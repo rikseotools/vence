@@ -91,10 +91,20 @@ describe('mapaBloquesPorArticulo', () => {
     expect(m['4']).toBe('a4')
   })
 
-  it('ignora títulos/capítulos y los artículos bis', () => {
+  it('ignora títulos y capítulos', () => {
+    expect(Object.values(mapaBloquesPorArticulo(XML_INDICE))).not.toContain('ti')
+  })
+
+  // ANTES este test exigía que los "bis" NO se mapearan. Era comportamiento INCIDENTAL,
+  // no intencionado: el regex original (`^Artículo (\d+)$`) sencillamente no los casaba, y
+  // el test fijó el efecto secundario como si fuera la regla. Pero `articles.article_number`
+  // SÍ guarda "32 bis" (LPRL, LO 3/2018), así que no mapearlos deja esos artículos fuera de
+  // toda auditoría contra el BOE. Lo que de verdad importaba —y se conserva— es que el bis
+  // NO desplace al artículo simple: van en claves distintas (T-133, 26/07/2026).
+  it('mapea los "bis" en su propia clave, sin pisar al artículo simple', () => {
     const m = mapaBloquesPorArticulo(XML_INDICE)
-    expect(Object.values(m)).not.toContain('ti')
-    expect(Object.values(m)).not.toContain('a28-2')
+    expect(m['28 bis']).toBe('a28-2')
+    expect(m['28']).toBe('a2-10')
   })
 
   it('devuelve mapa vacío si el índice no trae bloques', () => {

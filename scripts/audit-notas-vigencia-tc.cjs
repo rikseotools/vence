@@ -97,10 +97,18 @@ const fetchTexto = async (url) => {
   const indice = await fetchTexto(`${API}/${boeId}/texto/indice`)
   const mapa = mapaBloquesPorArticulo(indice)
 
+  // Lo que NO es un artículo no tiene bloque "Artículo N" en el índice y no debe contar
+  // como "no comprobado": el `0` estructural que usa el proyecto para la estructura de la
+  // norma, y las disposiciones (DA/DT/DD/DF) y anexos, que el BOE rotula aparte. Contarlos
+  // hacía que LPRL y LO 3/2018 salieran NO CONCLUYENTES sin tener nada ciego (T-133).
+  const esArticulo = (n) => /^\d+(\s+(bis|ter|quater|quinquies|sexies|septies))?$/i.test(String(n || '').trim())
+  const noArticulo = arts.filter((a) => !esArticulo(a.n)).length
+  const auditables = arts.filter((a) => esArticulo(a.n))
+
   const hallazgos = []
   let conNota = 0
   let sinBloque = 0
-  for (const a of arts) {
+  for (const a of auditables) {
     const bid = mapa[a.n]
     if (!bid) { sinBloque++; continue }
     let b
@@ -138,13 +146,13 @@ const fetchTexto = async (url) => {
   // Si son muchos, decir "0 hallazgos" es mentir por omisión: fue justo lo que pasó el
   // 26/07 con la LOPJ (665 de 665 sin bloque, informe "limpio"). Por encima del umbral el
   // resultado se declara NO CONCLUYENTE y el exit code lo refleja.
-  const ratioCiego = arts.length ? sinBloque / arts.length : 0
+  const ratioCiego = auditables.length ? sinBloque / auditables.length : 0
   const noConcluyente = ratioCiego > 0.2
 
   if (AS_JSON) {
-    console.log(JSON.stringify({ ley: ley.short_name, boeId, auditados: arts.length, conNota, sinBloque, ratioCiego: Number(ratioCiego.toFixed(3)), noConcluyente, hallazgos }, null, 2))
+    console.log(JSON.stringify({ ley: ley.short_name, boeId, auditados: auditables.length, noArticulo, conNota, sinBloque, ratioCiego: Number(ratioCiego.toFixed(3)), noConcluyente, hallazgos }, null, 2))
   } else {
-    console.log(`    con nota de vigencia: ${conNota} · sin bloque en el BOE: ${sinBloque}`)
+    console.log(`    artículos auditables: ${auditables.length} (${noArticulo} entradas que no son artículo: DA/DT/anexos/estructura) · con nota: ${conNota} · sin bloque: ${sinBloque}`)
     if (!hallazgos.length) console.log('  ✅ ningún artículo servido sin reflejar su pronunciamiento del TC')
     for (const h of hallazgos) {
       const icono = h.clase === 'nulidad' ? '🔴' : '🟠'
@@ -159,7 +167,7 @@ const fetchTexto = async (url) => {
     console.log(`\n=== ${hallazgos.filter((h) => h.clase === 'nulidad').length} 🔴 nulidad / ${hallazgos.filter((h) => h.clase === 'competencial').length} 🟠 competencial ===`)
     if (noConcluyente) {
       console.log(
-        `\n⚠️  RESULTADO NO CONCLUYENTE: ${sinBloque} de ${arts.length} artículos (${(ratioCiego * 100).toFixed(0)}%) no se pudieron localizar en el índice del BOE.\n` +
+        `\n⚠️  RESULTADO NO CONCLUYENTE: ${sinBloque} de ${auditables.length} artículos (${(ratioCiego * 100).toFixed(0)}%) no se pudieron localizar en el índice del BOE.\n` +
           '    Esos artículos NO se han comprobado — no interpretar la ausencia de hallazgos como "limpio".\n' +
           '    Causa habitual: numeración que el índice escribe de otra forma. Revisar mapaBloquesPorArticulo.',
       )
