@@ -43,6 +43,12 @@ const SQL = `
          -- la vista de deuda. Filtrarlos en el SQL era justo lo que escondía 715
          -- artículos sirviendo cero preguntas.
          (a.article_number ~ '^[0-9]+$') AS numerado,
+         -- Artículo con NOTA DE VIGENCIA (inciso anulado por el TC, remisión a preceptos
+         -- nulos…). El planificador lo ignoraba y seguía proponiéndolo: el 26/07/2026 el
+         -- art. 87 ter de la LJCA salía el primero del ranking justo después de marcarlo
+         -- como NO generable, una trampa para la siguiente sesión. Se marca, no se oculta:
+         -- la nota puede ser informativa y el juicio es de quien genera.
+         (a.vigencia_notes IS NOT NULL) AS "conNotaVigencia",
          EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active) AS cubierto
   FROM topic_scope ts
   JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
@@ -118,7 +124,7 @@ const tabla = (filas) => { console.table(filas); return filas }
     const foco = tipos ? noVistos.filter((a) => tipos.includes(a.tipo)) : noVistos.filter((a) => a.tipo === 'reforma')
     console.log(`\n▶ ${tipos ? tipos[0] : 'reforma'} — por alcance (es la familia examinable: Derecho introducido por modificación):\n`)
     tabla(plan.marcaEnCurso(foco, enCurso).slice(0, 25).map((a) => ({
-      ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas, usuarios: a.usuarios, enCurso: a.enCurso ? '⚠️' : '',
+      ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas, usuarios: a.usuarios, enCurso: a.enCurso ? '⚠️' : '', vigencia: a.conNotaVigencia ? '🚫 nota' : '',
     })))
     console.log('\n  Las disposiciones (adicional/transitoria/final/derogatoria) NO se proponen en bloque:')
     console.log('  una disposición final de entrada en vigor no es materia de examen. Se miran caso por caso')

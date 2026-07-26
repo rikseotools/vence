@@ -54,7 +54,7 @@ const pg = require('postgres')
 // si fuera el art. 31 de la LOPDGDD (registro de actividades de tratamiento). Un artículo
 // HOMÓNIMO POR NÚMERO de otra materia es peor que no adjuntar nada: da falsa confianza.
 // Lo cazaron las DOS auditorías ciegas del lote gen_l19_6bis_20260726 (26/07/2026).
-const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n|Texto Refundido|Estatuto)\b/i
+const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n|Texto Refundido|Estatuto|C[óo]digo)\b/i
 
 function numerosCitados(texto) {
   const t = String(texto || '')

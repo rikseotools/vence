@@ -346,3 +346,25 @@ describe('fidelidad del espejo con filas no numeradas', () => {
     expect(imp.temasDespues).toBe(0)
   })
 })
+
+describe('artículos con nota de vigencia (T-151)', () => {
+  // cubiertos=7 sobre 10: al sumar la fila con nota quedan 11 arts y 7 cubiertos
+  // (0,64 ≥ 0,6 y 4 huecos), así que el tema sigue disparando y el artículo entra al ranking.
+  const base = tema({ pt: 'opo_a', topicId: 't1', n: 10, cubiertos: 7 })
+  const conNota = { pt: 'opo_a', topicId: 't1', tema: 1, leySlug: 'ley-x', ley: 'Ley X', articulo: '99', cubierto: false, conNotaVigencia: true }
+
+  it('el ranking lo MARCA, no lo oculta: el juicio es de quien genera', () => {
+    const r = rankingHuerfanos([...base, conNota])
+    const a = r.find((x) => x.articulo === '99')
+    expect(a).toBeDefined()
+    expect(a.conNotaVigencia).toBe(true)
+  })
+
+  it('proponeLote NO lo propone: generar sobre un precepto anulado enseña Derecho inoperante', () => {
+    // Caso raíz: el art. 87 ter de la LJCA salió el PRIMERO del ranking justo después de
+    // marcarlo como no generable, porque su objeto son dos apartados anulados por el TC.
+    const soloConNota = [conNota, { ...conNota, articulo: '98' }, { ...conNota, articulo: '97' }, { ...conNota, articulo: '96' }]
+    const lote = proponeLote([...tema({ pt: 'opo_b', topicId: 't9', n: 10, cubiertos: 6 }), ...soloConNota])
+    expect(lote.articulos.every((a) => a.articulo !== '99')).toBe(true)
+  })
+})

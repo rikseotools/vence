@@ -35,6 +35,9 @@ describe('numerosCitados', () => {
     expect(numerosCitados('los arts. 16 y 17 de la Ley 10/2010')).toEqual([])
     expect(numerosCitados('el artículo 4 de la mencionada Ley')).toEqual([])
     expect(numerosCitados('el artículo 9 del referido Real Decreto')).toEqual([])
+    // 'Código Civil' faltaba en la lista de normas: una glosa que cite 'los artículos 235 y
+    // 236 del Código Civil' habría adjuntado los arts. 235/236 de la ley de la pregunta.
+    expect(numerosCitados('conforme a los artículos 235 y 236 del Código Civil')).toEqual([])
   })
 
   it('sigue resolviendo las remisiones al MISMO cuerpo legal', () => {
