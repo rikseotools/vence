@@ -489,7 +489,16 @@ Sin reparar el scope, los batches sucesivos contaminan el tema: preguntas sobre 
 > con apariencia de éxito, comparando tu `content` contra el precepto equivocado. Resuelve el id por el
 > `…/texto/indice` (`mapaBloquesPorArticulo`), con `a<N>` solo como último recurso.
 >
-> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`, `mapaBloquesPorArticulo`).
+> **TERCER GOTCHA — los `bis`/`ter` no se encontraban por un ESPACIO (T-146, 26/07/2026).** El índice del
+> BOE rotula «Artículo 6 bis» y nuestra BD guarda `6bis`: la búsqueda literal en el mapa fallaba, el
+> script daba `HTTP 404` y **el Paso 1 era imposible para toda la familia de reforma** — 183 artículos
+> escopados, activos y sin una sola pregunta, entre ellos el de más alcance de la campaña (art. 6 bis de
+> la Ley 19/2013: 17 oposiciones, 5.109 opositores). Lo mismo con la tilde (`367 quáter` vs `quater`) y
+> con los ordinales altos, que ni entraban en el mapa. Se cruza con `bloqueDeArticulo()`, que normaliza
+> espacios, tildes, puntos y paréntesis en los dos lados; si no está, devuelve `null` y el script **avisa**
+> en vez de inventar un `a<N>` que puede devolver otro artículo con apariencia de éxito.
+>
+> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`, `mapaBloquesPorArticulo`, `bloqueDeArticulo`).
 
 ```bash
 node -e "
@@ -868,6 +877,29 @@ done
 > contaba "parecido" a la MV en vez de "igual" —se le olvidó que la MV excluye `exam_case_id IS NOT NULL`
 > (supuestos prácticos)— y daba un desfase fijo de 3-5 preguntas por tema, es decir **6/6 falsos
 > positivos**. Si tocas la MV, toca también esta consulta.
+>
+> ⏱️ **Cuando falla nada más aprobar, la capa culpable es `topic_data:*` en ElastiCache, y NO se puede
+> purgar desde fuera de la VPC (26/07/2026, lote `gen_l19_6bis_20260726`).** Lo verificado en ese caso,
+> para no repetir el diagnóstico:
+> - **La BD y la MV estaban bien:** `topic_law_question_summary` daba 418 con los cubos de dificultad
+>   sumando 418 — es decir, el `refresh_topic_question_summary()` sí había entrado.
+> - **NO era el CDN:** `curl -D-` devolvía `x-cache: Miss from cloudfront`, o sea que el 416 lo daba el origen.
+> - **NO era un timeout** sirviendo caché viejo a propósito (el `catch` de la ruta lo hace): la respuesta
+>   tardaba 60-180 ms, camino rápido de Redis.
+> - **NO eran los tags:** 60 POST a `/api/admin/revalidate` (20 rondas × 3 tags) no movieron el número.
+> - **Los tags NO tocan esa clave:** `topic_data:<opo>:<tema>:<user>` la escribe `/api/topics/[numero]`
+>   con TTL de 24 h, y `revalidateTag` no la conoce.
+>
+> Ojo con dar por buena la explicación fácil: **el código de `main` tiene una ventana fresca de 5 minutos**
+> (`FRESH_WINDOW_MS`), que haría que el desfase se curase solo, **y no se curó**. O el build desplegado no
+> es ese, o hay algo más. Queda como cabo abierto, no como hecho.
+>
+> **Lo que sí se puede afirmar:** el desfase es de un **CONTADOR cacheado**, no de la cobertura. Las
+> preguntas están `approved`/`is_active` y el número escopado está en `topic_scope`, y el camino que sirve
+> preguntas (`getQuestionsForTopic`, `lib/testFetchers.ts`) las selecciona con un `inArray` EXACTO sobre
+> `topic_scope.article_numbers` — sin filtro numérico —, así que **al opositor ya le salen en los tests**
+> aunque la tarjeta del tema tarde en subir el conteo. Distinguir las dos cosas evita "arreglar" a lo bruto
+> lo que solo era caché.
 
 **Verificar que los conteos nuevos aparecen vía API real** antes de cerrar el batch:
 

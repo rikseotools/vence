@@ -69,6 +69,416 @@
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
+### [T-132] ✅ [CERRADA 26/07] El detector de incisos anulados era ciego a los pronunciamientos COMPETENCIALES del TC — y a dos cosas más
+- **Qué era:** `annulledProvisions.ts` solo cazaba la fórmula de NULIDAD. El TC usa además, en leyes estatales con incidencia autonómica, *"no es conforme con el orden constitucional de competencias"* — que contiene "constitucional" pero no "inconstitucional", así que el filtro (que exige el prefijo `in-` a propósito) pasaba de largo.
+- **Al ir al fondo aparecieron DOS puntos ciegos más, y el tercero es el que de verdad explicaba los 0 findings del kind:**
+  1. **La clase competencial no se puede detectar desde el análisis del BOE.** El análisis **no enumera** los artículos afectados: para la LCSP dice literalmente *"y no conforme con el orden constitucional de competencias **lo indicado**"*. El dato por-artículo solo está en la nota del texto consolidado → el auditor nuevo va bloque a bloque.
+  2. **`parseAnnulledArticles` no reconocía la abreviatura PLURAL `arts.`** (tras "art" viene una "s" que no es ni punto ni frontera de palabra) ni continuaba la enumeración → de *"arts. 46.4, 80.2 y 347.3"* extraía **NI UN artículo**. El detector de nulidad tampoco funcionaba.
+  3. **`mapaBloquesPorArticulo` solo entendía dígitos.** Las leyes antiguas numeran en letra: la **LOPJ tiene 713 de 713** bloques así. La ley entera quedaba fuera de la auditoría **y el barrido informaba "0 hallazgos" sin haber comprobado nada** — falso verde. Igual en Código Civil, LECrim y CP.
+- **RESULTADO: 4.912 artículos auditados, 13 hallazgos, TODOS remediados.** `articles.vigencia_notes` pasa de **7 a 20** artículos y las cuatro leyes vuelven a dar 0 hallazgos.
+
+  | Ley | Hallazgos |
+  |---|---|
+  | Ley 9/2017 (LCSP, ~30 oposiciones) | 1 nulidad (art. 46) + 8 competenciales (52, 72, 122, 125, 154, 185, 212, 242) |
+  | LO 6/1985 (LOPJ) | 2 nulidad (294, 367) — **invisibles hasta arreglar el mapeo en letra** |
+  | Ley 39/2015 | 1 nulidad (art. 129) |
+  | Ley 7/1985 (LBRL) | 1 nulidad (art. 26) |
+
+- **Integrado, no en un silo** (revisión explícita de qué existía ya antes de crear nada):
+  - Los patrones viven en **UN** sitio, `lib/laws/notaVigenciaTc.js` (JS plano para que lo compartan también los `.cjs`). Antes el regex de anulación estaba **copiado en cuatro**: `boeVigencia.ts`, `boe-extractor.ts`, el espejo del backend y `capturar-vigencia-articulo.cjs` — y ninguna copia conocía la fórmula competencial. Así es como se cuela un punto ciego.
+  - `VigenciaNote` gana `esCompetencial`, distinto de `esAnulacion` **a propósito**: el precepto NO es nulo, es inaplicable como básico o en CCAA con competencia propia → procede nota de vigencia, **NO jubilar preguntas**. El guardarraíl `annulledVigenciaMirror` cazó la divergencia en cuanto se tocó `lib` sin el backend; sincronizado.
+  - El conversor de números en letra estaba **copiado en cuatro sitios** y llegaba solo hasta "trescientos" → unificado en `lib/laws/spanishNumber.js` hasta 999. `boeScrapingUtils` lo re-exporta con el mismo nombre público: sus 149 tests siguen verdes.
+  - La remediación usa la herramienta **canónica** de T-048 (`capturar-vigencia-articulo.cjs` → `articles.vigencia_notes`), no una vía paralela. Y el auditor comprueba "ya marcado" **en los dos sitios** (`vigencia_notes` y `content`): si no, remediar por la vía buena no habría apagado el hallazgo.
+  - Registrado en `runbookRegistry` (kind `article_annulled_unmarked`, con las dos clases y su remediación distinta) y ampliado el runbook `incisos-anulados-tc.md`.
+- **Capa anti-falso-verde:** el auditor declara **NO CONCLUYENTE** y sale con exit 1 si >20% de los artículos no se localizan en el índice del BOE, para que ningún gate pase en verde sobre algo que no se ha comprobado.
+- **Tests:** 15 (`notaVigenciaTc`, incluida la integración con `parseBoeBlock`) + 10 (`spanishNumber`) + 4 nuevos en `annulledProvisions`. Suite 17.668 verde, typecheck limpio.
+
+### [T-117] ✅ [CERRADA 26/07 — DECISIÓN: NO va al panel; arreglada la precisión del detector on-demand] Banda MEDIA de `audit:epigrafe` (name-mismatch)
+- **La pregunta de la ficha era coste/beneficio. Respuesta MEDIDA: no se añade al panel.** Barrido bank-wide previo: **1.948 hallazgos** (835 `WRONG_SUBJECT` + 1.113 `OVER`) en **107 de 115** oposiciones, solo 8 limpias. El badge de contenido está en ~210 → esta banda lo multiplicaría por diez.
+- **Y además era ruido, cuantificado:** sobre una muestra ALEATORIA de 140 pares (tema, ley) con la ley aportando ≥80% de las preguntas del tema, 51 los marcaría la heurística y **el 82% tiene solapamiento de contenido ≥60%** — la materia encaja y el aviso sobra. El único de banda baja de toda la muestra era un epígrafe **en catalán** contra articulado en castellano: falso positivo de otra clase.
+- **Pero el mismo dato decía que el detector estaba roto de precisión, y eso sí se arregló** (commit `8bad686b7`): `audit:epigrafe` se usa como **gate después de cada build** —el 26/07 en León hubo que descartar **10 de 11 rojos a mano**—, así que con ese ruido no servía para lo que existe.
+- **El arreglo: juzgar por MATERIA, no por el título de la ley.** Se comparan las palabras del epígrafe contra el **texto de los artículos escopados**. Núcleo puro `lib/laws/epigrafeMateria.js` + 12 tests. Bandas: `encaja` (≥60%) no genera hallazgo · `dudoso` (35-60%) baja a `MATERIA_PARCIAL` **con su porcentaje** · `no_encaja` mantiene la severidad original.
+  - **Por qué el texto y no los títulos de artículo** (que sería lo natural): faltan justo donde más duele — **129 de 163 artículos de la Ley 7/1985 y 143 de 187 de la Constitución tienen `title` a NULL**. Una señal basada en títulos daría cero en las dos leyes más usadas del banco.
+  - **Dos guardas más:** mínimo de **3 palabras clave** para dar veredicto (con una o dos el ratio solo puede ser 0/0,5/1 — es azar, no señal); y epígrafe en **lengua cooficial** frente a texto en castellano → `NO_JUZGABLE`, nunca acusación.
+- **Efecto medido en una oposición real:** `auxiliar_administrativo_diputacion_leon` pasa de **11 🔴 / 8 🟡 a 1 🔴 / 2 🟡**.
+- **Límite conocido, fijado en los tests a propósito:** el 🔴 que queda en León (T19 «Órganos de gobierno provinciales», 33%) es de **vocabulario**: casi todas sus palabras clave son META («composición», «atribuciones», «vigencia», «finalización») y no aparecen en el articulado. **No se bajó el umbral para tragárselo** — hacerlo dejaría pasar también los que sí están fuera de tema. Lo que se gana no es que desaparezca: es que el aviso ahora dice su porcentaje y se adjudica en segundos.
+- **Pendiente menor (no bloquea):** el barrido bank-wide POST-fix no llegó a terminar en la sesión (el filtro añade una consulta de contenido por hallazgo y lo hace mucho más lento). Reproducible con `npm run audit:epigrafe` a secas; la línea final `=== N 🔴 / N 🟡 ===` da la cifra comparable contra los 1.948 de referencia.
+
+### [T-119] ✅ [CERRADA 26/07] Catálogo UMU desfasado — cuadrado contra la fuente oficial, resolución por resolución
+- **Qué era:** el catálogo tenía 9 filas UMU, varias sin provenance, una que no correspondía a nada y faltaban convocatorias vigentes. La ficha hablaba de "17 convocatorias vigentes"; **son 10** (listado "Convocatorias Vigentes" de `convocum.um.es`, Convocum PTGAS, 26/07/2026).
+- **Resultado: 6 creadas + 4 actualizadas; las 10 vigentes con provenance citada. 0 filas UMU sin fuente.** Reejecutar el reconciliador da 10/10 "ya correcta" (idempotente).
+
+  | Escala/Especialidad | Grupo | Plazas | Plazo |
+  |---|---|---|---|
+  | Auxiliares de Archivos y Bibliotecas | C1 | 8 | 10/07→06/08 |
+  | Técnicos Especialistas: Comedores | C1 | 1 | 10/07→06/08 |
+  | Técnicos Especialistas: Laboratorios Sociosanitarios | C1 | 8 | 10/07→06/08 |
+  | Diplomados Técnicos: Gestión de la Investigación | A2 | 1 | 10/07→06/08 |
+  | Escala Superior Facultativa: Estadística | A1 | 1 | 10/07→06/08 |
+  | Escala Técnica Auxiliar: Básica de Servicios | C2 | 6 | 20/07→14/08 |
+  | Técnicos Especialistas: Laboratorios de Biología | C1 | 3 | 20/07→14/08 |
+  | Técnicos Especialistas: Laboratorios de Disección | C1 | 1 | 20/07→14/08 |
+  | Técnicos Especialistas: Patología Clínica Veterinaria | C1 | 2 | 20/07→14/08 |
+  | Diplomados Técnicos: Transferencia de Resultados de Investigación | A2 | 1 | 20/07→14/08 |
+
+- **🔴 GOTCHA que justifica haber ido resolución por resolución: la columna "Nº Puestos" de la tabla de convocum NO es fiable.** Dice **4** plazas en *Gestión de la Investigación* y en *Transferencia de Resultados*, y las resoluciones (**R-864/2026** y **R-930/2026**) dicen literalmente **"una plaza"** en ambas — el BOE-A-2026-14940 lo confirma para la primera. Fichar desde la tabla habría metido 4 donde hay 1, **dos veces**. Manda SIEMPRE la resolución; por eso cada fila lleva su nº de resolución en `boe_reference`.
+- **Segundo gotcha, de código:** `inscription_deadline` es `date`, **no `timestamptz`**. Compararla en JS con `new Date(x).toISOString().slice(0,10)` la desplaza **un día** (medianoche peninsular → 22:00 UTC del día anterior) y hace creer que hay que "corregir" fechas que ya son correctas. Comparar con `to_char(col,'YYYY-MM-DD')` en SQL. El primer dry-run marcaba 5 fechas para corregir que estaban bien.
+- **El lote que cierra el 14/08 son MODIFICACIONES** de convocatorias de 2025 (R-929 a R-933/2026, BORM nº 158 de 11/07/2026, sobre R-1392/2025, R-1619/2025, R-1652/2025…): homogeneizan condiciones para las plazas de la OEP 2023 y **cambian penalización por errores, valoración de fases, méritos y el contenido de la parte general del temario**. Si algún día se construye alguna, hay que partir de la resolución modificada, no de la original.
+- **Una fila queda SIN identificar, a propósito:** `tecnicos-especialistas-universidad-de-murcia` (6 plazas, cierre 10/08, grupo NULL, creada por el radar el 15/07 sin provenance). No corresponde a ninguna vigente: ni escala, ni grupo, ni fecha (10/08 no existe en ningún lote). Las 6 plazas coinciden con la Técnica Auxiliar C2, **pero esa ya está fichada aparte con su resolución y cierra el 14/08** → vincularlas sería inventar. Queda anotada en su `boe_reference` con el análisis completo; probable duplicado del radar a eliminar, pero eso es adjudicación humana.
+- **Método reutilizable:** `convocum.um.es` → "Acceder »" (postback JSF, hay que **pulsar**, no navegar) → Convocum PTGAS → "Convocatorias Vigentes". La tabla trae el PDF del BORM de cada una en `/publicaciones/<id>.pdf` (HTTP 200 con user-agent de navegador). **El BORM bloquea la IP a nivel de red (Radware); convocum es la vía buena.**
+
+### [T-111] ✅ [CERRADA 26/07 — DECISIÓN: no se construyen para esta convocatoria] Las 2 escalas C1 de la Universidad de Murcia con plazo abierto
+- **Qué era:** montar y poner en vivo **Auxiliares de Archivos y Bibliotecas (8 plazas)** y **Técnicos Especialistas: Laboratorios Sociosanitarios (8 plazas)**, ambas C1, bases en BORM nº 148 de 30/06/2026, anuncio BOE-A-2026-14940, plazo hasta el **6 de agosto de 2026**.
+- **Por qué se cierra SIN construir** (decisión de Manuel, 26/07, con los números delante):
+  - **16 plazas** en dos nichos muy estrechos.
+  - **11 días de plazo** al decidir: ni con el contenido terminado daría tiempo a vender.
+  - **El 70-75% del temario es editorial SIN fuente oficial.** Solo **2 de 24** temas de Archivos y **~2 de 29** de Laboratorios tienen anclaje legal; y **5 de Archivos dependen de documentación interna de la UMU** (*"La Biblioteca de la Universidad de Murcia"*, *"hemerotecas"*, *"Catálogo Alba / Buscador Xabio"*, *"portal web de la Biblioteca"*, *"Archivo Universitario"*) — no hay boletín que citar.
+  - Lo barato **solo cubre 10 de 34 y 10 de 39 temas**: la parte general común (12.608 preguntas ya en BD entre CE, LO 3/2007, Ley 39/2015, Ley 40/2015, TREBEP, LOSU, Estatutos UMU y LO 3/2018). Publicar así sería ofrecer un temario al 26-29%.
+- **Lo verificado queda aprovechable para la PRÓXIMA convocatoria** (no hay que repetir el análisis):
+  - Fuentes vivas y FASE 1 rehacible en ~2 minutos: `convocum.um.es/publicaciones/162577.pdf` (R-849/2026, Archivos y Bibliotecas) y `163146.pdf` (R-850/2026, Laboratorios Sociosanitarios), HTTP 200 con user-agent de navegador, `pdftotext -raw`. **El BORM bloquea la IP a nivel de red (Radware); la vía buena es convocum.**
+  - Temarios: Archivos y Bibliotecas **10 general + 24 específica** (ojo, errata oficial *"Temas 17.-"*); Laboratorios Sociosanitarios **10 general + 29 específica**.
+  - La parte general es **idéntica** a la de las dos UMU ya vivas → reutilización pura y ya verificada.
+- **Cabo que SÍ se atiende:** el catálogo no cuadraba con el BOE → va en [T-119].
+
+### [T-123] ✅ [CERRADA 26/07] Aux. Admin. Diputación de León: servíamos 25 temas de los 29 del programa oficial
+- **Qué era:** el Anexo I del BOCYL núm. 9 de 15/01/2026 tiene **29 temas** (8+8+13) y servíamos **25**. Faltaban los temas 10-13 del Bloque III. El examen es un test de 40 preguntas sobre TODO el temario, así que quien estudiara solo con nosotros llegaba sin cuatro temas, dos de ellos de ofimática. Y la landing lo vendía como completo (`landing_features` decía "25 temas").
+- **Cómo se cerró — resultado medido:**
+
+  | Tema | Preguntas servidas |
+  |---|---|
+  | T26 Recursos de las Haciendas Locales | 20 |
+  | T27 El presupuesto de las entidades locales | 65 |
+  | T28 Windows 11 + Word 2016 + correo | 335 |
+  | T29 Excel 2016 | 104 |
+
+  `audit:served` pasa de `1 🟡` a **0 ❌ / 0 🟡** ("29 topics, todos con cobertura ≥10q"). Commits `7a0b62bce` (temas), `520037d36` (simulador), `7c9a73d95` (detector).
+- **Scope mapeado artículo a artículo contra el epígrafe, NO copiado de una oposición hermana.** T26 se queda a propósito en TRLRHL **arts 2-6** (el epígrafe pide enumeración y clasificación derecho público/privado, NO ordenanzas fiscales ni el detalle de tasas que sí piden Segovia o Ávila: copiar sus 21 artículos habría sido sobre-inclusión). T27 toma **162-193**, que cubre los seis puntos del epígrafe. **No se metió el RD 500/1990** pese a desarrollar el Título VI: el epígrafe no lo nombra.
+- **12 preguntas nuevas para T26** (batch `gen_leon_t26_2026-07-26`, arts 2-6, ancladas al texto literal), **aprobadas tras TRES pasadas independientes**: auto-auditoría 12/12 · auditoría ciega (Paso 7) 12/12 PERFECT · re-verificación post-aplicación con agente nuevo (Paso 9) 12/12 OK, ninguna a desactivar. Bonus: los arts 2-6 están escopados en más oposiciones, así que el banco llega también a Cuenca, Girona, Huelva, Huesca, Segovia, Zamora y Zaragoza.
+- **Gates:** `audit:oposicion` 0 ❌ · `audit:served` con `TOPIC_MV_ENABLED=true` 0 ❌ · MV refrescada · 3 capas de caché invalidadas (MV, tags, rutas ISR) · 703 suites / 17.326 tests · typecheck limpio. De paso se cerraron dos huecos preexistentes que el gate cantaba: `subgrupo` NULL (BOCYL: *"Grupo/Subgrupo: C/C2"*) y el mapeo CCAA ausente (León es Castilla y León).
+- **Los 🔴 de `audit:epigrafe` NO son de esta tarea:** son la banda conocida de name-mismatch ([T-117]); 10 de 11 ya existían (T19-T24, epígrafes que describen la materia sin citar la ley) y el de T27 es de esa misma clase.
+- **Dos herramientas que salieron de aquí** (ver [T-126]): `npm run simular:batch` y el arreglo del falso positivo de cita-truncada.
+
+### [T-126] ✅ [CERRADA 26/07] Simulación PRE-inserción de batches generados + el falso positivo que bloqueaba la aprobación
+- **Qué era:** el pipeline de `generar-preguntas-con-ia.md` solo sabía verificar **después** de insertar (`verificar-batch-generado.cjs` lee de RDS). Es seguro —el draft es invisible por construcción— pero deja basura que limpiar en cada iteración de reparación y empuja a "insertar para ver".
+- **`npm run simular:batch <borrador.json>`** (Paso 3.bis del manual, commit `520037d36`): corre los **mismos cinco núcleos** sobre el JSON borrador leyendo RDS en solo lectura → mismo veredicto, cero escritura. Añade tres cosas que después ya es tarde: el **contrato con el inserter**, la **distribución/secuencia** de `correct_option` del lote (§2.2-ter) y el **dedup** del Paso 3. Núcleo puro `lib/generacion/simularBatch.js` + 25 tests.
+- **Drift manual ↔ código que destapó:** el manual documenta `primary_article_id` + `option_a..option_d` en su Paso 2, pero `insertar-batch-generado.cjs` lee **`primary_article_number` + `options[]`**. Un borrador escrito según el manual muere con `UNDEFINED_VALUE: Undefined values are not allowed` sin decir qué campo falta. Ahora se aceptan las dos formas y se reclama por nombre lo que falte.
+- **Falso positivo de cita truncada (commit `7c9a73d95`):** `analizarCita` solo recibe artículo y opción, así que un inciso condicionante que PRECEDE a la cita se lee como truncamiento por la cabeza aunque la pregunta lo recoja entero — cuando §2.2 dice expresamente que eso es **condensación válida**. Consecuencia real: el verificador daba 11/12 y `aprobar-batch-generado.cjs` **abortaba** (hace bien, exige exit 0) sobre un lote que dos auditorías independientes habían dado por bueno. La salida fácil era saltarse el guardarraíl; la correcta era que el detector dejara de tener razón a medias. El helper vive ahora en `citaTruncada.js`, junto a la regla que matiza, y lo consumen los dos lados.
+- **Aprendizaje que motivó los tests:** la primera versión del simulador, escrita como script suelto, llamó a los cinco núcleos asumiendo que todos devolvían `{ok}` cuando devuelven `{estado}`/`{tell}` → marcó **12 de 12 preguntas como rotas**, una de ellas copia verbatim del artículo. Un fallo de contrato entre módulos no se ve leyendo el código; se ve con una pregunta buena que DEBE pasar limpia.
+
+### [T-122] ✅ [CERRADA 26/07] `main` tenía el pre-commit roto: el kind `scope_sin_verificar` estaba en el backend y no en el script
+- **Qué era:** `__tests__/health/content-sweep-parity.test.ts` fallaba en `origin/main` desde **`227714a0f`**, que añadió el kind **`scope_sin_verificar`** al `@Cron` del backend pero no al gemelo `scripts/health-sweep.cjs`. Como `.husky/pre-commit` corre `npm run test:unit`, **bloqueaba CUALQUIER commit del repo** (en la sesión de T-045 hubo que usar `--no-verify` cuatro veces).
+- **Cómo se cerró:** se **portó** la detección al gemelo CLI (misma SQL, mismo mensaje, mismo `detail`) en vez de retirarla del backend — el detector es correcto y ya estaba en `runbookRegistry`. Commit `8cd302116`.
+- **Segundo bloqueo, misma familia (`11a920c4f`):** en TODO worktree de `new-session.sh`, `__tests__/lib/generacion/numerosCitados.test.js` fallaba con *"Cannot find module .../backend/node_modules/postgres"* — `scripts/auditar-batch-input.cjs` resuelve esa dependencia por **ruta absoluta** y el script de sesión solo enlazaba el `node_modules` raíz. Resultado: suite unit en rojo en cualquier sesión aislada aunque `main` estuviera verde → `--no-verify` otra vez, el fallo exacto que T-122 existe para matar. Arreglado enlazando también `backend/node_modules`; y `backend/.gitignore` pasa de `node_modules/` a `node_modules` (con barra ignora solo directorios, no el symlink).
+- **Verificado:** `npx jest __tests__/health/content-sweep-parity.test.ts` 8/8 verde, `npm run test:unit` **698/698 suites** verde, y la SQL del detector corrida contra RDS devuelve filas reales (p. ej. `auxiliar-administrativo-baleares` 36/36 temas sin auditar).
+- **Aprendizaje para el gemelo CLI:** `scripts/health-sweep.cjs` lleva emojis → `grep` normal lo trata como **binario** y devuelve 0 hits falsos. Buscar siempre con `grep -a` (ya está avisado en la cabecera del fichero).
+### [T-114] ✅ [HECHA 26/07] Repuntar las `seguimiento_url` genéricas/desfasadas a la ficha concreta de la convocatoria viva (datos)
+- **Resultado:** de las 9, **6 repuntadas y verificadas**; **3 no tienen ficha vigilable por HTTP** y pasan a [T-125] (no es trabajo de datos, es capacidad de fetch). Hallazgos `seguimiento_url_stale`: **13 → 7** (3 error + 4 warn plurianuales, que son cola de revisión por diseño). Verificado corriendo el detector real (`diagnosticarSeguimientoUrl` + `procesoConFichaViva`) sobre las 123 activas con URL.
+- **Repuntadas** (cada URL comprobada contra la `boe_reference` que ya teníamos, y con las **cabeceras exactas del cron** — HTTP 200 + el texto del proceso presente en el HTML servido):
+  - `auxiliar-administrativo-ayuntamiento-cordoba` → ficha del PAG `idConvocatoria=220139`. **La URL anterior daba 404**, no solo genérica. Ancla: 55 plazas, BOE-A-2026-9772 de 05/05/2026, plazo 06/05–02/06/2026. La ficha del PAG trae apartado *Seguimiento* (registró la modificación de la base decimosegunda).
+  - `administrativo-diputacion-jaen` → ficha propia `dipujaen.es/…/_detalles/index.html?uid=b652dcc9-…` (título literal *"35Administrativos"*). La anterior (`sede.dipujaen.es/Convocatorias`) es un shell SPA: 25 KB y **cero** menciones a "Administrativ".
+  - `administrativo-madrid` → `comunidad.madrid/empleo/administrativos-c1-2026`. Ancla: Orden 1634/2026 de 30/06, BOCM 14/07/2026, 107 plazas, plazo 15/07–11/08/2026.
+  - `auxiliar-administrativo-ayuntamiento-murcia` → ficha del PAG `idConvocatoria=219363` (BOE-A-2026-5663). El portal propio solo tiene un post de *"varias convocatorias"* que no se actualizará por proceso.
+  - `administrativo-estado` y `auxiliar-administrativo-estado` → **índice del CUERPO en INAP** (sin sufijo de año), en vez de la convocatoria 2025 cerrada; es donde aterrizará la convocatoria de la OEP 2026 (RD 387/2026).
+- **Gotcha aplicado, con trampa:** `seguimiento_last_hash=NULL` en cada una, o el cron habría dado un "cambio" falso. **La columna existe en las DOS tablas (`oposiciones` y `convocatorias`) y el cron solo usa la de `oposiciones`** (`seguimiento-queries.ts` lee `oposiciones.seguimientoLastHash` y escribe con `.update(oposiciones)`): el primer reseteo fue a `convocatorias` y no habría servido de nada. Contraintuitivo, porque para el resto de campos de convocatoria la SSOT es `convocatorias`. Segundo tropiezo: `oposiciones` **no tiene** columna `updated_at` (la tiene `convocatorias`) → el primer intento reventó la transacción entera. Ambos anotados en el runbook.
+- **Criterio nuevo, que la ficha original no contemplaba:** el cron **hashea el HTML servido, sin ejecutar JS** (`backend/src/check-seguimiento/seguimiento-fetch.ts`). Una SPA responde 200 con un shell que nunca cambia → **hash congelado = la misma ceguera silenciosa que veníamos a arreglar**, pero disfrazada de "monitorizado". Por eso se descartaron `empleo.eprinsa.es` (Córdoba) y `jgpa.convoca.online` (Asturias) pese a ser las páginas "buenas" para un humano. **Regla: antes de escribir una `seguimiento_url`, `curl` con las cabeceras del cron y comprobar que el texto del proceso aparece.**
+- **Falso positivo detectado:** `ordenanza-ayuntamiento-cordoba` dispara `url_generica` por el regex (`/convocatorias$`) pero su URL **sí** sirve hoy el proceso (23 plazas, plazo hasta 17/08/2026) en HTML plano, y el Ayuntamiento de Córdoba **no tiene** ficha por proceso. Material para [T-113] (afinar precisión de detectores).
+- **También detectado, sin tocar:** discrepancia de plazas en `auxiliar-administrativo-ayuntamiento-murcia` — nuestra `boe_reference` cita *"Dieciocho plazas … turno libre. Dos … discapacidad"* (18+2) mientras el PAG y MurciaEmplea dan 20 libres + 2 discapacidad (22). No se ha cambiado el dato: exige leer el BOE y las bases. Anotado en [T-125].
+- **Origen:** cabo de T-112 (triaje del badge, 25/07).
+
+### [T-021] ✅ [CERRADA 25/07 — YA ESTABA HECHA, cerrada por verificación de estado y no por trabajo nuevo] Construir Ujieres de las Cortes Generales
+- **Estado real comprobado en RDS:** la oposición `ujieres-cortes-generales` está **EN PRODUCCIÓN** — `is_active=true`, **17 de 17 temas** con `disponible=true` y **5.722 preguntas servidas**; la desplegó el commit `d9066bd03`.
+- **Por qué estaba abierta:** la ficha seguía describiéndola como *"catalogada (⚪ is_active=false), sin temario ni tests"*. Es exactamente el **drift** que este runbook existe para evitar: T-021 figuraba `open` y `libre`, así que cualquier sesión podía reclamarla y ponerse a construir una oposición ya viva — el mismo patrón que el caso del RD 176/2022 del 20/07.
+- **Cómo se detectó:** al arrancar la sesión de T-045, cruzando el backlog con las convocatorias de plazo abierto. Ujieres aparecía con inscripción viva hasta el 13/08 *y* con la ficha diciendo que no tenía contenido; el contraste no cuadraba.
+
+
+### [T-048] ✅ [COMPLETA 20/07 — 3 capas + importadores cableados] Capturar las NOTAS DE VIGENCIA del BOE al importar leyes
+> El ✅ ahora sí corresponde: **cerrada también en `backlog_tasks`**, no solo en este documento.
+> (Otra sesión avisó con razón de que el ✅ anterior engañaba: el markdown decía "hecha" mientras el
+> registro decía `open`. La fuente de verdad del estado es `backlog_tasks`; este fichero es su reflejo.)
+- **✅ Capa 1 (import) HECHA.** Ya hay dónde guardarlo y con qué capturarlo:
+  - **`lib/laws/boeVigencia.ts`** — `parseBoeBlock()` devuelve `{ text, vigenciaNotes, highlightedFragments }`.
+    **Contrato clave: `text` sale IGUAL que antes** (articulado sin notas) → los importadores no cambian de
+    comportamiento y **las citas literales de las explicaciones siguen encajando**. Lo nuevo va aparte.
+  - **Migración `20260720_articles_vigencia_notes.sql`** — columna `articles.vigencia_notes JSONB` (additiva, NULL
+    por defecto = "no capturado", que NO es lo mismo que "sin notas") + índice GIN parcial. **Aplicada a RDS.**
+  - **`scripts/capturar-vigencia-articulo.cjs`** — captura para un artículo ya importado. **NO toca `content`.**
+- **Por qué columna aparte y NO marcadores inline en `content`:** las explicaciones citan el articulado
+  **verbatim** (blockquote literal, verificado en 1.073 citas el 20/07). Inyectar marcadores rompería esas citas
+  y los checks de literalidad.
+- **✅ Verificado de punta a punta con el caso conocido** (LO 4/2000 art. 58, STC 17/2013, **28 preguntas activas**):
+  8 notas capturadas, **1 inciso anulado aislado exactamente** (*"Asimismo, toda devolución acordada en aplicación
+  del párrafo b)… tres años."*), `content` intacto en 2.439 chars.
+- **Dos cosas que costaron un intento cada una (anotadas para el siguiente):**
+  1. **El BOE repite el historial de reformas en el mismo bloque**: 20 notas y 2 fragmentos, de los que solo 8 y 1
+     eran distintos. Sin deduplicar, el JSONB guardado es ruido.
+  2. **`JSON.stringify(payload)::jsonb` guarda un STRING json, no un objeto** (el driver ya serializa el parámetro)
+     → `jsonb_typeof` devolvía `'string'`. Hay que pasar el objeto con `sql.json()`.
+- **Precisión medida:** las 3 notas que el detector marcó como anulación en el caso real son las 3 legítimas
+  (misma STC 17/2013, apartados 6 y 7 + aclaración). **Cero falsos positivos.** Y un `<strong>` SIN nota de
+  anulación NO marca nada (el BOE resalta por otros motivos) — hay test.
+- **Tests:** `__tests__/laws/boeVigencia.test.ts` (9), con **fixture real** descargado de la API, no inventado.
+- **✅ Capa 2 (render) HECHA.** `lib/teoria/annotateVigencia.ts` pinta el inciso **tachado** (`~~…~~`, GFM, que es
+  lo que `MarkdownContent` tiene activado) + un aviso **en texto** (*"[inciso declarado inconstitucional y nulo —
+  sin vigencia]"*, no solo formato: quien lea rápido o use lector de pantalla también tiene que enterarse) y añade
+  las **notas del BOE al pie**, con las de anulación primero porque son las que cambian la respuesta.
+  Cableado en `lib/api/temario/queries.ts` + columna añadida a `db/schema.ts`; expone además `tieneIncisoAnulado`
+  para poder marcarlo en la UI. **`content` NO se toca**: la anotación es al vuelo, en display.
+  - **Si el fragmento no aparece en el texto guardado** (import reflowado, redacción distinta) **no se tacha nada
+    pero la nota SÍ se muestra**: avisar de más es mejor que tachar el trozo equivocado. Hay test.
+  - Verificado contra el dato real en RDS (LO 4/2000 art.58): el inciso se localiza y se tacha correctamente,
+    3 notas de anulación + 5 de modificación.
+  - **Tests:** `__tests__/teoria/annotateVigencia.test.ts` (9).
+- **✅ Capa 3 (guardarraíl) HECHA.** Migración `20260720_annulled_fragment_promotion_gate.sql`, aplicada a RDS:
+  gate dentro de `transition_question_state` (la ÚNICA vía legítima a un estado visible, igual que el gate
+  anti-competidor del 10/07) que **rechaza promover a `approved`/`tech_approved` una pregunta cuya CLAVE
+  reproduce un inciso anulado por el TC**. Detector reutilizable `answer_falls_in_annulled_fragment(text, jsonb)`.
+  - **Alcance deliberadamente estrecho** (un gate con falsos positivos se acaba desactivando): solo mira la
+    **opción correcta** (un distractor que cite el inciso anulado es legítimo y hasta pedagógico), exige
+    **≥60 caracteres** de solape literal, y **no bloquea nada si `vigencia_notes` es NULL** (no capturado ≠ sin notas).
+  - Normalización simétrica de espacios en ambos lados: si no, el reflow del importador daría falsos negativos.
+  - **✅ Verificado contra RDS con canario**: bloquea la clave que reproduce el inciso anulado del art. 58 LO 4/2000
+    y **deja pasar** una clave legítima del mismo artículo. Todo en transacciones revertidas, cero rastro en BD.
+    Reejecutable: `node scripts/canary-gate-inciso-anulado.cjs`.
+  - **Gotcha de método:** el primer canario dio un falso "bloqueó una buena" porque metí los dos casos en la MISMA
+    transacción — un `RAISE` la aborta y los comandos siguientes se ignoran. Cada caso necesita su transacción.
+- **✅ IMPORTADORES CABLEADOS (20/07).** El culpable no era un `replace` genérico: `lib/boe-extractor.ts`
+  —el extractor COMPARTIDO que usa toda la sincronización— **borraba a propósito** `nota_pie` y `blockquote`
+  para limpiar el articulado. Correcto que no vayan dentro del texto; el fallo era perderlas del todo.
+  - `extractVigencia()` las captura **antes** de borrarlas, en **los dos caminos** del extractor.
+  - `ExtractedArticle` lleva ahora `vigencia?`; `lib/api/article-sync/queries.ts` la persiste en
+    `articles.vigencia_notes` **tanto al INSERTAR como al ACTUALIZAR** (si el BOE ya no trae notas porque el
+    legislador reformó el texto, se limpia: re-sincronizar debe reflejar la vigencia ACTUAL).
+  - `lib/eurlex-extractor.ts` recibe el campo también: EUR-Lex no publica estas notas (siempre `undefined`),
+    pero ambos tipos comparten variable en article-sync y sin eso no compila.
+  - **Tests:** `__tests__/laws/boeExtractorVigencia.test.ts` (8). Fijan el **contrato**: `content` sale igual
+    que antes, SIN las notas. Si alguien las mete dentro del articulado, saltan — romperían las citas literales.
+- **⚠️ BUG PREEXISTENTE encontrado de paso (NO arreglado, a propósito):** `extractArticlesFromBOE` tiene dos
+  caminos y **el de reserva no llama a `decodeHtmlEntities`**, así que sus artículos guardan `&oacute;` en el
+  `content` y el opositor lo ve así. **No se toca aquí porque cambiar el texto cambia el `content_hash` de
+  miles de artículos y dispararía una re-sincronización masiva.** Queda fijado en un test para que el día que
+  se arregle salte y sea una decisión consciente.
+- **La capa 4 (cron) se descarta:** ver T-009, bajada a baja el 20/07. El barrido completo dio 0 bugs activos y
+  esta capa 1 corta el problema en origen, así que un cron de 714 peticiones al BOE por noche no se justifica.
+
+
+### [T-051] ✅ [HECHA 20/07] Enforcement del claim del backlog por pre-push (cerrar el hueco del OLVIDO)
+- **Por qué:** el claim atómico ya impedía que dos sesiones cogieran la misma fila, pero **nada obligaba a reclamar antes de trabajar** → el fallo real era el OLVIDO. Se coló dos veces el 20/07 (RD 176/2022 y **T-044/Almería**: una sesión completó los imports mientras otra tenía la tarea reclamada).
+- **Qué se ha hecho (dos capas):**
+  1. **Prevención:** `node scripts/backlog.cjs claim <id>` ahora **imprime la ficha entera** del markdown → "abrir la tarea" y "reclamarla" pasan a ser el mismo acto, no hay ventana para olvidarlo.
+  2. **Enforcement:** hook **`.husky/pre-push`** (`scripts/backlog-push-guard.cjs`) que **bloquea el push** si un commit que empujas menciona un `T-NNN` **vivo** (open/in_progress/blocked) que **no tienes reclamado** o lo tiene otra sesión. Fail-**closed** solo en ese caso; fail-**open** ante infra (sin `DATABASE_URL`/BD caída); cortocircuito si el push no menciona ningún `T-NNN` (no paga peaje). Escape legítimo: `BACKLOG_GUARD_SKIP=1 git push …`.
+- **Diseño:** lógica pura en `lib/backlog/pushGuard.cjs` (JS plano → el hook y el test usan la MISMA función, sin copia que dé falso verde). Tests: `__tests__/backlog/pushGuard.test.ts` (12) + bloque nuevo en `__tests__/guardrails/backlogRegistry.guardrail.test.ts`. Documentado en CLAUDE.md y `docs/runbooks/tareas-pendientes.md`.
+
+### [T-050] ✅ [HECHA 20/07] Retirar el sensor `hash_change` (cron `check-seguimiento`)
+- **Por qué se retira, con números.** Es el peor sensor del radar multicapa por mucho. Medido el 20/07 sobre
+  `oep_detection_signals` (aplicadas / útil): `pag_empleo` 140 / **79%** · `boe_api` 33 / 60% · `timeline_silence`
+  17 / 55% · `competitor` 17 / 46% · `regional_scan` 76 / 40% · `llm_semantic` 137 / 35% · `generic_source` 3 / 23%
+  · **`hash_change` 32 / 4%** (32 aciertos de 835 señales).
+- **Ya estaba medio muerto:** su emisión de señales se desconectó el **26/06** por redundante, su panel
+  `/admin/seguimiento-convocatorias` está marcado *"esta vista es solo histórica"*, y **nada aguas abajo consume su
+  resultado** (verificado: el detector semántico NO se dispara por el hash). Lo único que seguía produciendo era ruido:
+  46 de 468 fuentes marcando "cambio" a diario y **2.266 checks sin revisar**.
+- **Cómo se ha retirado:** flag `CHECK_SEGUIMIENTO_ENABLED` (por defecto **apagado**) en
+  `backend/src/check-seguimiento/check-seguimiento.cron.ts`. **Reversible sin tocar código.**
+- **⚠️ El detalle que rompe una retirada hecha a la ligera:** el cron tenía un **heartbeat con umbral de 4 días**.
+  Quitar el `@Cron` sin más habría puesto el panel de salud en **ROJO** a los 4 días por un job apagado a propósito.
+  El heartbeat ahora **solo se registra si el cron está activo**. Hay un test que lo fija.
+- **NO se borra nada:** el servicio, la tabla `convocatoria_seguimiento_checks` y el panel histórico se conservan.
+- **Tests:** `__tests__/backend/checkSeguimientoRetirado.test.ts` (5).
+- **Origen:** salió de T-047. Se fue a afinar el sensor y la pregunta de Manuel («¿pero hay un sistema nuevo más
+  robusto?») destapó que el componente estaba en deprecación. **Lección: antes de coger una tarea, comprobar que el
+  componente sigue vivo** — es la segunda vez en el día (ver T-029).
+
+
+### [T-047] ✅ [CERRADA 20/07 — SUPERADA por T-050: el sensor entero se retiró; la causa raíz ya no importa] Seguimiento de convocatorias: 46 fuentes dan "cambio" a diario
+- **Lo que resultó NO ser cierto de la ficha original:** decía que esto era "la fuente del badge 🎯". **Ya no lo es.**
+  La emisión de señales `hash_change` se desconectó el **26/06** (ver comentario en `seguimiento-queries.ts`); las
+  545 señales `hash_change` que hay en BD son históricas y están **todas `dismissed`, cero aplicadas**. El ruido solo
+  afectaba al badge del panel `/admin/seguimiento-convocatorias`.
+- **✅ Mitigado: el badge del panel pasa de 103 a 58.** Se añade `classifySignalReliability(total, changed)`
+  (`lib/api/seguimiento-convocatorias/queries.ts`): una fuente con ≥4 checks que cambia en **≥90%** de ellos se marca
+  `unreliable` y **deja de contar como cambio pendiente**; se muestra aparte como "N con señal poco fiable".
+  Es un dato **derivado del historial**: no se escribe en ninguna columna ni toca el cron → riesgo cero.
+- **✅ Hueco real del normalizador cerrado:** la ULE publica sus plazos como **"24 jun, 2026"** (mes abreviado + coma;
+  **40 apariciones en una sola página**) y `normalizeForHash` solo cubría "24 de junio de 2026" y las numéricas.
+  Añadido ese patrón + los días de la semana, en `backend/src/check-seguimiento/seguimiento-fetch.ts`.
+- **⚠️ Mina desactivada:** `lib/api/seguimiento-convocatorias/queries.ts` tenía **su propia copia de `hashContent` que
+  NO normalizaba**, mientras el cron vivo (el `@Cron` del backend) sí. Hoy no se ejecutaba (la ruta admin solo importa
+  lectura), así que no era la causa del ruido — pero si alguien la cableaba, cada check habría dado "cambio" para
+  siempre. Alineada con la del backend y documentado que deben ir a espejo.
+- **Tests:** `__tests__/lib/seguimientoSenal.test.ts` (11). Incluye dos que impiden volver el sensor ciego: debe
+  seguir detectando un cambio de plazas y **la aparición de la fecha del primer ejercicio** (justo lo que T-035 espera).
+- **✅ CIERRE 20/07 — la causa raíz ya no se persigue porque el sensor se retiró (T-050).** Se retomó para aislar el
+  byte que cambia y se llegó a acotarlo del todo, empíricamente sobre la ULE (la peor, 10/10 checks cambian):
+  dos fetches seguidos dan hash **idéntico** (no es ruido por-fetch); dos fetches con **cache-bust** forzando render
+  Drupal fresco salen **idénticos** (no es token por-render tipo `form_build_id`/CSRF/dom-id); los **primeros 2.000
+  chars son idénticos 4 días seguidos** y la longitud es **estable (102.259 ±2)** con hash distinto → el cambio es
+  **pequeño, profundo (más allá del char 2.000) y temporal (entre días)**, no de la primera pantalla. Aislar el byte
+  exacto exigía capturar el texto normalizado COMPLETO de dos días y diffear — trabajo intrínsecamente multi-día.
+- **Por qué se cierra sin hacerlo:** al ir a montar esa captura durable, **T-050 retiró el sensor `hash_change`
+  entero** (4% de acierto, cron apagado por flag, nadie consume su salida). Afinar el normalizador de un cron
+  apagado no aporta nada. **Lección (la misma que T-050 y T-029): comprobar que el componente sigue vivo antes de
+  invertir en él.** Si algún día se reactiva `check-seguimiento`, el diagnóstico de arriba es el punto de partida.
+
+
+### [T-029] ✅ [HECHA — ya lo estaba, 12/07] Exponer en la UI el filtro "excluir preguntas recientes"
+- **La ficha estaba obsoleta.** Se escribió el 10/07 diciendo que `config.excludeRecent` era `false` fijo
+  y que no había control en el configurador. **El 12/07, el commit `fa5ecddf` la implementó** — *"feat(premium):
+  cablea 'excluir preguntas recientes' como feature premium (👑 + modal + server gate)"* — y nadie cerró la tarea.
+- **Lo que hay hoy** en `components/TestConfigurator.tsx:1788-1831`: checkbox "🔄 Excluir preguntas recientes"
+  con corona 👑 para los free, `gate('exclude_recent', …)` (activar es **premium**, desactivar es libre: al free
+  le abre el modal de upgrade SIN activarlo), selector de **30 / 15 / 7 días**, y cableado al config que se envía
+  (líneas 1094-1095). El backend ya estaba (`lib/api/filtered-questions/queries.ts`).
+- **Cero trabajo necesario.** Detectado al ir a implementarla: lo advirtió Manuel de memoria («creo que ya estaba
+  y era botón premium»), y se confirmó leyendo el código y el `git log` antes de tocar nada.
+- **Lección:** antes de coger una tarea de UI de la lista, comprobar en el código que sigue viva. Entre que se
+  escribe una ficha y se ataca pueden pasar semanas y otra sesión puede haberla resuelto.
+
+> ```
+>
+> **Runbook completo: `docs/runbooks/tareas-pendientes.md`** (lease/heartbeat, guardarraíles, y cómo
+> pushear y desplegar al terminar → `docs/runbooks/pusheo-revision-despliegue.md`).
+>
+> **Dos comandos:**
+> - *"añádelo a tareas pendientes"* → Claude **añade** aquí una entrada (título + por qué + link al detalle + estado) y corre `sync`.
+> - *"¿qué tareas pendientes tenemos?"* → Claude **lee este fichero** y las lista (por prioridad).
+>
+> **Regla de oro (anti-saturación de memoria):** el **detalle/cómo** vive en el runbook/roadmap del repo;
+> aquí solo va **título + por qué/prioridad + link + estado**. La memoria no duplica esto: solo apunta a este
+> fichero (memoria `project_backlog_tareas_pendientes`).
+>
+> **Formato por tarea (OBLIGATORIO):** `### [T-042] 🟠 Título` + 1-3 líneas (por qué, link al cómo, estado).
+> Sin el id `T-xxx` nadie puede coger la tarea y el guardarraíl de CI se pone rojo. Al cerrar una,
+> muévela a "## Hechas" con la fecha, o bórrala si ya no aporta.
+
+## 🔢 Orden de ataque (reordenado 20/07 — **penaliza el coste en tokens**)
+
+> **Criterio (Manuel, 20/07):** lo que **quema muchos tokens va a prioridad baja**. Arriba, lo barato
+> y con valor claro. Esto NO es orden de impacto: T-040 sigue siendo la de más impacto de todo el
+> backlog (~21.000 preguntas), pero es también la más cara, así que baja.
+>
+> **La fuente de verdad del estado y la prioridad es la tabla `backlog_tasks` (RDS)**, no este índice.
+> `node scripts/backlog.cjs next` ya aplica este orden.
+
+**🟠 Alta — barato y con valor claro (empezar por aquí):**
+1. ~~**T-035** Capturar fecha de examen Univ. de León~~ — ✅ **AUTOMATIZADA, cero consulta manual** (`detect-oep-llm` extrae la fecha de la `seguimiento_url` + T-072 `nota_examen` de los PDFs → llega como señal 🎯). Fuera del orden de ataque. **NO mirar la web a mano.**
+2. **T-009** Disposiciones anuladas (STC) — el detector v1+v2 YA está hecho; quedan ~5 candidatos + cron
+5. ~~**T-039** Botón «Descargar PDF» + PDF server-side por tema~~ — ✅ **HECHA + DESPLEGADA** (deploy `4f67958b`; render markdown/tablas/estructura; PDF por tema verificado en vivo 200/application/pdf). Resuelve del todo «Imprimir PDF falla en in-app» (T-001). La Fase 2 (temario completo) se saca a **T-076**.
+   - ~~**T-076** Gating de impresión PDF por plan~~ — ✅ **CERRADA + DESPLEGADA** (24/07). Shipped **más duro que el plan**: el PDF del temario por tema es **Premium para TODOS los temas** (cupo gratis descartado, decisión 21/07; se sacrifica el SEO «PDFs descargables» a cambio de no filtrar valor premium). Verificado en prod: `GET /api/temario/administrativo-estado/{1,5,20}/pdf` sin auth → `403 premium_required`. Gating: `TopicPrintButton.tsx` + `lib/premium/features.ts` (`print_pdf`) + defensa server-side en la route (`verifyAuthOptional`+`getUserPlanType`+`isPremiumPlan`). Commit `0090552f6`.
+   - **T-077** Cambiar de oposición requiere plan premium **semestral o anual** (los de compromiso largo). Free + mensual + trimestral no pueden → upsell a los planes largos. *Detalle a decidir:* si el free puede fijar/cambiar su **única** oposición objetivo en el onboarding (no matar la exploración inicial) o bloqueo total. NO es antigüedad de cuenta (descartado), es el **tier del plan**.
+
+**🟡 Media — coste moderado:**
+6. **T-002** Render multi-convocatoria (landing con las 2 convocatorias separadas)
+7. **T-008** Aux. Admin. C. de Madrid: landing multi-convocatoria (va detrás de T-002)
+8. **T-034** Migrar `/leyes/[law]` a on-demand (flakiness del build)
+9. **T-011** Email RGPD de borrado *exactly-once*
+10. **T-031** Provisionar RDS read replica (barato en tokens, decisión de coste €)
+11. **T-036** Cubos sellados en verde — quedan 3 cabos acotados
+12. **T-012** Poblar `law_sections` en todas las leyes (scriptable, pero muchas leyes)
+13. **T-004** Osakidetza bilingüe — barato pero bajo valor (0 preguntas cuelgan)
+14. **T-028** Valorar oposiciones pedidas por usuarios
+15. **T-014** 16 preguntas de imagen esperando su oposición (aparcada)
+16. **T-007** Verificación scope↔epígrafe — *(en curso por otra sesión, no se toca)*
+
+**🟢 Baja — caras en tokens (dejar para cuando haya presupuesto):**
+17. **T-015** Editorial TCAE "Unidad del paciente"
+18. **T-030** Bloque II de Agrupación Profesional Servicios Públicos CARM
+19. **T-018** Verificar + completar Aux. Admin. Ayto. de Madrid
+20. **T-023** Huecos de contenido Aux. Admin. Aragón
+21. **T-024** Huecos de contenido Aux. Admin. Extremadura
+22. **T-020** Supuestos prácticos Administrativo C. de Madrid
+23. **T-026** Completitud de leyes — sistema hecho; es **mantenimiento**, drena poco a poco
+24. **T-003** Títulos huérfanos — **DRENADO 20/07** (42 clusters adjudicados, 16 huecos reales arreglados); queda solo como mantenimiento de lo que aparezca nuevo
+25. **T-038** Relink masivo de `needs_human` + explicaciones flojas
+26. ~~**T-044** Construir Aux. Admin. Univ. de Almería~~ — ✅ **HECHA, PUBLICADA Y VIVA** (20-21/07). Fuera del orden de ataque.
+27. **T-045** Construir Agentes de Tributos **Agencia Tributaria Canaria** — ⚠️ degradada: son **8 plz libres** (no 20) y temario tributario específico
+28. **T-016** Construir TSID · 29. **T-021** Construir Ujieres Cortes · 30. **T-022** Construir Gestión A2 Andalucía
+
+**⬜ Sin prioridad — fuera del orden de ataque:**
+- **T-040** Artículos-cajón (~21.000 preguntas, 110 mega-chunks) — **aparcada por tamaño (Manuel, 20/07)**. No se prioriza ni se coge de paso; si se abre, con plan propio y aprobación. Su ausencia de la lista de arriba es deliberada.
+
+> **Nota de calibración:** el drenaje CE-mislink del 19-20/07 costó ~2M tokens para 840 preguntas.
+> Sirve de vara de medir: T-040 y T-038 son de ese orden o mayores; construir una oposición, también.
+
+### [T-120] ✅ [CERRADA 26/07] Cabos de infraestructura del 25/07: desplegar los fixes, gate de coherencia en rojo y purga per-instancia
+- **⚠️ CORRECCIÓN (26/07): el punto 1 ESTABA DESFASADO — sus dos motivos urgentes YA SE DESPLEGARON el 25/07 por la noche** y nadie lo apuntó aquí. Verificado por ancestría contra los SHA vivos (`/api/health`): el **divisor de penalización de UAL** (`123819ab8`, 17:52) entró en el deploy de **frontend `20a25dcd`** (20:13) → el modo examen **NO** está puntuando mal en producción; y los **2 detectores de landing** (`288f61932`) entraron en el deploy de **backend `3e295033`** (20:57) → ya no están inertes. **Lección:** una ficha que dice "sin desplegar" no es evidencia; comprobar `git merge-base --is-ancestor <commit> <sha-desplegado>` contra el SHA que reporta `/api/health` — y OJO, front y back tienen SHA distintos, hay que comparar cada commit contra el suyo. Lo que SIGUE pendiente de deploy (ninguno es daño en vivo): backend → `227714a0f` (kind `scope_sin_verificar`), `98b58b7d6`+`76c839fec` (afinado de `seguimiento_url`, menos ruido en el badge), `7788144b6` (idempotency del email de impugnación); frontend → `95e2c2e5b` (tooltip del ASUNTO en el historial de newsletters).
+- **1. SIN DESPLEGAR (bloqueante para que lo de hoy viva).** ~~En `main` y esperando deploy:~~ **el divisor de penalización de Aux. Admin. UAL** (`123819ab8`: era 1/3 "asumido por defecto, confidence:baja" y las bases dicen *"un cuarto de respuesta correcta"*, AC = A − (F × 0,25) → hasta el deploy **el modo examen puntúa mal en producción**); los **2 detectores nuevos** del barrido (ver [T-118]); y el arreglo de la **columna ASUNTO** del historial de newsletters (`95e2c2e5b`: iba con `max-w-xs truncate` sin `title` → ocho envíos de la misma campaña se veían idénticos).
+- **2. `audit:coherencia:gate` entra en CI EN ROJO.** El 25/07 se enchufó al job de integración (`continue-on-error`, no bloquea merges). Baseline medido ese día sobre 123 landings activas: **8 ❌ / 98 🟡**. De los 8: 2 landings incompletas y 2 botones de boletín incoherentes (los cuatro en [T-118]), 1 `temas_card` ya cerrado por la sesión del badge, 1 timeline incoherente de `administrativo-madrid` que es **falso positivo** (el detector compara hitos de DOS ciclos vivos —2025 y 2026— sin agrupar por `convocatoria_id`, que está poblado) y el resto por adjudicar. **Cerrar los 8 = el gate pasa a verde y ya sirve de red.**
+- **3. `purge-cache` es PER-INSTANCIA (medido).** `revalidatePath()` solo limpia el proceso que atiende la petición y el ISR de página no está versionado → con N tasks de ECS, **una purga deja al resto sirviendo lo viejo hasta 24 h**. Medido: tras una purga, 1 de cada 6 peticiones servía lo nuevo. Remedio actual (documentado en `docs/maintenance/cache-revalidation.md`, commit `8daa033e2`): repetir el POST ~15-20 veces y **verificar sirviendo la página varias veces**. ~~Arreglo de fondo pendiente: purga cross-instancia para ISR~~ → **HECHO 26/07 (`b3cfb1517`)**, ver progreso 2 abajo.
+- **Progreso (26/07, sesión trabajo-26jul):** punto **2 adjudicado hasta el mínimo de esta tarea — el gate baja de 8 ❌ a 2**. Los 2 que sobrevivían fuera de la otra sesión eran de naturaleza opuesta y se cerraron con fuente oficial: (a) **`administrativo-aragon` = ROJO FALSO** — la tarjeta "144 plazas" es correcta (BOA nº 247 de 23/12/2025, Anexo I, código 250102: «144 (3 reservadas a víctimas de violencia de género, 1 reservada a víctimas de terrorismo y 1 reservada a personas transexuales)»); el detector estaba ciego a `plazas_otros_turnos` mientras el mirror del backend ya lo sumaba → núcleo puro compartido `lib/convocatoria/plazasCard.cjs` + 9 tests, commit `23d99650f`. Misma clase de divergencia script↔backend que T-122, invertida. (b) **`auxiliar-biblioteca-estado` = VERDADERO POSITIVO de dato** — la referencia mostrada citaba la convocatoria de 2024 (`BOE-A-2024-15769`) y el enlace caía por fallback al legacy, que ya apuntaba a la de 2025; corregido a **`BOE-A-2025-23564`** (Resolución 13/11/2025, «BOE» núm. 280 de 21/11/2025) con sus plazas verificadas (Sección Bibliotecas 5431J acceso libre: 26 de acceso general + 2 de discapacidad) y las fechas de la ficha oficial de cultura.gob.es (solicitudes 24/11→22/12/2025, publicación 21/11/2025), lo que además cerró el `programa_url` NULL del dual-write. **Nota verificada:** ese proceso NO necesita rollover — el ejercicio único ya se celebró y está en **fase de concurso** (certificados 30/06→27/07/2026), así que `examen_realizado` es correcto; `exam_date` sigue NULL porque la fecha exacta del ejercicio no consta en fuente (no se inventa). **Los 2 ❌ restantes son las landings incompletas de [T-118]**, en manos de otra sesión.
+- **Progreso 2 (26/07, sesión trabajo-26jul) — punto 3 HECHO: la purga de ISR ya es CROSS-INSTANCIA** (`b3cfb1517`). Se invierte el patrón del Data Cache: la clave del ISR es la ruta y la fija Next, así que no se le puede meter una versión dentro (por eso `versionedCache` no servía aquí) → en vez de eso **cada instancia observa un registro compartido y se auto-purga**. `POST /api/purge-cache` purga la suya y hace `HINCRBY` de la ruta en el hash `isr_purge_log` del KV (sink agnóstico, atómico e idempotente); un daemon por instancia (`lib/cache/isrPurgeWatcher`, arrancado en `instrumentation.ts` igual que el sampler de event-loop lag) sondea cada 10 s y aplica por loopback en `/api/internal/isr-apply`. **Regla anti-bucle: solo el endpoint PÚBLICO escribe en el registro.** Robustez: baseline en la primera lectura (una instancia nueva nace con el ISR frío), un contador que BAJA (TTL/FLUSH del KV) no purga nada, lotes de 50 rutas/ciclo, degradación al comportamiento anterior si el KV cae, y apagado por env `ISR_PURGE_WATCHER_ENABLED=false` sin redeploy. **Observable:** `isr_purge_broadcast` (warn si la purga NO quedó registrada — el fallo es silencioso, responde 200 igual) e `isr_purge_applied` con el id de instancia. **Capas:** 8 unit del núcleo puro + simulación de una flota de 6 instancias que reproduce el incidente (más KV caído, FLUSH, anti-bucle y carga) + `npm run verify:isr-purge-kv` (contrato del KV real; **fuera de jest a propósito**: `jest.setup.js` mockea `global.fetch` y el sink de Upstash es REST → un test allí pasaría en verde contra un KV fantasma) + `npm run canary:isr-purge` (end-to-end en prod con fixture ISR propio `/api/canary/isr` que expone `renderedAt`/`instance`, porque un 200 no distingue regenerado de rancio) + guardarraíl de cableado **validado por mutación** (su 1ª versión daba falso verde con la llamada al daemon comentada). Manual reescrito: `docs/maintenance/cache-revalidation.md`.
+
+### [T-118] ✅ [CERRADA 26/07] Desplegar los 2 detectores nuevos de landing y drenar sus 4 hallazgos vivos
+- **Qué:** el 25/07 se añadieron dos detectores al barrido (`landing_incompleta` y `convocatoria_etiqueta_boletin`, commit `288f61932`) con núcleos puros testeados, gemelo CLI + `@Cron` del backend, tests de integridad de los mirrors, canary en vivo y gate de CI. **Están INERTES hasta que se despliegue el backend**: mientras tanto NO escriben en `content_health_findings` y sus hallazgos no aparecen en `/admin/contenido`.
+- **Los 4 defectos REALES que ya encontraron (medidos, pendientes de arreglar):**
+  1. `landing_incompleta` — **`administrativo-pais-vasco`** (sin FAQs, sin `landing_description`, sin SEO, sin `titulo_requerido`, sin `examen_config`) y **`auxiliar-administrativo-diputacion-leon`** (sin FAQs, sin SEO, sin `examen_config`). Publicadas así, recibiendo tráfico.
+  2. `convocatoria_etiqueta_boletin` — **`auxiliar-administrativo-ayuntamiento-huesca`** (el botón dice "Ver convocatoria en BOA" y enlaza al BOE) y **`auxiliar-administrativo-consell-formentera`** (dice BOIB, enlaza al BOE). El botón promete un boletín y lleva a otro.
+- **Impacto:** 🟠 los cuatro son visibles para el opositor. El caso raíz fue Aux. Admin. UAL, publicada SEMANAS con el hero vacío y descubierta solo al ir a mandarle una newsletter a 1.334 personas.
+- **Cómo:** (1) desplegar backend + frontend; (2) completar las dos landings con datos verificados contra su boletín (dual-write `oposiciones` + convocatoria vigente, que es de donde lee la landing) y purgar caché **repitiendo** la purga (es per-instancia); (3) en Huesca y Formentera, decidir contra la fuente cuál manda —normalmente el documento enlazado— y alinear la etiqueta. Runbook `salud-contenido.md`, frases *"revisa las landings incompletas"* y *"revisa los enlaces de convocatoria"*.
+- **Relacionado:** cabo de [T-112] (badge a cero): cuando el sweep corra con estos detectores el badge SUBIRÁ en 4 antes de bajar.
+- **✅ PROGRESO 26/07 — los 4 defectos de DATOS están ARREGLADOS y verificados en vivo. Queda SOLO el deploy.**
+  - **Etiquetas de boletín (2/2):** verificados los dos BOE con `curl` (texto literal): **BOE-A-2026-13244** (Huesca, *"En el «Boletín Oficial de Aragón» número 110, de 11 de junio de 2026, se han publicado las bases… Ocho plazas"*) y **BOE-A-2025-25460** (Formentera, *"«Boletín Oficial de Islas Baleares» número 160, de 4 de diciembre de 2025… Veinticuatro plazas"*). En AMBOS el plazo *"será de veinte días hábiles a contar desde el siguiente al de la publicación de esta resolución en el «Boletín Oficial del Estado»"* → manda el BOE también semánticamente (no es el caso UAL, donde el plazo contaba desde el BOJA). Fix: `diario_oficial` `BOA`/`BOIB` → **`BOE`**; el boletín de las bases se conserva en `diario_referencia`, que es donde el runbook dice que va. Verificado sirviendo la página: Huesca 8/8 y Formentera 10/10 peticiones con *"convocatoria en BOE"*.
+  - **Landings incompletas (2/2):** **León** pasa a `ok` — FAQs, `examen_config`, `seo_title`/`seo_description` construidos contra las bases del **BOCYL núm. 9 de 15/01/2026** (PDF descargado y leído): ejercicio único con 2 partes obligatorias y eliminatorias (test de 40 preguntas +4 de reserva, 60 min, mínimo 5, baremo +1,00/−0,33/0 · supuestos prácticos 60 min), 17 plazas (13 libre + 4 discapacidad), ESO + tasa 15 €. **País Vasco** pasa de `incompleta`(error) a `mejorable`(warn): FAQs, descripción, SEO y `titulo_requerido` (Bachiller o Técnico, art. 76 TREBEP) puestos y ETIQUETADOS como previsión. **`examen_config` se deja VACÍO A PROPÓSITO** — la convocatoria NO está publicada (`plazas_prevision=true`) y fabricar la estructura del examen violaría la regla nuclear. Ese warn es honesto, no un cabo suelto.
+  - **Barrido global tras el fix (123 landings activas):** `landing_incompleta` **error 0** · `etiqueta_boletin_mismatch` **0**. Quedan 3 warns, 2 de ellos NO fichados: `administrativo-diputacion-valencia` (sin `landing_description`) y `tcae-sas` (sin `titulo_requerido` ni `examen_config`).
+  - **Caché purgada** (18-20 POST por ruta, es per-instancia) y verificada midiendo el TEXTO servido, no el 200.
+  - **Cabo menor detectado:** `seo_description` está en BD pero la landing **no la sirve** — el `<meta name="description">` se autogenera ("Oposiciones … N plazas, temario oficial N temas. Tests gratuitos."). El `<title>` sí toma `seo_title` (verificado). O se cablea el campo o el detector está exigiendo algo inerte en esa superficie (encaja con [T-113]).
+  - **PENDIENTE (lo único que queda de esta ficha):** desplegar backend + frontend para que los 2 detectores dejen de estar inertes → va con [T-120] punto 1.
+- **✅ CIERRE 26/07:** desplegado (backend `c85c983d`, frontend `dfe7aab1`) y **verificado que los detectores ya NO están inertes**: el barrido produce 3 hallazgos `landing_incompleta` (luego corren) y **0 errores** de los dos kinds, así que los 4 defectos siguen cerrados. Los 3 warns restantes van a [T-128]; el de `administrativo-pais-vasco` es DELIBERADO (sin convocatoria publicada no se fabrica `examen_config`).
+
+### [T-128] 🟢 [ABIERTO 26/07] Cabos menores de completitud de landings (2 warns) + `seo_description` que no se sirve
+- **Qué:** cabo de [T-118], que cerró los 4 defectos graves. Quedan 2 landings `mejorable` (warn, no error) por datos que **hay que verificar contra fuente oficial, no inventar**: `administrativo-diputacion-valencia` (falta `landing_description`) y `tcae-sas` (faltan `titulo_requerido` y `examen_config`). **NO incluye** `administrativo-pais-vasco`: su `examen_config` está vacío a propósito porque la convocatoria no está publicada — ese warn es honesto.
+- **Además (cabo de superficie):** `seo_description` está en BD pero la landing **no lo sirve** — el `<meta name="description">` se autogenera. O se cablea el campo o el detector está exigiendo algo inerte en esa superficie (encaja con [T-113]). El `<title>` sí toma `seo_title`, verificado.
+- **Impacto:** 🟢 son warns, no engañan al opositor; mejoran SEO y completitud. No urgente.
+
+## Abiertas
+
+### [T-143] ✅ [CERRADA 26/07 — resuelto y verificado; el TFUE exigió un SEGUNDO formato de documento] Las normas de la UE no se pueden verificar contra el BOE
+- **Qué:** el verificador `scripts/verificar-articulos-vs-boe.cjs` usa la API de **legislación consolidada** (`/datosabiertos/api/legislacion-consolidada/id/<BOE-ID>`), y las normas europeas **no están ahí**: devuelve `400 Identificador no válido`. Resultado: los artículos de RGPD, TFUE, Reglamentos UE y Protocolos **no se pueden verificar** y quedan fuera del Paso 1 del manual de generación, que es el que impide anclar preguntas a texto desactualizado.
+- **VÍA RESUELTA (26/07):** existen en el BOE como **documento**, no como consolidado, y se sirven en XML por otro endpoint: **`https://www.boe.es/buscar/xml.php?id=DOUE-L-2016-80807`** (probado: devuelve el RGPD íntegro). El id del documento sí es válido en `/buscar/doc.php?id=…`; lo que falla es solo la API de consolidado.
+- **Cabo de datos aparte:** nuestro `laws.boe_url` está mal en las dos normas de más alcance que quedan huérfanas: **RGPD** apunta a EUR-Lex (`CELEX:32016R0679`) y **TFUE** está a **NULL**. Sin `boe_url` utilizable, ni el verificador ni nadie puede llegar a la fuente.
+- **Impacto:** 🟠 desbloquea los dos huecos de mayor alcance de la campaña T-115 — **RGPD art. 38 (9 oposiciones) y TFUE art. 244 (7)** — y, en general, toda la legislación europea del temario. Ojo: el consolidado europeo NO tiene versiones por `fecha_vigencia`, así que la lógica de "elegir la versión vigente" no aplica igual; hay que comprobar qué estructura trae el XML de `/buscar/xml.php` antes de reutilizar `bloqueVigente`.
+- **RESULTADO:** `batch:boe` acepta ya ids `DOUE-*` y los verifica por `/buscar/xml.php?id=…`. **RGPD art. 38 y TFUE art. 244: idénticos** a la fuente. Los dos `laws.boe_url` corregidos (el del RGPD apuntaba a EUR-Lex; el del TFUE estaba a NULL) a `doc.php?id=DOUE-L-2016-80807` y `doc.php?id=DOUE-Z-2010-70002`.
+- **Los documentos DOUE llegan en DOS formatos y hay que soportar los dos.** El RGPD marca sus artículos con `<p class="articulo">`; **el documento de los Tratados (DOUE-Z-2010-70002) no usa esa clase en absoluto** — sus 989 KB son todos `parrafo` y el encabezado "Artículo 244" va suelto. Con solo el primer formato, el TFUE daba "artículo no encontrado" y **una familia entera del temario quedaba sin verificar sin que nada avisara**. Núcleo `articuloDeDocumento()` en `lib/laws/boeBloqueVigente.js`, 29 tests.
+- **GOTCHA que no se puede olvidar:** un documento DOUE es el texto **PUBLICADO**, no consolidado: no tiene `<version>` ni `fecha_vigencia`, así que **coincidir con él NO prueba que la norma no se haya modificado después**. El script lo dice explícitamente en el ✅ en vez de fingir que es "vigente". Para normas UE muy reformadas hay que contrastar además con EUR-Lex.
+- **Cabo abierto:** el documento de los Tratados contiene **TUE y TFUE juntos**, así que la numeración baja puede colisionar (el art. 4 existe en los dos). Para artículos de dos cifras o menos, comprobar a qué tratado pertenece antes de fiarse.
+
+### [T-144] 🟡 [ABIERTO 26/07] Contenido EDITORIAL del temario sin fuente oficial registrada: no se puede aplicar el Paso 1 del manual
+- **Qué:** parte del temario cuelga de **contenedores editoriales que no son normas**: `ODM` (8 artículos), `Gobierno Abierto` (3), `Agenda 2030`, `IV Plan Gobierno Abierto`, `Protocolo nº 1`, `Protocolo nº 2`. Son ~15 de los huecos que le quedan a **auxiliar-administrativo-estado** (2.174 usuarios), y **no tienen BOE**, así que el Paso 1 del manual (contrastar el `content` contra la fuente vigente) no se puede aplicar tal cual.
+- **Por qué NO se generó ya (decisión consciente 26/07):** todo el pipeline se apoya en "anclar al texto oficial". Generar sobre estos contenedores sin fijar antes la fuente sería inventar el ancla, que es justo lo que la regla nuclear prohíbe. Se paró a propósito en lugar de improvisar.
+- **Cómo:** fijar y **registrar** la fuente oficial de cada contenedor (documentos de Naciones Unidas para los ODM y la Agenda 2030; portal de transparencia / Plan de Gobierno Abierto para los suyos; DOUE para los Protocolos), guardarla en `laws.boe_url` o en el campo de fuente que corresponda, y solo entonces generar. Si algún contenedor no tiene fuente citable, la decisión correcta es **recortar el scope**, no escribir preguntas sin ancla.
+- **Impacto:** 🟡 es lo único que impide cerrar del todo la oposición con más usuarios de la plataforma; y el criterio que se fije aquí vale para el resto de contenido editorial del catálogo.
+- **INVENTARIO REAL (26/07) — el bloqueo NO era el que decía la ficha.** Volcado el contenido de los 8 contenedores, la falta de fuente es el menor de tres problemas, y **ninguno se arregla generando preguntas**:
+  1. **El contenido no está listo para generar.** `Agenda 2030` (19 artículos): **5 con los acentos perdidos** (*"discriminacion"*, *"ENERGIA"*, *"aqui"* — mismo síntoma de import viejo que [T-145]) y **6 con menos de 150 caracteres**, que son solo el título del ODS sin sus metas (ODS 10 = 44 ch, ODS 12 = 58 ch). Generar ahí produciría citas literales con faltas de ortografía, o preguntas sobre un texto que no da para pregunta.
+  2. **Duplicidad y desactualización entre dos contenedores.** `Gobierno Abierto` **ya describe el V Plan (2025-2029)** en su art. 0 y tiene un art. 4 titulado *"V Plan de Gobierno Abierto"*, mientras existe aparte el contenedor `IV Plan Gobierno Abierto` (4 artículos) cuyos 4 mencionan a la vez el IV y el V. Antes de generar hay que decidir **qué plan examina la convocatoria** y unificar; si no, se sirven preguntas de dos planes distintos en el mismo tema.
+  3. **`ODM` es contenido histórico** (Objetivos del Milenio, 2000-2015, sustituidos por la Agenda 2030) y son 8 de los ~15 huecos. Hay que mirar el epígrafe: si el programa ya no los pide, lo correcto es **recortar el scope**, no escribir 8 artículos de preguntas sobre objetivos caducados.
+- **Cabo que se separa a [T-146]:** el `IV Plan` numera sus artículos como `General`, `Compromiso8`, `00` — **no numéricos**, así que son invisibles al planificador y al detector. Eso resultó ser un punto ciego general del sistema, no un detalle de este contenedor.
+- **Estado:** el trabajo pendiente aquí es **decisión de producto + reparación de contenido**, no generación. Sigue abierta a propósito: se paró antes de escribir una sola pregunta.
+
+### [T-146] 🟠 [ABIERTO 26/07] Punto ciego del detector: 715 artículos servidos con 0 preguntas que el badge NUNCA verá (numeración no numérica)
+- **Qué:** el detector `article_no_coverage` y su consulta de recuento filtran **`a.article_number ~ '^[0-9]+$'`** (`content-health-sweep.service.ts` líneas ~728 y ~1109), y el planificador `huerfanos:plan` y el verificador `batch:boe` (modo "todos los artículos") heredan el mismo filtro. Consecuencia: **todo artículo cuya numeración no sea un entero puro es invisible a la campaña de cobertura** — `bis`/`ter`/`quater`, disposiciones adicionales, transitorias, finales.
+- **Medido (26/07, sobre `topic_scope` de temas activos):** **1.312 artículos activos escopados** son no numéricos, en **165 leyes**. De ellos **831 sirven 0 preguntas activas**, y **715 tienen texto real (>200 ch)**. Son huecos idénticos a los de [T-115] salvo en una cosa: **el badge no los cuenta, así que nunca aparecen como trabajo pendiente**. La deuda visible eran ~3.100 huérfanos; esto añade 715 que están estructuralmente escondidos.
+- **Triaje por naturaleza (no todos merecen preguntas):**
+  | Tipo | Huecos | Largo medio | ¿Examinable? |
+  |---|---|---|---|
+  | **Reforma (`bis`/`ter`/`quater`…)** | **195** | 1.345 ch | **Sí, y mucho** — son artículos introducidos por reforma, sustantivos y con querencia a caer en examen |
+  | Disp. adicional | 262 | 1.146 ch | A veces (la **DT 3ª del EBEP** sale en examen); caso por caso |
+  | Disp. transitoria | 81 | 694 ch | A veces |
+  | Disp. final | 92 | 1.945 ch | Casi nunca (entrada en vigor, títulos competenciales) |
+  | Disp. derogatoria | 13 | 715 ch | Casi nunca |
+  | Otros | 72 | 4.791 ch | Revisar (aquí caen los `A.1.1` de la Res. 04/01/2010 SEHP y los `General`/`Compromiso8` de [T-144]) |
+- **Por dónde empezar (mayor alcance, medido por nº de oposiciones que lo escopan):** `Ley 19/2013 art. 6bis` (**17 oposiciones**), `Ley 7/1985 art. 24 bis` (8), `LO 1/2004 art. 19 bis` (6), y un bloque grande de LBRL (`75 bis`, `75 ter`, `103 bis`, `104 bis`, `116 bis`, `70 bis`/`ter`/`quater`) y de la Ley 29/1998 (`87 bis`/`ter`, `102 bis`, `122 ter`/`quater`), todos con 4-5 oposiciones.
+- **Cómo:** (1) quitar el filtro en el **ranking** del planificador —no en el espejo `disparaFinding`, que debe seguir siendo idéntico al backend o rompe el test de paridad—; (2) extender el detector del backend **solo a la familia de reforma** (`bis`/`ter`/…), no a las disposiciones, para no inundar el badge con 715 hallazgos de los que la mitad no son examinables — y actualizar el test de paridad en el mismo commit; (3) generar por alcance con el pipeline de siempre.
+- **Impacto:** 🟠 no es un bug de código, es **deuda que el sistema de salud no puede ver**. Mientras el filtro esté ahí, la campaña de cobertura puede dar el temario por cubierto con 715 artículos sirviendo cero preguntas. Y `bis`/`ter` es precisamente donde vive el Derecho más nuevo.
+
+### [T-145] ✅ [CERRADA 26/07 — el mojibake era lo MENOS grave de las dos] 2 preguntas ACTIVAS con la explicación corrupta
+- **Qué:** hay **716 preguntas** cuya `explanation` perdió los caracteres acentuados en el import (*"P blico"*, *"jur dico"*, *"Espa a"*). La buena noticia, medida el 26/07: **solo 2 están ACTIVAS**; el resto está en `draft` o jubilado, así que el daño en vivo es mínimo pero real.
+- **Cómo:** localizar las 2 activas (`explanation LIKE '%P blico%' OR '%jur dico%' OR '%Espa a%'`), reescribir la explicación con el formato §8.1 anclado al artículo y verificar. Para las de `draft`, decidir si se reparan en bloque o se jubilan: **no activar ninguna sin arreglar la explicación**.
+- **Ojo:** ese mojibake es la señal de que un import antiguo perdió el encoding. Si aparece un lote nuevo con el patrón, el problema está en el importador, no en las preguntas.
+- **RESULTADO: cero preguntas activas con mojibake**, pero las dos tenían un defecto PEOR que la explicación corrupta, y ninguna se arregló solo reescribiendo el texto:
+  - **Artículo mal vinculado.** Una colgaba del **art. 42 de la Ley 39/2015** (notificaciones en papel) y preguntaba por el **sello electrónico**, que regula el **art. 42 de la Ley 40/2015** («Sistemas de firma para la actuación administrativa automatizada»). Re-vinculada al artículo correcto y explicación reescrita: la clave C resultó ser el arranque literal de ese artículo, o sea que la pregunta era buena y estaba colgada del sitio equivocado.
+  - **A `needs_human`, sin tocar la clave.** La otra tiene la clave D («ninguna es correcta») apoyada en que el enunciado dice «privativa de **derechos**» mientras el art. 64 habla de «privativa de **libertad**». Comprobado: en esa ley la expresión «privativas de derechos» solo aparece en los **arts. 130 y 133 (orden europea de protección)**, no como categoría de penas con autoridades propias → el artículo vinculado no responde a lo que se pregunta y la trampa no se sostiene. Decide un humano: corregir el enunciado a «libertad» (la correcta pasaría a ser A) o jubilarla. Motivo en el audit trail: `ai_detected_wrong_article`.
+- **Lección para el resto del barrido:** el mojibake es un **síntoma de import viejo**, y donde aparece conviene revisar también el vínculo del artículo y la clave. Quedan **714 en `draft`**: ninguna se activa sin arreglar la explicación, y al hacerlo hay que mirar las tres cosas, no solo el texto.
+
+
 ### [T-142] ✅ [HECHA 26/07] Auditar una landing ENTERA con un comando, y que sea la puerta antes de mandarle tráfico
 - **De dónde sale:** de la auditoría manual de `policia-nacional` ([T-134]) con el plazo de solicitudes **abierto**. Los enlaces salieron limpios (67 internos, 0 rotos; 3 externos correctos) pero el **contenido** tenía seis defectos que llevaban meses publicados y que **ningún detector veía**: la FAQ anunciaba *"convocatoria prevista verano 2026"* con la convocatoria ya publicada, otra FAQ daba cifras de psicotécnicos (*"80 preguntas, 60 min"*) **que no están en el BOE**, el hero decía *"46 temas del programa"* cuando el Anexo I tiene **45** (y la propia FAQ decía 45), el bloque de inglés se rotulaba *"Prueba de idioma extranjero"* cuando el A2 se acredita con certificado y no hay tal prueba, y el **footer anunciaba la oposición como "(Pronto)"** —comiéndose además su enlace interno— con el plazo abierto. Todos se arreglaron a mano; nada garantiza que no vuelvan.
 - **El diagnóstico NO es "faltan detectores", es que no hay puerta ni punto de entrada.** Comprobado herramienta por herramienta: `canary:oposiciones` mira que la landing responda, no sus enlaces; `texto_examen_pasado` solo mira fechas de **examen**, no el estado de la convocatoria; `temas_card` compara con los topics de BD, no entre superficies ni contra el programa oficial; y **nadie contrasta lo que la landing AFIRMA contra el documento oficial**. Hay seis herramientas dispersas (`audit:oposicion`, `audit:coherencia`, `audit:convocatorias`, `canary:oposiciones`, `canary-landing-vs-bd`, el sweep) y **ninguna responde "audítame ESTA landing entera"** — así que antes de una campaña nadie las corre.

@@ -8,6 +8,8 @@
  *   node scripts/huerfanos-plan.cjs --simula lprl 10 11 12 # impacto ANTES de escribir nada
  *   node scripts/huerfanos-plan.cjs --deuda                # deuda REAL (incluye lo que el badge ya no ve)
  *   node scripts/huerfanos-plan.cjs --oposicion auxiliar-administrativo-estado   # cerrar UNA oposición
+ *   node scripts/huerfanos-plan.cjs --invisibles            # deuda que el badge NO puede ver (T-146)
+ *   node scripts/huerfanos-plan.cjs --invisibles adicional  # y por familia
  *   node scripts/huerfanos-plan.cjs --excluir lprl,ley-7-1985   # para sesiones en paralelo
  *
  * La consulta reproduce el universo del detector (artículos escopados, activos,
@@ -34,6 +36,13 @@ const SQL = `
          l.slug             AS "leySlug",
          l.short_name       AS ley,
          a.article_number   AS articulo,
+         length(a.content)  AS len,
+         -- El detector filtra por entero puro, así que los NO numerados le son
+         -- invisibles (T-146). Aquí se traen igual pero MARCADOS: el núcleo puro los
+         -- excluye del veredicto del finding (fidelidad del espejo) y los incluye en
+         -- la vista de deuda. Filtrarlos en el SQL era justo lo que escondía 715
+         -- artículos sirviendo cero preguntas.
+         (a.article_number ~ '^[0-9]+$') AS numerado,
          EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active) AS cubierto
   FROM topic_scope ts
   JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
@@ -41,8 +50,7 @@ const SQL = `
   JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
   JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
   WHERE length(coalesce(a.content, '')) > 40
-    AND a.content NOT ILIKE '%derogado%'
-    AND a.article_number ~ '^[0-9]+$'`
+    AND a.content NOT ILIKE '%derogado%'`
 
 const tabla = (filas) => { console.table(filas); return filas }
 
@@ -91,6 +99,31 @@ const tabla = (filas) => { console.table(filas); return filas }
       console.log(`     en esos mismos temas: ${imp.huerfanosResidualesEnTemasApagados.slice(0, 20).join(', ')}`)
       console.log('     (el badge a cero NO es temario cubierto — apúntalos para una segunda vuelta)')
     }
+    await s.end()
+    return
+  }
+
+  // --invisibles [tipo] — la deuda que el badge NO puede ver (T-146)
+  if (flag('--invisibles') >= 0) {
+    const tipoPedido = argv[flag('--invisibles') + 1]
+    const tipos = tipoPedido && !tipoPedido.startsWith('--') ? [tipoPedido] : null
+    const todos = plan.rankingHuerfanos(filas, { soloQueDisparan: false, demanda, incluirNoNumerados: true })
+    const noVistos = todos.filter((a) => !plan.naturalezaArticulo(a.articulo).numerado)
+    const porTipo = {}
+    for (const a of noVistos) porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1
+    console.log('\n=== DEUDA INVISIBLE AL BADGE (T-146) ===\n')
+    console.log(`  ${noVistos.length} artículo(s) escopados, activos, con texto y 0 preguntas, que el detector NO cuenta`)
+    console.log('  (filtra `article_number ~ \'^[0-9]+$\'`, así que bis/ter y disposiciones no existen para él)\n')
+    tabla(Object.entries(porTipo).sort((a, b) => b[1] - a[1]).map(([tipo, n]) => ({ tipo, huecos: n })))
+    const foco = tipos ? noVistos.filter((a) => tipos.includes(a.tipo)) : noVistos.filter((a) => a.tipo === 'reforma')
+    console.log(`\n▶ ${tipos ? tipos[0] : 'reforma'} — por alcance (es la familia examinable: Derecho introducido por modificación):\n`)
+    tabla(plan.marcaEnCurso(foco, enCurso).slice(0, 25).map((a) => ({
+      ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas, usuarios: a.usuarios, enCurso: a.enCurso ? '⚠️' : '',
+    })))
+    console.log('\n  Las disposiciones (adicional/transitoria/final/derogatoria) NO se proponen en bloque:')
+    console.log('  una disposición final de entrada en vigor no es materia de examen. Se miran caso por caso')
+    console.log('  con `--invisibles adicional`, que es donde hay alguna examinable (p. ej. la DT 3ª del EBEP).')
+    avisoEnCurso()
     await s.end()
     return
   }

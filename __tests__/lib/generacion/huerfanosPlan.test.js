@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const {
   UMBRALES,
+  naturalezaArticulo,
   disparaFinding,
   temasQueDisparan,
   rankingHuerfanos,
@@ -254,5 +255,94 @@ describe('rankingHuerfanos con `oposicion` (cerrar una oposición del todo)', ()
     const lote = proponeLote(filas, { oposicion: 'opo_b', maxArticulos: 4 })
     expect(['ley-x', 'ley-y']).toContain(lote.leySlug)
     expect(lote.impacto.temasAntes).toBe(3) // los 3 temas globales que disparan
+  })
+})
+
+// ── T-146: artículos con numeración NO numérica (invisibles al detector) ──────
+describe('naturalezaArticulo', () => {
+  it('clasifica el entero puro como ordinario y numerado', () => {
+    expect(naturalezaArticulo('10')).toEqual({ tipo: 'ordinario', numerado: true, esReforma: false })
+    expect(naturalezaArticulo(0).tipo).toBe('ordinario') // art. 0 = "estructura de la norma"
+    expect(naturalezaArticulo('00').numerado).toBe(true)
+  })
+
+  it('reconoce la familia de REFORMA con y sin espacio, y con tilde', () => {
+    // Los tres estilos existen de verdad en la BD: "6bis" (Ley 19/2013),
+    // "127 bis" (CP) y "367 quáter" (LECrim).
+    for (const n of ['6bis', '127 bis', '70 ter', '367 quáter', '367 quater', '127 quinquies', '127 octies']) {
+      const r = naturalezaArticulo(n)
+      expect([n, r.tipo]).toEqual([n, 'reforma'])
+      expect(r.esReforma).toBe(true)
+      expect(r.numerado).toBe(false) // por eso el detector no los ve
+    }
+  })
+
+  it('NO confunde una disposición con un artículo de reforma por la subcadena', () => {
+    // "DAtrigésima" contiene "ter"... si se buscase la subcadena en vez de parsear
+    // el número, una disposición adicional entraría en la familia de reforma y se
+    // colaría en el badge. Este test es el que impide ese atajo.
+    expect(naturalezaArticulo('DAtrigésima').tipo).toBe('adicional')
+    expect(naturalezaArticulo('DAtrigésima').esReforma).toBe(false)
+  })
+
+  it('separa las disposiciones por clase', () => {
+    expect(naturalezaArticulo('DA1').tipo).toBe('adicional')
+    expect(naturalezaArticulo('DA_adicional_cuarta').tipo).toBe('adicional')
+    expect(naturalezaArticulo('DT2').tipo).toBe('transitoria')
+    expect(naturalezaArticulo('DF10').tipo).toBe('final')
+    expect(naturalezaArticulo('DDunica').tipo).toBe('derogatoria')
+  })
+
+  it('trata "301.1" como apartado y lo demás como otro', () => {
+    expect(naturalezaArticulo('301.1').tipo).toBe('apartado')
+    expect(naturalezaArticulo('A.1.1').tipo).toBe('otro')
+    expect(naturalezaArticulo('General').tipo).toBe('otro')
+    expect(naturalezaArticulo('Compromiso8').tipo).toBe('otro')
+    expect(naturalezaArticulo('preámbulo').tipo).toBe('otro')
+    expect(naturalezaArticulo('').tipo).toBe('otro')
+  })
+})
+
+describe('fidelidad del espejo con filas no numeradas', () => {
+  // Un tema que dispara por sus artículos numerados, MÁS artículos "bis" huérfanos.
+  const numerados = tema({ pt: 'opo_a', topicId: 't1', n: 10, cubiertos: 6 })
+  const bis = ['24 bis', '70 bis', '70 ter', '103 bis'].map((articulo) => ({
+    pt: 'opo_a', topicId: 't1', tema: 1, leySlug: 'ley-x', ley: 'Ley X', articulo, cubierto: false, numerado: false,
+  }))
+
+  it('añadir artículos invisibles NO cambia el veredicto del badge', () => {
+    // La garantía que hace honesto al test de paridad: el planificador evalúa el
+    // finding sobre EXACTAMENTE el universo que ve el detector del backend.
+    const antes = temasQueDisparan(numerados)
+    const despues = temasQueDisparan([...numerados, ...bis])
+    expect(despues.map((t) => t.topicId)).toEqual(antes.map((t) => t.topicId))
+    expect(despues[0].n).toBe(antes[0].n)
+    expect(despues[0].huecos).toEqual(antes[0].huecos)
+  })
+
+  it('el ranking los oculta por defecto y los muestra solo si se piden', () => {
+    const filas = [...numerados, ...bis]
+    const arts = (r) => r.map((a) => a.articulo)
+    expect(arts(rankingHuerfanos(filas))).not.toContain('24 bis')
+    const conInvisibles = rankingHuerfanos(filas, { incluirNoNumerados: true })
+    expect(arts(conInvisibles)).toContain('24 bis')
+    expect(conInvisibles.find((a) => a.articulo === '24 bis').tipo).toBe('reforma')
+  })
+
+  it('`tipos` acota a la familia que interesa cubrir', () => {
+    const filas = [...numerados, ...bis, {
+      pt: 'opo_a', topicId: 't1', tema: 1, leySlug: 'ley-x', ley: 'Ley X', articulo: 'DF7', cubierto: false, numerado: false,
+    }]
+    const r = rankingHuerfanos(filas, { incluirNoNumerados: true, tipos: ['reforma'] })
+    expect(r.every((a) => a.tipo === 'reforma')).toBe(true)
+    expect(r.map((a) => a.articulo)).not.toContain('DF7')
+  })
+
+  it('una simulación sobre un tema con invisibles no cuenta con ellos para apagar el finding', () => {
+    // Cubrir los 4 huecos numerados apaga el tema aunque los 4 "bis" sigan a cero:
+    // es exactamente el engaño que documenta la ficha (badge ≠ temario cubierto).
+    const filas = [...numerados, ...bis]
+    const imp = simulaCobertura(filas, [7, 8, 9, 10].map((articulo) => ({ leySlug: 'ley-x', articulo: String(articulo) })))
+    expect(imp.temasDespues).toBe(0)
   })
 })

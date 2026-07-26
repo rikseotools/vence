@@ -1,4 +1,11 @@
-const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, articuloDeDocumento } = require('../../../lib/laws/boeBloqueVigente')
+const {
+  bloqueVigente,
+  comparaConBd,
+  mapaBloquesPorArticulo,
+  articuloDeDocumento,
+  bloqueDeArticulo,
+  claveArticulo,
+} = require('../../../lib/laws/boeBloqueVigente')
 
 // Réplica reducida de la respuesta REAL del art. 2 de la Ley 7/1985: el BOE
 // devuelve las versiones 1985 → 2013 → 1990, en ese orden. Quedarse con la
@@ -331,5 +338,63 @@ describe('articuloDeDocumento (documentos DOUE)', () => {
   it('devuelve null si el artículo no está', () => {
     expect(articuloDeDocumento(RGPD, 99)).toBeNull()
     expect(articuloDeDocumento('', 1)).toBeNull()
+  })
+})
+
+// ── T-146: cruzar el rótulo del BOE con nuestro `article_number` ──────────────
+describe('bloqueDeArticulo / claveArticulo', () => {
+  // Rótulos tal cual los publica el BOE, normalizados ya por mapaBloquesPorArticulo.
+  const mapa = { 1: 'a1', 6: 'a6', '6 bis': 'a6bis', '367 quater': 'a367quater', '588 bis b': 'a588bisb' }
+
+  it('encuentra el bloque aunque la BD escriba el sufijo SIN espacio', () => {
+    // Caso raíz: Ley 19/2013 art. 6 bis (17 oposiciones, 5.109 opositores). La BD
+    // guarda `6bis`, el BOE rotula "Artículo 6 bis" → fallaba por un espacio y el
+    // verificador devolvía 404 para toda la familia de reforma.
+    expect(bloqueDeArticulo(mapa, '6bis')).toBe('a6bis')
+    expect(bloqueDeArticulo(mapa, '6 bis')).toBe('a6bis')
+  })
+
+  it('tolera la tilde de "quáter"', () => {
+    expect(bloqueDeArticulo(mapa, '367 quáter')).toBe('a367quater')
+    expect(bloqueDeArticulo(mapa, '367quater')).toBe('a367quater')
+  })
+
+  it('tolera el paréntesis de los sufijos compuestos de la LECrim', () => {
+    expect(bloqueDeArticulo(mapa, '588 bis b)')).toBe('a588bisb')
+  })
+
+  it('NO confunde el 6 con el 6 bis', () => {
+    // Lo importante no es solo encontrar: es no devolver OTRO artículo con
+    // apariencia de éxito, que es el fallo silencioso peligroso.
+    expect(bloqueDeArticulo(mapa, '6')).toBe('a6')
+    expect(bloqueDeArticulo(mapa, '6bis')).not.toBe('a6')
+  })
+
+  it('devuelve null si no está, en vez de adivinar', () => {
+    expect(bloqueDeArticulo(mapa, '99 bis')).toBeNull()
+    expect(bloqueDeArticulo(null, '1')).toBeNull()
+  })
+
+  it('claveArticulo canoniza espacios, tildes, puntos y paréntesis', () => {
+    expect(claveArticulo('6 bis')).toBe(claveArticulo('6bis'))
+    expect(claveArticulo('367 QUÁTER')).toBe('367quater')
+    expect(claveArticulo('861 bis a)')).toBe('861bisa')
+  })
+})
+
+describe('mapaBloquesPorArticulo — ordinales altos y acentuados (T-146)', () => {
+  const indice = (titulos) =>
+    '<respuesta>' + titulos.map((t, i) => `<bloque><id>b${i}</id><titulo>${t}</titulo></bloque>`).join('') + '</respuesta>'
+
+  it('mapea octies/nonies/decies y la variante con tilde', () => {
+    // El CP llega a "127 octies" y la LECrim escribe "367 quáter": sin estos
+    // ordinales en la lista no entraban en el mapa y quedaban sin verificar.
+    const m = mapaBloquesPorArticulo(indice([
+      'Artículo 127 octies', 'Artículo 26 nonies', 'Artículo 367 quáter', 'Artículo 10 decies',
+    ]))
+    expect(bloqueDeArticulo(m, '127 octies')).toBe('b0')
+    expect(bloqueDeArticulo(m, '26 nonies')).toBe('b1')
+    expect(bloqueDeArticulo(m, '367 quáter')).toBe('b2')
+    expect(bloqueDeArticulo(m, '10 decies')).toBe('b3')
   })
 })

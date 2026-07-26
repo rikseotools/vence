@@ -19,7 +19,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
-const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -46,7 +46,17 @@ async function bloqueId(art) {
     }
     if (!Object.keys(MAPA).length) console.log('⚠️ no se pudo leer el índice del BOE — se probará con el id "a<N>"')
   }
-  return MAPA[String(art)] || `a${art}`
+  // Lookup TOLERANTE: el BOE rotula "Artículo 6 bis" y la BD guarda `6bis`, así que
+  // la comparación literal fallaba por un espacio y devolvía 404 para toda la familia
+  // de reforma (T-146). El respaldo `a<N>` solo tiene sentido si el número es un
+  // entero puro: para un "6bis" produciría `a6bis`, que no existe, o peor, un id que
+  // sí existe y es OTRO artículo.
+  const id = bloqueDeArticulo(MAPA, String(art))
+  if (id) return id
+  if (!/^\d+$/.test(String(art))) {
+    console.log(`  ⚠️ art. ${art}: no aparece en el índice del BOE con ese nombre — revísalo a mano antes de generar`)
+  }
+  return `a${art}`
 }
 
 async function xmlBloque(art) {
