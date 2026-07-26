@@ -21,113 +21,18 @@ interface ParsedArticle {
 }
 
 /**
- * Convierte texto de número español a dígito
- * Soporta desde "primero" hasta "trescientos y pico"
- * También soporta sufijos: "bis", "ter", "quater", etc.
- * Ej: "primero" -> "1", "ciento ochenta y siete bis" -> "187 bis"
+ * Convierte texto de número español a dígito. Ej: "primero" -> "1",
+ * "ciento ochenta y siete bis" -> "187 bis".
+ *
+ * La implementación vive en `lib/laws/spanishNumber.js` (JS plano) para que puedan
+ * compartirla TAMBIÉN los scripts `.cjs`, que no pueden importar un `.ts`. Antes esta
+ * función estaba copiada en cuatro sitios y las copias se separaron: esta llegaba solo
+ * hasta "trescientos", y por eso la LOPJ —713 artículos en palabras, hasta "setecientos
+ * trece"— quedaba fuera de las auditorías contra el BOE (T-132, 26/07/2026).
  */
-export function spanishTextToNumber(text: string | null | undefined): string | null {
-  if (!text) return null
-
-  // Eliminar punto final antes de procesar
-  text = text.replace(/\.+$/, '').trim()
-
-  // Separar posible sufijo (bis, ter, etc.)
-  const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
-  const mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
-  const suffix = suffixMatch ? suffixMatch[2].toLowerCase() : ''
-
-  const normalized = mainText.toLowerCase().trim()
-
-  // Mapas base
-  const ordinals: Record<string, number> = {
-    'primero': 1, 'segundo': 2, 'tercero': 3, 'cuarto': 4, 'quinto': 5,
-    'sexto': 6, 'séptimo': 7, 'septimo': 7, 'octavo': 8, 'noveno': 9
-  }
-
-  const units: Record<string, number> = {
-    'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
-    'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9
-  }
-
-  const teens: Record<string, number> = {
-    'diez': 10, 'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14,
-    'quince': 15, 'dieciséis': 16, 'dieciseis': 16, 'diecisiete': 17,
-    'dieciocho': 18, 'diecinueve': 19
-  }
-
-  const twenties: Record<string, number> = {
-    'veinte': 20, 'veintiuno': 21, 'veintiuna': 21, 'veintidós': 22, 'veintidos': 22,
-    'veintitrés': 23, 'veintitres': 23, 'veinticuatro': 24, 'veinticinco': 25,
-    'veintiséis': 26, 'veintiseis': 26, 'veintisiete': 27, 'veintiocho': 28,
-    'veintinueve': 29
-  }
-
-  const tens: Record<string, number> = {
-    'treinta': 30, 'cuarenta': 40, 'cincuenta': 50, 'sesenta': 60,
-    'setenta': 70, 'ochenta': 80, 'noventa': 90
-  }
-
-  const hundreds: Record<string, number> = {
-    'cien': 100, 'ciento': 100, 'doscientos': 200, 'doscientas': 200,
-    'trescientos': 300, 'trescientas': 300
-  }
-
-  // Función auxiliar para convertir la parte numérica
-  function convertPart(str: string): number | null {
-    str = str.toLowerCase().trim()
-
-    // Ordinales (primero, segundo, etc.)
-    if (ordinals[str]) return ordinals[str]
-
-    // Unidades
-    if (units[str]) return units[str]
-
-    // Teens (10-19)
-    if (teens[str]) return teens[str]
-
-    // Twenties (20-29)
-    if (twenties[str]) return twenties[str]
-
-    // Decenas simples
-    if (tens[str]) return tens[str]
-
-    // Decenas compuestas: "treinta y uno", "ochenta y siete"
-    const tensCompound = str.match(/^(treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa)\s+y\s+(\w+)$/i)
-    if (tensCompound) {
-      const tenValue = tens[tensCompound[1].toLowerCase()] || 0
-      const unitValue = units[tensCompound[2].toLowerCase()] || 0
-      if (tenValue && unitValue) return tenValue + unitValue
-    }
-
-    // Cien/ciento
-    if (hundreds[str]) return hundreds[str]
-
-    return null
-  }
-
-  // Intentar conversión directa (números simples: 1-99)
-  const directConversion = convertPart(normalized)
-  if (directConversion !== null) {
-    return suffix ? `${directConversion} ${suffix}` : String(directConversion)
-  }
-
-  // Manejar centenas: "ciento uno", "ciento ochenta y dos", "doscientos diez"
-  const hundredsMatch = normalized.match(/^(cien|ciento|doscientos?|doscientas?|trescientos?|trescientas?)(?:\s+(.+))?$/i)
-  if (hundredsMatch) {
-    const hundredValue = hundreds[hundredsMatch[1].toLowerCase()] || 0
-    if (hundredsMatch[2]) {
-      const rest = convertPart(hundredsMatch[2])
-      if (rest !== null) {
-        const total = hundredValue + rest
-        return suffix ? `${total} ${suffix}` : String(total)
-      }
-    }
-    return suffix ? `${hundredValue} ${suffix}` : String(hundredValue)
-  }
-
-  return null
-}
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+export const spanishTextToNumber: (text: string | null | undefined) => string | null =
+  require('./laws/spanishNumber').spanishTextToNumber
 
 /**
  * Normaliza número de artículo para comparación
