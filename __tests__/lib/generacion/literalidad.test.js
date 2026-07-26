@@ -124,3 +124,79 @@ describe('analizarLiteralidad — diferencia solo de tildes', () => {
     expect(analizarLiteralidad(ART, cita).estado).not.toBe('ORTOGRAFIA')
   })
 })
+
+// --- resolverMarco: el marco se decide por EVIDENCIA, no por redacción (26/07/2026) ---
+//
+// `analizarIntruso` mira la forma de la frase y se equivoca en las dos direcciones.
+// El caso que obligó a esto: art. 5.1 RDL 1/1993 (batch gen_atc_t223_2026-07-26_s26c).
+// El enunciado CITA la negación de la propia ley y pide completarla, así que la pista
+// dispara; pero es una pregunta DIRECTA cuya correcta sí es cita literal. Con el marco
+// mal elegido el gate (a) exigía literalidad a los distractores inventados → rojo
+// absurdo, y (b) daba por buena la cita de la correcta SIN comprobarla.
+//
+// Endurecer el regex de la pista NO era la salida: medido sobre el banco real (17.468
+// preguntas con negación en el enunciado), exigir marco de selección explícito volvía a
+// marcar 438 intrusos legítimos, porque las redacciones del banco no siguen plantilla
+// ("EUROPOL. Indique cual NO forma parte de sus objetivos").
+const { resolverMarco } = require('../../../lib/generacion/literalidad')
+
+describe('resolverMarco — la evidencia desmiente la pista', () => {
+  const ART_5_1 =
+    'Los bienes y derechos transmitidos quedarán afectos, cualquiera que sea su poseedor, a la responsabilidad del pago de los impuestos que graven tales transmisiones, salvo que aquél resulte ser un tercero protegido por la fe pública registral. No se considerará protegido por la fe pública registral el tercero cuando en el Registro conste expresamente la afección.'
+
+  it('el caso raíz: pista de intruso pero la correcta ES cita → DIRECTA', () => {
+    const enunciado =
+      'El artículo 5.1 precisa cuándo el tercero deja de estar amparado. Según el precepto, no se considerará protegido por la fe pública registral el tercero:'
+    const opciones = [
+      'cuando en el Registro conste expresamente la afección', // literal
+      'cuando hubiera adquirido los bienes a título gratuito',
+      'cuando el impuesto esté pendiente de liquidación',
+      'cuando no hubiera inscrito su adquisición en un año',
+    ]
+    const r = resolverMarco(ART_5_1, opciones, 0, enunciado)
+    expect(analizarIntruso(enunciado)).toBe(true) // la pista SÍ dispara…
+    expect(r.pista).toBe(true)
+    expect(r.marco).toBe('DIRECTA') // …y la evidencia la desmiente
+    expect(r.literalidadCorrecta.estado).toBe('LITERAL')
+    expect(r.motivo).toMatch(/DESMENTIDA/)
+  })
+
+  it('un intruso GENUINO conserva su marco (la correcta es la inventada)', () => {
+    const enunciado = '¿Cuál de los siguientes NO figura entre los supuestos del artículo?'
+    const opciones = [
+      'la responsabilidad del pago de los impuestos que graven tales transmisiones', // literal
+      'un tercero protegido por la fe pública registral', // literal
+      'cuando en el Registro conste expresamente la afección', // literal
+      'la exención de los bienes gananciales inscritos en el Registro Mercantil', // inventada
+    ]
+    const r = resolverMarco(ART_5_1, opciones, 3, enunciado)
+    expect(r.marco).toBe('INTRUSO')
+    expect(r.distractoresNoLiterales).toEqual([]) // los tres literales
+  })
+
+  it('delata el intruso mal construido: distractores que no son del artículo', () => {
+    const enunciado = '¿Cuál de los siguientes NO figura entre los supuestos del artículo?'
+    const opciones = [
+      'la responsabilidad del pago de los impuestos que graven tales transmisiones', // literal
+      'la obligación de aportar aval bancario ante la oficina liquidadora', // inventada
+      'el deber de inscribir la escritura en el plazo de treinta días', // inventada
+      'la exención de los bienes gananciales', // la "correcta"
+    ]
+    const r = resolverMarco(ART_5_1, opciones, 3, enunciado)
+    expect(r.marco).toBe('INTRUSO')
+    expect(r.distractoresNoLiterales).toEqual([1, 2])
+  })
+
+  it('sin pista, el marco es DIRECTA y la literalidad de la correcta se reporta', () => {
+    const r = resolverMarco(ART_5_1, ['la responsabilidad del pago de los impuestos', 'x', 'y', 'z'], 0,
+      'Según el artículo 5.1, los bienes transmitidos quedan afectos a:')
+    expect(r.marco).toBe('DIRECTA')
+    expect(r.pista).toBe(false)
+    expect(r.literalidadCorrecta.estado).toBe('LITERAL')
+  })
+
+  it('no revienta con entradas degeneradas', () => {
+    expect(resolverMarco('', [], 0, '').marco).toBe('DIRECTA')
+    expect(resolverMarco(ART_5_1, null, 0, null).marco).toBe('DIRECTA')
+  })
+})

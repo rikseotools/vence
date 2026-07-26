@@ -275,3 +275,58 @@ describe('simularBatch — resolución del artículo por las dos vías (T-096)',
     expect(camposParaInsertar(q).some((f) => f.includes('primary_article_number'))).toBe(false)
   })
 })
+
+// --- Paridad de marco con el verificador POST-inserción (26/07/2026) ---
+// Los dos gates del pipeline comparten núcleos para dar el MISMO veredicto. El marco
+// INTRUSO era una excepción: `verificar-batch-generado.cjs` lo conocía y este simulador
+// no, así que avisaba de NO_LITERAL en intrusos impecables y no revisaba nunca los
+// distractores de un intruso mal construido.
+describe('analizarPregunta — marco INTRUSO (paridad con el verificador de BD)', () => {
+  const ART =
+    'Se considerarán piedras preciosas, a los efectos de este artículo, el zafiro, la esmeralda, la aguamarina, el diamante y el rubí.'
+
+  it('no avisa de literalidad en un intruso bien construido', () => {
+    const r = analizarPregunta(
+      {
+        question_text: '¿Cuál de las siguientes NO figura entre las piedras preciosas del artículo?',
+        options: ['el zafiro', 'la esmeralda', 'el rubí', 'el jade'],
+        correct_option: 3,
+        explanation: '**Por qué D es correcta:** el artículo no menciona el jade.\n\n> «el zafiro, la esmeralda, la aguamarina, el diamante y el rubí»\n\n**Por qué las demás son incorrectas:**\n- **A)** sí figura.\n- **B)** sí figura.\n- **C)** sí figura.',
+        primary_article_number: '30',
+        law_slug: 'ley-20-1991',
+      },
+      ART,
+    )
+    expect(r.avisos.filter((a) => /NO_LITERAL|INTRUSO/.test(a))).toEqual([])
+  })
+
+  it('avisa cuando los distractores de un intruso NO son del artículo', () => {
+    const r = analizarPregunta(
+      {
+        question_text: '¿Cuál de las siguientes NO figura entre las piedras preciosas del artículo?',
+        options: ['el zafiro', 'el cuarzo rosa', 'la turmalina verde', 'el jade'],
+        correct_option: 3,
+        explanation: '**Por qué D es correcta:** x.\n\n> «cita»\n\n**Por qué las demás son incorrectas:**\n- **A)** a.\n- **B)** b.\n- **C)** c.',
+        primary_article_number: '30',
+        law_slug: 'ley-20-1991',
+      },
+      ART,
+    )
+    expect(r.avisos.some((a) => /INTRUSO: 2 de los 3 distractores/.test(a))).toBe(true)
+  })
+
+  it('avisa de MARCO AMBIGUO cuando la correcta SÍ es del artículo (posible clave mal)', () => {
+    const r = analizarPregunta(
+      {
+        question_text: '¿Cuál de las siguientes NO figura entre las piedras preciosas del artículo?',
+        options: ['el ámbar báltico', 'la perla cultivada', 'el ópalo de fuego', 'la aguamarina'],
+        correct_option: 3, // ¡la aguamarina SÍ está en el artículo!
+        explanation: '**Por qué D es correcta:** x.\n\n> «cita»\n\n**Por qué las demás son incorrectas:**\n- **A)** a.\n- **B)** b.\n- **C)** c.',
+        primary_article_number: '30',
+        law_slug: 'ley-20-1991',
+      },
+      ART,
+    )
+    expect(r.avisos.some((a) => /MARCO AMBIGUO/.test(a))).toBe(true)
+  })
+})

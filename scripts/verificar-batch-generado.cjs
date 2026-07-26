@@ -28,7 +28,7 @@ const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 const { analizarLongitud } = require(path.join(__dirname, '..', 'lib', 'generacion', 'tellLongitud'))
-const { analizarLiteralidad, analizarIntruso } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
+const { analizarLiteralidad, resolverMarco } = require(path.join(__dirname, '..', 'lib', 'generacion', 'literalidad'))
 const { analizarCabecera } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cabeceraExplicacion'))
 const { analizarSiglas } = require(path.join(__dirname, '..', 'lib', 'generacion', 'siglasSinDesarrollar'))
 const { analizarOverclaim } = require(path.join(__dirname, '..', 'lib', 'generacion', 'overclaimExplicacion'))
@@ -56,7 +56,12 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     FROM questions q
     JOIN articles a ON a.id = q.primary_article_id
     WHERE ${BATCH} = ANY(q.tags)
-    ORDER BY a.article_number`
+    -- Desempate explícito: sin él el informe salía en orden distinto en cada
+    -- ejecución (los empates de article_number quedaban al criterio del plan), y
+    -- dos corridas seguidas del MISMO batch parecían decir cosas distintas —
+    -- incluida la "secuencia" de correct_option, que se lee como si fuera el
+    -- orden real de las preguntas.
+    ORDER BY a.article_number, q.created_at, q.id`
 
   if (!Q.length) {
     console.log(`No hay preguntas con el tag "${BATCH}".`)
@@ -78,20 +83,32 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     // opción INVENTADA y las literales son los distractores. Exigirle literalidad
     // a la correcta es un falso positivo garantizado, así que el criterio se
     // invierte: se comprueba que los TRES distractores sí sean del artículo.
-    const intruso = analizarIntruso(q.question_text)
-    if (intruso) {
-      const noLit = opts
-        .map((o, i) => ({ o, i }))
-        .filter(({ i }) => i !== q.correct_option)
-        .filter(({ o }) => analizarLiteralidad(q.content, o).estado === 'NO_LITERAL')
-      if (noLit.length) {
-        errs.push(`INTRUSO: ${noLit.length} de los 3 distractores no son literales del artículo (deberían serlo)`)
-      }
+    //
+    // El marco NO se decide solo por la redacción del enunciado: `resolverMarco`
+    // deja que la EVIDENCIA lo desmienta (si la correcta es cita literal, no era
+    // un intruso). Sin eso, un enunciado que cita la negación de la propia ley
+    // —art. 5.1 RDL 1/1993— pedía literalidad a los distractores inventados y
+    // dejaba la cita real sin verificar. Ver `lib/generacion/literalidad.js`.
+    const marco = resolverMarco(q.content, opts, q.correct_option, q.question_text)
+    const intruso = marco.marco === 'INTRUSO'
+    if (intruso && marco.distractoresNoLiterales.length) {
+      errs.push(`INTRUSO: ${marco.distractoresNoLiterales.length} de los 3 distractores no son literales del artículo (deberían serlo)`)
+    }
+    // Pista desmentida: el enunciado pide "la que NO figura" pero la opción marcada
+    // como correcta SÍ aparece en el artículo. O el enunciado no era un intruso
+    // (redacción que cita la negación de la ley: correcto, pasa) o la CLAVE está
+    // mal (la opción sí figura, así que no es la intrusa). Aviso, no error: el
+    // gate no puede distinguirlo, lo mira el auditor.
+    if (marco.pista && !intruso && marco.distractoresNoLiterales.length === 3) {
+      avisos.push(
+        'MARCO AMBIGUO: el enunciado suena a "¿cuál NO figura?" pero la correcta SÍ es del artículo ' +
+        `(${marco.literalidadCorrecta.estado}) y los 3 distractores no — si de verdad es un intruso, la CLAVE está mal`,
+      )
     }
 
     // Literalidad: LITERAL (subcadena), ENUMERACION (lista fiel — pase blando,
     // la completitud la juzga la auditoría LLM) o NO_LITERAL (defecto duro).
-    const lit = intruso ? { estado: 'LITERAL' } : analizarLiteralidad(q.content, correcta)
+    const lit = intruso ? { estado: 'LITERAL' } : marco.literalidadCorrecta
     if (lit.estado === 'NO_LITERAL') {
       errs.push('la correcta NO es subcadena literal del artículo' +
         (lit.fragmentosNoHallados ? ` (fragmentos no hallados: ${lit.fragmentosNoHallados.join(' / ').slice(0, 60)})` : ''))

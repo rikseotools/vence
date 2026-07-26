@@ -168,7 +168,8 @@ Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un su
 > | `NO_LITERAL` | **Recast gramatical**: *"sin que la exención **se extienda** a…"* → *"**no se extiende** a…"* para encajar con el enunciado | **No** |
 > | `NO_LITERAL` | **Cláusula ya presente en el enunciado**, omitida en la opción | **No** — es el ejemplo canónico de condensación válida |
 > | `ORTOGRAFIA` | *"periodo"* / *"período"*: ambas grafías correctas | **No** (pase blando desde hoy) |
-> | `NO_LITERAL` en pregunta **intruso** | La correcta es la opción INVENTADA, por construcción | **No** (detectado desde hoy) |
+> | `NO_LITERAL` en pregunta **intruso** | La correcta es la opción INVENTADA, por construcción | **No** — `resolverMarco` lo exenta |
+> | `MARCO AMBIGUO` | Suena a intruso pero la correcta SÍ es del artículo: o no era un intruso (bien) o **la CLAVE está mal** | **Depende** — hay que adjudicarlo (§5.35) |
 > | `NO_LITERAL` | **Sumario AUTO-REFERENCIAL**: *"adicionar al Valor en Aduana los conceptos **previstos en el artículo**"* | **SÍ** — es circular, no se puede responder por el fondo |
 > | `NO_LITERAL` | **Sumario que SÍ nombra el contenido**: *"…gravámenes y gastos accesorios hasta el primer lugar de destino"* | **No** — condensa una enumeración que no cabe en una opción |
 > | `NO_LITERAL` | **Término abreviado**: el artículo dice *"Impuesto sobre la Renta de las Personas Físicas"* y la opción *"IRPF"* | **SÍ** — abreviar un término del artículo es cambiarlo |
@@ -1825,6 +1826,23 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 > **Causa raíz, y no es del generador:** la campaña de `article_no_coverage` es **T-115**, reclamada por otra sesión, y se trabajó su contenido desde el "bloque 1" de **T-112**, que sí estaba reclamada por esta. Reclamar una tarea **no reserva el trabajo que vive en otra ficha**.
 >
 > **Qué hacer antes de generar, siempre que haya sesiones en paralelo:** (1) comprobar si la campaña tiene ficha propia y quién la tiene; (2) `SELECT unnest(tags), max(created_at) FROM questions WHERE created_at > now() - interval '12 hours' GROUP BY 1` — **los batches recientes de otras sesiones se ven en un segundo**; (3) si la ley elegida ya tiene batch de hoy, cambiar de ley. Cuesta una consulta y ahorra un lote entero.
+
+### 5.35 Batch ITPAJD (T223 ATC Canaria) — y el marco INTRUSO decidido por evidencia (2026-07-26)
+
+- **batch**: `gen_atc_t223_2026-07-26_s26c` — **13 preguntas** sobre los arts. **2, 3, 5, 15, 18, 22 y 24** del Real Decreto Legislativo 1/1993 (ITPAJD), tema 223 de `administrativo-agencia-tributaria-canaria`. Doble auditoría ciega con enfoques distintos (auditor estricto + opositor que busca impugnar): **11 PERFECT / 2 NEEDS_REVIEW / 0 impugnables**.
+- **Artículos descartados a propósito**: el **12** (tabla aplanada en el import — no se inventan cifras), el **17.2** (remite a la Ley 24/1988 del Mercado de Valores, derogada) y el **21** (remite al RDL 4/2004 TRLIS, derogado). Mismo criterio que el descarte del art. 54 LPRL en §5.33: **cobertura no justifica enseñar derecho muerto**.
+- **Lo que cazó cada capa, en orden de coste:** el gate mecánico paró 8 defectos (6 *tells* de longitud en los dos sentidos y 2 citas truncadas por la cola) y **cero errores de letras cruzadas** — porque las viñetas se generaron renderizando desde un mapa `texto de opción → motivo`, no escribiéndolas a mano después de ordenar. Los auditores encontraron lo que ninguna regex ve: un distractor **sinónimo funcional de la clave** (art. 5.3: *"la consolidación del dominio"* y *"la extinción del usufructo"* son el mismo hecho en una desmembración del dominio) y un distractor **truncado que no nombra ninguna figura** (art. 22: *"la agrupación de interés"*), con el agravante de que solo una de sus tres viñetas razonaba de verdad — y esa asimetría delata la respuesta.
+- **Regla nueva que sale de aquí:** al escribir los distractores de una enumeración, comprobar que ninguno **designe el mismo hecho** que la clave con otro nombre. No es un problema de literalidad ni de longitud: las dos opciones son legítimas por separado y solo el que sabe la materia ve el solape — precisamente el opositor que va a impugnar.
+
+> 🔧 **CORRECCIÓN DEL GATE — el marco INTRUSO se decide por EVIDENCIA, no por la redacción del enunciado.**
+>
+> `analizarIntruso` decide si se EXENTA a la pregunta del check de literalidad, y lo decide mirando la forma de la frase. Aquí falló en la dirección contraria a §5.33: el enunciado del art. 5.1 **cita la negación de la propia ley y pide completarla** (*"…no se considerará protegido por la fe pública registral el tercero:"*), así que la pista disparó — pero es una pregunta DIRECTA cuya correcta sí es cita literal. Consecuencias: (a) el gate exigía literalidad a los tres distractores, que son inventados como en cualquier pregunta normal → **rojo absurdo**; y (b) peor, **daba por buena la cita de la correcta sin comprobarla**, que es justo lo que el gate existe para verificar.
+>
+> **El camino muerto, medido:** endurecer el regex de la pista exigiendo marco de selección explícito —lo que ya se hace con los verbos de atribución— volvía a marcar **438 intrusos legítimos**, porque las redacciones reales del banco no siguen plantilla (*"EUROPOL. Indique cual NO forma parte de sus objetivos"*, *"…NO forma parte del contenido del Reglamento"*). **La forma de la frase no es un discriminante fiable en un banco heterogéneo.**
+>
+> **La regla que sí:** si la opción correcta **ES cita literal del artículo, no era un intruso** (en un intruso la correcta es, por construcción, la única inventada). Implementado en `resolverMarco` (`lib/generacion/literalidad.js`), usado **por los dos gates** —`verificar-batch-generado.cjs` y el simulador pre-inserción `lib/generacion/simularBatch.js`, que hasta ahora ni conocía el marco—, así que dejan de discrepar. Medido con `node scripts/sim-marco-intruso.cjs`: de 1.924 preguntas con pista, **1.510 quedan confirmadas (comportamiento idéntico)** y **414 pasan a DIRECTA con su cita verificada por primera vez**. El cambio es **monótono: ninguna pregunta pierde una comprobación.**
+>
+> **Y de rebote, una señal nueva:** cuando la pista dispara, la correcta SÍ es del artículo y los tres distractores no, el gate emite **`MARCO AMBIGUO`** — porque o el enunciado no era un intruso (correcto) o **la CLAVE está mal**, ya que la opción marcada figura en el artículo y por tanto no puede ser la intrusa. Son 135 en el banco (120 activas); el muestreo dice que la mayoría son preguntas directas legítimas, así que es una **cola de revisión, no una lista de defectos**.
 
 ## 6. Anti-patterns (qué NO hacer)
 
