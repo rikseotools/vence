@@ -382,8 +382,20 @@ async function runRecord(jsonPath) {
     // GUARDA DETERMINISTA: una over_inclusion "confirmada" cuyos arts a excluir NO están
     // en el scope actual es un FALSO POSITIVO (el scope ya los excluía) → degradar a ok.
     if (verdict === 'over_inclusion' && verificado) {
-      const [sc] = await sql`SELECT ts.article_numbers FROM topic_scope ts WHERE ts.topic_id=${it.topic_id} AND ts.law_id=${it.law_id}`;
-      const scopeSet = new Set(((sc && sc.article_numbers) || []).filter(x => /^[0-9]+$/.test(x)).map(Number));
+      const [sc] = await sql`
+        SELECT ts.article_numbers,
+               (SELECT count(*)::int FROM articles a WHERE a.law_id=ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
+          FROM topic_scope ts WHERE ts.topic_id=${it.topic_id} AND ts.law_id=${it.law_id}`;
+      // NULL = TODA la ley. Tratarlo como lista vacía hacía que la guarda concluyera
+      // "el scope ya excluía esos artículos" y DEGRADARA a `ok` una sobre-inclusión
+      // real: es el mismo bug del conteo, aquí en la guarda. Paso de verdad el
+      // 26/07 — las 9 confirmadas de la tanda 3 (todas con scope NULL) se
+      // degradaron en bloque hasta arreglar esto.
+      const scopeSet = !sc
+        ? new Set()
+        : sc.article_numbers === null
+          ? new Set(Array.from({ length: Number(sc.law_total) }, (_, i) => i + 1))
+          : new Set(sc.article_numbers.filter(x => /^[0-9]+$/.test(x)).map(Number));
       const ov = excludedOverlap(it.titulos_excluidos, scopeSet);
       if (ov.total > 0 && ov.ratio < 0.2) {
         verdict = 'ok'; verificado = false; tally.guardados++;
@@ -421,14 +433,18 @@ async function runReguard() {
   require('dotenv').config({ path: '.env.local' });
   const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
   const rows = await sql`
-    SELECT a.topic_id, a.law_id, a.titulos_excluidos, a.razon, t.position_type pt, t.topic_number tn, l.short_name ley, ts.article_numbers
+    SELECT a.topic_id, a.law_id, a.titulos_excluidos, a.razon, t.position_type pt, t.topic_number tn, l.short_name ley, ts.article_numbers,
+           (SELECT count(*)::int FROM articles ar WHERE ar.law_id=ts.law_id AND ar.article_number ~ '^[0-9]+$') law_total
     FROM scope_over_inclusion_adjudications a
     JOIN topics t ON t.id=a.topic_id JOIN laws l ON l.id=a.law_id
     JOIN topic_scope ts ON ts.topic_id=a.topic_id AND ts.law_id=a.law_id
     WHERE a.verdict='over_inclusion' AND a.verificado`;
   let fixed = 0;
   for (const r of rows) {
-    const scopeSet = new Set((r.article_numbers || []).filter(x => /^[0-9]+$/.test(x)).map(Number));
+    // NULL = toda la ley (ver la nota en runRecord).
+    const scopeSet = r.article_numbers === null
+      ? new Set(Array.from({ length: Number(r.law_total) }, (_, i) => i + 1))
+      : new Set(r.article_numbers.filter(x => /^[0-9]+$/.test(x)).map(Number));
     const ov = excludedOverlap(r.titulos_excluidos, scopeSet);
     if (ov.total > 0 && ov.ratio < 0.2) {
       await sql`UPDATE scope_over_inclusion_adjudications

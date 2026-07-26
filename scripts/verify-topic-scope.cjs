@@ -362,12 +362,34 @@ async function enrichChange(c, pt, ch) {
   const deltaValid = quitarPresent === ch.quitar.length && anadirAbsent === ch.anadir.length
   const remaining = cur.filter((a) => !ch.quitar.includes(a))
   const emptiesLaw = cur.length > 0 && remaining.length === 0
-  let impacto = 0
-  if (ch.quitar.length) {
-    impacto = Number((await c.query(
+  // IMPACTO = preguntas que DEJAN de servirse: las que sirve el scope actual menos
+  // las que servirá el resultante. Antes se medía solo contando `quitar`, y eso
+  // dejaba un agujero por el que se cuela lo más gordo: cuando el scope actual es
+  // NULL (= toda la ley) el recorte se expresa con `anadir` (materializar el
+  // listado) y `quitar` va vacío → el gate calculaba 0 preguntas y marcaba
+  // `auto_safe`. Paso de verdad el 26/07: ocho recortes con 1.271 preguntas fuera
+  // de programa —uno de 561— pasaron el gate como inocuos. Un gate que dice "0" a
+  // un recorte de 561 es peor que no tenerlo.
+  const sirve = async (arts) => {
+    if (arts === null) {
+      return Number((await c.query(
+        `SELECT count(DISTINCT q.id) n FROM questions q JOIN articles a ON a.id=q.primary_article_id
+         WHERE a.law_id=$1 AND a.is_active AND q.is_active`, [sRow.law_id])).rows[0].n)
+    }
+    if (!arts.length) return 0
+    return Number((await c.query(
       `SELECT count(DISTINCT q.id) n FROM questions q JOIN articles a ON a.id=q.primary_article_id
-       WHERE a.law_id=$1 AND a.article_number = ANY($2) AND q.is_active`, [sRow.law_id, ch.quitar])).rows[0].n)
+       WHERE a.law_id=$1 AND a.is_active AND a.article_number = ANY($2) AND q.is_active`,
+      [sRow.law_id, arts])).rows[0].n)
   }
+  const nextArts = (() => {
+    const base = cur.filter((a) => !ch.quitar.includes(a))
+    for (const a of ch.anadir) if (!base.includes(String(a))) base.push(String(a))
+    return base
+  })()
+  const antesN = await sirve(sRow.arts === null ? null : cur)
+  const despuesN = await sirve(nextArts)
+  const impacto = Math.max(0, antesN - despuesN)
   return {
     ...ch, topic_id: tRow.id, epigrafe: tRow.epigrafe, lawsInTema: Number(tRow.laws),
     leyNombre: sRow.ley_nombre, scope_id: sRow.scope_id, currentCount: cur.length,
