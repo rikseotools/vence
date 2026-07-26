@@ -285,6 +285,63 @@ el **programa oficial**: si el epígrafe pide el título → **añadir su rango 
 en BD**; si el programa no lo incluye → **dejarlo**. Nunca añadir un título que el epígrafe no pida ni
 quitar el que sí. Caso raíz resuelto: CE Título V huérfano en Diputación de Córdoba (186 preguntas).
 
+## Frontera de título: artículo escopado de un título que el epígrafe NO nombra
+
+**Herramienta:** `npx tsx scripts/scope/sim-title-boundary.ts <position_type> [topic] [--scope=1,2,6]`
+(ON-DEMAND: **no pinga el badge**). Pipeline real: BD (epígrafe + `topic_scope`) → estructura
+título→rango desde el índice del BOE (`parseBoeSections`) → `classifyTitleBoundary`
+(`lib/laws/scopeTitleBoundary.js`) → overflow. `--scope=` fuerza un scope concreto y sirve como
+**control positivo** para comprobar que el detector no está ciego antes de fiarte de un verde
+(el caso raíz es LOSU T6 de `tecnico_auxiliar_universidad_de_murcia` con `--scope=1,2,6`).
+
+### 🚨 «Silencio no es salud» — lee el veredicto, no la ausencia de hits
+
+El runner imprimía `✅ Sin overflow` de forma **indistinguible** en tres situaciones: banco sano,
+`position_type` con un **typo** (0 temas — un `administrativo_` en vez de `administrativa_` basta), y
+—la grave— **índices del BOE que no se pudieron descargar** (el fallo se tragaba con `catch { continue }`).
+En una barrida de 120 oposiciones, un BOE que limite el ritmo a mitad deja el resto "limpio" y el
+informe sale **falso pero convincente**.
+
+Desde T-121 la decisión la toma el núcleo puro `resumenBarrida()` (mismo fichero que el detector,
+8 tests + validado por mutación) y el runner solo la imprime. **Solo 2 de 5 veredictos son concluyentes:**
+
+| veredicto | ¿se puede afirmar salud? |
+|---|---|
+| `sin_temas` (typo) · `nada_evaluado` · `incompleto` (índices sin bajar) | **NO** — exit ≠ 0 |
+| `limpio` · `con_hallazgos` | sí |
+
+Matiz que importa: un hueco de cobertura **no invalida un positivo** (lo hallado es real), pero sí
+impide decir "limpio". Cada ejecución imprime además `📊 temas · scopes evaluados · omitidos por causa`.
+
+### Resultado de la barrida bank-wide (26/07) y cómo triarla
+
+120 oposiciones · 2.671 scopes evaluados · 0 índices sin bajar → **concluyente**: **59 hits / 1.022
+artículos** (frente a 83 el 24/07, −29% tras el fix del "Título preliminar").
+
+**Los 59 hits NO son un fenómeno, son dos o tres mezclados. Trocea la cola POR TAMAÑO:**
+
+- **1-2 artículos (16 hits)** → es el off-by-one de frontera de verdad. **Aquí sí** se adjudica: cada
+  artículo contra el BOE, **por número Y por rúbrica**, antes de recortar nada.
+- **3+ artículos (43 hits, uno con 239)** → **NO es una frontera.** Es mayoritariamente
+  sobre-inclusión → va a la sección de arriba (`scope_over_inclusion_suspect`), no aquí.
+
+Por eso el detector "parecía tener precisión baja": en 43 de 59 casos responde a una pregunta distinta
+de la que se le hace. Y contexto para no sobre-interpretarlo: **2.432 de 2.671 scopes (91%) tienen
+epígrafe no mapeable a títulos** (`applicable:false`), o sea que solo puede opinar sobre ~9% del banco.
+
+### Dos defectos conocidos del detector (antes de adjudicar, descártalos)
+
+1. **Fuga entre leyes.** `classifyTitleBoundary` extrae los títulos del epígrafe **sin atarlos a la ley
+   que los nombra** y los aplica a TODAS las leyes del tema. Caso: `auxiliar_administrativo_ayuntamiento_marbella`
+   T5, cuyo epígrafe dice *"(Constitución, Título VIII)"* → saca `permitidos: 8` y se lo aplica al
+   **Estatuto de Autonomía de Andalucía**, marcando **239** de sus 252 artículos. Si el hit es de un tema
+   multi-ley y el título nombrado pertenece a OTRA ley, es un falso positivo.
+2. **Nivel LIBRO no soportado** (`parseBoeSections`): las leyes-código estructuradas en libros
+   (`Ley 9/2017` de Contratos: 4 libros + 12 títulos) mapean mal. Comprobado que de las 8 leyes más
+   señaladas solo esa usa libros.
+
+**NUNCA recortar por cercanía numérica sin confirmar el título en el BOE.**
+
 ## Sobre-inclusión de scope: scope más ancho que el epígrafe (`scope_over_inclusion_suspect`)
 
 > **Frase-gatillo: *"revisa la sobre-inclusión del temario"*.** El **reverso** de los títulos
