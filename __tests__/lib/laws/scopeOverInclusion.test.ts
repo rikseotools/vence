@@ -65,6 +65,26 @@ const FIXTURES: Array<{ name: string; expect: boolean; lawTotal: number; scopedC
     epigrafe: 'La LO 1/2004 contra la Violencia de Género: principios rectores, medidas de sensibilización, prevención y detección en el ámbito sanitario; derechos de las funcionarias públicas.' },
   { name: 'Generico con coma pero SIN colon (no marcar)', expect: false, lawTotal: 90, scopedCount: 90,
     epigrafe: 'La Ley 39/2015, del Procedimiento Administrativo Común de las Administraciones Públicas.' },
+  // ── Banda "materia acotada en prosa" (26/07/2026) ────────────────────────────
+  // Origen: el RGPD tenía 54 artículos sin preguntas y parecía trabajo de
+  // generación; era scope de más. Tres oposiciones escopaban sus 99 artículos
+  // para epígrafes que piden una porción. No citan artículos, no nombran títulos
+  // y no llegan a 3 segmentos tras el colon: las reglas anteriores daban NONE.
+  { name: 'RGPD real: 99/99 para "Conceptos y Principios"', expect: true, lawTotal: 99, scopedCount: 99,
+    epigrafe: 'El régimen jurídico de la protección de datos de carácter personal: regulación. Conceptos y Principios en el tratamiento de los datos personales.' },
+  { name: 'RGPD real: 99/99 para "disposiciones generales"', expect: true, lawTotal: 99, scopedCount: 99,
+    epigrafe: 'Protección de Datos de Carácter Personal: disposiciones generales. Datos especialmente protegidos.' },
+  { name: 'Ley 2/2006 CyL: 301/301 para "Concepto y estructura"', expect: true, lawTotal: 301, scopedCount: 301,
+    epigrafe: 'El presupuesto de la Comunidad de Castilla y León. Concepto y estructura. Fases del ciclo presupuestario.' },
+  // El corte por TAMAÑO es lo que separa señal de ruido: en una norma pequeña, la
+  // materia acotada ES la norma entera. Medido sobre el banco: sin corte salen 33
+  // candidatos y la muestra mezcla; con corte a 60 arts quedan 18 del patrón bueno.
+  { name: 'Norma pequeña scopeada entera para un "concepto" (legítimo)', expect: false, lawTotal: 22, scopedCount: 22,
+    epigrafe: 'El archivo. Concepto. Tipos de archivos. Organización del archivo.' },
+  { name: 'Ley por debajo del corte de 60 arts', expect: false, lawTotal: 40, scopedCount: 40,
+    epigrafe: 'La norma: concepto y principios generales.' },
+  { name: 'Ley muy grande YA estrechada (cobertura baja) pese a epígrafe que acota', expect: false, lawTotal: 99, scopedCount: 20,
+    epigrafe: 'Protección de datos: conceptos y principios.' },
 ]
 
 describe('classifyScope — casos etiquetados', () => {
@@ -95,6 +115,34 @@ describe('classifyScope — casos etiquetados', () => {
 // porque la imagen standalone no incluye lib/*.ts. Este test extrae ese mirror y
 // verifica que NO diverge de la lib (una divergencia silenciosa ya ocurrió: un
 // regex con prefijo cirílico + flag `i` casaba "capÍTULO" como "Título").
+// TERCERA copia (descubierta el 26/07/2026): `scripts/scope-over-inclusion.cjs`
+// —el CLI de scan/suspects/record— NO importa la lib: lleva su propio
+// `classifyScope` inline. El guardarraíl solo vigilaba lib ↔ sweep, así que al
+// añadir la banda de "materia acotada" quedaron DOS actualizadas y una vieja, y
+// el scan seguía dando los números de antes sin avisar de nada. Un criterio con
+// tres implementaciones y dos vigiladas es peor que uno con dos: da falsa
+// sensación de cobertura.
+describe('CLI scope-over-inclusion.cjs ↔ lib (sync)', () => {
+  const src = readFileSync('scripts/scope-over-inclusion.cjs', 'utf-8')
+  const a = src.indexOf('const ROMAN =')
+  const b = src.indexOf('const FIXTURES =')
+  it('el bloque del clasificador existe en el CLI', () => {
+    expect(a).toBeGreaterThan(-1)
+    expect(b).toBeGreaterThan(a)
+  })
+  // eslint-disable-next-line no-eval
+  const cli: (i: { lawTotal: number; scopedCount: number; epigrafe: string }) => { band: string } = eval(
+    src.slice(a, b) + '\n(classifyScope)',
+  )
+  for (const fx of FIXTURES) {
+    it(`CLI == lib: ${fx.name}`, () => {
+      expect(cli({ lawTotal: fx.lawTotal, scopedCount: fx.scopedCount, epigrafe: fx.epigrafe }).band).toBe(
+        classifyScope(fx).band,
+      )
+    })
+  }
+})
+
 describe('sweep mirror ↔ lib (sync)', () => {
   const src = readFileSync('scripts/health-sweep.cjs', 'utf-8')
   const a = src.indexOf('const romanToInt = (s) =>')

@@ -95,7 +95,10 @@ function parseEpigrafe(ep) {
 
   const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|completa mente|la ley completa/i.test(ep);
 
-  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, len: ep.length };
+  // MIRROR de lib/laws/scopeOverInclusion.ts — materia acotada en prosa (26/07/2026).
+  const acotaMateria = (ep.match(/(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i) || [null])[0];
+
+  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length };
 }
 
 /**
@@ -135,6 +138,13 @@ function classifyScope({ lawTotal, scopedCount, epigrafe }) {
   if (f.titGap && nearFull && bigLaw) {
     score += 50;
     reasons.push(`epígrafe nombra títulos con huecos (${f.titSet.join(',')}) pero scope cubre toda la ley`);
+  }
+  // Regla MEDIA (26/07/2026): ley MUY grande escopada entera pero el epígrafe
+  // ACOTA la materia en prosa, sin enumerar. Porqué y calibración en
+  // lib/laws/scopeOverInclusion.ts (fuente única del criterio).
+  if (lawTotal >= 60 && nearFull && !enumerator && f.acotaMateria) {
+    score += 30;
+    reasons.push(`ley muy grande (${lawTotal}) escopada al ${(coverage * 100).toFixed(0)}% pero el epígrafe ACOTA la materia en prosa ("${f.acotaMateria}") sin enumerar bloques`);
   }
   // Regla MEDIA: ley grande + casi completa + epígrafe enumerador (patrón T11)
   if (bigLaw && nearFull && enumerator) {

@@ -109,7 +109,18 @@ export function parseEpigrafe(ep: string | null | undefined): EpigrafeFeatures {
 
   const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(ep)
 
-  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, len: ep.length }
+  // Marcadores de ACOTACIÓN: el epígrafe nombra PARTES de la norma (conceptos,
+  // principios, disposiciones generales…) en lugar de la norma entera. Por sí
+  // solos no prueban nada —una norma pequeña puede consistir justo en eso—, por
+  // lo que `classifyScope` solo los usa con leyes muy grandes. Se devuelve el
+  // literal encontrado para poder explicarlo en el motivo, no un booleano: un
+  // aviso que no dice QUÉ lo disparó no se puede adjudicar.
+  const acotaMateria =
+    (ep.match(
+      /(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i,
+    ) || [null])[0]
+
+  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length }
 }
 
 export type ScopeBand = 'HIGH' | 'MEDIUM' | 'CLEARED' | 'NONE'
@@ -167,6 +178,39 @@ export function classifyScope({ lawTotal, scopedCount, epigrafe }: ScopeInput): 
   if (bigLaw && nearFull && enumerator) {
     score += 30
     reasons.push(`ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${f.segments} bloques`)
+  }
+  // MEDIA (26/07/2026) — MATERIA ACOTADA EN PROSA, sin enumerar.
+  //
+  // Punto ciego encontrado al investigar por qué el RGPD tenía 54 artículos sin
+  // preguntas: tres oposiciones escopaban sus 99 artículos para epígrafes que
+  // piden una porción ("Conceptos y Principios en el tratamiento de los datos
+  // personales", "disposiciones generales. Datos especialmente protegidos"). Las
+  // dos reglas de arriba no los ven: no citan artículos, no nombran títulos y no
+  // llegan a 3 segmentos tras el colon — acotan la materia en PROSA. El detector
+  // devolvía NONE y el hueco parecía trabajo de generación cuando en realidad era
+  // scope de más: generar esos 54 artículos habría servido preguntas fuera de
+  // programa.
+  //
+  // CALIBRADO sobre las 4.000 parejas (tema, ley) del banco, no inventado: con el
+  // marcador de acotación a secas salen 33 candidatos y la muestra mezcla —un
+  // reglamento de archivos de 22 artículos escopado entero para "El archivo.
+  // Concepto. Tipos de archivos…" es LEGÍTIMO, porque ahí la materia ES la norma
+  // completa. El discriminante es el TAMAÑO: a partir de ~60 artículos, que un
+  // epígrafe acote la materia y el scope traiga la ley entera deja de cuadrar.
+  // Con ese corte quedan 18, del mismo patrón que el RGPD (Ley 2/2006 CyL 301/301
+  // para "Concepto y estructura. Fases del ciclo presupuestario"; Ley 5/2025
+  // Hacienda Madrid 197/197; Ley 29/1998 142/142 para un tema de recursos).
+  //
+  // Va a MEDIA a propósito: precisión estimada ~2/3, así que es cola de
+  // adjudicación bajo demanda, NO señal de badge (mismo criterio que el patrón
+  // T11). Exige `!enumerator` para no sumarse a la regla de arriba y promover a
+  // HIGH por acumulación.
+  const veryBigLaw = lawTotal >= 60
+  if (veryBigLaw && nearFull && !enumerator && f.acotaMateria) {
+    score += 30
+    reasons.push(
+      `ley muy grande (${lawTotal}) escopada al ${(coverage * 100).toFixed(0)}% pero el epígrafe ACOTA la materia en prosa ("${f.acotaMateria}") sin enumerar bloques`,
+    )
   }
 
   let band: ScopeBand = 'NONE'

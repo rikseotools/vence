@@ -344,6 +344,24 @@ epígrafe no mapeable a títulos** (`applicable:false`), o sea que solo puede op
 
 ## Sobre-inclusión de scope: scope más ancho que el epígrafe (`scope_over_inclusion_suspect`)
 
+> 🆕 **Segundo patrón de la banda MEDIUM — MATERIA ACOTADA EN PROSA (26/07/2026).** Hasta ahora la
+> banda media exigía un epígrafe *enumerador* (dos puntos + ≥3 bloques). Faltaba el caso en que el
+> epígrafe acota la materia **en prosa**: *«Conceptos y Principios en el tratamiento de los datos
+> personales»* con **los 99 artículos del RGPD** escopados. Se encontró investigando por qué el RGPD
+> tenía 54 artículos sin preguntas — parecía trabajo de generación y era **scope de más**: escribir
+> esas preguntas habría servido contenido fuera de programa. Regla: ley **≥60 artículos**, ≥90%
+> escopada, epígrafe que acota (*concepto, principios, disposiciones generales, ámbito de aplicación,
+> definiciones, especialmente protegidos*) y **no** enumera. El corte por tamaño es lo que separa
+> señal de ruido: en una norma pequeña la materia acotada ES la norma entera (un reglamento de
+> archivos de 22 artículos para *«El archivo. Concepto. Tipos de archivos»* es legítimo). Calibrado
+> sobre las 4.000 parejas del banco: 33 candidatos sin corte → 18 con él. **No pinga el badge** (sigue
+> siendo cola de adjudicación, como el resto de la MEDIUM).
+>
+> ⚠️ **El criterio vive en TRES sitios** — `lib/laws/scopeOverInclusion.ts` (fuente única),
+> el mirror del sweep y la copia inline de `scripts/scope-over-inclusion.cjs`. El guardarraíl del
+> 26/07 los compara los tres con las mismas fixtures: antes solo vigilaba dos, y al añadir esta banda
+> el CLI se quedó atrás dando los números viejos sin avisar.
+
 > **Frase-gatillo: *"revisa la sobre-inclusión del temario"*.** El **reverso** de los títulos
 > huérfanos: allí FALTA scope, aquí SOBRA. El epígrafe enumera sub-materias CONCRETAS de una ley
 > pero el `topic_scope` mete **casi la ley entera** → el tema sirve preguntas **fuera de programa

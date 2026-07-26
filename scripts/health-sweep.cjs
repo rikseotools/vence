@@ -673,13 +673,16 @@ async function main() {
     const reS = /art[íi]?c?u?l?o?\.?\s*(\d+)(?!\s*(?:a|al|-|–)\s*\d)/gi;
     while ((m = reS.exec(ep)) !== null) explicitArts.add(+m[1]);
     const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(ep);
-    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, enumerator = hasColon && segments >= 3;
+    // MIRROR de lib/laws/scopeOverInclusion.ts — materia acotada en prosa (26/07/2026).
+    const acotaMateria = (ep.match(/(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i) || [null])[0];
+    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, enumerator = hasColon && segments >= 3, veryBigLaw = lawTotal >= 60;
     if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
     if (titComplete && closureWord && nearFull) return { band: 'CLEARED', score: 0, coverage, reason: null };
     let score = 0, reason = null;
     if (explicitArts.size > 0 && bigLaw && scopedCount >= explicitArts.size * 2 && nearFull) { score += 60; reason = `epígrafe cita ${explicitArts.size} arts concretos pero scope tiene ${scopedCount}/${lawTotal}`; }
     if (titGap && nearFull && bigLaw) { score += 50; reason = reason || `epígrafe nombra títulos con huecos (${titSet.join(',')}) pero scope cubre toda la ley`; }
     if (bigLaw && nearFull && enumerator) { score += 30; reason = reason || `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${segments} bloques`; }
+    if (veryBigLaw && nearFull && !enumerator && acotaMateria) { score += 30; reason = reason || `ley muy grande (${lawTotal}) escopada al ${(coverage * 100).toFixed(0)}% pero el epígrafe ACOTA la materia en prosa ("${acotaMateria}") sin enumerar bloques`; }
     const band = score >= 50 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'NONE';
     return { band, score, coverage, reason };
   };
