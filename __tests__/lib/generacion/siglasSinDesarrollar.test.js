@@ -72,3 +72,36 @@ describe('analizarSiglas (§2.2-quater: pregunta autocontenida)', () => {
     expect(analizarSiglas(undefined, undefined, undefined)).toEqual({ faltan: [], candidatas: [] })
   })
 })
+
+// ── La sigla también cuenta si vive SOLO en las opciones (26/07/2026) ──────────
+// Antes solo se miraba el enunciado y se colaron 2 preguntas del lote gen_regage
+// con "REG-AGE" únicamente en las opciones (la correcta incluida): ilegibles
+// servidas sueltas y barajadas. Lo cazó una auditoría LLM, no el gate.
+describe('siglas que solo aparecen en las opciones', () => {
+  it('marca la sigla presente solo en las opciones', () => {
+    const r = analizarSiglas(
+      'Entre los contenidos exigidos al Punto de Acceso General figura:',
+      '',
+      ['Información de los trámites que anotan en el REG-AGE', 'Otra cosa', 'Otra', 'Otra']
+    )
+    expect(r.faltan).toContain('REG-AGE')
+  })
+
+  it('no la marca si alguna opción o el enunciado la desarrollan', () => {
+    expect(
+      analizarSiglas('Sobre el Registro Electrónico General de la Administración General del Estado (REG-AGE):', '', [
+        'Información de los trámites que anotan en el REG-AGE',
+      ]).faltan
+    ).toEqual([])
+  })
+
+  it('mantiene la excepción: si la respuesta ES la norma, no exige desarrollarla en el enunciado', () => {
+    const r = analizarSiglas('¿Qué norma regula el régimen sancionador de los tributos locales?', '', [
+      'La Ley General Tributaria',
+      'El Código Civil',
+      'La Ley 39/2015',
+      'La Ley 40/2015',
+    ])
+    expect(r.faltan).toEqual([])
+  })
+})
