@@ -7,6 +7,7 @@ const {
   rankingHuerfanos,
   simulaCobertura,
   proponeLote,
+  marcaEnCurso,
 } = require('../../../lib/generacion/huerfanosPlan')
 
 /** Fixture: n artículos de una ley en un tema, `cubiertos` de ellos con preguntas. */
@@ -149,5 +150,68 @@ describe('paridad con el detector article_no_coverage', () => {
     expect(having).toContain(`HAVING count(*) >= ${UMBRALES.minArticulos}`)
     expect(having).toContain(`/ count(*) >= ${UMBRALES.minCobertura}`)
     expect(having).toMatch(new RegExp(`count\\(\\*\\) - count\\(\\*\\) FILTER[\\s\\S]*?>= ${UMBRALES.minHuecos}`))
+  })
+})
+
+// ── Señales aportadas al fusionar el planificador duplicado (26/07/2026) ──────
+// El 26/07 dos sesiones construyeron dos planificadores a la vez. Al retirar el
+// duplicado, estas dos señales suyas se trajeron aquí porque no las había.
+
+describe('rankingHuerfanos — demanda (a cuánta gente llega el hueco)', () => {
+  // Mismo artículo huérfano en dos oposiciones de tamaño muy distinto.
+  const filas = [
+    ...tema({ pt: 'grande', topicId: 'T1', n: 10, cubiertos: 6 }),
+    ...tema({ pt: 'pequena', topicId: 'T2', n: 10, cubiertos: 6 }),
+  ]
+
+  it('sin datos de demanda, usuarios queda a 0 y no rompe nada', () => {
+    expect(rankingHuerfanos(filas).every((a) => a.usuarios === 0)).toBe(true)
+  })
+
+  it('suma los usuarios de las oposiciones que escopan el artículo', () => {
+    const r = rankingHuerfanos(filas, { demanda: { grande: 2000, pequena: 30 } })
+    expect(r[0].usuarios).toBe(2030)
+  })
+
+  it('no duplica al mismo opositor porque su oposición lo escope en dos temas', () => {
+    const dosTemas = [
+      ...tema({ pt: 'grande', topicId: 'T1', n: 10, cubiertos: 6 }),
+      ...tema({ pt: 'grande', topicId: 'T2', tema: 2, n: 10, cubiertos: 6 }),
+    ]
+    const r = rankingHuerfanos(dosTemas, { demanda: { grande: 2000 } })
+    expect(r[0].nTemas).toBe(2)
+    expect(r[0].usuarios).toBe(2000)
+  })
+
+  it('la demanda NO altera el orden: sigue mandando el alcance', () => {
+    const mixto = [
+      ...tema({ pt: 'a', topicId: 'T1', leySlug: 'ancha', n: 10, cubiertos: 6 }),
+      ...tema({ pt: 'b', topicId: 'T2', leySlug: 'ancha', n: 10, cubiertos: 6 }),
+      ...tema({ pt: 'c', topicId: 'T3', leySlug: 'estrecha', desde: 100, n: 10, cubiertos: 6 }),
+    ]
+    const r = rankingHuerfanos(mixto, { demanda: { c: 99999 } })
+    expect(r[0].leySlug).toBe('ancha') // 2 oposiciones vs 1, pese a la demanda
+  })
+})
+
+describe('marcaEnCurso — no elegir una ley que otra sesión está trabajando', () => {
+  const filas = [
+    ...tema({ pt: 'a', topicId: 'T1', leySlug: 'lprl', n: 10, cubiertos: 6 }),
+    ...tema({ pt: 'b', topicId: 'T2', leySlug: 'otra', desde: 100, n: 10, cubiertos: 6 }),
+  ]
+
+  it('marca solo las leyes con batch reciente', () => {
+    const r = marcaEnCurso(rankingHuerfanos(filas), ['lprl'])
+    expect(r.filter((a) => a.enCurso).every((a) => a.leySlug === 'lprl')).toBe(true)
+    expect(r.some((a) => a.leySlug === 'otra' && a.enCurso === false)).toBe(true)
+  })
+
+  it('sin lista, no marca ninguna', () => {
+    expect(marcaEnCurso(rankingHuerfanos(filas)).every((a) => a.enCurso === false)).toBe(true)
+  })
+
+  it('AVISA pero no filtra: continuar lo que otra sesión dejó a medias puede ser correcto', () => {
+    const r = marcaEnCurso(rankingHuerfanos(filas), ['lprl'])
+    expect(r).toHaveLength(rankingHuerfanos(filas).length)
   })
 })

@@ -48,6 +48,33 @@ const tabla = (filas) => { console.table(filas); return filas }
 ;(async () => {
   const filas = await s.unsafe(SQL)
 
+  // Demanda real por oposición: el alcance dice en cuántos sitios sale el hueco,
+  // no a cuánta gente llega, y no es lo mismo (26/07: dos leyes con idéntico
+  // rendimiento por artículo, 3.130 vs 733 opositores detrás).
+  const demRows = await s.unsafe(
+    `SELECT target_oposicion AS pt, count(*)::int usuarios FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`,
+  )
+  const demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+
+  // Leyes con batch generado en las últimas 24h por CUALQUIER sesión. Nace de la
+  // colisión del 26/07: dos sesiones sobre los mismos 5 artículos de la LPRL con
+  // 13 minutos de diferencia. `--excluir` ya existía, pero exige saber de antemano
+  // qué excluir; esto lo detecta solo.
+  const enCursoRows = await s.unsafe(
+    `SELECT DISTINCT l.slug AS ley FROM questions q
+       JOIN articles a ON a.id = q.primary_article_id
+       JOIN laws l ON l.id = a.law_id
+       JOIN LATERAL unnest(q.tags) AS t(tag) ON t.tag LIKE 'gen\\_%'
+      WHERE q.created_at > now() - interval '24 hours'`,
+  )
+  const enCurso = new Set(enCursoRows.map((r) => r.ley))
+  const avisoEnCurso = () => {
+    if (!enCurso.size) return
+    console.log(`\n  ⚠️ leyes con batch en las últimas 24h (otra sesión): ${[...enCurso].join(', ')}`)
+    console.log('     Generar sobre una de ellas duplica trabajo: el dedup del Paso 3 compara ENUNCIADOS')
+    console.log('     y no caza dos preguntas que evalúan lo mismo con otras palabras.')
+  }
+
   // --simula <ley_slug> <art…>
   if (flag('--simula') >= 0) {
     const [leySlug, ...arts] = argv.slice(flag('--simula') + 1)
@@ -71,26 +98,39 @@ const tabla = (filas) => { console.table(filas); return filas }
   const soloQueDisparan = flag('--deuda') < 0
   const ley = valor('--ley')
   if (ley || flag('--deuda') >= 0) {
-    const r = plan.rankingHuerfanos(filas, { soloQueDisparan }).filter((a) => !ley || a.leySlug === ley)
+    const r = plan
+      .marcaEnCurso(plan.rankingHuerfanos(filas, { soloQueDisparan, demanda }), enCurso)
+      .filter((a) => !ley || a.leySlug === ley)
     console.log(`\n${r.length} artículo(s) huérfano(s)${ley ? ` en ${ley}` : ''}${soloQueDisparan ? ' en temas que disparan el finding' : ' (DEUDA REAL, incluye lo que el badge ya no ve)'}:\n`)
-    tabla(r.slice(0, 40).map((a) => ({ ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas })))
+    tabla(r.slice(0, 40).map((a) => ({ ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas, usuarios: a.usuarios, enCurso: a.enCurso ? '⚠️' : '' })))
     await s.end()
     return
   }
 
   // Estado global + siguiente lote
   const disparan = plan.temasQueDisparan(filas)
-  const ranking = plan.rankingHuerfanos(filas)
+  const ranking = plan.marcaEnCurso(plan.rankingHuerfanos(filas, { demanda }), enCurso)
   const deuda = plan.rankingHuerfanos(filas, { soloQueDisparan: false })
   console.log('\n=== CAMPAÑA article_no_coverage (T-115) ===\n')
   console.log(`  temas que disparan el finding: ${disparan.length}`)
   console.log(`  oposiciones afectadas:         ${new Set(disparan.map((t) => t.pt)).size}`)
   console.log(`  artículos huérfanos distintos: ${ranking.length}  ·  deuda real (incl. invisibles): ${deuda.length}`)
 
+  // Por ley: nº de huérfanos, a cuánta gente llegan y si otra sesión la está
+  // trabajando. Las tres cosas juntas son las que evitan elegir mal.
   const porLey = {}
-  for (const a of ranking) porLey[a.ley] = (porLey[a.ley] || 0) + 1
-  console.log('\nLeyes con más huérfanos:')
-  tabla(Object.entries(porLey).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([ley, arts]) => ({ ley, arts })))
+  for (const a of ranking) {
+    const e = (porLey[a.ley] = porLey[a.ley] || { arts: 0, usuarios: 0, slug: a.leySlug, enCurso: a.enCurso })
+    e.arts++
+    e.usuarios = Math.max(e.usuarios, a.usuarios)
+  }
+  console.log('\nLeyes con más huérfanos (usuarios = alcance real del artículo más transversal):')
+  tabla(
+    Object.entries(porLey)
+      .sort((a, b) => b[1].arts - a[1].arts)
+      .slice(0, 10)
+      .map(([ley, e]) => ({ ley, arts: e.arts, usuarios: e.usuarios, enCurso: e.enCurso ? '⚠️ otra sesión' : '' })),
+  )
 
   const excluir = (valor('--excluir') || '').split(',').filter(Boolean)
   const lote = plan.proponeLote(filas, { maxArticulos: Number(valor('--max') || 6), excluirLeyes: excluir })
@@ -102,6 +142,10 @@ const tabla = (filas) => { console.table(filas); return filas }
   if (lote.impacto.oposicionesLimpias.length) console.log(`  quedan SIN finding: ${lote.impacto.oposicionesLimpias.join(', ')}`)
   console.log(`\n  1) node scripts/verificar-articulos-vs-boe.cjs ${lote.leySlug} <BOE-ID> ${lote.articulos.map((a) => a.articulo).join(' ')}`)
   console.log('  2) generar el borrador (manual generar-preguntas-con-ia.md) → insertar → verificar → doble auditoría ciega → aprobar → Paso 9')
+  if (enCurso.has(lote.leySlug)) {
+    console.log(`\n  ⚠️ OJO: ${lote.leySlug} YA tiene un batch de las últimas 24h — comprueba qué artículos cubrió antes de escribir.`)
+  }
+  avisoEnCurso()
 
   await s.end()
 })().catch((e) => {

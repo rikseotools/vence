@@ -24,6 +24,16 @@ export interface RunbookEntry {
   runbook: string | null
   /** qué hace Claude al seguir el runbook (resumen para la guía) */
   claudeHace: string
+  /**
+   * Comando por el que se EMPIEZA a trabajar este kind, si la campaña tiene
+   * utillaje propio (`npm run …`). Existe para que la herramienta no quede en un
+   * SILO: el 26/07/2026 dos sesiones construyeron a la vez dos planificadores
+   * distintos para `article_no_coverage` porque ninguna encontró el del otro —
+   * uno estaba documentado en el runbook y el otro solo en CLAUDE.md y una ficha.
+   * Declarándolo aquí, el panel, la guía y el guardarraíl leen todos lo mismo, y
+   * el test verifica que el script existe de verdad en package.json.
+   */
+  comando?: string
 }
 
 // Varias señales de FALLO de app comparten un único runbook y frase (health-check).
@@ -146,6 +156,7 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     title: 'Artículos del temario sin ninguna pregunta',
     triggerPhrase: 'revisa los artículos sin preguntas',
     runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run huerfanos:plan',
     claudeHace: 'localiza los artículos que están en el topic_scope y tienen contenido real pero 0 preguntas activas (al usuario nunca le salen en los tests aunque el tema en conjunto sí tenga preguntas), y genera preguntas ancladas al texto del artículo con doble auditoría ciega antes de activarlas. Excluye derogados.',
   },
   flattened_table: {

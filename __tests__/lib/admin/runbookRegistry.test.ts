@@ -50,6 +50,30 @@ describe('runbookRegistry — guardarraíles', () => {
     expect(faltan).toEqual([])
   })
 
+  // ── Anti-SILO (26/07/2026) ────────────────────────────────────────────────
+  // El 26/07 dos sesiones construyeron A LA VEZ dos planificadores distintos para
+  // `article_no_coverage`: ninguna encontró el de la otra porque uno vivía en el
+  // runbook y el otro solo en CLAUDE.md y una ficha del backlog. Declarar el
+  // comando en el registro no basta si nadie comprueba que existe y que el
+  // runbook lo nombra: sin estas dos comprobaciones, el puntero se pudre y la
+  // siguiente sesión vuelve a construirse el suyo.
+  it('el `comando` declarado existe de verdad como script de package.json', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf-8'))
+    const rotos = Object.entries(RUNBOOK_BY_KIND)
+      .filter(([, e]) => e.comando)
+      .filter(([, e]) => !pkg.scripts?.[e.comando!.replace(/^npm run /, '')])
+      .map(([kind, e]) => `${kind} → ${e.comando}`)
+    expect(rotos).toEqual([])
+  })
+
+  it('el runbook del kind NOMBRA su comando (el punto de entrada es descubrible)', () => {
+    const faltan = Object.entries(RUNBOOK_BY_KIND)
+      .filter(([, e]) => e.comando && e.runbook && existsSync(e.runbook))
+      .filter(([, e]) => !readFileSync(e.runbook!, 'utf-8').includes(e.comando!.replace(/^npm run /, '')))
+      .map(([kind, e]) => `${kind}: ${e.runbook} no menciona ${e.comando}`)
+    expect(faltan).toEqual([])
+  })
+
   it('kind desconocido → undefined (sin crash)', () => {
     expect(runbookForKind('kind_que_no_existe')).toBeUndefined()
     expect(runbookForKind(null)).toBeUndefined()
