@@ -79,6 +79,17 @@ async function xmlBloque(art) {
       console.log(`  ❌ art. ${a.n}: no se pudo leer del BOE (${e.message})`)
       continue
     }
+    // Una nota de vigencia del BOE ("Téngase en cuenta que se declara…") NO es
+    // texto del artículo, pero SÍ es información que puede invalidar una pregunta:
+    // se avisa aunque el texto coincida. Caso real: art. 72 Ley 9/2017, cuyo
+    // apartado 4 declaró no conforme con el orden constitucional de competencias
+    // la STC 68/2021 y nuestro `content` no lo refleja.
+    if (r.notaVigencia) {
+      console.log(`  ⚠️ art. ${a.n} — el BOE trae NOTA DE VIGENCIA que no está en nuestro texto:`)
+      console.log(`     «${r.notaVigencia.replace(/\s+/g, ' ').slice(0, 220)}»`)
+      console.log('     → NO generes sobre el apartado afectado sin resolver antes la vigencia.')
+    }
+
     if (r.coincide) {
       console.log(`  ✅ art. ${a.n} — idéntico al BOE vigente (${r.vigencia})`)
       continue

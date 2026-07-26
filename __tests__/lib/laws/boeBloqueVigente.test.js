@@ -41,6 +41,26 @@ describe('bloqueVigente (BOE consolidado)', () => {
     expect(bloqueVigente(XML_DESORDENADO).rubrica).toBe('Artículo 2.')
   })
 
+  // Caso real: art. 72 de la Ley 9/2017. El BOE mete la nota de vigencia como un
+  // párrafo MÁS del cuerpo (no en el blockquote), así que sin separarla el texto
+  // "oficial" arrastra una cola que no es del artículo y todo diverge.
+  it('separa la nota de vigencia del texto del artículo', () => {
+    const xml = `<response><data><bloque id="a7-4"><version fecha_vigencia="20210423">
+      <p class="articulo">Artículo 72.</p>
+      <p class="parrafo">4. La competencia para la declaración corresponder&aacute; al titular del departamento.</p>
+      <p class="parrafo">T&eacute;ngase en cuenta que se declara que el apartado 4 no es conforme con el orden constitucional de competencias, por la Sentencia del TC 68/2021, de 18 de marzo.</p>
+      <p class="parrafo">5. Cuando sea necesaria una declaraci&oacute;n previa.</p>
+    </version></bloque></data></response>`
+    const b = bloqueVigente(xml)
+    expect(b.texto).not.toMatch(/Téngase en cuenta/)
+    expect(b.texto).toMatch(/5\. Cuando sea necesaria/) // lo que va DESPUÉS de la nota se conserva
+    expect(b.notaVigencia).toMatch(/TC 68\/2021/)
+  })
+
+  it('notaVigencia es null cuando el bloque no trae ninguna', () => {
+    expect(bloqueVigente(XML_DESORDENADO).notaVigencia).toBeNull()
+  })
+
   it('devuelve null si el bloque no trae ninguna versión', () => {
     expect(bloqueVigente('<response><data/></response>')).toBeNull()
   })
