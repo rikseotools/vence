@@ -246,8 +246,46 @@ function parseMd() {
       if (huerfanas.length) console.log(`⚠️ VIVA en BD pero SIN ficha en el markdown: ${huerfanas.join(', ')}`);
     }
 
+    // ── reserve ────────────────────────────────────────────────────────────────
+    // Reserva ATÓMICAMENTE el siguiente id libre y lo imprime, para escribir la
+    // ficha en el markdown con un id que ya nadie más puede tomar.
+    //
+    // POR QUÉ EXISTE (26/07/2026): los ids se acuñaban mirando el markdown —que es
+    // per-worktree— y la reserva atómica solo llegaba con `sync`, DESPUÉS de haber
+    // escrito la ficha. Con sesiones en paralelo eso es una carrera: dos sesiones
+    // leen "el siguiente libre es T-123", ambas escriben su ficha con ese id y al
+    // fusionar hay dos tareas distintas con el mismo número. Pasó DOS VECES el
+    // mismo día (T-123 y T-126, esta última cerrada por la otra sesión con un
+    // `outcome` que no correspondía a la ficha escrita aquí). El guardarraíl de
+    // ids únicos lo caza en CI, pero tarde: cuando ya hay que renumerar a mano.
+    //
+    // El INSERT con el título provisional es lo que hace la reserva real: a partir
+    // de ahí `ON CONFLICT DO NOTHING` del sync respeta la fila y el id es tuyo.
+    else if (cmd === 'reserve') {
+      const titulo = process.argv[3] || 'RESERVADA — ficha pendiente de escribir en el markdown';
+      // Se reintenta por si otra sesión gana la carrera entre el SELECT y el INSERT:
+      // la unicidad la garantiza la PK, no este cálculo.
+      let reservado = null;
+      for (let intento = 0; intento < 10 && !reservado; intento++) {
+        const filas = await s`SELECT id FROM public.backlog_tasks`;
+        const nums = filas
+          .map((r) => parseInt(String(r.id).replace(/\D/g, ''), 10))
+          .filter((n) => Number.isFinite(n));
+        const siguiente = `T-${String(Math.max(0, ...nums) + 1).padStart(3, '0')}`;
+        const [r] = await s`
+          INSERT INTO public.backlog_tasks (id, title, priority, status)
+          VALUES (${siguiente}, ${titulo}, 'media', 'open')
+          ON CONFLICT (id) DO NOTHING RETURNING id`;
+        if (r) reservado = r.id;
+      }
+      if (!reservado) { console.error('❌ no se pudo reservar un id tras 10 intentos'); process.exit(2); }
+      console.log(`✅ id reservado: ${reservado}`);
+      console.log(`   escribe la ficha en docs/roadmap/tareas-pendientes.md como:  ### [${reservado}] 🟡 [ABIERTO …] <título>`);
+      console.log(`   y luego:  node scripts/backlog.cjs sync   (actualizará el título real)`);
+    }
+
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | reserve ["título"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);
