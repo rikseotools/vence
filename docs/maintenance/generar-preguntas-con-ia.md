@@ -288,6 +288,21 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 > límite de alcance**, el aviso es real: o se completa la opción o se reestructura la pregunta. Nunca
 > automatizar el descarte.
 | **`bullets_match_options_ok` (NUEVO 26/07/2026)** | **Cada bullet `- **X)**` describe la opción que hoy ocupa la posición X.** Se comprueba a ojo, opción contra bullet, DESPUÉS de cualquier retoque de las opciones. | **Solo revisión manual — NINGÚN gate lo ve** |
+| **`racional_describe_la_opcion_ok` (NUEVO 26/07/2026)** | **El «Por qué X es correcta» describe lo que la OPCIÓN dice, no lo que dice el artículo entero.** Si la opción es una cita parcial, la glosa no puede atribuirle contenido que su texto no lleva. | **Solo auditoría ciega — ningún gate lo ve** |
+
+> ⚠️ **`racional_describe_la_opcion_ok` nace de DOS casos del mismo lote, cazados por auditores distintos
+> (26/07/2026, `gen_ljv_bis2_20260726`).** Es sutil porque la pregunta es correcta y la glosa es *verdadera*:
+> lo que falla es que la glosa describe **el artículo** mientras dice estar explicando **la opción**.
+> - La clave citaba el art. 26 octies.1 hasta «…revertir la rectificación registral», y la glosa remataba
+>   «…la solicitud de la persona interesada, **acompañada de sus medios de prueba**» — dato que está en la
+>   frase siguiente del artículo y **no en la opción que el opositor lee**.
+> - La clave del art. 80 ter.2 recogía solo la legitimación del Ministerio Fiscal, y la glosa afirmaba que
+>   «**suma** a los titulares de derechos o intereses legítimos» la del Fiscal: la suma está en el apartado,
+>   no en la opción.
+>
+> Daño: el opositor coteja la explicación con la opción que ha elegido y no cuadran. Arreglo: o se completa
+> la opción, o la glosa **atribuye expresamente al apartado** lo que no viaja en la opción («el mismo
+> apartado añade, en frase aparte, que…»).
 
 > ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
 > Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
