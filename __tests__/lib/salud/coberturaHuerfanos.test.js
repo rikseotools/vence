@@ -109,6 +109,26 @@ describe('rankearLeyes', () => {
     expect(sesgado[0].ley).toBe('LPRL')
   })
 
+  // Colisión real del 26/07: dos sesiones generaron sobre los mismos 5 artículos
+  // de la LPRL con 13 minutos de diferencia. El ranking marca lo que ya está en
+  // curso para que la coordinación no dependa de que alguien se acuerde.
+  it('marca las leyes con batch reciente de otra sesión', () => {
+    const r = rankearLeyes(PARES, {}, ['LPRL'])
+    expect(r.find((x) => x.ley === 'LPRL').enCurso).toBe(true)
+    expect(r.find((x) => x.ley === 'AUTONOMICA').enCurso).toBe(false)
+  })
+
+  it('sin lista de leyes en curso, ninguna se marca', () => {
+    expect(rankearLeyes(PARES).every((r) => r.enCurso === false)).toBe(true)
+  })
+
+  it('estar en curso NO la saca del ranking: avisa, no decide por ti', () => {
+    // Puede ser legítimo continuar una ley que otra sesión dejó a medias; lo que
+    // no puede pasar es elegirla SIN SABERLO.
+    const r = rankearLeyes(PARES, {}, ['LPRL'])
+    expect(r[0].ley).toBe('LPRL')
+  })
+
   it('la ley exclusiva NO cierra su tema sola: quedan los artículos compartidos', () => {
     // Cubrir los 4 de AUTONOMICA deja T3 con artA y artB aún huérfanos → 0 temas
     // a cero pese a ser el doble de trabajo. Es exactamente la trampa que este

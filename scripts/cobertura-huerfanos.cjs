@@ -141,16 +141,35 @@ const PARES = () => s`
     FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`
   const demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
 
-  const ranking = rankearLeyes(pares, demanda)
+  // Leyes con batch generado en las últimas 24h: con varias sesiones en paralelo
+  // es la diferencia entre elegir bien y duplicar un lote entero (colisión real
+  // del 26/07 sobre la LPRL, 13 minutos de diferencia).
+  const enCursoRows = await s`
+    SELECT DISTINCT l.short_name AS ley, max(q.created_at) AS ult, min(t.tag) AS tag
+    FROM questions q
+    JOIN articles a ON a.id = q.primary_article_id
+    JOIN laws l ON l.id = a.law_id
+    JOIN LATERAL unnest(q.tags) AS t(tag) ON t.tag LIKE 'gen\\_%'
+    WHERE q.created_at > now() - interval '24 hours'
+    GROUP BY l.short_name`
+  const enCurso = new Set(enCursoRows.map((r) => r.ley))
+
+  const ranking = rankearLeyes(pares, demanda, enCurso)
   console.log('RANKING DE LEYES — por temas cerrados POR ARTÍCULO escrito\n')
   console.log('  ratio  arts  temas0  bajo↓  finds  usuarios  ley')
   ranking.slice(0, TOP).forEach((r) => {
     console.log(
       `  ${String(r.ratio).padStart(5)}  ${String(r.articulos).padStart(4)}  ` +
         `${String(r.temasACero).padStart(6)}  ${String(r.temasBajoUmbral).padStart(5)}  ` +
-        `${String(r.findingsCerrados).padStart(5)}  ${String(r.usuarios).padStart(8)}  ${r.ley}`,
+        `${String(r.findingsCerrados).padStart(5)}  ${String(r.usuarios).padStart(8)}  ${r.ley}` +
+        (r.enCurso ? '   ⚠️ BATCH RECIENTE (otra sesión) — NO la elijas sin mirar' : ''),
     )
   })
+  if (enCurso.size) {
+    console.log('\n  ⚠️ Leyes con batch en las últimas 24h: ' + [...enCurso].join(', '))
+    console.log('     Generar sobre una de ellas duplica trabajo: el dedup del pipeline compara')
+    console.log('     ENUNCIADOS y no caza dos preguntas que evalúan lo mismo con otras palabras.')
+  }
   console.log('\n  ratio    = temas que quedan a cero por cada artículo que hay que escribir')
   console.log('  temas0   = temas SIN ningún huérfano tras cubrir la ley entera (arreglo real)')
   console.log('  bajo↓    = temas que solo dejan de disparar el detector (efecto badge)')
