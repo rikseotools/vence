@@ -106,7 +106,19 @@ Y con los parámetros BUENOS, el resultado fue el mismo, lo que enseña algo má
   el ciego era mi extracción de TEXTO (que se quedaba en los menús).
 
 **Antes de pedir headless para una fuente, comprueba qué aporta de verdad frente a `curl`.** Hoy:
-cero de tres.
+**cero de cinco**.
+
+**Medición 26/07/2026 (T-125), los dos casos nuevos — y un fallo de la Lambda que sale a la luz:**
+
+| Fuente | `curl` (texto útil) | Lambda headless | ¿aporta? |
+|---|---|---|---|
+| `jgpa.convoca.online` (Junta General Asturias) | 200 · 6.040 chars · 0 anclas | **304** · 1.527 chars · 0 anclas | **NO — devuelve MENOS** |
+| `interior.gob.es` (Ayudantes IIPP) | 403 (WAF) | **403** · 0 anclas | **NO — el WAF también la bloquea** |
+
+Dos cosas que dejan esto cerrado:
+
+- **El headless NO cura un bloqueo por WAF.** Interior responde 403 a la Lambda igual que al UA del cron. Marcarla `headless` habría sido crear un hueco con nombre.
+- **⚠️ La Lambda devuelve `304 Not Modified` y contenido CACHEADO.** Se probó con `wait_for` (`a[href*="apigw…"]`, `main`) y con `timeout_ms: 45000`: **las tres invocaciones devuelven exactamente los mismos 1.527 chars y un 304**, así que el `wait_for` ni se ejercita — no se está volviendo a descargar la página. Y no es que el sitio no se pueda renderizar: un Playwright local sobre esa MISMA URL sí saca *"once plazas del Cuerpo Administrativo"* y los plazos. **El ciego es la Lambda, no la fuente.** Mientras no se resuelva ese 304, `fetcher_type='headless'` no es una opción real para SPAs — y conviene revisar si alguna de las **67 fuentes ya marcadas `headless`** está en la misma situación, sirviendo caché vieja sin que nadie lo note.
 
 ⚠️ **Una fuente que el fetcher no sabe leer no es una fuente: es un hueco con nombre.** Al añadir una,
 comprueba cuánto TEXTO ÚTIL devuelve — no que responda 200.
