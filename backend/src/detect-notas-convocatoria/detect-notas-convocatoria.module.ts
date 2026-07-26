@@ -21,7 +21,8 @@ import { DetectNotasConvocatoriaService } from './detect-notas-convocatoria.serv
  * que el triaje de señales OEP: **los sensores se automatizan; el criterio no**.
  *
  * Importa `OepSignalsModule` para reutilizar `OepSignalsLlmService.fetchPageHtml`
- * (http→headless Lambda). `AnthropicService` y `DRIZZLE` son globales.
+ * (http→headless Lambda). `DRIZZLE` es global. Ya NO usa `AnthropicService`: el análisis lo hace
+ * una sesión sobre el documento clonado (ver `npm run docs:bandeja`), no el cron con un LLM.
  */
 @Module({
   imports: [OepSignalsModule],

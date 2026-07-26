@@ -113,8 +113,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'npm run docs:bandeja [-- --ver <id>] [--revisado <id> --nota "…"] [--slug X]. No decide ni ' +
       'escribe en la convocatoria: enseña el documento clonado JUNTO a lo que hoy dice la BD para ' +
       'que la decisión y el dual-write los haga quien tiene criterio. Sustituye al pre-masticado ' +
-      'con LLM del cron, apagado el 26/07 (`DETECT_NOTAS_LLM_ENABLED`) tras medir 6.886 ' +
-      'extracciones y CERO triadas, ~17 USD. El cron además solo clona ya las oposiciones ' +
+      'con LLM del cron, ELIMINADO el 26/07 tras medir 6.886 extracciones y CERO triadas, ~17 USD. ' +
+      'No se dejó tras un flag: código muerto que alguien puede encender es una factura esperando. El cron además solo clona ya las oposiciones ' +
       'is_active: antes el 96% de lo clonado era de procesos que no preparamos (750 doc/día → ~25). ' +
       'Se ve en /admin/contenido (columna Docs) y en el sweep (kind documentos_sin_revisar).',
   },

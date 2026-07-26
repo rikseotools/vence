@@ -124,37 +124,8 @@ export function hasActionableSignal(s: NotaSignals): boolean {
   return s.versiones.length > 0 || s.criterio.length > 0;
 }
 
-/** Prompt para que Claude extraiga señales estructuradas (JSON) de las notas. */
-export function buildNotasPrompt(slug: string, pageText: string, notas: Array<{ title: string; text: string }>): string {
-  const corpus = [`PÁGINA DE SEGUIMIENTO (${slug}):\n${pageText.slice(0, 8000)}`]
-    .concat(notas.map((n, i) => `\n--- NOTA ${i + 1}: ${n.title} ---\n${n.text.slice(0, 8000)}`))
-    .join('\n')
-    .slice(0, 60000);
-  return `Eres analista de oposiciones. Lee la página de seguimiento y las notas informativas de una convocatoria española. Extrae SOLO lo que afecte al contenido de las preguntas de examen.
-
-IMPORTANTE sobre versiones de software: las notas suelen fijar qué versión de Windows/Office se examina, con frases como "la versión 11 de Windows", "Word para Microsoft 365 en la Web", "Excel 2016". Captúralas SIEMPRE (ambos órdenes: "Windows 11" y "versión 11 de Windows" → windows:"11"). Si solo hay criterio general ("la referencia siempre es a la versión más moderna"), ponlo en criterio_version Y deduce la moderna (Windows 11, Microsoft 365) con confianza:"media".
-
-Devuelve EXCLUSIVAMENTE un JSON válido (sin texto fuera del JSON):
-{"software_versions":{"windows":"<o null>","word":"<o null>","excel":"<o null>","office_o_365":"<o null>","otros":"<o null>"},"fecha_examen":"<o null>","criterio_version":"<o null>","material_permitido":"<o null>","penalizacion":"<o null>","otras_aclaraciones":["..."],"citas":[{"dato":"...","cita_literal":"<exacta>","fuente":"<título de nota o 'página'>"}],"confianza":"alta|media|baja"}
-Si un dato no aparece, null. NO inventes citas. Texto:\n\n${corpus}`;
-}
-
-/** Parsea la respuesta del LLM a objeto; tolera fences ```json y truncado. */
-export function parseNotasJson(raw: string): Record<string, unknown> | null {
-  const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-  try {
-    return JSON.parse(cleaned) as Record<string, unknown>;
-  } catch {
-    // intento de rescate: mayor bloque {...}
-    const first = cleaned.indexOf('{');
-    const last = cleaned.lastIndexOf('}');
-    if (first >= 0 && last > first) {
-      try {
-        return JSON.parse(cleaned.slice(first, last + 1)) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-}
+// NOTA (26/07/2026): aquí vivían `buildNotasPrompt` y `parseNotasJson`, que armaban y parseaban
+// la llamada a Haiku. Se eliminaron junto al paso que las usaba: generó 6.886 extracciones y CERO
+// triadas (~17 USD) y era redundante — el documento se clona igual en el hub y quien decide qué se
+// publica es una sesión leyendo la FUENTE (`npm run docs:bandeja`). Se quitan en vez de dejarlas
+// muertas: código que nadie llama pero que alguien puede volver a llamar es una factura esperando.

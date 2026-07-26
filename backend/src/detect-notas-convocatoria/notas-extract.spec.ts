@@ -3,7 +3,6 @@ import {
   extractSublinks,
   scanSignals,
   hasActionableSignal,
-  parseNotasJson,
 } from './notas-extract';
 
 describe('notas-extract (lógica validada vs incidente Aragón 27/06)', () => {
@@ -62,19 +61,4 @@ describe('notas-extract (lógica validada vs incidente Aragón 27/06)', () => {
     });
   });
 
-  describe('parseNotasJson', () => {
-    it('parsea JSON con fences ```json', () => {
-      const r = parseNotasJson('```json\n{"confianza":"alta"}\n```');
-      expect(r).toEqual({ confianza: 'alta' });
-    });
-
-    it('rescata el mayor bloque {...} si hay ruido alrededor', () => {
-      const r = parseNotasJson('Aquí tienes: {"windows":"11"} fin');
-      expect(r).toEqual({ windows: '11' });
-    });
-
-    it('devuelve null si no hay JSON', () => {
-      expect(parseNotasJson('no hay json aquí')).toBeNull();
-    });
-  });
 });

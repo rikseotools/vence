@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { DetectNotasConvocatoriaService } from './detect-notas-convocatoria.service';
 import { DRIZZLE } from '../db/database.module';
-import { AnthropicService } from '../anthropic/anthropic.service';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 
 // Guardarraíl de CABLEADO: que los providers se resuelven con sus dependencias reales.
@@ -12,7 +11,6 @@ describe('cableado del módulo (DI)', () => {
       providers: [
         DetectNotasConvocatoriaService,
         { provide: DRIZZLE, useValue: {} },
-        { provide: AnthropicService, useValue: {} },
         { provide: OepSignalsLlmService, useValue: {} },
       ],
     }).compile();

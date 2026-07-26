@@ -2,24 +2,18 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
-import { AnthropicService } from '../anthropic/anthropic.service';
-import { enterLlmFeature } from '../observability/llm-usage';
 import { OepSignalsLlmService } from '../oep-signals/oep-signals-llm.service';
 import { convocatoriaNotas, oposiciones } from './convocatoria-notas.schema';
 import { convocatoriaDocumentos } from './convocatoria-documentos.schema';
-import { decideReanalisis, type NotaCacheada } from './notas-cache';
 import {
-  buildNotasPrompt,
   extractDocLinks,
   extractSublinks,
   hasActionableSignal,
   htmlToText,
-  parseNotasJson,
   scanSignals,
   type NotaSignals,
 } from './notas-extract';
 
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_DOCS_PER_OPO = 8;
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 
@@ -31,9 +25,7 @@ export interface DetectNotasStats {
   needsManual: number;
   errors: number;
   /** Llamadas reales al LLM (documento nuevo/cambiado o análisis caducado). */
-  llmCalls: number;
   /** Oposiciones servidas con la extracción guardada, sin gastar tokens. */
-  llmReused: number;
 }
 
 const sha256 = (text: string): string =>
@@ -48,12 +40,6 @@ const sha256 = (text: string): string =>
  *
  * Lógica de extracción validada en runtime por scripts/sim-notas-pipeline.cjs.
  */
-/**
- * Pre-extracción con LLM: APAGADA por defecto. Ver el bloque de `run()` para el porqué (6.886
- * extracciones, 0 triadas). Se enciende con DETECT_NOTAS_LLM_ENABLED=true, sin tocar código.
- */
-const LLM_HABILITADO = process.env.DETECT_NOTAS_LLM_ENABLED === 'true';
-
 @Injectable()
 export class DetectNotasConvocatoriaService {
   private readonly logger = new Logger(DetectNotasConvocatoriaService.name);
@@ -61,7 +47,6 @@ export class DetectNotasConvocatoriaService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly llm: OepSignalsLlmService,
-    private readonly anthropic: AnthropicService,
   ) {}
 
   async run(): Promise<DetectNotasStats> {
@@ -87,8 +72,6 @@ export class DetectNotasConvocatoriaService {
       actionable: 0,
       needsManual: 0,
       errors: 0,
-      llmCalls: 0,
-      llmReused: 0,
     };
 
     for (const opo of opos) {
@@ -98,8 +81,6 @@ export class DetectNotasConvocatoriaService {
         stats.notasFound += r.notasFound;
         stats.actionable += r.actionable;
         stats.needsManual += r.needsManual;
-        stats.llmCalls += r.llmCalls;
-        stats.llmReused += r.llmReused;
       } catch (err) {
         stats.errors += 1;
         this.logger.warn(`Error notas ${opo.slug}: ${(err as Error).message}`);
@@ -108,8 +89,7 @@ export class DetectNotasConvocatoriaService {
 
     this.logger.log(
       `Notas: ${stats.scanned}/${stats.total} oposiciones, ${stats.notasFound} notas, ` +
-        `${stats.actionable} con versión/criterio, ${stats.needsManual} a revisión manual, ` +
-        `LLM ${stats.llmCalls} llamadas / ${stats.llmReused} reutilizadas de caché`,
+        `${stats.actionable} con versión/criterio, ${stats.needsManual} a revisión manual`,
     );
     return stats;
   }
@@ -123,15 +103,11 @@ export class DetectNotasConvocatoriaService {
     notasFound: number;
     actionable: number;
     needsManual: number;
-    llmCalls: number;
-    llmReused: number;
   }> {
     const vacio = {
       notasFound: 0,
       actionable: 0,
       needsManual: 0,
-      llmCalls: 0,
-      llmReused: 0,
     };
     if (!opo.seguimientoUrl) return vacio;
 
@@ -201,67 +177,23 @@ export class DetectNotasConvocatoriaService {
 
     // 4. LLM: extracción estructurada con citas (una llamada por oposición) — SOLO si hace falta.
     //
-    // El gate (notas-cache.ts) es lo que separa "sensor diario" de "factura diaria": sin él se
-    // reenviaban ~14k tokens por oposición cada día para releer PDFs idénticos (medido 24/07:
-    // 1.117 llamadas, 5 documentos nuevos). Si nada ha cambiado y el análisis no ha caducado,
-    // se reutiliza la extracción guardada y no se toca la API.
-    const decision = decideReanalisis(
-      opo.id,
-      notas.map((n) => ({ url: n.url, hash: n.hash })),
-      await this.leerCache(opo.id),
-      new Date(),
-    );
-
-    let llmExtraction: Record<string, unknown> | null = null;
-    let confianza: string | null = null;
-    let llmCalls = 0;
-
-    if (decision.reuse) {
-      llmExtraction = decision.llmExtraction;
-      confianza = decision.confianza;
-    } else if (!LLM_HABILITADO) {
-      // ── El pre-masticado con LLM queda APAGADO por defecto (26/07/2026) ──────────────────
-      // Medido: 6.886 extracciones generadas y **0 triadas** — nadie ha mirado ni una, y costaron
-      // ~17 USD (el 56% del saldo). El paso no era inútil por malo, sino por redundante: el
-      // documento se CLONA igual en el hub con su texto, y quien decide qué se publica es una
-      // sesión de Claude leyendo la fuente, no un resumen de seis campos. Apagarlo, además,
-      // saca al cron de la dependencia del proveedor: el 26/07 Anthropic estuvo 10 h sin saldo
-      // y con esto el pipeline no se habría enterado.
-      // Reversible sin desplegar: DETECT_NOTAS_LLM_ENABLED=true.
-      llmExtraction = null;
-      confianza = null;
-    } else {
-      llmCalls = 1;
-      try {
-        const client = await this.anthropic.getClient();
-        const prompt = buildNotasPrompt(
-          opo.slug ?? '',
-          htmlToText(page.html),
-          notas,
-        );
-        enterLlmFeature('detect_notas');
-        const resp = await client.messages.create({
-          model: HAIKU_MODEL,
-          max_tokens: 2048,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const block = resp.content[0];
-        const rawText = block && block.type === 'text' ? block.text : '';
-        llmExtraction = parseNotasJson(rawText);
-        confianza =
-          typeof llmExtraction?.confianza === 'string'
-            ? llmExtraction.confianza
-            : null;
-      } catch (err) {
-        this.logger.warn(
-          `LLM notas ${opo.slug} (${decision.motivo}): ${(err as Error).message}`,
-        );
-      }
-    }
-
-    // Sellar la fecha SOLO cuando hay extracción fresca: si el LLM falló, no queremos cachear el
-    // fallo durante el TTL — la próxima pasada tiene que volver a intentarlo.
-    const sellarAnalisis = !decision.reuse && llmExtraction !== null;
+    // ── El análisis lo hace una SESIÓN, no el cron (26/07/2026) ─────────────────────────────
+    // Aquí había una llamada a Haiku que pre-masticaba cada documento en un JSON de seis campos.
+    // Se quitó con los datos delante: **6.886 extracciones generadas y CERO triadas** —nadie miró
+    // ni una— por ~17 USD, el 56% del saldo de LLM. No era mala: era redundante. El documento se
+    // clona igual en `convocatoria_documentos` con su texto y su hash, y quién decide qué se
+    // publica en la landing es una sesión leyendo la FUENTE (`npm run docs:bandeja`), con criterio
+    // y dual-write. Se elimina en vez de dejarla tras un flag: código muerto que alguien puede
+    // encender es una factura esperando a que la enciendan.
+    //
+    // Efecto secundario que importa: el cron ya no depende del proveedor. El 26/07 Anthropic
+    // estuvo 10 horas sin saldo y este pipeline no se habría enterado.
+    //
+    // Lo que SÍ se conserva: el hash por nota (detecta cambios sin gastar nada) y `scanSignals`,
+    // el detector determinista que marca qué documentos merecen mirada humana primero.
+    const llmExtraction: Record<string, unknown> | null = null;
+    const confianza: string | null = null;
+    const sellarAnalisis = false;
 
     // 5. Persistir cada nota (UPSERT por oposición+url).
     let actionable = 0;
@@ -284,32 +216,7 @@ export class DetectNotasConvocatoriaService {
       notasFound: notas.length,
       actionable,
       needsManual: 0,
-      llmCalls,
-      llmReused: decision.reuse ? 1 : 0,
     };
-  }
-
-  /** Lo que dejó el pase anterior para esta oposición: hash por documento + extracción y su fecha. */
-  private async leerCache(oposicionId: string): Promise<NotaCacheada[]> {
-    const filas = await this.db
-      .select({
-        url: convocatoriaNotas.url,
-        contentHash: convocatoriaNotas.contentHash,
-        llmExtraction: convocatoriaNotas.llmExtraction,
-        confianza: convocatoriaNotas.confianza,
-        llmAnalyzedAt: convocatoriaNotas.llmAnalyzedAt,
-      })
-      .from(convocatoriaNotas)
-      .where(eq(convocatoriaNotas.oposicionId, oposicionId));
-
-    return filas.map((f) => ({
-      url: f.url,
-      contentHash: f.contentHash,
-      llmExtraction:
-        (f.llmExtraction as Record<string, unknown> | null) ?? null,
-      confianza: f.confianza,
-      llmAnalyzedAt: f.llmAnalyzedAt,
-    }));
   }
 
   /**
