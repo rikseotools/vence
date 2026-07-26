@@ -300,9 +300,17 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 >   «**suma** a los titulares de derechos o intereses legítimos» la del Fiscal: la suma está en el apartado,
 >   no en la opción.
 >
-> Daño: el opositor coteja la explicación con la opción que ha elegido y no cuadran. Arreglo: o se completa
-> la opción, o la glosa **atribuye expresamente al apartado** lo que no viaja en la opción («el mismo
-> apartado añade, en frase aparte, que…»).
+> Daño: el opositor coteja la explicación con la opción que ha elegido y no cuadran.
+> **Arreglo — y ojo, que el evidente NO vale (26/07/2026):** reatribuir la frase al apartado *dentro* del
+> párrafo «Por qué X es correcta» **no arregla nada**; el Paso 9 volvió a marcar las tres preguntas así
+> «reparadas». El contenido que no viaja en la opción tiene que **SALIR de ese párrafo**. Tres destinos
+> válidos, por orden de preferencia:
+>   1. **Completar la opción** (si no dispara un tell de longitud) o **trasladar la cláusula al enunciado**.
+>   2. **Moverlo al bullet del distractor donde hace falta** — a menudo es justo el contraste que ese
+>      distractor necesita para caerse (caso del art. 80 ter.2: la primera legitimación explica por qué la
+>      opción con «solo» es falsa).
+>   3. **Una línea aparte tras los bullets** («**Además, del mismo apartado:** …»), que enseña sin fingir
+>      que la opción lo dice.
 
 > ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
 > Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
