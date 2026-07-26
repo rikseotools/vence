@@ -77,8 +77,8 @@ const fetchTexto = async (url) => {
   const arts = (
     await c.query(
       TODOS
-        ? `SELECT a.article_number n, a.content FROM articles a WHERE a.law_id=$1 AND a.is_active ORDER BY a.article_number`
-        : `SELECT DISTINCT a.article_number n, a.content
+        ? `SELECT a.article_number n, a.content, a.vigencia_notes FROM articles a WHERE a.law_id=$1 AND a.is_active ORDER BY a.article_number`
+        : `SELECT DISTINCT a.article_number n, a.content, a.vigencia_notes
            FROM articles a
            JOIN topic_scope ts ON ts.law_id = a.law_id
                                AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
@@ -112,8 +112,15 @@ const fetchTexto = async (url) => {
     const cl = clasificarNotaVigencia(b.notaVigencia)
     if (cl.clase !== 'nulidad' && cl.clase !== 'competencial') continue
 
+    // "Ya marcado" hay que mirarlo en los DOS sitios: el sistema canónico de T-048
+    // persiste las notas en `articles.vigencia_notes` (JSONB), y algunos artículos las
+    // llevan embebidas en el propio `content`. Mirar solo uno haría que la remediación
+    // por la vía buena no apagase el hallazgo — el detector seguiría gritando.
+    const notasBd = JSON.stringify(a.vigencia_notes || '')
+    const yaEnNotas = cl.refBoe ? notasBd.includes(cl.refBoe) : false
     const yaMarcado =
-      cl.clase === 'competencial' ? contentReflejaCompetencial(a.content) : articleCarriesVigenciaNote(a.content)
+      yaEnNotas ||
+      (cl.clase === 'competencial' ? contentReflejaCompetencial(a.content) : articleCarriesVigenciaNote(a.content))
     if (yaMarcado) continue
 
     hallazgos.push({
