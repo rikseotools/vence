@@ -84,7 +84,8 @@
     "audit:oep-review": "node scripts/audit-oep-review.cjs",
     "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts",
     "canary:isr-purge": "node scripts/canary-isr-purge-cross-instancia.cjs",
-    "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs"
+    "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs",
+    "tools:buscar": "node scripts/tools-buscar.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -20,10 +20,46 @@
  *   node scripts/assign-seguimiento-urls.cjs            # aplica
  *   node scripts/assign-seguimiento-urls.cjs --dry-run  # solo reporta
  *
+ * GUARDARRAÍL (T-130): toda URL candidata se comprueba antes de escribirla, con el mismo núcleo
+ * que `scripts/seguimiento/repuntar-url.cjs` (`lib/convocatoria/seguimientoVigilable.cjs`). Sin
+ * esto, una oposición donante ciega propagaba su ceguera a todas las de su administración.
+ *
  * Ver docs/maintenance/oeps-convocatorias-seguimiento.md §10.bis.
  */
 require('dotenv').config({ path: '.env.local' })
 const postgres = require('postgres')
+const path = require('path')
+// Guardarraíl COMPARTIDO con `scripts/seguimiento/repuntar-url.cjs` — no una copia. Registrado en
+// `lib/admin/toolRegistry.ts`; el guardarraíl de CI exige que TODA herramienta viva que escriba
+// `seguimiento_url` pase por aquí. Motivo (T-130, 26/07): este script propaga la URL de una
+// oposición DONANTE a las de su misma administración, así que una donante ciega multiplicaba la
+// ceguera por N de una sola pasada, en silencio.
+const {
+  verificarUrlCandidata,
+  extraerTextoRelevante,
+  decidirEscritura,
+  CABECERAS_CRON,
+} = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'seguimientoVigilable.cjs'))
+
+/** Descarga como lo haría el cron y dice si la URL sirve contenido de verdad. Cacheada por URL. */
+const _cacheVigilable = new Map()
+async function esVigilable(url) {
+  if (_cacheVigilable.has(url)) return _cacheVigilable.get(url)
+  const ctrl = new AbortController()
+  const to = setTimeout(() => ctrl.abort(), 30000)
+  let httpStatus = 0, html = '', error = null
+  try {
+    const res = await fetch(url, { headers: CABECERAS_CRON, signal: ctrl.signal, redirect: 'follow' })
+    httpStatus = res.status
+    html = await res.text()
+  } catch (e) { error = e.message } finally { clearTimeout(to) }
+  const diag = verificarUrlCandidata({ httpStatus, error, texto: extraerTextoRelevante(html) })
+  // Se acepta la banda dudosa: aquí la alternativa es dejar la oposición SIN vigilancia ninguna,
+  // que es estrictamente peor. Lo que se rechaza es la banda CIEGA (shell de SPA, WAF, desuso).
+  const r = { ...decidirEscritura(diag, { aceptarDudoso: true }), nivel: diag.nivel, motivo: diag.motivo }
+  _cacheVigilable.set(url, r)
+  return r
+}
 
 // Portales de empleo público oficiales (server-rendered) por CCAA / ciudad autónoma.
 // Fuente: donantes reales del catálogo. Ampliar aquí si aparece una CCAA nueva.
@@ -79,11 +115,19 @@ async function main() {
 
     let byDonor = 0, byCcaa = 0
     const unmatched = []
+    const ciegas = []
     for (const t of targets) {
       const donor = donorMap[normalizeAdmin(t.administracion)]
       const url = donor || CCAA_FALLBACK[t.ccaa] || null
       const src = donor ? 'donante' : (CCAA_FALLBACK[t.ccaa] ? `ccaa:${t.ccaa}` : null)
       if (!url) { unmatched.push(`${t.nombre}  [ccaa=${t.ccaa}]`); continue }
+      // GUARDARRAÍL: nunca asignar una URL que el radar no pueda leer. Mejor NULL explícito
+      // (queda en "sin match" y se ve) que una URL que aparenta vigilancia y no vigila nada.
+      const v = await esVigilable(url)
+      if (!v.escribir) {
+        ciegas.push(`${t.nombre}  → ${url}  [${v.nivel}]`)
+        continue
+      }
       if (donor) byDonor++; else byCcaa++
       if (!dry) {
         await sql`UPDATE oposiciones SET seguimiento_url = ${url}, seguimiento_change_status = 'ok' WHERE id = ${t.id}`
@@ -92,6 +136,11 @@ async function main() {
     }
     console.log(`\n${dry ? '[DRY-RUN] ' : ''}asignadas por donante: ${byDonor} | por CCAA: ${byCcaa} | sin match: ${unmatched.length}`)
     if (unmatched.length) { console.log('SIN MATCH (asignar manualmente):'); unmatched.forEach(u => console.log('   - ' + u)) }
+    if (ciegas.length) {
+      console.log(`\nRECHAZADAS por no ser vigilables (${ciegas.length}) — la URL candidata responde pero no sirve contenido:`)
+      ciegas.forEach(c => console.log('   - ' + c))
+      console.log('   → busca una alternativa servida en HTML; ver docs/maintenance/oeps-convocatorias-seguimiento.md')
+    }
     await sql.end()
   } catch (e) { console.error('ERR', e.message); await sql.end(); process.exit(1) }
 }

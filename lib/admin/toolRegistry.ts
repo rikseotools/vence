@@ -1,0 +1,178 @@
+// lib/admin/toolRegistry.ts — REGISTRO de herramientas y capacidades operativas.
+//
+// Responde a una sola pregunta, y la responde ANTES de que alguien construya: **¿esto ya existe?**
+//
+// ## Por qué existe (T-130, 26/07/2026)
+//
+// Dos casos medidos el mismo día, los dos en una sola sesión:
+//   · Se escribió `scripts/seguimiento/repuntar-url.cjs` para escribir `seguimiento_url` sin ver
+//     que ya había otros escritores de esa columna. Dos puertas al mismo dato con criterios
+//     distintos = el guardarraíl del bueno no protege nada, porque basta usar el otro.
+//   · T-125 apuntaba "construir el headless-fetcher, requiere decidir si se delega por-fuente con
+//     una columna tipo `seguimiento_fetch_mode`" cuando `oposiciones.fetcher_type` YA EXISTE, con
+//     67 filas en `headless`, y los tres sensores vivos ya la respetan.
+//
+// Es el mismo patrón que el claim del backlog vino a arreglar, una capa más abajo: allí se
+// duplicaba el TRABAJO, aquí se duplica la HERRAMIENTA.
+//
+// ## Cómo se hace cumplir (no depende de que nadie lea esto)
+//
+// `__tests__/guardrails/toolRegistry.guardrail.test.ts` escanea el repo con
+// `lib/admin/toolWriters.ts` y pone el CI en rojo si aparece un escritor no registrado, si una
+// herramienta viva escribe un recurso SIN pasar por su guardarraíl compartido, si crece el número
+// de escritores de un recurso con trinquete, o si una entrada apunta a una ruta/runbook inexistente.
+//
+// Mismo patrón que `runbookRegistry` (kind→guía, con guardarraíl que exige la frase en CLAUDE.md),
+// `content-sweep-parity` (CLI ↔ @Cron) y `backlogRegistry` (toda tarea con id). En este repo, un
+// registro sin test es documentación que caduca.
+//
+// ## Búsqueda rápida
+//
+//   npm run tools:buscar <palabra>
+//
+// ANTES de construir cualquier herramienta operativa. Cinco segundos.
+
+/** Estado de una herramienta. Determina si el guardarraíl la cuenta como puerta abierta. */
+export type EstadoHerramienta =
+  /** En uso. Si escribe un recurso `guardarrail_compartido`, DEBE pasar por su módulo guardarraíl. */
+  | 'vivo'
+  /** Se corrió una vez para una migración/construcción concreta. No reutilizar a ciegas. */
+  | 'historico'
+  /** Sustituida. Se conserva por trazabilidad; usar la de `reemplazadaPor`. */
+  | 'deprecado'
+
+export interface Herramienta {
+  /** Qué resuelve, en una línea y en cristiano (esto es lo que se busca con tools:buscar). */
+  titulo: string
+  /** Ruta al script o módulo, relativa a la raíz del repo. El guardarraíl comprueba que existe. */
+  ruta: string
+  estado: EstadoHerramienta
+  /** Recursos sensibles que ESCRIBE (columnas de `RECURSOS_SENSIBLES`). */
+  escribe?: string[]
+  /** Runbook donde se explica su uso. El guardarraíl comprueba que el fichero existe. */
+  runbook?: string
+  /** Solo si `deprecado`: clave de la herramienta que la sustituye. */
+  reemplazadaPor?: string
+  /** Contexto que evita reconstruirla: qué hace, qué NO hace, gotchas. */
+  notas: string
+}
+
+export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── seguimiento_url ────────────────────────────────────────────────────────────────────────
+  repuntar_seguimiento_url: {
+    titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',
+    ruta: 'scripts/seguimiento/repuntar-url.cjs',
+    estado: 'vivo',
+    escribe: ['seguimiento_url'],
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    notas:
+      'Dry-run por defecto. Descarga la candidata con las cabeceras EXACTAS del cron, la pasa por ' +
+      '`decidirEscritura` y RECHAZA una URL que no sirva contenido; `--anclas` exige además que la ' +
+      'página mencione el proceso. Resetea `seguimiento_last_hash` en `oposiciones` (la tabla que usa ' +
+      'el cron; existe también en `convocatorias` y resetear esa NO hace nada). Traza en ' +
+      '`observable_events` (`seguimiento_url_repuntada`).',
+  },
+  asignar_seguimiento_url_catalogadas: {
+    titulo: 'Asignar seguimiento_url a oposiciones CATALOGADAS que no tienen ninguna',
+    ruta: 'scripts/assign-seguimiento-urls.cjs',
+    estado: 'vivo',
+    escribe: ['seguimiento_url'],
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    notas:
+      'Idempotente, pensado para correr tras cada tanda de "catalogar descubrimientos". Rellena ' +
+      'SOLO donde la columna está vacía — no repunta las que ya tienen (para eso, ' +
+      '`repuntar_seguimiento_url`). Estrategia histórica: dominio raíz del organismo, porque el ' +
+      'sensor LLM NAVEGA desde ahí y los paths concretos daban 404 masivos.',
+  },
+  backfill_seguimiento_urls_sprint_c: {
+    titulo: 'Backfill masivo de seguimiento_url (Sprints C.1–C.6, junio 2026)',
+    ruta: 'scripts/fill-seguimiento-urls-resto.cjs',
+    estado: 'historico',
+    escribe: ['seguimiento_url'],
+    notas:
+      'Una sola vez, junio 2026, junto a `fill-seguimiento-urls-diputaciones.cjs` y ' +
+      '`fill-seguimiento-urls-c6.cjs`. NO reutilizar: escriben sin comprobar que la página sirva ' +
+      'contenido. Se conservan porque documentan la decisión de usar dominio raíz (estable) en vez ' +
+      'de paths concretos (404 masivos) — contexto que hace falta para no "arreglar" a ciegas una ' +
+      'URL raíz que es deliberada.',
+  },
+
+  backfill_seguimiento_urls_diputaciones: {
+    titulo: 'Backfill de seguimiento_url para Diputaciones provinciales (Sprint C.1, junio 2026)',
+    ruta: 'scripts/fill-seguimiento-urls-diputaciones.cjs',
+    estado: 'historico',
+    escribe: ['seguimiento_url'],
+    notas:
+      'Una sola vez. Documenta POR QUÉ se usa el dominio raíz y no el path concreto: los paths ' +
+      'cambian y dieron 404 masivos. Contexto necesario para no "arreglar" una URL raíz deliberada.',
+  },
+  backfill_seguimiento_urls_c6: {
+    titulo: 'Backfill de las 19 seguimiento_url restantes (Sprint C.6, junio 2026)',
+    ruta: 'scripts/fill-seguimiento-urls-c6.cjs',
+    estado: 'historico',
+    escribe: ['seguimiento_url'],
+    notas: 'Una sola vez: retry de timeouts de C.1/C.2 + correcciones puntuales. No reutilizar.',
+  },
+  build_cuidador_cordoba_fase2: {
+    titulo: 'Construcción de Cuidador/a Diputación de Córdoba — fase 2 (datos de convocatoria)',
+    ruta: 'scripts/_cuidador_cordoba_fase2.cjs',
+    estado: 'historico',
+    escribe: ['seguimiento_url'],
+    notas:
+      'Script de construcción de UNA oposición concreta; escribe su seguimiento_url junto al resto ' +
+      'de datos de convocatoria. No es una herramienta reutilizable.',
+  },
+  build_ordenanza_cordoba_fase2: {
+    titulo: 'Construcción de Ordenanza Ayto. de Córdoba — fase 2 (datos de convocatoria)',
+    ruta: 'scripts/_ordenanza_cordoba_fase2.cjs',
+    estado: 'historico',
+    escribe: ['seguimiento_url'],
+    notas: 'Ídem: construcción de una oposición concreta, no herramienta reutilizable.',
+  },
+
+  // ── fetcher_type ──────────────────────────────────────────────────────────────────────────
+  fetcher_headless_por_fuente: {
+    titulo: 'Descargar una fuente con navegador real (headless) en vez de HTTP',
+    ruta: 'backend/src/detect-oep-llm/detect-oep-llm.service.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-radar.md',
+    notas:
+      'CAPACIDAD YA CONSTRUIDA, no la reconstruyas: la columna `oposiciones.fetcher_type` ' +
+      '(`http`|`headless`|`pdf`|`rss`|`boe_api`) la respetan `detect-oep-llm`, ' +
+      '`detect-notas-convocatoria` y `detect-generic-sources`. Medido 26/07: 67 fuentes ya en ' +
+      '`headless`. Para una fuente cuyo contenido monta JS, marcarla `headless` en vez de escribir ' +
+      'un fetcher nuevo. GOTCHA: el headless NO cura un bloqueo por WAF/IP (un 403 seguirá siendo 403).',
+  },
+
+  // ── diagnóstico / auditoría (no escriben) ─────────────────────────────────────────────────
+  simular_fuentes_ciegas: {
+    titulo: '¿Qué seguimiento_url responden 200 pero no sirven nada? (simulación, no escribe)',
+    ruta: 'scripts/seguimiento/sim-fuentes-ciegas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    notas:
+      'Corre el clasificador puro sobre el último check atribuible de cada fuente. `--todos` añade ' +
+      'la banda de revisión. Es el gate que se pasa ANTES de que un detector nuevo toque el badge.',
+  },
+  diagnosticar_ruido_hash: {
+    titulo: 'Por qué cambia el hash de una página entre dos descargas seguidas',
+    ruta: 'scripts/diag-seguimiento-ruido.cjs',
+    estado: 'historico',
+    notas:
+      'Diagnóstico de T-047 (julio 2026): descarga dos veces la misma URL y diffea lo que el ' +
+      'normalizador no captura. Llevó a retirar el sensor `hash_change` (4% de acierto). Útil si ' +
+      'algún día se reabre esa vía.',
+  },
+}
+
+/** Herramientas `vivo` que escriben un recurso dado. */
+export function escritoresVivos(recurso: string): string[] {
+  return Object.entries(TOOL_REGISTRY)
+    .filter(([, h]) => h.estado === 'vivo' && (h.escribe || []).includes(recurso))
+    .map(([k]) => k)
+}
+
+/** Rutas registradas (para que el guardarraíl sepa qué escritor está declarado). */
+export function rutasRegistradas(): string[] {
+  return Object.values(TOOL_REGISTRY).map((h) => h.ruta)
+}
