@@ -148,8 +148,6 @@ async function main() {
         extracted_text: docs.map((d) => d.extracted_text).join('\n\n'),
       }
     : null
-  await sql.end()
-
   const errores = []
   const avisos = []
   const notas = []
@@ -288,6 +286,33 @@ async function main() {
     huecosDeclarados: huecos.map((h) => `${h.titulo}: ${h.hueco}`),
     veredicto: errores.length ? 'ERROR' : avisos.length ? 'AVISOS' : 'OK',
   }
+
+  // ── Traza: quién auditó qué y con qué veredicto ────────────────────────────────────────────
+  // Es lo único que esta herramienta escribe. Importa porque la auditoría es la PUERTA de un
+  // envío: sin traza, "la landing estaba bien cuando mandamos la campaña" es un recuerdo, no un
+  // dato. Con ella se puede reconstruir el estado exacto que se dio por bueno.
+  try {
+    await sql`
+      INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+      VALUES (gen_random_uuid(), NOW(), 'script:audit-landing',
+              ${errores.length ? 'warn' : 'info'}, 'landing_auditada',
+              ${sql.json({
+                slug: op.slug,
+                veredicto: errores.length ? 'ERROR' : avisos.length ? 'AVISOS' : 'OK',
+                estado_proceso: op.estado_proceso,
+                n_errores: errores.length,
+                n_avisos: avisos.length,
+                kinds_error: errores.map((e) => (e.match(/^\[([a-z_0-9]+)\]/) || [, 'otro'])[1]),
+                enlaces_comprobados: enlaces ? enlaces.internos + enlaces.externos : 0,
+                enlaces_rotos: enlaces ? enlaces.rotos.length : null,
+                documentos_corpus: docs.length,
+              })}, NOW())`
+  } catch (e) {
+    // La traza NUNCA debe tumbar la auditoría (ni, por tanto, bloquear un envío por un fallo de
+    // observabilidad). Se avisa y se sigue — mismo criterio que `repuntar-url.cjs`.
+    console.error(`⚠️  no se pudo registrar el evento de observabilidad: ${e.message}`)
+  }
+  await sql.end()
 
   if (JSON_OUT) console.log(JSON.stringify(resultado, null, 2))
   else {
