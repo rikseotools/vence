@@ -170,3 +170,50 @@ describe('mirror del detector visual_deixis_no_image (núcleo ↔ backend @Cron)
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CABLEADO de los invariantes de timeline (T-124, 26/07/2026).
+//
+// El sweep NO lee `convocatoria_hito_incidencias` entera: reparte por nombre de
+// invariante en dos cubos (`graves` → error, `stale` → warn) y **lo que no cae en
+// ninguno se descarta en silencio**. Es decir, se puede añadir un invariante a la
+// vista y que en producción no exista: escrito pero no cableado, el modo de fallo
+// más silencioso de este subsistema.
+//
+// Este bloque fija que TODO invariante conocido esté enrutado en AMBOS gemelos.
+// Si añades un I11 a la vista, añádelo aquí y al reparto, o el test te lo recuerda.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('cableado de invariantes de timeline (vista ↔ sweep)', () => {
+  // Invariantes que la vista emite y que el sweep DEBE enrutar. `I5_registro_sin_fuente`
+  // está excluido a propósito en el propio sweep (línea base de cobertura de fuente,
+  // 794 filas que solo dicen "aún no hay documentos"), así que no se exige.
+  const ENRUTADOS = [
+    'I1_orden',
+    'I2_duplicado',
+    'I9_tipo_incoherente',
+    'I10_inscripcion_sin_convocatoria', // T-124: misinformación visible → error
+    'I7_prevision_caducada',
+    'I8_status_contradice_fecha',
+  ]
+
+  for (const inv of ENRUTADOS) {
+    it(`${inv} está enrutado en el gemelo CLI`, () => {
+      expect(SCRIPT).toContain(inv)
+    })
+    it(`${inv} está enrutado en el backend @Cron (el writer real)`, () => {
+      expect(BACKEND).toContain(inv)
+    })
+  }
+
+  it('I10 va al cubo de ERROR, no al de warn (es misinformación, no un hito viejo)', () => {
+    // Se comprueba por proximidad al kind: I10 debe aparecer antes del reparto de
+    // `stale`/`convocatoria_timeline_caducado` en ambos ficheros.
+    for (const txt of [SCRIPT, BACKEND]) {
+      const iI10 = txt.indexOf('I10_inscripcion_sin_convocatoria')
+      const iCaducado = txt.indexOf('convocatoria_timeline_caducado')
+      expect(iI10).toBeGreaterThan(-1)
+      expect(iCaducado).toBeGreaterThan(-1)
+      expect(iI10).toBeLessThan(iCaducado)
+    }
+  })
+})

@@ -1269,11 +1269,17 @@ export class ContentHealthSweepService {
       const porSlug: Record<string, Array<{ invariante: string; detalle: string }>> = {};
       for (const r of inc) (porSlug[r.slug] = porSlug[r.slug] || []).push(r);
       for (const [slug, rs] of Object.entries(porSlug)) {
+        // I10 va en `graves` (severity=error), no en `stale`: no es un hito viejo sin
+        // cerrar, es MISINFORMACIÓN visible — la landing anuncia "plazo cerrado" en un
+        // proceso que aún no se ha convocado, así que el usuario cree que perdió el plazo
+        // y se va (T-124, caso administrativo-pais-vasco). Reutiliza el kind existente
+        // para no inflar el badge con uno nuevo.
         const graves = rs.filter(
           (r) =>
             r.invariante === 'I1_orden' ||
             r.invariante === 'I2_duplicado' ||
-            r.invariante === 'I9_tipo_incoherente',
+            r.invariante === 'I9_tipo_incoherente' ||
+            r.invariante === 'I10_inscripcion_sin_convocatoria',
         );
         if (graves.length)
           add(

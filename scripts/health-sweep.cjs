@@ -175,7 +175,10 @@ async function main() {
     const porSlug = {};
     for (const r of inc) (porSlug[r.slug] = porSlug[r.slug] || []).push(r);
     for (const [slug, rs] of Object.entries(porSlug)) {
-      const graves = rs.filter((r) => r.invariante === 'I1_orden' || r.invariante === 'I2_duplicado' || r.invariante === 'I9_tipo_incoherente');
+      // I10 va en `graves` (error), no en `stale`: no es un hito viejo sin cerrar, es
+      // MISINFORMACIÓN visible — la landing dice "plazo cerrado" en un proceso no
+      // convocado (T-124). Reutiliza el kind existente para no inflar el badge.
+      const graves = rs.filter((r) => r.invariante === 'I1_orden' || r.invariante === 'I2_duplicado' || r.invariante === 'I9_tipo_incoherente' || r.invariante === 'I10_inscripcion_sin_convocatoria');
       if (graves.length) {
         add('content', 'error', slug, 'convocatoria_timeline_incoherente',
           `${slug}: ${graves.length} incoherencia(s) en el timeline — ${graves[0].detalle}`,
