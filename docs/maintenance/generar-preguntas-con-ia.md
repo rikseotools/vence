@@ -272,6 +272,21 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 | **`question_text_ok` (v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
 | **`distractors_balance_ok` (NUEVO v2.4)** | **Ningún distractor es manifiestamente más corto que la correcta (§2.2-bis). Criterio mecánico: la correcta NO debe ser la opción más larga por un margen ≥1,3× sobre la 2ª, y los distractores siguen siendo claramente falsos.** | **Automático (longitudes) + Sonnet (que los distractores reescritos sigan siendo falsos)** |
 | **`answer_position_uniform_ok` (NUEVO v2.5)** | **La posición de la correcta es aleatoria; en lote, las 4 posiciones se reparten ~25% (§2.2-ter). Criterio mecánico por batch: ninguna posición >40% ni <10%.** | **Automático (distribución de `correct_option` del batch)** |
+
+> 🚩 **El aviso CORRECTA PARCIAL NO es un falso positivo por defecto (26/07/2026).** Durante seis lotes se
+> despachó sistemáticamente como ruido «porque el enunciado ya acota la cola». **Dos veces el mismo día
+> resultó tener razón**, y la segunda la cazó una auditoría ciega, no el generador:
+> - **Art. 87 bis.2 LJCA:** la opción cortaba una **disyuntiva legal** por la mitad («devolución de los
+>   autos…» omitiendo «o la resolución del litigio por la Sala»). Se reestructuró la pregunta.
+> - **Art. 19 bis.1 LO 1/2004:** la clave paraba en «hasta su total recuperación» y omitía la **cláusula
+>   limitativa** («en lo concerniente a la sintomatología o las secuelas… derivadas de la violencia
+>   sufrida»), dando a entender un derecho de seguimiento sanitario general. El auditor adversarial lo
+>   levantó por su cuenta.
+>
+> Criterio para decidir: mirar **QUÉ hay en la cola omitida**. Si es una *aposición descriptiva* o un
+> matiz que el enunciado ya fija, es ruido. Si es una **disyuntiva, una excepción, una condición o un
+> límite de alcance**, el aviso es real: o se completa la opción o se reestructura la pregunta. Nunca
+> automatizar el descarte.
 | **`bullets_match_options_ok` (NUEVO 26/07/2026)** | **Cada bullet `- **X)**` describe la opción que hoy ocupa la posición X.** Se comprueba a ojo, opción contra bullet, DESPUÉS de cualquier retoque de las opciones. | **Solo revisión manual — NINGÚN gate lo ve** |
 
 > ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
@@ -716,6 +731,23 @@ Lanzar agente `general-purpose` con `model='sonnet'`. Prompt que NO mencione:
 
 El agente lee `/tmp/<batch_id>_audit_input.json` (preguntas + article_content), aplica los 4 checks y devuelve su propio veredicto independiente.
 
+
+> 🔧 **Dos bugs del constructor del input que la propia auditoría ciega destapó (26/07/2026).** Los dos
+> tenían el mismo efecto y es el peor posible: **adjuntar el artículo EQUIVOCADO es peor que no adjuntar
+> ninguno**, porque el auditor razona sobre un texto que no es el citado.
+> - **Artículo HOMÓNIMO POR NÚMERO de otra ley.** La guarda que descarta las citas a otra norma exigía que
+>   tras «de la» viniera ya «Ley|Real Decreto|…», así que **«del artículo 31 de la citada Ley Orgánica»**
+>   no casaba: se resolvía contra la ley de la pregunta y adjuntaba el art. 31 de la Ley 19/2013 —régimen
+>   sancionador de altos cargos— como si fuera el art. 31 de la LOPDGDD. Lo cazaron **las dos auditorías
+>   ciegas del mismo lote, por separado**. Ya se aceptan «citada/mencionada/referida/dicha» y la
+>   contracción «del».
+> - **Se perdía el sufijo de reforma.** De «artículo 75 bis.1» se extraía «75», y se adjuntaba el art. 75,
+>   otro precepto. El auditor, sin el texto que la glosa citaba, razonó de memoria y devolvió un **ISSUE
+>   inventado** sobre una glosa que era exacta. (Ojo con el separador de enumeraciones: partir por una «e»
+>   suelta troceaba «127 octies» en «127 octi» + «s»; ahora exige frontera de palabra.)
+>
+> Fijado en `__tests__/scripts/auditarBatchInput.test.js`. **Si un auditor ciego dice que una remisión no
+> es verificable, sospecha primero del constructor**, no de la glosa.
 > 📎 **Adjunta también los ARTÍCULOS QUE CITAN LAS EXPLICACIONES, no solo el preguntado (25/07/2026).** Los bullets de los distractores suelen decir *"eso es la autoliquidación del art. 120"* o *"ese carácter lo reserva el art. 101.3 a otros supuestos"*. Si el auditor no tiene esos artículos, no puede verificarlos: en el batch `gen_atc_t208_2026-07-25` devolvió **4 preguntas como ISSUES por remisiones no verificables** (arts. 120, 134 y 101.3) que, comprobadas después contra BD, eran **exactas las tres** — ruido que consume una ronda de reparación. En el mismo lote, las dos remisiones cuyo artículo SÍ viajaba en el input (125.2→126, 139.1→127) las validó sin más. Coste de adjuntarlos: una consulta. Estructura el input como `{preguntas: [...], articulos_referenciados: [...]}` y dilo en el prompt.
 >
 > ⚠️ **Y AUTOMATÍZALO, porque documentarlo no basta.** Volvió a pasar el mismo 25/07 con el batch de tasas del T215: se montó el input a mano, sin los artículos citados, y el auditor devolvió **4 avisos de "no verificable"** sobre remisiones a los arts. 7.3, 17, 21.4 y 24 del **mismo** texto refundido — las cuatro exactas al comprobarlas. Es la segunda vez en un día que se paga el mismo peaje con la regla ya escrita, así que la regla no estaba fallando: fallaba que dependiera de acordarse. El constructor del input debe **extraer solo los `artículo N` que aparezcan en las explicaciones y adjuntar esos artículos**, sin intervención.

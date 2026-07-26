@@ -47,16 +47,30 @@ const pg = require('postgres')
  *
  * "de este Texto Refundido" y "de esta ley" SÍ pasan: remiten al mismo cuerpo.
  */
-const OTRA_NORMA = /^\s*(?:,\s*)?de (?:la|el) (?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n)\b/i
+// OJO con la variante SIN nombre propio: "del artículo 31 de la CITADA Ley Orgánica".
+// El guardarraíl original exigía que tras "de la" viniera ya "Ley|Real Decreto|…", así que
+// "de la citada Ley Orgánica" NO casaba y la cita se resolvía contra la ley de la pregunta:
+// el auditor recibía el art. 31 de la Ley 19/2013 (régimen sancionador de altos cargos) como
+// si fuera el art. 31 de la LOPDGDD (registro de actividades de tratamiento). Un artículo
+// HOMÓNIMO POR NÚMERO de otra materia es peor que no adjuntar nada: da falsa confianza.
+// Lo cazaron las DOS auditorías ciegas del lote gen_l19_6bis_20260726 (26/07/2026).
+const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n|Texto Refundido|Estatuto)\b/i
 
 function numerosCitados(texto) {
   const t = String(texto || '')
   const out = new Set()
-  const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\.[0-9]+)*(?:\s*(?:,|y|e)\s*[0-9]+(?:\.[0-9]+)*)*)/gi
+  // El sufijo de REFORMA forma parte del número: de "artículo 75 bis.1" hay que sacar
+  // "75 bis", no "75". Sin él se adjuntaba el artículo 75 —otro precepto— y el auditor,
+  // sin el texto que la glosa citaba, devolvía un ISSUE inventado: pasó el 26/07/2026 con
+  // el art. 75 bis.1 de la LBRL, cuya glosa era exacta.
+  const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*(?:\s*(?:,|\by\b|\be\b)\s*[0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*)*)/gi
   for (const m of t.matchAll(re)) {
     if (OTRA_NORMA.test(t.slice(m.index + m[0].length, m.index + m[0].length + 40))) continue
-    for (const n of m[1].split(/\s*(?:,|y|e)\s*/)) {
-      const base = n.split('.')[0].trim()
+    // El separador debe ir con frontera de palabra: partir por una "e" suelta
+    // troceaba "127 octies" en "127 octi" + "s".
+    for (const n of m[1].split(/\s*(?:,|\by\b|\be\b)\s*/)) {
+      // "75 bis.1" → "75 bis" (el apartado se descarta, el sufijo NO).
+      const base = n.split('.')[0].trim().replace(/\s+/g, ' ')
       if (base) out.add(base)
     }
   }
