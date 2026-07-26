@@ -557,7 +557,9 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
     slug: 'orden-pjc-297-2026',
     year: 2026,
     type: 'law',
-    scope: 'national',     // 'national' | 'autonomic' | 'local' | 'eu'
+    scope: 'national',     // 'national' | 'regional' | 'local' | 'eu'  ← OJO: es 'regional', NO 'autonomic'
+                           // (constraint laws_scope_check; el valor 'autonomic' que documentaba
+                           //  este manual reventaba el INSERT — corregido 26/07/2026)
     is_active: true,
     boe_url: 'https://www.boe.es/buscar/act.php?id=BOE-A-2026-7296',
     verification_status: 'pendiente',

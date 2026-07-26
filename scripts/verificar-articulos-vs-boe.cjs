@@ -58,7 +58,14 @@ async function xmlBloque(art) {
   const arts = ARTS.length
     ? await s`SELECT a.article_number n, a.content FROM articles a JOIN laws l ON l.id = a.law_id
               WHERE l.slug = ${SLUG} AND a.article_number = ANY(${ARTS}) AND a.is_active
-              ORDER BY (a.article_number)::int`
+              -- Orden natural TOLERANTE al sufijo: el cast a int reventaba con
+              -- "40 bis" ("invalid input syntax for type integer"), así que la herramienta
+              -- no podía verificar precisamente los artículos añadidos por reforma, que es
+              -- donde más suele haber texto nuevo. Caso: art. 40 bis del DL 1/2009 de
+              -- Canarias (T-141). Ojo con la barra invertida en un template literal de JS:
+              -- hay que doblarla o el literal llega como una D suelta.
+              ORDER BY NULLIF(regexp_replace(a.article_number, '\\D', '', 'g'), '')::int NULLS LAST,
+                       a.article_number`
     : await s`SELECT a.article_number n, a.content FROM articles a JOIN laws l ON l.id = a.law_id
               WHERE l.slug = ${SLUG} AND a.is_active AND a.article_number ~ '^[0-9]+$'
               ORDER BY (a.article_number)::int`

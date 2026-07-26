@@ -203,3 +203,81 @@ it('reconoce la nota en plural: "Ténganse en cuenta…"', () => {
   expect(b.texto).not.toMatch(/Ténganse/)
   expect(b.notaVigencia).toMatch(/159\.4/)
 })
+
+// --- TABLAS: el BOE usa DOS codificaciones y las mezcla en la misma norma (26/07/2026) ---
+//
+// Caso real: art. 40 bis del Decreto-Legislativo 1/2009 de Canarias (Tasa fiscal sobre el
+// juego). Sus redacciones 2012-2019 envuelven el contenido de cada celda en
+// `<p class="cuerpo_tabla_izq">`; la VIGENTE (fecha_vigencia 20220101) lo pone
+// DIRECTAMENTE en `<td class="cuerpo_tabla_izq">…</td>`, sin `<p>` dentro.
+//
+// Leyendo solo los `<p>` desaparecía el cuerpo entero de la tabla —la escala de tipos de
+// gravamen— y `comparaConBd` daba falso DIVERGE contra un `content` correcto. El riesgo no
+// es el ruido: el método de revisión manda comparar con el BOE y corregir NUESTRO texto,
+// así que un falso DIVERGE aquí invita a borrar los tipos de gravamen.
+const XML_TABLA_TD = `<?xml version="1.0" encoding="utf-8"?>
+<response><status><code>200</code></status><data>
+  <bloque id="a40bis" tipo="precepto" titulo="Art&iacute;culo 40 bis">
+    <version id_norma="BOE-A-2012-9282" fecha_publicacion="20120626" fecha_vigencia="20120701">
+      <p class="articulo">Art&iacute;culo 40 bis.</p>
+      <p class="parrafo">Escala ANTIGUA, celdas en &lt;p&gt;:</p>
+      <table class="tabla"><tbody>
+        <tr><th><p class="cabeza_tabla">Suma acumulada</p></th><th><p class="cabeza_tabla">Tipo</p></th></tr>
+        <tr><td><p class="cuerpo_tabla_izq">De 0 a 3.500.000,00 euros</p></td><td><p class="cuerpo_tabla_centro">16%</p></td></tr>
+      </tbody></table>
+    </version>
+    <version fpub="20220217" id_norma="BOE-A-2022-2544" fecha_publicacion="20211231" fecha_vigencia="20220101">
+      <p class="articulo">Art&iacute;culo 40 bis.</p>
+      <p class="parrafo">Escala VIGENTE, celdas en &lt;td&gt;:</p>
+      <table class="tabla">
+        <thead><tr>
+          <th class="cabeza_tabla"><p class="cabeza_tabla">Suma acumulada</p></th>
+          <th class="cabeza_tabla"><p class="cabeza_tabla">Tipo de gravamen</p></th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="cuerpo_tabla_izq">De 0 a 3.500.000,00.</td><td class="cuerpo_tabla_coma">25,00</td></tr>
+          <tr><td class="cuerpo_tabla_izq">M&aacute;s de 3.500.000,00.</td><td class="cuerpo_tabla_coma">40,00</td></tr>
+        </tbody>
+      </table>
+    </version>
+  </bloque>
+</data></response>`
+
+describe('bloqueVigente — tablas', () => {
+  it('recoge las celdas que van DIRECTAMENTE en <td> (redacción nueva)', () => {
+    const r = bloqueVigente(XML_TABLA_TD)
+    expect(r.vigencia).toBe('20220101')
+    // Los datos de la escala son la respuesta a "¿qué tipo se aplica?": no pueden faltar.
+    expect(r.texto).toContain('De 0 a 3.500.000,00.')
+    expect(r.texto).toContain('25,00')
+    expect(r.texto).toContain('Más de 3.500.000,00.')
+    expect(r.texto).toContain('40,00')
+  })
+
+  it('NO pierde las cabeceras de tabla, que sí van en <p> dentro del <th>', () => {
+    // Regresión concreta: al dejar que el <th> casara como celda, el match consumía el
+    // <th> entero y sus <p> internos no se volvían a visitar.
+    const r = bloqueVigente(XML_TABLA_TD)
+    expect(r.texto).toContain('Suma acumulada')
+    expect(r.texto).toContain('Tipo de gravamen')
+  })
+
+  it('sigue leyendo las celdas envueltas en <p> (redacción antigua)', () => {
+    // Se comprueba sobre la versión antigua, forzándola como única del bloque.
+    const soloAntigua = XML_TABLA_TD.replace(/<version fpub[\s\S]*?<\/version>/, '')
+    const r = bloqueVigente(soloAntigua)
+    expect(r.vigencia).toBe('20120701')
+    expect(r.texto).toContain('De 0 a 3.500.000,00 euros')
+    expect(r.texto).toContain('16%')
+  })
+
+  it('no mete un espacio donde el BOE no lo tiene al vaciar tags inline', () => {
+    // "<i>Hecho imponible</i>.–Constituye…" del art. tercero del RDL 16/1977: sustituir
+    // el tag por un espacio daba "Hecho imponible .–Constituye" → falso DIVERGE.
+    const xml = `<response><data><bloque id="atercero"><version fecha_vigencia="20220101">
+      <p class="articulo">Artículo tercero.</p>
+      <p class="parrafo">Primero. <i>Hecho imponible</i>.–Constituye el hecho imponible la autorización.</p>
+    </version></bloque></data></response>`
+    expect(bloqueVigente(xml).texto).toContain('Hecho imponible.–Constituye')
+  })
+})
