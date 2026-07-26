@@ -88,9 +88,12 @@ function decodeHtmlEntities(s: string): string {
  * como `missing_in_db` porque el extractor tampoco los veía: **un verde falso**.
  * Una sola fuente para las cuatro. Fijado por `__tests__/laws/boeExtractorOrdinales.test.ts`.
  */
-export const ORDINAL_SUFFIXES =
-  'quaterdecies|terdecies|duodecies|undecies|quindecies|sexdecies|decies|nonies|octies|' +
-  'septies|sexies|quinquies|qu[aá]ter|ter|bis'
+// La lista vive en `lib/laws/ordinalesLatinos.js` desde el 26/07/2026: la necesita también
+// `mapaBloquesPorArticulo` (lib/laws/boeBloqueVigente.js, que es JS y no puede importar de
+// aquí), y tener DOS copias es exactamente lo que causó este bug tres veces. Se re-exporta
+// con el mismo nombre para no tocar sus usos ni los tests.
+export { ORDINAL_SUFFIXES } from './laws/ordinalesLatinos'
+import { ORDINAL_SUFFIXES } from './laws/ordinalesLatinos'
 
 /**
  * Convierte texto de número español a dígito

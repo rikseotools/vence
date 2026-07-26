@@ -398,3 +398,43 @@ describe('mapaBloquesPorArticulo — ordinales altos y acentuados (T-146)', () =
     expect(bloqueDeArticulo(m, '10 decies')).toBe('b3')
   })
 })
+
+// --- LA REDACCIÓN ANTERIOR VIENE DENTRO DEL BLOQUE VIGENTE (26/07/2026) ---
+// El BOE remata algunos bloques con un párrafo marcador «Redacción anterior:» y, detrás, el
+// texto DEROGADO entre comillas. No es una nota suelta filtrable por párrafo: hay que cortar
+// ahí. Caso real: art. 177 quinquies de la LGT, donde daba "BD 2.877 ch / BOE 3.492 ch" y los
+// 615 de diferencia eran la redacción anterior a la Ley 13/2023 — un falso DIVERGE contra un
+// `content` correcto, y la puerta a anclar una pregunta a Derecho derogado.
+describe('bloqueVigente — corta en "Redacción anterior:"', () => {
+  const XML = `<?xml version="1.0" encoding="utf-8"?>
+<response><data><bloque id="a177quinquies">
+  <version fecha_vigencia="20240101">
+    <p class="articulo">Artículo 177 quinquies.</p>
+    <p class="parrafo">Inspecciones conjuntas.</p>
+    <p class="parrafo">1. Son inspecciones conjuntas las actuaciones VIGENTES.</p>
+    <p class="parrafo">Redacci&oacute;n anterior:</p>
+    <p class="parrafo">"Art&iacute;culo 177 quinquies. Presencia en las actuaciones de asistencia."</p>
+    <p class="parrafo">1. Texto DEROGADO que no debe servirse.</p>
+  </version>
+</bloque></data></response>`
+
+  it('se queda con el texto vigente y tira todo lo posterior al marcador', () => {
+    const r = bloqueVigente(XML)
+    expect(r.texto).toContain('actuaciones VIGENTES')
+    expect(r.texto).not.toContain('Redacción anterior')
+    expect(r.texto).not.toContain('DEROGADO')
+    expect(r.texto).not.toContain('Presencia en las actuaciones de asistencia')
+  })
+
+  it('no corta nada si el bloque no trae el marcador', () => {
+    const sinMarcador = XML.replace(/<p class="parrafo">Redacci&oacute;n anterior:<\/p>/, '')
+    // Sin marcador se conserva TODO (incluido lo que aquí simula texto viejo): el módulo no
+    // adivina, solo obedece al marcador del BOE.
+    expect(bloqueVigente(sinMarcador).texto).toContain('DEROGADO')
+  })
+
+  it('tolera el plural y el acento perdido ("Redacciones anteriores")', () => {
+    const plural = XML.replace('Redacci&oacute;n anterior:', 'Redacciones anteriores:')
+    expect(bloqueVigente(plural).texto).not.toContain('DEROGADO')
+  })
+})
