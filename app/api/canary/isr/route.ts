@@ -16,16 +16,21 @@
 
 import { NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 
 export const dynamic = 'force-static'
 export const revalidate = false
+
+// El id de instancia sale del helper compartido con la observabilidad: en Fargate
+// `hostname#pid` es idéntico en las 8 tasks (0.0.0.0 y pid 1) y no distinguía nada.
+// (En la copia prerenderizada en build todas comparten el del builder, que es justo
+// el estado inicial que el canary espera ver.)
 
 async function _GET() {
   return NextResponse.json({
     canary: 'isr-cross-instance',
     renderedAt: new Date().toISOString(),
-    // ECS/Fargate pone el id de la task en HOSTNAME; el pid desempata en local.
-    instance: `${process.env.HOSTNAME || 'local'}#${process.pid}`,
+    instance: INSTANCE_ID,
   })
 }
 

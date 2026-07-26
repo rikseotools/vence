@@ -29,6 +29,7 @@
 
 import { diffIsrPurgeLog, readIsrPurgeLog, type IsrPurgeSnapshot } from '@/lib/cache/isrPurgeLog'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 
 /** Sondeo por defecto. Un HGETALL de unos cientos de campos cada 10 s por instancia es ruido. */
 const DEFAULT_POLL_MS = 10_000
@@ -112,7 +113,7 @@ export function createIsrPurgeObserver(deps: IsrPurgeObserverDeps = {}): IsrPurg
         endpoint: '/api/internal/isr-apply',
         errorMessage: aplicadas > 0 ? undefined : `esta instancia no pudo aplicar ${lote.length} ruta(s)`,
         metadata: {
-          instance: `${process.env.HOSTNAME || 'local'}#${process.pid}`,
+          instance: INSTANCE_ID,
           aplicadas,
           paths: lote.slice(0, 10),
           pendientesTotales: pendientes.length,
