@@ -878,9 +878,19 @@ done
 > (supuestos prácticos)— y daba un desfase fijo de 3-5 preguntas por tema, es decir **6/6 falsos
 > positivos**. Si tocas la MV, toca también esta consulta.
 >
-> ⏱️ **Cuando falla nada más aprobar, la capa culpable es `topic_data:*` en ElastiCache, y NO se puede
-> purgar desde fuera de la VPC (26/07/2026, lote `gen_l19_6bis_20260726`).** Lo verificado en ese caso,
-> para no repetir el diagnóstico:
+> ⏱️ **Si falla NADA MÁS aprobar: espera ~10 minutos y vuelve a correrlo. No purgues nada
+> (26/07/2026, lote `gen_l19_6bis_20260726`).** Medido: **9 minutos** desde la aprobación hasta 6/6 verde,
+> **sin tocar Redis**. La capa que retrasa es `topic_data:<opo>:<tema>:<user>` en ElastiCache, con ventana
+> fresca de 5 min (`FRESH_WINDOW_MS`) + el escalonado por instancia de ECS —cada contenedor necesita su
+> propia primera petición pasada la ventana—, lo que explica que a los 6 minutos aún salieran 1/6 y a los
+> 9 salieran 6/6. **El mensaje del script ("falta propagar (MV → Redis → tags)") manda a buscar una purga
+> que no toca**, y esa clave además no se puede purgar desde fuera de la VPC.
+>
+> ⚠️ **Y aquí se cometió el error de sacar conclusiones a los 6 minutos:** se dio por bueno que "no se
+> curaba", se documentó como cabo abierto y se buscó causa donde no había. Con cachés escalonadas,
+> **una segunda medición pronto no es evidencia**: hay que fijar el horizonte antes de mirar.
+>
+> Lo verificado por el camino, que sí sirve para descartar rápido cuando NO se cure:
 > - **La BD y la MV estaban bien:** `topic_law_question_summary` daba 418 con los cubos de dificultad
 >   sumando 418 — es decir, el `refresh_topic_question_summary()` sí había entrado.
 > - **NO era el CDN:** `curl -D-` devolvía `x-cache: Miss from cloudfront`, o sea que el 416 lo daba el origen.
@@ -890,11 +900,7 @@ done
 > - **Los tags NO tocan esa clave:** `topic_data:<opo>:<tema>:<user>` la escribe `/api/topics/[numero]`
 >   con TTL de 24 h, y `revalidateTag` no la conoce.
 >
-> Ojo con dar por buena la explicación fácil: **el código de `main` tiene una ventana fresca de 5 minutos**
-> (`FRESH_WINDOW_MS`), que haría que el desfase se curase solo, **y no se curó**. O el build desplegado no
-> es ese, o hay algo más. Queda como cabo abierto, no como hecho.
->
-> **Lo que sí se puede afirmar:** el desfase es de un **CONTADOR cacheado**, no de la cobertura. Las
+> **Y en todo caso el desfase es de un CONTADOR cacheado, no de la cobertura.** Las
 > preguntas están `approved`/`is_active` y el número escopado está en `topic_scope`, y el camino que sirve
 > preguntas (`getQuestionsForTopic`, `lib/testFetchers.ts`) las selecciona con un `inArray` EXACTO sobre
 > `topic_scope.article_numbers` — sin filtro numérico —, así que **al opositor ya le salen en los tests**
