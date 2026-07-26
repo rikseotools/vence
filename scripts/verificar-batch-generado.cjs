@@ -46,6 +46,7 @@ if (!BATCH) {
 
 // Normalización para comparar citas: unifica comillas y espacios.
 const { analizarCita, clausulaEnEnunciado } = require(path.join(__dirname, '..', 'lib', 'generacion', 'citaTruncada'))
+const { analizaCitaBlockquote } = require(path.join(__dirname, '..', 'lib', 'generacion', 'citaBlockquote'))
 
 const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().toLowerCase()
 
@@ -113,7 +114,17 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
       errs.push('la correcta NO es subcadena literal del artículo' +
         (lit.fragmentosNoHallados ? ` (fragmentos no hallados: ${lit.fragmentosNoHallados.join(' / ').slice(0, 60)})` : ''))
     } else {
-      // Cita truncada — solo tiene sentido sobre citas contiguas.
+      // CITA DEL BLOCKQUOTE literal del artículo. El opositor lee ese bloque como
+    // transcripción de la ley: una palabra añadida ahí es una cita falseada. Lo cazó
+    // una auditoría ciega el 26/07/2026 (art. 116 bis.3 LBRL: se coló «provincial»
+    // en la frase donde la ley no lo dice) y es el único defecto de esa familia que
+    // se puede comprobar mecánicamente, así que no debe costar una auditoría.
+    const bq = analizaCitaBlockquote(q.explanation, q.content)
+    for (const d of bq.divergencias) {
+      errs.push(`CITA NO LITERAL en el blockquote: «${d.fragmento.slice(0, 90)}…» no aparece así en el artículo`)
+    }
+
+    // Cita truncada — solo tiene sentido sobre citas contiguas.
       const cita = analizarCita(q.content, correcta)
       if (cita.estado === 'TRUNCADA') {
         // §2.2: si la cláusula que se "omite" ya está en el ENUNCIADO, es condensación

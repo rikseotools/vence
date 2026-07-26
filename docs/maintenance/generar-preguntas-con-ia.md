@@ -289,6 +289,21 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 > automatizar el descarte.
 | **`bullets_match_options_ok` (NUEVO 26/07/2026)** | **Cada bullet `- **X)**` describe la opción que hoy ocupa la posición X.** Se comprueba a ojo, opción contra bullet, DESPUÉS de cualquier retoque de las opciones. | **Solo revisión manual — NINGÚN gate lo ve** |
 | **`racional_describe_la_opcion_ok` (NUEVO 26/07/2026)** | **El «Por qué X es correcta» describe lo que la OPCIÓN dice, no lo que dice el artículo entero.** Si la opción es una cita parcial, la glosa no puede atribuirle contenido que su texto no lleva. | **Solo auditoría ciega — ningún gate lo ve** |
+| **`cita_blockquote_literal_ok` (NUEVO 26/07/2026, AUTOMÁTICO)** | **El texto entre comillas del blockquote es subcadena LITERAL del artículo.** El opositor lo lee como transcripción de la ley: una palabra añadida ahí es una cita falseada. | **Automático** — `lib/generacion/citaBlockquote.js`, dentro de `npm run batch:gate` |
+
+> 🤖 **`cita_blockquote_literal_ok` es el único de esta familia que NO necesita auditoría.** Lo cazó una
+> auditoría ciega (26/07/2026): el art. 116 bis.3 de la LBRL dice «La Diputación **provincial** o entidad
+> equivalente **asistirá**…» en su primera frase y «La Diputación o entidad equivalente **propondrá y
+> coordinará**…» en la segunda; el blockquote mezcló las dos y presentó como literal algo que la ley no
+> dice. Una auditoría cuesta minutos y tokens, y esto es una comparación de subcadena: **si la máquina
+> puede, que lo haga la máquina**.
+>
+> Al calibrarlo sobre las 69 preguntas del banco apareció el matiz que lo hace usable: el BOE entrecomilla
+> con **comillas tipográficas** (U+201C/D) y las citas suelen usar **angulares** (U+00AB/BB). Mismo texto,
+> distinto glifo. Sin unificar comillas por punto de código, el check daba un falso positivo y habría
+> acabado ignorado, que es la peor forma de morir para un gate. Tolera además la puntuación perdida en el
+> import y las citas que **saltan de un apartado a otro con puntos suspensivos** (cada tramo se comprueba
+> por separado, porque solo los tramos son contiguos en la ley).
 
 > ⚠️ **`racional_describe_la_opcion_ok` nace de DOS casos del mismo lote, cazados por auditores distintos
 > (26/07/2026, `gen_ljv_bis2_20260726`).** Es sutil porque la pregunta es correcta y la glosa es *verdadera*:
