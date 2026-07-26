@@ -108,11 +108,11 @@ export const RECURSOS_SENSIBLES: RecursoSensible[] = [
     columna: 'article_numbers',
     propiedad: 'articleNumbers',
     regla: 'trinquete',
-    techo: 31,
+    techo: 32,
     guardarrailPropio:
       'pipeline `verify:scope` (dump→plan→apply, con clasificador auto_safe vs judgment_gate) — ver docs/runbooks/verificar-epigrafes-scope.md',
     porQue:
-      'es el temario SERVIDO: un escritor sin simulación de huérfanas puede dejar preguntas fuera de los tests en silencio. Los 31 son scripts de construcción puntuales, legítimos',
+      'es el temario SERVIDO: un escritor sin simulación de huérfanas puede dejar preguntas fuera de los tests en silencio. Los 31 primeros son scripts de construcción puntuales, legítimos. El 32.º (26/07/2026) es `scripts/reanclar-preguntas.cjs`: solo QUITA de la lista números explícitamente enumerados en un plan revisado (nunca añade), y lo hace en la misma transacción en la que re-ancla las preguntas de ese artículo fantasma — separarlo en verify:scope dejaría el hueco entre las dos escrituras. Trae su propia simulación de huérfanas (`lib/contenido/reanclarGuardas.js`, 13 tests): bloquea el destino sin scope y la pérdida de temas no declarada, que es justo el fallo silencioso que este trinquete vigila',
   },
 ]
 

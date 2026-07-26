@@ -216,6 +216,46 @@ Cuando `dump` da `temario_parseado=0` (los portales GVA/DOGV son SPA de JS y Web
 - Datos contaminados: notas TODO (`_tmp_hold`) coladas en `article_numbers` aparecen como "artículos" — limpiar el dato, no es scope.
 - El sistema verifica **scope↔epígrafe (semántico)**, no literalidad byte-a-byte del boletín (ver memoria `reference_epigrafe_programa_url_en_bd`: el epígrafe de BD no está garantizado literal).
 
+## Artículos fantasma del scope (`scope_phantom_article`): re-anclar preguntas invisibles
+
+Un artículo escopado pero con `articles.is_active=false` **no se sirve, aunque tenga preguntas
+activas**: contenido ya escrito que ningún opositor ve. La remediación casi siempre es
+**re-anclar** las preguntas al artículo oficial que sí está activo.
+
+**Hazlo con `node scripts/reanclar-preguntas.cjs <plan.json>`** (dry-run por defecto,
+`--apply` para escribir). Guardas puras en `lib/contenido/reanclarGuardas.js`, testeadas en
+`__tests__/lib/contenido/reanclarGuardas.test.js`.
+
+**Por qué no a mano.** Una pregunta se sirve en un tema si SU ARTÍCULO está en el
+`topic_scope` de ese tema. Mover el ancla a un artículo escopado en otros temas **no la
+rescata: la cambia de sitio, y puede dejarla huérfana** — y como el artículo viejo se queda
+sin preguntas, el detector se apaga y el informe canta victoria. El script bloquea destino
+inactivo, destino sin ningún scope y pérdida de temas no declarada (declararla exige escribir
+el motivo), y avisa cuando el destino no contiene el texto del origen.
+
+**Cómo encontrar el destino.** `relacionContenido(origen, destino)` del mismo módulo: recorre
+los artículos ACTIVOS de la ley y dice cuál contiene el texto del inactivo. En el barrido del
+26/07 eso resolvió solo 19 de 31 filas. Familias que aparecieron:
+
+| familia | pinta | destino |
+|---|---|---|
+| fragmento de un artículo | `2.2`, `3.4`, `69.1` | el artículo padre (contiene el texto) |
+| preámbulo/EM troceado | `EM`, `EXP`, `preámbulo1a`, `Preámbulo_II` | la fila `preámbulo` activa |
+| disposición con clave del import | `da`, `df`, `dd` (título «Artículo da.Primera Ley…») | `DA1`/`DF6`/`DDunica` |
+| **otra ley, mismo número** | art. 88 y 93 del **CP** con preguntas de la **CE** | el artículo de la ley correcta |
+| número inventado | TREBEP «art. 101» (acaba en el 100) | el artículo real que dice el texto |
+| glosa editorial | «España cuenta con 17 autonomías» | el artículo oficial de la materia |
+
+**Tres trampas medidas el 26/07:**
+- **El ancla de origen puede estar mal ya.** En la Ley 4/2015 dos preguntas de *entrada en
+  vigor* colgaban de la disposición final PRIMERA (30.000 caracteres de reforma de la
+  LECrim). El destino se decide por lo que pregunta la pregunta, no por dónde estaba.
+- **Un `0` en `limpiarScope` no es «limpio».** Si el tema escopa la ley entera
+  (`article_numbers IS NULL`) no hay lista que podar. El script lo dice ahora en voz alta.
+- **Sin gemelo activo, re-anclar no aplica.** Si el artículo es correcto y solo está apagado
+  → reactivar contra el BOE; si está truncado → completar verbatim; si no existe en la norma
+  → quitarlo del scope. NUNCA inventar el artículo.
+
 ## Huecos del temario: títulos huérfanos (`scope_titulo_huerfano`)
 
 > **Frase-gatillo: *"revisa los huecos del temario"*.** Complementa al pipeline de arriba: éste
