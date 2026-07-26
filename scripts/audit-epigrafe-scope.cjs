@@ -24,6 +24,8 @@
  * Exit code 1 si hay algún hallazgo 🔴 (apto como gate de CI).
  */
 const postgres = require('postgres');
+const path = require('path');
+const { analizarMateria } = require(path.join(__dirname, '..', 'lib', 'laws', 'epigrafeMateria.js'));
 require('dotenv').config({ path: '.env.local' });
 
 // Agnóstico a la BD: postgres-js sobre DATABASE_URL (RDS/Neon/…), la MISMA capa
@@ -34,6 +36,7 @@ const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect
 
 // Extrae identificadores de norma con número del texto libre.
 // Normaliza a forma canónica "N/AAAA" (ej. "39/2015", "2016/679", "3/2018").
+
 function extractLawRefs(text) {
   if (!text) return new Set();
   const refs = new Set();
@@ -122,7 +125,7 @@ async function auditPositionType(pt) {
       // refs por número (short_name + name) + reconocimiento descriptivo por nombre
       const refs = new Set([...extractLawRefs(l ? l.short_name : ''), ...extractLawRefs(l ? l.name : '')]);
       const named = nameReferenced(l ? l.name : '', l ? l.short_name : '', t.epigrafe);
-      rows.push({ name: l ? l.short_name : '?', arts: artCount, q, refs, named });
+      rows.push({ name: l ? l.short_name : '?', arts: artCount, q, refs, named, articleIds });
       topicTotal += q;
     }
 
@@ -141,9 +144,29 @@ async function auditPositionType(pt) {
       if (r.arts === 0 || r.q === 0) continue;
       const referenced = [...r.refs].some(x => epiRefs.has(x)) || r.named;
       if (referenced) continue;
+      // El nombre de la ley no aparece en el epígrafe. Antes de acusar, mirar si el epígrafe
+      // habla de la MATERIA que regulan los artículos escopados: los temarios describen la
+      // materia sin citar la norma ("Órganos de gobierno provinciales" ↔ Ley 7/1985), y sin
+      // este filtro el 82% de estos avisos son falsos positivos (medido 26/07, T-117).
+      let materia = { banda: 'indeterminado' };
+      if (r.articleIds && r.articleIds.length) {
+        const cont = await sql`SELECT left(string_agg(content, ' '), 200000) AS k FROM articles WHERE id = ANY(${r.articleIds}::uuid[])`;
+        materia = analizarMateria(t.epigrafe, cont[0]?.k || '');
+      }
+      if (materia.banda === 'encaja') continue;               // la materia encaja: no hay hallazgo
+      const pct = (materia.ratio * 100).toFixed(0);
+      if (materia.banda === 'indeterminado') {
+        flags.push(`⚪ NO_JUZGABLE: ${r.name} (${r.q}q) no se nombra en el epígrafe y no se puede juzgar por materia — ${materia.motivo}`);
+        continue;
+      }
       const share = topicTotal ? r.q / topicTotal : 0;
-      if (share >= 0.8) flags.push(`🔴 WRONG_SUBJECT: ${r.name} aporta ${(share*100).toFixed(0)}% (${r.q}q) pero ni su número ni su nombre están en el epígrafe`);
-      else flags.push(`🟡 OVER: ${r.name} (${r.q}q) en scope pero no referenciada en epígrafe`);
+      if (materia.banda === 'dudoso') {
+        flags.push(`🟡 MATERIA_PARCIAL: ${r.name} (${r.q}q) no se nombra en el epígrafe y la materia encaja solo a medias (${pct}% del epígrafe aparece en lo escopado) — revisar`);
+      } else if (share >= 0.8) {
+        flags.push(`🔴 WRONG_SUBJECT: ${r.name} aporta ${(share*100).toFixed(0)}% (${r.q}q), no se nombra en el epígrafe y su materia NO aparece en lo escopado (${pct}%)`);
+      } else {
+        flags.push(`🟡 OVER: ${r.name} (${r.q}q) en scope, no referenciada en epígrafe y sin encaje de materia (${pct}%)`);
+      }
     }
     // LOW_COVERAGE: tema con muy pocas preguntas servidas
     if (topicTotal > 0 && topicTotal < 10) flags.push(`🟡 LOW_COVERAGE: solo ${topicTotal}q servidas`);
