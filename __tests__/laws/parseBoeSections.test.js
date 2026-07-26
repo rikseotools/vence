@@ -174,3 +174,60 @@ describe('validarSecciones — una sección derogada no debe tumbar la ley', () 
     expect(validarSecciones([]).motivo).toBe('sin_secciones')
   })
 })
+
+describe('rubricaVigente — la rúbrica de un bloque del BOE es la ÚLTIMA, no la primera', () => {
+  const { rubricaVigente } = require('@/lib/laws/parseBoeSections')
+  // Forma REAL del bloque `tviii-2` de la LECrim (BOE-A-1882-6036), recortado.
+  const LECRIM_TVIII = `<?xml version="1.0" encoding="utf-8"?>
+<response><data><bloque id="tviii-2" tipo="encabezado" titulo="TÍTULO VIII">
+  <version id_norma="BOE-A-1882-6036" fecha_publicacion="19970601" fecha_vigencia="19970601">
+    <p class="titulo_num">Título VIII</p>
+    <p class="titulo_tit">De la entrada y registro en lugar cerrado, del de libros y papeles y de la detención y apertura de la correspondencia escrita y telegráfica</p>
+  </version>
+  <version id_norma="BOE-A-2015-13211" fecha_publicacion="20151006" fecha_vigencia="20151206">
+    <p class="titulo_num">Título VIII</p>
+    <p class="titulo_tit">De las medidas de investigación limitativas de los derechos reconocidos en el artículo 18 de la Constitución</p>
+  </version>
+</bloque></data></response>`
+
+  test('devuelve la rúbrica VIGENTE, no la derogada de 1997', () => {
+    const r = rubricaVigente(LECRIM_TVIII, '20260726')
+    expect(r.rubrica).toBe('De las medidas de investigación limitativas de los derechos reconocidos en el artículo 18 de la Constitución')
+    expect(r.fechaVigencia).toBe('20151206')
+  })
+
+  test('respeta la fecha de corte: antes de la reforma, la rúbrica es la antigua', () => {
+    // Sin esto no se puede auditar por qué se adjudicó algo con los datos de entonces.
+    expect(rubricaVigente(LECRIM_TVIII, '20100101').rubrica).toMatch(/^De la entrada y registro/)
+  })
+
+  test('ignora versiones con vigencia FUTURA (reforma publicada y aún no en vigor)', () => {
+    const futuro = LECRIM_TVIII.replace('20151206', '20991231')
+    expect(rubricaVigente(futuro, '20260726').rubrica).toMatch(/^De la entrada y registro/)
+  })
+
+  test('si la versión vigente no trae rúbrica, cae a la más reciente que sí la tenga', () => {
+    const xml = `<response><data><bloque><version fecha_vigencia="19970601"><p class="capitulo_tit">De la detención</p></version>` +
+      `<version fecha_vigencia="20200101"><p class="parrafo">Solo se modifica el cuerpo.</p></version></bloque></data></response>`
+    expect(rubricaVigente(xml, '20260726').rubrica).toBe('De la detención')
+  })
+
+  test('NO se engancha a una cita cruzada dentro del texto de un artículo', () => {
+    // El extractor viejo hacía match sobre el cuerpo APLANADO con /TÍTULO [IVX]+\.?\s+(...)/,
+    // así que un "conforme al TÍTULO III. De lo que sea" dentro de un artículo lo envenenaba.
+    const xml = `<response><data><bloque><version fecha_vigencia="20200101">` +
+      `<p class="parrafo">Se aplicará lo dispuesto en el TÍTULO III. De la Policía judicial y demás normas.</p>` +
+      `<p class="capitulo_tit">Del registro de libros y papeles</p></version></bloque></data></response>`
+    expect(rubricaVigente(xml, '20260726').rubrica).toBe('Del registro de libros y papeles')
+  })
+
+  test('sin rúbrica alguna → null (nunca una cadena vacía que parezca rúbrica válida)', () => {
+    expect(rubricaVigente('<response><data><bloque/></data></response>', '20260726')).toBeNull()
+    expect(rubricaVigente('', '20260726')).toBeNull()
+    expect(rubricaVigente(null, '20260726')).toBeNull()
+  })
+
+  test('XML sin <version> (atípico) → parsea el bloque entero', () => {
+    expect(rubricaVigente('<bloque><p class="titulo_tit">De la denuncia</p></bloque>', '20260726').rubrica).toBe('De la denuncia')
+  })
+})

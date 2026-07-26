@@ -12,7 +12,7 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 import postgres from 'postgres'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { parseBoeSections } = require('../../lib/laws/parseBoeSections')
+const { parseBoeSections, rubricaVigente } = require('../../lib/laws/parseBoeSections')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { classifyTitleBoundary, resumenBarrida } = require('../../lib/laws/scopeTitleBoundary')
 type Seccion = { num: string; from: number; to: number; blockId?: string; rubrica?: string }
@@ -31,17 +31,22 @@ async function estructuraBoe(bid: string): Promise<Seccion[]> {
   return secs
 }
 
-// Rúbrica (materia) de un título: viene DENTRO del bloque, tras "TÍTULO X.". Fetch
-// extra por bloque → solo para los títulos CANDIDATOS a overflow (bounded).
+// Rúbrica (materia) de un título: viene DENTRO del bloque. Fetch extra por bloque →
+// solo para los títulos CANDIDATOS a overflow (bounded).
+//
+// La extracción vive en el núcleo puro (`rubricaVigente`) y NO se hace aquí con un
+// match: un bloque del BOE trae todas sus versiones históricas de la más antigua a la
+// vigente, así que el primer match devuelve la rúbrica DEROGADA. Este runner leía la
+// de 1997 del Título VIII de la LECrim en vez de la de 2015 → la exención por materia
+// no saltaba y el título salía como falso positivo. Ver rubricaVigente (26/07/2026).
 const rubricaCache = new Map<string, string>()
 async function rubricaBoe(bid: string, blockId: string): Promise<string> {
   const key = `${bid}#${blockId}`
   if (rubricaCache.has(key)) return rubricaCache.get(key)!
   let r = ''
   try {
-    const body = clean(await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/bloque/${blockId}`, { headers: { Accept: 'application/xml' } })).text())
-    const m = body.match(/(?:CAP[IÍ]TULO|T[IÍ]TULO|LIBRO|PARTE)\s+[IVXLCDM]+\.?\s+([^.]{3,140})/i)
-    r = m ? m[1].trim().replace(/\s+/g, ' ') : ''
+    const xml = await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/bloque/${blockId}`, { headers: { Accept: 'application/xml' } })).text()
+    r = rubricaVigente(xml)?.rubrica || ''
   } catch { r = '' }
   rubricaCache.set(key, r)
   return r
