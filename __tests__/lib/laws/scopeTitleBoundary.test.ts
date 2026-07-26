@@ -163,3 +163,60 @@ describe('titlesForLaw — una norma citada POR NOMBRE no puede filtrar sus tít
     expect(titlesForLaw(ep, { shortName: 'CE', name: 'Constitución Española' }).titles).toEqual([9])
   })
 })
+
+describe('epigrafeNamesRubrica — las rúbricas de plantilla no pueden eximirse solas', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { epigrafeNamesRubrica } = require('@/lib/laws/scopeTitleBoundary')
+
+  // Epígrafe REAL de `guardia_civil` T8 (verified_literal contra el temario oficial),
+  // recortado. NO menciona Hacienda, ni seguridad colectiva, ni Administración de Justicia.
+  const CP_T8 = 'DERECHO PENAL. Código Penal. LIBRO I. Disposiciones generales sobre los delitos, ' +
+    'las personas responsables, las penas, medidas de seguridad y demás consecuencias de la ' +
+    'infracción penal. TÍTULO XIX. Delitos contra la Administración Pública. TÍTULO XXI. ' +
+    'Delitos contra la Constitución.'
+
+  test.each([
+    ['De los delitos contra la Hacienda Pública y contra la Seguridad Social'],
+    ['De los delitos contra la seguridad colectiva'],
+  ])('NO exime «%s» (el epígrafe no la nombra)', (rubrica) => {
+    // Antes: 60-67 % de solape de bolsa de palabras bastaba, porque "delitos",
+    // "seguridad", "publica" y "administracion" salen por todo el epígrafe.
+    expect(epigrafeNamesRubrica(CP_T8, rubrica)).toBe(false)
+  })
+
+  test('SÍ exime el título que el epígrafe nombra de verdad', () => {
+    expect(epigrafeNamesRubrica(CP_T8, 'Delitos contra la Administración pública')).toBe(true)
+  })
+
+  test('sigue eximiendo el caso para el que se creó la exención (CE Título VIII)', () => {
+    const ep = 'La organización territorial del Estado. Las Comunidades Autónomas.'
+    expect(epigrafeNamesRubrica(ep, 'De la Organización Territorial del Estado')).toBe(true)
+  })
+
+
+  test('LÍMITE CONOCIDO: «Administración de Justicia» se sigue eximiendo (falso negativo aceptado)', () => {
+    // Comparte la frase entera con "Delitos contra la Administración Pública" menos el
+    // sustantivo final. Distinguirlo por parecido de cadenas no es fiable; queda documentado
+    // para que nadie lo lea como que el detector lo cubre.
+    expect(epigrafeNamesRubrica(CP_T8, 'Delitos contra la Administración de Justicia')).toBe(true)
+  })
+
+  test('tolera que la rúbrica lleve una cola que el epígrafe no repite', () => {
+    // Caso real `auxiliar_administrativo_diputacion_leon` T4 (Estatuto de CyL, Título II):
+    // el epígrafe dice "Instituciones de autogobierno" y la rúbrica añade "de la Comunidad".
+    // La regla del ÚLTIMO token —descartada— marcaba aquí 19 artículos que el epígrafe SÍ pide.
+    const ep = 'El Estatuto de Autonomía de Castilla y León: Estructura. Título Preliminar. ' +
+      'Derechos y principios rectores. Instituciones de autogobierno.'
+    expect(epigrafeNamesRubrica(ep, 'Instituciones de autogobierno de la Comunidad')).toBe(true)
+    expect(epigrafeNamesRubrica(ep, 'Derechos y principios rectores')).toBe(true)
+  })
+
+  test('palabras compartidas pero DISPERSAS no eximen (hace falta la frase)', () => {
+    const ep = 'Las competencias. La organización de los servicios. El territorio del Estado.'
+    expect(epigrafeNamesRubrica(ep, 'De la Organización Territorial del Estado')).toBe(false)
+  })
+
+  test('un solo token compartido nunca exime', () => {
+    expect(epigrafeNamesRubrica('El Estado y sus instituciones', 'De la Organización Territorial del Estado')).toBe(false)
+  })
+})
