@@ -101,7 +101,7 @@ async function main() {
       else if (s.es_null) {
         arts = (await sql`
           SELECT article_number FROM articles WHERE law_id = ${s.law_id} AND is_active = true
-        `).map((a: { article_number: string }) => String(a.article_number))
+        `).map((a) => String((a as { article_number: string }).article_number))
         nulosExpandidos++
       } else arts = s.article_numbers || []
       if (!arts.length) { sinArts++; continue }
