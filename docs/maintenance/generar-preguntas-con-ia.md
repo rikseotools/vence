@@ -861,6 +861,22 @@ const { data } = await s.from('questions')
 
 3. Registrar el resultado en `ai_verification_results` con `ai_provider='claude_code_recheck'` (NO `claude_code` — eso machacaría el registro del paso 7):
 
+
+> 🧰 **Hazlo con el comando, no a mano (26/07/2026):**
+> ```bash
+> npm run batch:registrar -- <batch_id> paso7|paso9|paso9v2|paso9v3 "<nota>"
+> ```
+> Hasta esa fecha no había herramienta y el registro se improvisaba con un `INSERT`… o
+> no se hacía: **327 preguntas activas quedaron sin Paso 9 registrado**, en 24 lotes y de
+> varias sesiones (ficha [T-155]). Va de la mano del guardarraíl de `npm run batch:servido`,
+> que desde entonces **se niega a cerrar un lote** al que le falte cualquiera de los dos
+> registros: uno comprueba y el otro rellena; sin el segundo, el primero solo sabe dar
+> malas noticias.
+>
+> ⚠️ El comando registra un veredicto **LIMPIO**. Si la auditoría encontró defectos, se
+> reparan, se vuelve a pasar con un agente aún más nuevo (`paso9v2`, `paso9v3`) y se
+> registra **la pasada que salió limpia**. Registrar una auditoría con hallazgos sin
+> repararlos es peor que no registrarla: deja una traza diciendo que todo estaba bien.
 ```javascript
 await s.from('ai_verification_results').upsert({
   question_id, article_id, law_id,
