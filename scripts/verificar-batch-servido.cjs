@@ -20,6 +20,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const { estadoCierre } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cierreLote'))
 
 const argv = process.argv.slice(2)
 const BATCH = argv[0]
@@ -100,8 +101,31 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
   if (fallos) {
     console.log('→ refresca la MV (`SELECT refresh_topic_question_summary()`) e invalida tags con /api/admin/revalidate, y vuelve a correrlo.')
   }
+
+  // ── Cierre según el MANUAL, no solo según la caché ───────────────────────────
+  // El Paso 9 dice literalmente «sin este paso el lote NO se cierra», pero hasta el
+  // 26/07/2026 nada lo comprobaba: se aprobaron 69 preguntas de T-146 sin él, y la
+  // re-verificación posterior encontró 15 defectos que las 12 auditorías ciegas del
+  // Paso 7 no vieron. Un paso obligatorio que solo vive en un markdown se salta, así
+  // que lo verifica el comando que el propio manual señala como cierre obligatorio.
+  const filas = await s`SELECT q.id::text AS "questionId", v.ai_provider AS provider
+                          FROM questions q
+                          LEFT JOIN ai_verification_results v ON v.question_id = q.id
+                         WHERE ${BATCH} = ANY(q.tags)`
+  const ids = [...new Set(filas.map((f) => f.questionId))]
+  const cierre = estadoCierre(filas.filter((f) => f.provider), ids)
+  if (cierre.cerrado) {
+    console.log(`✅ verificación registrada: las ${ids.length} preguntas tienen Paso 7 (auditoría ciega) y Paso 9 (re-verificación)`)
+  } else {
+    console.log(`\n❌ LOTE NO CERRADO — ${cierre.motivo}`)
+    console.log('   El manual (§Paso 9) es explícito: «Sin este paso el lote NO se cierra».')
+    console.log('   Lanza el agente que falte, y registra el veredicto en `ai_verification_results`')
+    console.log("   con ai_provider='claude_code' (Paso 7) o 'claude_code_recheck' (Paso 9).")
+    if (cierre.sinPaso9.length && cierre.sinPaso9.length <= 5) console.log('   sin Paso 9: ' + cierre.sinPaso9.map((i) => i.slice(0, 8)).join(', '))
+  }
+
   await s.end()
-  if (fallos) process.exit(2)
+  if (fallos || !cierre.cerrado) process.exit(2)
 })().catch((e) => {
   console.error('❌', e.message)
   process.exit(1)
