@@ -246,6 +246,15 @@ node scripts/seguimiento/repuntar-url.cjs --verificar "<url>" --anclas "Administ
 node scripts/seguimiento/repuntar-url.cjs <slug> "<url>" --anclas "…" --apply
 ```
 
+**Cuando la herramienta se niega.** Es lo normal y casi siempre tiene razón: en el drenaje del 26/07 rechazó de entrada las tres primeras candidatas. Dos salidas legítimas:
+
+- **Sin `--anclas`** cuando el destino es un ÍNDICE y no una ficha. Las anclas exigen que la página nombre el proceso, y eso solo aplica a fichas concretas. Si la oposición está en `oep_aprobada` **no existe ficha todavía**: el índice del cuerpo es la vigilancia correcta.
+- **`--aceptar-dudoso`** cuando cae en la banda `contenido_dudoso` (200 con poco texto) y aun así es lo mejor que hay. Queda marcado como `forzado_dudoso` en `observable_events`, así que es auditable. Caso real: la Diputación de Zamora vigilaba **su dominio raíz** (ciego); su sección de empleo sirve ~1.300 chars y no hay página por proceso — cambiarlo es una mejora clara aunque no llegue al umbral.
+
+Lo que **no** se puede forzar por ningún medio es la banda ciega (shell de SPA, WAF, "página en desuso", `sin_anclas`). Si se pudiera, el guardarraíl no serviría de nada — está fijado en `decidirEscritura` y testeado.
+
+**Elegir bien el destino:** para una oposición en `oep_aprobada`, apuntar a la ficha de una convocatoria CONCRETA es un error — reproduce el antipatrón de URL fijada a un ciclo que se cerrará. En el drenaje, CARM ofrecía ficha por convocatoria (`CODIGO_CONVOCATORIA=CGX00L24`) y se descartó a propósito en favor del **listado de procesos selectivos**, que recogerá la convocatoria que salga.
+
 **Punto ciego conocido, para no fiarse de más:** el detector nocturno mide **cantidad** de texto, así que una SPA con mucho armazón estático (menús, ayuda, avisos legales) lo pasa aunque esté igual de ciega — medido: `jgpa.convoca.online` sirve 6.040 chars y ni una mención al proceso. Eso solo lo caza `--anclas` al escribir, porque solo entonces sabemos qué proceso debería mencionar la página. La señal que cerraría el hueco (hash inmóvil mientras la convocatoria avanza) está pendiente en T-125.
 
 **Atribución de la evidencia:** el detector solo juzga con checks cuya `checked_url` coincide con la `seguimiento_url` vigente (columna añadida el 26/07). Sin eso, una oposición recién repuntada se juzgaría con el contenido de su URL anterior — falso positivo garantizado, que es justo lo que pasó con `administrativo-diputacion-jaen` a los pocos minutos de repuntarla. Las fuentes sin evidencia atribuible **no se juzgan** y se auto-curan en la siguiente pasada del cron.

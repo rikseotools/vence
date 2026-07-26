@@ -242,3 +242,40 @@ describe('paridad con el espejo inline del backend @Cron', () => {
     expect(SCRIPT).toMatch(/checked_url\s*=\s*o\.seguimiento_url/)
   })
 })
+
+describe('decidirEscritura — política de escritura (el guardarraíl del repunte)', () => {
+  const { decidirEscritura } = require('../../../lib/convocatoria/seguimientoVigilable.cjs')
+
+  it('escribe sin más lo que es vigilable', () => {
+    const d = decidirEscritura({ vigilable: true, nivel: 'ok' })
+    expect(d).toMatchObject({ escribir: true, forzado: false })
+  })
+
+  it('la banda dudosa NO se escribe por defecto', () => {
+    expect(decidirEscritura({ vigilable: false, nivel: 'contenido_dudoso' }).escribir).toBe(false)
+  })
+
+  it('la banda dudosa SÍ se escribe si se pide a mano, y queda marcada como forzada', () => {
+    const d = decidirEscritura({ vigilable: false, nivel: 'contenido_dudoso' }, { aceptarDudoso: true })
+    expect(d).toMatchObject({ escribir: true, forzado: true })
+  })
+
+  it('la banda CIEGA no se puede forzar por ningún medio (si se pudiera, esto no serviría)', () => {
+    for (const nivel of [
+      'shell_sin_contenido',
+      'bloqueo_waf',
+      'pagina_en_desuso',
+      'redireccion_sin_destino',
+      'error_aplicacion',
+      'sin_anclas',
+      'fetch_error',
+    ]) {
+      expect(decidirEscritura({ vigilable: false, nivel }, { aceptarDudoso: true }).escribir).toBe(false)
+    }
+  })
+
+  it('no revienta sin diagnóstico', () => {
+    expect(decidirEscritura(null).escribir).toBe(false)
+    expect(decidirEscritura(undefined, { aceptarDudoso: true }).escribir).toBe(false)
+  })
+})

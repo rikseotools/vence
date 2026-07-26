@@ -20,6 +20,7 @@
 //
 // Uso:
 //   node scripts/seguimiento/repuntar-url.cjs <slug> <url-nueva> [--anclas "a|b|c"] [--apply]
+//        [--aceptar-dudoso]   escape explícito para la banda `contenido_dudoso` (NUNCA para la ciega)
 //   node scripts/seguimiento/repuntar-url.cjs --verificar <url> [--anclas "…"]   # solo comprueba
 //
 // Ejemplos:
@@ -35,6 +36,7 @@ const postgres = require('postgres')
 const path = require('path')
 const {
   verificarUrlCandidata,
+  decidirEscritura,
   extraerTextoRelevante,
   CABECERAS_CRON,
 } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'seguimientoVigilable.cjs'))
@@ -42,6 +44,15 @@ const {
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
 const SOLO_VERIFICAR = argv.includes('--verificar')
+// Escape EXPLÍCITO y TRAZADO para la banda `contenido_dudoso` (200 con poco texto: puede ser una
+// página real corta o un contenedor vacío). Hace falta porque para algunas entidades el mejor
+// destino posible cae ahí: el índice de empleo de la Diputación de Zamora sirve ~1.900 chars y no
+// existe página por proceso para su convocatoria. Sustituir el dominio raíz —que es CIEGO— por ese
+// índice es una mejora real, y negarse por purismo dejaría la fuente ciega para siempre.
+//
+// Lo que este flag NO abre: la banda `error` (shell de SPA, WAF, "página en desuso", `sin_anclas`).
+// Esas siguen siendo rechazo duro — si se pudieran forzar, el guardarraíl no serviría de nada.
+const ACEPTAR_DUDOSO = argv.includes('--aceptar-dudoso')
 const idxAnclas = argv.indexOf('--anclas')
 const ANCLAS =
   idxAnclas >= 0 && argv[idxAnclas + 1]
@@ -110,7 +121,7 @@ function pinta(url, r) {
   console.log(`  motivo   : ${diag.motivo}\n`)
 }
 
-async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado }) {
+async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado, forzadoDudoso }) {
   try {
     await sql`
       INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
@@ -121,6 +132,8 @@ async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado }) {
                 url_vieja: urlVieja,
                 url_nueva: urlNueva,
                 aplicado,
+                // true = se escribió pese a caer en la banda dudosa (--aceptar-dudoso). Auditable.
+                forzado_dudoso: !!forzadoDudoso,
                 vigilable: diag.vigilable,
                 nivel: diag.nivel,
                 motivo: diag.motivo,
@@ -162,7 +175,14 @@ async function main() {
   pinta(urlNueva, r)
 
   // ── GUARDARRAÍL: no se escribe una URL que el cron no pueda vigilar ──────────────────────
-  if (!r.diag.vigilable) {
+  // Única excepción, y hay que pedirla a mano: la banda `contenido_dudoso` con --aceptar-dudoso.
+  const decision = decidirEscritura(r.diag, { aceptarDudoso: ACEPTAR_DUDOSO })
+  const aceptado = decision.escribir
+  if (decision.forzado) {
+    console.log('⚠️  ACEPTADA POR --aceptar-dudoso: contenido escaso pero no es un shell ciego.')
+    console.log('   Queda registrado en observable_events. Revísala si el cron no detecta cambios.\n')
+  }
+  if (!aceptado) {
     await traza(sql, {
       slug: op.slug, urlVieja: op.seguimiento_url, urlNueva, diag: r.diag, aplicado: false,
     })
@@ -192,6 +212,7 @@ async function main() {
   })
   await traza(sql, {
     slug: op.slug, urlVieja: op.seguimiento_url, urlNueva, diag: r.diag, aplicado: true,
+    forzadoDudoso: decision.forzado,
   })
   await sql.end()
 
