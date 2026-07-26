@@ -117,3 +117,36 @@ describe('assessLawAnnulments', () => {
     expect(assessLawAnnulments(annul, new Map())).toEqual([])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-132 (26/07/2026) — el parser era ciego a la abreviatura PLURAL y a las enumeraciones.
+//
+// El BOE escribe las referencias múltiples como "arts. 46.4, 80.2 y 347.3". La versión
+// original casaba `artículo`, `artículos`, `art.` y `art`, pero NO `arts.`: tras "art"
+// viene una "s" que no es ni punto ni frontera de palabra. Y aunque hubiera casado el
+// primero, los siguientes de la lista no llevan prefijo, así que se perdían igual.
+//
+// Efecto medido: de la referencia de la STC 68/2021 sobre la LCSP no se extraía NI UN
+// artículo — y por eso el kind `article_annulled_unmarked` llevaba 0 findings.
+describe('parseAnnulledArticles — abreviatura plural y enumeraciones (T-132)', () => {
+  const STC_68_2021 =
+    ', en el Recurso 4261/2018, la inconstitucionalidad y nulidad de los incisos indicados de los arts. 46.4, 80.2 y 347.3 y no conforme con el orden constitucional de competencias lo indicado, por Sentencia 68/2021, de 18 de marzo'
+
+  it('extrae TODOS los artículos de "arts. 46.4, 80.2 y 347.3"', () => {
+    expect(parseAnnulledArticles(STC_68_2021).sort()).toEqual(['347', '46', '80'])
+  })
+
+  it('la forma singular abreviada sigue funcionando', () => {
+    expect(parseAnnulledArticles('se declara la inconstitucionalidad y nulidad del inciso del art. 126.2')).toEqual(['126'])
+  })
+
+  it('la enumeración NO se traga referencias a otra norma', () => {
+    expect(parseAnnulledArticles('la nulidad del art. 5 de la Ley 27/2013')).toEqual([])
+  })
+
+  it('no inventa artículos cuando la enumeración no es de artículos', () => {
+    // "de 18 de marzo" tras la sentencia no debe colarse como artículo 18.
+    expect(parseAnnulledArticles('por Sentencia 68/2021, de 18 de marzo')).toEqual([])
+  })
+})
+

@@ -24,7 +24,17 @@ export interface TcAnnulment {
   texto: string
 }
 
-const ART_RE = /art(?:[íi]culos?|\.|\b)\s*(\d+(?:\s*bis)?)/gi
+// OJO con las abreviaturas: el BOE escribe las enumeraciones como "arts. 46.4, 80.2 y
+// 347.3". La forma PLURAL abreviada ("arts.") no la casaba la versión original
+// —`art` + (`ículos?` | `.` | frontera)— porque tras "art" viene una "s" que no es ni
+// punto ni frontera de palabra. Consecuencia medida el 26/07 (T-132): de la referencia de
+// la STC 68/2021 sobre la LCSP no se extraía NI UN artículo, y por eso el kind
+// `article_annulled_unmarked` llevaba 0 findings.
+const ART_RE = /art(?:[íi]culos?|s?\.|\b)\s*(\d+(?:\s*bis)?)/gi
+// Los siguientes elementos de una enumeración YA NO llevan el prefijo "art":
+// "arts. 46.4, 80.2 y 347.3". Se capturan continuando desde el final del match anterior
+// mientras haya separador de lista (coma / "y") y un número con forma de artículo.
+const ENUM_NEXT = /^\s*(?:\.\d+)?\s*(?:,|\sy)\s*(\d+(?:\.\d+)?)/
 const ANNUL_BEFORE = /\binconstitucional|\bnul(?:idad|o|a|os|as)\b|\banulad/i
 
 /**
@@ -48,6 +58,17 @@ export function parseAnnulledArticles(texto: string): string[] {
     const after = texto.slice(m.index + m[0].length, m.index + m[0].length + 40)
     if (CROSSREF_AFTER.test(after)) continue // referencia a otra norma, no a esta ley
     out.add(m[1].replace(/\s+/g, ' ').trim().toLowerCase())
+
+    // Continuar la enumeración: "arts. 46.4, 80.2 y 347.3" → 80 y 347 no llevan prefijo.
+    let cursor = m.index + m[0].length
+    for (;;) {
+      const resto = texto.slice(cursor, cursor + 40)
+      const e = resto.match(ENUM_NEXT)
+      if (!e) break
+      out.add(e[1].split('.')[0])
+      cursor += e[0].length
+    }
+    ART_RE.lastIndex = Math.max(ART_RE.lastIndex, cursor)
   }
   return [...out]
 }
