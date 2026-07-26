@@ -17,6 +17,13 @@ export interface VigenciaNote {
   texto: string;
   ref: string | null;
   esAnulacion: boolean;
+  /**
+   * La nota declara el precepto NO CONFORME CON EL ORDEN CONSTITUCIONAL DE COMPETENCIAS.
+   * Distinta de `esAnulacion`: el precepto NO es nulo, es inaplicable como básico o en las
+   * CCAA con competencia propia → procede nota de vigencia, NO jubilar preguntas.
+   * (T-132, 26/07/2026. Espejo de lib/laws/boeVigencia.ts — MANTENER EN SYNC.)
+   */
+  esCompetencial?: boolean;
 }
 
 export interface BoeBlock {
@@ -26,6 +33,11 @@ export interface BoeBlock {
 }
 
 const ANULACION_RE = /\b(inconstitucional|nulidad|nulos?|nulas?|se anula)\b/i;
+// Espejo de RE_COMPETENCIAL en lib/laws/notaVigenciaTc.js — MANTENER EN SYNC.
+// El BOE usa esta fórmula en leyes estatales con incidencia autonómica; contiene
+// "constitucional" pero NO "inconstitucional", así que ANULACION_RE no la ve.
+const COMPETENCIAL_RE =
+  /no\s+(?:es|son|resulta[n]?)\s+conforme[s]?\s+con\s+el\s+orden\s+constitucional\s+de\s+competencias/i;
 
 function decode(s: string): string {
   const named: Record<string, string> = {
@@ -54,7 +66,13 @@ export function parseBoeBlock(raw: string): BoeBlock {
       const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null;
       const texto = stripTags(p);
       if (texto && !vigenciaNotes.some((n) => n.texto === texto)) {
-        vigenciaNotes.push({ clase, texto, ref, esAnulacion: ANULACION_RE.test(texto) });
+        vigenciaNotes.push({
+          clase,
+          texto,
+          ref,
+          esAnulacion: ANULACION_RE.test(texto),
+          esCompetencial: COMPETENCIAL_RE.test(texto),
+        });
       }
     }
   }

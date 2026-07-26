@@ -90,7 +90,9 @@ const fetchTexto = async (url) => {
   ).rows
   await c.end()
 
-  console.log(`\n━━━ ${ley.short_name} (${boeId}) — ${arts.length} artículo(s) ${TODOS ? 'de la ley' : 'servidos'}`)
+  // `--json` tiene que salir LIMPIO: es la entrada de otros scripts. Sin esto, el
+  // encabezado se cuela delante del JSON y `require()`/`jq` revientan.
+  if (!AS_JSON) console.log(`\n━━━ ${ley.short_name} (${boeId}) — ${arts.length} artículo(s) ${TODOS ? 'de la ley' : 'servidos'}`)
 
   const indice = await fetchTexto(`${API}/${boeId}/texto/indice`)
   const mapa = mapaBloquesPorArticulo(indice)
@@ -124,8 +126,16 @@ const fetchTexto = async (url) => {
     })
   }
 
+  // ── CAPA ANTI-FALSO-VERDE ──────────────────────────────────────────────────────
+  // Un artículo cuyo bloque no se localiza en el índice del BOE NO se ha comprobado.
+  // Si son muchos, decir "0 hallazgos" es mentir por omisión: fue justo lo que pasó el
+  // 26/07 con la LOPJ (665 de 665 sin bloque, informe "limpio"). Por encima del umbral el
+  // resultado se declara NO CONCLUYENTE y el exit code lo refleja.
+  const ratioCiego = arts.length ? sinBloque / arts.length : 0
+  const noConcluyente = ratioCiego > 0.2
+
   if (AS_JSON) {
-    console.log(JSON.stringify({ ley: ley.short_name, boeId, auditados: arts.length, conNota, sinBloque, hallazgos }, null, 2))
+    console.log(JSON.stringify({ ley: ley.short_name, boeId, auditados: arts.length, conNota, sinBloque, ratioCiego: Number(ratioCiego.toFixed(3)), noConcluyente, hallazgos }, null, 2))
   } else {
     console.log(`    con nota de vigencia: ${conNota} · sin bloque en el BOE: ${sinBloque}`)
     if (!hallazgos.length) console.log('  ✅ ningún artículo servido sin reflejar su pronunciamiento del TC')
@@ -140,8 +150,17 @@ const fetchTexto = async (url) => {
       )
     }
     console.log(`\n=== ${hallazgos.filter((h) => h.clase === 'nulidad').length} 🔴 nulidad / ${hallazgos.filter((h) => h.clase === 'competencial').length} 🟠 competencial ===`)
+    if (noConcluyente) {
+      console.log(
+        `\n⚠️  RESULTADO NO CONCLUYENTE: ${sinBloque} de ${arts.length} artículos (${(ratioCiego * 100).toFixed(0)}%) no se pudieron localizar en el índice del BOE.\n` +
+          '    Esos artículos NO se han comprobado — no interpretar la ausencia de hallazgos como "limpio".\n' +
+          '    Causa habitual: numeración que el índice escribe de otra forma. Revisar mapaBloquesPorArticulo.',
+      )
+    }
   }
-  process.exit(hallazgos.length ? 1 : 0)
+  // exit 1 también si el barrido no es concluyente: un gate no puede pasar en verde
+  // sobre una comprobación que no se ha hecho.
+  process.exit(hallazgos.length || noConcluyente ? 1 : 0)
 })().catch((e) => {
   console.error('ERR', e.message)
   process.exit(2)

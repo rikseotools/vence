@@ -19,7 +19,7 @@ export interface ExtractedArticle {
 }
 
 export interface ExtractedVigencia {
-  notes: { clase: string; texto: string; ref: string | null; esAnulacion: boolean }[]
+  notes: { clase: string; texto: string; ref: string | null; esAnulacion: boolean; esCompetencial?: boolean }[]
   annulledFragments: string[]
 }
 
@@ -194,7 +194,10 @@ export function spanishTextToNumber(text: string | null | undefined): string | n
  * Espejo de lib/laws/boeVigencia.ts (que trabaja sobre la API de datos abiertos). Aquí sobre el
  * HTML de la web. Ambos alimentan articles.vigencia_notes con la misma forma.
  */
-const ANULACION_VIGENCIA_RE = /\b(inconstitucional|nulidad|nulos?|nulas?|se anula)\b/i
+// Copia eliminada: los patrones son los de `lib/laws/notaVigenciaTc.js`, único sitio donde
+// viven. Tener aquí un duplicado fue como se coló el punto ciego competencial (T-132).
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { RE_NULIDAD: ANULACION_VIGENCIA_RE, RE_COMPETENCIAL: COMPETENCIAL_VIGENCIA_RE } = require('./laws/notaVigenciaTc')
 
 function extractVigencia(blockContent: string): ExtractedVigencia | undefined {
   const notes: ExtractedVigencia['notes'] = []
@@ -204,7 +207,13 @@ function extractVigencia(blockContent: string): ExtractedVigencia | undefined {
     const texto = decodeHtmlEntities(p.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
     // El BOE repite el historial de reformas dentro del mismo bloque → deduplicar o el JSONB es ruido.
     if (texto && !notes.some((n) => n.texto === texto)) {
-      notes.push({ clase, texto, ref, esAnulacion: ANULACION_VIGENCIA_RE.test(texto) })
+      notes.push({
+        clase,
+        texto,
+        ref,
+        esAnulacion: ANULACION_VIGENCIA_RE.test(texto),
+        esCompetencial: COMPETENCIAL_VIGENCIA_RE.test(texto),
+      })
     }
   }
   if (!notes.length) return undefined

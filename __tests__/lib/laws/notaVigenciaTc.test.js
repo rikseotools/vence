@@ -98,3 +98,34 @@ describe('notaVigenciaTc — extracción de apartados', () => {
     expect(parseApartados('se declara inconstitucional el inciso destacado')).toEqual([])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTEGRACIÓN: este módulo es el ÚNICO sitio donde viven los patrones. `boeVigencia.ts` y
+// `boe-extractor.ts` los consumen desde aquí en vez de tener su copia — que es justo como
+// se coló el punto ciego competencial: tres copias del regex de anulación y ninguna sabía
+// de la fórmula del orden de competencias.
+describe('notaVigenciaTc — es el núcleo compartido, no un silo', () => {
+  const { parseBoeBlock } = require('@/lib/laws/boeVigencia')
+
+  const BLOQUE_COMPETENCIAL = `
+    <p class="parrafo">4. Los órganos de contratación podrán apreciar la prohibición de contratar.</p>
+    <blockquote><p class="nota_pie">Téngase en cuenta que se declara que el apartado 4 no es conforme con el orden constitucional de competencias, en los términos del fundamento jurídico 6 G) c), por la Sentencia del TC 68/2021, de 18 de marzo. Ref. BOE-A-2021-6614</p></blockquote>`
+
+  const BLOQUE_NULIDAD = `
+    <p class="parrafo">4. Texto del artículo.</p>
+    <blockquote><p class="nota_pie">Téngase en cuenta que se declara inconstitucional y nulo el párrafo segundo del apartado 4 por la Sentencia del TC 68/2021, de 18 de marzo. Ref. BOE-A-2021-6614</p></blockquote>`
+
+  it('parseBoeBlock marca esCompetencial usando los patrones de este módulo', () => {
+    const b = parseBoeBlock(BLOQUE_COMPETENCIAL)
+    expect(b.vigenciaNotes).toHaveLength(1)
+    expect(b.vigenciaNotes[0].esCompetencial).toBe(true)
+    expect(b.vigenciaNotes[0].esAnulacion).toBe(false) // NO es nulidad: no se jubilan preguntas
+    expect(b.vigenciaNotes[0].ref).toBe('BOE-A-2021-6614')
+  })
+
+  it('y sigue marcando esAnulacion en las de nulidad', () => {
+    const b = parseBoeBlock(BLOQUE_NULIDAD)
+    expect(b.vigenciaNotes[0].esAnulacion).toBe(true)
+    expect(b.vigenciaNotes[0].esCompetencial).toBe(false)
+  })
+})

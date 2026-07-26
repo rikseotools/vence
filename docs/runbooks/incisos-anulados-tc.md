@@ -63,3 +63,44 @@ Para **cada hallazgo** (`article_annulled_unmarked`):
   **26** (STC 111/2016), art. **57 bis** (STC 41/2016) — revisar.
 
 Relacionado: `docs/roadmap/verificacion-completitud-leyes.md`, memoria del incidente Alfonso.
+
+## Segunda clase: los pronunciamientos COMPETENCIALES (añadido 26/07/2026, T-132)
+
+El TC no solo anula. En leyes estatales con incidencia autonómica usa una fórmula muy
+frecuente que **no contiene la palabra "inconstitucional"**:
+
+> *"Téngase en cuenta que se declara que el apartado 4 **no es conforme con el orden
+> constitucional de competencias**, en los términos del fundamento jurídico 6 G) c), por la
+> Sentencia del TC 68/2021, de 18 de marzo. Ref. BOE-A-2021-6614"*
+
+**Dos motivos por los que se escapaba entera:**
+
+1. El filtro de nulidad exige el prefijo `in-` (para no casar con "constitucionalidad"), así
+   que "orden **constitucional** de competencias" pasa de largo.
+2. **El análisis del BOE no la enumera por artículo.** Para la LCSP dice literalmente *"y no
+   conforme con el orden constitucional de competencias **lo indicado**"*, sin decir qué.
+   El dato por-artículo SOLO está en la nota del texto consolidado.
+
+**Comando:**
+
+```bash
+node scripts/audit-notas-vigencia-tc.cjs "Ley 9/2017"     # solo artículos SERVIDOS
+node scripts/audit-notas-vigencia-tc.cjs "Ley 9/2017" --todos --json
+```
+
+**La remediación NO es la misma:**
+
+| Clase | Qué significa | Qué se hace |
+|---|---|---|
+| `nulidad` 🔴 | el inciso **no existe** | nota de vigencia **+ revisar la clave** de las preguntas de ese artículo |
+| `competencial` 🟠 | el precepto **no es nulo**: es inaplicable como básico o en CCAA con competencia propia | **nota de vigencia y punto** — NO se jubilan preguntas |
+
+Una pregunta que dé por aplicable sin matiz un apartado declarado no conforme sí es
+impugnable, pero la respuesta es matizar, no retirar.
+
+**⚠️ "NO CONCLUYENTE" no es "limpio".** Si el barrido avisa de que muchos artículos no se
+localizaron en el índice del BOE, esos **no se han comprobado**. Pasó con la LOPJ: sus 713
+artículos van en letra ("Artículo primero") y el mapeo solo entendía dígitos → 665 de 665
+sin comprobar e informe de "0 hallazgos". Arreglado compartiendo el conversor
+`lib/laws/spanishNumber.js`, pero el aviso queda como red.
+

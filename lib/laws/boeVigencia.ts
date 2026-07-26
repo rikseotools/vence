@@ -36,6 +36,14 @@ export interface VigenciaNote {
   ref: string | null
   /** La nota declara inconstitucional/nulo algo. */
   esAnulacion: boolean
+  /**
+   * La nota declara el precepto NO CONFORME CON EL ORDEN CONSTITUCIONAL DE COMPETENCIAS.
+   * Se distingue de `esAnulacion` a propósito: aquí el precepto NO es nulo, es inaplicable
+   * como básico o en las CCAA con competencia propia → procede nota de vigencia, no
+   * jubilar preguntas. Y no lo cazaba `ANULACION_RE`, que exige el prefijo `in-` para no
+   * confundirse con "constitucionalidad" (T-132, 26/07/2026).
+   */
+  esCompetencial?: boolean
 }
 
 export interface BoeBlock {
@@ -50,7 +58,11 @@ export interface BoeBlock {
   highlightedFragments: string[]
 }
 
-const ANULACION_RE = /\b(inconstitucional|nulidad|nulos?|nulas?|se anula)\b/i
+// Los patrones viven en `notaVigenciaTc.js` (JS plano) porque los comparten también los
+// scripts `.cjs` (auditores), que no pueden importar un `.ts`. Una copia por consumidor es
+// exactamente como se coló el punto ciego competencial.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { RE_NULIDAD: ANULACION_RE, RE_COMPETENCIAL } = require('./notaVigenciaTc')
 
 /** Decodifica las entidades que usa el BOE. Sin esto el texto queda con `&aacute;` y compañía. */
 function decode(s: string): string {
@@ -88,7 +100,13 @@ export function parseBoeBlock(raw: string): BoeBlock {
       // El bloque del BOE repite el historial de reformas (el art. 58 de la LO 4/2000 trae la
       // MISMA nota varias veces). Sin deduplicar, el JSONB guardado es ruido.
       if (texto && !vigenciaNotes.some((n) => n.texto === texto)) {
-        vigenciaNotes.push({ clase, texto, ref, esAnulacion: ANULACION_RE.test(texto) })
+        vigenciaNotes.push({
+          clase,
+          texto,
+          ref,
+          esAnulacion: ANULACION_RE.test(texto),
+          esCompetencial: RE_COMPETENCIAL.test(texto),
+        })
       }
     }
   }
