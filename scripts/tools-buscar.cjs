@@ -18,7 +18,17 @@ const fs = require('fs')
 const path = require('path')
 
 const REPO = path.resolve(__dirname, '..')
-const terminos = process.argv.slice(2).filter((a) => !a.startsWith('-')).map((s) => s.toLowerCase())
+// Se TROCEA cada argumento por espacios: una consulta entre comillas llegaba como una sola
+// frase literal, y entonces `npm run tools:buscar -- "batch generado"` no encontraba
+// `scripts/insertar-batch-generado.cjs` — la forma natural de teclearlo fallaba. Medido el
+// 26/07/2026: con el pipeline de generación ya registrado, esa consulta seguía dando CERO.
+// Es la misma ceguera que el registro viene a evitar, un nivel más abajo: da igual estar
+// registrado si la búsqueda con la que se busca no te encuentra.
+const terminos = process.argv
+  .slice(2)
+  .filter((a) => !a.startsWith('-'))
+  .flatMap((s) => s.toLowerCase().split(/\s+/))
+  .filter(Boolean)
 
 if (!terminos.length) {
   console.error('\nUso: npm run tools:buscar -- <palabra> [palabra2 ...]\n')
@@ -27,8 +37,17 @@ if (!terminos.length) {
   process.exit(2)
 }
 
+// Los guiones y guiones bajos pasan a espacio en LOS DOS lados de la comparación: los ficheros
+// del repo se llaman `insertar-batch-generado.cjs` y `seguimiento_url`, y quien busca escribe
+// «batch generado» o «seguimiento url». Sin esto, el nombre del propio fichero es lo único que
+// no lo encuentra.
 const norm = (s) =>
-  String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  String(s)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
 const casa = (texto) => terminos.some((t) => norm(texto).includes(norm(t)))
 
 function leer(rel) {

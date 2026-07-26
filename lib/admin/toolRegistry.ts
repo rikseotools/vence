@@ -366,6 +366,102 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'bloquea reactivar un artículo que no esté en ningún scope. Verifica lo escrito dentro de la ' +
       'transacción y refresca la MV.',
   },
+
+  // ── PIPELINE DE GENERACIÓN DE PREGUNTAS ────────────────────────────────────────────────────
+  // Se registran los cinco pasos el 26/07/2026 porque `tools:buscar "batch generado"` devolvía
+  // CERO herramientas: el pipeline más usado del repo era invisible para la pregunta "¿esto ya
+  // existe?". El trinquete de `lifecycle_state` ya los CONTABA como escritores, pero contar no es
+  // describir — quien no supiera que existen los habría reconstruido. Es el silo que T-130 vino a
+  // cerrar, aquí en la pieza que más se toca. Van en ORDEN de uso; el manual es el mismo para los
+  // cinco y explica los pasos 1 a 10.
+  verificar_articulos_vs_boe: {
+    titulo: 'Paso 1: comprobar que el texto de un artículo en BD coincide con el BOE VIGENTE antes de generar sobre él',
+    ruta: 'scripts/verificar-articulos-vs-boe.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'No escribe nada. `<law_slug> <BOE-ID> [<art>…]`; sin artículos verifica todos los activos ' +
+      '(1 fetch por artículo, sé considerado). Es la ÚNICA capa que compara el `content` contra la ' +
+      'fuente: los gates posteriores comparan la pregunta contra el `content`, así que un artículo ' +
+      'desactualizado pasa entero el pipeline y se enseña Derecho derogado. Elige la versión por ' +
+      '`fecha_vigencia` (los `<version>` del BOE NO vienen en orden) vía `lib/laws/boeBloqueVigente`. ' +
+      'Avisa además de notas de vigencia diferida. Ordena natural, así que verifica también los ' +
+      '`bis`/`ter`.',
+  },
+  simular_batch_preinsercion: {
+    titulo: 'Paso 2: gate MECÁNICO de un borrador de preguntas ANTES de insertarlo en BD',
+    ruta: 'scripts/simular-batch-preinsercion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'No escribe nada: lee el JSON del borrador y los artículos de RDS. Toda la lógica vive en el ' +
+      'núcleo PURO `lib/generacion/simularBatch.js` (testeado). Existe para que un defecto que caza ' +
+      'una regex no se descubra con las preguntas ya en BD. GOTCHA HISTÓRICO (26/07): trataba ' +
+      '`NO_LITERAL` como AVISO mientras el gate de BD lo trata como defecto duro, así que daba ' +
+      '"limpio para insertar" a lotes que el otro rechazaba — medido en el T204 de T-045: 5 de 14 ' +
+      'preguntas reescritas EN BD en vez de en el borrador. Ya bloquea en PARIDAD. Hermano de ' +
+      '`verificar_batch_generado`: si los dos discrepan, el simulador no sirve para nada.',
+  },
+  insertar_batch_generado: {
+    titulo: 'Paso 3: insertar un borrador de preguntas como `draft` (invisible), con dedup e invariantes',
+    ruta: 'scripts/insertar-batch-generado.cjs',
+    estado: 'vivo',
+    escribe: ['lifecycle_state'],
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      '`<fichero.json> <law_slug> <batch_id>`. Entra todo como `draft` → `is_active=false` (columna ' +
+      'GENERATED), así que nada se sirve hasta aprobar. Comprueba dedup contra las preguntas previas ' +
+      'de la ley y 6 invariantes sobre una fila de prueba. GOTCHA: **aborta si el batch_id ya ' +
+      'existe** (Paso 2-bis), porque el tag es la unidad de aprobación y el 26/07 dos sesiones ' +
+      'compusieron el mismo tag a mano → 21 preguntas bajo un tag, y aprobar habría transicionado ' +
+      'trabajo ajeno sin auditar. Usa sufijo de sesión en el tag. Deja los ids en un JSON para ' +
+      'poder re-taguear si hace falta.',
+  },
+  verificar_batch_generado: {
+    titulo: 'Paso 4: gate MECÁNICO del batch ya en BD (literalidad de la clave, citas, tells de forma, distribución)',
+    ruta: 'scripts/verificar-batch-generado.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'No escribe: lee de RDS por `batch_id`. Es la PUERTA de `aprobar_batch_generado`, que se niega ' +
+      'a aprobar si no está verde. Trata `NO_LITERAL` como defecto DURO: en un borrador nuevo la ' +
+      'clave se ancla al literal del artículo, no se adjudica (la adjudicación "condensación válida" ' +
+      'nació para RECLASIFICAR preguntas ya en el banco, no para escribir). Avisa de `CORRECTA ' +
+      'PARCIAL` cuando la cita sigue más allá de la opción; la exención por "cláusula ya en el ' +
+      'enunciado" solo reconoce la cláusula LITERAL, así que un acotamiento semántico correcto no ' +
+      'limpia el aviso y se adjudica a mano. Reporta por POSICIÓN en el lote: al reparar, usar ese ' +
+      'índice y no el número de artículo (varias preguntas comparten artículo).',
+  },
+  auditar_batch_input: {
+    titulo: 'Paso 5: empaquetar el batch + los artículos citados para la auditoría CIEGA por LLM',
+    ruta: 'scripts/auditar-batch-input.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'No escribe: `<batch_id> <salida.json> [--split N]`. Adjunta el texto del artículo preguntado ' +
+      'y de los que citan las explicaciones, para que el auditor pueda verificar las remisiones. ' +
+      'LÍMITE CONOCIDO (T-149): resuelve el número de la cita contra la ley de la PREGUNTA, así que ' +
+      'una cita a otra norma («el artículo 31 de la Ley 58/2003» desde el reglamento) trae el ' +
+      'artículo equivocado, y las remisiones que viven en el TEXTO del artículo no se extraen. ' +
+      'Mitigación: nombrar siempre la ley al citar un artículo ajeno, y pedirle al auditor que diga ' +
+      '"me falta el art. X" en vez de juzgar contra el texto que no tiene.',
+  },
+  aprobar_batch_generado: {
+    titulo: 'Paso 6: transicionar un batch `draft` → `approved` (lo hace VISIBLE), con gate y resumen de auditoría',
+    ruta: 'scripts/aprobar-batch-generado.cjs',
+    estado: 'vivo',
+    escribe: ['lifecycle_state'],
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      '`<batch_id> "<resumen de auditoría>"` — el resumen es POSICIONAL y se exige ≥80 chars: ' +
+      'aprobar sin auditar tiene que costar mentir por escrito. Corre el gate de BD y se niega si no ' +
+      'está verde. Transiciona por `transition_question_state` (nunca UPDATE directo de ' +
+      '`lifecycle_state`: el trigger lo registraría como `bypass_detected`). Antes de escribir ' +
+      'IMPRIME EL ALCANCE DE VISIBILIDAD —qué temas de qué oposiciones van a servir estas preguntas—, ' +
+      'que es el guardarraíl que cazó que unas preguntas de un tema oculto se servían además a una ' +
+      'oposición activa por compartir `topic_scope`. Emite `question_batch_approved` en ' +
+      '`observable_events`.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

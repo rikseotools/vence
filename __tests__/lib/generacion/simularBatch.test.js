@@ -59,6 +59,44 @@ describe('simularBatch — contrato de los núcleos (regresión del bug de integ
   })
 })
 
+// ── PARIDAD DE SEVERIDAD CON EL GATE DE BD (26/07/2026) ──
+// `verificar-batch-generado.cjs` trata NO_LITERAL como "defecto duro" (❌) y aquí era un
+// AVISO. Ese descuadre vaciaba de sentido al simulador: dio «Limpio para insertar» a
+// `gen_atc_t204_2026-07-26_s26c` con 5 NO_LITERAL en amarillo y, ya insertadas las 14 en BD,
+// el gate de BD las tumbó (9/14) → 5 preguntas reescritas EN BD en vez de en el borrador.
+// El simulador solo sirve si adelanta el MISMO veredicto.
+describe('simularBatch — NO_LITERAL bloquea, en paridad con verificar-batch-generado', () => {
+  // Condensación fiel del art. 6.b): reordena y resume sin añadir nada ajeno. Es
+  // exactamente el caso que antes pasaba en amarillo.
+  const CONDENSADA = 'No gravar negocios, actos o hechos realizados fuera del territorio de la Entidad impositora'
+
+  it('una clave que condensa el artículo (sin ser subcadena literal) es ERROR, no aviso', () => {
+    const r = analizarPregunta(preguntaBuena({ option_a: CONDENSADA }), ART_6B)
+    expect(r.errores.some((e) => /NO_LITERAL/.test(e))).toBe(true)
+    expect(r.avisos.some((a) => /NO_LITERAL/.test(a))).toBe(false)
+  })
+
+  it('el error dice qué hacer: anclar la clave al texto, no adjudicar', () => {
+    const r = analizarPregunta(preguntaBuena({ option_a: CONDENSADA }), ART_6B)
+    const e = r.errores.find((x) => /NO_LITERAL/.test(x))
+    expect(e).toMatch(/ancla la clave al texto/)
+  })
+
+  it('no toca el marco INTRUSO: ahí lo que debe ser literal son los DISTRACTORES', () => {
+    // En "¿cuál NO figura?" la correcta es por construcción la inventada, así que su
+    // NO_LITERAL no puede bloquear. Regresión del descuadre inverso.
+    const intrusa = preguntaBuena({
+      question_text: 'Según el artículo 6.b) del TRLRHL, ¿cuál de los siguientes NO figura entre los principios enunciados?',
+      option_a: 'Gravar los negocios celebrados fuera del territorio de la Entidad impositora',
+      option_b: CORRECTA_6B,
+      option_c: 'No gravar, como tales, negocios, actos o hechos celebrados o realizados fuera del territorio de la Entidad impositora',
+      option_d: 'ni el ejercicio o la transmisión de bienes, derechos u obligaciones que no hayan nacido ni hubieran de cumplirse en dicho territorio',
+      correct_option: 0,
+    })
+    expect(analizarPregunta(intrusa, ART_6B).errores.some((e) => /NO_LITERAL/.test(e))).toBe(false)
+  })
+})
+
 describe('simularBatch — §2.2-bis tell de longitud', () => {
   it('marca el patrón prohibido: correcta larga frente a distractores diminutos', () => {
     const { errores } = analizarPregunta(
