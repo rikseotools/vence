@@ -16,6 +16,8 @@ export interface VigenciaNoteLike {
   texto: string
   ref?: string | null
   esAnulacion?: boolean
+  /** `nota_pie…` = viene del BOE; cualquier otro valor = nota editorial nuestra. */
+  clase?: string
 }
 
 export interface VigenciaData {
@@ -77,7 +79,14 @@ export function annotateVigencia(
     return `> ${n.esAnulacion ? '⚠️ ' : ''}${n.texto}${ref}`
   })
 
-  return `${out}\n\n---\n\n**Notas de vigencia (BOE):**\n\n${lineas.join('\n>\n')}`
+  // El encabezado NO puede decir "(BOE)" si alguna nota no viene del BOE. Desde T-138
+  // (26/07/2026) se admiten notas EDITORIALES nuestras —p. ej. avisar de que una remisión
+  // del texto consolidado apunta a la numeración de una ley ya derogada— y atribuirlas al
+  // boletín sería sencillamente falso. Se detecta por `clase`: las del BOE llegan como
+  // `nota_pie`, `nota_pie_2`…; las nuestras con un `clase` propio.
+  const soloBoe = orden.every((n) => /^nota_pie/i.test(String(n.clase || '')))
+  const cabecera = soloBoe ? '**Notas de vigencia (BOE):**' : '**Notas de vigencia:**'
+  return `${out}\n\n---\n\n${cabecera}\n\n${lineas.join('\n>\n')}`
 }
 
 /** ¿Hay que avisar al usuario de que este artículo sirve texto sin vigencia? */

@@ -88,3 +88,40 @@ describe('annotateVigencia — no romper ni inventar', () => {
     expect(annotateVigencia(TEXTO, VIGENCIA)).toMatch(/~~.+~~/s)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-138 (26/07/2026): el encabezado no puede atribuir al BOE una nota que no es suya.
+//
+// Desde T-138 se admiten notas EDITORIALES nuestras (avisar de que una remisión del texto
+// consolidado apunta a la numeración de una ley derogada: el art. 25 de la Ley 29/1987 y
+// el art. 50 del RDL 1/1993 remiten a "los artículos 64 y siguientes" de la LGT 230/1963,
+// hoy los 66 y ss. de la LGT 58/2003). El BOE conserva la remisión original, así que el
+// articulado NO se toca: se anota. Pero firmarla como "(BOE)" sería falso.
+describe('annotateVigencia — origen de la nota en el encabezado', () => {
+  const nota = (clase: string, esAnulacion = false) => ({
+    notes: [{ clase, texto: 'texto de la nota', ref: 'BOE-A-2003-23186', esAnulacion }],
+    annulledFragments: [],
+  })
+
+  it('nota del BOE (`nota_pie`) → encabezado con "(BOE)"', () => {
+    expect(annotateVigencia('art', nota('nota_pie', true) as never)).toContain('**Notas de vigencia (BOE):**')
+  })
+
+  it('nota editorial nuestra → encabezado SIN "(BOE)"', () => {
+    const out = annotateVigencia('art', nota('nota_vence') as never)
+    expect(out).toContain('**Notas de vigencia:**')
+    expect(out).not.toContain('(BOE):')
+  })
+
+  it('si se mezclan, manda la prudencia: no se firma como BOE', () => {
+    const mixta = {
+      notes: [
+        { clase: 'nota_pie', texto: 'del boletín', ref: null, esAnulacion: true },
+        { clase: 'nota_vence', texto: 'nuestra', ref: null, esAnulacion: false },
+      ],
+      annulledFragments: [],
+    }
+    expect(annotateVigencia('art', mixta as never)).toContain('**Notas de vigencia:**')
+  })
+})
+
