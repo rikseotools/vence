@@ -1363,7 +1363,10 @@ export class ContentHealthSweepService {
             r.invariante === 'I1_orden' ||
             r.invariante === 'I2_duplicado' ||
             r.invariante === 'I9_tipo_incoherente' ||
-            r.invariante === 'I10_inscripcion_sin_convocatoria',
+            r.invariante === 'I10_inscripcion_sin_convocatoria' ||
+            // I11 (T-142): fila y hitos con fechas distintas del mismo plazo → la landing muestra
+            // las dos. Misinformación visible, mismo cubo que I10.
+            r.invariante === 'I11_fechas_inscripcion_vs_hitos',
         );
         if (graves.length)
           add(

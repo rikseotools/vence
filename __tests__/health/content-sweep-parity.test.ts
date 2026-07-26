@@ -301,6 +301,7 @@ describe('cableado de invariantes de timeline (vista ↔ sweep)', () => {
     'I2_duplicado',
     'I9_tipo_incoherente',
     'I10_inscripcion_sin_convocatoria', // T-124: misinformación visible → error
+    'I11_fechas_inscripcion_vs_hitos', // T-142: la fila y sus hitos, dos fechas del mismo plazo
     'I7_prevision_caducada',
     'I8_status_contradice_fecha',
   ]
