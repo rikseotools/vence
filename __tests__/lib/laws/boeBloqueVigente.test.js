@@ -413,12 +413,12 @@ describe('bloqueVigente — corta en "Redacción anterior:"', () => {
     <p class="parrafo">Inspecciones conjuntas.</p>
     <p class="parrafo">1. Son inspecciones conjuntas las actuaciones VIGENTES.</p>
     <p class="parrafo">Redacci&oacute;n anterior:</p>
-    <p class="parrafo">"Art&iacute;culo 177 quinquies. Presencia en las actuaciones de asistencia."</p>
-    <p class="parrafo">1. Texto DEROGADO que no debe servirse.</p>
+    <p class="parrafo">"Art&iacute;culo 177 quinquies. Presencia en las actuaciones de asistencia.</p>
+    <p class="parrafo">1. Texto DEROGADO que no debe servirse."</p>
   </version>
 </bloque></data></response>`
 
-  it('se queda con el texto vigente y tira todo lo posterior al marcador', () => {
+  it('quita el bloque citado aunque abarque VARIOS párrafos (caso 177 quinquies)', () => {
     const r = bloqueVigente(XML)
     expect(r.texto).toContain('actuaciones VIGENTES')
     expect(r.texto).not.toContain('Redacción anterior')
@@ -426,15 +426,61 @@ describe('bloqueVigente — corta en "Redacción anterior:"', () => {
     expect(r.texto).not.toContain('Presencia en las actuaciones de asistencia')
   })
 
-  it('no corta nada si el bloque no trae el marcador', () => {
+  it('no quita nada si el bloque no trae el marcador', () => {
     const sinMarcador = XML.replace(/<p class="parrafo">Redacci&oacute;n anterior:<\/p>/, '')
-    // Sin marcador se conserva TODO (incluido lo que aquí simula texto viejo): el módulo no
-    // adivina, solo obedece al marcador del BOE.
+    // Sin marcador se conserva TODO: el módulo no adivina, solo obedece al marcador del BOE.
     expect(bloqueVigente(sinMarcador).texto).toContain('DEROGADO')
+  })
+
+  it('también con el bloque citado en UN solo párrafo', () => {
+    const unParrafo = XML.replace(
+      /<p class="parrafo">"Art&iacute;culo 177 quinquies[\s\S]*?no debe servirse\."<\/p>/,
+      '<p class="parrafo">"c) Texto DEROGADO en una sola línea."</p>',
+    )
+    expect(bloqueVigente(unParrafo).texto).not.toContain('DEROGADO')
+    expect(bloqueVigente(unParrafo).texto).toContain('actuaciones VIGENTES')
   })
 
   it('tolera el plural y el acento perdido ("Redacciones anteriores")', () => {
     const plural = XML.replace('Redacci&oacute;n anterior:', 'Redacciones anteriores:')
     expect(bloqueVigente(plural).texto).not.toContain('DEROGADO')
   })
+
+  // ⚠️ EL CASO QUE SE ME ESCAPÓ: el marcador va EN MEDIO y el artículo CONTINÚA.
+  // Primer intento del arreglo: "cortar todo lo que sigue al marcador". En el art. 117 de la
+  // LGT el inserto está entre la letra c) y la d), así que el artículo se quedaba en 552 de
+  // sus 2.189 caracteres — un truncamiento silencioso, peor que el defecto original. Mis
+  // tests no lo cazaron porque el XML sintético ponía el marcador al final, copiando el caso
+  // del 177 quinquies. De ahí este test.
+  const XML_EN_MEDIO = `<?xml version="1.0" encoding="utf-8"?>
+<response><data><bloque id="a117">
+  <version fecha_vigencia="20230101">
+    <p class="articulo">Artículo 117. La gestión tributaria.</p>
+    <p class="parrafo">1. La gestión tributaria consiste en:</p>
+    <p class="parrafo">a) La recepción y tramitación de declaraciones.</p>
+    <p class="parrafo">c) El reconocimiento VIGENTE de beneficios fiscales.</p>
+    <p class="parrafo">T&eacute;ngase en cuenta que esta letra c) entra en vigor el 1 de enero de 2023.</p>
+    <p class="cita_con_pleca">Redacci&oacute;n anterior:</p>
+    <p class="parrafo">"c) El reconocimiento DEROGADO de los beneficios fiscales."</p>
+    <p class="parrafo">d) El control de la obligación de facturar.</p>
+    <p class="parrafo">n) Las demás actuaciones de aplicación de los tributos.</p>
+  </version>
+</bloque></data></response>`
+
+  it('quita SOLO el bloque citado y conserva el articulado posterior', () => {
+    const r = bloqueVigente(XML_EN_MEDIO)
+    expect(r.texto).toContain('reconocimiento VIGENTE')
+    expect(r.texto).not.toContain('DEROGADO')
+    expect(r.texto).not.toContain('Redacción anterior')
+    // Lo que el corte agresivo se llevaba por delante:
+    expect(r.texto).toContain('d) El control de la obligación de facturar')
+    expect(r.texto).toContain('n) Las demás actuaciones')
+  })
+
+  it('la nota de vigencia sigue separándose, no se cuela en el texto', () => {
+    const r = bloqueVigente(XML_EN_MEDIO)
+    expect(r.texto).not.toContain('Téngase en cuenta')
+    expect(r.notaVigencia).toMatch(/1 de enero de 2023/)
+  })
 })
+
