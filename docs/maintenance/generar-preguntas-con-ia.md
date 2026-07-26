@@ -337,6 +337,18 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 > Regla: antes de descartar un distractor por «eso es de otra norma», **búscalo en la ley que se pregunta**.
 > Estas leyes traen un artículo de definiciones (aquí el art. 2) donde suele estar justo lo que se iba a
 > atribuir fuera.
+>
+> 🔁 **Y el patrón REINCIDE dentro del mismo lote: hay que barrer, no parchear.** En ese mismo artículo 29
+> bis, tras reparar el bullet de la «lectura fácil», el Paso 9 encontró **otro bullet con el mismo vicio**:
+> llamaba «principio» a la **vida independiente**, cuando el art. 2 la define como *«la **situación** en la
+> que la persona con discapacidad ejerce el poder de decisión sobre su propia existencia»* — y sí define
+> como «el principio en virtud del cual…» la **normalización** y la **inclusión social**. El contraste es
+> del propio artículo de definiciones.
+>
+> Práctica que se deriva: cuando una ley trae artículo de definiciones y los distractores se toman de él,
+> **contrastar la CALIFICACIÓN de cada noción** (principio / situación / condición / medida / estrategia)
+> una por una, y hacerlo sobre TODOS los bullets del lote a la vez. Reparar el que te señalan y seguir
+> deja los hermanos vivos: aquí el segundo caso estaba a dos preguntas de distancia.
 
 > ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
 > Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
