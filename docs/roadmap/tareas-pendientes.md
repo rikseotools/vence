@@ -15,6 +15,15 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-064] ✅ [CERRADA 26/07 — el diagnóstico de la ficha no se sostenía] `law_sections`: leyes que el poblador rechazaba
+- **Qué decía la ficha:** *"~58 leyes de 3 niveles (libro>título>capítulo) que el parser RECHAZA a propósito"*, y que soportarlas era un rediseño con implicaciones en la app.
+- **Lo MEDIDO con `--sweep` antes de tocar nada, que es otra cosa:** 55 rechazadas por **45 `sin_secciones`, 7 `rango_vacio` y solo 3 `solape`** — el caso de 3 niveles que la ficha daba por dominante es el de **3 leyes**. Y había **15 leyes LISTAS** que solo necesitaban `--apply`. LECrim, CP y Ley 9/2017, citadas como rechazadas, ya estaban pobladas.
+- **Resultado: `law_sections` pasa de ~130 leyes a 268 (1.828 secciones).** Verificado en producción: `/leyes/codigo-civil` sirve la estructura por títulos con su rúbrica en **8 de 8** peticiones, en vez de volcar 1.911 artículos en lista plana.
+- **Dos arreglos, cada uno con su causa real (commit `18aadb118`):**
+  1. **`rango_vacio` ya no tumba la ley entera.** La causa habitual no es un parser desalineado: son artículos **DEROGADOS**. El Código Civil se caía por `rango_vacio(XI:314-324)` (suprimidos por la **Ley 8/2021**, reforma de la discapacidad) y por esa única sección se perdían las otras 45. Ahora la vacía se descarta, se informa de cuáles, y se conserva la intención protectora con un **umbral del 30 %**: por encima ya no es derogación sino desalineación. Criterio en el núcleo puro `validarSecciones`, con 6 tests.
+  2. **Slug duplicado.** En las leyes-código los títulos **reinician por libro**, así que el Código Civil tiene cuatro "Título I" y el slug chocaba contra `law_sections_slug_key`. Se desempata con el `blockId` del BOE, único dentro de la ley y **estable entre ejecuciones** (un índice posicional no lo garantiza).
+- **Lo que la ficha temía NO hizo falta:** no hubo que modelar el nivel LIBRO ni tocar la app. La página de ley pinta `title` y el rango, no el número, así que con la rúbrica real del BOE ("Título I. De los españoles y extranjeros") queda legible sin cambios de render. Lo que queda va en [T-140].
+
 ### [T-096] ✅ [CERRADA 26/07 — pendiente SOLO avisar a Maricarmen] Desarrollar el concepto APPCC en el Tema 15 de Cuidador (Dip. Córdoba)
 - **Qué era:** feedback `707f86bc` (mamenjulian23 / Maricarmen, 24/07): *"¿podrían desarrollar más el concepto APPCC?"*.
 - **El hueco era mayor de lo que decía la ficha (medido en RDS):** del Reglamento (CE) 852/2004 solo había **6 artículos** importados (el 2 y cinco capítulos del Anexo II) — **el artículo 5, que ES el del APPCC, NO estaba** — y en **TODO el banco había 0 preguntas activas** que mencionaran APPCC o puntos de control crítico.
@@ -414,7 +423,21 @@
 
 ## Abiertas
 
+### [T-140] 🟡 [ABIERTO 26/07] Las 51 leyes que siguen sin estructura en `law_sections`
+- **Qué:** tras [T-064] quedan **51 leyes rechazadas** por el poblador, en tres grupos con causas DISTINTAS:
+  - **45 `sin_secciones`** — el parser no encuentra ningún bloque de título ni capítulo. Es el grupo gordo; hay que mirar qué ids usa su índice (el Código Civil ya enseñó que hay rúbricas fuera del patrón, como `Art 1` abreviado).
+  - **3 `solape`** — el caso de 3 niveles REAL (libro>título>capítulo con títulos que reinician). Aquí sí haría falta modelar el nivel LIBRO o cualificar el número por libro.
+  - **3 `demasiadas_vacias`** — más del 30 % de sus secciones sin artículos: o falta importar articulado o el rango está desalineado. Mirarlas una a una **antes** de tocar el umbral.
+- **Por qué importa:** sin estructura, `/leyes/<slug>` cae a lista plana de artículos. Es lo que le pasaba al Código Civil con 1.911.
+- **Cómo:** `node scripts/poblar-law-sections-boe.cjs --sweep --limit 300` (dry-run) da el motivo por ley. Empezar por `sin_secciones`, que es el más numeroso y probablemente el más mecánico.
+
 ### [T-137] 🟠 [ABIERTO 26/07 — ficha escrita 26/07] Parlamento de Andalucía T12 escopa la Ley 22/2009 ENTERA para un epígrafe que solo pide el modelo de financiación
+- **⚠️ Ficha DUPLICADA y fusionada el 26/07:** existían dos entradas `T-137` para esta misma tarea (ids repetidos → el guardarraíl de CI en rojo y el `claim` roto, porque dos tareas compartían id). Se han unido conservando el contenido de ambas.
+- **Qué:** `oficial_de_gestion_parlamento_de_andalucia` **T12** (*"Distribución de competencias entre el Estado y las comunidades autónomas"*) escopa la **Ley 22/2009 con `article_numbers = NULL`**, es decir sus **69 artículos**. Su epígrafe pide: *"Generalidades. Las normas de atribución y delimitación de las competencias. El actual modelo de financiación de las comunidades autónomas de régimen común."*
+- **Por qué es sobre-inclusión:** la ley entera incluye toda la maquinaria de **gestión** de los tributos cedidos —delegación de competencias (art. 54), colaboración entre Administraciones (art. 61), puntos de conexión impuesto por impuesto (arts. 26-33), órganos y juntas arbitrales— que no es "el modelo de financiación" que pide el epígrafe. El tema está **`disponible=true`**, así que eso se sirve HOY a sus usuarios.
+- **Impacto:** 🟠 preguntas fuera de programa en silencio, en un tema visible. Es la banda que el detector `scope_over_inclusion_suspect` busca (epígrafe que enumera sub-materias concretas frente a scope de ley entera).
+- **Cómo:** mapear el epígrafe a la estructura de la Ley 22/2009 y recortar `article_numbers` a lo que pide (el Título/capítulos del modelo de financiación y los puntos de conexión si el epígrafe los ampara), con simulación orphan-check: las preguntas fuera dejan de servirse en ESTE tema pero siguen en BD para los temas que sí las piden (ATC T221). Runbook `verificar-epigrafes-scope.md` §Sobre-inclusión. **NUNCA recortar un bloque que el epígrafe sí pide.**
+- **Origen:** 26/07, al generar T221 de [T-045]: el guardarraíl de visibilidad del aprobador avisó de que los arts. 54 y 61 se servían también aquí. La sobre-inclusión es PREEXISTENTE, no la causó esa generación.
 - **Confirmado el hecho:** `oficial_de_gestion_parlamento_de_andalucia` T12 tiene la Ley 22/2009 con **`article_numbers = NULL`**, que por convención del proyecto significa **toda la ley** (69 artículos, 24 preguntas). No es una fila rota (`'{}'`) — se comprobó explícitamente, porque el arreglo es distinto en cada caso.
 - **Estructura oficial (BOE-A-2009-20375, rúbricas traídas del BOE):** Preliminar *Objeto de la Ley* (1) · **I *El Sistema de Financiación de las CCAA* (2-21)** · **II *Los Fondos de Convergencia Autonómica* (22-24)** · III *Cesión de tributos del Estado a las CCAA* (25-64, 40 arts de detalle técnico) · IV *Órganos de coordinación de la gestión tributaria* (65-66).
 - **Lectura, y por qué NO se ha recortado todavía:** el epígrafe dedica **una de sus tres cláusulas** al *«actual modelo de financiación de las CCAA de régimen común»*, y el modelo propiamente dicho son los Títulos Preliminar-I-II (**1-24**). Pero el objeto de la propia ley ES ese sistema, así que cabe leer que la nombra entera — **el mismo patrón que `auxiliar_administrativo_madrid` T12, que el adjudicador declaró `ok`**. Es caso de juicio, y esta sesión se equivocó dos veces en casos de juicio (las dos sospechas del RGPD en Marbella y Valladolid resultaron falsas). **Adjudicar con el pipeline** (`--suspects` → skill `adjudicar-sobre-inclusion` → `--record` → `verify:scope apply --include-gate`) antes de tocar nada. Si se confirma, el recorte natural es a **1-24**.
@@ -620,13 +643,6 @@
   - **8 tests unitarios** (`__tests__/lib/laws/resumenBarrida.test.js`) + **validado por mutación** (quitar la guarda de cobertura incompleta pone el test en rojo). Y **control positivo** antes de fiarme de cualquier verde: forzar el scope pre-fix del caso raíz (LOSU T6, Téc. Aux. Univ. Murcia, `--scope=1,2,6`) sigue marcando art.1 → Título Preliminar y art.6 → Título III, así que el detector no está ciego y el fix no sobre-suprime.
   - Capas NO puestas, a propósito: sin canary ni test de integración. Es una herramienta on-demand que no escribe en BD ni pinga el badge; el control positivo ya cubre el end-to-end.
 - **Cabos abiertos (NO hechos):** adjudicar los **16** casos de frontera contra el BOE (título por número **y** por rúbrica antes de recortar nada); arreglar la fuga cross-ley del defecto 1; y T-104 para el nivel LIBRO. **NUNCA recortar por cercanía numérica sin confirmar el título en el BOE.**
-
-### [T-137] 🟠 [ABIERTO 26/07] Parlamento de Andalucía T12 escopa la Ley 22/2009 ENTERA para un epígrafe que solo pide el modelo de financiación
-- **Qué:** `oficial_de_gestion_parlamento_de_andalucia` **T12** (*"Distribución de competencias entre el Estado y las comunidades autónomas"*) escopa la **Ley 22/2009 con `article_numbers = NULL`**, es decir sus **69 artículos**. Su epígrafe pide: *"Generalidades. Las normas de atribución y delimitación de las competencias. El actual modelo de financiación de las comunidades autónomas de régimen común."*
-- **Por qué es sobre-inclusión:** la ley entera incluye toda la maquinaria de **gestión** de los tributos cedidos —delegación de competencias (art. 54), colaboración entre Administraciones (art. 61), puntos de conexión impuesto por impuesto (arts. 26-33), órganos y juntas arbitrales— que no es "el modelo de financiación" que pide el epígrafe. El tema está **`disponible=true`**, así que eso se sirve HOY a sus usuarios.
-- **Impacto:** 🟠 preguntas fuera de programa en silencio, en un tema visible. Es la banda que el detector `scope_over_inclusion_suspect` busca (epígrafe que enumera sub-materias concretas frente a scope de ley entera).
-- **Cómo:** mapear el epígrafe a la estructura de la Ley 22/2009 y recortar `article_numbers` a lo que pide (el Título/capítulos del modelo de financiación y los puntos de conexión si el epígrafe los ampara), con simulación orphan-check: las preguntas fuera dejan de servirse en ESTE tema pero siguen en BD para los temas que sí las piden (ATC T221). Runbook `verificar-epigrafes-scope.md` §Sobre-inclusión. **NUNCA recortar un bloque que el epígrafe sí pide.**
-- **Origen:** 26/07, al generar T221 de [T-045]: el guardarraíl de visibilidad del aprobador avisó de que los arts. 54 y 61 se servían también aquí. La sobre-inclusión es PREEXISTENTE, no la causó esa generación.
 
 ### [T-138] 🟡 [ABIERTO 26/07] Ley 29/1987 (ISD) art. 25.1: remisión desfasada a "los artículos 64 y siguientes" de la LGT
 - **Qué:** el art. 25.1 del texto que servimos dice: *"La prescripción se aplicará de acuerdo con lo previsto en los artículos 64 y siguientes de la Ley General Tributaria."* Esa numeración es de la **LGT 230/1963**; en la **LGT 58/2003 vigente** la prescripción está en los **arts. 66 y siguientes**.
@@ -2173,22 +2189,6 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
     falsos positivos** — son palabras legítimas en los temas de Windows 11, "La Red Internet" o Correos. Si alguien
     reactiva este detector, usar SOLO los marcadores inequívocos.
 
-
-### [T-064] 🟢 [ABIERTA 21/07 — cabo de T-012] `law_sections`: soportar estructura ANIDADA (libro>título>capítulo)
-- **Qué:** el poblador de secciones (`scripts/poblar-law-sections-boe.cjs` + `lib/laws/parseBoeSections.js`) cubre
-  leyes de un nivel (título O capítulo). Las de **3 niveles** (libro>título>capítulo) las **RECHAZA a propósito**
-  (rango vacío / solape) en vez de meterlas mal. Son **~58 leyes** del temario, entre ellas importantes: **Código
-  Civil, LECrim, Ley de Enjuiciamiento Civil, Ley 9/2017 (Contratos), RDL 8/2015**.
-- **Por qué se dejó:** soportar la jerarquía multinivel es un rediseño del parser (elegir a qué nivel se muestran
-  las secciones cuando hay libros con títulos con capítulos), con sus propios tests. No cabía forzarlo sin arriesgar
-  la calidad de las 249 ya hechas.
-- **Cómo:** las rechazadas salen con motivo en `node scripts/poblar-law-sections-boe.cjs --sweep --limit 300`
-  (`solape` / `rango_vacio` / `sin_secciones`). La lógica pura a extender es `lib/laws/parseBoeSections.js`
-  (10 tests). Decidir la convención de nivel mirando qué hacen leyes multinivel ya en `law_sections` (si hay).
-- **Valor:** completa la cobertura de secciones al 100% de las leyes automatizables. Bajo, no urgente: las 249 más
-  usadas ya están, y el render ya funciona para ellas.
-
-## Derivadas de feedbacks (21/07/2026)
 
 ### [T-080] 🟢 [MEDIA] Barajar el orden de las opciones cuando se repite una pregunta (diseño unificado con la mejora de explicaciones)
 
