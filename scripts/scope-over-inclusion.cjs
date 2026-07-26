@@ -326,6 +326,31 @@ function excludedOverlap(titulosExcluidos, scopeSet) {
   return { inScope, total: excl.size, ratio: excl.size ? inScope / excl.size : 1 };
 }
 
+// MIRROR de `consensoBanco` (lib/laws/scopeOverInclusion.ts). Misma lógica, mismos umbrales;
+// la paridad la fija __tests__/lib/laws/scopeOverInclusion.test.ts.
+//
+// CONSENSO DEL BANCO: ¿tener esta ley ENTERA es lo raro o lo normal? El detector compara el
+// scope con el EPÍGRAFE, y eso basta cuando el epígrafe enumera títulos; pero la mayoría son
+// prosa temática y ahí no hay bloques que mapear. El banco responde mejor que una opinión:
+// en la LOPJ, 2 de 40 temas la tenían entera → la completa era la anomalía (T-154).
+function consensoBanco({ temas, enteros, medianaAcotados }, opts) {
+  const minTemas = (opts && opts.minTemas) != null ? opts.minTemas : 6;
+  const umbralAnomalia = (opts && opts.umbralAnomalia) != null ? opts.umbralAnomalia : 0.25;
+  const umbralNorma = (opts && opts.umbralNorma) != null ? opts.umbralNorma : 0.5;
+  if (!Number.isFinite(temas) || temas < minTemas) {
+    return { senal: 'insuficiente', motivo: `solo ${temas} tema(s) escopan esta ley en el banco: no hay con qué comparar` };
+  }
+  const ratio = enteros / temas;
+  if (ratio <= umbralAnomalia) {
+    const ref = medianaAcotados != null ? `; los que la acotan usan ~${medianaAcotados} arts` : '';
+    return { senal: 'anomalia', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): la ley completa es la EXCEPCIÓN${ref}` };
+  }
+  if (ratio >= umbralNorma) {
+    return { senal: 'norma', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): la ley completa es lo HABITUAL, probablemente legítima` };
+  }
+  return { senal: 'insuficiente', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): reparto ambiguo, no concluye` };
+}
+
 // --suspects [--only-new]: emite el INPUT del workflow adjudicar-sobre-inclusion.
 // Con --only-new excluye los ya adjudicados cuyo content_hash coincide (nada cambió).
 async function runSuspects(onlyNew) {
@@ -335,7 +360,16 @@ async function runSuspects(onlyNew) {
     SELECT t.id topic_id, l.id law_id, t.position_type, t.topic_number, t.title, t.epigrafe,
            l.short_name, l.name ley_nombre, l.boe_url, ts.article_numbers,
            (SELECT count(*) FROM articles a WHERE a.law_id=ts.law_id AND a.article_number ~ '^[0-9]+$') law_total,
-           adj.content_hash adj_hash
+           adj.content_hash adj_hash,
+           -- CONSENSO DEL BANCO: cómo tratan esta MISMA ley los demás temas activos. Se calcula
+           -- en SQL (una subconsulta por fila) y lo interpreta el núcleo puro consensoBanco.
+           (SELECT count(*) FROM topic_scope p JOIN topics pt ON pt.id=p.topic_id
+              WHERE p.law_id=ts.law_id AND pt.is_active) peer_temas,
+           (SELECT count(*) FROM topic_scope p JOIN topics pt ON pt.id=p.topic_id
+              WHERE p.law_id=ts.law_id AND pt.is_active AND p.article_numbers IS NULL) peer_enteros,
+           (SELECT percentile_disc(0.5) WITHIN GROUP (ORDER BY array_length(p.article_numbers,1))
+              FROM topic_scope p JOIN topics pt ON pt.id=p.topic_id
+              WHERE p.law_id=ts.law_id AND pt.is_active AND p.article_numbers IS NOT NULL) peer_mediana
     FROM topic_scope ts
     JOIN topics t ON t.id=ts.topic_id
     JOIN laws l ON l.id=ts.law_id
@@ -358,6 +392,11 @@ async function runSuspects(onlyNew) {
       scoped_range: ni.length ? `${ni[0]}-${ni[ni.length - 1]}` : '', scoped_count: ni.length,
       scoped_gaps: gaps.map(([a, b]) => a === b ? `${a}` : `${a}-${b}`).join(', '), // arts YA fuera del scope
       law_total: Number(r.law_total), band: c.band, reasons: c.reasons, content_hash: hash,
+      consenso_banco: consensoBanco({
+        temas: Number(r.peer_temas), enteros: Number(r.peer_enteros),
+        medianaAcotados: r.peer_mediana == null ? null : Number(r.peer_mediana),
+      }),
+      peers: { temas: Number(r.peer_temas), enteros: Number(r.peer_enteros), mediana_acotados: r.peer_mediana == null ? null : Number(r.peer_mediana) },
     });
   }
   await sql.end();
@@ -477,4 +516,4 @@ if (require.main === module) {
   } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --record <json> | --reguard'); process.exit(1); }
 }
 
-module.exports = { classifyScope, parseEpigrafe, romanToInt, contentHash, excludedOverlap, internalGaps };
+module.exports = { classifyScope, consensoBanco, parseEpigrafe, romanToInt, contentHash, excludedOverlap, internalGaps };

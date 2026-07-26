@@ -471,6 +471,25 @@ a las 18:34; una usuaria lo cazó a las 18:38.
    secuencia + cierre (reforma/disposiciones) = monográfico legítimo. **Solo la banda HIGH pinga el
    badge**; la MEDIUM (patrón prosa tipo T11, precisión ~35 %) es la cola de adjudicación bajo
    demanda. Scan ad-hoc: `node scripts/scope-over-inclusion.cjs --scan`.
+1-bis. **Señal de CONSENSO DEL BANCO** (`consensoBanco`, en el mismo núcleo puro + mirror en el CLI;
+   sale en cada sospechoso de `--suspects` como `consenso_banco`). Responde a *«¿tener esta ley
+   ENTERA es lo raro o lo normal?»* mirando **cómo escopan esa misma ley los demás temas activos**.
+   Nace de T-154: adjudicar un epígrafe en PROSA («El Poder Judicial. El principio de unidad
+   jurisdiccional…») no se puede hacer mapeando bloques —no los hay— y leerlo y opinar es justo lo
+   que el proyecto prohíbe. El banco responde mejor: de los **40 temas que escopan la LOPJ, solo DOS
+   la tenían entera**; los otros 38 la acotaban, y dos oposiciones estatales con epígrafe casi
+   idéntico usaban 75 y 73 artículos → esa fue la referencia del recorte.
+   - `anomalia` = ≤25 % de los temas la tienen entera (con ≥6 temas comparables) → **mira esto
+     primero**, y el motivo trae la **mediana de artículos** de los que la acotan como tamaño de
+     referencia.
+   - `norma` = ≥50 % la tienen entera → probablemente legítima (caso Estatuto de Autonomía de
+     Madrid: 4 de 7).
+   - `insuficiente` = pocos temas comparables o reparto ambiguo. **No se moja a propósito**: es lo
+     normal en leyes autonómicas, que tienen 3-4 temas en todo el banco.
+   Medido el 26/07 sobre los 263 sospechosos: **93 anomalía · 145 insuficiente · 25 norma**, o sea
+   que enfoca el trabajo a poco más de un tercio. **NO decide el recorte** — decide qué mirar antes
+   y con qué tamaño de referencia.
+
 2. **Stage-2 adjudicador (LLM)** — para cada sospechoso: obtén la **estructura oficial** de la ley
    (títulos/capítulos y rangos, vía BOE/BORM con WebFetch), **mapea cada materia que nombra el
    epígrafe** a su título/capítulo, y **LISTA los títulos con preguntas escopadas que el epígrafe NO

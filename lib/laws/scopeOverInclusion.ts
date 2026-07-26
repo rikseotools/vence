@@ -131,6 +131,63 @@ export function parseEpigrafe(ep: string | null | undefined): EpigrafeFeatures {
   return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length }
 }
 
+/** Cómo escopan ESA MISMA ley los demás temas activos del banco. */
+export interface PeerStats {
+  /** temas activos que escopan la ley (incluido el que se está juzgando) */
+  temas: number
+  /** de esos, cuántos la tienen ENTERA (article_numbers NULL o la lista completa) */
+  enteros: number
+  /** mediana de artículos escopados entre los que la acotan (null si no hay ninguno) */
+  medianaAcotados: number | null
+}
+
+export type PeerSenal = 'anomalia' | 'norma' | 'insuficiente'
+
+export interface PeerVerdict {
+  senal: PeerSenal
+  motivo: string
+}
+
+/**
+ * CONSENSO DEL BANCO: ¿tener esta ley ENTERA es lo raro o lo normal?
+ *
+ * POR QUÉ ESTA SEÑAL EXISTE (26/07/2026, T-154). El detector compara el scope con el
+ * EPÍGRAFE, y eso basta cuando el epígrafe enumera títulos. Pero la mayoría de epígrafes
+ * son prosa temática ("El Poder Judicial. El principio de unidad jurisdiccional…") y ahí no
+ * hay bloques que mapear: adjudicar se convertía en leer una prosa y opinar, que es
+ * exactamente lo que el proyecto prohíbe.
+ *
+ * El banco tiene una respuesta mejor que mi opinión: **cómo trata esa misma ley el resto de
+ * los temarios**. Caso que la estrenó — `administrativo_seguridad_social` T6 con la LOPJ
+ * entera: de los **40 temas que escopan la LOPJ, solo DOS la tenían completa** y los otros 38
+ * llevaban lista explícita (1 a 139 artículos). La ley entera era la anomalía, no la norma, y
+ * dos oposiciones estatales con epígrafe casi idéntico la acotaban a 75 y 73 artículos.
+ *
+ * NO decide el recorte — decide si merece la pena mirar, y con qué tamaño de referencia.
+ * Es deliberadamente conservadora: con pocos temas comparables dice `insuficiente` en vez de
+ * arriesgar, porque una señal que se moja sin datos es peor que ninguna.
+ */
+export function consensoBanco(
+  { temas, enteros, medianaAcotados }: PeerStats,
+  opts?: { minTemas?: number; umbralAnomalia?: number; umbralNorma?: number },
+): PeerVerdict {
+  const minTemas = opts?.minTemas ?? 6
+  const umbralAnomalia = opts?.umbralAnomalia ?? 0.25
+  const umbralNorma = opts?.umbralNorma ?? 0.5
+  if (!Number.isFinite(temas) || temas < minTemas) {
+    return { senal: 'insuficiente', motivo: `solo ${temas} tema(s) escopan esta ley en el banco: no hay con qué comparar` }
+  }
+  const ratio = enteros / temas
+  if (ratio <= umbralAnomalia) {
+    const ref = medianaAcotados != null ? `; los que la acotan usan ~${medianaAcotados} arts` : ''
+    return { senal: 'anomalia', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): la ley completa es la EXCEPCIÓN${ref}` }
+  }
+  if (ratio >= umbralNorma) {
+    return { senal: 'norma', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): la ley completa es lo HABITUAL, probablemente legítima` }
+  }
+  return { senal: 'insuficiente', motivo: `${enteros} de ${temas} temas la tienen entera (${(ratio * 100).toFixed(0)}%): reparto ambiguo, no concluye` }
+}
+
 export type ScopeBand = 'HIGH' | 'MEDIUM' | 'CLEARED' | 'NONE'
 
 export interface ScopeVerdict {

@@ -220,3 +220,74 @@ describe('sweep mirror ↔ lib (sync)', () => {
     })
   }
 })
+
+describe('consensoBanco — ¿tener la ley ENTERA es la anomalía o la norma?', () => {
+  const { consensoBanco } = require('@/lib/laws/scopeOverInclusion')
+
+  test('caso que la estrenó: LOPJ, 2 enteros de 40 temas → ANOMALÍA', () => {
+    // `administrativo_seguridad_social` T6 tenía la LOPJ completa (666 arts) con un epígrafe en
+    // prosa. Los otros 38 temas la acotaban; dos oposiciones estatales con epígrafe casi
+    // idéntico, a 75 y 73 artículos.
+    const v = consensoBanco({ temas: 40, enteros: 2, medianaAcotados: 24 })
+    expect(v.senal).toBe('anomalia')
+    expect(v.motivo).toMatch(/EXCEPCIÓN/)
+    expect(v.motivo).toMatch(/~24 arts/)   // la referencia de tamaño es parte del valor
+  })
+
+  test('cuando la ley entera es lo HABITUAL, no acusa', () => {
+    // Estatuto de Autonomía de Madrid: 4 de 7 temas lo tienen entero. Un tema sobre "el Estatuto:
+    // estructura y contenido" que recorre toda la norma es normal.
+    expect(consensoBanco({ temas: 7, enteros: 4, medianaAcotados: 60 }).senal).toBe('norma')
+  })
+
+  test('con pocos temas comparables NO se moja', () => {
+    // Reglamento de la Asamblea de Madrid: 3 temas en todo el banco. Una señal que opina sin
+    // datos es peor que ninguna.
+    const v = consensoBanco({ temas: 3, enteros: 1, medianaAcotados: 182 })
+    expect(v.senal).toBe('insuficiente')
+    expect(v.motivo).toMatch(/no hay con qué comparar/)
+  })
+
+  test('reparto ambiguo → insuficiente, no anomalía', () => {
+    expect(consensoBanco({ temas: 10, enteros: 4, medianaAcotados: 30 }).senal).toBe('insuficiente')
+  })
+
+  test('sin ninguno acotado, la señal no promete un tamaño de referencia', () => {
+    const v = consensoBanco({ temas: 8, enteros: 2, medianaAcotados: null })
+    expect(v.senal).toBe('anomalia')
+    expect(v.motivo).not.toMatch(/arts/)
+  })
+
+  test('umbrales configurables sin tocar la lógica', () => {
+    expect(consensoBanco({ temas: 4, enteros: 1, medianaAcotados: 10 }, { minTemas: 4 }).senal).toBe('anomalia')
+  })
+
+  // Dos copias del clasificador que se desincronicen valen menos que una: el CLI es el que usa
+  // el runbook, así que si divergen, el humano adjudica con una señal distinta de la testeada.
+  // Se extrae el mirror del FICHERO y se evalúa (mismo patrón que los otros mirrors de este
+  // test); no se puede `require` el .cjs porque arranca dotenv y CLI al cargarse.
+  describe('MIRROR del CLI ↔ lib (sync)', () => {
+    const src = readFileSync('scripts/scope-over-inclusion.cjs', 'utf-8')
+
+    it('el bloque mirror existe en el CLI', () => {
+      expect(src).toMatch(/function consensoBanco\(\{ temas, enteros, medianaAcotados \}, opts\)/)
+    })
+
+    const ini = src.indexOf('function consensoBanco(')
+    const fin = src.indexOf('\n}', ini) + 2
+    // eslint-disable-next-line no-eval
+    const mirror = eval(`(${src.slice(ini, fin).replace('function consensoBanco', 'function')})`)
+
+    for (const caso of [
+      { temas: 40, enteros: 2, medianaAcotados: 24 },
+      { temas: 7, enteros: 4, medianaAcotados: 60 },
+      { temas: 3, enteros: 1, medianaAcotados: null },
+      { temas: 10, enteros: 4, medianaAcotados: 30 },
+      { temas: 8, enteros: 2, medianaAcotados: null },
+    ]) {
+      it(`mirror == lib: ${JSON.stringify(caso)}`, () => {
+        expect(mirror(caso)).toEqual(consensoBanco(caso))
+      })
+    }
+  })
+})
