@@ -75,6 +75,24 @@ function decodeHtmlEntities(s: string): string {
 }
 
 /**
+ * Ordinales latinos que el BOE usa para intercalar artículos ("177 bis", "177 terdecies").
+ *
+ * ⚠️ EL ORDEN IMPORTA: de MÁS LARGO a más corto. Una alternación con `ter` antes que
+ * `terdecies` casa `ter` en "Artículo 177 terdecies" y deja `"decies."` colgando en el
+ * TÍTULO — defecto real medido el 26/07/2026 en 4 leyes (LGT, LIVA, LSC, RD 1221/1992):
+ * la fila quedaba como `article_number='177 quater'` con `title='decies. Terminación…'`.
+ *
+ * Y estaba INCOMPLETA en 4 sitios distintos de este fichero, cada uno con su propio
+ * recorte (dos paraban en `septies`, dos en `decies`) → la LGT perdió `177 undecies`,
+ * `duodecies`, `terdecies` y `quaterdecies`, y `GET /api/verify-articles` NO los reportaba
+ * como `missing_in_db` porque el extractor tampoco los veía: **un verde falso**.
+ * Una sola fuente para las cuatro. Fijado por `__tests__/laws/boeExtractorOrdinales.test.ts`.
+ */
+export const ORDINAL_SUFFIXES =
+  'quaterdecies|terdecies|duodecies|undecies|quindecies|sexdecies|decies|nonies|octies|' +
+  'septies|sexies|quinquies|qu[aá]ter|ter|bis'
+
+/**
  * Convierte texto de número español a dígito
  * Soporta desde "primero" hasta "trescientos y pico"
  * También soporta sufijos: "bis", "ter", "quater", etc.
@@ -84,7 +102,7 @@ export function spanishTextToNumber(text: string | null | undefined): string | n
 
   text = text.replace(/\.+$/, '').trim()
 
-  const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
+  const suffixMatch = text.match(new RegExp(`^(.+?)\\s+(${ORDINAL_SUFFIXES})\\.?$`, 'i'))
   const mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
   const suffix = suffixMatch ? suffixMatch[2].toLowerCase() : ''
 
@@ -334,7 +352,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
     // Patrón 1: "Artículo X", "Art. X", "Regla X" con número
     if (!articleNumber) {
-      const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?|Regla)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([\s\S]*?)<\/h5>/i)
+      const numericMatch = blockContent.match(new RegExp(`<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\\.?|Regla)\\s+(\\d+(?:\\s+(?:${ORDINAL_SUFFIXES}))?(?:\\s+\\d+)?)\\.?\\s*([\\s\\S]*?)</h5>`, 'i'))
 
       if (numericMatch) {
         articleNumber = numericMatch[1].trim().replace(/\s+/g, ' ')
@@ -471,7 +489,7 @@ export function extractArticlesFromBOE(html: string, options: ExtractionOptions 
 
       // Artículo con número
       if (!articleNumber) {
-        const artMatch = headerText.match(/^(?:Artículo|Art\.?|Regla)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies))?)\.\s*(.*?)\.?\s*$/i)
+        const artMatch = headerText.match(new RegExp(`^(?:Artículo|Art\\.?|Regla)\\s+(\\d+(?:\\s+(?:${ORDINAL_SUFFIXES}))?)\\.\\s*(.*?)\\.?\\s*$`, 'i'))
         if (artMatch) {
           articleNumber = artMatch[1].trim().replace(/\s+/g, ' ')
           title = (artMatch[2] || '').trim().replace(/\.$/, '')
@@ -627,7 +645,7 @@ export function normalizeArticleNumber(num: string | null | undefined): string {
   return trimmed
     .toLowerCase()
     .replace(/quáter/gi, 'quater')
-    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies|octies|nonies|decies)(\s*\d+)?/gi, '$1 $2$3')
+    .replace(new RegExp(`(\\d+)\\s*(${ORDINAL_SUFFIXES})(\\s*\\d+)?`, 'gi'), '$1 $2$3')
     .replace(/\s+/g, ' ')
     .trim()
 }

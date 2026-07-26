@@ -44,6 +44,29 @@ Responde lo que el detector NO distingue: ¿los artículos en BD cubren lo que e
 
 > **Patrón medido (21/07, barrido de las 43 false_green):** ninguna tenía artículos escopados faltantes — el "falso verde" es, para la mayoría, un problema de **evidencia, no de contenido**. Y hay **dos mundos**: las **ordenanzas municipales** (Madrid, Sevilla) salen **verbatim limpias**; las **digests universitarias/autonómicas** (estatutos, convenios, normativas de permanencia) **mezclan articulado verbatim con filas de resumen editorial** (`article_number` no numérico tipo `"s. 11-12 (Título V)"`) **o anexos parafraseados que no existen en la norma**. Las primeras se cierran rápido; las segundas necesitan además limpieza (retirar/relinkar las filas editoriales) — patrón `reference_leyes_virtuales_editoriales`.
 
+> ### ⚠️ La evidencia CADUCA, y el verificador tuvo un punto ciego (T-045, 26/07/2026)
+>
+> **No te fíes de un `last_verification_summary` viejo.** LGT y RGGIT tenían evidencia con TODO
+> a cero (292/292 y 230/230) del **06/01/2026**; re-verificadas en vivo, ninguna cuadraba
+> (LGT: BOE 290 / BD 289; RGGIT: BOE 228 / BD 230). Seis meses son suficientes para que una ley
+> cambie: **re-verifica antes de etiquetar**, siempre.
+>
+> **Y el verificador podía dar un VERDE FALSO en artículos con ordinal alto.** `lib/boe-extractor`
+> llevaba la lista de ordinales latinos duplicada en 4 sitios, incompleta (dos paraban en
+> `septies`, dos en `decies`) y **mal ordenada** (`ter` antes que `terdecies`) → en "Artículo 177
+> terdecies" casaba `ter` y dejaba `"decies."` en el TÍTULO. Efecto medido: la LGT había perdido
+> `177 undecies`, `duodecies`, `terdecies` y `quaterdecies`, **y `GET /api/verify-articles`
+> reportaba `missing_in_db: 1`** (solo el preámbulo) porque el extractor tampoco los veía. Una
+> verificación que no ve lo que falta no es una verificación.
+> **Arreglado** con una sola constante `ORDINAL_SUFFIXES` ordenada de más larga a más corta
+> (`lib/boe-extractor.ts`, tests en `__tests__/laws/boeExtractorOrdinales.test.ts`); contra el BOE
+> real la LGT pasa de 290 a **293** artículos extraídos y de 1 a **0** títulos con el ordinal
+> colado. Si vuelves a ver un título que empieza por `bis.`/`ter.`/`decies.`, es este defecto.
+>
+> **`"(Suprimido)"` NO es un artículo que falte.** Los `extra_in_db` cuyo contenido es
+> `"(Suprimido)"` son correctos: registramos la supresión y el extractor del BOE ya no los emite
+> (caso RGGIT arts 36, 76, 115 ter). No los borres ni los cuentes como discrepancia.
+
 ### 2. Registrar la fuente que falta (`no_source`)
 Localiza la norma oficial (BOE si es estatal; boletín autonómico BOCYL/DOGV/DOG/BOJA/BOCM si es regional; para universidades, el presupuesto/estatuto en su boletín). Escribe la URL en `laws.boe_url`. **Verifica que la URL abre el documento correcto** (no otra norma) antes de seguir — un `boe_url` mal apuntado da `boe_count=0` permanente (monitoreo BOE §1ter).
 
