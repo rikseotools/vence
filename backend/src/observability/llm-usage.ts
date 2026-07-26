@@ -83,7 +83,6 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-function record(
 // ── Mirror INLINE de lib/observability/llmErrorKind.cjs — MANTENER EN SYNC ──────────────────
 // El backend NestJS no puede importar `lib/` del frontend (build separado). Convierte el mensaje
 // del proveedor en una CLASE accionable: sin esto, `ok:false` obliga a repetir el diagnóstico a
@@ -132,6 +131,7 @@ export function requiereIntervencionLlm(kind: string): boolean {
   return kind === 'sin_credito' || kind === 'auth_invalida' || kind === 'permiso' || kind === 'modelo_no_disponible';
 }
 
+function record(
   obs: Pick<ObservabilityService, 'emitFireAndForget'>,
   r: { provider: LlmProvider; model: string; feature: string; usage: LlmUsage; durationMs: number; ok: boolean; error?: string; streaming: boolean },
 ): void {
