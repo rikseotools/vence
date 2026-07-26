@@ -15,6 +15,14 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-138] ✅ [CERRADA 26/07] Ley 29/1987 (ISD) art. 25.1: remisión desfasada a "los artículos 64 y siguientes" de la LGT
+- **Veredicto: el articulado NO se toca.** Verificado contra el consolidado del BOE (`BOE-A-1987-28141`, bloque `a25`, vigencia 20030101): **dice literalmente** *"los artículos 64 y siguientes de la Ley General Tributaria"*. Nuestro texto es fiel al boletín, así que procedía **nota de vigencia**, que es lo que la ficha pedía comprobar antes de editar.
+- **Y no era un artículo, eran DOS.** Un barrido por `64 y siguientes` encontró el mismo caso en el **art. 50 del RDL 1/1993 (ITPAJD)** (`BOE-A-1993-25359`), también fiel al consolidado. Los otros dos aciertos del barrido remiten a normas distintas (LRJS, Ley de Cantabria) y no aplican.
+- **Correspondencia verificada en la LGT vigente** (`BOE-A-2003-23186`): art. **66** *Plazos de prescripción*, **67** *Cómputo*, **68** *Interrupción*. La numeración vieja es de la Ley 230/1963, derogada.
+- **Nota añadida a los dos artículos** en `articles.vigencia_notes`, con `clase: nota_vence` y prefijo *"Nota de Vence:"* para que nadie la confunda con una del boletín. La capa 2 (`annotateVigencia`) ya la pinta en el temario.
+- **🔴 DEFECTO QUE DESTAPÓ VERIFICAR EL RENDER (commit `608c429be`):** `annotateVigencia` imprimía **siempre** el encabezado *"Notas de vigencia (BOE):"*, así que una nota editorial nuestra quedaba **atribuida al BOE**. Corregido: el encabezado depende del origen (las del boletín llegan con `clase` `nota_pie…`) y, si se mezclan, manda la prudencia y no se firma como BOE. Con 3 tests.
+- **Lección reutilizable:** comprobar cómo se RENDERIZA lo que se escribe, no solo que se escriba. El dato era correcto y el render lo volvía falso.
+
 ### [T-064] ✅ [CERRADA 26/07 — el diagnóstico de la ficha no se sostenía] `law_sections`: leyes que el poblador rechazaba
 - **Qué decía la ficha:** *"~58 leyes de 3 niveles (libro>título>capítulo) que el parser RECHAZA a propósito"*, y que soportarlas era un rediseño con implicaciones en la app.
 - **Lo MEDIDO con `--sweep` antes de tocar nada, que es otra cosa:** 55 rechazadas por **45 `sin_secciones`, 7 `rango_vacio` y solo 3 `solape`** — el caso de 3 niveles que la ficha daba por dominante es el de **3 leyes**. Y había **15 leyes LISTAS** que solo necesitaban `--apply`. LECrim, CP y Ley 9/2017, citadas como rechazadas, ya estaban pobladas.
@@ -667,13 +675,6 @@
   - **8 tests unitarios** (`__tests__/lib/laws/resumenBarrida.test.js`) + **validado por mutación** (quitar la guarda de cobertura incompleta pone el test en rojo). Y **control positivo** antes de fiarme de cualquier verde: forzar el scope pre-fix del caso raíz (LOSU T6, Téc. Aux. Univ. Murcia, `--scope=1,2,6`) sigue marcando art.1 → Título Preliminar y art.6 → Título III, así que el detector no está ciego y el fix no sobre-suprime.
   - Capas NO puestas, a propósito: sin canary ni test de integración. Es una herramienta on-demand que no escribe en BD ni pinga el badge; el control positivo ya cubre el end-to-end.
 - **Cabos abiertos (NO hechos):** adjudicar los **16** casos de frontera contra el BOE (título por número **y** por rúbrica antes de recortar nada); arreglar la fuga cross-ley del defecto 1; y T-104 para el nivel LIBRO. **NUNCA recortar por cercanía numérica sin confirmar el título en el BOE.**
-
-### [T-138] 🟡 [ABIERTO 26/07] Ley 29/1987 (ISD) art. 25.1: remisión desfasada a "los artículos 64 y siguientes" de la LGT
-- **Qué:** el art. 25.1 del texto que servimos dice: *"La prescripción se aplicará de acuerdo con lo previsto en los artículos 64 y siguientes de la Ley General Tributaria."* Esa numeración es de la **LGT 230/1963**; en la **LGT 58/2003 vigente** la prescripción está en los **arts. 66 y siguientes**.
-- **Por qué importa:** es un artículo servible del que se pueden generar preguntas, y una pregunta anclada a esa remisión enseñaría una numeración derogada. Al generar T222 lo detecté y **evité hacer pregunta de ese apartado**, pero el texto sigue ahí para el siguiente.
-- **Verificar antes de tocar:** puede que el **consolidado del BOE conserve literalmente** esa remisión (los textos consolidados no siempre actualizan las remisiones internas a otras normas). Si el BOE dice eso, nuestro texto es CORRECTO y lo que procede es una **nota de vigencia**, no editar el articulado. Si el BOE ya la actualizó, es un import desfasado → re-sincronizar.
-- **Cómo:** comparar el art. 25 contra `https://www.boe.es/buscar/act.php?id=BOE-A-1987-28141` (`GET /api/verify-articles?law=…`); si es fiel al consolidado, añadir nota de vigencia advirtiendo de la correspondencia 64→66 LGT 58/2003. **NUNCA reescribir el articulado sin cita literal del boletín.** Runbook `completitud-leyes.md`.
-- **Origen:** 26/07, lectura de la fuente al generar T222 de [T-045].
 
 ### [T-129] ✅ [CERRADA 26/07 — arreglado y MEDIDO; llegué al modelo bueno tras 3 fallidos que cazó la medición] Frontera de título: el detector aplicaba los títulos del epígrafe a TODAS las leyes del tema
 - **Resultado medido** sobre los 3.000 scopes del banco, con el detector REAL llamado dos veces (con y sin el parámetro nuevo) para aislar el fix de la deriva de datos:
