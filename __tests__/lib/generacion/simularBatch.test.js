@@ -405,3 +405,28 @@ describe('analizarPregunta — paridad de núcleos con verificar-batch-generado.
     expect(r.avisos.some((a) => /CORRECTA PARCIAL/.test(a))).toBe(false)
   })
 })
+
+describe('simularBatch — no anclar a un artículo que no se sirve (T-139)', () => {
+  // Un artículo INACTIVO no se sirve: una pregunta anclada a él nace invisible. Paso
+  // durante OCHO MESES con la ley virtual "Excel 365", cuyos artículos 1-6 nacieron
+  // inactivos el 29/10/2025 y nunca se activaron: se les fueron anclando preguntas hasta
+  // acumular 10 invisibles, 4 de ellas duplicados exactos de las que sí vivían.
+  //
+  // La capa de I/O del simulador solo resuelve artículos con `is_active = true`, así que
+  // uno inactivo llega aquí como "sin contenido" y el núcleo lo BLOQUEA. Este test fija
+  // ese comportamiento para que nadie lo relaje pensando que es un caso degenerado.
+  it('sin artículo servible → bloquea, no avisa', () => {
+    const { errores } = analizarPregunta(
+      {
+        law_slug: 'excel-365',
+        primary_article_number: '4',
+        question_text: '¿Qué símbolo inicia una fórmula en Excel 365?',
+        explanation: '> **Art**\n> "..."\n\n**Por qué A es correcta:** x\n\n**Por qué las demás son incorrectas:**\n- **B)** y\n- **C)** z\n- **D)** w',
+        options: ['=', '+', '-', '*'],
+        correct_option: 0,
+      },
+      '', // el artículo inactivo no se resuelve → sin contenido
+    )
+    expect(errores.some((e) => e.includes('sin texto de artículo'))).toBe(true)
+  })
+})

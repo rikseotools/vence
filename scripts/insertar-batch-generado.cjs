@@ -55,8 +55,19 @@ async function insertOne(q, defaultLawId) {
   const slug = q.law_slug
   const lawId = slug ? (await resolveLaw(slug))?.id : defaultLawId
   if (!lawId) return { skipped: `ley no encontrada para la pregunta (law_slug=${slug || '(sin default)'})` }
-  const art = (await s`SELECT id FROM articles WHERE law_id=${lawId} AND article_number=${q.primary_article_number}`)[0]
+  const art = (await s`SELECT id, is_active FROM articles WHERE law_id=${lawId} AND article_number=${q.primary_article_number}`)[0]
   if (!art) return { skipped: `artículo ${q.primary_article_number} no existe en la ley ${slug || defaultLawId}` }
+  // GUARDA: un artículo INACTIVO no se sirve, así que una pregunta anclada a él nace
+  // invisible — trabajo hecho que ningún opositor verá y que nada vuelve a mirar.
+  // Caso raíz (T-139, 26/07/2026): la ley virtual "Excel 365" tenía 6 artículos que
+  // NACIERON inactivos el 29/10/2025 y nunca se activaron; durante OCHO MESES se les
+  // fueron anclando preguntas (oct-25, ene-26, mar-26, may-26, jun-26) sin que nada
+  // avisara. Acabaron 10 preguntas invisibles, 4 de ellas duplicados exactos de las que
+  // sí vivían en el temario bueno. El sweep ya lo DETECTA a posteriori
+  // (`scope_phantom_article`); esto lo impide en origen, que sale mucho más barato.
+  if (art.is_active === false) {
+    return { skipped: `artículo ${q.primary_article_number} de ${slug || defaultLawId} está INACTIVO: la pregunta nacería invisible. Reactiva el artículo o ancla a otro que sí se sirva.` }
+  }
   const r = await s`
     INSERT INTO questions
       (question_text, option_a, option_b, option_c, option_d, correct_option, explanation,
