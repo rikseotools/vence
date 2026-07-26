@@ -502,6 +502,26 @@
   - Capas NO puestas, a propósito: sin canary ni test de integración. Es una herramienta on-demand que no escribe en BD ni pinga el badge; el control positivo ya cubre el end-to-end.
 - **Cabos abiertos (NO hechos):** adjudicar los **16** casos de frontera contra el BOE (título por número **y** por rúbrica antes de recortar nada); arreglar la fuga cross-ley del defecto 1; y T-104 para el nivel LIBRO. **NUNCA recortar por cercanía numérica sin confirmar el título en el BOE.**
 
+### [T-129] ✅ [CERRADA 26/07 — arreglado y MEDIDO; llegué al modelo bueno tras 3 fallidos que cazó la medición] Frontera de título: el detector aplicaba los títulos del epígrafe a TODAS las leyes del tema
+- **Resultado medido** sobre los 3.000 scopes del banco, con el detector REAL llamado dos veces (con y sin el parámetro nuevo) para aislar el fix de la deriva de datos:
+
+  | | hits | artículos |
+  |---|---|---|
+  | sin el fix | 80 | 1.668 |
+  | **con el fix** | **62** | **1.180** |
+
+  Silencia **20** hits (**−488 artículos de ruido, −29%**), incluido el de 239 artículos de Marbella, y crea solo **2** nuevos (1 y 4 artículos, del tamaño que sí toca adjudicar).
+- **El modelo que funciona:** cada título se atribuye a la **ÚLTIMA norma mencionada antes de él**. Así se escriben estos epígrafes (*"Ley X: Título A, Título B. Ley Y: Título C"*), y si todos los títulos resultan de otra norma → `applicable:false` (fail-safe: callarse antes que marcar la ley entera).
+- **🧪 TRES modelos fallidos antes, todos cazados por la medición controlada** (están documentados como tests de REGRESIÓN para no volver a ellos):
+  1. **Trocear por paréntesis** → en la mayoría de epígrafes el paréntesis lleva el NÚMERO del título (*"de los derechos fundamentales (título I)"*), no una cláusula de ley, así que un *"título Preliminar"* escrito fuera se perdía y **reaparecían los falsos positivos que arregló T-121**. Empeoraba: 88 hits.
+  2. **Ventana de ±90 caracteres** → se cuela en la cláusula de la ley siguiente: en `administrativo_gva` T10 descartaba el Título II de la LO 3/2007 porque a 90 caracteres aparecía *"La Ley 9/2003, de la Generalitat"*. 76 hits.
+  3. **Ventana + atribución por nombre** → `nameReferenced` **borra los números a propósito** (los cubre `extractLawRefs`), así que no reconocía *"Ley 39/2015: Título IV"* y descartaba el IV; y exigir 2 tokens hacía que *"La Constitución de 1978"* (sin "Española") no contase como la CE. 73 hits.
+  - Bonus del camino: `constituci[óo]n` **sin `\b`** casaba dentro de *"Tribunal **Constitucional**"* y *"reforma **constitucional**"* → descartaba el Título IX de la CE en 4 oposiciones.
+- **🧹 SILO ELIMINADO (lo más reutilizable):** el único matcher ley↔epígrafe del proyecto (`nameReferenced`, `extractLawRefs`, `norm`) vivía **dentro de `scripts/audit-epigrafe-scope.cjs`**, que abre BD al cargarse y hace `process.exit(2)` sin `DATABASE_URL` → ni `lib/` ni un test podían usarlo, y llevaba meses en producción **sin un solo test**. Promovido **verbatim** a **`lib/laws/lawNameMatch.cjs`**; el script lo consume desde ahí. **Refactor verificado diffeando la salida del script: idéntica antes y después.** Ahora tiene 10 tests que fijan lo que nunca estuvo fijado (EBEP, acrónimos, nombres cortos de leyes virtuales, acentos).
+- **Capas:** 18 tests en el detector (incluidos los 3 de regresión de los modelos fallidos y uno que **reproduce el bug** llamando sin la ley) + 10 en el matcher promovido + **mutación validada** (revertir el fail-safe pone 2 en rojo) + **control positivo** del caso raíz LOSU, que sigue marcando art.1 y art.6 → no sobre-suprime.
+- **Método que queda documentado en el runbook:** comparar dos barridas seguidas NO vale (el banco cambió de 2.671 a 3.000 scopes entre las mías y los hits "subían" por eso). Hay que medir en UNA pasada sobre los mismos datos y adjudicar los hits NUEVOS uno a uno; sin eso habría publicado como "mejora" un cambio que solo movía el ruido de sitio.
+- **Cabo que queda:** los 2 hits nuevos y los 16 de frontera real siguen pendientes de adjudicar contra el BOE. Y el defecto 2 (nivel LIBRO) es [T-104].
+
 ### [T-124] ✅ [CERRADA 26/07 — arreglado y VERIFICADO en producción; además cierra el punto ciego que lo hacía invisible] Administrativo País Vasco: fechas de inscripción de 2026 ya pasadas en una convocatoria SIN publicar
 - **Daño real, peor de lo que decía la ficha:** la landing anunciaba literalmente **"Plazo de inscripción cerrado."** en una oposición cuya convocatoria está **prevista para el 31/08/2026**. No es una incoherencia interna: el usuario lee que ha perdido el plazo y se va, cuando no ha perdido nada. Verificado en la página viva antes de tocar.
 - **Arreglado y comprobado EN PRODUCCIÓN:** `inscription_start`/`inscription_deadline` a NULL, purga de caché (`landing` + `oposiciones-catalog`) y `curl` a la página → el texto **ya no aparece** (`grep` = 0); ahora dice solo *"Examen previsto: 31 de enero de 2027 (fecha aproximada)"* y la tarjeta *"Plazas previstas (sin convocar)"*. Justificación del borrado: la fila se contradecía a sí misma (`estado='oep_aprobada'`, `plazas_prevision=true`, su propio motivo dice *"la convocatoria NO existe todavía"*, hito `convocatoria_publicada` **upcoming** el 31/08/2026) → se ELIMINA un dato sin fuente, que es la dirección segura; NO se convierte ninguna previsión en fecha oficial.

@@ -48,8 +48,8 @@ async function rubricaBoe(bid: string, blockId: string): Promise<string> {
 }
 
 /** classify con SEGUNDA pasada: enriquece con rúbrica los títulos candidatos y re-clasifica. */
-async function classifyConRubrica(bid: string, epigrafe: string, secs: Seccion[], arts: string[]) {
-  const first = classifyTitleBoundary(epigrafe, secs, arts)
+async function classifyConRubrica(bid: string, epigrafe: string, secs: Seccion[], arts: string[], law?: { shortName?: string; name?: string }) {
+  const first = classifyTitleBoundary(epigrafe, secs, arts, law)
   if (!first.applicable || !first.overflow.length) return first
   // fetch rúbrica solo de los títulos señalados
   const candNums = new Set(first.overflow.map((o: { titulo: string }) => o.titulo))
@@ -57,7 +57,7 @@ async function classifyConRubrica(bid: string, epigrafe: string, secs: Seccion[]
   for (const s of enriched) {
     if (candNums.has(s.num) && s.blockId && s.rubrica == null) s.rubrica = await rubricaBoe(bid, s.blockId)
   }
-  return classifyTitleBoundary(epigrafe, enriched, arts)
+  return classifyTitleBoundary(epigrafe, enriched, arts, law)
 }
 
 async function main() {
@@ -79,7 +79,7 @@ async function main() {
   let flagged = 0, evaluados = 0, sinBoeId = 0, sinArts = 0, fetchFail = 0, noAplicable = 0
   for (const t of temas) {
     const scopes = await sql`
-      SELECT l.short_name, l.boe_url, ts.article_numbers FROM topic_scope ts
+      SELECT l.short_name, l.name AS law_name, l.boe_url, ts.article_numbers FROM topic_scope ts
       JOIN laws l ON l.id = ts.law_id WHERE ts.topic_id = ${t.id}`
     for (const s of scopes) {
       const bid = boeId(s.boe_url)
@@ -88,7 +88,9 @@ async function main() {
       if (!arts.length) { sinArts++; continue }
       let secs: Seccion[]
       try { secs = await estructuraBoe(bid) } catch { fetchFail++; continue }
-      const r = await classifyConRubrica(bid, t.epigrafe, secs, arts)
+      // T-129: se pasa la LEY para atar los títulos del epígrafe a su norma y no aplicar
+      // "(Constitución, Título VIII)" al Estatuto de Andalucía.
+      const r = await classifyConRubrica(bid, t.epigrafe, secs, arts, { shortName: s.short_name, name: s.law_name })
       evaluados++
       if (!r.applicable) noAplicable++
       if (r.applicable && r.overflow.length) {

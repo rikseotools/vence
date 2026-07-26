@@ -329,13 +329,29 @@ Por eso el detector "parecía tener precisión baja": en 43 de 59 casos responde
 de la que se le hace. Y contexto para no sobre-interpretarlo: **2.432 de 2.671 scopes (91%) tienen
 epígrafe no mapeable a títulos** (`applicable:false`), o sea que solo puede opinar sobre ~9% del banco.
 
+### 📐 Cómo medir un cambio en un detector (método, no improvisar)
+
+Comparar dos barridas seguidas **NO vale**: el banco cambia por debajo (otras sesiones añaden temas;
+entre mis dos barridas del 26/07 pasó de 2.671 a 3.000 scopes, y los hits "subían" por eso, no por el
+cambio). La medición correcta es **una sola pasada sobre los MISMOS datos llamando al detector real dos
+veces**, con y sin el parámetro nuevo, y contar tres cosas: hits/artículos antes, después, y —lo que de
+verdad importa— **qué hits SILENCIA y qué hits NUEVOS crea**. Los nuevos hay que adjudicarlos uno a uno
+antes de dar el cambio por bueno: es lo que cazó los TRES modelos fallidos de T-129 (trocear por
+paréntesis perdía el "Título Preliminar" escrito fuera; una ventana de ±90 caracteres se colaba en la
+cláusula de la ley siguiente; y `nameReferenced` no reconoce una ley citada por NÚMERO porque los borra
+a propósito). Sin esa medición habría publicado como "mejora" un cambio que solo movía el ruido de sitio.
+
 ### Dos defectos conocidos del detector (antes de adjudicar, descártalos)
 
-1. **Fuga entre leyes.** `classifyTitleBoundary` extrae los títulos del epígrafe **sin atarlos a la ley
-   que los nombra** y los aplica a TODAS las leyes del tema. Caso: `auxiliar_administrativo_ayuntamiento_marbella`
-   T5, cuyo epígrafe dice *"(Constitución, Título VIII)"* → saca `permitidos: 8` y se lo aplica al
-   **Estatuto de Autonomía de Andalucía**, marcando **239** de sus 252 artículos. Si el hit es de un tema
-   multi-ley y el título nombrado pertenece a OTRA ley, es un falso positivo.
+1. ~~**Fuga entre leyes.**~~ ✅ **ARREGLADO 26/07 (T-129).** El detector aplicaba los títulos del
+   epígrafe a TODAS las leyes del tema (caso `auxiliar_administrativo_ayuntamiento_marbella` T5:
+   *"(Constitución, Título VIII)"* → `permitidos:8` aplicado al **Estatuto de Autonomía de Andalucía**
+   → **239 artículos** marcados). Ahora **cada título se atribuye a la ÚLTIMA norma mencionada antes
+   de él** —así se escriben estos epígrafes ("Ley X: Título A, Título B. Ley Y: Título C")— y si todos
+   los títulos resultan de otra norma, devuelve `applicable:false` en vez de marcar la ley entera.
+   Medido sobre los 3.000 scopes del banco: **80 → 62 hits y 1.668 → 1.180 artículos (−488 de ruido)**,
+   silenciando 20 hits y creando solo 2 (pequeños y adjudicables). El matcher ley↔epígrafe vive en
+   `lib/laws/lawNameMatch.cjs` (promovido desde `scripts/audit-epigrafe-scope.cjs`, donde era un silo).
 2. **Nivel LIBRO no soportado** (`parseBoeSections`): las leyes-código estructuradas en libros
    (`Ley 9/2017` de Contratos: 4 libros + 12 títulos) mapean mal. Comprobado que de las 8 leyes más
    señaladas solo esa usa libros.

@@ -34,50 +34,10 @@ const DB_URL = process.env.DATABASE_URL;
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado (agnóstico: RDS/Neon; NO Supabase). Ver db/client.ts'); process.exit(2); }
 const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 
-// Extrae identificadores de norma con número del texto libre.
-// Normaliza a forma canónica "N/AAAA" (ej. "39/2015", "2016/679", "3/2018").
-
-function extractLawRefs(text) {
-  if (!text) return new Set();
-  const refs = new Set();
-  // Ley / Ley Orgánica / LO / RD / Real Decreto / RDL / Real Decreto-ley / Decreto / Reglamento
-  const re = /\b(?:ley\s+org[aá]nica|ley|l\.?o\.?|r\.?d\.?l\.?|real\s+decreto[\s-]?ley|real\s+decreto|r\.?d\.?|decreto|reglamento(?:\s*\(ue\))?)\s+(?:n[ºo.]?\s*)?(\d+\/\d{4})/gi;
-  let m;
-  while ((m = re.exec(text)) !== null) refs.add(m[1]);
-  // Reglamentos UE con forma AAAA/NNN (RGPD 2016/679)
-  const reUE = /\b(\d{4}\/\d{2,4})\b/g;
-  while ((m = reUE.exec(text)) !== null) refs.add(m[1]);
-  return refs;
-}
-
-const norm = (x) => (x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-const STOP = new Set(['ley','organica','real','decreto','legislativo','reglamento','general','del','las','los','por','para','sobre','que','con','una','sus','este','esta','garantia','derechos','caracter','personal','publico','publica','publicos','servicios','servicio']);
-// Acrónimos frecuentes en epígrafes → palabras de su nombre completo. Si el epígrafe usa el
-// acrónimo, lo expandimos al comparar contra el nombre de la ley (ej. "EBEP" ↔ RDL 5/2015).
-const ACRONYMS = {
-  ebep: 'estatuto basico empleado', rgpd: 'reglamento proteccion datos', lgss: 'seguridad social',
-  lgs: 'sanidad', lprl: 'prevencion riesgos laborales', ens: 'esquema nacional seguridad',
-  trlpi: 'propiedad intelectual', tdah: '', lopdgdd: 'proteccion datos',
-};
-
-// ¿El epígrafe nombra esta ley DESCRIPTIVAMENTE? (ej. "Estatuto Básico del Empleado Público" ↔ RDL 5/2015)
-// Heurística: tokens distintivos (≥4 letras, sin stopwords) del nombre de la ley que aparecen en
-// el epígrafe. Referenciada si ≥2 coinciden, o si TODOS coinciden (nombres cortos: "Word 2019",
-// "Windows 10", "La Red Internet" → leyes virtuales de informática).
-function nameReferenced(lawName, shortName, epigrafe) {
-  let epi = norm(epigrafe);
-  for (const [acr, exp] of Object.entries(ACRONYMS)) {
-    if (new RegExp(`\\b${acr}\\b`).test(epi) && exp) epi += ' ' + exp;
-  }
-  const test = (txt) => {
-    const tokens = [...new Set(norm(txt).replace(/\d+\/\d+/g, ' ').split(/[^a-z]+/).filter(w => w.length >= 4 && !STOP.has(w)))];
-    if (!tokens.length) return false;
-    const hits = tokens.filter(w => epi.includes(w));
-    return hits.length >= 2 || hits.length === tokens.length;
-  };
-  // Referenciada si la coincidencia salta por el nombre completo O por el short_name (la "marca").
-  return test(lawName) || test(shortName);
-}
+// Matcher ley↔epígrafe: NÚCLEO COMPARTIDO en lib/laws/lawNameMatch.cjs (T-129).
+// Antes vivía aquí, pero este script abre BD al cargarse, así que `lib/` y los tests no
+// podían reutilizarlo — era un silo. Una sola implementación, sin copias que divergir.
+const { extractLawRefs, norm, nameReferenced } = require('../lib/laws/lawNameMatch.cjs');
 
 async function auditPositionType(pt) {
   const topics = await sql`
