@@ -153,7 +153,8 @@ async function main() {
     //    auditar la fila legacy sería auditar una copia que nadie mira. Que audit y sweep
     //    compartan núcleo es lo que impide que digan cosas distintas.
     const ssot = (await sql`SELECT is_active, landing_estadisticas, landing_faqs, landing_description,
-        seo_title, seo_description, titulo_requerido, examen_config, diario_oficial, programa_url, boe_reference
+        seo_title, seo_description, titulo_requerido, examen_config, diario_oficial, programa_url, boe_reference,
+        estado_proceso
       FROM oposiciones_ssot WHERE slug = ${o.slug} LIMIT 1`)[0];
     if (ssot) {
       const cl = classifyLandingCompleteness({
@@ -168,9 +169,16 @@ async function main() {
 
       for (const it of checkConvocatoriaLinks({
         diarioOficial: ssot.diario_oficial, programaUrl: ssot.programa_url, boeReference: ssot.boe_reference,
+        estadoProceso: ssot.estado_proceso,
       })) {
         if (it.tipo === 'etiqueta_boletin_mismatch') bad(`botón oficial incoherente — ${it.detalle}`);
         else if (it.tipo === 'ref_url_mismatch') bad(`enlace ≠ referencia mostrada — ${it.detalle}`);
+        // El botón promete un boletín y el enlace no es de ninguno (T-134). La severidad la fija
+        // el núcleo puro: solo bloquea el gate cuando HAY convocatoria publicada (existe documento
+        // oficial que enlazar). Sin ella —o si el enlace es un temario— es cola de revisión.
+        else if (it.tipo === 'enlace_no_es_boletin') {
+          (it.severidad === 'error' ? bad : warn)(`botón oficial fuera del boletín — ${it.detalle}`);
+        }
       }
     }
 

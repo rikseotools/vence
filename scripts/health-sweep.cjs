@@ -394,11 +394,14 @@ async function main() {
   // compone la tarjeta oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) +
   // `boe_reference` (referencia) resueltos por la vista.
   const linkRows = (await c.query(`
-    SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta
+    SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta,
+           estado_proceso AS estado
     FROM oposiciones_ssot
     WHERE is_active`)).rows;
   for (const r of linkRows) {
-    const issues = checkConvocatoriaLinks({ boeReference: r.ref, programaUrl: r.url, diarioOficial: r.etiqueta });
+    const issues = checkConvocatoriaLinks({
+      boeReference: r.ref, programaUrl: r.url, diarioOficial: r.etiqueta, estadoProceso: r.estado,
+    });
     for (const it of issues) {
       if (it.tipo === 'ref_url_mismatch') {
         add('content', it.severidad, r.slug, 'convocatoria_link_mismatch',
@@ -408,6 +411,13 @@ async function main() {
         // ETIQUETA del botón ("Ver convocatoria en BOJA" llevando a boe.es). Incidente 25/07.
         add('content', it.severidad, r.slug, 'convocatoria_etiqueta_boletin',
           `${r.slug}: el botón oficial promete un boletín y lleva a otro — ${it.detalle}`, it.detalle);
+      } else if (it.tipo === 'enlace_no_es_boletin') {
+        // Punto ciego de los dos anteriores (T-134, 26/07): ambos exigen RECONOCER un boletín en
+        // la URL, así que si el enlace no era de ninguno se callaban. Medido ese día: 56 de 123
+        // landings activas en esa zona muerta; el caso raíz (policia-nacional, plazo ABIERTO)
+        // prometía el BOE y llevaba al portal de aspirantes en inglés.
+        add('content', it.severidad, r.slug, 'convocatoria_enlace_no_boletin',
+          `${r.slug}: el botón oficial no lleva al boletín que promete — ${it.detalle}`, it.detalle);
       }
       // el año de seguimiento ya lo cubre seguimiento_url_stale
     }

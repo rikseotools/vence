@@ -85,6 +85,101 @@ describe('mirror del registro de boletines (backend ↔ lib)', () => {
   })
 })
 
+// El registro por DOMINIO (T-134) es la segunda mitad del mismo ladrillo: `PATTERNS` dice QUÉ
+// documento es, `BOLETIN_HOSTS` dice DE QUIÉN es la URL. El backend lo replica inline y un drift
+// aquí devuelve al detector a su zona ciega (56 de 123 landings) sin que nada avise.
+describe('mirror del registro de HOSTS de boletín (backend ↔ lib)', () => {
+  const { BOLETIN_HOSTS, boletinDeUrl } = require('@/lib/convocatoria/canonicalizeBoletinUrl.cjs')
+  // Se EVALÚA el literal del backend (como el mirror de visualDeixis) en vez de parsearlo con
+  // otra regex: una regex sobre regex-literales se rompe con la primera barra escapada (`/\/boc\//`)
+  // y un test que deja de casar en silencio es peor que no tenerlo.
+  const evalArray = (src: string, name: string): Array<Record<string, unknown>> => {
+    const m = src.match(new RegExp(`const ${name}[^=]*= (\\[[\\s\\S]*?\\n\\]);`))
+    if (!m) throw new Error(`no se encontró const ${name} en el fuente`)
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+  const clave = (b: string, host: RegExp, path?: RegExp) => `${b}|${host.source}|${path ? path.source : ''}`
+  const backendHosts = evalArray(BACKEND, 'BOLETIN_HOSTS')
+    .map((h) => clave(h.boletin as string, h.hostRe as RegExp, h.pathRe as RegExp | undefined))
+    .sort()
+  const libHosts = BOLETIN_HOSTS.map((h: { boletin: string; host: RegExp; path?: RegExp }) =>
+    clave(h.boletin, h.host, h.path),
+  ).sort()
+
+  it('el backend conoce los MISMOS dominios, con los mismos filtros de ruta', () => {
+    expect(backendHosts).toEqual(libHosts)
+  })
+
+  it('la extracción del backend no está vacía (sanity: si el regex deja de casar, el test miente)', () => {
+    expect(backendHosts.length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('los dominios que NO son boletín siguen sin reconocerse (la zona ciega se cierra por arriba, no por abajo)', () => {
+    for (const url of [
+      'https://www.policia.es/portalaspirantes/en/web/escala-basica-ejecutiva',
+      'https://www.euskadi.eus/ope-administracion-general-euskadi/',
+      'https://www3.gobiernodecanarias.org/sanidad/scs/content/x/025_Celador.pdf',
+      'https://empleopublico.carm.es/publicaciones/37400.pdf',
+    ]) {
+      expect(boletinDeUrl(url).boletin).toBeNull()
+    }
+  })
+})
+
+describe('mirror de las bandas de enlace_no_es_boletin (backend ↔ lib)', () => {
+  it('el backend usa el MISMO conjunto de estados con ficha viva que el núcleo puro', () => {
+    // `procesoConFichaViva` (seguimientoUrlSalud.cjs) decide error vs warn en los dos gemelos.
+    // Si el backend se quedara con otra lista, el @Cron nocturno marcaría distinto que el CLI.
+    const { procesoConFichaViva } = require('@/lib/convocatoria/seguimientoUrlSalud.cjs')
+    const m = BACKEND.match(/const ESTADOS_FICHA_VIVA_INLINE = new Set\(\[([\s\S]*?)\]\)/)
+    expect(m).toBeTruthy()
+    const backendEstados = [...m![1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort()
+    expect(backendEstados.length).toBeGreaterThanOrEqual(5)
+    for (const e of backendEstados) expect(procesoConFichaViva(e)).toBe(true)
+    // y ninguno de los estados SIN ficha viva se ha colado en la lista del backend
+    for (const e of ['oep_aprobada', 'sin_oep', 'examen_realizado', 'nombramientos']) {
+      expect(backendEstados).not.toContain(e)
+    }
+  })
+
+  it('las señales de URL del backend son IDÉNTICAS a las del núcleo (comparadas por VALOR)', () => {
+    const { señalesDeUrl } = require('@/lib/convocatoria/linkCoherence.cjs')
+    const evalConst = (name: string): RegExp => {
+      const m = BACKEND.match(new RegExp(`const ${name} = (/[^\\n]*?);\\n`))
+      if (!m) throw new Error(`no se encontró const ${name} en el backend`)
+      // eslint-disable-next-line no-new-func
+      return new Function(`return (${m[1]})`)()
+    }
+    const backendSignals = {
+      doc: evalConst('EXT_DOCUMENTO_INLINE'),
+      indice: evalConst('PAGINA_INDICE_INLINE'),
+      idioma: evalConst('IDIOMA_EXTRANJERO_INLINE'),
+      temario: evalConst('RUTA_TEMARIO_INLINE'),
+    }
+    // Se comprueba el COMPORTAMIENTO sobre los casos reales, no el texto del patrón.
+    const casos: Array<[string, 'portadaOSeccion' | 'idiomaExtranjero' | 'pareceTemario', boolean]> = [
+      ['https://www.policia.es/portalaspirantes/en/web/escala-basica-ejecutiva', 'idiomaExtranjero', true],
+      ['https://www.jgpa.es/procesos-selectivos', 'portadaOSeccion', true],
+      ['https://www.correos.es/es/es/personas-y-talento/empleo/index.html', 'portadaOSeccion', true],
+      ['https://empleopublico.carm.es/publicaciones/37400.pdf', 'portadaOSeccion', false],
+      ['https://web.guardiacivil.es/documentos/pdfs/2024/TEMARIO_INGRESO_GC.pdf', 'pareceTemario', true],
+    ]
+    for (const [url, señal, esperado] of casos) {
+      expect(señalesDeUrl(url)[señal]).toBe(esperado)
+      const ruta = url.replace(/^https?:\/\/[^/]+/, '')
+      const backendValor =
+        señal === 'idiomaExtranjero'
+          ? backendSignals.idioma.test(ruta.split('?')[0])
+          : señal === 'pareceTemario'
+            ? backendSignals.temario.test(ruta.split('?')[0])
+            : backendSignals.indice.test(ruta.split('?')[0]) ||
+              (!backendSignals.doc.test(ruta.split('?')[0]) && !/\d{3,}/.test(ruta.replace(/\b(?:19|20)\d{2}\b/g, '')))
+      expect(backendValor).toBe(esperado)
+    }
+  })
+})
+
 describe('mirror de landingCompleteness (backend ↔ lib)', () => {
   const { MIN_FAQS } = require('@/lib/convocatoria/landingCompleteness.cjs')
 

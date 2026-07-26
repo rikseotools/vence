@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { runbookForKind, runbookGuideRows } from '@/lib/admin/runbookRegistry'
+import { LANDING_SURFACES } from '@/lib/admin/landingSurfaces'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -625,7 +626,72 @@ function ContentHealthCard({ content }: { content: ContentHealthResponse | null 
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Contenido coherente (0 incoherencias).</p>
       )}
       <RunbookGuide />
+      <LandingCoverage />
     </IndicatorCard>
+  )
+}
+
+/**
+ * Cobertura de la landing: qué ve el opositor ↔ qué detector lo vigila, y DÓNDE hay hueco.
+ * Data-driven desde lib/admin/landingSurfaces.ts (fuente única, con guardarraíl en CI).
+ *
+ * Por qué está aquí y no en un documento: la guía de arriba contesta "tengo un hallazgo, ¿qué
+ * hago?"; esta contesta la pregunta que nadie podía hacer antes de T-134 — "¿qué parte de la
+ * landing NO está vigilada por nadie?". El caso que lo motivó (el botón oficial llevando al portal
+ * en inglés con el plazo abierto) fue invisible durante semanas porque esa pregunta no tenía sitio.
+ */
+function LandingCoverage() {
+  const [open, setOpen] = useState(false)
+  const surfaces = Object.entries(LANDING_SURFACES)
+  const huecos = surfaces.filter(([, s]) => s.hueco).length
+  return (
+    <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+      >
+        {open ? '▾' : '▸'} Cobertura de la landing ({surfaces.length} superficies
+        {huecos > 0 ? `, ${huecos} con hueco declarado` : ''}) — qué ve el opositor y quién lo vigila
+      </button>
+      {open && (
+        <div className="mt-2 overflow-x-auto">
+          <table className="min-w-full text-[11px]">
+            <thead>
+              <tr className="text-left text-gray-500 dark:text-gray-400">
+                <th className="pr-3 py-1 font-medium">Superficie</th>
+                <th className="pr-3 py-1 font-medium">Detectores</th>
+                <th className="py-1 font-medium">Hueco conocido</th>
+              </tr>
+            </thead>
+            <tbody>
+              {surfaces.map(([id, s]) => (
+                <tr key={id} className="border-t border-gray-100 dark:border-gray-800 align-top">
+                  <td className="pr-3 py-1 text-gray-700 dark:text-gray-300">{s.titulo}</td>
+                  <td className="pr-3 py-1 font-mono text-gray-600 dark:text-gray-400">
+                    {s.kinds.length ? s.kinds.join(', ') : <span className="text-amber-600 dark:text-amber-400">sin detector</span>}
+                  </td>
+                  <td className="py-1 text-gray-500 dark:text-gray-400">
+                    {s.hueco ? (
+                      <>
+                        <span className="text-amber-600 dark:text-amber-400">⚠ </span>
+                        {s.hueco}
+                        {s.tarea ? <span className="ml-1 font-mono text-gray-400">[{s.tarea}]</span> : null}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 italic">
+            Fuente: <code>lib/admin/landingSurfaces.ts</code>. El guardarraíl de CI exige que cada
+            superficie tenga detector o hueco declarado, y que todo detector de landing esté asignado.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 

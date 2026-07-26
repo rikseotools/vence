@@ -109,6 +109,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'la tarjeta oficial de la landing compone el texto con `diario_oficial` ("Ver convocatoria en BOJA") y el enlace con `programa_url`: si la etiqueta nombra un boletín y la URL es de otro, el botón miente. Punto ciego de convocatoria_link_mismatch, que compara referencia vs enlace y da limpio cuando ambos son el MISMO documento (caso raíz 25/07: UAL con diario_oficial=BOJA y programa_url a boe.es). Decide cuál es el bueno contra la fuente oficial —normalmente manda el documento enlazado— y alinea la etiqueta; si el plazo cuenta desde OTRO boletín, eso va en `diario_referencia` y en la FAQ del plazo, no en la etiqueta. NUNCA cambiar el enlace sin confirmar el documento.',
   },
+  convocatoria_enlace_no_boletin: {
+    title: 'El botón oficial promete un boletín y el enlace no es de ninguno (portal, portada o temario)',
+    triggerPhrase: 'revisa los enlaces de convocatoria',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'punto ciego de los dos detectores anteriores: ambos exigen RECONOCER un boletín en la URL, así que cuando `programa_url` apuntaba a un portal institucional se callaban los tres. Caso raíz 26/07 (T-134): `policia-nacional`, con plazo ABIERTO, prometía "Ver convocatoria en BOE" y llevaba a `policia.es/portalaspirantes/en/web/…` — ni BOE, ni convocatoria, ni español; medido ese día, 56 de 123 landings activas estaban en esa zona muerta. `error` = hay convocatoria PUBLICADA (existe documento oficial que enlazar) y el botón lleva a una portada/sección de portal o a una página en otro idioma; `warn` = aún no hay convocatoria (OEP aprobada, sin OEP, proceso cerrado) —ahí lo que suele fallar es la ETIQUETA, no el enlace— o el enlace es un TEMARIO, que es correcto como `programa_url` y engañoso bajo el rótulo "Ver convocatoria". Arreglo: busca el documento oficial de la convocatoria en su boletín y repunta `programa_url` (dual-write en `oposiciones` Y en la convocatoria vigente, que es de donde lee la landing), o —si de verdad no hay documento— cambia `diario_oficial` a lo que el enlace es en realidad y deja el boletín de las bases en `diario_referencia`. Simula antes con `node scripts/convocatoria/sim-enlace-boletin.cjs`. NUNCA repuntar sin abrir el documento y confirmar que es esa convocatoria.',
+  },
   landing_incompleta: {
     title: 'Landing publicada a medio hacer (hero sin tarjetas, sin FAQs, sin SEO)',
     triggerPhrase: 'revisa las landings incompletas',

@@ -87,6 +87,14 @@ export const RECURSOS_SENSIBLES: RecursoSensible[] = [
       'decide si una fuente se descarga con navegador (headless) o por HTTP. Medido 26/07: 67 filas en `headless` y CERO escritores en código — se ha tocado a mano. Registrarlo evita que se construya de cero algo que ya existe (pasó en T-125)',
   },
   {
+    columna: 'programa_url',
+    propiedad: 'programaUrl',
+    regla: 'guardarrail_compartido',
+    moduloGuardarrail: 'lib/convocatoria/linkCoherence',
+    porQue:
+      'es el ENLACE del botón más oficial de la landing ("Ver convocatoria en {diario_oficial}") y a la vez la fuente del temario que hashea el Sistema 2 de literalidad de epígrafe. No tenía escritor propio: se editaba a mano desde scripts de construcción, sin comprobar que la URL fuese el documento de esa convocatoria en el boletín que el botón anuncia. Así llegó a producción `policia-nacional` con plazo ABIERTO prometiendo el BOE y llevando al portal de aspirantes en inglés (T-134); medido ese día, 56 de 123 landings activas estaban en la zona ciega del detector',
+  },
+  {
     columna: 'lifecycle_state',
     propiedad: 'lifecycleState',
     regla: 'trinquete',

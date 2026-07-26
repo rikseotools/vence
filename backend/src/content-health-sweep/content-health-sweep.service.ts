@@ -315,14 +315,95 @@ const BOLETIN_URL_PATTERNS: Array<{ boletin: string; re: RegExp }> = [
   { boletin: 'DOGC', re: /portaldogc\.gencat\.cat.*?documentId=\d+/i },
   { boletin: 'BOC', re: /gobiernodecanarias\.org\/boc\/\d{4}\/\d+\/\d+/i },
   { boletin: 'BOJA', re: /juntadeandalucia\.es\/boja\/\d{4}\/\d+\/\d+/i },
+  { boletin: 'BOJA', re: /juntadeandalucia\.es\/eboja\/\d{4}\/\d+\/BOJA\d{2}-\d+-\d+/i },
   { boletin: 'DOG', re: /xunta\.gal\/dog\/Publicados\/\d{4}\/\d{8}\/Anuncio[A-Z0-9-]+/i },
   { boletin: 'MIA', re: /(?:mia\.aragon\.es\/documentos\?csv=|carp-core-mia\.aragon\.es\/rest\/documentos\/)[A-Z0-9]{10,}/i },
+];
+
+// Mirror INLINE de BOLETIN_HOSTS (registro por DOMINIO) de canonicalizeBoletinUrl.cjs —
+// MANTENER EN SYNC. Responde "¿esta URL es del boletín X?" sin necesidad de saber parsear su
+// id: hasta 26/07 solo se reconocían los 9 de arriba y 56 de 123 landings activas quedaban en
+// zona ciega (T-134). `path` acota los dominios que NO son solo boletín (euskadi.eus es el
+// portal entero del Gobierno Vasco; gobiernodecanarias.org sirve BOC y Servicio Canario de Salud).
+const BOLETIN_HOSTS: Array<{ boletin: string; hostRe: RegExp; pathRe?: RegExp }> = [
+  { boletin: 'BOE', hostRe: /(^|\.)boe\.es$/ },
+  { boletin: 'BOCM', hostRe: /(^|\.)bocm\.es$/ },
+  { boletin: 'BORM', hostRe: /(^|\.)borm\.es$/ },
+  { boletin: 'BOA', hostRe: /(^|\.)boa\.aragon\.es$/ },
+  { boletin: 'DOE', hostRe: /(^|\.)doe\.juntaex\.es$/ },
+  { boletin: 'BON', hostRe: /(^|\.)bon\.navarra\.es$/ },
+  { boletin: 'BOC', hostRe: /(^|\.)boc\.cantabria\.es$/ },
+  { boletin: 'BOC', hostRe: /(^|\.)gobiernodecanarias\.org$/, pathRe: /\/boc\// },
+  { boletin: 'BOPA', hostRe: /(^|\.)asturias\.es$/, pathRe: /\/bopa\// },
+  { boletin: 'BOR', hostRe: /(^|\.)larioja\.org$/, pathRe: /bor/i },
+  { boletin: 'BOCYL', hostRe: /(^|\.)bocyl\.jcyl\.es$/ },
+  { boletin: 'DOGC', hostRe: /(^|\.)dogc\.gencat\.cat$/ },
+  { boletin: 'DOGV', hostRe: /(^|\.)dogv\.gva\.es$/ },
+  { boletin: 'DOCM', hostRe: /(^|\.)docm\.jccm\.es$/ },
+  { boletin: 'BOIB', hostRe: /(^|\.)boib\.caib\.es$/ },
+  { boletin: 'BOUC', hostRe: /(^|\.)bouc\.ucm\.es$/ },
+  { boletin: 'BOPZ', hostRe: /(^|\.)boletin\.dpz\.es$/ },
+  { boletin: 'BOPV', hostRe: /(^|\.)euskadi\.eus$/, pathRe: /bopv/i },
+  { boletin: 'BOJA', hostRe: /(^|\.)juntadeandalucia\.es$/, pathRe: /\/e?boja\// },
+  { boletin: 'DOG', hostRe: /(^|\.)xunta\.gal$/, pathRe: /\/dog\// },
 ];
 
 function boletinDeUrlInline(url: string | null | undefined): string | null {
   if (!url) return null;
   for (const p of BOLETIN_URL_PATTERNS) if (p.re.test(String(url))) return p.boletin;
+  const sinEsquema = String(url)
+    .trim()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  const corte = sinEsquema.search(/[/?]/);
+  const host = (corte >= 0 ? sinEsquema.slice(0, corte) : sinEsquema)
+    .toLowerCase()
+    .replace(/^www\d*\./, '')
+    .replace(/:\d+$/, '');
+  const resto = corte >= 0 ? sinEsquema.slice(corte) : '';
+  for (const h of BOLETIN_HOSTS) {
+    if (!h.hostRe.test(host)) continue;
+    if (h.pathRe && !h.pathRe.test(resto)) continue;
+    return h.boletin;
+  }
   return null;
+}
+
+// Mirror INLINE de `señalesDeUrl` + bandas de `enlace_no_es_boletin` (linkCoherence.cjs) —
+// MANTENER EN SYNC. El botón promete un boletín y el enlace no es de NINGUNO: punto ciego de
+// los dos checks anteriores, que exigían reconocer un boletín en la URL para hablar.
+const EXT_DOCUMENTO_INLINE = /\.(pdf|docx?|odt|rtf)(\?|$)/i;
+const PAGINA_INDICE_INLINE = /\/(index|inicio|home|portada)\.(html?|jsp|php|aspx)$/i;
+const IDIOMA_EXTRANJERO_INLINE = /\/(en|fr|de|it|pt)(\/|$)/i;
+const RUTA_TEMARIO_INLINE = /temario|temari|programa[-_ ]?(?:de[-_ ]?)?(?:materias|oficial)/i;
+const ANIO_SUELTO_INLINE = /\b(?:19|20)\d{2}\b/g;
+// Estados con convocatoria PUBLICADA (mirror de ESTADOS_FICHA_VIVA de seguimientoUrlSalud.cjs):
+// solo entonces existe un documento oficial que enlazar y el hueco es indefendible (error).
+const ESTADOS_FICHA_VIVA_INLINE = new Set([
+  'convocatoria_publicada',
+  'convocada',
+  'inscripcion_abierta',
+  'inscripcion_cerrada',
+  'lista_admitidos',
+  'pendiente_examen',
+]);
+
+function señalesDeUrlInline(raw: string | null | undefined) {
+  const sinEsquema = String(raw || '').replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  const corte = sinEsquema.search(/[/?]/);
+  let ruta = corte >= 0 ? sinEsquema.slice(corte) : '';
+  try {
+    ruta = decodeURIComponent(ruta);
+  } catch {
+    /* ruta con % suelto: se usa tal cual */
+  }
+  const soloRuta = ruta.split('?')[0];
+  const esDocumento = EXT_DOCUMENTO_INLINE.test(soloRuta);
+  const tieneId = /\d{3,}/.test(ruta.replace(ANIO_SUELTO_INLINE, ''));
+  return {
+    idiomaExtranjero: IDIOMA_EXTRANJERO_INLINE.test(soloRuta),
+    portadaOSeccion: PAGINA_INDICE_INLINE.test(soloRuta) || (!esDocumento && !tieneId),
+    pareceTemario: RUTA_TEMARIO_INLINE.test(soloRuta),
+  };
 }
 
 // Etiqueta comparable: códigos simples ("BOE", "b.o.e."). Las compuestas de la cola larga
@@ -1412,10 +1493,17 @@ export class ContentHealthSweepService {
     // Se lee de `oposiciones_ssot` (lo que VE el opositor): la landing compone la tarjeta
     // oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) + `boe_reference`.
     const linkRows = (await this.db.execute(sql`
-      SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta
+      SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta,
+             estado_proceso AS estado
       FROM oposiciones_ssot
       WHERE is_active
-    `)) as unknown as Array<{ slug: string; ref: string | null; url: string | null; etiqueta: string | null }>;
+    `)) as unknown as Array<{
+      slug: string;
+      ref: string | null;
+      url: string | null;
+      etiqueta: string | null;
+      estado: string | null;
+    }>;
     for (const r of linkRows) {
       const idRef = extraerIdBoeInline(r.ref);
       const idUrl = extraerIdBoeInline(r.url);
@@ -1444,6 +1532,34 @@ export class ContentHealthSweepService {
           'convocatoria_etiqueta_boletin',
           `${r.slug}: el botón oficial promete un boletín y lleva a otro — la etiqueta dice "${etiqueta}" pero el enlace apunta al ${boletinUrl}`,
         );
+      } else if (etiqueta && r.url && !boletinUrl) {
+        // ── El botón promete un boletín y el enlace NO ES DE NINGUNO (T-134, 26/07) ──
+        // Punto ciego de los dos checks de arriba: ambos exigen reconocer un boletín en la URL,
+        // así que un portal institucional los dejaba mudos. Caso raíz: `policia-nacional`, con
+        // plazo ABIERTO, prometía el BOE y llevaba a policia.es/portalaspirantes/**en**/… — ni
+        // BOE, ni convocatoria, ni español. Calibrado para NO tocar la cola larga legítima (las
+        // bases en PDF colgadas de la sede de la entidad no se marcan).
+        const s = señalesDeUrlInline(r.url);
+        const razones: string[] = [];
+        if (s.portadaOSeccion) razones.push('no es un documento, es una portada/sección de portal');
+        if (s.idiomaExtranjero) razones.push('la página está en otro idioma');
+        if (razones.length) {
+          add(
+            'content',
+            ESTADOS_FICHA_VIVA_INLINE.has(r.estado ?? '') ? 'error' : 'warn',
+            r.slug,
+            'convocatoria_enlace_no_boletin',
+            `${r.slug}: el botón oficial no lleva al boletín que promete — el botón promete "${etiqueta}" pero el enlace ${razones.join('; además ')}`,
+          );
+        } else if (s.pareceTemario) {
+          add(
+            'content',
+            'warn',
+            r.slug,
+            'convocatoria_enlace_no_boletin',
+            `${r.slug}: el botón oficial no lleva al boletín que promete — el botón promete la convocatoria en "${etiqueta}" y el enlace es un TEMARIO`,
+          );
+        }
       }
     }
 

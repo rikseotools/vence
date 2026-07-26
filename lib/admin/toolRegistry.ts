@@ -58,6 +58,35 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── programa_url (el enlace del botón oficial de la landing) ───────────────────────────────
+  repuntar_enlace_convocatoria: {
+    titulo: 'Cambiar el enlace del botón "Ver convocatoria en {diario}" de una landing (programa_url)',
+    ruta: 'scripts/convocatoria/repuntar-enlace-convocatoria.cjs',
+    estado: 'vivo',
+    escribe: ['programa_url'],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'Dry-run por defecto. Comprueba con el registro compartido (`canonicalizeBoletinUrl`) que la ' +
+      'URL es del boletín que promete la etiqueta —o exige `--etiqueta` para cambiarla a la vez—, ' +
+      'descarga el documento (los PDF los lee con `pdftotext`, así que BOCM/BORM/BOPA también se ' +
+      'verifican) y con `--anclas` obliga a que el texto mencione ESTE proceso. Hace DUAL-WRITE ' +
+      '(`oposiciones` + convocatoria vigente: la landing lee la SSOT) y vuelve a leer la vista para ' +
+      'confirmar que el hallazgo se apagó. Resetea `programa_last_hash` (el documento es otro; si no, ' +
+      'la verificación de literalidad de epígrafe cantaría un `outdated_convocatoria` falso) y exige ' +
+      '`--acepto-perder-temario` si la URL actual era el temario. Traza en `observable_events` ' +
+      '(`convocatoria_enlace_repuntado`). NO purga la caché: eso va aparte y es per-instancia. ' +
+      'Hermano de `repuntar_seguimiento_url`.',
+  },
+  sprint_g_migrate_convocatorias: {
+    titulo: 'Migración Sprint G: volcar los campos de convocatoria de `oposiciones` a `convocatorias`',
+    ruta: 'scripts/sprint-g-migrate-data.cjs',
+    estado: 'historico',
+    escribe: ['programa_url'],
+    notas:
+      'Migración de datos que creó la SSOT de convocatorias (copia legacy → tabla `convocatorias`). ' +
+      'Corrió una vez; se conserva por trazabilidad de aquella migración.',
+  },
+
   // ── seguimiento_url ────────────────────────────────────────────────────────────────────────
   repuntar_seguimiento_url: {
     titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',
@@ -117,7 +146,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     titulo: 'Construcción de Cuidador/a Diputación de Córdoba — fase 2 (datos de convocatoria)',
     ruta: 'scripts/_cuidador_cordoba_fase2.cjs',
     estado: 'historico',
-    escribe: ['seguimiento_url'],
+    escribe: ['seguimiento_url', 'programa_url'],
     notas:
       'Script de construcción de UNA oposición concreta; escribe su seguimiento_url junto al resto ' +
       'de datos de convocatoria. No es una herramienta reutilizable.',
@@ -126,7 +155,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     titulo: 'Construcción de Ordenanza Ayto. de Córdoba — fase 2 (datos de convocatoria)',
     ruta: 'scripts/_ordenanza_cordoba_fase2.cjs',
     estado: 'historico',
-    escribe: ['seguimiento_url'],
+    escribe: ['seguimiento_url', 'programa_url'],
     notas: 'Ídem: construcción de una oposición concreta, no herramienta reutilizable.',
   },
 

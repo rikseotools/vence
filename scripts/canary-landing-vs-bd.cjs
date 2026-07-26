@@ -19,13 +19,12 @@
  */
 require('dotenv').config({ path: '.env.local' });
 const {Client}=require('pg');
-const {canonicalizeBoletinUrl}=require('../lib/convocatoria/canonicalizeBoletinUrl.cjs');
-const {normalizarEtiquetaBoletin}=require('../lib/convocatoria/linkCoherence.cjs');
+const {normalizarEtiquetaBoletin, checkConvocatoriaLinks}=require('../lib/convocatoria/linkCoherence.cjs');
 const fmt=n=>n==null?'—':String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 (async()=>{
 const c=new Client({connectionString:process.env.DATABASE_URL, ssl:{rejectUnauthorized:false}, statement_timeout:40000});
 await c.connect();
-const rows=(await c.query(`select slug, plazas_libres l, plazas_promocion_interna p, plazas_total t, temas_count tc, landing_estadisticas le
+const rows=(await c.query(`select slug, plazas_libres l, plazas_promocion_interna p, plazas_total t, temas_count tc, landing_estadisticas le, estado_proceso estado
   from oposiciones_ssot where is_active and jsonb_typeof(landing_estadisticas)='array'
     and landing_estadisticas::text like '%plazas%' order by plazas_total desc nulls last limit 40`)).rows;
 let ok=0, mal=0, sin=0, botonMal=0;
@@ -39,18 +38,22 @@ for(const r of rows){
   let html=''; try{ html=await fetch(`https://www.vence.es/${r.slug}?cb=${Date.now()}`).then(x=>x.text()) }catch{}
   const m=html.match(/<div class="text-[^"]*font-bold[^"]*"[^>]*>([^<]*)<\/div>/);
   const visto = m ? m[1].trim() : null;
-  // CAPA EN VIVO del guardarraíl etiqueta↔enlace: no basta con que la BD sea coherente,
-  // hay que ver que la PÁGINA RENDERIZADA no prometa un boletín y lleve a otro (una caché
-  // per-instancia sin purgar puede seguir sirviendo la etiqueta vieja). Núcleo puro
-  // compartido con el sweep: lib/convocatoria/linkCoherence.cjs.
+  // CAPA EN VIVO del guardarraíl del botón oficial: no basta con que la BD sea coherente, hay que
+  // ver que la PÁGINA RENDERIZADA no prometa un boletín y lleve a otro sitio (una caché
+  // per-instancia sin purgar puede seguir sirviendo el enlace viejo — que es exactamente cómo se
+  // queda un arreglo a medias). Se juzga con el MISMO núcleo puro que el sweep y el gate
+  // (`checkConvocatoriaLinks`), sobre la etiqueta y el href REALES del HTML servido: así el canario
+  // no puede opinar distinto que el detector, ni quedarse atrás cuando este mejore (T-134).
   const boton = html.match(/Ver (?:convocatoria|OEP) en ([A-ZÁÉÍÓÚ]{3,6})/);
   if (boton) {
     const etiquetaVista = normalizarEtiquetaBoletin(boton[1]);
     const hrefBoton = (html.match(/href="(https?:\/\/[^"]+)"[^>]*>(?:(?!<\/a>).)*?Ver (?:convocatoria|OEP) en /s) || [])[1];
-    const { boletin, recognized } = hrefBoton ? canonicalizeBoletinUrl(hrefBoton) : { boletin: null, recognized: false };
-    if (etiquetaVista && recognized && boletin && boletin !== etiquetaVista) {
+    const issues = checkConvocatoriaLinks({
+      diarioOficial: etiquetaVista, programaUrl: hrefBoton, estadoProceso: r.estado,
+    }).filter((i) => i.severidad === 'error');
+    if (issues.length) {
       botonMal++;
-      console.log(`  ❌ ${r.slug.padEnd(38)} el botón dice "${etiquetaVista}" y enlaza al ${boletin}`);
+      for (const i of issues) console.log(`  ❌ ${r.slug.padEnd(38)} botón oficial: ${i.detalle}`);
     }
   }
   if(!visto){ sin++; console.log(`  ⚠️  ${r.slug.padEnd(38)} sin tarjeta en la web`); continue }
