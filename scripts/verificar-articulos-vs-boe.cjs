@@ -9,6 +9,7 @@
  * Uso:
  *   node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <art> [<art>…]
  *   node scripts/verificar-articulos-vs-boe.cjs lprl BOE-A-1995-24292 10 11 12 32 39
+ *   node scripts/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 DOUE-L-2016-80807 38   # normas UE
  *
  * Sin lista de artículos verifica TODOS los activos de la ley (ojo: 1 fetch por
  * artículo, sé considerado con el BOE).
@@ -18,7 +19,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
-const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -54,6 +55,36 @@ async function xmlBloque(art) {
   return await r.text()
 }
 
+// ── Normas EUROPEAS (ids DOUE-*) ────────────────────────────────────────────
+// No están en legislación consolidada (la API devuelve 400), pero sí existen como
+// DOCUMENTO y se sirven en XML por otro endpoint. Sin esta rama, toda la
+// legislación de la UE del temario quedaba fuera del Paso 1 (T-143, 26/07/2026).
+const ES_DOUE = /^DOUE-/i.test(BOE_ID || '')
+let DOC_XML = null
+async function xmlDocumento() {
+  if (DOC_XML === null) {
+    const r = await fetch(`https://www.boe.es/buscar/xml.php?id=${BOE_ID}`, { redirect: 'follow' })
+    if (!r.ok) throw new Error(`HTTP ${r.status} al pedir el documento ${BOE_ID}`)
+    DOC_XML = await r.text()
+  }
+  return DOC_XML
+}
+
+/** Compara un artículo de un documento DOUE contra nuestro `content`. */
+async function comparaDocumento(art, contenidoBd) {
+  const a = articuloDeDocumento(await xmlDocumento(), art)
+  if (!a) return { coincide: false, vigencia: null, lenBoe: 0, lenBd: normalizar(contenidoBd).length, divergeEn: 0, notaVigencia: null, noEncontrado: true }
+  const boe = normalizar(a.texto)
+  const bd = normalizar(contenidoBd)
+  // El documento es el texto PUBLICADO: no hay versiones por fecha_vigencia, así
+  // que no se puede afirmar que sea el vigente si la norma se modificó después.
+  const base = { vigencia: 'documento', lenBoe: boe.length, lenBd: bd.length, notaVigencia: null }
+  if (boe === bd) return { ...base, coincide: true, divergeEn: null }
+  let i = 0
+  while (i < Math.min(boe.length, bd.length) && boe[i] === bd[i]) i++
+  return { ...base, coincide: false, divergeEn: i }
+}
+
 ;(async () => {
   const arts = ARTS.length
     ? await s`SELECT a.article_number n, a.content FROM articles a JOIN laws l ON l.id = a.law_id
@@ -80,7 +111,7 @@ async function xmlBloque(art) {
   for (const a of arts) {
     let r
     try {
-      r = comparaConBd(await xmlBloque(a.n), a.content)
+      r = ES_DOUE ? await comparaDocumento(a.n, a.content) : comparaConBd(await xmlBloque(a.n), a.content)
     } catch (e) {
       mal++
       console.log(`  ❌ art. ${a.n}: no se pudo leer del BOE (${e.message})`)
@@ -98,7 +129,7 @@ async function xmlBloque(art) {
     }
 
     if (r.coincide) {
-      console.log(`  ✅ art. ${a.n} — idéntico al BOE vigente (${r.vigencia})`)
+      console.log(`  ✅ art. ${a.n} — idéntico al BOE ${r.vigencia === 'documento' ? '(documento publicado; el DOUE no tiene versiones consolidadas, comprueba si la norma se modificó después)' : 'vigente (' + r.vigencia + ')'}`)
       continue
     }
     mal++
@@ -106,7 +137,7 @@ async function xmlBloque(art) {
       console.log(`  ❌ art. ${a.n}: el BOE no devuelve ninguna versión para ese bloque (¿numeración distinta, "bis", derogado?)`)
       continue
     }
-    const boe = bloqueVigente(await xmlBloque(a.n))
+    const boe = ES_DOUE ? articuloDeDocumento(await xmlDocumento(), a.n) : bloqueVigente(await xmlBloque(a.n))
     console.log(`  ❌ art. ${a.n} DIVERGE del BOE vigente (${r.vigencia}) — BD ${r.lenBd} ch / BOE ${r.lenBoe} ch, difieren desde el char ${r.divergeEn}`)
     console.log(`     BOE: …${boe.texto.replace(/\s+/g, ' ').slice(Math.max(0, r.divergeEn - 50), r.divergeEn + 150)}…`)
     console.log(`     BD : …${String(a.content).replace(/\s+/g, ' ').slice(Math.max(0, r.divergeEn - 50), r.divergeEn + 150)}…`)

@@ -1,4 +1,4 @@
-const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo } = require('../../../lib/laws/boeBloqueVigente')
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, articuloDeDocumento } = require('../../../lib/laws/boeBloqueVigente')
 
 // Réplica reducida de la respuesta REAL del art. 2 de la Ley 7/1985: el BOE
 // devuelve las versiones 1985 → 2013 → 1990, en ese orden. Quedarse con la
@@ -279,5 +279,57 @@ describe('bloqueVigente — tablas', () => {
       <p class="parrafo">Primero. <i>Hecho imponible</i>.–Constituye el hecho imponible la autorización.</p>
     </version></bloque></data></response>`
     expect(bloqueVigente(xml).texto).toContain('Hecho imponible.–Constituye')
+  })
+})
+
+// ── Normas EUROPEAS: documento, no consolidado (T-143, 26/07/2026) ───────────
+// El RGPD y los Tratados NO están en legislación consolidada (la API da 400) pero
+// sí como documento en /buscar/xml.php. Y llegan en DOS formatos distintos, así
+// que el parser tiene que soportar los dos o una familia entera queda sin verificar.
+describe('articuloDeDocumento (documentos DOUE)', () => {
+  // Formato del RGPD: los artículos van marcados con class="articulo", y el título
+  // trae espacio duro y espacio em ("Artículo 38. Posición…").
+  const RGPD = `<documento><texto>
+    <p class="articulo">Art&iacute;culo&#160;37.&#8195;Designaci&oacute;n del delegado.</p>
+    <p class="parrafo">Texto del 37.</p>
+    <p class="articulo">Art&iacute;culo&#160;38.&#8195;Posici&oacute;n del delegado de protecci&oacute;n de datos.</p>
+    <p class="parrafo">1. El responsable garantizar&aacute; que el delegado participe.</p>
+    <p class="parrafo_2">2. Le prestar&aacute;n el apoyo necesario.</p>
+    <p class="articulo">Art&iacute;culo&#160;39.&#8195;Funciones.</p>
+    <p class="parrafo">Texto del 39.</p>
+  </texto></documento>`
+
+  // Formato de los Tratados (DOUE-Z-2010-70002): NO usa class="articulo" en
+  // absoluto — todo es `parrafo` y el encabezado "Artículo 244" va suelto.
+  const TRATADOS = `<documento><texto>
+    <p class="parrafo">SECCI&Oacute;N CUARTA</p>
+    <p class="parrafo">Art&iacute;culo 244</p>
+    <p class="parrafo">Los miembros de la Comisi&oacute;n ser&aacute;n elegidos mediante un sistema de rotaci&oacute;n.</p>
+    <p class="parrafo">Art&iacute;culo 245</p>
+    <p class="parrafo">Texto del 245.</p>
+  </texto></documento>`
+
+  it('extrae el artículo del formato con class="articulo" y para en el siguiente', () => {
+    const a = articuloDeDocumento(RGPD, 38)
+    expect(a.rubrica).toMatch(/Posición del delegado/)
+    expect(a.texto).toMatch(/El responsable garantizará/)
+    expect(a.texto).toMatch(/apoyo necesario/)
+    expect(a.texto).not.toMatch(/Texto del 39|Texto del 37/)
+  })
+
+  it('extrae el artículo del formato SIN class="articulo" (Tratados)', () => {
+    const a = articuloDeDocumento(TRATADOS, 244)
+    expect(a.texto).toMatch(/sistema de rotación/)
+    expect(a.texto).not.toMatch(/Texto del 245/)
+  })
+
+  it('no confunde el 4 con el 44 ni el 244', () => {
+    expect(articuloDeDocumento(TRATADOS, 4)).toBeNull()
+    expect(articuloDeDocumento(TRATADOS, 245).texto).toMatch(/Texto del 245/)
+  })
+
+  it('devuelve null si el artículo no está', () => {
+    expect(articuloDeDocumento(RGPD, 99)).toBeNull()
+    expect(articuloDeDocumento('', 1)).toBeNull()
   })
 })
