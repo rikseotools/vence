@@ -37,7 +37,7 @@ const boeId = (u) => (String(u || '').match(/BOE-A-\d{4}-\d+/) || [])[0]
 // La lógica de parseo (qué es título/capítulo/artículo, de dónde sale el nº) vive en el
 // módulo PURO lib/laws/parseBoeSections, testeado en __tests__/laws/parseBoeSections.
 // Aquí solo queda lo que necesita red (fetch del índice + rúbrica).
-const { parseBoeSections } = require('../lib/laws/parseBoeSections')
+const { parseBoeSections, validarSecciones } = require('../lib/laws/parseBoeSections')
 
 /** Rúbrica descriptiva de un título/capítulo: viene DENTRO de su bloque, tras el
  *  encabezado "TÍTULO I". Fetch extra por sección (por eso se hace solo al aplicar). */
@@ -60,13 +60,19 @@ async function estructura(bid, { conRubrica = false } = {}) {
 
 /** Devuelve {ok, secs, motivo} tras validar contra los artículos reales de la ley. */
 async function validar(lawId, secs) {
-  if (!secs.length) return { ok: false, motivo: 'sin_secciones' }
+  // Solo I/O: contar los artículos REALES de cada rango. El criterio vive en el núcleo
+  // puro (`validarSecciones`), que está testeado y explica por qué una sección vacía ya
+  // no tumba la ley entera (T-064: eran artículos DEROGADOS, no un parser desalineado).
+  const conConteo = []
   for (const s of secs) {
     const n = (await sql`SELECT count(*)::int c FROM articles WHERE law_id=${lawId} AND article_number ~ '^[0-9]+$' AND article_number::int BETWEEN ${s.from} AND ${s.to}`)[0].c
-    if (n === 0) return { ok: false, motivo: `rango_vacio(${s.num}:${s.from}-${s.to})` }
+    conConteo.push({ ...s, arts: n })
   }
-  for (let i = 0; i < secs.length; i++) for (let j = i + 1; j < secs.length; j++) if (secs[i].from <= secs[j].to && secs[j].from <= secs[i].to) return { ok: false, motivo: 'solape' }
-  return { ok: true, secs }
+  const r = validarSecciones(conConteo)
+  if (r.ok && r.vacias.length) {
+    console.log(`     ↳ ${r.vacias.length} sección(es) sin artículos, descartadas (probable derogación): ${r.vacias.map((v) => `${v.num}:${v.from}-${v.to}`).join(', ')}`)
+  }
+  return r
 }
 
 async function insertar(lawId, secs, tipo) {
@@ -79,7 +85,14 @@ async function insertar(lawId, secs, tipo) {
       const title = s.rubrica ? `${nombreTipo} ${s.num}. ${s.rubrica}` : `${nombreTipo} ${s.num}`
       // slug ÚNICO GLOBAL (law_sections_slug_key): incluye el law_id, si no "titulo-i"
       // colisiona en cuanto una 2ª ley tiene un "Título I".
-      const slug = `${lawId.slice(0, 8)}-${tipo}-${String(s.num).toLowerCase()}`
+      // El nº de sección NO es único en las leyes-código: los títulos REINICIAN por libro
+      // ("Libro I › Título I", "Libro II › Título I"), así que el Código Civil tiene cuatro
+      // "Título I" y el slug colisionaba contra `law_sections_slug_key` (T-064, 26/07). Se
+      // desempata con el `blockId` del BOE, que sí es único dentro de la ley (`tprimero`,
+      // `tprimero-2`…) y además deja el slug estable entre ejecuciones — cosa que un índice
+      // posicional no garantiza si el índice del BOE cambia de orden.
+      const sufijo = s.blockId ? `-${String(s.blockId).toLowerCase()}` : ''
+      const slug = `${lawId.slice(0, 8)}-${tipo}-${String(s.num).toLowerCase()}${sufijo}`
       await tx`INSERT INTO law_sections (law_id, section_type, section_number, title, description, article_range_start, article_range_end, slug, order_position, is_active, created_at, updated_at)
         VALUES (${lawId}, ${tipo}, ${s.num}, ${title}, NULL, ${s.from}, ${s.to}, ${slug}, ${++i}, true, now(), now())`
     }

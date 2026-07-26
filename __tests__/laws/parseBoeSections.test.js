@@ -1,4 +1,4 @@
-const { parseBoeSections, haySolape, numDeLabel } = require('@/lib/laws/parseBoeSections')
+const { parseBoeSections, haySolape, numDeLabel, validarSecciones } = require('@/lib/laws/parseBoeSections')
 
 // Cada caso viene de un fallo REAL medido con --sweep sobre leyes del temario (T-012).
 describe('parseBoeSections — estructura de leyes del BOE', () => {
@@ -107,5 +107,70 @@ describe('parseBoeSections — estructura de leyes del BOE', () => {
     expect(numDeLabel('Art 10')).toBe(10)
     expect(numDeLabel('Artículo único')).toBeNull()
     expect(numDeLabel('CAPÍTULO I')).toBeNull()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// validarSecciones — T-064 (26/07/2026).
+//
+// El criterio original rechazaba la ley ENTERA si UNA sección no tenía artículos. La causa
+// habitual no es un parser desalineado: son artículos DEROGADOS. El Código Civil se caía
+// por `rango_vacio(XI:314-324)` —suprimidos por la Ley 8/2021, reforma de la discapacidad—
+// y con esa única sección se perdían las otras 45, dejando la ley más navegada del corpus
+// (1.911 artículos) como lista plana en /leyes.
+describe('validarSecciones — una sección derogada no debe tumbar la ley', () => {
+  const sec = (num, from, to, arts) => ({ num, from, to, arts })
+
+  it('descarta la sección vacía y acepta el resto (caso Código Civil)', () => {
+    const r = validarSecciones([
+      sec('Preliminar', 1, 16, 16),
+      sec('I', 17, 28, 12),
+      sec('XI', 314, 324, 0), // derogados por la Ley 8/2021
+      sec('XII', 325, 332, 8),
+    ])
+    expect(r.ok).toBe(true)
+    expect(r.secs.map((s) => s.num)).toEqual(['Preliminar', 'I', 'XII'])
+    expect(r.vacias.map((s) => s.num)).toEqual(['XI'])
+  })
+
+  it('pero SÍ rechaza si demasiadas salen vacías (eso es desalineación, no derogación)', () => {
+    const r = validarSecciones([
+      sec('I', 1, 10, 5),
+      sec('II', 11, 20, 0),
+      sec('III', 21, 30, 0),
+      sec('IV', 31, 40, 0),
+    ])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/demasiadas_vacias/)
+  })
+
+  it('rechaza si NINGUNA sección tiene artículos', () => {
+    const r = validarSecciones([sec('I', 1, 10, 0), sec('II', 11, 20, 0)])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toBe('ninguna_seccion_con_articulos')
+  })
+
+  it('sigue rechazando el solape, que es el fallo que de verdad mete basura', () => {
+    const r = validarSecciones([sec('I', 1, 20, 20), sec('II', 15, 30, 16)])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toBe('solape')
+  })
+
+  it('el solape se mide solo entre las secciones que se van a insertar', () => {
+    // La vacía (X) PISA a las vivas, pero se descarta ANTES de medir solapes, así que no
+    // puede provocar un rechazo falso. Se usan 4 secciones a propósito: con 3 el ratio de
+    // vacías (1/3) superaría el umbral del 30 % y el test mediría otra cosa.
+    const r = validarSecciones([
+      sec('I', 1, 20, 20),
+      sec('X', 10, 25, 0),
+      sec('II', 21, 30, 10),
+      sec('III', 31, 40, 10),
+    ])
+    expect(r.ok).toBe(true)
+    expect(r.secs.map((x) => x.num)).toEqual(['I', 'II', 'III'])
+  })
+
+  it('sin secciones → sin_secciones', () => {
+    expect(validarSecciones([]).motivo).toBe('sin_secciones')
   })
 })
