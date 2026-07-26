@@ -7,6 +7,7 @@
  *   node scripts/huerfanos-plan.cjs --ley lprl             # huérfanos de una ley, por alcance
  *   node scripts/huerfanos-plan.cjs --simula lprl 10 11 12 # impacto ANTES de escribir nada
  *   node scripts/huerfanos-plan.cjs --deuda                # deuda REAL (incluye lo que el badge ya no ve)
+ *   node scripts/huerfanos-plan.cjs --oposicion auxiliar-administrativo-estado   # cerrar UNA oposición
  *   node scripts/huerfanos-plan.cjs --excluir lprl,ley-7-1985   # para sesiones en paralelo
  *
  * La consulta reproduce el universo del detector (artículos escopados, activos,
@@ -94,14 +95,22 @@ const tabla = (filas) => { console.table(filas); return filas }
     return
   }
 
-  // --ley <slug> · --deuda
+  // --ley <slug> · --deuda · --oposicion <slug>
   const soloQueDisparan = flag('--deuda') < 0
   const ley = valor('--ley')
-  if (ley || flag('--deuda') >= 0) {
+  // Acepta el slug con guiones (como en la URL) o el position_type con guiones bajos.
+  const opoArg = valor('--oposicion')
+  const oposicion = opoArg ? opoArg.replace(/-/g, '_') : null
+  if (ley || oposicion || flag('--deuda') >= 0) {
     const r = plan
-      .marcaEnCurso(plan.rankingHuerfanos(filas, { soloQueDisparan, demanda }), enCurso)
+      .marcaEnCurso(plan.rankingHuerfanos(filas, { soloQueDisparan, demanda, oposicion }), enCurso)
       .filter((a) => !ley || a.leySlug === ley)
-    console.log(`\n${r.length} artículo(s) huérfano(s)${ley ? ` en ${ley}` : ''}${soloQueDisparan ? ' en temas que disparan el finding' : ' (DEUDA REAL, incluye lo que el badge ya no ve)'}:\n`)
+    if (oposicion) {
+      const suyos = plan.temasQueDisparan(filas).filter((t) => t.pt === oposicion)
+      console.log(`\n${oposicion}: ${suyos.length} tema(s) disparando · ${demanda[opoArg] || demanda[oposicion] || 0} usuarios`)
+      console.log('  (cerrarla del todo = cubrir TODOS estos artículos; el alcance y los usuarios son globales)')
+    }
+    console.log(`\n${r.length} artículo(s) huérfano(s)${ley ? ` en ${ley}` : ''}${oposicion ? ` de ${oposicion}` : ''}${soloQueDisparan ? ' en temas que disparan el finding' : ' (DEUDA REAL, incluye lo que el badge ya no ve)'}:\n`)
     tabla(r.slice(0, 40).map((a) => ({ ley: a.ley, art: a.articulo, oposiciones: a.nOposiciones, temas: a.nTemas, usuarios: a.usuarios, enCurso: a.enCurso ? '⚠️' : '' })))
     await s.end()
     return

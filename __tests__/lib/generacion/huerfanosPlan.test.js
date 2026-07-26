@@ -215,3 +215,44 @@ describe('marcaEnCurso — no elegir una ley que otra sesión está trabajando',
     expect(r).toHaveLength(rankingHuerfanos(filas).length)
   })
 })
+
+// ── Acotar a UNA oposición (26/07/2026) ─────────────────────────────────────
+// Estrategia "cerrar la oposición con más usuarios" en vez de perseguir el badge:
+// nació de medir que las oposiciones con más opositores tienen POCOS huecos.
+describe('rankingHuerfanos con `oposicion` (cerrar una oposición del todo)', () => {
+  const filas = [
+    // opo_a comparte los huecos 7-10 de ley-x con opo_b…
+    ...tema({ pt: 'opo_a', topicId: 'tA', n: 10, cubiertos: 6 }),
+    ...tema({ pt: 'opo_b', topicId: 'tB', n: 10, cubiertos: 6 }),
+    // …y opo_b tiene ADEMÁS huecos propios en otra ley.
+    ...tema({ pt: 'opo_b', topicId: 'tB2', leySlug: 'ley-y', ley: 'Ley Y', desde: 100, n: 10, cubiertos: 6 }),
+  ]
+
+  it('deja fuera los huecos que no son de esa oposición', () => {
+    const r = rankingHuerfanos(filas, { oposicion: 'opo_a' })
+    expect(r.every((a) => a.leySlug === 'ley-x')).toBe(true)
+    expect(rankingHuerfanos(filas, { oposicion: 'opo_b' }).some((a) => a.leySlug === 'ley-y')).toBe(true)
+  })
+
+  it('el alcance y los usuarios siguen siendo GLOBALES, no los de la oposición acotada', () => {
+    const r = rankingHuerfanos(filas, { oposicion: 'opo_a', demanda: { opo_a: 100, opo_b: 900 } })
+    // El artículo lo escopan las dos oposiciones: se reporta 2 y 1.000 usuarios,
+    // aunque el ranking se haya pedido "de opo_a".
+    expect(r[0].nOposiciones).toBe(2)
+    expect(r[0].usuarios).toBe(1000)
+  })
+
+  it('sin `oposicion` el comportamiento no cambia (compatibilidad)', () => {
+    expect(rankingHuerfanos(filas).length).toBe(rankingHuerfanos(filas, { oposicion: null }).length)
+  })
+
+  it('devuelve vacío si la oposición no tiene huecos', () => {
+    expect(rankingHuerfanos(filas, { oposicion: 'opo_inexistente' })).toEqual([])
+  })
+
+  it('proponeLote acotado propone una ley de ESA oposición y mide impacto global', () => {
+    const lote = proponeLote(filas, { oposicion: 'opo_b', maxArticulos: 4 })
+    expect(['ley-x', 'ley-y']).toContain(lote.leySlug)
+    expect(lote.impacto.temasAntes).toBe(3) // los 3 temas globales que disparan
+  })
+})
