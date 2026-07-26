@@ -21,7 +21,9 @@
 // Sumarlos en un único número sería mentir en las dos direcciones.
 
 require('dotenv').config({ path: '.env.local' })
+const path = require('path')
 const postgres = require('postgres')
+const { clasificarErrorLlm } = require(path.join(__dirname, '..', '..', 'lib', 'observability', 'llmErrorKind.cjs'))
 
 const argv = process.argv.slice(2)
 const JSON_OUT = argv.includes('--json')
@@ -69,6 +71,41 @@ async function main() {
       AND metadata->>'billing' = 'suscripcion'
     GROUP BY 1, 2 ORDER BY 6 DESC NULLS LAST LIMIT 10`
 
+  // Salud del proveedor: si algo está fallando, el gasto es lo de menos. Se agrupa por la CLASE
+  // del error (`errorKind`), que es lo que dice qué hacer: recargar saldo, regenerar la clave,
+  // esperar… Sin esto había que ir a probar la clave a mano contra la API (26/07: 8 h de radar
+  // muerto por falta de saldo, y el evento solo decía `ok:false`).
+  // Los eventos ANTERIORES a la clasificación no traen `errorKind`; para esos se clasifica aquí
+  // con el MISMO núcleo puro, leyendo `error_message`. Así la herramienta sirve desde el primer
+  // día y no solo para los fallos futuros — que es la diferencia entre diagnosticar hoy o esperar.
+  const fallosRaw = await sql`
+    SELECT COALESCE(metadata->>'provider', '—') proveedor,
+           metadata->>'errorKind' kind_guardado,
+           error_message, http_status,
+           count(*)::int n, to_char(max(ts), 'DD/MM HH24:MI') ultimo
+    FROM observable_events
+    WHERE event_type = 'llm_call' AND metadata->>'ok' = 'false' AND ts > now() - ${desde}::interval
+    GROUP BY 1, 2, 3, 4 ORDER BY 5 DESC`
+  const porClase = new Map()
+  for (const f of fallosRaw) {
+    const c = f.kind_guardado
+      ? { kind: f.kind_guardado, accion: '' }
+      : clasificarErrorLlm(f.error_message, f.http_status)
+    const clave = `${f.proveedor}|${c.kind}`
+    const e = porClase.get(clave) || { proveedor: f.proveedor, kind: c.kind, accion: c.accion, n: 0, ultimo: f.ultimo, derivado: !f.kind_guardado }
+    e.n += f.n
+    if (f.ultimo > e.ultimo) e.ultimo = f.ultimo
+    if (!e.accion && c.accion) e.accion = c.accion
+    porClase.set(clave, e)
+  }
+  const fallos = [...porClase.values()].sort((a, b) => b.n - a.n)
+  const ultimoOk = await sql`
+    SELECT COALESCE(metadata->>'provider', '—') proveedor, to_char(max(ts), 'DD/MM HH24:MI') t
+    FROM observable_events
+    WHERE event_type = 'llm_call' AND metadata->>'ok' = 'true'
+      AND COALESCE(metadata->>'billing','api') = 'api' AND ts > now() - ${desde}::interval
+    GROUP BY 1`
+
   const [tot] = await sql`
     SELECT round(sum((metadata->>'estimatedCostUsd')::numeric), 2) usd, count(*)::int n
     FROM observable_events
@@ -81,13 +118,22 @@ async function main() {
   await sql.end()
 
   if (JSON_OUT) {
-    console.log(JSON.stringify({ dias: DIAS, api, suscripcion: sub, totales: { api: tot, suscripcion: totSub } }, null, 2))
+    console.log(JSON.stringify({ dias: DIAS, api, suscripcion: sub, fallos, ultimoOk, totales: { api: tot, suscripcion: totSub } }, null, 2))
     return
   }
 
   console.log(`\n${'='.repeat(72)}`)
   console.log(`CONSUMO DE LLM — últimos ${DIAS} días`)
   console.log('='.repeat(72))
+
+  if (fallos.length) {
+    console.log('\n── ⚠️  SALUD DEL PROVEEDOR: hay llamadas fallando ──')
+    for (const f of fallos) {
+      console.log(`   ${String(f.proveedor).padEnd(12)} ${String(f.kind).padEnd(22)} ${String(f.n).padStart(5)} fallos · último ${f.ultimo}${f.derivado ? ' (clasificado al vuelo)' : ''}`)
+      if (f.accion) console.log(`                → ${f.accion}`)
+    }
+    for (const o of ultimoOk) console.log(`   última llamada OK de ${o.proveedor}: ${o.t}`)
+  }
 
   console.log(`\n── API (esto SÍ se factura) — ${tot.n || 0} llamadas · ${tot.usd || 0} USD estimados ──`)
   if (!api.length) console.log('   (sin datos)')

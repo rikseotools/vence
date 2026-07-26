@@ -17,6 +17,11 @@
 
 import { AsyncLocalStorage } from 'async_hooks'
 import { emitFireAndForget } from './emit'
+// Núcleo puro compartido (lo replica el gemelo del backend con test de paridad): convierte el
+// mensaje del proveedor en una CLASE accionable. Sin esto, "ok:false" obliga a repetir el
+// diagnóstico a mano cada vez — pasó el 26/07 con 8 horas de radar muerto por falta de saldo.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { clasificarErrorLlm, requiereIntervencion } = require('./llmErrorKind.cjs')
 
 export type LlmProvider = 'anthropic' | 'openai' | 'google'
 
@@ -121,6 +126,7 @@ export interface LlmCallRecord {
 export function recordLlmCall(r: LlmCallRecord): void {
   try {
     const estimatedCostUsd = r.ok ? estimateCostUsd(r.model, r.usage) : 0
+    const clase = r.ok ? null : clasificarErrorLlm(r.error, undefined)
     emitFireAndForget({
       source: 'fargate',
       severity: r.ok ? 'info' : 'warn',
@@ -138,6 +144,9 @@ export function recordLlmCall(r: LlmCallRecord): void {
         estimatedCostUsd,
         ok: r.ok,
         streaming: !!r.streaming,
+        // Qué CLASE de fallo fue y si necesita una persona. Es lo que permite alertar con
+        // "SIN SALDO en Anthropic" en vez de "una llamada falló", y agregarlo por tipo.
+        ...(clase ? { errorKind: clase.kind, errorAccion: clase.accion, requiereIntervencion: requiereIntervencion(clase.kind) } : {}),
       },
     })
   } catch {

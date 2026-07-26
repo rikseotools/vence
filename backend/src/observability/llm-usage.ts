@@ -84,6 +84,54 @@ function errMsg(e: unknown): string {
 }
 
 function record(
+// ── Mirror INLINE de lib/observability/llmErrorKind.cjs — MANTENER EN SYNC ──────────────────
+// El backend NestJS no puede importar `lib/` del frontend (build separado). Convierte el mensaje
+// del proveedor en una CLASE accionable: sin esto, `ok:false` obliga a repetir el diagnóstico a
+// mano — pasó el 26/07 con 8 horas de radar muerto por falta de saldo, que Anthropic devuelve
+// como 400 invalid_request_error y por eso parecía un error de petición.
+// El test `llm-error-kind-parity` compara estas reglas con las del núcleo POR COMPORTAMIENTO.
+const CLASES_ERROR: Array<{ kind: string; re: RegExp; accion: string }> = [
+  {
+    kind: 'sin_credito',
+    re: /credit balance is too low|insufficient[_ ]quota|billing_hard_limit|exceeded your current quota|payment required/i,
+    accion: 'recarga saldo en el proveedor (Plans & Billing). No es un bug de código.',
+  },
+  {
+    kind: 'auth_invalida',
+    re: /authentication_error|api key is invalid|invalid[_ ]api[_ ]key|incorrect api key|unauthorized/i,
+    accion: 'la clave está revocada o es de otra cuenta: regenérala y actualízala donde toque.',
+  },
+  {
+    kind: 'permiso',
+    re: /permission_error|does not have access|not allowed to access|forbidden/i,
+    accion: 'la clave existe pero no tiene permiso sobre ese modelo/organización.',
+  },
+  { kind: 'rate_limit', re: /rate[_ ]limit|too many requests|429/i, accion: 'se está pidiendo más rápido de lo permitido: reintentar con espera.' },
+  {
+    kind: 'modelo_no_disponible',
+    re: /model[^.]{0,40}(not found|does not exist|deprecated|retired)|not_found_error/i,
+    accion: 'el modelo ya no existe o no está disponible: cambiar el modelo configurado.',
+  },
+  { kind: 'sobrecarga', re: /overloaded|server_error|internal server error|503|502|bad gateway/i, accion: 'problema temporal del proveedor: reintentar.' },
+  { kind: 'timeout', re: /timeout|timed out|aborted|ETIMEDOUT|ECONNRESET/i, accion: 'la llamada no llegó a completarse: revisar red o subir el timeout.' },
+];
+
+export function clasificarErrorLlm(mensaje?: string | null, status?: number | null): { kind: string; accion: string } {
+  const txt = `${status != null ? `${status} ` : ''}${mensaje == null ? '' : String(mensaje)}`;
+  if (!txt.trim()) return { kind: 'desconocido', accion: 'el fallo no dejó mensaje: revisar el call-site.' };
+  for (const c of CLASES_ERROR) if (c.re.test(txt)) return { kind: c.kind, accion: c.accion };
+  // El texto manda sobre el código: un 400 de Anthropic puede ser falta de saldo.
+  if (status === 401) return { kind: 'auth_invalida', accion: CLASES_ERROR[1].accion };
+  if (status === 403) return { kind: 'permiso', accion: CLASES_ERROR[2].accion };
+  if (status === 429) return { kind: 'rate_limit', accion: CLASES_ERROR[3].accion };
+  if (status != null && status >= 500) return { kind: 'sobrecarga', accion: CLASES_ERROR[5].accion };
+  return { kind: 'otro', accion: 'sin patrón conocido: mirar `error_message` del evento.' };
+}
+
+export function requiereIntervencionLlm(kind: string): boolean {
+  return kind === 'sin_credito' || kind === 'auth_invalida' || kind === 'permiso' || kind === 'modelo_no_disponible';
+}
+
   obs: Pick<ObservabilityService, 'emitFireAndForget'>,
   r: { provider: LlmProvider; model: string; feature: string; usage: LlmUsage; durationMs: number; ok: boolean; error?: string; streaming: boolean },
 ): void {
@@ -106,6 +154,12 @@ function record(
         estimatedCostUsd,
         ok: r.ok,
         streaming: !!r.streaming,
+        ...(r.ok
+          ? {}
+          : (() => {
+              const c = clasificarErrorLlm(r.error, null);
+              return { errorKind: c.kind, errorAccion: c.accion, requiereIntervencion: requiereIntervencionLlm(c.kind) };
+            })()),
       },
     });
   } catch {
