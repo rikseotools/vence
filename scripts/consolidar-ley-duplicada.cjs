@@ -46,6 +46,7 @@
 const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
+const { emparejarArticulos } = require(path.join(__dirname, '..', 'lib', 'salud', 'emparejarArticulos'))
 
 const [SLUG_MUERTA, SLUG_VIVA] = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const APPLY = process.argv.includes('--apply')
@@ -99,7 +100,27 @@ const abortar = async (msg) => {
       (SELECT count(*)::int FROM questions q WHERE q.primary_article_id = a.id AND q.is_active) preg_activas
     FROM articles a WHERE a.law_id = ${muerta.id}`
   const artsV = await s`SELECT id, article_number, content FROM articles WHERE law_id = ${viva.id} AND is_active`
-  const porNum = new Map(artsV.map((a) => [a.article_number, a]))
+
+  // Emparejamiento por núcleo puro (`lib/salud/emparejarArticulos.js`): tolera
+  // acentos/mayúsculas/espacios pero NO ordinales ni números, y se planta si hay
+  // ambigüedad. Caso real: "37 quater" vs "37 quáter" son el mismo precepto y la
+  // igualdad exacta abortaba la consolidación entera.
+  const emp = emparejarArticulos(artsM, artsV)
+  const porNum = new Map()
+  for (const m of emp.mapeo) porNum.set(m.de.article_number, m.a)
+  const noExactos = emp.mapeo.filter((m) => !m.exacto)
+  if (noExactos.length) {
+    console.log('Artículos emparejados TRAS NORMALIZAR (revísalos):')
+    noExactos.forEach((m) => console.log(`   "${m.de.article_number}"  ↔  "${m.a.article_number}"`))
+    console.log('')
+  }
+  if (emp.ambiguos.length) {
+    console.error('Artículos AMBIGUOS (varias parejas posibles en la superviviente):')
+    emp.ambiguos.forEach((x) =>
+      console.error(`   "${x.articulo.article_number}" → ${x.candidatos.map((c) => `"${c.article_number}"`).join(', ')}`),
+    )
+    await abortar('hay artículos ambiguos: elegir por adivinación movería contenido al precepto equivocado')
+  }
 
   // Números que los temas escopan de la fila muerta: también tienen que existir.
   const scope = await s`
@@ -127,14 +148,36 @@ const abortar = async (msg) => {
     }
     if (relevante) mapeo.push({ de: a.id, a: v.id, num: a.article_number, preg: a.preg_todas, act: a.preg_activas })
   }
-  const numsEscopados = [...new Set(scope.flatMap((x) => x.article_numbers || []))]
-  const escopadosSinPareja = numsEscopados.filter((n) => !porNum.has(n))
+  const numsEscopados = new Set(scope.flatMap((x) => x.article_numbers || []))
 
-  // Capa 2 — nada puede quedarse sin destino.
-  if (sinPareja.length || escopadosSinPareja.length) {
-    console.error('artículos con preguntas y sin pareja:', sinPareja.join(', ') || '(ninguno)')
-    console.error('números escopados sin pareja:', escopadosSinPareja.join(', ') || '(ninguno)')
+  // Capa 2 — nada puede quedarse sin destino, pero "sin pareja" no siempre es un
+  // error: puede ser un artículo que la OTRA importación no trajo (caso real: el
+  // `preámbulo` del RDL 670/1987, que solo existe en la fila muerta y está
+  // escopado). Abortar ahí obligaba a parchear a mano en producción. Lo correcto
+  // es RE-PARENTARLO: la fila del artículo se mueve a la superviviente con su
+  // contenido y sus referencias intactas. No se copia ni se inventa nada.
+  const aReparentar = emp.soloEnMuerta.filter((a) => a.preg_todas > 0 || numsEscopados.has(a.article_number))
+  const huerfanosDeVerdad = sinPareja.filter((t) => !aReparentar.some((a) => t.startsWith(`art ${a.article_number} `)))
+  if (huerfanosDeVerdad.length) {
+    console.error('artículos con preguntas y sin destino posible:', huerfanosDeVerdad.join(', '))
     await abortar('hay contenido que se quedaría sin artículo de destino')
+  }
+  if (aReparentar.length) {
+    console.log('Artículos que solo existen en la fila muerta → se RE-PARENTAN a la superviviente:')
+    aReparentar.forEach((a) =>
+      console.log(`   "${a.article_number}" (${a.preg_todas} preguntas${numsEscopados.has(a.article_number) ? ', escopado' : ''})`),
+    )
+    console.log('')
+  }
+
+  // Números escopados que no existen como artículo en NINGUNA de las dos filas:
+  // eso ya está roto hoy (kind `scope_phantom_article`) y consolidar no lo empeora,
+  // así que se avisa sin bloquear — bloquear aquí solo escondería el problema real.
+  const numsEnMuerta = new Set(artsM.map((a) => a.article_number))
+  const fantasmas = [...numsEscopados].filter((n) => !porNum.has(n) && !numsEnMuerta.has(n))
+  if (fantasmas.length) {
+    console.log(`⚠️ números escopados que no existen en ninguna de las dos filas (ya rotos hoy): ${fantasmas.join(', ')}`)
+    console.log('   → son `scope_phantom_article`, se arreglan aparte; consolidar no los empeora.\n')
   }
 
   // Capa 3 — diferencias de texto por encima del 2% exigen decisión explícita.
@@ -176,6 +219,20 @@ const abortar = async (msg) => {
     )
   }
 
+  // TRADUCCIÓN DE NOMENCLATURA EN EL SCOPE. Si "37 quater" se emparejó con
+  // "37 quáter", mover el `topic_scope` tal cual dejaría el número apuntando a un
+  // artículo que en la fila viva se llama de otra forma: se convertiría en
+  // `scope_phantom_article` — un tema sirviendo 0 preguntas de ese artículo, en
+  // silencio. Al mover el scope hay que reescribir los números a la nomenclatura
+  // de la superviviente.
+  const traduce = new Map(emp.mapeo.filter((m) => !m.exacto).map((m) => [m.de.article_number, m.a.article_number]))
+  const traducir = (nums) => (nums ? nums.map((n) => traduce.get(n) || n) : nums)
+  if (traduce.size) {
+    console.log('Números que se REESCRIBEN en el scope al mover (nomenclatura de la superviviente):')
+    for (const [de, a] of traduce) console.log(`   "${de}" → "${a}"`)
+    console.log('')
+  }
+
   console.log('\nRESUMEN DEL MOVIMIENTO')
   console.log(`   artículos emparejados con preguntas : ${mapeo.length}`)
   console.log(`   preguntas a re-anclar (todas)       : ${mapeo.reduce((n, m) => n + m.preg, 0)}`)
@@ -189,6 +246,11 @@ const abortar = async (msg) => {
   }
 
   await s.begin(async (tx) => {
+    let rep = 0
+    for (const a of aReparentar) {
+      await tx`UPDATE articles SET law_id=${viva.id} WHERE id=${a.id}`
+      rep++
+    }
     let qs = 0
     let qa = 0
     for (const m of mapeo) {
@@ -201,16 +263,20 @@ const abortar = async (msg) => {
     let scFus = 0
     for (const x of scope) {
       if (x.ya_viva) {
-        const union = [...new Set([...(x.nums_viva || []), ...(x.article_numbers || [])])]
+        const union = [...new Set([...(x.nums_viva || []), ...(traducir(x.article_numbers) || [])])]
         await tx`UPDATE topic_scope SET article_numbers=${union} WHERE id=${x.ya_viva}`
         await tx`DELETE FROM topic_scope WHERE id=${x.id}`
         scFus++
       } else {
-        await tx`UPDATE topic_scope SET law_id=${viva.id} WHERE id=${x.id}`
+        // Se reescriben los números a la vez que se mueve la ley: si no, un
+        // "37 quater" apuntaría a un artículo que la superviviente llama "37 quáter".
+        await tx`UPDATE topic_scope SET law_id=${viva.id}, article_numbers=${traducir(x.article_numbers)} WHERE id=${x.id}`
         scMov++
       }
     }
-    console.log(`\n✅ aplicado: ${qs} preguntas re-ancladas · ${qa} enlaces adicionales · ${scMov} scope movidos · ${scFus} fusionados`)
+    console.log(
+      `\n✅ aplicado: ${rep} artículos re-parentados · ${qs} preguntas re-ancladas · ${qa} enlaces adicionales · ${scMov} scope movidos · ${scFus} fusionados`,
+    )
   })
 
   // Verificación posterior: los temas tienen que servir AL MENOS lo de antes.
