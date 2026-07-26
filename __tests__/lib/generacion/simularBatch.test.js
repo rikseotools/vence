@@ -330,3 +330,78 @@ describe('analizarPregunta — marco INTRUSO (paridad con el verificador de BD)'
     expect(r.avisos.some((a) => /MARCO AMBIGUO/.test(a))).toBe(true)
   })
 })
+
+// --- PARIDAD de núcleos con el verificador POST-inserción (26/07/2026) ---
+//
+// Los dos gates del pipeline deben dar el MISMO veredicto, pero la paridad se mantiene a
+// mano y se rompió: `citaVsOpcion` y `overclaimExplicacion` solo los corría el gate de BD,
+// así que un lote pasaba la simulación y el aviso salía DESPUÉS de insertar. Estos tests
+// se anclan a los dos casos REALES que lo delataron, para que quitar el cableado ponga algo
+// en rojo en vez de degradar el gate en silencio.
+describe('analizarPregunta — paridad de núcleos con verificar-batch-generado.cjs', () => {
+  it('avisa de OVERCLAIM (caso real: art. 39.1 RDL 1/1993, batch gen_atc_t224)', () => {
+    // La explicación afirmaba "sin excepciones" y el artículo no dice ese absoluto.
+    const ART = 'El pago del impuesto en la expedición de los documentos mercantiles cubre todas las cláusulas en ellos contenidas, en cuanto a su tributación por este concepto.'
+    const r = analizarPregunta(
+      {
+        question_text: 'Según el artículo 39.1, el pago del impuesto en la expedición de los documentos mercantiles:',
+        options: [
+          'cubre todas las cláusulas en ellos contenidas, en cuanto a su tributación por este concepto',
+          'cubre únicamente la cláusula principal del documento mercantil expedido',
+          'no exime de tributar por las cláusulas añadidas despues de su emisión',
+          'cubre las cláusulas salvo las que constituyan actos independientes',
+        ],
+        correct_option: 0,
+        explanation: '**Por qué A es correcta:** el artículo 39.1 extiende el efecto del pago a todas las cláusulas del documento, sin excepciones.\n\n> «cubre todas las cláusulas en ellos contenidas»\n\n**Por qué las demás son incorrectas:**\n- **B)** x.\n- **C)** y.\n- **D)** z.',
+        primary_article_number: '39',
+        law_slug: 'rdl-1-1993-itpajd',
+      },
+      ART,
+    )
+    expect(r.avisos.some((a) => /OVERCLAIM/.test(a))).toBe(true)
+  })
+
+  it('avisa de CORRECTA PARCIAL (caso real: art. 2.2 RDL 1/1993, batch gen_atc_t223)', () => {
+    // La opción paraba en "hasta que ésta se cumpla" y la ley añade un deber registral
+    // sobre la MISMA liquidación, que el enunciado no menciona.
+    const ART = 'En los actos o contratos en que medie alguna condición, su calificación se hará con arreglo a las prescripciones contenidas en el Código Civil. Si fuere suspensiva no se liquidará el impuesto hasta que ésta se cumpla, haciéndose constar el aplazamiento de la liquidación en la inscripción de bienes en el registro público correspondiente.'
+    const r = analizarPregunta(
+      {
+        question_text: 'Conforme al artículo 2.2, cuando en un acto o contrato medie una condición SUSPENSIVA:',
+        options: [
+          'no se liquidará el impuesto hasta que ésta se cumpla',
+          'se exigirá el impuesto desde luego, a reserva de la oportuna devolución',
+          'se practicará una liquidación provisional a cuenta de la definitiva',
+          'se liquidará el impuesto por la mitad de la cuota que corresponda',
+        ],
+        correct_option: 0,
+        explanation: '**Por qué A es correcta:** el artículo 2.2 aplaza la liquidación.\n\n> «Si fuere suspensiva **no se liquidará el impuesto hasta que ésta se cumpla**, haciéndose constar el aplazamiento de la liquidación en la inscripción de bienes en el registro público correspondiente.»\n\n**Por qué las demás son incorrectas:**\n- **B)** x.\n- **C)** y.\n- **D)** z.',
+        primary_article_number: '2',
+        law_slug: 'rdl-1-1993-itpajd',
+      },
+      ART,
+    )
+    expect(r.avisos.some((a) => /CORRECTA PARCIAL/.test(a))).toBe(true)
+  })
+
+  it('NO avisa de CORRECTA PARCIAL si la cola ya está en el enunciado (art. 21 Ley 19/1991)', () => {
+    const ART = 'Las concesiones administrativas para la explotación de servicios o bienes de dominio o titularidad pública, cualquiera que sea su duración, se valorarán con arreglo a los criterios señalados en el Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados.'
+    const r = analizarPregunta(
+      {
+        question_text: 'Según el artículo 21 de la Ley 19/1991, las concesiones administrativas para la explotación de servicios o bienes de dominio o titularidad pública se valoran con arreglo a los criterios del Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados:',
+        options: [
+          'solo si excede de diez años',
+          'cualquiera que sea su duración',
+          'salvo si son de duración inferior a un año',
+          'siempre que su duración sea determinada',
+        ],
+        correct_option: 1,
+        explanation: '**Por qué B es correcta:** el artículo 21 aplica la regla con independencia de la duración.\n\n> «Las concesiones administrativas para la explotación de servicios o bienes de dominio o titularidad pública, **cualquiera que sea su duración**, se valorarán con arreglo a los criterios señalados en el Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados.»\n\n**Por qué las demás son incorrectas:**\n- **A)** x.\n- **C)** y.\n- **D)** z.',
+        primary_article_number: '21',
+        law_slug: 'ley-19-1991-patrimonio',
+      },
+      ART,
+    )
+    expect(r.avisos.some((a) => /CORRECTA PARCIAL/.test(a))).toBe(false)
+  })
+})

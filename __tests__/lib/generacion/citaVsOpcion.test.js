@@ -89,3 +89,75 @@ describe('citaDe', () => {
     expect(citaDe('> **Art. 5**\n> "texto legal"\n\n**Por qué A:** razón')).toBe('art. 5 "texto legal"')
   })
 })
+
+// --- El enunciado, que antes no se leía (26/07/2026) ---
+// El módulo documentaba esta limitación como de diseño, con la medida hecha: 7 avisos
+// de 67 preguntas y 5 eran falsos positivos de ese tipo. El lote
+// `gen_atc_t225_2026-07-26_s26c` lo confirmó a lo grande: 6 avisos de 16, TODOS el
+// mismo patrón inocuo — la opción completa la frase legal y la continuación es el
+// predicado que ya está en la pregunta.
+describe('analizarCitaVsOpcion — la cola que ya está en el enunciado', () => {
+  // Caso real: art. 21 Ley 19/1991 (batch gen_atc_t225_2026-07-26_s26c).
+  const EXP_ART21 = [
+    '**Por qué B es correcta:** el artículo 21 aplica la regla con independencia de la duración.',
+    '',
+    '> «Las concesiones administrativas para la explotación de servicios o bienes de dominio o titularidad pública, **cualquiera que sea su duración**, se valorarán con arreglo a los criterios señalados en el Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados.»',
+    '',
+    '**Por qué las demás son incorrectas:** x',
+  ].join('\n')
+  const OK_ART21 = 'cualquiera que sea su duración'
+  const ENUN_ART21 =
+    'Según el artículo 21 de la Ley 19/1991, las concesiones administrativas para la explotación de servicios o bienes de dominio o titularidad pública se valoran con arreglo a los criterios del Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados:'
+
+  it('sin enunciado avisa (comportamiento anterior, intacto)', () => {
+    expect(analizarCitaVsOpcion(EXP_ART21, OK_ART21).aviso).toBe(true)
+  })
+
+  it('con el enunciado NO avisa y lo deja trazado', () => {
+    const r = analizarCitaVsOpcion(EXP_ART21, OK_ART21, ENUN_ART21)
+    expect(r.aviso).toBe(false)
+    expect(r.enElEnunciado).toBe(true)
+    expect(r.cola).toBeTruthy() // se conserva para poder auditar la decisión
+  })
+
+  // INVARIANTE: los dos defectos REALES que este check cazó deben seguir cazándose
+  // aunque se pase el enunciado. Si esto se pone verde, el cambio abrió un agujero.
+  it('SIGUE avisando del defecto real del art. 46.3 RDL 1/1993 (T224)', () => {
+    // La clave recogía solo el primer inciso; el segundo la condiciona y NO estaba
+    // en el enunciado original.
+    const exp = [
+      '**Por qué A es correcta:** el artículo 46.3 toma como base el valor declarado.',
+      '',
+      '> «Cuando el valor declarado por los interesados fuese superior al resultante de la comprobación, **aquél tendrá la consideración de base imponible**. Si el valor resultante de la comprobación o el valor declarado resultase inferior al precio o contraprestación pactada, se tomará esta última magnitud como base imponible.»',
+      '',
+      '**Por qué las demás son incorrectas:** x',
+    ].join('\n')
+    // OJO: la cola relevante va tras un punto, así que lo que aquí se mide es la
+    // continuación DENTRO de la frase. Se usa la opción sin el cierre de frase.
+    const enunciado =
+      'Según el artículo 46.3 del Real Decreto Legislativo 1/1993, cuando el valor declarado por los interesados fuese superior al resultante de la comprobación:'
+    const r = analizarCitaVsOpcion(exp, 'aquél tendrá', enunciado)
+    expect(r.aviso).toBe(true)
+    expect(r.cola).toMatch(/consideración de base imponible/)
+  })
+
+  it('SIGUE avisando del defecto real del art. 2.2 RDL 1/1993 (T223)', () => {
+    // La opción paraba en "hasta que ésta se cumpla" y la ley añade un deber
+    // registral sobre la MISMA liquidación, que el enunciado no mencionaba.
+    const exp = [
+      '**Por qué A es correcta:** el artículo 2.2 aplaza la liquidación.',
+      '',
+      '> «Si fuere suspensiva **no se liquidará el impuesto hasta que ésta se cumpla**, haciéndose constar el aplazamiento de la liquidación en la inscripción de bienes en el registro público correspondiente.»',
+      '',
+      '**Por qué las demás son incorrectas:** x',
+    ].join('\n')
+    const enunciado = 'Conforme al artículo 2.2 del Real Decreto Legislativo 1/1993, cuando en un acto o contrato medie una condición SUSPENSIVA:'
+    const r = analizarCitaVsOpcion(exp, 'no se liquidará el impuesto hasta que ésta se cumpla', enunciado)
+    expect(r.aviso).toBe(true)
+    expect(r.cola).toMatch(/haciéndose constar el aplazamiento/)
+  })
+
+  it('un enunciado que NO contiene la cola sigue avisando', () => {
+    expect(analizarCitaVsOpcion(EXP_ART21, OK_ART21, 'Según el artículo 21, las concesiones administrativas:').aviso).toBe(true)
+  })
+})

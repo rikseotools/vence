@@ -169,7 +169,11 @@ const norm = (t) => t.replace(/[«»""'']/g, '"').replace(/\s+/g, ' ').trim().to
     // CORRECTA PARCIAL: el blockquote que aportas como prueba dice MÁS que la
     // opción que marcas correcta (§2.2). AVISO: o acotas el enunciado, o
     // completas la opción. Tres lotes de la campaña T-115 cayeron aquí.
-    const parcial = analizarCitaVsOpcion(q.explanation, correcta)
+    // Se le pasa el ENUNCIADO (26/07/2026): si la cola omitida ya está en él, es
+    // condensación válida. Sin esto el lote `gen_atc_t225_2026-07-26_s26c` sacaba 6
+    // avisos de 16, todos del mismo patrón inocuo (la opción completa la frase y el
+    // predicado está en la pregunta) — el nivel de ruido que enseña a ignorar el gate.
+    const parcial = analizarCitaVsOpcion(q.explanation, correcta, q.question_text)
     if (parcial.aviso) {
       avisos.push(`CORRECTA PARCIAL: la cita de la explicación continúa con «${parcial.cola.slice(0, 110)}» y la opción correcta no lo recoge — acota el enunciado o completa la opción`)
     }

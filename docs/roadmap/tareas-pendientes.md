@@ -423,6 +423,13 @@
 
 ## Abiertas
 
+### [T-141] 🟠 [ABIERTO 26/07] ATC Canaria T225: el epígrafe pide «Tasas Fiscales sobre el Juego» y el `topic_scope` no tiene NINGUNA norma de eso
+- **Qué:** el tema **225** de `administrativo_agencia_tributaria_canaria` (*"Otros tributos cedidos"*) tiene por epígrafe: *"Otros tributos cedidos. **Impuesto sobre el Patrimonio**: hecho imponible, sujeto pasivo, exenciones, base imponible y liquidable, devengo, cuota tributaria. **Tasas Fiscales sobre el Juego**: hecho imponible, devengo, sujeto pasivo, base imponible y tipo de cada una de ellas."* Su `topic_scope` escopa **solo** la Ley 19/1991 del Impuesto sobre el Patrimonio (33 artículos). De la segunda mitad del epígrafe —las Tasas Fiscales sobre el Juego— no hay **ni una norma escopada**.
+- **Por qué importa:** es un HUECO de temario, no una sobre-inclusión: al opositor nunca le pueden salir preguntas de media materia que su programa sí exige. Y es un punto ciego de los detectores actuales — `empty_topic` y `low_coverage` no lo ven porque el tema SÍ tiene artículos y preguntas (la mitad del Patrimonio), y `scope_titulo_huerfano` busca huecos DENTRO de una ley ya escopada, no una ley entera que falta.
+- **Cómo:** identificar la norma que examina la convocatoria para las Tasas Fiscales sobre el Juego (la estatal es el Real Decreto-ley 16/1977, pero **la tasa está cedida y Canarias tiene normativa propia** — hay que verificar contra la convocatoria y el boletín, NUNCA suponerlo), importarla si no está, escoparla en el T225 y generar preguntas. Runbook `verificar-epigrafes-scope.md`.
+- **Ojo:** el tema está `disponible=false` (Bloque II de [T-045] sin publicar), así que **no hay daño en vivo**; conviene cerrarlo antes de publicar el bloque.
+- **Origen:** 26/07, al generar las preguntas del T225 en [T-045]: se leyó el epígrafe para elegir artículos y la segunda materia no tenía dónde colgarse.
+
 ### [T-140] 🟡 [ABIERTO 26/07] Las 51 leyes que siguen sin estructura en `law_sections`
 - **Qué:** tras [T-064] quedan **51 leyes rechazadas** por el poblador, en tres grupos con causas DISTINTAS:
   - **45 `sin_secciones`** — el parser no encuentra ningún bloque de título ni capítulo. Es el grupo gordo; hay que mirar qué ids usa su índice (el Código Civil ya enseñó que hay rúbricas fuera del patrón, como `Art 1` abreviado).
