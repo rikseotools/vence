@@ -326,6 +326,17 @@ El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de f
 >      opción con «solo» es falsa).
 >   3. **Una línea aparte tras los bullets** («**Además, del mismo apartado:** …»), que enseña sin fingir
 >      que la opción lo dice.
+>
+> 🪞 **Variante que aparece en los bullets de los distractores: atribuir a OTRAS normas lo que regula la
+> propia ley (26/07/2026).** En el art. 29 bis del RDL 1/2013 un bullet descartaba la «lectura fácil»
+> diciendo que *«es un medio que emplean otras normas»* — cuando el **artículo 2 de esa misma ley** dice
+> que la accesibilidad cognitiva *«se despliega y hace efectiva a través de la lectura fácil, sistemas
+> alternativos y aumentativos de comunicación, pictogramas…»*. El distractor seguía siendo falso (la
+> lectura fácil es un **medio**, no una de las tres capacidades que enumera el artículo), pero **el motivo
+> que se le daba al opositor era incorrecto**, y encima sobre la norma que está estudiando.
+> Regla: antes de descartar un distractor por «eso es de otra norma», **búscalo en la ley que se pregunta**.
+> Estas leyes traen un artículo de definiciones (aquí el art. 2) donde suele estar justo lo que se iba a
+> atribuir fuera.
 
 > ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
 > Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
