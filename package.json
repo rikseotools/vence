@@ -89,7 +89,9 @@
     "tools:buscar": "node scripts/tools-buscar.cjs",
     "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
     "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs",
-    "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs"
+    "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs",
+    "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
+    "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

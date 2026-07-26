@@ -43,6 +43,33 @@ Vence está hoy entre nivel 1 y 2. **El objetivo es nivel 3.**
 
 ---
 
+## 1ter. 💸 Consumo de LLM: lo que se factura y lo que consume cuota (*"revisa el gasto de LLM"*)
+
+**Comando único:** `npm run llm:gasto [-- --dias N] [--json]`. Lee UNA fuente —`observable_events` con `event_type='llm_call'`— y **separa por `billing`**, que es la distinción que importa:
+
+| | Qué es | Cómo se ve |
+|---|---|---|
+| **`api`** | Claves `sk-ant-api…`/OpenAI: **cuesta dinero por token** | coste estimado por llamada, agregado por `feature` |
+| **`suscripcion`** | Claude Code (plan Max): **no factura, consume CUOTA** | tokens y respuestas por sesión; `estimatedCostUsd` es **0 a propósito** |
+
+**Sumar las dos en un número sería mentir en las dos direcciones**, y por eso el comando nunca lo hace.
+
+### Cómo entra el consumo de la suscripción
+
+`npm run llm:ingest-claude-code [-- --dias N] [--dry]` lee los **transcripts locales** de Claude Code (`~/.claude/projects/**/*.jsonl`, donde cada respuesta trae su bloque `usage`), agrega por `(día, sesión, modelo)` y emite al **mismo** stream. No necesita clave ni llamar a Anthropic: la suscripción **no expone facturación**, así que esta es la única forma de saber qué sesión se come la cuota. Es **idempotente** por `dedupeKey` (`día:sesión:modelo`): re-ingerir un día lo actualiza, no lo duplica.
+
+Medido el 26/07/2026 en 30 días: **49.456 respuestas y ~20.081 M de tokens**, de los cuales casi todo es **caché leída** — el output real fueron 64 M. Con 2-10 sesiones en paralelo, ese es el grueso del consumo del sistema y era **completamente invisible**.
+
+### El límite que hay que tener presente: la cobertura
+
+El núcleo `lib/observability/llm.ts` instrumenta los **clientes compartidos** (`getAnthropic`/`getOpenAI`), así que **solo se ve el gasto de quien los usa**. Medido el 26/07: de **27 call-sites**, **15 hablaban con el proveedor en crudo** (`new OpenAI()`, `fetch` a la API, OpenRouter) → los ~31,7 USD/30 días son un **SUELO, no el total**.
+
+Eso ya no depende de la memoria de nadie: **`lib/observability/llmCallSites.ts`** los registra uno a uno con su `feature` y, los crudos, con el **motivo** y qué haría falta para cerrarlos; y **`__tests__/guardrails/llmInstrumentation.guardrail.test.ts`** (CI, sin red) exige que todo call-site esté registrado, que el registro **no mienta** sobre el código y aplica un **trinquete**: el número de crudos puede bajar, nunca subir. Un `new OpenAI()` nuevo pone el CI en rojo.
+
+**Al instrumentar uno:** cámbialo al cliente compartido, pon su entrada a `instrumentado` y **baja `TECHO_CRUDOS`** — si no lo bajas, el trinquete deja de apretar.
+
+**Cuando el gasto de API importe de verdad**, lo que falta es cruzarlo con la factura: hace falta una **admin key** (`sk-ant-admin…`, distinta de la de la app) para `/v1/organizations/cost_report`. Sin eso, el coste que guardamos es **estimación nuestra** con las tarifas de `lib/observability/llm.ts`, y nadie ha comprobado nunca cuánto se parece a lo que se cobra.
+
 ## 1bis. 🧭 Dos tablas, dos propósitos (Issues vs Events)
 
 > Sección añadida 2026-05-26 tras el audit de Bloque 4 Fase 1. Lo que parecía

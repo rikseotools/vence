@@ -58,6 +58,33 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Consumo de LLM (API facturable + suscripción de Claude Code) ──────────────────────────
+  llm_gasto: {
+    titulo: 'Ver el consumo de LLM del sistema: lo que se factura y lo que consume cuota',
+    ruta: 'scripts/observabilidad/llm-gasto.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/observability.md',
+    notas:
+      'npm run llm:gasto [-- --dias N] [--json]. Lee UNA fuente (`observable_events`, ' +
+      'event_type=llm_call) y separa por `billing`: `api` cuesta dinero por token, `suscripcion` ' +
+      '(Claude Code) consume CUOTA y su coste es 0 a propósito — sumarlos sería mentir en las dos ' +
+      'direcciones. El coste de la API es ESTIMACIÓN nuestra (tarifas en lib/observability/llm.ts) ' +
+      'y solo cubre los call-sites instrumentados: los que hablan en crudo con el proveedor están ' +
+      'listados en lib/observability/llmCallSites.ts, con guardarraíl de trinquete en CI.',
+  },
+  llm_ingest_claude_code: {
+    titulo: 'Meter el consumo de Claude Code (suscripción) en el stream de observabilidad',
+    ruta: 'scripts/observabilidad/ingest-claude-code-usage.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/observability.md',
+    notas:
+      'npm run llm:ingest-claude-code [-- --dias N] [--dry]. Lee los transcripts locales de Claude ' +
+      'Code (~/.claude/projects/**/*.jsonl), agrega por (día, sesión, modelo) y emite `llm_call` ' +
+      'con billing=suscripcion. NO necesita clave ni llamar a Anthropic: la suscripción no expone ' +
+      'facturación, así que esta es la única forma de ver qué sesión se come la cuota. IDEMPOTENTE ' +
+      'por `dedupeKey` (día:sesión:modelo): re-ingerir un día lo actualiza, no lo duplica. Medido ' +
+      'el 26/07: 49.456 respuestas y 20.081M tokens en 30 días, casi todo caché leída.',
+  },
   // ── programa_url (el enlace del botón oficial de la landing) ───────────────────────────────
   repuntar_enlace_convocatoria: {
     titulo: 'Cambiar el enlace del botón "Ver convocatoria en {diario}" de una landing (programa_url)',

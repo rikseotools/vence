@@ -13,7 +13,11 @@ import { join } from 'path'
 const ROOT = join(__dirname, '..', '..')
 const SCAN_DIRS = ['app', 'lib']
 const EXT = /\.(ts|tsx|js)$/
-const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\.test\.|lib\/observability\/llm\.ts/
+// `llmCallSites.ts` NOMBRA los patrones (`new OpenAI(`, la URL de la API) para documentar el
+// inventario de call-sites, así que se detectaba a sí mismo. Es el REGISTRO hermano de este
+// guardarraíl: aquí se comprueba que los clientes de app|lib van envueltos; allí se lleva la
+// cuenta de TODOS los call-sites (incluidos `fetch` directo, OpenRouter y scripts) con trinquete.
+const SKIP = /node_modules|\.next|\.open-next|\.backup|backup-|__tests__|\.test\.|lib\/observability\/llm\.ts|lib\/observability\/llmCallSites\.ts/
 
 function walk(rel: string): string[] {
   let out: string[] = []
