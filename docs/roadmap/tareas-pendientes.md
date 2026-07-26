@@ -240,6 +240,27 @@
 - **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
 - **Origen:** cabo de [T-125].
 
+### [T-148] 🟠 [ABIERTO 26/07 · 4 de 25 temas hechos] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
+- **Qué se descubrió (26/07):** los 25 epígrafes de `guardia_civil` están **`verified_literal`** contra el temario oficial (`TEMARIO_INGRESO_GC_ACTUALIZADO_2024`, clonado en el hub con `content_hash`), y ese temario enumera **libro › título › capítulo** con mucho detalle. Pero **58 de los 64 `topic_scope` tienen `article_numbers = NULL` (= la ley ENTERA)**. O sea: el epígrafe es quirúrgico y el scope es la norma completa.
+- **Cómo salió a la luz:** no lo cazó ningún badge. Salió al preguntar por un detalle de 6 preguntas del Tema 9 y tirar del hilo hacia el temario oficial, que **ya estaba en el sistema** (hub de documentos + `topic_epigrafe_verification`), no había que pedírselo a nadie.
+- **✅ HECHOS 4 temas · 5 leyes · −2.149 preguntas fuera de programa** (nada borrado: siguen en BD y vuelven con una orden):
+
+  | tema | ley | scope | preguntas |
+  |---|---|---|---|
+  | T9 | LECrim | NULL (995) → 352 | 2.116 → 1.032 |
+  | T9 | LO 6/1985 (LOPJ) | 199 → 69 | 1.465 → 999 |
+  | T9 | RD 769/1987 | 1-22 | ✅ correcto, no se toca |
+  | T7 | Código Civil | NULL (1.911) → 282 | 1.416 → 1.333 |
+  | T8 | CP | NULL (707) → 335 | 1.767 → 1.251 |
+
+- **💡 Anchura de scope ≠ impacto.** El Código Civil pierde **1.629 artículos** y solo **83 preguntas**: casi todo el contenido está anclado al Libro I, que es justo lo que el temario pide. No se puede priorizar por tamaño del recorte.
+- **⏳ QUEDA: 6 sobre-inclusiones ya detectadas y sin adjudicar**, más 21 temas sin auditar del todo:
+  - T2 · LO 3/2007 · T15 · Ley 29/2014 (Régimen Personal GC; el temario da Preliminar, I y II — el scope llega al Título IV)
+  - T16 · LSNPC (Ley 17/2015) y Ley 42/2007 (el temario NO pide su Título I)
+  - T17 · Ley 11/2022 (el temario pide Título I + Título III cap. III) y Ley 6/2020
+- **MÉTODO (el que funcionó, replicable):** temario oficial del hub → árbol libro›título›capítulo del índice del BOE → **rúbrica VIGENTE de cada bloque verificada** contra el temario (el script ABORTA si una no casa) → guarda de exención por materia sobre los títulos NO pedidos, **salvo los que el temario nombra acotando capítulos** (ahí manda la selección; sin esa excepción el CP recuperaba enteros los Títulos V y XII y se colaban "las costas procesales") → `verify:scope plan/apply`.
+- **NUNCA** recortar por rango numérico ni por cercanía: se recorta por **pertenencia al bloque**, con la rúbrica confirmada en el BOE. Y **NUNCA** teclear a mano el id del BOE de una ley: usar `laws.boe_url`. Me costó una falsa alarma esta misma noche (tecleé el id de la LO 14/2007 *biomédica* creyendo diagnosticar el Estatuto de CyL, que es la otra LO 14/2007).
+
 ### [T-139] 🟢 [ABIERTO 26/07] Cola de contenido invisible por artículo inactivo escopado (24 preguntas) + DECISIÓN pendiente sobre ofimática
 - **Qué:** un artículo escopado pero con `articles.is_active=false` **no se sirve, aunque tenga preguntas activas**: contenido ya escrito que ningún opositor ve. Medido el 26/07 y **corregido**: son **24 preguntas DISTINTAS** (la primera medición dio 112 porque contaba cada pregunta una vez POR TEMA — el join va por par artículo-tema e infla ×3,3; ojo con repetir ese error). Reparto: **Excel 365 10** · CP 4 · LECrim 4 · Ley 40/2015 2 · LO 3/2018 2 · Ley 5/2023 (Función Pública Andalucía) 2. Quedan **69 artículos inactivos escopados** en total, la mayoría sin preguntas.
 - **Impacto:** 🟢 baja. No engaña a nadie ni rompe nada: solo deja de mostrarse trabajo ya hecho. Con 24 preguntas en juego **NO es una campaña** — es una cola de arreglos pequeños, y el criterio para cogerla es el coste de CADA ley, no el total.
