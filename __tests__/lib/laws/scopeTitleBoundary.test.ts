@@ -278,3 +278,36 @@ describe('titulosMencionados — el romano no puede ser la inicial de una palabr
     expect(epigrafeTitles('Título V, Capítulo I y Capítulo III.')).toEqual([5])
   })
 })
+
+describe('epigrafeTitles — enumeraciones reales de epígrafes autonómicos', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { epigrafeTitles } = require('@/lib/laws/scopeTitleBoundary')
+
+  test('«preliminar» NO corta la lista (bug propio: devolvía solo [0])', () => {
+    // Caso real de la Ley 39/2015 en 5 oposiciones (Galicia, Asturias, Univ. León). Al leer
+    // solo [0] el detector daba por fuera de programa los Títulos I-V — 50 artículos por
+    // scope, todos falsos positivos.
+    expect(epigrafeTitles('Ley 39/2015: títulos preliminar, I, II, III, IV y V.')).toEqual([0, 1, 2, 3, 4, 5])
+  })
+
+  test('«e» como conjunción: «títulos preliminar e I»', () => {
+    expect(epigrafeTitles('Ley 9/2007 de subvenciones de Galicia: títulos preliminar e I.')).toEqual([0, 1])
+  })
+
+  test('salta el paréntesis que acota capítulos y sigue la enumeración', () => {
+    // Ley 7/2023 de Galicia. Sin saltarlo, la lista moría en el II y los Títulos VII y VIII
+    // —pedidos— salían como fuera de programa. Los capítulos del paréntesis NO se leen como
+    // títulos: el detector razona por título, y permitir el título entero es el lado seguro.
+    const ep = 'Ley 7/2023: títulos preliminar, I, II (capítulos I, II, y XI), VII y VIII.'
+    expect(epigrafeTitles(ep)).toEqual([0, 1, 2, 7, 8])
+  })
+
+  test('«capítulo I del título III» cuenta el título III como presente', () => {
+    const ep = 'Ley 16/2010: títulos preliminar, I, II y capítulo I del título III.'
+    expect(epigrafeTitles(ep)).toEqual([0, 1, 2, 3])
+  })
+
+  test('enumeración con saltos: «Títulos VII, VIII, X y XI»', () => {
+    expect(epigrafeTitles('Ley 7/1985. Títulos VII, VIII, X y XI.')).toEqual([7, 8, 10, 11])
+  })
+})
