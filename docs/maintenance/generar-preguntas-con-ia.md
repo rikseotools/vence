@@ -1941,6 +1941,28 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 
 - **De paso, limpieza de datos:** el `content` del art. 46 del RDL 1/1993 terminaba el apartado 2 con un apóstrofo suelto (*"…Actos Jurídicos Documentados.'"*), basura de import que se le mostraba al usuario al desplegar el artículo. Lo vio la auditoría. Corregido.
 
+### 5.37 Batch T208 gestión tributaria — el *tell* que es de LOTE, y tres defectos introducidos AL REPARAR (2026-07-26)
+
+- **batch**: `gen_atc_t208_2026-07-26_s26c` — **16 preguntas aprobadas** sobre gestión tributaria (13 de la Ley 58/2003, arts. 129/132/133/134/136/138, y 3 del RD 1065/2007, arts. 155/157/165). El tema pasa de **13 a 29** preguntas. Todos los artículos tenían CERO preguntas y **todos se verificaron contra el BOE ANTES de generar** (LGT 8/8, RGGIT 11/11 idénticos al vigente).
+- **Resultado de las auditorías:** estricta 13 PERFECT / 3 NEEDS_REVIEW · opositor **0 impugnables de 16** · re-check 4 LIMPIAS + 3 defectos que introdujo la propia reparación.
+- **El riesgo específico del lote, verificado y superado:** los cuatro procedimientos de gestión (verificación de datos, comprobación de valores, comprobación limitada e iniciado mediante declaración) se parecen y sus reglas se cruzan, y encima Ley y Reglamento regulan lo mismo con distinto detalle. Ninguna clave importó la regla de otro procedimiento. **Y varios distractores la usan a propósito**, que es la forma buena de explotarlo: el mecanismo de autorización del art. 57 del reglamento como distractor del art. 136.3, los 15 días de otro trámite frente a los 10 del art. 155.3, el art. 31 de la LGT frente al 32.2 en el art. 165.
+
+> 🎯 **EL HALLAZGO DEL LOTE: el *tell* de FORMA no se mide pregunta a pregunta, se mide en el LOTE.** El gate comprueba que la correcta no exceda al mayor distractor en más del 30% ni sea la más corta — y un lote puede pasar ese filtro entero teniendo **la clave como opción más larga en la mayoría de las preguntas**. Medido aquí: **13 de 16**, y tras reparar tres, **11 de 16**. Quien no sepa la materia acierta 11 eligiendo la más larga.
+>
+> Segundo patrón, más fino: los **absolutos delatores** se concentraban en los distractores — en 10 preguntas con absolutos, **9 los tenían solo ahí** («únicamente», «exclusivamente», «solo», «siempre», «en exclusiva», «libremente decida»), con la clave como única matizada. La única clave con un absoluto lo tenía porque **la ley lo dice** («en ningún caso», art. 136.3).
+>
+> **Es un sesgo de LOTE, así que arreglarlo pregunta a pregunta no sirve:** se limpió la que tenía los tres distractores con «únicamente/exclusivamente/solo» y el sesgo del lote no se movió. Ficha **[T-150]** con el diseño del check de lote (`analizarLote` ya calcula longitudes y la lista de absolutos ya existe en `overclaimExplicacion`).
+>
+> **Y la trampa al repararlo:** quitarle el absoluto a un distractor puede dejarlo **verdadero-pero-parcial**, que es peor que el tell. Pasó aquí con el art. 136.1: sin el «únicamente», el distractor describía literalmente una actuación del apartado 2 y solo lo descartaba el ancla del enunciado. Hay que sustituir el marcador por un **falsificador de contenido**.
+
+> 🔁 **LOS TRES DEFECTOS QUE INTRODUJO LA REPARACIÓN — el re-check no es opcional.** En este lote, las tres cosas que el tercer auditor devolvió no estaban en el original: las creó el arreglo.
+> 1. **Fuga cruzada.** Al pivotar la pregunta del art. 157.1 del reglamento para que dejara de ser un clon de la del art. 134.1 de la Ley, escribí en su enunciado *«Una son los valores publicados por la propia Administración actuante»*… que es **textualmente la clave de esa otra pregunta**. Se cambió una duplicación por una fuga: quien lee una acierta la otra. **Al reformular una pregunta, comprobar que su enunciado no contiene la clave de otra del mismo lote.**
+> 2. **Verdadero-pero-parcial** (el del art. 136.1, arriba).
+> 3. **Sustituir una afirmación falsa por una INCOMPROBABLE.** Una viñeta despachaba un distractor con «el artículo lo prohíbe sin excepción»; al mejorarla, describí el régimen de un artículo del reglamento **que no estaba aportado al auditor**. Pasó de falsa a no verificable, que en una explicación es igual de malo. La versión final se queda en lo que el propio artículo dice.
+
+- **Lección de método propia, por si le sirve a otra sesión:** en la primera pasada de reparación arreglé un artículo 134 que **no era** el del *tell* — hay tres preguntas de ese artículo y me fié del número en vez del índice que reportaba el gate. Lo delató que el error reaparecía idéntico tras "arreglarlo". **El gate numera por posición en el lote: usar ese índice, no el número de artículo.**
+- **Y una regla de citas que sale de aquí:** en las explicaciones, **nombrar siempre la ley al citar un artículo ajeno**. Escribir «reserva el artículo 31» hizo que el empaquetador de auditoría adjuntara el art. 31 del *reglamento* en vez del de la *Ley* — ver **[T-149]**, que documenta ese límite del anexo. Nombrar la ley arregla el adjunto y además hace la explicación autosuficiente.
+
 ## 6. Anti-patterns (qué NO hacer)
 
 | Anti-pattern | Por qué falla |
