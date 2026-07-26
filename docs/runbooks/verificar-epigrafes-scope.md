@@ -252,9 +252,39 @@ los artículos ACTIVOS de la ley y dice cuál contiene el texto del inactivo. En
   LECrim). El destino se decide por lo que pregunta la pregunta, no por dónde estaba.
 - **Un `0` en `limpiarScope` no es «limpio».** Si el tema escopa la ley entera
   (`article_numbers IS NULL`) no hay lista que podar. El script lo dice ahora en voz alta.
-- **Sin gemelo activo, re-anclar no aplica.** Si el artículo es correcto y solo está apagado
-  → reactivar contra el BOE; si está truncado → completar verbatim; si no existe en la norma
-  → quitarlo del scope. NUNCA inventar el artículo.
+- **Sin gemelo activo, re-anclar no aplica** → se reactiva contra el BOE (abajo).
+
+### Sin gemelo activo: reactivar contra el BOE
+
+`node scripts/reactivar-articulo-boe.cjs "<short_name>" "<article_number>" [--bloque <id>]`
+(dry-run por defecto). Compara con el bloque **vigente**, reescribe el texto con el oficial
+si hace falta, reactiva, y verifica lo escrito dentro de la misma transacción.
+
+El veredicto lo da el núcleo puro `lib/laws/compararArticuloOficial.js` (14 tests), y
+distingue cinco cosas porque **piden remedios opuestos**:
+
+| veredicto | qué es | qué se hace |
+|---|---|---|
+| `identico` | igual salvo formato | reactivar sin tocar |
+| `erratas` | el oficial mal copiado (*«el Defensor del Puebla»*) | reactivar reescribiendo |
+| `reordenado` | están todos los apartados, en otro orden | reactivar reescribiendo |
+| `incompleto` | faltan apartados | importar el oficial |
+| `contaminado` | material que el BOE no tiene | **NO reactivar**: averiguar de dónde sale |
+
+**No compares longitudes contra el bloque crudo.** El bloque crudo del BOE trae todas las
+versiones y las notas de modificación. Así se dio por *truncado* el art. 28 del Reglamento de
+Armas (4.628 caracteres frente a «8.839»); contra el bloque vigente eran 4.628 vs 4.672, y no
+faltaba nada: estaban sus 23 apartados **desordenados**, con el 10 donde va el 2.
+
+**Dos trampas del troceado**, las dos vistas el 26/07: nuestro texto puede **fusionar** varios
+apartados en una línea (comparar párrafo a párrafo lo acusaba de contaminado teniéndolo todo)
+y puede **partir** un párrafo en dos (la errata de la LO 3/1981 se leía como texto ajeno). Por
+eso se juzga desde el lado oficial y por residuo, y las erratas se miran también sobre el
+texto completo — con tope **absoluto**, que un 10% de un artículo de 4.000 caracteres es un
+apartado entero.
+
+**Para las disposiciones, el id de bloque es la rúbrica, no un número** (`dt`, `dasegunda`,
+`dfunica`): el mapeo por número no las encuentra y hay que pasar `--bloque`.
 
 ## Huecos del temario: títulos huérfanos (`scope_titulo_huerfano`)
 
