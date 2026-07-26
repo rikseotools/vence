@@ -41,23 +41,6 @@
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
-### [T-135] 🟠 [ABIERTO 26/07] El detector de fuentes ciegas vive de evidencia CONGELADA — decidir de qué flujo se alimenta
-- **Qué:** el kind `seguimiento_fuente_ciega` (T-125, desplegado y funcionando) se alimenta de `convocatoria_seguimiento_checks`, que **dejó de escribirse el 20/07**: el cron `check-seguimiento` está retirado a propósito (T-050, *"4% de acierto y nada lo consume"*), detrás del flag `CHECK_SEGUIMIENTO_ENABLED`, apagado por defecto y des-registrado del `SchedulerRegistry`. Así que el detector juzga con una foto fija de esa fecha y **no se refresca nunca**: las 6 fuentes que se drenaron ese día no se pueden re-confirmar, y una fuente que se quede ciega mañana no se detectará.
-- **Por qué importa:** `seguimiento_url` **NO es un campo muerto** — la leen los sensores VIVOS (`detect-oep-llm`, `detect-notas-convocatoria`, los de boletines), que produjeron señales hace horas. Cuando una de esas URLs es una SPA vacía, el sensor LLM también se come el armazón. Lo retirado es el *hash*, no la vigilancia.
-- **Tres opciones (DECISIÓN DE MANUEL, no es trabajo de una sesión):**
-  1. **Reactivar el bucle de fetch como pura telemetría** (`CHECK_SEGUIMIENTO_ENABLED=true`). Lo que motivó su retirada era la señal ruidosa `hash_change`, y **esa ya está borrada del código** desde el 26/06 — hoy el cron solo refrescaría `http_status`/`content_preview`/`checked_url` de las ~490 fuentes. Es la opción barata. Coste: ~490 fetches por día laborable y que reaparezca el estado `changed` en el panel de seguimiento.
-  2. **Alimentar el detector desde los fetches del sensor LLM**, que ya descarga esas URLs a diario. Conceptualmente mejor (una descarga sirve a dos fines) pero toca el backend del sensor.
-  3. **Aceptar que fue una auditoría puntual** y dejar el detector como herramienta bajo demanda vía `sim-fuentes-ciegas.cjs`. Honesto, pero entonces conviene quitar el kind del badge para que nadie crea que hay vigilancia continua.
-- **Bloquea:** la señal de **hash inmóvil** (una fuente cuyo `content_hash` no cambia mientras su convocatoria avanza), que cerraría el punto ciego documentado del detector —una SPA con mucho armazón estático pasa el umbral de longitud—. Hoy no tiene sentido construirla: mediría un flujo apagado y marcaría todo como inmóvil por construcción.
-- **Origen:** cabo de [T-125].
-
-### [T-136] 🟡 [ABIERTO 26/07] Verificar que las 47 fuentes revertidas de `headless` a `http` no perdieron señal
-- **Qué:** el 26/07 se revirtieron **47 de las 67** fuentes marcadas `fetcher_type='headless'` tras medir que el headless no aportaba un solo carácter frente a `curl` (ahorro: 47 invocaciones de Lambda por pasada). La comprobación de que ningún sensor pierde señal **solo se puede hacer en una pasada real**: `detect-oep-llm` (L-V 10:00 UTC) y `detect-notas-convocatoria` (diario 09:30 UTC).
-- **Cómo:** tras la pasada, comparar señales/errores por fuente contra los días previos. Las 47 decisiones están trazadas con su medición en `observable_events WHERE event_type='fetcher_type_ajustado'`. Revertir una es `node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>` (dry-run primero) mirando su medición.
-- **Contexto:** quedan 20 en `headless` — 12 que SÍ aportan y 8 huecos con nombre, donde el problema es la URL y cambiar el fetcher solo lo enmascararía.
-- **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
-- **Origen:** cabo de [T-125].
-
 ### [T-132] ✅ [CERRADA 26/07] El detector de incisos anulados era ciego a los pronunciamientos COMPETENCIALES del TC — y a dos cosas más
 - **Qué era:** `annulledProvisions.ts` solo cazaba la fórmula de NULIDAD. El TC usa además, en leyes estatales con incidencia autonómica, *"no es conforme con el orden constitucional de competencias"* — que contiene "constitucional" pero no "inconstitucional", así que el filtro (que exige el prefijo `in-` a propósito) pasaba de largo.
 - **Al ir al fondo aparecieron DOS puntos ciegos más, y el tercero es el que de verdad explicaba los 0 findings del kind:**
@@ -419,6 +402,23 @@
 - **Impacto:** 🟢 son warns, no engañan al opositor; mejoran SEO y completitud. No urgente.
 
 ## Abiertas
+
+### [T-135] 🟠 [ABIERTO 26/07] El detector de fuentes ciegas vive de evidencia CONGELADA — decidir de qué flujo se alimenta
+- **Qué:** el kind `seguimiento_fuente_ciega` (T-125, desplegado y funcionando) se alimenta de `convocatoria_seguimiento_checks`, que **dejó de escribirse el 20/07**: el cron `check-seguimiento` está retirado a propósito (T-050, *"4% de acierto y nada lo consume"*), detrás del flag `CHECK_SEGUIMIENTO_ENABLED`, apagado por defecto y des-registrado del `SchedulerRegistry`. Así que el detector juzga con una foto fija de esa fecha y **no se refresca nunca**: las 6 fuentes que se drenaron ese día no se pueden re-confirmar, y una fuente que se quede ciega mañana no se detectará.
+- **Por qué importa:** `seguimiento_url` **NO es un campo muerto** — la leen los sensores VIVOS (`detect-oep-llm`, `detect-notas-convocatoria`, los de boletines), que produjeron señales hace horas. Cuando una de esas URLs es una SPA vacía, el sensor LLM también se come el armazón. Lo retirado es el *hash*, no la vigilancia.
+- **Tres opciones (DECISIÓN DE MANUEL, no es trabajo de una sesión):**
+  1. **Reactivar el bucle de fetch como pura telemetría** (`CHECK_SEGUIMIENTO_ENABLED=true`). Lo que motivó su retirada era la señal ruidosa `hash_change`, y **esa ya está borrada del código** desde el 26/06 — hoy el cron solo refrescaría `http_status`/`content_preview`/`checked_url` de las ~490 fuentes. Es la opción barata. Coste: ~490 fetches por día laborable y que reaparezca el estado `changed` en el panel de seguimiento.
+  2. **Alimentar el detector desde los fetches del sensor LLM**, que ya descarga esas URLs a diario. Conceptualmente mejor (una descarga sirve a dos fines) pero toca el backend del sensor.
+  3. **Aceptar que fue una auditoría puntual** y dejar el detector como herramienta bajo demanda vía `sim-fuentes-ciegas.cjs`. Honesto, pero entonces conviene quitar el kind del badge para que nadie crea que hay vigilancia continua.
+- **Bloquea:** la señal de **hash inmóvil** (una fuente cuyo `content_hash` no cambia mientras su convocatoria avanza), que cerraría el punto ciego documentado del detector —una SPA con mucho armazón estático pasa el umbral de longitud—. Hoy no tiene sentido construirla: mediría un flujo apagado y marcaría todo como inmóvil por construcción.
+- **Origen:** cabo de [T-125].
+
+### [T-136] 🟡 [ABIERTO 26/07] Verificar que las 47 fuentes revertidas de `headless` a `http` no perdieron señal
+- **Qué:** el 26/07 se revirtieron **47 de las 67** fuentes marcadas `fetcher_type='headless'` tras medir que el headless no aportaba un solo carácter frente a `curl` (ahorro: 47 invocaciones de Lambda por pasada). La comprobación de que ningún sensor pierde señal **solo se puede hacer en una pasada real**: `detect-oep-llm` (L-V 10:00 UTC) y `detect-notas-convocatoria` (diario 09:30 UTC).
+- **Cómo:** tras la pasada, comparar señales/errores por fuente contra los días previos. Las 47 decisiones están trazadas con su medición en `observable_events WHERE event_type='fetcher_type_ajustado'`. Revertir una es `node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>` (dry-run primero) mirando su medición.
+- **Contexto:** quedan 20 en `headless` — 12 que SÍ aportan y 8 huecos con nombre, donde el problema es la URL y cambiar el fetcher solo lo enmascararía.
+- **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
+- **Origen:** cabo de [T-125].
 
 ### [T-134] 🔴 [ABIERTO 26/07] Auditoría COMPLETA de la landing (datos + enlaces): el botón "Ver convocatoria" puede llevar a cualquier sitio y ningún detector lo ve
 - **Caso raíz, EN VIVO y con plazo abierto:** `policia-nacional` — la tarjeta oficial dice **"Ver convocatoria en BOE"** y el enlace lleva a `https://www.policia.es/portalaspirantes/en/web/escala-basica-ejecutiva`: **ni es el BOE, ni es la convocatoria, ni está en español** (segmento `/en/`). Se descubrió al preparar su newsletter ([T-110]): íbamos a mandar tráfico de campaña a una landing cuyo enlace más oficial engaña. **Ningún detector lo marcó.**
