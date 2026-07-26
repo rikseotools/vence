@@ -15,6 +15,17 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-096] ✅ [CERRADA 26/07 — pendiente SOLO avisar a Maricarmen] Desarrollar el concepto APPCC en el Tema 15 de Cuidador (Dip. Córdoba)
+- **Qué era:** feedback `707f86bc` (mamenjulian23 / Maricarmen, 24/07): *"¿podrían desarrollar más el concepto APPCC?"*.
+- **El hueco era mayor de lo que decía la ficha (medido en RDS):** del Reglamento (CE) 852/2004 solo había **6 artículos** importados (el 2 y cinco capítulos del Anexo II) — **el artículo 5, que ES el del APPCC, NO estaba** — y en **TODO el banco había 0 preguntas activas** que mencionaran APPCC o puntos de control crítico.
+- **Hecho:**
+  1. **Importado el art. 5 verbatim** (2.834 caracteres, los 5 apartados y los 7 principios).
+  2. **10 preguntas nuevas** ancladas al texto literal, una por principio más apartados 1, 3 y la cláusula de revisión. Aprobadas tras **auditoría doble**: mecánica 10/10 y **ciega e independiente 10/10 PERFECT**.
+  3. MV refrescada y las 3 capas de caché invalidadas. Las preguntas ya se sirven en el Tema 15 (la ley está escopada entera, `article_numbers=NULL`, así que el artículo nuevo entra solo).
+- **🔴 GOTCHA DE FUENTE, y es reutilizable: para los reglamentos del DOUE, usar el PDF, no el HTML.** El espejo HTML del BOE (`doc.php?id=DOUE-L-2004-81035`) trae **erratas de OCR** que cambian el sentido: *"las letras a) a **O**"* donde el original dice *"a) a f)"*, y *"con el **fm** de cumplir"* por *"fin"*. El **PDF oficial** (`boe.es/doue/2004/139/L00001-00054.pdf`) está limpio. Importar del HTML habría puesto una remisión falsa delante del opositor justo en el punto más examinable del artículo. EUR-Lex, por cierto, responde **202 vacío** incluso con Playwright.
+- **Por qué importaba el detalle:** el art. 5 distingue el rango de la letra **f)** (verificar que las medidas de **a) a e)** son eficaces) del de la **g)** (documentar la aplicación de **a) a f)**). Es el error sutil típico de este artículo; el auditor ciego lo comprobó carácter a carácter y confirmó que la trampa está en un distractor y no en la clave.
+- **PENDIENTE:** avisar a Maricarmen (borrador preparado, a la espera del OK de Manuel — nunca se manda sin enseñarlo).
+
 ### [T-015] ✅ [CERRADA 26/07 — SIN TRABAJO: el motivo ya no existe] Crear editorial TCAE "Unidad del paciente"
 - **Qué era:** al cerrar el cubo mislink de bancos clínicos TCAE (14/07) afloraron preguntas huérfanas sobre *"la unidad del paciente / condiciones ambientales de la habitación"* sin ley editorial donde colgar. La propuesta era crear esa ley virtual para rescatarlas.
 - **Por qué se cierra sin hacerla (medido en RDS el 26/07):**
@@ -1240,12 +1251,6 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 
 - **Verificado el 26/07 (por qué sigue aparcada y no hay nada que hacer):** la ley editorial `diagnostico-por-imagen-radioproteccion` existe y está activa con **4 artículos** y **16 preguntas `approved`**, pero su `topic_scope` es **0** — ninguna oposición las sirve — y las **13 oposiciones TSID del catálogo están TODAS `is_active=false`**. El anclaje está hecho; lo que falta es una condición externa (construir una TSID), no trabajo de esta ficha.
 - **Se le quita la prioridad 🟢 y se marca ⬜ APARCADA** para que `backlog.cjs list/next` deje de ofrecerla como accionable: llevaba desde el 14/07 apareciendo como tarea disponible sin serlo. Revive sola al escopear esta ley en la primera TSID que se construya.
-### [T-096] 🟢 [CONTENIDO — pedido por usuaria] Desarrollar el concepto APPCC en el Tema 15 de Cuidador (Dip. Córdoba)
-- **Qué:** ampliar en el Tema 15 (`cuidador_diputacion_cordoba`, "Alimentos, APPCC, higiene alimentaria y dietas") el desarrollo del sistema **APPCC** — los **7 principios** del art. 5 del Reglamento (CE) 852/2004 (detectar peligros, determinar los PCC, fijar límites críticos, vigilancia, medidas correctivas, verificación, documentación/registros) + generar preguntas de repaso.
-- **Por qué:** feedback `707f86bc` (mamenjulian23 / Maricarmen, 24/07): *"¿podrían desarrollar más el concepto APPCC?"* (dijo tema 11, pero APPCC está en el T15). Verificado: el Reg. 852/2004 está escopado entero (`article_numbers=NULL`) pero el art 5 / los 7 principios NO aparecen desarrollados (0 artículos con "7 principios", ~0 preguntas de APPCC) → hueco real.
-- **Cómo:** confirmar que el art 5 del Reg. (CE) 852/2004 está en `articles` (activo) con su contenido literal (BOE/DOUE); si falta o es fino, importarlo verbatim (fuente oficial, doble auditoría) + generar preguntas verificadas (`docs/maintenance/generar-preguntas-con-ia.md`). NUNCA inventar los principios: son los del art 5.2.
-- **Estado:** ABIERTA (backlog). Avisar a Maricarmen al terminar.
-
 ### [T-097] 🟢 [HECHO 24/07 — quedan 3 follow-ups pequeños] PDF del temario: nº de página + título por hoja + reconciliador auto-curable
 - **Qué (raíz):** feedback de Nila (`a67f7c02`+`1397b115`, cerradas): pidió nº de página, título del tema por hoja, y que el título no se separe de su contenido en el PDF pre-generado (react-pdf).
 - **✅ Hecho y en `main` + prod:**
