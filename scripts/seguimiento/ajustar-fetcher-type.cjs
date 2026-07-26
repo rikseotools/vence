@@ -31,6 +31,8 @@
 //   node scripts/seguimiento/ajustar-fetcher-type.cjs                  # dry-run, todas
 //   node scripts/seguimiento/ajustar-fetcher-type.cjs --limite 5
 //   node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>
+//   node scripts/seguimiento/ajustar-fetcher-type.cjs --solo catalogo --apply   # tanda 1
+//   node scripts/seguimiento/ajustar-fetcher-type.cjs --solo activas  --apply   # tanda 2
 //   node scripts/seguimiento/ajustar-fetcher-type.cjs --apply
 
 require('dotenv').config({ path: '.env.local' })
@@ -53,6 +55,14 @@ const arg = (n) => {
 }
 const LIMITE = arg('--limite') ? Number(arg('--limite')) : null
 const SLUG = arg('--slug')
+// Permite aplicar por TANDAS: primero el catálogo (sin usuarios detrás), comprobar que ningún
+// sensor se resiente, y solo entonces las activas. Escribir 55 filas de golpe sobre una columna
+// que gobierna cómo se descarga cada fuente no se hace en un solo movimiento.
+const SOLO = arg('--solo') // 'activas' | 'catalogo'
+if (SOLO && !['activas', 'catalogo'].includes(SOLO)) {
+  console.error("❌ --solo admite 'activas' o 'catalogo'")
+  process.exit(2)
+}
 const CONCURRENCIA = 4
 
 function conectar() {
@@ -143,6 +153,7 @@ async function main() {
     SELECT slug, seguimiento_url, fetcher_type, is_active FROM oposiciones
     WHERE fetcher_type = 'headless' AND seguimiento_url IS NOT NULL
       ${SLUG ? sql`AND slug = ${SLUG}` : sql``}
+      ${SOLO === 'activas' ? sql`AND is_active` : SOLO === 'catalogo' ? sql`AND NOT is_active` : sql``}
     ORDER BY is_active DESC, slug`
   if (LIMITE) filas = filas.slice(0, LIMITE)
 
