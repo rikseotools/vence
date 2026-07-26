@@ -92,6 +92,19 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'tipo convocatoria/bases: el 96% del hub está clonado como `nota` y contrastar contra el ' +
       'documento equivocado produce avisos falsos en masa (medido: 168).',
   },
+  simular_auditoria_landings: {
+    titulo: 'Simular audit:landing sobre TODAS las landings activas (cuántas están mal y por qué)',
+    ruta: 'scripts/convocatoria/sim-audit-landings.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'npm run sim:audit-landings [-- --con-red N]. No escribe nada. Corre la auditoría sobre las ' +
+      '123 activas y agrega por veredicto y por detector; `--con-red N` añade comprobación de ' +
+      'ENLACES a las N más expuestas (plazo abierto + más usuarios), porque son ~70 peticiones por ' +
+      'landing. Es la medida de precisión de la puerta: correr la auditoría sobre UNA landing no ' +
+      'dice nada de si acierta, sobre las 123 sí. Así se cazaron dos falsos positivos propios (las ' +
+      'tarjetas de Navarra) y se decidió qué bloquea un envío y qué no.',
+  },
   simular_enlace_boletin: {
     titulo: 'Simular el detector del botón oficial sobre TODAS las landings activas',
     ruta: 'scripts/convocatoria/sim-enlace-boletin.cjs',

@@ -143,8 +143,25 @@ async function main() {
   const notas = []
 
   // ── 1. Lo que el sweep ya sabe de esta oposición ───────────────────────────────────────────
+  // Los `error` del barrido NO bloquean todos por igual: esta auditoría es la puerta de una
+  // campaña, así que bloquea lo que el opositor VE mal en la página, no la salud interna del
+  // sistema. Medido en la simulación bank-wide (T-142): de las 4 landings que salían con error,
+  // 3 lo eran por `seguimiento_url_stale` —la URL que VIGILAMOS es un índice del portal, algo que
+  // el visitante no percibe y que el propio runbook llama "cola de revisión, puede ser legítima"
+  // (T-125: ordenanza-cordoba está documentada como falso positivo)—. Bloquear una campaña por
+  // eso sería enseñar a saltarse la puerta, que es como se muere un guardarraíl.
+  const KINDS_NO_BLOQUEAN = new Set([
+    'seguimiento_url_stale', // calidad de NUESTRA vigilancia, no de lo que lee el opositor
+    'seguimiento_fuente_ciega', // ídem
+    'convocatoria_docs_incompletos', // provenance interno (documentos sin clonar)
+    'epigrafe_provenance_no_doc', // ídem
+    'scope_sin_verificar', // deuda de verificación del temario, no defecto visible
+  ])
   for (const f of findings) {
-    ;(f.severity === 'error' ? errores : avisos).push(`[${f.kind}] ${f.message}`)
+    const bloquea = f.severity === 'error' && !KINDS_NO_BLOQUEAN.has(f.kind)
+    ;(bloquea ? errores : avisos).push(
+      `[${f.kind}] ${f.message}${f.severity === 'error' && !bloquea ? '  (error de salud interna: no bloquea el envío)' : ''}`,
+    )
   }
 
   // ── 2. Núcleos puros sobre los datos vivos (por si el sweep no ha corrido desde el cambio) ──

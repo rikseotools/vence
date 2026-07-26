@@ -209,6 +209,42 @@ describe('detectarContradicciones — la página contra sí misma', () => {
     ).toEqual([])
   })
 
+  it('NO llama contradicción a "plazas totales" frente a "plazas turno libre" (caso Navarra)', () => {
+    // Falso positivo REAL cazado en la simulación bank-wide: administrativo-navarra tiene dos
+    // tarjetas correctas —585 totales y 264 turno libre— y el detector las marcaba como error.
+    expect(
+      detectarContradicciones(
+        extraerAfirmaciones([
+          { superficie: 'tarjeta_hero', texto: '585 Plazas totales' },
+          { superficie: 'tarjeta_hero', texto: '264 Plazas turno libre' },
+        ]),
+      ),
+    ).toEqual([])
+  })
+
+  it('SÍ marca dos cifras distintas del MISMO matiz', () => {
+    const c = detectarContradicciones(
+      extraerAfirmaciones([
+        { superficie: 'tarjeta_hero', texto: '585 plazas totales' },
+        { superficie: 'caja_convocatoria', texto: '600 plazas totales' },
+      ]),
+    )
+    expect(c).toHaveLength(1)
+    expect(c[0].matiz).toBe('total')
+    expect(c[0].detalle).toMatch(/585.*600|600.*585/)
+  })
+
+  it('el matiz también separa preguntas de examen de las de reserva', () => {
+    expect(
+      detectarContradicciones(
+        extraerAfirmaciones([
+          { superficie: 'tarjeta_hero', texto: '100 preguntas' },
+          { superficie: 'caja_convocatoria', texto: '5 preguntas de reserva' },
+        ]),
+      ),
+    ).toEqual([])
+  })
+
   it('entrada vacía no revienta', () => {
     expect(detectarContradicciones(null)).toEqual([])
     expect(detectarContradicciones([])).toEqual([])

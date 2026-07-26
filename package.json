@@ -87,7 +87,8 @@
     "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs",
     "tools:buscar": "node scripts/tools-buscar.cjs",
     "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
-    "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs"
+    "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs",
+    "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
