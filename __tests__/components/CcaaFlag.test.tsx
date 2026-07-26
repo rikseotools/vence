@@ -19,6 +19,13 @@ describe('CcaaFlag', () => {
       expect(hasCcaaFlag('tramitacion_procesal')).toBe(true)
     })
 
+    test('resuelve Canarias aunque el slug diga "canaria" en singular', () => {
+      // Regresión (26/07): "administrativo-agencia-tributaria-canaria" no contiene
+      // 'canarias' ni 'canario', así que caía al emoji de fallback.
+      expect(hasCcaaFlag('administrativo_agencia_tributaria_canaria')).toBe(true)
+      expect(hasCcaaFlag('administrativo-agencia-tributaria-canaria')).toBe(true)
+    })
+
     test('devuelve false para arquetipos sin región', () => {
       expect(hasCcaaFlag('bombero')).toBe(false)
       expect(hasCcaaFlag('conductor')).toBe(false)

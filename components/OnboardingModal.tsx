@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'administrativo_agencia_tributaria_canaria',
+    nombre: 'Agentes Tributos Canarias',
+    categoria: 'administrativa',
+    administracion: 'Autonómica',
+    icon: '📋'
+  },
+  {
     id: 'ujieres_cortes_generales',
     nombre: 'Ujieres Cortes Generales',
     categoria: 'C2',

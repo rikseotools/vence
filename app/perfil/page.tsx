@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'administrativo_agencia_tributaria_canaria',
+      label: 'Agentes Tributos Canarias',
+      data: {
+        name: 'Agentes de Tributos - Agencia Tributaria Canaria',
+        slug: 'administrativo-agencia-tributaria-canaria',
+        categoria: 'administrativa',
+        administracion: 'Autonómica'
+      }
+    },
+    {
       value: 'ujieres_cortes_generales',
       label: 'Ujieres Cortes Generales',
       data: {

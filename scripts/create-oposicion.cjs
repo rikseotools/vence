@@ -156,7 +156,14 @@ function buildConfigEntry(spec) {
   const id = spec.identity, T = spec.temario, B = spec.bloques;
   const esc = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const themeLine = t => {
-    const dn = (t.topic_number > 100) ? `, displayNumber: ${t.numero ?? (t.topic_number - 100)}` : '';
+    // `displayNumber` es el número que VE el opositor ("Bloque II - Tema 3"), y en los
+    // programas que reinician la numeración por bloque se guarda con prefijo de bloque
+    // (Bloque I = 1-15, Bloque II = 201-225). Restar 100 fijo solo acertaba con el
+    // prefijo 1xx: el Bloque II de Agentes de Tributos (201-225) salía como 101-125.
+    // Se deriva del prefijo real, así que vale para 1xx, 2xx, 3xx…
+    const dn = (t.topic_number > 100)
+      ? `, displayNumber: ${t.numero ?? (((t.topic_number - 1) % 100) + 1)}`
+      : '';
     return `          { id: ${t.topic_number}, name: '${esc(t.titulo)}'${dn} },`;
   };
   const blocks = B.map(b => {

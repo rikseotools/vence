@@ -287,7 +287,9 @@ const KEYWORD_TO_FLAG: Array<[string[], string]> = [
   // Murcia
   [['murcia', 'carm', 'cartagena', '-sms', 'sms-', 'local-lorca', 'molina-segura'], 'murcia'],
   // Canarias (cabildos + islas; antes que Baleares por "palma")
-  [['canarias', 'canario', '-scs', 'scs-', 'las-palmas', 'palmas', 'tenerife', 'gran-canaria', 'lanzarote', 'fuerteventura', 'la-gomera', 'la-palma', 'el-hierro', 'la-laguna', 'ulpgc', 'cabildo', 'arona', 'telde', 'policia-canaria'], 'canarias'],
+  // 'canaria' en singular hace falta: "…-agencia-tributaria-canaria" no contiene ni
+  // 'canarias' ni 'canario', así que caía al emoji de fallback (cazado por audit:oposicion 26/07).
+  [['canarias', 'canario', 'canaria', '-scs', 'scs-', 'las-palmas', 'palmas', 'tenerife', 'gran-canaria', 'lanzarote', 'fuerteventura', 'la-gomera', 'la-palma', 'el-hierro', 'la-laguna', 'ulpgc', 'cabildo', 'arona', 'telde', 'policia-canaria'], 'canarias'],
   // Illes Balears (consells + islas)
   [['baleares', 'balear', 'illes', 'caib', 'ibsalut', 'mallorca', 'menorca', 'ibiza', 'eivissa', 'formentera', 'palma', 'consell'], 'baleares'],
   // Madrid (comunidad, ayto, sanidad, universidades madrileñas)
