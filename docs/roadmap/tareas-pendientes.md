@@ -1493,6 +1493,21 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 >      ✅ Comprobado el 25/07 y ya NO pendiente: `plazas_libres` vale **7** tanto en `oposiciones` como en la convocatoria vigente (`plazas_promocion_interna=12`, `estado_proceso='inscripcion_abierta'`). La ficha pedía corregir el 20 heredado en dos sitios distintos; estaba hecho.
 >   - Nota: **LGT y RGGIT figuran `verification_status='pendiente'`** en BD (es estado previo, no introducido por esta construcción) — conviene mirarlo antes de generar contra ellas, que son la base de T2-T14.
 
+> ## 🟢 PROGRESO 26/07 (mañana) — Bloque II: +30 preguntas en 3 temas, con doble auditoría ciega
+> **Generadas, auditadas y aprobadas (todas en temas `disponible=false` salvo el aviso de T221):**
+> - **T216** (tabaco): **+9** → el tema pasa de 16 a **25** preguntas (el mínimo del proyecto). Cubre el **art. 8**, que tenía **0**. Doble auditoría ciega: **9/9 PERFECT** en las dos.
+> - **T221** (cesión de tributos): **+8** → de 16 a 24. Cubre arts. 54 y 61, ambos con 0 preguntas. **DOS rondas** de doble auditoría (4 agentes).
+> - **T222** (ISD): **+13** insertadas en `draft`, 13/13 en las puertas mecánicas, auditoría ciega en curso. Cubre 10 artículos, **9 de ellos sin preguntas**.
+>
+> **⚠️ AVISO — las 8 de T221 SÍ se sirven a usuarios.** El guardarraíl de visibilidad del aprobador lo advirtió: los arts. 54 y 61 de la Ley 22/2009 están también en `oficial_de_gestion_parlamento_de_andalucia` **T12, que está `disponible=true`**. Son defendibles ahí (su epígrafe pide *"el actual modelo de financiación de las comunidades autónomas de régimen común"*, que es esa ley) y son las más auditadas del lote, pero **NO estaban previstas como visibles**. Decisión pendiente de Manuel: dejarlas o devolverlas a `draft`.
+> **Cabo derivado (sobre-inclusión preexistente, NO causada aquí):** ese T12 escopa la **Ley 22/2009 ENTERA** (`article_numbers = NULL`) para un epígrafe que pide solo el modelo de financiación → ya servía los **69 artículos**. Candidato claro de `scope_over_inclusion_suspect`.
+>
+> **🐛 COLISIÓN DE BATCH_ID (defecto de clase, arreglado):** otra sesión insertó 8 preguntas de T222 a las 01:31 con el tag `gen_atc_t222_2026-07-26`; yo metí 13 a las 10:06 con **el mismo tag** (se compone a mano desde la fecha) → 21 bajo un tag que es la **unidad de aprobación**, así que aprobar habría transicionado trabajo ajeno sin auditar. Separadas re-tagueando SOLO las mías (`…_s26c`) por los ids del `inserted_ids.json`, y comprobado que **no hay duplicados semánticos** pese a compartir 5 artículos. `insertar-batch-generado.cjs` **aborta ahora** si el tag ya existe (Paso 2-bis, probado en vivo), y el gotcha baja al manual §2.1-bis.
+>
+> **Aprendizaje del pipeline (las puertas cazaron ~25 defectos MÍOS en 3 lotes):** cabecera didáctica ausente, *tells* de longitud en ambos sentidos, distribución sesgada, siglas sin desarrollar, `law_slug` equivocado (¡5 leyes con slug parecido!), opciones no literales por llevar artículo determinado delante, inversión de un negativo legal a afirmativo, y —la peor— **letras de explicación desincronizadas al reordenar opciones**, que resolví generando cabecera y viñetas desde el orden final en vez de a mano.
+>
+> **📌 Y lo que NINGUNA puerta mecánica vio, sí lo vieron los auditores ciegos:** explicaciones mías que introducían conocimiento externo no comprobable con el artículo, y una opción correcta que era **la única sin cola descriptiva** (heurística de formato para el alumno). En T221 el auditor escéptico dio 8/8 y el estricto 3 NEEDS_REVIEW: **acertó el estricto en las tres**. Con un solo auditor se habrían aprobado.
+>
 > ## 🔴 BLOQUEO CARACTERIZADO (26/07, madrugada) — la LGT NO se puede verificar con la herramienta actual
 > Los 14 temas T201-T214 esperaban a que `LGT` y `RGGIT` pasaran a `verification_status='actualizada'`. **No se puede marcar, y el motivo es peor que un dato mal: la herramienta de verificación da un VERDE FALSO aquí.**
 > - **Evidencia vieja engañosa:** ambas tenían `last_verification_summary` con TODO a cero (LGT 292/292, RGGIT 230/230) del **06/01/2026**. Re-verificado en vivo hoy: la LGT ya NO cuadra (BOE 290 / BD 289, 1 `content_mismatch`) y el RGGIT tampoco (BOE 228 / BD 230). Nunca fiarse de evidencia de hace 6 meses.

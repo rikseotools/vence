@@ -131,6 +131,22 @@ Igual que `importar-preguntas-scrapeadas.md` §"Importar Desactivadas, Activar T
 - `is_active` es `GENERATED ALWAYS AS (lifecycle_state IN ('approved','tech_approved'))` — UPDATE directo falla.
 - `content_hash` lo genera la BD vía trigger (MD5, 32 chars).
 
+### 2.1-bis El BATCH_ID tiene que ser ÚNICO (colisión real, 26/07/2026)
+
+El tag suele componerse a mano derivándolo de la fecha (`gen_atc_t222_2026-07-26`), así que **dos
+sesiones trabajando el MISMO tema el MISMO día colisionan en silencio**. Pasó: una sesión insertó
+8 preguntas del T222 a las 01:31 y otra 13 a las 10:06 con el mismo tag → el tag acabó con 21.
+
+Por qué importa: **el tag es la UNIDAD DE APROBACIÓN** de `aprobar-batch-generado.cjs`. Aprobar
+por ese tag habría transicionado a `approved` las 8 ajenas sin auditarlas — con 5 artículos
+solapados entre ambas tandas, además. Y el dedup del Paso 3 no lo caza: compara enunciados
+completos y solo contra preguntas **activas**, y las ajenas estaban en `draft`.
+
+`insertar-batch-generado.cjs` **aborta ahora** si el tag ya existe en BD (Paso 2-bis). Si te salta:
+añade un sufijo de sesión (`…_s26c`) o aleatorio. Y si ya has insertado con un tag compartido,
+re-taguea SOLO lo tuyo con `array_replace(tags, viejo, nuevo)` usando **los ids del fichero
+`<batch>_inserted_ids.json`** que deja el inserter — nunca por fecha ni «los últimos N».
+
 ### 2.2 La opción correcta debe ser cita LITERAL del artículo
 
 Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un sujeto, la pregunta ya está rota — el manual de revisión §3.2 advierte que los modos de fallo típicos son:

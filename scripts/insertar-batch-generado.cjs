@@ -85,6 +85,25 @@ async function insertOne(q, defaultLawId) {
   if (!lawIds.length) throw new Error('el batch no referencia ninguna ley válida (ni default ni law_slug)')
   console.log(`leyes del batch: ${[...slugs].join(', ')} · borrador: ${Q.length} preguntas · batch: ${BATCH}\n`)
 
+  // ---- Paso 2-bis: el BATCH_ID no puede estar ya en uso (26/07/2026) ----
+  // El tag se compone a mano y suele derivarse de la fecha (`gen_atc_t222_2026-07-26`), así
+  // que dos sesiones trabajando el MISMO tema el MISMO día colisionan en silencio. Pasó de
+  // verdad: una sesión insertó 8 preguntas del T222 a las 01:31 y otra 13 a las 10:06 con el
+  // mismo tag → el tag pasó a tener 21 y, como el tag es la UNIDAD DE APROBACIÓN de
+  // `aprobar-batch-generado.cjs`, aprobar habría transicionado también el trabajo ajeno, sin
+  // auditar. Se aborta antes de insertar: es barato y el fallo era invisible.
+  const yaUsado = await s`
+    SELECT count(*)::int AS n, min(created_at) AS primera
+    FROM questions WHERE ${BATCH} = ANY(tags)`
+  if (yaUsado[0].n > 0) {
+    console.error(`❌ BATCH_ID YA EN USO: "${BATCH}" tiene ya ${yaUsado[0].n} pregunta(s) en BD (la primera de ${new Date(yaUsado[0].primera).toISOString().slice(0, 16)}).`)
+    console.error('   El tag es la unidad de aprobación: reutilizarlo mezclaría tu tanda con la ajena y')
+    console.error('   `aprobar-batch-generado.cjs` aprobaría trabajo que no has auditado.')
+    console.error(`   Usa un tag único, p.ej. "${BATCH}_$(node -e "process.stdout.write(require('crypto').randomBytes(3).toString('hex'))")" o añade el slug de tu sesión.`)
+    await s.end()
+    process.exit(2)
+  }
+
   // ---- Paso 3: dedup contra lo ya existente sobre TODAS las leyes del batch ----
   const existentes = await s`
     SELECT q.question_text FROM questions q
