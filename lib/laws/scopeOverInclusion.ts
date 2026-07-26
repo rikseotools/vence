@@ -53,6 +53,14 @@ export interface EpigrafeFeatures {
   explicitArts: Set<number>
   /** el epígrafe declara la ley íntegra ("en su totalidad", "íntegra"…) */
   wholeLawWords: boolean
+  /**
+   * Literal del epígrafe que ACOTA la materia en prosa ("conceptos", "principios",
+   * "ámbito de aplicación"…), o `null` si no acota. Se guarda el texto encontrado y no un
+   * booleano a propósito: el motivo del hallazgo tiene que poder decir QUÉ lo disparó.
+   * (Faltaba en la interfaz aunque `parseEpigrafe` ya lo devolvía y `classifyScope` lo
+   * leía → typecheck roto en main; T-132, 26/07.)
+   */
+  acotaMateria: string | null
   len: number
 }
 
