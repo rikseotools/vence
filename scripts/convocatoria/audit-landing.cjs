@@ -128,14 +128,26 @@ async function main() {
   // El documento contra el que se contrastan las cifras tiene que SER la convocatoria. El hub
   // tiene el 96% clonado como `nota` (tipo por defecto): contrastar contra una nota o un temario
   // produce avisos falsos. Se prefiere `convocatoria`/`bases`; si no hay, se dice y no se opina.
-  const [doc] = await sql`
+  // Una landing NO habla de un solo documento: cita la OEP ("la OEP 2026 aprobó 1.100 plazas"),
+  // la convocatoria y las bases. Contrastarlo todo contra UNO daba falsos "sin respaldo" en masa
+  // —medido: la FAQ de administrativo-madrid cita las plazas de la OEP y el documento clonado es
+  // la convocatoria—. El corpus es el CONJUNTO de documentos oficiales de la convocatoria vigente.
+  const docs = await sql`
     SELECT d.extracted_text, d.titulo, d.url, d.tipo
     FROM convocatoria_documentos d
     JOIN convocatorias c ON c.id = d.convocatoria_id
     JOIN oposiciones o ON o.id = c.oposicion_id
     WHERE o.slug = ${SLUG} AND c.is_current AND d.extracted_text IS NOT NULL
-      AND d.tipo IN ('convocatoria', 'bases')
-    ORDER BY length(d.extracted_text) DESC LIMIT 1`
+      AND d.tipo IN ('convocatoria', 'bases', 'oep_decreto', 'correccion_errores')
+    ORDER BY length(d.extracted_text) DESC LIMIT 6`
+  const doc = docs.length
+    ? {
+        tipo: [...new Set(docs.map((d) => d.tipo))].join('+'),
+        titulo: `${docs.length} documento(s) oficial(es)`,
+        url: docs[0].url,
+        extracted_text: docs.map((d) => d.extracted_text).join('\n\n'),
+      }
+    : null
   await sql.end()
 
   const errores = []
@@ -175,14 +187,26 @@ async function main() {
     tituloRequerido: op.titulo_requerido,
     examenConfig: op.examen_config,
   })
-  if (cl.severidad === 'error') errores.push(`[landing_incompleta] falta ${cl.faltan.join(', ')}`)
-  else if (cl.severidad === 'warn') avisos.push(`[landing_incompleta] mejorable — falta ${cl.faltan.join(', ')}`)
+  if (!findings.some((f) => f.kind === 'landing_incompleta')) {
+    if (cl.severidad === 'error') errores.push(`[landing_incompleta] falta ${cl.faltan.join(', ')}`)
+    else if (cl.severidad === 'warn') avisos.push(`[landing_incompleta] mejorable — falta ${cl.faltan.join(', ')}`)
+  }
 
+  // El núcleo se re-ejecuta por si el sweep no ha corrido desde el último cambio, pero NO se
+  // repite lo que el barrido ya reportó: el mismo defecto salía dos veces (con el nombre del kind
+  // y con el del tipo interno) en 13 landings. Un informe que se repite se lee peor y se cree menos.
+  const KIND_DE_TIPO = {
+    ref_url_mismatch: 'convocatoria_link_mismatch',
+    etiqueta_boletin_mismatch: 'convocatoria_etiqueta_boletin',
+    enlace_no_es_boletin: 'convocatoria_enlace_no_boletin',
+  }
+  const kindsYaReportados = new Set(findings.map((f) => f.kind))
   for (const it of checkConvocatoriaLinks({
     diarioOficial: op.diario_oficial, programaUrl: op.programa_url,
     boeReference: op.boe_reference, estadoProceso: op.estado_proceso,
   })) {
-    ;(it.severidad === 'error' ? errores : avisos).push(`[${it.tipo}] ${it.detalle}`)
+    if (kindsYaReportados.has(KIND_DE_TIPO[it.tipo])) continue
+    ;(it.severidad === 'error' ? errores : avisos).push(`[${KIND_DE_TIPO[it.tipo] || it.tipo}] ${it.detalle}`)
   }
 
   // ── 3. La página SERVIDA: enlaces, afirmaciones y contradicciones ──────────────────────────
@@ -227,8 +251,17 @@ async function main() {
   let respaldo = { sinDocumento: true, sinRespaldo: [], respaldadas: [] }
   if (doc && doc.extracted_text) {
     respaldo = verificarAfirmaciones(afirmaciones.filter((a) => a.superficie !== 'pagina_servida'), doc.extracted_text)
+    // El aviso es de DOBLE lectura y así se redacta: o la cifra está mal, o nos falta clonar el
+    // documento que la respalda (la landing cita OEP + convocatoria + bases, y el hub tiene el 96%
+    // como `nota`). Decir "no aparece en el documento oficial" a secas sonaba a acusación y hacía
+    // perder el tiempo verificando cifras correctas cuyo documento simplemente no teníamos.
+    const tiposCorpus = doc.tipo
     for (const a of respaldo.sinRespaldo) {
-      avisos.push(`[landing_cifra_sin_respaldo] "${a.valor} ${a.tipo}" (${a.superficie}) no aparece en el documento oficial — ${a.fragmento}`)
+      avisos.push(
+        `[landing_cifra_sin_respaldo] "${a.valor} ${a.tipo.replace('_', ' ')}" (${a.superficie}) no está en los ` +
+        `${docs.length} documento(s) clonados [${tiposCorpus}] — verifica la cifra en su fuente, o clona ` +
+        `el documento que la respalda si es de otro (OEP, bases, temario) — ${a.fragmento}`,
+      )
     }
   } else {
     notas.push(
