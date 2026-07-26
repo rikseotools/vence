@@ -93,3 +93,27 @@ describe('divergenciaPlazas — el total, con la reserva DENTRO', () => {
     expect(r.explicacion).toMatch(/920 turno libre \+ 7 promoción interna/)
   })
 })
+
+describe('divergenciaPlazas — solo vale para plazas_libres', () => {
+  // Lo destapó el cableado al detector: aplicado a `plazas_discapacidad` soltó
+  // «la legacy guarda el turno general (88 convocadas − 88 reservadas = 0)», comparando el
+  // campo de discapacidad consigo mismo. Un veredicto con pinta de seguro y sin sentido.
+  it('rechaza plazas_discapacidad en vez de inventar un veredicto', () => {
+    const r = clasificarDivergenciaPlazas({ campo: 'plazas_discapacidad', legacy: 0, conv: 88, discapacidad: 88, incluidas: true })
+    expect(r.patron).toBe('sin_patron')
+    expect(r.ganaConvocatoria).toBe(false)
+    expect(r.explicacion).toMatch(/solo vale para plazas_libres/)
+  })
+
+  it('rechaza plazas_promocion_interna', () => {
+    expect(clasificarDivergenciaPlazas({ campo: 'plazas_promocion_interna', legacy: 0, conv: 340, discapacidad: 340, incluidas: true }).ganaConvocatoria).toBe(false)
+  })
+
+  it('sin `campo` sigue funcionando (retrocompatible con los planes ya escritos)', () => {
+    expect(clasificarDivergenciaPlazas({ legacy: 52, conv: 54, discapacidad: 2, incluidas: true }).patron).toBe('legacy_resta_reserva')
+  })
+
+  it('con `campo: plazas_libres` explícito, igual', () => {
+    expect(clasificarDivergenciaPlazas({ campo: 'plazas_libres', legacy: 52, conv: 54, discapacidad: 2, incluidas: true }).patron).toBe('legacy_resta_reserva')
+  })
+})

@@ -292,6 +292,60 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'normalizador no captura. Llevó a retirar el sensor `hash_change` (4% de acierto). Útil si ' +
       'algún día se reabre esa vía.',
   },
+
+  // ── dual-write legacy `oposiciones` ↔ convocatoria SSOT ───────────────────────────────────
+  adjudicar_dual_write: {
+    titulo: 'Resolver una divergencia entre la fila legacy `oposiciones` y su convocatoria vigente',
+    ruta: 'scripts/dual-write-adjudicar.cjs',
+    estado: 'vivo',
+    escribe: ['estado_proceso', 'plazas_libres', 'plazas_promocion_interna', 'plazas_discapacidad', 'inscription_deadline', 'exam_date'],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'Dry-run por defecto; aplica un plan JSON. NO decide nada a propósito: exige `gana` y `porQue` ' +
+      'escritos fila a fila, porque la divergencia es BIDIRECCIONAL — en la tanda de `estado_proceso` ' +
+      'del 26/07 salió 7-7, así que copiar en bloque en cualquier sentido regresa la mitad. Lista ' +
+      'blanca de campos (no es una puerta genérica para escribir en esas tablas), escribe el SSOT ' +
+      'antes que la legacy (misma convención que el puente radar→SSOT de `lib/api/oep-signals/queries.ts`: ' +
+      'los lectores van por la vista) y verifica DENTRO de la transacción que dejaron de divergir. ' +
+      'El detector que las lista es `npm run audit:coherencia`; para las de plazas, ese detector ya ' +
+      'trae la explicación de `lib/convocatoria/divergenciaPlazas.js`.',
+  },
+
+  // ── contenido invisible: artículo escopado pero inactivo ──────────────────────────────────
+  reanclar_preguntas: {
+    titulo: 'Mover preguntas a otro artículo sin dejarlas huérfanas (contenido invisible)',
+    ruta: 'scripts/reanclar-preguntas.cjs',
+    estado: 'vivo',
+    escribe: ['primary_article_id', 'article_numbers'],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Dry-run por defecto; aplica un plan JSON. Remedia el finding `scope_phantom_article` (artículo ' +
+      'escopado pero inactivo: no se sirve aunque tenga preguntas activas). El riesgo que cierra es ' +
+      'SILENCIOSO: una pregunta se sirve donde está escopado SU artículo, así que mover el ancla a ' +
+      'otro escopado en temas distintos no la rescata, la cambia de sitio — y como el artículo viejo ' +
+      'se queda sin preguntas, el detector se apaga y el informe canta victoria. Guardas puras en ' +
+      '`lib/contenido/reanclarGuardas.js` (13 tests): bloquea destino inactivo, destino sin ningún ' +
+      'scope, y pérdida de temas no declarada (declararla obliga a escribir el motivo). Es el 32.º ' +
+      'escritor de `article_numbers` y el trinquete se subió a conciencia (ver `toolWriters.ts`): ' +
+      'solo QUITA números enumerados en el plan y en la misma transacción que re-ancla.',
+  },
+  reactivar_articulo_boe: {
+    titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
+    ruta: 'scripts/reactivar-articulo-boe.cjs',
+    estado: 'vivo',
+    escribe: ['content', 'is_active'],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Dry-run por defecto. Para cuando NO hay artículo activo al que re-anclar (hermano de ' +
+      '`reanclar_preguntas`). Compara contra el bloque VIGENTE (`bloqueVigente`), nunca contra el ' +
+      'crudo: el crudo trae todas las versiones y las notas, y comparar longitudes contra él hace ' +
+      'que un artículo COMPLETO parezca truncado (pasó con el art. 28 del Reglamento de Armas). El ' +
+      'veredicto lo da `lib/laws/compararArticuloOficial.js` (14 tests) en cinco clases que piden ' +
+      'remedios OPUESTOS: identico / erratas / reordenado / incompleto / contaminado. BLOQUEA el ' +
+      '`contaminado` (párrafos que el BOE no tiene: puede ser otra norma o una versión derogada) y ' +
+      'bloquea reactivar un artículo que no esté en ningún scope. Verifica lo escrito dentro de la ' +
+      'transacción y refresca la MV.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

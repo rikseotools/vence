@@ -44,6 +44,7 @@
 const postgres = require('postgres');
 require('dotenv').config({ path: '.env.local' });
 const { dualWriteDivergences } = require('./lib/dual-write-divergence.cjs');
+const { clasificarDivergenciaPlazas } = require('../lib/convocatoria/divergenciaPlazas.js');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { sumaOtrosTurnos, combinacionesValidasPlazas } = require('../lib/convocatoria/plazasCard.cjs');
@@ -101,7 +102,7 @@ async function main() {
     }
 
     // convocatoria vigente
-    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
+    const conv = (await sql`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, plazas_discapacidad_incluidas, estado_proceso, inscription_start, inscription_deadline, exam_date, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
                             FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1`)[0];
     if (conv) {
       const L = Number(conv.plazas_libres || 0), D = Number(conv.plazas_discapacidad || 0), P = Number(conv.plazas_promocion_interna || 0);
@@ -130,8 +131,27 @@ async function main() {
       // distinto del que la vista sirve al front. NO auto-copiar: es bidireccional
       // (a veces adelanta la convocatoria, a veces la legacy) → adjudicar contra
       // fuente oficial. Runbook: "revisa el dual-write de convocatorias".
-      for (const dv of dualWriteDivergences(o, conv))
-        warn(`dual-write DIVERGENTE en ${dv.field}: legacy=${dv.legacy} ≠ convocatoria=${dv.convocatoria} (adjudicar contra boletín, NO copiar en bloque)`);
+      for (const dv of dualWriteDivergences(o, conv)) {
+        // Para las de PLAZAS el detector no se limita a decir que discrepan: la causa casi
+        // siempre es SEMÁNTICA (si la reserva de discapacidad va dentro del turno libre o
+        // aparte), y eso se puede DEMOSTRAR con aritmética. Cuando cuadra, se dice cuál gana
+        // y por qué; cuando no, se dice que hay que leer la cita — que es exactamente la
+        // frontera entre lo mecánico y lo que pide criterio. Núcleo: divergenciaPlazas.js.
+        let coletilla = '(adjudicar contra boletín, NO copiar en bloque)';
+        if (dv.field.startsWith('plazas_')) {
+          const v = clasificarDivergenciaPlazas({
+            campo: dv.field,
+            legacy: dv.legacy,
+            conv: dv.convocatoria,
+            discapacidad: conv.plazas_discapacidad,
+            promocionInterna: conv.plazas_promocion_interna,
+            incluidas: conv.plazas_discapacidad_incluidas,
+          });
+          if (v.ganaConvocatoria) coletilla = `→ gana la CONVOCATORIA: ${v.explicacion}`;
+          else if (v.patron === 'sin_patron') coletilla = `(NO se explica por la reserva → leer la cita del boletín; adjudicar con scripts/dual-write-adjudicar.cjs)`;
+        }
+        warn(`dual-write DIVERGENTE en ${dv.field}: legacy=${dv.legacy} ≠ convocatoria=${dv.convocatoria} ${coletilla}`);
+      }
 
       // hitos si inscripción abierta
       if (conv.estado_proceso === 'inscripcion_abierta') {
