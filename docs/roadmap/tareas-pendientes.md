@@ -15,6 +15,23 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-133] ✅ [CERRADA 26/07] Las tres leyes NO CONCLUYENTES del barrido de vigencia, ahora comprobadas
+- **Qué era:** la capa anti-falso-verde de [T-132] marcó **Código Civil (1.911 de 1.911 artículos sin comprobar), LO 3/2018 (48 de 145) y LPRL (28 de 82)**. Su "0 hallazgos" no significaba "limpio" sino "no mirado", en leyes que sirven contenido en 14, 90 y 84 oposiciones.
+- **Eran DOS causas distintas, no una:**
+  1. **El Código Civil rotula sus bloques como `Art 1`** — abreviado, sin punto ni "ículo". El mapeo exigía el prefijo largo, así que la ley entera era invisible. Ahora mapea **1.976** bloques. De paso se cubren los **`N bis` con dígitos** (`Artículo 32 bis`), que no eran ni dígito puro ni palabras y se perdían aunque son artículos reales en LPRL y LO 3/2018.
+  2. **LPRL y LO 3/2018 no tenían nada ciego.** El ratio contaba como "no comprobado" el `0` estructural, las disposiciones (DA/DT/DD/DF) y los anexos — que no son artículos y no tienen bloque `Artículo N`. Excluidos del denominador, ambas quedan con **1 solo** artículo sin bloque.
+- **RESULTADO — las tres concluyentes, y el Código Civil comprobado de verdad:**
+
+  | Ley | Antes | Ahora |
+  |---|---|---|
+  | Código Civil | 1.911 de 1.911 ciegos ⚠️ | **1.910 auditables · 1 sin bloque · 16 con nota · 0 hallazgos** |
+  | LO 3/2018 | 48 de 145 ciegos ⚠️ | 99 auditables · 1 sin bloque · 0 hallazgos |
+  | LPRL | 28 de 82 ciegos ⚠️ | 56 auditables · 1 sin bloque · 0 hallazgos |
+
+- **Un test existente exigía que los `bis` NO se mapearan.** Era comportamiento **incidental** —el regex viejo sencillamente no los casaba— fijado en un test como si fuera la regla. Se actualizó explicando el porqué: `articles.article_number` guarda `"32 bis"`, y lo que de verdad importaba (que el bis no desplace al artículo simple) se conserva, porque van en claves distintas.
+- **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
+- **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
+
 ### [T-132] ✅ [CERRADA 26/07] El detector de incisos anulados era ciego a los pronunciamientos COMPETENCIALES del TC — y a dos cosas más
 - **Qué era:** `annulledProvisions.ts` solo cazaba la fórmula de NULIDAD. El TC usa además, en leyes estatales con incidencia autonómica, *"no es conforme con el orden constitucional de competencias"* — que contiene "constitucional" pero no "inconstitucional", así que el filtro (que exige el prefijo `in-` a propósito) pasaba de largo.
 - **Al ir al fondo aparecieron DOS puntos ciegos más, y el tercero es el que de verdad explicaba los 0 findings del kind:**
@@ -38,12 +55,6 @@
   - Registrado en `runbookRegistry` (kind `article_annulled_unmarked`, con las dos clases y su remediación distinta) y ampliado el runbook `incisos-anulados-tc.md`.
 - **Capa anti-falso-verde:** el auditor declara **NO CONCLUYENTE** y sale con exit 1 si >20% de los artículos no se localizan en el índice del BOE, para que ningún gate pase en verde sobre algo que no se ha comprobado.
 - **Tests:** 15 (`notaVigenciaTc`, incluida la integración con `parseBoeBlock`) + 10 (`spanishNumber`) + 4 nuevos en `annulledProvisions`. Suite 17.668 verde, typecheck limpio.
-
-### [T-133] 🟡 [ABIERTO 26/07] Tres leyes salen NO CONCLUYENTES en el barrido de vigencia del TC
-- **Qué:** con la capa anti-falso-verde de [T-132], el barrido marca como **no concluyentes** tres leyes porque muchos de sus artículos no se localizan en el índice del BOE: **Código Civil (1.911 de 1.911 — 100% ciego)**, **LO 3/2018 (48 de 145)** y **LPRL (28 de 82)**. Sus "0 hallazgos" **no significan que estén limpias**: significan que no se han comprobado.
-- **Por qué importa:** son leyes muy servidas (Código Civil 1.416 preguntas en 14 oposiciones; LO 3/2018 en 90; LPRL en 84). Si alguna tiene un inciso anulado sin nota, hoy no lo veríamos.
-- **Cómo:** mirar el índice de cada una (`…/legislacion-consolidada/id/<BOE-ID>/texto/indice`) y ver cómo rotula sus bloques de artículo; el Código Civil al 100% sugiere un patrón distinto del `Artículo N` / `Artículo <letra>` que ya cubre `mapaBloquesPorArticulo`. Ampliar ese mapeo (que es el núcleo compartido) y re-barrer con `node scripts/audit-notas-vigencia-tc.cjs "<ley>"`.
-- **Origen:** [T-132], 26/07. La detección ya existe y avisa sola; lo que falta es cubrir esos formatos.
 
 ### [T-117] ✅ [CERRADA 26/07 — DECISIÓN: NO va al panel; arreglada la precisión del detector on-demand] Banda MEDIA de `audit:epigrafe` (name-mismatch)
 - **La pregunta de la ficha era coste/beneficio. Respuesta MEDIDA: no se añade al panel.** Barrido bank-wide previo: **1.948 hallazgos** (835 `WRONG_SUBJECT` + 1.113 `OVER`) en **107 de 115** oposiciones, solo 8 limpias. El badge de contenido está en ~210 → esta banda lo multiplicaría por diez.
