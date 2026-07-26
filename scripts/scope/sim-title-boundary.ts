@@ -14,7 +14,7 @@ import postgres from 'postgres'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { parseBoeSections } = require('../../lib/laws/parseBoeSections')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { classifyTitleBoundary } = require('../../lib/laws/scopeTitleBoundary')
+const { classifyTitleBoundary, resumenBarrida } = require('../../lib/laws/scopeTitleBoundary')
 type Seccion = { num: string; from: number; to: number; blockId?: string; rubrica?: string }
 
 const sql = postgres(process.env.DATABASE_URL as string, { ssl: { rejectUnauthorized: false }, max: 1 })
@@ -69,19 +69,28 @@ async function main() {
     SELECT id, topic_number, bloque_number, title, epigrafe FROM topics
     WHERE position_type = ${pt} AND is_active = true ${topicArg ? sql`AND topic_number = ${Number(topicArg)}` : sql``}
     ORDER BY topic_number`
-  let flagged = 0
+
+  // Un "✅ sin overflow" solo significa algo si de verdad se evaluó ALGO. Sin estos
+  // contadores el runner devuelve el mismo verde cuando (a) el position_type no
+  // existe —un typo basta—, (b) la ley no tiene id del BOE, o (c) el índice del BOE
+  // no se pudo descargar. El caso (c) es el peligroso en una barrida bank-wide: si
+  // el BOE limita el ritmo a mitad, TODAS las oposiciones restantes saldrían
+  // "limpias" y serían indistinguibles de un banco sano. (T-121, 26/07/2026)
+  let flagged = 0, evaluados = 0, sinBoeId = 0, sinArts = 0, fetchFail = 0, noAplicable = 0
   for (const t of temas) {
     const scopes = await sql`
       SELECT l.short_name, l.boe_url, ts.article_numbers FROM topic_scope ts
       JOIN laws l ON l.id = ts.law_id WHERE ts.topic_id = ${t.id}`
     for (const s of scopes) {
       const bid = boeId(s.boe_url)
-      if (!bid) continue
+      if (!bid) { sinBoeId++; continue }
       const arts: string[] = forced && topicArg ? forced.split(',') : (s.article_numbers || [])
-      if (!arts.length) continue
+      if (!arts.length) { sinArts++; continue }
       let secs: Seccion[]
-      try { secs = await estructuraBoe(bid) } catch { continue }
+      try { secs = await estructuraBoe(bid) } catch { fetchFail++; continue }
       const r = await classifyConRubrica(bid, t.epigrafe, secs, arts)
+      evaluados++
+      if (!r.applicable) noAplicable++
       if (r.applicable && r.overflow.length) {
         flagged++
         console.log(`🔴 T${t.topic_number} (${t.title}) · ${s.short_name}`)
@@ -90,7 +99,31 @@ async function main() {
       }
     }
   }
-  console.log(flagged ? `\n${flagged} overflow(s) detectado(s).` : '\n✅ Sin overflow de frontera de título.')
+
+  // El veredicto ("¿significa algo este resultado?") lo decide el NÚCLEO PURO
+  // `resumenBarrida` en lib/laws/scopeTitleBoundary.js, testeado aparte — aquí solo
+  // se imprime. Sin esto, un typo en el position_type o un BOE que no responde
+  // producían el mismo "✅ Sin overflow" que un banco sano (T-121).
+  console.log(
+    `\n📊 ${temas.length} tema(s) · ${evaluados} scope(s) evaluado(s)` +
+    ` · omitidos: ${sinBoeId} sin id BOE, ${sinArts} sin artículos, ${fetchFail} sin índice descargable` +
+    ` · ${noAplicable} con epígrafe no mapeable a títulos`,
+  )
+  const veredicto = resumenBarrida({ temas: temas.length, evaluados, fetchFail, flagged })
+  switch (veredicto.veredicto) {
+    case 'sin_temas':
+      console.log(`⚠️  0 temas activos para position_type='${pt}' — ¿typo? NO es un "sin overflow".`); break
+    case 'nada_evaluado':
+      console.log('⚠️  NADA evaluado — este resultado no dice nada sobre la salud del scope.'); break
+    case 'incompleto':
+      console.log(`⚠️  INCONCLUYENTE: ${fetchFail} scope(s) sin poder consultar el BOE. "Sin overflow" NO se puede afirmar.`); break
+    case 'con_hallazgos':
+      if (fetchFail) console.log(`⚠️  cobertura incompleta (${fetchFail} sin índice), pero los ${flagged} hallazgos SÍ son reales.`)
+      console.log(`${flagged} overflow(s) detectado(s).`); break
+    default:
+      console.log('✅ Sin overflow de frontera de título.')
+  }
   await sql.end()
+  if (veredicto.exitCode) process.exit(veredicto.exitCode)
 }
 main().catch((e) => { console.error(e); process.exit(1) })
