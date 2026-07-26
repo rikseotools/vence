@@ -134,20 +134,30 @@ const PARES = () => s`
     return
   }
 
-  const ranking = rankearLeyes(pares)
+  // Demanda real por oposición: sin esto el ranking manda a trabajar en huecos
+  // que no ve nadie. Dos leyes pueden empatar a ratio y diferir 10x en alcance.
+  const demRows = await s`
+    SELECT target_oposicion AS pt, count(*)::int usuarios
+    FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`
+  const demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+
+  const ranking = rankearLeyes(pares, demanda)
   console.log('RANKING DE LEYES — por temas cerrados POR ARTÍCULO escrito\n')
-  console.log('  ratio  arts  temas0  bajo↓  finds  ley')
+  console.log('  ratio  arts  temas0  bajo↓  finds  usuarios  ley')
   ranking.slice(0, TOP).forEach((r) => {
     console.log(
       `  ${String(r.ratio).padStart(5)}  ${String(r.articulos).padStart(4)}  ` +
         `${String(r.temasACero).padStart(6)}  ${String(r.temasBajoUmbral).padStart(5)}  ` +
-        `${String(r.findingsCerrados).padStart(5)}  ${r.ley}`,
+        `${String(r.findingsCerrados).padStart(5)}  ${String(r.usuarios).padStart(8)}  ${r.ley}`,
     )
   })
-  console.log('\n  ratio  = temas que quedan a cero por cada artículo que hay que escribir')
-  console.log('  temas0 = temas SIN ningún huérfano tras cubrir la ley entera (arreglo real)')
-  console.log('  bajo↓  = temas que solo dejan de disparar el detector (efecto badge)')
-  console.log('  finds  = hallazgos de oposición que desaparecerían del panel')
+  console.log('\n  ratio    = temas que quedan a cero por cada artículo que hay que escribir')
+  console.log('  temas0   = temas SIN ningún huérfano tras cubrir la ley entera (arreglo real)')
+  console.log('  bajo↓    = temas que solo dejan de disparar el detector (efecto badge)')
+  console.log('  finds    = hallazgos de oposición que desaparecerían del panel')
+  console.log('  usuarios = opositores con esas oposiciones como objetivo (a cuánta gente llega)')
+  console.log('\n  El orden es por RATIO (cuánto cunde el esfuerzo). "usuarios" es la segunda')
+  console.log('  lente: dos leyes pueden empatar a ratio y diferir 10x en alcance real.')
   console.log(`\n  siguiente paso:  node scripts/cobertura-huerfanos.cjs --ley "${ranking[0]?.ley}"`)
   console.log('  luego, para generar:  docs/maintenance/generar-preguntas-con-ia.md')
 

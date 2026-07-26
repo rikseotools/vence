@@ -92,6 +92,23 @@ describe('rankearLeyes', () => {
     expect(lprl).toMatchObject({ articulos: 2, temasACero: 1, ratio: 0.5 })
   })
 
+  it('sin datos de demanda, usuarios queda a 0 y el orden no cambia', () => {
+    expect(ranking.every((r) => r.usuarios === 0)).toBe(true)
+  })
+
+  it('cuenta usuarios por OPOSICIÓN distinta, sin duplicar por tema', () => {
+    // opo3 tiene UN tema con huecos de AUTONOMICA; opo1/2/3 comparten LPRL.
+    const conDemanda = rankearLeyes(PARES, { opo1: 100, opo2: 50, opo3: 10 })
+    expect(conDemanda.find((r) => r.ley === 'LPRL').usuarios).toBe(160)
+    expect(conDemanda.find((r) => r.ley === 'AUTONOMICA').usuarios).toBe(10)
+  })
+
+  it('la demanda NO altera el orden: es una segunda lente, no el criterio', () => {
+    // Aunque AUTONOMICA tuviera toda la demanda, LPRL sigue primera por ratio.
+    const sesgado = rankearLeyes(PARES, { opo3: 99999 })
+    expect(sesgado[0].ley).toBe('LPRL')
+  })
+
   it('la ley exclusiva NO cierra su tema sola: quedan los artículos compartidos', () => {
     // Cubrir los 4 de AUTONOMICA deja T3 con artA y artB aún huérfanos → 0 temas
     // a cero pese a ser el doble de trabajo. Es exactamente la trampa que este
