@@ -118,7 +118,27 @@ Y con los parámetros BUENOS, el resultado fue el mismo, lo que enseña algo má
 Dos cosas que dejan esto cerrado:
 
 - **El headless NO cura un bloqueo por WAF.** Interior responde 403 a la Lambda igual que al UA del cron. Marcarla `headless` habría sido crear un hueco con nombre.
-- **⚠️ La Lambda devuelve `304 Not Modified` y contenido CACHEADO.** Se probó con `wait_for` (`a[href*="apigw…"]`, `main`) y con `timeout_ms: 45000`: **las tres invocaciones devuelven exactamente los mismos 1.527 chars y un 304**, así que el `wait_for` ni se ejercita — no se está volviendo a descargar la página. Y no es que el sitio no se pueda renderizar: un Playwright local sobre esa MISMA URL sí saca *"once plazas del Cuerpo Administrativo"* y los plazos. **El ciego es la Lambda, no la fuente.** Mientras no se resuelva ese 304, `fetcher_type='headless'` no es una opción real para SPAs — y conviene revisar si alguna de las **67 fuentes ya marcadas `headless`** está en la misma situación, sirviendo caché vieja sin que nadie lo note.
+- **La causa real de Asturias: la web RECHAZA el navegador de la Lambda.** Persiguiendo esto se pasa por dos pistas falsas, así que van documentadas para que nadie las repita:
+  1. *"Devuelve 304, será caché"*: cierto a medias. El navegador se reutiliza entre invocaciones warm (`cachedBrowser`) y Chromium sirve de su caché → `304`. Pero con un **cache-buster** (`?_=<ts>`) pasa a `200` y **el contenido es idéntico**: 1.527 chars. La caché explicaba el código de estado, **no** el vacío.
+  2. *"Será que `wait_for` no funciona"*: falso, sí se honra (`page.waitForSelector`, línea 118 del handler). Esperó los 10 s completos porque el selector **no iba a aparecer nunca**.
+  Volcando el texto que devuelve se ve el motivo, y es inequívoco: **«Este navegador no es soportado por Convoca… ¡No hay datos a la vista!»**. La aplicación hace *sniffing* y se niega a montar los datos. No es el UA (la Lambda manda un Chrome 130 normal y acepta `user_agent` por parámetro); un Playwright local, que ni lo fija, SÍ pasa. Diferencia probable: `@sparticuz/chromium` frente al Chromium de Playwright.
+- **⚠️ `ok` da por bueno cualquier 3xx** (`status >= 200 && status < 400`), así que un `304` con armazón cacheado se reporta como fetch correcto. Quien consuma la Lambda no puede fiarse de `ok`: hay que mirar el TEXTO.
+- **Sonda para no volver a suponerlo:** `node scripts/seguimiento/sim-headless-aporta.cjs` mide, fuente por fuente, el texto útil por `curl` frente al de la Lambda y clasifica en `aporta` / `no_aporta` / `rechaza_bot` / `ambos_ciegos`. No escribe nada.
+
+**Barrido de las 67 marcadas `headless` (26/07/2026) — el 82% no gana nada:**
+
+| Veredicto | Nº | Qué significa |
+|---|---:|---|
+| ✅ `aporta` | 12 | la Lambda entrega bastante más texto: el marcado se paga |
+| ➖ `no_aporta` | 47 | `curl` da lo mismo o más: **una invocación por pasada tirada** |
+| ❌ `ambos_ciegos` | 7 | ni `curl` ni headless sirven → hueco con nombre (3 en oposiciones ACTIVAS: `auxiliar-administrativo-diputacion-zaragoza`, `ayudante-instituciones-penitenciarias`, `auxiliar-administrativo-la-rioja`) |
+| 🤖 `rechaza_bot` | 0 | — |
+
+Con el sensor LLM corriendo L-V y el de notas a diario, eso son **55 invocaciones diarias que no compran un solo carácter**.
+
+**Para revertirlo: `node scripts/seguimiento/ajustar-fetcher-type.cjs` (dry-run por defecto).** No se fía de la tabla de arriba: **vuelve a medir en el momento** y solo escribe el caso inequívoco (`no_aporta` estando en `headless`). NO toca los `ambos_ciegos` —ahí el problema es la URL y cambiar el fetcher lo enmascara— ni los `rechaza_bot`. Comparte núcleo con la sonda (`veredictoHeadless`/`decidirFetcherType`, testeados) para que las dos no puedan tener criterios distintos, y deja traza en `observable_events` (`fetcher_type_ajustado`).
+
+⚠️ **Ojo al umbral:** exige `1,5x` **y** `+500` chars. Un caso como `auxiliar-administrativo-andalucia` (2.563 → 3.237) gana 674 caracteres pero se queda en `no_aporta` por el ratio. Es deliberado —evita contar como "aporta" un salto grande sobre textos minúsculos, tipo Tenerife 40 → 444— pero si un día interesa afinarlo, es ahí y en sus tests.
 
 ⚠️ **Una fuente que el fetcher no sabe leer no es una fuente: es un hueco con nombre.** Al añadir una,
 comprueba cuánto TEXTO ÚTIL devuelve — no que responda 200.

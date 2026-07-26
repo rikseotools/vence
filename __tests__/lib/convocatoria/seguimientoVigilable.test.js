@@ -279,3 +279,66 @@ describe('decidirEscritura — política de escritura (el guardarraíl del repun
     expect(decidirEscritura(undefined, { aceptarDudoso: true }).escribir).toBe(false)
   })
 })
+
+// ── ¿Aporta algo el headless? Núcleo compartido por la sonda y por la herramienta ────────────
+// Si cada una tuviera su criterio, una podría medir "no aporta" y la otra revertir por otra regla.
+// Umbral calibrado el 26/07 sobre las 67 fuentes marcadas: 12 aportan, 47 no, 7 ciegas por ambas.
+describe('veredictoHeadless — medir en vez de suponer', () => {
+  const { veredictoHeadless, decidirFetcherType } = require('../../../lib/convocatoria/seguimientoVigilable.cjs')
+  const texto = (n) => 'convocatoria de plazas administrativo '.repeat(Math.ceil(n / 38)).slice(0, n)
+
+  it('aporta cuando el headless entrega bastante más texto (caso Jaén: 2.685 → 5.643)', () => {
+    const v = veredictoHeadless({ statusCurl: 200, textoCurl: texto(2685), statusHeadless: 200, textoHeadless: texto(5643) })
+    expect(v.veredicto).toBe('aporta')
+    expect(v.ganancia).toBeGreaterThan(500)
+  })
+
+  it('NO aporta cuando entrega lo mismo (caso Asturias: 6.040 → 1.527)', () => {
+    const v = veredictoHeadless({ statusCurl: 200, textoCurl: texto(6040), statusHeadless: 200, textoHeadless: texto(1527) })
+    expect(v.veredicto).toBe('no_aporta')
+  })
+
+  it('un salto porcentual grande sobre textos minúsculos NO es aportar (Tenerife: 40 → 444)', () => {
+    // 11x de ganancia relativa, pero 444 chars siguen siendo un armazón: por eso se exige +500 tb.
+    const v = veredictoHeadless({ statusCurl: 200, textoCurl: texto(40), statusHeadless: 200, textoHeadless: texto(444) })
+    expect(v.veredicto).toBe('ambos_ciegos')
+  })
+
+  it('ambos ciegos cuando ninguna vía sirve (IIPP, Zaragoza: fetch falla por las dos)', () => {
+    const v = veredictoHeadless({ statusCurl: 0, errorCurl: 'fetch failed', textoCurl: '', statusHeadless: 0, errorHeadless: 'fetch failed', textoHeadless: '' })
+    expect(v.veredicto).toBe('ambos_ciegos')
+    expect(v.motivo).toMatch(/hueco con nombre/)
+  })
+
+  it('detecta que la web rechaza el navegador (caso Convoca, Asturias)', () => {
+    const v = veredictoHeadless({ statusCurl: 200, textoCurl: texto(6040), statusHeadless: 200,
+      textoHeadless: 'Este navegador no es soportado por Convoca. No hay datos a la vista' })
+    expect(v.veredicto).toBe('rechaza_bot')
+  })
+})
+
+describe('decidirFetcherType — qué se automatiza y qué NO', () => {
+  const { decidirFetcherType } = require('../../../lib/convocatoria/seguimientoVigilable.cjs')
+
+  it('revierte a http SOLO el caso inequívoco: no_aporta estando en headless', () => {
+    expect(decidirFetcherType('no_aporta', 'headless')).toMatchObject({ cambiar: true, destino: 'http' })
+  })
+
+  it('no toca nada si ya está en http', () => {
+    expect(decidirFetcherType('no_aporta', 'http').cambiar).toBe(false)
+  })
+
+  it('NO toca un hueco con nombre: el problema es la URL, y cambiar el fetcher lo enmascara', () => {
+    const d = decidirFetcherType('ambos_ciegos', 'headless')
+    expect(d.cambiar).toBe(false)
+    expect(d.motivo).toMatch(/URL/)
+  })
+
+  it('NO decide sola cuando la web rechaza el navegador (exige criterio humano)', () => {
+    expect(decidirFetcherType('rechaza_bot', 'headless').cambiar).toBe(false)
+  })
+
+  it('deja en paz lo que sí aporta', () => {
+    expect(decidirFetcherType('aporta', 'headless').cambiar).toBe(false)
+  })
+})

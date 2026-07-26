@@ -154,6 +154,33 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Corre el clasificador puro sobre el último check atribuible de cada fuente. `--todos` añade ' +
       'la banda de revisión. Es el gate que se pasa ANTES de que un detector nuevo toque el badge.',
   },
+  ajustar_fetcher_type: {
+    titulo: 'Revertir a `http` las fuentes marcadas `headless` en las que el headless no aporta',
+    ruta: 'scripts/seguimiento/ajustar-fetcher-type.cjs',
+    estado: 'vivo',
+    escribe: ['fetcher_type'],
+    runbook: 'docs/runbooks/salud-radar.md',
+    notas:
+      'Dry-run por defecto. MIDE en el momento (curl vs Lambda, texto útil) y solo escribe el caso ' +
+      'inequívoco `no_aporta` estando en `headless`; NO toca `ambos_ciegos` (el problema es la URL y ' +
+      'cambiar el fetcher lo enmascara) ni `rechaza_bot` (exige criterio humano). Comparte núcleo con ' +
+      '`sim-headless-aporta.cjs` (`veredictoHeadless`/`decidirFetcherType`, testeados). Traza en ' +
+      '`observable_events` (`fetcher_type_ajustado`) con la medición que justificó cada cambio. ' +
+      'Medido 26/07: de 67 marcadas, 12 aportan y 55 no → 55 invocaciones diarias de Lambda tiradas.',
+  },
+  medir_aporte_headless: {
+    titulo: '¿Qué aporta de verdad el fetcher headless frente a curl, fuente por fuente?',
+    ruta: 'scripts/seguimiento/sim-headless-aporta.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-radar.md',
+    notas:
+      'CÓRRELO ANTES de marcar una fuente `fetcher_type=headless`. Compara el TEXTO ÚTIL por `curl` ' +
+      'contra el de la Lambda y clasifica: aporta / no_aporta / rechaza_bot (la web dice que no ' +
+      'soporta el navegador) / ambos_ciegos. No escribe nada. Motivo: el runbook lleva desde el ' +
+      '16/07 avisando de que "marcar headless no es un arreglo, hay que COMPROBAR que devuelve ' +
+      'contenido" y aun así había 67 fuentes marcadas sin medir. GOTCHA: el `ok` de la Lambda da ' +
+      'por bueno cualquier 3xx, así que un 304 con armazón cacheado se reporta como éxito — mira el TEXTO.',
+  },
   diagnosticar_ruido_hash: {
     titulo: 'Por qué cambia el hash de una página entre dos descargas seguidas',
     ruta: 'scripts/diag-seguimiento-ruido.cjs',
