@@ -59,3 +59,77 @@ describe('estadoCierre', () => {
     expect(r.motivo).toBeNull()
   })
 })
+
+// ── LA CONTRAPARTE DE ESCRITURA (26/07/2026) ──
+// `estadoCierre` decide; faltaba validar lo que se ESCRIBE. La causa de fondo de que el Paso 9 se
+// saltara es que no tenía herramienta: el manual lo documentaba como un insert a mano (y con el
+// cliente de Supabase, obsoleto tras el cutover a RDS). Medido: los 11 lotes ATC del 26/07 tenían
+// Paso 7 y ninguno Paso 9, aun habiéndose corrido el re-check en siete.
+const { validarVeredictosPaso9, MIN_HALLAZGO } = require('@/lib/generacion/cierreLote')
+
+const A = '11111111-1111-1111-1111-111111111111'
+const B = '22222222-2222-2222-2222-222222222222'
+const AJENO = '99999999-9999-9999-9999-999999999999'
+const HALLAZGO = 'Clave literal y blockquote verbatim; ningún distractor defendible.'
+
+describe('validarVeredictosPaso9', () => {
+  it('acepta un veredicto completo con Paso 7 previo', () => {
+    const r = validarVeredictosPaso9(
+      [{ questionId: A, limpia: true, hallazgo: HALLAZGO }], [A], new Set([A]),
+    )
+    expect(r.ok).toBe(true)
+    expect(r.escribibles).toHaveLength(1)
+    expect(r.faltantes).toEqual([])
+  })
+
+  // La guarda que de verdad importa: los batch_id se componen a mano y ya hubo una colisión entre
+  // sesiones, así que un registrador laxo acreditaría como auditado el trabajo de otra sesión.
+  it('RECHAZA un veredicto de una pregunta que no es del lote', () => {
+    const r = validarVeredictosPaso9(
+      [{ questionId: AJENO, limpia: true, hallazgo: HALLAZGO }], [A], new Set([A, AJENO]),
+    )
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(/no pertenece a este lote/)
+    expect(r.escribibles).toEqual([])
+  })
+
+  it('RECHAZA acreditar un Paso 9 sobre una pregunta sin Paso 7', () => {
+    const r = validarVeredictosPaso9(
+      [{ questionId: A, limpia: true, hallazgo: HALLAZGO }], [A], new Set(),
+    )
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(/no tiene Paso 7/)
+  })
+
+  it('RECHAZA un hallazgo trivial: registrar un paso no hecho debe costar mentir por escrito', () => {
+    const r = validarVeredictosPaso9(
+      [{ questionId: A, limpia: true, hallazgo: 'ok' }], [A], new Set([A]),
+    )
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(new RegExp(String(MIN_HALLAZGO)))
+  })
+
+  it('RECHAZA el veredicto duplicado y el que viene sin veredicto booleano', () => {
+    const dup = validarVeredictosPaso9(
+      [{ questionId: A, limpia: true, hallazgo: HALLAZGO }, { questionId: A, limpia: false, hallazgo: HALLAZGO }],
+      [A], new Set([A]),
+    )
+    expect(dup.errores.join(' ')).toMatch(/duplicado/)
+    const sinV = validarVeredictosPaso9([{ questionId: A, hallazgo: HALLAZGO }], [A], new Set([A]))
+    expect(sinV.errores.join(' ')).toMatch(/falta el veredicto/)
+  })
+
+  // El registro parcial es legítimo (el re-check suele mirar solo las reparadas) pero NUNCA
+  // silencioso: si no se ven las que faltan, un lote a medias parece cerrado.
+  it('permite el registro PARCIAL pero lista lo que queda sin acreditar', () => {
+    const r = validarVeredictosPaso9(
+      [{ questionId: A, limpia: true, hallazgo: HALLAZGO }], [A, B], new Set([A, B]),
+    )
+    expect(r.ok).toBe(true)
+    expect(r.faltantes).toEqual([B])
+  })
+
+  it('un lote sin ningún veredicto escribible no es ok (no se escribe nada)', () => {
+    expect(validarVeredictosPaso9([], [A], new Set([A])).ok).toBe(false)
+  })
+})

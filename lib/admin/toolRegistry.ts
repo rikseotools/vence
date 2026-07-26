@@ -478,6 +478,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'oposición activa por compartir `topic_scope`. Emite `question_batch_approved` en ' +
       '`observable_events`.',
   },
+  registrar_paso9: {
+    titulo: 'Registrar el veredicto del Paso 9 (re-verificación post-aplicación) en ai_verification_results',
+    ruta: 'scripts/registrar-paso9.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'Dry-run por defecto; `<batch_id> <veredictos.json> [--apply]`. Es la CONTRAPARTE de escritura ' +
+      'de `verificar-batch-servido.cjs` (T-155): ese comando BLOQUEA si falta el Paso 9, y esto es lo ' +
+      'que lo acredita. Nace de la causa de fondo de que el paso se saltara — no tenía herramienta: ' +
+      'el manual lo documentaba como un insert a mano copiado de un snippet, y con el cliente de ' +
+      'Supabase, obsoleto tras el cutover a RDS. Medido el 26/07: los 11 lotes ATC de esa sesión ' +
+      'tenían Paso 7 registrado y NINGUNO el Paso 9, aun habiéndose corrido el re-check en siete. ' +
+      'Las guardas viven en el núcleo puro `lib/generacion/cierreLote.js` (14 tests), el mismo que ' +
+      'decide el cierre, para que no haya dos definiciones de qué acredita un Paso 9: rechaza ' +
+      'preguntas AJENAS al lote (los batch_id se componen a mano y ya hubo una colisión entre ' +
+      'sesiones), rechaza acreditar un Paso 9 sin Paso 7 previo, y exige un hallazgo de >=40 chars ' +
+      'para que registrar un paso no hecho cueste mentir por escrito. Permite registro PARCIAL (el ' +
+      're-check suele mirar solo las reparadas) pero LISTA siempre lo que queda sin acreditar. NO ' +
+      'toca lifecycle_state ni el contenido: solo acredita una auditoría ya hecha.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */
