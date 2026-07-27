@@ -306,6 +306,21 @@
 - **Por qué importa más de lo que parece:** un detector que solo produce falsos positivos hace que nadie mire el panel — y ahí es donde van a aparecer las señales de cosecha nuevas (`curl_scraping` / `harvest_no_answer`, T-179). El ruido devalúa la señal buena.
 - **Cómo:** (1) que el ratio de acierto salga de la BD y no del estado en curso del cliente; (2) exigir RAPIDEZ, no lentitud, para hablar de bot; (3) arreglar los tiempos negativos antes de promediar nada; (4) no re-alertar de un sujeto ya absuelto dentro de un TTL; (5) dejar de crear alerta `medium` para el patrón de Android ya documentado como FP; (6) cerrar en bloque las 500 `stale` cuando (1)-(5) estén hechos, no antes.
 - **Ojo al alcance:** NO desactivar la detección. Lo que se busca es que cuando salte, signifique algo.
+
+#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
+- **La evidencia ya está recogida, no hay que re-investigar:** las 3 señales del 27/07 quedaron en `status='dismissed'` con el porqué **escrito en `fraud_alerts.notes`**. Empieza por ahí:
+  ```sql
+  SELECT alert_type, severity, detected_at, notes FROM fraud_alerts
+   WHERE status='dismissed' AND reviewed_at::date = DATE '2026-07-27' ORDER BY detected_at;
+  ```
+- **Dónde está cada defecto en el código:**
+  - El `correctRate` sobre estado PARCIAL → `hooks/useBotDetection.ts`, función `reportSuspiciousBehavior`: calcula `correctRate` sobre el array `answerData` **en memoria del cliente**, no sobre lo confirmado en BD. Es la causa raíz, y por eso un umbral no lo arregla.
+  - Los tiempos negativos salen de ese mismo `answerData` (`recentTimes`).
+  - El alta de la alerta y el escalado a reto forzado → `app/api/fraud/report/route.js`.
+- **Ese fichero ya se tocó el 27/07 en T-180** (ahora la identidad sale del token y el cliente manda `getAuthHeaders()`). Lee ese cambio antes de tocar nada para no deshacerlo.
+- **Casos concretos con los que validar el arreglo** (deben dejar de generar alerta): `isidoracarrenosanabrias@` (28 s/pregunta de mediana, 28 % de acierto real frente al 0 % que declaró el cliente), `followsymlinks53@` (PREMIUM, Chrome Android, 9 alertas), `amaiacubocossio@` (84 % de acierto, 12 alertas).
+- **Las 500 `stale` se cierran AL FINAL**, no al principio: si las cierras antes de arreglar la causa, se vuelven a llenar y habrás perdido la evidencia.
+- **Por qué corre prisa relativa:** es el MISMO panel donde van a aparecer las señales de cosecha nuevas (T-179). Mientras el detector viejo cría falsos positivos, la señal buena nace devaluada.
 - **Origen:** triaje del 27/07 (las 3 pendientes se dejaron `dismissed` con la evidencia en `notes`).
 
 ### [T-179] 🟠 [ABIERTO 27/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
@@ -313,7 +328,37 @@
 - **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
 - **Cuándo:** ~1 semana DESPUÉS de que el writer esté desplegado (antes no hay datos: `daily_questions_served` estará vacío y el canary en rojo).
 - **Cómo:** sacar la distribución de `served`, `answered` y el ratio por usuario en 30 días; ver dónde cae el percentil de los usuarios legítimos; ajustar `DEFAULTS` (o `FRAUD_SCRAPE_MIN_SERVED`) para que el corte quede claramente por encima del p99 real. Añadir el caso medido como test de regresión, igual que se hizo con el de 4.897.
-- **Cabo asociado:** con datos también se resuelve la otra incógnita — si la forma `orphan` de `exam_validate_served` (llamadas a `/api/exam/validate` sin `testId`) resulta **frecuente entre usuarios normales**, NO es scraping sino un **bug**: exámenes que no quedan anclados a su test. Runbook `revisar-fraudes.md` §cosecha por corrección.
+- **✅ El cabo del `orphan` YA está resuelto (no lo vuelvas a investigar):** en las primeras horas salieron 9 de 13 llamadas como `orphan`… y las 9 eran **exámenes ANÓNIMOS** (lote 25, 24-25 contestadas). Sin usuario no hay `tests` al que anclar, así que no pueden traer `testId`. NO era ni scraping ni bug. Reclasificado a `anon_exam`/info en el commit `8ea0cb6fb`.
+
+#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
+- **⚠️ ESTADO AL CERRAR: hay 2 commits en `main` SIN DESPLEGAR** — `8ea0cb6fb` (calibración) y `d5ebe23cc` (T-180). Lo desplegado al cerrar era `d397708c`. **Consecuencia mientras no se despliegue:** (a) los exámenes anónimos siguen entrando como `orphan`/**warn** en el panel de salud (17 acumulados en las primeras 4 h), y (b) `smoke@vence.es` sigue sumando al rollup (volvió a 1.560 servidas después de limpiarlo). **Las dos cosas se cortan solas con el siguiente deploy de frontend, no hay que arreglar nada.** El **sweep nocturno SÍ está protegido** aunque no se despliegue, porque corre desde GitHub Actions leyendo `main`. Verifica con:
+  ```bash
+  curl -s https://www.vence.es/api/health | grep -o '"deploy":"[^"]*"'
+  ```
+- **El instrumento lleva midiendo desde el 27/07 ~15:15 UTC.** Antes de esa hora no hay datos: cualquier ventana que los incluya está sesgada a la baja.
+- **Comprobar PRIMERO que la medición está viva** (si está ciega, todo lo demás sobra):
+  ```bash
+  npm run canary:served-rollup      # verde = midiendo; rojo = dice por qué
+  ```
+- **La consulta de calibración** (la distribución que falta para decidir los umbrales):
+  ```sql
+  SELECT s.subject_key, sum(s.served)::int servidas,
+         coalesce(sum(u.questions_answered),0)::int respondidas,
+         round(coalesce(sum(u.questions_answered),0)::numeric / nullif(sum(s.served),0), 3) ratio
+    FROM daily_questions_served s
+    LEFT JOIN daily_question_usage u
+      ON u.user_id::text = s.subject_key AND u.usage_date = s.usage_date
+   WHERE s.subject_kind='user' AND s.usage_date >= CURRENT_DATE - 30
+   GROUP BY 1 ORDER BY servidas DESC;
+  ```
+  Busca dónde cae el p99 de los usuarios legítimos y deja el corte CLARAMENTE por encima.
+- **Los umbrales viven en `DEFAULTS` de `lib/security/harvestSignals.js`** (`maxAnswerRatio` 0,2 · `minServed` 300) + el env `FRAUD_SCRAPE_MIN_SERVED`. Núcleo puro y CommonJS **a propósito**: lo comparten el sweep (`scripts/fraud-sweep.cjs`, CommonJS) y el panel admin (TS). Cambiar el criterio en un solo lado los hace divergir.
+- **⚠️ AVISO, el mismo día ya se calibró MAL dos veces, las dos por razonar sin datos:**
+  1. `harvest_volume` (volumen ≥5.000 servidas) habría marcado al usuario real más intenso — 4.897 respondidas/30d, a un 2 % del corte. **Eliminado**, y no vale reintroducirlo subiendo el número: el fallo era el razonamiento.
+  2. `orphan` en `warn` habría metido ~100-300 avisos/día en el panel de salud.
+  **Moraleja operativa: contrasta CADA umbral contra la distribución real antes de darlo por bueno.**
+- **Cuidado con el ruido de ventana corta:** un usuario a mitad de test tiene ratio bajo de forma legítima (carga 25, lleva 2 contestadas). Por eso existe `minServed`; no lo bajes sin mirar qué entra.
+- **El tráfico sintético está excluido en DOS capas** (writer por `x-vence-canary`, y el sweep por `email LIKE 'smoke@%'`). Si ves un `smoke@` en el rollup, la exención del writer se rompió — el canary ya lo vigila.
 - **Origen:** auditoría anti-scraping del 27/07.
 
 ### [T-168] 🟡 [ABIERTO 27/07] El deploy en caliente recarga la app A MITAD DE TEST y se lleva el test por delante (costó un usuario)
