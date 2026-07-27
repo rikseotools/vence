@@ -488,7 +488,10 @@ const VIG_UMBRAL_CABECERA = 220;
 const VIG_PATRONES_CABECERA: Array<{ nivel: string; re: RegExp; motivo: string }> = [
   {
     nivel: 'pagina_no_encontrada',
-    re: /noseencontr.?lap.?gina|p.?ginanoencontrada|contenidonoencontrado|pagenotfound|error404|404error/,
+    // + "no hemos podido encontrar la página" (Correos, 27/07/2026): su sitio responde 200
+    // con la página de error para CUALQUIER ruta desconocida. Mantener en paridad con
+    // lib/convocatoria/seguimientoVigilable.cjs — el test de paridad lo exige.
+    re: /noseencontr.?lap.?gina|p.?ginanoencontrada|nohemospodidoencontrarlap.?gina|contenidonoencontrado|pagenotfound|error404|404error/,
     motivo:
       'el TITULAR de la página dice que el contenido no existe: es un 404 servido con 200, ' +
       'nunca listará una convocatoria (y el hash queda congelado para siempre)',

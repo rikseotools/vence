@@ -85,6 +85,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'por `dedupeKey` (día:sesión:modelo): re-ingerir un día lo actualiza, no lo duplica. Medido ' +
       'el 26/07: 49.456 respuestas y 20.081M tokens en 30 días, casi todo caché leída.',
   },
+  // ── programa_url: ¿el enlace lleva a un documento DE VERDAD? ──────────────────────────────
+  sim_programa_url_vigilable: {
+    titulo: 'Comprobar si el programa_url de las oposiciones activas es una página de error/login servida con 200',
+    ruta: 'scripts/convocatoria/sim-programa-url-vigilable.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Simulación ON-DEMAND, solo lectura: no escribe ni pinga badge. REUTILIZA `clasificarVigilancia` ' +
+      '(el núcleo de T-165 para `seguimiento_url`) sobre la otra columna, en vez de abrir un detector ' +
+      'nuevo. Medido el 27/07/2026 sobre 122 oposiciones activas: 3 hallazgos reales — ' +
+      '`tecnico-auxiliar-universidad-de-murcia` (URL de FRAGMENTO del BORM `#/home/anuncio/…` = ' +
+      'cascarón de SPA, con inscripción ABIERTA y 47 usuarios; repuntado al PDF directo), ' +
+      '`correos-personal-operativo` (el sitio responde 200 con su página de error para cualquier ruta; ' +
+      'su portal de empleo ya no existe en correos.es y vive tras login en conecta.correos.es) y ' +
+      '`auxiliar-administrativo-diputacion-barcelona` (contenido dudoso). GOTCHA que invalidó la ' +
+      'primera pasada: los boletines sirven PDF SIN extensión, así que sin extraer su texto TODOS ' +
+      'parecen cascarón — daba 17 falsos positivos. Complementa a `convocatoria_enlace_no_boletin` ' +
+      '(T-134), que juzga si la URL es del boletín que promete la etiqueta pero no si el documento VIVE.',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',

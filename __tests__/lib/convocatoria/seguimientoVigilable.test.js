@@ -445,3 +445,26 @@ describe('clasificarVigilancia — cabecera que delata una página que no vigila
     expect(d.severidad).toBe('warn')
   })
 })
+
+describe('página de error con OTRA redacción (Correos, 27/07/2026)', () => {
+  // El sitio de Correos responde 200 con su página de error para CUALQUIER ruta
+  // desconocida. Su `programa_url` llevaba ahí y el núcleo lo daba por "vigilable":
+  // la redacción ("no hemos podido encontrar la página") no estaba entre los patrones.
+  const errorCorreos =
+    'Particular Empresa Busca en correos.es CORREOS MARKET INICIAR SESIÓN ¡Vaya! Parece que no ' +
+    'hemos podido encontrar la página que buscas. Estas cosas suceden a veces, estamos trabajando ' +
+    'para solucionar el error. Mientras tanto, puedes volver atrás o seguir navegando. '.repeat(20)
+
+  test('la caza aunque la página sea LARGA (el titular manda)', () => {
+    const v = clasificarVigilancia({ httpStatus: 200, texto: errorCorreos })
+    expect(v.vigilable).toBe(false)
+    expect(v.nivel).toBe('pagina_no_encontrada')
+  })
+
+  test('no se lleva por delante un tablón legítimo que mencione "página" en su cuerpo', () => {
+    const tablon =
+      'Convocatorias de Procesos Selectivos. Listado de convocatorias abiertas. ' +
+      'Si no encuentra la información en esta página, consulte el tablón de anuncios. '.repeat(30)
+    expect(clasificarVigilancia({ httpStatus: 200, texto: tablon }).vigilable).toBe(true)
+  })
+})
