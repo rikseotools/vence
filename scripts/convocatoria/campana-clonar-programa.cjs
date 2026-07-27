@@ -96,8 +96,19 @@ async function main() {
       }
       const cl = clasificarTipoDocumento({ titulo: p.slug, url: p.programa_url, texto: v.texto })
       if (cl.tipo === 'nota') {
-        console.log(`⏭️  no se reconoce QUÉ documento es (${v.chars} chars) — revisión humana`)
-        resumen.saltadas.push({ slug: p.slug, motivo: 'tipo no reconocido' })
+        // Dos cosas MUY distintas se esconden bajo "no reconocido", y mezclarlas deja al
+        // siguiente sin saber qué hacer. Medido en la primera pasada (17 casos): la mayoría no
+        // son documentos, son la FICHA WEB del proceso en la sede ("Detalle del trámite |
+        // Sede electrónica", "JavaScript está deshabilitado", el aviso de cookies del DOGC).
+        // Para esas, el arreglo NO es clonar mejor: es repuntar `programa_url` al documento
+        // (`repuntar-enlace-convocatoria.cjs`) — familia del detector `convocatoria_enlace_no_boletin`.
+        const esPortal = /sede electr[óo]nica|detalle del tr[áa]mite|pasar al contenido|javascript est[áa] deshabilitado|pol[íi]tica de cookies|men[uú] principal/i
+          .test(v.texto.slice(0, 3000))
+        const motivo = esPortal
+          ? 'NO es un documento: es la ficha web del proceso → repuntar programa_url'
+          : 'documento real que el clasificador no reconoce → calibrar regla o tipar a mano'
+        console.log(`⏭️  ${motivo} (${v.chars} chars)`)
+        resumen.saltadas.push({ slug: p.slug, motivo })
         continue
       }
       console.log(`${cl.tipo} [${cl.confianza}] · ${v.chars} chars${boletin ? ` · ${boletin}` : ''}`)
