@@ -15,7 +15,14 @@
  * los `cron_tick` en BD, que además es un chequeo independiente: si la cadencia
  * real no cuadra con el decorador, el problema es anterior a esta regla.
  *
- * Uso:  npx tsx scripts/alerts/sim-cron-stalled.ts [--dias 30]
+ * Uso:  npx tsx backend/scripts/sim-cron-stalled.ts [--dias 30]
+ *
+ * ⚠️ Vive bajo `backend/` A PROPÓSITO, junto a las demás simulaciones de
+ * detectores del backend. El `tsconfig.json` de la raíz EXCLUYE `backend`, así
+ * que un script en `scripts/` que importe de `backend/src` arrastra medio
+ * NestJS al typecheck de la raíz y lo rompe en CI —donde `backend/node_modules`
+ * no existe— aunque en local pase por el symlink de `new-session.sh`. Ese fallo
+ * ocurrió de verdad el 27/07 al crear este fichero (familia de T-131).
  */
 import fs from 'fs';
 import path from 'path';
@@ -25,7 +32,7 @@ import {
   stallThresholdMs,
   type AlertRuleContext,
   type StalledCronRow,
-} from '../../backend/src/alerts/alert-rules';
+} from '../src/alerts/alert-rules';
 
 const args = process.argv.slice(2);
 const dias = Number(args[args.indexOf('--dias') + 1]) || 30;
