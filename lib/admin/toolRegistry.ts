@@ -85,6 +85,20 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'por `dedupeKey` (día:sesión:modelo): re-ingerir un día lo actualiza, no lo duplica. Medido ' +
       'el 26/07: 49.456 respuestas y 20.081M tokens en 30 días, casi todo caché leída.',
   },
+  plan_paso2_tras_literal: {
+    titulo: 'Cerrar el Paso 2 (scope) tras reescribir epígrafes al literal, tema a tema y con la medición delante',
+    ruta: 'scripts/temario/plan-paso2-tras-literal.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Compañero de `sim-materias-ganadas`: convierte su medición en el `consensus.json` que come ' +
+      '`verify:scope record`. Solo lee de BD (los veredictos previos); el registro lo hace el ' +
+      'pipeline. Existe porque reescribir a literal deja TODO el Paso 2 en `stale` de golpe, y las ' +
+      'dos salidas obvias son malas: re-sellar en bloque declara cobertura sin medir, y dejarlo ' +
+      '`stale` esconde el trabajo. Medido el 27/07/2026: tcae_murcia 37 correct/6 issues, ' +
+      'tcae_galicia 19/3, auxiliar_administrativo_clm 12/9 — cada issue con el bloque de materia ' +
+      'escrito en `findings`, listo para la cola de generación sin re-investigar.',
+  },
   sim_materias_ganadas: {
     titulo: 'Medir qué materias GANA un temario al reescribir sus epígrafes al literal, y si las servimos',
     ruta: 'scripts/temario/sim-materias-ganadas.cjs',

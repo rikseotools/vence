@@ -251,7 +251,15 @@ node scripts/temario/sim-materias-ganadas.cjs <position_type> [--json salida.jso
 
 Compara el epígrafe anterior (del `dump` previo, que queda en `/tmp/verify_epigrafe_<pt>.json`) con el actual, extrae los segmentos añadidos y mide si el tema **sirve preguntas de esa materia**. Con eso el Paso 2 se cierra con datos: el tema que ganó materia **y la sirve** recupera su veredicto; el que tiene hueco va a `issues` **con el bloque concreto escrito**.
 
-Medido el 27/07/2026: `tcae_murcia` 40 temas ganaron materia y solo **8** segmentos sin cobertura (37 correct / 6 issues); `tcae_galicia` 22 y **3** (19 correct / 3 issues). Uno de los de Galicia —*"Representación, participación y negociación colectiva"*— se había detectado antes a mano leyendo el diff: la herramienta lo encuentra sola, que es justo lo que no escala a 75 oposiciones.
+El plan lo construye su compañero, para no escribirlo a mano cada vez:
+
+```bash
+node scripts/temario/sim-materias-ganadas.cjs <pt> --json /tmp/<pt>_ganadas.json
+node scripts/temario/plan-paso2-tras-literal.cjs <pt> /tmp/<pt>_ganadas.json /tmp/<pt>_p2.json DOCM
+npm run verify:scope -- record <pt> /tmp/<pt>_p2.json
+```
+
+Medido el 27/07/2026: `tcae_murcia` 40 temas ganaron materia y solo **8** segmentos sin cobertura (37 correct / 6 issues); `tcae_galicia` 22 y **3** (19/3); `auxiliar_administrativo_clm` 21 y **14** (12/9, concentrados en Excel 2019 y Teams/OneDrive). Uno de los de Galicia —*"Representación, participación y negociación colectiva"*— se había detectado antes a mano leyendo el diff: la herramienta lo encuentra sola, que es justo lo que no escala a 75 oposiciones.
 
 ### Añadir una ley a un tema: `verify:scope` con `ley_nueva`
 
