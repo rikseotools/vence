@@ -120,6 +120,19 @@
 
 ## Abiertas
 
+### [T-164] 🟡 [ABIERTO 27/07] Reanudar aquí: 2 verificaciones de reloj que quedaron a medias + 1 fix en `main` sin desplegar
+- **Qué es esto:** la sesión del barrido de salud del 27/07 se cerró a las ~08:25 UTC con dos comprobaciones **pendientes de que llegara su hora** y un arreglo pusheado sin desplegar. Sin anotarlo, el que retome no sabe qué se verificó y qué no. **Todo lo demás de ese barrido está cerrado o tiene ficha propia** (T-159 PDFs · T-160 event_loop_lag · T-161 TTS · T-162 detect-notas · T-163 chat sin fallback).
+- **(1) ¿Tickeó `check-seguimiento` a las 09:00 UTC del 27/07?** Se reactivó como telemetría el 26/07 21:03 (`8dc1267ae`, T-135) y su último tick real era del **lun 20/07**, así que el `cron_overdue` que disparó 13 veces era por ticks de cuando estaba apagado. El 27/07 a las 09:00 era su **primer tick legítimo** y debía curarse solo. Comprobar:
+  ```sql
+  SELECT ts, event_type, severity FROM observable_events
+  WHERE endpoint='check-seguimiento' AND event_type IN ('cron_tick','cron_run')
+    AND ts >= '2026-07-27T08:30:00Z' ORDER BY ts;
+  ```
+  Si NO hay filas, el cron está roto de verdad (no es el falso positivo) y hay que mirar los logs de `/ecs/vence-backend` a esa hora.
+- **(2) ¿Completó `detect-notas-convocatoria` su ejecución de las 09:30 UTC del 27/07?** Era la **primera del sistema sin LLM** (tras `56bcb7e5d`) y nadie la ha visto terminar. Es el dato que le falta a **T-162** para decidir su detector: **cuánto tarda ahora** (antes 6 h por el LLM) y **si completa**. Misma query con `endpoint='detect-notas-convocatoria'`: un `cron_tick` sin su `cron_run` = el fallo de T-162 repitiéndose por tercer día.
+- **(3) `cron_overdue` arreglado y en `main` SIN DESPLEGAR:** commit **`e92d73a41`** (el guard de "no juzgues un tick anterior al arranque del proceso" ahora se aplica también a los crons con ejecuciones viejas, que es el caso de una reactivación). No corre prisa —el falso positivo del 27/07 se cura solo con el tick de las 09:00— pero **hasta que se despliegue, la próxima reactivación de cualquier cron volverá a inundar el inbox**. Que entre en el próximo deploy del backend; ver `docs/runbooks/pusheo-revision-despliegue.md`.
+- **Origen:** cierre de sesión del barrido de salud del 27/07.
+
 ### [T-162] 🟠 [ABIERTO 27/07] `detect-notas-convocatoria` no COMPLETA una ejecución desde el 24/07 y nada se enteró
 - **Qué:** el cron (`30 9 * * *`) emitió su `cron_tick` el **25/07 y el 26/07** y **no emitió `cron_run` ninguno de los dos días**. Su emisión está en un `try/catch` que publica `cron_run` tanto en éxito como en fallo, así que la ausencia total significa que **el proceso murió a media ejecución**. Última ejecución completa: **24/07 15:35** (6,1 h, 606 errores de 2.206).
 - **Por qué murió:** la ejecución duraba ~6 h (arranca 09:30, terminaba a las 15:2x) y el contenedor se reinició dentro de esa ventana los dos días (boots el 25/07 a las 10:16 y el 26/07 a las 11:11). No hay reanudación ni reintento: el trabajo del día se pierde entero y en silencio.
@@ -142,6 +155,16 @@
 - **Cabo suelto medido:** `oposicion_desconocida` quema los 3 intentos y manda el job al DLQ, cuando es un fallo de **registro viejo en la imagen**, no del tema (7 jobs de `ujieres_cortes_generales` cayeron así el 24-25/07; se recuperaron re-encolando el 27/07 sin tocar nada más). Debería ser reintentable/`skipped`, no DLQ.
 - **Y un agujero aparte, barato:** el **413 no encola nada**. Es la única señal de que un premium REAL quería ese PDF concreto y se tira; la cola solo se alimenta del hook de scope (ciego y masivo) y de barridos manuales. Son ~3 líneas en `app/api/temario/[oposicion]/[topic]/pdf/route.ts`.
 - **Origen:** barrido de salud del 27/07.
+
+**🔵 ESTADO 27/07 08:20 — la cola está VACÍA y el canary VERDE; lo que queda es el diseño, no el incendio.**
+- **Drenado manual hecho:** 47 jobs procesados, 47 done, 0 retry, 0 DLQ. Cola final **383 done / 0 pending / 0 failed**, y el canary lo confirmó por sí mismo: `08:15 [info] canary_pdf_queue_ok`. Se acabaron los ~24 CRITICAL diarios. Los 7 de `ujieres_cortes_generales` se recuperaron re-encolando (ya resuelve el registro) y los 4 temas grandes quedaron en caché S3, así que esos premium dejaron de recibir 413.
+- **🔴 EL DLQ TENÍA DENTRO UN TEMA PERFECTAMENTE RENDERIZABLE — el diagnóstico "irreparable" era falso.** `auxiliar_administrativo_diputacion_segovia` T29 se renderizó a mano **sin el techo: 20 min 1 s y 2,9 MB, `outcome=uploaded`**. El techo del worker es `RENDER_TIMEOUT_MS` = **18 min exactos**: el tema se pasaba **2 minutos**. Al re-encolarlo con el PDF ya en S3, el worker lo cerró en **3,7 s** reconociéndolo desde caché.
+- **Consecuencias para el arreglo (cambian la ficha):**
+  1. **El techo está mal calibrado, no el tema.** Se fijó con el peor caso conocido de entonces (récord: 15,2 min) y sin holgura; el primer tema que lo superó se quedó en el DLQ **para siempre** generando 24 CRITICAL/día. Subirlo con margen real (el peor caso medido es 20 min) es parte del empaquetado del worker.
+  2. **Refuerza el acuse en el DLQ**: un job que cae por timeout **no es irreparable por definición**, así que tratar `dlq > 0` como fuego permanente estaba doblemente mal.
+  3. **Partir el Access sigue mereciendo la pena, pero YA NO es el arreglo del PDF.** El bloque de 91k es `Access 365` art. 1 *"Fundamentos de Access 365"* —contenido editorial de ofimática en un solo contenedor, con otros de 75k, 70k y 51k detrás: ~290k de manual de Access en 4 bloques—. Partirlo en secciones mejora navegación, TTS y progreso por artículo. Es una mejora aparte, no un apaño de render.
+- **🔴 Y la asimetría de fondo, comprobada: la cola está sobre-alertada y el usuario no está alertado en absoluto.** `canary_pdf_queue_failed` es `critical` con `cooldownMin: 60` y dispara con `dlq > 0` solo → ~24 emails/día indefinidos. Y el `413` (`temario_pdf_served` con `served='too_large'`) se emite con severidad **`info`** y **no hay NINGUNA regla de alerta que lo mire** (verificado con grep sobre `backend/src/alerts/`): si un premium se queda sin su PDF, no salta nada. Que el 24/07 pasara 5 veces con `auxiliar-administrativo-estado` T109 se supo solo buscándolo a mano en la BD.
+- **Diseño acordado — las tres piezas van juntas, separadas no funcionan:** (1) el **413 encola** el tema que falta (auto-curación; solo tiene sentido con consumidor automático, así que va CON el worker, no antes); (2) la **alerta cambia de sujeto**: de *"hay algo en el DLQ"* a *"este tema volvió a dar 413 DESPUÉS de encolarse"* = reincidencia, que sí es accionable y trae el tema en el payload; (3) **acuse en el DLQ** y el canary cuenta solo lo no reconocido — legítimo **solo si existe (2)**, porque si no se apaga la luz roja dejando al usuario a oscuras. **NO añadir (2) sola antes de la auto-curación**: sería un canal de emails nuevo para algo que debe curarse solo, que es la enfermedad que estamos tratando.
 
 ### [T-160] 🟠 [ABIERTO 27/07] `event_loop_lag`: 65 avisos CRITICAL/día y NO es un problema de capacidad
 - **Qué:** la regla `RULE_EVENT_LOOP_LAG` (añadida el 24/07, follow-up de T-075) es **la alerta nº1 del correo**: 65 disparos y 915 eventos en 24 h, con stalls reales de **2 a 3,8 s** cada ~20 min.
