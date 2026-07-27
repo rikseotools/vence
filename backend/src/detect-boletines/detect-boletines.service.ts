@@ -8,6 +8,8 @@ import { baseScoreBySensor } from '../oep-signals/oep-signals.schemas';
 import { adminFromOrganismo } from '../oep-signals/oep-match';
 import { BOLETIN_ADAPTERS, type BoletinAdapter, type BoletinHit } from './boletines';
 import { CCAA_BOLETIN_ADAPTERS, CCAA_BOLETINES_PENDING } from './ccaa-boletines';
+import { RadarTelemetry } from '../radar/core/telemetry';
+import { randomUUID } from 'crypto';
 
 // BOE + BOCYL (por fecha, con convocatoria+temario) + los 17 boletines CCAA
 // (temario-only, sumario vigente). Un único cron cubre todo.
@@ -15,6 +17,48 @@ const ALL_BOLETIN_ADAPTERS: BoletinAdapter[] = [
   ...BOLETIN_ADAPTERS,
   ...CCAA_BOLETIN_ADAPTERS,
 ];
+
+/** Contadores de UN boletín dentro de una pasada (T-187). */
+export interface AdapterTally {
+  /** Días de la ventana que se llegaron a pedir. */
+  diasEscaneados: number;
+  /** Días en los que el sumario trajo texto de candidatos. */
+  diasConTexto: number;
+  /** Días cuyo `scan()` lanzó. */
+  diasConError: number;
+  señalesNuevas: number;
+  /** Último mensaje de error, para que el fallo tenga cara y no solo número. */
+  ultimoError: string | null;
+}
+
+/**
+ * Estado de un boletín en una pasada — PURO, para poder testearlo sin red ni BD.
+ *
+ * ## Por qué existe (T-187, 27/07/2026)
+ *
+ * `RadarTelemetry` declara la regla innegociable: *"TODO run deja rastro, aunque no encuentre nada;
+ * un adapter `empty` es información: distingue «no hay convocatorias» de «el fetch se rompió»"*.
+ * El orquestador la cumple, pero este cron LEGACY —que escanea **18 boletines**, incluidos los 16
+ * de CCAA— solo publicaba un AGREGADO (`{boletines:18, signals:10, errors:0}`). Consecuencia
+ * medida: `radar_adapter_runs` tenía 4 adapters y 17 boletines quedaban sin liveness.
+ *
+ * Y el silencio era engañoso, no solo incompleto: los adapters **fallan en abierto por día**
+ * (`catch` → `continue`), así que un boletín que deje de devolver contenido **no suma a `errors`**;
+ * aporta 0 candidatos y el agregado sigue diciendo `success`. Es el patrón que ya costó caro en
+ * `generic_source` ("corría a diario, veía 5 cambios, emitía 0 señales, reportando success").
+ *
+ * Criterio, en este orden:
+ *   · TODOS los días fallaron → `failed` (la fuente está rota, no es que no haya nada).
+ *   · algún día trajo texto     → `ok`.
+ *   · ningún error y nada que leer → `empty` (día sin convocatorias: normal y **es información**).
+ * Un fallo parcial con hallazgos sigue siendo `ok`: el boletín se lee, y el error del día suelto
+ * queda en `errorMessage`.
+ */
+export function estadoAdapter(t: AdapterTally): 'ok' | 'empty' | 'failed' {
+  if (t.diasEscaneados > 0 && t.diasConError === t.diasEscaneados) return 'failed';
+  if (t.diasConTexto > 0) return 'ok';
+  return 'empty';
+}
 
 export interface DetectBoletinesStats {
   boletines: number;
@@ -48,6 +92,9 @@ export class DetectBoletinesService {
   constructor(
     private readonly queries: OepSignalsQueriesService,
     private readonly llm: OepSignalsLlmService,
+    // T-187: se reporta por la MISMA vía que el orquestador (tabla + evento +
+    // racha `degraded`), no por un canal propio.
+    private readonly telemetry: RadarTelemetry,
   ) {}
 
   private lastDays(n: number, today: Date): Date[] {
@@ -66,6 +113,8 @@ export class DetectBoletinesService {
    */
   async run(daysBack = 4, today: Date = new Date()): Promise<DetectBoletinesStats> {
     const dates = this.lastDays(daysBack, today);
+    // Un id por pasada: agrupa las 18 filas de `radar_adapter_runs` de este barrido.
+    const runId = randomUUID();
     const stats: DetectBoletinesStats = {
       boletines: ALL_BOLETIN_ADAPTERS.length,
       daysScanned: 0,
@@ -102,16 +151,23 @@ export class DetectBoletinesService {
     }
 
     for (const adapter of ALL_BOLETIN_ADAPTERS) {
+      const tally: AdapterTally = {
+        diasEscaneados: 0, diasConTexto: 0, diasConError: 0, señalesNuevas: 0, ultimoError: null,
+      };
+      const adapterStart = Date.now();
       for (let di = 0; di < dates.length; di++) {
         const date = dates[di];
         // Adapters sin fecha (sumario vigente): se leen 1× por pasada (día 0).
         if (adapter.dateless && di > 0) break;
         stats.daysScanned++;
+        tally.diasEscaneados++;
         let hit;
         try {
           hit = await adapter.scan(date);
         } catch (err) {
           stats.errors++;
+          tally.diasConError++;
+          tally.ultimoError = err instanceof Error ? err.message : String(err);
           this.logger.warn(
             `${adapter.key} ${date.toISOString().slice(0, 10)}: ${
               err instanceof Error ? err.message : String(err)
@@ -133,6 +189,7 @@ export class DetectBoletinesService {
         // --- 1ª pasada: convocatorias de ingreso ---
         if (!hit.candidatesText.trim()) continue;
         stats.candidatesDays++;
+        tally.diasConTexto++;
 
         const extraction = await this.llm.extractRegionalOeps(
           hit.candidatesText,
@@ -222,6 +279,7 @@ export class DetectBoletinesService {
             });
             if (inserted) {
               stats.signals++;
+              tally.señalesNuevas++;
               this.logger.warn(`SEÑAL ${adapter.key} ${ymd}: ${oep.name}`);
             }
           } catch (err) {
@@ -231,6 +289,34 @@ export class DetectBoletinesService {
             );
           }
         }
+      }
+
+      // T-187 — liveness POR BOLETÍN. Sin esto, un boletín que deja de devolver
+      // contenido es indistinguible de "hoy no había convocatorias": el agregado
+      // sigue diciendo `errors: 0, success`. La telemetría NUNCA puede tumbar la
+      // pasada, de ahí el catch: preferimos perder una fila de métricas antes que
+      // un boletín.
+      try {
+        await this.telemetry.adapterFinished({
+          runId,
+          layer: 'boletin',
+          adapterKey: adapter.key,
+          status: estadoAdapter(tally),
+          startedAt: new Date(adapterStart),
+          durationMs: Date.now() - adapterStart,
+          itemsScanned: tally.diasEscaneados,
+          candidates: tally.diasConTexto,
+          signalsNew: tally.señalesNuevas,
+          // El dedupe vive dentro de `insertSignal` (dedupeKey idempotente) y no
+          // devuelve el motivo, así que este cron no puede distinguir "duplicada"
+          // de "no insertada". Se declara 0 en vez de inventar un número.
+          signalsDupe: 0,
+          errorMessage: tally.ultimoError,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `telemetría de ${adapter.key} falló: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
 
