@@ -251,18 +251,28 @@ La respuesta correcta es X.
 
 Según el artículo Y de la Ley Z:
 
-**A) INCORRECTA** - Razón...
+**A)** INCORRECTA. Razón...
 
-**B) CORRECTA** - El artículo dice literalmente...
+**B)** CORRECTA. El artículo dice literalmente...
 
-**C) INCORRECTA** - Razón...
+**C)** INCORRECTA. Razón...
 
-**D) INCORRECTA** - Razón...
+**D)** INCORRECTA. Razón...
 ```
+
+> ⚠️ **La negrita cierra JUSTO tras el paréntesis: `**A)** INCORRECTA`, no `**A) INCORRECTA**`.**
+> No es cosmética. El transcriptor a `explanation_data` (§🔀) reconoce las opciones con
+> `/\*\*([A-E])\)\*\*/`, así que la variante con el veredicto dentro de la negrita **no se puede
+> transcribir** y deja la pregunta fuera del barajado para siempre. El banco lo confirma: 13.836
+> preguntas activas usan `**A)** …` (transcribibles) frente a 2.148 con `**A) INCORRECTA**`
+> (condenadas a la pasada LLM). Este ejemplo documentaba la variante mala y por eso se seguía
+> generando: cazado el 27/07 al corregir tres impugnaciones que nacieron no transcribibles.
+> El validador te lo dice antes de aplicar (🔀 Barajable / aviso), así que **hazle caso**.
 
 **Evitar:**
 - Texto corrido sin saltos de línea ni formato.
 - Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.
+- Referencias a la POSICIÓN de otra opción («como se vio en la primera», «las dos últimas»): no sobreviven al barajado ni con estructura.
 
 ### 5.1.1 Preguntas de Informática (Word, Excel, Access, Windows, Outlook, Internet)
 
