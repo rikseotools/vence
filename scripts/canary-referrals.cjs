@@ -23,13 +23,19 @@ const bad = (m) => { console.error(`  ❌ ${m}`); failed++ }
 async function httpChecks() {
   console.log('→ Endpoints desplegados:')
 
-  // 1) /r/<code> → 302 a /embajadores?ref= + cookie vence_ref
+  // 1) /r/<code> → 302 a la HOME con ?ref= + cookie vence_ref.
+  //    El destino dejó de ser /embajadores el 27/07: enseñarle "gana 10 €" a un desconocido al que
+  //    le acaban de recomendar Vence espantaba ("Creepy", caso real). Ver app/r/[code]/route.ts.
   const r = await fetch(`${BASE}/r/${CODE}`, { redirect: 'manual' })
   const loc = r.headers.get('location') || ''
   const setCookie = r.headers.get('set-cookie') || ''
-  if (r.status === 302 && loc.includes('/embajadores') && loc.includes('ref=')) ok(`/r/${CODE} → 302 ${loc}`)
-  else bad(`/r/${CODE} esperaba 302→/embajadores?ref=, got ${r.status} ${loc}`)
+  if (r.status === 302 && /\/\?ref=/.test(loc) && !loc.includes('/embajadores')) ok(`/r/${CODE} → 302 ${loc}`)
+  else bad(`/r/${CODE} esperaba 302→/?ref=<code> (home), got ${r.status} ${loc}`)
   if (/vence_ref/.test(setCookie)) ok('cookie vence_ref presente'); else bad('falta cookie vence_ref')
+
+  // 1b) el destino tiene que SERVIR (una home rota deja al referido en la nada).
+  const home = await fetch(loc || `${BASE}/`, { redirect: 'manual' })
+  home.status === 200 ? ok(`destino ${loc} responde 200`) : bad(`destino ${loc} responde ${home.status}`)
 
   // 2) /api/referrals/me sin auth → 401
   const me = await fetch(`${BASE}/api/referrals/me`)

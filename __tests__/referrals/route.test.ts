@@ -21,11 +21,12 @@ const params = (code: string) => Promise.resolve({ code })
 describe('GET /r/[code]', () => {
   afterEach(() => jest.clearAllMocks())
 
-  it('código válido → 302 a /embajadores?ref=<code> + cookie vence_ref', async () => {
+  it('código válido → 302 a la HOME con ?ref=<code> + cookie vence_ref', async () => {
     mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: 'abc123', sanitized: false })
     const res = await _GET(req('https://www.vence.es/r/abc123'), { params: params('abc123') })
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toContain('/embajadores?ref=abc123')
+    expect(res.headers.get('location')).toContain('/?ref=abc123')
+    expect(res.headers.get('location')).not.toContain('/embajadores')
     expect(res.headers.get('set-cookie') || '').toContain('vence_ref=abc123')
   })
 
@@ -36,7 +37,7 @@ describe('GET /r/[code]', () => {
     mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: '7d5f7ed7fe83', sanitized: true })
     const res = await _GET(req(`https://www.vence.es/r/${sucio}`), { params: params(sucio) })
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toContain('/embajadores?ref=7d5f7ed7fe83')
+    expect(res.headers.get('location')).toContain('/?ref=7d5f7ed7fe83')
     expect(res.headers.get('location')).not.toContain('esto')
     expect(res.headers.get('set-cookie') || '').toContain('vence_ref=7d5f7ed7fe83')
     // …y queda señal de que se salvó, para poder medir cuántos recupera el fix.
@@ -45,12 +46,12 @@ describe('GET /r/[code]', () => {
     }))
   })
 
-  it('código inválido → 302 a /embajadores SIN ref ni cookie', async () => {
+  it('código inválido → 302 a la HOME SIN ref ni cookie', async () => {
     mockResolve.mockResolvedValue(null)
     const res = await _GET(req('https://www.vence.es/r/bad'), { params: params('bad') })
     expect(res.status).toBe(302)
     const loc = res.headers.get('location') || ''
-    expect(loc).toContain('/embajadores')
+    expect(loc).not.toContain('/embajadores')
     expect(loc).not.toContain('ref=')
     expect(res.headers.get('set-cookie') || '').not.toContain('vence_ref')
   })
@@ -61,7 +62,7 @@ describe('GET /r/[code]', () => {
     const res = await _GET(req('http://0.0.0.0:3000/r/abc'), { params: params('abc') })
     const loc = res.headers.get('location') || ''
     expect(loc).not.toContain('0.0.0.0')
-    expect(loc).toContain('/embajadores?ref=abc')
+    expect(loc).toContain('/?ref=abc')
   })
 
   it('la cookie es httpOnly + lax (funcional, resiste al banner de consentimiento)', async () => {

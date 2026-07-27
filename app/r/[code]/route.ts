@@ -1,9 +1,9 @@
 // app/r/[code]/route.ts — enlace de referido: vence.es/r/<code>
 //
 // Captura la atribución de forma RESILIENTE (Anexo A.2 del roadmap): setea una cookie funcional
-// `vence_ref` (30-90d) Y propaga `?ref=` por la URL de destino (para el caso de cookies rechazadas:
-// el form de registro lo lee del querystring). NO atribuye aquí (eso pasa al registrarse o vía el
-// endpoint autenticado para el free existente) — esta ruta es una navegación de navegador sin token.
+// `vence_ref` (30-90d) Y propaga `?ref=` por la URL de destino (respaldo cookie-less). NO atribuye
+// aquí (eso pasa al registrarse o vía el endpoint autenticado para el free existente) — esta ruta
+// es una navegación de navegador sin token. Redirige a la HOME (ver el porqué junto a `dest`).
 //
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -38,8 +38,21 @@ async function _GET(request: NextRequest, { params }: { params: Promise<{ code: 
     })
   }
 
-  // Destino: landing /embajadores con ?ref para atribución cookie-less. Código inválido → /embajadores sin ref.
-  const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(canonical)}` : '/embajadores', SITE)
+  // Destino: la HOME (producto), no /embajadores.
+  //
+  // POR QUÉ (27/07/2026, con evidencia de usuario): hasta hoy el enlace aterrizaba en la página del
+  // PROGRAMA DE REFERIDOS, así que lo primero que veía un desconocido al que acababan de recomendar
+  // Vence era "4 formas de ganar recompensas · Recomienda Vence 10 € · Trae opositores activos 2 €".
+  // Un opositor de un grupo de WhatsApp pinchó el enlace de una embajadora, hizo captura de esa
+  // pantalla y respondió al grupo con una sola palabra: "Creepy" — y ella tuvo que salir a
+  // defendernos. El dato acompaña al testimonio: 65 clicks en su enlace → 0 registros; en todo el
+  // sistema, 216 clicks → 5 referidos (2,3%). La página de "gana dinero trayendo gente" es para
+  // quien YA es cliente, no para la primera impresión de alguien que viene a ver un temario.
+  //
+  // La atribución NO depende del destino: viaja en la cookie `vence_ref` y la reclama
+  // `components/ReferralAttributionOnLogin` (montado en el layout raíz) al autenticarse en CUALQUIER
+  // página. El `?ref=` se conserva como respaldo cookie-less y como señal de analítica.
+  const dest = new URL(valid ? `/?ref=${encodeURIComponent(canonical)}` : '/', SITE)
   const res = NextResponse.redirect(dest, { status: 302 })
 
   if (valid) {
