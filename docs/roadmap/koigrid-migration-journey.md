@@ -1163,3 +1163,62 @@ one for us.
 
 If G1 and G2 already exist and are just undocumented, that is the cheapest fix on this whole page —
 two lines in `llms.txt` would move them off our risk list.
+
+### 📐 The actual workload — everything Vence runs on AWS today (so you can tell us if it fits)
+
+Measured 2026-07-27 from the AWS APIs and our own DB, not estimated. **The question we need answered
+is simple: can koigrid host this, and for how much?**
+
+#### Compute
+
+| Service | What runs | Size | Notes |
+|---|---|---|---|
+| `vence-frontend` (ECS Fargate) | Next.js 15 app, ~4,500 SSG pages | **9 tasks × 2 vCPU / 4 GB** — autoscaling **min 8, max 12** | = **18 vCPU / 36 GB** right now. Measured consumption: **~390 vCPU-hours and ~864 GB-hours per day**. CPU sits at **2-4% average with 70-97% bursts** — the floor is insurance against spikes, not steady load. |
+| `vence-backend` (ECS Fargate) | NestJS API + **~30 in-process `@Cron` jobs** | **1 task × 0.25 vCPU / 0.5 GB** | Tiny. The crons travel inside the image, so they are not a scheduling requirement on your side. |
+
+#### Data
+
+| Service | Spec | Notes |
+|---|---|---|
+| RDS `vence-prod` | **db.t4g.medium, PostgreSQL 17.6, 100 GB allocated, Multi-AZ = true** | **Actual DB size: 32 GB.** This is the one you already restored 1:1 in the POC. |
+| RDS `vence-prod-replica` | **db.t4g.medium read replica, 100 GB** | All analytical crons + admin panels read from here (`DRIZZLE_READ`). See gap **G1**. |
+| ElastiCache | **Valkey, `cache.t4g.micro`, 1 node** | You have Redis; this one is genuinely small. |
+
+#### Edge, network and storage
+
+| Service | Spec |
+|---|---|
+| CloudFront | **~38 GB egress/month** (EU 30.7 + US 6.9 + CA 0.25). Modest — the value is the HTML cache hit rate, not the bandwidth. |
+| ALB | 1 internet-facing application load balancer (front + back behind it) |
+| S3 | 6 buckets; the load-bearing one is **`vence-frontend-static`** (`_next/static`, retained across deploys — gap **G3**) |
+| Lambda | 1 function (Playwright headless fetcher for JS-rendered official pages) |
+
+#### Traffic and scale
+
+| Metric | Value |
+|---|---|
+| Requests/day | **~500,000** (50,082 logged at 10% sampling × 10) |
+| Average | **~5.8 req/s** |
+| **Peak** | **~16.6 req/s** |
+| Registered users | **11,171** |
+
+#### So: does it fit?
+
+| Requirement | Your measured capability | Verdict |
+|---|---|---|
+| ~16.6 rps peak | **109.3 rps at 0.00% error on 6 free replicas** (25/07 gate) | ✅ **6.5× headroom, proven** |
+| 32 GB Postgres | Restored 1:1 in the POC, co-located **6.45 ms** | ✅ **Proven** |
+| Redis | Wired E2E in the POC | ✅ **Proven** |
+| ~38 GB/month egress | "generous bandwidth included, no surprise egress bills" | ✅ Assumed fine |
+| **How many replicas we'd need** | **1-2 with HTML edge caching; 4-6 without** | ⛔ **Undecidable until `scale-out` works** |
+| Read replica (G1) | Not documented | ❓ |
+| PITR (G2) | Not documented | ❓ |
+| Static assets across deploys (G3) | No story found | ❓ |
+| **Price of that plan** | Not published | ❓ **The blocking unknown** |
+
+**Bottom line for your team:** the hard parts — capacity and the 32 GB database — are already proven,
+and by a wide margin. What stands between us and a cutover is not scale: it is **one bug**
+(`scale-out` → `replica_unhealthy`, which gates HTML edge caching and therefore the replica count),
+**one number** (the price of the plan that carries 1-2 or 4-6 replicas), and **three yes/no answers**
+(read replica, PITR, asset retention). That is a remarkably short list for a whole-stack migration, and
+we would happily run the full rehearsal the week it clears.
