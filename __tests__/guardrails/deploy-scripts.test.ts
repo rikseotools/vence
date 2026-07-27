@@ -164,3 +164,41 @@ describe('ambos scripts — coordinación de sesiones paralelas (incidente 11/07
     })
   }
 })
+
+describe('ambos scripts — nada de backticks dentro de `node -e "…"` (incidente 27/07)', () => {
+  // El task def se construye con un bloque `node -e "…"` entre comillas DOBLES, así que bash
+  // interpreta cualquier backtick como SUSTITUCIÓN DE COMANDO. El 27/07 un comentario JS
+  // documentaba un detector con backticks (`seguimiento_fuente_ciega`) y el deploy escupía
+  // "seguimiento_fuente_ciega: orden no encontrada" cinco veces. Aquella vez solo fue ruido —los
+  // backticks caían en comentarios—, pero el mismo patrón con `$(...)` dentro ejecutaría lo que
+  // hubiera ahí mientras se registra la task def de producción. Comillas simples en esos bloques.
+  const bloquesNodeE = (script: string): string[] => {
+    const out: string[] = []
+    const re = /node -e "/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(script)) !== null) {
+      // hasta la comilla doble que cierra el bloque, al principio de una línea
+      const resto = script.slice(m.index + m[0].length)
+      const fin = resto.search(/\n"/)
+      out.push(fin === -1 ? resto : resto.slice(0, fin))
+    }
+    return out
+  }
+
+  it.each([
+    ['deploy-frontend.sh', frontend],
+    ['deploy-backend.sh', backend],
+  ])('%s: ningún backtick dentro de un node -e con comillas dobles', (_nombre, script) => {
+    for (const bloque of bloquesNodeE(script)) {
+      const conBacktick = bloque.split('\n').filter((l) => l.includes('`'))
+      expect(conBacktick).toEqual([])
+    }
+  })
+
+  it('el detector encuentra los bloques de verdad (si no, el test miente en silencio)', () => {
+    // Sanity: ambos scripts construyen su task def con node -e; si dejaran de hacerlo, este
+    // guardarraíl pasaría por vacío y nadie se enteraría.
+    expect(bloquesNodeE(backend).length).toBeGreaterThan(0)
+    expect(bloquesNodeE(frontend).length).toBeGreaterThan(0)
+  })
+})

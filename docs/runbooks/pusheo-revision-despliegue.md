@@ -83,6 +83,26 @@ Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs
 
 > ⚠️ **El gate exige solo los checks de CÓDIGO verdes (unit+typecheck+lint).** `integration` es una **señal aparte que NO bloquea**: pega a la BD real (readonly) y puede estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión, un test de otra feature a medias) — cosas ajenas al código que despliegas. **Decisión tomada (Manuel, 08/07):** el gate del script trata `integration` como informativa (la reporta pero no aborta). Aun así, míralo antes de soltar: si el rojo SÍ es de tu código, arréglalo primero.
 >
+> ⚠️ **`cancelled` NO es `failure` — y con varias sesiones pasa a menudo (27/07).** GitHub Actions
+> **cancela** el run en curso cuando llega un push más nuevo (concurrency `cancel-in-progress`). Si
+> tu gate de CI trata "no todos success" como rojo, **aborta el deploy por un motivo que no existe**:
+> los checks aparecen como `cancelled`, no como `failure`. Pasó dos veces seguidas el 27/07 con
+> cuatro sesiones pusheando. **Lo correcto ante `cancelled` es RESINCRONIZAR** (`git fetch` +
+> `reset --hard origin/main`) y volver a esperar el CI del HEAD nuevo, reintentando unas cuantas
+> veces; abortar solo ante un `failure` de verdad. Distinguirlos es una línea al leer los check-runs.
+> Y ojo con el orden: el guardarraíl **anti-stale** de los scripts ya te obliga a resincronizar, así
+> que un deploy que empieza con el árbol atrasado morirá igualmente más tarde y habrás perdido el build.
+
+> ⚠️ **Ni un backtick dentro de los `node -e "…"` de los scripts de deploy (27/07).** El task def se
+> construye con un bloque `node -e "…"` entre comillas **dobles**, así que bash interpreta cualquier
+> backtick como **sustitución de comando**. Un comentario JS que documentaba un detector
+> (`` `seguimiento_fuente_ciega` ``) hacía que el deploy escupiera *"seguimiento_fuente_ciega: orden
+> no encontrada"* cinco veces. Aquella vez fue solo ruido —caía en comentarios—, pero el mismo patrón
+> con `$(...)` **ejecutaría** lo que hubiera dentro mientras se registra la task def de producción.
+> Usa comillas simples ahí. Lo vigila `__tests__/guardrails/deploy-scripts.test.ts`, que además
+> comprueba que sigue encontrando los bloques (si el script dejara de usar `node -e`, el test pasaría
+> por vacío y mentiría en silencio).
+
 > ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
 
 ## Sesiones paralelas (varias sesiones de Claude a la vez)

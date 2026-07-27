@@ -119,9 +119,9 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
   if (e) e.value='true'; else c.environment.push({name:'USE_READ_REPLICA', value:'true'});
 }
 // check-seguimiento REACTIVADO como TELEMETRIA (T-135, 26/07/2026). Se retiro el 20/07 por el
-// sensor `hash_change` (4% de acierto) — pero esa señal YA no se emite desde el 26/06: hoy el cron
-// solo refresca `http_status` / `content_preview` / `checked_url` de las ~490 fuentes, que es
-// justo la evidencia de la que vive el detector `seguimiento_fuente_ciega`. Sin esto, ese detector
+// sensor 'hash_change' (4% de acierto) — pero esa señal YA no se emite desde el 26/06: hoy el cron
+// solo refresca 'http_status' / 'content_preview' / 'checked_url' de las ~490 fuentes, que es
+// justo la evidencia de la que vive el detector 'seguimiento_fuente_ciega'. Sin esto, ese detector
 // juzga con una foto congelada del 20/07 y no se entera de una fuente que se quede ciega mañana.
 // Va aqui y no a mano en la task def: si se parchea la task viva sin dejarlo en codigo, nadie sabe
 // por que esta encendido ni sobrevive a una recreacion del servicio.
