@@ -1284,3 +1284,25 @@ clearer picture than we had:
 - **We are not walking away.** The DB story, the 6.5× headroom, the CDC migration path and the quality of
   these docs are all genuinely strong. Ping us when custom-hostname edge caching lands and we will re-run
   the whole rehearsal — the POC is paused, not deleted, and the 32 GB database is still `running`.
+
+### ⚠️ CORRECTION to the gap table above (same day) — two of our five "gaps" were **our error, not yours**
+
+We re-checked with a correct search (our first pass used `grep -E "a\|b"`, where `\|` is a *literal* pipe,
+so it searched for one impossible string and returned zero hits — a false negative of our own making).
+Correcting it publicly because sending a vendor a list of missing features that exist would be unfair:
+
+| Gap we claimed | Reality | Verdict |
+|---|---|---|
+| **G1 — no read replica** | **WRONG.** `GET /databases/:id/connection` returns `readUri` — *"read replica endpoint, exists ONLY on HA plans; Free single-node has none"*. `GET /databases/:id` lists `members` with role `leader`/`replica`, and `/metrics` reports replication lag. | ✅ **You have it.** It is a *plan* question for us, not a missing feature. Retracted. |
+| **G2 — no PITR** | **WRONG.** `PATCH /databases/:id {"backupRetentionDays":N}` (1-35, default 7) — *"the knob that controls both your point-in-time recovery window AND what your backups cost"*; ledger with `mode=full\|delta`, **WAL archiving = PITR**, daily incrementals + weekly full, `full:true` for a standalone base before a migration. | ✅ **You have it,** and the warning about lowering retention deleting history is a nice touch. Retracted. |
+
+**Still standing from that table:** **G3** (static assets surviving a deploy — the Next.js `ChunkLoadError`
+footgun; we found no story), **G4** (no way to verify a secret is set without reading it — still the reason
+our Stripe webhook is not green; a fingerprint endpoint would fix it), **G5** (no published pricing).
+
+And the sizing worry we had is also resolved by the docs: `PUT /apps/:id/resources {"memoryMb":2048,"cpus":2}`
+— **CPU per replica is requestable and not capped by plan**, so matching our 2 vCPU/task Fargate shape is
+straightforward. That removes any doubt about whether koigrid can *hold* the workload.
+
+**Net after the correction: the blocker list is down to one real item** — edge caching on a customer's own
+domain (Cloudflare for SaaS). Everything else is either solved, a plan choice, or small.
