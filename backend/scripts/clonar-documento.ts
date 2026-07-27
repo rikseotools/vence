@@ -49,27 +49,12 @@ const arg = (n: string): string | undefined =>
 /** Flag sin valor (`--refrescar-texto`). */
 const has = (n: string): boolean => process.argv.includes(`--${n}`)
 
-/**
- * ¿Esto es una pared del portal disfrazada de documento?
- *
- * ⚠️ CASO REAL (16/07): tras varias descargas seguidas, el BORM empezó a devolver **HTTP 200** con una
- * «Radware Captcha Page» («your activity and behavior on this site made us think that you are a bot»).
- * 711 caracteres → pasaba de sobra el único filtro que había (`< 200 chars`) y se habría clonado como
- * si fuera la convocatoria, con su `curado`, su hash y su cita. Un corpus con captchas dentro es peor
- * que un corpus vacío: mentiría con pinta de prueba.
- *
- * Mismo patrón que el DOCM redirigiendo a los menús del portal: **200 no significa documento**.
- */
-export function esParedDelPortal(texto: string): string | null {
-  const t = texto.slice(0, 4000).toLowerCase()
-  if (/captcha|are you a robot|you are a bot|verifique que no es un robot/.test(t)) return 'captcha / anti-bot'
-  if (/acceso denegado|access denied|forbidden|403 error/.test(t)) return 'acceso denegado'
-  if (/demasiadas (peticiones|solicitudes)|too many requests|rate limit/.test(t)) return 'rate limit'
-  // El chrome de un portal: mucho menú y nada de norma (el DOCM sin /portaldocm/ daba justo esto).
-  if (texto.length < 4000 && /b[úu]squeda avanzada|mapa web|pol[íi]tica de cookies/.test(t)
-      && !/resoluci[óo]n|decreto|orden|convoca|plazas/.test(t)) return 'chrome del portal (sin norma)'
-  return null
-}
+// La defensa vive en `src/` desde el 27/07: el jest del backend tiene `rootDir: src` y nunca miraba
+// en `scripts/`, así que esta función estaba exportada «para testearla» y no la testeaba nadie —
+// mientras tanto dejó pasar 11 KB de chrome de sede.madrid.es. Ahora tiene 9 tests con muestras
+// reales (pared medida vs BOE/BOA/BOCM buenos).
+import { esParedDelPortal } from '../src/detect-notas-convocatoria/pared-portal'
+export { esParedDelPortal }
 
 /**
  * Fetch RENDERIZADO por la Lambda headless (`vence-backend-headless-fetcher`, Puppeteer+Chromium) para

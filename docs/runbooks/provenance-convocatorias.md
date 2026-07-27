@@ -237,6 +237,22 @@ El caso hermano lo confirma: en Madrid la cifra correcta (111) *incluye* las 11 
 discapacidad. Efecto de la resta: la landing anunciaba **5 plazas menos** de las convocadas.
 Corregido a 144 en las dos filas del dual-write, con traza `plazas_corregidas_contra_boletin`.
 
+**Si la firma equivocada YA está puesta, hay que RETIRARLA** (pasó en este mismo caso: una segunda
+sesión, trabajando en paralelo, firmó `cifra_derivada` justificando el 139 justo antes de que se
+corrigiera el dato). Una válvula firmada sobre una cifra que ya no existe es peor que no tener
+válvula: es una justificación en verde, con cita y autor, invitando a la siguiente sesión a
+«restaurar» el número malo. Se retira quitando la clave y **dejando el rastro del error**:
+
+```sql
+UPDATE convocatoria_verification
+   SET findings = (findings - 'cifra_derivada') || jsonb_build_object('derivada_retirada', '<por qué era falsa>')
+ WHERE convocatoria_id = '<id>';
+```
+
+Antes de retirarla, comprobar que el hallazgo **no reaparece**: si la cifra corregida está escrita
+literalmente en el boletín (144 lo está), la válvula sobra y `audit:convocatorias` sigue en cero. Si
+reapareciera, es que el dato nuevo tampoco está probado y el trabajo no estaba terminado.
+
 ### Qué NO hacer
 
 - **NUNCA** inventar la cifra ni ajustarla "a ojo" para que cuadre.
