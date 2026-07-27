@@ -253,6 +253,28 @@ Antes de retirarla, comprobar que el hallazgo **no reaparece**: si la cifra corr
 literalmente en el boletín (144 lo está), la válvula sobra y `audit:convocatorias` sigue en cero. Si
 reapareciera, es que el dato nuevo tampoco está probado y el trabajo no estaba terminado.
 
+### ⚠️ Qué significa (y qué NO) que este detector esté a cero
+
+La regla es «la cifra aparece en el texto de algún documento». Eso vale para cifras grandes y **es
+casi ciego para las pequeñas**, porque un número corto aparece por azar en cualquier boletín (fechas,
+artículos, apartados). Medido el 27/07 sobre 60 corpus reales, preguntando por cifras *arbitrarias*:
+
+| dígitos de la cifra | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| se dan por «probadas» sin serlo | **100 %** | **83,5 %** | 30,1 % | 9,2 % |
+
+Consecuencias prácticas:
+
+- **Cero hallazgos no es «todo probado»**: es «nada probado que yo pueda ver». Para `plazas_libres` de
+  1-2 dígitos, este detector no aporta garantía.
+- **No lo amplíes a `plazas_promocion_interna` ni `plazas_discapacidad` tal cual.** Se simuló: da
+  **0 hallazgos** sobre 96 convocatorias, y no porque estén bien — esas columnas son casi siempre de
+  1-2 dígitos, justo la banda ciega. Sería falsa tranquilidad con pinta de cobertura.
+- **La mejora conocida es exigir CONTEXTO** (que la cifra aparezca junto a «plazas»/«vacantes», no
+  suelta). Simulada: **58 de 118** convocatorias (49 %) dejarían de estar probadas. Eso es una campaña
+  de verificación, no un cambio de regla — hay que triarla antes de encenderla, o inunda el badge.
+  Ver la ficha del backlog.
+
 ### La válvula ya no se fía de ti (guardarraíl, 27/07/2026)
 
 Firmar `cifra_derivada` **ya no basta para callar el aviso**. El detector valida la firma con
