@@ -15,6 +15,30 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-175] ✅ [TRIADO 27/07 — medido y clasificado; queda cola de datos, no de código] `detect-notas-convocatoria` falla 1 de cada 5 documentos y nadie lo miraba
+- **Qué:** la primera ejecución del sistema nuevo (27/07, ya sin LLM) dio **123 documentos con 27 errores = 22%**. Bajó del 27% del sistema viejo (606 de 2.206 el 24/07), pero sigue siendo uno de cada cinco y **el cron se reporta como `success`** — el ratio de error no gatea nada.
+- **Por qué importa:** cada error es un documento oficial que NO se clona, así que no entra en la bandeja y nadie lo revisa. Es una pérdida silenciosa de cobertura justo en el sistema que se acaba de rediseñar para que la sesión analice la fuente.
+- **Cómo:** volcar los 27 errores por causa (`metadata` del `cron_run` + logs) y separar lo estructural (403/WAF, URL muerta, PDF no parseable) de lo transitorio (timeout). Con eso decidir si merece una banda de alerta sobre el ratio o si es cola larga aceptable. **Medir antes de construir**: puede que 20 de los 27 sean el mismo boletín con WAF, y entonces el arreglo es `fetcher_type` (ver `reference-fetch-boletin-waf-playwright`), no una alerta.
+- **Origen:** verificación del sistema nuevo en la sesión del 27/07 (T-162).
+- **✅ TRIADO (27/07).** Los 27 fallos de la ejecución de hoy (123 documentos), por causa:
+
+| Causa | N | Naturaleza |
+|---|---|---|
+| `fetch failed` (TLS/WAF) | **12** | fuente — **9 dominios DISTINTOS**, mayor grupo 4× `*.euskadi.eus` |
+| **HTTP 404** | **7** | **pudrición real de enlaces**: el documento ya no existe |
+| HTTP 403 | 3 | fuente — bloqueo por WAF |
+| **insert en `convocatoria_documentos`** | **2** | 🔴 **NUESTRO**: se descargó bien y no se pudo guardar |
+| timeout / abortado | 3 | transitorio |
+
+- **La hipótesis de esta ficha queda DESMENTIDA por la medición.** Decía *"puede que 20 de los 27 sean el mismo boletín con WAF, y entonces el arreglo es `fetcher_type`"*. No: se reparten en **nueve dominios** y no hay culpable único. Si se hubiera actuado sobre la hipótesis se habría tocado el `fetcher_type` de medio catálogo para arreglar 4 casos.
+- **✅ HECHO — desenvolver la causa real.** Los 2 fallos de inserción **no se podían diagnosticar**: Drizzle envuelve el error en `Failed query: <sql>` y esconde el mensaje del driver en `cause`; el servicio solo logueaba `.message`, así que en CloudWatch solo queda un muro de SQL. Se aplica el MISMO desenvuelto que se corrigió esa mañana en `alerts.cron.ts`. **La ejecución de mañana (09:30 UTC) dirá por fin qué pasa** — hasta entonces cualquier diagnóstico sería adivinar.
+- **⏳ COLA que queda (de DATOS, no de código), por valor:**
+  1. **Los 7 HTTP 404** son lo más accionable: apuntamos a documentos que ya no existen. Cada uno es una fuente que dejó de servir sin que nadie se enterara. Cruzar con `seguimiento_url` y repuntar con `repuntar-url.cjs` (dry-run por defecto, rechaza URLs no vigilables).
+  2. **Los 12 `fetch failed`**: firma conocida de WAF con `fetcher_type='http'` (memoria `reference-fetch-boletin-waf-playwright`). ⚠️ **Pero T-125 midió que `headless` NO cura todos los WAF** — hay que probarlo POR HOST con la sonda, no cambiarlos en bloque. Herramienta ya existente: `scripts/seguimiento/ajustar-fetcher-type.cjs`.
+  3. **Los 2 de inserción**: leer la causa en la ejecución de mañana.
+- **Y una observación sobre el ratio:** 22% suena alarmante, pero **20 de los 27 son la fuente** (404/403/TLS), no nuestro pipeline. El ratio mide en buena medida la salud del catálogo de URLs, no la del cron. Conviene no convertirlo en una alerta sin separar las dos cosas — sería ruido garantizado.
+
+
 ### [T-177] ✅ [CERRADA 27/07 — MEDIDO: el flood está muerto; el dato que alarmaba era residuo histórico] `auth_token_minted`: 3,23 M eventos en 30 días — ¿seguía vivo el flood del caso Natalia?
 - **Qué:** al medir el volumen de `observable_events` por tipo aparece `auth_token_minted` con **3.234.336 eventos en 30 días (~107.000/día)**, el segundo tipo más numeroso tras `request_completed` y el 30% de la tabla.
 - **Por qué mirarlo:** hay precedente exacto — el **flood de acuñación de token del 15/07 (caso Natalia)**, causado por un bug de caché del poll del cliente, con su regla `RULE_AUTH_TOKEN_MINT_FLOOD`. **No he verificado si estos 107k/día son el nivel normal o el flood que nunca se cerró del todo.**
@@ -209,12 +233,6 @@
 - **Cómo:** clasificar las 64 en (a) tablas de app que DEBEN estar en el schema → añadirlas con `drizzle-kit introspect` copiando solo lo que falta; (b) materializaciones/archivos/backups que no se consultan por Drizzle → a `IGNORE_TABLES` **con el motivo escrito**, para que el comando pueda quedar verde y volver a ser señal.
 - **Contexto:** el drift de **columnas** (53, en 15 tablas) se cerró el 27/07 y ya tiene trinquete en CI (`__tests__/integration/schemaColumnDrift.integration.test.ts`). Esto es el hermano de nivel tabla, que sigue abierto.
 - **Impacto:** 🟢 baja — nada roto hoy; es un detector apagado por ruido.
-
-### [T-175] 🟡 [ABIERTO 27/07] `detect-notas-convocatoria` falla 1 de cada 5 documentos y nadie lo mira
-- **Qué:** la primera ejecución del sistema nuevo (27/07, ya sin LLM) dio **123 documentos con 27 errores = 22%**. Bajó del 27% del sistema viejo (606 de 2.206 el 24/07), pero sigue siendo uno de cada cinco y **el cron se reporta como `success`** — el ratio de error no gatea nada.
-- **Por qué importa:** cada error es un documento oficial que NO se clona, así que no entra en la bandeja y nadie lo revisa. Es una pérdida silenciosa de cobertura justo en el sistema que se acaba de rediseñar para que la sesión analice la fuente.
-- **Cómo:** volcar los 27 errores por causa (`metadata` del `cron_run` + logs) y separar lo estructural (403/WAF, URL muerta, PDF no parseable) de lo transitorio (timeout). Con eso decidir si merece una banda de alerta sobre el ratio o si es cola larga aceptable. **Medir antes de construir**: puede que 20 de los 27 sean el mismo boletín con WAF, y entonces el arreglo es `fetcher_type` (ver `reference-fetch-boletin-waf-playwright`), no una alerta.
-- **Origen:** verificación del sistema nuevo en la sesión del 27/07 (T-162).
 
 ### [T-176] 🟡 [ABIERTO 27/07] Los backticks de `deploy-backend.sh` se ejecutan como sustitución de comandos
 - **Qué:** el bloque que muta la task def es un `node -e "…"` entre comillas **dobles**, así que bash expande lo que hay dentro. Varios comentarios usan acentos graves para citar nombres (`hash_change`, `http_status`, `content_preview`, `checked_url`, `seguimiento_fuente_ciega`) y bash intenta EJECUTARLOS: cada deploy imprime `orden no encontrada` por cada uno.
