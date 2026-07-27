@@ -153,10 +153,19 @@ async function main() {
   // firma es el RATIO respondidas/servidas. La clasificación vive en un núcleo
   // puro y testeado compartido con el panel admin, para que los dos lados no
   // vuelvan a divergir: lib/security/harvestSignals.js.
+  // Excluye las cuentas SINTÉTICAS (smoke/canary). Cargan preguntas para
+  // comprobar endpoints y no las contestan nunca → ratio 0,00, que es
+  // literalmente la firma de cosecha. Medido el 27/07: `smoke@vence.es` acumuló
+  // 1.860 servidas / 0 respondidas en unas horas. El writer ya las exime por el
+  // header `x-vence-canary`, pero esto es la SEGUNDA capa y es la que protege
+  // aunque el writer no esté desplegado todavía: el sweep corre desde GitHub
+  // Actions, así que un push basta para que esta exención esté viva.
   const servedRows = await c.query(
     `SELECT s.subject_key AS user_id, sum(s.served)::int AS served
        FROM daily_questions_served s
       WHERE s.subject_kind = 'user' AND s.usage_date >= CURRENT_DATE - ($1)::int
+        AND NOT EXISTS (SELECT 1 FROM user_profiles up
+                         WHERE up.id::text = s.subject_key AND up.email LIKE 'smoke@%')
       GROUP BY 1`, [WINDOW_DAYS]);
 
   // FALSO VERDE: si el rollup está vacío es que el writer no está desplegado o

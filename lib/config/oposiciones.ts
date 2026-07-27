@@ -5876,7 +5876,7 @@ export const OPOSICIONES: Oposicion[] = [
           { id: 9, name: 'Los contratos en el Sector Público' },
           { id: 10, name: 'El Texto Refundido de la Ley del Estatuto Básico del Empleado Público' },
           { id: 11, name: 'La Seguridad Social' },
-          { id: 12, name: 'Hacienda Pública y Presupuestos de la Comunidad de Madrid' },
+          { id: 12, name: 'La Ley de Hacienda de la Comunidad de Madrid' },
           { id: 13, name: 'Igualdad de género y no discriminación' },
           { id: 14, name: 'Información administrativa y Administración electrónica' },
           { id: 15, name: 'Los documentos administrativos' },

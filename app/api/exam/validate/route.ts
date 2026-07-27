@@ -440,10 +440,22 @@ async function traceValidateCall(
   args: { batchSize: number; answeredCount: number; testId?: string; rejected?: string },
 ): Promise<void> {
   try {
+    const ip = getClientIp(request)
+    const deviceId = getDeviceIdFromRequest(request)
+    const synthetic = isSyntheticRequest(request)
+    let userId: string | null = null
+    try {
+      userId = (await verifyAuthOptional(request, '/api/exam/validate'))?.userId ?? null
+    } catch { /* el trazo nunca depende de que la auth resuelva */ }
+
+    // La identidad se resuelve ANTES de clasificar: sin saber si hay sesión, un
+    // examen anónimo (que no puede traer testId) era indistinguible de un cliente
+    // logueado que se lo salta. Ver la nota de calibración en validateShape.ts.
     const shape = classifyValidateCall({
       batchSize: args.batchSize,
       answeredCount: args.answeredCount,
       hasTestId: Boolean(args.testId),
+      authenticated: Boolean(userId),
     })
     // Petición RECHAZADA (payload inválido, o lote por encima del tope). Antes esto
     // solo dejaba un `request_completed` de severidad info —que además está en la
@@ -453,14 +465,6 @@ async function traceValidateCall(
     const severity = args.rejected
       ? (args.batchSize > MAX_QUESTIONS_PER_REQUEST ? 'error' : 'warn')
       : shape.severity
-
-    const ip = getClientIp(request)
-    const deviceId = getDeviceIdFromRequest(request)
-    const synthetic = isSyntheticRequest(request)
-    let userId: string | null = null
-    try {
-      userId = (await verifyAuthOptional(request, '/api/exam/validate'))?.userId ?? null
-    } catch { /* el trazo nunca depende de que la auth resuelva */ }
 
     const emitted = emit({
       source: 'vercel',

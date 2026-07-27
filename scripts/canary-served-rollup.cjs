@@ -87,7 +87,26 @@ const MIN_ROWS = Number(process.env.SERVED_CANARY_MIN_ROWS) || 1;
       fails.push('hay filas de usuario pero NINGUNA de dispositivo → el header x-device-id dejó de llegar (se pierde el ancla anti-rotación)');
     }
 
-    // 3) ¿Se está denunciando algún fallo del propio writer?
+    // 3) El tráfico SINTÉTICO no puede colarse en la medición.
+    //
+    // Los canaries cargan preguntas para comprobar el endpoint y NUNCA las
+    // contestan → ratio 0,00, que es exactamente la firma de cosecha. El 27/07,
+    // en las primeras horas del rollup, `smoke@vence.es` ya acumulaba 1.260
+    // servidas y 0 respondidas: el sweep de esa noche habría levantado un
+    // `harvest_no_answer` crítico contra nuestro propio canario. Se exime por el
+    // header `x-vence-canary` en el writer; esto vigila que la exención siga viva.
+    const sinteticos = (await c.query(
+      `SELECT s.subject_key, sum(s.served)::int servidas
+         FROM daily_questions_served s
+         JOIN user_profiles up ON up.id::text = s.subject_key
+        WHERE up.email LIKE 'smoke@%' AND s.updated_at > now() - ($1 || ' hours')::interval
+        GROUP BY 1`, [String(FRESH_HOURS)]
+    )).rows;
+    for (const r of sinteticos) {
+      fails.push(`tráfico sintético contabilizado (${r.servidas} servidas de un usuario smoke) → la exención x-vence-canary del writer no está aplicando; envenena el ratio del detector de cosecha`);
+    }
+
+    // 4) ¿Se está denunciando algún fallo del propio writer?
     const rotos = (await c.query(
       `SELECT event_type, count(*)::int n FROM observable_events
         WHERE event_type IN ('served_rollup_write_failed','served_rollup_module_failed','fraud_detection_blind')

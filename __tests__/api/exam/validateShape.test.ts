@@ -49,9 +49,58 @@ describe('classifyValidateCall', () => {
     })
   })
 
+  // CALIBRACIÓN con datos reales de la primera hora en producción (27/07): 9 de
+  // 13 llamadas eran `orphan` y las 9 eran ANÓNIMAS, lote 25, con 24-25
+  // contestadas — el flujo normal de probar un examen sin registrarse. Sin
+  // usuario no hay `tests` al que anclar, así que NO PUEDEN traer testId.
+  // Marcarlas warn metía ~300 avisos/día en el panel de salud.
+  describe('examen anónimo (sin cuenta a la que anclar) — NO es sospechoso', () => {
+    it('anónimo + contestado = anon_exam/info', () => {
+      const r = classifyValidateCall({
+        batchSize: 25, answeredCount: 25, hasTestId: false, authenticated: false,
+      })
+      expect(r.shape).toBe('anon_exam')
+      expect(r.severity).toBe('info')
+    })
+
+    it('sin saber si hay sesión, se asume anónimo (no alarma por defecto)', () => {
+      const r = classifyValidateCall({ batchSize: 25, answeredCount: 25, hasTestId: false })
+      expect(r.severity).toBe('info')
+    })
+
+    // La discriminación que importaba: el cliente LOGUEADO siempre manda testId.
+    it('CON sesión y sin testId sigue siendo orphan/warn', () => {
+      const r = classifyValidateCall({
+        batchSize: 25, answeredCount: 25, hasTestId: false, authenticated: true,
+      })
+      expect(r.shape).toBe('orphan')
+      expect(r.severity).toBe('warn')
+      expect(r.reasons).toContain('con_sesion_deberia_traer_test_id')
+    })
+
+    // La firma de oráculo: pedir correcciones sin haber hecho el examen.
+    it('anónimo pero SIN contestar nada sigue siendo orphan/warn', () => {
+      const r = classifyValidateCall({
+        batchSize: 25, answeredCount: 0, hasTestId: false, authenticated: false,
+      })
+      expect(r.shape).toBe('orphan')
+      expect(r.severity).toBe('warn')
+    })
+
+    it('el lote desmedido escala aunque sea anónimo y contestado', () => {
+      const r = classifyValidateCall({
+        batchSize: ORPHAN_BULK_THRESHOLD + 1, answeredCount: 200, hasTestId: false, authenticated: false,
+      })
+      expect(r.shape).toBe('orphan_bulk')
+      expect(r.severity).toBe('error')
+    })
+  })
+
   describe('sin testId (no persiste nada → sin rastro)', () => {
     it('marca orphan/warn', () => {
-      const r = classifyValidateCall({ batchSize: 25, answeredCount: 25, hasTestId: false })
+      const r = classifyValidateCall({
+        batchSize: 25, answeredCount: 25, hasTestId: false, authenticated: true,
+      })
       expect(r.shape).toBe('orphan')
       expect(r.severity).toBe('warn')
       expect(r.reasons).toContain('sin_test_id')

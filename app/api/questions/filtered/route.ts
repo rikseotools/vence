@@ -395,7 +395,16 @@ async function _POST(request: NextRequest) {
       // al usuario — mataba también toda la MEDICIÓN, y en silencio. Detección y
       // enforcement no pueden compartir interruptor. Ahora se mide siempre; lo
       // que el flag decide es si se RETA (arriba), no si se ve.
-      if (result.questions?.length) {
+      //
+      // Y NUNCA el tráfico SINTÉTICO (canaries/smoke, header `x-vence-canary`).
+      // Medido el 27/07, primeras horas del rollup: `smoke@vence.es` acumulaba
+      // **1.260 servidas y 0 respondidas** — ratio 0,00 — porque los canaries
+      // cargan preguntas para comprobar el endpoint y jamás las contestan. Eso es
+      // EXACTAMENTE la firma de cosecha, así que el sweep de esa noche habría
+      // levantado un `harvest_no_answer` crítico contra nuestro propio canario.
+      // El gate ya exime lo sintético más arriba; el contador tenía que hacerlo
+      // también o la medición nace envenenada por nuestra propia monitorización.
+      if (result.questions?.length && !isSyntheticRequest(request)) {
         recordServedForSubjects(gateSubs, result.questions.length).catch(() => {})
       }
 
