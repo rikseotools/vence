@@ -437,7 +437,7 @@ const TRACE_BUDGET_MS = 1_500
 
 async function traceValidateCall(
   request: NextRequest,
-  args: { batchSize: number; answeredCount: number; testId?: string },
+  args: { batchSize: number; answeredCount: number; testId?: string; rejected?: string },
 ): Promise<void> {
   try {
     const shape = classifyValidateCall({
@@ -445,6 +445,14 @@ async function traceValidateCall(
       answeredCount: args.answeredCount,
       hasTestId: Boolean(args.testId),
     })
+    // Petición RECHAZADA (payload inválido, o lote por encima del tope). Antes esto
+    // solo dejaba un `request_completed` de severidad info —que además está en la
+    // lista de señales benignas del panel—, así que las peticiones MÁS agresivas
+    // eran las peor trazadas. Ahora tienen evento propio y severidad real.
+    const eventType = args.rejected ? 'exam_validate_rejected' : 'exam_validate_served'
+    const severity = args.rejected
+      ? (args.batchSize > MAX_QUESTIONS_PER_REQUEST ? 'error' : 'warn')
+      : shape.severity
 
     const ip = getClientIp(request)
     const deviceId = getDeviceIdFromRequest(request)
@@ -456,12 +464,13 @@ async function traceValidateCall(
 
     const emitted = emit({
       source: 'vercel',
-      severity: shape.severity,
-      eventType: 'exam_validate_served',
+      severity,
+      eventType,
       endpoint: '/api/exam/validate',
       userId: userId ?? undefined,
       metadata: {
-        shape: shape.shape,
+        shape: args.rejected ? 'rejected' : shape.shape,
+        rejectedReason: args.rejected ?? null,
         reasons: shape.reasons,
         batchSize: args.batchSize,
         answeredCount: args.answeredCount,
@@ -480,7 +489,16 @@ async function traceValidateCall(
 
     // Canaries/smoke fuera del contador (mismo criterio que /api/questions/filtered:
     // es monitorización interna, no consumo real).
-    if (isCaptchaEnabled() && !synthetic && args.batchSize > 0) {
+    //
+    // NO se guarda por `isCaptchaEnabled()`: ese flag apaga el RETO al usuario, no
+    // la medición. Compartir interruptor significaba que un rollback de la capa de
+    // captcha dejaba la detección de cosecha ciega sin que nadie se enterara.
+    //
+    // Y NUNCA en el path de rechazo: ahí no se sirvió ni una pregunta. Contarlas
+    // inflaría `daily_questions_served` con intentos fallidos y corrompería el
+    // ratio respondidas/servidas del que vive el detector de cosecha — un lote
+    // rechazado de 5.000 falsearía el denominador de golpe.
+    if (!args.rejected && !synthetic && args.batchSize > 0) {
       recordServedForSubjects(gateSubjects(userId, deviceId, ip), args.batchSize).catch(() => {})
     }
   } catch (err) {
@@ -505,6 +523,14 @@ async function _POST(request: NextRequest) {
 
     if (!validation.success) {
       console.error('❌ [API/exam/validate] Validación fallida:', validation.error.flatten())
+      // El rechazo TAMBIÉN deja rastro. `answers` puede no ser array (payload
+      // basura), así que el tamaño se lee a la defensiva.
+      const rawAnswers = (body as { answers?: unknown } | undefined)?.answers
+      await traceValidateCall(request, {
+        batchSize: Array.isArray(rawAnswers) ? rawAnswers.length : 0,
+        answeredCount: 0,
+        rejected: validation.error.issues[0]?.code ?? 'invalid_payload',
+      })
 return NextResponse.json(
         {
           success: false,

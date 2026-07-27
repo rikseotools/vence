@@ -165,6 +165,18 @@ async function main() {
   if (!servedRows.rows.length) {
     console.warn('⚠️  daily_questions_served VACÍO en la ventana → detección de cosecha CIEGA (¿writer desplegado?)');
     tally.served_rollup_empty = 1;
+    // Evento PROPIO y con severidad REAL. El heartbeat `fraud_sweep_completed` es
+    // 'info', y el catch-all de /admin/salud-sistema solo cuenta error/warn: meter
+    // la ceguera ahí dentro equivalía a construir la alarma y dejarla muda. Estar
+    // ciego no es un dato del resumen, es una avería.
+    if (!DRY) {
+      await c.query(
+        `INSERT INTO observable_events (source, severity, event_type, endpoint, error_message, metadata, created_at)
+         VALUES ('fargate','warn','fraud_detection_blind','scripts/fraud-sweep.cjs',$1,$2,now())`,
+        ['daily_questions_served sin filas en la ventana: la detección de cosecha no está midiendo',
+         JSON.stringify({ detector: 'harvest', window_days: WINDOW_DAYS })]
+      ).catch(e => console.warn('aviso de ceguera no registrado:', e.message));
+    }
   }
 
   for (const r of servedRows.rows) {

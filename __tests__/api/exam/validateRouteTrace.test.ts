@@ -147,11 +147,14 @@ describe('/api/exam/validate — trazo anti-cosecha', () => {
     expect(mockRecordServed).toHaveBeenCalledWith([{ key: 'sujeto', threshold: 500 }], 2)
   })
 
-  it('no contabiliza si la capa de captcha está apagada (mismo criterio que /api/questions/filtered)', async () => {
+  // CAMBIO 27/07/2026: antes esto NO contabilizaba con el flag apagado. Pero
+  // CAPTCHA_ENABLED es la palanca de rollback del reto al usuario; si además
+  // apaga la medición, un rollback de captcha deja la detección ciega en
+  // silencio. Detección y enforcement no comparten interruptor.
+  it('sigue midiendo aunque la capa de captcha esté apagada', async () => {
     mockCaptchaEnabled.mockReturnValue(false)
     await POST(req({ answers: [{ questionId: Q1, userAnswer: 'a' }] }))
-    expect(mockRecordServed).not.toHaveBeenCalled()
-    // pero el rastro se emite igual: la detección no depende del flag
+    expect(mockRecordServed).toHaveBeenCalledTimes(1)
     expect(mockEmit).toHaveBeenCalledTimes(1)
   })
 
@@ -164,6 +167,37 @@ describe('/api/exam/validate — trazo anti-cosecha', () => {
       }))
       const res = await POST(req({ answers }))
       expect(res.status).toBe(400)
+    })
+
+    // Sin esto, la petición MÁS agresiva era la peor trazada: solo quedaba un
+    // `request_completed` de severidad info, que además el panel trata como benigno.
+    it('el lote rechazado deja su propio evento en severidad error', async () => {
+      const answers = Array.from({ length: MAX_QUESTIONS_PER_REQUEST + 1 }, () => ({
+        questionId: Q1, userAnswer: null,
+      }))
+      await POST(req({ answers }))
+      const ev = lastEmit()
+      expect(ev.eventType).toBe('exam_validate_rejected')
+      expect(ev.severity).toBe('error')
+      expect(ev.metadata.batchSize).toBe(MAX_QUESTIONS_PER_REQUEST + 1)
+      expect(ev.metadata.ip).toBe('203.0.113.7')
+    })
+
+    // Un rechazo no sirvió NINGUNA pregunta. Contarlas inflaría el denominador
+    // del ratio respondidas/servidas y envenenaría al detector de cosecha.
+    it('un lote rechazado NO cuenta como preguntas servidas', async () => {
+      const answers = Array.from({ length: MAX_QUESTIONS_PER_REQUEST + 1 }, () => ({
+        questionId: Q1, userAnswer: null,
+      }))
+      await POST(req({ answers }))
+      expect(mockRecordServed).not.toHaveBeenCalled()
+    })
+
+    it('un payload basura también deja rastro, sin romperse al medirlo', async () => {
+      await POST(req({ answers: 'esto no es un array' }))
+      const ev = lastEmit()
+      expect(ev.eventType).toBe('exam_validate_rejected')
+      expect(ev.metadata.batchSize).toBe(0)
     })
 
     // LO IMPORTANTE: el tope no puede dejar sin nota a nadie. Va atado a la misma

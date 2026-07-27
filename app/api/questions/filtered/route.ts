@@ -387,8 +387,15 @@ async function _POST(request: NextRequest) {
       }
 
       // Contabilizar preguntas servidas en TODOS los sujetos (usuario/IP + dispositivo).
-      // Alimenta el gate anti-scraping. Fire-and-forget; solo si la capa activa.
-      if (isCaptchaEnabled() && result.questions?.length) {
+      // Fire-and-forget.
+      //
+      // SIN guardar por `isCaptchaEnabled()` (cambio 27/07/2026). Antes esto solo
+      // contaba con el flag activo, pero ese flag es la palanca de rollback
+      // INSTANTÁNEO de la capa de captcha: apagarlo — una decisión sobre el reto
+      // al usuario — mataba también toda la MEDICIÓN, y en silencio. Detección y
+      // enforcement no pueden compartir interruptor. Ahora se mide siempre; lo
+      // que el flag decide es si se RETA (arriba), no si se ve.
+      if (result.questions?.length) {
         recordServedForSubjects(gateSubs, result.questions.length).catch(() => {})
       }
 

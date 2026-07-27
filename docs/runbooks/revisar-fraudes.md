@@ -97,7 +97,18 @@ Ahora existe `daily_questions_served`: rollup diario de preguntas **SERVIDAS** p
 - **Escritura:** `recordServedForSubjects()` → `persistServedRollup()` (`lib/security/challengePolicy/servedRollup.ts`), desde `/api/questions/filtered` y `/api/exam/validate`.
 - **Clasificación:** núcleo puro `lib/security/harvestSignals.js`, compartido por el sweep y el panel para que no puedan divergir. Tests: `__tests__/security/harvestSignals.test.js`.
 
-⚠️ **Falso verde:** si `daily_questions_served` está vacío en la ventana, la detección de cosecha está **CIEGA**, no limpia. El sweep lo avisa por consola (`served_rollup_empty` en el tally) y el panel muestra un aviso ámbar en vez de una lista vacía. Si eso aparece, comprobar que el writer está desplegado y que no hay `served_rollup_write_failed` en `observable_events`.
+⚠️ **Falso verde:** si `daily_questions_served` está vacío en la ventana, la detección de cosecha está **CIEGA**, no limpia. Cuatro avisos independientes lo cubren (una lista vacía nunca debe tranquilizar):
+
+| Señal | Dónde salta | Qué avería cubre |
+|---|---|---|
+| `fraud_detection_blind` (warn) | `observable_events` → catch-all de `/admin/salud-sistema` | el rollup no tiene datos: writer caído o sin desplegar |
+| `served_rollup_write_failed` (error) | idem | el INSERT falla (permisos, tabla, timeout) |
+| `served_rollup_module_failed` (error) | idem | el módulo del rollup no carga (bundling, ciclo) |
+| `npm run canary:served-rollup` | exit 1 | liveness: sin filas frescas, o filas de usuario sin ninguna de dispositivo (se perdió `x-device-id`, el ancla anti-rotación) |
+
+El panel `/admin/fraudes` muestra además un aviso ámbar explícito en la pestaña de bots cuando el endpoint devuelve `blind:true`.
+
+**La medición NO depende de `CAPTCHA_ENABLED`** (fix 27/07/2026). Ese flag es el rollback instantáneo del *reto* al usuario; si además apagara la medición, un rollback de captcha dejaría la detección ciega en silencio. Detección y enforcement no comparten interruptor.
 
 ## Umbrales (env del sweep, calibrables)
 `FRAUD_DEVICE_ACCOUNTS` (3), `FRAUD_IP_ACCOUNTS` (5), `FRAUD_DEVICE_DAILY_Q` (60), `FRAUD_SCRAPE_MIN_SERVED` (300), `FRAUD_WINDOW_DAYS` (30). Subirlos = menos ruido; bajarlos = más sensibilidad. Ajustar con datos reales (fase F3). Los umbrales de la cosecha (ratio 0,2 y volumen egregio 5.000) viven en `DEFAULTS` de `harvestSignals.js`.

@@ -129,9 +129,26 @@ export async function recordServedForSubjects(
   if (n <= 0 || !subjects.length) return []
   // Import diferido: mantiene el módulo del gate libre de la dependencia de BD
   // (lo importan rutas que hoy no tocan Drizzle) y evita ciclos.
+  //
+  // El catch DENUNCIA en vez de tragar: si el módulo no carga (bundling, ciclo,
+  // dependencia rota) el rollup deja de escribirse entero y, sin este evento, el
+  // único síntoma sería que los detectores no encuentran nada — indistinguible
+  // de "no hay cosechadores". Es el mismo falso verde que cubre
+  // `served_rollup_write_failed` para el fallo de ESCRITURA; esto cubre el de CARGA.
   import('./servedRollup')
     .then((m) => m.persistServedRollup(subjects, n))
-    .catch(() => {})
+    .catch((err) => {
+      void import('@/lib/observability/emit')
+        .then((o) => o.emitFireAndForget({
+          source: 'vercel',
+          severity: 'error',
+          eventType: 'served_rollup_module_failed',
+          endpoint: 'lib/security/challengePolicy/questionsServed',
+          errorMessage: (err as Error)?.message ?? String(err),
+        }))
+        .catch(() => { /* si ni la observabilidad carga, queda el console */ })
+      console.warn('[questionsServed] rollup no cargado:', (err as Error)?.message)
+    })
   return Promise.all(
     subjects.map((s) => incrementCounterWithTtl(dayKey(s.key), COUNTER_TTL_S, n)),
   )
