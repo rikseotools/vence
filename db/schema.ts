@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, vector, uniqueIndex, interval, inet, point, serial, time, bigint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, vector, uniqueIndex, interval, inet, point, serial, time, bigint, bigserial, real, smallint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 // Schema auth de Supabase (referencia mínima para FKs)
@@ -4290,4 +4290,1172 @@ export const temarioPdfJobs = pgTable("temario_pdf_jobs", {
 	index("temario_pdf_jobs_pending").on(table.createdAt).where(sql`status = 'pending'`),
 	index("temario_pdf_jobs_running").on(table.claimedAt).where(sql`status = 'running'`),
 	check("temario_pdf_jobs_status_check", sql`status IN ('pending', 'running', 'done', 'failed')`),
+]);
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tablas incorporadas el 27/07/2026 (T-183) — 50 tablas que existían en RDS y NO
+// estaban declaradas aquí.
+//
+// Cómo se llegó a esto: `npm run db:check` comparaba tablas y llevaba tiempo en
+// rojo, así que había dejado de informar (201 en RDS contra 137 declaradas). Un
+// comando siempre rojo es un detector apagado: mismo mecanismo por el que una
+// bandeja ruidosa se aprende a ignorar (T-047).
+//
+// El criterio para decidir cuáles entran NO fue el nombre, fue el USO REAL en
+// código: entran las que alguien consulta (`observable_events` aparece en 106
+// ficheros, `referrals` en 40, `convocatoria_documentos` en 25 — todas por SQL
+// crudo, que es justo por lo que nadie notó que faltaban). Las que no tienen un
+// solo uso —copias `_pre_outbox`, cohortes de campañas puntuales, históricos de
+// features muertas— se declaran en `IGNORE_TABLES` de
+// `scripts/check-schema-drift.ts` con su motivo, para que el comando pueda
+// quedar verde y volver a ser señal.
+//
+// Generadas con `drizzle-kit introspect` y copiadas, no escritas a mano.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const backlogTasks = pgTable("backlog_tasks", {
+	id: text().primaryKey().notNull(),
+	title: text().notNull(),
+	priority: text().default('media').notNull(),
+	status: text().default('open').notNull(),
+	claimedBy: text("claimed_by"),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	leaseUntil: timestamp("lease_until", { withTimezone: true, mode: 'string' }),
+	blockedBy: text("blocked_by").array().default([""]).notNull(),
+	outcome: text(),
+	closedAt: timestamp("closed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("backlog_tasks_abiertas_idx").using("btree", table.priority.asc().nullsLast().op("text_ops"), table.id.asc().nullsLast().op("text_ops")).where(sql`(status = ANY (ARRAY['open'::text, 'in_progress'::text, 'blocked'::text]))`),
+	check("backlog_cierre_coherente", sql`(status = ANY (ARRAY['done'::text, 'dropped'::text])) = (closed_at IS NOT NULL)`),
+	check("backlog_claim_coherente", sql`((claimed_by IS NULL) AND (claimed_at IS NULL) AND (lease_until IS NULL)) OR ((claimed_by IS NOT NULL) AND (claimed_at IS NOT NULL) AND (lease_until IS NOT NULL))`),
+	check("backlog_tasks_priority_check", sql`priority = ANY (ARRAY['critica'::text, 'alta'::text, 'media'::text, 'baja'::text, 'ninguna'::text])`),
+	check("backlog_tasks_status_check", sql`status = ANY (ARRAY['open'::text, 'in_progress'::text, 'blocked'::text, 'done'::text, 'dropped'::text])`),
+]);
+
+export const competitorChanges = pgTable("competitor_changes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	competitorId: uuid("competitor_id").notNull(),
+	changeType: text("change_type").notNull(),
+	url: text(),
+	courseId: uuid("course_id"),
+	detail: jsonb().default({}).notNull(),
+	detectedAt: timestamp("detected_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewedBy: text("reviewed_by"),
+}, (table) => [
+	index("idx_competitor_changes_recent").using("btree", table.competitorId.asc().nullsLast().op("timestamptz_ops"), table.detectedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_competitor_changes_type").using("btree", table.changeType.asc().nullsLast().op("timestamptz_ops"), table.detectedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_competitor_changes_unreviewed").using("btree", table.detectedAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(reviewed_at IS NULL)`),
+	foreignKey({
+			columns: [table.competitorId],
+			foreignColumns: [competitors.id],
+			name: "competitor_changes_competitor_id_fkey"
+		}).onDelete("cascade"),
+	check("competitor_changes_type_check", sql`change_type = ANY (ARRAY['url_added'::text, 'url_removed'::text, 'url_modified'::text, 'course_added'::text, 'course_removed'::text, 'price_changed'::text])`),
+]);
+
+export const competitorCourses = pgTable("competitor_courses", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	competitorId: uuid("competitor_id").notNull(),
+	competitorUrlId: uuid("competitor_url_id").notNull(),
+	oposicionId: uuid("oposicion_id"),
+	rawName: text("raw_name").notNull(),
+	modalidad: text(),
+	region: text(),
+	isActive: boolean("is_active").default(true).notNull(),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	ambito: text(),
+	regionSlug: text("region_slug"),
+	matchMethod: text("match_method").default('none').notNull(),
+	matchConfidence: real("match_confidence"),
+	matchCandidateId: uuid("match_candidate_id"),
+	matchedAt: timestamp("matched_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_competitor_courses_active").using("btree", table.competitorId.asc().nullsLast().op("uuid_ops"), table.isActive.asc().nullsLast().op("bool_ops")),
+	index("idx_competitor_courses_oposicion").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_competitor_courses_review").using("btree", table.matchMethod.asc().nullsLast().op("text_ops")).where(sql`(match_method = 'needs_review'::text)`),
+	foreignKey({
+			columns: [table.competitorId],
+			foreignColumns: [competitors.id],
+			name: "competitor_courses_competitor_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.competitorUrlId],
+			foreignColumns: [competitorUrls.id],
+			name: "competitor_courses_competitor_url_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "competitor_courses_oposicion_id_fkey"
+		}).onDelete("set null"),
+	unique("competitor_courses_url_uniq").on(table.competitorUrlId),
+	check("competitor_courses_match_method_check", sql`match_method = ANY (ARRAY['auto_structured'::text, 'auto_name'::text, 'needs_review'::text, 'manual'::text, 'confirmed'::text, 'none'::text])`),
+]);
+
+export const competitorPrices = pgTable("competitor_prices", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	competitorCourseId: uuid("competitor_course_id").notNull(),
+	priceKind: text("price_kind").notNull(),
+	audience: text(),
+	amountCents: integer("amount_cents"),
+	period: text(),
+	currency: text().default('EUR').notNull(),
+	raw: text(),
+	isCurrent: boolean("is_current").default(true).notNull(),
+	capturedAt: timestamp("captured_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	supersededAt: timestamp("superseded_at", { withTimezone: true, mode: 'string' }),
+	plan: text(),
+	includes: jsonb().default([]).notNull(),
+}, (table) => [
+	index("idx_competitor_prices_current").using("btree", table.competitorCourseId.asc().nullsLast().op("bool_ops"), table.isCurrent.asc().nullsLast().op("bool_ops")),
+	index("idx_competitor_prices_hist").using("btree", table.competitorCourseId.asc().nullsLast().op("text_ops"), table.priceKind.asc().nullsLast().op("text_ops"), table.capturedAt.desc().nullsFirst().op("text_ops")),
+	foreignKey({
+			columns: [table.competitorCourseId],
+			foreignColumns: [competitorCourses.id],
+			name: "competitor_prices_competitor_course_id_fkey"
+		}).onDelete("cascade"),
+	check("competitor_prices_kind_check", sql`price_kind = ANY (ARRAY['matricula'::text, 'cuota'::text, 'intensivo'::text, 'tasa'::text, 'material'::text, 'curso'::text, 'otro'::text])`),
+]);
+
+export const competitorSources = pgTable("competitor_sources", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	competitorId: uuid("competitor_id").notNull(),
+	sourceType: text("source_type").notNull(),
+	url: text().notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	lastHash: text("last_hash"),
+	lastCheckedAt: timestamp("last_checked_at", { withTimezone: true, mode: 'string' }),
+	lastSuccessAt: timestamp("last_success_at", { withTimezone: true, mode: 'string' }),
+	lastError: text("last_error"),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_competitor_sources_active").using("btree", table.competitorId.asc().nullsLast().op("bool_ops"), table.isActive.asc().nullsLast().op("bool_ops")),
+	foreignKey({
+			columns: [table.competitorId],
+			foreignColumns: [competitors.id],
+			name: "competitor_sources_competitor_id_fkey"
+		}).onDelete("cascade"),
+	unique("competitor_sources_uniq").on(table.competitorId, table.url),
+	check("competitor_sources_type_check", sql`source_type = ANY (ARRAY['sitemap'::text, 'sitemap_index'::text, 'listing_html'::text, 'rss'::text, 'api'::text])`),
+]);
+
+export const competitorUrls = pgTable("competitor_urls", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	competitorId: uuid("competitor_id").notNull(),
+	url: text().notNull(),
+	urlType: text("url_type").default('other').notNull(),
+	contentHash: text("content_hash"),
+	lastmod: timestamp({ withTimezone: true, mode: 'string' }),
+	isActive: boolean("is_active").default(true).notNull(),
+	firstSeenAt: timestamp("first_seen_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	contentCheckedAt: timestamp("content_checked_at", { withTimezone: true, mode: 'string' }),
+	lastChangedAt: timestamp("last_changed_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_competitor_urls_active").using("btree", table.competitorId.asc().nullsLast().op("bool_ops"), table.isActive.asc().nullsLast().op("uuid_ops")),
+	index("idx_competitor_urls_type").using("btree", table.competitorId.asc().nullsLast().op("uuid_ops"), table.urlType.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.competitorId],
+			foreignColumns: [competitors.id],
+			name: "competitor_urls_competitor_id_fkey"
+		}).onDelete("cascade"),
+	unique("competitor_urls_uniq").on(table.competitorId, table.url),
+]);
+
+export const competitors = pgTable("competitors", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	slug: text().notNull(),
+	name: text().notNull(),
+	baseUrl: text("base_url").notNull(),
+	tipo: text(),
+	region: text(),
+	isActive: boolean("is_active").default(true).notNull(),
+	notes: text(),
+	lastSyncedAt: timestamp("last_synced_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	tech: jsonb().default({}).notNull(),
+	instagram: text(),
+	baselineDone: boolean("baseline_done").default(false).notNull(),
+}, (table) => [
+	unique("competitors_slug_key").on(table.slug),
+	check("competitors_tipo_check", sql`(tipo IS NULL) OR (tipo = ANY (ARRAY['academia_presencial'::text, 'plataforma_online'::text, 'hibrida'::text]))`),
+]);
+
+export const contentHealthFindings = pgTable("content_health_findings", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	category: text().notNull(),
+	severity: text().notNull(),
+	oposicionSlug: text("oposicion_slug"),
+	kind: text().notNull(),
+	message: text().notNull(),
+	detail: jsonb(),
+	computedAt: timestamp("computed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_content_health_cat_sev").using("btree", table.category.asc().nullsLast().op("text_ops"), table.severity.asc().nullsLast().op("text_ops")),
+	check("content_health_findings_category_check", sql`category = ANY (ARRAY['app'::text, 'content'::text])`),
+	check("content_health_findings_severity_check", sql`severity = ANY (ARRAY['error'::text, 'warn'::text])`),
+]);
+
+export const contentRadarPosts = pgTable("content_radar_posts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	permalink: text().notNull(),
+	competitorName: text("competitor_name").notNull(),
+	handle: text().notNull(),
+	followersCount: integer("followers_count"),
+	caption: text(),
+	mediaType: text("media_type"),
+	likeCount: integer("like_count").default(0).notNull(),
+	commentsCount: integer("comments_count").default(0).notNull(),
+	engagement: integer().default(0).notNull(),
+	engagementRate: numeric("engagement_rate"),
+	postedAt: timestamp("posted_at", { withTimezone: true, mode: 'string' }),
+	rankKind: text("rank_kind"),
+	fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	seen: boolean().default(false).notNull(),
+}, (table) => [
+	index("idx_content_radar_posted").using("btree", table.postedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_content_radar_unseen").using("btree", table.seen.asc().nullsLast().op("bool_ops"), table.engagement.desc().nullsFirst().op("bool_ops")),
+	unique("content_radar_posts_permalink_key").on(table.permalink),
+]);
+
+export const convocatoriaDocumentos = pgTable("convocatoria_documentos", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	convocatoriaId: uuid("convocatoria_id").notNull(),
+	tipo: text().notNull(),
+	url: text().notNull(),
+	titulo: text(),
+	boletin: text(),
+	referencia: text(),
+	fechaPublicacion: date("fecha_publicacion"),
+	contentHash: text("content_hash"),
+	extractedText: text("extracted_text"),
+	llmExtraction: jsonb("llm_extraction"),
+	confianza: integer(),
+	fuente: text().default('manual').notNull(),
+	fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	// TODO: failed to parse database type 'tsvector'
+	curado: boolean().default(false).notNull(),
+	curadoPor: text("curado_por"),
+	curadoAt: timestamp("curado_at", { withTimezone: true, mode: 'string' }),
+	docKey: text("doc_key"),
+	oepId: uuid("oep_id"),
+}, (table) => [
+	index("idx_conv_doc_conv").using("btree", table.convocatoriaId.asc().nullsLast().op("uuid_ops")),
+	index("idx_conv_doc_curado").using("btree", table.convocatoriaId.asc().nullsLast().op("uuid_ops"), table.curado.asc().nullsLast().op("uuid_ops")),
+	index("idx_conv_doc_tipo").using("btree", table.tipo.asc().nullsLast().op("text_ops")),
+	// NO declarados a propósito: la columna `tsv` (tsvector, generada) y su índice GIN
+	// `idx_conv_doc_tsv`. Drizzle no sabe representar tsvector — `introspect` la emite como
+	// `unknown("tsv")`, un tipo que ni siquiera importa. Ambos SIGUEN EXISTIENDO en RDS; es la
+	// declaración lo que no cabe aquí. Y ojo: quitar la columna y dejar el índice rompe el import
+	// del schema ENTERO (`table.tsv` undefined) — pasó al añadir esta tabla el 27/07 y lo cazó el
+	// pre-commit. Declarada en las listas de no-representables de scripts/check-schema-drift.ts y
+	// __tests__/integration/schemaColumnDrift.integration.test.ts.
+	uniqueIndex("uq_conv_doc_url_hash").using("btree", sql`convocatoria_id`, sql`url`, sql`COALESCE(content_hash, ''::text)`),
+	uniqueIndex("ux_convocatoria_documentos_conv_dockey").using("btree", table.convocatoriaId.asc().nullsLast().op("text_ops"), table.docKey.asc().nullsLast().op("text_ops")).where(sql`((doc_key IS NOT NULL) AND (tipo <> 'nota'::text))`),
+	foreignKey({
+			columns: [table.convocatoriaId],
+			foreignColumns: [convocatorias.id],
+			name: "convocatoria_documentos_convocatoria_id_fkey"
+		}).onDelete("restrict"),
+	foreignKey({
+			columns: [table.oepId],
+			foreignColumns: [oep.id],
+			name: "convocatoria_documentos_oep_id_fkey"
+		}).onDelete("set null"),
+	check("convocatoria_documentos_confianza_check", sql`(confianza IS NULL) OR ((confianza >= 0) AND (confianza <= 100))`),
+	check("convocatoria_documentos_fuente_check", sql`fuente = ANY (ARRAY['detect-notas'::text, 'radar'::text, 'seguimiento'::text, 'manual'::text, 'backfill-titulo'::text, 'epigrafe-verify'::text, 'oep-backfill'::text, 'oep-radar'::text])`),
+	check("convocatoria_documentos_tipo_check", sql`tipo = ANY (ARRAY['oep_decreto'::text, 'bases'::text, 'convocatoria'::text, 'temario'::text, 'correccion_errores'::text, 'lista_admitidos'::text, 'resolucion_tribunal'::text, 'anuncio_fecha'::text, 'nota'::text, 'otro'::text])`),
+]);
+
+export const convocatoriaNotas = pgTable("convocatoria_notas", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	url: text().notNull(),
+	title: text(),
+	contentHash: text("content_hash"),
+	signals: jsonb().default({}).notNull(),
+	llmExtraction: jsonb("llm_extraction"),
+	confianza: text(),
+	needsManual: boolean("needs_manual").default(false).notNull(),
+	triada: boolean().default(false).notNull(),
+	firstSeen: timestamp("first_seen", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	lastSeen: timestamp("last_seen", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	llmAnalyzedAt: timestamp("llm_analyzed_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_convocatoria_notas_oposicion").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_convocatoria_notas_triaje").using("btree", table.triada.asc().nullsLast().op("timestamptz_ops"), table.lastSeen.desc().nullsFirst().op("timestamptz_ops")).where(sql`(triada = false)`),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "convocatoria_notas_oposicion_id_fkey"
+		}).onDelete("cascade"),
+	unique("convocatoria_notas_oposicion_url_key").on(table.oposicionId, table.url),
+]);
+
+export const convocatoriaOep = pgTable("convocatoria_oep", {
+	convocatoriaId: uuid("convocatoria_id").notNull(),
+	oepId: uuid("oep_id").notNull(),
+	plazasAportadas: integer("plazas_aportadas"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("convocatoria_oep_por_oep_idx").using("btree", table.oepId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.convocatoriaId],
+			foreignColumns: [convocatorias.id],
+			name: "convocatoria_oep_convocatoria_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.oepId],
+			foreignColumns: [oep.id],
+			name: "convocatoria_oep_oep_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.convocatoriaId, table.oepId], name: "convocatoria_oep_pkey"}),
+]);
+
+export const convocatoriaSeguimientoChecks = pgTable("convocatoria_seguimiento_checks", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	checkedAt: timestamp("checked_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	contentHash: text("content_hash").notNull(),
+	contentLength: integer("content_length"),
+	httpStatus: integer("http_status"),
+	hasChanged: boolean("has_changed").default(false).notNull(),
+	changeReviewed: boolean("change_reviewed").default(false).notNull(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	errorMessage: text("error_message"),
+	contentPreview: text("content_preview"),
+	checkedUrl: text("checked_url"),
+}, (table) => [
+	index("idx_seguimiento_checks_oposicion").using("btree", table.oposicionId.asc().nullsLast().op("timestamptz_ops"), table.checkedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_seguimiento_checks_oposicion_url").using("btree", table.oposicionId.asc().nullsLast().op("timestamptz_ops"), table.checkedAt.desc().nullsFirst().op("uuid_ops")).where(sql`(checked_url IS NOT NULL)`),
+	index("idx_seguimiento_checks_unreviewed").using("btree", table.hasChanged.asc().nullsLast().op("bool_ops"), table.changeReviewed.asc().nullsLast().op("bool_ops")).where(sql`((has_changed = true) AND (change_reviewed = false))`),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "convocatoria_seguimiento_checks_oposicion_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const convocatoriaVerification = pgTable("convocatoria_verification", {
+	convocatoriaId: uuid("convocatoria_id").primaryKey().notNull(),
+	state: text().default('never_verified').notNull(),
+	verifiedDataHash: text("verified_data_hash"),
+	verifiedSourceHash: text("verified_source_hash"),
+	sourceUrl: text("source_url"),
+	sourceSnippet: text("source_snippet"),
+	verdict: text(),
+	findings: jsonb(),
+	agentRunId: text("agent_run_id"),
+	verifiedBy: text("verified_by"),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_cv_state").using("btree", table.state.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.convocatoriaId],
+			foreignColumns: [convocatorias.id],
+			name: "convocatoria_verification_convocatoria_id_fkey"
+		}).onDelete("cascade"),
+	check("convocatoria_verification_state_check", sql`state = ANY (ARRAY['never_verified'::text, 'verifying'::text, 'verified_correct'::text, 'verified_issues'::text, 'needs_human'::text, 'stale'::text])`),
+	check("convocatoria_verification_verdict_check", sql`verdict = ANY (ARRAY['correct'::text, 'issues'::text, 'needs_human'::text])`),
+]);
+
+export const coverageHistory = pgTable("coverage_history", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	fromLevel: text("from_level").notNull(),
+	toLevel: text("to_level").notNull(),
+	reason: text().notNull(),
+	changedBy: text("changed_by").notNull(),
+	changedAt: timestamp("changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	metadata: jsonb(),
+}, (table) => [
+	index("idx_coverage_history_oposicion_at").using("btree", table.oposicionId.asc().nullsLast().op("timestamptz_ops"), table.changedAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "coverage_history_oposicion_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const cronRuns = pgTable("cron_runs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	cronName: text("cron_name").notNull(),
+	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	endedAt: timestamp("ended_at", { withTimezone: true, mode: 'string' }),
+	durationMs: integer("duration_ms"),
+	status: text().default('running').notNull(),
+	processed: integer(),
+	errorMessage: text("error_message"),
+	metadata: jsonb().default({}),
+}, (table) => [
+	index("idx_cron_runs_cron_started").using("btree", table.cronName.asc().nullsLast().op("text_ops"), table.startedAt.desc().nullsFirst().op("text_ops")),
+	index("idx_cron_runs_errors").using("btree", table.startedAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(status = 'error'::text)`),
+	index("idx_cron_runs_running").using("btree", table.startedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'running'::text)`),
+	check("cron_runs_status_check", sql`status = ANY (ARRAY['running'::text, 'success'::text, 'error'::text, 'skipped'::text])`),
+]);
+
+export const genericSourceChecks = pgTable("generic_source_checks", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	sourceKey: text("source_key").notNull(),
+	sourceName: text("source_name").notNull(),
+	sourceUrl: text("source_url").notNull(),
+	lastHash: text("last_hash"),
+	lastCheckedAt: timestamp("last_checked_at", { withTimezone: true, mode: 'string' }),
+	lastChangedAt: timestamp("last_changed_at", { withTimezone: true, mode: 'string' }),
+	lastSignalId: uuid("last_signal_id"),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	fetcherType: text("fetcher_type").default('http').notNull(),
+}, (table) => [
+	index("idx_generic_source_checks_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`is_active`),
+	foreignKey({
+			columns: [table.lastSignalId],
+			foreignColumns: [oepDetectionSignals.id],
+			name: "generic_source_checks_last_signal_id_fkey"
+		}).onDelete("set null"),
+	unique("generic_source_checks_source_key_key").on(table.sourceKey),
+	check("generic_source_checks_fetcher_type_check", sql`fetcher_type = ANY (ARRAY['http'::text, 'headless'::text])`),
+]);
+
+export const helpArticles = pgTable("help_articles", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	slug: text().notNull(),
+	title: text().notNull(),
+	category: text().notNull(),
+	content: text().notNull(),
+	keywords: text().array().default([""]),
+	relatedUrls: text("related_urls").array().default([""]),
+	embedding: vector({ dimensions: 1536 }),
+	isPublished: boolean("is_published").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	relatedPaths: text("related_paths").array().default([""]),
+	needsReview: boolean("needs_review").default(false),
+	reviewReason: text("review_reason"),
+}, (table) => [
+	index("idx_help_articles_category").using("btree", table.category.asc().nullsLast().op("text_ops")),
+	index("idx_help_articles_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "10"}),
+	index("idx_help_articles_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	unique("help_articles_slug_key").on(table.slug),
+	pgPolicy("Public read help_articles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+export const lawSlugAliases = pgTable("law_slug_aliases", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	alias: text().notNull(),
+	canonicalSlug: text("canonical_slug").notNull(),
+	reason: text().default('legacy'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("law_slug_aliases_alias_idx").using("btree", table.alias.asc().nullsLast().op("text_ops")),
+	unique("law_slug_aliases_alias_unique").on(table.alias),
+	pgPolicy("Aliases legibles por todos", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+export const observableEvents = pgTable("observable_events", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	ts: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	source: text().notNull(),
+	severity: text().notNull(),
+	eventType: text("event_type").notNull(),
+	endpoint: text(),
+	userId: uuid("user_id"),
+	deployVersion: text("deploy_version"),
+	durationMs: integer("duration_ms"),
+	httpStatus: integer("http_status"),
+	errorMessage: text("error_message"),
+	metadata: jsonb(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_observable_events_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_observable_events_cron_covering").using("btree", table.eventType.asc().nullsLast().op("text_ops"), table.ts.desc().nullsFirst().op("text_ops"), table.endpoint.asc().nullsLast().op("text_ops"), table.durationMs.asc().nullsLast().op("timestamptz_ops")).where(sql`(event_type = ANY (ARRAY['cron_tick'::text, 'cron_run'::text]))`),
+	index("idx_observable_events_endpoint_ts").using("btree", table.endpoint.asc().nullsLast().op("timestamptz_ops"), table.ts.desc().nullsFirst().op("timestamptz_ops")).where(sql`(endpoint IS NOT NULL)`),
+	index("idx_observable_events_event_type_ts").using("btree", table.eventType.asc().nullsLast().op("text_ops"), table.ts.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_observable_events_source_severity_ts").using("btree", table.source.asc().nullsLast().op("timestamptz_ops"), table.severity.asc().nullsLast().op("timestamptz_ops"), table.ts.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_observable_events_ts_desc").using("btree", table.ts.desc().nullsFirst().op("timestamptz_ops")),
+	check("observable_events_severity_check", sql`severity = ANY (ARRAY['debug'::text, 'info'::text, 'warn'::text, 'error'::text, 'critical'::text])`),
+]);
+
+export const oep = pgTable("oep", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	"añoOep": integer("año_oep").notNull(),
+	decreto: text(),
+	fecha: date(),
+	ambito: text(),
+	plazasLibres: integer("plazas_libres"),
+	plazasDiscapacidad: integer("plazas_discapacidad"),
+	plazasPromocionInterna: integer("plazas_promocion_interna"),
+	plazasOtrosTurnos: jsonb("plazas_otros_turnos"),
+	estado: text().default('aprobada').notNull(),
+	fuenteUrl: text("fuente_url"),
+	docKey: text("doc_key"),
+	sourceDocumentoId: uuid("source_documento_id"),
+	notas: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("oep_backlog_idx").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")).where(sql`(estado = 'aprobada'::text)`),
+	uniqueIndex("oep_identidad").using("btree", sql`oposicion_id`, sql`año_oep`, sql`COALESCE(decreto, ''::text)`),
+	index("oep_oposicion_idx").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "oep_oposicion_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.sourceDocumentoId],
+			foreignColumns: [convocatoriaDocumentos.id],
+			name: "oep_source_documento_id_fkey"
+		}).onDelete("set null"),
+	check("oep_ambito_valido", sql`(ambito IS NULL) OR (ambito = ANY (ARRAY['estatal'::text, 'autonomico'::text, 'local'::text]))`),
+	check("oep_año_valido", sql`("año_oep" >= 1970) AND ("año_oep" <= 2100)`),
+	check("oep_estado_valido", sql`estado = ANY (ARRAY['aprobada'::text, 'convocada'::text, 'anulada'::text])`),
+]);
+
+export const oposicionBloques = pgTable("oposicion_bloques", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	positionType: text("position_type").notNull(),
+	bloqueNumber: integer("bloque_number").notNull(),
+	titulo: text().notNull(),
+	icon: text(),
+	sortOrder: integer("sort_order").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("oposicion_bloques_position_type_idx").using("btree", table.positionType.asc().nullsLast().op("text_ops")),
+	unique("oposicion_bloques_unique").on(table.positionType, table.bloqueNumber),
+	pgPolicy("Bloques legibles por todos", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+export const oposicionProgramaNormas = pgTable("oposicion_programa_normas", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	normaRef: text("norma_ref").notNull(),
+	cuerpo: text(),
+	ambito: text(),
+	boletin: text(),
+	ultimaModificacionConocida: text("ultima_modificacion_conocida"),
+	notas: text(),
+	isActive: boolean("is_active").default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_programa_normas_norma_ref").using("btree", sql`lower(norma_ref)`),
+	index("idx_programa_normas_oposicion").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "oposicion_programa_normas_oposicion_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const pgStatStatementsSnapshots = pgTable("pg_stat_statements_snapshots", {
+	snapshotAt: timestamp("snapshot_at", { withTimezone: true, mode: 'string' }).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	queryid: bigint({ mode: "number" }).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	calls: bigint({ mode: "number" }).notNull(),
+	totalExecMs: numeric("total_exec_ms").notNull(),
+	meanExecMs: numeric("mean_exec_ms").notNull(),
+	maxExecMs: numeric("max_exec_ms").notNull(),
+	stddevExecMs: numeric("stddev_exec_ms").notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	rows: bigint({ mode: "number" }).notNull(),
+	query: text().notNull(),
+}, (table) => [
+	index("idx_pgss_snap_ts").using("btree", table.snapshotAt.desc().nullsFirst().op("timestamptz_ops")),
+	primaryKey({ columns: [table.snapshotAt, table.queryid], name: "pg_stat_statements_snapshots_pkey"}),
+]);
+
+export const pgbouncerInstanceSamples = pgTable("pgbouncer_instance_samples", {
+	sampleAt: timestamp("sample_at", { withTimezone: true, mode: 'string' }).notNull(),
+	instance: text().notNull(),
+	az: text(),
+	targetHealth: text("target_health"),
+	reachable: boolean().notNull(),
+	connectMs: integer("connect_ms"),
+	select1Ms: integer("select1_ms"),
+	clActive: integer("cl_active"),
+	clWaiting: integer("cl_waiting"),
+	svActive: integer("sv_active"),
+	svIdle: integer("sv_idle"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	maxwaitUs: bigint("maxwait_us", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	queryCount: bigint("query_count", { mode: "number" }),
+	avgQueryTimeUs: integer("avg_query_time_us"),
+	avgWaitTimeUs: integer("avg_wait_time_us"),
+	serverCount: integer("server_count"),
+	error: text(),
+}, (table) => [
+	index("idx_pgbouncer_instance_samples_at").using("btree", table.sampleAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_pgbouncer_instance_samples_instance_at").using("btree", table.instance.asc().nullsLast().op("timestamptz_ops"), table.sampleAt.desc().nullsFirst().op("timestamptz_ops")),
+	primaryKey({ columns: [table.sampleAt, table.instance], name: "pgbouncer_instance_samples_pkey"}),
+]);
+
+export const poolCapacitySamples = pgTable("pool_capacity_samples", {
+	sampleAt: timestamp("sample_at", { withTimezone: true, mode: 'string' }).primaryKey().notNull(),
+	totalConns: integer("total_conns").notNull(),
+	activeConns: integer("active_conns").notNull(),
+	idleConns: integer("idle_conns").notNull(),
+	idleInTxConns: integer("idle_in_tx_conns").notNull(),
+	idleInTxOver5S: integer("idle_in_tx_over_5s").notNull(),
+	longActiveOver5S: integer("long_active_over_5s").notNull(),
+	hungClientreadOver10S: integer("hung_clientread_over_10s").notNull(),
+	byApp: jsonb("by_app").notNull(),
+	frontendActiveConns: integer("frontend_active_conns").notNull(),
+}, (table) => [
+	index("idx_pool_capacity_samples_at").using("btree", table.sampleAt.desc().nullsFirst().op("timestamptz_ops")),
+]);
+
+export const problematicArticlesRolloutLogs = pgTable("problematic_articles_rollout_logs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	positionType: text("position_type"),
+	path: text().notNull(),
+	articlesCount: integer("articles_count").default(0).notNull(),
+	lawNames: text("law_names").array().default([""]),
+	durationMs: integer("duration_ms"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_par_logs_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_par_logs_path_created").using("btree", table.path.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("text_ops")),
+	index("idx_par_logs_zero_count").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(articles_count = 0)`),
+	check("problematic_articles_rollout_logs_path_check", sql`path = ANY (ARRAY['new'::text, 'old'::text])`),
+]);
+
+export const questionLifecycleHistory = pgTable("question_lifecycle_history", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	questionId: uuid("question_id").notNull(),
+	fromState: text("from_state"),
+	toState: text("to_state").notNull(),
+	reasonCode: text("reason_code").notNull(),
+	changedAt: timestamp("changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	changedBy: uuid("changed_by"),
+	aiVerificationId: uuid("ai_verification_id"),
+	notes: text(),
+}, (table) => [
+	index("idx_qlh_changed_at").using("btree", table.changedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_qlh_question_id").using("btree", table.questionId.asc().nullsLast().op("timestamptz_ops"), table.changedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_qlh_to_state").using("btree", table.toState.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.aiVerificationId],
+			foreignColumns: [aiVerificationResults.id],
+			name: "question_lifecycle_history_ai_verification_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "question_lifecycle_history_question_id_fkey"
+		}).onDelete("cascade"),
+	check("qlh_from_state_check", sql`(from_state IS NULL) OR (from_state = ANY (ARRAY['draft'::text, 'needs_review'::text, 'needs_human'::text, 'quarantine'::text, 'approved'::text, 'tech_approved'::text, 'retired_duplicate'::text, 'retired_irreparable'::text]))`),
+	check("qlh_to_state_check", sql`to_state = ANY (ARRAY['draft'::text, 'needs_review'::text, 'needs_human'::text, 'quarantine'::text, 'approved'::text, 'tech_approved'::text, 'retired_duplicate'::text, 'retired_irreparable'::text])`),
+]);
+
+export const questionShuffleSafetyHistory = pgTable("question_shuffle_safety_history", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity({ name: "question_shuffle_safety_history_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 9223372036854775807, cache: 1 }),
+	questionId: uuid("question_id").notNull(),
+	state: text().notNull(),
+	reason: text(),
+	contentHash: text("content_hash"),
+	verifiedBy: text("verified_by"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_qss_hist_question").using("btree", table.questionId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+]);
+
+export const radarAdapterRuns = pgTable("radar_adapter_runs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	runId: uuid("run_id").notNull(),
+	layer: text().notNull(),
+	adapterKey: text("adapter_key").notNull(),
+	status: text().notNull(),
+	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).notNull(),
+	durationMs: integer("duration_ms"),
+	itemsScanned: integer("items_scanned").default(0).notNull(),
+	candidates: integer().default(0).notNull(),
+	signalsNew: integer("signals_new").default(0).notNull(),
+	signalsDupe: integer("signals_dupe").default(0).notNull(),
+	httpStatus: integer("http_status"),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_radar_adapter_runs_key").using("btree", table.adapterKey.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("text_ops")),
+	index("idx_radar_adapter_runs_run").using("btree", table.runId.asc().nullsLast().op("uuid_ops")),
+	index("idx_radar_adapter_runs_status").using("btree", table.status.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+]);
+
+export const rankingCache = pgTable("ranking_cache", {
+	timeFilter: text("time_filter").notNull(),
+	userId: uuid("user_id").notNull(),
+	totalQuestions: integer("total_questions").notNull(),
+	correctAnswers: integer("correct_answers").notNull(),
+	accuracy: numeric().notNull(),
+	refreshedAt: timestamp("refreshed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("ranking_cache_lookup_idx").using("btree", table.timeFilter.asc().nullsLast().op("text_ops"), table.accuracy.desc().nullsFirst().op("text_ops"), table.totalQuestions.desc().nullsFirst().op("numeric_ops"), table.userId.asc().nullsLast().op("text_ops"), table.correctAnswers.asc().nullsLast().op("text_ops")),
+	primaryKey({ columns: [table.timeFilter, table.userId], name: "ranking_cache_pkey"}),
+	check("ranking_cache_time_filter_check", sql`time_filter = ANY (ARRAY['today'::text, 'yesterday'::text, 'week'::text, 'month'::text])`),
+]);
+
+export const referralCodes = pgTable("referral_codes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	ownerUserId: uuid("owner_user_id").notNull(),
+	code: text().notNull(),
+	tier: text().default('premium').notNull(),
+	active: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.ownerUserId],
+			foreignColumns: [userProfiles.id],
+			name: "referral_codes_owner_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("referral_codes_owner_user_id_key").on(table.ownerUserId),
+	unique("referral_codes_code_key").on(table.code),
+]);
+
+export const referrals = pgTable("referrals", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	referrerUserId: uuid("referrer_user_id").notNull(),
+	referredUserId: uuid("referred_user_id"),
+	code: text().notNull(),
+	status: text().default('pending').notNull(),
+	attributedAt: timestamp("attributed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	qualifiedAt: timestamp("qualified_at", { withTimezone: true, mode: 'string' }),
+	planType: text("plan_type"),
+	qualifyingPaymentRef: text("qualifying_payment_ref"),
+	holdUntil: timestamp("hold_until", { withTimezone: true, mode: 'string' }),
+	bountyAmount: numeric("bounty_amount", { precision: 10, scale:  2 }).default('10').notNull(),
+	discountApplied: boolean("discount_applied").default(false).notNull(),
+	payoutId: uuid("payout_id"),
+	fraudFlags: jsonb("fraud_flags").default([]).notNull(),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	activeRewardAt: timestamp("active_reward_at", { withTimezone: true, mode: 'string' }),
+	activeRewardAmount: numeric("active_reward_amount"),
+}, (table) => [
+	index("idx_referrals_hold").using("btree", table.status.asc().nullsLast().op("text_ops"), table.holdUntil.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_referrals_referrer").using("btree", table.referrerUserId.asc().nullsLast().op("uuid_ops")),
+	index("idx_referrals_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.payoutId],
+			foreignColumns: [rewardPayouts.id],
+			name: "referrals_payout_fk"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.referredUserId],
+			foreignColumns: [userProfiles.id],
+			name: "referrals_referred_user_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.referrerUserId],
+			foreignColumns: [userProfiles.id],
+			name: "referrals_referrer_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("referrals_referred_user_id_key").on(table.referredUserId),
+	check("referrals_no_self", sql`(referred_user_id IS NULL) OR (referred_user_id <> referrer_user_id)`),
+	check("referrals_status_check", sql`status = ANY (ARRAY['pending'::text, 'qualified'::text, 'payable'::text, 'paid'::text, 'rejected'::text, 'expired'::text])`),
+]);
+
+export const rewardPayouts = pgTable("reward_payouts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	beneficiaryUserId: uuid("beneficiary_user_id").notNull(),
+	amount: numeric({ precision: 10, scale:  2 }).notNull(),
+	method: text().default('amazon_giftcard').notNull(),
+	purchasedVia: text("purchased_via"),
+	giftcardRef: text("giftcard_ref"),
+	status: text().default('pending').notNull(),
+	approvedBy: uuid("approved_by"),
+	paidAt: timestamp("paid_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	reason: text().default('referral').notNull(),
+	sourceId: uuid("source_id"),
+}, (table) => [
+	index("idx_referral_payouts_referrer").using("btree", table.beneficiaryUserId.asc().nullsLast().op("uuid_ops")),
+	index("idx_referral_payouts_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.approvedBy],
+			foreignColumns: [userProfiles.id],
+			name: "referral_payouts_approved_by_fkey"
+		}),
+	foreignKey({
+			columns: [table.beneficiaryUserId],
+			foreignColumns: [userProfiles.id],
+			name: "referral_payouts_referrer_user_id_fkey"
+		}).onDelete("cascade"),
+	check("referral_payouts_status_check", sql`status = ANY (ARRAY['pending'::text, 'paid'::text, 'void'::text])`),
+	check("reward_payouts_reason_chk", sql`reason = ANY (ARRAY['referral'::text, 'bug'::text, 'ugc'::text, 'accumulated'::text])`),
+]);
+
+export const rewardSubmissions = pgTable("reward_submissions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	type: text().notNull(),
+	status: text().default('pending').notNull(),
+	url: text(),
+	screenshotUrl: text("screenshot_url"),
+	feedbackId: uuid("feedback_id"),
+	amount: numeric({ precision: 10, scale:  2 }).notNull(),
+	holdUntil: timestamp("hold_until", { withTimezone: true, mode: 'string' }),
+	payoutId: uuid("payout_id"),
+	approvedBy: uuid("approved_by"),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_reward_submissions_status").using("btree", table.type.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
+	index("idx_reward_submissions_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.approvedBy],
+			foreignColumns: [userProfiles.id],
+			name: "reward_submissions_approved_by_fkey"
+		}),
+	foreignKey({
+			columns: [table.payoutId],
+			foreignColumns: [rewardPayouts.id],
+			name: "reward_submissions_payout_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "reward_submissions_user_id_fkey"
+		}).onDelete("cascade"),
+	check("reward_submissions_status_check", sql`status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text, 'paid'::text])`),
+	check("reward_submissions_type_check", sql`type = ANY (ARRAY['bug'::text, 'ugc'::text])`),
+]);
+
+export const scopeOverInclusionAdjudications = pgTable("scope_over_inclusion_adjudications", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	topicId: uuid("topic_id").notNull(),
+	lawId: uuid("law_id").notNull(),
+	contentHash: text("content_hash").notNull(),
+	band: text(),
+	verdict: text().notNull(),
+	titulosExcluidos: jsonb("titulos_excluidos"),
+	artsCorrectos: text("arts_correctos"),
+	razon: text(),
+	verificado: boolean().default(false).notNull(),
+	method: text(),
+	adjudicadoAt: timestamp("adjudicado_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	adjudicadoPor: text("adjudicado_por"),
+}, (table) => [
+	index("idx_scope_oi_confirmed").using("btree", table.adjudicadoAt.asc().nullsLast().op("timestamptz_ops")).where(sql`((verdict = 'over_inclusion'::text) AND (verificado = true))`),
+	foreignKey({
+			columns: [table.lawId],
+			foreignColumns: [laws.id],
+			name: "scope_over_inclusion_adjudications_law_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "scope_over_inclusion_adjudications_topic_id_fkey"
+		}).onDelete("cascade"),
+	unique("scope_oi_adj_uq").on(table.topicId, table.lawId),
+	check("scope_over_inclusion_adjudications_verdict_check", sql`verdict = ANY (ARRAY['over_inclusion'::text, 'ok'::text, 'unverifiable'::text])`),
+]);
+
+export const statsDriftLog = pgTable("stats_drift_log", {
+	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	checkedAt: timestamp("checked_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	targetTable: text("target_table").notNull(),
+	userId: uuid("user_id").notNull(),
+	fieldName: text("field_name").notNull(),
+	storedValue: numeric("stored_value"),
+	freshValue: numeric("fresh_value"),
+	driftAbs: numeric("drift_abs").generatedAlwaysAs(sql`abs((COALESCE(stored_value, (0)::numeric) - COALESCE(fresh_value, (0)::numeric)))`),
+	driftPct: numeric("drift_pct").generatedAlwaysAs(sql`
+CASE
+    WHEN ((fresh_value IS NULL) OR (fresh_value = (0)::numeric)) THEN NULL::numeric
+    ELSE round(((abs((COALESCE(stored_value, (0)::numeric) - fresh_value)) / abs(fresh_value)) * (100)::numeric), 2)
+END`),
+	notes: text(),
+}, (table) => [
+	index("stats_drift_log_checked_at_desc").using("btree", table.checkedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("stats_drift_log_significant").using("btree", table.checkedAt.desc().nullsFirst().op("timestamptz_ops")).where(sql`(drift_pct > (5)::numeric)`),
+	index("stats_drift_log_table_user").using("btree", table.targetTable.asc().nullsLast().op("text_ops"), table.userId.asc().nullsLast().op("text_ops"), table.checkedAt.desc().nullsFirst().op("text_ops")),
+]);
+
+export const subscriptionAdjustments = pgTable("subscription_adjustments", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	stripeSubscriptionId: text("stripe_subscription_id").notNull(),
+	adjustmentType: text("adjustment_type").notNull(),
+	amountValue: numeric("amount_value", { precision: 10, scale:  2 }).notNull(),
+	amountUnit: text("amount_unit").notNull(),
+	reasonCode: text("reason_code").notNull(),
+	reasonDetail: text("reason_detail"),
+	relatedFeedbackId: uuid("related_feedback_id"),
+	appliedByUserId: uuid("applied_by_user_id").notNull(),
+	stripeEventId: text("stripe_event_id"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_subscription_adjustments_applied_by_user_id_fk").using("btree", table.appliedByUserId.asc().nullsLast().op("uuid_ops")),
+	index("idx_subscription_adjustments_feedback").using("btree", table.relatedFeedbackId.asc().nullsLast().op("uuid_ops")).where(sql`(related_feedback_id IS NOT NULL)`),
+	index("idx_subscription_adjustments_sub").using("btree", table.stripeSubscriptionId.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_subscription_adjustments_user_created").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.appliedByUserId],
+			foreignColumns: [userProfiles.id],
+			name: "subscription_adjustments_applied_by_user_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.relatedFeedbackId],
+			foreignColumns: [userFeedback.id],
+			name: "subscription_adjustments_related_feedback_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "subscription_adjustments_user_id_fkey"
+		}).onDelete("cascade"),
+	check("subscription_adjustments_adjustment_type_check", sql`adjustment_type = ANY (ARRAY['time_extension'::text, 'credit'::text, 'refund'::text, 'discount'::text])`),
+	check("subscription_adjustments_amount_unit_check", sql`amount_unit = ANY (ARRAY['days'::text, 'eur'::text, 'percent'::text])`),
+	check("subscription_adjustments_amount_value_check", sql`amount_value > (0)::numeric`),
+	check("subscription_adjustments_reason_code_check", sql`reason_code = ANY (ARRAY['incident_compensation'::text, 'goodwill'::text, 'churn_prevention'::text, 'support_resolution'::text, 'manual_admin'::text])`),
+]);
+
+export const temarioVersions = pgTable("temario_versions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	oposicionId: uuid("oposicion_id").notNull(),
+	label: text(),
+	estado: text().default('active').notNull(),
+	esDefault: boolean("es_default").default(false).notNull(),
+	sourceConvocatoriaId: uuid("source_convocatoria_id"),
+	sourceDocumentoId: uuid("source_documento_id"),
+	parentVersionId: uuid("parent_version_id"),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_temario_versions_oposicion").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("ux_temario_version_default").using("btree", table.oposicionId.asc().nullsLast().op("uuid_ops")).where(sql`es_default`),
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "temario_versions_oposicion_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.parentVersionId],
+			foreignColumns: [table.id],
+			name: "temario_versions_parent_version_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.sourceConvocatoriaId],
+			foreignColumns: [convocatorias.id],
+			name: "temario_versions_source_convocatoria_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.sourceDocumentoId],
+			foreignColumns: [convocatoriaDocumentos.id],
+			name: "temario_versions_source_documento_id_fkey"
+		}),
+	check("temario_versions_estado_check", sql`estado = ANY (ARRAY['draft'::text, 'verified'::text, 'active'::text, 'superseded'::text])`),
+]);
+
+export const testQuestionsOutbox = pgTable("test_questions_outbox", {
+	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	testQuestionId: uuid("test_question_id").notNull(),
+	eventType: text("event_type").notNull(),
+	payload: jsonb().notNull(),
+	oldPayload: jsonb("old_payload"),
+	userId: uuid("user_id").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	processedAt: timestamp("processed_at", { withTimezone: true, mode: 'string' }),
+	retryCount: integer("retry_count").default(0).notNull(),
+	errorMessage: text("error_message"),
+}, (table) => [
+	index("idx_outbox_errors").using("btree", table.retryCount.asc().nullsLast().op("int4_ops"), table.createdAt.asc().nullsLast().op("int4_ops")).where(sql`((retry_count >= 3) AND (processed_at IS NULL))`),
+	index("idx_outbox_unprocessed").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(processed_at IS NULL)`),
+	check("test_questions_outbox_event_type_check", sql`event_type = ANY (ARRAY['INSERT'::text, 'UPDATE'::text, 'DELETE'::text])`),
+]);
+
+export const userArticleStats = pgTable("user_article_stats", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	id: bigint({ mode: "number" }).default(sql`nextval('user_article_stats_id_seq'::regclass)`).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	articleId: uuid("article_id"),
+	articleNumber: text("article_number"),
+	lawName: text("law_name"),
+	temaNumber: integer("tema_number"),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("user_article_stats_shadow_user_id_article_id_article_number_idx").using("btree", table.userId.asc().nullsLast().op("int4_ops"), table.articleId.asc().nullsLast().op("int4_ops"), table.articleNumber.asc().nullsLast().op("int4_ops"), table.lawName.asc().nullsLast().op("int4_ops"), table.temaNumber.asc().nullsLast().op("int4_ops")),
+	index("user_article_stats_shadow_user_id_expr_idx").using("btree", sql`user_id`, sql`(((correct_answers)::double precision / (NULLIF(total_questions`).where(sql`(total_questions >= 2)`),
+	check("user_article_stats_correct_answers_check", sql`correct_answers >= 0`),
+	check("user_article_stats_total_questions_check", sql`total_questions >= 0`),
+]);
+
+export const userArticleStatsPreOutbox = pgTable("user_article_stats_pre_outbox", {
+	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	articleId: uuid("article_id"),
+	articleNumber: text("article_number"),
+	lawName: text("law_name"),
+	temaNumber: integer("tema_number"),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("user_article_stats_dim_uniq").using("btree", table.userId.asc().nullsLast().op("int4_ops"), table.articleId.asc().nullsLast().op("uuid_ops"), table.articleNumber.asc().nullsLast().op("text_ops"), table.lawName.asc().nullsLast().op("text_ops"), table.temaNumber.asc().nullsLast().op("text_ops")),
+	index("user_article_stats_user_acc_idx").using("btree", sql`user_id`, sql`(((correct_answers)::double precision / (NULLIF(total_questions`).where(sql`(total_questions >= 2)`),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_article_stats_user_id_fkey"
+		}).onDelete("cascade"),
+	check("user_article_stats_correct_answers_check", sql`correct_answers >= 0`),
+	check("user_article_stats_total_questions_check", sql`total_questions >= 0`),
+]);
+
+export const userDailyStats = pgTable("user_daily_stats", {
+	userId: uuid("user_id").notNull(),
+	day: date().notNull(),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalTimeSeconds: bigint("total_time_seconds", { mode: "number" }).default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("user_daily_stats_shadow_user_id_day_idx").using("btree", table.userId.asc().nullsLast().op("date_ops"), table.day.desc().nullsFirst().op("date_ops")),
+	primaryKey({ columns: [table.userId, table.day], name: "user_daily_stats_shadow_pkey"}),
+	check("user_daily_stats_correct_answers_check", sql`correct_answers >= 0`),
+	check("user_daily_stats_total_questions_check", sql`total_questions >= 0`),
+	check("user_daily_stats_total_time_seconds_check", sql`total_time_seconds >= 0`),
+]);
+
+export const userDifficultyStats = pgTable("user_difficulty_stats", {
+	userId: uuid("user_id").notNull(),
+	difficulty: text().notNull(),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalTimeSeconds: bigint("total_time_seconds", { mode: "number" }).default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.userId, table.difficulty], name: "user_difficulty_stats_shadow_pkey"}),
+	check("user_difficulty_stats_correct_answers_check", sql`correct_answers >= 0`),
+	check("user_difficulty_stats_difficulty_check", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'extreme'::text])`),
+	check("user_difficulty_stats_total_questions_check", sql`total_questions >= 0`),
+	check("user_difficulty_stats_total_time_seconds_check", sql`total_time_seconds >= 0`),
+]);
+
+export const userHourlyStats = pgTable("user_hourly_stats", {
+	userId: uuid("user_id").notNull(),
+	hour: smallint().notNull(),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.userId, table.hour], name: "user_hourly_stats_shadow_pkey"}),
+	check("user_hourly_stats_correct_answers_check", sql`correct_answers >= 0`),
+	check("user_hourly_stats_hour_check", sql`(hour >= 0) AND (hour <= 23)`),
+	check("user_hourly_stats_total_questions_check", sql`total_questions >= 0`),
+]);
+
+export const userInscriptionBannerDismissals = pgTable("user_inscription_banner_dismissals", {
+	userId: uuid("user_id").notNull(),
+	oposicionSlug: text("oposicion_slug").notNull(),
+	boeReferenceAtDismiss: text("boe_reference_at_dismiss"),
+	dismissedAt: timestamp("dismissed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_inscription_banner_dismissals_user_id_profiles_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.userId, table.oposicionSlug], name: "user_inscription_banner_dismissals_pkey"}),
+]);
+
+export const userInteractionsArchive = pgTable("user_interactions_archive", {
+	id: uuid().default(sql`uuid_generate_v4()`).notNull(),
+	userId: uuid("user_id"),
+	sessionId: uuid("session_id"),
+	eventType: text("event_type").notNull(),
+	eventCategory: text("event_category").notNull(),
+	component: text(),
+	action: text(),
+	label: text(),
+	value: jsonb().default({}),
+	pageUrl: text("page_url"),
+	elementId: text("element_id"),
+	elementText: text("element_text"),
+	responseTimeMs: integer("response_time_ms"),
+	deviceInfo: jsonb("device_info").default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	deployVersion: text("deploy_version"),
+}, (table) => [
+	index("idx_archive_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_archive_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+]);
+
+export const userStatsResets = pgTable("user_stats_resets", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	userEmail: text("user_email"),
+	requestedBy: text("requested_by").notNull(),
+	reason: text().notNull(),
+	deletedCounts: jsonb("deleted_counts").notNull(),
+	snapshot: jsonb(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_user_stats_resets_user").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_stats_resets_user_id_fkey"
+		}).onDelete("set null"),
+]);
+
+export const userStatsSummary = pgTable("user_stats_summary", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	totalQuestions: integer("total_questions").default(0).notNull(),
+	correctAnswers: integer("correct_answers").default(0).notNull(),
+	blankAnswers: integer("blank_answers").default(0).notNull(),
+	questionsThisWeek: integer("questions_this_week").default(0).notNull(),
+	weekStart: date("week_start").default(sql`(date_trunc('week'`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	totalTests: integer("total_tests").default(0).notNull(),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalTimeSeconds: bigint("total_time_seconds", { mode: "number" }).default(0).notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_stats_summary_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const userThemeStats = pgTable("user_theme_stats", {
+	userId: uuid("user_id").notNull(),
+	positionType: text("position_type").notNull(),
+	temaNumber: integer("tema_number").notNull(),
+	total: integer().default(0).notNull(),
+	correct: integer().default(0).notNull(),
+	lastStudy: timestamp("last_study", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_user_theme_stats_user_position").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.positionType.asc().nullsLast().op("text_ops")),
+	primaryKey({ columns: [table.userId, table.positionType, table.temaNumber], name: "user_theme_stats_pkey"}),
 ]);

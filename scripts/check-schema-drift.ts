@@ -28,10 +28,40 @@ if (!DATABASE_URL) {
 }
 
 // Tablas a ignorar (backups, temporales, schema auth, etc.)
+// Tablas que existen en RDS y NO deben estar en `db/schema.ts`. Cada una con su motivo: una
+// entrada sin explicación es indistinguible de un olvido, y este comando solo sirve si puede
+// quedar VERDE (un detector siempre en rojo es un detector apagado — lección T-047).
+//
+// Criterio aplicado el 27/07/2026 (T-183) para decidir qué se ignora y qué se declara: **el uso
+// real en código**, no el nombre. Las 50 que alguien consulta se añadieron al schema; estas 15 no
+// tienen un solo uso en `lib/`, `app/`, `backend/src/`, `scripts/` ni `db/`.
 const IGNORE_TABLES = [
   'user_streaks_backup_20241208',  // Backup temporal
   'trigger_logs',                   // Logs internos de triggers
   'users',                          // Tabla de auth schema (no public)
+
+  // — Copias PREVIAS a la migración de outbox (2026). Congeladas: se conservan para poder
+  //   comparar contra el estado anterior si un contador materializado se descuadra. Nadie las lee.
+  'law_question_first_attempts_pre_outbox',
+  'question_first_attempts_pre_outbox',
+  'user_daily_stats_pre_outbox',
+  'user_difficulty_stats_pre_outbox',
+  'user_hourly_stats_pre_outbox',
+  'user_question_history_v2_pre_outbox',
+  'user_stats_summary_pre_outbox',
+  'backfill_materialized_stats_progress',  // Progreso del backfill que creó esas copias
+
+  // — Cohortes de campañas PUNTUALES ya cerradas (drenaje de mislinks, relink LECrim/CP).
+  //   Son el registro de qué se tocó y por qué; no las consulta ningún código vivo.
+  'mislink_review_cohort',
+  'relink_lecrim_cp_cohort',
+
+  // — Históricos de features que no llegaron a cablearse o quedaron sustituidas.
+  'convocatoria_verification_history',
+  'convocatorias_history',
+  'law_source_verification',
+  'law_source_verification_history',
+  'instagram_posts',               // Publicación en IG: la cuenta está caída por sanción
 ]
 
 async function main() {
@@ -130,6 +160,7 @@ async function main() {
     const COLUMNAS_NO_REPRESENTABLES = new Set([
       'articles.content_tsv',
       'articles.teoria_content_tsv',
+      'convocatoria_documentos.tsv',
     ])
     const columnasFaltantes: string[] = []
     if (dbTableNames.size > 0) {

@@ -45,7 +45,11 @@ function urlSinSslMode(url: string): string {
 // `tsvector`: `drizzle-kit introspect` las emite como `unknown("…")`, un tipo que ni siquiera
 // importa — el fichero que genera no compila. Son índices de búsqueda full-text mantenidos por
 // trigger, que la app nunca selecciona por Drizzle. Debe MENGUAR, no crecer.
-const NO_REPRESENTABLES = new Set(['articles.content_tsv', 'articles.teoria_content_tsv'])
+const NO_REPRESENTABLES = new Set([
+  'articles.content_tsv',
+  'articles.teoria_content_tsv',
+  'convocatoria_documentos.tsv', // añadida con la tabla al schema (T-183)
+])
 
 // Tablas fuera del schema a propósito (backups, logs internos, schema `auth`). Espejo de
 // IGNORE_TABLES en scripts/check-schema-drift.ts.
