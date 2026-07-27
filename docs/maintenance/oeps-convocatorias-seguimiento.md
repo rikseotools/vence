@@ -233,6 +233,20 @@ La tabla de arriba se hizo a mano con `curl` la primera vez. Ahora hay tres piez
 
 Y el badge lo vigila solo: kind **`seguimiento_fuente_ciega`** (frase-gatillo *"revisa las fuentes ciegas de seguimiento"*), en el gemelo CLI y en el `@Cron` del backend.
 
+> ⚠️ **Hueco conocido: una fuente puede estar LLENA de texto y aun así no vigilar nada (27/07).** El
+> núcleo decide por **volumen** (menos de ~600 caracteres de texto servido = ciega), lo cual caza SPAs,
+> shells, WAFs y páginas en desuso — pero **no** el caso de una página real, rica y estable que
+> simplemente **no contiene el hecho que queremos ver**. Medido en
+> `agrupacion-profesional-servicios-publicos-carm`: su `seguimiento_url` apuntaba a la **ficha del
+> cuerpo** de la CARM (`IDCONTENIDO=2340&CODIGO_CUERPO=ASP00`), 14.872 caracteres de titulación
+> requerida y menús, que **jamás lista una convocatoria**. Hash estable, HTTP 200, panel verde y
+> `sim-fuentes-ciegas` dándola por sana durante meses; señales OEP de esa oposición: **0**. La ficha
+> buena es el **buscador de convocatorias por cuerpo** (`IDCONTENIDO=62006…BUSCAR_POR=CUERPO_OFERTA`,
+> 294.922 caracteres), al que se repuntó entre el 20 y el 27/07. **Al auditar una fuente no te quedes
+> en "responde y tiene texto": abre el `content_preview` y comprueba que ahí SALDRÍA una convocatoria
+> nueva.** Un preview que empieza por "FICHA DEL CUERPO/OPCIÓN" o "TITULACIÓN REQUERIDA" es un
+> catálogo, no un tablón. Mientras el detector siga midiendo volumen, este caso lo tienes que ver tú.
+
 **Repuntar, a partir de ahora:**
 
 ```bash
