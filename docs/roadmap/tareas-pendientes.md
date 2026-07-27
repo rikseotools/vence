@@ -244,6 +244,35 @@
 - **Riesgo a vigilar cuando se reactive:** el cubo es el tercer candidato a vertedero. Ya hay dos: **6.886 extracciones de LLM con 0 triadas** y **6.476 de 6.696 documentos tipados como `nota` genérica** (T-147). Si entran 460 páginas/día, el cubo no se vacía. **El embudo no es un extra: es lo que hace el cubo atendible.**
 - **Reutilizar, no duplicar:** cubo `convocatoria_documentos` · patrón `docs:bandeja` · `computeContentHash()` (realineado) · `diag-seguimiento-ruido.cjs` para calibrar · A/B de modelos `scripts/observabilidad/ab-modelo-notas.cjs` si tras el embudo aún compensa mirar modelos más baratos por OpenRouter (`OPENROUTER_API_KEY` ya configurada). **Ojo:** con el embudo quitando el 75-80% de las llamadas, optimizar el precio del resto (~2 USD/día) es de segundo orden — decidir si merece la pena antes de gastar sesión en ello.
 - **Capas exigidas** (petición explícita de Manuel, 27/07): núcleo PURO compartido cron↔CLI (nunca una copia por gemelo), unit con las páginas reales de los tres grupos medidos, **simulación bank-wide sin escribir ANTES de encender**, paridad CLI↔`@Cron` si se toca el sweep, y canary solo si el embudo llega a decidir solo. Sin silos: frase-gatillo en `runbookRegistry` + CLAUDE.md.
+
+---
+
+#### ⏱️ EMPIEZA POR AQUÍ — un comando, y hay que correrlo el 28/07
+
+```bash
+node scripts/oep/pilot-hash-gate.cjs --n 120 --comparar scratchpad/oep-hashes-27jul.json
+```
+
+**Por qué HOY y no cuando se pueda:** la línea base se tomó el **27/07 a las ~15:20 UTC** (108 hashes en `scratchpad/oep-hashes-27jul.json`, gitignored, en el worktree `backlog-urgentes`). Corriéndolo el 28 mide el delta limpio de **24 h**, que es justo el ruido diario que falta por medir. Cada día que pase mide 48 h, 72 h… y el número deja de ser comparable con lo estimado. **Es lo ÚNICO de esta ficha que se degrada por esperar.**
+Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <fichero>` y se compara al día siguiente: se pierde un día, no el trabajo.
+
+**Qué esperar:** el ruido diario estimado es **7,4%**. Si sale en esa banda (≈5-12%), el embudo ahorra el 75-80% previsto → implementar y reactivar el radar. Si sale muy por encima (>25%), el hash no discrimina lo suficiente y **hay que replantear**, no forzar el embudo: sería repetir T-047.
+
+#### ✅ Ya HECHO el 27/07 (no rehacer)
+
+- **Piloto ejecutado con datos reales**, 73 y 108 páginas de seguimiento, doble descarga. Resultados: **97,3% de hashes estables**, ruido de segundos **5,6%**, páginas que **exceden la ventana de 20k del modelo 11-12%**.
+- **Ruido diario estimado sin esperar 24 h:** **7,4%** de las páginas imprimen la fecha del día DENTRO de la ventana del modelo → cambiarán seguro. **Converge con el 9,5%** del histórico 8-21/07 por un método independiente. Dos medidas distintas apuntando al mismo sitio.
+- **Reconciliación con T-047, ahora MEDIDA y no argumentada:** aquel sensor medía *precisión de señal* ("cambió el hash" → "hay convocatoria nueva"), difícil, y salió al 4%. Este mide *estabilidad del hash*, que es del 97,3%. Y el riesgo es inverso: allí un falso positivo ensuciaba la bandeja; aquí cuesta una llamada de céntimos. **El embudo es viable.**
+- **Núcleo puro `lib/oep/llmInputHash.cjs`** — hashea los **20.000** chars que ve el modelo (no los 100.000 de `computeContentHash`), `necesitaLlm()` con la asimetría cableada (sin hash previo o ante duda, SIEMPRE llamar) y `contieneFecha()`. **22 tests**, incluida paridad con el `cleanHtml` real del backend.
+- **Piloto reutilizable `scripts/oep/pilot-hash-gate.cjs`** con `--baseline` / `--comparar`.
+- **GOTCHA del normalizador:** cada etiqueta se sustituye por un espacio, así que `<b>Plazas</b>:` → `"Plazas :"` y `Plazas:` → `"Plazas:"`. **Un rediseño del HTML dispara un falso "cambió"** y paga una llamada de más. Cae del lado seguro, pero que nadie lo confunda con un bug del gate.
+
+#### 🔨 Lo que queda por CONSTRUIR (tras el `--comparar`)
+
+1. Persistir el hash del input del LLM por oposición (columna nueva o reutilizar `convocatoria_documentos.content_hash` — decidir cuál, no duplicar).
+2. Cablear `necesitaLlm()` en `DetectOepLlmService.run()` **antes** de `extractOepFromHtml`. El backend NO puede importar `lib/` (build separado): toca **espejo en `backend/src` + test de paridad**, como ya se hace con los detectores del sweep.
+3. Clonar en `convocatoria_documentos` lo que pase el filtro, **con su tipo real y su hash** (no como `nota` genérica — es el defecto que ya arrastran 6.476 filas, T-147).
+4. Quitar la pausa: `DETECT_OEP_LLM_ENABLED` a `true` en `scripts/deploy-backend.sh` + desplegar.
 ### [T-170] 🟡 [ABIERTO 27/07] `clasificar-hitos` bank-wide: 45 hitos cambiarían de `tipo` y nadie ha adjudicado cuáles son mejora
 - **Qué:** `scripts/clasificar-hitos.cjs` deriva `tipo` y `origen` de cada hito con reglas compartidas y testeadas, pero **hace más de un año que no se pasa entero**. Medido el 27/07 en seco sobre los 1.068 hitos vivos: **45 cambiarían de `tipo`** respecto a lo que hay en BD. Una parte son claramente arreglos (**14 hitos con `tipo` NULL** que pasarían a `plazo_fin`/`convocatoria_publicada`/`ejercicio_1`/`oep_aprobada`), pero otra parte **no está claro que lo sea**: `plazo_fin → plazo_inicio` ×4, `convocatoria_publicada → bases_publicadas` ×2, `modificacion_plazas → bases_publicadas` ×3. Correrlo a ciegas puede degradar hitos que alguien tipó a mano con el documento delante.
 - **Impacto:** 🟡 el `tipo` alimenta el timeline, el rollover y las consultas por tipo; un hito mal tipado es invisible a quien lo busca por su tipo, y uno NULL lo es para todos. No hay daño visible hoy.
