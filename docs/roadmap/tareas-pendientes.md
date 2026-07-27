@@ -1217,13 +1217,42 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - Detalle y diseño por fases: `docs/roadmap/oep-entidad-modelo.md`.
 
 ### [T-107] 🟡 [ABIERTO 24/07] Campaña de clonado de epígrafes oficiales (Paso 1) — falso verde de scope a escala
-- **📌 SESIÓN 27/07 (worktree `sesion-27jul-e`) — 4 oposiciones tocadas y el pipeline con 4 capacidades nuevas. Lo importante para quien siga:**
-  - **`auxiliar_administrativo_cantabria` ✅ 25/25 literal + 25/25 scope.** El `programa_url` apuntaba a la Orden PRE/76/2024 cuando el programa vigente es esa Orden **MODIFICADA por la PRE/12/2026** (BOC 30, 13/02/2026). Estuve a punto de revertir el temario correcto "por fidelidad al boletín": lo salvó leer los feedbacks (una usuaria lo había avisado el 07/07). **Antes de declarar drift contra el programa, busca órdenes que lo modifiquen** — está escrito en el runbook.
-  - **`auxiliar_administrativo_madrid_2027` ✅ 21/21 literal.** T12 recortado: **611 preguntas** fuera de programa (0 huérfanas). Las dos convocatorias VIVAS del mismo cuerpo tienen programas DISTINTOS — la de febrero dice "Hacienda Pública: Normativa básica" y la de julio no. 17 temas verificados por **equivalencia exacta** con la hermana (mismo epígrafe byte a byte + mismo scope), T16 a `needs_human` (una sirve Windows 10 y otra Windows 11 con el mismo epígrafe sin versión).
-  - **`tcae_galicia` ✅ 31/31 literal.** Programa **REPARTIDO en 3 documentos**: común en la convocatoria 2025, específica en la Resolución de 21/05/2019 (DOG 103) y un tema de género por la Ley 7/2023. 19 de 22 específicos y 4 de 8 comunes eran condensaciones que se comían materia examinable. **Paso 2 pendiente (24 `stale`).**
-  - **`correos_personal_operativo` → `provisional` con motivo.** No hay fuente pública: su portal de empleo ya no existe en correos.es y el vivo exige login. Ficha [T-186].
-  - **Capacidades nuevas del pipeline (úsalas, no repitas a mano):** `verify:epigrafe apply` (reescribe al literal con guarda de los 4 campos + literalidad, dry-run por defecto) · `verify:scope` admite **añadir una ley** a un tema (`ley_nueva`, siempre puerta de juicio) · **conflicto de fuentes** (si el parseo automático y el manual discrepan, para y los enseña; `--fuente-manual` decide) · clonado de documentos **con su texto**.
-  - **Y el coste de la campaña estaba INFLADO:** el "~30% de boletines no parsean" incluía un bug nuestro (`maxBuffer` de 1 MB en `pdftotext`), que hacía ilegibles justo los boletines con MÁS temario. Arreglado: `tcae_murcia`, `madrid_2027`, `enfermeria_gva` y `osakidetza` ya extraen texto. **Mide de nuevo antes de asumir trabajo manual.**
+- **📌 SESIÓN 27/07 (worktree `sesion-27jul-e`) — 6 oposiciones trabajadas, 5 capacidades nuevas del pipeline y el coste de la campaña RECALCULADO. Traspaso completo:**
+
+  **A) Estado de lo tocado (Paso 1 / Paso 2):**
+
+  | Oposición | Usuarios | Paso 1 | Paso 2 |
+  |---|---|---|---|
+  | `auxiliar_administrativo_cantabria` | 43 | 25/25 literal | 25/25 correct |
+  | `tcae_murcia` | 53 | 44/44 literal | 37 correct · **6 issues** |
+  | `tcae_galicia` | 30 | 31/31 literal | 25 correct · **4 issues** |
+  | `ordenanza_ayuntamiento_cordoba` | 55 | 10/10 literal | — |
+  | `auxiliar_administrativo_madrid_2027` | 33 | 21/21 literal | 17 correct · 2 issues · 1 `needs_human` |
+  | `correos_personal_operativo` | 43 | `provisional` con motivo | — |
+
+  Los **10 `issues`** NO son deuda opaca: cada uno lleva escrito en `findings` el bloque de materia que el tema no sirve (*"Dietas terapéuticas"*, *"Técnicas de deambulación"*, *"Cadena epidemiológica"*, *"Representación, participación y negociación colectiva"*…). Entran directos en la cola de generación de [T-115] sin re-investigar.
+
+  **B) Los tres errores de método que casi cuestan caro (léelos antes de tocar nada):**
+  1. **El `programa_url` puede apuntar a una Orden SUPERADA.** Cantabria: la PRE/76/2024 está modificada por la **PRE/12/2026**, que cambia el T16 y la parte específica entera. Comparando contra el `programa_url` estuve a punto de revertir el temario CORRECTO "por fidelidad al boletín". Lo destapó **una usuaria** (07/07), no el sistema. Señal de alarma: *si la parte general casa verbatim y solo diverge una sección entera, casi nunca es que nos lo inventáramos — es que esa sección se modificó.*
+  2. **Antes de concluir, LEE LOS FEEDBACKS de esa oposición.** Si alguien pidió el cambio, hay una razón documentada y probablemente una fuente.
+  3. **El programa suele estar REPARTIDO.** Galicia: común en la convocatoria + específica en la Resolución de 2019 + un tema por mandato de la Ley 7/2023. Murcia: común en una Resolución y específica en otra, **asignada POR OPCIÓN en el anexo**. La convocatoria a menudo no trae el temario: trae la remisión.
+
+  **C) Capacidades nuevas (úsalas; no repitas a mano):**
+  - `verify:epigrafe apply <pt> <plan.json> [--apply] [--fuente-manual]` — reescribe al literal con guarda de los 4 campos de display + literalidad obligatoria; dry-run por defecto.
+  - **Conflicto de fuentes:** si el parseo automático y el manual discrepan, PARA y enseña los dos (el parser se desalinea en boletines con varios turnos/bloques: en Galicia mezcló el turno de discapacidad). `--fuente-manual` decide y queda anotado.
+  - `verify:scope` admite **añadir una ley** a un tema (`ley_nueva`), siempre por puerta de juicio.
+  - `scripts/temario/sim-materias-ganadas.cjs <pt>` — **OBLIGATORIO tras reescribir a literal**: mide qué materia GANÓ el temario y si la servimos. Sin esto, o se re-sella el Paso 2 sin medir o se queda todo en `stale`.
+  - El clonado de documentos guarda ya **su texto** (sin texto, el documento es invisible para el aviso de "documentos que afinan el programa").
+
+  **D) El coste de la campaña estaba INFLADO:** el *"~30% de boletines no parsean"* incluía un bug nuestro (`maxBuffer` de 1 MB en `pdftotext`) que hacía ilegibles **justo los boletines con MÁS temario**. Arreglado. `tcae_murcia` —que la ficha daba por bloqueada por el WAF del BORM— se cerró entera. **Mide de nuevo antes de asumir trabajo manual.**
+
+  **E) Gotchas de extracción medidos (ahorran una hora cada uno):**
+  - **BOP Córdoba:** intercala el CSV de firma, la cabecera de página y una banda lateral *DENTRO* de las frases → tres temas parecen drift y no lo son.
+  - **BOCM:** el pie (`BOCM-AAAAMMDD-N`) se cuela al saltar de hoja.
+  - **BOC Cantabria / BORM:** un solo PDF con los programas de TODOS los cuerpos → acotar SIEMPRE al bloque del cuerpo correcto.
+  - Varios `programa_url` traen un **espacio final** en la URL.
+
+  **F) Punto de retomada:** `node scripts/temario/detect-temario-revision.cjs` da la cola por usuarios (~73 pendientes). Las 3 primeras (`cadiz`, `ayuntamiento_murcia`, `asturias`) siguen **flagged a propósito** (`drift_detected`: su `programa_url` no casa con el temario de BD) — no las toques sin confirmar antes la convocatoria vigente.
 
 - **Qué:** el sistema de verificación tiene DOS pasos y el **Paso 1 (clonar el epígrafe LITERAL de la convocatoria oficial → `topics.epigrafe` + `verified_literal`) es BLOQUEANTE** antes del Paso 2 (scope↔epígrafe). Medido 24/07 en RDS: de **127 oposiciones activas, solo 11** tienen algún tema con epígrafe `verified_literal`; **95 tienen 0 epígrafe clonado PERO ≥1 tema con scope `verified_correct`** → el scope se verificó contra una referencia SIN validar. **2.626 temas** en esa situación (scope `verified_correct`, epígrafe sin clonar).
 - **Impacto:** **falso verde a escala.** Un scope "verified_correct" contra un epígrafe que podría ser paráfrasis/incompleto no garantiza nada (casos T17 GVA, SMS T11, y el 24/07 `administrativo_extremadura`: casi se rechaza una impugnación de scope de Sara con el epígrafe `never_sourced`). El enforcement nuevo en los dossiers (`scripts/impugnaciones/lib/scope-enforcement.cjs`) **AVISA** cuando un usuario se queja, pero no cierra el gap de fondo.
