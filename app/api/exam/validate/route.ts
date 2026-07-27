@@ -21,6 +21,22 @@ import {
   scoreDivergence,
   type DbAnswerRow,
 } from '@/lib/api/exam/reconcile'
+// Trazo anti-cosecha (auditoría 27/07/2026). Este endpoint revela clave +
+// explicación de cualquier questionId, y cuando la llamada NO trae testId no
+// persiste nada → hasta ahora una cosecha por aquí no dejaba NINGÚN rastro.
+// No bloquea ni cambia la UX: solo cuenta y traza. Ver lib/api/exam/validateShape.ts.
+import { classifyValidateCall } from '@/lib/api/exam/validateShape'
+import { MAX_QUESTIONS_PER_REQUEST } from '@/lib/api/filtered-questions/schemas'
+import { emit } from '@/lib/observability/emit'
+import { getClientIp } from '@/lib/api/rateLimit'
+import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
+import { isCaptchaEnabled } from '@/lib/security/captcha'
+import {
+  gateSubjects,
+  recordServedForSubjects,
+} from '@/lib/security/challengePolicy/questionsServed'
 // ============================================
 // SCHEMAS DE VALIDACIÓN
 // ============================================
@@ -43,7 +59,14 @@ const examAnswerSchema = z.object({
 
 const validateExamRequestSchema = z.object({
   testId: z.string().uuid('ID de test inválido').optional(), // 🔴 FIX: Ahora acepta testId para marcar como completado
-  answers: z.array(examAnswerSchema).min(1, 'Debe haber al menos una respuesta')
+  // TOPE DE LOTE (27/07/2026). Antes solo había `.min(1)`: una sola petición podía
+  // pedir la corrección —clave + explicación— de decenas de miles de preguntas.
+  // El tope es el MISMO que el de generación (MAX_QUESTIONS_PER_REQUEST): más de
+  // lo que se puede generar no puede venir de un examen real, y atarlos a una
+  // única constante impide que diverjan y acaben rechazando exámenes legítimos.
+  answers: z.array(examAnswerSchema)
+    .min(1, 'Debe haber al menos una respuesta')
+    .max(MAX_QUESTIONS_PER_REQUEST, `Un examen no puede tener más de ${MAX_QUESTIONS_PER_REQUEST} preguntas`)
 })
 
 type ExamAnswer = z.infer<typeof examAnswerSchema>
@@ -387,6 +410,86 @@ return {
 }
 
 // ============================================
+// TRAZO ANTI-COSECHA
+// ============================================
+//
+// Este endpoint entrega clave + explicación de cada pregunta del lote. Es el
+// activo caro y hasta ahora se podía pedir sin dejar huella (sin `testId` no se
+// escribe ni una fila). Aquí NO se bloquea nada — se hace visible:
+//
+//   1. `observable_events`: un evento por llamada, con el sujeto (usuario/IP/
+//      dispositivo) y la FORMA de la llamada (ver validateShape.ts). Es el
+//      rastro que antes no existía.
+//   2. Contador de servidas: alimenta el MISMO gate anti-scraping que ya
+//      protege /api/questions/filtered, en vez de montar un contador aparte.
+//      Sin coste para el usuario real: el gate solo reta por encima de 500/día
+//      y el examen más grande son 110 preguntas.
+//
+// `await` en el emit a propósito: es un trazo de seguridad y no puede ser
+// lossy. `emitFireAndForget` dentro de un flujo que awaita otras operaciones
+// perdía eventos (incidente 47% del 26/05/2026, ver lib/observability/emit.ts).
+//
+// Pero el `await` va ACOTADO: el sink ya corta a 5s y nunca lanza, y aun así 5s
+// colgados en el camino por el que un opositor recibe su nota son inaceptables.
+// Con el tope de abajo, el peor caso que puede añadir el trazo es TRACE_BUDGET_MS
+// (el emit sigue en segundo plano y normalmente acaba entrando igual).
+const TRACE_BUDGET_MS = 1_500
+
+async function traceValidateCall(
+  request: NextRequest,
+  args: { batchSize: number; answeredCount: number; testId?: string },
+): Promise<void> {
+  try {
+    const shape = classifyValidateCall({
+      batchSize: args.batchSize,
+      answeredCount: args.answeredCount,
+      hasTestId: Boolean(args.testId),
+    })
+
+    const ip = getClientIp(request)
+    const deviceId = getDeviceIdFromRequest(request)
+    const synthetic = isSyntheticRequest(request)
+    let userId: string | null = null
+    try {
+      userId = (await verifyAuthOptional(request, '/api/exam/validate'))?.userId ?? null
+    } catch { /* el trazo nunca depende de que la auth resuelva */ }
+
+    const emitted = emit({
+      source: 'vercel',
+      severity: shape.severity,
+      eventType: 'exam_validate_served',
+      endpoint: '/api/exam/validate',
+      userId: userId ?? undefined,
+      metadata: {
+        shape: shape.shape,
+        reasons: shape.reasons,
+        batchSize: args.batchSize,
+        answeredCount: args.answeredCount,
+        hasTestId: Boolean(args.testId),
+        ip,
+        deviceId: deviceId ?? null,
+        authenticated: Boolean(userId),
+        synthetic,
+      },
+    })
+    let budget: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+      emitted.finally(() => { if (budget) clearTimeout(budget) }),
+      new Promise<void>((resolve) => { budget = setTimeout(resolve, TRACE_BUDGET_MS) }),
+    ])
+
+    // Canaries/smoke fuera del contador (mismo criterio que /api/questions/filtered:
+    // es monitorización interna, no consumo real).
+    if (isCaptchaEnabled() && !synthetic && args.batchSize > 0) {
+      recordServedForSubjects(gateSubjects(userId, deviceId, ip), args.batchSize).catch(() => {})
+    }
+  } catch (err) {
+    // Observabilidad degradada NUNCA rompe la nota del opositor.
+    console.warn('⚠️ [API/exam/validate] trazo no registrado:', (err as Error)?.message)
+  }
+}
+
+// ============================================
 // ENDPOINT POST
 // ============================================
 
@@ -411,6 +514,14 @@ return NextResponse.json(
         { status: 400 }
       )
     }
+
+    // Trazo ANTES de revelar: si la corrección peta a mitad, el intento ya
+    // quedó registrado. El coste es un INSERT por examen (no por pregunta).
+    await traceValidateCall(request, {
+      batchSize: validation.data.answers.length,
+      answeredCount: validation.data.answers.filter(a => a.userAnswer != null).length,
+      testId: validation.data.testId,
+    })
 
     // Validar examen y marcar como completado si se proporcionó testId
     const result = await validateExamAnswers(validation.data.answers, validation.data.testId)

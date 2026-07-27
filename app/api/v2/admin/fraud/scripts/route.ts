@@ -1,14 +1,30 @@
 // app/api/v2/admin/fraud/scripts/route.ts
-// Detección de scripts/curl (uso sin dispositivo registrado). Tier admin.
-// AGNÓSTICO (Fase C1): porta loadScripts server-side (queries Drizzle + agregación verbatim).
+// Detección de COSECHA de preguntas (scraping del banco). Tier admin.
+//
+// Reescrito 27/07/2026. La versión anterior listaba "usuarios sin dispositivo
+// registrado" ordenados por preguntas RESPONDIDAS (`daily_question_usage`), y
+// por eso era ciega al modo real de scraping: cosechar no requiere responder.
+// Medido en prod: un usuario tuvo ese contador en 2 el 16/05/2026 mientras se le
+// servían 5.495 preguntas.
+//
+// Ahora el volumen sale de `daily_questions_served` (rollup duradero de SERVIDAS)
+// y la señal es el RATIO respondidas/servidas, clasificado por el MISMO núcleo
+// puro que usa `scripts/fraud-sweep.cjs` (lib/security/harvestSignals.js) — para
+// que el panel y las alertas no puedan volver a divergir.
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { pgUuidArray } from '@/lib/api/sqlArrays'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { classifyHarvest } = require('@/lib/security/harvestSignals')
 
 export const maxDuration = 25
+
+/** Misma ventana que el sweep (FRAUD_WINDOW_DAYS): lo que alerta y lo que se ve
+ *  en el panel tienen que ser lo mismo o el revisor no encuentra la señal. */
+const WINDOW_DAYS = 30
 
 function rows(r: unknown): any[] {
   return (Array.isArray(r) ? r : (r as { rows?: unknown[] }).rows || []) as any[]
@@ -19,44 +35,87 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   if (!admin.ok) return admin.response
   const db = getAdminDb()
 
-  const recentUsage = rows(await db.execute(sql`
-    SELECT user_id, questions_answered, usage_date FROM daily_question_usage
-    WHERE usage_date >= (CURRENT_DATE - 7)
+  // Servidas por usuario en la ventana. subject_kind='user' → subject_key es el uuid.
+  const served = rows(await db.execute(sql`
+    SELECT subject_key AS user_id, sum(served)::int AS served, max(usage_date)::text AS last_usage
+      FROM daily_questions_served
+     WHERE subject_kind = 'user' AND usage_date >= CURRENT_DATE - ${WINDOW_DAYS}::int
+     GROUP BY 1
+     ORDER BY 2 DESC
+     LIMIT 500
   `))
-  if (!recentUsage.length) return NextResponse.json({ success: true, scripts: [] })
 
-  const usageUserIds = [...new Set(recentUsage.map(u => u.user_id))]
-  const deviceUsers = rows(await db.execute(sql`
-    SELECT user_id FROM user_devices WHERE user_id = ANY(${pgUuidArray(usageUserIds)})
-  `))
-  const usersWithDevices = new Set<string>(deviceUsers.map(d => d.user_id))
-
-  const suspectIds = usageUserIds.filter(id => !usersWithDevices.has(id))
-  if (!suspectIds.length) return NextResponse.json({ success: true, scripts: [] })
-
-  const totalByUser = new Map<string, { total: number; last: string }>()
-  for (const u of recentUsage) {
-    if (!suspectIds.includes(u.user_id)) continue
-    const entry = totalByUser.get(u.user_id) || { total: 0, last: '' }
-    entry.total += u.questions_answered
-    if (u.usage_date > entry.last) entry.last = u.usage_date
-    totalByUser.set(u.user_id, entry)
+  // FALSO VERDE: sin rollup no es que no haya cosechadores, es que no miramos.
+  // El panel debe decirlo en vez de mostrar una lista vacía tranquilizadora.
+  if (!served.length) {
+    return NextResponse.json({
+      success: true,
+      scripts: [],
+      blind: true,
+      reason: 'daily_questions_served sin datos en la ventana: el contador de servidas no está escribiendo',
+      windowDays: WINDOW_DAYS,
+    })
   }
 
+  const ids = served.map(s => s.user_id).filter((v: string) => /^[0-9a-f-]{36}$/i.test(v))
+  if (!ids.length) return NextResponse.json({ success: true, scripts: [], windowDays: WINDOW_DAYS })
+
   const profiles = rows(await db.execute(sql`
-    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(suspectIds)})
+    SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(ids)})
   `))
+  const answered = rows(await db.execute(sql`
+    SELECT user_id, sum(questions_answered)::int AS answered
+      FROM daily_question_usage
+     WHERE user_id = ANY(${pgUuidArray(ids)}) AND usage_date >= CURRENT_DATE - ${WINDOW_DAYS}::int
+     GROUP BY 1
+  `))
+  const pageViews = rows(await db.execute(sql`
+    SELECT user_id, count(*)::int AS page_views
+      FROM user_interactions
+     WHERE user_id = ANY(${pgUuidArray(ids)}) AND event_type = 'page_view'
+       AND created_at > now() - (${WINDOW_DAYS}::int || ' days')::interval
+     GROUP BY 1
+  `))
+  const devices = rows(await db.execute(sql`
+    SELECT DISTINCT user_id FROM user_devices WHERE user_id = ANY(${pgUuidArray(ids)})
+  `))
+
   const profileMap = new Map<string, any>(profiles.map(p => [p.id, p]))
+  const answeredMap = new Map<string, number>(answered.map(a => [a.user_id, Number(a.answered)]))
+  const pvMap = new Map<string, number>(pageViews.map(p => [p.user_id, Number(p.page_views)]))
+  const deviceSet = new Set<string>(devices.map(d => d.user_id))
 
-  const scripts = [...totalByUser.entries()].map(([uid, entry]) => {
-    const p = profileMap.get(uid)
-    return {
-      user_id: uid, email: p?.email || '?', full_name: p?.full_name || '',
-      plan_type: p?.plan_type || 'free', questions_total: entry.total, last_usage: entry.last,
-    }
-  }).sort((a, b) => b.questions_total - a.questions_total)
+  const scripts = served
+    .map(s => {
+      const uid = s.user_id
+      const p = profileMap.get(uid)
+      const input = {
+        served: Number(s.served),
+        answered: answeredMap.get(uid) ?? 0,
+        pageViews: pvMap.get(uid) ?? 0,
+        hasDevice: deviceSet.has(uid),
+      }
+      const verdict = classifyHarvest(input)
+      if (!verdict) return null
+      return {
+        user_id: uid,
+        email: p?.email || '?',
+        full_name: p?.full_name || '',
+        plan_type: p?.plan_type || 'free',
+        served: input.served,
+        answered: input.answered,
+        answer_ratio: Number(verdict.ratio.toFixed(4)),
+        page_views: input.pageViews,
+        has_device: input.hasDevice,
+        kind: verdict.kind,
+        severity: verdict.severity,
+        reasons: verdict.reasons,
+        last_usage: s.last_usage,
+      }
+    })
+    .filter(Boolean)
 
-  return NextResponse.json({ success: true, scripts })
+  return NextResponse.json({ success: true, scripts, windowDays: WINDOW_DAYS })
 }
 
 export const GET = withErrorLogging('/api/v2/admin/fraud/scripts', _GET)

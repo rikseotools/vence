@@ -1,6 +1,19 @@
 // lib/api/filtered-questions/schemas.ts - Schemas de validación para preguntas filtradas
 import { z } from 'zod'
 
+/**
+ * Techo de preguntas que se pueden pedir en UNA petición. Es el máximo que el
+ * producto permite generar, así que también es el máximo que tiene sentido
+ * CORREGIR de una vez (`/api/exam/validate` importa esta misma constante).
+ *
+ * Una sola fuente para los dos: si el tope de generación cambia y el de
+ * corrección no, o se rechazan exámenes legítimos (el opositor se queda sin
+ * nota) o se reabre el hueco de pedir correcciones en lotes ilimitados.
+ * Referencia empírica: el examen real más grande en 90 días fueron 110
+ * preguntas (p99 = 110, mediana 25), así que 500 va sobradísimo.
+ */
+export const MAX_QUESTIONS_PER_REQUEST = 500
+
 // ============================================
 // SCHEMAS PARA FILTROS DE SECCIONES/TÍTULOS
 // ============================================
@@ -38,7 +51,7 @@ export const getFilteredQuestionsRequestSchema = z.object({
   multipleTopics: z.array(z.number().int().min(1)).default([]),
 
   // Cantidad de preguntas (máx 200 para tests largos de múltiples leyes)
-  numQuestions: z.number().int().min(1).max(500).default(25),
+  numQuestions: z.number().int().min(1).max(MAX_QUESTIONS_PER_REQUEST).default(25),
 
   // Filtros de leyes (array de short_names)
   selectedLaws: z.array(z.string()).default([]),

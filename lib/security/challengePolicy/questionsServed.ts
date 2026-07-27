@@ -115,12 +115,23 @@ export async function shouldChallengeForLoad(
 /**
  * Contabiliza `n` preguntas servidas en TODOS los sujetos (usuario/IP + dispositivo).
  * Fire-and-forget desde el caller. Devuelve los totales (para telemetría/debug).
+ *
+ * DOS destinos, un solo concepto:
+ *   - Redis (aquí): camino CALIENTE. Es lo que lee el gate en cada carga; TTL 26 h.
+ *   - Postgres (`servedRollup`): pista de AUDITORÍA duradera, para los detectores.
+ *     Va desacoplado a propósito — si la BD tarda o falla, el gate no se entera
+ *     y el usuario tampoco. Ver el porqué en servedRollup.ts.
  */
 export async function recordServedForSubjects(
   subjects: GateSubject[],
   n: number,
 ): Promise<number[]> {
   if (n <= 0 || !subjects.length) return []
+  // Import diferido: mantiene el módulo del gate libre de la dependencia de BD
+  // (lo importan rutas que hoy no tocan Drizzle) y evita ciclos.
+  import('./servedRollup')
+    .then((m) => m.persistServedRollup(subjects, n))
+    .catch(() => {})
   return Promise.all(
     subjects.map((s) => incrementCounterWithTtl(dayKey(s.key), COUNTER_TTL_S, n)),
   )

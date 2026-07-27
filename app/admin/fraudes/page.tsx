@@ -34,12 +34,22 @@ interface BotSuspect {
   last_answer: string
 }
 
+// Cosecha de preguntas: servidas vs respondidas (ver lib/security/harvestSignals.js).
+// Antes esto listaba "usuarios sin dispositivo" ordenados por RESPUESTAS, que es
+// justo lo que un cosechador no genera.
 interface ScriptSuspect {
   user_id: string
   email: string
   full_name: string
   plan_type: string
-  questions_total: number
+  served: number
+  answered: number
+  answer_ratio: number
+  page_views: number
+  has_device: boolean
+  kind: string
+  severity: string
+  reasons: string[]
   last_usage: string
 }
 
@@ -74,6 +84,7 @@ export default function FraudesPage() {
   const [multiData, setMultiData] = useState<MultiAccount[]>([])
   const [botData, setBotData] = useState<BotSuspect[]>([])
   const [scriptData, setScriptData] = useState<ScriptSuspect[]>([])
+  const [scriptBlind, setScriptBlind] = useState(false)
   const [blockedData, setBlockedData] = useState<DeviceBlocked[]>([])
 
   useEffect(() => {
@@ -120,7 +131,17 @@ export default function FraudesPage() {
   }
 
   async function loadScripts() {
-    setScriptData(await fraudFetch<ScriptSuspect>('/api/v2/admin/fraud/scripts', 'scripts'))
+    // `blind` distingue "no hay cosecha" de "no estamos midiendo". Sin esa
+    // distinción, una lista vacía tranquiliza justo cuando no debe.
+    try {
+      const res = await adminFetch('/api/v2/admin/fraud/scripts', { headers: await getAuthHeaders() })
+      if (!res.ok) return
+      const json = await res.json()
+      setScriptData((json.scripts || []) as ScriptSuspect[])
+      setScriptBlind(Boolean(json.blind))
+    } catch (e) {
+      console.error('Error en /api/v2/admin/fraud/scripts', e)
+    }
   }
 
   async function loadBlocked() {
@@ -182,7 +203,7 @@ export default function FraudesPage() {
       {tab === 'senales' && <SignalsTab data={signalsData} onReview={reviewSignal} />}
       {tab === 'premium' && <PremiumTab data={premiumData} />}
       {tab === 'multicuenta' && <MultiTab data={multiData} />}
-      {tab === 'bots' && <BotTab data={botData} scriptData={scriptData} />}
+      {tab === 'bots' && <BotTab data={botData} scriptData={scriptData} scriptBlind={scriptBlind} />}
       {tab === 'bloqueados' && <BlockedTab data={blockedData} />}
     </div>
   )
@@ -286,7 +307,7 @@ function MultiTab({ data }: { data: MultiAccount[] }) {
   )
 }
 
-function BotTab({ data, scriptData }: { data: BotSuspect[]; scriptData: ScriptSuspect[] }) {
+function BotTab({ data, scriptData, scriptBlind }: { data: BotSuspect[]; scriptData: ScriptSuspect[]; scriptBlind: boolean }) {
   return (
     <div className="space-y-8">
       <div>
@@ -311,18 +332,30 @@ function BotTab({ data, scriptData }: { data: BotSuspect[]; scriptData: ScriptSu
 
       <div>
         <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
-          Sin dispositivo registrado (posible script/curl)
+          Cosecha de preguntas (servidas ≫ respondidas)
         </h3>
-        {!scriptData.length ? (
-          <Empty msg="No se detectan usuarios sin dispositivo en los ultimos 7 dias" />
+        {scriptBlind ? (
+          // NO decir "no hay cosechadores" cuando lo que pasa es que no miramos.
+          <div className="p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200">
+            <strong>Detección ciega.</strong> El contador de preguntas servidas no
+            tiene datos en la ventana, así que esta lista está vacía por falta de
+            medición, no por ausencia de cosecha. Ver <code>revisar-fraudes.md</code>.
+          </div>
+        ) : !scriptData.length ? (
+          <Empty msg="Ningun usuario con patron de cosecha en los ultimos 30 dias" />
         ) : (
           <Table
-            headers={['Email', 'Nombre', 'Plan', 'Preguntas (7d)', 'Ultimo uso']}
+            headers={['Email', 'Plan', 'Servidas (30d)', 'Respondidas', 'Ratio', 'Señal', 'Ultimo uso']}
             rows={scriptData.map(d => [
               d.email,
-              d.full_name,
               <Badge key="p" text={d.plan_type} color={d.plan_type === 'free' ? 'gray' : 'green'} />,
-              <span key="q" className={d.questions_total > 25 ? 'text-red-600 font-bold' : ''}>{d.questions_total}</span>,
+              <span key="s" className="font-bold">{d.served}</span>,
+              String(d.answered),
+              // El ratio es la señal: cuanto más bajo, más cosecha.
+              <span key="r" className={d.answer_ratio < 0.05 ? 'text-red-600 font-bold' : 'text-amber-600'}>
+                {(d.answer_ratio * 100).toFixed(1)}%
+              </span>,
+              <Badge key="k" text={d.kind} color={d.severity === 'critical' ? 'red' : 'orange'} />,
               formatDate(d.last_usage),
             ])}
           />

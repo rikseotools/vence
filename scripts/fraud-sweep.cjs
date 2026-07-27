@@ -10,7 +10,7 @@
  *   - multi_account_device   : ≥N cuentas distintas en un mismo dispositivo (farmeo/sharing)
  *   - multi_account_reg_ip    : ≥N cuentas desde una IP (excl. CDN/proxy; exige device compartido o ≥20 = granja)
  *   - device_daily_farming    : un dispositivo suma > umbral preguntas/día across cuentas
- *   - curl_scraping           : uso de API sin dispositivo Y sin navegador (page_views ~0) = script/curl
+ *   - curl_scraping / harvest_* : COSECHA — servidas >> respondidas (lib/security/harvestSignals.js)
  *   - premium_sharing         : dispositivo compartido que incluye premium + ≥2 cuentas activas
  *
  * Dedup: `match_criteria = kind:subject`. Si ya hay una señal 'new' del mismo sujeto se
@@ -18,10 +18,12 @@
  *
  * Uso:  DATABASE_URL=... node scripts/fraud-sweep.cjs [--dry]
  * Env:  FRAUD_DEVICE_ACCOUNTS (3), FRAUD_IP_ACCOUNTS (5), FRAUD_DEVICE_DAILY_Q (60),
- *       FRAUD_SCRAPE_MIN_Q (30), FRAUD_SCRAPE_MAX_PV (5), FRAUD_WINDOW_DAYS (30),
+ *       FRAUD_SCRAPE_MIN_SERVED (300), FRAUD_WINDOW_DAYS (30),
  *       FRAUD_REVIEW_TTL_DAYS (30)
  */
 const { Client } = require('pg');
+// Núcleo puro compartido con el panel admin (mismo criterio en los dos lados).
+const { classifyHarvest } = require('../lib/security/harvestSignals');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -31,8 +33,10 @@ const N = (name, def) => { const v = Number(process.env[name]); return Number.is
 const DEVICE_ACCOUNTS = N('FRAUD_DEVICE_ACCOUNTS', 3);
 const IP_ACCOUNTS     = N('FRAUD_IP_ACCOUNTS', 5);
 const DEVICE_DAILY_Q  = N('FRAUD_DEVICE_DAILY_Q', 60);
-const SCRAPE_MIN_Q    = N('FRAUD_SCRAPE_MIN_Q', 30);
-const SCRAPE_MAX_PV   = N('FRAUD_SCRAPE_MAX_PV', 5);
+// Volumen mínimo de preguntas SERVIDAS para que el ratio respondidas/servidas
+// signifique algo. Sustituye a FRAUD_SCRAPE_MIN_Q/MAX_PV, que medían respuestas
+// guardadas y por eso eran ciegos a la cosecha (ver D4).
+const SCRAPE_MIN_SERVED = N('FRAUD_SCRAPE_MIN_SERVED', 300);
 const WINDOW_DAYS     = N('FRAUD_WINDOW_DAYS', 30);
 const REVIEW_TTL_DAYS = N('FRAUD_REVIEW_TTL_DAYS', 30);
 
@@ -45,9 +49,11 @@ const sevFor = (kind, n) => {
   return 'medium';
 };
 
-async function upsertSignal(c, { kind, subject, userIds, details, n }) {
+async function upsertSignal(c, { kind, subject, userIds, details, n, severityOverride }) {
   const match = `${kind}:${subject}`;
-  const severity = sevFor(kind, n);
+  // severityOverride: los detectores con núcleo puro (cosecha) ya deciden la
+  // gravedad con más contexto del que tiene sevFor (ratio, navegador, huella).
+  const severity = severityOverride || sevFor(kind, n);
   // ¿ya adjudicada (revisada/descartada) hace poco? → no re-levantar
   const adj = await c.query(
     `SELECT id FROM fraud_alerts WHERE match_criteria=$1 AND status IN ('reviewed','dismissed','confirmed')
@@ -135,21 +141,70 @@ async function main() {
       details: { device_id: r.device_id, accounts: r.users.length, max_questions_one_day: Number(r.max_dia), threshold: DEVICE_DAILY_Q } }));
   }
 
-  // ── D4: curl_scraping (uso sin dispositivo Y sin navegador) ───────────────
-  const d4 = await c.query(
-    `SELECT u.user_id, up.email, up.plan_type, sum(u.questions_answered) q,
-            (SELECT count(*) FROM user_interactions ui WHERE ui.user_id=u.user_id AND ui.event_type='page_view' AND ui.created_at > now()-interval '14 days') page_views
-     FROM daily_question_usage u JOIN user_profiles up ON up.id=u.user_id
-     WHERE u.usage_date >= CURRENT_DATE - 7
-       AND NOT EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id=u.user_id)
-     GROUP BY 1,2,3
-     HAVING sum(u.questions_answered) >= $1
-        AND (SELECT count(*) FROM user_interactions ui WHERE ui.user_id=u.user_id AND ui.event_type='page_view' AND ui.created_at > now()-interval '14 days') < $2`,
-    [SCRAPE_MIN_Q, SCRAPE_MAX_PV]);
-  for (const r of d4.rows) {
+  // ── D4: COSECHA de preguntas (servidas vs respondidas) ────────────────────
+  //
+  // Reescrito 27/07/2026. La versión anterior medía el volumen con
+  // `daily_question_usage` (respuestas GUARDADAS) y por eso era ciega al modo
+  // real de scraping: cosechar no requiere responder. Medido en prod: el usuario
+  // anferbar987 tuvo ese contador en 2 el 16/05/2026 mientras se le servían
+  // 5.495 preguntas — y este detector NO disparó ni una vez en toda su vida.
+  //
+  // Ahora el volumen sale de `daily_questions_served` (rollup de SERVIDAS) y la
+  // firma es el RATIO respondidas/servidas. La clasificación vive en un núcleo
+  // puro y testeado compartido con el panel admin, para que los dos lados no
+  // vuelvan a divergir: lib/security/harvestSignals.js.
+  const servedRows = await c.query(
+    `SELECT s.subject_key AS user_id, sum(s.served)::int AS served
+       FROM daily_questions_served s
+      WHERE s.subject_kind = 'user' AND s.usage_date >= CURRENT_DATE - ($1)::int
+      GROUP BY 1`, [WINDOW_DAYS]);
+
+  // FALSO VERDE: si el rollup está vacío es que el writer no está desplegado o
+  // dejó de escribir. Sin este aviso, "0 hallazgos" se leería como "no hay
+  // scrapers" cuando en realidad es "no estamos mirando".
+  if (!servedRows.rows.length) {
+    console.warn('⚠️  daily_questions_served VACÍO en la ventana → detección de cosecha CIEGA (¿writer desplegado?)');
+    tally.served_rollup_empty = 1;
+  }
+
+  for (const r of servedRows.rows) {
+    const uid = r.user_id;
+    // El subject_key de un usuario es su uuid en crudo; si no lo es, no es un
+    // usuario de verdad (defensa ante claves con formato inesperado).
+    if (!/^[0-9a-f-]{36}$/i.test(uid)) continue;
+
+    const meta = await c.query(
+      `SELECT up.email, up.plan_type,
+              coalesce((SELECT sum(questions_answered) FROM daily_question_usage u
+                         WHERE u.user_id=up.id AND u.usage_date >= CURRENT_DATE - ($2)::int), 0)::int AS answered,
+              (SELECT count(*) FROM user_interactions ui
+                WHERE ui.user_id=up.id AND ui.event_type='page_view'
+                  AND ui.created_at > now() - ($2||' days')::interval)::int AS page_views,
+              EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id=up.id) AS has_device
+         FROM user_profiles up WHERE up.id = $1::uuid`, [uid, WINDOW_DAYS]);
+    if (!meta.rows.length) continue;
+    const m = meta.rows[0];
+
+    const verdict = classifyHarvest({
+      served: Number(r.served),
+      answered: Number(m.answered),
+      pageViews: Number(m.page_views),
+      hasDevice: Boolean(m.has_device),
+    }, { minServed: SCRAPE_MIN_SERVED });
+    if (!verdict) continue;
+
     found++;
-    bump(await upsertSignal(c, { kind: 'curl_scraping', subject: r.user_id, userIds: [r.user_id], n: Number(r.q),
-      details: { user_id: r.user_id, email: r.email, plan_type: r.plan_type, questions_7d: Number(r.q), page_views_14d: Number(r.page_views) } }));
+    bump(await upsertSignal(c, {
+      kind: verdict.kind, subject: uid, userIds: [uid], n: Number(r.served),
+      severityOverride: verdict.severity,
+      details: {
+        user_id: uid, email: m.email, plan_type: m.plan_type,
+        served: Number(r.served), answered: Number(m.answered),
+        answer_ratio: Number(verdict.ratio.toFixed(4)),
+        page_views: Number(m.page_views), has_device: Boolean(m.has_device),
+        window_days: WINDOW_DAYS, reasons: verdict.reasons,
+      },
+    }));
   }
 
   // ── D5: premium_sharing (device compartido con premium + ≥2 activas) ──────
@@ -177,7 +232,7 @@ async function main() {
     await c.query(
       `INSERT INTO observable_events (source, severity, event_type, endpoint, error_message, metadata, created_at)
        VALUES ('fargate','info','fraud_sweep_completed','scripts/fraud-sweep.cjs',null,$1,now())`,
-      [JSON.stringify({ found, tally, pending_total: Number(pending), thresholds: { DEVICE_ACCOUNTS, IP_ACCOUNTS, DEVICE_DAILY_Q, SCRAPE_MIN_Q, SCRAPE_MAX_PV } })]
+      [JSON.stringify({ found, tally, pending_total: Number(pending), thresholds: { DEVICE_ACCOUNTS, IP_ACCOUNTS, DEVICE_DAILY_Q, SCRAPE_MIN_SERVED } })]
     ).catch(e => console.warn('heartbeat warn:', e.message));
   }
 

@@ -2880,6 +2880,25 @@ export const dailyQuestionUsage = pgTable("daily_question_usage", {
 	pgPolicy("Users can update own usage", { as: "permissive", for: "update", to: ["public"] }),
 ]);
 
+// Rollup diario de preguntas SERVIDAS por sujeto (usuario/IP/dispositivo).
+// Complementa `dailyQuestionUsage`, que cuenta RESPONDIDAS: la cosecha de un banco
+// no responde, así que "servidas >> respondidas" es su firma. Espejo duradero del
+// contador Redis `captcha:served:*` (lib/security/challengePolicy/questionsServed.ts),
+// necesario porque fraud-sweep corre fuera de la VPC y no puede leer ElastiCache.
+// Sin FK a propósito: el sujeto puede ser una IP o un dispositivo anónimo.
+// Migración: supabase/migrations/20260727_daily_questions_served.sql
+export const dailyQuestionsServed = pgTable("daily_questions_served", {
+	subjectKey: text("subject_key").notNull(),
+	subjectKind: text("subject_kind").notNull(),
+	usageDate: date("usage_date").notNull(),
+	served: integer().default(0).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.subjectKey, table.usageDate], name: "daily_questions_served_pkey" }),
+	index("idx_dqs_date").using("btree", table.usageDate.desc().nullsFirst()),
+	index("idx_dqs_kind_date_served").using("btree", table.subjectKind.asc().nullsLast(), table.usageDate.desc().nullsFirst(), table.served.desc().nullsFirst()),
+]);
+
 export const fraudWatchList = pgTable("fraud_watch_list", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),
