@@ -21,36 +21,60 @@ describe('classifyEventLoopLag', () => {
     })
   })
 
-  it('warn cuando un stall puntual (max) supera maxWarn pero no maxCritical', () => {
-    expect(classifyEventLoopLag({ p99Ms: 10, maxMs: T.maxWarnMs })).toEqual({
+  // ⚠️ RECALIBRADO 28/07/2026 (T-160). Antes un `max` >= 500 ms emitía warn y un
+  // `max` >= 2 s emitía CRITICAL POR SÍ SOLO. Medido: 626 CRITICAL en 7 días
+  // mientras el p99 solo pasó de 100 ms TRES veces — la alerta nº1 del correo
+  // describiendo un loop que estaba sano. Y un Node OCIOSO con esta resolución
+  // reporta mean/p99 ~20 ms y max ~21 ms, así que ese suelo ES la resolución.
+  // Ahora la severidad la manda el p99 (sostenido) y el max solo ESCALA.
+  it('un pico aislado con el loop SANO ya no es crítico: solo warn', () => {
+    // El caso REAL de producción: p99 en el suelo de resolución y stall de 3 s.
+    expect(classifyEventLoopLag({ p99Ms: 22, maxMs: 3100 })).toEqual({
       emit: true,
       severity: 'warn',
     })
   })
 
-  it('critical cuando el max alcanza el umbral crítico (stall multi-segundo)', () => {
-    expect(classifyEventLoopLag({ p99Ms: 10, maxMs: T.maxCriticalMs })).toEqual({
+  it('un pico de medio segundo con el loop sano NO emite (era el grueso del ruido)', () => {
+    expect(classifyEventLoopLag({ p99Ms: 21, maxMs: 756 })).toEqual({
+      emit: false,
+      severity: null,
+    })
+  })
+
+  it('CRITICAL exige corroboración: p99 degradado Y pico — la firma del 21/07', () => {
+    expect(classifyEventLoopLag({ p99Ms: 150, maxMs: 2500 })).toEqual({
       emit: true,
       severity: 'critical',
     })
   })
 
-  it('critical tiene prioridad sobre warn', () => {
-    expect(
-      classifyEventLoopLag({ p99Ms: T.p99WarnMs, maxMs: T.maxCriticalMs + 500 }),
-    ).toEqual({ emit: true, severity: 'critical' })
+  it('CRITICAL también con p99 severo por sí solo, sin pico puntual', () => {
+    expect(classifyEventLoopLag({ p99Ms: 600, maxMs: 900 })).toEqual({
+      emit: true,
+      severity: 'critical',
+    })
+  })
+
+  it('p99 alto sin pico se queda en warn (aún no es cascada)', () => {
+    expect(classifyEventLoopLag({ p99Ms: 150, maxMs: 900 })).toEqual({
+      emit: true,
+      severity: 'warn',
+    })
   })
 
   it('justo por debajo de los umbrales no emite (fronteras)', () => {
     expect(
-      classifyEventLoopLag({ p99Ms: T.p99WarnMs - 0.1, maxMs: T.maxWarnMs - 0.1 }),
+      classifyEventLoopLag({ p99Ms: T.p99WarnMs - 0.1, maxMs: T.maxSpikeMs - 0.1 }),
     ).toEqual({ emit: false, severity: null })
   })
 
   it('respeta umbrales inyectados', () => {
-    const custom = { p99WarnMs: 10, maxWarnMs: 20, maxCriticalMs: 40 }
-    expect(classifyEventLoopLag({ p99Ms: 11, maxMs: 5 }, custom).severity).toBe('warn')
-    expect(classifyEventLoopLag({ p99Ms: 1, maxMs: 40 }, custom).severity).toBe('critical')
+    const custom = { p99WarnMs: 10, p99CriticalMs: 50, maxSpikeMs: 100 } as const
+    expect(classifyEventLoopLag({ p99Ms: 12, maxMs: 5 }, custom).severity).toBe('warn')
+    expect(classifyEventLoopLag({ p99Ms: 12, maxMs: 150 }, custom).severity).toBe('critical')
+    expect(classifyEventLoopLag({ p99Ms: 60, maxMs: 5 }, custom).severity).toBe('critical')
+    expect(classifyEventLoopLag({ p99Ms: 5, maxMs: 5 }, custom).emit).toBe(false)
   })
 })
 

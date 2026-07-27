@@ -111,11 +111,18 @@ describe('RULE_EVENT_LOOP_LAG (Capa 5 postmortem 21/07)', () => {
   it('dispara con ≥1 evento critical (stall multi-segundo = health-check-killer)', () => {
     expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 1, crit: 1, maxLagMs: 2400 }])).toBe(true);
   });
-  it('dispara con ≥5 warn sostenidos (loop pegajoso = precursor de cascada)', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 5, crit: 0, maxLagMs: 600 }])).toBe(true);
+  // Umbral de warn subido de 5 a 12 el 28/07 (T-160). No es aflojar el
+  // guardarraíl: es que AHORA un warn significa "stall multisegundo" (antes
+  // bastaba 500 ms), así que 5 se había quedado corto y la regla disparaba ~65
+  // veces al día. Calibrado sobre 7 días REALES: con 5 → 5,0 avisos/día; con
+  // 12 → 0,4. Se elige 12 y no 10 porque 12 y 15 dan el MISMO resultado
+  // (meseta), así que el umbral no se apoya en un borde.
+  it('dispara con ≥12 warn sostenidos (loop pegajoso = precursor de cascada)', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 12, crit: 0, maxLagMs: 2400 }])).toBe(true);
   });
-  it('NO dispara con pocos warn aislados (blip, no cascada)', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 4, crit: 0, maxLagMs: 550 }])).toBe(false);
+  it('NO dispara con el racimo que ANTES disparaba (5 warn) — era el grueso del ruido', () => {
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 5, crit: 0, maxLagMs: 2400 }])).toBe(false);
+    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 11, crit: 0, maxLagMs: 3000 }])).toBe(false);
   });
   it('NO dispara con 0 / filas vacías (loop sano)', () => {
     expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 0, crit: 0, maxLagMs: null }])).toBe(false);

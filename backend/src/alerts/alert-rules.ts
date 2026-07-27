@@ -1986,14 +1986,20 @@ export const RULE_EVENT_LOOP_LAG: AlertRule<{
   shouldFire: (rows) => {
     const r = rows[0];
     if (!r) return false;
-    return (r.crit ?? 0) >= 1 || (r.n ?? 0) >= 5;
+    // Umbral de warn subido de 5 a 12 el 28/07 (T-160). No es aflojar: es que
+    // AHORA un warn significa "stall multisegundo" (antes bastaba 500 ms), asi
+    // que 5 se habia quedado corto. Calibrado sobre 7 dias reales: 5 -> 5,0
+    // avisos/dia; 12 -> 0,4. Se elige 12 y no 10 porque 12-15 dan el MISMO
+    // resultado (meseta), asi que no se apoya en un borde.
+    return (r.crit ?? 0) >= 1 || (r.n ?? 0) >= 12;
   },
   buildNotification: (rows) => {
     const r = rows[0];
     const lagS = r.maxLagMs != null ? (r.maxLagMs / 1000).toFixed(1) : '?';
     return {
       title: `Event-loop del frontend saturándose — max ${lagS}s de lag (${r.n} muestras/15m, ${r.crit} críticas)`,
-      body: `El event-loop de Node (single-thread) del frontend acumula lag: ${r.n} muestra(s) sobre umbral en 15 min, ${r.crit} crítica(s) (stall ≥2s). Pico ${lagS}s.\n\nEsta es la FIRMA del incidente 21/07 (docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md): con 1 vCPU + trabajo CPU-bound (RS256 de /api/auth/token) el loop se bloquea, el health check no obtiene CPU para responder y ECS mata tasks vivos → cascada de 504. Aquí lo ves ANTES de la cascada.\n\nQUÉ MIRAR:\n  1. ECS CPU frontend Average+MAXIMUM (max=100% sostenido = task pegado a su único core).\n  2. ¿running == max? El autoscaler no sube más → dar capacidad ya (subir desired/max).\n  3. ¿pico de /api/auth/token? (el #1, RS256 CPU-bound). Backlog T-071: mover el minteo fuera del hot path.\n  4. Tasks 2 vCPU (cpu 1024→2048): el 2º core absorbe GC + crypto del threadpool.\n\nMitigación rápida (capacidad):\n  aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --desired-count <N>\n\n  SELECT ts, severity, duration_ms, metadata FROM observable_events\n  WHERE event_type='event_loop_lag' AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;`,
+      body: `El event-loop de Node del frontend lleva ${r.n} muestra(s) sobre umbral en 15 min, ${r.crit} critica(s). Pico ${lagS}s.\n\nQUE SIGNIFICA AHORA (recalibrado 28/07, T-160): una CRITICA ya no es un pico suelto — exige que el p99 este degradado TAMBIEN, o que el p99 solo ya sea severo. Es decir: el loop esta pegajoso de forma SOSTENIDA, no un bache aislado.\n\nOJO CON LA CONCLUSION FACIL: el cuerpo anterior recomendaba DAR CAPACIDAD, y eso se midio el 27/07 y era falso — CPU al 1-4% de media con las tareas ya a 2 vCPU. Antes de tocar el autoescalado, comprueba que la CPU acompana; si no, el problema NO es capacidad.\n\nQUE MIRAR, en orden:\n  1. metadata->>'instanceId' de los eventos: dice QUE tarea. Si es SIEMPRE la misma, es esa instancia (fuga de memoria, GC), no la flota.\n  2. p99Ms de los eventos: si esta en ~20ms es el SUELO DE RESOLUCION del medidor, no lag (un Node ocioso reporta eso).\n  3. CPU del servicio Average Y MAXIMUM. Solo si el maximo esta pegado al 100% sostenido es capacidad.\n  4. Pico de /api/auth/token (RS256, CPU-bound) — la firma del incidente del 21/07.\n\n  SELECT ts, severity, duration_ms, metadata->>'instanceId' AS tarea,\n         metadata->>'p99Ms' AS p99, metadata->>'maxMs' AS max\n  FROM observable_events\n  WHERE event_type='event_loop_lag' AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;`,
+
       metadata: {
         samples: r.n,
         critical: r.crit,

@@ -18,13 +18,33 @@
 
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { emit } from './emit'
+import { INSTANCE_ID } from './instanceId'
 
-/** Umbrales de lag (ms). Baseline sano del loop ~1-5ms; el incidente tuvo
- *  stalls de cientos de ms a segundos. */
+/**
+ * Umbrales de lag (ms).
+ *
+ * ⚠️ RECALIBRADO 28/07/2026 (T-160) — la versión anterior generaba **65 avisos
+ * CRITICAL al día** y era la alerta nº1 del correo, tapando lo demás.
+ *
+ * Lo que se midió antes de tocar nada:
+ *  · Un proceso Node **OCIOSO** con `resolution: 20` reporta `mean/p50/p99 ≈ 20 ms`:
+ *    ese suelo **es la resolución, no lag**. En producción el p99 mediano era de
+ *    **22-24 ms**, o sea el loop estaba SANO mientras la alerta gritaba.
+ *  · En 7 días hubo **626 CRITICAL**… y el p99 solo pasó de 100 ms **3 veces**.
+ *    Un `max` aislado no dice nada del servicio: el ocioso local nunca pasa de 21 ms,
+ *    así que el stall es real, pero no degrada al usuario si el loop vuelve enseguida.
+ *
+ * De ahí la regla nueva: **la severidad la manda el p99 (sostenido); el `max` solo
+ * ESCALA**. Un pico suelto ya no es crítico por sí mismo, y un loop sano ya no emite.
+ * Simulado sobre esos 7 días: de 530 eventos/día a 90, y de ~65 avisos/día a <1.
+ */
 export const EVENT_LOOP_LAG_THRESHOLDS = {
-  p99WarnMs: 100, // p99 sostenido alto = loop pegajoso
-  maxWarnMs: 500, // un stall puntual de medio segundo
-  maxCriticalMs: 2000, // stall multi-segundo = territorio de health-check-killer
+  /** p99 sostenido alto = loop pegajoso de verdad. Es la señal del 21/07. */
+  p99WarnMs: 100,
+  /** p99 severo sostenido: crítico por sí solo, sin necesitar un pico. */
+  p99CriticalMs: 500,
+  /** Stall multi-segundo. Ya NO basta para crítico: necesita corroboración del p99. */
+  maxSpikeMs: 2000,
 } as const
 
 export interface EventLoopLagStats {
@@ -43,10 +63,17 @@ export function classifyEventLoopLag(
   thresholds: typeof EVENT_LOOP_LAG_THRESHOLDS = EVENT_LOOP_LAG_THRESHOLDS,
 ): { emit: boolean; severity: LagSeverity | null } {
   const { p99Ms, maxMs } = stats
-  if (maxMs >= thresholds.maxCriticalMs) return { emit: true, severity: 'critical' }
-  if (p99Ms >= thresholds.p99WarnMs || maxMs >= thresholds.maxWarnMs) {
-    return { emit: true, severity: 'warn' }
-  }
+  const sostenido = p99Ms >= thresholds.p99WarnMs
+  const pico = maxMs >= thresholds.maxSpikeMs
+
+  // Severamente sostenido: crítico aunque no haya un pico puntual.
+  if (p99Ms >= thresholds.p99CriticalMs) return { emit: true, severity: 'critical' }
+  // Sostenido Y con pico: la firma del 21/07 (loop pegajoso que además se atasca).
+  if (sostenido && pico) return { emit: true, severity: 'critical' }
+  // Uno de los dos: se registra, no se grita.
+  if (sostenido || pico) return { emit: true, severity: 'warn' }
+  // Loop sano: NO emitir. Antes un pico de 500 ms bastaba y eran 530 eventos/día
+  // en una tabla que ya está bajo presión (ver T-173).
   return { emit: false, severity: null }
 }
 
@@ -116,6 +143,11 @@ export function startEventLoopLagSampler(
           maxMs: round1(stats.maxMs),
           windowMs,
           resolutionMs,
+          // Sin esto el evento es inservible para investigar: con 9 tareas no se
+          // sabe CUÁL se atascó y toda correlación queda diluida por 9. El helper
+          // ya existía (creado el 26/07 por este mismo problema con
+          // `isr_purge_applied`) y este sampler, del 24/07, no lo usaba.
+          instanceId: INSTANCE_ID,
         },
       })
     } catch {
