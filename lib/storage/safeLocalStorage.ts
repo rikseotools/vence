@@ -21,8 +21,9 @@
 
 import { emitClientEvent } from '@/lib/observability/client'
 
-/** Cuántos avisos por clave se emiten como máximo, para no inundar la observabilidad. */
-const MAX_AVISOS_POR_CLAVE = 1
+// Un aviso por (clave, operación) y punto: el fallo se repite en cada render, y 200 marcas distintas
+// es techo de sobra —hay 45 ficheros tocando localStorage— para que un bucle no infle la memoria.
+const MAX_MARCAS = 200
 const avisados = new Set<string>()
 
 function disponible(): boolean {
@@ -35,24 +36,22 @@ function avisar(key: string, op: 'get' | 'set' | 'remove', e: unknown): void {
     (e instanceof Error && /exceeded the quota|QuotaExceeded/i.test(e.message))
 
   const marca = `${key}:${op}`
-  if (avisados.size < 200 && !avisados.has(marca)) {
-    avisados.add(marca)
-    if (avisados.size <= MAX_AVISOS_POR_CLAVE * 200) {
-      try {
-        emitClientEvent({
-          // `warn`, no `error`: la app sigue funcionando. Marcarlo como error dispararía la alerta de
-          // pico de errores de cliente por algo que ya está contenido — el mismo criterio que
-          // `usage_limit_hit`. Lo que NO se puede es dejar de verlo: la cuota llena degrada la
-          // experiencia (se pierden backups de test, colas de respuestas) aunque no rompa.
-          severity: 'warn',
-          eventType: 'custom',
-          errorMessage: `localStorage.${op} falló para «${key}»: ${nombre}`,
-          metadata: { key, op, quotaExceeded: cuota, kind: 'storage_unavailable' },
-        })
-      } catch {
-        // Ni la observabilidad puede romper esto.
-      }
-    }
+  if (avisados.has(marca) || avisados.size >= MAX_MARCAS) return
+  avisados.add(marca)
+
+  try {
+    emitClientEvent({
+      // `warn`, no `error`: la app sigue funcionando. Marcarlo como error dispararía la alerta de
+      // pico de errores de cliente por algo que ya está contenido — el mismo criterio que
+      // `usage_limit_hit`. Lo que NO se puede es dejar de verlo: la cuota llena degrada la
+      // experiencia (se pierden backups de test, colas de respuestas) aunque no rompa.
+      severity: 'warn',
+      eventType: 'storage_unavailable',
+      errorMessage: `localStorage.${op} falló para «${key}»: ${nombre}`,
+      metadata: { key, op, quotaExceeded: cuota },
+    })
+  } catch {
+    // Ni la observabilidad puede romper esto.
   }
 }
 

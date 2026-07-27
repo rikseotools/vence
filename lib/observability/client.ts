@@ -96,6 +96,11 @@ export type ClientEventType =
   // unhandled_rejection/react_error_boundary/client_error). Ver
   // utils/answerSaveQueue.ts + utils/psychometricSaveQueue.ts.
   | 'usage_limit_hit'
+  // `localStorage` no disponible (cuota llena, Safari privado, cookies bloqueadas). Tipo PROPIO y no
+  // 'custom' por lo mismo que `usage_limit_hit`: se quiere CONSERVAR visibilidad —cuántos usuarios se
+  // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
+  // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
+  | 'storage_unavailable'
   // Reintento de red del wrapper fetchWithChallenge (fix 24/07/2026). Un
   // `Failed to fetch` transitorio en la ruta crítica (generar test) se
   // reintenta con backoff en vez de dead-end. `outcome:'recovered'` (severity

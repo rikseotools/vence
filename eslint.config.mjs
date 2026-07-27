@@ -200,6 +200,81 @@ const eslintConfig = [
       "react-hooks/exhaustive-deps": "off",
     },
   },
+
+  // ── localStorage solo a través de `lib/storage/safeLocalStorage` ──────────────────────────────
+  //
+  // `localStorage` LANZA cuando el almacén está lleno, en Safari privado y con cookies bloqueadas —
+  // y en esos navegadores hasta LEER revienta. Una llamada desnuda tumba el árbol de React entero:
+  // el 27/07/2026 fueron 19 `react_error_boundary` en 24 h por no poder guardar una caché de 10
+  // caracteres (`vence_hw_fingerprint`). Guardar una preferencia jamás debe romper la pantalla.
+  //
+  // Esto es un TRINQUETE, no una limpieza: los 45 ficheros que ya lo usaban directamente están
+  // exceptuados abajo para no bloquear a nadie, pero **ningún fichero nuevo** puede sumarse. La lista
+  // solo puede MENGUAR — al migrar uno, se borra su línea. Migración pendiente: T-203.
+  {
+    files: ["app/**/*.{ts,tsx,js,jsx}", "lib/**/*.{ts,tsx,js,jsx}", "components/**/*.{ts,tsx,js,jsx}",
+            "contexts/**/*.{ts,tsx,js,jsx}", "hooks/**/*.{ts,tsx,js,jsx}", "utils/**/*.{ts,tsx,js,jsx}"],
+    ignores: [
+      "lib/storage/safeLocalStorage.ts",   // es el helper: aquí SÍ se toca el API real
+      "app/admin/verificar-articulos/*/page.js",
+      "app/auxiliar-administrativo-estado/test/tema/*/page.tsx",
+      "app/admin/newsletters/page.tsx",
+      "app/auth/callback/page.tsx",
+      "app/psicotecnicos/test/PsicotecnicosTestClient.tsx",
+      "app/test/aleatorio/page.js",
+      "app/test-recuperado/page.js",
+      "components/Admin/LifecycleQueueTab.tsx",
+      "components/Admin/TopicReviewTab.tsx",
+      "components/ArticleTTS.tsx",
+      "components/ConsentModeDefault.tsx",
+      "components/CookieConsent.tsx",
+      "components/DailyGoalBanner.tsx",
+      "components/FraudTracker.tsx",
+      "components/OfficialExamLayout.tsx",
+      "components/OpenInscriptionBanner.tsx",
+      "components/OposicionDetector.tsx",
+      "components/PendingExams.tsx",
+      "components/TestLayout.tsx",
+      "components/test/RandomTestClient.tsx",
+      "components/test/TemaTestPage.tsx",
+      "components/test/TestHubClient.tsx",
+      "components/tracking/AttributionCapture.tsx",
+      "components/tts/TTSChainContext.tsx",
+      "contexts/AuthContext.tsx",
+      "contexts/OposicionContext.tsx",
+      "hooks/useBotDetection.ts",
+      "hooks/useDailyQuestionLimit.ts",
+      "hooks/useDeviceTracking.ts",
+      "hooks/useIntelligentNotifications.ts",
+      "hooks/useInteractionTracker.ts",
+      "hooks/useNewMedalsBadge.ts",
+      "hooks/useTestCompletion.ts",
+      "lib/api/authHeaders.ts",
+      "lib/api/fetchWithChallenge.ts",
+      "lib/auth/adapters/authjsAdapter.ts",
+      "lib/auth/adapters/supabaseAdapter.ts",
+      "lib/exam/localAnswerStore.ts",
+      "lib/hooks/useOposicionesCatalog.ts",
+      "lib/oposicion/oposicionCache.ts",
+      "lib/storage/safeLocalStorage.ts",
+      "lib/supabase.ts",
+      "utils/answerSaveQueue.ts",
+      "utils/psychometricSaveQueue.ts",
+      "utils/testBackup.ts",
+    ],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        ...["setItem", "getItem", "removeItem"].map((property) => ({
+          object: "localStorage",
+          property,
+          message:
+            "localStorage lanza con la cuota llena o en Safari privado, y una llamada desnuda rompe " +
+            "la interfaz entera. Usa safeGet/safeSet/safeRemove de lib/storage/safeLocalStorage.",
+        })),
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
