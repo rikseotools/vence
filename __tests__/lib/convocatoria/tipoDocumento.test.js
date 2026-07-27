@@ -74,6 +74,36 @@ describe('tipos con rúbrica propia', () => {
   })
 })
 
+describe('calibraciones con documentos REALES que se quedaban sin clasificar (27/07)', () => {
+  test('SAS Andalucía: "programas de materias" en PLURAL también es temario (costaba un documento por una `s`)', () => {
+    expect(tipo('Resolución de 2 de agosto de 2024, de la Dirección General de Personal del Servicio Andaluz de Salud, por la que se aprueban y publican los nuevos programas de materias que habrán de regir las pruebas selectivas'))
+      .toBe('temario')
+  })
+
+  test('Diputación de Huelva: el anexo suelto que EMPIEZA por "Tema 22" y no tiene rúbrica', () => {
+    const t = 'Tema 22. El órgano de contratación en la esfera local. ' +
+      Array.from({ length: 9 }, (_, i) => `Tema ${23 + i}. Materia de contratación.`).join(' ')
+    expect(tipo(t)).toBe('temario')
+  })
+
+  test('…pero un documento que menciona DOS temas sueltos NO es un temario', () => {
+    expect(tipo('Resolución por la que se corrige el Tema 3 y el Tema 4 del programa publicado')).not.toBe('temario')
+  })
+
+  test('REGRESIÓN: una NOTA INFORMATIVA que enumera los temas del ejercicio no es un temario', () => {
+    // Caso real (Aragón): la simulación lo coló como temario antes de exigir que la enumeración
+    // ARRANQUE el documento. Enumerar temas lo hacen muchos papeles; empezar por ellos, no.
+    const t = 'Nota informativa del órgano de selección de las pruebas selectivas para ingreso en el Cuerpo Auxiliar de la Administración de la Comunidad Autónoma de Aragón. Se informa del reparto: ' +
+      Array.from({ length: 10 }, (_, i) => `Tema ${i + 1}.`).join(' ')
+    expect(tipo(t)).not.toBe('temario')
+  })
+
+  test('Salamanca: "convocatoria y bases para la cobertura de veintiocho plazas" es bases', () => {
+    expect(tipo('IV. Administración Local. Ayuntamiento de Salamanca. Anuncio: convocatoria y bases para la cobertura en propiedad, mediante oposición libre, de veintiocho plazas de auxiliar administrativo'))
+      .toBe('bases')
+  })
+})
+
 describe('REGRESIONES medidas por la simulación (los 3 falsos positivos que costaron precisión)', () => {
   test('la convocatoria que CITA el decreto de la OEP no es un oep_decreto', () => {
     // Caso real: BOE-A-2026-10140 (INGESA). 4 de 4 de la primera muestra eran esto.
