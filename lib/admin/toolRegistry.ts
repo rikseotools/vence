@@ -85,6 +85,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'por `dedupeKey` (día:sesión:modelo): re-ingerir un día lo actualiza, no lo duplica. Medido ' +
       'el 26/07: 49.456 respuestas y 20.081M tokens en 30 días, casi todo caché leída.',
   },
+  sim_materias_ganadas: {
+    titulo: 'Medir qué materias GANA un temario al reescribir sus epígrafes al literal, y si las servimos',
+    ruta: 'scripts/temario/sim-materias-ganadas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'node scripts/temario/sim-materias-ganadas.cjs <pt> [--json salida]. Solo lectura. Compara el ' +
+      'epígrafe ANTERIOR (dump previo en /tmp/verify_epigrafe_<pt>.json) con el actual en BD, saca ' +
+      'los segmentos AÑADIDOS y mide si el tema sirve preguntas de esa materia. Responde a la ' +
+      'pregunta que deja abierta toda reescritura a literal: el Paso 2 previo se verificó contra el ' +
+      'texto CONDENSADO, así que su "correct" no dice nada de lo nuevo. Medido el 27/07/2026: ' +
+      '`tcae_murcia` 40 temas ganaron materia y solo 8 segmentos sin cobertura; `tcae_galicia` 22 y 3 ' +
+      '—uno de ellos "Representación, participación y negociación colectiva", que se había detectado ' +
+      'a mano: la herramienta lo confirma sola—. Con eso el Paso 2 se cierra CON DATOS: el tema que ' +
+      'ganó materia y la sirve recupera su veredicto; el que tiene hueco va a `issues` con el bloque ' +
+      'concreto escrito, no a un sello en bloque.',
+  },
   // ── programa_url: ¿el enlace lleva a un documento DE VERDAD? ──────────────────────────────
   sim_programa_url_vigilable: {
     titulo: 'Comprobar si el programa_url de las oposiciones activas es una página de error/login servida con 200',

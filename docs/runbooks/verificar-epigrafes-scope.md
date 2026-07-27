@@ -241,6 +241,18 @@ Al aplicar: transacción → `record_epigrafe_verification` a `literal` con su f
 
 **Por qué la literalidad no es cosmética (caso Cantabria 27/07/2026):** los 7 temas de informática tenían la versión CORRECTA pero escritos "a ojo". La paráfrasis sonaba igual de bien… y se había comido *"Navegadores Google Chrome y Microsoft Edge: favoritos, historial, búsqueda, certificados personales"*, *"Herramienta Recortes"* y *"Snap Layouts"*. Medido: la oposición servía **CERO preguntas de navegadores** pese a que el programa vigente las exige. Una paráfrasis fiel en el tono es indistinguible de una infiel en el alcance — por eso se exige verbatim.
 
+### Tras reescribir a literal: medir la materia GANADA (`sim-materias-ganadas`)
+
+Reescribir un epígrafe condensado a su literal **casi siempre añade materia**, y eso invalida el Paso 2 **hacia arriba**: el veredicto anterior se emitió contra el texto viejo, que no pedía lo nuevo. Sellar esos temas en bloque como `correct` es declarar una cobertura que nadie ha medido.
+
+```bash
+node scripts/temario/sim-materias-ganadas.cjs <position_type> [--json salida.json]
+```
+
+Compara el epígrafe anterior (del `dump` previo, que queda en `/tmp/verify_epigrafe_<pt>.json`) con el actual, extrae los segmentos añadidos y mide si el tema **sirve preguntas de esa materia**. Con eso el Paso 2 se cierra con datos: el tema que ganó materia **y la sirve** recupera su veredicto; el que tiene hueco va a `issues` **con el bloque concreto escrito**.
+
+Medido el 27/07/2026: `tcae_murcia` 40 temas ganaron materia y solo **8** segmentos sin cobertura (37 correct / 6 issues); `tcae_galicia` 22 y **3** (19 correct / 3 issues). Uno de los de Galicia —*"Representación, participación y negociación colectiva"*— se había detectado antes a mano leyendo el diff: la herramienta lo encuentra sola, que es justo lo que no escala a 75 oposiciones.
+
 ### Añadir una ley a un tema: `verify:scope` con `ley_nueva`
 
 El pipeline de scope sabía recortar y ampliar **dentro de una ley que el tema ya tenía**. Desde el 27/07 también admite **añadir una ley nueva** al tema (el movimiento con el que se tapan los huecos que deja una reorganización de temario, y el que hace falta cuando una norma sustituye a otra): basta con proponerla en el `veredicto` con sus `anadir`. El pipeline comprueba que la ley existe, que **sus artículos existen y están activos** (si no, estaría creando artículos fantasma en el scope) y mide **cuántas preguntas pasan a servirse**. Se clasifica **SIEMPRE como puerta de juicio** (`ley_nueva` → exige `--include-gate`): decir "este tema también va de esta norma" no tiene versión mecánica, y el gate de impacto no lo veía porque mide preguntas que SALEN, y una ley nueva no saca ninguna.
