@@ -16,7 +16,7 @@ import dotenv from 'dotenv'
 dotenv.config({ path: '.env.local' })
 import postgres from 'postgres'
 import * as schema from '../db/schema'
-import { getTableName, is } from 'drizzle-orm'
+import { getTableName, getTableColumns, is } from 'drizzle-orm'
 import { PgTable } from 'drizzle-orm/pg-core'
 
 const DATABASE_URL = process.env.DATABASE_URL
@@ -39,12 +39,20 @@ async function main() {
 
   // Extraer nombres de tablas del schema de Drizzle (solo schema public)
   const schemaTableNames = new Set<string>()
+  // …y sus COLUMNAS, leídas del propio objeto Drizzle (`getTableColumns`), no del texto del
+  // fichero: una regex sobre `db/schema.ts` se traga las claves entrecomilladas (`"año":`) y
+  // produce falsos positivos. Esto es la definición efectiva, la misma que usan las queries.
+  const schemaColumns = new Map<string, Set<string>>()
   for (const [key, value] of Object.entries(schema)) {
     if (is(value, PgTable)) {
       const tableName = getTableName(value)
       // Ignorar tablas del schema auth (como 'users')
       if (!IGNORE_TABLES.includes(tableName)) {
         schemaTableNames.add(tableName)
+        schemaColumns.set(
+          tableName,
+          new Set(Object.values(getTableColumns(value)).map((c) => c.name)),
+        )
       }
     }
   }
@@ -105,8 +113,62 @@ async function main() {
       hasErrors = true
     }
 
+    // ── Drift de COLUMNAS (añadido 27/07/2026) ────────────────────────────────
+    // Hasta hoy esto solo comparaba TABLAS, y por ese hueco se acumularon **53 columnas** que
+    // existían en RDS y no en `db/schema.ts` (15 tablas; `oposiciones` sola tenía 15, entre ellas
+    // todo el bloque `seguimiento_*`). Coste real: lo que no está en el schema **no se puede
+    // consultar con Drizzle** —se acaba escribiendo SQL crudo— y, peor, es **invisible para los
+    // guardarraíles que leen el schema**: `__tests__/guardrails/timestampTimezone.guardrail.test.ts`
+    // cuenta los `timestamp` sin zona sobre `db/schema.ts`, así que una columna ausente nunca
+    // aparecería en su lista por naive que fuese. Se descubrió al migrar `user_feedback` (T-167):
+    // su `claimed_at` estaba en RDS y no en el schema.
+    // Columnas que NO se pueden representar en Drizzle y por eso no cuentan como drift.
+    // `tsvector` es el caso: `drizzle-kit introspect` las emite como `unknown("…")`, un tipo que
+    // ni siquiera importa — el fichero que genera no compila. Son columnas de índice de búsqueda
+    // full-text, mantenidas por triggers, que la app nunca selecciona por Drizzle. Si algún día
+    // drizzle-kit las soporte, quítalas de aquí.
+    const COLUMNAS_NO_REPRESENTABLES = new Set([
+      'articles.content_tsv',
+      'articles.teoria_content_tsv',
+    ])
+    const columnasFaltantes: string[] = []
+    if (dbTableNames.size > 0) {
+      const dbCols = await sql<{ table_name: string; column_name: string }[]>`
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        ORDER BY table_name, column_name
+      `
+      const porTabla = new Map<string, Set<string>>()
+      for (const r of dbCols) {
+        if (!porTabla.has(r.table_name)) porTabla.set(r.table_name, new Set())
+        porTabla.get(r.table_name)!.add(r.column_name)
+      }
+      for (const [tabla, cols] of schemaColumns) {
+        const enBd = porTabla.get(tabla)
+        if (!enBd) continue // tabla ausente: ya se reporta arriba
+        for (const c of enBd) {
+          if (cols.has(c)) continue
+          if (COLUMNAS_NO_REPRESENTABLES.has(`${tabla}.${c}`)) continue
+          columnasFaltantes.push(`${tabla}.${c}`)
+        }
+      }
+    }
+
+    if (columnasFaltantes.length > 0) {
+      console.log('⚠️  Columnas en BD que FALTAN en schema:')
+      columnasFaltantes.forEach((c) => console.log(`   - ${c}`))
+      console.log('')
+      console.log('   Por qué importa: no se pueden consultar con Drizzle Y son invisibles para')
+      console.log('   los guardarraíles que leen db/schema.ts (p.ej. el de timestamps sin zona).')
+      console.log('   Acción: "npx drizzle-kit introspect" y copiar SOLO las columnas que faltan')
+      console.log('   (no pisar el fichero entero: lleva comentarios escritos a mano).')
+      console.log('')
+      hasErrors = true
+    }
+
     if (!hasErrors) {
-      console.log('✅ Schema sincronizado con la BD (sin drift)')
+      console.log('✅ Schema sincronizado con la BD (sin drift de tablas ni de columnas)')
     }
 
     await sql.end()

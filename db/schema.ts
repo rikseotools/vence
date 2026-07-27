@@ -53,6 +53,7 @@ export const topics = pgTable("topics", {
 	descripcionCorta: text("descripcion_corta"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	temarioVersionId: uuid("temario_version_id"),
 }, (table) => [
 	index("idx_topics_position_type_active").using("btree", table.positionType.asc().nullsLast().op("text_ops"), table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
 	unique("topics_position_type_topic_number_key").on(table.positionType, table.topicNumber),
@@ -124,6 +125,8 @@ export const userProfiles = pgTable("user_profiles", {
 	registrationFunnel: text("registration_funnel"),
 	registrationUrl: text("registration_url"),
 	adminNotes: text("admin_notes"),
+	isSynthetic: boolean("is_synthetic").default(false).notNull(),
+	referralEarningsSeenAt: timestamp("referral_earnings_seen_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_user_profiles_active_student").using("btree", table.isActiveStudent.asc().nullsLast().op("bool_ops")).where(sql`(is_active_student = true)`),
 	index("idx_user_profiles_ciudad").using("btree", table.ciudad.asc().nullsLast().op("text_ops")),
@@ -186,6 +189,7 @@ export const articles = pgTable("articles", {
 	// TODOS los deploys. Añadida para cerrar ese hueco.
 	vigenciaNotes: jsonb("vigencia_notes"),
 	embedding: vector({ dimensions: 1536 }),
+	embeddingStale: boolean("embedding_stale").default(false),
 }, (table) => [
 	index("articles_embedding_idx").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
 	index("idx_articles_law_id").using("btree", table.lawId.asc().nullsLast().op("uuid_ops")),
@@ -405,6 +409,9 @@ export const topicEpigrafeVerification = pgTable("topic_epigrafe_verification", 
 	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	sourceDocumentoId: uuid("source_documento_id"),
+	sourceNotes: text("source_notes"),
+	sourceUrl: text("source_url"),
 }, (table) => [
 	index("idx_tev_state").using("btree", table.state.asc().nullsLast()),
 	foreignKey({
@@ -466,6 +473,9 @@ export const aiVerificationResults = pgTable("ai_verification_results", {
 	explanationFix: text("explanation_fix"),
 	psychometricQuestionId: uuid("psychometric_question_id"),
 	spellingQuestionId: uuid("spelling_question_id"),
+	enunciadoOk: boolean("enunciado_ok"),
+	optionsOk: boolean("options_ok"),
+	reviewMethodVersion: text("review_method_version"),
 }, (table) => [
 	index("idx_ai_verification_article").using("btree", table.articleId.asc().nullsLast().op("uuid_ops")),
 	index("idx_ai_verification_law").using("btree", table.lawId.asc().nullsLast().op("uuid_ops")),
@@ -568,6 +578,13 @@ export const convocatorias = pgTable("convocatorias", {
 	programaLastChecked: timestamp("programa_last_checked", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	presentados: integer(),
+	inscritos: integer(),
+	temarioVersionId: uuid("temario_version_id"),
+	plazasPrevisionMotivo: text("plazas_prevision_motivo"),
+	plazasPrevision: boolean("plazas_prevision").default(false).notNull(),
+	plazasDiscapacidadIncluidas: boolean("plazas_discapacidad_incluidas"),
+	plazasOtrosTurnos: jsonb("plazas_otros_turnos"),
 }, (table) => [
 	foreignKey({
 			columns: [table.oposicionId],
@@ -639,6 +656,8 @@ export const userFeedback = pgTable("user_feedback", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
 	questionId: uuid("question_id"),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	claimedBy: text("claimed_by"),
 }, (table) => [
 	index("idx_user_feedback_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")).where(sql`(question_id IS NOT NULL)`),
 	foreignKey({
@@ -1709,6 +1728,8 @@ export const questionDisputes = pgTable("question_disputes", {
 	appealSubmittedAt: timestamp("appeal_submitted_at", { withTimezone: true, mode: 'string' }),
 	source: text().default('user').notNull(),
 	aiChatLogId: uuid("ai_chat_log_id"),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	claimedBy: text("claimed_by"),
 }, (table) => [
 	index("idx_question_disputes_appeal_submitted").using("btree", table.appealSubmittedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(appeal_text IS NOT NULL)`),
 	index("idx_question_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
@@ -2353,6 +2374,7 @@ export const questions = pgTable("questions", {
 	// directos a este campo dejan rastro reason_code='bypass_detected' en
 	// question_lifecycle_history vía trigger fallback.
 	lifecycleState: text("lifecycle_state").default('draft').notNull(),
+	statsDirty: boolean("stats_dirty").default(false).notNull(),
 }, (table) => [
 	uniqueIndex("idx_questions_content_hash").using("btree", table.contentHash.asc().nullsLast().op("text_ops")).where(sql`(content_hash IS NOT NULL)`),
 	index("idx_questions_difficulty").using("btree", table.difficulty.asc().nullsLast().op("text_ops")),
@@ -2459,6 +2481,7 @@ export const deletedUsersLog = pgTable("deleted_users_log", {
 	// RGPD: datos con obligación legal de retención (pagos, contabilidad)
 	// archivados como dump JSONB sin referencias FK vivas a las tablas operacionales.
 	archivedData: jsonb("archived_data"),
+	rgpdEmailSentAt: timestamp("rgpd_email_sent_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
@@ -2517,6 +2540,21 @@ export const oposiciones = pgTable("oposiciones", {
 	// T-059: memoria del sensor timeline_silence (modo agotado). Última revisión sin novedad;
 	// el sensor no re-avisa mientras el último hito sea anterior a esta fecha.
 	timelineReviewedAt: timestamp("timeline_reviewed_at", { withTimezone: true, mode: 'string' }),
+	familia: text(),
+	positionGroup: text("position_group"),
+	demandScore: integer("demand_score"),
+	headlessRequired: boolean("headless_required").default(false).notNull(),
+	fetcherType: text("fetcher_type").default('http').notNull(),
+	coverageLevel: text("coverage_level").default('catalogada').notNull(),
+	landingDuration: text("landing_duration").default('6-12 meses'),
+	landingDifficulty: text("landing_difficulty").default('Intermedio'),
+	landingRequirements: jsonb("landing_requirements").default([]),
+	landingFeatures: jsonb("landing_features").default([]),
+	landingDescription: text("landing_description"),
+	seguimientoChangeStatus: text("seguimiento_change_status").default('ok'),
+	seguimientoChangeDetectedAt: timestamp("seguimiento_change_detected_at", { withTimezone: true, mode: 'string' }),
+	seguimientoLastHash: text("seguimiento_last_hash"),
+	seguimientoLastChecked: timestamp("seguimiento_last_checked", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 	check("oposiciones_estado_proceso_check", sql`estado_proceso = ANY (ARRAY['sin_oep'::text, 'oep_aprobada'::text, 'convocada'::text, 'inscripcion_abierta'::text, 'inscripcion_cerrada'::text, 'lista_admitidos'::text, 'pendiente_examen'::text, 'examen_realizado'::text, 'resultados'::text, 'nombramientos'::text])`),
@@ -2970,6 +3008,8 @@ export const psychometricQuestionDisputes = pgTable("psychometric_question_dispu
 	isRead: boolean("is_read").default(false),
 	source: text().default('user').notNull(),
 	aiChatLogId: uuid("ai_chat_log_id"),
+	claimedAt: timestamp("claimed_at", { withTimezone: true, mode: 'string' }),
+	claimedBy: text("claimed_by"),
 }, (table) => [
 	index("idx_psych_disputes_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
 	index("idx_psych_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
@@ -3054,6 +3094,9 @@ export const payoutTransfers = pgTable("payout_transfers", {
 	notes: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	cryptoAmountReceived: numeric("crypto_amount_received"),
+	cryptoTxHash: text("crypto_tx_hash"),
+	expectedUsd: numeric("expected_usd"),
 }, (table) => [
 	index("idx_payout_transfers_date").using("btree", table.payoutDate.desc().nullsFirst().op("timestamptz_ops")),
 	index("idx_payout_transfers_sent").using("btree", table.sentToManuel.asc().nullsLast().op("bool_ops")),
@@ -3906,6 +3949,13 @@ export const convocatoriaHitos = pgTable("convocatoria_hitos", {
 	// Fase 8 (alertas usuario): canal + gate de verificación. Ver migración 20260604_hitos_notify_gate.sql
 	severity: text().default('important').notNull(),
 	notifyStatus: text("notify_status").default('pending').notNull(),
+	fechaAproximada: boolean("fecha_aproximada").default(false).notNull(),
+	confianza: integer(),
+	citaLiteral: text("cita_literal"),
+	sourceDocumentoId: uuid("source_documento_id"),
+	origen: text().default('registro').notNull(),
+	tipo: text(),
+	convocatoriaId: uuid("convocatoria_id"),
 }, (table) => [
 	index("idx_convocatoria_hitos_oposicion").using("btree", table.oposicionId, table.orderIndex),
 	index("idx_hitos_notify_ready").using("btree", table.notifyStatus, table.severity).where(sql`notify_status = 'verified'`),
@@ -3970,6 +4020,7 @@ export const oepDetectionSignals = pgTable("oep_detection_signals", {
 	dedupeKey: text("dedupe_key").unique("oep_detection_signals_dedupe_key_unique"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	sourceDocumentoId: uuid("source_documento_id"),
 }, (table) => [
 	index("idx_oep_signals_oposicion").using("btree", table.oposicionId, table.createdAt.desc()),
 	foreignKey({ columns: [table.oposicionId], foreignColumns: [oposiciones.id], name: "oep_detection_signals_oposicion_id_fkey" }).onDelete("cascade"),
