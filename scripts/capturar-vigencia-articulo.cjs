@@ -56,15 +56,29 @@ const {mapaBloquesPorArticulo}=require(path.join(__dirname,'..','lib','laws','bo
 const named={aacute:'á',eacute:'é',iacute:'í',oacute:'ó',uacute:'ú',ntilde:'ñ',uuml:'ü',Aacute:'Á',Eacute:'É',Iacute:'Í',Oacute:'Ó',Uacute:'Ú',Ntilde:'Ñ',laquo:'«',raquo:'»',nbsp:' ',amp:'&',lt:'<',gt:'>',quot:'"',ordm:'º',ordf:'ª'};
 const dec=s=>s.replace(/&([a-zA-Z]+);/g,(m,n)=>named[n]??m).replace(/&#(\d+);/g,(_,d)=>String.fromCodePoint(+d));
 const strip=s=>dec(s.replace(/<[^>]+>/g,' ')).replace(/[ \t]+/g,' ').trim();
+// ESPEJO de `lib/laws/boeVigencia.parseBoeBlock` — MANTENER EN SYNC (lo fija el guardarraíl
+// `__tests__/backend/annulledVigenciaMirror.test.ts`, que corre las tres copias sobre los
+// mismos textos). El <blockquote> puede llevar atributos (`class="siempreSeVe"`) y el texto
+// puede colgar directamente de él, sin <p class="nota_pie"> — así está la nota de la STC
+// 1/2011 en el art. 35 de la LOPS, que por eso no había forma de capturar (T-169).
 function parseBoeBlock(raw){
   const notes=[];
-  for(const bq of raw.match(/<blockquote>[\s\S]*?<\/blockquote>/gi)??[])
-    for(const p of bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi)??[]){
-      const clase=(p.match(/class="([^"]+)"/i)??[])[1]??'nota';
-      const ref=(p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i)??[])[1]??null;
-      const texto=strip(p); if(texto&&!notes.some(n=>n.texto===texto)) notes.push({clase,texto,ref,esAnulacion:ANUL.test(texto), esCompetencial:COMPET.test(texto)});
+  const push=(texto,clase,ref)=>{ if(texto&&!notes.some(n=>n.texto===texto)) notes.push({clase,texto,ref,esAnulacion:ANUL.test(texto), esCompetencial:COMPET.test(texto)}); };
+  for(const bq of raw.match(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi)??[]){
+    const parrafos=bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi)??[];
+    if(parrafos.length){
+      for(const p of parrafos){
+        const clase=(p.match(/class="([^"]+)"/i)??[])[1]??'nota';
+        const ref=(p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i)??[])[1]??null;
+        push(strip(p),clase,ref);
+      }
+      continue;
     }
-  const sin=raw.replace(/<blockquote>[\s\S]*?<\/blockquote>/gi,' ');
+    const clase=(bq.match(/<blockquote[^>]*class="([^"]+)"/i)??[])[1]??'nota_blockquote';
+    const ref=(bq.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i)??[])[1]??null;
+    push(strip(bq),clase,ref);
+  }
+  const sin=raw.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi,' ');
   const frags=[...new Set((sin.match(/<strong>([\s\S]*?)<\/strong>/gi)??[]).map(strip).filter(Boolean))];
   return {notes, frags};
 }
@@ -117,4 +131,4 @@ if (require.main === module) {
 
 // Se exporta la selección de bloque para que el guardarraíl la pruebe con los índices reales
 // (CC «Art 9» vs `a9` = art. 94 bis, LECrim «504 bis»…). Requerir este fichero NO abre la BD.
-module.exports = { seleccionarBloque, esDelArticulo };
+module.exports = { seleccionarBloque, esDelArticulo, parseBoeBlock };

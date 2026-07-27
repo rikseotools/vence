@@ -32,7 +32,11 @@ export interface BoeBlock {
   highlightedFragments: string[];
 }
 
-const ANULACION_RE = /\b(inconstitucional|nulidad|nulos?|nulas?|se anula)\b/i;
+// ESPEJO de `lib/laws/notaVigenciaTc.js` (RE_NULIDAD). Incluye la forma verbal del Tribunal
+// Supremo «se anula / se anulan» — y el plural importa: con `(se anula)\b` la «n» de
+// «se anulan» rompía la frontera y no casaba (T-169). El guardarraíl de paridad compara AMBAS
+// implementaciones sobre los mismos textos, así que no pueden volver a divergir.
+const ANULACION_RE = /\binconstitucional|\bnul(?:idad|o|a|os|as)\b|\banulad|\bse\s+anulan?\b/i;
 // Espejo de RE_COMPETENCIAL en lib/laws/notaVigenciaTc.js — MANTENER EN SYNC.
 // El BOE usa esta fórmula en leyes estatales con incidencia autonómica; contiene
 // "constitucional" pero NO "inconstitucional", así que ANULACION_RE no la ve.
@@ -60,24 +64,35 @@ export function parseBoeBlock(raw: string): BoeBlock {
   if (!raw) return { text: '', vigenciaNotes: [], highlightedFragments: [] };
 
   const vigenciaNotes: VigenciaNote[] = [];
-  for (const bq of raw.match(/<blockquote>[\s\S]*?<\/blockquote>/gi) ?? []) {
-    for (const p of bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi) ?? []) {
-      const clase = (p.match(/class="([^"]+)"/i) ?? [])[1] ?? 'nota';
-      const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null;
-      const texto = stripTags(p);
-      if (texto && !vigenciaNotes.some((n) => n.texto === texto)) {
-        vigenciaNotes.push({
-          clase,
-          texto,
-          ref,
-          esAnulacion: ANULACION_RE.test(texto),
-          esCompetencial: COMPETENCIAL_RE.test(texto),
-        });
+  const push = (texto: string, clase: string, ref: string | null) => {
+    if (!texto || vigenciaNotes.some((n) => n.texto === texto)) return;
+    vigenciaNotes.push({
+      clase,
+      texto,
+      ref,
+      esAnulacion: ANULACION_RE.test(texto),
+      esCompetencial: COMPETENCIAL_RE.test(texto),
+    });
+  };
+  // El <blockquote> puede llevar atributos (`class="siempreSeVe"`) y el texto puede colgar
+  // directamente de él, sin <p class="nota_pie"> — así está la nota de la STC 1/2011 en el
+  // art. 35 de la LOPS. Con el patrón anterior ese bloque era invisible (T-169).
+  for (const bq of raw.match(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi) ?? []) {
+    const parrafos = bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi) ?? [];
+    if (parrafos.length) {
+      for (const p of parrafos) {
+        const clase = (p.match(/class="([^"]+)"/i) ?? [])[1] ?? 'nota';
+        const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null;
+        push(stripTags(p), clase, ref);
       }
+      continue;
     }
+    const clase = (bq.match(/<blockquote[^>]*class="([^"]+)"/i) ?? [])[1] ?? 'nota_blockquote';
+    const ref = (bq.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null;
+    push(stripTags(bq), clase, ref);
   }
 
-  const sinNotas = raw.replace(/<blockquote>[\s\S]*?<\/blockquote>/gi, ' ');
+  const sinNotas = raw.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, ' ');
 
   const highlightedFragments = [
     ...new Set(

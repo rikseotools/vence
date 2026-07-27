@@ -92,26 +92,39 @@ export function parseBoeBlock(raw: string): BoeBlock {
   // 1) Las notas viven dentro de <blockquote>. Se extraen ANTES de limpiar, y se apartan
   //    del articulado (que es lo que hacíamos ya, solo que ahora sin tirarlas).
   const vigenciaNotes: VigenciaNote[] = []
-  for (const bq of raw.match(/<blockquote>[\s\S]*?<\/blockquote>/gi) ?? []) {
-    for (const p of bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi) ?? []) {
-      const clase = (p.match(/class="([^"]+)"/i) ?? [])[1] ?? 'nota'
-      const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null
-      const texto = stripTags(p)
-      // El bloque del BOE repite el historial de reformas (el art. 58 de la LO 4/2000 trae la
-      // MISMA nota varias veces). Sin deduplicar, el JSONB guardado es ruido.
-      if (texto && !vigenciaNotes.some((n) => n.texto === texto)) {
-        vigenciaNotes.push({
-          clase,
-          texto,
-          ref,
-          esAnulacion: ANULACION_RE.test(texto),
-          esCompetencial: RE_COMPETENCIAL.test(texto),
-        })
+  const push = (texto: string, clase: string, ref: string | null) => {
+    // El bloque del BOE repite el historial de reformas (el art. 58 de la LO 4/2000 trae la
+    // MISMA nota varias veces). Sin deduplicar, el JSONB guardado es ruido.
+    if (!texto || vigenciaNotes.some((n) => n.texto === texto)) return
+    vigenciaNotes.push({
+      clase,
+      texto,
+      ref,
+      esAnulacion: ANULACION_RE.test(texto),
+      esCompetencial: RE_COMPETENCIAL.test(texto),
+    })
+  }
+  // El <blockquote> puede traer atributos: el BOE usa `class="siempreSeVe"` para las notas
+  // que muestra siempre. Con `/<blockquote>/` a secas, ese bloque entero era invisible
+  // (T-169: el art. 35 de la LOPS tenía su nota de la STC 1/2011 ahí y el detector lo
+  // reportaba en cada pasada sin que hubiera forma de apagarlo — la captura no la veía).
+  for (const bq of raw.match(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi) ?? []) {
+    const parrafos = bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi) ?? []
+    if (parrafos.length) {
+      for (const p of parrafos) {
+        const clase = (p.match(/class="([^"]+)"/i) ?? [])[1] ?? 'nota'
+        const ref = (p.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null
+        push(stripTags(p), clase, ref)
       }
+      continue
     }
+    // …y el texto puede colgar DIRECTAMENTE del blockquote, sin <p class="nota_pie">.
+    const clase = (bq.match(/<blockquote[^>]*class="([^"]+)"/i) ?? [])[1] ?? 'nota_blockquote'
+    const ref = (bq.match(/Ref\.\s*(BOE-[A-Z]-\d{4}-\d+)/i) ?? [])[1] ?? null
+    push(stripTags(bq), clase, ref)
   }
 
-  const sinNotas = raw.replace(/<blockquote>[\s\S]*?<\/blockquote>/gi, ' ')
+  const sinNotas = raw.replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, ' ')
 
   // 2) Los <strong> del ARTICULADO (ya sin notas) son los fragmentos destacados.
   const highlightedFragments = [

@@ -137,3 +137,87 @@ describe('espejo CLI ↔ lib — audit-annulled-provisions (T-169)', () => {
     expect(typeof cli.extractTcAnnulments).toBe('function')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-169 — la paridad existía pero el FIXTURE no cubría el caso en que divergían.
+//
+// El backend cazaba «se anula» y el núcleo compartido no, así que tres artículos del
+// RD 1720/2007 se capturaron con `esAnulacion=false` y el detector los reportaba en cada
+// pasada sin que nadie pudiera apagarlos. Un test de paridad solo vale por los casos que
+// mete: estos son los que faltaban.
+describe('paridad de la fórmula de anulación — incluida la del Tribunal Supremo (T-169)', () => {
+  const { RE_NULIDAD } = require('@/lib/laws/notaVigenciaTc')
+  const { parseBoeBlock: mirParseBoeBlock } = require('../../backend/src/annulled-vigencia-sweep/vigencia-logic')
+  const { parseBoeBlock: libParseBoeBlock } = require('@/lib/laws/boeVigencia')
+
+  const nota = (t: string) => `<blockquote><p class="nota_pie">${t}</p></blockquote>`
+
+  const CASOS: Array<[string, string, boolean]> = [
+    ['TS singular', 'Se anula el apartado 2.b) por Sentencias del TS de 8 de febrero de 2012. Ref. BOE-A-2012-3269', true],
+    ['TS plural', 'Se anulan los apartados 1 y 3 por Sentencia del TS de 15 de julio de 2010.', true],
+    ['TC nulidad', 'Se declara la inconstitucionalidad y nulidad del inciso destacado por Sentencia del TC 17/2013.', true],
+    ['TC inconstitucional a secas', 'Se declara la inconstitucionalidad del párrafo primero por Sentencia del TC 273/2005.', true],
+    ['simple modificación', 'Se modifica por la disposición final 2 del Real Decreto-ley 7/2013.', false],
+    // No-caso deliberado: el ARTICULADO habla de anular, pero no es una nota de anulación.
+    ['articulado que habla de anular', 'El órgano competente podrá anular de oficio los actos nulos de pleno derecho.', true],
+  ]
+
+  it.each(CASOS)('RE_NULIDAD y el espejo del backend coinciden: %s', (_c, texto, esperado) => {
+    const lib = libParseBoeBlock(nota(texto)).vigenciaNotes[0]
+    const mir = mirParseBoeBlock(nota(texto)).vigenciaNotes[0]
+    expect(lib.esAnulacion).toBe(mir.esAnulacion)
+    expect(lib.esAnulacion).toBe(esperado)
+  })
+
+  it('el «se» es obligatorio: sin él, "anular" suelto no marca anulación', () => {
+    // Esto es lo que protege de que el articulado se confunda con una nota. (El caso de
+    // arriba SÍ marca porque lleva "nulos", que es fórmula de nulidad de verdad.)
+    expect(RE_NULIDAD.test('podrá anular el acto administrativo')).toBe(false)
+    expect(RE_NULIDAD.test('se anula el apartado 2')).toBe(true)
+  })
+})
+
+// El TERCER espejo de parseBoeBlock: el capturador CLI. Es el que ESCRIBE `vigencia_notes`,
+// así que si ve menos notas que los otros dos, el detector reporta artículos que nadie puede
+// apagar — exactamente lo que pasaba con el art. 35 de la LOPS (T-169).
+describe('paridad de parseBoeBlock — las TRES copias (lib, backend, CLI capturador)', () => {
+  const { parseBoeBlock: libP } = require('@/lib/laws/boeVigencia')
+  const { parseBoeBlock: mirP } = require('../../backend/src/annulled-vigencia-sweep/vigencia-logic')
+  const { parseBoeBlock: cliP } = require('../../scripts/capturar-vigencia-articulo.cjs')
+
+  const BLOQUES: Array<[string, string, number, boolean]> = [
+    [
+      'blockquote CON atributo y texto directo (LOPS art. 35 / STC 1/2011)',
+      '<p class="parrafo">5. Las credenciales…</p><blockquote class="siempreSeVe">Se declara la inconstitucionalidad y nulidad de los incisos destacados de los apartados 1 y 4 por Sentencia del TC 1/2011, de 14 de febrero. <a class="refPost">Ref. BOE-A-2011-4802</a>.</blockquote>',
+      1, true,
+    ],
+    [
+      'blockquote clásico con <p class="nota_pie">',
+      '<blockquote><p class="nota_pie">Se declara la inconstitucionalidad y nulidad del inciso por Sentencia del TC 17/2013. Ref. BOE-A-2013-2167</p></blockquote>',
+      1, true,
+    ],
+    [
+      'anulación del Tribunal Supremo (RD 1720/2007 art. 18)',
+      '<blockquote><p class="nota_pie">Se anula por Sentencias del TS de 15 de julio de 2010. Ref. BOE-A-2010-16300</p></blockquote>',
+      1, true,
+    ],
+    ['sin notas', '<p class="parrafo">1. Texto del artículo sin notas.</p>', 0, false],
+  ]
+
+  it.each(BLOQUES)('las tres coinciden: %s', (_caso, raw, nNotas, hayAnulacion) => {
+    const a = libP(raw), b = mirP(raw), c = cliP(raw)
+    expect(a.vigenciaNotes.length).toBe(nNotas)
+    expect(b.vigenciaNotes.length).toBe(nNotas)
+    expect(c.notes.length).toBe(nNotas) // el CLI devuelve {notes, frags}
+    expect(a.vigenciaNotes.map((n: any) => n.esAnulacion)).toEqual(b.vigenciaNotes.map((n: any) => n.esAnulacion))
+    expect(a.vigenciaNotes.map((n: any) => n.esAnulacion)).toEqual(c.notes.map((n: any) => n.esAnulacion))
+    expect(a.vigenciaNotes.some((n: any) => n.esAnulacion)).toBe(hayAnulacion)
+  })
+
+  it('el texto del articulado NO se lleva la nota por delante (blockquote con atributos)', () => {
+    const raw = '<p class="parrafo">1. Texto vivo.</p><blockquote class="siempreSeVe">Se anula el apartado 2 por STS.</blockquote>'
+    expect(libP(raw).text).toContain('Texto vivo')
+    expect(libP(raw).text).not.toContain('Se anula el apartado 2')
+    expect(mirP(raw).text).toBe(libP(raw).text)
+  })
+})
