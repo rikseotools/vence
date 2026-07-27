@@ -61,41 +61,10 @@ function citaEsBasura(cita, valores = []) {
   return cubiertos < 2
 }
 
-// Cifras en letra: los boletines las escriben así por convención jurídica, sobre todo las pequeñas —
-// que son la mayoría del catálogo. Un buscador solo-dígitos daría 22 acusaciones falsas de 31 (medido
-// el 16/07 con `proponer-plazas-boe.cjs`, que lleva la misma tabla y la misma cicatriz).
-const U = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
-  'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
-  'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis',
-  'veintisiete', 'veintiocho', 'veintinueve']
-const D = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
-const C = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos',
-  'setecientos', 'ochocientos', 'novecientos']
-
-function enLetra(n) {
-  if (n < 30) return U[n]
-  if (n < 100) return D[Math.floor(n / 10)] + (n % 10 ? ` y ${U[n % 10]}` : '')
-  if (n === 100) return 'cien'
-  if (n < 1000) return C[Math.floor(n / 100)] + (n % 100 ? ` ${enLetra(n % 100)}` : '')
-  const mil = Math.floor(n / 1000), r = n % 1000
-  return (mil === 1 ? 'mil' : `${enLetra(mil)} mil`) + (r ? ` ${enLetra(r)}` : '')
-}
-
-/**
- * ¿Aparece la cifra `n` en `texto`, en cualquiera de las formas en que un boletín la escribe?
- * (1030 · 1.030 · «mil treinta»). Exportada para testearla sin BD.
- *
- * Es condición NECESARIA de que el documento pruebe la cifra, no suficiente: que un «3» aparezca no
- * prueba que sean 3 plazas — eso se lee. Pero si no aparece NI UNA VEZ, no puede probarla, y eso sí
- * se puede afirmar sin criterio.
- */
-function cifraEnTexto(n, texto) {
-  if (n == null) return true          // sin cifra no hay nada que probar
-  if (!texto) return false            // sin corpus, imposible
-  const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' '
-  const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), ...(n <= 9999 ? [enLetra(n)] : [])]
-  return formas.some((f) => t.includes(f.toLowerCase()))
-}
+// Numerales y búsqueda de cifras: núcleo compartido con `scripts/health-sweep.cjs` y el gemelo del
+// backend. Vivía aquí suelto; se extrajo al llevar `plazas_afirmadas_sin_documento` al badge, porque
+// dos copias de una tabla de numerales divergen en cuanto alguien toque una — y el fallo sería mudo.
+const { cifraEnTexto, enLetra, esPlazaHuerfana } = require('../lib/convocatoria/cifraEnTexto.cjs')
 
 /**
  * ¿Miente esta tarjeta de la landing? Devuelve [] si no hay contradicción DEMOSTRABLE.
@@ -165,7 +134,12 @@ const HITO_A_CAMPO = {
 }
 
 async function main() {
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  // `sslmode=require` en la URL entra en conflicto con `ssl:{rejectUnauthorized:false}` y la
+  // conexión muere con "self-signed certificate in certificate chain" — el certificado de RDS lo
+  // es. `scripts/health-sweep.cjs` ya lo sorteaba quitándolo; aquí faltaba, así que este auditor
+  // llevaba SIN PODER CONECTAR (y con él su gate de CI) desde que la URL lleva ese parámetro.
+  const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
+  const c = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
   await c.connect()
   const F = []
   const add = (slug, kind, msg, detail) => F.push({ slug, kind, msg, detail })
@@ -364,7 +338,7 @@ async function main() {
        AND cv.plazas_libres IS NOT NULL
        AND NOT cv.plazas_prevision
      ORDER BY cv.plazas_libres DESC NULLS LAST`)).rows
-    .filter((h) => !cifraEnTexto(h.plazas_libres, h.corpus) && h.derivada_declarada !== true)
+    .filter(esPlazaHuerfana)
   for (const h of huerfanas) {
     add(h.slug, 'plazas_afirmadas_sin_documento',
       h.docs === 0

@@ -270,6 +270,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/incisos-anulados-tc.md',
     claudeHace: 'para cada artículo señalado verifica la clave de la pregunta contra la sentencia del TC: el gate (≥60 car. de la clave dentro del inciso anulado) es un CANDIDATO, no un bug confirmado — hay falsos positivos cuando la clave y el inciso comparten la cláusula inicial pero difieren en el fondo. Si la clave reproduce de verdad el texto anulado, corrige (nota de vigencia en el artículo + revisar la pregunta); NUNCA auto-flip de clave.',
   },
+  plazas_afirmadas_sin_documento: {
+    title: 'Cifra de plazas afirmada en la landing sin ningún documento que la contenga',
+    triggerPhrase: 'revisa las plazas sin documento',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    comando: 'npm run audit:convocatorias',
+    claudeHace: 'para cada oposición señalada corre `npm run audit:convocatorias` y mira su bloque plazas_afirmadas_sin_documento. Una cifra de plazas solo puede ser un HECHO (y entonces algún documento de convocatoria_documentos la contiene, en dígitos o en letra) o una PREVISIÓN (y entonces se declara con plazas_prevision + motivo). Resolver en este orden: (1) comprobar si el documento que la prueba simplemente no está clonado y clonarlo desde su URL oficial; (2) si el documento clonado NO es el que prueba la cifra (pasa cuando se clonó el menú del portal en vez del anuncio), clonar el bueno; (3) si la cifra sale de sumar literales DEL MISMO documento (turno libre desglosado), firmarla en convocatoria_verification con la clave cifra_derivada en findings explicando la cuenta y citando los sumandos; (4) si la cifra no la sostiene nada, corregirla contra el boletín o marcarla plazas_prevision. NUNCA inventar la cifra ni firmar cifra_derivada para callar el aviso: esa válvula existe para aritmética sobre literales, y «lo sumé yo» es exactamente lo que se dijo del 2.163 de Policía Nacional, que era una invención.',
+  },
   convocatoria_docs_incompletos: {
     title: 'Provenance de convocatoria incompleta (documento referenciado sin clonar/enlazar)',
     triggerPhrase: 'revisa la provenance de convocatorias',

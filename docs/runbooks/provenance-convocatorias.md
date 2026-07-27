@@ -154,3 +154,54 @@ SELECT slug, docs_por_clonar, hitos_enlazables, citas_sin_fuente, incompleto
 FROM convocatoria_docs_coverage WHERE slug = '<slug>';
 ```
 `incompleto` debe pasar a `false` cuando `docs_por_clonar = hitos_enlazables = citas_sin_fuente = 0`.
+
+## 6. Cifra de plazas afirmada sin documento (`plazas_afirmadas_sin_documento`)
+
+**Frase-gatillo:** *"revisa las plazas sin documento"*. **Badge:** severidad `error`.
+
+Los apartados anteriores miran si falta papeleo. Este mira algo más grave: **la landing afirma un número
+de plazas que no está escrito en ninguno de los documentos que hemos clonado**, ni en dígitos (`139`,
+`1.030`) ni en letra (`ciento treinta y nueve`) — los boletines escriben en letra, y un buscador
+solo-dígitos daría 22 acusaciones falsas de 31.
+
+Una cifra de plazas solo puede ser dos cosas:
+
+- un **HECHO** → algún documento de la convocatoria la contiene;
+- una **PREVISIÓN** → se declara con `plazas_prevision` + motivo.
+
+Lo que no puede ser es una cifra huérfana presentada como hecho. Así acabó
+`auxiliar-administrativo-estado` enseñando un total de **2.170** (el 1.450 de la OEP 2026 metido en una
+fila de 2025 junto al 720 de su convocatoria) que no existía en ningún documento del mundo.
+
+```bash
+npm run audit:convocatorias           # informe completo; el bloque plazas_afirmadas_sin_documento es este
+npm run audit:convocatorias:gate      # modo gate (CI)
+```
+
+### Cómo resolver, en este orden
+
+1. **¿El documento que la prueba no está clonado?** → clonarlo desde su URL oficial (§1-2 de este runbook).
+2. **¿El documento clonado no es el que la prueba?** → pasa cuando se clonó el *menú* del portal en vez del
+   anuncio (el chrome del DOGC, 4 KB de «Sortir ràpid»; el sumario del BOJA, 32 KB de menús). Clonar el bueno.
+3. **¿La cifra sale de sumar literales DEL MISMO documento?** (turno libre desglosado: 23 + 103 = 126, y el
+   «126» no aparece escrito) → **firmarla**: `convocatoria_verification` en `verified_correct` con la clave
+   `cifra_derivada` en `findings`, explicando la cuenta y citando los sumandos literales.
+4. **¿No la sostiene nada?** → corregirla contra el boletín, o marcarla `plazas_prevision` con motivo.
+
+### Qué NO hacer
+
+- **NUNCA** inventar la cifra ni ajustarla "a ojo" para que cuadre.
+- **NUNCA** firmar `cifra_derivada` para callar el aviso. Esa válvula es para aritmética sobre literales del
+  mismo documento; *"lo sumé yo"* es exactamente lo que se dijo del **2.163** de Policía Nacional
+  (2.704 − 541), que sí era una invención presentada como hecho. La diferencia no la ve un regex: la ve
+  quien lee, y por eso la excepción deja rastro firmado.
+- La regla es condición **necesaria, no suficiente**: que el `3` de Ávila aparezca en el texto no prueba que
+  sean 3 plazas — eso se lee. Pero si no aparece ni una vez, el documento no puede probarla.
+
+### Gotcha: el auditor puede estar mudo
+
+`scripts/audit-convocatoria-completitud.cjs` moría con `self-signed certificate in certificate chain`
+porque `DATABASE_URL` trae `sslmode=require`, que choca con `ssl: { rejectUnauthorized: false }` (el
+certificado de RDS lo es). No fallaba ruidosamente: simplemente el auditor **y su gate de CI** no corrían.
+Arreglado quitando el parámetro de la URL, como ya hacía `scripts/health-sweep.cjs`. **Si un auditor deja
+de reportar hallazgos, comprobar que conecta antes de celebrar que está todo limpio.**

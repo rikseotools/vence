@@ -73,6 +73,9 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
     kinds: [
       'plaza_card', 'temas_card', 'landing_incompleta',
       'landing_cifra_sin_respaldo', 'landing_superficies_contradictorias',
+      // `landing_cifra_sin_respaldo` mira si la cifra cuadra con las COLUMNAS de la BD;
+      // esta mira un escalón más abajo: si la columna misma tiene un DOCUMENTO que la pruebe.
+      'plazas_afirmadas_sin_documento',
     ],
   },
   caja_convocatoria: {

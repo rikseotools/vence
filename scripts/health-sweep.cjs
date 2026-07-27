@@ -697,6 +697,46 @@ async function main() {
       { orphan: true, con_url: orf.con_url, con_cita: orf.con_cita });
   }
 
+  // ── CONTENIDO: CIFRA DE PLAZAS AFIRMADA SIN NINGÚN DOCUMENTO QUE LA CONTENGA ──
+  //
+  // Hermano del anterior, pero un escalón más grave: aquel dice «falta papeleo», este dice «la landing
+  // afirma un número que no está escrito en ninguna parte». Una cifra de plazas solo puede ser un HECHO
+  // (y entonces tiene documento) o una PREVISIÓN (y entonces se declara con `plazas_prevision`). Lo que
+  // no puede ser es una cifra huérfana presentada como hecho: así acabó auxiliar-administrativo-estado
+  // enseñando un total de 2.170 que no existía en ningún documento del mundo.
+  //
+  // La regla la escribió `scripts/audit-convocatoria-completitud.cjs`, pero ese auditor solo corre bajo
+  // demanda — y de hecho llevaba tiempo SIN PODER CORRER (moría con `self-signed certificate`, ver el
+  // arreglo de `sslmode=require` allí). Sus hallazgos no llegaban a nadie. Aquí entran al badge.
+  //
+  // Solo se emite ESTE kind del auditor, no todos: sus otros 104 hallazgos son `senal_aplicada_sin_
+  // documento`, la misma deuda documental que ya reporta `convocatoria_docs_incompletos` arriba —
+  // duplicarla llenaría la bandeja de un aviso que ya está dado.
+  //
+  // `error` y no `warn`: las otras reglas de provenance describen trabajo pendiente nuestro; esta
+  // describe una cifra que el usuario está leyendo ahora mismo en una página pública.
+  // MANTENER EN SYNC con backend/src/content-health-sweep/content-health-sweep.service.ts.
+  const { esPlazaHuerfana } = require('../lib/convocatoria/cifraEnTexto.cjs');
+  const huerfanas = (await c.query(`
+    SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año",
+           (SELECT count(*)::int FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id) docs,
+           (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
+             WHERE d.convocatoria_id = cv.id) corpus,
+           (SELECT (v.state = 'verified_correct' AND v.findings ? 'cifra_derivada')
+              FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada
+      FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
+     WHERE cv.is_current AND o.is_active
+       AND cv.plazas_libres IS NOT NULL
+       AND NOT cv.plazas_prevision
+     ORDER BY cv.plazas_libres DESC NULLS LAST`)).rows.filter(esPlazaHuerfana);
+  for (const h of huerfanas) {
+    add('content', 'error', h.slug, 'plazas_afirmadas_sin_documento',
+      h.docs === 0
+        ? `${h.slug}: afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y NO hay NINGÚN documento en el corpus. O se clona su fuente, o se marca plazas_prevision con motivo`
+        : `${h.slug}: afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y ninguno de sus ${h.docs} documento(s) contiene esa cifra, ni en dígitos ni en letra: o el documento clonado no es el que la prueba, o la cifra está mal`,
+      { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año, docs: h.docs });
+  }
+
   // ── CONTENIDO: PROVENANCE de EPÍGRAFES (verified_literal sin documento del hub enlazado) ──
   // Gemelo del anterior para el 2.º consumidor del hub. verified_literal con source_documento_id
   // NULL = provenance huérfana (validado contra una URL suelta, no contra el doc clonado; el bug

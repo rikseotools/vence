@@ -424,6 +424,44 @@ const URL_GENERICA =
   /\/(?:empleo-?p[uú]blico|emprego|oferta-?de-?empleo(?:-p[uú]blico)?(?:-\d{4}(?:-\d{4})?)?|procesos-?selectivos|convocatorias|recursos-?humanos|tabl[oó]n(?:-oficial)?)\/?$/i;
 // Estados con convocatoria PUBLICADA y ficha viva → una URL genérica es ceguera (procesoEnJuego).
 // Fuera de aquí (oep_aprobada esperando bases, sin_oep, examen_realizado/nombramientos ya pasados)
+// ── Mirror de lib/convocatoria/cifraEnTexto.cjs ──────────────────────────────────────────────────
+// El backend no puede importar el `lib/` de la raíz (build aislado), así que lleva su copia. El porqué
+// de cada pieza vive en el .cjs; aquí solo el código. La equivalencia entre ambos NO se deja a la buena
+// fe: `content-health-sweep.cifra.spec.ts` corre los dos sobre los mismos casos y falla si divergen
+// (la paridad de kinds no basta — comparar nombres no compara aritmética).
+const U_NUM = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
+  'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+  'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis',
+  'veintisiete', 'veintiocho', 'veintinueve'];
+const D_NUM = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+const C_NUM = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos',
+  'setecientos', 'ochocientos', 'novecientos'];
+
+export function enLetra(n: number): string {
+  if (n < 30) return U_NUM[n];
+  if (n < 100) return D_NUM[Math.floor(n / 10)] + (n % 10 ? ` y ${U_NUM[n % 10]}` : '');
+  if (n === 100) return 'cien';
+  if (n < 1000) return C_NUM[Math.floor(n / 100)] + (n % 100 ? ` ${enLetra(n % 100)}` : '');
+  const mil = Math.floor(n / 1000), r = n % 1000;
+  return (mil === 1 ? 'mil' : `${enLetra(mil)} mil`) + (r ? ` ${enLetra(r)}` : '');
+}
+
+export function cifraEnTexto(n: number | null | undefined, texto: string | null | undefined): boolean {
+  if (n == null) return true;
+  if (!texto) return false;
+  const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' ';
+  const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), ...(n <= 9999 ? [enLetra(n)] : [])];
+  return formas.some((f) => t.includes(f.toLowerCase()));
+}
+
+export function esPlazaHuerfana(fila: {
+  plazas_libres?: number | null; corpus?: string | null; derivada_declarada?: boolean | null;
+}): boolean {
+  if (!fila || fila.plazas_libres == null) return false;
+  if (fila.derivada_declarada === true) return false;
+  return !cifraEnTexto(fila.plazas_libres, fila.corpus);
+}
+
 // el índice es la vigilancia legítima. Mirror de lib/convocatoria/seguimientoUrlSalud.cjs (T-112).
 const ESTADOS_FICHA_VIVA = new Set([
   'convocatoria_publicada',
@@ -1388,6 +1426,43 @@ export class ContentHealthSweepService {
         'convocatoria_docs_incompletos',
         `${orf[0].con_url} hito(s) con URL y ${orf[0].con_cita} con cita SIN convocatoria (provenance no atribuible; asignar a su ciclo)`,
         { orphan: true, con_url: orf[0].con_url, con_cita: orf[0].con_cita },
+      );
+    }
+
+    // ── CONTENIDO: CIFRA DE PLAZAS AFIRMADA SIN NINGÚN DOCUMENTO QUE LA CONTENGA ──
+    // Hermano del anterior, un escalón más grave: aquel dice «falta papeleo», este dice «la landing
+    // afirma un número que no está escrito en ninguna parte». Una cifra solo puede ser un HECHO (con
+    // documento) o una PREVISIÓN (declarada con plazas_prevision); una cifra huérfana presentada como
+    // hecho es como auxiliar-administrativo-estado acabó enseñando un total de 2.170 inexistente.
+    // Mirror de lib/convocatoria/cifraEnTexto.cjs — el porqué de la tabla de numerales y la válvula
+    // `cifra_derivada` están allí. Gemelo de scripts/health-sweep.cjs: MANTENER EN SYNC.
+    const huerfanas = (await this.db.execute(sql`
+      SELECT o.slug, cv.plazas_libres, cv.boe_reference, cv."año",
+             (SELECT count(*)::int FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id) docs,
+             (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
+               WHERE d.convocatoria_id = cv.id) corpus,
+             (SELECT (v.state = 'verified_correct' AND v.findings ? 'cifra_derivada')
+                FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada
+        FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
+       WHERE cv.is_current AND o.is_active
+         AND cv.plazas_libres IS NOT NULL
+         AND NOT cv.plazas_prevision
+       ORDER BY cv.plazas_libres DESC NULLS LAST
+    `)) as unknown as Array<{
+      slug: string; plazas_libres: number; boe_reference: string | null; año: number;
+      docs: number; corpus: string | null; derivada_declarada: boolean | null;
+    }>;
+    for (const h of huerfanas) {
+      if (!esPlazaHuerfana(h)) continue;
+      add(
+        'content',
+        'error',
+        h.slug,
+        'plazas_afirmadas_sin_documento',
+        h.docs === 0
+          ? `${h.slug}: afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y NO hay NINGÚN documento en el corpus. O se clona su fuente, o se marca plazas_prevision con motivo`
+          : `${h.slug}: afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y ninguno de sus ${h.docs} documento(s) contiene esa cifra, ni en dígitos ni en letra: o el documento clonado no es el que la prueba, o la cifra está mal`,
+        { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año, docs: h.docs },
       );
     }
 
