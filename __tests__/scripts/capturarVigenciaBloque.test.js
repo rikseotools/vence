@@ -23,29 +23,30 @@ const MAPA_CC = { 1: 'a1', 9: 'art9', 92: 'art92', '94 bis': 'a9' }
 
 describe('seleccionarBloque — el mapa manda, a<N> es el último recurso', () => {
   it('elige el bloque del artículo pedido aunque exista un a<N> que es OTRO artículo', () => {
-    const b = seleccionarBloque(BLOQUES_CC, MAPA_CC, '9')
-    expect(b.id).toBe('art9')
-    expect(b.id).not.toBe('a9') // el fallback viejo: «Artículo 94 bis»
+    const { bloque, via } = seleccionarBloque(BLOQUES_CC, MAPA_CC, '9')
+    expect(bloque.id).toBe('art9')
+    expect(via).toBe('mapa')
+    expect(bloque.id).not.toBe('a9') // el fallback viejo: «Artículo 94 bis»
   })
 
   it('sigue funcionando cuando el id SÍ es a<N> (la mayoría de leyes)', () => {
     const bloques = [{ id: 'a7', tit: 'Artículo 7. Responsabilidad financiera' }]
-    expect(seleccionarBloque(bloques, { 7: 'a7' }, '7').id).toBe('a7')
+    expect(seleccionarBloque(bloques, { 7: 'a7' }, '7').bloque.id).toBe('a7')
   })
 
   it('cae a la rúbrica cuando el mapa no trae el artículo', () => {
-    expect(seleccionarBloque(BLOQUES_CC, {}, '92').id).toBe('art92')
+    expect(seleccionarBloque(BLOQUES_CC, {}, '92').bloque.id).toBe('art92')
   })
 
   it('devuelve null si no hay nada que se le parezca', () => {
-    expect(seleccionarBloque(BLOQUES_CC, {}, '404')).toBeNull()
+    expect(seleccionarBloque(BLOQUES_CC, {}, '404').bloque).toBeNull()
   })
 
   it('resuelve los sufijos con espacio como los numera nuestra BD ("504 bis")', () => {
     const bloques = [{ id: 'a504', tit: 'Artículo 504' }, { id: 'a504bis', tit: 'Artículo 504 bis' }]
-    expect(seleccionarBloque(bloques, { '504 bis': 'a504bis' }, '504 bis').id).toBe('a504bis')
+    expect(seleccionarBloque(bloques, { '504 bis': 'a504bis' }, '504 bis').bloque.id).toBe('a504bis')
     // y sin mapa, por rúbrica, sin confundirse con el 504 a secas
-    expect(seleccionarBloque(bloques, {}, '504 bis').id).toBe('a504bis')
+    expect(seleccionarBloque(bloques, {}, '504 bis').bloque.id).toBe('a504bis')
   })
 })
 
@@ -63,5 +64,15 @@ describe('esDelArticulo — la guarda que impide escribir la nota de otro precep
   it('rechaza una rúbrica que no es un artículo', () => {
     expect(esDelArticulo({ tit: 'CAPÍTULO II. De las subvenciones' }, '9')).toBe(false)
     expect(esDelArticulo({ tit: '' }, '9')).toBe(false)
+  })
+  // Las leyes antiguas numeran en LETRA y el mapa ya las resuelve; exigir además que la
+  // rúbrica lleve el dígito abortaba capturas correctas (8 de 42: LOFCS art. 8 con 24
+  // preguntas activas, LOREG art. 197…). Por eso la guarda de rúbrica NO se aplica al mapa.
+  it('confía en el mapa cuando la rúbrica va en letra ("Artículo octavo" = art. 8)', () => {
+    const bloques = [{ id: 'aoctavo', tit: 'Artículo octavo' }]
+    const r = seleccionarBloque(bloques, { 8: 'aoctavo' }, '8')
+    expect(r.bloque.id).toBe('aoctavo')
+    expect(r.via).toBe('mapa')
+    expect(esDelArticulo(r.bloque, '8')).toBe(false) // la rúbrica NO lleva el dígito
   })
 })

@@ -114,6 +114,40 @@ node scripts/audit-notas-vigencia-tc.cjs "Ley 9/2017" --todos --json
 Una pregunta que dé por aplicable sin matiz un apartado declarado no conforme sí es
 impugnable, pero la respuesta es matizar, no retirar.
 
+## La otra mitad: ¿alguna CLAVE enseña el inciso anulado? (27/07/2026, T-169)
+
+Marcar el artículo no basta. Lo que produjo el incidente fundacional no fue la falta de nota,
+fue **una clave que daba por válido un inciso anulado**. Y eso ya se puede comprobar solo:
+
+```bash
+node scripts/audit-clave-inciso-anulado.cjs           # todo el banco
+node scripts/audit-clave-inciso-anulado.cjs --ley "Ley 7/1985" [--emit] [--gate]
+```
+
+Cruza `vigencia_notes.annulledFragments` —el inciso **literal** que el BOE marca como
+anulado— con la opción correcta de cada pregunta viva de ese artículo. Es comparación de
+subcadenas: **si la máquina puede, que lo haga la máquina** (mismo criterio que
+`cita_blockquote_literal_ok`). Núcleo puro `lib/laws/claveConIncisoAnulado.js`.
+
+**Bandas, calibradas sobre los 50 artículos que hoy tienen fragmento:**
+
+| Banda | Cuándo | Qué hacer |
+|---|---|---|
+| `alta` | el inciso es **distintivo** (≥30 ch): no coincide por azar | mirar YA: la clave casi seguro enseña algo anulado |
+| `revisar` | fragmento **corto** («favorable», «legalmente», «nieguen o») | cola de revisión, **no badge**: son los más peligrosos y a la vez los más ruidosos |
+
+Se descartan los **marcadores** (`(Anulado)`, `(Anulada).`) y las **rúbricas** capturadas por
+error, que son la mitad de lo que trae el BOE — casarlos sería ruido puro.
+
+**Caso que lo motivó, y sirve de canario:** la pregunta `9d361d19` (art. 92.8 CC, viva y
+aprobada) marcaba como correcta *«De un informe **favorable** del Ministerio Fiscal»*, y
+«favorable» es el inciso que anuló la **STC 185/2012** — con su propia explicación citando esa
+sentencia. Se corrigió quitando la palabra (**la clave no cambia**: sigue siendo la D) y
+dejando traza en `observable_events` (`question_annulled_inciso_fixed`). Comprobado que el
+detector la caza con la clave antigua y deja de hacerlo con la corregida.
+
+**Estado 27/07:** 201 preguntas vivas comprobadas → **0 hallazgos** tras corregir esa.
+
 ## Las TRES marcas del BOE — y por qué "0 hallazgos" engañaba (27/07/2026, T-169)
 
 El filtro `v2` (solo flaguear si el consolidado RETIENE la anulación) se diseñó con el art.

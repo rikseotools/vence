@@ -461,6 +461,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Con `--equilibrar` además REPARA la posición de la correcta (§2.2-ter) reescribiendo el ' +
       'borrador — ver `transponer_posicion_correcta`.',
   },
+  audit_clave_inciso_anulado: {
+    titulo: '¿La RESPUESTA CORRECTA de una pregunta viva reproduce un inciso anulado por el TC?',
+    ruta: 'scripts/audit-clave-inciso-anulado.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/incisos-anulados-tc.md',
+    notas:
+      'No escribe nada (salvo `--emit`, que manda a `observable_events` el kind ' +
+      '`question_clave_inciso_anulado`). Hermano de `audit-annulled-provisions`: aquel comprueba que el ' +
+      'ARTÍCULO tenga nota de vigencia, este mira lo que de verdad duele — que la CLAVE enseñe como ' +
+      'válido lo que el TC anuló, que es el incidente fundacional (art. 126.2 LBRL / STC 103/2013). ' +
+      'Cruza `vigencia_notes.annulledFragments` (el inciso LITERAL del BOE) con la opción correcta: ' +
+      'comparación de subcadenas, sin juez LLM. Núcleo puro `lib/laws/claveConIncisoAnulado.js` (12 tests). ' +
+      'BANDAS calibradas sobre los 50 artículos con fragmento: `alta` solo si el inciso es distintivo ' +
+      '(≥30 ch) —uno largo no coincide por azar—; los CORTOS («favorable», «legalmente») van a cola de ' +
+      'revisión, no al badge, porque son a la vez los más peligrosos y los más ruidosos. Descarta ' +
+      'marcadores «(Anulado)» y rúbricas, que son la mitad de lo capturado. ON-DEMAND: no pinga el badge. ' +
+      'Nació al encontrar a mano la pregunta `9d361d19` (art. 92.8 CC), cuya clave decía «informe ' +
+      'FAVORABLE del Ministerio Fiscal» con su propia explicación citando la STC 185/2012 que anuló esa ' +
+      'palabra. NUNCA auto-corrige.',
+  },
   transponer_posicion_correcta: {
     titulo:
       'Reparar la POSICIÓN de la opción correcta de un lote (§2.2-ter) sin descuadrar la explicación',

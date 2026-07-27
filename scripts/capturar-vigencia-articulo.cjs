@@ -31,9 +31,19 @@ const API='https://www.boe.es/datosabiertos/api/legislacion-consolidada/id';
 const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase()
 const esDelArticulo = (bloque, art) =>
   new RegExp(`^art(?:[íi]culo)?\\.?${norm(art)}(?:[.\\s]|$)`, 'i').test(norm(bloque && bloque.tit))
+// Devuelve TAMBIÉN por qué vía se resolvió: la guarda de rúbrica solo debe aplicarse a las
+// vías DÉBILES. El mapa (`mapaBloquesPorArticulo`) ya convierte los ordinales en letra —la
+// LOREG rotula «Artículo ciento noventa y siete» y la LOFCS «Artículo octavo»—, así que
+// exigirle además que la rúbrica contenga el dígito abortaba capturas correctas: 8 de 42 en
+// el primer barrido, entre ellas LOFCS art. 8 (24 preguntas activas) y LOREG art. 197.
 function seleccionarBloque(bloques, mapa, art) {
   const porMapa = (mapa && mapa[String(art)]) ? bloques.find((x) => x.id === mapa[String(art)]) : null
-  return porMapa || bloques.find((x) => esDelArticulo(x, art)) || bloques.find((x) => x.id === `a${art}`) || null
+  if (porMapa) return { bloque: porMapa, via: 'mapa' }
+  const porRubrica = bloques.find((x) => esDelArticulo(x, art))
+  if (porRubrica) return { bloque: porRubrica, via: 'rubrica' }
+  const porId = bloques.find((x) => x.id === `a${art}`)
+  if (porId) return { bloque: porId, via: 'id' }
+  return { bloque: null, via: null }
 }
 
 
@@ -75,11 +85,12 @@ async function main(){
   // `art9`). Capturar así habría escrito en `vigencia_notes` del art. 9 las notas de otro
   // precepto — un dato falso que nadie volvería a mirar. El manual ya avisaba de que el id
   // no siempre es `a<N>`; aquí no se estaba respetando.
-  const b=seleccionarBloque(bloques,mapa,art);
+  const {bloque:b, via}=seleccionarBloque(bloques,mapa,art);
   if(!b){console.error(`bloque del art.${art} no encontrado`);process.exit(1);}
-  // GUARDA: el bloque elegido tiene que ANUNCIARSE como el artículo pedido. Sin esto, un
-  // fallback silencioso escribe notas de otro artículo y el error es indetectable después.
-  if(!esDelArticulo(b,art)){
+  // GUARDA: si el bloque NO viene del mapa, tiene que ANUNCIARSE como el artículo pedido.
+  // Sin esto, el fallback `a<N>` escribe notas de otro artículo (el `a9` del Código Civil es
+  // el «Artículo 94 bis») y el error es indetectable después.
+  if(via!=='mapa' && !esDelArticulo(b,art)){
     console.error(`❌ el bloque ${b.id} se titula "${String(b.tit).trim().slice(0,60)}" y se pidió el art.${art}: abortado para no escribir la nota de otro artículo`);
     process.exit(1);
   }
