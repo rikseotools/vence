@@ -63,13 +63,24 @@ async function currentConvocatoria(c, pt) {
 function fetchProgramaText(url) {
   const tmp = path.join(DUMP_DIR, `_prog_dl_${Date.now()}.bin`)
   try {
-    execFileSync('curl', ['-sL', '--max-time', '40', '-A', 'Mozilla/5.0 (compatible; VenceBot/1.0)', '-o', tmp, url], { stdio: 'ignore' })
+    // 40s se quedaba corto con los boletines que publican TODOS los programas en un
+    // solo PDF (la Orden PRE/76/2024 de Cantabria son 2,8 MB): el documento más
+    // importante de verificar era justo el que no se podía descargar, y el hueco
+    // quedaba en silencio. Ver VERIFY_FETCH_TIMEOUT para casos extremos.
+    const maxTime = process.env.VERIFY_FETCH_TIMEOUT || '150'
+    execFileSync('curl', ['-sL', '--max-time', maxTime, '-A', 'Mozilla/5.0 (compatible; VenceBot/1.0)', '-o', tmp, url], { stdio: 'ignore' })
   } catch { return { text: null, how: 'download_error' } }
   if (!fs.existsSync(tmp) || fs.statSync(tmp).size < 200) return { text: null, how: 'download_empty' }
   const head = fs.readFileSync(tmp).subarray(0, 5)
   let text
   if (head.toString('latin1', 0, 4) === '%PDF') {
-    try { text = execFileSync('pdftotext', ['-layout', tmp, '-']).toString('utf8') } catch { text = '' }
+    // maxBuffer: el defecto de execFileSync es 1 MB, y los boletines que publican el
+    // programa de TODOS los cuerpos pasan de eso holgadamente (la Orden PRE/76/2024 de
+    // Cantabria extrae 1.205.140 chars). Al desbordar, execFileSync lanza y el catch lo
+    // convertía en `pdf_empty`: el documento se declaraba "no parseable" cuando el
+    // problema era nuestro. Los boletines MÁS importantes —los multi-cuerpo, los que
+    // más temario traen— eran justo los que nunca se podían leer. Medido el 27/07/2026.
+    try { text = execFileSync('pdftotext', ['-layout', tmp, '-'], { maxBuffer: 256 * 1024 * 1024 }).toString('utf8') } catch { text = '' }
     try { fs.unlinkSync(tmp) } catch {}
     if (!text || text.length < 200) return { text: null, how: 'pdf_empty' }
     return { text, how: 'pdf' }

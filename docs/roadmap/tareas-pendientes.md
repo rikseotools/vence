@@ -120,6 +120,18 @@
 
 ## Abiertas
 
+### [T-181] 🟡 [ABIERTO 27/07] Documentos clonados en la convocatoria EQUIVOCADA: ruido en la única señal que caza "el programa cambió"
+- **Qué:** el hub cuelga de la convocatoria vigente TODO documento que encuentra en la página de seguimiento, y esas páginas listan varios procesos. Medido al triar los 33 documentos con temario que no son el `programa_url`: el de **`auxiliar-administrativo-estado` (2.179 usuarios), `administrativo-estado` (706) y `tecnico-informatica`** es en realidad la **Orden TDF/568/2025 de Intervención-Tesorería** (otro proceso, portal del INAP), y `tcae-extremadura` tiene 3 PDF de **lectura fácil de otras categorías** (pinche, planchador, celador).
+- **Por qué importa (y por qué ahora):** desde el 27/07 los documentos se clonan CON su texto, así que `esTemarioRefiningDoc` por fin puede avisar de "documentos que afinan el programa" — la señal que se nos escapó en Cantabria. Un 18% de falsos positivos en esa lista (6 de 33) es justo lo que hace que una bandeja se deje de mirar (lección T-047/T-113).
+- **Cómo:** al clonar desde una página que lista varios procesos, exigir que el documento mencione la **denominación del cuerpo** de esa convocatoria (o marcarlo `curado=false` para triaje) en vez de atribuirlo a ciegas. Núcleo puro + simulación bank-wide antes de encender nada; el triaje de hoy sirve de banco de pruebas (27 buenos / 6 malos).
+- **Origen:** triaje de T-107 el 27/07 tras arreglar el clonado con texto.
+
+### [T-182] 🟡 [ABIERTO 27/07] Cantabria T20: el programa pide Recortes y configuración de dispositivos y hay 1 sola pregunta
+- **Qué:** al alinear los epígrafes de `auxiliar_administrativo_cantabria` al literal de la Orden PRE/12/2026 aparecen materias que el programa exige y el banco casi no cubre: **"Herramienta Recortes y anotaciones (Snipping Tool renovada)"** y **"configuración de dispositivos (impresoras, escáneres)"** → **1 pregunta** en todo el banco de `Explorador Windows 11`.
+- **Contexto:** el resto de materias nuevas del programa SÍ tienen cobertura razonable (Snap Layouts 16, Editor/Dictado/Traducción 27, análisis de datos 43, integración Teams-Outlook 63, notificaciones de Teams 10). Este es el único hueco real.
+- **Cómo:** generación anclada a fuente con doble auditoría ciega + Paso 9, flujo de [T-115]. El banco de `Explorador Windows 11` lo comparten 16 oposiciones, así que cubrirlo apaga el hueco en todas.
+- **Origen:** T-107, alineación de Cantabria al programa vigente (27/07).
+
 ### [T-173] 🟠 [ABIERTO 27/07] `traffic_drop` lleva >24 h caída: si el tráfico de la web se desploma, NADIE avisa
 - **Qué:** la regla que vigila caídas de tráfico **no llega a evaluarse**: su query supera el `statement_timeout: 20000` del pool de la réplica. Medido el 27/07: **255 fallos en 24 h** (la nº1 del motor), y sigue cayéndose después de arreglar las de cron (6 fallos en 40 min ya con el índice puesto). `materialized_stats_stale` está igual (110 fallos/24 h).
 - **Por qué importa más que las otras:** una regla de cron caída retrasa una detección interna. Esta es **la red que avisa de que la web ha perdido tráfico** — el tipo de incidente que si no se caza en horas, se caza en la factura del mes.

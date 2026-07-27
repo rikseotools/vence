@@ -193,7 +193,9 @@ node scripts/verify-epigrafe-literality.cjs status <position_type>
 ```
 Tratar los `drift_detected`: coger el texto oficial literal del temario → **actualizar `topics.epigrafe`** (cambiarlo dispara el trigger → re-verificar S1 scope) → revalidar caché. Cuando **el radar/seguimiento detecta convocatoria nueva** (badge 🎯 OEPs), los epígrafes pasan a `outdated_convocatoria` → re-sourcing.
 
-### Clonación MANUAL cuando el boletín NO parsea (~30% de casos) — método probado
+### Clonación MANUAL cuando el boletín NO parsea — método probado
+
+> ⚠️ **Antes de darlo por "no parseable", comprueba que no sea culpa nuestra (27/07/2026).** `execFileSync` trae un `maxBuffer` de **1 MB** por defecto, y los boletines que publican el programa de TODOS los cuerpos lo pasan de largo: la Orden PRE/76/2024 de Cantabria extrae **1.205.140 caracteres**. Al desbordar, `pdftotext` lanzaba y el `catch` lo traducía a `pdf_empty` — o sea, **los documentos con MÁS temario eran justo los que se declaraban ilegibles**, y en silencio. Arreglado en `fetchProgramaText` (256 MB; timeout de descarga configurable con `VERIFY_FETCH_TIMEOUT`). Efecto medido al repuntar Cantabria: el `dump` pasó de `pdf_empty` a `fetch=pdf` con 58 bloques parseados, y `tcae_murcia`, `auxiliar_administrativo_madrid_2027`, `auxiliar_enfermeria_gva` y `auxiliar_enfermeria_osakidetza` pasaron a extraer texto. **La cifra de "~30% no parsean" incluía este bug: mide de nuevo antes de asumir trabajo manual.** Los que siguen sin parsear son los de `fetch=html` (el `programa_url` apunta a un portal, no a un documento).
 
 Cuando `dump` da `temario_parseado=0` (los portales GVA/DOGV son SPA de JS y WebFetch no los lee), la clonación se hace **a mano contra el PDF PRIMARIO**. Método validado (subalterno_gva, 13/07):
 
