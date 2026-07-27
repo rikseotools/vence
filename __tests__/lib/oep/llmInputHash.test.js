@@ -107,6 +107,41 @@ describe('llmInputHash — núcleo del embudo de detect-oep-llm', () => {
     });
   });
 
+  describe('contieneFecha — medir HOY el ruido de MAÑANA', () => {
+    const { contieneFecha } = require(path.join(__dirname, '..', '..', '..', 'lib', 'oep', 'llmInputHash.cjs'));
+    const hoy = new Date(2026, 6, 27); // 27 julio 2026 (mes 0-indexado)
+
+    it.each([
+      ['dd/mm/aaaa', 'Actualizado el 27/07/2026 a las 09:12'],
+      ['d-m-aaaa sin ceros', 'Fecha: 27-7-2026'],
+      ['ISO aaaa-mm-dd', 'lastmod 2026-07-27'],
+      ['texto largo', 'Sevilla, a 27 de julio de 2026'],
+      ['texto largo en mayúsculas', 'A 27 DE JULIO DE 2026'],
+    ])('detecta el formato %s', (_, texto) => {
+      expect(contieneFecha(texto, hoy)).toBe(true);
+    });
+
+    it('NO confunde la fecha de AYER ni la de mañana', () => {
+      expect(contieneFecha('26/07/2026', hoy)).toBe(false);
+      expect(contieneFecha('28 de julio de 2026', hoy)).toBe(false);
+    });
+
+    it('NO confunde otro año con el mismo día y mes', () => {
+      expect(contieneFecha('27/07/2025', hoy)).toBe(false);
+    });
+
+    it('no marca una página sin fechas', () => {
+      expect(contieneFecha('Convocatoria de 10 plazas de auxiliar', hoy)).toBe(false);
+    });
+
+    // El día 1 no puede casar con el 11 ni el 21: el \b evita el falso positivo.
+    it('respeta los límites de palabra (el 1 no casa con el 11)', () => {
+      const uno = new Date(2026, 6, 1);
+      expect(contieneFecha('11/07/2026', uno)).toBe(false);
+      expect(contieneFecha('01/07/2026', uno)).toBe(true);
+    });
+  });
+
   describe('paridad con el backend (anti-deriva)', () => {
     // Si `cleanHtml` del servicio cambia y esta copia no, el gate hashea un
     // texto distinto del que se analiza y decide mal. Se compara el CUERPO de

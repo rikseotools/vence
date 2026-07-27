@@ -30,6 +30,7 @@ const {
   legacyContentHash,
   cleanHtml,
   LLM_MAX_CHARS,
+  contieneFecha,
 } = require(path.join(__dirname, '..', '..', 'lib', 'oep', 'llmInputHash.cjs'))
 
 const argv = process.argv.slice(2)
@@ -39,6 +40,12 @@ const val = (f, d) => {
 }
 const N = parseInt(val('--n', '80'), 10)
 const ESPERA_S = parseInt(val('--espera', '120'), 10)
+// Guarda/compara la línea base de hashes para medir el ruido DIARIO sin esperar
+// a que alguien esté delante mañana: --baseline escribe, --comparar lee.
+const BASELINE = val('--baseline', null)
+const COMPARAR = val('--comparar', null)
+
+
 
 // Mismas cabeceras que usa el cron: si descargamos distinto, medimos otra cosa.
 const HEADERS = {
@@ -90,6 +97,49 @@ async function main() {
   }
   const okP1 = [...p1.values()].filter((x) => x.html).length
   console.log(`   ${okP1}/${filas.length} descargadas`)
+
+  // ── Ruido DIARIO, medido hoy ────────────────────────────────────────────
+  // El doble fetch de abajo solo ve el ruido de segundos. El que de verdad
+  // arruina el ahorro es el diario, y no hace falta esperar a mañana: basta
+  // ver qué páginas imprimen la fecha de hoy DENTRO de la ventana del modelo.
+  let conFechaHoy = 0
+  const conFecha = []
+  for (const f of filas) {
+    const a = p1.get(f.slug)
+    if (!a || !a.html) continue
+    if (contieneFecha(cleanHtml(a.html, LLM_MAX_CHARS))) {
+      conFechaHoy++
+      conFecha.push(f.slug)
+    }
+  }
+  console.log(`   con la FECHA DE HOY en la ventana del modelo: ${conFechaHoy}/${okP1} (${pct(conFechaHoy, okP1)}%) → cambiarán mañana seguro`)
+
+  // Línea base para cerrar la medición mañana en un solo comando.
+  if (BASELINE) {
+    const base = {}
+    for (const f of filas) {
+      const a = p1.get(f.slug)
+      if (a && a.html) base[f.slug] = llmInputHash(a.html)
+    }
+    require('fs').writeFileSync(BASELINE, JSON.stringify({ fecha: new Date().toISOString(), hashes: base }, null, 1))
+    console.log(`   línea base guardada en ${BASELINE} (${Object.keys(base).length} hashes)`)
+  }
+
+  // Cierre de la medición: comparar contra una línea base de otro día.
+  if (COMPARAR) {
+    const prev = JSON.parse(require('fs').readFileSync(COMPARAR, 'utf8'))
+    let comunes = 0
+    let cambiaron = 0
+    for (const f of filas) {
+      const a = p1.get(f.slug)
+      if (!a || !a.html || !prev.hashes[f.slug]) continue
+      comunes++
+      if (llmInputHash(a.html) !== prev.hashes[f.slug]) cambiaron++
+    }
+    console.log(`\n── RUIDO DIARIO REAL vs ${prev.fecha} ──`)
+    console.log(`   cambiaron: ${cambiaron}/${comunes} (${pct(cambiaron, comunes)}%) → esas pagarían llamada`)
+    console.log(`   estables : ${comunes - cambiaron} (${pct(comunes - cambiaron, comunes)}%) → ahorro REAL del gate`)
+  }
 
   console.log(`→ esperando ${ESPERA_S}s (nadie edita una convocatoria en ese rato)…`)
   await new Promise((r) => setTimeout(r, ESPERA_S * 1000))
