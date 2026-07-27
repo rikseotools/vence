@@ -6,9 +6,21 @@
 //
 // Es la pieza de "capa 1" del diseño: de aquí sale lo que los importadores deben empezar a llamar.
 const fs=require('fs'),path=require('path');
-const pg=require(path.join(__dirname,'..','backend','node_modules','postgres'));
-const url=fs.readFileSync(path.join(__dirname,'..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
-const sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
+// La conexión se abre PEREZOSAMENTE, no al importar el módulo. Este fichero también se importa
+// desde `__tests__/scripts/capturarVigenciaBloque.test.js` para probar sus funciones PURAS
+// (seleccionarBloque/esDelArticulo); creándola arriba, el simple import arrastraba
+// `backend/node_modules/postgres` y `.env.local` — que en el runner de CI no existen. Resultado:
+// "Cannot find module …/backend/node_modules/postgres" y la suite entera en rojo, bloqueando un
+// deploy el 27/07. Un módulo que se importa no debe abrir conexiones ni leer secretos.
+let _sql=null;
+const sql=()=>{
+  if(!_sql){
+    const pg=require(path.join(__dirname,'..','backend','node_modules','postgres'));
+    const url=fs.readFileSync(path.join(__dirname,'..','.env.local'),'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
+    _sql=pg(url,{ssl:{rejectUnauthorized:false},max:2});
+  }
+  return _sql;
+};
 const arg=n=>{const i=process.argv.indexOf(n);return i>0?process.argv[i+1]:null};
 const APPLY=process.argv.includes('--apply');
 const API='https://www.boe.es/datosabiertos/api/legislacion-consolidada/id';
@@ -77,14 +89,15 @@ async function main(){
   console.log(`${boe} art.${art} (bloque ${b.id}) → ${notes.length} nota(s), ${anuladas.length} de anulación, ${notes.filter(n=>n.esCompetencial).length} competencial(es), ${frags.length} fragmento(s) destacado(s)`);
   for(const n of notes) console.log(`  ${n.esAnulacion?'⚠️ ':'   '}[${n.clase}] ${n.texto.slice(0,120)}`);
   const payload={notes, annulledFragments: anuladas.length?frags:[], capturedAt:new Date().toISOString(), sourceBlock:b.id};
-  if(!APPLY){console.log('\n— DRY RUN (usa --apply) —');await sql.end();return;}
+  if(!APPLY){console.log('\n— DRY RUN (usa --apply) —');await sql().end();return;}
   // OJO: JSON.stringify(...)::jsonb guarda un STRING json, no un objeto (el driver ya serializa
   // el parámetro). Hay que pasar el objeto con sql.json() o jsonb_typeof devuelve 'string'.
-  const r=await sql`UPDATE articles a SET vigencia_notes=${sql.json(payload)}
+  const db=sql();
+  const r=await db`UPDATE articles a SET vigencia_notes=${db.json(payload)}
     FROM laws l WHERE l.id=a.law_id AND l.boe_url LIKE ${'%'+boe+'%'} AND a.article_number=${String(art)}
     RETURNING a.id`;
   console.log(`\n✅ ${r.length} artículo(s) actualizados (content NO tocado)`);
-  await sql.end();
+  await db.end();
 }
 
 if (require.main === module) {
