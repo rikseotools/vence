@@ -1306,3 +1306,63 @@ straightforward. That removes any doubt about whether koigrid can *hold* the wor
 
 **Net after the correction: the blocker list is down to one real item** — edge caching on a customer's own
 domain (Cloudflare for SaaS). Everything else is either solved, a plan choice, or small.
+
+---
+
+## ✅ UPDATE 2026-07-27 (night) — **the last blocker is gone: bring-your-own CDN**
+
+Third release we have checked today (`llms.txt` 777 → 790). One change, and it is the one that matters:
+
+> *"**✅ BUT YOU CAN BRING YOUR OWN CDN, and it is measured**: koigrid already issues a valid Let's Encrypt
+> cert for your domain on the origin, so putting your own Cloudflare (free plan) in front works with zero
+> changes here. Measured 2026-07-27 on a throwaway app: **TTFB 0.350s without CDN → 0.053s with the
+> customer's Cloudflare in front, `cf-cache-status: HIT` = 6.6× faster**, plus DDoS, on your account with
+> your cache rules."*
+
+**This retires the blocker we declared two hours ago.** The custom-domain restriction is about *koigrid's*
+CDN; nothing stops us putting *our own* Cloudflare in front of `vence.es`. Consequences for our case:
+
+| | Before this release | Now |
+|---|---|---|
+| Edge caching on `vence.es` | ❌ impossible | ✅ **our own Cloudflare, free plan** |
+| Replicas for our 16.6 rps peak | 4-6 (origin-only) | **1-2** (edge absorbs the HTML) |
+| DDoS / origin hiding | none | ✅ on our own account |
+| Blocked on `scale-out` (N1) | yes | **no — it becomes optional**, since the edge is ours, not theirs |
+
+And the honesty is, again, the best part: you documented the caveats yourself, including that **koigrid
+will report the domain as `misconfigured` while it works perfectly** (your check wants it resolving to
+your IPs). Flagging your own false alarm before a customer hits it is rare.
+
+### Two integration items we found on our side (not koigrid's problem, recorded so nobody trips on them)
+
+1. **🔒 The client IP would silently degrade to a spoofable header — this is the one that matters.**
+   Our `getClientIp()` trusts **`CloudFront-Viewer-Address`** (injected by CloudFront, not spoofable) and
+   only falls back to `x-forwarded-for[0]`, which our own comment marks as *"spoofable"*. Behind our own
+   Cloudflare there is no `CloudFront-Viewer-Address`, so **every IP-based control would quietly start
+   trusting a header the client can forge** — and we run anti-fraud on exactly that (`multi_account_reg_ip`,
+   `curl_scraping`, registration IP). Not a broken feature: a **security control weakened in silence**,
+   which is worse. Fix is small and must land *before* any cutover: teach `getClientIp()` to trust
+   `CF-Connecting-IP` when the request comes from Cloudflare, and only then.
+2. **Firewall the origin to Cloudflare ranges.** Your BYO-CDN note says the origin IP becomes reachable.
+   You do ship a WAF (`/waf/rules`, allow/block by priority), so this looks solvable on-platform — we have
+   not tested it yet.
+
+### Where the migration actually stands now
+
+| | |
+|---|---|
+| Capacity (16.6 rps peak) | ✅ proven, 6.5× headroom |
+| 32 GB Postgres, co-located 6.45 ms | ✅ proven |
+| Read replica, PITR | ✅ exist (we were wrong earlier — see correction above) |
+| CPU per replica | ✅ requestable, uncapped by plan |
+| **Edge caching on our own domain** | ✅ **BYO-CDN, measured 6.6× by koigrid today** |
+| `scale-out` → `replica_unhealthy` | ⚠️ still broken, but **no longer blocking us** |
+| Static assets across deploys (G3) | ❓ still open |
+| Secret verification (G4) | ❓ still open — the reason our Stripe webhook is not green |
+| Price of the plan we need (G5) | ❓ **now the single biggest unknown** |
+
+**Bottom line:** this morning the migration was blocked on a platform bug; this afternoon on a platform
+policy; tonight on **a number**. With BYO-CDN the shape is 1-2 replicas + the managed Postgres + Redis,
+and every technical objection we raised today is either solved or ours to fix. **Tell us what that costs
+and we can make a decision.** We are ready to run the cutover rehearsal — the POC is paused, not deleted,
+and the 32 GB database is still `running`.
