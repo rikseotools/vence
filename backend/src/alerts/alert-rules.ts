@@ -216,18 +216,31 @@ function findOverdueCrons(
       continue;
     }
 
+    // Un cron no puede estar overdue por un tick esperado ANTERIOR al arranque
+    // del proceso: en ese instante este proceso no existía y no sabemos siquiera
+    // si el cron estaba registrado en el anterior (pudo desplegarse ahora, migrarse
+    // desde GitHub Actions, o estar RETIRADO por un kill-switch y reactivarse).
+    // Sin esto, cada despliegue de esos inundaba el inbox hasta el primer tick real.
+    //
+    // ⚠️ Aplica a AMBOS casos —cron nunca observado y cron con ejecuciones viejas—.
+    // Antes solo cubría el primero, y eso dejaba fuera justo el caso de la
+    // REACTIVACIÓN: un cron retirado hace días conserva un `lastRun` antiguo, así
+    // que no entra por la rama de "nunca observado" y se marcaba overdue por ticks
+    // de cuando estaba apagado. Caso real 27/07: `check-seguimiento`, retirado el
+    // 20/07 y reactivado como telemetría el 26/07, disparó 13 CRITICAL en 24 h por
+    // los ticks del 21 al 24, con su primer tick legítimo aún por llegar.
+    //
+    // Lo que se pierde a cambio: un tick fallado JUSTO ANTES de un reinicio deja de
+    // avisar. Es asumible y ya era el criterio de la regla — si el cron sigue roto,
+    // su siguiente tick ocurre con el proceso vivo y ahí sí dispara.
+    const startMs = ctx.processStartedAtMs ?? 0;
+    if (startMs > 0 && prevMs < startMs) continue;
+
     const lastRun = lastByEndpoint.get(job.name) ?? null;
     if (lastRun === null) {
-      // Nunca observado en la ventana de la query.
-      // (a) Un cron no puede estar overdue por un tick esperado ANTERIOR al
-      //     arranque del proceso: recién desplegado (p.ej. migrado de GitHub
-      //     Actions) no existía en ese tick. Silenciar hasta que ocurra un
-      //     tick esperado ESTANDO el proceso vivo. Sin esto, cada migración
-      //     inundaba el inbox toda la noche hasta el primer disparo real.
-      const startMs = ctx.processStartedAtMs ?? 0;
-      if (startMs > 0 && prevMs < startMs) continue;
-      // (b) Silenciar hasta que el primer tick esperado quede lo bastante
-      //     atrás como para descartar un bootstrap post-deploy.
+      // Nunca observado en la ventana de la query. Silenciar hasta que el primer
+      // tick esperado quede lo bastante atrás como para descartar un bootstrap
+      // post-deploy.
       if (nowMs - prevMs < CRON_NEVER_OBSERVED_GRACE_MS) continue;
       overdue.push({
         name: job.name,

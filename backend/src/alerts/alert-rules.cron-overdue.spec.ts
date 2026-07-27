@@ -166,6 +166,50 @@ describe('RULE_CRON_OVERDUE', () => {
     expect(RULE_CRON_OVERDUE.shouldFire(rows, ctxOld)).toBe(true);
   });
 
+  // ── Cron RETIRADO y REACTIVADO: lastRun viejo, ticks de cuando estaba apagado ──
+
+  it('cron REACTIVADO (ejecuciones viejas de antes de apagarlo, tick previo ANTES del arranque) → NO overdue', () => {
+    // Caso real 27/07: `check-seguimiento` (L-V 09:00) se retiró el lun 20/07 —su
+    // último tick real— y se reactivó el dom 26/07 a las 21:03. El lunes 27 a las
+    // 06:25 su tick previo es el vie 24 09:00, de cuando estaba APAGADO, y su
+    // primer tick legítimo (hoy 09:00) aún no ha llegado. No es un cron roto.
+    freeze('2026-07-27T06:25:00Z');
+    setCrons({ 'check-seguimiento': '0 9 * * 1-5' });
+    const rows = [
+      { endpoint: 'check-seguimiento', lastTs: '2026-07-20T09:00:00Z' },
+    ];
+    const ctxReactivated: AlertRuleContext = {
+      cronSchedule: svc,
+      processStartedAtMs: new Date('2026-07-26T21:03:00Z').getTime(),
+    };
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctxReactivated)).toBe(false);
+  });
+
+  it('mismo cron con ejecuciones viejas pero tick previo YA con el proceso vivo → SÍ overdue', () => {
+    // Contraprueba: el martes 28 a las 10:00 el tick previo (28 09:00) ocurrió
+    // estando el proceso vivo desde el 26. Si no emitió, está roto de verdad y
+    // el guard NO debe taparlo.
+    freeze('2026-07-28T10:00:00Z');
+    setCrons({ 'check-seguimiento': '0 9 * * 1-5' });
+    const rows = [
+      { endpoint: 'check-seguimiento', lastTs: '2026-07-20T09:00:00Z' },
+    ];
+    const ctxAlive: AlertRuleContext = {
+      cronSchedule: svc,
+      processStartedAtMs: new Date('2026-07-26T21:03:00Z').getTime(),
+    };
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctxAlive)).toBe(true);
+  });
+
+  it('sin processStartedAtMs (tests/legacy) el guard no aplica → sigue detectando el roto', () => {
+    freeze('2026-07-27T06:25:00Z');
+    setCrons({ 'check-seguimiento': '0 9 * * 1-5' });
+    const rows = [
+      { endpoint: 'check-seguimiento', lastTs: '2026-07-20T09:00:00Z' },
+    ];
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(true);
+  });
+
   // ── Endpoint legacy fuera del SchedulerRegistry ──────────────────
 
   it('endpoint observado pero sin @Cron asociado → fuera de la vigilancia', () => {
