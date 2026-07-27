@@ -457,7 +457,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`NO_LITERAL` como AVISO mientras el gate de BD lo trata como defecto duro, así que daba ' +
       '"limpio para insertar" a lotes que el otro rechazaba — medido en el T204 de T-045: 5 de 14 ' +
       'preguntas reescritas EN BD en vez de en el borrador. Ya bloquea en PARIDAD. Hermano de ' +
-      '`verificar_batch_generado`: si los dos discrepan, el simulador no sirve para nada.',
+      '`verificar_batch_generado`: si los dos discrepan, el simulador no sirve para nada. ' +
+      'Con `--equilibrar` además REPARA la posición de la correcta (§2.2-ter) reescribiendo el ' +
+      'borrador — ver `transponer_posicion_correcta`.',
+  },
+  transponer_posicion_correcta: {
+    titulo:
+      'Reparar la POSICIÓN de la opción correcta de un lote (§2.2-ter) sin descuadrar la explicación',
+    ruta: 'lib/generacion/transponerPosicion.js',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'Núcleo PURO (15 tests) + flag `--equilibrar` de `simular-batch-preinsercion.cjs`, que es quien ' +
+      'ya DETECTA el desequilibrio: no hay detector nuevo ni umbral propio, se repara exactamente lo ' +
+      'que `analizarLote` bloquea (>40% en una letra, <10%, o ciclo regular de periodo 4). Hace ' +
+      'TRANSPOSICIÓN de dos posiciones, nunca rotación de cuatro, y mueve con ella la cabecera y la ' +
+      'viñeta afectadas — el fallo de `gen_atc_t209` (25/07/2026) fue rotar cuatro a mano y dejar dos ' +
+      'viñetas describiendo la opción equivocada, invisible para el gate y cazado por una auditoría ' +
+      'ciega. Aborta si la explicación no está sincronizada con `correct_option` en vez de propagar el ' +
+      'desajuste. GOTCHA propio (27/07, lo destapó un canario sobre un lote de 15): repartir solo ' +
+      '"hasta cubrir el mínimo" dejaba la letra en exceso al 40% exacto; con n=8 el fallo es invisible ' +
+      'porque cupoMin y cupoMax coinciden.',
   },
   insertar_batch_generado: {
     titulo: 'Paso 3: insertar un borrador de preguntas como `draft` (invisible), con dedup e invariantes',

@@ -23,11 +23,16 @@ const {
   analizarLote,
   analizarDuplicados,
 } = require(path.join(__dirname, '..', 'lib/generacion/simularBatch.js'))
+const { equilibrarLote } = require(path.join(__dirname, '..', 'lib/generacion/transponerPosicion.js'))
 
 const FILE = process.argv[2]
 const AS_JSON = process.argv.includes('--json')
+// Repara §2.2-ter en el propio borrador: hasta ahora esto se hacía a mano y hacerlo a
+// mano es lo que falla (batch gen_atc_t209: rotación de 4 con dos viñetas remapeadas al
+// revés, que el gate no ve). Escribe el fichero solo si hay algo que mover.
+const EQUILIBRAR = process.argv.includes('--equilibrar')
 if (!FILE) {
-  console.error('uso: node scripts/simular-batch-preinsercion.cjs <borrador.json> [--json]')
+  console.error('uso: node scripts/simular-batch-preinsercion.cjs <borrador.json> [--json] [--equilibrar]')
   process.exit(2)
 }
 
@@ -105,7 +110,17 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
     r.avisos.forEach((a) => avisos.push(`${etiqueta(q, i)}: ${a}`))
   })
 
-  const lote = analizarLote(Q)
+  let lote = analizarLote(Q)
+  let equilibrado = null
+  if (EQUILIBRAR && lote.errores.length) {
+    const r = equilibrarLote(Q)
+    if (r.movimientos.length) {
+      r.preguntas.forEach((q, i) => { Q[i] = q })
+      fs.writeFileSync(FILE, JSON.stringify(Q, null, 2) + '\n')
+      equilibrado = r.movimientos
+      lote = analizarLote(Q)
+    }
+  }
   lote.errores.forEach((e) => errores.push(e))
   analizarDuplicados(Q, rv.rows.map((r) => r.question_text)).forEach((d) =>
     avisos.push(`${etiqueta(Q[d.i], d.i)}: ${d.motivo}`),
@@ -123,6 +138,13 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
     console.log(`\n━━━ SIMULACIÓN PRE-INSERCIÓN — ${path.basename(FILE)} (${Q.length} preguntas) ━━━`)
     console.log(`  distribución: ${lote.distribucionTexto}`)
     console.log(`  secuencia   : ${lote.secuencia}`)
+    if (equilibrado) {
+      console.log(
+        `  ♻️  equilibrado (§2.2-ter): ${equilibrado.length} transposición(es) — ` +
+          equilibrado.map((m) => `Q${m.i + 1} ${m.de}→${m.a}`).join(', '),
+      )
+      console.log('     revisa a ojo que cada viñeta describa su opción: ningún gate lo comprueba')
+    }
     console.log(`  vivas en esos artículos: ${rv.rows.length}`)
     console.log(`\n  ❌ ${errores.length} bloqueante(s)`)
     errores.forEach((e) => console.log(`     ❌ ${e}`))
