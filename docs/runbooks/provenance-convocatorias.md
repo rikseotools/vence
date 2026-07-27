@@ -276,6 +276,22 @@ entonces la válvula sobra» habría tumbado la del Ayuntamiento de Madrid, dond
 el BOCM y lo que falla es el extractor (CMap roto). Si tocas esta regla, **corre el auditor contra la BD
 antes de darla por buena**: así se cazaron las dos.
 
+**Y la cita tiene que ser PRECISA, por un motivo medido.** La probabilidad de que una cifra *arbitraria*
+sea suma de algún subconjunto de los números de la cita crece a plomo con su longitud:
+
+| números en la cita | 3 | 5 | 8 | 10 | 15 | 25 |
+|---|---|---|---|---|---|---|
+| cifra mala que colaría | 1,3 % | 5,2 % | 23,6 % | 42,5 % | 69,7 % | 79,1 % |
+
+Con una cita larga, que la cuenta cuadre no prueba nada. Por eso una cita con más de **8** números
+distintos no exime (`cita_imprecisa`): hay que recortarla al fragmento que sostiene la cuenta. Limitar
+el número de sumandos NO sirve (con 10 números: 43 % → 39 %); el problema es el tamaño del conjunto.
+
+Al contar se quita el ruido del boletín —fechas `17/12/2025`, `núm. 244`, años sueltos—, porque no son
+plazas: contarlos inflaba la cita de Extremadura de 7 números a 16 y la rechazaba siendo legítima. Ese
+falso positivo apareció al correr los **tres** caminos (auditor, sweep CLI y la query del backend)
+contra la BD antes de dar el guardarraíl por bueno. Hazlo tú también.
+
 ### Qué NO hacer
 
 - **NUNCA** inventar la cifra ni ajustarla "a ojo" para que cuadre.

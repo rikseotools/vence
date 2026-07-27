@@ -110,4 +110,14 @@ describe('mirror cifraEnTexto (backend @Cron) ↔ núcleo del root', () => {
     }
     expect(divergencias.slice(0, 5)).toEqual([]);
   });
+
+  it('el filtro de ruido del boletín coincide (la cita real de Extremadura: 16 números → 8)', () => {
+    const citaReal = '«Se convocan pruebas selectivas para cubrir 146 plazas del Cuerpo Auxiliar ' +
+      '(30 plazas correspondiente a la Oferta de Empleo Público para el año 2021 (23 por el turno de ' +
+      'acceso libre, 7 por el turno de discapacidad) más 116 plazas … para los años 2022 y 2023) ' +
+      '(103 por el turno de acceso libre y 13 por el turno de discapacidad).» — Orden de 17/12/2025, ' +
+      'base Primera.1 (DOE núm. 244, 19/12/2025)';
+    expect(firmaDerivadaValida(126, citaReal)).toBe(validador.validarFirmaDerivada({ plazas: 126, snippet: citaReal }).ok);
+    expect(firmaDerivadaValida(126, citaReal)).toBe(true);
+  });
 });

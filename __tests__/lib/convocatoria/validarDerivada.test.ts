@@ -77,6 +77,34 @@ describe('validarFirmaDerivada — la cita que contiene la cifra (extractor roto
   })
 })
 
+describe('validarFirmaDerivada — la cita tiene que ser PRECISA (medido, no opinado)', () => {
+  it('una cita con demasiados números no exime: ahí la suma cuadra por azar', () => {
+    const citaLarga = 'Anexo con 12 34 56 78 90 21 43 65 87 9 15 27 39 51 63 plazas repartidas'
+    const r = validarFirmaDerivada({ plazas: 137, snippet: citaLarga })
+    expect(r.ok).toBe(false)
+    expect(r.codigo).toBe('cita_imprecisa')
+  })
+
+  it('la tasa de azar es la razón: con 15 números, 7 de cada 10 cifras arbitrarias "cuadran"', () => {
+    // Simulación reducida del experimento que motivó el límite (3.000 iteraciones en la sesión).
+    let coladas = 0
+    const N = 400
+    for (let k = 0; k < N; k++) {
+      const nums = Array.from({ length: 15 }, (_, i) => 1 + ((k * 31 + i * 67 + i * i * 17) % 200))
+      const objetivo = 1 + ((k * 11) % 400)
+      if (sumaDeSubconjunto(objetivo, nums)) coladas++
+    }
+    expect(coladas / N).toBeGreaterThan(0.6)   // ~74%: sin el límite, el guardarraíl no guardaría nada
+  })
+
+  it('las citas reales caben de sobra en el límite (4-7 números)', () => {
+    expect(validarFirmaDerivada({
+      plazas: 126,
+      snippet: '146 plazas … 23 por el turno de acceso libre … 103 por el turno de acceso libre … 7 y 13 de discapacidad',
+    }).ok).toBe(true)
+  })
+})
+
 describe('validarFirmaDerivada — bordes', () => {
   it('sin cita no hay nada que comprobar', () => {
     expect(validarFirmaDerivada({ plazas: 100, snippet: '' }).codigo).toBe('sin_cita')

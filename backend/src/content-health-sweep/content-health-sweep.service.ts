@@ -474,8 +474,18 @@ export function sumaDeSubconjunto(objetivo: number, numeros: number[]): number[]
 export function firmaDerivadaValida(plazas: number | null | undefined, snippet: string | null | undefined): boolean {
   if (plazas == null) return false;
   if (!snippet || !snippet.trim()) return false;
-  const numeros = (String(snippet).match(/\b\d{1,4}\b/g) || []).map(Number).filter((n) => n > 0);
-  if (numeros.includes(Number(plazas))) return false;   // está escrita: la válvula sobra
+  // Se quita el ruido del boletín (fechas, «núm. N», años sueltos): contarlo inflaba la cita de
+  // Extremadura de 7 números a 16 y la guarda la rechazaba siendo legítima. Mirror de numerosDelTexto.
+  const limpio = String(snippet)
+    .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, ' ')
+    .replace(/\bn[úu]m\.?\s*\d+/gi, ' ')
+    .replace(/\baño\s+\d{4}\b/gi, ' ');
+  const numeros = (limpio.match(/\b\d{1,4}\b/g) || []).map(Number)
+    .filter((n) => n > 0).filter((n) => n < 1900 || n > 2100);
+  if (numeros.includes(Number(plazas))) return true;    // la cita respalda la cifra directamente
+  // Con una cita larga la suma cuadra por azar (medido: 8 números → 24%, 15 → 70%), así que una cita
+  // imprecisa no exime. Mirror de MAX_NUMEROS_CITA en lib/convocatoria/validarDerivada.cjs.
+  if (new Set(numeros).size > 8) return false;
   return sumaDeSubconjunto(Number(plazas), numeros) !== null;
 }
 
