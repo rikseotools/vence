@@ -1579,7 +1579,12 @@ export const RULE_CANARY_SYNTHETIC_EXTERNAL_FAILED: AlertRule<{
     return {
       title: `🚨 Canary sintético EXTERNO FALLÓ (${r.n} en 10 min) — la app puede estar rota para usuarios reales`,
       body: `El check externo (desde fuera, por CloudFront) falló. Esto ve lo que los canarios internos NO: assets/CDN, render de la home, edge.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - home / home_no_chunk: la home no carga o no renderiza (SSR/contenedor frontend roto). Ver /admin/infraestructura + logs ECS vence-frontend.\n  - assets: un chunk _next/static da != 200 → S3/CloudFront/origin-group roto = CLASE "app congelada / ChunkLoadError". Ver docs/runbooks/pusheo-revision-despliegue.md (assets en S3).\n  - backend_health: api.vence.es/health != 200 → backend caído. Ver ECS vence-backend.\n  - exception: el propio egress falló (NAT/DNS) o timeout.`,
-      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: 10 },
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        windowMin: 10,
+      },
       fingerprint: 'canary_synthetic_external_failed',
     };
   },
@@ -1615,7 +1620,13 @@ export const RULE_CANARY_SAVE_CONTRACT_FAILED: AlertRule<{
     return {
       title: `🚨 Canary save-contract FALLÓ (${r.n} en 10 min) — el guardado de respuestas está ROTO`,
       body: `El canary replicó el flujo del cliente (crear test + guardar respuesta) y verificó en RDS. Falló → los usuarios NO pueden guardar progreso. P1.\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\nACCIONES SEGÚN STEP:\n  - create_test: POST /api/v2/tests roto (creación de sesión — camino que rompió en C1). Ver lib/api/v2/tests + logs.\n  - save_answer: POST /api/test/save-answer roto (422 schema, 5xx handler, 503 saturación).\n  - db_verify: el endpoint respondió 200 pero la fila NO llegó a test_questions = GUARDADO SILENCIOSO ROTO (el PEOR caso, clase hueco C1). Investigar el handler de save-answer y los triggers.\n\nMemoria: project_hueco_c1_perdida_tests_recuperacion.`,
-      metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, lastStatus: r.lastStatus, windowMin: 10 },
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 10,
+      },
       fingerprint: 'canary_save_contract_failed',
     };
   },
@@ -1983,7 +1994,12 @@ export const RULE_EVENT_LOOP_LAG: AlertRule<{
     return {
       title: `Event-loop del frontend saturándose — max ${lagS}s de lag (${r.n} muestras/15m, ${r.crit} críticas)`,
       body: `El event-loop de Node (single-thread) del frontend acumula lag: ${r.n} muestra(s) sobre umbral en 15 min, ${r.crit} crítica(s) (stall ≥2s). Pico ${lagS}s.\n\nEsta es la FIRMA del incidente 21/07 (docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md): con 1 vCPU + trabajo CPU-bound (RS256 de /api/auth/token) el loop se bloquea, el health check no obtiene CPU para responder y ECS mata tasks vivos → cascada de 504. Aquí lo ves ANTES de la cascada.\n\nQUÉ MIRAR:\n  1. ECS CPU frontend Average+MAXIMUM (max=100% sostenido = task pegado a su único core).\n  2. ¿running == max? El autoscaler no sube más → dar capacidad ya (subir desired/max).\n  3. ¿pico de /api/auth/token? (el #1, RS256 CPU-bound). Backlog T-071: mover el minteo fuera del hot path.\n  4. Tasks 2 vCPU (cpu 1024→2048): el 2º core absorbe GC + crypto del threadpool.\n\nMitigación rápida (capacidad):\n  aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --desired-count <N>\n\n  SELECT ts, severity, duration_ms, metadata FROM observable_events\n  WHERE event_type='event_loop_lag' AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;`,
-      metadata: { samples: r.n, critical: r.crit, maxLagMs: r.maxLagMs, windowMin: 15 },
+      metadata: {
+        samples: r.n,
+        critical: r.crit,
+        maxLagMs: r.maxLagMs,
+        windowMin: 15,
+      },
       fingerprint: 'event_loop_lag',
     };
   },
@@ -2316,7 +2332,10 @@ export const RULE_POOL_SAMPLER_STALE: AlertRule<{
       title: `Pool capacity sampler MUERTO: última muestra hace ${ageMin} min`,
       body:
         `El cron pool-capacity-sampler debería emitir cada 1 min pero NO\n` +
-        `lo hace desde ${lastAt ?? '(nunca)'}.\n\n` +
+        // `lastAt` es Date|string|null segun venga del driver; interpolar un Date
+        // directamente es lo que marca restrict-template-expressions. Se formatea
+        // explicito para que el aviso diga una fecha legible y no [object Object].
+        `lo hace desde ${lastAt instanceof Date ? lastAt.toISOString() : (lastAt ?? '(nunca)')}.\n\n` +
         `Pérdida de leading indicator del pool. Investigar:\n` +
         `  - Logs CloudWatch del backend Fargate (¿cron crasheó?)\n` +
         `  - /health/crons (¿registrado?)\n` +
@@ -3189,7 +3208,8 @@ export const RULE_CLIENT_ERROR_SPIKE: AlertRule<{
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
     const lines = rows.map(
-      (r) => `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} errores`,
+      (r) =>
+        `  - ${r.endpoint ?? '(unknown)'} [${r.deployVersion ?? '?'}]: ${r.n} errores`,
     );
     return {
       title: `${rows.length} ruta(s) con spike de errores JS de cliente`,
@@ -3224,7 +3244,9 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
   `,
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
-    const lines = rows.map((r) => `  - ${r.endpoint ?? '(unknown)'}: ${r.n} respuestas 4xx`);
+    const lines = rows.map(
+      (r) => `  - ${r.endpoint ?? '(unknown)'}: ${r.n} respuestas 4xx`,
+    );
     return {
       title: `${rows.length} endpoint(s) con spike de 4xx inesperados de cliente`,
       body: `El cliente recibe 4xx inesperados (400/422…, ya excluidos 401/403/404/409/429) en 15 min:\n\n${lines.join('\n')}\n\nSuele ser el front mandando payloads/params mal formados. Investigar el fetcher del endpoint.`,
@@ -3244,7 +3266,10 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
  * si hay volumen y <50% se guarda, el pipeline de guardado está roto. Cazaría el
  * C1 de inmediato. Ver memoria project_hueco_c1_perdida_tests_recuperacion.
  */
-export const RULE_SAVE_RECONCILIATION: AlertRule<{ answered: number; saved: number }> = {
+export const RULE_SAVE_RECONCILIATION: AlertRule<{
+  answered: number;
+  saved: number;
+}> = {
   name: 'save_reconciliation',
   severity: 'critical',
   // Recalibrado 13/07 (anti falso-positivo): era ventana 15 min + ratio <50%.
@@ -3336,7 +3361,13 @@ export const RULE_CLIENT_EDGE_SUSTAINED: AlertRule<{
       body: byEdge
         ? `El cliente ve respuestas de EDGE 5xx/timeout SOSTENIDAS (${edge5xx} en 1h) que el servidor NO registra. Si es 502 en /api/auth/* → el 502 keep-alive (runbook §502): verificar keepAliveTimeout=65s en los contenedores. Breakdown en /admin/infraestructura → "Errores de cliente".`
         : `AVALANCHA de errores de red de cliente (${netErr} en 1h, muy por encima del baseline benigno ~100/h) — probable outage de red/edge (ALB/CloudFront). Verificar salud del ALB y de los contenedores. Breakdown en /admin/infraestructura → "Errores de cliente".`,
-      metadata: { edge5xx, netErr, topEndpoint: top, windowMin: 60, trigger: byEdge ? 'edge5xx' : 'netErr' },
+      metadata: {
+        edge5xx,
+        netErr,
+        topEndpoint: top,
+        windowMin: 60,
+        trigger: byEdge ? 'edge5xx' : 'netErr',
+      },
       fingerprint: `client_edge_sustained_${byEdge ? 'edge' : 'net'}_${top}`,
     };
   },
@@ -3377,13 +3408,18 @@ export const RULE_VALIDATION_LOG_FLOOD: AlertRule<{
   buildNotification: (rows) => {
     const lines = rows
       .slice(0, 10)
-      .map((r) => `  - ${r.n}/h  ${r.endpoint ?? '(unknown)'} / ${r.errorType ?? '?'}`);
+      .map(
+        (r) =>
+          `  - ${r.n}/h  ${r.endpoint ?? '(unknown)'} / ${r.errorType ?? '?'}`,
+      );
     return {
       title: `${rows.length} bucket(s) inundando validation_error_logs (≥5000/h)`,
       body: `Un (endpoint, error_type) se está escribiendo en el log de errores a un ritmo anómalo (≥5000/hora). Esto infla la tabla y ahoga las alertas reales — la clase de fallo que tumbó el panel admin el 11/07:\n\n${lines.join('\n')}\n\nInvestigar:\n  - ¿Es un 4xx BENIGNO mal-clasificado como error? → marcarlo esperado en withErrorLogging (como el 401 anónimo).\n  - ¿Es un error REAL en masa (endpoint roto, 500 storm)? → arreglar el endpoint.\n  - Query: SELECT error_message, http_status, COUNT(*) FROM validation_error_logs WHERE endpoint='…' AND created_at>NOW()-INTERVAL '1 hour' GROUP BY 1,2 ORDER BY 3 DESC;`,
       metadata: {
         bucketsAffected: rows.length,
-        topBucket: rows[0] ? `${rows[0].endpoint} / ${rows[0].errorType}` : null,
+        topBucket: rows[0]
+          ? `${rows[0].endpoint} / ${rows[0].errorType}`
+          : null,
         topRate: rows[0]?.n ?? 0,
       },
     };
@@ -3485,7 +3521,8 @@ export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
   `,
   // ≥20 usuarios para que la media sea fiable; >5 tokens muestreados/usuario/10min
   // (≈ >50 reales) = el cliente re-acuña sin cachear → flood → deslogueos.
-  shouldFire: (rows) => (rows[0]?.users ?? 0) >= 20 && (rows[0]?.perUser ?? 0) > 5,
+  shouldFire: (rows) =>
+    (rows[0]?.users ?? 0) >= 20 && (rows[0]?.perUser ?? 0) > 5,
   buildNotification: (rows) => {
     const minted = rows[0]?.minted ?? 0;
     const users = rows[0]?.users ?? 0;
@@ -3493,7 +3530,12 @@ export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
     return {
       title: `Flood de acuñación de token — ${perUser} tokens/usuario en 10 min (muestreado 10%)`,
       body: `El cliente re-acuña el RS256 sin cachearlo (el poll martillea /api/auth/token). ${minted} mints muestreados de ${users} usuarios en 10 min ≈ ${Math.round(perUser * 10)} reales/usuario. Genera 401 intermitentes que deslogean (el bug del 04-15/07, caso Natalia).\n\nRevisar la caché del token en lib/auth/adapters/authjsAdapter.ts y su test __tests__/lib/auth/authjsAdapter.test.ts.`,
-      metadata: { mintedSampled: minted, users, perUserSampled: perUser, windowMin: 10 },
+      metadata: {
+        mintedSampled: minted,
+        users,
+        perUserSampled: perUser,
+        windowMin: 10,
+      },
       fingerprint: 'auth_token_mint_flood',
     };
   },
@@ -3528,7 +3570,12 @@ function canaryFailedRule(
       return {
         title: `${opts.title} (${r.n} en ${opts.windowMin} min)`,
         body: `${opts.body}\n\nÚltimo fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}`,
-        metadata: { count: r.n, lastStep: r.lastStep, lastError: r.lastError, windowMin: opts.windowMin },
+        metadata: {
+          count: r.n,
+          lastStep: r.lastStep,
+          lastError: r.lastError,
+          windowMin: opts.windowMin,
+        },
         fingerprint: eventType,
       };
     },
@@ -3536,40 +3583,56 @@ function canaryFailedRule(
   };
 }
 
-export const RULE_CANARY_AI_MODEL_FAILED = canaryFailedRule('canary_ai_model_failed', {
-  title: '🚨 Canary AI-model: un proveedor LLM activo NO responde',
-  body: 'El ping al proveedor LLM configurado (ai_api_config activo) falló de forma sostenida → el chat IA / generación puede estar caído. Revisar credenciales del proveedor + su status page.',
-  windowMin: 20,
-  cooldownMin: 20,
-});
+export const RULE_CANARY_AI_MODEL_FAILED = canaryFailedRule(
+  'canary_ai_model_failed',
+  {
+    title: '🚨 Canary AI-model: un proveedor LLM activo NO responde',
+    body: 'El ping al proveedor LLM configurado (ai_api_config activo) falló de forma sostenida → el chat IA / generación puede estar caído. Revisar credenciales del proveedor + su status page.',
+    windowMin: 20,
+    cooldownMin: 20,
+  },
+);
 
-export const RULE_CANARY_ANSWER_PREMIUM_FAILED = canaryFailedRule('canary_answer_premium_failed', {
-  title: '🚨 Canary answer-premium: el canary de límites premium falló',
-  body: 'El canary que verifica que un usuario premium NO topa con el límite diario (y que los endpoints de respuesta se comportan) falló. Riesgo: regresión de gating premium. Revisar /api/daily-limit + los endpoints de answer.',
-  windowMin: 10,
-  cooldownMin: 10,
-});
+export const RULE_CANARY_ANSWER_PREMIUM_FAILED = canaryFailedRule(
+  'canary_answer_premium_failed',
+  {
+    title: '🚨 Canary answer-premium: el canary de límites premium falló',
+    body: 'El canary que verifica que un usuario premium NO topa con el límite diario (y que los endpoints de respuesta se comportan) falló. Riesgo: regresión de gating premium. Revisar /api/daily-limit + los endpoints de answer.',
+    windowMin: 10,
+    cooldownMin: 10,
+  },
+);
 
-export const RULE_CANARY_COMPETITOR_MENTION_FAILED = canaryFailedRule('canary_competitor_mention_failed', {
-  title: '⚠️ Canary competitor-mention: el chequeo de menciones falló',
-  body: 'El canary que cuenta menciones activas a competidores en contenido publicado no pudo ejecutar su query (fallo del propio canary, NO una mención detectada). Revisar la conexión/consulta.',
-  windowMin: 90,
-  cooldownMin: 60,
-});
+export const RULE_CANARY_COMPETITOR_MENTION_FAILED = canaryFailedRule(
+  'canary_competitor_mention_failed',
+  {
+    title: '⚠️ Canary competitor-mention: el chequeo de menciones falló',
+    body: 'El canary que cuenta menciones activas a competidores en contenido publicado no pudo ejecutar su query (fallo del propio canary, NO una mención detectada). Revisar la conexión/consulta.',
+    windowMin: 90,
+    cooldownMin: 60,
+  },
+);
 
-export const RULE_CANARY_POR_LEYES_SCOPE_FAILED = canaryFailedRule('canary_por_leyes_scope_failed', {
-  title: '🚨 Canary por-leyes-scope: fallo de scope (posible fuga o endpoint roto)',
-  body: 'El canary del filtro "por leyes" falló: puede ser una FUGA de scope (scopeToPosition devolviendo artículos de fuera del tema), 0 preguntas donde debería haber, o el endpoint /api/questions/filtered caído. Verificar el paso reportado.',
-  windowMin: 10,
-  cooldownMin: 10,
-});
+export const RULE_CANARY_POR_LEYES_SCOPE_FAILED = canaryFailedRule(
+  'canary_por_leyes_scope_failed',
+  {
+    title:
+      '🚨 Canary por-leyes-scope: fallo de scope (posible fuga o endpoint roto)',
+    body: 'El canary del filtro "por leyes" falló: puede ser una FUGA de scope (scopeToPosition devolviendo artículos de fuera del tema), 0 preguntas donde debería haber, o el endpoint /api/questions/filtered caído. Verificar el paso reportado.',
+    windowMin: 10,
+    cooldownMin: 10,
+  },
+);
 
-export const RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED = canaryFailedRule('canary_psychometric_integrity_failed', {
-  title: '⚠️ Canary psychometric-integrity: el chequeo de integridad falló',
-  body: 'El canary que vigila sesiones psicotécnicas fantasma no pudo ejecutar su query (fallo del propio canary, NO fantasmas detectados). Revisar la conexión/consulta.',
-  windowMin: 30,
-  cooldownMin: 30,
-});
+export const RULE_CANARY_PSYCHOMETRIC_INTEGRITY_FAILED = canaryFailedRule(
+  'canary_psychometric_integrity_failed',
+  {
+    title: '⚠️ Canary psychometric-integrity: el chequeo de integridad falló',
+    body: 'El canary que vigila sesiones psicotécnicas fantasma no pudo ejecutar su query (fallo del propio canary, NO fantasmas detectados). Revisar la conexión/consulta.',
+    windowMin: 30,
+    cooldownMin: 30,
+  },
+);
 
 /**
  * Spike de `network_retry` EXHAUSTED — el wrapper de fetch resiliente
@@ -3641,7 +3704,8 @@ export const RULE_LAWS_CONFIGURATOR_DEGRADED: AlertRule<{
     WHERE event_type IN ('laws_configurator_error', 'laws_configurator_stats')
       AND ts > NOW() - INTERVAL '10 minutes'
   `,
-  shouldFire: (rows) => (rows[0]?.errors ?? 0) >= 3 || (rows[0]?.slow ?? 0) >= 3,
+  shouldFire: (rows) =>
+    (rows[0]?.errors ?? 0) >= 3 || (rows[0]?.slow ?? 0) >= 3,
   buildNotification: (rows) => {
     const errors = rows[0]?.errors ?? 0;
     const slow = rows[0]?.slow ?? 0;
