@@ -15,6 +15,20 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-178] ✅ [CERRADA 27/07 — el segundo cabo NO era de higiene: `sync` dejaba mentir a `list` y `next`] Dos cabos: 44 errores de lint en `alert-rules.ts` y la prioridad de T-089 divergente
+- **Prettier:** `backend/src/alerts/alert-rules.ts` arrastra **44 errores de formato PREVIOS** a la sesión del 27/07 (recuento idéntico antes y después de añadir dos reglas nuevas, comprobado con `git stash`). 43 son auto-corregibles con `--fix`. No rompen CI (el job `Lint` de la raíz no cubre `backend/`), pero ensucian cualquier `eslint` que se corra ahí.
+- **Prioridad divergente:** `backlog.cjs list` muestra **T-089 como 🔴** mientras el markdown dice **🟡 desde el 25/07** (se bajó al superar el gate de pico de Koigrid). Causa: **`backlog.cjs sync` solo INSERTA ids nuevos, no actualiza la prioridad** de los existentes. Efecto: `next` sugiere mal a todas las sesiones. Arreglo: que `sync` reconcilie también prioridad y título (y, ya puestos, que `findBacklogDrift()` lo reporte como deriva, igual que hace con el estado).
+- **Origen:** sesión del 27/07.
+- **✅ Lint:** 43 los arregló `--fix`; el 44 no era de formato — interpolar un `Date|string|null` en una plantilla. Se formatea explícito, lo que **además mejora el aviso**: la alerta de `pool-capacity-sampler` muerto ya no puede imprimir `[object Object]` donde va la fecha. 289/289 y typecheck verde.
+- **🔴 El segundo cabo NO era higiene, era un defecto de verdad.** `sync` usaba `ON CONFLICT DO NOTHING`: importaba ids nuevos y **jamás actualizaba los existentes**. Consecuencias medidas, las dos sobre la herramienta con la que se ELIGE tarea:
+  - **`reserve` promete en su propia salida** que *«luego sync actualizará el título real»* — y no lo hacía. **T-148, T-153 y T-154** llevaban días vivas mostrándose como `RESERVADA — ficha pendiente de escribir` con su ficha ya escrita. En `list` y `next` eran ilegibles justo cuando hay que decidir.
+  - **T-089** seguía ofreciéndose como 🔴 a todas las sesiones pese a haber bajado a 🟡 el 25/07.
+  - Verificado: **14 filas reconciliadas** en la primera pasada; la segunda solo toca lo que cambió (idempotente).
+- **Decisión de diseño tomada al implementarlo:** NO se reconcilia lo que el markdown da por cerrado aunque la fila siga abierta. Eso es **deriva** y le toca delatarla a `findBacklogDrift()`; copiarle el título `"CERRADA …"` a una fila abierta la disfrazaría de normal. Pasó con **T-072** mientras se escribía (su título se restauró a mano).
+- **Y un bug del parseo que llevaba oculto precisamente porque nunca se persistía:** el emoji `⬜` no estaba en la lista de caracteres a quitar del título, así que **T-040 y T-014** lo arrastraban dentro del texto. Solo se ve cuando empiezas a escribir de verdad.
+- **⚠️ Queda vivo (de otra sesión, no se toca):** **T-072** está ✅ en el markdown y `open` en BD desde el 21/07 — `next` la ha estado ofreciendo seis días. Y el repo principal lleva desde el 27/07 por la mañana parado con cambios sin commitear en `alert-rules.ts` que **ya están en `origin/main`**: son redundantes y 300+ commits atrasados, así que quien los retome debe descartarlos, no fusionarlos.
+
+
 ### [T-176] ✅ [CERRADA 27/07 — el arreglo lo hizo OTRA sesión; aquí se consolidó el guardarraíl] Los backticks de `deploy-backend.sh` se ejecutaban como sustitución de comandos
 - **Qué:** el bloque que muta la task def es un `node -e "…"` entre comillas **dobles**, así que bash expande lo que hay dentro. Varios comentarios usan acentos graves para citar nombres (`hash_change`, `http_status`, `content_preview`, `checked_url`, `seguimiento_fuente_ciega`) y bash intenta EJECUTARLOS: cada deploy imprime `orden no encontrada` por cada uno.
 - **Hoy es ruido, pero es una bomba de relojería:** hoy fallan porque no existen esos comandos. El día que un comentario cite entre backticks algo que SÍ sea ejecutable, el deploy lo ejecuta. Y ya hay dos incidentes de esta misma familia: el 11/07 unas comillas dobles truncaron el JS **en silencio**, y el 27/07 un `$8` abortó el deploy de todas las sesiones.
@@ -270,11 +284,6 @@
 - **Contexto:** el resto de materias nuevas del programa SÍ tienen cobertura razonable (Snap Layouts 16, Editor/Dictado/Traducción 27, análisis de datos 43, integración Teams-Outlook 63, notificaciones de Teams 10). Este es el único hueco real.
 - **Cómo:** generación anclada a fuente con doble auditoría ciega + Paso 9, flujo de [T-115]. El banco de `Explorador Windows 11` lo comparten 16 oposiciones, así que cubrirlo apaga el hueco en todas.
 - **Origen:** T-107, alineación de Cantabria al programa vigente (27/07).
-
-### [T-178] 🟢 [ABIERTO 27/07] Dos cabos de higiene: 44 errores de prettier en `alert-rules.ts` y la prioridad de T-089 divergente
-- **Prettier:** `backend/src/alerts/alert-rules.ts` arrastra **44 errores de formato PREVIOS** a la sesión del 27/07 (recuento idéntico antes y después de añadir dos reglas nuevas, comprobado con `git stash`). 43 son auto-corregibles con `--fix`. No rompen CI (el job `Lint` de la raíz no cubre `backend/`), pero ensucian cualquier `eslint` que se corra ahí.
-- **Prioridad divergente:** `backlog.cjs list` muestra **T-089 como 🔴** mientras el markdown dice **🟡 desde el 25/07** (se bajó al superar el gate de pico de Koigrid). Causa: **`backlog.cjs sync` solo INSERTA ids nuevos, no actualiza la prioridad** de los existentes. Efecto: `next` sugiere mal a todas las sesiones. Arreglo: que `sync` reconcilie también prioridad y título (y, ya puestos, que `findBacklogDrift()` lo reporte como deriva, igual que hace con el estado).
-- **Origen:** sesión del 27/07.
 
 ### [T-185] 🟠 [ABIERTO 27/07] El detector client-side de bots cría falsos positivos en cadena: 500 alertas rancias y un cálculo sobre estado PARCIAL
 - **Estado medido (27/07):** `fraud_alerts` tiene **500 en `stale`** desde el 04/02 sin triar. Las **3 pendientes** de ese día se revisaron una a una contra los datos y las **3 eran falsos positivos** — igual que las 2 examinadas en la auditoría anti-scraping. La tasa de acierto del detector, sobre todo lo que se ha mirado a fondo, es **0**.
