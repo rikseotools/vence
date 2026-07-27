@@ -2329,6 +2329,10 @@ export const questions = pgTable("questions", {
 	// Barajar opciones Fase 1: barajabilidad de las opciones (default no_shuffle = seguro).
 	// Clasificador: lib/shuffle/classifyShuffleMode.ts. Migración 20260722_shuffle_options_fase1.
 	shuffleMode: text("shuffle_mode").default('no_shuffle').notNull(),
+	// Explicación ESTRUCTURADA por-opción sin letras (Fase 2 de T-080). Si está presente, el
+	// serve renderiza desde aquí y la pregunta es shuffle-safe por construcción; si es NULL, se
+	// sirve `explanation` tal cual. Esquema: lib/shuffle/structuredExplanation.ts
+	explanationData: jsonb("explanation_data"),
 	// Barajar opciones (verificación robusta): seguridad de barajar como DATO verificado
 	// + auto-invalidable. unverified(default)/safe/unsafe/stale. El serve solo baraja las
 	// safe. Trigger tg_questions_shuffle_safety_invalidate marca stale al cambiar contenido.

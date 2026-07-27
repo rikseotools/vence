@@ -61,9 +61,32 @@ describe('cableado shuffle: SERVE (lib/api/filtered-questions)', () => {
     expect(queries).toContain("from '@/lib/shuffle/classifyShuffleMode'")
     expect(queries).toContain("from '@/lib/shuffle/permute'")
     expect(queries).toContain("from '@/lib/shuffle/flag'")
-    // El gate exige shuffle_safety='safe' (persistido) además del detector determinista.
-    expect(queries).toMatch(/isShuffleServeEligible\(\{\s*shuffle_mode: q\.shuffleMode, explanation: q\.explanation, shuffle_safety: q\.shuffleSafety/)
+    // El gate exige shuffle_safety='safe' (persistido) además del detector determinista, y desde
+    // la Fase 2 le pasa también si la pregunta tiene explicación ESTRUCTURADA (que es shuffle-safe
+    // por construcción). Se comprueban los cuatro campos por separado para no atar el guardarraíl
+    // al formato del código (una sola línea vs multilínea), que fue lo que lo rompió al cablear.
+    expect(queries).toContain('isShuffleServeEligible({')
+    for (const campo of [
+      'shuffle_mode: q.shuffleMode',
+      'explanation: q.explanation',
+      'shuffle_safety: q.shuffleSafety',
+      'has_structured_explanation:',
+    ]) {
+      expect(queries).toContain(campo)
+    }
     expect(queries).toContain('option_order: optionOrder')
+  })
+
+  it('FASE 2: la explicación se RENDERIZA desde explanation_data cuando existe (y no antes)', () => {
+    // Los dos sistemas conviven mientras se transcribe el histórico: sin estructura se sirve
+    // `q.explanation` tal cual —139.445 preguntas dependen de ello— y con estructura se compone
+    // para el orden REALMENTE servido, para que cada opción viaje con su razón al barajar.
+    expect(queries).toContain("from '@/lib/shuffle/structuredExplanation'")
+    expect(queries).toContain('isStructuredExplanation(q.explanationData')
+    expect(queries).toMatch(/renderStructuredExplanation\(estructurada, \{[\s\S]{0,200}optionOrder/)
+    expect(queries).toMatch(/explanation: estructurada[\s\S]{0,300}: q\.explanation/)
+    // Y la columna tiene que viajar en el SELECT, o nada de lo anterior se entera.
+    expect(queries).toContain('explanationData: questions.explanationData')
   })
   it('el gate es OPT-IN: shuffleOn exige shuffleOptions del request + flag/scope', () => {
     expect(queries).toMatch(/shuffleOn\s*=\s*shuffleOptions === true && isShuffleEnabledFor\(positionType\)/)

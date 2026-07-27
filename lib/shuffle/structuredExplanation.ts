@@ -31,8 +31,17 @@ export interface StructuredExplanation {
   v: 1
   /** Texto introductorio independiente de opción (opcional). */
   intro?: string
-  /** Cita legal (blockquote). `ref` = "Art. X.Y Norma"; `texto` = cita literal. */
-  cita?: { ref?: string; texto?: string }
+  /**
+   * Cita legal (blockquote). `ref` = "Art. X.Y Norma"; `texto` = cita literal.
+   *
+   * `bloque` guarda el blockquote ÍNTEGRO (sin el prefijo "> ") y, si está, manda sobre
+   * ref/texto al renderizar. Existe porque el par {ref, texto} solo captura el primer
+   * **negrita** y el primer "entrecomillado": medido el 27/07 sobre el banco vivo, las citas
+   * multilínea —las que desglosan apartados, o las de ofimática con rutas de menú— perdían todo
+   * lo demás al migrar (un caso real pasaba de 1.024 a 391 caracteres). Con `bloque` la
+   * transcripción es sin pérdida.
+   */
+  cita?: { ref?: string; texto?: string; bloque?: string }
   /**
    * Razón por opción, keada al índice ORIGINAL como string ("0".."4").
    * DEBE existir una entrada por cada opción presente de la pregunta. La razón se
@@ -120,11 +129,14 @@ export function renderStructuredExplanation(
   const parts: string[] = []
   if (data.intro && data.intro.trim()) parts.push(data.intro.trim())
 
-  if (data.cita && (data.cita.ref || data.cita.texto)) {
-    const ref = data.cita.ref ? `**${data.cita.ref}**` : ''
-    const texto = data.cita.texto ? `"${data.cita.texto}"` : ''
-    // blockquote: ref y texto en líneas separadas con prefijo "> " (formato §8.1).
-    const lines = [ref, texto].filter(Boolean).map((l) => `> ${l}`)
+  if (data.cita && (data.cita.bloque || data.cita.ref || data.cita.texto)) {
+    // `bloque` (el blockquote íntegro) manda: reproduce la cita tal cual estaba, incluidas las
+    // multilínea. Sin él se recompone desde ref/texto, que es el formato canónico §8.1.
+    const lines = data.cita.bloque
+      ? data.cita.bloque.split('\n').map((l) => `> ${l}`.trimEnd())
+      : [data.cita.ref ? `**${data.cita.ref}**` : '', data.cita.texto ? `"${data.cita.texto}"` : '']
+          .filter(Boolean)
+          .map((l) => `> ${l}`)
     if (lines.length) parts.push(lines.join('\n'))
   }
 
@@ -182,30 +194,6 @@ export function parseLetterFormatExplanation(
 ): StructuredExplanation | null {
   if (!explanation || !explanation.trim()) return null
   const text = explanation.replace(/\r\n/g, '\n')
-
-  // 1) Cita: bloque inicial de líneas que empiezan por ">".
-  let cita: { ref?: string; texto?: string } | undefined
-  const quoteLines: string[] = []
-  const lines = text.split('\n')
-  let idx = 0
-  while (idx < lines.length && (lines[idx].trim().startsWith('>') || lines[idx].trim() === '')) {
-    const t = lines[idx].trim()
-    if (t.startsWith('>')) quoteLines.push(t.replace(/^>\s?/, ''))
-    idx++
-    // parar el bloque de cita al llegar a una línea vacía tras haber capturado algo
-    if (quoteLines.length && lines[idx] && !lines[idx].trim().startsWith('>')) break
-  }
-  if (quoteLines.length) {
-    const joined = quoteLines.join(' ').trim()
-    // ref = primer **...**; texto = primer "..."
-    const refMatch = joined.match(/\*\*([^*]+)\*\*/)
-    const txtMatch = joined.match(/"([^"]+)"/)
-    cita = {
-      ref: refMatch ? refMatch[1].trim().replace(/[:：]\s*$/, '') : undefined,
-      texto: txtMatch ? txtMatch[1].trim() : undefined,
-    }
-    if (!cita.ref && !cita.texto) cita = undefined
-  }
 
   // 2) Razón de la correcta: entre "Por qué <L> (es|no es) correcta/incorrecta:" y
   //    "Por qué las demás". Se aceptan las variantes de cabecera SEGURAS medidas en el
@@ -290,8 +278,47 @@ export function parseLetterFormatExplanation(
     if (!r || !stripEmphasis(r).trim()) return null
   }
 
+  // 4-bis) CITA e INTRO: todo lo que va ANTES de la cabecera de la correcta.
+  //
+  // La cita se buscaba antes con un bucle desde la línea 0, o sea que **solo la encontraba si el
+  // blockquote abría la explicación**. Con un párrafo de contexto delante (que es lo normal en
+  // buena parte del banco), la cita se PERDÍA al migrar. Ahora se recorta la zona previa a la
+  // cabecera y de ahí salen las dos cosas: las líneas `>` son la cita y el resto es el intro.
+  const zonaPrevia = text.slice(0, cm.index)
+  const quoteLines = zonaPrevia
+    .split('\n')
+    .filter((l) => l.trim().startsWith('>'))
+    .map((l) => l.trim().replace(/^>\s?/, ''))
+  let cita: { ref?: string; texto?: string; bloque?: string } | undefined
+  if (quoteLines.length) {
+    const joined = quoteLines.join(' ').trim()
+    const refMatch = joined.match(/\*\*([^*]+)\*\*/)
+    const txtMatch = joined.match(/"([^"]+)"/)
+    cita = {
+      ref: refMatch ? refMatch[1].trim().replace(/[:：]\s*$/, '') : undefined,
+      texto: txtMatch ? txtMatch[1].trim() : undefined,
+      bloque: quoteLines.join('\n').trim() || undefined,
+    }
+    if (!cita.ref && !cita.texto && !cita.bloque) cita = undefined
+  }
+
+  // 5) INTRO: el texto en prosa que va ANTES de la cabecera de la correcta y que no es la cita.
+  //    Sin esto se PERDÍA al migrar — medido el 27/07 sobre el banco vivo: explicaciones de 1.024
+  //    caracteres se renderizaban en 629 porque el párrafo de contexto ("En las bases de datos
+  //    relacionales, la terminología de tablas tiene significados precisos.") desaparecía. El
+  //    esquema ya tenía el campo `intro` y el render lo emite primero; solo faltaba capturarlo.
+  //    Lo cazó la guarda de no-regresión del backfill (render ≠ original ⇒ no se migra), no un
+  //    test: la invariante ida-vuelta no lo veía porque lo que se pierde nunca entra.
+  const introTexto = zonaPrevia
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('>'))   // la cita ya está capturada aparte
+    .join('\n')
+    .trim()
+  const intro = introTexto || undefined
+
   const frame: ExplanationFrame = /incorrect|falsa/i.test(cm[0]) ? 'select_incorrect' : 'select_correct'
   const result: StructuredExplanation = { v: 1, options, frame }
+  if (intro) result.intro = intro
   if (cita) result.cita = cita
   if (outro) result.outro = outro
   return result

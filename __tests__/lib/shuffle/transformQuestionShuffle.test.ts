@@ -100,3 +100,75 @@ describe('transformQuestion — no elegibles y flag off', () => {
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Fase 2 (T-080): explicación ESTRUCTURADA y CONVIVENCIA de los dos sistemas.
+//
+// La estrategia acordada es transcribir el histórico a ritmo mientras las dos formas coexisten:
+// pregunta sin `explanation_data` → se sirve el texto de siempre, byte a byte; pregunta con
+// estructura → se compone para el orden realmente servido. Estos tests fijan las dos mitades,
+// porque romper la primera sería romper producción entera para 139.445 preguntas.
+describe('transformQuestion — explicación estructurada (Fase 2) y convivencia', () => {
+  const estructura = {
+    v: 1 as const,
+    cita: { ref: 'Art. 103 CE', texto: 'La Administración sirve con objetividad los intereses generales.' },
+    options: {
+      '0': 'Es lo que dice el precepto: sirve con objetividad los intereses generales.',
+      '1': 'Ese cometido corresponde al Gobierno, no a la Administración.',
+      '2': 'Confunde la función con el control jurisdiccional.',
+      '3': 'No aparece en el artículo.',
+    },
+  }
+
+  test('SIN explanation_data se sirve la explicación de siempre, intacta', () => {
+    const q = transformQuestion(row({ explanation: 'Texto legacy tal cual.', explanationData: null }), 0, false)
+    expect(q.explanation).toBe('Texto legacy tal cual.')
+  })
+
+  test('CON explanation_data la explicación se renderiza desde la estructura', () => {
+    const q = transformQuestion(row({ explanation: 'legacy que NO debe servirse', explanationData: estructura }), 0, false)
+    expect(q.explanation).toContain('Art. 103 CE')
+    expect(q.explanation).toContain('**Por qué A es correcta:**')
+    expect(q.explanation).not.toContain('legacy que NO debe servirse')
+  })
+
+  test('al BARAJAR, cada opción viaja con su razón y las letras se recolocan', () => {
+    const q = transformQuestion(
+      row({ explanationData: estructura, explanation: 'irrelevante' }),
+      0,
+      true,
+    )
+    // La correcta es la opción 0 ("Alfa"): esté donde esté, su razón la acompaña.
+    const posMostrada = q.options.indexOf('Alfa')
+    const letra = ['A', 'B', 'C', 'D'][posMostrada]
+    expect(q.correct_option).toBe(posMostrada)
+    expect(q.explanation).toContain(`**Por qué ${letra} es correcta:**`)
+    expect(q.explanation).toContain('sirve con objetividad los intereses generales')
+    // Y ninguna razón queda huérfana: las 4 siguen presentes.
+    for (const razon of Object.values(estructura.options)) {
+      expect(q.explanation).toContain(razon.slice(0, 30))
+    }
+  })
+
+  test('la estructura hace barajable una pregunta marcada unsafe por su texto legacy', () => {
+    // Ese es el desbloqueo: 47.388 preguntas activas son unsafe SOLO por citar letras en el
+    // texto. Con estructura, el texto plano ya no se sirve, así que deja de mandar.
+    const q = transformQuestion(
+      row({
+        explanation: 'La opción B es correcta porque…',
+        shuffleSafety: 'unsafe',
+        explanationData: estructura,
+      }),
+      0,
+      true,
+    )
+    expect(q.option_order).not.toBeNull()
+    expect(q.explanation).not.toContain('La opción B es correcta porque')
+  })
+
+  test('una estructura INVÁLIDA (le falta una opción) no se usa: se cae al texto legacy', () => {
+    const rota = { v: 1, options: { '0': 'solo una razón' } }
+    const q = transformQuestion(row({ explanation: 'legacy de rescate', explanationData: rota }), 0, false)
+    expect(q.explanation).toBe('legacy de rescate')
+  })
+})

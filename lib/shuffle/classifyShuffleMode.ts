@@ -137,6 +137,15 @@ export function isShuffleServeEligible(q: {
   shuffle_mode?: ShuffleMode | string | null;
   explanation?: string | null;
   shuffle_safety?: string | null;
+  /** ¿Tiene explicación ESTRUCTURADA válida? (Fase 2 de T-080) */
+  has_structured_explanation?: boolean;
 }): boolean {
+  // Con explicación estructurada la seguridad NO depende de la clasificación guardada: las
+  // razones van keadas al índice de cada opción y la letra se pinta al renderizar, así que
+  // barajar mueve cada opción CON su razón. Es shuffle-safe POR CONSTRUCCIÓN — y por eso no se
+  // le exige `shuffle_safety='safe'`, que describe el texto plano que ya no se sirve.
+  // Sigue exigiéndose `isShuffleEligible` (el modo: 'no_shuffle' o 'anchor_last' mandan igual,
+  // porque hablan de las OPCIONES —"todas las anteriores"—, no de la explicación).
+  if (q.has_structured_explanation) return isShuffleEligible({ ...q, explanation: null });
   return q.shuffle_safety === 'safe' && isShuffleEligible(q);
 }

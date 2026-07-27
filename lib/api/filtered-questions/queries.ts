@@ -34,6 +34,7 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 import { isShuffleServeEligible } from '@/lib/shuffle/classifyShuffleMode'
 import { permutationFor, applyOrder } from '@/lib/shuffle/permute'
 import { isShuffleEnabledFor } from '@/lib/shuffle/flag'
+import { isStructuredExplanation, renderStructuredExplanation } from '@/lib/shuffle/structuredExplanation'
 import { randomUUID } from 'crypto'
 
 // ============================================
@@ -66,6 +67,7 @@ const questionColumns = {
   contentData: questions.contentData,
   correctOption: questions.correctOption,
   globalDifficultyCategory: questions.globalDifficultyCategory,
+  explanationData: questions.explanationData,
   shuffleMode: questions.shuffleMode,
   shuffleSafety: questions.shuffleSafety,
 } as const
@@ -106,6 +108,7 @@ type QuestionRow = {
   contentData: Record<string, unknown> | null
   correctOption: number
   globalDifficultyCategory: string | null
+  explanationData: unknown
   shuffleMode: string | null
   shuffleSafety: string | null
   articleId: string
@@ -165,10 +168,22 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
   let displayOptions = naturalOptions
   let optionOrder: number[] | null = null
   let correctOption = q.correctOption
+  // ¿Tiene explicación ESTRUCTURADA (Fase 2)? Entonces es shuffle-safe por construcción y la
+  // explicación se RENDERIZA desde ella, en el orden en que se sirvan las opciones. Los dos
+  // sistemas conviven a propósito: mientras se transcribe el histórico, la pregunta sin
+  // estructura se sirve exactamente como hoy.
+  const estructurada = isStructuredExplanation(q.explanationData, naturalOptions.length)
+    ? (q.explanationData as Parameters<typeof renderStructuredExplanation>[0])
+    : null
   if (
     shuffle &&
     naturalOptions.length > 1 &&
-    isShuffleServeEligible({ shuffle_mode: q.shuffleMode, explanation: q.explanation, shuffle_safety: q.shuffleSafety })
+    isShuffleServeEligible({
+      shuffle_mode: q.shuffleMode,
+      explanation: q.explanation,
+      shuffle_safety: q.shuffleSafety,
+      has_structured_explanation: estructurada !== null,
+    })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)
     // correct_option (original, 0=A en BD) → su nueva posición mostrada.
@@ -189,7 +204,16 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
     id: q.id,
     question: q.questionText,
     options: displayOptions,
-    explanation: q.explanation,
+    // Con estructura, la explicación se compone para el orden REALMENTE servido (barajado o
+    // natural): cada opción viaja con su razón y las letras se asignan por posición. Sin
+    // estructura, el texto de siempre.
+    explanation: estructurada
+      ? renderStructuredExplanation(estructurada, {
+          correctOption: q.correctOption,
+          optionOrder,
+          nOptions: naturalOptions.length,
+        })
+      : q.explanation,
     correct_option: correctOption,
     option_order: optionOrder,
     primary_article_id: q.primaryArticleId,

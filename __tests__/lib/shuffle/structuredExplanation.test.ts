@@ -192,3 +192,42 @@ El art. 39.1 TREBEP enumera taxativamente los dos órganos. No existen otros.
     expect(parseLetterFormatExplanation(null, { correctOption: 0, nOptions: 4 })).toBeNull()
   })
 })
+
+describe('parseLetterFormatExplanation — el INTRO en prosa no se pierde (regresión 27/07)', () => {
+  // Medido sobre el banco vivo: explicaciones de 1.024 caracteres se renderizaban en 629 porque
+  // el párrafo de contexto anterior a la cabecera desaparecía al migrar. Lo cazó la guarda de
+  // no-regresión del backfill (render ≠ original), NO la invariante ida-vuelta: lo que se pierde
+  // en el parseo nunca entra en la estructura, así que el round-trip cerraba tan feliz.
+  const conIntro = [
+    'En las bases de datos relacionales, la terminología de tablas tiene significados precisos.',
+    '',
+    '> **Art. 1** "cita literal"',
+    '',
+    '**Por qué A es correcta:** Es la definición exacta.',
+    '',
+    '**Por qué las demás son incorrectas:**',
+    '- **B)** Confunde fila con columna.',
+    '- **C)** Es otro concepto.',
+    '- **D)** No aparece.',
+  ].join('\n')
+
+  test('captura el párrafo de contexto en `intro`', () => {
+    const d = parseLetterFormatExplanation(conIntro, { correctOption: 0, nOptions: 4 })
+    expect(d).not.toBeNull()
+    expect(d!.intro).toContain('terminología de tablas tiene significados precisos')
+  })
+
+  test('y el render lo devuelve, así que no se pierde texto al transcribir', () => {
+    const d = parseLetterFormatExplanation(conIntro, { correctOption: 0, nOptions: 4 })!
+    const r = renderStructuredExplanation(d, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(r).toContain('terminología de tablas tiene significados precisos')
+    expect(r).toContain('Art. 1')
+    expect(r).toContain('**Por qué A es correcta:**')
+  })
+
+  test('sin intro, no se inventa el campo', () => {
+    const sinIntro = '> **Art. 1** "cita"\n\n**Por qué A es correcta:** Sí.\n\n**Por qué las demás son incorrectas:**\n- **B)** No.\n- **C)** No.\n- **D)** No.'
+    const d = parseLetterFormatExplanation(sinIntro, { correctOption: 0, nOptions: 4 })
+    expect(d!.intro).toBeUndefined()
+  })
+})
