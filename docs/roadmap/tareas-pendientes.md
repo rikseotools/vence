@@ -621,13 +621,6 @@
   - **Qué hacer el lunes:** comparar las señales de `llm_semantic` del 27/07 contra esa media y, sobre todo, revisar `last_error`/`last_success_at` de las fuentes revertidas. Si alguna perdió señal: `node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>` (dry-run primero), mirando su medición en `observable_events WHERE event_type='fetcher_type_ajustado'`.
   - ⚠️ **Aviso de instrumentación:** `cron_runs` **NO registra** estos crons (solo tiene historial de 4 crons antiguos, el último de mayo) y no hay eventos `oep`/`nota` en `observable_events`. La única evidencia de que una pasada ocurrió es la propia tabla `oep_detection_signals`. Eso hace que un cron muerto se confunda con "no había nada que detectar" — el punto ciego que describe [T-135].
 
-### [T-136] 🟡 [ABIERTO 26/07] Verificar que las 47 fuentes revertidas de `headless` a `http` no perdieron señal
-- **Qué:** el 26/07 se revirtieron **47 de las 67** fuentes marcadas `fetcher_type='headless'` tras medir que el headless no aportaba un solo carácter frente a `curl` (ahorro: 47 invocaciones de Lambda por pasada). La comprobación de que ningún sensor pierde señal **solo se puede hacer en una pasada real**: `detect-oep-llm` (L-V 10:00 UTC) y `detect-notas-convocatoria` (diario 09:30 UTC).
-- **Cómo:** tras la pasada, comparar señales/errores por fuente contra los días previos. Las 47 decisiones están trazadas con su medición en `observable_events WHERE event_type='fetcher_type_ajustado'`. Revertir una es `node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>` (dry-run primero) mirando su medición.
-- **Contexto:** quedan 20 en `headless` — 12 que SÍ aportan y 8 huecos con nombre, donde el problema es la URL y cambiar el fetcher solo lo enmascararía.
-- **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
-- **Origen:** cabo de [T-125].
-
 ### [T-154] 🟡 [ABIERTO 26/07 · SS cerrada, quedan 209 sospechosos en el banco] Scopes "toda la ley" con epígrafe en PROSA: el método de T-148 no sirve, hay que usar evidencia comparada
 - **El problema:** T-148 funcionó porque el temario de la Guardia Civil **enumera** libro›título›capítulo. La mayoría de oposiciones NO: su epígrafe es prosa temática («El Poder Judicial. El principio de unidad jurisdiccional. El Consejo General del Poder Judicial. La organización judicial española»). Ahí no hay bloques que mapear, y recortar por lectura propia de una prosa es exactamente lo que el proyecto prohíbe.
 - **✅ MÉTODO QUE SÍ FUNCIONA — evidencia comparada del propio banco.** Caso cerrado: `administrativo_seguridad_social` T6 · LOPJ.
@@ -2708,6 +2701,20 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** T-112, sesión `sesion-26jul-d` (26/07), midiendo el universo de `article_no_coverage`: los arts de la LPRL salían huérfanos **por duplicado**, uno por cada fila de ley.
 
 ## Hechas
+
+### [T-136] ✅ [HECHA 27/07] Verificar que las 47 fuentes revertidas de `headless` a `http` no perdieron señal
+- **Qué:** el 26/07 se revirtieron **47 de las 67** fuentes marcadas `fetcher_type='headless'` tras medir que el headless no aportaba un solo carácter frente a `curl` (ahorro: 47 invocaciones de Lambda por pasada). La comprobación de que ningún sensor pierde señal **solo se puede hacer en una pasada real**: `detect-oep-llm` (L-V 10:00 UTC) y `detect-notas-convocatoria` (diario 09:30 UTC).
+- **Cómo:** tras la pasada, comparar señales/errores por fuente contra los días previos. Las 47 decisiones están trazadas con su medición en `observable_events WHERE event_type='fetcher_type_ajustado'`. Revertir una es `node scripts/seguimiento/ajustar-fetcher-type.cjs --slug <slug>` (dry-run primero) mirando su medición.
+- **Contexto:** quedan 20 en `headless` — 12 que SÍ aportan y 8 huecos con nombre, donde el problema es la URL y cambiar el fetcher solo lo enmascararía.
+- **Impacto:** 🟡 si alguna perdió señal, se revierte en un minuto; el riesgo real es que nadie lo mire y se descubra tarde.
+- **Origen:** cabo de [T-125].
+- **✅ VERIFICADA Y CERRADA 27/07 — ninguna de las 47 perdió señal. La reversión fue correcta y el ahorro (47 invocaciones de Lambda por pasada) se queda.**
+  - **La pasada ocurrió:** `detect-oep-llm` corrió hoy (última señal `llm_semantic` a las 11:05 UTC), que era la primera L-V después del cambio del domingo.
+  - **(1) Agregado — por encima de la referencia:** **17 señales** `llm_semantic` hoy, contra la media de **8,0** que dejó calculada la ficha (rango 1-12; 24/07→10 · 23/07→12 · 22/07→12 · 21/07→1 · 20/07→11). Es el máximo de la ventana.
+  - **(2) Por fuente — la prueba que de verdad decide:** se re-midió el **texto ÚTIL** de las 47 con el mismo extractor y las mismas cabeceras del cron, y se comparó contra el `curl_chars` que quedó grabado en cada evento `fetcher_type_ajustado` del 26/07. Resultado: **las 47 siguen entregando texto, ninguna a 0 y ninguna cae ni a la mitad**. Los 47 eventos tienen `aplicado=true` y las 47 están hoy en `fetcher_type='http'`.
+  - **⚠️ Y una trampa de método, para quien repita esto: comparar SEÑALES por fuente NO sirve como prueba de pérdida.** Salían 3 fuentes que señalaron entre el 20 y el 24/07 y no hoy (`auxiliar-administrativo-ayuntamiento-valencia`, `auxiliar-enfermeria-osakidetza`, `celador-osakidetza`) — y parecen bajas hasta que miras que **`oep_detection_signals.dedupe_key` tiene índice UNIQUE** (449 señales, 449 claves distintas): una detección repetida **no crea fila nueva**. "Hoy no señaló" es lo esperado de algo ya detectado, no una pérdida. La prueba buena es la del texto servido.
+  - **De propina:** 2 fuentes que no habían señalado nunca en la ventana lo hicieron hoy (`auxiliar-administrativo-ayuntamiento-cordoba`, `auxiliar-administrativo-ayuntamiento-murcia`).
+  - **Sin cambios que aplicar:** no hubo que revertir ninguna con `ajustar-fetcher-type.cjs`. Siguen 20 en `headless` (12 que aportan y 8 huecos con nombre, donde el problema es la URL — cruza con [T-172]).
 
 ### [T-169] ✅ [CERRADA 27/07] El auditor de incisos anulados da FALSO VERDE cuando el BOE marca la anulación con nota al pie — y es el que alimenta el badge
 - **Qué:** `scripts/audit-annulled-provisions.cjs` (el que emite `article_annulled_unmarked`, la frase-gatillo *"revisa los incisos anulados"*) informó **0 hallazgos** sobre la **Ley 38/2003 General de Subvenciones** mientras servíamos **dos artículos realmente afectados por el TC y SIN nota de vigencia**: el **art. 7** (apartado 1.a) declarado inconstitucional y nulo, **STC 70/2016**, y por eso figura como *"a) (Anulado)"*) y el **art. 16** (**STC 206/2013**, que anuló la DF 11ª de la Ley 2/2008, la que dio redacción a su título y a los apartados 5 y 6). No es una ley menor: la sirven **24 temas** de otras tantas oposiciones.
