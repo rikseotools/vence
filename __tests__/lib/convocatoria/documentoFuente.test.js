@@ -113,3 +113,21 @@ describe('paredDelPortal — paridad con `esParedDelPortal` de backend/scripts/c
     expect(paredDelPortal(largo('Resolución de 13 de julio de 2026 por la que se convocan plazas'))).toBeNull()
   })
 })
+
+describe('pareceBoletinCompleto — el boletín entero no es "el documento"', () => {
+  const { pareceBoletinCompleto } = require('../../../lib/convocatoria/documentoFuente.cjs')
+
+  test('REGRESIÓN (BORM 146/2026): 739k chars con sumario = boletín completo, no la convocatoria', () => {
+    const boletin = 'Número 146 sábado, 27 de junio de 2026 S U M A R I O I. Comunidad Autónoma. ' + 'contenido '.repeat(30000)
+    expect(pareceBoletinCompleto(boletin)).toMatch(/boletín completo/)
+  })
+
+  test('unas bases largas DE VERDAD no se marcan (tamaño sin pinta de recopilatorio)', () => {
+    const bases = 'Bases específicas que han de regir la convocatoria. ' + 'La base cuarta establece los requisitos. '.repeat(8000)
+    expect(pareceBoletinCompleto(bases)).toBeNull()
+  })
+
+  test('un documento normal, ni se mira', () => {
+    expect(pareceBoletinCompleto('Resolución por la que se convoca proceso selectivo')).toBeNull()
+  })
+})

@@ -93,6 +93,35 @@ texto que el documento tipado, y dos tipados estaban VACÍOS**. Fusionar sin mir
 del más completo y **después** se borra el duplicado — en ese orden, o revienta el UNIQUE
 `uq_conv_doc_url_hash` al coexistir dos filas con la misma url+hash.
 
+### 2.2-ter. Campaña: clonar el documento del BOTÓN OFICIAL (`programa_url`)
+
+Hueco sistémico medido el 27/07: **el documento más oficial de la landing no lo clona nadie.** El
+cron `detect-notas` clona lo que cuelga de la `seguimiento_url`; el `programa_url` —el que abre el
+botón "Ver convocatoria en {diario}"— se quedaba fuera. Resultado: **44 de 122 landings activas**
+lo tenían fuera del hub, y por eso el detector de cifras no podía contrastar (`administrativo-madrid`
+afirma "47 temas del programa" y en sus documentos clonados no hay ni un «Tema N»: el Anexo III
+del temario no estaba).
+
+```bash
+node scripts/convocatoria/campana-clonar-programa.cjs              # qué haría (no escribe)
+node scripts/convocatoria/campana-clonar-programa.cjs --limite 12  # por lotes
+node scripts/convocatoria/campana-clonar-programa.cjs --apply
+```
+
+Prioriza las que hoy no tienen NINGÚN documento tipado. **Decide** (qué falta, si el documento
+sirve, de qué tipo es) con los núcleos compartidos y **delega el escribir** en la herramienta
+canónica `backend/scripts/clonar-documento.ts` — no hay un segundo escritor.
+
+**Tres motivos por los que se salta un documento, y los tres son correctos:**
+- *tipo no reconocido* → el clasificador no sabe QUÉ es. Clonarlo tipado a lo bruto lo convertiría
+  en fuente de verdad; va a revisión humana.
+- *boletín completo* → el `programa_url` apunta al PDF del boletín ENTERO, no al anuncio. Caso real:
+  `administrativa-universidad-de-murcia` → BORM 146/2026, **739.000 caracteres y 179 anuncios**. Si
+  se clona, el detector de cifras da por respaldada cualquier afirmación cuyo número aparezca ahí
+  dentro — y con 739 KB aparece cualquiera. **Ese `programa_url` hay que repuntarlo al anuncio**
+  (`repuntar-enlace-convocatoria.cjs`), no clonar el boletín.
+- *no responde / pared del portal* → sede caída o WAF. Se reintenta otro día; no se inventa.
+
 ### 2.3. Citas sin fuente (`citas_sin_fuente`)
 Un hito con `cita_literal` pero sin `source_documento_id`: localizar el documento del que salió la cita, clonarlo (2.2) y enlazar. Si la cita no se puede rastrear a un documento oficial, es sospechosa (¿de dónde salió el texto?) → verificar contra fuente antes de dejarla.
 
