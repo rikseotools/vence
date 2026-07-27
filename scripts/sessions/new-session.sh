@@ -12,6 +12,7 @@
 # Cierre: scripts/sessions/end-session.sh <slug>   ·   Ver: scripts/sessions/list-sessions.sh
 set -euo pipefail
 
+ARGS_ORIG=("$@")
 SLUG="${1:-}"
 [ -n "$SLUG" ] || { echo "Uso: new-session.sh <slug> [--db shared|local] [--own-deps]"; exit 2; }
 shift
@@ -39,6 +40,23 @@ git -C "$MAIN_REPO" show-ref --verify --quiet "refs/heads/$BRANCH" && { echo "�
 
 echo "→ git fetch origin (base fresca)…"
 git -C "$MAIN_REPO" fetch origin --quiet
+
+# Este script se invoca DESDE EL ÁRBOL PRINCIPAL, que es justo el que suele estar rancio
+# (es la razón de ser del worktree). Resultado real el 27/07: el árbol principal iba 40
+# commits por detrás y montó una sesión SIN el symlink de `backend/node_modules` que se
+# había añadido aquí el 26/07 — el arreglo existía en origin/main y aun así la sesión
+# nació rota. Un script que monta entornos frescos no puede ser el único fichero que se
+# lee de la copia vieja: si difiere de origin/main, se re-ejecuta la versión de origin.
+if [ -z "${VENCE_NEWSESSION_REEXEC:-}" ]; then
+  FRESCO="$(mktemp)"
+  if git -C "$MAIN_REPO" show origin/main:scripts/sessions/new-session.sh > "$FRESCO" 2>/dev/null &&
+     [ -s "$FRESCO" ] && ! cmp -s "$FRESCO" "${BASH_SOURCE[0]}"; then
+    echo "⚠️  new-session.sh está desactualizado respecto a origin/main → re-ejecutando la versión fresca"
+    chmod +x "$FRESCO"
+    VENCE_NEWSESSION_REEXEC=1 exec bash "$FRESCO" "${ARGS_ORIG[@]}"
+  fi
+  rm -f "$FRESCO"
+fi
 
 echo "→ creando worktree desde origin/main…"
 mkdir -p "$SESSIONS_DIR"
