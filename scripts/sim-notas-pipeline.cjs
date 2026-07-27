@@ -13,6 +13,7 @@
  *
  * Uso: node scripts/sim-notas-pipeline.cjs <slug> [<slug> ...]
  */
+const { parseLlmJson } = require(require('path').join(__dirname, '..', 'lib', 'llm', 'parseLlmJson.cjs')) // canonico compartido (T-174)
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const { execFileSync } = require('child_process');
@@ -107,8 +108,9 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin texto fuera del JSON) con esta form
 Si un dato no aparece, pon null. NO inventes citas. Cita literal exacta. Texto:\n\n${corpus}`;
 
   const resp = await anthropic.messages.create({ model: MODEL, max_tokens: 2048, messages: [{ role: 'user', content: prompt }] });
-  const raw = resp.content[0].text.trim().replace(/^```json\s*|\s*```$/g, '');
-  try { return JSON.parse(raw); } catch { return { _parse_error: true, raw: raw.slice(0, 500) }; }
+  const raw = resp.content[0].text;
+  // parseLlmJson NUNCA lanza: null = no habia JSON recuperable (T-174).
+  return parseLlmJson(raw) ?? { _parse_error: true, raw: String(raw).slice(0, 500) };
 }
 
 async function procesar(opo) {

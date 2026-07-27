@@ -25,6 +25,8 @@ require('dotenv').config({ path: '.env.local' })
 const path = require('path')
 const postgres = require('postgres')
 const { recortarParaNotas } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'notasRecorte.cjs'))
+// Parser canonico compartido (T-174): habia 4 copias de esto con robustez distinta.
+const { parseLlmJson: parseJson } = require(path.join(__dirname, '..', '..', 'lib', 'llm', 'parseLlmJson.cjs'))
 
 const argv = process.argv.slice(2)
 const val = (f, d) => {
@@ -42,17 +44,6 @@ Devuelve EXCLUSIVAMENTE un JSON válido: {"software_versions":{"windows":null,"w
 Si un dato no aparece, null. NO inventes. Texto:\n\n${texto}`
 }
 
-function parseJson(raw) {
-  const limpio = String(raw || '').trim().replace(/^```json\s*/i, '').replace(/```$/i, '').trim()
-  try {
-    return JSON.parse(limpio)
-  } catch {
-    const a = limpio.indexOf('{')
-    const b = limpio.lastIndexOf('}')
-    if (a >= 0 && b > a) { try { return JSON.parse(limpio.slice(a, b + 1)) } catch { return null } }
-    return null
-  }
-}
 
 /**
  * Registra la llamada en el MISMO stream que el resto del gasto (`observable_events`,

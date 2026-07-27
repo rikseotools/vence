@@ -10,6 +10,12 @@
  * Uso:  NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sim-reconciliacion-convocatoria.ts <slug>
  *
  * NO escribe nada: solo lee el documento oficial, extrae y compara. La escritura (findings) es del cron.
+ *
+ * 💰 CUESTA DINERO AL EJECUTARLO (aviso añadido 27/07/2026, T-174). Este script
+ * llama a la API de Anthropic por cada fuente/documento que procesa. NO lo invoca
+ * ningún cron ni el runtime — solo corre si alguien lo lanza a mano. Mídelo antes
+ * con `npm run llm:gasto`. Contexto: el 27/07 se PAUSÓ `detect-oep-llm` por gastar
+ * ~8 USD/día laborable, así que no lo lances "a ver qué sale" sin acotar el corpus.
  */
 // ⚠️ Ejecutar DESDE backend/ (ahí vive pdf-parse):
 //    cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx ../scripts/sim-reconciliacion-convocatoria.ts <slug>
@@ -25,7 +31,8 @@ import {
   buildProcesoPrompt, reconciliar, hitosValidos,
   type ProcesoExtraction,
 } from '../src/detect-notas-convocatoria/proceso-extract'
-import { extractDocLinks, parseNotasJson } from '../src/detect-notas-convocatoria/notas-extract'
+import { extractDocLinks } from '../src/detect-notas-convocatoria/notas-extract'
+import { parseLlmJson } from '../src/llm/parse-llm-json'
 
 const SLUG = process.argv[2] ?? 'administrativo-madrid'
 const HAIKU = 'claude-haiku-4-5-20251001'
@@ -112,7 +119,7 @@ async function fetchPdfText(url: string): Promise<string> {
     messages: [{ role: 'user', content: buildProcesoPrompt(SLUG, leidos) }],
   })
   const block = resp.content[0]
-  const parsed = parseNotasJson(block && block.type === 'text' ? block.text : '') as unknown as ProcesoExtraction | null
+  const parsed = parseLlmJson(block && block.type === 'text' ? block.text : '') as unknown as ProcesoExtraction | null
   if (!parsed) { console.error('❌ el LLM no devolvió JSON parseable'); await c.end(); process.exit(1) }
 
   console.log('\n─── EXTRAÍDO del documento oficial:')

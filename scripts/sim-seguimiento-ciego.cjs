@@ -16,6 +16,7 @@
  *
  * Uso: node scripts/sim-seguimiento-ciego.cjs <slug> [<slug> ...]
  */
+const { parseLlmJson } = require(require('path').join(__dirname, '..', 'lib', 'llm', 'parseLlmJson.cjs')) // canonico compartido (T-174)
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('./lib/pg-agnostic-client.cjs');
 const { execFileSync } = require('child_process');
@@ -70,8 +71,9 @@ Devuelve EXCLUSIVAMENTE un JSON:
 {"tipo":"especifica|generica","menciona_esta_convocatoria":true|false,"fecha_examen_en_pagina":"<fecha o null>","plazas_en_pagina":"<o null>","datos_especificos_encontrados":["..."],"confianza":"alta|media|baja","motivo":"<1 frase>"}
 "generica" = listado/portal de varios procesos sin contenido propio de ESTA convocatoria. "especifica" = página de esta convocatoria (sus fechas/plazas/listados/notas). Si no hay datos propios de esta oposición, es "generica".`;
   const resp = await anthropic.messages.create({ model: MODEL, max_tokens: 600, messages: [{ role: 'user', content: prompt }] });
-  const raw = resp.content[0].text.trim().replace(/^```json\s*|\s*```$/g, '');
-  try { return JSON.parse(raw); } catch { return { _parse_error: true, raw: raw.slice(0, 200) }; }
+  const raw = resp.content[0].text;
+  // parseLlmJson NUNCA lanza: null = no habia JSON recuperable (T-174).
+  return parseLlmJson(raw) ?? { _parse_error: true, raw: String(raw).slice(0, 200) };
 }
 
 (async () => {

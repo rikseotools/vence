@@ -15,6 +15,12 @@
  *
  * Uso (desde backend/):
  *   NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sim-radar-por-fuente.ts [referencia-del-corpus]
+ *
+ * 💰 CUESTA DINERO AL EJECUTARLO (aviso añadido 27/07/2026, T-174). Este script
+ * llama a la API de Anthropic por cada fuente/documento que procesa. NO lo invoca
+ * ningún cron ni el runtime — solo corre si alguien lo lanza a mano. Mídelo antes
+ * con `npm run llm:gasto`. Contexto: el 27/07 se PAUSÓ `detect-oep-llm` por gastar
+ * ~8 USD/día laborable, así que no lo lances "a ver qué sale" sin acotar el corpus.
  */
 import * as dotenv from 'dotenv'
 import * as path from 'path'
@@ -25,7 +31,7 @@ for (const p of ['.env.local', '../.env.local']) {
 import { Client } from 'pg'
 import Anthropic from '@anthropic-ai/sdk'
 import { classifyFamily } from '../src/oep-signals/oep-match'
-import { parseNotasJson } from '../src/detect-notas-convocatoria/notas-extract'
+import { parseLlmJson } from '../src/llm/parse-llm-json'
 
 const REF = process.argv[2] ?? 'BOPVA-19/11/2024'   // el tablón de Valladolid: sabemos que tiene ≥4 cuerpos
 
@@ -82,7 +88,7 @@ ${texto.slice(0, 90_000)}`
     messages: [{ role: 'user', content: buildPromptFuente(doc.extracted_text) }],
   })
   const b = resp.content[0]
-  const parsed = parseNotasJson(b && b.type === 'text' ? b.text : '') as { convocatorias?: ConvExtraida[] } | null
+  const parsed = parseLlmJson(b && b.type === 'text' ? b.text : '') as { convocatorias?: ConvExtraida[] } | null
   const convs = (parsed?.convocatorias ?? []).filter((x) => x?.cuerpo && x?.cita_literal?.trim())
 
   console.log(`\n─── REFORMA: 1 pasada → ${convs.length} convocatoria(s) extraídas de la MISMA página\n`)
