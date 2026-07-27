@@ -314,3 +314,47 @@ describe('mismoContenidoExplicacion — el comparador que decide si una transcri
     expect(mismoContenidoExplicacion('- **A)** Uno.', '- **A)** Otra cosa.')).toBe(false)
   })
 })
+
+describe('escribir en el formato NUEVO: render determinista (el camino que sí es fiable)', () => {
+  // Manuel señaló el defecto del planteamiento inicial: escribir el texto y PARSEARLO después es
+  // heurístico y falla (43,7% y 15,3% según el formato). Al revés no: de la estructura al texto
+  // es un render determinista. Estos tests fijan esa dirección, que es la que usan las
+  // explicaciones nuevas (`scripts/aplicar-explicacion.ts`).
+  const estructura = {
+    v: 1 as const,
+    cita: { ref: 'Art. 103.1 CE', texto: 'La Administración sirve con objetividad los intereses generales.' },
+    options: {
+      '0': 'Es el mandato literal del precepto.',
+      '1': 'Atribuye una función de dirección política que corresponde al Gobierno.',
+      '2': 'Confunde la actuación administrativa con el control jurisdiccional.',
+      '3': 'Introduce un criterio de oportunidad que el artículo no contempla.',
+    },
+  }
+
+  test('el texto generado cumple el formato §8.1 que el gate exige', () => {
+    const t = renderStructuredExplanation(estructura, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(t).toMatch(/\*\*Por qué A es correcta:\*\*/)
+    expect(t).toContain('**Por qué las demás son incorrectas:**')
+    expect(t).toContain('> **Art. 103.1 CE**')
+    // Y las tres razones de los distractores, cada una con su letra de posición.
+    expect(t).toMatch(/- \*\*B\)\*\*/)
+    expect(t).toMatch(/- \*\*C\)\*\*/)
+    expect(t).toMatch(/- \*\*D\)\*\*/)
+  })
+
+  test('render → parse → render vuelve al mismo texto (la ida y vuelta cierra)', () => {
+    const t1 = renderStructuredExplanation(estructura, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    const reparsed = parseLetterFormatExplanation(t1, { correctOption: 0, nOptions: 4 })
+    expect(reparsed).not.toBeNull()
+    const t2 = renderStructuredExplanation(reparsed!, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(t2).toBe(t1)
+  })
+
+  test('escrito así, al barajar cada razón sigue con su opción', () => {
+    const barajado = renderStructuredExplanation(estructura, { correctOption: 0, optionOrder: [2, 0, 3, 1], nOptions: 4 })
+    // La correcta (índice 0) pasa a la posición 1 → letra B.
+    expect(barajado).toContain('**Por qué B es correcta:** Es el mandato literal del precepto.')
+    // Y la razón del índice 2 va en la posición 0 → letra A.
+    expect(barajado).toContain('- **A)** Confunde la actuación administrativa')
+  })
+})

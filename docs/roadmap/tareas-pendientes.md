@@ -2796,6 +2796,19 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ### [T-080] 🟢 [MEDIA] Barajar el orden de las opciones cuando se repite una pregunta (diseño unificado con la mejora de explicaciones)
 
+> ### ↩️ CORRECCIÓN DE ENFOQUE (27/07, la señaló Manuel): lo nuevo se ESCRIBE estructurado, no se deriva
+> El planteamiento inicial —escribir el texto de siempre y **parsearlo** después— tiene un defecto
+> de fondo: parsear es heurístico (43,7% del formato de generación, 15,3% del de impugnaciones) y
+> encima depende de que alguien corra el comando. **La dirección correcta es la contraria:** de la
+> estructura al texto es un RENDER determinista, que no puede fallar.
+> - `scripts/aplicar-explicacion.ts` escribe una explicación nueva desde su JSON estructurado y
+>   **genera el texto** con el mismo render del serve: las dos columnas coherentes por
+>   construcción, la pregunta nace `safe` y producción —sin desplegar— sigue sirviendo el texto.
+> - Guarda anti-letra: rechaza razones que digan «la opción A» o «como se ha visto en la primera»,
+>   que al barajar dejan de ser ciertas.
+> - Los 4 manuales piden ya el formato NUEVO; el parseo queda **solo para el histórico**, que es
+>   lo único que no se puede reescribir.
+
 > ## ✅ FASE 2 IMPLEMENTADA (27/07/2026) — los dos formatos YA CONVIVEN en producción
 > La columna `explanation_data` existe, el serve renderiza desde ella y **690 preguntas ya están transcritas**. Decisión de producto (Manuel): se transcribe el histórico a ritmo con los dos sistemas conviviendo, y el barajado se enciende **cuando la BD esté completa** (aunque el diseño permite encenderlo por-pregunta antes).
 > - **Migración `20260727_explanation_data_estructurada.sql`** (aplicada a RDS): columna + `compute_shuffle_safety_hash` y `record_shuffle_safety` extendidos. ⚠️ **La clave estaba en el hash:** el campo nuevo solo entra si NO es NULL, porque si no **las 134.646 clasificaciones ya verificadas se habrían degradado a `stale`** en el siguiente UPDATE de cada fila. Verificado: 134.646/134.646 hashes siguen cuadrando tras aplicar.

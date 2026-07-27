@@ -223,9 +223,28 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 >
 > **Punto ciego que esto revela:** ningún check mecánico valida que el bullet `- **X)**` describa realmente el contenido de la opción X. Es territorio de auditoría LLM — y por eso conviene decírselo explícitamente en el prompt cuando el lote haya sufrido reordenaciones.
 
-> **¿En qué formato emito la explicación? En el de SIEMPRE (§8.1).** El estructurado no se escribe
-> a mano: se **deriva** del que emites. Durante la transición conviven los dos — el texto es lo que
-> se sirve hoy y la estructura es lo que permitirá barajar.
+> **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
+>
+> Se escribe un JSON con una razón por opción —referida al CONTENIDO, nunca a la letra— y el
+> texto de siempre lo **genera** la herramienta:
+>
+> ```bash
+> npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
+> ```
+>
+> Escribe las DOS columnas coherentes: `explanation_data` (la estructura, que permitirá barajar)
+> y `explanation` (el texto renderizado, que es lo que el opositor ve hoy porque el render nuevo
+> aún no está desplegado). La pregunta nace **barajable** y no hay ningún paso que se pueda
+> olvidar.
+>
+> **Por qué así y no al revés:** escribir el texto y parsearlo después es heurístico y falla
+> —medido el 27/07: solo se transcribe el 43,7% del formato de generación y el 15,3% del de
+> impugnaciones—. De la estructura al texto, en cambio, es un render determinista: no puede
+> fallar. El parseo se reserva para el HISTÓRICO, que es lo único que no se puede reescribir.
+>
+> Rechaza razones que digan «la opción A», «como se ha visto en la primera»… porque al barajar
+> dejan de ser ciertas. Y para lo antiguo sigue existiendo el camino inverso:
+> `scripts/backfill-explanation-data.ts`.
 >
 > ⚙️ **ESTADO (27/07/2026): la columna `explanation_data` YA EXISTE y el serve renderiza desde
 > ella.** Lo que faltaba para poder emitir §8.2 está hecho: los dos formatos conviven (sin
