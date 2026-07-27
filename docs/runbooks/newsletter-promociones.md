@@ -178,6 +178,17 @@ SELECT event_type, COUNT(*) FROM email_events WHERE campaign_id='<campaignId>' G
 - Vista previa a Manuel + OK (§4) antes del envío masivo (salvo que Manuel diga "envíalo" directamente).
 - Tras el piloto de una zona, replicar a las demás con inscripción abierta reusando el mismo script y plantilla, cambiando el `config.json`.
 
+### Leer bien la PUERTA de auditoría (`audit:landing`) — 27/07
+
+La auditoría previa al envío mezcla **dos tipos de hallazgo** y confundirlos cuesta tiempo o, peor, tranquilidad falsa:
+
+- **Recalculados en vivo** (enlaces del HTML servido, cifras contra el documento clonado, botón oficial, completitud): reflejan el estado de AHORA.
+- **Heredados del barrido nocturno** (`content_health_findings`, `computed_at` de esa madrugada): `dual_write`, `scope_sin_verificar`, `article_no_coverage`, `documentos_sin_revisar`… **Si acabas de arreglar uno, seguirá saliendo hasta el sweep siguiente.** Compruébalo contra la BD antes de volver a "arreglarlo" (`SELECT computed_at FROM content_health_findings WHERE oposicion_slug='<slug>'`).
+
+**Un ❌ de enlace roto no siempre es un enlace roto.** El chequeo de enlaces ahora hace **retry-once** ante timeout o 5xx (igual que `canary-oposiciones-live.cjs`); antes, una página nuestra tardando 4,1 s en la primera petición (ISR frío) daba veredicto ❌ y **habría bloqueado la campaña por nada**. Un 404 se sigue creyendo a la primera.
+
+**Y lo que la puerta NO mira: que el timeline enseñe las fechas.** El render solo muestra la fecha de los hitos con `origen='registro'`; con `inferencia` pinta *"Fecha por confirmar"*. Antes de anunciar un plazo por correo, **abre la landing** y comprueba que el fin de plazo se ve. Si no, es provenance: `docs/runbooks/provenance-convocatorias.md` §2.4.
+
 ### Aprendizajes de medición (05/07)
 - **El tracking de clics SÍ funciona** (confirmado: campañas León-CyL y Jaén registraron `clicked` a los minutos). Un envío con alta apertura y **0 clics sostenidos** (caso La Rioja: 50% open, 0 clics en días) apunta a **CTA/desinterés**, no a instrumentación rota.
 - **Open rate temprano** (primeros minutos) es buen indicador pero **el CTR real se mide a horas/días** — no concluir CTR=0 recién enviado.

@@ -140,6 +140,12 @@ Qué hace, recorriendo el **inventario de superficies** (`lib/admin/landingSurfa
 ## GOTCHAS
 
 - **PDF escaneado que WebFetch/agente no leen** (p. ej. BOPA): WebFetch lo guarda a fichero → `pdftotext -layout <fichero>` extrae el texto (así se cerró el desglose de asturias, 10/07).
+- **Epígrafes importados de un PDF arrastran la cabecera y el pie del boletín, a veces EN MEDIO de la frase** (27/07). En `ordenanza-ayuntamiento-cordoba` el T8 decía *"…Medidas preventivas y pautas de **de la Provincia Este documento es una copia electrónica… Fima automática 2F177891AA88… Nº 99 p. 7474** actuación ante incendios…"* y el T10 se llevaba puesto el pie de firma entero. Rompe la verificación de literalidad y envenena cualquier adjudicación epígrafe↔scope, porque el texto que se compara no es el del programa. Barrido para localizarlos (4 en todo el catálogo, 2 falsos positivos por *"Depósito legal"* como materia real):
+  ```sql
+  SELECT position_type, topic_number, left(epigrafe,120) FROM topics
+   WHERE epigrafe ~* '(Fima autom|copia electrónica de un documento|Código Seguro de Verificación|Powered by TCPDF|Boletín Oficial de la Provincia|Lo que se hace público|Nº ?[0-9]+ p\. ?[0-9]+)';
+  ```
+  Arreglo: reescribir con el texto **literal** del anexo oficial (no recortar a ojo: el corte puede estar en mitad de una frase). Ojo, el epígrafe es lo que hashea la verificación de scope → al tocarlo se invalida sola, que es lo correcto.
 - **Alias en mayúscula:** pg pasa `SELECT plazas_libres L` a `row.l` (minúscula) — leer `row.plazas_libres`, no `row.L`.
 - **La imagen ECS poda postgres-js** → el sweep usa `pg` (node-postgres), presente en la imagen. NO usar `postgres`/postgres-js en scripts que corran en la imagen.
 - **Reusar la imagen del frontend** para el sweep acopla: cambiar el script exige re-deploy del frontend.

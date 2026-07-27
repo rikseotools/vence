@@ -42,7 +42,6 @@
 
 require('dotenv').config({ path: '.env.local' })
 const path = require('path')
-const { execFileSync } = require('child_process')
 const postgres = require('postgres')
 const { boletinDeUrl } = require(
   path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'),
@@ -67,13 +66,11 @@ const posicionales = argv.filter((a, i) => {
   return previo !== '--anclas' && previo !== '--etiqueta'
 })
 
-// Mismas cabeceras que el cron de seguimiento: si un WAF nos trata distinto que a él, mejor
-// enterarse aquí que en producción.
-const CABECERAS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0; +https://www.vence.es)',
-  Accept: 'text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'es-ES,es;q=0.9',
-}
+// Descargar el documento, leerlo (HTML o PDF) y comprobar que habla de ESTE proceso vive en
+// el núcleo compartido: lo usan también el clonador al hub de provenance
+// (`clonar-documento.cjs`) y quien venga después. Un solo umbral, un solo `pdftotext`, una
+// sola definición de "el documento menciona el proceso".
+const { verificar } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'documentoFuente.cjs'))
 
 function uso(msg) {
   console.error(`\n❌ ${msg}\n`)
@@ -91,80 +88,6 @@ function conectar() {
     ssl: { rejectUnauthorized: false },
     onnotice: () => {},
   })
-}
-
-/** Texto plano del documento: HTML sin etiquetas, o PDF pasado por `pdftotext`. */
-function aTexto(buf, contentType) {
-  if (/pdf/i.test(contentType || '') || buf.slice(0, 5).toString('latin1') === '%PDF-') {
-    try {
-      // `-layout` conserva columnas: las bases de un boletín en PDF son tablas con frecuencia.
-      return execFileSync('pdftotext', ['-layout', '-', '-'], { input: buf, maxBuffer: 64 * 1024 * 1024 })
-        .toString('utf8')
-    } catch (e) {
-      return `__PDF_NO_LEIDO__ ${e.message}`
-    }
-  }
-  return buf
-    .toString('utf8')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-}
-
-/** Normaliza para buscar anclas: sin tildes, minúsculas, espacios colapsados. */
-const plano = (s) =>
-  String(s || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-
-async function descargar(url) {
-  const ctrl = new AbortController()
-  const to = setTimeout(() => ctrl.abort(), 45000)
-  try {
-    const res = await fetch(url, { headers: CABECERAS, signal: ctrl.signal, redirect: 'follow' })
-    const buf = Buffer.from(await res.arrayBuffer())
-    return { status: res.status, tipo: res.headers.get('content-type') || '', buf, error: null }
-  } catch (e) {
-    return { status: 0, tipo: '', buf: Buffer.alloc(0), error: e.message }
-  } finally {
-    clearTimeout(to)
-  }
-}
-
-/**
- * Verifica una URL candidata: que responda, que sea legible y que hable de ESTE proceso.
- * @returns {{ok:boolean, motivo:string, status:number, chars:number, anclasEncontradas:string[], anclasFaltan:string[]}}
- */
-async function verificar(url, anclas) {
-  const r = await descargar(url)
-  if (r.error) return { ok: false, motivo: `no responde (${r.error})`, status: 0, chars: 0, anclasEncontradas: [], anclasFaltan: anclas }
-  if (r.status !== 200) return { ok: false, motivo: `HTTP ${r.status}`, status: r.status, chars: 0, anclasEncontradas: [], anclasFaltan: anclas }
-  const texto = aTexto(r.buf, r.tipo)
-  if (texto.startsWith('__PDF_NO_LEIDO__')) {
-    return { ok: false, motivo: `PDF ilegible (${texto.slice(17, 90)})`, status: 200, chars: 0, anclasEncontradas: [], anclasFaltan: anclas }
-  }
-  // Umbral igual al del detector de fuentes ciegas: por debajo no hay documento que verificar.
-  if (texto.length < 600) {
-    return { ok: false, motivo: `solo ${texto.length} chars de texto (¿shell de SPA o página vacía?)`, status: 200, chars: texto.length, anclasEncontradas: [], anclasFaltan: anclas }
-  }
-  const txt = plano(texto)
-  const encontradas = anclas.filter((a) => txt.includes(plano(a)))
-  const faltan = anclas.filter((a) => !encontradas.includes(a))
-  if (anclas.length && faltan.length) {
-    return { ok: false, motivo: `el documento no menciona: ${faltan.join(', ')}`, status: 200, chars: texto.length, anclasEncontradas: encontradas, anclasFaltan: faltan }
-  }
-  return {
-    ok: true,
-    motivo: anclas.length ? `documento legible y menciona ${encontradas.length}/${anclas.length} anclas` : 'documento legible (sin anclas exigidas)',
-    status: 200,
-    chars: texto.length,
-    anclasEncontradas: encontradas,
-    anclasFaltan: [],
-  }
 }
 
 async function traza(sql, datos) {

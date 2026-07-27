@@ -34,6 +34,12 @@ describe('clasificar-hitos — tipo', () => {
     expect(h('Relación de aspirantes que superan la fase de oposición').tipo).toBe('resultados')
   })
 
+  test('"Celebración de los ejercicios" es el EXAMEN, no "otro" (así lo escriben las bases sin fecha)', () => {
+    expect(h('Celebración de los ejercicios (fecha por determinar)').tipo).toBe('ejercicio_1')
+    expect(h('Celebración de ejercicios').tipo).toBe('ejercicio_1')
+    expect(h('Celebración de las pruebas selectivas').tipo).toBe('ejercicio_1')
+  })
+
   test('REGRESIÓN: multiidioma (catalán en prod) — sin esto "Tancament" caía a otro', () => {
     expect(h("Tancament del termini d'inscripció").tipo).toBe('plazo_fin')
     expect(h('Fi termini de sol·licituds').tipo).toBe('plazo_fin')

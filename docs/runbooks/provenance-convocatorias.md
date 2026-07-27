@@ -60,6 +60,17 @@ Para cada `docs_por_clonar`: coger la `url` del hito (BOE/boletín/sede), **clon
 ### 2.3. Citas sin fuente (`citas_sin_fuente`)
 Un hito con `cita_literal` pero sin `source_documento_id`: localizar el documento del que salió la cita, clonarlo (2.2) y enlazar. Si la cita no se puede rastrear a un documento oficial, es sospechosa (¿de dónde salió el texto?) → verificar contra fuente antes de dejarla.
 
+**Las estimaciones NO cuentan (27/07/2026).** Un hito con `origen='estimacion'` declara que la fecha es NUESTRA y que ningún boletín la publica: pedirle documento es una contradicción de categoría, y el aviso no se podía apagar haciendo lo correcto. La vista los excluye desde la migración `20260727_docs_coverage_excluye_estimaciones.sql`. Los `registro` e `inferencia` sin fuente **sí siguen contando**: esos sí tienen un documento detrás que nadie ha clonado.
+
+### 2.4. Después de enlazar, deriva el `origen` con la regla compartida
+Enlazar el documento y poner la `url` no basta: el timeline **oculta la fecha** de todo hito cuyo `origen` no sea `registro` (lista blanca de `lib/convocatoria/fechaEstimada.ts`). Un hito con fecha oficial pero `origen='inferencia'` se pinta como *"Fecha por confirmar"* — pasó en `ordenanza-ayuntamiento-cordoba`, cuyo **fin de plazo** salía sin fecha justo cuando se iba a anunciar por newsletter.
+
+```bash
+node scripts/clasificar-hitos.cjs --slug <slug>          # dry-run, solo esa oposición
+node scripts/clasificar-hitos.cjs --slug <slug> --apply
+```
+`--slug` acota a una oposición: revisar UNA landing no debe reescribir los ~1.000 hitos del catálogo. Sin él, el comportamiento es el de siempre (todo). **No pongas `origen` a mano:** la regla (citar boletín con identificador o traer `url` ⇒ registro) vive en `clasificar()` y está testeada.
+
 ## 3. Hitos huérfanos (`convocatoria_id IS NULL`)
 
 La vista es por convocatoria, así que **no ve** los hitos con `convocatoria_id NULL` (cuelgan solo de `oposicion_id`). El detector los cuenta aparte (finding con `detail.orphan=true`). Estos hitos tienen provenance no atribuible a un ciclo: hay que **asignarlos a su convocatoria** (normalmente la `is_current`, pero si el hito es de un ciclo pasado va a la convocatoria archivada de ese año — mirar la fecha del hito, no asumir). Solo entonces entran en la cobertura.

@@ -3,8 +3,14 @@
  * clasificar-hitos.cjs — deriva `tipo` y `origen` de cada convocatoria_hito desde su texto.
  *
  * Diseño: docs/roadmap/verificacion-convocatorias-documentos-proceso.md
- * Uso:  node scripts/clasificar-hitos.cjs            (DRY-RUN: mide, no escribe)
- *       node scripts/clasificar-hitos.cjs --apply     (escribe en 1 UPDATE)
+ * Uso:  node scripts/clasificar-hitos.cjs                       (DRY-RUN: mide, no escribe)
+ *       node scripts/clasificar-hitos.cjs --apply                (escribe en 1 UPDATE)
+ *       node scripts/clasificar-hitos.cjs --slug <slug> [--apply] (solo esa oposición)
+ *
+ * `--slug` existe porque la revisión de UNA landing (antes de una campaña, p.ej.) no debe
+ * obligar a reescribir los ~1.000 hitos del catálogo entero: acotar el alcance es lo que
+ * permite usar la regla compartida en vez de parchear a mano esa oposición — que es como
+ * nacen los silos. Sin `--slug` el comportamiento es el de siempre (todo el catálogo).
  *
  * POR QUÉ REGLAS Y NO IA: es texto propio, cerrado y auditable. La regla se lee, se mide y se
  * corrige; un LLM aquí no aporta y no se puede auditar. La IA hace falta para leer el DOCUMENTO
@@ -39,7 +45,10 @@ const TIPO = [
   ['lista_definitiva',      /(lista|relaci.n|llista).*definitiv|definitiv.*(admitid|admesos)/i],
   ['lista_provisional',     /(lista|relaci.n|llista).*provisional|provisional.*(admitid|admesos)|lista de personas admitidas|admitid.*\(pendiente\)/i],
   ['ejercicio_2',           /segundo ejercicio|2.. ejercicio|ejercicio 2|segunda prueba/i],
-  ['ejercicio_1',           /primer ejercicio|1.. ejercicio|ejercicio .nico|ejercicio 1|examen|ejercicios? (del|de la|pendientes)|fase de oposici|inicio de la oposici|instrucciones del ejercicio|convocatoria (a examen|del examen|de (las )?pruebas)/i],
+  // `celebración de los ejercicios/pruebas` es como lo escriben las propias bases cuando aún
+  // no hay fecha, y caía a 'otro' — con lo que el hito del EXAMEN quedaba sin tipo y fuera de
+  // cualquier consulta por tipo (rollover, timeline, avisos). Medido 27/07: 2 hitos en prod.
+  ['ejercicio_1',           /primer ejercicio|1.. ejercicio|ejercicio .nico|ejercicio 1|examen|ejercicios? (del|de la|pendientes)|celebraci.n de (los |las )?(ejercicios?|pruebas?)|fase de oposici|inicio de la oposici|instrucciones del ejercicio|convocatoria (a examen|del examen|de (las )?pruebas)/i],
   ['plazo_fin',             /(cierre|tancament|fin(al)?\b|^fi\b|\bfi )\s*(del?\s*)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)/i],
   ['plazo_inicio',          /(apertura|inici(o)?|comienzo)\s*(del?\s*)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)|plazo de (presentaci.n de )?(solicitud|inscripci)/i],
   ['programa_publicado',    /programa|temario/i],
@@ -66,9 +75,24 @@ module.exports = { clasificar, TIPO }
 
 if (require.main === module) {
   ;(async () => {
-    const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+    // `sslmode=require` en la URL gana sobre la opción `ssl` y hace fallar la conexión a RDS
+    // con "self-signed certificate in certificate chain". Se quita, como en el resto de
+    // scripts del repo (`_gen_*.cjs`, `audit-notas-vigencia-tc.cjs`…).
+    const c = new Client({
+      connectionString: (process.env.DATABASE_URL || '').replace(/[?&]sslmode=[^&]*/, ''),
+      ssl: { rejectUnauthorized: false },
+    })
     await c.connect()
-    const rows = (await c.query(`SELECT id, titulo, coalesce(descripcion,'') descripcion, url FROM convocatoria_hitos`)).rows
+    const iSlug = process.argv.indexOf('--slug')
+    const SLUG = iSlug >= 0 && process.argv[iSlug + 1] && !process.argv[iSlug + 1].startsWith('--') ? process.argv[iSlug + 1] : null
+    if (iSlug >= 0 && !SLUG) { console.error('❌ --slug necesita un valor'); process.exit(2) }
+    const rows = (await c.query(
+      `SELECT h.id, h.titulo, coalesce(h.descripcion,'') descripcion, h.url
+         FROM convocatoria_hitos h
+         ${SLUG ? 'JOIN oposiciones o ON o.id = h.oposicion_id WHERE o.slug = $1' : ''}`,
+      SLUG ? [SLUG] : [])).rows
+    if (SLUG && !rows.length) { console.error(`❌ sin hitos para el slug "${SLUG}" (¿existe?)`); process.exit(2) }
+    if (SLUG) console.log(`🔎 acotado a ${SLUG}: ${rows.length} hito(s)`)
     const vals = rows.map(r => ({ id: r.id, ...clasificar(r) }))
     const cnt = f => vals.reduce((a, r) => (a[f(r)] = (a[f(r)] || 0) + 1, a), {})
 

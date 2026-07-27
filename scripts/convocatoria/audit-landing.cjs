@@ -99,7 +99,7 @@ async function comprobarEnlaces(html) {
   // Cabeceras del cron de seguimiento (núcleo compartido, no una copia): muchas sedes oficiales
   // devuelven 403 a una petición sin `User-Agent` de navegador. Sin esto, el detector llamaba
   // "roto" a un enlace perfectamente vivo — pasó con congreso.es en la primera pasada.
-  const comprobar = async (url, etiqueta) => {
+  const intento = async (url) => {
     try {
       // `Accept: */*` a propósito: aquí solo se comprueba que el recurso EXISTA, no se lee. Con
       // el Accept de HTML del cron, el BORM devuelve 406 al PDF de un anuncio que está perfecto.
@@ -108,13 +108,28 @@ async function comprobarEnlaces(html) {
         redirect: 'follow',
         signal: AbortSignal.timeout(25000),
       })
-      // 403/429 = el sitio bloquea peticiones automáticas, no que el enlace esté roto. Se informa
-      // aparte: marcarlo como error mandaría a alguien a "arreglar" una URL que funciona.
-      if (r.status === 403 || r.status === 429 || r.status === 406) noComprobables.push({ url: etiqueta, status: r.status })
-      else if (r.status >= 400) rotos.push({ url: etiqueta, status: r.status })
+      return { status: r.status, error: null }
     } catch (e) {
-      rotos.push({ url: etiqueta, status: 0, error: e.message })
+      return { status: 0, error: e.message }
     }
+  }
+  // RETRY-ONCE anti-flaky, igual que `canary-oposiciones-live.cjs`: un timeout suelto o un 5xx
+  // puntual NO es un enlace roto. Importa porque esta auditoría es la PUERTA del envío de
+  // campañas: el 27/07 una página nuestra tardó 4,1 s en la primera petición (ISR frío) y el
+  // veredicto salió ❌, que habría bloqueado la newsletter por nada. Solo se reintenta el fallo
+  // potencialmente transitorio; un 404 se cree a la primera.
+  const esTransitorio = (r) => r.status === 0 || r.status >= 500
+  const comprobar = async (url, etiqueta) => {
+    let r = await intento(url)
+    if (esTransitorio(r)) {
+      await new Promise((res) => setTimeout(res, 1500))
+      r = await intento(url)
+    }
+    // 403/429 = el sitio bloquea peticiones automáticas, no que el enlace esté roto. Se informa
+    // aparte: marcarlo como error mandaría a alguien a "arreglar" una URL que funciona.
+    if (r.status === 403 || r.status === 429 || r.status === 406) noComprobables.push({ url: etiqueta, status: r.status })
+    else if (r.status === 0) rotos.push({ url: etiqueta, status: 0, error: r.error })
+    else if (r.status >= 400) rotos.push({ url: etiqueta, status: r.status })
   }
   // En serie por lotes cortos: son ~70 peticiones a nuestro propio dominio, no hay prisa y así no
   // se abre una tormenta contra los boletines oficiales (que sí capan por ráfaga).
