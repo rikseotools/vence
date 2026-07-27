@@ -107,17 +107,59 @@ function checkCorrespondence(expl, opts, correctLetter) {
 // fallar que tiene un verificador (§15.8).
 const esLineaDeReferencia = (l) => /^\*\*[^*]+\*\*\s*:?$/.test(l.trim());
 
+// Una cita puede OMITIR tramos legítimamente con «(...)» o «…» — eso no la hace inventada. Se
+// parte por esas marcas y cada fragmento se exige literal por separado. Los fragmentos cortos no
+// se comprueban: una brizna de 3 palabras aparece en cualquier texto y solo generaría ruido.
+const MIN_FRAGMENTO = 25; // caracteres YA normalizados
+const partirPorElipsis = (q) => q.split(/\(\s*(?:\.{2,}|…)\s*\)|\[\s*(?:\.{2,}|…)\s*\]|\.{3,}|…/);
+
+// Muchas citas legítimas CIERRAN con su propia referencia dentro del blockquote: «…organización de
+// sus instituciones de autogobierno (art. 27 de la LO 1/1981)». Esa coletilla la ponemos nosotros y
+// nunca está en el texto del artículo, así que exigirla literal marcaría como inventada una cita
+// impecable. Medido el 27/07 sobre 5.000 explicaciones vivas: sin esta poda el check estricto
+// levantaba 942 (18,8%), y la mayoría eran exactamente esto.
+//
+// Se poda SOLO si con ello la cita pasa a casar: si aun sin coletilla sigue sin aparecer, el
+// problema es la cita, no la referencia, y se reporta igual.
+const MARCA_REFERENCIA = /\s(?:arts?|articulo|articulos|apartado|parrafo|ley|lo|ldo|rd|real decreto|reglamento|estatuto|constitucion|cp|ce)\s+[0-9ivx]/;
+function sinReferenciaFinal(fragmento, contenidoNormalizado) {
+  if (contenidoNormalizado.includes(fragmento)) return fragmento;
+  const m = MARCA_REFERENCIA.exec(fragmento);
+  if (!m || m.index < MIN_FRAGMENTO) return fragmento;
+  const podado = fragmento.slice(0, m.index).trim();
+  return contenidoNormalizado.includes(podado) ? podado : fragmento;
+}
+
 function validateQuotes(expl, articleContent) {
   const problems = [];
   const lineas = expl.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
   const quoteLines = lineas.filter((l) => l && !esLineaDeReferencia(l));
   const quote = quoteLines.join(' ').trim();
   if (!quote) return problems; // sin cita literal → nada que verificar
-  const nq = norm(quote), nc = norm(articleContent || '');
-  // La cita completa (o su tramo significativo) debe existir literal en el artículo.
-  const chunk = nq.length > 80 ? nq.slice(0, 80) : nq;
-  if (!nc.includes(chunk)) {
-    problems.push(`La cita en blockquote NO aparece literal en el artículo vinculado (posible cita inventada o de otro artículo).\n     cita: "${quote.slice(0, 90)}…"`);
+  const nc = norm(articleContent || '');
+
+  // La cita debe existir literal en el artículo ENTERA, no solo su arranque.
+  //
+  // Antes se comparaban los primeros 80 caracteres (`nq.slice(0, 80)`) y el resto no se miraba
+  // nunca. Cazado el 27/07 atacando el propio guardarraíl: invertí el final de la cita del art. 4.1
+  // CE («siendo la ROJA de doble anchura que cada una de las AMARILLAS», lo contrario de la norma y
+  // justo el error que esa pregunta examina) y la aprobó. El arranque de una cita legal suele ser
+  // genérico —«El plazo de presentación de solicitudes será de…»— y lo que decide la respuesta
+  // (plazos, mayorías, órgano competente) vive al final, o sea, justo en el tramo ciego.
+  const fragmentos = partirPorElipsis(quote)
+    .map((f) => norm(f))
+    .filter((f) => f.length >= MIN_FRAGMENTO);
+  // Cita corta (o toda ella por debajo del umbral): se comprueba entera, sin trocear.
+  const aComprobar = fragmentos.length ? fragmentos : [norm(quote)].filter(Boolean);
+
+  const fallo = aComprobar.map((f) => sinReferenciaFinal(f, nc)).find((f) => !nc.includes(f));
+  if (fallo !== undefined) {
+    const troceada = aComprobar.length > 1;
+    problems.push(
+      `La cita en blockquote NO aparece literal en el artículo vinculado (posible cita inventada o de otro artículo).\n` +
+      `     cita: "${quote.slice(0, 90)}…"` +
+      (troceada ? `\n     tramo que falla: "${fallo.slice(0, 90)}…"` : '')
+    );
   }
   return problems;
 }

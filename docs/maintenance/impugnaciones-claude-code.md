@@ -11,7 +11,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 > **Empieza por aquí.** Secuencia canónica para resolver una impugnación. Las secciones §1-§16 son el detalle.
 
 **Reglas que NO se saltan nunca:**
-- 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí. **Desde el 27/07 dice además si la explicación será BARAJABLE** (🔀) y da el comando para transcribirla tras aplicarla; si avisa de que NO se podrá, reescríbela con una razón por opción — que es el mismo §5.1 que el manual ya exige.
+- 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas — **la comprueba ENTERA**, ver §5.1.bis), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí. **Desde el 27/07 dice además si la explicación será BARAJABLE** (🔀) y da el comando para transcribirla tras aplicarla; si avisa de que NO se podrá, reescríbela con una razón por opción — que es el mismo §5.1 que el manual ya exige.
 - 🗺️ **ENFORCEMENT de scope/epígrafe (en el dossier, desde 24/07):** cuando la impugnación va de **temario / epígrafe / scope / "no entra" / "es de otro tema"**, el dossier imprime un **CHECK SCOPE/EPÍGRAFE** con el estado de verificación de la oposición del usuario (Paso 1 epígrafe clonado + Paso 2 scope) y un **aviso BLOQUEANTE 🛑 si el Paso 1 está `never_sourced`** — porque resolver un scope contra un epígrafe sin clonar del oficial es un **falso verde** (caso Sara 24/07: casi se rechaza como "falso positivo" con el scope `verified_correct` pero el epígrafe `never_sourced`). Es la "Regla previa OBLIGATORIA" de `verificar-epigrafes-scope.md`, ahora enforzada por código (módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`, compartido con el dossier de feedback; test `__tests__/impugnaciones/scopeEnforcement.test.js`). **No resuelvas una queja de scope si el dossier saca el 🛑 — haz el Paso 1 primero.**
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
 - 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next` — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). **No hace falta pasar `--sid`: se identifica sola** por `CLAUDE_CODE_SESSION_ID` (cada sesión de Claude Code trae el suyo). `revisar-impugnacion.cjs <id>` también la coge al abrir el dossier y avisa si otra sesión ya la tiene. Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
@@ -273,6 +273,37 @@ Según el artículo Y de la Ley Z:
 - Texto corrido sin saltos de línea ni formato.
 - Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.
 - Referencias a la POSICIÓN de otra opción («como se vio en la primera», «las dos últimas»): no sobreviven al barajado ni con estructura.
+
+### 5.1.bis La cita del blockquote se comprueba ENTERA (post-27/07/2026)
+
+`validar-explicacion.cjs` comparaba solo los **primeros 80 caracteres** normalizados de la cita
+(`nq.slice(0, 80)`) y el resto no lo miraba nunca. Un guardarraíl que existe para *"cazar citas
+inventadas"* era ciego justo donde más duele: **el arranque de un precepto suele ser genérico**
+(*"El plazo de presentación de solicitudes será de…"*) y lo que decide la respuesta —plazos,
+mayorías, anchuras, órgano competente— **vive al final**.
+
+**Cómo se cazó (27/07):** atacando al propio validador. Se invirtió el FINAL de la cita del art. 4.1
+CE (*"siendo la **roja** de doble anchura que cada una de las **amarillas**"*, lo contrario de la
+norma y exactamente el error que esa pregunta examina) y lo dio por **VÁLIDO**. No era regresión del
+arreglo de T-204: el `slice(0, 80)` ya estaba antes.
+
+**Qué hace ahora:** trocea la cita por las elisiones (`(...)`, `…`) y exige **cada fragmento**
+literal en el artículo. Dos concesiones, ambas medidas, para no castigar la cita honrada:
+
+| Se acepta | Por qué |
+|---|---|
+| Elidir tramos con `(...)` o `…` | Es práctica legítima; cada tramo se verifica por separado |
+| Cerrar la cita con su propia referencia (*"…de autogobierno (art. 27 de la LO 1/1981)"*) | La coletilla la ponemos nosotros y nunca está dentro del artículo. Se poda **solo si con ello la cita pasa a casar**: si el cuerpo sigue sin aparecer, falla igual |
+
+**Calibración (medida sobre 5.000 explicaciones vivas):** sin esas dos concesiones el check estricto
+levantaba **942 (18,8 %)**, casi todas correctas; con ellas, **165 (3,3 %)**, y las revisadas a mano
+eran de verdad no literales (citas que siguen más allá de donde acaba el artículo, o enumeraciones
+compactadas que el precepto lista por letras). Regresión fijada en
+`__tests__/impugnaciones/validarExplicacionCitaEntera.test.ts`.
+
+> **Para ti, al corregir:** si el validador te dice *"tramo que falla"*, no toquetees la cita hasta
+> que pase — **léela contra el artículo**. Ese aviso es casi siempre una cita que mezcla dos
+> preceptos o que continúa con texto que el artículo vinculado no tiene.
 
 ### 5.1.1 Preguntas de Informática (Word, Excel, Access, Windows, Outlook, Internet)
 
