@@ -174,9 +174,40 @@ export class AlertsCron {
           `Regla '${rule.name}' [${rule.severity}] DISPARADA: ${partial.title}`,
         );
       } catch (err) {
+        // ⚠️ QUIÉN VIGILA AL VIGILANTE (27/07/2026, cabo de T-162).
+        // Hasta hoy esto era SOLO una línea de log, y por eso `traffic_drop`
+        // (255 fallos), `cron_overdue` (132) y `materialized_stats_stale` (110)
+        // llevaban MÁS DE UN DÍA sin evaluarse sin que nadie se enterara: el
+        // panel de salud y las alertas leen `observable_events`, y aquí no se
+        // escribía nada. Una regla caída es indistinguible de una regla que no
+        // dispara — el peor modo de fallo posible en un motor de alertas.
+        //
+        // Ahora el fallo queda en la tabla, consultable como cualquier otra
+        // señal y disponible para que una regla lo alerte
+        // (RULE_ALERT_RULE_FAILING). Fire-and-forget: nunca puede tumbar el
+        // tick ni convertir un fallo de una regla en un fallo del motor.
+        //
+        // `cause` se emite aparte a propósito: Drizzle envuelve el error en
+        // "Failed query: <sql>" y el mensaje del driver (el que dice si fue
+        // timeout, sintaxis o conflicto de recovery) queda DENTRO de `cause`.
+        // Sin desenvolverlo, el diagnóstico obliga a reproducir a mano — que es
+        // exactamente lo que costó media tarde el 27/07.
+        const msg = err instanceof Error ? err.message : String(err);
+        const cause =
+          err instanceof Error && err.cause instanceof Error
+            ? err.cause.message
+            : undefined;
         this.logger.error(
-          `Regla '${rule.name}' falló: ${err instanceof Error ? err.message : String(err)}`,
+          `Regla '${rule.name}' falló: ${msg}${cause ? ` | causa: ${cause}` : ''}`,
         );
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: 'error',
+          eventType: 'alert_rule_failed',
+          endpoint: `alert:${rule.name}`,
+          errorMessage: cause ?? msg,
+          metadata: { rule: rule.name, cause, message: msg.slice(0, 500) },
+        });
       }
     }
 

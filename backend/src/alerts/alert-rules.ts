@@ -570,6 +570,63 @@ export const RULE_CRON_STARTED_NOT_FINISHED: AlertRule<StalledCronRow> = {
   cooldownMin: 360,
 };
 
+/**
+ * QUIÉN VIGILA AL VIGILANTE: una regla del motor que lleva rato reventando.
+ *
+ * El 27/07 se midió que `traffic_drop` (255 fallos en 24 h), `cron_overdue`
+ * (132) y `materialized_stats_stale` (110) llevaban **más de un día sin
+ * evaluarse** por timeout de query, y NADIE lo sabía: el `catch` del motor solo
+ * escribía una línea de log. Una regla caída se ve exactamente igual que una
+ * regla que no dispara, así que el panel seguía verde mientras la vigilancia
+ * estaba muerta. Es el mismo patrón de fondo que T-162, un nivel más arriba.
+ *
+ * Umbral: ≥3 fallos de la MISMA regla en 1 h (el motor tickea cada 5 min → 12
+ * intentos/h). Con 3 se descarta el fallo puntual —un pico de carga, un deploy,
+ * un reinicio de la réplica— y se exige que el problema persista. `warn`, no
+ * `critical`: no hay nada roto de cara al usuario, pero la red de seguridad
+ * tiene un agujero y alguien debe mirarlo.
+ */
+export const RULE_ALERT_RULE_FAILING: AlertRule<{
+  rule: string;
+  fallos: number;
+  ultimaCausa: string | null;
+}> = {
+  name: 'alert_rule_failing',
+  severity: 'warn',
+  query: sql`
+    SELECT metadata->>'rule' AS rule,
+           COUNT(*)::int AS fallos,
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "ultimaCausa"
+    FROM observable_events
+    WHERE event_type = 'alert_rule_failed'
+      AND ts > NOW() - INTERVAL '1 hour'
+    GROUP BY metadata->>'rule'
+    HAVING COUNT(*) >= 3
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => ({
+    title: `${rows.length} regla(s) de alerta reventando — la vigilancia tiene un hueco`,
+    body:
+      `Estas reglas del motor de alertas fallan al ejecutarse, así que NO están vigilando nada. ` +
+      `Lo que cubren está sin cubrir:\n\n` +
+      rows
+        .map(
+          (r) =>
+            `  - ${r.rule}: ${r.fallos} fallos en 1 h\n      causa: ${r.ultimaCausa ?? '(sin detalle)'}`,
+        )
+        .join('\n\n') +
+      `\n\nCausa más frecuente: la query supera el statement_timeout del pool (20 s en la réplica, ` +
+      `backend/src/db/database.module.ts). Mirar el plan: si sale Seq Scan sobre observable_events, ` +
+      `falta índice util o falta VACUUM (el index-only scan necesita el mapa de visibilidad marcado — ` +
+      `ver supabase/migrations/20260727_observable_events_cron_covering_idx.sql).\n\n` +
+      `  SELECT metadata->>'rule', count(*), max(error_message) FROM observable_events\n` +
+      `  WHERE event_type='alert_rule_failed' AND ts > NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 2 DESC;`,
+    metadata: { reglas: rows.map((r) => `${r.rule}:${r.fallos}`).join(',') },
+    fingerprint: `alert_rule_failing_${rows.map((r) => r.rule).join(',')}`,
+  }),
+  cooldownMin: 120,
+};
+
 /** Deploy fallido — alertar inmediato si aparece event deploy_failed. */
 export const RULE_DEPLOY_FAILED: AlertRule<{
   n: number;
@@ -3600,6 +3657,9 @@ export const ALERT_RULES: AlertRule[] = [
   // Complemento de la anterior (2026-07-27, T-162): `cron_overdue` vigila el
   // ARRANQUE y da verde con un solo tick; ésta vigila el COMPLETADO.
   RULE_CRON_STARTED_NOT_FINISHED as AlertRule,
+  // Quién vigila al vigilante (2026-07-27): una regla que revienta no vigila
+  // nada, y hasta hoy eso solo se veía en los logs.
+  RULE_ALERT_RULE_FAILING as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
   // Reglas Fase 1.6 (2026-05-26) — cierran loop de eventos nuevos

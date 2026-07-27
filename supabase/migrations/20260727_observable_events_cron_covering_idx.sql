@@ -1,0 +1,64 @@
+-- 20260727_observable_events_cron_covering_idx.sql
+-- Índice PARCIAL y CUBRIDOR de los eventos de cron en observable_events.
+--
+-- PROBLEMA MEDIDO (27/07/2026, T-162): las reglas del motor de alertas que
+-- agregan eventos de cron hacían un `Parallel Seq Scan` de la tabla ENTERA
+-- (10,6 M filas / 6,7 GB · 386k bloques · 40,9 s de I/O) porque los eventos de
+-- cron son solo el 5,7% (604k filas en 30 días) y el planificador descarta el
+-- índice `(event_type, ts DESC)` existente: leer 604k filas del heap por acceso
+-- aleatorio le sale más caro que barrer la tabla. Y tiene razón — el índice no
+-- es cubridor.
+--
+-- CONSECUENCIA REAL: el pool de la réplica impone `statement_timeout: 20000`
+-- (backend/src/db/database.module.ts) y la query tarda 26 s en el primario y
+-- **107 s en la réplica** → las reglas NUNCA terminaban. Medido en 24 h:
+-- `cron_overdue` 132 fallos, `traffic_drop` 255, `materialized_stats_stale` 110.
+-- Es decir: **la regla que vigila si los crons arrancan llevaba más de un día
+-- sin evaluarse, en silencio.** No es un problema nuevo de T-162; T-162 solo lo
+-- destapó al añadir la regla hermana `cron_started_not_finished`.
+--
+-- POR QUÉ UN ÍNDICE Y NO OTRA COSA (verificado contra lo que ya existe, no
+-- supuesto — `npm run tools:buscar` + runbook `contencion-rds-paneles-admin.md`):
+--   · La RETENCIÓN ya existe y funciona (30 d, `observability-cleanup` +
+--     `telemetry-retention`). No es el problema: 30 días ES el dato de trabajo.
+--   · La RÉPLICA de lectura ya existe y el motor de alertas ya la usa
+--     (`DRIZZLE_READ`, Capa 3 del runbook). Mueve el cómputo de sitio; no evita
+--     el barrido completo.
+--   · El CACHE de paneles ya existe, pero es de los paneles admin, no del cron.
+--   · Particionar por tiempo (`pg_partman`) sigue PENDIENTE en la escalera del
+--     runbook y es el arreglo estructural — pero es un proyecto, y este índice
+--     es compatible con él (sobreviviría por partición).
+-- Un índice parcial de 42 MB que convierte el barrido en un *index-only scan*
+-- es la respuesta proporcionada, no un parche: no enmascara la causa, la elimina.
+--
+-- ⚠️⚠️ EL ÍNDICE SOLO NO BASTA — LA MITAD DEL ARREGLO ES EL VACUUM. Medido:
+-- recién creado el índice, el plan seguía siendo Seq Scan; y forzándolo
+-- (`enable_seqscan=off`) el "Index Only Scan" daba **Heap Fetches: 385.495** y
+-- tardaba 68 s, PEOR que el barrido. Motivo: en una tabla de inserción continua
+-- el MAPA DE VISIBILIDAD está sin marcar, así que el index-only scan va al heap
+-- igual. Solo lo marca VACUUM. Tras `VACUUM (ANALYZE)` (85 s):
+--     ventana 30d:  107.831 ms → 876 ms   (123×), Heap Fetches 385.495 → 328
+--     ventana  7d:   13.852 ms → 246 ms
+-- Contra el presupuesto de 20 s del pool, eso es 23× de margen.
+--
+-- QUIÉN MANTIENE ESO VIVO: nadie nuevo. El cron `telemetry-retention`
+-- (`10 4 * * *`) ya hace `VACUUM (ANALYZE) observable_events` cada noche, así
+-- que el mapa de visibilidad se re-marca solo. Entre vacuums se degrada solo la
+-- cola de páginas recientes (unas horas de datos), no la ventana entera.
+-- ⚠️ Si algún día se retira ese VACUUM nocturno, ESTA optimización se cae con
+-- él y las reglas de cron vuelven a superar el timeout. Están acopladas.
+--
+-- CUBRIDOR: `INCLUDE (endpoint, duration_ms)` es lo que permite el index-only
+-- scan. Las dos reglas que lo usan necesitan exactamente event_type, ts,
+-- endpoint y duration_ms — nada más — así que ninguna toca el heap.
+-- PARCIAL: acotado a los dos event_type de cron → ~610k filas históricas
+-- (~23 MB) en vez de indexar los 10,6 M.
+--
+-- CONCURRENTLY: no bloquea escrituras (la tabla recibe eventos en caliente).
+-- Se propaga sola a la réplica por replicación física.
+-- Aplicado en vivo a RDS el 27/07/2026; este fichero es el registro/repro.
+-- Revertir: DROP INDEX CONCURRENTLY idx_observable_events_cron_covering;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_observable_events_cron_covering
+  ON public.observable_events (event_type, ts DESC)
+  INCLUDE (endpoint, duration_ms)
+  WHERE event_type IN ('cron_tick', 'cron_run');
