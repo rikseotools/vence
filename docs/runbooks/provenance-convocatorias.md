@@ -188,6 +188,40 @@ npm run audit:convocatorias:gate      # modo gate (CI)
    `cifra_derivada` en `findings`, explicando la cuenta y citando los sumandos literales.
 4. **¿No la sostiene nada?** → corregirla contra el boletín, o marcarla `plazas_prevision` con motivo.
 
+### El PDF que NO se puede leer: renderiza la página y léela (27/07/2026, T-191)
+
+Hay boletines municipales cuyo PDF lleva el **CMap roto**: el texto sale en mojibake y **ningún
+extractor lo salva** — `pdftotext`, `pdftotext -layout` y `gs -sDEVICE=txtwrite` devuelven lo mismo
+(`EKD/E/MEd'KZ1` por «DENOMINACIÓN CATEGORÍA»). Antes de dar el documento por inservible:
+
+```bash
+pdftoppm -png -r 150 -f 3 -l 3 documento.pdf pag   # y LEER la imagen
+```
+
+Con la página renderizada la tabla se lee sin ambigüedad. Así se probó que las **111 plazas** de
+`auxiliar-administrativo-ayuntamiento-madrid` están impresas en el Anexo I del BOCM-20251210-49
+(cupo general 100 + reserva discapacidad 11 = total 111), después de que las dos vías anteriores
+—`sede.madrid.es` con WAF y el PDF con `pdftotext`— estuvieran documentadas como muertas.
+
+**Y aun así hay que firmar la verificación**, porque el corpus sigue sin poder probar la cifra por
+extracción: `convocatoria_verification` con `cifra_derivada` + un `source_snippet` que **describa la
+tabla en prosa** (el detector `cita_no_prueba_nada` exige ≥5 palabras en minúscula o dos de las
+cifras afirmadas; un membrete no vale). Comprueba el snippet contra ese mismo criterio ANTES de
+escribirlo — a mí me cazó por dejarlo vacío.
+
+### Restar las reservas NO da «las plazas» (27/07/2026, T-191)
+
+`administrativo-aragon` publicaba **139** plazas y el BOA (Resolución de 19/12/2025, BOA 247,
+Anexo I) convoca **144**: `250102 Escala General Administrativa. Administrativos 144 (3 reservadas a
+víctimas de violencia de género, 1 reservada a víctimas de terrorismo y 1 reservada a personas
+transexuales)`. El 139 salía de restar esas 5 — **una resta que no aparece escrita en ningún sitio**,
+el mismo patrón que el 2.163 de Policía Nacional.
+
+**Las plazas reservadas a colectivos son plazas del turno libre CON reserva, no plazas descontadas.**
+El caso hermano lo confirma: en Madrid la cifra correcta (111) *incluye* las 11 de reserva por
+discapacidad. Efecto de la resta: la landing anunciaba **5 plazas menos** de las convocadas.
+Corregido a 144 en las dos filas del dual-write, con traza `plazas_corregidas_contra_boletin`.
+
 ### Qué NO hacer
 
 - **NUNCA** inventar la cifra ni ajustarla "a ojo" para que cuadre.
