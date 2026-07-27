@@ -576,7 +576,17 @@ Sin reparar el scope, los batches sucesivos contaminan el tema: preguntas sobre 
 > ```bash
 > node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <art> [<art>…]
 > node scripts/verificar-articulos-vs-boe.cjs lprl BOE-A-1995-24292 10 11 12 32 39
+> # Normas de la UE → EUR-Lex CONSOLIDADO (id CELEX), NO el espejo del BOE:
+> node scripts/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 CELEX:02016R0679-20160504 9 28 40
 > ```
+>
+> 🇪🇺 **NORMAS DE LA UE: el espejo del BOE (`DOUE-…`) es el texto ORIGINAL, CON erratas** — no incorpora
+> las correcciones de errores posteriores. El RGPD tiene una (DO L 127, 23/05/2018), así que el BOE dice
+> *«la vida sexual o **las orientación sexuales**»* donde el consolidado dice *«o **la orientación
+> sexual**»*. Verificando contra el BOE, **80 de los 99 artículos del RGPD salían "divergentes"** y
+> "arreglarlos" habría metido las erratas en el temario de 49 oposiciones (T-184, 27/07/2026). Pásale un
+> id **CELEX que empiece por 0** (consolidado); si empieza por 3 es el acto publicado y el script te
+> avisa. Núcleo: `lib/laws/eurlexConsolidado.js`.
 >
 > **GOTCHA que lo hace traicionero:** la API del BOE devuelve **una `<version>` por redacción histórica y
 > NO vienen en orden cronológico**. En el art. 2 de la Ley 7/1985 el orden es **1985 → 2013 → 1990**: coger

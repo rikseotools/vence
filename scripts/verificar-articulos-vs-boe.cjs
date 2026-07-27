@@ -9,7 +9,10 @@
  * Uso:
  *   node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <art> [<art>…]
  *   node scripts/verificar-articulos-vs-boe.cjs lprl BOE-A-1995-24292 10 11 12 32 39
- *   node scripts/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 DOUE-L-2016-80807 38   # normas UE
+ *   node scripts/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 CELEX:02016R0679-20160504 38  # UE
+ *
+ * ⚠️ NORMAS DE LA UE: usa el CELEX del texto CONSOLIDADO (empieza por 0), no el espejo del BOE
+ *   (`DOUE-…`), que reproduce el original CON erratas y no trae las correcciones de errores.
  *
  * Sin lista de artículos verifica TODOS los activos de la ley (ojo: 1 fetch por
  * artículo, sé considerado con el BOE).
@@ -20,6 +23,7 @@ const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
+const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado, urlEurLex } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -70,6 +74,49 @@ async function xmlBloque(art) {
 // DOCUMENTO y se sirven en XML por otro endpoint. Sin esta rama, toda la
 // legislación de la UE del temario quedaba fuera del Paso 1 (T-143, 26/07/2026).
 const ES_DOUE = /^DOUE-/i.test(BOE_ID || '')
+
+// ── Normas europeas por EUR-Lex (ids CELEX) ─────────────────────────────────
+// El espejo del BOE reproduce el DOUE **ORIGINAL, con erratas**, y no incorpora las correcciones
+// de errores posteriores. El RGPD tuvo una (DO L 127, 23/05/2018): comparar contra el BOE decía
+// que 80 de sus 99 artículos "divergían" cuando lo que pasaba es que NUESTRO texto estaba más
+// cerca del corregido. Reescribir con ese veredicto habría metido «las orientación sexuales» en
+// el temario de 49 oposiciones (T-184, 27/07/2026). Para normas UE, la fuente es EUR-Lex
+// CONSOLIDADA: `node …/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 CELEX:02016R0679-20160504`
+const ES_EURLEX = esIdEurLex(BOE_ID)
+let EURLEX_HTML = null
+async function htmlEurLex() {
+  if (EURLEX_HTML === null) {
+    const r = await fetch(urlEurLex(BOE_ID), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!r.ok) throw new Error(`HTTP ${r.status} al pedir ${urlEurLex(BOE_ID)}`)
+    EURLEX_HTML = await r.text()
+  }
+  return EURLEX_HTML
+}
+
+/** Compara un artículo del consolidado de EUR-Lex contra nuestro `content`. */
+async function comparaEurLex(art, contenidoBd, rubrica) {
+  const a = articuloDeEurLex(await htmlEurLex(), art, rubrica)
+  if (!a) return { coincide: false, vigencia: null, lenBoe: 0, lenBd: normalizar(contenidoBd).length, divergeEn: 0, notaVigencia: null }
+  const of_ = normalizar(a.texto)
+  const bd = normalizar(contenidoBd)
+  const base = { vigencia: 'consolidado UE', lenBoe: of_.length, lenBd: bd.length, notaVigencia: null }
+  if (of_ === bd) return { ...base, coincide: true, divergeEn: null }
+  let i = 0
+  while (i < Math.min(of_.length, bd.length) && of_[i] === bd[i]) i++
+  return { ...base, coincide: false, divergeEn: i }
+}
+
+if (ES_DOUE) {
+  console.log('⚠️  AVISO: el espejo del BOE de una norma UE es el texto ORIGINAL, CON sus erratas —')
+  console.log('   no incorpora las correcciones de errores publicadas después. Si esta norma tiene')
+  console.log('   corrección (el RGPD la tiene: DO L 127 de 23/05/2018), aquí saldrán DIVERGENCIAS')
+  console.log('   FALSAS y "arreglarlas" empeoraría el texto. Usa el consolidado de EUR-Lex:')
+  console.log(`   node scripts/verificar-articulos-vs-boe.cjs ${SLUG} CELEX:0XXXXRXXXX-AAAAMMDD\n`)
+}
+if (ES_EURLEX && esCelexNoConsolidado(BOE_ID)) {
+  console.log('⚠️  AVISO: ese CELEX empieza por 3 = el acto tal como se PUBLICÓ (con erratas).')
+  console.log('   El consolidado empieza por 0 (p. ej. `02016R0679-20160504`).\n')
+}
 let DOC_XML = null
 async function xmlDocumento() {
   if (DOC_XML === null) {
@@ -97,7 +144,7 @@ async function comparaDocumento(art, contenidoBd) {
 
 ;(async () => {
   const arts = ARTS.length
-    ? await s`SELECT a.article_number n, a.content FROM articles a JOIN laws l ON l.id = a.law_id
+    ? await s`SELECT a.article_number n, a.content, a.title FROM articles a JOIN laws l ON l.id = a.law_id
               WHERE l.slug = ${SLUG} AND a.article_number = ANY(${ARTS}) AND a.is_active
               -- Orden natural TOLERANTE al sufijo: el cast a int reventaba con
               -- "40 bis" ("invalid input syntax for type integer"), así que la herramienta
@@ -107,7 +154,7 @@ async function comparaDocumento(art, contenidoBd) {
               -- hay que doblarla o el literal llega como una D suelta.
               ORDER BY NULLIF(regexp_replace(a.article_number, '\\D', '', 'g'), '')::int NULLS LAST,
                        a.article_number`
-    : await s`SELECT a.article_number n, a.content FROM articles a JOIN laws l ON l.id = a.law_id
+    : await s`SELECT a.article_number n, a.content, a.title FROM articles a JOIN laws l ON l.id = a.law_id
               WHERE l.slug = ${SLUG} AND a.is_active AND a.article_number ~ '^[0-9]+$'
               ORDER BY (a.article_number)::int`
 
@@ -121,7 +168,11 @@ async function comparaDocumento(art, contenidoBd) {
   for (const a of arts) {
     let r
     try {
-      r = ES_DOUE ? await comparaDocumento(a.n, a.content) : comparaConBd(await xmlBloque(a.n), a.content)
+      r = ES_EURLEX
+        ? await comparaEurLex(a.n, a.content, a.title)
+        : ES_DOUE
+          ? await comparaDocumento(a.n, a.content)
+          : comparaConBd(await xmlBloque(a.n), a.content)
     } catch (e) {
       mal++
       console.log(`  ❌ art. ${a.n}: no se pudo leer del BOE (${e.message})`)
@@ -139,7 +190,7 @@ async function comparaDocumento(art, contenidoBd) {
     }
 
     if (r.coincide) {
-      console.log(`  ✅ art. ${a.n} — idéntico al BOE ${r.vigencia === 'documento' ? '(documento publicado; el DOUE no tiene versiones consolidadas, comprueba si la norma se modificó después)' : 'vigente (' + r.vigencia + ')'}`)
+      console.log(`  ✅ art. ${a.n} — idéntico ${ES_EURLEX ? 'a EUR-Lex consolidado' : r.vigencia === 'documento' ? 'al documento del BOE (el DOUE no tiene versiones consolidadas: comprueba si la norma se modificó después)' : `al BOE vigente (${r.vigencia})`}`)
       continue
     }
     mal++
@@ -147,14 +198,18 @@ async function comparaDocumento(art, contenidoBd) {
       console.log(`  ❌ art. ${a.n}: el BOE no devuelve ninguna versión para ese bloque (¿numeración distinta, "bis", derogado?)`)
       continue
     }
-    const boe = ES_DOUE ? articuloDeDocumento(await xmlDocumento(), a.n) : bloqueVigente(await xmlBloque(a.n))
-    console.log(`  ❌ art. ${a.n} DIVERGE del BOE vigente (${r.vigencia}) — BD ${r.lenBd} ch / BOE ${r.lenBoe} ch, difieren desde el char ${r.divergeEn}`)
-    console.log(`     BOE: …${boe.texto.replace(/\s+/g, ' ').slice(Math.max(0, r.divergeEn - 50), r.divergeEn + 150)}…`)
+    const boe = ES_EURLEX
+      ? articuloDeEurLex(await htmlEurLex(), a.n, a.title)
+      : ES_DOUE
+        ? articuloDeDocumento(await xmlDocumento(), a.n)
+        : bloqueVigente(await xmlBloque(a.n))
+    console.log(`  ❌ art. ${a.n} DIVERGE de ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE vigente'} (${r.vigencia}) — BD ${r.lenBd} ch / oficial ${r.lenBoe} ch, difieren desde el char ${r.divergeEn}`)
+    console.log(`     OFI: …${boe.texto.replace(/\s+/g, ' ').slice(Math.max(0, r.divergeEn - 50), r.divergeEn + 150)}…`)
     console.log(`     BD : …${String(a.content).replace(/\s+/g, ' ').slice(Math.max(0, r.divergeEn - 50), r.divergeEn + 150)}…`)
   }
 
-  console.log(`\n${arts.length - mal}/${arts.length} artículos coinciden con el BOE vigente`)
-  if (mal) console.log('⚠️ NO generes preguntas sobre los que divergen: actualiza antes el `content` desde el BOE.')
+  console.log(`\n${arts.length - mal}/${arts.length} artículos coinciden con ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE vigente'}`)
+  if (mal) console.log(`⚠️ NO generes preguntas sobre los que divergen: actualiza antes el \`content\` desde ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE'}.`)
   await s.end()
   if (mal) process.exit(2)
 })().catch((e) => {
