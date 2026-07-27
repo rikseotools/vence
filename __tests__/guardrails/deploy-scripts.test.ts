@@ -122,6 +122,17 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
       expect(m).toBeTruthy()
       expect(m![1]).not.toMatch(/"/)
     })
+    // Hermano del anterior, por un fallo REAL del 27/07/2026: la cadena va entre comillas
+    // DOBLES, así que bash también expande `$`. Documentando el coste de un cron escribí
+    // "~$8 por dia" y `set -u` lo convirtió en "variable sin asignar" → el deploy abortó
+    // (por suerte ANTES de tocar el servicio, pero bloqueaba a TODAS las sesiones).
+    // El test de las comillas no lo veía: son dos formas distintas de que el shell se coma
+    // el bloque. Importes en la forma `8 USD`, nunca con el símbolo.
+    it(`${name}: el bloque node -e no expande parámetros posicionales ($1..$9)`, () => {
+      const m = s.match(/node -e "\n([\s\S]*?)\n"\n/)
+      expect(m).toBeTruthy()
+      expect(m![1]).not.toMatch(/\$[0-9]/)
+    })
   }
 })
 

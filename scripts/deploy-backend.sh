@@ -131,8 +131,12 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
   if (f) f.value='true'; else c.environment.push({name:'CHECK_SEGUIMIENTO_ENABLED', value:'true'});
 }
 // detect-oep-llm EN PAUSA POR COSTE (27/07/2026). Manda a Haiku el HTML de las 2.213
-// oposiciones con seguimiento_url, una llamada por oposicion: ~1.700 llamadas y ~$8 por dia
-// laborable (~$170/mes), 169 min por pasada, y la ultima completa dio 2.206 escaneadas ->
+// oposiciones con seguimiento_url, una llamada por oposicion: ~1.700 llamadas y ~8 USD por dia
+// laborable (~170 USD/mes), 169 min por pasada, y la ultima completa dio 2.206 escaneadas ->
+// OJO al editar este bloque: va dentro de un node -e entre comillas dobles, asi que bash expande
+// el simbolo dolar y los acentos graves. Un dolar seguido de digito aborta el deploy con set -u
+// (pasado el 27/07/2026). Escribir los importes en la forma 8 USD, nunca con el simbolo. Y sin
+// comillas dobles de ningun tipo: truncan el JS en silencio (guardarrail deploy-scripts.test.ts).
 // 424 extracciones -> 10 senales. El desperdicio NO son las inactivas (a 60 dias generan 98
 // senales aplicadas frente a 43 de las activas: descubrir convocatorias nuevas ES el trabajo
 // del radar), sino re-extraer paginas que no han cambiado — el servicio ya tiene
