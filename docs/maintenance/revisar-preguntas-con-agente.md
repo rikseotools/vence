@@ -1756,6 +1756,10 @@ Algunas preguntas re-vinculadas pertenecen a normas que NO se han creado en BD (
 
 ## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
 
+> **¿En qué formato la escribo? En el de SIEMPRE (§8.1).** El estructurado no se escribe a mano:
+> se **deriva** del que escribes, con un comando. Durante la transición conviven los dos —
+> `explanation` es lo que el opositor ve hoy y `explanation_data` es lo que permitirá barajar.
+
 Desde el 27/07/2026 la explicación puede vivir en dos sitios: el texto de siempre (`explanation`)
 y la versión ESTRUCTURADA (`explanation_data`), con las razones keadas a cada opción y sin letras
 dentro. **Los dos conviven a propósito** mientras se transcribe el histórico; el barajado de
