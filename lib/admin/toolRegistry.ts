@@ -575,6 +575,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'FAVORABLE del Ministerio Fiscal» con su propia explicación citando la STC 185/2012 que anuló esa ' +
       'palabra. NUNCA auto-corrige.',
   },
+  corregir_plazas_contra_boletin: {
+    titulo: 'Corregir una cifra de plazas contra el boletín (paso 4 del §6 de provenance)',
+    ruta: 'scripts/corregir-plazas-contra-boletin.cjs',
+    estado: 'vivo',
+    escribe: ['plazas_libres', 'plazas_promocion_interna', 'plazas_discapacidad'],
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      'Dry-run por defecto. El §6 tiene cuatro salidas para una cifra sin documento que la pruebe y ' +
+      'esta era la ÚNICA sin herramienta — justo la que cambia un dato que el opositor LEE en la ' +
+      'landing (T-191). GUARDA CLAVE: la cifra nueva tiene que aparecer en la CITA aportada, ' +
+      'comprobado con `cifraEnTexto`, EL MISMO predicado del detector `plazas_afirmadas_sin_documento` ' +
+      '→ es imposible escribir por aquí una cifra que el detector no daría por probada. Además exige ' +
+      'que la cita parezca prueba (mismo criterio que `cita_no_prueba_nada`: cláusula en prosa o fila ' +
+      'de tabla; un membrete no vale), `--esperado` como optimistic check, dual-write en TRANSACCIÓN ' +
+      'sobre `oposiciones` + convocatoria vigente, traza del éxito Y del rechazo en `observable_events`, ' +
+      'y re-lectura posterior. Núcleo puro `lib/convocatoria/correccionPlazas.cjs` (20 tests). ' +
+      'NO es para la cifra que se deduce del propio texto: eso es la válvula firmada `cifra_derivada`. ' +
+      'Caso raíz: `administrativo-aragon` publicaba 139 restando a las 144 convocadas las 5 reservadas ' +
+      'a colectivos — la resta no aparece escrita, mismo patrón que el 2.163 de Policía Nacional, y ' +
+      'anunciaba 5 plazas MENOS de las convocadas.',
+  },
   transponer_posicion_correcta: {
     titulo:
       'Reparar la POSICIÓN de la opción correcta de un lote (§2.2-ter) sin descuadrar la explicación',

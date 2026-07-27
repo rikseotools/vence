@@ -186,7 +186,22 @@ npm run audit:convocatorias:gate      # modo gate (CI)
 3. **¿La cifra sale de sumar literales DEL MISMO documento?** (turno libre desglosado: 23 + 103 = 126, y el
    «126» no aparece escrito) → **firmarla**: `convocatoria_verification` en `verified_correct` con la clave
    `cifra_derivada` en `findings`, explicando la cuenta y citando los sumandos literales.
-4. **¿No la sostiene nada?** → corregirla contra el boletín, o marcarla `plazas_prevision` con motivo.
+4. **¿No la sostiene nada?** → corregirla contra el boletín **con la herramienta** (desde T-191 ya la hay;
+   antes era el único paso del §6 que se hacía a mano, y es el que cambia un dato que el opositor LEE):
+
+   ```bash
+   node scripts/corregir-plazas-contra-boletin.cjs --slug=<slug> --valor=<n> \
+     --cita="<literal del boletín que la sostiene>" --url=<url del documento> \
+     --motivo="<por qué la publicada estaba mal>" [--esperado=<valor actual>] [--apply]
+   ```
+
+   Rehúsa escribir si la cita **no contiene la cifra** (mismo `cifraEnTexto` que el detector: no se
+   puede colar una cifra que el detector no daría por probada), si la cita es un membrete, o si otra
+   sesión cambió el valor entre medias. Hace el dual-write en transacción, deja traza del éxito y del
+   rechazo, y re-lee para verificar. Si la cifra no está escrita pero es aritmética honesta sobre el
+   mismo documento, **esta no es la vía**: firma `cifra_derivada` (punto 3).
+
+   Y si no la sostiene nada en absoluto → `plazas_prevision` con motivo.
 
 ### El PDF que NO se puede leer: renderiza la página y léela (27/07/2026, T-191)
 
