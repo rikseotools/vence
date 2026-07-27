@@ -633,9 +633,11 @@ export const userFeedback = pgTable("user_feedback", {
 	priority: text().default('medium'),
 	adminResponse: text("admin_response"),
 	adminUserId: uuid("admin_user_id"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	// timestamptz desde 20260727_user_feedback_timestamptz.sql (T-167): eran las últimas fechas
+	// naive del recorrido de un usuario y falseaban el cruce con user_interactions/user_profiles.
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
 	questionId: uuid("question_id"),
 }, (table) => [
 	index("idx_user_feedback_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")).where(sql`(question_id IS NOT NULL)`),

@@ -49,10 +49,13 @@ function naiveTimestampColumns(src: string): string[] {
   return out.sort()
 }
 
-// Deuda CONGELADA (verificada contra RDS el 26/07/2026: 13 naive de 478).
-// Migrar a timestamptz interpretando el valor como UTC —el servidor corre en UTC
-// y estas columnas tienen `DEFAULT now()`, así que el naive YA es hora UTC:
+// Deuda CONGELADA (verificada contra RDS: 13 naive de 478 el 26/07/2026 → **10** el 27/07, tras
+// pagar las 3 de `user_feedback` en T-167). Migrar a timestamptz interpretando el valor como UTC
+// —el servidor corre en UTC y estas columnas tienen `DEFAULT now()`, así que el naive YA es hora
+// UTC; comprobado midiendo contra una tabla timestamptz antes de convertir:
 //   ALTER TABLE x ALTER COLUMN y TYPE timestamptz USING y AT TIME ZONE 'UTC';
+// Receta completa (simulación con ROLLBACK incluida) en
+// supabase/migrations/20260727_user_feedback_timestamptz.sql.
 const DEUDA_CONOCIDA = [
   'laws.change_detected_at',
   'laws.last_checked',
@@ -64,10 +67,9 @@ const DEUDA_CONOCIDA = [
   'pwa_sessions.session_end',
   'pwa_sessions.session_start',
   'trigger_logs.trigger_time',
-  // Las 3 que causaron el falso diagnóstico de T-103:
-  'user_feedback.created_at',
-  'user_feedback.resolved_at',
-  'user_feedback.updated_at',
+  // PAGADAS 27/07 (T-167): user_feedback.{created_at,updated_at,resolved_at}. Eran las 3 que
+  // causaron el falso diagnóstico de T-103 y, un día después, el de un `account_deletion` que
+  // parecía anterior al registro del propio usuario. Ya son timestamptz.
 ].sort()
 
 describe('guardarraíl — timestamps sin zona horaria (trinquete)', () => {
@@ -91,10 +93,14 @@ describe('guardarraíl — timestamps sin zona horaria (trinquete)', () => {
     expect(fantasmas).toEqual([])
   })
 
-  it('user_feedback sigue siendo el caso testigo documentado', () => {
-    // Si esto falla es BUENA noticia: se migró. Actualiza DEUDA_CONOCIDA y la
-    // ficha T-103, que documenta por qué esta tabla importa más que las otras
-    // (se cruza con user_profiles en el triaje de bajas y en analytics).
-    expect(naive).toContain('user_feedback.created_at')
+  it('user_feedback NO puede volver a ser naive (el caso testigo, ya pagado)', () => {
+    // Antes este test exigía lo contrario y decía "si falla es BUENA noticia: se
+    // migró". Se migró el 27/07 (T-167), así que ahora el trinquete apunta al
+    // otro lado: esta tabla es la que se cruza con `user_profiles` y
+    // `user_interactions` en el triaje de bajas, y volver a naive reabriría los
+    // dos falsos diagnósticos que ya costó (T-103 y el account_deletion del 27/07).
+    expect(naive).not.toContain('user_feedback.created_at')
+    expect(naive).not.toContain('user_feedback.updated_at')
+    expect(naive).not.toContain('user_feedback.resolved_at')
   })
 })
