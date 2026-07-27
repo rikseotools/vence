@@ -83,7 +83,20 @@ export class DetectNotasConvocatoriaService {
         stats.needsManual += r.needsManual;
       } catch (err) {
         stats.errors += 1;
-        this.logger.warn(`Error notas ${opo.slug}: ${(err as Error).message}`);
+        // Drizzle envuelve los errores de BD en "Failed query: <sql>" y esconde
+        // el mensaje REAL del driver dentro de `cause`. Sin desenvolverlo, un
+        // fallo de inserción se ve como un muro de SQL sin causa y no se puede
+        // diagnosticar sin reproducir a mano — pasó el 27/07 al triar estos
+        // errores (T-175) y es el mismo defecto que se corrigió esa mañana en
+        // `alerts.cron.ts`.
+        const msg = err instanceof Error ? err.message : String(err);
+        const causa =
+          err instanceof Error && err.cause instanceof Error
+            ? err.cause.message
+            : undefined;
+        this.logger.warn(
+          `Error notas ${opo.slug}: ${msg}${causa ? ` | causa: ${causa}` : ''}`,
+        );
       }
     }
 
