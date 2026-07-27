@@ -92,6 +92,14 @@ Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs
 > veces; abortar solo ante un `failure` de verdad. Distinguirlos es una línea al leer los check-runs.
 > Y ojo con el orden: el guardarraíl **anti-stale** de los scripts ya te obliga a resincronizar, así
 > que un deploy que empieza con el árbol atrasado morirá igualmente más tarde y habrás perdido el build.
+>
+> **✅ ARREGLADO EN EL SCRIPT (27/07/2026).** Este aprendizaje llevaba escrito aquí un rato mientras el
+> gate seguía metiendo `cancelled` en el mismo saco que `failure` — y ese mismo día volvió a bloquear
+> **tres** deploys seguidos con CERO checks en `failure`. Ahora `FAILED` cuenta solo `failure`/`timed_out`
+> y los cancelados tienen su propia rama, que dice qué hacer (`git fetch origin && git reset --hard
+> origin/main` y esperar el CI del HEAD nuevo). Lo fija `__tests__/guardrails/deploy-scripts.test.ts`.
+> Lección transversal: **un aprendizaje que solo vive en el manual se vuelve a pagar** — si es una línea
+> de código, va al código.
 
 > ⚠️ **Ni un backtick dentro de los `node -e "…"` de los scripts de deploy (27/07).** El task def se
 > construye con un bloque `node -e "…"` entre comillas **dobles**, así que bash interpreta cualquier

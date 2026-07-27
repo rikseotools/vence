@@ -202,3 +202,34 @@ describe('ambos scripts — nada de backticks dentro de `node -e "…"` (inciden
     expect(bloquesNodeE(frontend).length).toBeGreaterThan(0)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-169 (27/07/2026) — el gate de CI debe distinguir `cancelled` de `failure`.
+//
+// GitHub cancela el run en curso cuando llega un push más nuevo (concurrency
+// cancel-in-progress). Con varias sesiones trabajando eso pasa constantemente, y el gate
+// lo metía en el mismo saco que un fallo real: abortaba el deploy diciendo "CI en ROJO"
+// cuando no había ni un solo check en `failure`. Bloqueó tres deploys el mismo día — y el
+// runbook YA lo documentaba como aprendizaje ("distinguirlos es una línea al leer los
+// check-runs") sin que el script lo aplicara. Un aprendizaje que solo vive en la
+// documentación se vuelve a pagar; por eso esto es un test.
+describe('gate de CI — `cancelled` no es `failure`', () => {
+  const scripts = ['scripts/deploy-frontend.sh', 'scripts/deploy-backend.sh']
+
+  it.each(scripts)('%s: FAILED cuenta solo failure/timed_out, nunca cancelled', (rel) => {
+    const src = readFileSync(join(process.cwd(), rel), 'utf8')
+    const linea = src.split('\n').find((l) => l.includes('FAILED=$('))
+    expect(linea).toBeDefined()
+    expect(linea).toContain('failure')
+    expect(linea).toContain('timed_out')
+    expect(linea).not.toContain('cancelled')
+  })
+
+  it.each(scripts)('%s: los cancelados tienen su propia rama, que manda RESINCRONIZAR', (rel) => {
+    const src = readFileSync(join(process.cwd(), rel), 'utf8')
+    expect(src).toMatch(/CANCELLED=\$\(/)
+    expect(src).toMatch(/\$\{CANCELLED:-0\}/)
+    // el mensaje tiene que decir qué hacer, no solo que pasó
+    expect(src).toMatch(/CANCELADO[\s\S]{0,400}reset --hard origin\/main/)
+  })
+})

@@ -57,11 +57,18 @@ else
     | [ $req[] as $k | ([ .check_runs[]? | select(.name|ascii_downcase|contains($k)) ]|last)
         | { k:$k, status:(.status // "missing"), conclusion:(.conclusion // "missing") } ]')
   MISSING=$(echo "$CODE" | jq -r '[.[]|select(.status=="missing")]|length')
-  FAILED=$(echo "$CODE" | jq -r '[.[]|select(.conclusion=="failure" or .conclusion=="cancelled" or .conclusion=="timed_out")]|length')
+  # `cancelled` NO es un fallo del código: GitHub cancela el run en curso cuando llega un push
+  # más nuevo (concurrency cancel-in-progress), cosa que pasa constantemente con varias sesiones
+  # trabajando. Contarlo como ROJO abortaba el deploy por un motivo inexistente — bloqueó tres
+  # deploys el 27/07 y el runbook ya lo documentaba como aprendizaje sin que el script lo aplicara.
+  # Lo correcto ante `cancelled` es RESINCRONIZAR y esperar el CI del HEAD nuevo.
+  FAILED=$(echo "$CODE" | jq -r '[.[]|select(.conclusion=="failure" or .conclusion=="timed_out")]|length')
+  CANCELLED=$(echo "$CODE" | jq -r '[.[]|select(.conclusion=="cancelled")]|length')
   PENDING=$(echo "$CODE" | jq -r '[.[]|select(.status!="completed" and .status!="missing")]|length')
   INTEG=$(echo "$CR" | jq -r '[.check_runs[]?|select(.name|ascii_downcase|contains("integration"))]|last|.conclusion // "n/a"')
   if [ "$TOTAL" = "0" ] || [ "${MISSING:-0}" -gt 0 ]; then echo "   ❌ faltan checks de código para ${SHA} (¿git push?). SKIP_CI_GATE=1 para forzar."; exit 1
   elif [ "${FAILED:-0}" -gt 0 ]; then echo "   ❌ CI de CÓDIGO en ROJO: ${FAILED} check(s) fallando. SKIP_CI_GATE=1 para forzar."; exit 1
+  elif [ "${CANCELLED:-0}" -gt 0 ]; then echo "   ↻ CI CANCELADO para ${SHA}: ${CANCELLED} check(s) (otro push llegó después; NO es un fallo de tu código). Resincroniza y reintenta:  git fetch origin && git reset --hard origin/main"; exit 1
   elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI de CÓDIGO EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
   echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo]"
