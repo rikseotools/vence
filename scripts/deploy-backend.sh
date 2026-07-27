@@ -130,6 +130,19 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
   const f=c.environment.find(x=>x.name==='CHECK_SEGUIMIENTO_ENABLED');
   if (f) f.value='true'; else c.environment.push({name:'CHECK_SEGUIMIENTO_ENABLED', value:'true'});
 }
+// detect-oep-llm EN PAUSA POR COSTE (27/07/2026). Manda a Haiku el HTML de las 2.213
+// oposiciones con seguimiento_url, una llamada por oposicion: ~1.700 llamadas y ~$8 por dia
+// laborable (~$170/mes), 169 min por pasada, y la ultima completa dio 2.206 escaneadas ->
+// 424 extracciones -> 10 senales. El desperdicio NO son las inactivas (a 60 dias generan 98
+// senales aplicadas frente a 43 de las activas: descubrir convocatorias nuevas ES el trabajo
+// del radar), sino re-extraer paginas que no han cambiado — el servicio ya tiene
+// computeContentHash() y el sensor no lo llama.
+// PONER A 'true' EN CUANTO ESTE LA PUERTA DE HASH: esto es una pausa, no una retirada.
+{ const c=td.containerDefinitions[0];
+  c.environment = c.environment || [];
+  const g=c.environment.find(x=>x.name==='DETECT_OEP_LLM_ENABLED');
+  if (g) g.value='false'; else c.environment.push({name:'DETECT_OEP_LLM_ENABLED', value:'false'});
+}
 // Guardarrail anti-colision env/secret (incidente 11/07): ECS rechaza un name que
 // este a la vez en environment y secrets. Detectarlo aqui con mensaje claro.
 { const en=new Set((td.containerDefinitions[0].environment||[]).map(e=>e.name));
