@@ -278,7 +278,7 @@ async function main() {
   )
   for (const c of contradicciones) errores.push(`[landing_superficies_contradictorias] ${c.detalle}`)
 
-  let respaldo = { sinDocumento: true, sinRespaldo: [], respaldadas: [] }
+  let respaldo = { sinDocumento: true, sinRespaldo: [], respaldadas: [], derivadas: [] }
   if (doc && doc.extracted_text) {
     respaldo = verificarAfirmaciones(afirmaciones.filter((a) => a.superficie !== 'pagina_servida'), doc.extracted_text)
     // El aviso es de DOBLE lectura y así se redacta: o la cifra está mal, o nos falta clonar el
@@ -354,7 +354,13 @@ async function main() {
     if (enlaces) console.log(`  enlaces  : ${enlaces.internos} internos + ${enlaces.externos} externos · ${enlaces.rotos.length} rotos${enlaces.noComprobables.length ? ` · ${enlaces.noComprobables.length} no comprobables (403/429)` : ''}`)
     else console.log('  enlaces  : no comprobados (--sin-red)')
     console.log(`  documento: ${doc ? `[${doc.tipo}] ${doc.titulo || doc.url} (${doc.extracted_text.length} chars)` : '— ninguno de tipo convocatoria/bases'}`)
-    console.log(`  cifras   : ${afirmaciones.length} afirmaciones · ${respaldo.sinDocumento ? 'sin contrastar' : `${respaldo.sinRespaldo.length} sin respaldo`}`)
+    // Las DERIVADAS se cuentan aparte y NO son un problema: el boletín reparte la cifra en vez
+    // de escribirla ("65 psicotécnicas + 65 del temario" = las 153 que anuncia la landing).
+    const der = (respaldo.derivadas || []).length
+    console.log(`  cifras   : ${afirmaciones.length} afirmaciones · ${respaldo.sinDocumento ? 'sin contrastar' : `${respaldo.sinRespaldo.length} sin respaldo${der ? ` · ${der} derivada(s) del documento` : ''}`}`)
+    for (const d of respaldo.derivadas || []) {
+      console.log(`     ↪️  ${d.valor} ${d.tipo}: ${d.derivacion.detalle}`)
+    }
     console.log(`  superficies vigiladas: ${superficiesRegistro.length} (${huecos.length} con hueco declarado)`)
     if (errores.length) { console.log(`\n  ❌ ERRORES (${errores.length})`); errores.forEach((e) => console.log(`     · ${e}`)) }
     if (avisos.length) { console.log(`\n  🟡 AVISOS (${avisos.length})`); avisos.forEach((a) => console.log(`     · ${a}`)) }

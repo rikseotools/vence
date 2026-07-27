@@ -147,6 +147,54 @@ describe('verificarAfirmaciones — respaldo en el documento oficial', () => {
   })
 })
 
+describe('cifras DERIVADAS — el boletín reparte, no escribe el total (T-147, paso 3)', () => {
+  // Los tres casos son landings REALES que salían "sin respaldo" siendo correctas, y que por eso
+  // impedían subir el detector al barrido nocturno.
+
+  test('subalterno-parlamento-andalucia: "153 preguntas" = 65 psicotécnicas + 65 del temario + 23 de reserva', () => {
+    const doc = 'El ejercicio constará de 65 preguntas psicotécnicas y 65 preguntas sobre el temario, más 23 preguntas de reserva. '.repeat(6)
+    const r = verificarAfirmaciones(
+      extraerAfirmaciones([{ superficie: 'tarjeta_hero', texto: '153 preguntas en el examen' }]), doc)
+    expect(r.sinRespaldo).toHaveLength(0)
+    expect(r.derivadas).toHaveLength(1)
+    expect(r.derivadas[0].derivacion).toMatchObject({ como: 'suma' })
+    expect(r.derivadas[0].derivacion.detalle).toMatch(/65 \+ 65 \+ 23 = 153/)
+  })
+
+  test('oficial-de-gestion: "105 preguntas" = 100 del cuestionario + 5 de reserva', () => {
+    const doc = 'El cuestionario tendrá 100 preguntas y 5 preguntas de reserva que solo se valorarán en caso de anulación. '.repeat(6)
+    const r = verificarAfirmaciones(
+      extraerAfirmaciones([{ superficie: 'tarjeta_hero', texto: '105 preguntas' }]), doc)
+    expect(r.derivadas[0].derivacion.detalle).toMatch(/100 \+ 5 = 105/)
+  })
+
+  test('la derivación NO respalda un número que no sale de ninguna suma explicable', () => {
+    // ≥600 caracteres: por debajo, el núcleo no opina (guarda del detector de fuentes ciegas).
+    const doc = 'El cuestionario tendrá 100 preguntas y 5 preguntas de reserva que solo se valorarán en caso de anulación. '.repeat(6)
+    const r = verificarAfirmaciones(
+      extraerAfirmaciones([{ superficie: 'tarjeta_hero', texto: '80 preguntas' }]), doc)
+    expect(r.derivadas).toHaveLength(0)
+    expect(r.sinRespaldo).toHaveLength(1)   // el caso raíz de policia-nacional sigue cazándose
+  })
+
+  test('máximo 3 sumandos: con más, cualquier cifra "cuadraría"', () => {
+    const doc = 'Habrá 10 preguntas, 20 preguntas, 30 preguntas, 40 preguntas y 50 preguntas repartidas. '.repeat(6)
+    const r = verificarAfirmaciones(
+      extraerAfirmaciones([{ superficie: 'tarjeta_hero', texto: '150 preguntas' }]), doc)
+    // 10+20+30+40+50 = 150, pero eso es "encontrar una combinación", no una derivación explicable.
+    expect(r.derivadas).toHaveLength(0)
+  })
+
+  test('los sumandos salen de las ventanas del CONCEPTO, no del documento entero', () => {
+    // 90 y 63 están en el documento pero hablando de artículos y plazos, no de preguntas.
+    const doc = 'Según el artículo 90 y en el plazo de 63 días. '.repeat(20) + 'El ejercicio tendrá 40 preguntas. '.repeat(6)
+    const r = verificarAfirmaciones(
+      extraerAfirmaciones([{ superficie: 'tarjeta_hero', texto: '153 preguntas' }]), doc)
+    expect(r.derivadas).toHaveLength(0)
+    expect(r.sinRespaldo).toHaveLength(1)
+  })
+})
+
 describe('detectarContradicciones — la página contra sí misma', () => {
   it('CAZA dos superficies de RESUMEN que dan distinto número del mismo concepto', () => {
     const c = detectarContradicciones(
