@@ -19,7 +19,8 @@ Sistema **Claude-en-el-bucle**: el sweep detecta y alerta (badge); **el humano d
 | `device_daily_farming` | un dispositivo suma > umbral preguntas/día across cuentas | poco frecuente; casi siempre farmeo real del límite free |
 | `curl_scraping` | **cosecha SIN navegador**: servidas ≫ respondidas + sin dispositivo + 0 page_views | humano cuyo fingerprint no se registró (pero ESE sí tiene page_views → no salta) |
 | `harvest_no_answer` | **cosecha CON navegador**: servidas ≫ respondidas (ratio < 0,2) pero con huella/page_views → automatización sobre navegador real (Playwright) o extensión | usuario que abre muchos tests y abandona (ratio suele quedar >0,2) |
-| `harvest_volume` | responde lo que se le sirve, pero el volumen es de otra liga (≥5.000 servidas) | opositor obsesivo en sprint final — mirar reparto por días antes de confirmar |
+
+> **El volumen NO es señal por sí solo** (lección del 27/07/2026). Hubo un tercer detector, `harvest_volume`, que marcaba a partir de 5.000 servidas aunque el ratio fuera sano. Los datos reales lo tumbaron antes de desplegarlo: el usuario más intenso de la plataforma respondió **4.897** preguntas en 30 días —a un 2 % del umbral— y las servidas siempre superan a las respondidas. Habría marcado como sospechosos justo a los opositores de pago más activos. Quien responde el 97 % de lo que se le sirve no está cosechando, está estudiando: **la señal es el RATIO**. El volumen solo AGRAVA (high → critical) una cosecha ya detectada por ratio. No reintroducirlo subiendo el número: el fallo era el razonamiento.
 | `premium_sharing` | dispositivo compartido que incluye premium + ≥2 cuentas activas | pareja/familia con una premium legítima |
 | `bot_detected` / `suspicious_behavior` | (heredado) respuestas muy rápidas | usuario rápido real |
 

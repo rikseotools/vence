@@ -62,12 +62,26 @@ describe('classifyHarvest', () => {
     })
   })
 
-  describe('volumen desmedido aunque responda', () => {
-    it('marca harvest_volume', () => {
-      const r = classifyHarvest({ served: 6000, answered: 5800, pageViews: 500, hasDevice: true })
-      expect(r).not.toBeNull()
-      expect(r.kind).toBe('harvest_volume')
-      expect(r.severity).toBe('high')
+  // REGRESIÓN (27/07/2026). Hubo una señal `harvest_volume` que disparaba por
+  // volumen suelto a partir de 5.000 servidas. Los datos reales la tumbaron: el
+  // usuario más intenso de la plataforma respondió 4.897 preguntas en 30 días, a
+  // un 2% de ese umbral, y las servidas siempre superan a las respondidas → habría
+  // marcado como sospechosos a los opositores de pago más activos.
+  describe('el volumen NO es señal por sí solo', () => {
+    it('el usuario más intenso real (≈4.900 respondidas/30d) no genera señal', () => {
+      // Servidas por encima de respondidas, como pasa siempre en la realidad.
+      expect(classifyHarvest({ served: 6200, answered: 4897, pageViews: 1500, hasDevice: true })).toBeNull()
+    })
+
+    it('ni siquiera un volumen enorme con ratio sano genera señal', () => {
+      expect(classifyHarvest({ served: 50000, answered: 48000, pageViews: 9000, hasDevice: true })).toBeNull()
+    })
+
+    it('pero el volumen SÍ agrava una cosecha ya detectada por ratio', () => {
+      const pequeña = classifyHarvest({ served: 1000, answered: 0, pageViews: 50, hasDevice: true })
+      const enorme = classifyHarvest({ served: 9000, answered: 0, pageViews: 50, hasDevice: true })
+      expect(pequeña.severity).toBe('high')
+      expect(enorme.severity).toBe('critical')
     })
   })
 
