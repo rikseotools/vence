@@ -123,6 +123,34 @@ GET /api/admin/rewards/accumulated
 
 **Endpoint fallback:** `POST /api/admin/rewards/issue-giftcard { userId, amount }` hace todo lo anterior en una llamada, pero **solo compra real con `BITREFILL_LIVE=1`** (si no, dry-run con código `DRYRUN-…` que no se muestra al usuario). No se usa mientras el cash-out sea supervisado.
 
+### Por qué unos vales traen enlace/PIN y otros no (medido 27/07/2026)
+
+**Bitrefill es un AGREGADOR**: compra el stock de Amazon.es a varios distribuidores y sirve cada
+pedido del lote que tenga. Cada lote entrega un formato distinto, y la API **no dice de cuál viene**
+(la estructura del `order` es idéntica en los tres casos; solo cambia `redemption_info`). Medido
+sobre los cinco vales comprados hasta esa fecha — misma denominación, cuatro días de diferencia:
+
+| Fecha | `redemption_info` |
+|---|---|
+| 11/07 | `code` + `extra_fields["Fallback link"]` (revealyourgift.com) |
+| 13/07 | `code` a secas |
+| 15/07 | `code` + `pin` + `extra_fields["Serial Number"]` |
+| 20/07 | `code` a secas |
+| 27/07 | `code` a secas |
+
+**Conclusión operativa: el formato NO se puede predecir ni exigir, y lo único constante es el
+`code` (5 de 5).** Por eso el paso 3 dice "no abortes si faltan pin/serial" — y por eso la UI
+tampoco puede depender de ellos. Comprobado además que **nuestro registro es fiel**: donde se
+guardó enlace, la API lo daba; donde se guardó vacío, la API no lo dio. No hay pérdida de datos.
+
+**Consecuencia que faltaba (arreglada el 27/07):** «Mis vales» enseñaba el código y **ningún sitio
+donde canjearlo**, y el `_fallback_link` que sí llegó una vez nunca se mostró (las claves `_*` son
+internas). Ahora la tarjeta lleva **siempre** un enlace *«Canjear en Amazon»* →
+`https://www.amazon.es/gc/redeem` (el mismo que Bitrefill pone en sus instrucciones, válido para
+todos los formatos) y, cuando el vale lo trae, el enlace a la tarjeta original. El resto de claves
+`_*` (`_invoice_id`, `_order_id`, `_price_sats`) siguen sin salir al usuario. Fijado en
+`__tests__/referrals/vouchers-endpoint.test.ts` (los tres formatos + que la trazabilidad no se filtra).
+
 ## Observabilidad
 
 Todo pasa por `observable_events` (source `fargate`) vía `emitReferralEvent`. Eventos clave:

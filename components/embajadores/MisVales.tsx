@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import CopyCode from './CopyCode'
 
-interface Voucher { amount: number; code: string; pin?: string | null; serial?: string | null; via: string | null; date: string | null }
+interface Voucher { amount: number; code: string; pin?: string | null; serial?: string | null; fallbackLink?: string | null; via: string | null; date: string | null }
 
 export default function MisVales() {
   const [vouchers, setVouchers] = useState<Voucher[] | null>(null)
@@ -44,6 +44,34 @@ export default function MisVales() {
               <CopyCode label="Código" value={v.code} />
               {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
               {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
+            </div>
+            {/* CÓMO CANJEARLO. Va SIEMPRE, no solo cuando el vale trae extras: Bitrefill sirve las
+                tarjetas desde lotes de distintos distribuidores y el formato cambia de un vale a
+                otro (unos traen pin+serial, otros un enlace, tres de cinco solo el código). Lo
+                único constante es el código, así que el "dónde se canjea" tiene que ser nuestro:
+                antes el usuario veía un código suelto y ningún sitio donde meterlo. */}
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              <a
+                href="https://www.amazon.es/gc/redeem"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Canjear en Amazon →
+              </a>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                pega el código en «Canjear tarjeta regalo»
+              </span>
+              {v.fallbackLink ? (
+                <a
+                  href={v.fallbackLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                >
+                  · ver la tarjeta original
+                </a>
+              ) : null}
             </div>
           </div>
         ))}
