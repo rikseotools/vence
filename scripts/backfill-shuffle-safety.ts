@@ -69,7 +69,7 @@ async function main() {
         UPDATE public.questions q
            SET shuffle_safety = v.state,
                shuffle_safety_reason = v.reason,
-               shuffle_safety_hash = public.compute_shuffle_safety_hash(q.explanation, q.option_a, q.option_b, q.option_c, q.option_d, q.option_e, q.shuffle_mode),
+               shuffle_safety_hash = public.compute_shuffle_safety_hash(q.explanation, q.option_a, q.option_b, q.option_c, q.option_d, q.option_e, q.shuffle_mode, q.explanation_data::text),
                shuffle_safety_verified_at = now(),
                shuffle_safety_verified_by = $${p}::text
           FROM (VALUES ${values.join(',')}) AS v(id, state, reason)

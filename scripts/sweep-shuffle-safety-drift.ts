@@ -32,6 +32,12 @@ async function main() {
     await c.query(
       `SELECT id, explanation FROM public.questions
         WHERE is_active = true AND shuffle_safety = 'safe' AND explanation IS NOT NULL
+          -- Las transcritas a explanation_data quedan FUERA: son safe por construcción (las
+          -- razones van keadas a cada opción y la letra la pone el render), y su texto legacy
+          -- —que sigue citando letras y ya no se sirve— las haría salir aquí como regresión.
+          -- Sin esta guarda, la Fase 2 de T-080 metía 4.732 falsos positivos en el barrido
+          -- nocturno: una bandeja que grita todas las noches se deja de mirar.
+          AND explanation_data IS NULL
           AND (explanation ~ '\\y[A-Ea-e]\\y'
                OR explanation ~ '\\y[0-9]\\y'
                OR explanation ~* '(primer|segund|tercer|cuart|quint|[uú]ltim|anterior|siguiente|opci|respuesta|apartado|letra|alternativa|afirmaci)')`,
@@ -45,8 +51,11 @@ async function main() {
     await c.query(
       `SELECT count(*)::int AS n FROM public.questions
         WHERE is_active = true AND shuffle_safety = 'safe'
+          -- Con los 8 argumentos: para una pregunta ya transcrita a explanation_data, omitir el
+          -- octavo daría un hash distinto del que calcula el trigger y la marcaría stale sin
+          -- que nada haya cambiado.
           AND shuffle_safety_hash IS DISTINCT FROM public.compute_shuffle_safety_hash(
-            explanation, option_a, option_b, option_c, option_d, option_e, shuffle_mode)`,
+            explanation, option_a, option_b, option_c, option_d, option_e, shuffle_mode, explanation_data::text)`,
     )
   ).rows[0].n as number
 
