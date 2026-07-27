@@ -43,7 +43,7 @@
 require('dotenv').config({ path: '.env.local' })
 const path = require('path')
 const postgres = require('postgres')
-const { boletinDeUrl } = require(
+const { boletinDeUrl, canonicalizeBoletinUrl } = require(
   path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'),
 )
 const { checkConvocatoriaLinks, señalesDeUrl, normalizarEtiquetaBoletin } = require(
@@ -70,7 +70,7 @@ const posicionales = argv.filter((a, i) => {
 // el núcleo compartido: lo usan también el clonador al hub de provenance
 // (`clonar-documento.cjs`) y quien venga después. Un solo umbral, un solo `pdftotext`, una
 // sola definición de "el documento menciona el proceso".
-const { verificar } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'documentoFuente.cjs'))
+const { verificar, dictaminar } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'documentoFuente.cjs'))
 
 function uso(msg) {
   console.error(`\n❌ ${msg}\n`)
@@ -157,7 +157,30 @@ async function main() {
   }
 
   // ── 2. ¿El documento existe, se lee y habla de ESTE proceso? ────────────────────────────
-  const v = await verificar(urlNueva, ANCLAS)
+  //
+  // Se intenta por fetch plano. Si la fuente contesta con un muro (el DOGC devuelve 4.188
+  // caracteres de aviso de cookies, `sede.madrid.es` un 403), la verificación NO se salta: se
+  // hace contra el **documento ya clonado y curado en el hub** para esa misma URL, que es la
+  // misma prueba con el papel que ya tenemos. Sin esto quedaba un callejón absurdo —el documento
+  // correcto clonado y verificado con 4 anclas, y el botón sin poder repuntarse (T-188, 27/07).
+  let v = await verificar(urlNueva, ANCLAS)
+  if (!v.ok && /muro de cookies|HTTP 403|chars de texto|no responde/.test(v.motivo)) {
+    const [clonado] = await sql`
+      SELECT d.extracted_text AS texto, d.tipo, d.curado
+        FROM convocatoria_documentos d
+        JOIN convocatorias c ON c.id = d.convocatoria_id
+        JOIN oposiciones o ON o.id = c.oposicion_id
+       WHERE o.slug = ${slug}
+         AND (d.url = ${urlNueva} OR d.doc_key = ${canonicalizeBoletinUrl(urlNueva).docKey || urlNueva})
+         AND d.extracted_text IS NOT NULL
+       ORDER BY length(d.extracted_text) DESC LIMIT 1`
+    if (clonado?.texto) {
+      const d = dictaminar(clonado.texto, ANCLAS)
+      console.log(`  🗄️  la fuente no deja leerlo (${v.motivo}) → se verifica contra el documento YA CLONADO en el hub`)
+      console.log(`      (${clonado.tipo}${clonado.curado ? ', curado' : ''}, ${clonado.texto.length} chars)`)
+      v = { ...d, status: 200, texto: clonado.texto }
+    }
+  }
   console.log(`  HTTP    : ${v.status} · ${v.chars} chars de texto`)
   if (ANCLAS.length) {
     console.log(`  anclas  : ${v.anclasEncontradas.length ? `✅ ${v.anclasEncontradas.join(' · ')}` : '❌ ninguna'}${v.anclasFaltan.length ? ` — faltan: ${v.anclasFaltan.join(' · ')}` : ''}`)
