@@ -127,6 +127,37 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 - **`client_edge_sustained` ("Errores de cliente sostenidos — X/h") — RECALIBRADO 2026-07-08.** Disparaba cada hora (cooldown 60m) porque sumaba `http_network_error` (baseline benigno ~100-120/h de móviles en background) con un umbral único de 80/h → el ruido cruzaba solo y ahogaba el 502 real (~8/h). Fix: separar signals — edge 5xx/timeout ≥30/h (accionable) O avalancha de red ≥500/h (outage). Además el cliente ahora suprime `http_network_error` durante unload/background (raíz del ruido). Regla mental: **network_error solo, por muy alto que sea bajo ~500/h, NO es accionable** (conectividad de cliente); el signal accionable es el edge 5xx. Detalle: §3 incidente 08/07.
 - **`pool_hung_clientread` ("Pool: N muestras con conexiones colgadas en ClientRead") — RECALIBRADO 2026-06-12.** Disparaba un CRITICAL cada ~30 min (cooldown) sobre el goteo residual del path `getDb()`/Supavisor (raíz en `[[project_supavisor_zombie_conn_root_cause]]`, se cierra del todo con RDS). El piso de conn-min no bastaba: 2-3 conns sostenidas durante 5 muestras acumulan ~10-15 conn-min y lo cruzaban, pero el **pico simultáneo** (`maxHung`) nunca pasó de 3 en 24h reales y el pool frontend nunca rozó su techo. Fix: gate `maxHung >= 5` (`POOL_HUNG_MIN_PEAK`) además del piso — **pico ≤3 = goteo residual, NO dispara**; una cascada real satura muchas conns a la vez (pico ≫5) y sí dispara, además cubierta en paralelo por `canary_db_pool` + `pool_frontend_saturation` + `5xx_spike`. Regla mental: en este detector, **mira el pico simultáneo, no el conn-min acumulado** — el conn-min confunde "pocas conns mucho rato" (residual) con "muchas un instante" (real).
 - **`cron_overdue` ("1 cron overdue") — FIX DE FONDO 2026-06-12.** Falso positivo auto-resuelto: `detect-oep-llm` (escaneo LLM, ~30 min) emitía su `cron_run` **al completar**, pasado el margen de 30 min de su tick de las 10:00 → la regla lo veía overdue durante toda la ejecución y disparaba, curándose al terminar. Causa: la regla medía "¿terminó el job?" en vez de "¿disparó el scheduler?", y el cap de margen asumía (falsamente) que "el cron más pesado tarda ~3.4 s". Fix profesional (no parche de margen por-cron, que reintroduciría el mapa hardcoded que la regla presume de haber eliminado): se emite un evento **`cron_tick` al ARRANCAR** el tick desde el wrapper compartido `runWithHeartbeat` (opt-in vía opts: `{ name, observability }`), y `cron_overdue` lee `cron_tick` ∪ `cron_run` (`MAX(ts)` de ambos). Así cualquier cron —de 3 s o de 30 min— se juzga por si disparó, sin config por-cron. El heartbeat in-memory del `HeartbeatRegistry` NO se tocó (sigue marcándose al completar, para no regresar su detección de cuelgue). **Los 32 crons `@Cron` migrados** (todos emiten `cron_tick`); `outbox-processor` se excluye a propósito (es `@Interval` cada 5 s, no lo vigila `cron_overdue`, y un tick cada 5 s saturaría `observable_events`). **NO se añade regla `cron_stuck`**: la detección de cron colgado ya existe y es superior a un email — `HeartbeatRegistry` (`thresholdMs` por-cron) → `/health/crons` (503 si alguno supera su umbral) → la ECS liveness probe **mata y relanza el container** (auto-recovery). Una alert-rule paralela sería redundante y añadiría superficie de falsos positivos.
+#### 1.bis.a — Desglosar `alert_fired` POR REGLA + liveness de TODOS los crons (OBLIGATORIO)
+
+> **Por qué (incidente 22/07/2026):** §1.bis agrupa por `event_type`, así que **todas** las alertas
+> caen en UN bucket (`133 critical alert_fired`) y se pasan por alto. Y el veredicto de §1 solo vigila
+> el cron de *drift*. Resultado: se declaró salud verde con 44 `[Vence CRITICAL]` en la bandeja y un
+> cron parado 2 días. Hay que abrir las dos cosas SIEMPRE.
+
+1. **`alert_fired` GROUP BY `metadata->>'rule'`** (24h) — es literalmente lo que llega al correo de
+   Manuel. Cada regla con conteo alto es o un fuego real o una regla mal calibrada; las dos cosas
+   se atienden, ninguna se ignora.
+2. **Liveness de crons.** ⚠️ **NO usar un umbral plano de 26h**: la mitad de los crons son semanales
+   (`0 9 * * 1`), en martes (`30 4 * * 2`) o L-V (`0 8 * * 1-5`), así que un `max(ts)` de 166h puede
+   ser perfectamente sano un lunes por la mañana. Comparar SIEMPRE contra la expresión real:
+   `grep -rn "@Cron(" backend/src --include=*.cron.ts`. Un L-V visto en lunes a las 07:00 lleva
+   legítimamente ~71h sin correr (viernes 08:00 → hoy). La regla `cron_overdue` ya hace esto bien
+   (lee `SchedulerRegistry` + `cron-parser`): **si ella no lo marca, probablemente está sano**.
+3. **Para un cron que SÍ está overdue**, distinguir 3 causas con los logs de arranque
+   (`aws --profile vence --region eu-west-2 logs filter-log-events --log-group-name /ecs/vence-backend
+   --filter-pattern '"<nombre-cron>"'`):
+   - **(1) retirado a propósito** → el boot loguea `… RETIRADO … Reactivar con XXX_ENABLED=true` y
+     `… des-registrado del SchedulerRegistry`. Entonces `cron_overdue` NO debería verlo; si lo ve,
+     **comprobar el env var en la task def viva**, no solo el default del código:
+     `aws ecs describe-task-definition --task-definition vence-backend:<rev> | grep -A2 XXX_ENABLED`.
+     Caso real 27/07: `check-seguimiento` estaba retirado por código desde el 20/07 pero alguien puso
+     `CHECK_SEGUIMIENTO_ENABLED=true` en la task def el 26/07 → volvió a registrarse y el
+     `cron_overdue` era **verdadero positivo** (habilitado y sin correr desde el 20/07), no el falso
+     positivo que decía la nota anterior.
+   - **(2) roto** → fix real.
+   - **(3) el task no estaba vivo al tick** → si a esa misma hora OTROS crons SÍ dispararon, se
+     descarta; si no disparó ninguno, mirar deploys/reinicios de ECS a esa hora.
+
 - Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
 - Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).
 

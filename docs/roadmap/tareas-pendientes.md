@@ -120,6 +120,41 @@
 
 ## Abiertas
 
+### [T-162] 🟠 [ABIERTO 27/07] `detect-notas-convocatoria` no COMPLETA una ejecución desde el 24/07 y nada se enteró
+- **Qué:** el cron (`30 9 * * *`) emitió su `cron_tick` el **25/07 y el 26/07** y **no emitió `cron_run` ninguno de los dos días**. Su emisión está en un `try/catch` que publica `cron_run` tanto en éxito como en fallo, así que la ausencia total significa que **el proceso murió a media ejecución**. Última ejecución completa: **24/07 15:35** (6,1 h, 606 errores de 2.206).
+- **Por qué murió:** la ejecución duraba ~6 h (arranca 09:30, terminaba a las 15:2x) y el contenedor se reinició dentro de esa ventana los dos días (boots el 25/07 a las 10:16 y el 26/07 a las 11:11). No hay reanudación ni reintento: el trabajo del día se pierde entero y en silencio.
+- **🔴 Y es INVISIBLE POR CONSTRUCCIÓN, que es lo grave:** (1) `cron_overdue` vigila el **arranque** (`cron_tick`), y el tick sí se emitió → verde; (2) el `HeartbeatRegistry` marca al **completar**, pero es **en memoria** y se **resetea con cada reinicio** del contenedor — justo el evento que causa el fallo. Umbral de este cron: 48 h. Resultado: dos días seguidos sin trabajo hecho y el panel de salud en verde. **Ningún detector cubre "empezó y no terminó".**
+- **Contexto:** el 26/07 se **eliminó el pre-masticado con LLM** de este cron (`56bcb7e5d`), que era lo que lo hacía durar 6 h. La ejecución del **27/07 09:30 UTC es la PRIMERA del sistema nuevo** y nadie la ha verificado de punta a punta: hay que medir cuánto tarda ahora y si completa.
+- **Cómo:** verificar la ejecución nueva; y decidir el detector que falta — lo natural es una regla `cron_started_not_finished` (tick sin `cron_run` pasado N× la duración típica), que además cubriría a cualquier otro cron largo, no solo a este.
+- **Origen:** barrido de salud del 27/07.
+
+### [T-163] 🟡 [ABIERTO 27/07] El chat de IA no tiene fallback de proveedor: si Anthropic cae, el psicotécnico se queda sin respuesta
+- **Qué:** `lib/chat/shared/modelRouter.ts` elige proveedor **por contenido y de forma determinista** (psicotécnicos de series/tablas/cálculo → Anthropic; el resto → OpenAI). No hay cadena de respaldo: si el proveedor elegido falla, la petición muere ahí.
+- **Medido en el incidente del 26/07** (saldo de Anthropic agotado, 09:38-17:08 UTC): **21 chats enrutados a Anthropic fallaron** y los 30 que funcionaron no fueron un fallback — iban a OpenAI de origen. Es decir: los usuarios afectados fueron **exactamente los de psicotécnico con cálculo**, que es donde el chat más aporta.
+- **Cómo:** degradar al otro proveedor ante error de infraestructura del elegido (5xx, error de facturación/cuota, timeout), no ante un error de contenido. Anotar en el evento `llm_call` que la respuesta salió por el proveedor secundario, para no perder la señal de que el primario está caído.
+- **Ojo al alcance:** el objetivo NO es igualar calidad — Anthropic se elige ahí a propósito por razonamiento. Es preferible una respuesta peor que ninguna, pero la degradación debe ser visible.
+- **Origen:** barrido de salud del 27/07.
+
+### [T-159] 🟠 [ABIERTO 27/07] La cola de PDFs del temario no tiene consumidor automático (Fase D de T-086)
+- **Qué:** el productor es automático (el hook `hook:scope` encoló **33 jobs solo el 26/07**) y el consumidor es **una persona** ejecutando `tsx scripts/pdf-worker.ts drain`. No hay workflow en `.github/workflows/` ni tarea programada en ECS. Entre el último drenado manual (26/07 00:50) y el barrido de salud del 27/07 se acumularon **36 pendientes, el más viejo de 29 h**.
+- **Por qué importa:** el canary `canary-pdf-queue` avisa cada 15 min → **96 CRITICAL/día** al correo de Manuel por algo que no tiene a nadie al otro lado (alert-fatigue puro). Y de los pendientes, los que **no caben en generación síncrona** (>400k caracteres o artículo >60k) devuelven **413 `tema_demasiado_grande`** a un usuario **premium**: el 27/07 eran 4 (`auxiliar_administrativo_andalucia` T11, `policia_nacional` T21, `guardia_civil` T9 y T22).
+- **Cómo:** empaquetar el worker como tarea Fargate programada. Ya está preparado para ello — `drain` arranca con el reconciliador `enqueue-big` (estado deseado: re-encola lo que cambió de firma y deduplica lo que está al día), así que un ciclo programado se auto-cura. Ojo al dimensionado: media **101 s/job**, p90 **266 s**, máximo **910 s**, y `RENDER_TIMEOUT_MS` = 18 min por render.
+- **Cabo suelto medido:** `oposicion_desconocida` quema los 3 intentos y manda el job al DLQ, cuando es un fallo de **registro viejo en la imagen**, no del tema (7 jobs de `ujieres_cortes_generales` cayeron así el 24-25/07; se recuperaron re-encolando el 27/07 sin tocar nada más). Debería ser reintentable/`skipped`, no DLQ.
+- **Y un agujero aparte, barato:** el **413 no encola nada**. Es la única señal de que un premium REAL quería ese PDF concreto y se tira; la cola solo se alimenta del hook de scope (ciego y masivo) y de barridos manuales. Son ~3 líneas en `app/api/temario/[oposicion]/[topic]/pdf/route.ts`.
+- **Origen:** barrido de salud del 27/07.
+
+### [T-160] 🟠 [ABIERTO 27/07] `event_loop_lag`: 65 avisos CRITICAL/día y NO es un problema de capacidad
+- **Qué:** la regla `RULE_EVENT_LOOP_LAG` (añadida el 24/07, follow-up de T-075) es **la alerta nº1 del correo**: 65 disparos y 915 eventos en 24 h, con stalls reales de **2 a 3,8 s** cada ~20 min.
+- **Por qué no encaja con lo que la alerta dice:** su cuerpo apunta a la firma del incidente del 21/07 (1 vCPU + RS256 CPU-bound → cascada de 504) y recomienda dar capacidad. Pero medido el 27/07: **CPU del servicio al 1% de media y 36% de pico**, tasks ya a **2 vCPU**, 8 corriendo, **1 solo 5xx user-facing en 24 h** y ninguna cascada. Los stalls **no correlacionan con ningún request lento** (se cruzaron con `request_completed` >900 ms en la misma ventana: nada) ni con la generación de PDFs (hoy se sirvieron 0 y los stalls siguen). El `p50`/`p99` del propio muestreo está en 20-21 ms: es idle con picos aislados.
+- **Cómo:** o se encuentra la causa (candidatos: GC de heap grande, trabajo síncrono puntual, o starvation del propio temporizador que mide) o se recalibra el disparo (hoy basta **1 muestra crítica** en 15 min). Mientras siga así **tapa lo demás** — es parte de por qué el saldo agotado de Anthropic del 26/07 pasó desapercibido entre el ruido.
+- **Origen:** barrido de salud del 27/07.
+
+### [T-161] 🟡 [ABIERTO 27/07] TTS del temario: `voice` sin definir revienta el error boundary + circuit breaker abriéndose 39 veces/día
+- **Qué:** `react_error_boundary` con `undefined is not an object (evaluating 'Object.getPrototypeOf(voice)')` en `/administrativo-la-rioja/temario/tema-1` — eso es **pantalla rota**, no una métrica. En paralelo, `tts_error` acumula **81 eventos/24 h**, de los cuales **39 son el circuit breaker abortando la sesión** (*"5 errores consecutivos (synthesis-failed)"*), en temarios distintos (`administrativo-seguridad-social/tema-102`, Carlos III tema-1…).
+- **Sospecha a verificar, no conclusión:** huele a navegador donde `speechSynthesis.getVoices()` devuelve vacío o asíncrono (Safari/iOS es el caso clásico) y el código asume una voz disponible. Cruza con la memoria pendiente de TTS en pantalla bloqueada.
+- **Cómo:** reproducir en Safari/iOS, blindar la selección de voz (esperar a `voiceschanged`, degradar a la voz por defecto) y que el fallo no tumbe el árbol de React. Los eventos ya traen `userAgent` en `observable_events` para acotar el navegador antes de tocar nada.
+- **Origen:** barrido de salud del 27/07.
+
 ### [T-157] 🟡 [ABIERTO 26/07] 38 preguntas invisibles que el detector NO cuenta: artículo inactivo **y además sin escopar**
 - **Qué:** `scope_phantom_article` cuenta las preguntas que cuelgan de un artículo inactivo **que está escopado**. Pero hay artículos inactivos **que tampoco están en ningún `topic_scope`**, y sus preguntas activas son igual de invisibles — solo que **por partida doble**, así que ningún detector las ve. Medido el 26/07: **38 preguntas en 12 artículos**.
 - **Reparto:** RGC 16 · Ley 1/1998 CyL 12 · LECrim 7 · ODM 2 · Ley 15/2015 1.
