@@ -89,7 +89,7 @@ function parseMd() {
     const idM = /\[(T-\d+)\]/.exec(h3[1]);
     if (!idM) continue;
     const emoji = Object.keys(E2P).find((e) => h3[1].includes(e));
-    const title = h3[1].replace(/\[(T-\d+)\]/, '').replace(/[🔴🟠🟡🟢✅]/g, '')
+    const title = h3[1].replace(/\[(T-\d+)\]/, '').replace(/[🔴🟠🟡🟢⬜✅]/g, '')
       .replace(/^\s*\[[^\]]*\]\s*/, '').trim();
     out.push({ id: idM[1], title, priority: emoji ? E2P[emoji] : 'media', inOpenSection: inOpen, doneMarked: h3[1].includes('✅') });
   }
@@ -218,10 +218,28 @@ function parseMd() {
     }
 
     else if (cmd === 'sync') {
-      // Importa del markdown los ids que aún no están en la tabla. NO toca los existentes
-      // (el estado vive en BD; el markdown solo aporta id/título/prioridad).
+      // Importa del markdown los ids que aún no están en la tabla, y RECONCILIA el
+      // título y la prioridad de las que ya están.
+      //
+      // El reparto sigue siendo el de siempre: el ESTADO (quién la tiene, en qué
+      // acabó) vive en BD y el markdown no lo toca; el CONTENIDO (título, prioridad)
+      // vive en el markdown y la BD lo copia. Antes esto era `DO NOTHING` y la
+      // segunda mitad no ocurría nunca, con dos consecuencias reales (27/07, T-178):
+      //
+      //   · `reserve` promete en su propia salida que «luego sync actualizará el
+      //     título real», y no lo hacía: T-148, T-153 y T-154 llevaban días vivas
+      //     con el título provisional RESERVADA aunque su ficha estuviera escrita.
+      //     `list` y `next` las mostraban así, es decir, ilegibles para elegir.
+      //   · Una prioridad corregida en el markdown no llegaba a la tabla: T-089 se
+      //     bajó de 🔴 a 🟡 el 25/07 al superar el gate de pico y `next` seguía
+      //     ofreciéndola como crítica a TODAS las sesiones.
+      //
+      // Solo se reconcilian las VIVAS: en una cerrada, el título con el que se
+      // trabajó es historia y reescribirlo falsearía el registro.
       const md = parseMd();
       let nuevos = 0;
+      let reconciliadas = 0;
+      const cambios = [];
       for (const t of md) {
         // Una tarea ya cerrada (fuera de "Abiertas" o marcada ✅) entra directamente como
         // done. El constraint backlog_cierre_coherente exige closed_at → se pone aquí.
@@ -233,9 +251,24 @@ function parseMd() {
                   ${cerrada ? s`now()` : null},
                   ${cerrada ? 'Importada ya cerrada en el sync inicial (ver su ficha en el markdown).' : null})
           ON CONFLICT (id) DO NOTHING RETURNING id`;
-        if (r) nuevos++;
+        if (r) { nuevos++; continue; }
+        // Ya existía. NO se reconcilia lo que el markdown da por cerrado aunque la
+        // fila siga viva: eso es DERIVA (T-072 el 27/07 — ✅ en el markdown, `open`
+        // en BD) y le toca delatarla a `findBacklogDrift()`. Copiarle el título
+        // "CERRADA …" a una fila abierta la disfrazaría de normal.
+        if (cerrada) continue;
+        // Reconciliar contenido si difiere y la tarea sigue viva.
+        const [u] = await s`
+          UPDATE public.backlog_tasks
+             SET title = ${t.title}, priority = ${t.priority}
+           WHERE id = ${t.id}
+             AND status IN ('open','in_progress','blocked')
+             AND (title IS DISTINCT FROM ${t.title} OR priority IS DISTINCT FROM ${t.priority})
+          RETURNING id, title, priority`;
+        if (u) { reconciliadas++; cambios.push(`${u.id} [${u.priority}] ${String(u.title).slice(0, 46)}`); }
       }
-      console.log(`sync: ${md.length} en markdown · ${nuevos} nueva(s) insertada(s).`);
+      console.log(`sync: ${md.length} en markdown · ${nuevos} nueva(s) insertada(s) · ${reconciliadas} reconciliada(s).`);
+      for (const c of cambios) console.log(`   ↻ ${c}`);
       // Solo las VIVAS pueden ser huérfanas de verdad: una tarea viva sin ficha no se puede
       // trabajar (nadie sabe qué es). Borrar la ficha de una CERRADA, en cambio, es limpieza
       // legítima y documentada, así que incluirlas aquí producía un aviso permanentemente
