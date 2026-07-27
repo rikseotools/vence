@@ -343,6 +343,233 @@ export const RULE_CRON_OVERDUE: AlertRule<{
   cooldownMin: 60,
 };
 
+// ────────────────────────────────────────────────────────────────
+// `cron_started_not_finished` (2026-07-27, T-162) — el complemento de
+// `cron_overdue`. Aquélla pregunta "¿disparó el scheduler?"; ésta,
+// "¿llegó a terminar?". Entre las dos no queda hueco.
+//
+// El hueco existía POR CONSTRUCCIÓN y se abrió a propósito: el 12/06
+// `cron_overdue` pasó a leer `cron_tick ∪ cron_run` para callar el falso
+// positivo de los crons lentos (ver nota de graceForJob). Desde entonces un
+// tick basta para dar verde, así que un cron que arranca y muere a media
+// ejecución es INVISIBLE. El `HeartbeatRegistry` no lo tapa: marca al
+// completar, pero vive en memoria y se resetea justo con el reinicio que
+// causa el fallo. Y `cron_failure_burst` lee `cron_run`: sin run, no hay burst.
+//
+// Caso real que lo motiva: `detect-notas-convocatoria` no completó ni el
+// 25 ni el 26/07 (el contenedor se reinició dentro de su ventana de 6 h) y
+// el panel de salud estuvo verde los dos días. 13 ticks huérfanos en 30 días.
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * Mínimo de `cron_run` históricos para que un cron sea JUZGABLE por esta regla.
+ *
+ * ⚠️ Esto NO es una tuerca de sensibilidad: es la guarda que decide la
+ * corrección de la regla, y salió de medir, no de suponer. `cron_run` NO es una
+ * señal universal de "terminé" — lo emite el `runImpl` de cada cron, y hay una
+ * familia entera que en éxito calla A PROPÓSITO para no meter ruido
+ * (`served-coverage.cron.ts`: «el heartbeat/tick ya registra que corrió; no
+ * metemos ruido»). Medido el 27/07 sobre 30 días: 9 endpoints con ticks y CERO
+ * runs (`served-coverage`, los seis `trigger-*`, `law-completeness-sweep`,
+ * `annulled-vigencia-sweep`). Para ellos "tick sin run" es el estado SANO.
+ * Sin esta guarda la regla nacería con 9 falsos positivos permanentes.
+ *
+ * Se exige un número ABSOLUTO de runs, no un ratio runs/ticks. Un ratio tiene
+ * un incentivo perverso letal: cuanto más muere un cron, peor su ratio y antes
+ * dejaría de vigilarse — justo al revés de lo que hace falta. (`detect-notas-
+ * convocatoria`, el caso que origina la regla, arrastra un ratio de 0,57.)
+ *
+ * Y el umbral es 3, no 1, por un caso real que destapó la simulación:
+ * `pool-capacity-sampler` lleva **1 `cron_run` en 43.308 ticks** — emite sólo
+ * al fallar. Con el listón en 1 habría entrado en vigilancia y disparado de
+ * forma permanente. Los dos muestreadores por minuto suman 85.220 ticks
+ * huérfanos sanos: son el grueso de lo que esta guarda mantiene fuera.
+ */
+const STALL_MIN_RUNS_BASELINE = 3;
+
+/**
+ * Umbral de "lleva demasiado sin terminar", derivado de la propia historia del
+ * cron en vez de un número fijo. Un fijo no puede servir a la vez a un cron
+ * horario de 4 s y a uno diario de 6 h — ése fue exactamente el error que
+ * generó el falso positivo de junio.
+ *
+ *   umbral = clamp(3 × p90(duración real), 15 min, 0,9 × intervalo)
+ *
+ * El techo por intervalo garantiza que el aviso llegue ANTES del siguiente
+ * tick: si no, un cron diario roto se solaparía con su propia repetición y ya
+ * no se sabría qué ejecución falló. Y se auto-afina: `detect-notas-convocatoria`
+ * arrastra hoy un p90 de 5,9 h del sistema viejo (→ avisa a las ~17,6 h), pero
+ * conforme entren ejecuciones del sistema nuevo (20 min) el umbral baja solo a
+ * ~1 h. Ninguna constante que tocar a mano.
+ */
+const STALL_MIN_MS = 15 * 60 * 1000;
+const STALL_DURATION_FACTOR = 3;
+const STALL_INTERVAL_CAP_FRACTION = 0.9;
+
+export function stallThresholdMs(
+  p90DurationMs: number | null,
+  intervalMs: number,
+): number {
+  const cap = Math.max(STALL_MIN_MS, intervalMs * STALL_INTERVAL_CAP_FRACTION);
+  const fromDuration =
+    p90DurationMs != null && p90DurationMs > 0
+      ? p90DurationMs * STALL_DURATION_FACTOR
+      : STALL_MIN_MS;
+  return Math.min(cap, Math.max(STALL_MIN_MS, fromDuration));
+}
+
+export interface StalledCronRow {
+  endpoint: string;
+  ticks: number;
+  runs: number;
+  lastTick: Date | string | null;
+  lastRun: Date | string | null;
+  p90DurationMs: number | string | null;
+}
+
+export interface StalledCronEntry {
+  name: string;
+  lastTick: Date;
+  lastRun: Date | null;
+  stalledForMs: number;
+  thresholdMs: number;
+  p90DurationMs: number | null;
+}
+
+const toDate = (v: Date | string | null): Date | null =>
+  v == null ? null : v instanceof Date ? v : new Date(v);
+
+/**
+ * Crons que emitieron su `cron_tick` de arranque y NO su `cron_run` de
+ * completado, pasado el umbral propio de cada uno.
+ *
+ * A diferencia de `findOverdueCrons`, aquí NO se aplica el guard de
+ * `processStartedAtMs`: un tick anterior al arranque del proceso es
+ * precisamente la firma del fallo que buscamos (el reinicio se llevó por
+ * delante la ejecución en curso). Ese es el caso que `cron_overdue` renunció
+ * a cubrir el 27/07 —«se pierde a cambio el aviso de un tick fallado justo
+ * antes de un reinicio»— y que esta regla recoge.
+ */
+export function findStalledCrons(
+  rows: StalledCronRow[],
+  ctx: AlertRuleContext,
+  now: Date = new Date(),
+): StalledCronEntry[] {
+  const intervalByName = new Map<string, number>();
+  for (const job of ctx.cronSchedule.listCronJobs(now)) {
+    intervalByName.set(
+      job.name,
+      job.nextExpectedTick.getTime() - job.prevExpectedTick.getTime(),
+    );
+  }
+
+  const stalled: StalledCronEntry[] = [];
+  const nowMs = now.getTime();
+
+  for (const row of rows) {
+    // Sólo crons vivos en el SchedulerRegistry: misma fuente de verdad que
+    // `cron_overdue` (el decorador @Cron). Un endpoint histórico de un cron ya
+    // retirado no debe alertar para siempre.
+    const intervalMs = intervalByName.get(row.endpoint);
+    if (intervalMs === undefined || intervalMs <= 0) continue;
+
+    // Sin costumbre de anunciar el completado, "tick sin run" no significa nada.
+    if (row.runs < STALL_MIN_RUNS_BASELINE) continue;
+
+    const lastTick = toDate(row.lastTick);
+    // Crons aún no migrados al wrapper con opts no emiten `cron_tick` (p.ej.
+    // `outbox-processor`): sin señal de arranque no hay nada que comparar.
+    if (lastTick === null) continue;
+
+    const lastRun = toDate(row.lastRun);
+    if (lastRun !== null && lastRun.getTime() >= lastTick.getTime()) continue;
+
+    const p90 =
+      row.p90DurationMs == null ? null : Number(row.p90DurationMs) || null;
+    const thresholdMs = stallThresholdMs(p90, intervalMs);
+    const stalledForMs = nowMs - lastTick.getTime();
+    if (stalledForMs < thresholdMs) continue; // aún puede estar corriendo
+
+    stalled.push({
+      name: row.endpoint,
+      lastTick,
+      lastRun,
+      stalledForMs,
+      thresholdMs,
+      p90DurationMs: p90,
+    });
+  }
+
+  return stalled.sort((a, b) => b.stalledForMs - a.stalledForMs);
+}
+
+const fmtMin = (ms: number) => `${Math.round(ms / 60000)} min`;
+
+/**
+ * Un cron arrancó y nunca anunció que terminara. El trabajo de ese tick se
+ * perdió entero y en silencio: no hay reanudación ni reintento.
+ */
+export const RULE_CRON_STARTED_NOT_FINISHED: AlertRule<StalledCronRow> = {
+  name: 'cron_started_not_finished',
+  severity: 'error',
+  query: sql`
+    SELECT endpoint,
+           COUNT(*) FILTER (WHERE event_type = 'cron_tick')::int AS ticks,
+           COUNT(*) FILTER (WHERE event_type = 'cron_run')::int  AS runs,
+           MAX(ts) FILTER (WHERE event_type = 'cron_tick') AS "lastTick",
+           MAX(ts) FILTER (WHERE event_type = 'cron_run')  AS "lastRun",
+           PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY duration_ms)
+             FILTER (WHERE event_type = 'cron_run' AND duration_ms IS NOT NULL)
+             AS "p90DurationMs"
+    FROM observable_events
+    WHERE event_type IN ('cron_tick', 'cron_run')
+      AND ts > NOW() - INTERVAL '30 days'
+    GROUP BY endpoint
+  `,
+  shouldFire: (rows, ctx) => {
+    assertContextualRule('cron_started_not_finished', ctx);
+    return findStalledCrons(rows, ctx).length > 0;
+  },
+  buildNotification: (rows, ctx) => {
+    assertContextualRule('cron_started_not_finished', ctx);
+    const stalled = findStalledCrons(rows, ctx);
+    const lines = stalled.map((e) => {
+      const lastRunStr = e.lastRun
+        ? e.lastRun.toISOString()
+        : '(ningún completado en 30d)';
+      const p90Str =
+        e.p90DurationMs != null
+          ? `p90 habitual ${fmtMin(e.p90DurationMs)}`
+          : 'sin duración histórica';
+      return `  - ${e.name}\n      arrancó: ${e.lastTick.toISOString()} (hace ${fmtMin(e.stalledForMs)})\n      último completado: ${lastRunStr}\n      umbral: ${fmtMin(e.thresholdMs)} (${p90Str})`;
+    });
+    return {
+      title: `${stalled.length} cron${stalled.length > 1 ? 's' : ''} arrancó y no terminó`,
+      body:
+        `Estos crons emitieron su "cron_tick" de arranque pero NUNCA su "cron_run" de completado. ` +
+        `El trabajo de ese tick se perdió entero: no hay reanudación ni reintento.\n\n${lines.join('\n\n')}\n\n` +
+        `Causa más frecuente: el contenedor se reinició (deploy o rolling de ECS) dentro de la ventana de ejecución del job.\n\n` +
+        `ACCIONES:\n` +
+        `  1. ¿Hubo reinicio? Comparar con el arranque del proceso:\n` +
+        `     SELECT MIN(ts) FROM observable_events WHERE event_type='cron_tick' AND ts > NOW() - INTERVAL '2 days';\n` +
+        `  2. Ver la última ejecución completa y cuánto duró:\n` +
+        `     SELECT ts, duration_ms, metadata FROM observable_events\n` +
+        `     WHERE endpoint='<cron>' AND event_type='cron_run' ORDER BY ts DESC LIMIT 5;\n` +
+        `  3. Si el job dura más que la ventana entre deploys, el arreglo NO es la alerta: es acortarlo o hacerlo reanudable.`,
+      metadata: {
+        stalledCrons: stalled.map((e) => e.name),
+        worst: stalled[0]?.name,
+      },
+      fingerprint: `cron_started_not_finished_${stalled.map((e) => e.name).join(',')}`,
+    };
+  },
+  // La condición persiste hasta el siguiente completado con éxito (hasta 24 h en
+  // un cron diario). Un cooldown corto la convertiría en el goteo de T-160; el
+  // cuerpo lista TODOS los crons parados, así que un solo email cubre el estado
+  // entero y 4/día como techo es proporcionado.
+  cooldownMin: 360,
+};
+
 /** Deploy fallido — alertar inmediato si aparece event deploy_failed. */
 export const RULE_DEPLOY_FAILED: AlertRule<{
   n: number;
@@ -3370,6 +3597,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SAVE_RECONCILIATION as AlertRule,
   RULE_CLIENT_EDGE_SUSTAINED as AlertRule,
   RULE_CRON_OVERDUE as AlertRule,
+  // Complemento de la anterior (2026-07-27, T-162): `cron_overdue` vigila el
+  // ARRANQUE y da verde con un solo tick; ésta vigila el COMPLETADO.
+  RULE_CRON_STARTED_NOT_FINISHED as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
   // Reglas Fase 1.6 (2026-05-26) — cierran loop de eventos nuevos
