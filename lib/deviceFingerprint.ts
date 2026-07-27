@@ -1,22 +1,28 @@
 // lib/deviceFingerprint.ts — Hardware-based fingerprint that survives localStorage clear
 // Combines screen, GPU, timezone, language into a stable hash.
+//
+// Acceso a localStorage vía `safeLocalStorage` (27/07/2026): estas llamadas estaban desnudas y
+// provocaban 19 `react_error_boundary` en 24 h — «setItem … 'vence_hw_fingerprint' exceeded the
+// quota». El fingerprint son ~10 caracteres: no llena nada, es que el almacén del usuario ya estaba
+// lleno y `setItem` lanza. Guardarlo es solo una CACHÉ: si no se puede, se recalcula y la app sigue.
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const FINGERPRINT_KEY = 'vence_hw_fingerprint'
 
 export function getOrCreateHardwareFingerprint(): string {
   if (typeof window === 'undefined') return ''
 
-  const cached = localStorage.getItem(FINGERPRINT_KEY)
+  const cached = safeGet(FINGERPRINT_KEY)
   if (cached) return cached
 
   const fp = computeFingerprint()
-  localStorage.setItem(FINGERPRINT_KEY, fp)
+  safeSet(FINGERPRINT_KEY, fp)   // si el almacén está lleno se sigue igual: es caché, no estado
   return fp
 }
 
 export function getHardwareFingerprint(): string | null {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem(FINGERPRINT_KEY) || computeFingerprint()
+  return safeGet(FINGERPRINT_KEY) || computeFingerprint()
 }
 
 function computeFingerprint(): string {
