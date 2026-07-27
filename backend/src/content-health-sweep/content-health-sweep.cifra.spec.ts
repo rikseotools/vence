@@ -10,7 +10,13 @@
 // A diferencia del spec hermano de `estado`, aquí NO se replican casos a mano: se carga el núcleo del
 // root y se comparan las dos implementaciones sobre TODO su dominio. Es barato porque son funciones
 // puras, y así la paridad no depende de que alguien acuerde de añadir el caso nuevo a los dos sitios.
-import { enLetra, cifraEnTexto, esPlazaHuerfana } from './content-health-sweep.service';
+import { enLetra, cifraEnTexto, esPlazaHuerfana, firmaDerivadaValida, sumaDeSubconjunto } from './content-health-sweep.service';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const validador = require('../../../lib/convocatoria/validarDerivada.cjs') as {
+  validarFirmaDerivada: (f: { plazas?: number | null; snippet?: string | null }) => { ok: boolean };
+  sumaDeSubconjunto: (o: number, n: number[]) => number[] | null;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nucleo = require('../../../lib/convocatoria/cifraEnTexto.cjs') as {
@@ -73,5 +79,35 @@ describe('mirror cifraEnTexto (backend @Cron) ↔ núcleo del root', () => {
     for (const f of filas) {
       expect(esPlazaHuerfana(f)).toBe(nucleo.esPlazaHuerfana(f));
     }
+  });
+
+  it('la validación de firmas derivadas coincide con el núcleo (las 4 firmas reales del 27/07)', () => {
+    const firmas: Array<[number, string]> = [
+      [126, '146 plazas … 23 por el turno de acceso libre … 103 por el turno de acceso libre'],
+      [128, 'Mallorca: 110 plazas del turno libre, 6 … Menorca: 6 plazas, 1 … Eivissa: 11 plazas'],
+      [111, 'el cupo general es de 100 plazas, las reservadas a discapacidad son 11'],
+      [139, '250102 Escala General Administrativa. Administrativos 144 (3 reservadas, 1 reservada, 1 reservada)'],
+      [144, '250102 Escala General Administrativa. Administrativos 144 (3 reservadas, 1, 1)'],
+    ];
+    for (const [plazas, snippet] of firmas) {
+      expect(firmaDerivadaValida(plazas, snippet)).toBe(validador.validarFirmaDerivada({ plazas, snippet }).ok);
+    }
+    expect(firmaDerivadaValida(139, '… 144 (3, 1, 1)')).toBe(false);   // mi firma mala, en ambos
+    expect(firmaDerivadaValida(126, null)).toBe(false);
+  });
+
+  it('sumaDeSubconjunto coincide con el núcleo sobre combinaciones generadas', () => {
+    const divergencias: string[] = [];
+    for (let a = 1; a <= 40; a++) {
+      for (let b = 1; b <= 40; b++) {
+        const nums = [a, b, a + b, a * 2 + 1];
+        for (const objetivo of [a + b, a + b + 1, a]) {
+          const mio = JSON.stringify(sumaDeSubconjunto(objetivo, nums));
+          const suyo = JSON.stringify(validador.sumaDeSubconjunto(objetivo, nums));
+          if (mio !== suyo) divergencias.push(`${objetivo} en [${nums}]`);
+        }
+      }
+    }
+    expect(divergencias.slice(0, 5)).toEqual([]);
   });
 });

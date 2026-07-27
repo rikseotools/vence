@@ -332,7 +332,9 @@ async function main() {
            (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
              WHERE d.convocatoria_id = cv.id) corpus,
            (SELECT (v.state = 'verified_correct' AND v.findings ? 'cifra_derivada')
-              FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada
+              FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada,
+           -- La cita de la firma: sin ella no se puede comprobar que la derivación se sostenga.
+           (SELECT v.source_snippet FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_snippet
       FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
      WHERE cv.is_current AND o.is_active
        AND cv.plazas_libres IS NOT NULL

@@ -70,12 +70,13 @@ describe('esPlazaHuerfana', () => {
     expect(esPlazaHuerfana({ plazas_libres: 139, corpus: 'oferta de 139 plazas', docs: 9 })).toBe(false)
   })
 
-  it('calla ante una cifra derivada FIRMADA (la válvula de Extremadura: 23 + 103 = 126)', () => {
+  it('calla ante una cifra derivada FIRMADA y VERIFICABLE (Extremadura: 23 + 103 = 126)', () => {
     expect(esPlazaHuerfana({
       plazas_libres: 126,
       corpus: '23 por el turno de acceso libre … 103 por el turno de acceso libre',
       docs: 1,
       derivada_declarada: true,
+      derivada_snippet: '«23 por el turno de acceso libre» (OEP 2021) + «103 por el turno de acceso libre» (OEP 2022/23)',
     })).toBe(false)
   })
 
@@ -84,6 +85,24 @@ describe('esPlazaHuerfana', () => {
       plazas_libres: 126, corpus: '23 … 103 …', docs: 1, derivada_declarada: false,
     })).toBe(true)
     expect(esPlazaHuerfana({ plazas_libres: 126, corpus: '23 … 103 …', docs: 1 })).toBe(true)
+  })
+
+  it('EL CASO DE MI PROPIO ERROR: firmada pero NO verificable ⇒ sigue acusando', () => {
+    // administrativo-aragon: firmé 139 como «144 − 5 reservadas». El BOA convoca 144 y 139 no es
+    // suma de nada de la cita. Antes del 27/07 la firma bastaba para callar el aviso; ya no.
+    expect(esPlazaHuerfana({
+      plazas_libres: 139,
+      corpus: 'Escala General Administrativa. Administrativos 144 (3 reservadas…)',
+      docs: 1,
+      derivada_declarada: true,
+      derivada_snippet: '250102 Escala General Administrativa. Administrativos 144 (3 reservadas a víctimas de violencia de género, 1 reservada a víctimas de terrorismo y 1 reservada a personas transexuales)',
+    })).toBe(true)
+  })
+
+  it('una firma sin cita no exime (no hay nada que comprobar)', () => {
+    expect(esPlazaHuerfana({
+      plazas_libres: 126, corpus: 'sin la cifra', docs: 1, derivada_declarada: true,
+    })).toBe(true)
   })
 
   it('sin cifra de plazas no hay hallazgo', () => {

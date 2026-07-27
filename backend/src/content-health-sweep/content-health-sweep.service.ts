@@ -454,12 +454,45 @@ export function cifraEnTexto(n: number | null | undefined, texto: string | null 
   return formas.some((f) => t.includes(f.toLowerCase()));
 }
 
+/**
+ * ¿Existe un subconjunto (≥2) de `numeros` que sume `objetivo`? Mirror de lib/convocatoria/validarDerivada.cjs.
+ * Distingue SUMAR partes que el documento enumera (legítimo) de RESTAR de un total que declara
+ * (interpretación disfrazada de aritmética) — ver el porqué y las 4 firmas medidas en el .cjs.
+ */
+export function sumaDeSubconjunto(objetivo: number, numeros: number[]): number[] | null {
+  if (!objetivo || objetivo <= 0) return null;
+  const cand = [...new Set(numeros)].filter((n) => n <= objetivo).sort((a, b) => b - a).slice(0, 18);
+  const busca = (i: number, resto: number, usados: number[]): number[] | null => {
+    if (resto === 0 && usados.length >= 2) return usados;
+    if (i >= cand.length || resto < 0) return null;
+    return busca(i + 1, resto - cand[i], [...usados, cand[i]]) || busca(i + 1, resto, usados);
+  };
+  return busca(0, objetivo, []);
+}
+
+/** ¿Se sostiene sola una firma `cifra_derivada`? Mirror de lib/convocatoria/validarDerivada.cjs. */
+export function firmaDerivadaValida(plazas: number | null | undefined, snippet: string | null | undefined): boolean {
+  if (plazas == null) return false;
+  if (!snippet || !snippet.trim()) return false;
+  const numeros = (String(snippet).match(/\b\d{1,4}\b/g) || []).map(Number).filter((n) => n > 0);
+  if (numeros.includes(Number(plazas))) return false;   // está escrita: la válvula sobra
+  return sumaDeSubconjunto(Number(plazas), numeros) !== null;
+}
+
 export function esPlazaHuerfana(fila: {
   plazas_libres?: number | null; corpus?: string | null; derivada_declarada?: boolean | null;
+  derivada_snippet?: string | null;
 }): boolean {
   if (!fila || fila.plazas_libres == null) return false;
-  if (fila.derivada_declarada === true) return false;
-  return !cifraEnTexto(fila.plazas_libres, fila.corpus);
+  if (!cifraEnTexto(fila.plazas_libres, fila.corpus)) {
+    // La válvula solo exime si la firma es VERIFICABLE (endurecido el 27/07: una firma que
+    // justificaba una resta no escrita callaba el aviso y publicaba 5 plazas de menos).
+    if (fila.derivada_declarada === true) {
+      return !firmaDerivadaValida(fila.plazas_libres, fila.derivada_snippet);
+    }
+    return true;
+  }
+  return false;
 }
 
 // el índice es la vigilancia legítima. Mirror de lib/convocatoria/seguimientoUrlSalud.cjs (T-112).
@@ -1442,7 +1475,8 @@ export class ContentHealthSweepService {
              (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
                WHERE d.convocatoria_id = cv.id) corpus,
              (SELECT (v.state = 'verified_correct' AND v.findings ? 'cifra_derivada')
-                FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada
+                FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_declarada,
+             (SELECT v.source_snippet FROM convocatoria_verification v WHERE v.convocatoria_id = cv.id) derivada_snippet
         FROM convocatorias cv JOIN oposiciones o ON o.id = cv.oposicion_id
        WHERE cv.is_current AND o.is_active
          AND cv.plazas_libres IS NOT NULL
@@ -1450,7 +1484,7 @@ export class ContentHealthSweepService {
        ORDER BY cv.plazas_libres DESC NULLS LAST
     `)) as unknown as Array<{
       slug: string; plazas_libres: number; boe_reference: string | null; año: number;
-      docs: number; corpus: string | null; derivada_declarada: boolean | null;
+      docs: number; corpus: string | null; derivada_declarada: boolean | null; derivada_snippet: string | null;
     }>;
     for (const h of huerfanas) {
       if (!esPlazaHuerfana(h)) continue;

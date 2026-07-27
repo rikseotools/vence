@@ -253,6 +253,29 @@ Antes de retirarla, comprobar que el hallazgo **no reaparece**: si la cifra corr
 literalmente en el boletín (144 lo está), la válvula sobra y `audit:convocatorias` sigue en cero. Si
 reapareciera, es que el dato nuevo tampoco está probado y el trabajo no estaba terminado.
 
+### La válvula ya no se fía de ti (guardarraíl, 27/07/2026)
+
+Firmar `cifra_derivada` **ya no basta para callar el aviso**. El detector valida la firma con
+`lib/convocatoria/validarDerivada.cjs` y solo la acepta si se sostiene sola:
+
+| situación | veredicto |
+|---|---|
+| la cifra es **suma** de números presentes en la cita (126 = 103 + 23) | ✅ `suma_verificable` |
+| la cita **contiene** la cifra (documento impreso que el extractor no lee) | ✅ `cifra_en_cita` |
+| la cifra **no aparece ni es suma de nada** de su cita | ❌ `no_es_suma` → **corregir el dato** |
+| la firma no aporta `source_snippet` | ❌ `sin_cita` |
+
+La frontera es la que separa **leer** de **interpretar**: sumar partes que el documento enumera pero no
+totaliza es leer; restar de un total que el documento sí declara es decidir que parte de lo que cuenta
+no cuenta. Lo segundo no se firma como hecho — se corrige el dato.
+
+**Calibrado contra las firmas reales, no inventado.** Dos reglas plausibles se descartaron por medirlas
+antes de activarlas: «rechazar si la cita menciona otra cifra de plazas» habría tumbado **las tres**
+firmas legítimas (todas mencionan otra: 146, 110, 100); y «rechazar si la cita contiene la cifra, porque
+entonces la válvula sobra» habría tumbado la del Ayuntamiento de Madrid, donde el 111 **está impreso** en
+el BOCM y lo que falla es el extractor (CMap roto). Si tocas esta regla, **corre el auditor contra la BD
+antes de darla por buena**: así se cazaron las dos.
+
 ### Qué NO hacer
 
 - **NUNCA** inventar la cifra ni ajustarla "a ojo" para que cuadre.
