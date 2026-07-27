@@ -226,6 +226,13 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-205] 🟠 [ABIERTO 27/07] `tcae_sas`: nuestro temario son 29 títulos condensados frente a los 55 temas del programa oficial
+- **Qué (medido):** el programa oficial del SAS para Técnico/a en Cuidados Auxiliares de Enfermería —Resolución de 31/07/2024, **BOJA núm. 153, Anexo VIII**— tiene **55 temas**: 29 de temario común + 26 de específico. Nuestra BD tiene **29**, que son **títulos condensados** (*"La Constitución Española de 1978"* frente al texto oficial completo) y además **mezclan los dos bloques** (nuestro T29, *"Cuidados al paciente terminal…"*, pertenece al específico). **0 coincidencias literales** con ninguno de los dos bloques. Los 29 quedan `drift_detected` con la evidencia.
+- **Por qué NO se arregla reescribiendo:** no es un problema de redacción sino de **estructura**. Pasar a los 55 temas mueve fronteras, obliga a re-mapear `topic_scope` con orphan-check y cambia lo que ve el usuario. Es judgment gate, como el patrón Cádiz/Murcia/Asturias.
+- **25 usuarios.** La oposición está construida y sirve preguntas; lo que no podemos afirmar es que su temario sea el oficial.
+- **Dónde está la fuente (costó encontrarla, que no se repita):** la convocatoria (Resolución 19/02/2025, [BOJA 2025/37/17](https://www.juntadeandalucia.es/boja/2025/37/17)) **no reproduce el temario**: remite a la Resolución de 31/07/2024. El sumario del BOJA no la lista de forma directa y **la web de temarios del SAS es JS** (hay que renderizarla con Playwright); el PDF oficial es `boja153_prog_mat_20240807.pdf`, ya clonado en el hub y enlazado a los 29 temas.
+- **Origen:** T-107, 27/07.
+
 ### [T-203] 🟡 [ABIERTO 27/07] Migrar los 45 ficheros que aún tocan `localStorage` a pelo
 - **Qué:** `localStorage` **lanza** cuando el almacén está lleno, en Safari privado y con cookies bloqueadas — y ahí hasta LEER revienta. Una llamada desnuda tumba el árbol de React entero. El 27/07 fueron **19 `react_error_boundary` en 24 h** porque no se podía guardar una caché de 10 caracteres (`vence_hw_fingerprint`).
 - **Ya hecho:** helper `lib/storage/safeLocalStorage.ts` (nunca lanza; emite `storage_unavailable` como `warn` con la clave y si fue por cuota; un aviso por clave/operación), `lib/deviceFingerprint.ts` migrado, 11 tests, y un **trinquete de lint** (`no-restricted-properties` en `eslint.config.mjs`) que impide que aparezcan llamadas NUEVAS. Guardarraíl `__tests__/guardrails/localStorageRatchet.test.ts`: la lista de excepciones solo puede menguar.
