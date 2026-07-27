@@ -13,6 +13,19 @@ const arg=n=>{const i=process.argv.indexOf(n);return i>0?process.argv[i+1]:null}
 const APPLY=process.argv.includes('--apply');
 const API='https://www.boe.es/datosabiertos/api/legislacion-consolidada/id';
 
+// ── selección del BLOQUE del artículo (pura y testeable) ────────────────────────────────
+// El MAPA manda; `a<N>` es el ÚLTIMO recurso. Estaba al revés y en el Código Civil eso lee
+// otro precepto: su bloque `a9` es el «Artículo 94 bis» (el CC rotula «Art 9» → id `art9`).
+const norm = (s) => String(s || '').replace(/\s+/g, '').toLowerCase()
+const esDelArticulo = (bloque, art) =>
+  new RegExp(`^art(?:[íi]culo)?\\.?${norm(art)}(?:[.\\s]|$)`, 'i').test(norm(bloque && bloque.tit))
+function seleccionarBloque(bloques, mapa, art) {
+  const porMapa = (mapa && mapa[String(art)]) ? bloques.find((x) => x.id === mapa[String(art)]) : null
+  return porMapa || bloques.find((x) => esDelArticulo(x, art)) || bloques.find((x) => x.id === `a${art}`) || null
+}
+
+
+
 // Los patrones vienen del NÚCLEO compartido (lib/laws/notaVigenciaTc.js), no de una copia:
 // esto era el cuarto duplicado del regex de anulación y ninguno conocía la fórmula
 // competencial del TC (T-132, 26/07/2026).
@@ -33,7 +46,7 @@ function parseBoeBlock(raw){
   const frags=[...new Set((sin.match(/<strong>([\s\S]*?)<\/strong>/gi)??[]).map(strip).filter(Boolean))];
   return {notes, frags};
 }
-(async()=>{
+async function main(){
   const boe=arg('--boe'), art=arg('--art');
   if(!boe||!art){console.error('uso: --boe BOE-A-.... --art 58 [--apply]');process.exit(2);}
   const idx=await (await fetch(`${API}/${boe}/texto/indice`,{headers:{Accept:'application/xml'}})).text();
@@ -44,10 +57,20 @@ function parseBoeBlock(raw){
   // artículos escritos en letra ("Artículo doscientos noventa y cuatro"), que es como
   // numeran las leyes antiguas — la LOPJ tiene 713 así y aquí fallaban todos (T-132).
   const mapa=mapaBloquesPorArticulo(idx);
-  const b=bloques.find(x=>x.id===`a${art}`)
-    ||(mapa[String(art)]?bloques.find(x=>x.id===mapa[String(art)]):null)
-    ||bloques.find(x=>new RegExp(`art[íi]culo\\s+${art}\\b`,'i').test(x.tit));
+  // ORDEN DE PREFERENCIA — el MAPA manda, `a<N>` es el ÚLTIMO recurso (T-169, 27/07/2026).
+  // Estaba al revés, y en el Código Civil eso lee el artículo EQUIVOCADO con apariencia de
+  // éxito: su bloque `a9` es el «Artículo 94 bis», no el 9 (el CC rotula «Art 9» y su id es
+  // `art9`). Capturar así habría escrito en `vigencia_notes` del art. 9 las notas de otro
+  // precepto — un dato falso que nadie volvería a mirar. El manual ya avisaba de que el id
+  // no siempre es `a<N>`; aquí no se estaba respetando.
+  const b=seleccionarBloque(bloques,mapa,art);
   if(!b){console.error(`bloque del art.${art} no encontrado`);process.exit(1);}
+  // GUARDA: el bloque elegido tiene que ANUNCIARSE como el artículo pedido. Sin esto, un
+  // fallback silencioso escribe notas de otro artículo y el error es indetectable después.
+  if(!esDelArticulo(b,art)){
+    console.error(`❌ el bloque ${b.id} se titula "${String(b.tit).trim().slice(0,60)}" y se pidió el art.${art}: abortado para no escribir la nota de otro artículo`);
+    process.exit(1);
+  }
   const raw=await (await fetch(`${API}/${boe}/texto/bloque/${b.id}`,{headers:{Accept:'application/xml'}})).text();
   const {notes,frags}=parseBoeBlock(raw);
   const anuladas=notes.filter(n=>n.esAnulacion);
@@ -62,4 +85,12 @@ function parseBoeBlock(raw){
     RETURNING a.id`;
   console.log(`\n✅ ${r.length} artículo(s) actualizados (content NO tocado)`);
   await sql.end();
-})().catch(e=>{console.error('❌',e.message);process.exit(1)});
+}
+
+if (require.main === module) {
+  main().catch(e=>{console.error('❌',e.message);process.exit(1)});
+}
+
+// Se exporta la selección de bloque para que el guardarraíl la pruebe con los índices reales
+// (CC «Art 9» vs `a9` = art. 94 bis, LECrim «504 bis»…). Requerir este fichero NO abre la BD.
+module.exports = { seleccionarBloque, esDelArticulo };
