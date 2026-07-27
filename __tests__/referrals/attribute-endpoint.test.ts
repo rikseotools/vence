@@ -54,7 +54,7 @@ describe('POST /api/referrals/attribute', () => {
   })
 
   it('elegible → attributed:true (pasa premium + never-paid a attributeReferral)', async () => {
-    mResolve.mockResolvedValue({ ownerUserId: 'owner' })
+    mResolve.mockResolvedValue({ ownerUserId: 'owner', code: 'abc', sanitized: false })
     mPlan.mockResolvedValue('premium')
     mPaid.mockResolvedValue(false)
     mAttr.mockResolvedValue({ ok: true, referralId: 'r1', referrerUserId: 'owner' })
@@ -65,8 +65,21 @@ describe('POST /api/referrals/attribute', () => {
     }))
   })
 
+  // Regresión del bug medido el 27/07: una cookie puesta antes del fix (o por un enlace con el
+  // texto del mensaje pegado) lleva el código SUCIO. Se atribuye con el canónico del resolvedor,
+  // nunca con el valor crudo de la cookie, o `attributeReferral` no encontraría el código.
+  it('cookie con basura pegada → atribuye con el código CANÓNICO, no con el crudo', async () => {
+    mResolve.mockResolvedValue({ ownerUserId: 'owner', code: '7d5f7ed7fe83', sanitized: true })
+    mPlan.mockResolvedValue('premium')
+    mPaid.mockResolvedValue(false)
+    mAttr.mockResolvedValue({ ok: true, referralId: 'r1', referrerUserId: 'owner' })
+    const res = await _POST(req('vence_ref=7d5f7ed7fe83..................esto'))
+    expect(await res.json()).toEqual({ attributed: true, alreadyAttributed: false })
+    expect(mAttr).toHaveBeenCalledWith(expect.objectContaining({ code: '7d5f7ed7fe83' }))
+  })
+
   it('no elegible → attributed:false con la razón', async () => {
-    mResolve.mockResolvedValue({ ownerUserId: 'owner' })
+    mResolve.mockResolvedValue({ ownerUserId: 'owner', code: 'abc', sanitized: false })
     mPlan.mockResolvedValue('free')
     mPaid.mockResolvedValue(false)
     mAttr.mockResolvedValue({ ok: false, reason: 'referrer_not_premium' })

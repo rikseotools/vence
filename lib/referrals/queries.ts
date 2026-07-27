@@ -8,6 +8,7 @@ import { alias } from 'drizzle-orm/pg-core'
 import { getAdminDb, getReadDb } from '@/db/client'
 import { referralCodes, referrals, rewardPayouts, rewardSubmissions } from '@/db/referralSchema'
 import { userProfiles, userSubscriptions } from '@/db/schema'
+import { normalizeReferralCode } from '@/lib/referrals/code'
 import {
   generateReferralCode,
   abbreviateReferredName,
@@ -86,16 +87,46 @@ export async function hasPendingReferral(userId: string, exec?: Executor): Promi
   return !!row
 }
 
-/** Resuelve un código de referido ACTIVO → owner, o null si no existe/está inactivo. */
+/**
+ * Resuelve un código de referido ACTIVO → owner, o null si no existe/está inactivo.
+ *
+ * Normaliza la entrada ANTES de consultar (`normalizeReferralCode`): el código llega del path
+ * de `/r/<code>` o de la cookie, y puede traer basura pegada si el enlace se compartió sin
+ * espacio detrás (caso medido 27/07: 21 clicks perdidos, ver `lib/referrals/code.ts`).
+ * Sanear AQUÍ, y no en cada ruta, cubre de una vez los dos caminos que resuelven código
+ * (`/r/[code]` y `/api/referrals/attribute`) y cualquiera que se añada después.
+ *
+ * Devuelve también el `code` CANÓNICO: quien lo llame debe usar ese —no el crudo— para la
+ * cookie y el `?ref=`, o la basura seguiría viajando por el resto del flujo.
+ */
 export async function resolveActiveReferralCode(
   code: string, exec?: Executor,
-): Promise<{ ownerUserId: string } | null> {
+): Promise<{ ownerUserId: string; code: string; sanitized: boolean } | null> {
+  const { code: canonical, sanitized } = normalizeReferralCode(code)
+  if (!canonical) return null
   const db = exec ?? getReadDb()
   const [row] = await db.select({ owner: referralCodes.ownerUserId })
     .from(referralCodes)
-    .where(and(eq(referralCodes.code, code), eq(referralCodes.active, true)))
+    .where(and(eq(referralCodes.code, canonical), eq(referralCodes.active, true)))
     .limit(1)
-  return row ? { ownerUserId: row.owner as string } : null
+  return row ? { ownerUserId: row.owner as string, code: canonical, sanitized } : null
+}
+
+/**
+ * Marca que al referido se le aplicó el cupón de 5 € en su checkout. Idempotente.
+ * Sin esto, `referrals.discount_applied` se queda en `false` para siempre y la métrica
+ * miente: el 27/07 había 12 eventos `referral_coupon_applied` y 0 filas marcadas.
+ * Devuelve cuántas filas marcó (0 = no había atribución pendiente, no es un error).
+ */
+export async function markReferralDiscountApplied(
+  referredUserId: string, exec?: Executor,
+): Promise<number> {
+  const db = exec ?? getAdminDb()
+  const rows = await db.update(referrals)
+    .set({ discountApplied: true, updatedAt: new Date() })
+    .where(and(eq(referrals.referredUserId, referredUserId), eq(referrals.status, 'pending')))
+    .returning({ id: referrals.id })
+  return rows.length
 }
 
 export interface AttributeInput {

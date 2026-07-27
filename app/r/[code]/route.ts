@@ -21,24 +21,29 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 async function _GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
   const valid = code ? await resolveActiveReferralCode(code) : null
+  // El resolvedor canoniza (quita la basura que WhatsApp pega al enlace, ver lib/referrals/code.ts).
+  // A partir de aquí SIEMPRE el canónico: si la cookie o el ?ref llevaran el crudo, la basura
+  // seguiría viajando por el flujo y volvería a romper la atribución más adelante.
+  const canonical = valid?.code ?? code
 
   // Observabilidad: click en el enlace (userId = embajador dueño del código).
   // Los canaries (header x-vence-canary) NO cuentan: inflarían el embudo con clicks sintéticos.
+  // `sanitized` marca los clicks que ANTES se perdían: es la métrica de cuánto salva este fix.
   if (!isSyntheticRequest(request)) {
     emitReferralEvent('referral_link_click', {
       userId: valid?.ownerUserId ?? null,
       endpoint: '/r/[code]',
       severity: valid ? 'info' : 'warn',
-      metadata: { code, valid: !!valid },
+      metadata: { code: canonical, valid: !!valid, sanitized: !!valid?.sanitized, ...(valid?.sanitized ? { rawCode: code.slice(0, 120) } : {}) },
     })
   }
 
   // Destino: landing /embajadores con ?ref para atribución cookie-less. Código inválido → /embajadores sin ref.
-  const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(code)}` : '/embajadores', SITE)
+  const dest = new URL(valid ? `/embajadores?ref=${encodeURIComponent(canonical)}` : '/embajadores', SITE)
   const res = NextResponse.redirect(dest, { status: 302 })
 
   if (valid) {
-    res.cookies.set(REF_COOKIE, code, {
+    res.cookies.set(REF_COOKIE, canonical, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',

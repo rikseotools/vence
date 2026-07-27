@@ -226,8 +226,13 @@ async function _POST(request) {
         const { ensureReferralCoupon } = await import('@/lib/referrals/coupon')
         referralCouponId = await ensureReferralCoupon(sc)
         console.log(`🏅 [Referral] Cupón 5 € aplicado en checkout para referido ${userId}`)
+        // Dejar constancia EN LA FILA, no solo en el evento: sin esto `referrals.discount_applied`
+        // se queda en false para siempre y la métrica miente (27/07: 12 cupones aplicados, 0 filas
+        // marcadas). Idempotente y fail-open: nunca romper el checkout por una métrica.
+        const { markReferralDiscountApplied } = await import('@/lib/referrals/queries')
+        const marcadas = await markReferralDiscountApplied(userId)
         const { emitReferralEvent } = await import('@/lib/referrals/observability')
-        emitReferralEvent('referral_coupon_applied', { userId, endpoint: '/api/stripe/create-checkout', metadata: { coupon: referralCouponId } })
+        emitReferralEvent('referral_coupon_applied', { userId, endpoint: '/api/stripe/create-checkout', metadata: { coupon: referralCouponId, rowsMarked: marcadas } })
       }
     } catch (refCouponErr) {
       console.error('⚠️ [Referral] No se pudo aplicar el cupón de referido (fail-open):', refCouponErr.message)

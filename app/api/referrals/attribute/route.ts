@@ -40,7 +40,9 @@ async function _POST(request: NextRequest) {
   ])
 
   const result = await attributeReferral({
-    code,
+    // El CANÓNICO, no el de la cookie: una cookie puesta antes de este fix (o por un enlace
+    // con basura pegada) llevaría el código sucio y `attributeReferral` no lo encontraría.
+    code: resolved.code,
     referredUserId,
     referrerIsActivePremium: referrerPlan === 'premium',
     referredHasEverPaid: referredPaid,
@@ -48,7 +50,7 @@ async function _POST(request: NextRequest) {
 
   if (result.ok) {
     if (!result.alreadyAttributed) {
-      emitReferralEvent('referral_attributed', { userId: referredUserId, endpoint: EP, metadata: { referrerUserId: result.referrerUserId } })
+      emitReferralEvent('referral_attributed', { userId: referredUserId, endpoint: EP, metadata: { referrerUserId: result.referrerUserId, sanitized: resolved.sanitized } })
     }
     return NextResponse.json({ attributed: true, alreadyAttributed: !!result.alreadyAttributed })
   }

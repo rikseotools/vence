@@ -22,11 +22,27 @@ describe('GET /r/[code]', () => {
   afterEach(() => jest.clearAllMocks())
 
   it('código válido → 302 a /embajadores?ref=<code> + cookie vence_ref', async () => {
-    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: 'abc123', sanitized: false })
     const res = await _GET(req('https://www.vence.es/r/abc123'), { params: params('abc123') })
     expect(res.status).toBe(302)
     expect(res.headers.get('location')).toContain('/embajadores?ref=abc123')
     expect(res.headers.get('set-cookie') || '').toContain('vence_ref=abc123')
+  })
+
+  // Regresión del bug medido el 27/07 (21 clicks perdidos): WhatsApp pega el texto del mensaje
+  // al enlace y el código llega sucio. La cookie y el ?ref deben llevar el CANÓNICO, no el crudo.
+  it('enlace con texto pegado → recupera el código y propaga el CANÓNICO (cookie + ref)', async () => {
+    const sucio = '7d5f7ed7fe83..................esto'
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: '7d5f7ed7fe83', sanitized: true })
+    const res = await _GET(req(`https://www.vence.es/r/${sucio}`), { params: params(sucio) })
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toContain('/embajadores?ref=7d5f7ed7fe83')
+    expect(res.headers.get('location')).not.toContain('esto')
+    expect(res.headers.get('set-cookie') || '').toContain('vence_ref=7d5f7ed7fe83')
+    // …y queda señal de que se salvó, para poder medir cuántos recupera el fix.
+    expect(mockEmit).toHaveBeenCalledWith('referral_link_click', expect.objectContaining({
+      metadata: expect.objectContaining({ code: '7d5f7ed7fe83', valid: true, sanitized: true }),
+    }))
   })
 
   it('código inválido → 302 a /embajadores SIN ref ni cookie', async () => {
@@ -40,7 +56,7 @@ describe('GET /r/[code]', () => {
   })
 
   it('el redirect usa el dominio público, NO el host de la request (regresión bug 0.0.0.0 del contenedor)', async () => {
-    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: 'abc', sanitized: false })
     // Simula el host interno del contenedor detrás del ALB.
     const res = await _GET(req('http://0.0.0.0:3000/r/abc'), { params: params('abc') })
     const loc = res.headers.get('location') || ''
@@ -49,7 +65,7 @@ describe('GET /r/[code]', () => {
   })
 
   it('la cookie es httpOnly + lax (funcional, resiste al banner de consentimiento)', async () => {
-    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1' })
+    mockResolve.mockResolvedValue({ ownerUserId: 'owner-1', code: 'xyz', sanitized: false })
     const res = await _GET(req('https://www.vence.es/r/xyz'), { params: params('xyz') })
     const sc = res.headers.get('set-cookie') || ''
     expect(sc.toLowerCase()).toContain('httponly')
