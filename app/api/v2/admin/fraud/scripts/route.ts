@@ -63,10 +63,16 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   const profiles = rows(await db.execute(sql`
     SELECT id, email, full_name, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(ids)})
   `))
+  // Denominador desde `test_questions`, NO de `daily_question_usage`: ese contador
+  // solo se incrementa en el camino del límite diario y los PREMIUM lo esquivan
+  // (medido 27/07: 77 premium con 5.598 respuestas ese día y contador 0). Usarlo
+  // marcaba como cosechador a todo premium activo — falso positivo estructural.
   const answered = rows(await db.execute(sql`
-    SELECT user_id, sum(questions_answered)::int AS answered
-      FROM daily_question_usage
-     WHERE user_id = ANY(${pgUuidArray(ids)}) AND usage_date >= CURRENT_DATE - ${WINDOW_DAYS}::int
+    SELECT user_id, count(*)::int AS answered
+      FROM test_questions
+     WHERE user_id = ANY(${pgUuidArray(ids)})
+       AND created_at > now() - (${WINDOW_DAYS}::int || ' days')::interval
+       AND user_answer IS NOT NULL AND user_answer <> '' AND user_answer <> 'BLANK'
      GROUP BY 1
   `))
   const pageViews = rows(await db.execute(sql`

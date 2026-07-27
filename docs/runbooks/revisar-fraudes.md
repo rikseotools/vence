@@ -5,7 +5,8 @@
 Sistema **Claude-en-el-bucle**: el sweep detecta y alerta (badge); **el humano dispara y Claude revisa cada señal, la verifica contra los datos y la marca revisada** (`dismissed` = falso positivo, `confirmed` = fraude real). NO es un cron autónomo que bloquee: el enforcement (bloqueo/límite) es fase aparte y siempre con aprobación de Manuel.
 
 ## Qué es cada pieza
-- **Detección:** `scripts/fraud-sweep.cjs` (cron GHA diario `fraud-sweep.yml`) escribe SEÑALES en `fraud_alerts` (`status='new'`) con dedup por `match_criteria = kind:subject`.
+- **Detección:** el barrido que corre en PRODUCCIÓN es **`backend/src/fraud-sweep/`** — un `@Cron('15 3 * * *')` **dentro del backend NestJS en Fargate**. Escribe SEÑALES en `fraud_alerts` (`status='new'`) con dedup por `match_criteria = kind:subject`.
+  > ⚠️ **NO existe `fraud-sweep.yml` en GitHub Actions.** Esta línea decía "cron GHA diario" hasta el 27/07/2026 — quedó obsoleta al migrar a `@Cron` (commit `e5cfe988b`) y **indujo un error real**: se reescribió el detector solo en `scripts/fraud-sweep.cjs` creyendo que era el que corría. **`scripts/fraud-sweep.cjs` es un gemelo CLI para uso manual**; tocarlo NO cambia nada en producción. Un cambio de detección necesita **deploy de BACKEND**. La paridad entre los dos la vigila `__tests__/backend/fraudSweepHarvestParity.test.ts`.
 - **Trazo de `/api/exam/validate`** (27/07/2026): evento `exam_validate_served` en `observable_events`, uno por llamada. NO es una `fraud_alert` — es la materia prima que antes no existía (ver §Cosecha por corrección).
 - **Badge:** `/api/v2/admin/fraud/pending-count` cuenta `fraud_alerts status='new'` → badge 🚨 en `app/admin/layout.tsx` (rojo si hay `critical`, naranja si no).
 - **Panel:** `/admin/fraudes` (pestaña "Señales") lista las pendientes; también `/api/v2/admin/fraud/signals?status=new`.
@@ -93,10 +94,10 @@ Todos los detectores de consumo se apoyaban en `daily_question_usage.questions_a
 - El usuario `anferbar987` tuvo ese contador en **2** el 16/05/2026 mientras se le servían **5.495** preguntas.
 - `curl_scraping`, construido sobre ese contador, **no disparó ni una vez** en toda la vida de la tabla.
 
-Ahora existe `daily_questions_served`: rollup diario de preguntas **SERVIDAS** por sujeto (usuario / `ip:<ip>` / `device:<id>`). No es un contador nuevo — es el que ya alimentaba el gate anti-scraping (Redis `captcha:served:*`, TTL 26 h) hecho duradero, porque `fraud-sweep.cjs` corre en GitHub Actions (fuera de la VPC) y no puede leer ElastiCache.
+Ahora existe `daily_questions_served`: rollup diario de preguntas **SERVIDAS** por sujeto (usuario / `ip:<ip>` / `device:<id>`). No es un contador nuevo — es el que ya alimentaba el gate anti-scraping (Redis `captcha:served:*`, TTL 26 h) hecho duradero, porque el TTL de Redis es de **26 h** y la ventana de detección del barrido es de **30 días**: esa ventana no se puede reconstruir desde el contador efímero, corra donde corra el proceso.
 
-- **Escritura:** `recordServedForSubjects()` → `persistServedRollup()` (`lib/security/challengePolicy/servedRollup.ts`), desde `/api/questions/filtered` y `/api/exam/validate`.
-- **Clasificación:** núcleo puro `lib/security/harvestSignals.js`, compartido por el sweep y el panel para que no puedan divergir. Tests: `__tests__/security/harvestSignals.test.js`.
+- **Escritura:** `recordServedForSubjects()` → `persistServedRollup()` (`lib/security/challengePolicy/servedRollup.ts`), desde `/api/questions/filtered` y `/api/exam/validate`. Necesita **deploy de FRONTEND**.
+- **Clasificación:** núcleo puro `lib/security/harvestSignals.js` (lo usan el panel admin y el gemelo CLI) + su **espejo** `backend/src/fraud-sweep/harvest-signals.ts` (el backend compila con `rootDir: src` y no puede importar de la raíz). Los dos se mantienen alineados por el guardarraíl de paridad `__tests__/backend/fraudSweepHarvestParity.test.ts`, que compara veredictos sobre casos reales — **no** por buena voluntad. Tests del núcleo: `__tests__/security/harvestSignals.test.js`.
 
 ⚠️ **Falso verde:** si `daily_questions_served` está vacío en la ventana, la detección de cosecha está **CIEGA**, no limpia. Cuatro avisos independientes lo cubren (una lista vacía nunca debe tranquilizar):
 

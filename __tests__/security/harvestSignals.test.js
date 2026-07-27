@@ -47,6 +47,27 @@ describe('classifyHarvest', () => {
     })
   })
 
+  // REGRESIÓN ESTRUCTURAL (27/07/2026). El denominador salía de
+  // `daily_question_usage`, que solo se incrementa en el camino del LÍMITE DIARIO
+  // — y los premium lo esquivan. Medido: 77 usuarios premium respondieron 5.598
+  // preguntas ese día con el contador a 0. Resultado: TODO premium activo que
+  // pasara de 300 servidas salía como cosechador. Caso real: violeta.adm11@ con
+  // 309 servidas, contador 0 y 3.269 respuestas REALES.
+  //
+  // El detector no cambió: cambió DE DÓNDE se lee `answered` (ahora de
+  // `test_questions`). Este test fija las dos caras de esa decisión.
+  describe('el denominador tiene que ser el de las respuestas REALES', () => {
+    it('con el conteo real, la premium activa NO genera señal', () => {
+      expect(classifyHarvest({ served: 309, answered: 3269, pageViews: 900, hasDevice: true })).toBeNull()
+    })
+
+    it('con el contador roto (0) la habría marcado — por eso no se usa esa fuente', () => {
+      const r = classifyHarvest({ served: 309, answered: 0, pageViews: 900, hasDevice: true })
+      expect(r).not.toBeNull()
+      expect(r.kind).toBe('harvest_no_answer')
+    })
+  })
+
   describe('frontera del ratio', () => {
     it('justo en el umbral de ratio NO dispara (frontera cerrada por abajo)', () => {
       const served = 1000

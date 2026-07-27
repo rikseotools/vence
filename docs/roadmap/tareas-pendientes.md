@@ -335,7 +335,9 @@
 - **✅ El cabo del `orphan` YA está resuelto (no lo vuelvas a investigar):** en las primeras horas salieron 9 de 13 llamadas como `orphan`… y las 9 eran **exámenes ANÓNIMOS** (lote 25, 24-25 contestadas). Sin usuario no hay `tests` al que anclar, así que no pueden traer `testId`. NO era ni scraping ni bug. Reclasificado a `anon_exam`/info en el commit `8ea0cb6fb`.
 
 #### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
-- **⚠️ ESTADO AL CERRAR: hay 2 commits en `main` SIN DESPLEGAR** — `8ea0cb6fb` (calibración) y `d5ebe23cc` (T-180). Lo desplegado al cerrar era `d397708c`. **Consecuencia mientras no se despliegue:** (a) los exámenes anónimos siguen entrando como `orphan`/**warn** en el panel de salud (17 acumulados en las primeras 4 h), y (b) `smoke@vence.es` sigue sumando al rollup (volvió a 1.560 servidas después de limpiarlo). **Las dos cosas se cortan solas con el siguiente deploy de frontend, no hay que arreglar nada.** El **sweep nocturno SÍ está protegido** aunque no se despliegue, porque corre desde GitHub Actions leyendo `main`. Verifica con:
+- **⚠️ ESTADO AL CERRAR: hay 2 commits en `main` SIN DESPLEGAR** — `8ea0cb6fb` (calibración) y `d5ebe23cc` (T-180). Lo desplegado al cerrar era `d397708c`. **Consecuencia mientras no se despliegue:** (a) los exámenes anónimos siguen entrando como `orphan`/**warn** en el panel de salud (17 acumulados en las primeras 4 h), y (b) `smoke@vence.es` sigue sumando al rollup (volvió a 1.560 servidas después de limpiarlo). **Las dos cosas se cortan solas con el siguiente deploy de frontend, no hay que arreglar nada.**
+  > 🔴 **CORRECCIÓN (misma sesión, más tarde):** una versión anterior de esta ficha decía que el sweep nocturno estaba protegido "porque corre desde GitHub Actions leyendo `main`". **Es FALSO.** El barrido que corre en producción es `backend/src/fraud-sweep/` (`@Cron` 03:15 UTC en Fargate); `fraud-sweep.yml` no existe. El detector se portó al backend en esta misma sesión, así que la detección de cosecha necesita **deploy de BACKEND** además del de frontend. Mientras no se despliegue el backend, el barrido nocturno sigue corriendo el D4 viejo (el ciego).
+  Verifica el frontend con:
   ```bash
   curl -s https://www.vence.es/api/health | grep -o '"deploy":"[^"]*"'
   ```
@@ -356,7 +358,7 @@
    GROUP BY 1 ORDER BY servidas DESC;
   ```
   Busca dónde cae el p99 de los usuarios legítimos y deja el corte CLARAMENTE por encima.
-- **Los umbrales viven en `DEFAULTS` de `lib/security/harvestSignals.js`** (`maxAnswerRatio` 0,2 · `minServed` 300) + el env `FRAUD_SCRAPE_MIN_SERVED`. Núcleo puro y CommonJS **a propósito**: lo comparten el sweep (`scripts/fraud-sweep.cjs`, CommonJS) y el panel admin (TS). Cambiar el criterio en un solo lado los hace divergir.
+- **Los umbrales viven en DOS sitios que hay que tocar a la vez:** `DEFAULTS` de `lib/security/harvestSignals.js` (núcleo: panel admin + gemelo CLI) y `HARVEST_DEFAULTS` de `backend/src/fraud-sweep/harvest-signals.ts` (**el espejo que corre en producción**). El backend compila con `rootDir: src` y no puede importar de la raíz, por eso hay espejo. **No te fíes de acordarte:** `__tests__/backend/fraudSweepHarvestParity.test.ts` falla si divergen. También está el env `FRAUD_SCRAPE_MIN_SERVED`.
 - **⚠️ AVISO, el mismo día ya se calibró MAL dos veces, las dos por razonar sin datos:**
   1. `harvest_volume` (volumen ≥5.000 servidas) habría marcado al usuario real más intenso — 4.897 respondidas/30d, a un 2 % del corte. **Eliminado**, y no vale reintroducirlo subiendo el número: el fallo era el razonamiento.
   2. `orphan` en `warn` habría metido ~100-300 avisos/día en el panel de salud.

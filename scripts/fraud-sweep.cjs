@@ -196,8 +196,13 @@ async function main() {
 
     const meta = await c.query(
       `SELECT up.email, up.plan_type,
-              coalesce((SELECT sum(questions_answered) FROM daily_question_usage u
-                         WHERE u.user_id=up.id AND u.usage_date >= CURRENT_DATE - ($2)::int), 0)::int AS answered,
+              -- Denominador desde test_questions, NO daily_question_usage: ese contador
+              -- solo se incrementa por el camino del límite diario y los PREMIUM lo
+              -- esquivan (77 premium con 5.598 respuestas y contador 0 el 27/07) →
+              -- todo premium activo salía como cosechador. Ver runbook §cosecha.
+              (SELECT count(*) FROM test_questions t
+                WHERE t.user_id=up.id AND t.created_at > now() - ($2||' days')::interval
+                  AND t.user_answer IS NOT NULL AND t.user_answer <> '' AND t.user_answer <> 'BLANK')::int AS answered,
               (SELECT count(*) FROM user_interactions ui
                 WHERE ui.user_id=up.id AND ui.event_type='page_view'
                   AND ui.created_at > now() - ($2||' days')::interval)::int AS page_views,

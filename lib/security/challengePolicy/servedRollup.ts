@@ -5,12 +5,18 @@
 // El contador vive en Redis (`questionsServed.ts`, claves `captcha:served:*`,
 // TTL 26 h) porque el gate anti-scraping necesita leerlo en O(1) en cada carga.
 // Eso está bien para RETAR, pero no para DETECTAR: a las 26 h la evidencia
-// desaparece, y `scripts/fraud-sweep.cjs` corre en GitHub Actions —fuera de la
-// VPC— así que ni siquiera puede leer ElastiCache.
+// desaparece, y la ventana de detección del barrido antifraude es de 30 DÍAS.
 //
 // Aquí se replica el MISMO contador, con los MISMOS sujetos, en Postgres
 // (`daily_questions_served`). No es una segunda fuente de verdad para el gate:
 // el gate sigue leyendo Redis. Esto es la pista de auditoría.
+//
+// CORRECCIÓN 27/07: una versión anterior de este comentario justificaba la copia
+// diciendo que el sweep "corre en GitHub Actions, fuera de la VPC, y no ve
+// ElastiCache". Era FALSO — el sweep corre como @Cron dentro del backend en
+// Fargate, o sea DENTRO de la VPC. La razón de verdad, que es la decisiva, está
+// arriba: **el TTL de Redis es de 26 h y la ventana de detección es de 30 días**.
+// Desde Redis esa ventana no se puede reconstruir, viva donde viva el proceso.
 //
 // POR QUÉ IMPORTA (auditoría 27/07/2026): todo lo que medía consumo miraba
 // `daily_question_usage`, que cuenta respuestas GUARDADAS. La cosecha no
