@@ -1222,3 +1222,65 @@ and by a wide margin. What stands between us and a cutover is not scale: it is *
 **one number** (the price of the plan that carries 1-2 or 4-6 replicas), and **three yes/no answers**
 (read replica, PITR, asset retention). That is a remarkably short list for a whole-stack migration, and
 we would happily run the full rehearsal the week it clears.
+
+---
+
+## 🚧 UPDATE 2026-07-27 (late) — new release, and it surfaces a **harder blocker than `scale-out`**
+
+Re-checked the docs a few hours after the section above: `llms.txt` **758 → 777 lines**. Three changes,
+one of which changes the verdict for us.
+
+### The one that matters: **a custom domain and the CDN are mutually exclusive**
+
+> *"⛔ CUSTOM DOMAINS: an app with an ACTIVE custom domain CANNOT use the CDN… Choose ONE: (a) serve the
+> app on its `<slug>.apps.koigrid.com` host and get the CDN, or (b) keep your own domain and run without
+> edge caching."*
+
+Thank you for documenting it plainly, with the mechanism (CNAME cross-user → Cloudflare **1014**, i.e.
+site DOWN, not merely uncached) and with your own measurement (*"the zone is on the Free plan and the
+API returns 1404 No quota has been allocated"*). That is exactly the honesty that makes this doc useful.
+
+**But for Vence, option (a) does not exist.** We serve **`www.vence.es`** — a live business with 11,171
+registered users, SEO rankings we depend on, and Google/Meta ads pointing at that domain. We cannot
+serve production from `vence-web7-23f37d.apps.koigrid.com`. So our only option is (b): **our domain,
+and therefore no CDN at all.**
+
+### What that means, using your own numbers
+
+Not "no HTML caching" — **no CDN**: no edge cache of any kind, no DDoS protection, origin IP exposed.
+
+| | With CDN (impossible for us) | Our real option: custom domain, DNS-only |
+|---|---|---|
+| Latency vs AWS+CloudFront | 2.5-3.5× (measured 25/07) | **4.2-5.6×** (measured 25/07 with CDN off) |
+| Replicas for our 16.6 rps peak | 1-2 | **4-6** (your ~10 rps/replica without edge cache) |
+| DDoS / origin hiding | Yes | No |
+
+**So `scale-out` and HTML edge caching, which we spent today debugging, are moot for our case.** Even
+if `replica_unhealthy` were fixed tomorrow, on `vence.es` there is no CDN to program. The blocker moved
+up a level: it is no longer a bug, it is **Cloudflare for SaaS on your zone**.
+
+### What we would need to migrate (revised, and shorter)
+
+| # | Ask | Why it is now the top item |
+|---|---|---|
+| **1** | **Cloudflare for SaaS custom hostnames** (or any path to edge-cache a customer's own domain) | Without it, every customer who brings their own domain — i.e. every real business — runs origin-only. It caps koigrid at side-projects and staging for the exact workloads you are best positioned to win. You already identified it as *"a plan/cost decision, not a missing feature"*; from out here it is **the** feature. |
+| 2 | Fix `scale-out` → `replica_unhealthy` | Still broken (no mention in the new docs). Matters the day #1 lands. |
+| 3 | Publish plan pricing | Unchanged. |
+
+### Also in this release (both good)
+
+- **TLS to the managed DB done properly**: `GET /databases/:id/connection` now returns `caCert` + `sslVerifiedUri`, with an explicit warning not to use `NODE_TLS_REJECT_UNAUTHORIZED=0` *"it disables TLS verification for the WHOLE process, so Stripe/S3/every outbound call stops being verified too"*. **We had exactly that footgun in our POC scripts.** That warning is worth more than it looks — it is the kind of thing that silently weakens a payment stack.
+- CLI parity for `db ext`.
+
+### Honest bottom line, revised
+
+We came into today hoping to migrate for cost (AWS at ~$1,040/month projected). We are ending it with a
+clearer picture than we had:
+
+- **Capacity and the database: proven, comfortably.** Nothing to prove there.
+- **The blocker is no longer a bug we can wait out** — it is whether koigrid can edge-cache a customer's
+  own domain. Until then, a production site on koigrid means origin-only serving at 4-6 replicas and
+  4-5× the latency of our current setup, which we cannot justify to users.
+- **We are not walking away.** The DB story, the 6.5× headroom, the CDC migration path and the quality of
+  these docs are all genuinely strong. Ping us when custom-hostname edge caching lands and we will re-run
+  the whole rehearsal — the POC is paused, not deleted, and the 32 GB database is still `running`.
