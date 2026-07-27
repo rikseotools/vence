@@ -122,17 +122,6 @@ describe('ambos scripts — digest del push, NO re-resuelto por tag (incidente 1
       expect(m).toBeTruthy()
       expect(m![1]).not.toMatch(/"/)
     })
-    // Hermano del anterior, por un fallo REAL del 27/07/2026: la cadena va entre comillas
-    // DOBLES, así que bash también expande `$`. Documentando el coste de un cron escribí
-    // "~$8 por dia" y `set -u` lo convirtió en "variable sin asignar" → el deploy abortó
-    // (por suerte ANTES de tocar el servicio, pero bloqueaba a TODAS las sesiones).
-    // El test de las comillas no lo veía: son dos formas distintas de que el shell se coma
-    // el bloque. Importes en la forma `8 USD`, nunca con el símbolo.
-    it(`${name}: el bloque node -e no expande parámetros posicionales ($1..$9)`, () => {
-      const m = s.match(/node -e "\n([\s\S]*?)\n"\n/)
-      expect(m).toBeTruthy()
-      expect(m![1]).not.toMatch(/\$[0-9]/)
-    })
   }
 })
 
@@ -192,6 +181,23 @@ describe('ambos scripts — nada de backticks dentro de `node -e "…"` (inciden
     for (const bloque of bloquesNodeE(script)) {
       const conBacktick = bloque.split('\n').filter((l) => l.includes('`'))
       expect(conBacktick).toEqual([])
+    }
+  })
+
+  // Hermana de la anterior: el MISMO fallo con otro carácter. Dentro de comillas
+  // dobles bash también expande el dólar, así que documentar un coste como "~$8
+  // por día" convierte el bloque en "variable sin asignar" y con `set -u` ABORTA
+  // el deploy — de todas las sesiones, no solo la tuya (pasado el 27/07/2026).
+  // Van tres incidentes de la misma familia: comillas dobles (11/07, truncaban
+  // el JS en SILENCIO), acentos graves (arriba) y esto. Escribir importes como
+  // "8 USD" y citar con comillas simples.
+  it.each([
+    ['deploy-frontend.sh', frontend],
+    ['deploy-backend.sh', backend],
+  ])('%s: ningún parámetro posicional ($1..$9) dentro de un node -e', (_nombre, script) => {
+    for (const bloque of bloquesNodeE(script)) {
+      const conDolar = bloque.split('\n').filter((l) => /\$[0-9]/.test(l))
+      expect(conDolar).toEqual([])
     }
   })
 
