@@ -303,13 +303,6 @@
 - **Cabo asociado:** con datos también se resuelve la otra incógnita — si la forma `orphan` de `exam_validate_served` (llamadas a `/api/exam/validate` sin `testId`) resulta **frecuente entre usuarios normales**, NO es scraping sino un **bug**: exámenes que no quedan anclados a su test. Runbook `revisar-fraudes.md` §cosecha por corrección.
 - **Origen:** auditoría anti-scraping del 27/07.
 
-### [T-180] 🟠 [ABIERTO 27/07] `/api/fraud/report` acepta `userId` del body sin verificar: cualquiera puede falsificar alertas de fraude
-- **Qué:** `app/api/fraud/report/route.js` **no tiene auth**. Coge `userId` del cuerpo de la petición y con él escribe en `fraud_alerts` y marca el sujeto para reto forzado (`markForcedChallenge`). Dos consecuencias: (1) **cualquiera puede fabricar alertas contra otro usuario** y ensuciarle el expediente / forzarle captchas; (2) la detección de bots es **autodeclarada por el cliente**, así que un scraper simplemente **no llama** y nunca se marca.
-- **Matiz sobre (2):** el comentario de `forceChallenge.ts` dice *"no es spoofable: el scraper no puede borrar su propia marca"*. Es cierto y a la vez incompleto — no necesita borrarla, le basta con no ponérsela nunca.
-- **Cómo:** exigir sesión y derivar el `userId` del token (no del body), como hacen los `/api/v2/*`. Ojo al alcance: el endpoint es fire-and-forget desde el cliente y **degradar con gracia es requisito** (hoy devuelve 200 aunque falle el INSERT, a propósito, para no romper la experiencia).
-- **Lo que NO arregla:** seguirá sin detectar al bot que no coopera. Eso pide señales de SERVIDOR (ausencia de eventos de página frente a peticiones de datos, `sec-ch-ua`, orden de cabeceras, huella TLS en CloudFront), que es tarea aparte.
-- **Origen:** auditoría anti-scraping del 27/07.
-
 ### [T-168] 🟡 [ABIERTO 27/07] El deploy en caliente recarga la app A MITAD DE TEST y se lleva el test por delante (costó un usuario)
 - **Qué:** `useVersionCheck` fuerza recarga cuando cambia el `deploy_version`. El propio runbook de despliegue dice que la recarga **se DIFIERE en rutas de test para no interrumpir exámenes**, pero en la práctica no siempre ocurre: hay `version_check_reload_immediate` disparándose con el usuario dentro de un test.
 - **Caso real medido (26/07, usuario ya dado de baja):** se registró a las 12:04:49, y en sus **8 minutos** de vida vio **dos bundles distintos** (`c85c983d` y `aa51c6be`) y **10 eventos de version-check**. La recarga de las 12:09:51 le **cortó el test en la pregunta 2** y lo dejó en `0/25, is_completed=false`; nueve segundos después llegaron **tres recargas más seguidas** (12:10:00, 12:10:01, 12:10:02). Reintentó un test nuevo, respondió una pregunta y **a los dos minutos se dio de baja**. Cero errores en `validation_error_logs`: para toda la observabilidad de app, esa sesión fue "sana".
@@ -2865,6 +2858,19 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** T-112, sesión `sesion-26jul-d` (26/07), midiendo el universo de `article_no_coverage`: los arts de la LPRL salían huérfanos **por duplicado**, uno por cada fila de ley.
 
 ## Hechas
+
+### [T-180] ✅ [HECHA 27/07] `/api/fraud/report` aceptaba `userId` del body sin verificar: alertas de fraude falsificables
+- **✅ HECHO:** la identidad sale ahora del **token** (`verifyAuthOptional`), nunca del cuerpo. Sin sesión → 401. Si el cuerpo apunta a **otro** usuario → 403 **y se emite `fraud_report_identity_mismatch` (warn)**: el intento de falsificación deja rastro, que es la señal que antes no existía.
+- **El vector real era peor que "ensuciar el expediente":** un `botScore` alto llama a `markForcedChallenge`, así que bastaba un POST con el uuid de una clienta de pago para **llenarle la sesión de captchas**. Los tests lo fijan explícitamente: ni el 401 ni el 403 marcan reto forzado.
+- **Cliente actualizado:** los dos `fetch` de `hooks/useBotDetection.ts` mandan `getAuthHeaders()`. El hook solo reporta con sesión iniciada, así que exigirla no quita ninguna señal legítima.
+- **Tests:** `__tests__/security/fraudReportAuth.test.ts` (7), incluido el caso de ataque (reportar sobre un tercero) y que el reto forzado se marca sobre la identidad del token.
+- **Sigue pendiente y NO lo arregla esto** (va en T-185 y en el trabajo de señales de servidor): el bot que no coopera nunca se autodenuncia. La detección client-side solo ve a quien llama.
+- **Qué:** `app/api/fraud/report/route.js` **no tiene auth**. Coge `userId` del cuerpo de la petición y con él escribe en `fraud_alerts` y marca el sujeto para reto forzado (`markForcedChallenge`). Dos consecuencias: (1) **cualquiera puede fabricar alertas contra otro usuario** y ensuciarle el expediente / forzarle captchas; (2) la detección de bots es **autodeclarada por el cliente**, así que un scraper simplemente **no llama** y nunca se marca.
+- **Matiz sobre (2):** el comentario de `forceChallenge.ts` dice *"no es spoofable: el scraper no puede borrar su propia marca"*. Es cierto y a la vez incompleto — no necesita borrarla, le basta con no ponérsela nunca.
+- **Cómo:** exigir sesión y derivar el `userId` del token (no del body), como hacen los `/api/v2/*`. Ojo al alcance: el endpoint es fire-and-forget desde el cliente y **degradar con gracia es requisito** (hoy devuelve 200 aunque falle el INSERT, a propósito, para no romper la experiencia).
+- **Lo que NO arregla:** seguirá sin detectar al bot que no coopera. Eso pide señales de SERVIDOR (ausencia de eventos de página frente a peticiones de datos, `sec-ch-ua`, orden de cabeceras, huella TLS en CloudFront), que es tarea aparte.
+- **Origen:** auditoría anti-scraping del 27/07.
+
 
 ### [T-187] ✅ [HECHA 27/07] 17 de los 18 boletines NO tienen liveness propia: si uno deja de mirar, no se entera nadie
 - **Medido el 27/07:** la tabla `radar_adapter_runs` —la que da "¿este adapter corrió y qué vio?"— solo tiene **4 adapters** (`bon`, `oposiciones-es`, `pag-empleo`, `competitor-db`). El cron legacy `detect-boletines` escanea **18 boletines** (BOE, BOCYL y los 16 CCAA) y solo publica un **agregado**: `{boletines:18, signals:10, errors:0, daysScanned:39}`. Por boletín, nada.

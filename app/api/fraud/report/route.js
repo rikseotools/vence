@@ -9,6 +9,7 @@ import { and, eq, gte, arrayContains } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { markForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 
 // getAdminDb() = Drizzle con DATABASE_URL, bypass RLS (equivalente al
 // service_role). Agnóstico de proveedor.
@@ -20,7 +21,7 @@ async function _POST(request) {
     const body = await request.json()
 
     const {
-      userId,
+      userId: userIdDelBody,
       alertType,
       botScore,
       behaviorScore,
@@ -31,11 +32,47 @@ async function _POST(request) {
       url
     } = body
 
-    // Validación básica
-    if (!userId || !alertType) {
+    // 🔒 La identidad SIEMPRE sale del token, nunca del cuerpo (T-180, 27/07/2026).
+    //
+    // Hasta aquí este endpoint no tenía auth y se creía el `userId` que le
+    // mandaran. Con eso, cualquiera podía (a) fabricar alertas de fraude contra
+    // otra persona y ensuciarle el expediente, y (b) —lo peor— provocarle
+    // CAPTCHAS: un score alto llama a `markForcedChallenge`, así que bastaba un
+    // POST con el uuid de una clienta de pago para llenarle la sesión de retos.
+    //
+    // El hook cliente (`useBotDetection`) solo reporta con sesión iniciada, así
+    // que exigirla no quita ninguna señal legítima.
+    const auth = await verifyAuthOptional(request, '/api/fraud/report')
+    const userId = auth?.userId ?? null
+
+    if (!userId) {
+      // Sin sesión no se acepta el reporte. El cliente es fire-and-forget y no
+      // mira el status, así que esto no rompe ninguna experiencia.
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
+    if (!alertType) {
       return NextResponse.json(
-        { error: 'userId y alertType son requeridos' },
+        { error: 'alertType es requerido' },
         { status: 400 }
+      )
+    }
+
+    // Un cuerpo que pide reportar sobre OTRO usuario es, por definición, un
+    // intento de falsificación: el cliente legítimo manda siempre su propio id.
+    // Se rechaza y se deja rastro — es justo la señal que antes no existía.
+    if (userIdDelBody && userIdDelBody !== userId) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'fraud_report_identity_mismatch',
+        endpoint: '/api/fraud/report',
+        userId,
+        metadata: { intentoSobre: String(userIdDelBody).slice(0, 64), alertType },
+      })
+      return NextResponse.json(
+        { error: 'El userId no coincide con la sesión' },
+        { status: 403 }
       )
     }
 

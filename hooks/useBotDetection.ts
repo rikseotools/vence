@@ -3,6 +3,10 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+// El reporte va AUTENTICADO (T-180): el servidor deriva la identidad del token
+// y ya no se cree el `userId` del cuerpo. Sin esta cabecera el reporte se
+// descarta con 401 — que es preferible a aceptar uno falsificado.
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 declare global {
   interface Window {
@@ -154,7 +158,7 @@ export function useBotDetection(userId: string | null) {
     try {
       await fetch('/api/fraud/report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({
           userId,
           alertType: 'bot_detected',
@@ -300,7 +304,7 @@ async function reportSuspiciousBehavior(userId: string, score: number, answerDat
 
     await fetch('/api/fraud/report', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({
         userId,
         alertType: 'suspicious_behavior',
