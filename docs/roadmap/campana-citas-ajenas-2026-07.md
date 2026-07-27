@@ -1,5 +1,31 @@
 # Campaña "citas ajenas" — mislinks detectados por barrido de citas (16-17/07/2026)
 
+## ⚠️ RE-MEDIDA 27/07 — el inventario de esta campaña se hizo con un detector CIEGO (ver [T-207])
+
+Los dos detectores de citas comparaban solo el **arranque** de la cita: `validar-explicacion.cjs`
+usaba `nq.slice(0, 80)` y el barrido de esta campaña tiene **su propia copia** con `slice(0, 70)`
+(`barrido-citas.cjs:53`). Todo lo que diverge a partir de ahí era invisible — y el arranque de un
+precepto suele ser genérico, mientras que **lo que decide la respuesta (plazos, mayorías, anchuras,
+órgano competente) vive al final**.
+
+Arreglado el guardarraíl el 27/07 (compara la cita entera, troceando por elisiones y podando la
+referencia final; manual de impugnaciones §5.1.bis), la foto real del banco es:
+
+| Medida | Resultado |
+|---|---|
+| Activas con blockquote + artículo vinculado | 43.774 |
+| **Citas que NO aparecen literales en su artículo** | **13.424 (30,7 %)** |
+| Triaje determinista (muestra 60): el tramo final existe en **otro artículo de la misma ley** | 50 % → relink, sin IA |
+| Triaje: no aparece en **ninguna parte de su ley** | 50 % → adjudicación LLM |
+
+**Lo primero es matar la copia:** que este barrido reutilice `validateQuotes` en lugar de su propio
+`slice(0, 70)`. Un mismo criterio con dos implementaciones ya ha demostrado que diverge, y es la
+razón de que 13.424 defectos convivieran con una campaña que se dio por cerrada.
+
+Lo de abajo queda como **histórico de la pasada de julio**: sus resultados siguen siendo válidos,
+pero su inventario NO era el universo.
+
+
 ## PASADA 19/07 — drenaje needs_human COMPLETADO (23/23; 0 quedan en needs_human)
 Resultado final: **22 a visible** (21 approved + 1 tech_approved) + **1 retirada** (`6bf9caae`, ley derogada). Todo verificado contra fuente oficial (BOE/BOCyL), **0 flips de clave** (2 claves que un verificador previo proponía cambiar —`514c0c65`→A y el cluster CES— resultaron correctas al leer el texto consolidado). Herramienta nueva durable: `scripts/impugnaciones/aplicar-needs-human.cjs` (re-vínculo + explicación validada con `validar-explicacion.cjs` + marca AVR fix_applied + transición lifecycle canónica en una pasada; nunca toca correct_option).
 - **Imports verbatim nuevos (fuente oficial):** CES CyL arts 9/12 + art.4 actualizado (BOE-A-1991-2826); Ley 2/2016 CM art.1 Definiciones (BOE-A-2016-6728); Decreto 12/2024 Servicio 012 arts 2/5/7 (BOCYL-D-28062024-1). Editoriales: enriquecido Word 365 art.1 (comodines < >), TCAE "Atención Primaria" (EAP, RD 137/1984), y creados arts editoriales "Valores del documento de archivo" y ley "Formas de la actividad administrativa" (autorización).
