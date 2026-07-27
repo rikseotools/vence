@@ -1,3 +1,4 @@
+import type { AnyPgColumn } from "drizzle-orm/pg-core"
 import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, vector, uniqueIndex, interval, inet, point, serial, time, bigint, bigserial, real, smallint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
@@ -409,7 +410,13 @@ export const topicEpigrafeVerification = pgTable("topic_epigrafe_verification", 
 	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	sourceDocumentoId: uuid("source_documento_id"),
+	// FK declarada AQUÍ y no en el array de abajo, con el tipo de retorno explícito: `oep` y
+	// `convocatoriaDocumentos` se referencian MUTUAMENTE (oep.source_documento_id →
+	// convocatoria_documentos.id, y convocatoria_documentos.oep_id → oep.id). Con las dos FK en
+	// los arrays, TypeScript no puede cerrar la inferencia y ambas tablas caen a `any`
+	// (TS7022/TS7024) — que es como el Typecheck de CI se puso en rojo el 27/07 y bloqueó los
+	// deploys. `AnyPgColumn` corta la recursión sin cambiar el SQL generado.
+	sourceDocumentoId: uuid("source_documento_id").references((): AnyPgColumn => convocatoriaDocumentos.id, { onDelete: "set null" }),
 	sourceNotes: text("source_notes"),
 	sourceUrl: text("source_url"),
 }, (table) => [
@@ -4819,11 +4826,6 @@ export const oep = pgTable("oep", {
 			foreignColumns: [oposiciones.id],
 			name: "oep_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.sourceDocumentoId],
-			foreignColumns: [convocatoriaDocumentos.id],
-			name: "oep_source_documento_id_fkey"
-		}).onDelete("set null"),
 	check("oep_ambito_valido", sql`(ambito IS NULL) OR (ambito = ANY (ARRAY['estatal'::text, 'autonomico'::text, 'local'::text]))`),
 	check("oep_año_valido", sql`("año_oep" >= 1970) AND ("año_oep" <= 2100)`),
 	check("oep_estado_valido", sql`estado = ANY (ARRAY['aprobada'::text, 'convocada'::text, 'anulada'::text])`),
