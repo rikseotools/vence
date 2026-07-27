@@ -59,6 +59,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-convocatorias.md',
     claudeHace: 'arregla los hitos que se contradicen entre sí (orden imposible, dos fechas de examen para el mismo ciclo) contra la fuente oficial.',
   },
+  convocatoria_estado_incoherente: {
+    title: 'El estado del proceso se contradice con sus propias fechas',
+    triggerPhrase: 'revisa los estados de convocatoria',
+    runbook: 'docs/runbooks/verificar-convocatorias.md',
+    comando: 'audit:estados',
+    claudeHace:
+      'para cada oposición señalada, mira la contradicción concreta del mensaje: `inscripcion_abierta` con el plazo VENCIDO, `pendiente_examen` con el examen ya pasado, un estado post-examen con el examen en el futuro, o el estado en desacuerdo con lo que el front muestra (home/SEO/banner filtran por FECHAS, no por `estado_proceso`: si divergen, la oposición aparece o desaparece del catálogo por el motivo equivocado). Es DETERMINISTA: detecta la contradicción, no adivina el estado bueno — para eso hace falta fuente oficial (sigue el runbook). Ojo a las CATALOGADAS visibles: si el radar nunca las verificó o lleva >30 días sin hacerlo, su fecha no tiene garantía y puede estar engañando en /oposiciones/inscripcion-abierta. Misma lógica en el CLI `npm run audit:estados` (núcleo `lib/convocatoria/estadoCoherencia.cjs`), útil para ver el informe entero de golpe.',
+  },
   convocatoria_timeline_caducado: {
     title: 'Previsión caducada o estado que contradice su fecha',
     triggerPhrase: 'revisa el timeline de convocatorias',

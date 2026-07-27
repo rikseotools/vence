@@ -21,6 +21,7 @@ import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 import AutoAssignOposicion from '@/components/AutoAssignOposicion'
 import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/format'
 import { etiquetaFechaHito, hitoParaSchemaEvent } from '@/lib/convocatoria/fechaEstimada'
+import { anuncioHero, esOepSinConvocatoria as esOepSinConvocatoriaFn } from '@/lib/convocatoria/anuncioHero'
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
@@ -126,9 +127,11 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   // Fetch topic names from BD (para que el temario preview no dependa de oposiciones.ts)
   const topicNamesFromBD = new Map(topicNamesArr ?? [])
 
-  // Estado del proceso (para distinguir OEP vs convocatoria en los botones)
+  // Estado del proceso (para distinguir OEP vs convocatoria en los botones Y en el hero).
+  // El criterio vive en lib/convocatoria/anuncioHero.ts: una sola fuente para las tres
+  // superficies (badge, subtítulo y enlace oficial), que antes podían contradecirse.
   const estadoProceso = data?.estadoProceso ?? 'sin_oep'
-  const esOepSinConvocatoria = estadoProceso === 'oep_aprobada' || estadoProceso === 'sin_oep'
+  const esOepSinConvocatoria = esOepSinConvocatoriaFn(estadoProceso)
 
   // Datos de BD con fallbacks
   const plazasLibres = data?.plazasLibres ?? null
@@ -151,6 +154,9 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const oepDecreto = data?.oepDecreto ?? null
   const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null
   const diarioOficial = data?.diarioOficial ?? 'BOE'
+
+  // Lo que el hero puede AFIRMAR sin mentir (badge + subtítulo), derivado del estado del proceso.
+  const heroAnuncio = anuncioHero({ estadoProceso, boeReference: boeRef, boeFechaCorta })
 
   const isApproxDate = data?.examDateApproximate ?? false
   const textoExamen = examDate
@@ -315,14 +321,14 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
           {/* Hero */}
           <div className="text-center mb-8">
             <span className={`${colors.badge} ${colors.badgeText} px-3 py-1 rounded-full text-sm font-medium`}>
-              {config.badge} - {boeFechaCorta ? `CONVOCATORIA PUBLICADA ${boeFechaCorta}` : 'PREPARACIÓN'}
+              {config.badge} - {heroAnuncio.badge}
             </span>
 
             <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">{config.name}</h1>
 
             <p className="text-lg text-gray-600 mb-4 max-w-2xl mx-auto">
               <span className={`inline-block ${colors.subtitleBg} ${colors.subtitleText} px-3 py-1 rounded-full font-bold`}>
-                {boeRef ? 'Convocatoria oficial publicada' : 'Preparación disponible'} - {textoExamen}
+                {heroAnuncio.titulo} - {textoExamen}
               </span>
             </p>
 

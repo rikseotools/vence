@@ -52,12 +52,19 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
   },
   hero_badge: {
     titulo: 'Badge del hero: "CONVOCATORIA PUBLICADA {fecha}" y la línea de examen',
-    marcadores: ['boeFechaCorta', 'textoExamen', 'examDateApproximate'],
-    kinds: ['dual_write', 'texto_examen_pasado'],
+    marcadores: ['boeFechaCorta', 'textoExamen', 'examDateApproximate', 'heroAnuncio'],
+    // `convocatoria_estado_incoherente` entra aquí desde el 27/07: ahora que el badge DERIVA del
+    // estado del proceso, un estado contradictorio contamina directamente lo que anuncia el hero.
+    kinds: ['dual_write', 'texto_examen_pasado', 'convocatoria_estado_incoherente'],
     hueco:
-      'nadie compara el BADGE con el estado real del proceso: si `boe_publication_date` está puesta, ' +
-      'el hero anuncia "CONVOCATORIA PUBLICADA" aunque `estado_proceso` diga `oep_aprobada`. ' +
-      '`texto_examen_pasado` mira las FAQs y la descripción, no el badge',
+      'CERRADO POR CONSTRUCCIÓN el 27/07: el badge y el subtítulo ya no pueden contradecir al ' +
+      'estado del proceso, porque los deriva de él `lib/convocatoria/anuncioHero.ts` (mismo criterio ' +
+      'que el enlace oficial, F4/T-108). Antes bastaba con tener `boe_publication_date` o ' +
+      '`boe_reference` —normalmente del decreto de la OEP— para anunciar "CONVOCATORIA PUBLICADA" ' +
+      'aunque no hubiera convocatoria; en `oep_aprobada` ahora dice "PLAZAS APROBADAS". No hace ' +
+      'falta detector: no hay estado desde el que el texto pueda mentir. Queda vigilado por los ' +
+      'tests del núcleo (__tests__/lib/convocatoria/anuncioHero.test.ts). Nota: `texto_examen_pasado` ' +
+      'sigue mirando FAQs y descripción, no el badge — la línea de examen es otra superficie.',
     tarea: 'T-134',
   },
   hero_tarjetas: {

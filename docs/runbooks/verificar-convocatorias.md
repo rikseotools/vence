@@ -85,9 +85,24 @@ cuáles son de fiar — lo contrario de "trackeable".
 ```sql
 SELECT oposicion_slug, kind, severity, message, detail
   FROM content_health_findings
- WHERE kind IN ('convocatoria_descuadre_oficial','convocatoria_timeline_incoherente','convocatoria_timeline_caducado')
+ WHERE kind IN ('convocatoria_descuadre_oficial','convocatoria_timeline_incoherente',
+                'convocatoria_timeline_caducado','convocatoria_estado_incoherente')
  ORDER BY severity, oposicion_slug;
 ```
+
+> **`convocatoria_estado_incoherente`** (frase-gatillo *"revisa los estados de convocatoria"*) detecta
+> que el **`estado_proceso` se contradice con sus propias fechas**: `inscripcion_abierta` con el plazo
+> vencido, `pendiente_examen` con el examen pasado, un post-examen con el examen futuro, o el estado en
+> desacuerdo con lo que enseña el front (home/SEO/banner filtran por FECHAS, no por estado). Para verlo
+> **todo junto en un informe legible**, con su gate para CI:
+>
+> ```bash
+> npm run audit:estados          # informe completo; exit 1 si hay ❌
+> ```
+>
+> Misma detección en los dos sitios: el núcleo puro `lib/convocatoria/estadoCoherencia.cjs` lo comparten
+> el CLI y los dos barridos de salud, así que el informe y el badge nunca pueden discrepar. Hasta el
+> 27/07 esta lógica vivía **solo** en el CLI y sus hallazgos no llegaban al panel.
 
 ### 2. Tratar según el tipo
 

@@ -614,6 +614,69 @@ function diagnosticarSeguimientoUrl(
   return { nivel: 'ok', severidad: 'ok', motivo: 'sin señales de desfase' };
 }
 
+/**
+ * MIRROR de `lib/convocatoria/estadoCoherencia.cjs` (el backend es un proyecto aparte y no puede
+ * requerir el root `lib/`; mismo motivo por el que `diagnosticarSeguimientoUrl` está replicada
+ * aquí arriba). La paridad de KINDS la vigila `__tests__/health/content-sweep-parity.test.ts`;
+ * la paridad de COMPORTAMIENTO, `content-health-sweep.estado.spec.ts`, que corre los mismos
+ * casos que el test del núcleo. Si tocas una, toca la otra.
+ */
+export function detectarIncoherenciasEstado(
+  o: Record<string, unknown>,
+  hoy: string,
+): Array<{ severidad: 'error' | 'warn'; regla: string; mensaje: string }> {
+  const out: Array<{ severidad: 'error' | 'warn'; regla: string; mensaje: string }> = [];
+  const add = (severidad: 'error' | 'warn', regla: string, mensaje: string) =>
+    out.push({ severidad, regla, mensaje });
+  const dia = (v: unknown) => (v ? String(v).slice(0, 10) : null);
+
+  const e = o.estado_proceso as string | null;
+  const dl = dia(o.inscription_deadline);
+  const ex = dia(o.exam_date);
+  const start = dia(o.inscription_start);
+  const abiertaPorFechas = !!start && !!dl && start <= hoy && dl >= hoy;
+
+  if (!e) {
+    add('warn', 'estado_vacio', 'estado_proceso vacío');
+    return out;
+  }
+  if (e === 'inscripcion_abierta') {
+    if (!dl) add('warn', 'abierta_sin_cierre', "'inscripcion_abierta' SIN fecha de cierre (incompleto/sospechoso de stale)");
+    else if (dl < hoy) add('error', 'abierta_plazo_vencido', `'inscripcion_abierta' con plazo VENCIDO (${dl} < ${hoy}) → debe avanzar a inscripcion_cerrada/posterior`);
+  }
+  if (e === 'convocada' && dl && dl < hoy)
+    add('warn', 'convocada_plazo_vencido', `'convocada' pero el plazo de inscripción (${dl}) ya venció → ¿inscripcion_cerrada?`);
+  if (e === 'inscripcion_cerrada' && dl && dl > hoy)
+    add('warn', 'cerrada_plazo_futuro', `'inscripcion_cerrada' pero el plazo (${dl}) aún no ha vencido (contradicción)`);
+  if (e === 'pendiente_examen') {
+    if (!ex) add('warn', 'pendiente_sin_fecha', "'pendiente_examen' SIN fecha de examen");
+    else if (ex < hoy && !o.exam_date_approximate) add('error', 'pendiente_examen_pasado', `'pendiente_examen' con examen YA PASADO (${ex} < ${hoy}) → debe ser examen_realizado/resultados`);
+  }
+  if (['examen_realizado', 'resultados', 'nombramientos'].includes(e) && ex && ex > hoy)
+    add('error', 'post_examen_futuro', `'${e}' pero el examen es FUTURO (${ex} > ${hoy}) → contradicción`);
+  if (start && dl && start > dl)
+    add('warn', 'start_despues_deadline', `inscription_start (${start}) posterior al deadline (${dl})`);
+
+  if (o.is_active) {
+    if (e === 'inscripcion_abierta' && !abiertaPorFechas) {
+      const motivo = !start ? 'sin inscription_start' : !dl ? 'sin deadline' : `plazo vencido (${dl})`;
+      add('error', 'abierta_invisible_en_front', `estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`);
+    } else if (abiertaPorFechas && e !== 'inscripcion_abierta') {
+      add('warn', 'abierta_por_fechas_otro_estado', `abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`);
+    }
+  } else if (abiertaPorFechas && !!o.seguimiento_url) {
+    if (e !== 'inscripcion_abierta')
+      add('warn', 'catalogada_visible_otro_estado', `CATALOGADA visible en el front (abierta) pero estado='${e}' → reconciliar`);
+    const lc = dia(o.seguimiento_last_checked);
+    if (!lc) add('warn', 'catalogada_sin_verificar', 'CATALOGADA visible en el front pero el radar NUNCA la verificó (seguimiento_last_checked NULL) → fecha sin garantía');
+    else {
+      const days = Math.floor((Date.parse(hoy) - Date.parse(lc)) / 86400000);
+      if (days > 30) add('warn', 'catalogada_radar_stale', `CATALOGADA visible en el front pero el radar no la verifica hace ${days}d (>30) → posible fecha stale`);
+    }
+  }
+  return out;
+}
+
 @Injectable()
 export class ContentHealthSweepService {
   private readonly logger = new Logger(ContentHealthSweepService.name);
@@ -1490,6 +1553,36 @@ export class ContentHealthSweepService {
         'seguimiento_url_stale',
         `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`,
       );
+    }
+
+    // ── estado_proceso que se contradice con sus PROPIAS fechas ─────────────────────────
+    // Misma detección que `npm run audit:estados`. Esa lógica llevaba desde el 18/06 en un CLI
+    // cuyos hallazgos iban a un log/email y NO a `content_health_findings`: 1 error y 34 avisos
+    // que no aparecían ni en el badge ni en /admin/contenido. Aquí se publican con el resto.
+    // Determinista (solo fechas): ni IA ni boletines. Decidir el estado correcto exige fuente
+    // oficial y es trabajo humano → docs/runbooks/verificar-convocatorias.md.
+    {
+      const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+      const filas = (await this.db.execute(sql`
+        SELECT slug, is_active, estado_proceso,
+               inscription_start::text        AS inscription_start,
+               inscription_deadline::text     AS inscription_deadline,
+               exam_date::text                AS exam_date,
+               exam_date_approximate,
+               seguimiento_url,
+               seguimiento_last_checked::text AS seguimiento_last_checked
+        FROM oposiciones_ssot`)) as unknown as Array<Record<string, unknown>>;
+      for (const o of filas) {
+        for (const inc of detectarIncoherenciasEstado(o, hoy)) {
+          add(
+            'content',
+            inc.severidad,
+            String(o.slug),
+            'convocatoria_estado_incoherente',
+            `${String(o.slug)}${o.is_active ? ' [PUBLICADA]' : ''}: ${inc.mensaje}`,
+          );
+        }
+      }
     }
 
     // ── seguimiento_url que responde 200 pero NO VIGILA NADA (seguimiento_fuente_ciega) ──

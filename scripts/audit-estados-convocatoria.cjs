@@ -26,6 +26,9 @@
 
 require('dotenv').config({ path: '.env.local' })
 const postgres = require('postgres')
+// La lógica de detección vive en el núcleo puro compartido (una sola fuente para este CLI y
+// para los dos barridos de salud, que son los que la publican en el badge). Ver el módulo.
+const { detectarIncoherenciasEstado, abiertaPorFechas, catalogadaVisible, POST_EXAMEN, CATALOGADA_STALE_DAYS } = require('../lib/convocatoria/estadoCoherencia.cjs')
 
 const DB_URL = process.env.DATABASE_URL
 if (!DB_URL) {
@@ -38,18 +41,7 @@ const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect
 // lib/oposiciones/inscripcion.ts (fuente de verdad; aquí inline porque es .cjs).
 const HOY = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })
 
-// estados "post-examen": no pueden tener examen en el futuro
-const POST_EXAMEN = new Set(['examen_realizado', 'resultados', 'nombramientos'])
 
-// Espejo de isInscripcionAbierta() de lib/oposiciones/inscripcion.ts (el front usa esa).
-const abiertaPorFechas = (o) => {
-  const start = o.inscription_start && o.inscription_start.slice(0, 10)
-  const dl = o.inscription_deadline && o.inscription_deadline.slice(0, 10)
-  return !!start && !!dl && start <= HOY && dl >= HOY
-}
-// Espejo de isShowableCatalogada(): catalogada (is_active=false) + abierta + url oficial.
-const catalogadaVisible = (o) => !o.is_active && abiertaPorFechas(o) && !!o.seguimiento_url
-const CATALOGADA_STALE_DAYS = 30
 
 async function main() {
   // Fechas a ::text para preservar 'YYYY-MM-DD' y evitar el footgun de pg con
@@ -75,76 +67,13 @@ async function main() {
   const errs = [] // ❌ contradicciones claras
   const warns = [] // 🟡 sospechas / datos incompletos
 
+  // La detección vive en el núcleo puro compartido: este CLI solo la FORMATEA. Así el informe
+  // legible, el gate de CI y los hallazgos del badge no pueden divergir nunca (antes la lógica
+  // estaba aquí dentro y era invisible para /admin/contenido).
   for (const o of ops) {
-    const e = o.estado_proceso
-    const dl = o.inscription_deadline
-    const ex = o.exam_date
-    const pub = o.is_active ? ' [PUBLICADA]' : ''
-    const tag = `${o.slug}${pub}`
-
-    if (!e) {
-      warns.push(`${tag} → estado_proceso vacío`)
-      continue
-    }
-
-    // 1. inscripcion_abierta: el plazo NO puede haber vencido ni faltar
-    if (e === 'inscripcion_abierta') {
-      if (!dl) warns.push(`${tag} → 'inscripcion_abierta' SIN fecha de cierre (incompleto/sospechoso de stale)`)
-      else if (dl < HOY) errs.push(`${tag} → 'inscripcion_abierta' con plazo VENCIDO (${dl} < ${HOY}) → debe avanzar a inscripcion_cerrada/posterior`)
-    }
-
-    // 2. convocada: si ya pasó el plazo de inscripción, debió avanzar
-    if (e === 'convocada' && dl && dl < HOY) {
-      warns.push(`${tag} → 'convocada' pero el plazo de inscripción (${dl}) ya venció → ¿inscripcion_cerrada?`)
-    }
-
-    // 3. inscripcion_cerrada: el plazo no debería estar aún en el futuro
-    if (e === 'inscripcion_cerrada' && dl && dl > HOY) {
-      warns.push(`${tag} → 'inscripcion_cerrada' pero el plazo (${dl}) aún no ha vencido (contradicción)`)
-    }
-
-    // 4. pendiente_examen: el examen no puede haber pasado; debería tener fecha
-    if (e === 'pendiente_examen') {
-      if (!ex) warns.push(`${tag} → 'pendiente_examen' SIN fecha de examen`)
-      else if (ex < HOY && !o.exam_date_approximate) errs.push(`${tag} → 'pendiente_examen' con examen YA PASADO (${ex} < ${HOY}) → debe ser examen_realizado/resultados`)
-    }
-
-    // 5. estados post-examen con examen en el futuro = imposible
-    if (POST_EXAMEN.has(e) && ex && ex > HOY) {
-      errs.push(`${tag} → '${e}' pero el examen es FUTURO (${ex} > ${HOY}) → contradicción`)
-    }
-
-    // 6. coherencia start <= deadline
-    if (o.inscription_start && dl && o.inscription_start > dl) {
-      warns.push(`${tag} → inscription_start (${o.inscription_start}) posterior al deadline (${dl})`)
-    }
-
-    // 7. coherencia de FRONT: home/SEO/banner filtran por FECHAS, no por estado_proceso.
-    // Si divergen, el dato está mal en algún lado (incidente 20/06/2026).
-    if (o.is_active) {
-      const abierta = abiertaPorFechas(o)
-      if (e === 'inscripcion_abierta' && !abierta) {
-        const motivo = !o.inscription_start ? 'sin inscription_start'
-          : !dl ? 'sin deadline' : `plazo vencido (${dl})`
-        errs.push(`${tag} → estado 'inscripcion_abierta' pero NO abierta-por-fechas (${motivo}) → invisible en el front`)
-      } else if (abierta && e !== 'inscripcion_abierta') {
-        warns.push(`${tag} → abierta-por-fechas pero estado='${e}' → aparece en el front; reconciliar estado`)
-      }
-    } else if (catalogadaVisible(o)) {
-      // 8. catalogadas visibles en /oposiciones/inscripcion-abierta (sin test, enlace oficial).
-      // Ahora son superficie de usuario → vigilar su dato.
-      if (e !== 'inscripcion_abierta') {
-        warns.push(`${tag} → CATALOGADA visible en el front (abierta) pero estado='${e}' → reconciliar`)
-      }
-      const lc = o.seguimiento_last_checked
-      if (!lc) {
-        warns.push(`${tag} → CATALOGADA visible en el front pero el radar NUNCA la verificó (seguimiento_last_checked NULL) → fecha sin garantía`)
-      } else {
-        const days = Math.floor((Date.parse(HOY) - Date.parse(lc)) / 86400000)
-        if (days > CATALOGADA_STALE_DAYS) {
-          warns.push(`${tag} → CATALOGADA visible en el front pero el radar no la verifica hace ${days}d (>${CATALOGADA_STALE_DAYS}) → posible fecha stale`)
-        }
-      }
+    const tag = `${o.slug}${o.is_active ? ' [PUBLICADA]' : ''}`
+    for (const inc of detectarIncoherenciasEstado(o, HOY)) {
+      (inc.severidad === 'error' ? errs : warns).push(`${tag} → ${inc.mensaje}`)
     }
   }
 

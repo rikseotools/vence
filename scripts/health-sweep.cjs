@@ -30,6 +30,7 @@
  */
 const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
+const { detectarIncoherenciasEstado, hoyMadrid } = require('../lib/convocatoria/estadoCoherencia.cjs');
 const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
@@ -335,6 +336,28 @@ async function main() {
       `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
       (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
                 : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'));
+  }
+
+  // ── estado_proceso que se contradice con sus PROPIAS fechas ────────────────────────────
+  // Misma lógica que `npm run audit:estados` (núcleo compartido `estadoCoherencia.cjs`): antes
+  // vivía SOLO en ese CLI, cuyos hallazgos iban a un log/email y NO al badge — 1 error y 34 avisos
+  // que nadie veía en /admin/contenido. Aquí se publican donde se mira todo lo demás.
+  // Determinista: sin IA y sin boletines; solo contradicciones internas del dato.
+  const estados = (await c.query(`
+    SELECT slug, is_active, estado_proceso,
+           inscription_start::text        AS inscription_start,
+           inscription_deadline::text     AS inscription_deadline,
+           exam_date::text                AS exam_date,
+           exam_date_approximate,
+           seguimiento_url,
+           seguimiento_last_checked::text AS seguimiento_last_checked
+    FROM oposiciones_ssot`)).rows;
+  const HOY_MADRID = hoyMadrid();
+  for (const o of estados) {
+    for (const inc of detectarIncoherenciasEstado(o, HOY_MADRID)) {
+      add('content', inc.severidad, o.slug, 'convocatoria_estado_incoherente',
+        `${o.slug}${o.is_active ? ' [PUBLICADA]' : ''}: ${inc.mensaje}`, { regla: inc.regla });
+    }
   }
 
   // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ─────────
