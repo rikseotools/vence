@@ -119,9 +119,19 @@ export function isStructuredExplanation(
  * cada bullet corresponde a la POSICIÓN MOSTRADA de esa opción tras barajar.
  */
 /**
- * Render del estilo §5.1 (manual de impugnaciones): "La respuesta correcta es …" y un bloque por
- * opción, en orden MOSTRADO, marcando CORRECTA/INCORRECTA. La marca no depende de la letra sino
- * de si la opción es la buena, así que sobrevive al barajado igual que las razones.
+ * Render del estilo §5.1 (manual de impugnaciones): apertura "La respuesta correcta es la **X**",
+ * cita en blockquote y un bloque por opción, en orden MOSTRADO, marcando CORRECTA/INCORRECTA.
+ *
+ * Las tres cosas las EMITE el render, no el que escribe, y por un motivo: la letra de la apertura
+ * y el veredicto de cada opción dependen de DÓNDE queda cada una al barajar. Si los escribiera a
+ * mano quien redacta, volveríamos al problema que este formato viene a resolver.
+ *
+ * ⚠️ Nació incumpliendo su propio docstring en las tres (T-201, cazado por la sesión de
+ * impugnaciones al aplicarlo a casos reales): no emitía la apertura, no marcaba los veredictos —así
+ * que el texto generado NO pasaba `validar-explicacion.cjs`, que los exige, con dos guardarraíles
+ * de la casa contradiciéndose— y **solo leía `cita.bloque`**, de modo que la forma documentada
+ * `cita: {ref, texto}` producía un texto SIN cita. La ironía: uno de los casos venía justo de una
+ * impugnación por la cita mal transcrita.
  */
 function renderEstiloImpugnacion(
   data: StructuredExplanation,
@@ -132,13 +142,35 @@ function renderEstiloImpugnacion(
       ? optionOrder
       : Array.from({ length: nOptions }, (_, i) => i)
   const partes: string[] = []
-  if (data.intro && data.intro.trim()) partes.push(data.intro.trim())
-  if (data.cita?.bloque) partes.push(data.cita.bloque.split('\n').map((l) => `> ${l}`.trimEnd()).join('\n'))
+
+  // 1) Apertura con la letra MOSTRADA de la correcta (§5.1 la exige; el validador la comprueba).
+  //    Salvo que el `intro` YA la traiga: el histórico transcrito la tiene dentro (era la primera
+  //    frase del texto) y añadirla otra vez la duplicaba. Lo nuevo no debe escribirla a mano —el
+  //    aplicador lo rechaza— precisamente para que la ponga el render y siga a la opción al barajar.
+  const posCorrecta = order.indexOf(correctOption)
+  const letraCorrecta = indexToLetter(posCorrecta >= 0 ? posCorrecta : correctOption)
+  const introTrim = (data.intro ?? '').trim()
+  const introYaAbre = /^la respuesta correcta es/i.test(introTrim)
+  if (!introYaAbre) partes.push(`La respuesta correcta es la **${letraCorrecta}**.`)
+  if (introTrim) partes.push(introTrim)
+
+  // 2) La cita, desde el bloque íntegro O recompuesta desde ref/texto — como el render de boletín.
+  const lineasCita = data.cita?.bloque
+    ? data.cita.bloque.split('\n')
+    : [data.cita?.ref ? `**${data.cita.ref}**` : '', data.cita?.texto ? `"${data.cita.texto}"` : ''].filter(Boolean)
+  if (lineasCita.length) partes.push(lineasCita.map((l) => `> ${l}`.trimEnd()).join('\n'))
+
+  // 3) Un bloque por opción con su VEREDICTO, que lo decide la clave, no la letra.
   for (let pos = 0; pos < nOptions; pos++) {
     const original = order[pos]
-    const razon = data.options[String(original)] ?? ''
-    if (razon) partes.push(`**${indexToLetter(pos)})** ${razon}`)
+    const razon = (data.options[String(original)] ?? '').trim()
+    if (!razon) continue
+    const veredicto = original === correctOption ? 'CORRECTA' : 'INCORRECTA'
+    // Si la razón ya viene con el veredicto escrito (histórico), no se duplica.
+    const yaLoTrae = new RegExp(`^\\*{0,2}(CORRECTA|INCORRECTA)\\b`, 'i').test(razon)
+    partes.push(yaLoTrae ? `**${indexToLetter(pos)})** ${razon}` : `**${indexToLetter(pos)})** ${veredicto} — ${razon}`)
   }
+
   if (data.outro && data.outro.trim()) partes.push(data.outro.trim())
   return partes.join('\n\n')
 }

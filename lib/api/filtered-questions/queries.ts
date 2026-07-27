@@ -183,6 +183,9 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
       explanation: q.explanation,
       shuffle_safety: q.shuffleSafety,
       has_structured_explanation: estructurada !== null,
+      // Las OPCIONES también deciden: si una cita a otra por su letra, barajar la vuelve mentira
+      // aunque la explicación esté estructurada (T-201).
+      options: naturalOptions,
     })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)

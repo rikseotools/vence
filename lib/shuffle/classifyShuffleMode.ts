@@ -115,6 +115,47 @@ const EXPLANATION_LETTER_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * ¿Alguna OPCIÓN se refiere a otra por su letra? («La respuesta b) es correcta y además…»)
+ *
+ * Hueco encontrado por la sesión de impugnaciones (T-201, 27/07) y es de los que muerden: el
+ * clasificador vigilaba las letras en la EXPLICACIÓN pero no dentro del texto de las opciones, así
+ * que una pregunta cuya opción cita a otra podía marcarse `safe` y barajarse — y al reordenar, esa
+ * opción pasa a mentir. Medido: **33 activas así, 7 ya marcadas safe**, una desde mayo (o sea, el
+ * hueco es anterior a la Fase 2; lo que hace el backfill es irlas marcando de una en una).
+ *
+ * Se reutilizan los MISMOS patrones que la explicación: el problema es idéntico (una referencia
+ * que el barajado invalida), solo cambia dónde vive el texto.
+ */
+export function optionsReferenceOtherOptions(
+  opciones: Array<string | null | undefined>,
+): boolean {
+  return (opciones || []).some((o) => OPTION_CROSSREF_PATTERNS.some((r) => r.test(normalizaTexto(o))));
+}
+
+const normalizaTexto = (t?: string | null) =>
+  (t || '').replace(/[*_`~]+/g, '').replace(/\s+/g, ' ');
+
+/**
+ * Referencias de una OPCIÓN a OTRA opción. Criterio distinto —y más estricto— que el de las
+ * explicaciones, y con motivo: allí un falso negativo deja una explicación rota a la vista, así que
+ * los patrones son generosos; aquí ese mismo criterio produce ruido, porque una opción es un texto
+ * corto donde la «A» suele ser preposición («**A** temperatura corporal (36-37°C)») o una letra de
+ * apartado legal («la letra a) del artículo 5»), no una referencia a la opción A.
+ *
+ * Medido el 27/07 sobre 20.000 opciones `safe`: el detector de explicaciones marcaba 62 y la
+ * mayoría eran de esos dos tipos. Se exige que la letra vaya acompañada de la palabra que la
+ * convierte en referencia a otra opción.
+ */
+const OPTION_CROSSREF_PATTERNS: RegExp[] = [
+  // La letra tiene que ir con paréntesis O en MAYÚSCULA. Sin esta condición, «la respuesta **a**
+  // los estímulos» casaba —la «a» es preposición— y 103 preguntas se marcaron unsafe sin motivo.
+  /\b(?:respuesta|opci[óo]n|alternativa)\s+(?:[a-eA-E]\)|[A-E]\b)/,
+  /\b(?:respuestas|opciones)\s+[ABCDE]\s*(?:y|,|e)\s*[ABCDE]\b/i, // "las opciones A y C"
+  /\b(?:la|las)\s+(?:anterior|anteriores|primera|segunda|tercera|cuarta|[úu]ltima)s?\s+(?:respuesta|opci[óo]n|alternativa)/i,
+  /\b(?:todas|ninguna)\s+(?:las|de las)\s+(?:anteriores|respuestas|opciones)\b/i,
+];
+
+/**
  * Predicado de elegibilidad de la Fase 1: barajable ⇔ full ∧ explicación sin letras.
  * Se evalúa DINÁMICAMENTE (no se congela): cuando en la Fase 2 una explicación pase
  * a formato estructurado sin letras, la pregunta pasa a ser elegible sin más.
@@ -122,8 +163,12 @@ const EXPLANATION_LETTER_PATTERNS: RegExp[] = [
 export function isShuffleEligible(q: {
   shuffle_mode?: ShuffleMode | string | null;
   explanation?: string | null;
+  /** Texto de las opciones: si una cita a otra por su letra, barajar la vuelve mentira (T-201). */
+  options?: Array<string | null | undefined>;
 }): boolean {
-  return q.shuffle_mode === 'full' && !explanationReferencesLetters(q.explanation);
+  if (q.shuffle_mode !== 'full') return false;
+  if (q.options && optionsReferenceOtherOptions(q.options)) return false;
+  return !explanationReferencesLetters(q.explanation);
 }
 
 /**
@@ -139,6 +184,8 @@ export function isShuffleServeEligible(q: {
   shuffle_safety?: string | null;
   /** ¿Tiene explicación ESTRUCTURADA válida? (Fase 2 de T-080) */
   has_structured_explanation?: boolean;
+  /** Texto de las opciones (T-201). */
+  options?: Array<string | null | undefined>;
 }): boolean {
   // Con explicación estructurada la seguridad NO depende de la clasificación guardada: las
   // razones van keadas al índice de cada opción y la letra se pinta al renderizar, así que
@@ -146,6 +193,8 @@ export function isShuffleServeEligible(q: {
   // le exige `shuffle_safety='safe'`, que describe el texto plano que ya no se sirve.
   // Sigue exigiéndose `isShuffleEligible` (el modo: 'no_shuffle' o 'anchor_last' mandan igual,
   // porque hablan de las OPCIONES —"todas las anteriores"—, no de la explicación).
+  // Con estructura, la explicación deja de mandar… pero las OPCIONES siguen mandando: una opción
+  // que cita a otra por su letra rompe igual, tenga la explicación el formato que tenga (T-201).
   if (q.has_structured_explanation) return isShuffleEligible({ ...q, explanation: null });
   return q.shuffle_safety === 'safe' && isShuffleEligible(q);
 }

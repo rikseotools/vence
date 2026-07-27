@@ -409,3 +409,59 @@ describe('etiqueta descolgada: "- **A) Este equipo:** …" (regresión 27/07, 18
     expect(d!.options['1']).toBe('No procede.')
   })
 })
+
+describe('T-201 — los tres huecos que cazó la sesión de impugnaciones', () => {
+  const { parseImpugnacionFormatExplanation } = require('../../../lib/shuffle/structuredExplanation')
+  const { isShuffleEligible, optionsReferenceOtherOptions } = require('../../../lib/shuffle/classifyShuffleMode')
+
+  test('HALLAZGO 1: la cita escrita como {ref, texto} YA NO se pierde en el estilo impugnación', () => {
+    // El render solo leía `cita.bloque`, así que la forma DOCUMENTADA producía un texto sin cita
+    // — y uno de los casos venía justo de una impugnación por la cita mal transcrita.
+    const d: any = {
+      v: 1, estilo: 'impugnacion',
+      cita: { ref: 'Art. 4 CE', texto: 'La bandera de España está formada por tres franjas horizontales.' },
+      options: { '0': 'Es el texto del precepto.', '1': 'No es lo que dice.', '2': 'Tampoco.', '3': 'No.' },
+    }
+    const r = renderStructuredExplanation(d, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(r).toContain('> **Art. 4 CE**')
+    expect(r).toContain('tres franjas horizontales')
+  })
+
+  test('HALLAZGO 2: emite la apertura y los veredictos que el validador §5.1 exige', () => {
+    const d: any = {
+      v: 1, estilo: 'impugnacion',
+      options: { '0': 'Es el texto del precepto.', '1': 'No es lo que dice.', '2': 'Tampoco.', '3': 'No.' },
+    }
+    const r = renderStructuredExplanation(d, { correctOption: 1, optionOrder: null, nOptions: 4 })
+    expect(r).toMatch(/^La respuesta correcta es la \*\*B\*\*\./)
+    expect(r).toContain('**B)** CORRECTA —')
+    expect(r).toContain('**A)** INCORRECTA —')
+  })
+
+  test('HALLAZGO 2-bis: al barajar, apertura y veredictos siguen a la opción, no a la letra', () => {
+    const d: any = {
+      v: 1, estilo: 'impugnacion',
+      options: { '0': 'Uno.', '1': 'Dos.', '2': 'Tres.', '3': 'Cuatro.' },
+    }
+    // La correcta (índice 1) pasa a la posición 0 → debe ser la A y llevar CORRECTA.
+    const r = renderStructuredExplanation(d, { correctOption: 1, optionOrder: [1, 0, 2, 3], nOptions: 4 })
+    expect(r).toMatch(/^La respuesta correcta es la \*\*A\*\*\./)
+    expect(r).toContain('**A)** CORRECTA — Dos.')
+    expect(r).toContain('**B)** INCORRECTA — Uno.')
+  })
+
+  test('HALLAZGO 3: una OPCIÓN que cita a otra por su letra impide barajar', () => {
+    const opciones = ['Lo que dice el artículo.', 'La respuesta b) es correcta y además amplía el plazo.', 'Otra cosa.', 'Ninguna.']
+    expect(optionsReferenceOtherOptions(opciones)).toBe(true)
+    expect(isShuffleEligible({ shuffle_mode: 'full', explanation: 'Explicación limpia sin letras.', options: opciones })).toBe(false)
+    // Sin esa referencia cruzada, la misma pregunta sí es elegible.
+    expect(isShuffleEligible({ shuffle_mode: 'full', explanation: 'Explicación limpia sin letras.', options: ['Uno.', 'Dos.', 'Tres.', 'Cuatro.'] })).toBe(true)
+  })
+
+  test('el veredicto no se duplica si la razón ya lo trae escrito (histórico)', () => {
+    const d: any = { v: 1, estilo: 'impugnacion', options: { '0': 'CORRECTA — Sí.', '1': 'INCORRECTA — No.' } }
+    const r = renderStructuredExplanation(d, { correctOption: 0, optionOrder: null, nOptions: 2 })
+    expect(r).toContain('**A)** CORRECTA — Sí.')
+    expect(r).not.toContain('CORRECTA — CORRECTA')
+  })
+})

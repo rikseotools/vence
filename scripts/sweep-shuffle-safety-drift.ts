@@ -11,7 +11,7 @@
 //
 // Uso: DATABASE_URL=.. NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sweep-shuffle-safety-drift.ts [--json]
 import { Client } from 'pg'
-import { explanationReferencesLetters } from '@/lib/shuffle/classifyShuffleMode'
+import { explanationReferencesLetters, optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
 
 const JSON_OUT = process.argv.includes('--json')
 
@@ -30,7 +30,7 @@ async function main() {
   //    lo que marca el detector (0 FN del prefiltro).
   const safe = (
     await c.query(
-      `SELECT id, explanation FROM public.questions
+      `SELECT id, explanation, option_a, option_b, option_c, option_d, option_e FROM public.questions
         WHERE is_active = true AND shuffle_safety = 'safe' AND explanation IS NOT NULL
           -- Las transcritas a explanation_data quedan FUERA: son safe por construcción (las
           -- razones van keadas a cada opción y la letra la pone el render), y su texto legacy
@@ -38,12 +38,20 @@ async function main() {
           -- Sin esta guarda, la Fase 2 de T-080 metía 4.732 falsos positivos en el barrido
           -- nocturno: una bandeja que grita todas las noches se deja de mirar.
           AND explanation_data IS NULL
-          AND (explanation ~ '\\y[A-Ea-e]\\y'
+          AND (option_a ~* '[a-e]\\)' OR option_b ~* '[a-e]\\)' OR option_c ~* '[a-e]\\)' OR option_d ~* '[a-e]\\)'
+               OR explanation ~ '\\y[A-Ea-e]\\y'
                OR explanation ~ '\\y[0-9]\\y'
                OR explanation ~* '(primer|segund|tercer|cuart|quint|[uú]ltim|anterior|siguiente|opci|respuesta|apartado|letra|alternativa|afirmaci)')`,
     )
-  ).rows as { id: string; explanation: string }[]
-  const regressed = safe.filter((r) => explanationReferencesLetters(r.explanation))
+  ).rows as Array<{ id: string; explanation: string; option_a: string | null; option_b: string | null; option_c: string | null; option_d: string | null; option_e: string | null }>
+  // Dos ejes, no uno: la explicación Y las opciones. Una opción que cita a otra por su letra
+  // («La respuesta b) es correcta y además…») rompe igual al barajar, y el sweep no la miraba
+  // (T-201): 7 preguntas estaban marcadas `safe` así, una desde mayo.
+  const regressed = safe.filter(
+    (r: any) =>
+      explanationReferencesLetters(r.explanation) ||
+      optionsReferenceOtherOptions([r.option_a, r.option_b, r.option_c, r.option_d, r.option_e]),
+  )
 
   // 2) Integridad del trigger: safe cuyo hash guardado != hash del contenido actual.
   //    (El trigger debería haberlas puesto 'stale'. Si no, el trigger está roto.)

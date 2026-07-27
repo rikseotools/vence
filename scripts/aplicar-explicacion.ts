@@ -100,6 +100,16 @@ async function main() {
     process.exit(1)
   }
 
+  // 2-bis) La apertura la pone el RENDER, no quien escribe: si viniera en el `intro` con su letra,
+  //         esa letra quedaría clavada y al barajar diría una mentira — justo lo que este formato
+  //         viene a evitar. (En el histórico transcrito sí vive en el intro, y el render la respeta
+  //         para no duplicarla; pero eso es herencia, no el modo de escribir.)
+  if (/^la respuesta correcta es/i.test((estructura.intro ?? '').trim())) {
+    console.error('❌ El `intro` no debe empezar con "La respuesta correcta es …": esa frase la genera')
+    console.error('   el render con la letra que corresponda tras barajar. Quítala del intro.')
+    process.exit(1)
+  }
+
   // 3) El texto legacy se GENERA desde la estructura (render determinista, el mismo del serve).
   const texto = renderStructuredExplanation(estructura, {
     correctOption: q.correct_option,
