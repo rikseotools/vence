@@ -27,11 +27,13 @@ export interface NormalizedReferralCode {
  * Devuelve el código canónico contenido en `raw`, o null.
  *
  * - Acepta el código exacto (`sanitized: false`).
- * - Recupera el código cuando lleva basura pegada detrás (`sanitized: true`).
- * - **Rechaza lo ambiguo**: si tras los 12 primeros caracteres hex viene OTRO carácter hex,
- *   la cadena podría pertenecer a un código distinto (más largo, o mal copiado) y atribuir
- *   por prefijo asignaría la venta al embajador equivocado. Ante la duda, null: es preferible
- *   perder una atribución a pagarle a quien no es.
+ * - Recupera el código cuando lleva basura pegada detrás (`sanitized: true`), **incluso si esa
+ *   basura empieza por un carácter hexadecimal** (`…fe83entra aquí`: la `e` es hex). Esto es
+ *   seguro porque los códigos son de **longitud FIJA** (12): un código de 13+ no existe, así que
+ *   el prefijo de 12 es el ÚNICO candidato posible, y quien valida de verdad es la BD — si el
+ *   prefijo no es un código activo, `resolveActiveReferralCode` devuelve null igual.
+ *   (La primera versión de este fix rechazaba ese caso "por si acaso" y se dejaba fuera justo
+ *   el patrón más común al pegar un enlace seguido de texto: escribir sin espacio.)
  */
 export function normalizeReferralCode(raw: string | null | undefined): NormalizedReferralCode {
   if (!raw) return { code: null, sanitized: false }
@@ -48,9 +50,9 @@ export function normalizeReferralCode(raw: string | null | undefined): Normalize
   if (REFERRAL_CODE_RE.test(s)) return { code: s, sanitized: false }
 
   const hex = HEX_PREFIX_RE.exec(s)?.[0] ?? ''
+  // Sin 12 hex por delante no hay código que rescatar (y NO rebuscamos en medio del texto:
+  // el código va SIEMPRE al principio del path de /r/<code>).
   if (hex.length < REFERRAL_CODE_LENGTH) return { code: null, sanitized: false }
-  // Prefijo hex MÁS largo que un código → ambiguo, no adivinamos (ver doc arriba).
-  if (hex.length > REFERRAL_CODE_LENGTH) return { code: null, sanitized: false }
 
-  return { code: hex, sanitized: true }
+  return { code: hex.slice(0, REFERRAL_CODE_LENGTH), sanitized: true }
 }

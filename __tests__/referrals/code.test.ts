@@ -46,12 +46,24 @@ describe('normalizeReferralCode', () => {
     })
   })
 
-  describe('lo AMBIGUO se rechaza: mejor perder una atribución que pagarle a quien no es', () => {
-    it('devuelve null si tras los 12 hex viene OTRO carácter hex (podría ser otro código)', () => {
-      expect(normalizeReferralCode('7d5f7ed7fe83a')).toEqual({ code: null, sanitized: false })
-      expect(normalizeReferralCode('7d5f7ed7fe83abcdef')).toEqual({ code: null, sanitized: false })
+  describe('texto pegado que EMPIEZA por un carácter hex (el patrón más común al escribir sin espacio)', () => {
+    // Los códigos son de longitud FIJA (12): un código de 13+ no existe, así que el prefijo de 12
+    // es el único candidato posible y la BD hace de árbitro final. Rescatarlo es seguro.
+    it('recupera "…fe83entra aquí" (la e es hex y antes lo descartábamos)', () => {
+      expect(normalizeReferralCode('7d5f7ed7fe83entra aqui')).toEqual({ code: '7d5f7ed7fe83', sanitized: true })
     })
 
+    it('recupera aunque el texto pegado sea TODO hexadecimal', () => {
+      expect(normalizeReferralCode('7d5f7ed7fe83abcdef')).toEqual({ code: '7d5f7ed7fe83', sanitized: true })
+    })
+
+    it('un prefijo que no sea un código activo lo rechaza la BD, no esta función', () => {
+      // Devuelve candidato; resolveActiveReferralCode consulta y devuelve null si no existe.
+      expect(normalizeReferralCode('000000000000despues').code).toBe('000000000000')
+    })
+  })
+
+  describe('lo que sigue sin ser rescatable', () => {
     it('devuelve null si el código viene incompleto', () => {
       expect(normalizeReferralCode('7d5f7ed7fe8')).toEqual({ code: null, sanitized: false })
       expect(normalizeReferralCode('7d5f7ed7fe8...texto')).toEqual({ code: null, sanitized: false })
