@@ -58,6 +58,13 @@ describe('tipos con rúbrica propia', () => {
       .toBe('oep_decreto')
   })
 
+  test('REGRESIÓN: "ANEXO I: PROGRAMA DE MATERIAS" es temario aunque NO escriba "Tema N"', () => {
+    // Caso real (Granada, 15 plazas): el temario enumera «1.», «2.»… y tiene cero "Tema N".
+    // La guarda de estructura lo dejaba sin clasificar, así que no se clonaba.
+    const t = 'Ayuntamiento de Granada. Subdirección General de Recursos Humanos. Auxiliar de Administración General (15 plazas). Oferta de Empleo Público 2023, 2024 y 2025. ANEXO I: PROGRAMA DE MATERIAS para el turno libre. 1. La Constitución Española. 2. La Administración Local.'
+    expect(tipo(t)).toBe('temario')
+  })
+
   test('temario: por estructura (≥5 "Tema N"), no por la palabra', () => {
     const conTemas = 'Programa de materias. ' + Array.from({ length: 6 }, (_, i) => `Tema ${i + 1}. Contenido.`).join(' ')
     expect(tipo(conTemas)).toBe('temario')
