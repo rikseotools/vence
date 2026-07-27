@@ -129,6 +129,8 @@ console.log('Description:', topic.description);
 >
 > **Fallo real (08/07/2026 — re-scope Cantabria a Windows 11 / Office 365):** se actualizó title/epigrafe/description de los 7 temas de informática pero se olvidó `descripcion_corta`, que además quedó desalineada por el desplazamiento. El listado en producción mostraba "Windows 10 / Word 2016 / La Red Internet" mientras el resto ya era 365.
 >
+> **🔧 Desde el 27/07/2026 esta checklist NO se ejecuta a mano: la hornea `npm run verify:epigrafe -- apply`** (guarda pura en `lib/temario/epigrafeApply.js`, dry-run por defecto). Rechaza el plan si falta uno de los 4 campos, si el epígrafe no es el literal del boletín o si hay drift de versión — y al aplicar hace el record y la recaché. Un paso obligatorio que solo vive en un markdown se salta: este mismo fallo lo demuestra. Ver `docs/runbooks/verificar-epigrafes-scope.md` §"Reescribir los epígrafes".
+>
 > **Checklist obligatoria tras tocar un tema:**
 > 1. Actualizar los 4 campos (`title`, `epigrafe`, `description`, `descripcion_corta`).
 > 2. `POST /api/admin/revalidate-temario` (+ CloudFront si aplica, ver `crear-nueva-oposicion.md` §2b.2).

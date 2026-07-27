@@ -13,6 +13,12 @@
  *                                     parsea temario oficial, vuelca {tema, epigrafe_bd, oficial}
  *   record <position_type> <json>   → record_epigrafe_verification por tema
  *   status <position_type>          → estado efectivo (vista) de la oposición
+ *   apply  <position_type> <json> [--apply]
+ *          REESCRIBE los epígrafes al LITERAL oficial (los 4 campos de display a la
+ *          vez), registra la verificación como `literal` con su fuente y recachea.
+ *          DRY-RUN por defecto: sin --apply enseña el diff y no escribe nada.
+ *          Guarda pura en lib/temario/epigrafeApply.js — por esta puerta NO puede
+ *          entrar un epígrafe que no esté en el boletín.
  *
  * Salida dump: /tmp/verify_epigrafe_<position_type>.json
  */
@@ -23,6 +29,8 @@ const crypto = require('crypto')
 const { execFileSync } = require('child_process')
 const { canonicalizeBoletinUrl } = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'))
 const { esTemarioRefiningDoc } = require(path.join(__dirname, '..', 'lib', 'temario', 'temarioRefiningDoc.js'))
+const { validarPlanEpigrafe } = require(path.join(__dirname, '..', 'lib', 'temario', 'epigrafeApply.js'))
+const { recache } = require(path.join(__dirname, 'lib', 'temario-recache.cjs'))
 
 // ── .env.local ──
 try {
@@ -181,6 +189,98 @@ async function cmdRecord(pt, jsonPath) {
   } finally { await c.end() }
 }
 
+async function cmdApply(pt, jsonPath, opts) {
+  // plan: { "<tema>": { title, epigrafe, description, descripcion_corta,
+  //                     oficial?, oficial_manual?, source_url?, source_notes? } }
+  const plan = JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
+
+  // ── Textos OFICIALES contra los que se exige literalidad ───────────────────
+  // Preferencia 1: el `oficial` que parseó `dump` del boletín (nadie lo escribe a mano).
+  // Preferencia 2: `oficial` del plan, SOLO si viene marcado `oficial_manual` + `source_url`.
+  //   Los ~30% de boletines que no parsean necesitan una vía humana; que sea explícita y
+  //   quede anotada es la diferencia entre una excepción trazable y un agujero.
+  const oficiales = {}
+  const manuales = []
+  try {
+    const dump = JSON.parse(fs.readFileSync(dumpPath(pt), 'utf8'))
+    for (const t of (dump.temas || [])) if (t.oficial) oficiales[String(t.tema)] = t.oficial
+  } catch {}
+  for (const [tema, v] of Object.entries(plan)) {
+    if (oficiales[tema]) continue
+    if (v.oficial && v.oficial_manual && v.source_url) { oficiales[tema] = v.oficial; manuales.push(tema) }
+  }
+
+  const { errores, ok } = validarPlanEpigrafe(plan, oficiales)
+  if (errores.length) {
+    console.error(`\n❌ GUARDA: ${errores.length} problema(s) — NO se escribe nada:`)
+    for (const e of errores) console.error(`   T${e.tema} [${e.code}] ${e.detail}`)
+    process.exit(2)
+  }
+  if (manuales.length) {
+    console.log(`\n⚠️  literalidad acreditada a MANO en T${manuales.join(', T')} (boletín no parseable) — la fuente queda registrada en source_url`)
+  }
+
+  const c = db(); await c.connect()
+  try {
+    const conv = await currentConvocatoria(c, pt)
+    const programaHash = (await c.query(`SELECT programa_last_hash h FROM convocatorias WHERE id=$1`, [conv.id])).rows[0]?.h || null
+    const rows = (await c.query(
+      `SELECT id, topic_number, title, epigrafe, description, descripcion_corta
+       FROM topics WHERE position_type=$1 AND is_active AND topic_number = ANY($2)`,
+      [pt, ok.map(Number)])).rows
+    const byN = {}; rows.forEach((r) => byN[String(r.topic_number)] = r)
+
+    const faltan = ok.filter((t) => !byN[t])
+    if (faltan.length) { console.error(`❌ temas no encontrados en ${pt}: ${faltan.join(', ')}`); process.exit(2) }
+
+    console.log(`\n=== APPLY epígrafe ${pt} ${opts.apply ? '' : '(DRY-RUN)'} — ${ok.length} temas ===`)
+    let cambian = 0
+    for (const t of ok) {
+      const cur = byN[t], nue = plan[t]
+      const diffs = ['title', 'epigrafe', 'description', 'descripcion_corta'].filter((f) => (cur[f] || '') !== nue[f])
+      if (!diffs.length) { console.log(`  T${t}: sin cambios`); continue }
+      cambian++
+      console.log(`  T${t}: cambian ${diffs.join(', ')}`)
+      for (const f of diffs) {
+        console.log(`     ${f}\n       - ${String(cur[f] || '').slice(0, 160)}\n       + ${String(nue[f]).slice(0, 160)}`)
+      }
+    }
+    if (!opts.apply) { console.log(`\n(dry-run: nada escrito — repite con --apply)`); return }
+    if (!cambian) { console.log('\nnada que escribir'); return }
+
+    await c.query('BEGIN')
+    for (const t of ok) {
+      const nue = plan[t]
+      await c.query(
+        `UPDATE topics SET title=$2, epigrafe=$3, description=$4, descripcion_corta=$5 WHERE id=$1`,
+        [byN[t].id, nue.title, nue.epigrafe, nue.description, nue.descripcion_corta])
+    }
+    await c.query('COMMIT')
+    console.log(`✅ COMMIT topics (${ok.length} temas, los 4 campos)`)
+
+    // registrar la verificación: ahora el epígrafe ES el literal oficial
+    for (const t of ok) {
+      const v = plan[t]
+      await c.query(`SELECT record_epigrafe_verification($1,$2,$3,$4,$5::jsonb,$6)`,
+        [byN[t].id, 'literal', conv.id, programaHash,
+         JSON.stringify({ note: 'verify:epigrafe apply — reescrito al literal oficial', oficial_manual: !!v.oficial_manual }),
+         v.verified_by || 'epigrafe_apply'])
+      if (v.source_url || v.source_notes) {
+        await c.query(`UPDATE topic_epigrafe_verification SET source_url=$2, source_notes=$3 WHERE topic_id=$1`,
+          [byN[t].id, v.source_url || null, v.source_notes || null])
+      }
+    }
+    console.log(`✅ record: ${ok.length} temas → literal`)
+  } finally { await c.end() }
+
+  console.log('→ recache…')
+  const rc = await recache(pt, ok.map(Number), db)
+  console.log(`   MV:${rc.mv ? '✅' : '❌'} · rutas purgadas:${rc.purged}/${ok.length} · revalidate-temario:${rc.temario ? '✅' : '—'}`)
+
+  const c2 = db(); await c2.connect()
+  try { await printStatus(c2, pt) } finally { await c2.end() }
+}
+
 async function printStatus(c, pt) {
   const st = (await c.query(
     `SELECT effective_state, count(*) n FROM topic_epigrafe_verification_effective
@@ -200,8 +300,9 @@ async function main() {
   try {
     if (cmd === 'dump') await cmdDump(args[0])
     else if (cmd === 'record') await cmdRecord(args[0], args[1])
+    else if (cmd === 'apply') await cmdApply(args[0], args[1], { apply: args.includes('--apply') })
     else if (cmd === 'status') await cmdStatus(args[0])
-    else { console.log('Uso: node scripts/verify-epigrafe-literality.cjs <dump|record|status> <position_type> [json]'); process.exit(1) }
+    else { console.log('Uso: node scripts/verify-epigrafe-literality.cjs <dump|record|apply|status> <position_type> [json] [--apply]'); process.exit(1) }
   } catch (e) { console.error('❌', e.message); process.exit(1) }
 }
 main()

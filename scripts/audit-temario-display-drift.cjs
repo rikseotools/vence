@@ -27,84 +27,12 @@
  */
 require('dotenv').config({ path: '.env.local' });
 
-// --- Lógica PURA de detección (testeable sin BD) ---
-
-const APPS = [
-  { key: 'windows', re: /\bwindows\b/i },
-  { key: 'word', re: /\bword\b/i },
-  { key: 'excel', re: /\bexcel\b/i },
-  { key: 'outlook', re: /\boutlook\b/i },
-  { key: 'teams', re: /\bteams\b/i },
-  { key: 'access', re: /\baccess\b/i },
-  { key: 'powerpoint', re: /\bpower\s?point\b/i },
-  { key: 'internet', re: /\b(?:red\s+)?internet\b/i },
-];
-
-function firstApp(text) {
-  if (!text) return null;
-  let best = null;
-  let pos = Infinity;
-  for (const a of APPS) {
-    const m = a.re.exec(text);
-    if (m && m.index < pos) { pos = m.index; best = a.key; }
-  }
-  return best;
-}
-function winVers(text) {
-  const s = new Set();
-  const re = /windows\s*(10|11)/gi;
-  let m;
-  while ((m = re.exec(text || '')) !== null) s.add(m[1]);
-  return s;
-}
-function officeVers(text) {
-  const s = new Set();
-  const re = /\b(2016|2019|2021|365)\b/g;
-  let m;
-  while ((m = re.exec(text || '')) !== null) s.add(m[1]);
-  return s;
-}
-
-/** Devuelve un array de hallazgos {type, detail} para un tema. PURA. */
-function detectDrift({ title, descripcion_corta, epigrafe, description }) {
-  const out = [];
-  const tApp = firstApp(title);
-  if (!tApp) return out; // no es tema de informática por título → no aplica
-
-  // 1) APP_DRIFT: la descripcion_corta encabeza con otra app distinta a la del título.
-  const dcApp = firstApp(descripcion_corta);
-  if (dcApp && dcApp !== tApp) {
-    out.push({ type: 'APP_DRIFT', detail: `título es '${tApp}' pero descripcion_corta encabeza con '${dcApp}'` });
-  }
-
-  const fields = [
-    ['descripcion_corta', descripcion_corta],
-    ['epigrafe', epigrafe],
-    ['description', description],
-  ];
-
-  // 2) WIN_VER_DRIFT: alguna versión de Windows del campo que NO esté entre las del título.
-  //    (un título "Windows 10/11" cubre ambas → no es drift que un campo diga una de ellas.)
-  const tWin = winVers(title);
-  if (tWin.size) {
-    for (const [f, txt] of fields) {
-      for (const v of winVers(txt)) {
-        if (!tWin.has(v)) { out.push({ type: 'WIN_VER_DRIFT', detail: `título Windows [${[...tWin]}] pero ${f} dice Windows ${v}` }); break; }
-      }
-    }
-  }
-
-  // 3) OFFICE_VER_DRIFT: alguna versión Office del campo que NO esté entre las del título.
-  const tOff = officeVers(title);
-  if (tOff.size && ['word', 'excel', 'outlook', 'access', 'powerpoint'].includes(tApp)) {
-    for (const [f, txt] of fields) {
-      for (const v of officeVers(txt)) {
-        if (!tOff.has(v)) { out.push({ type: 'OFFICE_VER_DRIFT', detail: `título ${tApp} [${[...tOff]}] pero ${f} dice ${v}` }); break; }
-      }
-    }
-  }
-  return out;
-}
+// --- Lógica PURA de detección ---
+// Vive en `lib/temario/displayDrift.js` para que el ESCRITOR que puede introducir el
+// drift (`verify:epigrafe apply`) use la MISMA definición que este detector. Ver la
+// cabecera de ese módulo: dos definiciones del mismo concepto = regresión por la
+// puerta que no vigila nadie.
+const { detectDrift } = require('../lib/temario/displayDrift.js');
 
 // --- Self-test (demuestra que caza el fallo real) ---
 function selftest() {

@@ -85,6 +85,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'por `dedupeKey` (día:sesión:modelo): re-ingerir un día lo actualiza, no lo duplica. Medido ' +
       'el 26/07: 49.456 respuestas y 20.081M tokens en 30 días, casi todo caché leída.',
   },
+  // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
+  verify_epigrafe_apply: {
+    titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',
+    ruta: 'scripts/verify-epigrafe-literality.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'npm run verify:epigrafe -- apply <pt> <plan.json> [--apply]. DRY-RUN por defecto: enseña el ' +
+      'diff campo a campo y no escribe. Guarda PURA en lib/temario/epigrafeApply.js (15 tests) con ' +
+      'tres invariantes que antes vivían en un markdown y se incumplieron: (1) los CUATRO campos de ' +
+      'display se escriben juntos (title, epigrafe, description, descripcion_corta) — el fallo del ' +
+      '08/07/2026 en Cantabria fue olvidar `descripcion_corta`, que además quedó desplazada y solo se ' +
+      'veía en la página LIVE; (2) el epígrafe propuesto DEBE coincidir con el literal oficial, así ' +
+      'que por esta puerta no puede entrar temario inventado —los boletines que no parsean se ' +
+      'acreditan con `oficial_manual` + `source_url`, explícito y trazable—; (3) sin drift de ' +
+      'versión/app, con la MISMA definición que el detector nocturno (lib/temario/displayDrift.js). ' +
+      'Al aplicar: transacción + record_epigrafe_verification a `literal` con su fuente + recache ' +
+      'compartida (scripts/lib/temario-recache.cjs). Caso raíz 27/07/2026: los 7 temas de informática ' +
+      'de Cantabria tenían la versión CORRECTA pero escrita a ojo, y por eso les faltaban materias ' +
+      'del programa vigente (navegadores Chrome/Edge, Recortes, Snap Layouts).',
+  },
   // ── programa_url (el enlace del botón oficial de la landing) ───────────────────────────────
   repuntar_enlace_convocatoria: {
     titulo: 'Cambiar el enlace del botón "Ver convocatoria en {diario}" de una landing (programa_url)',

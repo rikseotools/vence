@@ -126,3 +126,34 @@ describe('epigrafeSegment — localiza el trozo del epígrafe de una ley', () =>
     expect(seg).not.toContain('3/2007')
   })
 })
+
+describe('ley nueva en un tema (operación añadida el 27/07/2026)', () => {
+  // Caso raíz: Cantabria T20. El programa vigente (Orden PRE/12/2026) pide los
+  // navegadores Chrome y Edge DENTRO del tema del Explorador, y la oposición servía
+  // cero preguntas de esa materia porque la reorganización de julio soltó la ley.
+  // Añadir una ley a un tema NO tiene versión mecánica: siempre puerta de juicio.
+  const leyNueva = {
+    ley: 'La Red Internet', leyNueva: true, quitar: [], anadir: ['3', '4'],
+    epigrafe: 'Explorador de Archivos en Windows 11… Navegadores Google Chrome y Microsoft Edge: favoritos, historial, búsqueda, certificados personales.',
+    lawsInTema: 1, emptiesLaw: false, impacto: 0, ganancia: 144, deltaValid: true,
+  }
+
+  test('va SIEMPRE a puerta de juicio, aunque el impacto de salida sea 0', () => {
+    const r = classifyChange(leyNueva, {})
+    expect(r.category).toBe('judgment_gate')
+    expect(r.flags).toContain('ley_nueva')
+  })
+
+  test('sigue en la puerta aunque el umbral de impacto sea altísimo', () => {
+    // el impacto mide preguntas que SALEN; una ley nueva no saca ninguna, así que
+    // sin la regla propia se colaría como auto_safe por la puerta de atrás
+    const r = classifyChange(leyNueva, { impactThreshold: 100000 })
+    expect(r.category).toBe('judgment_gate')
+  })
+
+  test('un cambio normal de la misma forma NO se marca como ley nueva', () => {
+    const normal = { ...leyNueva, leyNueva: false, epigrafe: 'Título I, artículos 1 a 9.' }
+    const r = classifyChange(normal, {})
+    expect(r.flags).not.toContain('ley_nueva')
+  })
+})

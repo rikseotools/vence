@@ -29,6 +29,7 @@ const DEFAULT_IMPACT_THRESHOLD = 150
 
 const GATE_FLAGS = new Set([
   'delta_invalido',
+  'ley_nueva',
   'reglamento_desarrolla',
   'epigrafe_tematico',
   'epigrafe_no_localizable',
@@ -93,6 +94,14 @@ function classifyChange(ch, opts) {
   const flags = []
 
   if (!hasChange(ch)) return { category: 'auto_safe', flags: ['sin_cambio'] }
+
+  // LEY NUEVA en el tema (no es recortar/ampliar dentro de una ley ya escopada, es
+  // decir "este tema TAMBIÉN va de esta otra norma"). SIEMPRE puerta de juicio: no
+  // existe versión mecánica de esa decisión, y es la operación con la que se tapan
+  // los huecos que deja una reorganización de temario (caso Cantabria 27/07/2026:
+  // el programa vigente pide los navegadores dentro del tema del Explorador y la
+  // oposición servía CERO preguntas de esa materia).
+  if (ch.leyNueva) flags.push('ley_nueva')
 
   // dato sospechoso: los arts a quitar no estaban, o los a añadir ya estaban
   if (ch.deltaValid === false) flags.push('delta_invalido')

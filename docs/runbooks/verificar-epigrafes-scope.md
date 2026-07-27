@@ -208,6 +208,41 @@ Cuando `dump` da `temario_parseado=0` (los portales GVA/DOGV son SPA de JS y Web
 - Guarda SIEMPRE la URL del PDF **con su numeración** (`2026_8075`) en `source_url`: es el puntero durable para la próxima revisión — no re-buscar.
 - Es Paso 1: hasta que las N temas no queden `verified_literal`, **NO** se cierra el Paso 2 (scope).
 
+### ⚠️ El programa puede estar MODIFICADO por una Orden POSTERIOR (punto ciego, 27/07/2026)
+
+**El `programa_url` de la convocatoria apunta a UN documento y se queda ahí para siempre.** Si el boletín publica después una Orden que **modifica** ese programa, el `dump` sigue comparando contra el texto viejo y **todo cuadra en verde estando mal**. Ningún detector lo ve: no es un enlace roto (la URL vive y es del boletín correcto), no es un ciclo cerrado, y el hash no cambia porque el documento original no ha cambiado — es que ya no es el vigente.
+
+**Caso raíz `auxiliar_administrativo_cantabria`:** el `programa_url` apunta a la **Orden PRE/76/2024** (BOC 171, 4/09/2024), y el programa exigible de hoy es esa Orden **modificada por la Orden PRE/12/2026, de 10 de febrero** (BOC 30, 13/02/2026), que sustituye el T16 de la parte general y **la parte específica entera** (Windows 10/Office 2016 → Windows 11/Microsoft 365/Teams/Seguridad). Quien lo detectó no fue el sistema: fue **una usuaria** (07/07/2026, *"el temario de la parte específica ha cambiado, ¿se va a actualizar?"*). Y una sesión posterior, comparando contra el `programa_url`, estuvo a punto de **revertir** el temario correcto a la versión vieja «por fidelidad al boletín».
+
+**Comprobación obligatoria antes de declarar drift contra el programa (30 segundos, y evita un destrozo):**
+1. **La convocatoria manda, no el `programa_url`.** Lee la norma de la convocatoria que declara el programa exigible (*"El programa de materias exigible… es el que figura en la Orden X"*) — ahí está el documento bueno, con su número.
+2. **Busca modificaciones de ESA Orden** en el boletín (`"modifica la Orden <X>"` + el nombre del cuerpo). Las modificaciones de temario suelen publicarse justo antes de una convocatoria nueva.
+3. **Señal de alarma que NO se puede ignorar:** si la parte general casa verbatim y **solo** una sección entera (típicamente ofimática) diverge, casi nunca es que nos lo hayamos inventado — es que **esa sección se modificó** y el `programa_url` apunta a la versión anterior.
+4. Al confirmarlo, **repunta el `programa_url`** a la Orden vigente con `repuntar-enlace-convocatoria.cjs` (escritor registrado; resetea `programa_last_hash`), o el `dump` seguirá comparando contra el documento superado para siempre.
+
+### Reescribir los epígrafes: `verify:epigrafe apply` (NO a mano)
+
+Cuando la comparación da drift REAL y hay que alinear la BD al literal oficial, **no se editan los `topics` a mano**:
+
+```bash
+npm run verify:epigrafe -- apply <position_type> <plan.json>            # DRY-RUN: diff campo a campo
+npm run verify:epigrafe -- apply <position_type> <plan.json> --apply    # escribe
+```
+
+`plan.json` = `{ "<tema>": { title, epigrafe, description, descripcion_corta, oficial?, oficial_manual?, source_url, source_notes } }`. La guarda pura (`lib/temario/epigrafeApply.js`, 15 tests) **rechaza el plan entero** —sin escribir nada— si:
+
+- falta cualquiera de los **4 campos de display** (`title`, `epigrafe`, `description`, `descripcion_corta`). Es la checklist de abajo convertida en invariante: estaba escrita en el manual y **aun así se incumplió** el 08/07/2026;
+- el `epigrafe` propuesto **no coincide con el literal oficial** → por esta puerta no entra temario inventado. Para los ~30% de boletines que no parsean, la literalidad se acredita a mano con `oficial` + `oficial_manual: true` + `source_url`, y el comando lo **anuncia en voz alta** (excepción trazable, no agujero);
+- hay **drift de versión/app** entre los campos, con la misma definición que usa el detector nocturno (`lib/temario/displayDrift.js` — un solo concepto, dos usuarios: el detector a posteriori y el escritor a priori).
+
+Al aplicar: transacción → `record_epigrafe_verification` a `literal` con su fuente → recache compartida (`scripts/lib/temario-recache.cjs`: MV + purga de rutas + revalidate-temario). **Ojo:** reescribir el epígrafe dispara el trigger que deja el **scope en `stale`** → toca re-verificar el Paso 2 de esos temas (sin cambio de contenido, pero hay que cerrarlo).
+
+**Por qué la literalidad no es cosmética (caso Cantabria 27/07/2026):** los 7 temas de informática tenían la versión CORRECTA pero escritos "a ojo". La paráfrasis sonaba igual de bien… y se había comido *"Navegadores Google Chrome y Microsoft Edge: favoritos, historial, búsqueda, certificados personales"*, *"Herramienta Recortes"* y *"Snap Layouts"*. Medido: la oposición servía **CERO preguntas de navegadores** pese a que el programa vigente las exige. Una paráfrasis fiel en el tono es indistinguible de una infiel en el alcance — por eso se exige verbatim.
+
+### Añadir una ley a un tema: `verify:scope` con `ley_nueva`
+
+El pipeline de scope sabía recortar y ampliar **dentro de una ley que el tema ya tenía**. Desde el 27/07 también admite **añadir una ley nueva** al tema (el movimiento con el que se tapan los huecos que deja una reorganización de temario, y el que hace falta cuando una norma sustituye a otra): basta con proponerla en el `veredicto` con sus `anadir`. El pipeline comprueba que la ley existe, que **sus artículos existen y están activos** (si no, estaría creando artículos fantasma en el scope) y mide **cuántas preguntas pasan a servirse**. Se clasifica **SIEMPRE como puerta de juicio** (`ley_nueva` → exige `--include-gate`): decir "este tema también va de esta norma" no tiene versión mecánica, y el gate de impacto no lo veía porque mide preguntas que SALEN, y una ley nueva no saca ninguna.
+
 **Visibilidad (columna "Epígrafe" en `/admin/contenido`, desde 13/07):** por oposición, badge `X/Y` con color (🟢 todos literal · 🟡 drift/stale · 🔵 faltan por verificar · ⚪ `—` sin verificar) y, al pinchar, **modal tema a tema** (epígrafe BD + estado + hallazgo + fecha). Es el mapa de "qué falta": las oposiciones sin `dump`/`record` salen `—`. Helper puro `lib/api/admin-contenido/epigrafeBadge.ts`; agregación en `getContenidoOverview` (CTE `epi`); drill-down `getEpigrafeDetail` + `/api/admin/contenido/epigrafe/[slug]`. Cobertura al lanzar: 3/115 oposiciones. Detalle: memoria `project_epigrafe_verificacion_columna_admin`.
 
 ## Gotchas

@@ -354,7 +354,40 @@ async function enrichChange(c, pt, ch) {
     `SELECT l.id law_id, l.name ley_nombre, ts.id scope_id, ts.article_numbers arts
      FROM topic_scope ts JOIN laws l ON l.id=ts.law_id WHERE ts.topic_id=$1 AND l.short_name=$2`,
     [tRow.id, ch.ley])).rows[0]
-  if (!sRow) return { ...ch, error: `ley "${ch.ley}" no está en el scope del tema ${ch.tema}` }
+  if (!sRow) {
+    // La ley NO está todavía en el scope del tema. Dos casos muy distintos:
+    //  · el plan la propone para AÑADIRLA (`anadir` con artículos) → operación legítima
+    //    de "este tema también va de esta norma"; se enriquece como ley nueva y la
+    //    clasificación la manda a puerta de juicio (nunca automática).
+    //  · el plan pretende QUITAR de una ley que no está → dato sospechoso, error.
+    if (ch.quitar.length || !ch.anadir.length) {
+      return { ...ch, error: `ley "${ch.ley}" no está en el scope del tema ${ch.tema}` }
+    }
+    const lRow = (await c.query(`SELECT id, name FROM laws WHERE short_name=$1`, [ch.ley])).rows
+    if (lRow.length !== 1) {
+      return { ...ch, error: lRow.length ? `short_name "${ch.ley}" ambiguo (${lRow.length} leyes)` : `ley "${ch.ley}" no existe` }
+    }
+    const lawId = lRow[0].id
+    // Los artículos propuestos tienen que EXISTIR y estar activos en esa ley, o
+    // estaríamos creando artículos fantasma en el scope (kind `scope_phantom_article`).
+    const existentes = (await c.query(
+      `SELECT article_number FROM articles WHERE law_id=$1 AND is_active AND article_number = ANY($2)`,
+      [lawId, ch.anadir])).rows.map((r) => String(r.article_number))
+    const fantasma = ch.anadir.filter((a) => !existentes.includes(String(a)))
+    if (fantasma.length) {
+      return { ...ch, error: `artículos inexistentes/inactivos en "${ch.ley}": ${fantasma.join(', ')}` }
+    }
+    const gana = Number((await c.query(
+      `SELECT count(DISTINCT q.id) n FROM questions q JOIN articles a ON a.id=q.primary_article_id
+       WHERE a.law_id=$1 AND a.is_active AND a.article_number = ANY($2) AND q.is_active`,
+      [lawId, ch.anadir])).rows[0].n)
+    return {
+      ...ch, topic_id: tRow.id, epigrafe: tRow.epigrafe, lawsInTema: Number(tRow.laws),
+      leyNombre: lRow[0].name, scope_id: null, law_id: lawId, leyNueva: true,
+      currentCount: 0, quitarPresent: 0, anadirAbsent: ch.anadir.length, deltaValid: true,
+      emptiesLaw: false, impacto: 0, ganancia: gana, _current: [],
+    }
+  }
   const cur = (sRow.arts || []).map(String)
   const curSet = new Set(cur)
   const quitarPresent = ch.quitar.filter((a) => curSet.has(a)).length
@@ -431,43 +464,7 @@ async function cmdPlan(pt, jsonPath, threshold) {
   } finally { await c.end() }
 }
 
-async function recache(pt, temas) {
-  const results = { mv: false, purged: 0, temario: false }
-  const c = db(); await c.connect()
-  try {
-    await c.query('REFRESH MATERIALIZED VIEW CONCURRENTLY topic_law_question_summary')
-    results.mv = true
-  } catch (e) {
-    try { await c.query('REFRESH MATERIALIZED VIEW topic_law_question_summary'); results.mv = true }
-    catch (e2) { console.error('   ⚠️ MV refresh falló:', e2.message) }
-  } finally { await c.end() }
-  const slug = pt.replace(/_/g, '-')
-  const cron = process.env.CRON_SECRET
-  if (cron && typeof fetch === 'function') {
-    for (const t of temas) {
-      try {
-        const r = await fetch('https://www.vence.es/api/purge-cache', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-cron-secret': cron },
-          body: JSON.stringify({ path: `/${slug}/temario/tema-${t}` }),
-        })
-        if (r.ok) results.purged++
-      } catch {}
-    }
-  }
-  // revalidate-temario (tag amplio) — best effort con token admin
-  try {
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      const { createClient } = require('@supabase/supabase-js')
-      const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-      const { data } = await admin.auth.admin.generateLink({ type: 'magiclink', email: 'manueltrader@gmail.com' })
-      const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-      const { data: v } = await anon.auth.verifyOtp({ token_hash: data.properties.hashed_token, type: 'magiclink' })
-      const r = await fetch('https://www.vence.es/api/admin/revalidate-temario', { method: 'POST', headers: { Authorization: 'Bearer ' + v.session.access_token } })
-      results.temario = r.ok
-    }
-  } catch (e) { console.error('   ⚠️ revalidate-temario falló (no crítico):', e.message) }
-  return results
-}
+const { recache } = require('./lib/temario-recache.cjs')
 
 async function cmdApply(pt, jsonPath, opts) {
   const plan = JSON.parse(fs.readFileSync(jsonPath || planPath(pt), 'utf8'))
@@ -483,13 +480,22 @@ async function cmdApply(pt, jsonPath, opts) {
     return sortArtNums(next)
   }
   console.log(`\n=== APPLY scope ${pt} ${opts.dryRun ? '(DRY-RUN)' : ''} — ${toApply.length} cambios${opts.includeGate ? ' (incluye PUERTA)' : ' (solo auto_safe)'} ===`)
-  toApply.forEach((ch) => console.log(`  T${ch.tema} [${ch.ley}] ${ch._current.length} → ${compute(ch).length} arts (q${ch.quitar.length}/a${ch.anadir.length}, ${ch.impacto} preg)`))
+  toApply.forEach((ch) => console.log(`  T${ch.tema} [${ch.ley}]${ch.leyNueva ? ' 🆕 LEY NUEVA' : ''} ${ch._current.length} → ${compute(ch).length} arts (q${ch.quitar.length}/a${ch.anadir.length}, ${ch.leyNueva ? `+${ch.ganancia} preg pasan a servirse` : `${ch.impacto} preg`})`))
   if (opts.dryRun) { console.log('\n(dry-run: nada escrito)'); return }
 
   const c = db(); await c.connect()
   try {
     await c.query('BEGIN')
-    for (const ch of toApply) await c.query('UPDATE topic_scope SET article_numbers=$1 WHERE id=$2', [compute(ch), ch.scope_id])
+    for (const ch of toApply) {
+      if (ch.scope_id) {
+        await c.query('UPDATE topic_scope SET article_numbers=$1 WHERE id=$2', [compute(ch), ch.scope_id])
+      } else {
+        // ley nueva en el tema → fila nueva de scope (misma transacción, mismo escritor:
+        // `article_numbers` sigue teniendo UNA sola puerta, la de este pipeline)
+        await c.query('INSERT INTO topic_scope (topic_id, law_id, article_numbers) VALUES ($1,$2,$3)',
+          [ch.topic_id, ch.law_id, compute(ch)])
+      }
+    }
     await c.query('COMMIT')
     console.log('✅ COMMIT topic_scope')
   } catch (e) { await c.query('ROLLBACK').catch(() => {}); await c.end(); throw e }
@@ -497,7 +503,7 @@ async function cmdApply(pt, jsonPath, opts) {
 
   const temas = [...new Set(toApply.map((ch) => ch.tema))]
   console.log('→ recache…')
-  const rc = await recache(pt, temas)
+  const rc = await recache(pt, temas, db)
   console.log(`   MV:${rc.mv ? '✅' : '❌'} · rutas purgadas:${rc.purged}/${temas.length} · revalidate-temario:${rc.temario ? '✅' : '—'}`)
 
   // record: cada tema tocado con su veredicto (correct si todos sus cambios se aplicaron; issues si queda puerta pendiente)
