@@ -15,6 +15,28 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-177] ✅ [CERRADA 27/07 — MEDIDO: el flood está muerto; el dato que alarmaba era residuo histórico] `auth_token_minted`: 3,23 M eventos en 30 días — ¿seguía vivo el flood del caso Natalia?
+- **Qué:** al medir el volumen de `observable_events` por tipo aparece `auth_token_minted` con **3.234.336 eventos en 30 días (~107.000/día)**, el segundo tipo más numeroso tras `request_completed` y el 30% de la tabla.
+- **Por qué mirarlo:** hay precedente exacto — el **flood de acuñación de token del 15/07 (caso Natalia)**, causado por un bug de caché del poll del cliente, con su regla `RULE_AUTH_TOKEN_MINT_FLOOD`. **No he verificado si estos 107k/día son el nivel normal o el flood que nunca se cerró del todo.**
+- **Cómo:** repartir por usuario y por hora (`SELECT user_id, count(*) … GROUP BY 1 ORDER BY 2 DESC`) — si unos pocos usuarios concentran el grueso, es el bug; si está repartido, es el caudal normal. Cruzar con si la regla de flood ha disparado. **No tocar nada sin ese reparto delante.**
+- **Impacto colateral:** ese volumen es también peso de escritura en el primario y tamaño de tabla — la misma contención que hace fallar a `traffic_drop` ([T-173]).
+- **Origen:** medición de volumen en la sesión del 27/07.
+- **✅ RESPUESTA: NO sigue vivo, y el 3,23 M engañaba.** La cifra que abrió esta ficha es el **rastro histórico** del flood de julio, no el ritmo actual. Serie diaria medida:
+
+| Periodo | Tokens/día | Por usuario/día |
+|---|---|---|
+| **3-10 jul (FLOOD)** | hasta **494.448** | **1.425** |
+| 11-15 jul (arreglándose) | 40.000-130.000 | 100-480 |
+| **16 jul → hoy (normal)** | **3.000-8.000** | **8-25** |
+
+  Hoy (27/07): **3.719 tokens · 434 usuarios · 8,6 por usuario**. El flood se arregló y los datos lo confirman sin lugar a duda.
+- **Los 3,23 M se purgan solos:** son filas del 3-10 de julio y la retención de 30 días (`observability-cleanup` + `telemetry-retention`) las borra entre el **2 y el 9 de agosto**. **NO hay que hacer nada.** Merece la pena recordarlo como método: un conteo a 30 días sobre una tabla con retención de 30 días mezcla regímenes y puede hacer sonar una alarma por algo ya resuelto — mirar SIEMPRE la serie, no el agregado.
+- **🔎 PERO queda un cabo real, y el guardarraíl es CIEGO a él por construcción.** Medido hoy: **1 cliente de 523 acuña 10-19 tokens/hora las 24 horas del día**, madrugada incluida (312 tokens = **6,1%** del total diario, contra una mediana de **6/día** y un p95 de 33). Eso no es una persona estudiando: es una pestaña en bucle — el rabo del bug del caso Natalia, que a escala se arregló pero en algún cliente sigue.
+  - **`RULE_AUTH_TOKEN_MINT_FLOOD` no lo caza y no puede:** exige **≥20 usuarios Y >5 tokens/usuario en 10 min**, es decir, detecta el flood MASIVO. Un solo cliente en bucle nunca cruza ese umbral (su máximo medido es 9 tokens en un minuto, aislado).
+  - **Qué NO hacer:** añadir otra regla de alerta a lo tonto. Hoy mismo (T-160) se ha medido que el ruido de alertas tapa lo importante. El criterio barato y sin ruido sería «un `user_id` acuñando en ≥20 horas distintas del día» — hoy daría **exactamente 1**, así que si algún día se cablea, nace calibrado. Pero el arreglo de fondo es de CLIENTE (la pestaña que reintenta), no otra alarma.
+  - **Coste real hoy: despreciable** (312 tokens). Se registra por lo que SIGNIFICA —el bug no está del todo muerto— no por lo que cuesta.
+
+
 ### [T-174] ✅ [CERRADA 27/07 — typecheck VERDE y, de paso, 4 copias del mismo parser unificadas] El typecheck del backend estaba ROTO en `main` desde el 26/07
 - **Qué:** `npx tsc --noEmit -p backend/tsconfig.json` falla con 2 errores: `backend/scripts/sim-radar-por-fuente.ts:28` y `sim-reconciliacion-convocatoria.ts:28` importan `parseNotasJson` de `../src/detect-notas-convocatoria/notas-extract`, y **esa función se borró** en `56bcb7e5d` (eliminación del pre-masticado con LLM).
 - **Por qué no ha saltado nada:** el gate del deploy de backend corre `npm test` (jest), no `tsc`; y el job `Typecheck` de CI usa el `tsconfig.json` de la RAÍZ, que **excluye `backend`**. O sea: nadie lo compila en CI. No afecta a producción — ninguno de esos scripts corre en runtime.
@@ -199,13 +221,6 @@
 - **Hoy es ruido, pero es una bomba de relojería:** hoy fallan porque no existen esos comandos. El día que un comentario cite entre backticks algo que SÍ sea ejecutable, el deploy lo ejecuta. Y ya hay dos incidentes de esta misma familia: el 11/07 unas comillas dobles truncaron el JS **en silencio**, y el 27/07 un `$8` abortó el deploy de todas las sesiones.
 - **Cómo:** sustituir los acentos graves de los comentarios por comillas simples o nada. **El guardarraíl ya cubre las otras dos formas** (`__tests__/guardrails/deploy-scripts.test.ts` prohíbe comillas dobles y parámetros posicionales en ese bloque): añadir la tercera aserción es una línea, pero **hay que limpiar los backticks existentes primero** o el test nace en rojo.
 - **Origen:** sesión del 27/07, al arreglar el `$8` que abortaba el deploy.
-
-### [T-177] 🟡 [ABIERTO 27/07] `auth_token_minted`: 3,23 M eventos en 30 días — ¿sigue vivo el flood del caso Natalia?
-- **Qué:** al medir el volumen de `observable_events` por tipo aparece `auth_token_minted` con **3.234.336 eventos en 30 días (~107.000/día)**, el segundo tipo más numeroso tras `request_completed` y el 30% de la tabla.
-- **Por qué mirarlo:** hay precedente exacto — el **flood de acuñación de token del 15/07 (caso Natalia)**, causado por un bug de caché del poll del cliente, con su regla `RULE_AUTH_TOKEN_MINT_FLOOD`. **No he verificado si estos 107k/día son el nivel normal o el flood que nunca se cerró del todo.**
-- **Cómo:** repartir por usuario y por hora (`SELECT user_id, count(*) … GROUP BY 1 ORDER BY 2 DESC`) — si unos pocos usuarios concentran el grueso, es el bug; si está repartido, es el caudal normal. Cruzar con si la regla de flood ha disparado. **No tocar nada sin ese reparto delante.**
-- **Impacto colateral:** ese volumen es también peso de escritura en el primario y tamaño de tabla — la misma contención que hace fallar a `traffic_drop` ([T-173]).
-- **Origen:** medición de volumen en la sesión del 27/07.
 
 ### [T-178] 🟢 [ABIERTO 27/07] Dos cabos de higiene: 44 errores de prettier en `alert-rules.ts` y la prioridad de T-089 divergente
 - **Prettier:** `backend/src/alerts/alert-rules.ts` arrastra **44 errores de formato PREVIOS** a la sesión del 27/07 (recuento idéntico antes y después de añadir dos reglas nuevas, comprobado con `git stash`). 43 son auto-corregibles con `--fix`. No rompen CI (el job `Lint` de la raíz no cubre `backend/`), pero ensucian cualquier `eslint` que se corra ahí.
