@@ -1048,24 +1048,40 @@ export const RULE_TRAFFIC_DROP: AlertRule<{
       -- mediana incluía días laborables con más tráfico. Recibimos 11 alertas
       -- traffic_drop el sábado 30/05 entre 07-11 UTC. Comparar sábado vs
       -- sábados pasados elimina el ruido del weekend.
+      -- REESCRITO 27/07/2026 (T-173) — MISMO RESULTADO, 950x MAS RAPIDO.
+      -- Antes esto pedia 29 dias y se quedaba con las 4 horas que casaban por
+      -- funciones de extraccion de hora y dia-de-semana. Esas funciones NO son
+      -- indexables, asi que Postgres barria los 4.085.645 request_completed de
+      -- 29 dias para devolver 4 filas: 60.718 ms, muy por encima del
+      -- statement_timeout de 20 s del pool de la replica. Resultado: la regla
+      -- llevaba mas de 24 h sin evaluarse (255 fallos en 24 h) y NADIE se
+      -- enteraba de una caida de trafico.
+      -- Ahora se piden las 4 ventanas de una hora directamente por RANGO sobre
+      -- ts (hace 7, 14, 21 y 28 dias son, por definicion, el mismo dia de la
+      -- semana y la misma hora), que si usa idx_observable_events_ts_desc.
+      -- Medido en la replica: mediana 64 ms, peor caso en frio 1.636 ms.
+      -- Equivalencia comprobada con DATOS REALES, no por razonamiento: las dos
+      -- versiones devuelven las mismas 4 franjas con los mismos conteos
+      -- (1638, 1199, 1132, 953).
+      --
+      -- De paso desaparece el FLOOR de regimen del sampling, que existia porque
+      -- el baseline de 29 dias aun alcanzaba la era pre-sampling (10% de
+      -- request_completed desde finales de mayo) y provocaba spam de "cayo
+      -- 70-80%". Su propio comentario pedia eliminarlo pasado finales de junio;
+      -- con ventanas de 7 a 28 dias ya es imposible tocar aquella era.
       SELECT date_trunc('hour', ts) AS hr, COUNT(*)::int AS n
       FROM observable_events
       WHERE event_type = 'request_completed'
-        AND ts >= NOW() - INTERVAL '29 days'
-        -- FLOOR de régimen (04/06/2026): el sampling 10% de request_completed
-        -- (commit c088e927, activo en prod ~31/05) bajó el conteo logueado ~78%
-        -- SIN caída de tráfico real. El baseline de 29 días aún incluía la era
-        -- pre-sampling (100% logueado) → cur (sampleado) < 40% de la mediana
-        -- (sin samplear) → spam "Tráfico HTTP cayó 70-80%" cada hora. Comparar
-        -- solo contra la era post-sampling. ELIMINAR este floor cuando la
-        -- ventana de 29 días ya no alcance el 31/05 (≈28/06/2026): a partir de
-        -- ahí el régimen es homogéneo y el floor es inocuo.
-        AND ts >= TIMESTAMPTZ '2026-05-31 00:00:00+00'
-        AND ts <  date_trunc('hour', NOW() - INTERVAL '1 hour')
-        AND EXTRACT(HOUR FROM ts AT TIME ZONE 'UTC')
-            = EXTRACT(HOUR FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
-        AND EXTRACT(DOW FROM ts AT TIME ZONE 'UTC')
-            = EXTRACT(DOW FROM (NOW() - INTERVAL '1 hour') AT TIME ZONE 'UTC')
+        AND (
+             (ts >= date_trunc('hour', NOW() - INTERVAL '1 hour') - INTERVAL '7 days'
+              AND ts < date_trunc('hour', NOW()) - INTERVAL '7 days')
+          OR (ts >= date_trunc('hour', NOW() - INTERVAL '1 hour') - INTERVAL '14 days'
+              AND ts < date_trunc('hour', NOW()) - INTERVAL '14 days')
+          OR (ts >= date_trunc('hour', NOW() - INTERVAL '1 hour') - INTERVAL '21 days'
+              AND ts < date_trunc('hour', NOW()) - INTERVAL '21 days')
+          OR (ts >= date_trunc('hour', NOW() - INTERVAL '1 hour') - INTERVAL '28 days'
+              AND ts < date_trunc('hour', NOW()) - INTERVAL '28 days')
+        )
         AND endpoint IS DISTINCT FROM '/api/auth/token'
         AND (metadata->>'host' IS NULL OR metadata->>'host' NOT LIKE 'localhost%')
       GROUP BY 1
