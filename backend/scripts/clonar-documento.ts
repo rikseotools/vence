@@ -23,7 +23,9 @@
  *   CSS que la Lambda espera antes de devolver (el dato de una SPA aparece tras `networkidle0`). El
  *   resultado pasa por el MISMO `esParedDelPortal()`: un menú renderizado se rechaza igual que uno
  *   plano. NOTA medida: la Lambda NO cura bloqueos por IP — `sede.gva.es` da ERR_CONNECTION_TIMED_OUT
- *   (bloquea AWS); `euskadi.eus` y `sede.madrid.es` sí renderizan.
+ *   (bloquea AWS) y **`sede.madrid.es` tampoco: da `net::ERR_ABORTED`** (medido 27/07/2026 con
+ *   `policia-municipal-madrid`; la nota anterior decía que sí renderizaba y era falsa).
+ *   `euskadi.eus` sí renderiza. Para las sedes que capan AWS hace falta salir por otra IP.
  *
  * Idempotente por (convocatoria_id, url, content_hash): re-clonar un documento sin cambios no
  * duplica; si el boletín lo ENMIENDA, el hash cambia → fila nueva, que es justo lo que queremos para

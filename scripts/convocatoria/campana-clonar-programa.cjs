@@ -31,6 +31,22 @@
 //   node scripts/convocatoria/campana-clonar-programa.cjs --limite 5 # lote corto
 //   node scripts/convocatoria/campana-clonar-programa.cjs --slug X   # una sola
 //   node scripts/convocatoria/campana-clonar-programa.cjs --apply
+//   node scripts/convocatoria/campana-clonar-programa.cjs --headless --apply   # WAF/SPA
+//
+// ## `--headless`: para lo que el fetch plano no puede traer
+//
+// Algunas fuentes no devuelven el documento a una petición normal: el DOGC contesta con su muro
+// de cookies (4.188 caracteres de aviso legal) y `sede.madrid.es` con un 403. Con `--headless` el
+// documento lo renderiza la Lambda `vence-backend-headless-fetcher` (la misma que ya usa el
+// clonador canónico), y el resultado pasa por los MISMOS filtros — un menú renderizado se rechaza
+// igual que uno plano. Medido el 27/07: el DOGC pasó de 4.188 caracteres de cookies a **188.456
+// del documento real** (Resolución PRE/212/2026, proceso 878, verificado con 4 anclas).
+//
+// ⚠️ GOTCHA de credenciales: las claves de `.env.local` (`vence-storage-writer`) **NO pueden
+// invocar la Lambda** ("not authorized to perform: lambda:InvokeFunction"). Hay que correrlo con
+// el perfil del proyecto y sin esas claves en el entorno:
+//   env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY AWS_PROFILE=vence AWS_REGION=eu-west-2 \
+//     node scripts/convocatoria/campana-clonar-programa.cjs --headless --apply
 //
 // Relacionado: `docs/runbooks/provenance-convocatorias.md` §2.2, T-147, T-142.
 
@@ -47,7 +63,22 @@ const APPLY = argv.includes('--apply')
 const valor = (f) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null }
 const LIMITE = parseInt(valor('--limite') || '0', 10)
 const SLUG = valor('--slug')
+const HEADLESS = argv.includes('--headless')
 const RAIZ = path.join(__dirname, '..', '..')
+
+/**
+ * El mensaje ÚTIL de un fallo del clonador. La última línea de stdout no vale: dotenvx escribe
+ * su propaganda ("injected env (0) … tip: …") después de todo, y el error real quedaba tapado.
+ */
+function errorUtil(e) {
+  const salida = `${e.stdout || ''}\n${e.stderr || ''}\n${e.message || ''}`
+  const linea = salida.split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/injected env|dotenvx|^tip:/i.test(l))
+    .reverse()
+    .find((l) => /✗|ERR|error|no autorizado|not authorized|403|timeout/i.test(l))
+  return linea || (e.message || '').slice(0, 200)
+}
 
 async function main() {
   if (!process.env.DATABASE_URL) { console.error('❌ DATABASE_URL no configurado (RDS)'); process.exit(2) }
@@ -83,8 +114,34 @@ async function main() {
 
       const v = await verificar(p.programa_url, [])
       if (!v.ok) {
-        console.log(`⏭️  ${v.motivo}`)
-        resumen.saltadas.push({ slug: p.slug, motivo: v.motivo })
+        // Con --headless, lo que el fetch plano no puede traer NO es motivo para saltar: es justo
+        // el caso que la Lambda resuelve (muro de cookies, 403, SPA). Se delega en ella, que
+        // aplica los mismos filtros sobre el HTML renderizado.
+        const recuperable = /muro de cookies|HTTP 403|chars de texto|no responde/.test(v.motivo)
+        if (!(HEADLESS && recuperable)) {
+          console.log(`⏭️  ${v.motivo}${recuperable ? ' — reintenta con --headless' : ''}`)
+          resumen.saltadas.push({ slug: p.slug, motivo: v.motivo })
+          continue
+        }
+        console.log(`🖥️  ${v.motivo} → lo intenta la Lambda headless`)
+        // El tipo lo decidirá el clonador canónico sobre el HTML renderizado; aquí no hay texto
+        // que clasificar, así que se clona como `convocatoria` (el contrato de `programa_url`) y
+        // se deja anotado para revisarlo en la bandeja.
+        if (APPLY) {
+          try {
+            execFileSync('npx', ['tsx', 'scripts/clonar-documento.ts',
+              `--slug=${p.slug}`, `--url=${p.programa_url}`, '--tipo=convocatoria',
+              `--titulo=documento oficial de ${p.nombre} (renderizado, revisar tipo)`,
+              ...(boletin ? [`--boletin=${boletin}`] : []), '--headless'],
+              { cwd: path.join(RAIZ, 'backend'), env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' }, encoding: 'utf8', timeout: 180000 })
+            resumen.clonadas++
+            console.log('   ✅ clonado por la Lambda')
+          } catch (e) {
+            const msg = errorUtil(e)
+            console.log(`   ❌ ${msg.slice(0, 120)}`)
+            resumen.fallidas.push({ slug: p.slug, error: msg.slice(0, 200) })
+          }
+        }
         continue
       }
       // El boletín entero NO se clona: respaldaría cualquier cifra (ver `pareceBoletinCompleto`).
@@ -131,7 +188,7 @@ async function main() {
         resumen.clonadas++
         console.log('   ✅ clonado y curado')
       } catch (e) {
-        const msg = String(e.stdout || e.message).split('\n').filter(Boolean).pop() || e.message
+        const msg = errorUtil(e)
         console.log(`   ❌ ${msg.slice(0, 120)}`)
         resumen.fallidas.push({ slug: p.slug, error: msg.slice(0, 200) })
       }
