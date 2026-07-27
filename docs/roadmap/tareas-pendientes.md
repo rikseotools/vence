@@ -249,17 +249,11 @@
 - **Cómo cerrarlo:** clonar el documento que prueba cada cifra (`backend/scripts/clonar-documento.ts`) y **verificar que el hallazgo desaparece** con `npm run audit:convocatorias` — no dar por bueno el ✅ del clonador sin mirar (ver T-189). Si la cifra resulta no estar sostenida por ningún boletín, **NO inventarla**: `plazas_prevision=true` con motivo, como se hizo con Alcalá de Henares el 27/07.
 - **Origen:** sesión del 27/07 que llevó `audit:convocatorias` al badge. De los 4 hallazgos: `policia-municipal-madrid` resuelto de raíz (re-clonado, el BOE prueba el 561 en su ficha de análisis) y `alcala-henares` cerrado como previsión (su OEP oficial más reciente es la de 2024 con 11 plazas, ya convocadas; no existe OEP 2025/2026 publicada, y el 29 no lo sostiene ningún boletín).
 
-### [T-189] 🟡 [ABIERTO 27/07] La defensa anti-«pared del portal» del clonador no ve las paredes GRANDES
-- **Qué:** `esParedDelPortal()` (`backend/scripts/clonar-documento.ts`) protege el corpus de clonar captchas y menús como si fueran documentos. **No cazó** el chrome de `sede.madrid.es` el 27/07, y se coló en el corpus un documento de 11 KB que era solo navegación (se borró a mano).
-- **Por qué falla, medido:** la regla del chrome exige `texto.length < 4000` — esta pared son **11.181 caracteres** — y además se exime si el texto menciona `resolución|decreto|orden|convoca|plazas`, palabras que el listado **«Lo más visto»** del portal contiene («Auxiliar Administrativo/a del Ay…», «Policía del Cuerpo de Policía Mu…»). Las dos condiciones fallan a la vez.
-- **Por qué importa:** un corpus con menús dentro **miente con pinta de prueba** — es el mismo daño que el captcha del BORM que motivó la función, y alimenta justo al detector `plazas_afirmadas_sin_documento` con falsos «sí hay documento».
-- **Cómo (con cuidado, hay riesgo de falso positivo):** una señal candidata es ≥2 marcadores de navegación de sede (`acceso al módulo`, `lo más visto`, `saltar al contenido`, `mapa web`) **sin** ningún marcador de cuerpo dispositivo (`acuerda`, `resuelve`, `dispone`, `primero.`, `artículo`, `base primera`, `anexo`). **No cablearla sin muestras:** hace falta guardar el HTML de la pared de `sede.madrid.es` y contrastar contra documentos REALES ya clonados (el BOE de policia-municipal-madrid tiene «se han publicado las bases», el BOCM de Alcalá tiene «acuerda»). Un endurecimiento mal calibrado tira documentos buenos, que es peor.
-- **Origen:** sesión del 27/07, al intentar clonar el BOAM 10.017 para T-191.
-
 ### [T-190] 🟡 [ABIERTO 27/07] Barrido: documentos del corpus congelados con una extracción pobre
 - **Qué:** hasta el 27/07, re-clonar un documento **nunca mejoraba su texto** (`ensure_convocatoria_documento` enriquece «sin pisar») y el clonador imprimía `✅ clonado y CURADO` igualmente. Ya está arreglado (dice la verdad y reemplaza cuando la mejora es evidente), pero **los documentos clonados ANTES siguen congelados con la extracción que tuvieran**.
 - **Daño conocido:** `policia-municipal-madrid` tenía 1.862 caracteres (el cuerpo del anuncio) en vez de 3.056 (la página con la **ficha de análisis del BOE**, que es donde el BOE pone los totales por turno: «Turno libre: … 561 plazas»). Eso hizo que el 17/07 se firmara en `convocatoria_verification` un «561 PROBADO … clonada la versión que sí trae la ficha» apoyado en un documento que **ni siquiera existe** en la tabla. Diez días en verde sin que nadie lo viera.
 - **Cómo:** re-clonar con el clonador ya arreglado (`--refrescar-texto` cuando haga falta) los documentos con más papeletas: **los del BOE clonados desde `/pdfs` o con texto corto**, porque el PDF del BOE NO lleva la ficha de análisis y escribe las cifras solo en letra. Priorizar por impacto: convocatorias `is_current` de oposiciones activas. Medir antes/después con `npm run audit:convocatorias`.
+- **DIMENSIONADO (27/07), es pequeño:** de **725** documentos en convocatorias vigentes de oposiciones activas, **120** tienen menos de 3.000 caracteres, y solo **30** vienen de `boe.es/…/pdfs/` — de los cuales **6** son cortos. Esos 6 son el objetivo real: el PDF del BOE no lleva la ficha de análisis y escribe las cifras solo en letra, que es exactamente como se perdió el 561.
 - **Origen:** sesión del 27/07 (causa raíz destapada por el detector `plazas_afirmadas_sin_documento`).
 
 ### [T-184] 🔴 [ABIERTO 27/07] El RGPD que servimos NO es el texto oficial: 80 de 99 artículos divergen y faltan 40.517 caracteres
@@ -2918,6 +2912,26 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** T-112, sesión `sesion-26jul-d` (26/07), midiendo el universo de `article_no_coverage`: los arts de la LPRL salían huérfanos **por duplicado**, uno por cada fila de ley.
 
 ## Hechas
+
+### [T-189] ✅ [CERRADA 27/07] La defensa anti-«pared del portal» del clonador no ve las paredes GRANDES
+- **Qué:** `esParedDelPortal()` (`backend/scripts/clonar-documento.ts`) protege el corpus de clonar captchas y menús como si fueran documentos. **No cazó** el chrome de `sede.madrid.es` el 27/07, y se coló en el corpus un documento de 11 KB que era solo navegación (se borró a mano).
+- **Por qué falla, medido:** la regla del chrome exige `texto.length < 4000` — esta pared son **11.181 caracteres** — y además se exime si el texto menciona `resolución|decreto|orden|convoca|plazas`, palabras que el listado **«Lo más visto»** del portal contiene («Auxiliar Administrativo/a del Ay…», «Policía del Cuerpo de Policía Mu…»). Las dos condiciones fallan a la vez.
+- **Por qué importa:** un corpus con menús dentro **miente con pinta de prueba** — es el mismo daño que el captcha del BORM que motivó la función, y alimenta justo al detector `plazas_afirmadas_sin_documento` con falsos «sí hay documento».
+- **Cómo (con cuidado, hay riesgo de falso positivo):** una señal candidata es ≥2 marcadores de navegación de sede (`acceso al módulo`, `lo más visto`, `saltar al contenido`, `mapa web`) **sin** ningún marcador de cuerpo dispositivo (`acuerda`, `resuelve`, `dispone`, `primero.`, `artículo`, `base primera`, `anexo`). **No cablearla sin muestras:** hace falta guardar el HTML de la pared de `sede.madrid.es` y contrastar contra documentos REALES ya clonados (el BOE de policia-municipal-madrid tiene «se han publicado las bases», el BOCM de Alcalá tiene «acuerda»). Un endurecimiento mal calibrado tira documentos buenos, que es peor.
+- **Origen:** sesión del 27/07, al intentar clonar el BOAM 10.017 para T-191.
+- **✅ RESUELTO (27/07) — y la hipótesis de esta ficha era FALSA.** Aquí se proponía marcar como pared lo que NO hablara como una norma. Medido contra muestras reales, eso habría **blindado la pared para siempre**: el chrome de una sede LISTA trámites, así que dice «acuerda», «artículo» y «anexo I» *más* veces que el propio BOE.
+
+  | muestra | longitud | marcadores de navegación | marcadores «dispositivos» |
+  |---|---|---|---|
+  | pared de `sede.madrid.es` | 11.306 | **3** | 4 |
+  | BOE real (las 561 plazas) | 3.063 | **0** | 1 |
+  | BOA real (Aragón) | 39.708 | **0** | 5 |
+  | BOCM real (Alcalá) | 6.381 | **0** | 2 |
+
+  La única señal que discrimina es la navegación de sede, **por sí sola**: ≥2 marcadores ⇒ pared, sin límite de tamaño y sin exención por vocabulario normativo (las dos guardas que dejaron pasar los 11 KB). Margen amplio: 3 en la pared, 0 en los tres documentos buenos. Se mira el texto ENTERO, no los primeros 4.000 — la navegación se reparte por cabecera, lateral y pie.
+- **De paso, el motivo por el que nadie lo vio:** la función estaba exportada «para testearla» desde el 16/07 y **el jest del backend nunca la miró** (`rootDir: src`, y ella vivía en `scripts/`). Movida a `backend/src/detect-notas-convocatoria/pared-portal.ts` con **9 tests** que fijan las dos direcciones (cazar la pared / no tirar el documento bueno); el script la importa.
+- **Verificado end-to-end contra la pared REAL:** reintentado el clonado que la coló, ahora responde `✗ esto NO es el documento, es chrome de sede electrónica (3 marcadores de navegación…)` y no toca el corpus.
+
 
 ### [T-151] ✅ [CERRADA 27/07] El detector de incisos anulados por el TC tiene **0 hallazgos en TODA la BD**: no se ha corrido bank-wide
 - **Qué:** `content_health_findings` tiene **cero** filas de kind `article_annulled_unmarked`. No es que no haya incisos anulados sin marcar: es que el auditor (`scripts/audit-annulled-provisions.cjs`) se ejecuta **por ley, a demanda**, y en [T-132] se pasó sobre 4 leyes-código. El resto del banco **nunca se ha auditado**, y el badge a cero se lee como «no hay nada», que es el falso verde exacto que el detector venía a evitar.
