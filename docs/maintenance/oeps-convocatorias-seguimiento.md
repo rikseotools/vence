@@ -233,19 +233,48 @@ La tabla de arriba se hizo a mano con `curl` la primera vez. Ahora hay tres piez
 
 Y el badge lo vigila solo: kind **`seguimiento_fuente_ciega`** (frase-gatillo *"revisa las fuentes ciegas de seguimiento"*), en el gemelo CLI y en el `@Cron` del backend.
 
-> ⚠️ **Hueco conocido: una fuente puede estar LLENA de texto y aun así no vigilar nada (27/07).** El
-> núcleo decide por **volumen** (menos de ~600 caracteres de texto servido = ciega), lo cual caza SPAs,
-> shells, WAFs y páginas en desuso — pero **no** el caso de una página real, rica y estable que
-> simplemente **no contiene el hecho que queremos ver**. Medido en
+> ⚠️ **Una fuente puede estar LLENA de texto y aun así no vigilar nada.** El núcleo decidía solo por
+> **volumen** (menos de ~600 caracteres de texto servido = ciega), lo cual caza SPAs, shells, WAFs y
+> páginas en desuso — pero **no** el caso de una página real, rica y estable que simplemente **no
+> contiene el hecho que queremos ver**. Caso raíz en
 > `agrupacion-profesional-servicios-publicos-carm`: su `seguimiento_url` apuntaba a la **ficha del
 > cuerpo** de la CARM (`IDCONTENIDO=2340&CODIGO_CUERPO=ASP00`), 14.872 caracteres de titulación
 > requerida y menús, que **jamás lista una convocatoria**. Hash estable, HTTP 200, panel verde y
 > `sim-fuentes-ciegas` dándola por sana durante meses; señales OEP de esa oposición: **0**. La ficha
-> buena es el **buscador de convocatorias por cuerpo** (`IDCONTENIDO=62006…BUSCAR_POR=CUERPO_OFERTA`,
-> 294.922 caracteres), al que se repuntó entre el 20 y el 27/07. **Al auditar una fuente no te quedes
-> en "responde y tiene texto": abre el `content_preview` y comprueba que ahí SALDRÍA una convocatoria
-> nueva.** Un preview que empieza por "FICHA DEL CUERPO/OPCIÓN" o "TITULACIÓN REQUERIDA" es un
-> catálogo, no un tablón. Mientras el detector siga midiendo volumen, este caso lo tienes que ver tú.
+> buena es el **buscador de convocatorias por cuerpo** (`IDCONTENIDO=62006…BUSCAR_POR=CUERPO_OFERTA`),
+> al que se repuntó entre el 20 y el 27/07.
+>
+> **CERRADO EN PARTE el 27/07 (T-165), tras revisar las 123 activas una a una.** El clasificador mira
+> ahora también la **CABECERA** (los primeros 220 caracteres = el titular), y ahí **sin límite de
+> longitud**. Un tablón de verdad no se TITULA "Página de error" ni "Servizo de autenticación", así
+> que el marcador en el titular es concluyente por rico que sea el resto; en el CUERPO no se evalúa
+> (un tablón legítimo puede enlazar "certificado electrónico" en su pie). Cuatro niveles nuevos:
+>
+> | nivel | qué es | caso real |
+> |---|---|---|
+> | `pagina_no_encontrada` | 404 servido con HTTP 200 | `tcae-extremadura` (81 KB de menús tras "No se encontró la página"), 71 fichas de SES Extremadura y Rioja Salud |
+> | `pagina_error` | pantalla de error del portal | `subalterno-parlamento-andalucia` |
+> | `muro_login` | el contenido vive tras autenticación | `tcae-galicia` / `celador-galicia` (991 KB de formulario de acceso en `fides.sergas.es`) |
+> | `ficha_de_catalogo` | ficha del cuerpo/convocatoria en vez del listado | el caso raíz de la CARM, y `auxiliar-administrativo-carm`, que seguía igual |
+>
+> Simulación bank-wide antes de encender: **+73 hallazgos, 0 falsos positivos**, y de ellos **1 sola
+> oposición ACTIVA** → el badge sube en 1, no se convierte en bandeja.
+>
+> **LO QUE SIGUE SIENDO TUYO (no lo ve el detector):** la página que *parece* un tablón pero es de
+> otro alcance — la **portada** del organismo (`celador-sas` y `tcae-sas` vigilaban la home del SAS),
+> el **índice general** del área de personal (`administrativa-universidad-de-murcia` → `um.es/web/ptgas`),
+> o la **ficha de un proceso vivo** (correcta hoy, ciega para la convocatoria siguiente: así están
+> `administrativo-seguridad-social` y los `detalleEmpleo` del PAG — no las toques mientras el proceso
+> avance). Ahí no hay marcador en el titular y hay que abrir el `content_preview` y preguntarse: **¿aquí
+> APARECERÍA una convocatoria nueva?** Tells de tablón: lista de procesos con fechas y estados
+> ("Plazo de solicitudes finalizado").
+>
+> **Y hay un hueco que no se arregla repuntando:** portales donde TODO el empleo público está detrás
+> de login y no existe listado público — Junta de Extremadura (el buscador de empleo devuelve los
+> resultados por **POST con token `p_auth` de sesión**: ni `curl` ni el headless llegan) y el Portal
+> del Candidato del SES. Esas fuentes ya no fingen estar sanas: salen como `muro_login` /
+> `pagina_no_encontrada` y se quedan visibles hasta que haya adapter propio o se acepte que la única
+> vigilancia posible es la capa de **boletín** (DOE).
 
 **Repuntar, a partir de ahora:**
 

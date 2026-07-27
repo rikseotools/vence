@@ -342,3 +342,106 @@ describe('decidirFetcherType — qué se automatiza y qué NO', () => {
     expect(decidirFetcherType('aporta', 'headless').cambiar).toBe(false)
   })
 })
+
+// ── T-165: la página RICA que no es una página de convocatorias ────────────────
+//
+// El punto ciego que cierran estos tests: `PATRONES_CUERPO_FALSO` solo se evalúa por debajo de
+// UMBRAL_DUDOSO, así que una pantalla de error / muro de login que además sirve el menú entero del
+// portal (decenas de KB) pasaba por VIGILABLE y el panel se veía verde. Los textos de abajo son
+// literales de `content_preview` en RDS el 27/07/2026 — con la codificación rota tal cual llega.
+describe('clasificarVigilancia — cabecera que delata una página que no vigila nada (T-165)', () => {
+  // Cola larga de menús del portal: lo que hace que estas páginas superen todos los umbrales.
+  const menus =
+    ' Inicio Centro de Salud Solicitar cita previa Recursos Problemas de Salud Temas de Interés ' +
+    'Accesibilidad Mapa web Contacto Sugerencias Buscador Ciudadanía Profesionales Servicios Ayuda '
+  const rico = (cabecera) => cabecera + menus.repeat(30)
+
+  it('caza el 404 servido con 200 (tcae-extremadura, 81 KB de menús detrás)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('Extremadura Salud - Error No se encontr la p gina [oposiciones] solicitada X'),
+    })
+    expect(d.vigilable).toBe(false)
+    expect(d.nivel).toBe('pagina_no_encontrada')
+    expect(d.severidad).toBe('error')
+  })
+
+  it('caza la pantalla de error del portal (subalterno-parlamento-andalucia)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('Parlamento de Andaluc�a P�gina de error Facebook Twitter Youtube'),
+    })
+    expect(d.nivel).toBe('pagina_error')
+    expect(d.severidad).toBe('error')
+  })
+
+  it('caza el muro de login aunque sirva 991 KB (tcae-galicia / celador-galicia, fides.sergas.es)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('Sergas - Servizo de autenticaci n ou identificaci n de usuarios ACCEDE Galego'),
+    })
+    expect(d.nivel).toBe('muro_login')
+    expect(d.severidad).toBe('error')
+  })
+
+  it('caza la FICHA del catálogo en vez del tablón (caso raíz APSP CARM y aux-admin-carm)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('Ficha de Oposici n OFERTA PARTICIPAR GU A PARA OPOSITAR FICHA DE LA CONVOCATORIA'),
+    })
+    expect(d.nivel).toBe('ficha_de_catalogo')
+    expect(d.severidad).toBe('error')
+  })
+
+  it('caza la ficha del CUERPO (el preview que dejó a APSP CARM sin vigilancia)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('FICHA DEL CUERPO/OPCI N TITULACI N REQUERIDA: Sin exigencia de titulaci n'),
+    })
+    expect(d.nivel).toBe('ficha_de_catalogo')
+  })
+
+  // ── Lo que NO debe marcar (la precisión vive aquí) ──────────────────────────
+  it('NO marca el tablón bueno de CARM, que comparte menús con la ficha', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico(
+        'Convocatorias de Procesos Selectivos OFERTA PARTICIPAR GU A PARA OPOSITAR LISTAS DE ' +
+          'ESPERA NORMATIVA aqu : Convocatorias de Procesos Selectivos Buscar por Cuerpo y Oferta',
+      ),
+    })
+    expect(d.vigilable).toBe(true)
+  })
+
+  it('NO marca un tablón real porque en su CUERPO aparezca "error" o el acceso con certificado', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto:
+        'Convocatorias de empleo p blico Ayuntamiento de C rdoba ' +
+        relleno(3000) +
+        ' Si se produce un error en la solicitud, acceda con certificado electr nico o Cl@ve ' +
+        'para iniciar sesi n en la sede',
+    })
+    expect(d.vigilable).toBe(true)
+  })
+
+  it('NO marca la sede que ofrece "Autenticación / Identificarse" en su cabecera (Valladolid)', () => {
+    const d = clasificarVigilancia({
+      httpStatus: 200,
+      texto: rico('Empleo P blico | Sede Electr nica Autenticaci n Identificarse Tr mites'),
+    })
+    expect(d.vigilable).toBe(true)
+  })
+
+  it('no cambia el veredicto de las bandas por longitud que ya existían', () => {
+    expect(clasificarVigilancia({ httpStatus: 200, texto: relleno(100) }).nivel).toBe('shell_sin_contenido')
+    expect(clasificarVigilancia({ httpStatus: 200, texto: relleno(900) }).nivel).toBe('contenido_dudoso')
+    expect(clasificarVigilancia({ httpStatus: 200, texto: relleno(5000) }).vigilable).toBe(true)
+  })
+
+  it('el fetch fallido sigue mandando sobre la cabecera (no duplica lo ya visible)', () => {
+    const d = clasificarVigilancia({ httpStatus: 404, texto: rico('404 - Ayto Salamanca Inicio') })
+    expect(d.nivel).toBe('fetch_error')
+    expect(d.severidad).toBe('warn')
+  })
+})

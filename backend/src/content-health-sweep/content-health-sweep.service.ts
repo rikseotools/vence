@@ -479,6 +479,42 @@ const VIG_PATRONES: Array<{ nivel: string; re: RegExp; motivo: string }> = [
   },
 ];
 
+// Patrones de CABECERA (T-165): se evalúan sobre el titular y SIN límite de longitud, porque el
+// fallo que atacan es la página de error/login RICA (sirve el portal entero, supera los umbrales
+// y pasaba por sana). Mirror de PATRONES_CABECERA_FALSA — el porqué y los casos medidos están en
+// lib/convocatoria/seguimientoVigilable.cjs. MANTENER EN SYNC (lo vigila
+// __tests__/health/seguimientoVigilableMirror.parity.test.ts, que compara COMPORTAMIENTO).
+const VIG_UMBRAL_CABECERA = 220;
+const VIG_PATRONES_CABECERA: Array<{ nivel: string; re: RegExp; motivo: string }> = [
+  {
+    nivel: 'pagina_no_encontrada',
+    re: /noseencontr.?lap.?gina|p.?ginanoencontrada|contenidonoencontrado|pagenotfound|error404|404error/,
+    motivo:
+      'el TITULAR de la página dice que el contenido no existe: es un 404 servido con 200, ' +
+      'nunca listará una convocatoria (y el hash queda congelado para siempre)',
+  },
+  {
+    nivel: 'pagina_error',
+    re: /p.?ginadeerror|paginadeerror|errorpage/,
+    motivo:
+      'el TITULAR de la página es una pantalla de error del portal, no el tablón de convocatorias',
+  },
+  {
+    nivel: 'muro_login',
+    re: /servizodeautenticaci|serviciodeautenticaci|identificaci.?ndeusuarios|iniciarsesi.?ncondnie|accesoalportalpuedeacceder/,
+    motivo:
+      'el TITULAR es un muro de autenticación: el contenido vive detrás del login y el cron ' +
+      'solo ve la pantalla de acceso — nunca verá una convocatoria nueva',
+  },
+  {
+    nivel: 'ficha_de_catalogo',
+    re: /fichadelcuerpo|fichadeoposici|fichadelaconvocatoria|titulaci.?nrequerida/,
+    motivo:
+      'el TITULAR es la FICHA de un cuerpo/convocatoria concreta del catálogo, no el listado: ' +
+      'describe lo que ya existe y no cambia cuando se convoca un proceso nuevo',
+  },
+];
+
 function clasificarVigilanciaInline(
   httpStatus: number | null | undefined,
   error: string | null | undefined,
@@ -497,6 +533,13 @@ function clasificarVigilanciaInline(
         ? `el último check falló (${String(error).slice(0, 60)}) — visible, no silencioso`
         : `el último check devolvió HTTP ${status} — visible, no silencioso`,
     };
+  }
+
+  const cabecera = aplastarInline(t.slice(0, VIG_UMBRAL_CABECERA));
+  for (const p of VIG_PATRONES_CABECERA) {
+    if (p.re.test(cabecera)) {
+      return { nivel: p.nivel, severidad: 'error', motivo: p.motivo };
+    }
   }
 
   if (t.length < VIG_UMBRAL_DUDOSO) {
@@ -1459,6 +1502,11 @@ export class ContentHealthSweepService {
     // repuntada se juzga con la evidencia de su URL anterior (falso positivo garantizado). Sin
     // evidencia atribuible NO se juzga (fail-safe). Solo se emite la banda `error`; la banda
     // `warn` se adjudica bajo demanda con scripts/seguimiento/sim-fuentes-ciegas.cjs --todos.
+    //
+    // ENSANCHADO 27/07 (T-165): el clasificador mira también la CABECERA sin límite de longitud →
+    // caen aquí las páginas RICAS que no vigilan nada (404 con 200, pantalla de error, muro de
+    // login, ficha de catálogo). Simulado bank-wide antes de encender: +73 hallazgos, 0 falsos
+    // positivos, y solo 1 en oposición ACTIVA (el resto, catalogadas).
     //
     // Mirror INLINE de lib/convocatoria/seguimientoVigilable.cjs — MANTENER EN SYNC (el backend
     // NestJS no puede importar del `lib/` del frontend). Umbrales y patrones idénticos: los

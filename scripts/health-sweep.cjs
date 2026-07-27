@@ -375,6 +375,14 @@ async function main() {
   // mezcla páginas reales cortas con contenedores vacíos— NO pinga el badge: se adjudica bajo
   // demanda con `node scripts/seguimiento/sim-fuentes-ciegas.cjs --todos`. Misma política que la
   // banda MEDIUM de sobre-inclusión: una bandeja ruidosa se aprende a ignorar (lección T-047).
+  //
+  // ENSANCHADO 27/07 (T-165): el clasificador mira ahora también la CABECERA sin límite de
+  // longitud, así que caen aquí las páginas RICAS que no vigilan nada — 404 servido con 200,
+  // pantalla de error del portal, muro de login, ficha de catálogo. Antes pasaban por sanas
+  // (`tcae-galicia` servía 991 KB… de formulario de acceso). Simulación bank-wide antes de
+  // encender: 73 hallazgos nuevos, 0 falsos positivos, y de ellos **1 sola oposición ACTIVA** →
+  // el badge sube en 1, no se convierte en bandeja. Los otros 72 son catalogadas (SES Extremadura
+  // y Rioja Salud sirven un 404 a decenas de fichas) y salen en la simulación, no en el badge.
   const ciegaRows = (await c.query(`
     SELECT o.slug, ch.http_status, ch.error_message, ch.content_preview
     FROM oposiciones o
