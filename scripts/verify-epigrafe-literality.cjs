@@ -139,6 +139,40 @@ async function cmdDump(pt) {
   } finally { await c.end() }
 }
 
+
+/**
+ * Clona un documento oficial en el HUB de provenance CON SU TEXTO.
+ *
+ * El texto no es un extra: es lo que hace que el documento sea OBSERVABLE. El aviso
+ * de "documentos que AFINAN el programa" (`esTemarioRefiningDoc`) filtra por
+ * `extracted_text IS NOT NULL`, así que un documento clonado sin texto es, a efectos
+ * de vigilancia, un documento que no está. Fallo real medido el 27/07/2026: la Orden
+ * PRE/12/2026 —que modifica el programa entero del Cuerpo General Auxiliar de
+ * Cantabria— estaba clonada… y vacía, así que el `dump` no podía avisar de ella y la
+ * verificación siguió comparando contra el programa superado. Lo detectó una usuaria.
+ *
+ * Nunca PISA un texto existente: solo rellena el hueco (el clon anterior puede venir de
+ * un extractor mejor, p.ej. `detect-notas` con su fetcher headless).
+ */
+async function ensureDocConTexto(c, convId, url, { tipo = 'convocatoria', titulo = null, notas = null, fuente = 'epigrafe-verify' } = {}) {
+  const { docKey, canonicalUrl } = canonicalizeBoletinUrl(url)
+  if (!docKey) return null
+  const { text } = fetchProgramaText(canonicalUrl || url)
+  const hash = text ? crypto.createHash('sha256').update(text).digest('hex') : null
+  const r = await c.query(
+    `SELECT ensure_convocatoria_documento($1,$2,$3,$4,$5,$6,$7,$8) AS id`,
+    [convId, docKey, canonicalUrl, hash, tipo, titulo || notas, text, fuente])
+  const id = r.rows[0].id
+  if (text) {
+    await c.query(
+      `UPDATE convocatoria_documentos SET extracted_text=$2, content_hash=COALESCE(content_hash,$3)
+       WHERE id=$1 AND extracted_text IS NULL`, [id, text, hash])
+  } else {
+    console.log(`   ⚠️  documento clonado SIN texto (no se pudo extraer): ${canonicalUrl} — queda ciego para el aviso de temario`)
+  }
+  return id
+}
+
 async function cmdRecord(pt, jsonPath) {
   // consensus.json: { "<tema>": { "verdict": "literal"|"drift"|"provisional", "note": "...",
   //                                source_url?: "...", source_notes?: "...", "findings": {...} } }
@@ -173,10 +207,9 @@ async function cmdRecord(pt, jsonPath) {
         const { docKey, canonicalUrl } = canonicalizeBoletinUrl(v.source_url)
         if (docKey) {
           if (!(docKey in docCache)) {
-            const r = await c.query(
-              `SELECT ensure_convocatoria_documento($1,$2,$3,$4,$5,$6,$7,$8) AS id`,
-              [conv.id, docKey, canonicalUrl, null, 'convocatoria', v.source_notes || null, null, 'epigrafe-verify'])
-            docCache[docKey] = r.rows[0].id
+            // CON TEXTO: un documento clonado vacío es invisible para el aviso de
+            // "documentos que afinan el programa". Ver ensureDocConTexto.
+            docCache[docKey] = await ensureDocConTexto(c, conv.id, v.source_url, { notas: v.source_notes || null })
           }
           await c.query(`UPDATE topic_epigrafe_verification SET source_documento_id=$2 WHERE topic_id=$1`, [tid, docCache[docKey]])
           linked++
@@ -259,6 +292,7 @@ async function cmdApply(pt, jsonPath, opts) {
     console.log(`✅ COMMIT topics (${ok.length} temas, los 4 campos)`)
 
     // registrar la verificación: ahora el epígrafe ES el literal oficial
+    const docCacheApply = {}
     for (const t of ok) {
       const v = plan[t]
       await c.query(`SELECT record_epigrafe_verification($1,$2,$3,$4,$5::jsonb,$6)`,
@@ -268,6 +302,13 @@ async function cmdApply(pt, jsonPath, opts) {
       if (v.source_url || v.source_notes) {
         await c.query(`UPDATE topic_epigrafe_verification SET source_url=$2, source_notes=$3 WHERE topic_id=$1`,
           [byN[t].id, v.source_url || null, v.source_notes || null])
+      }
+      if (v.source_url) {
+        if (!(v.source_url in docCacheApply)) {
+          docCacheApply[v.source_url] = await ensureDocConTexto(c, conv.id, v.source_url, { notas: v.source_notes || null })
+        }
+        const did = docCacheApply[v.source_url]
+        if (did) await c.query(`UPDATE topic_epigrafe_verification SET source_documento_id=$2 WHERE topic_id=$1`, [byN[t].id, did])
       }
     }
     console.log(`✅ record: ${ok.length} temas → literal`)
@@ -305,4 +346,8 @@ async function main() {
     else { console.log('Uso: node scripts/verify-epigrafe-literality.cjs <dump|record|apply|status> <position_type> [json] [--apply]'); process.exit(1) }
   } catch (e) { console.error('❌', e.message); process.exit(1) }
 }
-main()
+// Solo como CLI: al requerirlo como módulo (backfills, tests) NO debe ejecutarse.
+if (require.main === module) main()
+
+
+module.exports = { ensureDocConTexto }
