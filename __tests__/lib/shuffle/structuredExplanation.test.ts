@@ -376,3 +376,36 @@ describe('mismoContenidoExplicacion — el bloque SIN viñeta del estilo impugna
     expect(mismoContenidoExplicacion(completo, mutilado)).toBe(false)
   })
 })
+
+describe('etiqueta descolgada: "- **A) Este equipo:** …" (regresión 27/07, 186 preguntas)', () => {
+  // Bullets con la etiqueta descriptiva DENTRO de las negritas del marcador. Al separar marcador
+  // y razón, la razón se quedaba con el cierre de negritas y sin su apertura, y el render producía
+  // markdown ROTO ("Este equipo:** muestra…") que el opositor vería tal cual. Lo destapó la
+  // clasificación de diferencias previa al despliegue, no un test.
+  const conEtiqueta = [
+    '**Por qué D es correcta:** Sí.',
+    '',
+    '**Por qué las demás son incorrectas:**',
+    '- **A) Este equipo:** muestra dispositivos de almacenamiento.',
+    '- **B) Archivo:** da acceso a la vista Backstage.',
+    '- **C) Compartir:** publica el documento.',
+  ].join('\n')
+
+  test('la razón recupera su apertura de negritas', () => {
+    const d = parseLetterFormatExplanation(conEtiqueta, { correctOption: 3, nOptions: 4 })
+    expect(d!.options['0']).toBe('**Este equipo:** muestra dispositivos de almacenamiento.')
+  })
+
+  test('y el render deja los asteriscos BALANCEADOS (markdown válido)', () => {
+    const d = parseLetterFormatExplanation(conEtiqueta, { correctOption: 3, nOptions: 4 })!
+    const r = renderStructuredExplanation(d, { correctOption: 3, optionOrder: null, nOptions: 4 })
+    expect((r.match(/\*\*/g) || []).length % 2).toBe(0)
+    expect(r).toContain('- **A)** **Este equipo:** muestra')
+  })
+
+  test('una razón normal no se toca', () => {
+    const normal = '**Por qué A es correcta:** Sí.\n\n**Por qué las demás son incorrectas:**\n- **B)** No procede.\n- **C)** Tampoco.\n- **D)** No.'
+    const d = parseLetterFormatExplanation(normal, { correctOption: 0, nOptions: 4 })
+    expect(d!.options['1']).toBe('No procede.')
+  })
+})

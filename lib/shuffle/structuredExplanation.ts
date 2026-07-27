@@ -366,6 +366,13 @@ export function parseLetterFormatExplanation(
         reason = reason.slice(0, m.index).trim()
       }
     }
+    // ETIQUETA DESCOLGADA: hay bullets escritos como "- **A) Este equipo:** muestra…", con la
+    // etiqueta DENTRO de las negritas del marcador. Al separar marcador y razón, la razón se
+    // queda con el cierre de negritas y sin su apertura ("Este equipo:** muestra…"), y el render
+    // produce markdown ROTO que el opositor ve tal cual. Medido el 27/07: 503 razones en 186
+    // preguntas. Se reequilibra devolviéndole su apertura.
+    if (/^[^*]{1,60}:\*\*/.test(reason)) reason = `**${reason}`
+
     const oi = letterToIndex(bulletStarts[k].letter)
     if (oi < 0 || oi >= nOptions) return null
     if (oi === correctOption) return null // un bullet no debe repetir la correcta
@@ -455,6 +462,10 @@ export function mismoContenidoExplicacion(a: string, b: string): boolean {
   const norm = (s: string) =>
     (s || '')
       .replace(/Por qu[eé]\s+[A-E]\s+(es|no es)/gi, 'Por qué <L> $1')
+      // Los asteriscos son FORMATO, no contenido: al reequilibrar la etiqueta descolgada
+      // ("Este equipo:**" → "**Este equipo:**") el texto dice exactamente lo mismo y solo cambia
+      // el énfasis. Compararlos haría saltar el canary por un arreglo de markdown.
+      .replace(/\*+/g, '')
       .replace(/\s+/g, ' ')
       .trim()
   const trocear = (texto: string) => {
