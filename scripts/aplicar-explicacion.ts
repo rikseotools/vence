@@ -72,20 +72,25 @@ async function main() {
   const opciones = [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(
     (v: string | null) => v != null && v !== '',
   )
-  const data = JSON.parse(readFileSync(fichero, 'utf8')) as StructuredExplanation
-  if (!data.v) data.v = 1
+  // `unknown` a propósito: es entrada externa y quien la valida es el type guard de abajo. Si se
+  // declara ya como StructuredExplanation, TypeScript estrecha la rama de error a `never` y no
+  // deja ni leer el objeto para explicar qué falta.
+  const data: unknown = JSON.parse(readFileSync(fichero, 'utf8'))
+  if (data && typeof data === 'object' && !(data as { v?: number }).v) (data as { v: number }).v = 1
 
   // 1) La estructura tiene que cubrir TODAS las opciones presentes. Sin esto, al barajar habría
   //    una opción sin razón y la explicación quedaría coja justo donde el opositor mira.
   if (!isStructuredExplanation(data, opciones.length)) {
+    const recibidas = Object.keys((data as { options?: Record<string, string> })?.options ?? {})
     console.error(`❌ Estructura inválida: hacen falta ${opciones.length} razones (una por opción presente), keadas "0".."${opciones.length - 1}".`)
-    console.error(`   Recibidas: ${Object.keys(data.options || {}).join(', ') || '(ninguna)'}`)
+    console.error(`   Recibidas: ${recibidas.join(', ') || '(ninguna)'}`)
     process.exit(1)
   }
+  const estructura: StructuredExplanation = data
 
   // 2) Guarda anti-letra: una razón que nombre la letra o la posición vuelve a clavar el orden,
   //    que es justo lo que este formato viene a eliminar.
-  const sospechosas = Object.entries(data.options).filter(([, r]) =>
+  const sospechosas = Object.entries(estructura.options).filter(([, r]) =>
     /\b(la|opci[óo]n|respuesta|letra)\s+[A-E]\b|\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)/i.test(r),
   )
   if (sospechosas.length) {
@@ -96,14 +101,14 @@ async function main() {
   }
 
   // 3) El texto legacy se GENERA desde la estructura (render determinista, el mismo del serve).
-  const texto = renderStructuredExplanation(data, {
+  const texto = renderStructuredExplanation(estructura, {
     correctOption: q.correct_option,
     optionOrder: null,
     nOptions: opciones.length,
   })
 
   console.log(`\n── ${qid}`)
-  console.log(`  estilo   : ${data.estilo ?? 'boletin'} · ${opciones.length} opciones`)
+  console.log(`  estilo   : ${estructura.estilo ?? 'boletin'} · ${opciones.length} opciones`)
   console.log(`  explicación que se servirá (render en orden natural):\n`)
   console.log(texto.split('\n').map((l) => `    ${l}`).join('\n'))
   if (q.explanation) {
@@ -117,7 +122,7 @@ async function main() {
   await db.execute(sql`
     UPDATE questions
        SET explanation = ${texto},
-           explanation_data = ${JSON.stringify(data)}::jsonb,
+           explanation_data = ${JSON.stringify(estructura)}::jsonb,
            updated_at = NOW()
      WHERE id = ${qid}::uuid`)
   await db.execute(sql`
@@ -127,7 +132,7 @@ async function main() {
     await db.execute(sql`
       INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
       VALUES (gen_random_uuid(), NOW(), 'script:aplicar-explicacion', 'info', 'explicacion_estructurada_aplicada',
-              ${JSON.stringify({ question_id: qid, estilo: data.estilo ?? 'boletin', opciones: opciones.length })}::jsonb, NOW())`)
+              ${JSON.stringify({ question_id: qid, estilo: estructura.estilo ?? 'boletin', opciones: opciones.length })}::jsonb, NOW())`)
   } catch (e) {
     console.error(`⚠️  no se pudo registrar el evento: ${(e as Error).message}`)
   }
