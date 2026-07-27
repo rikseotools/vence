@@ -107,3 +107,51 @@ describe('normalizarLiteral / esLiteral', () => {
     expect(esLiteral('lo que sea', '')).toBe(false)
   })
 })
+
+describe('resolverFuentes — de dónde sale el texto oficial', () => {
+  const { resolverFuentes } = require('../../lib/temario/epigrafeApply.js')
+  const manual = (t) => ({ oficial: t, oficial_manual: true, source_url: 'https://boletin/x.pdf' })
+
+  test('sin parseo automático, vale el manual acreditado (source_url + oficial_manual)', () => {
+    const r = resolverFuentes({ 1: manual('Texto oficial') }, {}, {})
+    expect(r.oficiales['1']).toBe('Texto oficial')
+    expect(r.manuales).toEqual(['1'])
+    expect(r.conflictos).toEqual([])
+  })
+
+  test('un `oficial` SIN acreditar (sin source_url) no se acepta: sería autocertificación', () => {
+    const r = resolverFuentes({ 1: { oficial: 'me lo invento', oficial_manual: true } }, {}, {})
+    expect(r.oficiales['1']).toBeUndefined()
+  })
+
+  test('si el parseo automático existe y NO hay manual, manda el automático', () => {
+    const r = resolverFuentes({ 1: {} }, { 1: 'Del boletín' }, {})
+    expect(r.oficiales['1']).toBe('Del boletín')
+    expect(r.manuales).toEqual([])
+  })
+
+  test('coinciden salvo ruido tipográfico → no es conflicto', () => {
+    const r = resolverFuentes({ 1: manual('La  Constitución española.') }, { 1: 'La Constitución española. ' }, {})
+    expect(r.conflictos).toEqual([])
+    expect(r.oficiales['1']).toBeDefined()
+  })
+
+  test('DISCREPAN de verdad → conflicto, y NO se elige por nadie (caso tcae_galicia)', () => {
+    // El parser mezcló el bloque del turno de discapacidad: su "T3" es otro tema.
+    const r = resolverFuentes(
+      { 3: manual('La Ley general de sanidad: fundamentos y características.') },
+      { 3: 'Legislación sanitaria: derechos y deberes de los usuarios.' }, {})
+    expect(r.conflictos).toHaveLength(1)
+    expect(r.conflictos[0].tema).toBe('3')
+    expect(r.oficiales['3']).toBeUndefined()
+  })
+
+  test('con --fuente-manual el conflicto se resuelve a favor del humano, y queda anotado', () => {
+    const r = resolverFuentes(
+      { 3: manual('La Ley general de sanidad: fundamentos y características.') },
+      { 3: 'Legislación sanitaria: derechos y deberes de los usuarios.' }, { fuenteManual: true })
+    expect(r.conflictos).toEqual([])
+    expect(r.oficiales['3']).toMatch(/Ley general de sanidad/)
+    expect(r.manuales).toEqual(['3'])
+  })
+})

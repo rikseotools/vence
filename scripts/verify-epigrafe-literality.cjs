@@ -18,7 +18,8 @@
  *          vez), registra la verificación como `literal` con su fuente y recachea.
  *          DRY-RUN por defecto: sin --apply enseña el diff y no escribe nada.
  *          Guarda pura en lib/temario/epigrafeApply.js — por esta puerta NO puede
- *          entrar un epígrafe que no esté en el boletín.
+ *          entrar un epígrafe que no esté en el boletín. Si el texto parseado y el
+ *          aportado a mano DISCREPAN, para y los enseña: --fuente-manual decide.
  *
  * Salida dump: /tmp/verify_epigrafe_<position_type>.json
  */
@@ -29,7 +30,7 @@ const crypto = require('crypto')
 const { execFileSync } = require('child_process')
 const { canonicalizeBoletinUrl } = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'))
 const { esTemarioRefiningDoc } = require(path.join(__dirname, '..', 'lib', 'temario', 'temarioRefiningDoc.js'))
-const { validarPlanEpigrafe } = require(path.join(__dirname, '..', 'lib', 'temario', 'epigrafeApply.js'))
+const { validarPlanEpigrafe, resolverFuentes } = require(path.join(__dirname, '..', 'lib', 'temario', 'epigrafeApply.js'))
 const { recache } = require(path.join(__dirname, 'lib', 'temario-recache.cjs'))
 
 // ── .env.local ──
@@ -243,15 +244,20 @@ async function cmdApply(pt, jsonPath, opts) {
   // Preferencia 2: `oficial` del plan, SOLO si viene marcado `oficial_manual` + `source_url`.
   //   Los ~30% de boletines que no parsean necesitan una vía humana; que sea explícita y
   //   quede anotada es la diferencia entre una excepción trazable y un agujero.
-  const oficiales = {}
-  const manuales = []
+  const auto = {}
   try {
     const dump = JSON.parse(fs.readFileSync(dumpPath(pt), 'utf8'))
-    for (const t of (dump.temas || [])) if (t.oficial) oficiales[String(t.tema)] = t.oficial
+    for (const t of (dump.temas || [])) if (t.oficial) auto[String(t.tema)] = t.oficial
   } catch {}
-  for (const [tema, v] of Object.entries(plan)) {
-    if (oficiales[tema]) continue
-    if (v.oficial && v.oficial_manual && v.source_url) { oficiales[tema] = v.oficial; manuales.push(tema) }
+  const { oficiales, manuales, conflictos } = resolverFuentes(plan, auto, { fuenteManual: opts.fuenteManual })
+  if (conflictos.length) {
+    console.error(`\n❌ FUENTE EN CONFLICTO en ${conflictos.length} tema(s): el texto parseado del boletín y el aportado a mano NO coinciden.`)
+    for (const c of conflictos.slice(0, 5)) {
+      console.error(`   T${c.tema}\n     parseado: ${String(c.auto).slice(0, 150)}\n     a mano  : ${String(c.manual).slice(0, 150)}`)
+    }
+    console.error(`\n   Mira CUÁL es el bueno (el parser se desalinea en boletines con varios bloques/turnos).`)
+    console.error(`   Si el correcto es el tuyo, repite con --fuente-manual y quedará anotado.\n`)
+    process.exit(2)
   }
 
   const { errores, ok } = validarPlanEpigrafe(plan, oficiales)
@@ -352,7 +358,7 @@ async function main() {
   try {
     if (cmd === 'dump') await cmdDump(args[0])
     else if (cmd === 'record') await cmdRecord(args[0], args[1])
-    else if (cmd === 'apply') await cmdApply(args[0], args[1], { apply: args.includes('--apply') })
+    else if (cmd === 'apply') await cmdApply(args[0], args[1], { apply: args.includes('--apply'), fuenteManual: args.includes('--fuente-manual') })
     else if (cmd === 'status') await cmdStatus(args[0])
     else { console.log('Uso: node scripts/verify-epigrafe-literality.cjs <dump|record|apply|status> <position_type> [json] [--apply]'); process.exit(1) }
   } catch (e) { console.error('❌', e.message); process.exit(1) }
