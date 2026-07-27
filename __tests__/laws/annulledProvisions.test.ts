@@ -150,3 +150,83 @@ describe('parseAnnulledArticles — abreviatura plural y enumeraciones (T-132)',
   })
 })
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-169 (27/07/2026) — el detector daba FALSO VERDE por dos motivos independientes, los
+// dos medidos sobre la Ley 38/2003 General de Subvenciones (la sirven 24 temas):
+//
+//   1. Miraba la nota SOLO dentro de `content`, mientras la herramienta que marca los
+//      artículos (`capturar-vigencia-articulo.cjs`, T-048) escribe en la columna
+//      `vigencia_notes` y NO toca el `content` a propósito. Marcar bien un artículo no
+//      apagaba el aviso; lo único que lo apagaba era contaminar el `content`.
+//   2. El filtro v2 exigía que el BOE retuviera el inciso TACHADO con nota inline, que es
+//      como se ve el art. 126.2 LBRL. El BOE tiene al menos dos formas más, y con ellas el
+//      hallazgo real se descartaba como "artículo ya reformado".
+describe('articleCarriesVigenciaNote — la columna vigencia_notes es la fuente canónica (T-169)', () => {
+  const CONTENT_LIMPIO = 'Artículo 607. 1. Los que, con propósito de destruir…'
+
+  it('un artículo marcado en vigencia_notes cuenta como marcado (caso CP art. 607)', () => {
+    const col = { notes: [{ texto: 'Se declara la inconstitucionalidad y nulidad…', esAnulacion: true }] }
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO, col)).toBe(true)
+  })
+
+  it('también cuando la nota es COMPETENCIAL (no es nulidad, pero está anotado)', () => {
+    const col = { notes: [{ texto: 'no es conforme con el orden constitucional de competencias', esCompetencial: true }] }
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO, col)).toBe(true)
+  })
+
+  it('una nota que NO es pronunciamiento del TC no marca el artículo', () => {
+    const col = { notes: [{ texto: 'Se modifica por el art. 45.1 de la Ley 4/2012.', esAnulacion: false, esCompetencial: false }] }
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO, col)).toBe(false)
+  })
+
+  it('sin columna sigue valiendo el formato legacy escrito en el content', () => {
+    expect(articleCarriesVigenciaNote('… [Nota de vigencia: el inciso fue declarado nulo…]')).toBe(true)
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO)).toBe(false)
+  })
+
+  it('columna vacía o nula no rompe ni marca', () => {
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO, null)).toBe(false)
+    expect(articleCarriesVigenciaNote(CONTENT_LIMPIO, { notes: [] })).toBe(false)
+  })
+})
+
+describe('boeBlockRetainsAnnulment — las TRES marcas del BOE, no solo el tachado (T-169)', () => {
+  // (1) La que ya funcionaba: inciso tachado + nota inline (art. 126.2 LBRL / STC 103/2013).
+  const INLINE = '<p>… <span class="tachado">podrá nombrar…</span> Declarado inconstitucional y nulo por Sentencia del TC 103/2013</p>'
+
+  // (2) Nota al pie: la anulación INDIRECTA del art. 16 de la Ley 38/2003 — lo anulado es la
+  //     DF 11ª de la Ley 2/2008, que dio redacción al artículo, así que el cuerpo está limpio.
+  const NOTA_PIE = `<p class="parrafo">1. La resolución se dictará…</p>
+    <blockquote><p class="nota_pie">Se declara la inconstitucionalidad de la disposición final 11 de la Ley 2/2008, de 23 de diciembre, que da redacción al título y a los apartados 5 y 6 de este artículo, con los efectos establecidos en el fundamento jurídico 3.j), por Sentencia TC 206/2013, de 5 de diciembre. Ref. BOE-A-2014-223.</p></blockquote>`
+
+  // (3) "(Anulado)" a secas: art. 7.1 a) de la Ley 38/2003 / STC 70/2016.
+  const ANULADO_SECO = '<p class="parrafo">a) (Anulado)</p><p class="parrafo">b) En los casos distintos…</p>'
+
+  it('caza el inciso tachado con nota inline', () => {
+    expect(boeBlockRetainsAnnulment(INLINE)).toBe(true)
+  })
+
+  it('caza la anulación declarada en NOTA AL PIE (indirecta, vía norma modificadora)', () => {
+    expect(boeBlockRetainsAnnulment(NOTA_PIE)).toBe(true)
+  })
+
+  it('caza el apartado sustituido por "(Anulado)"', () => {
+    expect(boeBlockRetainsAnnulment(ANULADO_SECO)).toBe(true)
+  })
+
+  it('NO marca un artículo reformado y limpio — que es lo que v2 vino a evitar', () => {
+    const REFORMADO = `<p class="parrafo">1. Las subvenciones se regirán por esta ley.</p>
+      <blockquote><p class="nota_pie">Se modifica por la disposición final 2 del Real Decreto-ley 7/2013, de 28 de junio. Ref. BOE-A-2013-7062.</p></blockquote>`
+    expect(boeBlockRetainsAnnulment(REFORMADO)).toBe(false)
+  })
+
+  it('NO marca un artículo que solo HABLA de nulidad (LOTC, Código Civil…)', () => {
+    expect(boeBlockRetainsAnnulment('<p>El Tribunal podrá declarar inconstitucionales las leyes.</p>')).toBe(false)
+    expect(boeBlockRetainsAnnulment('<p>El matrimonio declarado nulo produce efectos civiles.</p>')).toBe(false)
+  })
+
+  it('no confunde la palabra "anulado" en prosa con la marca "(Anulado)"', () => {
+    expect(boeBlockRetainsAnnulment('<p>El acto anulado no produce efectos.</p>')).toBe(false)
+  })
+})

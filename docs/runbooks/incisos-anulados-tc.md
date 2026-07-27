@@ -46,9 +46,25 @@ Para **cada hallazgo** (`article_annulled_unmarked`):
 
 1. **Verifica el inciso concreto contra la sentencia** (WebFetch a la STC por su `id_norma`,
    o el `texto` de la referencia): ¿qué parte exacta se anuló y qué quedó vigente?
-2. **Añade la nota de vigencia** al artículo (`articles.content`), en nuestro formato:
-   `[Nota de vigencia: el inciso … fue declarado inconstitucional y nulo por la STC N/AAAA,
-   de … (BOE-A-…), por vulnerar el art. … CE. En consecuencia, …]`.
+2. **Añade la nota de vigencia con la herramienta, NO a mano y NO en el `content`** (corregido
+   27/07/2026, T-169):
+
+   ```bash
+   node scripts/capturar-vigencia-articulo.cjs --boe BOE-A-2003-20977 --art 16          # dry-run
+   node scripts/capturar-vigencia-articulo.cjs --boe BOE-A-2003-20977 --art 16 --apply
+   ```
+
+   Trae la nota **literal** del BOE y la guarda en la columna `articles.vigencia_notes`
+   (T-048), que es la fuente canónica: **no toca `content`** —las explicaciones lo citan
+   verbatim— y el render de teoría la pinta al vuelo (`lib/teoria/annotateVigencia`, capa 2),
+   así que el opositor la ve igual.
+
+   > La versión v1 de este runbook mandaba escribir `[Nota de vigencia: …]` dentro del
+   > `content`. **Quedó obsoleta al llegar T-048 y nadie la actualizó**, con un efecto
+   > perverso: el detector buscaba la nota en el `content`, la herramienta la escribía en la
+   > columna, y marcar un artículo correctamente **no apagaba el aviso** (medido con el art.
+   > 607 del CP). Lo único que lo apagaba era contaminar el `content`. El formato en `content`
+   > se sigue aceptando como legacy, pero no se escribe más.
 3. **REVISA la clave de las preguntas de ese artículo**: ninguna debe dar por válido el
    inciso anulado. Si alguna lo hace → re-clave / neutralizar enunciado / `needs_human`.
 4. **NUNCA auto-corregir la clave** — revisión humana (como en el caso art. 126.2 LBRL).
@@ -97,6 +113,37 @@ node scripts/audit-notas-vigencia-tc.cjs "Ley 9/2017" --todos --json
 
 Una pregunta que dé por aplicable sin matiz un apartado declarado no conforme sí es
 impugnable, pero la respuesta es matizar, no retirar.
+
+## Las TRES marcas del BOE — y por qué "0 hallazgos" engañaba (27/07/2026, T-169)
+
+El filtro `v2` (solo flaguear si el consolidado RETIENE la anulación) se diseñó con el art.
+126.2 LBRL, donde el BOE deja el **inciso tachado + nota inline**. Pero el BOE marca la
+anulación de **tres** formas, y las otras dos se descartaban como "artículo ya reformado":
+
+| Marca | Ejemplo real | Cuándo la usa el BOE |
+|---|---|---|
+| Inciso **tachado + nota inline** | art. 126.2 LBRL / STC 103/2013 | el inciso se puede señalar dentro del texto |
+| **Nota al pie** (`<p class="nota_pie">`) | art. 16 Ley 38/2003 / STC 206/2013 · art. 9.2 y 133 CC | **anulación INDIRECTA**: lo anulado es la norma MODIFICADORA, el cuerpo queda limpio |
+| **`(Anulado)`** a secas | art. 7.1 a) Ley 38/2003 / STC 70/2016 | el apartado se sustituye por esa palabra, sin sentencia al lado |
+
+**Y un falso verde peor, del mismo día:** el CLI tenía su propio regex `artículo\s+N` para
+localizar el bloque del artículo. El **Código Civil rotula sus 2.444 bloques como "Art 92"**
+→ no localizaba ninguno, y sin bloque el script hace `continue` **en silencio**: informaba
+"0 hallazgos" sin haber comprobado nada. Ya usa el núcleo compartido
+`mapaBloquesPorArticulo`, que entiende dígitos, letra, `bis`/`ter` y la forma abreviada.
+Tras arreglarlo aparecieron **9 hallazgos en 60 leyes** donde antes había 0 — entre ellos
+seis del Código Civil (arts. 92, 9, 133, 136 ×2, 211), servidos con 50 preguntas activas.
+
+**Los tres espejos.** Esta lógica vive en `lib/laws/annulledProvisions.ts` y está COPIADA en
+el backend (`annulled-vigencia-sweep/vigencia-logic.ts`) y en el CLI. El guardarraíl
+`__tests__/backend/annulledVigenciaMirror.test.ts` corre las tres sobre el mismo fixture y
+exige el mismo veredicto: **si tocas una, las otras dan CI en rojo**. El falso verde de
+T-169 nació justo de un espejo que nadie comparaba.
+
+**Ojo al calibrar:** un artículo cuya STC anuló *"la redacción original"* ya sustituida
+(caso CP art. 335) sigue apareciendo. No es ruido que haya que filtrar: el BOE mantiene la
+nota, así que la remediación es **capturarla** — barata y no destructiva. Lo que NO procede
+ahí es tocar preguntas: la redacción vigente es otra.
 
 **⚠️ "NO CONCLUYENTE" no es "limpio".** Si el barrido avisa de que muchos artículos no se
 localizaron en el índice del BOE, esos **no se han comprobado**. Pasó con la LOPJ: sus 713

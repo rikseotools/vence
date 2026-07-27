@@ -81,3 +81,59 @@ describe('mirror backend ↔ lib (boeVigencia + annulledProvisions) — MISMA sa
     expect(mirArts(t)).toEqual(['126'])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-169 — TERCER espejo: el CLI `scripts/audit-annulled-provisions.cjs`.
+//
+// El test de arriba vigilaba lib ↔ backend, pero el script CLI —el que emite el kind
+// `article_annulled_unmarked` y por tanto el que enciende el badge— lleva su PROPIA copia
+// inline y nadie la comparaba con nada. Se quedó atrás y produjo un falso verde: la Ley
+// 38/2003 (24 temas) servía los arts. 7 y 16 con anulación del TC sin nota, y el script
+// informaba 0 hallazgos. Arreglar el núcleo no habría cambiado nada mientras el CLI
+// siguiera con su copia.
+describe('espejo CLI ↔ lib — audit-annulled-provisions (T-169)', () => {
+  const cli = require('../../scripts/audit-annulled-provisions.cjs')
+  const {
+    articleCarriesVigenciaNote: libNote,
+    boeBlockRetainsAnnulment: libRetains,
+  } = require('@/lib/laws/annulledProvisions')
+
+  const BLOQUES: Array<[string, string]> = [
+    ['inline tachado (art. 126.2 LBRL)', '<p>… Declarado inconstitucional y nulo por Sentencia del TC 103/2013</p>'],
+    [
+      'nota al pie / anulación indirecta (art. 16 Ley 38/2003)',
+      '<p class="parrafo">1. Texto.</p><blockquote><p class="nota_pie">Se declara la inconstitucionalidad de la disposición final 11 de la Ley 2/2008, que da redacción al título y a los apartados 5 y 6 de este artículo, por Sentencia TC 206/2013. Ref. BOE-A-2014-223.</p></blockquote>',
+    ],
+    ['"(Anulado)" a secas (art. 7.1 a) Ley 38/2003)', '<p class="parrafo">a) (Anulado)</p>'],
+    [
+      'nota al pie competencial (STC 68/2021)',
+      '<blockquote><p class="nota_pie">Téngase en cuenta que se declara que el apartado 4 no es conforme con el orden constitucional de competencias, por la Sentencia del TC 68/2021. Ref. BOE-A-2021-6614</p></blockquote>',
+    ],
+    [
+      'artículo reformado y limpio (NO es hallazgo)',
+      '<p class="parrafo">1. Texto.</p><blockquote><p class="nota_pie">Se modifica por la disposición final 2 del Real Decreto-ley 7/2013. Ref. BOE-A-2013-7062.</p></blockquote>',
+    ],
+    ['artículo que solo HABLA de nulidad (NO es hallazgo)', '<p>El matrimonio declarado nulo produce efectos civiles.</p>'],
+  ]
+
+  it.each(BLOQUES)('boeBlockRetainsAnnulment coincide: %s', (_caso, bloque) => {
+    expect(cli.boeBlockRetainsAnnulment(bloque)).toBe(libRetains(bloque))
+  })
+
+  const ARTICULOS: Array<[string, string, any]> = [
+    ['marcado en la columna', 'Artículo 607. Los que…', { notes: [{ texto: 'Se declara…', esAnulacion: true }] }],
+    ['columna con nota competencial', 'Artículo 72.', { notes: [{ texto: 'no conforme…', esCompetencial: true }] }],
+    ['columna con nota que no es del TC', 'Artículo 3.', { notes: [{ texto: 'Se modifica por…', esAnulacion: false }] }],
+    ['sin columna, content limpio', 'Artículo 5. Las subvenciones se regirán…', null],
+    ['sin columna, nota legacy en el content', '… [Nota de vigencia: inciso declarado nulo por STC 103/2013]', null],
+  ]
+
+  it.each(ARTICULOS)('articleCarriesVigenciaNote coincide: %s', (_caso, content, col) => {
+    expect(cli.articleCarriesVigenciaNote(content, col)).toBe(libNote(content, col))
+  })
+
+  it('el CLI no ejecuta nada al importarlo (no abre BD)', () => {
+    expect(typeof cli.boeBlockRetainsAnnulment).toBe('function')
+    expect(typeof cli.extractTcAnnulments).toBe('function')
+  })
+})

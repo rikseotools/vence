@@ -16,6 +16,13 @@
 //
 // Este módulo es LÓGICA PURA (sin red ni BD) para poder testearlo.
 
+import { parseBoeBlock } from './boeVigencia'
+
+/** Forma de `articles.vigencia_notes` (JSONB que escribe `capturar-vigencia-articulo.cjs`). */
+export interface VigenciaNotesColumn {
+  notes?: Array<{ esAnulacion?: boolean; esCompetencial?: boolean; texto?: string }> | null
+}
+
 /** Una anulación del TC extraída del análisis BOE: sentencia + artículos afectados. */
 export interface TcAnnulment {
   idNorma: string | null // BOE-A-... de la sentencia
@@ -106,8 +113,25 @@ export function extractTcAnnulments(analisisJson: any): TcAnnulment[] {
  * (LOTC, Código Civil 'matrimonio declarado nulo'…) → exige el formato de nota o la
  * fórmula de anulación ligada a una STC/Sentencia con año.
  */
-export function articleCarriesVigenciaNote(content: string | null | undefined): boolean {
+export function articleCarriesVigenciaNote(
+  content: string | null | undefined,
+  vigenciaNotes?: VigenciaNotesColumn | null,
+): boolean {
+  // FUENTE CANÓNICA: la columna `articles.vigencia_notes` (T-048). Se comprueba PRIMERO
+  // porque es donde escribe `capturar-vigencia-articulo.cjs` y de donde tira el render de
+  // teoría (`annotateVigencia`, capa 2) — el `content` NO se toca a propósito, porque las
+  // explicaciones lo citan verbatim.
+  //
+  // Mirar solo el `content` (lo que se hacía hasta el 27/07) tenía un efecto perverso:
+  // marcar un artículo con la herramienta CORRECTA no apagaba el aviso, y lo único que lo
+  // apagaba era contaminar el `content` — justo lo que el diseño prohíbe. Medido con el
+  // art. 607 del CP: tenía ya su `vigencia_notes` y seguía saliendo como hallazgo.
+  const notes = vigenciaNotes?.notes
+  if (Array.isArray(notes) && notes.some((n) => n?.esAnulacion || n?.esCompetencial)) return true
+
   const t = content || ''
+  // Formato LEGACY (nota escrita a mano dentro del content, como pedía el runbook v1).
+  // Se mantiene para no dar por "sin marcar" lo que ya se anotó así antes de T-048.
   if (/nota\s+de\s+vigencia/i.test(t)) return true
   // "declarad(o) inconstitucional y nulo ... por (la )?(STC|Sentencia) N/AAAA"
   if (/declarad[oa]s?\b[\s\S]{0,60}\b(?:inconstitucional|nul)[\s\S]{0,80}\b(?:STC|Sentencia)\s+\d+\/\d{4}/i.test(t)) return true
@@ -123,8 +147,28 @@ export function articleCarriesVigenciaNote(content: string | null | undefined): 
  * Tribunal podrá declarar inconstitucionales…" — 'declarar' ≠ 'declarado', y sin Sentencia).
  */
 export function boeBlockRetainsAnnulment(blockText: string | null | undefined): boolean {
-  const t = (blockText || '').replace(/<[^>]+>/g, ' ')
-  return /(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)
+  const raw = blockText || ''
+  const t = raw.replace(/<[^>]+>/g, ' ')
+
+  // (1) MARCA INLINE: el BOE deja el texto tachado + "Declarado inconstitucional y nulo …
+  //     por Sentencia … del TC". Es el caso del art. 126.2 LBRL, con el que se diseñó v2.
+  if (/(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)) return true
+
+  // (2) NOTA AL PIE del bloque (`<blockquote><p class="nota_pie">`). El BOE la usa cuando el
+  //     inciso no se puede tachar en el cuerpo — señaladamente en la anulación INDIRECTA:
+  //     lo anulado es la norma MODIFICADORA, y el artículo afectado solo lo dice la nota.
+  //     Caso medido: art. 16 de la Ley 38/2003 (STC 206/2013, que anuló la DF 11ª de la Ley
+  //     2/2008). Se reutiliza el parseo compartido — nada de una quinta copia del regex.
+  for (const n of parseBoeBlock(raw).vigenciaNotes) {
+    if (n.esAnulacion || n.esCompetencial) return true
+  }
+
+  // (3) "(Anulado)" A SECAS en el cuerpo: el BOE sustituye el apartado por esa palabra, sin
+  //     tachado ni sentencia al lado. Caso medido: art. 7.1 a) de la Ley 38/2003 (STC 70/2016).
+  //     Se exige el paréntesis para no casar con un artículo que HABLE de anulaciones.
+  if (/\(\s*anulad[oa]s?\s*\)/i.test(t)) return true
+
+  return false
 }
 
 export interface AnnulmentFinding {

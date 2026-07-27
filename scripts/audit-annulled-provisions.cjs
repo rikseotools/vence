@@ -19,6 +19,10 @@
 const { Client } = require('pg')
 const fs = require('fs')
 const path = require('path')
+// Mapeo artículo→bloque del BOE: núcleo COMPARTIDO y endurecido (dígitos, letra, sufijos
+// compuestos, "Art" abreviado). Nada de una copia local: es lo que hacía ciega a la mitad
+// del corpus. Ver T-169.
+const { mapaBloquesPorArticulo } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 
 function getUrl() {
   const env = fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8')
@@ -55,16 +59,39 @@ function extractTcAnnulments(j) {
   }
   return res
 }
-function articleCarriesVigenciaNote(content) {
+// T-169: la nota CANÓNICA vive en la columna `articles.vigencia_notes` (T-048), no en el
+// `content` — que no se toca a propósito, porque las explicaciones lo citan verbatim.
+// Mirando solo el content, marcar un artículo con la herramienta correcta NO apagaba el
+// aviso (medido con el art. 607 del CP, ya anotado y aun así reportado).
+function articleCarriesVigenciaNote(content, vigenciaNotes) {
+  const notes = vigenciaNotes && vigenciaNotes.notes
+  if (Array.isArray(notes) && notes.some((n) => n && (n.esAnulacion || n.esCompetencial))) return true
   const t = content || ''
   if (/nota\s+de\s+vigencia/i.test(t)) return true
   if (/declarad[oa]s?\b[\s\S]{0,60}\b(?:inconstitucional|nul)[\s\S]{0,80}\b(?:STC|Sentencia)\s+\d+\/\d{4}/i.test(t)) return true
   return false
 }
-// v2: ¿el bloque del consolidado BOE RETIENE el inciso anulado con nota inline?
+// v2: ¿el bloque del consolidado BOE RETIENE la anulación? T-169: el BOE la marca de TRES
+// formas y v2 solo conocía la primera, así que descartaba hallazgos reales como "artículo
+// ya reformado" — el falso verde de la Ley 38/2003 (arts. 7 y 16), servida en 24 temas.
 function boeBlockRetainsAnnulment(blockText) {
-  const t = (blockText || '').replace(/<[^>]+>/g, ' ')
-  return /(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)
+  const raw = blockText || ''
+  const t = raw.replace(/<[^>]+>/g, ' ')
+  // (1) inciso tachado + nota inline (art. 126.2 LBRL / STC 103/2013)
+  if (/(?:declarad[oa]s?\s+(?:inconstitucional|nul)|inconstitucional(?:idad)?\s+y\s+nul)[\s\S]{0,140}\b(?:Sentencia|STC|del\s+TC|Tribunal\s+Constitucional)\b/i.test(t)) return true
+  // (2) nota al pie del bloque: única marca cuando la anulación es INDIRECTA (lo anulado es
+  //     la norma modificadora, como el art. 16 de la Ley 38/2003 / STC 206/2013)
+  for (const bq of raw.match(/<blockquote>[\s\S]*?<\/blockquote>/gi) || []) {
+    for (const p of bq.match(/<p\s+class="(nota[^"]*)"[^>]*>([\s\S]*?)<\/p>/gi) || []) {
+      const texto = p.replace(/<[^>]+>/g, ' ')
+      if (!/\bse\s+declara|\bdeclarad[oa]s?\b/i.test(texto)) continue
+      if (ANNUL_BEFORE.test(texto)) return true
+      if (/no\s+(?:es|son|resulta[n]?)\s+conforme[s]?\s+con\s+el\s+orden\s+constitucional\s+de\s+competencias/i.test(texto)) return true
+    }
+  }
+  // (3) apartado sustituido por "(Anulado)" a secas (art. 7.1 a) de la Ley 38/2003 / STC 70/2016)
+  if (/\(\s*anulad[oa]s?\s*\)/i.test(t)) return true
+  return false
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -80,19 +107,24 @@ async function fetchAnalisis(boeId) {
   } catch { return null }
 }
 
-// índice → mapa 'Artículo N' (normalizado) → bloque id (para pedir el bloque del artículo)
+// índice → mapa artículo → bloque id (para pedir el bloque del artículo).
+//
+// T-169: esto tenía su PROPIO regex `art[íi]culo\s+(\d+)`, y por eso el barrido era un
+// falso verde en leyes enteras. El Código Civil rotula sus 2.444 bloques como "Art 92"
+// —abreviado— así que NO se localizaba ni uno: sin bloque, el script hace `continue` en
+// silencio y reporta "0 hallazgos" sin haber comprobado nada. El núcleo compartido
+// `mapaBloquesPorArticulo` ya resolvía esto desde T-133 (y también los artículos en letra
+// de la LOPJ, T-132, y los sufijos compuestos de la LECrim, T-139): el CLI se lo perdía
+// todo por llevar copia propia.
 async function fetchArticleBlockMap(boeId) {
   try {
     const r = await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${boeId}/texto/indice`,
-      { headers: { Accept: 'application/json' } })
+      { headers: { Accept: 'application/xml' } })
     if (!r.ok) return null
-    const j = await r.json()
+    const mapa = mapaBloquesPorArticulo(await r.text())
     const map = new Map()
-    for (const b of (j?.data?.[0]?.bloque ?? [])) {
-      const m = String(b?.titulo || '').match(/art[íi]culo\s+(\d+(?:\s*bis)?)/i)
-      if (m && b?.id) map.set(normNum(m[1]), b.id)
-    }
-    return map
+    for (const [num, id] of Object.entries(mapa || {})) map.set(normNum(num), id)
+    return map.size ? map : null
   } catch { return null }
 }
 
@@ -105,7 +137,7 @@ async function fetchBlockText(boeId, blockId) {
   } catch { return null }
 }
 
-;(async () => {
+async function main() {
   const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
   const LIMIT = parseInt(arg('--limit') || '0', 10)
   const ONE = arg('--law')
@@ -134,15 +166,16 @@ async function fetchBlockText(boeId, blockId) {
     if (!annuls.length) continue
     withAnnul++
     // artículos que servimos, por número
-    const { rows: arts } = await c.query('SELECT article_number, content FROM articles WHERE law_id=$1', [l.id])
-    const byNum = new Map(arts.map((a) => [normNum(a.article_number), a.content]))
+    const { rows: arts } = await c.query('SELECT article_number, content, vigencia_notes FROM articles WHERE law_id=$1', [l.id])
+    const byNum = new Map(arts.map((a) => [normNum(a.article_number), a]))
     // v2: mapa artículo→bloque BOE (para comprobar si el inciso anulado SIGUE en el consolidado)
     const blockMap = V2 ? await fetchArticleBlockMap(boeId) : null
     const blockCache = new Map()
     for (const a of annuls) {
       for (const artNum of a.articles) {
         if (!byNum.has(artNum)) continue // no servimos ese artículo
-        if (articleCarriesVigenciaNote(byNum.get(artNum))) continue // ya marcado
+        const row = byNum.get(artNum)
+        if (articleCarriesVigenciaNote(row.content, row.vigencia_notes)) continue // ya marcado
         // v2: solo es REAL si el BOE RETIENE el inciso anulado (nota inline). Si el
         // artículo se reformó (texto limpio) → falsa alarma → NO flaguear.
         if (V2 && blockMap) {
@@ -179,4 +212,15 @@ async function fetchBlockText(boeId, blockId) {
   }
   await c.end()
   process.exit(process.argv.includes('--gate') && findings.length > 0 ? 1 : 0)
-})().catch((e) => { console.error('ERR', e.message); process.exit(1) })
+}
+
+// Solo se ejecuta como CLI: al requerirlo (guardarraíl de paridad) no debe abrir la BD.
+if (require.main === module) {
+  main().catch((e) => { console.error('ERR', e.message); process.exit(1) })
+}
+
+// El ESPEJO se exporta para que el guardarraíl de paridad (`__tests__/backend/annulledVigenciaMirror.test.ts`)
+// pueda correr esta copia y la de `lib/laws/annulledProvisions.ts` sobre el mismo fixture y
+// exigir el mismo veredicto. Sin esto, el espejo solo se podía comprobar leyéndolo — que es
+// como se quedó atrás y produjo el falso verde de T-169.
+module.exports = { parseAnnulledArticles, extractTcAnnulments, articleCarriesVigenciaNote, boeBlockRetainsAnnulment }
