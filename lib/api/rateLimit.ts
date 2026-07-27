@@ -138,24 +138,12 @@ export const RATE_LIMIT_ANON_ANSWER: RateLimitConfig = {
 // ============================================
 // HELPER para extraer IP del request
 // ============================================
+// La implementación vive en `lib/api/clientIp.ts`, AGNÓSTICA del CDN: antes esto
+// sabía solo de CloudFront y, al cambiar de borde, caía en silencio a una cabecera
+// falsificable (ver la cabecera de ese módulo). Aquí solo se reexporta para no
+// romper a los ~11 llamadores.
+//
+// ⚠️ Para decisiones de SEGURIDAD usa `resolveClientIp()` y comprueba `trust`.
+export { getClientIp, resolveClientIp } from './clientIp'
+export type { ClientIp, IpTrust } from './clientIp'
 
-export function getClientIp(request: Request): string {
-  // 1) CloudFront-Viewer-Address: IP de confianza inyectada por CloudFront (NO
-  //    spoofable por el cliente, a diferencia de x-forwarded-for). Formato
-  //    "IP:puerto" (el puerto va tras el ÚLTIMO ':', válido también para IPv6).
-  //    Requiere origin request policy que reenvíe las CloudFront-Viewer-* headers.
-  const cfAddr = request.headers.get('cloudfront-viewer-address')
-  if (cfAddr) {
-    const i = cfAddr.lastIndexOf(':')
-    return i > 0 ? cfAddr.slice(0, i) : cfAddr
-  }
-  // 2) Fallback legacy: x-forwarded-for[0] (lo antepone el edge, pero el cliente
-  //    puede prefijar valores → spoofable; aceptable solo como respaldo).
-  const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) {
-    return forwarded.split(',')[0].trim()
-  }
-  const real = request.headers.get('x-real-ip')
-  if (real) return real
-  return 'unknown'
-}

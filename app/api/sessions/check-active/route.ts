@@ -7,6 +7,7 @@ import { userSessions } from '@/db/schema'
 import { and, eq, isNull, gte, gt, desc } from 'drizzle-orm'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { resolveClientIp } from '@/lib/api/clientIp'
 
 const CONTROLLED_EMAILS: string[] = [
   'edu77santoyo@gmail.com'
@@ -43,10 +44,11 @@ interface CheckActiveResponse {
   error?: string
 }
 
+// Copia local retirada (27/07): usaba solo x-forwarded-for, que es falsificable,
+// y no sabia de ningun borde. Ahora el canonico agnostico de lib/api/clientIp.
 function getClientIp(request: NextRequest): string | null {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? request.headers.get('x-real-ip')
-    ?? null
+  const { ip } = resolveClientIp(request.headers)
+  return ip === 'unknown' ? null : ip
 }
 
 async function _GET(request: NextRequest): Promise<NextResponse<CheckActiveResponse>> {

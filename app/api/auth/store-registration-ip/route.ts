@@ -7,6 +7,8 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { resolveClientIp } from '@/lib/api/clientIp'
+import { emitFireAndForget } from '@/lib/observability/emit'
 const storeIpSchema = z.object({
   userId: z.string().uuid(),
 })
@@ -25,10 +27,25 @@ async function _POST(request: Request) {
 
     const { userId } = parsed.data
 
-    // Obtener IP del request
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const ip = forwardedFor?.split(',')[0]?.trim() ?? realIp ?? 'unknown'
+    // IP del request, con VEREDICTO de confianza. Esta IP alimenta el antifraude
+    // (multi_account_reg_ip), asi que importa de donde salio: una cabecera de borde
+    // no es falsificable, x-forwarded-for si.
+    const { ip, trust, source } = resolveClientIp(request.headers)
+
+    // OBSERVABILIDAD DEL PROPIO FALLO (27/07): si algun dia cambiamos de CDN y la
+    // cabecera de confianza desaparece, esto degradaria en SILENCIO a una IP que el
+    // cliente puede falsificar. Emitirlo hace visible esa degradacion en vez de
+    // dejarla enterrada. Volumen bajo: solo en registros, no en cada peticion.
+    if (trust !== 'trusted') {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'client_ip_untrusted',
+        endpoint: '/api/auth/store-registration-ip',
+        errorMessage: `IP de registro obtenida de una fuente ${trust} (${source}): el antifraude por IP pierde garantias`,
+        metadata: { trust, ipSource: source, userId },
+      })
+    }
 
     console.log('📍 [IP] Guardando IP de registro:', { userId, ip })
 
