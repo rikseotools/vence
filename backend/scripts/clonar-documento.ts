@@ -44,6 +44,9 @@ const MAX_BYTES = 8 * 1024 * 1024
 const arg = (n: string): string | undefined =>
   process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3)
 
+/** Flag sin valor (`--refrescar-texto`). */
+const has = (n: string): boolean => process.argv.includes(`--${n}`)
+
 /**
  * ¿Esto es una pared del portal disfrazada de documento?
  *
@@ -195,6 +198,16 @@ async function main() {
   // Documento CANÓNICO → por el camino único del hub: dedup por doc_key (mata el dup txt.php vs
   // /pdfs del mismo BOE). boletin_doc_key calcula la identidad. Luego un UPDATE preserva la
   // metadata curada que ensure_ no maneja (boletin/referencia/fecha/curado).
+  // Qué texto había ANTES: `ensure_convocatoria_documento` enriquece "sin pisar" (solo rellena si
+  // faltaba), así que un documento ya poblado NUNCA mejora por re-clonarlo. Eso es correcto —un
+  // re-clonado que devuelve el menú del portal no debe destruir un texto bueno—, pero este script
+  // imprimía ✅ igualmente y hacía creer que el corpus se había actualizado. El 17/07 eso llevó a
+  // firmar «561 PROBADO … clonada la versión que sí trae la ficha» sobre una prueba inexistente.
+  const previo = (await c.query(
+    `SELECT id, extracted_text FROM convocatoria_documentos
+      WHERE convocatoria_id = $1 AND doc_key = boletin_doc_key($2) AND tipo <> 'nota' LIMIT 1`,
+    [cv.id, url])).rows[0] as { id: string; extracted_text: string | null } | undefined
+
   const docId = (await c.query(
     `SELECT ensure_convocatoria_documento($1, boletin_doc_key($2), $2, $3, $4, $5, $6, 'manual') AS id`,
     [cv.id, url, hash, tipo, arg('titulo') ?? url.split('/').pop(), r.texto])).rows[0].id
@@ -204,7 +217,31 @@ async function main() {
        curado_at = now(), updated_at = now() WHERE id = $1`,
     [docId, arg('boletin') ?? null, arg('ref') ?? null, arg('fecha') ?? null])
 
-  console.log(`✅ clonado y CURADO en el corpus (hub, dedup por doc_key): ${(r.texto.length / 1024).toFixed(0)} KB (${r.formato}) → ${slug}`)
+  // Decidir y DECIR lo que ha pasado de verdad con el texto. La decisión es pura y está testeada en
+  // `__tests__/lib/convocatoria/refrescoDocumento.test.ts`.
+  const { decidirRefresco } = require('../../lib/convocatoria/refrescoDocumento.cjs') as {
+    decidirRefresco: (a: string | null | undefined, n: string | null | undefined, o?: { forzar?: boolean }) =>
+      { accion: 'insertar' | 'reemplazar' | 'conservar'; motivo: string }
+  }
+  const decision = decidirRefresco(previo?.extracted_text, r.texto, { forzar: has('refrescar-texto') })
+  if (decision.accion === 'reemplazar') {
+    await c.query(
+      `UPDATE convocatoria_documentos SET extracted_text = $2, content_hash = $3, updated_at = now() WHERE id = $1`,
+      [docId, r.texto, hash])
+  }
+
+  const kb = (r.texto.length / 1024).toFixed(0)
+  if (decision.accion === 'conservar' && previo) {
+    // NO es un ✅: el corpus se ha quedado como estaba. Decirlo, o la próxima verificación volverá a
+    // firmar una prueba que no existe.
+    console.log(`⚠️  documento YA en el corpus y su texto NO se ha tocado (${slug})`)
+    console.log(`   ${decision.motivo}`)
+    console.log(`   descargado: ${kb} KB (${r.formato}) · en BD: ${(previo.extracted_text || '').length} caracteres`)
+  } else {
+    const que = decision.accion === 'reemplazar' ? 'texto ACTUALIZADO' : 'clonado y CURADO'
+    console.log(`✅ ${que} en el corpus (hub, dedup por doc_key): ${kb} KB (${r.formato}) → ${slug}`)
+    if (decision.accion === 'reemplazar') console.log(`   ${decision.motivo}`)
+  }
   await c.end()
 }
 
