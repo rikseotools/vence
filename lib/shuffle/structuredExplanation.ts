@@ -441,8 +441,17 @@ export function parseLetterFormatExplanation(
  *     colaron las tres pérdidas que cazó la guarda el 27/07.
  */
 export function mismoContenidoExplicacion(a: string, b: string): boolean {
-  // Acepta las variantes reales del marcador: "- **A)** ", "- **A** ", "* **A**: ", "- A) ".
-  const RE_BULLET = /^\s*[-*]\s*(?:\*\*)?\s*([A-E])\s*(?:\)|:|\.)?\s*(?:\*\*)?\s*(.*)$/
+  // DOS patrones explícitos, no uno elástico (un solo patrón permisivo empezó a tragarse líneas
+  // de texto normal que arrancan por "A." y rompió más de lo que arreglaba):
+  //   · con viñeta  — "- **A)** …", "- **A** …", "* **A**: …"   (estilo §8.1)
+  //   · sin viñeta  — "**A)** …" al principio de línea            (estilo §5.1, impugnaciones)
+  // El segundo hace falta porque el bloque por opción del formato de impugnaciones no lleva
+  // viñeta: sin reconocerlo, esos bloques se comparaban como texto corrido y al barajar —que los
+  // reordena— el canary los daba por texto cambiado (40 falsos fallos, 27/07).
+  const RE_BULLETS = [
+    /^\s*[-*]\s*(?:\*\*)?\s*([A-E])\s*(?:\)|:|\.)?\s*(?:\*\*)?\s*(.*)$/,
+    /^\s*\*\*\s*([A-E])\s*\)\s*\*\*\s*(.+)$/,
+  ]
   const norm = (s: string) =>
     (s || '')
       .replace(/Por qu[eé]\s+[A-E]\s+(es|no es)/gi, 'Por qué <L> $1')
@@ -452,7 +461,7 @@ export function mismoContenidoExplicacion(a: string, b: string): boolean {
     const bullets: string[] = []
     const resto: string[] = []
     for (const linea of (texto || '').replace(/\r\n/g, '\n').split('\n')) {
-      const m = linea.match(RE_BULLET)
+      const m = RE_BULLETS.reduce<RegExpMatchArray | null>((acc, re) => acc || linea.match(re), null)
       // Un bullet de verdad tiene contenido tras la letra; si no, es texto normal.
       if (m && m[2] && m[2].trim()) bullets.push(norm(m[2]))
       else resto.push(linea)

@@ -358,3 +358,21 @@ describe('escribir en el formato NUEVO: render determinista (el camino que sí e
     expect(barajado).toContain('- **A)** Confunde la actuación administrativa')
   })
 })
+
+describe('mismoContenidoExplicacion — el bloque SIN viñeta del estilo impugnación (regresión 27/07)', () => {
+  const { mismoContenidoExplicacion } = require('../../../lib/shuffle/structuredExplanation')
+
+  test('reconoce "**A)** …" al principio de línea, sin guion', () => {
+    // El estilo §5.1 escribe así cada opción. Sin reconocerlo, esos bloques se comparaban como
+    // texto corrido y al barajar —que los reordena— el canary daba 40 falsos fallos.
+    const a = 'La respuesta correcta es la **B**.\n\n**A)** INCORRECTA — Uno.\n\n**B)** CORRECTA — Dos.'
+    const b = 'La respuesta correcta es la **B**.\n\n**B)** CORRECTA — Dos.\n\n**A)** INCORRECTA — Uno.'
+    expect(mismoContenidoExplicacion(a, b)).toBe(true)
+  })
+
+  test('y sigue cazando la pérdida de texto en ese mismo estilo', () => {
+    const completo = 'La respuesta correcta es la **B**.\n\n**A)** INCORRECTA — Uno.\n\n**B)** CORRECTA — Dos.'
+    const mutilado = '**A)** INCORRECTA — Uno.\n\n**B)** CORRECTA — Dos.'
+    expect(mismoContenidoExplicacion(completo, mutilado)).toBe(false)
+  })
+})
