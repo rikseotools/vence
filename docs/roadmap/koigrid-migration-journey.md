@@ -1000,3 +1000,98 @@ When one `-j` worker dies, `pg_restore` aborts and the surviving output is a wal
 - Time lost to the 4 snags above: ~2 hours (mostly Snag B re-restore + Snag C diagnosis).
 
 *Net: the platform is genuinely good and the migration is very doable — snags 1-3 are the difference between "migrate in an afternoon" and "migrate in a day of head-scratching." Fix the Supabase/pgvector path (#1) and you unlock a wave of Supabase refugees.*
+
+---
+
+## 🔁 RE-TEST 2026-07-27 — the two open items turned out to be **one chain**, and it still blocks
+
+**Why we came back today (business context, because it changes the stakes).** Our AWS bill jumped from
+**~$14/day to ~$33/day** on 21-22 July (frontend Fargate floor raised to 8 tasks × 2 vCPU after a
+504 incident). Projected August: **~$1,040/month** vs ~$434 before. So we re-opened the migration with
+a concrete question: *can Koigrid take this load, and what would it cost?* We could not answer it, and
+the reason is a single reproducible bug.
+
+### Finding 1 — A3 (HTML edge caching) is **gated behind** N1 (scale-out). They are not two items.
+
+Your own API told us, which is excellent diagnostics — `GET /apps/{id}/rules`:
+
+```json
+"enforcement": {
+  "enforced": false,
+  "servedBy": "legacy_runner",
+  "note": "…esta app se sirve por el Caddy heredado de su runner, que no ejecuta reglas…",
+  "remedy": { "action": "serve_via_central_edge", "endpoint": "PUT /api/v1/apps/{id}/scale-out" }
+}
+```
+
+So: **rules and (we infer) HTML edge caching only apply on the central edge; getting there requires
+`scale-out`; `scale-out` fails.** That makes N1 the single blocker, not one of two.
+
+### Finding 2 — `scale-out` still fails, **identically, two days later**
+
+| When | Action | Result |
+|---|---|---|
+| 2026-07-25 17:02 UTC | `scale-out:true` + deploy | `failed` — `replica_unhealthy` |
+| **2026-07-27 17:58 UTC** | `scale-out:true` + deploy | **`failed` — `replica_unhealthy`** |
+
+Same app (`vence-web7`, faithful Next.js clone, `sourceType=image`), same error code, empty logs, ~30 s.
+The **same image deploys fine** through the normal path (verified again today: `resume` → `running`,
+`GET /leyes` → 200 in 0.73 s). **No downtime either time** — the last-good replica kept serving, which
+is genuinely good behaviour and worth keeping.
+
+**What would help us most:** `replica_unhealthy` with empty logs is not actionable from the outside.
+There is no `healthPath` to tune on this app, and the error is not in the documented runtime-error
+catalogue. Even a one-line reason (`probe timed out after Ns on port P`, `container exited rc=N`,
+`no runner with capacity for N replicas`) would let us fix it ourselves instead of reporting it.
+
+### Finding 3 — you fixed the A3 **docs** exactly as we asked… but the fix is unreachable
+
+The `llms.txt` grew 659 → **758 lines** and now says, by name, the thing we flagged on 25/07:
+
+> *"The bare s-maxage is **ENOUGH** — the `public` token is **NOT required** (Next.js ISR never emits it
+> and those pages DO cache; RFC 9111: s-maxage is itself a shared-cache directive)."*
+
+That is precisely right, and thank you for acting on it. **But measured today on the faithful clone with
+`cdnEnabled:true`, three real pages, three requests each:**
+
+| Page | `Cache-Control` from origin | `cf-cache-status` |
+|---|---|---|
+| `/` | `s-maxage=3600, stale-while-revalidate=3153240` | `DYNAMIC` ×3 |
+| `/leyes` | `s-maxage=2592000, stale-while-revalidate=2894` | `DYNAMIC` ×3 |
+| `/leyes/constitucion-espanola` | `s-maxage=31536000` | `DYNAMIC` ×3 |
+
+Because the app is on `legacy_runner` (Finding 1), the documented behaviour cannot apply. **This is the
+second time something is documented before it is reachable** (the first was the managed restore that
+appeared, then 404'd). Not a complaint about speed — you ship fast and that is the best thing about
+working with you — just a suggestion: **gate the doc on the path being live**, or mark it
+`available on central edge only`, so integrators do not spend a session testing an unreachable feature.
+
+### Finding 4 — plan quotas vs a real production load (pricing feedback)
+
+`GET /usage` on our token: `plan: free`, `maxApps: 1`, `cpu_seconds` limit **180,000** (= 50 vCPU-hours),
+`memory_gb_hours` limit **100**. Our current AWS frontend consumes **~390 vCPU-hours and ~864 GB-hours
+per DAY**. So the free tier is ~⅛ of *one day* of our real load — which is fine and expected, but:
+
+**there is no published price for the plan we would actually need**, and the docs say quotas are soft
+(you go over and get billed). For a migration decision that is the one number we cannot estimate. A
+simple *"here is what N replicas × M GB costs per month"* table — or a `GET /pricing` endpoint — would
+let us finish the comparison. Right now we can prove Koigrid **can** take the load (your peak gate:
+109 rps at 0% error on 6 free replicas, vs our ~16.6 rps peak) but not what it **costs**.
+
+### Where this leaves the migration
+
+- **Capacity: proven.** 6.5× headroom over our peak, and scaling is one call + ~30 s.
+- **Database: proven.** 31 GB 1:1, co-located 6.45 ms.
+- **Blocked on exactly one bug:** `scale-out` → `replica_unhealthy`. It gates the central edge, which
+  gates HTML caching, which gates *both* the latency gap (we are 2.5-3.5× behind AWS purely because
+  CloudFront serves our HTML from the edge and Koigrid re-renders it) **and** the replica count that
+  determines the price (4-6 replicas without edge caching vs 1-2 with it).
+
+**One fix unblocks the whole decision.** We are keen to run the full cutover rehearsal the day
+`scale-out` lands — the POC is paused, not deleted (`/resume` brings it back in ~40 s with no rebuild),
+and the 31 GB database is still `running`.
+
+**Reproduction, if useful:** app `vence-web7` (`38864c7c-8ff1-4c9d-83f5-cd0790448c6a`),
+`PUT /apps/{id}/scale-out {"enabled":true}` → `POST /apps/{id}/deployments` → `failed`,
+`error: replica_unhealthy`, logs empty. Reverted to `scale-out:false` and re-deployed successfully
+after each attempt, so the app is left healthy.
