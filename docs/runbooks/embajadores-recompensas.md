@@ -4,7 +4,7 @@
 > Las **operaciones** (crear recompensa/bonus, consultar saldos, pagar gift card) se ejecutan por **API**
 > siguiendo este runbook. Este documento es la fuente única de "cómo se opera el programa".
 >
-> **Vista admin "ver como el usuario":** en `/admin/embajadores`, pinchar un nombre de "Top embajadores"/"Saldos" abre **`/admin/embajadores/[userId]`** en pestaña nueva = el panel del embajador **tal cual lo ve él** (saldo, vales, enlace, embudo, referidos), read-only (endpoint `/api/admin/embajadores/[userId]/panel`, requireAdmin).
+> **Vista admin "ver como el usuario":** en `/admin/embajadores`, pinchar un nombre de "Top embajadores"/"Saldos" abre **`/admin/embajadores/[userId]`** en pestaña nueva = el panel del embajador **tal cual lo ve él** (saldo, vales, enlace, embudo, referidos), read-only (endpoint `/api/admin/embajadores/[userId]/panel`, requireAdmin). **Desde el 27/07/2026 la tarjeta del vale es LITERALMENTE la misma** (`components/embajadores/VoucherCard.tsx`): antes eran dos implementaciones y habían divergido —la de admin ocultaba PIN/serial tras «Revelar» y la del usuario no—, así que «tal cual lo ve él» era falso. Lo fija `__tests__/guardrails/voucherCard.guardrail.test.ts`.
 > **Naming user-facing:** en los MENSAJES al usuario, el programa se llama **"Programa de Recompensas"** (no "de Embajadores"). Los referidos se muestran con nombre abreviado ("Nombre A. B.") y estado premium ("Registrado · No premium" / "Premium").
 
 ## Qué es

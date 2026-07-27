@@ -1,0 +1,56 @@
+/**
+ * Guardarraíl: la tarjeta del vale se pinta en UN solo sitio (`VoucherCard`).
+ *
+ * POR QUÉ (27/07/2026). Había dos implementaciones de la misma tarjeta —`MisVales` (lo que ve la
+ * embajadora en /embajadores) y `EmbajadorPanelView` (la vista de admin «ver como el usuario»)— y
+ * habían divergido: una ocultaba PIN/serial tras «Revelar» y enseñaba el enlace de la tarjeta
+ * original, la otra no. El runbook describe la vista de admin como *el panel del embajador tal cual
+ * lo ve él*, y con dos componentes distintos eso era falso.
+ *
+ * Se destapó al añadir el enlace de canje: se puso en una vista y desde la otra seguía sin verse
+ * dónde canjear el vale. Este test existe para que no vuelva a pasar en silencio.
+ */
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+const src = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
+
+const VISTAS = [
+  'components/embajadores/MisVales.tsx',
+  'components/embajadores/EmbajadorPanelView.tsx',
+]
+
+describe('VoucherCard — una sola implementación de la tarjeta del vale', () => {
+  it.each(VISTAS)('%s usa <VoucherCard> y no reimplementa la tarjeta', (rel) => {
+    const s = src(rel)
+    expect(s).toMatch(/import VoucherCard/)
+    expect(s).toMatch(/<VoucherCard\b/)
+    // Señales de haber vuelto a pintar la tarjeta a mano: los campos del vale con CopyCode.
+    expect(s).not.toMatch(/<CopyCode\s+label="Código"/)
+    expect(s).not.toMatch(/<CopyCode\s+label="PIN"/)
+    expect(s).not.toMatch(/<CopyCode\s+label="Serial"/)
+  })
+
+  it.each(VISTAS)('%s no duplica el enlace de canje (lo pone la tarjeta)', (rel) => {
+    expect(src(rel)).not.toContain('amazon.es/gc/redeem')
+  })
+
+  it('la tarjeta ofrece SIEMPRE dónde canjear, no solo cuando el vale trae extras', () => {
+    const card = src('components/embajadores/VoucherCard.tsx')
+    expect(card).toContain('https://www.amazon.es/gc/redeem')
+    expect(card).toMatch(/Canjear en Amazon/)
+    // El enlace vive FUERA del condicional de pin/serial/fallbackLink: si alguien lo mete dentro,
+    // los vales que solo traen código (3 de los 5 primeros) se quedan otra vez sin destino.
+    // Se compara el USO en el JSX (href=...), no la declaración de la constante, que va arriba.
+    const iCondFin = card.indexOf('solo con el código')
+    const iLinkUso = card.indexOf('href={AMAZON_REDEEM_URL}')
+    expect(iLinkUso).toBeGreaterThan(iCondFin)
+  })
+
+  it('los tres formatos de Bitrefill están contemplados en la tarjeta', () => {
+    const card = src('components/embajadores/VoucherCard.tsx')
+    expect(card).toMatch(/v\.pin/)          // lote con pin+serial
+    expect(card).toMatch(/v\.fallbackLink/) // lote con enlace de revelación
+    expect(card).toMatch(/solo con el código/) // lote que solo trae el código
+  })
+})

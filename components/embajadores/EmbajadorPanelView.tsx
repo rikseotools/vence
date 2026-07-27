@@ -6,7 +6,7 @@
 // de otro usuario). Réplica visual de app/embajadores/page.tsx, sin la parte celebratoria/confeti.
 
 import { useState } from 'react'
-import CopyCode from './CopyCode'
+import VoucherCard from './VoucherCard'
 
 const SOURCE_LABEL: Record<string, string> = {
   referido: '💛 Recomendaciones', registro_activo: '📝 Registros activos', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
@@ -42,9 +42,6 @@ function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; titl
     title: `Ganarás ${ar.amount} € cuando este referido complete ${ar.testsNeeded} tests (lleva ${ar.testsDone})` }
 }
 
-function fmtVoucherDate(d: string | null): string {
-  return d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
-}
 function fmtMonthYear(d?: string | null): string {
   return d ? new Date(d).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) : ''
 }
@@ -93,11 +90,6 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
   const emb = embajadorWord(data.gender)
   const name = data.firstName || emb
   const [copied, setCopied] = useState(false)
-  // Vales revelados (índices). Por defecto TODOS ocultan PIN/Serial tras un enlace
-  // "Revelar tarjeta completa" — patrón uniforme (decisión Manuel 12/07): el dato
-  // sensible (PIN/serial) no se enseña a la vista hasta que el embajador lo pide.
-  const [revealedVouchers, setRevealedVouchers] = useState<Set<number>>(new Set())
-  const revealVoucher = (i: number) => setRevealedVouchers((s) => new Set(s).add(i))
   const copyLink = async () => {
     if (!data.link) return
     try { await navigator.clipboard.writeText(data.link); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* noop */ }
@@ -174,48 +166,7 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Tarjetas regalo de Amazon.es que has conseguido. Copia el código y canjéalo en Amazon (el PIN si lo trae).</p>
           <div className="space-y-2">
             {data.vouchers.map((v, i) => (
-              <div key={i} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
-                <div className="flex items-baseline justify-between gap-3 mb-3">
-                  <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{fmtVoucherDate(v.date)}</div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <CopyCode label="Código" value={v.code} />
-                  {/* Uniforme: el código siempre visible (se necesita para canjear);
-                      PIN/Serial ocultos tras "Revelar" hasta que el embajador lo pida. */}
-                  {(() => {
-                    const revealed = revealedVouchers.has(i)
-                    const hasSecret = !!(v.pin || v.serial)
-                    // Ya revelado → muestra los campos sensibles (si los trae).
-                    if (revealed && hasSecret) {
-                      return (
-                        <>
-                          {v.pin ? <CopyCode label="PIN" value={v.pin} /> : null}
-                          {v.serial ? <CopyCode label="Serial" value={v.serial} /> : null}
-                        </>
-                      )
-                    }
-                    // Sin secreto y sin enlace → esta tarjeta se canjea solo con el código.
-                    if (!hasSecret && !v.fallbackLink) {
-                      return <p className="text-xs text-gray-500 dark:text-gray-400">Esta tarjeta se canjea solo con el código en amazon.es/redeem (no lleva PIN).</p>
-                    }
-                    // Enlace externo de Amazon (tarjeta que revela en su web) → abre el link.
-                    if (!hasSecret && v.fallbackLink) {
-                      return (
-                        <a href={v.fallbackLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                          🔓 Revelar tarjeta completa (código, PIN si lo trae) →
-                        </a>
-                      )
-                    }
-                    // Tiene PIN/Serial inline → botón para revelarlos (no exponerlos de entrada).
-                    return (
-                      <button type="button" onClick={() => revealVoucher(i)} className="text-left text-xs text-blue-600 dark:text-blue-400 hover:underline">
-                        🔓 Revelar tarjeta completa (código, PIN si lo trae) →
-                      </button>
-                    )
-                  })()}
-                </div>
-              </div>
+              <VoucherCard key={i} voucher={v} />
             ))}
           </div>
         </section>
