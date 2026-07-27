@@ -11,7 +11,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 > **Empieza por aquí.** Secuencia canónica para resolver una impugnación. Las secciones §1-§16 son el detalle.
 
 **Reglas que NO se saltan nunca:**
-- 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí.
+- 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**. **Desde el 27/07 te dice además si la explicación será BARAJABLE** (🔀) y te da el comando exacto para transcribirla tras aplicarla — córrelo, son dos segundos y es lo que permite que esa pregunta baraje sus opciones algún día. Si avisa de que NO se podrá transcribir, reescribe la explicación con una razón por opción: es el mismo formato §5.1 que ya exige el manual: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí.
 - 🗺️ **ENFORCEMENT de scope/epígrafe (en el dossier, desde 24/07):** cuando la impugnación va de **temario / epígrafe / scope / "no entra" / "es de otro tema"**, el dossier imprime un **CHECK SCOPE/EPÍGRAFE** con el estado de verificación de la oposición del usuario (Paso 1 epígrafe clonado + Paso 2 scope) y un **aviso BLOQUEANTE 🛑 si el Paso 1 está `never_sourced`** — porque resolver un scope contra un epígrafe sin clonar del oficial es un **falso verde** (caso Sara 24/07: casi se rechaza como "falso positivo" con el scope `verified_correct` pero el epígrafe `never_sourced`). Es la "Regla previa OBLIGATORIA" de `verificar-epigrafes-scope.md`, ahora enforzada por código (módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`, compartido con el dossier de feedback; test `__tests__/impugnaciones/scopeEnforcement.test.js`). **No resuelvas una queja de scope si el dossier saca el 🛑 — haz el Paso 1 primero.**
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
 - 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next` — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). **No hace falta pasar `--sid`: se identifica sola** por `CLAUDE_CODE_SESSION_ID` (cada sesión de Claude Code trae el suyo). `revisar-impugnacion.cjs <id>` también la coge al abrir el dossier y avisa si otra sesión ya la tiene. Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
@@ -1555,3 +1555,29 @@ Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas 
 6. ✅ Manual `docs/procedures/gestionar-feedback-bug.md` §10 actualizado.
 
 **Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Este patrón se aplicó a todos los flujos de notificación internos del 14/04/2026 (impugnaciones legislativas + psicotécnicas + feedback). Si aparecen nuevos casos similares, usar el mismo refactor.
+
+## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
+
+Desde el 27/07/2026 la explicación puede vivir en dos sitios: el texto de siempre (`explanation`)
+y la versión ESTRUCTURADA (`explanation_data`), con las razones keadas a cada opción y sin letras
+dentro. **Los dos conviven a propósito** mientras se transcribe el histórico; el barajado de
+opciones se encenderá cuando la cobertura sea suficiente.
+
+Por qué te afecta: una explicación que cita las opciones por letra («la B es correcta») **impide
+barajar esa pregunta para siempre**. Hoy 47.388 preguntas activas están bloqueadas solo por eso.
+Si corriges una explicación y la dejas únicamente en texto, la pregunta sigue bloqueada.
+
+**Después de aplicar la explicación, un comando:**
+
+```bash
+npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta <question_id> --apply
+```
+
+Transcribe esa pregunta si puede hacerlo **sin cambiar una coma de lo que ve el opositor** (lo
+comprueba con `mismoContenidoExplicacion`, el mismo comparador que vigila el canary). Si no puede,
+no toca nada y lo dice: la pregunta queda para la pasada LLM. Nunca inventa ni recorta.
+
+**Y si escribes la explicación a mano**, ayuda a que sea transcribible: mantén el formato canónico
+del manual (una razón por opción, en su propio bloque) y evita frases que solo tengan sentido por
+la POSICIÓN («como se ha visto en la primera opción», «las dos últimas son incorrectas»): esas no
+sobreviven al barajado ni con estructura.

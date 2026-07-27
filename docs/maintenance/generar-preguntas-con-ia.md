@@ -223,6 +223,15 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 >
 > **Punto ciego que esto revela:** ningún check mecánico valida que el bullet `- **X)**` describa realmente el contenido de la opción X. Es territorio de auditoría LLM — y por eso conviene decírselo explícitamente en el prompt cuando el lote haya sufrido reordenaciones.
 
+> ⚙️ **ESTADO (27/07/2026): la columna `explanation_data` YA EXISTE y el serve renderiza desde
+> ella.** Lo que faltaba para poder emitir §8.2 está hecho: los dos formatos conviven (sin
+> estructura se sirve el texto de siempre) y el barajado se encenderá cuando la BD esté
+> transcrita. Al generar, **emite el §8.1 como hasta ahora** —el gate mecánico lo exige y el
+> render lo reproduce igual— y **después transcribe el lote**:
+> `npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta <id> --apply`
+> (o sin `--pregunta` para el lote entero). La transcripción solo escribe si no cambia ni una
+> coma de lo que ve el opositor.
+>
 > **Esta deuda DESAPARECE con el formato estructurado (§8.2, v2.6):** si la explicación se escribe keada al CONTENIDO de cada opción (sin letras), re-permutar es keaer el índice y el render recompone las letras solo — no hay nada que mover a mano. **Emite siempre el formato §8.2** en generación nueva; §2.2-ter (posición uniforme) sigue aplicando a `correct_option`, pero la coreografía de "mover la letra" queda obsoleta.
 
 **Remediación de la cohorte histórica (04/06/2026):** 437 preguntas re-permutadas (transposición mínima B/A→C/D con relabel determinista del header + bullets + validación per-pregunta + skip-on-fail). Distribución post: A 25,2 / B 25,7 / C 24,6 / D 24,5% (χ²=0,58 vs uniforme, indistinguible). 13 saltadas (9 sin header parseable + 4 con header≠`correct_option`, posible bug de clave a revisar). Backup `/tmp/ia_position_backup.json`.

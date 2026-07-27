@@ -142,3 +142,29 @@ FROM questions WHERE id = 'ID_PREGUNTA';
 SELECT status, resolved_at FROM problematic_questions_tracking 
 WHERE question_id = 'ID_PREGUNTA';
 ```
+
+## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
+
+Desde el 27/07/2026 la explicación puede vivir en dos sitios: el texto de siempre (`explanation`)
+y la versión ESTRUCTURADA (`explanation_data`), con las razones keadas a cada opción y sin letras
+dentro. **Los dos conviven a propósito** mientras se transcribe el histórico; el barajado de
+opciones se encenderá cuando la cobertura sea suficiente.
+
+Por qué te afecta: una explicación que cita las opciones por letra («la B es correcta») **impide
+barajar esa pregunta para siempre**. Hoy 47.388 preguntas activas están bloqueadas solo por eso.
+Si corriges una explicación y la dejas únicamente en texto, la pregunta sigue bloqueada.
+
+**Después de aplicar la explicación, un comando:**
+
+```bash
+npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta <question_id> --apply
+```
+
+Transcribe esa pregunta si puede hacerlo **sin cambiar una coma de lo que ve el opositor** (lo
+comprueba con `mismoContenidoExplicacion`, el mismo comparador que vigila el canary). Si no puede,
+no toca nada y lo dice: la pregunta queda para la pasada LLM. Nunca inventa ni recorta.
+
+**Y si escribes la explicación a mano**, ayuda a que sea transcribible: mantén el formato canónico
+del manual (una razón por opción, en su propio bloque) y evita frases que solo tengan sentido por
+la POSICIÓN («como se ha visto en la primera opción», «las dos últimas son incorrectas»): esas no
+sobreviven al barajado ni con estructura.

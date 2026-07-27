@@ -231,3 +231,86 @@ describe('parseLetterFormatExplanation — el INTRO en prosa no se pierde (regre
     expect(d!.intro).toBeUndefined()
   })
 })
+
+describe('formato §5.1 de IMPUGNACIONES — se transcribe y se re-renderiza igual', () => {
+  // El banco tiene DOS formatos legacy vivos y este lo produce cada corrección de impugnación
+  // (13.559 preguntas activas). Sin soportarlo, el trabajo de impugnaciones seguiría generando
+  // explicaciones no barajables.
+  const { parseImpugnacionFormatExplanation } = require('../../../lib/shuffle/structuredExplanation')
+
+  const expl = [
+    'La respuesta correcta es la B).',
+    '',
+    '**A)** INCORRECTA — El plazo de un mes corresponde al recurso de reposición.',
+    '',
+    '**B)** CORRECTA — El artículo fija dos meses para el contencioso-administrativo.',
+    '',
+    '**C)** INCORRECTA — Ese plazo no aparece en el precepto.',
+    '',
+    '**D)** INCORRECTA — Confunde el plazo con el de subsanación.',
+  ].join('\n')
+
+  test('se reconoce y guarda su estilo', () => {
+    const d = parseImpugnacionFormatExplanation(expl, { correctOption: 1, nOptions: 4 })
+    expect(d).not.toBeNull()
+    expect(d.estilo).toBe('impugnacion')
+    expect(d.intro).toContain('La respuesta correcta es')
+    expect(Object.keys(d.options)).toHaveLength(4)
+  })
+
+  test('el render lo devuelve en SU formato, no en el del boletín', () => {
+    const d = parseImpugnacionFormatExplanation(expl, { correctOption: 1, nOptions: 4 })
+    const r = renderStructuredExplanation(d, { correctOption: 1, optionOrder: null, nOptions: 4 })
+    expect(r).toContain('La respuesta correcta es')
+    expect(r).toContain('**B)** CORRECTA')
+    expect(r).not.toContain('Por qué B es correcta')   // ese es el estilo del OTRO formato
+    expect(r).not.toContain('Por qué las demás')
+  })
+
+  test('al barajar, la marca CORRECTA viaja con su opción (cambia la letra, no el contenido)', () => {
+    const d = parseImpugnacionFormatExplanation(expl, { correctOption: 1, nOptions: 4 })
+    // order[pos] = índice original: la correcta (1) pasa a la posición 0.
+    const r = renderStructuredExplanation(d, { correctOption: 1, optionOrder: [1, 0, 2, 3], nOptions: 4 })
+    expect(r).toContain('**A)** CORRECTA — El artículo fija dos meses')
+    expect(r).toContain('**B)** INCORRECTA — El plazo de un mes')
+  })
+
+  test('si la marca CORRECTA no cae en la clave real, NO se migra (contradicción de contenido)', () => {
+    expect(parseImpugnacionFormatExplanation(expl, { correctOption: 2, nOptions: 4 })).toBeNull()
+  })
+
+  test('no confunde el otro formato: una explicación §8.1 no entra por aquí', () => {
+    const ochoUno = '> **Art. 1** "cita"\n\n**Por qué A es correcta:** Sí.\n\n**Por qué las demás son incorrectas:**\n- **B)** No.'
+    expect(parseImpugnacionFormatExplanation(ochoUno, { correctOption: 0, nOptions: 2 })).toBeNull()
+  })
+})
+
+describe('mismoContenidoExplicacion — el comparador que decide si una transcripción es segura', () => {
+  const { mismoContenidoExplicacion } = require('../../../lib/shuffle/structuredExplanation')
+
+  test('tolera la variante de marcador sin paréntesis (1.210 preguntas del banco la usan)', () => {
+    const a = '**Por qué las demás son incorrectas:**\n- **A)** No procede.\n- **C)** Tampoco.'
+    const b = '**Por qué las demás son incorrectas:**\n- **A** No procede.\n- **C** Tampoco.'
+    expect(mismoContenidoExplicacion(a, b)).toBe(true)
+  })
+
+  test('tolera que cambie la LETRA de la cabecera (es lo que hace el barajado)', () => {
+    expect(mismoContenidoExplicacion('**Por qué A es correcta:** Sí.', '**Por qué C es correcta:** Sí.')).toBe(true)
+  })
+
+  test('tolera que los bullets vengan en otro ORDEN', () => {
+    const a = '- **A)** Uno.\n- **B)** Dos.'
+    const b = '- **B)** Dos.\n- **A)** Uno.'
+    expect(mismoContenidoExplicacion(a, b)).toBe(true)
+  })
+
+  test('NO tolera que se pierda texto — que es justo lo que hay que impedir', () => {
+    const conIntro = 'Contexto importante.\n\n**Por qué A es correcta:** Sí.'
+    const sinIntro = '**Por qué A es correcta:** Sí.'
+    expect(mismoContenidoExplicacion(conIntro, sinIntro)).toBe(false)
+  })
+
+  test('NO tolera que cambie una razón', () => {
+    expect(mismoContenidoExplicacion('- **A)** Uno.', '- **A)** Otra cosa.')).toBe(false)
+  })
+})

@@ -22,29 +22,12 @@
 // encryption"). El canary hermano `shuffleRoundtripBD` sí se lo quita porque monta su propio
 // cliente con `ssl` explícito — no copiar de ahí sin mirar.
 import { transformQuestion } from '@/lib/api/filtered-questions/queries'
+// El MISMO comparador que usa el backfill para decidir si migra. Tenerlo duplicado aquí
+// garantizaría que un día divergen y este canary deja de vigilar lo que aquel decide.
+import { mismoContenidoExplicacion } from '@/lib/shuffle/structuredExplanation'
 
 const HAS_DB = !!process.env.DATABASE_URL
 const d = HAS_DB ? describe : describe.skip
-
-/** Neutraliza la letra de la cabecera: al barajar CAMBIA por diseño (la correcta se mueve). */
-const norm = (s: string) =>
-  (s || '')
-    .replace(/Por qu[eé]\s+[A-E]\s+(es|no es)/gi, 'Por qué <L> $1')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-/** Separa bullets (que se reordenan) del resto del texto (que no puede cambiar). */
-function partes(texto: string) {
-  const RE = /^\s*-\s*\*\*([A-E])\)\*\*\s*(.*)$/
-  const bullets: string[] = []
-  const resto: string[] = []
-  for (const linea of (texto || '').split('\n')) {
-    const m = linea.match(RE)
-    if (m) bullets.push(norm(m[2]))
-    else resto.push(linea)
-  }
-  return { bullets: bullets.sort().join('|'), resto: norm(resto.join(' ')) }
-}
 
 d('CANARY Fase 2 — la explicación estructurada no pierde ni cambia texto (BD viva)', () => {
   let filas: any[] = []
@@ -72,9 +55,7 @@ d('CANARY Fase 2 — la explicación estructurada no pierde ni cambia texto (BD 
     const malas: string[] = []
     for (const f of filas) {
       const servida = transformQuestion(fila(f), 0, false).explanation
-      const a = partes(servida)
-      const b = partes(f.explanation)
-      if (a.resto !== b.resto || a.bullets !== b.bullets) malas.push(f.id)
+      if (!mismoContenidoExplicacion(servida, f.explanation)) malas.push(f.id)
     }
     expect({ preguntas: filas.length, conDiferencias: malas.slice(0, 5) })
       .toEqual({ preguntas: filas.length, conDiferencias: [] })
@@ -84,10 +65,8 @@ d('CANARY Fase 2 — la explicación estructurada no pierde ni cambia texto (BD 
     const malas: string[] = []
     for (const f of filas) {
       const servida = transformQuestion(fila(f), 0, true).explanation
-      const a = partes(servida)
-      const b = partes(f.explanation)
-      // Las letras cambian (normalizadas arriba); el CONJUNTO de razones y el resto, no.
-      if (a.resto !== b.resto || a.bullets !== b.bullets) malas.push(f.id)
+      // Las letras cambian (el comparador las neutraliza); el texto y las razones, no.
+      if (!mismoContenidoExplicacion(servida, f.explanation)) malas.push(f.id)
     }
     expect({ preguntas: filas.length, conDiferencias: malas.slice(0, 5) })
       .toEqual({ preguntas: filas.length, conDiferencias: [] })

@@ -129,6 +129,47 @@ if (require.main !== module) {
     const correctLetter = ['A', 'B', 'C', 'D'][q.correct_option];
     const problems = [...validateFormat(expl, opts, correctLetter), ...validateQuotes(expl, q.acontent)];
     const warnings = checkCorrespondence(expl, opts, correctLetter);
+
+    // ── ¿Esta explicación podrá BARAJARSE? (Fase 2 de T-080, 27/07/2026) ────────────────────
+    //
+    // Una explicación que cita las opciones por letra impide barajar esa pregunta PARA SIEMPRE:
+    // 47.388 preguntas activas están bloqueadas hoy solo por eso. La salida es transcribirla al
+    // formato estructurado (`explanation_data`), donde la razón va keada a la opción y la letra
+    // la pone el render.
+    //
+    // Se comprueba AQUÍ porque este guardarraíl es el ÚNICO paso obligatorio antes de aplicar una
+    // explicación (manual §5.1). Ponerlo solo en el manual sería confiar en que alguien se
+    // acuerde — que es exactamente por lo que este script existe.
+    //
+    // Es AVISO, no bloqueo: el 74% del histórico de impugnaciones está en prosa libre sin
+    // análisis por opción, así que bloquear hoy convertiría el gate en ruido que se ignora (la
+    // lección del gate de cabecera que salía rojo en el 100% de los batches buenos).
+    let transcribible = false;
+    try {
+      // El núcleo de la explicación estructurada es TypeScript y este guardarraíl es CommonJS
+      // puro (se invoca con `node`, como dice el manual). En vez de duplicar los parsers en .cjs
+      // —dos copias de un criterio que DEBE ser uno— se registra el cargador de TS que ya trae el
+      // proyecto. Si no estuviera, el catch de abajo lo degrada a aviso y el guardarraíl sigue.
+      require('tsx/cjs');
+      const { parseLetterFormatExplanation, parseImpugnacionFormatExplanation } = require('../../lib/shuffle/structuredExplanation');
+      const nOptions = ['A', 'B', 'C', 'D'].filter((L) => opts[L]).length;
+      transcribible = !!(
+        parseLetterFormatExplanation(expl, { correctOption: q.correct_option, nOptions }) ||
+        parseImpugnacionFormatExplanation(expl, { correctOption: q.correct_option, nOptions })
+      );
+    } catch (e) {
+      warnings.push(`no se pudo comprobar si es barajable: ${e.message}`);
+    }
+    if (transcribible) {
+      console.log('🔀 Barajable: la explicación se puede transcribir al formato estructurado.');
+      console.log(`   Tras aplicarla:  npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta ${qid} --apply`);
+    } else {
+      warnings.push(
+        'NO se podrá transcribir al formato barajable (§8.2): la pregunta seguirá sin poder ' +
+        'barajar sus opciones. Suele ser por explicar en prosa sin una razón por opción, o por ' +
+        'referirse a las opciones por su posición. Ver docs/maintenance/impugnaciones-claude-code.md.',
+      );
+    }
     if (problems.length === 0) {
       console.log('✅ Explicación VÁLIDA (formato §5.1 + cita literal verificada).');
       warnings.forEach((w) => console.log(`⚠️  AVISO (no bloquea): ${w}`));

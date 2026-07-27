@@ -58,6 +58,17 @@ export interface StructuredExplanation {
   outro?: string
   /** Marco. Default 'select_correct'. */
   frame?: ExplanationFrame
+  /**
+   * ESTILO con el que se vuelve a componer el texto. El banco tiene DOS formatos legacy vivos y
+   * transcribir uno al otro cambiaría lo que ve el opositor:
+   *   · `boletin` (default) — el §8.1 de generación: blockquote + "**Por qué B es correcta:**"
+   *     + bullets "- **A)** …". 26.571 preguntas activas.
+   *   · `impugnacion` — el §5.1 del manual de impugnaciones: "La respuesta correcta es …" +
+   *     un bloque por opción "**A)** CORRECTA/INCORRECTA — …". 13.559 preguntas activas, y es
+   *     el que produce CADA corrección de impugnación.
+   * En ambos, las razones siguen keadas al índice de la opción: la letra la pone el render.
+   */
+  estilo?: 'boletin' | 'impugnacion'
 }
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const
@@ -107,6 +118,31 @@ export function isStructuredExplanation(
  * Invariante clave: la razón de cada opción viaja con ella; la letra del header y de
  * cada bullet corresponde a la POSICIÓN MOSTRADA de esa opción tras barajar.
  */
+/**
+ * Render del estilo §5.1 (manual de impugnaciones): "La respuesta correcta es …" y un bloque por
+ * opción, en orden MOSTRADO, marcando CORRECTA/INCORRECTA. La marca no depende de la letra sino
+ * de si la opción es la buena, así que sobrevive al barajado igual que las razones.
+ */
+function renderEstiloImpugnacion(
+  data: StructuredExplanation,
+  { correctOption, optionOrder, nOptions }: { correctOption: number; optionOrder?: number[] | null; nOptions: number }
+): string {
+  const order =
+    optionOrder && optionOrder.length === nOptions
+      ? optionOrder
+      : Array.from({ length: nOptions }, (_, i) => i)
+  const partes: string[] = []
+  if (data.intro && data.intro.trim()) partes.push(data.intro.trim())
+  if (data.cita?.bloque) partes.push(data.cita.bloque.split('\n').map((l) => `> ${l}`.trimEnd()).join('\n'))
+  for (let pos = 0; pos < nOptions; pos++) {
+    const original = order[pos]
+    const razon = data.options[String(original)] ?? ''
+    if (razon) partes.push(`**${indexToLetter(pos)})** ${razon}`)
+  }
+  if (data.outro && data.outro.trim()) partes.push(data.outro.trim())
+  return partes.join('\n\n')
+}
+
 export function renderStructuredExplanation(
   data: StructuredExplanation,
   {
@@ -115,6 +151,11 @@ export function renderStructuredExplanation(
     nOptions,
   }: { correctOption: number; optionOrder?: number[] | null; nOptions: number }
 ): string {
+  // El estilo se preserva: transcribir una explicación de impugnación al formato de boletín le
+  // cambiaría la cara al opositor, y esto es una transcripción, no un rediseño.
+  if (data.estilo === 'impugnacion') {
+    return renderEstiloImpugnacion(data, { correctOption, optionOrder, nOptions })
+  }
   const frame: ExplanationFrame = data.frame ?? 'select_correct'
   // order[i] = índice original en la posición mostrada i. Sin barajar ⇒ identidad.
   const order =
@@ -188,6 +229,65 @@ function stripEmphasis(s: string): string {
  * @param nOptions      nº de opciones presentes
  * @returns StructuredExplanation si parsea limpio y cubre TODAS las opciones; null si no.
  */
+/**
+ * Parser del formato §5.1 (manual de impugnaciones): "La respuesta correcta es …" seguido de un
+ * bloque por opción `**A)** CORRECTA/INCORRECTA — razón`.
+ *
+ * Existe porque el banco tiene DOS formatos legacy y este lo produce **cada corrección de
+ * impugnación**: sin él, el trabajo de impugnaciones seguiría creando explicaciones no
+ * transcribibles (13.559 preguntas activas hoy). Devuelve la estructura con `estilo:'impugnacion'`
+ * para que el render la reproduzca igual y el opositor no note el cambio.
+ */
+export function parseImpugnacionFormatExplanation(
+  explanation: string | null | undefined,
+  { correctOption, nOptions }: { correctOption: number; nOptions: number }
+): StructuredExplanation | null {
+  if (!explanation || !explanation.trim()) return null
+  const text = explanation.replace(/\r\n/g, '\n').trim()
+  if (!/^la respuesta correcta es/i.test(text)) return null
+
+  // Un bloque por opción: "**A)** …" hasta el siguiente "**X)**" o el final.
+  const RE_OPCION = /\*\*([A-E])\)\*\*/g
+  const marcas: { letra: string; ini: number; finCabecera: number }[] = []
+  let m: RegExpExecArray | null
+  while ((m = RE_OPCION.exec(text)) !== null) {
+    marcas.push({ letra: m[1].toUpperCase(), ini: m.index, finCabecera: m.index + m[0].length })
+  }
+  if (marcas.length < 2) return null
+
+  const options: Record<string, string> = {}
+  for (let i = 0; i < marcas.length; i++) {
+    const fin = i + 1 < marcas.length ? marcas[i + 1].ini : text.length
+    const razon = text.slice(marcas[i].finCabecera, fin).trim()
+    const idx = letterToIndex(marcas[i].letra)
+    if (idx < 0 || idx >= nOptions) return null
+    if (!razon) return null
+    if (options[String(idx)]) return null // opción repetida → no migrar
+    options[String(idx)] = razon
+  }
+  // Cobertura completa: si falta la razón de alguna opción presente, no se migra.
+  for (let i = 0; i < nOptions; i++) if (!options[String(i)]) return null
+
+  // La marca CORRECTA debe caer en la clave real; si no, el texto y el dato se contradicen y eso
+  // es un defecto de contenido, no algo que la transcripción deba consolidar.
+  const razonClave = options[String(correctOption)] || ''
+  if (!/\bCORRECTA\b/i.test(razonClave)) return null
+
+  const intro = text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim() || undefined
+  const bloqueCita = text
+    .slice(0, marcas[0].ini)
+    .split('\n')
+    .filter((l) => l.trim().startsWith('>'))
+    .map((l) => l.trim().replace(/^>\s?/, ''))
+    .join('\n')
+    .trim()
+
+  const out: StructuredExplanation = { v: 1, options, estilo: 'impugnacion' }
+  if (intro) out.intro = intro
+  if (bloqueCita) out.cita = { bloque: bloqueCita }
+  return out
+}
+
 export function parseLetterFormatExplanation(
   explanation: string | null | undefined,
   { correctOption, nOptions }: { correctOption: number; nOptions: number }
@@ -322,4 +422,44 @@ export function parseLetterFormatExplanation(
   if (cita) result.cita = cita
   if (outro) result.outro = outro
   return result
+}
+
+/**
+ * ¿Dos explicaciones dicen LO MISMO, aunque no se escriban igual?
+ *
+ * Comparador de no-regresión para la transcripción a `explanation_data`. Lo usan el backfill
+ * (antes de escribir) y el canary contra BD viva (después), y por eso vive aquí: tenerlo
+ * duplicado en los dos sitios garantiza que un día divergen y el canary deja de vigilar lo que
+ * el backfill decide.
+ *
+ * Tolera lo que puede cambiar sin engañar a nadie y NO tolera lo que sí:
+ *   · la LETRA de la cabecera y de cada bullet cambia al barajar — es el objetivo del sistema;
+ *   · el marcador del bullet puede escribirse `- **A)**` o `- **A**` (1.210 preguntas del banco
+ *     usan la segunda forma) y el render emite siempre la canónica;
+ *   · el ORDEN de los bullets cambia al reordenar las opciones.
+ *   · pero el TEXTO —intro, cita, razones, cierre— tiene que estar entero. Ahí es donde se
+ *     colaron las tres pérdidas que cazó la guarda el 27/07.
+ */
+export function mismoContenidoExplicacion(a: string, b: string): boolean {
+  // Acepta las variantes reales del marcador: "- **A)** ", "- **A** ", "* **A**: ", "- A) ".
+  const RE_BULLET = /^\s*[-*]\s*(?:\*\*)?\s*([A-E])\s*(?:\)|:|\.)?\s*(?:\*\*)?\s*(.*)$/
+  const norm = (s: string) =>
+    (s || '')
+      .replace(/Por qu[eé]\s+[A-E]\s+(es|no es)/gi, 'Por qué <L> $1')
+      .replace(/\s+/g, ' ')
+      .trim()
+  const trocear = (texto: string) => {
+    const bullets: string[] = []
+    const resto: string[] = []
+    for (const linea of (texto || '').replace(/\r\n/g, '\n').split('\n')) {
+      const m = linea.match(RE_BULLET)
+      // Un bullet de verdad tiene contenido tras la letra; si no, es texto normal.
+      if (m && m[2] && m[2].trim()) bullets.push(norm(m[2]))
+      else resto.push(linea)
+    }
+    return { bullets: bullets.sort().join('␟'), resto: norm(resto.join(' ')) }
+  }
+  const x = trocear(a)
+  const y = trocear(b)
+  return x.resto === y.resto && x.bullets === y.bullets
 }

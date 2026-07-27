@@ -29,6 +29,8 @@
  *   npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts             # dry-run
  *   npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --limite 500
  *   npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --apply
+ *   … --pregunta <uuid> --apply   ← UNA pregunta: para usar tras corregir una impugnación o una
+ *                                   revisión, de modo que la explicación nueva nazca barajable
  *   … --solo-activas   (por defecto recorre TODAS; con esto, solo `is_active`)
  *
  * Relacionado: `docs/roadmap/barajar-opciones-fase2-explicaciones-estructuradas.md` §7,
@@ -38,8 +40,10 @@ import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import {
   parseLetterFormatExplanation,
+  parseImpugnacionFormatExplanation,
   renderStructuredExplanation,
   isStructuredExplanation,
+  mismoContenidoExplicacion,
 } from '@/lib/shuffle/structuredExplanation'
 
 const argv = process.argv.slice(2)
@@ -50,42 +54,8 @@ const valor = (f: string) => {
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null
 }
 const LIMITE = parseInt(valor('--limite') || '0', 10)
+const PREGUNTA = valor('--pregunta')
 const LOTE = 500
-
-/**
- * ¿El render dice LO MISMO que el original, aunque no letra por letra?
- *
- * La comparación byte a byte descartaba 1.125 de 2.000 preguntas por una diferencia que NO es
- * pérdida: el render emite los bullets de los distractores **en orden de opción** (A, B, C, D
- * saltando la correcta) mientras que muchos originales los traen en otro orden. El contenido es
- * idéntico y la normalización es incluso deseable — lo que no se puede tolerar es que se pierda
- * o cambie TEXTO.
- *
- * Así que se compara lo que importa: (1) el conjunto letra→razón de los bullets y (2) el resto
- * del texto (intro, cita, cabecera de la correcta, cierre) ya sin bullets. Si algo se pierde por
- * el camino —el caso real del párrafo de contexto que desaparecía— esto lo sigue cazando.
- */
-function mismoContenido(render: string, original: string): boolean {
-  const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
-  const RE_BULLET = /^\s*-\s*\*\*([A-E])\)\*\*\s*(.*)$/
-  const trocear = (texto: string) => {
-    const bullets = new Map<string, string>()
-    const resto: string[] = []
-    for (const linea of texto.replace(/\r\n/g, '\n').split('\n')) {
-      const m = linea.match(RE_BULLET)
-      if (m) bullets.set(m[1].toUpperCase(), norm(m[2]))
-      else resto.push(linea)
-    }
-    return { bullets, resto: norm(resto.join(' ')) }
-  }
-  const a = trocear(render)
-  const b = trocear(original)
-  if (a.resto !== b.resto) return false
-  if (a.bullets.size !== b.bullets.size) return false
-  // Mismas RAZONES (el conjunto), aunque vayan asignadas a otra letra por el reordenado.
-  const razones = (m: Map<string, string>) => [...m.values()].sort()
-  return JSON.stringify(razones(a.bullets)) === JSON.stringify(razones(b.bullets))
-}
 
 type Fila = {
   id: string
@@ -100,20 +70,28 @@ type Fila = {
 
 async function main() {
   const db = getDb()
-  const resumen = { candidatas: 0, migradas: 0, no_migrables: 0, render_distinto: 0, errores: 0 }
+  const resumen = { candidatas: 0, migradas: 0, no_migrables: 0, render_distinto: 0, errores: 0,
+    // Desglose por formato: sin él no se sabe si el problema es el parser de uno o del otro.
+    por_formato: { boletin: { total: 0, ok: 0 }, impugnacion: { total: 0, ok: 0 } } }
 
   const filas = (await db.execute(sql`
     SELECT id, explanation, correct_option, option_a, option_b, option_c, option_d, option_e
       FROM questions
      WHERE explanation_data IS NULL
+       ${PREGUNTA ? sql`AND id = ${PREGUNTA}::uuid` : sql``}
        AND explanation IS NOT NULL AND explanation <> ''
        AND shuffle_mode = 'full'
        -- Universo = el formato §8.1 COMPLETO, el mismo que mide la simulación. Sin este filtro
        -- entran explicaciones en prosa libre que el parser no puede reconocer (y no debe: no
        -- tienen razones por opción que extraer), y la tasa de migración parece un desastre
        -- cuando en realidad se está midiendo otra cosa: 3,8% sobre todo vs 71,2% sobre §8.1.
-       AND explanation LIKE '%Por qué%'
-       AND explanation LIKE '%son incorrectas%'
+       -- Los DOS formatos legacy vivos: el §8.1 de generación y el §5.1 de impugnaciones. El
+       -- segundo lo produce cada corrección de impugnación (13.559 activas), así que dejarlo
+       -- fuera condenaba a ese trabajo a seguir generando explicaciones no barajables.
+       AND (
+         (explanation LIKE '%Por qué%' AND explanation LIKE '%son incorrectas%')
+         OR explanation ILIKE 'La respuesta correcta es%'
+       )
        ${SOLO_ACTIVAS ? sql`AND is_active` : sql``}
      ORDER BY id
      ${LIMITE > 0 ? sql`LIMIT ${LIMITE}` : sql``}
@@ -131,10 +109,13 @@ async function main() {
     )
     if (opciones.length < 2) { resumen.no_migrables++; continue }
 
-    const data = parseLetterFormatExplanation(f.explanation, {
-      correctOption: f.correct_option,
-      nOptions: opciones.length,
-    })
+    // Se intenta con los dos parsers; cada uno reconoce su formato y devuelve null ante el otro.
+    const esImpugnacion = /^la respuesta correcta es/i.test((f.explanation || '').trim())
+    const fam = esImpugnacion ? 'impugnacion' : 'boletin'
+    resumen.por_formato[fam].total++
+    const data =
+      parseLetterFormatExplanation(f.explanation, { correctOption: f.correct_option, nOptions: opciones.length }) ??
+      parseImpugnacionFormatExplanation(f.explanation, { correctOption: f.correct_option, nOptions: opciones.length })
     if (!data || !isStructuredExplanation(data, opciones.length)) { resumen.no_migrables++; continue }
 
     // GUARDA de no-regresión, pregunta a pregunta: el render en orden NATURAL tiene que producir
@@ -146,11 +127,12 @@ async function main() {
       optionOrder: null,
       nOptions: opciones.length,
     })
-    if (!mismoContenido(renderizado, f.explanation || '')) {
+    if (!mismoContenidoExplicacion(renderizado, f.explanation || '')) {
       resumen.render_distinto++
       continue
     }
 
+    resumen.por_formato[fam].ok++
     pendientes.push({ id: f.id, data })
   }
 
@@ -159,6 +141,10 @@ async function main() {
   console.log(`  migrables por el parser        : ${resumen.migradas} (${pct}%)`)
   console.log(`  no migrables (→ pasada LLM)    : ${resumen.no_migrables}`)
   console.log(`  descartadas por render distinto: ${resumen.render_distinto}  ← guarda de no-regresión`)
+  for (const [fam, v] of Object.entries(resumen.por_formato)) {
+    const p = v.total ? ((v.ok / v.total) * 100).toFixed(1) : '0.0'
+    console.log(`     · formato ${fam.padEnd(12)}: ${v.ok}/${v.total} (${p}%)`)
+  }
 
   if (!APPLY) {
     console.log('\n(dry-run — no se ha escrito nada; repite con --apply)\n')
