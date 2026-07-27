@@ -1095,3 +1095,71 @@ and the 31 GB database is still `running`.
 `PUT /apps/{id}/scale-out {"enabled":true}` → `POST /apps/{id}/deployments` → `failed`,
 `error: replica_unhealthy`, logs empty. Reverted to `scale-out:false` and re-deployed successfully
 after each attempt, so the app is left healthy.
+
+### Status ledger — updated 2026-07-27
+
+| Item | Status |
+|---|---|
+| DB migration (31 GB, 1:1) | ✅ **Proven.** Co-located 6.45 ms. `vence-poc` (PG17) still `running`. |
+| Whole-stack POC (front + back + Redis) | ✅ **Proven** and E2E-verified (auth, answer-save, Redis). Apps currently `paused` — `/resume` restores in ~40 s, no rebuild. |
+| External private-registry pull (#0a) | ✅ Shipped 2026-07-23. This is what made the drop-in-ECS path real. |
+| Peak-capacity gate | ✅ **Passed 2026-07-25.** 109.3 rps @ 0.00% err on 6 free replicas (p50 81 ms, p95 596 ms) vs our ~16.6 rps peak = **6.5× headroom**. |
+| CDN re-enable (R1) | ✅ Fixed — the one-way door is gone. |
+| **A3 — HTML edge caching** | ⛔ **Documented, not reachable.** Blocked by N1 (see Finding 1). |
+| **N1 — `scale-out`** | ⛔ **`replica_unhealthy`, reproduced 25/07 and 27/07.** The single blocker. |
+| Stripe webhook / front→back private net / crons | ⏳ Not started — config work, deliberately parked behind the blocker. |
+| **Price of the plan we'd need** | ❓ **Unknown.** Not published; the one number missing to close the comparison. |
+
+### Top suggestions after today (in the order that would unblock us)
+
+| # | Suggestion | Why it matters |
+|---|---|---|
+| **1** | **Fix `scale-out` → `replica_unhealthy`**, or at minimum return an actionable reason (`probe timed out after Ns on port P`, `container exited rc=N`, `no runner with capacity`). Today it fails in ~30 s with **empty logs** and a code that is not in the documented runtime-error catalogue. | **One fix unblocks the entire decision**: central edge → rules + HTML caching → the latency gap AND the replica count that sets the price. Everything else is done. |
+| **2** | **Publish the price of a real plan** — even a rough *"N replicas × M GB = $X/month"* table, or a `GET /pricing`. | We can prove you **can** take our load; we cannot say what it **costs**. That is the only thing stopping a go/no-go. |
+| **3** | **Gate docs on the path being live** (or label `central edge only`). | Second time a feature was documented before reachable (managed restore, then A3). Costs integrators a session each time — and it is a shame, because shipping fast is your best trait. |
+
+### Appendix — what the alternative costs us (so the stakes are concrete)
+
+Measured on AWS Cost Explorer, same account, this month:
+
+| | vCPU-hours/day | Avg vCPU | ECS $/day |
+|---|---|---|---|
+| 18-20 Jul | 54 | 2.3 | $3.1 |
+| 22-26 Jul | ~390-416 | **16-17** | **~$22** |
+
+The jump is a frontend autoscaling **floor** of 8 tasks × 2 vCPU / 4 GB (min 8, max 12) raised after a
+504 incident. Whole-account run rate went **$14/day → $33.5/day**; projected August **~$1,040/month**
+(RDS is flat at $6.50/day, CloudFront ~$1.3 — it is essentially all Fargate). Frontend CPU sits at
+**2-4% average with 70-97% bursts**, so the floor is mostly insurance against spikes.
+
+**What that means for Koigrid:** with HTML edge caching working, our own numbers say **1-2 replicas**
+would carry this (the origin would only render misses); without it, **4-6**. That factor of ~3 in
+replicas is the difference between an obvious migration and an unclear one — and it is decided entirely
+by the `scale-out` bug above. We are not shopping on price alone: the DB story and the 6.5× headroom
+already impressed us. We simply cannot finish the arithmetic yet.
+
+### What Vence relies on today that we could not find on koigrid
+
+Not a complaint list — a gap analysis from a customer who *wants* to move. Checked against your
+`llms.txt` (758 lines, 2026-07-27) and the API, not assumed. Ordered by how hard it would block us.
+
+| # | What we depend on | On AWS | On koigrid (as documented today) | Why it blocks us |
+|---|---|---|---|---|
+| **G1** | **Read replica for analytics** | RDS read replica; the backend injects `DRIZZLE_READ` so every analytical cron + admin panel reads off the replica | **0 mentions of replicas** in the docs | This is not a nice-to-have for us: routing analytics to a replica is **what fixed a production contention incident** (admin panels aggregating a 6.7 GB events table were stalling user traffic on the primary). Without it, every heavy read lands on the primary again. |
+| **G2** | **PITR on the managed Postgres** | RDS point-in-time recovery | **0 mentions of PITR.** You do have **volume snapshots** (`POST /apps/:id/volumes/:volId/backups`) and dump/restore | We hold payment records and user progress. Snapshot-granularity is a different risk profile from "restore to 14:32 last Tuesday". If PITR exists, it is not discoverable; if it does not, say so — we can price the risk, we cannot price silence. |
+| **G3** | **Old static assets surviving a deploy** | `_next/static` is synced to S3 **without `--delete`** on purpose, so chunks from the previous build stay reachable behind CloudFront | Image-based deploys replace the filesystem; we found no story for retaining previous assets | This is *the* Next.js-on-containers footgun and it bit us on AWS: a user mid-session requests a chunk that no longer exists → **ChunkLoadError, app frozen until hard reload**. Our deploy script has a guardrail test for it. On an immutable-image platform this needs an answer (serve previous assets from the edge, or a retained asset bucket). |
+| **G4** | **Verifying a secret is set correctly** | SSM Parameter Store — we can read back what the task will receive | Secrets are **write-only by design** (`never the secret`, redacted from logs) | Sound security posture, real operational cost: our **Stripe webhook is still not green** purely because we cannot tell whether the secret we set matches the live one. A `GET /apps/:id/env/:key/fingerprint` (a hash or last-4, never the value) would close this without weakening anything. |
+| **G5** | **Cost forecasting** | Cost Explorer — daily $/service, which is how we caught our own 2.4× jump this month | `GET /usage` gives quota counters; **no prices, no spend endpoint we could find** (there is a `spend:read` scope, so perhaps it exists and is undocumented) | We can measure what you can *do*; we cannot tell the CFO what it *costs*. Same ask as suggestion #2. |
+
+**Things we checked and you DO cover** (so this reads fairly): rollback without rebuild
+(`POST /apps/:id/rollback`), volume snapshot + restore to a new volume, log access and Log Drains
+(`logs:read`/`otel:read` scopes), Redis, object storage/buckets, autoscaling on CPU
+(`PUT /apps/:id/autoscale`), WAF rules, and near-zero-downtime CDC migration via logical replication —
+that last one is better than what we would have built by hand.
+
+**In-process crons are a non-issue**: our ~30 backend jobs are `@Cron` inside the NestJS container, so
+they travel with the image. We flag it only because "no scheduler" looks like a gap on paper and is not
+one for us.
+
+If G1 and G2 already exist and are just undocumented, that is the cheapest fix on this whole page —
+two lines in `llms.txt` would move them off our risk list.
