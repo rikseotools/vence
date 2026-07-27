@@ -22,6 +22,10 @@ const HTML = `
   <p class="norm">▼B 2. El Reglamento (CE) n.<sup>o</sup> 45/2001 es de aplicación.</p>
   <p class="norm">3. El Reglamento (CE) n.<span class="superscript">o</span>&nbsp;1049/2001 también.</p>
 </div>
+<div id="cpt_IV.sct_2">
+  <p class="title-division-1"><span class="expanded">Sección 2</span></p>
+  <p class="title-division-2"><span class="expanded">Seguridad de los datos personales</span></p>
+</div>
 <div class="eli-subdivision" id="art_2">
   <p class="title-article-norm">Artículo&nbsp;2</p>
   <div class="eli-title" id="art_2.tit_1"><p class="stitle-article-norm">Ámbito</p></div>
@@ -66,6 +70,15 @@ describe('articuloDeEurLex — las tres trampas que dieron números falsos', () 
   it('extrae el artículo siguiente sin llevarse el anterior', () => {
     const a = articuloDeEurLex(HTML, 2, 'Ámbito')
     expect(a.texto).toBe('1. Texto del segundo.')
+  })
+
+  it('NO se lleva el encabezado de la sección siguiente', () => {
+    // El art. 31 del RGPD acababa en «…en el desempeño de sus funciones. Sección 2 Seguridad de
+    // los datos personales»: contaminación METIDA POR NOSOTROS, cazada mirando a ojo el texto que
+    // se iba a escribir en producción, no con un contador.
+    const a = articuloDeEurLex(HTML, 1, 'Objeto')
+    expect(a.texto).not.toMatch(/Secci[óo]n\s*2/)
+    expect(a.texto).not.toMatch(/Seguridad de los datos/)
   })
 
   it('devuelve null si el artículo no está', () => {

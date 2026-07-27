@@ -463,6 +463,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'escritor de `article_numbers` y el trinquete se subió a conciencia (ver `toolWriters.ts`): ' +
       'solo QUITA números enumerados en el plan y en la misma transacción que re-ancla.',
   },
+  actualizar_articulo_oficial: {
+    titulo: 'Poner al día el `content` de artículos contra su fuente oficial (normas UE: EUR-Lex)',
+    ruta: 'scripts/actualizar-articulo-oficial.cjs',
+    estado: 'vivo',
+    escribe: ['content'],
+    runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
+    notas:
+      'Dry-run por defecto. Hermano de `reactivar_articulo_boe`, que reactiva UN artículo apagado ' +
+      'contra el BOE; esto pone al día EN TANDA el texto de artículos ACTIVOS. Nace de T-184: el ' +
+      'RGPD servía 41.381 caracteres de menos (el art. 28, 12 párrafos; el 40, 21). **La fuente de ' +
+      'una norma UE es EUR-Lex CONSOLIDADO (CELEX que empieza por 0), NO el espejo del BOE**, que ' +
+      'reproduce el DOUE original CON erratas: comparando contra él "divergían" 80 de 99 artículos ' +
+      'y arreglarlos habría metido «las orientación sexuales» en 49 oposiciones. Rechaza un CELEX ' +
+      'del sector 3. La política vive en `lib/laws/actualizarArticuloGuardas.js` (9 tests): solo ' +
+      'reescribe `incompleto` y `erratas`, BLOQUEA `contaminado` y `sin_oficial`, y `reordenado` ' +
+      'pide bandera. Usa `parrafosDeEurLex`, que reconstruye el `\n` por apartado y por letra ' +
+      '(volcar plano arregla la literalidad y ROMPE la teoría) y corta en el encabezado de ' +
+      'división: sin eso el art. 31 se llevaba pegado «Sección 2 Seguridad de los datos ' +
+      'personales» — contaminación nuestra, cazada mirando el texto antes de escribir, no con un ' +
+      'contador. Re-compara DENTRO de la transacción y hace ROLLBACK si no queda `identico`. ' +
+      'Escribir `content` dispara `reset_questions_on_article_update`: las preguntas del artículo ' +
+      'quedan pendientes de re-verificar, que es lo correcto.',
+  },
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
