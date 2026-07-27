@@ -73,6 +73,43 @@ if [ -n "$DIRTY" ]; then
   echo "   ALLOW_DIRTY=1 → continúo pese al árbol sucio."
 fi
 
+# ── AUTO-SINCRONIZACIÓN CON origin/main (antes del gate de CI) ───────────────
+# El build sale del WORKING TREE, así que el guardarraíl anti-stale de más abajo aborta si
+# tu árbol no contiene todo origin/main. Correcto — pero con varias sesiones pusheando,
+# CUALQUIER push ajeno durante la ventana «verificar CI → construir» tumbaba el deploy y el
+# operador acababa haciendo a mano `fetch` + `reset --hard` + reintentar. Medido el 27/07:
+# tres abortos seguidos por esto (más otros tres por tratar `cancelled` como fallo).
+#
+# Cuando NO hay nada propio que perder —árbol limpio y HEAD ya contenido en origin/main—
+# resincronizar es seguro POR CONSTRUCCIÓN y no cambia la semántica: el deploy ya es
+# cumulativo, así que subir «el origin/main de este instante» es justo lo que se esperaba.
+# Va ANTES del gate de CI a propósito, para que los checks se verifiquen sobre el SHA que
+# de verdad se construye; y recalcula SHA/FULL_SHA, que si no el build se pinearía al viejo
+# y el anti-clobber del final daría un falso positivo.
+#
+# NO auto-sincroniza (y aborta como siempre) si el árbol está sucio o si HEAD tiene commits
+# propios sin pushear: ahí perder trabajo sí es posible y la decisión es del operador.
+# Desactivar: NO_AUTO_SYNC=1.
+git fetch origin main --quiet 2>/dev/null || true
+if [ "${NO_AUTO_SYNC:-0}" != "1" ] && [ "${SKIP_MAIN_SYNC:-0}" != "1" ] \
+   && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "↻ [auto-sync] árbol SUCIO y detrás de origin/main → no toco nada; resuélvelo tú."
+  elif git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
+    echo "↻ [auto-sync] árbol limpio y detrás de origin/main (otra sesión pusheó) → resincronizo."
+    if git reset --hard origin/main --quiet; then
+      SHA=$(git rev-parse HEAD | cut -c1-8)
+      FULL_SHA=$(git rev-parse HEAD)
+      echo "   → ahora en ${SHA}; el gate de CI verificará ESTE SHA."
+    else
+      echo "   ⚠️  no pude resincronizar; sigo y que decida el guardarraíl anti-stale."
+    fi
+  else
+    echo "↻ [auto-sync] HEAD tiene commits propios que NO están en origin/main → no auto-sincronizo (los perdería)."
+    echo "   Pushea tu rama o rebasa a mano; el guardarraíl anti-stale abortará si no."
+  fi
+fi
+
 # GATE CI (Fase 2, 08/07/2026): NO desplegar código que no pasó CI. Consulta los
 # check-runs de GHA para el SHA (via GITHUB_PAT de .env.local). Override: SKIP_CI_GATE=1.
 # SOLO gatean los checks de CÓDIGO (unit+typecheck+lint). `integration` pega a la BD

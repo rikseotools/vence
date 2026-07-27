@@ -113,6 +113,24 @@ Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs
 
 > ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
 
+### Auto-sincronización con `origin/main` (27/07/2026)
+
+Los scripts **se resincronizan solos** antes del gate de CI cuando no hay nada que perder:
+árbol limpio y `HEAD` ya contenido en `origin/main`. Es el caso habitual de un deploy con
+varias sesiones activas — otra pushea mientras tu gate verifica el CI — y antes obligaba a
+hacer `fetch` + `reset --hard` + reintentar **a mano**: tres abortos seguidos ese día, además
+de otros tres por el bug de `cancelled`.
+
+Va **antes** del gate a propósito, para que los checks se verifiquen sobre el SHA que de
+verdad se construye, y **recalcula `SHA`/`FULL_SHA`** — si no, el build se pinearía al commit
+viejo y el anti-clobber del final daría un falso positivo.
+
+**No auto-sincroniza** (y el anti-stale aborta como siempre) en los dos casos donde perder
+trabajo es posible: **árbol sucio**, o **`HEAD` con commits propios sin pushear**. Desactivar:
+`NO_AUTO_SYNC=1`. Lo fija `__tests__/guardrails/deploy-scripts.test.ts`; probado en un repo de
+laboratorio con los cuatro casos (limpio-atrasado → resincroniza · sucio → no toca · commits
+propios → no toca · al día → silencio).
+
 ## Sesiones paralelas (varias sesiones de Claude a la vez)
 
 > 🔑 **Distinción clave — pushear a `main` ≠ desplegar** (causa de confusión 09/07, dos sesiones lo leían opuesto):

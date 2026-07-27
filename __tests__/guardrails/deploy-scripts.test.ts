@@ -239,3 +239,47 @@ describe('gate de CI — `cancelled` no es `failure`', () => {
     expect(src).toMatch(/CANCELADO[\s\S]{0,400}reset --hard origin\/main/)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-sincronización con origin/main antes del gate de CI (27/07/2026).
+//
+// El build sale del working tree, así que el anti-stale aborta si el árbol no contiene
+// todo origin/main. Con varias sesiones pusheando, cualquier push ajeno durante la ventana
+// «verificar CI → construir» tumbaba el deploy: tres abortos seguidos ese día. Cuando no
+// hay nada propio que perder, resincronizar es seguro por construcción — pero SOLO
+// entonces, y recalculando el SHA o el build se pinearía al commit viejo y el anti-clobber
+// del final daría un falso positivo. Eso es lo que fija este test.
+describe('deploy — auto-sync con origin/main', () => {
+  const scripts = ['scripts/deploy-frontend.sh', 'scripts/deploy-backend.sh']
+  const src = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
+
+  it.each(scripts)('%s: existe y se puede desactivar (NO_AUTO_SYNC=1)', (rel) => {
+    const s = src(rel)
+    expect(s).toContain('AUTO-SINCRONIZACIÓN CON origin/main')
+    expect(s).toMatch(/\$\{NO_AUTO_SYNC:-0\}/)
+  })
+
+  it.each(scripts)('%s: corre ANTES del gate de CI (si no, validaría un SHA que no despliega)', (rel) => {
+    const s = src(rel)
+    expect(s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')).toBeLessThan(s.indexOf('GATE CI (Fase 2'))
+  })
+
+  it.each(scripts)('%s: recalcula SHA y FULL_SHA tras resincronizar', (rel) => {
+    const s = src(rel)
+    const ini = s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')
+    const bloque = s.slice(ini, s.indexOf('GATE CI (Fase 2', ini))
+    expect(bloque).toMatch(/reset --hard origin\/main/)
+    expect(bloque).toMatch(/SHA=\$\(git rev-parse HEAD \| cut -c1-8\)/)
+    expect(bloque).toMatch(/FULL_SHA=\$\(git rev-parse HEAD\)/)
+  })
+
+  it.each(scripts)('%s: NO resincroniza con árbol sucio ni con commits propios sin pushear', (rel) => {
+    const s = src(rel)
+    const ini = s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')
+    const bloque = s.slice(ini, s.indexOf('GATE CI (Fase 2', ini))
+    // guarda 1: árbol limpio
+    expect(bloque).toMatch(/git status --porcelain --untracked-files=no/)
+    // guarda 2: HEAD ya contenido en origin/main (nada propio que perder)
+    expect(bloque).toMatch(/merge-base --is-ancestor HEAD origin\/main/)
+  })
+})
