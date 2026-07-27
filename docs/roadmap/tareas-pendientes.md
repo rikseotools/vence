@@ -15,6 +15,21 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-174] ✅ [CERRADA 27/07 — typecheck VERDE y, de paso, 4 copias del mismo parser unificadas] El typecheck del backend estaba ROTO en `main` desde el 26/07
+- **Qué:** `npx tsc --noEmit -p backend/tsconfig.json` falla con 2 errores: `backend/scripts/sim-radar-por-fuente.ts:28` y `sim-reconciliacion-convocatoria.ts:28` importan `parseNotasJson` de `../src/detect-notas-convocatoria/notas-extract`, y **esa función se borró** en `56bcb7e5d` (eliminación del pre-masticado con LLM).
+- **Por qué no ha saltado nada:** el gate del deploy de backend corre `npm test` (jest), no `tsc`; y el job `Typecheck` de CI usa el `tsconfig.json` de la RAÍZ, que **excluye `backend`**. O sea: nadie lo compila en CI. No afecta a producción — ninguno de esos scripts corre en runtime.
+- **Por qué arreglarlo igual:** es la familia exacta de **T-131** (herramientas que solo funcionan en el entorno de quien las escribió). Las dos sims quedaron inservibles y el siguiente que las necesite se comerá el `MODULE_NOT_FOUND`/error de tipos sin contexto.
+- **Cómo:** decidir si esas dos sims siguen teniendo sentido sin el pipeline LLM que medían (probablemente no: medían el pre-masticado que se eliminó a propósito) → borrarlas, o reescribirlas contra lo que quedó (`scanSignals` + el hash por nota). **No re-crear `parseNotasJson`**: se borró a propósito porque el flag con código muerto detrás era la trampa que Manuel quiso evitar.
+- **Origen:** detectado el 27/07 al typechequear el backend en la sesión de T-162.
+- **✅ RESUELTO (27/07):** `npx tsc --noEmit -p backend/tsconfig.json` **exit 0** por primera vez desde el 26/07.
+- **El arreglo obvio habría sido el equivocado.** Reponer `parseNotasJson` o borrar los dos sims eran las dos salidas que planteaba esta ficha; ninguna era correcta. `sim-radar-por-fuente.ts` NO mide el pre-masticado eliminado: prototipa el **radar invertido** (`docs/roadmap/radar-por-fuente.md`), un diseño vivo y hermano de T-166. Y el parser no era del pipeline de notas: era **genérico**, y la limpieza se lo llevó por daño colateral.
+- **El problema real: había CUATRO implementaciones del mismo parser** sin conocerse — `parseNotasJson` (backend, borrada), `parseJson` en `ab-modelo-notas.cjs` (idéntica), y **dos variantes MÁS DÉBILES** inline en `sim-seguimiento-ciego.cjs` y `sim-notas-pipeline.cjs` que solo quitaban las vallas y reventaban si el modelo añadía prosa alrededor — el fallo típico de un modelo barato o un prompt largo, que es justo lo que esos scripts miden.
+- **Ahora:** canónico en **`lib/llm/parseLlmJson.cjs`**, los tres scripts migrados, y **espejo en `backend/src/llm/parse-llm-json.ts` con TEST DE PARIDAD** (16 casos por ambas). El espejo no es pereza: el backend **no puede importar `lib/`** (build separado) y cruzar esa frontera **rompió el CI esa misma mañana**. Misma convención que los detectores del sweep.
+- **Un test cazó un BUG REAL que leer el código no vio:** con array y prosa delante (`Esto: [{...}]`) devolvía el objeto interior en vez del array, porque probaba `{}` antes que `[]`. Ahora gana el delimitador que **abre antes** (el contenedor más externo).
+- **Guardarraíl anti-silo:** el test falla si algún script vuelve a desvallar por su cuenta. 30 tests en total.
+- **⚠️ Coste:** nada de esto llama a un LLM ni resucita el pre-masticado. Pero los dos sims **sí gastan si alguien los lanza a mano** (llaman a Anthropic por fuente/documento) y no lo advertían: se les añadió el aviso con referencia a `npm run llm:gasto` y al contexto del 27/07.
+
+
 ### [T-173] ✅ [CERRADA 27/07 — arreglada, desplegada y verificada en vivo] `traffic_drop` llevaba >24 h caída: si el tráfico se desplomaba, NADIE avisaba
 - **Qué:** la regla que vigila caídas de tráfico **no llega a evaluarse**: su query supera el `statement_timeout: 20000` del pool de la réplica. Medido el 27/07: **255 fallos en 24 h** (la nº1 del motor), y sigue cayéndose después de arreglar las de cron (6 fallos en 40 min ya con el índice puesto). `materialized_stats_stale` está igual (110 fallos/24 h).
 - **Por qué importa más que las otras:** una regla de cron caída retrasa una detección interna. Esta es **la red que avisa de que la web ha perdido tráfico** — el tipo de incidente que si no se caza en horas, se caza en la factura del mes.
@@ -172,13 +187,6 @@
 - **Cómo:** clasificar las 64 en (a) tablas de app que DEBEN estar en el schema → añadirlas con `drizzle-kit introspect` copiando solo lo que falta; (b) materializaciones/archivos/backups que no se consultan por Drizzle → a `IGNORE_TABLES` **con el motivo escrito**, para que el comando pueda quedar verde y volver a ser señal.
 - **Contexto:** el drift de **columnas** (53, en 15 tablas) se cerró el 27/07 y ya tiene trinquete en CI (`__tests__/integration/schemaColumnDrift.integration.test.ts`). Esto es el hermano de nivel tabla, que sigue abierto.
 - **Impacto:** 🟢 baja — nada roto hoy; es un detector apagado por ruido.
-
-### [T-174] 🟡 [ABIERTO 27/07] El typecheck del backend está ROTO en `main` desde el 26/07
-- **Qué:** `npx tsc --noEmit -p backend/tsconfig.json` falla con 2 errores: `backend/scripts/sim-radar-por-fuente.ts:28` y `sim-reconciliacion-convocatoria.ts:28` importan `parseNotasJson` de `../src/detect-notas-convocatoria/notas-extract`, y **esa función se borró** en `56bcb7e5d` (eliminación del pre-masticado con LLM).
-- **Por qué no ha saltado nada:** el gate del deploy de backend corre `npm test` (jest), no `tsc`; y el job `Typecheck` de CI usa el `tsconfig.json` de la RAÍZ, que **excluye `backend`**. O sea: nadie lo compila en CI. No afecta a producción — ninguno de esos scripts corre en runtime.
-- **Por qué arreglarlo igual:** es la familia exacta de **T-131** (herramientas que solo funcionan en el entorno de quien las escribió). Las dos sims quedaron inservibles y el siguiente que las necesite se comerá el `MODULE_NOT_FOUND`/error de tipos sin contexto.
-- **Cómo:** decidir si esas dos sims siguen teniendo sentido sin el pipeline LLM que medían (probablemente no: medían el pre-masticado que se eliminó a propósito) → borrarlas, o reescribirlas contra lo que quedó (`scanSignals` + el hash por nota). **No re-crear `parseNotasJson`**: se borró a propósito porque el flag con código muerto detrás era la trampa que Manuel quiso evitar.
-- **Origen:** detectado el 27/07 al typechequear el backend en la sesión de T-162.
 
 ### [T-175] 🟡 [ABIERTO 27/07] `detect-notas-convocatoria` falla 1 de cada 5 documentos y nadie lo mira
 - **Qué:** la primera ejecución del sistema nuevo (27/07, ya sin LLM) dio **123 documentos con 27 errores = 22%**. Bajó del 27% del sistema viejo (606 de 2.206 el 24/07), pero sigue siendo uno de cada cinco y **el cron se reporta como `success`** — el ratio de error no gatea nada.
