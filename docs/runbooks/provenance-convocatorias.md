@@ -57,6 +57,42 @@ Para cada `docs_por_clonar`: coger la `url` del hito (BOE/boletín/sede), **clon
 - **NUNCA inventar:** el documento se clona de su URL oficial. Si la URL da 403/está caída (madrid.es, algún BOP con TLS roto), **NO se clona a ciegas** — se deja el hueco anotado (es "URL de seguimiento caída", familia T-047), no se fabrica evidencia.
 - El `tipo` se pone según el documento (`oep_decreto`, `bases`, `resolucion_tribunal`, `correccion_errores`, `anuncio_fecha`, `lista_admitidos`…), no `nota` (que es lo que emite el pipeline automático `detect-notas`).
 
+### 2.2-bis. Tipar lo YA clonado (`nota` → su tipo real)
+
+El 94% del hub está en `nota` y **sin tipo no se puede usar como fuente**. El núcleo puro
+`lib/convocatoria/tipoDocumento.cjs` deduce el tipo de la CABECERA del documento (no del texto
+entero: buscar en todo el PDF daba 67 falsos "lista de admitidos"), con la URL y el título como
+refuerzo, y **ante la duda deja `nota`**.
+
+```bash
+node scripts/convocatoria/sim-tipo-documento.cjs                 # landings vivas, no escribe
+node scripts/convocatoria/sim-tipo-documento.cjs --ver bases     # muestra a revisar A MANO
+node scripts/convocatoria/sim-tipo-documento.cjs --apply         # escribe + traza en observable_events
+node scripts/convocatoria/sim-tipo-documento.cjs --todo          # el hub entero (no solo landings vivas)
+```
+
+**Revisa la muestra ANTES de aplicar; no es opcional.** En la primera pasada (27/07) `oep_decreto`
+tenía precisión ~0 —4 de 4 eran convocatorias que citan el RD de la OEP en su primer párrafo— y
+`bases` se tragaba los extractos del BOE de administración local, que SIEMPRE dicen *"se han
+publicado las bases que han de regir la convocatoria"* sin ser las bases. Las tres regresiones
+están fijadas en `__tests__/lib/convocatoria/tipoDocumento.test.js`.
+
+**Duplicados:** el índice `ux_convocatoria_documentos_conv_dockey` es UNIQUE sobre
+`(convocatoria_id, doc_key) WHERE tipo <> 'nota'` — las `nota` NO deduplican (son historial de
+monitoreo), los documentos tipados sí. Así que una `nota` cuyo `doc_key` ya tiene fila tipada es
+**el mismo documento clonado dos veces**: no se re-tipa, se fusiona.
+
+```bash
+node scripts/provenance/merge-dup-docs.cjs --notas                    # dry-run
+node scripts/provenance/merge-dup-docs.cjs --notas --adoptar-texto --apply
+```
+
+⚠️ `--adoptar-texto` existe por un hallazgo del 27/07: **12 de 18 notas duplicadas tenían MÁS
+texto que el documento tipado, y dos tipados estaban VACÍOS**. Fusionar sin mirar habría tirado
+339.207 caracteres de texto oficial. Con el flag, el superviviente adopta el texto (y el hash)
+del más completo y **después** se borra el duplicado — en ese orden, o revienta el UNIQUE
+`uq_conv_doc_url_hash` al coexistir dos filas con la misma url+hash.
+
 ### 2.3. Citas sin fuente (`citas_sin_fuente`)
 Un hito con `cita_literal` pero sin `source_documento_id`: localizar el documento del que salió la cita, clonarlo (2.2) y enlazar. Si la cita no se puede rastrear a un documento oficial, es sospechosa (¿de dónde salió el texto?) → verificar contra fuente antes de dejarla.
 
