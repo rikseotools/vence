@@ -60,7 +60,12 @@ describe('fetchWithTimeout', () => {
     await expect(fetchWithTimeout('https://example.com/hang', {}, 200)).rejects.toThrow()
     const elapsed = Date.now() - start
     expect(elapsed).toBeGreaterThanOrEqual(180)
-    expect(elapsed).toBeLessThan(500) // no debe esperar mucho más
+    // Cota ALTA y a propósito: lo que este test afirma es que la petición se corta y no se
+    // cuelga indefinidamente, NO la precisión del reloj. Con 500 ms fallaba en cuanto la máquina
+    // estaba cargada (medido el 27/07: 763 ms con simulaciones en paralelo) y **bloqueaba el
+    // pre-commit de cualquiera** — el camino corto a que alguien acabe usando --no-verify, que
+    // es justo lo que T-122 existe para evitar. Aislado pasa 7/7.
+    expect(elapsed).toBeLessThan(3000)
   })
 
   it('no aborta si la respuesta llega antes del timeout', async () => {
