@@ -52,6 +52,7 @@ import {
   renderStructuredExplanation,
   type StructuredExplanation,
 } from '@/lib/shuffle/structuredExplanation'
+import { optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
 
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
@@ -135,8 +136,19 @@ async function main() {
            explanation_data = ${JSON.stringify(estructura)}::jsonb,
            updated_at = NOW()
      WHERE id = ${qid}::uuid`)
+  // La explicación estructurada hace la EXPLICACIÓN barajable, pero no arregla unas OPCIONES que
+  // se citen entre sí («La respuesta b) es correcta y además…»): esa pregunta sigue sin poder
+  // barajarse. Marcar `safe` a ciegas dejaba que el sweep fuese detrás recogiendo lo que este
+  // script acababa de romper (T-204), y con 47k pendientes de backfill eso no escala.
+  const cruzadas = optionsReferenceOtherOptions(opciones)
+  const estado = cruzadas ? 'unsafe' : 'safe'
+  const razon = cruzadas ? 'options_crossref' : 'structured_explanation'
   await db.execute(sql`
-    SELECT record_shuffle_safety(${qid}::uuid, 'safe', 'structured_explanation', 'aplicar-explicacion')`)
+    SELECT record_shuffle_safety(${qid}::uuid, ${estado}, ${razon}, 'aplicar-explicacion')`)
+  if (cruzadas) {
+    console.log('\n⚠️  Alguna OPCIÓN cita a otra por su letra → la pregunta queda `unsafe`:')
+    console.log('   la explicación ya es barajable, pero las opciones no lo permiten.')
+  }
 
   try {
     await db.execute(sql`

@@ -45,6 +45,7 @@ import {
   isStructuredExplanation,
   mismoContenidoExplicacion,
 } from '@/lib/shuffle/structuredExplanation'
+import { optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
 
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
@@ -102,7 +103,7 @@ async function main() {
   console.log(`BACKFILL explanation_data — ${filas.length} candidata(s)${SOLO_ACTIVAS ? ' (solo activas)' : ''}`)
   console.log('='.repeat(78))
 
-  const pendientes: Array<{ id: string; data: unknown }> = []
+  const pendientes: Array<{ id: string; data: unknown; cruzadas: boolean }> = []
   for (const f of filas) {
     const opciones = [f.option_a, f.option_b, f.option_c, f.option_d, f.option_e].filter(
       (v): v is string => v != null && v !== '',
@@ -133,7 +134,10 @@ async function main() {
     }
 
     resumen.por_formato[fam].ok++
-    pendientes.push({ id: f.id, data })
+    // Igual que el aplicador: la estructura arregla la explicación, no unas opciones que se citen
+    // entre sí. Se transcribe igual (la estructura es buena) pero NO se marca barajable (T-204).
+    const cruzadas = optionsReferenceOtherOptions(opciones)
+    pendientes.push({ id: f.id, data, cruzadas })
   }
 
   resumen.migradas = pendientes.length
@@ -160,7 +164,9 @@ async function main() {
         // leyendo la fila, así que si se hiciera al revés el hash guardado sería el de antes de
         // la estructura y el trigger lo degradaría a `stale` en el siguiente UPDATE.
         await db.execute(sql`UPDATE questions SET explanation_data = ${JSON.stringify(p.data)}::jsonb WHERE id = ${p.id}::uuid`)
-        await db.execute(sql`SELECT record_shuffle_safety(${p.id}::uuid, 'safe', 'structured_explanation', 'backfill-explanation-data')`)
+        await db.execute(sql`SELECT record_shuffle_safety(${p.id}::uuid,
+          ${p.cruzadas ? 'unsafe' : 'safe'}, ${p.cruzadas ? 'options_crossref' : 'structured_explanation'},
+          'backfill-explanation-data')`)
       } catch (e) {
         resumen.errores++
         console.error(`  ❌ ${p.id}: ${(e as Error).message.slice(0, 120)}`)

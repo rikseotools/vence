@@ -1590,6 +1590,19 @@ Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas 
 > Rechaza razones que digan «la opción A», «como se ha visto en la primera»… porque al barajar
 > dejan de ser ciertas. Y para lo antiguo sigue existiendo el camino inverso:
 > `scripts/backfill-explanation-data.ts`.
+>
+> **La cita va en `{"cita": {"ref": "Artículo 4.1 CE", "texto": "…literal…"}}`** y el render la
+> compone en dos líneas de blockquote. `validar-explicacion.cjs` **acepta esa forma** desde el
+> 27/07: ignora la línea de la referencia (que nunca está dentro del artículo) y sigue exigiendo
+> literal el texto entrecomillado. Antes la tumbaba como *«posible cita inventada»* — si ves ese
+> mensaje hoy, la cita está mal de verdad, no es el guardarraíl.
+>
+> **Si el aplicador avisa de que la pregunta queda `unsafe`, tu explicación NO está mal.** Consulta
+> el detector de opciones cruzadas: cuando una OPCIÓN cita a otra por su letra («La respuesta b) es
+> correcta y además…»), esa pregunta no puede barajarse aunque la explicación sea perfecta. El
+> bloqueo está en el enunciado de las opciones, y arreglarlo es otra decisión (reescribirlas cambia
+> la pregunta). Lo que no hace ya es marcarla barajable a ciegas y dejar que el sweep nocturno lo
+> descubra después.
 
 Desde el 27/07/2026 la explicación puede vivir en dos sitios: el texto de siempre (`explanation`)
 y la versión ESTRUCTURADA (`explanation_data`), con las razones keadas a cada opción y sin letras

@@ -96,9 +96,21 @@ function checkCorrespondence(expl, opts, correctLetter) {
   return warnings;
 }
 
+// Una línea del blockquote que va ENTERA en negrita («**Artículo 4.1 CE**», con `:` opcional) es
+// la REFERENCIA de la cita, no texto de la ley: nombrarla es cosa nuestra y jamás va a aparecer
+// literal dentro del artículo. Se separa antes de comparar.
+//
+// Por qué existe esto (T-204): el render de la explicación estructurada compone el blockquote en
+// dos líneas —referencia + cita— y este validador, que unía todas y las exigía literales, tumbaba
+// como «posible cita inventada» justamente la forma canónica que documenta `aplicar-explicacion.ts`
+// y que el manual declara obligatoria. El guardarraíl frenaba lo correcto, que es el peor modo de
+// fallar que tiene un verificador (§15.8).
+const esLineaDeReferencia = (l) => /^\*\*[^*]+\*\*\s*:?$/.test(l.trim());
+
 function validateQuotes(expl, articleContent) {
   const problems = [];
-  const quoteLines = expl.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
+  const lineas = expl.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
+  const quoteLines = lineas.filter((l) => l && !esLineaDeReferencia(l));
   const quote = quoteLines.join(' ').trim();
   if (!quote) return problems; // sin cita literal → nada que verificar
   const nq = norm(quote), nc = norm(articleContent || '');
