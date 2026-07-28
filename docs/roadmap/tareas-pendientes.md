@@ -272,6 +272,27 @@
 - **Matiz importante para quien lo arregle:** hay que separar dos familias. Las `NEXT_PUBLIC_*` **tienen** que estar en build (se inlinean en el bundle) y no son secretas por definición. Las que sí lo son —`DATABASE_URL`, `DATABASE_URL_REPLICA`, `SUPABASE_SERVICE_ROLE_KEY`— están en build porque algo del `next build` las necesita (SSG/ISR que consulta BD). **Comprobar qué las usa realmente en build antes de moverlas**: si solo hacen falta en runtime, sobran del build y basta con quitarlas (ya viven en SSM para el task def).
 - **Alternativas:** *secret mounts* de BuildKit (`--secret id=db,env=DATABASE_URL` + `RUN --mount=type=secret`), que no aparecen en `ps` ni en la historia de la imagen; o un fichero de env montado solo durante el build.
 - **Impacto:** 🟡 nada roto hoy; es higiene que se vuelve grave el día que el build salga de esta máquina.
+### [T-227] 🟠 [ABIERTO 28/07] La estructura de las leyes: 740 sin registrar, y 4.959 preguntas que la examinan sin nada con que contrastarlas
+- **De dónde sale:** al arreglar el feedback de Luisa ([T-223]) el dossier pasó a enseñar la ESTRUCTURA de la ley frente al scope… y a gritar cuando la ley no tiene estructura en BD. Preguntando cuánto abarca eso salen dos huecos que hasta ahora se miraban por separado y **son el mismo hecho**: cómo está organizada una norma.
+
+**Hueco 1 — cobertura (medido 28/07, no estimado)**
+- **1.036** leyes sirven en temas vivos. **740 (71%) no tienen ni una fila en `law_sections`.**
+- De esas 740: **302 tienen `boe_url`** — pero solo **108** con id `BOE-A-`, que son las que la herramienta que YA existe (`scripts/poblar-law-sections-boe.cjs` / `scripts/scope/refresh-law-sections.cjs`) puede alcanzar hoy; **24 de ellas con ≥20 artículos**, o sea con estructura casi segura (Reglamento Cortes Aragón 339 arts, Ley 1/2015 Hacienda GVA 182, RGC 171, LGS 116…).
+- Y **438 no tienen `boe_url`**: regionales y editoriales (BORM, BOJA, DOGV…). **Ninguna herramienta llega a ellas** — el Decreto 53/1989 del caso de Luisa era una de estas, y su estructura hubo que sacarla a mano del PDF del BORM.
+- ⚠️ **[T-140] no cubre esto**: aquella ficha va de las **51 leyes que el poblador RECHAZÓ** (y quedó bien cerrada: 27 pobladas, 24 clasificadas, varias legítimamente planas). El hueco real es un orden de magnitud mayor y de otra naturaleza: leyes que **nunca se intentaron**.
+
+**Hueco 2 — dos fuentes de verdad sobre lo mismo, que nadie ha comparado nunca**
+- Hay **4.959 preguntas activas colgando del «Art. 0»** (la convención de la casa para las preguntas de estructura: *"¿en cuántos títulos se divide…?"*) en **177 leyes**. Es decir: **al usuario le examinamos de la estructura de la norma**.
+- **4.495 de ellas (91%) están en leyes cuya estructura NO tenemos en BD.** Le preguntamos por algo que nosotros no registramos, y no hay con qué contrastar la clave.
+- Donde ambas cosas existen (**464 preguntas en 42 leyes**) **nadie las compara**. `law_sections` alimenta `/leyes/<slug>`, el temario, el test-config y el PDF; el banco del Art. 0 alimenta los tests. **Pueden contradecirse y el mismo usuario ver las dos versiones** (una en teoría, otra en el test) sin que salte nada.
+
+**Cómo, y en qué orden**
+1. **Cruce automático `law_sections` ↔ banco del Art. 0** como guardarraíl: donde las dos existen, comparar. ⚠️ **Con cuidado, no por conteo bruto**: en la muestra hay claves *"En cinco"* junto a leyes con 11 títulos, pero la pregunta era *"¿en cuántos capítulos se divide el Título X?"* — hay que leer **el sujeto** de la pregunta (ley entera vs un título concreto) o el detector nace ruidoso. Comparación directa hoy: **23 preguntas**. Es poco, pero es un guardarraíl que **crece solo** según se vaya poblando estructura, y de paso valida el poblador.
+2. **Barrer las 108 alcanzables** con el poblador que ya existe (empezando por las 24 con ≥20 artículos). Es lo más barato: la herramienta está hecha y probada.
+3. **Las 438 sin `boe_url` son el problema de fondo** y piden otra vía: los boletines autonómicos no tienen API de consolidado. Opciones a evaluar (PDF + extracción de rúbricas, como se hizo a mano con el BORM; o derivar la estructura del propio articulado importado). **No hacerlo a ojo**: la estructura de una norma es contenido legal, y la regla nuclear se aplica igual.
+4. **Priorizar por uso**, no por tamaño: primero las leyes que sirven en más temas vivos y las que tienen preguntas del Art. 0 (ahí el riesgo es doble, porque además las estamos examinando).
+- **Impacto:** 🟠 no es cosmética. Sin estructura, (a) `/leyes/<slug>` cae a lista plana, (b) los detectores de sobre-inclusión y de frontera de título **no pueden razonar por rúbrica** (que es justo por donde se coló el caso de Luisa), y (c) 4.495 preguntas examinan de algo que no tenemos registrado.
+
 
 ### [T-223] 🟠 [PARCIAL 28/07] El detector de sobre-inclusión no ve el epígrafe que nombra los capítulos **por su RÚBRICA**
 - **Qué:** `lib/laws/scopeOverInclusion.ts` marca banda **ALTA** cuando el epígrafe nombra títulos **por número** ("Título IV") o cita artículos concretos. Cuando los nombra **por su rúbrica** cae en **MEDIA**, que por diseño **NO pinga el badge**.
@@ -1034,6 +1055,7 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Origen:** 26/07, doble auditoría del T208 de [T-045]: los dos auditores señalaron el mismo defecto del anexo por su cuenta.
 
 ### [T-140] 🟡 [ABIERTO 26/07] Las 51 leyes que siguen sin estructura en `law_sections`
+- **📏 OJO CON EL ALCANCE (medido 28/07):** esta ficha va de las 51 que el poblador **rechazó**. El hueco de cobertura REAL es **740 de las 1.036 leyes que sirven en temas vivos** — leyes que nunca se intentaron, no leyes que fallaron. Está en **[T-227]**, junto con el cruce contra las preguntas del Art. 0. No confundir una con otra al planificar.
 - **Qué:** tras [T-064] quedan **51 leyes rechazadas** por el poblador, en tres grupos con causas DISTINTAS:
   - **45 `sin_secciones`** — el parser no encuentra ningún bloque de título ni capítulo. Es el grupo gordo; hay que mirar qué ids usa su índice (el Código Civil ya enseñó que hay rúbricas fuera del patrón, como `Art 1` abreviado).
   - **3 `solape`** — el caso de 3 niveles REAL (libro>título>capítulo con títulos que reinician). Aquí sí haría falta modelar el nivel LIBRO o cualificar el número por libro.
