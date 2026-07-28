@@ -490,6 +490,29 @@
 - **Cómo:** generación anclada a fuente con doble auditoría ciega + Paso 9, flujo de [T-115]. El banco de `Explorador Windows 11` lo comparten 16 oposiciones, así que cubrirlo apaga el hueco en todas.
 - **Origen:** T-107, alineación de Cantabria al programa vigente (27/07).
 
+### [T-217] 🟠 [ABIERTO 28/07] Verificar que el barrido antifraude corrió POR FIN (primera noche tras 7 muertas)
+- **Qué se comprueba, en 30 segundos:**
+  ```bash
+  npm run canary:fraud-sweep
+  ```
+  **Verde** = las formas de SQL funcionan **y** el barrido ha terminado bien alguna vez en 3 días. **Rojo** = dice exactamente qué falla. Y la consulta cruda, por si acaso:
+  ```sql
+  SELECT created_at, metadata->>'status', duration_ms, error_message
+    FROM observable_events WHERE endpoint='fraud-sweep' AND event_type='cron_run'
+   ORDER BY created_at DESC LIMIT 3;
+  ```
+- **Por qué existe esta ficha:** `backend/src/fraud-sweep/` falló **7 noches seguidas con CERO éxitos** (21→28/07), muriendo siempre en su PRIMER detector — ninguno de los cinco llegó a ejecutarse. Causa: Drizzle interpola un array JS como parámetros sueltos, así que `ANY(${'${users}'})` generaba `ANY(($1,$2,$3))`. Arreglado en `e7f98d856` con `pgUuidArray()` (`backend/src/db/sql-arrays.ts`), y **verificado ejecutando el servicio real contra RDS**: completó y destapó 9 señales que llevaban días sin detectar.
+- **⚠️ ESTADO AL ESCRIBIR ESTO (28/07, media mañana):** el arreglo está en `main` pero **el deploy de backend se lanzó y estaba esperando el `flock` de otra sesión**. Lo PRIMERO es comprobar que entró:
+  ```bash
+  curl -s https://api.vence.es/health | grep -o '"deploy":"[^"]*"'
+  git merge-base --is-ancestor e7f98d856 <ese-sha> && echo DESPLEGADO
+  ```
+  **Si NO se desplegó, el barrido habrá muerto una octava noche** y no hay nada que diagnosticar: desplegar y esperar a la siguiente.
+- **Si SÍ se desplegó y aun así falló:** el error va en `error_message` del `cron_run`. Ojo a los otros arrays del servicio — se arreglaron 4 sitios (2 SELECT + el INSERT y el UPDATE de `upsert`, que **nunca se habían ejecutado** porque D1 moría antes), pero si aparece otra query con `ANY(${'${algo}'})` es el mismo bug.
+- **Si corrió bien:** mirar QUÉ abrió. El primer barrido completo dio 9 señales; se triaron todas el 28/07 (4 confirmadas de multicuenta, 2 en observación, 4 descartadas) y el badge quedó a 0. Las nuevas de mañana son material fresco — y las de tipo `curl_scraping`/`harvest_no_answer` alimentan **[T-179]**.
+- **🔴 LA LECCIÓN QUE NO HAY QUE PERDER:** el cron emitía `cron_run`/**error** cada noche, y eso entra en el catch-all de `/admin/salud-sistema`. **La alarma funcionó; falló el triaje** — 7 días de rojo en un panel con ruido. Por eso se hizo T-185. Regla en el runbook: **un badge a 0 con `cron_run=failure` significa CIEGO, no limpio.**
+- **Origen:** sesión del 28/07. Runbook: `docs/runbooks/revisar-fraudes.md` §"El barrido puede estar MUERTO y el badge parecer tranquilo".
+
 ### [T-179] 🟠 [ABIERTO 27/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
 - **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
 - **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
