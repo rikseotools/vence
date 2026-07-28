@@ -144,3 +144,19 @@ describe('proponerRelacion — «de las 9, ocho por turno libre y una por discap
     expect(props.filter((x) => x.via.includes('reparte'))).toHaveLength(0)
   })
 })
+
+// Ficha de bases sin prosa (Ayto. Sevilla, 28/07): no dice «del total», pero la decide la misma
+// regla — si en la ventana está nuestra cifra y NO la suma, es que guardamos el total.
+describe('proponerRelacion — ficha de bases «Plazas turno libre: N · Plazas reservadas: M»', () => {
+  const SEVILLA = 'PLAZA: AUXILIAR ADMINISTRATIVO. Número: 46, de las cuáles 13 pertenece a la OPE 2021, 27 pertenecen a la OPE 2022 y 6 pertenecen a la OPE de 2023. Plazas turno libre: 46 Plazas reservadas a personas con discapacidad: 5, de las que 1 se reserva al cupo de personas con discapacidad intelectual.'
+
+  it('el total y el turno libre son la misma cifra → dentro', () => {
+    const p = propuestaUnanime(proponerRelacion(SEVILLA, { plazasLibres: 46, plazasDiscapacidad: 5 }))
+    expect(p).not.toBeNull()
+    expect(p.incluidas).toBe(true)
+  })
+
+  it('con otras cifras que no casan, no propone nada', () => {
+    expect(proponerRelacion(SEVILLA, { plazasLibres: 200, plazasDiscapacidad: 9 })).toHaveLength(0)
+  })
+})

@@ -81,6 +81,7 @@
     "audit:coherencia:gate": "node scripts/audit-oposiciones-coherencia.cjs",
     "canary:oposiciones": "node scripts/canary-oposiciones-live.cjs",
     "audit:convocatorias": "node scripts/audit-convocatoria-completitud.cjs",
+    "reserva:declarar": "node scripts/convocatoria/declarar-reserva-discapacidad.cjs",
     "audit:convocatorias:gate": "node scripts/audit-convocatoria-completitud.cjs --gate",
     "audit:oep-review": "node scripts/audit-oep-review.cjs",
     "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts",

@@ -403,3 +403,70 @@ porque `DATABASE_URL` trae `sslmode=require`, que choca con `ssl: { rejectUnauth
 certificado de RDS lo es). No fallaba ruidosamente: simplemente el auditor **y su gate de CI** no corrían.
 Arreglado quitando el parámetro de la URL, como ya hacía `scripts/health-sweep.cjs`. **Si un auditor deja
 de reportar hallazgos, comprobar que conecta antes de celebrar que está todo limpio.**
+
+## 7. ¿El cupo de discapacidad va DENTRO del turno libre o APARTE? (`plazas_discapacidad_incluidas`)
+
+**Frase-gatillo:** *"declara el cupo de discapacidad"*, *"revisa las reservas de discapacidad"*. Ficha: **T-218**.
+
+Hermano del §6 y con la misma disciplina, porque es el mismo tipo de acto: **escribir un hecho que el
+opositor lee**. Aquí el hecho es la RELACIÓN entre dos cifras que ya tenemos, y decide dos cosas visibles:
+
+- el **total** que publica `oposiciones_ssot` — `IS TRUE` no suma el cupo; `false` y **`NULL` SÍ lo suman**;
+- la **frase de la landing** — «…, de las cuales N están reservadas» (dentro) vs «… y otras N más» (aparte),
+  y **silencio** si no consta, que es lo honesto pero publica menos de lo que sabemos.
+
+Sin declarar, la vista suma por defecto: cada fila en `NULL` es una moneda al aire sobre si estamos
+**inflando el total**. Pasó de verdad — la UNED publicaba 60 donde el BOE convoca 54.
+
+```bash
+# 1. QUÉ FALTA, con la evidencia delante (no escribe nada, ni con propuesta unánime)
+npm run reserva:declarar -- --proponer [--slug=<slug>]
+
+# 2. DECLARAR, con la cita literal del boletín
+npm run reserva:declarar -- --slug=<slug> --incluidas=true|false \
+  --cita="<literal>" --url=<url del documento> --motivo="<qué dice y dónde>" [--apply]
+```
+
+**La guarda** (núcleo puro `validarDeclaracionReserva` en `lib/convocatoria/correccionPlazas.cjs`): la cita
+tiene que **nombrar el cupo** y contener el **total que tu declaración implica** — el turno libre guardado si
+va dentro, `libres + cupo` si va aparte. Alternativa admitida para el «aparte»: que el texto **enumere los
+dos cupos** («se dividen en dos cupos: general 1.747 · reserva 131»), porque hay boletines que no imprimen la
+suma. **No basta con que aparezcan las dos cifras**: *«425 plazas, de las cuales 43 reservadas»* también las
+trae y significa lo contrario — lo que decide es el conector.
+
+### Cómo se lee un boletín, en la práctica
+
+`--proponer` reconoce ya seis formas reales (`lib/convocatoria/evidenciaReserva.cjs`, 19 tests) y **separa
+las dos colas**, que son trabajos distintos: las que **piden LEER** (el documento está, la forma es nueva) y
+las que **piden CLONAR** el boletín (ningún documento trae la cifra junto a la reserva → eso es §6, no esto).
+
+Al leer, el criterio que resuelve casi todo:
+
+- **«Del total de las plazas … se reservan N»** NO significa siempre «dentro». Depende de **qué total
+  guardamos**: la UNED dice 54 y guardamos 54 ⇒ dentro; Ujieres dice *cuarenta* y guardábamos 36 ⇒ aparte.
+  La misma frase, veredictos opuestos.
+- **Las tablas se resuelven por posición:** si nuestra cifra CIERRA la fila, guardamos el total ⇒ dentro
+  (`305 9 13 327`); si la ABRE y la fila cierra con la suma, guardamos el cupo general ⇒ aparte
+  (`89 7 23 3 122`).
+- **El total va en LETRAS más de lo que parece** («convocatoria de cuarenta plazas»): por eso el lector usa
+  `cifraEnTexto`, el mismo predicado del detector del §6.
+
+### 🚩 Si la guarda rechaza un «aparte» porque falta NUESTRA cifra en la cita
+
+Sospecha lo primero de que **nuestra cifra sea una resta nuestra**. Pasó en dos: Ujieres guardaba 36 donde el
+BOE dice «cuarenta … se reservan cuatro» (40−4) e INGESA guardaba 7 donde dice «9 plazas … se reservarán 2»
+(9−2). Es el patrón que el §6 llama invención presentada como hecho. Se arregla ENCADENANDO las dos
+herramientas: primero `corregir-plazas-contra-boletin.cjs` para poner la cifra impresa, y **después**
+declarar la relación. El total publicado no cambia; lo que cambia es que el desglose deja de ser una cuenta
+nuestra.
+
+### Qué NO hacer
+
+- **NUNCA** declararlo por analogía con una convocatoria parecida ni por lo que dé la suma más redonda.
+  Se lee en el boletín o **se deja sin declarar**, que es una respuesta legítima: la landing calla y no miente.
+- **NUNCA** dar una oposición por declarada: **se declara un CICLO**. Un rollover a la convocatoria del año
+  siguiente nace en `NULL` —correctamente, porque hay que leer SU boletín— así que la cuenta de resueltas
+  decae sola. Pasó con `diputacion-cadiz` el mismo día.
+- **NUNCA** fiarse de una propuesta sin mirar sus números. La primera versión del lector propuso 3 «limpias»
+  y **las 3 eran coincidencia aritmética** entre fechas de un índice de procesos. Por eso el informe imprime
+  la cuenta que casó, y por eso una fila de números sin vocabulario de reserva al lado ya no es evidencia.
