@@ -147,6 +147,30 @@ describe('verificarAfirmaciones — respaldo en el documento oficial', () => {
   })
 })
 
+// [T-202] Este núcleo es la TERCERA implementación de «¿está la cifra en el documento?», y resultó
+// ser la que llevaba razón: exigía frontera de dígito desde el 26/07 mientras el núcleo del
+// detector de plazas se conformaba con un `includes`. Ahora los tres se prueban contra el MISMO
+// fixture, cada uno en la columna que le toca. Un caso nuevo de calibración va al fixture.
+describe('casos compartidos con cifraEnTexto y con el mirror del backend', () => {
+  const { CASOS } = require('../../fixtures/cifraEnDocumento.cjs')
+  const { CONCEPTOS, numerosDelConcepto } = require('@/lib/convocatoria/landingClaims.cjs')
+  const RE_PLAZAS = CONCEPTOS.find((c) => c.tipo === 'plazas').re
+  const aplican = CASOS.filter((c) => c.laLlamaPlazas !== null)
+
+  it.each(aplican.map((c) => [c.nombre, c]))('¿el documento la presenta como plazas? — %s', (_n, c) => {
+    const presentadas = numerosDelConcepto(normalizarNumerosDelTexto(c.texto), RE_PLAZAS)
+    expect(presentadas.includes(c.cifra)).toBe(c.laLlamaPlazas)
+  })
+
+  it('hay casos donde el documento PRUEBA la cifra sin llamarla plazas (por eso no sirve de regla)', () => {
+    // Si esta lista se quedara vacía, alguien habría igualado dos reglas que miden cosas distintas:
+    // «la cifra está» (lo que puede afirmar el detector) y «la llama plazas» (más exigente, y que
+    // simulado sobre las 118 convocatorias vivas producía 56 hallazgos casi todos falsos).
+    const divergen = CASOS.filter((c) => c.apareceLaCifra && c.laLlamaPlazas === false)
+    expect(divergen.map((c) => c.cifra).sort()).toEqual([1704, 1747])
+  })
+})
+
 describe('cifras DERIVADAS — el boletín reparte, no escribe el total (T-147, paso 3)', () => {
   // Los tres casos son landings REALES que salían "sin respaldo" siendo correctas, y que por eso
   // impedían subir el detector al barrido nocturno.

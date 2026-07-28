@@ -52,7 +52,14 @@ En `list` verás tres estados: `🟢 libre` · `🔒 <sid> (Xm)` cogida con leas
 
 ## Añadir una tarea nueva
 
-1. Añádela al markdown con id nuevo y prioridad: `### [T-044] 🟠 Título`. Debajo, 1-3 líneas: **qué, por qué/prioridad, link al cómo**. El detalle largo va en su runbook/roadmap, no aquí.
+0. **Pide el id con `node scripts/backlog.cjs reserve "<título>"`. NUNCA lo elijas mirando el markdown.**
+   El markdown que tú ves va por detrás de la realidad: con 2-10 sesiones en paralelo, las otras ya
+   tienen ids cogidos en `backlog_tasks` con sus fichas **sin pushear todavía**, así que «el siguiente
+   al último que veo» está ocupado casi siempre. `reserve` lo saca de la tabla, que es atómica.
+   *Medido el 28/07: elegí T-210 mirando el markdown y era de otra sesión; volví a elegir T-213 y
+   también. Lo cazó el guardarraíl de ids únicos al rebasar —dos tareas con el mismo id comparten
+   claim— pero después de haber pisado en BD el título de la tarea ajena, que hubo que reconciliar.*
+1. Añádela al markdown con ESE id y su prioridad: `### [T-044] 🟠 Título`. Debajo, 1-3 líneas: **qué, por qué/prioridad, link al cómo**. El detalle largo va en su runbook/roadmap, no aquí.
 2. `node scripts/backlog.cjs sync` para que entre en la tabla.
 
 Prioridades: `🔴 crítica` (daño en vivo) · `🟠 alta` · `🟡 media` · `🟢 baja`.

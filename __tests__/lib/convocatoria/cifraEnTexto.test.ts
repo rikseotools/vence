@@ -6,6 +6,19 @@
  * negativo deja publicada una cifra inventada. Las dos direcciones se fijan.
  */
 import { cifraEnTexto, enLetra, esPlazaHuerfana } from '@/lib/convocatoria/cifraEnTexto'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { CASOS } = require('../../fixtures/cifraEnDocumento.cjs') as {
+  CASOS: Array<{ nombre: string; cifra: number; texto: string; apareceLaCifra: boolean; origen: string }>
+}
+
+// El fixture es COMPARTIDO con el mirror del backend y con `landingClaims` (ver su cabecera): tres
+// implementaciones del mismo hecho que habían divergido porque cada una traía sus propios casos.
+// Un caso nuevo de calibración va AHÍ, no aquí.
+describe('cifraEnTexto — casos compartidos con el mirror y con landingClaims', () => {
+  it.each(CASOS.map((c) => [c.nombre, c] as const))('%s', (_n, c) => {
+    expect(cifraEnTexto(c.cifra, c.texto)).toBe(c.apareceLaCifra)
+  })
+})
 
 describe('enLetra', () => {
   it.each([

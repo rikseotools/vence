@@ -19,6 +19,11 @@ const validador = require('../../../lib/convocatoria/validarDerivada.cjs') as {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { CASOS } = require('../../../__tests__/fixtures/cifraEnDocumento.cjs') as {
+  CASOS: Array<{ nombre: string; cifra: number; texto: string; apareceLaCifra: boolean }>;
+};
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const nucleo = require('../../../lib/convocatoria/cifraEnTexto.cjs') as {
   enLetra: (n: number) => string | null;
   cifraEnTexto: (n: number | null | undefined, t: string | null | undefined) => boolean;
@@ -99,6 +104,16 @@ describe('mirror cifraEnTexto (backend @Cron) ↔ núcleo del root', () => {
     // …y el veredicto es el correcto, no solo el mismo en los dos.
     expect(cifraEnTexto(216, 'C1.1000197163216')).toBe(false);
     expect(cifraEnTexto(1704, 'Mil setecientas cuatro (1704) plazas libres.')).toBe(true);
+  });
+
+  // [T-202] Los casos vienen del fixture COMPARTIDO con el root: si el mirror se separa del núcleo,
+  // el @Cron nocturno y el auditor bajo demanda dirían cosas distintas de la MISMA convocatoria, y
+  // el badge acabaría discrepando de quien lo audita a mano. Un caso nuevo se añade al fixture.
+  describe('[T-202] casos compartidos: el mirror responde lo mismo que el núcleo, y lo correcto', () => {
+    it.each(CASOS.map((c) => [c.nombre, c] as const))('%s', (_n, c) => {
+      expect(cifraEnTexto(c.cifra, c.texto)).toBe(c.apareceLaCifra);
+      expect(cifraEnTexto(c.cifra, c.texto)).toBe(nucleo.cifraEnTexto(c.cifra, c.texto));
+    });
   });
 
   it('esPlazaHuerfana coincide, incluida la válvula `cifra_derivada`', () => {
