@@ -352,6 +352,14 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-255] 🟡 [ABIERTO 28/07] El pre-commit no distingue un rojo TUYO de uno heredado de otra sesión
+- **Qué pasa:** el `pre-commit` corre la suite unit ENTERA, así que un test roto por CUALQUIER sesión **bloquea los commits de todas las demás** — incluido un commit de solo documentación. Pasó dos veces el 28/07 (paridad del sweep y el duplicado del backend).
+- **Parche puesto el 28/07, que NO es la solución:** escape con nombre `PRECOMMIT_TESTS_SKIP=1`, que salta SOLO los tests y conserva `db:check` y `audit:display-drift`. Antes no había ninguno y la salida natural era `--no-verify`, que apaga todo el hook. El mensaje de fallo ahora explica cómo comprobar si el rojo es tuyo (`git stash push -u && npm run test:unit`) — pero eso lo tiene que hacer la persona, a mano, y con el gotcha de que **el stash es del REPO y no del worktree** ([[reference-git-stash-compartido-worktrees]]).
+- **Lo que falta, y es lo único que quita la fricción de verdad:** que el hook **sepa solo** si el fallo es heredado. Al fallar, comparar contra el estado limpio y decir *"esto ya estaba roto en HEAD, no es tuyo — continúa"* en vez de mandar al humano a investigar. Ideas por coste: (a) cachear el resultado de la última suite verde por SHA y, si el SHA de HEAD ya venía rojo, avisar y dejar pasar; (b) correr solo las suites que tocan los ficheros en stage (jest `--findRelatedTests`), que además haría el hook mucho más rápido; (c) fail-open si el fallo no está en ninguna suite relacionada con tu diff.
+- **Ojo con (b):** hay tests que leen MARKDOWN (el guardarraíl del backlog lee `tareas-pendientes.md`, el de `runbookRegistry` lee `CLAUDE.md`), así que "relacionado con mi diff" no es solo el grafo de imports. Medido: el subconjunto `__tests__/guardrails` tarda **46 s** y la suite entera ~40 s — **no hay nada que ahorrar filtrando por carpetas**, el coste es el arranque de jest por suite. Cualquier diseño tiene que atacar el número de SUITES, no su tamaño.
+- **Impacto:** 🟡 no rompe producción, pero es fricción diaria entre sesiones y **empuja al `--no-verify`**, que es lo que dejó `main` roto dos veces hoy.
+- **Relacionada:** [T-225] (el typecheck en pre-push, misma familia: que el rojo no llegue a `main`).
+
 ### [T-249] 🟠 [ABIERTO 29/07] 96 explicaciones activas son NOTAS DE AUDITORÍA: el opositor lee la crítica en vez de la explicación
 - **Qué ve el opositor:** responde, y donde debería estar la explicación se encuentra el comentario que un pase de IA escribió *sobre* la pregunta: *«La explicación es incoherente: afirma…»*, *«La explicación debe reflejar que…»*, *«La explicación no responde a la pregunta»*, *«La explicación está vacía»*. No es un fallo de formato: es que ahí no hay explicación ninguna.
 - **Tamaño medido (29/07/2026, banco vivo):** **96 preguntas activas**. Antes de esta fecha el detector veía **0** — ver abajo.

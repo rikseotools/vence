@@ -112,6 +112,24 @@ La ficha de T-225 daba *"más de 2 minutos"*: se había medido **en frío**, que
 
 **Fail-open ante infra** (no arranca `npm`, falta el script) y **fail-closed en lo suyo** (tipos rotos → push bloqueado), igual que su hermano del backlog.
 
+### Los escapes de los hooks, y por qué NO usar `--no-verify` (28/07/2026)
+
+Cada guardarraíl tiene su propio interruptor, y ese es el que hay que usar: `--no-verify` los apaga **todos a la vez**, y es lo que dejó `main` roto dos veces el 28/07.
+
+| Situación | Escape | Qué sigue vigilando |
+|---|---|---|
+| Commit bloqueado por un test que **NO es tuyo** | `PRECOMMIT_TESTS_SKIP=1 git commit …` | `db:check` y `audit:display-drift` |
+| Push de una rama que no va a `main` / rehacer historia | `TYPECHECK_GUARD_SKIP=1 git push …` | el guard del backlog |
+| Mención suelta de un `T-NNN` que no tienes reclamado | `BACKLOG_GUARD_SKIP=1 git push …` | el typecheck |
+
+**Antes de usar el primero, comprueba de quién es el rojo** — el `pre-commit` corre la suite ENTERA, así que un fallo de cualquier sesión bloquea a todas:
+
+```bash
+git stash push -u && npm run test:unit; git stash pop
+```
+
+⚠️ El stash es del **REPO**, no del worktree: con sesiones en paralelo, haz `pop` enseguida. Que el hook distinga solo un rojo heredado de uno tuyo es [T-255].
+
 > ⚠️ El hook mira el **diff neto contra `origin/main`**, no cada commit: si añades un fichero roto y lo quitas en otro commit del mismo push, no paga peaje — porque a `main` no llega. Y `backend/` y `__tests__/` no lo disparan porque el typecheck de la raíz los excluye (paridad con `tsconfig.json` fijada por test: si alguien cambia ese `exclude`, el guardarraíl se pone rojo).
 
 > **CI — dónde corre:** el workflow (`.github/workflows/test.yml`) dispara en **`pull_request` y push a `main`**, NO en push de una rama suelta. Para tener CI sobre una feature-branch (worktree, ver abajo) hay que **abrir un PR** — aunque seas solo tú: el PR es el mecanismo que dispara el CI, no una ceremonia de aprobación.

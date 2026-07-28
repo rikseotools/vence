@@ -51,6 +51,15 @@ else
 fi
 
 echo ""
+# Escape con NOMBRE (28/07/2026). Antes este hook no tenía ninguno, y como corre la suite
+# ENTERA, un test roto por OTRA sesión bloquea a todo el mundo — incluido un commit de solo
+# documentación. Sin escape nombrado, la salida era `--no-verify`, que apaga TAMBIÉN el
+# `db:check` y el `audit:display-drift` de arriba. Este salta solo los tests, deja rastro en
+# la salida y no toca los demás guardarraíles.
+if [ "${PRECOMMIT_TESTS_SKIP:-}" = "1" ]; then
+  echo "⏭️  Tests saltados (PRECOMMIT_TESTS_SKIP=1) — el resto de validaciones SÍ se han pasado."
+  echo "   Úsalo solo si el rojo NO es tuyo; si lo es, arréglalo (el CI lo va a cazar igual)."
+else
 echo "🧪 Tests críticos + unit..."
 npm run test:precommit && npm run test:unit
 TEST_EXIT_CODE=$?
@@ -64,7 +73,17 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
   echo "   2. Tests de integración (BD real / flaky) corren en CI, no aquí."
   echo "   3. Corrige los problemas y vuelve a hacer commit."
   echo ""
+  echo "🤔 ¿Y si el rojo NO es tuyo? Con varias sesiones pasa: compruébalo guardando tus"
+  echo "   cambios y corriendo la suite sobre HEAD limpio:"
+  echo "       git stash push -u && npm run test:unit; git stash pop"
+  echo "   (ojo: el stash es del REPO, no del worktree — con sesiones en paralelo, haz pop"
+  echo "    enseguida). Si ya estaba roto ANTES de tus cambios, avisa a quien lo rompió y"
+  echo "   sigue con:  PRECOMMIT_TESTS_SKIP=1 git commit …"
+  echo "   Eso salta SOLO los tests; NO uses --no-verify, que apaga además el db:check y el"
+  echo "   audit:display-drift."
+  echo ""
   exit 1
+fi
 fi
 
 # Lint NO se ejecuta en pre-commit:
