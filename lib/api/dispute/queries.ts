@@ -24,6 +24,12 @@ export async function getExistingDispute(
     const [dispute] = await db
       .select({
         id: questionDisputes.id,
+        // Se devuelve la PREGUNTA a la que pertenece para que el cliente pueda comprobar que lo que
+        // pinta es de la pregunta que el usuario tiene delante. Sin este campo el panel no podía
+        // detectar que estaba mostrando una impugnación de otra (bug `dc236653`, 28/07): confiaba
+        // en su propio estado, y el estado se le quedó pegado. Un dato que permite VERIFICAR vale
+        // más que la disciplina de acordarse de limpiar.
+        questionId: questionDisputes.questionId,
         disputeType: questionDisputes.disputeType,
         status: questionDisputes.status,
         createdAt: questionDisputes.createdAt,

@@ -23,6 +23,11 @@ jest.mock('@/lib/api/authHeaders', () => ({
   getAuthHeaders: jest.fn(async () => ({ Authorization: 'Bearer test' })),
 }))
 
+// El prefijo `mock` no es capricho: Jest solo permite referenciar variables así dentro de la
+// factoría de `jest.mock` (protección contra mocks sin inicializar).
+const mockEmitir = jest.fn()
+jest.mock('@/lib/observability/client', () => ({ emitClientEvent: (...a: unknown[]) => mockEmitir(...a) }))
+
 const user = { id: 'u-1', email: 'test@vence.es' } as never
 
 // La API devuelve impugnación previa SOLO para la pregunta 13.
@@ -33,7 +38,7 @@ const respuestaPara = (url: string) => {
     json: () =>
       Promise.resolve(
         esLa13
-          ? { success: true, data: { disputeType: 'tema_incorrecto', status: 'pending', createdAt: '2026-07-28T09:58:38Z' } }
+          ? { success: true, data: { id: 'd-1', questionId: 'q-13', disputeType: 'tema_incorrecto', status: 'pending', createdAt: '2026-07-28T09:58:38Z' } }
           : { success: true, data: null },
       ),
   } as Response)
@@ -70,5 +75,28 @@ describe('QuestionDispute — el estado no sobrevive al cambio de pregunta', () 
       const urls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]))
       expect(urls.some((u) => u.includes('q-22'))).toBe(true)
     })
+  })
+
+  it('IGNORA y DEJA RASTRO si la API devuelve la impugnación de otra pregunta', async () => {
+    // Segunda capa: aunque el estado se limpie, una respuesta cruzada (carrera entre dos
+    // peticiones, caché intermedia) volvería a pintar lo que no toca. La guarda lo hace imposible
+    // y lo deja medido en `question_dispute_action`, el mismo evento de los fallos de contexto.
+    ;(global.fetch as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: { id: 'd-1', questionId: 'OTRA-pregunta', disputeType: 'tema_incorrecto', status: 'pending', createdAt: null },
+          }),
+      } as Response),
+    )
+    render(<QuestionDispute questionId="q-99" user={user} isOpen />)
+    await waitFor(() => expect(mockEmitir).toHaveBeenCalled())
+    expect(screen.queryByText(/Ya impugnaste esta pregunta/i)).not.toBeInTheDocument()
+    const evento = mockEmitir.mock.calls[0][0] as { eventType: string; severity: string; metadata: Record<string, unknown> }
+    expect(evento.eventType).toBe('question_dispute_action')
+    expect(evento.severity).toBe('warn')
+    expect(evento.metadata.action).toBe('stale_panel_ignored')
   })
 })

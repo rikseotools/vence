@@ -9,6 +9,7 @@ import {
   type DisputeType,
 } from '@/lib/api/v2/dispute/types'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { emitClientEvent } from '@/lib/observability/client'
 
 // ============================================
 // TIPOS
@@ -122,9 +123,23 @@ export default function QuestionDispute({
 
       if (res.ok) {
         const result = await res.json()
-        // La rama `else` importa tanto como la otra: sin ella, «no hay impugnación previa» dejaba
-        // en pantalla la de la consulta anterior. Se escribe SIEMPRE el resultado, aunque sea nulo.
-        setExistingDispute(result.success && result.data ? result.data : null)
+        const previa = result.success && result.data ? result.data : null
+        // GUARDA VERIFICABLE, no confianza en el estado. El bug `dc236653` (28/07) consistió en
+        // pintar la impugnación de OTRA pregunta; el reset de estado lo evita, pero esto lo hace
+        // IMPOSIBLE y además deja rastro si vuelve a ocurrir por otra vía (una respuesta cruzada,
+        // una carrera entre dos peticiones). Se reutiliza `question_dispute_action`, el evento que
+        // ya existe para los fallos de contexto de pregunta (bug de la pregunta stale, 21/07): el
+        // mismo problema merece el mismo sitio donde mirarlo, no un evento nuevo.
+        if (previa && previa.questionId && previa.questionId !== questionId) {
+          emitClientEvent({
+            severity: 'warn',
+            eventType: 'question_dispute_action',
+            metadata: { action: 'stale_panel_ignored', questionId, previaDe: previa.questionId },
+          })
+          setExistingDispute(null)
+        } else {
+          setExistingDispute(previa)
+        }
       }
     } catch (err) {
       console.error('Error checking existing dispute:', err)
@@ -152,6 +167,10 @@ export default function QuestionDispute({
     setDisputeType('')
     setDescription('')
     setErrorMessage('')
+    // También los transitorios: si la pregunta cambia con un envío o una consulta en vuelo, un
+    // `submitting` pegado deja el formulario bloqueado en la siguiente sin que se entienda por qué.
+    setSubmitting(false)
+    setCheckingExisting(false)
   }, [questionId])
 
   // Al abrir, verificar si ya existe

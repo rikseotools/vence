@@ -63,6 +63,12 @@ export type CreateDisputeResponse = z.infer<typeof createDisputeResponseSchema>
 
 export type ExistingDisputeData = {
   id: string
+  /**
+   * Pregunta a la que pertenece. Permite al cliente VERIFICAR que no está pintando otra.
+   * Nullable porque la columna lo es (impugnaciones sin contexto de pregunta, p. ej. desde
+   * /soporte): con `null` el cliente no puede comprobar nada y no debe inventarse que cuadra.
+   */
+  questionId: string | null
   disputeType: string
   status: string | null
   createdAt: string | null
