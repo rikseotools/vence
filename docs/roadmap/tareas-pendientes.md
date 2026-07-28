@@ -14,6 +14,19 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
+- **Qué:** el 28/07 se encendió el barajado de opciones en producción **solo para `auxiliar_administrativo_valencia`** (41 usuarios, ~4.400 respuestas/semana; el 33% de lo que se le sirve es barajable). **Revisar a los 3-5 días** con datos reales, no antes: hace falta que se acumulen respuestas.
+- **Cómo saber si va bien** (por orden de gravedad):
+  1. `SELECT count(*) FROM observable_events WHERE event_type='shuffle_option_order_invalid' AND ts > '2026-07-28'` — detector de **clave rota** (el cliente devolvió un orden que no cuadra). **Cualquier cosa distinta de 0 es motivo de apagar y diagnosticar antes que seguir.**
+  2. `SELECT count(*) FROM test_questions WHERE option_order IS NOT NULL` — debe **subir**. Si sigue en 0 pasados unos días, el piloto NO está actuando (flag apagado por un deploy, scope mal, o nadie de Valencia practicando) y lo que parece «va bien» es que no está pasando nada.
+  3. **Aciertos de Valencia antes/después.** Barajar debería bajar un poco el acierto —se deja de reconocer por posición, que es el objetivo—, pero **una caída brusca** apunta a preguntas cuya explicación u opciones dependían del orden y se colaron. Comparar la semana previa contra la posterior, y contra otra oposición como control.
+  4. **Impugnaciones de usuarios de Valencia**: leer si alguna dice que la explicación no cuadra con las opciones. El dossier ya traduce las letras (ver manual de impugnaciones), así que el bloque 🔀 aparecerá solo.
+  5. `npx tsx --env-file=.env.local scripts/sweep-shuffle-safety-drift.ts` — debe seguir en 0 regresiones.
+- **Decisión al revisar:** si 1 y 3 están limpios → **ampliar** el `_SCOPE` (siguiente escalón: añadir `auxiliar_administrativo_diputacion_cordoba` y `tecnico_auxiliar_universidad_de_murcia`, o pasar a `all`). Si aparece cualquier señal → **apagar** primero y diagnosticar después; apagar cuesta ~5 min y no necesita build.
+- **Comandos (ampliar / apagar) y el estado del cableado:** en la ficha [T-080], sección «ENCENDIDO EN PRODUCCIÓN».
+- **Contexto de por qué importa vigilarlo:** el mismo día se encontraron cuatro huecos en los detectores que decidían qué es barajable (referencias por posición, el agujero de las tildes en `\b`, opciones que se citan entre sí, razones estructuradas que mencionan otra opción). Que hoy el sweep dé 0 no garantiza que no quede una quinta clase sin descubrir — y el sitio donde se vería es el uso real.
+- **Origen:** encendido del piloto, 28/07.
+
 ### [T-232] 🟠 [ABIERTO 28/07] El programa de recompensas no falla por el incentivo: el 96% de los premium no sabe que existe
 - **Qué:** campaña de contacto uno a uno a los premium más activos para pedirles que **nos mencionen cuando alguien pregunte en un grupo** («¿dónde hago tests?», «¿de dónde saco el temario?»), y de paso descubrirles el programa entero. **No es una idea: es el cuello de botella medido.**
 - **📊 MEDIDO (28/07), y es demoledor:**

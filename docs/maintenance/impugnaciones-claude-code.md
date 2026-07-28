@@ -1650,7 +1650,28 @@ Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas 
 
 **Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Este patrón se aplicó a todos los flujos de notificación internos del 14/04/2026 (impugnaciones legislativas + psicotécnicas + feedback). Si aparecen nuevos casos similares, usar el mismo refactor.
 
-## 🔀 Cuando el barajado esté encendido: la letra que dice el usuario NO es la de la BD
+## 🔀 EL BARAJADO YA ESTÁ ENCENDIDO (Valencia): la letra que dice el usuario NO es la de la BD
+
+> ### 🟢 ESTADO — encendido el 28/07/2026, piloto en `auxiliar_administrativo_valencia`
+> **Si la impugnación es de un usuario de Valencia, sus letras pueden no ser las nuestras.** En el
+> resto de oposiciones, hoy, coinciden. Verificado al encenderlo: Valencia devuelve preguntas con
+> `option_order` y `auxiliar_administrativo_estado`/`_madrid` devuelven 0.
+>
+> **Comprueba el alcance ACTUAL antes de fiarte de este párrafo** (el piloto se ampliará a más
+> oposiciones, o se apagará si algo va mal):
+> ```bash
+> aws --profile vence --region eu-west-2 ssm get-parameters \
+>   --names /vence-frontend/FEATURE_SHUFFLE_OPTIONS /vence-frontend/FEATURE_SHUFFLE_OPTIONS_SCOPE \
+>   --query "Parameters[].[Name,Value]" --output text
+> ```
+> `FEATURE_SHUFFLE_OPTIONS=false` → nadie baraja. `_SCOPE` = CSV de `position_type`, o `all`.
+>
+> **Da igual lo que diga esto: el dossier lo resuelve solo** — mira la exposición REAL de esa
+> persona, no la oposición. Pero saberlo evita leer el bloque 🔀 como si fuera ruido.
+>
+> Si aparece un `shuffle_option_order_invalid` en `observable_events`, es el detector de «clave
+> rota» y **hay que apagar** (los comandos, en la ficha [T-080] del backlog). Seguimiento a los
+> días: [T-235].
 
 El serve permuta las opciones **por exposición** y guarda esa permutación en
 `test_questions.option_order`. Así que cuando alguien escribe *«la opción C es errónea»* está
