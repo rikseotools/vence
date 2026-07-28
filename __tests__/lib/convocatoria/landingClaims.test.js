@@ -167,7 +167,10 @@ describe('casos compartidos con cifraEnTexto y con el mirror del backend', () =>
     // «la cifra está» (lo que puede afirmar el detector) y «la llama plazas» (más exigente, y que
     // simulado sobre las 118 convocatorias vivas producía 56 hallazgos casi todos falsos).
     const divergen = CASOS.filter((c) => c.apareceLaCifra && c.laLlamaPlazas === false)
-    expect(divergen.map((c) => c.cifra).sort()).toEqual([1704, 1747])
+    // `.sort()` a secas ordena como TEXTO: con [3, 1704, 1747] daba [1704, 1747, 3] y el fallo de
+    // añadir un caso legítimo al fixture apuntaba al orden en vez de al cambio. Añadir calibración
+    // tiene que ser barato, o el guardarraíl acaba borrado.
+    expect(divergen.map((c) => c.cifra).sort((a, b) => a - b)).toEqual([3, 1704, 1747])
   })
 })
 

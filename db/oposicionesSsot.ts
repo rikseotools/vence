@@ -31,6 +31,10 @@ export const oposicionesSsot = pgView('oposiciones_ssot', {
   plazasLibres: integer('plazas_libres'),
   plazasPromocionInterna: integer('plazas_promocion_interna'),
   plazasDiscapacidad: integer('plazas_discapacidad'),
+  // true = el cupo va DENTRO de las plazas libres · false = aparte · null = no consta. Es el mismo
+  // dato con el que la vista decide si SUMA el cupo al `plazas_total`, así que el texto de la
+  // landing y el total salen de aquí o se contradicen (migración 20260728).
+  plazasDiscapacidadIncluidas: boolean('plazas_discapacidad_incluidas'),
   temasCount: integer('temas_count'),
   bloquesCount: integer('bloques_count'),
   tituloRequerido: text('titulo_requerido'),

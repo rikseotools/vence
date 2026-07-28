@@ -13,6 +13,7 @@ import { topics } from '@/db/schema'
 import { asc, and } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { versionedCache } from '@/lib/cache/versionedCache'
+import { emit } from '@/lib/observability/emit'
 import type { ConvocatoriaHistorica } from '@/lib/convocatoria/historico'
 
 export interface OposicionLandingData {
@@ -161,7 +162,21 @@ export async function getOposicionLandingData(
       landingEstadisticas: r.landing_estadisticas as OposicionLandingData['landingEstadisticas'],
     }
   } catch (error) {
-    console.warn(`⚠️ [convocatoria] Error obteniendo datos landing para ${slug}:`, (error as Error).message)
+    // Este catch es el punto ciego más caro de la landing: devolver `null` NO deja la página rota,
+    // la deja PLAUSIBLE — cae al texto genérico de config y pierde a la vez plazas, fechas, BOE,
+    // SEO, FAQs y estadísticas, sin 5xx, sin badge y con `getOposicionLandingDataCached` cacheando
+    // el null. Pasó el 28/07: la query pidió a la vista una columna que no proyectaba
+    // (`plazas_discapacidad_incluidas`) y las 123 landings se habrían quedado mudas en silencio.
+    // Un `console.warn` no lo cuenta: nadie lee los logs de un render que devuelve 200.
+    console.error(`❌ [convocatoria] Error obteniendo datos landing para ${slug}:`, (error as Error).message)
+    void emit({
+      source: 'vercel',
+      severity: 'error',
+      eventType: 'landing_data_unavailable',
+      endpoint: `/${slug}`,
+      errorMessage: (error as Error).message,
+      metadata: { slug, causa: (error as { code?: string }).code ?? null },
+    })
     return null
   }
 }

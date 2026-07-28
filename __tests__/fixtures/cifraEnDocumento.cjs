@@ -100,6 +100,69 @@ const CASOS = [
     origen: 'el hallazgo legítimo de siempre',
   },
 
+  // ── …ni dentro de otro NUMERAL EN LETRA ──────────────────────────────────────────────────────
+  // La frontera de T-202 se puso solo en el camino de los dígitos, y el de letras se quedó con el
+  // `includes` de siempre: el MISMO falso verde, intacto, en la mitad del detector que nadie miró
+  // porque el fixture solo traía un caso positivo en letra. Los numerales españoles se COMPONEN, así
+  // que aquí no basta la frontera de palabra —«treinta» es palabra entera dentro de «treinta y
+  // seis»—: hay que exigir que ninguna palabra de numeral toque la aparición.
+  {
+    nombre: 'una decena no se prueba con el numeral compuesto que la empieza',
+    cifra: 30,
+    texto: 'se convocan treinta y seis plazas de la escala administrativa',
+    apareceLaCifra: false,
+    laLlamaPlazas: false,
+    origen: 'T-202 (revisión adversarial 28/07): el documento prueba 36, no 30',
+  },
+  {
+    nombre: 'ni la unidad que lo termina',
+    cifra: 6,
+    texto: 'se convocan treinta y seis plazas de la escala administrativa',
+    apareceLaCifra: false,
+    laLlamaPlazas: false,
+    origen: 'T-202 — la cita que dice «seiscientas» no puede validar una escritura de 6',
+  },
+  {
+    nombre: 'un millar no se prueba con el millar de otro número',
+    cifra: 1000,
+    texto: 'de las dos mil setecientas cuatro plazas convocadas',
+    apareceLaCifra: false,
+    laLlamaPlazas: false,
+    origen: 'T-202 — «mil» dentro de «dos mil setecientas cuatro» (femenino: así lo escribe el BOE)',
+  },
+  {
+    nombre: 'ni una centena con la centena de otro',
+    cifra: 200,
+    texto: 'doscientos cincuenta y tres puestos de trabajo',
+    apareceLaCifra: false,
+    laLlamaPlazas: false,
+    origen: 'T-202',
+  },
+  {
+    nombre: 'el numeral no vale DENTRO de una palabra corriente',
+    // «dos» ⊂ «todos», «uno» ⊂ «ninguno»: con `includes` cualquier corpus probaba el 1 y el 2.
+    cifra: 2,
+    texto: 'todos los aspirantes deberán acreditar el requisito',
+    apareceLaCifra: false,
+    laLlamaPlazas: false,
+    origen: 'T-202',
+  },
+  {
+    nombre: 'la «y» que NO une numerales no descalifica la prueba',
+    // El contrapeso: exigir frontera no puede volverse una acusación falsa. Aquí la conjunción une
+    // dos cosas distintas («laboral» y «tres plazas»), así que el documento SÍ prueba el 3. Por eso
+    // la vecindad se juzga mirando qué hay detrás de la «y», no la «y» sola.
+    cifra: 3,
+    texto: 'de personal laboral y tres plazas de auxiliar administrativo',
+    apareceLaCifra: true,
+    // DEUDA CONOCIDA de `landingClaims`, no un comportamiento deseado: su normalizador no convierte
+    // «y tres» → «3» (lo confunde con la cola de un compuesto tipo «treinta y tres»), así que no la
+    // presenta como plazas. Queda fijado aquí para que se vea, con la misma «y» que el detector sí
+    // resuelve. Ver T-224.
+    laLlamaPlazas: false,
+    origen: 'contrapeso de la frontera en letra (28/07)',
+  },
+
   // ── La cifra SÍ está, pero el patrón de concepto no la casa (divergencia DELIBERADA) ────────
   {
     nombre: 'la palabra «Plazas» va DELANTE, con dos puntos',
@@ -136,6 +199,17 @@ const CASOS = [
     apareceLaCifra: true,
     laLlamaPlazas: true,
     origen: 'administrativa-universidad-de-murcia',
+  },
+  {
+    nombre: 'el numeral en letra CONCORDADO en femenino, que es como se escribe «plazas»',
+    // `enLetra` escribe en masculino («doscientos») y el boletín concuerda con lo que cuenta. Buscar
+    // solo el masculino no colaba cifras de más: acusaba a convocatorias que tienen el dato escrito
+    // con todas sus letras. Se busca en los dos géneros.
+    cifra: 200,
+    texto: 'se convocan doscientas plazas de la escala auxiliar administrativa',
+    apareceLaCifra: true,
+    laLlamaPlazas: true,
+    origen: 'T-202 (28/07) — mismo motivo por el que no se quitó la búsqueda en letra',
   },
   {
     nombre: 'con punto de millar, como lo imprime el boletín',

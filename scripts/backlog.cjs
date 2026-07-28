@@ -262,6 +262,37 @@ function parseMd() {
         process.exit(2);
       }
 
+      // COLISIÓN CON LA BD — la otra mitad del mismo fallo. El bloque de arriba solo ve ids
+      // repetidos DENTRO del markdown, y el choque entre sesiones no se ve ahí: la otra sesión
+      // reserva el id en la tabla y su ficha tarda en llegar a tu copia del fichero, así que en tu
+      // markdown el id aparece UNA vez —la tuya— y no hay nada que comparar. Pasó el 28/07 con
+      // T-225: el `sync` reconcilió tan tranquilo y le pisó el título a la tarea ajena. La única
+      // fuente de verdad de los ids es la tabla, así que se pregunta a la tabla.
+      const idsMd = md.filter((t) => t.inOpenSection && !t.doneMarked).map((t) => t.id);
+      if (idsMd.length) {
+        const { esOtraTarea } = require(path.join(REPO, 'lib', 'backlog', 'syncGuard.cjs'));
+        const enBd = await s`
+          SELECT id, title FROM public.backlog_tasks
+           WHERE id IN ${s(idsMd)} AND status IN ('open','in_progress','blocked')`;
+        const porId = new Map(enBd.map((r) => [r.id, r.title]));
+        const ajenas = md
+          .filter((t) => porId.has(t.id) && esOtraTarea(porId.get(t.id), t.title))
+          .map((t) => ({ id: t.id, bd: porId.get(t.id), md: t.title }));
+        if (ajenas.length) {
+          console.error(`❌ sync ABORTADO: ${ajenas.length} id(s) ya ocupado(s) en la BD por OTRA tarea.`);
+          for (const c of ajenas) {
+            console.error(`   ${c.id}`);
+            console.error(`      · en BD:       ${String(c.bd).slice(0, 70)}`);
+            console.error(`      · tu markdown: ${String(c.md).slice(0, 70)}`);
+          }
+          console.error('   Otra sesión reservó ese id y su ficha aún no ha llegado a tu copia.');
+          console.error('   Renumera TU ficha con un id reservado de forma atómica:');
+          console.error('      node scripts/backlog.cjs reserve "<título>"');
+          console.error('   (Si de verdad estás RETITULANDO tu propia ficha, cambia el título en la BD a mano.)');
+          process.exit(2);
+        }
+      }
+
       let nuevos = 0;
       let reconciliadas = 0;
       const cambios = [];

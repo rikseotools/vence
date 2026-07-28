@@ -164,6 +164,20 @@ de plazas que no está escrito en ninguno de los documentos que hemos clonado**,
 `1.030`) ni en letra (`ciento treinta y nueve`) — los boletines escriben en letra, y un buscador
 solo-dígitos daría 22 acusaciones falsas de 31.
 
+> **La cifra tiene que aparecer ENTERA, y eso vale para las dos escrituras.** «Aparecer» no es
+> `includes`: en dígitos, el `216` de dentro del código `C1.1000197163216` no prueba 216 (T-202); y en
+> letra —que es la mitad que se quedó sin arreglar hasta el 28/07— **«treinta» dentro de «treinta y
+> seis» no prueba 30**, ni «mil» dentro de «dos mil setecientas cuatro» prueba 1000, ni «dos» dentro de
+> «todos» prueba 2. Los numerales españoles se componen, así que aquí no basta la frontera de palabra:
+> `lib/convocatoria/cifraEnTexto.cjs` exige que **ninguna palabra de numeral toque la aparición**, con
+> la «y» juzgada por lo que lleva detrás («…laboral **y tres** plazas» sí prueba el 3).
+> **Qué hacer si tocas esta regla:** el caso nuevo va al fixture COMPARTIDO
+> (`__tests__/fixtures/cifraEnDocumento.cjs`) —que es lo que mantiene alineados el núcleo, el espejo
+> del @Cron y `landingClaims`— y **antes de dar el cambio por bueno se mide sobre las convocatorias
+> vivas** con `node scripts/convocatoria/sim-plazas-contexto.cjs` (el 28/07: 0 acusaciones nuevas).
+> Ese simulador lleva su propio brazo de control congelado y avisa si deja de medir: un `0` suyo
+> significa «no cambia nada» solo cuando el control sigue vivo.
+
 Una cifra de plazas solo puede ser dos cosas:
 
 - un **HECHO** → algún documento de la convocatoria la contiene;

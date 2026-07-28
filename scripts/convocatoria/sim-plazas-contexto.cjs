@@ -68,23 +68,23 @@ function ventanasDePlazas(corpus) {
   return trozos.join(' … ')
 }
 
-/** Fragmentos donde la cifra aparece, para poder juzgar si es azar o una mención real. */
+/**
+ * Fragmentos donde la cifra aparece, para poder juzgar si es azar o una mención real.
+ *
+ * Usa EXACTAMENTE la frontera del núcleo, no una parecida. Llevaba una tercera variante (la de la
+ * izquierda no miraba la coma, la de la derecha solo un carácter) y por eso podía imprimir como
+ * prueba un «44,5 %» que el propio simulador acababa de declarar no-probado: el humano que triaba
+ * veía una cita que contradecía el veredicto de al lado y «arreglaba» un hallazgo correcto.
+ */
 function fragmentosDe(corpus, valor) {
   const t = String(corpus || '').replace(/\s+/g, ' ')
   const formas = [String(valor), String(valor).replace(/\B(?=(\d{3})+(?!\d))/g, '.')]
   const out = []
   for (const f of formas) {
-    let desde = 0
-    for (;;) {
-      const i = t.indexOf(f, desde)
-      if (i === -1) break
-      // Solo si es un número suelto, no parte de otro más largo ni de un código.
-      const antes = t[i - 1] || ' '
-      const despues = t[i + f.length] || ' '
-      if (!/[\d.]/.test(antes) && !/\d/.test(despues)) {
-        out.push(t.slice(Math.max(0, i - 60), i + f.length + 60).trim())
-      }
-      desde = i + f.length
+    const re = new RegExp(`(?<![\\d.,])${f.replace(/\./g, '\\.')}(?![\\d.,]?\\d)`, 'g')
+    let m
+    while ((m = re.exec(t)) !== null) {
+      out.push(t.slice(Math.max(0, m.index - 60), m.index + f.length + 60).trim())
       if (out.length >= 4) return out
     }
   }
@@ -96,26 +96,51 @@ function digitos(n) {
 }
 
 /**
- * La regla viva, pero exigiendo que la cifra sea un NÚMERO ENTERO del texto y no una subcadena de
- * otro número. `cifraEnTexto` compara con `includes`, así que hoy «216» se da por probada dentro
- * del código `C1.1000197163216`, y «278» dentro de «2781853». Se simula aquí antes de tocar el
- * núcleo compartido: es un cambio a la regla VIVA, no a una regla candidata.
+ * BRAZO DE CONTROL: la regla tal como estaba ANTES del 28/07 — frontera solo en los DÍGITOS, y el
+ * numeral en LETRA con un `includes` pelado.
+ *
+ * Ojo al modo de fallo de este fichero, que ya se cumplió una vez: cuando la regla candidata se
+ * hornea en `cifraEnTexto`, esta copia pasa a ser IDÉNTICA a la viva, la comparación se queda sin
+ * control y el informe imprime «0» para siempre — que un operador lee como «el problema ya no
+ * existe» cuando lo que ha desaparecido es el termómetro. Por eso el control se mueve HACIA ATRÁS
+ * (queda congelada la regla anterior) en vez de borrarse: la pregunta útil pasa a ser «¿qué deja de
+ * dar por probado el cambio?», que es justo lo que hay que medir antes de desplegarlo.
+ *
+ * Congelada el 28/07: dígitos con frontera (T-202, ya viva) + letra con `includes` (el falso verde
+ * que se arregla ahora: «treinta» dentro de «treinta y seis» daba por probado el 30).
  */
-function cifraConFrontera(n, texto) {
+function reglaAnterior(n, texto) {
   if (n == null) return true
   if (!Number.isInteger(n) || n < 0) return false
   if (!texto) return false
   const t = ' ' + String(texto).replace(/\s+/g, ' ') + ' '
-  // El numeral en LETRA se busca igual que hoy (los boletines escriben «treinta y seis plazas»):
-  // quitarlo aquí habría inventado hallazgos donde el documento es perfectamente explícito. Lo
-  // detectó la propia simulación — `administrativa-universidad-de-murcia` salía «sin frontera»
-  // mientras su documento la presentaba como plazas.
   const letra = n <= 9999 ? enLetra(n) : null
   if (letra && t.toLowerCase().includes(letra.toLowerCase())) return true
   const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.')]
   // Frontera: ni dígito ni punto/coma decimal pegados a los lados (el punto de millar del propio
   // número ya va dentro de `formas`).
   return formas.some((f) => new RegExp(`(?<![\\d.,])${f.replace(/\./g, '\\.')}(?![\\d.,]?\\d)`).test(t))
+}
+
+/**
+ * ¿SIGUE VIVO EL TERMÓMETRO? Casos donde el control y la regla viva DEBEN discrepar por definición.
+ *
+ * Sin esto, el día que alguien hornee la regla candidata en el núcleo y se olvide de mover el
+ * control, el informe imprime «0 diferencias» —que se lee como «ya no hay problema»— en vez de
+ * «ya no estoy midiendo nada». Ya pasó una vez (28/07, T-202). Un simulador que no puede detectar
+ * su propia avería no es una capa de seguridad, es un adorno.
+ */
+const CANARIOS = [
+  { n: 30, texto: 'se convocan treinta y seis plazas', anterior: true, viva: false },
+  { n: 216, texto: 'C.ADMINISTRATIVO C1.1000197163216 C.DE AYUDANTES', anterior: false, viva: false },
+  { n: 36, texto: 'se convocan treinta y seis plazas', anterior: true, viva: true },
+]
+
+function controlVivo() {
+  const rotos = CANARIOS.filter(
+    (c) => reglaAnterior(c.n, c.texto) !== c.anterior || cifraEnTexto(c.n, c.texto) !== c.viva,
+  )
+  return { ok: rotos.length === 0, rotos }
 }
 
 async function main() {
@@ -143,16 +168,20 @@ async function main() {
      WHERE cv.is_current AND o.is_active
        AND cv.plazas_libres IS NOT NULL
        AND NOT cv.plazas_prevision
-     ORDER BY cv.plazas_libres DESC NULLS LAST`)
+       -- El filtro va en SQL, no en memoria: cada fila arrastra el corpus ENTERO de la convocatoria
+       -- (boletines de varios MB). Pedir las 118 para quedarse con una era traerse cientos de MB al
+       -- proceso para tirarlos, y con --slug es justo lo que uno cree estar evitando.
+       AND ($1::text IS NULL OR o.slug = $1)
+     ORDER BY cv.plazas_libres DESC NULLS LAST
+     ${muestra ? `LIMIT ${parseInt(muestra, 10)}` : ''}`, [soloSlug])
   await db.end()
 
-  let filas = soloSlug ? rows.filter((r) => r.slug === soloSlug) : rows
-  if (muestra) filas = filas.slice(0, muestra)
+  const filas = rows
 
   const resultados = filas.map((r) => {
     const valor = r.plazas_libres
-    const hoy = cifraEnTexto(valor, r.corpus)          // regla VIVA: ¿aparece la cifra?
-    const conFrontera = cifraConFrontera(valor, r.corpus) // ¿y como número entero, no dentro de otro?
+    const hoy = cifraEnTexto(valor, r.corpus)          // regla VIVA (con frontera en dígitos Y en letra)
+    const antes = reglaAnterior(valor, r.corpus)       // brazo de control: la regla previa al 28/07
     const ventanas = ventanasDePlazas(r.corpus)
     const norm = normalizarNumerosDelTexto(ventanas)   // «dos mil setecientas» → 2704
     const presentadas = numerosDelConcepto(norm, RE_PLAZAS)  // cifras que el doc LLAMA plazas
@@ -174,7 +203,7 @@ async function main() {
       docs: r.docs,
       corpus_chars: (r.corpus || '').length,
       regla_viva: hoy,
-      regla_frontera: conFrontera,
+      regla_anterior: antes,
       veredicto,
       derivacion: derivacion ? `${derivacion.como}: ${derivacion.detalle}` : null,
       presentadas_como_plazas: presentadas.slice(0, 12),
@@ -187,17 +216,29 @@ async function main() {
   const n = resultados.length
   const cuenta = (p) => resultados.filter(p).length
   console.log(`\n=== Simulación regla CON CONTEXTO vs regla viva — ${n} convocatorias vivas con plazas_libres ===\n`)
+  const control = controlVivo()
+  if (!control.ok) {
+    console.log('❌ BRAZO DE CONTROL AVERIADO: ya no distingue la regla anterior de la viva.')
+    for (const c of control.rotos) console.log(`   · ${c.n} en «${c.texto}» — esperado anterior=${c.anterior} viva=${c.viva}`)
+    console.log('   → Un «0 diferencias» de este informe NO significa nada hasta arreglarlo (congela aquí la regla previa).\n')
+  }
   console.log(`Regla VIVA (¿aparece la cifra?):     ${cuenta((x) => x.regla_viva)} probadas · ${cuenta((x) => !x.regla_viva)} hallazgo(s)`)
   console.log(`Regla CON CONTEXTO (¿la llama plazas?):`)
   for (const v of ['respaldada', 'derivable', 'SIN_RESPALDO', 'sin_documento']) {
     console.log(`   ${v.padEnd(14)} ${cuenta((x) => x.veredicto === v)}`)
   }
 
-  // ── La regla viva + FRONTERA de número (el defecto barato, independiente del contexto) ──────
-  const fronteraPierde = resultados.filter((x) => x.regla_viva && !x.regla_frontera)
-  console.log(`\n🎯 Hoy «probadas» SOLO porque la cifra casa DENTRO de otro número: ${fronteraPierde.length}`)
-  for (const x of fronteraPierde) {
+  // ── Qué cambia la FRONTERA respecto a la regla anterior (el defecto barato, sin contexto) ────
+  const dejanDeProbarse = resultados.filter((x) => x.regla_anterior && !x.regla_viva)
+  console.log(`\n🎯 Estaban «probadas» SOLO porque la cifra casaba dentro de otro número (o de otro numeral): ${dejanDeProbarse.length}`)
+  for (const x of dejanDeProbarse) {
     console.log(`   · ${x.slug} = ${x.valor} (${x.digitos} díg) — el doc presenta como plazas: ${x.presentadas_como_plazas.slice(0, 6).join(', ') || '(ninguna)'}`)
+  }
+  // La dirección contraria debe estar VACÍA: la regla viva solo puede ser más estricta que la
+  // anterior. Si aparece alguna, el cambio no es un endurecimiento sino otra regla distinta.
+  const ganadas = resultados.filter((x) => !x.regla_anterior && x.regla_viva)
+  if (ganadas.length) {
+    console.log(`\n❌ INCOHERENTE: ${ganadas.length} pasan a «probadas» que antes no lo estaban → ${ganadas.map((x) => x.slug).join(', ')}`)
   }
 
   const nuevos = resultados.filter((x) => x.regla_viva && x.veredicto === 'SIN_RESPALDO')

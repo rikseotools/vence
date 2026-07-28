@@ -449,16 +449,49 @@ export function enLetra(n: number): string | null {
   return (mil === 1 ? 'mil' : `${enLetra(mil)} mil`) + (r ? ` ${enLetra(r)}` : '');
 }
 
+// Frontera del numeral en LETRA. Mirror de lib/convocatoria/cifraEnTexto.cjs; el porqué (los
+// numerales se componen, así que «treinta» es palabra entera dentro de «treinta y seis») vive allí.
+const PALABRA_NUMERAL = /^(mil|mill[óo]n|millones|cien|ciento|cientos|un|un[oa]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci(s[ée]is|siete|ocho|nueve)|veinte|veinti(un[oa]?|d[óo]s|tr[ée]s|cuatro|cinco|s[ée]is|siete|ocho|nueve)|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|quinient[oa]s|(dos|tres|cuatro|seis|sete|ocho|nove)cient[oa]s)$/;
+
+function tocaOtroNumeral(vecina: string | undefined, masAlla: string | undefined): boolean {
+  if (!vecina) return false;
+  if (vecina === 'y') return !!masAlla && PALABRA_NUMERAL.test(masAlla);
+  return PALABRA_NUMERAL.test(vecina);
+}
+
+// «doscientos puestos» / «doscientas plazas»: enLetra escribe en masculino y el boletín concuerda
+// con lo que cuenta. Buscar solo el masculino no da falsos verdes, da acusaciones falsas.
+function formasDeGenero(letra: string): string[] {
+  const fem = letra
+    .replace(/cientos\b/g, 'cientas')
+    .replace(/\bveintiuno\b/g, 'veintiuna')
+    .replace(/\buno\b/g, 'una');
+  return fem === letra ? [letra] : [letra, fem];
+}
+
+function numeralSuelto(t: string, letra: string): boolean {
+  const palabras = t.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const buscada = letra.split(' ');
+  for (let i = 0; i + buscada.length <= palabras.length; i++) {
+    if (buscada.some((w, k) => palabras[i + k] !== w)) continue;
+    const fin = i + buscada.length;
+    if (tocaOtroNumeral(palabras[i - 1], palabras[i - 2])) continue;
+    if (tocaOtroNumeral(palabras[fin], palabras[fin + 1])) continue;
+    return true;
+  }
+  return false;
+}
+
 export function cifraEnTexto(n: number | null | undefined, texto: string | null | undefined): boolean {
   if (n == null) return true;
   // Basura → false, nunca excepción: un detector que revienta deja de reportar (ver el .cjs).
   if (!Number.isInteger(n) || n < 0) return false;
   if (!texto) return false;
   const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' ';
-  // El numeral en letra, tal cual; los dígitos, con FRONTERA de número — «216» dentro del código
-  // `C1.1000197163216` no prueba nada ([T-202]). El porqué medido, en el .cjs.
+  // Frontera en los DOS caminos: en dígitos «216» dentro de `C1.1000197163216` no prueba nada
+  // ([T-202]); en letra «treinta» dentro de «treinta y seis» tampoco. El porqué medido, en el .cjs.
   const letra = n <= 9999 ? enLetra(n) : null;
-  if (letra && t.includes(letra.toLowerCase())) return true;
+  if (letra && formasDeGenero(letra.toLowerCase()).some((f) => numeralSuelto(t, f))) return true;
   const escapar = (s: string) => s.replace(/[.]/g, '\\.');
   return [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.')]
     .some((f) => new RegExp(`(?<![\\d.,])${escapar(f)}(?![\\d.,]?\\d)`).test(t));

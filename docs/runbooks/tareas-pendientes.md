@@ -27,6 +27,19 @@ deja que la PK arbitre las carreras (reintenta hasta 10 veces). A partir de ahí
 **Si aun así colisionas, `sync` ABORTA** y te enseña las dos fichas y el comando. Antes reconciliaba
 en silencio: le pisaba el título a la tarea de la otra sesión y lo reportaba como un `↻` normal.
 
+Y aborta en los **dos** sitios donde se puede chocar, que no son el mismo:
+
+| Choque | Cómo se ve | Qué lo caza |
+|---|---|---|
+| El id sale **dos veces en tu markdown** | dos fichas con el mismo `T-nnn` en el fichero | comparación dentro del markdown |
+| El id **ya es de otra sesión en la BD** | en TU fichero aparece una sola vez (la tuya): su ficha aún no está pusheada | comparación contra `backlog_tasks` (`lib/backlog/syncGuard.cjs`) |
+
+El segundo es el que pasa de verdad y estuvo suelto hasta el 28/07: la otra sesión reservó T-225 a
+las 09:17, en esta copia el markdown no tenía esa ficha, y el `sync` reconcilió el id como propio
+**pisándole el título**. La decisión de parar es pura y testeada (`__tests__/backlog/syncGuard.test.ts`):
+compara el vocabulario de los dos títulos, exime el provisional de `reserve` y no se mete en un
+retitulado normal — un guardarraíl que grita por cualquier cambio de redacción se acaba saltando.
+
 > Historial: el problema se repitió con T-123/T-126, y otra vez cuatro veces el 28/07 (T-188, T-196,
 > T-201, T-204). `reserve` existía desde el primer episodio — lo que faltaba era que estuviera escrito
 > donde alguien lo lee. Por eso está aquí y en CLAUDE.md.
