@@ -15,10 +15,28 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Cancelar runs viejas del mismo ref si llega una nueva push.
+# Cancelar runs viejas del mismo ref si llega una nueva push… PERO NUNCA EN `main`.
+#
+# MEDIDO EL 28/07/2026: de los 100 últimos runs de este workflow en `main`, **57 salieron
+# `cancelled`** y solo 36 llegaron a dar veredicto. Con 5-10 sesiones empujando cada pocos minutos,
+# cancelar por ref significa que más de la mitad de los commits de `main` NUNCA se comprueban.
+#
+# Y el agujero es peor de lo que parece, porque el job que avisa lleva `if: failure() && !cancelled()`
+# — correcto por sí solo (un run cancelado no dice nada), pero combinado con esto la consecuencia es
+# que **un `main` roto no avisa a nadie**. Ese mismo día pasó TRES veces: un detector entraba en el
+# sweep CLI sin su espejo en el @Cron, el guardarraíl de paridad se ponía rojo, su run se cancelaba
+# por el push siguiente, y el fallo lo descubría la siguiente sesión al estrellarse contra el
+# pre-commit (que corre la misma suite). El guardarraíl funcionaba; lo que faltaba era que alguien
+# se enterara.
+#
+# En un PR cancelar SÍ tiene sentido: solo importa el último commit de la rama. En `main` cada
+# commit es un estado que se despliega, así que cada uno merece su veredicto.
+#
+# Coste: ninguno. El repo es PÚBLICO y en público los minutos de Actions son gratis e ilimitados
+# (y el workflow entero son ~7 min de runner: unit 2, typecheck 2, lint 1-2, integration 1).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   unit:

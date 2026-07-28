@@ -10,6 +10,8 @@
 # intentos. Solo UNO falló por el código (typecheck roto en main, ajeno). Los otros seis:
 #   · CI aún en curso (el gate hace exit 1, no espera)            → aquí se espera
 #   · GitHub CANCELÓ el run porque llegó otro push                → aquí se resincroniza
+#     (28/07: esto debería ser YA raro — `test.yml` dejó de cancelar en `main`, donde se
+#      cancelaba el 57% de los runs. Se mantiene el manejo por si acaso.)
 #   · el lock lo tenía un build de frontend de >30 min            → aquí se reintenta
 #   · árbol sucio (cambios sin commitear)                         → aquí se PARA y se avisa
 #
