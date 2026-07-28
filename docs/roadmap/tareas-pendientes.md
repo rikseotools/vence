@@ -246,6 +246,23 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-210] 🔴 [ABIERTO 28/07] El 52-68% de los usuarios ACTIVOS ve errores de fetch en el cliente, todos los días, y nadie lo estaba mirando
+- **Medido (6 días, `observable_events.console_error` cruzado con usuarios que responden preguntas):**
+
+  | Día | Usuarios activos | Con `Failed to fetch` | % | Con 401/sin token |
+  |---|---|---|---|---|
+  | 27/07 | 382 | **236** | **62%** | 21 |
+  | 26/07 | 242 | 143 | 59% | 13 |
+  | 25/07 | 207 | 108 | 52% | 11 |
+  | 24/07 | 248 | **168** | **68%** | 21 |
+
+- **Dónde falla (24h, eventos/usuarios distintos):** `Error cargando notificaciones: Failed to fetch` 308×/77u y otra variante 146×/46u · `disputes/notifications 401` 144×/17u · `Error cargando oposición del usuario` 134×/35u · `Error checking new medals` 133×/50u · `[answerSaveQueue] Sin token` 216×/2u.
+- **Por qué NO se había visto:** el badge de salud cuenta `http_5xx` del SERVIDOR (14 hallazgos, todos residuo de la ventana de reinicio del 27/07 a las 11:00 UTC). Estos errores son de CLIENTE y viven en `console_error`, que nadie agrega ni cruza con usuarios activos. Además el top del ranking lo ocupan **1.837 eventos de GSI/FedCM de UN SOLO navegador**, que entierran la señal real.
+- **Qué hay que averiguar antes de arreglar (no dar por hecho que es red del usuario):** ¿los `Failed to fetch` coinciden en el tiempo con reinicios/deploys de ECS? ¿el 401 de `disputes/notifications` es expiración del token RS256 sin refresco (Auth.js, flip de julio) o falta de sesión legítima? ¿hay correlación con móvil/red o está repartido? Si una parte es token, **el usuario pierde funcionalidad en silencio** (notificaciones, medallas, guardado de respuestas).
+- **Impacto:** 🔴 es el defecto de UX con más alcance medido hoy: más de la mitad de la base activa cada día. Y toca el guardado de respuestas (`answerSaveQueue`), que es el camino crítico.
+- **Relación:** roadmap de observabilidad §Fase 1 (client-side observability) — la instrumentación EXISTE, lo que falta es agregarla, filtrar el ruido de un solo navegador y ponerle umbral.
+- **Origen:** triaje de salud del 28/07, al desglosar los 5.076 eventos de error de 24h (4.840 eran `console_error`).
+
 ### [T-207] 🟠 [ABIERTO 27/07] Cubo «citas no literales»: 13.424 preguntas activas (30,7%) que los dos detectores de citas nunca pudieron ver
 - **Qué:** medido con el check de cita ya arreglado (compara la cita ENTERA, §5.1.bis del manual de impugnaciones), **13.424 de 43.774** preguntas activas con blockquote + artículo vinculado tienen una cita que **no aparece literal** en ese artículo. Es el 30,7%.
 - **Por qué no se había visto, que es lo importante:** los DOS detectores comparaban solo el arranque. El guardarraíl `validar-explicacion.cjs` miraba `nq.slice(0, 80)` y el barrido de campaña `scripts/impugnaciones/barrido-citas.cjs` tiene **su propia copia** del criterio con `slice(0, 70)` (línea 53). O sea: la campaña «citas ajenas» de julio (837 resueltas, residuo 10) inventarió solo las citas que divergen en sus primeras 70 letras. **El arranque de un precepto es genérico; lo que decide la respuesta —plazos, mayorías, anchuras, órgano competente— vive al final**, justo en el tramo ciego.
