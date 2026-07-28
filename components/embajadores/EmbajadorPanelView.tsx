@@ -7,11 +7,9 @@
 
 import { useState } from 'react'
 import VoucherCard from './VoucherCard'
+import { rewardSourceText } from '@/lib/referrals/logic'
 
-const SOURCE_LABEL: Record<string, string> = {
-  referido: '💛 Recomendaciones', registro_activo: '📝 Registros activos', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
-}
-const sourceText = (s: string) => SOURCE_LABEL[s] || s
+const sourceText = rewardSourceText
 
 function statusLabel(s: string): { text: string; cls: string } {
   switch (s) {

@@ -110,19 +110,71 @@ export function isLegalTransition(from: ReferralState, to: ReferralState): boole
 // ============================================================================
 // Recompensas por BUG / UGC (las otras 2 formas de ganar, tabla reward_submissions)
 // ============================================================================
-export const REWARD_AMOUNTS = { bug: 3, ugc: 5 } as const
+export const REWARD_AMOUNTS = { bug: 3, ugc: 5, impugnacion: 1 } as const
 export type RewardType = keyof typeof REWARD_AMOUNTS
 export const UGC_MONTHLY_CAP = 3          // UGC: máximo 3 al mes por usuario
 export const UGC_HOLD_DAYS = 5 // UGC: hold propio (verificar que el post sigue vivo); NO ligado a la ventana de reembolso, por eso NO sube a 15 con el referido
+
+// Impugnación aceptada = 1 € (decisión Manuel 28/07). A diferencia de bug/ugc, esta se concede
+// AUTOMÁTICAMENTE al resolver, así que el tope no es opcional: es lo único que separa "premiar la
+// calidad" de "pagar por volumen".
+//
+// El tope sale del dato, no del dedo (medido 28/07 sobre `question_disputes`): ~100-120 impugnaciones
+// aceptadas/mes de usuarios premium ≈ 100-120 €/mes, pero MUY concentradas — una sola usuaria acumuló
+// 76 aceptadas en 90 días (≈25/mes, ≈25 €/mes ella sola). Con tope 10 el gasto máximo por persona
+// queda en 10 €/mes y el 90% de los usuarios no lo nota (la mediana está muy por debajo).
+export const IMPUGNACION_MONTHLY_CAP = Number(process.env.IMPUGNACION_MONTHLY_CAP || 10)
 
 export function rewardAmount(type: RewardType): number {
   return REWARD_AMOUNTS[type]
 }
 
-/** ¿puede el usuario recibir otra recompensa de este tipo este mes? (solo UGC tiene tope duro). */
+/**
+ * Etiqueta user-facing de cada FUENTE de ingreso (las de `reward_earnings`). ÚNICA copia: antes vivía
+ * duplicada en tres sitios (panel del usuario, `EmbajadorPanelView` y el panel admin) y ya habían
+ * divergido —"Recomendaciones" vs "Referidos"—, con el riesgo real de que una fuente nueva se añadiera
+ * en dos de los tres y en el otro saliera el identificador crudo ("impugnacion") a la cara del usuario.
+ * Mismo problema que arregló el guardarraíl de `VoucherCard`.
+ */
+export const REWARD_SOURCE_LABEL: Record<string, string> = {
+  referido: '💛 Recomendaciones',
+  registro_activo: '📝 Registros activos',
+  bug: '🐛 Mejoras/bugs',
+  ugc: '📣 Opiniones',
+  impugnacion: '⚖️ Impugnaciones aceptadas',
+}
+
+export function rewardSourceText(source: string): string {
+  return REWARD_SOURCE_LABEL[source] || source
+}
+
+/** ¿puede el usuario recibir otra recompensa de este tipo este mes? (UGC e impugnación tienen tope duro). */
 export function withinRewardMonthlyCap(type: RewardType, countThisMonth: number): boolean {
   if (type === 'ugc') return countThisMonth < UGC_MONTHLY_CAP
+  if (type === 'impugnacion') return countThisMonth < IMPUGNACION_MONTHLY_CAP
   return true // bug: sin tope duro; se controla por aprobación manual
+}
+
+/**
+ * ¿Corresponde 1 € por esta impugnación resuelta? PURA (sin BD) para poder testear la política
+ * sin montar datos. Se concede SOLO si:
+ *  · la impugnación se acepta A FAVOR del usuario (`resolved`; `rejected` no paga), y
+ *  · la escribió una PERSONA (`source='user'`; las `ai_auto` no tienen a quién pagar), y
+ *  · quien la escribió es PREMIUM (decisión Manuel 28/07: el programa es solo-premium, igual que
+ *    el resto de fuentes — un free no cobra aunque su impugnación sea impecable).
+ * El anti-duplicado por `dispute_id` y el tope mensual NO se deciden aquí: viven en la capa de BD
+ * (índice único parcial) y en `withinRewardMonthlyCap`, porque necesitan contar filas.
+ */
+export function shouldRewardResolvedDispute(params: {
+  status: string
+  source?: string | null
+  planType?: string | null
+  userId?: string | null
+}): boolean {
+  if (params.status !== 'resolved') return false
+  if (!params.userId) return false
+  if ((params.source ?? 'user') !== 'user') return false
+  return params.planType === 'premium'
 }
 
 /**

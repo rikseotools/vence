@@ -17,6 +17,7 @@ import {
 } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { maybeRewardResolvedDispute } from '@/lib/referrals/disputeReward'
 import type {
   QuestionType,
   CreateDisputeRequest,
@@ -349,6 +350,14 @@ export async function resolveDispute(
     }
 
     console.log(`\u2705 [Dispute] ${questionType} ${disputeId} → ${status}`)
+
+    // 3.2 Recompensa de 1 € si la impugnación se ACEPTA a favor de un usuario premium (Manuel 28/07).
+    // Va aquí —después del UPDATE atómico y FUERA de él— porque este es el único punto por el que una
+    // impugnación llega a `resolved` (endpoint admin y scripts CLI incluidos). No lanza nunca: si la
+    // concesión falla, la impugnación queda resuelta igual (ver lib/referrals/disputeReward.ts).
+    if (status === 'resolved' && userId) {
+      await maybeRewardResolvedDispute({ disputeId, userId, status, questionType })
+    }
 
     // 3.4 Invalidar cache server-side de validation queries (tag 'questions').
     // Usa la API interna /api/admin/revalidate en vez de revalidateTag directo

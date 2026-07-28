@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { payoutDenomination } from '@/lib/referrals/logic'
+import { payoutDenomination, rewardSourceText } from '@/lib/referrals/logic'
 
 interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
 interface ReferralDetail {
@@ -34,10 +34,7 @@ interface MeResponse {
   recent?: RecentEarning[]
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  referido: '💛 Recomendaciones', registro_activo: '📝 Registros activos', bug: '🐛 Mejoras/bugs', ugc: '📣 Opiniones',
-}
-const sourceText = (s: string) => SOURCE_LABEL[s] || s
+const sourceText = rewardSourceText
 
 // Confeti celebratorio al revelar una recompensa nueva (dos ráfagas laterales). SSR-safe.
 function fireConfetti() {
@@ -130,14 +127,28 @@ const PROGRAMAS = [
     icon: '🐛',
     titulo: 'Ayúdanos a mejorar',
     premio: '3 €',
-    desc: 'Por cada fallo técnico que encuentres o mejora de usabilidad de la plataforma que nos propongas y nos sirva de verdad. No incluye impugnaciones de preguntas.',
+    desc: 'Por cada fallo técnico que encuentres o mejora de usabilidad de la plataforma que nos propongas y nos sirva de verdad. Las impugnaciones de preguntas van aparte y tienen su propia recompensa.',
     detalle: [
       '¿Has encontrado un fallo técnico o se te ocurre cómo mejorar la usabilidad de la plataforma? Cuéntanoslo.',
       'Repórtalo por el chat de soporte, con el máximo detalle posible (qué pasó, dónde, capturas…).',
       'Si es un bug reproducible o una mejora de usabilidad que nos sirve de verdad, ganas 3 €.',
-      'Importante: esto NO son impugnaciones de preguntas (esas tienen su propio proceso y no entran aquí). Es sobre el funcionamiento y la usabilidad de la app.',
+      'Importante: esto es sobre el funcionamiento y la usabilidad de la app. Si lo que has visto es un fallo en una PREGUNTA concreta, impúgnala desde la propia pregunta: eso se recompensa aparte (1 € si la aceptamos).',
       'Los duplicados o cosas ya conocidas no cuentan. Hay un límite mensual por usuario.',
       'Tu ayuda hace Vence mejor para todos los opositores. 🙌',
+    ],
+  },
+  {
+    icon: '⚖️',
+    titulo: 'Impugna preguntas',
+    premio: '1 €',
+    desc: 'Por cada impugnación que aceptemos porque tenías razón: una pregunta con la respuesta mal, un enunciado confuso o un artículo que no corresponde. Se abona sola al resolverla a tu favor.',
+    detalle: [
+      'Impugna desde la propia pregunta, con el botón de impugnar, cuando creas que hay algo mal.',
+      'Explica POR QUÉ crees que está mal: es lo que nos permite revisarla y darte la razón. Las impugnaciones sin explicación se rechazan el doble de veces.',
+      'Si al revisarla vemos que tenías razón y la aceptamos, ganas 1 € automáticamente — sin pedir nada.',
+      'Si la desestimamos no pasa nada: no penaliza, simplemente no se abona.',
+      'Hasta 10 impugnaciones aceptadas al mes. Cuenta la calidad, no el volumen: impugnar a voleo no suma.',
+      'Nos ayudas a cazar errores que ningún control automático ve — y el temario mejora para todos. 🎯',
     ],
   },
 ]
@@ -258,7 +269,7 @@ export default function EmbajadoresPage() {
                 Hazte <span className="text-blue-600 dark:text-blue-400">{emb} de Vence</span> y gana recompensas
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed mb-6">
-                El programa de embajadores es para usuarios <strong>Premium</strong>. Hazte Premium y empieza a
+                El programa de recompensas es para usuarios <strong>Premium</strong>. Hazte Premium y empieza a
                 ganar <strong>tarjetas regalo de Amazon</strong> recomendando Vence a tus compañeros de oposición.
               </p>
               <Link href="/premium" className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:brightness-95 transition">
@@ -268,7 +279,7 @@ export default function EmbajadoresPage() {
           ) : (
             <>
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-                Programa de <span className="text-blue-600 dark:text-blue-400">Embajadores</span> de Vence
+                Programa de <span className="text-blue-600 dark:text-blue-400">Recompensas</span> de Vence
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed mb-6">
                 Recomienda Vence a otros opositores y gana <strong>recompensas en tarjetas regalo de Amazon</strong>.

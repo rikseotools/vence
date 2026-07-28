@@ -262,15 +262,18 @@ describe('QuestionDispute', () => {
   // ============================================
 
   describe('Submit (POST)', () => {
-    async function openAndFillForm(type = 'no_literal', description = '', postMock = null) {
+    // Abre el formulario, elige motivo, escribe (si toca) y ENVÍA con el botón.
+    // El envío explícito no es un detalle del test: hasta T-198 el clic en el radio enviaba la
+    // impugnación por su cuenta y el usuario nunca llegaba al textarea. Con `submit:false` se
+    // comprueba justo eso — que elegir motivo NO manda nada.
+    async function openAndFillForm(type = 'no_literal', description = '', postMock = null, { submit = true } = {}) {
       // GET check → no existing
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true, data: null }),
       })
 
-      // For non-"otro" types, auto-submit fires on radio click, so POST mock must be ready
-      if (postMock && type !== 'otro') {
+      if (postMock) {
         global.fetch.mockResolvedValueOnce(postMock)
       }
 
@@ -281,7 +284,6 @@ describe('QuestionDispute', () => {
         expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument()
       })
 
-      // Select type (auto-submits if not "otro")
       const labels = {
         no_literal: /no se ajusta exactamente al artículo/,
         respuesta_incorrecta: /respuesta marcada como correcta es errónea/,
@@ -292,6 +294,10 @@ describe('QuestionDispute', () => {
       if (description) {
         const textarea = screen.getByRole('textbox')
         fireEvent.change(textarea, { target: { value: description } })
+      }
+
+      if (submit) {
+        fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
       }
     }
 
@@ -342,7 +348,7 @@ describe('QuestionDispute', () => {
       await waitFor(() => {
         expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument()
       })
-      // "Otro motivo" NO auto-envía (muestra textarea + botón explícito).
+      // Desde T-198 NINGÚN motivo auto-envía; el botón es la única vía. La ráfaga se prueba sobre él.
       fireEvent.click(screen.getByLabelText(/Otro motivo/))
       fireEvent.change(screen.getByRole('textbox'), {
         target: { value: 'una descripción de motivo suficientemente larga para el envío' },
@@ -366,7 +372,20 @@ describe('QuestionDispute', () => {
       })
     })
 
-    test('auto-submit para "no_literal" envía descripción automática', async () => {
+    // T-198: el cambio deliberado. ELEGIR EL MOTIVO YA NO ENVÍA — antes sí, y por eso el 54% de las
+    // impugnaciones (1.024 de 1.882, medido 27/07) llegaba sin una palabra del usuario, y esas se
+    // rechazaban al doble (42% vs 22%). Si alguien reintroduce el auto-envío, este test lo caza.
+    test('T-198: elegir el motivo NO envía la impugnación (el envío es explícito)', async () => {
+      await openAndFillForm('no_literal', '', null, { submit: false })
+
+      const posts = global.fetch.mock.calls.filter(c => c[1]?.method === 'POST')
+      expect(posts.length).toBe(0)
+
+      // Y el usuario SÍ puede escribir: el textarea que antes era inalcanzable ahora está en pantalla.
+      expect(screen.getByText(/¿Por qué crees que está mal\?/)).toBeInTheDocument()
+    })
+
+    test('sin texto opcional, el motivo sigue viajando como "Motivo: <tipo>"', async () => {
       const postMock = {
         ok: true,
         json: async () => ({
@@ -383,18 +402,28 @@ describe('QuestionDispute', () => {
       })
     })
 
-    test('descripción directa para "otro"', async () => {
-      await openAndFillForm('otro', 'Pregunta ambigua y confusa')
+    test('el texto opcional viaja junto al motivo', async () => {
+      const postMock = {
+        ok: true,
+        json: async () => ({ success: true, data: { id: 'id-1b', createdAt: '2026-01-15T10:00:00Z' } }),
+      }
+      await openAndFillForm('no_literal', 'El artículo 14 dice otra cosa', postMock)
 
-      global.fetch.mockResolvedValueOnce({
+      await waitFor(() => {
+        const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')
+        const body = JSON.parse(postCall[1].body)
+        expect(body.description).toBe('Motivo: no_literal - Detalles: El artículo 14 dice otra cosa')
+      })
+    })
+
+    test('descripción directa para "otro"', async () => {
+      await openAndFillForm('otro', 'Pregunta ambigua y confusa', {
         ok: true,
         json: async () => ({
           success: true,
           data: { id: 'id-2', createdAt: '2026-01-15T10:00:00Z' },
         }),
       })
-
-      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
 
       await waitFor(() => {
         const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')

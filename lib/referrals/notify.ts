@@ -36,7 +36,7 @@ export async function notifyEarning(
       subject: '🎁 ¡Tienes una recompensa nueva en Vence!',
       html: `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;color:#1f2937;line-height:1.5">
   <h2 style="color:#2563eb;margin:0 0 12px">¡Enhorabuena, ${name}! 🎉</h2>
-  <p style="margin:0 0 16px">Has conseguido una <strong>recompensa nueva</strong> en el Programa de Embajadores. Entra para ver cuánto has ganado y tu saldo.</p>
+  <p style="margin:0 0 16px">Has conseguido una <strong>recompensa nueva</strong> en el Programa de Recompensas. Entra para ver cuánto has ganado y tu saldo.</p>
   <p style="margin:0 0 20px"><a href="${site}/embajadores" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Ver mi recompensa</a></p>
   <p style="color:#6b7280;font-size:13px;margin:0">Gracias por ayudar a que más gente apruebe su oposición. 💙</p>
 </div>`,

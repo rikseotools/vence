@@ -456,7 +456,7 @@ export async function countRewardSubmissionsThisMonth(
  * aplica el tope mensual (ugc 3/mes) y el hold del UGC (post vivo N días).
  */
 export async function createRewardSubmission(
-  params: { userId: string; type: RewardType; url?: string; screenshotUrl?: string; feedbackId?: string },
+  params: { userId: string; type: RewardType; url?: string; screenshotUrl?: string; feedbackId?: string; disputeId?: string },
   exec?: Executor,
 ): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
   const db = exec ?? getAdminDb()
@@ -469,6 +469,18 @@ export async function createRewardSubmission(
       .where(and(
         eq(rewardSubmissions.type, 'bug'),
         eq(rewardSubmissions.feedbackId, params.feedbackId),
+        sql`${rewardSubmissions.status} <> 'rejected'`,
+      )).limit(1)
+    if (dup) return { ok: false, reason: 'duplicate' }
+  }
+  // impugnacion → misma impugnación. Además del índice único parcial en BD (que es quien de verdad
+  // impide el doble pago si dos resoluciones corren a la vez), este check evita el error y deja el
+  // motivo `duplicate` limpio para el caller.
+  if (params.type === 'impugnacion' && params.disputeId) {
+    const [dup] = await db.select({ id: rewardSubmissions.id }).from(rewardSubmissions)
+      .where(and(
+        eq(rewardSubmissions.type, 'impugnacion'),
+        eq(rewardSubmissions.disputeId, params.disputeId),
         sql`${rewardSubmissions.status} <> 'rejected'`,
       )).limit(1)
     if (dup) return { ok: false, reason: 'duplicate' }
@@ -499,6 +511,7 @@ export async function createRewardSubmission(
     url: params.url ?? null,
     screenshotUrl: params.screenshotUrl ?? null,
     feedbackId: params.feedbackId ?? null,
+    disputeId: params.disputeId ?? null,
     amount,
     holdUntil,
   }).returning({ id: rewardSubmissions.id })

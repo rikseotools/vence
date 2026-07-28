@@ -252,7 +252,12 @@ export default function QuestionDispute({
   // ------------------------------------------
   // Validación
   // ------------------------------------------
-  const canSubmit = !!questionId && !!disputeType && !submitting && !existingDispute
+  // En `otro` la explicación es OBLIGATORIA (el servidor exige 10-500 caracteres vía Zod): se
+  // comprueba aquí para que el botón salga deshabilitado en vez de dejar al usuario chocar contra
+  // un error del servidor. En el resto de motivos el texto es opcional — pero se pide, ver el aviso
+  // bajo el textarea. Mismo patrón que el recurso en NotificationBell. (T-198)
+  const otroNeedsText = disputeType === 'otro' && description.trim().length < 10
+  const canSubmit = !!questionId && !!disputeType && !submitting && !existingDispute && !otroNeedsText
 
   // ------------------------------------------
   // Render helpers
@@ -303,11 +308,13 @@ export default function QuestionDispute({
 
     const availableTypes = isPsychometric ? PSYCHOMETRIC_DISPUTE_TYPES : LEGISLATIVE_DISPUTE_TYPES
 
+    // Elegir el motivo SOLO selecciona el motivo. Antes enviaba la impugnación en ese mismo clic
+    // (con `description=''`), y el resultado medido el 27/07 fue que el 54% de las impugnaciones
+    // —1.024 de 1.882— llegaba sin una sola palabra del usuario: nunca veía dónde escribir. Esas
+    // se rechazan al DOBLE (42% vs 22%) porque el revisor no sabe qué quiso decir. Ahora el envío
+    // es siempre explícito, por el botón «Enviar impugnación». (T-198)
     const handleRadioChange = (type: DisputeTypeValue) => {
       setDisputeType(type)
-      if (type !== 'otro' && type !== '') {
-        submitDispute(type, '')
-      }
     }
 
     return (
@@ -565,7 +572,7 @@ export default function QuestionDispute({
               {disputeType && disputeType !== 'otro' && (
                 <div>
                   <label className="block text-sm font-medium text-orange-800 dark:text-orange-300 mb-2">
-                    Información adicional (opcional):
+                    ¿Por qué crees que está mal? <span className="font-normal">(opcional, pero ayuda mucho)</span>
                   </label>
                   <textarea
                     value={description}
@@ -581,7 +588,7 @@ export default function QuestionDispute({
                     }
                   />
                   <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    Campo opcional - {description.trim().length}/500 caracteres
+                    Si nos explicas el motivo, es mucho más fácil darte la razón · {description.trim().length}/500 caracteres
                   </div>
                 </div>
               )}

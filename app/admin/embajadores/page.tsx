@@ -9,7 +9,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 
 const DENOMS = [5, 10, 20, 50, 100, 200, 400, 500, 1000, 1500]
-const SOURCE_LABEL: Record<string, string> = { referido: '💛 Referidos', registro_activo: '📝 Registros activos', bug: '🐛 Bugs/UX', ugc: '📣 Opiniones (UGC)' }
+// Etiquetas COMPARTIDAS con el panel del usuario (lib/referrals/logic): este panel dice ser
+// "tal cual lo ve él", así que no puede tener su propio vocabulario.
+import { rewardSourceText } from '@/lib/referrals/logic'
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Atribuidos', qualified: 'Compraron', payable: 'Por pagar', paid: 'Pagados', rejected: 'Rechazados', expired: 'Caducados',
 }
@@ -136,7 +138,7 @@ export default function AdminEmbajadoresPage() {
         {!stats?.bySource?.length ? <p className="text-sm text-gray-400 dark:text-gray-500">Aún no hay ingresos.</p>
           : <div className="space-y-2">{stats.bySource.map((s) => (
               <div key={s.source} className="flex items-center gap-3">
-                <div className="w-32 shrink-0 text-sm text-gray-700 dark:text-gray-200">{SOURCE_LABEL[s.source] || s.source}</div>
+                <div className="w-32 shrink-0 text-sm text-gray-700 dark:text-gray-200">{rewardSourceText(s.source)}</div>
                 <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full h-5 overflow-hidden">
                   <div className="h-5 bg-blue-500 rounded-full" style={{ width: `${Math.max(4, (s.earned / maxSource) * 100)}%` }} />
                 </div>

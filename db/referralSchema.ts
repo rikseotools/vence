@@ -90,6 +90,9 @@ export const rewardSubmissions = pgTable("reward_submissions", {
 	url: text(),
 	screenshotUrl: text("screenshot_url"),
 	feedbackId: uuid("feedback_id"),
+	// Impugnación que originó la recompensa (type='impugnacion', 1 €). Motivo trazable + clave
+	// anti-duplicado. Sin FK: la impugnación puede ser legislativa o psicotécnica (tablas distintas).
+	disputeId: uuid("dispute_id"),
 	amount: numeric({ precision: 10, scale: 2 }).notNull(),
 	holdUntil: ts("hold_until"),
 	payoutId: uuid("payout_id"),

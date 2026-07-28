@@ -15,9 +15,14 @@ jest.mock('@/lib/api/emails', () => ({
 
 // Observabilidad: el drop silencioso del email debe emitir un evento estructurado.
 const mockEmit = jest.fn().mockResolvedValue(undefined)
+const mockEmitFireAndForget = jest.fn()
 jest.mock('@/lib/observability/emit', () => ({
   __esModule: true,
   emit: (...args: unknown[]) => mockEmit(...args),
+  // El módulo real exporta TAMBIÉN `emitFireAndForget`. Omitirlo hacía que cualquier ruta nueva que
+  // lo usara explotara con "is not a function" DENTRO de resolveDispute, convirtiendo un fallo de
+  // telemetría en "la impugnación no se pudo resolver". Un mock a medias miente sobre el contrato.
+  emitFireAndForget: (...args: unknown[]) => mockEmitFireAndForget(...args),
 }))
 
 // Drizzle chain mock: cada `select`/`update` consume el siguiente "response"
