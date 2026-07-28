@@ -102,6 +102,19 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
         component: 'answerSaveQueue syncOne 401',
         userId: extractUserId(answer),
       })
+      // Recuperación tras 401 (T-210). Desde que el token se REUSA mientras siga vigente,
+      // un rechazo del servidor con un token estructuralmente válido (rotación de clave,
+      // sesión revocada, desfase de reloj) ya no se cura solo: el reintento cogería el
+      // MISMO token cacheado y quemaría los 5 intentos. Forzar una renovación aquí es el
+      // único sitio donde `refreshSession()` sigue siendo la herramienta correcta — mismo
+      // patrón que el "Nivel 2" de `utils/testAnswers.ts`, y explícitamente permitido por
+      // el guardarraíl (no es adquirir un token, es recuperarse de que lo rechacen).
+      try {
+        const { auth } = await import('@/lib/auth')
+        await auth.refreshSession()
+      } catch {
+        /* sin red: el siguiente reintento lo volverá a intentar */
+      }
       return false
     }
 
@@ -215,20 +228,17 @@ function notifyListeners(): void {
  */
 async function getAccessToken(): Promise<string | null> {
   try {
-    // Vía puerto agnóstico (lib/auth). refreshSession/getSession devuelven la
-    // sesión normalizada (o null en error) — sin objeto error que loggear.
+    // Verbo del puerto agnóstico: token cacheado y compartido, con la decisión de
+    // renovar tomada por EXPIRACIÓN. Antes esta función hacía refreshSession() y luego
+    // getSession() por CADA respuesta sincronizada: bajo Auth.js eso es re-acuñar el
+    // RS256 en el camino crítico del guardado, y cada ida a la red es una oportunidad
+    // de fallo transitorio → los `Sin token` que destapó T-210.
     const { auth } = await import('@/lib/auth')
 
-    const refreshed = await auth.refreshSession()
-    if (refreshed?.accessToken) {
+    const accessToken = await auth.getAccessToken()
+    if (accessToken) {
       authFailCount = 0
-      return refreshed.accessToken
-    }
-
-    const session = await auth.getSession()
-    if (session?.accessToken) {
-      authFailCount = 0
-      return session.accessToken
+      return accessToken
     }
 
     authFailCount++
@@ -236,7 +246,7 @@ async function getAccessToken(): Promise<string | null> {
     console.error(`❌ [answerSaveQueue] Sin token (intento #${authFailCount}, ${pending} pendientes)`)
 
     if (authFailCount >= 2 && pending > 0) {
-      logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes (refresh+getSession vía puerto devolvieron sin token)`), {
+      logClientError('/api/v2/answer-and-save', new Error(`Auth null x${authFailCount}. ${pending} pendientes (auth.getAccessToken() del puerto devolvió sin token)`), {
         component: 'answerSaveQueue auth',
       })
     }

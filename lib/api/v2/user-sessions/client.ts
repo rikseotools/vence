@@ -3,20 +3,11 @@
 import { auth } from '@/lib/auth'
 import { createUserSessionResponseSchema, type CreateUserSessionRequest, type CreateUserSessionResponse } from './schemas'
 
-async function getToken(): Promise<string | undefined> {
-  try {
-    const refreshed = await auth.refreshSession()
-    if (refreshed?.accessToken) return refreshed.accessToken
-  } catch {
-    /* fallback */
-  }
-  return (await auth.getSession())?.accessToken
-}
-
 export async function createUserSessionOnServer(
   params: CreateUserSessionRequest,
 ): Promise<CreateUserSessionResponse> {
-  const accessToken = await getToken()
+  // Token por el verbo del puerto (cacheado y compartido; ver T-210).
+  const accessToken = await auth.getAccessToken()
   if (!accessToken) return { success: false, error: 'SESSION_EXPIRED' }
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 8000)

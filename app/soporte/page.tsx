@@ -124,8 +124,8 @@ interface UploadedImage {
   path: string
 }
 
-// Auth tokens: usar getAuthHeaders() centralizado (lib/api/authHeaders.ts)
-// que hace refreshSession() + fallback a getSession()
+// Auth tokens: usar getAuthHeaders() centralizado (lib/api/authHeaders.ts), que pide el
+// token al puerto (`auth.getAccessToken()`) — cacheado y renovado por expiración (T-210).
 
 // ============================================
 // COMPONENTE PRINCIPAL

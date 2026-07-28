@@ -41,6 +41,7 @@ import type {
   SignInResult,
   SignInWithIdTokenArgs,
 } from '../types'
+import { isBearerFresh, TOKEN_SKEW_SEC } from '../tokenFreshness'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NextSessionUser = any
@@ -48,11 +49,10 @@ type NextSessionUser = any
 const TOKEN_ENDPOINT = '/api/auth/token'
 /** Cada cuánto se sondea la sesión para emular onAuthStateChange. */
 const POLL_INTERVAL_MS = 5000
-/**
- * Margen (segundos) antes de la expiración del RS256 para re-acuñarlo. Con TTL de 1h
- * y este margen de 5 min, un usuario activo acuña ~1 token/55min en vez de 1 cada 5s.
- */
-const TOKEN_SKEW_SEC = 5 * 60
+// El margen antes de la expiración para re-acuñar (`TOKEN_SKEW_SEC`, 5 min) ya NO se
+// define aquí: vive en el núcleo puro `../tokenFreshness`, compartido con el adapter de
+// Supabase. Tenerlo por duplicado fue el origen de T-210 (dos criterios de "¿hay que ir
+// a la red?" conviviendo, y el otro ni miraba la expiración).
 /** Tras un 401 (sin sesión), no volver a pedir token hasta pasado este backoff. Corta el
  *  martilleo de /api/auth/token de los visitantes ANÓNIMOS (que no tienen sesión). */
 const UNAUTH_BACKOFF_MS = 60_000
@@ -81,8 +81,8 @@ function mapUser(u: NextSessionUser): AuthUser | null {
 
 interface MintedToken {
   accessToken: string
-  /** epoch en SEGUNDOS en que expira (contrato de mintAccessToken). */
-  expiresAt: number
+  /** epoch en SEGUNDOS en que expira (contrato de mintAccessToken), o null si no vino. */
+  expiresAt: number | null
   /** Identidad devuelta por el bridge (cuando no hay sesión Auth.js todavía). */
   user: { id: string; email: string | null } | null
 }
@@ -211,15 +211,17 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
   // mata el flood. `unauthUntil` aplica backoff tras un 401 (anónimos dejan de martillear).
   // En TESTS el `expiresAt` suele ser del pasado → nada se cachea → comportamiento previo.
   let cachedMint: MintedToken | null = null
-  let cachedMintExpMs = 0
   let cachedSession: AuthSession | null = null
   let unauthUntil = 0
 
   const now = () => Date.now()
-  const mintFresh = () => cachedMint !== null && cachedMintExpMs - TOKEN_SKEW_SEC * 1000 > now()
+  // Frescura por el núcleo puro compartido (misma regla que el adapter de Supabase).
+  // Sin `expiresAt` → NO fresco → se re-acuña (en TESTS el expiresAt suele ser pasado o
+  // ausente, así que nada se cachea y el comportamiento observado no cambia).
+  const mintFresh = () =>
+    cachedMint !== null && isBearerFresh(cachedMint.expiresAt, now(), TOKEN_SKEW_SEC)
   function resetCache() {
     cachedMint = null
-    cachedMintExpMs = 0
     cachedSession = null
     unauthUntil = 0
   }
@@ -237,8 +239,6 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
     const outcome = await fetchMintedToken()
     if (outcome.status === 'ok') {
       cachedMint = outcome.token
-      // Cachear solo con expiración FUTURA (tests usan expiresAt pasado → no se cachea).
-      cachedMintExpMs = typeof outcome.token.expiresAt === 'number' ? outcome.token.expiresAt * 1000 : 0
       unauthUntil = 0
     } else if (outcome.status === 'unauthenticated') {
       resetCache()

@@ -58,12 +58,10 @@ function saveQueue(state: QueueState): void {
 
 async function getAccessToken(): Promise<string | null> {
   try {
-    // Vía puerto agnóstico (lib/auth)
+    // Verbo del puerto agnóstico: token cacheado y compartido, renovado por EXPIRACIÓN.
+    // Antes forzaba un refreshSession() por respuesta sincronizada (T-210).
     const { auth } = await import('@/lib/auth')
-    const refreshed = await auth.refreshSession()
-    if (refreshed?.accessToken) return refreshed.accessToken
-    const session = await auth.getSession()
-    return session?.accessToken || null
+    return (await auth.getAccessToken()) || null
   } catch {
     return null
   }
@@ -93,7 +91,15 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
     // diagnosticarlo. Ahora se loguea con el body (sin questionsToday/dailyLimit el
     // endpoint no los devolvía → señal de que el 403 no venía del gate esperado).
     const errorBody = await response.text().catch(() => '')
-    if (response.status === 401) return false // token caducado → se reintenta
+    if (response.status === 401) {
+      // Recuperación tras 401 (T-210): el token se reusa mientras siga vigente, así que un
+      // rechazo con token válido no se cura solo — forzar renovación para el reintento.
+      try {
+        const { auth } = await import('@/lib/auth')
+        await auth.refreshSession()
+      } catch { /* sin red: se reintenta luego */ }
+      return false
+    }
     // 403 de LÍMITE (dispositivos/diario) = respuesta esperada (el usuario ve un
     // modal): visibilidad como `usage_limit_hit` (info), NO como error → no dispara
     // RULE_CLIENT_ERROR_SPIKE. Un 403 SIN señal de límite cae al logClientError de

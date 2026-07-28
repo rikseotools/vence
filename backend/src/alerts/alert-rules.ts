@@ -3548,6 +3548,72 @@ export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * DESPERDICIO de acuñación de token — el hermano FINO Y ANCHO de la regla de arriba (T-210,
+ * 28/07/2026).
+ *
+ * `auth_token_mint_flood` caza el flood CATASTRÓFICO por usuario (el poll de 5s del
+ * 04-15/07: >50 acuñaciones reales por usuario y 10 min). Es ciego a un régimen distinto:
+ * pocas acuñaciones por usuario y minuto, pero repartidas entre CIENTOS de usuarios, todo
+ * el día. Medido el 28/07 antes del arreglo: **45 acuñaciones reales por usuario y HORA**
+ * (mediana de 7 días; rango 29-136) de un token cuyo TTL es 1 h. El umbral de la otra
+ * regla (>5 muestreados/usuario/10 min ≈ 300 reales/hora) exigía que fuese ~7× peor →
+ * nunca disparó, y por eso «nadie lo estaba mirando».
+ *
+ * Causa que lo produjo: 9 copias del patrón «`refreshSession()` y si no `getSession()`»
+ * repartidas por la app (authHeaders, cinco clientes de /api/v2, answerSaveQueue,
+ * psychometricSaveQueue, testAnswers). `refreshSession()` FUERZA la re-acuñación, así que
+ * cada copia se saltaba la caché del adapter. Convergieron en `auth.getAccessToken()`;
+ * el guardarraíl estático es `__tests__/guardrails/bearerTokenSinglePath.test.ts`, pero
+ * eso solo impide reintroducir el PATRÓN — el régimen de tráfico lo vigila esta regla.
+ *
+ * Calibración (simulación sobre 7 días de datos reales, no a ojo): con TTL de 1 h el ideal
+ * es ~1 acuñación por usuario y hora, y el suelo teórico medido eran 2.001/día frente a
+ * 58.680 reales (29× de desperdicio). Umbral en **8 reales por usuario y hora**: deja 4-8×
+ * de margen sobre el régimen sano y queda 3,7× por debajo del PEOR régimen bueno observado
+ * (min 29,4), así que no puede confundirse con tráfico normal. `warn`, no `critical`: es
+ * derroche y riesgo de 401 intermitentes, no una caída.
+ *
+ * ⚠️ Nota de transición: hasta que el arreglo esté DESPLEGADO esta regla dispara — y hace
+ * bien, el defecto está vivo. Su silencio posterior es la verificación de que el arreglo
+ * funcionó (lo contrario del falso positivo de baseline que retiró `auth_mint_drop`: esta
+ * no compara contra el pasado, mide el ratio absoluto).
+ */
+export const RULE_AUTH_TOKEN_MINT_WASTE: AlertRule<{
+  mintedSampled: number;
+  users: number;
+  perUserHour: number;
+}> = {
+  name: 'auth_token_mint_waste',
+  severity: 'warn',
+  // Solo `via=authjs_session`, que es el muestreado al 10% (el `bridge` se emite SIEMPRE:
+  // mezclarlos inflaría el ratio y la alerta mentiría durante el drenaje del bridge).
+  query: sql`
+    SELECT COUNT(*)::int AS "mintedSampled",
+           COUNT(DISTINCT user_id)::int AS users,
+           ROUND((COUNT(*) * 10.0) / GREATEST(COUNT(DISTINCT user_id), 1), 1)::float AS "perUserHour"
+    FROM observable_events
+    WHERE event_type = 'auth_token_minted'
+      AND metadata->>'via' = 'authjs_session'
+      AND ts > NOW() - INTERVAL '60 minutes'
+  `,
+  // ≥20 usuarios para que la media signifique algo (mismo criterio que la regla hermana).
+  shouldFire: (rows) =>
+    (rows[0]?.users ?? 0) >= 20 && (rows[0]?.perUserHour ?? 0) > 8,
+  buildNotification: (rows) => {
+    const mintedSampled = rows[0]?.mintedSampled ?? 0;
+    const users = rows[0]?.users ?? 0;
+    const perUserHour = rows[0]?.perUserHour ?? 0;
+    return {
+      title: `Desperdicio de acuñación de token — ${perUserHour} tokens/usuario/hora (TTL 1h, ideal ~1)`,
+      body: `Se está re-acuñando el RS256 muchas más veces de lo que dura. ${mintedSampled} mints muestreados (10%) de ${users} usuarios en 1 h ≈ ${Math.round(perUserHour * users)} reales.\n\nCausa típica: alguien volvió a pedir el Bearer con auth.refreshSession() en vez de auth.getAccessToken() (el patrón de las 9 copias de T-210) — refreshSession FUERZA la re-acuñación y se salta la caché del adapter.\n\n  git grep -n "refreshSession()" -- lib utils app components hooks contexts\n\nVer lib/auth/tokenFreshness.ts y __tests__/guardrails/bearerTokenSinglePath.test.ts.`,
+      metadata: { mintedSampled, users, perUserHour, windowMin: 60 },
+      fingerprint: 'auth_token_mint_waste',
+    };
+  },
+  cooldownMin: 180,
+};
+
 // ── Reglas de fallo de canary (fábrica) ─────────────────────────────────────
 // Estos canaries emitían `canary_<x>_failed` SIN regla → un fallo suyo pasaba
 // desapercibido (hueco de observabilidad cerrado 20/07, canary-framework.md P3).
@@ -3731,6 +3797,10 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_LAWS_CONFIGURATOR_DEGRADED as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
   RULE_AUTH_TOKEN_MINT_FLOOD as AlertRule,
+  // Su hermano FINO Y ANCHO (28/07, T-210): pocas acuñaciones por usuario pero
+  // repartidas entre cientos → 45 reales/usuario/hora con TTL de 1 h, invisibles
+  // para el umbral por-usuario de la regla de arriba.
+  RULE_AUTH_TOKEN_MINT_WASTE as AlertRule,
   // Tests bloqueados por rechazo de validación (2026-07-11, incidente Alfonso)
   RULE_FILTERED_VALIDATION_REJECTED_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)

@@ -33,13 +33,23 @@ beforeEach(() => {
 
   // Default: auth returns a valid token. Incluye `user` porque el puerto
   // (lib/auth) mapea la sesión y descarta las que no tienen usuario.
+  //
+  // ⚠️ Y AHORA incluye `expires_at`, que en producción viene SIEMPRE (T-210): desde que la
+  // decisión de renovar la toma la EXPIRACIÓN y no un reloj de pared, una sesión simulada
+  // sin `expires_at` no representa nada real — y además hacía estos tests dependientes del
+  // orden (el cooldown anti-429 del adapter es estado compartido entre tests del fichero).
   mockRefreshSession.mockResolvedValue({
-    data: { session: { access_token: 'test-token-123', user: { id: 'u1', email: 'a@b.com' } } },
+    data: { session: { access_token: 'tok-renovado', expires_at: EXP_FRESCO, user: { id: 'u1', email: 'a@b.com' } } },
   })
   mockGetSession.mockResolvedValue({
-    data: { session: { access_token: 'fallback-token', user: { id: 'u1', email: 'a@b.com' } } },
+    data: { session: { access_token: 'tok-sesion', expires_at: EXP_FRESCO, user: { id: 'u1', email: 'a@b.com' } } },
   })
 })
+
+/** Sesión con casi una hora por delante: el token vigente SIRVE, no hay que renovar. */
+const EXP_FRESCO = Math.floor(Date.now() / 1000) + 3600
+/** Sesión ya caducada: hay que renovar antes de usarla. */
+const EXP_CADUCADO = Math.floor(Date.now() / 1000) - 10
 
 afterAll(() => {
   global.fetch = originalFetch
@@ -109,7 +119,8 @@ describe('completeTestOnServer — success', () => {
     expect(url).toBe('/api/v2/complete-test')
     expect(opts.method).toBe('POST')
     expect(opts.headers['Content-Type']).toBe('application/json')
-    expect(opts.headers['Authorization']).toBe('Bearer test-token-123')
+    // El token vigente de la sesión (no hace falta renovar nada).
+    expect(opts.headers['Authorization']).toBe('Bearer tok-sesion')
 
     // Verify body
     const body = JSON.parse(opts.body)
@@ -124,37 +135,30 @@ describe('completeTestOnServer — success', () => {
     expect(result.savedQuestionsCount).toBe(10)
   })
 
-  it('uses refreshSession token preferentially', async () => {
+  // T-210: el contrato de este cliente es «manda un Bearer VÁLIDO», no «fuerza una
+  // renovación antes de cada llamada». La mecánica de cuándo renovar (singleflight,
+  // cooldown anti-429, frescura) se caracteriza en la suite de su dueño:
+  // __tests__/lib/auth/client.test.ts → «supabaseAdapter — getAccessToken (Bearer)».
+  // Aquí solo se fija lo que se ve desde fuera, y con casos que no dependen del orden.
+  it('reusa el token vigente de la sesión: NO fuerza una renovación por llamada', async () => {
+    // Antes, completar un test acuñaba un RS256 nuevo aunque al token le quedara una hora.
     mockFetch.mockReturnValueOnce(mockOk(validResponse()))
 
     await completeTestOnServer(validRequest())
 
-    const opts = mockFetch.mock.calls[0][1]
-    expect(opts.headers['Authorization']).toBe('Bearer test-token-123')
-    // getSession should NOT have been called since refreshSession succeeded
-    expect(mockGetSession).not.toHaveBeenCalled()
+    expect(mockRefreshSession).not.toHaveBeenCalled()
+    expect(mockFetch.mock.calls[0][1].headers['Authorization']).toBe('Bearer tok-sesion')
   })
 
-  it('falls back to getSession when refreshSession returns no token', async () => {
+  it('sesión CADUCADA y renovación imposible → SESSION_EXPIRED, no manda un token muerto', async () => {
+    // Mejora de comportamiento de T-210: antes se enviaba el token caducado (401 seguro).
+    mockGetSession.mockResolvedValue({
+      data: { session: { access_token: 'tok-muerto', expires_at: EXP_CADUCADO, user: { id: 'u1', email: 'a@b.com' } } },
+    })
     mockRefreshSession.mockResolvedValue({ data: { session: null } })
-    mockFetch.mockReturnValueOnce(mockOk(validResponse()))
 
-    await completeTestOnServer(validRequest())
-
-    expect(mockGetSession).toHaveBeenCalledTimes(1)
-    const opts = mockFetch.mock.calls[0][1]
-    expect(opts.headers['Authorization']).toBe('Bearer fallback-token')
-  })
-
-  it('falls back to getSession when refreshSession throws', async () => {
-    mockRefreshSession.mockRejectedValue(new Error('refresh failed'))
-    mockFetch.mockReturnValueOnce(mockOk(validResponse()))
-
-    await completeTestOnServer(validRequest())
-
-    expect(mockGetSession).toHaveBeenCalledTimes(1)
-    const opts = mockFetch.mock.calls[0][1]
-    expect(opts.headers['Authorization']).toBe('Bearer fallback-token')
+    await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('sends AbortSignal for timeout control', async () => {

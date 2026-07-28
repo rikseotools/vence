@@ -4,17 +4,6 @@
 import { auth } from '@/lib/auth'
 import { createTestResponseSchema, type CreateTestRequest, type CreateTestResponse } from './schemas'
 
-async function getToken(): Promise<string | undefined> {
-  try {
-    const refreshed = await auth.refreshSession()
-    if (refreshed?.accessToken) return refreshed.accessToken
-  } catch {
-    /* fallback */
-  }
-  const session = await auth.getSession()
-  return session?.accessToken
-}
-
 /**
  * Crea (o reutiliza) la sesión de test en el servidor. Devuelve la respuesta
  * validada; el id resultante es el que usa `enqueueAnswer` como `sessionId`.
@@ -24,7 +13,8 @@ async function getToken(): Promise<string | undefined> {
 export async function createTestSessionOnServer(
   params: CreateTestRequest,
 ): Promise<CreateTestResponse> {
-  const accessToken = await getToken()
+  // Token por el verbo del puerto (cacheado y compartido; ver T-210).
+  const accessToken = await auth.getAccessToken()
   if (!accessToken) return { success: false, error: 'SESSION_EXPIRED' }
 
   const controller = new AbortController()

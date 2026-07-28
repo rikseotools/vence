@@ -34,16 +34,20 @@ function walk(rel: string): string[] {
 const ALL_FILES = SCAN_DIRS.flatMap(walk)
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
 
-// Ficheros que LEGÍTIMAMENTE referencian supabase.auth.* (actualizado 2026-07-04):
+// Ficheros que LEGÍTIMAMENTE referencian supabase.auth.* (actualizado 2026-07-28):
 // solo infra del puerto / verificación server-side. El funnel de login (C2) y el
 // callback (Fase B) YA se migraron al puerto agnóstico `lib/auth` → sus 6 entradas
 // se retiraron de esta allowlist (el ratchet ENCOGIÓ, como debe). Si aparece un
 // fichero nuevo aquí, el test falla → o lo migras al puerto, o (si es legítimo) lo añades.
+//
+// 2026-07-28 (T-210): sale `lib/api/authHeaders.ts` — el ratchet vuelve a ENCOGER. Ese
+// fichero implementaba su propio singleflight+cooldown sobre la sesión; ahora solo pide el
+// token al puerto (`auth.getAccessToken()`) y ensambla cabeceras. La mecánica del proveedor
+// vive donde le toca, en `lib/auth/adapters/supabaseAdapter.ts`.
 const AUTH_ALLOWLIST = new Set<string>([
   'lib/api/auth/verifyAuth.ts',
   'lib/api/auth/verifyJwtLocal.ts',
   'lib/security/adminApiGuard.ts',
-  'lib/api/authHeaders.ts',
   'app/api/send-support-email/route.ts',
 ])
 

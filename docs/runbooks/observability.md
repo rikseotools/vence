@@ -1424,4 +1424,33 @@ node scripts/observabilidad/sim-ruido-console.cjs [--dias N]
 
 Separa los eventos en ya-ruido / candidatos / aplicación y emite una **predicción falsable**. Medido el 28/07 sobre 3 días: 14.320 eventos → 32,2% ya-ruido, 52,9% candidatos, 14,9% aplicación, luego los errores deben caer a **entre 2.127 y 9.704**. **Si tras el deploy se quedan cerca de la cota alta, es que ocurren con la pestaña VISIBLE: hay daño real y el trabajo no ha terminado.** Sin esta medición, "el ruido bajó" no se distingue de "se silenció señal".
 
-**Pendiente (mecanismo 2):** el 401 de `disputes/notifications` (11-26 usuarios/día) y `[answerSaveQueue] Sin token` apuntan a `getValidToken()` (`lib/api/authHeaders.ts`), cuyo cooldown de 30 s devuelve la sesión cacheada **sin comprobar la expiración**. Va aparte a propósito: mezclarlo con el cambio de logging haría imposible atribuir el efecto de cada uno al re-medir.
+### Mecanismo 2 — CERRADO 28/07: había NUEVE formas de pedir un Bearer, y ocho iban a la red
+
+**Lo que se buscaba:** el 401 de `disputes/notifications` (11-26 usuarios/día) y `[answerSaveQueue] Sin token` (219 eventos/24 h) apuntaban a `getValidToken()` (`lib/api/authHeaders.ts`), cuyo cooldown de 30 s devolvía la sesión cacheada **sin comprobar la expiración**.
+
+**Lo que se encontró al mirar, que era más grande:** el patrón «`refreshSession()` y si no `getSession()`» estaba **copiado en 9 sitios** (authHeaders, cinco clientes de `/api/v2/*`, `answerSaveQueue`, `psychometricSaveQueue`, `testAnswers`). Y bajo Auth.js —proveedor vivo desde el 03/07— **`refreshSession()` FUERZA la re-acuñación del RS256**, así que cada copia se saltaba la caché de token que se montó el 15/07 justo para cortar este flood. El puerto ya tenía el verbo correcto y cacheado (`auth.getAccessToken()`); simplemente **nadie lo usaba**.
+
+**Medido antes de tocar nada** (`auth_token_minted`, muestreo 10%):
+
+| | |
+|---|---|
+| acuñaciones reales / 24 h | **58.800** |
+| suelo necesario (TTL 1 h → 1 por usuario-hora activa) | 1.999 |
+| factor de desperdicio | **29,4×** |
+| por usuario y hora (mediana 7 d; rango) | **45** (29-136) |
+
+**El arreglo, en una frase:** una sola definición de «¿hay que ir a la red?» (`lib/auth/tokenFreshness.ts`, núcleo puro compartido por los dos adapters, que decide por **EXPIRACIÓN** y no por reloj de pared), la mecánica (singleflight + cooldown anti-429) movida al adapter que es su dueño, y las 9 copias convergidas en `auth.getAccessToken()`. `authHeaders` queda como lo que su nombre dice: ensamblar cabeceras.
+
+**Dos defectos por el precio de uno.** El cooldown de 30 s hacía las dos cosas mal a la vez: *dentro* de su ventana servía tokens caducados (los 401 silenciosos: notificaciones, medallas, guardado de respuestas), y *fuera* de ella forzaba una renovación aunque al token le quedasen 55 minutos (el desperdicio). Ahora ninguna de las dos decisiones depende del reloj de pared.
+
+**Cómo se verifica (antes y después de desplegar):**
+
+```bash
+node scripts/observabilidad/sim-desperdicio-mints.cjs [--dias N]
+```
+
+Predicción falsable: **−96,6%** (58.800 → ~2.000). ⚠️ **Y el falso alivio a vigilar:** quedar MUY por debajo del suelo no es eficiencia, es que hay usuarios activos sin token; el script lo avisa en vez de dar verde.
+
+**Por qué no lo cazó la observabilidad, que sí lo estaba viendo.** Existía `auth_token_mint_flood`, escrita en julio para este mismo endpoint — pero calibrada para el flood **catastrófico por usuario** (>50 reales/usuario/10 min, el poll de 5 s del caso Natalia). Este régimen es **fino y ancho**: 45 por usuario y hora repartidos entre cientos de usuarios, o sea ~0,7 muestreados/usuario/10 min → habría necesitado ser **7× peor** para disparar. Cerrado con su hermana `auth_token_mint_waste` (>8 reales/usuario/hora, umbral calibrado sobre 7 días: deja 4-8× de margen sobre lo sano y queda 3,7× por debajo del peor régimen bueno observado). **Lección repetida:** una alerta sobre la métrica correcta puede seguir siendo ciega si el umbral se calibró para otra forma del mismo fallo. Dispara sola hasta que el arreglo esté desplegado — y su silencio posterior es la verificación.
+
+**Guardarraíl para que no vuelvan las copias:** `__tests__/guardrails/bearerTokenSinglePath.test.ts` prohíbe el patrón de adquisición fuera de `lib/auth/**`, y es estrecho a propósito (no marca renovar claims tras una compra ni reintentar tras un 401, que son usos legítimos).

@@ -202,21 +202,12 @@ export const saveDetailedAnswerV2 = async (params: SaveAnswerParams): Promise<Sa
       return { success: false, error: 'Datos faltantes', action: 'error' }
     }
 
-    // Nivel 1: Refresh proactivo antes de usar el token
-    let accessToken: string | undefined
-    try {
-      const refreshed = await auth.refreshSession()
-      accessToken = refreshed?.accessToken
-    } catch {
-      // refreshSession puede fallar si no hay red — fallback a getSession
-    }
+    // Nivel 1: token por el verbo del puerto (cacheado; renueva por EXPIRACIÓN, no por
+    // reloj de pared). El "refresh proactivo" que había aquí forzaba una ida a la red
+    // por respuesta guardada — ver T-210. El Nivel 2 (retry tras 401) sigue abajo.
+    const accessToken = await auth.getAccessToken()
     if (!accessToken) {
-      console.warn('⚠️ [V2] refreshSession falló, fallback a getSession')
-      const fallbackSession = await auth.getSession()
-      accessToken = fallbackSession?.accessToken
-    }
-    if (!accessToken) {
-      console.error('❌ [V2] No hay sesion activa después de refresh')
+      console.error('❌ [V2] No hay sesion activa (puerto sin token)')
       return { success: false, error: 'Sesión expirada', action: 'session_expired' }
     }
 

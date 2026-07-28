@@ -40,6 +40,8 @@ import {
   RULE_FILTERED_VALIDATION_REJECTED_SPIKE,
   RULE_FRONTEND_SATURATION,
   RULE_EVENT_LOOP_LAG,
+  RULE_AUTH_TOKEN_MINT_FLOOD,
+  RULE_AUTH_TOKEN_MINT_WASTE,
 } from './alert-rules';
 
 describe('RULE_LAWS_CONFIGURATOR_DEGRADED (fix configurador 24/07, caso David/Galicia)', () => {
@@ -502,6 +504,14 @@ describe('ALERT_RULES — registro completo', () => {
     expect(names).toContain('dispute_email_drop'); // nunca se intentó
     expect(names).toContain('email_send_failed'); // intentado y rechazado
   });
+
+  // Mismo guardarraíl de cableado para T-210: la regla existía escrita y sin registrar
+  // no la ejecutaría nadie (el cron solo recorre ALERT_RULES).
+  it('las 2 reglas de acuñación de token están registradas (flood por-usuario Y desperdicio agregado)', () => {
+    const names = ALERT_RULES.map((r) => r.name);
+    expect(names).toContain('auth_token_mint_flood'); // catastrófico por usuario
+    expect(names).toContain('auth_token_mint_waste'); // fino y ancho (T-210)
+  });
 });
 
 describe('RULE_SUBSCRIPTION_VOID_FAILED', () => {
@@ -816,6 +826,88 @@ describe('RULE_EMAIL_SEND_FAILED (cabo de T-116 — intentado y RECHAZADO por el
     // dispute_email_drop → 0 filas en email_events (nunca se intentó).
     // email_send_failed  → fila con event_type='failed' (intentado, rechazado).
     expect(RULE_EMAIL_SEND_FAILED.name).not.toBe(RULE_DISPUTE_EMAIL_DROP.name);
+  });
+});
+
+describe('RULE_AUTH_TOKEN_MINT_WASTE (T-210 — el flood FINO Y ANCHO)', () => {
+  // Umbrales calibrados sobre 7 días de datos reales (28/07): régimen con el bug =
+  // 29-136 acuñaciones reales por usuario y hora (mediana 45) para un TTL de 1 h;
+  // suelo teórico 2.001/día frente a 58.680 reales → 29× de desperdicio.
+  it('dispara con el régimen REAL medido antes del arreglo (45/usuario/hora)', () => {
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 414, users: 98, perUserHour: 42.2 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('dispara incluso en el régimen malo MÁS SUAVE observado (29,4)', () => {
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 147, users: 50, perUserHour: 29.4 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara en el régimen sano esperado (~1-2 por usuario y hora, TTL 1 h)', () => {
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 12, users: 100, perUserHour: 1.2 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara con margen de sobra sobre lo sano (hasta 8 inclusive)', () => {
+    // 4-8× el ideal se considera tolerable (re-logins, varias pestañas, sesiones cortas).
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 40, users: 50, perUserHour: 8 },
+      ]),
+    ).toBe(false);
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 45, users: 50, perUserHour: 9 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara con pocos usuarios (la media no significaría nada)', () => {
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 100, users: 3, perUserHour: 333 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('NO dispara sin datos (hora muerta, no un fallo)', () => {
+    expect(RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([])).toBe(false);
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([{ mintedSampled: 0, users: 0, perUserHour: 0 }]),
+    ).toBe(false);
+  });
+
+  it('la notificación dice qué mirar (el patrón que lo causa)', () => {
+    const n = RULE_AUTH_TOKEN_MINT_WASTE.buildNotification([
+      { mintedSampled: 414, users: 98, perUserHour: 42.2 },
+    ]);
+    expect(n.title).toContain('42.2');
+    expect(n.body).toContain('refreshSession');
+    expect(n.body).toContain('getAccessToken');
+    expect(n.fingerprint).toBe('auth_token_mint_waste');
+  });
+
+  it('cubre el hueco de su regla hermana: el régimen real NO la dispararía', () => {
+    // 42 reales/usuario/hora ≈ 7 reales/usuario/10min ≈ 0,7 muestreados → muy por debajo
+    // del >5 muestreados/usuario/10min de auth_token_mint_flood. Este test fija POR QUÉ
+    // hacen falta las dos: si alguien "unifica" las reglas, aquí se ve lo que se pierde.
+    expect(
+      RULE_AUTH_TOKEN_MINT_FLOOD.shouldFire([{ minted: 70, users: 98, perUser: 0.7 }]),
+    ).toBe(false);
+    expect(
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 414, users: 98, perUserHour: 42.2 },
+      ]),
+    ).toBe(true);
   });
 });
 

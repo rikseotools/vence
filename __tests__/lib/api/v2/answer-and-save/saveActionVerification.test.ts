@@ -32,11 +32,26 @@ describe('saveAction verification — syncOne', () => {
 
   it('syncOne devuelve false para 401', () => {
     expect(queueContent).toContain('response.status === 401')
+    // Ventana ampliada a 1.600 caracteres (T-210): la rama del 401 ya no solo devuelve
+    // false, también fuerza una renovación del token para que el reintento no repita el
+    // mismo Bearer rechazado. La ventana de 500 se quedó corta y el test fallaba por el
+    // TAMAÑO del bloque, no por su comportamiento.
     const block401 = queueContent.slice(
       queueContent.indexOf('response.status === 401'),
-      queueContent.indexOf('response.status === 401') + 500
+      queueContent.indexOf('response.status === 401') + 1600
     )
     expect(block401).toContain('return false')
+  })
+
+  it('la rama del 401 fuerza una renovación (si no, el reintento repetiría el token rechazado)', () => {
+    // Desde T-210 el token se REUSA mientras siga vigente: sin este refresh explícito, un
+    // 401 con un token estructuralmente válido (rotación de clave, sesión revocada) se
+    // comería los 5 reintentos con el mismo Bearer.
+    const block401 = queueContent.slice(
+      queueContent.indexOf('response.status === 401'),
+      queueContent.indexOf('response.status === 401') + 1600
+    )
+    expect(block401).toContain('refreshSession()')
   })
 
   it('syncOne devuelve true solo cuando response.ok Y saveAction no es save_failed', () => {

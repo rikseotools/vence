@@ -9,18 +9,8 @@ import { completeOnboardingResponseSchema, type CompleteOnboardingRequest, type 
 export async function completeOnboardingOnServer(
   params: CompleteOnboardingRequest
 ): Promise<CompleteOnboardingResponse> {
-  // Token de auth vía puerto agnóstico (lib/auth)
-  let accessToken: string | undefined
-  try {
-    const refreshed = await auth.refreshSession()
-    accessToken = refreshed?.accessToken
-  } catch {
-    // fallback
-  }
-  if (!accessToken) {
-    const session = await auth.getSession()
-    accessToken = session?.accessToken
-  }
+  // Token de auth por el verbo del puerto (cacheado y compartido; ver T-210).
+  const accessToken = await auth.getAccessToken()
   if (!accessToken) {
     return { success: false, error: 'Sesión expirada' }
   }

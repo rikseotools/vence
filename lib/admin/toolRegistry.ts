@@ -153,6 +153,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'y DESPUÉS del deploy es la verificación: sin él, "el ruido bajó" no se distingue de "se ' +
       'silenció señal".',
   },
+  sim_desperdicio_mints: {
+    titulo: 'Medir cuántas veces se re-acuña el access token frente a las que hace falta (desperdicio de /api/auth/token)',
+    ruta: 'scripts/observabilidad/sim-desperdicio-mints.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/observability.md',
+    notas:
+      'node scripts/observabilidad/sim-desperdicio-mints.cjs [--dias N]. Solo lectura. El RS256 dura ' +
+      '1 h, así que el suelo es ~1 acuñación por usuario y HORA ACTIVA; el script compara ese suelo ' +
+      'con las acuñaciones reales (`auth_token_minted`, ×10 por el muestreo del 10% en ' +
+      'via=authjs_session; el `bridge` va sin muestrear y se cuenta aparte). Medido el 28/07/2026: ' +
+      '**58.800 reales frente a 1.999 de suelo = 29,4× de desperdicio** (45 por usuario y hora, ' +
+      'mediana de 7 días, rango 29-136). Causa: 9 copias del patrón «refreshSession() y si no ' +
+      'getSession()» que FORZABAN la re-acuñación saltándose la caché del adapter (T-210); ' +
+      'convergieron en `auth.getAccessToken()`. Correrlo ANTES y DESPUÉS del deploy: la predicción ' +
+      'es −96,6%. **Ojo con el falso alivio:** quedar MUY por debajo del suelo no es eficiencia, es ' +
+      'que hay usuarios activos sin token (401 silenciosos) — el script lo avisa. La misma señal en ' +
+      'vivo y sin intervención es la alerta `auth_token_mint_waste` (>8 reales/usuario/hora); su ' +
+      'silencio tras desplegar es la verificación continua. El guardarraíl estático que impide ' +
+      'reintroducir el patrón es `__tests__/guardrails/bearerTokenSinglePath.test.ts`.',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',

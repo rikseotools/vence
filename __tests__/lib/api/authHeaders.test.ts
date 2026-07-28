@@ -1,10 +1,20 @@
-// Tests de CARACTERIZACIÓN de lib/api/authHeaders.ts (red de seguridad Fase 4B).
-// Fijan el comportamiento (singleflight + cooldown 30s + fallback + device headers).
-// Tras la migración a `auth.*`, authHeaders depende del PORT agnóstico `@/lib/auth`
-// (no de supabase): el mock devuelve AuthSession (`{ accessToken }`), no el shape supabase.
-// El estado de módulo (refreshPromise/lastRefreshTime) se resetea con jest.resetModules().
+// Tests de `lib/api/authHeaders.ts` — ENSAMBLADO de cabeceras.
+//
+// Hasta T-210 (28/07/2026) este fichero caracterizaba además el singleflight + cooldown de
+// 30 s, porque esa mecánica vivía aquí. Se movió al adapter del proveedor (que es quien la
+// conoce) y su caracterización se movió con ella a
+// `__tests__/lib/auth/client.test.ts` → «supabaseAdapter — getAccessToken (Bearer)»,
+// ampliada con los dos casos que arreglan el defecto (reusar token fresco sin red; no
+// servir un token caducado por estar dentro de la ventana de reloj de pared).
+//
+// Lo que se fija AQUÍ es lo que este módulo sigue prometiendo:
+//   · pide el token al PUERTO (una sola vez, sin lógica de renovación propia),
+//   · lo envuelve en `Authorization: Bearer`,
+//   · adjunta las cabeceras de dispositivo (anti-fraude),
+//   · y nunca lanza: sin token se devuelven cabeceras sin `Authorization`.
 
 const mockAuthPort = {
+  getAccessToken: jest.fn(),
   getSession: jest.fn(),
   refreshSession: jest.fn(),
 }
@@ -13,91 +23,54 @@ jest.mock('@/lib/auth', () => ({
 }))
 
 function loadGetAuthHeaders(): () => Promise<Record<string, string>> {
-  // require fresh tras resetModules → reinicia refreshPromise/lastRefreshTime
   return require('@/lib/api/authHeaders').getAuthHeaders
 }
 
-describe('getAuthHeaders — caracterización (singleflight + cooldown)', () => {
-  let nowSpy: jest.SpyInstance
-
+describe('getAuthHeaders — ensamblado de cabeceras', () => {
   beforeEach(() => {
     jest.resetModules()
+    mockAuthPort.getAccessToken.mockReset()
     mockAuthPort.getSession.mockReset()
     mockAuthPort.refreshSession.mockReset()
     localStorage.clear()
-    nowSpy = jest.spyOn(Date, 'now').mockReturnValue(10_000_000)
   })
 
-  afterEach(() => {
-    nowSpy.mockRestore()
-  })
-
-  test('primera llamada refresca la sesión y devuelve Bearer', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue({ accessToken: 'tok-1' })
+  test('pide el token al puerto y lo envuelve en Bearer', async () => {
+    mockAuthPort.getAccessToken.mockResolvedValue('tok-1')
     const getAuthHeaders = loadGetAuthHeaders()
 
     const headers = await getAuthHeaders()
 
-    expect(mockAuthPort.refreshSession).toHaveBeenCalledTimes(1)
+    expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(1)
     expect(headers.Authorization).toBe('Bearer tok-1')
   })
 
-  test('singleflight: N llamadas concurrentes comparten UNA sola refreshSession', async () => {
-    let resolveRefresh!: (v: unknown) => void
-    mockAuthPort.refreshSession.mockReturnValue(new Promise((r) => { resolveRefresh = r }))
-    const getAuthHeaders = loadGetAuthHeaders()
-
-    const p1 = getAuthHeaders()
-    const p2 = getAuthHeaders()
-    const p3 = getAuthHeaders()
-
-    resolveRefresh({ accessToken: 'tok-sf' })
-    const [h1, h2, h3] = await Promise.all([p1, p2, p3])
-
-    expect(mockAuthPort.refreshSession).toHaveBeenCalledTimes(1) // anti-429
-    expect(h1.Authorization).toBe('Bearer tok-sf')
-    expect(h2.Authorization).toBe('Bearer tok-sf')
-    expect(h3.Authorization).toBe('Bearer tok-sf')
-  })
-
-  test('cooldown 30s: 2ª llamada <30s usa getSession cacheada, NO refreshSession', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue({ accessToken: 'tok-r' })
-    mockAuthPort.getSession.mockResolvedValue({ accessToken: 'tok-cached' })
-    const getAuthHeaders = loadGetAuthHeaders()
-
-    await getAuthHeaders() // refresca; lastRefreshTime = 10_000_000
-    nowSpy.mockReturnValue(10_000_000 + 29_000) // +29s (< 30s)
-    const h2 = await getAuthHeaders()
-
-    expect(mockAuthPort.refreshSession).toHaveBeenCalledTimes(1)
-    expect(mockAuthPort.getSession).toHaveBeenCalledTimes(1)
-    expect(h2.Authorization).toBe('Bearer tok-cached')
-  })
-
-  test('pasados 30s vuelve a refrescar', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue({ accessToken: 'tok-r' })
+  // El fondo de T-210: la renovación NO se decide aquí. Si este módulo volviera a llamar
+  // refreshSession() por su cuenta, reaparecerían las dos implementaciones que convivían
+  // (y con ellas los ~58.400 mints/día y los 401 silenciosos).
+  test('NO decide renovaciones: no llama refreshSession ni getSession', async () => {
+    mockAuthPort.getAccessToken.mockResolvedValue('tok-1')
     const getAuthHeaders = loadGetAuthHeaders()
 
     await getAuthHeaders()
-    nowSpy.mockReturnValue(10_000_000 + 31_000) // +31s (> 30s)
-    await getAuthHeaders()
 
-    expect(mockAuthPort.refreshSession).toHaveBeenCalledTimes(2)
+    expect(mockAuthPort.refreshSession).not.toHaveBeenCalled()
+    expect(mockAuthPort.getSession).not.toHaveBeenCalled()
   })
 
-  test('fallback a getSession si refreshSession no devuelve token', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue(null)
-    mockAuthPort.getSession.mockResolvedValue({ accessToken: 'tok-fb' })
+  test('N llamadas → N consultas al puerto (la caché es del puerto, no de aquí)', async () => {
+    mockAuthPort.getAccessToken.mockResolvedValue('tok-1')
     const getAuthHeaders = loadGetAuthHeaders()
 
-    const headers = await getAuthHeaders()
+    await Promise.all([getAuthHeaders(), getAuthHeaders(), getAuthHeaders()])
 
-    expect(headers.Authorization).toBe('Bearer tok-fb')
+    // Sin estado local: cada llamada pregunta. El puerto ya comparte el vuelo y cachea
+    // (ver la simulación de 1 h en client.test.ts), así que esto NO es tráfico de red.
+    expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(3)
   })
 
   test('sin sesión → sin header Authorization (pero no lanza)', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue(null)
-    mockAuthPort.getSession.mockResolvedValue(null)
+    mockAuthPort.getAccessToken.mockResolvedValue(undefined)
     const getAuthHeaders = loadGetAuthHeaders()
 
     const headers = await getAuthHeaders()
@@ -105,18 +78,20 @@ describe('getAuthHeaders — caracterización (singleflight + cooldown)', () => 
     expect(headers.Authorization).toBeUndefined()
   })
 
-  test('refreshSession que lanza → fallback a getSession sin propagar', async () => {
-    mockAuthPort.refreshSession.mockRejectedValue(new Error('429'))
-    mockAuthPort.getSession.mockResolvedValue({ accessToken: 'tok-after-throw' })
+  test('el puerto lanza → se degrada sin Authorization, sin propagar', async () => {
+    mockAuthPort.getAccessToken.mockRejectedValue(new Error('boom'))
+    localStorage.setItem('vence_device_id', 'dev-123')
     const getAuthHeaders = loadGetAuthHeaders()
 
     const headers = await getAuthHeaders()
 
-    expect(headers.Authorization).toBe('Bearer tok-after-throw')
+    expect(headers.Authorization).toBeUndefined()
+    // Las cabeceras de dispositivo se mandan igual: el anti-fraude no depende del token.
+    expect(headers['X-Device-Id']).toBe('dev-123')
   })
 
   test('incluye X-Device-Id y X-Hw-Fingerprint desde localStorage', async () => {
-    mockAuthPort.refreshSession.mockResolvedValue({ accessToken: 't' })
+    mockAuthPort.getAccessToken.mockResolvedValue('t')
     localStorage.setItem('vence_device_id', 'dev-123')
     localStorage.setItem('vence_hw_fingerprint', 'hw-456')
     const getAuthHeaders = loadGetAuthHeaders()
@@ -125,5 +100,15 @@ describe('getAuthHeaders — caracterización (singleflight + cooldown)', () => 
 
     expect(headers['X-Device-Id']).toBe('dev-123')
     expect(headers['X-Hw-Fingerprint']).toBe('hw-456')
+  })
+
+  test('sin device id en localStorage → no inventa la cabecera', async () => {
+    mockAuthPort.getAccessToken.mockResolvedValue('t')
+    const getAuthHeaders = loadGetAuthHeaders()
+
+    const headers = await getAuthHeaders()
+
+    expect(headers['X-Device-Id']).toBeUndefined()
+    expect(headers['X-Hw-Fingerprint']).toBeUndefined()
   })
 })

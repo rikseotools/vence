@@ -4,7 +4,7 @@
 // eventos custom, fixes iOS/Android). Aquí solo se traduce su superficie auth a tipos
 // agnósticos. Cambiar de proveedor = escribir otro adapter y cambiar la fábrica en client.ts.
 import { getSupabaseClient, signInWithGoogle as supabaseSignInWithGoogle } from '@/lib/supabase'
-import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { isBearerExpired, isBearerFresh } from '../tokenFreshness'
 import type {
   AuthChange,
   AuthClientPort,
@@ -197,15 +197,47 @@ async function acquireOAuthCallbackSession(
   })
 }
 
+/**
+ * Cuánto se espera entre INTENTOS de refresh. Es anti-429 (evita que 10 componentes
+ * disparen refreshSession a la vez y Supabase nos corte).
+ *
+ * ⚠️ Es un cooldown de INTENTOS, no de éxitos — cambio de T-210. Antes vivía en
+ * `lib/api/authHeaders.ts` y solo se rearmaba al ACERTAR: si el refresh fallaba, cada
+ * llamada siguiente volvía a intentarlo (justo el martilleo que el cooldown existía para
+ * evitar). Y sobre todo: la ventana se usaba como sustituto de mirar la expiración.
+ */
+const REFRESH_COOLDOWN_MS = 30_000
+
 export function createSupabaseAuthAdapter(): AuthClientPort {
   // Acceso perezoso al singleton: no se instancia en import-time (client-only).
   const sb = () => getSupabaseClient()
 
-  return {
-    async getSession() {
-      const { data } = await sb().auth.getSession()
+  // ── Adquisición del Bearer (singleflight + cooldown + frescura) ───────────────
+  // Vive AQUÍ, en el adapter, porque es mecánica del proveedor: el puerto solo promete
+  // "dame un token válido" (`getAccessToken`). Antes vivía en `lib/api/authHeaders.ts`,
+  // que es capa de app — y por eso acabó habiendo 9 copias del patrón
+  // "refreshSession() y si no getSession()" repartidas por la app, cada una forzando red.
+  // Estado POR INSTANCIA del adapter (singleton en prod), igual que en el de Auth.js.
+  let inflight: Promise<AuthSession | null> | null = null
+  let lastAttemptMs = 0
+
+  async function currentSession(): Promise<AuthSession | null> {
+    const { data } = await sb().auth.getSession()
+    return mapSession(data.session)
+  }
+
+  async function refreshOnce(): Promise<AuthSession | null> {
+    try {
+      const { data } = await sb().auth.refreshSession()
       return mapSession(data.session)
-    },
+    } catch {
+      // 429 / red / lock del SDK → null; el caller cae al mejor esfuerzo.
+      return null
+    }
+  }
+
+  return {
+    getSession: currentSession,
 
     async getUser() {
       const { data } = await sb().auth.getUser()
@@ -213,10 +245,62 @@ export function createSupabaseAuthAdapter(): AuthClientPort {
     },
 
     async getAccessToken() {
-      // Delega en getAuthHeaders() — conserva el singleflight + cooldown 30s anti-429.
-      const headers = await getAuthHeaders()
-      const authz = headers['Authorization']
-      return authz?.startsWith('Bearer ') ? authz.slice('Bearer '.length) : undefined
+      const now = Date.now()
+
+      // 1. Singleflight: si ya hay un refresh en vuelo, compartirlo (anti-429).
+      //    Se captura la promesa en un local ANTES de esperarla: leer `inflight` después
+      //    del await devolvería el valor que haya dejado otro caller (o null si ya acabó).
+      const enVuelo = inflight
+      if (enVuelo) return (await enVuelo)?.accessToken
+
+      // 2. ¿Sirve la sesión que ya tenemos? Lectura LOCAL, sin red.
+      //    ⚠️ El fix de T-210 está aquí: antes esta rama devolvía el token cacheado a
+      //    ciegas dentro de una ventana de 30 s de reloj de pared, sin comprobar si ya
+      //    había caducado → 401 en notificaciones, medallas y guardado de respuestas.
+      //    Y al revés: pasados esos 30 s forzaba un refresh aunque al token le quedara
+      //    casi una hora. Ahora manda la EXPIRACIÓN, no el reloj de pared.
+      const cached = await currentSession()
+      if (cached?.accessToken && isBearerFresh(cached.expiresAt, now)) {
+        return cached.accessToken
+      }
+
+      // 3. Segundo control de singleflight: leer la sesión (paso 2) es ASÍNCRONO, así que
+      //    varios callers pueden haber llegado hasta aquí a la vez. El que llega tarde se
+      //    engancha al vuelo del primero. Va ANTES del cooldown a propósito: si no, el
+      //    primero armaría la ventana anti-429 y sus compañeros de tanda se comerían un
+      //    "sin token" cuando en realidad hay un refresh en marcha del que aprovecharse.
+      const yaEnVuelo = inflight
+      if (yaEnVuelo) return (await yaEnVuelo)?.accessToken
+
+      // 4. Toca renovar, pero si acabamos de intentarlo no insistimos (anti-429).
+      //    Mejor esfuerzo: un token dentro del margen de renovación SIGUE siendo válido,
+      //    así que se manda. Uno ya caducado NO: mandarlo garantiza el 401 y consume el
+      //    reintento del caller (p. ej. answerSaveQueue), que rinde más volviendo luego.
+      if (now - lastAttemptMs < REFRESH_COOLDOWN_MS) {
+        if (cached?.accessToken && !isBearerExpired(cached.expiresAt, now)) {
+          return cached.accessToken
+        }
+        return undefined
+      }
+
+      // 5. Refresh compartido por todos los callers concurrentes.
+      lastAttemptMs = now
+      const flight = refreshOnce()
+      inflight = flight
+      try {
+        const refreshed = await flight
+        if (refreshed?.accessToken) return refreshed.accessToken
+        // El refresh no dio token: el SDK puede haber dejado una sesión válida en
+        // storage (o haberla renovado por su cuenta) → último intento local.
+        const after = await currentSession()
+        if (after?.accessToken && !isBearerExpired(after.expiresAt, Date.now())) {
+          return after.accessToken
+        }
+        return undefined
+      } finally {
+        // Solo limpiar SU vuelo (si otro caller ya armó uno nuevo, no pisarlo).
+        if (inflight === flight) inflight = null
+      }
     },
 
     signInWithGoogle(options?: SignInOptions) {
@@ -242,6 +326,10 @@ export function createSupabaseAuthAdapter(): AuthClientPort {
       await sb().auth.signOut()
     },
 
+    // Verbo del puerto: renovación EXPLÍCITA pedida por el caller (renovar claims tras una
+    // compra, recuperarse de un 401). Deja propagar el fallo a propósito — a diferencia de
+    // `refreshOnce`, que es el uso INTERNO de `getAccessToken` y se lo traga para caer al
+    // mejor esfuerzo. No se unifican: quien pide un refresh explícito quiere saber si falló.
     async refreshSession() {
       const { data } = await sb().auth.refreshSession()
       return mapSession(data.session)

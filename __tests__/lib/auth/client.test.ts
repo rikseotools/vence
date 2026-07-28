@@ -11,15 +11,14 @@ const mockAuth = {
   signInWithIdToken: jest.fn(),
 }
 const mockSignInWithGoogle = jest.fn().mockResolvedValue({ success: true, data: { url: 'https://google' } })
-const mockGetAuthHeaders = jest.fn()
 
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({ auth: mockAuth }),
   signInWithGoogle: (...args: unknown[]) => mockSignInWithGoogle(...args),
 }))
-jest.mock('@/lib/api/authHeaders', () => ({
-  getAuthHeaders: () => mockGetAuthHeaders(),
-}))
+// NO se mockea '@/lib/api/authHeaders': desde T-210 el adapter YA NO lo importa. Era una
+// dependencia invertida (adapter → capa de app) que además creaba un ciclo:
+// supabaseAdapter → authHeaders → lib/auth → supabaseAdapter.
 
 import { createSupabaseAuthAdapter } from '@/lib/auth/adapters/supabaseAdapter'
 
@@ -67,18 +66,6 @@ describe('supabaseAdapter — AuthClientPort', () => {
     const auth = createSupabaseAuthAdapter()
     const u = await auth.getUser()
     expect(u).toMatchObject({ id: 'u2', email: null, metadata: { fullName: null, avatarUrl: null } })
-  })
-
-  test('getAccessToken() extrae el Bearer de getAuthHeaders (singleflight de authHeaders)', async () => {
-    mockGetAuthHeaders.mockResolvedValue({ Authorization: 'Bearer abc.def' })
-    const auth = createSupabaseAuthAdapter()
-    expect(await auth.getAccessToken()).toBe('abc.def')
-  })
-
-  test('getAccessToken() devuelve undefined si no hay Authorization', async () => {
-    mockGetAuthHeaders.mockResolvedValue({ 'X-Device-Id': 'd1' })
-    const auth = createSupabaseAuthAdapter()
-    expect(await auth.getAccessToken()).toBeUndefined()
   })
 
   test('signInWithGoogle() delega en lib/supabase con las options', async () => {
@@ -216,5 +203,166 @@ describe('supabaseAdapter — AuthClientPort', () => {
     await jest.advanceTimersByTimeAsync(15100)
     expect(await p).toBeNull()
     jest.useRealTimers()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────────
+// getAccessToken() — adquisición del Bearer (singleflight + cooldown + frescura)
+//
+// Esta caracterización VIVÍA en `__tests__/lib/api/authHeaders.test.ts`, porque la
+// mecánica vivía en `lib/api/authHeaders.ts`. Se mueve aquí con el código (T-210): el
+// dueño es el adapter, que es quien conoce al proveedor. Los dos casos NUEVOS son los que
+// arreglan el defecto medido: reusar el token fresco sin ir a la red, y no dar por bueno
+// un token caducado solo porque el reloj de pared diga que "hace poco que refrescamos".
+// ─────────────────────────────────────────────────────────────────────────────────
+describe('supabaseAdapter — getAccessToken (Bearer)', () => {
+  const NOW = 1_800_000_000_000
+  const nowSec = NOW / 1000
+  let nowSpy: jest.SpyInstance
+
+  /** Sesión Supabase cruda con la expiración que se quiera (epoch en segundos). */
+  const session = (token: string, expiresAtSec: number | null) => ({
+    user: SB_USER,
+    access_token: token,
+    expires_at: expiresAtSec,
+    refresh_token: 'ref',
+  })
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    nowSpy = jest.spyOn(Date, 'now').mockReturnValue(NOW)
+  })
+  afterEach(() => nowSpy.mockRestore())
+
+  test('token FRESCO en la sesión → lo devuelve sin tocar la red (el fix del flood)', async () => {
+    // Antes: pasados 30 s de reloj de pared se forzaba refreshSession() aunque al token le
+    // quedara casi una hora → bajo Auth.js, re-acuñar el RS256 (~58.400 al día medidos).
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-fresh', nowSec + 3600) }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-fresh')
+    expect(mockAuth.refreshSession).not.toHaveBeenCalled()
+  })
+
+  test('token CADUCADO → refresca y devuelve el nuevo (antes lo servía caducado → 401)', async () => {
+    // ESTE es el 401 de T-210: dentro de la ventana de 30 s se devolvía la sesión cacheada
+    // sin mirar la expiración → notificaciones, medallas y guardado de respuestas a 401.
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-viejo', nowSec - 10) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: session('tok-nuevo', nowSec + 3600) }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-nuevo')
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('token DENTRO del margen de renovación → intenta refrescar (aún no está caducado)', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-justo', nowSec + 120) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: session('tok-nuevo', nowSec + 3600) }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-nuevo')
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('singleflight: N llamadas concurrentes comparten UN solo refreshSession (anti-429)', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-viejo', nowSec - 10) }, error: null })
+    let resolveRefresh!: (v: unknown) => void
+    mockAuth.refreshSession.mockReturnValue(new Promise((r) => { resolveRefresh = r }))
+    const auth = createSupabaseAuthAdapter()
+
+    const p1 = auth.getAccessToken()
+    const p2 = auth.getAccessToken()
+    const p3 = auth.getAccessToken()
+    // Los tres deben estar esperando el MISMO refresh: se resuelve una vez.
+    await Promise.resolve()
+    resolveRefresh({ data: { session: session('tok-sf', nowSec + 3600) }, error: null })
+
+    expect(await Promise.all([p1, p2, p3])).toEqual(['tok-sf', 'tok-sf', 'tok-sf'])
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('cooldown de INTENTOS: tras un refresh fallido NO se re-intenta en <30 s', async () => {
+    // Cambio respecto a la versión de authHeaders, donde el cooldown solo se rearmaba al
+    // ACERTAR: si el refresh fallaba, cada llamada volvía a intentarlo → martilleo (429),
+    // que es justo lo que el cooldown existe para evitar.
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-valido', nowSec + 120) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: { message: '429' } })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-valido') // mejor esfuerzo: sigue siendo válido
+    nowSpy.mockReturnValue(NOW + 29_000)
+    expect(await auth.getAccessToken()).toBe('tok-valido')
+
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('pasados 30 s del último intento, vuelve a intentarlo', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-valido', nowSec + 120) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    await auth.getAccessToken()
+    nowSpy.mockReturnValue(NOW + 31_000)
+    await auth.getAccessToken()
+
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(2)
+  })
+
+  test('caducado + cooldown activo → SIN token (no quemar el reintento del caller con uno muerto)', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-muerto', nowSec - 10) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBeUndefined() // intento 1: refresh falla
+    nowSpy.mockReturnValue(NOW + 5_000)
+    expect(await auth.getAccessToken()).toBeUndefined() // cooldown: no reintenta
+
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('sin sesión → undefined (y no lanza)', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBeUndefined()
+  })
+
+  test('refreshSession que LANZA → no propaga; cae al mejor esfuerzo local', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-local', nowSec + 120) }, error: null })
+    mockAuth.refreshSession.mockRejectedValue(new Error('network down'))
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-local')
+  })
+
+  test('expiración DESCONOCIDA (el proveedor no la expone) → intenta refrescar, pero sirve el que hay', async () => {
+    mockAuth.getSession.mockResolvedValue({ data: { session: session('tok-sin-exp', null) }, error: null })
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: null })
+    const auth = createSupabaseAuthAdapter()
+
+    expect(await auth.getAccessToken()).toBe('tok-sin-exp')
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  test('SIMULACIÓN sesión de estudio (1 h respondiendo): 1 acuñación, no 120', async () => {
+    // Modelo: el usuario responde y la app pide cabeceras ~cada 30 s (guardado + polling
+    // de notificaciones + medallas). Con el token de 1 h, solo debe renovarse al entrar en
+    // el margen de 5 min. Antes: un refresh forzado cada 30 s = 120 en la hora.
+    let current = session('tok-h1', nowSec + 3600)
+    mockAuth.getSession.mockImplementation(async () => ({ data: { session: current }, error: null }))
+    mockAuth.refreshSession.mockImplementation(async () => {
+      current = session('tok-h2', Date.now() / 1000 + 3600)
+      return { data: { session: current }, error: null }
+    })
+    const auth = createSupabaseAuthAdapter()
+
+    for (let i = 0; i < 120; i++) {
+      nowSpy.mockReturnValue(NOW + i * 30_000) // 120 llamadas × 30 s = 1 h
+      expect(await auth.getAccessToken()).toBeTruthy()
+    }
+
+    // Solo al cruzar el margen (a los 55 min ≈ tick 110) se renueva.
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
   })
 })

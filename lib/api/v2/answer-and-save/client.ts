@@ -14,18 +14,10 @@ import { answerAndSaveResponseSchema, type AnswerAndSaveRequest, type AnswerAndS
 export async function answerAndSave(
   params: AnswerAndSaveRequest
 ): Promise<AnswerAndSaveResponse> {
-  // Obtener token de auth (vía puerto agnóstico lib/auth)
-  let accessToken: string | undefined
-  try {
-    const refreshed = await auth.refreshSession()
-    accessToken = refreshed?.accessToken
-  } catch {
-    // fallback a getSession
-  }
-  if (!accessToken) {
-    const session = await auth.getSession()
-    accessToken = session?.accessToken
-  }
+  // Token de auth por el verbo del puerto: cacheado, compartido y con la decisión de
+  // renovar tomada por EXPIRACIÓN (T-210). Antes esto forzaba un refreshSession() por
+  // llamada = una acuñación de RS256 por respuesta guardada.
+  const accessToken = await auth.getAccessToken()
   if (!accessToken) {
     throw new Error('SESSION_EXPIRED')
   }
