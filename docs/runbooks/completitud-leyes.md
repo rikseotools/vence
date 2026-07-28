@@ -22,6 +22,18 @@ La **fuente única del criterio** es `lib/laws/completeness.ts` (`classifyLawCom
 
 > **`verified` legítimo** sin acción: summary con `is_ok`, o `no_consolidated_text=true` (doc no parseable clasificado), o `historical=true` (versión anual sustituida). Las **virtuales** quedan fuera (las cubre scope↔epígrafe).
 
+### ⚠️ COMPLETO ≠ FIEL — el punto ciego de este detector (T-193, 28/07/2026)
+
+Todo lo de arriba responde a **«¿están todos los artículos?»**. NO responde a **«¿dicen lo que dice la fuente?»**, y son preguntas distintas: **una ley puede tener sus artículos sin un solo hueco y ser una paráfrasis de cabo a rabo.**
+
+**El caso:** `rgpd-ue-2016-679` figuraba como verificado, `is_ok: true`, con este summary literal — *«RGPD completo: 99 artículos (1-99, sin huecos) = articulado íntegro»*. Y **72 de esos 99 artículos no eran el texto oficial**, sino una reescritura sinónima. En el art. 43 la redacción se comía *«Los Estados miembros garantizarán que…»*: no es estilo, es contenido normativo. La ley se sirve en **49 temas de 49 oposiciones**. Un `is_ok` que solo cuenta filas es un **FALSO VERDE**, aunque traiga summary.
+
+Ningún otro detector lo veía: los de huecos miran que el tema tenga preguntas (tenía 207), los de scope miran qué artículos entran (entraban todos) y este contaba filas. **Nadie leía el texto.**
+
+**Qué hacer al verificar una ley, además de contar:** coger unos pocos artículos y compararlos de verdad con `compararArticuloOficial` (`lib/laws/compararArticuloOficial.js`, distingue `identico`/`erratas`/`incompleto`/`contaminado`). Si varios salen `contaminado`, esa ley pide auditoría completa. **Nunca escribir en `last_verification_summary` un `is_ok` que solo se apoye en el recuento.** Automatizarlo está pendiente en [T-240].
+
+**Y ojo con la fuente en normas de la UE:** va el CONSOLIDADO de EUR-Lex (`CELEX:0…`), nunca el espejo del BOE, que reproduce el original **con erratas** — comparar contra el BOE decía que 80 de 99 artículos «divergían» y «arreglarlos» habría metido *«las orientación sexuales»* en el temario. La descarga ya está resuelta y es reutilizable (`lib/laws/descargarEurlex.cjs`): valida el contenido y cae al espejo Cellar cuando EUR-Lex raciona con un `202` vacío.
+
 ## Procedimiento
 
 ### 1. Ver el estado real

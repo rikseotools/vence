@@ -6,6 +6,7 @@
 
 const {
   articuloDeEurLex,
+  parrafosDeEurLex,
   esIdEurLex,
   esCelexNoConsolidado,
   urlEurLex,
@@ -85,8 +86,25 @@ describe('articuloDeEurLex — las tres trampas que dieron números falsos', () 
     expect(articuloDeEurLex(HTML, 99, 'X')).toBeNull()
   })
 
-  it('sin rúbrica conocida no rompe (solo poda el «Artículo N»)', () => {
-    expect(articuloDeEurLex(HTML, 2).texto.startsWith('Ámbito')).toBe(true)
+  // CAMBIO DE COMPORTAMIENTO (T-193, 28/07). Antes, sin nuestro `title` la rúbrica se quedaba
+  // dentro del cuerpo. Ahora se poda por su marca en el HTML, que no depende de lo que tengamos
+  // guardado. El caso real: en el art. 73 del RGPD guardamos «Presidente» y EUR-Lex rotula
+  // «Presidencia» — no casaban, y «Presidencia» se colaba como primera línea del texto legal que
+  // íbamos a escribir. Y es precisamente en las leyes a reimportar donde los títulos NO casan.
+  it('poda la rúbrica AUNQUE no sepamos el título (se lee del HTML, no de nuestro `title`)', () => {
+    const a = articuloDeEurLex(HTML, 2)
+    expect(a.texto.startsWith('1. Texto del segundo')).toBe(true)
+    expect(a.texto).not.toMatch(/Ámbito/)
+  })
+
+  it('la rúbrica no se pierde: se devuelve aparte, tal como la rotula la fuente', () => {
+    expect(articuloDeEurLex(HTML, 2).rubrica).toBe('Ámbito')
+    // …y con un título nuestro que NO casa, sigue mandando el oficial.
+    expect(articuloDeEurLex(HTML, 2, 'Ambito de aplicación').rubrica).toBe('Ámbito')
+  })
+
+  it('parrafosDeEurLex tampoco deja la rúbrica en el cuerpo sin título conocido', () => {
+    expect(parrafosDeEurLex(HTML, 2).texto).not.toMatch(/Ámbito/)
   })
 })
 

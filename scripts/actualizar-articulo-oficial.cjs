@@ -35,13 +35,20 @@ require('dotenv').config({ path: '.env.local' })
 const path = require('path')
 const { Client } = require('pg')
 const { compararArticuloOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'compararArticuloOficial'))
-const { parrafosDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { parrafosDeEurLex, articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
 const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
-const { decidirReescritura, resumirPlan } = require(path.join(__dirname, '..', 'lib', 'laws', 'actualizarArticuloGuardas'))
+const { decidirReescritura, revisarTextoOficial, resumirPlan } = require(path.join(__dirname, '..', 'lib', 'laws', 'actualizarArticuloGuardas'))
 
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
 const INCLUIR_REORDENADO = argv.includes('--incluir-reordenado')
+// Puerta EXPLÍCITA para la clase `contaminado` (T-193): solo cuando el origen ya se ha investigado
+// y se sabe que lo que servimos es una redacción NO oficial del mismo artículo. Nunca por defecto.
+const INCLUIR_PARAFRASIS = argv.includes('--reimportar-parafrasis')
+// Previsualización: imprime el texto viejo contra el nuevo. Existe porque los contadores NO bastan
+// —el 27/07 el dry-run daba 10 candidatos y cuatro llevaban pegado un encabezado de sección que
+// había metido nuestro propio extractor, y ningún número lo dijo.
+const VER = argv.includes('--ver')
 const [SLUG, FUENTE, ...RESTO] = argv.filter((a) => !a.startsWith('--'))
 const ARTS = RESTO
 
@@ -88,9 +95,10 @@ if (esCelexNoConsolidado(FUENTE)) {
   const plan = []
   for (const a of arts) {
     const of_ = parrafosDeEurLex(html, a.n, a.title)
+    const rubricaOficial = of_ ? (articuloDeEurLex(html, a.n, a.title) || {}).rubrica : null
     const cmp = compararArticuloOficial(a.content, of_ ? of_.texto : '')
-    const d = decidirReescritura(cmp.clase, { incluirReordenado: INCLUIR_REORDENADO })
-    plan.push({ ...a, oficial: of_ ? of_.texto : '', clase: cmp.clase, resumen: cmp.resumen, ...d })
+    const d = decidirReescritura(cmp.clase, { incluirReordenado: INCLUIR_REORDENADO, incluirParafrasis: INCLUIR_PARAFRASIS })
+    plan.push({ ...a, oficial: of_ ? of_.texto : '', rubricaOficial, clase: cmp.clase, resumen: cmp.resumen, ...d })
   }
 
   for (const p of plan.filter((x) => x.accion === 'reescribir')) {
@@ -103,21 +111,63 @@ if (esCelexNoConsolidado(FUENTE)) {
     for (const b of bloqueados) (porClase[b.clase] ||= []).push(b.n)
     for (const [clase, ns] of Object.entries(porClase)) {
       console.log(`     ${clase}: ${ns.slice(0, 25).join(', ')}${ns.length > 25 ? ` … (${ns.length})` : ''}`)
-      console.log(`       ↳ ${decidirReescritura(clase, { incluirReordenado: INCLUIR_REORDENADO }).motivo}`)
+      console.log(`       ↳ ${decidirReescritura(clase, { incluirReordenado: INCLUIR_REORDENADO, incluirParafrasis: INCLUIR_PARAFRASIS }).motivo}`)
     }
   }
   console.log('\n  ' + JSON.stringify(resumirPlan(plan)))
 
   const aEscribir = plan.filter((x) => x.accion === 'reescribir')
+
+  // Mirar el TEXTO, no el contador. Los números no cazan un encabezado de sección pegado por
+  // nuestro propio extractor; leerlo, sí.
+  if (VER) {
+    for (const p of aEscribir) {
+      console.log(`\n${'─'.repeat(78)}\n  ART. ${p.n} — ${p.title || '(sin rúbrica)'} · ${p.clase}`)
+      console.log(`\n  ── AHORA (${p.content.length} ch) ──\n${p.content.split('\n').map((l) => '  │ ' + l).join('\n')}`)
+      console.log(`\n  ── QUEDARÍA (${p.oficial.length} ch) ──\n${p.oficial.split('\n').map((l) => '  ▶ ' + l).join('\n')}`)
+    }
+    console.log(`\n${'─'.repeat(78)}`)
+  }
+
   if (!APPLY) {
     console.log(`\n🔍 DRY-RUN: no se ha escrito nada. Añade --apply para reescribir ${aEscribir.length}.`)
+    if (!VER && aEscribir.length) console.log('   (añade --ver para LEER el texto que se guardaría: los contadores no cazan un encabezado colado)')
     await c.end(); return
   }
   if (!aEscribir.length) { console.log('\nnada que escribir.'); await c.end(); return }
 
+  // La extracción se revisa ANTES de tocar nada: la re-comparación de dentro de la transacción
+  // NO caza un defecto de extracción (compararía basura contra la misma basura). Si uno falla, no
+  // se escribe NINGUNO — si el extractor falla en un artículo, no hay razón para fiarse del resto.
+  const malos = aEscribir.map((p) => ({ p, v: revisarTextoOficial(p.oficial, p.rubricaOficial) })).filter((x) => !x.v.ok)
+  if (malos.length) {
+    console.error(`\n❌ NO se escribe nada: la extracción falla en ${malos.length} artículo(s).`)
+    for (const m of malos) console.error(`   · art. ${m.p.n}: ${m.v.motivo}`)
+    await c.end(); process.exit(3)
+  }
+
   await c.query('BEGIN')
   try {
     for (const p of aEscribir) {
+      // El texto anterior se CONSERVA antes de pisarlo. `article_versions` existía desde el diseño
+      // con la columna `previous_content` y estaba a cero filas: sin esto, la objeción de la guarda
+      // («sobrescribir borra la prueba») sería cierta y no habría forma de auditar qué servíamos.
+      await c.query(
+        // `version_number` es TEXT (la tabla estaba a cero filas, así que la convención se fija
+        // aquí: entero en texto, correlativo por artículo). El `regexp_replace` es defensivo por si
+        // alguna vez entra un valor no numérico: preferible empezar de nuevo que reventar la tanda.
+        `INSERT INTO article_versions (article_id, version_number, content_hash, previous_content, change_description)
+         VALUES ($1,
+                 (COALESCE((SELECT MAX(NULLIF(regexp_replace(version_number, '\\D', '', 'g'), '')::int)
+                              FROM article_versions WHERE article_id = $1), 0) + 1)::text,
+                 $2, $3, $4)`,
+        [
+          p.id,
+          require('crypto').createHash('sha256').update(p.oficial).digest('hex'),
+          p.content,
+          `${p.clase}: reescrito con el texto oficial de ${FUENTE}${INCLUIR_PARAFRASIS ? ' (--reimportar-parafrasis)' : ''}`,
+        ],
+      )
       await c.query('UPDATE articles SET content = $1 WHERE id = $2', [p.oficial, p.id])
       // No se da por buena la escritura: se relee y se re-compara DENTRO de la transacción.
       const { rows: [post] } = await c.query('SELECT content FROM articles WHERE id = $1', [p.id])
