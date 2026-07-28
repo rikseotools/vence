@@ -169,3 +169,42 @@ describe('utilidades', () => {
     expect(hoyMadrid(new Date('2026-07-27T22:30:00Z'))).toBe('2026-07-28')
   })
 })
+
+describe('degradación por oposición NO ACTIVA (precisión de la banda de error)', () => {
+  // Una oposición inactiva es ficha de CATÁLOGO (radar), no landing servida: su estado puede
+  // contradecirse con sus fechas sin que ningún opositor lo lea. La incidencia se registra igual
+  // —el dato sigue mal— pero baja a `warn`, porque `error` significa "está EN PANTALLA y hay que
+  // arreglarlo hoy". Medido el 28/07/2026: los 4 errores vivos del detector eran los 4 de
+  // oposiciones inactivas, y el catálogo (~2.500 fichas) los repone cada noche al vencer plazos.
+  const vencida = { estado_proceso: 'inscripcion_abierta', inscription_deadline: '2026-07-01' }
+
+  it('ACTIVA con plazo vencido → error (se ve, hay que arreglarlo)', () => {
+    expect(sev({ ...vencida, is_active: true })).toContain('error')
+  })
+
+  it('NO ACTIVA con el MISMO defecto → warn, no error', () => {
+    expect(sev({ ...vencida, is_active: false })).not.toContain('error')
+    expect(sev({ ...vencida, is_active: false })).toContain('warn')
+  })
+
+  it('la incidencia NO desaparece: sigue detectándose, solo cambia la severidad', () => {
+    expect(reglas({ ...vencida, is_active: false })).toContain('abierta_plazo_vencido')
+  })
+
+  it('sin el campo `is_active` NO degrada: un dato ausente no apaga una alarma en silencio', () => {
+    expect(sev(vencida)).toContain('error')
+    expect(sev({ ...vencida, is_active: undefined })).toContain('error')
+  })
+
+  it('degrada TODAS las reglas de error, no solo la del plazo', () => {
+    const examenPasado = { estado_proceso: 'pendiente_examen', exam_date: '2026-05-17' }
+    expect(sev({ ...examenPasado, is_active: true })).toContain('error')
+    expect(sev({ ...examenPasado, is_active: false })).not.toContain('error')
+    expect(reglas({ ...examenPasado, is_active: false })).toContain('pendiente_examen_pasado')
+  })
+
+  it('los warn de una inactiva siguen siendo warn (no se inventan severidades)', () => {
+    const s = sev({ estado_proceso: 'inscripcion_abierta', is_active: false })
+    expect(s.every((x) => x === 'warn')).toBe(true)
+  })
+})

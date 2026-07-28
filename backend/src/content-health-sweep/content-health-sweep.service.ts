@@ -761,8 +761,14 @@ export function detectarIncoherenciasEstado(
   hoy: string,
 ): Array<{ severidad: 'error' | 'warn'; regla: string; mensaje: string }> {
   const out: Array<{ severidad: 'error' | 'warn'; regla: string; mensaje: string }> = [];
+  // Espejo de la degradación del núcleo (lib/convocatoria/estadoCoherencia.cjs): una oposición NO
+  // ACTIVA es ficha de catálogo, no landing servida — su estado puede contradecirse sin que ningún
+  // opositor lo lea. Se registra, pero `error` se reserva para lo que está EN PANTALLA. Sin esto,
+  // los ~2.500 procesos del catálogo re-llenan la banda de error cada noche al vencer sus plazos.
+  // Por defecto NO degrada: solo con `is_active === false` explícito.
+  const soloCatalogo = o.is_active === false;
   const add = (severidad: 'error' | 'warn', regla: string, mensaje: string) =>
-    out.push({ severidad, regla, mensaje });
+    out.push({ severidad: soloCatalogo && severidad === 'error' ? 'warn' : severidad, regla, mensaje });
   const dia = (v: unknown) => (v ? String(v).slice(0, 10) : null);
 
   const e = o.estado_proceso as string | null;

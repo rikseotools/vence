@@ -13,6 +13,7 @@ import { detectarIncoherenciasEstado } from './content-health-sweep.service';
 
 const HOY = '2026-07-27';
 const reglas = (o: Record<string, unknown>) => detectarIncoherenciasEstado(o, HOY).map((i) => i.regla);
+const sevs = (o: Record<string, unknown>) => detectarIncoherenciasEstado(o, HOY).map((i) => i.severidad);
 
 describe('mirror estado ↔ fechas (backend @Cron) — mismos veredictos que el núcleo del root', () => {
   it("'inscripcion_abierta' con plazo vencido ⇒ error", () => {
@@ -84,5 +85,29 @@ describe('mirror estado ↔ fechas (backend @Cron) — mismos veredictos que el 
     ['post-examen con referencia VIEJA y sin fecha', { is_active: true, estado_proceso: 'nombramientos', boe_reference: 'BOE núm. 45, de 21/02/2023' }],
   ])('%s ⇒ sin incidencias (no gritar sin motivo)', (_c, o) => {
     expect(detectarIncoherenciasEstado(o as Record<string, unknown>, HOY)).toEqual([]);
+  });
+});
+
+describe('degradación por oposición NO ACTIVA (paridad con el núcleo)', () => {
+  // Mismos casos que `__tests__/lib/convocatoria/estadoCoherencia.test.ts`: si el espejo del
+  // backend no degradara igual, el @Cron nocturno escribiría `error` donde el CLI escribe `warn`
+  // y el badge diría una cosa distinta según quién corriera el barrido.
+  const vencida = { estado_proceso: 'inscripcion_abierta', inscription_deadline: '2026-07-01' };
+
+  it('ACTIVA con plazo vencido → error', () => {
+    expect(sevs({ ...vencida, is_active: true })).toContain('error');
+  });
+
+  it('NO ACTIVA con el mismo defecto → warn', () => {
+    expect(sevs({ ...vencida, is_active: false })).not.toContain('error');
+    expect(sevs({ ...vencida, is_active: false })).toContain('warn');
+  });
+
+  it('la incidencia se sigue detectando, solo cambia la severidad', () => {
+    expect(reglas({ ...vencida, is_active: false })).toContain('abierta_plazo_vencido');
+  });
+
+  it('sin `is_active` NO degrada', () => {
+    expect(sevs(vencida)).toContain('error');
   });
 });
