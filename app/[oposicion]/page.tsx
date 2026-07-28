@@ -189,6 +189,14 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
     plazasLibres: plazasLibres ? formatNumber(plazasLibres) : '—',
     plazasPromocion: plazasPromocion ? formatNumber(plazasPromocion) : '—',
     plazasDiscapacidad: plazasDiscapacidad ? formatNumber(plazasDiscapacidad) : '—',
+    // El cupo de discapacidad, YA REDACTADO con su relación con el turno libre («, de las cuales N
+    // están reservadas…» si va dentro · « y otras N más reservadas…» si va aparte · un punto y nada
+    // más si no consta). Existe como VARIABLE porque los textos de la landing viven en BD: sin ella
+    // la única forma de nombrar el cupo en una FAQ es teclear «({plazasDiscapacidad} reservadas)»,
+    // que se lee como una suma tanto si lo es como si no. Con `plazas_discapacidad_incluidas=true`
+    // eso publicaba 468 donde el proceso tiene 425 (auxilio-judicial) — y encima en el JSON-LD, que
+    // es lo que se lleva Google. Misma frase que el hero, del mismo núcleo: una sola verdad.
+    reservaDiscapacidad: reservaDisc ?? '.',
     // Total del proceso. DERIVADO en `oposiciones_ssot` (los 3 turnos + plazas_otros_turnos), nunca
     // tecleado: una tarjeta que escribe el total a mano no se entera cuando el dato cambia — así
     // celador-sescam-clm llegó a anunciar 537 plazas donde el DOCM dice 128.
