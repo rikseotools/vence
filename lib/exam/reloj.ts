@@ -102,6 +102,30 @@ export function siguienteEnBlanco(
   return null
 }
 
+/**
+ * Igual que `siguienteEnBlanco` pero hacia ATRÁS: la anterior sin responder, dando la vuelta
+ * por el final. Con un solo sentido, pasarse de la que buscabas obligaba a dar la vuelta
+ * entera al examen para volver a ella.
+ */
+export function anteriorEnBlanco(
+  respuestas: Record<number, string | undefined | null> | Array<string | undefined | null>,
+  total: number,
+  desde: number,
+): number | null {
+  const n = Math.max(0, Math.floor(total || 0))
+  if (n === 0) return null
+  const respondida = (i: number) => {
+    const v = Array.isArray(respuestas) ? respuestas[i] : respuestas?.[i]
+    return typeof v === 'string' && v.trim() !== ''
+  }
+  const inicio = Number.isFinite(desde) ? Math.floor(desde) : 0
+  for (let paso = 1; paso <= n; paso++) {
+    const i = (((inicio - paso) % n) + n) % n
+    if (!respondida(i)) return i
+  }
+  return null
+}
+
 /** Cuántas quedan en blanco (para el contador de la barra). */
 export function cuantasEnBlanco(
   respuestas: Record<number, string | undefined | null> | Array<string | undefined | null>,

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useDailyGoal } from '../hooks/useDailyGoal'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { emitClientEvent } from '../lib/observability/client'
+import { clampOffsetArrastre } from '../lib/ui/arrastrable'
 
 // ============================================================================
 // Helpers puros (testeados en __tests__/components/DailyGoalBanner.test.ts).
@@ -34,29 +35,10 @@ export function nextBannerVisible(currentEffective: boolean): boolean {
  * del viewport (queda siempre completamente visible con un margen). Devuelve el
  * offset (relativo a la posición natural) ya corregido. Pura: sin DOM ni window.
  */
-export function clampBannerOffset(args: {
-  naturalLeft: number
-  naturalTop: number
-  baseX: number
-  baseY: number
-  dx: number
-  dy: number
-  width: number
-  height: number
-  viewportWidth: number
-  viewportHeight: number
-  margin?: number
-}): { x: number; y: number } {
-  const m = args.margin ?? 4
-  let absLeft = args.naturalLeft + args.baseX + args.dx
-  let absTop = args.naturalTop + args.baseY + args.dy
-  absLeft = Math.min(Math.max(absLeft, m), args.viewportWidth - args.width - m)
-  absTop = Math.min(Math.max(absTop, m), args.viewportHeight - args.height - m)
-  return {
-    x: Math.round(absLeft - args.naturalLeft),
-    y: Math.round(absTop - args.naturalTop),
-  }
-}
+// La implementación vive en `lib/ui/arrastrable.ts` desde que los controles del examen
+// necesitaron el mismo arrastre: una sola copia, dos usuarios. Se mantiene el nombre y la
+// exportación de siempre para no romper a quien ya la importaba (incluidos sus tests).
+export const clampBannerOffset = clampOffsetArrastre
 
 export default function DailyGoalBanner() {
   const { user, isPremium, userProfile } = useAuth() as any

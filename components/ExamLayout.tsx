@@ -10,6 +10,7 @@ import {
   tiempoRestanteSeg,
   estadoReloj,
   siguienteEnBlanco,
+  anteriorEnBlanco,
   cuantasEnBlanco,
   OBJETIVO_MIN_MINUTOS,
   OBJETIVO_MAX_MINUTOS,
@@ -27,6 +28,9 @@ import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
 import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
+import { useOffsetCabecera } from '@/hooks/useOffsetCabecera'
+import { useArrastrable } from '@/hooks/useArrastrable'
+import { useFueraDePantalla } from '@/hooks/useFueraDePantalla'
 import { logClientError } from '@/lib/logClientError'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -429,6 +433,19 @@ export default function ExamLayout({
   // Desde qué pregunta busca la siguiente en blanco. Es un ref y no estado: cambia al saltar y no
   // debe provocar re-render de la lista entera de preguntas en mitad de un examen.
   const ultimaVisitadaRef = useRef<number>(-1)
+  // Dónde se pega la barra: JUSTO debajo de la cabecera del sitio, que también es pegajosa y va
+  // por encima (z-50). Con `top-0` la barra se quedaba pegada DETRÁS de ella: invisible y sin
+  // recibir los clics (los dos síntomas que reportó Manolo eran este mismo fallo).
+  const offsetCabecera = useOffsetCabecera()
+  // Cada control se arrastra por su cuenta: el sitio que a uno le viene bien a otro le tapa el
+  // enunciado, así que la posición es suya y se recuerda en su dispositivo.
+  const arrastreReloj = useArrastrable('examen:reloj')
+  const arrastreContador = useArrastrable('examen:contador')
+  const arrastreBlanco = useArrastrable('examen:en-blanco')
+  // Los controles flotantes solo salen cuando la cabecera del examen se ha ido de pantalla:
+  // arriba ya están el reloj y las respondidas en su tarjeta, así que flotar ahí solo taparía
+  // el título sin aportar nada.
+  const { ref: cabeceraExamenRef, fuera: cabeceraExamenFuera } = useFueraDePantalla<HTMLDivElement>()
 
   // 🔒 Estados para límite de preguntas (usuarios FREE)
   const [effectiveQuestions, setEffectiveQuestions] = useState<ExamQuestion[]>(questions || [])
@@ -1140,9 +1157,10 @@ export default function ExamLayout({
   // render no se nota.
   const enBlancoAhora = cuantasEnBlanco(userAnswers as Record<number, string | undefined>, totalQuestions)
 
-  /** Salta a la siguiente pregunta sin responder (da la vuelta al llegar al final). */
-  const irASiguienteEnBlanco = () => {
-    const destino = siguienteEnBlanco(
+  /** Salta a la anterior/siguiente pregunta sin responder (da la vuelta en los dos extremos). */
+  const irAEnBlanco = (sentido: 'anterior' | 'siguiente') => {
+    const buscar = sentido === 'anterior' ? anteriorEnBlanco : siguienteEnBlanco
+    const destino = buscar(
       userAnswers as Record<number, string | undefined>,
       totalQuestions,
       ultimaVisitadaRef.current,
@@ -1180,7 +1198,7 @@ export default function ExamLayout({
         )}
 
         {/* ✅ HEADER DEL EXAMEN */}
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+        <div ref={cabeceraExamenRef} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
           <div className="mb-4">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📝 Modo Examen</h1>
             <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
@@ -1343,23 +1361,41 @@ export default function ExamLayout({
           })()}
         </div>
 
-        {/* ⏱️ BARRA FIJA DEL EXAMEN (feedback Manolo, 28/07/2026)
+        {/* ⏱️ CONTROLES FLOTANTES DEL EXAMEN (feedback Manolo, 28/07/2026)
             Dos cosas que faltaban y que él pidió: el reloj se perdía de vista al pasar de la
             primera pregunta, y no había forma de volver a las que dejó en blanco sin subir a ojo
-            por una lista de 50. Solo mientras se hace el examen: al corregir estorba. */}
+            por una lista de 50. Solo mientras se hace el examen: al corregir estorba.
+
+            Van FLOTANTES y por separado, no en una barra única: cada control se arrastra a donde
+            el usuario quiera (posición recordada en su dispositivo) porque el sitio que a uno le
+            va bien a otro le tapa el enunciado. Arrancan justo bajo la cabecera — que es
+            pegajosa y va por encima (z-50): con `top-0` quedaban DETRÁS de ella, invisibles y sin
+            recibir los clics. */}
         {!isSubmitted && totalQuestions > 0 && (
-          <div className="sticky top-0 z-30 -mx-2 px-2 py-2 mb-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              {/* Reloj: un toque alterna transcurrido ↔ lo que queda para el objetivo */}
-              <button
-                type="button"
-                onClick={() => {
-                  const nuevo = !modoCuentaAtras
-                  setModoCuentaAtras(nuevo)
-                  safeSet('exam_reloj_cuenta_atras', nuevo ? '1' : '0')
-                }}
-                title={modoCuentaAtras ? 'Ver el tiempo transcurrido' : 'Ver el tiempo que queda para tu objetivo'}
-                className={`font-mono font-bold text-lg px-3 py-1.5 rounded-lg border transition-colors ${
+          <div
+            style={{ top: offsetCabecera + 6 }}
+            aria-hidden={!cabeceraExamenFuera}
+            className={`fixed left-0 right-0 z-30 px-3 pointer-events-none transition-opacity duration-200 ${
+              cabeceraExamenFuera ? 'opacity-100' : 'opacity-0 invisible'
+            }`}
+          >
+            <div className="max-w-4xl mx-auto flex items-start justify-between gap-2">
+              {/* Reloj y objetivo van JUNTOS: el objetivo solo significa algo respecto al reloj
+                  (es contra lo que corre la cuenta atrás), así que separarlos los convertía en dos
+                  controles sin relación aparente. */}
+              <div
+                ref={arrastreReloj.ref}
+                onPointerDown={arrastreReloj.onPointerDown}
+                style={arrastreReloj.estilo}
+                title="Arrástralo si te tapa algo"
+                className="pointer-events-auto flex flex-col gap-1 rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg px-2 py-1.5 cursor-grab active:cursor-grabbing"
+              >
+              <div className="flex items-center gap-2">
+              {/* El tiempo. Qué se está viendo lo eligen los dos botones de abajo: alternarlo con
+                  un toque sobre el propio reloj no lo adivinaba nadie. */}
+              <div
+                data-testid="reloj-examen"
+                className={`px-2 py-0.5 rounded-lg border font-mono font-bold text-lg leading-tight ${
                   !modoCuentaAtras
                     ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-200'
                     : estadoDelReloj === 'agotado'
@@ -1372,7 +1408,7 @@ export default function ExamLayout({
                 {modoCuentaAtras
                   ? (restanteSeg >= 0 ? `⏳ ${formatearTiempo(restanteSeg)}` : `⏳ +${formatearTiempo(-restanteSeg)}`)
                   : `⏱️ ${formatearTiempo(elapsedTime)}`}
-              </button>
+              </div>
 
               {/* Objetivo: es TUYO, no el del examen oficial (nuestros exámenes de tema no llevan
                   duración oficial y no vamos a inventárnosla). */}
@@ -1396,31 +1432,118 @@ export default function ExamLayout({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setEditandoObjetivo(true)}
-                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2"
+                  onClick={arrastreReloj.siNoArrastro(() => setEditandoObjetivo(true))}
+                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2 pr-1"
                 >
                   objetivo: {Math.round(objetivoSeg / 60)} min
                 </button>
               )}
-
-              <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                {answeredCount}/{totalQuestions}
               </div>
 
-              {/* Volver a las que faltan sin subir a ojo. Da la vuelta al llegar al final, que es
-                  justo cuando se necesita: al terminar la primera pasada. */}
-              <button
-                type="button"
-                onClick={irASiguienteEnBlanco}
-                disabled={enBlancoAhora === 0}
-                className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  enBlancoAhora === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+              {/* Dos botones nombrados en vez de un reloj que alterna al tocarlo: así se ve de
+                  un vistazo QUÉ se está mirando y que hay otra opción. El toque sobre el propio
+                  reloj no lo descubría nadie. */}
+              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-[11px] font-semibold">
+                {([
+                  { modo: false, etiqueta: '⏱️ reloj', aria: 'Ver el tiempo transcurrido' },
+                  { modo: true, etiqueta: '⏳ cuenta atrás', aria: 'Ver la cuenta atrás hasta tu objetivo' },
+                ] as const).map(op => (
+                  <button
+                    key={op.etiqueta}
+                    type="button"
+                    aria-pressed={modoCuentaAtras === op.modo}
+                    aria-label={op.aria}
+                    onClick={arrastreReloj.siNoArrastro(() => {
+                      setModoCuentaAtras(op.modo)
+                      safeSet('exam_reloj_cuenta_atras', op.modo ? '1' : '0')
+                    })}
+                    className={`px-2 py-1 transition-colors ${
+                      modoCuentaAtras === op.modo
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {op.etiqueta}
+                  </button>
+                ))}
+              </div>
+              </div>
+
+              <div
+                ref={arrastreContador.ref}
+                onPointerDown={arrastreContador.onPointerDown}
+                style={arrastreContador.estilo}
+                title="Preguntas respondidas del total. Arrástralo si te tapa algo"
+                className="pointer-events-auto rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg px-3 py-1 text-center leading-tight cursor-grab active:cursor-grabbing"
               >
-                {enBlancoAhora === 0 ? '✓ Ninguna en blanco' : `⚪ Ir a la siguiente en blanco (${enBlancoAhora})`}
-              </button>
+                {/* "4/25" a secas no dice de qué: puede leerse como la pregunta en la que vas.
+                    Lleva la palabra debajo. */}
+                <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                  {answeredCount}<span className="opacity-60"> / {totalQuestions}</span>
+                </div>
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                  respondidas
+                </div>
+              </div>
+
+              {/* Volver a las que faltan sin subir a ojo, en los DOS sentidos: con un solo
+                  sentido, pasarse de la que buscabas obligaba a dar la vuelta entera al examen.
+                  Ambas flechas dan la vuelta al llegar al extremo, que es justo cuando se
+                  necesitan: al terminar la primera pasada las que faltan quedaron atrás. */}
+              <div
+                ref={arrastreBlanco.ref}
+                onPointerDown={arrastreBlanco.onPointerDown}
+                style={arrastreBlanco.estilo}
+                title="Saltar a las preguntas que has dejado en blanco. Arrástralo si te tapa algo"
+                className="pointer-events-auto flex items-center gap-0.5 rounded-full bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-gray-700 shadow-lg p-1 cursor-grab active:cursor-grabbing"
+              >
+                <button
+                  type="button"
+                  onClick={arrastreBlanco.siNoArrastro(() => irAEnBlanco('anterior'))}
+                  disabled={enBlancoAhora === 0}
+                  aria-label="Ir a la anterior pregunta en blanco"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    enBlancoAhora === 0
+                      ? 'text-gray-300 cursor-not-allowed dark:text-gray-600'
+                      : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 active:scale-90 dark:text-blue-300 dark:hover:bg-blue-900/40'
+                  }`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+
+                {/* Cuántas quedan por contestar: el número es lo que importa, y en verde cuando
+                    ya no queda ninguna (señal de "puedes entregar"). */}
+                <span className="flex items-center gap-1.5 px-1 whitespace-nowrap">
+                  <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold ${
+                    enBlancoAhora === 0
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                      : 'bg-blue-600 text-white'
+                  }`}>
+                    {enBlancoAhora === 0 ? '✓' : enBlancoAhora}
+                  </span>
+                  <span className="hidden sm:inline text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                    en blanco
+                  </span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={arrastreBlanco.siNoArrastro(() => irAEnBlanco('siguiente'))}
+                  disabled={enBlancoAhora === 0}
+                  aria-label="Ir a la siguiente pregunta en blanco"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    enBlancoAhora === 0
+                      ? 'text-gray-300 cursor-not-allowed dark:text-gray-600'
+                      : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 active:scale-90 dark:text-blue-300 dark:hover:bg-blue-900/40'
+                  }`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]" aria-hidden="true">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         )}

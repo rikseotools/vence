@@ -13,6 +13,7 @@ import {
   tiempoRestanteSeg,
   estadoReloj,
   siguienteEnBlanco,
+  anteriorEnBlanco,
   cuantasEnBlanco,
   OBJETIVO_MIN_MINUTOS,
   OBJETIVO_MAX_MINUTOS,
@@ -106,6 +107,37 @@ describe('saltar a las preguntas en blanco', () => {
   it('una respuesta vacía o de espacios cuenta como EN BLANCO', () => {
     expect(siguienteEnBlanco({ 0: 'a', 1: '', 2: '   ' }, 3, 0)).toBe(1)
     expect(siguienteEnBlanco({ 0: 'a', 1: '', 2: '   ' }, 3, 1)).toBe(2)
+  })
+
+  it('también busca hacia ATRÁS: pasarse no obliga a dar la vuelta entera', () => {
+    expect(anteriorEnBlanco(respuestas, 5, 4)).toBe(2)
+    expect(anteriorEnBlanco(respuestas, 5, 3)).toBe(2)
+  })
+
+  it('hacia atrás DA LA VUELTA por el final', () => {
+    expect(anteriorEnBlanco(respuestas, 5, 2)).toBe(4)
+    expect(anteriorEnBlanco(respuestas, 5, 0)).toBe(4)
+  })
+
+  it('ida y vuelta son simétricas: ‹ deshace lo que hizo ›', () => {
+    const siguiente = siguienteEnBlanco(respuestas, 5, 0) // 2
+    expect(siguiente).toBe(2)
+    const otra = siguienteEnBlanco(respuestas, 5, siguiente as number) // 4
+    expect(anteriorEnBlanco(respuestas, 5, otra as number)).toBe(siguiente)
+  })
+
+  it('hacia atrás devuelve null cuando no queda ninguna en blanco', () => {
+    expect(anteriorEnBlanco({ 0: 'a', 1: 'b' }, 2, 1)).toBeNull()
+    expect(anteriorEnBlanco({}, 0, 0)).toBeNull()
+  })
+
+  it('con UNA sola en blanco, ambos sentidos llevan a la misma', () => {
+    const casi: Record<number, string | undefined> = { 0: 'a', 1: undefined, 2: 'c' }
+    expect(siguienteEnBlanco(casi, 3, 0)).toBe(1)
+    expect(anteriorEnBlanco(casi, 3, 0)).toBe(1)
+    // Y estando ya en ella, sigue siendo la única a la que ir (da la vuelta y vuelve a sí misma).
+    expect(siguienteEnBlanco(casi, 3, 1)).toBe(1)
+    expect(anteriorEnBlanco(casi, 3, 1)).toBe(1)
   })
 
   it('funciona igual con un array (no solo con el mapa por índice)', () => {
