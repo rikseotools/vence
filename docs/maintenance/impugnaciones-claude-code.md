@@ -14,6 +14,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 - 🛠️ **OBLIGATORIO usar las 2 herramientas** (`scripts/impugnaciones/`, creadas 15/07 porque Claude se saltaba pasos del manual): **(1)** `node scripts/impugnaciones/revisar-impugnacion.cjs <dispute_id>` genera el **dossier** con los datos + los dos checks pre-rellenados + la checklist de 9 puntos — **empieza SIEMPRE por aquí** al analizar. **(2)** `node scripts/impugnaciones/validar-explicacion.cjs <question_id> <fichero>` es un **guardarraíl que DEBE pasar en verde ANTES de aplicar cualquier explicación**: verifica formato §5.1 (análisis por opción + saltos de línea, no apelotonado), cita literal del blockquote en el artículo vinculado (caza citas inventadas — **la comprueba ENTERA**, ver §5.1.bis), y coherencia clave↔opción marcada CORRECTA. Si falla, **NO se aplica** la explicación hasta arreglarla. El código no se despista aunque Claude sí. **Desde el 27/07 dice además si la explicación será BARAJABLE** (🔀) y da el comando para transcribirla tras aplicarla; si avisa de que NO se podrá, reescríbela con una razón por opción — que es el mismo §5.1 que el manual ya exige.
 - 🗺️ **ENFORCEMENT de scope/epígrafe (en el dossier, desde 24/07):** cuando la impugnación va de **temario / epígrafe / scope / "no entra" / "es de otro tema"**, el dossier imprime un **CHECK SCOPE/EPÍGRAFE** con el estado de verificación de la oposición del usuario (Paso 1 epígrafe clonado + Paso 2 scope) y un **aviso BLOQUEANTE 🛑 si el Paso 1 está `never_sourced`** — porque resolver un scope contra un epígrafe sin clonar del oficial es un **falso verde** (caso Sara 24/07: casi se rechaza como "falso positivo" con el scope `verified_correct` pero el epígrafe `never_sourced`). Es la "Regla previa OBLIGATORIA" de `verificar-epigrafes-scope.md`, ahora enforzada por código (módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`, compartido con el dossier de feedback; test `__tests__/impugnaciones/scopeEnforcement.test.js`). **No resuelvas una queja de scope si el dossier saca el 🛑 — haz el Paso 1 primero.**
 - NUNCA cerrar / rechazar / modificar sin **borrador del mensaje + aprobación explícita** de Manuel.
+- 💶 **Cerrar como `resolved` PAGA 1 € automáticamente** (desde 28/07/2026): si la impugnación la escribió un usuario **premium**, el cierre le concede 1 € solo, sin que tú hagas nada — ver §6.bis. Consecuencia operativa: **`resolved` significa "tenía razón", no "le damos la razón para quedar bien"**. Un cierre de cortesía ahora cuesta dinero y ensucia la señal de calidad. Si la impugnación no es válida, es `rejected` (no paga y no penaliza al usuario). Y **NUNCA menciones la recompensa en el mensaje** — el badge 🎁 ya se lo comunica.
 - 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next` — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). **No hace falta pasar `--sid`: se identifica sola** por `CLAUDE_CODE_SESSION_ID` (cada sesión de Claude Code trae el suyo). `revisar-impugnacion.cjs <id>` también la coge al abrir el dossier y avisa si otra sesión ya la tiene. Un claim se auto-libera a las 2h. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
 - **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
@@ -655,6 +656,33 @@ const result = await res.json();
 > **El email se envía en el mismo flujo de aplicación** (`sendEmailV2` directo, sin saltos HTTP intermedios). Si `emailSent === false`, revisar `emailError` o `emailSkipReason`. La disputa **siempre queda resuelta** aunque el email falle (no hay rollback).
 
 > **NO hagas UPDATE directo en BD.** El trigger PG antiguo fue eliminado el 14/04/2026 porque fallaba en silencio por cold-start de Vercel. Si haces UPDATE directo, **NO se enviará email al usuario**.
+
+## 6.bis Cerrar como `resolved` concede 1 € al usuario (post-28/07/2026)
+
+**Decisión Manuel (28/07):** aceptar una impugnación recompensa al usuario con **1 €** en su saldo del Programa de Recompensas. **Es automática**: la concede `resolveDispute` en el mismo cierre, así que **no tienes que crear nada** — ni `POST /api/admin/rewards` ni SQL. Si lo haces a mano, duplicas.
+
+**Cuándo se concede** (todo tiene que cumplirse):
+| Condición | Detalle |
+|---|---|
+| Estado `resolved` | `rejected` no paga — y tampoco penaliza al usuario |
+| Usuario **premium** | El programa es solo-premium. Un free no cobra aunque su impugnación sea impecable |
+| La escribió una persona | `source='user'`. Las auto-detectadas por IA (`ai_auto`, §12.1) no pagan: no hay a quién |
+| Bajo el tope | **10 aceptadas/mes por usuario** (`IMPUGNACION_MONTHLY_CAP`). Al llegar al tope se sigue resolviendo igual, simplemente no suma |
+
+**Lo que esto cambia en tu criterio, que es lo importante:** cerrar `resolved` una impugnación que en realidad es un falso positivo ya no es solo un error de registro — **paga 1 € y contamina la métrica de precisión de la IA** (§12.2). El manual ya decía que un falso positivo se rechaza (§10.1); ahora además cuesta dinero. No cambies tu criterio para "premiar" al usuario, ni al revés: si tenía razón, `resolved` y punto.
+
+**Detalles que evitan sustos:**
+- **No es retroactiva.** Las ~1.268 impugnaciones resueltas antes del 28/07 no generan nada.
+- **Re-resolver no paga dos veces.** El anti-duplicado es físico (índice único sobre `reward_submissions.dispute_id`), no depende de que te acuerdes.
+- **Si la concesión falla, la impugnación se resuelve igual.** Nunca bloquea el cierre; el fallo queda en `observable_events` (`referral_error`, `metadata.step='dispute_reward'`).
+- **El usuario se entera por el badge 🎁**, no por email. **NUNCA lo menciones en el mensaje de respuesta** (decisión Manuel 24/07 para bug/ugc, aplica igual aquí): queda cutre y el mensaje va del asunto, no del dinero.
+- **Comprobarlo:** `SELECT amount, created_at FROM reward_submissions WHERE dispute_id = '<id>'`.
+
+**Por qué se hizo junto al arreglo del formulario (T-198):** hasta el 28/07 el formulario **enviaba la impugnación al pulsar el motivo**, sin dejar escribir — el 54% llegaba sin una palabra del usuario. Pagar por impugnación aceptada con ese formulario habría premiado el volumen (pulsar motivos a voleo salía rentable). Las dos cosas van juntas y por eso el envío ahora es explícito. **Si alguien reintroduce el auto-envío, esta recompensa se convierte en un incentivo a spamear.**
+
+Detalle del programa y de las otras 4 fuentes: `docs/runbooks/embajadores-recompensas.md`. Implementación: `lib/referrals/disputeReward.ts` (política pura en `lib/referrals/logic.ts`).
+
+---
 
 ## 7. Tablas Involucradas
 
