@@ -1813,3 +1813,80 @@ no toca nada y lo dice: la pregunta queda para la pasada LLM. Nunca inventa ni r
 del manual (una razón por opción, en su propio bloque) y evita frases que solo tengan sentido por
 la POSICIÓN («como se ha visto en la primera opción», «las dos últimas son incorrectas»): esas no
 sobreviven al barajado ni con estructura.
+
+---
+
+## 🧱 El cubo «Explicación apelotonada» de /admin/calidad — cómo atacarlo
+
+**Qué es:** pregunta **activa** con una explicación de **más de 400 caracteres y ni un solo salto
+de línea** (`cramped_explanation` en `app/api/admin/question-quality/route.ts`). Es el muro de
+texto que el opositor se encuentra justo después de responder. Medido el **28/07/2026: 7.998
+preguntas activas**, ninguna con explicación estructurada.
+
+> No confundir con el criterio de `scripts/impugnaciones/validar-explicacion.cjs` («apelotonada» =
+> menos de 3 párrafos). Aquel es el **gate** al escribir; este es el **cubo** del panel. Se usan los
+> dos: el cubo selecciona, el gate valida.
+
+### Ataca por EXPOSICIÓN, no por id
+
+La cola de este cubo es larguísima y casi toda invisible: **256 preguntas —el 3,2%— concentran el
+77% de las veces que el cubo se ha servido en 90 días**, y el 82% del cubo no se sirvió ni una vez.
+Empezar por el principio de la tabla reparte el esfuerzo donde nadie mira.
+
+```bash
+node scripts/apelotonadas/extraer-lote.cjs --min-impresiones 10 --tam 16 --out /tmp/apelotonadas
+```
+
+Usa el **mismo predicado que pinta el panel** y ordena por impresiones reales medidas en
+`test_questions` (90 días), con el artículo vinculado **completo** en cada ficha.
+
+### Se reescriben ESTRUCTURADAS, y en lote
+
+Una explicación reescrita en texto plano con el formato §8.1 nace **`unsafe`** (cita las opciones
+por letra) — mejorar la calidad destruiría barajabilidad. Por eso la campaña escribe siempre
+`explanation_data` y deja que el render genere el texto:
+
+```bash
+npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts --lote <dir> [--apply]   # dry-run por defecto
+```
+
+El modo `--lote` recorre un directorio con un fichero `<question_id>.json` por pregunta: una sola
+arrancada de tsx, y un rechazo se anota y se sigue con el resto en vez de dejar el lote a medias.
+
+### Los tres pasos que NO se pueden saltar
+
+1. **Traza con `ai_provider` propio** (§5.1): `node scripts/apelotonadas/registrar-verificacion.cjs
+   <veredictos.json> --apply` escribe con `claude_code_apelotonadas_2026_07`. Reutilizar
+   `claude_code` no añade fila: **sobrescribe** y borra el historial de la pregunta.
+2. **Verificar la clave contra el artículo antes de reescribir.** Reescribir la explicación de una
+   pregunta con la clave mal la deja *mejor redactada y sigue siendo falsa*. Si la clave no se
+   sostiene, se anota y no se toca — **nunca** flip automático.
+3. **Re-verificar sobre la BD viva después de aplicar** (paso 7 del procedimiento v2.1):
+   `npx tsx --env-file=.env.local scripts/apelotonadas/verificar-aplicadas.ts <dir> […]`
+   Comprueba con el render y las guardas REALES que la clave sigue teniendo su razón, que
+   `explanation` es exactamente el render de `explanation_data`, que la pregunta salió del cubo y
+   que `shuffle_safety` quedó coherente. La primera tanda de 145 dio pasada limpia.
+
+### Lo que de verdad hay dentro del cubo (145 revisadas, 28/07/2026)
+
+«Apelotonada» resultó ser **el síntoma, no el defecto**. La mayoría de esas explicaciones no eran
+solo feas: no respondían a su pregunta. Patrones por frecuencia:
+
+- **Copia del artículo** — se transcribe el precepto sin decir por qué la opción marcada es la
+  correcta ni rebatir las demás. El caso más común.
+- **Nota de auditoría publicada como explicación** — texto de un pase de IA anterior que el
+  opositor está leyendo: *«La explicación debería…»*, *«Debe reorientarse la justificación al
+  art. 6.3»*, *«Revisar el contexto aplicación antes de afirmar qué hace cada atajo»*. Es el kind
+  `audit_note_explanation` del barrido nocturno, y aparece **mezclado** dentro de este cubo.
+- **Corrección sin limpiar** — quedó el antes y el después pegados: *«el órgano competente deberá
+  podrá pronunciarse»*, *«un plazo no superior a siete días quince días»*, *«por razón de la
+  materia, TERRITORIO»*. La frase resultante no significa nada.
+- **Apartado equivocado** — la explicación cita un apartado del artículo distinto del que pregunta
+  el enunciado (art. 27.1 LPRL por el 27.2; art. 21.1 LPAC por el 24.3.b); art. 14.1 por el 14.3).
+- **Referencia numérica falsa** — «art. 40 L40/2015» cuando es el 30; «artículo 39.2 LPAC» cuando
+  es el 43.2; texto del art. 7 L40/2015 atribuido al art. 8.
+- **Explicación que contradice su propia clave** — daba la respuesta buena y a continuación
+  describía la competencia del *otro* órgano (Delegado en vez de Subdelegado del Gobierno).
+
+Consecuencia práctica: **este cubo no se cierra formateando**. Cada pregunta hay que verificarla
+contra su artículo como en cualquier otra revisión; el salto de línea es lo último que se arregla.
