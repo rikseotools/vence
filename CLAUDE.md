@@ -332,6 +332,7 @@ git push origin main
 - **Cuándo:** cuando el usuario diga una de estas frases (o toque el badge de Salud del contenido), Claude sigue el runbook indicado ANTES de improvisar. Guardarraíl: `__tests__/lib/admin/runbookRegistry.test.ts` verifica que registro ↔ CLAUDE.md no divergen.
 - **Mapa (frase → qué mira):**
   - *"busca errores"* → fallos de app (5xx, páginas caídas, webhook, render) → `health-check.md`.
+  - *"revisa los feedbacks incontestables"* → feedback `pending` **sin conversación**: el endpoint de respuesta lo rechaza (409), así que el usuario escribió y **no recibirá contestación nunca** → `gestionar-feedback-bug.md`. Detección: `feedback_sin_conversacion` en `health-sweep.cjs`. Crear la conversación y responder, **y mirar de dónde vino**: si el camino de creación no la abre, el arreglo va ahí (caso raíz T-247: las solicitudes del chat de IA, 6 sin una sola respuesta entre abril y julio, cerradas en silencio). Las bajas de cuenta están excluidas a propósito (van por `eliminacion-cuentas.md`).
   - *"revisa los temas vacíos"* → temas publicados con 0 preguntas → `salud-contenido.md`.
   - *"revisa la coherencia de las tarjetas"* → tarjetas de plazas/temas que no cuadran con la convocatoria → `salud-contenido.md`.
   - *"revisa el dual-write de convocatorias"* → campos de convocatoria sin propagar → `salud-contenido.md`.

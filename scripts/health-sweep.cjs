@@ -1022,6 +1022,32 @@ async function main() {
     `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
     { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
 
+  // ── Feedback INCONTESTABLE: pendiente y sin conversación (T-247, 28/07/2026) ──
+  // `/api/v2/feedback/respond` se NIEGA a responder si el feedback no tiene fila en
+  // `feedback_conversations` (409). Un feedback `pending` sin ella es, por definición,
+  // imposible de contestar por el flujo normal — y el usuario no se entera de nada: escribe
+  // y no recibe respuesta jamás.
+  //
+  // No es hipotético: las solicitudes que llegaban por el CHAT DE IA no creaban conversación,
+  // y las 6 que entraron entre abril y julio se quedaron SIN UNA SOLA respuesta (cinco
+  // cerradas como `dismissed`, una como `resolved`, en silencio). Se arregló el origen, y
+  // esto es la red por si otro camino de creación vuelve a olvidarla.
+  //
+  // Va como APP y no como contenido: el usuario está esperando una respuesta que no llegará.
+  // Se excluyen las solicitudes de borrado de cuenta, que van por su propio manual y NO se
+  // responden por el hilo (serían un falso positivo permanente).
+  const sinConv = (await c.query(`
+    SELECT f.id, f.type, left(f.message, 90) AS msg, f.created_at
+    FROM user_feedback f
+    WHERE f.status = 'pending'
+      AND f.message NOT LIKE '[Solicitud de eliminación de cuenta%'
+      AND NOT EXISTS (SELECT 1 FROM feedback_conversations c2 WHERE c2.feedback_id = f.id)
+    ORDER BY f.created_at
+    LIMIT 50`)).rows;
+  if (sinConv.length) add('app', 'error', null, 'feedback_sin_conversacion',
+    `${sinConv.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
+    { count: sinConv.length, sample: sinConv.slice(0, 10).map(r => ({ id: r.id, type: r.type, msg: r.msg, creado: r.created_at })) });
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

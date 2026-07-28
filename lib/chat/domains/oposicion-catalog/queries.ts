@@ -3,7 +3,7 @@
 
 // Lecturas por self-hosted PgBouncer (max:8, sano), no Supavisor max:1 → 504.
 import { getPoolerDb, getAdminDb } from '@/db/client'
-import { userFeedback } from '@/db/schema'
+import { userFeedback, feedbackConversations } from '@/db/schema'
 // Lee de la vista SSOT (proceso de la convocatoria vigente + fallback). Solo lectura.
 import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, ilike, gte } from 'drizzle-orm'
@@ -277,6 +277,14 @@ export type RegisterResult =
 /**
  * Inserta una solicitud de oposición nueva en user_feedback (type='suggestion').
  * Dedupe: no crea registro si el mismo user pidió la misma oposición en últimos 7 días.
+ *
+ * **Crea también su `feedback_conversations`, y NO es un detalle** (arreglo 28/07/2026,
+ * T-247): sin conversación, `/api/v2/feedback/respond` **rechaza responder** con un 409
+ * (`lib/api/v2/feedback/queries.ts`), así que estas solicitudes eran **incontestables** por el
+ * flujo normal. Medido el día del arreglo: de las **6** que habían llegado por aquí desde
+ * abril, **ninguna** recibió respuesta — cinco se cerraron como `dismissed` y una como
+ * `resolved`, en silencio, porque no se podían contestar. El formulario de soporte sí la
+ * creaba; este camino no.
  */
 export async function registerOposicionRequest(input: OposicionRequestInput): Promise<RegisterResult> {
   const db = getAdminDb()
@@ -325,7 +333,30 @@ Log chat: ${input.logId || 'n/a'}`
       })
       .returning({ id: userFeedback.id })
 
-    return { status: 'created', id: inserted[0].id }
+    const feedbackId = inserted[0].id
+
+    // La conversación es el canal por el que se le responde. Va DESPUÉS y en su propio
+    // try/catch a propósito: si fallara, la solicitud ya está registrada y no se pierde la
+    // petición del usuario —que es lo importante—; lo que se pierde es poder contestarle por
+    // el hilo, y eso queda en el log en vez de tumbar la operación entera.
+    // Solo tiene sentido con `userId`: sin usuario no hay a quién abrirle un hilo.
+    if (input.userId) {
+      try {
+        await db.insert(feedbackConversations).values({
+          feedbackId,
+          userId: input.userId,
+          status: 'waiting_admin',
+          lastMessageAt: new Date().toISOString(),
+        })
+      } catch (err) {
+        logger.error('Solicitud creada SIN conversación: quedará incontestable', err, {
+          domain: 'oposicion-catalog',
+          feedbackId,
+        })
+      }
+    }
+
+    return { status: 'created', id: feedbackId }
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Unknown error'
     logger.error('Error registering oposición request', err, { domain: 'oposicion-catalog' })

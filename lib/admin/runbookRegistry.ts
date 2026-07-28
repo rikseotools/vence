@@ -52,6 +52,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   server_render_error: { title: 'Error de render en servidor', ...HEALTH_CHECK },
   render_error: { title: 'Error de render', ...HEALTH_CHECK },
   webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
+  feedback_sin_conversacion: {
+    title: 'Feedback pendiente que NO se puede responder',
+    triggerPhrase: 'revisa los feedbacks incontestables',
+    runbook: 'docs/procedures/gestionar-feedback-bug.md',
+    claudeHace:
+      'el feedback está `pending` pero no tiene fila en `feedback_conversations`, y `/api/v2/feedback/respond` rechaza responder sin ella (409 «no tiene conversacion abierta»): el usuario escribió y no recibirá contestación nunca. Crea la conversación (`INSERT INTO feedback_conversations (feedback_id, user_id, status) VALUES (…, …, \'waiting_admin\')` o el endpoint admin `create-conversation`) y responde por el flujo normal. Y MIRA DE DÓNDE VINO: si el camino de creación no abre conversación, el arreglo va ahí, no en el parche uno a uno — pasó con las solicitudes del chat de IA (T-247), donde las 6 que llegaron entre abril y julio se quedaron sin una sola respuesta, cerradas en silencio. Las solicitudes de borrado de cuenta están excluidas del detector a propósito: van por `eliminacion-cuentas.md` y no se responden por el hilo.',
+  },
   // ── CONVOCATORIAS: el proceso fiel al documento oficial (docs/runbooks/verificar-convocatorias.md) ──
   convocatoria_timeline_incoherente: {
     title: 'Timeline de convocatoria incoherente',
