@@ -116,3 +116,14 @@ describe('proponerRelacion — «del total… se reservan N» depende de cuál s
     expect(proponerRelacion(corpus, { plazasLibres: 36, plazasDiscapacidad: 4 })).toHaveLength(0)
   })
 })
+
+// Cada boletín tiene su muletilla para decir lo mismo. Esta es del BOJA (subalterno-parlamento-
+// andalucia, 28/07) y no se reconocía: la frase es tan concluyente como «del total».
+describe('proponerRelacion — «de dichas plazas, se reserva una»', () => {
+  it('BOJA: once plazas de las que se reserva una → dentro', () => {
+    const corpus = 'Se convocan pruebas selectivas para cubrir once plazas del cuerpo de subalternos del Parlamento de Andalucía, por el sistema de oposición libre. De dichas plazas, se reserva una para ser cubierta entre personas con discapacidad de grado igual o superior al 33%.'
+    const p = propuestaUnanime(proponerRelacion(corpus, { plazasLibres: 11, plazasDiscapacidad: 1 }))
+    expect(p).not.toBeNull()
+    expect(p.incluidas).toBe(true)
+  })
+})
