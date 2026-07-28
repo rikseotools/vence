@@ -246,6 +246,15 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-219] 🟠 [ABIERTO 28/07] 308 preguntas de «señale la INCORRECTA» sirven un encabezado que se contradice a sí mismo
+- **Qué ve el opositor:** en 308 preguntas activas cuyo enunciado pide la afirmación FALSA, la explicación abre con **«Por qué A es correcta:»** y a continuación explica por qué esa afirmación **es incorrecta**. Caso real: `23acc72a` (*"Señale la respuesta incorrecta en relación al rootkit"*), cuya explicación dice *"Por qué A es correcta: Afirmar que los rootkits pueden propagarse automáticamente es incorrecto"*.
+- **Tamaño exacto:** de **5.714** activas de ese tipo, **308 (5,4 %)** con el encabezado contradictorio, 326 con el coherente (*"Por qué X es la incorrecta"*) y 403 ya en el formato nuevo (*"ES LA INCORRECTA"*). Además, de las 17 de ese tipo YA estructuradas, **11 guardan `frame: select_correct`**, o sea el marco equivocado.
+- **De dónde viene:** se generaron con la plantilla de boletín sin mirar el marco de la pregunta. No es regresión de [T-212] —el arreglo del render está verificado y correcto—, es herencia: al transcribirse, la estructura guardó fielmente lo que el texto decía.
+- **⚠️ GOTCHA que decide el diseño: NO se arregla relanzando el backfill.** La guarda `mismoContenidoExplicacion` existe precisamente para que transcribir no cambie lo que lee el opositor, así que rechazaría estas justo por lo que queremos hacerles: cambiarles el encabezado. Necesitan un **pase explícito de reparación**, separado de la transcripción.
+- **Y hay que mirar cada una, no solo reescribir el encabezado:** el escenario feo es una pregunta donde el marco esté bien y lo que esté mal sea la CLAVE. Reescribir el encabezado a ciegas consolidaría el error en vez de destaparlo. Criterio: si la explicación argumenta que la opción marcada es FALSA, el encabezado es lo que sobra; si argumenta que es verdadera, el defecto es la clave y va a revisión, nunca a auto-flip.
+- **Ya hecho aparte (28/07, commit del arreglo de inferencia):** el parser del §5.1 ya deduce el marco del enunciado, así que lo que se transcriba a partir de ahora nace con el dato bien. Eso **no** repara estas 308.
+- **Relacionada:** [T-212] (el render ya respeta el marco) · [T-080] Fase 2.
+
 ### [T-215] 🔴 [ABIERTO 28/07] El borrado RGPD sigue expirando con los usuarios ACTIVOS (los 15 triggers de `test_questions`)
 - **Qué:** `/api/admin/delete-user` devuelve `success:false` y **no borra la cuenta** cuando el usuario tiene actividad real. El pool corta a los 20 s (`statement_timeout`, `backend/src/db/database.module.ts`) y `delete_user_account()` no llega.
 - **Estado tras el arreglo parcial del 28/07** (índice `idx_observable_events_user_id`, migración `20260728_observable_events_user_id_idx.sql`), medido con simulaciones `ROLLBACK` sobre usuarios REALES:
