@@ -91,9 +91,19 @@ async function main() {
 
   // 2) Guarda anti-letra: una razón que nombre la letra o la posición vuelve a clavar el orden,
   //    que es justo lo que este formato viene a eliminar.
-  const sospechosas = Object.entries(estructura.options).filter(([, r]) =>
-    /\b(la|opci[óo]n|respuesta|letra)\s+[A-E]\b|\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)/i.test(r),
-  )
+  //
+  //    ⚠️ Excepción: en Derecho los apartados SE CITAN por letra («la letra e) del artículo 9.1»,
+  //    «el apartado b) del 4.1»), y eso NO es una referencia a la opción E ni a la B: al barajar
+  //    sigue siendo verdad, porque nombra la ley, no la pantalla. Sin esta salvedad el guardarraíl
+  //    rechazaba explicaciones impecables y obligaba a redactar peor para esquivarlo — pasó el
+  //    28/07 con el art. 9.1 LPRL, cuyas funciones de la Inspección se enumeran por letras.
+  const CITA_DE_LA_NORMA = /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/i
+  const REFERENCIA_A_OPCION =
+    /\b(la|opci[óo]n|respuesta|letra)\s+[A-E]\b|\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)\b|\b(opci[óo]n|respuesta|alternativa)\s+(anterior|previa|siguiente)\b/i
+  const sospechosas = Object.entries(estructura.options).filter(([, r]) => {
+    const limpia = r.replace(new RegExp(CITA_DE_LA_NORMA.source, 'gi'), ' ')
+    return REFERENCIA_A_OPCION.test(limpia)
+  })
   if (sospechosas.length) {
     console.error('❌ Hay razones que se refieren a la LETRA o a la POSICIÓN de una opción:')
     for (const [k, r] of sospechosas) console.error(`   · opción ${k}: "${r.slice(0, 90)}…"`)
