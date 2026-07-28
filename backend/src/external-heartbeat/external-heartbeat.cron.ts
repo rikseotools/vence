@@ -40,7 +40,7 @@ export class ExternalHeartbeatCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'external-heartbeat', timeZone: 'UTC' })
+  @Cron('2-57/5 * * * *', { name: 'external-heartbeat', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'external-heartbeat',

@@ -36,7 +36,7 @@ export class CanaryDatabasePoolCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-database-pool', timeZone: 'UTC' })
+  @Cron('3-58/5 * * * *', { name: 'canary-database-pool', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-20s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(20_000);

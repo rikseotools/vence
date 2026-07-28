@@ -43,7 +43,7 @@ export class CanarySmokeAuthCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-smoke-auth', timeZone: 'UTC' })
+  @Cron('2-57/5 * * * *', { name: 'canary-smoke-auth', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-10s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(10_000);

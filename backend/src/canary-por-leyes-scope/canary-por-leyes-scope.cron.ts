@@ -27,7 +27,7 @@ export class CanaryPorLeyesScopeCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-por-leyes-scope', timeZone: 'UTC' })
+  @Cron('4-59/5 * * * *', { name: 'canary-por-leyes-scope', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await jitter(30_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {

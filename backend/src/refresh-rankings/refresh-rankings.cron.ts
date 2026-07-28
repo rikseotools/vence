@@ -38,7 +38,7 @@ export class RefreshRankingsCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'refresh-rankings', timeZone: 'UTC' })
+  @Cron('4-59/5 * * * *', { name: 'refresh-rankings', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-30s: cron pesado (3-5s típico). Evita colisión XX:25:00 UTC
     // con alerts-engine + 4 canaries que también son @Cron('*/5 * * * *').

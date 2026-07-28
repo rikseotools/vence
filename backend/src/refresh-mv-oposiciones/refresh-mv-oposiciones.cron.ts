@@ -33,7 +33,7 @@ export class RefreshMvOposicionesCron {
     );
   }
 
-  @Cron('*/30 * * * *', { name: 'refresh-mv-oposiciones', timeZone: 'UTC' })
+  @Cron('13-43/30 * * * *', { name: 'refresh-mv-oposiciones', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-15s para no colisionar exactamente XX:00/XX:30 con otros.
     await jitter(15_000);

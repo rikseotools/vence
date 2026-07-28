@@ -35,7 +35,7 @@ export class CanarySaveContractCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-save-contract', timeZone: 'UTC' })
+  @Cron('1-56/5 * * * *', { name: 'canary-save-contract', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'canary-save-contract',

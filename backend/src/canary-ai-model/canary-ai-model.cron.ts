@@ -28,7 +28,7 @@ export class CanaryAiModelCron {
     );
   }
 
-  @Cron('*/10 * * * *', { name: 'canary-ai-model', timeZone: 'UTC' })
+  @Cron('6-56/10 * * * *', { name: 'canary-ai-model', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await jitter(30_000);
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {

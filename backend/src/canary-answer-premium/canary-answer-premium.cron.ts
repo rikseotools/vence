@@ -36,7 +36,7 @@ export class CanaryAnswerPremiumCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-answer-premium', timeZone: 'UTC' })
+  @Cron('1-56/5 * * * *', { name: 'canary-answer-premium', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'canary-answer-premium',

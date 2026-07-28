@@ -38,7 +38,7 @@ export class CanaryStatsPipelineCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-stats-pipeline', timeZone: 'UTC' })
+  @Cron('3-58/5 * * * *', { name: 'canary-stats-pipeline', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'canary-stats-pipeline',

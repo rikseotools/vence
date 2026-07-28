@@ -36,7 +36,7 @@ export class CanaryPsychometricIntegrityCron {
     );
   }
 
-  @Cron('*/15 * * * *', { name: 'canary-psychometric-integrity', timeZone: 'UTC' })
+  @Cron('9-54/15 * * * *', { name: 'canary-psychometric-integrity', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'canary-psychometric-integrity',

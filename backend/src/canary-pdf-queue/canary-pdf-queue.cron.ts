@@ -38,7 +38,7 @@ export class CanaryPdfQueueCron {
     );
   }
 
-  @Cron('*/15 * * * *', { name: 'canary-pdf-queue', timeZone: 'UTC' })
+  @Cron('8-53/15 * * * *', { name: 'canary-pdf-queue', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-20s para desacoplar del resto de crons del minuto 0/15/30/45.
     await jitter(20_000);

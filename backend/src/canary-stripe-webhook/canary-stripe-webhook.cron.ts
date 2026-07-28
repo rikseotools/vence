@@ -39,7 +39,7 @@ export class CanaryStripeWebhookCron {
     );
   }
 
-  @Cron('*/5 * * * *', { name: 'canary-stripe-webhook', timeZone: 'UTC' })
+  @Cron('4-59/5 * * * *', { name: 'canary-stripe-webhook', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-25s para desacoplar de refresh-rankings + alerts-engine.
     await jitter(25_000);

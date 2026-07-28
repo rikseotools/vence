@@ -40,7 +40,7 @@ export class CheckWebhookHealthCron {
     );
   }
 
-  @Cron('*/15 * * * *', { name: 'check-webhook-health', timeZone: 'UTC' })
+  @Cron('11-56/15 * * * *', { name: 'check-webhook-health', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'check-webhook-health',

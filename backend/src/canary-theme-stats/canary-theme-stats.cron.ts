@@ -36,7 +36,7 @@ export class CanaryThemeStatsCron {
     );
   }
 
-  @Cron('*/10 * * * *', { name: 'canary-theme-stats', timeZone: 'UTC' })
+  @Cron('7-57/10 * * * *', { name: 'canary-theme-stats', timeZone: 'UTC' })
   async handle(): Promise<void> {
     // Jitter 0-25s para desacoplar de refresh-rankings + otros canaries.
     await jitter(25_000);
