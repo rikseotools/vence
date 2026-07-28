@@ -2431,7 +2431,8 @@ export class ContentHealthSweepService {
     // ── Hitos que se presentan como fecha OFICIAL sin ninguna fuente ───────────────
     // Mirror INLINE de scripts/health-sweep.cjs (hito_registro_sin_fuente) — MANTENER EN SYNC.
     // Bandas calibradas con simulación bank-wide antes de encender: error = fecha de EXAMEN
-    // futura en oposición activa (medido: 4); warn = el resto (medido: 0, porque las
+    // futura en oposición activa (medido en vivo el 28/07: 3 hallazgos / 4 hitos, sobre 25
+    // candidatos y 21 exentos); warn = el resto (medido: 0, porque las
     // candidatas coincidían con el deadline verificado y el núcleo las exime).
     const hitosSinFuenteRows = (await this.db.execute(sql`
       SELECT h.id, h.titulo, h.origen, h.url, h.cita_literal, h.source_documento_id, h.fecha,

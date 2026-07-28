@@ -352,12 +352,13 @@ async function main() {
   //
   // Bandas calibradas con simulación bank-wide ANTES de encender (lección T-047/T-113):
   //   · error → fecha de EXAMEN, futura, en oposición ACTIVA: es el dato por el que un
-  //     opositor organiza meses de estudio. Medido: 4.
+  //     opositor organiza meses de estudio. Medido en vivo el 28/07: 3 hallazgos / 4 hitos
+  //     (se agrupa por oposición: Galicia pone dos), sobre 25 candidatos — 21 exentos.
   //   · warn  → cualquier otra fecha futura sin fuente. Medido: 0, porque las 5 candidatas
   //     COINCIDÍAN con el `inscription_deadline` verificado de su convocatoria → les falta la
   //     cita, no la verdad (provenance, T-147), y el núcleo puro las exime. Sin esa exención
   //     el detector nacía con un 100% de ruido.
-  // La decisión vive en `lib/convocatoria/hitoOrigen.cjs` (24 tests), compartida con el
+  // La decisión vive en `lib/convocatoria/hitoOrigen.js` (24 tests), compartida con el
   // escritor `scripts/convocatoria/degradar-origen-hito.cjs`.
   const hitosSinFuente = (await c.query(`
     SELECT h.id, h.titulo, h.origen, h.url, h.cita_literal, h.source_documento_id, h.fecha,

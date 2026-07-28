@@ -25,6 +25,17 @@ node scripts/convocatoria/degradar-origen-hito.cjs --hito <uuid> --verificado "�
 
 **NUNCA** rellenar la cita con una URL genérica del boletín para callar el check: convierte un dato dudoso en uno que *parece* verificado, que es peor que el problema.
 
+### El detector que cierra el grifo — frase-gatillo *"revisa las fechas sin fuente"*
+
+Arreglar los hitos de hoy no impide que mañana se escriba otro `registro` sin cita, así que el estado se vigila solo: kind **`hito_registro_sin_fuente`** en `scripts/health-sweep.cjs` **y en el espejo del `@Cron`** (`backend/src/content-health-sweep/content-health-sweep.service.ts`), decidiendo ambos con el núcleo puro `lib/convocatoria/hitoOrigen.js` (24 tests) — la misma pieza que usa el escritor, así que detector y remediación no pueden divergir.
+
+- **`error`** — fecha de **EXAMEN**, futura, en oposición activa. Es el dato con el que un opositor organiza meses de estudio. Medido el 28/07 contra datos vivos: **3 hallazgos / 4 hitos** (`administrativo-galicia` pone dos), porque el sweep **agrupa por oposición**: al opositor le importa su landing, no cada fila.
+- **`warn`** — cualquier otra fecha futura sin fuente. Medido: **0**.
+- **Volumen total:** 25 candidatos (`registro` + fecha futura + oposición activa), de los que el núcleo **exime 21** por respaldo o corroboración. Es la proporción que decide si esto se lee o se ignora.
+- **Exención por corroboración (la que evita que la bandeja nazca ruidosa):** si la fecha **coincide con un campo ya verificado de la convocatoria** (típicamente `inscription_deadline`), **no es hallazgo** — le falta la cita, no la verdad; eso es provenance (T-147), no una fecha inventada. Sin esta exención las 5 candidatas de `warn` eran las 5 falsos positivos, y una bandeja ruidosa se acaba ignorando (lección T-047).
+
+Al triar un hallazgo: verificar la fecha **contra el boletín de esa convocatoria**. Si consta → añadir `url` + `cita_literal` y el hito se queda como `registro`. Si no consta en ninguna fuente → degradarlo con `degradar-origen-hito.cjs --verificado "…"`, que es la única vía y deja traza. Para volver a medir el estado completo, `--listar`.
+
 
 ## 0. Qué avisa el badge
 
