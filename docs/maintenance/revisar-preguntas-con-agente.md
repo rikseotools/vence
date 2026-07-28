@@ -1878,6 +1878,13 @@ solo feas: no respondían a su pregunta. Patrones por frecuencia:
   opositor está leyendo: *«La explicación debería…»*, *«Debe reorientarse la justificación al
   art. 6.3»*, *«Revisar el contexto aplicación antes de afirmar qué hace cada atajo»*. Es el kind
   `audit_note_explanation` del barrido nocturno, y aparece **mezclado** dentro de este cubo.
+  ⚠️ **Su detector estaba en verde mintiendo** (28/07): sus patrones venían de una remesa de julio
+  y daban 0 con 24 activas rotas. Ampliado en `lib/health/auditNoteExplanation.cjs`. Lección
+  general: **al encontrar un defecto en un cubo, comprobar si su detector lo estaba viendo** — si
+  no, el detector es parte del arreglo, y hay que tocar los DOS gemelos del sweep (el `@Cron` del
+  backend es el que escribe el snapshot) más el guardarraíl de paridad.
+  **Vale la pena leerlas antes de descartarlas:** una de las 18 tenía razón y destapó una pregunta
+  sin respuesta correcta (opción con tres productos donde el temario lista cuatro).
 - **Corrección sin limpiar** — quedó el antes y el después pegados: *«el órgano competente deberá
   podrá pronunciarse»*, *«un plazo no superior a siete días quince días»*, *«por razón de la
   materia, TERRITORIO»*. La frase resultante no significa nada.
