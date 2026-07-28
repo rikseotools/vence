@@ -991,6 +991,26 @@ await supabase.from('laws').update({
 }).eq('id', lawId);
 ```
 
+> 🧰 **Para reimportar una ley entera sin huerfanar preguntas: `scripts/leyes/sync-ley-completa.mts`**
+> (`npx tsx scripts/leyes/sync-ley-completa.mts "<short_name>"`). Llama a la MISMA función que este
+> endpoint (`syncArticlesFromBoe`), pero añade una **guarda anti-huérfanas**: el sync desactiva los
+> artículos que no están en el índice del BOE, y eso se lleva por delante los **artículos NO
+> NUMÉRICOS que creamos nosotros** (`etiquetado`, `5-6`, `17-18`…), que sí tienen preguntas
+> colgando. **Saltó en 2 de las 8 leyes reimportadas el 28/07** — no es hipotético. Además evita
+> pegarle a `sync-all`, que no valida admin.
+>
+> Después de reimportar, **dos comprobaciones que se olvidan**: (a) si algún tema escopa la ley
+> ENTERA (`article_numbers IS NULL`), lo importado **pasa a servirse solo** → revalidar caché con
+> `scripts/lib/temario-recache.cjs`; (b) `poblar-law-sections-boe.cjs --apply`, porque con la ley
+> completa suele poder delimitarla y antes no podía (7 de 8 el 28/07).
+>
+> 🔎 **Y una señal de importación parcial que el detector de completitud NO tiene:** cuando
+> `poblar-law-sections-boe.cjs` rechaza una ley con **`demasiadas_vacias`**, casi siempre significa
+> que **tenemos solo un trozo del articulado** — cruza el índice del BOE contra nuestros artículos
+> sin depender de que nadie haya escrito una evidencia. Así se encontraron las 8 del 28/07, cuatro
+> de ellas marcadas `actualizada` (el ROF con 13 de 237 artículos, el RP 1981 con 11 de 420) y una
+> afirmando en su evidencia `missing_in_db: 0`. Ver [T-239].
+
 ### Estrategia: priorizar manual sobre completo
 
 Cuando hay limitación del extractor, **NO bloquear la importación de la pregunta** mientras se decide qué hacer con la norma entera. Importar el artículo concreto que cubre la pregunta + dejar el resto como cabo documentado en `last_verification_summary`. Lo opuesto (esperar a una importación completa antes de aprobar preguntas) deja las preguntas en `needs_human` indefinidamente.

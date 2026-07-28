@@ -42,6 +42,15 @@ Responde lo que el detector NO distingue: ¿los artículos en BD cubren lo que e
 - **FALTAN-ESCOPADOS** — un tema vivo pide artículos que no están en BD → import (§3).
 - **SCOPE-LEY-ENTERA** — un tema escopa la ley entera (`article_numbers=NULL`) → requiere la fuente para dictaminar.
 
+> 🔎 **PUNTO CIEGO (28/07/2026): la evidencia que miente no la caza este detector, la caza el poblador de secciones.**
+> `audit-law-completeness` clasifica por **estado de verificación**, así que una ley con
+> `verification_status='actualizada'` y una evidencia que dice `missing_in_db: 0` **no aparece**, aunque
+> tengamos 13 artículos de 237. Lo que sí lo delata es `poblar-law-sections-boe.cjs` cuando rechaza con
+> **`demasiadas_vacias`**: cruza el índice del BOE contra nuestros artículos y no le pregunta a nadie.
+> Así salieron 8 leyes el 28/07 (ROF 13/237, RP 1981 11/420, Reglamento de Bienes EELL 9/136, Consells
+> Insulars 8/135), reimportadas enteras — 971 artículos. **Convertir ese `demasiadas_vacias` en una señal
+> de completitud es [T-239]**, y sale barato: el dato ya se calcula al poblar secciones y hoy se tira.
+
 > **Patrón medido (21/07, barrido de las 43 false_green):** ninguna tenía artículos escopados faltantes — el "falso verde" es, para la mayoría, un problema de **evidencia, no de contenido**. Y hay **dos mundos**: las **ordenanzas municipales** (Madrid, Sevilla) salen **verbatim limpias**; las **digests universitarias/autonómicas** (estatutos, convenios, normativas de permanencia) **mezclan articulado verbatim con filas de resumen editorial** (`article_number` no numérico tipo `"s. 11-12 (Título V)"`) **o anexos parafraseados que no existen en la norma**. Las primeras se cierran rápido; las segundas necesitan además limpieza (retirar/relinkar las filas editoriales) — patrón `reference_leyes_virtuales_editoriales`.
 
 > ### ⚠️ La evidencia CADUCA, y el verificador tuvo un punto ciego (T-045, 26/07/2026)
