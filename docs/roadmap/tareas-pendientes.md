@@ -3220,10 +3220,31 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 >   5.433 ya excluidas por otros motivos. Y las explicaciones que citan el orden de la plantilla
 >   («el tribunal dio como correcta la opción tercera») quedan fuera solas por el detector.
 >
-> ### 🎛️ Encendido: PREPARADO Y CABLEADO (28/07), apagado
+> ### 🟢 ENCENDIDO EN PRODUCCIÓN — piloto `auxiliar_administrativo_valencia` (28/07)
+> `FEATURE_SHUFFLE_OPTIONS=true` con `_SCOPE=auxiliar_administrativo_valencia`, task def 547,
+> servicio convergido (12 tareas). **Verificado en producción pidiendo el mismo tema dos veces:**
+> Valencia devuelve preguntas con `option_order` (4 y 2 de 15, coherente con el 33% medido) y
+> `auxiliar_administrativo_estado` y `auxiliar_administrativo_madrid` devuelven **0** — el scope
+> acota de verdad.
+>
+> **Qué vigilar estos días** (en `observable_events`):
+> - `shuffle_option_order_invalid` (**severity warn**) — el detector de «clave rota»: el cliente
+>   mandó un `option_order` que no cuadra. **Cualquier aparición es motivo de apagar.** A la hora
+>   de escribir esto: 0.
+> - `shuffle_options_request_active` (info) — confirma que el barajado actúa en las peticiones.
+> - Impugnaciones nuevas de usuarios de Valencia: el dossier ya traduce la letra que vieron.
+>
+> **Apagar (~5 min, sin build):**
+> ```bash
+> aws --profile vence --region eu-west-2 ssm put-parameter --name /vence-frontend/FEATURE_SHUFFLE_OPTIONS --value false --overwrite
+> aws --profile vence --region eu-west-2 ecs update-service --cluster vence-backend --service vence-frontend --force-new-deployment
+> ```
+> **Ampliar:** cambiar `_SCOPE` (CSV de `position_type`, o `all` para todas) y forzar el deployment.
+>
+> ### 🎛️ Cómo quedó cableado (28/07)
 > El flag existía en el código pero **no estaba cableado a la infraestructura**: no había parámetro
 > en SSM ni lo referenciaba el task def, así que encenderlo no era «cambiar un valor». Ya lo está:
-> - `/vence-frontend/FEATURE_SHUFFLE_OPTIONS` = `false` · `/vence-frontend/FEATURE_SHUFFLE_OPTIONS_SCOPE` = `auxiliar_administrativo_valencia`
+> - `/vence-frontend/FEATURE_SHUFFLE_OPTIONS` · `/vence-frontend/FEATURE_SHUFFLE_OPTIONS_SCOPE`
 > - Van por **SSM y no por `environment`** a propósito: un valor en environment está horneado en la
 >   task def y cambiarlo obliga a registrar otra; por SSM se resuelve al arrancar la tarea.
 > - **Encender:** `aws ssm put-parameter --name /vence-frontend/FEATURE_SHUFFLE_OPTIONS --value true --overwrite`
