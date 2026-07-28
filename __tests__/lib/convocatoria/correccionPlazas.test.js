@@ -107,3 +107,67 @@ describe('citaPruebaAlgo — mismo criterio que el detector cita_no_prueba_nada'
     expect(citaPruebaAlgo('144 plazas', [144])).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// [T-218] Declarar si el cupo de discapacidad va DENTRO del turno libre o APARTE.
+//
+// Los dos casos reales que la estrenaron (28/07) son tablas de boletín donde la cifra del cupo NO
+// está impresa —es una suma de columnas—, así que la guarda no puede pedirla: pide el TOTAL que la
+// declaración implica, que es lo que sí imprime el boletín.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe('validarDeclaracionReserva', () => {
+  const { validarDeclaracionReserva } = require('@/lib/convocatoria/correccionPlazas.cjs')
+
+  // DOCM 12/12/2025: «Cupo general | Reserva discapacidad | Total plazas» → 305 + 9 + 13 = 327.
+  const CITA_CLM = 'Cupo general Reserva personas con discapacidad Total plazas — C2 Cuerpo Auxiliar 305 9 13 327'
+  // DOGV: «Turno libre | Discapacidad | Discapacidad intelectual | Enfermedad mental | Total».
+  const CITA_GVA = 'Turno libre Discapacidad Discapacidad intelectual Enfermedad mental Total — C2-01. Cuerpo auxiliar. 204 14 21 6 245'
+  const base = { url: 'https://docm.castillalamancha.es/x.pdf', motivo: 'La tabla del Decreto de OEP desglosa cupo general y reserva, y el total coincide con lo guardado.' }
+
+  it('DENTRO: basta con que el total guardado esté en la cita (el cupo es suma de columnas)', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: CITA_CLM, plazasLibres: 327, plazasDiscapacidad: 22 })
+    expect(r.ok).toBe(true)
+  })
+
+  it('APARTE: exige que el total (libres + cupo) esté IMPRESO, no deducido', () => {
+    const ok = validarDeclaracionReserva({ ...base, incluidas: false, cita: CITA_GVA, plazasLibres: 204, plazasDiscapacidad: 41 })
+    expect(ok.ok).toBe(true) // 245 está en la cita
+
+    // La misma cita, pero declarando «aparte» sobre unas cifras cuyo total (327 + 22 = 349) no
+    // aparece: es una interpretación, no una lectura.
+    const no = validarDeclaracionReserva({ ...base, incluidas: false, cita: CITA_CLM, plazasLibres: 327, plazasDiscapacidad: 22 })
+    expect(no.ok).toBe(false)
+    expect(no.errores.join(' ')).toMatch(/349/)
+  })
+
+  it('no se declara sin cupo que declarar', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: CITA_CLM, plazasLibres: 327, plazasDiscapacidad: 0 })
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(/cupo/)
+  })
+
+  it('un membrete no es una cita, por muchas palabras de fecha que lleve', () => {
+    // Este pasaba la guarda heredada de la corrección (5 palabras en minúscula = "prosa") y no dice
+    // NADA de la reserva. Para declarar cómo se relaciona el cupo, la cita tiene que nombrarlo.
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: 'DOCM núm. 240 de 12 de diciembre de 2025 — 327 plazas convocadas en total', plazasLibres: 327, plazasDiscapacidad: 22 })
+    expect(r.ok).toBe(false)
+  })
+
+  it('la cláusula en prosa del boletín vale igual que la fila de tabla', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, plazasLibres: 425, plazasDiscapacidad: 43,
+      cita: 'Se convocan 425 plazas del Cuerpo de Auxilio Judicial. Del total de estas plazas se reservan 43 para personas con discapacidad.' })
+    expect(r.ok).toBe(true)
+  })
+
+  it('NO pisa una declaración distinta que ya esté en BD', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: CITA_CLM, plazasLibres: 327, plazasDiscapacidad: 22, actual: false })
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(/ya hay una declaración/)
+  })
+
+  it('avisa (sin error) si ya está declarado igual: reejecutar es idempotente', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: CITA_CLM, plazasLibres: 327, plazasDiscapacidad: 22, actual: true })
+    expect(r.ok).toBe(true)
+    expect(r.avisos.join(' ')).toMatch(/ya está declarado/)
+  })
+})

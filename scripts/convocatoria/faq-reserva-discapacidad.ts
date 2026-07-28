@@ -97,6 +97,22 @@ const REESCRITURAS = [
     despues: 'Se convocan {plazasLibres} plazas de acceso libre y {plazasPromocion} de promoción interna (OEP 2026, Decreto 16/2026).',
     porque: 'afirmaba «incluyendo» mientras la vista SUMA el cupo (dato sin declarar): la propia página se contradecía en el total',
   },
+
+  // ── Segunda vuelta: las dos anteriores, YA con su dato leído del boletín (T-218, 28/07) ──────
+  // Aquí se ve para qué servía callar: no se perdió la cifra, se aplazó hasta poder decirla bien.
+  // Ahora la frase sale del dato, así que si mañana cambia el cupo, cambia sola.
+  {
+    slug: 'auxiliar-administrativo-clm',
+    antes: 'Se convocan {plazasLibres} plazas de acceso libre para el Cuerpo Auxiliar de la Junta de Comunidades de Castilla-La Mancha.',
+    despues: 'Se convocan {plazasLibres} plazas de acceso libre del Cuerpo Auxiliar de la Junta de Comunidades de Castilla-La Mancha{reservaDiscapacidad}',
+    porque: 'declarado DENTRO contra el DOCM 12/12/2025 (cupo general 305 + 9 + 13 = 327): la reserva vuelve a decirse, y sin invitar a sumar',
+  },
+  {
+    slug: 'auxiliar-administrativo-valencia',
+    antes: 'Se convocan {plazasLibres} plazas de acceso libre y {plazasPromocion} de promoción interna (OEP 2026, Decreto 16/2026).',
+    despues: 'Se convocan {plazasLibres} plazas de acceso libre{reservaDiscapacidad} A ellas se suman {plazasPromocion} de promoción interna (OEP 2026, Decreto 16/2026).',
+    porque: 'declarado APARTE contra el DOGV 09/02/2026 (204 + 14 + 21 + 6 = 245 del turno libre): la reserva vuelve, ya con la relación correcta',
+  },
 ]
 
 /** Resuelve las variables igual que el render de la landing, para poder ver la frase final. */
