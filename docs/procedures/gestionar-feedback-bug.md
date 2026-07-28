@@ -79,7 +79,28 @@ Cuando el usuario pregunta algo sobre **qué entra en un tema** (epígrafes, art
 
 **Atajo:** si la BD ya dice que la oposición está auditada (Paso 1 `verified_literal` + Paso 2 `verified_correct`, frescos), **NO repitas la auditoría** — ve directo a revisar el punto concreto del usuario contra el scope/epígrafe ya verificados.
 
-> **No recompensable:** temario/epígrafes/scope es contenido, no un fallo funcional de la app → NO lleva recompensa (regla `feedback_recompensa_solo_bug_app_no_contenido`). Se corrige si procede, pero no se paga.
+> **🔄 REGLA CAMBIADA (decisión de Manuel, 28/07/2026) — el scope EVIDENTE sí se recompensa.**
+> Antes decía: *"temario/epígrafes/scope es contenido, no un fallo funcional de la app → NO lleva recompensa"*.
+> **Ya no.** Cuando el usuario señala un defecto de temario/scope y **tiene razón de forma evidente**
+> (se comprueba contra el epígrafe oficial y encaja), **lleva recompensa de bug (3 €)**. El motivo lo dijo
+> Manuel así: *"nos permite mejorar la plataforma"*. Esta gente nos está haciendo la auditoría de scope
+> que ningún detector hace, y pagarla sale barato.
+>
+> **Las dos condiciones, que siguen mandando:**
+> 1. **Solo PREMIUM comprometidos.** Un `free` no cobra aunque acierte, y **a quien se está dando de baja
+>    tampoco** (decisión de Manuel, 28/07: *"a un usuario que se van no"*). Ver [[feedback-recompensa-solo-usuarios-de-pago]].
+> 2. **Que sea EVIDENTE.** Si la queja es discutible, o resulta que el scope estaba bien, se le responde
+>    con el porqué y no se paga. Se recompensa el acierto comprobado, no el aviso.
+>
+> Sigue haciendo falta **orden explícita** para crearla ([[feedback-recompensa-requiere-orden-explicita]]) y
+> **nunca se menciona en el mensaje** ([[feedback-recompensa-no-mencionar-en-mensaje]]).
+>
+> **Contexto de por qué cambió:** la práctica ya iba por delante de la regla escrita. A la usuaria Luisa
+> (`auxiliar_administrativo_sms`, 52 avisos, casi todos certeros) se le habían aprobado **dos** recompensas
+> de bug por avisos de scope puros (Tema 8 el 17/07, Tema 10 el 22/07) mientras el manual decía que eso no
+> se pagaba. El 28/07, al acertar de nuevo con el Decreto 53/1989 —donde además le habíamos dicho que no y
+> ella tenía razón—, Manuel ordenó el vale y cambiar la regla. La única anulada de sus recompensas lo fue
+> por *"creada sin orden explícita"*, **no** por ser de scope.
 
 > **Ejemplo real (subalterno_gva, 13/07):** Sonia preguntó por 2 temas; al no estar hecho el Paso 1, se clonó el epígrafe oficial (15/15 `verified_literal` contra el PDF primario del DOGV) y se auditó el scope entero (15/15 `verified_correct`) ANTES de contestarle — lo que de paso destapó 3 errores reales que ella no había visto (Ley 4/2023 sobre-scope, Ley 9/2003 ausente, Decreto 42/2019 vacío). Lo que ella señalaba ya estaba bien.
 

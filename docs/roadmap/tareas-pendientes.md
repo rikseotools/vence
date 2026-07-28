@@ -14,6 +14,14 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-230] ✅ [CERRADA 28/07 — la alarma era mía, no del sistema] «Feedbacks cerrados sin responder»: eran respuestas AGRUPADAS
+- **Lo que denuncié:** de 707 feedbacks resueltos, **69 sin ningún mensaje de admin en el hilo**; y de la usuaria Luisa, **8 avisos de temario cerrados "sin decirle nada"**, 7 el mismo día. Lo presenté como que se le estaban cerrando avisos en silencio.
+- **Lo que pasaba de verdad (lo cazó Manuel: *"pero serían por el mismo asunto"*):** los 7 del 17/07 **se contestaron juntos, en una sola respuesta agrupada** colgada de otro de sus avisos (*"Lo hemos comprobado uno a uno contra el texto literal del programa oficial (BORM de 7 de octubre de 2021)… Tema 2 (Estatuto de Autonomía)…"*), y los demás se cerraron con ella. Mismo asunto, una respuesta. **Es la forma correcta de tratar una tanda**, no un descuido.
+- **Y el "repitió el aviso palabra por palabra"**, que yo leí como desesperación de quien no sabe si le han leído, eran **dos envíos separados por 7 segundos**: 18:38:21 y 18:38:28. Un doble clic, no una queja.
+- **Lección de método, que es lo que merece la pena guardar:** clasifiqué por *"¿tiene este hilo un mensaje de admin?"* y di por abandonado todo lo que salía a cero. **La unidad de respuesta no es el hilo, es el ASUNTO**: una tanda de avisos se responde una vez. Un detector que cuente mensajes por hilo dará este mismo falso positivo — antes de alarmar, mirar si hay una respuesta agrupada con el **mismo `resolved_at`**.
+- **Lo único real que queda, y es menor:** en la tanda del Tema 14 sí se dejó en cada hilo un puntero (*"Te hemos respondido todas tus dudas del tema 14 juntas en tu otra consulta 😊"*) y en la del 17/07 no. Es una inconsistencia de cortesía, no un fallo: quien abre esos hilos los ve cerrados y vacíos. **No se abre ficha por esto**; si algún día se toca el cierre en lote, que ponga el puntero siempre.
+
+
 ### [T-229] ✅ [HECHO 28/07] `/privacidad` mandaba a escribir un email para borrar la cuenta, existiendo el botón
 - **Qué pasaba:** la página de privacidad listaba en «Tus Derechos» el de *«Solicitar la eliminación de tus datos»* y remataba con *«Para ejercer estos derechos, contacta con nosotros en info@vence.es»*. **No mencionaba en ningún sitio que el propio usuario puede hacerlo desde su perfil**, existiendo el flujo completo (`/perfil` → «Eliminar cuenta» → «Solicitar eliminación», con paso de retención). La página desviaba a un email cuando había un botón.
 - **Cómo se vio:** un usuario (Ricardo, alta hace 1 día) preguntó *"¿cómo puedo cerrar el perfil desde la web?"*. Su recorrido: `/privacidad` → `/cancelacion-y-devoluciones` → y acabó pulsando **«Cerrar Sesión»** creyendo que era eso. Buscó en los dos sitios más lógicos y en ninguno estaba.
@@ -282,18 +290,6 @@
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
-
-### [T-230] 🟠 [ABIERTO 28/07] 65 feedbacks cerrados como «resueltos» sin que el usuario recibiera NINGUNA respuesta
-- **Qué:** medido el 28/07 sobre toda la plataforma: de **707** feedbacks con `status='resolved'`, **69 no tienen ni un solo mensaje de admin en el hilo**. Solo **4** de esos tienen la respuesta en la vía legacy `user_feedback.admin_response` (el síndrome ya documentado de *"no puedo leer vuestras respuestas"*, `gestionar-feedback-bug.md`). **Los otros ~65 se cerraron y punto.**
-- **El cierre silencioso es legítimo** (spam, duplicados, pruebas propias, o un *"ya me va, gracias"*) — el endpoint lo contempla sin `message`. **El problema es cuando se usa con un aviso de fondo.**
-- **Caso que lo destapó (usuaria Luisa, `auxiliar_administrativo_sms`):** de sus 52 resueltos, **9 sin respuesta**. Uno es legítimo (*"YA ME VA, MUCHÍSIMAS GRACIAS"*). **Los otros 8 son avisos de temario concretos y accionables**, 7 de ellos del mismo día (17/07): *"Ley 7/2007 CARM, TEMA 9, faltan artículos…"*, *"LO 3/2007, tema 5, solo entra el artículo 46"*, *"Estatuto de Autonomía de Murcia, TEMA 2, no entran…"*, *"tema 1, no entran los artículos del 1 al 10"*. **Se cerraron sin decirle nada.** Ella siguió mandando avisos, y el 21/07 repitió uno palabra por palabra (*"TEMA 11, creo que solo entra del artículo 11 al 14…"*) — señal de que no supo si el primero se había leído.
-- **Por qué importa más de lo que parece:** esta usuaria es la mejor fuente de defectos de scope que tenemos (52 avisos, casi todos certeros; el del Decreto 53/1989 lo tenía clavado, ver [T-223]). Cerrarle avisos en silencio es gastar su paciencia. Y el usuario no distingue "lo arreglamos y no te avisamos" de "nos lo saltamos".
-- **Qué hace falta, por orden:**
-  1. **Adjudicar los 8 de Luisa**: comprobar si el scope de cada uno está hoy como ella pedía. Si se arreglaron, avisarle (aunque sea tarde); si no, trabajarlos. **No es un cabo suelto de una sesión: son 8 adjudicaciones de scope.**
-  2. **Triar los ~65** separando el cierre silencioso legítimo del aviso abandonado. Heurística barata: si el texto del usuario dispara `isScopeComplaint` o menciona artículos/temas, no debería haberse cerrado mudo.
-  3. **Guardarraíl para que no se repita**, en la línea de la casa (enforcement por código, no por memoria): que `/api/v2/feedback/respond` **avise o exija confirmación** al cerrar sin mensaje un feedback cuyo texto parece un aviso de contenido. El cierre silencioso seguiría existiendo para lo que es.
-- **Origen:** barrido de los feedbacks resueltos de Luisa pedido en [T-223] (28/07). Ese barrido buscaba otra cosa (más casos del error de razonar por prosa) y **no encontró ninguno** — encontró esto.
-
 
 ### [T-225] 🟠 [ABIERTO 28/07] El pre-commit no corre `typecheck`: un `main` rojo por tipos bloquea el gate de deploy de TODAS las sesiones
 - **Qué pasó (28/07, medido):** `origin/main` estuvo con el **`Typecheck` en ROJO** por el error más tonto posible — `scripts/backfill-explanation-data.ts:123` usaba `f.question_text`, el `SELECT` de la línea 79 **ya lo pedía**, pero el tipo `Fila` no lo declaraba (`error TS2339`). El dato estaba ahí; solo faltaba decírselo al compilador.
