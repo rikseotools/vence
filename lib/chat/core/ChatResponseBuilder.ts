@@ -60,6 +60,18 @@ export class ChatResponseBuilder {
    */
   addSources(sources: ArticleSource[]): this {
     this.sources.push(...sources)
+    // Las fuentes van a metadata AQUÍ, no solo en `withSourcesBlock()`.
+    //
+    // Antes solo se guardaban al pintar el bloque visible, y `VerificationDomain` NO lo pinta a
+    // propósito («para no mostrar fuentes al usuario»): quería las fuentes en los metadatos sin
+    // enseñarlas, y el único camino que las guardaba era justo el que las enseñaba. Resultado:
+    // **se perdían**. Por eso las trazas decían `hasSources: false` teniendo artículos, y
+    // `ai_chat_logs.sources_used` y `detected_laws` salían vacíos en respuestas que sí citaban
+    // el artículo correcto (visto en los ciclos 1, 2 y 5 de la revisión de negativos, 28/07/2026).
+    //
+    // Separar las dos cosas es lo correcto: `addSources` = «tengo estas fuentes» (dato),
+    // `withSourcesBlock` = «además, píntalas» (presentación).
+    this.metadata.sources = [...this.sources]
     return this
   }
 
@@ -116,7 +128,10 @@ export class ChatResponseBuilder {
   build(): ChatResponse {
     return {
       content: this.content.join(''),
-      metadata: this.metadata,
+      // Copia, no la referencia: devolver `this.metadata` hacía que seguir usando el builder
+      // (otro `addSources`, otro `reset`) mutara una respuesta YA entregada. No había pasado
+      // todavía, pero es la clase de borde que aparece el día que alguien reutilice el builder.
+      metadata: { ...this.metadata },
     }
   }
 
