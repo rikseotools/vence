@@ -135,6 +135,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'parecen cascarón — daba 17 falsos positivos. Complementa a `convocatoria_enlace_no_boletin` ' +
       '(T-134), que juzga si la URL es del boletín que promete la etiqueta pero no si el documento VIVE.',
   },
+  // ── observabilidad de cliente ─────────────────────────────────────────────────────────────
+  sim_ruido_console: {
+    titulo: 'Medir qué parte de los console_error de cliente es ruido y qué parte es daño (y predecir el efecto del arreglo)',
+    ruta: 'scripts/observabilidad/sim-ruido-console.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/observability.md',
+    notas:
+      'node scripts/observabilidad/sim-ruido-console.cjs [--dias N]. Solo lectura. Separa los ' +
+      '`console_error` en tres cubos con la MISMA regla que aplica el logger ' +
+      '(lib/observability/consoleNoise.ts): ya-ruido (GSI/FedCM/401), CANDIDATOS (mensaje de red, ' +
+      'que solo bajan a debug si la página se estaba yendo) y errores de APLICACIÓN, que la regla ' +
+      'no toca nunca. De ahí sale una PREDICCIÓN falsable con la que juzgar el despliegue. Medido ' +
+      'el 28/07/2026 sobre 3 días: 14.320 eventos → 32,2% ya-ruido · 52,9% candidatos · 14,9% ' +
+      'aplicación, así que los errores deben caer a entre 2.127 y 9.704. **Si se quedan cerca de la ' +
+      'cota ALTA, es que ocurren con la pestaña VISIBLE y hay daño real, no ruido.** Correrlo ANTES ' +
+      'y DESPUÉS del deploy es la verificación: sin él, "el ruido bajó" no se distingue de "se ' +
+      'silenció señal".',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',
