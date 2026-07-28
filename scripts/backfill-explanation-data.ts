@@ -61,6 +61,10 @@ const LOTE = 500
 type Fila = {
   id: string
   explanation: string | null
+  // El parser necesita el ENUNCIADO para decidir el marco (¿se pide la verdadera o la falsa?).
+  // Estaba en el SELECT pero no en el tipo, y el typecheck de CI —que abarca scripts/— se puso
+  // rojo en main. Dos sesiones tocaron T-212 en paralelo el 28/07: una el parser, otra el render.
+  question_text: string | null
   correct_option: number
   option_a: string | null
   option_b: string | null
