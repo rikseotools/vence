@@ -327,3 +327,38 @@ describe('cableado de invariantes de timeline (vista ↔ sweep)', () => {
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIRROR del detector `audit_note_explanation` (núcleo compartido ↔ backend @Cron).
+//
+// Origen (28/07/2026): el detector llevaba meses reportando CERO mientras había 24 preguntas
+// activas con el defecto. Sus 10 literales venían de una remesa concreta de julio y no cubrían
+// las otras formas del mismo acto. Lo cazó una persona revisando otro cubo, no el sensor.
+// Como el gemelo del backend es el que escribe el snapshot nocturno, ampliar solo el CLI
+// habría dejado el @Cron —y por tanto el badge— exactamente igual de ciego.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)', () => {
+  const core = require('@/lib/health/auditNoteExplanation.cjs')
+
+  /** Lee el array literal `const AUDIT_NOTE_PATS = [...]` del fuente y lo evalúa. */
+  function evalPats(src: string): string[] {
+    const m = src.match(/const AUDIT_NOTE_PATS = (\[[\s\S]*?\])/)
+    if (!m) throw new Error('no se encontró const AUDIT_NOTE_PATS en el fuente')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia)', () => {
+    expect(SCRIPT).toContain("require('../lib/health/auditNoteExplanation.cjs')")
+    expect(SCRIPT).not.toMatch(/const AUDIT_NOTE_PATS\s*=/)
+  })
+
+  it('la lista de patrones del backend es IDÉNTICA a la del núcleo (mismo orden y valor)', () => {
+    expect(evalPats(BACKEND)).toEqual(core.AUDIT_NOTE_PATS)
+  })
+
+  it('los dos gemelos siguen emitiendo el kind', () => {
+    expect(hasKind(SCRIPT, 'audit_note_explanation')).toBe(true)
+    expect(hasKind(BACKEND, 'audit_note_explanation')).toBe(true)
+  })
+})

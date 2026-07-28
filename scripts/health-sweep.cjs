@@ -36,6 +36,7 @@ const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
+const { AUDIT_NOTE_PATS } = require('../lib/health/auditNoteExplanation.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -255,9 +256,6 @@ async function main() {
   // arreglarla. Se remediaron ~46 el 10/07 (36 reescritas + 10 needs_human); este
   // detector evita que reaparezcan en silencio. Patrones ALTA PRECISIÓN (se omite
   // "la explicación anterior", propenso a FP en explicaciones ya corregidas).
-  const AUDIT_NOTE_PATS = ['La explicación omite', 'La explicación debería', 'La explicación actual',
-    'Esta pregunta debería', 'posible errata', 'Nota técnica:', 'respuesta oficial del examen',
-    'debería ser impugnada', 'debería haberse ANULADO', 'debería haber especificado'];
   const anOrs = AUDIT_NOTE_PATS.map((_, i) => `explanation ILIKE $${i + 1}`).join(' OR ');
   const anRows = (await c.query(`SELECT id FROM questions WHERE is_active = true AND (${anOrs}) LIMIT 50`,
     AUDIT_NOTE_PATS.map(p => '%' + p + '%'))).rows;

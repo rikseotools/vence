@@ -1154,6 +1154,13 @@ export class ContentHealthSweepService {
     }
 
     // ── CONTENIDO: explicaciones que son NOTAS DE AUDITORÍA ──
+    // Mirror INLINE de lib/health/auditNoteExplanation.cjs (MANTENER EN SYNC — el guardarraíl
+    // content-sweep-parity compara esta lista con la del núcleo POR VALOR). El backend no puede
+    // requerir el `lib/` del frontend: proyecto y build separados.
+    //
+    // Ampliada el 28/07/2026 tras encontrar el detector EN VERDE con 24 activas defectuosas: los
+    // 10 literales originales venían de una remesa concreta de julio y no cubrían las otras
+    // formas del mismo acto (la explicación se juzga a sí misma, o da instrucciones de arreglo).
     const AUDIT_NOTE_PATS = [
       'La explicación omite',
       'La explicación debería',
@@ -1165,6 +1172,19 @@ export class ContentHealthSweepService {
       'debería ser impugnada',
       'debería haberse ANULADO',
       'debería haber especificado',
+      'La explicación confunde',
+      'La explicación proporcionada',
+      'La explicación es incorrecta',
+      'La explicación menciona',
+      'La explicación solo menciona',
+      'La explicación no debe',
+      'la explicación debe precisar',
+      'La explanation',
+      'Debe reescribirse',
+      'Debe reorientarse',
+      'Corregir eliminando',
+      'conviene aclarar este matiz',
+      'por razones bien explicadas',
     ];
     const anClause = sql.join(
       AUDIT_NOTE_PATS.map((p) => sql`explanation ILIKE ${'%' + p + '%'}`),
