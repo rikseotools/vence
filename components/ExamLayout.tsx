@@ -2,6 +2,19 @@
 // components/ExamLayout.tsx - MODO EXAMEN (todas las preguntas a la vez)
 'use client'
 import { useState, useEffect, useRef } from 'react'
+// Reloj y navegación del examen: lógica pura y testeada en lib/exam/reloj.ts (feedback Manolo 28/07).
+import {
+  formatearTiempo,
+  objetivoPorDefectoSeg,
+  clampObjetivoMinutos,
+  tiempoRestanteSeg,
+  estadoReloj,
+  siguienteEnBlanco,
+  cuantasEnBlanco,
+  OBJETIVO_MIN_MINUTOS,
+  OBJETIVO_MAX_MINUTOS,
+} from '@/lib/exam/reloj'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
@@ -340,16 +353,6 @@ function answerToLetter(index: number | null | undefined): string {
 }
 
 /** Formatear tiempo para el cronómetro */
-function formatElapsedTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
 
 /**
  * Convertir número de tema interno a número de display
@@ -413,6 +416,19 @@ export default function ExamLayout({
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isResuming] = useState(!!resumeTestId)
+
+  // ── Reloj del examen: transcurrido ↔ cuenta atrás (feedback Manolo, 28/07/2026) ──
+  // El reloj vivía en un bloque estático arriba: al pasar de la primera pregunta se perdía de
+  // vista. Ahora hay una barra fija, y el reloj puede mostrar el tiempo QUE QUEDA para un
+  // objetivo. Ojo: el objetivo es DEL USUARIO (nuestros exámenes de tema no tienen duración
+  // oficial); por eso en la UI se llama "objetivo" y jamás "tiempo del examen".
+  // Preferencias por dispositivo, con el envoltorio seguro (localStorage puede no estar).
+  const [modoCuentaAtras, setModoCuentaAtras] = useState(false)
+  const [objetivoMin, setObjetivoMin] = useState<number | null>(null)
+  const [editandoObjetivo, setEditandoObjetivo] = useState(false)
+  // Desde qué pregunta busca la siguiente en blanco. Es un ref y no estado: cambia al saltar y no
+  // debe provocar re-render de la lista entera de preguntas en mitad de un examen.
+  const ultimaVisitadaRef = useRef<number>(-1)
 
   // 🔒 Estados para límite de preguntas (usuarios FREE)
   const [effectiveQuestions, setEffectiveQuestions] = useState<ExamQuestion[]>(questions || [])
@@ -539,6 +555,17 @@ export default function ExamLayout({
     }
   }, [questions, hasLimit, isLimitReached, questionsRemaining, limitLoading, isSubmitted])
 
+  // Preferencias del reloj (por dispositivo). Se leen en el cliente, tras montar, para no
+  // desincronizar el render del servidor. Si `localStorage` no está disponible, `safeGet`
+  // devuelve null y se usan los valores por defecto: nunca rompe el examen.
+  useEffect(() => {
+    setModoCuentaAtras(safeGet('exam_reloj_cuenta_atras') === '1')
+    const guardado = safeGet('exam_objetivo_min')
+    if (guardado !== null) {
+      setObjetivoMin(clampObjetivoMinutos(guardado, Math.round(objetivoPorDefectoSeg(questions?.length ?? 0) / 60)))
+    }
+  }, [questions?.length])
+
   // ✅ CRONÓMETRO: Actualizar cada segundo
   useEffect(() => {
     if (isSubmitted) return
@@ -661,6 +688,10 @@ export default function ExamLayout({
     // inmediato desde el estado ya fusionado: garantiza durabilidad aunque el guardado
     // server-side falle o el usuario cierre la pestaña acto seguido. El write a
     // localStorage es idempotente (seguro ante el doble-invoke de StrictMode en dev).
+    // El buscador de "siguiente en blanco" arranca desde la última que tocó, no desde el
+    // principio: si no, tras responder la 40 el salto le mandaría otra vez a la 2.
+    ultimaVisitadaRef.current = questionIndex
+
     setUserAnswers(prev => {
       const next = { ...prev, [questionIndex]: option }
       if (testId) saveLocalExamAnswers(testId, next as Record<number, string>)
@@ -1100,6 +1131,30 @@ export default function ExamLayout({
   const incorrectCount = answeredCount - score
   const blankCount = totalQuestions - answeredCount
 
+  // ── Barra fija del examen (reloj + progreso + salto a las que faltan) ──
+  const objetivoSeg = (objetivoMin ?? Math.round(objetivoPorDefectoSeg(totalQuestions) / 60)) * 60
+  const restanteSeg = tiempoRestanteSeg(objetivoSeg, elapsedTime)
+  const estadoDelReloj = estadoReloj(objetivoSeg, elapsedTime)
+  // Cálculo directo y NO `useMemo`: este bloque vive después de un return temprano, así que un
+  // hook aquí rompería el orden de hooks de React (lo cazó el lint). Recorrer 50 respuestas por
+  // render no se nota.
+  const enBlancoAhora = cuantasEnBlanco(userAnswers as Record<number, string | undefined>, totalQuestions)
+
+  /** Salta a la siguiente pregunta sin responder (da la vuelta al llegar al final). */
+  const irASiguienteEnBlanco = () => {
+    const destino = siguienteEnBlanco(
+      userAnswers as Record<number, string | undefined>,
+      totalQuestions,
+      ultimaVisitadaRef.current,
+    )
+    if (destino === null) return
+    ultimaVisitadaRef.current = destino
+    const nodo = typeof document !== 'undefined' ? document.getElementById(`pregunta-${destino}`) : null
+    // `block:'center'` y no 'start': con la barra fija arriba, alinear al principio dejaría el
+    // enunciado justo debajo de la barra y medio tapado.
+    nodo?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   const puntosBrutos = correctCount - (incorrectCount * penaltyPerWrong)
   const notaSobre10 = isSubmitted
     ? Math.max(0, (puntosBrutos / totalQuestions) * 10).toFixed(2)
@@ -1156,7 +1211,7 @@ export default function ExamLayout({
             <div className="text-center px-3 py-3 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="text-xs text-purple-600 font-medium mb-1">⏱️ Tiempo</div>
               <div className="text-xl sm:text-2xl font-bold text-purple-700 font-mono">
-                {formatElapsedTime(elapsedTime)}
+                {formatearTiempo(elapsedTime)}
               </div>
             </div>
 
@@ -1221,7 +1276,7 @@ export default function ExamLayout({
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-purple-600 font-medium">⏱️ Tiempo empleado:</span>
                       <span className="text-2xl font-bold text-purple-700 font-mono">
-                        {formatElapsedTime(elapsedTime)}
+                        {formatearTiempo(elapsedTime)}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 text-center mt-2">
@@ -1288,6 +1343,88 @@ export default function ExamLayout({
           })()}
         </div>
 
+        {/* ⏱️ BARRA FIJA DEL EXAMEN (feedback Manolo, 28/07/2026)
+            Dos cosas que faltaban y que él pidió: el reloj se perdía de vista al pasar de la
+            primera pregunta, y no había forma de volver a las que dejó en blanco sin subir a ojo
+            por una lista de 50. Solo mientras se hace el examen: al corregir estorba. */}
+        {!isSubmitted && totalQuestions > 0 && (
+          <div className="sticky top-0 z-30 -mx-2 px-2 py-2 mb-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              {/* Reloj: un toque alterna transcurrido ↔ lo que queda para el objetivo */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nuevo = !modoCuentaAtras
+                  setModoCuentaAtras(nuevo)
+                  safeSet('exam_reloj_cuenta_atras', nuevo ? '1' : '0')
+                }}
+                title={modoCuentaAtras ? 'Ver el tiempo transcurrido' : 'Ver el tiempo que queda para tu objetivo'}
+                className={`font-mono font-bold text-lg px-3 py-1.5 rounded-lg border transition-colors ${
+                  !modoCuentaAtras
+                    ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-200'
+                    : estadoDelReloj === 'agotado'
+                      ? 'bg-red-50 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200'
+                      : estadoDelReloj === 'aviso'
+                        ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200'
+                        : 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-200'
+                }`}
+              >
+                {modoCuentaAtras
+                  ? (restanteSeg >= 0 ? `⏳ ${formatearTiempo(restanteSeg)}` : `⏳ +${formatearTiempo(-restanteSeg)}`)
+                  : `⏱️ ${formatearTiempo(elapsedTime)}`}
+              </button>
+
+              {/* Objetivo: es TUYO, no el del examen oficial (nuestros exámenes de tema no llevan
+                  duración oficial y no vamos a inventárnosla). */}
+              {editandoObjetivo ? (
+                <input
+                  type="number"
+                  autoFocus
+                  min={OBJETIVO_MIN_MINUTOS}
+                  max={OBJETIVO_MAX_MINUTOS}
+                  defaultValue={Math.round(objetivoSeg / 60)}
+                  onBlur={(e) => {
+                    const v = clampObjetivoMinutos(e.target.value, Math.round(objetivoPorDefectoSeg(totalQuestions) / 60))
+                    setObjetivoMin(v)
+                    safeSet('exam_objetivo_min', String(v))
+                    setEditandoObjetivo(false)
+                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  className="w-20 text-sm px-2 py-1 border border-gray-300 rounded dark:bg-gray-800 dark:border-gray-600"
+                  aria-label="Tu objetivo de tiempo en minutos"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditandoObjetivo(true)}
+                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2"
+                >
+                  objetivo: {Math.round(objetivoSeg / 60)} min
+                </button>
+              )}
+
+              <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                {answeredCount}/{totalQuestions}
+              </div>
+
+              {/* Volver a las que faltan sin subir a ojo. Da la vuelta al llegar al final, que es
+                  justo cuando se necesita: al terminar la primera pasada. */}
+              <button
+                type="button"
+                onClick={irASiguienteEnBlanco}
+                disabled={enBlancoAhora === 0}
+                className={`text-sm px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                  enBlancoAhora === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {enBlancoAhora === 0 ? '✓ Ninguna en blanco' : `⚪ Ir a la siguiente en blanco (${enBlancoAhora})`}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ✅ LISTA DE PREGUNTAS */}
         <div className="space-y-6">
           {effectiveQuestions.map((question, index) => {
@@ -1305,6 +1442,8 @@ export default function ExamLayout({
             return (
               <div
                 key={index}
+                // Ancla del salto "ir a la siguiente en blanco" (feedback Manolo 28/07).
+                id={`pregunta-${index}`}
                 className={`bg-white rounded-lg shadow-sm p-6 border-2 transition-all ${
                   showFeedback
                     ? isCorrect
