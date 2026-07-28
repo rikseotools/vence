@@ -920,7 +920,21 @@ incluida).
 - **NO es un endpoint, es un recurso compartido.** En esa misma ventana cayeron a la vez cosas sin relación entre sí: renders de landing (`/auxiliar-administrativo-ayuntamiento-badajoz`, `…universidad-carlos-iii`), `/api/daily-limit`, `/api/medals`, `/api/v2/test-config/articles` y **tres canarios de Fargate** (`alerts-engine`, `canary-ai-model`, `canary-stats-pipeline`, `canary-theme-stats`). Cuando se degrada todo junto, el sospechoso es la BD o el pool, no el código de un endpoint. **Recordatorio del contexto:** el pool de la app es `max:5` (`CLAUDE.md`, tras el cutover a RDS).
 - **Y NO es un incidente puntual: es un PATRÓN diario en horas punta.** Peticiones de más de 5 s por hora, últimos 5 días: **24/07** 09h→82 · 10h→139 · 11h→146 · **12h→161** · 13h→102 · 14h→107 · 15h→74 (≈800 en un día) · **27/07** 07h→81 · 10h→65 · 11h→142 · **26/07** 09h→62 · **25/07** 10h→62. Siempre en horario de estudio.
 - **Por qué no lo veía nadie:** el badge de salud cuenta **5xx del servidor**, y esto no son 5xx — son respuestas correctas que llegan tarde. La latencia se registra en `duration_ms` y **nadie la agrega ni la vigila**. Es el mismo punto ciego que [T-210] con los errores de cliente: el indicador mide una cosa mientras el daño ocurre en otra.
-- **Qué averiguar antes de tocar (no dar por hecho que es el pool):** ¿coincide con los crons/canarios de Fargate, con el sweep nocturno, o simplemente con el pico de tráfico? ¿se agota el pool `max:5` o es la propia RDS (CPU, IOPS, locks)? ¿hay una query concreta que se dispara? Con `duration_ms` por `endpoint` y `source` ya se puede acotar mucho sin tocar producción. **Sin eso, subir el pool es adivinar** — y si el cuello es la BD, empeora.
+- **🎯 CAUSA LOCALIZADA (28/07) — es la CPU del contenedor del BACKEND, no la base de datos ni el pool.** Medido en CloudWatch sobre la ventana exacta del incidente (09:30-09:45 UTC = 11:30-11:45 local):
+  | | CPU |
+  |---|---|
+  | `vence-backend` 11:30 | media **52%** · máx **99,98%** |
+  | `vence-backend` 11:35 | media **71%** · máx 97,7% |
+  | `vence-backend` 11:45 | media 41% · máx **99,7%** |
+  | `vence-frontend` | 2-6% |
+  | RDS `vence-prod` | 8-20% |
+  - **Y NO se repite solo ese día:** el 24/07 —el de las ~800 peticiones lentas— el backend estuvo entre **96% y 100%** de forma repetida de 11:30 a 15:30. Coincide hora por hora con el patrón de lentitud.
+  - **Se descartaron las dos hipótesis previas, y las dos parecían buenas:**
+    1. **La BD NO es el cuello.** `db.t4g.medium` es *burstable*, así que lo primero que sospeché fue el agotamiento de créditos de CPU — encaja de libro con «se degrada en horas punta». **Falso:** `CPUCreditBalance` está clavado en **576, el máximo, plano**, y la CPU de RDS al 8-20%. La base de datos estaba tranquila mientras el usuario esperaba 16 segundos.
+    2. **El pool `max:5` tampoco.** Si el cuello fuera el pool, la BD estaría ocupada; está ociosa. **Subir el pool no habría arreglado nada** — era justo el «arreglar es adivinar» que avisaba esta ficha.
+  - **Lo que sí encaja:** el backend ejecuta **en el mismo contenedor** los `@Cron` y los canarios (`alerts-engine`, `canary-ai-model`, `canary-stats-pipeline`, `canary-theme-stats`, el sweep de salud, `detect-boletines`…), y en esa misma ventana **esos canarios también salieron lentos**. Trabajo por lotes y peticiones de usuario compitiendo por la misma CPU: cuando el lote satura, el opositor espera.
+  - **Siguiente paso, ya acotado:** confirmar QUÉ tarea concreta consume la CPU en esa franja (logs del servicio por minuto durante un pico) y decidir entre separar el trabajo por lotes del contenedor que sirve peticiones, espaciarlo, o darle más CPU a la tarea. **La dirección ya no es adivinar: es medir cuál de los crons.**
+- **Qué queda por averiguar (no dar por hecho que es un cron concreto):** ¿coincide con los crons/canarios de Fargate, con el sweep nocturno, o simplemente con el pico de tráfico? ¿se agota el pool `max:5` o es la propia RDS (CPU, IOPS, locks)? ¿hay una query concreta que se dispara? Con `duration_ms` por `endpoint` y `source` ya se puede acotar mucho sin tocar producción. **Sin eso, subir el pool es adivinar** — y si el cuello es la BD, empeora.
 - **Capa que falta y encaja donde ya hay sitio:** un indicador de **latencia p95 por endpoint** en `/admin/salud-sistema`, junto a los cuatro que ya existen. La tabla y los datos están; lo que no hay es quien los mire.
 - **Origen:** investigando los timeouts de 15 s que quedaron como «lo real que queda» al cerrar el diagnóstico de [T-210].
 
