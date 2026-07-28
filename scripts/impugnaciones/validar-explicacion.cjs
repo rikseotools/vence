@@ -164,35 +164,43 @@ function sinReferenciaFinal(fragmento, contenidoNormalizado) {
   return contenidoNormalizado.includes(podado) ? podado : fragmento;
 }
 
+/**
+ * NÚCLEO compartido: ¿este texto de cita aparece literal en el artículo? Devuelve null si sí, o
+ * `{fallo, troceada}` con el tramo que no aparece.
+ *
+ * Está extraído aquí para que exista UNA sola implementación del criterio. `barrido-citas.cjs`
+ * tenía la suya (`slice(0, 70)`) mientras este validador ya comparaba la cita entera, así que la
+ * campaña de julio inventarió solo las citas que divergen en sus primeras 70 letras — y el arranque
+ * de un precepto es genérico: lo que decide la respuesta (plazos, mayorías, órgano competente) vive
+ * al final, justo en el tramo que aquella copia no miraba. Un detector con dos implementaciones
+ * diverge; es cuestión de tiempo.
+ */
+function citaNoLiteral(quote, articleContent) {
+  if (!quote || !quote.trim()) return null;
+  const nc = norm(articleContent || '');
+  const fragmentos = partirPorElipsis(quote)
+    .map((f) => norm(f))
+    .filter((f) => f.length >= MIN_FRAGMENTO);
+  // Cita corta (o toda ella por debajo del umbral): se comprueba entera, sin trocear.
+  const aComprobar = fragmentos.length ? fragmentos : [norm(quote)].filter(Boolean);
+  const fallo = aComprobar.map((f) => sinReferenciaFinal(f, nc)).find((f) => !nc.includes(f));
+  return fallo === undefined ? null : { fallo, troceada: aComprobar.length > 1 };
+}
+
 function validateQuotes(expl, articleContent) {
   const problems = [];
   const lineas = expl.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
   const quoteLines = lineas.filter((l) => l && !esLineaDeReferencia(l));
   const quote = quoteLines.join(' ').trim();
   if (!quote) return problems; // sin cita literal → nada que verificar
-  const nc = norm(articleContent || '');
 
-  // La cita debe existir literal en el artículo ENTERA, no solo su arranque.
-  //
-  // Antes se comparaban los primeros 80 caracteres (`nq.slice(0, 80)`) y el resto no se miraba
-  // nunca. Cazado el 27/07 atacando el propio guardarraíl: invertí el final de la cita del art. 4.1
-  // CE («siendo la ROJA de doble anchura que cada una de las AMARILLAS», lo contrario de la norma y
-  // justo el error que esa pregunta examina) y la aprobó. El arranque de una cita legal suele ser
-  // genérico —«El plazo de presentación de solicitudes será de…»— y lo que decide la respuesta
-  // (plazos, mayorías, órgano competente) vive al final, o sea, justo en el tramo ciego.
-  const fragmentos = partirPorElipsis(quote)
-    .map((f) => norm(f))
-    .filter((f) => f.length >= MIN_FRAGMENTO);
-  // Cita corta (o toda ella por debajo del umbral): se comprueba entera, sin trocear.
-  const aComprobar = fragmentos.length ? fragmentos : [norm(quote)].filter(Boolean);
-
-  const fallo = aComprobar.map((f) => sinReferenciaFinal(f, nc)).find((f) => !nc.includes(f));
-  if (fallo !== undefined) {
-    const troceada = aComprobar.length > 1;
+  // La cita debe existir literal en el artículo ENTERA, no solo su arranque (ver `citaNoLiteral`).
+  const r = citaNoLiteral(quote, articleContent);
+  if (r) {
     problems.push(
       `La cita en blockquote NO aparece literal en el artículo vinculado (posible cita inventada o de otro artículo).\n` +
       `     cita: "${quote.slice(0, 90)}…"` +
-      (troceada ? `\n     tramo que falla: "${fallo.slice(0, 90)}…"` : '')
+      (r.troceada ? `\n     tramo que falla: "${r.fallo.slice(0, 90)}…"` : '')
     );
   }
   return problems;
@@ -200,7 +208,7 @@ function validateQuotes(expl, articleContent) {
 
 // Exporta los helpers puros para test (sin BD). Si se requiere como módulo, no ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { validateFormat, validateQuotes, checkCorrespondence, explanationBlocks };
+  module.exports = { validateFormat, validateQuotes, citaNoLiteral, checkCorrespondence, explanationBlocks };
   return;
 }
 

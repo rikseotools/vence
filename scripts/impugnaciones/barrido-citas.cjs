@@ -48,10 +48,16 @@ function citaLiteralPretendida(explanation) {
   return { texto: m[1], elipsis: RE_ELIPSIS.test(m[1]) };
 }
 
+// El criterio de "¿la cita está literal en el artículo?" es UNO y vive en el guardarraíl
+// (`validar-explicacion.cjs`). Aquí había una COPIA que comparaba solo `slice(0, 70)`: la campaña
+// de julio inventarió únicamente las citas que divergen en sus primeras 70 letras, y el arranque de
+// un precepto es genérico —lo que decide la respuesta (plazos, mayorías, órgano competente) vive al
+// final, justo en el tramo que la copia no miraba—. Dos implementaciones del mismo criterio
+// divergen siempre; el barrido y el guardarraíl tienen que decir lo MISMO de la misma pregunta.
+const { citaNoLiteral } = require('./validar-explicacion.cjs');
+
 function citaAusente(texto, articleContent) {
-  const nt = norm(texto);
-  const chunk = nt.length > 70 ? nt.slice(0, 70) : nt;
-  return chunk ? !norm(articleContent || '').includes(chunk) : false;
+  return citaNoLiteral(texto, articleContent) !== null;
 }
 
 // "No es literal" NO significa "está mal": hay tres familias muy distintas y solo una es grave.

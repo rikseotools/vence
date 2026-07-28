@@ -519,6 +519,29 @@
 - **Triaje sobre muestra de 60 (determinista, sin IA): sale 50/50.**
   - **La mitad, el fragmento final SÍ existe en otro artículo de la MISMA ley** → mal vinculada o cita del precepto contiguo. Se localiza por texto, sin gastar un token: es el bucket barato y masivo, y ya existe el camino (`aplicar-needs-human.cjs` hace re-vínculo + explicación validada + AVR + transición en una pasada).
   - **La otra mitad no aparece en ninguna parte de su ley** → cita inventada, parafraseada o traída de otra norma. **Aquí sí toca LLM**, con el flujo de `revisar-preguntas-con-agente.md` y volcado a `ai_verification_results` con proveedor de campaña propio (NUNCA `claude_code`, §5.1).
+- **✅ PASO 1 HECHO (28/07) — la copia del criterio, muerta.** `barrido-citas.cjs` usa ya el núcleo
+  `citaNoLiteral` exportado por `validar-explicacion.cjs`; trinquete en
+  `__tests__/impugnaciones/criterioCitaUnico.test.ts` para que barrido y guardarraíl no vuelvan a
+  divergir. **PERO OJO, la expectativa de esta ficha era demasiado optimista y conviene decirlo:**
+  medido sobre 4.597 activas con cita, el criterio viejo (`slice(0,70)`) marcaba **1.607 (35,0%)** y
+  el nuevo marca **1.632 (35,5%)** — solo **25 más**. Es decir, **el inventario NO estaba sesgado
+  por el tramo ciego** como se suponía: cuando una cita no es literal, suele divergir también en su
+  arranque. El valor del paso 1 es de mantenimiento (un criterio, no dos), no de volumen.
+- **📊 LO QUE SÍ MANDA, medido el 28/07 al cruzar con las impugnaciones PAGADAS (1 €/aceptada):**
+  - De las 606 preguntas con impugnación aceptada en 3 meses, **solo el 21% estaba marcada como
+    defectuosa ANTES** del reporte (mirando `verified_at` del AVR contra la fecha de la impugnación;
+    sin ese filtro sale un número inflado, porque resolver una impugnación ESCRIBE un AVR). El
+    **79% era nuevo** → drenar las colas de AVR (`needs_human`, explicaciones flojas) **no evita los
+    pagos**: buena parte de esas preguntas ni se sirven (2.472 de la cola B nunca se han servido).
+  - **Este cubo sí toca lo visible:** el **43%** de lo impugnado y aceptado tiene la cita no literal,
+    frente al **30,7%** del banco (×1,4). Y no llega como queja `no_literal` (16) sino como `otro`
+    (41), `tema_incorrecto` (27) y `respuesta_incorrecta` (27): **la cita rota es un marcador de
+    pregunta enferma**, no un defecto cosmético.
+  - **El objetivo acotado:** de las **1.000 preguntas más servidas** en 30 días, 692 tienen cita
+    verificable y **266 la tienen NO literal**, con **15.929 exposiciones/mes** (40% de ese tramo) —
+    cada una vista **60 veces al mes**. **266 preguntas, no 13.424:** ahí está la parte del cubo que
+    el opositor realmente ve, y es el siguiente paso natural (mitad determinista por relink
+    intra-ley, mitad LLM, nunca auto-flip de clave).
 - **Orden propuesto (barato → caro):** (1) **matar la copia**: que `barrido-citas.cjs` reutilice `validateQuotes` en vez de su `slice(0, 70)` — un detector con dos implementaciones ya ha demostrado que diverge; (2) re-barrer y publicar el inventario por bucket; (3) bucket determinista (relink intra-ley) en lotes con los guardarraíles de siempre; (4) LLM solo sobre el residuo, y **nunca auto-flip de clave**.
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.
