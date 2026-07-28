@@ -171,3 +171,33 @@ describe('validarDeclaracionReserva', () => {
     expect(r.avisos.join(' ')).toMatch(/ya está declarado/)
   })
 })
+
+// [T-218, segunda tanda] La otra forma de probar «aparte»: el boletín ENUMERA los dos cupos y no
+// imprime la suma. Es como está escrito el BOCM de tcae-sermas-madrid, la convocatoria con el mayor
+// error absoluto en riesgo de toda la lista (131 plazas).
+describe('validarDeclaracionReserva — «aparte» probado por enumeración de cupos', () => {
+  const { validarDeclaracionReserva } = require('@/lib/convocatoria/correccionPlazas.cjs')
+  const base = { url: 'https://www.bocm.es/x.PDF', motivo: 'El BOCM enumera los dos cupos del turno libre y la reserva es el 7% del total de las convocadas.' }
+
+  const CITA_BOCM = 'Las plazas convocadas se proveerán por el sistema de turno libre, y se dividen en dos cupos: — Plazas del cupo general: 1.747. — Plazas del cupo de reserva para personas con discapacidad: 131.'
+
+  it('acepta la enumeración aunque el total (1.878) NO esté impreso', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: false, cita: CITA_BOCM, plazasLibres: 1747, plazasDiscapacidad: 131 })
+    expect(r.ok).toBe(true)
+  })
+
+  it('NO basta con que aparezcan las dos cifras: «de las cuales» significa lo contrario', () => {
+    // Mismas dos cifras, sentido opuesto. Sin marca de separación, declarar «aparte» exige el total.
+    const r = validarDeclaracionReserva({
+      ...base, incluidas: false, plazasLibres: 425, plazasDiscapacidad: 43,
+      cita: 'Se convocan 425 plazas del Cuerpo de Auxilio Judicial, de las cuales 43 se reservan para personas con discapacidad.',
+    })
+    expect(r.ok).toBe(false)
+    expect(r.errores.join(' ')).toMatch(/468/) // el total que implicaría, y que no está escrito
+  })
+
+  it('la enumeración no sirve para colar un «dentro» sin su total', () => {
+    const r = validarDeclaracionReserva({ ...base, incluidas: true, cita: CITA_BOCM, plazasLibres: 1878, plazasDiscapacidad: 131 })
+    expect(r.ok).toBe(false)
+  })
+})
