@@ -2218,6 +2218,46 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── Feedback PENDIENTE sin conversación: incontestable ─────────────────────
+    // Mirror INLINE de scripts/health-sweep.cjs (feedback_sin_conversacion) — MANTENER EN SYNC.
+    //
+    // No es hipotético: las solicitudes que llegaban por el CHAT DE IA no creaban
+    // conversación, y las 6 que entraron entre abril y julio se quedaron SIN UNA SOLA
+    // respuesta (cinco cerradas como `dismissed`, una como `resolved`, en silencio). Se
+    // arregló el origen (T-247), y esto es la red por si otro camino de creación vuelve a
+    // olvidarla.
+    //
+    // Va como APP y no como contenido: el usuario está esperando una respuesta que no
+    // llegará. Se excluyen las solicitudes de borrado de cuenta, que van por su propio
+    // manual y NO se responden por el hilo (serían un falso positivo permanente).
+    const sinConvRows = (await this.db.execute(sql`
+      SELECT f.id, f.type, left(f.message, 90) AS msg, f.created_at
+      FROM user_feedback f
+      WHERE f.status = 'pending'
+        AND f.message NOT LIKE '[Solicitud de eliminación de cuenta%'
+        AND NOT EXISTS (SELECT 1 FROM feedback_conversations c2 WHERE c2.feedback_id = f.id)
+      ORDER BY f.created_at
+      LIMIT 50
+    `)) as unknown as Array<{ id: string; type: string; msg: string; created_at: string }>;
+    if (sinConvRows.length) {
+      add(
+        'app',
+        'error',
+        null,
+        'feedback_sin_conversacion',
+        `${sinConvRows.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
+        {
+          count: sinConvRows.length,
+          sample: sinConvRows.slice(0, 10).map((r) => ({
+            id: r.id,
+            type: r.type,
+            msg: r.msg,
+            creado: r.created_at,
+          })),
+        },
+      );
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {
