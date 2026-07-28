@@ -277,6 +277,17 @@
 - **Qué hay que averiguar antes de arreglar (no dar por hecho que es red del usuario):** ¿los `Failed to fetch` coinciden en el tiempo con reinicios/deploys de ECS? ¿el 401 de `disputes/notifications` es expiración del token RS256 sin refresco (Auth.js, flip de julio) o falta de sesión legítima? ¿hay correlación con móvil/red o está repartido? Si una parte es token, **el usuario pierde funcionalidad en silencio** (notificaciones, medallas, guardado de respuestas).
 - **Impacto:** 🔴 es el defecto de UX con más alcance medido hoy: más de la mitad de la base activa cada día. Y toca el guardado de respuestas (`answerSaveQueue`), que es el camino crítico.
 - **Relación:** roadmap de observabilidad §Fase 1 (client-side observability) — la instrumentación EXISTE, lo que falta es agregarla, filtrar el ruido de un solo navegador y ponerle umbral.
+- **🔬 DIAGNÓSTICO 28/07 (medido, no supuesto) — son DOS fenómenos distintos y solo uno es un bug:**
+  - **NO es caída de servidor.** En 3 días hay **803 minutos** con fallos y **541 de ellos afectan a UN SOLO usuario**; el pico máximo son 6 usuarios en el mismo minuto. Si fuese el backend, se verían ráfagas colectivas. No las hay.
+  - **NO es la red móvil.** 3.076 eventos en escritorio frente a 2.202 en móvil.
+  - **NO es un usuario ruidoso.** 396 usuarios distintos en 3 días, **mediana de 4 fallos** por usuario (máximo 243, ese sí es un caso aparte).
+  - **Mecanismo 1 — `Failed to fetch` = peticiones ABORTADAS, registradas como error.** Los endpoints que fallan son todos de carga inicial y de **polling** (`useDisputeNotifications` arranca `startPolling()` + `visibilitychange`). Cuando el usuario navega o el navegador congela la pestaña, el fetch en vuelo se aborta y el `catch` lo escribe como `console.error`. Eso explica el volumen (4.840/24h) y por qué la señal es inaccionable: **la mayoría probablemente sea ruido de instrumentación, no pérdida de funcionalidad**.
+  - **Mecanismo 2 — el 401 SÍ es un bug real.** `getValidToken()` (`lib/api/authHeaders.ts`, líneas 11-46) tiene un **cooldown de 30 s**: si se refrescó hace menos, devuelve `auth.getSession()` **sin comprobar la expiración del token**. Un caller que entre en esa ventana con la sesión cacheada caducada se lleva un 401. Encaja con los 11-26 usuarios/día de `disputes/notifications 401` y con `[answerSaveQueue] Sin token`.
+- **➡️ QUÉ HACER (en este orden, y no al revés):**
+  1. **Separar el ruido del daño ANTES de arreglar nada:** distinguir en el logger el fetch abortado (unload/`AbortError`/pestaña oculta) del fallo real. Sin eso no se puede medir si el arreglo funciona, y se seguirá viendo un 60% que no significa nada.
+  2. **Comprobar la expiración antes de usar el token cacheado** en el paso 2 del cooldown. Es el bug con daño demostrable: notificaciones, medallas y —lo serio— el guardado de respuestas.
+  3. Re-medir con el ruido ya separado y decidir si queda algo.
+
 - **Origen:** triaje de salud del 28/07, al desglosar los 5.076 eventos de error de 24h (4.840 eran `console_error`).
 
 ### [T-207] 🟠 [ABIERTO 27/07] Cubo «citas no literales»: 13.424 preguntas activas (30,7%) que los dos detectores de citas nunca pudieron ver
