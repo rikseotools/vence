@@ -54,10 +54,15 @@ describe('proponerRelacion — cuándo NO debe proponer', () => {
   })
 
   it('si el corpus da evidencia de los DOS lados, no se elige por mayoría: se manda a leer', () => {
+    // La prosa dice «del total de las 100 se reservan 8» (dentro) y, MUY lejos, un anexo da la fila
+    // «100 8 108» (aparte). Separados a propósito: si cayeran en la misma ventana, la prosa se
+    // callaría sola por ambigua y no habría contradicción que probar.
     const corpus = 'Se convocan 100 plazas. Del total de las plazas convocadas se reservarán 8 para personas con discapacidad. ' +
+      'Relleno intermedio sin cifras. '.repeat(30) +
       'Anexo: Turno libre Discapacidad Total 100 8 108.'
     const props = proponerRelacion(corpus, { plazasLibres: 100, plazasDiscapacidad: 8 })
     expect(props.length).toBeGreaterThan(1)
+    expect(new Set(props.map((p) => p.incluidas)).size).toBe(2)
     expect(propuestaUnanime(props)).toBeNull()
   })
 
@@ -79,5 +84,35 @@ describe('proponerRelacion — no confundir una casualidad con una tabla', () =>
     const p = proponerRelacion(corpus, { plazasLibres: 3, plazasDiscapacidad: 2 })
     expect(p.length).toBeGreaterThan(0)
     expect(p[0].nums).toEqual([1, 2, 3])
+  })
+})
+
+// La MISMA frase, dos veredictos opuestos, según qué total tengamos guardado. Lo destapó
+// ujieres-cortes-generales (28/07): con la regla ingenua habría propuesto DENTRO y habría sido falso.
+describe('proponerRelacion — «del total… se reservan N» depende de cuál sea ese total', () => {
+  const UJIERES = 'han acordado la Oferta de Empleo Público de las Cortes Generales para el año 2026, que incluye una propuesta de convocatoria de cuarenta plazas para el Cuerpo de Ujieres de las Cortes Generales, para su provisión por el turno libre y de discapacidad. Del total de las plazas convocadas, de conformidad con lo dispuesto en el artículo 11.2 del Estatuto del Personal de las Cortes Generales, se reservan cuatro para ser cubiertas por personas con discapacidad.'
+
+  it('si el total del boletín es NUESTRA cifra → dentro (UNED: 54 y 54)', () => {
+    const corpus = 'Se convocan pruebas selectivas para cubrir 54 plazas de la Escala de Auxiliares Administrativos. Del total de las plazas convocadas se reservarán 6 para personas con discapacidad.'
+    const p = propuestaUnanime(proponerRelacion(corpus, { plazasLibres: 54, plazasDiscapacidad: 6 }))
+    expect(p.incluidas).toBe(true)
+  })
+
+  it('si el total del boletín es nuestra cifra MÁS el cupo → aparte (Ujieres: guardamos 36, el BOE dice cuarenta)', () => {
+    const p = propuestaUnanime(proponerRelacion(UJIERES, { plazasLibres: 36, plazasDiscapacidad: 4 }))
+    expect(p).not.toBeNull()
+    expect(p.incluidas).toBe(false)
+    expect(p.evidencias[0].via).toMatch(/MÁS el cupo/)
+  })
+
+  it('el total en LETRAS cuenta igual: los boletines lo escriben así más de lo que parece', () => {
+    // «cuarenta» — si el lector solo mirara dígitos, esta convocatoria sería muda.
+    expect(/\b40\b/.test(UJIERES)).toBe(false)
+    expect(proponerRelacion(UJIERES, { plazasLibres: 36, plazasDiscapacidad: 4 }).length).toBeGreaterThan(0)
+  })
+
+  it('si la frase no trae ninguno de los dos totales, no se concluye', () => {
+    const corpus = 'Del total de las plazas convocadas se reservará el cupo legalmente previsto para personas con discapacidad.'
+    expect(proponerRelacion(corpus, { plazasLibres: 36, plazasDiscapacidad: 4 })).toHaveLength(0)
   })
 })
