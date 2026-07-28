@@ -49,7 +49,13 @@ async function proponer(c, soloSlug) {
            COALESCE((SELECT count(*)::int FROM user_profiles up
                       WHERE up.target_oposicion = replace(o.slug, '-', '_')), 0) AS usuarios,
            (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
-             WHERE d.convocatoria_id = cv.id) AS corpus
+             WHERE d.convocatoria_id = cv.id) AS corpus,
+           -- Documentos SUELTOS, para poder distinguir «falta una forma» de «falta el documento»:
+           -- que la cifra salga en ALGÚN sitio del corpus no prueba que esté clonado el papel que
+           -- explica el desglose (carlos-iii tiene 8 documentos y ninguno son las bases).
+           (SELECT jsonb_agg(jsonb_build_object('tipo', d.tipo, 'chars', length(d.extracted_text),
+                                                'texto', left(d.extracted_text, 200000)))
+              FROM convocatoria_documentos d WHERE d.convocatoria_id = cv.id) AS docs
       FROM oposiciones o JOIN convocatorias cv ON cv.oposicion_id = o.id AND cv.is_current
      WHERE o.is_active AND cv.plazas_discapacidad > 0
        AND cv.plazas_discapacidad_incluidas IS NULL
@@ -76,17 +82,20 @@ async function proponer(c, soloSlug) {
       //    es que no tenemos el documento que la prueba (territorio de `plazas_afirmadas_sin_documento`).
       //  · si la contiene y aun así no reconocemos la relación, es una FORMA NUEVA que hay que leer
       //    a mano y, si se repite, enseñársela al lector.
-      const tieneCifra = cifraEnTexto(r.libres, r.corpus)
-      const tieneCupo = cifraEnTexto(r.cupo, r.corpus)
-      if (!tieneCifra) sinDocumento++
+      // El documento que PRUEBA el desglose es el que trae la cifra Y habla de la reserva. Si no
+      // hay ninguno así, no falta una forma: falta el papel, y eso es otra cola (y otro detector).
+      const VOCAB = /discapacidad|discapacitat|reserv|cupo/i
+      const docs = Array.isArray(r.docs) ? r.docs : []
+      const prueba = docs.find((d) => cifraEnTexto(r.libres, d.texto) && VOCAB.test(String(d.texto || '')))
+      if (!prueba) sinDocumento++
       else formaNueva++
-      console.log(`\n·  ${cab}\n   → ${tieneCifra
-        ? `forma NUEVA: el corpus sí trae el ${r.libres}${tieneCupo ? ` y el ${r.cupo}` : ` (pero NO el cupo ${r.cupo})`} — hay que leerlo`
-        : `NO hay documento que pruebe ni el ${r.libres}: primero clonar el boletín bueno`}`)
+      console.log(`\n·  ${cab}\n   → ${prueba
+        ? `FORMA NUEVA: «${prueba.tipo}» (${prueba.chars} ch) trae el ${r.libres} y habla de reserva — hay que leerlo`
+        : `FALTA EL DOCUMENTO que lo pruebe (${docs.length} clonado(s), ninguno con el ${r.libres} junto a la reserva)`}`)
     }
   }
   console.log(`\n═══ ${rows.length} sin declarar · ${unanimes} con propuesta limpia · ${discrepan} contradictorias · ${mudas} mudas`)
-  console.log(`    de las mudas: ${formaNueva} con la cifra en el documento (forma nueva, a leer) · ${sinDocumento} SIN documento que pruebe la cifra`)
+  console.log(`    de las mudas: ${formaNueva} piden LEER (el documento está, la forma es nueva) · ${sinDocumento} piden CLONAR el boletín que lo pruebe`)
   console.log('   Nada de esto se ha escrito. Para declarar: --slug=… --incluidas=… --cita="…" --url=… --motivo="…" --apply')
 }
 

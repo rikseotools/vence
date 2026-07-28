@@ -127,3 +127,20 @@ describe('proponerRelacion — «de dichas plazas, se reserva una»', () => {
     expect(p.incluidas).toBe(true)
   })
 })
+
+// Reparto explícito de un total entre turnos (BOP de Badajoz, 28/07). Como «del total…», no concluye
+// sola: lo que decide es si guardamos el total o una de las partes.
+describe('proponerRelacion — «de las 9, ocho por turno libre y una por discapacidad»', () => {
+  const BADAJOZ = 'CONVOCATORIA PARA CUBRIR, MEDIANTE EL SISTEMA DE OPOSICIÓN LIBRE, 9 PLAZAS DE AUXILIAR ADMINISTRATIVO/A DEL AYUNTAMIENTO DE BADAJOZ, DE LAS CUALES 8 PLAZAS SE CUBRIRÁN POR EL TURNO DE ACCESO LIBRE Y 1 PLAZA ESTÁ DESTINADA A SER CUBIERTA POR EL TURNO DE DISCAPACIDAD.'
+
+  it('guardamos la PARTE (8 de 9) → aparte', () => {
+    const p = propuestaUnanime(proponerRelacion(BADAJOZ, { plazasLibres: 8, plazasDiscapacidad: 1 }))
+    expect(p).not.toBeNull()
+    expect(p.incluidas).toBe(false)
+  })
+
+  it('si guardáramos el TOTAL, el mismo texto no concluye nada (no se inventa)', () => {
+    const props = proponerRelacion(BADAJOZ, { plazasLibres: 9, plazasDiscapacidad: 1 })
+    expect(props.filter((x) => x.via.includes('reparte'))).toHaveLength(0)
+  })
+})
