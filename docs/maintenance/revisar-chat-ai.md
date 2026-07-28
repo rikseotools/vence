@@ -183,6 +183,12 @@ Y ahí es fácil montar una simulación que parece rigurosa y no mide nada. Las 
    Con él llegué a dos conclusiones opuestas —«el control falla» y «mi arreglo empeora las
    cosas»— y **las dos eran falsas**.
 
+**⚠️ `input_data.userPrompt` de la traza NO es el prompt que se envía.** Es una etiqueta. El
+envío real está en **`messagesArray`** (sistema + contexto + explicación previa + la duda del
+usuario). Leyendo el campo equivocado llegué a "en el 74 % de los mensajes el modelo nunca ve lo
+que escribe el usuario", que es **falso** y habría sido un diagnóstico catastrófico. Antes de
+concluir nada sobre lo que el modelo vio, **mira `messagesArray`**.
+
 **Y el corolario incómodo:** si el fallo es raro (0,2 % de los mensajes), **puede que no se
 reproduzca a demanda**. Entonces la simulación solo puede probar *ausencia de regresión*, no
 *eficacia*. Dilo así en vez de vender un verde: se mantiene el cambio si es inofensivo y el
