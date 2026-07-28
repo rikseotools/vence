@@ -5,7 +5,7 @@ const path = require('path')
 //
 // `scripts/apelotonadas/extraer-lote.cjs` saca las preguntas de un cubo de calidad CON su
 // artículo, para que el pipeline (reescribir estructurada → registrar traza → re-verificar)
-// pueda trabajar. El 29/07/2026 se le añadió el cubo `nota-auditoria` y se arreglaron dos cosas
+// pueda trabajar. El 28/07/2026 se le añadió el cubo `nota-auditoria` y se arreglaron dos cosas
 // que habían mordido ese mismo día; este fichero fija las tres.
 //
 // Por qué un test de FUENTE y no de comportamiento: el script abre una conexión a la RDS de
@@ -17,7 +17,7 @@ const SCRIPT = fs.readFileSync(
 )
 
 describe('extraer-lote — el cubo `nota-auditoria` CONSUME el detector, no lo copia', () => {
-  // Este detector ya se quedó «en verde mintiendo» DOS veces en dos días (28 y 29/07) por
+  // Este detector ya se quedó «en verde mintiendo» DOS veces en dos días (28 y 28/07) por
   // criterios duplicados que divergen. Si el extractor se trajera su propia lista de patrones,
   // la cola de remediación (T-249) dejaría de coincidir con lo que el badge señala, y nadie se
   // enteraría hasta que un usuario lo reportase. Ver lib/health/auditNoteExplanation.cjs.
@@ -43,7 +43,7 @@ describe('extraer-lote — el cubo `nota-auditoria` CONSUME el detector, no lo c
 })
 
 describe('extraer-lote — `--ids` significa esos ids, y punto', () => {
-  // Hasta el 29/07 los ids se filtraban DENTRO del cubo: pedir 35 devolvía 8 y los otros 27
+  // Hasta el 28/07 los ids se filtraban DENTRO del cubo: pedir 35 devolvía 8 y los otros 27
   // desaparecían en silencio. Se usa justo para reprocesar listas que salen de otra consulta
   // (p.ej. los ids de un kind del barrido), así que ese filtro silencioso lo hacía inservible
   // y, peor, mentiroso: parecía que la cola era más corta de lo que era.

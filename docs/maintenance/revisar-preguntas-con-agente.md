@@ -1842,17 +1842,56 @@ node scripts/apelotonadas/extraer-lote.cjs --cubo nota-auditoria --min-impresion
   que la cola y el badge no pueden divergir (guardarraíl: `__tests__/scripts/extraerLoteCubos.test.js`).
   Cola: **T-249**.
 
-⚠️ **`--ids` NO aplica el predicado del cubo** (arreglado el 29/07: antes sí, y pedir 35 ids devolvía
+⚠️ **`--ids` NO aplica el predicado del cubo** (arreglado el 28/07: antes sí, y pedir 35 ids devolvía
 8 **sin decir nada** — justo cuando se usa para reprocesar una lista de otra consulta). Ahora los ids
 mandan y avisa de los que no salen.
 
-> **Lo que cambia en el cubo `nota-auditoria`: la nota vieja SUELE TENER RAZÓN.** Medido en la
-> primera tanda (35 con exposición, 29/07): **22 de 35 acertaban**. No son ruido — son defectos que
+> **Lo que cambia en el cubo `nota-auditoria`: la nota vieja SUELE TENER RAZÓN.** Medido sobre la
+> cola ENTERA (92 preguntas, 28/07): **75 acertaban — el 81%** (22 de 35 en la tanda con
+> exposición, 53 de 57 en el resto). No son ruido — son defectos que
 > alguien detectó y nadie ejecutó. **Léelas y compruébalas contra el artículo antes de descartarlas.**
 > De ahí salieron las dos únicas irreparables: una pregunta con TRES opciones ciertas (porque el
 > temario del que salió las hace ciertas) y otra construida sobre la LOPD 15/1999 **derogada**. Y de
 > la primera salió un defecto un piso más abajo: la misma prosa de auditoría **dentro del temario**
 > (T-253). Cuando una nota apunte a la fuente, mira la fuente.
+>
+> **Cerrada el 28/07: 84 reescritas + 8 ocultadas, cero activas.** De las 8, **cinco salen del
+> temario editorial de Correos**, y de ahí las dos lecciones de abajo.
+
+### ⚠️ Fuente CIRCULAR: cuando el temario está escrito desde las preguntas
+
+En el material editorial de Correos aparecen frases que **no dan el dato, repiten la respuesta**:
+
+> *«Giro dirigido a prisiones: ninguna de las opciones habituales (administración como remitente,
+> pago en cheque, importe máximo 1.000 €)…»* — que enumera **los tres distractores exactos** del
+> enunciado.
+
+Eso **no sirve para verificar nada**: el artículo se escribió a partir de la pregunta, así que
+confirmarla contra él es preguntarle a la propia pregunta. Dos consecuencias prácticas:
+
+- **Si el único respaldo de la clave es una frase que reformula el enunciado, la clave está SIN
+  verificar**, aunque parezca que encaja. No la des por buena, y no escribas una explicación que
+  diga «no corresponde» tres veces sin decir nunca el dato: eso cambia una nota de auditoría por
+  otra cosa igual de inútil. Va a `needs_human`.
+- **Si el temario afirma varias cosas ciertas a la vez**, la pregunta generada de ahí puede tener
+  dos respuestas válidas. Al revisar material editorial, **compara CADA opción con la fuente**, no
+  solo la marcada. Las tres preguntas de «dos opciones ciertas» de esta campaña salieron así.
+
+### ⚠️ Comprueba las citas con `citaNoLiteral` ANTES de aplicar
+
+De 51 explicaciones escritas por agentes, **10 traían una cita que no aparece literal** en el
+artículo — y una llegó a presentar como texto del temario una frase inventada por el propio agente.
+El aplicador NO comprueba esto. Antes de aplicar, pasa las citas por el núcleo real:
+
+```js
+const { citaNoLiteral } = require('./scripts/impugnaciones/validar-explicacion.cjs')
+citaNoLiteral(estructura.cita.texto, articulo.content)   // null = literal; objeto = tramo que falla
+```
+
+Y **usa ese**, no una comparación propia: es el mismo criterio que vigila las impugnaciones, tolera
+la elipsis `[...]` y comprueba la cita ENTERA (el final es donde viven plazos y órganos). Si falla,
+**quita la cita** y deja el resto de la explicación: perder el blockquote es un coste pequeño;
+publicar una cita inventada, no.
 
 ### Ataca por EXPOSICIÓN, no por id
 
@@ -1860,7 +1899,7 @@ La cola de este cubo es larguísima y casi toda invisible: **256 preguntas —el
 77% de las veces que el cubo se ha servido en 90 días**, y el 82% del cubo no se sirvió ni una vez.
 Empezar por el principio de la tabla reparte el esfuerzo donde nadie mira.
 
-> **✅ La banda de alta exposición está CERRADA (29/07/2026).** Con las 73 de esta segunda tanda,
+> **✅ La banda de alta exposición está CERRADA (28/07/2026).** Con las 73 de esta segunda tanda,
 > **`--min-impresiones 10` devuelve 0**. En dos sesiones se han reescrito **274** preguntas (201 +
 > 73) y el cubo pasó de 10.352 a **2.355 impresiones** en 90 días: **el 77% de la exposición
 > resuelto tocando el 3,4% de las preguntas**. Quedan ~7.737 en la cola larga, casi todas con **0
@@ -1917,7 +1956,7 @@ solo feas: no respondían a su pregunta. Patrones por frecuencia:
   general: **al encontrar un defecto en un cubo, comprobar si su detector lo estaba viendo** — si
   no, el detector es parte del arreglo, y hay que tocar los DOS gemelos del sweep (el `@Cron` del
   backend es el que escribe el snapshot) más el guardarraíl de paridad.
-  ⚠️⚠️ **Y volvió a estar en verde AL DÍA SIGUIENTE** (29/07): la tanda de 73 trajo 4 notas más y
+  ⚠️⚠️ **Y volvió a estar en verde ESE MISMO DÍA, unas horas después**: la tanda de 73 trajo 4 notas más y
   los 21 literales recién ampliados **no veían ninguna**. Al medirlo: **96 activas con el defecto,
   0 detectadas**. La lección de segunda vuelta es más dura que la primera — **una lista de
   literales no puede ganar esta carrera**, porque cada remesa de IA estrena verbo y el literal se
@@ -1942,13 +1981,13 @@ solo feas: no respondían a su pregunta. Patrones por frecuencia:
 
 - **Explicación cortada a mitad de frase** — termina en seco, sin cerrar la oración: *«…otras que
   sean inherentes a los servicios comunes del Ministerio»*. Salieron **4 de 73** en la tanda del
-  29/07. **No tiene detector**, y la heurística obvia («no acaba en signo de cierre») da 7.567
+  28/07. **No tiene detector**, y la heurística obvia («no acaba en signo de cierre») da 7.567
   activas y es basura: hay que calibrarla antes de cablear nada → **[T-250]**.
 
 Consecuencia práctica: **este cubo no se cierra formateando**. Cada pregunta hay que verificarla
 contra su artículo como en cualquier otra revisión; el salto de línea es lo último que se arregla.
 
-### Lo que salió en la segunda tanda (73 revisadas, 29/07/2026)
+### Lo que salió en la segunda tanda (73 revisadas, 28/07/2026)
 
 Confirma el patrón anterior y añade un dato de proceso útil: **73 de 73 con la clave sana**. Con
 las 145 de la primera tanda, el banco LEGAL de este cubo se comporta como el barrido masivo de

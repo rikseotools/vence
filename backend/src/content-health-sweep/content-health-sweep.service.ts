@@ -1188,7 +1188,7 @@ export class ContentHealthSweepService {
     // 10 literales originales venían de una remesa concreta de julio y no cubrían las otras
     // formas del mismo acto (la explicación se juzga a sí misma, o da instrucciones de arreglo).
     //
-    // Y el 29/07/2026 se le añadió el PATRÓN META (`AUDIT_NOTE_META_RE_SRC`), porque la lista
+    // Y el 28/07/2026 se le añadió el PATRÓN META (`AUDIT_NOTE_META_RE_SRC`), porque la lista
     // ampliada volvió a quedarse en verde: 96 activas cuya explicación se juzga a sí misma y
     // CERO vistas por los 21 literales. Los literales cubren las notas con otro sujeto ("Esta
     // pregunta debería", "Nota técnica:"); el patrón cubre el acto. Van en OR.
@@ -1994,7 +1994,7 @@ export class ContentHealthSweepService {
     //
     // Estaba SOLO en el CLI, así que el @Cron nocturno —el que escribe el snapshot que pinta el
     // panel— nunca lo emitía: un detector de severidad `error` invisible en la práctica. Lo
-    // destapó el guardarraíl de paridad al ejecutarlo el 29/07/2026 (llevaba rojo en `main`).
+    // destapó el guardarraíl de paridad al ejecutarlo el 28/07/2026 (llevaba rojo en `main`).
     // Se excluyen las bajas de cuenta: van por su propio manual y no se responden por el hilo.
     const sinConvRows = (await this.db.execute(sql`
       SELECT f.id, f.type, left(f.message, 90) AS msg, f.created_at

@@ -22,7 +22,7 @@
  *     pregunta (`lib/health/auditNoteExplanation.cjs`, el mismo criterio que el barrido). Es un
  *     defecto PEOR: ahí no hay explicación ninguna, hay una crítica. Cola: T-249.
  *
- * ## `--ids` significa esos ids, y punto (arreglado 29/07/2026)
+ * ## `--ids` significa esos ids, y punto (arreglado 28/07/2026)
  *
  * Antes `--ids` se aplicaba DENTRO del cubo, así que pedir 35 ids devolvía 8 y los otros 27
  * desaparecían **sin decir nada** — justo cuando se usa para reprocesar una lista que salió de
@@ -102,7 +102,7 @@ async function main() {
      ORDER BY coalesce(e.veces, 0) DESC, c.id`;
 
   // Un id pedido que no sale es SIEMPRE un aviso: o la pregunta se desactivó, o ya no existe.
-  // Callárselo fue el fallo que este script tuvo hasta el 29/07 (35 pedidos → 8 devueltos).
+  // Callárselo fue el fallo que este script tuvo hasta el 28/07 (35 pedidos → 8 devueltos).
   if (ids) {
     const traidos = new Set(filas.map((f) => f.id));
     const perdidos = ids.filter((i) => !traidos.has(i));

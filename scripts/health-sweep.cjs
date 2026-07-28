@@ -257,7 +257,7 @@ async function main() {
   // detector evita que reaparezcan en silencio. Patrones ALTA PRECISIÓN (se omite
   // "la explicación anterior", propenso a FP en explicaciones ya corregidas).
   //
-  // DOS vías complementarias (29/07/2026, ver el núcleo): los literales cazan las notas con
+  // DOS vías complementarias (28/07/2026, ver el núcleo): los literales cazan las notas con
   // OTRO sujeto ("Esta pregunta debería", "Nota técnica:"); el patrón meta caza el acto de que
   // la explicación se juzgue a sí misma, que ninguna lista de literales alcanzaba (medido: 96
   // activas, 0 vistas por los 21 literales).

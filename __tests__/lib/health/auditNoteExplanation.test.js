@@ -25,7 +25,7 @@ describe('detector audit_note_explanation — casos reales que el detector NO ve
     'La pregunta habla de "fase de iniciación"; conviene aclarar este matiz para evitar confusión con el art.56.2.',
     // certifica en vez de explicar
     'Las opciones B, C y D son incorrectas por razones bien explicadas.',
-    // — 29/07/2026: la SEGUNDA recaída. Estos cuatro son texto real que servía producción y que
+    // — 28/07/2026: la SEGUNDA recaída. Estos cuatro son texto real que servía producción y que
     //   los 21 literales ampliados el día anterior NO veían; los cazó la campaña del cubo de
     //   explicaciones apelotonadas, otra vez de refilón. Medido entonces sobre el banco vivo: 96
     //   activas con este acto, 0 vistas por los literales → el criterio pasó a ser el PATRÓN.
@@ -60,7 +60,7 @@ describe('detector audit_note_explanation — NO marca explicaciones legítimas'
     'Conviene revisar el contexto de la norma: el artículo se ubica en el capítulo de la potestad sancionadora.',
     'La explicación anterior desarrolla el principio de tipicidad; aquí interesa el de proporcionalidad.',
     // Continuaciones legítimas de «La explicación …» que el patrón META debe dejar pasar. Se
-    // midieron sobre el banco vivo el 29/07/2026: 0 apariciones cada una, así que el patrón no
+    // midieron sobre el banco vivo el 28/07/2026: 0 apariciones cada una, así que el patrón no
     // pierde nada real por no cazarlas — pero si alguien las escribe, no son notas de auditoría.
     'La explicación de este precepto se encuentra en el preámbulo de la ley.',
     'La explicación radica en la naturaleza reglada de la potestad.',

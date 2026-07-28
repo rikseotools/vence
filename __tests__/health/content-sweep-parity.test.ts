@@ -357,7 +357,7 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
     expect(evalPats(BACKEND)).toEqual(core.AUDIT_NOTE_PATS)
   })
 
-  // El 29/07/2026 la lista ampliada volvió a quedarse en verde (96 activas con el defecto, 0
+  // El 28/07/2026 la lista ampliada volvió a quedarse en verde (96 activas con el defecto, 0
   // vistas) y se le añadió un PATRÓN META. Es la segunda mitad del criterio: si el backend se
   // quedara solo con los literales, el @Cron —el que escribe el snapshot— seguiría ciego a esas
   // 96 mientras el CLI las ve, que es exactamente el drift que este bloque existe para impedir.
