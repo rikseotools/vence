@@ -47,6 +47,21 @@ async function scopeEnforcement(s, { text, oposicion, force }) {
   out += `   Oposición del usuario: ${oposicion}\n`;
   out += `   Paso 1 (epígrafe oficial clonado): ${fmt(epi)}\n`;
   out += `   Paso 2 (scope↔epígrafe):           ${fmt(sco)}\n`;
+  // ⚠️ CERO temas ≠ todo en orden. Si la oposición no tiene NINGÚN tema activo, las dos consultas
+  // devuelven cero filas → neverSourced=0 y scopeOpen=0 → el semáforo caía en el `else` y pintaba
+  // 🟢 «Paso 1 y Paso 2 en orden», que es exactamente lo contrario de la realidad: no hay temario
+  // contra el que comprobar nada. Cazado el 28/07 resolviendo la impugnación `1c71e908` (Rocío,
+  // `administrativo_de_administracion_general_administracion_local`: 0 temas, 0 topic_scope), donde
+  // el dossier dio luz verde sobre la nada. Un verificador que aprueba por ausencia de datos es
+  // peor que no tenerlo: da por firme una base que no existe.
+  const temasActivos = epi.reduce((a, r) => a + r.n, 0);
+  if (temasActivos === 0) {
+    out += `   🛑 Esa oposición NO TIENE TEMARIO en la plataforma (0 temas activos), así que la queja no puede\n`
+      + `      ser "esta pregunta está en el tema equivocado": no hay temas donde estarlo. Comprueba el\n`
+      + `      target_oposicion del usuario y en qué modo de test le salió la pregunta (practice, por leyes…).\n`
+      + `      Si la oposición está catalogada pero vacía, es demanda de contenido, no un defecto de scope.`;
+    return out;
+  }
   if (neverSourced > 0) {
     out += `   🛑 PASO 1 SIN HACER (${neverSourced} temas never_sourced). NO resuelvas aún: clona el epígrafe LITERAL del\n`
       + `      programa_url de la convocatoria a topics.epigrafe y verifica (verify-epigrafe-literality.cjs), LUEGO re-\n`

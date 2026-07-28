@@ -179,3 +179,45 @@ describe('formatEstructuraVsScope — el dato que faltaba en pantalla', () => {
     expect(out).toMatch(/NO deduzcas los cap[ií]tulos de la prosa/);
   });
 });
+
+// ── Semáforo: CERO temas no es «todo en orden» (bug cazado el 28/07) ──────────────────
+//
+// Las dos consultas de estado agrupan por `topics` de esa oposición. Si la oposición no tiene
+// NINGÚN tema activo devuelven cero filas, y el recuento de "pendientes" daba 0 en ambas → el
+// semáforo caía en el `else` y pintaba 🟢 «Paso 1 y Paso 2 en orden». Justo al revés: no hay
+// temario contra el que comprobar nada. Pasó resolviendo la impugnación `1c71e908` (oposición
+// `administrativo_de_administracion_general_administracion_local`, 0 temas y 0 topic_scope).
+//
+// Se prueba con un cliente falso, sin BD, igual que el resto del fichero.
+const { scopeEnforcement } = require('../../scripts/impugnaciones/lib/scope-enforcement.cjs');
+
+const clienteQueNoDevuelveNada = { unsafe: async () => [] };
+
+describe('scopeEnforcement — el semáforo no aprueba por ausencia de datos', () => {
+  test('oposición SIN temario: avisa en rojo y NO da luz verde', async () => {
+    const out = await scopeEnforcement(clienteQueNoDevuelveNada, {
+      text: 'esta pregunta es de otro tema',
+      oposicion: 'oposicion_catalogada_pero_vacia',
+    });
+    expect(out).toContain('🛑');
+    expect(out).toContain('NO TIENE TEMARIO');
+    expect(out).not.toContain('🟢');
+  });
+
+  test('explica que entonces la queja no puede ser de scope', async () => {
+    const out = await scopeEnforcement(clienteQueNoDevuelveNada, {
+      text: 'no entra en el temario',
+      oposicion: 'oposicion_catalogada_pero_vacia',
+    });
+    expect(out).toMatch(/no hay temas donde estarlo/i);
+    expect(out).toMatch(/target_oposicion/);
+  });
+
+  test('sin disparo (queja ajena al scope) sigue sin imprimir nada', async () => {
+    const out = await scopeEnforcement(clienteQueNoDevuelveNada, {
+      text: 'la app se cierra al abrir el test',
+      oposicion: 'oposicion_catalogada_pero_vacia',
+    });
+    expect(out).toBe('');
+  });
+});
