@@ -6,6 +6,31 @@
 
 > **Por qué existe.** Con 2-10 sesiones de Claude a la vez, dos sesiones cogían la misma tarea sin enterarse. **Caso real (20/07):** una sesión montó un worktree para arreglar el RD 176/2022 mientras otra ya lo estaba arreglando — y encima la ficha decía *"9 mislinks EN VIVO"* cuando ya estaban resueltos. Se perdió tiempo por dos motivos distintos: **falta de claim** y **ficha desfasada**. Este sistema ataca los dos.
 
+## Crear una ficha nueva: `reserve` PRIMERO
+
+```bash
+node scripts/backlog.cjs reserve "Título provisional de la tarea"
+#  ✅ id reservado: T-216
+#     escribe la ficha en docs/roadmap/tareas-pendientes.md como:  ### [T-216] 🟡 [ABIERTO …] <título>
+#     y luego:  node scripts/backlog.cjs sync
+```
+
+**Nunca elijas el id mirando el markdown.** La fuente de verdad de los ids es la **tabla
+`backlog_tasks`**, igual que para el claim: con 2-10 sesiones en paralelo, otra puede haber creado
+T-196 hace diez minutos y no haber pusheado todavía su ficha. Tú ves el número libre en el fichero,
+lo usas, y al fusionar hay dos tareas distintas con el mismo id.
+
+`reserve` lo resuelve de forma atómica: calcula el siguiente, lo INSERTA con un título provisional y
+deja que la PK arbitre las carreras (reintenta hasta 10 veces). A partir de ahí el id es tuyo y el
+`sync` posterior solo actualiza el título real.
+
+**Si aun así colisionas, `sync` ABORTA** y te enseña las dos fichas y el comando. Antes reconciliaba
+en silencio: le pisaba el título a la tarea de la otra sesión y lo reportaba como un `↻` normal.
+
+> Historial: el problema se repitió con T-123/T-126, y otra vez cuatro veces el 28/07 (T-188, T-196,
+> T-201, T-204). `reserve` existía desde el primer episodio — lo que faltaba era que estuviera escrito
+> donde alguien lo lee. Por eso está aquí y en CLAUDE.md.
+
 ## Reparto de responsabilidad (no duplicar)
 
 | Vive en | Qué | Por qué ahí |

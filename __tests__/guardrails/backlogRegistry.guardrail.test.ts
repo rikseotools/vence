@@ -122,4 +122,21 @@ describe('backlog — enforcement del claim por pre-push', () => {
     expect(claudeMd).toMatch(/pre-push/i)
     expect(runbook).toMatch(/pre-push/i)
   })
+
+  // El comando `reserve` existía desde el episodio T-123/T-126 y NO estaba escrito en ningún sitio
+  // donde alguien lo lea: 0 menciones en CLAUDE.md, 0 en el runbook. Resultado, 4 colisiones más el
+  // 28/07. Una herramienta que resuelve el problema pero nadie conoce no lo resuelve.
+  it('el comando `reserve` está documentado donde se lee (CLAUDE.md y su runbook)', () => {
+    const claude = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf-8')
+    const runbook = readFileSync(join(process.cwd(), 'docs/runbooks/tareas-pendientes.md'), 'utf-8')
+    expect(claude).toMatch(/backlog\.cjs[^\n]*reserve/)
+    expect(runbook).toContain('reserve')
+  })
+
+  it('el sync ABORTA ante ids duplicados en vez de pisar la tarea ajena', () => {
+    const src = readFileSync(join(process.cwd(), 'scripts/backlog.cjs'), 'utf-8')
+    expect(src).toContain('sync ABORTADO')
+    // y el aviso tiene que enseñar la salida, no solo quejarse
+    expect(src).toMatch(/sync ABORTADO[\s\S]{0,1200}backlog\.cjs reserve/)
+  })
 })

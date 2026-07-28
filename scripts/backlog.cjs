@@ -237,6 +237,31 @@ function parseMd() {
       // Solo se reconcilian las VIVAS: en una cerrada, el título con el que se
       // trabajó es historia y reescribirlo falsearía el registro.
       const md = parseMd();
+      // COLISIÓN DE ID antes de escribir nada. Si el markdown trae el mismo id dos veces es que
+      // alguien eligió un número "libre" mirando el fichero, sin ver que otra sesión ya lo había
+      // ocupado en la BD (que es la fuente de verdad del claim). Seguir adelante sería peor que
+      // parar: el UPDATE de reconciliación de abajo le PISA EL TÍTULO a la tarea ajena y lo reporta
+      // como un "↻" de aspecto inofensivo. Pasó 4 veces el 28/07 (T-188, T-196, T-201, T-204) —
+      // siempre con `reserve` disponible y sin que nadie supiera que existía.
+      const vistos = new Map();
+      const colisiones = [];
+      for (const t of md) {
+        if (vistos.has(t.id)) colisiones.push({ id: t.id, a: vistos.get(t.id), b: t.title });
+        else vistos.set(t.id, t.title);
+      }
+      if (colisiones.length) {
+        console.error(`❌ sync ABORTADO: ${colisiones.length} id(s) duplicado(s) en el markdown.`);
+        for (const c of colisiones) {
+          console.error(`   ${c.id}`);
+          console.error(`      · ${String(c.a).slice(0, 70)}`);
+          console.error(`      · ${String(c.b).slice(0, 70)}`);
+        }
+        console.error('   Renumera la ficha NUEVA y reserva su id de forma atómica:');
+        console.error('      node scripts/backlog.cjs reserve "<título>"');
+        console.error('   (`reserve` mira la BD, no el markdown: es la única forma de no chocar con otra sesión.)');
+        process.exit(2);
+      }
+
       let nuevos = 0;
       let reconciliadas = 0;
       const cambios = [];
