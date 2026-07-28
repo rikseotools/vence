@@ -246,6 +246,14 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-211] 🟠 [ABIERTO 28/07] Cádiz dice "examen realizado" con una convocatoria de 2026 recién publicada — y el detector de estado no lo ve
+- **Qué:** `auxiliar-administrativo-diputacion-cadiz` (**164 usuarios, la oposición con más gente de la campaña**) tiene `estado_proceso = 'examen_realizado'` y `exam_date = null`, mientras su propio `boe_reference` ya dice *"BOP Cádiz nº 28, de 11/02/2026 (44 plz; extracto BOE de apertura de plazo pendiente)"*. La Diputación lista ese proceso de **44 plazas** bajo el epígrafe **"NO ABREN PLAZO DE SOLICITUDES"**, con bases aprobadas por Decreto de **4 de febrero de 2026**.
+- **El estado correcto es `convocada`** (bases publicadas, plazo aún sin abrir), que ya se usa en 5 oposiciones. Hoy la landing le dice a 164 personas que su examen ya pasó.
+- **Punto ciego medido:** el detector `convocatoria_estado_incoherente` (34 hallazgos hoy) **NO marca a Cádiz**. Le falta el caso "el estado dice proceso terminado pero la referencia describe una convocatoria NUEVA": basta cruzar el año que cita `boe_reference` con el estado.
+- **Por qué no lo he cambiado yo:** el escritor registrado (`dual-write-adjudicar.cjs`) solo resuelve divergencias entre la fila legacy y su convocatoria (`gana: legacy|convocatoria`), y aquí **las dos filas están mal**: la verdad es un tercer valor. Escribirlo a mano sería abrir una puerta sin guardarraíl a un campo que pinta la landing. Va por el flujo de rollover (`docs/runbooks/rollover-oposiciones.md`).
+- **Ya arreglado en esta pasada (no forma parte de la tarea):** sus 24 epígrafes están **`verified_literal` 24/24** contra las bases de 2026, y el `programa_url` repuntado del anuncio del BOE de 2023 al documento vigente.
+- **Origen:** T-107, 28/07, al desbloquear Cádiz.
+
 ### [T-210] 🔴 [ABIERTO 28/07] El 52-68% de los usuarios ACTIVOS ve errores de fetch en el cliente, todos los días, y nadie lo estaba mirando
 - **Medido (6 días, `observable_events.console_error` cruzado con usuarios que responden preguntas):**
 
