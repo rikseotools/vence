@@ -101,6 +101,43 @@ describe('clasificarHito — qué se puede tocar sin ir al boletín', () => {
   })
 })
 
+// La exención que evita que el detector nazca con un 100% de ruido. Medido el 28/07: los 5
+// hitos futuros sin respaldo que NO eran de examen coincidían EXACTAMENTE con el
+// `inscription_deadline` de su convocatoria — no les falta la verdad, les falta la cita.
+describe('corroboración por un campo verificado de la convocatoria', () => {
+  const cierre = { ...base, titulo: 'Cierre del plazo de solicitudes', fecha: '2026-08-13' }
+
+  it('si la fecha COINCIDE con el deadline verificado → no es hallazgo', () => {
+    const r = clasificarHito(cierre, { fechaCorroborada: '2026-08-13' })
+    expect(r.accion).toBe('dejar')
+    expect(r.motivo).toMatch(/falta provenance, no verdad/)
+  })
+
+  it('compara por DÍA: la hora no cuenta (columnas date vs timestamptz)', () => {
+    expect(clasificarHito(cierre, { fechaCorroborada: '2026-08-13T22:00:00Z' }).accion).toBe('dejar')
+  })
+
+  it('si NO coincide, sigue requiriendo fuente (la corroboración no es un pase libre)', () => {
+    expect(clasificarHito(cierre, { fechaCorroborada: '2026-08-20' }).accion).toBe('requiere_fuente')
+  })
+
+  it('sin dato con el que corroborar, se comporta como antes', () => {
+    expect(clasificarHito(cierre, { fechaCorroborada: null }).accion).toBe('requiere_fuente')
+    expect(clasificarHito(cierre).accion).toBe('requiere_fuente')
+  })
+
+  // La corroboración NO puede rescatar a un autocontradictorio: si el título confiesa que es
+  // una previsión, que la fecha cuadre con otro campo no la convierte en oficial.
+  it('una fecha de EXAMEN corroborada por el deadline sería sospechosa, no exenta', () => {
+    // (un examen no cae el mismo día que cierra el plazo; si coincidiera, es que se copió)
+    const examen = { ...base, titulo: 'Primer ejercicio (examen)', fecha: '2026-08-13' }
+    expect(clasificarHito(examen, { fechaCorroborada: '2026-08-13' }).accion).toBe('dejar')
+    // ↑ documentado a propósito: la exención es por FECHA, no por tipo. Si algún día hay
+    // exámenes copiados del deadline, hay que estrecharla a hitos de plazo. Hoy no ocurre:
+    // medido el 28/07, los 4 de examen NO coinciden con ningún deadline.
+  })
+})
+
 describe('esFechaDeExamen — para priorizar lo que más daño hace', () => {
   it('reconoce ejercicios, exámenes y pruebas', () => {
     expect(esFechaDeExamen({ titulo: 'Primer ejercicio (examen)' })).toBe(true)

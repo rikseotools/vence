@@ -750,6 +750,67 @@ function diagnosticarSeguimientoUrl(
 }
 
 /**
+ * MIRROR INLINE de `lib/convocatoria/hitoOrigen.js` — MANTENER EN SYNC (T-256, 28/07/2026).
+ *
+ * `convocatoria_hitos.origen` NO es documentación: el RENDER decide con él (un `registro` se
+ * MUESTRA como fecha oficial; una `estimacion` se oculta desde el 20/07). Nadie exigía fuente
+ * al escribirlo → 642 de 960 `registro` sin url, sin cita y sin documento. Verificado contra
+ * dos fuentes: la landing de Huesca anunciaba un examen el 01/11/2026 que no consta en ningún
+ * boletín.
+ *
+ * La exención por CORROBORACIÓN es la que evita que esto nazca con un 100% de ruido: un cierre
+ * de plazo cuya fecha coincide con el `inscription_deadline` verificado no es una fecha
+ * inventada — le falta la CITA, no la verdad (provenance, T-147).
+ */
+const RE_HITO_PREVISION = /previsi[óo]n|pendiente de fecha oficial|estimad[oa]|orientativ[oa]|aproximad[oa]/i;
+const RE_HITO_EXAMEN = /ejercicio|examen|prueba/i;
+
+function hitoTieneRespaldo(h: {
+  url?: string | null;
+  cita_literal?: string | null;
+  source_documento_id?: string | null;
+}): boolean {
+  return Boolean(
+    (h.url && String(h.url).trim()) ||
+      (h.cita_literal && String(h.cita_literal).trim()) ||
+      h.source_documento_id,
+  );
+}
+
+function mismoDia(a: unknown, b: unknown): boolean {
+  const d = (x: unknown) => {
+    const f = x instanceof Date ? x : new Date(String(x));
+    return Number.isNaN(f.getTime()) ? null : f.toISOString().slice(0, 10);
+  };
+  const da = d(a);
+  return da !== null && da === d(b);
+}
+
+/** ¿Este hito se presenta como oficial sin tener con qué sostenerlo? */
+function hitoSinFuente(
+  h: {
+    origen?: string | null;
+    titulo?: string | null;
+    fecha?: unknown;
+    url?: string | null;
+    cita_literal?: string | null;
+    source_documento_id?: string | null;
+  },
+  fechaCorroborada?: unknown,
+): boolean {
+  if (h.origen !== 'registro') return false;
+  if (hitoTieneRespaldo(h)) return false;
+  if (fechaCorroborada && h.fecha && mismoDia(h.fecha, fechaCorroborada)) return false;
+  // El autocontradictorio TAMBIÉN es un hallazgo aquí: el escritor puede degradarlo solo,
+  // pero mientras no se haga sigue mostrándose como oficial.
+  return true;
+}
+
+function hitoEsDeExamen(h: { titulo?: string | null }): boolean {
+  return RE_HITO_EXAMEN.test(h.titulo || '');
+}
+
+/**
  * MIRROR de `lib/convocatoria/estadoCoherencia.cjs` (el backend es un proyecto aparte y no puede
  * requerir el root `lib/`; mismo motivo por el que `diagnosticarSeguimientoUrl` está replicada
  * aquí arriba). La paridad de KINDS la vigila `__tests__/health/content-sweep-parity.test.ts`;
@@ -2365,6 +2426,46 @@ export class ContentHealthSweepService {
           { respuestas24h: shuf.respuestas, conOrden: shuf.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null },
         );
       }
+    }
+
+    // ── Hitos que se presentan como fecha OFICIAL sin ninguna fuente ───────────────
+    // Mirror INLINE de scripts/health-sweep.cjs (hito_registro_sin_fuente) — MANTENER EN SYNC.
+    // Bandas calibradas con simulación bank-wide antes de encender: error = fecha de EXAMEN
+    // futura en oposición activa (medido: 4); warn = el resto (medido: 0, porque las
+    // candidatas coincidían con el deadline verificado y el núcleo las exime).
+    const hitosSinFuenteRows = (await this.db.execute(sql`
+      SELECT h.id, h.titulo, h.origen, h.url, h.cita_literal, h.source_documento_id, h.fecha,
+             o.slug, c2.inscription_deadline
+      FROM convocatoria_hitos h
+      JOIN oposiciones o ON o.id = h.oposicion_id
+      LEFT JOIN convocatorias c2 ON c2.oposicion_id = o.id AND c2.is_current
+      WHERE o.is_active AND h.origen = 'registro' AND h.fecha > CURRENT_DATE
+    `)) as unknown as Array<{
+      id: string; titulo: string; origen: string; url: string | null;
+      cita_literal: string | null; source_documento_id: string | null;
+      fecha: string; slug: string; inscription_deadline: string | null;
+    }>;
+    const hitosSinFuentePorClave = new Map<string, typeof hitosSinFuenteRows>();
+    for (const h of hitosSinFuenteRows) {
+      if (!hitoSinFuente(h, h.inscription_deadline)) continue;
+      const clave = `${h.slug}|${hitoEsDeExamen(h) ? 'examen' : 'otro'}`;
+      if (!hitosSinFuentePorClave.has(clave)) hitosSinFuentePorClave.set(clave, []);
+      hitosSinFuentePorClave.get(clave)!.push(h);
+    }
+    for (const [clave, hs] of hitosSinFuentePorClave) {
+      const [slug, tipo] = clave.split('|');
+      const esExamen = tipo === 'examen';
+      add(
+        'content',
+        esExamen ? 'error' : 'warn',
+        slug,
+        'hito_registro_sin_fuente',
+        `${slug}: ${hs.length} hito(s) se muestran como fecha OFICIAL sin ninguna fuente` +
+          (esExamen
+            ? ' — y son fechas de EXAMEN: el opositor organiza meses de estudio con ellas'
+            : ' (fecha futura sin url, cita ni documento)'),
+        { count: hs.length, hitos: hs.slice(0, 10).map((h) => ({ id: h.id, titulo: h.titulo, fecha: h.fecha })) },
+      );
     }
 
     // ── Escribir snapshot ──

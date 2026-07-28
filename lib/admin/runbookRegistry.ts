@@ -254,6 +254,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/incisos-anulados-tc.md',
     claudeHace: 'corre `scripts/audit-annulled-provisions.cjs` (cruza el análisis del BOE datosabiertos — referencias posteriores "SE DECLARA … inconstitucional/nulidad … art. N" — con nuestros artículos) y `node scripts/audit-notas-vigencia-tc.cjs "<ley>"`, que va al TEXTO CONSOLIDADO artículo por artículo y caza además los pronunciamientos COMPETENCIALES ("no es conforme con el orden constitucional de competencias"), invisibles para el primero porque el análisis del BOE no los enumera por artículo. Para cada hallazgo verifica el inciso contra la sentencia y añade la nota de vigencia. OJO a la diferencia de remediación: en `nulidad` el inciso NO existe → REVISAR la clave de las preguntas de ese artículo; en `competencial` el precepto NO es nulo (es inaplicable como básico o en CCAA con competencia propia) → basta la nota, NO se jubilan preguntas. NUNCA auto-corrige la clave: revisión humana como en el caso art. 126.2 LBRL / STC 103/2013. Si el barrido sale "NO CONCLUYENTE", es que muchos artículos no se localizaron en el índice del BOE: no interpretar la ausencia de hallazgos como limpio.',
   },
+  hito_registro_sin_fuente: {
+    title: 'Hito que se muestra como fecha OFICIAL sin ninguna fuente',
+    triggerPhrase: 'revisa las fechas sin fuente',
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    claudeHace:
+      'para cada hito señalado, comprueba su fecha contra el boletín de esa convocatoria. Si el boletín la publica, añade la cita (url + cita_literal) y el hito se queda como `registro`. Si NO consta en ninguna fuente, degrádalo con `node scripts/convocatoria/degradar-origen-hito.cjs --hito <uuid> --verificado "<qué miraste y qué decía>" --apply`, que es la única vía y deja traza. Los que el propio título confiesa como previsión se degradan en bloque con `--autocontradictorios`. NUNCA rellenar la cita con una URL genérica del boletín para callar el check: convierte un dato dudoso en uno que PARECE verificado. Y ojo: «sin fuente» no es «inventada» — si la fecha coincide con un campo verificado de la convocatoria, lo que falta es provenance, no verdad.',
+  },
   scope_phantom_article: {
     title: 'Artículo escopado sin fila activa en la BD (inexistente o desactivado)',
     triggerPhrase: 'revisa los artículos fantasma del scope',

@@ -33,6 +33,7 @@ const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/conv
 const { detectarIncoherenciasEstado, hoyMadrid } = require('../lib/convocatoria/estadoCoherencia.cjs');
 const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
+const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOrigen.js');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
@@ -340,6 +341,46 @@ async function main() {
       `${r.slug}: ${r.n} hito(s) "próximos" con fecha ya pasada` +
       (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
                 : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'));
+  }
+
+  // ── hitos que se PRESENTAN como fecha oficial sin tener ninguna fuente ────────────────
+  // `origen` NO es documentación: el RENDER decide con él (un `registro` se muestra como
+  // oficial; una `estimacion` se oculta desde el 20/07). Hasta T-256 nadie exigía fuente al
+  // escribirlo, y quedaron 642 de 960 `registro` sin url, sin cita y sin documento. Caso
+  // verificado contra DOS fuentes: la landing de Huesca anunciaba "Primer ejercicio
+  // 01/11/2026" y ni el Ayuntamiento ni el BOE publican fecha.
+  //
+  // Bandas calibradas con simulación bank-wide ANTES de encender (lección T-047/T-113):
+  //   · error → fecha de EXAMEN, futura, en oposición ACTIVA: es el dato por el que un
+  //     opositor organiza meses de estudio. Medido: 4.
+  //   · warn  → cualquier otra fecha futura sin fuente. Medido: 0, porque las 5 candidatas
+  //     COINCIDÍAN con el `inscription_deadline` verificado de su convocatoria → les falta la
+  //     cita, no la verdad (provenance, T-147), y el núcleo puro las exime. Sin esa exención
+  //     el detector nacía con un 100% de ruido.
+  // La decisión vive en `lib/convocatoria/hitoOrigen.cjs` (24 tests), compartida con el
+  // escritor `scripts/convocatoria/degradar-origen-hito.cjs`.
+  const hitosSinFuente = (await c.query(`
+    SELECT h.id, h.titulo, h.origen, h.url, h.cita_literal, h.source_documento_id, h.fecha,
+           o.slug, c2.inscription_deadline
+    FROM convocatoria_hitos h
+    JOIN oposiciones o ON o.id = h.oposicion_id
+    LEFT JOIN convocatorias c2 ON c2.oposicion_id = o.id AND c2.is_current
+    WHERE o.is_active AND h.origen = 'registro' AND h.fecha > CURRENT_DATE`)).rows;
+  const sinFuentePorSlug = new Map();
+  for (const h of hitosSinFuente) {
+    if (clasificarHito(h, { fechaCorroborada: h.inscription_deadline }).accion === 'dejar') continue;
+    const clave = `${h.slug}|${esFechaDeExamen(h) ? 'examen' : 'otro'}`;
+    if (!sinFuentePorSlug.has(clave)) sinFuentePorSlug.set(clave, []);
+    sinFuentePorSlug.get(clave).push(h);
+  }
+  for (const [clave, hs] of sinFuentePorSlug) {
+    const [slug, tipo] = clave.split('|');
+    const esExamen = tipo === 'examen';
+    add('content', esExamen ? 'error' : 'warn', slug, 'hito_registro_sin_fuente',
+      `${slug}: ${hs.length} hito(s) se muestran como fecha OFICIAL sin ninguna fuente` +
+      (esExamen ? ' — y son fechas de EXAMEN: el opositor organiza meses de estudio con ellas'
+                : ' (fecha futura sin url, cita ni documento)'),
+      { count: hs.length, hitos: hs.slice(0, 10).map(h => ({ id: h.id, titulo: h.titulo, fecha: h.fecha })) });
   }
 
   // ── estado_proceso que se contradice con sus PROPIAS fechas ────────────────────────────
