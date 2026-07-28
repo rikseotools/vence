@@ -57,6 +57,53 @@ Para cada `docs_por_clonar`: coger la `url` del hito (BOE/boletín/sede), **clon
 - **NUNCA inventar:** el documento se clona de su URL oficial. Si la URL da 403/está caída (madrid.es, algún BOP con TLS roto), **NO se clona a ciegas** — se deja el hueco anotado (es "URL de seguimiento caída", familia T-047), no se fabrica evidencia.
 - El `tipo` se pone según el documento (`oep_decreto`, `bases`, `resolucion_tribunal`, `correccion_errores`, `anuncio_fecha`, `lista_admitidos`…), no `nota` (que es lo que emite el pipeline automático `detect-notas`).
 
+### 2.1-bis. De dónde sale el documento de una SEÑAL del radar (28/07/2026, T-221)
+
+**El caso:** el 96% de lo que reportaba `audit:convocatorias` era `senal_aplicada_sin_documento` —se
+cambiaban plazas/fechas/estado sin papel detrás—. Medido en RDS: **133 señales aplicadas en 7 días,
+19 con documento (14%)**. La tentación es "clonar más"; era el diagnóstico equivocado.
+
+**La causa real estaba en el SENSOR, no en el clonado.** El sumario del boletín se aplanaba a texto
+(`htmlToText`) *antes* de trocearlo por disposición, así que el enlace de cada anuncio se perdía —y
+el prompt del LLM pedía después una `url` que ya no existía en lo que se le daba: devolvía `null`
+siempre, por construcción. La señal se quedaba con la URL del **sumario del día**, y un sumario NO
+sirve como prueba: el del BORM son 739.029 caracteres que "respaldan" cualquier cifra (T-147(c)).
+
+**Cómo funciona ahora** (`backend/src/detect-boletines/boletines.ts`):
+- `htmlToTextConAnclas()` conserva cada `<a href>` como marca `⟦Ln⟧`, y `extractCandidatosFromSumarioText()`
+  devuelve `{titulo, url}` por disposición. Los boletines JSON (DOGV, DOGC) traen el enlace por
+  registro (`collectJsonEntradas`), y el sumario del BOE por item (`collectBoeEntradas`).
+- **El LLM no elige la URL** — viene del parseo, pegada a su candidato. `urlDelCandidato()` solo decide
+  a qué candidato corresponde el nombre extraído, y **ante empate o parecido flojo devuelve `null`**.
+  Una URL equivocada es peor que ninguna: sería la prueba de OTRA convocatoria.
+- El `apply` (`lib/api/oep-signals/queries.ts`) registra el puntero en el hub para **toda** señal (antes
+  solo dentro del bloque con año OEP, y el 45% no lo trae), y **emite `senal_aplicada_sin_documento`**
+  a `observable_events` cuando no puede, con la causa (`sin_source_url` / `url_no_reconocida`).
+
+**Dos trampas medidas, las dos daban 200** (ver `feedback-verificar-el-arreglo-no-declararlo`):
+1. El `href` del BOPA de Asturias trae `&amp;`: sin decodificar, el servidor responde **200 con otra
+   página** (los parámetros llegan como `amp;p_p_lifecycle`).
+2. El `urlPdf` del DOGV sin el prefijo `/datos` devuelve **200 con el HTML del portal** (126 KB de SPA)
+   en vez del PDF (967 KB) — y encima `boletin_doc_key` no lo reconoce. Por eso el adapter lo canoniza.
+
+**Simular antes de tocar nada** (no escribe, no llama al LLM, 0 €):
+```bash
+cd backend
+npx tsx scripts/sim-enlace-anuncio.ts --dias 5                 # cobertura de enlaces por boletín
+npx tsx scripts/sim-enlace-anuncio.ts --dias 5 --con-bd        # CADENA COMPLETA (¿lo reconoce doc_key?)
+npx tsx scripts/sim-enlace-anuncio.ts --dias 5 --verificar     # + HEAD a una muestra
+```
+Medición del 28/07 tras el arreglo: **65% de los candidatos ya salen con enlace** (antes 0%) y **47%
+llegan a documento registrado**. La diferencia son 6 boletines cuyo enlace es correcto pero
+`boletin_doc_key` todavía no sabe parsear (BOPA-Asturias, BON, BOME, BOPV, DOE, DOCM): mientras no
+tengan rama en esa función SQL, su señal seguirá sin provenance. **Esa es la siguiente palanca**, y se
+añade como las que ya existen (`supabase/migrations/20260726_boletin_doc_key_*.sql`).
+
+**Lo que NO se hizo a propósito:** un cron que clone el texto solo. El clonador canónico es una
+herramienta y no un cron *por diseño* (elegir el documento bueno pide criterio); lo que cambia es que
+ahora hay un puntero trazable a su señal que curar, en vez de nada. El tipado fino lo sigue haciendo
+§2.2-bis.
+
 ### 2.2-bis. Tipar lo YA clonado (`nota` → su tipo real)
 
 El 94% del hub está en `nota` y **sin tipo no se puede usar como fuente**. El núcleo puro

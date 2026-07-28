@@ -7,6 +7,7 @@ import { oepDetectionSignals, convocatoriaHitos } from '@/db/schema'
 import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, desc, sql, gte, lt, isNotNull } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
+import { emit } from '@/lib/observability/emit'
 import type {
   CreateSignalInput,
   SignalRow,
@@ -253,7 +254,7 @@ async function promoteSignalToConvocatoria(
            detected_fecha_publicacion::text  AS detected_fecha_publicacion,
            detected_fecha_inscripcion_fin::text AS detected_fecha_inscripcion_fin,
            detected_fecha_examen::text       AS detected_fecha_examen,
-           detected_estado, detected_sistema
+           detected_estado, detected_sistema, signal_summary, sensor_type
     FROM oep_detection_signals WHERE id = ${signalId} LIMIT 1`)) as unknown
   const s = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || [])[0] as Record<string, unknown> | undefined
   if (!s || !s.oposicion_id) return null
@@ -399,9 +400,13 @@ async function promoteSignalToConvocatoria(
           const rec = one<{ rec: boolean }>(await db.execute<{ rec: boolean }>(sql`
             SELECT (boletin_doc_key(${srcUrl}) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-') AS rec`))?.rec
           if (rec) {
-            const docId = one<{ id: string }>(await db.execute<{ id: string }>(sql`
-              SELECT ensure_convocatoria_documento(${convId}, boletin_doc_key(${srcUrl}), ${srcUrl}, NULL,
-                'oep_decreto', ${`OEP ${yr}${boc ? ` — ${boc}` : ''}`}, NULL, 'oep-radar') AS id`))?.id
+            const docId = await registrarDocumentoDeSenal(
+              db,
+              convId,
+              srcUrl,
+              `OEP ${yr}${boc ? ` — ${boc}` : ''}`,
+              'oep_decreto',
+            )
             if (docId) {
               await db.execute(sql`UPDATE convocatoria_documentos SET oep_id = ${oepId} WHERE id = ${docId}`)
               await db.execute(sql`UPDATE oep SET source_documento_id = ${docId}, doc_key = boletin_doc_key(${srcUrl}) WHERE id = ${oepId}`)
@@ -414,7 +419,82 @@ async function promoteSignalToConvocatoria(
     }
   }
 
+  // ── [T-221] PROVENANCE DE TODA SEÑAL APLICADA ────────────────────────────────────────────────
+  // Hasta el 28/07 el documento solo se registraba dentro del bloque F3, que exige año OEP: el
+  // 45% de las señales aplicadas (192 de 422 en 30 días) NO trae año, así que cambiaban plazas,
+  // fechas o estado SIN dejar rastro del papel del que salieron. Medido: 133 aplicadas en 7 días,
+  // 19 con documento (14%).
+  //
+  // Registra el PUNTERO al documento (URL canónica + doc_key) por la vía oficial del hub. El TEXTO
+  // sigue siendo curación deliberada (`backend/scripts/clonar-documento.ts` — "es una herramienta y
+  // no un cron" porque elegir el documento bueno pide criterio); lo que cambia es que ahora hay algo
+  // que curar y trazable a su señal, en vez de nada. El tipado fino lo hace la campaña que ya existe
+  // (`scripts/convocatoria/sim-tipo-documento.cjs`, §2.2-bis del runbook de provenance).
+  //
+  // Si NO se puede registrar, se EMITE: un hueco de provenance invisible es como se llegó aquí.
+  if (convId) {
+    try {
+      const docId = await registrarDocumentoDeSenal(
+        db,
+        convId,
+        srcUrl,
+        (s.signal_summary ?? null) as string | null,
+        'convocatoria',
+      )
+      if (docId) {
+        await db.execute(sql`
+          UPDATE oep_detection_signals SET source_documento_id = ${docId} WHERE id = ${signalId}`)
+      } else {
+        void emit({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'senal_aplicada_sin_documento',
+          metadata: {
+            signalId,
+            oposicionId,
+            sensorType: (s.sensor_type ?? null) as string | null,
+            sourceUrl: srcUrl,
+            // La causa importa: sin URL = el sensor no la trajo; no reconocida = la URL es un
+            // sumario/listado o un boletín que `boletin_doc_key` todavía no sabe parsear.
+            causa: !srcUrl ? 'sin_source_url' : 'url_no_reconocida',
+          },
+        })
+      }
+    } catch (e) {
+      console.warn('⚠️ [OepSignals] provenance de la señal (no bloqueante):', (e as Error).message)
+    }
+  }
+
   return { oposicionId, result }
+}
+
+/**
+ * Registra en el hub el documento oficial del que sale una señal y devuelve su id.
+ *
+ * Devuelve `null` (y NO escribe) si la URL no la reconoce `boletin_doc_key`: eso significa que
+ * apunta a un sumario del día, a una página de listado o a un boletín sin parser — y clonar un
+ * sumario entero es peor que no tener documento, porque "respalda" cualquier cifra que la landing
+ * afirme (el sumario del BORM son 739.029 caracteres; antipatrón T-147(c)).
+ */
+async function registrarDocumentoDeSenal(
+  db: ReturnType<typeof getDb>,
+  convId: string,
+  srcUrl: string | null,
+  titulo: string | null,
+  tipo: 'oep_decreto' | 'convocatoria',
+): Promise<string | null> {
+  if (!srcUrl) return null
+  const rows = (await db.execute<{ id: string | null }>(sql`
+    SELECT CASE
+      WHEN boletin_doc_key(${srcUrl}) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-'
+      THEN ensure_convocatoria_documento(${convId}, boletin_doc_key(${srcUrl}), ${srcUrl}, NULL,
+             ${tipo}, ${titulo}, NULL, 'oep-radar')
+      ELSE NULL
+    END AS id`)) as unknown
+  const first = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows || [])[0] as
+    | { id: string | null }
+    | undefined
+  return first?.id ?? null
 }
 
 export async function reviewSignal(input: ReviewSignalInput): Promise<{ success: boolean; error?: string; promoted?: string }> {

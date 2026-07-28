@@ -6,7 +6,12 @@ import {
 } from '../oep-signals/oep-signals-queries.service';
 import { baseScoreBySensor } from '../oep-signals/oep-signals.schemas';
 import { adminFromOrganismo } from '../oep-signals/oep-match';
-import { BOLETIN_ADAPTERS, type BoletinAdapter, type BoletinHit } from './boletines';
+import {
+  BOLETIN_ADAPTERS,
+  urlDelCandidato,
+  type BoletinAdapter,
+  type BoletinHit,
+} from './boletines';
 import { CCAA_BOLETIN_ADAPTERS, CCAA_BOLETINES_PENDING } from './ccaa-boletines';
 import { RadarTelemetry } from '../radar/core/telemetry';
 import { randomUUID } from 'crypto';
@@ -257,11 +262,20 @@ export class DetectBoletinesService {
               (match.matched ? 10 : 0),
           );
 
+          // [T-221] Enlace al ANUNCIO concreto. `oep.url` lo devolvía SIEMPRE null (el
+          // prompt pedía una URL que el propio `cleanHtml` había borrado del HTML), así
+          // que la señal se quedaba con la URL del SUMARIO DEL DÍA — que no vale como
+          // prueba y por eso solo el 14% de las señales aplicadas tenía documento.
+          // Ahora el enlace viene del PARSEO (pegado a su candidato) y solo se adjudica
+          // si el casado es inequívoco; si no, se queda como estaba. `sourceUrl` ya
+          // prefería `oep.url`, así que el clonado del `apply` se enchufa solo.
+          const urlAnuncio = oep.url ?? urlDelCandidato(oep.name, hit.candidatos)
+
           try {
             const { inserted } = await this.queries.insertSignal({
               oposicionId: match.oposicionId,
               sensorType: adapter.sensorType,
-              sourceUrl: oep.url ?? hit.url,
+              sourceUrl: urlAnuncio ?? hit.url,
               regionName: adapter.regionName,
               detectedOposicionName: oep.name,
               detectedYear: oep.year ?? null,
@@ -274,7 +288,14 @@ export class DetectBoletinesService {
               signalSummary: `[${adapter.regionName}] ${oep.name}${
                 oep.plazas ? ` (${oep.plazas} plazas)` : ''
               }`,
-              rawExtraction: { boletin: adapter.key, fecha: ymd, oep },
+              // `sumarioUrl` se conserva aunque `sourceUrl` pase a ser el anuncio: es la
+              // procedencia (de qué sumario salió) y sin ella no se puede reauditar.
+              rawExtraction: {
+                boletin: adapter.key,
+                fecha: ymd,
+                sumarioUrl: hit.url,
+                oep: { ...oep, url: urlAnuncio },
+              },
               dedupeKey,
             });
             if (inserted) {

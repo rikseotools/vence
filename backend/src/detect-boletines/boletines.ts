@@ -16,11 +16,38 @@
 //
 // Funciones PURAS (salvo la llamada `fetch`): testeables con la fixture de HTML.
 
+/**
+ * Una disposición candidata CON su enlace al anuncio concreto.
+ *
+ * NACE DEL HUECO DE PROVENANCE (28/07/2026, T-221): el sumario del boletín se
+ * convertía a texto plano ANTES de trocearlo, así que el enlace de cada anuncio
+ * se perdía y la señal solo se quedaba con la URL del SUMARIO DEL DÍA. Resultado
+ * medido: de 133 señales aplicadas en 7 días, **19 con documento clonado (14%)** —
+ * y las 110 restantes apuntaban a un sumario o a una página de listado, que es
+ * justo lo que NO se puede clonar como prueba (clonar el sumario entero del BORM
+ * son 739.029 caracteres que "respaldan" cualquier cifra: antipatrón T-147(c)).
+ *
+ * El enlace viaja PEGADO al candidato desde el parseo, nunca lo elige el LLM:
+ * así no hay URL inventada posible.
+ */
+export interface CandidatoSumario {
+  /** Título de la disposición, ya recortado y sin marcas internas. */
+  titulo: string
+  /** URL absoluta del anuncio concreto, o null si el boletín no la expone (p.ej. sumario en PDF). */
+  url: string | null
+}
+
 export interface BoletinHit {
   /** URL del sumario consultado (para trazabilidad en la señal). */
   url: string
   /** Texto pre-filtrado: una línea por disposición candidata a convocatoria C1/C2. */
   candidatesText: string
+  /**
+   * Mismos candidatos que `candidatesText`, en el mismo orden, pero con el enlace
+   * al anuncio concreto cuando el boletín lo expone. `candidatesText` se mantiene
+   * (lo consume el prompt del LLM) y esto es ADITIVO: quien no lo mire, sigue igual.
+   */
+  candidatos: CandidatoSumario[]
   /**
    * Texto pre-filtrado: una línea por disposición candidata a MODIFICACIÓN DE
    * TEMARIO/PROGRAMA (Ordenes de programas exigibles / materias). Se extrae del
@@ -99,6 +126,53 @@ export function extractTemarioCandidatesFromSumarioText(text: string, maxPerDay 
   return hits
 }
 
+/**
+ * Casa el nombre que devuelve el LLM con el candidato del sumario del que salió, para
+ * poder pegarle SU enlace. Devuelve la URL solo si el casado es INEQUÍVOCO.
+ *
+ * Por qué no se lo preguntamos al LLM: una URL inventada (o la de la convocatoria de al
+ * lado) se convertiría en el documento que "prueba" el dato — una prueba falsa es peor
+ * que no tener prueba. Aquí el modelo no elige nada: la URL viene del parseo y esto solo
+ * decide a cuál de los candidatos corresponde. Ante duda (empate o parecido flojo) → null.
+ *
+ * PURA.
+ */
+export function urlDelCandidato(
+  nombreExtraido: string,
+  candidatos: CandidatoSumario[],
+): string | null {
+  const tokens = tokensSignificativos(nombreExtraido)
+  if (tokens.length === 0 || candidatos.length === 0) return null
+
+  const puntuados = candidatos.map((c) => {
+    const enTitulo = new Set(tokensSignificativos(c.titulo))
+    const aciertos = tokens.filter((t) => enTitulo.has(t)).length
+    return { c, score: aciertos / tokens.length }
+  })
+  const orden = [...puntuados].sort((a, b) => b.score - a.score)
+  const mejor = orden[0]
+  const segundo = orden[1]
+  // Umbral de parecido + desempate obligatorio: dos convocatorias del mismo cuerpo que
+  // solo cambian en el turno puntúan casi igual, y ahí NO se puede adjudicar documento.
+  if (mejor.score < 0.6) return null
+  if (segundo && segundo.score === mejor.score) return null
+  return mejor.c.url ?? null
+}
+
+function tokensSignificativos(s: string): string[] {
+  return [
+    ...new Set(
+      (s ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((t) => t.length >= 5),
+    ),
+  ]
+}
+
 export function htmlToText(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -113,6 +187,108 @@ export function htmlToText(html: string): string {
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/**
+ * Resuelve un `href` (relativo o absoluto) contra la URL del sumario. Devuelve null
+ * para lo que no es un documento enlazable (anclas internas, javascript:, mailto:).
+ * PURA.
+ */
+export function absolutizarUrl(href: string, base: string): string | null {
+  // El href viene del HTML: `&amp;` es UN separador de parámetros, no tres caracteres.
+  // Sin decodificar, el BOPA de Asturias devolvía 200 con los parámetros ROTOS
+  // (`amp;p_p_lifecycle=…`) → la página existe pero NO es la disposición pedida. Es el
+  // caso de libro de "un 200 no prueba nada" (feedback-verificar-el-arreglo-no-declararlo).
+  const h = (href ?? '')
+    .trim()
+    .replace(/&amp;/gi, '&')
+    .replace(/&#0*38;/g, '&')
+    .replace(/&quot;/gi, '"')
+  if (!h || h.startsWith('#') || /^(javascript|mailto|tel):/i.test(h)) return null
+  let u: URL
+  try {
+    u = new URL(h, base)
+  } catch {
+    return null
+  }
+  // Portada del boletín (raíz o `index.php` sin query): es navegación, no un anuncio.
+  // Adjudicarla sería dar por probada una convocatoria con la home del diario — caso
+  // real detectado en la simulación del 28/07 con el DOE de Extremadura.
+  if (!u.search && /^\/(index\.(php|html?|jsp))?$/i.test(u.pathname)) return null
+  return u.toString()
+}
+
+// Marcas que sustituyen a `<a href>` y `</a>`. Sobreviven a htmlToText (no llevan
+// `<`/`>`, que es lo que se borra) y no aparecen jamás en el texto de un boletín.
+//
+// HACEN FALTA LAS DOS (apertura y CIERRE) porque los boletines usan dos maquetaciones
+// opuestas y sin el cierre son indistinguibles — comprobado con sumarios reales:
+//   (a) el ancla ENVUELVE el título          → `<a href=…>RESOLUCIÓN de …</a>`
+//   (b) el título va suelto y los enlaces van DESPUÉS (BOCYL 22/07/2026):
+//       `<p>RESOLUCIÓN de 17 de julio…</p><ul><li><a href=…>…pdf</a></li></ul>`
+// En las dos, el trozo ANTERIOR acaba en marca de apertura, así que mirar solo "acaba
+// en marca" adjudicaría a la convocatoria (b) el documento de la disposición ANTERIOR.
+const MARCA_ANCLA_RE = /⟦L(\d+)⟧/g
+const MARCA_TODAS_RE = /⟦(?:L\d+|\/)⟧/g
+const marcaAncla = (i: number) => `⟦L${i}⟧`
+const MARCA_CIERRE = '⟦/⟧'
+
+/**
+ * Igual que `htmlToText` pero CONSERVANDO los enlaces: cada `<a href>` deja una marca
+ * `⟦Ln⟧` en el texto y su URL absoluta en `urls[n]`. Así se puede trocear el sumario
+ * por disposición y saber, después, a qué anuncio apunta cada trozo.
+ * PURA (la fixture del test es HTML real del BOCYL).
+ */
+export function htmlToTextConAnclas(
+  html: string,
+  base: string,
+): { texto: string; urls: string[] } {
+  const urls: string[] = []
+  const conMarcas = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    // Los comentarios llevan enlaces MUERTOS (el BOCYL deja variantes comentadas del
+    // mismo `<li>`): si no se quitan, entran en la lista como si fueran visibles.
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi, (_m, href: string) => {
+      const abs = absolutizarUrl(href, base)
+      if (!abs) return ' '
+      urls.push(abs)
+      return ` ${marcaAncla(urls.length - 1)} `
+    })
+    .replace(/<\/a\s*>/gi, ` ${MARCA_CIERRE} `)
+  return { texto: htmlToText(conMarcas), urls }
+}
+
+/** Quita las marcas de un texto (para que el título no las lleve). */
+const sinMarcas = (s: string) => s.replace(MARCA_TODAS_RE, ' ').replace(/\s+/g, ' ').trim()
+
+/** Índices de ancla presentes en un trozo, en orden de aparición. */
+function marcasDe(trozo: string): number[] {
+  return [...trozo.matchAll(MARCA_ANCLA_RE)].map((m) => Number(m[1]))
+}
+
+/**
+ * Si el trozo anterior deja un ancla ABIERTA (marca de apertura sin cierre después), el
+ * título de este trozo está DENTRO de ese enlace → maquetación (a). Devuelve su índice.
+ */
+function anclaAbiertaAlEntrar(trozoAnterior: string): number | undefined {
+  const ultimaApertura = [...trozoAnterior.matchAll(MARCA_ANCLA_RE)].pop()
+  if (!ultimaApertura) return undefined
+  const resto = trozoAnterior.slice(ultimaApertura.index + ultimaApertura[0].length)
+  return resto.includes(MARCA_CIERRE) ? undefined : Number(ultimaApertura[1])
+}
+
+/**
+ * Entre los enlaces que van DETRÁS del título (maquetación b), prefiere el HTML al PDF:
+ * el PDF de un boletín no siempre trae la ficha de análisis con el desglose de plazas, y
+ * clonar el PDF en vez de la página fue justo como se perdió el «561» de Madrid (T-190).
+ * Solo mira los primeros enlaces del trozo: más allá ya son de la disposición siguiente.
+ */
+function preferirHtml(indices: number[], urls: string[]): number | undefined {
+  const cercanos = indices.slice(0, 4)
+  const noPdf = cercanos.find((i) => urls[i] && !/\.pdf(\?|#|$)/i.test(urls[i]))
+  return noPdf ?? cercanos[0]
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -131,18 +307,53 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const DISPOSICION_SPLIT_RE =
   /(?<!\b(?:la|el|de|del|las|los|una?|dicha|misma|citada|referida|mencionada)\s)(?=Resoluci[óo]n |RESOLUCI[ÓO]N |Orden |ORDEN |Acuerdo |ACUERDO |Decreto |DECRETO |Extracto |EXTRACTO )/
 
-export function extractCandidatesFromSumarioText(text: string, maxPerDay = 40): string[] {
+/**
+ * Igual que `extractCandidatesFromSumarioText` pero devolviendo, con cada título, el
+ * enlace al anuncio concreto (si el sumario venía de `htmlToTextConAnclas`).
+ *
+ * REGLA DE ADJUDICACIÓN DEL ENLACE (verificada contra sumarios reales de los dos tipos):
+ *   1. Si al empezar el trozo hay un ancla ABIERTA, el título está dentro de ese enlace
+ *      → es el suyo (maquetación «el ancla envuelve el título»).
+ *   2. Si no, el enlace va detrás del título, dentro del propio trozo (BOCYL: `<p>` con
+ *      el título y luego el `<ul>` de descargas) → se coge de ahí, prefiriendo HTML.
+ *   3. Si no hay ninguno → `null`. NUNCA se adivina por cercanía: una URL equivocada es
+ *      PEOR que ninguna, porque la señal acabaría citando el documento de otra
+ *      convocatoria y eso es una prueba falsa.
+ */
+export function extractCandidatosFromSumarioText(
+  text: string,
+  urls: string[] = [],
+  maxPerDay = 40,
+): CandidatoSumario[] {
   const parts = text.split(DISPOSICION_SPLIT_RE)
-  const hits: string[] = []
-  for (const p of parts) {
+  const hits: CandidatoSumario[] = []
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]
     if (looksLikeC1C2Convocatoria(p)) {
       // recorta a la frase de la disposición (hasta la ref del boletín o 260 chars)
-      const title = p.slice(0, 260).replace(/\s+(BOCYL|BOE|BOJA|BOCM)-.*$/i, '').trim()
-      if (title) hits.push(title)
+      const title = sinMarcas(p)
+        .slice(0, 260)
+        .replace(/\s+(BOCYL|BOE|BOJA|BOCM)-.*$/i, '')
+        .trim()
+      if (title) {
+        const idx =
+          (i > 0 ? anclaAbiertaAlEntrar(parts[i - 1]) : undefined) ??
+          preferirHtml(marcasDe(p), urls)
+        hits.push({ titulo: title, url: idx === undefined ? null : (urls[idx] ?? null) })
+      }
     }
     if (hits.length >= maxPerDay) break
   }
   return hits
+}
+
+/**
+ * Compatibilidad: la forma "solo títulos". Delega en `extractCandidatosFromSumarioText`
+ * para que exista UNA sola regla de troceo/recorte (si divergen, el texto que ve el LLM
+ * dejaría de casar con el candidato al que se le pega el enlace).
+ */
+export function extractCandidatesFromSumarioText(text: string, maxPerDay = 40): string[] {
+  return extractCandidatosFromSumarioText(text, [], maxPerDay).map((c) => c.titulo)
 }
 
 // ============================================================
@@ -166,12 +377,13 @@ export const bocylAdapter: BoletinAdapter = {
     }
     // Sin sumario real (días sin boletín devuelven una página corta)
     if (html.length < 2000) return null
-    const text = htmlToText(html)
-    const candidates = extractCandidatesFromSumarioText(text)
-    const temario = extractTemarioCandidatesFromSumarioText(text)
+    const { texto, urls } = htmlToTextConAnclas(html, url)
+    const candidatos = extractCandidatosFromSumarioText(texto, urls)
+    const temario = extractTemarioCandidatesFromSumarioText(texto)
     return {
       url,
-      candidatesText: candidates.join('\n'),
+      candidatos,
+      candidatesText: candidatos.map((c) => c.titulo).join('\n'),
       temarioText: temario.join('\n'),
     }
   },
@@ -182,14 +394,41 @@ export const bocylAdapter: BoletinAdapter = {
 // ============================================================
 /** Recorre el JSON del sumario del BOE y devuelve los títulos de disposiciones. */
 export function collectBoeTitulos(node: unknown, acc: string[] = []): string[] {
+  for (const e of collectBoeEntradas(node)) acc.push(e.titulo)
+  return acc
+}
+
+/**
+ * Igual que `collectBoeTitulos` pero conservando el enlace del propio item del sumario
+ * del BOE (`url_pdf.texto` o `url_html.texto`), que es el anuncio CONCRETO — no el
+ * diario entero. Mismo recorrido y mismo orden que la versión de solo títulos. [T-221]
+ */
+export function collectBoeEntradas(node: unknown, acc: CandidatoSumario[] = []): CandidatoSumario[] {
   if (Array.isArray(node)) {
-    for (const x of node) collectBoeTitulos(x, acc)
+    for (const x of node) collectBoeEntradas(x, acc)
   } else if (node && typeof node === 'object') {
     const obj = node as Record<string, unknown>
-    if (typeof obj.titulo === 'string') acc.push(obj.titulo)
-    for (const k of Object.keys(obj)) collectBoeTitulos(obj[k], acc)
+    if (typeof obj.titulo === 'string') acc.push({ titulo: obj.titulo, url: urlDeItemBoe(obj) })
+    for (const k of Object.keys(obj)) collectBoeEntradas(obj[k], acc)
   }
   return acc
+}
+
+/**
+ * `url_pdf`/`url_html` del BOE vienen como `{texto: "https://…"}` (o string suelto).
+ * Se PREFIERE el HTML: el PDF del BOE no lleva la ficha de análisis (donde el BOE pone
+ * los totales por turno), y clonar el PDF fue justo como se perdió el «561» de T-190.
+ */
+function urlDeItemBoe(obj: Record<string, unknown>): string | null {
+  for (const k of ['url_html', 'url_pdf']) {
+    const v = obj[k]
+    if (typeof v === 'string' && v) return v
+    if (v && typeof v === 'object') {
+      const t = (v as Record<string, unknown>).texto
+      if (typeof t === 'string' && t) return t
+    }
+  }
+  return null
 }
 
 export const boeAdapter: BoletinAdapter = {
@@ -209,12 +448,20 @@ export const boeAdapter: BoletinAdapter = {
     } catch {
       return null
     }
-    const titulos = collectBoeTitulos(json)
-    const candidates = titulos.filter((t) => looksLikeC1C2Convocatoria(t)).map((t) => t.slice(0, 260))
-    const temario = titulos.filter((t) => looksLikeTemarioChange(t)).map((t) => t.slice(0, 300))
+    const entradas = collectBoeEntradas(json)
+    // El item del sumario del BOE trae su propio enlace → el candidato cita el ANUNCIO,
+    // no el sumario del día (que es lo que hasta ahora llegaba a la señal). [T-221]
+    const candidatos = entradas
+      .filter((e) => looksLikeC1C2Convocatoria(e.titulo))
+      .map((e) => ({ titulo: e.titulo.slice(0, 260), url: e.url }))
+    const temario = entradas
+      .map((e) => e.titulo)
+      .filter((t) => looksLikeTemarioChange(t))
+      .map((t) => t.slice(0, 300))
     return {
       url,
-      candidatesText: candidates.join('\n'),
+      candidatos,
+      candidatesText: candidatos.map((c) => c.titulo).join('\n'),
       temarioText: temario.join('\n'),
     }
   },

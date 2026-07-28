@@ -28,14 +28,31 @@
 // dedup por (boletín, norma) las colapsa aunque el sumario vigente se relea.
 
 import {
-  collectBoeTitulos,
-  extractCandidatesFromSumarioText,
+  absolutizarUrl,
+  collectBoeEntradas,
+  extractCandidatosFromSumarioText,
   extractTemarioCandidatesFromSumarioText,
-  htmlToText,
+  htmlToTextConAnclas,
   looksLikeTemarioChange,
   type BoletinAdapter,
   type BoletinHit,
+  type CandidatoSumario,
 } from './boletines'
+
+/**
+ * Arma el `BoletinHit` desde los candidatos CON enlace. `candidatesText` se deriva de
+ * los mismos candidatos y en el mismo orden: así el texto que ve el LLM y la lista a la
+ * que se le pega el enlace no pueden divergir (si divergieran, la señal acabaría citando
+ * el documento de OTRA convocatoria — una prueba falsa, peor que no tener prueba).
+ */
+function hit(url: string, candidatos: CandidatoSumario[], temario: string[]): BoletinHit {
+  return {
+    url,
+    candidatos,
+    candidatesText: candidatos.map((c) => c.titulo).join('\n'),
+    temarioText: temario.join('\n'),
+  }
+}
 
 // Chrome UA: el más aceptado por los WAF de los boletines (La Rioja/BOR devuelve
 // 403 al UA de Firefox pero 200 a Chrome). Verificado en los 14 boletines.
@@ -52,6 +69,23 @@ export interface CcaaBoletinConfig {
   format: 'html' | 'boe-json' | 'json' | 'pdf'
   /** Para format='json': campos de cada registro que contienen el título. */
   titleFields?: string[]
+  /**
+   * Para format='json': campos de cada registro con el enlace al anuncio concreto
+   * (p.ej. DOGV `urlPdf`). Se resuelven contra `urlBase` (o contra la URL del
+   * sumario si no se indica). Sin esto, la señal solo puede citar el sumario del
+   * día — que no sirve como prueba (T-221).
+   */
+  urlFields?: string[]
+  /** Origen contra el que absolutizar `urlFields` relativos (default: la URL del sumario). */
+  urlBase?: string
+  /**
+   * Canonicaliza el enlace crudo del registro ANTES de absolutizarlo. Existe porque el
+   * DOGV publica `urlPdf: "/2026/07/21/pdf/2026_24586_es.pdf"` y esa URL **devuelve 200
+   * con el HTML del portal** (126 KB de SPA, no el documento); la buena lleva `/datos`
+   * delante y sirve el PDF real (967 KB) — que además es la forma que `boletin_doc_key`
+   * ya reconoce. Sin esto clonaríamos el caparazón del portal como si fuera la prueba.
+   */
+  urlMap?: (raw: string) => string
   /** Para format='json': clave del array de registros si no es el top-level (p.ej. 'disposiciones'). */
   jsonArrayField?: string
   /** Longitud mínima del cuerpo para considerar que hay sumario (evita páginas de error). */
@@ -79,6 +113,44 @@ export function collectJsonTitles(
   fields: string[],
   arrayField?: string,
 ): string[] {
+  return collectJsonEntradas(json, fields, arrayField).map((e) => e.titulo)
+}
+
+/**
+ * Igual que `collectJsonTitles` pero conservando, por registro, el enlace al anuncio
+ * concreto (`urlFields`, resuelto contra `base`).
+ *
+ * El caso que lo motiva es el DOGV, el boletín que más señales aporta: su JSON trae
+ * `urlPdf: "/2026/07/22/pdf/2026_25000_es.pdf"` en CADA disposición, y el código se
+ * quedaba solo con `titulo` — tirando la única URL clonable que teníamos. En JSON el
+ * enlace es DETERMINISTA (viene por registro): ni ancla que adivinar, ni LLM de por
+ * medio. Ver [T-221] y `CandidatoSumario` en `boletines.ts`.
+ */
+// (definición debajo de su ayudante)
+
+/**
+ * El enlace de un registro JSON viene como string suelto (DOGV `urlPdf`) o envuelto en
+ * un objeto (DOGC `format_html: {url}`). Se aceptan las dos formas; cualquier otra → null.
+ */
+function urlDeCampo(v: unknown): string | null {
+  if (typeof v === 'string') return v || null
+  if (v && typeof v === 'object') {
+    for (const k of ['url', 'texto', 'href']) {
+      const x = (v as Record<string, unknown>)[k]
+      if (typeof x === 'string' && x) return x
+    }
+  }
+  return null
+}
+
+export function collectJsonEntradas(
+  json: unknown,
+  fields: string[],
+  arrayField?: string,
+  urlFields: string[] = [],
+  base?: string,
+  urlMap?: (raw: string) => string,
+): CandidatoSumario[] {
   const asObj = json && typeof json === 'object' ? (json as Record<string, unknown>) : null
   const rows = Array.isArray(json)
     ? json
@@ -89,16 +161,27 @@ export function collectJsonTitles(
         : asObj && Array.isArray(asObj.disposiciones)
           ? (asObj.disposiciones as unknown[])
           : []
-  const out: string[] = []
+  const out: CandidatoSumario[] = []
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue
     const r = row as Record<string, unknown>
+    let titulo: string | null = null
     for (const f of fields) {
       if (typeof r[f] === 'string' && r[f]) {
-        out.push(r[f] as string)
+        titulo = r[f] as string
         break // un título por registro
       }
     }
+    if (!titulo) continue
+    let url: string | null = null
+    for (const f of urlFields) {
+      const crudo0 = urlDeCampo(r[f])
+      if (!crudo0) continue
+      const crudo = urlMap ? urlMap(crudo0) : crudo0
+      url = base ? absolutizarUrl(crudo, base) : crudo
+      if (url) break
+    }
+    out.push({ titulo, url })
   }
   return out
 }
@@ -192,13 +275,9 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
         )
         const joined = bodies.filter(Boolean).join(' ')
         if (joined.length < (cfg.minLength ?? 2000)) return null
-        const texto = htmlToText(joined)
+        const { texto, urls: anclas } = htmlToTextConAnclas(joined, cfg.urlBase ?? urls[0])
         const temario = extractTemarioCandidatesFromSumarioText(texto)
-        return {
-          url: urls[0],
-          candidatesText: extractCandidatesFromSumarioText(texto).join('\n'),
-          temarioText: temario.join('\n'),
-        }
+        return hit(urls[0], extractCandidatosFromSumarioText(texto, anclas), temario)
       }
 
       const url = cfg.buildUrl
@@ -209,22 +288,20 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
       if (!url) return null
 
       // Sumario en PDF (BORM): descargar binario y extraer texto con pdf-parse.
+      // Un PDF no lleva enlaces por disposición → candidatos SIN url (honesto: preferimos
+      // "sin documento" a inventar uno; el sumario entero no vale como prueba, T-147(c)).
       if (cfg.format === 'pdf') {
         const text = await fetchPdfText(url)
         if (!text || text.length < (cfg.minLength ?? 500)) return null
         const temario = extractTemarioCandidatesFromSumarioText(text)
-        return {
-          url,
-          candidatesText: extractCandidatesFromSumarioText(text).join('\n'),
-          temarioText: temario.join('\n'),
-        }
+        return hit(url, extractCandidatosFromSumarioText(text), temario)
       }
 
       const body = await fetchText(url, cfg.format, cfg.encoding)
       if (!body || body.length < (cfg.minLength ?? 2000)) return null
 
       let temario: string[]
-      let candidatos: string[]
+      let candidatos: CandidatoSumario[]
       if (cfg.format === 'boe-json' || cfg.format === 'json') {
         let json: unknown
         try {
@@ -232,21 +309,34 @@ export function makeCcaaTemarioAdapter(cfg: CcaaBoletinConfig): BoletinAdapter {
         } catch {
           return null
         }
-        const titles =
+        const entradas =
           cfg.format === 'json'
-            ? collectJsonTitles(json, cfg.titleFields ?? [], cfg.jsonArrayField)
-            : collectBoeTitulos(json)
-        temario = titles.filter(looksLikeTemarioChange).map((t) => t.slice(0, 300))
+            ? collectJsonEntradas(
+                json,
+                cfg.titleFields ?? [],
+                cfg.jsonArrayField,
+                cfg.urlFields ?? [],
+                cfg.urlBase ?? url,
+                cfg.urlMap,
+              )
+            : collectBoeEntradas(json)
+        temario = entradas
+          .map((e) => e.titulo)
+          .filter(looksLikeTemarioChange)
+          .map((t) => t.slice(0, 300))
         // En JSON cada registro YA es una disposición: no hay que trocear el sumario, solo
-        // filtrar. Se pasa cada título por el mismo extractor (que aplica looksLikeC1C2Convocatoria).
-        candidatos = titles.flatMap((t) => extractCandidatesFromSumarioText(t))
+        // filtrar. El registro trae su propio enlace, así que el candidato conserva la URL
+        // del anuncio (no la del sumario) — que es lo único clonable como prueba.
+        candidatos = entradas.flatMap((e) =>
+          extractCandidatosFromSumarioText(e.titulo).map((c) => ({ titulo: c.titulo, url: e.url })),
+        )
       } else {
-        const texto = htmlToText(body)
+        const { texto, urls: anclas } = htmlToTextConAnclas(body, cfg.urlBase ?? url)
         temario = extractTemarioCandidatesFromSumarioText(texto)
-        candidatos = extractCandidatesFromSumarioText(texto)
+        candidatos = extractCandidatosFromSumarioText(texto, anclas)
       }
 
-      return { url, candidatesText: candidatos.join('\n'), temarioText: temario.join('\n') }
+      return hit(url, candidatos, temario)
     },
   }
 }
@@ -387,6 +477,9 @@ export const CCAA_BOLETINES: CcaaBoletinConfig[] = [
     // API SODA/Socrata (Dades Obertes de Catalunya): normativa DOGC al día.
     // Últimas 300 normas por fecha desc; el dedup por norma colapsa relecturas.
     titleFields: ['t_tol_de_la_norma', 't_tol_de_la_norma_es'],
+    // Socrata envuelve el enlace: `format_html: {url: "https://portaljuridic…"}`.
+    // HTML primero (el PDF del portal jurídico no siempre trae el anexo de plazas).
+    urlFields: ['format_html', 'format_pdf'],
     sumarioUrl:
       'https://analisi.transparenciacatalunya.cat/resource/n6hn-rmy7.json?$order=data_de_publicaci_del_diari%20DESC&$limit=300',
     minLength: 10,
@@ -398,6 +491,13 @@ export const CCAA_BOLETINES: CcaaBoletinConfig[] = [
     // Backend JSON real de la SPA (dogv-portal). Date-based YYYY-MM-DD; `lang` obligatorio.
     // Día sin boletín → {disposiciones:null} (se ignora).
     titleFields: ['titulo'],
+    // Cada disposición trae su PDF: `urlPdf: "/2026/07/22/pdf/2026_25000_es.pdf"` (relativo).
+    // Es el anuncio CONCRETO — lo único clonable como prueba (el sumario del día no vale).
+    urlFields: ['urlPdf'],
+    // OJO: sin `/datos` la URL responde 200 con el HTML del portal (no el documento) y
+    // además `boletin_doc_key` no la reconoce → no se clonaría. Verificado el 28/07.
+    urlMap: (raw) => `/datos${raw.startsWith('/') ? '' : '/'}${raw}`,
+    urlBase: 'https://dogv.gva.es',
     jsonArrayField: 'disposiciones',
     buildUrl: (d) => `https://dogv.gva.es/dogv-portal/dogv?date=${ymdDash(d)}&lang=es`,
     minLength: 10,
