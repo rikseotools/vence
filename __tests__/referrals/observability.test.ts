@@ -63,6 +63,36 @@ describe('POST /api/referrals/track-view', () => {
     expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'referral_page_view', userId: null }))
   })
 
+  // `src` = por dónde entró (?src=header, ?src=msg-mencion…). Es lo que permite saber si una campaña
+  // funciona, y viene del cliente: se sanea o acaba metiendo basura arbitraria en observable_events.
+  const reqSrc = (body: unknown) => new NextRequest('https://www.vence.es/api/referrals/track-view', {
+    method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' },
+  })
+
+  it('registra el src cuando es una etiqueta limpia', async () => {
+    mAuth.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    await trackView(reqSrc({ src: 'msg-mencion' }))
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({ src: 'msg-mencion' }),
+    }))
+  })
+
+  it('descarta un src con basura o demasiado largo (no es un dato de confianza)', async () => {
+    mAuth.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    await trackView(reqSrc({ src: '<script>alert(1)</script>' }))
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ src: null }) }))
+    jest.clearAllMocks()
+    await trackView(reqSrc({ src: 'x'.repeat(33) }))
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ src: null }) }))
+  })
+
+  it('sin body (visita directa) sigue contando, con src null', async () => {
+    mAuth.mockResolvedValue({ ok: true, user: { id: 'u1' } })
+    const res = await trackView(req())
+    expect(res.status).toBe(200)
+    expect(mEmit).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ src: null }) }))
+  })
+
   it('logueado → captura el userId del visitante (trazabilidad)', async () => {
     mAuth.mockResolvedValue({ ok: true, user: { id: 'visitante1' } })
     const res = await trackView(req())

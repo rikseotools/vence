@@ -195,9 +195,20 @@ export default function EmbajadoresPage() {
 
   // Observabilidad: registra la visita a la página (top del embudo), una vez por carga, para todos.
   // Manda el token si lo hay → captura el userId del visitante (trazabilidad); anónimo cuenta igual.
+  //
+  // `src` = POR DÓNDE entró (?src=header, ?src=msg-mencion…). Sin esto sabíamos CUÁNTOS entran pero no
+  // QUÉ los trae, que es justo lo que hay que medir cuando el problema es que el 96% de los premium ni
+  // sabe que el programa existe: si un mensaje funciona, se repite; si no, se cambia. Se lee de
+  // `window.location` a propósito y NO con useSearchParams: ese hook obliga a envolver la página en un
+  // <Suspense> para el prerender y aquí no compensa esa complejidad por un parámetro opcional.
   useEffect(() => {
+    const src = new URLSearchParams(window.location.search).get('src')
     getAuthHeaders()
-      .then((headers) => fetch('/api/referrals/track-view', { method: 'POST', headers }))
+      .then((headers) => fetch('/api/referrals/track-view', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ src }),
+      }))
       .catch(() => { /* silencioso */ })
   }, [])
 
