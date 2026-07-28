@@ -936,7 +936,13 @@ incluida).
    ORDER BY created_at DESC LIMIT 3;
   ```
 - **Por qué existe esta ficha:** `backend/src/fraud-sweep/` falló **7 noches seguidas con CERO éxitos** (21→28/07), muriendo siempre en su PRIMER detector — ninguno de los cinco llegó a ejecutarse. Causa: Drizzle interpola un array JS como parámetros sueltos, así que `ANY(${'${users}'})` generaba `ANY(($1,$2,$3))`. Arreglado en `e7f98d856` con `pgUuidArray()` (`backend/src/db/sql-arrays.ts`), y **verificado ejecutando el servicio real contra RDS**: completó y destapó 9 señales que llevaban días sin detectar.
-- **⚠️ ESTADO AL ESCRIBIR ESTO (28/07, media mañana):** el arreglo está en `main` pero **el deploy de backend se lanzó y estaba esperando el `flock` de otra sesión**. Lo PRIMERO es comprobar que entró:
+- **✅ COMPROBADO 28/07 18:03 UTC — el fix ESTÁ desplegado; la verificación real es el 29/07 a las 03:15 UTC.** Medido, no supuesto:
+  - `api.vence.es/health` → `deploy: 0658c818` (commit de las 16:29), y `git merge-base --is-ancestor e7f98d856 0658c818` = **DESPLEGADO**. Se acabó la duda del `flock`.
+  - **Pero el cron es `@Cron('15 3 * * *', UTC)`** (`fraud-sweep.cron.ts:30`) y su última ejecución fue **28/07 03:15**, seis horas ANTES del commit del fix. Los 7 `cron_run` de la tabla son fallos **pre-fix**, todos con el mismo `error_message` (`… WHERE id = ANY(($1, $2, $3, $4)) …`) — ninguna noche ha corrido todavía con el arreglo.
+  - Confirmado que la línea que moría ya usa el helper: `fraud-sweep.service.ts:128` → `ANY(${'${pgUuidArray(r.users)}'})`. Los otros `ANY(` del servicio son arrays SQL de columna (`d.users`, `iu.users`, CIDRs), no interpolación JS: no son el bug.
+  - **No hay disparo manual** (el módulo solo expone el `@Cron`, sin controller), así que hoy no se puede adelantar: `npm run canary:fraud-sweep` seguirá en **rojo legítimo** ("0 éxitos / 3 fallos") hasta que corra la ventana del 29/07. **Rojo hoy ≠ regresión.**
+  - **Qué hacer mañana (29/07, tras las 03:15 UTC):** `npm run canary:fraud-sweep`. Verde → cerrar la ficha y triar lo que abra. Rojo → el `error_message` del nuevo `cron_run` es el diagnóstico, y ahí sí aplica lo de abajo.
+- **⚠️ ESTADO AL ABRIR LA FICHA (28/07, media mañana — ya resuelto por el punto anterior):** el arreglo está en `main` pero **el deploy de backend se lanzó y estaba esperando el `flock` de otra sesión**. Lo PRIMERO es comprobar que entró:
   ```bash
   curl -s https://api.vence.es/health | grep -o '"deploy":"[^"]*"'
   git merge-base --is-ancestor e7f98d856 <ese-sha> && echo DESPLEGADO
