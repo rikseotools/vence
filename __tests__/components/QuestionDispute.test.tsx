@@ -387,21 +387,28 @@ describe('QuestionDispute', () => {
       expect(screen.getByText(/¿Por qué crees que está mal\?/)).toBeInTheDocument()
     })
 
-    // T-198 (2ª parte, corrección de Manuel 28/07): el motivo del radio nunca sobró — lo que faltaba
-    // era OBLIGAR a escribir el porqué. Sin texto no se puede enviar: así filtramos en origen, porque
-    // quien no sabe explicar qué falla normalmente no tenía una queja real.
-    test('T-198: sin escribir el motivo NO se puede enviar (campo obligatorio)', async () => {
-      await openAndFillForm('no_literal', '', null, { submit: false })
+    // La explicación es OPCIONAL en los motivos tipificados (decisión Manuel 28/07, tras probarlo
+    // desplegado: se intentó obligatoria y se revirtió). El motivo del radio ya dice qué falla;
+    // exigir 10 caracteres a quien solo marca "respuesta incorrecta" es cobrarle un peaje por
+    // reportar un fallo NUESTRO. Se pide, no se impone.
+    test('el texto es OPCIONAL: sin escribir nada se puede enviar', async () => {
+      const postMock = { ok: true, json: async () => ({ success: true, data: { id: 'id-x', createdAt: '2026-01-15T10:00:00Z' } }) }
+      await openAndFillForm('no_literal', '', postMock, { submit: false })
 
       const btn = screen.getByRole('button', { name: /Enviar impugnación/ })
-      expect(btn).toBeDisabled()
+      expect(btn).toBeEnabled()
 
       fireEvent.click(btn)
-      expect(global.fetch.mock.calls.filter(c => c[1]?.method === 'POST').length).toBe(0)
+      await waitFor(() => {
+        const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')
+        expect(JSON.parse(postCall[1].body).description).toBe('Motivo: no_literal')
+      })
     })
 
-    test('T-198: con menos de 10 caracteres sigue bloqueado, y se habilita al llegar', async () => {
-      await openAndFillForm('no_literal', 'corto', null, { submit: false })
+    // La excepción: en `otro` no hay motivo tipificado, así que sin texto no hay nada que revisar
+    // (y el Zod del servidor exige 10-500). El botón se deshabilita en vez de dejarle chocar.
+    test('en "otro" SÍ es obligatorio: bloqueado hasta los 10 caracteres', async () => {
+      await openAndFillForm('otro', 'corto', null, { submit: false })
       expect(screen.getByRole('button', { name: /Enviar impugnación/ })).toBeDisabled()
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'ahora sí es suficientemente largo' } })

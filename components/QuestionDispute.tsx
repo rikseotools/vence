@@ -290,15 +290,17 @@ export default function QuestionDispute({
   // ------------------------------------------
   // Validación
   // ------------------------------------------
-  // El MOTIVO por escrito es OBLIGATORIO en TODOS los tipos (mínimo 10 caracteres, lo mismo que
-  // exige el Zod del servidor). El motivo del radio nunca sobró: lo que faltaba era que el usuario
-  // CONTARA por qué. Sin eso, el revisor decide a ciegas — medido el 27/07: el 54% de las
-  // impugnaciones llegaba sin una palabra y esas se rechazaban al DOBLE (42% vs 22%). Exigirlo
-  // filtra mejor en origen: quien no puede explicar por qué, probablemente no tenía queja real.
-  // El botón sale deshabilitado en vez de dejar al usuario chocar contra un error del servidor,
-  // igual que el recurso en NotificationBell. (T-198)
+  // La explicación es OBLIGATORIA solo en `otro` (ahí el servidor exige 10-500 caracteres vía Zod;
+  // sin motivo tipificado, sin texto no hay impugnación que valga). En el RESTO es OPCIONAL a
+  // propósito (decisión Manuel 28/07, revirtiendo el intento de hacerla obligatoria en todos):
+  // el motivo del radio ya dice qué falla, y exigir 10 caracteres a quien solo quiere marcar
+  // "respuesta incorrecta" es ponerle un peaje para reportar un fallo NUESTRO. Se PIDE el texto
+  // (etiqueta y aviso lo animan), no se impone.
+  //
+  // Lo que sí cambió para siempre (T-198) es que elegir el motivo YA NO ENVÍA: el usuario llega
+  // al textarea y decide. Antes se autoenviaba en el clic y por eso el 54% llegaba sin una palabra.
   const MIN_DESC = 10
-  const needsText = description.trim().length < MIN_DESC
+  const needsText = disputeType === 'otro' && description.trim().length < MIN_DESC
   const canSubmit = !!questionId && !!disputeType && !submitting && !existingDispute && !needsText
 
   // ------------------------------------------
@@ -480,12 +482,14 @@ export default function QuestionDispute({
                         {/* Descripción */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Descripción * (mínimo {MIN_DESC} caracteres)
+                            Descripción {disputeType === 'otro' ? `* (mínimo ${MIN_DESC} caracteres)` : '(opcional)'}
                           </label>
                           <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Explica por qué crees que esta pregunta está mal..."
+                            placeholder={disputeType === 'otro'
+                              ? 'Describe el problema que has encontrado...'
+                              : 'Si quieres, explica por qué crees que está mal...'}
 
                             rows={4}
                             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none"
@@ -611,7 +615,7 @@ export default function QuestionDispute({
               {disputeType && disputeType !== 'otro' && (
                 <div>
                   <label className="block text-sm font-medium text-orange-800 dark:text-orange-300 mb-2">
-                    ¿Por qué crees que está mal? * <span className="font-normal">(mínimo {MIN_DESC} caracteres)</span>
+                    ¿Por qué crees que está mal? <span className="font-normal">(opcional)</span>
                   </label>
                   <textarea
                     value={description}
@@ -627,10 +631,7 @@ export default function QuestionDispute({
                     }
                   />
                   <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    Cuéntanos qué falla: así podemos revisarlo y darte la razón · {description.trim().length}/500 caracteres
-                    {needsText && description.trim().length > 0 && (
-                      <span className="text-red-600 ml-2">(Faltan {MIN_DESC - description.trim().length} caracteres)</span>
-                    )}
+                    Si nos cuentas qué falla, es mucho más fácil darte la razón · {description.trim().length}/500 caracteres
                   </div>
                 </div>
               )}
