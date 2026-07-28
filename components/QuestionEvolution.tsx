@@ -144,6 +144,8 @@ interface EvolutionData {
   mensaje: string
   icono: string
   color: EvolutionColor
+  /** Cliente y servidor no coinciden sobre el intento actual (ver `calcularEvolucionCompleta`). */
+  discrepanciaClienteServidor?: { cliente: boolean; servidor: boolean } | null
   totalIntentos: number
   aciertosAbsolutos: number
   fallosAbsolutos: number
@@ -554,17 +556,57 @@ export function calcularEvolucionCompleta(
   const fallos = total - aciertos - blancos
   const tasaAciertos = total > 0 ? Math.round((aciertos / total) * 100) : 0
 
+  // ── UNA SOLA VERDAD PARA TODO EL RECUADRO (fix bug MariSol 28/07/2026, feedback 108cc2a8) ──
+  //
+  // Lo que estaba roto: las bolitas y el porcentaje se calculaban con `all` —que, cuando el
+  // intento ya está persistido, usa la FILA REAL (verdad del servidor)— mientras la cabecera se
+  // calculaba con `currentResult`, que el TestLayout deriva del estado del cliente
+  // (`selectedAnswer === verifiedCorrectAnswer`). Dos fuentes para el mismo hecho → el mismo
+  // recuadro podía afirmar dos cosas opuestas. Casos reales verificados contra `test_questions`:
+  // respondió A (ACIERTO) y la cabecera dijo «Sigues fallando esta pregunta (0/2)»; respondió B
+  // (FALLO) y dijo «¡Progreso! Antes fallaste, ahora acertaste».
+  //
+  // El arreglo NO es ajustar el mensaje: es que la cabecera beba de la MISMA fuente que las
+  // bolitas. Si el intento actual ya está en la BD, esa fila manda —el servidor revalida la
+  // respuesta y es la que alimenta estadísticas y repaso de fallos—. Si aún no ha aterrizado
+  // (guardado asíncrono), se usa el resultado del cliente, que es lo único que hay y da el
+  // feedback instantáneo intacto.
+  const filaPersistida = currentAlreadyPersisted ? history[persistedIdx] : null
+  const intentoActual: CurrentResult | null = filaPersistida
+    ? {
+        is_correct: filaPersistida.is_correct,
+        was_blank: filaPersistida.was_blank ?? false,
+        time_spent_seconds: filaPersistida.time_spent_seconds ?? 0,
+        confidence_level: filaPersistida.confidence_level ?? null,
+        test_id: filaPersistida.test_id,
+      }
+    : (currentResult ?? null)
+
+  // Discrepancia cliente↔servidor: hoy esto NO deja rastro (la BD guarda lo correcto, así que
+  // ninguna alerta lo ve y solo lo caza un usuario mirando la pantalla). Se expone para que el
+  // componente lo emita a observabilidad y deje de ser invisible.
+  const discrepanciaClienteServidor =
+    filaPersistida && currentResult && typeof currentResult.is_correct === 'boolean'
+      ? clasificarIntento({ is_correct: currentResult.is_correct, was_blank: currentResult.was_blank })
+        !== clasificarIntento(filaPersistida)
+        ? { cliente: currentResult.is_correct === true, servidor: filaPersistida.is_correct === true }
+        : null
+      : null
+
   // La cabecera compara el último PREVIO con el actual para el mensaje de transición.
   // Se pasa `historyBeforeCurrent` (no `history`) para que, cuando el intento actual
   // ya esté persistido, no se compare consigo mismo. En el caso normal
   // `historyBeforeCurrent === history`, así que es idéntico a antes (cero regresión).
-  const evo = determinarTipoEvolucion(historyBeforeCurrent, currentResult)
+  const evo = determinarTipoEvolucion(historyBeforeCurrent, intentoActual)
 
   return {
     tipoEvolucion: evo.tipo,
     mensaje: evo.mensaje,
     icono: evo.icono,
     color: evo.color,
+    // Se expone para que el componente lo emita a observabilidad (no decide nada de lo que se
+    // pinta: la fila persistida ya manda). `null` = cliente y servidor coinciden.
+    discrepanciaClienteServidor,
     totalIntentos: total,
     aciertosAbsolutos: aciertos,
     fallosAbsolutos: fallos,
@@ -638,6 +680,23 @@ export default function QuestionEvolution({ userId, questionId, currentResult }:
           currentResult ?? null,
         )
         setEvolutionData(evo)
+
+        // El panel ya pinta lo correcto (manda la fila del servidor), pero la discrepancia en sí
+        // es una señal: significa que el cliente creyó una cosa y el servidor registró otra. Antes
+        // no dejaba NINGÚN rastro —la BD guarda bien, así que ninguna alerta lo veía— y por eso el
+        // fallo vivió hasta que una usuaria mandó capturas. Emitir es lo que lo hace medible.
+        if (evo.discrepanciaClienteServidor) {
+          emitClientEvent({
+            severity: 'warn',
+            eventType: 'evolution_result_mismatch',
+            metadata: {
+              questionId,
+              cliente: evo.discrepanciaClienteServidor.cliente,
+              servidor: evo.discrepanciaClienteServidor.servidor,
+              intentos: historialCompleto.length,
+            },
+          })
+        }
 
         // Observabilidad: la guardia de dedup ha actuado → el intento actual ya
         // estaba persistido en el historial y se ha evitado el duplicado ("Intento N"

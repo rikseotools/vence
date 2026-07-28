@@ -8,14 +8,21 @@
  * ORDER BY created_at ASC, sin límite) por la MISMA función pura que pinta el panel
  * (`calcularEvolucionCompleta`), y compara el resultado con lo que ella vio.
  *
- * Lo que decide: si con la entrada correcta la función produce el mensaje CORRECTO, el fallo está
- * en lo que el TestLayout le pasa (`currentResult`, derivado de estado del cliente). Si produce el
- * mensaje equivocado, el fallo está en la función. No hay tercera opción.
+ * Qué decidió (28/07): las bolitas y el porcentaje coincidían EXACTAMENTE con `test_questions` en
+ * los tres casos, y la función pura devolvía el mensaje correcto cuando se le daba la entrada
+ * correcta → el fallo estaba en la ENTRADA (`currentResult`, derivado del estado del cliente),
+ * porque la cabecera bebía de él mientras las bolitas bebían de la fila guardada. Dos fuentes para
+ * el mismo hecho.
+ *
+ * Qué comprueba AHORA (regresión): se le inyecta a propósito un resultado de cliente INVERTIDO y
+ * se exige que la cabecera siga respetando lo que dice la BD. Si alguien vuelve a separar las dos
+ * fuentes, esto se pone rojo. El juicio lo pone el mismo invariante que el journey de navegador.
  *
  * Uso:  npx tsx scripts/sim/sim-evolucion-marisol.ts <email> [questionIdPrefix...]
  */
 import postgres from 'postgres'
 import { calcularEvolucionCompleta, clasificarIntento } from '../../components/QuestionEvolution'
+import { evolutionHeaderMatchesLastAttempt } from '../../lib/sim/invariants'
 
 const EMAIL = process.argv[2] || 'flor7687@gmail.com'
 const PREFIJOS = process.argv.slice(3).length ? process.argv.slice(3) : ['3bdd3565', '4ed7bbcc', '89021fe8']
@@ -65,28 +72,33 @@ async function main() {
       test_id: actual.test_id,
     }
 
-    const evo = calcularEvolucionCompleta(history, currentResult as any)
+    // Se le pasa el resultado del cliente EQUIVOCADO a propósito (invertido respecto a la BD):
+    // así se comprueba que el panel ya no se deja arrastrar por él y manda la fila persistida.
+    const evo = calcularEvolucionCompleta(history, { ...currentResult, is_correct: !actual.is_correct } as any)
     const dots = history.map((h) => (clasificarIntento(h) === 'correct' ? '✓' : clasificarIntento(h) === 'blank' ? '·' : '✗')).join('')
     const obs = OBSERVADO[pref]
 
+    // El juicio lo pone el MISMO invariante que usa el journey de navegador (lib/sim/invariants),
+    // para que la simulación de datos y la de navegador no puedan divergir en el criterio.
+    const veredicto = evolutionHeaderMatchesLastAttempt({
+      headerText: evo.mensaje,
+      lastAttemptCorrect: actual.is_correct === true,
+    })
+
     console.log(`\n── pregunta ${pref} ──`)
     console.log(`  intentos reales      : ${history.length}  ${dots}  (último: ${actual.is_correct ? 'ACIERTO' : 'FALLO'}, respondió "${actual.user_answer}")`)
-    console.log(`  simulación → mensaje : "${evo.mensaje}"`)
-    console.log(`  simulación → aciertos: ${evo.tasaAciertos}% (${evo.totalIntentos} intentos)`)
-    if (obs) {
-      console.log(`  ella VIO   → mensaje : "${obs.mensaje}"`)
-      console.log(`  ella VIO   → aciertos: ${obs.porcentaje}% (${obs.intentos} intentos)`)
-      const mensajeIgual = evo.mensaje === obs.mensaje
-      const statsIguales = evo.tasaAciertos === obs.porcentaje && evo.totalIntentos === obs.intentos
-      console.log(`  ▶ mensaje: ${mensajeIgual ? 'COINCIDE' : '❌ DIFIERE'} | stats: ${statsIguales ? 'COINCIDEN' : '❌ DIFIEREN'}`)
-      if (!mensajeIgual) fallos++
-    }
+    console.log(`  cabecera ahora       : "${evo.mensaje}"`)
+    console.log(`  aciertos             : ${evo.tasaAciertos}% (${evo.totalIntentos} intentos)`)
+    if (obs) console.log(`  (lo que ella vio     : "${obs.mensaje}")`)
+    console.log(`  discrepancia cliente↔servidor detectada: ${evo.discrepanciaClienteServidor ? 'SÍ (se emite evento)' : 'no'}`)
+    console.log(`  ▶ ${veredicto.ok ? '✅ la cabecera respeta lo que respondió' : '❌ ' + veredicto.detail}`)
+    if (!veredicto.ok) fallos++
   }
 
   console.log(
     `\n▶ VEREDICTO: ${fallos === 0
-      ? 'la función pura reproduce lo que ella vio → el fallo está EN LA FUNCIÓN'
-      : `${fallos} mensaje(s) que la función NO reproduce con la entrada correcta → el fallo está en la ENTRADA (currentResult del TestLayout)`}`,
+      ? '✅ la cabecera NO contradice a la BD en ningún caso, ni siquiera alimentándola con un resultado de cliente equivocado'
+      : `❌ ${fallos} caso(s) en los que la cabecera sigue contradiciendo lo que el usuario respondió`}`,
   )
   await sql.end()
 }

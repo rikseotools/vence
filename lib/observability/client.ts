@@ -102,6 +102,16 @@ export type ClientEventType =
   // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
   // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
   | 'storage_unavailable'
+  // El cliente y el servidor no coinciden sobre si el usuario acertó el intento que acaba de
+  // hacer (panel "Tu Evolución en esta pregunta"). Tipo PROPIO, por lo mismo que
+  // `usage_limit_hit` y `storage_unavailable`: interesa CONSERVAR visibilidad sin contarlo como
+  // error de cliente. Nace del bug 108cc2a8 (MariSol, 28/07/2026): la cabecera del panel le decía
+  // que seguía fallando una pregunta que acababa de acertar. Lo grave no fue el fallo, fue que
+  // **no dejaba ningún rastro** —la BD guardaba lo correcto, así que ninguna métrica ni alerta lo
+  // veía— y solo se supo porque una usuaria mandó capturas. Ahora la UI ya pinta la verdad del
+  // servidor; este evento existe para MEDIR cuántas veces el cliente se equivoca y poder ir a la
+  // causa. `metadata`: { questionId, cliente, servidor, intentos }.
+  | 'evolution_result_mismatch'
   // Banner de instalación de la PWA (28/07/2026). Tipo PROPIO por lo mismo que
   // `usage_limit_hit` y `storage_unavailable`: interesa CONSERVAR visibilidad —cuántos ven la
   // invitación, cuántos instalan, cuántos la descartan y por qué no se muestra— sin que cuente
