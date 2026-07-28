@@ -246,6 +246,21 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-215] 🔴 [ABIERTO 28/07] El borrado RGPD sigue expirando con los usuarios ACTIVOS (los 15 triggers de `test_questions`)
+- **Qué:** `/api/admin/delete-user` devuelve `success:false` y **no borra la cuenta** cuando el usuario tiene actividad real. El pool corta a los 20 s (`statement_timeout`, `backend/src/db/database.module.ts`) y `delete_user_account()` no llega.
+- **Estado tras el arreglo parcial del 28/07** (índice `idx_observable_events_user_id`, migración `20260728_observable_events_user_id_idx.sql`), medido con simulaciones `ROLLBACK` sobre usuarios REALES:
+  | usuario | actividad | antes | ahora |
+  |---|---|---|---|
+  | el que falló hoy | 121 interacciones | 28 s ❌ | (cabe) ✅ |
+  | mediano de la base | 120 interacciones / 27 respuestas | — | **15,15 s** ⚠️ (75% del presupuesto) |
+  | el más activo (premium) | 120.095 interacciones / 33.396 respuestas | — | **133 s** ❌ |
+- **El cuello que queda, medido tabla por tabla:** `DELETE FROM test_questions` = **53,5 s para 33.396 filas**. No es falta de índice (lo tiene): son los **15 triggers `AFTER DELETE`** que materializan stats (`user_stats_summary`, `user_article_stats`, `user_daily_stats`, `user_difficulty_stats`, `user_hourly_stats`) — 33.396 × 15 ≈ 500.000 ejecuciones. El guard `IF NOT EXISTS user_profiles RETURN` evita el repueblo pero **se ejecuta igual** en cada fila. Ver §"Triggers materializadores — invariante crítico" del manual.
+- **Por qué urge (🔴):** es una obligación legal (RGPD Art. 17), y falla precisamente con los usuarios veteranos y **premium** — la gente con más derecho a que funcione. Hoy se salvó porque los 4 que pidieron baja eran de un día.
+- **Arreglo propuesto (NO improvisar: toca la función central del RGPD, con 4 ficheros de test):** desactivar los materializadores durante el borrado (`SET LOCAL session_replication_role = replica` acotado a la transacción, o `ALTER TABLE ... DISABLE TRIGGER USER` con el mismo alcance). Es seguro **en este flujo concreto** porque las 5 tablas de stats se borran también: no hay nada que recalcular. Cuidado: `session_replication_role=replica` desactiva TAMBIÉN las FK, así que hay que verificar que el orden de borrado sigue siendo válido sin ellas.
+- **Cómo validar antes de aplicar:** simulación con `ROLLBACK` sobre el usuario más activo (la que destapó esto) — debe bajar de 133 s a <20 s — y los 4 tests de `__tests__/api/admin/delete-user*`.
+- **Guardarraíl que YA existe:** `__tests__/integration/deleteUserIndexCoverage.integration.test.ts` (cruza las tablas que borra la función con los índices por `user_id`). Cubre la falta de índice, **no** el coste de los triggers: por eso hace falta esta ficha.
+- **Origen:** 28/07, procesando 4 bajas reales. Una falló y la investigación destapó que el fallo afectaba al 55% de los usuarios.
+
 ### [T-211] 🟠 [ABIERTO 28/07] Cádiz dice "examen realizado" con una convocatoria de 2026 recién publicada — y el detector de estado no lo ve
 - **Qué:** `auxiliar-administrativo-diputacion-cadiz` (**164 usuarios, la oposición con más gente de la campaña**) tiene `estado_proceso = 'examen_realizado'` y `exam_date = null`, mientras su propio `boe_reference` ya dice *"BOP Cádiz nº 28, de 11/02/2026 (44 plz; extracto BOE de apertura de plazo pendiente)"*. La Diputación lista ese proceso de **44 plazas** bajo el epígrafe **"NO ABREN PLAZO DE SOLICITUDES"**, con bases aprobadas por Decreto de **4 de febrero de 2026**.
 - **El estado correcto es `convocada`** (bases publicadas, plazo aún sin abrir), que ya se usa en 5 oposiciones. Hoy la landing le dice a 164 personas que su examen ya pasó.

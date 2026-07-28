@@ -378,6 +378,31 @@ console.assert(log?.deletion_reason?.length > 500, '❌ deletion_reason demasiad
 
 ## 6. Fallos comunes y su diagnóstico
 
+### ⏱️ `success:false` + `criticalErrors:1` en `_delete_user_account` = TIMEOUT, no corrupción
+
+Si la API responde `Failed query: SELECT public.delete_user_account($1::uuid)` sin más detalle, casi
+siempre es que la función **no cupo en el `statement_timeout` de 20 s** del pool. Comprobación en 30 s:
+
+```sql
+-- desde una conexión SIN timeout (psql/pg directo), con ROLLBACK: mide, no borra
+BEGIN;
+INSERT INTO deleted_users_log (original_user_id, email, plan_type, registered_at, deleted_at, deletion_reason, requested_via)
+  VALUES ('<uuid>','<email>','free', now(), now(), 'SIMULACIÓN', 'simulacion');
+\timing on
+SELECT public.delete_user_account('<uuid>'::uuid);
+ROLLBACK;
+```
+
+**Cómo completar la baja mientras tanto** (probado el 28/07): ejecutar `delete_user_account()` desde una
+conexión sin `statement_timeout` y **volver a llamar a la API** — es idempotente, detecta que la cuenta
+ya no existe, se salta la función y **envía igualmente el email legal** sellando `rgpd_email_sent_at`.
+No te saltes ese segundo paso: el email es obligación legal, no cortesía.
+
+**Estado del rendimiento (28/07/2026):** `observable_events` ya tiene índice por `user_id` (antes: 31 s
+de seq scan por baja). El cuello que queda es `test_questions` con sus 15 triggers materializadores:
+**53 s para 33.396 filas**, y el usuario más activo tarda **133 s**. El mediano cabe con 15 s de 20 —
+poco margen. Ficha **T-215**.
+
 ### "violates foreign key constraint"
 
 Si el DELETE falla con un mensaje del tipo:

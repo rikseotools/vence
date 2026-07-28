@@ -1,0 +1,46 @@
+-- 20260728_observable_events_user_id_idx.sql
+-- Índice PARCIAL por `user_id` en observable_events: sin él, el borrado RGPD no cabe en su timeout.
+--
+-- PROBLEMA MEDIDO (28/07/2026, procesando 4 bajas reales): `DELETE FROM observable_events WHERE
+-- user_id = $1` hace un `Seq Scan` de la tabla ENTERA (10,6 M filas / 6,7 GB, coste 524.725) porque
+-- `user_id` no tiene ningún índice — los 7 que hay cubren ts, event_type, endpoint, source y cron.
+-- Un solo scan por user_id: **31 s**. Y `public.delete_user_account()` lo hace dentro de su bloque,
+-- así que la función tarda **28 s** para un usuario cualquiera.
+--
+-- CONSECUENCIA REAL: el pool impone `statement_timeout: 20000` (backend/src/db/database.module.ts),
+-- así que `/api/admin/delete-user` devuelve `success:false, criticalErrors:1` y la cuenta NO se borra.
+-- Pasó hoy con `iniciosesionsorsya@gmail.com`, que tenía **121 eventos** — es decir, casi nada:
+--   · mediana de interacciones por usuario: 136
+--   · usuarios por encima de ese umbral: 5.019 de 9.045 (**55%**)
+-- O sea: **el derecho de supresión (RGPD Art. 17) fallaba para más de la mitad de los usuarios**, y
+-- justo para los veteranos. Las 4 bajas de hoy solo salieron adelante porque tres de ellos apenas
+-- usaron la app; la cuarta hubo que completarla a mano por una conexión sin timeout.
+--
+-- POR QUÉ UN ÍNDICE Y NO OTRA COSA (verificado contra lo que YA existe, no supuesto):
+--   · La RETENCIÓN de 30 d ya existe (`observability-cleanup` + `telemetry-retention`) y no sirve
+--     aquí: el RGPD exige borrar cuando el usuario lo pide, no esperar 30 días — y sus eventos
+--     recientes son justo los que están dentro de la ventana.
+--   · Subir el `statement_timeout` trataría el síntoma y dejaría una conexión bloqueada 30 s por baja.
+--   · Anonimizar (`user_id = NULL`) en vez de borrar necesitaría igualmente encontrar las filas, o sea
+--     el mismo scan. No evita nada.
+--   · Particionar por tiempo (`pg_partman`) sigue pendiente en la escalera de
+--     `contencion-rds-paneles-admin.md`: es un proyecto, y este índice es compatible con él.
+--   · Hermano del de ayer (`20260727_observable_events_cron_covering_idx.sql`), mismo diagnóstico
+--     —un consumidor legítimo barriendo 6,7 GB por falta de índice— sobre la misma tabla.
+--
+-- PARCIAL: el 62,9% de las filas tienen `user_id` NULL (eventos de servidor sin usuario), así que
+-- indexar solo las que lo tienen baja de 10,6 M a ~3,9 M filas (~150 MB en vez de ~400).
+--
+-- CONCURRENTLY: no bloquea escrituras (la tabla recibe eventos en caliente). Se propaga a la réplica
+-- por replicación física.
+--
+-- Guardarraíl para que no vuelva a pasar con OTRA tabla:
+-- `__tests__/api/admin/deleteUserIndexCoverage.integration.test.ts` cruza las tablas que borra
+-- `delete_user_account()` con los índices existentes y falla si una tabla grande se queda sin índice
+-- por `user_id`. Este fallo no se vio venir en 2 meses porque nadie comparaba ambas listas.
+--
+-- Aplicado en vivo a RDS el 28/07/2026; este fichero es el registro/repro.
+-- Revertir: DROP INDEX CONCURRENTLY idx_observable_events_user_id;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_observable_events_user_id
+  ON public.observable_events (user_id)
+  WHERE user_id IS NOT NULL;
