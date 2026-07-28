@@ -42,6 +42,7 @@ import type {
   SignInWithIdTokenArgs,
 } from '../types'
 import { isBearerFresh, TOKEN_SKEW_SEC } from '../tokenFreshness'
+import { deriveMintReason, MINT_REASON_HEADER, type MintReason } from '../mintReason'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NextSessionUser = any
@@ -161,10 +162,14 @@ type MintOutcome =
  * discriminado: SOLO un 401 se considera "sin sesión"; cualquier otro fallo es
  * transitorio y el cliente debe mantener la sesión y reintentar en el próximo tick.
  */
-async function fetchMintedToken(): Promise<MintOutcome> {
+async function fetchMintedToken(reason: MintReason = 'desconocido'): Promise<MintOutcome> {
   try {
     const legacy = getLegacySupabaseAccessToken()
     const headers: Record<string, string> = legacy ? { Authorization: `Bearer ${legacy}` } : {}
+    // POR QUÉ acuñamos. El servidor no puede saberlo (solo ve la petición), y sin este dato
+    // el 61% del desperdicio que quedó tras T-210 no se pudo explicar — hubo que conjeturar.
+    // Va en cabecera, no en query, para no cambiar la clave de caché del endpoint.
+    headers[MINT_REASON_HEADER] = reason
     const res = await fetch(TOKEN_ENDPOINT, { credentials: 'include', headers })
     if (res.status === 401) return { status: 'unauthenticated' }
     // 5xx / 429 / 503 (emisor no configurado) / cualquier otro no-ok → transitorio.
@@ -213,6 +218,13 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
   let cachedMint: MintedToken | null = null
   let cachedSession: AuthSession | null = null
   let unauthUntil = 0
+  /**
+   * ¿Este contexto JS ha acuñado alguna vez? Solo sirve para etiquetar el MOTIVO (T-210), y a
+   * propósito **sobrevive a `resetCache()`**: si se reseteara, una caché invalidada se
+   * contaría como «carga inicial» y las dos causas —el suelo del sistema (la caché nace vacía
+   * en cada carga de página) y algo que está tirando la caché— quedarían indistinguibles.
+   */
+  let yaAcuñoAlgunaVez = false
 
   const now = () => Date.now()
   // Frescura por el núcleo puro compartido (misma regla que el adapter de Supabase).
@@ -236,9 +248,19 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
       if (mintFresh()) return { status: 'ok', token: cachedMint as MintedToken }
       if (cachedMint === null && t < unauthUntil) return { status: 'unauthenticated' }
     }
-    const outcome = await fetchMintedToken()
+    // Se calcula ANTES de acuñar, con el estado que motivó la decisión (después ya está
+    // pisado). `acuñoAntes` es lo que separa el SUELO del sistema (carga de página: la caché
+    // vive en memoria y nace vacía) de una caché que alguien está tirando — dos problemas
+    // distintos que sin este dato se ven iguales. Ver lib/auth/mintReason.ts.
+    const reason = deriveMintReason({
+      forzado: Boolean(force),
+      hayCache: cachedMint !== null,
+      acuñoAntes: yaAcuñoAlgunaVez,
+    })
+    const outcome = await fetchMintedToken(reason)
     if (outcome.status === 'ok') {
       cachedMint = outcome.token
+      yaAcuñoAlgunaVez = true
       unauthUntil = 0
     } else if (outcome.status === 'unauthenticated') {
       resetCache()

@@ -71,6 +71,18 @@ const UMBRAL_ALERTA = 8
     GROUP BY date_trunc('hour', ts)
     HAVING count(DISTINCT user_id) >= 20
     ORDER BY 1`)
+
+  // POR QUÉ se acuña (T-210). Sin este desglose, tras el deploy del 28/07 solo se pudo decir
+  // "queda un 61% sin explicar"; con él, cada punto porcentual tiene nombre y el arreglo
+  // siguiente se elige con datos. `desconocido` = cliente aún sin la cabecera (bundle viejo).
+  const { rows: motivos } = await c.query(`
+    SELECT COALESCE(metadata->>'reason', 'sin_dato') AS motivo,
+           count(*)::int AS sampled,
+           count(DISTINCT user_id)::int AS usuarios
+    FROM observable_events
+    WHERE event_type = 'auth_token_minted' AND metadata->>'via' = 'authjs_session'
+      AND ts >= NOW() - INTERVAL '${DIAS} days'
+    GROUP BY 1 ORDER BY 2 DESC`)
   await c.end()
 
   const reales = Math.round(m.authjs_sampled / MUESTREO_AUTHJS) + m.bridge
@@ -92,12 +104,40 @@ const UMBRAL_ALERTA = 8
     console.log(`     horas por encima del umbral de alerta (>${UMBRAL_ALERTA}): ${rs.filter((r) => r > UMBRAL_ALERTA).length}/${rs.length}`)
   }
 
+  if (motivos.length) {
+    const totalM = motivos.reduce((a, m) => a + m.sampled, 0)
+    console.log('\n  POR QUÉ se acuña (lo que convierte "queda un 61% sin explicar" en filas con nombre):')
+    for (const m of motivos) {
+      const pctM = ((m.sampled / totalM) * 100).toFixed(1).padStart(5)
+      console.log(`     ${String(m.motivo).padEnd(14)} ${String(m.sampled * 10).padStart(7)} reales  ${pctM}%   ${m.usuarios} usuarios`)
+    }
+    const cargas = motivos.find((m) => m.motivo === 'carga_inicial')
+    const sinDato = motivos.find((m) => m.motivo === 'sin_dato' || m.motivo === 'desconocido')
+    if (sinDato && sinDato.sampled / totalM > 0.5) {
+      console.log('     ⚠️  más de la mitad sin motivo: el bundle con la cabecera aún no ha llegado a los')
+      console.log('         clientes (o un proxy la quita). Re-medir cuando `sin_dato` baje.')
+    }
+    if (cargas && cargas.sampled / totalM > 0.5) {
+      console.log('     ℹ️  domina `carga_inicial`: el gasto es el SUELO del sistema (la caché vive en')
+      console.log('         memoria y muere en cada carga de página / pestaña), no un bug de renovación.')
+      console.log('         Bajarlo exige persistir el token entre cargas, que es otra decisión (seguridad).')
+    }
+  }
+
   // Veredicto: la predicción falsable.
   console.log('')
   if (factor >= 4) {
-    console.log(`  ❌ DESPERDICIO VIVO. Esperado tras el arreglo: bajar de ${reales.toLocaleString('es-ES')} a ~${suelo.toLocaleString('es-ES')}`)
-    console.log(`     (−${(100 - 100 / factor).toFixed(1)}%). Si tras desplegar sigue alto, queda un caller pidiendo el`)
-    console.log(`     Bearer con refreshSession():  git grep -n "refreshSession()" -- lib utils app components hooks contexts`)
+    console.log(`  ❌ DESPERDICIO VIVO: ${reales.toLocaleString('es-ES')} acuñaciones, ${factor.toFixed(1)}× el suelo por usuario-hora.`)
+    console.log('')
+    console.log('     ⚠️  NO tomes ese suelo como objetivo. Se probó el 28/07 y salió mal: se predijo')
+    console.log('         −96,6% y el arreglo dio −39%. El suelo de "1 por usuario-hora" sale del TTL')
+    console.log('         del token (1 h), pero la caché del adapter vive EN MEMORIA y muere en cada')
+    console.log('         carga de página y cada pestaña → el suelo REAL es "≈1 por carga de página".')
+    console.log('         Mira el desglose por MOTIVO de arriba antes de prometer un número:')
+    console.log('           · domina `carga_inicial` → es el suelo del sistema, no un bug de renovación')
+    console.log('           · domina `forzado`       → alguien volvió a forzar red:')
+    console.log('                git grep -n "refreshSession()" -- lib utils app components hooks contexts')
+    console.log('           · domina `cache_miss`    → algo está TIRANDO la caché (revisar resetCache/401)')
     process.exitCode = 1
   } else if (reales === 0) {
     console.log('  ⚠️  CERO acuñaciones en la ventana: o no hay tráfico, o el minteo está ROTO.')

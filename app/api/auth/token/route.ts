@@ -19,6 +19,7 @@ import { mintAccessToken } from '@/lib/auth/mintAccessToken'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { MINT_REASON_HEADER, sanitizeMintReason } from '@/lib/auth/mintReason'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,13 +73,19 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   // http_status=200 (muestreo consistente 10%, sin falso positivo de transición).
   const MINT_SAMPLE_RATE = 0.1
   if (via === 'bridge' || Math.random() < MINT_SAMPLE_RATE) {
+    // POR QUÉ se acuñó (T-210). El servidor no puede deducirlo —solo ve la petición—, así que
+    // lo manda el cliente en una cabecera y aquí se VALIDA contra la taxonomía cerrada antes
+    // de escribirlo: nunca entra texto libre del navegador en `observable_events` (rompería
+    // los GROUP BY con los que se lee esto, y es cardinalidad inyectable). Un cliente viejo
+    // sin la cabecera cuenta como `desconocido`, que es la verdad, en vez de perderse.
+    const reason = sanitizeMintReason(request.headers.get(MINT_REASON_HEADER))
     emitFireAndForget({
       source: 'vercel',
       severity: 'info',
       eventType: 'auth_token_minted',
       endpoint: '/api/auth/token',
       userId,
-      metadata: { via, sampleRate: via === 'bridge' ? 1 : MINT_SAMPLE_RATE },
+      metadata: { via, reason, sampleRate: via === 'bridge' ? 1 : MINT_SAMPLE_RATE },
     })
   }
 

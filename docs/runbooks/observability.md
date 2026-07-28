@@ -1459,7 +1459,31 @@ Verificado con el método del runbook de despliegue (`/api/health` + `git merge-
 
 > **La lección, que vale para cualquier predicción falsable de este manual:** un suelo teórico hay que derivarlo del **ciclo de vida real del artefacto** (¿dónde vive la caché? ¿cuándo muere?), no de su tiempo de validez nominal. Un número bonito y mal fundado convierte un −39% real en un «fracaso» aparente, y al revés puede vender como éxito algo que no lo es.
 >
-> **Y el corolario, que es la causa raíz de haber tenido que adivinar:** el evento `auth_token_minted` no registra **por qué** se acuñó. Añadirle un `reason` (`carga_inicial` / `cache_miss` / `expirado` / `forzado`) es lo que convierte la siguiente iteración en medición en vez de conjetura. Es el patrón de este manual: *si has tenido que suponer, falta un campo*.
+> **Y el corolario, que es la causa raíz de haber tenido que adivinar:** el evento `auth_token_minted` no registraba **por qué** se acuñó. Es el patrón de este manual: *si has tenido que suponer, falta un campo*.
+
+##### ✅ El campo ya existe: `metadata.reason` en `auth_token_minted` (28/07, mismo día)
+
+Taxonomía **cerrada y compartida** por cliente y servidor en `lib/auth/mintReason.ts` — una definición, dos consumidores. El motivo lo sabe el **cliente** (el servidor solo ve la petición), así que viaja en la cabecera `X-Mint-Reason` y el servidor lo **valida contra la lista** antes de escribirlo: nunca entra texto libre del navegador en `observable_events` (rompería los `GROUP BY` y es cardinalidad inyectable).
+
+| motivo | qué significa | qué implica si domina |
+|---|---|---|
+| `carga_inicial` | primera acuñación del contexto JS | es el **suelo del sistema**: la caché vive en memoria y muere en cada carga de página y pestaña. Bajarlo exige persistir el token, que es otra decisión (seguridad) |
+| `expirado` | había token pero ya no era reusable | el motivo **sano**: ~1 por hora de token |
+| `cache_miss` | sin caché, pero el contexto ya había acuñado | algo está **tirando** la caché (`resetCache`, 401, logout en otra pestaña) |
+| `forzado` | el caller exigió red | alguien volvió a **forzar renovaciones**: el bug de T-210 |
+| `desconocido` | cliente sin la cabecera o valor no reconocido | bundle viejo tras un deploy; el evento **no se descarta**, se cuenta como lo que es |
+
+```sql
+SELECT metadata->>'reason' motivo, count(*)*10 reales, count(DISTINCT user_id) usuarios
+FROM observable_events
+WHERE event_type='auth_token_minted' AND metadata->>'via'='authjs_session'
+  AND ts > now()-interval '24 hours'
+GROUP BY 1 ORDER BY 2 DESC;
+```
+
+Ya está integrado donde se mira: el desglose sale en `sim-desperdicio-mints.cjs` y el cuerpo de la alerta `auth_token_mint_waste` **abre pidiendo el motivo** en vez de sugerir una causa. La distinción `carga_inicial` ↔ `cache_miss` es la que sostiene la decisión, y por eso el flag que las separa **sobrevive a propósito a `resetCache()`** (con test que lo fija: si se reseteara, las dos causas se contarían igual).
+
+⚠️ **Al leerlo por primera vez tras desplegar:** mientras `desconocido` domine, el reparto no significa nada — son clientes con el bundle anterior. Re-medir cuando baje.
 
 Lo que queda vivo tras el deploy (2 h, medido): 125 usuarios y ~20 acuñaciones por usuario y hora. Hay 15 usuarios con **cadencia periódica exacta** (siempre el mismo segundo de cada minuto = temporizador, no persona) que explican el 23%; la hipótesis natural —bucle del backoff de 60 s por sesión que no cuaja— **está descartada por los datos**: esos usuarios tienen CERO 401. El 77% restante sigue sin explicar. Detalle y siguiente paso en la ficha de T-210.
 

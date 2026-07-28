@@ -395,3 +395,73 @@ describe('authjsAdapter — caché del token (anti-flood)', () => {
     expect(tokenFetches()).toBe(2)
   })
 })
+
+// POR QUÉ se acuñó (T-210). La derivación pura está en __tests__/lib/auth/mintReason.test.ts;
+// lo que se fija AQUÍ es el CABLEADO del estado, que es lo que puede estar mal sin que la
+// función pura se entere. Nació de no poder explicar el 61% del desperdicio que quedó tras el
+// deploy: se sabía cuántas acuñaciones había, no por qué.
+describe('authjsAdapter — motivo de la acuñación (metadata `reason`)', () => {
+  const FUTURE = Math.floor(Date.now() / 1000) + 3600
+  const PASADO = Math.floor(Date.now() / 1000) - 10
+  /** Motivos enviados en la cabecera, en orden de llamada. */
+  const motivos = () =>
+    (global.fetch as jest.Mock).mock.calls
+      .filter((c) => c[0] === '/api/auth/token')
+      .map((c) => (c[1]?.headers as Record<string, string>)?.['X-Mint-Reason'])
+
+  const okToken = (exp: number) => ({
+    ok: true,
+    body: { accessToken: 'tok', expiresAt: exp, user: { id: APP_USER_ID, email: 'u@test.com' } },
+  })
+
+  it('la primera acuñación del contexto es `carga_inicial` (el suelo real: la caché nace vacía)', async () => {
+    setTokenEndpoint(() => okToken(FUTURE))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken()
+    expect(motivos()).toEqual(['carga_inicial'])
+  })
+
+  it('token caducado en un contexto que ya acuñó → `expirado` (el motivo SANO)', async () => {
+    setTokenEndpoint(() => okToken(PASADO)) // nunca queda fresco → re-acuña cada vez
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken() // carga_inicial
+    await adapter.getAccessToken() // ya hay caché, pero no sirve → expirado
+    expect(motivos()).toEqual(['carga_inicial', 'expirado'])
+  })
+
+  it('una renovación explícita es `forzado` (así se ve si alguien vuelve a forzar red)', async () => {
+    mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
+    setTokenEndpoint(() => okToken(FUTURE))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken() // carga_inicial
+    await adapter.refreshSession() // force
+    expect(motivos()).toEqual(['carga_inicial', 'forzado'])
+  })
+
+  // El cableado que da valor al campo: si `yaAcuñoAlgunaVez` se reseteara con la caché, una
+  // caché invalidada se contaría como carga de página y las dos causas —el suelo del sistema
+  // y algo que tira la caché— serían indistinguibles, que es justo la pregunta abierta.
+  it('tras invalidar la caché (signOut) NO vuelve a decir `carga_inicial`, dice `cache_miss`', async () => {
+    mockSignOut.mockResolvedValue(undefined)
+    setTokenEndpoint(() => okToken(FUTURE))
+    const adapter = createAuthjsAuthAdapter()
+    await adapter.getAccessToken() // carga_inicial
+    await adapter.signOut() // resetCache()
+    await adapter.getAccessToken() // caché vacía, pero NO es un contexto nuevo
+    expect(motivos()).toEqual(['carga_inicial', 'cache_miss'])
+  })
+
+  it('un contexto NUEVO sí vuelve a `carga_inicial` (cada pestaña arranca sin caché)', async () => {
+    setTokenEndpoint(() => okToken(FUTURE))
+    await createAuthjsAuthAdapter().getAccessToken()
+    await createAuthjsAuthAdapter().getAccessToken() // otra pestaña
+    expect(motivos()).toEqual(['carga_inicial', 'carga_inicial'])
+  })
+
+  it('el motivo viaja en CABECERA, no en la URL (no cambia la clave de caché del endpoint)', async () => {
+    setTokenEndpoint(() => okToken(FUTURE))
+    await createAuthjsAuthAdapter().getAccessToken()
+    const [url] = (global.fetch as jest.Mock).mock.calls[0]
+    expect(url).toBe('/api/auth/token') // sin ?reason=
+  })
+})
