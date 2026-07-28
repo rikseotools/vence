@@ -26,6 +26,9 @@ export const maxDuration = 25
  *  en el panel tienen que ser lo mismo o el revisor no encuentra la señal. */
 const WINDOW_DAYS = 30
 
+/** Tope diario del plan free (lib/api/daily-limit/config.ts). */
+const FREE_DAILY_LIMIT = 25
+
 function rows(r: unknown): any[] {
   return (Array.isArray(r) ? r : (r as { rows?: unknown[] }).rows || []) as any[]
 }
@@ -85,11 +88,21 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   const devices = rows(await db.execute(sql`
     SELECT DISTINCT user_id FROM user_devices WHERE user_id = ANY(${pgUuidArray(ids)})
   `))
+  // Tope diario del plan free: si lo topó, el ratio bajo lo causamos NOSOTROS
+  // (un free que arma un test de 100 solo puede contestar 25 → ratio <= 0,25 por
+  // construcción). Ver la nota de `answerCapped` en lib/security/harvestSignals.js.
+  const capped = rows(await db.execute(sql`
+    SELECT user_id, max(questions_answered)::int AS max_dia
+      FROM daily_question_usage
+     WHERE user_id = ANY(${pgUuidArray(ids)}) AND usage_date >= CURRENT_DATE - ${WINDOW_DAYS}::int
+     GROUP BY 1
+  `))
 
   const profileMap = new Map<string, any>(profiles.map(p => [p.id, p]))
   const answeredMap = new Map<string, number>(answered.map(a => [a.user_id, Number(a.answered)]))
   const pvMap = new Map<string, number>(pageViews.map(p => [p.user_id, Number(p.page_views)]))
   const deviceSet = new Set<string>(devices.map(d => d.user_id))
+  const cappedSet = new Set<string>(capped.filter(x => Number(x.max_dia) >= FREE_DAILY_LIMIT).map(x => x.user_id))
 
   const scripts = served
     .map(s => {
@@ -100,6 +113,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
         answered: answeredMap.get(uid) ?? 0,
         pageViews: pvMap.get(uid) ?? 0,
         hasDevice: deviceSet.has(uid),
+        answerCapped: cappedSet.has(uid),
       }
       const verdict = classifyHarvest(input)
       if (!verdict) return null

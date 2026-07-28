@@ -68,6 +68,31 @@ describe('classifyHarvest', () => {
     })
   })
 
+  // REGRESIÓN ESTRUCTURAL #2 (28/07/2026), destapada triando las 2 PRIMERAS señales
+  // reales del detector: ninguna cosechaba. Ambas eran altas nuevas que armaron
+  // tests de ~100 preguntas y toparon el límite free de 25/día. Con ese tope, el
+  // ratio es <= 0,25 POR CONSTRUCCIÓN — pegado al umbral de 0,2. El ratio bajo lo
+  // causamos nosotros, así que cuando el usuario topa no se opina.
+  describe('si el límite diario le capó las respuestas, no se opina', () => {
+    it('mpareja19@ (300 servidas / 27 respondidas, contador a 25) NO genera señal', () => {
+      expect(classifyHarvest({ served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: true })).toBeNull()
+    })
+
+    it('felixmurod@ (304 / 34, contador a 25) NO genera señal', () => {
+      expect(classifyHarvest({ served: 304, answered: 34, pageViews: 43, hasDevice: true, answerCapped: true })).toBeNull()
+    })
+
+    it('el MISMO perfil sin haber topado SÍ genera señal (no se desactiva el detector)', () => {
+      const r = classifyHarvest({ served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: false })
+      expect(r).not.toBeNull()
+      expect(r.kind).toBe('harvest_no_answer')
+    })
+
+    it('sin saber si topó, se opina como antes (no se asume exención)', () => {
+      expect(classifyHarvest({ served: 300, answered: 27 })).not.toBeNull()
+    })
+  })
+
   describe('frontera del ratio', () => {
     it('justo en el umbral de ratio NO dispara (frontera cerrada por abajo)', () => {
       const served = 1000

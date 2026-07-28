@@ -34,6 +34,10 @@ export interface FraudSweepSummary {
 function rows(r: unknown): any[] {
   return Array.isArray(r) ? r : (r as { rows?: unknown[] }).rows || [];
 }
+/** Tope diario del plan free (lib/api/daily-limit/config.ts). Si un usuario lo topa,
+ *  su ratio respondidas/servidas deja de ser interpretable. */
+const FREE_DAILY_LIMIT = envInt('FREE_DAILY_LIMIT', 25);
+
 function envInt(name: string, def: number): number {
   const v = Number(process.env[name]);
   return Number.isFinite(v) && v > 0 ? v : def;
@@ -271,6 +275,8 @@ export class FraudSweepService {
                (SELECT count(*) FROM user_interactions ui
                  WHERE ui.user_id=up.id AND ui.event_type='page_view'
                    AND ui.created_at > now() - (${this.WINDOW_DAYS}::int || ' days')::interval)::int AS page_views,
+               (SELECT coalesce(max(u.questions_answered),0) FROM daily_question_usage u
+                 WHERE u.user_id=up.id AND u.usage_date >= CURRENT_DATE - ${this.WINDOW_DAYS}::int)::int AS max_dia,
                EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id=up.id) AS has_device
           FROM user_profiles up WHERE up.id = ${uid}::uuid`),
       )[0];
@@ -282,6 +288,8 @@ export class FraudSweepService {
           answered: Number(meta.answered),
           pageViews: Number(meta.page_views),
           hasDevice: Boolean(meta.has_device),
+          // Topó el tope diario del plan free → ratio no interpretable.
+          answerCapped: Number(meta.max_dia) >= FREE_DAILY_LIMIT,
         },
         { minServed: this.SCRAPE_MIN_SERVED },
       );

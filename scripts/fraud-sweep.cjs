@@ -37,6 +37,8 @@ const DEVICE_DAILY_Q  = N('FRAUD_DEVICE_DAILY_Q', 60);
 // signifique algo. Sustituye a FRAUD_SCRAPE_MIN_Q/MAX_PV, que medían respuestas
 // guardadas y por eso eran ciegos a la cosecha (ver D4).
 const SCRAPE_MIN_SERVED = N('FRAUD_SCRAPE_MIN_SERVED', 300);
+// Tope diario del plan free: si lo topa, el ratio lo distorsionamos nosotros.
+const FREE_DAILY_LIMIT = N('FREE_DAILY_LIMIT', 25);
 const WINDOW_DAYS     = N('FRAUD_WINDOW_DAYS', 30);
 const REVIEW_TTL_DAYS = N('FRAUD_REVIEW_TTL_DAYS', 30);
 
@@ -206,6 +208,8 @@ async function main() {
               (SELECT count(*) FROM user_interactions ui
                 WHERE ui.user_id=up.id AND ui.event_type='page_view'
                   AND ui.created_at > now() - ($2||' days')::interval)::int AS page_views,
+              (SELECT coalesce(max(u.questions_answered),0) FROM daily_question_usage u
+                WHERE u.user_id=up.id AND u.usage_date >= CURRENT_DATE - ($2)::int)::int AS max_dia,
               EXISTS (SELECT 1 FROM user_devices d WHERE d.user_id=up.id) AS has_device
          FROM user_profiles up WHERE up.id = $1::uuid`, [uid, WINDOW_DAYS]);
     if (!meta.rows.length) continue;
@@ -216,6 +220,8 @@ async function main() {
       answered: Number(m.answered),
       pageViews: Number(m.page_views),
       hasDevice: Boolean(m.has_device),
+      // Topó el tope diario free → ratio no interpretable (ver harvestSignals.js).
+      answerCapped: Number(m.max_dia) >= FREE_DAILY_LIMIT,
     }, { minServed: SCRAPE_MIN_SERVED });
     if (!verdict) continue;
 

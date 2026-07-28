@@ -34,6 +34,27 @@ export interface HarvestInput {
   pageViews?: number;
   /** ¿Tiene dispositivo registrado? */
   hasDevice?: boolean;
+  /**
+   * ¿El usuario TOPÓ su límite diario en la ventana? Si sí, el ratio NO es
+   * interpretable y no se opina.
+   *
+   * Descubierto triando las 2 primeras señales reales (28/07/2026): dos altas
+   * nuevas salieron marcadas con 300/27 y 304/34. Ninguna cosechaba — las dos
+   * tenían el contador diario en 25, el TOPE del plan free. Armaron tests de ~100
+   * preguntas y solo se les permitió contestar 25. Con ese tope, cualquier free
+   * que monte un test grande tiene un ratio <= 0,25 POR CONSTRUCCIÓN, pegadito al
+   * umbral de 0,2: falso positivo estructural, y la causa la ponemos nosotros.
+   *
+   * Es el mismo defecto de forma que el de premium del 27/07 (allí el contador no
+   * se incrementaba; aquí lo topa el límite): la maquinaria del límite diario
+   * distorsiona el denominador.
+   *
+   * ⚠️ Contrapartida asumida: un cosechador con cuenta free que conteste hasta su
+   * tope quedaría exento. Se acepta a cambio de no acusar a usuarios legítimos —
+   * un detector que da falsas alarmas se deja de mirar, que es justo el estado del
+   * que venimos (ver T-185). Anotado en T-179 para revisarlo con distribución real.
+   */
+  answerCapped?: boolean;
 }
 
 export interface HarvestVerdict {
@@ -79,6 +100,9 @@ export function classifyHarvest(
   // Sin volumen suficiente no se opina: evita marcar al usuario que cargó un test
   // y lleva dos preguntas contestadas (ratio bajo del todo legítimo).
   if (served < o.minServed) return null;
+
+  // Topó su límite diario → el ratio bajo lo causamos nosotros. Ver `answerCapped`.
+  if (input?.answerCapped === true) return null;
 
   const ratio = served > 0 ? answered / served : 0;
   const reasons: string[] = [];

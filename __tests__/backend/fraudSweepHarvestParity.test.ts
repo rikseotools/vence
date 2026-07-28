@@ -39,6 +39,10 @@ const CASOS: Caso[] = [
   { nombre: 'ratio malo con volumen moderado', input: { served: 1000, answered: 0, pageViews: 50, hasDevice: true } },
   { nombre: 'sin saber pageViews ni hasDevice', input: { served: 1000, answered: 0 } },
   { nombre: 'abandona la mitad de los tests', input: { served: 1000, answered: 500, pageViews: 200, hasDevice: true } },
+  // Exención por tope diario (28/07): casos reales de las 2 primeras señales.
+  { nombre: 'mpareja19@: 300/27 con el tope free topado', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: true } },
+  { nombre: 'el mismo perfil SIN topar', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: false } },
+  { nombre: 'sin saber si topó', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true } },
   // Basura: corre en un cron nocturno, no puede petar por un dato sucio.
   { nombre: 'entrada nula', input: null },
   { nombre: 'entrada vacía', input: {} },
