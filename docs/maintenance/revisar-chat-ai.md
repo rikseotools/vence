@@ -83,6 +83,27 @@ promedio escondía que la app estaba rota.
 - ❌ Proponer una lista de mejoras y preguntar cuál. **Arregla la que tienes delante.**
 - ❌ Correr. Un ciclo por feedback, entero. Ir rápido es cómo se cuelan las regresiones.
 
+**El paso 4 tiene DOS formas, según si has cambiado algo:**
+
+- **Has tocado código → SIMULA.** Reproyecta el cambio sobre los mensajes reales y responde
+  *"¿a quién se lo quito y esos cómo iban?"*. Un cambio en un dominio no añade capacidad:
+  **reparte** mensajes, y lo que capture de más se lo resta a quien hoy lo responde bien.
+- **El arreglo ya estaba desplegado → VERIFICA LA EXTINCIÓN.** No basta con una muestra de dos
+  mensajes que ahora van bien (fue mi primer intento y era flojo). Hay que enseñar que **la
+  clase de fallo desapareció y que el arreglo se está USANDO**:
+  ```sql
+  -- 1. ¿La causa concreta dejó de aparecer, y CUÁNDO exactamente?
+  SELECT date_trunc('week',created_at)::date, count(*) FROM ai_chat_traces
+  WHERE trace_type='llm_call' AND coalesce(output_data->>'errorMessage', error_message,'') ILIKE '%<causa>%'
+  GROUP BY 1 ORDER BY 1 DESC;
+  -- 2. ¿Lo nuevo está en uso de verdad, no solo configurado?
+  SELECT model_id, count(*), max(created_at) FROM ai_chat_logs
+  WHERE created_at > '<fecha del arreglo>' GROUP BY 1 ORDER BY 2 DESC;
+  ```
+  **Que algo figure en la tabla de configuración no prueba que se esté usando.** En el ciclo 2
+  del 28/07 los 404 de modelo caen a cero justo el 09/07 a las 12:53 y el modelo nuevo lleva
+  302 mensajes desde entonces, el último ese mismo día: eso sí cierra el caso.
+
 **Y el paso 4 no es opcional ni decorativo.** Ese mismo día, el arreglo del negativo nº 1
 parecía obvio (a `app-help` le faltaban patrones para «no consigo memorizar…»), se implementó,
 y la simulación demostró que **capturaba 6 mensajes, de los que los 3 valorados eran POSITIVOS
