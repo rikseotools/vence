@@ -302,6 +302,45 @@ Lo que **no** se puede forzar por ningún medio es la banda ciega (shell de SPA,
 
 **Atribución de la evidencia:** el detector solo juzga con checks cuya `checked_url` coincide con la `seguimiento_url` vigente (columna añadida el 26/07). Sin eso, una oposición recién repuntada se juzgaría con el contenido de su URL anterior — falso positivo garantizado, que es justo lo que pasó con `administrativo-diputacion-jaen` a los pocos minutos de repuntarla. Las fuentes sin evidencia atribuible **no se juzgan** y se auto-curan en la siguiente pasada del cron.
 
+### 🚨 `detected_plazas_libre` trae el TOTAL, no el turno libre (28/07/2026) — el fallo MÁS repetido
+
+**Medido en la tanda del 28/07: 7 de 8 señales con cifra de plazas traían el TOTAL** en un campo que
+significa *turno libre*. Aplicarlas a ciegas habría corrompido datos que ya eran correctos:
+
+| Oposición | Señal | Fuente oficial | Nuestro dato |
+|---|---:|---|---|
+| `auxiliar-administrativo-diputacion-leon` | 17 | BOE-A-2026-3140: *"Trece plazas… en turno libre"* + 4 discapacidad | 13 ✅ ya correcto |
+| `auxiliar-administrativo-ayuntamiento-murcia` | 20 | BOE-A-2026-5663: *"Dieciocho plazas… turno libre"* + 2 discapacidad | 18 ✅ ya correcto |
+| `auxiliar-administrativo-ayuntamiento-cordoba` | 55 | BOP nº199: 55 con 9 discapacidad + 3 salud mental | 43 ✅ ya correcto |
+| `auxiliar-tecnico-laboratorio-...-navarra` | 6 | Res. 2168/2026: 2 libre + 3 PI + 1 discapacidad | escrito 2 |
+| `titulado-grado-medio-irpf-...-navarra` | 4 | Res. 2177/2026: 2 libre + 2 PI | escrito 2 |
+| `ats-due-...-castilla-y-leon` | 18 | BOCYL 27/07: 15 libre + 3 discapacidad | catalogado 15 |
+| `administrativo-ayuntamiento-getxo` | 34 | BOE-A-2026-15700: 29 libre + 5 discapacidad | catalogado 29 |
+| **`enfermero-sacyl`** | **342** | Sacyl: 380 total = **342 libre** + 38 discapacidad | **380 ❌ estaba mal** |
+
+**Dos consecuencias operativas:**
+
+1. **⚠️ NO uses el botón «Aplicar» para una señal con cifra de plazas.** `promoteSignalToConvocatoria`
+   escribe `detected_plazas_libre` **verbatim** en `plazas_libres`. Abre la fuente, saca el desglose y
+   escribe a mano. El botón es seguro para estado/fechas, no para plazas.
+2. **El canario barato: `plazas_libres + plazas_discapacidad + plazas_promocion_interna` debe dar el
+   total del boletín.** En `enfermero-sacyl` daba 418 sobre un total real de 380 — la suma delataba el
+   error sin abrir nada. Compruébalo antes y después de tocar plazas.
+
+### ⚠️ `landing_faqs` vive en `convocatorias`, y la vista SSOT gana (28/07/2026)
+
+Al actualizar la FAQ *"¿Cuándo es el examen?"* de León solo en `oposiciones.landing_faqs`, la landing
+**siguió sirviendo el texto viejo** (*"Todavía no hay fecha publicada"*) mientras el timeline ya
+mostraba el examen del 19/09 — página fresca, FAQ rancia. Motivo: `oposiciones_ssot` resuelve
+`landing_faqs` (y `landing_description`, `landing_estadisticas`) **desde `convocatorias`**, y los
+lectores leen de la vista.
+
+**Regla:** al tocar `landing_faqs`/`landing_description`/`landing_estadisticas`, escribir en
+**`convocatorias`** (la de `is_current`), no solo en `oposiciones`. Y verificar con
+`SELECT … FROM oposiciones_ssot`, nunca contra la tabla base. Es el inverso del gotcha de
+`seguimiento_last_hash` (§ arriba), donde manda `oposiciones` — por eso hay que mirar caso a caso.
+**GOTCHA jsonb:** usar `sql.json(x)`, nunca `JSON.stringify(x)::jsonb`.
+
 ### ⚠️ La señal puede estar EQUIVOCADA — y el radar la engancha a la fila que no es (16/07/2026)
 
 Tres casos reales del mismo día. **Ninguna señal era ruido y ninguna era lo que decía:**

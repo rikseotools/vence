@@ -116,6 +116,19 @@
 - **Cabo NO cerrado:** sigue existiendo la segunda vía de impugnación en `FeedbackModal.tsx:640-742` contra el endpoint viejo `/api/dispute`. Queda abierto decidir si se retira.
 
 
+### [T-237] 🟠 `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
+
+**Qué:** el sensor `llm_semantic` escribe `cron_tick{phase:'start'}` al arrancar y `cron_run` con las
+stats al terminar. El 21, 22 y 27/07 arrancó, emitió algunas señales y **nunca cerró** — las
+oposiciones que quedaban por barrer ese día no se miraron y nada avisó.
+**Por qué (🟠):** es un fallo SILENCIOSO en el sensor de mayor cobertura del radar (2.206 URLs). El
+badge de OEPs parece sano porque sí llegan señales, así que se da por bueno. Causa probable: el
+barrido creció 4,7× (472 → 2.206 URLs al subir la cobertura) y pasó de ~40 min a **~2 h 50 min** sin
+ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206). Falta también una
+alerta `arranques > cierres`.
+**Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
+incluida).
+
 ### [T-160] ✅ [CERRADA 28/07 — recalibrada la cadena entera; de ~65 avisos/día a <1] `event_loop_lag`: 65 avisos CRITICAL/día sobre un loop SANO
 - **Qué:** la regla `RULE_EVENT_LOOP_LAG` (añadida el 24/07, follow-up de T-075) es **la alerta nº1 del correo**: 65 disparos y 915 eventos en 24 h, con stalls reales de **2 a 3,8 s** cada ~20 min.
 - **Por qué no encaja con lo que la alerta dice:** su cuerpo apunta a la firma del incidente del 21/07 (1 vCPU + RS256 CPU-bound → cascada de 504) y recomienda dar capacidad. Pero medido el 27/07: **CPU del servicio al 1% de media y 36% de pico**, tasks ya a **2 vCPU**, 8 corriendo, **1 solo 5xx user-facing en 24 h** y ninguna cascada. Los stalls **no correlacionan con ningún request lento** (se cruzaron con `request_completed` >900 ms en la misma ventana: nada) ni con la generación de PDFs (hoy se sirvieron 0 y los stalls siguen). El `p50`/`p99` del propio muestreo está en 20-21 ms: es idle con picos aislados.

@@ -38,6 +38,44 @@ SELECT sensor_type, max(created_at)::date AS ultima,
 **Un sensor con `ultima` vieja está MUERTO, aunque nadie se queje.** Referencia sana (16/07):
 `llm_semantic` ~180/30d · `pag_empleo` ~177 · `boe_api` ~46 · `regional_scan` ~43.
 
+### 🚨 El sensor que ARRANCA y no TERMINA — `max(created_at)` no lo ve (28/07/2026)
+
+`detect-oep-llm` (`llm_semantic`) escribe un `cron_tick {phase:'start'}` al arrancar y un `cron_run`
+con las stats al terminar. **Comparando las dos series salen jornadas sin cierre:**
+
+```
+17/07 start 10:00 → cron_run 10:41  (472 escaneadas)   ✅
+20/07 start 10:00 → cron_run 10:39  (495)              ✅
+21/07 start 10:00 → (nada)          1 señal y muere    ❌
+22/07 start 10:00 → (nada)          12 señales         ❌
+23/07 start 10:00 → cron_run 12:37  (2.205, 441 err)   ✅
+24/07 start 10:00 → cron_run 12:49  (2.206, 529 err)   ✅
+27/07 start 10:00 → (nada)          17 señales, última 11:05 ❌
+```
+
+**3 de las últimas 7 jornadas mueren a media pasada.** El sensor emite algunas señales y desaparece:
+las oposiciones que quedaban por barrer ese día **no se miran y nadie avisa** — el badge de OEPs
+incluso parece sano porque sí llegaron señales.
+
+**Causa probable: el barrido creció 4,7×** (472 → 2.206 URLs, al subir la cobertura de
+`seguimiento_url`) y el trabajo pasó de ~40 min a **~2 h 50 min** sin que se ajustara el presupuesto
+del cron. Además la tasa de error es del **24 %** (529/2.206).
+
+**Cómo mirarlo (no basta el `max(created_at)` del §1):**
+
+```sql
+SELECT ts::date d,
+       count(*) FILTER (WHERE event_type='cron_tick')::int arranques,
+       count(*) FILTER (WHERE event_type='cron_run')::int  cierres
+  FROM observable_events
+ WHERE endpoint='detect-oep-llm' AND ts > now() - interval '14 days'
+ GROUP BY 1 ORDER BY 1 DESC;
+```
+
+**`arranques > cierres` = el sensor muere a media pasada.** Aplica a cualquier cron con el par
+tick/run. Es un modo de fallo distinto del sensor MUERTO (no produce nada) y del SORDO (produce 0
+señales reportando `success`): aquí produce *a medias*, que es el más fácil de dar por bueno.
+
 ### ⚠️ Mudo por DECISIÓN ≠ mudo por avería — míralo aquí ANTES de "arreglarlo"
 
 | sensor | estado | por qué |
