@@ -3700,6 +3700,19 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
     SELECT metadata->>'resultado' resultado, count(DISTINCT user_id) usuarios, count(*) veces
       FROM observable_events WHERE event_type='auth_sub_reconciliado' GROUP BY 1;
     ```
+- **🔁 CUÁNDO HAY QUE VOLVER AQUÍ (repunte).** El arreglo cura el síntoma en cada acuñación de token, pero **no explica por qué desaparece un perfil**, así que la causa de fondo sigue abierta. La señal que lo delata es `auth_sub_reconciliado`:
+  ```sql
+  -- Vigilancia: cuántos usuarios llegan con un sub sin perfil, por día
+  SELECT date_trunc('day', ts)::date dia,
+         metadata->>'resultado' resultado,
+         count(DISTINCT user_id) usuarios, count(*) veces
+    FROM observable_events
+   WHERE event_type = 'auth_sub_reconciliado' AND ts >= now() - interval '14 days'
+   GROUP BY 1,2 ORDER BY 1 DESC;
+  ```
+  - **Normal** (drenaje): unos pocos `reconciliado` los primeros días —los 8 afectados curándose— y luego tendiendo a 0.
+  - **🚨 VOLVER si:** aparecen `reconciliado` **nuevos de forma sostenida** pasada una semana (algo sigue dejando perfiles huérfanos), o aparece **cualquier `huerfano`** (ni el sub ni el email resuelven: ese usuario SIGUE roto y el arreglo no le llega).
+  - **Punto ciego que queda:** un usuario roto **no puede reportarlo** (el soporte falla por la misma FK) hasta que se haga el pendiente (c). Es decir: si no miras esta consulta, no te enteras. Por eso está escrita aquí.
 - **⏭️ Lo que queda:** (a) **desplegar** — hasta entonces los afectados siguen rotos; (b) escribirle a `pcsergio0@gmail.com` (Manuel quiere ver el borrador antes); (c) que `/api/feedback` no pierda el mensaje cuando el `user_id` no existe (guardar con `user_id` nulo antes que devolver 500) — sin eso, el próximo fallo de esta familia volverá a ser invisible; (d) sin resolver: **qué borró el perfil original** (no consta en `deleted_users_log`).
 
 ### [T-243] ✅ [HECHO 28/07 · falta desplegar] La atribución solo veía el tráfico de PAGO: el 86% de las altas quedaba como `direct`
