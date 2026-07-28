@@ -111,3 +111,45 @@ describe('/api/fraud/report — la identidad sale del token, no del cuerpo', () 
     expect(mockMarkForcedChallenge).not.toHaveBeenCalled()
   })
 })
+
+// T-185: la mayor parte del ruido venía de abrir expediente con una confianza en
+// la que no confiamos. 261 de ~400 alertas eran el patrón Android/BotD a score 60.
+describe('/api/fraud/report — solo se abre expediente con la confianza con la que actuaríamos', () => {
+  it('score 60 (patrón Android/BotD) responde 200 pero NO crea alerta', async () => {
+    const res = await POST(req({
+      userId: YO, alertType: 'bot_detected', botScore: 60,
+      evidence: ['no_plugins', 'botd:headless_chrome'],
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.alerted).toBe(false)
+    expect(body.reason).toContain('bajo_umbral')
+    expect(mockInsertValues).not.toHaveBeenCalled()
+    expect(mockMarkForcedChallenge).not.toHaveBeenCalled()
+  })
+
+  it('lo descartado NO se pierde: queda como evento de observabilidad', async () => {
+    await POST(req({ userId: YO, alertType: 'bot_detected', botScore: 60 }))
+    const ev = mockEmitFireAndForget.mock.calls.at(-1)?.[0]
+    expect(ev.eventType).toBe('bot_detection_below_bar')
+    expect(ev.severity).toBe('info')
+    expect(ev.metadata.score).toBe(60)
+  })
+
+  it('una huella firme (score >= 90) SÍ crea alerta y reta', async () => {
+    const res = await POST(req({ userId: YO, alertType: 'bot_detected', botScore: 150 }))
+    expect(res.status).toBe(200)
+    expect(mockMarkForcedChallenge).toHaveBeenCalledTimes(1)
+  })
+
+  // Sin datos de servidor la política no alerta — el mock de db devuelve [] para
+  // la consulta de comportamiento, que es justo el caso "no sé".
+  it('suspicious_behavior no alerta si el servidor no confirma el comportamiento', async () => {
+    const res = await POST(req({
+      userId: YO, alertType: 'suspicious_behavior', behaviorScore: 130,
+      evidence: { correctRate: 0, answerCount: 24 },
+    }))
+    expect((await res.json()).alerted).toBe(false)
+    expect(mockMarkForcedChallenge).not.toHaveBeenCalled()
+  })
+})

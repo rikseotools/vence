@@ -490,33 +490,6 @@
 - **Cómo:** generación anclada a fuente con doble auditoría ciega + Paso 9, flujo de [T-115]. El banco de `Explorador Windows 11` lo comparten 16 oposiciones, así que cubrirlo apaga el hueco en todas.
 - **Origen:** T-107, alineación de Cantabria al programa vigente (27/07).
 
-### [T-185] 🟠 [ABIERTO 27/07] El detector client-side de bots cría falsos positivos en cadena: 500 alertas rancias y un cálculo sobre estado PARCIAL
-- **Estado medido (27/07):** `fraud_alerts` tiene **500 en `stale`** desde el 04/02 sin triar. Las **3 pendientes** de ese día se revisaron una a una contra los datos y las **3 eran falsos positivos** — igual que las 2 examinadas en la auditoría anti-scraping. La tasa de acierto del detector, sobre todo lo que se ha mirado a fondo, es **0**.
-- **🔴 CAUSA RAÍZ NUEVA (esto no es solo calibración):** la evidencia de `suspicious_behavior` de `isidoracarrenosanabrias@` decía `correctRate: 0`, pero la BD dice **28,0 % de acierto** para esa misma sesión. El detector del cliente calcula el ratio sobre un estado **PARCIAL** (respuestas todavía sin guardar), así que la premisa de la alerta era **falsa de origen**. Un umbral no arregla eso: hay que calcular el ratio sobre datos confirmados o no calcularlo.
-- **Segundo defecto: mide LENTITUD como si fuera un bot.** Los casos reales que dispararon `suspicious_behavior` tenían medianas de **20-31 segundos por pregunta**. Un bot no tarda medio minuto. La regla actual (acierto bajo + N respuestas) describe a un opositor agobiado, no a un script.
-- **Tercer defecto: instrumentación de tiempos rota.** En la evidencia de `f.javier.banzo@` aparece un `recentTimes` con **`-273399` ms**. Un tiempo negativo significa que el cálculo resta relojes que no son comparables (¿render vs. interacción, o un reset de sesión?). Cualquier media que lo incluya es basura.
-- **Cuarto: reincide sobre los mismos usuarios legítimos.** `followsymlinks53@` (PREMIUM desde junio) acumula **9** alertas; `amaiacubocossio@`, **12**. No hay memoria de "a este ya lo absolvimos".
-- **Y el `bot_detected` de Android sigue vivo:** `no_plugins` + `botd:headless_chrome` sobre Chrome móvil es el falso positivo que el propio `app/api/fraud/report/route.js` documenta desde el 15/04 (por eso subieron HIGH a 90), pero se sigue **creando la alerta** en `medium`, que es la que llena el badge.
-- **Por qué importa más de lo que parece:** un detector que solo produce falsos positivos hace que nadie mire el panel — y ahí es donde van a aparecer las señales de cosecha nuevas (`curl_scraping` / `harvest_no_answer`, T-179). El ruido devalúa la señal buena.
-- **Cómo:** (1) que el ratio de acierto salga de la BD y no del estado en curso del cliente; (2) exigir RAPIDEZ, no lentitud, para hablar de bot; (3) arreglar los tiempos negativos antes de promediar nada; (4) no re-alertar de un sujeto ya absuelto dentro de un TTL; (5) dejar de crear alerta `medium` para el patrón de Android ya documentado como FP; (6) cerrar en bloque las 500 `stale` cuando (1)-(5) estén hechos, no antes.
-- **Ojo al alcance:** NO desactivar la detección. Lo que se busca es que cuando salte, signifique algo.
-
-#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
-- **La evidencia ya está recogida, no hay que re-investigar:** las 3 señales del 27/07 quedaron en `status='dismissed'` con el porqué **escrito en `fraud_alerts.notes`**. Empieza por ahí:
-  ```sql
-  SELECT alert_type, severity, detected_at, notes FROM fraud_alerts
-   WHERE status='dismissed' AND reviewed_at::date = DATE '2026-07-27' ORDER BY detected_at;
-  ```
-- **Dónde está cada defecto en el código:**
-  - El `correctRate` sobre estado PARCIAL → `hooks/useBotDetection.ts`, función `reportSuspiciousBehavior`: calcula `correctRate` sobre el array `answerData` **en memoria del cliente**, no sobre lo confirmado en BD. Es la causa raíz, y por eso un umbral no lo arregla.
-  - Los tiempos negativos salen de ese mismo `answerData` (`recentTimes`).
-  - El alta de la alerta y el escalado a reto forzado → `app/api/fraud/report/route.js`.
-- **Ese fichero ya se tocó el 27/07 en T-180** (ahora la identidad sale del token y el cliente manda `getAuthHeaders()`). Lee ese cambio antes de tocar nada para no deshacerlo.
-- **Casos concretos con los que validar el arreglo** (deben dejar de generar alerta): `isidoracarrenosanabrias@` (28 s/pregunta de mediana, 28 % de acierto real frente al 0 % que declaró el cliente), `followsymlinks53@` (PREMIUM, Chrome Android, 9 alertas), `amaiacubocossio@` (84 % de acierto, 12 alertas).
-- **Las 500 `stale` se cierran AL FINAL**, no al principio: si las cierras antes de arreglar la causa, se vuelven a llenar y habrás perdido la evidencia.
-- **Por qué corre prisa relativa:** es el MISMO panel donde van a aparecer las señales de cosecha nuevas (T-179). Mientras el detector viejo cría falsos positivos, la señal buena nace devaluada.
-- **Origen:** triaje del 27/07 (las 3 pendientes se dejaron `dismissed` con la evidencia en `notes`).
-
 ### [T-179] 🟠 [ABIERTO 27/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
 - **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
 - **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
@@ -3241,6 +3214,44 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 > - **El guardarraíl se probó rompiéndolo:** inyectado el `includes` viejo en el núcleo, se ponen rojos 5 casos del fixture; restaurado, 417 tests del root y 20 del backend en verde. Un guardarraíl que nadie ha visto fallar no está verificado.
 > - **Causa 2 — el runbook mandaba elegir el id «nuevo» mirando el markdown**, que es imposible de acertar: las otras sesiones ya tienen ids cogidos en `backlog_tasks` con sus fichas sin pushear. Me pasó **dos veces seguidas** el mismo día (T-210 y T-213, las dos ajenas; la primera llegó a pisar en BD el título de la tarea de otra sesión). Ahora el runbook abre con un **paso 0: pedir el id con `backlog.cjs reserve`**, que lo saca de la tabla, que es atómica. El id de esta ficha se pidió así.
 > - **Lo que NO se hizo, a propósito:** ni un detector más ni otro panel. Lo de hoy no fue falta de detección —todo salió del barrido nocturno— sino criterios divergentes y un procedimiento que empujaba al error.
+
+### [T-185] ✅ [HECHA 28/07] El detector client-side de bots creaba expediente con una confianza en la que no confiamos
+- **✅ HECHO.** Los seis pasos. La política de decisión vive ahora en `lib/security/botAlertPolicy.ts` (pura, 20 tests) y el endpoint la aplica.
+- **El dato que ordenó el arreglo:** de ~400 alertas acumuladas, **261** tenían la evidencia EXACTA `["no_plugins","botd:headless_chrome"]` —falso positivo documentado en el propio código desde el 15/04— y **255 estaban por debajo del score 90**, el nivel en el que sí actuamos. Es decir: abríamos expediente con una confianza que no nos parecía suficiente ni para pedir un captcha.
+- **(1) Ratio desde la BD:** para `suspicious_behavior` el servidor RECALCULA respuestas, mediana y acierto sobre `test_questions` confirmadas. Sin datos de servidor **no se alerta** (antes se creía el `correctRate` del cliente, que declaró 0% cuando la BD decía 28%).
+- **(2) Se exige RAPIDEZ, no lentitud:** mediana ≤3 s + acierto ≤0,35 + ≥20 respuestas. La regla vieja describía a un opositor agobiado (los casos reales tenían 20-31 s por pregunta).
+- **(3) Tiempos negativos:** `medianSecondsFrom()` descarta negativos y absurdos y usa MEDIANA, no media, para que un outlier no la mueva.
+- **(4) No reincidir:** si el sujeto tuvo una alerta del mismo tipo `dismissed` en 30 días, no se vuelve a abrir. Había usuarias legítimas con 9 y 12 alertas del mismo patrón ya descartado.
+- **(5) Solo se alerta con score ≥90.** Lo que queda por debajo **no se pierde**: se emite `bot_detection_below_bar` (info) para ver tendencia sin ensuciar la cola de revisión.
+- **(6) Las 500 rancias, cerradas** con nota trazable explicando el porqué del cierre en bloque. Badge a 0.
+- **Lo que NO arregla, y sigue abierto:** el bot que no coopera nunca se autodenuncia — la detección client-side solo ve a quien llama. Eso pide señales de SERVIDOR (ausencia de eventos de página frente a peticiones de datos, `sec-ch-ua`, orden de cabeceras, huella TLS en CloudFront) y es trabajo aparte.
+- **Pendiente de DESPLIEGUE de frontend** para que la política surta efecto.
+- **Estado medido (27/07):** `fraud_alerts` tiene **500 en `stale`** desde el 04/02 sin triar. Las **3 pendientes** de ese día se revisaron una a una contra los datos y las **3 eran falsos positivos** — igual que las 2 examinadas en la auditoría anti-scraping. La tasa de acierto del detector, sobre todo lo que se ha mirado a fondo, es **0**.
+- **🔴 CAUSA RAÍZ NUEVA (esto no es solo calibración):** la evidencia de `suspicious_behavior` de `isidoracarrenosanabrias@` decía `correctRate: 0`, pero la BD dice **28,0 % de acierto** para esa misma sesión. El detector del cliente calcula el ratio sobre un estado **PARCIAL** (respuestas todavía sin guardar), así que la premisa de la alerta era **falsa de origen**. Un umbral no arregla eso: hay que calcular el ratio sobre datos confirmados o no calcularlo.
+- **Segundo defecto: mide LENTITUD como si fuera un bot.** Los casos reales que dispararon `suspicious_behavior` tenían medianas de **20-31 segundos por pregunta**. Un bot no tarda medio minuto. La regla actual (acierto bajo + N respuestas) describe a un opositor agobiado, no a un script.
+- **Tercer defecto: instrumentación de tiempos rota.** En la evidencia de `f.javier.banzo@` aparece un `recentTimes` con **`-273399` ms**. Un tiempo negativo significa que el cálculo resta relojes que no son comparables (¿render vs. interacción, o un reset de sesión?). Cualquier media que lo incluya es basura.
+- **Cuarto: reincide sobre los mismos usuarios legítimos.** `followsymlinks53@` (PREMIUM desde junio) acumula **9** alertas; `amaiacubocossio@`, **12**. No hay memoria de "a este ya lo absolvimos".
+- **Y el `bot_detected` de Android sigue vivo:** `no_plugins` + `botd:headless_chrome` sobre Chrome móvil es el falso positivo que el propio `app/api/fraud/report/route.js` documenta desde el 15/04 (por eso subieron HIGH a 90), pero se sigue **creando la alerta** en `medium`, que es la que llena el badge.
+- **Por qué importa más de lo que parece:** un detector que solo produce falsos positivos hace que nadie mire el panel — y ahí es donde van a aparecer las señales de cosecha nuevas (`curl_scraping` / `harvest_no_answer`, T-179). El ruido devalúa la señal buena.
+- **Cómo:** (1) que el ratio de acierto salga de la BD y no del estado en curso del cliente; (2) exigir RAPIDEZ, no lentitud, para hablar de bot; (3) arreglar los tiempos negativos antes de promediar nada; (4) no re-alertar de un sujeto ya absuelto dentro de un TTL; (5) dejar de crear alerta `medium` para el patrón de Android ya documentado como FP; (6) cerrar en bloque las 500 `stale` cuando (1)-(5) estén hechos, no antes.
+- **Ojo al alcance:** NO desactivar la detección. Lo que se busca es que cuando salte, signifique algo.
+
+#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
+- **La evidencia ya está recogida, no hay que re-investigar:** las 3 señales del 27/07 quedaron en `status='dismissed'` con el porqué **escrito en `fraud_alerts.notes`**. Empieza por ahí:
+  ```sql
+  SELECT alert_type, severity, detected_at, notes FROM fraud_alerts
+   WHERE status='dismissed' AND reviewed_at::date = DATE '2026-07-27' ORDER BY detected_at;
+  ```
+- **Dónde está cada defecto en el código:**
+  - El `correctRate` sobre estado PARCIAL → `hooks/useBotDetection.ts`, función `reportSuspiciousBehavior`: calcula `correctRate` sobre el array `answerData` **en memoria del cliente**, no sobre lo confirmado en BD. Es la causa raíz, y por eso un umbral no lo arregla.
+  - Los tiempos negativos salen de ese mismo `answerData` (`recentTimes`).
+  - El alta de la alerta y el escalado a reto forzado → `app/api/fraud/report/route.js`.
+- **Ese fichero ya se tocó el 27/07 en T-180** (ahora la identidad sale del token y el cliente manda `getAuthHeaders()`). Lee ese cambio antes de tocar nada para no deshacerlo.
+- **Casos concretos con los que validar el arreglo** (deben dejar de generar alerta): `isidoracarrenosanabrias@` (28 s/pregunta de mediana, 28 % de acierto real frente al 0 % que declaró el cliente), `followsymlinks53@` (PREMIUM, Chrome Android, 9 alertas), `amaiacubocossio@` (84 % de acierto, 12 alertas).
+- **Las 500 `stale` se cierran AL FINAL**, no al principio: si las cierras antes de arreglar la causa, se vuelven a llenar y habrás perdido la evidencia.
+- **Por qué corre prisa relativa:** es el MISMO panel donde van a aparecer las señales de cosecha nuevas (T-179). Mientras el detector viejo cría falsos positivos, la señal buena nace devaluada.
+- **Origen:** triaje del 27/07 (las 3 pendientes se dejaron `dismissed` con la evidencia en `notes`).
+
 
 ### [T-212] ✅ [CERRADA 28/07] El render de estilo impugnación ignoraba `frame: 'select_incorrect'` — las preguntas de «señale la INCORRECTA» se contradecían
 > **✅ HECHO (28/07).** La cogió la misma sesión que venía tocando el módulo (T-080 → T-201 → T-204), como pedía la ficha, así que no hubo conflicto.
