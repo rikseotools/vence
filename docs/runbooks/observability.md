@@ -1449,7 +1449,19 @@ Separa los eventos en ya-ruido / candidatos / aplicación y emite una **predicci
 node scripts/observabilidad/sim-desperdicio-mints.cjs [--dias N]
 ```
 
-Predicción falsable: **−96,6%** (58.800 → ~2.000). ⚠️ **Y el falso alivio a vigilar:** quedar MUY por debajo del suelo no es eficiencia, es que hay usuarios activos sin token; el script lo avisa en vez de dar verde.
+Predicción que se dejó escrita: **−96,6%** (58.800 → ~2.000). ⚠️ **Y el falso alivio a vigilar:** quedar MUY por debajo del suelo no es eficiencia, es que hay usuarios activos sin token; el script lo avisa en vez de dar verde.
+
+#### ✅ Desplegado el 28/07 a las 11:17 UTC — y la predicción NO se cumplió (lección de método)
+
+Verificado con el método del runbook de despliegue (`/api/health` + `git merge-base`, nunca por notas): el arreglo está en prod, front y back. Resultado medido contra la misma franja horaria del día anterior: **96,7 → 58,8 acuñaciones por usuario y hora (−39%)**, no el −96,6% prometido.
+
+**Y buena parte del error es de la predicción, no del arreglo.** El «suelo» de 1 acuñación por usuario y hora salía del TTL del token (1 h), pero la caché del adapter vive **en memoria**: cada carga de página y cada pestaña arrancan sin ella. El suelo real es «≈1 por carga de página y pestaña». **El objetivo era inalcanzable por arquitectura.**
+
+> **La lección, que vale para cualquier predicción falsable de este manual:** un suelo teórico hay que derivarlo del **ciclo de vida real del artefacto** (¿dónde vive la caché? ¿cuándo muere?), no de su tiempo de validez nominal. Un número bonito y mal fundado convierte un −39% real en un «fracaso» aparente, y al revés puede vender como éxito algo que no lo es.
+>
+> **Y el corolario, que es la causa raíz de haber tenido que adivinar:** el evento `auth_token_minted` no registra **por qué** se acuñó. Añadirle un `reason` (`carga_inicial` / `cache_miss` / `expirado` / `forzado`) es lo que convierte la siguiente iteración en medición en vez de conjetura. Es el patrón de este manual: *si has tenido que suponer, falta un campo*.
+
+Lo que queda vivo tras el deploy (2 h, medido): 125 usuarios y ~20 acuñaciones por usuario y hora. Hay 15 usuarios con **cadencia periódica exacta** (siempre el mismo segundo de cada minuto = temporizador, no persona) que explican el 23%; la hipótesis natural —bucle del backoff de 60 s por sesión que no cuaja— **está descartada por los datos**: esos usuarios tienen CERO 401. El 77% restante sigue sin explicar. Detalle y siguiente paso en la ficha de T-210.
 
 **Por qué no lo cazó la observabilidad, que sí lo estaba viendo.** Existía `auth_token_mint_flood`, escrita en julio para este mismo endpoint — pero calibrada para el flood **catastrófico por usuario** (>50 reales/usuario/10 min, el poll de 5 s del caso Natalia). Este régimen es **fino y ancho**: 45 por usuario y hora repartidos entre cientos de usuarios, o sea ~0,7 muestreados/usuario/10 min → habría necesitado ser **7× peor** para disparar. Cerrado con su hermana `auth_token_mint_waste` (>8 reales/usuario/hora, umbral calibrado sobre 7 días: deja 4-8× de margen sobre lo sano y queda 3,7× por debajo del peor régimen bueno observado). **Lección repetida:** una alerta sobre la métrica correcta puede seguir siendo ciega si el umbral se calibró para otra forma del mismo fallo. Dispara sola hasta que el arreglo esté desplegado — y su silencio posterior es la verificación.
 

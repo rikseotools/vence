@@ -167,7 +167,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mediana de 7 días, rango 29-136). Causa: 9 copias del patrón «refreshSession() y si no ' +
       'getSession()» que FORZABAN la re-acuñación saltándose la caché del adapter (T-210); ' +
       'convergieron en `auth.getAccessToken()`. Correrlo ANTES y DESPUÉS del deploy: la predicción ' +
-      'es −96,6%. **Ojo con el falso alivio:** quedar MUY por debajo del suelo no es eficiencia, es ' +
+      'era −96,6%. ⚠️ **Desplegado el 28/07 a las 11:17 UTC: salió −39% (96,7 → 58,8 por usuario y ' +
+      'hora contra la misma franja del día anterior), no −96,6% — y el error es de la PREDICCIÓN: el ' +
+      'suelo de "1 por usuario-hora" salía del TTL del token, pero la caché del adapter vive en ' +
+      'MEMORIA y muere en cada carga de página y cada pestaña, así que el suelo real es "≈1 por carga ' +
+      'de página". Al re-usar este script, derivar el suelo del ciclo de vida de la caché, no del TTL.** ' +
+      '**Ojo con el falso alivio:** quedar MUY por debajo del suelo no es eficiencia, es ' +
       'que hay usuarios activos sin token (401 silenciosos) — el script lo avisa. La misma señal en ' +
       'vivo y sin intervención es la alerta `auth_token_mint_waste` (>8 reales/usuario/hora); su ' +
       'silencio tras desplegar es la verificación continua. El guardarraíl estático que impide ' +
