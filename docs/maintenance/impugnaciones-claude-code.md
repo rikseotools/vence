@@ -1646,7 +1646,7 @@ usa la letra que vio el usuario**, no la de la BD: para él la nuestra no signif
 Mapeo y traducción son funciones puras (`mapaExposicion`, `traducirLetrasDelUsuario`) con 8 tests
 en `__tests__/impugnaciones/dossierExposicionBarajada.test.ts`.
 
-## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
+## 🔀 Explicación BARAJABLE: escríbela ya en el formato estructurado
 
 > ### Aprovecha SIEMPRE la impugnación para dejar la pregunta barajable
 >
@@ -1677,10 +1677,11 @@ en `__tests__/impugnaciones/dossierExposicionBarajada.test.ts`.
 > npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
 > ```
 >
-> Escribe las DOS columnas coherentes: `explanation_data` (la estructura, que permitirá barajar)
-> y `explanation` (el texto renderizado, que es lo que el opositor ve hoy porque el render nuevo
-> aún no está desplegado). La pregunta nace **barajable** y no hay ningún paso que se pueda
-> olvidar.
+> Escribe las DOS columnas coherentes: `explanation_data` (la estructura) y `explanation` (el
+> texto renderizado). **Desde el 28/07 producción ya sirve desde la estructura** cuando existe, así
+> que lo que el opositor lee es el render; `explanation` se conserva como red de seguridad y es lo
+> que se sirve en las preguntas que aún no la tienen. La pregunta nace **barajable** y no hay
+> ningún paso que se pueda olvidar.
 >
 > **Por qué así y no al revés:** escribir el texto y parsearlo después es heurístico y falla
 > —medido el 27/07: solo se transcribe el 43,7% del formato de generación y el 15,3% del de
@@ -1710,10 +1711,12 @@ dentro. **Los dos conviven a propósito** mientras se transcribe el histórico; 
 opciones se encenderá cuando la cobertura sea suficiente.
 
 Por qué te afecta: una explicación que cita las opciones por letra («la B es correcta») **impide
-barajar esa pregunta para siempre**. Hoy 47.388 preguntas activas están bloqueadas solo por eso.
+barajar esa pregunta para siempre** (medido el 27/07: 47.388 activas bloqueadas solo por eso).
 Si corriges una explicación y la dejas únicamente en texto, la pregunta sigue bloqueada.
 
-**Después de aplicar la explicación, un comando:**
+**Si has usado `aplicar-explicacion.ts`, aquí no hay nada más que hacer**: esa herramienta escribe
+las dos columnas y la pregunta ya nace estructurada. El comando de abajo es para el OTRO caso —una
+explicación que no has reescrito, o que escribiste a mano en el formato de siempre:
 
 ```bash
 npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta <question_id> --apply

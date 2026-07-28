@@ -1754,7 +1754,7 @@ Algunas preguntas re-vinculadas pertenecen a normas que NO se han creado en BD (
 ### 20.6 Coste y cadencia
 ~0,5M tokens / ~90 preguntas con el ciclo completo. Para decenas de miles → **por tandas, ley por ley, con validación de unicidad y checkpoint**. No intentar un autopilot continuo de todo el banco: la tasa de fallo de agentes obliga a supervisión por lote.
 
-## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
+## 🔀 Explicación BARAJABLE: escríbela ya en el formato estructurado
 
 > **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
 >
@@ -1765,11 +1765,22 @@ Algunas preguntas re-vinculadas pertenecen a normas que NO se han creado en BD (
 > npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
 > ```
 >
-> Escribe las DOS columnas coherentes: `explanation_data` (la estructura, que permitirá barajar)
-> y `explanation` (el texto renderizado, que es lo que el opositor ve hoy porque el render nuevo
-> aún no está desplegado). La pregunta nace **barajable** y no hay ningún paso que se pueda
-> olvidar.
+> Escribe las DOS columnas coherentes: `explanation_data` (la estructura) y `explanation` (el
+> texto renderizado). **Desde el 28/07 producción ya sirve desde la estructura** cuando existe, así
+> que lo que el opositor lee es el render; `explanation` se conserva como red de seguridad y es lo
+> que se sirve en las preguntas que aún no la tienen. La pregunta nace **barajable** y no hay
+> ningún paso que se pueda olvidar.
 >
+>
+> **Enunciados de «señale la INCORRECTA»: pon `"frame": "select_incorrect"`.** Con él, el render
+> etiqueta la opción a marcar como **`ES LA INCORRECTA`** y las demás como **`VERDADERA`**. Sin él
+> sale `**A)** CORRECTA — …que es falsa`, una contradicción en la misma línea. El aplicador te
+> avisa si el enunciado pide la falsa y te lo has dejado. (T-212, 28/07.)
+>
+> **Nunca escribas razones que dependan de la POSICIÓN** («la primera opción», «la última opción de
+> respuesta», «como se vio en la anterior»): no sobreviven al barajado ni con estructura. El
+> detector las caza —36 explicaciones del banco cayeron por esto el 28/07— y esa pregunta deja de
+> barajarse.
 > **Por qué así y no al revés:** escribir el texto y parsearlo después es heurístico y falla
 > —medido el 27/07: solo se transcribe el 43,7% del formato de generación y el 15,3% del de
 > impugnaciones—. De la estructura al texto, en cambio, es un render determinista: no puede

@@ -232,10 +232,11 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 > npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
 > ```
 >
-> Escribe las DOS columnas coherentes: `explanation_data` (la estructura, que permitirá barajar)
-> y `explanation` (el texto renderizado, que es lo que el opositor ve hoy porque el render nuevo
-> aún no está desplegado). La pregunta nace **barajable** y no hay ningún paso que se pueda
-> olvidar.
+> Escribe las DOS columnas coherentes: `explanation_data` (la estructura) y `explanation` (el
+> texto renderizado). **Desde el 28/07 producción ya sirve desde la estructura** cuando existe, así
+> que lo que el opositor lee es el render; `explanation` se conserva como red de seguridad y es lo
+> que se sirve en las preguntas que aún no la tienen. La pregunta nace **barajable** y no hay
+> ningún paso que se pueda olvidar.
 >
 > **Por qué así y no al revés:** escribir el texto y parsearlo después es heurístico y falla
 > —medido el 27/07: solo se transcribe el 43,7% del formato de generación y el 15,3% del de
