@@ -44,7 +44,12 @@ for(const r of rows){
   // queda un arreglo a medias). Se juzga con el MISMO núcleo puro que el sweep y el gate
   // (`checkConvocatoriaLinks`), sobre la etiqueta y el href REALES del HTML servido: así el canario
   // no puede opinar distinto que el detector, ni quedarse atrás cuando este mejore (T-134).
-  const boton = html.match(/Ver (?:convocatoria|OEP) en ([A-ZÁÉÍÓÚ]{3,6})/);
+  // La etiqueta se lee ENTERA, mayúsculas y minúsculas. Con `[A-Z]{3,6}` se leía «BOC» de «BOCyL»
+  // (Castilla y León) y el canario acusaba de incoherente a una landing PERFECTA: la etiqueta decía
+  // BOC —que es Cantabria/Canarias— y el enlace iba a bocyl.jcyl.es. El dato en BD siempre estuvo
+  // bien. Un canario que grita sobre lo correcto enseña a ignorar sus rojos, que es peor que no
+  // tenerlo; `normalizarEtiquetaBoletin` ya se encarga de mayusculizar lo que lea. 28/07.
+  const boton = html.match(/Ver (?:convocatoria|OEP) en ([A-Za-zÁÉÍÓÚáéíóú]{3,6})/);
   if (boton) {
     const etiquetaVista = normalizarEtiquetaBoletin(boton[1]);
     const hrefBoton = (html.match(/href="(https?:\/\/[^"]+)"[^>]*>(?:(?!<\/a>).)*?Ver (?:convocatoria|OEP) en /s) || [])[1];
