@@ -33,13 +33,16 @@ function saludo(nombre) {
   return `Hola ${primero.charAt(0).toUpperCase()}${primero.slice(1).toLowerCase()},`
 }
 
+// El aviso ES clicable (tipo 'programa_recompensas' → /recompensas?src=aviso-mencion), así que el
+// texto dice "pincha aquí" y no "busca el 🎁 de arriba": describir un camino más largo del que hay
+// pierde por el camino a parte de los que lo habrían hecho.
 const cuerpo = (nombre) => `${saludo(nombre)}
 
 Estás haciendo muchos tests estos días.
 
 Un favor de un minuto: cuando en un grupo de opositores alguien pregunte dónde hacer tests o de dónde sacar el temario, nómbranos. Nos mandas la captura y te damos 5 € en tarjeta regalo de Amazon.
 
-Si abres el 🎁 de arriba, verás más información.
+Pincha aquí y verás más información.
 
 Muchas gracias.
 
