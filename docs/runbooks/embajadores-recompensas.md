@@ -16,7 +16,7 @@ Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cript
 | **Referido** (`referido`) | **10 €** | Un premium refiere a alguien que **paga en ≤10 días** | Automático (webhook Stripe al calificar) |
 | **Registro activo** (`registro_activo`) | **2 €** | Un referido llega a **≥5 tests** (opositor real). Inversión temporal de captación/marca | Automático (cron), **solo con `ACTIVE_SIGNUP_REWARD=1`** |
 | **Bug / UX** (`bug`) | **3 €** | El usuario reporta un bug real/útil **y lo resolvemos** | Manual (Claude Code, tras validar) |
-| **Impugnación aceptada** (`impugnacion`) | **1 €** | Impugnamos a su favor: la impugnación pasa a `resolved` | **Automático** (al resolver, `resolveDispute`) |
+| **Impugnación aceptada** (`impugnacion`) | **1 €** | Impugnamos a su favor (`resolved`) **y el motivo es de los verificables** (ver §3.bis) | **Automático** (al resolver, `resolveDispute`) |
 | **Opinión / UGC** (`ugc`) | **5 €** | Opinión REAL **nombrando Vence, SIN su enlace de referido**, en grupos FB/Telegram, IG, foros. (Con enlace → es Referido, no UGC — ver §2) | Manual (Claude Code, tras validar) |
 
 **Registro activo (`registro_activo`) — dinero real, OFF por defecto.** Bonus de 2€ al embajador cuando su referido llega a ≥5 tests (señal de opositor real, no bot). **Compensa** (ARPU neto ≈36€, conversión de activos ≥5 tests ≈16% → +1,33€ netos/registro tras el referido y el cupón). Es **inversión temporal** (1-2 años) de captación/marca, sunset-eable. **Capas:** flag `ACTIVE_SIGNUP_REWARD=1` (runtime, OFF por defecto → nada se concede), anti-fraude (IP del referido ≠ del embajador + ≥5 tests + no fraud-flagged), **tope por embajador/mes** (`ACTIVE_SIGNUP_MONTHLY_CAP`, def 30) + **presupuesto global/mes** (`ACTIVE_SIGNUP_MONTHLY_BUDGET_EUR`, def 500€, tipo línea de Ads). Lógica: `lib/referrals/activeSignup.ts` (idempotente, 1 bonus/referido vía `referrals.active_reward_at`), disparada por el cron `/api/cron/referrals-promote`. **Para activarlo:** setear `ACTIVE_SIGNUP_REWARD=1` (+ opcional ajustar caps/budget) en el task def (SSM) y redeploy; para sunsetear, quitar el flag. Migración `20260711_active_signup_reward.sql`.
@@ -25,6 +25,27 @@ Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cript
 - **Tope 10/mes por usuario** (`IMPUGNACION_MONTHLY_CAP`, env). No es opcional: al concederse sola, el tope es lo único que separa premiar la calidad de pagar el volumen. Sale del dato medido el 28/07 — ~100-120 aceptadas/mes de premium (≈100-120 €/mes) pero **muy concentradas: una sola usuaria acumuló 76 en 90 días** (≈25 €/mes ella sola). Con el tope, el máximo por persona es 10 €/mes.
 - **Anti-duplicado FÍSICO:** índice único parcial sobre `reward_submissions.dispute_id` (donde `status <> 'rejected'`). Re-resolver una impugnación no puede pagar dos veces. La columna es el MOTIVO trazable, igual que `feedback_id` en `bug` y `url` en `ugc`. Sin FK: la impugnación puede ser legislativa o psicotécnica (dos tablas).
 - **Nunca rompe la resolución:** si la concesión falla, se registra (`referral_error`, `metadata.step='dispute_reward'`) y la impugnación queda resuelta igual. Lógica: `lib/referrals/disputeReward.ts`; política pura y testeada en `lib/referrals/logic.ts` (`shouldRewardResolvedDispute`). Tests: `__tests__/referrals/disputeReward.test.ts`.
+
+#### §3.bis — Solo pagan los motivos VERIFICABLES (28/07/2026)
+
+**La regla: objetividad, no esfuerzo.** Se paga cuando aceptar la impugnación significa que teníamos un **error demostrable contra la fuente**. No se paga cuando aceptarla significa que hemos **mejorado algo a partir de una opinión**: ahí la recompensa deja de premiar detectar un fallo y pasa a premiar opinar — que es gratis, ilimitado y no se puede arbitrar.
+
+| Pagan (error comprobable) | NO pagan solas (valoración personal) |
+|---|---|
+| `respuesta_incorrecta`, `desacuerdo_correcta`, `no_literal`, `mal_formulada`, `pregunta_repetida`, `tema_incorrecto`, `error_pregunta_respuesta` | `explicacion_confusa`, `explicacion_mejorable`, `otro` |
+
+**Por qué se introdujo.** La recompensa nació pagando por cualquier `resolved` de un premium. Medido a 90 días: **322 aceptadas, 195 (61 %) de motivo subjetivo** (`otro` 113, `explicacion_confusa` 47, `explicacion_mejorable` 35), y **una sola usuaria concentraba 70**. Agravante: nuestro propio manual de impugnaciones (§7.3) manda mejorar toda explicación mejorable → `explicacion_confusa` era un camino casi garantizado a `resolved`, o sea el tope entero (10 €/mes) por persona sin error nuestro alguno. Simulado sobre los datos reales, la política baja el gasto de **274 € a 128 €** por 90 días.
+
+**Lo subjetivo NO queda sin premio:** se concede **a mano**, igual que `bug` y `ugc`, cuando la aportación lo merece. Lo que se retira es el automatismo.
+
+**Dónde vive y por qué no puede divergir:**
+- Política: `lib/referrals/disputeRewardPolicy.js` (núcleo puro, **fuente única**).
+- La consume el runtime (`lib/referrals/logic.ts` → `Record<DisputeType, boolean>`: **añadir un motivo sin clasificarlo no compila**), el dossier CLI (`revisar-impugnacion.cjs`, línea `💶 Recompensa:`) y la página que lo promete al usuario (`app/recompensas/page.tsx`, que **genera** el texto desde la política — prometer una cosa y pagar otra es imposible por construcción).
+- Lo que no paga por tipo emite `reward_skipped_subjective_type` → se puede medir cuánto se deja de pagar, de qué motivos y a quién, y revisar la lista con datos.
+- Tests: `__tests__/referrals/recompensaPorTipoDeImpugnacion.test.ts` (política + exhaustividad) y `disputeRewardSafety.test.ts` (que no se cree fila).
+
+**El dossier lo dice ANTES de decidir.** `revisar-impugnacion.cjs` imprime la consecuencia económica junto al tipo: si ya está concedida, si el usuario no es premium, si el motivo no paga, si topó el tope, o `aceptarla concede 1 € automático … lleva X/10 este mes`. Es lo que evita los dos fallos simétricos —pagar sin querer y **no pagar debiendo**— sin depender de que quien resuelve se acuerde de comprobarlo (el 28/07 dos premium se quedaron sin su euro porque la función se desplegó después de resolverles; se detectó revisando a mano).
+
 - **⚠️ Depende de que el formulario pida el motivo (T-198).** Pagar por impugnación aceptada mientras el formulario se autoenviaba al pulsar el motivo habría premiado el volumen: pulsar a voleo salía rentable. Por eso las dos cosas van juntas — el envío explícito se arregló en el mismo cambio. Si alguien reintroduce el auto-envío, esta recompensa se convierte en un incentivo a spamear.
 
 **Modelo ACUMULADO:** las recompensas se **acumulan por usuario** y se pagan en gift cards de **denominación fija** de Amazon.es (5/10/20/50/100…€). Amazon.es no baja de 5 € ni admite importe libre → por eso los 3 € se acumulan hasta llegar a una denominación pagable. Al pagar una tarjeta de N €, el resto del saldo **se queda acumulado** para la siguiente.

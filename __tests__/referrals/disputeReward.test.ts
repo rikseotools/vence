@@ -8,7 +8,10 @@
 import { shouldRewardResolvedDispute, rewardAmount, withinRewardMonthlyCap, REWARD_AMOUNTS, IMPUGNACION_MONTHLY_CAP, rewardSourceText } from '@/lib/referrals/logic'
 
 describe('recompensa por impugnación aceptada', () => {
-  const base = { status: 'resolved', source: 'user', planType: 'premium', userId: 'u1' }
+  // El MOTIVO forma parte de la política desde el 28/07 (solo pagan los verificables; ver
+  // `recompensaPorTipoDeImpugnacion.test.ts`). Aquí se fija uno que paga para poder aislar las
+  // demás dimensiones —estado, origen, plan, usuario— sin que el tipo las tape.
+  const base = { status: 'resolved', source: 'user', planType: 'premium', userId: 'u1', disputeType: 'respuesta_incorrecta' }
 
   it('son 1 €, ni más ni menos', () => {
     expect(REWARD_AMOUNTS.impugnacion).toBe(1)
@@ -40,7 +43,13 @@ describe('recompensa por impugnación aceptada', () => {
   })
 
   it('trata la ausencia de `source` como impugnación de usuario (psicotécnicas: esa columna no existe)', () => {
-    expect(shouldRewardResolvedDispute({ status: 'resolved', planType: 'premium', userId: 'u1' })).toBe(true)
+    expect(shouldRewardResolvedDispute({ status: 'resolved', planType: 'premium', userId: 'u1', disputeType: 'error_pregunta_respuesta' })).toBe(true)
+  })
+
+  it('NO paga si el motivo es de valoración personal, aunque todo lo demás cuadre', () => {
+    // La política de tipos (28/07) no es un filtro más: era el 61 % de lo que se pagaba.
+    expect(shouldRewardResolvedDispute({ ...base, disputeType: 'explicacion_confusa' })).toBe(false)
+    expect(shouldRewardResolvedDispute({ ...base, disputeType: undefined })).toBe(false)
   })
 
   describe('tope mensual — es lo único que separa premiar calidad de pagar volumen', () => {

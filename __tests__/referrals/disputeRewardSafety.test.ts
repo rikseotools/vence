@@ -46,14 +46,14 @@ describe('maybeRewardResolvedDispute — a prueba de fallos', () => {
   })
 
   it('no lanza aunque el SINK DE EVENTOS explote en la ruta de éxito', async () => {
-    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user' }]))
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
     const r = await maybeRewardResolvedDispute({ disputeId: 'd2', userId: 'u1', status: 'resolved', questionType: 'legislative' })
     expect(r.granted).toBe(true)
     expect(r.amount).toBe(1)
   })
 
   it('no lanza aunque el sink explote DENTRO del manejador de errores (el fallo original)', async () => {
-    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user' }]))
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
     mockCreate.mockRejectedValue(new Error('insert falló'))
     await expect(
       maybeRewardResolvedDispute({ disputeId: 'd3', userId: 'u1', status: 'resolved', questionType: 'legislative' })
@@ -61,7 +61,7 @@ describe('maybeRewardResolvedDispute — a prueba de fallos', () => {
   })
 
   it('no lanza cuando se topa el límite mensual (emite y sigue)', async () => {
-    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user' }]))
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
     mockCreate.mockResolvedValue({ ok: false, reason: 'monthly_cap' })
     await expect(
       maybeRewardResolvedDispute({ disputeId: 'd4', userId: 'u1', status: 'resolved', questionType: 'legislative' })
@@ -76,14 +76,30 @@ describe('maybeRewardResolvedDispute — a prueba de fallos', () => {
   })
 
   it('un free NO cobra, y no se intenta crear nada', async () => {
-    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'free', source: 'user' }]))
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'free', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
     const r = await maybeRewardResolvedDispute({ disputeId: 'd6', userId: 'u1', status: 'resolved', questionType: 'legislative' })
     expect(r).toEqual({ granted: false, reason: 'not_premium' })
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
+  it('un motivo de valoración personal NO paga, aunque sea premium y aceptada', async () => {
+    // El 61 % de lo aceptado caía aquí (medido a 90 días el 28/07). Que NO se llame a `createRewardSubmission`
+    // es lo importante: sin fila no hay saldo, no hay tope consumido y no hay nada que revertir.
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'explicacion_confusa' }]))
+    const r = await maybeRewardResolvedDispute({ disputeId: 'd8', userId: 'u1', status: 'resolved', questionType: 'legislative' })
+    expect(r).toEqual({ granted: false, reason: 'not_rewardable_type' })
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('un motivo desconocido en BD tampoco paga (el dinero falla cerrado)', async () => {
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'motivo_inventado' }]))
+    const r = await maybeRewardResolvedDispute({ disputeId: 'd9', userId: 'u1', status: 'resolved', questionType: 'legislative' })
+    expect(r).toEqual({ granted: false, reason: 'not_rewardable_type' })
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
   it('re-resolver la misma impugnación no paga dos veces', async () => {
-    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user' }]))
+    mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
     mockCreate.mockResolvedValue({ ok: false, reason: 'duplicate' })
     const r = await maybeRewardResolvedDispute({ disputeId: 'd7', userId: 'u1', status: 'resolved', questionType: 'legislative' })
     expect(r).toEqual({ granted: false, reason: 'duplicate' })

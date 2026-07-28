@@ -8,6 +8,9 @@
 //   Con --sid: COGE (claim) la impugnación para tu sesión y avisa si otra sesión ya la
 //   está revisando (reparto entre 2-10 sesiones sin pisarse, ver cola.cjs). Sin --sid: solo dossier.
 const fs = require('fs');
+// Política de recompensa POR MOTIVO, importada del núcleo puro que usa también el runtime: el
+// dossier enseña exactamente lo que el sistema va a pagar, no una copia que se desactualice.
+const { disputeTypeIsRewardable } = require('../../lib/referrals/disputeRewardPolicy');
 // `postgres` se carga PEREZOSAMENTE (igual que en `validar-explicacion.cjs`). Antes era un
 // require de RUTA ABSOLUTA a la máquina de Manuel en el top-level: fuera de ella —CI, otro
 // worktree, otro portátil— el módulo reventaba nada más importarlo, aunque solo quisieras las
@@ -107,7 +110,42 @@ if (require.main !== module) {
       }
     }
 
-    const [p] = await s`SELECT full_name, email, target_oposicion FROM user_profiles WHERE id=${d.user_id}`;
+    const [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+
+    // --- CONSECUENCIA ECONÓMICA de aceptar, calculada ANTES de decidir ---
+    // Aceptar una impugnación mueve dinero real. Que eso se vea en el momento de decidir —y no se
+    // confíe a que quien resuelve se acuerde de comprobarlo— es lo que evita los dos fallos
+    // simétricos: pagar sin querer y no pagar debiendo (28/07: dos usuarias premium se quedaron sin
+    // su euro porque la función se desplegó después de resolverles, y nadie lo vio hasta revisarlo
+    // a mano). Se usa LA MISMA política que aplica el runtime, no una copia.
+    let rewardWarn = '';
+    try {
+      const [ya] = await s`
+        SELECT count(*)::int n FROM reward_submissions
+         WHERE user_id = ${d.user_id} AND type = 'impugnacion'
+           AND created_at >= date_trunc('month', now())`;
+      const [pagada] = await s`
+        SELECT amount, status FROM reward_submissions
+         WHERE dispute_id = ${did} AND type = 'impugnacion' LIMIT 1`;
+      const esPremium = p?.plan_type === 'premium';
+      const tipoPaga = disputeTypeIsRewardable(d.dispute_type);
+      const cap = Number(process.env.IMPUGNACION_MONTHLY_CAP || 10);
+      if (pagada) {
+        rewardWarn = `💶 Recompensa: YA concedida por esta impugnación (${pagada.amount} €, ${pagada.status}). Re-resolver NO duplica.`;
+      } else if (!esPremium) {
+        rewardWarn = `💶 Recompensa: no aplica — usuario ${p?.plan_type || 'sin plan'} (el programa es solo premium).`;
+      } else if (!tipoPaga) {
+        rewardWarn = `💶 Recompensa: NO se abona — motivo «${d.dispute_type}» es de valoración personal, no error verificable.\n`
+          + `   → Si aun así la aportación es valiosa, se premia A MANO (no la concede sola).`;
+      } else if (ya.n >= cap) {
+        rewardWarn = `💶 Recompensa: NO se abona — el usuario ya lleva ${ya.n}/${cap} este mes (tope alcanzado).`;
+      } else {
+        rewardWarn = `💶 Recompensa: aceptarla concede 1 € automático (premium, motivo verificable). Lleva ${ya.n}/${cap} este mes.`;
+      }
+    } catch (e) {
+      // Nunca romper el dossier por esto: sin la línea se sigue pudiendo resolver la impugnación.
+      rewardWarn = `💶 Recompensa: no se pudo calcular (${e.message}).`;
+    }
     const scopeWarn = await scopeEnforcement(s, {
       text: d.description, oposicion: p?.target_oposicion || null, force: d.dispute_type === 'tema_incorrecto',
     });
@@ -128,6 +166,7 @@ if (require.main !== module) {
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
     console.log(`Descripción: ${d.description}`);
+    if (rewardWarn) console.log(rewardWarn);
     if (scopeWarn) console.log(scopeWarn);
     console.log(`\nPregunta (oficial=${q.is_official_exam}, lifecycle=${q.lifecycle_state}):`);
     console.log(`  ${q.question_text}`);

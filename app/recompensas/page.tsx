@@ -8,7 +8,8 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { payoutDenomination, rewardSourceText } from '@/lib/referrals/logic'
+import { payoutDenomination, rewardSourceText, DISPUTE_REWARD_BY_TYPE } from '@/lib/referrals/logic'
+import { ALL_DISPUTE_TYPES, type DisputeType } from '@/lib/api/v2/dispute/types'
 
 interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
 interface ReferralDetail {
@@ -80,6 +81,37 @@ function prettyOpo(slug: string | null): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+/**
+ * Cómo se le nombra al usuario cada motivo de impugnación en esta página. `Record<DisputeType, …>`
+ * a propósito: si mañana se añade un motivo al formulario, esta página **no compila** hasta que se
+ * decida cómo se le cuenta a la gente. Un motivo nuevo no puede aparecer en el formulario y
+ * quedarse fuera de la explicación de qué se paga.
+ */
+const MOTIVO_CORTO: Record<DisputeType, string> = {
+  no_literal: 'la pregunta no se ajusta al artículo',
+  respuesta_incorrecta: 'la respuesta marcada está mal',
+  desacuerdo_correcta: 'no es correcta la opción dada por buena',
+  error_pregunta_respuesta: 'hay un error en el enunciado o en el resultado',
+  mal_formulada: 'está mal formulada',
+  pregunta_repetida: 'está repetida',
+  tema_incorrecto: 'es de otro tema',
+  explicacion_confusa: 'explicación confusa',
+  explicacion_mejorable: 'explicación mejorable',
+  otro: 'otro motivo',
+}
+
+/**
+ * Los motivos que llevan (y los que no) recompensa automática se DERIVAN de la política real que
+ * aplica el sistema (`DISPUTE_REWARD_BY_TYPE`), en vez de reescribirse a mano aquí. Es lo que
+ * garantiza que lo que esta página promete es exactamente lo que se paga: si un motivo se
+ * reclasifica, el texto cambia solo. Prometer una cosa y pagar otra es la peor forma de romper
+ * la confianza en un programa de recompensas.
+ */
+const motivosSegunPremio = (premia: boolean): string =>
+  ALL_DISPUTE_TYPES.filter((t) => DISPUTE_REWARD_BY_TYPE[t] === premia)
+    .map((t) => MOTIVO_CORTO[t])
+    .join('; ')
+
 const PROGRAMAS = [
   {
     icon: '💛',
@@ -141,11 +173,12 @@ const PROGRAMAS = [
     icon: '⚖️',
     titulo: 'Impugna preguntas',
     premio: '1 €',
-    desc: 'Por cada impugnación que aceptemos porque tenías razón: una pregunta con la respuesta mal, un enunciado confuso o un artículo que no corresponde. Se abona sola al resolverla a tu favor.',
+    desc: 'Por cada impugnación que aceptemos porque habías detectado un error comprobable: la respuesta marcada está mal, la pregunta no se ajusta al artículo, está repetida o pertenece a otro tema. Se abona sola al resolverla a tu favor.',
     detalle: [
       'Impugna desde la propia pregunta, con el botón de impugnar, cuando creas que hay algo mal.',
       'Explica POR QUÉ crees que está mal: es lo que nos permite revisarla y darte la razón. Las impugnaciones sin explicación se rechazan el doble de veces.',
-      'Si al revisarla vemos que tenías razón y la aceptamos, ganas 1 € automáticamente — sin pedir nada.',
+      `Se abona el euro cuando el motivo es un error que podemos comprobar: ${motivosSegunPremio(true)}.`,
+      `Los motivos de valoración personal (${motivosSegunPremio(false)}) no llevan recompensa automática, porque no hay forma objetiva de medirlos. Aun así los leemos todos y mejoramos la explicación cuando toca; y si tu aportación nos resulta especialmente valiosa, te la premiamos a mano.`,
       'Si la desestimamos no pasa nada: no penaliza, simplemente no se abona.',
       'Hasta 10 impugnaciones aceptadas al mes. Cuenta la calidad, no el volumen: impugnar a voleo no suma.',
       'Nos ayudas a cazar errores que ningún control automático ve — y el temario mejora para todos. 🎯',

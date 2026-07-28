@@ -7,6 +7,14 @@
 // ATRIBUCIÓN; hold = pago + 15 días (>= ventana de reembolso); bounty 10 €, descuento 5 €.
 
 import { randomBytes } from 'crypto'
+// Los tipos de impugnación tienen fuente única; importarla (en vez de recopiar la lista) es lo que
+// hace que `Record<DisputeType, boolean>` obligue a clasificar cualquier tipo nuevo.
+import type { DisputeType } from '@/lib/api/v2/dispute/types'
+// Núcleo puro compartido con las CLI en CommonJS: una sola lista de motivos que pagan.
+import {
+  DISPUTE_REWARD_BY_TYPE as POLICY_BY_TYPE,
+  disputeTypeIsRewardable as policyIsRewardable,
+} from './disputeRewardPolicy'
 
 export const REFERRAL_ATTRIBUTION_WINDOW_DAYS = 10
 // Hold = 15 días para CUBRIR la ventana real de reembolso: garantía comercial (15 días,
@@ -156,12 +164,30 @@ export function withinRewardMonthlyCap(type: RewardType, countThisMonth: number)
 }
 
 /**
+ * ¿Qué TIPOS de impugnación dan derecho al euro? La política vive en el núcleo puro
+ * `disputeRewardPolicy.js` (con el porqué y los números que la motivaron) para que la compartan el
+ * runtime y las herramientas CLI en CommonJS — el dossier de impugnaciones enseña LA MISMA lista
+ * que se paga, y la página de recompensas promete LA MISMA. Aquí solo se re-exporta tipada.
+ *
+ * El `Record<DisputeType, boolean>` es la red de seguridad: añadir un tipo a `ALL_DISPUTE_TYPES`
+ * sin clasificarlo en el núcleo **no compila**. Un tipo nuevo no puede heredar en silencio una
+ * política de pago que nadie eligió.
+ */
+export const DISPUTE_REWARD_BY_TYPE: Record<DisputeType, boolean> = POLICY_BY_TYPE
+
+/** ¿Este tipo de impugnación da derecho al euro automático? Desconocido → NO (el dinero falla cerrado). */
+export function disputeTypeIsRewardable(disputeType?: string | null): boolean {
+  return policyIsRewardable(disputeType)
+}
+
+/**
  * ¿Corresponde 1 € por esta impugnación resuelta? PURA (sin BD) para poder testear la política
  * sin montar datos. Se concede SOLO si:
  *  · la impugnación se acepta A FAVOR del usuario (`resolved`; `rejected` no paga), y
  *  · la escribió una PERSONA (`source='user'`; las `ai_auto` no tienen a quién pagar), y
  *  · quien la escribió es PREMIUM (decisión Manuel 28/07: el programa es solo-premium, igual que
- *    el resto de fuentes — un free no cobra aunque su impugnación sea impecable).
+ *    el resto de fuentes — un free no cobra aunque su impugnación sea impecable), y
+ *  · el TIPO es de los verificables (ver `DISPUTE_REWARD_BY_TYPE`).
  * El anti-duplicado por `dispute_id` y el tope mensual NO se deciden aquí: viven en la capa de BD
  * (índice único parcial) y en `withinRewardMonthlyCap`, porque necesitan contar filas.
  */
@@ -170,10 +196,12 @@ export function shouldRewardResolvedDispute(params: {
   source?: string | null
   planType?: string | null
   userId?: string | null
+  disputeType?: string | null
 }): boolean {
   if (params.status !== 'resolved') return false
   if (!params.userId) return false
   if ((params.source ?? 'user') !== 'user') return false
+  if (!disputeTypeIsRewardable(params.disputeType)) return false
   return params.planType === 'premium'
 }
 

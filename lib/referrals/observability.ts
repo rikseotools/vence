@@ -28,6 +28,10 @@ export type ReferralEventType =
   | 'reward_cap_hit'
   | 'reward_duplicate'
   | 'reward_paid'
+  // Impugnación aceptada que NO paga por ser de motivo subjetivo (explicacion_confusa/mejorable/otro).
+  // No es un error: es la política de tipos funcionando. Se emite para poder MEDIRLA — cuánto se
+  // deja de pagar, de qué tipos y a quién — y poder revisar la lista con datos, no con impresiones.
+  | 'reward_skipped_subjective_type'
 
 export interface ReferralEmitOpts {
   userId?: string | null
