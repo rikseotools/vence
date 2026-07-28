@@ -3017,8 +3017,22 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 > - ⬜ **2.388 preguntas de EXAMEN OFICIAL se barajarían.** Decisión de producto, no técnica: para
 >   practicar está bien, pero se pierde el «en el examen salió en este orden». Se excluye con una
 >   condición en el gate si se decide que no.
-> - ⬜ **8 explicaciones `safe` razonan por POSICIÓN** («la primera opción», «las dos últimas») en vez
->   de por letra — el detector mira letras, no posiciones. Son 8: se arreglan a mano en minutos.
+> - ✅ **HECHO (28/07)** — las explicaciones que razonan por POSICIÓN. **No eran 8 sino 36**, y
+>   arreglarlas a mano habría sido el error: el hueco estaba en el DETECTOR. Se le escapaban dos
+>   formas —el orden invertido («opciones primera y cuarta», dominante en el banco clínico) y
+>   «anterior/anteriores», que sí estaba en el detector de opciones— y, sobre todo, **un agujero de
+>   acentos**: en JavaScript `\b` se define sobre `[A-Za-z0-9_]`, así que entre un espacio y una «ú»
+>   no hay frontera de palabra y `\b(?:…|[úu]ltima)` **nunca casaba «última»**, solo «ultima». Todo
+>   «la última opción de respuesta» del banco llevaba escapándose desde el principio y ningún test
+>   lo veía porque los ejemplos se habían escrito sin tilde. Ahora el detector normaliza sin tildes.
+>   Las 36 devueltas a `unsafe`; sweep nocturno **0 regresiones**.
+> - ✅ **HECHO (28/07), y este no estaba en la lista** — **tener estructura NO basta**: al transcribir
+>   el histórico, **630 de las 4.739 razones (13%)** se trajeron dentro menciones a OTRA opción por
+>   su letra («el plazo que cita la opción D»). La estructura garantiza que cada razón viaja con SU
+>   opción, no que la razón no hable de las demás — y al barajar, esa mención señala otra cosa. El
+>   gate de serve examina ahora también las razones con el mismo detector.
+> - 📉 **Cobertura tras los dos arreglos: 52,2% (72.803)** frente al 52,7% medido antes. 665
+>   preguntas menos a cambio de que ninguna de las que se barajan mienta.
 >
 > **Recomendación:** cerrar los dos cabos abiertos y encender **por scope en UNA oposición** unos
 > días con el sweep nocturno vigilando, antes de ir a global.

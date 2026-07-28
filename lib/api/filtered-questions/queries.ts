@@ -186,6 +186,9 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
       // Las OPCIONES también deciden: si una cita a otra por su letra, barajar la vuelve mentira
       // aunque la explicación esté estructurada (T-201).
       options: naturalOptions,
+      // Y las RAZONES de la estructura: tenerla no garantiza que una razón no hable de otra
+      // opción por su letra o su posición (28/07).
+      structuredReasons: estructurada ? Object.values(estructurada.options ?? {}) : undefined,
     })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)

@@ -85,7 +85,18 @@ export function explanationReferencesLetters(explanation?: string | null): boole
   // referencias a opción suelen ir en negrita ("es la **B**", "opción **C**"), lo
   // que rompía la adyacencia de los patrones → falso negativo = explicación rota.
   // Quitamos énfasis/formato (* _ ` ~) y comillas/asteriscos y colapsamos espacios.
-  const norm = explanation.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ');
+  //
+  // Y se quitan las TILDES, que no es cosmética: en JavaScript `\b` se define sobre
+  // `[A-Za-z0-9_]`, así que entre un espacio y una «ú» NO hay frontera de palabra y el patrón
+  // `\b(?:…|[úu]ltima)` **nunca casaba «última»** — solo «ultima» sin tilde. Es decir, todo «la
+  // última opción de respuesta» del banco llevaba escapándose desde el primer día, y ningún test
+  // lo veía porque todos los casos de ejemplo se escribieron sin acento. Descubierto el 28/07
+  // depurando por qué 25 explicaciones posicionales seguían marcadas `safe`.
+  const norm = explanation
+    .replace(/[*_`~]+/g, '')
+    .replace(/\s+/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   return EXPLANATION_LETTER_PATTERNS.some((r) => r.test(norm));
 }
 
@@ -112,7 +123,21 @@ const EXPLANATION_LETTER_PATTERNS: RegExp[] = [
   /\b(?:opciones|respuestas)\s+\d\b/i, // "opciones 1..." (numeradas)
   /\b\d\s*(?:,|y|e)\s*\d\b[^.]{0,30}(?:correct|incorrect|ciert|fals|verdader|v[áa]lid)/i, // "1, 2 y 4 (no pueden ser) correctas"
   /\b(?:la|las)\s+(?:dos|tres|cuatro)\s+(?:primeras|[úu]ltimas)\s+(?:opci|respuesta|alternativa|afirmaci)/i, // "las dos primeras opciones"
+  // ── Orden INVERTIDO: el ordinal va DETRÁS ("opciones primera y cuarta", "la opción segunda",
+  //    "la opción de respuesta primera"). Es la forma dominante en el banco clínico (enfermería,
+  //    TCAE) y se escapaba entera: medido el 28/07, de 28 explicaciones `safe` que razonan por
+  //    posición el detector solo cazaba 3, y las 25 restantes eran de esta forma o de la de abajo.
+  /\b(?:opci[óo]n|respuesta|alternativa)(?:es)?\s+(?:de\s+respuesta\s+)?(?:primera|segunda|tercera|cuarta|quinta|[úu]ltima)\b/i,
+  // ── "anterior/anteriores": estaba en el detector de OPCIONES pero no en el de explicaciones
+  //    ("como se indica en la respuesta anterior", "ninguna de las tres opciones anteriores").
+  /\b(?:la|las)\s+(?:\w+\s+)?(?:opci[óo]n|respuesta|alternativa)(?:es)?\s+anterior(?:es)?\b/i,
 ];
+
+// ⚠️ NO incluir "siguiente(s)": «elegir una de las siguientes opciones», «de las siguientes
+// respuestas sobre la RCP» son enumeraciones o menús de software, no referencias posicionales a
+// otra opción del test. Los 6 falsos positivos medidos el 28/07 salían de ahí y de «opción» en su
+// sentido corriente («la primera opción que prevé el precepto», «la femoral es la última opción
+// para la punción arterial»), que estos patrones dejan pasar a propósito.
 
 /**
  * ¿Alguna OPCIÓN se refiere a otra por su letra? («La respuesta b) es correcta y además…»)
@@ -186,6 +211,14 @@ export function isShuffleServeEligible(q: {
   has_structured_explanation?: boolean;
   /** Texto de las opciones (T-201). */
   options?: Array<string | null | undefined>;
+  /**
+   * Razones de la explicación ESTRUCTURADA (28/07). Tener estructura NO basta: al transcribir el
+   * histórico, muchas razones se trajeron dentro menciones a OTRAS opciones por su letra («el
+   * plazo que cita la opción D») o por su posición. La estructura garantiza que cada razón viaja
+   * con SU opción, no que la razón no hable de las demás — y al barajar, esa mención miente.
+   * Medido: 630 de 4.739 estructuradas (13%).
+   */
+  structuredReasons?: Array<string | null | undefined>;
 }): boolean {
   // Con explicación estructurada la seguridad NO depende de la clasificación guardada: las
   // razones van keadas al índice de cada opción y la letra se pinta al renderizar, así que
@@ -195,6 +228,11 @@ export function isShuffleServeEligible(q: {
   // porque hablan de las OPCIONES —"todas las anteriores"—, no de la explicación).
   // Con estructura, la explicación deja de mandar… pero las OPCIONES siguen mandando: una opción
   // que cita a otra por su letra rompe igual, tenga la explicación el formato que tenga (T-201).
-  if (q.has_structured_explanation) return isShuffleEligible({ ...q, explanation: null });
+  if (q.has_structured_explanation) {
+    // Las razones se examinan con el MISMO detector que la explicación plana: el problema es
+    // idéntico (una referencia que el barajado invalida), solo cambia dónde vive el texto.
+    if ((q.structuredReasons || []).some((r) => explanationReferencesLetters(r))) return false;
+    return isShuffleEligible({ ...q, explanation: null });
+  }
   return q.shuffle_safety === 'safe' && isShuffleEligible(q);
 }

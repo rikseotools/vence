@@ -10,6 +10,7 @@ import {
   classifyShuffleMode,
   explanationReferencesLetters,
   isShuffleEligible,
+  isShuffleServeEligible,
   type QuestionOptions,
 } from '@/lib/shuffle/classifyShuffleMode'
 
@@ -180,5 +181,84 @@ describe('isShuffleServeEligible (gate de serve: verificación robusta)', () => 
   })
   it('safe pero no full → NO elegible', () => {
     expect(isShuffleServeEligible({ shuffle_mode: 'no_shuffle', explanation: 'Limpia.', shuffle_safety: 'safe' })).toBe(false)
+  })
+})
+
+describe('explanationReferencesLetters — referencias por POSICIÓN (28/07)', () => {
+  // Hueco medido el 28/07 al preparar el encendido del barajado: de 28 explicaciones `safe` que
+  // razonan por posición, el detector solo cazaba 3. Se le escapaban dos formas, ambas frecuentes
+  // en el banco clínico (enfermería/TCAE), donde el ordinal va DETRÁS del sustantivo.
+  test.each([
+    ['orden invertido singular', 'es la opción de respuesta primera'],
+    ['orden invertido plural', 'Las opciones de respuesta segunda, tercera y cuarta están relacionadas'],
+    ['sin "de respuesta"', 'En las opciones primera y cuarta no especifican la connotación'],
+    ['artículo + ordinal detrás', 'la respuesta dada en su día por el tribunal fue la opción tercera'],
+    ['última + de respuesta', 'nos quedamos con la última opción de respuesta'],
+    ['respuesta anterior', 'no del mismo como se indica en la respuesta anterior'],
+    ['opciones anteriores con cuantificador', 'ninguna de las tres opciones anteriores representa una limitación'],
+  ])('caza: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(true)
+  })
+
+  test('«última» CON TILDE casa igual que sin ella', () => {
+    // El agujero que escondía 19 de las 36: en JS `\b` se define sobre [A-Za-z0-9_], así que entre
+    // un espacio y una «ú» no hay frontera de palabra y `\b(?:…|[úu]ltima)` nunca casaba «última».
+    // Ningún test lo veía porque todos los ejemplos se habían escrito sin acento.
+    expect(explanationReferencesLetters('todo es cierto salvo la última opción de respuesta')).toBe(true)
+    expect(explanationReferencesLetters('todo es cierto salvo la ultima opcion de respuesta')).toBe(true)
+  })
+
+  // Lo que el detector deja pasar A PROPÓSITO: «siguiente(s)» no es una referencia posicional a
+  // otra opción del test sino una enumeración o un menú de software. Los 3 casos son reales y
+  // salían del banco al calibrar; incluir «siguiente» habría marcado explicaciones correctas.
+  test.each([
+    ['menú de software', 'elegir una de las siguientes opciones en el grupo Formato'],
+    ['enunciado citado', 'PREGUNTA ORIGINAL: De las siguientes respuestas sobre los pasos en la RCP'],
+    ['enumeración', 'como nos señalan las siguientes opciones de respuesta: - Control del peso'],
+  ])('NO caza: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(false)
+  })
+
+  // Y lo que marca aunque sea un falso positivo, porque el sesgo es deliberado: en la EXPLICACIÓN
+  // un falso negativo deja un texto roto a la vista del opositor, mientras que un falso positivo
+  // solo hace que esa pregunta no se baraje. Con 36 de 73.469 (0,05% de cobertura), el cambio sale
+  // barato. Distinguir «la última opción para la punción arterial» de «la última opción de
+  // respuesta» exigiría entender la frase, no reconocerla.
+  test.each([
+    ['«opción» en su sentido corriente', 'Es la primera opción que prevé el precepto para este caso'],
+    ['último recurso clínico', 'La arteria femoral es la última opción para la punción arterial'],
+  ])('falso positivo ACEPTADO: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(true)
+  })
+})
+
+describe('isShuffleServeEligible — tener estructura NO basta (28/07)', () => {
+  const base = { shuffle_mode: 'full', shuffle_safety: 'safe', has_structured_explanation: true,
+    options: ['Doce meses', 'Seis meses', 'Un año', 'Dos años'] }
+
+  test('una RAZÓN que cita otra opción por su letra bloquea el barajado', () => {
+    // Caso real (22850dcd): al transcribir el histórico, la razón se trajo dentro la mención a
+    // otra opción. La estructura garantiza que cada razón viaja con SU opción, no que la razón
+    // no hable de las demás — y barajando, «la opción D» pasa a señalar otra cosa.
+    expect(isShuffleServeEligible({ ...base,
+      structuredReasons: ['Doce meses es el plazo que cita la opción D y no corresponde a ningún precepto', 'ok', 'ok', 'ok'],
+    })).toBe(false)
+  })
+
+  test('una RAZÓN que razona por posición también lo bloquea', () => {
+    expect(isShuffleServeEligible({ ...base,
+      structuredReasons: ['Como se vio en la última opción de respuesta, el plazo es anual', 'ok', 'ok', 'ok'],
+    })).toBe(false)
+  })
+
+  test('razones limpias siguen siendo barajables (no se rompe la cobertura)', () => {
+    expect(isShuffleServeEligible({ ...base,
+      structuredReasons: ['El art. 41.3 fija doce meses', 'No hay plazo semestral', 'Coincide con doce meses', 'No existe plazo bienal'],
+    })).toBe(true)
+  })
+
+  test('sin razones (sin estructura) el comportamiento es el de siempre', () => {
+    expect(isShuffleServeEligible({ shuffle_mode: 'full', shuffle_safety: 'safe', explanation: 'Texto limpio.' })).toBe(true)
+    expect(isShuffleServeEligible({ shuffle_mode: 'full', shuffle_safety: 'unsafe', explanation: 'Texto limpio.' })).toBe(false)
   })
 })
