@@ -36,14 +36,70 @@ const arg = (n, def = null) => {
 }
 const APPLY = process.argv.includes('--apply')
 
+/**
+ * Modo PROPONER: barre las convocatorias sin declarar, busca en su corpus las formas conocidas y
+ * enseña la evidencia. NO escribe nada — ni siquiera cuando la propuesta es unánime. La declaración
+ * la sigue firmando una persona con la cita delante, que es lo que exige una cifra de plazas.
+ */
+async function proponer(c, soloSlug) {
+  const { proponerRelacion, propuestaUnanime } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'evidenciaReserva.cjs'))
+  const { cifraEnTexto } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'cifraEnTexto.cjs'))
+  const { rows } = await c.query(`
+    SELECT o.slug, cv.plazas_libres AS libres, cv.plazas_discapacidad AS cupo,
+           COALESCE((SELECT count(*)::int FROM user_profiles up
+                      WHERE up.target_oposicion = replace(o.slug, '-', '_')), 0) AS usuarios,
+           (SELECT string_agg(d.extracted_text, ' ') FROM convocatoria_documentos d
+             WHERE d.convocatoria_id = cv.id) AS corpus
+      FROM oposiciones o JOIN convocatorias cv ON cv.oposicion_id = o.id AND cv.is_current
+     WHERE o.is_active AND cv.plazas_discapacidad > 0
+       AND cv.plazas_discapacidad_incluidas IS NULL
+       AND ($1::text IS NULL OR o.slug = $1)
+     ORDER BY usuarios DESC`, [soloSlug])
+
+  let unanimes = 0, discrepan = 0, mudas = 0, sinDocumento = 0, formaNueva = 0
+  for (const r of rows) {
+    const props = proponerRelacion(r.corpus, { plazasLibres: r.libres, plazasDiscapacidad: r.cupo })
+    const u = propuestaUnanime(props)
+    const cab = `${String(r.usuarios).padStart(4)} usuarios · ${r.slug.padEnd(46)} libres=${r.libres} cupo=${r.cupo}`
+    if (u) {
+      unanimes++
+      console.log(`\n✅ ${cab}\n   → propone ${u.incluidas ? 'DENTRO' : 'APARTE'} (${u.evidencias.length} evidencia(s))`)
+      for (const e of u.evidencias.slice(0, 2)) console.log(`      · ${e.via}${e.nums ? ` → [${e.nums.join(" ")}]` : ""}\n        «…${e.cita.slice(0, 260)}…»`)
+    } else if (props.length) {
+      discrepan++
+      console.log(`\n⚠️  ${cab}\n   → el corpus dice las DOS cosas: hay que leerlo`)
+      for (const e of props.slice(0, 2)) console.log(`      · [${e.incluidas ? 'dentro' : 'aparte'}] ${e.via}\n        «…${e.cita.slice(0, 200)}…»`)
+    } else {
+      mudas++
+      // «Sin evidencia» son dos averías MUY distintas y conviene no confundirlas:
+      //  · si el corpus ni siquiera contiene la cifra del turno libre, el problema no es el patrón:
+      //    es que no tenemos el documento que la prueba (territorio de `plazas_afirmadas_sin_documento`).
+      //  · si la contiene y aun así no reconocemos la relación, es una FORMA NUEVA que hay que leer
+      //    a mano y, si se repite, enseñársela al lector.
+      const tieneCifra = cifraEnTexto(r.libres, r.corpus)
+      const tieneCupo = cifraEnTexto(r.cupo, r.corpus)
+      if (!tieneCifra) sinDocumento++
+      else formaNueva++
+      console.log(`\n·  ${cab}\n   → ${tieneCifra
+        ? `forma NUEVA: el corpus sí trae el ${r.libres}${tieneCupo ? ` y el ${r.cupo}` : ` (pero NO el cupo ${r.cupo})`} — hay que leerlo`
+        : `NO hay documento que pruebe ni el ${r.libres}: primero clonar el boletín bueno`}`)
+    }
+  }
+  console.log(`\n═══ ${rows.length} sin declarar · ${unanimes} con propuesta limpia · ${discrepan} contradictorias · ${mudas} mudas`)
+  console.log(`    de las mudas: ${formaNueva} con la cifra en el documento (forma nueva, a leer) · ${sinDocumento} SIN documento que pruebe la cifra`)
+  console.log('   Nada de esto se ha escrito. Para declarar: --slug=… --incluidas=… --cita="…" --url=… --motivo="…" --apply')
+}
+
 async function main() {
   const slug = arg('slug')
   const crudo = arg('incluidas')
   const cita = arg('cita')
   const url = arg('url')
   const motivo = arg('motivo')
-  if (!slug || crudo === null) {
-    console.error('Uso: --slug=<slug> --incluidas=true|false --cita="…" --url=… --motivo="…" [--apply]')
+  const PROPONER = process.argv.includes('--proponer')
+  if (!PROPONER && (!slug || crudo === null)) {
+    console.error('Uso: --proponer [--slug=<slug>]')
+    console.error('  o: --slug=<slug> --incluidas=true|false --cita="…" --url=… --motivo="…" [--apply]')
     process.exit(2)
   }
   const incluidas = crudo === 'true' ? true : crudo === 'false' ? false : null
@@ -51,9 +107,17 @@ async function main() {
   const c = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    statement_timeout: 60000,
+    // El modo proponer se trae el corpus ENTERO de cada convocatoria (varios MB por boletín), así
+    // que necesita más margen que una escritura, que solo toca una fila.
+    statement_timeout: PROPONER ? 180000 : 60000,
   })
   await c.connect()
+
+  if (PROPONER) {
+    await proponer(c, slug)
+    await c.end()
+    return
+  }
 
   const { rows } = await c.query(
     `SELECT o.id AS oid, cv.id AS cvid, cv."año" AS ciclo,
