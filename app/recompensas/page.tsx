@@ -1,5 +1,5 @@
 'use client'
-// app/embajadores/page.tsx — Programa de Embajadores de Vence.
+// app/recompensas/page.tsx — Programa de Recompensas de Vence.
 // Tono aspiracional/de estatus: el premium descubre que YA es embajador y puede ganar recompensas
 // en tarjetas regalo de Amazon. Explica las 3 formas de ganar. Auth-aware (premium / free / anónimo).
 

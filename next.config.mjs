@@ -78,6 +78,15 @@ const nextConfig = {
   async redirects() {
     // Redirecciones mínimas necesarias (rutas que NO existen)
     const testRedirects = [
+      // 🔄 El Programa de Embajadores pasó a llamarse "de Recompensas" (28/07/2026) y la URL lo sigue.
+      // El 301 NO es opcional: hay enlaces vivos a /embajadores en emails YA ENVIADOS (el aviso de
+      // recompensa nueva lleva ese botón) y en mensajes de soporte. Sin esto, cada uno de esos
+      // correos lleva a un 404 para siempre.
+      {
+        source: '/embajadores',
+        destination: '/recompensas',
+        permanent: true,
+      },
       // 🔄 Redirect de /convocatorias/* a /oposiciones/ (migración SEO - 702 URLs afectadas)
       // Las páginas de convocatorias individuales fueron eliminadas el 13/01/2026
       {

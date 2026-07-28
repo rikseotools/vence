@@ -55,7 +55,7 @@ describe('notifyEarning', () => {
     expect(arg.subject).not.toContain('10')
     expect(arg.subject).not.toContain('€')
     expect(arg.html).not.toContain('10 €')
-    expect(arg.html).toContain('/embajadores') // botón directo
+    expect(arg.html).toContain('/recompensas') // botón directo
   })
 
   it('nunca lanza aunque falle el envío', async () => {

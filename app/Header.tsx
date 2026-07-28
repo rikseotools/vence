@@ -385,10 +385,10 @@ export default function HeaderES() {
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
       // Recompensas: SOLO premium/legacy (el programa es solo-premium). El nombre user-facing es
-      // "Recompensas" (no "Embajadores"): cubre las CUATRO fuentes —referido, registro activo, bug
-      // y opinión—, mientras que "referidos"/"embajadores" solo nombra una. La RUTA sigue siendo
-      // /embajadores (hay enlaces vivos en emails ya enviados; renombrarla exigiría redirección).
-      ...((isPremium || isLegacy) ? [{ href: '/embajadores', label: 'Recompensas', icon: '🎁', title: 'Gana recompensas por recomendar Vence, reportar fallos y opinar' }] : [])
+      // "Recompensas" (no "Embajadores"): cubre las CINCO fuentes —referido, registro activo, bug,
+      // opinión e impugnación aceptada—, mientras que "referidos"/"embajadores" solo nombra una.
+      // La RUTA también es /recompensas; /embajadores queda como 301 por los emails ya enviados.
+      ...((isPremium || isLegacy) ? [{ href: '/recompensas', label: 'Recompensas', icon: '🎁', title: 'Gana recompensas por recomendar Vence, reportar fallos y opinar' }] : [])
     ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
@@ -611,7 +611,7 @@ export default function HeaderES() {
                 {/* 🎁 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
                 {(isPremium || isLegacy) && (
                   <Link
-                    href="/embajadores"
+                    href="/recompensas"
                     className="tap-feedback relative flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                     aria-label={hasReferralEarnings ? 'Programa de Recompensas — ¡has ganado dinero!' : 'Programa de Recompensas'}
                     title={hasReferralEarnings ? '🎉 ¡Has ganado dinero! Toca para ver' : 'Recompensas — gana por recomendar Vence, reportar fallos y opinar'}
