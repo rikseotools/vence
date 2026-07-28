@@ -143,7 +143,16 @@ async function procesarLey(l, { apply }) {
       SELECT DISTINCT l.short_name, l.id, l.boe_url, (SELECT count(*)::int FROM articles a WHERE a.law_id=l.id) arts
       FROM laws l JOIN topic_scope ts ON ts.law_id=l.id JOIN topics t ON t.id=ts.topic_id AND t.is_active=true
       WHERE l.is_active=true AND coalesce(l.is_virtual,false)=false AND l.boe_url ~ 'BOE-A-'
-        AND (SELECT count(*) FROM articles a WHERE a.law_id=l.id) >= 20
+        -- Umbral 5, antes 20 (T-227, 28/07/2026). El >=20 daba por hecho que una ley corta
+        -- no tiene estructura, y NO es verdad: al probar una a una las 84 leyes cortas que
+        -- el barrido nunca miraba, 17 tenían capítulos o títulos de verdad — la más pequeña,
+        -- el RD 127/2015, con 6 artículos y 3 capítulos. Se quedaban fuera sin fallar ni
+        -- aparecer en ningún informe, que es la peor forma de quedarse fuera.
+        -- El 5 no protege de nada que no proteja ya el validador (rangos con artículos
+        -- reales, sin solapes, nunca inserta basura): solo evita bajarse del BOE leyes de
+        -- 2-3 artículos donde el resultado no podría ser útil (el botón de Títulos exige
+        -- >=2 secciones). Es ahorro de peticiones, no una salvaguarda.
+        AND (SELECT count(*) FROM articles a WHERE a.law_id=l.id) >= 5
         AND (SELECT count(*) FROM law_sections s WHERE s.law_id=l.id) = 0
       ORDER BY arts DESC LIMIT ${limit}`
   } else {
