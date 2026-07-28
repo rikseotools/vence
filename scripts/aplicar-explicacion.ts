@@ -98,11 +98,18 @@ async function main() {
   //    rechazaba explicaciones impecables y obligaba a redactar peor para esquivarlo — pasó el
   //    28/07 con el art. 9.1 LPRL, cuyas funciones de la Inspección se enumeran por letras.
   const CITA_DE_LA_NORMA = /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/i
+  // La LETRA de una opción se escribe en MAYÚSCULA («la opción B», «la C es correcta»); los
+  // apartados de un precepto van en minúscula («la letra d) no pide acreditar, sino poseer»). Sin
+  // esa distinción el guard frena explicaciones que citan el articulado por sus letras, que es
+  // lenguaje jurídico corriente — pasó el 28/07 con el art. 29.2 del Decreto 7/2013 CyL, cuyos
+  // cuatro requisitos van por letras y cuyos distractores cambian justo el verbo de cada una.
+  // Por eso esta primera va SIN el flag `i`: la mayúscula es la señal.
+  const REFERENCIA_A_OPCION_LETRA = /\b(?:[Ll]a|[Oo]pci[óo]n|[Rr]espuesta|[Ll]etra)\s+[A-E]\b/
   const REFERENCIA_A_OPCION =
-    /\b(la|opci[óo]n|respuesta|letra)\s+[A-E]\b|\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)\b|\b(opci[óo]n|respuesta|alternativa)\s+(anterior|previa|siguiente)\b/i
+    /\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)\b|\b(opci[óo]n|respuesta|alternativa)\s+(anterior|previa|siguiente)\b/i
   const sospechosas = Object.entries(estructura.options).filter(([, r]) => {
     const limpia = r.replace(new RegExp(CITA_DE_LA_NORMA.source, 'gi'), ' ')
-    return REFERENCIA_A_OPCION.test(limpia)
+    return REFERENCIA_A_OPCION_LETRA.test(limpia) || REFERENCIA_A_OPCION.test(limpia)
   })
   if (sospechosas.length) {
     console.error('❌ Hay razones que se refieren a la LETRA o a la POSICIÓN de una opción:')

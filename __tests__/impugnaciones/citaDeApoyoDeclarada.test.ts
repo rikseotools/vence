@@ -30,6 +30,13 @@ describe('refDeclaradaDistinta — ¿la cita atribuye su texto a otro artículo?
     expect(refDeclaradaDistinta('> Art. 65: "El Rey recibe de los Presupuestos…"', '65')).toBeNull()
   })
 
+  test('CASO REAL fc7defa6: la atribución va DETRÁS de la cita, entre paréntesis', () => {
+    // «El Centro Directivo podrá conceder […] traslados de Establecimiento por motivos educativos.»
+    // (Art. 121.1 RP), en una pregunta colgada del art. 120. Así cita media doctrina, y el filtro
+    // que solo miraba delante la daba por cita falsa.
+    expect(refDeclaradaDistinta('> «El Centro Directivo podrá conceder traslados de Establecimiento.» (Art. 121.1 RP)', '120')).toBe('121')
+  })
+
   test('sin referencia declarada, se verifica contra el artículo vinculado (comportamiento de siempre)', () => {
     expect(refDeclaradaDistinta('> "El Rey recibe de los Presupuestos del Estado"', '65')).toBeNull()
   })
@@ -37,5 +44,22 @@ describe('refDeclaradaDistinta — ¿la cita atribuye su texto a otro artículo?
   test('solo cuenta la referencia ANTES de la cita: un artículo nombrado DENTRO del texto citado no redirige', () => {
     // «…conforme al artículo 30» dentro de la cita no significa que la cita sea del artículo 30.
     expect(refDeclaradaDistinta('> "Cualquier ciudadano podrá recabar la tutela conforme al artículo 30"', '53')).toBeNull()
+  })
+})
+
+// ── El guard de `aplicar-explicacion.ts`: apartado de un precepto ≠ opción del test ──────────────
+//
+// «la letra d) no pide acreditar, sino poseer» cita el ARTICULADO; «la opción D» cita el test. La
+// diferencia es la mayúscula, y sin ella el guard frena explicaciones jurídicas normales: pasó el
+// 28/07 con el art. 29.2 del Decreto 7/2013 CyL, cuyos cuatro requisitos van por letras y cuyos
+// distractores cambian justo el verbo de cada una.
+describe('guard anti-letra: distingue el apartado legal de la opción', () => {
+  const REFERENCIA_A_OPCION_LETRA = /\b(?:[Ll]a|[Oo]pci[óo]n|[Rr]espuesta|[Ll]etra)\s+[A-E]\b/
+  test('«la letra d) no pide acreditar» NO es referencia a una opción', () => {
+    expect(REFERENCIA_A_OPCION_LETRA.test('La letra d) no pide «acreditar» los mecanismos, sino poseerlos')).toBe(false)
+  })
+  test('«la opción D» y «la B es correcta» SÍ lo son', () => {
+    expect(REFERENCIA_A_OPCION_LETRA.test('Como se vio en la opción D, el plazo es anual')).toBe(true)
+    expect(REFERENCIA_A_OPCION_LETRA.test('La B es correcta porque reproduce el precepto')).toBe(true)
   })
 })

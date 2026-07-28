@@ -74,12 +74,15 @@ function refDeclaradaDistinta(explanation, articleNumber) {
     .filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
   // La referencia va antes del entrecomillado: se busca en el tramo previo a la primera comilla.
   const bq = lineas.join(' ');
-  // Solo cuenta lo que va ANTES de la cita: un artículo nombrado DENTRO del texto citado
-  // («…conforme al artículo 30») no significa que la cita sea de ese artículo. Y si el blockquote
-  // ARRANCA con la comilla, no hay cabeza donde declarar nada.
-  const corte = bq.search(/[«"“]/);
-  const cabeza = corte === -1 ? bq : bq.slice(0, corte);
-  const m = cabeza.match(RE_REF_ARTICULO);
+  // La atribución puede ir DELANTE de la cita («Art. 56.3: "…"») o DETRÁS, entre paréntesis o tras
+  // una raya («"…" (Art. 121.1 RP)»), que es como cita media doctrina. Se miran las dos zonas y
+  // NUNCA el interior del entrecomillado: un artículo nombrado dentro del texto citado
+  // («…conforme al artículo 30») no convierte la cita en suya.
+  const ini = bq.search(/[«"“]/);
+  const fin = Math.max(bq.lastIndexOf('»'), bq.lastIndexOf('"'), bq.lastIndexOf('”'));
+  const cabeza = ini === -1 ? bq : bq.slice(0, ini);
+  const cola = fin === -1 || fin + 1 >= bq.length ? '' : bq.slice(fin + 1);
+  const m = cabeza.match(RE_REF_ARTICULO) || cola.match(RE_REF_ARTICULO);
   if (!m) return null;
   const declarado = m[1].replace(/\s+/g, ' ').trim();
   return String(declarado) === String(articleNumber) ? null : declarado;

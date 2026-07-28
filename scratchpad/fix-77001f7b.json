@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El apartado 2 del artículo 29 enumera los cuatro requisitos del buzón electrónico, y cada uno lleva su propio verbo: acreditar, posibilitar, acreditar y poseer. Las opciones incorrectas cambian precisamente ese verbo.",
+  "cita": {
+    "ref": "Art. 29.2 Decreto 7/2013, de 14 de febrero, de utilización de medios electrónicos en la Administración de la Comunidad de Castilla y León",
+    "texto": "El sistema de buzón electrónico deberá de satisfacer los siguientes requisitos: a) Acreditar la fecha y hora en que se produce la puesta a disposición del interesado del acto objeto de la notificación. b) Posibilitar el acceso permanente. c) Acreditar la fecha y hora de acceso al contenido. d) Poseer los mecanismos de seguridad que determinen la identificación del ciudadano y garanticen la exclusividad de uso."
+  },
+  "options": {
+    "0": "Reproduce la letra a) del precepto: acreditar la fecha y hora en que se produce la puesta a disposición del interesado del acto objeto de la notificación.",
+    "1": "La letra d) no pide «acreditar» los mecanismos de seguridad, sino POSEERLOS: son los que determinan la identificación del ciudadano y garantizan la exclusividad de uso.",
+    "2": "La letra b) no habla de «acreditar» el acceso permanente, sino de POSIBILITARLO.",
+    "3": "La letra c) no habla de «poseer» la fecha y hora de acceso al contenido, sino de ACREDITARLA."
+  },
+  "outro": "**Clave:** los cuatro requisitos están en el precepto, pero solo una opción conserva el verbo que le corresponde. Al leer enumeraciones así, el verbo es tan examinable como el sustantivo."
+}
