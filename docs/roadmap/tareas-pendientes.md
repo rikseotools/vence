@@ -14,6 +14,15 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-222] ✅ [HECHO 28/07] `topic_scope` ya audita quién cambia el temario, por qué y con qué antes/después
+- **Qué había:** la tabla que decide **qué estudia el opositor** tenía `created_at` y nada más — ni `updated_at`, ni autor, ni motivo — con **31 escritores** vivos. Sus dos triggers no auditaban (uno invalida la verificación, otro encola el PDF), y `topic_scope_verification_history` registra quién lo **REVISÓ**, no quién lo **CAMBIÓ**.
+- **Qué hay ahora:** `topic_scope_history` append-only + trigger `tg_topic_scope_audit` (migración `20260728_topic_scope_history.sql`), mismo patrón que `question_lifecycle_history`. Guarda operación, **antes y después enteros**, `delta_count` calculado, autor y motivo.
+- **Por trigger, no por los escritores:** una auditoría que dependa de que cada uno de los 31 se acuerde de escribirla nace incompleta. Así, **lo que se captura no depende de nadie**. `changed_by`/`change_reason` sí son opt-in (`SET LOCAL app.actor` / `app.change_reason`) porque un trigger no los puede adivinar — y que salgan NULL **es la señal medible** de qué caminos faltan por identificar, no un fallo. Hueco visible > trazabilidad fingida.
+- **Un defecto que cazó el test antes de producción:** con `now()` todos los cambios de una misma transacción salían con el MISMO instante y el historial no se podía ordenar — justo en `verify:scope apply`, que toca varios temas en una tx. Cambiado a `clock_timestamp()`.
+- **Capas:** integración real contra RDS **dentro de una transacción que siempre revierte** (un trigger no se testea con mocks), 6 casos incluidos idempotencia, NULL→NULL, orden intra-tx y convivencia con los 2 triggers que ya había — `__tests__/integration/topicScopeAudit.integration.test.ts`, tras `INTEGRATION_DB_WRITABLE=1` como el resto de tests que escriben. **3 mutaciones** (quitar `clock_timestamp`, quitar el guard de idempotencia, no registrar el DELETE) → las 3 se detectan.
+- **Estreno:** el primer evento de la historia de esa tabla es el recorte del Decreto 53/1989 del feedback de Luisa, con su motivo y su fuente. Documentado en `verificar-epigrafes-scope.md` (§«Quién cambió el temario»).
+
+
 
 ### [T-160] ✅ [CERRADA 28/07 — recalibrada la cadena entera; de ~65 avisos/día a <1] `event_loop_lag`: 65 avisos CRITICAL/día sobre un loop SANO
 - **Qué:** la regla `RULE_EVENT_LOOP_LAG` (añadida el 24/07, follow-up de T-075) es **la alerta nº1 del correo**: 65 disparos y 915 eventos en 24 h, con stalls reales de **2 a 3,8 s** cada ~20 min.
@@ -245,6 +254,23 @@
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
+
+### [T-223] 🟠 [PARCIAL 28/07] El detector de sobre-inclusión no ve el epígrafe que nombra los capítulos **por su RÚBRICA**
+- **Qué:** `lib/laws/scopeOverInclusion.ts` marca banda **ALTA** cuando el epígrafe nombra títulos **por número** ("Título IV") o cita artículos concretos. Cuando los nombra **por su rúbrica** cae en **MEDIA**, que por diseño **NO pinga el badge**.
+- **Caso raíz (28/07, feedback de Luisa, `auxiliar_administrativo_sms` T9):** epígrafe = *"El Decreto 53/1989… **funciones y organización** del EAP"*. Estructura oficial del BORM: **Cap. II «Funciones del EAP» (5-8)** y **Cap. III «Organización» (9-25)**. El epígrafe nombraba dos capítulos por su título literal y el scope tenía **los 32 artículos**. Nadie lo marcó, y al resolver su aviso se razonó sobre la **prosa** en vez de la **estructura** → **se le dijo que no a quien tenía razón exacta**.
+
+**✅ Hecho (lo que ataca el fallo real: el DATO en pantalla)**
+- El bloque `CHECK SCOPE/EPÍGRAFE` de los dossiers (`scripts/impugnaciones/lib/scope-enforcement.cjs`, compartido por feedback e impugnaciones) ahora imprime **📐 ESTRUCTURA vs SCOPE**: capítulos con rúbrica, rango y cuántos artículos suyos están escopados, marcando los que quedan `⟵ FUERA`, junto al epígrafe. Se dispara solo con que el usuario cite la norma. Enganchado dentro de `scopeEnforcement` y no en los llamadores: **dos sitios donde imprimirlo son dos sitios donde se puede olvidar**.
+- **Cuando la ley no tiene estructura en BD, lo GRITA** (🛑 + [T-140]) en vez de omitirlo en silencio — ese silencio era el problema.
+- Partes puras testeadas (22 tests): extracción de la norma citada y el formateo estructura↔scope, fijando el caso real con la estructura del BORM. La extracción exige la palabra de la norma para años de 2 cifras, porque *"acerté 3/10 preguntas"* se leía como la norma 3/2010 — **un bloque que a veces habla de otra ley enseña a ignorarlo**.
+- `law_sections` del Decreto 53/1989 **poblado** (7 capítulos verificados contra el PDF del BORM, validado sin huecos ni solapes y con los 32 artículos cubiertos). Una menos de las 51 de [T-140].
+- Runbook `verificar-epigrafes-scope.md` actualizado con la regla: **epígrafe que enumera materias → cásalas con las RÚBRICAS, no con la idea general de la norma**.
+
+**⏳ Queda**
+1. Subir a banda **ALTA** el caso "el epígrafe casa con rúbricas de capítulos concretos y el scope incluye capítulos cuya rúbrica no aparece", reutilizando el matcher que YA existe en `lib/laws/scopeTitleBoundary.js` (baja la rúbrica del BOE y exime si el epígrafe la nombra por materia; hoy resuelve el problema **inverso** y corre bajo demanda). **Simular bank-wide antes de encender** — lección T-113/T-047: la banda `error` solo con precisión alta.
+2. Poblar `law_sections` del resto de leyes que sirven en temas vivos ([T-140]). Ojo: `scripts/scope/refresh-law-sections.cjs` solo sirve para leyes con id **BOE-A-**; las regionales (BORM, BOJA, DOGV…) se quedan fuera, y son justo estas.
+3. **Barrer los feedbacks ya resueltos de Luisa**: lleva ~25, casi todos de scope, y varios se cerraron en los días en que se razonaba por prosa. Si en este se falló, puede haber más.
+
 
 ### [T-219] 🟠 [ABIERTO 28/07] 308 preguntas de «señale la INCORRECTA» sirven un encabezado que se contradice a sí mismo
 - **Qué ve el opositor:** en 308 preguntas activas cuyo enunciado pide la afirmación FALSA, la explicación abre con **«Por qué A es correcta:»** y a continuación explica por qué esa afirmación **es incorrecta**. Caso real: `23acc72a` (*"Señale la respuesta incorrecta en relación al rootkit"*), cuya explicación dice *"Por qué A es correcta: Afirmar que los rootkits pueden propagarse automáticamente es incorrecto"*.

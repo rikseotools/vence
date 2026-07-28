@@ -10,6 +10,12 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 > 🗺️ **ENFORZADA POR CÓDIGO (desde 24/07):** los dossiers `revisar-impugnacion.cjs` y `revisar-feedback.cjs` detectan solos cuando la queja va de temario/epígrafe/scope y **imprimen un CHECK con el estado Paso 1/Paso 2 de la oposición + un 🛑 bloqueante si el epígrafe está `never_sourced`**. Módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`. Nace porque la regla se saltaba (caso Sara 24/07: scope `verified_correct` pero epígrafe `never_sourced` = falso verde). Si ves el 🛑, haz el Paso 1 antes de resolver.
 
+> 📐 **Y desde el 28/07 el mismo bloque imprime la ESTRUCTURA de la ley frente al scope** (capítulos/títulos con su rúbrica, su rango y cuántos de sus artículos están escopados, marcando los que quedan `⟵ FUERA`). Se dispara solo con que el usuario cite la norma («decreto 53/1989», «la 39/2015»). **Si la ley no tiene estructura en BD, lo GRITA** en vez de callarse — ese silencio era el problema.
+>
+> **Por qué:** el 28/07 una usuaria (Luisa) avisó de que del Decreto 53/1989 del T9 de `auxiliar_administrativo_sms` solo entraban unos artículos. Se le respondió que **no**, razonando sobre la **prosa** del epígrafe (*"el decreto entero es el Reglamento General de funcionamiento"*). Su rango era, clavado, los **Capítulos II y III** — que es lo que el epígrafe nombra, pero **por su RÚBRICA** (*«funciones y organización del EAP»*) y no por su número. `law_sections` de ese decreto estaba **vacío**, así que la estructura no estaba a la vista de nadie.
+>
+> **La regla que sale de ahí:** cuando el epígrafe enumere **materias** («funciones», «organización», «régimen jurídico»), cásalas con las **rúbricas** de los títulos/capítulos, no con la idea general de la norma. El nombre de una ley describe su objeto entero; el epígrafe casi nunca pide todo su objeto. Y si no tienes la estructura delante, **bájala de la fuente oficial antes de contestar** — no la deduzcas.
+
 Siempre que un usuario (feedback, impugnación, duda) hable de **epígrafes, `topic_scope`, temario, artículos de un tema o "faltan/sobran preguntas de un tema"**, el orden es **este, y en este orden**, ANTES de responderle o tocar nada:
 
 1. **Lee primero este manual de epígrafes** (y `docs/maintenance/verificar-epigrafe-topic-scope.md`). No improvises el diagnóstico de scope de memoria.
@@ -266,6 +272,30 @@ Medido el 27/07/2026: `tcae_murcia` 40 temas ganaron materia y solo **8** segmen
 El pipeline de scope sabía recortar y ampliar **dentro de una ley que el tema ya tenía**. Desde el 27/07 también admite **añadir una ley nueva** al tema (el movimiento con el que se tapan los huecos que deja una reorganización de temario, y el que hace falta cuando una norma sustituye a otra): basta con proponerla en el `veredicto` con sus `anadir`. El pipeline comprueba que la ley existe, que **sus artículos existen y están activos** (si no, estaría creando artículos fantasma en el scope) y mide **cuántas preguntas pasan a servirse**. Se clasifica **SIEMPRE como puerta de juicio** (`ley_nueva` → exige `--include-gate`): decir "este tema también va de esta norma" no tiene versión mecánica, y el gate de impacto no lo veía porque mide preguntas que SALEN, y una ley nueva no saca ninguna.
 
 **Visibilidad (columna "Epígrafe" en `/admin/contenido`, desde 13/07):** por oposición, badge `X/Y` con color (🟢 todos literal · 🟡 drift/stale · 🔵 faltan por verificar · ⚪ `—` sin verificar) y, al pinchar, **modal tema a tema** (epígrafe BD + estado + hallazgo + fecha). Es el mapa de "qué falta": las oposiciones sin `dump`/`record` salen `—`. Helper puro `lib/api/admin-contenido/epigrafeBadge.ts`; agregación en `getContenidoOverview` (CTE `epi`); drill-down `getEpigrafeDetail` + `/api/admin/contenido/epigrafe/[slug]`. Cobertura al lanzar: 3/115 oposiciones. Detalle: memoria `project_epigrafe_verificacion_columna_admin`.
+
+## Quién cambió el temario, cuándo y por qué — `topic_scope_history` (desde 28/07/2026)
+
+Hasta el 28/07 la respuesta a *"¿quién metió estos artículos y con qué criterio?"* era **no se puede saber**: `topic_scope` tenía `created_at` y nada más, con **31 escritores** distintos. Lo único parecido, `topic_scope_verification_history`, guarda quién lo **REVISÓ**, no quién lo **CAMBIÓ** (fácil confundirlos).
+
+Ahora un trigger (`tg_topic_scope_audit`) escribe en **`topic_scope_history`** cada alta, baja o cambio de `article_numbers`, con el **antes y el después enteros**. Es por trigger a propósito: si dependiera de que cada uno de los 31 escritores se acuerde de registrar su fila, la auditoría nacería incompleta.
+
+```sql
+-- Historia del temario de un tema, lo último primero
+SELECT operation, delta_count, changed_by, change_reason, changed_at,
+       articles_before, articles_after
+FROM topic_scope_history WHERE topic_id = '…' ORDER BY changed_at DESC;
+```
+
+- **`changed_by` / `change_reason` en NULL no es un fallo: es la señal** de que ese cambio vino de un escritor que todavía no se identifica. Se mide (`WHERE changed_by IS NULL`) y se va drenando.
+- **Al tocar el scope a mano, identifícate** — es una línea, y es la diferencia entre dejar historia y dejar un misterio:
+  ```sql
+  SET LOCAL app.actor = 'claude:feedback-<id>';
+  SET LOCAL app.change_reason = 'por qué, con la fuente';
+  ```
+- Reescribir el **mismo** valor no genera fila (los scripts idempotentes no ensucian el historial).
+- `changed_at` usa `clock_timestamp()`, no `now()`: varios cambios en la misma transacción —lo normal en `verify:scope apply`— tienen que quedar ordenables.
+
+Migración `supabase/migrations/20260728_topic_scope_history.sql`; tests `__tests__/integration/topicScopeAudit.integration.test.ts` (`INTEGRATION_DB_WRITABLE=1`).
 
 ## Gotchas
 - El `dump` lee `topic_scope` en vivo — corre siempre `dump` justo antes de los agentes.

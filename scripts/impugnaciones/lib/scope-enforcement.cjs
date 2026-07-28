@@ -57,10 +57,167 @@ async function scopeEnforcement(s, { text, oposicion, force }) {
   } else {
     out += '   🟢 Paso 1 y Paso 2 en orden para esta oposición → puedes analizar la queja sobre base firme.';
   }
+  // Se engancha AQUÍ y no en los llamadores para que salga igual en impugnaciones y en
+  // feedback: dos sitios donde imprimirlo son dos sitios donde se puede olvidar.
+  // Y va después del semáforo a propósito: el 🟢 de arriba es el que más engaña — el
+  // Decreto 53/1989 estaba "en orden" y aun así el scope pedía la mitad de la ley.
+  out += await estructuraVsScope(s, { text, oposicion });
   return out;
 }
 
 // ¿el texto del usuario es una queja de temario/epígrafe/scope? (parte pura, testeable)
 const isScopeComplaint = (text) => SCOPE_TRIGGER.test(norm(text));
 
-module.exports = { norm, SCOPE_TRIGGER, scopeEnforcement, isScopeComplaint };
+// ───────────────────────────────────────────────────────────────────────────────────────
+// ESTRUCTURA vs SCOPE (T-223, 28/07/2026)
+//
+// El bloque de arriba comprueba el ESTADO de verificación. Eso no bastó: el 28/07 una
+// usuaria (Luisa) avisó de que del Decreto 53/1989 del T9 de `auxiliar_administrativo_sms`
+// solo entraban unos artículos. Se le respondió que no, razonando sobre la PROSA del
+// epígrafe ("el decreto entero es el reglamento de funcionamiento"). Tenía razón exacta:
+// su rango era, clavados, los Capítulos II y III que el epígrafe nombra por su RÚBRICA
+// («funciones y organización del EAP»).
+//
+// La pieza que faltaba no era criterio, era un DATO en pantalla: los capítulos de la ley
+// junto al scope. Quien resuelve no debería tener que deducir la estructura de una norma
+// leyendo prosa — y cuando esa estructura NO está en BD, lo peligroso es no enterarse.
+// Por eso el caso "sin estructura" se grita en vez de omitirse.
+// ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normas citadas en el texto del usuario, como `número/año`. Pura.
+ *
+ * Solo interesa el par número/año: es lo que identifica la norma sin depender de cómo la
+ * llame cada uno («decreto 53/1989», «Decreto 53/89», «el 53/1989»). Se acepta el año de
+ * dos cifras porque los usuarios lo escriben así.
+ */
+function extraerReferenciasNorma(text) {
+  const t = String(text || '');
+  const out = new Set();
+
+  // Año de CUATRO cifras: se acepta suelto ("la 39/2015"), porque así lo escriben y el
+  // año ya desambigua por sí solo.
+  for (const m of t.matchAll(/\b(\d{1,4})\s*\/\s*((?:19|20)\d{2})\b/g)) {
+    out.add(`${Number(m[1])}/${m[2]}`);
+  }
+
+  // Año de DOS cifras: solo si delante va la palabra de la norma. Sin esa exigencia,
+  // "acerté 3/10 preguntas" o "el día 5/12" se leerían como leyes — y como 3/2010 y
+  // 5/2012 existen de verdad, el dossier acabaría enseñando la estructura de una norma
+  // que el usuario nunca mencionó. Un bloque que a veces habla de otra ley es peor que
+  // no tenerlo: enseña a ignorarlo.
+  const NORMA = /\b(?:ley(?:es)?\s+organicas?|ley(?:es)?|real(?:es)?\s+decretos?(?:[-\s]leyes?)?|decretos?(?:\s+legislativos?)?|rdl?|rd|orden|reglamento|directiva)\s*\.?\s*(?:n[.º°]?\s*)?(\d{1,4})\s*\/\s*(\d{2})\b(?!\d)/gi;
+  // Normalización propia: `norm()` no sirve aquí porque borra la BARRA junto con el resto
+  // de la puntuación, y sin barra no hay referencia que extraer. Aquí solo hacen falta
+  // minúsculas y quitar tildes ("Decreto"/"decreto", "Orden"/"orden").
+  const suave = t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for (const m of suave.matchAll(NORMA)) {
+    const n2 = Number(m[2]);
+    // Ventana igual que en las citas legales: dos cifras altas son del siglo XX.
+    out.add(`${Number(m[1])}/${n2 > 50 ? 1900 + n2 : 2000 + n2}`);
+  }
+  return [...out];
+}
+
+/** ¿El artículo `n` cae dentro de la sección? Pura. */
+const enSeccion = (sec, n) =>
+  Number.isFinite(n) &&
+  n >= (sec.article_range_start ?? -Infinity) &&
+  n <= (sec.article_range_end ?? Infinity);
+
+/**
+ * Estructura de la ley enfrentada al scope del tema. Pura: recibe datos, devuelve texto.
+ *
+ * @param {object} p
+ * @param {string} p.ley         nombre corto de la ley
+ * @param {number|string} p.tema número de tema
+ * @param {string[]|null} p.scope  `article_numbers` (null = la ley ENTERA)
+ * @param {object[]} p.secciones filas de `law_sections` (vacío = sin estructura en BD)
+ * @param {string} [p.epigrafe]  epígrafe del tema, para poder cotejar rúbricas a ojo
+ */
+function formatEstructuraVsScope({ ley, tema, scope, secciones, epigrafe }) {
+  const nums = (scope || []).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  const resumen = scope === null || scope === undefined
+    ? 'LEY ENTERA (article_numbers NULL)'
+    : `${nums.length} arts (${nums.length ? `${nums[0]}-${nums[nums.length - 1]}` : '—'})`;
+
+  let out = `\n   📐 ESTRUCTURA vs SCOPE — ${ley} · T${tema}\n`;
+  out += `      scope actual: ${resumen}\n`;
+  if (epigrafe) out += `      epígrafe:     "${String(epigrafe).slice(0, 200)}"\n`;
+
+  if (!secciones || !secciones.length) {
+    // El caso peligroso. Sin estructura no se puede mapear "funciones y organización" a
+    // unos artículos, y el hueco es INVISIBLE si no se dice.
+    out += `      🛑 SIN ESTRUCTURA EN BD (law_sections vacío para esta ley) — [T-140]\n`
+      + `         NO deduzcas los capítulos de la prosa del epígrafe: es justo el error del\n`
+      + `         28/07 (Decreto 53/1989, usuaria Luisa) que dio un "no" a quien tenía razón.\n`
+      + `         Baja el índice de la fuente oficial (BOE/boletín autonómico) y mapea\n`
+      + `         epígrafe → capítulos → artículos ANTES de responder.`;
+    return out;
+  }
+
+  const ordenadas = [...secciones].sort(
+    (a, b) => (a.order_position ?? 0) - (b.order_position ?? 0) || (a.article_range_start ?? 0) - (b.article_range_start ?? 0),
+  );
+  const fuera = [];
+  for (const sec of ordenadas) {
+    const dentro = nums.filter((n) => enSeccion(sec, n));
+    const total = (sec.article_range_end ?? 0) - (sec.article_range_start ?? 0) + 1;
+    const cubre = scope === null || scope === undefined ? total : dentro.length;
+    const etiqueta = `${sec.section_type || 'sección'} ${sec.section_number || '?'}`.trim();
+    const rango = `${sec.article_range_start ?? '?'}-${sec.article_range_end ?? '?'}`;
+    const marca = cubre === 0 ? '  ⟵ FUERA del scope' : cubre < total ? '  ⟵ PARCIAL' : '';
+    out += `      ${etiqueta.padEnd(16)} ${String(rango).padEnd(9)} ${String(sec.title || '').slice(0, 52).padEnd(52)} ${cubre}/${total}${marca}\n`;
+    if (cubre === 0) fuera.push(etiqueta);
+  }
+  out += `      → Comprueba que cada bloque escopado lo pide el epígrafe, y que ninguno que sí\n`
+    + `        pida se haya quedado fuera. Si el epígrafe nombra materias ("funciones",\n`
+    + `        "organización"), cásalas con las RÚBRICAS de arriba, no con la prosa.`;
+  if (fuera.length) out += `\n      (bloques hoy fuera del scope: ${fuera.join(', ')})`;
+  return out;
+}
+
+/**
+ * Busca en la oposición del usuario las leyes que ha citado y añade su estructura.
+ * Best-effort: si algo falla o no cita ninguna norma, no estorba (devuelve '').
+ */
+async function estructuraVsScope(s, { text, oposicion }) {
+  if (!oposicion) return '';
+  const refs = extraerReferenciasNorma(text);
+  if (!refs.length) return '';
+  try {
+    const filas = await s.unsafe(
+      `SELECT l.id law_id, l.short_name ley, t.topic_number tema, t.epigrafe, ts.article_numbers
+         FROM topic_scope ts
+         JOIN topics t ON t.id = ts.topic_id
+         JOIN laws   l ON l.id = ts.law_id
+        WHERE t.position_type = $1 AND t.is_active
+          AND (l.short_name ILIKE ANY($2) OR l.name ILIKE ANY($2))
+        ORDER BY t.topic_number
+        LIMIT 6`,
+      [oposicion, refs.map((r) => `%${r}%`)],
+    );
+    if (!filas.length) return '';
+    let out = '';
+    for (const f of filas) {
+      const secs = await s.unsafe(
+        `SELECT section_type, section_number, title, article_range_start, article_range_end, order_position
+           FROM law_sections WHERE law_id = $1 AND is_active ORDER BY order_position`,
+        [f.law_id],
+      );
+      out += formatEstructuraVsScope({
+        ley: f.ley, tema: f.tema, scope: f.article_numbers, secciones: secs, epigrafe: f.epigrafe,
+      });
+    }
+    return out;
+  } catch (e) {
+    // Nunca tumbar el dossier por esto: sin el bloque se resuelve peor, sin dossier no se
+    // resuelve. Pero que se vea que faltó.
+    return `\n   ⚠️ (no se pudo cargar la estructura de la ley: ${e.message})`;
+  }
+}
+
+module.exports = {
+  norm, SCOPE_TRIGGER, scopeEnforcement, isScopeComplaint,
+  extraerReferenciasNorma, formatEstructuraVsScope, enSeccion, estructuraVsScope,
+};
