@@ -824,6 +824,14 @@ incluida).
 - **Alcance a medir antes de decidir:** cuántas oposiciones valencianas (`*_gva`, `*_valencia`) tienen su temario oficial solo en valenciano. Son 4 las que hoy tenemos activas.
 - **Origen:** T-107, 27/07, al verificar `auxiliar_enfermeria_gva`.
 
+### [T-248] 🟡 [ABIERTO 28/07] Test inestable en el pre-commit: `concurrency.test.ts` falla por tiempos bajo carga y bloquea el commit de cualquier sesión
+- **Qué pasa:** `__tests__/lib/seguimiento-convocatorias/concurrency.test.ts` falló en un `git commit` del 28/07 (1 de 19.109 tests) y tumbó el hook entero. **Ejecutado en aislamiento acto seguido: 11/11 en verde.** No era una regresión — es inestabilidad por tiempos.
+- **Por qué falla:** mide **paralelismo real** con temporizadores (*«items independientes terminan más rápido que secuencial»*, *«limita la concurrencia (max N en flight)»*). En el pre-commit compite con ~800 suites por la máquina, así que el reloj de pared deja de ser fiable. Un test que mide velocidad relativa bajo carga variable es inestable por construcción, no por un bug.
+- **Por qué merece arreglarse y no ignorarse:** el pre-commit corre en TODAS las sesiones. Un rojo aleatorio ahí no solo cuesta el reintento: **enseña a desconfiar del hook**, y un guardarraíl del que se desconfía acaba saltándose con `--no-verify`. Ese es el daño de verdad.
+- **Cómo arreglarlo sin perder lo que prueba:** sustituir la medición de tiempo por **observación del estado de concurrencia** — contador de tareas en vuelo con su máximo, y promesas resueltas a mano en vez de `setTimeout`. Se comprueba lo mismo (que nunca hay más de N a la vez, que el fallo de un worker no aborta el resto) sin depender del reloj. Si alguna comprobación necesita tiempo de verdad, que corra fuera del pre-commit.
+- **Antes de tocar:** confirmar la frecuencia real (correr la suite entera varias veces seguidas y contar), no vaya a ser que el fallo tuviera otra causa y el diagnóstico de «inestable» sea la explicación cómoda.
+- **Fichero:** `__tests__/lib/seguimiento-convocatorias/concurrency.test.ts`.
+
 ### [T-240] 🟠 [ABIERTO 28/07] El detector de completitud de leyes cuenta artículos pero no compara el TEXTO: da verde a una ley entera parafraseada
 - **Qué pasa:** `classifyLawCompleteness` / `scripts/audit-law-completeness.cjs` (kind `law_unverified_source`) responden a *«¿están todos los artículos?»*. No responden a *«¿dicen lo que dice la fuente?»*. Son preguntas distintas y hoy solo se hace la primera.
 - **El caso que lo destapó ([T-193], 28/07):** el RGPD figuraba como verificado con este resumen literal — *«RGPD completo: 99 artículos (1-99, sin huecos) = articulado íntegro»*, `is_ok: true`. Y **72 de esos 99 artículos eran una paráfrasis**, no el texto oficial: en el art. 43 la redacción se comía *«Los Estados miembros garantizarán que…»*. Cantidad perfecta, fidelidad nula. La ley se sirve en **49 temas de 49 oposiciones**.
