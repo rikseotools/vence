@@ -274,6 +274,15 @@ Según el artículo Y de la Ley Z:
 - Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.
 - Referencias a la POSICIÓN de otra opción («como se vio en la primera», «las dos últimas»): no sobreviven al barajado ni con estructura.
 
+> **Preguntas de «señale la afirmación INCORRECTA» — redáctalas así hasta que se arregle [T-212].**
+> El render de estilo impugnación etiqueta cada bloque por la CLAVE, no por si la afirmación es
+> verdadera, y **todavía ignora el campo `frame: 'select_incorrect'`** (el render de boletín sí lo
+> aplica). Si escribes las razones dando por hecho que la etiqueta acompaña, sale
+> `**A)** INCORRECTA — Afirmación verdadera: …`, que se lee como una contradicción.
+> **Fórmula que encaja con la etiqueta:** *"No es la que hay que señalar, porque la afirmación es
+> verdadera: …"* para las tres verdaderas, y *"Es la que hay que señalar, porque la afirmación es
+> falsa: …"* para la clave. Ejemplo aplicado: `65313a59` (art. 33 CE, propiedad privada).
+
 ### 5.1.bis La cita del blockquote se comprueba ENTERA (post-27/07/2026)
 
 `validar-explicacion.cjs` comparaba solo los **primeros 80 caracteres** normalizados de la cita
