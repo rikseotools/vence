@@ -374,6 +374,12 @@ export default function NotificationBell() {
     
     try {
       switch (notification.type) {
+        // 🎁 Aviso del Programa de Recompensas: lleva DIRECTO al panel. El `src` identifica que la
+        // visita viene del aviso — sin él sabríamos cuánta gente entra pero no qué la trae, que es
+        // lo único que dice si la campaña funciona y merece repetirse.
+        case 'programa_recompensas':
+          return `/recompensas?src=aviso-mencion`
+
         case 'problematic_articles':
           if (actionType === 'intensive_test') {
             console.log('🔍 Problematic articles data:', {

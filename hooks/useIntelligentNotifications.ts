@@ -490,6 +490,23 @@ const NOTIFICATION_TYPES: NotificationTypesMap = {
       type: 'open_chat'
     }
   },
+  // 🎁 PROGRAMA DE RECOMPENSAS — aviso dirigido a premium que NUNCA lo han abierto.
+  // Medido el 28/07/2026: solo 11 de 258 premium (4,3%) habían entrado alguna vez. El programa no
+  // falla por el incentivo, falla porque casi nadie sabe que existe. Al pinchar, el aviso lleva
+  // DIRECTO al panel (ver generateActionUrl) en vez de pedirle al usuario que busque el 🎁 él solo:
+  // el objetivo es que entre y lo lea, y cada paso intermedio se come parte de los que lo harían.
+  'programa_recompensas': {
+    priority: 35,
+    icon: '🎁',
+    color: 'blue',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+    textColor: 'text-blue-600 dark:text-blue-400',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+    primaryAction: {
+      label: '🎁 Ver mis recompensas',
+      type: 'view_recompensas'
+    }
+  },
   'new_content': {
     priority: 35,
     icon: '🆕',
