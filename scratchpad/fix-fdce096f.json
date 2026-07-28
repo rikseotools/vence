@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El artículo 14 no describe la sustitución: remite al artículo 12.1, que es donde está el orden.",
+  "cita": {
+    "ref": "Art. 14.1 Ley 6/1984 del Principado de Asturias",
+    "texto": "En los casos de ausencia temporal o enfermedad que no origine incapacidad, el Presidente del Principado será sustituido en la forma prevista en el artículo 12.1 de esta Ley."
+  },
+  "options": {
+    "0": "No es a quien remite el precepto para la sustitución.",
+    "1": "Es lo que resulta de la remisión: el artículo 12.1 llama al Vicepresidente y, en su defecto, al titular de la Consejería que corresponda según el orden establecido.",
+    "2": "No corresponde a la persona que la ley llama a sustituir al Presidente.",
+    "3": "Tampoco es el sustituto que designa la remisión del artículo 14.1."
+  },
+  "outro": "**Clave:** el artículo 14 regula CUÁNDO se sustituye (ausencia temporal o enfermedad sin incapacidad, y las ausencias de más de un mes requieren autorización previa); QUIÉN sustituye está en el artículo 12.1, al que remite."
+}

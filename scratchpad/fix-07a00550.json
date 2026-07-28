@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El documento de atajos de Word 365 recoge el comando en su tabla de revisión.",
+  "cita": {
+    "ref": "Atajos de teclado en Word 365 — Revisión",
+    "texto": "Ctrl+Mayús+E | Activar o desactivar Control de cambios"
+  },
+  "options": {
+    "0": "Ctrl+Alt+E no corresponde a Control de cambios en Word 365.",
+    "1": "Ctrl+E centra el texto (en la versión española de Word), no activa el control de cambios.",
+    "2": "Mayús+E no es un atajo de Word: la tecla Mayús sola con una letra escribe esa letra en mayúscula.",
+    "3": "Es el atajo que recoge el documento: activa o desactiva el Control de cambios (Track Changes)."
+  },
+  "outro": "**Clave:** en la versión ESPAÑOLA de Word los atajos siguen la inicial del nombre español, así que conviene no traducir mentalmente desde el inglés (Ctrl+E aquí es Centrar, no Select All)."
+}

@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "La directriz enumera los servicios que tienen esa consideración, y encabeza la lista el que se pregunta.",
+  "cita": {
+    "ref": "Directriz Novena, letra a) del Acuerdo 130/2015, de 10 de septiembre, de la Junta de Castilla y León",
+    "texto": "Servicio de valoración, orientación y planificación de caso ante situaciones de violencia de género. Son las actuaciones que realiza el coordinador de caso dirigidas a prestar una atención integral a personas ante situaciones de violencia de género, incluyendo la valoración de las circunstancias personales y el nivel de riesgo de las víctimas de violencia de género"
+  },
+  "options": {
+    "0": "No es el servicio que encabeza la enumeración de la directriz.",
+    "1": "Tampoco figura con esa denominación entre los servicios enumerados.",
+    "2": "El apoyo para la elaboración del proyecto de vida no es el servicio por el que pregunta el enunciado.",
+    "3": "Es el primero que enumera la directriz: comprende la valoración de las circunstancias personales y del nivel de riesgo, el asesoramiento sobre derechos y recursos, la propuesta de plan individual de atención y su seguimiento."
+  },
+  "outro": "**Clave:** lo define por su CONTENIDO —valorar, orientar y planificar el caso— y lo atribuye al coordinador de caso, que es quien articula la atención integral."
+}

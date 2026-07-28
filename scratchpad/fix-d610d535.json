@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El documento de atajos de Word 365 lo recoge en su tabla de edición básica.",
+  "cita": {
+    "ref": "Atajos de teclado en Word 365 — Edición",
+    "texto": "Ctrl+Z | Deshacer la acción anterior"
+  },
+  "options": {
+    "0": "Alt+O no deshace: las combinaciones con Alt activan la cinta de opciones y sus pestañas.",
+    "1": "Es el atajo que recoge el documento para deshacer la acción anterior, y puede repetirse para deshacer sucesivamente.",
+    "2": "Ctrl+L abre el cuadro de Buscar y reemplazar en la versión española de Word.",
+    "3": "Alt+D no deshace; las combinaciones con Alt navegan por la cinta de opciones."
+  },
+  "outro": "**Clave:** el par que conviene memorizar junto es Ctrl+Z (deshacer) y Ctrl+Y (rehacer), que el propio documento enumera seguidos."
+}

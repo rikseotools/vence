@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El artículo 9 no describe un procedimiento concreto: remite a la normativa de aplicación y atribuye la decisión a un órgano colegiado. Esa remisión, unida a los principios que el artículo 1 impone a estas organizaciones (transparencia y publicidad activa), es lo que excluye las tres alternativas restantes.",
+  "cita": {
+    "ref": "Art. 9.1 Ley 11/2017, de Buen Gobierno y Profesionalización de la gestión de los centros y organizaciones sanitarias del Servicio Madrileño de Salud",
+    "texto": "Al frente de cada organización existirá un director gerente o director territorial, cuyo nombramiento y cese corresponde al Consejo de Administración del SERMAS a propuesta del Director General del SERMAS atendiendo a la normativa de aplicación."
+  },
+  "options": {
+    "0": "El nombramiento no lo decide el gerente saliente ni es libre: corresponde al Consejo de Administración, a propuesta del Director General y con sujeción a la normativa aplicable.",
+    "1": "La ley no prevé sorteo alguno; el propio título de la norma habla de PROFESIONALIZACIÓN de la gestión, incompatible con designar al azar.",
+    "2": "La antigüedad no aparece como criterio, y menos de forma exclusiva: la ley atiende a la trayectoria profesional, el mérito y los conocimientos requeridos por la convocatoria.",
+    "3": "Es lo coherente con la remisión del precepto a la normativa de aplicación y con los principios de transparencia y publicidad activa que el artículo 1 impone a estas organizaciones."
+  },
+  "outro": "**Clave:** la ley permite además que accedan personas sin vinculación previa con la Administración (apartado 2) y somete a los designados a evaluación continua, pudiendo relevarlos si es negativa (apartado 3): profesionalización con rendición de cuentas, no confianza personal."
+}
