@@ -15,6 +15,12 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 ### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
+- **📏 PRIMERA MEDICIÓN (28/07 ~15:30, desde otra sesión — NO reclamé la ficha, solo dejo el dato):** el piloto **está vivo pero casi no produce señal**, así que hoy **no se puede juzgar** con los criterios de abajo.
+  - ✅ **El flag llega y actúa:** `FEATURE_SHUFFLE_OPTIONS=true` y `..._SCOPE=auxiliar_administrativo_valencia` están en SSM **y el task def vivo los inyecta**; el evento `shuffle_options_request_active` ha disparado **6 veces hoy**, todas con `positionType=auxiliar_administrativo_valencia`. No es un problema de configuración.
+  - ⚠️ **Pero `test_questions.option_order` sigue en 0**, incluidas las **36 respuestas de Valencia posteriores al deploy**. Es el criterio nº 2 de esta ficha… y **no basta para concluir que está roto**.
+  - 🔍 **El dato que lo explica, y es el hallazgo:** hoy hubo **379 respuestas de usuarios de Valencia y solo 6 peticiones con barajado activo**. La vía que baraja (`/api/questions/filtered` con `shuffleOptions:true`, que ponen los fetchers de `testFetchers.ts`) **apenas la toca el tráfico real**. Con ~12 preguntas servidas y un **33 % de elegibles** en Valencia (6.946 de 20.942 `safe`+`full`), el 0 es perfectamente compatible con "muestra minúscula", no con "roto".
+  - **Por tanto, ANTES de mirar aciertos o de decidir si se amplía/apaga: averiguar por qué el 98 % de las respuestas de Valencia no pasan por la vía que baraja.** Si es que el grueso del tráfico usa otro fetcher (tests de ley, aleatorio, repaso…), el piloto está midiendo una esquina y ampliarlo o apagarlo por estos números sería decidir a ciegas.
+  - Sin eventos `shuffle_option_order_invalid` (0 hoy): no hay indicio de clave rota.
 - **Qué:** el 28/07 se encendió el barajado de opciones en producción **solo para `auxiliar_administrativo_valencia`** (41 usuarios, ~4.400 respuestas/semana; el 33% de lo que se le sirve es barajable). **Revisar a los 3-5 días** con datos reales, no antes: hace falta que se acumulen respuestas.
 - **Cómo saber si va bien** (por orden de gravedad):
   1. `SELECT count(*) FROM observable_events WHERE event_type='shuffle_option_order_invalid' AND ts > '2026-07-28'` — detector de **clave rota** (el cliente devolvió un orden que no cuadra). **Cualquier cosa distinta de 0 es motivo de apagar y diagnosticar antes que seguir.**
