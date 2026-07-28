@@ -1833,6 +1833,13 @@ La cola de este cubo es larguísima y casi toda invisible: **256 preguntas —el
 77% de las veces que el cubo se ha servido en 90 días**, y el 82% del cubo no se sirvió ni una vez.
 Empezar por el principio de la tabla reparte el esfuerzo donde nadie mira.
 
+> **✅ La banda de alta exposición está CERRADA (29/07/2026).** Con las 73 de esta segunda tanda,
+> **`--min-impresiones 10` devuelve 0**. En dos sesiones se han reescrito **274** preguntas (201 +
+> 73) y el cubo pasó de 10.352 a **2.355 impresiones** en 90 días: **el 77% de la exposición
+> resuelto tocando el 3,4% de las preguntas**. Quedan ~7.737 en la cola larga, casi todas con **0
+> impresiones**. Antes de retomarlo, correr `extraer-lote.cjs` otra vez (la exposición se mueve) y
+> **bajar el umbral** (`--min-impresiones 5`, luego 2): seguir por id sigue siendo la peor opción.
+
 ```bash
 node scripts/apelotonadas/extraer-lote.cjs --min-impresiones 10 --tam 16 --out /tmp/apelotonadas
 ```
@@ -1883,6 +1890,17 @@ solo feas: no respondían a su pregunta. Patrones por frecuencia:
   general: **al encontrar un defecto en un cubo, comprobar si su detector lo estaba viendo** — si
   no, el detector es parte del arreglo, y hay que tocar los DOS gemelos del sweep (el `@Cron` del
   backend es el que escribe el snapshot) más el guardarraíl de paridad.
+  ⚠️⚠️ **Y volvió a estar en verde AL DÍA SIGUIENTE** (29/07): la tanda de 73 trajo 4 notas más y
+  los 21 literales recién ampliados **no veían ninguna**. Al medirlo: **96 activas con el defecto,
+  0 detectadas**. La lección de segunda vuelta es más dura que la primera — **una lista de
+  literales no puede ganar esta carrera**, porque cada remesa de IA estrena verbo y el literal se
+  queda fijado a la remesa que ya se remedió. El criterio pasó a ser el **patrón del ACTO**
+  (`AUDIT_NOTE_META_RE_SRC`): *el sujeto es «la explicación» y el verbo la juzga*. Los literales se
+  conservan porque cubren notas con **otro sujeto** («Esta pregunta debería», «Nota técnica:») —
+  medido: su intersección con el patrón es **0**, son complementarios. Calibración: muestra
+  aleatoria de 25 de las 96 → 25 notas reales, 0 falsos positivos. **Aplica la regla a cualquier
+  detector por literales que lleves puesto:** si la segunda ampliación tampoco aguanta un mes,
+  el criterio está mal planteado, no incompleto. Cola de remediación: **[T-249]**.
   **Vale la pena leerlas antes de descartarlas:** una de las 18 tenía razón y destapó una pregunta
   sin respuesta correcta (opción con tres productos donde el temario lista cuatro).
 - **Corrección sin limpiar** — quedó el antes y el después pegados: *«el órgano competente deberá
@@ -1895,5 +1913,29 @@ solo feas: no respondían a su pregunta. Patrones por frecuencia:
 - **Explicación que contradice su propia clave** — daba la respuesta buena y a continuación
   describía la competencia del *otro* órgano (Delegado en vez de Subdelegado del Gobierno).
 
+- **Explicación cortada a mitad de frase** — termina en seco, sin cerrar la oración: *«…otras que
+  sean inherentes a los servicios comunes del Ministerio»*. Salieron **4 de 73** en la tanda del
+  29/07. **No tiene detector**, y la heurística obvia («no acaba en signo de cierre») da 7.567
+  activas y es basura: hay que calibrarla antes de cablear nada → **[T-250]**.
+
 Consecuencia práctica: **este cubo no se cierra formateando**. Cada pregunta hay que verificarla
 contra su artículo como en cualquier otra revisión; el salto de línea es lo último que se arregla.
+
+### Lo que salió en la segunda tanda (73 revisadas, 29/07/2026)
+
+Confirma el patrón anterior y añade un dato de proceso útil: **73 de 73 con la clave sana**. Con
+las 145 de la primera tanda, el banco LEGAL de este cubo se comporta como el barrido masivo de
+junio predijo (≈0% de clave-mala-limpia en contenido legal); **el defecto es la explicación, no la
+respuesta**. Aun así la doble pasada se hizo entera —verificación + **auditoría ciega adversarial**
+(dos agentes que solo ven pregunta + opciones + clave + artículo, con el encargo de tumbar la
+clave)— y las dos coincidieron en 73/73. Merece la pena repetirla: cuesta poco y es lo único que
+distingue «no hay claves rotas» de «nadie las buscó».
+
+Dos apuntes para quien retome:
+- **Ojo a la fuente cuando el BOE no responde.** Un agente resolvió un caso con «fuentes
+  alternativas» porque el BOE estaba caído; se comprobó después contra el BOE consolidado y era
+  correcto, pero eso hay que **verificarlo, no suponerlo** (Estatuto de Aragón art. 115 → Título IX).
+- **Desfases de nomenclatura que NO son defectos:** la opción usa el nombre actual del organismo y
+  el artículo conserva el histórico (INSHT→INSST por RD 903/2018; Ministerio de Justicia→Ministerio
+  de la Presidencia, Justicia y Relaciones con las Cortes). La entidad es la misma y la clave se
+  sostiene: aclarar el desfase en el `intro` y seguir, **no** marcarlo como clave rota.

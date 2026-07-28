@@ -1161,6 +1161,14 @@ export class ContentHealthSweepService {
     // Ampliada el 28/07/2026 tras encontrar el detector EN VERDE con 24 activas defectuosas: los
     // 10 literales originales venían de una remesa concreta de julio y no cubrían las otras
     // formas del mismo acto (la explicación se juzga a sí misma, o da instrucciones de arreglo).
+    //
+    // Y el 29/07/2026 se le añadió el PATRÓN META (`AUDIT_NOTE_META_RE_SRC`), porque la lista
+    // ampliada volvió a quedarse en verde: 96 activas cuya explicación se juzga a sí misma y
+    // CERO vistas por los 21 literales. Los literales cubren las notas con otro sujeto ("Esta
+    // pregunta debería", "Nota técnica:"); el patrón cubre el acto. Van en OR.
+    const AUDIT_NOTE_META_RE_SRC =
+      'la explicaci[oó]n\\s+(es|no|debe|deber|de la respuesta|del enunciado|dada|actual|original|' +
+      'proporcionada|aportada|ofrecida|resulta|contiene|confunde|omite|menciona|cita|se refiere|est[aá])';
     const AUDIT_NOTE_PATS = [
       'La explicación omite',
       'La explicación debería',
@@ -1191,7 +1199,10 @@ export class ContentHealthSweepService {
       sql` OR `,
     );
     const anRows = (await this.db.execute(sql`
-      SELECT id FROM questions WHERE is_active = true AND (${anClause}) LIMIT 50
+      SELECT id FROM questions
+       WHERE is_active = true
+         AND ((${anClause}) OR explanation ~* ${AUDIT_NOTE_META_RE_SRC})
+       LIMIT 50
     `)) as unknown as Array<{ id: string }>;
     if (anRows.length)
       add(
@@ -1931,6 +1942,43 @@ export class ContentHealthSweepService {
         `${r.slug}: ${r.n} documento(s) oficial(es) clonado(s) SIN revisar (el más antiguo, del ${String(r.mas_viejo).slice(0, 10)}) — revísalos con npm run docs:bandeja`,
       );
     }
+    // ── Feedback PENDIENTE sin conversación (feedback_sin_conversacion) ────────────────────
+    // Espejo del gemelo CLI. El endpoint de respuesta exige un hilo: sin fila en
+    // `feedback_conversations` devuelve 409 y el feedback es INCONTESTABLE — el usuario espera
+    // una respuesta que no llegará nunca. Pasó de verdad: las solicitudes que entraban por el
+    // chat de IA no creaban conversación y las 6 de abril-julio se cerraron sin contestar.
+    //
+    // Estaba SOLO en el CLI, así que el @Cron nocturno —el que escribe el snapshot que pinta el
+    // panel— nunca lo emitía: un detector de severidad `error` invisible en la práctica. Lo
+    // destapó el guardarraíl de paridad al ejecutarlo el 29/07/2026 (llevaba rojo en `main`).
+    // Se excluyen las bajas de cuenta: van por su propio manual y no se responden por el hilo.
+    const sinConvRows = (await this.db.execute(sql`
+      SELECT f.id, f.type, left(f.message, 90) AS msg, f.created_at
+        FROM user_feedback f
+       WHERE f.status = 'pending'
+         AND f.message NOT LIKE '[Solicitud de eliminación de cuenta%'
+         AND NOT EXISTS (SELECT 1 FROM feedback_conversations c2 WHERE c2.feedback_id = f.id)
+       ORDER BY f.created_at
+       LIMIT 50
+    `)) as unknown as Array<{ id: string; type: string; msg: string; created_at: string }>;
+    if (sinConvRows.length)
+      add(
+        'app',
+        'error',
+        null,
+        'feedback_sin_conversacion',
+        `${sinConvRows.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
+        {
+          count: sinConvRows.length,
+          sample: sinConvRows.slice(0, 10).map((r) => ({
+            id: r.id,
+            type: r.type,
+            msg: r.msg,
+            creado: r.created_at,
+          })),
+        },
+      );
+
     // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
     // Caso raíz 25/07: Aux. Admin. UAL llevaba semanas activa con el hero sin tarjetas, 0 FAQs,
     // sin descripción y sin SEO. `audit:oposicion` lo cantaba, pero es on-demand. Espejo de

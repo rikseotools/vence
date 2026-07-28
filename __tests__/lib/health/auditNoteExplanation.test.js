@@ -25,6 +25,19 @@ describe('detector audit_note_explanation — casos reales que el detector NO ve
     'La pregunta habla de "fase de iniciación"; conviene aclarar este matiz para evitar confusión con el art.56.2.',
     // certifica en vez de explicar
     'Las opciones B, C y D son incorrectas por razones bien explicadas.',
+    // — 29/07/2026: la SEGUNDA recaída. Estos cuatro son texto real que servía producción y que
+    //   los 21 literales ampliados el día anterior NO veían; los cazó la campaña del cubo de
+    //   explicaciones apelotonadas, otra vez de refilón. Medido entonces sobre el banco vivo: 96
+    //   activas con este acto, 0 vistas por los literales → el criterio pasó a ser el PATRÓN.
+    'la explicación no advierte que el texto constitucional usa «Príncipe heredero».',
+    'La explicación es incoherente: afirma que las competencias exclusivas del Estado incluyen la ordenación del territorio.',
+    'La explicación de la respuesta B es excesivamente escueta: «serían magistrados del TC…».',
+    'La explicación debe reflejar que dentro del mismo artículo coexisten dos cuerpos del Grupo A.',
+    // …y las otras formas del mismo acto que salieron al medir las 96
+    'La explicación está vacía',
+    'La explicación no responde a la pregunta',
+    'La explicación original cita erróneamente "Art. 12" cuando el precepto aplicable es el 13.',
+    'La explicación resulta ambigua respecto del plazo aplicable.',
   ]
 
   it.each(REALES)('marca: %s', (texto) => {
@@ -46,6 +59,11 @@ describe('detector audit_note_explanation — NO marca explicaciones legítimas'
     'Como se ha visto, el plazo general es de diez días hábiles; debe mencionarse que puede ampliarse hasta cinco días más.',
     'Conviene revisar el contexto de la norma: el artículo se ubica en el capítulo de la potestad sancionadora.',
     'La explicación anterior desarrolla el principio de tipicidad; aquí interesa el de proporcionalidad.',
+    // Continuaciones legítimas de «La explicación …» que el patrón META debe dejar pasar. Se
+    // midieron sobre el banco vivo el 29/07/2026: 0 apariciones cada una, así que el patrón no
+    // pierde nada real por no cazarlas — pero si alguien las escribe, no son notas de auditoría.
+    'La explicación de este precepto se encuentra en el preámbulo de la ley.',
+    'La explicación radica en la naturaleza reglada de la potestad.',
   ]
 
   it.each(LEGITIMAS)('no marca: %s', (texto) => {

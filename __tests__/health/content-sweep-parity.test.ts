@@ -357,6 +357,27 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
     expect(evalPats(BACKEND)).toEqual(core.AUDIT_NOTE_PATS)
   })
 
+  // El 29/07/2026 la lista ampliada volvió a quedarse en verde (96 activas con el defecto, 0
+  // vistas) y se le añadió un PATRÓN META. Es la segunda mitad del criterio: si el backend se
+  // quedara solo con los literales, el @Cron —el que escribe el snapshot— seguiría ciego a esas
+  // 96 mientras el CLI las ve, que es exactamente el drift que este bloque existe para impedir.
+  /** Lee el literal `const AUDIT_NOTE_META_RE_SRC = '…' + '…'` del fuente y lo evalúa. */
+  function evalMetaRe(src: string): string {
+    const m = src.match(/const AUDIT_NOTE_META_RE_SRC\s*=\s*([\s\S]*?);\n/)
+    if (!m) throw new Error('no se encontró const AUDIT_NOTE_META_RE_SRC en el fuente')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el patrón META del backend es IDÉNTICO al del núcleo', () => {
+    expect(evalMetaRe(BACKEND)).toBe(core.AUDIT_NOTE_META_RE_SRC)
+  })
+
+  it('los DOS gemelos aplican el patrón META en su SQL (no solo lo declaran)', () => {
+    expect(SCRIPT).toMatch(/explanation ~\* \$/)
+    expect(BACKEND).toMatch(/explanation ~\* \$\{AUDIT_NOTE_META_RE_SRC\}/)
+  })
+
   it('los dos gemelos siguen emitiendo el kind', () => {
     expect(hasKind(SCRIPT, 'audit_note_explanation')).toBe(true)
     expect(hasKind(BACKEND, 'audit_note_explanation')).toBe(true)

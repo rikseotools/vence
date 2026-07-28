@@ -352,6 +352,21 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-249] 🟠 [ABIERTO 29/07] 96 explicaciones activas son NOTAS DE AUDITORÍA: el opositor lee la crítica en vez de la explicación
+- **Qué ve el opositor:** responde, y donde debería estar la explicación se encuentra el comentario que un pase de IA escribió *sobre* la pregunta: *«La explicación es incoherente: afirma…»*, *«La explicación debe reflejar que…»*, *«La explicación no responde a la pregunta»*, *«La explicación está vacía»*. No es un fallo de formato: es que ahí no hay explicación ninguna.
+- **Tamaño medido (29/07/2026, banco vivo):** **96 preguntas activas**. Antes de esta fecha el detector veía **0** — ver abajo.
+- **Por qué aparecen ahora:** el detector `audit_note_explanation` buscaba **literales**, y cada remesa de IA inventa un verbo nuevo. Se amplió el 28/07 (de 10 a 21 literales) y **al día siguiente volvía a estar en verde con 96 activas rotas**. El 29/07 el criterio pasó a ser el **patrón del acto** (`AUDIT_NOTE_META_RE_SRC` en `lib/health/auditNoteExplanation.cjs`): el sujeto es «la explicación» y el verbo la juzga. Esas 96 son la **cola que el detector nunca había enseñado**, no una regresión nueva.
+- **Cómo remediarlas — NO es formatear.** Cada una se verifica contra su artículo y se reescribe **estructurada** (`scripts/aplicar-explicacion.ts`, nace barajable), o se manda a `needs_human`. **Vale la pena LEER la nota antes de descartarla:** de las 18 remediadas el 28/07, una tenía razón y destapó una pregunta sin respuesta correcta. **NUNCA auto-flip de clave.**
+- **Por dónde empezar:** por **exposición**, no por id — es el aprendizaje del cubo de explicaciones apelotonadas (el 3,2% de un cubo concentra el 77% de las impresiones). Sirve el mismo patrón de `scripts/apelotonadas/extraer-lote.cjs`.
+- **Procedimiento:** `docs/maintenance/revisar-preguntas-con-agente.md` §🧱 (el pipeline entero: verificar → reescribir estructurada → registrar traza → re-verificar sobre BD viva).
+- **Relacionada:** [T-233] (tablas aplanadas) y [T-250] (explicaciones cortadas) — tres formas distintas de que lo servido no sea una explicación.
+
+### [T-250] 🟡 [ABIERTO 29/07] Explicaciones CORTADAS a mitad de frase: hay que calibrar el detector antes de poder contarlas
+- **Qué:** explicaciones activas que terminan en seco, sin cerrar la oración: *«…otras que sean inherentes a los servicios comunes del Ministerio»*, *«…soluciones sostenibles a largo plazo para abordar la violencia de género»*. Encontradas de refilón revisando el cubo de apelotonadas el 29/07: **4 de 73** preguntas de alta exposición estaban así.
+- **Estado: SIN detector, y la heurística obvia NO sirve.** Medido el 29/07: «no acaba en signo de cierre» da **7.567** activas; limpiando markdown de cierre (`**`) y espacio duro baja a **4.852**, y **sigue siendo claramente sobre-inclusiva** (explicaciones que acaban en negrita, en punto con espacio duro detrás, o legítimamente en una URL). El trabajo de esta ficha **es la calibración**, no el barrido: sin ella el hallazgo no es accionable y llenaría la bandeja de explicaciones correctas, que es como se mata un detector (misma decisión razonada en `visualDeixis.cjs`).
+- **Por dónde:** núcleo puro en `lib/health/`, con casos reales del banco en el test, y **medir precisión sobre una muestra aleatoria antes de cablearlo** a los dos gemelos del sweep (`scripts/health-sweep.cjs` + el `@Cron` del backend, que es el que escribe el snapshot) — si no pasa de ~90% de precisión, no se cablea.
+- **Impacto:** 🟡 el defecto es real y visible, pero su tamaño hoy es desconocido; lo caro sería cablear una heurística mala.
+
 ### [T-246] 🟠 [ABIERTO 28/07] Construir Mecánico-Conductor del Parque Móvil del Estado — 196 plazas, convocatoria VIVA
 - **Qué:** montar la oposición `mecanico-conductor-estado`, hoy **catalogada y vacía** (`is_active=false`, sin temas). **Comprometido con un usuario:** a Chema Ballesteros (28/07) se le ha respondido que **la estamos preparando**, así que esto no es una idea a valorar sino una promesa hecha.
 - **Convocatoria verificada contra el BOE** ([BOE-A-2026-15052](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-15052), publicada el **10/07/2026**):

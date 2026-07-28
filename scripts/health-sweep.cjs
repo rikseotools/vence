@@ -36,7 +36,7 @@ const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
-const { AUDIT_NOTE_PATS } = require('../lib/health/auditNoteExplanation.cjs');
+const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -256,9 +256,15 @@ async function main() {
   // arreglarla. Se remediaron ~46 el 10/07 (36 reescritas + 10 needs_human); este
   // detector evita que reaparezcan en silencio. Patrones ALTA PRECISIÓN (se omite
   // "la explicación anterior", propenso a FP en explicaciones ya corregidas).
+  //
+  // DOS vías complementarias (29/07/2026, ver el núcleo): los literales cazan las notas con
+  // OTRO sujeto ("Esta pregunta debería", "Nota técnica:"); el patrón meta caza el acto de que
+  // la explicación se juzgue a sí misma, que ninguna lista de literales alcanzaba (medido: 96
+  // activas, 0 vistas por los 21 literales).
   const anOrs = AUDIT_NOTE_PATS.map((_, i) => `explanation ILIKE $${i + 1}`).join(' OR ');
-  const anRows = (await c.query(`SELECT id FROM questions WHERE is_active = true AND (${anOrs}) LIMIT 50`,
-    AUDIT_NOTE_PATS.map(p => '%' + p + '%'))).rows;
+  const anRows = (await c.query(
+    `SELECT id FROM questions WHERE is_active = true AND ((${anOrs}) OR explanation ~* $${AUDIT_NOTE_PATS.length + 1}) LIMIT 50`,
+    [...AUDIT_NOTE_PATS.map(p => '%' + p + '%'), AUDIT_NOTE_META_RE_SRC])).rows;
   if (anRows.length) add('content', 'warn', null, 'audit_note_explanation',
     `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
