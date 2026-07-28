@@ -557,6 +557,28 @@ incluida).
     cada una vista **60 veces al mes**. **266 preguntas, no 13.424:** ahí está la parte del cubo que
     el opositor realmente ve, y es el siguiente paso natural (mitad determinista por relink
     intra-ley, mitad LLM, nunca auto-flip de clave).
+- **🔬 PILOTO EJECUTADO (28/07) — y el resultado CAMBIA la prioridad de esta ficha.** Se corrió el
+  barrido sobre el banco visible (43.997 explicaciones con blockquote, 17.245 con cita que pretende
+  ser literal) y se triaron los hallazgos por familia y por tráfico:
+  - **1.046 hallazgos, pero 898 son «retocadas»** (solape ≥0,8: el artículo dice lo mismo con otra
+    puntuación o formato) y 117 «dudosas». **Solo 31 son «ajenas»** — el artículo NO dice eso.
+    Es decir: **el cubo no es un problema de 13.424 preguntas graves; lo grave son decenas.**
+  - **Priorizar por tráfico a secas NO sirve:** de las 25 más servidas con cita no literal, 24
+    tenían solape ~1 (reformateo). El tráfico hay que cruzarlo con la familia.
+  - **Dos clases de FALSO POSITIVO encontradas al verificar a mano** (y arregladas, no anotadas):
+    1. **Cita de apoyo declarada.** Una explicación puede citar otro artículo y decirlo —
+       `5a0795d0` (109 exposiciones) cuelga del art. 65 CE y cita «Art. 56.3: *La persona del Rey es
+       inviolable…*»; `6aa51432` cuelga del art. 47 y cita «Art. 48.2 (anulabilidad)» para
+       contrastar. **Las dos son correctas** y el barrido las acusaba. Ahora, si la cita declara
+       otro artículo y allí SÍ es literal, no es hallazgo (`refDeclaradaDistinta`, 5 tests).
+    2. **Blockquote que no pretende citar.** `1d68ed6e` (356 exposiciones, la nº1 del cubo) usa el
+       blockquote como ESQUEMA de la estructura del Título I, con las rúbricas entrecomilladas; no
+       cita el art. 43. **La pregunta está bien.** Sin resolver: el filtro `citaLiteralPretendida`
+       no distingue una rúbrica entrecomillada de una cita.
+  - **Conclusión honesta:** este cubo **no es la palanca** que parecía para reducir las
+    impugnaciones pagadas. Sigue mereciendo drenaje —31 preguntas afirman lo que su artículo no
+    dice— pero es un lote pequeño, no una campaña. **La palanca sigue sin encontrarse**: el 79% de
+    lo que impugnan los usuarios no lo detecta hoy ningún cubo.
 - **Orden propuesto (barato → caro):** (1) **matar la copia**: que `barrido-citas.cjs` reutilice `validateQuotes` en vez de su `slice(0, 70)` — un detector con dos implementaciones ya ha demostrado que diverge; (2) re-barrer y publicar el inventario por bucket; (3) bucket determinista (relink intra-ley) en lotes con los guardarraíles de siempre; (4) LLM solo sobre el residuo, y **nunca auto-flip de clave**.
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.

@@ -56,6 +56,35 @@ function citaLiteralPretendida(explanation) {
 // divergen siempre; el barrido y el guardarraíl tienen que decir lo MISMO de la misma pregunta.
 const { citaNoLiteral } = require('./validar-explicacion.cjs');
 
+// ── Cita de OTRO artículo, DECLARADO por la propia explicación ────────────────────────────────
+//
+// Una explicación puede citar legítimamente un artículo distinto del que cuelga la pregunta, y
+// decirlo: «Art. 56.3: "La persona del Rey es inviolable…"» en una pregunta colgada del art. 65
+// (actos exceptuados de refrendo), o «Art. 48.2 (anulabilidad por defecto de forma)» en una de
+// nulidad. Comparar esa cita contra el artículo VINCULADO la declara falsa cuando es correcta.
+//
+// Medido el 28/07 sobre las 39 «ajenas» del inventario: 19 citaban otro artículo de la misma ley,
+// y las dos de más tráfico revisadas a mano resultaron legítimas. Un cubo lleno de aciertos
+// marcados como defectos es un cubo que nadie drena.
+const RE_REF_ARTICULO = /\bart[íi]?c?u?l?o?\.?\s*(\d+\s*(?:bis|ter|quater)?)/i;
+
+/** Nº de artículo que la propia cita declara, si lo declara y NO es el vinculado. */
+function refDeclaradaDistinta(explanation, articleNumber) {
+  const lineas = explanation.split('\n').map((l) => l.trim())
+    .filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
+  // La referencia va antes del entrecomillado: se busca en el tramo previo a la primera comilla.
+  const bq = lineas.join(' ');
+  // Solo cuenta lo que va ANTES de la cita: un artículo nombrado DENTRO del texto citado
+  // («…conforme al artículo 30») no significa que la cita sea de ese artículo. Y si el blockquote
+  // ARRANCA con la comilla, no hay cabeza donde declarar nada.
+  const corte = bq.search(/[«"“]/);
+  const cabeza = corte === -1 ? bq : bq.slice(0, corte);
+  const m = cabeza.match(RE_REF_ARTICULO);
+  if (!m) return null;
+  const declarado = m[1].replace(/\s+/g, ' ').trim();
+  return String(declarado) === String(articleNumber) ? null : declarado;
+}
+
 function citaAusente(texto, articleContent) {
   return citaNoLiteral(texto, articleContent) !== null;
 }
@@ -81,6 +110,12 @@ function clasificar(solape) {
   return 'dudosa';
 }
 
+// Exporta los helpers puros para test (sin BD). Si se requiere como módulo, no ejecuta el CLI.
+if (require.main !== module) {
+  module.exports = { refDeclaradaDistinta, citaAusente, solapeConArticulo };
+  return;
+}
+
 (async () => {
   const args = process.argv.slice(2);
   const incluirElipsis = args.includes('--incluir-elipsis');
@@ -90,7 +125,7 @@ function clasificar(solape) {
   try {
     const filas = await sql`
       SELECT q.id, q.explanation, q.lifecycle_state,
-             a.content, a.article_number, l.short_name AS ley,
+             a.content, a.article_number, a.law_id, l.short_name AS ley,
              (SELECT count(*)::int FROM test_questions tq WHERE tq.question_id = q.id) AS intentos
       FROM questions q
       JOIN articles a ON a.id = q.primary_article_id
@@ -98,7 +133,7 @@ function clasificar(solape) {
       WHERE q.lifecycle_state IN ('approved','tech_approved')
         AND q.explanation LIKE '%>%'`;
 
-    let pretenden = 0, saltadasElipsis = 0;
+    let pretenden = 0, saltadasElipsis = 0, declaradas = 0;
     const hallazgos = [];
     for (const r of filas) {
       const cita = citaLiteralPretendida(r.explanation);
@@ -106,6 +141,15 @@ function clasificar(solape) {
       if (cita.elipsis && !incluirElipsis) { saltadasElipsis++; continue; }
       pretenden++;
       if (citaAusente(cita.texto, r.content)) {
+        // ¿La cita declara otro artículo de la MISMA ley y allí sí es literal? Entonces no hay
+        // defecto: es una cita de apoyo correctamente atribuida.
+        const ref = refDeclaradaDistinta(r.explanation, r.article_number);
+        if (ref) {
+          const [otro] = await sql`
+            SELECT content FROM articles
+             WHERE law_id = ${r.law_id} AND article_number = ${ref} AND is_active LIMIT 1`;
+          if (otro && !citaAusente(cita.texto, otro.content)) { declaradas++; continue; }
+        }
         const solape = solapeConArticulo(cita.texto, r.content);
         hallazgos.push({
           question_id: r.id,
@@ -127,6 +171,7 @@ function clasificar(solape) {
     console.log(`Explicaciones con blockquote analizadas : ${filas.length}`);
     console.log(`Citas que PRETENDEN ser literales       : ${pretenden}${incluirElipsis ? ' (incluye elipsis)' : ''}`);
     if (!incluirElipsis) console.log(`Saltadas por elipsis (no concluyentes)  : ${saltadasElipsis}  → verlas con --incluir-elipsis`);
+    console.log(`Citas de OTRO artículo, declarado y correcto: ${declaradas}  ← NO son defecto`);
     console.log(`Citas NO literales                      : ${hallazgos.length}`);
     console.log('\n─── Desglose por familia (solo la 1ª es el fallo grave) ───');
     console.log(`🔴 AJENA    (solape <${UMBRAL_AJENA})  : ${ajenas.length}  → el artículo NO habla de eso: cita inventada o pregunta mal vinculada`);
