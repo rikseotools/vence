@@ -190,3 +190,54 @@ describe('instalar', () => {
     expect(acciones()).toContain('instalado')
   })
 })
+
+describe('el fallo es VISIBLE para el sistema de salud', () => {
+  // El panel /admin/salud-sistema cuenta `severity IN ('error','critical')`. Si la
+  // instalación se rompiera y lo emitiéramos como `info` —como estaba al principio—
+  // quedaría registrado pero no lo vería nadie, que es el fallo que el manual de
+  // observabilidad nombra por su nombre.
+  it('un fallo del diálogo de instalación se emite como `error`, no como `info`', async () => {
+    render(<PwaInstallBanner />)
+    const prompt = jest.fn().mockRejectedValue(new Error('prompt no disponible'))
+    const ev: any = new Event('beforeinstallprompt')
+    ev.prompt = prompt
+    ev.userChoice = Promise.resolve({ outcome: 'accepted' })
+    act(() => { window.dispatchEvent(ev) })
+    await screen.findByText('Instalar')
+
+    await userEvent.click(screen.getByText('Instalar'))
+    await act(async () => { await Promise.resolve() })
+
+    const fallo = emitidos.find((e) => e.metadata?.accion === 'error_prompt')
+    expect(fallo).toBeTruthy()
+    expect(fallo.severity).toBe('error')
+    expect(fallo.metadata.error).toContain('prompt no disponible')
+  })
+
+  it('los pasos NORMALES del embudo NO se emiten como error (no ensucian el panel)', async () => {
+    render(<PwaInstallBanner />)
+    dispararPrompt()
+    await screen.findByText('Instalar')
+    await userEvent.click(screen.getByLabelText('Cerrar'))
+
+    // Ver el banner y descartarlo es comportamiento esperado: contarlo como error dispararía
+    // alarmas por gente usando la app con normalidad.
+    for (const e of emitidos) expect(e.severity).toBe('info')
+  })
+})
+
+// La rama `prompt_perdido` (pulsa «Instalar» y el prompt guardado ya no vale) es DEFENSIVA:
+// depende de que Chrome invalide el prompt por su cuenta y no hay forma honesta de provocarla
+// desde jsdom sin retorcer el componente. No se finge cobertura con un test que no prueba
+// nada. Lo que SÍ se fija es lo que importa: que si ocurre, sea visible para el panel de salud.
+describe('contrato de severidad', () => {
+  it('las acciones consideradas FALLO incluyen el clic sin efecto', () => {
+    const src = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'components/PwaInstallBanner.tsx'), 'utf8')
+    const linea = src.match(/const ACCIONES_DE_FALLO = new Set\(\[([^\]]*)\]\)/)?.[1] ?? ''
+    expect(linea).toContain('error_prompt')
+    expect(linea).toContain('prompt_perdido')
+    // Y que el emisor las mapee a 'error', que es lo que mira /admin/salud-sistema.
+    expect(src).toContain("ACCIONES_DE_FALLO.has(accion) ? 'error' : 'info'")
+  })
+})

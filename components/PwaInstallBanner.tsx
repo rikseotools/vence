@@ -51,9 +51,19 @@ interface EventoInstalacion extends Event {
  */
 const MARGEN_PROMPT_MS = 10_000
 
+/**
+ * Acciones que son un FALLO de verdad y no un paso del embudo. Van con severidad `error`
+ * porque el panel de salud (`/admin/salud-sistema`) cuenta `severity IN ('error','critical')`:
+ * emitirlas como `info` —como estaban al principio— las dejaba registradas pero **invisibles**,
+ * y si la instalación se rompiera para los usuarios no se enteraría nadie. Es justo el fallo
+ * que el manual de observabilidad nombra: *"si un usuario nos reporta un bug que la
+ * observabilidad podía haber capturado, hemos fallado"*.
+ */
+const ACCIONES_DE_FALLO = new Set(['error_prompt', 'prompt_perdido'])
+
 function emitir(accion: string, extra?: Record<string, unknown>) {
   emitClientEvent({
-    severity: 'info',
+    severity: ACCIONES_DE_FALLO.has(accion) ? 'error' : 'info',
     eventType: 'pwa_install_banner',
     // `accion` va DESPUÉS del spread a propósito: así ningún extra puede pisarla. Es la clave
     // por la que se agrupa todo el embudo; que un `metadata` la sobrescriba sin avisar
@@ -156,7 +166,15 @@ export default function PwaInstallBanner() {
 
   const instalar = useCallback(async () => {
     const p = promptRef.current
-    if (!p) return
+    if (!p) {
+      // El usuario pulsa «Instalar» y NO PASA NADA. Es el fallo más grave de los dos, porque
+      // desde fuera es indistinguible de que la app esté rota, y antes salía por un `return`
+      // mudo. Chrome invalida el prompt guardado en algunos casos (cambio de pestaña, otra
+      // instalación en curso), así que puede ocurrir sin que nadie haya tocado el código.
+      emitir('prompt_perdido')
+      setVisible(false)
+      return
+    }
     emitir('aceptado')
     setVisible(false)
     try {

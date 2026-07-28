@@ -1235,6 +1235,19 @@ WHERE event_type='pwa_install_banner' AND ts > now() - interval '7 days'
 GROUP BY 1,2 ORDER BY 3 DESC;
 ```
 
+**Si la instalación FALLA, sale en el panel de salud.** Dos acciones se emiten con
+`severity:'error'` (el panel cuenta `severity IN ('error','critical')`), y las demás con `info`
+para no disparar alarmas por gente usando la app con normalidad:
+
+| Acción | Qué pasó |
+|---|---|
+| `error_prompt` | El diálogo de instalación lanzó una excepción |
+| `prompt_perdido` | **Pulsó «Instalar» y no pasó NADA** (Chrome invalidó el prompt guardado) |
+
+El segundo es el peor de los dos: desde fuera es indistinguible de que la app esté rota, y
+antes salía por un `return` mudo sin dejar rastro. Fijado por test, y validado por mutación
+(devolverlos a `info` pone 2 tests en rojo).
+
 **Qué NO existe todavía:** invitación en **iOS** (Safari no dispara `beforeinstallprompt`; haría
 falta enseñar las instrucciones de «Añadir a pantalla de inicio» a mano) y ningún panel: hoy
 esto se consulta con las queries de arriba.
