@@ -76,6 +76,10 @@ export const UserProgressSchema = z.object({
 export const TopicContentSchema = z.object({
   // Metadatos del tema
   topicNumber: z.number(),
+  // Número VISIBLE. Va en el contrato y no solo en la consulta del listado porque el PDF
+  // lo necesita y antes no lo tenía: por eso portadas decían "Tema 14" donde la web decía
+  // "Tema 7" (lo reportó una usuaria, Laura, el 28/07/2026). `null` = no numera por bloques.
+  displayNumber: z.number().nullable().default(null),
   title: z.string(),
   description: z.string().nullable(),
   oposicion: z.string(),

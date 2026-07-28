@@ -267,6 +267,7 @@ export function pdfFileName(oposicionSlug: string, topicNumber: number): string 
 // Solo los campos que este builder lee. Así acepta tanto el TopicContent completo (route) como el
 // TopicContentBase que devuelve la variante uncached (pre-gen/worker, sin isUnlocked/unlockReq).
 type PdfContentInput = Pick<TopicContent, 'topicNumber' | 'title' | 'description' | 'oposicionName' | 'laws'>
+  & { displayNumber?: number | null }
 
 export function buildTopicPdfModel(
   content: PdfContentInput,
@@ -295,7 +296,11 @@ export function buildTopicPdfModel(
   const fecha = generatedAt.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return {
-    title: `Tema ${content.topicNumber}. ${content.title}`,
+    // El número VISIBLE, no el interno. En los temarios por bloques la numeración reinicia
+    // en cada bloque, así que el tema 14 de la BD es el "Tema 7 de específica" del programa
+    // oficial — y la portada del PDF decía 14 mientras la web decía 7. Un opositor que
+    // imprime el temario y lo cruza con la convocatoria no puede cuadrarlo.
+    title: `Tema ${content.displayNumber ?? content.topicNumber}. ${content.title}`,
     subtitle: content.description?.trim() || '',
     oposicionName: content.oposicionName,
     footer: `Vence · ${content.oposicionName} · Generado el ${fecha}`,

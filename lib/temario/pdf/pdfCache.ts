@@ -33,7 +33,13 @@ export interface PdfHashableContent {
 // esto invalida todas las cache keys → se regeneran con la nueva maquetación.
 //   v2: nº de página y título del tema por hoja (post-proceso pdf-lib) + minPresenceAhead para que
 //       las cabeceras no queden huérfanas al pie (feedback Nila, fb a67f7c02 + 1397b115).
-export const PDF_TEMPLATE_VERSION = 'v2'
+//   v3: la portada usa el nº de tema VISIBLE y no el interno. En los temarios por bloques la
+//       numeración reinicia en cada bloque, así que el PDF decía "Tema 14" donde la web decía
+//       "Tema 7 de específica" (lo reportó la usuaria Laura, 28/07/2026). Afectaba a 619 temas
+//       de 21 oposiciones. El bump es IMPRESCINDIBLE, no cosmético: el hash cubre el contenido
+//       y no la portada, así que sin él los 383 PDF ya cacheados seguirían saliendo con el
+//       número viejo por mucho que el código estuviera arreglado.
+export const PDF_TEMPLATE_VERSION = 'v3'
 
 export function topicPdfContentHash(content: PdfHashableContent): string {
   const h = createHash('sha256')

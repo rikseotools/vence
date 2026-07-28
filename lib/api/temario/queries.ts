@@ -33,6 +33,13 @@ import { sortByArticleNumber } from '@/lib/utils/articleOrder'
 // Tipo interno para contenido cacheado
 type TopicContentBase = {
   topicNumber: number
+  /**
+   * El número que VE el usuario. En los temarios por bloques la numeración reinicia en
+   * cada bloque (la específica empieza otra vez por el 1), así que el nº interno y el
+   * visible NO coinciden: el "Tema 14" de la BD es el "Tema 7 de específica" del programa.
+   * `null` cuando la oposición no numera por bloques, y entonces manda `topicNumber`.
+   */
+  displayNumber: number | null
   title: string
   description: string | null
   oposicion: OposicionSlug
@@ -64,6 +71,7 @@ export async function getTopicContentBaseInternal(
     .select({
       id: topics.id,
       topicNumber: topics.topicNumber,
+      displayNumber: topics.displayNumber,
       title: topics.title,
       description: topics.description,
       positionType: topics.positionType,
@@ -99,6 +107,7 @@ export async function getTopicContentBaseInternal(
   if (validScopes.length === 0) {
     return {
       topicNumber: topic.topicNumber,
+      displayNumber: topic.displayNumber ?? null,
       title: topic.title,
       description: topic.description,
       oposicion: oposicionSlug,
@@ -305,6 +314,7 @@ export async function getTopicContentBaseInternal(
 
   return {
     topicNumber: topic.topicNumber,
+    displayNumber: topic.displayNumber ?? null,
     title: topic.title,
     description: topic.description,
     oposicion: oposicionSlug,

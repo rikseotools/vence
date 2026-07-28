@@ -114,6 +114,40 @@ describe('buildTopicPdfModel', () => {
     expect(m.footer).toContain('20 de julio de 2026')
   })
 
+  // ── Nº de tema VISIBLE en la portada (bug reportado por la usuaria Laura, 28/07/2026) ──
+  // En los temarios por bloques la numeración reinicia en cada bloque: el tema 14 de la BD
+  // es el "Tema 7 de específica" del programa oficial. La web ya lo pintaba bien en todas
+  // sus pantallas; la portada del PDF, no — componía el título con el número INTERNO. Un
+  // opositor que imprime el temario y lo cruza con la convocatoria no puede cuadrarlo.
+  it('usa el número VISIBLE cuando el temario va por bloques', () => {
+    // Caso literal del aviso: UMU, "Seguridad en edificios públicos. El incendio".
+    const porBloques: any = {
+      ...content,
+      topicNumber: 14,
+      displayNumber: 7,
+      title: 'Seguridad en edificios públicos. El incendio',
+    }
+    const m = buildTopicPdfModel(porBloques, FECHA)
+    expect(m.title).toBe('Tema 7. Seguridad en edificios públicos. El incendio')
+    expect(m.title).not.toContain('Tema 14')
+  })
+
+  it('cae al número interno cuando la oposición NO numera por bloques', () => {
+    // La mayoría de oposiciones son de bloque único y ahí displayNumber viene null: el
+    // arreglo no debe cambiarles nada.
+    expect(buildTopicPdfModel({ ...content, displayNumber: null }, FECHA).title)
+      .toBe('Tema 12. El Parlamento (II)')
+    expect(buildTopicPdfModel({ ...content, displayNumber: undefined }, FECHA).title)
+      .toBe('Tema 12. El Parlamento (II)')
+  })
+
+  it('no confunde el 0 con "sin número visible"', () => {
+    // `??` y no `||`: con `||` un displayNumber 0 caería al interno. No debería haber
+    // temas 0, pero el operador correcto no cuesta nada y el incorrecto falla en silencio.
+    expect(buildTopicPdfModel({ ...content, displayNumber: 0 }, FECHA).title)
+      .toBe('Tema 0. El Parlamento (II)')
+  })
+
   it('es determinista: la fecha se inyecta, no se lee el reloj', () => {
     const a = buildTopicPdfModel(content, FECHA)
     const b = buildTopicPdfModel(content, FECHA)
