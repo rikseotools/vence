@@ -1827,6 +1827,33 @@ preguntas activas**, ninguna con explicación estructurada.
 > menos de 3 párrafos). Aquel es el **gate** al escribir; este es el **cubo** del panel. Se usan los
 > dos: el cubo selecciona, el gate valida.
 
+### El mismo pipeline sirve para OTROS cubos (`--cubo`)
+
+Nada de esto es específico de las explicaciones apelotonadas: lo único que cambia es qué preguntas
+entran. El extractor lo tiene parametrizado:
+
+```bash
+node scripts/apelotonadas/extraer-lote.cjs --cubo nota-auditoria --min-impresiones 1 --out <dir>
+```
+
+- `apelotonada` (default) — explicación >400 caracteres sin un salto de línea.
+- `nota-auditoria` — la «explicación» es la NOTA que un pase de IA escribió sobre la pregunta.
+  **Consume `lib/health/auditNoteExplanation.cjs`**, el mismo criterio que el barrido nocturno, así
+  que la cola y el badge no pueden divergir (guardarraíl: `__tests__/scripts/extraerLoteCubos.test.js`).
+  Cola: **T-249**.
+
+⚠️ **`--ids` NO aplica el predicado del cubo** (arreglado el 29/07: antes sí, y pedir 35 ids devolvía
+8 **sin decir nada** — justo cuando se usa para reprocesar una lista de otra consulta). Ahora los ids
+mandan y avisa de los que no salen.
+
+> **Lo que cambia en el cubo `nota-auditoria`: la nota vieja SUELE TENER RAZÓN.** Medido en la
+> primera tanda (35 con exposición, 29/07): **22 de 35 acertaban**. No son ruido — son defectos que
+> alguien detectó y nadie ejecutó. **Léelas y compruébalas contra el artículo antes de descartarlas.**
+> De ahí salieron las dos únicas irreparables: una pregunta con TRES opciones ciertas (porque el
+> temario del que salió las hace ciertas) y otra construida sobre la LOPD 15/1999 **derogada**. Y de
+> la primera salió un defecto un piso más abajo: la misma prosa de auditoría **dentro del temario**
+> (T-253). Cuando una nota apunte a la fuente, mira la fuente.
+
 ### Ataca por EXPOSICIÓN, no por id
 
 La cola de este cubo es larguísima y casi toda invisible: **256 preguntas —el 3,2%— concentran el
