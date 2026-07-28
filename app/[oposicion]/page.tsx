@@ -12,6 +12,7 @@ import {
   getTopicNamesForLandingCached,
 } from '@/lib/api/convocatoria/queries'
 import { resumenHistorico } from '@/lib/convocatoria/historico'
+import { fraseReserva } from '@/lib/convocatoria/reservaDiscapacidad'
 import HistoricoConvocatorias from './HistoricoConvocatorias'
 import { safeServerFetch } from '@/lib/db/safeServerFetch'
 import { notFound } from 'next/navigation'
@@ -137,6 +138,10 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   const plazasLibres = data?.plazasLibres ?? null
   const plazasPromocion = data?.plazasPromocionInterna ?? null
   const plazasDiscapacidad = data?.plazasDiscapacidad ?? null
+  // [T-214] El cupo de discapacidad va DENTRO de las plazas libres o aparte según la convocatoria,
+  // y la landing decía lo mismo en los dos casos: «216 plazas de acceso libre. 19 reservadas…»
+  // se leía como 235 cuando las 19 ya iban dentro. Si no consta la relación, no se afirma.
+  const reservaDisc = fraseReserva(plazasDiscapacidad, data?.plazasDiscapacidadIncluidas, formatNumber)
   const plazasTotal = data?.plazasTotal ?? null
   const temasCount = data?.temasCount ?? config.totalTopics
   const boeRef = data?.boeReference ?? data?.diarioReferencia ?? null
@@ -251,7 +256,7 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
       {
         pregunta: `¿Cuántas plazas hay para ${config.name}?`,
         respuesta: plazasLibres
-          ? `Se convocan ${formatNumber(plazasLibres)} plazas de acceso libre${plazasDiscapacidad ? ` (${formatNumber(plazasDiscapacidad)} reservadas para discapacidad)` : ''}.`
+          ? `Se convocan ${formatNumber(plazasLibres)} plazas de acceso libre${reservaDisc ?? '.'}`
           : 'El número de plazas se determinará en la convocatoria.'
       },
       {
@@ -334,8 +339,8 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
 
             {plazasLibres != null && plazasLibres > 0 && (
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                Oposición con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>.
-                {plazasDiscapacidad != null && plazasDiscapacidad > 0 ? ` ${formatNumber(plazasDiscapacidad)} reservadas para discapacidad.` : ''}
+                Oposición con <strong>{formatNumber(plazasLibres)} plazas de acceso libre</strong>
+                {reservaDisc ?? '.'}
               </p>
             )}
 

@@ -20,6 +20,10 @@ export interface OposicionLandingData {
   plazasLibres: number | null
   plazasPromocionInterna: number | null
   plazasDiscapacidad: number | null
+  /** ¿El cupo de discapacidad va DENTRO de `plazasLibres` o aparte? `null` = no consta.
+   *  Sin esto, la landing decía lo mismo para dos realidades opuestas (ver [T-214] y
+   *  `lib/convocatoria/reservaDiscapacidad.ts`): con `true` las cifras NO se suman. */
+  plazasDiscapacidadIncluidas: boolean | null
   /** Total del proceso, DERIVADO en la vista (3 turnos comunes + plazas_otros_turnos).
    *  NULL = no consta ninguna cifra (desconocido), nunca 0. Se expone como {plazasTotal}. */
   plazasTotal: number | null
@@ -73,6 +77,7 @@ export async function getOposicionLandingData(
       plazas_libres: number | null
       plazas_promocion_interna: number | null
       plazas_discapacidad: number | null
+      plazas_discapacidad_incluidas: boolean | null
       plazas_total: number | null
       exam_date: string | null
       exam_date_approximate: boolean | null
@@ -104,6 +109,7 @@ export async function getOposicionLandingData(
       SELECT
         nombre,
         plazas_libres, plazas_promocion_interna, plazas_discapacidad, plazas_total,
+        plazas_discapacidad_incluidas,
         exam_date::text AS exam_date, exam_date_approximate,
         inscription_start::text AS inscription_start, inscription_deadline::text AS inscription_deadline,
         boe_publication_date::text AS boe_publication_date, boe_reference,
@@ -125,6 +131,7 @@ export async function getOposicionLandingData(
       plazasLibres: r.plazas_libres as number | null,
       plazasPromocionInterna: r.plazas_promocion_interna as number | null,
       plazasDiscapacidad: r.plazas_discapacidad as number | null,
+      plazasDiscapacidadIncluidas: r.plazas_discapacidad_incluidas as boolean | null,
       plazasTotal: r.plazas_total as number | null,
       examDate: r.exam_date as string | null,
       examDateApproximate: r.exam_date_approximate as boolean | null,

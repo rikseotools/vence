@@ -249,6 +249,19 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'patrón y 37 por tablas que el PDF aplanó) y la frontera SÍ (7 casos que estaban en verde ' +
       'porque la cifra vivía dentro de un código, p.ej. 216 en `C1.1000197163216`).',
   },
+  simular_frase_plazas: {
+    titulo: 'Simular la frase de plazas de la landing (vieja vs nueva) sobre TODAS las activas',
+    ruta: 'scripts/convocatoria/sim-frase-plazas.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-convocatorias.md',
+    notas:
+      'npx tsx scripts/convocatoria/sim-frase-plazas.ts [--todas]. No escribe nada. Importa el ' +
+      'núcleo real `lib/convocatoria/reservaDiscapacidad.ts`, así que si cambia la regla cambia la ' +
+      'simulación. Enseña la frase ANTES y AHORA de cada landing viva agrupada por tipo de cambio, ' +
+      'y comprueba que ninguna pierde su cifra de plazas. Correrla es lo que destapó en [T-214] la ' +
+      'concordancia rota en singular («1 reservadas para discapacidad») y lo que permite tocar la ' +
+      'primera frase de 123 landings publicadas sin desplegar a ciegas.',
+  },
   simular_enlace_boletin: {
     titulo: 'Simular el detector del botón oficial sobre TODAS las landings activas',
     ruta: 'scripts/convocatoria/sim-enlace-boletin.cjs',
