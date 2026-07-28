@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "El artículo enumera de la a) a la g) las atribuciones del Consejo de Administración. Tres de las opciones están en esa lista; una no.",
+  "cita": {
+    "ref": "Art. 8 RD 122/2015",
+    "texto": "Serán atribuciones del Consejo de Administración: a) Cumplir y velar por el cumplimiento de los fines esenciales de la entidad Trabajo Penitenciario y Formación para el Empleo. b) Aprobar el anteproyecto de presupuestos, así como, las cuentas anuales de la entidad. […] d) Determinar anualmente el módulo retributivo de los internos que realicen trabajos productivos en los talleres penitenciarios. e) Aprobar anualmente el inventario de bienes y derechos, tanto propios como adscritos, excepto los de carácter fungible."
+  },
+  "options": {
+    "0": "No figura entre las atribuciones que enumera el artículo: suscribir convenios y habilitar al Director-Gerente para contratar no aparece en la lista.",
+    "1": "Es la letra b) de la enumeración: aprobar el anteproyecto de presupuestos y las cuentas anuales.",
+    "2": "Es la letra d): determinar anualmente el módulo retributivo de los internos que trabajan en los talleres penitenciarios.",
+    "3": "Es la letra e): aprobar anualmente el inventario de bienes y derechos, propios y adscritos, salvo los fungibles."
+  },
+  "outro": "**Clave:** al Consejo le corresponden funciones de aprobación y control (presupuestos, cuentas, inventario, módulo retributivo), y puede deliberar sobre asuntos del Director-Gerente que el Presidente le someta; la gestión contractual ordinaria no está en su lista."
+}

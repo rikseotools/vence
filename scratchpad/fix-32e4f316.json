@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "La Ley de Prevención de Riesgos Laborales define en su artículo 4 los conceptos que maneja, y el que corresponde a la consecuencia sufrida es el de daño.",
+  "cita": {
+    "ref": "Art. 4.3.º Ley 31/1995, de Prevención de Riesgos Laborales",
+    "texto": "Se considerarán como «daños derivados del trabajo» las enfermedades, patologías o lesiones sufridas con motivo u ocasión del trabajo."
+  },
+  "options": {
+    "0": "La prevención es el conjunto de actividades o medidas adoptadas para evitar o disminuir los riesgos, es decir, la actuación anticipada, no la consecuencia sufrida.",
+    "1": "El riesgo laboral es la POSIBILIDAD de que un trabajador sufra un determinado daño: probabilidad, no consecuencia materializada.",
+    "2": "Es el concepto que designa la consecuencia ya producida: la ley lo concreta en las enfermedades, patologías o lesiones sufridas con motivo u ocasión del trabajo.",
+    "3": "El peligro es la fuente o situación capaz de causar el mal, no el mal mismo."
+  },
+  "outro": "**Clave:** la cadena es peligro (fuente) → riesgo (probabilidad de que se materialice) → daño (consecuencia ya sufrida). La ley define los tres en el mismo artículo 4, y las preguntas suelen jugar con confundir riesgo y daño."
+}

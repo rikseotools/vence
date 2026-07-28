@@ -587,9 +587,18 @@ incluida).
     largo**. Con esto y las dos correcciones anteriores, las «ajenas» bajaron de 39 a 28.
   · **Una cita SÍ era inventada:** `5dde0ced` atribuía al art. 2 del RD 822/2021 un texto que no
     existe en la norma (verificado en el BOE); reescrita con el texto real.
-  · **Quedan 7**, todas con 0-2 exposiciones: `f7392e33` (Reglamento 3/1995 art. 21 — nuestro texto
-    está CONDENSADO, hace falta el boletín del CGPJ, que no está en el id BOE probado), `e66caaca`,
-    `756f0fd9`, `089efde9`, `7cfbea54`, `32e4f316` y `c0defc3f`.
+  · **CERRADO 29/31 (28/07): 17 reparadas y 12 falsos positivos**, todas trazadas. En la última
+    tanda: enumeraciones citadas en prosa (`089efde9`), una definición de «Daño» que NO está en el
+    art. 4 LPRL (`32e4f316`), y dos citas de otro artículo que ahora lo declaran —`e66caaca` (el
+    art. 9 SUSPENDE, el 10 EXTINGUE) y `756f0fd9` (el art. 9 CP, imprescindible porque la afirmación
+    falsa dice «supletoriamente» donde el Título Preliminar se aplica de forma DIRECTA)—.
+  · **Quedan 2, y las dos por el mismo motivo: falta la fuente y no se toca sin ella.**
+    `f7392e33` (Reglamento 3/1995 de los Jueces de Paz, art. 21) y `c0defc3f` (Ley 13/1990 CES CyL,
+    art. 5.2) tienen el texto **CONDENSADO** en nuestra BD, no verbatim, así que no se puede
+    comparar ni citar sin traerlo del boletín. El Reglamento 3/1995 es del CGPJ y no aparece en el
+    id del BOE probado (`BOE-A-1995-16221`). **Es el mismo patrón que destapó el RGPD art. 4: el
+    detector de citas encuentra artículos incompletos de rebote**, y esa es la parte más valiosa de
+    la campaña.
 - **Orden propuesto (barato → caro):** (1) **matar la copia**: que `barrido-citas.cjs` reutilice `validateQuotes` en vez de su `slice(0, 70)` — un detector con dos implementaciones ya ha demostrado que diverge; (2) re-barrer y publicar el inventario por bucket; (3) bucket determinista (relink intra-ley) en lotes con los guardarraíles de siempre; (4) LLM solo sobre el residuo, y **nunca auto-flip de clave**.
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.

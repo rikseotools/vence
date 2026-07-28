@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "El apartado 2 del artículo 11 enumera las funciones propias del Consejo de Salud, que es un órgano consultivo y de participación ciudadana.",
+  "cita": {
+    "ref": "Art. 11.2 Ley 4/1994, de Salud de la Región de Murcia",
+    "texto": "El Consejo de Salud de la Región de Murcia tendrá como funciones propias: a) El asesoramiento al Consejo de Gobierno y consejero en cuantos asuntos relacionados con la salud le sean consultados por éste. […] c) Evaluar el cumplimiento de los fines y objetivos del Plan de Salud. d) Conocer e informar el anteproyecto del Plan de Salud de la Comunidad Autónoma y elevar el informe al Consejo de Dirección."
+  },
+  "options": {
+    "0": "No está entre sus funciones: el Consejo de Salud es órgano consultivo y de participación, y aprobar nombramientos directivos no le corresponde.",
+    "1": "Es la letra d) de la enumeración: conocer e informar el anteproyecto del Plan de Salud y elevar el informe al Consejo de Dirección.",
+    "2": "Figura también entre sus funciones de conocimiento e informe.",
+    "3": "Es la letra c): evaluar el cumplimiento de los fines y objetivos del Plan de Salud."
+  },
+  "outro": "**Clave:** sus verbos son asesorar, proponer, evaluar, conocer e informar — todos consultivos. Ninguno es decisorio, y ahí se distingue de los órganos de dirección."
+}

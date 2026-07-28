@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "El artículo 10 enumera las causas de EXTINCIÓN de la relación laboral especial penitenciaria. La incapacidad temporal no está entre ellas: figura como causa de SUSPENSIÓN en el artículo 9 del mismo real decreto, y esa es la distinción que examina la pregunta.",
+  "cita": {
+    "ref": "Art. 10.1 RD 782/2001",
+    "texto": "La relación laboral especial penitenciaria se extinguirá: a) Por mutuo acuerdo de las partes. b) Por la terminación de la obra o servicio. c) Por ineptitud del interno trabajador conocida o sobrevenida con posterioridad al desempeño del puesto de trabajo adjudicado."
+  },
+  "options": {
+    "0": "Sí extingue la relación: es la primera causa que enumera el precepto.",
+    "1": "No extingue la relación, la SUSPENDE: la incapacidad temporal figura entre las causas de suspensión del artículo 9, y por eso es la afirmación que hay que señalar.",
+    "2": "Sí extingue: la terminación de la obra o servicio está en la enumeración.",
+    "3": "Sí extingue: la ineptitud del interno trabajador, conocida o sobrevenida tras el desempeño del puesto, está en la enumeración."
+  },
+  "outro": "**Clave:** suspensión y extinción son planos distintos. La suspensión interrumpe la relación y permite retomarla; la extinción la termina. La incapacidad temporal, por definición, es transitoria."
+}

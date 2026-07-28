@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "Conviene separar dos reglas que el Código Penal enuncia por separado: el Título Preliminar se aplica DIRECTAMENTE a los delitos penados por leyes especiales, mientras que las RESTANTES disposiciones del Código son las que operan como supletorias.",
+  "cita": {
+    "ref": "Art. 9 del Código Penal",
+    "texto": "Las disposiciones de este Título se aplicarán a los delitos que se hallen penados por leyes especiales. Las restantes disposiciones de este Código se aplicarán como supletorias en lo no previsto expresamente por aquéllas."
+  },
+  "options": {
+    "0": "Es correcta: recoge la irretroactividad de la ley penal y de las medidas de seguridad que establece el artículo 2.1.",
+    "1": "Es la afirmación incorrecta: el Título Preliminar NO se aplica supletoriamente, sino de forma directa, a los delitos penados por leyes especiales. Lo supletorio son las restantes disposiciones del Código.",
+    "2": "Es correcta: la retroactividad favorable al reo está expresamente prevista, incluso con sentencia firme y condena en curso.",
+    "3": "Es correcta conforme a las reglas de aplicación temporal de la ley penal."
+  },
+  "outro": "**Clave:** la trampa está en la palabra «supletoriamente». Aplicación DIRECTA para el Título Preliminar; supletoria para lo demás del Código, y solo en lo que la ley especial no prevea."
+}
