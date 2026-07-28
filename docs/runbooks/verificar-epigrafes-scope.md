@@ -378,6 +378,20 @@ apartado entero.
 > **Frase-gatillo: *"revisa los huecos del temario"*.** Complementa al pipeline de arriba: éste
 > verifica lo que SÍ está escopado; el detector de huérfanos caza lo que **falta**.
 
+> 🚨 **COBERTURA REAL DEL DETECTOR: 30 %. Su silencio NO significa "no hay huecos" (medido 28/07).**
+> Para saber dónde empieza y acaba cada título, el prefiltro lee `law_sections` (`health-sweep.cjs`,
+> `WHERE ls.section_type='titulo' AND article_range_start IS NOT NULL`). **Una ley sin delimitar es
+> invisible para él.** Medido: de **635** leyes con scope acotado solo ve **192**; **443 están ciegas**
+> — y entre ellas, las gordas (TFUE en 47 temas, RGPD en 49). Es el mismo patrón que la sección
+> «Silencio no es salud» de más abajo, pero por otra puerta: allí el runner no podía bajar el índice;
+> aquí la ley ni siquiera entra en el barrido, así que **ni aparece como fallo**.
+>
+> **Qué hacer con esto:** si revisas huecos de una oposición y sale limpio, **comprueba antes que sus
+> leyes están delimitadas** — si no lo están, el "limpio" no es un veredicto, es una ausencia de datos.
+> Poblarlas es [T-227] (las 108 del BOE, con la herramienta ya hecha) y [T-228] (las 191 autonómicas
+> y de la UE, sin vía todavía). La misma tabla da de comer al filtro de test por título que ve el
+> usuario y al razonamiento por rúbrica del bloque de arriba: son tres consumidores, no uno.
+
 **Qué detecta** (prefiltro determinista del barrido nocturno, `scripts/health-sweep.cjs`): un
 **título** de una ley que la oposición sí usa, con ≥8 preguntas activas, con **0 artículos suyos
 en el `topic_scope`** de esa oposición, y flanqueado a ambos lados por artículos escopados de la
