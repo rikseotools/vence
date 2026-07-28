@@ -279,7 +279,12 @@ const secrets=(td.containerDefinitions[0].secrets ||= []);
 // el deploy manual clona la task def viva y solo swapea imagen, así que los secretos
 // runtime nuevos hay que añadirlos idempotentemente aquí (el ensure_secret del
 // workflow YAML solo aplica al path GHA workflow_dispatch, que está en desuso).
-for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY']) {
+// FEATURE_SHUFFLE_OPTIONS(_SCOPE): barajado de opciones (T-080 Fase 1). No son secretos, pero van
+// por SSM y no por environment A PROPOSITO: un valor en environment esta HORNEADO en la task def,
+// asi que cambiarlo obliga a registrar una nueva; por SSM se resuelve al arrancar la tarea, de modo
+// que encender o apagar es cambiar el parametro y forzar un new deployment (~5 min, sin build ni
+// task def nueva). Con FEATURE_SHUFFLE_OPTIONS=false el comportamiento es el historico.
+for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY','FEATURE_SHUFFLE_OPTIONS','FEATURE_SHUFFLE_OPTIONS_SCOPE']) {
   if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
 }
 // Precios Stripe en RUNTIME (server-side). getPricesFor()/priceBelongsToAccount()

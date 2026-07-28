@@ -3126,9 +3126,29 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 > - ✅ **HECHO (28/07)** — el dossier de impugnaciones no miraba `option_order` (0 referencias en
 >   `scripts/impugnaciones/`): un usuario escribe «la opción C está mal» refiriéndose a lo que vio ÉL
 >   y nosotros abríamos otra C. Ya reconstruye la exposición y traduce las letras (8 tests + manual).
-> - ⬜ **2.388 preguntas de EXAMEN OFICIAL se barajarían.** Decisión de producto, no técnica: para
->   practicar está bien, pero se pierde el «en el examen salió en este orden». Se excluye con una
->   condición en el gate si se decide que no.
+> - ✅ **DECIDIDO (Manuel, 28/07): se barajan también las oficiales, sin excepción.** No hay nada que
+>   tocar —ya son elegibles— y se evita mantener un segundo criterio de «barajable» en paralelo.
+>   **Ojo al concepto**, que se confundió al plantearlo: una cosa es el **modo examen** (simulacro,
+>   NO baraja) y otra la **pregunta oficial** (`is_official_exam`). El «Test Oficial» es un test
+>   normal filtrado a oficiales y su fetcher pide `shuffleOptions: true`, así que **sí barajará**.
+>   Lo que promete ese test es que las preguntas son de exámenes reales, no que las opciones salgan
+>   en el orden de aquel examen. Con el gate corregido: 7.675 oficiales activas, 2.242 elegibles,
+>   5.433 ya excluidas por otros motivos. Y las explicaciones que citan el orden de la plantilla
+>   («el tribunal dio como correcta la opción tercera») quedan fuera solas por el detector.
+>
+> ### 🎛️ Encendido: PREPARADO Y CABLEADO (28/07), apagado
+> El flag existía en el código pero **no estaba cableado a la infraestructura**: no había parámetro
+> en SSM ni lo referenciaba el task def, así que encenderlo no era «cambiar un valor». Ya lo está:
+> - `/vence-frontend/FEATURE_SHUFFLE_OPTIONS` = `false` · `/vence-frontend/FEATURE_SHUFFLE_OPTIONS_SCOPE` = `auxiliar_administrativo_valencia`
+> - Van por **SSM y no por `environment`** a propósito: un valor en environment está horneado en la
+>   task def y cambiarlo obliga a registrar otra; por SSM se resuelve al arrancar la tarea.
+> - **Encender:** `aws ssm put-parameter --name /vence-frontend/FEATURE_SHUFFLE_OPTIONS --value true --overwrite`
+>   y `aws ecs update-service --cluster <c> --service <s> --force-new-deployment`. ~5 min, sin build.
+>   **Apagar es el mismo camino con `false`.**
+> - **Piloto recomendado — `auxiliar_administrativo_valencia`**: 41 usuarios y 4.389 respuestas en 7
+>   días (señal en 24-48 h) y **el 33% de lo que realmente se sirve ahí se barajaría**, la fracción
+>   más alta de las candidatas (Córdoba 27%, Murcia 26%). No se elige Madrid —176 usuarios— para no
+>   estrenar a ciegas sobre la oposición más grande.
 > - ✅ **HECHO (28/07)** — las explicaciones que razonan por POSICIÓN. **No eran 8 sino 36**, y
 >   arreglarlas a mano habría sido el error: el hueco estaba en el DETECTOR. Se le escapaban dos
 >   formas —el orden invertido («opciones primera y cuarta», dominante en el banco clínico) y
