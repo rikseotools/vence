@@ -1648,6 +1648,26 @@ en `__tests__/impugnaciones/dossierExposicionBarajada.test.ts`.
 
 ## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
 
+> ### Aprovecha SIEMPRE la impugnación para dejar la pregunta barajable
+>
+> Una impugnación es la única ocasión en que alguien mira esa pregunta a fondo. Desaprovecharla
+> significa que la pregunta sigue en el pozo de las **47.388 activas que hoy no pueden barajar**
+> hasta que un barrido masivo la toque, quizá nunca. Dos caminos según lo que estés haciendo:
+>
+> | Situación | Qué haces |
+> |---|---|
+> | **Reescribes la explicación** (mejorable, cita mal, formato viejo) | Escríbela YA estructurada: `scripts/aplicar-explicacion.ts <qid> <fichero.json> --apply`. Nace barajable, sin paso que se pueda olvidar. |
+> | **NO la reescribes** (la explicación está bien) | Prueba igualmente `scripts/backfill-explanation-data.ts --pregunta <qid> --apply`. Si está en formato canónico, la transcribe **sin cambiar una coma** (lo garantiza la guarda de no-regresión); si no puede, no toca nada y te lo dice. Cuesta dos segundos y la respuesta es binaria. |
+>
+> **No siempre saldrá, y no es un fallo tuyo.** El backfill solo mira el universo de los DOS formatos
+> canónicos (el §8.1 de generación —«Por qué X es correcta» + «son incorrectas»— y el §5.1 de
+> impugnaciones —arranca por «La respuesta correcta es»—) con `shuffle_mode='full'`. Una explicación
+> en prosa con bullets sueltos queda fuera y devuelve `0 candidatas`. Ejemplo real (28/07,
+> impugnación `1ef36204`, art. 81 Ley 39/2015): explicación correcta y bien argumentada, pero empieza
+> por *"El artículo 81 de la Ley 39/2015 prevé dos informes…"*, así que ni entra. Ahí la única vía es
+> reescribirla estructurada, y **solo merece la pena si además la explicación mejora**: reescribir una
+> explicación buena únicamente para que baraje es cambiar lo que ve el opositor a cambio de nada.
+
 > **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
 >
 > Se escribe un JSON con una razón por opción —referida al CONTENIDO, nunca a la letra— y el
