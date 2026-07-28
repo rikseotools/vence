@@ -217,6 +217,20 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'dice nada de si acierta, sobre las 123 sí. Así se cazaron dos falsos positivos propios (las ' +
       'tarjetas de Navarra) y se decidió qué bloquea un envío y qué no.',
   },
+  simular_plazas_contexto: {
+    titulo: 'Simular la regla «con contexto» de plazas_afirmadas_sin_documento (y la frontera de número)',
+    ruta: 'scripts/convocatoria/sim-plazas-contexto.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'node scripts/convocatoria/sim-plazas-contexto.cjs [--json salida] [--slug X]. No escribe ' +
+      'nada. Corre sobre las MISMAS filas que el detector vivo y compara tres reglas: la viva ' +
+      '(¿aparece la cifra?), la viva CON FRONTERA (¿como número entero, no dentro de otro?) y la ' +
+      'de CONTEXTO reutilizando `landingClaims` (¿el documento la llama plazas?). Con eso se ' +
+      'decidió [T-202]: la de contexto NO se enciende (56 hallazgos, casi todos falsos: 13 por el ' +
+      'patrón y 37 por tablas que el PDF aplanó) y la frontera SÍ (7 casos que estaban en verde ' +
+      'porque la cifra vivía dentro de un código, p.ej. 216 en `C1.1000197163216`).',
+  },
   simular_enlace_boletin: {
     titulo: 'Simular el detector del botón oficial sobre TODAS las landings activas',
     ruta: 'scripts/convocatoria/sim-enlace-boletin.cjs',

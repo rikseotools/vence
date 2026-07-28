@@ -455,8 +455,13 @@ export function cifraEnTexto(n: number | null | undefined, texto: string | null 
   if (!Number.isInteger(n) || n < 0) return false;
   if (!texto) return false;
   const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' ';
-  const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), ...(n <= 9999 ? [enLetra(n)] : [])];
-  return formas.filter((f): f is string => Boolean(f)).some((f) => t.includes(f.toLowerCase()));
+  // El numeral en letra, tal cual; los dígitos, con FRONTERA de número — «216» dentro del código
+  // `C1.1000197163216` no prueba nada ([T-202]). El porqué medido, en el .cjs.
+  const letra = n <= 9999 ? enLetra(n) : null;
+  if (letra && t.includes(letra.toLowerCase())) return true;
+  const escapar = (s: string) => s.replace(/[.]/g, '\\.');
+  return [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.')]
+    .some((f) => new RegExp(`(?<![\\d.,])${escapar(f)}(?![\\d.,]?\\d)`).test(t));
 }
 
 /**

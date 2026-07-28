@@ -279,6 +279,29 @@ datos reales: las previsiones son previsiones"*.
 Guardarraíl: `plazas_afirmadas_sin_documento` en `audit-convocatoria-completitud.cjs`. **107 de las
 publicadas estaban así el 16/07** (afirmando plazas sin nada que las pruebe).
 
+#### Qué cuenta como «la cifra aparece» (calibrado en [T-202], 28/07)
+
+El detector solo puede afirmar una cosa: *si la cifra no aparece ni una vez, el documento no la
+prueba*. Por eso importa qué cuenta como aparición.
+
+- **Tiene que ser un número ENTERO del texto, no una subcadena de otro.** Hasta el 28/07 se
+  comparaba con `includes`, y eso daba por probadas cifras que solo existen dentro de otro número:
+  `216` dentro del código `C1.1000197163216`, `278` dentro de `2781853`, `317` dentro de
+  `Total31745362`. Medido sobre las 118 convocatorias vivas, **7 estaban en verde únicamente por
+  esto**. El numeral en LETRA se sigue buscando tal cual («treinta y seis plazas»): quitarlo
+  acusaría a documentos perfectamente explícitos.
+- **Una cifra dentro de una tabla que el PDF aplanó SÍ sale como hallazgo, y está bien.**
+  `Total31745362` es «Total | 317 | 45 | 362» y el dato es correcto, pero ningún lector reconoce ahí
+  la cifra: lo que falla es la extracción. Se resuelve arreglando el documento clonado o firmando la
+  derivación en `convocatoria_verification` — **nunca** dando por bueno el pegote.
+- **NO se exige que el documento la llame «plazas».** Es tentador (`139 plazas`) y está simulado:
+  produce **56 hallazgos, casi todos falsos** — 13 porque el patrón no casa la forma real del
+  boletín (*«Mil setecientas cuatro (1704) plazas»* lleva un paréntesis en medio; *«Plazas del cupo
+  general: 1.747»* pone la palabra delante) y 37 porque las convocatorias sanitarias reparten las
+  plazas en **tablas por categoría**, donde la cifra nunca lleva la palabra al lado. Antes de
+  reabrir esto, correr `node scripts/convocatoria/sim-plazas-contexto.cjs`: enseña las tres reglas
+  sobre datos vivos sin encender nada.
+
 ### ⚠️ Tras cambiar datos de una landing, INVALIDA LA CACHÉ (o el opositor sigue viendo lo viejo)
 
 ```bash

@@ -83,6 +83,42 @@ describe('cifraEnTexto', () => {
     expect(cifraEnTexto(0, 'se convocan 139 plazas')).toBe(false)
   })
 
+  // [T-202] La cifra tiene que ser un número ENTERO del texto, no una subcadena de otro. Los tres
+  // primeros son literales de corpus reales: medido sobre las 118 convocatorias vivas, 7 estaban en
+  // verde ÚNICAMENTE por esto.
+  describe('frontera de número: una subcadena no es una aparición', () => {
+    it('no la da por probada dentro de un código', () => {
+      expect(cifraEnTexto(216, 'B.1.3 C.ADMINISTRATIVO C1.1000197163216 C.DE AYUDANTES')).toBe(false)
+    })
+
+    it('no la da por probada dentro de otro número más largo', () => {
+      expect(cifraEnTexto(278, 'PLAZAS ADICIONALES TD C211L26181 8 69 4 28 6 2781853 6 Grupo E')).toBe(false)
+    })
+
+    it('no la da por probada dentro de una tabla que el PDF aplanó', () => {
+      // «Total | 317 | 45 | 362» salió del extractor como «Total31745362». La cifra es correcta,
+      // pero el documento no la prueba de forma legible: el detector debe pedir prueba, no adivinar.
+      expect(cifraEnTexto(317, 'Acuerdo 52/2025, de 11 de diciembre19220212 Total31745362 2.2.')).toBe(false)
+    })
+
+    it('sigue encontrándola cuando SÍ es un número del texto, pegada a puntuación', () => {
+      expect(cifraEnTexto(1747, 'Plazas del cupo general: 1.747. Plazas del cupo de reserva')).toBe(true)
+      expect(cifraEnTexto(1704, 'Mil setecientas cuatro (1704) plazas libres.')).toBe(true)
+      expect(cifraEnTexto(55, 'la provisión en propiedad de 55 plazas de Auxiliar Administrativo/a,')).toBe(true)
+    })
+
+    it('no confunde la cifra con la parte decimal ni con un porcentaje', () => {
+      expect(cifraEnTexto(5, 'un incremento del 44,5 % sobre la plantilla')).toBe(false)
+      expect(cifraEnTexto(747, 'un total de 1.747 plazas')).toBe(false)
+    })
+
+    it('el numeral en LETRA se sigue buscando igual (los boletines escriben así las pequeñas)', () => {
+      // Sin esto, `administrativa-universidad-de-murcia` habría salido acusada teniendo su
+      // documento la cifra escrita con todas las letras. Lo cazó la simulación de [T-202].
+      expect(cifraEnTexto(36, 'se convocan treinta y seis plazas de la escala administrativa')).toBe(true)
+    })
+  })
+
   it('por encima de 9999 solo busca dígitos (no genera el numeral)', () => {
     expect(cifraEnTexto(12345, 'son 12.345 plazas')).toBe(true)
     expect(cifraEnTexto(12345, 'doce mil trescientos cuarenta y cinco')).toBe(false)

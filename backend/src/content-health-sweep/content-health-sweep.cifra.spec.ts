@@ -80,6 +80,27 @@ describe('mirror cifraEnTexto (backend @Cron) ↔ núcleo del root', () => {
     }
   }, 3000);
 
+  // [T-202] La frontera de número es criterio del detector, no un detalle: si el mirror se queda
+  // con el `includes` viejo, el @Cron nocturno y el auditor bajo demanda dirían cosas distintas
+  // sobre la MISMA convocatoria — y el badge acabaría discrepando de quien lo audita a mano.
+  it('[T-202] coinciden exigiendo que la cifra sea un número entero, no una subcadena', () => {
+    const casos: Array<[number, string]> = [
+      [216, 'B.1.3 C.ADMINISTRATIVO C1.1000197163216 C.DE AYUDANTES'],
+      [278, 'PLAZAS ADICIONALES TD C211L26181 8 69 4 28 6 2781853 6 Grupo E'],
+      [317, 'Acuerdo 52/2025, de 11 de diciembre19220212 Total31745362 2.2.'],
+      [1747, 'Plazas del cupo general: 1.747. Plazas del cupo de reserva'],
+      [1704, 'Mil setecientas cuatro (1704) plazas libres.'],
+      [36, 'se convocan treinta y seis plazas de la escala administrativa'],
+      [747, 'un total de 1.747 plazas'],
+    ];
+    for (const [n, t] of casos) {
+      expect(cifraEnTexto(n, t)).toBe(nucleo.cifraEnTexto(n, t));
+    }
+    // …y el veredicto es el correcto, no solo el mismo en los dos.
+    expect(cifraEnTexto(216, 'C1.1000197163216')).toBe(false);
+    expect(cifraEnTexto(1704, 'Mil setecientas cuatro (1704) plazas libres.')).toBe(true);
+  });
+
   it('esPlazaHuerfana coincide, incluida la válvula `cifra_derivada`', () => {
     const filas = [
       { plazas_libres: 561, corpus: 'convoca 231 plazas', docs: 2 },
