@@ -460,6 +460,25 @@ herramientas: primero `corregir-plazas-contra-boletin.cjs` para poner la cifra i
 declarar la relación. El total publicado no cambia; lo que cambia es que el desglose deja de ser una cuenta
 nuestra.
 
+### Tercera familia: la convocatoria ACUMULA varias OEP y nuestra cifra es la suma
+
+Distinta de la anterior y se reconoce igual de rápido: la guarda rechaza porque **nuestra cifra no está
+impresa**, pero aquí no es una resta — es que el boletín enumera las partes **por decreto de OEP** y
+nosotros guardamos el acumulado. Dos casos leídos el 28/07:
+
+- `administrativo-asturias`: el BOPA da *«ACCESO LIBRE ORDINARIO 13»* (OEP 2022) y *«ACCESO LIBRE
+  ORDINARIO 3»* (OEP 2023), más *«ACCESO LIBRE DE PERSONAS CON DISCAPACIDAD 1»*. Guardamos 16 (=13+3) y
+  109 de promoción (=100+1+8). Cuadra al dígito, pero **ni el 16 ni el 17 aparecen escritos**.
+- `administrativo-la-rioja`: el BOR encadena *«tres (3) plazas por el sistema de acceso de turno libre y
+  una (1) plaza por el turno reserva para discapacidad»* por cada decreto. Guardamos 17 + 5; el título sí
+  imprime el total (**22 plazas de turno libre y reserva para discapacidad**), pero el 17 no.
+
+**Ruta correcta, y es una que ya existe: NO se inventa una segunda válvula.** Es aritmética sobre literales
+del MISMO documento, o sea exactamente lo que el §6 legitima con `cifra_derivada`: se firma la suma en
+`convocatoria_verification` (explicando la cuenta y citando los sumandos) y **después** se declara la
+relación. Sin esa firma, la cifra publicada es una cuenta nuestra sin rastro, que es lo que este runbook
+persigue desde el principio.
+
 ### Qué NO hacer
 
 - **NUNCA** declararlo por analogía con una convocatoria parecida ni por lo que dé la suma más redonda.
