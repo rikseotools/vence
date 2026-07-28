@@ -63,3 +63,16 @@ describe('guard anti-letra: distingue el apartado legal de la opción', () => {
     expect(REFERENCIA_A_OPCION_LETRA.test('La B es correcta porque reproduce el precepto')).toBe(true)
   })
 })
+
+// ── La RÚBRICA entrecomillada no es la cita (28/07) ──────────────────────────────────────────────
+describe('citaLiteralPretendida — de varios entrecomillados, la cita es el más largo', () => {
+  const { citaAusente } = require(path.join(process.cwd(), 'scripts/impugnaciones/barrido-citas.cjs'))
+  const ART_405 = 'A la autoridad o funcionario público que, en el ejercicio de su competencia y a sabiendas de su ilegalidad, propusiere, nombrare o diere posesión para el ejercicio de un determinado cargo público a cualquier persona sin que concurran los requisitos legalmente establecidos'
+  test('CASO REAL b0731e5b: el primer entrecomillado es el título del CAPÍTULO, no la cita', () => {
+    // Coger el primero daba por «cita inventada» un texto copiado letra por letra: el título de un
+    // capítulo no aparece, por definición, dentro del articulado.
+    const rubrica = 'De la prevaricación de los funcionarios públicos y otros comportamientos injustos'
+    expect(citaAusente(rubrica, ART_405)).toBe(true)                       // la rúbrica NO está en el artículo
+    expect(citaAusente(ART_405.slice(0, 120), ART_405)).toBe(false)        // la cita real SÍ
+  })
+})

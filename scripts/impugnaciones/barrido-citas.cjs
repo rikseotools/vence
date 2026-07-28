@@ -43,9 +43,16 @@ function extraerCita(explanation) {
 function citaLiteralPretendida(explanation) {
   const cita = extraerCita(explanation);
   if (!cita || !RE_ARTICULO.test(cita)) return null;
-  const m = cita.match(RE_ENTRECOMILLADO);
-  if (!m) return null;
-  return { texto: m[1], elipsis: RE_ELIPSIS.test(m[1]) };
+  // De TODOS los entrecomillados del blockquote, la cita es el MÁS LARGO. Coger el primero
+  // confundía la RÚBRICA con la cita: «CP art. 405 (Capítulo I, "De la prevaricación de los
+  // funcionarios públicos…"): "A la autoridad o funcionario público que…"» — el primer
+  // entrecomillado es el título del capítulo, que por definición no aparece dentro del articulado,
+  // así que el barrido acusaba de cita inventada un texto copiado letra por letra. Tres de las
+  // «ajenas» del 28/07 eran esto, y la nº1 del cubo por tráfico (356 exposiciones) también.
+  const todos = [...cita.matchAll(new RegExp(RE_ENTRECOMILLADO.source, 'g'))].map((x) => x[1]);
+  if (!todos.length) return null;
+  const texto = todos.reduce((a, b) => (b.length > a.length ? b : a));
+  return { texto, elipsis: RE_ELIPSIS.test(texto) };
 }
 
 // El criterio de "¿la cita está literal en el artículo?" es UNO y vive en el guardarraíl

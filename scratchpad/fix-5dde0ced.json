@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El artículo 2 delimita el ámbito por las ENSEÑANZAS y por quién las imparte, sin distinguir la titularidad del centro.",
+  "cita": {
+    "ref": "Art. 2 Real Decreto 822/2021, de 28 de septiembre",
+    "texto": "Este real decreto tiene como ámbito de aplicación las enseñanzas universitarias oficiales de Grado, Máster Universitario y Doctorado, así como otras enseñanzas universitarias, específicamente la formación permanente, impartidas por las universidades del sistema universitario español y que se definirán como títulos propios."
+  },
+  "options": {
+    "0": "El precepto no excluye a las de titularidad privada: habla de las universidades del sistema universitario español, sin distinguir quién sea su titular.",
+    "1": "Es lo que resulta del precepto: alcanza a las universidades del sistema universitario español, y ese sistema lo integran tanto las públicas como las privadas reconocidas.",
+    "2": "Invierte la exclusión: tampoco deja fuera a las públicas, y el precepto no delimita su ámbito por centros adscritos.",
+    "3": "Añade a las escuelas de negocios, que no son universidades del sistema universitario español; el precepto se refiere a enseñanzas impartidas por universidades."
+  },
+  "outro": "**Clave:** el ámbito se define por la ENSEÑANZA (Grado, Máster, Doctorado y formación permanente como títulos propios) y por quién la imparte —una universidad del sistema universitario español—, no por la titularidad pública o privada del centro."
+}

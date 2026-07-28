@@ -569,8 +569,20 @@ incluida).
   · **Dos reparaciones fueron de CONTENIDO, no de explicación:** al RGPD art. 4 le faltaba el párrafo
     2.º del punto 9) (importado del BOE) y en la Ley 11/2017 SERMAS la clave afirmaba algo que el
     art. 9 no dice — se reescribió sin atribuirle palabras que no tiene, en vez de forzar la cita.
-  · **Quedan 11**, todas con 0-2 exposiciones. Dos requieren ir al boletín porque nuestro artículo
-    parece condensado (Reglamento 3/1995 art. 21, RD 822/2021 art. 2).
+  · **Al cierre del 28/07: 24 de 31 revisadas** — 12 reparadas y **12 falsos positivos**, todos
+    trazados. Es casi mitad y mitad, y esa es la lección del cubo: **el detector acusaba tanto como
+    acertaba**.
+  · **Tercera clase de falso positivo, arreglada de raíz:** el barrido tomaba por cita el PRIMER
+    entrecomillado, que muchas veces es la **rúbrica del capítulo** («CP art. 405 (Capítulo I, "De
+    la prevaricación de los funcionarios públicos…"): "A la autoridad o funcionario público que…"»).
+    Un título de capítulo no aparece, por definición, dentro del articulado, así que el barrido
+    acusaba de inventado un texto copiado letra por letra. Ahora la cita es el entrecomillado **más
+    largo**. Con esto y las dos correcciones anteriores, las «ajenas» bajaron de 39 a 28.
+  · **Una cita SÍ era inventada:** `5dde0ced` atribuía al art. 2 del RD 822/2021 un texto que no
+    existe en la norma (verificado en el BOE); reescrita con el texto real.
+  · **Quedan 7**, todas con 0-2 exposiciones: `f7392e33` (Reglamento 3/1995 art. 21 — nuestro texto
+    está CONDENSADO, hace falta el boletín del CGPJ, que no está en el id BOE probado), `e66caaca`,
+    `756f0fd9`, `089efde9`, `7cfbea54`, `32e4f316` y `c0defc3f`.
 - **Orden propuesto (barato → caro):** (1) **matar la copia**: que `barrido-citas.cjs` reutilice `validateQuotes` en vez de su `slice(0, 70)` — un detector con dos implementaciones ya ha demostrado que diverge; (2) re-barrer y publicar el inventario por bucket; (3) bucket determinista (relink intra-ley) en lotes con los guardarraíles de siempre; (4) LLM solo sobre el residuo, y **nunca auto-flip de clave**.
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.
