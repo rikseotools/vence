@@ -437,7 +437,10 @@ const D_NUM = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 
 const C_NUM = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos',
   'setecientos', 'ochocientos', 'novecientos'];
 
-export function enLetra(n: number): string {
+export function enLetra(n: number): string | null {
+  // Fuera del dominio (entero >= 0) devuelve null, no una excepción ni una recursión infinita.
+  // El porqué, en el .cjs. Si esto diverge del núcleo, `content-health-sweep.cifra.spec.ts` lo caza.
+  if (!Number.isInteger(n) || n < 0) return null;
   if (n < 30) return U_NUM[n];
   if (n < 100) return D_NUM[Math.floor(n / 10)] + (n % 10 ? ` y ${U_NUM[n % 10]}` : '');
   if (n === 100) return 'cien';
@@ -448,10 +451,12 @@ export function enLetra(n: number): string {
 
 export function cifraEnTexto(n: number | null | undefined, texto: string | null | undefined): boolean {
   if (n == null) return true;
+  // Basura → false, nunca excepción: un detector que revienta deja de reportar (ver el .cjs).
+  if (!Number.isInteger(n) || n < 0) return false;
   if (!texto) return false;
   const t = ' ' + String(texto).replace(/\s+/g, ' ').toLowerCase() + ' ';
   const formas = [String(n), String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), ...(n <= 9999 ? [enLetra(n)] : [])];
-  return formas.some((f) => t.includes(f.toLowerCase()));
+  return formas.filter((f): f is string => Boolean(f)).some((f) => t.includes(f.toLowerCase()));
 }
 
 /**

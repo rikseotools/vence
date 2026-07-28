@@ -20,7 +20,7 @@ const validador = require('../../../lib/convocatoria/validarDerivada.cjs') as {
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nucleo = require('../../../lib/convocatoria/cifraEnTexto.cjs') as {
-  enLetra: (n: number) => string;
+  enLetra: (n: number) => string | null;
   cifraEnTexto: (n: number | null | undefined, t: string | null | undefined) => boolean;
   esPlazaHuerfana: (f: Record<string, unknown>) => boolean;
 };
@@ -64,6 +64,21 @@ describe('mirror cifraEnTexto (backend @Cron) ↔ núcleo del root', () => {
       expect(cifraEnTexto(n, t)).toBe(nucleo.cifraEnTexto(n, t));
     }
   });
+
+  // [T-195] La guarda contra entradas imposibles es justo el tipo de arreglo que se aplica en un lado
+  // y se olvida en el otro — y al vivir el mirror en otro build, nadie lo notaría hasta que el @Cron
+  // nocturno reventara en silencio. Aquí se exige que ambos respondan lo mismo ANTE LA BASURA, no solo
+  // ante las cifras legítimas. El timeout corto es a propósito: `NaN` colgaba por recursión infinita,
+  // y un cuelgue debe salir como fallo, no como test lento.
+  it('[T-195] coinciden ante entradas imposibles: false, sin excepción ni recursión', () => {
+    const basura = [-3, -1, 2.5, NaN, Infinity, -Infinity];
+    for (const n of basura) {
+      expect(cifraEnTexto(n, 'se convocan 139 plazas')).toBe(false);
+      expect(nucleo.cifraEnTexto(n, 'se convocan 139 plazas')).toBe(false);
+      expect(enLetra(n)).toBe(nucleo.enLetra(n));
+      expect(enLetra(n)).toBeNull();
+    }
+  }, 3000);
 
   it('esPlazaHuerfana coincide, incluida la válvula `cifra_derivada`', () => {
     const filas = [

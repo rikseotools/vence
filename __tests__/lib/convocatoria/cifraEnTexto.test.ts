@@ -16,6 +16,18 @@ describe('enLetra', () => {
   ])('escribe %i como «%s»', (n, esperado) => {
     expect(enLetra(n as number)).toBe(esperado)
   })
+
+  // Fuera de dominio devuelve null, y sobre todo NO revienta ni se cuelga. `NaN`/`Infinity` no entran
+  // en ninguna rama y caían en la recursión final (`enLetra(NaN/1000)`) hasta agotar la pila: por eso
+  // estos casos se prueban con un timeout corto, un cuelgue no es «solo» un test lento.
+  it.each([[-5], [-1], [3.5], [NaN], [Infinity], [-Infinity]])(
+    'devuelve null fuera de dominio (%p) sin excepción ni recursión', (n) => {
+      expect(enLetra(n as number)).toBeNull()
+    }, 2000)
+
+  it('NUNCA devuelve cadena vacía: la daría por encontrada cualquier includes(\'\')', () => {
+    for (const n of [-5, 3.5, NaN, Infinity]) expect(enLetra(n as unknown as number)).not.toBe('')
+  })
 })
 
 describe('cifraEnTexto', () => {
@@ -49,6 +61,26 @@ describe('cifraEnTexto', () => {
   it('sin cifra no hay nada que probar (no acusa)', () => {
     expect(cifraEnTexto(null, null)).toBe(true)
     expect(cifraEnTexto(undefined, 'lo que sea')).toBe(true)
+  })
+
+  // El bug de [T-195]: `cifraEnTexto(-3, …)` no devolvía `false`, lanzaba
+  // `Cannot read properties of undefined (reading 'toLowerCase')`. Lo cazó un test de `correccionPlazas`
+  // (T-191) probando el caso «valor negativo», y quedó anotado en vez de arreglarse de rebote porque
+  // este núcleo lo comparten el auditor, el sweep nocturno y el @Cron del backend. Un detector que
+  // revienta deja de reportar, y ese silencio se lee como «no hay hallazgos».
+  it.each([[-3], [-1], [2.5], [NaN], [Infinity]])(
+    'ante una cifra imposible (%p) responde false, no una excepción', (n) => {
+      expect(cifraEnTexto(n as number, 'se convocan 139 plazas')).toBe(false)
+    }, 2000)
+
+  it('una cifra basura NO se da por probada ni con el corpus más favorable', () => {
+    // Sin la guarda, `formas` colaba un `undefined` y bastaba con que includes('') acertara.
+    expect(cifraEnTexto(-3 as number, 'aquí aparece -3 y también 3 y tres')).toBe(false)
+  })
+
+  it('sigue siendo estricto con el cero, que SÍ es un entero válido', () => {
+    expect(cifraEnTexto(0, 'se convocan cero plazas este año')).toBe(true)
+    expect(cifraEnTexto(0, 'se convocan 139 plazas')).toBe(false)
   })
 
   it('por encima de 9999 solo busca dígitos (no genera el numeral)', () => {

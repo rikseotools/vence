@@ -5,7 +5,7 @@
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const impl = require('./cifraEnTexto.cjs') as {
-  enLetra: (n: number) => string
+  enLetra: (n: number) => string | null
   cifraEnTexto: (n: number | null | undefined, texto: string | null | undefined) => boolean
   esPlazaHuerfana: (fila: FilaPlazas) => boolean
 }
