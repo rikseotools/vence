@@ -118,7 +118,28 @@ function checkCorrespondence(expl, opts, correctLetter) {
 // como «posible cita inventada» justamente la forma canónica que documenta `aplicar-explicacion.ts`
 // y que el manual declara obligatoria. El guardarraíl frenaba lo correcto, que es el peor modo de
 // fallar que tiene un verificador (§15.8).
-const esLineaDeReferencia = (l) => /^\*\*[^*]+\*\*\s*:?$/.test(l.trim());
+//
+// ⚠️ AFINADO el 28/07: «línea entera en negrita» NO basta para llamarla referencia. Medido sobre el
+// banco vivo, **2.887 preguntas activas (6,8 % de las que tienen blockquote) escriben la CITA
+// COMPLETA en negrita** —`> **«Se entiende por expediente administrativo…»**`—, así que la regla
+// laxa las descartaba enteras y el check se quedaba sin nada que verificar: devolvía «sin
+// problemas» sobre citas que no estaban en el artículo. Un guardarraíl ciego es peor que no
+// tenerlo, porque da una garantía que no existe. Cazado al resolver la impugnación `533cb8db`
+// (art. 70 LPAC), cuya cita fusionaba dos apartados y pasaba limpia.
+//
+// Ahora una referencia tiene que PARECERLO: corta y nombrando la norma o el artículo.
+const MAX_REFERENCIA = 120; // caracteres; por encima es cita, no rótulo
+const RE_PARECE_REFERENCIA =
+  /^(arts?\.?|art[íi]culo|apartado|p[áa]rrafo|disposici[óo]n|ley|l\.?o\.?|real decreto|r\.?d\.?|reglamento|estatuto|constituci[óo]n|c[óo]digo|directiva|orden|decreto)\b/i;
+const RE_CONTIENE_CITA_NORMA = /\b(art[íi]?c?u?l?o?\.?|ley|l\.?o\.?|r\.?d\.?)\s*\d/i;
+
+const esLineaDeReferencia = (l) => {
+  const t = l.trim();
+  if (!/^\*\*[^*]+\*\*\s*:?$/.test(t)) return false;
+  const dentro = t.replace(/^\*\*/, '').replace(/\*\*\s*:?$/, '').trim();
+  if (dentro.length > MAX_REFERENCIA) return false;
+  return RE_PARECE_REFERENCIA.test(dentro) || RE_CONTIENE_CITA_NORMA.test(dentro);
+};
 
 // Una cita puede OMITIR tramos legítimamente con «(...)» o «…» — eso no la hace inventada. Se
 // parte por esas marcas y cada fragmento se exige literal por separado. Los fragmentos cortos no
