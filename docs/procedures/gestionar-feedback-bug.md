@@ -330,6 +330,30 @@ El borrador debe incluir:
 - Si está arreglado o pendiente
 - Qué debe hacer el usuario (recargar, esperar, nada)
 
+> **🚫 NO desvelar más problemas de los que el usuario ha visto** (decisión de Manuel, 28/07/2026).
+> Nada de *"con tu aviso lo hemos arreglado también en otras oposiciones"*, *"afectaba a N temas"*,
+> *"resulta que pasaba en más sitios"*. Se confirma lo suyo, se dice que está arreglado y se agradece.
+> **Punto.**
+>
+> **Por qué:** en sus palabras, *"parecemos tontos desvelando más problemas de los que nos comunican"*.
+> El usuario reportó UN caso; si le contestas que has encontrado otros veinte, lo que lee no es
+> *"qué bien que avisé"* sino *"esto está lleno de fallos"*. La intención de agradecerle el aviso
+> acaba siendo publicidad de nuestros propios defectos. **El alcance real va al commit, a la ficha y
+> a este manual**, que es donde sirve de algo.
+>
+> **Caso que lo fijó** (Laura García, nº de tema en el PDF): el fallo afectaba a 619 temas de 21
+> oposiciones, y el borrador aprobado no menciona ni uno:
+> *"Tienes razón: es el tema 7 de específica, no el 14. El fallo estaba en el PDF descargable, que
+> numeraba mal la portada. Ya está corregido, así que descárgatelo otra vez y lo verás bien.
+> Gracias por avisar."*
+>
+> **Misma vena que la regla de no decir que el contenido lo hace una IA:** hay cosas ciertas que no
+> se le cuentan al usuario porque le restan confianza sin aportarle nada.
+>
+> **Y no te pases de explicaciones.** Si el fallo estaba en un sitio distinto del que él miraba, basta
+> con nombrarlo en una frase; no hace falta contarle cómo lo guardamos por dentro. Un borrador largo
+> explicando nuestras tripas transmite lo mismo que enumerar los otros fallos.
+
 ### Formato y firma (convención de la casa)
 
 El `message` que se envía es **texto plano** (el chat/email respetan los `\n`), así que **redacta con saltos de línea reales**, no en un párrafo-ladrillo:
