@@ -400,6 +400,23 @@ incluida).
   - **Qué se hizo:** el candidato del sumario viaja ya como `{titulo, url}` (`htmlToTextConAnclas` + `extractCandidatosFromSumarioText` para HTML, `collectJsonEntradas` para DOGV/DOGC, `collectBoeEntradas` para el BOE); **el LLM no elige la URL** (viene del parseo y `urlDelCandidato` no adjudica ante empate); el `apply` registra el puntero para TODA señal y **emite `senal_aplicada_sin_documento`** con la causa cuando no puede. Detalle y trampas en `docs/runbooks/provenance-convocatorias.md` §2.1-bis.
   - **✅ Y los parsers de `boletin_doc_key` que faltaban, añadidos** (migración `20260728_boletin_doc_key_bopa_bon_bome_docm.sql`, aplicada a RDS con verificación de paridad JS↔SQL en transacción): **BOPA, BON, BOME, DOCM** + la variante de la SEDE del BOC (publicaba el mismo anuncio con dos URLs y se guardaba dos veces). De paso se arregló un **drift JS↔SQL preexistente**: el núcleo JS tenía la variante PDF del eBOJA desde T-107 y RDS no — el canary no lo veía porque se había quedado en la lista de fixtures anterior (ahora vigila 25). Y las **3 copias a mano de la lista de prefijos** desaparecen: los llamadores preguntan `boletin_doc_key_reconocido(url)`, así que añadir un boletín ya no obliga a tocarlos.
   - **Medido tras todo** (`npx tsx backend/scripts/sim-enlace-anuncio.ts --dias 5 --con-bd`, no escribe): **69% de candidatos con enlace** (antes 0%) y **63% llegan a documento registrado** (antes del arreglo: 0%). 9 de los 12 boletines que producen señales, en verde.
+  - **🚀 DESPLEGADO el 28/07 ~16:45 CEST** (backend task def `:123`, frontend `:552`, SHA vivo `0658c818` en los dos, smoke y canary verdes). Los parsers de `boletin_doc_key` ya estaban vivos antes (son de BD).
+  - **⏱️ VERIFICACIÓN PENDIENTE — hazla a partir del 29/07 07:00 UTC (2 minutos).** El cron `detect-boletines` corre **06:30 UTC, L-V**, así que la primera cosecha con el código nuevo es la de esa mañana; hasta entonces todo lo medido es simulación, no producción. **Línea base tomada el 28/07 con esta MISMA consulta: `0 de 68` señales de 7 días traían una URL que permitiera documento** (regional_scan 0/59, boe_api 0/9).
+    ```sql
+    -- (1) ¿las señales NUEVAS citan el anuncio en vez del sumario?  Éxito: pct >> 0 (la simulación decía ~69%)
+    SELECT sensor_type, count(*) total,
+           count(*) FILTER (WHERE boletin_doc_key_reconocido(source_url)) con_doc_posible
+      FROM oep_detection_signals
+     WHERE created_at > '2026-07-29 06:00Z' AND sensor_type IN ('regional_scan','boe_api')
+     GROUP BY 1;
+    -- (2) ¿las que se apliquen dejan documento?  (source_documento_id lo escribe el apply)
+    SELECT count(*) aplicadas, count(source_documento_id) con_documento
+      FROM oep_detection_signals WHERE status='applied' AND reviewed_at > '2026-07-29 06:00Z';
+    -- (3) el hueco, ya visible en vez de silencioso: causa por causa
+    SELECT metadata->>'causa' causa, count(*) FROM observable_events
+     WHERE event_type='senal_aplicada_sin_documento' AND created_at > '2026-07-29 06:00Z' GROUP BY 1;
+    ```
+    Si (1) sigue en 0, el sensor no está aplicando el cambio → mirar los logs del cron en el task del backend antes de tocar nada más. Si (1) sube pero (2) no, el corte está en el `apply`, no en el sensor.
   - **⏭️ Lo que queda NO es "falta un parser":** **DOE y BOPV** publican en su sumario una URL que no es el documento (el DOE sirve una página de título+analítica sin la disposición; el BOPV mete el texto en un `iframe`). Hay que resolver su URL de contenido real ANTES de darles doc_key: reconocerlas ahora sería provenance apuntando a un caparazón.
   - **NO tocado (sigue abierto):** el **backfill de las ~104 históricas** (decisión de Manuel el 28/07: primero la causa raíz, que la deuda deje de crecer) y el **cabo 2** (PDF del BOCM con el CMap roto).
 
