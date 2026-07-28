@@ -53,6 +53,44 @@ No hay tabla de conversaciones. Los mensajes se agrupan por:
 3. **Estadísticas** (`suggestion_used = 'como_voy'`):
    - Resumen de progreso del usuario
 
+## 🔁 EL CICLO: un feedback, un arreglo, un push (decisión de Manuel, 28/07/2026)
+
+> **Esto es lo primero que hay que entender, y me lo tuvo que explicar tres veces.**
+
+**No se revisan en lote. No se sacan porcentajes. No se hace un informe con recomendaciones.**
+Se coge **UN** feedback negativo, se cierra entero, y solo entonces se pasa al siguiente:
+
+```
+  ┌─ 1. Coge el negativo MÁS ANTIGUO sin revisar (`ORDER BY created_at ASC`)
+  │  2. Analízalo: intención del usuario · cómo se gestionó (rastro) · qué falló
+  │  3. ARREGLA el sistema para que esa pregunta se responda PERFECTA
+  │  4. SIMULA contra los mensajes reales: ¿arregla lo que debe SIN romper nada?
+  │  5. Si rompe algo → revierte y documenta por qué (también es trabajo hecho)
+  │  6. Push
+  └─ 7. Marca `reviewed_at` + `review_notes` y vuelve al 1
+```
+
+**Por qué así y no en lote.** *"Los usuarios pagan por esto"* (Manuel). Un informe con
+veinte recomendaciones no arregla ni una pregunta; un ciclo cerrado arregla una de verdad, y
+al siguiente el sistema ya es mejor. Además, **el lote miente**: en el primer intento del
+28/07 saqué porcentajes y concluí que las explicaciones de psicotécnicos suspendían — y era
+falso, porque 27 de los 42 negativos no eran respuestas malas sino **errores servidos**. El
+promedio escondía que la app estaba rota.
+
+**Tres cosas que NO hay que hacer, las tres cometidas ese día:**
+
+- ❌ Ir a los agregados «para priorizar». Se prioriza solo: el más antiguo sin revisar.
+- ❌ Proponer una lista de mejoras y preguntar cuál. **Arregla la que tienes delante.**
+- ❌ Correr. Un ciclo por feedback, entero. Ir rápido es cómo se cuelan las regresiones.
+
+**Y el paso 4 no es opcional ni decorativo.** Ese mismo día, el arreglo del negativo nº 1
+parecía obvio (a `app-help` le faltaban patrones para «no consigo memorizar…»), se implementó,
+y la simulación demostró que **capturaba 6 mensajes, de los que los 3 valorados eran POSITIVOS
+—se los quitaba a dominios que los respondían bien— y no arreglaba ni un negativo**; y que ni
+siquiera cubría el caso raíz, porque aquel usuario tenía una pregunta abierta y `app-help` se
+inhibe entonces. Se revirtió. **Un arreglo sin simular es una regresión que aún no sabes que
+has hecho.**
+
 ## 🔬 CÓMO se revisa: el rastro manda, no el texto (método, 28/07/2026)
 
 > **Frase-gatillo: *"revisa los negativos del chat"*.**
