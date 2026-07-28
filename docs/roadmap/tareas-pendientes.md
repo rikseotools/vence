@@ -383,17 +383,6 @@ incluida).
   - **Y una métrica de verdad, no de vanidad:** de los que cambien, cuántos hacen **al menos un test** en los 7 días siguientes. Migrar a alguien que sigue sin estudiar no es haber resuelto nada.
 - **Dato de negocio que sale de aquí (no es tarea, es decisión tuya):** la lista de demanda ordenada por personas — enfermería 89, auxiliar de ayuntamiento 37, auxiliar de enfermería 27, subalterno/ordenanza de administración local 25, policía local 24, bomberos 17. Enfermería es la señal más fuerte del banco y no es familia administrativa.
 
-### [T-225] 🟠 [ABIERTO 28/07] El pre-commit no corre `typecheck`: un `main` rojo por tipos bloquea el gate de deploy de TODAS las sesiones
-- **Qué pasó (28/07, medido):** `origin/main` estuvo con el **`Typecheck` en ROJO** por el error más tonto posible — `scripts/backfill-explanation-data.ts:123` usaba `f.question_text`, el `SELECT` de la línea 79 **ya lo pedía**, pero el tipo `Fila` no lo declaraba (`error TS2339`). El dato estaba ahí; solo faltaba decírselo al compilador.
-- **El coste no lo paga quien lo rompe, lo pagan las demás sesiones:** el gate de CI de `deploy-{frontend,backend}.sh` **aborta si algún check de CÓDIGO está en rojo**, así que un `main` rojo **bloquea el deploy de todo el mundo**. Ese día mi deploy de backend abortó por esto tras haber abortado ya una vez por CI en curso: tres vueltas para desplegar un fix de una línea.
-- **Por qué se colará otra vez:** el hook `.husky/pre-commit` corre `db:check`, `audit:display-drift`, `test:precommit` y `test:unit` — **`tsc` no está**. Los tests unitarios no ven un error de tipos: pasan igual. Así que el único sitio donde se detecta es el CI, o sea **después** de pushear, cuando ya bloquea a los demás.
-- **Lo que hay que decidir, y tiene un coste real que medir antes:** `npx tsc --noEmit` en este repo tarda **más de 2 minutos** (comprobado varias veces el 27-28/07: se pasa del timeout de 120 s). Meterlo tal cual en el pre-commit hace el commit muy pesado, y un hook que molesta se acaba saltando con `--no-verify`, que es peor que no tenerlo. Opciones por orden de coste:
-  1. **`tsc` en el PRE-PUSH** en vez del pre-commit: se paga una vez por push, no por commit, y sigue estando ANTES de que el rojo llegue a `main` (que es lo que importa). Es mi favorita.
-  2. `tsc --incremental` con caché en el pre-commit, midiendo el tiempo en caliente.
-  3. Dejarlo solo en CI y aceptar el bloqueo ocasional, pero **avisando** en el canal de la sesión que rompe.
-- **Ojo al elegir:** el pre-push ya está ocupado por el guardarraíl del backlog (`scripts/backlog-push-guard.cjs`); añadir ahí 2 min lo convierte en un push lento. Medir con `--incremental` antes de decidir.
-- **Impacto:** 🟠 no rompe producción, pero paraliza los despliegues de varias sesiones a la vez y el diagnóstico se lo come quien no lo rompió.
-
 ### [T-226] 🟡 [ABIERTO 28/07] Los secretos de producción viajan en `--build-arg`: visibles en `ps` para cualquier proceso de la máquina
 - **Qué:** `scripts/deploy-frontend.sh` pasa al `podman build` la contraseña de RDS (`DATABASE_URL` y `DATABASE_URL_REPLICA`) y la `SUPABASE_SERVICE_ROLE_KEY` como `--build-arg`. Eso los deja en la **línea de comandos del proceso**, así que un `ps -eo cmd` cualquiera los imprime en claro. Descubierto de casualidad el 28/07 mirando con `fuser`/`ps` quién tenía el lock de deploy: salieron completos en la salida.
 - **Riesgo real, dicho sin dramatizar:** en un portátil de un solo usuario el impacto es bajo. Lo que lo hace merecedor de ficha es (a) que los `--build-arg` **quedan además en los metadatos de la imagen** (`podman history`/`inspect`), así que viajan al registro; y (b) que si algún día esto corre en un runner compartido o en GHA, deja de ser un detalle y pasa a ser fuga de credenciales de producción.
@@ -3579,6 +3568,28 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** T-112, sesión `sesion-26jul-d` (26/07), midiendo el universo de `article_no_coverage`: los arts de la LPRL salían huérfanos **por duplicado**, uno por cada fila de ley.
 
 ## Hechas
+
+### [T-225] ✅ [CERRADA 28/07] El `typecheck` corre en el `pre-push`: un `main` rojo por tipos ya no bloquea el deploy de todas las sesiones
+> **✅ HECHO (28/07).** `tsc` no estaba en ningún hook y **los tests unitarios no ven un error de tipos**, así que el único sitio donde se detectaba era el CI — o sea, DESPUÉS de pushear, cuando el rojo ya bloquea el gate de deploy de todo el mundo. El caso que lo originó fue un TS2339 de una línea que costó tres vueltas de deploy a otra sesión.
+>
+> **La premisa de la ficha era falsa, y medirlo cambió la decisión.** Decía *"`tsc` tarda más de 2 minutos"*: eso se había medido **en frío**. Con la caché `incremental` que `tsconfig.json` **ya tenía activada**:
+>
+> | escenario | coste |
+> |---|---|
+> | push que solo toca documentación | **0,2 s** (ni se lanza `tsc`) |
+> | caliente, sin cambios de código | ~14 s |
+> | caliente, tocando un módulo de amplio alcance | ~43 s |
+> | en frío (worktree recién creada) | ~72 s |
+>
+> El frío es real y se paga una vez por worktree — que es exactamente por qué la ficha lo vio así. Pero por PUSH, y saltándose los pushes de documentación, el coste típico es de segundos. Se eligió la opción 1 (pre-push), que era la favorita de la ficha, ahora con datos detrás.
+>
+> **Lo que hace que casi nunca se pague:** `lib/hooks/typecheckRelevance.cjs` decide, a partir del **diff neto contra `origin/main`**, si el push puede romper el `Typecheck`. Documentación → 0 s. Es **conservador a propósito**: ante la duda corre, porque un falso positivo cuesta 14 s y un falso negativo es el `main` rojo que la tarea existe para evitar. `backend/` y `__tests__/` no disparan porque el typecheck de la raíz los excluye — **con test de paridad contra `tsconfig.json`**, para que nadie los desincronice en silencio (si alguien mete `backend` en el typecheck y el hook sigue ignorándolo, el guard daría verde a un push roto).
+>
+> **Verificado extremo a extremo, no solo con tests:** se creó a propósito un fichero con el MISMO error que rompió `main` (campo que el tipo no declara) → **push bloqueado en 12 s** con el mensaje que explica el porqué; push de solo documentación → 0,17 s; escape `TYPECHECK_GUARD_SKIP=1` → pasa.
+>
+> **Escape a la vista en el propio hook.** Si el escape específico no se ve, la gente usa `--no-verify`, que además se salta el guard del backlog: peor que no tener hook. Fail-open ante infra, fail-closed en lo suyo (calcado del hermano del backlog, que va primero por ser el barato).
+>
+> Ficheros: `.husky/pre-push` · `scripts/typecheck-push-guard.cjs` · `lib/hooks/typecheckRelevance.cjs` · `__tests__/guardrails/typecheckHook.test.ts` (19 tests: regla, paridad con tsconfig y **cableado** —que el hook lo invoque de verdad, el fallo más silencioso posible) · runbook `docs/runbooks/pusheo-revision-despliegue.md`.
 
 ### [T-216] ✅ [CERRADA 28/07] Fixture compartido de «¿la cifra está en el documento?» + `reserve` documentado — las dos causas raíz que destapó [T-202]
 > **✅ HECHO (28/07).** No son detectores nuevos: son las dos costuras por donde se colaron los fallos del día.

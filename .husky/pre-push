@@ -1,8 +1,17 @@
 #!/bin/sh
 # .husky/pre-push
-# Guardrail del backlog: si un commit que empujas menciona un T-NNN vivo que NO tienes
-# reclamado en `backlog_tasks`, bloquea el push. Cierra el hueco del OLVIDO de reclamar
-# (colisión T-047/T-050 del 20/07). Lógica pura en lib/backlog/pushGuard.cjs (testeada).
+# Dos guardarraíles, en orden de coste (el barato primero: si bloquea, no pagas el caro).
 #
-# Fail-open ante infra (sin DATABASE_URL / BD caída). Escape: BACKLOG_GUARD_SKIP=1 git push …
+# 1) Backlog: si un commit que empujas menciona un T-NNN vivo que NO tienes reclamado en
+#    `backlog_tasks`, bloquea el push. Cierra el hueco del OLVIDO de reclamar (colisión
+#    T-047/T-050 del 20/07). Lógica pura en lib/backlog/pushGuard.cjs (testeada).
+#    Fail-open ante infra (sin DATABASE_URL / BD caída). Escape: BACKLOG_GUARD_SKIP=1 git push …
+#
+# 2) Typecheck (T-225, 28/07): `tsc` NO estaba en ningún hook y los tests unitarios no ven un
+#    error de tipos → el único sitio donde se detectaba era el CI, o sea DESPUÉS de pushear.
+#    Y el `Typecheck` en rojo en `main` BLOQUEA EL DEPLOY DE TODAS LAS SESIONES (gate de CI de
+#    deploy-*.sh). Va en el pre-push y no en el pre-commit porque se paga una vez por push
+#    (medido: ~14 s en caliente, ~43 s tocando un módulo de amplio alcance, 72 s en frío) y un
+#    push que solo toca documentación no paga nada. Escape: TYPECHECK_GUARD_SKIP=1 git push …
 node scripts/backlog-push-guard.cjs || exit 1
+node scripts/typecheck-push-guard.cjs || exit 1

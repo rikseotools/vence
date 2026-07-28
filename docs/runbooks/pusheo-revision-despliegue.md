@@ -91,6 +91,29 @@ scripts/deploy-frontend.sh            # el gate confirma verde y despliega
 ```
 Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
 
+### El typecheck se comprueba ANTES de pushear (hook `pre-push`, T-225 — 28/07/2026)
+
+**El problema que resuelve:** el check `Typecheck` es uno de los que mira el gate de arriba, así que **un `main` rojo por tipos bloquea el deploy de TODAS las sesiones** — y el diagnóstico se lo come quien no lo rompió. El `pre-commit` corre tests, pero **los tests unitarios no ven un error de tipos**: pasan igual. El caso del 28/07 fue el error más tonto posible (`scripts/backfill-explanation-data.ts` usaba un campo que el `SELECT` ya pedía pero el tipo no declaraba, TS2339) y costó **tres vueltas de deploy** a otra sesión.
+
+**Dónde está:** `.husky/pre-push` → `scripts/typecheck-push-guard.cjs` (regla pura en `lib/hooks/typecheckRelevance.cjs`, guardarraíl en `__tests__/guardrails/typecheckHook.test.ts`). Va detrás del guard del backlog: primero el barato.
+
+**Por qué en el pre-PUSH y no en el pre-commit — medido, no a ojo** (con la caché `incremental` que `tsconfig.json` ya tenía):
+
+| escenario | coste |
+|---|---|
+| push que **solo toca documentación** | **0,2 s** (ni se lanza `tsc`) |
+| caliente, sin cambios de código | ~14 s |
+| caliente, tocando un módulo de amplio alcance | ~43 s |
+| **en frío** (worktree recién creada, sin `.tsbuildinfo`) | ~72 s |
+
+La ficha de T-225 daba *"más de 2 minutos"*: se había medido **en frío**, que es justo lo que pasa la primera vez en cada worktree nueva. Por commit sería intolerable (varios commits por sesión) y **un hook que molesta se acaba saltando con `--no-verify`**, que es peor que no tenerlo. Por push se paga una vez y sigue estando antes de que el rojo llegue a `main`, que es lo único que importa.
+
+**Escape:** `TYPECHECK_GUARD_SKIP=1 git push …` (rama de trabajo que no va a `main`, rehacer historia). Está a la vista en el propio hook a propósito: si el escape específico no se ve, la gente usa `--no-verify`, que además se salta el guard del backlog.
+
+**Fail-open ante infra** (no arranca `npm`, falta el script) y **fail-closed en lo suyo** (tipos rotos → push bloqueado), igual que su hermano del backlog.
+
+> ⚠️ El hook mira el **diff neto contra `origin/main`**, no cada commit: si añades un fichero roto y lo quitas en otro commit del mismo push, no paga peaje — porque a `main` no llega. Y `backend/` y `__tests__/` no lo disparan porque el typecheck de la raíz los excluye (paridad con `tsconfig.json` fijada por test: si alguien cambia ese `exclude`, el guardarraíl se pone rojo).
+
 > **CI — dónde corre:** el workflow (`.github/workflows/test.yml`) dispara en **`pull_request` y push a `main`**, NO en push de una rama suelta. Para tener CI sobre una feature-branch (worktree, ver abajo) hay que **abrir un PR** — aunque seas solo tú: el PR es el mecanismo que dispara el CI, no una ceremonia de aprobación.
 
 > ⚠️ **El gate exige solo los checks de CÓDIGO verdes (unit+typecheck+lint).** `integration` es una **señal aparte que NO bloquea**: pega a la BD real (readonly) y puede estar en ROJO por motivos de **datos** o por trabajo de **otra sesión** (p.ej. una oposición construida en DB pero aún sin entrada en config, un ratchet de temario de otra sesión, un test de otra feature a medias) — cosas ajenas al código que despliegas. **Decisión tomada (Manuel, 08/07):** el gate del script trata `integration` como informativa (la reporta pero no aborta). Aun así, míralo antes de soltar: si el rojo SÍ es de tu código, arréglalo primero.
