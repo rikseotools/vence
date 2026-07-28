@@ -216,6 +216,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'en rechazo. Decisión en el núcleo puro `lib/convocatoria/hitoOrigen.js` (19 tests). NUNCA rellenar ' +
       'la cita con una URL genérica para callar el check: convierte un dato dudoso en uno que parece verificado.',
   },
+  acreditar_hito: {
+    titulo: 'Acreditar la fecha de un hito de convocatoria con la cita literal de su boletín',
+    ruta: 'scripts/convocatoria/acreditar-hito.cjs',
+    estado: 'vivo',
+    escribe: ['url', 'cita_literal', 'source_documento_id'],
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    notas:
+      '`--hito <uuid> --url "<url del documento>" --cita "<frase literal>" [--documento <uuid>] [--apply]`. ' +
+      'Dry-run por defecto. Es la OTRA mitad de `degradar_origen_hito`: el hallazgo ' +
+      '`hito_registro_sin_fuente` se cierra degradando (la fecha no consta) **o acreditando** (sí consta), ' +
+      'y hasta T-256 la segunda vía era escribir a mano, sin nada que impidiese pegar la portada del ' +
+      'boletín y dar el hito por verificado —justo lo que el runbook prohíbe—. **La contención está en el ' +
+      'núcleo puro `lib/convocatoria/hitoAcreditacion.js` (22 tests):** la url debe apuntar a un DOCUMENTO ' +
+      '(no a una portada ni a una sección) y **la cita debe NOMBRAR la fecha del hito** — una cita que no ' +
+      'dice la fecha no prueba la fecha, y es el error que de verdad pasa desapercibido porque suena bien. ' +
+      'Un hito cuyo título se confiesa "previsión" NO se acredita: ahí toca degradar. Escribe dos campos ' +
+      '(tres con `--documento`), RELEE tras escribir y emite `hito_acreditado` en éxito Y en rechazo. ' +
+      'Estrenado con el examen del Cuerpo Administrativo de la Junta General de Asturias (07/11/2026), que ' +
+      'llevaba meses sin fuente y resultó ser CIERTO: lo fija el BOJG serie C núm. 116.',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',

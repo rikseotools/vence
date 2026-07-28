@@ -13,13 +13,20 @@
 
 **El problema medido:** de **960** hitos `registro`, **642 (67%)** no tienen ni `url`, ni `cita_literal`, ni `source_documento_id`. Caso verificado contra dos fuentes: la landing de Huesca anunciaba *"Primer ejercicio (examen) → 01/11/2026"* y **ni la web del Ayuntamiento ni la reseña del BOE publican fecha alguna**.
 
-**Única vía para tocarlo** (dry-run por defecto):
+**Únicas vías para tocarlo** (dry-run por defecto). Un hallazgo se cierra por uno de los dos lados: la fecha **no consta** → se degrada; la fecha **sí consta** → se acredita con su cita.
 
 ```bash
+# la fecha NO consta en ningún boletín → deja de mostrarse como oficial
 node scripts/convocatoria/degradar-origen-hito.cjs --listar [<slug>]
 node scripts/convocatoria/degradar-origen-hito.cjs --autocontradictorios [--apply]
 node scripts/convocatoria/degradar-origen-hito.cjs --hito <uuid> --verificado "…" [--apply]
+
+# la fecha SÍ consta → se queda como `registro`, ahora con la prueba delante
+node scripts/convocatoria/acreditar-hito.cjs --hito <uuid> \
+  --url "<url del documento>" --cita "<frase literal del boletín>" [--apply]
 ```
+
+⚠️ **La cita tiene que NOMBRAR la fecha del hito** — el acreditador lo exige (`lib/convocatoria/hitoAcreditacion.js`, 22 tests) y rechaza tanto la portada del boletín como una cita que hable del proceso sin decir la fecha. Es el error que pasa desapercibido porque *suena* a verificado.
 
 ⚠️ **«Sin respaldo» NO es «inventada».** Muchos cierres de plazo derivan de `inscription_deadline`, que sí está verificado: les falta la CITA, no la verdad. Por eso la herramienta **solo degrada sola** lo que se contradice a sí mismo (título que dice *"previsión"* con `origen=registro`) y para cualquier otro caso **exige `--verificado`** con lo que hayas mirado, que queda en la traza (`observable_events`, `hito_origen_degradado`, éxito y rechazo).
 
@@ -34,7 +41,17 @@ Arreglar los hitos de hoy no impide que mañana se escriba otro `registro` sin c
 - **Volumen total:** 25 candidatos (`registro` + fecha futura + oposición activa), de los que el núcleo **exime 21** por respaldo o corroboración. Es la proporción que decide si esto se lee o se ignora.
 - **Exención por corroboración (la que evita que la bandeja nazca ruidosa):** si la fecha **coincide con un campo ya verificado de la convocatoria** (típicamente `inscription_deadline`), **no es hallazgo** — le falta la cita, no la verdad; eso es provenance (T-147), no una fecha inventada. Sin esta exención las 5 candidatas de `warn` eran las 5 falsos positivos, y una bandeja ruidosa se acaba ignorando (lección T-047).
 
-Al triar un hallazgo: verificar la fecha **contra el boletín de esa convocatoria**. Si consta → añadir `url` + `cita_literal` y el hito se queda como `registro`. Si no consta en ninguna fuente → degradarlo con `degradar-origen-hito.cjs --verificado "…"`, que es la única vía y deja traza. Para volver a medir el estado completo, `--listar`.
+Al triar un hallazgo: verificar la fecha **contra el boletín de esa convocatoria**. Si consta → `acreditar-hito.cjs` y el hito se queda como `registro`. Si no consta en ninguna fuente → `degradar-origen-hito.cjs --verificado "…"`. Para volver a medir el estado completo, `--listar`.
+
+**Dónde buscar cuando la convocatoria no fija la fecha** (lo normal: casi ninguna la fija, la publica después). Lo aprendido adjudicando los 4 primeros hallazgos, 28/07:
+
+- La fecha suele vivir en la **resolución de listas definitivas**, no en la convocatoria. Busca esa resolución antes de dar la fecha por inventada.
+- Muchos parlamentos y organismos publican en boletín propio **enumerable por URL** (la Junta General de Asturias: `agoranet.jgpa.es/documentos/Boletines/PDF/12C-NNN.pdf`). Descargar el rango de números y buscar la frase dentro es más rápido y más fiable que pelearse con el buscador.
+- Los portales de empleo modernos (`*.convoca.online`) son **SPA**: `curl` devuelve la plantilla vacía y hay que cargarlos con navegador. Y aun así pueden no publicar la fecha, que va al boletín.
+- **Cuidado con el proceso hermano:** en la misma entidad conviven varias oposiciones y sus resoluciones se parecen muchísimo. La primera que encontré fijaba el 20/10/2026… para *otro* cuerpo. Comprobar SIEMPRE que el documento nombra tu proceso (cuerpo, nº de plazas, expediente).
+- Una web de academia que da la fecha **no es fuente**, pero sí es una pista de que la resolución existe: si la redacción que citan suena a boletín (*"Se convoca a los aspirantes admitidos…"*), sigue buscando el original.
+
+**Y no olvides la superficie hermana:** `convocatorias.exam_date` se enseña en el hero de la landing y **no lo cubre este detector**. Si el día no está publicado, el campo que toca es `exam_date_approximate = true` → la landing pasa de *"Examen: 20 de septiembre de 2026"* a *"Examen previsto: … (fecha aproximada)"*. Degradar el hito y dejar el `exam_date` afirmado deja la mentira a medio quitar.
 
 
 ## 0. Qué avisa el badge
