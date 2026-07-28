@@ -96,6 +96,39 @@ export function mixedInclusionIsWarned(opts: {
   return pass(name)
 }
 
+/**
+ * INVARIANTE (bug MariSol 28/07/2026, feedback 108cc2a8): en el panel "Tu Evolución en esta
+ * pregunta", **la cabecera no puede contradecir al intento que el usuario acaba de hacer**.
+ *
+ * El caso real: respondió bien y la cabecera dijo «Sigues fallando esta pregunta (0/2)»; en otra
+ * falló y dijo «¡Progreso! Antes fallaste, ahora acertaste». Las bolitas y el porcentaje SÍ
+ * cuadraban con la base de datos —se verificó intento a intento—, así que el usuario ve dos
+ * verdades opuestas en el mismo recuadro y la que está mal es la de arriba.
+ *
+ * Se afirma solo la DIRECCIÓN (acierto/fallo), que es lo que el usuario percibe, y no el texto
+ * exacto: los mensajes cambian y esto debe seguir protegiendo igual.
+ */
+export function evolutionHeaderMatchesLastAttempt(opts: {
+  /** Mensaje de la cabecera tal cual se ve en pantalla. */
+  headerText: string
+  /** ¿El intento que se acaba de responder fue correcto? (verdad del test, no de la UI). */
+  lastAttemptCorrect: boolean
+}): InvariantResult {
+  const name = 'evolution_header_matches_last_attempt'
+  const t = (opts.headerText || '').toLowerCase()
+  // Mensajes que AFIRMAN acierto en el último intento, y los que afirman fallo.
+  const diceAcierto = /ahora (la has )?acertaste|siempre aciertas|la acertaste/.test(t)
+  const diceFallo = /sigues fallando|ahora fallaste|siempre fallas/.test(t)
+  if (!diceAcierto && !diceFallo) return pass(name) // neutro (primera vez, blanco…): no afirma nada
+  if (diceAcierto && !opts.lastAttemptCorrect) {
+    return fail(name, `la cabecera dice que acertó pero el intento fue FALLO: "${opts.headerText}"`)
+  }
+  if (diceFallo && opts.lastAttemptCorrect) {
+    return fail(name, `la cabecera dice que falla pero el intento fue ACIERTO: "${opts.headerText}"`)
+  }
+  return pass(name)
+}
+
 /** INVARIANTE genérica: una llamada scoped debe ir a la oposición esperada (no anónima). */
 export function requestIsScopedTo(url: string | null, positionType: string): InvariantResult {
   const name = 'request_is_scoped'

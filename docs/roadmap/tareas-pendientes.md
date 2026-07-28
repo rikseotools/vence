@@ -14,6 +14,29 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
+- **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
+- **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
+
+  | Pregunta | Lo que respondió de verdad | Lo que decía la cabecera |
+  |---|---|---|
+  | `3bdd3565` | B → **FALLO** (`is_correct=false`) | *«¡Progreso! Antes fallaste, ahora acertaste»* |
+  | `4ed7bbcc` | A → **ACIERTO** (`is_correct=true`) | *«Sigues fallando esta pregunta (0/2)»* |
+  | `89021fe8` | histórico real **2/3** | *«Siempre aciertas (3/3)»* |
+
+- **Dónde NO está el fallo (descartado con datos, no por intuición):**
+  - **No son las bolitas ni el porcentaje:** coinciden **exactamente** con `test_questions` en los 3 casos (`3bdd3565`: 6 intentos, 17 %, ✓✗✗✗✗✗). Quien miente es la cabecera; la usuaria lo interpretó al revés.
+  - **No es la función pura:** con la entrada correcta, `calcularEvolucionCompleta` devuelve el mensaje CORRECTO en los 3 casos. El fallo está en la **entrada**.
+  - **No es el barajado:** ninguna de sus 20 respuestas de ese rato lleva `option_order`, y la clave guardada (`correct_answer`) coincide con `questions.correct_option` en **todas** → se le sirvió en orden natural. (Ver T-235: el piloto no ha barajado aún.)
+- **Dónde está:** en `currentResult`, que `TestLayout.tsx` (~L296) deriva del estado del cliente: `is_correct: !isBlank && verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer`. En dos de los tres casos sale **invertido** respecto a lo que el servidor registró. Sospecha principal: **desincronía pregunta↔estado en el repaso de fallos** — el propio fichero documenta un bug previo de esa familia (*«Bug repaso-fallos: la captura mostró el texto de la pregunta anterior con marcadores de la actual»*), y ella estaba en `/test/repaso-fallos-v2`. Falta reproducir el disparador exacto.
+- **Por qué es 🔴 y no cosmético:** al usuario se le afirma que ha fallado algo que acertó. Eso ataca justo lo que vende la plataforma —saber en qué estás flojo— y encima **no deja rastro**: la BD guarda lo correcto, así que ninguna métrica ni alerta lo ve. Solo lo caza alguien mirando la pantalla.
+- **Ya hecho (28/07):**
+  - **Simulación con datos reales:** `scripts/sim/sim-evolucion-marisol.ts <email>` — replayea los intentos de un usuario y dice si el fallo está en la función o en la entrada. Reutilizable para cualquier reporte parecido.
+  - **Invariante + regresión permanente:** `evolutionHeaderMatchesLastAttempt` en `lib/sim/invariants.ts` (+ 4 tests con los dos casos REALES) y journey de navegador `scripts/sim/journeys/evolucion-cabecera-coherente.ts`, que afirma que la cabecera no puede contradecir al veredicto que la propia UI acaba de mostrar.
+- **Bloqueo del journey (arreglar al retomar):** contra prod, la cuenta de test (`SMOKE_USER_ID`) se come el **modal de onboarding** («Para personalizar tu experiencia…») y no llega al test → el journey no puede evaluar. **Hay que completar el perfil de la cuenta de test o que el journey lo cierre**; si no, este journey y cualquier otro que necesite responder preguntas nacen inservibles.
+- **Siguiente paso:** desbloquear el journey → reproducir → arreglar el origen de `currentResult` (no parchear el mensaje) → dejar el journey en verde como regresión.
+- **Origen:** feedback `108cc2a8` de MariSol, 28/07/2026.
+
 ### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
 - **📏 PRIMERA MEDICIÓN (28/07 ~15:30, desde otra sesión — NO reclamé la ficha, solo dejo el dato):** el piloto **está vivo pero casi no produce señal**, así que hoy **no se puede juzgar** con los criterios de abajo.
   - ✅ **El flag llega y actúa:** `FEATURE_SHUFFLE_OPTIONS=true` y `..._SCOPE=auxiliar_administrativo_valencia` están en SSM **y el task def vivo los inyecta**; el evento `shuffle_options_request_active` ha disparado **6 veces hoy**, todas con `positionType=auxiliar_administrativo_valencia`. No es un problema de configuración.
@@ -21,6 +44,11 @@
   - 🔍 **El dato que lo explica, y es el hallazgo:** hoy hubo **379 respuestas de usuarios de Valencia y solo 6 peticiones con barajado activo**. La vía que baraja (`/api/questions/filtered` con `shuffleOptions:true`, que ponen los fetchers de `testFetchers.ts`) **apenas la toca el tráfico real**. Con ~12 preguntas servidas y un **33 % de elegibles** en Valencia (6.946 de 20.942 `safe`+`full`), el 0 es perfectamente compatible con "muestra minúscula", no con "roto".
   - **Por tanto, ANTES de mirar aciertos o de decidir si se amplía/apaga: averiguar por qué el 98 % de las respuestas de Valencia no pasan por la vía que baraja.** Si es que el grueso del tráfico usa otro fetcher (tests de ley, aleatorio, repaso…), el piloto está midiendo una esquina y ampliarlo o apagarlo por estos números sería decidir a ciegas.
   - Sin eventos `shuffle_option_order_invalid` (0 hoy): no hay indicio de clave rota.
+- **📏 SEGUNDA MEDICIÓN (28/07 ~17:30, otra sesión — TAMPOCO la reclamo, solo confirmo y afino):** el diagnóstico de arriba se sostiene y se estrecha.
+  - `shuffle_options_request_active` ha subido a **19** (última 15:21) y `test_questions.option_order` sigue en **0 — en TODA la historia de la tabla**, no solo hoy. El piloto **no ha producido ni una sola exposición barajada**.
+  - **No es escasez de material:** hay **73.485 preguntas activas `safe`** (frente a 61.099 `unsafe`), así que la vía que baraja tendría de sobra.
+  - **Confirmado desde el otro extremo, con un caso real:** las 20 respuestas de MariSol (usuaria de Valencia) de las 16:20-16:32 **no tienen `option_order`** y su `correct_answer` guardada coincide con `questions.correct_option` en **las 20** → se le sirvió en **orden natural**. Es decir: una usuaria de la oposición del piloto, practicando dentro del piloto, no vio barajado ni una vez.
+  - Refuerza la conclusión: el problema es **por dónde entra el tráfico real** (`/test/repaso-fallos-v2` en su caso), no la configuración. Mientras eso no se resuelva, los criterios 2 y 3 de esta ficha no pueden dar veredicto.
 - **Qué:** el 28/07 se encendió el barajado de opciones en producción **solo para `auxiliar_administrativo_valencia`** (41 usuarios, ~4.400 respuestas/semana; el 33% de lo que se le sirve es barajable). **Revisar a los 3-5 días** con datos reales, no antes: hace falta que se acumulen respuestas.
 - **Cómo saber si va bien** (por orden de gravedad):
   1. `SELECT count(*) FROM observable_events WHERE event_type='shuffle_option_order_invalid' AND ts > '2026-07-28'` — detector de **clave rota** (el cliente devolvió un orden que no cuadra). **Cualquier cosa distinta de 0 es motivo de apagar y diagnosticar antes que seguir.**
