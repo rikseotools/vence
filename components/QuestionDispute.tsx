@@ -1,7 +1,7 @@
 // components/QuestionDispute.tsx - Componente unificado para impugnar preguntas
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { ExistingDisputeData } from '@/lib/api/dispute'
+import { getDisputeResponseSchema, type ExistingDispute } from '@/lib/api/v2/dispute/schemas'
 import {
   LEGISLATIVE_DISPUTE_TYPES,
   PSYCHOMETRIC_DISPUTE_TYPES,
@@ -92,7 +92,7 @@ export default function QuestionDispute({
   const [errorMessage, setErrorMessage] = useState('')
 
   // Verificación previa
-  const [existingDispute, setExistingDispute] = useState<ExistingDisputeData | null>(null)
+  const [existingDispute, setExistingDispute] = useState<ExistingDispute | null>(null)
   const [checkingExisting, setCheckingExisting] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)
 
@@ -122,8 +122,29 @@ export default function QuestionDispute({
       })
 
       if (res.ok) {
-        const result = await res.json()
-        const previa = result.success && result.data ? result.data : null
+        const crudo = await res.json()
+        // Se VALIDA contra el esquema del endpoint en vez de leer campos a mano.
+        //
+        // Por qué: este componente leía `result.data` mientras `/api/v2/dispute` devuelve
+        // `{success, dispute}` desde el refactor `c361fd9a5` (18/03/2026). `data` era siempre
+        // undefined, así que el aviso «Ya impugnaste esta pregunta» llevaba meses sin aparecerle a
+        // NADIE: el usuario que volvía a una pregunta ya impugnada veía el formulario en blanco y,
+        // al enviarlo, se comía el error del índice único. Medido en `validation_error_logs`: 44
+        // choques de duplicado en los 24 días que retiene el log.
+        //
+        // Un desajuste de contrato silencioso solo se caza si alguien lo comprueba. Ahora lo hace
+        // el esquema, y si vuelve a divergir se entera la observabilidad, no una usuaria.
+        const parsed = getDisputeResponseSchema.safeParse(crudo)
+        if (!parsed.success) {
+          emitClientEvent({
+            severity: 'warn',
+            eventType: 'question_dispute_action',
+            metadata: { action: 'contract_mismatch', questionId, campos: Object.keys(crudo ?? {}).join(',') },
+          })
+          setExistingDispute(null)
+          return
+        }
+        const previa = parsed.data.dispute
         // GUARDA VERIFICABLE, no confianza en el estado. El bug `dc236653` (28/07) consistió en
         // pintar la impugnación de OTRA pregunta; el reset de estado lo evita, pero esto lo hace
         // IMPOSIBLE y además deja rastro si vuelve a ocurrir por otra vía (una respuesta cruzada,

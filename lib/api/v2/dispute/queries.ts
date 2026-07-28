@@ -47,6 +47,7 @@ export async function getExistingDispute(
       const [existing] = await db
         .select({
           id: psychometricQuestionDisputes.id,
+          questionId: psychometricQuestionDisputes.questionId,
           status: psychometricQuestionDisputes.status,
           disputeType: psychometricQuestionDisputes.disputeType,
           description: psychometricQuestionDisputes.description,
@@ -67,6 +68,7 @@ export async function getExistingDispute(
         success: true,
         dispute: existing ? {
           id: existing.id,
+          questionId: existing.questionId,
           status: existing.status,
           disputeType: existing.disputeType,
           description: existing.description,
@@ -79,6 +81,7 @@ export async function getExistingDispute(
       const [existing] = await db
         .select({
           id: questionDisputes.id,
+          questionId: questionDisputes.questionId,
           status: questionDisputes.status,
           disputeType: questionDisputes.disputeType,
           description: questionDisputes.description,
@@ -99,6 +102,7 @@ export async function getExistingDispute(
         success: true,
         dispute: existing ? {
           id: existing.id,
+          questionId: existing.questionId,
           status: existing.status,
           disputeType: existing.disputeType,
           description: existing.description,

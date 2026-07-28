@@ -166,10 +166,15 @@ export type ClientEventType =
   // 'inapp_blocked' medimos el tamaño real del muro y si el apaño (copy_link) se usa.
   | 'temario_print_action'
   // Impugnación de pregunta desde FeedbackModal y desde el panel del test. metadata.action ∈
-  // {'submitted','no_question_context','stale_panel_ignored'},
+  // {'submitted','no_question_context','stale_panel_ignored','contract_mismatch'},
   // source, questionId. 'no_question_context' = se intentó impugnar sin pregunta a la vista (típico
   // en /soporte): mide la demanda de un selector de pregunta. Anti-regresión del bug 21/07 (la
   // impugnación se colgaba de una pregunta stale de localStorage). Ver resolveQuestionId.ts.
+  // 'contract_mismatch' = la respuesta del endpoint no valida contra su propio esquema. Existe
+  // porque el componente leyó `result.data` durante meses mientras la API devolvía `{dispute}`
+  // (refactor 18/03): el aviso «ya impugnaste» quedó muerto y NADIE se enteró, porque un
+  // desajuste de contrato no lanza excepción ni deja log — la pantalla parece normal. 44 usuarios
+  // se comieron el error del índice único en 24 días.
   // 'stale_panel_ignored' = el panel recibió la impugnación de OTRA pregunta y la descartó; mide
   // que no vuelva el bug `dc236653` (28/07), donde el panel pintaba «Ya impugnaste esta pregunta»
   // sobre una que el usuario no había impugnado. Va al MISMO evento a propósito: los dos son

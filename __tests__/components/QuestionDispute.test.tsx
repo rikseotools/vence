@@ -43,6 +43,7 @@ jest.mock('../../lib/api/authHeaders', () => ({
 
 // Importar después de mocks
 import QuestionDispute from '../../components/QuestionDispute'
+import { respuestaConImpugnacion } from '../helpers/disputeResponse'
 
 // ============================================
 // HELPERS
@@ -208,16 +209,16 @@ describe('QuestionDispute', () => {
     test('si ya existe impugnación, muestra estado + admin_response', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            id: 'dispute-1',
+        // Antes este mock escribía `{success, data}` a mano y el test pasaba con la función MUERTA:
+        // el endpoint devuelve `{success, dispute}` desde el refactor del 18/03. Ahora se construye
+        // desde el esquema real, así que si el contrato cambia, salta aquí.
+        json: async () =>
+          respuestaConImpugnacion({
+            questionId: VALID_QUESTION_ID,
             disputeType: 'no_literal',
-            status: 'pending',
             createdAt: '2026-01-15T10:00:00Z',
             adminResponse: 'Revisaremos tu caso',
-          },
-        }),
+          }),
       })
 
       renderInline()

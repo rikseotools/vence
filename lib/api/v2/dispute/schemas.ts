@@ -66,6 +66,12 @@ export type GetDisputeRequest = z.infer<typeof getDisputeRequestSchema>
 
 export const existingDisputeSchema = z.object({
   id: z.string().uuid(),
+  /**
+   * Pregunta a la que pertenece. Va en el contrato para que el consumidor pueda COMPROBAR que lo
+   * que pinta es de la pregunta que el usuario tiene delante, en vez de confiar en su propio
+   * estado. Nullable porque la columna lo es (impugnaciones sin contexto, p. ej. desde /soporte).
+   */
+  questionId: z.string().uuid().nullable(),
   status: z.string().nullable(),
   disputeType: z.string(),
   description: z.string(),

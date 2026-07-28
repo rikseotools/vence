@@ -44,10 +44,22 @@ test.describe('Impugnar — el panel no arrastra el estado entre preguntas', () 
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
+        // Forma REAL del endpoint v2: `{success, dispute}`. Escribirla a mano fue justo el error
+        // que dejó vivo el bug de contrato durante meses, así que aquí se replica el contrato tal
+        // cual lo define `getDisputeResponseSchema`.
         body: JSON.stringify({
           success: true,
-          data: esLaPrimera
-            ? { id: 'e2e-1', questionId: qid, disputeType: 'tema_incorrecto', status: 'pending', createdAt: null, adminResponse: null }
+          dispute: esLaPrimera
+            ? {
+                id: '00000000-0000-4000-8000-0000000000e2',
+                questionId: qid,
+                status: 'pending',
+                disputeType: 'tema_incorrecto',
+                description: 'Motivo: tema_incorrecto',
+                adminResponse: null,
+                createdAt: null,
+                resolvedAt: null,
+              }
             : null,
         }),
       })
