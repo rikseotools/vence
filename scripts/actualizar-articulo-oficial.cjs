@@ -35,7 +35,8 @@ require('dotenv').config({ path: '.env.local' })
 const path = require('path')
 const { Client } = require('pg')
 const { compararArticuloOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'compararArticuloOficial'))
-const { parrafosDeEurLex, esIdEurLex, esCelexNoConsolidado, urlEurLex } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { parrafosDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
 const { decidirReescritura, resumirPlan } = require(path.join(__dirname, '..', 'lib', 'laws', 'actualizarArticuloGuardas'))
 
 const argv = process.argv.slice(2)
@@ -60,11 +61,11 @@ if (esCelexNoConsolidado(FUENTE)) {
 }
 
 ;(async () => {
-  const html = await (async () => {
-    const r = await fetch(urlEurLex(FUENTE), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } })
-    if (!r.ok) throw new Error(`HTTP ${r.status} al pedir ${urlEurLex(FUENTE)}`)
-    return r.text()
-  })()
+  // Validar el CONTENIDO y no el código de estado: EUR-Lex responde 202 con cuerpo VACÍO
+  // cuando nos raciona, y `202` pasa el filtro `r.ok` → los 99 artículos salían «sin oficial»
+  // y el script informaba de que no había nada que reescribir. Cae a Cellar y lanza si no hay
+  // ninguna fuente utilizable.
+  const { html } = await descargarDocumentoOficial(FUENTE, { log: (m) => console.log(`   ${m}`) })
 
   // GOTCHA `pg` + RDS: si la URL trae `sslmode=require`, ESE parámetro gana sobre la opción `ssl`
   // y revienta con "self-signed certificate in certificate chain" (RDS presenta su propia CA).

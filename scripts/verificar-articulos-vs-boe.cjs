@@ -23,7 +23,8 @@ const fs = require('fs')
 const path = require('path')
 const pg = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))
 const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
-const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado, urlEurLex } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -86,9 +87,10 @@ const ES_EURLEX = esIdEurLex(BOE_ID)
 let EURLEX_HTML = null
 async function htmlEurLex() {
   if (EURLEX_HTML === null) {
-    const r = await fetch(urlEurLex(BOE_ID), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } })
-    if (!r.ok) throw new Error(`HTTP ${r.status} al pedir ${urlEurLex(BOE_ID)}`)
-    EURLEX_HTML = await r.text()
+    // Validar el CONTENIDO y no el código de estado: EUR-Lex responde 202 con cuerpo VACÍO
+    // cuando nos raciona, y `202` pasa el filtro `r.ok` → salía «0 divergencias» sin haber
+    // comparado nada. El bucle cae a Cellar y lanza si ninguna fuente sirve.
+    EURLEX_HTML = (await descargarDocumentoOficial(BOE_ID, { log: (m) => console.log(`   ${m}`) })).html
   }
   return EURLEX_HTML
 }
