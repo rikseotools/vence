@@ -3683,6 +3683,8 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 >
 > **Preguntas:** las 207 activas de la ley estaban ya TODAS sin verificar antes de esto (el trigger solo movió 2, las únicas que conservaban estado). No se ha creado cola nueva, pero siguen pendientes de verificar contra el texto ya correcto → [T-192].
 >
+> **La fila DUPLICADA también estaba mal, y también se ha arreglado.** Existe una segunda entrada de la misma norma, `reglamento-ue-2016-679`, con 46 artículos: tenía 29 `contaminado` + 2 `incompleto` + 3 `erratas`. Reimportada igual → **46/46 oficiales**. Sirve 1 oposición y 1 pregunta activa, así que el impacto era pequeño, pero era el mismo defecto. **Queda la pregunta de fondo, que NO es de esta tarea: por qué hay dos filas de la misma norma.** Total entre las dos: **145 artículos** puestos al día.
+>
 > **Ficheros:** `lib/laws/descargarEurlex.cjs` (nuevo) · `lib/laws/eurlexConsolidado.js` · `lib/laws/actualizarArticuloGuardas.js` · `scripts/actualizar-articulo-oficial.cjs` · `scripts/verificar-articulos-vs-boe.cjs`. Tests: 12 de descarga + 20 de guardas + 16 de extracción.
 
 ### [T-225] ✅ [CERRADA 28/07] El `typecheck` corre en el `pre-push`: un `main` rojo por tipos ya no bloquea el deploy de todas las sesiones
