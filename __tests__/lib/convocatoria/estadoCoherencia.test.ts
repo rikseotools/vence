@@ -4,7 +4,7 @@
 // se validaba mirando su salida a ojo. Al extraerla para que alimente también el badge, se fija
 // aquí su comportamiento, incluidos los casos reales que la motivaron.
 
-import { detectarIncoherenciasEstado, abiertaPorFechas, hoyMadrid } from '@/lib/convocatoria/estadoCoherencia'
+import { detectarIncoherenciasEstado, abiertaPorFechas, hoyMadrid, anioMaxCitado } from '@/lib/convocatoria/estadoCoherencia'
 
 const HOY = '2026-07-27'
 const reglas = (o: Record<string, unknown>, hoy = HOY) =>
@@ -97,6 +97,57 @@ describe('lo coherente NO genera ruido (evitar el detector que grita siempre)', 
     ['oep aprobada sin fechas', { is_active: true, estado_proceso: 'oep_aprobada' }],
   ])('%s ⇒ sin incidencias', (_caso, o) => {
     expect(detectarIncoherenciasEstado(o as never, HOY)).toEqual([])
+  })
+})
+
+// El punto ciego que destapó Cádiz (T-211): TODAS las reglas de arriba comparan fechas de
+// convocatoria entre sí. Aquí la contradicción es entre el ESTADO y la referencia de boletín,
+// y por eso 164 usuarios veían "examen realizado" sobre una convocatoria recién publicada.
+describe('estado post-examen contra la REFERENCIA DE BOLETÍN', () => {
+  it('CASO CÁDIZ: post-examen, sin fecha de examen y con referencia del año en curso ⇒ warn', () => {
+    const o = {
+      is_active: true,
+      estado_proceso: 'examen_realizado',
+      exam_date: null,
+      boe_reference: 'BOP Cádiz nº 28, de 11/02/2026 (44 plz; extracto BOE de apertura de plazo pendiente)',
+    }
+    expect(reglas(o)).toContain('post_examen_sin_fecha_ref_actual')
+    expect(sev(o)).toEqual(['warn'])
+  })
+
+  it('la convocatoria publicada DESPUÉS del examen que se da por celebrado ⇒ error', () => {
+    const o = {
+      is_active: true,
+      estado_proceso: 'examen_realizado',
+      exam_date: '2026-06-06',
+      boe_publication_date: '2026-07-01',
+    }
+    expect(reglas(o)).toContain('post_examen_convocatoria_posterior')
+    expect(sev(o)).toContain('error')
+  })
+
+  it('examen de un año y referencia de boletín POSTERIOR ⇒ warn (¿ya es del ciclo siguiente?)', () => {
+    const o = { is_active: true, estado_proceso: 'resultados', exam_date: '2024-05-11', boe_reference: 'BOP nº 28, de 11/02/2026' }
+    expect(reglas(o)).toContain('post_examen_ref_posterior')
+  })
+
+  it.each([
+    // Lo NORMAL: proceso terminado este año cuya convocatoria también es de este año.
+    ['convocatoria y examen del mismo año', { is_active: true, estado_proceso: 'examen_realizado', exam_date: '2026-05-17', boe_publication_date: '2026-01-20', boe_reference: 'BOE núm. 18, de 20/01/2026' }],
+    ['post-examen con referencia VIEJA y sin fecha', { is_active: true, estado_proceso: 'nombramientos', boe_reference: 'BOE núm. 45, de 21/02/2023' }],
+    ['estado NO post-examen (convocada) con referencia de este año', { is_active: true, estado_proceso: 'convocada', boe_reference: 'BOP Cádiz nº 28, de 11/02/2026' }],
+    ['sin referencia de boletín', { is_active: true, estado_proceso: 'examen_realizado' }],
+  ])('%s ⇒ sin incidencias', (_caso, o) => {
+    expect(detectarIncoherenciasEstado(o as never, HOY)).toEqual([])
+  })
+
+  it('anioMaxCitado se queda con el año MÁS RECIENTE del texto (la OEP vieja no fecha la convocatoria)', () => {
+    expect(anioMaxCitado('OEP 2023 (12 plz) + OEP 2024 (16 plz); bases en BOP de 11/02/2026')).toBe(2026)
+    expect(anioMaxCitado('BOE-A-2026-9982')).toBe(2026)
+    expect(anioMaxCitado('sin años')).toBeNull()
+    expect(anioMaxCitado(null)).toBeNull()
+    // Un número de 4 cifras que NO es un año (nº de plazas, expediente) no debe colarse.
+    expect(anioMaxCitado('convocatoria de 1200 plazas')).toBeNull()
   })
 })
 

@@ -354,7 +354,9 @@ async function main() {
            exam_date::text                AS exam_date,
            exam_date_approximate,
            seguimiento_url,
-           seguimiento_last_checked::text AS seguimiento_last_checked
+           seguimiento_last_checked::text AS seguimiento_last_checked,
+           boe_reference,
+           boe_publication_date::text     AS boe_publication_date
     FROM oposiciones_ssot`)).rows;
   const HOY_MADRID = hoyMadrid();
   for (const o of estados) {

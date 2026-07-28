@@ -53,10 +53,35 @@ describe('mirror estado ↔ fechas (backend @Cron) — mismos veredictos que el 
     expect(reglas({ is_active: true, estado_proceso: null })).toEqual(['estado_vacio']);
   });
 
+  // Regla 5.bis (T-211, caso Cádiz): estado post-examen vs. referencia de boletín.
+  it('CASO CÁDIZ: post-examen sin fecha de examen y con referencia del año en curso ⇒ warn', () => {
+    const o = {
+      is_active: true,
+      estado_proceso: 'examen_realizado',
+      exam_date: null,
+      boe_reference: 'BOP Cádiz nº 28, de 11/02/2026 (44 plz; extracto BOE de apertura de plazo pendiente)',
+    };
+    expect(reglas(o)).toContain('post_examen_sin_fecha_ref_actual');
+    expect(detectarIncoherenciasEstado(o, HOY)[0].severidad).toBe('warn');
+  });
+
+  it('convocatoria publicada DESPUÉS del examen dado por celebrado ⇒ error', () => {
+    const o = { is_active: true, estado_proceso: 'examen_realizado', exam_date: '2026-06-06', boe_publication_date: '2026-07-01' };
+    expect(reglas(o)).toContain('post_examen_convocatoria_posterior');
+    expect(detectarIncoherenciasEstado(o, HOY)[0].severidad).toBe('error');
+  });
+
+  it('examen viejo con referencia de boletín posterior ⇒ warn', () => {
+    expect(reglas({ is_active: true, estado_proceso: 'resultados', exam_date: '2024-05-11', boe_reference: 'BOP nº 28, de 11/02/2026' }))
+      .toContain('post_examen_ref_posterior');
+  });
+
   it.each([
     ['abierta de verdad', { is_active: true, estado_proceso: 'inscripcion_abierta', inscription_start: '2026-07-01', inscription_deadline: '2026-08-31' }],
     ['examen futuro pendiente', { is_active: true, estado_proceso: 'pendiente_examen', exam_date: '2026-11-20' }],
     ['oep aprobada sin fechas', { is_active: true, estado_proceso: 'oep_aprobada' }],
+    ['convocatoria y examen del mismo año', { is_active: true, estado_proceso: 'examen_realizado', exam_date: '2026-05-17', boe_publication_date: '2026-01-20', boe_reference: 'BOE núm. 18, de 20/01/2026' }],
+    ['post-examen con referencia VIEJA y sin fecha', { is_active: true, estado_proceso: 'nombramientos', boe_reference: 'BOE núm. 45, de 21/02/2023' }],
   ])('%s ⇒ sin incidencias (no gritar sin motivo)', (_c, o) => {
     expect(detectarIncoherenciasEstado(o as Record<string, unknown>, HOY)).toEqual([]);
   });

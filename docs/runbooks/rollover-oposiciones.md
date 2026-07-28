@@ -73,6 +73,22 @@
 6. **Revalidar caché** (si no, el cambio no se ve): tag `landing` + invalidar CloudFront `--paths "/<slug>*"` (ver `docs/maintenance/cache-revalidation.md`).
 7. **Verificar** con los tests de consistencia: `npx jest __tests__/integration/oposicionesDataConsistency --no-coverage`.
 
+## 2.bis. Una oposición puede tener DOS procesos vivos a la vez (caso Cádiz, 28/07/2026)
+
+No siempre hay un solo ciclo. En `auxiliar-administrativo-diputacion-cadiz` (164 usuarios) convivían:
+
+| Proceso | Estado real | Evidencia oficial |
+|---|---|---|
+| **33 plazas** (6 disc.) | examinando — 1er ejercicio 06/06/2026 | epígrafe **"EN CURSO"** de la Diputación; solicitudes 26/01–23/02/2024 |
+| **44 plazas** (7 disc.) | bases publicadas, **plazo sin abrir** | epígrafe **"NO ABREN PLAZO DE SOLICITUDES"**; BOP nº 28 de 11/02/2026 |
+
+**Estaban mezclados en UNA sola fila de `convocatorias`** (año 2024, `examen_realizado`) con las plazas del nuevo y los hitos de exámenes del viejo. La landing decía *"examen realizado"* a gente que aún puede presentarse.
+
+- **Cómo se distingue:** el proceso que **capta** es aquel al que el opositor todavía puede apuntarse. El que ya cerró solicitudes no admite gente nueva, por muy "en curso" que esté → **`is_current` es el nuevo**; el viejo se archiva con `rollover_convocatoria()` y **conserva sus propios hitos** (los ejercicios celebrados son SU verdad, no la del ciclo nuevo).
+- **Al archivar, devuélvele su verdad al ciclo saliente.** Si alguien le escribió encima los datos del proceso nuevo (plazas, `boe_reference`), la fila archivada los conserva y miente para siempre. Lo que no puedas verificar, a NULL: mejor un hueco que un dato de otro proceso.
+- **No inventes la fecha de apertura del plazo.** En Cádiz las bases dicen literalmente *"en el plazo de veinte días hábiles contados desde el siguiente al de la publicación de la convocatoria en el **Boletín Oficial del Estado**"* — hasta ese extracto no hay fecha. Va como hito `upcoming` con `origen='estimacion'` y `fecha_aproximada=true` (el render la oculta), citando esa frase.
+- **Qué detector lo caza ahora:** regla `post_examen_sin_fecha_ref_actual` de `lib/convocatoria/estadoCoherencia.cjs` — estado post-examen sin `exam_date` cuya referencia de boletín es del año en curso. Antes ninguna regla lo veía: todas comparaban fechas de convocatoria entre sí, y aquí la contradicción está entre el ESTADO y la referencia.
+
 ## 3. Qué NO tocar
 
 - **NO** tocar temario / epígrafes / `topic_scope` / tests. El rollover es de **datos de convocatoria** (fechas/plazas/estado/SEO/hitos), no de contenido. El temario del ciclo anterior suele servir para el siguiente (o cambia poco).

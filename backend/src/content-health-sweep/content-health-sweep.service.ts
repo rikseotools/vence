@@ -789,6 +789,26 @@ export function detectarIncoherenciasEstado(
   }
   if (['examen_realizado', 'resultados', 'nombramientos'].includes(e) && ex && ex > hoy)
     add('error', 'post_examen_futuro', `'${e}' pero el examen es FUTURO (${ex} > ${hoy}) → contradicción`);
+
+  // 5.bis — post-examen mientras la REFERENCIA DE BOLETÍN describe una convocatoria más nueva.
+  // Ver el porqué (caso Cádiz, T-211) en lib/convocatoria/estadoCoherencia.cjs; esto es su espejo.
+  if (['examen_realizado', 'resultados', 'nombramientos'].includes(e)) {
+    const años = String(o.boe_reference ?? '').match(/\b(19|20)\d{2}\b/g);
+    const plausibles = (años ?? []).map(Number).filter((a) => a >= 1980 && a <= 2100);
+    const anioRef = plausibles.length ? Math.max(...plausibles) : null;
+    const pub = dia(o.boe_publication_date);
+    const anioEx = ex ? Number(ex.slice(0, 4)) : null;
+    if (pub && ex && pub > ex) {
+      add('error', 'post_examen_convocatoria_posterior',
+        `'${e}' pero la convocatoria se publicó DESPUÉS del examen (${pub} > ${ex}) → la referencia describe otro ciclo, o el estado se quedó viejo`);
+    } else if (!ex && anioRef != null && anioRef >= Number(hoy.slice(0, 4))) {
+      add('warn', 'post_examen_sin_fecha_ref_actual',
+        `'${e}' SIN fecha de examen y con una referencia de boletín de ${anioRef} (${String(o.boe_reference).slice(0, 80)}) → parece una convocatoria NUEVA presentada como proceso terminado`);
+    } else if (anioEx != null && anioRef != null && anioRef > anioEx) {
+      add('warn', 'post_examen_ref_posterior',
+        `'${e}' (examen de ${anioEx}) pero su referencia de boletín cita ${anioRef} → ¿la referencia es ya del ciclo siguiente?`);
+    }
+  }
   if (start && dl && start > dl)
     add('warn', 'start_despues_deadline', `inscription_start (${start}) posterior al deadline (${dl})`);
 
@@ -1774,7 +1794,9 @@ export class ContentHealthSweepService {
                exam_date::text                AS exam_date,
                exam_date_approximate,
                seguimiento_url,
-               seguimiento_last_checked::text AS seguimiento_last_checked
+               seguimiento_last_checked::text AS seguimiento_last_checked,
+               boe_reference,
+               boe_publication_date::text     AS boe_publication_date
         FROM oposiciones_ssot`)) as unknown as Array<Record<string, unknown>>;
       for (const o of filas) {
         for (const inc of detectarIncoherenciasEstado(o, hoy)) {

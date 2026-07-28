@@ -545,14 +545,6 @@ incluida).
 - **Guardarraíl que YA existe:** `__tests__/integration/deleteUserIndexCoverage.integration.test.ts` (cruza las tablas que borra la función con los índices por `user_id`). Cubre la falta de índice, **no** el coste de los triggers: por eso hace falta esta ficha.
 - **Origen:** 28/07, procesando 4 bajas reales. Una falló y la investigación destapó que el fallo afectaba al 55% de los usuarios.
 
-### [T-211] 🟠 [ABIERTO 28/07] Cádiz dice "examen realizado" con una convocatoria de 2026 recién publicada — y el detector de estado no lo ve
-- **Qué:** `auxiliar-administrativo-diputacion-cadiz` (**164 usuarios, la oposición con más gente de la campaña**) tiene `estado_proceso = 'examen_realizado'` y `exam_date = null`, mientras su propio `boe_reference` ya dice *"BOP Cádiz nº 28, de 11/02/2026 (44 plz; extracto BOE de apertura de plazo pendiente)"*. La Diputación lista ese proceso de **44 plazas** bajo el epígrafe **"NO ABREN PLAZO DE SOLICITUDES"**, con bases aprobadas por Decreto de **4 de febrero de 2026**.
-- **El estado correcto es `convocada`** (bases publicadas, plazo aún sin abrir), que ya se usa en 5 oposiciones. Hoy la landing le dice a 164 personas que su examen ya pasó.
-- **Punto ciego medido:** el detector `convocatoria_estado_incoherente` (34 hallazgos hoy) **NO marca a Cádiz**. Le falta el caso "el estado dice proceso terminado pero la referencia describe una convocatoria NUEVA": basta cruzar el año que cita `boe_reference` con el estado.
-- **Por qué no lo he cambiado yo:** el escritor registrado (`dual-write-adjudicar.cjs`) solo resuelve divergencias entre la fila legacy y su convocatoria (`gana: legacy|convocatoria`), y aquí **las dos filas están mal**: la verdad es un tercer valor. Escribirlo a mano sería abrir una puerta sin guardarraíl a un campo que pinta la landing. Va por el flujo de rollover (`docs/runbooks/rollover-oposiciones.md`).
-- **Ya arreglado en esta pasada (no forma parte de la tarea):** sus 24 epígrafes están **`verified_literal` 24/24** contra las bases de 2026, y el `programa_url` repuntado del anuncio del BOE de 2023 al documento vigente.
-- **Origen:** T-107, 28/07, al desbloquear Cádiz.
-
 ### [T-210] 🔴 [ABIERTO 28/07] El 52-68% de los usuarios ACTIVOS ve errores de fetch en el cliente, todos los días, y nadie lo estaba mirando
 - **Medido (6 días, `observable_events.console_error` cruzado con usuarios que responden preguntas):**
 
@@ -3767,6 +3759,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ## Hechas
 
+
+### [T-211] ✅ [HECHO 28/07] Cádiz decía "examen realizado" sobre una convocatoria recién publicada — eran DOS procesos metidos en una sola fila
+- **El diagnóstico de la ficha se quedaba corto.** No era un `estado_proceso` mal puesto: la Diputación de Cádiz tiene **dos procesos de Auxiliar Administrativo vivos a la vez** y los teníamos fundidos en una única fila de `convocatorias` (año 2024). Verificado hoy en su portal:
+  - **33 plazas** (6 disc.), solicitudes 26/01–23/02/2024, **1er ejercicio celebrado el 06/06/2026** → epígrafe **"EN CURSO"**.
+  - **44 plazas** (7 disc.), bases por Decreto de 4/02/2026 (BOP nº 28) → epígrafe **"NO ABREN PLAZO DE SOLICITUDES"**.
+
+  La fila llevaba las **plazas del nuevo** (37+7) con el **estado y los hitos de exámenes del viejo**. A 164 usuarios la landing les decía que su examen ya había pasado cuando el proceso al que pueden presentarse **ni siquiera ha abierto plazo**.
+- **Confirmado en las bases oficiales (PDF del Decreto):** OEP 2023 (12) + OEP 2024 (16) + OEP 2025 (16) = **44 plazas / 7 de discapacidad**, y el plazo es *"de veinte días hábiles contados desde el siguiente al de la publicación de la convocatoria en el Boletín Oficial del Estado"* — extracto que a día de hoy sigue sin salir. Por eso el estado correcto es **`convocada`**.
+- **Qué se hizo:** `rollover_convocatoria(…, 2026, 'convocada')` → ciclo 2026 con lo verificado (44 plz, BOP nº 28, OEP 2023-2025) y ciclo 2024 **archivado con SU verdad devuelta** (33 plz, sin la referencia del otro proceso, `examen_realizado` con sus ejercicios). Hito nuevo `upcoming` "Apertura del plazo (pendiente del extracto en el BOE)" citando la frase literal de las bases; el hito de la convocatoria pasó de `estimacion` a `registro` con URL y cita. Fila legacy alineada para no dejar divergencia de dual-write. **Verificado en la landing viva** tras purgar caché: ahora dice "CONVOCATORIA PUBLICADA · 44 plazas".
+- **El punto ciego, cerrado:** regla `post_examen_sin_fecha_ref_actual` (+ `post_examen_convocatoria_posterior` en banda `error` y `post_examen_ref_posterior`) en el núcleo puro `lib/convocatoria/estadoCoherencia.cjs` y su espejo del backend. Ninguna regla lo veía porque **todas comparaban fechas de convocatoria entre sí**, y aquí la contradicción es entre el ESTADO y la referencia de boletín. **Simulación bank-wide antes de encender (2.647 filas): 19 hallazgos, 5 en publicadas, todos en banda `warn`; las dos bandas `error` dan 0** → cola de revisión, no inundación del badge. Esos 19 quedan por adjudicar uno a uno contra fuente oficial.
+- **Aprendizaje al runbook:** `docs/runbooks/rollover-oposiciones.md` §2.bis — cómo se decide cuál de dos procesos simultáneos es `is_current` (el que aún capta), por qué hay que devolverle su verdad al ciclo que se archiva, y por qué la fecha de apertura no se inventa.
+- **Origen:** T-107, 28/07, al desbloquear Cádiz.
 
 ### [T-247] ✅ [HECHO 28/07] Los feedbacks del CHAT DE IA ya se pueden responder — 6 usuarios se habían quedado sin contestación
 - **Qué pasaba:** un feedback creado desde el **chat de IA** (`[SOLICITUD OPOSICIÓN]`) **no creaba fila en `feedback_conversations`**, y `/api/v2/feedback/respond` **se niega a responder sin conversación** (409). El formulario de soporte sí la creaba; el chat no.
