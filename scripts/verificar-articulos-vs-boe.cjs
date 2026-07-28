@@ -167,6 +167,7 @@ async function comparaDocumento(art, contenidoBd) {
   }
 
   let mal = 0
+  let ilegibles = 0   // de los `mal`, cuántos fallaron al LEER la fuente (≠ divergir)
   for (const a of arts) {
     let r
     try {
@@ -177,6 +178,7 @@ async function comparaDocumento(art, contenidoBd) {
           : comparaConBd(await xmlBloque(a.n), a.content)
     } catch (e) {
       mal++
+      ilegibles++
       console.log(`  ❌ art. ${a.n}: no se pudo leer del BOE (${e.message})`)
       continue
     }
@@ -211,7 +213,19 @@ async function comparaDocumento(art, contenidoBd) {
   }
 
   console.log(`\n${arts.length - mal}/${arts.length} artículos coinciden con ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE vigente'}`)
-  if (mal) console.log(`⚠️ NO generes preguntas sobre los que divergen: actualiza antes el \`content\` desde ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE'}.`)
+  // "No he podido leer" NO es "no coincide". Cuando fallan TODAS las lecturas —id equivocado,
+  // BOE caído, sin red— el resumen decía igualmente "0/N coinciden · NO generes preguntas", que
+  // empuja a "actualizar" desde el BOE un `content` que puede estar perfecto. Pasó el 28/07 al
+  // invocarlo sin el BOE-ID (el 2º argumento es el id, no el primer artículo): 15 HTTP 400
+  // seguidos y un veredicto que parecía de contenido. Fail-safe: si nada se pudo leer, se dice.
+  if (ilegibles === arts.length && arts.length > 0) {
+    console.log(`\n🚫 NO se ha podido leer NINGÚN artículo de la fuente oficial — esto NO significa que diverjan.`)
+    console.log(`   Revisa el id del documento (recibido: "${BOE_ID}") y la conectividad antes de tocar ningún \`content\`.`)
+    console.log(`   uso: node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> [<art>…]`)
+  } else if (mal) {
+    console.log(`⚠️ NO generes preguntas sobre los que divergen: actualiza antes el \`content\` desde ${ES_EURLEX ? 'EUR-Lex consolidado' : 'el BOE'}.`)
+    if (ilegibles) console.log(`   (${ilegibles} de esos ${mal} no se pudieron LEER: eso no es divergencia, míralos aparte.)`)
+  }
   await s.end()
   if (mal) process.exit(2)
 })().catch((e) => {
