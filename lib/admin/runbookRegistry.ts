@@ -52,6 +52,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   server_render_error: { title: 'Error de render en servidor', ...HEALTH_CHECK },
   render_error: { title: 'Error de render', ...HEALTH_CHECK },
   webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
+  chat_ia_errores: {
+    title: 'El chat IA está sirviendo errores',
+    triggerPhrase: 'revisa los errores del chat',
+    runbook: 'docs/maintenance/revisar-chat-ai.md',
+    claudeHace:
+      'el chat le está devolviendo al usuario "ha ocurrido un error" en vez de una respuesta. La CAUSA está en `ai_chat_traces` (`trace_type=\'llm_call\'`, campos `output_data->>\'errorStatus\'` y `errorMessage`), no en el log: mírala ahí antes de tocar nada. Las dos vistas hasta ahora son **cuenta del proveedor sin saldo** (Anthropic lo manda como 400 «Your credit balance is too low», NO como 402) y **modelo inexistente** (404, p.ej. un `claude-*` retirado: comprobar `ai_api_config.default_model`). Ojo con el histórico: hasta el 28/07/2026 `ai_chat_logs.had_error` estaba en false SIEMPRE aunque la respuesta fuera un error, así que en logs viejos no te fíes de esa columna — filtra por el texto de `full_response`.',
+  },
   feedback_sin_conversacion: {
     title: 'Feedback pendiente que NO se puede responder',
     triggerPhrase: 'revisa los feedbacks incontestables',

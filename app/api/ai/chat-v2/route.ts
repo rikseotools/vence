@@ -23,6 +23,7 @@ import {
   reanalyzeWithSuperiorModel,
 } from '@/lib/chat/domains/verification'
 import { insertChatLog } from '@/lib/api/ai-chat-logs'
+import { esRespuestaDeError } from '@/lib/chat/shared/errorResponses'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_CHAT } from '@/lib/api/rateLimit'
@@ -487,6 +488,11 @@ async function _POST(request: NextRequest) {
             suggestionUsed: data.suggestionUsed,
             userOposicion: data.userOposicion,
             responseTimeMs: Date.now() - startTime,
+            // Si la respuesta que le hemos servido al usuario ES un error, el log tiene que
+            // decirlo: de `had_error` cuelgan las alertas y el panel. Hasta el 28/07/2026 no
+            // se pasaba nunca, así que 210 errores servidos quedaron registrados como
+            // respuestas normales y NADIE se enteró (lo destaparon 27 pulgares abajo).
+            hadError: esRespuestaDeError(fullResponse),
             errorMessage: !data.userId && data.debugAuthState
               ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
               : null,
@@ -543,6 +549,9 @@ async function _POST(request: NextRequest) {
         suggestionUsed: data.suggestionUsed,
         responseTimeMs: Date.now() - startTime,
         userOposicion: data.userOposicion,
+        // Mismo motivo que en la rama de streaming: sin esto el error se guarda como si fuera
+        // una respuesta normal y no lo ve ninguna alerta.
+        hadError: esRespuestaDeError(response.content),
         errorMessage: !data.userId && data.debugAuthState
           ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
           : null,

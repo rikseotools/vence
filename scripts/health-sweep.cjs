@@ -1028,6 +1028,27 @@ async function main() {
     `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
     { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
 
+  // ── CHAT IA caído: respuestas de error servidas a usuarios (28/07/2026) ──
+  // El chat sirvió 210 respuestas de error y `had_error` estaba en false en las 210, así que
+  // NADA lo veía: lo destaparon 27 usuarios pulsando el pulgar abajo, semanas después. Dos
+  // causas medidas en las trazas: un modelo que ya no existía (179 fallos, 15/06→09/07, ya
+  // corregido) y la cuenta del proveedor sin saldo (27, el último el 26/07).
+  //
+  // Se mira el TEXTO servido y no `had_error` a propósito: el arreglo que rellena esa columna
+  // es nuevo, así que durante un tiempo los errores viejos seguirán con `false`. El texto
+  // estaba desde el principio.
+  const chatErr = (await c.query(`
+    SELECT count(*)::int n, max(created_at) ult,
+           count(DISTINCT user_id)::int usuarios
+    FROM ai_chat_logs
+    WHERE created_at > now() - interval '24 hours'
+      AND (full_response ILIKE '%ha ocurrido un error%'
+        OR full_response ILIKE '%hubo un error al procesar%'
+        OR full_response ILIKE '%no está disponible ahora mismo%')`)).rows[0];
+  if (chatErr && chatErr.n > 0) add('app', 'error', null, 'chat_ia_errores',
+    `${chatErr.n} respuesta(s) de ERROR servidas por el chat IA en 24h a ${chatErr.usuarios} usuario(s) — el asistente está fallando (mira el errorStatus en ai_chat_traces: sin saldo del proveedor, modelo inexistente…)`,
+    { n: chatErr.n, usuarios: chatErr.usuarios, ultimo: chatErr.ult });
+
   // ── Feedback INCONTESTABLE: pendiente y sin conversación (T-247, 28/07/2026) ──
   // `/api/v2/feedback/respond` se NIEGA a responder si el feedback no tiene fila en
   // `feedback_conversations` (409). Un feedback `pending` sin ella es, por definición,
@@ -1080,7 +1101,7 @@ async function main() {
   // que se acumulen diez es esperar a tener diez personas ignoradas. (Se descubrió al
   // correr el sweep de verdad, 28/07: el hallazgo usaba `detail.count` y este filtro lee
   // `detail.n`, así que además no habría alertado NUNCA por volumen.)
-  const appFire = appErr.filter(f => ['http_down', 'empty_topic', 'feedback_sin_conversacion'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
+  const appFire = appErr.filter(f => ['http_down', 'empty_topic', 'feedback_sin_conversacion', 'chat_ia_errores'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
 
   // Email APP (nightly, si hay fallos que merecen alerta)
   if (appFire.length) {

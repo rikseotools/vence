@@ -6,6 +6,7 @@ import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { getAnthropic, getAnthropicModel } from '../../shared/anthropic'
 import { selectModel } from '../../shared/modelRouter'
+import { clasificarErrorProveedor, mensajeDeError } from '@/lib/chat/shared/errorResponses'
 import { logger } from '../../shared/logger'
 import { stripLatex } from '../../shared/formatting'
 import { isPsychometricSubtype } from '../../shared/constants'
@@ -211,10 +212,12 @@ export async function processPsychometricQuestion(
       })
     } catch (err: any) {
       const status = err?.status || err?.response?.status
-      const isOverloaded = status === 529 || status === 503 || status === 429
-      const userMsg = isOverloaded
-        ? '⚠️ **Nuestro sistema de razonamiento avanzado está saturado en este momento.**\n\nPor favor, espera unos minutos y vuelve a intentarlo.'
-        : '⚠️ **Ha ocurrido un error generando la explicación.**\n\nPor favor, vuelve a intentarlo en unos minutos.'
+      // Clasificación centralizada (lib/chat/shared/errorResponses). Distingue el caso
+      // "sin saldo" de los demás: Anthropic lo manda como 400, y hasta el 28/07 se le decía
+      // al usuario "vuelve a intentarlo en unos minutos" — que con la cuenta sin saldo es
+      // pedirle que insista en algo que no puede salir bien.
+      const motivo = clasificarErrorProveedor(status, err?.message)
+      const userMsg = mensajeDeError(motivo)
 
       llmSpan?.setOutput({ responseContent: userMsg, finishReason: 'error', errorStatus: status, errorMessage: err?.message })
       llmSpan?.addMetadata('model', model)
