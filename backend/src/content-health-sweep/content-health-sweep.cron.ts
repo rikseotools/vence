@@ -13,10 +13,24 @@ import { ContentHealthSweepService } from './content-health-sweep.service';
  *
  * PORT del `scripts/health-sweep.cjs` que NUNCA tuvo scheduler (se quedó fuera de
  * la migración GHA→Fargate del 07/07 → el panel `/admin/contenido` quedaba
- * congelado, incidente 19/07). Corre a las 03:00 UTC (~05:00 Madrid, hueco sin
- * colisión con los crons de 04:00/05:00), como job pesado in-process sin límite
- * de duración. Heartbeat diario: si deja de tickar, salta `cron_overdue` en el
- * propio panel de salud → el vigilante tiene quien lo vigile.
+ * congelado, incidente 19/07). Job pesado in-process sin límite de duración.
+ * Heartbeat diario: si deja de tickar, salta `cron_overdue` en el propio panel
+ * de salud → el vigilante tiene quien lo vigile.
+ *
+ * ⏰ **07:30 UTC, y la hora IMPORTA: va DESPUÉS de `advance-estado` (06:30).**
+ * Estaba a las 03:00 —elegida solo por ser un hueco sin colisión— y eso lo dejaba
+ * FUERA de la cadena que el resto de sensores ya respetaba (`advance-estado` 06:30
+ * → `detect-timeline-silence` 07:00 → `check-seguimiento` 09:00, «de modo que esos
+ * sensores vean ya los estados al día»).
+ *
+ * Consecuencia medida el 28/07: el sweep fotografiaba los estados 3½ h ANTES de que
+ * el sistema se autocorrigiera, así que el badge amanecía con 4 `convocatoria_estado_
+ * incoherente` en rojo —«inscripción abierta con plazo vencido»— que `advance-estado`
+ * cerraba solo a las 06:30. Cuatro falsos positivos CADA DÍA, que es como se enseña a
+ * ignorar un panel. El detector se añadió al badge el 27/07 sin revisar esta cadena.
+ *
+ * Invariante fijado en `content-health-sweep.cron.spec.ts`: si alguien mueve un cron y
+ * rompe el orden, salta el test.
  */
 @Injectable()
 export class ContentHealthSweepCron {
@@ -36,7 +50,7 @@ export class ContentHealthSweepCron {
     );
   }
 
-  @Cron('0 3 * * *', { name: 'content-health-sweep', timeZone: 'UTC' })
+  @Cron('30 7 * * *', { name: 'content-health-sweep', timeZone: 'UTC' })
   async handle(): Promise<void> {
     await runWithHeartbeat(this, 'lastTickAtMs', async () => this.runImpl(), {
       name: 'content-health-sweep',

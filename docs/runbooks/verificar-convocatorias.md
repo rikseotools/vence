@@ -103,6 +103,21 @@ SELECT oposicion_slug, kind, severity, message, detail
 > Misma detección en los dos sitios: el núcleo puro `lib/convocatoria/estadoCoherencia.cjs` lo comparten
 > el CLI y los dos barridos de salud, así que el informe y el badge nunca pueden discrepar. Hasta el
 > 27/07 esta lógica vivía **solo** en el CLI y sus hallazgos no llegaban al panel.
+>
+> ⏰ **Antes de arreglar un `convocatoria_estado_incoherente` a mano, mira la hora.** Existe un cron,
+> **`advance-estado` (06:30 UTC)**, que corrige solo las transiciones deterministas: `inscripcion_abierta`
+> con el plazo vencido → `inscripcion_cerrada`. No hay que hacerlo a mano ni montar nada nuevo.
+>
+> El barrido de salud corría a las **03:00**, tres horas y media ANTES, así que el badge amanecía
+> denunciando lo que el sistema iba a arreglar solo: el 28/07 fueron 4 falsos positivos, y habrían sido
+> otros tantos cada día. Movido a las **07:30 UTC**, dentro de la cadena que el resto de sensores ya
+> respetaba (`advance-estado` 06:30 → `detect-timeline-silence` 07:00 → `check-seguimiento` 09:00).
+> Invariante fijado en `backend/src/content-health-sweep/content-health-sweep.cron.spec.ts`.
+>
+> Lo que SÍ necesita a alguien son las incoherencias que `advance-estado` no toca a propósito: los
+> estados que no están en su `ALLOWED_FROM` (un `oep_aprobada` con plazo vencido suele ser un rollover
+> con la fecha del ciclo viejo, no un plazo que cerró), los post-examen con el examen futuro, y las
+> fechas estimadas. Ahí el criterio es humano y hay que ir a la fuente.
 
 ### 2. Tratar según el tipo
 
