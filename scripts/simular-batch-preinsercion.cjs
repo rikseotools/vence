@@ -22,24 +22,35 @@ const {
   analizarPregunta,
   analizarLote,
   analizarDuplicados,
+  aplicarLeyPorDefecto,
 } = require(path.join(__dirname, '..', 'lib/generacion/simularBatch.js'))
 const { equilibrarLote } = require(path.join(__dirname, '..', 'lib/generacion/transponerPosicion.js'))
 
 const FILE = process.argv[2]
+// Ley POR DEFECTO del lote, igual que en `insertar-batch-generado.cjs <fichero> <law_slug> <batch>`.
+// Sin esto, un borrador de UNA sola ley —el caso normal, y el formato que el manual manda escribir—
+// simulaba con `law_slug` undefined y devolvía "artículo inexistente o inactivo" en TODAS las
+// preguntas: un bloqueante que parece de datos y es de firma. Pasó el 28/07 con el lote de la
+// Ley 7/1985 (13/13). Cada pregunta puede seguir trayendo su propio `law_slug` (lotes multi-ley),
+// que gana sobre este.
+const LAW_SLUG = process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : null
 const AS_JSON = process.argv.includes('--json')
 // Repara §2.2-ter en el propio borrador: hasta ahora esto se hacía a mano y hacerlo a
 // mano es lo que falla (batch gen_atc_t209: rotación de 4 con dos viñetas remapeadas al
 // revés, que el gate no ve). Escribe el fichero solo si hay algo que mover.
 const EQUILIBRAR = process.argv.includes('--equilibrar')
 if (!FILE) {
-  console.error('uso: node scripts/simular-batch-preinsercion.cjs <borrador.json> [--json] [--equilibrar]')
+  console.error('uso: node scripts/simular-batch-preinsercion.cjs <borrador.json> [law_slug] [--json] [--equilibrar]')
   process.exit(2)
 }
 
 const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})` : ''}`
 
 ;(async () => {
-  const Q = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+  const Q0 = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+  // La ley del CLI solo RELLENA lo que falta: si la pregunta trae la suya, manda ella.
+  // (núcleo puro + tests en lib/generacion/simularBatch.js)
+  const Q = Array.isArray(Q0) ? aplicarLeyPorDefecto(Q0, LAW_SLUG) : Q0
   if (!Array.isArray(Q) || !Q.length) {
     console.error('el borrador está vacío o no es un array')
     process.exit(2)
@@ -100,6 +111,15 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   Q.forEach((q, i) => {
     const clave = claveDe(q)
     if (!arts.has(clave)) {
+      // Distinguir "no sé de qué ley me hablas" de "ese artículo no existe": el primero se
+      // arregla pasando la ley, el segundo mirando la BD. Confundirlos manda a buscar un
+      // problema de datos que no existe.
+      if (!q.primary_article_id && !q.law_slug) {
+        errores.push(
+          `${etiqueta(q, i)}: no se puede resolver el artículo ${q.primary_article_number}: la pregunta no trae "law_slug" y no se pasó la ley por CLI (uso: simular-batch-preinsercion.cjs <borrador.json> <law_slug>)`,
+        )
+        return
+      }
       errores.push(
         `${etiqueta(q, i)}: artículo inexistente o inactivo (${q.primary_article_id || `${q.law_slug} art.${q.primary_article_number}`})`,
       )

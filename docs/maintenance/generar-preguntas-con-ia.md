@@ -733,9 +733,18 @@ Ver `importar-preguntas-scrapeadas.md` §"Detección de Duplicados" para el cód
 ### Paso 3.bis — SIMULACIÓN pre-inserción (OBLIGATORIO desde 26/07/2026)
 
 ```bash
-npm run simular:batch -- /tmp/<batch_id>_borrador.json
+npm run simular:batch -- /tmp/<batch_id>_borrador.json <law_slug>
 # exit 0 = limpio para insertar · 1 = hay bloqueantes · 2 = error de uso
 ```
+
+> **Pásale la ley igual que al inserter** (`insertar-batch-generado.cjs <fichero> <law_slug> <batch>`).
+> El borrador de un lote de UNA sola ley no lleva `law_slug` por pregunta —es lo que este manual
+> manda escribir— y hasta el 28/07/2026 el simulador solo sabía resolver el artículo por
+> `law_slug` + número: sin la ley, devolvía **"artículo inexistente o inactivo" en TODAS las
+> preguntas** (13 de 13 en el lote de la Ley 7/1985), un bloqueante que parece de datos y era de
+> firma. Cada pregunta puede seguir trayendo su propio `law_slug` para los lotes multi-ley, y ese
+> gana sobre el del CLI. Núcleo puro `aplicarLeyPorDefecto` en `lib/generacion/simularBatch.js`,
+> con tests en `__tests__/lib/generacion/leyPorDefecto.test.js`.
 
 Corre **los mismos cinco núcleos** que el verificador del Paso 5.bis
 (`lib/generacion/*.js`) pero sobre el JSON borrador, leyendo de RDS en **solo lectura**.
