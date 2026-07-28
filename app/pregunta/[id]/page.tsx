@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 
 interface QuestionArticle {
   id: string
@@ -350,10 +351,17 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
 
             {question.explanation && (!isQuizMode || hasAnswered) && (
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-6">
-                <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2">Explicacion:</h4>
-                <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
-                  {question.explanation}
-                </p>
+                <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2">Explicación:</h4>
+                {/* El MISMO componente que el test, el examen y la revisión. Esta página era la
+                    ÚNICA que metía la explicación cruda en un <p>: los `**` salían literales y los
+                    saltos de línea se colapsaban, así que la cita, los veredictos por opción y los
+                    bullets aparecían apelotonados en un párrafo azul ilegible. Y es la vista que se
+                    COMPARTE (de ahí `/api/v2/shared-question/track`), o sea la que ve alguien que
+                    quizá no nos conoce. */}
+                <MarkdownExplanation
+                  content={question.explanation}
+                  className="text-blue-700 dark:text-blue-400 text-sm"
+                />
               </div>
             )}
 
