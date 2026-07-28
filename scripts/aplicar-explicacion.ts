@@ -44,7 +44,8 @@
  * `docs/maintenance/impugnaciones-claude-code.md`, `scripts/backfill-explanation-data.ts` (el
  * camino inverso, para el histórico).
  */
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
+import { basename, join } from 'path'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import {
@@ -54,21 +55,32 @@ import {
 } from '@/lib/shuffle/structuredExplanation'
 import { optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
 
-const argv = process.argv.slice(2)
-const APPLY = argv.includes('--apply')
-const [qid, fichero] = argv.filter((a) => !a.startsWith('--'))
+/**
+ * Reparte los argumentos entre las dos formas de uso. Es función pura y exportada porque el
+ * reparto ya se rompió una vez: sin `--lote`, `indexOf` devuelve -1 y `iLote + 1` vale 0, que
+ * es justo la posición del question_id — se lo comía y el modo suelto dejaba de funcionar.
+ * Un `if` de una línea que solo se ve fallando; por eso tiene test.
+ */
+export function repartirArgumentos(argv: string[]) {
+  const iLote = argv.indexOf('--lote')
+  const lote = iLote >= 0 ? argv[iLote + 1] ?? null : null
+  const posicionales = argv.filter((a, i) => !a.startsWith('--') && !(iLote >= 0 && i === iLote + 1))
+  return { apply: argv.includes('--apply'), lote, qid: posicionales[0], fichero: posicionales[1] }
+}
 
-async function main() {
-  if (!qid || !fichero) {
-    console.error('Uso: aplicar-explicacion.ts <question_id> <fichero.json> [--apply]')
-    process.exit(2)
-  }
-  const db = getDb()
+const { apply: APPLY, lote: LOTE, qid, fichero } = repartirArgumentos(process.argv.slice(2))
+
+/** Un rechazo de una explicación concreta. En modo lote NO tumba el resto: se anota y se sigue. */
+class ExplicacionRechazada extends Error {
+  constructor(msg: string, readonly code = 1) { super(msg) }
+}
+
+async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: string, resumido = false) {
   const [q]: any = await db.execute(sql`
     SELECT id, question_text, correct_option, option_a, option_b, option_c, option_d, option_e,
            explanation, explanation_data
       FROM questions WHERE id = ${qid}::uuid`)
-  if (!q) { console.error(`Pregunta no encontrada: ${qid}`); process.exit(2) }
+  if (!q) throw new ExplicacionRechazada(`Pregunta no encontrada: ${qid}`, 2)
 
   const opciones = [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(
     (v: string | null) => v != null && v !== '',
@@ -83,9 +95,9 @@ async function main() {
   //    una opción sin razón y la explicación quedaría coja justo donde el opositor mira.
   if (!isStructuredExplanation(data, opciones.length)) {
     const recibidas = Object.keys((data as { options?: Record<string, string> })?.options ?? {})
-    console.error(`❌ Estructura inválida: hacen falta ${opciones.length} razones (una por opción presente), keadas "0".."${opciones.length - 1}".`)
-    console.error(`   Recibidas: ${recibidas.join(', ') || '(ninguna)'}`)
-    process.exit(1)
+    throw new ExplicacionRechazada(
+      `Estructura inválida: hacen falta ${opciones.length} razones (una por opción presente), keadas "0".."${opciones.length - 1}". ` +
+      `Recibidas: ${recibidas.join(', ') || '(ninguna)'}`)
   }
   const estructura: StructuredExplanation = data
 
@@ -112,10 +124,11 @@ async function main() {
     return REFERENCIA_A_OPCION_LETRA.test(limpia) || REFERENCIA_A_OPCION.test(limpia)
   })
   if (sospechosas.length) {
-    console.error('❌ Hay razones que se refieren a la LETRA o a la POSICIÓN de una opción:')
-    for (const [k, r] of sospechosas) console.error(`   · opción ${k}: "${r.slice(0, 90)}…"`)
-    console.error('   Reescríbelas referidas al CONTENIDO: al barajar, esas frases dejan de ser ciertas.')
-    process.exit(1)
+    throw new ExplicacionRechazada(
+      'Hay razones que se refieren a la LETRA o a la POSICIÓN de una opción ' +
+      `(${sospechosas.map(([k]) => `opción ${k}`).join(', ')}): ` +
+      sospechosas.map(([k, r]) => `[${k}] "${r.slice(0, 90)}…"`).join(' · ') +
+      '. Reescríbelas referidas al CONTENIDO: al barajar, esas frases dejan de ser ciertas.')
   }
 
   // 2-bis) La apertura la pone el RENDER, no quien escribe: si viniera en el `intro` con su letra,
@@ -123,9 +136,9 @@ async function main() {
   //         viene a evitar. (En el histórico transcrito sí vive en el intro, y el render la respeta
   //         para no duplicarla; pero eso es herencia, no el modo de escribir.)
   if (/^la respuesta correcta es/i.test((estructura.intro ?? '').trim())) {
-    console.error('❌ El `intro` no debe empezar con "La respuesta correcta es …": esa frase la genera')
-    console.error('   el render con la letra que corresponda tras barajar. Quítala del intro.')
-    process.exit(1)
+    throw new ExplicacionRechazada(
+      'El `intro` no debe empezar con "La respuesta correcta es …": esa frase la genera el render ' +
+      'con la letra que corresponda tras barajar. Quítala del intro.')
   }
 
   // 2-ter) El `frame` decide las etiquetas de los veredictos (T-212). Dos comprobaciones:
@@ -135,8 +148,7 @@ async function main() {
   //     → se avisa, porque es el olvido que destapó la impugnación afe7c8bb (art. 33 CE).
   const frameRecibido = (data as { frame?: string }).frame
   if (frameRecibido && frameRecibido !== 'select_correct' && frameRecibido !== 'select_incorrect') {
-    console.error(`❌ frame desconocido: "${frameRecibido}". Solo "select_correct" o "select_incorrect".`)
-    process.exit(1)
+    throw new ExplicacionRechazada(`frame desconocido: "${frameRecibido}". Solo "select_correct" o "select_incorrect".`)
   }
   const pideLaFalsa = /\b(incorrecta|falsa|no es (?:cierto|correcta|correcto|verdadera?))\b/i.test(q.question_text || '')
   if (pideLaFalsa && frameRecibido !== 'select_incorrect') {
@@ -152,15 +164,21 @@ async function main() {
     nOptions: opciones.length,
   })
 
-  console.log(`\n── ${qid}`)
-  console.log(`  estilo   : ${estructura.estilo ?? 'boletin'} · ${opciones.length} opciones`)
-  console.log(`  explicación que se servirá (render en orden natural):\n`)
-  console.log(texto.split('\n').map((l) => `    ${l}`).join('\n'))
-  if (q.explanation) {
-    console.log(`\n  (sustituye a un texto de ${String(q.explanation).length} caracteres)`)
+  // En modo lote el render completo de 16 preguntas es ruido que tapa lo que importa (qué se
+  // rechazó y por qué); en modo suelto es justo lo que se va a leer antes de aplicar.
+  if (resumido) {
+    console.log(`── ${qid} · ${opciones.length} opciones · ${String(q.explanation ?? '').length} → ${texto.length} caracteres`)
+  } else {
+    console.log(`\n── ${qid}`)
+    console.log(`  estilo   : ${estructura.estilo ?? 'boletin'} · ${opciones.length} opciones`)
+    console.log(`  explicación que se servirá (render en orden natural):\n`)
+    console.log(texto.split('\n').map((l) => `    ${l}`).join('\n'))
+    if (q.explanation) {
+      console.log(`\n  (sustituye a un texto de ${String(q.explanation).length} caracteres)`)
+    }
   }
 
-  if (!APPLY) { console.log('\n(dry-run — repite con --apply)\n'); return }
+  if (!APPLY) { if (!resumido) console.log('\n(dry-run — repite con --apply)\n'); return }
 
   // Las dos columnas en la MISMA transacción y en este orden: primero el contenido y después el
   // veredicto, porque `record_shuffle_safety` recalcula el hash leyendo la fila.
@@ -192,7 +210,50 @@ async function main() {
   } catch (e) {
     console.error(`⚠️  no se pudo registrar el evento: ${(e as Error).message}`)
   }
-  console.log('\n✅ aplicada: estructura + texto coherentes, y la pregunta nace BARAJABLE.\n')
+  if (!resumido) console.log('\n✅ aplicada: estructura + texto coherentes, y la pregunta nace BARAJABLE.\n')
 }
 
-main().catch((e) => { console.error('ERR', e.message); process.exit(1) })
+async function main() {
+  const db = getDb()
+
+  // Modo LOTE: un directorio con un fichero `<question_id>.json` por pregunta. Existe porque
+  // arrancar tsx una vez por pregunta cuesta más que escribir la explicación, y porque un fallo
+  // en la número 7 no puede dejar el lote a medias sin decir cuáles quedaron: aquí cada rechazo
+  // se anota, se sigue con el resto, y al final se listan todos.
+  if (LOTE) {
+    const ficheros = readdirSync(LOTE).filter((f) => f.endsWith('.json')).sort()
+    if (!ficheros.length) { console.error(`No hay ficheros .json en ${LOTE}`); process.exit(2) }
+    const fallos: Array<[string, string]> = []
+    let ok = 0
+    for (const f of ficheros) {
+      const id = basename(f, '.json')
+      try { await aplicarUna(db, id, join(LOTE, f), true); ok++ }
+      catch (e) { fallos.push([id, (e as Error).message]); console.log(`❌ ${id}: ${(e as Error).message}`) }
+    }
+    console.log(`\n── lote ${LOTE}: ${ok}/${ficheros.length} ${APPLY ? 'aplicadas' : 'validadas (dry-run)'}`)
+    if (fallos.length) {
+      console.log(`   ${fallos.length} rechazada(s):`)
+      for (const [id, m] of fallos) console.log(`   · ${id}: ${m}`)
+      process.exit(1)
+    }
+    return
+  }
+
+  if (!qid || !fichero) {
+    console.error('Uso: aplicar-explicacion.ts <question_id> <fichero.json> [--apply]')
+    console.error('     aplicar-explicacion.ts --lote <dir con <question_id>.json> [--apply]')
+    process.exit(2)
+  }
+  try {
+    await aplicarUna(db, qid, fichero)
+  } catch (e) {
+    console.error(`❌ ${(e as Error).message}`)
+    process.exit(e instanceof ExplicacionRechazada ? e.code : 1)
+  }
+}
+
+// Solo se ejecuta si se invoca el script; importarlo (p. ej. desde el test de reparto de
+// argumentos) no debe abrir conexión a la base de datos ni tocar nada.
+if (require.main === module) {
+  main().catch((e) => { console.error('ERR', e.message); process.exit(1) })
+}
