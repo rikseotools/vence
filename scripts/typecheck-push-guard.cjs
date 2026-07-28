@@ -26,7 +26,7 @@
 
 const path = require('path')
 const { execFileSync, spawnSync } = require('child_process')
-const { needsTypecheck } = require('../lib/hooks/typecheckRelevance.cjs')
+const { needsTypecheck, needsBackendTypecheck } = require('../lib/hooks/typecheckRelevance.cjs')
 
 const REPO = path.join(__dirname, '..')
 
@@ -70,34 +70,59 @@ function main() {
     console.log('⏭️  typecheck: el push no trae cambios de fichero')
     return 0
   }
-  const { correr, motivo, relevantes } = needsTypecheck(archivos === null ? [] : archivos)
-  if (!correr) {
-    console.log(`⏭️  typecheck: ${motivo} (push sin peaje)`)
+  const lista = archivos === null ? [] : archivos
+
+  // Dos proyectos, dos tsconfig, dos comprobaciones. El de la RAÍZ excluye `backend/`, así
+  // que sin la segunda un cambio de backend pasa el hook Y el CI y solo revienta al
+  // desplegar — que es cuando ya bloquea a todas las sesiones (caso real del 28/07: dos
+  // sesiones portaron el mismo detector y `main` quedó con el backend sin compilar).
+  const proyectos = [
+    { nombre: 'raíz', cwd: REPO, coste: 'con caché ~15 s; en frío ~70 s', ...needsTypecheck(lista) },
+    { nombre: 'backend', cwd: `${REPO}/backend`, coste: '~9 s', ...needsBackendTypecheck(lista) },
+  ]
+
+  const aCorrer = proyectos.filter((p) => p.correr)
+  if (aCorrer.length === 0) {
+    console.log(`⏭️  typecheck: ${proyectos[0].motivo} (push sin peaje)`)
     return 0
   }
 
-  console.log(`🔎 typecheck (${motivo})… la caché incremental lo deja en ~15 s; en frío, ~70 s.`)
-  const t0 = Date.now()
-  const r = spawnSync('npm', ['run', 'typecheck'], { cwd: REPO, stdio: 'inherit' })
-  const seg = ((Date.now() - t0) / 1000).toFixed(0)
+  let fallo = false
+  for (const p of aCorrer) {
+    console.log(`🔎 typecheck [${p.nombre}] (${p.motivo})… ${p.coste}.`)
+    const t0 = Date.now()
+    const r = spawnSync('npm', ['run', 'typecheck'], { cwd: p.cwd, stdio: 'inherit' })
+    const seg = ((Date.now() - t0) / 1000).toFixed(0)
 
-  if (r.error) {
-    console.log(`⚠️  typecheck-push-guard: no pude ejecutar npm (${r.error.message}). Push permitido (fail-open).`)
-    return 0
-  }
-  if (r.status !== 0) {
-    console.error(`\n❌ PUSH BLOQUEADO — el typecheck falla (${seg} s). Empujar esto deja el CI en ROJO,`)
-    console.error('   y un `main` rojo BLOQUEA EL DEPLOY DE TODAS LAS SESIONES (gate de CI de deploy-*.sh).')
-    console.error('\n   Arregla los errores de arriba y reintenta.  Ver: npm run typecheck')
-    console.error('   Si es legítimo (rama de trabajo que no va a main, rehacer historia):')
-    console.error('   TYPECHECK_GUARD_SKIP=1 git push …\n')
-    if (relevantes.length) {
-      console.error(`   Ficheros de código en este push (${relevantes.length}): ${relevantes.slice(0, 8).join(', ')}${relevantes.length > 8 ? '…' : ''}\n`)
+    if (r.error) {
+      console.log(`⚠️  typecheck-push-guard [${p.nombre}]: no pude ejecutar npm (${r.error.message}). Se ignora (fail-open).`)
+      continue
     }
+    if (r.status !== 0) {
+      fallo = true
+      console.error(`\n❌ PUSH BLOQUEADO — el typecheck del ${p.nombre.toUpperCase()} falla (${seg} s).`)
+      if (p.nombre === 'backend') {
+        console.error('   ⚠️ Ojo: el CI NO lo habría cazado (su job `typecheck` corre el tsconfig de la')
+        console.error('   raíz, que EXCLUYE backend/). Esto solo se ve al desplegar, y para entonces')
+        console.error('   bloquea el deploy de todas las sesiones.')
+      } else {
+        console.error('   Empujar esto deja el CI en ROJO, y un `main` rojo BLOQUEA EL DEPLOY DE TODAS')
+        console.error('   LAS SESIONES (gate de CI de deploy-*.sh).')
+      }
+      console.error(`\n   Arregla los errores de arriba y reintenta.  Ver: (cd ${p.nombre === 'backend' ? 'backend && ' : ''}npm run typecheck)`)
+      if (p.relevantes.length) {
+        console.error(`   Ficheros en este push (${p.relevantes.length}): ${p.relevantes.slice(0, 8).join(', ')}${p.relevantes.length > 8 ? '…' : ''}`)
+      }
+    } else {
+      console.log(`✅ typecheck [${p.nombre}] OK (${seg} s)`)
+    }
+  }
+
+  if (fallo) {
+    console.error('\n   Si es legítimo (rama de trabajo que no va a main, rehacer historia):')
+    console.error('   TYPECHECK_GUARD_SKIP=1 git push …\n')
     return 1
   }
-
-  console.log(`✅ typecheck OK (${seg} s)`)
   return 0
 }
 

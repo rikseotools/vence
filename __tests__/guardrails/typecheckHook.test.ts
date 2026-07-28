@@ -21,7 +21,7 @@ import { join } from 'path'
 
 const ROOT = join(__dirname, '..', '..')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { needsTypecheck, PREFIJOS_IGNORADOS } = require(join(ROOT, 'lib/hooks/typecheckRelevance.cjs'))
+const { needsTypecheck, needsBackendTypecheck, PREFIJOS_IGNORADOS } = require(join(ROOT, 'lib/hooks/typecheckRelevance.cjs'))
 
 describe('needsTypecheck — qué push paga el peaje', () => {
   it('un push SOLO de documentación no cuesta nada', () => {
@@ -96,6 +96,64 @@ describe('needsTypecheck — qué push paga el peaje', () => {
 
   it('un .md dentro de lib/ no es código', () => {
     expect(needsTypecheck(['lib/README.md']).correr).toBe(false)
+  })
+})
+
+// El agujero que costó un deploy abortado el 28/07: dos sesiones portaron el mismo detector
+// al servicio del @Cron en sitios distintos, el rebase no dio conflicto y `main` quedó con una
+// variable declarada dos veces → el BACKEND no compilaba. Ni el CI ni este hook lo vieron: los
+// dos miraban solo el tsconfig de la raíz, que EXCLUYE backend/. Se descubrió al desplegar.
+describe('needsBackendTypecheck — el backend tiene su propio tsconfig y nadie lo miraba', () => {
+  it('un cambio en el backend lo dispara', () => {
+    expect(needsBackendTypecheck(['backend/src/alerts/alert-rules.ts']).correr).toBe(true)
+  })
+
+  it('el caso REAL: el servicio del @Cron que quedó sin compilar', () => {
+    expect(
+      needsBackendTypecheck(['backend/src/content-health-sweep/content-health-sweep.service.ts']).correr,
+    ).toBe(true)
+  })
+
+  it('un push que NO toca el backend no lo paga', () => {
+    const r = needsBackendTypecheck(['lib/auth/tokenFreshness.ts', 'docs/x.md'])
+    expect(r.correr).toBe(false)
+    expect(r.motivo).toMatch(/no toca el backend/)
+  })
+
+  it('su config también lo dispara (cambiar strict o subir TS rompe sin tocar código)', () => {
+    expect(needsBackendTypecheck(['backend/tsconfig.json']).correr).toBe(true)
+    expect(needsBackendTypecheck(['backend/package.json']).correr).toBe(true)
+  })
+
+  it('los artefactos y dependencias del backend NO lo disparan', () => {
+    expect(needsBackendTypecheck(['backend/dist/main.js']).correr).toBe(false)
+    expect(needsBackendTypecheck(['backend/node_modules/x/index.js']).correr).toBe(false)
+  })
+
+  it('si NO se sabe qué cambia → se corre igualmente (conservador, como su hermano)', () => {
+    expect(needsBackendTypecheck([]).correr).toBe(true)
+  })
+
+  // Las dos comprobaciones son COMPLEMENTARIAS: lo que una mira, la otra lo ignora.
+  it('raíz y backend cubren superficies DISJUNTAS (por eso hacen falta las dos)', () => {
+    const soloBackend = ['backend/src/x.ts']
+    expect(needsTypecheck(soloBackend).correr).toBe(false)
+    expect(needsBackendTypecheck(soloBackend).correr).toBe(true)
+
+    const soloRaiz = ['lib/x.ts']
+    expect(needsTypecheck(soloRaiz).correr).toBe(true)
+    expect(needsBackendTypecheck(soloRaiz).correr).toBe(false)
+  })
+
+  it('el backend declara el script `typecheck` que el guard invoca', () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'backend/package.json'), 'utf8'))
+    expect(pkg.scripts.typecheck).toBe('tsc --noEmit')
+  })
+
+  it('el guard corre AMBOS proyectos, cada uno en su directorio', () => {
+    const guard = readFileSync(join(ROOT, 'scripts/typecheck-push-guard.cjs'), 'utf8')
+    expect(guard).toMatch(/needsBackendTypecheck/)
+    expect(guard).toMatch(/cwd: `\$\{REPO\}\/backend`/)
   })
 })
 
