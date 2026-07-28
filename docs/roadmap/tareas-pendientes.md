@@ -359,6 +359,25 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-256] 🟠 [ABIERTO 28/07] El `origen` de los hitos miente: 642 fechas marcadas como REGISTRADAS sin ninguna fuente, y el render decide mostrarlas por ese campo
+- **Cómo salió:** adjudicando el cabo que dejó [T-211] (los hallazgos de `convocatoria_estado_incoherente` sin revisar). El único que tocaba una oposición ACTIVA era `auxiliar-administrativo-ayuntamiento-huesca`: *"`pendiente_examen` SIN fecha de examen"*. Pero sí había fecha… en los hitos.
+- **El caso, verificado contra DOS fuentes oficiales:** el hito *"Primer ejercicio (examen) → 01/11/2026"* está marcado **`origen='registro'`** (que en este proyecto significa *fecha REAL registrada*, y por eso **el render la MUESTRA**; las `estimacion` las oculta desde el 20/07). Y **no tiene url, ni `cita_literal`, ni `source_documento_id`**. Comprobado hoy: la web de procesos selectivos del Ayto. de Huesca dice solo *"PLAZO FINALIZADO — DESDE EL DIA 19 DE JUNIO DE 2026 HASTA EL DIA 16 DE JULIO 2026"* y **ninguna fecha de examen**; la reseña `BOE-A-2026-13244` tampoco fija fecha de ejercicio. O sea: **al usuario se le enseña como oficial una fecha que nadie ha publicado.**
+- **No es un caso, es una CLASE (medido hoy):**
+  | origen | total | sin NINGÚN respaldo (url + cita + documento vacíos) |
+  |---|---|---|
+  | `registro` | 960 | **642 (67%)** |
+  | `estimacion` | 103 | 99 |
+  | `inferencia` | 8 | 5 |
+- **Los 12 GRAVES** (origen=`registro` + fecha FUTURA + sin respaldo + oposición ACTIVA) incluyen **cuatro fechas de EXAMEN**: `administrativo-galicia` 20/09/26, `auxiliar-administrativo-ayuntamiento-huesca` 01/11/26, `administrativo-junta-general-asturias` 07/11/26 y `auxiliar-administrativo-madrid-2027` 01/06/27. Y **dos se contradicen a sí mismos**: *"Examen (**previsión, pendiente de fecha oficial**)"* con `origen='registro'` (`subalterno-parlamento-andalucia` y `oficial-de-gestion-parlamento-de-andalucia`, ambos 31/12/26). El título dice previsión y el campo dice registrada: prueba de que **`origen` no es fiable como criterio de render**.
+- **⚠️ Matiz que hay que respetar al adjudicar: "sin respaldo" ≠ "inventada".** Muchos cierres de plazo salen de `inscription_deadline`, que SÍ está verificado en la convocatoria — les falta la cita, no la verdad (eso es [T-147], provenance). Lo confirmado como falso hoy es Huesca (dos fuentes) y lo autocontradictorio son las dos "previsión". El resto **hay que mirarlo uno a uno contra su boletín**.
+- **Qué hacer, por orden:**
+  1. **Lo urgente y conservador:** las fechas de EXAMEN sin respaldo en oposiciones activas → degradar `origen` a `estimacion` (el render deja de mostrarlas) **hasta** tener cita. Degradar NO inventa nada; dejarlas como están sí afirma algo que no consta. Empezar por Huesca, ya verificada.
+  2. Las dos con "previsión" en el título → `estimacion`, sin más investigación: se contradicen solas.
+  3. El resto de los 12, uno a uno contra fuente. Los cierres de plazo derivables de `inscription_deadline` pueden quedarse, anotando de dónde salen.
+  4. **Guardarraíl para que no vuelva:** nada impide hoy escribir `origen='registro'` sin cita. Un check —en el detector de hitos o al escribir— que exija respaldo para `registro`, o el render deja de fiarse de `origen` y pasa a exigir cita. Detector: contar los `registro` sin respaldo y no dejar que ese número crezca (trinquete).
+- **NUNCA** rellenar la cita "a posteriori" con una URL genérica del boletín para callar el check: eso convierte un dato dudoso en uno que parece verificado, que es peor.
+- **Relacionada:** [T-211] (de donde sale), [T-147] (provenance de documentos), [T-124] (invariantes de convocatoria).
+
 ### [T-255] 🟡 [ABIERTO 28/07] El pre-commit no distingue un rojo TUYO de uno heredado de otra sesión
 - **Qué pasa:** el `pre-commit` corre la suite unit ENTERA, así que un test roto por CUALQUIER sesión **bloquea los commits de todas las demás** — incluido un commit de solo documentación. Pasó dos veces el 28/07 (paridad del sweep y el duplicado del backend).
 - **Parche puesto el 28/07, que NO es la solución:** escape con nombre `PRECOMMIT_TESTS_SKIP=1`, que salta SOLO los tests y conserva `db:check` y `audit:display-drift`. Antes no había ninguno y la salida natural era `--no-verify`, que apaga todo el hook. El mensaje de fallo ahora explica cómo comprobar si el rojo es tuyo (`git stash push -u && npm run test:unit`) — pero eso lo tiene que hacer la persona, a mano, y con el gotcha de que **el stash es del REPO y no del worktree** ([[reference-git-stash-compartido-worktrees]]).
