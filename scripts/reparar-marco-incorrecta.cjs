@@ -31,10 +31,24 @@ const L = ['A', 'B', 'C', 'D']
 
 // ¿El argumento bajo el encabezado de la clave sostiene que esa opción es FALSA?
 // Se mira solo el arranque del bloque: es donde va la tesis.
+// ¿El argumento sostiene que la opción marcada es FALSA?
+// Las fórmulas salen de LEER 30 casos reales (28/07), no de imaginarlas: el redactor casi nunca
+// escribe «es falsa», escribe «no figura entre», «no está previsto», «la Constitución lo prohíbe»
+// o «invirtiendo el sentido». Con el patrón corto, 28 de esas 30 acababan en la cola de revisión
+// humana por vocabulario, no por duda real — y una cola inflada de falsas alarmas es una cola que
+// nadie mira.
 function argumentaQueEsFalsa(texto) {
-  const t = texto.toLowerCase().slice(0, 400)
-  const falsa = /(es|son|sería|resulta)\s+(incorrect|fals|erróne|inexact)|no es (cierto|correcto|verdad)|es la (respuesta )?(incorrecta|falsa)|no se ajusta|no aparece|no contempla|no permite|no exige|no corresponde|contradice/
-  return falsa.test(t)
+  const t = texto.toLowerCase().slice(0, 500)
+  const tesis = [
+    /(es|son|sería|resulta)\s+(incorrect|fals|erróne|inexact|inválid)/,
+    /no es (cierto|correcto|verdad|una|un |la |el )/,
+    /es la (respuesta |afirmación |opción |proposición |situación )?(incorrecta|falsa|inválida)/,
+    /\bno (figura|aparece|contempla|permite|exige|corresponde|se ajusta|está previst|se encuentra|consta|menciona|atribuye|genera|encaja|existe|recoge|incluye|constituye|se incluye)/,
+    /\bprohíbe\b|\bcontradice\b|invirtiendo el sentido|invierte el sentido/,
+    /\bcuando (el|la|los|las) (art|ley|constitución|precepto)/,
+    /\bno\b[^.]{0,40}\b(mejora|lanza|abre|resuelve|planifica)\b/,
+  ]
+  return tesis.some((re) => re.test(t))
 }
 
 function reparar(exp, letra) {
