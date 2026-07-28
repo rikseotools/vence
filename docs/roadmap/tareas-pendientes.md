@@ -3601,6 +3601,15 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Al terminar cada consolidación:** `refresh_topic_question_summary()` + invalidar tags `test-counts`/`questions`/`temario`/`laws`/`test-config`. Hecho para las 5.
 - **Origen:** T-112, sesión `sesion-26jul-d` (26/07), midiendo el universo de `article_no_coverage`: los arts de la LPRL salían huérfanos **por duplicado**, uno por cada fila de ley.
 
+### [T-241] 🟡 [ABIERTO 28/07] Artículos con el texto INCOMPLETO en BD: el detector de citas los encuentra de rebote y no hay ninguno que los busque
+- **Qué:** un artículo puede estar **presente y activo** pero con el texto **truncado o condensado**. Ningún detector lo mira: `verify-law-source.cjs` compara el INVENTARIO (qué artículos faltan), y `lib/laws/completeness.ts` deriva el estado de la EVIDENCIA (`last_verification_summary`) — un artículo que está pero al que le falta un párrafo pasa como bueno por los dos.
+- **Cómo apareció:** drenando el cubo de citas (T-207). De 31 preguntas revisadas, **3 no tenían un defecto de explicación sino de contenido**: al **art. 4.9 del RGPD** le faltaba el párrafo segundo entero («no se considerarán destinatarios las autoridades públicas que puedan recibir datos personales en el marco de una investigación concreta…»), y el **Reglamento 3/1995 art. 21** y la **Ley 13/1990 CES CyL art. 5.2** los tenemos **condensados**, no verbatim. Las dos últimas quedaron sin reparar precisamente por eso: sin el texto oficial no se puede ni comparar ni citar.
+- **Por qué importa más que un defecto de explicación:** el articulado alimenta también la TEORÍA y el estudio artículo por artículo, no solo las preguntas. Y es lo que ve el opositor que va a comprobar algo a la norma.
+- **⚠️ MÉTODO QUE NO FUNCIONA (probado el 28/07, para que nadie lo repita):** comparar la LONGITUD de nuestro artículo con la del BOE consolidado troceando por marcas «Artículo N». Da **falsos positivos masivos**: entre dos marcas el BOE mete rúbricas de sección, notas de vigencia y bloques de índice, así que el «tamaño oficial» sale inflado. Sobre la **CE** (4.763 preguntas, la ley más servida) marcó **11 artículos** y los tres de más tráfico —159, 143 y 14— resultaron **completos** al leerlos. La Constitución está bien.
+- **Por dónde ir entonces:** (a) reutilizar `lib/laws/parseBoeSections.js`, que ya sabe separar el articulado de verdad, en vez de trocear a mano; (b) comparar por CONTENIDO —¿aparece en nuestro texto la frase FINAL del artículo oficial?—, que es la firma real del truncado y la que cazó el caso del RGPD; (c) priorizar por exposición, no por ley.
+- **Ojo al tamaño:** 12 leyes con fuente BOE concentran ~23.000 preguntas activas. No hace falta barrer el catálogo entero para cubrir el grueso.
+- **Origen:** campaña de citas ajenas del 28/07 (T-207).
+
 ## Hechas
 
 
