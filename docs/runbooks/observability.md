@@ -1479,6 +1479,56 @@ Si el timeout salta, el catch existente loguea el warn y suelta el slot. Pérdid
 | 2026-06-03 (noche) | **Incidente cutover outbox a medias → 5 tablas materializadas congeladas 14h, y PUNTO CIEGO de `check_stats_drift`.** El cutover de outbox aplicó el RENAME shadow→canónica + DISABLE de ~20 triggers pero NO desplegó los flags (`CUTOVER_DONE`/`SHADOW_HANDLERS_ENABLED`) → handlers no-op → `uqh_v2`/`user_article_stats`/`user_difficulty_stats`/`user_daily_stats`/`user_hourly_stats` sin escritor 14h para todos los users. **Lo reportó una usuaria (Nila), NO la observabilidad.** Diagnóstico del fallo de detección: `check_stats_drift` corrió a las 08:47 DURANTE el freeze y no vio nada — (a) muestrea solo **30 users al azar** ~diario (222 afectados de miles → ~50% prob. de ni tocar uno), (b) chequea `uqh_v2` por **row-count** (insensible al drift de `total_attempts` al re-responder preguntas ya respondidas), (c) `uqh_v2` NUNCA ha aparecido en `stats_drift_log`. **Solución (3 capas, ver tabla cobertura)**: `materialized_stats_stale` (frescura), `stats_paridad_divergence` (correctitud en vivo), canary `canary-stats-pipeline` (e2e 24/7). Más reparación: flags en `main.tf` (`ceb2ea7e`) + recompute autoritativo de los 222 afectados (`scripts/recompute-gap-materialized-stats.mjs`, paridad post 0 divergencias) + runbook `outbox-cutover.md` Paso 5-bis (el flag deja de ser olvidable). `[[project_incidente_outbox_cutover_a_medias_03_06]]`. **`check_stats_drift` sigue siendo un detector débil** (NO se reforzó; queda superado para el caso agudo por la rule de paridad). |
 | 2026-06-03 | **Cambio de stack (fuera Vercel) + 2 gaps nuevos por el incidente del email de Eva.** (1) Front migrado a **OpenNext en ECS Fargate** (`vence-frontend`, cluster `vence-backend`) tras **CloudFront** (`E1EH4WF1H7ZGLA`) — Vercel retirado; manual marcado como desfasado en todas las menciones «Vercel». (2) Incidente: `/api/v2/dispute/resolve` cerró la impugnación `cfc85dd3` pero CloudFront/ALB cortó por timeout (502→504) antes de `sendEmailV2`; email perdido, **0 filas en `observable_events`/`email_events`** pese a 4 intentos → el health-check no lo habría detectado. (3) **Gap 14 reescrito** (Vercel Log Drain obsoleto → alarmas CloudWatch CloudFront/ALB). (4) **Gap 16** (durabilidad de side-effects vía outbox; el genérico `lib/outbox` está a medias, `dispatch` vacío) y **Gap 17** (reconciliadores de invariantes de negocio más allá de suscripciones) añadidos con caso real + **Fase 0** en el roadmap. Auditoría con 5 ejes (side-effects, fire-and-forget, canaries, alert-rules, error-logging). |
 
+## ¿De dónde vienen los usuarios? — atribución de adquisición (T-243, 28/07/2026)
+
+**Frase-gatillo:** *"¿de dónde viene el pico de usuarios?"*, *"¿nos ha anunciado algún foro?"*, *"¿rinde más el SEO o Ads?"*.
+
+**Respuesta rápida:**
+
+```sql
+SELECT a.channel, count(*) altas
+FROM user_profiles p JOIN user_acquisition a ON a.user_id = p.id
+WHERE p.created_at > now() - interval '7 days'
+GROUP BY 1 ORDER BY 2 DESC;
+```
+
+Canales que produce `lib/attribution/deriveChannel.ts`: `google_ads` · `meta_ads` · `tiktok_ads` · `bing_ads` · **`organic`** (buscadores) · **`ai_referral`** (ChatGPT, Perplexity, Gemini, Copilot) · **`referral`** (cualquier otro sitio: un foro entra aquí) · `social` (apps de mensajería) · `email` · `direct`.
+
+### Cómo funciona (dos piezas, y las dos tienen que estar vivas)
+
+1. **Captura** — `components/tracking/AttributionCapture.tsx` emite un toque a `/api/attribution/touch`, keyed por `vence_device_id`. Dos clases: **campaña** (una por querystring) y **entrada de sesión** (UNA por sesión: solo en la primera página el `referrer` dice de dónde viene).
+2. **Binding** — al registrarse, `/api/acquisition` resuelve los toques de ese device y escribe `user_acquisition` (first-touch **inmutable**, last-touch siempre fresco).
+
+**La regla de qué se guarda vive en UN sitio**, `lib/attribution/touchPolicy.ts`, y la importan cliente y servidor. **No la dupliques**: cuando estuvo duplicada (hasta el 28/07) ampliar solo el cliente dejaba el toque descartado en el servidor **respondiendo `success: true`** — silencio perfecto. Hay guardarraíl que falla si alguno vuelve a decidir por su cuenta.
+
+### Antes de tocar el clasificador o la política: SIMULA
+
+```bash
+npx tsx scripts/atribucion/sim-captura-ampliada.ts [--dias N]
+```
+
+Usa los **módulos reales** (no una copia): reclasifica los toques ya guardados, avisa si algún dominio **propio o de infra** se cuela como `referral`, y acota el volumen de escritura. **Ya pagó el día que se escribió:** destapó que `android-app://com.google.android.gm/` —Gmail— se contaba como `organic` por llevar `.google.` en el package name (121 casos en 7 días). Un clic desde el correo no es SEO.
+
+### Gotchas que costaron un bug cada uno
+
+- **El referrer se compara por HOST, no por cadena.** `(?:^|\.)google\.` sobre la URL entera hacía que `https://duckduckgo.com/` (sin `www.`) cayera en `referral` — media internet manda el referrer sin `www.`.
+- **`android-app://<paquete>` no es un dominio.** Se resuelve por paquete conocido; una app desconocida cae en `referral`, **nunca** en `organic`.
+- **El first-touch es INMUTABLE** (`onConflictDoNothing`): el primer escritor gana para siempre. Por eso todo caller de `/api/acquisition` debe mandar `deviceId` — si cae al modo legacy, fija la fila con datos pobres y el binding bueno ya no puede corregirla.
+- **La captura es de 1ª parte y NO está gateada por consentimiento**, igual que `FraudTracker`. El envío a plataformas de Ads (F1) sí lo está. Ampliar la captura no cambia eso.
+
+### Salud de la señal
+
+Si `channel` sale mayoritariamente `direct` o `organic` casi no aparece, la captura está rota — no es que el tráfico sea directo. Comprobar la cobertura:
+
+```sql
+SELECT count(*) altas,
+       count(*) FILTER (WHERE a.landing_path IS NOT NULL AND a.landing_path <> '') con_landing
+FROM user_profiles p LEFT JOIN user_acquisition a ON a.user_id = p.id
+WHERE p.created_at > now() - interval '7 days';
+```
+
+Estuvo **8 semanas entre el 11% y el 26% sin que nada avisara**. Un `direct` del 86% es un síntoma, no un dato.
+
 ## Ruido vs daño en los `console_error` de cliente (T-210, 28/07/2026)
 
 **El problema, medido:** los `console_error` eran el **95% del ruido de error** del sistema (4.840/24 h) y eran **inaccionables**: el mensaje dominante, `Failed to fetch`, mezcla al usuario que pierde funcionalidad con el que simplemente cambió de página. Cruzado con los usuarios que responden preguntas daba un alarmante 52-68% de la base activa… que no significaba lo que parecía.
