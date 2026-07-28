@@ -18,9 +18,43 @@ const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 const words = (s) => new Set(norm(s).split(' ').filter((w) => w.length > 3));
 function recall(opt, art) { const O = words(opt), A = words(art); if (!O.size) return 0; let h = 0; O.forEach((w) => A.has(w) && h++); return h / O.size; }
 const hasOptFormat = (e) => /\*\*A\)/i.test(e || '') && /\*\*B\)/i.test(e || '');
+
+// ── Barajado de opciones (T-080 Fase 1): traducir lo que VIO el usuario ────────────────────────
+//
+// Con el barajado encendido, la letra que el usuario nombra en su impugnación NO es la de la BD:
+// el serve permuta las opciones por exposición y guarda esa permutación en
+// `test_questions.option_order` (option_order[i] = índice ORIGINAL mostrado en la posición i).
+// Sin esto, alguien escribe «la opción C es errónea», nosotros abrimos la C de la BD —que es otra
+// opción distinta— y diagnosticamos la pregunta equivocada, con toda la seguridad del mundo.
+// El dato ya se guardaba; lo que faltaba era mirarlo.
+const LETRAS = ['A', 'B', 'C', 'D', 'E'];
+
+/** Mapa posición MOSTRADA → letra ORIGINAL en BD. Puro: `order` es lo servido, sin BD de por medio. */
+function mapaExposicion(order) {
+  if (!Array.isArray(order) || !order.length) return null;
+  return order.map((orig, pos) => ({ vio: LETRAS[pos], enBd: LETRAS[orig] }));
+}
+
+/** Reescribe las letras que el usuario menciona a las de la BD, para no diagnosticar la opción equivocada. */
+function traducirLetrasDelUsuario(texto, order) {
+  const mapa = mapaExposicion(order);
+  if (!mapa || !texto) return null;
+  const vistas = new Set();
+  const re = /\b(?:opci[óo]n|respuesta|alternativa|letra)\s*([A-Ea-e])\b|\b([A-E])\)/g;
+  let m;
+  while ((m = re.exec(texto))) vistas.add((m[1] || m[2]).toUpperCase());
+  if (!vistas.size) return null;
+  return [...vistas].sort().map((L) => {
+    const e = mapa.find((x) => x.vio === L);
+    return { dijo: L, esEnBd: e ? e.enBd : '?' };
+  });
+}
 // Enforcement de la Regla previa OBLIGATORIA (scope/epígrafe) — módulo compartido con revisar-feedback.cjs
 const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
 
+if (require.main !== module) {
+  module.exports = { mapaExposicion, traducirLetrasDelUsuario };
+} else
 (async () => {
   const did = process.argv[2];
   if (!did) { console.error('Uso: revisar-impugnacion.cjs <dispute_id>'); process.exit(2); }
@@ -92,6 +126,34 @@ const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
     console.log(`  ${q.question_text}`);
     ['A', 'B', 'C', 'D'].forEach((L) => opts[L] != null && console.log(`  ${L}) ${opts[L]}`));
     console.log(`  CLAVE: ${'ABCD'[co]}) ${correctText}`);
+
+    // ¿Vio el usuario las opciones BARAJADAS? Se busca su exposición más cercana a la impugnación.
+    if (!isPsy) {
+      try {
+        const [exp] = await s`
+          SELECT option_order, created_at FROM test_questions
+           WHERE user_id = ${d.user_id} AND question_id = ${d.question_id}
+             AND created_at <= ${d.created_at}::timestamptz + interval '1 hour'
+           ORDER BY created_at DESC LIMIT 1`;
+        const mapa = exp && mapaExposicion(exp.option_order);
+        if (mapa) {
+          console.log('\n🔀 EL USUARIO VIO LAS OPCIONES BARAJADAS — sus letras NO son las de la BD:');
+          for (const e of mapa) {
+            const t = opts[e.enBd] == null ? '(vacía)' : String(opts[e.enBd]).slice(0, 72);
+            console.log(`   él vio ${e.vio}) = en BD es la ${e.enBd}) ${t}`);
+          }
+          const trad = traducirLetrasDelUsuario(d.description, exp.option_order);
+          if (trad) {
+            console.log('   ⚠️ En su texto menciona: ' + trad.map((t) => `«${t.dijo}» → es la ${t.esEnBd}) de la BD`).join(' · '));
+            console.log('      Analiza ESA opción, no la de su letra. Y al responderle, usa SU letra.');
+          }
+        } else if (exp) {
+          console.log('\n🔀 Orden natural: vio las opciones como están en la BD (sin barajar).');
+        }
+      } catch (e) {
+        console.log(`\n(no se pudo reconstruir el orden que vio el usuario: ${e.message.slice(0, 70)})`);
+      }
+    }
     console.log(`\nExplicación actual:\n  ${(q.explanation || '(vacía)').replace(/\n/g, '\n  ')}`);
     if (art) {
       console.log(`\nArtículo vinculado: ${art.ln} art ${art.an} — ${art.title || ''}`);

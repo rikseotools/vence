@@ -1597,6 +1597,30 @@ Sin colas, sin crons, sin dependencias externas, sin tablas nuevas. ~80 líneas 
 
 **Lección general:** triggers PG llamando a HTTP desde Postgres son frágiles ante cold-starts de stack serverless. Cuando el productor del UPDATE es siempre código de la app (no jobs externos), preferir flujo in-process síncrono. Este patrón se aplicó a todos los flujos de notificación internos del 14/04/2026 (impugnaciones legislativas + psicotécnicas + feedback). Si aparecen nuevos casos similares, usar el mismo refactor.
 
+## 🔀 Cuando el barajado esté encendido: la letra que dice el usuario NO es la de la BD
+
+El serve permuta las opciones **por exposición** y guarda esa permutación en
+`test_questions.option_order`. Así que cuando alguien escribe *«la opción C es errónea»* está
+hablando de **la C que vio él**, que puede ser otra opción distinta en la BD. Analizar la C de la
+BD sería diagnosticar la pregunta equivocada con total seguridad — y responderle nombrándole una
+letra que él nunca vio.
+
+**No hay que hacer nada a mano:** el dossier (`revisar-impugnacion.cjs`) reconstruye la exposición
+más cercana a la fecha de la impugnación y, si estaba barajada, imprime el bloque
+
+```
+🔀 EL USUARIO VIO LAS OPCIONES BARAJADAS — sus letras NO son las de la BD:
+   él vio A) = en BD es la C) …
+   ⚠️ En su texto menciona: «C» → es la D) de la BD
+      Analiza ESA opción, no la de su letra. Y al responderle, usa SU letra.
+```
+
+Si la exposición fue en orden natural lo dice también, en una línea. **Al redactar la respuesta,
+usa la letra que vio el usuario**, no la de la BD: para él la nuestra no significa nada.
+
+Mapeo y traducción son funciones puras (`mapaExposicion`, `traducirLetrasDelUsuario`) con 8 tests
+en `__tests__/impugnaciones/dossierExposicionBarajada.test.ts`.
+
 ## 🔀 Explicación BARAJABLE: tras aplicar una explicación, transcríbela
 
 > **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
