@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { pgUuidArray } from '../db/sql-arrays';
 import { ObservabilityService } from '../observability/observability.service';
 import { classifyHarvest } from './harvest-signals';
 
@@ -92,13 +93,13 @@ export class FraudSweepService {
     );
     if (cur.length) {
       await this.db.execute(
-        sql`UPDATE fraud_alerts SET details=${detailsJson}::jsonb, severity=${severity}, user_ids=${userIds}, detected_at=now() WHERE id=${cur[0].id}`,
+        sql`UPDATE fraud_alerts SET details=${detailsJson}::jsonb, severity=${severity}, user_ids=${pgUuidArray(userIds)}, detected_at=now() WHERE id=${cur[0].id}`,
       );
       return 'refreshed';
     }
     await this.db.execute(sql`
       INSERT INTO fraud_alerts (alert_type, severity, status, user_ids, details, match_criteria, detected_at)
-      VALUES (${kind}, ${severity}, 'new', ${userIds}, ${detailsJson}::jsonb, ${match}, now())`);
+      VALUES (${kind}, ${severity}, 'new', ${pgUuidArray(userIds)}, ${detailsJson}::jsonb, ${match}, now())`);
     return 'inserted';
   }
 
@@ -120,7 +121,7 @@ export class FraudSweepService {
       found++;
       const emails = rows(
         await this.db.execute(
-          sql`SELECT email, plan_type, created_at::date d FROM user_profiles WHERE id = ANY(${r.users}) ORDER BY created_at`,
+          sql`SELECT email, plan_type, created_at::date d FROM user_profiles WHERE id = ANY(${pgUuidArray(r.users as string[])}) ORDER BY created_at`,
         ),
       );
       bump(
@@ -325,7 +326,7 @@ export class FraudSweepService {
       found++;
       const emails = rows(
         await this.db.execute(
-          sql`SELECT email, plan_type FROM user_profiles WHERE id = ANY(${r.users})`,
+          sql`SELECT email, plan_type FROM user_profiles WHERE id = ANY(${pgUuidArray(r.users as string[])})`,
         ),
       );
       bump(

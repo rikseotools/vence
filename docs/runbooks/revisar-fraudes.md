@@ -54,6 +54,28 @@ Sistema **Claude-en-el-bucle**: el sweep detecta y alerta (badge); **el humano d
    - `reviewed` = vista, sin veredicto duro (p.ej. dudosa, a vigilar).
 4. **Resume a Manuel** los `confirmed` y propón acción (bloqueo/límite) para su OK. El auto-bloqueo NO está activo en F0.
 
+## ⚠️ El barrido puede estar MUERTO y el badge parecer tranquilo (incidente 21-28/07/2026)
+
+**Lo que pasó:** `backend/src/fraud-sweep/` falló **7 noches seguidas con CERO éxitos**, muriendo siempre en su **primer detector**. Ninguno de los cinco llegó a ejecutarse. Durante esa semana el badge 🚨 estaba bajo no porque no hubiera fraude, sino **porque nadie estaba mirando**. Al arreglarlo, el primer barrido completo destapó **9 señales** que llevaban días sin detectar.
+
+**La causa, y es una trampa reutilizable:** Drizzle interpola un array JS como parámetros SUELTOS, no como array de Postgres. `ANY(${'${users}'})` genera `ANY(($1,$2,$3))` → *"op ANY/ALL (array) requires array on right side"*; y escribir en una columna `uuid[]` da *"expression is of type record"*. **Siempre `pgUuidArray()`** (`backend/src/db/sql-arrays.ts`, espejo de `lib/api/sqlArrays.ts`).
+
+**Lo que NO lo cazó** — importa tanto como la causa:
+- `tsc` y `nest build`: la forma del SQL no es un problema de tipos.
+- El spec del módulo: **mockea `execute`**, así que el SQL no llega a ejecutarse. Un test verde no dice nada aquí.
+- El heartbeat: SÍ emitía `cron_run`/`error` cada noche y entra en `/admin/salud-sistema`. La alarma funcionó; **falló el triaje** — 7 días de señal roja en un panel con ruido (ver T-185).
+
+**Comprobación (30 s), antes de fiarte del badge:**
+```bash
+npm run canary:fraud-sweep     # formas de SQL + ¿ha terminado bien alguna vez en 3 días?
+```
+```sql
+SELECT created_at::date, metadata->>'status', error_message
+  FROM observable_events WHERE endpoint='fraud-sweep' AND event_type='cron_run'
+ ORDER BY created_at DESC LIMIT 7;
+```
+**Un badge a 0 con `status=failure` en esa consulta significa CIEGO, no limpio.**
+
 ## Cosecha por corrección (`/api/exam/validate`) — punto ciego cerrado el 27/07/2026
 
 **Qué pasaba:** ese endpoint devuelve la clave **y la explicación completa** de cada `questionId` del lote. Es el único sitio donde la clave no viaja con la pregunta (modo examen), así que es el único que se puede usar como **oráculo**: le pasas una lista de UUIDs y te los corrige. Y cuando la llamada **no trae `testId` no persistía nada** — ni `test_questions`, ni score, ni contador diario. Una cosecha por ahí no dejaba rastro en NINGUNA tabla, así que ninguno de los detectores de este runbook podía verla. Verificado contra prod el 27/07: 50 preguntas en una petición, sin cuenta ni token, 200 con las 50 respuestas y las 50 explicaciones.
