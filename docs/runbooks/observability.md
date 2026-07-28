@@ -1181,6 +1181,64 @@ Pago por nivel pro: $20/mes total. Aceptable.
 
 ---
 
+## 13ter. 📱 PWA: quién la usa, cuánto, y el embudo del banner (28/07/2026)
+
+> **Frase-gatillo: *"cómo va la PWA"* / *"cuánta gente tiene la app instalada"*.**
+
+**La adopción NO tiene tabla propia, y es a propósito.** Viaja en
+`user_interactions.device_info->>'isStandalone'`, que se registra **desde siempre** y nadie
+estaba mirando. Hubo un sistema aparte (`pwa_events`, `pwa_sessions`, vista `admin_pwa_stats`)
+que escribía `lib/services/pwaTracker.ts` con supabase-js: **murió el 21/05/2026** al retirar el
+push, tiene 346.218 filas congeladas y **la vista sigue devolviendo 0 instalaciones, que parece
+un dato y es un cero falso**. No la uses. Si algún día estorba, se borra.
+
+```sql
+-- ¿QUIÉNES la usan? (últimos 30 días)
+WITH act AS (
+  SELECT user_id, bool_or((device_info->>'isStandalone')='true') pwa, count(*)::int n
+  FROM user_interactions
+  WHERE created_at > now() - interval '30 days' AND user_id IS NOT NULL
+  GROUP BY user_id)
+SELECT count(*) usuarios, count(*) FILTER (WHERE pwa) con_pwa,
+       round(avg(n) FILTER (WHERE pwa)) media_pwa,
+       round(avg(n) FILTER (WHERE NOT pwa)) media_web
+FROM act;
+```
+
+**Medido el 28/07 (línea base):** 3.720 usuarios activos, **75 con la PWA (2 %)**. Los instalados
+hacen **1.909 interacciones/usuario frente a 431**, o sea **4,4×**, y son **premium en un 28 %
+frente al 5 %**. Ojo con la lectura: es correlación — el que ya viene mucho es el que se la
+instala. Aun así, 2 % de adopción con esa diferencia es el motivo de que el banner volviera.
+
+**El EMBUDO del banner** va por `observable_events`, `event_type='pwa_install_banner'`, con
+`metadata.accion`:
+
+| `accion` | Qué significa |
+|---|---|
+| `mostrado` | Se le enseñó la invitación |
+| `aceptado` | Pulsó «Instalar» (aún NO está instalada) |
+| `eleccion_sistema` | Qué respondió en el diálogo de Android (`metadata.outcome`) |
+| `instalado` | Instalación **consumada** (evento `appinstalled`) |
+| `descartado` | ✕ o «Ahora no» (`metadata.gesto`) |
+| `no_mostrado` | NO se le enseñó, y **por qué** (`metadata.motivo`) |
+
+**`aceptado` ≠ `instalado` a propósito:** entre los dos está quien se arrepiente en el diálogo
+del sistema, y esa fuga no se ve de ninguna otra forma. Y `no_mostrado` lleva el motivo porque
+el día que el banner no aparezca hay que poder distinguir *"no aplica"* (`no_movil`,
+`ya_instalada`, `descartado`) de *"el navegador no lo ofrece"* (`sin_prompt`), que sí sería una
+avería.
+
+```sql
+SELECT metadata->>'accion' accion, metadata->>'motivo' motivo, count(*)
+FROM observable_events
+WHERE event_type='pwa_install_banner' AND ts > now() - interval '7 days'
+GROUP BY 1,2 ORDER BY 3 DESC;
+```
+
+**Qué NO existe todavía:** invitación en **iOS** (Safari no dispara `beforeinstallprompt`; haría
+falta enseñar las instrucciones de «Añadir a pantalla de inicio» a mano) y ningún panel: hoy
+esto se consulta con las queries de arriba.
+
 ## 13bis. 🔊 Taxonomía TTS (Bloque 4 — 2026-05-25)
 
 Eventos del lector de temario (Web Speech robusto). Catálogo completo definido en `lib/tts/telemetry.ts`. Todos van a `observable_events.source='frontend'` vía `/api/observability/ingest`.
