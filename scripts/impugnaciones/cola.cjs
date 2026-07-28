@@ -105,10 +105,40 @@ async function listQueue(list) {
   return out;
 }
 
+/**
+ * Filas que dicen `pending` pero YA están contestadas (tienen `resolved_at` o `admin_response`).
+ *
+ * Por qué se vigila: el 28/07 una impugnación cerrada a las 10:21 reapareció en la cola con la
+ * respuesta y la fecha de resolución guardadas y el status en `pending`. Nada de la app hace eso
+ * —`appeal` pone `appealed` y solo desde `rejected`, y el resto solo toca `is_read`—, así que fue
+ * un UPDATE de fuera (con 2-10 sesiones a la vez, lo normal es que sea otra sesión). El coste de
+ * no verlo es alto y silencioso: alguien reabre el análisis de algo ya respondido y **el usuario
+ * recibe un segundo correo** diciéndole lo mismo.
+ *
+ * Se avisa, no se corrige sola: reparar en automático taparía la causa.
+ */
+async function inconsistentesResueltasEnPending() {
+  const out = [];
+  for (const { tbl, kind } of DISPUTE_TBL) {
+    const rows = await s.unsafe(
+      `SELECT id FROM public.${tbl}
+        WHERE status = 'pending' AND (resolved_at IS NOT NULL OR admin_response IS NOT NULL)`);
+    rows.forEach((r) => out.push({ ...r, kind }));
+  }
+  return out;
+}
+
 (async () => {
   try {
     if (cmd === 'list') {
       const rows = [...(await listQueue(DISPUTE_TBL)), ...(await listQueue(FEEDBACK_TBL))];
+      const zombis = await inconsistentesResueltasEnPending();
+      if (zombis.length) {
+        console.log(`\n⚠️  ${zombis.length} impugnación(es) figuran PENDING pero ya tienen respuesta y fecha de resolución.`);
+        console.log('   Alguien las devolvió a pending fuera de la app. NO las re-trabajes sin mirar: el usuario');
+        console.log('   ya recibió su respuesta y volver a cerrarlas le manda un segundo correo.');
+        zombis.forEach((z) => console.log(`     · [${z.kind}] ${z.id}`));
+      }
       if (!rows.length) { console.log('Cola vacía (0 pendientes en RDS).'); return; }
       console.log(`COLA (RDS) — ${rows.length} pendientes:\n`);
       for (const r of rows) {
