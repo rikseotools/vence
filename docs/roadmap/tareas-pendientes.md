@@ -2912,6 +2912,33 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ### [T-080] 🟢 [MEDIA] Barajar el orden de las opciones cuando se repite una pregunta (diseño unificado con la mejora de explicaciones)
 
+> ### 📏 MEDIDO EL 28/07 — qué pasaría si se enciende HOY (simulación con el gate REAL sobre las 139.445 activas)
+> **Se barajaría el 52,7% (73.468)**: 68.733 por clasificación `safe` y 4.735 por explicación
+> estructurada. **Se quedarían quietas 65.977 (47,3%)**: 45.927 `unsafe`, 11.631 `anchor_last`
+> («todas las anteriores»), 8.314 `no_shuffle` y 105 entre `stale`/`unverified`. Una pregunta no
+> elegible se sirve exactamente como hoy, así que encenderlo no toca ese 47%.
+>
+> **El circuito está entero y verificado pieza a pieza:** el serve baraja con el gate por pregunta,
+> adjunta `option_order` y remapea la clave a la posición mostrada; `/api/v2/answer-and-save` mapea
+> mostrada→original antes de comparar y **persiste en coordenadas originales** (las estadísticas por
+> distractor NO se corrompen); la permutación queda en `test_questions.option_order`; el modo examen
+> no baraja; y el flag admite rollout por oposición (`FEATURE_SHUFFLE_OPTIONS_SCOPE`), que se cambia
+> por task def sin rebuild y es reversible.
+>
+> **Cabos ANTES de encender:**
+> - ✅ **HECHO (28/07)** — el dossier de impugnaciones no miraba `option_order` (0 referencias en
+>   `scripts/impugnaciones/`): un usuario escribe «la opción C está mal» refiriéndose a lo que vio ÉL
+>   y nosotros abríamos otra C. Ya reconstruye la exposición y traduce las letras (8 tests + manual).
+> - ⬜ **2.388 preguntas de EXAMEN OFICIAL se barajarían.** Decisión de producto, no técnica: para
+>   practicar está bien, pero se pierde el «en el examen salió en este orden». Se excluye con una
+>   condición en el gate si se decide que no.
+> - ⬜ **8 explicaciones `safe` razonan por POSICIÓN** («la primera opción», «las dos últimas») en vez
+>   de por letra — el detector mira letras, no posiciones. Son 8: se arreglan a mano en minutos.
+>
+> **Recomendación:** cerrar los dos cabos abiertos y encender **por scope en UNA oposición** unos
+> días con el sweep nocturno vigilando, antes de ir a global.
+
+
 > ### ↩️ CORRECCIÓN DE ENFOQUE (27/07, la señaló Manuel): lo nuevo se ESCRIBE estructurado, no se deriva
 > El planteamiento inicial —escribir el texto de siempre y **parsearlo** después— tiene un defecto
 > de fondo: parsear es heurístico (43,7% del formato de generación, 15,3% del de impugnaciones) y
