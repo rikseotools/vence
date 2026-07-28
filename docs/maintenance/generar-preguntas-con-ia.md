@@ -1043,11 +1043,14 @@ Verificar:
 ```bash
 set -a; source .env.local; set +a
 
-# 1. Refrescar materialized views (~7s)
+# 1. Refrescar materialized views (~13s) — contra RDS, que es la BD VIVA.
+#    ⚠️ Este comando usaba `@supabase/supabase-js` con la SERVICE_ROLE_KEY, y desde el cutover
+#    del 04/07/2026 esa ruta apunta a Supabase CONGELADO: "refrescaba" una copia muerta y las
+#    MV de producción se quedaban con el conteo viejo (el tema seguía enseñando N-13 preguntas).
 node -e "require('dotenv').config({path:'.env.local'}); \
-  const {createClient} = require('@supabase/supabase-js'); \
-  const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY); \
-  s.rpc('refresh_topic_question_summary').then(r => console.log('MV refresh:', r))"
+  const pg = require('./backend/node_modules/postgres'); \
+  const s = pg(process.env.DATABASE_URL, {ssl:{rejectUnauthorized:false}, max:1}); \
+  s\`SELECT public.refresh_topic_question_summary()\`.then(() => { console.log('MV refresh OK'); return s.end() })"
 
 # 2. Invalidar Redis claves topic_data:* afectadas
 #    (ajustar oposiciones y temas al alcance del batch)
