@@ -360,6 +360,13 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-259] 🟠 [ABIERTO 29/07] El backend lleva 6 commits sin desplegar: los detectores nuevos del barrido de salud NO están corriendo
+- **Qué pasa:** `api.vence.es/health` sirve `69f07a66`, y `main` tiene **6 commits que tocan `backend/`** por encima de ese. El barrido de salud del contenido corre como `@Cron` **dentro del backend** ([[project-health-sweep-cron-fargate]]), así que todo lo que se ha añadido estos días al sweep está en el repo pero **no se ejecuta**: el detector de fechas afirmadas sin fuente ([T-256]), el de enlaces que la landing enseña, la banda de error de estados, el de notas de auditoría y el de "piloto de barajado encendido sin efecto".
+- **Por qué importa:** el badge de salud del contenido parece tranquilo, y lo que hay es que **los sensores nuevos no están enchufados**. Es la misma clase de trampa que motivó el runbook del radar: un cero puede ser "no hay nada" o "no lo está mirando nadie".
+- **Cómo salió:** desplegando el frontend el 28/07 (fix de los controles del examen). El deploy es acumulativo y subió lo de todos, pero el **backend se despliega aparte** y nadie lo había empujado.
+- **Qué hay que hacer:** `scripts/deploy-cuando-verde.sh backend` y comprobar después que el sweep nocturno emite los hallazgos nuevos (`content_health_findings` con los `kind` correspondientes).
+- **Dueño natural:** quien cerró [T-256] / los detectores del sweep; no requiere criterio de contenido, solo el deploy y la verificación.
+
 ### [T-257] 🟡 [ABIERTO 28/07] La otra fecha que la landing afirma sin fuente: `convocatorias.exam_date`, que ningún detector mira
 - **Cómo salió:** cerrando [T-256]. El detector `hito_registro_sin_fuente` vigila los HITOS, pero el hero de la landing no lee un hito: lee `convocatorias.exam_date`, con su propio flag `exam_date_approximate` (`false` ⇒ *"Examen: 20 de septiembre de 2026"*; `true` ⇒ *"Examen previsto: … (fecha aproximada)"*).
 - **El caso real:** `administrativo-galicia` tenía el hito sin fuente **y** el `exam_date` afirmado como firme. Degradar solo el hito habría dejado la mentira a medio quitar — el timeline decía "Fecha por confirmar" y el hero seguía anunciando la fecha exacta. Se corrigió a mano (traza `exam_date_approximate_marcado`), pero **nada impide que vuelva a pasar**.
