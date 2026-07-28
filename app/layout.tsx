@@ -17,6 +17,7 @@ import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent
 import ConsentModeDefault from '../components/ConsentModeDefault'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
 import { ClientObservabilityInstaller } from '../components/observability/ClientObservabilityInstaller'
+import PwaInstallBanner from '../components/PwaInstallBanner'
 import ReferralAttributionOnLogin from '../components/ReferralAttributionOnLogin'
 import PrintPremiumGuard from '../components/PrintPremiumGuard'
 import { EarlyErrorsBridge } from '../components/observability/EarlyErrorsBridge'
@@ -50,6 +51,12 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                 intent tracking. Ver lib/observability/client.ts. */}
             <ClientObservabilityInstaller />
             <ReferralAttributionOnLogin />
+            {/* Invitación a instalar la PWA. Solo móvil y solo a quien no la tiene; la
+                decisión vive en lib/pwa/installBanner.ts. Vuelve a existir porque el banner
+                anterior desapareció con la retirada del push (03/05) y desde entonces nadie
+                invita a instalarla: solo el 2% la tiene, y quien la tiene usa la plataforma
+                4,4× más. */}
+            <PwaInstallBanner />
             {/* Anti-fuga premium: bloquea la impresión del temario (Ctrl+P / botón)
                 para usuarios no premium. Fuente única, ver components/PrintPremiumGuard. */}
             <PrintPremiumGuard />

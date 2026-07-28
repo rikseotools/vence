@@ -102,6 +102,15 @@ export type ClientEventType =
   // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
   // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
   | 'storage_unavailable'
+  // Banner de instalación de la PWA (28/07/2026). Tipo PROPIO por lo mismo que
+  // `usage_limit_hit` y `storage_unavailable`: interesa CONSERVAR visibilidad —cuántos ven la
+  // invitación, cuántos instalan, cuántos la descartan y por qué no se muestra— sin que cuente
+  // como error de cliente ni quede enterrado en 'custom'. `metadata.accion` distingue el caso:
+  //   'mostrado' | 'aceptado' | 'instalado' | 'descartado' | 'no_mostrado' (+ motivo)
+  // La ADOPCIÓN (quién la usa y cuánto) NO se mide aquí: ya viaja en
+  // `user_interactions.device_info.isStandalone`, que se registra desde siempre. Duplicarlo
+  // habría creado dos verdades sobre lo mismo.
+  | 'pwa_install_banner'
   // Reintento de red del wrapper fetchWithChallenge (fix 24/07/2026). Un
   // `Failed to fetch` transitorio en la ruta crítica (generar test) se
   // reintenta con backoff en vez de dead-end. `outcome:'recovered'` (severity
