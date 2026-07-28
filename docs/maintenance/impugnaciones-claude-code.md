@@ -46,6 +46,32 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 
 ---
 
+## 0.bis ⚖️ ALEGACIONES: qué son y por qué no las veías (arreglado 28/07/2026)
+
+Un usuario cuya impugnación se cierra puede **alegar** desde la app. Hasta el 28/07 eso funcionaba
+a medias y en silencio:
+
+| Pieza | Qué hacía | Estado |
+|---|---|---|
+| CHECK de `question_disputes.status` | Admitía solo `pending`, `reviewing`, `resolved`, `rejected` | ❌ **`appealed` era imposible**: 0 filas en 1.887 |
+| `/api/v2/disputes/appeal` | `SET status='appealed'` | ❌ fallaba SIEMPRE contra el CHECK |
+| `/api/dispute` PATCH (el que usa la app) | `SET status='pending'` + guarda `appeal_text` | ⚠️ funcionaba, pero la alegación volvía a la cola **disfrazada de impugnación nueva** |
+| Panel `/admin/impugnaciones` | Pinta el texto solo `if (status === 'appealed')` | ❌ no lo mostró jamás |
+
+**Por qué importa para ti:** una alegación que entra como `pending` no se distingue de una queja
+nueva. Quien la coge no ve que ya se le respondió, la analiza de cero y al cerrarla **le manda al
+usuario un segundo correo con lo mismo**. Estuvo a punto de pasar el 28/07.
+
+**Cómo está ahora:** migración `20260728_dispute_status_appealed.sql` abre el dominio, el camino v1
+escribe `appealed`, y `cola.cjs list` las muestra con ese estado. Recuperadas las **3 alegaciones
+reales que se habían quedado sin respuesta** (una esperaba desde el 21/03). Guardarraíl para que no
+vuelva a divergir: `__tests__/guardrails/disputeStatusEnDominioDeLaBD.test.ts` compara lo que el
+código escribe con lo que la BD admite.
+
+**Al trabajar una `appealed`:** lee primero tu respuesta anterior (`admin_response`) y el texto de
+la alegación (`appeal_text`). No es una impugnación nueva: es una segunda vuelta sobre algo que ya
+contestaste, y el usuario merece que se le note que lo has leído.
+
 ## 1. Ver Impugnaciones Pendientes
 
 ```

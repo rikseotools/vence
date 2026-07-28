@@ -106,23 +106,36 @@ async function listQueue(list) {
 }
 
 /**
- * Filas que dicen `pending` pero YA están contestadas (tienen `resolved_at` o `admin_response`).
+ * Filas que dicen `pending` pero YA están contestadas **y no son una alegación**.
  *
- * Por qué se vigila: el 28/07 una impugnación cerrada a las 10:21 reapareció en la cola con la
- * respuesta y la fecha de resolución guardadas y el status en `pending`. Nada de la app hace eso
- * —`appeal` pone `appealed` y solo desde `rejected`, y el resto solo toca `is_read`—, así que fue
- * un UPDATE de fuera (con 2-10 sesiones a la vez, lo normal es que sea otra sesión). El coste de
- * no verlo es alto y silencioso: alguien reabre el análisis de algo ya respondido y **el usuario
- * recibe un segundo correo** diciéndole lo mismo.
+ * Nació el 28/07 al ver una impugnación cerrada reaparecer en la cola, y la primera versión estaba
+ * MAL: marcaba como anomalía las ALEGACIONES, que son justo lo contrario —un usuario ejerciendo su
+ * derecho a responder—. La causa real era otra y más gorda: el estado `appealed` no existía en la
+ * BD (CHECK sin ese valor, 0 filas en 1.887), así que el camino que sí funcionaba escribía
+ * `pending` y la alegación volvía a la cola disfrazada de impugnación nueva. Arreglado en
+ * `supabase/migrations/20260728_dispute_status_appealed.sql`.
  *
- * Se avisa, no se corrige sola: reparar en automático taparía la causa.
+ * Lo que queda vigilado aquí es el caso que NO tiene explicación: contestada, sin alegación, y de
+ * vuelta en `pending`. Si aparece, alguien la movió por fuera y re-trabajarla le manda al usuario
+ * un segundo correo con lo mismo.
+ *
+ * Se avisa, no se corrige sola: reparar en automático taparía la causa (y la primera versión de
+ * este mismo guardarraíl demuestra por qué — habría "arreglado" alegaciones legítimas).
  */
 async function inconsistentesResueltasEnPending() {
   const out = [];
   for (const { tbl, kind } of DISPUTE_TBL) {
+    // Las psicotécnicas no tienen alegación (la tabla ni siquiera lleva `appeal_submitted_at`), así
+    // que la exclusión se aplica solo donde la columna existe. Se consulta el esquema en vez de
+    // asumirlo: dar por hecho que dos tablas hermanas tienen las mismas columnas es justo el tipo
+    // de suposición que ha costado esta sesión entera.
+    const [{ tiene }] = await s.unsafe(
+      `SELECT count(*)::int > 0 AS tiene FROM information_schema.columns
+        WHERE table_schema='public' AND table_name=$1 AND column_name='appeal_submitted_at'`, [tbl]);
     const rows = await s.unsafe(
       `SELECT id FROM public.${tbl}
-        WHERE status = 'pending' AND (resolved_at IS NOT NULL OR admin_response IS NOT NULL)`);
+        WHERE status = 'pending' AND (resolved_at IS NOT NULL OR admin_response IS NOT NULL)
+          ${tiene ? 'AND appeal_submitted_at IS NULL' : ''}`);
     rows.forEach((r) => out.push({ ...r, kind }));
   }
   return out;
@@ -135,8 +148,8 @@ async function inconsistentesResueltasEnPending() {
       const zombis = await inconsistentesResueltasEnPending();
       if (zombis.length) {
         console.log(`\n⚠️  ${zombis.length} impugnación(es) figuran PENDING pero ya tienen respuesta y fecha de resolución.`);
-        console.log('   Alguien las devolvió a pending fuera de la app. NO las re-trabajes sin mirar: el usuario');
-        console.log('   ya recibió su respuesta y volver a cerrarlas le manda un segundo correo.');
+        console.log('   Contestadas, SIN alegación y de vuelta en pending: alguien las movió por fuera. NO las');
+        console.log('   re-trabajes sin mirar: el usuario ya recibió respuesta y cerrarlas de nuevo le manda otro correo.');
         zombis.forEach((z) => console.log(`     · [${z.kind}] ${z.id}`));
       }
       if (!rows.length) { console.log('Cola vacía (0 pendientes en RDS).'); return; }

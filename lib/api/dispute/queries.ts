@@ -248,10 +248,17 @@ export async function handleDisputeAppeal(
       if (!appealText?.trim()) {
         return { success: false, error: 'El texto de apelación es requerido' }
       }
+      // `appealed`, no `pending`. Escribir 'pending' devolvía la alegación a la cola disfrazada de
+      // impugnación NUEVA: quien la cogía no veía que ya se le había respondido y, al cerrarla, el
+      // usuario recibía un segundo correo con lo mismo. Además el panel de admin solo pinta el texto
+      // de la alegación `if (status === 'appealed')`, así que nadie lo leía nunca.
+      //
+      // Se escribía 'pending' porque el CHECK de la BD no admitía 'appealed' (nunca lo admitió: 0
+      // filas en 1.887). Lo abre `supabase/migrations/20260728_dispute_status_appealed.sql`.
       await db
         .update(questionDisputes)
         .set({
-          status: 'pending',
+          status: 'appealed',
           appealText: appealText.trim(),
           appealSubmittedAt: new Date().toISOString(),
         })
