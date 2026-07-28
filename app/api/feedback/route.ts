@@ -45,9 +45,12 @@ async function _POST(request: NextRequest): Promise<NextResponse<CreateFeedbackR
     }
 
     // Crear conversación automáticamente
+    // [T-245] El userId RESUELTO (el que se guardó de verdad), no el que mandó el cliente:
+    // si el del cuerpo no tiene perfil, la conversación fallaría por la misma clave foránea
+    // y el usuario se quedaría con un feedback sin hilo donde leer la respuesta.
     const conversationResult = await createFeedbackConversation(
       result.data.id,
-      data.userId || null
+      result.data.userId || null
     )
 
     if (!conversationResult.success) {

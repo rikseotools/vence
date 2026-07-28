@@ -6,7 +6,7 @@
 // formulario de soporte falla por FK contra la misma tabla → el fallo se oculta solo).
 import fs from 'fs'
 import path from 'path'
-import { decidirSub } from '@/lib/auth/canonicalSub'
+import { decidirSub, userIdParaFeedback } from '@/lib/auth/canonicalSub'
 
 const SUB_ROTO = '0f8e35ae-5ff9-48d3-8a43-3e348a103622' // el de la sesión, sin perfil
 const SUB_BUENO = '8330df66-d308-4077-b439-21d43e8366fd' // el perfil real del email
@@ -84,5 +84,43 @@ describe('[T-245] cableado en /api/auth/token', () => {
   it('emite señal cuando reconcilia o cuando el usuario queda huérfano', () => {
     expect(fuente).toContain('auth_sub_reconciliado')
     expect(fuente).toMatch(/decision\.huerfano \? 'error' : 'warn'/)
+  })
+})
+
+// ============================================================
+// [T-245] Segunda línea de defensa: el mensaje del usuario NO se pierde
+// ============================================================
+
+describe('userIdParaFeedback', () => {
+  it('identidad buena → se guarda con su usuario', () => {
+    expect(userIdParaFeedback({ sub: SUB_BUENO, reconciliado: false, huerfano: false })).toBe(SUB_BUENO)
+  })
+
+  it('identidad reconciliada → se guarda con el usuario CORRECTO, no con el roto', () => {
+    expect(userIdParaFeedback({ sub: SUB_BUENO, reconciliado: true, huerfano: false })).toBe(SUB_BUENO)
+  })
+
+  it('identidad irresoluble → user_id NULL (el mensaje se guarda igual, no se pierde)', () => {
+    // Es la regla que evita el caso del 28/07: 4 mensajes perdidos con 500 porque la FK
+    // rechazaba un id inexistente. Preferimos un mensaje sin usuario a ningún mensaje.
+    expect(userIdParaFeedback({ sub: SUB_ROTO, reconciliado: false, huerfano: true })).toBeNull()
+  })
+})
+
+describe('[T-245] guardarraíl: /api/feedback no confía en el id del cliente', () => {
+  const queries = fs.readFileSync(path.join(process.cwd(), 'lib/api/feedback/queries.ts'), 'utf8')
+  const ruta = fs.readFileSync(path.join(process.cwd(), 'app/api/feedback/route.ts'), 'utf8')
+
+  it('NO inserta el userId del cuerpo a pelo', () => {
+    expect(queries).not.toMatch(/userId:\s*params\.userId\s*\|\|\s*null/)
+  })
+
+  it('resuelve la identidad con el MISMO núcleo que el acuñado del token', () => {
+    expect(queries).toContain('canonicalSubForToken')
+    expect(queries).toContain('userIdParaFeedback')
+  })
+
+  it('la conversación usa el userId ya resuelto, no el del cuerpo', () => {
+    expect(ruta).toMatch(/createFeedbackConversation\(\s*result\.data\.id,\s*result\.data\.userId/)
   })
 })

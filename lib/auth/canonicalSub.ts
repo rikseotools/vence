@@ -59,3 +59,21 @@ export function decidirSub(
   // tumbar la sesión, pero queda registrado como huérfano.
   return { sub: subToken, reconciliado: false, huerfano: true }
 }
+
+/**
+ * Qué `user_id` guardar cuando un usuario nos MANDA algo (un feedback) y su identidad no
+ * resuelve. PURA.
+ *
+ * Regla: **el mensaje nunca se pierde**. Si la identidad es huérfana se guarda con
+ * `user_id = NULL` (el email sigue en la fila, así que se sabe quién escribe) en vez de
+ * dejar que la clave foránea devuelva un 500.
+ *
+ * POR QUÉ (28/07): un usuario con la identidad rota escribió CUATRO veces desde `/soporte`
+ * (probó hasta a cambiar la categoría de «bug» a «sugerencia», creyendo que se equivocaba
+ * él) y los cuatro intentos se perdieron con 500. El fallo se ocultaba a sí mismo: el único
+ * que podía avisarnos era justo quien no podía. Su texto sobrevivió de milagro, dentro del
+ * registro del error. Ver [T-245].
+ */
+export function userIdParaFeedback(d: DecisionSub): string | null {
+  return d.huerfano ? null : d.sub
+}

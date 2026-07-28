@@ -1,4 +1,4 @@
-# 📋 Tareas pendientes (backlog general, sin fecha)
+(c) ✅ **HECHO** — `/api/feedback` ya no pierde el mensaje: resuelve la identidad con el MISMO núcleo del acuñado del token (`canonicalSubForToken`) y, si no hay manera, guarda con `user_id = NULL` (el email queda en la fila, así que se sabe quién escribe y se le puede contestar). La conversación se crea con el id ya resuelto, no con el del cuerpo. Señal: `feedback_identidad_irresoluble` (`warn` al reconciliar, `error` al guardar sin usuario). Probado en transacción contra la BD real: con id fantasma la FK RECHAZA, con NULL guarda; ROLLBACK sin rastro. **El patrón venía del propio repo:** `app/api/webhooks/resend-inbound/route.ts` (los correos a info@vence.es) ya resolvía por email en vez de fiarse del id del cliente;# 📋 Tareas pendientes (backlog general, sin fecha)
 
 > **Fuente única de las tareas que Manuel aparca para "luego".** Es el sitio canónico del backlog
 > **sin fecha** (para tareas **con fecha** → memoria `agenda_tareas_programadas`).
