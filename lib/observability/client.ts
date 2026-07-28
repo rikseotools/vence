@@ -324,6 +324,24 @@ export function installClientObservability(options?: {
   // Restaurada de bfcache → la página vuelve a estar viva; los fetch ya no se
   // están abortando por navegación.
   window.addEventListener('pageshow', () => { pageLeaving = false })
+
+  // Cambio de ruta en el cliente. Next navega con `history.pushState`/`replaceState`, que NO
+  // dispara `beforeunload` ni `pagehide` y deja la pestaña visible: las peticiones de montaje que
+  // quedan en vuelo mueren igual, pero se registraban como error COMPLETO. La URL que encabezaba
+  // el ranking del 28/07 era `/auth/callback` (35 usuarios en 24 h), que redirige sola en cuanto
+  // tiene sesión — el caso puro. Se parchean los dos métodos porque no hay evento nativo para esto.
+  marcarNavegacion()
+  window.addEventListener('popstate', marcarNavegacion)
+  for (const m of ['pushState', 'replaceState'] as const) {
+    const orig = history[m]
+    if (typeof orig !== 'function' || (orig as unknown as { __obs?: boolean }).__obs) continue
+    const envuelto = function (this: History, ...args: Parameters<typeof orig>) {
+      marcarNavegacion()
+      return orig.apply(this, args)
+    }
+    ;(envuelto as unknown as { __obs?: boolean }).__obs = true   // idempotente: no re-envolver
+    history[m] = envuelto as typeof orig
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -345,6 +363,17 @@ let origFetch: typeof fetch | null = null
  * ruido en /api/auth/* (diagnóstico 08/07/2026).
  */
 let pageLeaving = false
+
+/**
+ * Instante del último cambio de ruta. Un fallo de red en los milisegundos siguientes es una
+ * petición que la navegación se llevó por delante, no una red rota — ver `consoleNoise.ts`.
+ * `null` = todavía no ha navegado en esta sesión de página.
+ */
+let ultimaNavegacion: number | null = null
+function marcarNavegacion() { ultimaNavegacion = Date.now() }
+function msDesdeNavegacion(): number | undefined {
+  return ultimaNavegacion === null ? undefined : Date.now() - ultimaNavegacion
+}
 /** Anti-recursión del wrapper de console (nuestro propio código no se re-captura). */
 let inConsoleCapture = false
 
@@ -413,7 +442,7 @@ function installConsoleCapture(): void {
         // `console_error` a severidad completa desde el `catch` de la app (T-210, 28/07/2026).
         const leaving = pageLeaving
           || (typeof document !== 'undefined' && document.visibilityState === 'hidden')
-        const isNoise = esRuidoDeConsola(msg, { leaving })
+        const isNoise = esRuidoDeConsola(msg, { leaving, msDesdeNavegacion: msDesdeNavegacion() })
         pushEvent({
           severity: isNoise ? 'debug' : level === 'error' ? 'error' : 'warn',
           eventType: level === 'error' ? 'console_error' : 'console_warn',
