@@ -43,15 +43,19 @@ function extraerCita(explanation) {
 function citaLiteralPretendida(explanation) {
   const cita = extraerCita(explanation);
   if (!cita || !RE_ARTICULO.test(cita)) return null;
-  // De TODOS los entrecomillados del blockquote, la cita es el MÁS LARGO. Coger el primero
-  // confundía la RÚBRICA con la cita: «CP art. 405 (Capítulo I, "De la prevaricación de los
-  // funcionarios públicos…"): "A la autoridad o funcionario público que…"» — el primer
-  // entrecomillado es el título del capítulo, que por definición no aparece dentro del articulado,
-  // así que el barrido acusaba de cita inventada un texto copiado letra por letra. Tres de las
-  // «ajenas» del 28/07 eran esto, y la nº1 del cubo por tráfico (356 exposiciones) también.
-  const todos = [...cita.matchAll(new RegExp(RE_ENTRECOMILLADO.source, 'g'))].map((x) => x[1]);
-  if (!todos.length) return null;
-  const texto = todos.reduce((a, b) => (b.length > a.length ? b : a));
+  // De TODOS los entrecomillados del blockquote, la cita es el MÁS LARGO **que no sea una
+  // rúbrica**. Coger el primero confundía el rótulo con la cita: «CP art. 405 (Capítulo I, "De la
+  // prevaricación de los funcionarios públicos…"): "A la autoridad o funcionario público que…"».
+  //
+  // Quedarse con el más largo NO bastaba, y el caso lo enseña la nº1 del cubo por tráfico:
+  // `1d68ed6e` (CE art. 43, **357 exposiciones**) usa el blockquote como ESQUEMA del Título I y
+  // TODO lo que entrecomilla son rúbricas de secciones — la más larga sigue siendo una rúbrica. La
+  // pregunta es correcta y el barrido la acusaba. Si no queda ningún entrecomillado que pretenda
+  // ser articulado, aquí no hay cita que juzgar.
+  const citas = citasAtribuidas(explanation).filter((x) => !x.rubrica);
+  if (!citas.length) return null;
+  const texto = citas.map((x) => x.texto).filter((t) => t.length >= 60).reduce((a, b) => (b.length > a.length ? b : a), '');
+  if (!texto) return null;
   return { texto, elipsis: RE_ELIPSIS.test(texto) };
 }
 
@@ -128,19 +132,31 @@ function citasAtribuidas(explanation) {
     return m ? { ref: m[1], consumido: m[0].length } : null;
   });
 
+  // ¿Lo entrecomillado es la RÚBRICA de una división (Capítulo/Sección/Título) en vez de una cita
+  // del articulado? Manda la referencia MÁS PEGADA a la comilla: en «CP art. 405 (Capítulo I, "De
+  // la prevaricación…")» lo último antes de abrir comillas es «Capítulo I», así que eso es una
+  // rúbrica — un rótulo, que por definición NO aparece dentro del texto de ningún artículo.
+  // Juzgarlo como cita acusa de inventado un texto copiado letra por letra.
+  const RE_DIVISION_O_ART = /(art[íi]?c?u?l?o?\.?\s*\d+|cap[íi]tulo|secci[óo]n|t[íi]tulo|libro)/gi;
+  const esRubrica = (cabeza) => {
+    const ultima = [...String(cabeza).matchAll(RE_DIVISION_O_ART)].pop();
+    return !!ultima && !/^art/i.test(ultima[1]);
+  };
+
   const out = [];
   for (let i = 0; i < trozos.length; i++) {
-    if (detras[i]) { out.push({ texto: trozos[i][1], ref: String(detras[i].ref).replace(/\s+/g, ' ').trim() }); continue; }
+    const desde0 = i === 0 ? 0 : finDe(i - 1) + (detras[i - 1] ? detras[i - 1].consumido : 0);
+    const rubrica = esRubrica(bq.slice(desde0, trozos[i].index));
+    if (detras[i]) { out.push({ texto: trozos[i][1], ref: String(detras[i].ref).replace(/\s+/g, ' ').trim(), rubrica }); continue; }
     // La cabecera empieza donde acaba la cita anterior MÁS lo que su atribución trasera consumió,
     // para no volver a leer la referencia de la vecina.
-    const desde = i === 0 ? 0 : finDe(i - 1) + (detras[i - 1] ? detras[i - 1].consumido : 0);
-    const cabeza = bq.slice(desde, trozos[i].index);
+    const cabeza = bq.slice(desde0, trozos[i].index);
     const cola = bq.slice(finDe(i), iniSiguiente(i));
     // De la cabeza manda la ÚLTIMA referencia (la pegada a la cita), no la primera.
     const enCabeza = [...cabeza.matchAll(new RegExp(RE_REF_ARTICULO.source, 'gi'))].pop();
     const enCola = cola.match(RE_REF_ARTICULO);
     const ref = enCabeza ? enCabeza[1] : (enCola ? enCola[1] : null);
-    out.push({ texto: trozos[i][1], ref: ref === null ? null : String(ref).replace(/\s+/g, ' ').trim() });
+    out.push({ texto: trozos[i][1], ref: ref === null ? null : String(ref).replace(/\s+/g, ' ').trim(), rubrica });
   }
   return out;
 }
@@ -189,7 +205,7 @@ function clasificar(solape) {
 
 // Exporta los helpers puros para test (sin BD). Si se requiere como módulo, no ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { refDeclaradaDistinta, citasAtribuidas, citaAusente, solapeConArticulo };
+  module.exports = { refDeclaradaDistinta, citasAtribuidas, citaLiteralPretendida, citaAusente, solapeConArticulo };
   return;
 }
 

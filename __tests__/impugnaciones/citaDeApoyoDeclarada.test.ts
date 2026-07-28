@@ -173,3 +173,40 @@ describe('la atribución envuelta en markdown sigue siendo atribución', () => {
     expect(citasAtribuidas(CURSIVA)[0].ref).toBe('816')
   })
 })
+
+// CASO REAL 1d68ed6e (CE art. 43, 357 exposiciones — la nº1 del cubo por tráfico): el blockquote
+// es un ESQUEMA de la estructura del Título I y lo entrecomillado son RÚBRICAS de secciones, no
+// citas del articulado. Una rúbrica es un rótulo: por definición no aparece dentro del texto de
+// ningún artículo, así que juzgarla como cita acusa a una pregunta correcta. Quedarse con el
+// entrecomillado más largo no bastaba — aquí TODOS son rúbricas.
+describe('rúbrica de división ≠ cita del articulado', () => {
+  const { citasAtribuidas, citaLiteralPretendida } = require(
+    require('path').join(__dirname, '..', '..', 'scripts', 'impugnaciones', 'barrido-citas.cjs'),
+  )
+
+  const ESQUEMA =
+    '> **Estructura del Título I de la Constitución Española:**\n' +
+    '> - **Capítulo II — Sección 1ª "De los derechos fundamentales y de las libertades públicas" (arts. 15 a 29):** derechos con la máxima protección.\n' +
+    '> - **Capítulo III — "De los principios rectores de la política social y económica" (arts. 39 a 52):** no son derechos fundamentales en sentido estricto.'
+
+  it('marca como rúbrica lo entrecomillado tras «Capítulo»/«Sección»', () => {
+    expect(citasAtribuidas(ESQUEMA).every((c: { rubrica: boolean }) => c.rubrica)).toBe(true)
+  })
+
+  it('si TODO son rúbricas, no hay cita que juzgar (la pregunta no pretende citar)', () => {
+    expect(citaLiteralPretendida(ESQUEMA)).toBeNull()
+  })
+
+  it('manda la referencia MÁS PEGADA: «art. 405 (Capítulo I, "…")» es rúbrica, no cita del 405', () => {
+    const MIXTO = '> CP art. 405 (Capítulo I, "De la prevaricación de los funcionarios públicos"): "A la autoridad o funcionario público que, a sabiendas de su injusticia, dictare una resolución arbitraria."'
+    const cs = citasAtribuidas(MIXTO)
+    expect(cs[0].rubrica).toBe(true)   // el rótulo del capítulo
+    expect(cs[1].rubrica).toBe(false)  // la cita de verdad
+    expect(citaLiteralPretendida(MIXTO).texto).toMatch(/A la autoridad o funcionario/)
+  })
+
+  it('una cita normal NO se confunde con una rúbrica por nombrar un capítulo dentro del texto', () => {
+    const DENTRO = '> Art. 12: "Las transferencias reguladas en el Capítulo V se someterán a las condiciones previstas en el presente Reglamento y en su normativa de desarrollo."'
+    expect(citasAtribuidas(DENTRO)[0].rubrica).toBe(false)
+  })
+})
