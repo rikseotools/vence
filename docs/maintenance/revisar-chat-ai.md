@@ -167,6 +167,27 @@ Lo que cuenta cada traza:
   consejos genéricos de estudio, con `hasSources: false`. **Cruza siempre `db_query` con
   `hasSources`**: si encontró y dice que no tiene fuentes, ahí hay algo roto.
 
+### 🧪 Simular un cambio de PROMPT: tres trampas que costaron el ciclo 4 (28/07/2026)
+
+Un cambio de prompt no se reproyecta como uno de enrutado: hay que **volver a llamar al modelo**.
+Y ahí es fácil montar una simulación que parece rigurosa y no mide nada. Las tres del mismo día:
+
+1. **Usa el MODELO DE PRODUCCIÓN.** Simulé con `gpt-4o-mini` porque es más barato y el control
+   salía verde con y sin el cambio: no medía nada. La respuesta defectuosa original la produjo
+   **gpt-4o**. Un simulador con otro modelo no simula tu sistema, simula otro.
+2. **Elige la muestra por la FORMA del caso, no por su etiqueta.** Filtré por "clave agregada" y
+   me salieron preguntas de «todas las anteriores», cuando el fallo era de «A y B son correctas».
+   Distinta forma, distinto comportamiento del modelo, control inútil.
+3. **Comprueba tu DETECTOR antes de creerte el resultado.** El mío no reconocía
+   «**Respuesta correcta**: C) A) y B) son correctas» y marcaba como fallo respuestas perfectas.
+   Con él llegué a dos conclusiones opuestas —«el control falla» y «mi arreglo empeora las
+   cosas»— y **las dos eran falsas**.
+
+**Y el corolario incómodo:** si el fallo es raro (0,2 % de los mensajes), **puede que no se
+reproduzca a demanda**. Entonces la simulación solo puede probar *ausencia de regresión*, no
+*eficacia*. Dilo así en vez de vender un verde: se mantiene el cambio si es inofensivo y el
+defecto está documentado, y **se deja escrito que no está probado**.
+
 ### Qué se saca de una tanda (resultado real del 28/07, 42 negativos)
 
 - **27 (64 %) eran errores servidos** → no era calidad, era disponibilidad. Dos causas en las

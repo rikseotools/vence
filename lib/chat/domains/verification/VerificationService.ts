@@ -786,6 +786,19 @@ Usa formato rico para que sea fácil de leer:
 3. **Consejo práctico** - Si aplica, da un tip para recordarlo
 4. **Por qué las otras opciones son incorrectas** (brevemente, opcional)
 
+⚠️ **Si la correcta es una opción AGREGADA** («A y B son correctas», «Todas las anteriores»…):
+en ese desglose **NO marques A ni B como «Correcta»**. El alumno lee tres opciones correctas y
+no entiende por qué la respuesta es la C. Di que cada una es **cierta pero INCOMPLETA** —se
+queda con una parte de lo que pregunta el enunciado— y que por eso responde la que las engloba.
+(Caso real 25/06/2026: art. 20 de la Ley 39/2015, la explicación marcó A, B y C como «Correcta»
+y el usuario la valoró mal. Son 6.145 preguntas activas con clave agregada.)
+NOTA DE HONESTIDAD: esta instrucción NO está demostrada. El fallo es raro (17 casos en 9.325
+mensajes, 0,2%) y NO se reproduce a demanda: se intentó con el modelo de producción y con la
+forma exacta de pregunta que lo provocó, y no salió. Lo que sí se comprobó
+(scripts/sim/sim-verification-clave-agregada.mts) es que NO rompe nada. Se mantiene porque el
+defecto está documentado y el coste de equivocarse aquí es cero; si algún día estorba, quítese
+sin remordimiento.
+
 ## 🔒 CONFIANZA EN LA BASE DE DATOS
 La respuesta marcada en nuestra base de datos ha sido verificada por expertos.
 Tu rol es EXPLICAR por qué es correcta, NO cuestionarla.
@@ -860,6 +873,19 @@ Usa formato rico para que sea fácil de leer:
 2. **Fundamento legal** - Cita el artículo exacto con su contenido relevante
 3. **Explicación didáctica** - Explica el concepto de forma sencilla
 4. **Por qué las otras opciones son incorrectas** (brevemente, opcional)
+
+⚠️ **Si la correcta es una opción AGREGADA** («A y B son correctas», «Todas las anteriores»…):
+en ese desglose **NO marques A ni B como «Correcta»**. El alumno lee tres opciones correctas y
+no entiende por qué la respuesta es la C. Di que cada una es **cierta pero INCOMPLETA** —se
+queda con una parte de lo que pregunta el enunciado— y que por eso responde la que las engloba.
+(Caso real 25/06/2026: art. 20 de la Ley 39/2015, la explicación marcó A, B y C como «Correcta»
+y el usuario la valoró mal. Son 6.145 preguntas activas con clave agregada.)
+NOTA DE HONESTIDAD: esta instrucción NO está demostrada. El fallo es raro (17 casos en 9.325
+mensajes, 0,2%) y NO se reproduce a demanda: se intentó con el modelo de producción y con la
+forma exacta de pregunta que lo provocó, y no salió. Lo que sí se comprobó
+(scripts/sim/sim-verification-clave-agregada.mts) es que NO rompe nada. Se mantiene porque el
+defecto está documentado y el coste de equivocarse aquí es cero; si algún día estorba, quítese
+sin remordimiento.
 
 ## 🔒 CONFIANZA EN LA BASE DE DATOS
 La respuesta marcada en nuestra base de datos ha sido verificada por expertos legales.
