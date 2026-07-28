@@ -347,7 +347,7 @@
 **⏳ Queda**
 1. Subir a banda **ALTA** el caso "el epígrafe casa con rúbricas de capítulos concretos y el scope incluye capítulos cuya rúbrica no aparece", reutilizando el matcher que YA existe en `lib/laws/scopeTitleBoundary.js` (baja la rúbrica del BOE y exime si el epígrafe la nombra por materia; hoy resuelve el problema **inverso** y corre bajo demanda). **Simular bank-wide antes de encender** — lección T-113/T-047: la banda `error` solo con precisión alta.
 2. Poblar `law_sections` del resto de leyes que sirven en temas vivos ([T-140]). Ojo: `scripts/scope/refresh-law-sections.cjs` solo sirve para leyes con id **BOE-A-**; las regionales (BORM, BOJA, DOGV…) se quedan fuera, y son justo estas.
-3. **Barrer los feedbacks ya resueltos de Luisa**: lleva ~25, casi todos de scope, y varios se cerraron en los días en que se razonaba por prosa. Si en este se falló, puede haber más.
+3. ~~Barrer los feedbacks ya resueltos de Luisa~~ — **✅ HECHO 28/07: no hay más casos.** Barridos sus **52** resueltos: la inmensa mayoría se le aceptaron y corrigieron, y **ningún otro se cerró con el error de razonar por prosa**. El del Decreto 53/1989 era el único. (El barrido destapó de paso una falsa alarma sobre cierres sin responder, resuelta en [T-230].)
 
 
 ### [T-219] 🟠 [ABIERTO 28/07] 308 preguntas de «señale la INCORRECTA» sirven un encabezado que se contradice a sí mismo
