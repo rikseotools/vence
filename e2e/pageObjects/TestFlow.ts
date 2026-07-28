@@ -32,6 +32,25 @@ export class TestFlow {
   }
 
   /**
+   * Pasa a la pregunta siguiente y espera a que el contenedor cambie de `data-question-id`.
+   *
+   * Vive aquí y no dentro de un spec porque en cuanto un segundo test necesita "ir a la
+   * siguiente" empiezan a convivir dos selectores distintos para lo mismo, y el día que cambie
+   * el botón solo se arregla uno. Esperar al cambio de id (y no al texto) es lo que hace fiable
+   * la aserción posterior: garantiza que lo que se mira ya es OTRA pregunta.
+   */
+  async next() {
+    const actual = await this.page.locator('[data-question-id]').first().getAttribute('data-question-id')
+    await this.page.getByRole('button', { name: /Siguiente Pregunta/i }).first().click()
+    await expect
+      .poll(
+        async () => this.page.locator('[data-question-id]').first().getAttribute('data-question-id'),
+        { timeout: 15_000, message: 'la pregunta no cambió tras pulsar Siguiente' },
+      )
+      .not.toBe(actual)
+  }
+
+  /**
    * Espera a que el guardado asíncrono aterrice en el servidor. Es lo que FUERZA la
    * carrera del bug de la cronología: cuando esta respuesta vuelve, el historial en vivo
    * ya incluye el intento actual.
