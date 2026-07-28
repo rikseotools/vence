@@ -266,7 +266,9 @@ describe('QuestionDispute', () => {
     // El envío explícito no es un detalle del test: hasta T-198 el clic en el radio enviaba la
     // impugnación por su cuenta y el usuario nunca llegaba al textarea. Con `submit:false` se
     // comprueba justo eso — que elegir motivo NO manda nada.
-    async function openAndFillForm(type = 'no_literal', description = '', postMock = null, { submit = true } = {}) {
+    const TEXTO_VALIDO = 'El artículo 14 dice justo lo contrario que la opción marcada'
+
+    async function openAndFillForm(type = 'no_literal', description = TEXTO_VALIDO, postMock = null, { submit = true } = {}) {
       // GET check → no existing
       global.fetch.mockResolvedValueOnce({
         ok: true,
@@ -310,7 +312,7 @@ describe('QuestionDispute', () => {
           data: { id: 'new-dispute-id', createdAt: '2026-01-15T10:00:00Z' },
         }),
       }
-      await openAndFillForm('no_literal', '', postMock)
+      await openAndFillForm('no_literal', undefined, postMock)
 
       // Auto-submitted on radio click
       await waitFor(() => {
@@ -385,24 +387,28 @@ describe('QuestionDispute', () => {
       expect(screen.getByText(/¿Por qué crees que está mal\?/)).toBeInTheDocument()
     })
 
-    test('sin texto opcional, el motivo sigue viajando como "Motivo: <tipo>"', async () => {
-      const postMock = {
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: { id: 'id-1', createdAt: '2026-01-15T10:00:00Z' },
-        }),
-      }
-      await openAndFillForm('no_literal', '', postMock)
+    // T-198 (2ª parte, corrección de Manuel 28/07): el motivo del radio nunca sobró — lo que faltaba
+    // era OBLIGAR a escribir el porqué. Sin texto no se puede enviar: así filtramos en origen, porque
+    // quien no sabe explicar qué falla normalmente no tenía una queja real.
+    test('T-198: sin escribir el motivo NO se puede enviar (campo obligatorio)', async () => {
+      await openAndFillForm('no_literal', '', null, { submit: false })
 
-      await waitFor(() => {
-        const postCall = global.fetch.mock.calls.find(c => c[1]?.method === 'POST')
-        const body = JSON.parse(postCall[1].body)
-        expect(body.description).toBe('Motivo: no_literal')
-      })
+      const btn = screen.getByRole('button', { name: /Enviar impugnación/ })
+      expect(btn).toBeDisabled()
+
+      fireEvent.click(btn)
+      expect(global.fetch.mock.calls.filter(c => c[1]?.method === 'POST').length).toBe(0)
     })
 
-    test('el texto opcional viaja junto al motivo', async () => {
+    test('T-198: con menos de 10 caracteres sigue bloqueado, y se habilita al llegar', async () => {
+      await openAndFillForm('no_literal', 'corto', null, { submit: false })
+      expect(screen.getByRole('button', { name: /Enviar impugnación/ })).toBeDisabled()
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'ahora sí es suficientemente largo' } })
+      expect(screen.getByRole('button', { name: /Enviar impugnación/ })).toBeEnabled()
+    })
+
+    test('el texto escrito viaja junto al motivo', async () => {
       const postMock = {
         ok: true,
         json: async () => ({ success: true, data: { id: 'id-1b', createdAt: '2026-01-15T10:00:00Z' } }),
@@ -440,7 +446,7 @@ describe('QuestionDispute', () => {
           data: { id: 'id-3', createdAt: '2026-01-15T10:00:00Z' },
         }),
       }
-      await openAndFillForm('respuesta_incorrecta', '', postMock)
+      await openAndFillForm('respuesta_incorrecta', undefined, postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Impugnación enviada/)).toBeInTheDocument()
@@ -462,7 +468,7 @@ describe('QuestionDispute', () => {
           error: 'Ya has impugnado esta pregunta anteriormente',
         }),
       }
-      await openAndFillForm('no_literal', '', postMock)
+      await openAndFillForm('no_literal', undefined, postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Ya has impugnado/)).toBeInTheDocument()
@@ -478,7 +484,7 @@ describe('QuestionDispute', () => {
           error: 'Error interno del servidor',
         }),
       }
-      await openAndFillForm('no_literal', '', postMock)
+      await openAndFillForm('no_literal', undefined, postMock)
 
       await waitFor(() => {
         expect(screen.getByText(/Error interno del servidor/)).toBeInTheDocument()
@@ -500,6 +506,9 @@ describe('QuestionDispute', () => {
       })
 
       fireEvent.click(screen.getByLabelText(/no se ajusta exactamente al artículo/))
+      // El motivo escrito es obligatorio (T-198): sin él el botón está deshabilitado y no se
+      // llegaría a comprobar la sesión, que es lo que este test quiere ver.
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'la pregunta no cita el artículo' } })
       fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/ }))
 
       await waitFor(() => {
