@@ -6,6 +6,26 @@
 
 ---
 
+
+## El `origen` de un hito decide si el opositor lo VE (T-256, 28/07/2026)
+
+`convocatoria_hitos.origen` no es documentación: **el render lo usa para decidir**. Un hito `registro` (= fecha REAL registrada) se **muestra** como oficial; una `estimacion` se **oculta** desde el 20/07, precisamente para no vender una previsión como fecha firme.
+
+**El problema medido:** de **960** hitos `registro`, **642 (67%)** no tienen ni `url`, ni `cita_literal`, ni `source_documento_id`. Caso verificado contra dos fuentes: la landing de Huesca anunciaba *"Primer ejercicio (examen) → 01/11/2026"* y **ni la web del Ayuntamiento ni la reseña del BOE publican fecha alguna**.
+
+**Única vía para tocarlo** (dry-run por defecto):
+
+```bash
+node scripts/convocatoria/degradar-origen-hito.cjs --listar [<slug>]
+node scripts/convocatoria/degradar-origen-hito.cjs --autocontradictorios [--apply]
+node scripts/convocatoria/degradar-origen-hito.cjs --hito <uuid> --verificado "…" [--apply]
+```
+
+⚠️ **«Sin respaldo» NO es «inventada».** Muchos cierres de plazo derivan de `inscription_deadline`, que sí está verificado: les falta la CITA, no la verdad. Por eso la herramienta **solo degrada sola** lo que se contradice a sí mismo (título que dice *"previsión"* con `origen=registro`) y para cualquier otro caso **exige `--verificado`** con lo que hayas mirado, que queda en la traza (`observable_events`, `hito_origen_degradado`, éxito y rechazo).
+
+**NUNCA** rellenar la cita con una URL genérica del boletín para callar el check: convierte un dato dudoso en uno que *parece* verificado, que es peor que el problema.
+
+
 ## 0. Qué avisa el badge
 
 - **Badge ámbar** en el nav "Oposiciones" = nº de oposiciones que **preparamos** (activas / con tests / landing) con **`exam_date` ya pasada**. Fuente: `lib/api/oposiciones/rollover.ts` → endpoint `/api/admin/oposiciones/rollover-pending`.

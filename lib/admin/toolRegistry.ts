@@ -195,6 +195,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
       '`deriveChannel` o la política de toques.',
   },
+  degradar_origen_hito: {
+    titulo: 'Degradar el `origen` de un hito de convocatoria cuando su fecha no consta en ninguna fuente',
+    ruta: 'scripts/convocatoria/degradar-origen-hito.cjs',
+    estado: 'vivo',
+    escribe: ['origen'],
+    runbook: 'docs/runbooks/rollover-oposiciones.md',
+    notas:
+      '`--listar [slug]` · `--autocontradictorios [--apply]` · `--hito <uuid> --verificado "…" [--apply]`. ' +
+      'Dry-run por defecto. ÚNICA vía para cambiar `convocatoria_hitos.origen`, que NO es documentación: ' +
+      '**el render decide con él** (un `registro` se MUESTRA como fecha oficial; una `estimacion` se ' +
+      'oculta desde el 20/07). Hasta T-256 no había escritor: el campo se ponía a mano desde scripts de ' +
+      'construcción sin exigir fuente, y quedaron **642 de 960 `registro` sin url, sin cita y sin ' +
+      'documento**. Caso verificado contra DOS fuentes (Huesca): la landing anunciaba "Primer ejercicio ' +
+      '01/11/2026" y ni el Ayuntamiento ni el BOE han publicado fecha. **La contención es lo importante:** ' +
+      '«sin respaldo» NO es «inventada» —muchos cierres de plazo derivan de `inscription_deadline`, que sí ' +
+      'está verificado—, así que solo degrada solo lo AUTOCONTRADICTORIO (título que dice "previsión" con ' +
+      '`origen=registro`) y para todo lo demás exige `--verificado "<qué fuente miraste y qué decía>"`, que ' +
+      'queda en la traza. Escribe UN campo, RELEE tras escribir y emite `hito_origen_degradado` en éxito Y ' +
+      'en rechazo. Decisión en el núcleo puro `lib/convocatoria/hitoOrigen.js` (19 tests). NUNCA rellenar ' +
+      'la cita con una URL genérica para callar el check: convierte un dato dudoso en uno que parece verificado.',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',
