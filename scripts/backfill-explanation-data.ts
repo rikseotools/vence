@@ -76,7 +76,7 @@ async function main() {
     por_formato: { boletin: { total: 0, ok: 0 }, impugnacion: { total: 0, ok: 0 } } }
 
   const filas = (await db.execute(sql`
-    SELECT id, explanation, correct_option, option_a, option_b, option_c, option_d, option_e
+    SELECT id, explanation, question_text, correct_option, option_a, option_b, option_c, option_d, option_e
       FROM questions
      WHERE explanation_data IS NULL
        ${PREGUNTA ? sql`AND id = ${PREGUNTA}::uuid` : sql``}
@@ -116,7 +116,12 @@ async function main() {
     resumen.por_formato[fam].total++
     const data =
       parseLetterFormatExplanation(f.explanation, { correctOption: f.correct_option, nOptions: opciones.length }) ??
-      parseImpugnacionFormatExplanation(f.explanation, { correctOption: f.correct_option, nOptions: opciones.length })
+      parseImpugnacionFormatExplanation(f.explanation, {
+        correctOption: f.correct_option,
+        nOptions: opciones.length,
+        // El marco (¿se pide la verdadera o la falsa?) lo dicta el ENUNCIADO, no la explicación (T-212).
+        questionText: f.question_text,
+      })
     if (!data || !isStructuredExplanation(data, opciones.length)) { resumen.no_migrables++; continue }
 
     // GUARDA de no-regresión, pregunta a pregunta: el render en orden NATURAL tiene que producir

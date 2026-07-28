@@ -283,9 +283,33 @@ function stripEmphasis(s: string): string {
  * transcribibles (13.559 preguntas activas hoy). Devuelve la estructura con `estilo:'impugnacion'`
  * para que el render la reproduzca igual y el opositor no note el cambio.
  */
+/**
+ * ¿El ENUNCIADO pide señalar la afirmación FALSA? («señale la incorrecta», «indique cuál NO es
+ * cierta»…). Es la evidencia que decide el `frame`, y vive en la pregunta, no en la explicación.
+ *
+ * Por qué hace falta (T-212, medido el 28/07): el parser del §5.1 no ponía `frame` nunca, así que
+ * las 527 preguntas de este tipo pendientes de transcribir en ese formato guardaban
+ * `select_correct` implícito. Hoy no se nota —el render conserva el veredicto que ya trae escrito
+ * la razón—, pero deja el dato mintiendo, y en cuanto una razón no traiga veredicto propio el
+ * render la etiquetaría al revés.
+ *
+ * Deliberadamente ESTRICTO: exige el verbo de instrucción cerca del adjetivo. «¿Cuál de estas
+ * afirmaciones sobre el recurso es incorrecta?» entra; una pregunta que solo mencione la palabra
+ * «incorrecta» en una opción, no.
+ */
+const RE_ENUNCIADO_FALSA =
+  /(se[ñn]ale|indique|marque|identifique|cu[áa]l)[^.?]{0,80}(incorrecta|falsa|err[óo]nea|no es (cierta|correcta|verdadera))/i
+
+export function inferFrameFromQuestionText(
+  questionText: string | null | undefined
+): ExplanationFrame | null {
+  if (!questionText) return null
+  return RE_ENUNCIADO_FALSA.test(questionText.replace(/\s+/g, ' ')) ? 'select_incorrect' : null
+}
+
 export function parseImpugnacionFormatExplanation(
   explanation: string | null | undefined,
-  { correctOption, nOptions }: { correctOption: number; nOptions: number }
+  { correctOption, nOptions, questionText }: { correctOption: number; nOptions: number; questionText?: string | null }
 ): StructuredExplanation | null {
   if (!explanation || !explanation.trim()) return null
   const text = explanation.replace(/\r\n/g, '\n').trim()
@@ -330,6 +354,10 @@ export function parseImpugnacionFormatExplanation(
   const out: StructuredExplanation = { v: 1, options, estilo: 'impugnacion' }
   if (intro) out.intro = intro
   if (bloqueCita) out.cita = { bloque: bloqueCita }
+  // El marco lo dicta el enunciado. No cambia el texto que se sirve (las razones legacy ya traen su
+  // veredicto escrito y el render lo respeta), pero deja el dato coherente para cualquier re-render.
+  const frame = inferFrameFromQuestionText(questionText)
+  if (frame) out.frame = frame
   return out
 }
 
