@@ -93,8 +93,16 @@ export default function PrivacidadPage() {
             <li>Portabilidad de tus datos</li>
             <li>Retirar tu consentimiento en cualquier momento</li>
           </ul>
+          {/* El puntero a /perfil va PRIMERO y el email después: esta página listaba el
+              derecho de supresión y remataba con "contacta con info@vence.es", sin mencionar
+              que el propio usuario puede hacerlo desde su perfil. Un usuario (Ricardo, 28/07)
+              vino aquí y a /cancelacion-y-devoluciones buscando cómo borrar su cuenta, no lo
+              encontró, y acabó pulsando "Cerrar sesión" creyendo que era eso. */}
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Para ejercer estos derechos, contacta con nosotros en{' '}
+            Puedes <strong>eliminar tu cuenta tú mismo</strong> desde{' '}
+            <Link href="/perfil" className="text-blue-600 dark:text-blue-400">tu perfil</Link>, en el
+            apartado «Eliminar cuenta». Para el resto de derechos, o si prefieres que lo
+            gestionemos nosotros, escríbenos a{' '}
             <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a>
           </p>
 
@@ -103,7 +111,7 @@ export default function PrivacidadPage() {
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Implementamos medidas de seguridad técnicas y organizativas para proteger tus datos,
-            incluyendo cifrado SSL/TLS, almacenamiento seguro en servidores de la UE (Supabase),
+            incluyendo cifrado SSL/TLS, almacenamiento seguro en servidores de la UE
             y acceso restringido a datos personales.
           </p>
 

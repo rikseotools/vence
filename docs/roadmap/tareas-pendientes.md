@@ -14,6 +14,15 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-229] ✅ [HECHO 28/07] `/privacidad` mandaba a escribir un email para borrar la cuenta, existiendo el botón
+- **Qué pasaba:** la página de privacidad listaba en «Tus Derechos» el de *«Solicitar la eliminación de tus datos»* y remataba con *«Para ejercer estos derechos, contacta con nosotros en info@vence.es»*. **No mencionaba en ningún sitio que el propio usuario puede hacerlo desde su perfil**, existiendo el flujo completo (`/perfil` → «Eliminar cuenta» → «Solicitar eliminación», con paso de retención). La página desviaba a un email cuando había un botón.
+- **Cómo se vio:** un usuario (Ricardo, alta hace 1 día) preguntó *"¿cómo puedo cerrar el perfil desde la web?"*. Su recorrido: `/privacidad` → `/cancelacion-y-devoluciones` → y acabó pulsando **«Cerrar Sesión»** creyendo que era eso. Buscó en los dos sitios más lógicos y en ninguno estaba.
+- **Arreglado:** el párrafo ahora dice primero que puede eliminar la cuenta él mismo, con enlace a `/perfil`, y deja el email para el resto de derechos o para quien prefiera que lo gestionemos nosotros.
+- **Además, quitada la mención a «Supabase»** en el apartado de Seguridad: los datos están en AWS RDS desde el 04/07, así que el texto era falso. Queda *«almacenamiento seguro en servidores de la UE»*.
+  - **⚠️ ANOTADO PARA QUE NADIE LO "ARREGLE" SIN SABERLO:** se comprobó el 28/07 que `vence-prod` corre en **`eu-west-2c`, que es Londres** — Reino Unido, **no la UE**. Se le planteó a Manuel y **decidió mantener el texto «servidores de la UE»**. Es lícito (el Reino Unido tiene decisión de adecuación), pero **la frase no es exacta**, y esto queda escrito para que la próxima sesión que lo vea sepa que es una decisión tomada y no un descuido.
+- **Contexto de churn del mismo caso, medido:** Ricardo se dio de alta el 27/07 a las 08:59; a las 09:01 vio el muro de premium y lo cerró; **a las 09:29 saltó `limit_reached`** y el modal de upgrade. Media hora desde el registro. Al día siguiente respondió una pregunta y se puso a buscar cómo borrarse. Es el patrón de [[project-churn-limite-diario-free]] con su cronología.
+
+
 ### [T-222] ✅ [HECHO 28/07] `topic_scope` ya audita quién cambia el temario, por qué y con qué antes/después
 - **Qué había:** la tabla que decide **qué estudia el opositor** tenía `created_at` y nada más — ni `updated_at`, ni autor, ni motivo — con **31 escritores** vivos. Sus dos triggers no auditaban (uno invalida la verificación, otro encola el PDF), y `topic_scope_verification_history` registra quién lo **REVISÓ**, no quién lo **CAMBIÓ**.
 - **Qué hay ahora:** `topic_scope_history` append-only + trigger `tg_topic_scope_audit` (migración `20260728_topic_scope_history.sql`), mismo patrón que `question_lifecycle_history`. Guarda operación, **antes y después enteros**, `delta_count` calculado, autor y motivo.
@@ -255,6 +264,18 @@
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
+
+### [T-230] 🟠 [ABIERTO 28/07] 65 feedbacks cerrados como «resueltos» sin que el usuario recibiera NINGUNA respuesta
+- **Qué:** medido el 28/07 sobre toda la plataforma: de **707** feedbacks con `status='resolved'`, **69 no tienen ni un solo mensaje de admin en el hilo**. Solo **4** de esos tienen la respuesta en la vía legacy `user_feedback.admin_response` (el síndrome ya documentado de *"no puedo leer vuestras respuestas"*, `gestionar-feedback-bug.md`). **Los otros ~65 se cerraron y punto.**
+- **El cierre silencioso es legítimo** (spam, duplicados, pruebas propias, o un *"ya me va, gracias"*) — el endpoint lo contempla sin `message`. **El problema es cuando se usa con un aviso de fondo.**
+- **Caso que lo destapó (usuaria Luisa, `auxiliar_administrativo_sms`):** de sus 52 resueltos, **9 sin respuesta**. Uno es legítimo (*"YA ME VA, MUCHÍSIMAS GRACIAS"*). **Los otros 8 son avisos de temario concretos y accionables**, 7 de ellos del mismo día (17/07): *"Ley 7/2007 CARM, TEMA 9, faltan artículos…"*, *"LO 3/2007, tema 5, solo entra el artículo 46"*, *"Estatuto de Autonomía de Murcia, TEMA 2, no entran…"*, *"tema 1, no entran los artículos del 1 al 10"*. **Se cerraron sin decirle nada.** Ella siguió mandando avisos, y el 21/07 repitió uno palabra por palabra (*"TEMA 11, creo que solo entra del artículo 11 al 14…"*) — señal de que no supo si el primero se había leído.
+- **Por qué importa más de lo que parece:** esta usuaria es la mejor fuente de defectos de scope que tenemos (52 avisos, casi todos certeros; el del Decreto 53/1989 lo tenía clavado, ver [T-223]). Cerrarle avisos en silencio es gastar su paciencia. Y el usuario no distingue "lo arreglamos y no te avisamos" de "nos lo saltamos".
+- **Qué hace falta, por orden:**
+  1. **Adjudicar los 8 de Luisa**: comprobar si el scope de cada uno está hoy como ella pedía. Si se arreglaron, avisarle (aunque sea tarde); si no, trabajarlos. **No es un cabo suelto de una sesión: son 8 adjudicaciones de scope.**
+  2. **Triar los ~65** separando el cierre silencioso legítimo del aviso abandonado. Heurística barata: si el texto del usuario dispara `isScopeComplaint` o menciona artículos/temas, no debería haberse cerrado mudo.
+  3. **Guardarraíl para que no se repita**, en la línea de la casa (enforcement por código, no por memoria): que `/api/v2/feedback/respond` **avise o exija confirmación** al cerrar sin mensaje un feedback cuyo texto parece un aviso de contenido. El cierre silencioso seguiría existiendo para lo que es.
+- **Origen:** barrido de los feedbacks resueltos de Luisa pedido en [T-223] (28/07). Ese barrido buscaba otra cosa (más casos del error de razonar por prosa) y **no encontró ninguno** — encontró esto.
+
 
 ### [T-225] 🟠 [ABIERTO 28/07] El pre-commit no corre `typecheck`: un `main` rojo por tipos bloquea el gate de deploy de TODAS las sesiones
 - **Qué pasó (28/07, medido):** `origin/main` estuvo con el **`Typecheck` en ROJO** por el error más tonto posible — `scripts/backfill-explanation-data.ts:123` usaba `f.question_text`, el `SELECT` de la línea 79 **ya lo pedía**, pero el tipo `Fila` no lo declaraba (`error TS2339`). El dato estaba ahí; solo faltaba decírselo al compilador.
