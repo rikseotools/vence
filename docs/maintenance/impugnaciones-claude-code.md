@@ -269,6 +269,22 @@ Según el artículo Y de la Ley Z:
 > generando: cazado el 27/07 al corregir tres impugnaciones que nacieron no transcribibles.
 > El validador te lo dice antes de aplicar (🔀 Barajable / aviso), así que **hazle caso**.
 
+> ### 🔻 Enunciados de «señale la INCORRECTA»: pon `"frame": "select_incorrect"`
+> En estas preguntas, la opción que hay que marcar es la que contiene la afirmación **falsa**. Con
+> el frame puesto, el render etiqueta esa opción **`ES LA INCORRECTA`** y las demás **`VERDADERA`**,
+> y `validar-explicacion.cjs` lo reconoce (las etiquetas están acordadas entre los dos: cambiar una
+> sin la otra tumba textos impecables).
+>
+> **Sin el frame**, la opción a señalar salía como `**A)** CORRECTA — …que es falsa`, una
+> contradicción en la misma línea, y había que escribir la razón peleándose con la etiqueta
+> (*«No es la que hay que señalar, porque la afirmación es verdadera: …»*). **Esa pauta queda
+> retirada**: era un apaño para un defecto del render, no una forma de escribir. Arreglado el 28/07
+> (T-212); lo destapó la impugnación `afe7c8bb` (art. 33 CE).
+>
+> Las razones se escriben derechas, diciendo por qué la afirmación es verdadera o falsa —nunca
+> «no es la que hay que señalar»—, y el aplicador **avisa** si el enunciado pide la falsa y te has
+> dejado el frame.
+
 **Evitar:**
 - Texto corrido sin saltos de línea ni formato.
 - Secciones tipo "Truco", "Consejo", "Tip" o similares. El resumen final debe integrarse como un párrafo natural, no como una sección aparte.

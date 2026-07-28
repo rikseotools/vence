@@ -465,3 +465,44 @@ describe('T-201 — los tres huecos que cazó la sesión de impugnaciones', () =
     expect(r).not.toContain('CORRECTA — CORRECTA')
   })
 })
+
+describe('frame select_incorrect en estilo impugnación (T-212)', () => {
+  // Caso real: impugnación afe7c8bb (usuario Mario, Téc. Aux. UMU) — art. 33 CE, «señale la
+  // afirmación INCORRECTA». Con el frame ignorado, la opción a marcar salía como
+  // `**A)** CORRECTA — …que es falsa`, una contradicción en la misma línea, y quien escribía
+  // tenía que redactar la razón peleándose con la etiqueta.
+  const base = {
+    v: 1 as const,
+    estilo: 'impugnacion' as const,
+    frame: 'select_incorrect' as const,
+    cita: { ref: 'Artículo 33 CE', texto: 'Se reconoce el derecho a la propiedad privada y a la herencia.' },
+    options: {
+      '0': 'El art. 33.3 exige indemnización conforme a lo dispuesto por las leyes.',
+      '1': 'Reproduce literalmente el art. 33.1.',
+      '2': 'Es el contenido del art. 33.2.',
+      '3': 'Recoge la garantía del art. 33.3.',
+    },
+  }
+
+  test('la opción a señalar es "ES LA INCORRECTA" y las demás "VERDADERA"', () => {
+    const txt = renderStructuredExplanation(base, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(txt).toContain('**A)** ES LA INCORRECTA —')
+    expect(txt).toContain('**B)** VERDADERA —')
+    expect(txt).not.toContain('**A)** CORRECTA')
+  })
+
+  test('al BARAJAR, la etiqueta viaja con la opción, no con la letra', () => {
+    // order[i] = índice original mostrado en la posición i → la original 0 se muestra en la C.
+    const txt = renderStructuredExplanation(base, { correctOption: 0, optionOrder: [1, 2, 0, 3], nOptions: 4 })
+    expect(txt).toContain('**C)** ES LA INCORRECTA —')
+    expect(txt).toContain('La respuesta correcta es la **C**.')
+    expect(txt).not.toContain('**A)** ES LA INCORRECTA')
+  })
+
+  test('sin frame (el marco normal) las etiquetas siguen siendo CORRECTA/INCORRECTA', () => {
+    const { frame, ...sinFrame } = base
+    const txt = renderStructuredExplanation(sinFrame, { correctOption: 0, optionOrder: null, nOptions: 4 })
+    expect(txt).toContain('**A)** CORRECTA —')
+    expect(txt).toContain('**B)** INCORRECTA —')
+  })
+})

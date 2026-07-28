@@ -65,7 +65,7 @@ async function main() {
   }
   const db = getDb()
   const [q]: any = await db.execute(sql`
-    SELECT id, correct_option, option_a, option_b, option_c, option_d, option_e,
+    SELECT id, question_text, correct_option, option_a, option_b, option_c, option_d, option_e,
            explanation, explanation_data
       FROM questions WHERE id = ${qid}::uuid`)
   if (!q) { console.error(`Pregunta no encontrada: ${qid}`); process.exit(2) }
@@ -109,6 +109,23 @@ async function main() {
     console.error('❌ El `intro` no debe empezar con "La respuesta correcta es …": esa frase la genera')
     console.error('   el render con la letra que corresponda tras barajar. Quítala del intro.')
     process.exit(1)
+  }
+
+  // 2-ter) El `frame` decide las etiquetas de los veredictos (T-212). Dos comprobaciones:
+  //   · un valor desconocido (un typo como "select_incorect") se renderizaría COMO SI fuera
+  //     `select_correct`, en silencio y al revés de lo que se quería → se rechaza.
+  //   · un enunciado que pide señalar la FALSA sin `frame` produce «CORRECTA — Afirmación falsa…»
+  //     → se avisa, porque es el olvido que destapó la impugnación afe7c8bb (art. 33 CE).
+  const frameRecibido = (data as { frame?: string }).frame
+  if (frameRecibido && frameRecibido !== 'select_correct' && frameRecibido !== 'select_incorrect') {
+    console.error(`❌ frame desconocido: "${frameRecibido}". Solo "select_correct" o "select_incorrect".`)
+    process.exit(1)
+  }
+  const pideLaFalsa = /\b(incorrecta|falsa|no es (?:cierto|correcta|correcto|verdadera?))\b/i.test(q.question_text || '')
+  if (pideLaFalsa && frameRecibido !== 'select_incorrect') {
+    console.log('\n⚠️  El enunciado parece pedir la opción INCORRECTA/FALSA y no has puesto')
+    console.log('    "frame": "select_incorrect". Sin él, la opción a señalar saldrá etiquetada')
+    console.log('    CORRECTA junto a una razón que dice que es falsa. Míralo en el texto de abajo.')
   }
 
   // 3) El texto legacy se GENERA desde la estructura (render determinista, el mismo del serve).

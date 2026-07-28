@@ -161,13 +161,26 @@ function renderEstiloImpugnacion(
   if (lineasCita.length) partes.push(lineasCita.map((l) => `> ${l}`.trimEnd()).join('\n'))
 
   // 3) Un bloque por opción con su VEREDICTO, que lo decide la clave, no la letra.
+  //
+  // El `frame` manda (T-212). En una pregunta de «señale la INCORRECTA», la opción que hay que
+  // marcar es la que contiene la afirmación FALSA: etiquetarla «CORRECTA» producía líneas que se
+  // contradicen solas —`**A)** CORRECTA — Afirmación falsa: …`— y obligaba a quien escribía a
+  // redactar la razón peleándose con la etiqueta. Las etiquetas de este marco (`ES LA INCORRECTA`
+  // para la que se señala, `VERDADERA` para las demás) están ACORDADAS con
+  // `scripts/impugnaciones/validar-explicacion.cjs`, que las reconoce para comprobar la coherencia
+  // clave↔explicación. Cambiar una sin la otra rompe el guardarraíl: es el mismo acoplamiento que
+  // ya mordió en T-204.
+  const señalarLaFalsa = (data.frame ?? 'select_correct') === 'select_incorrect'
   for (let pos = 0; pos < nOptions; pos++) {
     const original = order[pos]
     const razon = (data.options[String(original)] ?? '').trim()
     if (!razon) continue
-    const veredicto = original === correctOption ? 'CORRECTA' : 'INCORRECTA'
+    const esLaMarcada = original === correctOption
+    const veredicto = señalarLaFalsa
+      ? (esLaMarcada ? 'ES LA INCORRECTA' : 'VERDADERA')
+      : (esLaMarcada ? 'CORRECTA' : 'INCORRECTA')
     // Si la razón ya viene con el veredicto escrito (histórico), no se duplica.
-    const yaLoTrae = new RegExp(`^\\*{0,2}(CORRECTA|INCORRECTA)\\b`, 'i').test(razon)
+    const yaLoTrae = new RegExp(`^\\*{0,2}(ES LA INCORRECTA|CORRECTA|INCORRECTA|VERDADERA|FALSA)\\b`, 'i').test(razon)
     partes.push(yaLoTrae ? `**${indexToLetter(pos)})** ${razon}` : `**${indexToLetter(pos)})** ${veredicto} — ${razon}`)
   }
 

@@ -46,3 +46,49 @@ describe('validateQuotes — la referencia del blockquote no es texto de la ley'
     expect(validateQuotes('> **Artículo 4.1 CE**', ART_4_CE)).toEqual([])
   })
 })
+
+// ── T-212: el validador y el render comparten las etiquetas del marco «señale la INCORRECTA» ──
+//
+// Por qué va aquí y no en un fichero aparte: es el MISMO acoplamiento que el de la cita. Si el
+// render cambia una etiqueta y el validador no se entera, el guardarraíl obligatorio tumba un
+// texto impecable — y quien escribe acaba desactivándolo, que es como se pierde un guardarraíl.
+const { validateFormat } = require(
+  path.join(process.cwd(), 'scripts/impugnaciones/validar-explicacion.cjs')
+)
+
+const OPTS_33CE = {
+  A: 'La propiedad privada puede expropiarse sin indemnización alguna.',
+  B: 'Se reconoce el derecho a la propiedad privada y a la herencia.',
+  C: 'La función social delimita su contenido.',
+  D: 'Nadie puede ser privado de sus bienes salvo causa justificada.',
+}
+const MARCO_INCORRECTA = [
+  'La respuesta correcta es la **A**.', '',
+  '> **Artículo 33 CE**', '> «Se reconoce el derecho a la propiedad privada y a la herencia.»', '',
+  '**A)** ES LA INCORRECTA — El art. 33.3 exige indemnización.', '',
+  '**B)** VERDADERA — Reproduce el art. 33.1.', '',
+  '**C)** VERDADERA — Es el art. 33.2.', '',
+  '**D)** VERDADERA — Recoge el art. 33.3.',
+].join('\n')
+
+describe('validateFormat — marco «señale la INCORRECTA»', () => {
+  test('acepta el texto que produce el render con frame select_incorrect', () => {
+    expect(validateFormat(MARCO_INCORRECTA, OPTS_33CE, 'A')).toEqual([])
+  })
+
+  test('sigue cazando la incoherencia clave↔explicación dentro de ese marco', () => {
+    const p = validateFormat(MARCO_INCORRECTA, OPTS_33CE, 'C')
+    expect(p).toHaveLength(1)
+    expect(p[0]).toMatch(/ES LA INCORRECTA la A.*clave real.*es la C/)
+  })
+
+  test('el marco clásico no se ve afectado', () => {
+    const clasico = [
+      'La respuesta correcta es la **B**.', '', '> **Art. 1** «cita»', '',
+      '**A)** INCORRECTA — no.', '', '**B)** CORRECTA — sí.', '',
+      '**C)** INCORRECTA — no.', '', '**D)** INCORRECTA — no.',
+    ].join('\n')
+    expect(validateFormat(clasico, OPTS_33CE, 'B')).toEqual([])
+    expect(validateFormat(clasico, OPTS_33CE, 'D')).toHaveLength(1)
+  })
+})

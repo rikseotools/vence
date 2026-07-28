@@ -42,12 +42,25 @@ function validateFormat(expl, opts, correctLetter) {
   //    se marca cuando es ETIQUETA de sección ("Consejo:" al inicio de línea), no como parte de un
   //    nombre de órgano — si no, false-positiveaba casi toda explicación legal (caso Jesse, 16/07).
   if (/\b(truco|tip)\b/i.test(t) || /(^|\n)\s*[>\-*#]*\s*\**\s*consejos?\s*:/i.test(t)) problems.push('Contiene "Truco/Consejo/Tip" (prohibido §5.1).');
-  // 5. COHERENCIA clave↔explicación: la opción marcada "CORRECTA" debe ser EXACTAMENTE la clave real.
+  // 5. COHERENCIA clave↔explicación: la opción SEÑALADA debe ser EXACTAMENTE la clave real.
   //    Caza el error grave de una explicación que da por buena una opción distinta de correct_option.
-  const marked = letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*CORRECTA`, 'i').test(t));
+  //
+  //    Dos marcos, y las etiquetas están ACORDADAS con `renderEstiloImpugnacion` (T-212):
+  //      · «señale la CORRECTA» (lo normal) → la señalada dice `**X)** CORRECTA`.
+  //      · «señale la INCORRECTA»           → la señalada dice `**X)** ES LA INCORRECTA` y las
+  //        demás `VERDADERA`. Etiquetarlas «CORRECTA» daría aquí tres marcadas y el validador
+  //        tumbaría un texto impecable; y al revés, exigir «CORRECTA» obligaba a escribir
+  //        `**A)** CORRECTA — Afirmación falsa: …`, que se contradice sola.
+  //    El marco se detecta por el TEXTO (aquí no hay `frame`): manda `ES LA INCORRECTA` si aparece.
+  const señaladaFalsa = letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*ES LA INCORRECTA`, 'i').test(t));
+  const marcoIncorrecta = señaladaFalsa.length > 0;
+  const marked = marcoIncorrecta
+    ? señaladaFalsa
+    : letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*CORRECTA`, 'i').test(t));
+  const etiq = marcoIncorrecta ? 'ES LA INCORRECTA' : 'CORRECTA';
   if (marked.length === 0) problems.push('Ninguna opción marcada como "CORRECTA" en el análisis por opción.');
-  else if (marked.length > 1) problems.push(`Varias opciones marcadas CORRECTA (${marked.join(', ')}) — solo puede haber una.`);
-  else if (correctLetter && marked[0] !== correctLetter) problems.push(`La explicación marca CORRECTA la ${marked[0]}, pero la clave real (correct_option) es la ${correctLetter}. Incoherencia grave.`);
+  else if (marked.length > 1) problems.push(`Varias opciones marcadas ${etiq} (${marked.join(', ')}) — solo puede haber una.`);
+  else if (correctLetter && marked[0] !== correctLetter) problems.push(`La explicación marca ${etiq} la ${marked[0]}, pero la clave real (correct_option) es la ${correctLetter}. Incoherencia grave.`);
   return problems;
 }
 
@@ -176,7 +189,7 @@ if (require.main !== module) {
   const expl = file ? fs.readFileSync(file, 'utf8') : fs.readFileSync(0, 'utf8');
   const s = getPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
   try {
-    const [q] = await s`SELECT option_a, option_b, option_c, option_d, correct_option, a.content acontent
+    const [q] = await s`SELECT option_a, option_b, option_c, option_d, correct_option, q.explanation_data, a.content acontent
       FROM questions q LEFT JOIN articles a ON a.id = q.primary_article_id WHERE q.id = ${qid}`;
     if (!q) { console.error('Pregunta no encontrada:', qid); process.exit(2); }
     const opts = { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d };
@@ -214,7 +227,15 @@ if (require.main !== module) {
     } catch (e) {
       warnings.push(`no se pudo comprobar si es barajable: ${e.message}`);
     }
-    if (transcribible) {
+    if (q.explanation_data) {
+      // La pregunta YA tiene explicación estructurada: es barajable POR CONSTRUCCIÓN y el texto
+      // se renderiza desde la estructura. Preguntarle al parser del HISTÓRICO si sabría
+      // transcribir ese texto no dice nada útil —y con el marco «señale la INCORRECTA» (T-212)
+      // dice que NO, porque sus etiquetas no son las que el parser conoce—. Avisar ahí de que
+      // «no se podrá barajar» era falso y, peor, ruido en un guardarraíl obligatorio: así es
+      // como se acaba ignorando un guardarraíl (§15.8).
+      console.log('🔀 Ya estructurada: barajable por construcción (explanation_data presente).');
+    } else if (transcribible) {
       console.log('🔀 Barajable: la explicación se puede transcribir al formato estructurado.');
       console.log(`   Tras aplicarla:  npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta ${qid} --apply`);
     } else {
