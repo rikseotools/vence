@@ -49,7 +49,10 @@ if command -v flock >/dev/null 2>&1; then
   if ! flock -n 9; then
     echo "⏳ Otra sesión está desplegando (lock $LOCK). Esperando a que termine…"
     H=$(cat "$LOCK" 2>/dev/null || true); [ -n "$H" ] && echo "   en curso: $H"
-    flock -w 1800 9 || { echo "❌ el lock sigue tomado tras 30 min — abortado."; exit 1; }
+    # 45 min, no 30: el 28/07 un build de FRONTEND tardó >30 min y un deploy de backend en cola
+    # detrás moría por timeout ANTES de que el otro terminara — o sea, condenado por construcción.
+    # Ajustable con DEPLOY_LOCK_WAIT si algún día el build crece más.
+    flock -w "${DEPLOY_LOCK_WAIT:-2700}" 9 || { echo "❌ el lock sigue tomado tras $(( ${DEPLOY_LOCK_WAIT:-2700} / 60 )) min — abortado. ¿Un build largo delante? Usa scripts/deploy-cuando-verde.sh, que reintenta."; exit 1; }
   fi
   : >&9; echo "frontend $SHA pid=$$ $(date -u +%FT%TZ)" >&9   # quién tiene el lock (informativo)
   echo "🔒 lock de deploy adquirido ($LOCK)."

@@ -31,7 +31,19 @@ scripts/deploy-frontend.sh / deploy-backend.sh  # 3) el flock serializa; el gate
 ```bash
 scripts/deploy-frontend.sh   # Next.js (OpenNext) → ECS Fargate + assets a S3
 scripts/deploy-backend.sh    # NestJS → ECS Fargate
+
+# Con VARIAS SESIONES pusheando, usa mejor el lanzador: espera a que el CI verdee y despliega solo.
+scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 ```
+
+> **¿Por qué un lanzador y no ejecutar el script a pelo?** Los guardarraíles de abajo son correctos
+> uno a uno, pero exigen que coincidan CUATRO cosas: árbol limpio, al día con `origin/main`, lock de
+> deploy libre y **CI verde de ESE SHA exacto**. Con cuatro sesiones pusheando cada pocos minutos esa
+> ventana casi no existe: el **28/07** desplegar un fix de UNA línea en el backend necesitó **siete
+> intentos**, y solo uno falló por el código (un typecheck roto en `main`, ajeno). Los otros seis
+> fueron CI en curso, run cancelado por un push ajeno, el lock ocupado por un build de frontend de
+> >30 min, y un árbol sucio. `deploy-cuando-verde.sh` reacciona a cada uno de esos estados en vez de
+> morir; solo aborta ante un CI **realmente** rojo.
 
 Ambos: build (podman) → push ECR → task def pineada por **digest** clonando la viva (hereda secretos) → `update-service` rolling → `wait services-stable` → **smoke** (falla el deploy si el smoke no pasa).
 

@@ -136,7 +136,11 @@ describe('ambos scripts — coordinación de sesiones paralelas (incidente 11/07
       expect(s).toMatch(/\/tmp\/vence-deploy\.lock/)
       expect(s).toMatch(/exec 9>/)
       expect(s).toMatch(/flock -n 9/)
-      expect(s).toMatch(/flock -w \d+ 9/)
+      // La espera es ACOTADA (nunca infinita), pero el cuánto es parametrizable: el 28/07 un build
+      // de frontend pasó de 30 min y un backend en cola detrás moría por timeout antes de que el
+      // otro acabara — condenado por construcción. Ahora son 45 min y se ajusta con
+      // DEPLOY_LOCK_WAIT, así que se aceptan las dos formas: literal o variable con default.
+      expect(s).toMatch(/flock -w (\d+|"\$\{DEPLOY_LOCK_WAIT:-\d+\}") 9/)
     })
     // Anti-stale: el build sale del working tree; si tu rama no contiene origin/main,
     // desplegar dejaría caer trabajo de otra sesión (clobber). Exigir ancestría.

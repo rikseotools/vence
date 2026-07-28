@@ -565,6 +565,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Escribir `content` dispara `reset_questions_on_article_update`: las preguntas del artículo ' +
       'quedan pendientes de re-verificar, que es lo correcto.',
   },
+  deploy_cuando_verde: {
+    titulo: 'Desplegar EN CUANTO el CI verdee (sigue a origin/main y reintenta solo)',
+    ruta: 'scripts/deploy-cuando-verde.sh',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/pusheo-revision-despliegue.md',
+    notas:
+      '`scripts/deploy-cuando-verde.sh backend|frontend [vueltas]`. No despliega él: espera y llama ' +
+      'al `deploy-*.sh` de siempre. Existe porque con varias sesiones pusheando cada pocos minutos, ' +
+      'la ventana que exigen los guardarraíles —árbol limpio + al día + lock libre + CI VERDE de ESE ' +
+      'SHA— casi nunca coincide: el 28/07 un fix de UNA línea necesitó SIETE intentos y solo UNO ' +
+      'falló por el código. Reacciona distinto a cada estado: espera si el CI está en curso, ' +
+      'RESINCRONIZA si GitHub canceló el run (llegó otro push) o si origin/main avanzó, PARA si el ' +
+      'árbol está sucio (el build usa el working tree) y ABORTA si el CI está en rojo de verdad — ' +
+      'eso se arregla, no se fuerza. El veredicto no lo decide él: vive en `lib/deploy/ciGate.js` ' +
+      '(11 tests), el mismo criterio que aplican los scripts de deploy en jq, con paridad vigilada ' +
+      'por `__tests__/guardrails/ciGateParidad.test.ts`.',
+  },
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
