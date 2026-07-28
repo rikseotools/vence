@@ -23,6 +23,7 @@ import AutoAssignOposicion from '@/components/AutoAssignOposicion'
 import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/format'
 import { etiquetaFechaHito, hitoParaSchemaEvent } from '@/lib/convocatoria/fechaEstimada'
 import { anuncioHero, esOepSinConvocatoria as esOepSinConvocatoriaFn } from '@/lib/convocatoria/anuncioHero'
+import { enlaceOficialEfectivo } from '@/lib/convocatoria/enlaceOficial'
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
@@ -154,7 +155,9 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
   // (su documento clonado en el hub), no del `programa_url` legacy que se desincroniza
   // (mostraba la OEP 2026 y enlazaba a la convocatoria 2025). Fallback al legacy si la
   // entidad no tiene doc clonado (entonces toca POBLAR el documento, trabajo aparte).
-  const enlaceOficial = (esOepSinConvocatoria && enlaceOepVigente) ? enlaceOepVigente : programaUrl
+  // Regla compartida con el detector de enlaces (lib/convocatoria/enlaceOficial): si vive solo aquí,
+  // los vigilantes juzgan `programa_url` a pelo y marcan lo que la página no enseña.
+  const enlaceOficial = enlaceOficialEfectivo({ estadoProceso, enlaceOep: enlaceOepVigente, programaUrl })
   const tituloRequerido = data?.tituloRequerido ?? 'Graduado en ESO o equivalente'
   const oepDecreto = data?.oepDecreto ?? null
   const oepFecha = data?.oepFecha ? formatDateLarga(data.oepFecha) : null

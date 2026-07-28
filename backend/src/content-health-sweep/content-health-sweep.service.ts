@@ -1872,16 +1872,26 @@ export class ContentHealthSweepService {
     // Se lee de `oposiciones_ssot` (lo que VE el opositor): la landing compone la tarjeta
     // oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) + `boe_reference`.
     const linkRows = (await this.db.execute(sql`
-      SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta,
-             estado_proceso AS estado
-      FROM oposiciones_ssot
-      WHERE is_active
+      SELECT s.slug, s.boe_reference AS ref, s.programa_url AS url, s.diario_oficial AS etiqueta,
+             s.estado_proceso AS estado,
+             -- Documento de la OEP vigente ya clonado: el enlace que la landing enseña DE VERDAD
+             -- mientras no hay convocatoria (F4/T-108). Espejo de la query del CLI.
+             (SELECT d.url FROM convocatorias c
+                JOIN convocatoria_oep co ON co.convocatoria_id = c.id
+                JOIN oep e ON e.id = co.oep_id
+                JOIN convocatoria_documentos d ON d.id = e.source_documento_id
+              WHERE c.oposicion_id = o.id AND c.is_current = true AND d.url IS NOT NULL
+              ORDER BY e."año_oep" DESC LIMIT 1) AS enlace_oep
+      FROM oposiciones_ssot s
+      JOIN oposiciones o ON o.slug = s.slug
+      WHERE s.is_active
     `)) as unknown as Array<{
       slug: string;
       ref: string | null;
       url: string | null;
       etiqueta: string | null;
       estado: string | null;
+      enlace_oep: string | null;
     }>;
     for (const r of linkRows) {
       const idRef = extraerIdBoeInline(r.ref);
@@ -1902,7 +1912,12 @@ export class ContentHealthSweepService {
       // FUENTE DE VERDAD y tiene los tests; aquí va nativo porque el backend NestJS no puede
       // importar el `lib/` del frontend. MANTENER EN SYNC.
       const etiqueta = normalizarEtiquetaBoletinInline(r.etiqueta);
-      const boletinUrl = boletinDeUrlInline(r.url);
+      // Espejo de `enlaceOficialEfectivo` (lib/convocatoria/enlaceOficial.cjs): sin convocatoria
+      // publicada y con documento de OEP clonado, el botón enlaza ESE documento y se rotula
+      // "Ver OEP en {diario}" — juzgar `programa_url` a pelo marca lo que el opositor no ve.
+      const esOepSinConvocatoriaInline = ['sin_oep', 'oep_aprobada'].includes(r.estado ?? 'sin_oep');
+      const urlEfectiva = (esOepSinConvocatoriaInline && r.enlace_oep) ? r.enlace_oep : r.url;
+      const boletinUrl = boletinDeUrlInline(urlEfectiva);
       if (etiqueta && boletinUrl && boletinUrl !== etiqueta) {
         add(
           'content',
@@ -1918,7 +1933,7 @@ export class ContentHealthSweepService {
         // plazo ABIERTO, prometía el BOE y llevaba a policia.es/portalaspirantes/**en**/… — ni
         // BOE, ni convocatoria, ni español. Calibrado para NO tocar la cola larga legítima (las
         // bases en PDF colgadas de la sede de la entidad no se marcan).
-        const s = señalesDeUrlInline(r.url);
+        const s = señalesDeUrlInline(urlEfectiva);
         const razones: string[] = [];
         if (s.portadaOSeccion) razones.push('no es un documento, es una portada/sección de portal');
         if (s.idiomaExtranjero) razones.push('la página está en otro idioma');
@@ -1930,7 +1945,8 @@ export class ContentHealthSweepService {
             'convocatoria_enlace_no_boletin',
             `${r.slug}: el botón oficial no lleva al boletín que promete — el botón promete "${etiqueta}" pero el enlace ${razones.join('; además ')}`,
           );
-        } else if (s.pareceTemario) {
+        } else if (s.pareceTemario && !esOepSinConvocatoriaInline) {
+          // Solo si el botón PROMETE la convocatoria: con "Ver OEP en X" no hay promesa que romper.
           add(
             'content',
             'warn',

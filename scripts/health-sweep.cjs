@@ -442,13 +442,26 @@ async function main() {
   // compone la tarjeta oficial con `diario_oficial` (etiqueta) + `programa_url` (enlace) +
   // `boe_reference` (referencia) resueltos por la vista.
   const linkRows = (await c.query(`
-    SELECT slug, boe_reference AS ref, programa_url AS url, diario_oficial AS etiqueta,
-           estado_proceso AS estado
-    FROM oposiciones_ssot
-    WHERE is_active`)).rows;
+    SELECT s.slug, s.boe_reference AS ref, s.programa_url AS url, s.diario_oficial AS etiqueta,
+           s.estado_proceso AS estado,
+           -- Documento de la OEP vigente ya clonado: es el enlace que la landing enseña DE VERDAD
+           -- cuando aún no hay convocatoria (F4/T-108). Sin este dato el detector juzga
+           -- `programa_url` a pelo y marca URLs que el opositor no ve (medido 28/07: falsos
+           -- positivos en administrativo-andalucia y administrativo-castilla-la-mancha, señalados
+           -- por su temario cuando la página enseña su BOJA/DOCM correctos).
+           (SELECT d.url FROM convocatorias c
+              JOIN convocatoria_oep co ON co.convocatoria_id = c.id
+              JOIN oep e ON e.id = co.oep_id
+              JOIN convocatoria_documentos d ON d.id = e.source_documento_id
+            WHERE c.oposicion_id = o.id AND c.is_current = true AND d.url IS NOT NULL
+            ORDER BY e."año_oep" DESC LIMIT 1) AS enlace_oep
+    FROM oposiciones_ssot s
+    JOIN oposiciones o ON o.slug = s.slug
+    WHERE s.is_active`)).rows;
   for (const r of linkRows) {
     const issues = checkConvocatoriaLinks({
       boeReference: r.ref, programaUrl: r.url, diarioOficial: r.etiqueta, estadoProceso: r.estado,
+      enlaceOep: r.enlace_oep,
     });
     for (const it of issues) {
       if (it.tipo === 'ref_url_mismatch') {

@@ -294,3 +294,56 @@ describe('checkConvocatoriaLinks — el enlace no es de NINGÚN boletín', () =>
     })).toEqual([])
   })
 })
+
+describe('juzga el enlace EFECTIVO, no `programa_url` a pelo (T-134, 28/07/2026)', () => {
+  // La landing no siempre enseña `programa_url`: desde F4/T-108, sin convocatoria publicada y con
+  // el documento de la OEP clonado, el botón lleva a ESE documento y se rotula "Ver OEP en {diario}".
+  // Mientras el detector ignoró esa regla marcó URLs que ningún opositor ve — medido el 28/07:
+  // `administrativo-andalucia` señalado por el temario del IAAP cuando la página enseña su BOJA.
+  const oep = { diarioOficial: 'BOJA', estadoProceso: 'oep_aprobada' }
+
+  it('OEP con documento clonado: juzga el documento, no el temario de programa_url', () => {
+    expect(checkConvocatoriaLinks({
+      ...oep,
+      programaUrl: 'https://www.juntadeandalucia.es/sites/default/files/2024-06/IAAP_Temario_C1.pdf',
+      enlaceOep: 'https://www.juntadeandalucia.es/boja/2025/250/c01/BOJA25-225-00003.pdf',
+    })).toHaveLength(0)
+  })
+
+  it('OEP SIN documento clonado: cae a programa_url y el hallazgo es REAL', () => {
+    const tipos = checkConvocatoriaLinks({
+      diarioOficial: 'BOPV', estadoProceso: 'oep_aprobada',
+      programaUrl: 'https://www.euskadi.eus/ope-administracion-general-euskadi/', enlaceOep: null,
+    }).map((i) => i.tipo)
+    expect(tipos).toContain('enlace_no_es_boletin')
+  })
+
+  it('CON convocatoria publicada NO se usa el enlace de la OEP: manda programa_url', () => {
+    const tipos = checkConvocatoriaLinks({
+      diarioOficial: 'BOJA', estadoProceso: 'inscripcion_abierta',
+      programaUrl: 'https://www.juntadeandalucia.es/portal/generico/empleo/index.html',
+      enlaceOep: 'https://www.juntadeandalucia.es/boja/2025/250/c01/BOJA25-225-00003.pdf',
+    }).map((i) => i.tipo)
+    expect(tipos).toContain('enlace_no_es_boletin')
+  })
+
+  it('el TEMARIO no se marca si el botón dice "Ver OEP" (no promete convocatoria)', () => {
+    const tipos = checkConvocatoriaLinks({
+      ...oep, programaUrl: 'https://ejemplo.es/temario_oposicion_2026.pdf', enlaceOep: null,
+    }).map((i) => i.tipo)
+    expect(tipos).not.toContain('enlace_no_es_boletin')
+  })
+
+  it('el TEMARIO SÍ se marca cuando el botón promete la convocatoria', () => {
+    const tipos = checkConvocatoriaLinks({
+      diarioOficial: 'BOJA', estadoProceso: 'inscripcion_abierta',
+      programaUrl: 'https://ejemplo.es/temario_oposicion_2026.pdf',
+    }).map((i) => i.tipo)
+    expect(tipos).toContain('enlace_no_es_boletin')
+  })
+
+  it('sin `enlaceOep` se comporta como antes: no puede empeorar a un llamador viejo', () => {
+    const c = { diarioOficial: 'BOPV', estadoProceso: 'oep_aprobada', programaUrl: 'https://www.euskadi.eus/ope-general/' }
+    expect(checkConvocatoriaLinks(c)).toEqual(checkConvocatoriaLinks({ ...c, enlaceOep: null }))
+  })
+})

@@ -26,20 +26,13 @@
 // badge y el subtítulo no usaban ese criterio: los botones decían una cosa y el texto otra. Aquí
 // vive el criterio ÚNICO que consumen las tres superficies, para que no puedan volver a divergir.
 
-/** Estados en los que la oposición NO tiene convocatoria publicada (solo oferta, o ni eso). */
-export const ESTADOS_SIN_CONVOCATORIA = ['sin_oep', 'oep_aprobada'] as const
-
-/**
- * ¿La oposición está en fase PREVIA a la convocatoria?
- *
- * Criterio por lista negra, el mismo que la landing ya aplicaba al enlace oficial: un estado
- * nuevo y desconocido se trata como "hay convocatoria" (permisivo), que es como se comportaba
- * el sistema antes de este módulo. Cambiarlo a lista blanca dejaría landings mudas al añadir un
- * estado, así que la decisión se toma aquí, una vez, y no en cada superficie.
- */
-export function esOepSinConvocatoria(estadoProceso: string | null | undefined): boolean {
-  return ESTADOS_SIN_CONVOCATORIA.includes((estadoProceso ?? 'sin_oep') as typeof ESTADOS_SIN_CONVOCATORIA[number])
-}
+// El criterio "¿aún no hay convocatoria?" vive en `enlaceOficial.cjs` y aquí se REEXPORTA.
+// Motivo (28/07, T-134): el detector de enlaces es CommonJS y necesitaba el mismo criterio; tener
+// la definición en un .ts obligaba a copiarla, y dos copias del mismo criterio divergen — que es
+// justo el defecto que este módulo nació para eliminar en el hero. Los importadores existentes no
+// cambian: siguen leyendo `esOepSinConvocatoria` de aquí.
+import { esOepSinConvocatoria } from './enlaceOficial'
+export { ESTADOS_SIN_CONVOCATORIA, esOepSinConvocatoria } from './enlaceOficial'
 
 export interface AnuncioHeroInput {
   /** `convocatorias.estado_proceso` del ciclo vigente (vía `oposiciones_ssot`). */
