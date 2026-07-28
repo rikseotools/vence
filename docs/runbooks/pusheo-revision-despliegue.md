@@ -234,6 +234,27 @@ Gate extra de auth recomendado tras deploy front: `node scripts/fase-b-auth-surf
 
 **Verificar tras deploy:** que bajen los `http_5xx` (status 502) de cliente en `/admin/infraestructura` → "Errores de cliente".
 
+## ⚠️ Renombrar una RUTA: desplegar el redirect NO basta — hay que purgar la ruta vieja en LAS DOS cachés (28/07/2026)
+
+**Lo que pasó:** al renombrar `/embajadores` → `/recompensas` con un redirect `permanent` en `next.config.mjs`, el deploy salió bien (imagen correcta en ECS, `/recompensas` → 200)… y **`/embajadores` seguía devolviendo 200 con la página vieja**, no el 308. El redirect estaba desplegado pero no se aplicaba nunca.
+
+**Por qué:** la ruta vieja estaba cacheada **en dos capas**, y la respuesta cacheada se sirve ANTES de llegar a la lógica de redirects:
+1. **Caché del servidor Next/OpenNext** — `x-nextjs-cache: HIT`, `x-nextjs-prerender: 1`. Se ve incluso pidiendo con una querystring nueva (que esquiva el CDN): si con `?cb=<aleatorio>` sigue dando 200, es ESTA.
+2. **CloudFront** — `x-cache: Hit from cloudfront` + `age: 54846`. Y con `cache-control: s-maxage=31536000` (**un año**), habría servido la copia congelada durante meses.
+
+**Cómo se arregla (las dos, en este orden):**
+```bash
+# 1) caché del servidor Next
+curl -X POST https://www.vence.es/api/purge-cache -H "Content-Type: application/json" \
+     -H "x-cron-secret: $CRON_SECRET" -d '{"path":"/ruta-vieja"}'
+# 2) CloudFront (distribución E1EH4WF1H7ZGLA)
+aws --profile vence --region eu-west-2 cloudfront create-invalidation \
+    --distribution-id E1EH4WF1H7ZGLA --paths "/ruta-vieja" "/ruta-vieja/*"
+```
+**Verificar SIEMPRE la URL DESNUDA**, no solo con cache-buster: la querystring esquiva CloudFront y da un falso verde. El único veredicto válido es `curl -I https://www.vence.es/ruta-vieja` devolviendo `308`.
+
+**Por qué importa más de lo que parece:** la ruta vieja vive en **emails YA ENVIADOS** y en mensajes de soporte. Si no se purga, esos enlaces siguen aterrizando en una copia congelada, el redirect nunca entra en vigor y el deploy parece correcto en todas las comprobaciones habituales.
+
 ## Gotchas
 
 - ⚠️ **Páginas SSG (prerenderizadas) NO se refrescan solas en CloudFront tras un deploy** (incidente 09/07, `/premium`). El deploy sincroniza `_next/static` a S3, pero las **páginas HTML prerenderizadas** (p.ej. `/premium`) se sirven con `cache-control: s-maxage=31536000` y CloudFront las cachea → los visitantes ven el HTML VIEJO (apuntando al chunk viejo) hasta que caduque (1 año). Al cambiar una página SSG hay que **invalidar CloudFront a mano**: `aws cloudfront create-invalidation --distribution-id E1EH4WF1H7ZGLA --paths "/premium" "/premium/" --profile vence`. (Con `?cb=<n>` se fuerza render fresco de origin para verificar.) Rutas dinámicas/SSR no tienen este problema; SSG sí.
