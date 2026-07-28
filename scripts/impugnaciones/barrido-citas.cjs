@@ -75,24 +75,91 @@ const { citaNoLiteral } = require('./validar-explicacion.cjs');
 // marcados como defectos es un cubo que nadie drena.
 const RE_REF_ARTICULO = /\bart[íi]?c?u?l?o?\.?\s*(\d+\s*(?:bis|ter|quater)?)/i;
 
-/** Nº de artículo que la propia cita declara, si lo declara y NO es el vinculado. */
-function refDeclaradaDistinta(explanation, articleNumber) {
-  const lineas = explanation.split('\n').map((l) => l.trim())
-    .filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, ''));
-  // La referencia va antes del entrecomillado: se busca en el tramo previo a la primera comilla.
-  const bq = lineas.join(' ');
-  // La atribución puede ir DELANTE de la cita («Art. 56.3: "…"») o DETRÁS, entre paréntesis o tras
-  // una raya («"…" (Art. 121.1 RP)»), que es como cita media doctrina. Se miran las dos zonas y
-  // NUNCA el interior del entrecomillado: un artículo nombrado dentro del texto citado
-  // («…conforme al artículo 30») no convierte la cita en suya.
-  const ini = bq.search(/[«"“]/);
-  const fin = Math.max(bq.lastIndexOf('»'), bq.lastIndexOf('"'), bq.lastIndexOf('”'));
-  const cabeza = ini === -1 ? bq : bq.slice(0, ini);
-  const cola = fin === -1 || fin + 1 >= bq.length ? '' : bq.slice(fin + 1);
-  const m = cabeza.match(RE_REF_ARTICULO) || cola.match(RE_REF_ARTICULO);
-  if (!m) return null;
-  const declarado = m[1].replace(/\s+/g, ' ').trim();
-  return String(declarado) === String(articleNumber) ? null : declarado;
+/**
+ * Trocea el blockquote en pares (cita, artículo que la propia explicación le atribuye).
+ *
+ * POR QUÉ HACE FALTA TROCEAR (28/07/2026, T-207). Antes se miraba el blockquote como si fuera UNA
+ * cita con UNA atribución, y las explicaciones apilan varias:
+ *
+ *     > **Art. 166:** "La iniciativa de reforma constitucional se ejercerá…"
+ *     > **Art. 87.2:** "Las Asambleas de las Comunidades Autónomas podrán solicitar…"
+ *
+ * `citaLiteralPretendida` se queda con el entrecomillado **más largo** (el del 87.2) y la
+ * atribución se leía del tramo previo a la PRIMERA comilla (el «Art. 166»). Resultado: se juzgaba
+ * el texto del 87.2 como si pretendiera ser del 166, no estaba, y la pregunta —correcta— se
+ * acusaba de cita inventada. Las dos «ajenas» de más tráfico del cubo eran esto (222 y 86
+ * exposiciones). La atribución de en medio no caía ni en la cabeza ni en la cola: quedaba en
+ * tierra de nadie.
+ *
+ * Cada entrecomillado se queda con la referencia MÁS CERCANA que lo precede; si no la tiene, se
+ * mira el tramo que va detrás y hasta la cita siguiente, porque parte de la doctrina atribuye
+ * después («"…" (Art. 121.1 RP)»). Nunca se mira DENTRO del entrecomillado: un artículo nombrado
+ * en el texto citado («…conforme al artículo 30») no convierte la cita en suya.
+ *
+ * @returns {Array<{texto:string, ref:string|null}>}
+ */
+function citasAtribuidas(explanation) {
+  const bq = String(explanation || '').split('\n').map((l) => l.trim())
+    .filter((l) => l.startsWith('>')).map((l) => l.replace(/^>+\s?/, '')).join(' ');
+  // OJO: para TROCEAR vale cualquier entrecomillado, por corto que sea. `RE_ENTRECOMILLADO` exige
+  // 60+ caracteres porque decide qué cita se JUZGA, no cómo se parte el blockquote; usarlo aquí
+  // dejaba sin atribución a las citas cortas («Art. 56.3: "La persona del Rey es inviolable"»).
+  const trozos = [...bq.matchAll(/[«"“]([^»"”]+)[»"”]/g)];
+
+  // PRIMERA PASADA — atribuciones que van DETRÁS y PEGADAS a su cita: «…» (Art. 74 Ley 39/2015).
+  // Hay que resolverlas antes que nada, porque si no el tramo que separa esta cita de la siguiente
+  // se lee como cabecera de la SIGUIENTE y cada cita hereda la referencia de la anterior. Ese
+  // desplazamiento de uno se vio en `4ddc6a7e` (Ley 39/2015 art. 74), donde las cuatro citas
+  // llevaban su referencia detrás y salieron corridas: 74, 74, 71, 73 en vez de 74, 71, 73, 53.
+  // El PARÉNTESIS es lo que distingue una atribución trasera de la cabecera de la cita siguiente:
+  //   «…» (Art. 74 Ley 39/2015)   → trasera, es de ESTA cita
+  //   «…»  Art. 57.5: "…"         → cabecera, es de la SIGUIENTE
+  // Sin exigirlo, el desplazamiento de uno solo cambia de sentido: se lo come la vecina de al lado.
+  // El hueco admite marcas de MARKDOWN (`*`, `_`): las explicaciones escriben la atribución en
+  // cursiva —`*(Art. 576.1 LEC)*`— y sin contemplarlas la cola no se consumía, así que la cita
+  // siguiente volvía a heredar la referencia de la anterior. Caso real `1336a5eb`: la cita del
+  // art. 576 salía atribuida al 816 y se acusaba a una pregunta correcta.
+  const RE_PEGADA_DETRAS = /^[\s.,;:\-—*_]{0,8}\(\s*art[íi]?c?u?l?o?\.?\s*(\d+\s*(?:bis|ter|quater)?)/i;
+  const finDe = (i) => trozos[i].index + trozos[i][0].length;
+  const iniSiguiente = (i) => (i + 1 < trozos.length ? trozos[i + 1].index : bq.length);
+  const detras = trozos.map((_, i) => {
+    const tail = bq.slice(finDe(i), iniSiguiente(i));
+    const m = tail.match(RE_PEGADA_DETRAS);
+    return m ? { ref: m[1], consumido: m[0].length } : null;
+  });
+
+  const out = [];
+  for (let i = 0; i < trozos.length; i++) {
+    if (detras[i]) { out.push({ texto: trozos[i][1], ref: String(detras[i].ref).replace(/\s+/g, ' ').trim() }); continue; }
+    // La cabecera empieza donde acaba la cita anterior MÁS lo que su atribución trasera consumió,
+    // para no volver a leer la referencia de la vecina.
+    const desde = i === 0 ? 0 : finDe(i - 1) + (detras[i - 1] ? detras[i - 1].consumido : 0);
+    const cabeza = bq.slice(desde, trozos[i].index);
+    const cola = bq.slice(finDe(i), iniSiguiente(i));
+    // De la cabeza manda la ÚLTIMA referencia (la pegada a la cita), no la primera.
+    const enCabeza = [...cabeza.matchAll(new RegExp(RE_REF_ARTICULO.source, 'gi'))].pop();
+    const enCola = cola.match(RE_REF_ARTICULO);
+    const ref = enCabeza ? enCabeza[1] : (enCola ? enCola[1] : null);
+    out.push({ texto: trozos[i][1], ref: ref === null ? null : String(ref).replace(/\s+/g, ' ').trim() });
+  }
+  return out;
+}
+
+/**
+ * Nº de artículo que la propia cita declara, si lo declara y NO es el vinculado.
+ *
+ * `citaTexto` identifica CUÁL de las citas del blockquote se está juzgando. Sin él se mira la más
+ * larga, que es la que elige `citaLiteralPretendida` — pero pasarlo explícitamente es lo correcto:
+ * juzgar una cita con la atribución de otra es el fallo que esto vino a arreglar.
+ */
+function refDeclaradaDistinta(explanation, articleNumber, citaTexto) {
+  const citas = citasAtribuidas(explanation);
+  if (!citas.length) return null;
+  const elegida = citaTexto
+    ? (citas.find((c) => c.texto === citaTexto) || citas.find((c) => c.texto.includes(citaTexto) || citaTexto.includes(c.texto)))
+    : citas.reduce((a, b) => (b.texto.length > a.texto.length ? b : a));
+  if (!elegida || elegida.ref === null) return null;
+  return String(elegida.ref) === String(articleNumber) ? null : elegida.ref;
 }
 
 function citaAusente(texto, articleContent) {
@@ -122,7 +189,7 @@ function clasificar(solape) {
 
 // Exporta los helpers puros para test (sin BD). Si se requiere como módulo, no ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { refDeclaradaDistinta, citaAusente, solapeConArticulo };
+  module.exports = { refDeclaradaDistinta, citasAtribuidas, citaAusente, solapeConArticulo };
   return;
 }
 
@@ -153,7 +220,7 @@ if (require.main !== module) {
       if (citaAusente(cita.texto, r.content)) {
         // ¿La cita declara otro artículo de la MISMA ley y allí sí es literal? Entonces no hay
         // defecto: es una cita de apoyo correctamente atribuida.
-        const ref = refDeclaradaDistinta(r.explanation, r.article_number);
+        const ref = refDeclaradaDistinta(r.explanation, r.article_number, cita.texto);
         if (ref) {
           const [otro] = await sql`
             SELECT content FROM articles

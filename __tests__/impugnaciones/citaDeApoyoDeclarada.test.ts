@@ -76,3 +76,100 @@ describe('citaLiteralPretendida — de varios entrecomillados, la cita es el má
     expect(citaAusente(ART_405.slice(0, 120), ART_405)).toBe(false)        // la cita real SÍ
   })
 })
+
+// ── Varias citas atribuidas en el MISMO blockquote (T-207, 28/07/2026) ────────────────────────
+//
+// Las explicaciones apilan citas: «Art. 166: "…"» seguido de «Art. 87.2: "…"». Se juzgaba el
+// entrecomillado MÁS LARGO (el del 87.2) con la atribución de la PRIMERA cita (el 166), así que
+// una pregunta correcta salía acusada de citar algo que su artículo no dice. Las dos «ajenas» de
+// más tráfico del cubo eran exactamente esto: 222 y 86 exposiciones de puro ruido.
+describe('varias citas atribuidas en el mismo blockquote', () => {
+  const { citasAtribuidas } = require(
+    require('path').join(__dirname, '..', '..', 'scripts', 'impugnaciones', 'barrido-citas.cjs'),
+  )
+
+  // CASO REAL de858282 (CE art. 166, 222 exposiciones).
+  const DOS_CITAS =
+    '> **Art. 166:** "La iniciativa de reforma constitucional se ejercerá en los términos previstos en los apartados 1 y 2 del artículo 87."\n' +
+    '> **Art. 87.2:** "Las Asambleas de las Comunidades Autónomas podrán solicitar del Gobierno la adopción de un proyecto de ley o remitir a la Mesa del Congreso una proposición de ley."'
+
+  it('cada cita se queda con SU atribución, no con la de la primera', () => {
+    const cs = citasAtribuidas(DOS_CITAS)
+    expect(cs).toHaveLength(2)
+    expect(cs[0].ref).toBe('166')
+    expect(cs[1].ref).toBe('87')
+  })
+
+  it('la cita larga del 87.2 NO se juzga como si pretendiera ser del 166', () => {
+    const larga = citasAtribuidas(DOS_CITAS)[1].texto
+    expect(refDeclaradaDistinta(DOS_CITAS, '166', larga)).toBe('87')
+  })
+
+  it('y la cita del propio artículo sigue sin redirigir', () => {
+    const corta = citasAtribuidas(DOS_CITAS)[0].texto
+    expect(refDeclaradaDistinta(DOS_CITAS, '166', corta)).toBeNull()
+  })
+
+  // CASO REAL 063167fc (CE art. 60, 86 exposiciones): tres citas, dos de otros artículos.
+  it('con tres citas apiladas, cada una conserva la suya', () => {
+    const TRES =
+      '> Art. 60.1: "Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto."\n' +
+      '> Art. 57.5: "Las abdicaciones y renuncias se resolverán por una ley orgánica."\n' +
+      '> Art. 81.2: "La aprobación de las leyes orgánicas exigirá mayoría absoluta del Congreso."'
+    expect(citasAtribuidas(TRES).map((c: { ref: string | null }) => c.ref)).toEqual(['60', '57', '81'])
+  })
+
+  it('un artículo nombrado DENTRO del texto citado no se convierte en atribución de la cita siguiente', () => {
+    // El «artículo 87» del final de la cita del 166 vive DENTRO del entrecomillado: si se colara,
+    // la cita siguiente heredaría un 87 que nadie declaró — acertaría por casualidad aquí y
+    // fallaría en cuanto el texto citado nombrara otro artículo.
+    const cs = citasAtribuidas(
+      '> **Art. 166:** "…en los términos previstos en los apartados 1 y 2 del artículo 87."\n> "Las Asambleas podrán solicitar del Gobierno la adopción de un proyecto de ley."',
+    )
+    expect(cs[1].ref).toBeNull()
+  })
+
+  // CASO REAL 4ddc6a7e (Ley 39/2015 art. 74): las cuatro citas llevan la referencia DETRÁS y entre
+  // paréntesis. Al arreglar el reparto salieron corridas —74, 74, 71, 73 en vez de 74, 71, 73, 53—
+  // porque la cola de una cita se leía como cabecera de la siguiente. El paréntesis es lo que las
+  // distingue, y sin este test el desplazamiento vuelve en cuanto alguien "simplifique" el regex.
+  it('la referencia entre paréntesis DETRÁS es de SU cita, no de la siguiente', () => {
+    const DETRAS =
+      '> «Las cuestiones incidentales no suspenderán la tramitación del mismo, salvo la recusación.» (Art. 74 Ley 39/2015)\n' +
+      '> «El procedimiento se impulsará de oficio en todos sus trámites y a través de medios electrónicos.» (Art. 71.1 Ley 39/2015)\n' +
+      '> «Los trámites que deban cumplimentar los interesados se realizarán en el plazo de diez días.» (Art. 73.1 Ley 39/2015)'
+    expect(citasAtribuidas(DETRAS).map((c: { ref: string | null }) => c.ref)).toEqual(['74', '71', '73'])
+  })
+
+  it('mezclar los dos estilos en la misma explicación no descoloca ninguno', () => {
+    const MIXTO =
+      '> Art. 60.1: "Será tutor del Rey menor la persona que hubiese nombrado el Rey difunto."\n' +
+      '> «Las abdicaciones y renuncias se resolverán por una ley orgánica.» (Art. 57.5 CE)'
+    expect(citasAtribuidas(MIXTO).map((c: { ref: string | null }) => c.ref)).toEqual(['60', '57'])
+  })
+})
+
+// CASO REAL 1336a5eb (LEC art. 816): la atribución va detrás, entre paréntesis Y en cursiva
+// markdown. Sin admitir el `*` en el hueco, la cola no se consumía y la cita del art. 576 salía
+// atribuida al 816 — o sea, se acusaba a una pregunta correcta de citar lo que su artículo no dice.
+describe('la atribución envuelta en markdown sigue siendo atribución', () => {
+  const { citasAtribuidas } = require(
+    require('path').join(__dirname, '..', '..', 'scripts', 'impugnaciones', 'barrido-citas.cjs'),
+  )
+
+  it('reconoce `*(Art. N …)*` en cursiva detrás de su cita', () => {
+    const CURSIVA =
+      '> *«Desde que se dicte el auto despachando ejecución la deuda devengará el interés a que se refiere el artículo 576.»*\n' +
+      '> *(Art. 816.2 Ley 1/2000, LEC)*\n' +
+      '> *«Desde que fuere dictada en primera instancia, toda sentencia que condene al pago de una cantidad líquida devengará el interés legal incrementado en dos puntos.»*\n' +
+      '> *(Art. 576.1 Ley 1/2000, LEC)*'
+    expect(citasAtribuidas(CURSIVA).map((c: { ref: string | null }) => c.ref)).toEqual(['816', '576'])
+  })
+
+  it('el «artículo 576» nombrado DENTRO de la primera cita no se la queda para él', () => {
+    // La cita del 816.2 menciona el 576 en su propio texto. Si eso contara como atribución, la
+    // primera cita se declararía del 576 y el barrido dejaría de comprobarla contra el 816.
+    const CURSIVA = '> *«…devengará el interés a que se refiere el artículo 576.»*\n> *(Art. 816.2 LEC)*'
+    expect(citasAtribuidas(CURSIVA)[0].ref).toBe('816')
+  })
+})
