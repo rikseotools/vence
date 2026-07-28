@@ -10,6 +10,7 @@
 // SQL crudo vía getDb().execute (mismo patrón que competitors/radar-contenido).
 
 import { getDb, getAdminDb } from '@/db/client'
+import { pgTextArray } from '@/lib/api/sqlArrays'
 import { sql } from 'drizzle-orm'
 import { kindsCubiertos } from '@/lib/admin/landingSurfaces'
 
@@ -183,7 +184,7 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
              count(*) FILTER (WHERE severity = 'error')::int AS landing_errores,
              count(*) FILTER (WHERE severity <> 'error')::int AS landing_avisos
       FROM content_health_findings
-      WHERE oposicion_slug IS NOT NULL AND kind = ANY(${KINDS_LANDING})
+      WHERE oposicion_slug IS NOT NULL AND kind = ANY(${pgTextArray(KINDS_LANDING)})
       GROUP BY 1
     ),
     -- Proceso: estado de verificación de la convocatoria VIGENTE de cada oposición
