@@ -119,6 +119,39 @@ INSERT INTO problematic_questions_tracking (
 - **SIEMPRE** incluir análisis por descarte
 
 ## Template de Explicación Mejorada
+
+> ⚠️ **La plantilla de abajo quedó OBSOLETA el 27-28/07.** Escribía un texto que **no es ninguno de
+> los dos formatos canónicos**, así que la explicación resultante **no se puede transcribir** y la
+> pregunta se queda fuera del barajado para siempre (hoy hay 47.388 activas bloqueadas justo por
+> esto). Además su sección final `CLAVE:` incumple §5.1 del manual de impugnaciones, que exige
+> integrar el resumen como párrafo natural, y el texto no arranca por *"La respuesta correcta es…"*,
+> que es lo que `validar-explicacion.cjs` comprueba. Se conserva solo como referencia histórica.
+
+**Cómo se escribe HOY: la estructura, y el texto lo genera la herramienta.**
+
+```bash
+npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
+```
+
+El JSON lleva `cita` (`ref`+`texto`, o `bloque` para el literal íntegro), una razón **por opción**
+keada a su índice (`"0".."3"`), `outro` opcional y `estilo: "impugnacion"`. Las razones se refieren
+al **CONTENIDO** de la opción, nunca a su letra ni a su posición, porque al barajar dejarían de ser
+ciertas. La apertura (*"La respuesta correcta es la **X**"*) y los veredictos los pone el render, no
+tú. Detalle y ejemplos: manual de impugnaciones, §5.1 y §🔀.
+
+**Tres cosas que se comprueban solas y conviene conocer antes de pelearte con ellas:**
+
+- **La cita se verifica ENTERA** contra el artículo vinculado, no solo su arranque (§5.1.bis del
+  manual de impugnaciones). Se admite elidir con `(...)` y cerrar con la referencia.
+- **Preguntas de «señale la INCORRECTA»**: el marco se deduce del enunciado y el render etiqueta
+  `ES LA INCORRECTA` / `VERDADERA`. No escribas tú el veredicto peleándote con la etiqueta.
+- **Si NO reescribes la explicación**, prueba igualmente
+  `scripts/backfill-explanation-data.ts --pregunta <qid> --apply`: transcribe sin cambiar una coma o
+  no toca nada.
+
+<details>
+<summary>Plantilla histórica (no usar)</summary>
+
 ```
 ESTRUCTURA/CONTEXTO:
 - Información relevante del artículo/tema
@@ -131,6 +164,7 @@ D) INCORRECTA/CORRECTA: Razón específica
 
 CLAVE: Punto fundamental para recordar
 ```
+</details>
 
 ## Verificación Final
 ```sql
