@@ -3690,6 +3690,22 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ## Hechas
 
+### [T-245] ✅ [HECHO 28/07 · falta desplegar] Sesión con `sub` sin perfil: el usuario no puede pagar, no puede quejarse, y nadie se entera
+- **Qué pasó (caso real, 28/07):** `pcsergio0@gmail.com` intentó contratar premium **24 veces en 10 minutos** y el checkout le rechazó siempre con «User not found in database». Después fue a `/soporte` a avisarnos **6 veces** y también falló (500). Acabó pagando a las 14:50 —es premium activo— pero por su cuenta, y sus 6 avisos se perdieron.
+- **Causa:** su sesión llevaba un `sub` (`0f8e35ae…`) **sin fila en `user_profiles`**, mientras su email SÍ tenía perfil con otro id (`8330df66…`). Como `/api/stripe/create-checkout`, `/api/stripe/subscription` y `/api/feedback` se indexan por ese id, le rebotaba todo. No se cura navegando: el id viaja dentro de la sesión.
+- **El agravante que lo hacía invisible:** el usuario roto **tampoco puede quejarse**, porque el formulario de soporte falla por la misma FK. El fallo se oculta a sí mismo — lo encontré por casualidad revisando los 5xx de un deploy, no porque nada avisara.
+- **Alcance medido en `observable_events`:** **8 usuarios y 70 intentos de compra rechazados desde el 07/07.**
+- **Arreglo (hecho):** reconciliación en `/api/auth/token`, que es el ÚNICO punto donde se decide la identidad: si el `sub` no tiene perfil, se resuelve por el email de la sesión verificada (mismo criterio que `resolveAppUserId` en el primer login; `user_profiles.email` es UNIQUE) y se acuña con el id canónico. Cura a los afectados **en su siguiente tick de sesión, sin re-login y sin tocar los endpoints de pago**. Si ni el sub ni el email resuelven, NO se inventa identidad: se acuña con el original y se emite `error`.
+  - Núcleo puro `lib/auth/canonicalSub.ts` (`decidirSub`) + consultas en `lib/auth/resolveAppUser.ts` (donde ya vive la resolución de identidad, sin fichero nuevo).
+  - **Coste en el hot path cuidado:** el caso bueno paga solo un lookup por PK; la consulta por email (que hace *seq scan*) solo se ejecuta en el caso roto.
+  - **Capas:** 5 tests unitarios de la decisión + 3 de guardarraíl de cableado (validados por mutación: quitar la llamada pone el test en rojo) + **simulación contra datos reales de producción** (el sub roto → `8330df66`, el bueno intacto, el inventado marcado huérfano).
+  - **Observabilidad:** evento `auth_sub_reconciliado` (`warn` al reconciliar, `error` si queda huérfano). Para medir el drenaje:
+    ```sql
+    SELECT metadata->>'resultado' resultado, count(DISTINCT user_id) usuarios, count(*) veces
+      FROM observable_events WHERE event_type='auth_sub_reconciliado' GROUP BY 1;
+    ```
+- **⏭️ Lo que queda:** (a) **desplegar** — hasta entonces los afectados siguen rotos; (b) escribirle a `pcsergio0@gmail.com` (Manuel quiere ver el borrador antes); (c) que `/api/feedback` no pierda el mensaje cuando el `user_id` no existe (guardar con `user_id` nulo antes que devolver 500) — sin eso, el próximo fallo de esta familia volverá a ser invisible; (d) sin resolver: **qué borró el perfil original** (no consta en `deleted_users_log`).
+
 ### [T-243] ✅ [HECHO 28/07 · falta desplegar] La atribución solo veía el tráfico de PAGO: el 86% de las altas quedaba como `direct`
 > **Causa raíz, una línea repetida en DOS sitios** (`components/tracking/AttributionCapture.tsx` y `app/api/attribution/touch/route.ts`): `if (!hasSignal) return`, donde `hasSignal` solo era cierto con click-id o UTM. O sea, **solo el tráfico de pago dejaba rastro**. La visita orgánica, la directa, el enlace de un foro y el de ChatGPT no registraban nada, aunque su `landing_path` y su `referrer` estuvieran ahí mismo en el navegador. Medido: **24 de 169 altas (14%) con `landing_path` real**, canal `organic` **1 vez en 12 días**, y 8 semanas de cobertura plana entre el 11% y el 26%.
 >

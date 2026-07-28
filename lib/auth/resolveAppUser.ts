@@ -12,6 +12,41 @@
 
 import { sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
+import { decidirSub, type DecisionSub } from './canonicalSub'
+
+/**
+ * Comprueba que el `sub` de una sesión tiene perfil y, si no, lo reconcilia por email.
+ * La decisión vive en `decidirSub` (pura, testeada); aquí solo se hacen las consultas.
+ *
+ * COSTE EN EL HOT PATH: `/api/auth/token` se acuña en cada tick de sesión (~675k/día), así
+ * que el caso bueno paga SOLO un lookup por clave primaria (índice, microsegundos) y ni
+ * siquiera mira el email. La consulta por email —que NO usa el índice único porque
+ * compara en minúsculas -y por eso tarda- solo se ejecuta cuando el `sub` no existe, que
+ * es el caso roto y raro (8 usuarios en 3 semanas). Ver [T-245].
+ */
+export async function canonicalSubForToken(
+  sub: string,
+  email: string | null,
+): Promise<DecisionSub> {
+  const db = getAdminDb()
+  const found = await db.execute(sql`SELECT 1 AS ok FROM user_profiles WHERE id = ${sub}::uuid LIMIT 1`)
+  const existe = (found as unknown as Array<{ ok: number }>).length > 0
+  if (existe) return decidirSub(sub, true, null)
+
+  const porEmail = email ? await resolveProfileIdByEmail(email) : null
+  return decidirSub(sub, false, porEmail)
+}
+
+/** id del perfil de un email (case-insensitive), o null. Mismo criterio que el primer login. */
+async function resolveProfileIdByEmail(emailRaw: string): Promise<string | null> {
+  const email = emailRaw.trim().toLowerCase()
+  if (!email) return null
+  const db = getAdminDb()
+  const rows = await db.execute(
+    sql`SELECT id FROM user_profiles WHERE lower(email) = ${email} LIMIT 1`,
+  )
+  return (rows as unknown as Array<{ id: string }>)[0]?.id ?? null
+}
 
 /**
  * Devuelve el `user_profiles.id` para un email:

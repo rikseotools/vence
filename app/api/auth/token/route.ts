@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/authjs'
 import { mintAccessToken } from '@/lib/auth/mintAccessToken'
+import { canonicalSubForToken } from '@/lib/auth/resolveAppUser'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -57,6 +58,33 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   if (!userId) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 })
   }
+
+  // 3. [T-245] El `sub` DEBE tener perfil. Si no lo tiene, se reconcilia por email ANTES
+  //    de acuñar: con un sub sin fila en `user_profiles`, todo lo que se indexa por id
+  //    rebota —checkout («User not found in database»), suscripción, y hasta el formulario
+  //    de soporte (FK)— y el usuario no puede ni avisarnos, así que el fallo se oculta solo.
+  //    Curarlo AQUÍ arregla al afectado en su siguiente tick de sesión, sin re-login y sin
+  //    tocar los endpoints de pago. Caso real 28/07: 24 intentos de compra rechazados a un
+  //    usuario que YA tenía perfil premium con otro id.
+  const decision = await canonicalSubForToken(userId, email)
+  if (decision.reconciliado || decision.huerfano) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: decision.huerfano ? 'error' : 'warn',
+      eventType: 'auth_sub_reconciliado',
+      endpoint: '/api/auth/token',
+      userId: decision.sub,
+      metadata: {
+        via,
+        subOriginal: userId,
+        subAcunado: decision.sub,
+        // huerfano = ni el sub ni el email resuelven: NO se puede arreglar aquí y el
+        // usuario seguirá roto → por eso va como `error`, no como `warn`.
+        resultado: decision.huerfano ? 'huerfano' : 'reconciliado',
+      },
+    })
+  }
+  userId = decision.sub
 
   const minted = await mintAccessToken({ sub: userId, email })
   if (!minted) {
