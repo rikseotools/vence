@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "El artículo 40 enumera, uno por apartado, los sistemas de selección del personal funcionario de carrera en Castilla y León.",
+  "cita": {
+    "ref": "Art. 40 Ley 7/2005, de la Función Pública de Castilla y León",
+    "texto": "Oposición. El sistema de oposición consistirá en celebrar las pruebas exigidas en la convocatoria para determinar la aptitud de los aspirantes y el orden de prelación de éstos. […] Concurso-oposición. El concurso-oposición consistirá en la celebración, como partes del procedimiento de selección, de una fase de oposición y otra de concurso. […] Concurso. El concurso consistirá en la calificación de los méritos aducidos y acreditados por los aspirantes, conforme al baremo incluido en la convocatoria"
+  },
+  "options": {
+    "0": "El artículo lo recoge en su primer apartado: consiste en celebrar las pruebas exigidas en la convocatoria para determinar la aptitud de los aspirantes y su orden de prelación.",
+    "1": "Figura en el tercer apartado: consiste en calificar los méritos aducidos y acreditados conforme al baremo incluido en la convocatoria y fijar con ellos el orden de prelación.",
+    "2": "No aparece en el artículo, y no es un sistema de SELECCIÓN sino de PROVISIÓN de puestos: se aplica a quien ya es funcionario, no para acceder a la función pública.",
+    "3": "Es el segundo apartado: una fase de oposición y otra de concurso, sin que la puntuación obtenida en el concurso dispense de superar las pruebas de la oposición."
+  },
+  "outro": "**Clave:** selección (cómo se ACCEDE: oposición, concurso-oposición, concurso) y provisión (cómo se OCUPA un puesto siendo ya funcionario: concurso de méritos, libre designación) son dos planos distintos, y el enunciado pregunta por el primero."
+}

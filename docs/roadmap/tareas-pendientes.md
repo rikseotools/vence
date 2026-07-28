@@ -568,6 +568,27 @@ incluida).
     impugnaciones pagadas. Sigue mereciendo drenaje —31 preguntas afirman lo que su artículo no
     dice— pero es un lote pequeño, no una campaña. **La palanca sigue sin encontrarse**: el 79% de
     lo que impugnan los usuarios no lo detecta hoy ningún cubo.
+- **🚰 DRENAJE EN MARCHA (28/07) — 5 de las 31 «ajenas» arregladas y verificadas**, empezando por
+  tráfico. Lo interesante es que las cinco tenían defectos de **tres clases distintas**, y solo una
+  era «explicación mal escrita»:
+  1. **La explicación cita otra cosa** — `102efb25` (70 exposiciones, LO 3/2018 art 9): parafraseaba
+     el RGPD cuando **el propio artículo 9.2 dice literalmente** lo que la pregunta examina («deberán
+     estar amparados en una norma con rango de ley»). Reescrita con la cita real.
+  2. **El ARTÍCULO estaba incompleto en la BD** — `91d4ce7a` (63, RGPD art 4): la explicación citaba
+     bien el párrafo segundo del punto 9) («no se considerarán destinatarios las autoridades
+     públicas…»), pero **ese párrafo no estaba en nuestro artículo**. Verificado contra el BOE
+     (DOUE-L-2016-80807) e **importado verbatim**. El defecto no era de la explicación: era de
+     contenido, y el detector de citas lo destapó de rebote.
+  3. **La cita atribuía al artículo lo contrario de lo que dice** — `32f8a676` (Ley 4/1994 Salud
+     Murcia art 10): la pregunta pide qué NO forma parte del Plan de Salud y la explicación citaba
+     «La delimitación de las Áreas de Salud» **como si el artículo la incluyera**. Reescrita con la
+     enumeración literal del 10.2 y con `frame: select_incorrect`.
+  · También `94f0d1fb` (32, Ley 7/2005 CyL art 40: los sistemas de selección, con frame
+    `select_incorrect`) y `f529fc64` (Reglamento 3/1995 art 25: «extenderá la jurisdicción», que la
+    explicación citaba como «prorrogará»).
+  · **Las 4 primeras nacen barajables** (explicación estructurada); las cinco pasan el check de cita.
+  · **Quedan 24**, casi todas con 0-4 exposiciones, más 2 de ofimática (Word 365) cuyo blockquote
+    imita una cita legal sobre una ley VIRTUAL — ahí el arreglo es de forma, no de fuente.
 - **Orden propuesto (barato → caro):** (1) **matar la copia**: que `barrido-citas.cjs` reutilice `validateQuotes` en vez de su `slice(0, 70)` — un detector con dos implementaciones ya ha demostrado que diverge; (2) re-barrer y publicar el inventario por bucket; (3) bucket determinista (relink intra-ley) en lotes con los guardarraíles de siempre; (4) LLM solo sobre el residuo, y **nunca auto-flip de clave**.
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.

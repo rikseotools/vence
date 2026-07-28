@@ -1,0 +1,16 @@
+{
+  "estilo": "boletin",
+  "frame": "select_incorrect",
+  "intro": "El apartado 2 del artículo 10 enumera, uno por uno, los contenidos que el Plan de Salud debe incluir.",
+  "cita": {
+    "ref": "Art. 10.2 Ley 4/1994, de 26 de julio, de Salud de la Región de Murcia",
+    "texto": "El Plan de Salud deberá incluir un análisis e identificación de los problemas, la formulación de los objetivos a alcanzar, plazos de ejecución o calendario general de actuaciones, los programas a desarrollar, los órganos encargados de su ejecución, los recursos que han de destinarse a su financiación y los mecanismos de evaluación sistemática y continuada de los distintos programas, garantizando la participación de la colectividad en todas las fases de su desarrollo."
+  },
+  "options": {
+    "0": "Están en la enumeración del precepto: la formulación de los objetivos a alcanzar y los plazos de ejecución o calendario general de actuaciones.",
+    "1": "También figuran: los órganos encargados de su ejecución y los recursos que han de destinarse a su financiación.",
+    "2": "No aparece en la enumeración. La ordenación del territorio en Áreas de Salud pertenece al mapa sanitario, que la ley regula aparte, y no es contenido del Plan de Salud.",
+    "3": "Encabezan la enumeración: el análisis e identificación de los problemas y los programas a desarrollar."
+  },
+  "outro": "**Clave:** el Plan de Salud es el instrumento de PLANIFICACIÓN (qué problemas hay, qué objetivos, con qué recursos y plazos); la división del territorio en Áreas de Salud es ORDENACIÓN, y va por otra vía."
+}

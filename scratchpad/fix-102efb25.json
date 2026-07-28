@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "La letra h) del artículo 9.2 del Reglamento (UE) 2016/679 es justamente la que cubre los fines de medicina preventiva o laboral, evaluación de la capacidad laboral, diagnóstico médico y prestación de asistencia sanitaria o social que reproduce el enunciado. Cuando ese tratamiento se funda en el Derecho español, la Ley Orgánica 3/2018 exige un instrumento normativo concreto.",
+  "cita": {
+    "ref": "Art. 9.2 LO 3/2018",
+    "texto": "Los tratamientos de datos contemplados en las letras g), h) e i) del artículo 9.2 del Reglamento (UE) 2016/679 fundados en el Derecho español deberán estar amparados en una norma con rango de ley, que podrá establecer requisitos adicionales relativos a su seguridad y confidencialidad."
+  },
+  "options": {
+    "0": "El desarrollo reglamentario tiene rango inferior a la ley, y el precepto exige precisamente rango legal: un reglamento no basta para amparar estos tratamientos.",
+    "1": "La ley de bases es el instrumento de la delegación legislativa del artículo 82 de la Constitución para que el Gobierno apruebe un texto articulado; el precepto no reclama esa figura concreta, sino cualquier norma con rango de ley.",
+    "2": "La orden ministerial es una disposición administrativa de rango inferior a la ley, insuficiente para dar cobertura a estos tratamientos.",
+    "3": "Es lo que exige el precepto: los tratamientos de las letras g), h) e i) del artículo 9.2 del Reglamento fundados en el Derecho español deben ampararse en una norma con rango de ley."
+  },
+  "outro": "**Clave:** el rango exigido es legal, no reglamentario. La norma con rango de ley puede además añadir requisitos de seguridad y confidencialidad, y amparar el tratamiento sanitario cuando lo exija la gestión de los servicios de asistencia o un contrato de seguro del que el afectado sea parte."
+}

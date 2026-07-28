@@ -1,0 +1,15 @@
+{
+  "estilo": "boletin",
+  "intro": "El artículo regula la sustitución de los Jueces de Paz y prevé expresamente qué hacer cuando no hay sustituto.",
+  "cita": {
+    "ref": "Art. 25 Reglamento 3/1995, de 7 de junio, de los Jueces de Paz",
+    "texto": "Los Jueces de Paz serán sustituidos por sus sustitutos en caso de enfermedad, ausencia legal u otro impedimento. De no haber sustituto, la Sala de Gobierno extenderá la jurisdicción de otro Juez de Paz."
+  },
+  "options": {
+    "0": "El puesto no queda vacante a la espera del titular: el precepto prevé precisamente cómo se cubre la falta.",
+    "1": "El órgano competente no es el Presidente del Tribunal Superior de Justicia; la decisión se atribuye a la Sala de Gobierno.",
+    "2": "El propio precepto contempla el supuesto de que NO haya sustituto, de modo que no puede afirmarse que siempre exista.",
+    "3": "Es lo que dispone el artículo: a falta de sustituto, la Sala de Gobierno extiende la jurisdicción de otro Juez de Paz."
+  },
+  "outro": "**Clave:** el reglamento habla de *extender la jurisdicción de otro Juez de Paz*, no de nombrar a nadie nuevo: se amplía el ámbito territorial de un juez que ya lo es."
+}
