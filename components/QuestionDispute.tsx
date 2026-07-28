@@ -122,9 +122,9 @@ export default function QuestionDispute({
 
       if (res.ok) {
         const result = await res.json()
-        if (result.success && result.data) {
-          setExistingDispute(result.data)
-        }
+        // La rama `else` importa tanto como la otra: sin ella, «no hay impugnación previa» dejaba
+        // en pantalla la de la consulta anterior. Se escribe SIEMPRE el resultado, aunque sea nulo.
+        setExistingDispute(result.success && result.data ? result.data : null)
       }
     } catch (err) {
       console.error('Error checking existing dispute:', err)
@@ -133,6 +133,25 @@ export default function QuestionDispute({
       setCheckingExisting(false)
       setHasChecked(true)
     }
+  }, [questionId])
+
+  // Al CAMBIAR de pregunta, olvidar todo lo de la anterior.
+  //
+  // Sin esto el componente arrastraba el estado de una pregunta a la siguiente, porque
+  // `TestLayout` lo monta SIN `key` (misma instancia durante todo el test) y `checkExistingDispute`
+  // solo hace `setExistingDispute(data)` cuando la hay: **no tiene rama else**, así que una
+  // impugnación previa nunca se borraba. Efecto visible: abrías el panel en otra pregunta y te
+  // decía «Ya impugnaste esta pregunta — Motivo: …» de una que no habías impugnado.
+  //
+  // Lo reportó Rocío el 28/07 con estas palabras exactas: «no he marcado ese titulo» (impugnación
+  // `dc236653`). Había impugnado la pregunta 13 del test y el aviso reapareció en la 22.
+  useEffect(() => {
+    setExistingDispute(null)
+    setHasChecked(false)
+    setSubmitted(false)
+    setDisputeType('')
+    setDescription('')
+    setErrorMessage('')
   }, [questionId])
 
   // Al abrir, verificar si ya existe
