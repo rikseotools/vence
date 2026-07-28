@@ -22,7 +22,14 @@ import postgres from 'postgres'
 // `.env.local` (igual que el resto de scripts del repo).
 config({ path: '.env.local' })
 import { deriveChannel } from '../../lib/attribution/deriveChannel'
-import { shouldStoreTouch } from '../../lib/attribution/touchPolicy'
+import { shouldStoreTouch, hasCampaignSignal } from '../../lib/attribution/touchPolicy'
+
+/**
+ * Referrers que NUNCA son un origen: nuestro propio sitio, y la infra de terceros por la
+ * que pasa nuestro flujo (login OAuth, pasarela de pago). Si alguno aparece clasificado
+ * como un canal de marketing —EN CUALQUIERA de los cubos—, el clasificador está mintiendo.
+ */
+const RE_NO_ES_ORIGEN = /vence\.es|localhost|stripe\.com|accounts\.google|login\.microsoftonline|appleid\.apple/
 
 const i = process.argv.indexOf('--dias')
 const DIAS = i > 0 && process.argv[i + 1] ? parseInt(process.argv[i + 1], 10) : 7
@@ -53,8 +60,18 @@ async function main() {
     const canal = deriveChannel(señales)
     porCanal.set(canal, (porCanal.get(canal) ?? 0) + t.n)
     total += t.n
-    // El fallo que esta simulación existe para cazar: contarnos a nosotros mismos.
-    if (canal === 'referral' && t.referrer && /vence\.es|localhost|stripe\.com|accounts\.google/.test(t.referrer)) {
+    // El fallo que esta simulación existe para cazar: contarnos a nosotros mismos. Dos
+    // matices, y los dos costaron una pasada:
+    //
+    // 1. Se revisan TODOS los canales, no solo `referral`. Antes miraba únicamente ese cubo
+    //    y por eso NO cazó que `accounts.google.com` —el retorno del login OAuth— caía en
+    //    **`organic`**; lo destapó la producción al desplegar. Un verificador que solo mira
+    //    donde espera el fallo no es un verificador.
+    // 2. Solo si el canal se DEDUJO del referrer. Con UTM/click-id el canal lo dice la
+    //    campaña y el referrer es irrelevante: una notificación propia que abre una URL
+    //    nuestra es un canal legítimo (`notification`) aunque venga de `vence.es`. Sin este
+    //    matiz marcaba decenas de esos y el check se habría acabado ignorando.
+    if (t.referrer && !hasCampaignSignal(señales) && RE_NO_ES_ORIGEN.test(t.referrer)) {
       sospechosos.push({ referrer: t.referrer, canal, n: t.n })
     }
   }
@@ -64,12 +81,13 @@ async function main() {
   for (const [canal, n] of [...porCanal.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`     ${canal.padEnd(14)} ${String(n).padStart(6)}  ${((n / total) * 100).toFixed(1)}%`)
   }
+  const malos = sospechosos.filter((s) => s.canal !== 'direct')
   console.log(
-    sospechosos.length === 0
-      ? '   ✅ ningún dominio propio/infra clasificado como `referral`'
-      : `   ❌ ${sospechosos.length} referrer(s) propios contados como referral — corregir antes de encender:`,
+    malos.length === 0
+      ? '   ✅ ningún dominio propio ni de infra (login, pasarela) se cuenta como canal de marketing'
+      : `   ❌ ${malos.length} referrer(s) que NO son un origen, contados como canal — corregir antes de encender:`,
   )
-  for (const s of sospechosos.slice(0, 5)) console.log(`      ${s.n}× ${s.referrer}`)
+  for (const s of malos.slice(0, 5)) console.log(`      ${s.n}× [${s.canal}] ${s.referrer}`)
 
   // 2) Volumen: cuántos toques NUEVOS por día añade la entrada-de-sesión. Se aproxima con
   //    los devices activos (1 toque por sesión ≈ 1 por device y día, cota alta).

@@ -127,6 +127,25 @@ describe('deriveChannel — el clasificador que llevaba meses en ayunas', () => 
     })
   })
 
+  // Lo destapó la PRODUCCIÓN a la hora de desplegar T-243, no la simulación: su check de
+  // dominios sospechosos solo miraba el cubo `referral` y este caía en `organic`.
+  describe('infra de terceros por la que pasa nuestro flujo NO es un origen', () => {
+    it('el retorno del login OAuth NO es tráfico orgánico (aunque el host lleve .google.)', () => {
+      expect(deriveChannel({ referrer: 'https://accounts.google.com/' })).toBe('direct')
+    })
+
+    it('tampoco lo son los demás proveedores de login ni la pasarela de pago', () => {
+      expect(deriveChannel({ referrer: 'https://login.microsoftonline.com/' })).toBe('direct')
+      expect(deriveChannel({ referrer: 'https://appleid.apple.com/' })).toBe('direct')
+      expect(deriveChannel({ referrer: 'https://checkout.stripe.com/pay/x' })).toBe('direct')
+    })
+
+    it('pero un buscador de verdad SIGUE siendo organic (no se ha barrido de más)', () => {
+      expect(deriveChannel({ referrer: 'https://www.google.com/' })).toBe('organic')
+      expect(deriveChannel({ referrer: 'https://news.google.com/' })).toBe('organic')
+    })
+  })
+
   it('nuestro propio dominio NO se cuenta como referral (inflaría el canal)', () => {
     expect(deriveChannel({ referrer: 'https://www.vence.es/tests' })).toBe('direct')
     expect(deriveChannel({ referrer: 'http://localhost:3000/' })).toBe('direct')

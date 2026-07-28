@@ -53,6 +53,20 @@ const RE_BUSCADOR = /(?:^|\.)(google|bing|duckduckgo|yahoo|ecosia|yandex|brave|s
 const RE_IA = /chatgpt\.com|perplexity\.|bard\.|gemini\.|copilot\./
 
 /**
+ * Hosts de INFRAESTRUCTURA de terceros por los que pasa nuestro propio flujo: volver de
+ * ellos no es un origen, es una escala del viaje que ya habíamos empezado.
+ *
+ * Lo destapó la producción a la hora de desplegar T-243: aparecía `accounts.google.com`
+ * como referrer —el retorno del login OAuth— y, como su host contiene `.google.`, se
+ * clasificaba como **`organic`**, inflando justo el canal que más interesa medir bien.
+ *
+ * No lo cazó la simulación porque su comprobación de dominios sospechosos solo miraba el
+ * cubo `referral`, y éste caía en `organic`. El check se ha corregido para revisar TODOS
+ * los cubos — el fallo era del verificador, no del clasificador.
+ */
+const RE_INFRA_PROPIA = /^(accounts|login|oauth2?)\.|(^|\.)(accounts\.google|login\.microsoftonline|appleid\.apple|checkout\.stripe|js\.stripe)\.com$/
+
+/**
  * Deriva el canal a partir de los click-IDs / UTM / referrer de un toque.
  *
  * Orden deliberado: los click-IDs mandan sobre los UTM (un anuncio puede traer ambos y el
@@ -85,6 +99,10 @@ export function deriveChannel(t: ChannelSignals): string {
     // `organic` — 121 casos en 7 días. Un clic desde el correo NO es SEO, y con la captura
     // ampliada iban a llegar muchos más.
     if (ref.startsWith('android-app://')) return canalDeApp(objetivo)
+    // La escala por infra propia (login OAuth, pasarela de pago) NO es un origen: el
+    // usuario ya venía de algún sitio. Va ANTES que buscadores porque `accounts.google.com`
+    // casaría con el patrón de Google y se contaría como SEO.
+    if (RE_INFRA_PROPIA.test(objetivo)) return 'direct'
     if (RE_IA.test(objetivo)) return 'ai_referral'
     if (RE_BUSCADOR.test(objetivo)) return 'organic'
     return 'referral'
