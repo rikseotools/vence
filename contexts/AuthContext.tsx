@@ -579,6 +579,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
+              // deviceId → el endpoint usa su MODO PRINCIPAL: resuelve los toques reales de
+              // este dispositivo (canal, landing y referrer de verdad) en vez del modo legacy.
+              // Sin él (T-243), esta llamada —que existe para garantizar cobertura ~100%— era
+              // la que ganaba la carrera y fijaba la fila con datos pobres: el first-touch es
+              // INMUTABLE (`onConflictDoNothing`), así que el binding bueno del callback ya no
+              // podía corregirla. Los campos de abajo se conservan como respaldo: si no hay
+              // toques, el endpoint sigue cayendo a su fallback y la cobertura no baja.
+              deviceId: typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null,
               channel: registrationSource,
               gclid: getCookie('google_gclid') || campaign?.gclid || null,
               fbclid: getCookie('meta_fbclid') || campaign?.fbclid || null,

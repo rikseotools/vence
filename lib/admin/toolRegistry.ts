@@ -178,6 +178,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'silencio tras desplegar es la verificación continua. El guardarraíl estático que impide ' +
       'reintroducir el patrón es `__tests__/guardrails/bearerTokenSinglePath.test.ts`.',
   },
+  sim_captura_atribucion: {
+    titulo: 'Simular el efecto de ampliar la captura de atribución antes de encenderla (canales, volumen y ruido)',
+    ruta: 'scripts/atribucion/sim-captura-ampliada.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/observability.md',
+    notas:
+      'npx tsx scripts/atribucion/sim-captura-ampliada.ts [--dias N]. Solo lectura. Usa los MÓDULOS ' +
+      'REALES (lib/attribution/deriveChannel + touchPolicy), no una copia: si la lógica cambia, la ' +
+      'simulación cambia con ella. Nació de T-243, donde el toque solo se emitía con UTM/click-id → ' +
+      'el 86% de las altas quedaba como `direct` y `organic` salía 1 vez en 12 días. Comprueba tres ' +
+      'cosas: (1) reclasifica los toques YA guardados y avisa si algún dominio PROPIO o de infra se ' +
+      'cuela como `referral`; (2) acota el volumen de escritura nuevo; (3) enseña la política sobre ' +
+      'referrers reales. **Ya pagó el día que se escribió:** destapó que ' +
+      '`android-app://com.google.android.gm/` (Gmail) se clasificaba como `organic` por contener ' +
+      '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
+      '`deriveChannel` o la política de toques.',
+  },
   // ── temario: epígrafe literal y ley servida ───────────────────────────────────────────────
   verify_epigrafe_apply: {
     titulo: 'Reescribir los epígrafes de un temario al LITERAL del boletín (Paso 1 de verificación)',

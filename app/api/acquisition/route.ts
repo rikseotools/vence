@@ -20,6 +20,8 @@ import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
 import { userAcquisition, attributionTouches } from '@/db/schema'
+import { deriveChannel } from '@/lib/attribution/deriveChannel'
+import { hasCampaignSignal } from '@/lib/attribution/touchPolicy'
 
 export const maxDuration = 15
 
@@ -39,29 +41,6 @@ const bodySchema = z.object({
 })
 
 type Touch = typeof attributionTouches.$inferSelect
-
-/** Deriva el canal de marketing a partir de los click-IDs/UTM de un toque. */
-function deriveChannel(t: Pick<Touch, 'gclid' | 'gbraid' | 'wbraid' | 'fbclid' | 'ttclid' | 'msclkid' | 'utmSource' | 'utmMedium' | 'referrer'>): string {
-  if (t.gclid || t.gbraid || t.wbraid) return 'google_ads'
-  if (t.fbclid) return 'meta_ads'
-  if (t.ttclid) return 'tiktok_ads'
-  if (t.msclkid) return 'bing_ads'
-  const src = (t.utmSource || '').toLowerCase()
-  const med = (t.utmMedium || '').toLowerCase()
-  if (src === 'google' && med === 'cpc') return 'google_ads'
-  if (['facebook', 'instagram', 'meta'].includes(src) || src.includes('fb') || src.includes('meta')) return 'meta_ads'
-  if (src || med) return src ? `${src}${med ? '/' + med : ''}` : 'referral'
-  // Sin UTM ni click-id → clasificar por el referrer:
-  const ref = (t.referrer || '').toLowerCase()
-  if (ref && !ref.includes('vence.es') && !ref.includes('localhost')) {
-    // Buscadores → orgánico; cualquier otro sitio externo → referral.
-    if (/(?:^|\.)(google|bing|duckduckgo|yahoo|ecosia|yandex|brave|startpage|baidu)\.|search\.|chatgpt\.com|perplexity\.|bard\.|gemini\./.test(ref)) {
-      return ref.includes('chatgpt') || ref.includes('perplexity') || ref.includes('bard') || ref.includes('gemini') ? 'ai_referral' : 'organic'
-    }
-    return 'referral'
-  }
-  return 'direct' // sin referrer ni campaña = tráfico directo (antes devolvía 'organic', incorrecto)
-}
 
 async function _POST(request: NextRequest): Promise<NextResponse> {
   const auth = await verifyAuth(request, '/api/acquisition')
@@ -138,6 +117,16 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
         ))
     }
 
+    // Respaldo cuando este device NO tiene toques (adblock, sessionStorage limpiado,
+    // registro desde otro dispositivo…). Antes esta rama fijaba 'direct' a secas y
+    // DESCARTABA los campos directos que el caller hubiera mandado — lo que convertía
+    // en 'direct' a usuarios cuyo gclid/UTM sí conocíamos. Desde T-243 `AuthContext`
+    // manda `deviceId` Y los campos, así que aquí se aprovechan los dos.
+    const sinToques = touches.length === 0
+    const canalRespaldo = sinToques
+      ? (hasCampaignSignal(a) || a.referrer ? deriveChannel(a) : a.channel || 'direct')
+      : deriveChannel(touches[0])
+
     // GA4 client_id: guardarlo aunque NO haya toques de campaña (sirve para que
     // GA4 atribuya también ventas orgánicas/directas). Asegura la fila base y
     // preserva el primer client_id capturado (coalesce).
@@ -146,7 +135,14 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
         .insert(userAcquisition)
         .values({
           userId,
-          channel: touches.length > 0 ? deriveChannel(touches[0]) : 'direct',
+          channel: canalRespaldo,
+          gclid: sinToques ? a.gclid ?? null : null,
+          fbclid: sinToques ? a.fbclid ?? null : null,
+          utmSource: sinToques ? a.utmSource ?? null : null,
+          utmMedium: sinToques ? a.utmMedium ?? null : null,
+          utmCampaign: sinToques ? a.utmCampaign ?? null : null,
+          landingPath: sinToques ? a.landingPath ?? null : null,
+          referrer: sinToques ? a.referrer ?? null : null,
           gaClientId: a.gaClientId,
         })
         .onConflictDoUpdate({
@@ -156,11 +152,26 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Fallback de COBERTURA: si no hubo toques NI gaClientId (directo sin GA,
-    // consentimiento rechazado, adblock…), garantizar fila base 'direct' para
-    // que TODO usuario tenga canal. onConflictDoNothing → nunca pisa atribución
-    // real existente. Sube la cobertura hacia el 100%.
-    const baseRow = touches.length === 0 && !a.gaClientId
-      ? await db.insert(userAcquisition).values({ userId, channel: 'direct' }).onConflictDoNothing().returning({ id: userAcquisition.userId })
+    // consentimiento rechazado, adblock…), garantizar fila base para que TODO usuario
+    // tenga canal. onConflictDoNothing → nunca pisa atribución real existente. Sube la
+    // cobertura hacia el 100%. Usa los campos directos si los hay (T-243): mejor un
+    // 'google_ads' con su gclid que un 'direct' vacío.
+    const baseRow = sinToques && !a.gaClientId
+      ? await db
+          .insert(userAcquisition)
+          .values({
+            userId,
+            channel: canalRespaldo,
+            gclid: a.gclid ?? null,
+            fbclid: a.fbclid ?? null,
+            utmSource: a.utmSource ?? null,
+            utmMedium: a.utmMedium ?? null,
+            utmCampaign: a.utmCampaign ?? null,
+            landingPath: a.landingPath ?? null,
+            referrer: a.referrer ?? null,
+          })
+          .onConflictDoNothing()
+          .returning({ id: userAcquisition.userId })
       : null
 
     return NextResponse.json({ success: true, touches: touches.length, baseCreated: !!baseRow?.length })

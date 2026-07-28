@@ -15,6 +15,7 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getAdminDb } from '@/db/client'
 import { attributionTouches } from '@/db/schema'
+import { shouldStoreTouch } from '@/lib/attribution/touchPolicy'
 
 export const maxDuration = 10
 const TOUCH_TIMEOUT_MS = 5000
@@ -67,13 +68,18 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   }
   const a = parsed.data
 
-  // Solo persistir si hay alguna señal de atribución (evita ruido de page-loads
-  // orgánicos sin parámetros). El cliente ya filtra, esto es defensa en profundidad.
-  const hasSignal =
-    a.gclid || a.gbraid || a.wbraid || a.fbclid || a.ttclid || a.msclkid ||
-    a.utmSource || a.utmCampaign
-  if (!hasSignal) {
-    return NextResponse.json({ success: true, skipped: 'no_signal' })
+  // ¿Merece guardarse? La regla vive en el núcleo PURO compartido con el emisor
+  // (`lib/attribution/touchPolicy.ts`). Antes estaba escrita aquí Y en el cliente con el
+  // mismo criterio equivocado —solo tráfico de pago—, y ese duplicado tenía un modo de fallo
+  // peor que el bug: ampliar solo el cliente habría dejado el toque descartado aquí
+  // respondiendo `success: true`, o sea silencio perfecto (T-243).
+  //
+  // Ahora también entra la ENTRADA DE SESIÓN sin campaña: su `referrer` dice el canal
+  // (buscador, IA, foro) y su ausencia es tráfico directo, que también es un dato. Lo único
+  // que se sigue descartando es la navegación INTERNA, que no aporta origen.
+  const { store, motivo } = shouldStoreTouch(a)
+  if (!store) {
+    return NextResponse.json({ success: true, skipped: motivo })
   }
 
   try {

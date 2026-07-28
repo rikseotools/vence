@@ -19,6 +19,7 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { esNavegacionInterna } from '@/lib/attribution/touchPolicy'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 const COOKIE_MAX_AGE_DAYS = 90
@@ -66,13 +67,25 @@ export default function AttributionCapture() {
       if (v) { payload[toCamel(k)] = v; if (k === 'utm_source' || k === 'utm_campaign') hasSignal = true }
     }
 
-    // Sin señales de campaña en la URL → no es un toque atribuible. No hacemos nada.
-    if (!hasSignal) return
-
-    // Dedup: no reenviar el mismo querystring dos veces en la misma sesión
-    // (evita doble toque por re-render / navegación que conserva params).
-    const dedupKey = `attr_touch_sent:${window.location.search}`
+    // ¿Merece un toque? La regla vive en el núcleo PURO compartido con el endpoint
+    // (`lib/attribution/touchPolicy.ts`): antes estaba aquí Y allí, con el mismo criterio
+    // equivocado —`if (!hasSignal) return`, o sea SOLO tráfico de pago—, y por eso el 86% de
+    // las altas quedaba como `direct` y el canal `organic` salía 1 vez en 12 días (T-243).
+    //
+    // Ahora hay dos clases de toque, con dedup distinto porque responden a preguntas distintas:
+    //   · CAMPAÑA: uno por querystring (un anuncio nuevo es un toque nuevo aunque sea la misma
+    //     sesión) — el comportamiento de siempre.
+    //   · ENTRADA DE SESIÓN: UNO por sesión, en la primera página que se ve. Solo ahí el
+    //     `referrer` dice de dónde viene (después ya es navegación interna nuestra), así que
+    //     repetirlo no aportaría nada y multiplicaría las escrituras por cada navegación.
+    const dedupKey = hasSignal
+      ? `attr_touch_sent:${window.location.search}`
+      : 'attr_touch_entrada_sesion'
     if (sessionStorage.getItem(dedupKey)) return
+
+    // Sin campaña Y con referrer nuestro = navegación interna: no dice nada del origen.
+    // (El endpoint lo vuelve a comprobar; esto ahorra el beacon.)
+    if (!hasSignal && esNavegacionInterna(document.referrer)) return
 
     const deviceId = getOrCreateDeviceId()
 

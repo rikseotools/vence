@@ -319,32 +319,6 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-243] 🟠 [ABIERTO 28/07] La atribución solo ve el tráfico de PAGO: el 86% de las altas queda como `direct` porque el toque no se emite sin UTM
-- **Cómo salió:** preguntando «¿de dónde viene el pico de usuarios de estos días, nos ha anunciado algún foro?». La respuesta hubo que armarla por vías indirectas (oposición elegida + fechas de plazo + campañas de email) porque **el sistema de atribución no lo sabe**.
-- **La causa raíz es UNA LÍNEA**, `components/tracking/AttributionCapture.tsx`:
-  ```js
-  // Sin señales de campaña en la URL → no es un toque atribuible. No hacemos nada.
-  if (!hasSignal) return
-  ```
-  `hasSignal` solo es cierto si la URL trae **click-id (gclid/fbclid/…) o UTM**. O sea: **solo el tráfico de PAGO genera toque**. La visita orgánica, la directa, el enlace de un foro y el de ChatGPT **no dejan rastro ninguno**, aunque su `landing_path` y su `referrer` estén ahí mismo en el navegador.
-- **Lo irónico:** `deriveChannel()` (`app/api/acquisition/route.ts`) **ya sabe clasificar** todo eso — tiene ramas para `organic` (buscadores), `ai_referral` (ChatGPT/Perplexity/Gemini) y `referral` (cualquier sitio externo). Nunca recibe esos toques porque se filtran antes de emitirse. El clasificador está construido y en ayunas.
-- **Medido (28/07):**
-  | | |
-  |---|---|
-  | altas 27-28/07 con fila de adquisición | 169 |
-  | de ellas, con `landing_path` real | **24 (14%)** |
-  | canal `organic` en 12 días | **1** (imposible para un sitio con SEO) |
-  | cobertura de `landing_path`, media de 8 semanas | **11-26%**, sin mejorar nunca |
-  - Y el 54% de las altas **sí pasa por el callback** que hace el binding bueno (`ga_client_id` lo demuestra): mandan su `deviceId`, pero **no hay toques que resolver** para ese device. El binding funciona; lo que falta es la materia prima.
-- **Segundo defecto, independiente y del mismo día:** el binding de `contexts/AuthContext.tsx` (añadido para garantizar «cobertura ~100%») llama a `/api/acquisition` **SIN `deviceId`** → cae al **modo legacy**, que inserta la fila con `channel: a.channel || 'organic'` y `landing_path` de unas cookies que solo existen en `/landing/*`. Como el first-touch es **inmutable** (`onConflictDoNothing`), **el que llega primero gana**: el fallback pensado para asegurar cobertura es justo lo que puede fijar la fila con datos pobres antes de que el binding bueno la escriba.
-- **Impacto:** 🟠 no se ve en pantalla, pero **es la base con la que se decide dónde meter el dinero**. Ahora mismo no se puede responder si el SEO rinde más o menos que Ads, ni detectar que un foro o un medio nos ha enlazado. El canal `chatgpt.com` aparece con 79 altas en 12 días **solo porque el referrer se coló por otra vía** — la magnitud real de ese canal (y de los demás) es desconocida.
-- **Cómo (en este orden, y el primero es pequeño):**
-  1. **Emitir un toque en la primera entrada de cada sesión aunque NO haya UTM**, con `landing_path` + `referrer`. `deriveChannel` ya hace el resto. Dedup por `sessionStorage` como ahora → 1 beacon por sesión, coste despreciable. **Es el 90% del valor.**
-  2. Mandar `deviceId` también desde `AuthContext` para que use el modo principal, conservando su fallback `direct` (que garantiza cobertura). Quita la carrera entre los dos escritores.
-  3. Simular antes de encender: con los toques ya en BD, comprobar que la reclasificación no infla `referral` con dominios propios (`vence.es`, correo, la pasarela de pago) — `deriveChannel` ya excluye `vence.es`, hay que verificar el resto.
-  4. Guardarraíl: test de que el toque se emite sin UTM (hoy no hay ninguno que lo cubra) y cobertura mínima de `landing_path` vigilada, para que esto no vuelva a degradarse en silencio durante 8 semanas.
-- **NO tocar sin pensar:** la captura es de 1ª parte y NO está gateada por consentimiento a propósito (igual que `FraudTracker`); el envío a plataformas de Ads sí lo está. Ampliar la captura no cambia eso, pero conviene dejarlo escrito en el PR.
-
 ### [T-233] 🟡 [ABIERTO 28/07] 105 explicaciones con la tabla APLANADA: en pantalla dicen algo distinto de lo que guarda la BD
 - **Qué ve el opositor:** la explicación se escribió como tabla usando `|` pero **sin la línea separadora** (`|---|---|`), así que markdown no la reconoce como tabla y **colapsa las filas en un solo párrafo**. El dato queda pegado a la etiqueta equivocada. Caso real (impugnación `bb487ee7`, usuaria Laura Zurdo, Outlook 365): la explicación guardaba correctamente `Crear un contacto | Ctrl+Mayús+C` y `Crear una convocatoria de reunión | Ctrl+Mayús+Q`, pero al renderizarse se leía *"…Ctrl+Mayús+**C** Crear una convocatoria de reunión…"*. Ella lo reportó como error de contenido, y tenía razón en lo que veía.
 - **Tamaño:** de **771** activas con `|` en la explicación, **666 llevan tabla bien formada** y **105 están aplanadas**. Detección determinista y sin ambigüedad: hay `|` en alguna línea y no existe ninguna línea `^\s*\|?\s*:?-{3,}`.
@@ -3628,6 +3602,23 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** campaña de citas ajenas del 28/07 (T-207).
 
 ## Hechas
+
+### [T-243] ✅ [HECHO 28/07 · falta desplegar] La atribución solo veía el tráfico de PAGO: el 86% de las altas quedaba como `direct`
+> **Causa raíz, una línea repetida en DOS sitios** (`components/tracking/AttributionCapture.tsx` y `app/api/attribution/touch/route.ts`): `if (!hasSignal) return`, donde `hasSignal` solo era cierto con click-id o UTM. O sea, **solo el tráfico de pago dejaba rastro**. La visita orgánica, la directa, el enlace de un foro y el de ChatGPT no registraban nada, aunque su `landing_path` y su `referrer` estuvieran ahí mismo en el navegador. Medido: **24 de 169 altas (14%) con `landing_path` real**, canal `organic` **1 vez en 12 días**, y 8 semanas de cobertura plana entre el 11% y el 26%.
+>
+> **El duplicado era peor que el bug:** ampliar solo el cliente habría dejado el toque descartado en el servidor **respondiendo `success: true`**. Silencio perfecto. Por eso la regla vive ahora en un núcleo puro compartido (`lib/attribution/touchPolicy.ts`) que importan los dos lados, con guardarraíl que falla si alguno vuelve a cortar por su cuenta.
+>
+> **Lo irónico:** `deriveChannel()` YA sabía clasificar buscadores, IA y referidos. Nunca recibía esos toques. El clasificador llevaba meses construido y en ayunas. Se ha extraído a `lib/attribution/deriveChannel.ts` para poder testearlo y simularlo (estaba atrapado dentro de una route).
+>
+> **Segundo defecto, independiente:** el binding de `AuthContext` llamaba a `/api/acquisition` **sin `deviceId`** → modo legacy → y como el first-touch es INMUTABLE, el fallback que existía para garantizar cobertura era el que fijaba la fila con datos pobres antes de que el binding bueno pudiera escribir. Ahora manda `deviceId` **y** conserva los campos directos, que el endpoint aprovecha como respaldo si ese device no tiene toques (antes los descartaba y ponía `direct` a secas, degradando a quien sí traía gclid).
+>
+> **La simulación pagó sola el día que se escribió** (`scripts/atribucion/sim-captura-ampliada.ts`, con los módulos REALES, no una copia): destapó que **`android-app://com.google.android.gm/` — Gmail — se clasificaba como `organic`** por contener `.google.` en el package name. 121 casos en 7 días. Un clic desde el correo no es SEO, y con la captura ampliada iban a llegar muchos más. Se resuelven ahora por paquete (Gmail→`email`, app de Google→`organic`, WhatsApp/Telegram→`social`, desconocida→`referral`, **nunca** `organic`).
+>
+> **Otros dos defectos preexistentes que salieron al poder testear:** el regex de buscadores se aplicaba a la URL entera, así que `https://duckduckgo.com/` (sin `www.`) caía en `referral` — media internet manda el referrer sin `www.`; y `copilot.` no contaba como IA. Los dos corregidos, cada uno con su test.
+>
+> **Verificado antes de encender:** 28 tests (política, clasificador, casos reales y paridad cliente↔endpoint) · simulación sobre 2.473 toques reales → **ningún dominio propio se cuela como `referral`**, la navegación interna se descarta y el volumen extra está acotado (~147/día como cota alta frente a 353/día actuales) · `test:unit` 793 suites / 18.982 tests verde · typecheck y lint limpios.
+>
+> **⏳ Falta desplegar** y, a los pocos días, comprobar en `user_acquisition` que aparecen `organic`, `ai_referral`, `referral` y `social`, y que la cobertura de `landing_path` sube desde ese 11-26%. **Si `referral` se dispara, mirar primero qué dominios lo componen** antes de tocar el clasificador.
 
 ### [T-236] ✅ [CERRADA 28/07 — desplegado y verificado en producción] La FAQ que ingiere Google decía la frase AMBIGUA de las plazas: la redacción nueva vivía en una rama muerta
 - **Qué:** la frase que distingue si el cupo de discapacidad va dentro o aparte (`lib/convocatoria/reservaDiscapacidad.ts`) se cableó en `app/[oposicion]/page.tsx` en **dos** superficies —el hero y la FAQ del JSON-LD—, pero **la de la FAQ solo se aplica en el array de fallback**, el que se genera cuando la oposición no tiene `landing_faqs` en BD. Medido el 28/07: **las 123 landings activas tienen `landing_faqs`**, y 69 de ellas mencionan «discapacidad» → la rama nueva **no se ejecuta en ninguna**.
