@@ -1046,7 +1046,7 @@ async function main() {
     LIMIT 50`)).rows;
   if (sinConv.length) add('app', 'error', null, 'feedback_sin_conversacion',
     `${sinConv.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
-    { count: sinConv.length, sample: sinConv.slice(0, 10).map(r => ({ id: r.id, type: r.type, msg: r.msg, creado: r.created_at })) });
+    { n: sinConv.length, sample: sinConv.slice(0, 10).map(r => ({ id: r.id, type: r.type, msg: r.msg, creado: r.created_at })) });
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
@@ -1068,7 +1068,13 @@ async function main() {
   // TODOS los hallazgos están igualmente en la tabla → el panel/badge los ven; el filtro
   // es solo para decidir si merece EMAIL.
   const APP_OBS_MIN = Number(process.env.APP_OBS_MIN || 10);
-  const appFire = appErr.filter(f => ['http_down', 'empty_topic'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
+  // `feedback_sin_conversacion` va en la lista de los que alertan SIEMPRE, con
+  // `http_down` y `empty_topic`: aquí el volumen no mide la gravedad. UN feedback
+  // incontestable es UN usuario que escribió y no recibirá respuesta nunca, y esperar a
+  // que se acumulen diez es esperar a tener diez personas ignoradas. (Se descubrió al
+  // correr el sweep de verdad, 28/07: el hallazgo usaba `detail.count` y este filtro lee
+  // `detail.n`, así que además no habría alertado NUNCA por volumen.)
+  const appFire = appErr.filter(f => ['http_down', 'empty_topic', 'feedback_sin_conversacion'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
 
   // Email APP (nightly, si hay fallos que merecen alerta)
   if (appFire.length) {
