@@ -92,6 +92,11 @@ Cada bug reportado → un journey nuevo (~20 líneas) que queda como **regresió
 - `recoveredFromBlip` / `retriesAreBounded` — resiliencia de red del cliente (bug #1).
 - `mixedInclusionIsWarned` — visibilidad del caso "ley entera + acotada".
 - `requestIsScopedTo` — la llamada va a la oposición esperada.
+- `floatingControlIsReachable` — un control flotante **se pinta Y recibe el clic** (bug Manolo,
+  28/07: la barra del examen se pegaba detrás de la cabecera, visible en el DOM pero sorda al
+  clic). Juzga con `elementFromPoint`, no con `isVisible()`, porque lo segundo era cierto
+  mientras estaba roto; y compara la altura contra el **borde real** de la cabecera, que cambia
+  con la sesión y el ancho. Reutilízalo para cualquier elemento pegajoso/flotante nuevo.
 - `failureWasObserved` — **meta-invariante**: un fallo visible SIN evento = punto ciego.
 
 ## Canary continuo en AWS (ya existe — NO se duplica)

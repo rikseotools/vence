@@ -1,4 +1,5 @@
 import {
+  floatingControlIsReachable,
   questionsWithinSelection,
   recoveredFromBlip,
   retriesAreBounded,
@@ -102,5 +103,61 @@ describe('failureWasObserved (meta-bug / punto ciego)', () => {
   })
   it('OK: sin fallo', () => {
     expect(failureWasObserved({ userVisibleFailure: false, observedEventCount: 0 }).ok).toBe(true)
+  })
+})
+
+describe('floatingControlIsReachable (bug Manolo: pintado pero sordo al clic)', () => {
+  it('FALLA: el control está en pantalla pero otro elemento recibe el clic en su centro', () => {
+    // El fallo original: la barra se pegaba DETRÁS de la cabecera. Visible en el DOM, con
+    // posición razonable, y aun así el clic aterrizaba en la cabecera.
+    const r = floatingControlIsReachable({
+      control: 'reloj', visible: true, occludedBy: 'div.sticky.top-0', topPx: 8,
+    })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/tapado/)
+    expect(r.name).toBe('floating_control_reachable:reloj')
+  })
+
+  it('FALLA: no se pinta', () => {
+    const r = floatingControlIsReachable({ control: 'reloj', visible: false })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/no se pinta/)
+  })
+
+  it('FALLA: se fue demasiado abajo (hueco de cabecera mal medido)', () => {
+    // Regresión real de la propia corrección: escanear los posicionados de la cabecera se
+    // tragó un menú oculto de 457 px y empujó los controles a media pantalla (295 con la
+    // cabecera acabando en 105).
+    const r = floatingControlIsReachable({
+      control: 'reloj', visible: true, occludedBy: null, topPx: 295, cabeceraBottomPx: 105,
+    })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/hueco de cabecera/)
+  })
+
+  it('FALLA: empieza POR ENCIMA del borde de la cabecera (solapa aunque el centro no)', () => {
+    const r = floatingControlIsReachable({
+      control: 'reloj', visible: true, occludedBy: null, topPx: 60, cabeceraBottomPx: 105,
+    })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/por encima del borde/)
+  })
+
+  it('OK: visible, nadie lo tapa y pegado justo bajo la cabecera', () => {
+    expect(floatingControlIsReachable({
+      control: 'reloj', visible: true, occludedBy: null, topPx: 116, cabeceraBottomPx: 105,
+    }).ok).toBe(true)
+  })
+
+  it('OK: la cabecera alta de un usuario logueado no cuenta como "demasiado abajo"', () => {
+    // Con sesión la cabecera mide bastante más (fila de racha/leyes): el control legítimamente
+    // aparece más abajo. Un umbral fijo lo habría marcado como fallo.
+    expect(floatingControlIsReachable({
+      control: 'reloj', visible: true, occludedBy: null, topPx: 210, cabeceraBottomPx: 190,
+    }).ok).toBe(true)
+  })
+
+  it('OK: sin medida de posición no inventa un fallo', () => {
+    expect(floatingControlIsReachable({ control: 'saltar', visible: true }).ok).toBe(true)
   })
 })

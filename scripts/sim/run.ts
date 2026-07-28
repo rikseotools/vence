@@ -61,6 +61,27 @@ async function loadJourneys(): Promise<Journey[]> {
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/**
+ * Un modal a pantalla completa se traga TODOS los clics del journey, y el síntoma que llega es
+ * un `locator.click: Timeout` sobre un botón que existe y se ve — un rato perdido buscando un
+ * bug del app que no está ahí (28/07: la cuenta de test no tenía edad/género, así que el
+ * onboarding se abría encima de cada journey autenticado). Se detecta al navegar y se falla
+ * con lo que hay que arreglar, no con el timeout.
+ */
+async function assertSinModalBloqueante(page: Page): Promise<void> {
+  const onboarding = await page
+    .locator('text=/necesitamos saber estos datos/i')
+    .count()
+    .catch(() => 0)
+  if (onboarding > 0) {
+    throw new Error(
+      '[sim] el modal de ONBOARDING está tapando la página: la cuenta de test no está ' +
+      'completa (le falta edad, género, ciudad, oposición u onboarding_completed_at). ' +
+      'Complétala en user_profiles — si no, ningún journey autenticado puede pulsar nada.',
+    )
+  }
+}
+
 function buildCtx(page: Page, ctxPw: BrowserContext, journey: Journey, steps: StepOutcome[], shotDir: string): JourneyCtx {
   const seen = new Map<string, string>()
   page.on('request', r => {
@@ -73,7 +94,10 @@ function buildCtx(page: Page, ctxPw: BrowserContext, journey: Journey, steps: St
     base: BASE,
     positionType: journey.as?.positionType,
     page,
-    async goto(path) { await page.goto(BASE + path, { waitUntil: 'networkidle' }).catch(() => {}) },
+    async goto(path) {
+      await page.goto(BASE + path, { waitUntil: 'networkidle' }).catch(() => {})
+      await assertSinModalBloqueante(page)
+    },
     async api(path, init) {
       return page.evaluate(async ({ b, path, init }) => {
         const r = await fetch(b + path, {
@@ -159,6 +183,16 @@ async function runJourney(journey: Journey): Promise<SimResult> {
 
   const browser = await chromium.launch({ headless: true })
   const ctxPw = await browser.newContext()
+  // El runner corre bajo `tsx` (esbuild con keepNames): esbuild reescribe las funciones con
+  // nombre insertando una llamada al helper `__name`. Cuando un journey serializa una función
+  // para el navegador (`page.evaluate`), ese helper viaja con ella pero NO existe allí, y el
+  // journey muere con "ReferenceError: __name is not defined" — un fallo del harness que se
+  // confunde con un fallo del app. Se define como identidad en cada documento antes de nada,
+  // así cualquier journey puede usar `page.evaluate` con normalidad.
+  await ctxPw.addInitScript(() => {
+    // @ts-expect-error — shim de esbuild en el navegador
+    if (typeof window.__name === 'undefined') window.__name = (fn: unknown) => fn
+  })
   let error: string | undefined
   let invariants: SimResult['invariants'] = []
   try {

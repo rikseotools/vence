@@ -11,6 +11,7 @@ import {
   estadoReloj,
   siguienteEnBlanco,
   anteriorEnBlanco,
+  indiceMasCentrado,
   cuantasEnBlanco,
   OBJETIVO_MIN_MINUTOS,
   OBJETIVO_MAX_MINUTOS,
@@ -446,6 +447,31 @@ export default function ExamLayout({
   // arriba ya están el reloj y las respondidas en su tarjeta, así que flotar ahí solo taparía
   // el título sin aportar nada.
   const { ref: cabeceraExamenRef, fuera: cabeceraExamenFuera } = useFueraDePantalla<HTMLDivElement>()
+
+  // El cursor de "siguiente/anterior en blanco" sigue al usuario mientras se desplaza: si no,
+  // el salto parte de la última que respondió y, en un examen recién abierto (sin ninguna
+  // respondida), el primer "›" te mandaba de vuelta a la pregunta 1. Lo cazó la simulación.
+  // Es un ref, no estado: no debe re-renderizar la lista entera en mitad de un examen.
+  useEffect(() => {
+    if (isSubmitted || typeof window === 'undefined') return
+    let pendiente = false
+    const alDesplazarse = () => {
+      if (pendiente) return
+      pendiente = true
+      requestAnimationFrame(() => {
+        pendiente = false
+        const nodos = Array.from(document.querySelectorAll('[id^="pregunta-"]'))
+        const medidas = nodos.map(n => {
+          const r = n.getBoundingClientRect()
+          return { index: Number(n.id.replace('pregunta-', '')), top: r.top, height: r.height }
+        })
+        const centrada = indiceMasCentrado(medidas, window.innerHeight)
+        if (centrada !== null) ultimaVisitadaRef.current = centrada
+      })
+    }
+    window.addEventListener('scroll', alDesplazarse, { passive: true })
+    return () => window.removeEventListener('scroll', alDesplazarse)
+  }, [isSubmitted])
 
   // 🔒 Estados para límite de preguntas (usuarios FREE)
   const [effectiveQuestions, setEffectiveQuestions] = useState<ExamQuestion[]>(questions || [])
@@ -1163,6 +1189,9 @@ export default function ExamLayout({
     const destino = buscar(
       userAnswers as Record<number, string | undefined>,
       totalQuestions,
+      // Punto de partida: donde ESTÁ el usuario. El ref lo mantiene al día tanto al responder
+      // como al desplazarse (ver el efecto de scroll), así que el salto es relativo a lo que
+      // tiene delante y no a la última que tocó.
       ultimaVisitadaRef.current,
     )
     if (destino === null) return

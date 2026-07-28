@@ -138,6 +138,64 @@ export function requestIsScopedTo(url: string | null, positionType: string): Inv
 }
 
 /**
+ * INVARIANTE de ALCANZABILIDAD (bug Manolo, 28/07/2026): un control flotante que se PINTA
+ * pero al que no le llegan los clics es peor que uno ausente — el usuario lo ve (o ni eso) y
+ * no responde. Pasó con la barra del examen: se pegaba con `top-0` bajo una cabecera también
+ * pegajosa y con más `z-index`, así que quedaba DETRÁS: invisible y sorda a los clics. Sus
+ * dos quejas ("el reloj no baja", "el botón no funciona") eran ese único fallo.
+ *
+ * El juicio no es "¿existe en el DOM?" ni "¿está en pantalla?" — las dos cosas eran ciertas
+ * mientras estaba roto. Es: en el CENTRO del control, ¿quién recibiría el clic? Por eso el
+ * journey pasa aquí el resultado de `elementFromPoint`, no un `isVisible()`.
+ *
+ * El segundo juicio caza el extremo contrario: un control que HUYE hacia abajo porque se midió
+ * mal el hueco de la cabecera (nos pasó al corregirlo: un menú oculto de 457 px empujó los
+ * controles a media pantalla). Ahí nadie los tapa, pero están donde no deben. Se juzga contra
+ * el borde REAL de la cabecera y no contra un número fijo, porque ese borde cambia con el
+ * ancho, con la sesión y con el aviso de convocatoria: "pegado debajo de la cabecera" es el
+ * invariante; "a menos de N píxeles" sería una constante que envejece.
+ */
+export function floatingControlIsReachable(opts: {
+  control: string
+  /** ¿lo pinta el navegador? (display/visibility/opacity ya resueltos) */
+  visible: boolean
+  /** qué elemento recibiría el clic en su centro; null = el propio control. */
+  occludedBy?: string | null
+  /** distancia al borde superior del viewport, si el journey la midió. */
+  topPx?: number | null
+  /** borde inferior de la cabecera pegajosa, si el journey lo midió. */
+  cabeceraBottomPx?: number | null
+  /** holgura admitida bajo la cabecera (separación de diseño). */
+  margenPx?: number
+}): InvariantResult {
+  const name = `floating_control_reachable:${opts.control}`
+  if (!opts.visible) return fail(name, `"${opts.control}" no se pinta cuando debería estar disponible`)
+  if (opts.occludedBy) {
+    return fail(name, `"${opts.control}" está tapado por ${opts.occludedBy}: el clic del usuario no le llega`)
+  }
+  const margen = opts.margenPx ?? 40
+  if (typeof opts.topPx === 'number' && typeof opts.cabeceraBottomPx === 'number') {
+    const limite = opts.cabeceraBottomPx + margen
+    if (opts.topPx > limite) {
+      return fail(
+        name,
+        `"${opts.control}" quedó a ${Math.round(opts.topPx)}px cuando la cabecera acaba en ${Math.round(opts.cabeceraBottomPx)}px ` +
+        `(margen ${margen}px): hueco de cabecera mal medido`,
+      )
+    }
+    if (opts.topPx < opts.cabeceraBottomPx - 1) {
+      // Solapa la cabecera aunque `elementFromPoint` no lo haya visto (p.ej. porque el centro
+      // del control cae justo por debajo del borde): sigue estando medio tapado.
+      return fail(
+        name,
+        `"${opts.control}" empieza a ${Math.round(opts.topPx)}px, por encima del borde de la cabecera (${Math.round(opts.cabeceraBottomPx)}px)`,
+      )
+    }
+  }
+  return pass(name)
+}
+
+/**
  * INVARIANTE de OBSERVABILIDAD (meta-bug): si el usuario vive un fallo, la observabilidad
  * debió capturarlo. Un fallo visible con CERO eventos = punto ciego (caso Alfonso #1, cuya
  * caída no dejó rastro). Cruza lo que la sim vio con lo que se logueó.

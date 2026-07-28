@@ -948,11 +948,17 @@ export default function HeaderES() {
 
 
           {/* MENÚ MÓVIL */}
-          <div className={`xl:hidden absolute left-0 right-0 top-full bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ease-in-out ${
-            isMobileMenuOpen 
-              ? 'opacity-100 visible' 
-              : 'opacity-0 invisible'
-          }`}>
+          <div
+            // Cuelga bajo la cabecera pero es TRANSITORIO: no reserva sitio, se abre encima.
+            // Por eso NO cuenta para `useOffsetCabecera` (contarlo hundía los controles del
+            // examen media pantalla, porque incluso cerrado mide 457 px).
+            data-cabecera-overlay="menu-movil"
+            className={`xl:hidden absolute left-0 right-0 top-full bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ease-in-out ${
+              isMobileMenuOpen
+                ? 'opacity-100 visible'
+                : 'opacity-0 invisible'
+            }`}
+          >
             <nav className="bg-white dark:bg-gray-900 p-4">
               
               {/* Indicador de oposición móvil (solo si usuario logueado) */}

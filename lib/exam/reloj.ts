@@ -126,6 +126,30 @@ export function anteriorEnBlanco(
   return null
 }
 
+/**
+ * Índice de la pregunta que el usuario está MIRANDO (la más centrada en pantalla), o `null` si
+ * no hay ninguna medible.
+ *
+ * Es el punto de partida natural de "siguiente/anterior en blanco": el cursor tiene que ser
+ * dónde estás, no la última que tocaste. Lo cazó la simulación (28/07): en un examen recién
+ * abierto, sin nada respondido, el cursor valía -1 y el primer "›" mandaba a la pregunta 1 —
+ * o sea, de vuelta al principio del examen.
+ */
+export function indiceMasCentrado(
+  elementos: Array<{ index: number; top: number; height: number }>,
+  altoViewport: number,
+): number | null {
+  if (!elementos.length || !Number.isFinite(altoViewport) || altoViewport <= 0) return null
+  const centro = altoViewport / 2
+  let mejor: { index: number; d: number } | null = null
+  for (const e of elementos) {
+    if (!Number.isFinite(e.top) || !Number.isFinite(e.height)) continue
+    const d = Math.abs(e.top + e.height / 2 - centro)
+    if (!mejor || d < mejor.d) mejor = { index: e.index, d }
+  }
+  return mejor ? mejor.index : null
+}
+
 /** Cuántas quedan en blanco (para el contador de la barra). */
 export function cuantasEnBlanco(
   respuestas: Record<number, string | undefined | null> | Array<string | undefined | null>,

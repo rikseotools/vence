@@ -14,6 +14,7 @@ import {
   estadoReloj,
   siguienteEnBlanco,
   anteriorEnBlanco,
+  indiceMasCentrado,
   cuantasEnBlanco,
   OBJETIVO_MIN_MINUTOS,
   OBJETIVO_MAX_MINUTOS,
@@ -154,5 +155,46 @@ describe('saltar a las preguntas en blanco', () => {
     expect(siguienteEnBlanco(respuestas, 5, -99)).toBe(2)
     expect(siguienteEnBlanco(respuestas, 5, NaN as unknown as number)).toBe(2)
     expect(siguienteEnBlanco(respuestas, 5, 999)).toBe(2)
+  })
+})
+
+describe('indiceMasCentrado (el cursor sigue a lo que el usuario mira)', () => {
+  const alto = 800
+
+  it('elige la pregunta cuyo centro está más cerca del centro de la pantalla', () => {
+    const medidas = [
+      { index: 0, top: -600, height: 400 },
+      { index: 1, top: 200, height: 400 }, // centro 400 = centro de pantalla
+      { index: 2, top: 700, height: 400 },
+    ]
+    expect(indiceMasCentrado(medidas, alto)).toBe(1)
+  })
+
+  it('en lo alto del examen el cursor es la primera, no -1 (el fallo que cazó la simulación)', () => {
+    // Con -1 como cursor, el primer "›" mandaba de vuelta a la pregunta 1.
+    const medidas = [
+      { index: 0, top: 100, height: 400 },
+      { index: 1, top: 520, height: 400 },
+    ]
+    expect(indiceMasCentrado(medidas, alto)).toBe(0)
+  })
+
+  it('sin preguntas medibles devuelve null (el llamador conserva su cursor)', () => {
+    expect(indiceMasCentrado([], alto)).toBeNull()
+    expect(indiceMasCentrado([{ index: 0, top: NaN, height: 10 }], alto)).toBeNull()
+  })
+
+  it('sin alto de ventana no inventa un cursor', () => {
+    expect(indiceMasCentrado([{ index: 3, top: 0, height: 10 }], 0)).toBeNull()
+  })
+
+  it('el salto encadenado avanza usando el cursor que deja el desplazamiento', () => {
+    // Simula el bucle real: miras la 2 (centrada), pulsas ›, y el cursor pasa a ser el destino.
+    const respuestas: Record<number, string | undefined> = { 0: 'a', 1: 'b' }
+    const cursor = indiceMasCentrado([{ index: 1, top: 200, height: 400 }], alto)
+    expect(cursor).toBe(1)
+    const destino = siguienteEnBlanco(respuestas, 5, cursor as number)
+    expect(destino).toBe(2)
+    expect(siguienteEnBlanco(respuestas, 5, destino as number)).toBe(3)
   })
 })
