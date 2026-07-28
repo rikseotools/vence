@@ -8,7 +8,14 @@
 //   Con --sid: COGE (claim) la impugnación para tu sesión y avisa si otra sesión ya la
 //   está revisando (reparto entre 2-10 sesiones sin pisarse, ver cola.cjs). Sin --sid: solo dossier.
 const fs = require('fs');
-const pg = require('/home/manuel/Documentos/github/vence/backend/node_modules/postgres');
+// `postgres` se carga PEREZOSAMENTE (igual que en `validar-explicacion.cjs`). Antes era un
+// require de RUTA ABSOLUTA a la máquina de Manuel en el top-level: fuera de ella —CI, otro
+// worktree, otro portátil— el módulo reventaba nada más importarlo, aunque solo quisieras las
+// funciones puras. Lo destapó el test de `mapaExposicion`, que pasaba en local y moría en CI.
+const getPg = () => {
+  try { return require('postgres'); } catch { /* fuera del backend, se prueba su node_modules */ }
+  return require(require('path').join(__dirname, '..', '..', 'backend', 'node_modules', 'postgres'));
+};
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
@@ -58,7 +65,7 @@ if (require.main !== module) {
 (async () => {
   const did = process.argv[2];
   if (!did) { console.error('Uso: revisar-impugnacion.cjs <dispute_id>'); process.exit(2); }
-  const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
+  const s = getPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
   try {
     let d, isPsy = false;
     [d] = await s`SELECT *, 'legislative' qtype FROM question_disputes WHERE id=${did}`;
