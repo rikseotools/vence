@@ -44,15 +44,55 @@ const TABLES_WITH_LEGAL_RETENTION: Array<{ table: string; column: string }> = [
 // REQUISITO: la fila de deleted_users_log (con deletion_reason) debe existir
 // ANTES — la función la usa para escribir archived_data y falla si no está.
 
+/**
+ * Presupuesto de tiempo para el borrado, SOLO en esta ruta.
+ *
+ * El cliente admin lleva `statement_timeout=30000` en la cadena de conexión (correcto: impide que
+ * una query de admin se quede colgada para siempre). Pero un borrado RGPD no es una query de admin
+ * cualquiera: es UNA sentencia que barre 89 tablas. Medido el 28/07 sobre el usuario más activo de
+ * la base (75.272 filas en `test_questions`, alta en junio), con simulación `ROLLBACK` en producción:
+ *
+ *   delete_user_account() completo …… 186,5 s     ← contra 30 s de presupuesto
+ *     user_interactions_archive ……… 50,9 s (63.254 filas)
+ *     test_questions …………………… 39,3 s (75.272)
+ *     user_interactions ………………… 28,4 s (95.637)
+ *     observable_events ………………… 21,3 s (39.790)
+ *     …y una cola de 85 tablas más
+ *
+ * No hay un culpable que optimizar: son ~400.000 filas repartidas, cada una con su mantenimiento de
+ * índices. Con 30 s el `SELECT` se abortaba a la mitad, la transacción hacía ROLLBACK entera y el
+ * endpoint devolvía `success:false` **con la cuenta intacta** — un usuario que ejerce el Art. 17 y
+ * se queda sin borrar. Que la salvaguarda contra queries colgadas impida cumplir la ley es una
+ * elección de valores equivocada: aquí la protección es que la transacción sea atómica (o borra
+ * todo o no borra nada), no que se corte a los 30 s.
+ *
+ * 15 min es holgado a propósito (8× el peor caso medido) para que crezca la base sin volver a
+ * romperse, y sigue siendo un techo: si algo se cuelga de verdad, cae.
+ *
+ * ⚠️ LO QUE ESTO NO ARREGLA: la petición HTTP puede morir antes (ALB/CloudFront cortan mucho antes
+ * de 186 s) y el admin verá un 504 — pero la transacción de la BD **sigue y commitea**. O sea, la
+ * cuenta SÍ queda borrada aunque la respuesta se pierda. Verificarlo en BD antes de reintentar
+ * (`select count(*) from user_profiles where id = …`), nunca dar por fallido lo que solo perdió la
+ * respuesta. El arreglo bueno —responder 202 y ejecutar el borrado en segundo plano— está en T-215.
+ */
+const BORRADO_TIMEOUT_MS = 15 * 60 * 1000
+
 export async function deleteUserData(userId: string): Promise<DeletionResult[]> {
   const db = getAdminDb()
+  const t0 = Date.now()
   try {
-    await db.execute(sql`SELECT public.delete_user_account(${userId}::uuid)`)
-    console.log('🗑️ delete_user_account OK para usuario:', userId)
+    // Transacción explícita: `SET LOCAL` solo vive dentro de ella, así que el resto de queries del
+    // cliente admin (compartido, `max:5`) conserva su timeout de 30 s. Sin la transacción, un `SET`
+    // a secas se quedaría pegado a la conexión del pool y lo heredaría la siguiente query ajena.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL statement_timeout = ${sql.raw(String(BORRADO_TIMEOUT_MS))}`)
+      await tx.execute(sql`SELECT public.delete_user_account(${userId}::uuid)`)
+    })
+    console.log(`🗑️ delete_user_account OK para usuario: ${userId} (${((Date.now() - t0) / 1000).toFixed(1)} s)`)
     return [{ table: '_delete_user_account', status: 'deleted' }]
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('❌ delete_user_account falló para', userId, ':', msg)
+    console.error(`❌ delete_user_account falló para ${userId} tras ${((Date.now() - t0) / 1000).toFixed(1)} s:`, msg)
     return [{ table: '_delete_user_account', status: 'error', error: msg }]
   }
 }

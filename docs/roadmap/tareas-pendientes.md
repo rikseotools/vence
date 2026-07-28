@@ -403,7 +403,47 @@ incluida).
   - **⏭️ Lo que queda NO es "falta un parser":** **DOE y BOPV** publican en su sumario una URL que no es el documento (el DOE sirve una página de título+analítica sin la disposición; el BOPV mete el texto en un `iframe`). Hay que resolver su URL de contenido real ANTES de darles doc_key: reconocerlas ahora sería provenance apuntando a un caparazón.
   - **NO tocado (sigue abierto):** el **backfill de las ~104 históricas** (decisión de Manuel el 28/07: primero la causa raíz, que la deuda deje de crecer) y el **cabo 2** (PDF del BOCM con el CMap roto).
 
-### [T-215] 🔴 [ABIERTO 28/07] El borrado RGPD sigue expirando con los usuarios ACTIVOS (los 15 triggers de `test_questions`)
+### [T-215] 🟠 [ABIERTO 28/07 · el borrado YA CABE en la BD; queda que la RESPUESTA HTTP no se pierda] El borrado RGPD expiraba con los usuarios ACTIVOS
+> **⚠️ El diagnóstico con el que se abrió esta ficha era FALSO, y por eso las tres vías que barajaba
+> apuntaban al sitio equivocado.** Medido el 28/07 con `pg_stat_user_functions` (`track_functions=pl`)
+> y con la atribución por trigger de `EXPLAIN (ANALYZE)`, no por intuición:
+> - **22 de los 26 triggers de `test_questions` están en `tgenabled='D'`** — desactivados. Los 6
+>   materializadores de stats registraron **0 llamadas** en el borrado. No eran el problema.
+> - El único que costaba era **`tg_test_questions_emit_outbox`**: 38,4 s (75.272 llamadas), y lo que
+>   escribía —una fila de outbox por cada `test_question`, con `to_jsonb(OLD)` DUPLICADO— **lo borraba
+>   la propia transacción** en su paso 4. Trabajo puro para tirar, que además metía una copia íntegra
+>   de los datos del usuario que pide que le borres los datos.
+> - **Y aun así el trigger era solo el 20%.** El borrado completo tarda **186,5 s** repartidos entre
+>   **89 tablas y ~400.000 filas**: `user_interactions_archive` 50,9 s · `test_questions` 39,3 s ·
+>   `user_interactions` 28,4 s · `observable_events` 21,3 s · y una cola de 85 tablas. No hay un
+>   culpable que optimizar; es mantenimiento de índices repartido.
+>
+> **Trampa de método, anotada para la próxima:** comparar dos ejecuciones seguidas en producción NO
+> vale — la primera medida dio 111,7 s y la siguiente 14,0 s por caché caliente, y un A/B posterior
+> salió SOLAPADO (39,6 s con el arreglo vs 34,5 s sin él). Lo único que aguanta es la atribución
+> DENTRO de la misma sentencia (`Trigger tg_…: time=…` de `EXPLAIN ANALYZE`): ahí se ve limpio que el
+> trigger baja de **38,4 s a 8,5 s**.
+>
+> **✅ HECHO el 28/07:**
+> 1. `supabase/migrations/20260728_borrado_rgpd_sin_outbox.sql` — el trigger del outbox se calla
+>    durante el borrado, con una marca de transacción (`app.deleting_user` = el `user_id`, vía
+>    `set_config(..., is_local => true)`) que fija `delete_user_account()`. **Aplicada.** Verificado
+>    con tres pruebas en `ROLLBACK`: sin marca sigue emitiendo · con la marca se calla · **con la marca
+>    de OTRO usuario emite** (no es un interruptor global). 75.272 filas de outbox → **0**.
+> 2. `lib/api/admin-delete-user/queries.ts` — el borrado va en transacción explícita con
+>    `SET LOCAL statement_timeout = 15 min` (el cliente admin corta a 30 s). **Este era el fallo real
+>    que veía el usuario:** a los 30 s la sentencia abortaba, la transacción hacía ROLLBACK ENTERA y
+>    el endpoint devolvía `success:false` con la cuenta intacta. Fijado como regresión en
+>    `__tests__/api/admin/delete-user.test.ts` (que el SET exista, su valor, y que vaya ANTES).
+>
+> **⏭️ LO QUE QUEDA (y por qué esto sigue abierto):** 186 s no caben en una petición HTTP —
+> ALB/CloudFront cortan mucho antes—, así que el admin verá un **504 aunque el borrado se complete y
+> commitee**. Hoy eso ya no es «no se borró», es «no me enteré»: **verificar en BD antes de
+> reintentar** (`select count(*) from user_profiles where id = …`). El arreglo bueno es responder
+> **202 y ejecutar el borrado en segundo plano** (`after()` de Next o un job), dejando traza del
+> resultado; toca el contrato del endpoint y sus 4 ficheros de test, así que va aparte.
+> Fuera de eso, lo que de verdad bajaría los 186 s es reducir índices/volumen (`test_questions` tiene
+> **18 índices, 3,2 GB sobre 2,3 GB de datos**), que es otra conversación.
 - **Qué:** `/api/admin/delete-user` devuelve `success:false` y **no borra la cuenta** cuando el usuario tiene actividad real. El pool corta a los 20 s (`statement_timeout`, `backend/src/db/database.module.ts`) y `delete_user_account()` no llega.
 - **Estado tras el arreglo parcial del 28/07** (índice `idx_observable_events_user_id`, migración `20260728_observable_events_user_id_idx.sql`), medido con simulaciones `ROLLBACK` sobre usuarios REALES:
   | usuario | actividad | antes | ahora |

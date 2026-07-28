@@ -103,10 +103,16 @@ describe('Admin Delete User - Queries', () => {
   // AHORA en la función SQL — se validan con una verificación de integración
   // contra BD real (ver docs/maintenance/eliminacion-cuentas.md §6, "barrido
   // final hasta 0 filas"), no con mocks.
+  // El borrado va dentro de una TRANSACCIÓN explícita desde el 28/07 (T-215): necesita subirse el
+  // `statement_timeout` con `SET LOCAL`, y `SET LOCAL` fuera de una transacción se quedaría pegado a
+  // la conexión del pool (compartida, max:5) para la siguiente query ajena. El mock reproduce eso —
+  // `tx` es el mismo doble que `db`— para que el test siga hablando de round-trips reales.
   function mockAdminDb(executeMock: jest.Mock) {
     const sqlFn: any = (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values, _type: 'sql' })
     sqlFn.raw = (str: string) => str
-    jest.doMock('@/db/client', () => ({ getAdminDb: () => ({ execute: executeMock }) }))
+    const db: any = { execute: executeMock }
+    db.transaction = (fn: (tx: unknown) => Promise<unknown>) => fn(db)
+    jest.doMock('@/db/client', () => ({ getAdminDb: () => db }))
     jest.doMock('drizzle-orm', () => ({ sql: sqlFn }))
   }
 
@@ -117,10 +123,19 @@ describe('Admin Delete User - Queries', () => {
     const { deleteUserData } = require('@/lib/api/admin-delete-user/queries')
     const result = await deleteUserData('550e8400-e29b-41d4-a716-446655440000')
 
-    // 1 sola llamada (no ~52) → mata el 504 por round-trips
-    expect(executeMock).toHaveBeenCalledTimes(1)
-    const sqlArg = JSON.stringify(executeMock.mock.calls[0][0])
-    expect(sqlArg).toContain('delete_user_account')
+    // 1 sola llamada A LA FUNCIÓN (no ~52 DELETE sueltos) → mata el 504 por round-trips.
+    const llamadas = executeMock.mock.calls.map((c) => JSON.stringify(c[0]))
+    expect(llamadas.filter((s) => s.includes('delete_user_account'))).toHaveLength(1)
+
+    // [T-215] Y va con presupuesto propio: el cliente admin corta a 30 s y el borrado del usuario
+    // más activo tarda 186,5 s medidos. Sin esto la transacción abortaba a medias, hacía ROLLBACK
+    // entera y la cuenta seguía viva devolviendo `success:false` — un Art. 17 incumplido en silencio.
+    const timeout = llamadas.find((s) => s.includes('statement_timeout'))
+    expect(timeout).toBeDefined()
+    expect(timeout).toContain('900000') // 15 min: 8× el peor caso medido
+    // El SET va ANTES de la llamada, o no aplica a nada.
+    expect(llamadas.findIndex((s) => s.includes('statement_timeout')))
+      .toBeLessThan(llamadas.findIndex((s) => s.includes('delete_user_account')))
 
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({ table: '_delete_user_account', status: 'deleted' })
