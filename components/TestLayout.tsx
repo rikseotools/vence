@@ -54,6 +54,9 @@ import { buildRepasoFallosUrl } from '@/lib/nav/repasoFallosUrl'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
 import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/answerSaveQueue'
+// Núcleo puro del payload de respuesta (incluye la permutación del barajado, dato del que depende
+// que una respuesta se corrija bien). Extraído del componente para poder testear el ida y vuelta.
+import { buildAnswerPayload, normalizeOptionOrder, type QuestionForPayload } from '@/lib/answers/buildAnswerPayload'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { usePendingAnswers } from '@/hooks/usePendingAnswers'
 import { logClientError } from '@/lib/logClientError'
@@ -1069,22 +1072,20 @@ export default function TestLayout({
     const effectiveTema = typeof questionTema === 'number' && questionTema > 0 ? questionTema : tema
 
     const payload: Record<string, unknown> = {
-      questionId: currentQ.id,
-      // Feature "Dejar en blanco": userAnswer=null cuando isBlank=true.
-      // El backend valida con .refine() la coherencia (ver schemas.ts).
-      userAnswer: isBlankFlag ? null : answerIndex,
-      isBlank: isBlankFlag,
-      sessionId: session?.id ?? null,
-      questionIndex,
-      questionText: currentQ.question_text || currentQ.question || '',
-      options: currentQ.options || [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d, currentQ.option_e].filter(Boolean),
-      // 🔀 Barajar opciones (Fase 1): permutación con la que el servidor sirvió esta
-      // pregunta. answerIndex/userAnswer es la POSICIÓN MOSTRADA; el server usa
-      // option_order para mapearla al índice original antes de validar/guardar.
-      // null cuando la pregunta no se barajó (retrocompatible).
-      optionOrder: (currentQ as any).option_order ?? null,
-      tema: effectiveTema,
-      questionType: (currentQ.question_type === 'psychometric' ? 'psychometric' : 'legislative'),
+      // Núcleo del payload construido por una función PURA y TESTEADA
+      // (`lib/answers/buildAnswerPayload`): ahí viaja `optionOrder`, la permutación con la que el
+      // servidor sirvió las opciones. Si ese dato se pierde, el servidor corrige la posición
+      // MOSTRADA contra la clave ORIGINAL y marca fallo a quien acertó, en silencio y sin dejar
+      // rastro. Estaba escrito aquí dentro, donde no se podía probar; el viaje de ida y vuelta lo
+      // fija ahora `__tests__/answers/viajeDeIdaYVueltaDelBarajado.test.ts`.
+      ...buildAnswerPayload({
+        question: currentQ as unknown as QuestionForPayload,
+        answerIndex,
+        isBlank: isBlankFlag,
+        sessionId: session?.id ?? null,
+        questionIndex,
+        tema: effectiveTema,
+      }),
       article: currentQ.article ? {
         id: currentQ.article.id || currentQ.primary_article_id || null,
         number: currentQ.article.number || currentQ.article_number || null,
@@ -1198,7 +1199,10 @@ export default function TestLayout({
                   selectedAnswer: a.selectedAnswer ?? -1,
                   // 🔀 Barajar opciones (Fase 1): permutación servida, para que el
                   // gap-fill server-side mapee la posición mostrada → índice original.
-                  optionOrder: (qd as any)?.option_order ?? null,
+                  // Pasa por el normalizador COMPARTIDO: si llega basura (array vacío, valores
+                  // serializados) no puede viajar como si fuera un orden real, porque ahí se
+                  // decide si una respuesta cuenta como acierto.
+                  optionOrder: normalizeOptionOrder((qd as any)?.option_order),
                   isCorrect: !!a.isCorrect,
                   timeSpent: a.timeSpent ?? 0,
                   confidence: (['very_sure', 'sure', 'unsure', 'guessing', 'unknown'].includes(a.confidence as string)

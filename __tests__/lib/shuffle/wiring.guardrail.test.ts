@@ -111,11 +111,17 @@ describe('cableado shuffle: SERVE (lib/api/filtered-questions)', () => {
 
 describe('cableado shuffle: CLIENTE (TestLayout reenvía option_order)', () => {
   const testLayout = read('components/TestLayout.tsx')
-  it('el payload de answer-and-save incluye optionOrder de la pregunta', () => {
-    expect(testLayout).toMatch(/optionOrder:\s*\(currentQ as any\)\.option_order/)
+  // 28/07/2026: la construcción del payload se EXTRAJO del componente a `lib/answers/
+  // buildAnswerPayload` para poder testear el viaje de ida y vuelta de la permutación (mientras
+  // vivía aquí dentro, nadie podía comprobar que el dato llegaba). La intención de este
+  // guardarraíl no cambia —el cliente debe reenviar `option_order`—, cambia dónde se comprueba:
+  // el comportamiento lo fija ahora `__tests__/answers/viajeDeIdaYVueltaDelBarajado.test.ts`.
+  it('el payload de answer-and-save se construye con el núcleo compartido (que reenvía optionOrder)', () => {
+    expect(testLayout).toContain('buildAnswerPayload(')
+    expect(testLayout).toMatch(/from '@\/lib\/answers\/buildAnswerPayload'/)
   })
-  it('el detailedAnswer de complete-test incluye optionOrder', () => {
-    expect(testLayout).toMatch(/optionOrder:\s*\(qd as any\)\?\.option_order/)
+  it('el detailedAnswer de complete-test reenvía optionOrder normalizado', () => {
+    expect(testLayout).toMatch(/optionOrder:\s*normalizeOptionOrder\(\(qd as any\)\?\.option_order\)/)
   })
 })
 
