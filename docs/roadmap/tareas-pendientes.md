@@ -3769,6 +3769,13 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 ## Hechas
 
 
+### [T-252] ✅ [HECHO 28/07] Las tareas que esperan a un reloj ya se pueden aplazar (`snooze`) en vez de gritarlo en el título
+- **El agujero:** el backlog sabía decir *"la estoy haciendo yo"* (`claimed_by` + `lease_until`) y *"depende de otra tarea nuestra"* (`blocked_by`), pero no *"hasta mañana a las 6 no hay NADA que hacer aquí"*. Y ese tercer caso es el más frecuente de los tres: un cron nocturno que aún no ha corrido, una cosecha que termina mañana, una fecha en la que toca medir.
+- **Cómo se resolvía hasta hoy:** a gritos en el markdown. **T-221 llevaba literalmente `⛔ NO COGER HASTA EL 29/07 07:00 UTC` en el título de la ficha… y `next` la seguía ofreciendo**, porque ni el CLI ni la tabla leen el texto del markdown. Con 2-10 sesiones en paralelo eso es otra sesión montando un worktree para descubrir a los cinco minutos que no había nada que medir. Salió a la luz con T-217 (el canario del antifraude no puede estar verde hasta que corra el `@Cron` de las 03:15 UTC).
+- **Qué hay ahora:** `snooze <id> --hasta|--horas|--dias --motivo "…"` y `wake <id>`. `list` la pinta `🕒 en espera hasta …` con el motivo debajo, `next` la salta, y **vence sola** (aplazamiento, no candado: nadie tiene que acordarse de despertarla). `claim` **no lo impide, solo avisa** — adelantar el trabajo preparatorio sigue siendo legítimo. El motivo es obligatorio: sin él, un aplazamiento no se distingue de un olvido.
+- **Dónde:** migración additiva `20260728_backlog_snooze.sql` (`snooze_until`/`snooze_reason`/`snoozed_by` + índice parcial), lógica pura `isSnoozed`/`snoozeInfo` + filtro en `pickNext` (`lib/backlog/claim.ts`, 6 tests nuevos), CLI `scripts/backlog.cjs`, runbook y CLAUDE.md.
+- **Estrenado el mismo día** con los dos casos que lo motivaron: T-217 (hasta el 29/07 06:00) y T-221 (hasta el 29/07 09:00).
+
 ### [T-211] ✅ [HECHO 28/07] Cádiz decía "examen realizado" sobre una convocatoria recién publicada — eran DOS procesos metidos en una sola fila
 - **El diagnóstico de la ficha se quedaba corto.** No era un `estado_proceso` mal puesto: la Diputación de Cádiz tiene **dos procesos de Auxiliar Administrativo vivos a la vez** y los teníamos fundidos en una única fila de `convocatorias` (año 2024). Verificado hoy en su portal:
   - **33 plazas** (6 disc.), solicitudes 26/01–23/02/2024, **1er ejercicio celebrado el 06/06/2026** → epígrafe **"EN CURSO"**.

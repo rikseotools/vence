@@ -7,6 +7,7 @@
 import {
   isClaimable, claimBlockedReason, pickNext, sortByAttackOrder,
   parseBacklogMarkdown, findHeadingsWithoutId, findBacklogDrift, findZombieClaims,
+  isSnoozed, snoozeInfo,
   type BacklogTask,
 } from '@/lib/backlog/claim'
 
@@ -84,6 +85,48 @@ describe('orden de ataque y reparto', () => {
       task({ id: 'T-002', status: 'done' }),
     ], 'yo', AHORA)
     expect(next?.id).toBe('T-001')
+  })
+})
+
+// Aplazamiento (T-252): el tercer estado, junto al claim ("la tengo yo") y a `blocked_by`
+// ("depende de otra tarea nuestra"). Aquí no la tiene nadie: es que hasta cierta hora no hay
+// NADA que hacer. Antes esto se escribía a gritos en el título de la ficha y `next` la ofrecía.
+describe('aplazamiento por reloj (snooze)', () => {
+  it('está dormida mientras no llega su hora, y despierta SOLA al pasar', () => {
+    const t = task({ snooze_until: mins(60) })
+    expect(isSnoozed(t, AHORA)).toBe(true)
+    expect(isSnoozed(t, new Date(AHORA.getTime() + 61 * 60_000))).toBe(false)
+  })
+
+  it('sin snooze_until está despierta (el campo es opcional)', () => {
+    expect(isSnoozed(task(), AHORA)).toBe(false)
+  })
+
+  it('pickNext NO sugiere una dormida, aunque sea la más prioritaria', () => {
+    const next = pickNext([
+      task({ id: 'T-001', priority: 'critica', snooze_until: mins(600) }),
+      task({ id: 'T-002', priority: 'baja' }),
+    ], 'yo', AHORA)
+    expect(next?.id).toBe('T-002')
+  })
+
+  it('…y vuelve a sugerirla en cuanto vence el plazo (nadie tiene que despertarla)', () => {
+    const tareas = [task({ id: 'T-001', priority: 'critica', snooze_until: mins(60) })]
+    expect(pickNext(tareas, 'yo', AHORA)).toBeNull()
+    expect(pickNext(tareas, 'yo', new Date(AHORA.getTime() + 61 * 60_000))?.id).toBe('T-001')
+  })
+
+  it('dormir NO es bloquear: sigue siendo reclamable a propósito (avisando)', () => {
+    const t = task({ snooze_until: mins(600) })
+    expect(isClaimable(t, 'yo', AHORA)).toBe(true)
+    expect(claimBlockedReason(t, 'yo', AHORA)).toBeNull()
+  })
+
+  it('snoozeInfo da la hora, el motivo y cuánto queda; null si está despierta', () => {
+    const info = snoozeInfo(task({ snooze_until: mins(90), snooze_reason: 'el cron corre a las 03:15' }), AHORA)
+    expect(info?.minutos).toBe(90)
+    expect(info?.reason).toBe('el cron corre a las 03:15')
+    expect(snoozeInfo(task(), AHORA)).toBeNull()
   })
 })
 

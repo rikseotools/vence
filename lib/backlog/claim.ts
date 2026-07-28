@@ -17,6 +17,9 @@ export interface BacklogTask {
   claimed_by: string | null
   lease_until: string | Date | null
   blocked_by?: string[]
+  /** Hasta cuándo NO tiene sentido cogerla (espera a un reloj externo). Vence sola. */
+  snooze_until?: string | Date | null
+  snooze_reason?: string | null
 }
 
 /** Estados en los que la tarea sigue viva (aparece en el pool y en "Abiertas"). */
@@ -60,17 +63,51 @@ export function claimBlockedReason(task: BacklogTask, sid: string, now: Date = n
   return `la tiene ${String(task.claimed_by).slice(0, 12)} (lease vivo, ${mins} min)`
 }
 
+/**
+ * ¿Está APLAZADA ahora mismo? (espera a un reloj: un cron que aún no ha corrido, una cosecha,
+ * una fecha en la que toca medir).
+ *
+ * Es distinto del claim y de `blocked_by`: no la tiene nadie y no depende de otra tarea nuestra
+ * — simplemente todavía no hay nada que hacer. Vence sola, como el lease: una tarea aplazada al
+ * pasado está DESPIERTA, sin que nadie tenga que acordarse de despertarla.
+ */
+export function isSnoozed(task: BacklogTask, now: Date = new Date()): boolean {
+  if (task.snooze_until == null) return false
+  return new Date(task.snooze_until).getTime() > now.getTime()
+}
+
+/** Descripción del aplazamiento para el CLI (null si está despierta). */
+export function snoozeInfo(
+  task: BacklogTask,
+  now: Date = new Date(),
+): { until: Date; reason: string | null; minutos: number } | null {
+  if (!isSnoozed(task, now)) return null
+  const until = new Date(task.snooze_until as string | Date)
+  return {
+    until,
+    reason: task.snooze_reason ?? null,
+    minutos: Math.max(0, Math.round((until.getTime() - now.getTime()) / 60000)),
+  }
+}
+
 /** Orden de reparto: prioridad y, a igualdad, id (estable y determinista). */
 export function sortByAttackOrder(tasks: BacklogTask[]): BacklogTask[] {
   return [...tasks].sort((a, b) =>
     (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) || a.id.localeCompare(b.id))
 }
 
-/** Siguiente tarea reclamable respetando prioridad y dependencias. */
+/**
+ * Siguiente tarea reclamable respetando prioridad, dependencias y aplazamientos.
+ *
+ * Las APLAZADAS se saltan aquí (no en `isClaimable`) a propósito: sugerir es un acto de reparto
+ * —nunca ofrezcas trabajo que hoy no se puede hacer— pero coger sigue siendo decisión de quien
+ * la coge, que puede querer adelantar la preparación.
+ */
 export function pickNext(tasks: BacklogTask[], sid: string, now: Date = new Date()): BacklogTask | null {
   const openIds = new Set(tasks.filter(t => OPEN_STATUSES.includes(t.status)).map(t => t.id))
   const libres = sortByAttackOrder(tasks).filter(t =>
     isClaimable(t, sid, now) &&
+    !isSnoozed(t, now) &&
     !(t.blocked_by || []).some(dep => openIds.has(dep)))  // bloqueada por otra viva
   return libres[0] ?? null
 }

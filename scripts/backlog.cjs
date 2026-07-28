@@ -17,6 +17,8 @@
 //   node scripts/backlog.cjs mine
 //   node scripts/backlog.cjs done T-042 --outcome "…"  # cierra + deja constancia
 //   node scripts/backlog.cjs release T-042
+//   node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (no la sugiere `next`)
+//   node scripts/backlog.cjs wake T-042                # la despierta antes de tiempo
 //   node scripts/backlog.cjs sync                      # importa ids nuevos del markdown
 //
 // El session-id se resuelve solo: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
@@ -61,6 +63,29 @@ const left = (t) => {
   const m = Math.round((new Date(t).getTime() - Date.now()) / 60000);
   return m > 0 ? `${m}m` : 'caducado';
 };
+// 'sáb 04:00' — lo que necesita saber la sesión que la ve en `list` (hora local, no ISO).
+const cuando = (t) => new Date(t).toLocaleString('es-ES', {
+  weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+});
+const dormida = (r) => r.snooze_until && new Date(r.snooze_until) > new Date();
+
+/**
+ * Momento hasta el que aplazar, desde --hasta/--horas/--dias. Devuelve Date o lanza.
+ * `--hasta` acepta ISO ('2026-07-29T04:00Z') o 'YYYY-MM-DD HH:MM' local.
+ */
+function parseHasta() {
+  const hasta = arg('--hasta') || arg('--until');
+  const horas = arg('--horas');
+  const dias = arg('--dias');
+  if (hasta) {
+    const d = new Date(hasta.includes('T') || hasta.includes(' ') ? hasta : `${hasta}T00:00`);
+    if (isNaN(d.getTime())) throw new Error(`--hasta no es una fecha válida: ${hasta}`);
+    return d;
+  }
+  if (horas) return new Date(Date.now() + Number(horas) * 3600_000);
+  if (dias) return new Date(Date.now() + Number(dias) * 86400_000);
+  throw new Error('falta el plazo: usa --hasta <ISO|YYYY-MM-DD HH:MM> | --horas N | --dias N');
+}
 function needSid() {
   if (!sid) { console.error('❌ sin session-id: usa --sid <ID> o crea un fichero .session-id'); process.exit(2); }
 }
@@ -101,34 +126,44 @@ function parseMd() {
     if (cmd === 'list') {
       const all = process.argv.includes('--all');
       const rows = await s`
-        SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by
+        SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
+               snooze_until, snooze_reason
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
          ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END, id`;
       console.log(`\nBACKLOG — ${rows.length} tarea(s)${all ? ' (todas)' : ' abiertas'}:\n`);
+      let enEspera = 0;
       for (const r of rows) {
         const vivo = r.lease_until && new Date(r.lease_until) > new Date();
-        const lock = !r.claimed_by ? '🟢 libre'
+        // El aplazamiento se pinta ANTES que "libre": libre-pero-dormida se leía como
+        // "cógela", que es justo el malentendido que esto viene a quitar.
+        const lock = dormida(r) ? (enEspera++, `🕒 en espera hasta ${cuando(r.snooze_until)}`)
+          : !r.claimed_by ? '🟢 libre'
           : vivo ? `🔒 ${String(r.claimed_by).slice(0, 8)} (${left(r.lease_until)})`
                  : `🟡 lease caducado hace ${age(r.lease_until)} (libre)`;
         const dep = (r.blocked_by || []).length ? ` ⛔ bloqueada por ${r.blocked_by.join(',')}` : '';
         console.log(`  ${EMOJI[r.priority]} ${r.id}  ${String(r.title).slice(0, 58).padEnd(60)} ${r.status.padEnd(12)} ${lock}${dep}`);
+        if (dormida(r) && r.snooze_reason) console.log(`         ↳ ${r.snooze_reason}`);
       }
+      if (enEspera) console.log(`\n  🕒 ${enEspera} en espera (no las sugiere \`next\`; se despiertan solas)`);
       console.log('');
     }
 
     else if (cmd === 'next') {
       const rows = await s`
-        SELECT id, title, priority, status, claimed_by, lease_until, blocked_by
+        SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const openIds = new Set(rows.map((r) => r.id));
       const rank = { critica: 0, alta: 1, media: 2, baja: 3, ninguna: 9 };
+      const dormidas = rows.filter(dormida).length;
       const libre = rows
         .filter((r) => !r.claimed_by || r.claimed_by === sid || (r.lease_until && new Date(r.lease_until) < new Date()))
         .filter((r) => r.priority !== 'ninguna') // aparcadas: no se sugieren nunca
+        .filter((r) => !dormida(r))              // aplazadas: hoy no hay nada que hacer en ellas
         .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
         .sort((a, b) => (rank[a.priority] - rank[b.priority]) || a.id.localeCompare(b.id));
-      if (!libre.length) { console.log('No hay tareas libres (todas cogidas o bloqueadas).'); }
+      if (dormidas) console.log(`(${dormidas} en espera por reloj — se saltan; \`list\` las muestra con su hora)`);
+      if (!libre.length) { console.log('No hay tareas libres (todas cogidas, bloqueadas o en espera).'); }
       else {
         console.log(`\nSiguiente sugerida: ${EMOJI[libre[0].priority]} ${libre[0].id} — ${libre[0].title}`);
         console.log(`  cógela con:  node scripts/backlog.cjs claim ${libre[0].id}\n`);
@@ -151,7 +186,7 @@ function parseMd() {
               AND status IN ('open','in_progress','blocked')
               AND (claimed_by IS NULL OR claimed_by = ${sid} OR lease_until < now())
             FOR UPDATE SKIP LOCKED LIMIT 1)
-        RETURNING id, title, priority, blocked_by`;
+        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason`;
       if (!row) {
         const [cur] = await s`SELECT status, claimed_by, lease_until FROM public.backlog_tasks WHERE id = ${id}`;
         if (!cur) console.error(`❌ ${id} no existe (¿has corrido 'sync'?)`);
@@ -160,6 +195,12 @@ function parseMd() {
         process.exit(1);
       }
       console.log(`✅ CLAIM ${row.id} — ${row.title}`);
+      // AVISA, no impide: aplazar es "hoy no hay nada que medir", y aun así puede ser
+      // legítimo adelantar la preparación. Lo que no puede pasar es cogerla sin saberlo.
+      if (dormida(row)) {
+        console.log(`   🕒 OJO: está EN ESPERA hasta ${cuando(row.snooze_until)}${row.snooze_reason ? ` — ${row.snooze_reason}` : ''}`);
+        console.log('      (si vas a trabajarla igualmente, despiértala: node scripts/backlog.cjs wake ' + row.id + ')');
+      }
       if ((row.blocked_by || []).length) console.log(`   ⚠️ declarada bloqueada por: ${row.blocked_by.join(', ')}`);
       console.log(`   lease ${LEASE_MIN} min · renueva con: node scripts/backlog.cjs heartbeat`);
       // Reclamar = LEER: escupimos la ficha entera del markdown. Así no existe "abrir la
@@ -350,6 +391,41 @@ function parseMd() {
     //
     // El INSERT con el título provisional es lo que hace la reserva real: a partir
     // de ahí `ON CONFLICT DO NOTHING` del sync respeta la fila y el id es tuyo.
+    // APLAZAR (snooze): la tarea espera a un RELOJ, no a una persona ni a otra tarea.
+    // Es lo tercero que faltaba junto al claim (`lease_until`) y la dependencia (`blocked_by`).
+    // Ver el porqué en supabase/migrations/20260728_backlog_snooze.sql: T-221 llegó a llevar
+    // "⛔ NO COGER HASTA EL 29/07 07:00 UTC" en el TÍTULO, y `next` la ofrecía igual.
+    else if (cmd === 'snooze') {
+      const id = process.argv[3];
+      if (!id) { console.error('Uso: backlog.cjs snooze <T-xxx> --hasta <ISO|YYYY-MM-DD HH:MM> | --horas N | --dias N --motivo "…"'); process.exit(2); }
+      const motivo = arg('--motivo') || arg('--reason');
+      // El motivo es OBLIGATORIO: un aplazamiento sin explicación es indistinguible de un
+      // olvido, y la sesión que lo vea dentro de tres días no sabrá si ya toca o no.
+      if (!motivo) { console.error('❌ falta --motivo "por qué espera y qué se mira al despertar"'); process.exit(2); }
+      let hasta;
+      try { hasta = parseHasta(); } catch (e) { console.error(`❌ ${e.message}`); process.exit(2); }
+      if (hasta.getTime() <= Date.now()) { console.error(`❌ ${hasta.toISOString()} ya pasó — un aplazamiento al pasado no aplaza nada`); process.exit(2); }
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET snooze_until = ${hasta}, snooze_reason = ${motivo}, snoozed_by = ${sid || 'cli'}
+         WHERE id = ${id} AND status IN ('open','in_progress','blocked')
+        RETURNING id, title`;
+      if (!row) { console.error(`❌ ${id} no existe o está cerrada`); process.exit(1); }
+      console.log(`🕒 ${row.id} EN ESPERA hasta ${cuando(hasta)} — ${row.title}`);
+      console.log(`   motivo: ${motivo}`);
+      console.log('   (no la sugiere `next`; se despierta sola, sin que nadie se acuerde)');
+    }
+
+    else if (cmd === 'wake') {
+      const id = process.argv[3];
+      if (!id) { console.error('Uso: backlog.cjs wake <T-xxx>'); process.exit(2); }
+      const [row] = await s`
+        UPDATE public.backlog_tasks SET snooze_until = NULL, snooze_reason = NULL, snoozed_by = NULL
+         WHERE id = ${id} RETURNING id, title`;
+      if (!row) { console.error(`❌ ${id} no existe`); process.exit(1); }
+      console.log(`⏰ ${row.id} despierta — ${row.title}`);
+    }
+
     else if (cmd === 'reserve') {
       const titulo = process.argv[3] || 'RESERVADA — ficha pendiente de escribir en el markdown';
       // Se reintenta por si otra sesión gana la carrera entre el SELECT y el INSERT:
@@ -374,7 +450,7 @@ function parseMd() {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | reserve ["título"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | wake <id> | reserve ["título"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

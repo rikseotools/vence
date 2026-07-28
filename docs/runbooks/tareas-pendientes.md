@@ -63,6 +63,8 @@ node scripts/backlog.cjs heartbeat         # renueva el lease mientras trabajas
 node scripts/backlog.cjs mine
 node scripts/backlog.cjs done T-042 --outcome "qué pasó de verdad"
 node scripts/backlog.cjs release T-042     # soltarla sin cerrar
+node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (ver abajo)
+node scripts/backlog.cjs wake T-042        # la despierta antes de tiempo
 node scripts/backlog.cjs sync              # importa ids nuevos del markdown a la tabla
 ```
 
@@ -80,6 +82,26 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 `lease_until` es un **arriendo renovable**, no un candado eterno. Una sesión que muere (se acaba el contexto, peta, cierras la ventana) libera su tarea sola al caducar el lease; una sesión viva la conserva mientras dé señales con `heartbeat`. Sin esto, el backlog se bloquearía solo la primera vez que una sesión muriese con una tarea cogida.
 
 En `list` verás tres estados: `🟢 libre` · `🔒 <sid> (Xm)` cogida con lease vivo · `🟡 lease caducado (libre)`.
+
+## Aplazar una tarea que espera a un RELOJ (`snooze`)
+
+Hay tres motivos distintos por los que una tarea no se puede coger, y solo confundirlos cuesta trabajo tirado:
+
+| Situación | Campo | Qué significa |
+|---|---|---|
+| La estoy haciendo yo | `claimed_by` + `lease_until` | ocupa a una sesión; caduca a los 90 min |
+| Depende de otra tarea nuestra | `blocked_by` | dependencia interna del backlog |
+| **Hasta cierta hora no hay NADA que hacer** | **`snooze_until`** | espera a un reloj EXTERNO: un cron que aún no ha corrido, una cosecha, la fecha en que toca medir |
+
+```bash
+node scripts/backlog.cjs snooze T-217 --hasta "2026-07-29T06:00" --motivo "el cron corre a las 03:15 UTC; antes no hay nada que medir"
+node scripts/backlog.cjs snooze T-234 --dias 14 --motivo "la medición es a los 14 días del cambio"
+node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
+```
+
+- **`list` la pinta `🕒 en espera hasta …` con su motivo debajo**, y `next` **no la sugiere**. El motivo es obligatorio: un aplazamiento sin explicación es indistinguible de un olvido.
+- **Aplazamiento, no candado.** Vence solo, igual que el lease: nadie tiene que acordarse de despertarla. Y `claim` **no lo impide, solo avisa** — a veces sí quieres adelantar el trabajo preparatorio.
+- **Por qué existe (28/07/2026):** T-221 llegó a llevar `⛔ NO COGER HASTA EL 29/07 07:00 UTC` **en el título de la ficha**… y `next` la seguía ofreciendo, porque ni el CLI ni la tabla leen el texto del markdown. Gritar en la ficha no es un mecanismo. Con 2-10 sesiones, eso es otra sesión montando un worktree para descubrir a los cinco minutos que no había nada que medir.
 
 ## Guardarraíles (lo que evita que vuelva a pasar lo del 20/07)
 

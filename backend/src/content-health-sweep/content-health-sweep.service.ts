@@ -2001,6 +2001,37 @@ export class ContentHealthSweepService {
         },
       );
 
+    // ── CHAT IA caído: respuestas de ERROR servidas a usuarios (chat_ia_errores) ──────────
+    // Espejo del gemelo CLI (scripts/health-sweep.cjs). El chat sirvió 210 respuestas de error
+    // con `had_error = false` en las 210, así que NADA lo veía: lo destaparon 27 usuarios
+    // pulsando el pulgar abajo, semanas después.
+    //
+    // Se mira el TEXTO servido y no `had_error` a propósito: la columna se empezó a rellenar
+    // ahora, y los errores viejos seguirán en `false` un tiempo. El texto estuvo desde el
+    // principio.
+    //
+    // Nació solo en el CLI (28/07), así que el @Cron —que es quien ESCRIBE el snapshot del
+    // panel— no lo emitía: un detector `error` invisible en la práctica, el mismo patrón que
+    // ya había pasado con `feedback_sin_conversacion`. Lo cazó el guardarraíl de paridad.
+    const chatErr = (await this.db.execute(sql`
+      SELECT count(*)::int AS n, max(created_at) AS ult,
+             count(DISTINCT user_id)::int AS usuarios
+        FROM ai_chat_logs
+       WHERE created_at > now() - interval '24 hours'
+         AND (full_response ILIKE '%ha ocurrido un error%'
+           OR full_response ILIKE '%hubo un error al procesar%'
+           OR full_response ILIKE '%no está disponible ahora mismo%')
+    `)) as unknown as Array<{ n: number; ult: string; usuarios: number }>;
+    if (chatErr[0]?.n > 0)
+      add(
+        'app',
+        'error',
+        null,
+        'chat_ia_errores',
+        `${chatErr[0].n} respuesta(s) de ERROR servidas por el chat IA en 24h a ${chatErr[0].usuarios} usuario(s) — el asistente está fallando (mira el errorStatus en ai_chat_traces: sin saldo del proveedor, modelo inexistente…)`,
+        { n: chatErr[0].n, usuarios: chatErr[0].usuarios, ultimo: chatErr[0].ult },
+      );
+
     // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
     // Caso raíz 25/07: Aux. Admin. UAL llevaba semanas activa con el hero sin tarjetas, 0 FAQs,
     // sin descripción y sin SEO. `audit:oposicion` lo cantaba, pero es on-demand. Espejo de
