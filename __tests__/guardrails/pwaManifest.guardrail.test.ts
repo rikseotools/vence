@@ -20,11 +20,21 @@
 // De ahí la forma de este guardarraíl: no comprueba que el fichero exista (existía), ni que
 // la ruta responda (respondía). Comprueba la **firma PNG y las dimensiones reales**, que es
 // lo único que distingue un icono de un post-it.
+//
+// Y una segunda lección, del mismo día: había DOS manifiestos con el mismo contenido
+// (`app/manifest.js`, que es el que se sirve, y `public/manifest.json`, que no leía nadie).
+// El arreglo se hizo primero sobre la copia muerta. Por eso este test lee `app/manifest.js`
+// y por eso la copia se borró: dos definiciones de lo mismo es una que se queda vieja.
 
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
-const manifest = JSON.parse(readFileSync(join(process.cwd(), 'public/manifest.json'), 'utf8'))
+// Se lee el manifiesto REAL: el que Next sirve en /manifest.webmanifest. Y no es un detalle
+// de estilo — la primera versión de este test apuntaba a `public/manifest.json`, una copia
+// muerta que no leía nadie, así que habría dado verde con el manifiesto de producción roto.
+// Esa copia ya no existe (se borró el 28/07 justo por esto).
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const manifest = require('../../app/manifest.js').default()
 
 /** Cabecera PNG + dimensiones leídas del chunk IHDR. Sin dependencias. */
 function leerPng(buf: Buffer): { esPng: boolean; ancho: number; alto: number } {
