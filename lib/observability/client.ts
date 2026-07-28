@@ -19,6 +19,7 @@
 'use client'
 
 import type { EventSeverity, EventSource } from './emit'
+import { esRuidoDeConsola } from './consoleNoise'
 
 const SAMPLE_RATES: Record<string, number> = {
   intent_unfulfilled: 1.0,
@@ -375,11 +376,15 @@ function installConsoleCapture(): void {
         const msg = args
           .map((a) => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : safeStringify(a)))
           .join(' ')
-        // Ruido conocido (se SIGUE trackeando en debug, pero no cuenta como error):
-        //  - Google Sign-In FedCM (widget de terceros, no es bug nuestro)
-        //  - 401 esperados pre-login (componentes que fetchean antes de auth;
-        //    coherente con isExpectedStatus del wrapper de fetch)
-        const isNoise = /\[GSI_LOGGER\]|FedCM|\b401\b|HTTP 401/i.test(msg)
+        // Ruido conocido (se SIGUE trackeando en debug, pero no cuenta como error).
+        // La regla vive en `consoleNoise.ts` porque es la MISMA que aplica el wrapper de
+        // fetch: un fallo de red mientras la página se descarga o está en background no es
+        // un fallo, es el navegador cancelando lo que había en vuelo. Sin esto, la petición
+        // abortada se suprimía como `http_network_error` y se registraba igualmente como
+        // `console_error` a severidad completa desde el `catch` de la app (T-210, 28/07/2026).
+        const leaving = pageLeaving
+          || (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+        const isNoise = esRuidoDeConsola(msg, { leaving })
         pushEvent({
           severity: isNoise ? 'debug' : level === 'error' ? 'error' : 'warn',
           eventType: level === 'error' ? 'console_error' : 'console_warn',
