@@ -40,6 +40,13 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 
 6. **Redactar el mensaje** (§6): conciso, aireado, reconocer si el usuario tenía razón, firmar "Equipo de Vence". Mostrar el borrador y ESPERAR aprobación.
 
+> **No detalles NUESTROS fallos.** Reconoce el fallo y di que está corregido; ahí se acaba. Nada de
+> cuánto tiempo llevaba, a cuánta gente afectó ni métricas internas. Corrección de Manuel (28/07,
+> impugnación `dc236653`): un borrador decía *"este fallo llevaba meses y lo sufría mucha gente sin
+> decírnoslo"* → **"no des tantos detalles de nuestros fallos, parecemos tontos o incompetentes"**.
+> El usuario quiere saber que se le ha escuchado y que ya funciona: una frase para el
+> reconocimiento y otra para lo que cambia para él.
+
 7. **Cerrar** vía `/api/v2/dispute/resolve` (`resolved` / `rejected`) — comprobar `emailSent` y `bellSent` en la respuesta.
 
 8. **Continuar** con la siguiente sin preguntar "¿seguimos?" hasta terminarlas todas.
