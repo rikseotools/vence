@@ -23,7 +23,7 @@ import AutoAssignOposicion from '@/components/AutoAssignOposicion'
 import { formatNumber, formatDateLarga, formatDateCorta } from '@/lib/utils/format'
 import { etiquetaFechaHito, hitoParaSchemaEvent } from '@/lib/convocatoria/fechaEstimada'
 import { anuncioHero, esOepSinConvocatoria as esOepSinConvocatoriaFn } from '@/lib/convocatoria/anuncioHero'
-import { enlaceOficialEfectivo } from '@/lib/convocatoria/enlaceOficial'
+import { enlaceOficialEfectivo, rotuloEnlaceOficial } from '@/lib/convocatoria/enlaceOficial'
 import { getColorScheme } from '@/lib/utils/landing-colors'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
@@ -490,7 +490,9 @@ export default async function OposicionPage({ params }: { params: Promise<{ opos
                   <div className={`flex-shrink-0 w-12 h-12 ${colors.badge} rounded-lg flex items-center justify-center text-2xl`}>📄</div>
                   <div>
                     <div className={`font-bold text-gray-800 group-${colors.linkHover} transition-colors`}>
-                      {esOepSinConvocatoria ? `Ver OEP en ${diarioOficial}` : `Ver convocatoria en ${diarioOficial}`}
+                      {/* Rótulo del MISMO núcleo que decide el enlace: el detector se apoya en él para
+                          saber si el botón promete la convocatoria (y por tanto si un temario engaña). */}
+                      {rotuloEnlaceOficial({ estadoProceso, diarioOficial })}
                     </div>
                     <div className="text-sm text-gray-500">{boeRef} {boeFechaCorta ? `- ${boeFechaCorta}` : ''}</div>
                   </div>
