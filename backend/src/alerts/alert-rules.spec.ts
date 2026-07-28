@@ -12,6 +12,7 @@ import {
   RULE_RUNTIME_KILL,
   RULE_TTS_ERROR_BURST,
   RULE_WORKFLOW_FAILURE_BURST,
+  RULE_MAIN_CI_ROJO,
   RULE_SUBSCRIPTION_VOID_FAILED,
   RULE_SUBSCRIPTION_FORCE_CANCEL_BURST,
   RULE_SUBSCRIPTION_CANCEL_ERROR_BURST,
@@ -1844,5 +1845,42 @@ describe('RULE_CLIENT_EDGE_SUSTAINED (recalibrado 08/07)', () => {
 
   it('está registrada en ALERT_RULES', () => {
     expect(ALERT_RULES.map((r) => r.name)).toContain('client_edge_sustained');
+  });
+});
+
+// ── `main` en rojo (28/07/2026) ───────────────────────────────────────────────────────────────
+// Tres veces en un día: detector nuevo sin su espejo → guardarraíl de paridad rojo → nadie avisado,
+// porque el run se cancelaba Y la regla de racimo escuchaba un event_type muerto (`workflow_failure`
+// cuando el emisor manda `workflow_failed`: 328 eventos vs 3, el último de hace cuatro semanas).
+describe('RULE_MAIN_CI_ROJO', () => {
+  const fila = {
+    sha: 'abc12345',
+    workflow: 'Tests',
+    run_url: 'https://github.com/rikseotools/vence/actions/runs/1',
+    cuando: '2026-07-28T18:00:00Z',
+  };
+
+  it('dispara con UN SOLO fallo: no hace falta racimo', () => {
+    expect(RULE_MAIN_CI_ROJO.shouldFire([fila])).toBe(true);
+  });
+
+  it('no dispara sin fallos', () => {
+    expect(RULE_MAIN_CI_ROJO.shouldFire([])).toBe(false);
+  });
+
+  it('el aviso dice lo que de verdad duele: nadie puede commitear ni desplegar', () => {
+    const n = RULE_MAIN_CI_ROJO.buildNotification([fila]);
+    expect(n.title).toMatch(/main/i);
+    expect(n.body).toMatch(/pre-commit/);
+    expect(n.body).toMatch(/desplegar/);
+    expect(n.body).toContain(fila.run_url);
+  });
+
+  it('la query escucha el event_type que el emisor USA, no el que se creía', () => {
+    // El SQL de Drizzle no es una cadena: hay que mirar dentro del objeto. Merece la pena, porque
+    // este test es justo el que habría cazado los cuatro semanas de silencio.
+    const q = JSON.stringify(RULE_MAIN_CI_ROJO.query);
+    expect(q).toContain('workflow_failed');
+    expect(q).toContain('refs/heads/main');
   });
 });

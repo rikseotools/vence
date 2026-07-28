@@ -818,12 +818,21 @@ export const RULE_WORKFLOW_FAILURE_BURST: AlertRule<{
 }> = {
   name: 'workflow_failure_burst',
   severity: 'error',
+  // ⚠️ DOS NOMBRES, y el bueno no era el que se consultaba. El job de GHA
+  // (.github/workflows/test.yml → «Notify failure to observable_events») emite
+  // `workflow_failed`; esta regla preguntaba por `workflow_failure`. Medido el 28/07/2026:
+  // **328 eventos `workflow_failed`** (el último, de ese mismo día) frente a **3
+  // `workflow_failure`**, el último del 1 de julio. O sea, la regla llevaba CUATRO SEMANAS
+  // escuchando un nombre muerto mientras los fallos reales de CI se apilaban sin avisar a nadie.
+  // Se aceptan los dos: renombrar el emisor dejaría huérfanos los 328 ya escritos, y otros
+  // emisores podrían usar cualquiera de los dos. La paridad emisor↔regla la vigila ahora
+  // `__tests__/guardrails/ciAlertaCableada.test.ts`.
   query: sql`
     SELECT
       metadata->>'workflow' AS workflow,
       COUNT(*)::int AS failures
     FROM observable_events
-    WHERE event_type = 'workflow_failure'
+    WHERE event_type IN ('workflow_failed', 'workflow_failure')
       AND ts > NOW() - INTERVAL '30 minutes'
     GROUP BY 1
     HAVING COUNT(*) >= 2
@@ -861,6 +870,62 @@ export const RULE_WORKFLOW_FAILURE_BURST: AlertRule<{
  * (caso Andrea exacto). Requiere ampliar el endpoint de reconciliación
  * para consultar Stripe API — pendiente como mejora futura.
  */
+/**
+ * `main` EN ROJO — un solo fallo basta, no hace falta racimo.
+ *
+ * La regla de racimo (2 en 30 min) está pensada para «algo falla repetido, mírrenlo». Pero un CI
+ * rojo en `main` no es eso: es que **nadie puede commitear** (el pre-commit corre la misma suite
+ * unit) **ni desplegar** (el gate exige CI verde de ese SHA). Un solo evento ya cuesta el trabajo de
+ * todas las sesiones abiertas.
+ *
+ * Pasó tres veces el 28/07/2026, siempre igual: un detector entraba en el sweep CLI sin su espejo en
+ * el @Cron, el guardarraíl de paridad se ponía rojo… y el aviso no salía por dos motivos a la vez —
+ * el run se cancelaba por el push siguiente (arreglado en `test.yml`: `main` ya no cancela) y la
+ * regla de racimo escuchaba un `event_type` muerto. Se enteraba la siguiente sesión, estrellándose.
+ *
+ * Solo `main`: en una rama de PR un CI rojo es normal y es asunto de quien la lleva.
+ */
+export const RULE_MAIN_CI_ROJO: AlertRule<{
+  sha: string | null;
+  workflow: string | null;
+  run_url: string | null;
+  cuando: string;
+}> = {
+  name: 'main_ci_rojo',
+  severity: 'error',
+  query: sql`
+    SELECT
+      deploy_version AS sha,
+      metadata->>'workflow' AS workflow,
+      metadata->>'runUrl' AS run_url,
+      ts::text AS cuando
+    FROM observable_events
+    WHERE event_type IN ('workflow_failed', 'workflow_failure')
+      AND metadata->>'ref' = 'refs/heads/main'
+      AND ts > NOW() - INTERVAL '20 minutes'
+    ORDER BY ts DESC
+    LIMIT 5
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `CI ROJO en main (${r.workflow ?? 'Tests'}) — nadie puede commitear ni desplegar`,
+      body:
+        `El commit ${r.sha ?? '(sha?)'} dejó \`main\` en rojo.\n\n` +
+        `Consecuencia inmediata, y por eso esto avisa al primer fallo: el pre-commit de CADA sesión ` +
+        `corre la misma suite unit, así que nadie puede commitear; y el gate de deploy exige CI verde ` +
+        `de ese SHA, así que tampoco se puede desplegar.\n\n` +
+        `Run: ${r.run_url ?? '(sin url)'}\n\n` +
+        `Lo más habitual (3 veces el 28/07): un detector nuevo entra en \`scripts/health-sweep.cjs\` ` +
+        `sin su espejo en \`backend/src/content-health-sweep\` y el guardarraíl de paridad lo caza. ` +
+        `Se arregla añadiéndolo en los DOS sitios, no saltándose el hook.`,
+      metadata: { sha: r.sha, workflow: r.workflow, runUrl: r.run_url },
+    };
+  },
+  cooldownMin: 20,
+};
+
 export const RULE_SUBSCRIPTION_DRIFT: AlertRule<{
   detected: number;
   fixed: number;
@@ -3823,6 +3888,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_TTS_ERROR_BURST as AlertRule,
   RULE_HYDRATION_MISMATCH_SPIKE as AlertRule,
   RULE_WORKFLOW_FAILURE_BURST as AlertRule,
+  // Un CI rojo en `main` bloquea a TODAS las sesiones (commit y deploy): avisa al primer fallo,
+  // sin esperar racimo. 28/07/2026.
+  RULE_MAIN_CI_ROJO as AlertRule,
   // Subscription health (2026-05-26 post-incidente Andrea/Lidia)
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,
