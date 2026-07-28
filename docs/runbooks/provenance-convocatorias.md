@@ -93,11 +93,22 @@ npx tsx scripts/sim-enlace-anuncio.ts --dias 5                 # cobertura de en
 npx tsx scripts/sim-enlace-anuncio.ts --dias 5 --con-bd        # CADENA COMPLETA (¿lo reconoce doc_key?)
 npx tsx scripts/sim-enlace-anuncio.ts --dias 5 --verificar     # + HEAD a una muestra
 ```
-Medición del 28/07 tras el arreglo: **65% de los candidatos ya salen con enlace** (antes 0%) y **47%
-llegan a documento registrado**. La diferencia son 6 boletines cuyo enlace es correcto pero
-`boletin_doc_key` todavía no sabe parsear (BOPA-Asturias, BON, BOME, BOPV, DOE, DOCM): mientras no
-tengan rama en esa función SQL, su señal seguirá sin provenance. **Esa es la siguiente palanca**, y se
-añade como las que ya existen (`supabase/migrations/20260726_boletin_doc_key_*.sql`).
+Medición del 28/07 tras el arreglo: **69% de los candidatos salen con enlace** (antes 0%) y **63%
+llegan a documento registrado** — 9 de los 12 boletines que producen señales, en verde.
+
+**Cómo se añade un boletín al doc_key** (se hizo ese día con BOPA, BON, BOME, DOCM y la variante de
+la sede del BOC): una fila en `PATTERNS` de `canonicalizeBoletinUrl.cjs` + su rama espejo en una
+migración `CREATE OR REPLACE FUNCTION boletin_doc_key` + fixture en el test de paridad **y** en
+`scripts/provenance/canary-doc-key-parity.cjs`. **Verifica el id contra la URL real antes**: en el
+BOME, el `BOME-B-…` que va en la ruta es el BOLETÍN del día, no el anuncio — usarlo habría colapsado
+todos los anuncios de esa fecha en un mismo doc_key. Ya no hay que tocar a los llamadores: preguntan
+con `boletin_doc_key_reconocido(url)` en vez de llevar copiada la lista de prefijos (había 3 copias,
+y ninguna se enteraba de que la migración añadía boletines).
+
+**Lo que queda fuera y por qué NO es "falta un parser":** DOE y BOPV publican en su sumario una URL
+que **no es el documento** (el DOE devuelve una página de título+analítica sin la disposición; el
+BOPV mete el texto en un `iframe`). Ahí hace falta resolver primero la URL de contenido real —
+darles doc_key crearía provenance apuntando a un caparazón, que es peor que no tener documento.
 
 **Lo que NO se hizo a propósito:** un cron que clone el texto solo. El clonador canónico es una
 herramienta y no un cron *por diseño* (elegir el documento bueno pide criterio); lo que cambia es que

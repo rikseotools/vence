@@ -398,7 +398,7 @@ async function promoteSignalToConvocatoria(
         // id estructurado) → evita clonar páginas de listado/seguimiento como si fueran decretos.
         if (srcUrl) {
           const rec = one<{ rec: boolean }>(await db.execute<{ rec: boolean }>(sql`
-            SELECT (boletin_doc_key(${srcUrl}) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-') AS rec`))?.rec
+            SELECT boletin_doc_key_reconocido(${srcUrl}) AS rec`))?.rec
           if (rec) {
             const docId = await registrarDocumentoDeSenal(
               db,
@@ -471,7 +471,7 @@ async function promoteSignalToConvocatoria(
 /**
  * Registra en el hub el documento oficial del que sale una señal y devuelve su id.
  *
- * Devuelve `null` (y NO escribe) si la URL no la reconoce `boletin_doc_key`: eso significa que
+ * Devuelve `null` (y NO escribe) si la URL no la reconoce `boletin_doc_key_reconocido()`: eso significa que
  * apunta a un sumario del día, a una página de listado o a un boletín sin parser — y clonar un
  * sumario entero es peor que no tener documento, porque "respalda" cualquier cifra que la landing
  * afirme (el sumario del BORM son 739.029 caracteres; antipatrón T-147(c)).
@@ -486,7 +486,7 @@ async function registrarDocumentoDeSenal(
   if (!srcUrl) return null
   const rows = (await db.execute<{ id: string | null }>(sql`
     SELECT CASE
-      WHEN boletin_doc_key(${srcUrl}) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-'
+      WHEN boletin_doc_key_reconocido(${srcUrl})
       THEN ensure_convocatoria_documento(${convId}, boletin_doc_key(${srcUrl}), ${srcUrl}, NULL,
              ${tipo}, ${titulo}, NULL, 'oep-radar')
       ELSE NULL

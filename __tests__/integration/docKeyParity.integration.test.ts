@@ -41,6 +41,15 @@ const FIXTURES = [
   'https://www.xunta.gal/dog/Publicados/2025/20251125/AnuncioG0597-191125-0004_gl.html', // DOG _gl → mismo docKey
   'https://mia.aragon.es/documentos?csv=CSVS60B0W34IP1Q0XFIL',           // MIA (portal CSV Aragón)
   'https://carp-core-mia.aragon.es/rest/documentos/CSVS60B0W34IP1Q0XFIL/pdf', // MIA API → mismo docKey
+  // [T-221, 28/07] boletines añadidos con su URL de anuncio verificada + el drift del eBOJA
+  'https://www.juntadeandalucia.es/eboja/2026/136/BOJA26-136-00016-9536-01_00340768.pdf', // eBOJA PDF → mismo docKey que la web
+  'https://miprincipado.asturias.es/bopa/disposiciones?p_p_id=x&p_r_p_dispositionReference=2026-06220', // BOPA (Asturias)
+  'https://sede.gobiernodecanarias.org/boc/boc-a-2026-150-2685.pdf',    // BOC sede → mismo docKey que /boc/2026/150/2685.html
+  'https://www.gobiernodecanarias.org/boc/2026/150/2685.html',
+  'https://bon.navarra.es/es/anuncio/-/texto/2026/146/1',                // BON (Navarra)
+  'https://bon.navarra.es/eu/anuncio/-/texto/2026/146/1',                // BON /eu → mismo docKey
+  'https://bomemelilla.es/bome/BOME-B-2026-6400/articulo/872',           // BOME (Melilla): el ARTÍCULO, no el boletín
+  'https://docm.jccm.es/docm/descargarArchivo.do?ruta=2026/07/23/pdf/2026_5573.pdf&tipo=rutaDocm', // DOCM
 ]
 
 const describeIfDb = process.env.DATABASE_URL ? describe : describe.skip

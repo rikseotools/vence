@@ -314,9 +314,17 @@ const BOLETIN_URL_PATTERNS: Array<{ boletin: string; re: RegExp }> = [
   { boletin: 'BOCYL', re: /BOCYL-[A-Z]-\d{8}-\d+-\d+/i },
   { boletin: 'DOGC', re: /portaldogc\.gencat\.cat.*?documentId=\d+/i },
   { boletin: 'BOC', re: /gobiernodecanarias\.org\/boc\/\d{4}\/\d+\/\d+/i },
+  { boletin: 'BOC', re: /gobiernodecanarias\.org\/boc\/boc-[a-z]-\d{4}-\d+-\d+/i },
   { boletin: 'BOJA', re: /juntadeandalucia\.es\/boja\/\d{4}\/\d+\/\d+/i },
   { boletin: 'BOJA', re: /juntadeandalucia\.es\/eboja\/\d{4}\/\d+\/BOJA\d{2}-\d+-\d+/i },
   { boletin: 'DOG', re: /xunta\.gal\/dog\/Publicados\/\d{4}\/\d{8}\/Anuncio[A-Z0-9-]+/i },
+  // Añadidos el 28/07 (T-221) junto con su rama en boletin_doc_key: son los boletines cuyo
+  // enlace de ANUNCIO ya emite el sensor de sumarios y que verificamos uno a uno contra la
+  // URL real. DOE y BOPV NO entran: la suya es un envoltorio, no el documento.
+  { boletin: 'BOPA', re: /miprincipado\.asturias\.es\/bopa\/.*dispositionReference=\d{4}-\d+/i },
+  { boletin: 'BON', re: /bon\.navarra\.es\/[a-z]{2}\/anuncio\/-\/texto\/\d{4}\/\d+\/\d+/i },
+  { boletin: 'BOME', re: /bomemelilla\.es\/bome\/BOME-[A-Z]-\d{4}-\d+\/articulo\/\d+/i },
+  { boletin: 'DOCM', re: /docm\.jccm\.es\/.*ruta=\d{4}\/\d{2}\/\d{2}\/pdf\/\d{4}_\d+/i },
   { boletin: 'MIA', re: /(?:mia\.aragon\.es\/documentos\?csv=|carp-core-mia\.aragon\.es\/rest\/documentos\/)[A-Z0-9]{10,}/i },
 ];
 

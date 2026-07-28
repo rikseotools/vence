@@ -142,3 +142,66 @@ describe('canonicalizeBoletinUrl — entradas vacías', () => {
     }
   });
 });
+
+// ============================================================
+// [T-221] Boletines añadidos el 28/07/2026 — todos con su URL REAL verificada
+// (el enlace lo emite ya el sensor; sin patrón aquí, la señal no deja provenance)
+// ============================================================
+
+describe('[T-221] boletines nuevos: BOPA, BON, BOME, DOCM', () => {
+  test('BOPA (Asturias): la referencia manda, el ruido del portlet no', () => {
+    const r = canonicalizeBoletinUrl(
+      'https://miprincipado.asturias.es/bopa/disposiciones?p_p_id=pa_sede_bopa_web_portlet_SedeBopaDispositionWeb&p_p_lifecycle=0&p_r_p_dispositionText=2026-06220&p_r_p_dispositionReference=2026-06220&p_r_p_dispositionDate=28%2F07%2F2026',
+    );
+    expect(r.docKey).toBe('BOPA-2026-06220');
+    expect(r.recognized).toBe(true);
+  });
+
+  test('BON (Navarra): año/boletín/orden, y la versión en euskera deduplica igual', () => {
+    const es = canonicalizeBoletinUrl('https://bon.navarra.es/es/anuncio/-/texto/2026/146/1');
+    const eu = canonicalizeBoletinUrl('https://bon.navarra.es/eu/anuncio/-/texto/2026/146/1');
+    expect(es.docKey).toBe('BON-2026-146-1');
+    expect(eu.docKey).toBe(es.docKey);
+  });
+
+  test('BON: dos anuncios del MISMO boletín NO colapsan', () => {
+    const a = canonicalizeBoletinUrl('https://bon.navarra.es/es/anuncio/-/texto/2026/146/0');
+    const b = canonicalizeBoletinUrl('https://bon.navarra.es/es/anuncio/-/texto/2026/146/1');
+    expect(a.docKey).not.toBe(b.docKey);
+  });
+
+  test('BOME (Melilla): identifica el ARTÍCULO, no el boletín del día', () => {
+    // Verificado contra el portal: /articulo/872 se titula «Artículo BOME-A-2026-872».
+    const r = canonicalizeBoletinUrl('https://bomemelilla.es/bome/BOME-B-2026-6400/articulo/872');
+    expect(r.docKey).toBe('BOME-A-2026-872');
+  });
+
+  test('BOME: dos artículos del mismo boletín NO colapsan (el fallo que costaría el dedup)', () => {
+    const a = canonicalizeBoletinUrl('https://bomemelilla.es/bome/BOME-B-2026-6400/articulo/870');
+    const b = canonicalizeBoletinUrl('https://bomemelilla.es/bome/BOME-B-2026-6400/articulo/872');
+    expect(a.docKey).toBe('BOME-A-2026-870');
+    expect(b.docKey).toBe('BOME-A-2026-872');
+    expect(a.docKey).not.toBe(b.docKey);
+  });
+
+  test('DOCM (Castilla-La Mancha): año_número de la disposición', () => {
+    const r = canonicalizeBoletinUrl(
+      'https://docm.jccm.es/docm/descargarArchivo.do?ruta=2026/07/23/pdf/2026_5573.pdf&tipo=rutaDocm',
+    );
+    expect(r.docKey).toBe('DOCM-2026-5573');
+  });
+
+  test('DOE y BOPV siguen SIN reconocer: su URL de sumario es un envoltorio, no el documento', () => {
+    // Medido el 28/07: el DOE devuelve una página de título+analítica sin la disposición y el
+    // BOPV mete el texto en un iframe. Un docKey aquí sería provenance a un caparazón.
+    const doe = canonicalizeBoletinUrl('https://doe.juntaex.es/otrosFormatos/html.php?xml=2026061939&anio=2026&doe=1430o');
+    const bopv = canonicalizeBoletinUrl('https://www.euskadi.eus/y22-bopv/es/bopv2/datos/2026/07/2603354a.shtml');
+    expect(doe.recognized).toBe(false);
+    expect(bopv.recognized).toBe(false);
+  });
+
+  test('la portada del boletín NO se reconoce como documento', () => {
+    expect(canonicalizeBoletinUrl('https://bon.navarra.es/es/boletin').recognized).toBe(false);
+    expect(canonicalizeBoletinUrl('https://docm.jccm.es/docm/busquedaAvanzada.do').recognized).toBe(false);
+  });
+});

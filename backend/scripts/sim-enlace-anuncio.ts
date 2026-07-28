@@ -40,6 +40,10 @@ const SOLO = flag('boletin', '')
   .filter(Boolean)
 const VERIFICAR = args.includes('--verificar')
 const CON_BD = args.includes('--con-bd')
+// Vuelca TODAS las URLs (no 2 de muestra): sirve para VERIFICAR el formato de id de un
+// boletín antes de darle una rama en `boletin_doc_key` (regla del núcleo: nada de ids
+// inventados — solo patrones comprobados contra URLs reales).
+const TODAS = args.includes('--todas')
 
 const TODOS: BoletinAdapter[] = [...BOLETIN_ADAPTERS, ...CCAA_BOLETIN_ADAPTERS]
 
@@ -99,6 +103,12 @@ async function main() {
   )
 
   for (const f of filas) {
+    if (TODAS) {
+      if (!f.urls.length) continue
+      console.log(`### ${f.boletin}`)
+      ;[...new Set(f.urls)].forEach((u) => console.log(`   ${u}`))
+      continue
+    }
     if (!f.muestra.length) continue
     console.log(`### ${f.boletin}`)
     f.muestra.forEach((m) => console.log(`   ${m}`))
@@ -122,7 +132,7 @@ async function main() {
     for (const f of filas) {
       if (!f.urls.length) continue
       const r = await c.query<{ ok: number }>(
-        `SELECT count(*) FILTER (WHERE boletin_doc_key(u) ~ '^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-')::int AS ok
+        `SELECT count(*) FILTER (WHERE boletin_doc_key_reconocido(u))::int AS ok
            FROM unnest($1::text[]) u`,
         [f.urls],
       )
