@@ -53,6 +53,111 @@ No hay tabla de conversaciones. Los mensajes se agrupan por:
 3. **Estadísticas** (`suggestion_used = 'como_voy'`):
    - Resumen de progreso del usuario
 
+## 🔬 CÓMO se revisa: el rastro manda, no el texto (método, 28/07/2026)
+
+> **Frase-gatillo: *"revisa los negativos del chat"*.**
+
+**No hay comentario del usuario.** El widget solo tiene pulgar arriba/abajo, y `feedback_comment`
+está vacío en **los 98 negativos**. Así que preguntarse "¿qué le habrá molestado?" no lleva a
+ningún sitio: el diagnóstico sale de **`ai_chat_traces`**, que registra cada paso.
+
+**Y hay que verlas UNA A UNA.** Mirar porcentajes primero engaña: en la primera pasada del
+28/07 concluí "las explicaciones de psicotécnicos suspenden, un 51 % de negativos" y era
+falso — al abrirlas de una en una, **27 de las 42 no eran respuestas malas sino mensajes de
+error servidos al usuario**. El agregado escondía que la app estaba rota. Los porcentajes
+valen DESPUÉS, para ordenar lo que ya has leído.
+
+### Los cuatro pasos
+
+```sql
+-- 1. La lista, de la más antigua a la más nueva (empieza por la primera)
+SELECT id, created_at, user_oposicion, suggestion_used, message, full_response
+FROM ai_chat_logs WHERE feedback='negative' AND reviewed_at IS NULL ORDER BY created_at;
+
+-- 2. Para cada una, SU RASTRO: qué hizo el sistema paso a paso
+SELECT trace_type, sequence_number, duration_ms, success, input_data, output_data
+FROM ai_chat_traces WHERE log_id = '<id>' ORDER BY sequence_number;
+```
+
+Lo que cuenta cada traza:
+
+| `trace_type` | Qué mirar |
+|---|---|
+| `routing` | `selectedDomain` y `confidence`. **A qué dominio fue** y si dudó |
+| `db_query` | `output_data.articles` — **qué encontró de verdad** en la BD |
+| `domain` | `hasSources` — si el dominio dice que usó fuentes |
+| `llm_call` | `errorStatus` / `errorMessage` — **aquí está la causa cuando falla** |
+
+3. **Clasifica antes de opinar.** ¿Es un **error servido** (el texto empieza por «Ha ocurrido un
+   error» / «Hubo un error al procesar»)? Entonces no es un problema de calidad: es la app
+   caída, y la causa está en `llm_call.errorStatus`, no en el prompt.
+4. **Si NO es un error, contrasta lo que dijo con lo que sabemos**: la clave del chat contra
+   `questions.correct_option`, y la cita contra el artículo real.
+
+### Tres trampas, las tres caídas de verdad el 28/07
+
+- **`had_error` no sirve para logs anteriores al 28/07/2026.** Estuvo en `false` en las 210
+  respuestas de error que se sirvieron. Filtra por el TEXTO de `full_response`; la columna solo
+  es fiable desde el arreglo.
+- **Que el sistema hiciera todo bien no descarta el negativo.** Caso real: pregunta de lógica,
+  el router acertó, la respuesta coincidía con nuestra clave y con la explicación guardada… y el
+  usuario la valoró mal igual. **Ciérrala como "sistema correcto, motivo desconocido"** y sigue;
+  no inventes una causa.
+- **Recuperar ≠ usar.** Otro caso real: `db_query` devolvió 10 artículos de las dos leyes que el
+  usuario nombró, se le pasaron al modelo (14.285 tokens de prompt) y la respuesta fueron diez
+  consejos genéricos de estudio, con `hasSources: false`. **Cruza siempre `db_query` con
+  `hasSources`**: si encontró y dice que no tiene fuentes, ahí hay algo roto.
+
+### Qué se saca de una tanda (resultado real del 28/07, 42 negativos)
+
+- **27 (64 %) eran errores servidos** → no era calidad, era disponibilidad. Dos causas en las
+  trazas: modelo inexistente (179 fallos) y **cuenta del proveedor sin saldo** (27).
+- **1 cita que PARECÍA inventada y no lo era** — y esto es la trampa más cara del día:
+  *«Según el artículo 50 de Excel 365»*. Excel no tiene artículos, así que lo di por
+  alucinación… **hasta comprobarlo contra nuestro temario: el artículo 50 EXISTE** y es
+  *«Formato de número, alineación y fuente»*, justo el que toca para una pregunta de formato de
+  porcentaje. El chat citó **nuestro propio contenido, y bien**. Los contenedores editoriales
+  (Excel, Windows, Word, Correos…) numeran sus secciones de 10 en 10 (10, 20, 30… 210) y el
+  chat las llama "artículo" porque así se llaman en `articles`.
+  **REGLA: antes de gritar «alucinación», comprueba si la cita existe en NUESTRO temario.**
+  Lo que queda es un problema de REDACCIÓN, no de veracidad: decirle a un opositor «según el
+  artículo 50 de Excel 365» suena a cita legal y confunde, cuando lo correcto sería «en el
+  apartado *Formato de número…* del tema de Excel».
+- El resto: respuestas correctas con el usuario en desacuerdo, o respuestas que ignoran que
+  Vence existe (le recomienda "estudia en grupo" a un premium que tiene tests por ley,
+  puntos débiles y temario en audio).
+
+### ⚠️ Antes de "arreglar" un dominio: SIMULA sobre los mensajes reales
+
+Un cambio en `canHandle` no añade capacidades, **reparte mensajes**: `app-help` tiene prioridad
+**1.7**, por encima de `search` y `verification`, así que todo lo que capture de más **se lo
+quita a quien hoy lo responde bien**. La simulación (`scripts/sim/sim-app-help-dificultad.mts`)
+reproyecta la decisión sobre los ~4.400 mensajes de chat libre reales y responde lo único que
+importa: **a quién se lo quitas, y esos cómo iban.**
+
+**Caso real (28/07/2026) — el arreglo se DESCARTÓ por la simulación.** Tras ver que a un
+premium que escribió *"tengo problemas para memorizar la LO 3/2007"* le respondimos con
+consejos genéricos, el diagnóstico parecía claro: `app-help` solo entiende preguntas
+(*"¿cómo hago X?"*) y no descripciones de un problema (*"no consigo X"*), así que se le
+añadieron patrones de dificultad y una feature `memorizar`. La simulación dijo dos cosas:
+
+1. **Capturaba 6 mensajes de 4.447. De los 3 valorados, los 3 eran POSITIVOS** (los respondían
+   bien `temario`, `fallback` y `knowledge-base`) y **arreglaba 0 negativos**. Tres regresiones
+   a cambio de nada.
+2. **Ni siquiera arreglaba el caso que lo motivó:** aquel usuario tenía una **pregunta abierta**
+   (`question_context_id`), y `app-help` se inhibe por diseño cuando la hay. Habría acabado en
+   `search` igual.
+
+**La lección, que vale para cualquier dominio:** el motivo real no era la falta de patrones sino
+que **el usuario escribió desde dentro de una pregunta**, y ahí manda `verification`/`search`,
+que no saben que la plataforma tiene tests por ley ni puntos débiles. Sin la simulación se
+habría desplegado un cambio que empeora tres casos conocidos y no arregla ninguno.
+
+```sql
+-- Marcar revisada (SIEMPRE, o la siguiente sesión repite el trabajo)
+UPDATE ai_chat_logs SET reviewed_at = NOW(), review_notes = '…' WHERE id = '<id>';
+```
+
 ## Prioridad de revisión
 
 Revisar primero (más probable que tengan problemas):
