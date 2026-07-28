@@ -2319,6 +2319,32 @@ export class ContentHealthSweepService {
       );
     }
 
+    // Mirror INLINE de scripts/health-sweep.cjs (shuffle_encendido_sin_efecto) — MANTENER EN SYNC.
+    //
+    // La bandera del barajado activa y ni una sola respuesta reciente con `option_order`. Un piloto
+    // que no produce señal es indistinguible de uno que va bien: el 28/07/2026 estuvo así 8 horas,
+    // con `option_order` a NULL en el 100 % de las filas mientras el servidor SÍ barajaba. Eso
+    // significa que la permutación no vuelve al guardar, y entonces el servidor corrige la posición
+    // MOSTRADA contra la clave ORIGINAL → fallos falsos en silencio.
+    if (String(process.env.FEATURE_SHUFFLE_OPTIONS || '').toLowerCase() === 'true') {
+      const shufRows = (await this.db.execute(sql`
+        SELECT count(*)::int AS respuestas, count(option_order)::int AS con_orden
+          FROM test_questions
+         WHERE created_at > now() - interval '24 hours'
+      `)) as unknown as Array<{ respuestas: number; con_orden: number }>;
+      const shuf = shufRows[0];
+      if (shuf && shuf.respuestas > 100 && shuf.con_orden === 0) {
+        add(
+          'app',
+          'error',
+          null,
+          'shuffle_encendido_sin_efecto',
+          `El barajado está ACTIVO y ninguna de las ${shuf.respuestas} respuestas de las últimas 24h guarda el orden servido: o no baraja de verdad (piloto inerte) o la permutación no vuelve al guardar (y entonces se están registrando fallos falsos)`,
+          { respuestas24h: shuf.respuestas, conOrden: shuf.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null },
+        );
+      }
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {

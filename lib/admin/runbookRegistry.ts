@@ -334,6 +334,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
     claudeHace: 'para cada pregunta señalada (shuffle_safety=safe cuya explicación referencia una opción por letra/número/posición) confirma que barajar rompería la explicación y bájala a unsafe vía record_shuffle_safety, o reescribe la explicación a formato sin letras (Fase 2) si procede. Si el finding reporta hash desincronizado, re-verifica (el trigger debería haberla puesto stale). Es un miss del detector/auditoría LLM o una edición no invalidada. NUNCA dejar barajable una explicación letra-anclada ni auto-editar la explicación sin verificar la clave.',
   },
+  shuffle_encendido_sin_efecto: {
+    title: 'Barajado encendido pero sin efecto (o sin rastro): ninguna respuesta guarda el orden',
+    triggerPhrase: 'revisa el barajado',
+    runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
+    claudeHace:
+      'la bandera FEATURE_SHUFFLE_OPTIONS está activa y aun así NINGUNA respuesta reciente guarda `option_order`. Son dos escenarios muy distintos y hay que distinguirlos ANTES de tocar nada: (1) el servidor no está barajando de verdad → el piloto es inerte y los datos que se estén usando para juzgarlo no valen; (2) el servidor SÍ baraja y la permutación no vuelve al guardar → el servidor corrige la posición MOSTRADA contra la clave ORIGINAL y está registrando FALLOS FALSOS en silencio (la fila queda coherente consigo misma, así que después es indetectable). Para distinguir: `npx tsx scripts/sim/sim-shuffle-extremo-a-extremo.ts <position_type>` ejecuta la función real de servir con las banderas de producción y dice si devuelve preguntas permutadas; y `observable_events` con event_type=shuffle_options_served trae el orden por pregunta que se sirvió de verdad. Si es el escenario (2): APAGAR la bandera primero (SSM + force-new-deployment, ECS lee los secretos al arrancar) y diagnosticar después; ese daño NO se puede reparar sin el evento de servido, porque la permutación usa un nonce aleatorio por exposición. Caso raíz 28/07/2026: el piloto de Valencia llevaba 8 horas encendido con option_order a NULL en el 100 % de las filas y nada avisó. NUNCA reactivar el piloto sin comprobar en la primera hora que option_order deja de estar a NULL.',
+  },
   visual_deixis_no_image: {
     title: 'Pregunta que invoca una imagen que no existe',
     triggerPhrase: 'revisa las preguntas sin imagen',

@@ -1077,6 +1077,28 @@ async function main() {
     `${sinConv.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
     { n: sinConv.length, sample: sinConv.slice(0, 10).map(r => ({ id: r.id, type: r.type, msg: r.msg, creado: r.created_at })) });
 
+  // ── Barajado ENCENDIDO pero sin rastro (28/07/2026) ──
+  //
+  // La bandera activa y ni una sola respuesta reciente con `option_order`. Un piloto que no
+  // produce señal es indistinguible de uno que va bien, y así estuvo 8 horas el día que se
+  // encendió: `option_order` a NULL en el 100 % de las filas mientras el servidor SÍ barajaba
+  // (verificado ejecutando la función real de servir). Eso significa que la permutación no vuelve
+  // al guardar y el servidor corrige la posición MOSTRADA contra la clave ORIGINAL → fallos falsos
+  // en silencio. El criterio ya estaba escrito en la ficha del piloto, pero como consulta que
+  // alguien tenía que acordarse de lanzar; aquí deja de depender de la memoria de nadie.
+  if (String(process.env.FEATURE_SHUFFLE_OPTIONS || '').toLowerCase() === 'true') {
+    const [barajado] = (await c.query(`
+      SELECT count(*)::int AS respuestas,
+             count(option_order)::int AS con_orden
+        FROM test_questions
+       WHERE created_at > now() - interval '24 hours'`)).rows;
+    if (barajado.respuestas > 100 && barajado.con_orden === 0) {
+      add('app', 'error', null, 'shuffle_encendido_sin_efecto',
+        `El barajado está ACTIVO y ninguna de las ${barajado.respuestas} respuestas de las últimas 24h guarda el orden servido: o no baraja de verdad (piloto inerte) o la permutación no vuelve al guardar (y entonces se están registrando fallos falsos)`,
+        { respuestas24h: barajado.respuestas, conOrden: barajado.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null });
+    }
+  }
+
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
     await c.query('TRUNCATE content_health_findings');

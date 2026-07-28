@@ -154,6 +154,49 @@ const lightweightArticleColumns = {
   lawShortName: laws.shortName,
 } as const
 
+/**
+ * Registra QUÉ se sirvió barajado. Devuelve las mismas preguntas (envoltorio transparente).
+ *
+ * Por qué existe (28/07/2026): la permutación se genera aquí, al servir, y hasta hoy **solo
+ * quedaba registrada si el cliente la devolvía** en el guardado. Es decir, el rastro de una
+ * decisión del servidor dependía de que el cliente cooperase. Cuando `test_questions.option_order`
+ * apareció a NULL en el 100 % de las filas mientras el servidor SÍ barajaba, no hubo forma de
+ * demostrar qué se le mostró a cada usuario **ni de reparar los datos**: la permutación usa un
+ * nonce aleatorio por exposición, así que no se puede reconstruir.
+ *
+ * Con este evento, un caso así se resuelve comparando lo servido con lo guardado, y sobre todo
+ * se puede RECALCULAR el acierto real. Es la diferencia entre un fallo reparable y uno perdido.
+ *
+ * Fire-and-forget y acotado (solo las barajadas, máximo 50 por petición): si no hay barajado no
+ * emite nada, así que en el caso normal el coste es cero.
+ */
+export function registrarBarajadoServido(
+  qs: FilteredQuestion[],
+  ctx: { positionType?: string | null; userId?: string | null; endpoint?: string },
+): FilteredQuestion[] {
+  try {
+    const barajadas = qs.filter((q) => Array.isArray(q.option_order))
+    if (barajadas.length === 0) return qs
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'info',
+      eventType: 'shuffle_options_served',
+      endpoint: ctx.endpoint ?? '/api/questions/filtered',
+      userId: ctx.userId ?? undefined,
+      metadata: {
+        positionType: String(ctx.positionType ?? '').slice(0, 80),
+        servidas: qs.length,
+        barajadas: barajadas.length,
+        // El orden POR pregunta: es exactamente lo que hoy no se podía reconstruir.
+        ordenes: barajadas.slice(0, 50).map((q) => ({ q: q.id, o: q.option_order })),
+      },
+    })
+  } catch {
+    /* la observabilidad nunca puede tumbar el servir preguntas */
+  }
+  return qs
+}
+
 export function transformQuestion(q: QuestionRow, index: number, shuffle = false): FilteredQuestion {
   // Opciones en orden NATURAL (0=A) tal como están en la BD.
   const naturalOptions = [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter(
@@ -811,7 +854,10 @@ export async function getFilteredQuestions(
 
       return {
         success: true,
-        questions: scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)),
+        questions: registrarBarajadoServido(
+          scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)),
+          { positionType, userId },
+        ),
         totalAvailable: scopeQuestions.length,
         filtersApplied: { laws: 0, articles: primaryArticleIds.length, sections: 0 },
       }
@@ -926,7 +972,10 @@ export async function getFilteredQuestions(
         return { success: true, questions: [], totalAvailable: 0, filtersApplied: { laws: selectedLaws?.length || 0, articles: 0, sections: 0 }, emptyReason }
       }
 
-      const transformedQuestions = failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn))
+      const transformedQuestions = registrarBarajadoServido(
+        failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn)),
+        { positionType, userId },
+      )
 
       return {
         success: true,
@@ -1013,7 +1062,10 @@ export async function getFilteredQuestions(
       console.log(`✅ [failed-questions-ids] ${finalQuestions.length} preguntas${missing > 0 ? ` (${missing} no encontradas)` : ''}`)
 
       // Transformar al formato esperado
-      const transformedQuestions = finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn))
+      const transformedQuestions = registrarBarajadoServido(
+        finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn)),
+        { positionType, userId },
+      )
 
       return {
         success: true,
@@ -1135,8 +1187,11 @@ export async function getFilteredQuestions(
 
       console.log(`✅ Modo global: ${globalQuestions.length} preguntas de ${validLawIds.length} leyes válidas`)
 
-      const transformedQuestions = globalQuestions.map((q, i) =>
-        transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)
+      const transformedQuestions = registrarBarajadoServido(
+        globalQuestions.map((q, i) =>
+          transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)
+        ),
+        { positionType, userId },
       )
 
       return {
@@ -1527,7 +1582,10 @@ export async function getFilteredQuestions(
       console.warn(`⚠️ [hydrate] ${droppedDuringHydration}/${selectedIds.length} preguntas dropeadas (race con desactivación)`)
     }
 
-    const transformedQuestions: FilteredQuestion[] = orderedRows.map((q, i) => transformQuestion(q, i, shuffleOn))
+    const transformedQuestions: FilteredQuestion[] = registrarBarajadoServido(
+      orderedRows.map((q, i) => transformQuestion(q, i, shuffleOn)),
+      { positionType, userId },
+    )
 
     return {
       success: true,

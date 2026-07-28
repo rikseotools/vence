@@ -125,6 +125,28 @@ describe('cableado shuffle: CLIENTE (TestLayout reenvía option_order)', () => {
   })
 })
 
+describe('cableado shuffle: RASTRO DEL SERVIDOR (qué se sirvió barajado)', () => {
+  const queries = read('lib/api/filtered-questions/queries.ts')
+
+  // 28/07/2026: hasta hoy la permutación SOLO quedaba registrada si el cliente la devolvía al
+  // guardar. Cuando `option_order` apareció a NULL en el 100 % de las filas mientras el servidor SÍ
+  // barajaba, no hubo forma de demostrar qué se mostró NI de reparar los datos (el orden usa un
+  // nonce aleatorio por exposición). El servidor tiene que dejar su propio rastro.
+  it('existe el registro de lo servido y emite un evento propio', () => {
+    expect(queries).toContain('export function registrarBarajadoServido')
+    expect(queries).toContain("eventType: 'shuffle_options_served'")
+  })
+
+  it('TODOS los caminos que sirven preguntas pasan por el registro', () => {
+    // Un camino nuevo que devuelva preguntas sin registrar volvería a dejarnos a ciegas justo en
+    // el flujo que más importa. Se cuentan los `transformQuestion(` de serve y se exige que cada
+    // bloque que los agrupa esté envuelto por el registro.
+    const usos = [...queries.matchAll(/registrarBarajadoServido\(/g)].length
+    // 1 definición + 1 por cada camino de serve (5 en el momento de escribir esto).
+    expect(usos).toBeGreaterThanOrEqual(6)
+  })
+})
+
 describe('cableado shuffle: VALIDADOR (answer-and-save mapea mostrada→original)', () => {
   const schemas = read('lib/api/v2/answer-and-save/schemas.ts')
   const queries = read('lib/api/v2/answer-and-save/queries.ts')
