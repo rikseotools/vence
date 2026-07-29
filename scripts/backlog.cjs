@@ -155,10 +155,94 @@ function parseMd() {
   return out;
 }
 
+/**
+ * Despierta las tareas cuyo commit YA está vivo, dado el sha de cada superficie.
+ *
+ * Una sola implementación para los DOS caminos que la necesitan:
+ *   · `deployed <sha>` — lo llama el script de deploy al terminar (push);
+ *   · la reconciliación perezosa de `list` — mira el sha vivo de `/health` (pull).
+ *
+ * Existe el segundo camino porque el primero tiene una dependencia oculta que falló en su
+ * estreno (29/07): cada sesión despliega DESDE SU PROPIO WORKTREE, que puede ser de hace días.
+ * La sesión que desplegó esa noche tenía un `deploy-frontend.sh` anterior al commit que añadió
+ * la llamada, así que el deploy salió bien y NO avisó a nadie: T-266 se quedó esperando un
+ * frontend que ya estaba vivo. Fallo silencioso —sin error, solo ausencia—, que es justo lo que
+ * este mecanismo venía a evitar. Reconciliar contra el sha VIVO no depende de quién desplegó ni
+ * con qué script, y seguiría funcionando si mañana despliega GitHub Actions u otro proveedor.
+ *
+ * `contiene` se resuelve con `merge-base --is-ancestor`: el commit esperado tiene que estar
+ * CONTENIDO en el desplegado, no ser igual — el deploy es cumulativo y sube todo `main`.
+ *
+ * @param {*} s cliente sql
+ * @param {{frontend?:string|null, backend?:string|null}} shas sha vivo por superficie (null = no se sabe)
+ * @param {{verboso?:boolean}} [opts]
+ */
+async function despertarPorDeploy(s, shas, opts = {}) {
+  const esperando = await s`
+    SELECT id, title, wake_on_deploy_sha, wake_on_deploy_surface, resume_check
+      FROM public.backlog_tasks
+     WHERE wake_on_deploy_sha IS NOT NULL AND status IN ('open','in_progress','blocked')`;
+  if (!esperando.length) return { esperaban: 0, despertadas: 0, ids: [] };
+
+  const { execFileSync } = require('child_process');
+  const contenidoEn = (base, sha) => {
+    if (!sha) return false;   // "no lo sé" NUNCA despierta: sería mandar a verificar algo que no está vivo
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', base, sha], { cwd: REPO, stdio: 'ignore' });
+      return true;
+    } catch { return false; } // fail-safe: si git no puede contestar (commit purgado), no se despierta
+  };
+
+  const ids = [];
+  for (const t of esperando) {
+    const contiene = {
+      frontend: contenidoEn(t.wake_on_deploy_sha, shas.frontend),
+      backend: contenidoEn(t.wake_on_deploy_sha, shas.backend),
+    };
+    if (!deployWakeReady(t, contiene)) continue;
+    await s`UPDATE public.backlog_tasks
+               SET wake_on_deploy_sha = NULL, wake_on_deploy_surface = NULL
+             WHERE id = ${t.id}`;
+    ids.push(t.id);
+    if (opts.verboso) console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${t.resume_check || t.title}`);
+    // El aviso no puede morir en el log de quien desplegó: quien pausó la tarea es otra sesión,
+    // que no lo ve. Rastro en `observable_events`, el bus que ya usa todo el proyecto.
+    try {
+      await s`
+        INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+        VALUES ('fargate', 'info', 'backlog_task_awakened', 'backlog',
+                ${`${t.id} lista para verificar tras desplegar`},
+                ${s.json({
+                  task: t.id,
+                  surface: t.wake_on_deploy_surface || 'both',
+                  frontend: shas.frontend || null,
+                  backend: shas.backend || null,
+                  check: t.resume_check || null,
+                })})`;
+    } catch { /* el aviso es un extra, no una precondición del deploy */ }
+  }
+  return { esperaban: esperando.length, despertadas: ids.length, ids };
+}
+
 (async () => {
   try {
     if (cmd === 'list') {
       const all = process.argv.includes('--all');
+      // RECONCILIACIÓN PEREZOSA. No se puede depender de que quien despliega avise: cada sesión
+      // despliega desde su propio worktree y el suyo puede ser anterior al commit que añadió esa
+      // llamada — pasó el 29/07 y T-266 se quedó esperando un frontend que ya estaba vivo, sin
+      // un solo error de por medio. Aquí se mira el sha VIVO y se despierta lo que ya está dentro.
+      // Coste CERO cuando no hay nada esperando: si la consulta no devuelve tareas, ni se toca la red.
+      const pendientesDeDeploy = await s`
+        SELECT count(*)::int n FROM public.backlog_tasks
+         WHERE wake_on_deploy_sha IS NOT NULL AND status IN ('open','in_progress','blocked')`;
+      if (pendientesDeDeploy[0]?.n > 0) {
+        try {
+          const { shasVivos } = require(path.join(__dirname, '..', 'lib', 'deploy', 'shaVivo.cjs'));
+          const r = await despertarPorDeploy(s, await shasVivos(), { verboso: false });
+          if (r.despertadas) console.log(`\n⏰ ${r.ids.join(', ')} — el deploy ya está vivo: pasan a LISTA(S) PARA VERIFICAR`);
+        } catch { /* fail-open: sin red o sin git, `list` sigue funcionando como siempre */ }
+      }
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
                snooze_until, snooze_reason, snooze_count, resume_check,
@@ -613,52 +697,17 @@ function parseMd() {
 
     else if (cmd === 'deployed') {
       // Lo llama el propio script de deploy al terminar (best-effort, nunca rompe un deploy).
-      // Despierta las tareas que esperaban a que ESE commit estuviera vivo: el commit esperado
-      // tiene que estar CONTENIDO en el desplegado, no ser igual — el deploy es cumulativo y
-      // sube todo lo que haya en `main`.
+      // Comparte implementación con la reconciliación perezosa de `list`: dos copias acabarían
+      // despertando con criterios distintos y el desacuerdo sería invisible.
       const sha = process.argv[3];
       const superficie = arg('--superficie') || arg('--surface') || 'both';
       if (!sha) { console.error('Uso: backlog.cjs deployed <sha> [--superficie frontend|backend|both]'); process.exit(2); }
-      const esperando = await s`
-        SELECT id, title, wake_on_deploy_sha, wake_on_deploy_surface, resume_check
-          FROM public.backlog_tasks
-         WHERE wake_on_deploy_sha IS NOT NULL AND status IN ('open','in_progress','blocked')`;
-      if (!esperando.length) { console.log('(ninguna tarea esperaba un deploy)'); return; }
-      const { execFileSync } = require('child_process');
-      const contenido = (base) => {
-        try {
-          execFileSync('git', ['merge-base', '--is-ancestor', base, sha], { cwd: REPO, stdio: 'ignore' });
-          return true;
-        } catch { return false; }   // fail-safe: si git no puede contestar, NO se despierta
-      };
-      let despertadas = 0;
-      for (const t of esperando) {
-        const yaVa = contenido(t.wake_on_deploy_sha);
-        const ready = deployWakeReady(
-          t,
-          superficie === 'both'
-            ? { frontend: yaVa, backend: yaVa }
-            : { [superficie]: yaVa },
-        );
-        if (!ready) continue;
-        await s`UPDATE public.backlog_tasks
-                   SET wake_on_deploy_sha = NULL, wake_on_deploy_surface = NULL
-                 WHERE id = ${t.id}`;
-        despertadas++;
-        console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${t.resume_check || t.title}`);
-        // El aviso no puede morir en el log de ESTE deploy: quien pausó la tarea es otra
-        // sesión, que no lo ve. Se deja rastro en `observable_events` —el bus que ya usa
-        // todo el proyecto— para que el panel de salud y quien mire después se enteren.
-        // Best-effort como el resto del comando: un fallo aquí NUNCA tumba un deploy.
-        try {
-          await s`
-            INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
-            VALUES ('fargate', 'info', 'backlog_task_awakened', 'backlog',
-                    ${`${t.id} lista para verificar tras desplegar`},
-                    ${s.json({ task: t.id, sha: String(sha).slice(0, 8), surface: superficie, check: t.resume_check || null })})`;
-        } catch { /* el aviso es un extra, no una precondición del deploy */ }
-      }
-      if (!despertadas) console.log(`(${esperando.length} esperando deploy, ninguna incluida todavía en ${String(sha).slice(0, 8)})`);
+      const shas = superficie === 'both'
+        ? { frontend: sha, backend: sha }
+        : { frontend: null, backend: null, [superficie]: sha };
+      const r = await despertarPorDeploy(s, shas, { verboso: true });
+      if (!r.esperaban) console.log('(ninguna tarea esperaba un deploy)');
+      else if (!r.despertadas) console.log(`(${r.esperaban} esperando deploy, ninguna incluida todavía en ${String(sha).slice(0, 8)})`);
     }
 
     else if (cmd === 'wake') {

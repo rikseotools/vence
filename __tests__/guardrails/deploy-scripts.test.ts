@@ -500,3 +500,53 @@ describe('deploy — avisa a las sesiones que esperaban ese deploy (T-285)', () 
     }
   })
 })
+
+/**
+ * El aviso NO puede depender del script de quien despliega (T-290).
+ *
+ * Fallo real del 29/07, la misma noche que se estrenó el mecanismo: cada sesión despliega desde su
+ * PROPIO worktree, y el de quien desplegó era anterior al commit que añadió la llamada a
+ * `backlog.cjs deployed`. El deploy salió perfecto y no avisó a nadie — T-266 se quedó esperando un
+ * frontend que ya estaba vivo. Sin error, solo ausencia: el modo de fallo que este sistema existe
+ * para evitar, reproducido por el propio sistema.
+ *
+ * El arreglo es que `list` RECONCILIE contra el sha vivo de `/health` (pull) en vez de fiarlo todo
+ * al aviso del deployer (push). Esto vigila que ese segundo camino siga cableado: si alguien lo
+ * quita, volvemos a depender de que el worktree del que despliega esté al día, que es una condición
+ * que no se cumple casi nunca y que nadie nota hasta que una tarea lleva días dormida.
+ */
+describe('backlog — el despertar no depende del worktree de quien despliega (T-290)', () => {
+  const backlogCli = readFileSync(join(ROOT, 'scripts/backlog.cjs'), 'utf-8')
+
+  it('`list` reconcilia contra el sha VIVO, no solo espera el aviso del deploy', () => {
+    const list = backlogCli.slice(backlogCli.indexOf("cmd === 'list'"), backlogCli.indexOf("cmd === 'next'"))
+    expect(list).toMatch(/shasVivos/)
+    expect(list).toMatch(/despertarPorDeploy/)
+  })
+
+  it('no toca la red si no hay ninguna tarea esperando deploy (coste cero en el caso normal)', () => {
+    const list = backlogCli.slice(backlogCli.indexOf("cmd === 'list'"), backlogCli.indexOf("cmd === 'next'"))
+    // La consulta de pendientes va ANTES que la llamada a la red, y la envuelve.
+    expect(list.indexOf('wake_on_deploy_sha IS NOT NULL')).toBeLessThan(list.indexOf('shasVivos'))
+  })
+
+  it('la reconciliación es fail-open: sin red o sin git, `list` sigue funcionando', () => {
+    const list = backlogCli.slice(backlogCli.indexOf("cmd === 'list'"), backlogCli.indexOf("cmd === 'next'"))
+    const trozo = list.slice(list.indexOf('shasVivos') - 400, list.indexOf('shasVivos') + 400)
+    expect(trozo).toMatch(/try\s*\{/)
+    expect(trozo).toMatch(/catch/)
+  })
+
+  it('los dos caminos comparten UNA implementación (push y pull no pueden divergir)', () => {
+    // `deployed` (lo llama el deploy) y `list` (reconciliación) deben usar la misma función:
+    // dos copias acabarían despertando con criterios distintos, y el desacuerdo sería invisible.
+    const usos = backlogCli.match(/despertarPorDeploy\(/g) || []
+    expect(usos.length).toBeGreaterThanOrEqual(3) // definición + los dos llamantes
+    expect(backlogCli.match(/async function despertarPorDeploy/g) || []).toHaveLength(1)
+  })
+
+  it('"no sé qué hay vivo" NUNCA despierta (null no puede leerse como desplegado)', () => {
+    const fn = backlogCli.slice(backlogCli.indexOf('async function despertarPorDeploy'))
+    expect(fn).toMatch(/if \(!sha\) return false/)
+  })
+})

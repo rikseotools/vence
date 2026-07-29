@@ -72,6 +72,22 @@ scripts/deploy-cuando-verde.sh <superficie>  # 4) SOLO si toca (ver política ab
 > si alguien quita esa llamada, le cambia la superficie o la mueve antes del smoke, CI en rojo —
 > porque si se desconecta, el sistema deja de avisar **en silencio** y las tareas se quedan
 > dormidas para siempre.
+>
+> **Y NO te fíes solo de ese aviso — hay una segunda red (T-290).** El aviso del deploy tiene una
+> dependencia oculta que falló la misma noche de su estreno: **cada sesión despliega desde su
+> propio worktree**, y el de quien desplegó era anterior al commit que añadió la llamada. El
+> deploy salió perfecto y **no avisó a nadie**: T-266 se quedó esperando un frontend que ya estaba
+> vivo. Sin error, solo ausencia.
+> Por eso `backlog.cjs list` **reconcilia por su cuenta**: si hay tareas esperando deploy, mira el
+> sha vivo en `/health` y despierta las que ya están dentro. Deja de importar quién desplegó ni con
+> qué versión del script, y seguiría valiendo si mañana despliega GitHub Actions. Coste cero cuando
+> no hay nada esperando (si la consulta no devuelve tareas, ni se toca la red) y **fail-open** (sin
+> red o sin git, `list` funciona igual que siempre).
+> Regla mental: **el aviso del deployer es el camino rápido; la reconciliación es el que no se
+> puede olvidar.** Los dos comparten UNA sola implementación (`despertarPorDeploy`) — dos copias
+> despertarían con criterios distintos y el desacuerdo sería invisible.
+> Y un invariante de seguridad: cuando no se puede saber el sha vivo, `shaVivo()` devuelve `null`
+> y **`null` NUNCA despierta**. Mandar a verificar algo que no está desplegado es peor que esperar.
 
 ## TL;DR
 
