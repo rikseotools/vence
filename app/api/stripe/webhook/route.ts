@@ -271,7 +271,8 @@ async function sendWebhookErrorEmail(error: Error): Promise<void> {
             <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${error.stack || 'Sin stack trace'}</pre>
           </div>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe().com/webhooks" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">📊 Ver Webhooks en Stripe</a>
+            <a href="https://dashboard.stripe.com/webhooks" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">📊 Ver Webhooks en Stripe</a>
+            <p style="color: #6b7280; font-size: 13px; margin: 12px 0 0 0;">Hay DOS cuentas Stripe (Manuel y Nila) y cada una tiene su endpoint y su signing secret: comprobar el dashboard de la que corresponda.</p>
             <a href="https://www.vence.es/admin" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">🏠 Panel Admin</a>
           </div>
         </div>
@@ -1186,7 +1187,7 @@ async function sendAdminPaymentIssueEmail(data: PaymentIssueEmailData): Promise<
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
           </div>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe().com/subscriptions/${data.subscriptionId}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver en Stripe</a>
+            <a href="https://dashboard.stripe.com/subscriptions/${data.subscriptionId}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver en Stripe</a>
           </div>
         </div>
       </body>

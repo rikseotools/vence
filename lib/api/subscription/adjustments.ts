@@ -19,9 +19,10 @@
 //     (el cambio en Stripe ya se aplicó, no podemos revertirlo silenciosamente, pero
 //     el caller tiene la info para registrar manualmente)
 
-import Stripe from 'stripe'
+import type Stripe from 'stripe'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
+import { getStripeFor, resolveAccount, type StripeAccount } from '@/lib/stripe'
 
 export type AdjustmentType = 'time_extension' | 'credit' | 'refund' | 'discount'
 export type AmountUnit = 'days' | 'eur' | 'percent'
@@ -53,15 +54,31 @@ export interface ApplyAdjustmentResult {
   error?: string
 }
 
-let _stripeInstance: Stripe | null = null
-function getStripe(): Stripe {
-  if (!_stripeInstance) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY no configurada')
-    }
-    _stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
+/**
+ * Cuenta Stripe donde vive la suscripción de ESTE usuario.
+ *
+ * Con dos cuentas vivas, operar siempre contra la de por defecto significaba
+ * que cualquier ajuste sobre un usuario de Nila (o sea, cualquier alta desde el
+ * flip) iba a la cuenta equivocada: en el mejor caso `resource_missing`, y en
+ * el peor un cupón creado donde no toca. La verdad está en
+ * `user_profiles.payment_account`, que es la misma columna por la que se
+ * enrutan cancelar / portal / reembolso.
+ */
+async function resolveStripeForUser(userId: string): Promise<{
+  stripe: Stripe
+  account: StripeAccount
+}> {
+  const db = getDb()
+  const rows = (await db.execute(sql`
+    SELECT payment_account FROM user_profiles WHERE id = ${userId}::uuid LIMIT 1
+  `)) as unknown as Array<{ payment_account: string | null }>
+
+  if (rows.length === 0) {
+    throw new Error(`user_profiles ${userId} no existe — no se puede resolver la cuenta Stripe`)
   }
-  return _stripeInstance
+
+  const account = resolveAccount(rows[0]?.payment_account)
+  return { stripe: getStripeFor(account), account }
 }
 
 /**
@@ -83,7 +100,18 @@ export async function applySubscriptionAdjustment(
     return { success: false, adjustmentId: null, stripeEventId: null, error: 'time_extension requiere amountUnit=days' }
   }
 
-  const stripe = getStripe()
+  // Cuenta Stripe del usuario (NO la de por defecto — ver resolveStripeForUser)
+  let stripe: Stripe
+  try {
+    ;({ stripe } = await resolveStripeForUser(params.userId))
+  } catch (err) {
+    return {
+      success: false,
+      adjustmentId: null,
+      stripeEventId: null,
+      error: `No se pudo resolver la cuenta Stripe del usuario: ${(err as Error).message}`,
+    }
+  }
 
   // FASE 1: aplicar en Stripe según tipo
   let stripeEventId: string | null = null

@@ -380,6 +380,19 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 ```
 - **Criterio de decisión:** el baseline es **0 de 48**. Si convierte algo, se queda y se pule el texto; si sigue en cero a los 2-3 días con volumen parecido, el problema no es el mensaje sino que en iPhone la gente no instala, y toca decidir si se retira para no gastarles la pantalla.
 - **Ojo al medir:** `ya_instalada` con user_id nulo (anónimos) no sirve para el cruce — el numerador solo cuenta usuarios identificados. Y el `descartado` de iOS silencia 30 días con "Entendido", así que la ventana de exposición se agota sola.
+### [T-265] 🟠 [ABIERTO 29/07] Unificar stripe-fees-summary a las dos cuentas Stripe (decidir tramo de comisión)
+- **Qué pasa:** `/api/admin/stripe-fees-summary` (paneles `/admin/cobros` y `/armando`) abre Stripe con `STRIPE_SECRET_KEY` a pelo → los cobros, comisiones y el balance de **Nila** (que recibe el 100% de las altas nuevas) no aparecen. Mismo defecto que ya se arregló en `/admin/conversiones`, `check-webhook-health`, `subscription-reconciliation` y `canary-stripe-webhook` el 29/07.
+- **Por qué NO se arregló con los otros:** no es mecánico. El endpoint calcula el **tramo de comisión** (5-10% según volumen neto de 4 semanas) y con él el reparto `manuelAmount`/`armandoAmount`. Sumar las dos cuentas sube el volumen → baja el tramo → **cambia el dinero del reparto**. Es una decisión de negocio de Manuel, no de ingeniería.
+- **Qué hay que decidir primero:** ¿el tramo se calcula sobre el volumen AGREGADO de las dos cuentas o por cuenta y luego se suman los repartos? Stripe factura sus comisiones por cuenta; el acuerdo con Armando puede ir por cualquiera de las dos vías.
+- **Cómo:** una vez decidido, `getConfiguredAccounts()` + `getStripeFor()` (ya existen en `lib/stripe.ts`), con desglose por cuenta en la respuesta y el criterio `degraded` que usan los otros. Reglas del multi-cuenta en `docs/runbooks/observability.md` §Vigilancia con VARIAS cuentas Stripe.
+- **Relacionada:** [T-266] (el otro resto del multi-cuenta).
+
+### [T-266] 🟡 [ABIERTO 29/07] Churn de /admin/conversiones cuenta el vaciado de Manuel como bajas reales
+- **Qué pasa:** desde que el MRR mira las dos cuentas (29/07), el churn sí se calcula sobre la cartera completa, pero la fórmula sigue siendo `canceladas / activas` y Manuel arrastra ~180 canceladas y 194 en `cancel_at_period_end` que son **el vaciado de la cuenta**, no bajas de clientes. Encima, quien re-compró por Nila cuenta dos veces: como baja en Manuel y como alta en Nila.
+- **Efecto:** el churn satura en el tope del 15% mientras dure el vaciado, y con él las proyecciones de MRR a 6 y 12 meses. El número no es accionable.
+- **Qué haría falta:** distinguir la cancelación por MIGRACIÓN de la baja real. Señal disponible: una sub cancelada en Manuel cuyo usuario tiene sub activa en Nila **no es churn**. Con eso, excluirlas del numerador y no contar al mismo usuario dos veces en el denominador.
+- **Impacto:** 🟡 no rompe nada, pero es la métrica con la que se decide presupuesto de Ads (ver `docs/runbooks/google-ads-analisis.md`).
+- **Relacionada:** [T-265].
 
 ### [T-257] 🟡 [ABIERTO 28/07] La otra fecha que la landing afirma sin fuente: `convocatorias.exam_date`, que ningún detector mira
 - **Cómo salió:** cerrando [T-256]. El detector `hito_registro_sin_fuente` vigila los HITOS, pero el hero de la landing no lee un hito: lee `convocatorias.exam_date`, con su propio flag `exam_date_approximate` (`false` ⇒ *"Examen: 20 de septiembre de 2026"*; `true` ⇒ *"Examen previsto: … (fecha aproximada)"*).
