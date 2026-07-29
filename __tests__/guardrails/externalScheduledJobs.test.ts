@@ -71,3 +71,50 @@ describe('guardarraíl — jobs programados externos', () => {
     }
   })
 })
+
+/**
+ * Techo de render vs rescate de 'running' colgados.
+ *
+ * Son dos números en ficheros distintos con una relación de orden OBLIGATORIA, y
+ * así es como se descalibraron: el techo se fijó con el récord de entonces (15,2
+ * min) y sin holgura, y el primer tema que lo superó —Segovia T29, **20 min 1 s**
+ * medidos renderizando a mano sin techo— quemaba sus 3 intentos y caía al DLQ
+ * PARA SIEMPRE, con el canary emitiendo CRITICAL a diario por un tema que sí se
+ * puede renderizar. El tema no estaba mal; el techo sí.
+ */
+describe('guardarraíl — techo de render vs rescate de colgados', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { DEFAULT_RENDER_TIMEOUT_MS, DEFAULT_STALE_SECONDS } = require('@/lib/temario/pdf/pdfJobQueue')
+
+  /** Peor caso MEDIDO en producción (Segovia T29, 2,9 MB). */
+  const PEOR_CASO_MEDIDO_MS = 20 * 60_000 + 1_000
+
+  it('el techo de render cubre el peor caso medido, con margen', () => {
+    expect(DEFAULT_RENDER_TIMEOUT_MS).toBeGreaterThan(PEOR_CASO_MEDIDO_MS)
+    // Margen mínimo del 20%: sin holgura, el siguiente tema un poco mayor repite el bug.
+    expect(DEFAULT_RENDER_TIMEOUT_MS).toBeGreaterThanOrEqual(PEOR_CASO_MEDIDO_MS * 1.2)
+  })
+
+  it('el rescate de colgados llega DESPUÉS del techo (si no, re-encola un render en curso)', () => {
+    expect(DEFAULT_STALE_SECONDS * 1000).toBeGreaterThan(DEFAULT_RENDER_TIMEOUT_MS)
+    // Margen real, no un empate técnico: hay que poder distinguir "render largo"
+    // de "worker muerto a media faena".
+    expect(DEFAULT_STALE_SECONDS * 1000 - DEFAULT_RENDER_TIMEOUT_MS).toBeGreaterThanOrEqual(10 * 60_000)
+  })
+
+  it('el worker usa la constante compartida, no un literal propio', () => {
+    const src = readFileSync(PDF_WORKER, 'utf8')
+    expect(src).toMatch(/RENDER_TIMEOUT_MS\s*=\s*DEFAULT_RENDER_TIMEOUT_MS/)
+    // Un `18 * 60_000` suelto aquí es exactamente cómo se descalibró.
+    expect(src).not.toMatch(/RENDER_TIMEOUT_MS\s*=\s*\d+\s*\*/)
+  })
+
+  it('el canary del backend espeja el MISMO rescate (no puede importar de lib/)', () => {
+    const canary = readFileSync(
+      join(ROOT, 'backend/src/canary-pdf-queue/canary-pdf-queue.service.ts'), 'utf8',
+    )
+    const m = canary.match(/STALE_RUNNING_SECONDS\s*=\s*(\d+)\s*\*\s*60/)
+    expect(m).not.toBeNull()
+    expect(Number(m![1]) * 60).toBe(DEFAULT_STALE_SECONDS)
+  })
+})

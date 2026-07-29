@@ -15,15 +15,18 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { sql } from 'drizzle-orm'
 import postgres from 'postgres'
 import { OPOSICIONES } from '@/lib/api/temario/schemas'
-import { enqueuePdfJob, pdfJobStats } from '@/lib/temario/pdf/pdfJobQueue'
+import { DEFAULT_RENDER_TIMEOUT_MS, enqueuePdfJob, pdfJobStats } from '@/lib/temario/pdf/pdfJobQueue'
 import { runPdfWorker, type EmitFn, type RenderFn } from '@/lib/temario/pdf/pdfWorker'
 import { PDF_TEMPLATE_VERSION } from '@/lib/temario/pdf/pdfCache'
 
 const PDF_MAX_CHARS = 400_000       // límite de generación síncrona (total del tema)
 const PDF_MAX_ARTICLE_CHARS = 60_000 // límite por-artículo (cajón)
-// Timeout por render. Un tema gigante legítimo (1,3 MB) tarda ~10-13 min; por encima de esto
-// asumimos patológico/colgado → se mata el hijo y el job va a retry/DLQ (no bloquea la cola).
-const RENDER_TIMEOUT_MS = 18 * 60_000
+// Timeout por render: se mata el hijo y el job va a retry/DLQ (no bloquea la cola).
+// El valor NO se declara aquí: vive junto a `DEFAULT_STALE_SECONDS`, con el que
+// mantiene un invariante (el rescate de 'running' colgados tiene que llegar DESPUÉS
+// del techo, o re-encolaría un render en curso). Tenerlos en ficheros distintos es
+// como se descalibró: el techo se subía sin mirar el rescate.
+const RENDER_TIMEOUT_MS = DEFAULT_RENDER_TIMEOUT_MS
 
 function makeDb() {
   const url = process.env.DATABASE_URL

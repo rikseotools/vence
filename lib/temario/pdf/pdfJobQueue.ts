@@ -34,8 +34,30 @@ export type PdfJobStatus = 'pending' | 'running' | 'done' | 'failed'
 /** Número máximo de intentos antes de mandar el job a la DLQ ('failed'). */
 export const DEFAULT_MAX_ATTEMPTS = 3
 
-/** Un 'running' más viejo que esto (sin terminar) se considera colgado y se re-encola. */
-export const DEFAULT_STALE_SECONDS = 30 * 60 // 30 min
+/**
+ * Techo por render. El worker MATA el proceso hijo al superarlo y el job va a
+ * retry/DLQ, así que este número decide qué temas son renderizables.
+ *
+ * **Se fija por el peor caso MEDIDO, con margen.** Estuvo en 18 min, elegido
+ * con el récord de entonces (15,2 min) y sin holgura. El primer tema que lo
+ * superó —`auxiliar_administrativo_diputacion_segovia` T29, **20 min 1 s y 2,9
+ * MB**, renderizado a mano sin techo— quemaba sus 3 intentos y caía al DLQ
+ * **para siempre**, con el canary emitiendo CRITICAL a diario por un tema que
+ * es perfectamente renderizable. No estaba mal el tema: estaba mal el techo.
+ * 30 min = 50% de margen sobre ese peor caso medido.
+ */
+export const DEFAULT_RENDER_TIMEOUT_MS = 30 * 60_000 // 30 min
+
+/**
+ * Un 'running' más viejo que esto (sin terminar) se considera colgado y se re-encola.
+ *
+ * ⚠️ **INVARIANTE: tiene que ser MAYOR que `DEFAULT_RENDER_TIMEOUT_MS`.** Si el
+ * rescate llega antes que el techo, re-encola un job que TODAVÍA se está
+ * renderizando → dos workers rindiendo el mismo tema y contando intentos de más.
+ * El margen entre ambos es lo que distingue "render legítimamente largo" de
+ * "worker muerto a media faena". Fijado en `__tests__/temario/pdfJobQueue…`.
+ */
+export const DEFAULT_STALE_SECONDS = 45 * 60 // 45 min (15 min por encima del techo de render)
 
 /**
  * Decisión PURA de reintento (unit-testeable sin BD): dado el nº de intentos ya consumidos

@@ -32,8 +32,13 @@ export class CanaryPdfQueueService implements CanaryProbe {
   readonly writesToProd = false;
   readonly bounding: CanaryBounding = 'read-only';
 
-  // 30 min = DEFAULT_STALE_SECONDS del worker: un 'running' más viejo = worker muerto.
-  private readonly STALE_RUNNING_SECONDS = 30 * 60;
+  // ESPEJO de `DEFAULT_STALE_SECONDS` de `lib/temario/pdf/pdfJobQueue.ts` (el backend
+  // tiene rootDir propio y no puede importar de ../lib). Un 'running' más viejo = worker
+  // muerto. Debe ir por encima del techo de render (`DEFAULT_RENDER_TIMEOUT_MS`, 30 min)
+  // o marcaría como colgado un tema que sigue renderizándose legítimamente: el peor caso
+  // medido son 20 min (Segovia T29). Paridad fijada en
+  // `__tests__/guardrails/externalScheduledJobs.test.ts`.
+  private readonly STALE_RUNNING_SECONDS = 45 * 60;
   // El worker corre cada 15 min; un 'pending' de >2h (8 ciclos) = no se está drenando.
   private readonly MAX_PENDING_AGE_SECONDS = 2 * 60 * 60;
 
