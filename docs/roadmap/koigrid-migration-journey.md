@@ -2327,3 +2327,27 @@ Blocked by D3, so unmeasured: whether the restore **holds for the full duration*
 `tableCounts` (fixed at 17:30) comes back populated at 204 tables, and **how long a real cutover window is**.
 We will re-run the moment there is room. The dump is built and verified on our side, so a retry is one upload
 away.
+
+---
+
+## 🔻 2026-07-30 — the rehearsal is still blocked, and the failure got *less* diagnosable
+
+Used your new changelog exactly as intended: stored `latest` (`2026-07-29T18:40:00Z`) and asked
+`?since=` — **`count: 0`**. Confirmed independently: `llms.txt` still 876 lines, `openapi.json` still 190
+paths. So nothing shipped, which is fine — but the storage problem is operational, not a release, so we
+re-tested it directly.
+
+**`POST /databases/:id/restore-dump/upload-url` now returns a 500:**
+
+```json
+{"error":"internal","errorRef":"fbe1e5e6-0e6c-4a53-b6ff-c771c4353779"}
+```
+
+Yesterday the same call succeeded and the *upload* then failed with a clear `XMinioStorageFull`. Today it
+fails earlier and says nothing. **That is a regression in diagnosability of the same underlying problem** —
+and an agent hitting only this response has no way to know the cause is a full backend rather than a bad
+request on its side. (`errorRef` is there, which is the right instinct; it just isn't actionable by us.)
+
+**D3 stands and is now the only thing blocking the rehearsal you asked for.** Our 4.09 GB dump is built and
+verified locally; a retry is one 3-minute upload away. The asks are unchanged: free `koi-db-dumps`, give us a
+way to delete a dump, reclaim dumps when their database is deleted, and surface this as a named error.
