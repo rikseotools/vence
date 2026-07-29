@@ -2,12 +2,12 @@
 # Cierra una sesión creada con new-session.sh: libera sus claims, avisa de commits sin
 # llevar a origin/main, quita el worktree + la rama, para el Postgres local si lo había.
 #
-# Uso: scripts/sessions/end-session.sh <slug> [--force]
+# Uso: scripts/sessions/borrar-worktree.sh <slug> [--force]
 #   --force  quita el worktree aunque tenga cambios sin commitear (se PIERDEN)
 set -euo pipefail
 
 SLUG="${1:-}"
-[ -n "$SLUG" ] || { echo "Uso: end-session.sh <slug> [--force]"; exit 2; }
+[ -n "$SLUG" ] || { echo "Uso: borrar-worktree.sh <slug> [--force]"; exit 2; }
 FORCE=0; [ "${2:-}" = "--force" ] && FORCE=1
 
 GIT_COMMON="$(git rev-parse --git-common-dir 2>/dev/null)" || { echo "❌ no estás en un repo git"; exit 2; }
