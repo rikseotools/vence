@@ -2564,6 +2564,40 @@ export class ContentHealthSweepService {
       this.logger.warn(`mapa de visibilidad no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
+    // ── Epígrafe con la cabecera/pie del PDF del boletín incrustada (T-171) ──
+    // ⚠️ ESPEJO de `lib/health/epigrafeRuidoBoletin.cjs` (el núcleo puro y testeado que usa el CLI).
+    // El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas un patrón
+    // aquí, tócalo allí — `content-sweep-parity.test.ts` vigila que los KINDS no diverjan.
+    //
+    // `fir?ma` con la `r` opcional es a propósito: «Fima automática» es el OCR REAL del caso de
+    // Córdoba. Y «Depósito legal» NO acusa solo — es materia legítima en biblioteconomía y fue la
+    // causa de 2 de los 4 «hallazgos» del barrido del 27/07.
+    try {
+      const MARCADORES = [
+        /copia electrónica de un documento/i, /código seguro de verificación/i,
+        /powered by tcpdf/i, /\bfir?ma autom[áa]tica\b/i,
+        /bolet[íi]n oficial de la provincia/i, /\bn[ºo]\s?\d{1,5}\s+p\.\s?\d{1,6}\b/i,
+      ];
+      const epRows = (await this.db.execute(sql`
+        SELECT position_type AS slug, topic_number AS tema, epigrafe
+          FROM topics WHERE epigrafe IS NOT NULL
+      `)) as unknown as Array<{ slug: string; tema: number; epigrafe: string }>;
+      const sucios = (Array.isArray(epRows) ? epRows : [])
+        .map((e) => {
+          const hits = MARCADORES.map((re) => e.epigrafe?.match(re)?.[0]?.trim()).filter(Boolean) as string[];
+          const dep = /dep[óo]sito legal/i.exec(e.epigrafe ?? '')?.[0];
+          return { ...e, marcadores: hits.length ? (dep ? [...hits, dep] : hits) : [] };
+        })
+        .filter((e) => e.marcadores.length > 0);
+      for (const e of sucios.slice(0, 10)) {
+        add('content', 'warn', e.slug, 'epigrafe_ruido_boletin',
+          `${e.slug} T${e.tema}: el epígrafe trae incrustada la cabecera/pie del PDF del boletín (${e.marcadores.slice(0, 2).join(' · ')})`,
+          { slug: e.slug, tema: e.tema, marcadores: e.marcadores });
+      }
+    } catch (e) {
+      this.logger.warn(`ruido de boletín en epígrafes no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {

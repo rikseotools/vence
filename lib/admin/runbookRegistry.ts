@@ -326,6 +326,18 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada, los epígrafes están marcados verified_literal pero sin source_documento_id → se validaron contra una URL suelta, no contra el documento clonado del hub convocatoria_documentos. Si tienen source_url, enlázalos con scripts/provenance/link-epigrafe-docs.cjs --apply (canonicaliza → ensure_convocatoria_documento → fija source_documento_id). Si NO tienen source_url (verificados antes del hub), re-sourcéalos: baja el temario oficial del programa_url y corre verify-epigrafe-literality.cjs record con source_url (que ya enlaza al hub). NUNCA marcar verified_literal sin fuente ni fabricar la URL.',
   },
+  epigrafe_ruido_boletin: {
+    title: 'Epígrafe con la cabecera/pie del PDF del boletín incrustada',
+    triggerPhrase: 'revisa los epígrafes sucios',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'el epígrafe se trajo el pie del PDF del boletín al importarlo, a veces PARTIENDO LA FRASE por la mitad ' +
+      '(caso ordenanza-ayuntamiento-cordoba T8). Compara el epígrafe contra el temario oficial del programa_url ' +
+      'y limpia SOLO el artefacto de maquetación, sin reescribir la materia. Envenena dos cosas: la verificación ' +
+      'de literalidad compara contra un texto que ya no es el programa, y la adjudicación epígrafe↔scope por LLM ' +
+      'razona sobre basura. OJO: «Depósito legal» es materia legítima en biblioteconomía — el detector ya no lo ' +
+      'marca solo, pero al limpiar a mano no lo borres.',
+  },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',
     triggerPhrase: 'revisa las leyes duplicadas entre temas',

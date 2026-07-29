@@ -38,6 +38,7 @@ const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cj
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
+const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 
@@ -1231,6 +1232,23 @@ async function main() {
         { tabla: f.relname, pctVisible: f.pctVisible, paginasFrias: f.paginasFrias, relpages: f.relpages, remedio: remedioVisibilidad(f) });
     }
   } catch (e) { console.warn('⚠️ mapa de visibilidad no evaluado:', String(e.message || e).slice(0, 120)); }
+
+  // ── Epígrafe con la cabecera/pie del PDF del boletín incrustada (T-171) ──
+  // Al importar un temario desde el PDF de un boletín, el pie puede colarse EN MITAD DE LA FRASE.
+  // Caso real: `ordenanza-ayuntamiento-cordoba` T8 → «…Medidas preventivas y pautas de DE LA
+  // PROVINCIA ESTE DOCUMENTO ES UNA COPIA ELECTRÓNICA… Nº 99 p. 7474 actuación ante incendios…».
+  // Frecuencia baja, daño caro: la verificación de literalidad compara contra un texto que ya no
+  // es el programa, y cualquier adjudicación epígrafe↔scope por LLM razona sobre basura.
+  // La guarda de «Depósito legal» (materia legítima en biblioteconomía) vive en el núcleo puro.
+  try {
+    const eps = (await c.query(`SELECT position_type AS slug, topic_number AS tema, epigrafe
+                                  FROM topics WHERE epigrafe IS NOT NULL`)).rows;
+    for (const e of epigrafesSucios(eps).slice(0, 10)) {
+      add('content', 'warn', e.slug, 'epigrafe_ruido_boletin',
+        `${e.slug} T${e.tema}: el epígrafe trae incrustada la cabecera/pie del PDF del boletín (${e.marcadores.slice(0, 2).join(' · ')})`,
+        { slug: e.slug, tema: e.tema, marcadores: e.marcadores });
+    }
+  } catch (e) { console.warn('⚠️ ruido de boletín en epígrafes no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
