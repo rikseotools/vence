@@ -60,10 +60,47 @@ describe('seguridad del precio personalizado', () => {
     expect(bloque).toMatch(/if \(esPrecioHeredado\)[\s\S]*\} else \{/)
   })
 
-  it('la migración garantiza UNA sola oferta viva por persona', () => {
+  it('la tabla nace con las guardas correctas (el índice de una-sola se relajó después)', () => {
     const sqlMig = leer('supabase/migrations/20260729_user_price_offers.sql')
-    expect(sqlMig).toMatch(/CREATE UNIQUE INDEX[\s\S]*user_price_offers \(user_id\)[\s\S]*WHERE redeemed_at IS NULL AND revoked_at IS NULL/)
+    // La migración original creaba «una oferta viva por persona»; el mismo día se cambió a
+    // «una por precio» para poder ofrecer dos planes (ver …_multiples.sql). Se comprueba
+    // que la tabla nace con SU índice, no que ese índice siga vigente — si no, este test
+    // afirmaría algo que ya es falso.
+    expect(sqlMig).toMatch(/CREATE UNIQUE INDEX[\s\S]*user_price_offers \(user_id\)/)
     // Y que un importe absurdo no entre por la puerta de atrás.
     expect(sqlMig).toContain('CHECK (importe_centimos > 0)')
+  })
+})
+
+describe('varias ofertas vivas por persona (29/07)', () => {
+  // La migración permitió dos ofertas (mensual y trimestral, para que elija), pero el
+  // endpoint y la página se quedaron con LIMIT 1: se le iban a prometer dos precios por
+  // mensaje y habría visto uno. No lo cazó nada porque con UNA oferta —lo que tienen
+  // todos los demás— funciona perfectamente. Estos tests fijan las tres piezas.
+  const ENDPOINT = leer('app/api/v2/premium/mi-oferta/route.ts')
+  const PAGINA = leer('app/premium/personal/page.tsx')
+
+  it('la consulta devuelve TODAS las vivas, sin LIMIT 1', () => {
+    expect(OFERTAS).toContain('export async function getOfertasActivas')
+    const bloque = OFERTAS.slice(OFERTAS.indexOf('getOfertasActivas'), OFERTAS.indexOf('/** La primera oferta viva'))
+    expect(bloque).not.toMatch(/LIMIT\s+1/i)
+  })
+
+  it('el endpoint las expone en plural (y conserva el singular para clientes viejos)', () => {
+    expect(ENDPOINT).toContain('getOfertasActivas')
+    expect(ENDPOINT).toMatch(/ofertas:\s*ofertas\.map/)
+    expect(ENDPOINT).toMatch(/oferta:\s*vista\(ofertas\[0\]\)/)
+  })
+
+  it('la página pinta una tarjeta por oferta, no la primera', () => {
+    expect(PAGINA).toMatch(/ofertas\.map\(\(oferta\)/)
+    // Y el botón contrata LA de su tarjeta, no una variable suelta del componente.
+    expect(PAGINA).toMatch(/onClick=\{\(\) => contratar\(oferta\)\}/)
+  })
+
+  it('la migración impide la MISMA oferta dos veces, pero no dos planes distintos', () => {
+    const mig = leer('supabase/migrations/20260729_user_price_offers_multiples.sql')
+    expect(mig).toContain('DROP INDEX IF EXISTS user_price_offers_una_viva_por_usuario')
+    expect(mig).toMatch(/UNIQUE INDEX[\s\S]*\(user_id, stripe_price_id\)/)
   })
 })
