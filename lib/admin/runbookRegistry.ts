@@ -326,6 +326,22 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/provenance-convocatorias.md',
     claudeHace: 'para cada oposición señalada, los epígrafes están marcados verified_literal pero sin source_documento_id → se validaron contra una URL suelta, no contra el documento clonado del hub convocatoria_documentos. Si tienen source_url, enlázalos con scripts/provenance/link-epigrafe-docs.cjs --apply (canonicaliza → ensure_convocatoria_documento → fija source_documento_id). Si NO tienen source_url (verificados antes del hub), re-sourcéalos: baja el temario oficial del programa_url y corre verify-epigrafe-literality.cjs record con source_url (que ya enlaza al hub). NUNCA marcar verified_literal sin fuente ni fabricar la URL.',
   },
+  plazas_reserva_sin_declarar: {
+    title: 'Plazas publicadas con una suma que puede ser falsa (reserva de discapacidad sin declarar)',
+    triggerPhrase: 'revisa las plazas de reserva sin declarar',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'la convocatoria tiene reserva de discapacidad pero NO declara si va DENTRO del turno libre o APARTE ' +
+      '(`convocatorias.plazas_discapacidad_incluidas IS NULL`). La vista SSOT tiene que dar un número, así que ' +
+      'supone que van aparte y SUMA: si en realidad iban dentro, estamos publicando plazas que no existen. ' +
+      'Abre el boletín de esa convocatoria (`programa_url`/`boe_reference`), busca el reparto por turnos y ' +
+      'DECLARA la columna: true si la reserva está incluida en el total del turno libre, false si se suma. ' +
+      'NUNCA suponer — es preferible dejarlo sin declarar que declarar mal. Origen: una usuaria vio 51 plazas ' +
+      'en el catálogo del Ayuntamiento de Sevilla cuando la convocatoria tiene 46 (29/07/2026); el bug de código ' +
+      'que sumaba en todas las superficies ya está arreglado y con guardarraíl ' +
+      '(`__tests__/guardrails/plazasReservaDiscapacidad.test.ts`), esto vigila el hueco de DATOS que queda. ' +
+      'Núcleo: `lib/convocatoria/reservaSinDeclarar.cjs`; la regla de presentación, `lib/convocatoria/reservaDiscapacidad.ts`.',
+  },
   epigrafe_ruido_boletin: {
     title: 'Epígrafe con la cabecera/pie del PDF del boletín incrustada',
     triggerPhrase: 'revisa los epígrafes sucios',

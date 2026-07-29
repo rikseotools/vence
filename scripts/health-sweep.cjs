@@ -35,6 +35,7 @@ const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilab
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOrigen.js');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
+const { detectarReservaSinDeclarar } = require('../lib/convocatoria/reservaSinDeclarar.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
@@ -1273,6 +1274,26 @@ async function main() {
         { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
     }
   } catch (e) { console.warn('⚠️ estructura de explicaciones no evaluada:', String(e.message || e).slice(0, 120)); }
+  // ── Plazas publicadas con una SUMA que puede ser falsa (29/07/2026, caso Concha) ──
+  // Cuando `plazas_discapacidad_incluidas` es NULL no consta si la reserva va dentro del
+  // turno libre o aparte, y la vista SSOT tiene que dar un número: supone que van aparte
+  // y SUMA. Si iban dentro, publicamos plazas que no existen — que es justo lo que una
+  // usuaria vio en el catálogo (51 en Sevilla cuando son 46). El bug de código está
+  // arreglado y con guardarraíl; esto vigila el hueco de DATOS que queda. Se resuelve
+  // verificando la convocatoria contra su boletín, nunca suponiendo.
+  try {
+    const filas = (await c.query(`
+      SELECT o.slug, c2.plazas_libres, c2.plazas_discapacidad,
+             c2.plazas_discapacidad_incluidas AS incluidas
+        FROM oposiciones o
+        JOIN convocatorias c2 ON c2.oposicion_id = o.id AND c2.is_current
+       WHERE o.is_active AND COALESCE(c2.plazas_discapacidad, 0) > 0
+    `)).rows;
+    for (const h of detectarReservaSinDeclarar(filas).slice(0, 12)) {
+      add('content', h.severity, h.slug, 'plazas_reserva_sin_declarar', h.mensaje,
+        { plazas_en_duda: h.plazas_en_duda });
+    }
+  } catch (e) { console.warn('⚠️ reserva de discapacidad sin declarar no evaluada:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {

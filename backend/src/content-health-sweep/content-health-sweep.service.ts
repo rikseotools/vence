@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { detectarReservaSinDeclarar } from './reserva-sin-declarar';
 
 /**
  * Barrido de SALUD (app + contenido) → tabla `content_health_findings` + email.
@@ -2645,6 +2646,29 @@ export class ContentHealthSweepService {
       }
     } catch (e) {
       this.logger.warn(`estructura de explicaciones no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
+    // ── Plazas publicadas con una SUMA que puede ser falsa (29/07/2026, caso Concha) ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC). Cuando no consta si la
+    // reserva de discapacidad va dentro del turno libre o aparte, la vista SSOT supone
+    // que va aparte y SUMA: si iba dentro, publicamos plazas que no existen. El bug de
+    // código que sumaba en TODAS las superficies ya está arreglado y con guardarraíl;
+    // esto vigila el hueco de DATOS. Se resuelve verificando el boletín, nunca suponiendo.
+    try {
+      const filasReserva = (await this.db.execute(sql`
+        SELECT o.slug, c2.plazas_libres, c2.plazas_discapacidad,
+               c2.plazas_discapacidad_incluidas AS incluidas
+          FROM oposiciones o
+          JOIN convocatorias c2 ON c2.oposicion_id = o.id AND c2.is_current
+         WHERE o.is_active AND COALESCE(c2.plazas_discapacidad, 0) > 0
+      `)) as unknown as Array<{ slug: string; plazas_libres: number | null; plazas_discapacidad: number | null; incluidas: boolean | null }>;
+      for (const h of detectarReservaSinDeclarar(Array.isArray(filasReserva) ? filasReserva : []).slice(0, 12)) {
+        add('content', h.severity, h.slug, 'plazas_reserva_sin_declarar', h.mensaje, {
+          plazas_en_duda: h.plazas_en_duda,
+        });
+      }
+    } catch (e) {
+      this.logger.warn(`reserva de discapacidad sin declarar no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
     // ── Escribir snapshot ──
