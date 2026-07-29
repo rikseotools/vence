@@ -298,3 +298,78 @@ export function payoutDenomination(balanceEur: number): number {
 export function isValidDenomination(amount: number): boolean {
   return (AMAZON_ES_DENOMINATIONS as readonly number[]).includes(amount)
 }
+
+// ============================================================================
+// Estado del icono 🎁 del Header (decisión Manuel, 29/07/2026)
+// ============================================================================
+//
+// Tres estados que se aprenden sin leer instrucciones, y una señal aparte para la novedad:
+//
+//   · SIN saldo          → apagado (gris). No promete nada.
+//   · CON saldo < mínimo → encendido, SIN cifra. Dice «tienes algo» sin prometer un cobro que no
+//     existe: por debajo de 5 € no se puede canjear.
+//   · Saldo COBRABLE     → encendido + la cifra del vale que ya se puede pedir.
+//
+// **Por qué la cifra solo aparece cuando es cobrable.** Medido el 29/07: de 18 usuarios con saldo,
+// **11 están por debajo del mínimo** (tres con 1 €, siete con 3 €). Escribir «1 €» en la barra a
+// quien no puede cobrarlo convierte el clic en una decepción —y quema el canal para la siguiente—,
+// además de anclar la percepción del programa en su cifra más baja (las recompensas reales son 3 €
+// por bug y 10 € por referido).
+//
+// **Por qué la novedad va aparte del color.** Antes el icono marcaba *ganancias sin ver* y se
+// apagaba al pincharlo. Si el color pasa a significar «tienes saldo», el que tenga 3 € lo verá
+// encendido para siempre y en dos días será papel pintado. Se separan: el COLOR informa del saldo,
+// el PUNTO avisa de que hay algo nuevo desde la última visita.
+//
+// **Sin animación**: el `animate-bounce` permanente cansa, molesta a quien tiene sensibilidad al
+// movimiento y hace que el icono se lea como publicidad — justo lo que impide pincharlo.
+
+export type EstadoIconoRecompensas = 'sin_saldo' | 'con_saldo' | 'cobrable'
+
+export interface IconoRecompensas {
+  estado: EstadoIconoRecompensas
+  /** Importe del vale que YA se puede pedir. `null` mientras no llegue al mínimo: no se pinta. */
+  importeCobrable: number | null
+  /** Punto de novedad: hay ingresos que el usuario aún no ha visto. */
+  hayNovedad: boolean
+  /** Texto del `title`/`aria-label`. Se decide aquí para que no diverja del estado pintado. */
+  titulo: string
+}
+
+/**
+ * Qué pinta el icono 🎁, dado el saldo y si hay ingresos sin ver. PURO: sin BD y sin React, para
+ * poder fijarlo en tests — es la única función que decide si a alguien se le promete dinero.
+ */
+export function estadoIconoRecompensas({
+  balanceEur,
+  unseen,
+}: { balanceEur: number; unseen: number }): IconoRecompensas {
+  const saldo = Number.isFinite(balanceEur) && balanceEur > 0 ? balanceEur : 0
+  const hayNovedad = Number.isFinite(unseen) && unseen > 0
+  const cobrable = payoutDenomination(saldo) // 0 si no llega al mínimo; reutiliza la regla del pago
+
+  if (cobrable > 0) {
+    return {
+      estado: 'cobrable',
+      importeCobrable: cobrable,
+      hayNovedad,
+      titulo: `Tienes ${cobrable} € listos para canjear`,
+    }
+  }
+  if (saldo > 0) {
+    return {
+      estado: 'con_saldo',
+      importeCobrable: null,
+      hayNovedad,
+      // Sin cifra en el icono, pero el title sí puede decir cuánto falta: quien pasa el ratón
+      // está preguntando, y ahí la respuesta honesta ayuda en vez de decepcionar.
+      titulo: `Llevas ${saldo.toFixed(2).replace(/\.00$/, '')} € — a partir de ${MIN_PAYOUT_EUR} € puedes canjear`,
+    }
+  }
+  return {
+    estado: 'sin_saldo',
+    importeCobrable: null,
+    hayNovedad,
+    titulo: 'Recompensas — gana por recomendar Vence, reportar fallos y opinar',
+  }
+}

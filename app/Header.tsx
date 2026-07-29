@@ -13,6 +13,7 @@ import FeedbackButton from '@/components/FeedbackButton'
 import QuestionDispute from '@/components/QuestionDispute'
 import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { useReferralEarningsBadge } from '@/hooks/useReferralEarningsBadge'
+import { RewardsIcon } from '@/components/RewardsIcon'
 
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
@@ -75,7 +76,7 @@ export default function HeaderES() {
   const [discardingExamId, setDiscardingExamId] = useState<string | null>(null)
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
-  const { hasUnseen: hasReferralEarnings } = useReferralEarningsBadge()
+  const { icono: iconoRecompensas } = useReferralEarningsBadge()
   const pathname = usePathname()
 
   const { user, loading: authLoading, isPremium, isLegacy, userProfile } = useAuth()
@@ -633,26 +634,10 @@ export default function HeaderES() {
                   <span className="text-lg">💬</span>
                 </SupportButton>
 
-                {/* 🎁 ICONO DE EMBAJADORES - Solo premium/legacy (programa solo-premium) */}
-                {(isPremium || isLegacy) && (
-                  <Link
-                    href="/recompensas?src=header"
-                    className="tap-feedback relative flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
-                    aria-label={hasReferralEarnings ? 'Programa de Recompensas — ¡has ganado dinero!' : 'Programa de Recompensas'}
-                    title={hasReferralEarnings ? '🎉 ¡Has ganado dinero! Toca para ver' : 'Recompensas — gana por recomendar Vence, reportar fallos y opinar'}
-                  >
-                    {/* En reposo el 🎁 va en GRIS (grayscale): así el color queda RESERVADO para
-                        "tienes algo nuevo" y el aviso se nota sin depender solo del movimiento
-                        (que `prefers-reduced-motion` puede anular y que la vista periférica no capta). */}
-                    <span className={`text-lg transition-all duration-300 ${hasReferralEarnings ? 'animate-bounce' : 'grayscale opacity-60'}`}>🎁</span>
-                    {hasReferralEarnings && (
-                      <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                      </span>
-                    )}
-                  </Link>
-                )}
+                {/* 🎁 ICONO DE RECOMPENSAS — solo premium/legacy (el programa es solo-premium).
+                    Tres estados y el punto de novedad: los pinta `RewardsIcon` y los decide el
+                    núcleo puro `estadoIconoRecompensas`. Aquí no hay reglas. */}
+                {(isPremium || isLegacy) && <RewardsIcon icono={iconoRecompensas} />}
 
                 {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
                 {userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (
