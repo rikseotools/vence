@@ -516,6 +516,16 @@ Los umbrales también están codificados en `app/api/admin/system-health/route.t
 - Latencia INSERT mean histórico de pg_stat_statements (incluye RTT): ámbar ≥ 80ms, rojo ≥ 250ms. proxy_p95 (mean + 2·stddev) se muestra como informativo en el panel pero sin umbral propio — es muy sensible a outliers de contención.
 - Cron de drift staleness: ámbar > 26h, rojo > 36h
 
+**Latencia POR ENDPOINT** (`endpoint_latency`, T-254 — núcleo en `lib/api/admin/endpoint-latency.ts`):
+- `user_facing`: ámbar ≥ 2.000 ms, rojo ≥ 5.000 ms · `admin`: ámbar ≥ 5.000 ms, rojo ≥ 15.000 ms
+- Se mide el **p95 del PEOR cubo de 5 minutos** de la ventana, no el agregado del periodo. Mínimo **10 muestras** por cubo: por debajo dice `unknown`, nunca verde.
+- La alerta (`endpoint_latency_sustained`, cada 5 min) exige **≥2 cubos consecutivos en ámbar-o-peor con al menos uno rojo**, y solo en endpoints de usuario. Volumen medido: **0,9/día**.
+- ⚠️ Los umbrales están DUPLICADOS en `backend/src/alerts/alert-rules.ts` (el backend no puede importar `lib/`: su Docker solo copia `backend/src`). La divergencia la caza `backend/src/alerts/alert-rules.endpoint-latency.spec.ts` — si tocas un número aquí, ese spec te avisa.
+
+> **Por qué NO basta el indicador `request_latency` que ya había** (y por qué el incidente del 28/07 pasó desapercibido): agrega TODO el tráfico junto. Medido sobre los datos reales de ese día, mientras `/api/v2/answer-and-save` estaba a **p95 25.145 ms**, el p95 global de esos mismos 15 minutos marcaba **166 ms → verde**. Un endpoint que es el 3% del volumen no puede mover un percentil global, por muchos umbrales que se le pongan.
+>
+> **Y por endpoint tampoco basta si la ventana es larga:** el p95 de ese MISMO endpoint agregado a 24 h sale a 362 ms → verde, porque 13 minutos de incendio son el 0,9% del día. Hacen falta las dos cosas: por endpoint **y** en cubo corto. Simulación reproducible: `npx tsx scripts/sim-latencia-endpoints.ts --dias 7 [--detalle]`.
+
 ---
 
 ## 5. Acciones de emergencia

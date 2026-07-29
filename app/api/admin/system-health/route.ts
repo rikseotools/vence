@@ -35,6 +35,16 @@ import {
   classifyEndpoint,
   ERROR_5XX_THRESHOLDS,
 } from '@/lib/api/admin/endpoint-classification'
+import {
+  worstBucketPerEndpoint,
+  overallEndpointLatencyStatus,
+  degradedEndpoints,
+  sustainedDegradations,
+  LATENCY_BUCKET_MINUTES,
+  LATENCY_MIN_SAMPLES,
+  LATENCY_P95_THRESHOLDS,
+  type EndpointLatencyBucket,
+} from '@/lib/api/admin/endpoint-latency'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
@@ -262,6 +272,7 @@ async function _GET(request: NextRequest) {
     examIntegrityCronErrorResult,
     cacheCanaryResult,
     errorSignalsResult,
+    endpointLatencyResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -494,6 +505,29 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: rows, count: null }
     }),
+
+    // 15) LATENCIA POR ENDPOINT Y CUBO CORTO (T-254). El indicador `request_latency` de arriba
+    // agrega TODO el tráfico junto, y por eso no vio el incidente del 28/07: `answer-and-save`
+    // estuvo a p95 25.145 ms durante 15 minutos y el p95 global de esa misma ventana marcaba
+    // 166 ms → verde. Un endpoint que es el 3% del volumen no puede mover un percentil global.
+    // Se agrega en SQL (no se traen filas crudas) porque son ~60.000 mediciones en 7 días.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT endpoint,
+               to_timestamp(floor(extract(epoch from created_at) / ${LATENCY_BUCKET_MINUTES * 60})
+                            * ${LATENCY_BUCKET_MINUTES * 60}) AS bucket,
+               count(*)::int AS samples,
+               percentile_disc(0.95) WITHIN GROUP (ORDER BY duration_ms)::int AS p95
+        FROM observable_events
+        WHERE event_type = 'request_completed'
+          AND duration_ms IS NOT NULL
+          AND endpoint IS NOT NULL
+          AND created_at >= ${since}
+        GROUP BY 1, 2
+        HAVING count(*) >= ${LATENCY_MIN_SAMPLES}
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -588,6 +622,25 @@ async function _GET(request: NextRequest) {
   const p50 = percentile(durations, 50)
   const p95 = percentile(durations, 95)
   const p99 = percentile(durations, 99)
+
+  // ─── Procesar 7-bis: latencia POR ENDPOINT y cubo corto (T-254) ───
+  // La decisión vive en `@/lib/api/admin/endpoint-latency` (pura y testeada contra los números
+  // reales del incidente del 28/07). Aquí solo se traduce la fila de SQL y se arma el payload.
+  const endpointBuckets: EndpointLatencyBucket[] = (endpointLatencyResult.data ?? []).map(r => {
+    const row = r as { endpoint: string; bucket: string | Date; samples: number; p95: number }
+    return {
+      endpoint: row.endpoint,
+      bucketStart: new Date(row.bucket).toISOString(),
+      samples: Number(row.samples),
+      p95Ms: Number(row.p95),
+    }
+  })
+  const endpointVerdicts = worstBucketPerEndpoint(endpointBuckets)
+  const endpointDegraded = degradedEndpoints(endpointVerdicts)
+  const endpointSustained = sustainedDegradations(endpointBuckets)
+  const endpointLatencyStatus = endpointLatencyResult.error
+    ? 'unknown'
+    : overallEndpointLatencyStatus(endpointVerdicts)
 
   // ─── Procesar 8: canary uptime agregado ───
   const canaryEvents = canaryEventsResult.data ?? []
@@ -852,7 +905,29 @@ async function _GET(request: NextRequest) {
         p99_ms: p99,
         sampleCount: durations.length,
         thresholds: { amber: REQ_LATENCY_P95_AMBER_MS, red: REQ_LATENCY_P95_RED_MS },
-        note: 'Sampling 10% de request_completed (server-side withErrorLogging).',
+        note: 'Sampling 10% de request_completed (server-side withErrorLogging). AGREGADO — no puede ver la caída de UN endpoint concreto; para eso está endpoint_latency.',
+      },
+      // T-254. El de arriba agrega todo el tráfico junto y por eso dio VERDE mientras
+      // `answer-and-save` estaba a 25 s: un endpoint que es el 3% del volumen no mueve un
+      // percentil global. Éste mira endpoint por endpoint y en cubos de 5 min, porque el
+      // agregado de 24 h TAMPOCO ve un incendio de 13 minutos (salía a 362 ms → verde).
+      endpoint_latency: {
+        status: endpointLatencyStatus,
+        bucketMinutes: LATENCY_BUCKET_MINUTES,
+        minSamples: LATENCY_MIN_SAMPLES,
+        thresholds: LATENCY_P95_THRESHOLDS,
+        measured: endpointVerdicts.length,
+        degraded: endpointDegraded.slice(0, 15).map(v => ({
+          endpoint: v.endpoint,
+          status: v.status,
+          p95_ms: v.p95Ms,
+          samples: v.samples,
+          category: v.category,
+          worst_bucket_at: v.bucketStart,
+        })),
+        // Lo que dispara la alerta: degradación que DURÓ, no un pico suelto.
+        sustained: endpointSustained.slice(0, 10),
+        note: 'p95 por endpoint sobre el PEOR cubo de 5 min de la ventana. Mínimo 10 muestras por cubo (menos = unknown, nunca verde). Umbrales distintos admin/user_facing.',
       },
       traffic_volume: {
         status: trafficCount == null ? 'unknown' : classifyTraffic(trafficCount),

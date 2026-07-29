@@ -117,6 +117,29 @@ interface SystemHealthResponse {
       thresholds: { amber: number; red: number }
       note: string
     }
+    endpoint_latency: {
+      status: Status
+      bucketMinutes: number
+      minSamples: number
+      thresholds: { user_facing: { amber: number; red: number }; admin: { amber: number; red: number } }
+      measured: number
+      degraded: Array<{
+        endpoint: string
+        status: Status
+        p95_ms: number
+        samples: number
+        category: 'admin' | 'user_facing'
+        worst_bucket_at: string
+      }>
+      sustained: Array<{
+        endpoint: string
+        desde: string
+        buckets: number
+        minutos: number
+        peorP95Ms: number
+      }>
+      note: string
+    }
     insert_latency: {
       status: Status
       mean_ms: number | null
@@ -366,6 +389,55 @@ export default function SaludSistemaPage() {
                   ))}
                 </div>
               )}
+            </IndicatorCard>
+
+            {/* 3-bis) Latencia POR ENDPOINT (T-254) — el agregado global daba VERDE mientras
+                `answer-and-save` estaba a 25 s. Aquí manda el PEOR endpoint, no el promedio. */}
+            <IndicatorCard
+              title="Latencia por endpoint (peor cubo 5 min)"
+              status={data.indicators.endpoint_latency.status}
+              metric={
+                data.indicators.endpoint_latency.degraded.length > 0
+                  ? `${data.indicators.endpoint_latency.degraded[0].p95_ms.toLocaleString('es-ES')}ms`
+                  : '—'
+              }
+              hint={`user-facing: ámbar ≥${data.indicators.endpoint_latency.thresholds.user_facing.amber}ms, rojo ≥${data.indicators.endpoint_latency.thresholds.user_facing.red}ms · ${data.indicators.endpoint_latency.measured} endpoints medidos`}
+            >
+              {data.indicators.endpoint_latency.sustained.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs">
+                  <p className="font-semibold text-red-700 dark:text-red-400">
+                    Degradación sostenida (esto es lo que alerta):
+                  </p>
+                  {data.indicators.endpoint_latency.sustained.slice(0, 3).map((s, i) => (
+                    <div key={i} className="text-gray-700 dark:text-gray-300">
+                      <span className="font-mono">{s.endpoint}</span> · {s.minutos} min ·
+                      peor p95 {s.peorP95Ms.toLocaleString('es-ES')}ms
+                      <span className="text-gray-500"> ({new Date(s.desde).toLocaleString('es-ES')})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {data.indicators.endpoint_latency.degraded.length > 0 ? (
+                <div className="mt-2 space-y-1 text-xs">
+                  {data.indicators.endpoint_latency.degraded.slice(0, 6).map((d, i) => (
+                    <div key={i} className="text-gray-600 dark:text-gray-300">
+                      <span className={d.status === 'red' ? 'text-red-600' : 'text-amber-600'}>
+                        {d.status === 'red' ? '🔴' : '🟠'}
+                      </span>{' '}
+                      <span className="font-mono">{d.endpoint}</span> · p95{' '}
+                      {d.p95_ms.toLocaleString('es-ES')}ms · n={d.samples}
+                      {d.category === 'admin' && <span className="text-gray-400"> (admin)</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Ningún endpoint degradado en la ventana.
+                </p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                {data.indicators.endpoint_latency.note}
+              </p>
             </IndicatorCard>
 
             {/* 4) Salud cron de drift */}

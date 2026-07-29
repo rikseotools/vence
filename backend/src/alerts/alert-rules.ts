@@ -807,6 +807,131 @@ export const RULE_TTS_ERROR_BURST: AlertRule<{
  * /temario/[slug]; esta regla detecta el resto del repo donde no llega
  * el guardarraíl.
  */
+/**
+ * LATENCIA SOSTENIDA en un endpoint de USUARIO (T-254).
+ *
+ * ## Por qué existe
+ *
+ * El 28/07/2026, entre las 09:30 y las 09:45 UTC, `/api/v2/answer-and-save` —el endpoint que
+ * guarda la respuesta de cada test— estuvo a **p95 de 25.145 ms**, con 8 peticiones por encima
+ * del corte de 15 s del cliente. El opositor estaba estudiando sobre una app que no le respondía.
+ * No saltó ninguna alerta, y el panel de salud estaba en verde.
+ *
+ * No fue un fallo de umbral: el indicador `request_latency` agrega TODO el tráfico junto, y ese
+ * endpoint es el 3% del volumen (1.803 peticiones de 55.919 al día). Medido a posteriori, el p95
+ * global de esos mismos 15 minutos era **166 ms**. Un percentil sobre todo el tráfico no puede
+ * ver la caída de un endpoint concreto, por muchos umbrales que se le pongan.
+ *
+ * ## Qué firma dispara, y por qué NO las dos obvias
+ *
+ * Los cubos reales del incidente fueron: 09:30 rojo (25.145 ms), 09:35 ámbar (4.732), 09:40 ámbar
+ * (3.272), 09:45 severo pero con 6 muestras. Contra esa forma:
+ *   - «≥2 endpoints en rojo a la vez» (firma de recurso compartido) LO PIERDE: los otros dos
+ *     endpoints tocados no llegaban al mínimo de muestras, así que el único rojo era éste.
+ *   - «≥2 cubos ROJOS seguidos» LO PIERDE también: solo un cubo pasó de 5.000 ms.
+ *   - **≥2 cubos consecutivos en ámbar-o-peor con al menos uno rojo** lo caza, y con ella salen
+ *     los tres incidentes que T-254 documenta (24, 27 y 28/07).
+ *
+ * Volumen medido sobre 7 días de producción con `scripts/sim-latencia-endpoints.ts`: **0,9/día**.
+ * Un detector que no caza su propio caso de origen no vale; uno que se enciende cada hora, tampoco.
+ *
+ * ## Paridad con el frontend
+ *
+ * Los umbrales, el tamaño del cubo, el mínimo de muestras y la lista de endpoints admin viven
+ * también en `lib/api/admin/endpoint-latency.ts` y `lib/api/admin/endpoint-classification.ts`
+ * (panel `/admin/salud-sistema`). El backend NO puede importarlos: su imagen Docker solo copia
+ * `backend/src`. Esa duplicación es real y por eso está VIGILADA — `alert-rules.endpoint-latency.spec.ts`
+ * lee los ficheros del frontend como texto y falla si los números divergen. Es el mismo problema
+ * JS↔SQL que ya mordió en T-107 (el núcleo JS tenía una variante que RDS no, y el canary no lo
+ * veía porque miraba una lista de fixtures vieja).
+ */
+export const RULE_ENDPOINT_LATENCY_SUSTAINED: AlertRule<{
+  endpoint: string | null;
+  desde: string | null;
+  buckets: number;
+  peorP95Ms: number;
+}> = {
+  name: 'endpoint_latency_sustained',
+  severity: 'error',
+  query: sql`
+    WITH cubos AS (
+      SELECT endpoint,
+             to_timestamp(floor(extract(epoch FROM ts) / 300) * 300) AS cubo,
+             COUNT(*)::int AS n,
+             PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY duration_ms)::int AS p95
+        FROM observable_events
+       WHERE event_type = 'request_completed'
+         AND duration_ms IS NOT NULL
+         AND endpoint IS NOT NULL
+         AND ts > NOW() - INTERVAL '45 minutes'
+       GROUP BY 1, 2
+      HAVING COUNT(*) >= 10
+    ),
+    -- Solo endpoints de USUARIO. El espejo de ADMIN_ENDPOINT_PATTERNS
+    -- (lib/api/admin/endpoint-classification.ts); el spec de paridad lo vigila.
+    clasificados AS (
+      SELECT *,
+             CASE WHEN p95 >= 5000 THEN 'red'
+                  WHEN p95 >= 2000 THEN 'amber'
+                  ELSE 'green' END AS estado
+        FROM cubos
+       WHERE endpoint !~ '^/api/(admin|v2/admin|cron|debug|verify-articles|armando|health)(/|$)'
+    ),
+    malos AS (
+      SELECT * FROM clasificados WHERE estado IN ('red', 'amber')
+    ),
+    -- Truco clásico de rachas: restar el nº de fila (en cubos) a la marca de tiempo deja una
+    -- constante por cada tramo CONSECUTIVO, así que agrupar por ella son las rachas.
+    rachas AS (
+      SELECT *,
+             cubo - (ROW_NUMBER() OVER (PARTITION BY endpoint ORDER BY cubo)) * INTERVAL '5 minutes'
+               AS grupo
+        FROM malos
+    )
+    SELECT endpoint,
+           MIN(cubo)::text AS desde,
+           COUNT(*)::int AS buckets,
+           MAX(p95)::int AS "peorP95Ms"
+      FROM rachas
+     GROUP BY endpoint, grupo
+    HAVING COUNT(*) >= 2 AND BOOL_OR(estado = 'red')
+     ORDER BY MAX(p95) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lineas = rows.map(
+      (r) =>
+        `  - ${r.endpoint ?? '(desconocido)'}: ${r.buckets * 5} min degradado, peor p95 ${r.peorP95Ms} ms (desde ${r.desde ?? '?'})`,
+    );
+    const critico = rows.some((r) => (r.endpoint ?? '').includes('answer-and-save'));
+    return {
+      title: `Latencia sostenida en ${rows.length} endpoint(s) de usuario`,
+      body:
+        `Peticiones que TARDAN, no que fallan: son respuestas correctas que llegan tarde, así que ` +
+        `el indicador de 5xx no las ve y el usuario sí.\n\n${lineas.join('\n')}\n\n` +
+        (critico
+          ? `⚠️ Está afectado /api/v2/answer-and-save: es el guardado de CADA respuesta de CADA test. ` +
+            `El cliente corta a los 15 s, así que por encima de eso el opositor ve la app colgada.\n\n`
+          : '') +
+        `QUÉ MIRAR, en orden (playbook T-254 — la causa confirmada la vez anterior NO fue la BD):\n` +
+        `  1. CPU del contenedor BACKEND. El 28/07 estaba al 96-100% mientras RDS iba al 8-20%: los\n` +
+        `     @Cron corren en el mismo contenedor que sirve las peticiones, así que lo que se lleven\n` +
+        `     ellos se lo quitan al opositor.\n` +
+        `       aws --profile vence --region eu-west-2 cloudwatch get-metric-statistics \\\n` +
+        `         --namespace AWS/ECS --metric-name CPUUtilization \\\n` +
+        `         --dimensions Name=ClusterName,Value=vence-backend Name=ServiceName,Value=vence-backend \\\n` +
+        `         --period 300 --statistics Average Maximum --start-time <T-1h> --end-time <ahora>\n` +
+        `  2. ¿Coincide con una estampida de crons? El guardarraíl cron-colisiones.ts limita a 6 por\n` +
+        `     minuto; si alguien añadió uno sin fase, vuelve a apilarse.\n` +
+        `  3. Solo DESPUÉS, la BD: pool (max:5), pg_stat_activity, CPU/IOPS de RDS.\n` +
+        `  4. Detalle por endpoint y cubo: /admin/salud-sistema → «Latencia por endpoint».\n\n` +
+        `Ficha: docs/roadmap/tareas-pendientes.md [T-254]. Runbook: docs/runbooks/health-check.md.`,
+      metadata: { endpoints: rows.length, peorP95Ms: Math.max(...rows.map((r) => r.peorP95Ms)) },
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const RULE_HYDRATION_MISMATCH_SPIKE: AlertRule<{
   endpoint: string | null;
   deployVersion: string | null;
@@ -3952,6 +4077,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_RUNTIME_KILL as AlertRule,
   RULE_TTS_ERROR_BURST as AlertRule,
   RULE_HYDRATION_MISMATCH_SPIKE as AlertRule,
+  // Latencia SOSTENIDA por endpoint de usuario (T-254): respuestas correctas que
+  // llegan tarde — el indicador de 5xx no las ve y el opositor sí.
+  RULE_ENDPOINT_LATENCY_SUSTAINED as AlertRule,
   RULE_WORKFLOW_FAILURE_BURST as AlertRule,
   // Un CI rojo en `main` bloquea a TODAS las sesiones (commit y deploy): avisa al primer fallo,
   // sin esperar racimo. 28/07/2026.
