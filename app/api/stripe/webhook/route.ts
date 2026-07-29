@@ -375,6 +375,23 @@ async function handleCheckoutSessionCompleted(
   if (userId) {
     console.log('👤 Activando premium para usuario:', userId)
 
+    // Precio personalizado (precio heredado): marcar la oferta como usada. Sin esto
+    // seguiría apareciendo en /premium/personal después de haberla contratado, y el
+    // índice de "una oferta viva por persona" bloquearía conceder otra más adelante.
+    // Best-effort: una incidencia de bookkeeping nunca puede impedir activar el premium
+    // que la persona acaba de pagar.
+    try {
+      const priceId = (session as { line_items?: { data?: Array<{ price?: { id?: string } }> } })
+        .line_items?.data?.[0]?.price?.id
+        ?? (await getSubscription(session.subscription as string, sc)).items?.data?.[0]?.price?.id
+      if (priceId) {
+        const { marcarOfertaCanjeada } = await import('@/lib/api/premium/ofertas')
+        await marcarOfertaCanjeada(userId, priceId)
+      }
+    } catch (ofertaErr) {
+      console.error('⚠️ No se pudo marcar la oferta como canjeada:', ofertaErr instanceof Error ? ofertaErr.message : ofertaErr)
+    }
+
     const [beforeData] = await db
       .select({ plan_type: userProfiles.planType, updated_at: userProfiles.updatedAt })
       .from(userProfiles)

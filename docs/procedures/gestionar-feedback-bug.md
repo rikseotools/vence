@@ -167,11 +167,22 @@ Mira también las facturas: si las últimas están `paid` y no hay ninguna poste
 
 | Plan | Precio | €/mes |
 |---|---|---|
-| Trimestral | 35 € | 11,67 |
-| Semestral | 59 € | 9,83 |
+| Mensual | 29 € | 29,00 |
+| Trimestral | 39 € | 13,00 |
+| Semestral | 69 € | 11,50 |
 | Anual | 99 € | 8,25 |
 
-**Verifica los precios antes de citarlos** (`stripe.prices.retrieve` con los `NEXT_PUBLIC_STRIPE_PRICE_*_NILA`): cambian, y dar una cifra vieja a alguien a quien ya le hemos fallado es el segundo error.
+> ⚠️ **Precios corregidos el 29/07/2026 — y el aviso de abajo se incumplió el mismo día.** Esta tabla decía 35 € y 59 €, y con esas cifras se le respondió a Rocío. Son de un juego de precios ANTIGUO: en la cuenta Nila conviven **dos juegos activos** (20/35/59 y 29/39/69/99) y la web sirve el NUEVO. Le dimos dos de tres precios equivocados a la persona a la que ya le habíamos cancelado la suscripción sin avisar.
+>
+> **Cómo verificarlo bien (no basta con leer `.env.local`, que traía los ids viejos):** los `NEXT_PUBLIC_STRIPE_PRICE_*` se hornean en el bundle, así que la verdad está en lo que sirve la web:
+> ```bash
+> # ids REALES que usa producción hoy
+> curl -s https://www.vence.es/premium > /tmp/p.html
+> for u in $(grep -oE '/_next/static/chunks/[A-Za-z0-9._~-]+\.js' /tmp/p.html | sort -u); do
+>   curl -s "https://www.vence.es$u" | grep -oE 'price_1T[A-Za-z0-9]+'; done | sort -u
+> # y luego stripe.prices.retrieve(<id>) en la cuenta NILA para el importe
+> ```
+> Contraste adicional gratis: la **última sesión de checkout** del propio usuario (`checkout.sessions.list`) dice el precio EXACTO que vio en pantalla.
 
 **NO ofrecer de entrada mantenerle el precio antiguo** (decisión Manuel 29/07). Los planes largos ya salen **más baratos** que el mensual con descuento que tenían (18 €), así que no hace falta; y mantener un precio a medida sienta precedente con el resto de afectados. Si alguien insiste en seguir mes a mes, el cupón `loyalty_10` (10 %) está clonado en la cuenta nueva y reproduce ese precio exacto sobre el mensual de 20 €, pero eso se decide caso a caso.
 

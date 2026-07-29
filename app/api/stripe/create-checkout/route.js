@@ -50,7 +50,36 @@ async function _POST(request) {
     // en NINGUNA cuenta (config realmente inválida), nunca por cobrar en la
     // cuenta equivocada: siempre se cobra en `targetAccount`.
     let effectivePriceId = priceId
-    if (!priceBelongsToAccount(priceId, targetAccount)) {
+
+    // 🔐 PRECIO PERSONALIZADO (precio heredado): solo para su dueño.
+    //
+    // Este endpoint cobra el `priceId` que le manden. Con el catálogo público eso es
+    // inofensivo (todos ven los mismos precios), pero desde que existen precios a medida
+    // —a alguien se le mantiene su tarifa anterior— un `price_...` filtrado permitiría a
+    // cualquiera pagar 18 € en vez de 29. Aquí se comprueba que la oferta es SUYA y sigue
+    // viva (`user_price_offers`). Si lo es, el precio pasa TAL CUAL al flujo normal (que ya
+    // resuelve customer, metadata y anti-duplicado); si no, sigue el camino de siempre y
+    // acaba rechazado por no pertenecer a ninguna cuenta.
+    //
+    // Fail-CLOSED a propósito (al revés que los demás guardias de este fichero): ante un
+    // fallo de consulta, mejor un checkout menos que un cobro al precio de otro.
+    let precioPersonalizado = false
+    const esDelCatalogo = priceBelongsToAccount(priceId, targetAccount) || !!resolvePriceForAccount(priceId, targetAccount)
+    if (!esDelCatalogo) {
+      try {
+        const { priceEsDelUsuario } = await import('@/lib/api/premium/ofertas')
+        precioPersonalizado = await priceEsDelUsuario(userId, priceId)
+        if (precioPersonalizado) console.log(`🎟️ Precio personalizado válido para ${userId}: ${priceId}`)
+      } catch (ofertaErr) {
+        console.error('❌ No se pudo verificar la oferta personalizada:', ofertaErr.message)
+        return NextResponse.json(
+          { error: 'offer_check_failed', message: 'No hemos podido verificar tu precio. Inténtalo de nuevo en un momento.' },
+          { status: 503 }
+        )
+      }
+    }
+
+    if (!precioPersonalizado && !priceBelongsToAccount(priceId, targetAccount)) {
       const translated = resolvePriceForAccount(priceId, targetAccount)
       if (!translated) {
         console.error(`❌ priceId ${priceId} no reconocido en ninguna cuenta configurada`)
