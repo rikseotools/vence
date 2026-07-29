@@ -42,7 +42,8 @@
   1. **887** — apertura canónica sin cola.
   2. **293** — variantes de redacción del banco (`**Respuesta correcta: C) …**`, `**La respuesta correcta es A.**`, `La respuesta correcta es **B) 21.**`). Se podan **solo si la cola ES el enunciado de la opción correcta**, comprobado contra la opción real: si fuera razonamiento propio se perdería contenido.
   3. **20** — glosa entre paréntesis (`(al año)`, `(el Tribunal Constitucional)`, `(la opción incorrecta según el enunciado)`). Se revisó una a una; las que aludían al marco tenían `frame: select_incorrect`, así que el render lo sigue diciendo. La única con `select_correct` conservaba el sentido en la propia razón («es **falso** que…»), verificado leyendo el texto resultante.
-  Caché `questions` invalidada. El sweep confirma **0 regresiones, 0 hash mismatch, 24 narrativas** restantes.
+  4. **30 INACTIVAS** (`--incluir-inactivas`). No las ve nadie hoy, pero volverían con la letra clavada si alguien las repara y las reactiva; las destapó la simulación, que no filtra por `is_active`.
+  Caché `questions` invalidada. El sweep confirma **0 regresiones, 0 hash mismatch, 24 narrativas** restantes (todas activas; entre las apagadas ya no queda ninguna).
 - **🔜 QUEDAN 24, enumeradas — no es un residuo vago, es una cola acotada.** Ninguna es urgente: el gate de serve ya se niega a barajarlas, así que no pueden contradecirse en pantalla.
 
   | Clase | N | Qué son | Qué hacer |

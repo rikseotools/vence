@@ -1,0 +1,535 @@
+[
+ {
+  "id": "0323d2fd-4133-4fb6-9115-35e4398f8927",
+  "explanation": "La respuesta correcta es **D) Cuando la convivencia, dentro de una misma unidad económica, se produzca entre el solicitante y sus descendientes o ascendientes en primer grado, los límites de acumulación de recursos serán equivalentes a 2,5 veces la cuantía que resulte de la suma de la cuantía, en cómputo anual, de la pensión, más el 70% de dicha cuantía multiplicado por el número de convivientes, menos uno.**\n\nEl **artículo 363 del texto refundido de la Ley General de la Seguridad Social (RDL 8/2015)** regula los requisitos de los beneficiarios de la pensión de incapacidad no contributiva, entre ellos carecer de rentas o ingresos suficientes. El apartado 2 fija la regla general de acumulación de recursos en unidad económica (cuantía anual de la pensión + 70% de esa cifra × [convivientes − 1]) y el apartado 3 establece la regla reforzada cuando la convivencia es con descendientes o ascendientes en primer grado: \"los límites de acumulación de recursos serán equivalentes a dos veces y media la cuantía que resulte de aplicar lo dispuesto en el apartado 2\".\n\n**A)** Incorrecta: emplea el **60%** en lugar del 70% que exige el apartado 2 del artículo 363.\n\n**B)** Incorrecta: alude a la convivencia con descendientes o ascendientes hasta el **segundo grado** y a un multiplicador de **3 veces** con el **60%**; el artículo 363.3 se refiere al **primer grado**, a **2,5 veces** y al 70%.\n\n**C)** Incorrecta como respuesta a esta pregunta: reproduce únicamente la regla general del apartado 2 (pensión + 70% × convivientes − 1) sin contemplar el supuesto específico de convivencia con descendientes o ascendientes en primer grado por el que pregunta el enunciado, que es el del apartado 3.\n\n**D)** Correcta: reproduce con exactitud el apartado 3 del artículo 363, \"dos veces y media\" (2,5) sobre la base del apartado 2 (pensión + 70% × [convivientes − 1]) para la convivencia con descendientes o ascendientes en **primer grado**.",
+  "explanation_data": {
+   "v": 1,
+   "intro": "La respuesta correcta es **D) Cuando la convivencia, dentro de una misma unidad económica, se produzca entre el solicitante y sus descendientes o ascendientes en primer grado, los límites de acumulación de recursos serán equivalentes a 2,5 veces la cuantía que resulte de la suma de la cuantía, en cómputo anual, de la pensión, más el 70% de dicha cuantía multiplicado por el número de convivientes, menos uno.**\n\nEl **artículo 363 del texto refundido de la Ley General de la Seguridad Social (RDL 8/2015)** regula los requisitos de los beneficiarios de la pensión de incapacidad no contributiva, entre ellos carecer de rentas o ingresos suficientes. El apartado 2 fija la regla general de acumulación de recursos en unidad económica (cuantía anual de la pensión + 70% de esa cifra × [convivientes − 1]) y el apartado 3 establece la regla reforzada cuando la convivencia es con descendientes o ascendientes en primer grado: \"los límites de acumulación de recursos serán equivalentes a dos veces y media la cuantía que resulte de aplicar lo dispuesto en el apartado 2\".",
+   "estilo": "impugnacion",
+   "options": {
+    "0": "Incorrecta: emplea el **60%** en lugar del 70% que exige el apartado 2 del artículo 363.",
+    "1": "Incorrecta: alude a la convivencia con descendientes o ascendientes hasta el **segundo grado** y a un multiplicador de **3 veces** con el **60%**; el artículo 363.3 se refiere al **primer grado**, a **2,5 veces** y al 70%.",
+    "2": "Incorrecta como respuesta a esta pregunta: reproduce únicamente la regla general del apartado 2 (pensión + 70% × convivientes − 1) sin contemplar el supuesto específico de convivencia con descendientes o ascendientes en primer grado por el que pregunta el enunciado, que es el del apartado 3.",
+    "3": "Correcta: reproduce con exactitud el apartado 3 del artículo 363, \"dos veces y media\" (2,5) sobre la base del apartado 2 (pensión + 70% × [convivientes − 1]) para la convivencia con descendientes o ascendientes en **primer grado**."
+   }
+  }
+ },
+ {
+  "id": "03e468d1-a753-4c2d-a273-91be1136a99c",
+  "explanation": "La respuesta correcta es la **D**.\n\n> **Art. 418 CP:** «La autoridad o funcionario público que, aprovechándose de su cargo, obtuviere un beneficio económico para sí o para un tercero haciendo uso de información privilegiada [...] incurrirá en las penas [...]. El particular que aprovechare para sí o para un tercero el secreto o la información privilegiada que obtuviere de un funcionario público también se castigará con las penas de este artículo.»\n\n**Por qué D es correcta:** El art. 418 CP tipifica la violación de secretos, incluyendo expresamente al **particular** (el granjero del supuesto) que se aprovecha de la información privilegiada facilitada por un funcionario (el alcalde).\n\n**Por qué las demás son incorrectas:**\n\n- **A** — El particular sí comete delito cuando aprovecha información privilegiada de un funcionario (párrafo 2.º del art. 418 CP).\n- **B** — Las actividades prohibidas a funcionarios (arts. 441-444 CP) requieren que el sujeto activo sea funcionario; el granjero es un particular.\n- **C** — El cohecho (arts. 419-427 CP) exige una dádiva o promesa a un funcionario para un acto de su cargo; no encaja en el supuesto.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 418 CP",
+    "bloque": "**Art. 418 CP:** «La autoridad o funcionario público que, aprovechándose de su cargo, obtuviere un beneficio económico para sí o para un tercero haciendo uso de información privilegiada [...] incurrirá en las penas [...]. El particular que aprovechare para sí o para un tercero el secreto o la información privilegiada que obtuviere de un funcionario público también se castigará con las penas de este artículo.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **D**.",
+   "options": {
+    "0": "— El particular sí comete delito cuando aprovecha información privilegiada de un funcionario (párrafo 2.º del art. 418 CP).",
+    "1": "— Las actividades prohibidas a funcionarios (arts. 441-444 CP) requieren que el sujeto activo sea funcionario; el granjero es un particular.",
+    "2": "— El cohecho (arts. 419-427 CP) exige una dádiva o promesa a un funcionario para un acto de su cargo; no encaja en el supuesto.",
+    "3": "El art. 418 CP tipifica la violación de secretos, incluyendo expresamente al **particular** (el granjero del supuesto) que se aprovecha de la información privilegiada facilitada por un funcionario (el alcalde)."
+   }
+  }
+ },
+ {
+  "id": "07f68313-f1ad-4a97-b73b-61fe53db0195",
+  "explanation": "La respuesta correcta es la **D**.\n\n> \"Los créditos declarados ampliables tendrán carácter vinculante a nivel de subconcepto económico.\"\n>\n> — Ley 5/2024, de 9 de mayo, de Presupuestos Generales de la Comunidad de Castilla y León para 2024\n\n**Por qué D es correcta:**\nLa Ley de Presupuestos 2024 establece que los créditos declarados ampliables tienen carácter vinculante al nivel más específico de la clasificación económica: el **subconcepto económico**.\n\n**Por qué las demás son incorrectas:**\n- **A)** El capítulo es el nivel más agregado de la clasificación económica y no es el nivel de vinculación de los créditos ampliables.\n- **B)** El concepto económico es un nivel de detalle intermedio, no el exigido por la norma presupuestaria.\n- **C)** El artículo es una categoría intermedia, igualmente insuficientemente específica según la norma.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "texto": "Los créditos declarados ampliables tendrán carácter vinculante a nivel de subconcepto económico.",
+    "bloque": "\"Los créditos declarados ampliables tendrán carácter vinculante a nivel de subconcepto económico.\"\n\n— Ley 5/2024, de 9 de mayo, de Presupuestos Generales de la Comunidad de Castilla y León para 2024"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **D**.",
+   "options": {
+    "0": "El capítulo es el nivel más agregado de la clasificación económica y no es el nivel de vinculación de los créditos ampliables.",
+    "1": "El concepto económico es un nivel de detalle intermedio, no el exigido por la norma presupuestaria.",
+    "2": "El artículo es una categoría intermedia, igualmente insuficientemente específica según la norma.",
+    "3": "La Ley de Presupuestos 2024 establece que los créditos declarados ampliables tienen carácter vinculante al nivel más específico de la clasificación económica: el **subconcepto económico**."
+   }
+  }
+ },
+ {
+  "id": "0906fdd4-fcd5-4b7b-add0-457e35b22979",
+  "explanation": "La respuesta correcta es **C) Son textos o gráficos que tienen vínculos incrustados**.\n\n**Hipertexto** es texto que contiene **enlaces (hipervínculos)** a otros documentos o secciones. Al hacer clic en un enlace, se navega a otro contenido.\n\n**Hipermedia** amplía el concepto de hipertexto incluyendo no solo texto sino también **imágenes, audio, vídeo y otros elementos multimedia** con vínculos incrustados.\n\n| Concepto | Contenido | Vínculos |\n|----------|-----------|----------|\n| **Hipertexto** | Texto | ✅ Enlaces a otros textos |\n| **Hipermedia** | Texto + imágenes + audio + vídeo | ✅ Enlaces a otros contenidos multimedia |\n\nLa World Wide Web (WWW) es el ejemplo más conocido de sistema hipermedia.\n\n**A)** INCORRECTA — No tiene sentido técnico. El hipertexto se puede abrir y cerrar libremente.\n\n**B)** INCORRECTA — No se activan por correo electrónico. Se activan haciendo clic en un enlace (hipervínculo).\n\n**C)** CORRECTA — Son textos o gráficos con vínculos incrustados que permiten navegar a otros contenidos.\n\n**D)** INCORRECTA — Una LAN (Red de Área Local) es una red física de ordenadores. No tiene relación con el concepto de hipertexto/hipermedia.",
+  "explanation_data": {
+   "v": 1,
+   "intro": "La respuesta correcta es **C) Son textos o gráficos que tienen vínculos incrustados**.\n\n**Hipertexto** es texto que contiene **enlaces (hipervínculos)** a otros documentos o secciones. Al hacer clic en un enlace, se navega a otro contenido.\n\n**Hipermedia** amplía el concepto de hipertexto incluyendo no solo texto sino también **imágenes, audio, vídeo y otros elementos multimedia** con vínculos incrustados.\n\n| Concepto | Contenido | Vínculos |\n|----------|-----------|----------|\n| **Hipertexto** | Texto | ✅ Enlaces a otros textos |\n| **Hipermedia** | Texto + imágenes + audio + vídeo | ✅ Enlaces a otros contenidos multimedia |\n\nLa World Wide Web (WWW) es el ejemplo más conocido de sistema hipermedia.",
+   "estilo": "impugnacion",
+   "options": {
+    "0": "INCORRECTA — No tiene sentido técnico. El hipertexto se puede abrir y cerrar libremente.",
+    "1": "INCORRECTA — No se activan por correo electrónico. Se activan haciendo clic en un enlace (hipervínculo).",
+    "2": "CORRECTA — Son textos o gráficos con vínculos incrustados que permiten navegar a otros contenidos.",
+    "3": "INCORRECTA — Una LAN (Red de Área Local) es una red física de ordenadores. No tiene relación con el concepto de hipertexto/hipermedia."
+   }
+  }
+ },
+ {
+  "id": "0a7a6b6b-5588-48f7-a874-2991a31cc571",
+  "explanation": "La respuesta correcta es **B) Un protocolo de transferencia simple de correo empleado para el intercambio de mensajes entre dispositivos**.\n\n**SMTP** (Simple Mail Transfer Protocol) es el protocolo estándar para el **envío** de correo electrónico entre servidores.\n\nProtocolos de correo electrónico:\n\n| Protocolo | Función | Puerto |\n|-----------|---------|--------|\n| **SMTP** | **Envío** de mensajes entre servidores | 25/587 |\n| POP3 | Recepción (descarga y elimina del servidor) | 110/995 |\n| IMAP | Recepción (sincroniza con servidor) | 143/993 |\n\n**A)** INCORRECTA — SMTP no es un protocolo de cifrado. El cifrado de correo se realiza con TLS/SSL o con protocolos como S/MIME o PGP.\n\n**B)** CORRECTA — SMTP = Simple Mail Transfer Protocol. Protocolo de transferencia simple de correo para intercambiar mensajes entre dispositivos (servidores de correo).\n\n**C)** INCORRECTA — SMTP no identifica unívocamente al emisor/receptor. Las direcciones de correo identifican a los usuarios, no el protocolo.\n\n**D)** INCORRECTA — SMTP no es un protocolo de autenticación. La autenticación la proporcionan mecanismos como SASL o la autenticación SMTP-AUTH.",
+  "explanation_data": {
+   "v": 1,
+   "intro": "La respuesta correcta es **B) Un protocolo de transferencia simple de correo empleado para el intercambio de mensajes entre dispositivos**.\n\n**SMTP** (Simple Mail Transfer Protocol) es el protocolo estándar para el **envío** de correo electrónico entre servidores.\n\nProtocolos de correo electrónico:\n\n| Protocolo | Función | Puerto |\n|-----------|---------|--------|\n| **SMTP** | **Envío** de mensajes entre servidores | 25/587 |\n| POP3 | Recepción (descarga y elimina del servidor) | 110/995 |\n| IMAP | Recepción (sincroniza con servidor) | 143/993 |",
+   "estilo": "impugnacion",
+   "options": {
+    "0": "INCORRECTA — SMTP no es un protocolo de cifrado. El cifrado de correo se realiza con TLS/SSL o con protocolos como S/MIME o PGP.",
+    "1": "CORRECTA — SMTP = Simple Mail Transfer Protocol. Protocolo de transferencia simple de correo para intercambiar mensajes entre dispositivos (servidores de correo).",
+    "2": "INCORRECTA — SMTP no identifica unívocamente al emisor/receptor. Las direcciones de correo identifican a los usuarios, no el protocolo.",
+    "3": "INCORRECTA — SMTP no es un protocolo de autenticación. La autenticación la proporcionan mecanismos como SASL o la autenticación SMTP-AUTH."
+   }
+  }
+ },
+ {
+  "id": "121088a2-3954-4cfb-ac0a-70fe8ac495e7",
+  "explanation": "**Respuesta correcta: B) El control deslizante de zoom.**\n> El control deslizante de zoom está situado en el extremo derecho de la barra de estado y permite aumentar o reducir el nivel de ampliación de la diapositiva.\n**Por qué B es correcta:** Este control ofrece un deslizador y botones +/- para ajustar rápidamente el porcentaje de zoom del área de trabajo.\n**Por qué las demás son incorrectas:**\n- **A) El selector de vistas** — Permite cambiar entre vistas (Normal, Clasificador, etc.), pero no controla el nivel de ampliación.\n- **C) El botón de ajuste de ventana** — Es un botón específico que ajusta la diapositiva al tamaño de la ventana, pero no es el control principal de zoom.\n- **D) El indicador de número de diapositiva** — Solo muestra qué diapositiva está seleccionada; no tiene función de ampliación.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "El control deslizante de zoom está situado en el extremo derecho de la barra de estado y permite aumentar o reducir el nivel de ampliación de la diapositiva."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) El control deslizante de zoom.**",
+   "options": {
+    "0": "El selector de vistas** — Permite cambiar entre vistas (Normal, Clasificador, etc.), pero no controla el nivel de ampliación.",
+    "1": "Este control ofrece un deslizador y botones +/- para ajustar rápidamente el porcentaje de zoom del área de trabajo.",
+    "2": "El botón de ajuste de ventana** — Es un botón específico que ajusta la diapositiva al tamaño de la ventana, pero no es el control principal de zoom.",
+    "3": "El indicador de número de diapositiva** — Solo muestra qué diapositiva está seleccionada; no tiene función de ampliación."
+   }
+  }
+ },
+ {
+  "id": "12ca5fd3-5f04-47d6-9cb4-1cfcb1738213",
+  "explanation": "**Respuesta correcta: B) La barra de estado.**\n> La barra de estado ocupa la franja inferior de la ventana de PowerPoint y muestra datos contextuales como el número de diapositiva actual, el idioma, el tema y los botones de vista y zoom.\n**Por qué B es correcta:** Es el elemento diseñado para ofrecer información de estado en tiempo real sin interrumpir el área de edición.\n**Por qué las demás son incorrectas:**\n- **A) La barra de título** — Se encuentra en la parte superior y muestra el nombre del archivo y de la aplicación.\n- **C) El panel de notas** — Aparece debajo del área de edición de la diapositiva y permite escribir notas del orador, no muestra información del sistema.\n- **D) La cinta de opciones** — Está en la parte superior y contiene pestañas con herramientas de edición y formato.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "La barra de estado ocupa la franja inferior de la ventana de PowerPoint y muestra datos contextuales como el número de diapositiva actual, el idioma, el tema y los botones de vista y zoom."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) La barra de estado.**",
+   "options": {
+    "0": "La barra de título** — Se encuentra en la parte superior y muestra el nombre del archivo y de la aplicación.",
+    "1": "Es el elemento diseñado para ofrecer información de estado en tiempo real sin interrumpir el área de edición.",
+    "2": "El panel de notas** — Aparece debajo del área de edición de la diapositiva y permite escribir notas del orador, no muestra información del sistema.",
+    "3": "La cinta de opciones** — Está en la parte superior y contiene pestañas con herramientas de edición y formato."
+   }
+  }
+ },
+ {
+  "id": "18ef4811-ef86-44da-ae6a-c56e4af8d4d5",
+  "explanation": "La respuesta correcta es **C) Derecho subjetivo**.\n\n> El **derecho subjetivo** se define en la teoría general del Derecho como la **facultad o poder que la norma jurídica reconoce a un sujeto** para exigir de otro (o de todos) un comportamiento determinado, ya sea de acción u omisión. Es el correlato del deber jurídico.\n\n**Por qué C es correcta:** La definición del enunciado («el poder que la norma concede a la persona») es la definición canónica de derecho subjetivo.\n\n**Por qué las demás son incorrectas:**\n- **A) Derecho privado:** es una de las grandes ramas del ordenamiento jurídico (frente al Derecho público), no un poder individual que la norma concede a la persona.\n- **B) Derecho positivo:** hace referencia al conjunto de normas jurídicas vigentes en un ordenamiento concreto (frente al Derecho natural), tampoco designa el poder que la norma confiere al individuo.\n\nFuente: Teoría General del Derecho — Concepto de derecho subjetivo",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "derecho subjetivo",
+    "bloque": "El **derecho subjetivo** se define en la teoría general del Derecho como la **facultad o poder que la norma jurídica reconoce a un sujeto** para exigir de otro (o de todos) un comportamiento determinado, ya sea de acción u omisión. Es el correlato del deber jurídico."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Derecho subjetivo**.",
+   "options": {
+    "0": "**Derecho privado:** es una de las grandes ramas del ordenamiento jurídico (frente al Derecho público), no un poder individual que la norma concede a la persona.",
+    "1": "**Derecho positivo:** hace referencia al conjunto de normas jurídicas vigentes en un ordenamiento concreto (frente al Derecho natural), tampoco designa el poder que la norma confiere al individuo.\n\nFuente: Teoría General del Derecho — Concepto de derecho subjetivo",
+    "2": "La definición del enunciado («el poder que la norma concede a la persona») es la definición canónica de derecho subjetivo."
+   }
+  }
+ },
+ {
+  "id": "1bcb7d4b-e91c-4021-9d1d-6e8076745fd3",
+  "explanation": "La respuesta correcta es la **B**.\n\n> **Capacidad de obrar:** aptitud reconocida por el Derecho para **ejercitar activamente** los derechos y obligaciones de los que una persona es titular, es decir, para realizar válidamente actos jurídicos con plenos efectos.\n\n**Por qué B es correcta:** La capacidad de obrar habilita a la persona para actuar en el tráfico jurídico: celebrar contratos, contraer matrimonio, testar, etc. No toda persona tiene plena capacidad de obrar: depende de la edad, del estado civil y de otras circunstancias personales (art. 322 CC: la mayoría de edad otorga plena capacidad de obrar).\n\n**Por qué las demás son incorrectas:**\n\n- **A** — Ser \"sujeto pasivo en actos jurídicos\" equivale a ser destinatario o receptor de derechos y obligaciones, lo que describe la **capacidad jurídica** (aptitud para ser titular de derechos y deberes), no la capacidad de obrar.\n- **C** — Ser \"sujeto activo y pasivo en el derecho penal\" describe la imputabilidad o responsabilidad penal, que es un concepto ajeno a la distinción civil entre capacidad jurídica y capacidad de obrar.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Capacidad de obrar",
+    "bloque": "**Capacidad de obrar:** aptitud reconocida por el Derecho para **ejercitar activamente** los derechos y obligaciones de los que una persona es titular, es decir, para realizar válidamente actos jurídicos con plenos efectos."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B**.",
+   "options": {
+    "0": "— Ser \"sujeto pasivo en actos jurídicos\" equivale a ser destinatario o receptor de derechos y obligaciones, lo que describe la **capacidad jurídica** (aptitud para ser titular de derechos y deberes), no la capacidad de obrar.",
+    "1": "La capacidad de obrar habilita a la persona para actuar en el tráfico jurídico: celebrar contratos, contraer matrimonio, testar, etc. No toda persona tiene plena capacidad de obrar: depende de la edad, del estado civil y de otras circunstancias personales (art. 322 CC: la mayoría de edad otorga plena capacidad de obrar).",
+    "2": "— Ser \"sujeto activo y pasivo en el derecho penal\" describe la imputabilidad o responsabilidad penal, que es un concepto ajeno a la distinción civil entre capacidad jurídica y capacidad de obrar."
+   }
+  }
+ },
+ {
+  "id": "1fa7450f-c330-4e9e-9946-a2c0fb9164fb",
+  "explanation": "**Respuesta correcta: A) El 2,0454.**\n\n> «A cada uno de los municipios turísticos se le cederá el 2,0454 por ciento de los rendimientos que no hayan sido objeto de cesión a las comunidades autónomas por los Impuestos sobre Hidrocarburos y sobre las Labores del Tabaco.» (Art. 125.3 RDL 2/2004)\n\n**Por qué A es correcta:** El artículo 125.3 establece expresamente que a los municipios turísticos se les cede el 2,0454% de los rendimientos no cedidos a las CCAA por Hidrocarburos y Labores del Tabaco.\n\n**Por qué las demás son incorrectas:**\n- **B)** El 50% no corresponde a ningún porcentaje de cesión previsto en este artículo.\n- **C)** El 2,9220% es el porcentaje de cesión de los Impuestos Especiales a los municipios del art. 112.1.c (modelo general), no el de municipios turísticos.\n- **D)** El 2,3266% es el porcentaje de cesión del IVA a los municipios del art. 112.1.b, no el aplicable a municipios turísticos.\n\n📚 **Fuente:** [RDL 2/2004, Art. 125](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a125)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«A cada uno de los municipios turísticos se le cederá el 2,0454 por ciento de los rendimientos que no hayan sido objeto de cesión a las comunidades autónomas por los Impuestos sobre Hidrocarburos y sobre las Labores del Tabaco.» (Art. 125.3 RDL 2/2004)"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) El 2,0454.**",
+   "options": {
+    "0": "El artículo 125.3 establece expresamente que a los municipios turísticos se les cede el 2,0454% de los rendimientos no cedidos a las CCAA por Hidrocarburos y Labores del Tabaco.",
+    "1": "El 50% no corresponde a ningún porcentaje de cesión previsto en este artículo.",
+    "2": "El 2,9220% es el porcentaje de cesión de los Impuestos Especiales a los municipios del art. 112.1.c (modelo general), no el de municipios turísticos.",
+    "3": "El 2,3266% es el porcentaje de cesión del IVA a los municipios del art. 112.1.b, no el aplicable a municipios turísticos.\n\n📚 **Fuente:** [RDL 2/2004, Art. 125](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a125)"
+   }
+  }
+ },
+ {
+  "id": "26eb24b0-0299-4cea-a0ca-d3ba1ef37c56",
+  "explanation": "La respuesta correcta es la **B**.\n\nLa pregunta hace referencia a la Ley 5/2024 de Presupuestos Generales de CyL para 2024, pero el artículo vinculado en el sistema es el Art. 11 de la Ley 2/2006 CyL (sobre rendición de cuentas). El contenido sobre créditos ampliables en la Ley de Presupuestos de 2024 incluye, entre otros, los destinados al pago de vacunas incluidas en los programas vacunales.\n\n> \"Las entidades integrantes del sector público de la Comunidad deben rendir cuentas de sus respectivas operaciones [...] al Consejo de Cuentas de Castilla y León.\"\n>\n> — Art. 11 de la Ley 2/2006 CyL\n\n**Por qué B es correcta:**\nEn la Ley 5/2024 de Presupuestos de CyL para 2024, los créditos destinados al pago de las vacunas incluidas en los programas vacunales tienen la condición de ampliables, lo que permite incrementar su dotación cuando las necesidades sanitarias lo requieran sin necesidad de tramitar un suplemento de crédito ordinario.\n\n**Por qué las demás son incorrectas:**\n- **A)** Los créditos destinados a gastos de inversiones de carácter inmaterial no figuran entre los ampliables en la Ley 5/2024.\n- **C)** Los créditos para gastos de cancelación de intereses tampoco constan entre los ampliables de dicha ley.\n- **D)** Los créditos procedentes de adquisición de acciones y participaciones del Sector Público no tienen la condición de ampliables en la Ley 5/2024.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "texto": "Las entidades integrantes del sector público de la Comunidad deben rendir cuentas de sus respectivas operaciones [...] al Consejo de Cuentas de Castilla y León.",
+    "bloque": "\"Las entidades integrantes del sector público de la Comunidad deben rendir cuentas de sus respectivas operaciones [...] al Consejo de Cuentas de Castilla y León.\"\n\n— Art. 11 de la Ley 2/2006 CyL"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B**.\n\nLa pregunta hace referencia a la Ley 5/2024 de Presupuestos Generales de CyL para 2024, pero el artículo vinculado en el sistema es el Art. 11 de la Ley 2/2006 CyL (sobre rendición de cuentas). El contenido sobre créditos ampliables en la Ley de Presupuestos de 2024 incluye, entre otros, los destinados al pago de vacunas incluidas en los programas vacunales.",
+   "options": {
+    "0": "Los créditos destinados a gastos de inversiones de carácter inmaterial no figuran entre los ampliables en la Ley 5/2024.",
+    "1": "En la Ley 5/2024 de Presupuestos de CyL para 2024, los créditos destinados al pago de las vacunas incluidas en los programas vacunales tienen la condición de ampliables, lo que permite incrementar su dotación cuando las necesidades sanitarias lo requieran sin necesidad de tramitar un suplemento de crédito ordinario.",
+    "2": "Los créditos para gastos de cancelación de intereses tampoco constan entre los ampliables de dicha ley.",
+    "3": "Los créditos procedentes de adquisición de acciones y participaciones del Sector Público no tienen la condición de ampliables en la Ley 5/2024."
+   }
+  }
+ },
+ {
+  "id": "27a977a5-a9ec-483e-a740-6854b3085e84",
+  "explanation": "La respuesta correcta es **C) Un juez por Estado miembro y está asimismo asistido por 11 abogados generales.**\n\n> Según el artículo 19.2 del TUE: «El Tribunal de Justicia estará compuesto por **un juez por Estado miembro**. Estará asistido por **abogados generales**.» El número de 11 abogados generales se establece en el Estatuto del TJUE (art. 252 TFUE + Protocolo n.º 3), fijado en 11 desde 2015.\n\n**Por qué C es correcta:** Un juez por Estado miembro (actualmente 27) y 11 abogados generales es la composición actual del Tribunal de Justicia.\n\n**Por qué las demás son incorrectas:**\n- **A) INCORRECTA** — Habla de «27 abogados generales»; el número correcto es 11, no 27 (los 27 corresponden al número de Estados miembros, que es el número de jueces).\n- **B) INCORRECTA** — «Dos jueces por Estado miembro» corresponde al Tribunal General (mínimo 2 jueces por Estado desde 2016), no al Tribunal de Justicia.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "un juez por Estado miembro",
+    "bloque": "Según el artículo 19.2 del TUE: «El Tribunal de Justicia estará compuesto por **un juez por Estado miembro**. Estará asistido por **abogados generales**.» El número de 11 abogados generales se establece en el Estatuto del TJUE (art. 252 TFUE + Protocolo n.º 3), fijado en 11 desde 2015."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Un juez por Estado miembro y está asimismo asistido por 11 abogados generales.**",
+   "options": {
+    "0": "INCORRECTA** — Habla de «27 abogados generales»; el número correcto es 11, no 27 (los 27 corresponden al número de Estados miembros, que es el número de jueces).",
+    "1": "INCORRECTA** — «Dos jueces por Estado miembro» corresponde al Tribunal General (mínimo 2 jueces por Estado desde 2016), no al Tribunal de Justicia.",
+    "2": "Un juez por Estado miembro (actualmente 27) y 11 abogados generales es la composición actual del Tribunal de Justicia."
+   }
+  }
+ },
+ {
+  "id": "2b1b0495-cd43-4792-b9c4-69247b62fe5f",
+  "explanation": "**Respuesta correcta: C) Insertar.**\n> La pestaña Insertar agrupa todos los comandos para añadir nuevos elementos a la diapositiva: tablas, imágenes, formas, gráficos SmartArt, cuadros de texto, vídeos, audio, etc.\n**Por qué C es correcta:** Es la pestaña específicamente dedicada a la inserción de objetos y contenido multimedia en las diapositivas.\n**Por qué las demás son incorrectas:**\n- **A) Inicio** — Contiene herramientas de edición básica (portapapeles, fuente, párrafo, dibujo), pero no las de inserción de objetos complejos.\n- **B) Diseño** — Se centra en los temas visuales, variantes de color y formato del fondo de la diapositiva.\n- **D) Revisar** — Incluye corrección ortográfica, sinónimos, comentarios y funciones de revisión colaborativa.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "La pestaña Insertar agrupa todos los comandos para añadir nuevos elementos a la diapositiva: tablas, imágenes, formas, gráficos SmartArt, cuadros de texto, vídeos, audio, etc."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: C) Insertar.**",
+   "options": {
+    "0": "Inicio** — Contiene herramientas de edición básica (portapapeles, fuente, párrafo, dibujo), pero no las de inserción de objetos complejos.",
+    "1": "Diseño** — Se centra en los temas visuales, variantes de color y formato del fondo de la diapositiva.",
+    "2": "Es la pestaña específicamente dedicada a la inserción de objetos y contenido multimedia en las diapositivas.",
+    "3": "Revisar** — Incluye corrección ortográfica, sinónimos, comentarios y funciones de revisión colaborativa."
+   }
+  }
+ },
+ {
+  "id": "2d5d3d79-d290-44e8-8b60-008612a7b84d",
+  "explanation": "**Respuesta correcta: D) El Impuesto sobre Construcciones, Instalaciones y Obras.**\n\n> «El Impuesto sobre Construcciones, Instalaciones y Obras es un tributo indirecto [...]» (Art. 100.1 RDL 2/2004)\n\n**Por qué D es correcta:** De todos los impuestos locales regulados en el RDL 2/2004, el único tributo indirecto es el ICIO (art. 100.1). Los demás impuestos locales son directos.\n\n**Por qué las demás son incorrectas:**\n- **A)** Incluye los cinco impuestos locales como indirectos, pero solo el ICIO es indirecto; el IBI, IVTM, IAE e IIVTNU son directos.\n- **B)** El IBI, IVTM, IAE e IIVTNU son todos impuestos directos, no indirectos.\n- **C)** El IBI, IVTM e IAE son impuestos directos.\n\n📚 **Fuente:** [RDL 2/2004, Art. 100](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a100)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«El Impuesto sobre Construcciones, Instalaciones y Obras es un tributo indirecto [...]» (Art. 100.1 RDL 2/2004)"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: D) El Impuesto sobre Construcciones, Instalaciones y Obras.**",
+   "options": {
+    "0": "Incluye los cinco impuestos locales como indirectos, pero solo el ICIO es indirecto; el IBI, IVTM, IAE e IIVTNU son directos.",
+    "1": "El IBI, IVTM, IAE e IIVTNU son todos impuestos directos, no indirectos.",
+    "2": "El IBI, IVTM e IAE son impuestos directos.\n\n📚 **Fuente:** [RDL 2/2004, Art. 100](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a100)",
+    "3": "De todos los impuestos locales regulados en el RDL 2/2004, el único tributo indirecto es el ICIO (art. 100.1). Los demás impuestos locales son directos."
+   }
+  }
+ },
+ {
+  "id": "2e295133-e788-41c5-a6cc-7b97982c05dd",
+  "explanation": "La respuesta correcta es B.\n\nRamón, siendo propietario del piso, corta el suministro de luz y agua para impedir que su exmujer viva en él. Aunque sea titular del inmueble, el piso fue atribuido judicialmente a Fabiola y al hijo común, por lo que esta conducta constituye un delito de **coacciones agravado**.\n\n> **Art. 172.2 CP:** «El que de modo leve coaccione a quien sea o haya sido su esposa, o mujer que esté o haya estado ligada a él por una análoga relación de afectividad, aun sin convivencia, será castigado con la pena de prisión...»\n> **Art. 172.1 CP:** El que, sin estar legítimamente autorizado, impidiere a otro con violencia hacer lo que la ley no prohíbe, o le compeliere a efectuar lo que no quiere, será castigado.\n\n**Por qué B es correcta:** Cortar servicios básicos de un domicilio asignado judicialmente a la ex-cónyuge e hijos implica violencia sobre las cosas con ánimo de doblegar la voluntad ajena. Al concurrir la relación ex-conyugal, el tipo básico (art.172.1) se agrava (art.172.2).\n\n**Por qué las demás son incorrectas:**\n- **A) \"Delito leve de coacciones\":** La conducta de privar del suministro básico del hogar asignado judicialmente no es una mera coacción leve.\n- **C) \"No sería delito, vía civil\":** La conducta tiene tipificación penal expresa en el Código Penal como coacciones en el ámbito de la violencia de género/doméstica.\n\nFuente: Arts. 172 y 172.2 del Código Penal.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 172.2 CP",
+    "bloque": "**Art. 172.2 CP:** «El que de modo leve coaccione a quien sea o haya sido su esposa, o mujer que esté o haya estado ligada a él por una análoga relación de afectividad, aun sin convivencia, será castigado con la pena de prisión...»\n**Art. 172.1 CP:** El que, sin estar legítimamente autorizado, impidiere a otro con violencia hacer lo que la ley no prohíbe, o le compeliere a efectuar lo que no quiere, será castigado."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es B.\n\nRamón, siendo propietario del piso, corta el suministro de luz y agua para impedir que su exmujer viva en él. Aunque sea titular del inmueble, el piso fue atribuido judicialmente a Fabiola y al hijo común, por lo que esta conducta constituye un delito de **coacciones agravado**.",
+   "options": {
+    "0": "**\"Delito leve de coacciones\":** La conducta de privar del suministro básico del hogar asignado judicialmente no es una mera coacción leve.",
+    "1": "Cortar servicios básicos de un domicilio asignado judicialmente a la ex-cónyuge e hijos implica violencia sobre las cosas con ánimo de doblegar la voluntad ajena. Al concurrir la relación ex-conyugal, el tipo básico (art.172.1) se agrava (art.172.2).",
+    "2": "**\"No sería delito, vía civil\":** La conducta tiene tipificación penal expresa en el Código Penal como coacciones en el ámbito de la violencia de género/doméstica.\n\nFuente: Arts. 172 y 172.2 del Código Penal."
+   }
+  }
+ },
+ {
+  "id": "2e770e0f-da97-4123-a5b8-5a9d14226307",
+  "explanation": "La respuesta correcta es **B**.\n\n> **CP art. 564.1:** «La **tenencia de armas de fuego reglamentadas, careciendo de las licencias o permisos necesarios**, será castigada: 1.º Con la pena de prisión de uno a dos años, si se trata de **armas cortas**; 2.º Con la pena de prisión de seis meses a un año, si se trata de armas largas.»\n\n**Por qué B es correcta:** la detención 'por carecer de licencia o permiso' presupone un arma que **requiere licencia** (arma de fuego reglamentada). Portar un **arma corta de fuego** sin la licencia necesaria integra el delito de tenencia ilícita de armas del art. 564.1.1º, lo que justifica la detención del portador.\n\n**Por qué las demás son incorrectas:**\n- **C** ('siempre que sea arma prohibida'): las armas prohibidas (art. 563) lo son de manera absoluta; no existe licencia para ellas, de modo que su tenencia no se detiene 'por carecer de licencia', sino por estar prohibidas. La premisa del enunciado no encaja.\n- **A** ('arma restringida'): categoría imprecisa que no se corresponde con el tipo de tenencia ilícita del art. 564.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "CP art. 564.1",
+    "bloque": "**CP art. 564.1:** «La **tenencia de armas de fuego reglamentadas, careciendo de las licencias o permisos necesarios**, será castigada: 1.º Con la pena de prisión de uno a dos años, si se trata de **armas cortas**; 2.º Con la pena de prisión de seis meses a un año, si se trata de armas largas.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B**.",
+   "options": {
+    "0": "('arma restringida'): categoría imprecisa que no se corresponde con el tipo de tenencia ilícita del art. 564.",
+    "1": "la detención 'por carecer de licencia o permiso' presupone un arma que **requiere licencia** (arma de fuego reglamentada). Portar un **arma corta de fuego** sin la licencia necesaria integra el delito de tenencia ilícita de armas del art. 564.1.1º, lo que justifica la detención del portador.",
+    "2": "('siempre que sea arma prohibida'): las armas prohibidas (art. 563) lo son de manera absoluta; no existe licencia para ellas, de modo que su tenencia no se detiene 'por carecer de licencia', sino por estar prohibidas. La premisa del enunciado no encaja."
+   }
+  }
+ },
+ {
+  "id": "353a38b7-9196-453a-a6a0-8ef45d736011",
+  "explanation": "La respuesta correcta es **A) La Policía Judicial no precisa autorización judicial**.\n\n> «La Policía Judicial podrá obtener y grabar por cualquier medio técnico **imágenes de la persona investigada** cuando se encuentre en un lugar o espacio público, si ello fuera necesario para facilitar su identificación, para localizar los instrumentos o efectos del delito u obtener datos relevantes para el esclarecimiento de los hechos.» (Art. 588 quinquies a LECrim)\n\n**Por qué A es correcta:** El art. 588 quinquies *a* LECrim permite a la Policía Judicial grabar imágenes en espacios **públicos** sin autorización judicial previa, a diferencia de otras medidas de investigación tecnológica que sí la requieren.\n\n**Por qué las demás son incorrectas:**\n- **B) Es precisa la autorización judicial:** Solo se exige autorización judicial para medidas más invasivas (intervención comunicaciones, captación conversaciones, dispositivos de seguimiento), no para la grabación de imágenes en lugar público.\n- **C) Es precisa la autorización del Juez de Instrucción o el Ministerio Fiscal:** Tampoco: el art. 588 quinquies *a* atribuye directamente esta facultad a la Policía Judicial sin exigir autorización de ningún órgano.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "imágenes de la persona investigada",
+    "bloque": "«La Policía Judicial podrá obtener y grabar por cualquier medio técnico **imágenes de la persona investigada** cuando se encuentre en un lugar o espacio público, si ello fuera necesario para facilitar su identificación, para localizar los instrumentos o efectos del delito u obtener datos relevantes para el esclarecimiento de los hechos.» (Art. 588 quinquies a LECrim)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) La Policía Judicial no precisa autorización judicial**.",
+   "options": {
+    "0": "El art. 588 quinquies *a* LECrim permite a la Policía Judicial grabar imágenes en espacios **públicos** sin autorización judicial previa, a diferencia de otras medidas de investigación tecnológica que sí la requieren.",
+    "1": "**Es precisa la autorización judicial:** Solo se exige autorización judicial para medidas más invasivas (intervención comunicaciones, captación conversaciones, dispositivos de seguimiento), no para la grabación de imágenes en lugar público.",
+    "2": "Es precisa la autorización del Juez de Instrucción o el Ministerio Fiscal:** Tampoco: el art. 588 quinquies *a* atribuye directamente esta facultad a la Policía Judicial sin exigir autorización de ningún órgano."
+   }
+  }
+ },
+ {
+  "id": "396b6102-fdee-4fbd-8db7-ad21c1debc4f",
+  "explanation": "**Respuesta correcta: B) Los vehículos históricos o aquellos que tengan una antigüedad mínima de veinticinco años.**\n\n> «Las ordenanzas fiscales podrán regular [...] c) Una bonificación de hasta el 100 por cien para los vehículos históricos o aquellos que tengan una antigüedad mínima de veinticinco años [...]» (Art. 95.6.c RDL 2/2004)\n\n**Por qué B es correcta:** Los vehículos históricos o con antigüedad mínima de 25 años NO están exentos del IVTM. Lo que pueden obtener es una bonificación de hasta el 100% regulada por ordenanza fiscal (art. 95.6.c), que es un concepto diferente a la exención. La bonificación depende de que el ayuntamiento la establezca en su ordenanza fiscal.\n\n**Por qué las demás son incorrectas:**\n- **A)** Los autobuses, microbuses y vehículos de transporte público urbano con capacidad superior a 9 plazas sí están exentos (art. 93.1.f).\n- **C)** Las ambulancias y vehículos de asistencia sanitaria sí están exentos (art. 93.1.d).\n- **D)** Los tractores, remolques, semirremolques y maquinaria con Cartilla de Inspección Agrícola sí están exentos (art. 93.1.g).\n\n📚 **Fuente:** [RDL 2/2004, Art. 93 y 95](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a93)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Las ordenanzas fiscales podrán regular [...] c) Una bonificación de hasta el 100 por cien para los vehículos históricos o aquellos que tengan una antigüedad mínima de veinticinco años [...]» (Art. 95.6.c RDL 2/2004)"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) Los vehículos históricos o aquellos que tengan una antigüedad mínima de veinticinco años.**",
+   "options": {
+    "0": "Los autobuses, microbuses y vehículos de transporte público urbano con capacidad superior a 9 plazas sí están exentos (art. 93.1.f).",
+    "1": "Los vehículos históricos o con antigüedad mínima de 25 años NO están exentos del IVTM. Lo que pueden obtener es una bonificación de hasta el 100% regulada por ordenanza fiscal (art. 95.6.c), que es un concepto diferente a la exención. La bonificación depende de que el ayuntamiento la establezca en su ordenanza fiscal.",
+    "2": "Las ambulancias y vehículos de asistencia sanitaria sí están exentos (art. 93.1.d).",
+    "3": "Los tractores, remolques, semirremolques y maquinaria con Cartilla de Inspección Agrícola sí están exentos (art. 93.1.g).\n\n📚 **Fuente:** [RDL 2/2004, Art. 93 y 95](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a93)"
+   }
+  }
+ },
+ {
+  "id": "3df18adb-52ae-4b34-b1e3-477c468f1bd9",
+  "explanation": "La respuesta correcta es **A) la consecuencia jurídica**.\n\n> La **norma jurídica** tiene una estructura binaria: el **supuesto de hecho** (la realidad social descrita por la norma, el \"si ocurre X\") y la **consecuencia jurídica** (el efecto o respuesta que el ordenamiento asocia a ese hecho, el \"entonces se produce Y\").\n\n**Por qué A es correcta:** La consecuencia jurídica es el segundo elemento estructural canónico de la norma jurídica, reconocido por toda la teoría general del Derecho. Ejemplo: art.6.3 CC — supuesto de hecho: «actos contrarios a normas imperativas»; consecuencia jurídica: «nulidad de pleno derecho».\n\n**Por qué las demás son incorrectas:**\n- **B) La razón del hecho:** no es una categoría reconocida en la teoría estructural de la norma jurídica.\n- **C) La responsabilidad jurídica:** es un tipo específico de consecuencia jurídica (cuando se impone un deber de reparar), pero no el segundo elemento estructural genérico.\n\nFuente: Teoría General del Derecho — Estructura de la norma jurídica",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "norma jurídica",
+    "texto": "si ocurre X",
+    "bloque": "La **norma jurídica** tiene una estructura binaria: el **supuesto de hecho** (la realidad social descrita por la norma, el \"si ocurre X\") y la **consecuencia jurídica** (el efecto o respuesta que el ordenamiento asocia a ese hecho, el \"entonces se produce Y\")."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) la consecuencia jurídica**.",
+   "options": {
+    "0": "La consecuencia jurídica es el segundo elemento estructural canónico de la norma jurídica, reconocido por toda la teoría general del Derecho. Ejemplo: art.6.3 CC — supuesto de hecho: «actos contrarios a normas imperativas»; consecuencia jurídica: «nulidad de pleno derecho».",
+    "1": "**La razón del hecho:** no es una categoría reconocida en la teoría estructural de la norma jurídica.",
+    "2": "**La responsabilidad jurídica:** es un tipo específico de consecuencia jurídica (cuando se impone un deber de reparar), pero no el segundo elemento estructural genérico.\n\nFuente: Teoría General del Derecho — Estructura de la norma jurídica"
+   }
+  }
+ },
+ {
+  "id": "3f822488-14a7-46eb-95ba-102fe72797db",
+  "explanation": "**Respuesta correcta: C) 9.**\n> La cinta de opciones muestra por defecto las pestañas: Archivo, Inicio, Insertar, Diseño, Transiciones, Animaciones, Presentación con diapositivas, Revisar y Vista.\n**Por qué C es correcta:** PowerPoint 2016 incluye 9 pestañas fijas en la cinta de opciones (pueden aparecer pestañas contextuales adicionales al seleccionar ciertos objetos).\n**Por qué las demás son incorrectas:**\n- **A) 7** — Faltan dos pestañas en este recuento; no refleja la configuración real.\n- **B) 8** — Omite una pestaña; es un error frecuente al olvidar alguna como Transiciones o Animaciones.\n- **D) 10** — Supera el número de pestañas predeterminadas; las pestañas contextuales solo aparecen al trabajar con objetos específicos.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "La cinta de opciones muestra por defecto las pestañas: Archivo, Inicio, Insertar, Diseño, Transiciones, Animaciones, Presentación con diapositivas, Revisar y Vista."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: C) 9.**",
+   "options": {
+    "0": "7** — Faltan dos pestañas en este recuento; no refleja la configuración real.",
+    "1": "8** — Omite una pestaña; es un error frecuente al olvidar alguna como Transiciones o Animaciones.",
+    "2": "PowerPoint 2016 incluye 9 pestañas fijas en la cinta de opciones (pueden aparecer pestañas contextuales adicionales al seleccionar ciertos objetos).",
+    "3": "10** — Supera el número de pestañas predeterminadas; las pestañas contextuales solo aparecen al trabajar con objetos específicos."
+   }
+  }
+ },
+ {
+  "id": "403182e7-13e9-45e9-b305-e0cf981c56c5",
+  "explanation": "La respuesta correcta es **C) el Congreso de los Diputados**.\n\n> «El estado de sitio será declarado por la **mayoría absoluta** del **Congreso de los Diputados**, a propuesta exclusiva del Gobierno.» (Art. 116.4 CE)\n\n**Por qué C es correcta:** El art. 116.4 CE atribuye en exclusiva al **Congreso de los Diputados** la declaración del estado de sitio (por mayoría absoluta), siendo el Gobierno quien lo propone exclusivamente.\n\n**Por qué las demás son incorrectas:**\n- **A) El Ministro de Defensa:** No tiene competencia para declarar ningún estado excepcional; solo el Gobierno puede proponerlo al Congreso.\n- **B) El Gobierno de la Nación:** El Gobierno propone la declaración, pero quien la aprueba/declara es el Congreso. El Gobierno por sí mismo declara el estado de **alarma** (art. 116.2 CE), no el de sitio.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "mayoría absoluta",
+    "bloque": "«El estado de sitio será declarado por la **mayoría absoluta** del **Congreso de los Diputados**, a propuesta exclusiva del Gobierno.» (Art. 116.4 CE)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) el Congreso de los Diputados**.",
+   "options": {
+    "0": "**El Ministro de Defensa:** No tiene competencia para declarar ningún estado excepcional; solo el Gobierno puede proponerlo al Congreso.",
+    "1": "**El Gobierno de la Nación:** El Gobierno propone la declaración, pero quien la aprueba/declara es el Congreso. El Gobierno por sí mismo declara el estado de **alarma** (art. 116.2 CE), no el de sitio.",
+    "2": "El art. 116.4 CE atribuye en exclusiva al **Congreso de los Diputados** la declaración del estado de sitio (por mayoría absoluta), siendo el Gobierno quien lo propone exclusivamente."
+   }
+  }
+ },
+ {
+  "id": "43427d67-9357-4d0c-a9e7-5b7bb5b8ad1d",
+  "explanation": "La respuesta correcta es la **A**.\n\n> En dispositivos con **iOS**, las aplicaciones adicionales se instalan exclusivamente a través de la **App Store**, la tienda oficial de Apple. Esta plataforma permite a los usuarios descubrir, descargar e instalar aplicaciones que amplían las funciones disponibles por defecto en el dispositivo.\n\n**Por qué A es correcta:** Apple centraliza la distribución de aplicaciones para iOS en la App Store, manteniendo un proceso de revisión de aplicaciones que garantiza ciertos estándares de calidad y seguridad. Salvo en casos de jailbreak (no oficial), iOS no permite instalar aplicaciones fuera de la App Store.\n\n**Por qué las demás son incorrectas:**\n- **B)** \"Store App\" invierte el nombre; no existe ninguna tienda oficial de Apple con ese nombre.\n- **C)** \"Store App iOS\" tampoco es el nombre oficial de ninguna plataforma de distribución de aplicaciones de Apple.\n- **D)** Google Play Store es la tienda de aplicaciones del sistema operativo **Android** de Google, no de iOS. Son plataformas de diferentes fabricantes e incompatibles entre sí.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "iOS",
+    "bloque": "En dispositivos con **iOS**, las aplicaciones adicionales se instalan exclusivamente a través de la **App Store**, la tienda oficial de Apple. Esta plataforma permite a los usuarios descubrir, descargar e instalar aplicaciones que amplían las funciones disponibles por defecto en el dispositivo."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **A**.",
+   "options": {
+    "0": "Apple centraliza la distribución de aplicaciones para iOS en la App Store, manteniendo un proceso de revisión de aplicaciones que garantiza ciertos estándares de calidad y seguridad. Salvo en casos de jailbreak (no oficial), iOS no permite instalar aplicaciones fuera de la App Store.",
+    "1": "\"Store App\" invierte el nombre; no existe ninguna tienda oficial de Apple con ese nombre.",
+    "2": "\"Store App iOS\" tampoco es el nombre oficial de ninguna plataforma de distribución de aplicaciones de Apple.",
+    "3": "Google Play Store es la tienda de aplicaciones del sistema operativo **Android** de Google, no de iOS. Son plataformas de diferentes fabricantes e incompatibles entre sí."
+   }
+  }
+ },
+ {
+  "id": "43cda9cf-0296-418e-a676-d0a9a8da1c8c",
+  "explanation": "La respuesta correcta es **B) Al amenazado, a su familia o a otras personas con las que esté íntimamente vinculado**.\n\n> **Art. 169 CP:** «El que amenazare a otro con causarle a él, **a su familia** o a otras personas con las que esté **íntimamente vinculado** un mal que constituya delitos contra la vida, la integridad, la libertad, la libertad o indemnidad sexuales, la intimidad, el honor o el patrimonio...»\n\n**Por qué B es correcta:** El precepto enumera tres categorías de sujeto pasivo potencial del mal amenazado: el propio amenazado, su familia, o personas con las que esté íntimamente vinculado. La opción B reproduce fielmente esta triple estructura.\n\n**Por qué las demás son incorrectas:**\n- **A:** Limitar el círculo de víctimas al amenazante y su familia suprime la tercera categoría («personas con las que esté íntimamente vinculado») e incluye incorrectamente al «amenazante» como víctima del mal, cuando el sujeto pasivo es el amenazado.\n- **C:** La expresión «otras personas» es excesivamente amplia; el CP no protege a cualquier tercero sino solo a aquellas personas con las que el amenazado tenga un vínculo íntimo, restringiendo así el tipo objetivo.\n\n*Fuente: Art. 169 Código Penal.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 169 CP",
+    "bloque": "**Art. 169 CP:** «El que amenazare a otro con causarle a él, **a su familia** o a otras personas con las que esté **íntimamente vinculado** un mal que constituya delitos contra la vida, la integridad, la libertad, la libertad o indemnidad sexuales, la intimidad, el honor o el patrimonio...»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Al amenazado, a su familia o a otras personas con las que esté íntimamente vinculado**.",
+   "options": {
+    "0": "Limitar el círculo de víctimas al amenazante y su familia suprime la tercera categoría («personas con las que esté íntimamente vinculado») e incluye incorrectamente al «amenazante» como víctima del mal, cuando el sujeto pasivo es el amenazado.",
+    "1": "El precepto enumera tres categorías de sujeto pasivo potencial del mal amenazado: el propio amenazado, su familia, o personas con las que esté íntimamente vinculado. La opción B reproduce fielmente esta triple estructura.",
+    "2": "La expresión «otras personas» es excesivamente amplia; el CP no protege a cualquier tercero sino solo a aquellas personas con las que el amenazado tenga un vínculo íntimo, restringiendo así el tipo objetivo.\n\n*Fuente: Art. 169 Código Penal.*"
+   }
+  }
+ },
+ {
+  "id": "48cd258f-bbba-4e25-8d48-1a82cba8cbed",
+  "explanation": "La respuesta correcta es **B) Cada cinco años.**\n\nEl Real Decreto 389/2021, de 1 de junio, por el que se aprueba el Estatuto de la Agencia Española de Protección de Datos, regula la aprobación del Plan Estratégico en su artículo 9 (Programación).\n\n> «La Presidencia de la Agencia Española de Protección de Datos aprobará, en el primer semestre de su nombramiento y con carácter quinquenal, un Plan Estratégico con el objetivo de sentar las bases de las líneas de actuación de la Agencia en dicho periodo, incorporando las acciones específicas que cada departamento de la misma haya propuesto en relación con sus respectivas materias, así como el calendario de las circulares que se prevean aprobar.»\n\n**Por qué B es correcta:**\nEl artículo 9 establece expresamente que el Plan Estratégico se aprueba \"con carácter quinquenal\", es decir, cada cinco años.\n\n**Por qué las demás son incorrectas:**\n- A) El artículo 9 no vincula la aprobación del Plan Estratégico al inicio de cada legislatura, sino al primer semestre del nombramiento de la Presidencia de la Agencia, con periodicidad quinquenal.\n- C) El Plan Estratégico no se aprueba con carácter anual; el artículo 9 fija expresamente su carácter quinquenal (cada cinco años).\n\nFuente: Real Decreto 389/2021, de 1 de junio, por el que se aprueba el Estatuto de la Agencia Española de Protección de Datos, artículo 9 (BOE-A-2021-9175).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«La Presidencia de la Agencia Española de Protección de Datos aprobará, en el primer semestre de su nombramiento y con carácter quinquenal, un Plan Estratégico con el objetivo de sentar las bases de las líneas de actuación de la Agencia en dicho periodo, incorporando las acciones específicas que cada departamento de la misma haya propuesto en relación con sus respectivas materias, así como el calendario de las circulares que se prevean aprobar.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Cada cinco años.**\n\nEl Real Decreto 389/2021, de 1 de junio, por el que se aprueba el Estatuto de la Agencia Española de Protección de Datos, regula la aprobación del Plan Estratégico en su artículo 9 (Programación).",
+   "options": {
+    "0": "El artículo 9 no vincula la aprobación del Plan Estratégico al inicio de cada legislatura, sino al primer semestre del nombramiento de la Presidencia de la Agencia, con periodicidad quinquenal.",
+    "1": "El artículo 9 establece expresamente que el Plan Estratégico se aprueba \"con carácter quinquenal\", es decir, cada cinco años.",
+    "2": "El Plan Estratégico no se aprueba con carácter anual; el artículo 9 fija expresamente su carácter quinquenal (cada cinco años).\n\nFuente: Real Decreto 389/2021, de 1 de junio, por el que se aprueba el Estatuto de la Agencia Española de Protección de Datos, artículo 9 (BOE-A-2021-9175)."
+   }
+  }
+ },
+ {
+  "id": "493effcd-00a8-46fa-a15c-2e5e501bdd29",
+  "explanation": "**Respuesta correcta: C) Clasificador de diapositivas.**\n> El Clasificador de diapositivas muestra todas las diapositivas como miniaturas en una cuadrícula, facilitando su reordenación mediante arrastrar y soltar.\n**Por qué C es correcta:** Esta vista está diseñada específicamente para obtener una visión global de la presentación y reorganizar, copiar o eliminar diapositivas con facilidad.\n**Por qué las demás son incorrectas:**\n- **A) Vista Normal** — Muestra la diapositiva activa en grande con un panel lateral de miniaturas, pero no es la más eficiente para reorganizar.\n- **B) Vista de lectura** — Presenta la diapositiva a pantalla completa con controles de navegación; está pensada para revisar, no para editar el orden.\n- **D) Página de notas** — Muestra la diapositiva junto con sus notas del orador; no está orientada a la reordenación.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "El Clasificador de diapositivas muestra todas las diapositivas como miniaturas en una cuadrícula, facilitando su reordenación mediante arrastrar y soltar."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: C) Clasificador de diapositivas.**",
+   "options": {
+    "0": "Vista Normal** — Muestra la diapositiva activa en grande con un panel lateral de miniaturas, pero no es la más eficiente para reorganizar.",
+    "1": "Vista de lectura** — Presenta la diapositiva a pantalla completa con controles de navegación; está pensada para revisar, no para editar el orden.",
+    "2": "Esta vista está diseñada específicamente para obtener una visión global de la presentación y reorganizar, copiar o eliminar diapositivas con facilidad.",
+    "3": "Página de notas** — Muestra la diapositiva junto con sus notas del orador; no está orientada a la reordenación."
+   }
+  }
+ },
+ {
+  "id": "4980fb6e-02d2-4989-9de6-261093024d28",
+  "explanation": "La respuesta correcta es **C) Hasta 10 trabajadores**.\n\n> **Art. 11 Real Decreto 39/1997 (Reglamento de los Servicios de Prevención):** «El empresario podrá desarrollar personalmente la actividad de prevención, con excepción de las actividades relativas a la vigilancia de la salud de los trabajadores, cuando concurran las siguientes circunstancias: a) Que se trate de empresa de **hasta diez trabajadores**; o que [...] b) Que las actividades desarrolladas en la empresa no estén incluidas en el Anexo I; c) Que desarrolle de forma habitual su actividad en el centro de trabajo; d) Que tenga la capacidad correspondiente a las funciones preventivas que va a desarrollar.»\n\n**Por qué C es correcta:** El umbral para que el empresario pueda asumir personalmente la prevención es de **hasta 10 trabajadores** (no 6 ni 9), según el art. 11.a) RSP.\n\n**Por qué las demás son incorrectas:**\n- **A) Hasta 6 trabajadores:** No existe este límite en la normativa de prevención de riesgos laborales.\n- **B) Hasta 9 trabajadores:** Tampoco existe este límite; el RSP establece específicamente 10 trabajadores.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 11 Real Decreto 39/1997 (Reglamento de los Servicios de Prevención)",
+    "bloque": "**Art. 11 Real Decreto 39/1997 (Reglamento de los Servicios de Prevención):** «El empresario podrá desarrollar personalmente la actividad de prevención, con excepción de las actividades relativas a la vigilancia de la salud de los trabajadores, cuando concurran las siguientes circunstancias: a) Que se trate de empresa de **hasta diez trabajadores**; o que [...] b) Que las actividades desarrolladas en la empresa no estén incluidas en el Anexo I; c) Que desarrolle de forma habitual su actividad en el centro de trabajo; d) Que tenga la capacidad correspondiente a las funciones preventivas que va a desarrollar.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Hasta 10 trabajadores**.",
+   "options": {
+    "0": "**Hasta 6 trabajadores:** No existe este límite en la normativa de prevención de riesgos laborales.",
+    "1": "**Hasta 9 trabajadores:** Tampoco existe este límite; el RSP establece específicamente 10 trabajadores.",
+    "2": "El umbral para que el empresario pueda asumir personalmente la prevención es de **hasta 10 trabajadores** (no 6 ni 9), según el art. 11.a) RSP."
+   }
+  }
+ },
+ {
+  "id": "49f8bedb-6d5a-4d19-a8ae-342c450e40e8",
+  "explanation": "La respuesta correcta es **B**.\n\nLos **actos preparatorios punibles** del delito son la conspiración, la proposición (art. 17) y la provocación (art. 18). El Código Penal los castiga con **la pena inferior en uno o dos grados** a la prevista para el delito proyectado.\n\n> **CP art. 17.1 y 2:** define la conspiración y la proposición para delinquir.\n> «La conspiración y la proposición para delinquir sólo se castigarán en los casos especialmente previstos en la ley» (art. 17.3), y cuando se castigan se les impone la **pena inferior en uno o dos grados** a la del delito.\n\n**Por qué B es correcta:** a los autores de los actos preparatorios se les impone **la pena inferior en uno o dos grados** que a los autores del delito consumado.\n\n**Por qué las demás son incorrectas:**\n- **A** ('inferior en un grado'): omite la posibilidad de rebajar en dos grados.\n- **C** ('la misma pena'): sería tratarlos como autores del delito consumado, lo que no procede en la fase preparatoria.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "CP art. 17.1 y 2",
+    "bloque": "**CP art. 17.1 y 2:** define la conspiración y la proposición para delinquir.\n«La conspiración y la proposición para delinquir sólo se castigarán en los casos especialmente previstos en la ley» (art. 17.3), y cuando se castigan se les impone la **pena inferior en uno o dos grados** a la del delito."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B**.\n\nLos **actos preparatorios punibles** del delito son la conspiración, la proposición (art. 17) y la provocación (art. 18). El Código Penal los castiga con **la pena inferior en uno o dos grados** a la prevista para el delito proyectado.",
+   "options": {
+    "0": "('inferior en un grado'): omite la posibilidad de rebajar en dos grados.",
+    "1": "a los autores de los actos preparatorios se les impone **la pena inferior en uno o dos grados** que a los autores del delito consumado.",
+    "2": "('la misma pena'): sería tratarlos como autores del delito consumado, lo que no procede en la fase preparatoria."
+   }
+  }
+ },
+ {
+  "id": "4c70f767-b4b6-4382-90db-f38a6256794b",
+  "explanation": "La respuesta correcta es **C) Ctrl + K**.\n\nEl atajo **Ctrl + K** abre el diálogo de **Insertar hiperenlace** en LibreOffice Calc, permitiendo crear enlaces a páginas web, documentos, direcciones de correo o posiciones dentro del propio documento.\n\n**Por qué C es correcta:**\n> Ctrl+K corresponde a \"Insert > Hyperlink\" y también se puede acceder a través del icono Insertar hiperenlace en la barra de herramientas Estándar.\n\n**Por qué las demás son incorrectas:**\n- **A) Ctrl + F8** — No es un atajo estándar de LibreOffice Calc para hiperenlaces. En algunas configuraciones puede estar relacionado con la visualización de valores/fórmulas.\n- **B) Shift + Ctrl + F4** — Este atajo abre la barra lateral del Origen de datos (fuentes de datos registradas), no tiene relación con hiperenlaces.\n- **D) Mayús + Ctrl + F2** — No es un atajo estándar para insertar hiperenlaces en Calc.\n\nFuente: LibreOffice Calc Guide 25.2 - Appendix A, Keyboard Shortcuts (https://books.libreoffice.org/en/CG252/CG25218-KeyboardShortcuts.html)",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Ctrl + K**.\n\nEl atajo **Ctrl + K** abre el diálogo de **Insertar hiperenlace** en LibreOffice Calc, permitiendo crear enlaces a páginas web, documentos, direcciones de correo o posiciones dentro del propio documento.",
+   "options": {
+    "0": "Ctrl + F8** — No es un atajo estándar de LibreOffice Calc para hiperenlaces. En algunas configuraciones puede estar relacionado con la visualización de valores/fórmulas.",
+    "1": "Shift + Ctrl + F4** — Este atajo abre la barra lateral del Origen de datos (fuentes de datos registradas), no tiene relación con hiperenlaces.",
+    "2": "> Ctrl+K corresponde a \"Insert > Hyperlink\" y también se puede acceder a través del icono Insertar hiperenlace en la barra de herramientas Estándar.",
+    "3": "Mayús + Ctrl + F2** — No es un atajo estándar para insertar hiperenlaces en Calc.\n\nFuente: LibreOffice Calc Guide 25.2 - Appendix A, Keyboard Shortcuts (https://books.libreoffice.org/en/CG252/CG25218-KeyboardShortcuts.html)"
+   }
+  }
+ },
+ {
+  "id": "4cb879cc-510a-4121-a376-9f10532f262d",
+  "explanation": "La respuesta correcta es la **B**.\n\n> Según Microsoft, **NTFS** es la mejor opción para volúmenes de **400 MB o más**, ya que su rendimiento no se degrada con volúmenes grandes, a diferencia de FAT, cuyo rendimiento disminuye notablemente a medida que aumenta el tamaño del volumen.\n\n**Por qué B es correcta:** Microsoft recomienda explícitamente NTFS para volúmenes de cierto tamaño porque su estructura interna (tabla maestra de archivos, MFT) escala eficientemente con el tamaño del volumen, manteniendo un rendimiento constante. FAT, en cambio, sufre una degradación notable con volúmenes grandes.\n\n**Por qué las demás son incorrectas:**\n- **A)** HPFS (High Performance File System) fue el sistema de archivos de OS/2 de IBM, no es una opción nativa de Windows para volúmenes de usuario.\n- **C)** FAT (y FAT32) es el sistema cuyo rendimiento sí se degrada con volúmenes grandes; precisamente por eso Microsoft recomienda NTFS como alternativa para volúmenes de 400 MB o más.\n- **D)** exFAT está diseñado principalmente para dispositivos de almacenamiento extraíble y tarjetas de memoria, no está optimizado por Microsoft como la mejor opción para volúmenes grandes en instalaciones de Windows.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "NTFS",
+    "bloque": "Según Microsoft, **NTFS** es la mejor opción para volúmenes de **400 MB o más**, ya que su rendimiento no se degrada con volúmenes grandes, a diferencia de FAT, cuyo rendimiento disminuye notablemente a medida que aumenta el tamaño del volumen."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B**.",
+   "options": {
+    "0": "HPFS (High Performance File System) fue el sistema de archivos de OS/2 de IBM, no es una opción nativa de Windows para volúmenes de usuario.",
+    "1": "Microsoft recomienda explícitamente NTFS para volúmenes de cierto tamaño porque su estructura interna (tabla maestra de archivos, MFT) escala eficientemente con el tamaño del volumen, manteniendo un rendimiento constante. FAT, en cambio, sufre una degradación notable con volúmenes grandes.",
+    "2": "FAT (y FAT32) es el sistema cuyo rendimiento sí se degrada con volúmenes grandes; precisamente por eso Microsoft recomienda NTFS como alternativa para volúmenes de 400 MB o más.",
+    "3": "exFAT está diseñado principalmente para dispositivos de almacenamiento extraíble y tarjetas de memoria, no está optimizado por Microsoft como la mejor opción para volúmenes grandes en instalaciones de Windows."
+   }
+  }
+ },
+ {
+  "id": "4dd977d3-0e44-42f5-8fbb-fd1a28c4b68b",
+  "explanation": "**Respuesta correcta: A) Esquema.**\n> La vista Esquema presenta el texto de cada diapositiva organizado por niveles (títulos y subtítulos) en el panel izquierdo, facilitando la edición y reorganización del contenido textual.\n**Por qué A es correcta:** Esta vista permite concentrarse en la estructura y el texto de la presentación sin la distracción de los elementos gráficos.\n**Por qué las demás son incorrectas:**\n- **B) Normal** — Aunque tiene un panel lateral con miniaturas, no muestra el contenido textual en formato de esquema jerárquico.\n- **C) Clasificador de diapositivas** — Solo muestra miniaturas de las diapositivas; no presenta el texto de forma desglosada.\n- **D) Página de notas** — Muestra la diapositiva junto con sus notas del orador, no un esquema del contenido textual.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "La vista Esquema presenta el texto de cada diapositiva organizado por niveles (títulos y subtítulos) en el panel izquierdo, facilitando la edición y reorganización del contenido textual."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Esquema.**",
+   "options": {
+    "0": "Esta vista permite concentrarse en la estructura y el texto de la presentación sin la distracción de los elementos gráficos.",
+    "1": "Normal** — Aunque tiene un panel lateral con miniaturas, no muestra el contenido textual en formato de esquema jerárquico.",
+    "2": "Clasificador de diapositivas** — Solo muestra miniaturas de las diapositivas; no presenta el texto de forma desglosada.",
+    "3": "Página de notas** — Muestra la diapositiva junto con sus notas del orador, no un esquema del contenido textual."
+   }
+  }
+ }
+]

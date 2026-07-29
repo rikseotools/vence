@@ -63,6 +63,10 @@ const APPLY = argv.includes('--apply')
 const PREGUNTA = arg('--pregunta')
 const LIMITE = arg('--limite') ? parseInt(arg('--limite')!, 10) : undefined
 const BACKUP = arg('--backup')
+// Por defecto solo las ACTIVAS (son las que se sirven). Con esto se incluyen las apagadas
+// (`needs_human`, `draft`…): no las ve nadie hoy, pero si alguien las repara y las reactiva
+// volverían con la letra clavada. Medido el 29/07: 200 inactivas con estructura.
+const INCLUIR_INACTIVAS = argv.includes('--incluir-inactivas')
 
 /** Qué se puede hacer con una pregunta, decidido SIN tocar la BD (función pura, testeable). */
 export type Veredicto =
@@ -93,7 +97,8 @@ async function main() {
     SELECT id, correct_option, option_a, option_b, option_c, option_d, option_e,
            explanation, explanation_data, shuffle_safety
       FROM questions
-     WHERE is_active = true AND explanation_data IS NOT NULL
+     WHERE explanation_data IS NOT NULL
+       ${INCLUIR_INACTIVAS ? sql`` : sql`AND is_active = true`}
        ${PREGUNTA ? sql`AND id = ${PREGUNTA}::uuid` : sql``}
      ORDER BY id
      ${LIMITE ? sql`LIMIT ${LIMITE}` : sql``}`)
