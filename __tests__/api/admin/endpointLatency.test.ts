@@ -237,3 +237,32 @@ describe('sustainedDegradations — la firma que dispara la ALERTA', () => {
     expect(sustainedDegradations([])).toEqual([])
   })
 })
+
+describe('smallSample — el p95 que en realidad es el máximo', () => {
+  it('marca los cubos por debajo de 20 muestras', () => {
+    // Con n≤19, percentile_disc(0.95) devuelve el mayor valor del cubo. Medido sobre 7 días de
+    // producción, ahí cae el 85% de los hallazgos (50 de 59): si no se marca, el panel enseña
+    // «p95» donde hay «la peor petición».
+    expect(classifyEndpointLatency(cubo('/api/x', 6_000, 19)).smallSample).toBe(true)
+    expect(classifyEndpointLatency(cubo('/api/x', 6_000, 10)).smallSample).toBe(true)
+  })
+
+  it('NO marca los cubos con muestra suficiente — el del incidente entre ellos', () => {
+    expect(classifyEndpointLatency(cubo('/api/x', 6_000, 20)).smallSample).toBe(false)
+    // El cubo real de las 09:30 del 28/07 tenía 34 muestras: el titular de T-254 NO depende de esto.
+    expect(classifyEndpointLatency(cubo('/api/v2/answer-and-save', 25_145, 34)).smallSample).toBe(false)
+  })
+
+  it('no cambia el veredicto: la marca informa, no degrada ni indulta', () => {
+    const corto = classifyEndpointLatency(cubo('/api/x', 6_000, 12))
+    const largo = classifyEndpointLatency(cubo('/api/x', 6_000, 120))
+    expect(corto.status).toBe(largo.status)
+  })
+
+  it('la alerta NO se apoya en un cubo suelto de muestra corta', () => {
+    // La protección contra el outlier no es el suelo de muestras: es exigir que DURE.
+    expect(sustainedDegradations([
+      { endpoint: '/api/x', bucketStart: '2026-07-28T10:00:00.000Z', samples: 11, p95Ms: 25_000 },
+    ])).toEqual([])
+  })
+})

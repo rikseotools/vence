@@ -923,11 +923,12 @@ async function _GET(request: NextRequest) {
           p95_ms: v.p95Ms,
           samples: v.samples,
           category: v.category,
+          small_sample: v.smallSample,
           worst_bucket_at: v.bucketStart,
         })),
         // Lo que dispara la alerta: degradación que DURÓ, no un pico suelto.
         sustained: endpointSustained.slice(0, 10),
-        note: 'p95 por endpoint sobre el PEOR cubo de 5 min de la ventana. Mínimo 10 muestras por cubo (menos = unknown, nunca verde). Umbrales distintos admin/user_facing.',
+        note: 'p95 por endpoint sobre el PEOR cubo de 5 min. Mínimo 10 muestras (menos = unknown, nunca verde). OJO: los 2xx/3xx se muestrean al 10% en el escritor, así que con n<20 el p95 es de hecho el MÁXIMO del cubo (marcado small_sample) — una lenta observada son ~10 reales. Umbrales distintos admin/user_facing.',
       },
       traffic_volume: {
         status: trafficCount == null ? 'unknown' : classifyTraffic(trafficCount),

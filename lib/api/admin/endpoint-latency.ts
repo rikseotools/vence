@@ -75,6 +75,27 @@ export const LATENCY_BUCKET_MINUTES = 5
  */
 export const LATENCY_MIN_SAMPLES = 10
 
+/**
+ * Por debajo de este número de muestras, `percentile_disc(0.95)` devuelve **literalmente el
+ * máximo** del cubo (con n=19, `ceil(0.95·19)=19` → el mayor de 19). O sea: entre 10 y 19 muestras
+ * esto NO es un percentil, es un detector de la peor petición del cubo.
+ *
+ * **No se sube el suelo a 20 a propósito, y conviene entender por qué.** Los eventos
+ * `request_completed` de 2xx/3xx se emiten **muestreados al 10%** en el escritor
+ * (`SUCCESS_TIMING_SAMPLE_RATE` en `lib/api/withErrorLogging.ts`; los 4xx/5xx van al 100%). Así que
+ * UNA petición lenta observada implica ~10 lentas reales: es daño de verdad, no ruido, y taparlo
+ * exigiendo 20 muestras dejaría ciegos a todos los endpoints que no hacen 200 peticiones reales
+ * cada cinco minutos — que son casi todos.
+ *
+ * Lo que NO se puede hacer es llamarlo «p95» sin decir esto: medido sobre 7 días, **50 de 59 cubos
+ * degradados (85%) caen en la banda 10-19**, así que el número que se enseña es, la mayoría de las
+ * veces, el peor caso del cubo. Por eso se marca (`smallSample`) y el panel lo señala.
+ *
+ * La protección contra el falso positivo no está aquí, está en la firma de la ALERTA: exige
+ * degradación en ≥2 cubos consecutivos, que un outlier suelto no produce. Medido: 0,9 alertas/día.
+ */
+export const LATENCY_SMALL_SAMPLE_UNDER = 20
+
 /** Una medición: un endpoint durante un cubo de tiempo. */
 export interface EndpointLatencyBucket {
   endpoint: string
@@ -90,6 +111,13 @@ export interface EndpointLatencyVerdict extends EndpointLatencyBucket {
   category: EndpointCategory
   status: LatencyStatus
   thresholds: { amber: number; red: number }
+  /**
+   * `true` cuando el cubo tiene menos de `LATENCY_SMALL_SAMPLE_UNDER` muestras y por tanto el
+   * `p95Ms` es de hecho el MÁXIMO del cubo, no un percentil. Se marca en vez de esconderse: la
+   * señal es válida (el escritor muestrea 2xx/3xx al 10%, así que una lenta observada son ~10
+   * reales) pero quien la lee tiene que saber qué está mirando.
+   */
+  smallSample: boolean
 }
 
 /**
@@ -114,7 +142,10 @@ export function classifyEndpointLatency(bucket: EndpointLatencyBucket): Endpoint
     status = 'green'
   }
 
-  return { ...bucket, category, status, thresholds }
+  return {
+    ...bucket, category, status, thresholds,
+    smallSample: Number.isFinite(bucket.samples) && bucket.samples < LATENCY_SMALL_SAMPLE_UNDER,
+  }
 }
 
 const PEOR: Record<LatencyStatus, number> = { red: 3, amber: 2, unknown: 1, green: 0 }

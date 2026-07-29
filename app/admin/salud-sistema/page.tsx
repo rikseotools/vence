@@ -129,6 +129,7 @@ interface SystemHealthResponse {
         p95_ms: number
         samples: number
         category: 'admin' | 'user_facing'
+        small_sample: boolean
         worst_bucket_at: string
       }>
       sustained: Array<{
@@ -427,6 +428,11 @@ export default function SaludSistemaPage() {
                       <span className="font-mono">{d.endpoint}</span> · p95{' '}
                       {d.p95_ms.toLocaleString('es-ES')}ms · n={d.samples}
                       {d.category === 'admin' && <span className="text-gray-400"> (admin)</span>}
+                      {d.small_sample && (
+                        <span className="text-gray-400" title="Menos de 20 muestras: este p95 es en realidad el máximo del cubo. Los 2xx/3xx se muestrean al 10%, así que una petición lenta observada son ~10 reales.">
+                          {' '}· muestra corta (p95 = máx)
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
