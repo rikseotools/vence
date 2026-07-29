@@ -1846,18 +1846,47 @@ export default function ConversionesPage() {
                     </div>
                     <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                       <div className="text-3xl font-bold text-red-600">{predictionData.mrr.churn?.calculatedRate || 0}%</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Churn real</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Churn mensual</div>
+                      {/* Ventana móvil sobre las cuentas vivas (T-266): antes esto era
+                          "canceladas de toda la vida / activas de hoy", que durante el
+                          vaciado de una cuenta medía una decisión nuestra, no retención. */}
                       <div className="text-xs text-gray-400 mt-1">
-                        {predictionData.mrr.churn?.totalCancellations || 0} de {predictionData.mrr.churn?.payingUsers || 0} pagadores
+                        {(predictionData.mrr.churn?.cancellationsInWindow ?? 0) - (predictionData.mrr.churn?.migrationsExcluded ?? 0)} bajas
+                        {' '}en {predictionData.mrr.churn?.windowDays ?? 90} días
+                        {' '}sobre {predictionData.mrr.churn?.activeBase ?? 0} activas
+                        {predictionData.mrr.churn?.liveAccounts?.length > 0 && ` (${predictionData.mrr.churn.liveAccounts.join('+')})`}
                       </div>
+                      {predictionData.mrr.churn?.migrationsExcluded > 0 && (
+                        <div className="text-xs text-gray-400">
+                          excl. {predictionData.mrr.churn.migrationsExcluded} migraciones entre cuentas
+                        </div>
+                      )}
                       {predictionData.mrr.churn?.totalRefunds > 0 && (
                         <div className="text-xs text-red-400 mt-1">
                           ({predictionData.mrr.churn.totalRefunds} con refund: {predictionData.mrr.churn.refundAmount}€)
                         </div>
                       )}
-                      {predictionData.mrr.churn?.isMinimum && (
+                      {/* Si el suelo o el techo muerden, el número que se ve NO es el medido.
+                          Decirlo evita leer un valor recortado como si fuera la realidad. */}
+                      {predictionData.mrr.churn?.rateSource === 'suelo' && (
                         <div className="text-xs text-amber-600 mt-1">
-                          Aplicado mín. 5%
+                          medido {predictionData.mrr.churn?.measuredRate ?? 0}% → aplicado el mínimo
+                        </div>
+                      )}
+                      {predictionData.mrr.churn?.rateSource === 'techo' && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          medido {predictionData.mrr.churn?.measuredRate ?? 0}% → recortado al máximo
+                        </div>
+                      )}
+                      {predictionData.mrr.churn?.rateSource === 'muestra_insuficiente' && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          muestra insuficiente ({predictionData.mrr.churn?.activeBase ?? 0} activas) → valor por defecto
+                        </div>
+                      )}
+                      {predictionData.mrr.churn?.windDownAccounts?.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-1 border-t border-red-200 dark:border-red-800 pt-1">
+                          {predictionData.mrr.churn.windDownAccounts.join('+')} en vaciado, fuera del churn:
+                          {' '}{predictionData.mrr.churn.scheduledExpirations} vencimientos programados
                         </div>
                       )}
                     </div>
@@ -1866,20 +1895,20 @@ export default function ConversionesPage() {
                   {/* Proyección MRR */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-white">
-                      <div className="text-sm opacity-90 mb-1">MRR en 6 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate || 5}%</span></div>
+                      <div className="text-sm opacity-90 mb-1">MRR en 6 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate ?? '—'}%</span></div>
                       <div className="text-3xl font-bold">{(predictionData.mrr.in6Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/mes</div>
                       <div className="text-xs opacity-75 mt-1">
-                        Churn real: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.isMinimum ? ' → aplicado mín. 5%' : ''}
+                        Churn aplicado: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.rateSource && predictionData.mrr.churn.rateSource !== 'medida' ? ` (medido ${predictionData.mrr.churn?.measuredRate ?? 0}%)` : ''}
                       </div>
                       <div className="text-xs opacity-60 mt-1">
                         ARR: {(predictionData.mrr.arrIn6Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/año
                       </div>
                     </div>
                     <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
-                      <div className="text-sm opacity-90 mb-1">MRR en 12 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate || 5}%</span></div>
+                      <div className="text-sm opacity-90 mb-1">MRR en 12 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate ?? '—'}%</span></div>
                       <div className="text-3xl font-bold">{(predictionData.mrr.in12Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/mes</div>
                       <div className="text-xs opacity-75 mt-1">
-                        Churn real: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.isMinimum ? ' → aplicado mín. 5%' : ''}
+                        Churn aplicado: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.rateSource && predictionData.mrr.churn.rateSource !== 'medida' ? ` (medido ${predictionData.mrr.churn?.measuredRate ?? 0}%)` : ''}
                       </div>
                       <div className="text-xs opacity-60 mt-1">
                         ARR: {(predictionData.mrr.arrIn12Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/año

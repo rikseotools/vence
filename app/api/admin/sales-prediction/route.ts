@@ -1,7 +1,9 @@
 // app/api/admin/sales-prediction/route.ts
 // API para predicciones de ventas con intervalos de confianza
 import { NextResponse } from 'next/server'
-import { listSubscriptionsAllAccounts, type StripeSubscriptionLite } from '@/lib/stripe'
+import { listSubscriptionsAllAccounts, newSignupAccount, type StripeSubscriptionLite } from '@/lib/stripe'
+// Núcleo puro en JS, compartido con sus tests (una sola definición de la fórmula)
+import { calcularChurn } from '@/lib/metrics/churn'
 import {
   getRegistrationData,
   getConversionData,
@@ -701,10 +703,23 @@ async function _GET() {
     const stripeCancelPendingCount = cancelingSubscriptions.length
     const totalStripeEver = allStripeSubs.length
 
-    const canceledPerMonth = stripeChurnedCount / businessAgeMonths
-    const churnMonthly = stripeSubs.length > 5
-      ? Math.max(0.03, Math.min(0.15, canceledPerMonth / stripeSubs.length))
-      : 0.05
+    // Churn mensual — ventana móvil sobre las cuentas VIVAS (T-266, 29/07/2026).
+    //
+    // Antes: `canceladas_de_toda_la_vida / activas_de_hoy`, que mezcla un flujo
+    // acumulado con un stock instantáneo. Con una cuenta en vaciado el número deja
+    // de medir retención y pasa a medir una decisión nuestra: el 29/07 las 214
+    // canceladas eran TODAS de la cuenta Manuel, que ya no capta ni renueva.
+    // Se comprobó que Stripe no permite distinguirlas (201 `cancellation_requested`
+    // + 13 `payment_failed`: el vaciado se ejecutó pidiendo la cancelación), así que
+    // la única fuente fiable de "cuenta viva" es la que recibe las altas nuevas.
+    // Los vencimientos de la cuenta apagada se reportan aparte, que es lo que son.
+    const cuentasVivas = [newSignupAccount()]
+    const churn = calcularChurn({
+      subs: allStripeSubs,
+      cuentasVivas,
+      ahoraMs: Date.now(),
+    })
+    const churnMonthly: number = churn.tasaMensual
 
     // ═══════════════════════════════════════════════════════════════
     // PROYECCIÓN MRR MES A MES CON CHURN POR EXAMEN (dinámico)
@@ -1011,7 +1026,23 @@ async function _GET() {
           totalCancellations,
           totalRefunds: totalRefundsCount,
           refundAmount: Math.round(totalRefundAmount * 100) / 100,
-          isMinimum: churnMonthly <= 0.03,
+          isMinimum: churn.aplicada === 'suelo' || churn.aplicada === 'muestra_insuficiente',
+          // ── Ventana móvil sobre cuentas vivas (T-266) ──────────────────────
+          // `calculatedRate` es la tasa APLICADA; `measuredRate` la MEDIDA. Si el
+          // suelo o el techo muerden, los dos números difieren y hay que verlo:
+          // enseñar un valor recortado como si fuera el medido es lo que hacía
+          // que nadie supiera si el 15% era la realidad o el tope.
+          measuredRate: Math.round(churn.tasaMedida * 1000) / 10,
+          rateSource: churn.aplicada,
+          windowDays: churn.ventanaDias,
+          cancellationsInWindow: churn.canceladasVentana,
+          migrationsExcluded: churn.migracionesExcluidas,
+          activeBase: churn.activasBase,
+          liveAccounts: churn.cuentasVivas,
+          // El vaciado NO es churn: son vencimientos ya decididos. Aparte y con nombre.
+          windDownAccounts: churn.cuentasEnVaciado,
+          scheduledExpirations: churn.vencimientosProgramados,
+          cancellationsInWindDown: churn.canceladasEnVaciado,
         },
         byPlan: {
           semester: semesterCount,
@@ -1038,7 +1069,9 @@ async function _GET() {
         accountsDegraded: failedAccounts.length > 0,
         explanation: {
           mrrCurrent: `${activeSubscriptions.filter(s => !s.cancel_at_period_end).length} subs activas (${stripeSubs.length} Stripe en ${stripeAccountsHealth.filter(a => a.ok).length} cuenta(s) + ${(manualSubsData || []).length} manuales, excl. ${cancelingSubscriptions.length} cancelando)`,
-          churnApplied: `Churn mensual ${Math.round(churnMonthly * 100)}% (${stripeChurnedCount} canceladas Stripe + ${stripeCancelPendingCount} pendientes en ${businessAgeMonths.toFixed(1)} meses)`,
+          churnApplied: churn.aplicada === 'muestra_insuficiente'
+            ? `Churn mensual ${Math.round(churnMonthly * 100)}% por defecto: solo ${churn.activasBase} subs activas en ${churn.cuentasVivas.join('+') || 'ninguna cuenta viva'}, muestra insuficiente para medirlo`
+            : `Churn mensual ${Math.round(churnMonthly * 100)}%${churn.aplicada !== 'medida' ? ` (medido ${(churn.tasaMedida * 100).toFixed(1)}%, aplicado el ${churn.aplicada})` : ''}: ${churn.canceladasVentana - churn.migracionesExcluidas} bajas en ${churn.ventanaDias} días sobre ${churn.activasBase} activas de ${churn.cuentasVivas.join('+')}${churn.migracionesExcluidas > 0 ? ` (excluidas ${churn.migracionesExcluidas} migraciones entre cuentas)` : ''}${churn.cuentasEnVaciado.length > 0 ? ` · ${churn.cuentasEnVaciado.join('+')} en vaciado, fuera de la base: ${churn.vencimientosProgramados} vencimientos programados` : ''}`,
           projection6m: `MRR × (1-churn)^6 + nuevas subs ajustadas por churn`,
           cancellationsNote: `${totalCancellations} cancelaciones de ${uniquePayingUsersGross} pagadores (${totalRefundsCount} con refund: ${Math.round(totalRefundAmount)}€)`,
         },
