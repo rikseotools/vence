@@ -2123,3 +2123,99 @@ Numbers, gotchas and the wall-clock will be added here when it finishes. The spe
 or the upload timing out, whether `maintenance_work_mem` is enough for the **ivfflat index at full row
 count** (not just 61 k rows), whether **`tableCounts`** comes back populated at scale (it was `[]` on our
 successful small run), and **how long a real cutover window would be**.
+
+---
+
+## ✅ UPDATE 2026-07-29 (19:00 UTC) — you shipped a changelog, an audit log, and fixes for almost everything in this report
+
+This is the release where the feedback loop closed. Everything below was verified against the live API, not
+read off the changelog.
+
+### ⭐ `GET /api/v1/changelog` — the thing we asked for twice today, and it works
+
+Public, no auth (`200` without a token), `?since=` filters correctly (`?since=2026-07-29T17:00:00Z` → 3 of 8
+entries), each entry carries `kind` and the `endpoints` it touches, and `latest` is a timestamp you can store
+and send back. There is an Atom feed too.
+
+**This retires the md5-diffing of `llms.txt` we had been reduced to** — and it retires the specific failure it
+caused: two of our seven `scale-out` attempts were re-runs of an unchanged build, because from the outside a
+no-op release and a real one looked identical. You also told us `llms.txt` was advertising a **one-year
+cache** by mistake and is now five minutes, which explains why our diffs sometimes looked frozen. Good catch
+on your side; we had not spotted it.
+
+### ✅ Fix at 18:40 — unresolved `${{…}}` reference now stops the deploy. Verified on our own broken app
+
+Our `vence-web7` had exactly this: `DATABASE_URL = ${{db.vence-mig2.DATABASE_URL}}`, pointing at a database
+deleted during the POC. Redeploying it now gives:
+
+> *"No se pueden resolver estas referencias: `${{db.vence-mig2.DATABASE_URL}}`. Apuntan a un recurso que no
+> existe en este proyecto (¿borrado o renombrado?). El despliegue se ha parado: arrancar con la referencia sin
+> resolver dejaría la aplicación en pie pero fallando en todas sus rutas."*
+
+That is precisely the failure we reported this morning, and the message even states the reasoning we used to
+argue for it. `env/verify` also carries the new `unresolvedReference` field.
+
+**Consequence for us, and it is a good one:** we pointed the variable at the real POC database and the clone
+now works *end to end* for the first time — `/api/health` → `200`, `overall: ok`, `database: ok` in **38 ms**.
+Until today our clone only served pre-rendered HTML.
+
+### 🔎 Fix at 16:50 — replica diagnostics. **They work, and they answer the seven-attempt question**
+
+Seventh reproduction of `scale-out`, but for the first time the record explains itself:
+
+```
+runner = 167.233.84.5
+image  = 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-koigrid-mig:latest
+logs   = KOI_SO_FAIL
+         --- réplica koi-vence-web7-23f37d-r1 ---
+         no existe: no se llegó a crear
+         código de salida: ?
+         --- últimas líneas del contenedor ---
+         Error response from daemon: No such container: koi-vence-web7-23f37d-r1
+```
+
+**The replica container is never created.** A runner is selected and the correct image is resolved, but
+`docker` is asked about a container that was never made. So this is not a health check failing — nothing ever
+got as far as being healthy or unhealthy. **`replica_unhealthy` is still the wrong code for this**; something
+like `replica_never_created` would point straight at the container-creation step on the runner.
+
+### 🙏 We have to correct ourselves twice on this one
+
+1. This morning we reported *"`runner: null` ⇒ the replica was never scheduled"*.
+2. This afternoon, when you started populating `runner`, we **retracted that** and told you placement clearly
+   did happen, so our diagnosis had been wrong.
+3. Tonight's logs show the substance of **(1)** was right — *the container is never created* — while the
+   mechanism is finer than either of our statements: **a runner IS assigned, and the container is still never
+   created on it.**
+
+The lesson is ours, not yours: we inferred from an unpopulated field, then over-corrected the moment a field
+appeared. Neither reading deserved the confidence we gave it. What actually settled it was you emitting the
+logs — which is the argument for the fix you just shipped.
+
+### ✅ Fix at 14:00 — `/audit`, the customer-visible record we asked for this afternoon
+
+`GET /audit` returns categorised entries (`auth · members · tokens · resources · deploy · network · security ·
+billing · config`) with `actorType`, `actor`, `resourceId`, `ip` and timestamp. Our own actions show up
+correctly as `actorType: agent, actor: token:vence-api`. This is the answer to **S4** — the process gap where
+we only discovered koigrid had operated on our storage because we happened to list our tokens. Shipped the
+same day we raised it.
+
+### ✅ Storage (S1/S2) — closed, and your diagnosis was exactly right
+
+You said the bucket had been hanging off a different organisation than our token, and that a key issued
+*before* the change would not pick up the new policy. That matches what we measured to the letter: the key we
+minted at 16:10 kept getting `AccessDenied`, and a key minted after the change lists the bucket and reads a
+real 1.6 GB lesson (`206` on a presigned GET). **We had already re-tested with a fresh key before your
+message arrived**, so no action was pending on our side.
+
+One item from that thread is still worth a line in your docs, because the fix does not remove it: **the key
+and the endpoint are not independent.** We tested both cross-combinations — old key on the new host and new
+key on the old host both return `InvalidAccessKeyId`. There is no safe half-step, so a customer must change
+both in a single deploy. We are treating our own production rollout that way.
+
+### Still open after this release
+
+- **N1 `scale-out`** — now diagnosable, still broken: the replica container is never created. Suggested code:
+  `replica_never_created`.
+- **A5 `tableCounts`** — you fixed it at 17:30; our 33 GB rehearsal is the first job large enough to be a real
+  test of it, and it is running now.
