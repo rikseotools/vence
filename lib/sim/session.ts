@@ -37,12 +37,14 @@ export function sessionTokenPayload(sub: OwnAuthSubject, nowSec: number, ttlSec:
 export async function mintOwnAuthCookie(
   sub: OwnAuthSubject,
   secret: string,
-  opts: { nowSec: number; ttlSec?: number } ,
+  opts: { nowSec: number; ttlSec?: number; host?: string } ,
 ): Promise<string> {
   if (!secret) throw new Error('[sim] mintOwnAuthCookie: falta AUTH_SECRET')
   const ttl = opts.ttlSec ?? 1800
   const token = sessionTokenPayload(sub, opts.nowSec, ttl)
-  return encode({ token, secret, salt: AUTHJS_SESSION_COOKIE, maxAge: ttl })
+  // El salt DEBE ser el nombre real de la cookie en ese host (difiere en local).
+  const salt = sessionCookieNameFor(opts.host ?? 'www.vence.es')
+  return encode({ token, secret, salt, maxAge: ttl })
 }
 
 /** Round-trip para tests/diagnóstico: descifra y devuelve el appUserId/email. */
@@ -50,7 +52,17 @@ export async function readOwnAuthCookie(value: string, secret: string) {
   return decode({ token: value, secret, salt: AUTHJS_SESSION_COOKIE })
 }
 
+/** Nombre de cookie de sesión según el host: en local (http) Auth.js NO usa el prefijo
+ * `__Secure-` (que el navegador solo acepta por https). El nombre es además el SALT del
+ * cifrado, así que emisor y app tienen que coincidir o la sesión no se descifra. */
+export function sessionCookieNameFor(host: string): string {
+  const esLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(host)
+  return esLocal ? 'authjs.session-token' : AUTHJS_SESSION_COOKIE
+}
+
 /** Descriptor de cookie listo para Playwright `context.addCookies`. */
 export function cookieForPlaywright(value: string, host = 'www.vence.es') {
-  return { name: AUTHJS_SESSION_COOKIE, value, domain: host, path: '/', httpOnly: true, secure: true, sameSite: 'Lax' as const }
+  const name = sessionCookieNameFor(host)
+  const esLocal = name !== AUTHJS_SESSION_COOKIE
+  return { name, value, domain: host, path: '/', httpOnly: true, secure: !esLocal, sameSite: 'Lax' as const }
 }

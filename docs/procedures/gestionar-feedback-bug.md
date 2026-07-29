@@ -134,6 +134,25 @@ Cuando pregunten por el temario —¿está completo?, ¿se amplía según estudi
 - **Recomienda la lectura por voz:** además de leerlo, puede **escucharlo** — ideal para repasar **haciendo deporte o en transporte público**, sin perder tiempo.
 - **Foco + ánimo:** ir tema a tema con constancia, apoyarse en los tests para fijar, y un **ánimo** final ("lo tienes a tu alcance").
 
+## ❓ Preguntas frecuentes — respuestas canónicas (línea oficial, no improvisar)
+
+Preguntas que se repiten y ya tienen respuesta acordada con Manuel. **Usa esta línea**: improvisar aquí acaba prometiendo cosas que no existen o negando cosas que sí.
+
+### «¿Tenéis supuestos prácticos / casos prácticos?» (línea fijada 29/07/2026, caso Sergio, TAG Ayto. Madrid)
+
+**Respuesta canónica:** **Vence es una plataforma de TESTS.** Los supuestos prácticos existen **solo en algunas oposiciones concretas**, no en todas, y no se prometen para la suya. **Están en los planes**: primero terminamos de construir **las oposiciones mayoritarias de España** y después se generan los supuestos para todas ellas. **Sin cifras** de catálogo en el mensaje al usuario (decisión Manuel 29/07: no damos números).
+
+**Dónde están de verdad los supuestos (verifícalo antes de nombrar ninguno):**
+- Las preguntas con `exam_case_id` están **excluidas por código de TODOS los flujos normales**: test aleatorio, por tema, por ley, falladas, simulacro y configurador (`lib/api/random-test/queries.ts`, `random-test-data`, `topic-data`, `user-failed-questions`, `simulacro`, `filtered-questions` — todas con `isNull(questions.examCaseId)`).
+- La **única** vía es la parte `supuesto` dentro de **Exámenes Oficiales** (`lib/api/official-exams/queries.ts`, filtro `parte === 'supuesto'`). Ruta en la UI: hub `/{oposicion}/test` → **«📋 Exámenes Oficiales»** → tarjeta de la convocatoria → fila de la parte (su texto cambia por oposición: «Supuesto práctico», «Segunda prueba (supuestos prácticos)», «Segundo ejercicio»…).
+- Declarada solo en 4 oposiciones (29/07): `tramitacion-procesal`, `auxiliar-administrativo-ayuntamiento-zaragoza`, `administrativo-carm`, `administrativo-seguridad-social`. **No dirijas a un usuario a un supuesto sin comprobar que su oposición lo tiene.**
+
+**No hagas esto:** ofrecerle practicar las leyes del supuesto como sucedáneo. Se propuso en el borrador de Sergio y Manuel lo quitó: el usuario pregunta si tenemos supuestos, y la respuesta es qué tenemos y qué haremos, no un consejo de estudio que no ha pedido.
+
+### «¿Puedo descargar / imprimir el temario para estudiarlo en papel?»
+
+Ver la respuesta canónica en § Feedback de PRE-VENTA (arriba): **la descarga/impresión en PDF es PREMIUM**; el free ve el temario online y practica con el tope diario, pero no descarga.
+
 ## Paso 0: ¿YA está respondido / resuelto? (mirar ANTES de redactar nada)
 
 > 🛠️ **OBLIGATORIO — empieza SIEMPRE por el dossier, no improvises la consulta:**

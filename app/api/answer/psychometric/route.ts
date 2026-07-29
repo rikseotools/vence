@@ -123,8 +123,18 @@ return NextResponse.json(
       )
     }
 
-    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
-    // No incrementar aquí para evitar doble conteo
+    // COBRO DEL CUPO DIARIO (29/07/2026) — lo hace el SERVIDOR, tras guardar.
+    // Antes lo hacía el cliente (`useDailyQuestionLimit.recordAnswer`), desacoplado
+    // del guardado: se cobraba aunque la respuesta no se persistiera.
+    //
+    // LIMITACIÓN CONOCIDA: `psychometric_test_answers` no tiene índice único por
+    // (sesión, pregunta), así que aquí no hay idempotencia física como en
+    // `test_questions` (unique_test_question). Se cobra por guardado correcto, que
+    // ya es estrictamente mejor que cobrar por evento de cliente. Si se añade el
+    // índice, pasar a la misma regla `debeConsumirCupo(saveAction, isPremium)`.
+    if (!dailyLimit.isPremium) {
+      await incrementDailyCount(tokenUserId)
+    }
 
     return NextResponse.json(result)
   } catch (error) {

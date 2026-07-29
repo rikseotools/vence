@@ -96,6 +96,9 @@ function makeController(): {
       tierLabel: null,
     }),
     checkDeviceDailyUsage: jest.fn().mockResolvedValue({ allowed: true, deviceTotal: 5 }),
+    // Cobro del cupo diario (T-260, 29/07/2026): el controller lo llama en
+    // background cuando la respuesta se guarda por primera vez.
+    incrementDailyCount: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<DailyLimitService>;
 
   const cache = {
@@ -318,6 +321,65 @@ describe('AnswerSaveController.post', () => {
         'Mozilla/5.0 Chrome/120',
         'fp-xyz',
       );
+    });
+  });
+
+  describe('cobro del cupo diario (T-260 — 29/07/2026)', () => {
+    // Antes, el contador lo incrementaba SOLO el cliente: se cobraba cupo por
+    // respuestas que no llegaban a persistirse y por eventos repetidos. 41 usuarios
+    // free en 14 días agotaron el tope de 25 con ~13 respuestas reales.
+    const esperarBackground = () => new Promise((r) => setTimeout(r, 10));
+
+    it('cobra cuando la respuesta se guarda por primera vez (saved_new)', async () => {
+      const { controller, mocks } = makeController();
+      const res = makeRes();
+
+      await controller.post(makeBody(), USER, {}, res);
+      await esperarBackground();
+
+      expect(mocks.dailyLimit.incrementDailyCount).toHaveBeenCalledTimes(1);
+      expect(mocks.dailyLimit.incrementDailyCount).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it('NO cobra si la fila ya existía (already_saved — reintento de la cola)', async () => {
+      const { controller, mocks } = makeController();
+      const res = makeRes();
+      mocks.answerSave.validateAndSaveAnswer.mockResolvedValue({
+        success: true,
+        isCorrect: true,
+        correctAnswer: 1,
+        explanation: 'ok',
+        articleNumber: '1',
+        lawShortName: 'CE',
+        lawName: 'Constitución Española',
+        newScore: 4,
+        saveAction: 'already_saved',
+        questionDbId: QUESTION_ID,
+      } as never);
+
+      await controller.post(makeBody(), USER, {}, res);
+      await esperarBackground();
+
+      expect(mocks.dailyLimit.incrementDailyCount).not.toHaveBeenCalled();
+    });
+
+    it('NO cobra a un usuario premium', async () => {
+      const { controller, mocks } = makeController();
+      const res = makeRes();
+      mocks.dailyLimit.getDailyLimitStatus.mockResolvedValue({
+        allowed: true,
+        questionsToday: 0,
+        questionsRemaining: 999,
+        dailyLimit: 999,
+        isPremium: true,
+        isGraduated: false,
+        tierLabel: null,
+      });
+
+      await controller.post(makeBody(), USER, {}, res);
+      await esperarBackground();
+
+      expect(mocks.dailyLimit.incrementDailyCount).not.toHaveBeenCalled();
     });
   });
 });

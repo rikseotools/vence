@@ -4120,8 +4120,89 @@ export const RULE_LAWS_CONFIGURATOR_DEGRADED: AlertRule<{
   cooldownMin: 30,
 };
 
+/**
+ * Cupo del plan gratuito cobrado DE MÁS — usuarios free que llegan al tope diario
+ * habiendo respondido bastantes menos preguntas de las que el contador les cobró.
+ *
+ * Nace del incidente del 29/07/2026 (caso Sergio): el contador lo incrementaba solo
+ * el cliente, desacoplado del guardado y sin idempotencia; Sergio respondió 15 y le
+ * cobraron 25. Medido entonces sobre 14 días: 41 usuarios free en esa situación.
+ * El arreglo movió el cobro al servidor (`debeConsumirCupo`, solo `saved_new`);
+ * esta regla vigila que no vuelva a desviarse — por una regresión del cobro, por un
+ * camino nuevo que cuente sin guardar, o por respuestas que dejen de persistirse.
+ *
+ * NO usa `observable_events` (muestreado al 10% en peticiones OK) sino las TABLAS
+ * DE NEGOCIO, que están completas: contador (`daily_question_usage`) contra respuestas
+ * reales de las tres modalidades (test, psicotécnicos, ortografía).
+ *
+ * Fecha en `Europe/Madrid` porque así la calcula `increment_daily_questions`; en UTC
+ * la comparación produce falsos positivos con las respuestas de última hora.
+ */
+export const RULE_DAILY_QUOTA_OVERCHARGE: AlertRule<{
+  afectados: number;
+  respondidasMedia: number;
+  desfaseMedio: number;
+}> = {
+  name: 'daily_quota_overcharge',
+  severity: 'warn',
+  query: sql`
+    WITH topados AS (
+      SELECT d.user_id, d.usage_date, d.questions_answered AS contador
+      FROM daily_question_usage d
+      JOIN user_profiles p ON p.id = d.user_id
+      WHERE p.plan_type <> 'premium'
+        AND d.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1
+        AND d.questions_answered >= 25
+    ),
+    con_respuestas AS (
+      SELECT
+        t.*,
+        (SELECT COUNT(*) FROM test_questions q
+          WHERE q.user_id = t.user_id
+            AND (q.created_at AT TIME ZONE 'Europe/Madrid')::date = t.usage_date)
+        + (SELECT COUNT(*) FROM psychometric_test_answers pa
+            WHERE pa.user_id = t.user_id
+              AND (pa.created_at AT TIME ZONE 'Europe/Madrid')::date = t.usage_date)
+        + (SELECT COUNT(*) FROM spelling_test_answers sa
+            WHERE sa.user_id = t.user_id
+              AND (sa.answered_at AT TIME ZONE 'Europe/Madrid')::date = t.usage_date)
+        AS respondidas
+      FROM topados t
+    )
+    SELECT
+      COUNT(*)::int AS afectados,
+      COALESCE(ROUND(AVG(respondidas))::int, 0) AS "respondidasMedia",
+      COALESCE(ROUND(AVG(contador - respondidas))::int, 0) AS "desfaseMedio"
+    FROM con_respuestas
+    WHERE respondidas < 20
+  `,
+  // Umbral: el ruido normal es de unos pocos casos al día (sesiones a caballo entre
+  // dos días, respuestas que el cliente no llega a enviar). Un salto por encima de
+  // 10 en 48 h es señal de regresión, no de cola larga.
+  shouldFire: (rows) => (rows[0]?.afectados ?? 0) > 10,
+  buildNotification: (rows) => {
+    const n = rows[0]?.afectados ?? 0;
+    const media = rows[0]?.respondidasMedia ?? 0;
+    const desfase = rows[0]?.desfaseMedio ?? 0;
+    return {
+      title: `${n} usuarios free agotaron el cupo con ~${media} respuestas reales`,
+      body: `El contador diario está cobrando de más (desfase medio: ${desfase} preguntas).\n\nDesde el 29/07/2026 el cupo lo cobra el SERVIDOR y solo si la respuesta se guarda (\`debeConsumirCupo\`, lib/api/dailyLimit.ts + backend/src/daily-limit/daily-limit.service.ts). Si esta regla dispara, comprobar por ese orden:\n\n  1. ¿Alguien volvió a cobrar desde el cliente? → guardarraíl __tests__/guardrails/dailyQuotaServerSide.test.ts\n  2. ¿Hay respuestas que dejaron de persistirse en test_questions? (cola de guardado, sesión sin crear)\n  3. ¿Un camino nuevo (modalidad nueva) cobra sin guardar?\n\nQuiénes son:\n\n  SELECT d.user_id, d.usage_date, d.questions_answered\n  FROM daily_question_usage d JOIN user_profiles p ON p.id=d.user_id\n  WHERE p.plan_type <> 'premium' AND d.questions_answered >= 25\n    AND d.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1;`,
+      metadata: {
+        afectados: n,
+        respondidasMedia: media,
+        desfaseMedio: desfase,
+      },
+      fingerprint: 'daily_quota_overcharge',
+    };
+  },
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Cupo free cobrado de más (2026-07-29, caso Sergio): el contador debe seguir a
+  // las respuestas GUARDADAS, no a los eventos del cliente.
+  RULE_DAILY_QUOTA_OVERCHARGE as AlertRule,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE as AlertRule,
   RULE_LAWS_CONFIGURATOR_DEGRADED as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)

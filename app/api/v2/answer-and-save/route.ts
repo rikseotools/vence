@@ -11,7 +11,7 @@ import {
 } from '@/lib/api/v2/answer-and-save'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
-import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
@@ -231,8 +231,25 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       return NextResponse.json(result, { status })
     }
 
-    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
-    // No incrementar aquí para evitar doble conteo
+    // 5. COBRO DEL CUPO DIARIO — lo hace el SERVIDOR, y solo si la respuesta se
+    // ha persistido por primera vez (`saved_new`). La idempotencia la da el
+    // constraint único de `test_questions`: un reintento de la cola o un doble
+    // clic devuelven `already_saved` y no vuelven a cobrar.
+    //
+    // Antes lo hacía SOLO el cliente (`useDailyQuestionLimit.recordAnswer`), lo que
+    // desacoplaba el cobro del guardado: se consumía cupo por respuestas que nunca
+    // llegaban a `test_questions` (sesión sin crear, cola caída) y por eventos
+    // repetidos. Medido en 14 días: 41 usuarios free agotaron el tope de 25 con una
+    // media de 13 respuestas reales (caso Sergio, 29/07/2026).
+    //
+    // Fail-silent dentro de incrementDailyCount: si el contador falla, el usuario
+    // se lleva una pregunta gratis — nunca un bloqueo indebido.
+    if (debeConsumirCupo(result.saveAction, dailyLimit.isPremium)) {
+      // `.catch` explícito además del fail-silent interno: el cobro del cupo NUNCA
+      // puede convertir en 5xx una respuesta que el usuario ya tiene validada y
+      // guardada. Si el contador falla, se lleva una pregunta gratis.
+      await incrementDailyCount(user.id).catch(() => {})
+    }
 
     return NextResponse.json(result)
   } catch (error) {

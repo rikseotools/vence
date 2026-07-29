@@ -12,6 +12,37 @@ import type { DailyLimitStatus } from './daily-limit'
 // las 2 RPCs daily-limit. Ver docs/roadmap/sprint-outbox-test-questions.md
 import { getOrSet, invalidate as redisInvalidate } from '@/lib/cache/redis'
 
+/**
+ * ¿Esta respuesta debe consumir cupo del plan gratuito?
+ *
+ * PURA a propósito: es la regla de negocio del cobro de cupo y se comparte con el
+ * backend NestJS (copia en `backend/src/daily-limit/daily-limit.service.ts`, con
+ * guardarraíl de paridad en `__tests__/guardrails/dailyQuotaServerSide.test.ts`).
+ *
+ * REGLA: cobra el SERVIDOR y solo cuando la respuesta se ha PERSISTIDO por primera vez.
+ *  - `saved_new`      → la fila entró en `test_questions` → consume 1.
+ *  - `already_saved`  → reintento de la cola / doble clic; la fila ya estaba (constraint
+ *                       único) → NO consume. Aquí vive la idempotencia, sin tabla extra.
+ *  - `save_failed`    → no hay registro → no se cobra al usuario algo que no tiene.
+ *  - premium          → nunca consume (la función SQL también lo corta; esto lo explicita).
+ *
+ * POR QUÉ (incidente 29/07/2026, caso Sergio): el contador lo incrementaba SOLO el
+ * cliente (`useDailyQuestionLimit.recordAnswer` → `/api/v2/daily-question/increment`),
+ * desacoplado del guardado, sin idempotencia y sin saber si la respuesta llegó a
+ * persistirse. Medido en 14 días: 41 usuarios free agotaron el tope de 25 habiendo
+ * respondido una media de 13 preguntas. `incrementDailyCount` existía pero no la
+ * llamaba nadie.
+ */
+export type AnswerSaveAction = 'saved_new' | 'already_saved' | 'save_failed'
+
+export function debeConsumirCupo(
+  saveAction: string | null | undefined,
+  isPremium: boolean,
+): boolean {
+  if (isPremium) return false
+  return saveAction === 'saved_new'
+}
+
 interface DailyLimitResult {
   allowed: boolean
   questionsToday: number

@@ -196,16 +196,30 @@ export function useDailyQuestionLimit() {
     const currentLimit = dynamicLimitRef.current
 
     try {
-      const headers = await getAuthHeaders()
-      const incRes = await fetch('/api/v2/daily-question/increment', {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: currentLimit }),
-      })
+      // ═══════════════════════════════════════════════════════════════
+      // NO se cobra cupo desde aquí (29/07/2026). El cobro es del SERVIDOR,
+      // en answer-and-save, y solo cuando la respuesta se PERSISTE
+      // (`debeConsumirCupo` → saveAction === 'saved_new').
+      //
+      // Este método solo lleva la cuenta OPTIMISTA para que el gate de la UI
+      // reaccione al instante; el servidor reconcilia después (fetchStatus).
+      //
+      // Por qué cambió: cobrar desde el cliente desacoplaba el cupo del
+      // guardado (respuestas que no llegaban a `test_questions` consumían
+      // igual) y no era idempotente (un evento repetido cobraba dos veces).
+      // Medido en 14 días: 41 usuarios free agotaron el tope de 25 con una
+      // media de 13 respuestas reales.
+      // ═══════════════════════════════════════════════════════════════
+      const result = {
+        questions_today: Math.min(status.questionsToday + 1, currentLimit),
+        is_premium: false,
+        reset_time: status.resetTime,
+      }
 
-      if (!incRes.ok) throw new Error(`daily-question/increment ${incRes.status}`)
-
-      const result = (await incRes.json()).status
+      // Reconciliar con el contador autoritativo del servidor sin bloquear la UI.
+      // `fetchStatus(true)` salta el cache y emite `dailyLimitUpdated`, así que si
+      // el optimista se desvía (respuesta que no se guardó), la corrección llega sola.
+      setTimeout(() => { if (isMountedRef.current) fetchStatus(true) }, 2500)
 
       if (result && isMountedRef.current) {
         const questionsToday = result.questions_today
@@ -270,7 +284,7 @@ export function useDailyQuestionLimit() {
       console.error('Error recording answer:', error)
       return { success: false, error: error.message }
     }
-  }, [user, isPremium, isLegacy, status.isPremiumUser])
+  }, [user, isPremium, isLegacy, status.isPremiumUser, status.questionsToday, status.resetTime, fetchStatus])
 
   // Cargar estado inicial — force=true para no usar cache viejo entre navegaciones
   // inflightFetch deduplicata si múltiples componentes montan a la vez

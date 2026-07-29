@@ -6,7 +6,7 @@ import { safeParseSpellingAnswerRequest, validateSpellingAnswer, saveSpellingAns
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
 import { logValidationError } from '@/lib/api/validation-error-log'
-import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken, incrementDailyCount } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 
 export const maxDuration = 30
@@ -119,6 +119,15 @@ async function _POST(request: NextRequest) {
         isCorrect: result.isFullyCorrect,
         timeSpentSeconds: timeSpentSeconds || null,
       }).catch(err => console.error('❌ [API/spelling] Error guardando respuesta:', err))
+    }
+
+    // COBRO DEL CUPO DIARIO (29/07/2026) — server-side, igual que en
+    // answer-and-save y psicotécnicos. El cliente ya no cobra: lo hacía sin
+    // saber si la respuesta se guardaba y sin idempotencia.
+    // Misma limitación que en psicotécnicos: `spelling_test_answers` no tiene
+    // índice único por (sesión, pregunta), así que no hay idempotencia física.
+    if (tokenUserId && !dailyLimit.isPremium) {
+      await incrementDailyCount(tokenUserId)
     }
 
     return NextResponse.json(result)

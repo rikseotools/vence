@@ -343,7 +343,12 @@ describe('useDailyQuestionLimit Hook', () => {
 
       expect(response.success).toBe(true)
       expect(response.canContinue).toBe(true)
-      expect(response.questionsRemaining).toBe(5)
+      // 29/07/2026 — `recordAnswer` ya NO cobra cupo (eso lo hace el servidor al
+      // guardar, ver `debeConsumirCupo`). Aquí solo lleva la cuenta OPTIMISTA para
+      // que el gate de la UI reaccione al instante: partiendo de 20 respondidas,
+      // tras contestar estima 21 → quedan 4. Antes el POST devolvía el total ya
+      // incrementado por el servidor (20 → restaban 5).
+      expect(response.questionsRemaining).toBe(4)
     })
 
     test('debe retornar canContinue: false si alcanza límite', async () => {

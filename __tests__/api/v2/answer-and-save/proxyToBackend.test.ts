@@ -43,7 +43,10 @@ jest.mock('../../../../lib/api/dailyLimit', () => ({
     isGraduated: false,
     tierLabel: null,
   }),
-  incrementDailyCount: jest.fn(),
+  // Desde el 29/07/2026 el route cobra el cupo tras guardar (T-260). Se usa la
+  // política REAL — es una función pura y mockearla ocultaría el contrato.
+  debeConsumirCupo: jest.requireActual('../../../../lib/api/dailyLimit').debeConsumirCupo,
+  incrementDailyCount: jest.fn().mockResolvedValue(undefined),
   checkDeviceDailyUsage: jest.fn().mockResolvedValue({ allowed: true, deviceTotal: 0 }),
 }))
 

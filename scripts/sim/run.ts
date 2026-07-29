@@ -174,7 +174,7 @@ async function runJourney(journey: Journey): Promise<SimResult> {
   if (journey.as) {
     try {
       const nowSec = Math.floor(Date.now() / 1000)
-      cookieValue = await mintOwnAuthCookie({ userId: journey.as.userId, email: journey.as.email }, authSecret(), { nowSec })
+      cookieValue = await mintOwnAuthCookie({ userId: journey.as.userId, email: journey.as.email }, authSecret(), { nowSec, host: HOST })
     } catch (e: any) {
       const finishedAt = new Date().toISOString()
       return {

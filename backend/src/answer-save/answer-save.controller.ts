@@ -22,7 +22,10 @@ import {
   isTimeoutError,
   withTimeout,
 } from '../common/with-timeout';
-import { DailyLimitService } from '../daily-limit/daily-limit.service';
+import {
+  DailyLimitService,
+  debeConsumirCupo,
+} from '../daily-limit/daily-limit.service';
 import { AnswerSaveService } from './answer-save.service';
 import {
   safeParseAnswerSaveRequest,
@@ -197,6 +200,19 @@ export class AnswerSaveController {
         ]),
       'invalidate-user-caches',
     );
+
+    // 5.bis COBRO DEL CUPO DIARIO — igual que el route de Next: lo hace el
+    // SERVIDOR y solo si la fila entró por primera vez en `test_questions`
+    // (`saved_new`). Un reintento de la cola devuelve `already_saved` y no
+    // vuelve a cobrar; la idempotencia la da el constraint único.
+    // Va en background: no debe añadir latencia a la respuesta del usuario y
+    // `incrementDailyCount` ya es fail-silent.
+    if (debeConsumirCupo(result.saveAction, dailyLimit.isPremium)) {
+      this.bg.runAfter(
+        () => this.dailyLimit.incrementDailyCount(user.userId),
+        'incrementDailyCount',
+      );
+    }
 
     // 6. Headers de identificación (mismo patrón que medals)
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

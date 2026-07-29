@@ -6,6 +6,7 @@
 
 import {
   ALERT_RULES,
+  RULE_DAILY_QUOTA_OVERCHARGE,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
   RULE_LAWS_CONFIGURATOR_DEGRADED,
   RULE_HYDRATION_MISMATCH_SPIKE,
@@ -1988,5 +1989,49 @@ describe('RULE_MAIN_CI_ROJO', () => {
     const q = JSON.stringify(RULE_MAIN_CI_ROJO.query);
     expect(q).toContain('workflow_failed');
     expect(q).toContain('refs/heads/main');
+  });
+});
+
+describe('RULE_DAILY_QUOTA_OVERCHARGE (cupo free cobrado de más — 29/07, caso Sergio)', () => {
+  const fila = (afectados: number, respondidasMedia = 13, desfaseMedio = 12) => [
+    { afectados, respondidasMedia, desfaseMedio },
+  ];
+
+  it('NO dispara con el ruido normal (pocos casos: sesiones a caballo de dos días)', () => {
+    expect(RULE_DAILY_QUOTA_OVERCHARGE.shouldFire(fila(0))).toBe(false);
+    expect(RULE_DAILY_QUOTA_OVERCHARGE.shouldFire(fila(10))).toBe(false);
+  });
+
+  it('dispara cuando el desfase deja de ser cola larga (>10 usuarios en 48h)', () => {
+    expect(RULE_DAILY_QUOTA_OVERCHARGE.shouldFire(fila(11))).toBe(true);
+    // Magnitud del incidente original (41 usuarios en 14 días).
+    expect(RULE_DAILY_QUOTA_OVERCHARGE.shouldFire(fila(41))).toBe(true);
+  });
+
+  it('no revienta si la query no devuelve filas', () => {
+    expect(RULE_DAILY_QUOTA_OVERCHARGE.shouldFire([])).toBe(false);
+  });
+
+  it('la notificación dice cuántos son, cuánto respondieron y por dónde empezar', () => {
+    const notif = RULE_DAILY_QUOTA_OVERCHARGE.buildNotification(fila(23, 12, 13));
+    expect(notif.title).toContain('23');
+    expect(notif.title).toContain('12');
+    expect(notif.body).toContain('debeConsumirCupo');
+    expect(notif.body).toContain('dailyQuotaServerSide');
+    expect(notif.metadata).toMatchObject({ afectados: 23, respondidasMedia: 12, desfaseMedio: 13 });
+  });
+
+  it('está registrada en el catálogo que corre el cron', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('daily_quota_overcharge');
+  });
+
+  it('mide sobre las tablas de negocio (completas), no sobre eventos muestreados', () => {
+    const q = JSON.stringify(RULE_DAILY_QUOTA_OVERCHARGE.query);
+    expect(q).toContain('daily_question_usage');
+    expect(q).toContain('test_questions');
+    // Fecha en Europe/Madrid: es la que usa increment_daily_questions. En UTC la
+    // comparación genera falsos positivos con las respuestas de última hora.
+    expect(q).toContain('Europe/Madrid');
+    expect(q).not.toContain('observable_events');
   });
 });

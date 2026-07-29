@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, count, eq, sql } from 'drizzle-orm';
+
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { conversionEvents, userProfiles } from '../db/schema';
 import {
@@ -9,6 +10,28 @@ import {
   type PremiumPlanType,
   type UserLimitProfile,
 } from './daily-limit.config';
+
+/**
+ * ¿Esta respuesta debe consumir cupo del plan gratuito?
+ *
+ * ⚠️ COPIA EXACTA de `debeConsumirCupo` en `lib/api/dailyLimit.ts` (frontend Next).
+ * El mismo endpoint lo sirven las dos implementaciones según el flag de canary, así
+ * que la regla tiene que ser idéntica en ambas. La paridad la vigila el guardarraíl
+ * `__tests__/guardrails/dailyQuotaServerSide.test.ts` (falla en CI si divergen).
+ *
+ * REGLA: cobra el SERVIDOR y solo cuando la respuesta se PERSISTE por primera vez
+ * (`saved_new`). `already_saved` es un reintento de la cola o un doble clic — la
+ * idempotencia la da el constraint único de `test_questions`, sin tabla extra.
+ */
+export type AnswerSaveAction = 'saved_new' | 'already_saved' | 'save_failed';
+
+export function debeConsumirCupo(
+  saveAction: string | null | undefined,
+  isPremium: boolean,
+): boolean {
+  if (isPremium) return false;
+  return saveAction === 'saved_new';
+}
 
 export interface DailyLimitResult {
   allowed: boolean;
@@ -320,9 +343,10 @@ export class DailyLimitService {
    * Incrementa el counter diario (llamar SOLO tras INSERT OK de answer).
    * Fail-silent: si falla, el user obtiene una pregunta gratis.
    *
-   * En el endpoint answer-and-save del POST original Vercel, esto NO se
-   * llama (el incremento lo hace el frontend tras OK para evitar doble
-   * conteo). Lo dejamos disponible aquí para otros endpoints.
+   * Desde 29/07/2026 lo llama el propio flujo de answer-and-save (aquí y en
+   * el route de Next), condicionado por `debeConsumirCupo`. Antes lo hacía
+   * solo el frontend y el cobro quedaba desacoplado del guardado — ver el
+   * comentario de `debeConsumirCupo` más abajo.
    */
   async incrementDailyCount(userId: string | null): Promise<void> {
     if (!userId) return;
