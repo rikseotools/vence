@@ -1364,6 +1364,46 @@ export class ContentHealthSweepService {
         },
       );
 
+    // ── §2.2-quater: enunciado que cita una norma SIN nombrarla (29/07/2026) ──
+    // «Según el artículo 75 DE LA LEY, …»: fuera del test no hay forma de saber de qué norma habla.
+    // MANTENER IDÉNTICO a `lib/health/autocontenida.cjs` (lo vigila content-sweep-parity POR VALOR).
+    // El ancla al «artículo N» no es cosmética: sin ella entra «conforme a la ley» como fórmula
+    // jurídica del contenido (medido: 391 → 274 y desaparece esa clase entera de falsos positivos).
+    const AC_DESNUDA =
+      '\\yart[íi]culo\\s+[0-9]+(\\.[0-9]+)*\\s*(bis|ter|qu[áa]ter)?\\s*' +
+      '(,\\s*(p[áa]rrafo|apartado)[^,]{0,20},?\\s*)?' +
+      '(de|seg[úu]n)\\s+(la|dicha|esta|citada|presente|mencionada|referida)\\s+' +
+      '(normativa|norma|ley|reglamento|disposici[óo]n)\\y' +
+      '([,.:;?)]|\\s+(en|se|que|si|no|para|cuando)\\y|$)';
+    const AC_IDENTIFICA =
+      '([0-9]+/[0-9]{2,4})' +
+      '|(\\yconstituci[óo]n\\y)' +
+      '|(\\y(universidad|ayuntamiento|ordenanza|estatuto|convenio|tratado)\\y)' +
+      '|(\\yley\\s+(de|del|org[áa]nica)\\y)' +
+      '|(\\yreglamento\\s+(de|del)\\y)' +
+      '|(\\yc[óo]digo\\s+[a-z])';
+    // Sensible a mayúsculas A PROPÓSITO: con `~*` casaría dos letras cualesquiera.
+    const AC_SIGLA = '[A-ZÁÉÍÓÚÑ]{2,}';
+    const acRows = (await this.db.execute(sql`
+      SELECT id, question_text FROM questions
+      WHERE is_active = true
+        AND question_text ~* ${AC_DESNUDA}
+        AND NOT (question_text ~* ${AC_IDENTIFICA} OR question_text ~ ${AC_SIGLA})
+      LIMIT 60
+    `)) as unknown as Array<{ id: string; question_text: string }>;
+    if (acRows.length)
+      add(
+        'content',
+        'warn',
+        null,
+        'enunciado_norma_sin_nombrar',
+        `${acRows.length}${acRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) cuyo enunciado cita un artículo «de la ley» sin nombrarla nunca — incumple §2.2-quater (autocontenida); el nombre está en la ley vinculada`,
+        {
+          count: acRows.length,
+          sample: acRows.slice(0, 15).map((r) => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })),
+        },
+      );
+
     // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
     const CURR_YEAR = now.getFullYear();
     const scopedLaws = (await this.db.execute(sql`

@@ -342,6 +342,44 @@ describe('cableado de invariantes de timeline (vista ↔ sweep)', () => {
 // Como el gemelo del backend es el que escribe el snapshot nocturno, ampliar solo el CLI
 // habría dejado el @Cron —y por tanto el badge— exactamente igual de ciego.
 // ─────────────────────────────────────────────────────────────────────────────
+describe('mirror del detector enunciado_norma_sin_nombrar (núcleo ↔ backend @Cron)', () => {
+  const core = require('@/lib/health/autocontenida.cjs')
+
+  /** Evalúa el valor REAL de un `const X = '…' + '…';` del fuente. */
+  function evalConst(src: string, name: string): string {
+    const m = src.match(new RegExp(`const ${name} =([\\s\\S]*?);\\n`))
+    if (!m) throw new Error(`no se encontró const ${name} en el fuente`)
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia)', () => {
+    expect(SCRIPT).toContain("require('../lib/health/autocontenida.cjs')")
+    expect(SCRIPT).not.toMatch(/const AC_DESNUDA\s*=/)
+  })
+
+  it('los TRES patrones del backend son IDÉNTICOS a los del núcleo', () => {
+    for (const name of ['AC_DESNUDA', 'AC_IDENTIFICA', 'AC_SIGLA']) {
+      expect(evalConst(BACKEND, name)).toBe(core[name])
+    }
+  })
+
+  // La sigla se compara con `~` y no con `~*` a propósito: en Postgres, `~*` sobre
+  // `[A-ZÁÉÍÓÚÑ]{2,}` casaría dos letras CUALESQUIERA y daría por identificada toda pregunta,
+  // dejando el detector en cero permanente. Es el fallo más fácil de introducir aquí.
+  it('la SIGLA se compara sensible a mayúsculas en los dos gemelos', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/question_text ~ (\$3|\$\{AC_SIGLA\})/)
+      expect(txt).not.toMatch(/question_text ~\* (\$3|\$\{AC_SIGLA\})/)
+    }
+  })
+
+  it('los dos gemelos emiten el kind', () => {
+    expect(hasKind(SCRIPT, 'enunciado_norma_sin_nombrar')).toBe(true)
+    expect(hasKind(BACKEND, 'enunciado_norma_sin_nombrar')).toBe(true)
+  })
+})
+
 describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)', () => {
   const core = require('@/lib/health/auditNoteExplanation.cjs')
 

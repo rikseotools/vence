@@ -153,3 +153,41 @@ Qué hace, recorriendo el **inventario de superficies** (`lib/admin/landingSurfa
 - **Reusar la imagen del frontend** para el sweep acopla: cambiar el script exige re-deploy del frontend.
 
 Detalle de diseño y de las 3 capas de detección: memoria `project_deteccion_oposiciones_3capas`.
+
+## Enunciado que cita una norma sin nombrarla (`enunciado_norma_sin_nombrar`)
+
+**Frase-gatillo:** *"revisa los enunciados sin norma"*.
+
+*"Según el artículo 75 **de la ley**, ¿cuál es el contenido mínimo…?"* — fuera del test no hay forma
+de saber de qué norma habla. Incumple la **§2.2-quater** del manual de generación: *cada pregunta
+debe ser AUTOCONTENIDA*, porque los tests salen barajados y sueltos.
+
+**El punto ciego que cierra.** Esa regla ya tenía vigilada la mitad de las siglas
+(`lib/generacion/siglasSinDesarrollar.js`, «IGIC» a pelo) **pero solo al GENERAR**: nadie la barría
+sobre el banco vivo, así que lo anterior a la regla no lo miraba nadie. Y las dos mitades nacen
+igual, de una impugnación: el gate de siglas de la de Laura García (02/07, «LBRL»), este de la de
+Esther Lázaro (29/07, `6ed11712`): *«Porque no indica a qué normativa se refiere»*.
+
+**Medido el 29/07** sobre 139.464 activas: **274**, 443 exposiciones, **0 de examen oficial**, y 270
+salen de 6 leyes (198 de un mismo lote de Extremadura). No es ruido disperso: es una remesa de
+generación que escribió el enunciado como si el lector ya supiera de qué norma se habla.
+
+**Cómo se repara.** El dato ya está en casa —la pregunta cuelga de un artículo y ese artículo tiene
+su ley—, así que la sustitución es determinista y no inventa nada:
+
+```bash
+npm run enunciados:sin-norma                             # informe por ley (no toca nada)
+npm run enunciados:sin-norma -- --ley "Ley 9/2017"       # antes/después de esa ley
+npm run enunciados:sin-norma -- --ley "Ley 9/2017" --apply
+```
+
+Se va **por ley**, no pregunta a pregunta: dentro de una ley el arreglo es idéntico y el nombre que
+se inserta hay que leerlo una vez. La herramienta **salta siempre las de examen OFICIAL** (ahí el
+enunciado es el que salió publicado) y solo toca el enunciado — nunca opciones, clave ni explicación.
+Tras sustituir, comprueba con el propio detector que la pregunta deja de estar marcada; si seguiría
+marcada, la deja para revisión humana en vez de escribir media reparación.
+
+> ⚠️ Dos trampas que enseñó el piloto sobre la Ley 13/2015, antes de tocar una fila: sin concordancia
+> de género salía *«de la Decreto 225/2014»*, y sin la condición de cierre la sustitución mordía el
+> «Ley» de *«de la **Ley** 13/2015»* y escribía *«Ley 13/2015 13/2015»*. Las dos están fijadas en
+> `__tests__/health/repararEnunciadoSinNorma.test.ts`.

@@ -356,6 +356,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'la bandera FEATURE_SHUFFLE_OPTIONS está activa y aun así NINGUNA respuesta reciente guarda `option_order`. Son dos escenarios muy distintos y hay que distinguirlos ANTES de tocar nada: (1) el servidor no está barajando de verdad → el piloto es inerte y los datos que se estén usando para juzgarlo no valen; (2) el servidor SÍ baraja y la permutación no vuelve al guardar → el servidor corrige la posición MOSTRADA contra la clave ORIGINAL y está registrando FALLOS FALSOS en silencio (la fila queda coherente consigo misma, así que después es indetectable). Para distinguir: `npx tsx scripts/sim/sim-shuffle-extremo-a-extremo.ts <position_type>` ejecuta la función real de servir con las banderas de producción y dice si devuelve preguntas permutadas; y `observable_events` con event_type=shuffle_options_served trae el orden por pregunta que se sirvió de verdad. Si es el escenario (2): APAGAR la bandera primero (SSM + force-new-deployment, ECS lee los secretos al arrancar) y diagnosticar después; ese daño NO se puede reparar sin el evento de servido, porque la permutación usa un nonce aleatorio por exposición. Caso raíz 28/07/2026: el piloto de Valencia llevaba 8 horas encendido con option_order a NULL en el 100 % de las filas y nada avisó. NUNCA reactivar el piloto sin comprobar en la primera hora que option_order deja de estar a NULL.',
   },
+  enunciado_norma_sin_nombrar: {
+    title: 'Enunciado que cita un artículo de una norma que no nombra',
+    triggerPhrase: 'revisa los enunciados sin norma',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run enunciados:sin-norma',
+    claudeHace:
+      'para cada pregunta señalada, el enunciado cita un artículo «de la ley» / «de la normativa» sin decir NUNCA de cuál se trata («Según el artículo 75 de la ley, ¿cuál es el contenido mínimo…?»). Incumple la §2.2-quater del manual de generación (cada pregunta debe ser AUTOCONTENIDA): los tests salen barajados y sueltos, así que el opositor no tiene ese contexto. El dato para arreglarlo YA está en la BD: la pregunta cuelga de un artículo y ese artículo tiene su ley, así que se reescribe el enunciado nombrándola («Según el artículo 75 de la Ley 9/2017, de Contratos del Sector Público, …»). Ir por LEY, no pregunta a pregunta: el defecto viene de remesas de generación enteras y dentro de una ley el arreglo es el mismo. NUNCA tocar el enunciado de una pregunta de examen OFICIAL (ahí el enunciado es el que salió publicado; si aparece alguna, se deja), ni cambiar opciones, clave o explicación al hacerlo. Gate hermano que vigila la otra mitad de la misma regla al GENERAR: lib/generacion/siglasSinDesarrollar.js (siglas sin desarrollar).',
+  },
   visual_deixis_no_image: {
     title: 'Pregunta que invoca una imagen que no existe',
     triggerPhrase: 'revisa las preguntas sin imagen',

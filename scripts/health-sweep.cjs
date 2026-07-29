@@ -37,6 +37,7 @@ const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOri
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
+const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
@@ -1095,6 +1096,24 @@ async function main() {
   if (vdRows.length) add('content', 'warn', null, 'visual_deixis_no_image',
     `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
     { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
+
+  // ── §2.2-quater: enunciado que cita una norma SIN nombrarla (29/07/2026) ──
+  // «Según el artículo 75 DE LA LEY, ¿cuál es el contenido mínimo…?»: fuera del test no hay forma
+  // de saber de qué norma habla. La regla («cada pregunta debe ser AUTOCONTENIDA») ya tenía la
+  // mitad de las siglas vigilada en generación (`lib/generacion/siglasSinDesarrollar.js`), pero
+  // nadie la barría sobre el banco vivo. Núcleo puro compartido en lib/health/autocontenida.cjs;
+  // el backend @Cron replica los patrones inline y `content-sweep-parity` los compara POR VALOR.
+  // OJO: las siglas se comparan con `~` (sensible a mayúsculas) — con `~*` casaría cualquier par
+  // de letras y daría por identificada toda pregunta.
+  const acRows = (await c.query(`
+    SELECT id, question_text FROM questions
+    WHERE is_active = true
+      AND question_text ~* $1
+      AND NOT (question_text ~* $2 OR question_text ~ $3)
+    LIMIT 60`, [AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA])).rows;
+  if (acRows.length) add('content', 'warn', null, 'enunciado_norma_sin_nombrar',
+    `${acRows.length}${acRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) cuyo enunciado cita un artículo «de la ley» sin nombrarla nunca — incumple §2.2-quater (autocontenida); el nombre está en la ley vinculada`,
+    { count: acRows.length, sample: acRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
 
   // ── CHAT IA caído: respuestas de error servidas a usuarios (28/07/2026) ──
   // El chat sirvió 210 respuestas de error y `had_error` estaba en false en las 210, así que
