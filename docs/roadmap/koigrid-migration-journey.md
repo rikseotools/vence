@@ -27,7 +27,11 @@
 >   unprivileged `app` role can set it. This blocks the managed restore for every Supabase/pgvector source.
 > - 🔴 **N1 (`scale-out`) still fails** with `replica_unhealthy`, third reproduction — but it **no longer
 >   blocks us**, and it turned out A3 never depended on it (see Finding 4: your `/rules` message says it does).
-> - ❓ **The only thing between us and a cutover rehearsal is now the price of the plan we need.**
+> - 💰 **LATER THE SAME DAY YOU PUBLISHED THE PRICES — G5 is closed too.** Worked against our measured
+>   numbers: **Pro ($35/mo)** fits us, with **exact DB RAM parity** with our RDS (4 GB) and 5× bandwidth
+>   headroom. Against our measured AWS run-rate of **$491/mo that is 14× cheaper.** Remaining gap in the
+>   published model: **Redis is not priced anywhere.**
+> - ✅ **Nothing technical and nothing commercial is now open on your side.** What's left is ours.
 >
 > Full evidence in the **RE-TEST 2026-07-29** section at the end of this document.
 
@@ -1623,3 +1627,82 @@ What is left is not engineering:
    (our POC cluster is a schema-only shell today — the populated one was deleted during the POC).
 
 **Tell us the number and we will schedule the rehearsal.**
+
+---
+
+## 💰 UPDATE 2026-07-29 (later) — **you published the prices. That was the last open question, and the answer is Pro ($35).**
+
+`llms.txt` 810 → **837 lines**, `openapi.json` unchanged at 189 paths. Two additions, and one of them closes
+the item that has been at the bottom of every "where this stands" table for four days: **G5, the price of
+the plan we need.**
+
+For four days our summary ended with *"tell us the number and we can make a decision."* Here is the decision,
+worked with our own measured numbers.
+
+### What we actually need (measured, not estimated)
+
+| Resource | Vence in production today | Source of the number |
+|---|---|---|
+| App RAM | **2 GB × 1 replica** (2 for HA) | your load test: 615 rps, p95 50 ms, 37× our peak, CPU 0 % |
+| DB | 31 GB data · **4 GB RAM** · 100 GB disk allocated | our RDS is a `db.t4g.medium` Multi-AZ |
+| Bandwidth out | **~370 GB / 28 days (~400 GB/mo)** | AWS Cost Explorer, all CloudFront `DataTransfer-Out` |
+| Requests | **43.3 M / month** | same, `EU-Requests-Tier2-HTTPS` |
+| Object storage | ~56 GB of HLS video | already served from koigrid storage today |
+
+### The fit
+
+**Pro ($35/mo) covers all of it**, with the DB being the interesting line:
+
+| | Pro includes | We need | Headroom |
+|---|---|---|---|
+| RAM/vCPU per app | 4 GB / 2 vCPU | 2 GB | 2× |
+| Total app RAM | 6 GB | 2–4 GB (1–2 replicas) | ✅ |
+| **DB RAM / disk** | **4 GB / 50 GB** | **4 GB / 31 GB** | **exact RAM parity with our RDS** |
+| Storage | 100 GB | ~56 GB | tight but fits |
+| Bandwidth | 2 TB | ~400 GB | 5× |
+| Replicas per app | 5 | 1–2 | ✅ |
+
+**Starter ($12) does not work** — not because of the totals but because of the **per-app cap**: 1 GB RAM per
+app, and our Next.js container needs 2 GB. Worth knowing that the per-app ceiling, not the plan total, is
+what disqualifies a plan; the pricing page shows it but the `llms.txt` cost model only lists the totals, so
+an agent budgeting from the docs alone would size this wrong.
+
+### The comparison, with our real AWS bill
+
+Our AWS run-rate, measured in Cost Explorer (01→24/07, extrapolated): **$491/mo**.
+
+| | AWS today | Koigrid Pro | Koigrid Scale |
+|---|---|---|---|
+| Monthly | **$491** | **$35** | **$89** |
+| Ratio | — | **14× cheaper** | 5.5× cheaper |
+
+And one line of that bill is worth pointing at, because it is invisible until you look: **$40/mo of our
+CloudFront cost is REQUESTS**, not data — 43.3 M Tier-2 HTTPS requests. Egress itself is nearly free for us
+(~400 GB). **Koigrid does not meter requests at all.** So for a request-heavy, byte-light app like ours, the
+saving is not the egress story you lead with in the docs — it is that the request meter doesn't exist. That
+is a stronger pitch for the Next.js/SSR ICP than the egress comparison, and you are currently not making it.
+
+### Two gaps in the published model
+
+1. **🔴 Redis is not priced anywhere.** It is not a row in the pricing table, not in the `llms.txt` cost
+   model, and we could not infer it from `/usage`. We run one (`cache`, ElastiCache-equivalent, $8/mo on
+   AWS). Does its RAM come out of the plan's "total app RAM", or is it included like the database, or is it
+   billed separately? **A migration cannot be budgeted without this** — please add a Redis row.
+2. **DB disk headroom deserves a sentence.** Pro's 50 GB against our 31 GB is 1.6×, and a database only grows.
+   The overage rate ($0.05/GB) makes this a non-issue in practice — 100 GB extra is $5 — but the pricing page
+   presents disk as a hard plan attribute, so it reads scarier than it is. Saying *"disk overage is $0.05/GB,
+   you will not be cut off"* next to the DB line would remove the doubt.
+
+Minor, and good: the **registry retention** note added in the same release answers a question we had not yet
+asked — *"will my rollback target still be there?"*. Keeping N per plan **but never deleting an image that is
+serving or still rollback-reachable**, computed by you rather than configured by us, is genuinely better than
+the ECR lifecycle rules we maintain by hand today. Flagging that the sweep currently runs in dry-run is the
+kind of disclosure that builds trust.
+
+### Where this leaves us
+
+**Nothing technical is open on your side that blocks our cutover, and now nothing commercial is either.**
+The remaining work is ours: re-clone the database (our POC cluster is a schema-only shell), land the
+`getClientIp()` / `CF-Connecting-IP` fix before any traffic moves, and put our own Cloudflare in front.
+**A4** (`maintenance_work_mem` too low for ivfflat) only matters if we use your managed restore instead of
+`pg_dump | psql` for the real 31 GB load — we would prefer to use yours.
