@@ -188,7 +188,16 @@ async function runJourney(journey: Journey): Promise<SimResult> {
   }
 
   const browser = await chromium.launch({ headless: true })
-  const ctxPw = await browser.newContext()
+  // El journey es monitorización interna, igual que los canaries de API: si tiene el secreto,
+  // lo demuestra y el gate anti-scraping no le pide Turnstile (que en un navegador sin persona
+  // delante no se puede resolver). Sin secreto NO se manda nada: el journey se pondrá rojo con
+  // el reto, que es preferible a abrir un agujero para poder testear.
+  const secretoCanary = process.env.CANARY_SECRET || process.env.CRON_SECRET || ''
+  const ctxPw = await browser.newContext(
+    secretoCanary.length >= 16
+      ? { extraHTTPHeaders: { 'x-vence-canary': '1', 'x-vence-canary-secret': secretoCanary } }
+      : undefined,
+  )
   // El runner corre bajo `tsx` (esbuild con keepNames): esbuild reescribe las funciones con
   // nombre insertando una llamada al helper `__name`. Cuando un journey serializa una función
   // para el navegador (`page.evaluate`), ese helper viaja con ella pero NO existe allí, y el

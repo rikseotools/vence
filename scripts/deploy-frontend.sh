@@ -426,9 +426,11 @@ fi
 # peticiones) y un guardarraíl que tumba deploys por causas ajenas se acaba desactivando.
 VERIFY_SECRET=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-frontend/AUTH_SECRET" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
 VERIFY_ID=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-backend/SMOKE_USER_ID" --query 'Parameter.Value' --output text 2>/dev/null || true)
+VERIFY_CANARY=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-frontend/CRON_SECRET" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
 VERIFY_BASE_URL=https://www.vence.es \
 SIM_AUTH_SECRET="$VERIFY_SECRET" \
 SMOKE_USER_ID="$VERIFY_ID" \
+CANARY_SECRET="$VERIFY_CANARY" \
 SIM_EMIT=1 \
   bash "$(dirname "$0")/verify-release.sh" || true
 

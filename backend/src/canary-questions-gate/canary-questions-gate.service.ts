@@ -143,6 +143,9 @@ export class CanaryQuestionsGateService {
           Authorization: `Bearer ${token}`,
           'User-Agent': 'Vence-Canary-Gate/1.0',
           'x-vence-canary': '1',
+          // Ver nota en canary-por-leyes-scope: la exención ahora se demuestra.
+          'x-vence-canary-secret':
+            process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '',
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),

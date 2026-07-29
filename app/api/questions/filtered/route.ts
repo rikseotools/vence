@@ -55,7 +55,7 @@ import {
   recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
 import { anyForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
-import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
+import { esCanaryDeConfianza, secretoCanaryEsperado } from '@/lib/api/syntheticTrust'
 import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { getUserPlanType } from '@/lib/referrals/queries'
@@ -278,12 +278,18 @@ async function _POST(request: NextRequest) {
     // IP o cuentas en la misma máquina. El deviceId solo si el cliente lo envió.
     const deviceId = getDeviceIdFromRequest(request)
     const gateSubs = gateSubjects(authUserId, deviceId, ip)
-    // Eximir tráfico sintético de canaries (header canónico `x-vence-canary`): el
-    // canary `canary-por-leyes-scope` pega aquí cada 5 min (288/día) con SMOKE_USER_ID
-    // → supera su propia cuota diaria del gate → 403 → NO puede verificar el scope
-    // (su cometido real). Es monitorización interna legítima, no scraping. Mismo
-    // criterio que withErrorLogging/answer-save con los canaries.
-    if (isCaptchaEnabled() && !isSyntheticRequest(request)) {
+    // Eximir tráfico sintético de canaries: el canary `canary-por-leyes-scope` pega aquí
+    // cada 5 min (288/día) con SMOKE_USER_ID → supera su propia cuota diaria del gate →
+    // 403 → NO puede verificar el scope (su cometido real). Es monitorización interna
+    // legítima, no scraping.
+    //
+    // ⚠️ La exención exige DEMOSTRARLO (secreto compartido), no solo afirmarlo. Hasta el
+    // 29/07/2026 bastaba el header `x-vence-canary`, que no lleva secreto: comprobado en
+    // producción, una petición anónima con esa línea recibía las preguntas saltándose el
+    // Turnstile. `x-vence-canary` se queda para lo suyo (no ensuciar el log de errores);
+    // conceder algo requiere `x-vence-canary-secret`. Ver lib/api/syntheticTrust.ts.
+    const canaryDeConfianza = esCanaryDeConfianza(request, secretoCanaryEsperado(process.env))
+    if (isCaptchaEnabled() && !canaryDeConfianza) {
       // Volumen (Capa A) + señal de bot (Capa C-fácil), en paralelo.
       const [gateEval, botFlag] = await Promise.all([
         evaluateLoadGate(gateSubs),
@@ -404,7 +410,10 @@ async function _POST(request: NextRequest) {
       // levantado un `harvest_no_answer` crítico contra nuestro propio canario.
       // El gate ya exime lo sintético más arriba; el contador tenía que hacerlo
       // también o la medición nace envenenada por nuestra propia monitorización.
-      if (result.questions?.length && !isSyntheticRequest(request)) {
+      // Mismo criterio que el gate: solo NO cuenta lo que demuestra ser canary. Este
+      // contador alimenta el propio gate, así que dejarlo con el header sin secreto permitía
+      // servir preguntas sin sumar nunca al volumen — o sea, evadir el gate por acumulación.
+      if (result.questions?.length && !canaryDeConfianza) {
         recordServedForSubjects(gateSubs, result.questions.length).catch(() => {})
       }
 

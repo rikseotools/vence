@@ -53,6 +53,11 @@ export class CanaryPorLeyesScopeService {
       headers: {
         'Content-Type': 'application/json',
         'x-vence-canary': '1',
+        // La exención del gate anti-scraping exige DEMOSTRAR que somos monitorización
+        // interna, no solo decirlo: `x-vence-canary` no lleva secreto y cualquiera podía
+        // escribirlo para saltarse el Turnstile (hallazgo 29/07/2026).
+        'x-vence-canary-secret':
+          process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(this.body(scoped)),
