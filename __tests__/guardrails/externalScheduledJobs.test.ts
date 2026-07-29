@@ -118,3 +118,80 @@ describe('guardarraíl — techo de render vs rescate de colgados', () => {
     expect(Number(m![1]) * 60).toBe(DEFAULT_STALE_SECONDS)
   })
 })
+
+/**
+ * Acotado de concurrencia del worker.
+ *
+ * El scheduler dispara una ejecución cada 30 min y cada una drenaba HASTA VACIAR
+ * la cola. Con la cola vacía eso termina en segundos y nunca dio problema; con un
+ * backlog de temas pesados dura horas y los workers se ACUMULAN, 2 vCPU cada uno,
+ * contra una cuota Fargate de 30 que el frontend ya consume en dos tercios.
+ * Quedarse sin vCPU es lo que revierte los deploys de frontend.
+ */
+describe('guardarraíl — el worker no puede acumularse sin límite', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const {
+    DEFAULT_RENDER_TIMEOUT_MS, DEFAULT_MAX_RUNTIME_MS, WORKER_CADENCE_MS,
+  } = require('@/lib/temario/pdf/pdfJobQueue')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { runPdfWorker } = require('@/lib/temario/pdf/pdfWorker')
+
+  it('el peor caso de una ejecución deja como mucho 2 workers a la vez', () => {
+    // La fecha límite se mira ANTES de reclamar, nunca a mitad de render, así que
+    // el peor caso real es tope + un render entero.
+    const peorCaso = DEFAULT_MAX_RUNTIME_MS + DEFAULT_RENDER_TIMEOUT_MS
+    expect(peorCaso).toBeLessThan(2 * WORKER_CADENCE_MS)
+  })
+
+  it('la cadencia declarada coincide con la del catálogo de jobs externos', () => {
+    const registry = readFileSync(
+      join(ROOT, 'backend/src/cron-schedule/external-jobs.registry.ts'), 'utf8',
+    )
+    const m = registry.match(/name:\s*'temario-pdf-worker'[\s\S]*?expression:\s*'\*\/(\d+) \* \* \* \*'/)
+    expect(m).not.toBeNull()
+    expect(Number(m![1]) * 60_000).toBe(WORKER_CADENCE_MS)
+  })
+
+  /**
+   * Cola INAGOTABLE a propósito: el `db` falso siempre devuelve un job que reclamar,
+   * así que lo ÚNICO que puede parar el bucle es la fecha límite. Si se rompe, este
+   * test no falla por una aserción: se cuelga. Esa es la idea — el contrato es
+   * "termina", y con la cola infinita no hay forma de aprobarlo por accidente.
+   */
+  it('con cola inagotable, la fecha límite es lo único que para el bucle', async () => {
+    let t = 0
+    const now = () => t
+    const db = {
+      execute: async () => [
+        { id: 'j', oposicion: 'x', tema: 1, contentHash: 'h', attempts: 1 },
+      ],
+    }
+    const deps: any = {
+      db,
+      // El render es lo que tarda: cada tema "consume" 8 min de reloj.
+      render: async () => { t += 8 * 60_000; return { ok: true, outcome: 'uploaded', ms: 1 } },
+      emit: () => {},
+    }
+
+    const s = await runPdfWorker(deps, { maxRuntimeMs: 20 * 60_000, now })
+
+    // Reclama en t=0, 8 y 16 min; en t=24 ya ha vencido → para. Ni uno más.
+    expect(s.processed).toBe(3)
+    expect(s.done).toBe(3)
+  })
+
+  it('el tope por defecto respeta el invariante de concurrencia', async () => {
+    let t = 0
+    const db = { execute: async () => [{ id: 'j', oposicion: 'x', tema: 1, contentHash: 'h', attempts: 1 }] }
+    const deps: any = {
+      db,
+      render: async () => { t += DEFAULT_RENDER_TIMEOUT_MS; return { ok: true, outcome: 'uploaded', ms: 1 } },
+      emit: () => {},
+    }
+    // Sin pasar maxRuntimeMs: usa DEFAULT_MAX_RUNTIME_MS.
+    const s = await runPdfWorker(deps, { now: () => t })
+    // Con renders del tamaño del techo, una ejecución no puede encadenar muchos.
+    expect(t).toBeLessThanOrEqual(DEFAULT_MAX_RUNTIME_MS + DEFAULT_RENDER_TIMEOUT_MS)
+    expect(s.processed).toBeGreaterThan(0)
+  })
+})

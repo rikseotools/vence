@@ -60,6 +60,29 @@ export const DEFAULT_RENDER_TIMEOUT_MS = 30 * 60_000 // 30 min
 export const DEFAULT_STALE_SECONDS = 45 * 60 // 45 min (15 min por encima del techo de render)
 
 /**
+ * Cadencia con la que el scheduler dispara el worker. Declarada aquí porque de
+ * ella depende el acotado de concurrencia (ver `DEFAULT_MAX_RUNTIME_MS`).
+ * Espejo de `EXTERNAL_SCHEDULED_JOBS` en el backend, fijado por guardarraíl.
+ */
+export const WORKER_CADENCE_MS = 30 * 60_000 // cada 30 min
+
+/**
+ * Tope de duración de UNA ejecución del worker. Al vencer deja de reclamar jobs
+ * nuevos y sale; el siguiente tick sigue donde se quedó (la cola es el estado).
+ *
+ * **Existe para acotar la CONCURRENCIA, no por prisa.** Cada ejecución drenaba
+ * hasta vaciar la cola: con la cola vacía termina en segundos y nunca dio
+ * problema, pero con un backlog de temas pesados dura horas y los workers se
+ * ACUMULAN —uno nuevo cada tick, 2 vCPU cada uno— contra una cuota Fargate de 30
+ * vCPU que el frontend ya consume en dos tercios. Quedarse sin vCPU es lo que
+ * **revierte los deploys de frontend**.
+ *
+ * Con 20 min de tope y 30 de techo de render, el peor caso de una ejecución es
+ * 50 min < 2 ciclos → **como mucho 2 workers a la vez**. Ese es el invariante.
+ */
+export const DEFAULT_MAX_RUNTIME_MS = 20 * 60_000 // 20 min
+
+/**
  * Decisión PURA de reintento (unit-testeable sin BD): dado el nº de intentos ya consumidos
  * y el tope, ¿reintentar (pending) o rendirse (failed/DLQ)?
  */

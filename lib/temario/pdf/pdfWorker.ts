@@ -14,7 +14,7 @@
 
 import {
   claimNextPdfJob, markPdfJobDone, markPdfJobFailed, requeueStalePdfJobs,
-  DEFAULT_MAX_ATTEMPTS, DEFAULT_STALE_SECONDS, type JobDb, type PdfJob,
+  DEFAULT_MAX_ATTEMPTS, DEFAULT_MAX_RUNTIME_MS, DEFAULT_STALE_SECONDS, type JobDb, type PdfJob,
 } from './pdfJobQueue'
 
 /** Resultado del render de un tema (forma de PregenResult, sin acoplar el import). */
@@ -107,13 +107,37 @@ export interface WorkerSummary {
 
 /**
  * Vacía la cola: primero rescata colgados (requeueStale), luego procesa hasta agotar los
- * pendientes o alcanzar `maxJobs` (tope de seguridad anti-bucle). Devuelve el resumen.
+ * pendientes, alcanzar `maxJobs` (tope anti-bucle) o vencer `maxRuntimeMs`. Devuelve el resumen.
+ *
+ * ⏱️ **Por qué hay una fecha límite (29/07/2026).** El worker lo dispara un scheduler cada
+ * 30 min y cada ejecución drenaba HASTA VACIAR la cola. Con la cola normalmente vacía eso
+ * termina en segundos y nunca dio problema; con un backlog de 111 temas PESADOS (hasta 30
+ * min por render), cada ejecución dura horas y **los workers se acumulan**: uno nuevo cada
+ * 30 min, 2 vCPU cada uno, contra una cuota Fargate de 30 vCPU que el frontend ya consume
+ * en dos tercios. Proyección medida esa noche: cuota agotada en ~2,5 h, y quedarse sin
+ * vCPU es justo lo que **revierte los deploys de frontend**.
+ *
+ * Con la fecha límite, cada ejecución avanza lo que puede y sale; el siguiente tick sigue
+ * donde se quedó (la cola es el estado, el worker no guarda nada). El backlog se drena
+ * igual, en varios ciclos, con concurrencia ACOTADA.
+ *
+ * La comprobación va ANTES de reclamar el siguiente job, nunca a mitad de un render: cortar
+ * un render en curso lo mandaría a retry y desperdiciaría el trabajo ya hecho. Por eso el
+ * peor caso real de una ejecución es `maxRuntimeMs + DEFAULT_RENDER_TIMEOUT_MS`, y de ahí
+ * sale el invariante de concurrencia que fija el guardarraíl.
  */
-export async function runPdfWorker(deps: WorkerDeps, opts: { maxJobs?: number } = {}): Promise<WorkerSummary> {
+export async function runPdfWorker(
+  deps: WorkerDeps,
+  opts: { maxJobs?: number; maxRuntimeMs?: number; now?: () => number } = {},
+): Promise<WorkerSummary> {
   const rescued = await requeueStalePdfJobs(deps.db, deps.staleSeconds ?? DEFAULT_STALE_SECONDS, { oposicionPrefix: deps.oposicionPrefix })
   const limit = opts.maxJobs ?? Number.MAX_SAFE_INTEGER
+  const clock = opts.now ?? (() => Date.now())
+  const maxRuntimeMs = opts.maxRuntimeMs ?? DEFAULT_MAX_RUNTIME_MS
+  const t0 = clock()
   const s: WorkerSummary = { processed: 0, done: 0, retried: 0, failed: 0, rescued }
   while (s.processed < limit) {
+    if (clock() - t0 >= maxRuntimeMs) break
     const r = await processOnePdfJob(deps)
     if (!r) break
     s.processed++
