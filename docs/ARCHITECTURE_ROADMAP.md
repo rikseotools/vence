@@ -1040,6 +1040,73 @@ Diagnóstico raíz: ambos cascades comparten el mismo cuello — pool primary ma
 
 ---
 
+## Incidente 2026-07-29 — El PDF del temario bloquea el event-loop del frontend y tumba el guardado de respuestas
+
+> **Ficha de seguimiento: [T-270]** (`docs/roadmap/tareas-pendientes.md`). Guardarraíl que impide que la clase crezca: `__tests__/guardrails/cpuBoundRoutes.guardrail.test.ts`. Síntoma vigilado por el indicador `endpoint_latency` de `/admin/salud-sistema` ([T-254]).
+
+**Ventana observada:** 2026-07-29 09:30-09:48 UTC (11:30-11:48 Europe/Madrid). Recuperación completa y espontánea a las 09:49.
+
+**Estado:** causa raíz identificada y con ficha; **NO arreglada todavía**. La ruta sigue pudiendo reproducirlo hoy.
+
+### Síntomas
+
+- `/api/v2/answer-and-save` —el endpoint que guarda CADA respuesta de CADA test— a **p95 25.070 ms**, con peticiones por encima del corte de 15 s del cliente.
+- Event-loop del frontend bloqueado hasta **215 segundos**, en **5 instancias de task distintas** a la vez.
+- CPU del servicio `vence-frontend` al **98,5%** (venía de 12-24% diez minutos antes).
+- **El tráfico fue PLANO durante todo el episodio** (44-117 peticiones/min, sin pico): no fue carga de usuarios.
+
+### Causa raíz
+
+`app/api/temario/[oposicion]/[topic]/pdf/route.ts` es **pública y sin autenticar** (`verifyAuthOptional`, decisión deliberada: la teoría se indexa en SEO). Cuando el PDF no está en la caché S3, la ruta lo **renderiza en línea** con `@react-pdf/renderer` y lo sella con `pdf-lib`. Las dos son **JS puro y CPU pura, ejecutándose en el proceso que sirve el tráfico**.
+
+Un tema son 21 páginas de mediana, pero **la cola pesa: p95 de 178 páginas y máximo de 760**. Node es monohilo: mientras ese render corre, el event-loop de esa task está bloqueado y **todo lo demás que sirve esa task hace cola detrás** — incluido el guardado de respuestas.
+
+El disparador de ese día fue un barrido de **51 PDFs sobre 44 temas de 2 oposiciones, todos anónimos** (`user_id` NULL en los 51), del que **36 fueron renders frescos** y 15 salieron de caché.
+
+### La secuencia, minuto a minuto
+
+| hora UTC | qué pasa |
+|---|---|
+| 09:30 | arrancan los PDFs (0 → 4/min) |
+| 09:33 | `answer-and-save` salta a 13.086 ms |
+| 09:40 | 25.070 ms · event-loop bloqueado 20 s |
+| 09:46 | event-loop bloqueado **215 s** |
+| 09:48 | se acaba el barrido |
+| 09:49 | todo vuelve a 30-70 ms |
+
+### Lo que hace este incidente distinto: el fallo estaba PREVISTO y aislado a medias
+
+El worker de PDFs (`vence-temario-pdf-worker`) existe **exactamente por esto**, y su `Dockerfile` lo dice literal:
+
+> *"el render de @react-pdf es CPU-bound (hasta ~12min/3GB en los cajones de ofimática) y bloquearía el event-loop de una task de serving → fallaría health checks y la matarían (exit 137)"*
+
+Tiene imagen propia, 2 vCPU / 4 GB, vive **fuera del ALB** y aísla el render en un **proceso hijo killeable con timeout**. Es decir: **el camino por LOTES se blindó y el camino BAJO DEMANDA se quedó sin blindar.** El conocimiento estaba escrito; lo que faltó fue algo que impidiera que la excepción sobreviviera.
+
+### Riesgo de disponibilidad, no solo de rendimiento
+
+La ruta es pública, sin autenticación y sin límite de tasa, y cada petición a un tema distinto es un fallo de caché garantizado. **Cualquiera puede degradar la plataforma a voluntad** pidiendo PDFs de temas distintos en bucle, sin ser usuario. El episodio del 29/07 pudo ser un bot o un barrido propio; el mecanismo queda abierto.
+
+### Por qué el panel no avisó (y por qué ahora sí lo haría)
+
+El indicador de latencia que existía agregaba **todo** el tráfico junto: durante estos mismos 15 minutos marcaba **166 ms → verde**, porque `answer-and-save` es el 3% del volumen diario. El indicador `endpoint_latency` construido ese mismo día ([T-254]) mide **por endpoint y en cubos de 5 minutos**, y sí lo señala en rojo.
+
+### Diagnóstico previo que este incidente CORRIGE
+
+La ficha de [T-254] atribuía la degradación a la **CPU del contenedor del BACKEND** por una estampida de crons, y ese arreglo (escalonar las fases, `cron-colisiones.ts`) se desplegó el 29/07 a las 03:39. **La degradación se repitió igual ese mismo día**: el escalonado era correcto pero atacaba otra cosa. El saturado no era el backend sino el **frontend**, que es quien sirve `answer-and-save`. Lección: *"la CPU del backend estaba al 100%"* y *"el backend es la causa"* no son la misma frase — hay que comprobar qué contenedor sirve el endpoint que duele.
+
+### Qué lo cierra (escalonado, ver [T-270])
+
+1. **Contención:** límite de renders frescos concurrentes por task. Convierte "el sitio se degrada 18 minutos" en "algunos PDFs esperan".
+2. **Fondo:** que la ruta pública **encole** (`lib/temario/pdf/pdfJobQueue.ts`) y sirva desde S3 (`pdfCache.ts`), devolviendo 202 cuando aún no está. La infraestructura ya existe y es la que usa el camino por lotes.
+3. **Cobertura de caché:** pre-generar los temas con demanda real; ese día solo 15 de 51 salieron de caché.
+4. **Verificación:** canario que pida PDFs en ráfaga y compruebe que la latencia de `answer-and-save` no se mueve.
+
+### Guardarraíl
+
+`__tests__/guardrails/cpuBoundRoutes.guardrail.test.ts` falla si **cualquier ruta servida** importa un motor de render CPU-bound (`@react-pdf/renderer`, `pdf-lib`) sin estar en una lista de excepciones explícita con su ficha abierta. No pretende que el problema esté resuelto: impide que la clase **crezca** en silencio y obliga a una decisión consciente en cada ruta nueva. Cuando [T-270] se cierre, la lista queda vacía.
+
+---
+
 ## Incidente 2026-05-11 — Cascada de timeouts BD + medallas
 
 **Ventana observada:** 2026-05-11 18:58-19:13 Europe/Madrid, con sintomas ya visibles en la hora anterior.
