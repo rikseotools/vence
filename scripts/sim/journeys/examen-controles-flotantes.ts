@@ -99,7 +99,17 @@ const journey: Journey = {
       return false
     })
     if (!hayPreguntas) {
-      return [{ name: 'examen_cargado', ok: false, detail: `no cargaron preguntas en ${RUTA}` }]
+      // Qué se quedó en pantalla importa para no confundir un fallo del app con el entorno:
+      // "Algo no ha ido bien" suele ser el límite de peticiones o el reto anti-scraping (típico
+      // al reintentar el journey varias veces seguidas), mientras que quedarse en "Preparando
+      // examen…" apunta a la carga de preguntas.
+      const texto = (await ctx.page.locator('body').innerText().catch(() => '')) as string
+      const pista = /Algo no ha ido bien/i.test(texto)
+        ? 'la página muestra el error genérico — probable límite de peticiones o reto anti-scraping por reintentos seguidos; espera unos minutos'
+        : /Preparando examen/i.test(texto)
+          ? 'se quedó en "Preparando examen…" — la carga de preguntas no terminó'
+          : `la página muestra: ${texto.slice(0, 120).replace(/\s+/g, ' ')}`
+      return [{ name: 'examen_cargado', ok: false, detail: `no cargaron preguntas en ${RUTA}: ${pista}` }]
     }
 
     // Bajar: es el momento exacto del que se quejaba Manolo ("una vez que pasas de la primera
