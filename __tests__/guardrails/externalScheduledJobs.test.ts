@@ -86,7 +86,12 @@ describe('guardarraíl — techo de render vs rescate de colgados', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { DEFAULT_RENDER_TIMEOUT_MS, DEFAULT_STALE_SECONDS } = require('@/lib/temario/pdf/pdfJobQueue')
 
-  /** Peor caso MEDIDO en producción (Segovia T29, 2,9 MB). */
+  /**
+   * Peor caso MEDIDO (Segovia T29, 2,9 MB). Dos mediciones reales del MISMO tema:
+   * 20 min 1 s a mano y 17 min 8,6 s en Fargate 2 vCPU (render forzado, 29/07).
+   * Se toma la más alta: su duración oscila, y el techo viejo (18 min) caía DENTRO
+   * de esa banda — por eso unas veces pasaba y otras iba al DLQ.
+   */
   const PEOR_CASO_MEDIDO_MS = 20 * 60_000 + 1_000
 
   it('el techo de render cubre el peor caso medido, con margen', () => {

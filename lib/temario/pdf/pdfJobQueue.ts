@@ -38,13 +38,18 @@ export const DEFAULT_MAX_ATTEMPTS = 3
  * Techo por render. El worker MATA el proceso hijo al superarlo y el job va a
  * retry/DLQ, así que este número decide qué temas son renderizables.
  *
- * **Se fija por el peor caso MEDIDO, con margen.** Estuvo en 18 min, elegido
- * con el récord de entonces (15,2 min) y sin holgura. El primer tema que lo
- * superó —`auxiliar_administrativo_diputacion_segovia` T29, **20 min 1 s y 2,9
- * MB**, renderizado a mano sin techo— quemaba sus 3 intentos y caía al DLQ
- * **para siempre**, con el canary emitiendo CRITICAL a diario por un tema que
- * es perfectamente renderizable. No estaba mal el tema: estaba mal el techo.
- * 30 min = 50% de margen sobre ese peor caso medido.
+ * **Se fija por el peor caso MEDIDO, con margen — y el margen es el punto.**
+ * Estuvo en 18 min, elegido con el récord de entonces (15,2 min) y sin holgura.
+ * El tema que lo tumbó, `auxiliar_administrativo_diputacion_segovia` T29 (2,9 MB),
+ * NO tarda un tiempo fijo: **20 min 1 s** medido a mano y **17 min 8,6 s** medido
+ * en Fargate 2 vCPU (29/07, render forzado sin caché). Es decir, su duración
+ * **oscila alrededor de los 18 min**, así que el techo viejo no lo rechazaba
+ * siempre: echaba una moneda al aire en cada ejecución. Cuando salía cruz,
+ * quemaba sus 3 intentos, caía al DLQ **para siempre** y el canary emitía
+ * CRITICAL a diario por un tema perfectamente renderizable.
+ *
+ * Lección: un techo NO se fija pegado al peor caso conocido, porque el peor caso
+ * conocido es una muestra, no una cota. 30 min = 50% sobre la medición más alta.
  */
 export const DEFAULT_RENDER_TIMEOUT_MS = 30 * 60_000 // 30 min
 
