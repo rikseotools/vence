@@ -15,6 +15,8 @@ import {
   getPricesFor,
   getPriceTier,
   resolvePriceForAccount,
+  getConfiguredAccounts,
+  listSubscriptionsAllAccounts,
   DEFAULT_ACCOUNT,
 } from '@/lib/stripe'
 
@@ -130,5 +132,111 @@ describe('getWebhookAccounts', () => {
     const accounts = getWebhookAccounts()
     const map = Object.fromEntries(accounts.map((a) => [a.account, a.secret]))
     expect(map).toEqual({ manuel: 'whsec_manuel', nila: 'whsec_nila' })
+  })
+})
+
+// ============================================================================
+// LECTURAS AGREGADAS MULTI-CUENTA
+// ----------------------------------------------------------------------------
+// Regresión 29/07/2026: /admin/conversiones barría /v1/subscriptions con la
+// secret key de la cuenta por defecto → MRR/ARR/renovaciones a 0€ mientras la
+// cuenta de altas (Nila) tenía 53 subs vivas. Estos tests fijan que el barrido
+// recorre TODAS las cuentas configuradas, etiqueta cada sub con la suya y no
+// oculta el fallo parcial de una cuenta.
+// ============================================================================
+
+const sub = (id: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  status: 'active',
+  cancel_at_period_end: false,
+  created: 1_700_000_000,
+  items: { data: [{ price: { recurring: { interval: 'month', interval_count: 1 } } }] },
+  ...extra,
+})
+
+describe('getConfiguredAccounts', () => {
+  it('solo devuelve cuentas con secret key configurada', () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_manuel'
+    delete process.env.STRIPE_SECRET_KEY_NILA
+    expect(getConfiguredAccounts()).toEqual(['manuel'])
+
+    process.env.STRIPE_SECRET_KEY_NILA = 'sk_nila'
+    expect(getConfiguredAccounts()).toEqual(['manuel', 'nila'])
+  })
+})
+
+describe('listSubscriptionsAllAccounts', () => {
+  beforeEach(() => {
+    process.env.STRIPE_SECRET_KEY = 'sk_manuel'
+    process.env.STRIPE_SECRET_KEY_NILA = 'sk_nila'
+  })
+
+  it('barre las dos cuentas y etiqueta cada sub con la suya', async () => {
+    const seen: string[] = []
+    const { subscriptions, accounts } = await listSubscriptionsAllAccounts({
+      fetchPage: async ({ secretKey }) => {
+        seen.push(secretKey)
+        return secretKey === 'sk_manuel'
+          ? { data: [sub('sub_m1')], has_more: false }
+          : { data: [sub('sub_n1'), sub('sub_n2')], has_more: false }
+      },
+    })
+
+    expect(seen.sort()).toEqual(['sk_manuel', 'sk_nila'])
+    expect(subscriptions.map((s) => [s.id, s.stripe_account])).toEqual([
+      ['sub_m1', 'manuel'],
+      ['sub_n1', 'nila'],
+      ['sub_n2', 'nila'],
+    ])
+    expect(accounts).toEqual([
+      { account: 'manuel', ok: true, count: 1 },
+      { account: 'nila', ok: true, count: 2 },
+    ])
+  })
+
+  it('pagina con starting_after hasta agotar has_more', async () => {
+    const paths: string[] = []
+    const { subscriptions } = await listSubscriptionsAllAccounts({
+      accounts: ['manuel'],
+      fetchPage: async ({ path }) => {
+        paths.push(path)
+        return path.includes('starting_after=sub_a')
+          ? { data: [sub('sub_b')], has_more: false }
+          : { data: [sub('sub_a')], has_more: true }
+      },
+    })
+    expect(subscriptions.map((s) => s.id)).toEqual(['sub_a', 'sub_b'])
+    expect(paths[0]).toContain('status=all')
+    expect(paths[1]).toContain('starting_after=sub_a')
+  })
+
+  it('una cuenta caída NO tumba la lectura, pero se marca ok:false', async () => {
+    const { subscriptions, accounts } = await listSubscriptionsAllAccounts({
+      fetchPage: async ({ secretKey }) => {
+        if (secretKey === 'sk_nila') return { error: { message: 'Invalid API Key' } }
+        return { data: [sub('sub_m1')], has_more: false }
+      },
+    })
+    expect(subscriptions.map((s) => s.id)).toEqual(['sub_m1'])
+    expect(accounts.find((a) => a.account === 'nila')).toEqual({
+      account: 'nila', ok: false, count: 0, error: 'Invalid API Key',
+    })
+  })
+
+  it('marca la cuenta sin secret key en vez de leerla en silencio', async () => {
+    delete process.env.STRIPE_SECRET_KEY_NILA
+    const { accounts } = await listSubscriptionsAllAccounts({
+      accounts: ['manuel', 'nila'],
+      fetchPage: async () => ({ data: [], has_more: false }),
+    })
+    expect(accounts.find((a) => a.account === 'nila')).toMatchObject({ ok: false })
+  })
+
+  it('corta la paginación si Stripe dice has_more con página vacía (anti bucle infinito)', async () => {
+    const { subscriptions } = await listSubscriptionsAllAccounts({
+      accounts: ['manuel'],
+      fetchPage: async () => ({ data: [], has_more: true }),
+    })
+    expect(subscriptions).toEqual([])
   })
 })

@@ -1,7 +1,7 @@
 // app/api/admin/sales-prediction/route.ts
 // API para predicciones de ventas con intervalos de confianza
 import { NextResponse } from 'next/server'
-import https from 'https'
+import { listSubscriptionsAllAccounts, type StripeSubscriptionLite } from '@/lib/stripe'
 import {
   getRegistrationData,
   getConversionData,
@@ -22,44 +22,11 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 // Endpoint admin con varias queries pesadas + Stripe API; 30s da margen sin
 // permitir que un blip pool retenga el lambda los 5 minutos completos.
 export const maxDuration = 30
-// Helper para llamar a la API de Stripe directamente
-function stripeGet(path: string): Promise<{ data: StripeSubscription[]; has_more: boolean }> {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.stripe.com',
-      path,
-      method: 'GET',
-      headers: { 'Authorization': 'Bearer ' + process.env.STRIPE_SECRET_KEY },
-    }
-    const req = https.request(options, (res) => {
-      let data = ''
-      res.on('data', (chunk: string) => data += chunk)
-      res.on('end', () => resolve(JSON.parse(data)))
-    })
-    req.on('error', reject)
-    req.end()
-  })
-}
-
-interface StripeSubscription {
-  id: string
-  status: string
-  cancel_at_period_end: boolean
-  current_period_start?: number
-  current_period_end?: number
-  created: number
-  canceled_at?: number
-  metadata?: Record<string, string>
-  items: {
-    data: Array<{
-      price?: {
-        recurring?: { interval: string; interval_count: number }
-      }
-      current_period_start?: number
-      current_period_end?: number
-    }>
-  }
-}
+// El barrido de suscripciones vive en lib/stripe (listSubscriptionsAllAccounts):
+// recorre TODAS las cuentas configuradas, no solo STRIPE_SECRET_KEY. Leer una
+// sola cuenta daba MRR/ARR/renovaciones a cero desde el flip de altas a Nila
+// (incidente 29/07/2026).
+type StripeSubscription = StripeSubscriptionLite
 
 // Wilson score interval para proporciones con muestras pequeñas
 function wilsonScoreInterval(successes: number, total: number, confidence = 0.95) {
@@ -476,17 +443,14 @@ async function _GET() {
       },
     }
 
-    // 9. MRR y previsión de renovaciones
-    let allStripeSubs: StripeSubscription[] = []
-    let hasMore = true
-    let startingAfter: string | null = null
-    while (hasMore) {
-      let path = '/v1/subscriptions?limit=100&status=all'
-      if (startingAfter) path += '&starting_after=' + startingAfter
-      const result = await stripeGet(path)
-      allStripeSubs = allStripeSubs.concat(result.data)
-      hasMore = result.has_more
-      if (result.data.length > 0) startingAfter = result.data[result.data.length - 1].id
+    // 9. MRR y previsión de renovaciones (TODAS las cuentas Stripe)
+    const { subscriptions: allStripeSubs, accounts: stripeAccountsHealth } = await listSubscriptionsAllAccounts()
+    const failedAccounts = stripeAccountsHealth.filter(a => !a.ok)
+    if (failedAccounts.length > 0) {
+      // Fallo parcial: el MRR sale CORTO. Que se vea (log + campo en la respuesta),
+      // nunca en silencio.
+      console.error('❌ [API/admin/sales-prediction] cuentas Stripe ilegibles:',
+        failedAccounts.map(a => `${a.account}: ${a.error}`).join(' | '))
     }
     const stripeSubs = allStripeSubs.filter(s => s.status === 'active')
     const stripeCanceledSubs = allStripeSubs.filter(s => s.status === 'canceled')
@@ -515,6 +479,8 @@ async function _GET() {
       current_period_end: string | null
       user_id: string | null
       source: string
+      /** cuenta Stripe de la sub, o 'manual' si es una sub sin Stripe */
+      account: string
       created?: number
     }
 
@@ -540,6 +506,7 @@ async function _GET() {
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         user_id: sub.metadata?.supabase_user_id || sub.metadata?.user_id || null,
         source: 'stripe',
+        account: sub.stripe_account,
         created: sub.created,
       })
     }
@@ -562,6 +529,7 @@ async function _GET() {
         current_period_end: sub.currentPeriodEnd,
         user_id: sub.userId,
         source: 'manual',
+        account: 'manual',
       })
     }
 
@@ -1053,8 +1021,23 @@ async function _GET() {
           pctQuarterly: totalSubs > 0 ? Math.round((quarterlyCount / totalSubs) * 100) : 0,
           pctMonthly: totalSubs > 0 ? Math.round((monthlyCount / totalSubs) * 100) : 0,
         },
+        // Desglose por cuenta Stripe: sin esto, un MRR corto por una cuenta
+        // ilegible (o no configurada) pasa desapercibido.
+        byAccount: stripeAccountsHealth.map(a => ({
+          account: a.account,
+          ok: a.ok,
+          error: a.error ?? null,
+          subsTotal: a.count,
+          subsActive: stripeSubs.filter(s => s.stripe_account === a.account).length,
+          mrr: Math.round(
+            activeSubscriptions
+              .filter(s => s.account === a.account && !s.cancel_at_period_end)
+              .reduce((acc, s) => acc + (MRR_RATES[s.plan_type] || MRR_RATES.premium_semester), 0) * 100,
+          ) / 100,
+        })),
+        accountsDegraded: failedAccounts.length > 0,
         explanation: {
-          mrrCurrent: `${activeSubscriptions.filter(s => !s.cancel_at_period_end).length} subs activas (${stripeSubs.length} Stripe + ${(manualSubsData || []).length} manuales, excl. ${cancelingSubscriptions.length} cancelando)`,
+          mrrCurrent: `${activeSubscriptions.filter(s => !s.cancel_at_period_end).length} subs activas (${stripeSubs.length} Stripe en ${stripeAccountsHealth.filter(a => a.ok).length} cuenta(s) + ${(manualSubsData || []).length} manuales, excl. ${cancelingSubscriptions.length} cancelando)`,
           churnApplied: `Churn mensual ${Math.round(churnMonthly * 100)}% (${stripeChurnedCount} canceladas Stripe + ${stripeCancelPendingCount} pendientes en ${businessAgeMonths.toFixed(1)} meses)`,
           projection6m: `MRR × (1-churn)^6 + nuevas subs ajustadas por churn`,
           cancellationsNote: `${totalCancellations} cancelaciones de ${uniquePayingUsersGross} pagadores (${totalRefundsCount} con refund: ${Math.round(totalRefundAmount)}€)`,

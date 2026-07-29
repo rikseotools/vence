@@ -201,6 +201,130 @@ export function getWebhookAccounts(): Array<{ account: StripeAccount; secret: st
   return out
 }
 
+// ── Lecturas agregadas multi-cuenta (paneles de negocio) ─────────────────────
+// REGLA: cualquier métrica agregada de negocio (MRR, churn, renovaciones,
+// antigüedad) tiene que mirar TODAS las cuentas configuradas, no `stripe()`.
+// Incidente 29/07/2026: /admin/conversiones barría `/v1/subscriptions` con
+// STRIPE_SECRET_KEY (= Manuel, en vaciado y con el 100% de sus subs en
+// cancel_at_period_end) → MRR 0€, ARR 0€, renovaciones 0€ y churn saturado,
+// mientras Nila tenía 53 subs vivas (~747€/mes) invisibles para el panel.
+
+/** Cuentas con secret key configurada (las que se pueden leer server-side). */
+export function getConfiguredAccounts(): StripeAccount[] {
+  return ALL_ACCOUNTS.filter(a => !!process.env[ACCOUNT_ENV[a].secretKey])
+}
+
+/**
+ * Suscripción tal como la devuelve la API REST de Stripe, con lo mínimo que
+ * necesitan los paneles + la cuenta de la que salió. Tipo laxo a propósito: se
+ * consume el JSON crudo (la app fija apiVersion 2024-06-20, donde
+ * current_period_* vive en la sub; en versiones nuevas vive en el item).
+ */
+export interface StripeSubscriptionLite {
+  id: string
+  status: string
+  cancel_at_period_end: boolean
+  current_period_start?: number
+  current_period_end?: number
+  created: number
+  canceled_at?: number
+  metadata?: Record<string, string>
+  items: {
+    data: Array<{
+      price?: { recurring?: { interval: string; interval_count: number } }
+      current_period_start?: number
+      current_period_end?: number
+    }>
+  }
+  /** Cuenta Stripe de la que salió esta suscripción. */
+  stripe_account: StripeAccount
+}
+
+/** Salud por cuenta de una lectura agregada — para no fallar en silencio. */
+export interface StripeAccountReadStatus {
+  account: StripeAccount
+  ok: boolean
+  count: number
+  error?: string
+}
+
+/** Fetcher inyectable de una página de la API REST (tests sin red). */
+export type StripePageFetcher = (args: { secretKey: string; path: string }) => Promise<{
+  data?: unknown[]
+  has_more?: boolean
+  error?: { message?: string }
+}>
+
+const httpsPageFetcher: StripePageFetcher = ({ secretKey, path }) =>
+  new Promise((resolve, reject) => {
+    // require diferido: lib/stripe.ts también se importa desde el browser
+    // (getStripe/loadStripe) y `https` no existe ahí.
+    import('https').then(({ default: https }) => {
+      const req = https.request(
+        { hostname: 'api.stripe.com', path, method: 'GET', headers: { Authorization: 'Bearer ' + secretKey } },
+        (res) => {
+          let data = ''
+          res.on('data', (chunk) => { data += chunk })
+          res.on('end', () => {
+            try { resolve(JSON.parse(data)) } catch { reject(new Error(`Respuesta no-JSON de Stripe (HTTP ${res.statusCode})`)) }
+          })
+        },
+      )
+      req.on('error', reject)
+      req.end()
+    }).catch(reject)
+  })
+
+/**
+ * Barre TODAS las suscripciones (status=all) de todas las cuentas configuradas,
+ * en paralelo, etiquetando cada una con su cuenta.
+ *
+ * No lanza si una cuenta falla: devuelve lo que sí pudo leer + el estado por
+ * cuenta, para que el consumidor avise en vez de mostrar un número corto sin
+ * decir nada (que es justo el modo de fallo que originó esta función).
+ */
+export async function listSubscriptionsAllAccounts(opts: {
+  accounts?: StripeAccount[]
+  fetchPage?: StripePageFetcher
+} = {}): Promise<{ subscriptions: StripeSubscriptionLite[]; accounts: StripeAccountReadStatus[] }> {
+  const accounts = opts.accounts ?? getConfiguredAccounts()
+  const fetchPage = opts.fetchPage ?? httpsPageFetcher
+
+  const results = await Promise.all(accounts.map(async (account): Promise<{
+    subs: StripeSubscriptionLite[]
+    status: StripeAccountReadStatus
+  }> => {
+    const secretKey = process.env[ACCOUNT_ENV[account].secretKey]
+    if (!secretKey) {
+      return { subs: [], status: { account, ok: false, count: 0, error: `Falta ${ACCOUNT_ENV[account].secretKey}` } }
+    }
+    const subs: StripeSubscriptionLite[] = []
+    try {
+      let hasMore = true
+      let startingAfter: string | null = null
+      while (hasMore) {
+        let path = '/v1/subscriptions?limit=100&status=all'
+        if (startingAfter) path += '&starting_after=' + startingAfter
+        const page = await fetchPage({ secretKey, path })
+        if (page.error) throw new Error(page.error.message || 'error de Stripe')
+        const rows = (page.data ?? []) as Array<Omit<StripeSubscriptionLite, 'stripe_account'>>
+        for (const row of rows) subs.push({ ...row, stripe_account: account })
+        hasMore = !!page.has_more
+        if (rows.length > 0) startingAfter = rows[rows.length - 1].id
+        else hasMore = false
+      }
+      return { subs, status: { account, ok: true, count: subs.length } }
+    } catch (err) {
+      return { subs, status: { account, ok: false, count: subs.length, error: (err as Error).message } }
+    }
+  }))
+
+  return {
+    subscriptions: results.flatMap(r => r.subs),
+    accounts: results.map(r => r.status),
+  }
+}
+
 // ── Cliente client-side (browser) ────────────────────────────────────────────
 // Usa la publishable de la cuenta de altas nuevas activa en build. Las
 // renovaciones no usan cliente browser (Stripe las cobra server-side).

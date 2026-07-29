@@ -1802,6 +1802,30 @@ export default function ConversionesPage() {
                     MRR y Proyecciones de Facturación
                   </h3>
 
+                  {/* Desglose por cuenta Stripe. El panel leía SOLO la cuenta por
+                      defecto: con las altas en Nila, el MRR salía a 0€ (29/07/2026). */}
+                  {predictionData.mrr.byAccount && (
+                    <div className="mb-4">
+                      {predictionData.mrr.accountsDegraded && (
+                        <div className="mb-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+                          ⚠️ Hay cuentas Stripe ilegibles — el MRR y las renovaciones de abajo salen CORTOS.
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {predictionData.mrr.byAccount.map((a: any) => (
+                          <span
+                            key={a.account}
+                            className={`px-2 py-1 rounded border ${a.ok
+                              ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                              : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300'}`}
+                          >
+                            <strong>{a.account}</strong>: {a.ok ? `${a.subsActive} activas · ${a.mrr.toFixed(2)}€/mes` : `error (${a.error})`}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* MRR Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                     <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
