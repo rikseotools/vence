@@ -441,5 +441,11 @@ if [ "$REPIN_OK" != "1" ]; then
   exit 1
 fi
 echo "✅ DEPLOY OK — $NEWTD"
+# ── Despertar las tareas del backlog que esperaban ESTE deploy ───────────────
+# Una sesión que deja trabajo "hecho pero sin verificar hasta que se despliegue" lo marca con
+# `backlog.cjs pause <id> --tras-deploy`. Aquí se cierra el bucle: el deploy avisa, en vez de
+# que alguien tenga que acordarse. Best-effort — nunca puede tumbar un deploy que ya salió bien.
+node "$(dirname "$0")/backlog.cjs" deployed "$FULL_SHA" --superficie frontend 2>/dev/null || true
+
 echo "   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs"
 echo "   Rollback: aws ecs update-service --cluster vence-backend --service vence-frontend --task-definition $LIVE_TD --profile vence --region eu-west-2"

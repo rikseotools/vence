@@ -11,7 +11,7 @@
 // Mismo patrón que __tests__/lib/admin/runbookRegistry.test.ts (registro ↔ CLAUDE.md).
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { parseBacklogMarkdown, findHeadingsWithoutId } from '@/lib/backlog/claim'
+import { parseBacklogMarkdown, findHeadingsWithoutId, findDateLockedTitles } from '@/lib/backlog/claim'
 
 const MD_PATH = join(process.cwd(), 'docs', 'roadmap', 'tareas-pendientes.md')
 const md = readFileSync(MD_PATH, 'utf8')
@@ -138,5 +138,19 @@ describe('backlog — enforcement del claim por pre-push', () => {
     expect(src).toContain('sync ABORTADO')
     // y el aviso tiene que enseñar la salida, no solo quejarse
     expect(src).toMatch(/sync ABORTADO[\s\S]{0,1200}backlog\.cjs reserve/)
+  })
+
+  it('ninguna tarea VIVA codifica un candado de fecha en el TÍTULO', () => {
+    // El campo existe (`snooze_until`, desde el 28/07) y aun así el 29/07 seguía habiendo dos
+    // fichas gritando la fecha en la cabecera: T-221 «⛔ NO COGER HASTA EL 29/07 07:00 UTC» y
+    // T-234 «⏱ MEDIR EL 11/08». Un título no vence solo — la fecha de T-221 pasó y el texto
+    // siguió diciendo "no coger", así que la tarea quedó congelada por una cadena de caracteres.
+    //
+    // La fecha va en la BD, que sí vence sola:
+    //    node scripts/backlog.cjs snooze <id> --hasta <fecha> --motivo "…"
+    //    node scripts/backlog.cjs pause  <id> --tras-deploy --hecho "…" --falta "…"
+    const vivas = tasks.filter((t) => t.inOpenSection && !t.doneMarked)
+    const candados = findDateLockedTitles(vivas)
+    expect(candados.map((c) => `${c.id} (${c.patron}): ${c.title}`)).toEqual([])
   })
 })

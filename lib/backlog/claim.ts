@@ -20,6 +20,12 @@ export interface BacklogTask {
   /** Hasta cuándo NO tiene sentido cogerla (espera a un reloj externo). Vence sola. */
   snooze_until?: string | Date | null
   snooze_reason?: string | null
+  /** Cuántas veces se ha aplazado (aplazar en bucle es no decidir). */
+  snooze_count?: number | null
+  /** Al pausar: qué quedó HECHO. */
+  progress_note?: string | null
+  /** Al pausar: qué hay que VERIFICAR al despertar. */
+  resume_check?: string | null
 }
 
 /** Estados en los que la tarea sigue viva (aparece en el pool y en "Abiertas"). */
@@ -89,6 +95,11 @@ export function snoozeInfo(
     minutos: Math.max(0, Math.round((until.getTime() - now.getTime()) / 60000)),
   }
 }
+
+// La PUERTA del claim (lease + reloj + dependencia) vive en `lib/backlog/claimGate.cjs`:
+// la necesita el CLI, que es CommonJS, y una segunda implementación aquí sería una copia que
+// se separa de la de producción al primer cambio. Aquí quedan los predicados sueltos que sí
+// usan el parser y `pickNext`.
 
 /** Orden de reparto: prioridad y, a igualdad, id (estable y determinista). */
 export function sortByAttackOrder(tasks: BacklogTask[]): BacklogTask[] {
@@ -164,6 +175,45 @@ export function parseBacklogMarkdown(md: string): MarkdownTask[] {
       doneMarked: rest.includes('✅'),
       parked: rest.includes('⬜'),
     })
+  }
+  return out
+}
+
+/**
+ * Candados de fecha escritos en el TÍTULO — el síntoma de que el campo existe y no se usa.
+ *
+ * Casos reales el 29/07, un día después de que `snooze_until` existiera:
+ *   · T-221 «⛔ NO COGER HASTA EL 29/07 07:00 UTC (esperando la cosecha del cron) — …»
+ *   · T-234 «⏱ MEDIR EL 11/08 — 873 usuarios estudian con una oposición que no existe»
+ *
+ * Un título no despierta solo: la fecha de T-221 venció y el título siguió diciendo "no coger",
+ * así que la tarea quedó congelada por un texto. La fecha va en `snooze_until`, que vence sola.
+ *
+ * PRECISIÓN sobre recall, como el resto de detectores del repo: solo se marca el candado
+ * IMPERATIVO («no coger hasta», «medir el 11/08»), nunca la fecha descriptiva («no completa una
+ * ejecución desde el 24/07»), que es información legítima del título.
+ */
+const RE_CANDADO_FECHA: Array<{ nombre: string; re: RegExp }> = [
+  { nombre: 'no coger/tocar', re: /\bno\s+(coger|tocar|empezar|atacar|abrir)\b/i },
+  { nombre: 'esperar a', re: /\besperar\s+(a|al|hasta)\b/i },
+  { nombre: 'imperativo + fecha', re: /\b(medir|revisar|verificar|comprobar|releer|retomar)\s+(el|la)\s+\d{1,2}([/-]\d{1,2})/i },
+  { nombre: 'hasta el <fecha>', re: /\bhasta\s+(el\s+)?\d{1,2}([/-]\d{1,2})/i },
+  { nombre: 'emoji de candado/reloj', re: /[⛔⏱🕒]/ },
+]
+
+export interface DateLockedTitle {
+  id: string
+  title: string
+  /** Qué patrón lo delató (para que el mensaje del guardarraíl sea accionable). */
+  patron: string
+}
+
+/** Títulos que codifican un candado temporal en vez de usar `snooze_until`. */
+export function findDateLockedTitles(tasks: Array<{ id: string; title: string }>): DateLockedTitle[] {
+  const out: DateLockedTitle[] = []
+  for (const t of tasks) {
+    const hit = RE_CANDADO_FECHA.find(p => p.re.test(t.title))
+    if (hit) out.push({ id: t.id, title: t.title, patron: hit.nombre })
   }
   return out
 }

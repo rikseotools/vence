@@ -68,7 +68,9 @@ node scripts/backlog.cjs mine
 node scripts/backlog.cjs done T-042 --outcome "qué pasó de verdad"
 node scripts/backlog.cjs release T-042     # soltarla sin cerrar
 node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (ver abajo)
+node scripts/backlog.cjs pause T-042 --tras-deploy --hecho "…" --falta "…"   # empezada, espera deploy
 node scripts/backlog.cjs wake T-042        # la despierta antes de tiempo
+node scripts/backlog.cjs deployed <sha> --superficie frontend   # lo llama el propio deploy
 node scripts/backlog.cjs sync              # importa ids nuevos del markdown a la tabla
 ```
 
@@ -87,15 +89,45 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 
 En `list` verás tres estados: `🟢 libre` · `🔒 <sid> (Xm)` cogida con lease vivo · `🟡 lease caducado (libre)`.
 
+## Las CUATRO esperas, y por qué no son la misma
+
+| Situación | Campo | Qué significa | ¿`claim` la entrega? |
+|---|---|---|---|
+| La estoy haciendo yo | `claimed_by` + `lease_until` | ocupa a una sesión; caduca a los 90 min | ❌ nunca (forzarlo es pisar trabajo ajeno) |
+| Depende de otra tarea nuestra | `blocked_by` | dependencia interna del backlog | ❌ salvo `--force --motivo` |
+| Hasta cierta hora no hay NADA que hacer | `snooze_until` | reloj EXTERNO: un cron que no ha corrido, una cosecha, la fecha en que toca medir | ❌ salvo `--force --motivo` |
+| **Hecha, pero no se puede verificar hasta que se despliegue** | **`wake_on_deploy_sha`** | **CONDICIÓN, no reloj: «mi commit ya está vivo». No hay fecha que poner** | ❌ salvo `--force --motivo` |
+
+**El reloj IMPIDE coger, no avisa (cambio del 29/07).** Hasta ese día `claim` te dejaba coger una aplazada y solo imprimía un aviso. Medido 24 h después de estrenar el campo: **T-221 seguía con `⛔ NO COGER HASTA EL 29/07 07:00 UTC` en el título y T-234 con `⏱ MEDIR EL 11/08`** — o sea, ni con el campo disponible se confió en el aviso. Un aviso impreso entre otras diez líneas no es una condición. Las colas de trabajo serias (DelaySeconds de SQS, scheduled sets de Sidekiq, ETA de Celery) no avisan de que un trabajo no toca: **no lo entregan**. La comprobación va **en el mismo `UPDATE` atómico que el lease y con el reloj del SERVIDOR** — con 2-10 sesiones, el reloj de cada portátil no es una fuente de verdad.
+
+**El escape sigue existiendo, pero deja rastro:**
+
+```bash
+node scripts/backlog.cjs claim T-234 --force --motivo "adelanto la preparación, no la medición"
+```
+
+Queda en `force_claim_reason` + `force_claimed_at`. Lo que NO se puede forzar es el lease de otra sesión.
+
+## Dejar una tarea a medias sin perder dónde la dejaste (`pause`)
+
+El caso más común de tarea sin cerrar no es "se me olvidó": es **"hecho, pero hay que verificarlo otro día o cuando se despliegue"**. Antes las dos salidas eran malas — `release` borra que estaba a medias y el siguiente empieza de cero; `snooze` conservando el claim deja el lease agonizando (medido el 29/07: 3 tareas `in_progress` con el lease caducado, una desde hacía 32 h).
+
+```bash
+# espera a un DEPLOY (lo normal cuando el trabajo ya está en main)
+node scripts/backlog.cjs pause T-266 --tras-deploy --superficie frontend \
+  --hecho "arreglado el churn y desplegable" --falta "comprobar en /admin/conversiones que ya no satura al 15%"
+
+# espera a una FECHA (una medición, una cosecha)
+node scripts/backlog.cjs pause T-234 --hasta "2026-08-11 07:00" \
+  --hecho "detector desplegado y midiendo" --falta "leer el cruce a 14 días y decidir"
+```
+
+- **Suelta el claim** (nada de leases agonizando), pone la espera y guarda **las dos notas, que son obligatorias**: una pausa sin ellas es indistinguible de un abandono.
+- Al volver a cogerla, `claim` **imprime «se retoma donde se dejó»** con lo hecho y lo que falta. Eso es lo que hace que retomarla dentro de dos semanas no cueste releer una ficha entera.
+- **`--tras-deploy` sin fecha es deliberado:** un deploy no tiene hora. Si te la inventas y te quedas corto, la tarea despierta y sigue sin poder verificarse; si te pasas, duerme de más. Se guarda el commit y **lo despierta el propio `deploy-frontend.sh` / `deploy-backend.sh` al terminar** (llaman a `backlog.cjs deployed <sha>`, best-effort: nunca tumban un deploy). El commit tiene que estar **contenido** en el desplegado, no ser igual — el deploy es cumulativo.
+- **`--superficie frontend|backend|both`**: se despliegan por separado. `both` exige las dos; despertar a medias manda a alguien a verificar algo incompleto.
+
 ## Aplazar una tarea que espera a un RELOJ (`snooze`)
-
-Hay tres motivos distintos por los que una tarea no se puede coger, y solo confundirlos cuesta trabajo tirado:
-
-| Situación | Campo | Qué significa |
-|---|---|---|
-| La estoy haciendo yo | `claimed_by` + `lease_until` | ocupa a una sesión; caduca a los 90 min |
-| Depende de otra tarea nuestra | `blocked_by` | dependencia interna del backlog |
-| **Hasta cierta hora no hay NADA que hacer** | **`snooze_until`** | espera a un reloj EXTERNO: un cron que aún no ha corrido, una cosecha, la fecha en que toca medir |
 
 ```bash
 node scripts/backlog.cjs snooze T-217 --hasta "2026-07-29T06:00" --motivo "el cron corre a las 03:15 UTC; antes no hay nada que medir"
@@ -104,12 +136,13 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
 ```
 
 - **`list` la pinta `🕒 en espera hasta …` con su motivo debajo**, y `next` **no la sugiere**. El motivo es obligatorio: un aplazamiento sin explicación es indistinguible de un olvido.
-- **Aplazamiento, no candado.** Vence solo, igual que el lease: nadie tiene que acordarse de despertarla. Y `claim` **no lo impide, solo avisa** — a veces sí quieres adelantar el trabajo preparatorio.
+- **Aplazamiento, no candado.** Vence solo, igual que el lease: nadie tiene que acordarse de despertarla. Desde el 29/07 **`claim` tampoco la entrega** (ver arriba); el caso legítimo de adelantar preparación va por `--force --motivo`.
+- **Aplazar en bucle no es programar.** Cada `snooze`/`pause` incrementa `snooze_count`; a partir de 3, `list` y `claim` lo cantan: eso ya no es una tarea programada, es una decisión que nadie toma.
 - **Por qué existe (28/07/2026):** T-221 llegó a llevar `⛔ NO COGER HASTA EL 29/07 07:00 UTC` **en el título de la ficha**… y `next` la seguía ofreciendo, porque ni el CLI ni la tabla leen el texto del markdown. Gritar en la ficha no es un mecanismo. Con 2-10 sesiones, eso es otra sesión montando un worktree para descubrir a los cinco minutos que no había nada que medir.
 
 ## Guardarraíles (lo que evita que vuelva a pasar lo del 20/07)
 
-- **`__tests__/guardrails/backlogRegistry.guardrail.test.ts`** (corre en CI, sin BD): toda cabecera lleva id, los ids son únicos y con formato `T-NNN`, toda tarea viva declara prioridad, y existe la sección `## Abiertas`. Si alguien añade una tarea sin id, el CI se pone rojo — porque sin id **nadie puede cogerla**.
+- **`__tests__/guardrails/backlogRegistry.guardrail.test.ts`** (corre en CI, sin BD): toda cabecera lleva id, los ids son únicos y con formato `T-NNN`, toda tarea viva declara prioridad, existe la sección `## Abiertas`, y **ningún título codifica un candado de fecha** (`NO COGER HASTA`, `MEDIR EL 11/08`, `⛔`, `⏱`) — eso va a `snooze_until`, que vence solo; un título no. Si alguien añade una tarea sin id, el CI se pone rojo — porque sin id **nadie puede cogerla**.
 - **`lib/backlog/claim.ts` → `findBacklogDrift()`**: detecta el fallo exacto del 20/07 — tarea `done` en BD que sigue anunciada como abierta en el markdown (y el caso inverso). Testeado en `__tests__/backlog/claim.test.ts`.
 - **`findZombieClaims()`**: `in_progress` con el lease caducado hace >24 h = sesión zombi o cierre olvidado.
 - **`backlog.cjs sync`** avisa de ids que están en la tabla pero no en el markdown (tareas fantasma, sin contexto). **Ese aviso va lo PRIMERO y separa dos casos que no se parecen** (`lib/backlog/fichaHuerfana.cjs`, testeado en `__tests__/backlog/fichaHuerfana.test.ts`):

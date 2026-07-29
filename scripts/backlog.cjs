@@ -28,6 +28,8 @@ const path = require('path');
 // Driver perezoso y por resolucion normal: una ruta ABSOLUTA/cableada rompe el script
 // en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
 const loadPg = () => require('postgres');
+// La decisión de si una tarea se puede coger vive en un solo sitio, compartida con los tests.
+const { claimGate, isChronicSnooze, deployWakeReady } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
@@ -59,7 +61,14 @@ function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   return fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim();
 }
-function arg(name) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; }
+function arg(name) {
+  const i = process.argv.indexOf(name);
+  if (i < 0) return null;
+  const v = process.argv[i + 1];
+  // Un flag sin valor seguido de otro flag devolvía el FLAG como valor: `--tras-deploy
+  // --superficie frontend` guardaba el sha "--superficie" (visto en la prueba real, 29/07).
+  return v == null || v.startsWith('--') ? null : v;
+}
 function readSessionId() {
   for (const p of [path.join(process.cwd(), '.session-id'), path.join(REPO, '.session-id')]) {
     try { const v = fs.readFileSync(p, 'utf8').trim(); if (v) return v; } catch {}
@@ -90,6 +99,9 @@ const cuando = (t) => new Date(t).toLocaleString('es-ES', {
   weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 });
 const dormida = (r) => r.snooze_until && new Date(r.snooze_until) > new Date();
+// Esperar a un deploy es esperar igual: `next` no la sugiere y `claim` no la entrega.
+const esperandoDeploy = (r) => !!r.wake_on_deploy_sha;
+const enEsperaAlguna = (r) => dormida(r) || esperandoDeploy(r);
 
 /**
  * Momento hasta el que aplazar, desde --hasta/--horas/--dias. Devuelve Date o lanza.
@@ -149,7 +161,8 @@ function parseMd() {
       const all = process.argv.includes('--all');
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
-               snooze_until, snooze_reason
+               snooze_until, snooze_reason, snooze_count, resume_check,
+               wake_on_deploy_sha, wake_on_deploy_surface
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
          ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END, id`;
@@ -159,13 +172,16 @@ function parseMd() {
         const vivo = r.lease_until && new Date(r.lease_until) > new Date();
         // El aplazamiento se pinta ANTES que "libre": libre-pero-dormida se leía como
         // "cógela", que es justo el malentendido que esto viene a quitar.
-        const lock = dormida(r) ? (enEspera++, `🕒 en espera hasta ${cuando(r.snooze_until)}`)
+        const lock = esperandoDeploy(r) ? (enEspera++, `🚀 espera deploy de ${String(r.wake_on_deploy_sha).slice(0, 8)}${r.wake_on_deploy_surface && r.wake_on_deploy_surface !== 'both' ? ` (${r.wake_on_deploy_surface})` : ''}`)
+                   : dormida(r) ? (enEspera++, `🕒 en espera hasta ${cuando(r.snooze_until)}`)
           : !r.claimed_by ? '🟢 libre'
           : vivo ? `🔒 ${String(r.claimed_by).slice(0, 8)} (${left(r.lease_until)})`
                  : `🟡 lease caducado hace ${age(r.lease_until)} (libre)`;
         const dep = (r.blocked_by || []).length ? ` ⛔ bloqueada por ${r.blocked_by.join(',')}` : '';
         console.log(`  ${EMOJI[r.priority]} ${r.id}  ${String(r.title).slice(0, 58).padEnd(60)} ${r.status.padEnd(12)} ${lock}${dep}`);
         if (dormida(r) && r.snooze_reason) console.log(`         ↳ ${r.snooze_reason}`);
+        if (enEsperaAlguna(r) && r.resume_check) console.log(`         ▶ al despertar: ${r.resume_check}`);
+        if (isChronicSnooze(r)) console.log(`         🔁 aplazada ${r.snooze_count} veces`);
       }
       if (enEspera) console.log(`\n  🕒 ${enEspera} en espera (no las sugiere \`next\`; se despiertan solas)`);
       console.log('');
@@ -173,15 +189,16 @@ function parseMd() {
 
     else if (cmd === 'next') {
       const rows = await s`
-        SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason
+        SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason,
+               wake_on_deploy_sha
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const openIds = new Set(rows.map((r) => r.id));
       const rank = { critica: 0, alta: 1, media: 2, baja: 3, ninguna: 9 };
-      const dormidas = rows.filter(dormida).length;
+      const dormidas = rows.filter(enEsperaAlguna).length;
       const libre = rows
         .filter((r) => !r.claimed_by || r.claimed_by === sid || (r.lease_until && new Date(r.lease_until) < new Date()))
         .filter((r) => r.priority !== 'ninguna') // aparcadas: no se sugieren nunca
-        .filter((r) => !dormida(r))              // aplazadas: hoy no hay nada que hacer en ellas
+        .filter((r) => !enEsperaAlguna(r))       // aplazadas o esperando deploy: hoy no hay nada que hacer
         .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
         .sort((a, b) => (rank[a.priority] - rank[b.priority]) || a.id.localeCompare(b.id));
       if (dormidas) console.log(`(${dormidas} en espera por reloj — se saltan; \`list\` las muestra con su hora)`);
@@ -196,34 +213,70 @@ function parseMd() {
       needSid();
       const id = process.argv[3];
       if (!id) { console.error('Uso: backlog.cjs claim <T-xxx>'); process.exit(2); }
-      // Atómico: SKIP LOCKED + la condición de lease. Dos sesiones NUNCA cogen la misma.
+      // El reloj y la dependencia son CONDICIÓN, no aviso (29/07). Van dentro del mismo
+      // UPDATE atómico que el lease y se evalúan con `now()` del SERVIDOR: con 2-10 sesiones,
+      // el reloj de cada portátil no es fuente de verdad. Ver lib/backlog/claimGate.cjs.
+      const force = process.argv.includes('--force');
+      const forceMotivo = arg('--motivo') || arg('--reason');
+      if (force && !forceMotivo) {
+        console.error('❌ --force exige --motivo "por qué te saltas la espera/el bloqueo" (queda registrado)');
+        process.exit(2);
+      }
       const [row] = await s`
-        UPDATE public.backlog_tasks
+        UPDATE public.backlog_tasks t
            SET claimed_by = ${sid}, claimed_at = now(),
                lease_until = now() + (${LEASE_MIN} || ' minutes')::interval,
-               status = CASE WHEN status = 'open' THEN 'in_progress' ELSE status END
-         WHERE id = (
+               status = CASE WHEN t.status = 'open' THEN 'in_progress' ELSE t.status END,
+               force_claim_reason = CASE WHEN ${force} THEN ${forceMotivo || null} ELSE t.force_claim_reason END,
+               force_claimed_at   = CASE WHEN ${force} THEN now() ELSE t.force_claimed_at END
+         WHERE t.id = (
            SELECT id FROM public.backlog_tasks
             WHERE id = ${id}
               AND status IN ('open','in_progress','blocked')
               AND (claimed_by IS NULL OR claimed_by = ${sid} OR lease_until < now())
+              -- reloj: una aplazada no se entrega (salvo --force)
+              AND (${force} OR snooze_until IS NULL OR snooze_until <= now())
+              -- deploy: si espera a que su commit esté vivo, tampoco (salvo --force)
+              AND (${force} OR wake_on_deploy_sha IS NULL)
+              -- dependencia: bloqueada por otra tarea NUESTRA aún viva (salvo --force)
+              AND (${force} OR NOT EXISTS (
+                    SELECT 1 FROM public.backlog_tasks d
+                     WHERE d.id = ANY(COALESCE(backlog_tasks.blocked_by, '{}'))
+                       AND d.status IN ('open','in_progress','blocked')))
             FOR UPDATE SKIP LOCKED LIMIT 1)
-        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason`;
+        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason, snooze_count`;
       if (!row) {
-        const [cur] = await s`SELECT status, claimed_by, lease_until FROM public.backlog_tasks WHERE id = ${id}`;
-        if (!cur) console.error(`❌ ${id} no existe (¿has corrido 'sync'?)`);
-        else if (['done', 'dropped'].includes(cur.status)) console.error(`❌ ${id} ya está cerrada (${cur.status})`);
-        else console.error(`❌ ${id} la tiene ${String(cur.claimed_by).slice(0, 12)} (lease hasta ${cur.lease_until})`);
+        const [cur] = await s`
+          SELECT id, title, status, claimed_by, lease_until, snooze_until, snooze_reason, blocked_by,
+                 wake_on_deploy_sha, wake_on_deploy_surface
+            FROM public.backlog_tasks WHERE id = ${id}`;
+        if (!cur) { console.error(`❌ ${id} no existe (¿has corrido 'sync'?)`); process.exit(1); }
+        const abiertas = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
+        const gate = claimGate(cur, sid, new Date(), new Set(abiertas.map((r) => r.id)));
+        console.error(`❌ ${id} — ${gate.reason || 'no se puede coger ahora'}`);
+        if (gate.code === 'awaiting_deploy') {
+          console.error(`   🚀 la despertará el propio deploy al terminar (o: node scripts/backlog.cjs deployed <sha>).`);
+        }
+        if (gate.code === 'snoozed') {
+          console.error(`   🕒 despierta sola el ${cuando(cur.snooze_until)}; hasta entonces no hay nada que hacer en ella.`);
+        }
+        if (gate.forzable) {
+          console.error(`   Si aun así vas a trabajarla (p.ej. adelantar preparación):`);
+          console.error(`      node scripts/backlog.cjs claim ${id} --force --motivo "…"`);
+        }
         process.exit(1);
       }
       console.log(`✅ CLAIM ${row.id} — ${row.title}`);
-      // AVISA, no impide: aplazar es "hoy no hay nada que medir", y aun así puede ser
-      // legítimo adelantar la preparación. Lo que no puede pasar es cogerla sin saberlo.
-      if (dormida(row)) {
-        console.log(`   🕒 OJO: está EN ESPERA hasta ${cuando(row.snooze_until)}${row.snooze_reason ? ` — ${row.snooze_reason}` : ''}`);
-        console.log('      (si vas a trabajarla igualmente, despiértala: node scripts/backlog.cjs wake ' + row.id + ')');
-      }
+      if (force) console.log(`   ⚠️ COGIDA A LA FUERZA (queda registrado): ${forceMotivo}`);
       if ((row.blocked_by || []).length) console.log(`   ⚠️ declarada bloqueada por: ${row.blocked_by.join(', ')}`);
+      if (isChronicSnooze(row)) console.log(`   🔁 aplazada ${row.snooze_count} veces ya — si no toca, quizá no es una tarea programada sino una decisión pendiente.`);
+      // Lo que se dejó a medias la última vez que se pausó: sin esto, retomar es empezar de cero.
+      const [notas] = await s`SELECT progress_note, resume_check FROM public.backlog_tasks WHERE id = ${row.id}`;
+      if (notas && (notas.progress_note || notas.resume_check)) {
+        console.log('   ── se retoma donde se dejó ──');
+        if (notas.progress_note) console.log(`   ✔ hecho:  ${notas.progress_note}`);
+        if (notas.resume_check) console.log(`   ▶ falta:  ${notas.resume_check}`);
+      }
       console.log(`   lease ${LEASE_MIN} min · renueva con: node scripts/backlog.cjs heartbeat`);
       // Reclamar = LEER: escupimos la ficha entera del markdown. Así no existe "abrir la
       // tarea" separado de "reclamarla" → se elimina la ventana de olvido (el pre-push
@@ -466,13 +519,122 @@ function parseMd() {
       if (hasta.getTime() <= Date.now()) { console.error(`❌ ${hasta.toISOString()} ya pasó — un aplazamiento al pasado no aplaza nada`); process.exit(2); }
       const [row] = await s`
         UPDATE public.backlog_tasks
-           SET snooze_until = ${hasta}, snooze_reason = ${motivo}, snoozed_by = ${sid || 'cli'}
+           SET snooze_until = ${hasta}, snooze_reason = ${motivo}, snoozed_by = ${sid || 'cli'},
+               snooze_count = COALESCE(snooze_count, 0) + 1
          WHERE id = ${id} AND status IN ('open','in_progress','blocked')
-        RETURNING id, title`;
+        RETURNING id, title, snooze_count`;
       if (!row) { console.error(`❌ ${id} no existe o está cerrada`); process.exit(1); }
       console.log(`🕒 ${row.id} EN ESPERA hasta ${cuando(hasta)} — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      console.log('   (no la sugiere `next`; se despierta sola, sin que nadie se acuerde)');
+      console.log('   (no la sugiere `next` NI la deja coger `claim`; se despierta sola)');
+      if (isChronicSnooze(row)) console.log(`   🔁 van ${row.snooze_count} aplazamientos: replantéate si es una tarea programada o una decisión que nadie toma.`);
+    }
+
+    else if (cmd === 'pause') {
+      // La operación que faltaba: aplazar una tarea que YA has empezado.
+      //
+      // Hoy las dos salidas eran malas: `release` borra que estaba a medias (el siguiente
+      // empieza de cero) y `snooze` conservando el claim deja el lease muriéndose solo —medido
+      // el 29/07: 3 tareas in_progress con el lease caducado, una desde hacía 32 h—. `pause`
+      // hace las tres cosas a la vez: suelta el claim, pone el reloj y deja escrito dónde se
+      // quedó, que es lo único que hace útil retomarla dentro de dos semanas.
+      needSid();
+      const id = process.argv[3];
+      const hecho = arg('--hecho');
+      const falta = arg('--falta');
+      if (!id || !hecho || !falta) {
+        console.error('Uso: backlog.cjs pause <T-xxx> --hasta <ISO|YYYY-MM-DD HH:MM>|--horas N|--dias N --hecho "qué queda hecho" --falta "qué hay que verificar al despertar"');
+        console.error('   Las dos notas son OBLIGATORIAS: una pausa sin ellas es indistinguible de un abandono.');
+        process.exit(2);
+      }
+      // Dos formas de esperar, y NO son la misma:
+      //   --hasta/--horas/--dias  → un RELOJ (la cosecha del cron, la fecha en que toca medir)
+      //   --tras-deploy [sha]     → una CONDICIÓN ("mi commit ya está vivo"), que es el caso más
+      //                             común de "hecho pero sin verificar" y no tiene fecha.
+      const trasDeploy = process.argv.includes('--tras-deploy');
+      let hasta = null;
+      let shaEsperado = null;
+      let superficie = arg('--superficie') || arg('--surface') || 'both';
+      if (trasDeploy) {
+        if (!['frontend', 'backend', 'both'].includes(superficie)) {
+          console.error('❌ --superficie debe ser frontend | backend | both'); process.exit(2);
+        }
+        shaEsperado = arg('--tras-deploy') || (() => {
+          try {
+            const { execFileSync } = require('child_process');
+            return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+          } catch { return null; }
+        })();
+        if (!shaEsperado) { console.error('❌ no pude resolver el commit — pásalo: --tras-deploy <sha>'); process.exit(2); }
+      } else {
+        try { hasta = parseHasta(); } catch (e) { console.error(`❌ ${e.message}`); process.exit(2); }
+        if (hasta.getTime() <= Date.now()) { console.error(`❌ ${hasta.toISOString()} ya pasó — una pausa al pasado no pausa nada`); process.exit(2); }
+      }
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET snooze_until = ${hasta},
+               wake_on_deploy_sha = ${shaEsperado},
+               wake_on_deploy_surface = ${shaEsperado ? superficie : null},
+               snooze_reason = ${`retomar: ${falta}`},
+               snoozed_by = ${sid},
+               snooze_count = COALESCE(snooze_count, 0) + 1,
+               progress_note = ${hecho},
+               resume_check = ${falta},
+               -- suelta el claim: que no quede un lease agonizando durante días
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
+               status = CASE WHEN status = 'in_progress' THEN 'open' ELSE status END
+         WHERE id = ${id} AND status IN ('open','in_progress','blocked')
+           AND (claimed_by = ${sid} OR claimed_by IS NULL OR lease_until < now())
+        RETURNING id, title, snooze_count`;
+      if (!row) { console.error(`❌ no pude pausar ${id} (¿no existe, está cerrada o la tiene otra sesión?)`); process.exit(1); }
+      console.log(shaEsperado
+        ? `⏸  ${row.id} EN PAUSA hasta que se despliegue ${shaEsperado.slice(0, 8)} (${superficie}) — ${row.title}`
+        : `⏸  ${row.id} EN PAUSA hasta ${cuando(hasta)} — ${row.title}`);
+      console.log(`   ✔ hecho:  ${hecho}`);
+      console.log(`   ▶ falta:  ${falta}`);
+      console.log(shaEsperado
+        ? '   (claim liberado · la despierta el propio deploy al terminar, o `backlog.cjs deployed <sha>`)'
+        : '   (claim liberado · no la sugiere `next` ni la deja coger `claim` · despierta sola)');
+      if (isChronicSnooze(row)) console.log(`   🔁 van ${row.snooze_count} aplazamientos: ¿tarea programada o decisión pendiente?`);
+    }
+
+    else if (cmd === 'deployed') {
+      // Lo llama el propio script de deploy al terminar (best-effort, nunca rompe un deploy).
+      // Despierta las tareas que esperaban a que ESE commit estuviera vivo: el commit esperado
+      // tiene que estar CONTENIDO en el desplegado, no ser igual — el deploy es cumulativo y
+      // sube todo lo que haya en `main`.
+      const sha = process.argv[3];
+      const superficie = arg('--superficie') || arg('--surface') || 'both';
+      if (!sha) { console.error('Uso: backlog.cjs deployed <sha> [--superficie frontend|backend|both]'); process.exit(2); }
+      const esperando = await s`
+        SELECT id, title, wake_on_deploy_sha, wake_on_deploy_surface, resume_check
+          FROM public.backlog_tasks
+         WHERE wake_on_deploy_sha IS NOT NULL AND status IN ('open','in_progress','blocked')`;
+      if (!esperando.length) { console.log('(ninguna tarea esperaba un deploy)'); return; }
+      const { execFileSync } = require('child_process');
+      const contenido = (base) => {
+        try {
+          execFileSync('git', ['merge-base', '--is-ancestor', base, sha], { cwd: REPO, stdio: 'ignore' });
+          return true;
+        } catch { return false; }   // fail-safe: si git no puede contestar, NO se despierta
+      };
+      let despertadas = 0;
+      for (const t of esperando) {
+        const yaVa = contenido(t.wake_on_deploy_sha);
+        const ready = deployWakeReady(
+          t,
+          superficie === 'both'
+            ? { frontend: yaVa, backend: yaVa }
+            : { [superficie]: yaVa },
+        );
+        if (!ready) continue;
+        await s`UPDATE public.backlog_tasks
+                   SET wake_on_deploy_sha = NULL, wake_on_deploy_surface = NULL
+                 WHERE id = ${t.id}`;
+        despertadas++;
+        console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${t.resume_check || t.title}`);
+      }
+      if (!despertadas) console.log(`(${esperando.length} esperando deploy, ninguna incluida todavía en ${String(sha).slice(0, 8)})`);
     }
 
     else if (cmd === 'wake') {
@@ -509,7 +671,7 @@ function parseMd() {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | wake <id> | reserve ["título"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | reserve ["título"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

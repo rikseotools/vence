@@ -8,6 +8,7 @@ import {
   isClaimable, claimBlockedReason, pickNext, sortByAttackOrder,
   parseBacklogMarkdown, findHeadingsWithoutId, findBacklogDrift, findZombieClaims,
   isSnoozed, snoozeInfo,
+  findDateLockedTitles,
   type BacklogTask,
 } from '@/lib/backlog/claim'
 
@@ -212,5 +213,170 @@ describe('findZombieClaims', () => {
       task({ id: 'T-003', status: 'open' }),
     ], AHORA, 24)
     expect(z.map(t => t.id)).toEqual(['T-001'])
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// LA PUERTA DEL CLAIM (29/07) — el reloj deja de avisar y pasa a impedir.
+// Revierte a propósito la decisión del 28/07 ("avisa, no impide"): 24 h después
+// T-221 seguía con "⛔ NO COGER HASTA EL 29/07" en el TÍTULO, con el campo ya
+// disponible. Un aviso impreso entre otras diez líneas no es una condición.
+// ════════════════════════════════════════════════════════════════════════════
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { claimGate, isChronicSnooze, deployWakeReady } = require('@/lib/backlog/claimGate.cjs') as {
+  claimGate: (t: unknown, sid: string, now?: Date, openIds?: Set<string>) => {
+    ok: boolean; code: string; reason: string | null; forzable: boolean
+  }
+  isChronicSnooze: (t: unknown, umbral?: number) => boolean
+  deployWakeReady: (t: unknown, contiene: { frontend?: boolean; backend?: boolean }) => boolean
+}
+
+const HOY = new Date('2026-07-29T12:00:00Z')
+const tarea = {
+  id: 'T-1', title: 'x', priority: 'alta' as const, status: 'open' as const,
+  claimed_by: null, lease_until: null,
+}
+
+describe('claimGate', () => {
+  it('deja coger una tarea libre y despierta', () => {
+    expect(claimGate(tarea, 'sid-a', HOY)).toEqual({ ok: true, code: 'ok', reason: null, forzable: false })
+  })
+
+  it('IMPIDE coger una aplazada, y dice hasta cuándo y por qué', () => {
+    const t = { ...tarea, snooze_until: '2026-08-11T07:00:00Z', snooze_reason: 'medir a los 14 días' }
+    const g = claimGate(t, 'sid-a', HOY)
+    expect(g.ok).toBe(false)
+    expect(g.code).toBe('snoozed')
+    expect(g.reason).toContain('2026-08-11')
+    expect(g.reason).toContain('medir a los 14 días')
+  })
+
+  it('el aplazamiento vence SOLO: pasada la hora vuelve a ser reclamable', () => {
+    const t = { ...tarea, snooze_until: '2026-07-29T11:59:00Z' }
+    expect(claimGate(t, 'sid-a', HOY).ok).toBe(true)
+  })
+
+  it('IMPIDE coger una bloqueada por otra tarea VIVA, y la nombra', () => {
+    const t = { ...tarea, blocked_by: ['T-99'] }
+    const g = claimGate(t, 'sid-a', HOY, new Set(['T-99']))
+    expect(g.code).toBe('blocked')
+    expect(g.reason).toContain('T-99')
+  })
+
+  it('una dependencia YA CERRADA no bloquea (no está en el conjunto de abiertas)', () => {
+    const t = { ...tarea, blocked_by: ['T-99'] }
+    expect(claimGate(t, 'sid-a', HOY, new Set()).ok).toBe(true)
+  })
+
+  it('el lease ajeno NO es forzable, el reloj y la dependencia SÍ', () => {
+    // Forzar un lease vivo sería pisar trabajo de otra sesión; forzar el reloj es
+    // adelantar preparación, que es legítimo si se declara.
+    const leased = { ...tarea, claimed_by: 'otra', lease_until: '2026-07-29T13:00:00Z' }
+    expect(claimGate(leased, 'sid-a', HOY)).toMatchObject({ code: 'leased', forzable: false })
+    const dormida = { ...tarea, snooze_until: '2026-08-11T07:00:00Z' }
+    expect(claimGate(dormida, 'sid-a', HOY).forzable).toBe(true)
+    const bloqueada = { ...tarea, blocked_by: ['T-99'] }
+    expect(claimGate(bloqueada, 'sid-a', HOY, new Set(['T-99'])).forzable).toBe(true)
+  })
+
+  it('una cerrada no se coge ni forzando', () => {
+    const t = { ...tarea, status: 'done' as const }
+    expect(claimGate(t, 'sid-a', HOY)).toMatchObject({ code: 'closed', forzable: false })
+  })
+
+  it('el lease ajeno se comprueba ANTES que el reloj (el motivo más útil primero)', () => {
+    const t = { ...tarea, claimed_by: 'otra', lease_until: '2026-07-29T13:00:00Z', snooze_until: '2026-08-11T07:00:00Z' }
+    expect(claimGate(t, 'sid-a', HOY).code).toBe('leased')
+  })
+
+  it('re-claim de la MISMA sesión sigue siendo idempotente aunque esté aplazada… no: el reloj manda', () => {
+    // Matiz deliberado: que la tarea sea tuya no adelanta la fecha externa. Si la
+    // pausaste hasta el 11/08, tampoco tú tienes nada que hacer hoy.
+    const t = { ...tarea, claimed_by: 'sid-a', snooze_until: '2026-08-11T07:00:00Z' }
+    expect(claimGate(t, 'sid-a', HOY).code).toBe('snoozed')
+  })
+})
+
+describe('isChronicSnooze', () => {
+  it('marca la tarea aplazada 3+ veces (aplazar en bucle es no decidir)', () => {
+    expect(isChronicSnooze({ ...tarea, snooze_count: 3 })).toBe(true)
+    expect(isChronicSnooze({ ...tarea, snooze_count: 2 })).toBe(false)
+    expect(isChronicSnooze({ ...tarea, snooze_count: null })).toBe(false)
+  })
+})
+
+describe('findDateLockedTitles', () => {
+  it('caza los candados imperativos reales (T-221 y T-234)', () => {
+    const hits = findDateLockedTitles([
+      { id: 'T-221', title: '⛔ NO COGER HASTA EL 29/07 07:00 UTC (esperando la cosecha del cron)' },
+      { id: 'T-234', title: '⏱ MEDIR EL 11/08 — 873 usuarios estudian con una oposición que no existe' },
+    ])
+    expect(hits.map(h => h.id)).toEqual(['T-221', 'T-234'])
+  })
+
+  it('NO marca la fecha descriptiva, que es información legítima del título', () => {
+    // Precisión sobre recall: estos dos son títulos correctos y deben pasar.
+    const hits = findDateLockedTitles([
+      { id: 'T-162', title: '`detect-notas-convocatoria` no COMPLETA una ejecución desde el 24/07' },
+      { id: 'T-276', title: 'Las preguntas generadas desde el 23/07 nacen no barajables' },
+      { id: 'T-999', title: 'Newsletters de las 4 convocatorias con plazo abierto' },
+    ])
+    expect(hits).toEqual([])
+  })
+
+  it('caza "esperar a" y "hasta el <fecha>" sin emoji', () => {
+    const hits = findDateLockedTitles([
+      { id: 'T-1', title: 'Esperar a que el cron coseche y entonces medir' },
+      { id: 'T-2', title: 'Rehacer el scope hasta el 30/07' },
+    ])
+    expect(hits.map(h => h.id)).toEqual(['T-1', 'T-2'])
+  })
+})
+
+describe('espera de DEPLOY (no es un reloj: no hay fecha que poner)', () => {
+  it('IMPIDE coger una tarea cuyo commit aún no está desplegado, y dice cuál', () => {
+    const t = { ...tarea, wake_on_deploy_sha: 'abc1234567', wake_on_deploy_surface: 'frontend' }
+    const g = claimGate(t, 'sid-a', HOY)
+    expect(g.code).toBe('awaiting_deploy')
+    expect(g.reason).toContain('abc12345')
+    expect(g.reason).toContain('frontend')
+    expect(g.forzable).toBe(true)   // se puede adelantar preparación declarándolo
+  })
+
+  it('el reloj se comprueba antes que el deploy (si tiene los dos, manda la fecha)', () => {
+    const t = { ...tarea, snooze_until: '2026-08-11T07:00:00Z', wake_on_deploy_sha: 'abc' }
+    expect(claimGate(t, 'sid-a', HOY).code).toBe('snoozed')
+  })
+
+  it('sin commit pendiente no bloquea nada', () => {
+    expect(claimGate({ ...tarea, wake_on_deploy_sha: null }, 'sid-a', HOY).ok).toBe(true)
+  })
+})
+
+describe('deployWakeReady', () => {
+  const t = (surface: string) => ({ wake_on_deploy_sha: 'abc', wake_on_deploy_surface: surface })
+
+  it('frontend: despierta cuando el frontend ya lo lleva', () => {
+    expect(deployWakeReady(t('frontend'), { frontend: true, backend: false })).toBe(true)
+    expect(deployWakeReady(t('frontend'), { frontend: false, backend: true })).toBe(false)
+  })
+
+  it('backend: idem al revés', () => {
+    expect(deployWakeReady(t('backend'), { frontend: true, backend: false })).toBe(false)
+    expect(deployWakeReady(t('backend'), { frontend: false, backend: true })).toBe(true)
+  })
+
+  it('both exige las DOS: despertar a medias manda a verificar algo incompleto', () => {
+    expect(deployWakeReady(t('both'), { frontend: true, backend: false })).toBe(false)
+    expect(deployWakeReady(t('both'), { frontend: true, backend: true })).toBe(true)
+  })
+
+  it('sin superficie declarada se comporta como both (lo conservador)', () => {
+    expect(deployWakeReady({ wake_on_deploy_sha: 'abc' }, { frontend: true })).toBe(false)
+  })
+
+  it('una tarea que no espera deploy siempre está lista', () => {
+    expect(deployWakeReady({ wake_on_deploy_sha: null }, {})).toBe(true)
   })
 })
