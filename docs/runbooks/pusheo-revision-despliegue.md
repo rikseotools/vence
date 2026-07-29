@@ -71,6 +71,21 @@ Ambos: build (podman) → push ECR → task def pineada por **digest** clonando 
 - **GHA auto-deploy DESACTIVADO** (metía builds Supabase por sorpresa). Deploy manual con estos scripts.
   - ⚠️ **`backend-deploy.yml` seguía con trigger `push` vivo hasta el 11/07/2026** (pese a este párrafo) y además **pinaba el task def a un digest equivocado** (distinto de la imagen que construía) → al pushear `backend/**` a `main`, ECS intentaba arrancar un task cuya imagen no existía en ECR → **deployment atascada + backend frágil** (el task vivo corría una imagen ya borrada de ECR; una muerte del task = caída no auto-curable; circuit breaker OFF). Recuperación: registrar task def clon apuntando a la imagen REAL (`...@sha256:<digest_existente>`) + `update-service` + esperar estable + smoke. **Fix:** el workflow se pasó a `workflow_dispatch` (sin `push`). No re-activar el `push` sin arreglar antes el pinning por digest.
 
+## Post-deploy: el smoke HTTP no lo ve todo
+
+Tras el smoke (`home` 200 + `/api/auth/token` 401), el anti-clobber y el canary premium, el
+deploy del frontend corre una **verificación en navegador** (`scripts/verify-release.sh`, Vence
+Sim con los journeys `postDeploy`). Motivo: los controles del examen se sirvieron rotos —tapados
+por la cabecera, invisibles y sordos al clic— **con el smoke en verde**, porque un 200 no dice
+nada del pintado. Detalle y frontera agnóstica: `docs/runbooks/vence-sim.md`.
+
+- **No bloquea**: un rojo puede ser del entorno (contenedor frío, límite de peticiones). Informa
+  y emite a `observable_events`. Con `VERIFY_STRICT=1` sí bloquea.
+- **Se salta limpiamente** si la máquina no tiene navegadores de Playwright o falta la identidad
+  de la cuenta de test: un despliegue nunca falla por no poder verificar.
+- **Con koigrid**: su script exporta `VERIFY_BASE_URL` + `SIM_AUTH_SECRET` + `SMOKE_USER_ID` y
+  llama al MISMO verificador. Lo que sabe de AWS se queda en `deploy-frontend.sh`.
+
 ## Pre-deploy: árbol limpio + commit pusheado + CI verde (guardarraíles del script)
 
 Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueban dos cosas y **abortan** si no se cumplen:

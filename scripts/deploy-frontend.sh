@@ -418,6 +418,20 @@ if [ -n "$CANARY_SECRET" ]; then
 else
   echo "   (canary premium omitido: SUPABASE_JWT_SECRET no accesible en SSM)"
 fi
+# Verificación en NAVEGADOR de lo recién publicado: los journeys de Vence Sim marcados
+# `postDeploy` (hoy, los controles flotantes del examen — el fallo de Manolo era de PINTADO y
+# ningún smoke de HTTP lo ve). Aquí SOLO se resuelven los secretos de ESTA nube; el verificador
+# (scripts/verify-release.sh) es agnóstico y es lo que llamará también koigrid.
+# No bloquea el despliegue: un rojo puede ser del entorno (contenedor frío, límite de
+# peticiones) y un guardarraíl que tumba deploys por causas ajenas se acaba desactivando.
+VERIFY_SECRET=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-frontend/AUTH_SECRET" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
+VERIFY_ID=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-backend/SMOKE_USER_ID" --query 'Parameter.Value' --output text 2>/dev/null || true)
+VERIFY_BASE_URL=https://www.vence.es \
+SIM_AUTH_SECRET="$VERIFY_SECRET" \
+SMOKE_USER_ID="$VERIFY_ID" \
+SIM_EMIT=1 \
+  bash "$(dirname "$0")/verify-release.sh" || true
+
 echo ""
 if [ "$REPIN_OK" != "1" ]; then
   echo "⚠️⚠️ FRONTEND DESPLEGADO OK, pero alguna task def derivada NO se re-pineó (ver arriba)."

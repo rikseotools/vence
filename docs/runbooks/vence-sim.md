@@ -97,6 +97,45 @@ Cada bug reportado → un journey nuevo (~20 líneas) que queda como **regresió
 3. Añade un caso a `journey.integration.test.ts` con un ctx simulado.
 4. Corre `npm run sim -- <nombre>` contra prod.
 
+## Verificación de RELEASE (lo único que corre solo)
+
+Vence Sim es on-demand por diseño, con UNA excepción: al publicar una versión, el despliegue
+corre los journeys marcados `postDeploy: true`.
+
+```bash
+# lo que hace el deploy (y lo que puedes lanzar tú a mano)
+VERIFY_BASE_URL=https://www.vence.es SIM_AUTH_SECRET=… SMOKE_USER_ID=… SIM_EMIT=1 \
+  bash scripts/verify-release.sh
+```
+
+**Por qué ahí y no en un cron:** esta clase de fallo (pintado, oclusión, z-index, un hueco mal
+medido) la introduce un cambio que llega a producción; no aparece sola con el tiempo. En el
+despliegue el culpable es evidente y no hace falta que CI guarde `AUTH_SECRET` — la llave con la
+que se forja la sesión de cualquiera. Un cron cada 6h llegaría tarde, costaría ese secreto y
+abriría exámenes reales a diario (con su desgaste: el límite es de 10 peticiones/minuto).
+
+**No bloquea el despliegue.** Un rojo puede ser del entorno (contenedor frío, límite de
+peticiones), y un guardarraíl que tumba deploys por causas ajenas se acaba desactivando. Informa
+y deja el resultado en `observable_events` (`sim_journey_result`, severidad `error` si el journey
+es `high`/`critical`). Cuando demuestre ser estable: `VERIFY_STRICT=1`.
+
+**Marcar un journey para que entre aquí:** `postDeploy: true` en su definición. La lista vive en
+los journeys, NO en el script de despliegue — así no se muda al cambiar de nube.
+
+### Frontera agnóstica (AWS hoy, koigrid mañana)
+| Pieza | Sabe de la nube | Qué hace |
+|-------|-----------------|----------|
+| `scripts/deploy-frontend.sh` | **Sí** (SSM, ECS) | resuelve el secreto y la identidad y llama al verificador |
+| `scripts/verify-release.sh` | **No** | contrato: recibe URL + identidad por entorno y corre los journeys `postDeploy` |
+| `lib/sim/secretos.ts` | aislada | de dónde sale `AUTH_SECRET`: `env` (defecto en koigrid) o `aws-ssm` (comodidad local) |
+| `lib/sim/seleccion.ts` | No | qué journeys entran en la verificación |
+
+Mudarse a koigrid = su script de despliegue exporta `VERIFY_BASE_URL`, `SIM_AUTH_SECRET` y
+`SMOKE_USER_ID` (con `SIM_SECRET_PROVIDER=env`) y llama al mismo `verify-release.sh`. Ni el
+verificador, ni los journeys, ni las invariantes cambian. Guardarraíl que lo mantiene honesto:
+`__tests__/guardrails/deploy-scripts.test.ts` falla si el verificador empieza a hablar AWS o si
+el deploy deja de invocarlo.
+
 ## Catálogo de invariantes (`lib/sim/invariants.ts`)
 - `questionsWithinSelection` — ninguna pregunta fuera de lo seleccionado (bug Alfonso #2).
 - `recoveredFromBlip` / `retriesAreBounded` — resiliencia de red del cliente (bug #1).

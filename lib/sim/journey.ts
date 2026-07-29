@@ -37,6 +37,12 @@ export interface Journey {
   severity: SimSeverity
   /** identidad opcional (auth propia). Sin ella, corre anónimo. */
   as?: SimIdentity & { positionType?: string }
+  /**
+   * ¿Vigila algo que un DESPLIEGUE puede romper? Si sí, el verificador de release lo corre
+   * tras publicar una versión (`run.ts --post-deploy`). Se declara aquí y no en el script del
+   * proveedor de nube para que la lista no se mude al cambiar de casa (AWS → koigrid).
+   */
+  postDeploy?: boolean
   /** ejecuta el escenario y devuelve las invariantes evaluadas. */
   run(ctx: JourneyCtx): Promise<InvariantResult[]>
 }

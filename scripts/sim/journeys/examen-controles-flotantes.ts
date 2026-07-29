@@ -83,6 +83,9 @@ const journey: Journey = {
   // high y no critical: el examen se puede hacer igual, pero deja al usuario sin las dos cosas
   // que pidió y sin forma de saber que existen.
   severity: 'high',
+  // Es un fallo de PINTADO que introduce un despliegue: se verifica justo cuando la versión
+  // llega a producción, que es cuando el riesgo existe y cuando el culpable es evidente.
+  postDeploy: true,
   as: { userId: USER_ID, email: EMAIL, label: POSITION, positionType: POSITION },
   async run(ctx) {
     const resultados: InvariantResult[] = []

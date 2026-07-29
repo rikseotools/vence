@@ -28,24 +28,29 @@ import { faultHandler } from '../../lib/sim/faults'
 import { verdictOf, type SimResult, type StepOutcome } from '../../lib/sim/types'
 import { toObservabilityEvent, suiteSummary, oneLineSummary } from '../../lib/sim/report'
 import type { Journey, JourneyCtx } from '../../lib/sim/journey'
+import { leerArgs, seleccionar } from '../../lib/sim/seleccion'
+import { resolverAuthSecret } from '../../lib/sim/secretos'
 
 const BASE = process.env.SIM_BASE || 'https://www.vence.es'
 const HOST = new URL(BASE).hostname
 const EMIT = process.env.SIM_EMIT === '1'
 const REPORT_DIR = process.env.SIM_REPORT_DIR || join(process.cwd(), 'sim-reports', String(Date.now()))
-const FILTER = process.argv[2] || ''
+const { filtro: FILTER, soloPostDeploy: SOLO_POST_DEPLOY } = leerArgs(process.argv.slice(2))
 
 let AUTH_SECRET: string | null = null
 function authSecret(): string {
   if (AUTH_SECRET) return AUTH_SECRET
   // 1) env (CI canary: viene de un secret de GitHub Actions). 2) fallback SSM (dev con
   // perfil AWS que tenga ssm:GetParameter). Env-first = no dependemos de SSM en runtime.
-  const fromEnv = process.env.SIM_AUTH_SECRET || process.env.AUTH_SECRET
-  if (fromEnv && fromEnv.length > 10) { AUTH_SECRET = fromEnv; return AUTH_SECRET }
-  AUTH_SECRET = execSync(
-    'aws ssm get-parameter --name "/vence-frontend/AUTH_SECRET" --with-decryption --query "Parameter.Value" --output text',
-    { encoding: 'utf8' },
-  ).trim()
+  // De dónde sale el valor lo decide `lib/sim/secretos.ts` (env-first, SSM como comodidad en
+  // local). Es el único punto del harness atado a una nube: al mudarse a koigrid se usa el
+  // proveedor `env` y aquí no cambia nada.
+  const resuelto = resolverAuthSecret({
+    env: process.env,
+    ejecutar: (comando: string) => execSync(comando, { encoding: 'utf8' }),
+  })
+  if (!resuelto) throw new Error('[sim] sin AUTH_SECRET: define SIM_AUTH_SECRET o usa un proveedor de secretos')
+  AUTH_SECRET = resuelto
   return AUTH_SECRET
 }
 
@@ -56,9 +61,10 @@ async function loadJourneys(): Promise<Journey[]> {
   for (const f of files) {
     const mod = await import(join(dir, f))
     const j: Journey = mod.default || mod.journey
-    if (j && j.name && (!FILTER || j.name.includes(FILTER))) out.push(j)
+    if (j && j.name) out.push(j)
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name))
+  return seleccionar(out, { filtro: FILTER, soloPostDeploy: SOLO_POST_DEPLOY })
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
@@ -235,7 +241,13 @@ async function emit(results: SimResult[]) {
 async function main() {
   mkdirSync(REPORT_DIR, { recursive: true })
   const journeys = await loadJourneys()
-  if (journeys.length === 0) { console.error('No hay journeys' + (FILTER ? ` que casen "${FILTER}"` : '')); process.exit(2) }
+  if (journeys.length === 0) {
+    const motivo = SOLO_POST_DEPLOY
+      ? ' marcados para verificar un release (`postDeploy: true`)'
+      : FILTER ? ` que casen "${FILTER}"` : ''
+    console.error('No hay journeys' + motivo)
+    process.exit(2)
+  }
   console.log(`▶ Vence Sim — ${journeys.length} journey(s) contra ${BASE}${EMIT ? ' [emit ON]' : ''}\n`)
 
   const results: SimResult[] = []

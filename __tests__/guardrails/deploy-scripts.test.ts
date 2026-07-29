@@ -7,7 +7,7 @@
  * Si alguien edita el deploy y quita el sync a S3, este test falla ANTES de que
  * un deploy vuelva a congelar usuarios.
  */
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 
 const ROOT = join(__dirname, '..', '..')
@@ -404,5 +404,54 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
       // La familia de la task def lleva el prefijo `vence-`; el job, no.
       expect(declarados).toContain(e.familia.replace(/^vence-/, ''))
     }
+  })
+})
+
+// ── Verificación de release en navegador (Vence Sim) ─────────────────────────────────────────
+//
+// El smoke de HTTP no ve un fallo de PINTADO: los controles del examen se sirvieron rotos
+// (tapados por la cabecera) con la home devolviendo 200 y el token 401, o sea, con el smoke en
+// verde. Por eso el deploy llama además a una verificación en navegador. Y esa verificación
+// tiene que seguir siendo AGNÓSTICA: la nube se resuelve en el script del proveedor, no dentro
+// del verificador — si no, mudarse a koigrid obligaría a reescribirlo.
+const verifier = readFileSync(join(ROOT, 'scripts/verify-release.sh'), 'utf-8')
+
+describe('verificación de release — enganchada al deploy y agnóstica del proveedor', () => {
+  it('el deploy del frontend la invoca', () => {
+    expect(frontend).toMatch(/verify-release\.sh/)
+  })
+
+  it('el deploy le pasa la URL y la identidad por entorno (contrato, no acoplamiento)', () => {
+    expect(frontend).toMatch(/VERIFY_BASE_URL=/)
+    expect(frontend).toMatch(/SIM_AUTH_SECRET=/)
+    expect(frontend).toMatch(/SMOKE_USER_ID=/)
+  })
+
+  it('NO tumba el despliegue por sí sola (un rojo de entorno no puede bloquear un release)', () => {
+    expect(frontend).toMatch(/verify-release\.sh"?\s*\|\|\s*true/)
+  })
+
+  it('el verificador NO habla con ninguna nube concreta', () => {
+    // Lo que lo hace portable: ni AWS CLI, ni SSM, ni ECS dentro del verificador.
+    expect(verifier).not.toMatch(/\baws\s+(ssm|ecs|s3|cloudfront)\b/)
+  })
+
+  it('el verificador corre los journeys marcados para release, no una lista escrita a mano', () => {
+    expect(verifier).toMatch(/--post-deploy/)
+    // Pasar nombres de journey a mano sería un silo que envejece al añadir journeys: lo que
+    // se corre lo declara cada journey con `postDeploy`, no este script.
+    expect(verifier).not.toMatch(/run\.ts\s+(?!--)[a-z]/)
+  })
+
+  it('sin navegador o sin URL se salta limpiamente en vez de fallar', () => {
+    expect(verifier).toMatch(/SALTADA/)
+    expect(verifier).toMatch(/exit 0/)
+  })
+
+  it('hay al menos un journey declarado para verificar el release', () => {
+    const journeys = readdirSync(join(ROOT, 'scripts/sim/journeys'))
+      .filter(f => f.endsWith('.ts'))
+      .map(f => readFileSync(join(ROOT, 'scripts/sim/journeys', f), 'utf-8'))
+    expect(journeys.some(src => /postDeploy:\s*true/.test(src))).toBe(true)
   })
 })
