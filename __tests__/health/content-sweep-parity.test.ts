@@ -39,7 +39,12 @@ const hasKind = (txt: string, kind: string) =>
 // se excluye de la paridad A PROPÓSITO. Consecuencia asumida: el @Cron nocturno NO refresca
 // estos hallazgos (solo aparecen al correr el CLI a mano). Si algún día se reimplementa la
 // lógica nativa en el service (o en un paquete compartido), quitarlo de este set.
-const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed'])
+// `shuffle_narrativa_letra_clavada` (T-262) sale del MISMO subproceso y hereda la misma
+// limitación: se emite al correr el CLI, no en el @Cron nocturno. Se documenta en el runbook para
+// que nadie lea un badge a cero como "no hay ninguna". Promoverlos al @Cron exige un paquete
+// compartido con `lib/shuffle/*` — reimplementar el detector en el backend crearía la segunda
+// copia de patrones que este módulo lleva cuatro calibraciones evitando.
+const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed', 'shuffle_narrativa_letra_clavada'])
 
 // Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano
 // (y como puerta antes de una campaña), NO el barrido nocturno. Se midieron sobre las 123 landings

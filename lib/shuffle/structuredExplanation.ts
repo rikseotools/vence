@@ -17,11 +17,14 @@
  *   - option_order[i] = índice ORIGINAL mostrado en la posición i (0=A al render).
  *   - `correctOption` (questions.correct_option) es SIEMPRE en coordenadas ORIGINALES.
  *
- * Este módulo es PURO (sin IO, sin deps). Alimenta:
+ * Este módulo es PURO (sin IO). Su única dependencia es el detector de referencias por letra de
+ * `classifyShuffleMode` (Fase 1), que se REUTILIZA en vez de copiarse. Alimenta:
  *   - serve: renderiza `explanation` desde `explanation_data` + `option_order`.
  *   - migración: `parseLetterFormatExplanation` convierte el §8.1 histórico a estructura.
  *   - generación: el manual manda emitir directamente `explanation_data` (sin letras).
  */
+
+import { explanationReferencesLetters } from './classifyShuffleMode'
 
 /** Marco de la pregunta: elegir la CORRECTA (default) o la INCORRECTA ("señale la falsa"). */
 export type ExplanationFrame = 'select_correct' | 'select_incorrect'
@@ -103,6 +106,92 @@ export function isStructuredExplanation(
     if (typeof r !== 'string' || r.trim() === '') return false
   }
   return true
+}
+
+/**
+ * Los campos de NARRATIVA de una explicación estructurada: el texto libre que el render emite
+ * **verbatim, igual en cualquier orden**. Hoy son `intro` y `outro`.
+ *
+ * Se separan del resto porque tienen una propiedad que las razones NO tienen: las razones van
+ * keadas al índice de su opción y la letra la pone el render, así que barajar las mueve con su
+ * opción; la narrativa, en cambio, se copia tal cual. Si ahí dentro hay una letra de opción, al
+ * barajar queda clavada y **miente**.
+ *
+ * ⚠️ La `cita` queda FUERA a propósito: el articulado se cita por letras en lenguaje jurídico
+ * corriente («la letra b) del art. 9.1»), y pasarla por el detector marcaría citas impecables.
+ * Es el mismo criterio que ya hubo que aplicar en T-204 con el validador de impugnaciones.
+ */
+export function structuredNarrative(
+  data?: Pick<StructuredExplanation, 'intro' | 'outro'> | null
+): Array<{ campo: 'intro' | 'outro'; texto: string }> {
+  if (!data) return []
+  const out: Array<{ campo: 'intro' | 'outro'; texto: string }> = []
+  if (data.intro && data.intro.trim()) out.push({ campo: 'intro', texto: data.intro })
+  if (data.outro && data.outro.trim()) out.push({ campo: 'outro', texto: data.outro })
+  return out
+}
+
+/**
+ * ¿Qué campos de narrativa CLAVAN una letra de opción? Devuelve los nombres (`intro`/`outro`)
+ * para que quien informe pueda decir dónde está el problema, no solo que lo hay.
+ *
+ * Usa el MISMO detector que el resto del sistema (`explanationReferencesLetters`) — no una copia:
+ * los patrones se han calibrado cuatro veces (T-201, T-204, el agujero de las tildes en `\b`) y
+ * mantener un segundo juego los dejaría divergir en silencio.
+ *
+ * **Por qué existe (T-262, 29/07):** tener `explanation_data` se venía tratando como "safe por
+ * construcción" en TODAS las capas —el gate de serve, el sweep nocturno y la simulación—, y esa
+ * suposición se hizo mirando las razones. Al transcribir el histórico, el `intro` se captura
+ * verbatim (para no perder el párrafo de contexto, arreglo del 27/07) y con él entraron 1.211
+ * aperturas del tipo «La respuesta correcta es la **C**.». Barajada, esa pregunta dice **C**
+ * arriba y **A** en la cabecera que calcula el render: se contradice sola en el mismo recuadro.
+ */
+/**
+ * La apertura canónica que CLAVA la letra: «La respuesta correcta es la **C**.». Solo casa si hay
+ * letra — «La respuesta correcta es la que exige acreditación» es contenido legítimo y se respeta.
+ */
+// Ancla al FINAL DE LÍNEA a propósito: la línea entera tiene que ser esa frase y nada más.
+//
+// ⚠️ Sin el ancla, la poda MUTILA el formato §5.1, que abre nombrando la opción completa:
+// «La respuesta correcta es **B) Podrá aprobarse el remate en favor de una mejor postura…**».
+// Recortando solo el prefijo quedaba el texto de la opción suelto, empezando en minúscula y con
+// los asteriscos descolgados. Cazado el 29/07 comprobando la reparación contra 3 casos reales
+// ANTES de aplicarla a 1.155 preguntas — el recuento decía «podable» y el texto decía otra cosa.
+// Esas variantes van a revisión humana: decidir si se pierde la repetición del enunciado de la
+// opción no es una decisión mecánica.
+const RE_APERTURA_CON_LETRA =
+  /^[ \t]*la\s+respuesta\s+correcta\s+es(?:\s+la)?[ \t]*\*{0,2}[ \t]*([A-E])[ \t]*\)?[ \t]*\*{0,2}[ \t]*[.:]?[ \t]*$/im
+
+/**
+ * Poda esa apertura del `intro` al TRANSCRIBIR el histórico (T-262). Importa el orden de los
+ * hechos: el intro se empezó a capturar verbatim el 27/07 para dejar de perder el párrafo de
+ * contexto, y con él entró la línea de la letra — que en el texto plano era verdad y en una
+ * explicación barajable es una mentira fija.
+ *
+ * Qué pasa después de podar, por estilo:
+ *   · `impugnacion` → el render REGENERA esa línea con la letra que toque, así que el texto en
+ *     orden natural sale idéntico y barajado sale correcto. Ganancia limpia.
+ *   · `boletin`     → el render no la emite (la cabecera «Por qué C es correcta» ya la dice), así
+ *     que el texto pierde esa línea redundante y la guarda de no-regresión RECHAZA la migración.
+ *     Es el sesgo de siempre del módulo: **ante la duda, no migrar** — un falso negativo deja la
+ *     pregunta sin barajar (inocuo) y un falso positivo sirve una contradicción (grave).
+ */
+export function podarAperturaConLetra(intro?: string | null): string | undefined {
+  if (!intro) return undefined
+  // Solo la PRIMERA línea, y solo si es exactamente esa frase: una aparición en medio del párrafo
+  // es contenido con contexto alrededor y recortarla dejaría la frase coja.
+  const lineas = intro.replace(/\r\n/g, '\n').split('\n')
+  if (!RE_APERTURA_CON_LETRA.test(lineas[0] ?? '')) return intro
+  const podado = lineas.slice(1).join('\n').trim()
+  return podado || undefined
+}
+
+export function structuredNarrativeStaleLetters(
+  data?: Pick<StructuredExplanation, 'intro' | 'outro'> | null
+): Array<'intro' | 'outro'> {
+  return structuredNarrative(data)
+    .filter(({ texto }) => explanationReferencesLetters(texto))
+    .map(({ campo }) => campo)
 }
 
 /**
@@ -342,7 +431,9 @@ export function parseImpugnacionFormatExplanation(
   const razonClave = options[String(correctOption)] || ''
   if (!/\bCORRECTA\b/i.test(razonClave)) return null
 
-  const intro = text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim() || undefined
+  // La apertura con letra NO entra en la estructura: aquí el render la regenera con la letra que
+  // corresponda tras barajar, así que podarla deja el texto natural idéntico y el barajado sano.
+  const intro = podarAperturaConLetra(text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim())
   const bloqueCita = text
     .slice(0, marcas[0].ini)
     .split('\n')
@@ -494,7 +585,10 @@ export function parseLetterFormatExplanation(
     .filter((l) => !l.trim().startsWith('>'))   // la cita ya está capturada aparte
     .join('\n')
     .trim()
-  const intro = introTexto || undefined
+  //    Y desde T-262 se PODA la apertura con letra: aquí el render no la reemite (la cabecera
+  //    «Por qué C es correcta» ya la dice), así que la guarda de no-regresión rechazará la
+  //    migración de esas — que es justo lo que se quiere: sin barajar antes que contradiciéndose.
+  const intro = podarAperturaConLetra(introTexto)
 
   const frame: ExplanationFrame = /incorrect|falsa/i.test(cm[0]) ? 'select_incorrect' : 'select_correct'
   const result: StructuredExplanation = { v: 1, options, frame }

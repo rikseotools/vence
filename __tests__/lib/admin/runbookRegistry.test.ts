@@ -17,7 +17,8 @@ const SWEEP_KINDS = [
   'no_hitos', 'flattened_table', 'stale_dated_law', 'audit_note_explanation',
   'law_unverified_source', 'scope_titulo_huerfano', 'convocatoria_docs_incompletos',
   'answer_in_annulled_fragment', 'scope_over_inclusion_suspect',
-  'scope_cross_tema_dup', 'shuffle_safe_regressed', 'visual_deixis_no_image',
+  'scope_cross_tema_dup', 'shuffle_safe_regressed', 'shuffle_narrativa_letra_clavada',
+  'visual_deixis_no_image',
   'epigrafe_provenance_no_doc', 'temario_revision_pendiente', 'scope_sin_verificar',
 ]
 

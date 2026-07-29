@@ -999,6 +999,15 @@ async function main() {
         `${drift.regressions} pregunta(s) 'safe' cuya explicación cita letras/posición${drift.hash_mismatch ? ` + ${drift.hash_mismatch} con hash desincronizado (trigger)` : ''} — barajarlas rompería la explicación`,
         { regressions: drift.regressions, hash_mismatch: drift.hash_mismatch, sample: drift.sample });
     }
+    // Hallazgo SEPARADO (T-262): la letra clavada en el intro/outro de una explicación
+    // estructurada. Mismo detector y mismo barrido, pero otro remedio —se PODA la narrativa, no
+    // se reescribe la razón—, así que va con su propio kind para que el chip de /admin/contenido
+    // dé la instrucción correcta.
+    if (drift.narrative_stale_letters > 0) {
+      add('content', 'warn', null, 'shuffle_narrativa_letra_clavada',
+        `${drift.narrative_stale_letters} pregunta(s) con explicación estructurada cuyo intro/outro clava una letra de opción — al barajar se contradicen con la letra que calcula el render`,
+        { total: drift.narrative_stale_letters, sample: drift.narrative_sample });
+    }
   } catch (e) { console.warn('⚠️ drift barajado no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──

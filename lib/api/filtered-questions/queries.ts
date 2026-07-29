@@ -34,7 +34,11 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 import { isShuffleServeEligible } from '@/lib/shuffle/classifyShuffleMode'
 import { permutationFor, applyOrder } from '@/lib/shuffle/permute'
 import { isShuffleEnabledFor } from '@/lib/shuffle/flag'
-import { isStructuredExplanation, renderStructuredExplanation } from '@/lib/shuffle/structuredExplanation'
+import {
+  isStructuredExplanation,
+  renderStructuredExplanation,
+  structuredNarrative,
+} from '@/lib/shuffle/structuredExplanation'
 import { randomUUID } from 'crypto'
 
 // ============================================
@@ -232,6 +236,11 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
       // Y las RAZONES de la estructura: tenerla no garantiza que una razón no hable de otra
       // opción por su letra o su posición (28/07).
       structuredReasons: estructurada ? Object.values(estructurada.options ?? {}) : undefined,
+      // Y la NARRATIVA (intro/outro): se emite verbatim en cualquier orden, así que una letra
+      // escrita ahí se contradice con la que calcula el render (T-262, 29/07).
+      structuredNarrative: estructurada
+        ? structuredNarrative(estructurada).map(({ texto }) => texto)
+        : undefined,
     })
   ) {
     const order = permutationFor(q.id, randomUUID(), naturalOptions.length)

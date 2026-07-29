@@ -219,6 +219,18 @@ export function isShuffleServeEligible(q: {
    * Medido: 630 de 4.739 estructuradas (13%).
    */
   structuredReasons?: Array<string | null | undefined>;
+  /**
+   * NARRATIVA de la explicación estructurada: `intro` y `outro` (T-262, 29/07). Es texto libre
+   * que el render emite **verbatim en cualquier orden**, así que una letra escrita ahí queda
+   * clavada y miente al barajar. Medido el 29/07: 1.211 activas `safe` cuyo intro dice «La
+   * respuesta correcta es la **C**.» mientras la cabecera calcula otra letra dos líneas después.
+   *
+   * Va aparte de `structuredReasons` porque el remedio es distinto —la razón se reescribe, la
+   * narrativa se PODA (el render ya anuncia la letra)— y quien informe debe poder distinguirlas.
+   * La `cita` NO se pasa por aquí: el articulado se cita por letras («la letra b) del art. 9.1»)
+   * y marcaría citas correctas.
+   */
+  structuredNarrative?: Array<string | null | undefined>;
 }): boolean {
   // Con explicación estructurada la seguridad NO depende de la clasificación guardada: las
   // razones van keadas al índice de cada opción y la letra se pinta al renderizar, así que
@@ -232,6 +244,9 @@ export function isShuffleServeEligible(q: {
     // Las razones se examinan con el MISMO detector que la explicación plana: el problema es
     // idéntico (una referencia que el barajado invalida), solo cambia dónde vive el texto.
     if ((q.structuredReasons || []).some((r) => explanationReferencesLetters(r))) return false;
+    // La narrativa (intro/outro) se emite verbatim en cualquier orden: una letra ahí queda
+    // clavada. Mismo detector, misma consecuencia — no barajar (T-262).
+    if ((q.structuredNarrative || []).some((r) => explanationReferencesLetters(r))) return false;
     return isShuffleEligible({ ...q, explanation: null });
   }
   return q.shuffle_safety === 'safe' && isShuffleEligible(q);

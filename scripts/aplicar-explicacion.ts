@@ -51,6 +51,7 @@ import { sql } from 'drizzle-orm'
 import {
   isStructuredExplanation,
   renderStructuredExplanation,
+  structuredNarrativeStaleLetters,
   type StructuredExplanation,
 } from '@/lib/shuffle/structuredExplanation'
 import { optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
@@ -139,6 +140,18 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
     throw new ExplicacionRechazada(
       'El `intro` no debe empezar con "La respuesta correcta es …": esa frase la genera el render ' +
       'con la letra que corresponda tras barajar. Quítala del intro.')
+  }
+  // 2-quater) …y CUALQUIER otra letra en la narrativa, no solo esa apertura (T-262, 29/07). El
+  //   `intro` y el `outro` se emiten VERBATIM en cualquier orden, así que una letra escrita ahí
+  //   («como se ve en la B», un "**Clave:** la C es…") queda clavada y contradice a la cabecera
+  //   que calcula el render. La regla de arriba solo cubría la apertura canónica; el histórico
+  //   transcrito trajo 891 casos justo por ahí. Mismo detector que usan el serve y el sweep.
+  const narrativaSucia = structuredNarrativeStaleLetters(estructura)
+  if (narrativaSucia.length) {
+    throw new ExplicacionRechazada(
+      `La narrativa cita una opción por su letra o su posición en: ${narrativaSucia.join(', ')}. ` +
+      'El `intro` y el `outro` se emiten igual en cualquier orden, así que esa letra miente al ' +
+      'barajar. Escríbelos referidos al CONTENIDO — la letra ya la pone el render.')
   }
 
   // 2-ter) El `frame` decide las etiquetas de los veredictos (T-212). Dos comprobaciones:

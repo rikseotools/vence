@@ -254,8 +254,18 @@ describe('formato §5.1 de IMPUGNACIONES — se transcribe y se re-renderiza igu
     const d = parseImpugnacionFormatExplanation(expl, { correctOption: 1, nOptions: 4 })
     expect(d).not.toBeNull()
     expect(d.estilo).toBe('impugnacion')
-    expect(d.intro).toContain('La respuesta correcta es')
     expect(Object.keys(d.options)).toHaveLength(4)
+    // La apertura con letra YA NO se guarda en el intro (T-262): es texto que el render emite
+    // verbatim en cualquier orden, así que guardarla clavaba la letra y contradecía a la que
+    // calcula el render al barajar. Aquí no se pierde nada — el render la REGENERA (lo comprueba
+    // el test siguiente); lo que se protege es el intro de CONTEXTO, que sí debe conservarse.
+    expect(d.intro).toBeUndefined()
+  })
+
+  test('el intro de CONTEXTO sí se conserva; solo se poda la línea de la letra (T-262)', () => {
+    const conContexto = ['La respuesta correcta es la B).', '', 'El precepto distingue dos plazos.', '', ...expl.split('\n').slice(2)].join('\n')
+    const d = parseImpugnacionFormatExplanation(conContexto, { correctOption: 1, nOptions: 4 })
+    expect(d.intro).toBe('El precepto distingue dos plazos.')
   })
 
   test('el render lo devuelve en SU formato, no en el del boletín', () => {

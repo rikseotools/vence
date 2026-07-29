@@ -15,6 +15,35 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-262] 🟠 [EN CURSO 29/07 — capas puestas, falta decidir la reparación masiva] El `intro` de la explicación estructurada CLAVA la letra: 1.211 preguntas `safe` que se contradirían al barajar
+- **Qué:** `explanation_data.intro` guarda texto libre que se emite **verbatim** en cualquier orden. En 1.211 activas esa narrativa es literalmente *«La respuesta correcta es la **C**.»*, mientras el render calcula la letra buena más abajo. Al barajar, el mismo recuadro dice **C** arriba y **A** dos líneas después.
+- **Medido (29/07, RDS, con el detector REAL):** 5.119 activas con `explanation_data` · 5.019 marcadas `safe` · **1.211 con la letra clavada en la narrativa**. Exposiciones barajadas servidas en toda la historia de `test_questions`: **0** → mina sin detonar, no daño hecho. Sale a la luz el día que se reencienda `FEATURE_SHUFFLE_OPTIONS` (ver [T-235]).
+  - Reparto de la reparación: **887 podables** (estilo boletín; pierden la línea redundante que la cabecera «Por qué C es correcta» ya dice) y **337 a criterio humano** (formato §5.1, que abre nombrando la opción ENTERA: podar el prefijo dejaba su texto suelto y mutilado — cazado comprobando la reparación contra 3 casos reales ANTES de lanzarla, cuando el recuento ya la daba por automática).
+- **Por qué NINGUNA capa lo vio** — es la "quinta clase" que la propia ficha de [T-235] anticipaba:
+
+  | Capa | Existe | Por qué no lo caza |
+  |---|---|---|
+  | `aplicar-explicacion.ts` (escritura) | sí | ✅ Sí lo caza — rechaza un intro que abra con "La respuesta correcta es" |
+  | `isShuffleServeEligible` (serve) | sí | Mira `structuredReasons` y las opciones; **intro/outro no** |
+  | `sweep-shuffle-safety-drift.ts` → `shuffle_safe_regressed` | sí | **Excluye** `explanation_data IS NOT NULL` ("safe por construcción") |
+  | `sim-explicacion-estructurada-gates.ts` | sí | Renderiza en TODAS las posiciones (arnés correcto) pero solo asegura cabecera + razones, no la **no-contradicción** |
+  | Guarda de no-regresión del backfill | sí | Compara en orden natural; la contradicción solo existe barajado |
+
+- **✅ HECHO (29/07) — las 5 capas, integradas en lo que ya había (ninguna pieza nueva paralela):**
+  - **Núcleo puro** `structuredNarrative` + `structuredNarrativeStaleLetters` + `podarAperturaConLetra` en `lib/shuffle/structuredExplanation.ts`, **reutilizando** `explanationReferencesLetters` (no una segunda copia de patrones que divergiría en silencio).
+  - **Gate de serve**: `isShuffleServeEligible` recibe `structuredNarrative` → con letra clavada NO baraja aunque esté `safe`. Cableado en `lib/api/filtered-questions/queries.ts`.
+  - **Escritura**: `aplicar-explicacion.ts` rechaza cualquier letra en intro/outro (antes solo la apertura canónica).
+  - **Transcripción**: los dos parsers podan la apertura; en `boletin` eso hace que la guarda de no-regresión RECHACE migrar, que es el sesgo correcto (sin barajar antes que contradiciéndose).
+  - **Detector nocturno**: `sweep-shuffle-safety-drift.ts` cuenta `narrative_stale_letters` → `health-sweep.cjs` emite el kind **`shuffle_narrativa_letra_clavada`**, con entrada propia en `runbookRegistry.ts` (frase «revisa el barajado», comando `npm run shuffle:narrativa`) y en CLAUDE.md.
+  - **Simulación**: `sim-explicacion-estructurada-gates.ts` gana la aserción de **no-contradicción** (renderizaba en todas las posiciones pero solo miraba que la cabecera existiera).
+  - **Tests**: `__tests__/shuffle/narrativaLetraClavada.test.ts` (22) — incluye la frontera medida del detector compartido y las dos regresiones de la poda.
+- **⚠️ Limitación asumida y documentada:** el hallazgo lo emite el CLI, **no el @Cron nocturno** — el subproceso importa `@/lib/shuffle/*` y el backend NestJS no puede ejecutarlo (ya pasaba con `shuffle_safe_regressed`; declarados CLI-only en `content-sweep-parity.test.ts`, que fue quien lo cazó en el pre-commit). Un badge a cero aquí significa «nadie ha corrido el CLI». Promoverlo al nocturno pide un paquete compartido; reimplementarlo en el backend crearía la segunda copia de patrones que este módulo lleva cuatro calibraciones evitando.
+- **🔜 PENDIENTE — decisión de Manuel:** aplicar la reparación a las **887 podables** cambia lo que lee el opositor (desaparece la línea «La respuesta correcta es la X», redundante con la cabecera). Y las **337** del §5.1 necesitan criterio: decidir si se pierde la repetición del enunciado de la opción o se reescriben. Mientras tanto **no hay riesgo**: el gate de serve ya se niega a barajarlas.
+- **De dónde salieron:** no del camino de escritura sino del de **transcripción**. El 27/07 se arregló que el backfill *perdía* el párrafo de contexto y pasó a capturar el intro verbatim (`structuredExplanation.ts` §5 INTRO) — y con él entró la línea de la letra. La suposición "tiene estructura ⇒ es segura" se hizo sobre las RAZONES; el intro/outro son texto libre y nadie los sometió a esa regla.
+- **Alcance de la comprobación:** solo `intro` + `outro` (la narrativa que escribimos nosotros). **La `cita` queda fuera a propósito:** el articulado se cita por letras en lenguaje jurídico corriente ("la letra b) del art. 9.1") y meterla daría falsos positivos sobre citas impecables — el mismo criterio que ya salvó [T-204].
+- **Origen:** impugnación `c204dcb5` (María José Martínez, `pregunta_repetida`, 29/07). Al revisar la explicación de la pregunta que sobrevivía al duplicado apareció el intro con la letra clavada.
+- **Relacionada:** [T-080] Fase 2 · [T-235] (bloquea reencender el piloto) · [T-201]/[T-204]/[T-212] (la misma familia de huecos).
+
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
 - **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):

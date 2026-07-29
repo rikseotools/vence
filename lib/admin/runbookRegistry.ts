@@ -341,6 +341,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
     claudeHace: 'para cada pregunta señalada (shuffle_safety=safe cuya explicación referencia una opción por letra/número/posición) confirma que barajar rompería la explicación y bájala a unsafe vía record_shuffle_safety, o reescribe la explicación a formato sin letras (Fase 2) si procede. Si el finding reporta hash desincronizado, re-verifica (el trigger debería haberla puesto stale). Es un miss del detector/auditoría LLM o una edición no invalidada. NUNCA dejar barajable una explicación letra-anclada ni auto-editar la explicación sin verificar la clave.',
   },
+  shuffle_narrativa_letra_clavada: {
+    title: 'Barajado: el intro/outro de una explicación estructurada clava la letra',
+    triggerPhrase: 'revisa el barajado',
+    runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
+    comando: 'npm run shuffle:narrativa',
+    claudeHace:
+      'la pregunta tiene explicación ESTRUCTURADA (razones keadas a cada opción, letra puesta por el render) y aun así su `intro` o su `outro` nombran una opción por su letra —típicamente «La respuesta correcta es la **C**.», heredado al transcribir el histórico—. Esos dos campos se emiten VERBATIM en cualquier orden, así que al barajar el recuadro dice una letra arriba y otra en la cabecera que calcula el render: se contradice solo. Remedio: PODAR la letra de la narrativa, no reescribir las razones (que están bien). En estilo `impugnacion` el render regenera la apertura con la letra correcta, así que el texto en orden natural queda idéntico; en `boletin` la cabecera «Por qué C es correcta» ya la anuncia, así que la línea sobra. Herramienta: `npm run shuffle:narrativa -- --pregunta <id> --apply` (dry-run por defecto, muestra el antes/después y separa las que requieren criterio humano). NUNCA tocar las razones ni la cita para arreglar esto, y NUNCA marcar `safe` a mano: el gate de serve ya se niega a barajarlas mientras la letra siga ahí.',
+  },
   shuffle_encendido_sin_efecto: {
     title: 'Barajado encendido pero sin efecto (o sin rastro): ninguna respuesta guarda el orden',
     triggerPhrase: 'revisa el barajado',

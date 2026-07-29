@@ -26,6 +26,7 @@
     "oep:triage-prep": "node scripts/oep-triage-prep.cjs",
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",
+    "shuffle:narrativa": "npx tsx --env-file=.env.local scripts/reparar-narrativa-letra-clavada.ts",
     "audit:scraped-reconcile": "node scripts/audit-scraped-reconcile.cjs",
     "huerfanos:plan": "node scripts/huerfanos-plan.cjs",
     "batch:boe": "node scripts/verificar-articulos-vs-boe.cjs",

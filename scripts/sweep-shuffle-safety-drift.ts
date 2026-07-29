@@ -5,13 +5,18 @@
 // comprueba la INTEGRIDAD del trigger: safe cuyo hash guardado != hash del contenido
 // actual (debería estar stale y no lo está).
 //
+// Y desde T-262, la NARRATIVA de las explicaciones ESTRUCTURADAS: `intro`/`outro` se emiten
+// verbatim en cualquier orden, así que una letra escrita ahí queda clavada aunque las razones
+// estén impecables. Se cuenta aparte porque el remedio es otro (podar, no reescribir).
+//
 // Usa la función REAL de producción (no una copia). Emite JSON con --json para que
-// health-sweep.cjs lo pliegue en content_health_findings (kind 'shuffle_safe_regressed').
-// Sin escribir a la tabla (la dueña del TRUNCATE es el sweep).
+// health-sweep.cjs lo pliegue en content_health_findings (kinds 'shuffle_safe_regressed' y
+// 'shuffle_narrativa_letra_clavada'). Sin escribir a la tabla (la dueña del TRUNCATE es el sweep).
 //
 // Uso: DATABASE_URL=.. NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/sweep-shuffle-safety-drift.ts [--json]
 import { Client } from 'pg'
 import { explanationReferencesLetters, optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
+import { structuredNarrativeStaleLetters } from '@/lib/shuffle/structuredExplanation'
 
 const JSON_OUT = process.argv.includes('--json')
 
@@ -53,6 +58,23 @@ async function main() {
       optionsReferenceOtherOptions([r.option_a, r.option_b, r.option_c, r.option_d, r.option_e]),
   )
 
+  // 1-bis) NARRATIVA estructurada con la letra clavada (T-262). La consulta de arriba deja fuera
+  //   a propósito las transcritas (`explanation_data IS NOT NULL`) porque su TEXTO legacy ya no
+  //   se sirve. Pero "tiene estructura" nunca significó "todo su contenido es seguro": las
+  //   RAZONES viajan keadas a su opción, y el `intro`/`outro` se emiten VERBATIM en cualquier
+  //   orden. Medido el 29/07: 1.211 activas `safe` cuyo intro dice «La respuesta correcta es la
+  //   **C**.» mientras la cabecera calcula otra letra dos líneas después. Sin esto, el hueco solo
+  //   se vería el día que se reencienda el barajado — y en la cara del opositor.
+  const estructuradas = (
+    await c.query(
+      `SELECT id, explanation_data FROM public.questions
+        WHERE is_active = true AND shuffle_safety = 'safe' AND explanation_data IS NOT NULL`,
+    )
+  ).rows as Array<{ id: string; explanation_data: unknown }>
+  const narrativaSucia = estructuradas
+    .map((r) => ({ id: r.id, campos: structuredNarrativeStaleLetters(r.explanation_data as any) }))
+    .filter((r) => r.campos.length > 0)
+
   // 2) Integridad del trigger: safe cuyo hash guardado != hash del contenido actual.
   //    (El trigger debería haberlas puesto 'stale'. Si no, el trigger está roto.)
   const hashMismatch = (
@@ -73,6 +95,11 @@ async function main() {
     regressions: regressed.length,
     hash_mismatch: hashMismatch,
     sample: regressed.slice(0, 8).map((r) => ({ id: r.id, explanation: r.explanation.replace(/\s+/g, ' ').slice(0, 120) })),
+    // Cuenta aparte, no sumada a `regressions`: el remedio es distinto (la razón se REESCRIBE; la
+    // narrativa se PODA porque el render ya anuncia la letra), y mezclarlas daría a quien lo
+    // atienda la instrucción equivocada.
+    narrative_stale_letters: narrativaSucia.length,
+    narrative_sample: narrativaSucia.slice(0, 8).map((r) => ({ id: r.id, campos: r.campos })),
   }
 
   if (JSON_OUT) {
@@ -80,13 +107,16 @@ async function main() {
   } else {
     console.log(`safe activas: ${safe.length}`)
     console.log(`REGRESIONES (safe que citan letras/posición): ${result.regressions}`)
+    console.log(`NARRATIVA con letra clavada (intro/outro de estructuradas): ${result.narrative_stale_letters}`)
     console.log(`hash mismatch (trigger no invalidó): ${result.hash_mismatch}`)
     for (const s of result.sample) console.log(`  - ${s.id}: "${s.explanation}"`)
-    if (result.regressions === 0 && result.hash_mismatch === 0) console.log('✅ sin drift: el conjunto safe es coherente.')
+    for (const s of result.narrative_sample) console.log(`  - ${s.id}: letra clavada en ${s.campos.join(', ')}`)
+    if (result.regressions === 0 && result.hash_mismatch === 0 && result.narrative_stale_letters === 0)
+      console.log('✅ sin drift: el conjunto safe es coherente.')
   }
 }
 main().catch((e) => {
-  if (JSON_OUT) process.stdout.write(JSON.stringify({ regressions: 0, hash_mismatch: 0, sample: [], error: String(e).slice(0, 200) }))
+  if (JSON_OUT) process.stdout.write(JSON.stringify({ regressions: 0, hash_mismatch: 0, sample: [], narrative_stale_letters: 0, narrative_sample: [], error: String(e).slice(0, 200) }))
   else console.error(e)
   process.exit(JSON_OUT ? 0 : 1) // en modo json no romper el sweep
 })
