@@ -40,7 +40,8 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
 
   // Servidas por usuario en la ventana. subject_kind='user' → subject_key es el uuid.
   const served = rows(await db.execute(sql`
-    SELECT subject_key AS user_id, sum(served)::int AS served, max(usage_date)::text AS last_usage
+    SELECT subject_key AS user_id, sum(served)::int AS served, max(usage_date)::text AS last_usage,
+           count(DISTINCT usage_date)::int AS active_days
       FROM daily_questions_served
      WHERE subject_kind = 'user' AND usage_date >= CURRENT_DATE - ${WINDOW_DAYS}::int
      GROUP BY 1
@@ -114,6 +115,9 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
         pageViews: pvMap.get(uid) ?? 0,
         hasDevice: deviceSet.has(uid),
         answerCapped: cappedSet.has(uid),
+        // Días distintos con servidas: un volumen que se agota en una sesión es
+        // el perfil del que prueba y no vuelve, no el de una cosecha (T-179).
+        activeDays: Number(s.active_days),
       }
       const verdict = classifyHarvest(input)
       if (!verdict) return null

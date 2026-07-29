@@ -55,6 +55,12 @@ export interface HarvestInput {
    * que venimos (ver T-185). Anotado en T-179 para revisarlo con distribución real.
    */
   answerCapped?: boolean;
+  /**
+   * Días DISTINTOS con actividad en la ventana. Ver `minActiveDays` en
+   * `HARVEST_DEFAULTS`: por debajo del mínimo, el ratio no distingue una cosecha
+   * de un "entré, probé y no volví". Ausente = no penaliza.
+   */
+  activeDays?: number;
 }
 
 export interface HarvestVerdict {
@@ -68,6 +74,7 @@ export interface HarvestOpts {
   minServed?: number;
   maxAnswerRatio?: number;
   egregiousServed?: number;
+  minActiveDays?: number;
 }
 
 /** Mismos valores que `DEFAULTS` del original. El test de paridad los compara. */
@@ -81,6 +88,18 @@ export const HARVEST_DEFAULTS = {
    * que se le sirve no está cosechando, está estudiando. La señal es el RATIO.
    */
   egregiousServed: 5000,
+  /**
+   * Días DISTINTOS con actividad exigidos para opinar sobre un volumen no
+   * egregio. CALIBRADO CON LA DISTRIBUCIÓN REAL (29/07/2026): de los 29 usuarios
+   * que en 30 días caían bajo el ratio con >=100 servidas, 26 estaban en la banda
+   * 100-499 con 1,1 dias de media, 19 se habian registrado hacia menos de una
+   * semana, y los 3 de volumen alto eran `smoke@vence.es` —nuestra propia cuenta
+   * de canarios E2E— y dos altas de 1 y 2 dias antes. Ninguno cosechaba.
+   *
+   * El problema no era que 300 fuese poco: es que UN DIA NO ES UN PATRON.
+   * Cosechar exige volver; probar y abandonar se agota en una sesion.
+   */
+  minActiveDays: 3,
 };
 
 function num(v: unknown): number {
@@ -103,6 +122,15 @@ export function classifyHarvest(
 
   // Topó su límite diario → el ratio bajo lo causamos nosotros. Ver `answerCapped`.
   if (input?.answerCapped === true) return null;
+
+  // AMPLITUD TEMPORAL — ver `minActiveDays`. Por debajo del minimo no se opina,
+  // SALVO volumen egregio: 5.000 servidas no las explica ningun novato, y ahi la
+  // amplitud no puede servir de coartada (el caso `anferbar987`, 5.495 servidas,
+  // sigue marcando aunque fuera en un solo dia).
+  const activeDays = num(input?.activeDays);
+  if (activeDays > 0 && activeDays < o.minActiveDays && served < o.egregiousServed) {
+    return null;
+  }
 
   const ratio = served > 0 ? answered / served : 0;
   const reasons: string[] = [];

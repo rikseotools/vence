@@ -163,7 +163,8 @@ async function main() {
   // aunque el writer no esté desplegado todavía: el sweep corre desde GitHub
   // Actions, así que un push basta para que esta exención esté viva.
   const servedRows = await c.query(
-    `SELECT s.subject_key AS user_id, sum(s.served)::int AS served
+    `SELECT s.subject_key AS user_id, sum(s.served)::int AS served,
+            count(DISTINCT s.usage_date)::int AS active_days
        FROM daily_questions_served s
       WHERE s.subject_kind = 'user' AND s.usage_date >= CURRENT_DATE - ($1)::int
         AND NOT EXISTS (SELECT 1 FROM user_profiles up
@@ -222,6 +223,8 @@ async function main() {
       hasDevice: Boolean(m.has_device),
       // Topó el tope diario free → ratio no interpretable (ver harvestSignals.js).
       answerCapped: Number(m.max_dia) >= FREE_DAILY_LIMIT,
+      // Días distintos con servidas (T-179): cosechar exige volver.
+      activeDays: Number(r.active_days),
     }, { minServed: SCRAPE_MIN_SERVED });
     if (!verdict) continue;
 

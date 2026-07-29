@@ -43,6 +43,17 @@ const CASOS: Caso[] = [
   { nombre: 'mpareja19@: 300/27 con el tope free topado', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: true } },
   { nombre: 'el mismo perfil SIN topar', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true, answerCapped: false } },
   { nombre: 'sin saber si topó', input: { served: 300, answered: 27, pageViews: 6, hasDevice: true } },
+  // Amplitud temporal (29/07): los 4 casos REALES que el detector marcó en su vida,
+  // más los 3 de volumen alto de la distribución. Ninguno cosechaba.
+  { nombre: 'leofabra50@: 300/0 en UN día, alta ese mismo día', input: { served: 300, answered: 0, pageViews: 13, hasDevice: false, activeDays: 1 } },
+  { nombre: 'yolandamoyaparis@: 300/1 en dos días', input: { served: 300, answered: 1, pageViews: 16, hasDevice: true, activeDays: 2 } },
+  { nombre: 'smoke@vence.es: nuestros propios canarios, 2.600/137 en 2 días', input: { served: 2600, answered: 137, pageViews: 0, hasDevice: false, activeDays: 2 } },
+  { nombre: 'rafaypili.91@: 600/4 en un día, alta ese mismo día', input: { served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 1 } },
+  { nombre: 'el mismo volumen pero SOSTENIDO en el tiempo (sí es cosecha)', input: { served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 12 } },
+  { nombre: 'volumen egregio en un solo día: la amplitud NO es coartada', input: { served: 5495, answered: 2, pageViews: 0, hasDevice: false, activeDays: 1 } },
+  { nombre: 'justo en el mínimo de días', input: { served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 3 } },
+  { nombre: 'justo bajo el mínimo de días', input: { served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 2 } },
+  { nombre: 'sin saber los días (comportamiento previo intacto)', input: { served: 600, answered: 4, pageViews: 5, hasDevice: true } },
   // Basura: corre en un cron nocturno, no puede petar por un dato sucio.
   { nombre: 'entrada nula', input: null },
   { nombre: 'entrada vacía', input: {} },
@@ -64,6 +75,7 @@ describe('paridad núcleo ↔ espejo del backend (detección de cosecha)', () =>
     expect(mirrorDefaults.minServed).toBe(nucleoDefaults.minServed)
     expect(mirrorDefaults.maxAnswerRatio).toBe(nucleoDefaults.maxAnswerRatio)
     expect(mirrorDefaults.egregiousServed).toBe(nucleoDefaults.egregiousServed)
+    expect(mirrorDefaults.minActiveDays).toBe(nucleoDefaults.minActiveDays)
   })
 
   it('un umbral pasado por opts se respeta igual en ambos', () => {

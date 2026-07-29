@@ -228,7 +228,8 @@ export class FraudSweepService {
     // alerta crítica contra nuestro propio canario.
     const served = rows(
       await this.db.execute(sql`
-      SELECT s.subject_key AS user_id, sum(s.served)::int AS served
+      SELECT s.subject_key AS user_id, sum(s.served)::int AS served,
+             count(DISTINCT s.usage_date)::int AS active_days
         FROM daily_questions_served s
        WHERE s.subject_kind = 'user' AND s.usage_date >= CURRENT_DATE - ${this.WINDOW_DAYS}::int
          AND NOT EXISTS (SELECT 1 FROM user_profiles up
@@ -290,6 +291,10 @@ export class FraudSweepService {
           hasDevice: Boolean(meta.has_device),
           // Topó el tope diario del plan free → ratio no interpretable.
           answerCapped: Number(meta.max_dia) >= FREE_DAILY_LIMIT,
+          // Días DISTINTOS con servidas: un volumen que se agota en una o dos
+          // sesiones es el perfil del que entra, prueba y no vuelve — que fue lo
+          // que produjo las 2 señales del 29/07 (T-179). Cosechar exige volver.
+          activeDays: Number(s.active_days),
         },
         { minServed: this.SCRAPE_MIN_SERVED },
       );

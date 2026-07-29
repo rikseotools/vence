@@ -139,6 +139,66 @@ describe('classifyHarvest', () => {
     })
   })
 
+  // ── Amplitud temporal (T-179, calibrado 29/07/2026) ────────────────────
+  //
+  // El detector produjo 4 señales en toda su vida y las 4 fueron falsos positivos.
+  // Las 2 primeras (28/07) por el tope del plan free → `answerCapped`. Las 2 de
+  // 29/07 NO las cubría esa exención: no topaban nada, respondieron 0 y 1. Eran
+  // altas nuevas que probaron y se fueron.
+  //
+  // La distribución de 30 días lo confirmó: 29 usuarios bajo el ratio, 26 de ellos
+  // con 1,1 días de actividad, 19 registrados hacía menos de una semana — y los 3
+  // de más volumen eran nuestra propia cuenta de smoke tests y dos altas de 1-2
+  // días. Ninguno cosechaba. Un día no es un patrón.
+  describe('amplitud temporal: cosechar exige VOLVER', () => {
+    it('leofabra50@ (real): 300 servidas y 0 respondidas en UN día → no se opina', () => {
+      expect(
+        classifyHarvest({ served: 300, answered: 0, pageViews: 13, hasDevice: false, activeDays: 1 }),
+      ).toBeNull()
+    })
+
+    it('yolandamoyaparis@ (real): 300/1 en dos días → no se opina', () => {
+      expect(
+        classifyHarvest({ served: 300, answered: 1, pageViews: 16, hasDevice: true, activeDays: 2 }),
+      ).toBeNull()
+    })
+
+    it('smoke@vence.es (real): nuestros propios canarios, 2.600/137 en 2 días → no se opina', () => {
+      expect(
+        classifyHarvest({ served: 2600, answered: 137, pageViews: 0, hasDevice: false, activeDays: 2 }),
+      ).toBeNull()
+    })
+
+    it('el MISMO volumen sostenido en el tiempo SÍ es señal', () => {
+      const r = classifyHarvest({ served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 12 })
+      expect(r).not.toBeNull()
+      expect(r.kind).toBe('harvest_no_answer')
+    })
+
+    it('el volumen egregio NO se libra por concentrarse en un día (anferbar987)', () => {
+      // Si la amplitud eximiera siempre, bastaría con cosechar rápido para ser invisible.
+      const r = classifyHarvest({ served: 5495, answered: 2, pageViews: 0, hasDevice: false, activeDays: 1 })
+      expect(r).not.toBeNull()
+      expect(r.severity).toBe('critical')
+    })
+
+    it('frontera exacta: 3 días opina, 2 no', () => {
+      const base = { served: 600, answered: 4, pageViews: 5, hasDevice: true }
+      expect(classifyHarvest({ ...base, activeDays: 3 })).not.toBeNull()
+      expect(classifyHarvest({ ...base, activeDays: 2 })).toBeNull()
+    })
+
+    it('sin saber los días no penaliza (no inventa evidencia, igual que pageViews)', () => {
+      expect(classifyHarvest({ served: 600, answered: 4, pageViews: 5, hasDevice: true })).not.toBeNull()
+    })
+
+    it('el umbral de días se puede ajustar por opts', () => {
+      const caso = { served: 600, answered: 4, pageViews: 5, hasDevice: true, activeDays: 2 }
+      expect(classifyHarvest(caso)).toBeNull()
+      expect(classifyHarvest(caso, { minActiveDays: 2 })).not.toBeNull()
+    })
+  })
+
   describe('robustez: corre en un cron nocturno, no puede petar por un dato sucio', () => {
     it.each([
       [null],
