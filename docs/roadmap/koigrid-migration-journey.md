@@ -3,22 +3,48 @@
 > **What this is:** an honest, end-to-end log of migrating a real production app (Vence — a Spanish exam-prep platform: Next.js 16 frontend + 31 GB PostgreSQL) **from AWS (ECS Fargate + RDS) to Koigrid**, written to help Koigrid improve the migration experience. Mix of what worked great and where we hit friction, with concrete suggestions.
 >
 > **Source stack:** Next.js 16 (standalone) on ECS Fargate + PostgreSQL 17.6 on RDS Multi-AZ (eu-west-2). DB = 31 GB, ~195 tables, 245 functions, 87 triggers, generated columns, 38 views, pgvector embeddings. Origin was Supabase (cut over to RDS 2026-07), so the schema carries Supabase-era conventions (an `extensions` schema, an `auth` schema).
-> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases) → 2026-07-24 (image-deploy retest, then the whole-app manifest + load-test features) → 2026-07-25 (managed restore-dump tested end-to-end + AWS head-to-head re-run). **Start with the OPEN ACTION LIST right below** — it consolidates every outstanding ask with a repro and an acceptance test.
+> **Tester:** an AI agent (Claude) driving the Koigrid REST API + CLI end-to-end. Dates: 2026-07-22 (initial run) → 2026-07-23 (re-test cycle across new releases) → 2026-07-24 (image-deploy retest, then the whole-app manifest + load-test features) → 2026-07-25 (managed restore-dump tested end-to-end + AWS head-to-head re-run) → 2026-07-27 (three releases in one day: `scale-out` re-test, custom-domain/CDN policy, bring-your-own CDN) → **2026-07-29 (A3 confirmed working: edge caching + ~60× capacity, managed restore re-tested end-to-end, new blocker A4)**. **Start with the OPEN ACTION LIST right below** — it consolidates every outstanding ask with a repro and an acceptance test.
 
 ---
 
-## 🔧 OPEN ACTION LIST — everything this report still asks for, prioritized, each with a repro and an acceptance test (updated 2026-07-25)
+## 🔧 OPEN ACTION LIST — everything this report still asks for, prioritized, each with a repro and an acceptance test (updated 2026-07-29)
 
 > Read this first if you're here to ship fixes. Every item below was **reproduced on a real migration** (Vence: Next.js 16 + 31 GB Postgres, AWS→Koigrid), and every "acceptance test" is something you can run against a fresh account to know it's closed. Detail and evidence for each is in the dated sections further down. Nothing here is a nice-to-have we imagined — it's what actually blocked or slowed a paying-sized migration.
+
+> ## 🎉 **STATUS 2026-07-29 — READ THIS FIRST. The two blockers that mattered are CLOSED.**
+>
+> - **A3 (HTML edge caching) WORKS.** Bare `s-maxage` is honoured exactly as we argued (R1-bis): `/`, `/leyes`
+>   and `/leyes/constitucion-espanola` all go `MISS → HIT` with a growing `age`. **Open since 07-24, closed.**
+> - **The capacity consequence is ~60×:** same load test, same app, **one 2 GB replica on the free plan** →
+>   **615 rps** (p50 19 ms, p95 50 ms, 0 % errors, *not* saturated, CPU 0 %), against **8.8–10.5 rps saturated**
+>   on 07-25. Our production peak is 16.6 rps: **one replica now carries 37× our peak.**
+> - **Latency vs AWS production (CloudFront + 8 Fargate tasks) collapsed to 1.4–2.0×**, from 4.2–5.6× — and
+>   Koigrid **wins** our heaviest page (165 ms vs 202 ms).
+> - **Managed restore re-tested end-to-end: A1, B1, B2 and `preSeed` all CONFIRMED FIXED.**
+> - 🔴 **One new hard blocker, A4:** the restore cannot build a pgvector **ivfflat** index —
+>   `maintenance_work_mem is 64 MB` (PostgreSQL's factory default, `source: "default"`, not scaled to the
+>   cluster) and **no API exists to raise it**. One `SET` in your restore session fixes it; we proved the
+>   unprivileged `app` role can set it. This blocks the managed restore for every Supabase/pgvector source.
+> - 🔴 **N1 (`scale-out`) still fails** with `replica_unhealthy`, third reproduction — but it **no longer
+>   blocks us**, and it turned out A3 never depended on it (see Finding 4: your `/rules` message says it does).
+> - ❓ **The only thing between us and a cutover rehearsal is now the price of the plan we need.**
+>
+> Full evidence in the **RE-TEST 2026-07-29** section at the end of this document.
 
 > **STATUS UPDATE 2026-07-25 (later), after the next release:** **A3 (HTML edge caching) is now documented as SHIPPED 🎉 — but we cannot observe it**, because `PUT /apps/{id}/cdn {enabled:true}` **regressed** and now fails on every `*.apps.koigrid.com` app (new item **R1**, and it's a one-way door: disabling still works). **A1/A2/B1/B2 are moot for now: the managed restore-dump endpoints were withdrawn** (404, `openapi.json` byte-identical to the 24/07 build) — re-test when they return. Three more regressions landed with this build: **R3** (new apps no longer CDN-by-default), **R4** (`POST /apps sourceType:image` no longer auto-deploys), **R5** (`/rules` header rules have no effect), **R6** (runtime error-code catalogue gone from the docs). Detail + evidence in the 🚨 section below.
 
 ### ✅ CLOSED 2026-07-25 (evening release) — verified against the live API
 **R1** (CDN enables again) · **R3** (new apps CDN-on by default) · **R4** (image apps auto-deploy, live on 1st attempt in ~25 s) · **R5** (`/rules` now reports `enforcement{enforced,servedBy,note,remedy}` — better than we asked) · **R6** (runtime error codes back) · **the replica/autoscale plan gate is gone** (free tier can now run a 6–10 replica capacity test — the #1 cutover gate, and **we passed it: 109 rps @ 0 % errors on 6 replicas vs our 16.6 rps peak**) · **A1/A2/B1/B2 + C2** shipped as documented in the restored managed restore (`\restrict` stripped, auto-ownership + `POST /databases/:id/fix-ownership`, dump kept on failure, atomic restore) — *documented, end-to-end re-test pending*.
 
-### 🔴 STILL OPEN — the only two left
-- **A3 — HTML edge caching: documented (bare `s-maxage` now accepted, our RFC 9111 argument adopted) but INEFFECTIVE.** Fresh CDN-on app: 6/6 requests `cf-cache-status: DYNAMIC`. Isolation on the same app: `/robots.txt` caches (REVALIDATED), `/sitemap.xml` with `public, max-age, s-maxage` does **not** (DYNAMIC) → only extension-based static caching is running; the document rule isn't applied. Probably gated on N1.
-- **N1 (new) — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`, twice, in ~30 s, with EMPTY logs.** It's the documented remedy for R5 and the likely path to A3. The code isn't in the documented RUNTIME list and it shipped without the self-explaining logs that make every other failure debuggable; there's also no `healthPath` to tune. Same image deploys fine on the normal path.
+### 🔴 STILL OPEN — updated 2026-07-29
+- **A4 (new, P0) — the managed restore cannot build a pgvector `ivfflat` index.** `ERROR: memory required is 65 MB, maintenance_work_mem is 64 MB`. `SHOW maintenance_work_mem` → `65536 kB` with **`source: "default"`** (PostgreSQL's factory default, *not* derived from cluster RAM), `PUT /databases/{id}/resources` is `404`, `apply-config` is for node recreation, and your pooler rejects `PGOPTIONS="-c maintenance_work_mem=…"` (`unsupported startup parameter in options`). **Fix: `SET maintenance_work_mem` in the restore session** — it is `USERSET` and we verified the unprivileged `app` role can set it to 256 MB on your own cluster. **Acceptance:** a dump containing `CREATE INDEX … USING ivfflat` over ≥50 k rows restores cleanly on a free-tier cluster.
+- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** Third reproduction (07-25, 07-27, 07-29), always ~30 s, always **empty logs**. New evidence: the failed deployment carries **`runner: null`** while the *same image* deployed fine on the normal path ten minutes earlier — so this looks like a scheduling failure being reported as a health-check failure. None of the documented precondition errors (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`) are returned. **No longer blocks us** (A3 works without it).
+- **`/rules` `enforcement` message is misleading now that A3 works.** It still returns `enforced:false, servedBy:"legacy_runner"` with a remedy pointing at `scale-out` — on an app that is demonstrably edge-caching. It cost us a wrong conclusion on 07-27 ("A3 is gated behind N1"). Suggestion: report `documentCaching: "active"` separately from `customRules: "pending_central_edge"`.
+- **`GET /apps/{id}/env/verify` reports green on an unresolved `${{…}}` reference.** Our container received the literal string `${{db.vence-mig2.DATABASE_URL}}` (the referenced DB had been deleted) → every API route `500`; `env/verify` said `present:true, matchesConfigured:true`. Ask: fail the deploy on an unresolved reference, and have `env/verify` flag `^\$\{\{.*\}\}$` as `unresolved_reference`.
+- **`postgres: {running, available, behind}` is documented but absent** from `GET /databases/{id}`. Ours actually runs **17.2** while the docs say PG17 ships 17.5 (our source is 17.6) — and you correctly tell people to check this after a migration.
+
+### ✅ CLOSED 2026-07-29 — verified end-to-end against the live API
+**A3** (HTML edge caching: `MISS → HIT`, growing `age`, bare `s-maxage` honoured — and **~60× capacity: 615 rps on one 2 GB replica**, p95 50 ms, 0 % errors) · **A1** (`\restrict` from `pg_dump` 17.10 parsed) · **B1** (dump retained on failure, retried with the same `dumpKey`, no re-upload) · **B2** (atomic: two failed jobs left **zero** half-created objects) · **`preSeed`** (`extensions.vector` pre-created, restore proceeded past the pgvector column) · **`pause`/`resume`** (paused POC resumed and serving production HTML in ~45 s, no rebuild).
 
 ### P0-OLD — regressions from the previous build (all FIXED, kept for the record)
 
@@ -1366,3 +1392,234 @@ policy; tonight on **a number**. With BYO-CDN the shape is 1-2 replicas + the ma
 and every technical objection we raised today is either solved or ours to fix. **Tell us what that costs
 and we can make a decision.** We are ready to run the cutover rehearsal — the POC is paused, not deleted,
 and the 32 GB database is still `running`.
+
+---
+
+## 🎉 RE-TEST 2026-07-29 — **A3 is FIXED and it changes the whole economics.** 615 rps on ONE replica (was 8.8)
+
+`llms.txt` 790 → **810 lines**, `openapi.json` 178 → **189 paths**. Everything below was reproduced against
+the live API and the live app in a single session, on the **free plan, one 2 GB replica**, using our
+faithful production clone (`vence-web7`, Next.js 16 standalone from ECR).
+
+### ⭐ Finding 1 — **HTML edge caching (A3) WORKS.** The #1 item of this report, open since 2026-07-24, is closed
+
+We resumed the paused POC app (`POST /apps/{id}/resume` → serving in **~45 s**, no rebuild — the new
+pause/resume pair is excellent) and measured the three pages we have been re-measuring all week:
+
+| Path | `Cache-Control` sent by Next.js | req 1 | req 2 | req 3 |
+|---|---|---|---|---|
+| `/` | `max-age=14400, s-maxage=3600, swr=…` | MISS | **HIT** | **HIT** |
+| `/leyes` | `max-age=14400, s-maxage=2592000, swr=…` | MISS | **HIT** | **HIT** |
+| `/leyes/constitucion-espanola` | `max-age=14400, s-maxage=31536000` | MISS | **HIT** | **HIT** |
+
+And it is a *real* edge cache, not a coincidence: hitting the same URL six times over 18 s returns
+`cf-cache-status: HIT` with a **monotonically growing `age` (17 → 21 → 24 → 27 → 30 → 34)**.
+
+**You shipped exactly the semantics we argued for (R1-bis):** these pages send a **bare `s-maxage`** with no
+`public` token — Next.js never emits one — and they cache. That was the single detail we flagged on 07-25 as
+potentially invalidating the feature for your entire Next.js/Astro ICP. It landed correctly.
+
+### ⭐ Finding 2 — the capacity consequence is enormous: **~60× on the same hardware**
+
+Same endpoint (`POST /apps/{id}/loadtest`), same parameters we have used all week (30 s, concurrency 15),
+same app, **1 replica of 2 GB**:
+
+| Date | Path | rps | p50 | p95 | errors | saturated? |
+|---|---|---|---|---|---|---|
+| 07-25 (CDN on, no HTML cache) | `/leyes/constitucion-espanola` | **8.8–10.5** | 805 ms | 4 143 ms | 0 % | **yes** |
+| **07-29** | `/leyes/constitucion-espanola` | **615.5** | **19 ms** | **50 ms** | 0 % | **no** |
+| **07-29** | `/` | **461.9** | 26 ms | 62 ms | 0 % | **no** |
+| **07-29** @ concurrency 50 | `/leyes/constitucion-espanola` | **838.4** | 52 ms | 107 ms | 0 % | **no** |
+| **07-29** @ concurrency 50 | `/` | **623.4** | 85 ms | 126 ms | 0 % | **no** |
+
+Server-side CPU stayed at **0 %** throughout, and your own note said it correctly: *"the bottleneck is NOT
+compute"*. **Our production peak is ~16.6 rps.** On 07-25 that needed 4–6 replicas; today **one replica
+carries 37× our peak** and is still not saturated.
+
+This is the number that decides the migration for us. Sizing goes from "4–6 replicas + unknown plan" to
+"1 replica with a huge margin", and it is the difference between the cost case being speculative and being
+obvious. Thank you.
+
+*(Nit: `concurrency: 150` returns a bare `bad_request` with no explanation — the ceiling appears to be 100.
+Saying `max concurrency is 100` in the error would cost you one string.)*
+
+### ⭐ Finding 3 — head-to-head vs AWS: the gap collapsed from 4.2–5.6× to **1.4–2.0×**, and we lose one route
+
+Medians of 7, both stacks measured in the same window, alternating hosts request-by-request so network
+drift cannot favour either side. AWS = production (CloudFront + ALB + 8 Fargate tasks). Koigrid = **one
+2 GB replica on the free plan**.
+
+| Path | AWS | Koigrid | ratio |
+|---|---|---|---|
+| `/` | 36 ms | 72 ms | 1.97× |
+| `/leyes` | 41 ms | 63 ms | 1.54× |
+| `/leyes/constitucion-espanola` | 49 ms | 67 ms | 1.37× |
+| `/auxiliar-administrativo-estado` | 202 ms | **165 ms** | **0.81× — Koigrid wins** |
+
+For context, the same measurement was **2.5–3.5×** on 07-25 (CDN on, no HTML caching) and **4.2–5.6×** later
+that night (CDN off). One 2 GB container on a free plan is now within 2× of a CloudFront-fronted 16-vCPU
+Fargate fleet, and beats it on the heaviest page.
+
+### 🔎 Finding 4 — A3 landed **without** `scale-out`, so our 07-27 "A3 is gated behind N1" conclusion was wrong — and your API still says otherwise
+
+On 07-27 we concluded A3 and N1 were one chain, because `GET /apps/{id}/rules` told us so. **That same
+response is still being returned today, on the app that is demonstrably edge-caching:**
+
+```json
+{"rules":[],"enforcement":{"enforced":false,"servedBy":"legacy_runner",
+ "note":"Guardada, pero AÚN NO se aplica al tráfico: esta app se sirve por el Caddy heredado de su runner…",
+ "remedy":{"action":"serve_via_central_edge","endpoint":"PUT /api/v1/apps/{id}/scale-out"}}}
+```
+
+So `servedBy: legacy_runner` **no longer implies "no edge caching"** — built-in document caching runs on the
+legacy path too; only *custom rules* need the central edge. The message is now actively misleading: it sent
+us chasing `scale-out` (a broken endpoint, below) to unlock something that already worked. Suggestion:
+split the two states — `documentCaching: "active"` vs `customRules: "pending_central_edge"`.
+
+### 🔴 Finding 5 — **N1 (`scale-out`) still fails identically. Third reproduction, four days apart**
+
+`PUT /apps/{id}/scale-out {"enabled":true}` → clean `200` with a promising body
+(`servedBy: "central_edge", rulesEnforced: true`). Then `POST /apps/{id}/deployments`:
+
+```
+status: "failed"   error: "replica_unhealthy"   runner: null   logs: ""
+```
+
+Failures at 07-25 17:02, 07-27 17:58 and **07-29 06:16** — same code, same empty logs, same ~30 s.
+
+**New evidence that should narrow it down for you:** the *same image* deployed successfully through the
+normal path **ten minutes earlier** (deployment `b614ae5c`, `KOI_HEALTH_OK`, live), and the failed
+scale-out deployment carries **`runner: null`** — it never appears to land on a runner at all. If nothing
+was ever scheduled, `replica_unhealthy` is reporting a *symptom* of a scheduling failure, not a real health
+check. Also worth noting: the docs promise precondition errors
+(`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`) and we got **none** of them, so as far
+as the API is concerned our preconditions are met.
+
+The app stayed up throughout (last-good kept serving, `200` in 0.05 s) and reverting to
+`scale-out:false` + redeploy restored `running` in **15 s**. **Good news: this no longer blocks us** — A3
+works without it, and for our own domain we bring our own CDN anyway. It is now a robustness bug, not a
+migration blocker.
+
+### 🟡 Finding 6 — managed restore re-tested end-to-end: **A1, B1, B2 and `preSeed` all confirmed FIXED** — and one new hard blocker (A4)
+
+We ran the real thing: `pg_dump` from our production RDS (PostgreSQL 17.6) → your managed restore, three
+jobs, on the POC cluster.
+
+**What is fixed, verified:**
+
+| Item | Test | Result |
+|---|---|---|
+| **A1** — `\restrict` | Dump from `pg_dump` **17.10**, `\restrict` on line 5 | ✅ parsed past it; failure occurred at line 51, not line 5 |
+| **`preSeed`** | `[{"name":"vector","schema":"extensions"}]` | ✅ `extensions.vector` created; restore proceeded past the pgvector column |
+| **B1** — dump kept on failure | Re-`POST` with the **same `dumpKey`** after a failed job | ✅ accepted and re-ran; no re-upload of 241 MB, no `download_failed`/404 |
+| **B2** — atomic restore | After two failed jobs, look for leftovers | ✅ **clean**: `articles` absent, no half-created objects. (`preSeed`'s extension correctly survives — it runs before.) |
+| Upload path | 241 MB gzip via presigned `PUT` | ✅ 11–23 s; `contentEncoding: gzip` honoured |
+| Fail-fast diagnostics | | ✅ still the best part: exact `file:line` + the raw psql error, in ~100 s |
+
+**🔴 A4 (new, blocking for anyone with pgvector) — the restore cannot build an ivfflat index, and there is no API to fix it.**
+
+```
+psql:<stdin>:61219: ERROR:  memory required is 65 MB, maintenance_work_mem is 64 MB
+```
+
+One megabyte short. And it is not a sizing accident on our side:
+
+- `SHOW maintenance_work_mem` → `65536 kB`, **`source: "default"`** — this is PostgreSQL's stock factory
+  default, *not* derived from the cluster's RAM. So provisioning a bigger cluster would not help.
+- There is **no way to raise it**: `PUT /databases/{id}/resources` → `404 not_found`, and the new
+  `POST /databases/{id}/apply-config` is documented as *"recreate nodes to apply pending config (scoped
+  backup credentials, limits)"* — not parameter tuning. We found no documented knob for any GUC.
+- Your pooler also rejects the client-side escape hatch:
+  `PGOPTIONS="-c maintenance_work_mem=256MB"` → `FATAL: unsupported startup parameter in options`.
+
+**The fix is one line, and we proved it works on your own cluster with your own unprivileged role:**
+
+```sql
+-- as the app role, through your pooler:
+SET maintenance_work_mem='256MB';  -- → SET, SHOW returns 256MB
+```
+
+`maintenance_work_mem` is `USERSET`, so **the restore session can simply set it before running the dump**
+(a generous value scaled to the cluster, e.g. `min(25% of RAM, 1GB)`). Without it, **every Supabase-origin
+database with pgvector — your stated ICP — cannot complete a managed restore**, which is a shame because
+everything else in the pipeline now works.
+
+**Acceptance test:** restore a dump containing `CREATE INDEX … USING ivfflat (embedding vector_cosine_ops)`
+over ≥50 k rows into a free-tier cluster; it completes.
+
+**Workaround we used, and its cost:** the manual path still works — prepending `SET maintenance_work_mem`
+to the stream and piping into `psql` restored `public.articles` (61 123 rows, 606 MB, 8 indexes including
+the ivfflat) in **2 m 39 s**, with `count(*)` matching RDS **exactly** and the table owned by `app`
+(so A2's auto-ownership behaves on this path too).
+
+### 🟡 Finding 7 — `GET /apps/{id}/env/verify` is a great idea that reports green on a broken value
+
+The new endpoint is genuinely useful (fingerprints without revealing secrets — right call). But we hit the
+exact failure it exists to catch, and it said everything was fine.
+
+Our app's API routes were returning `500`. The container's `DATABASE_URL` was the **literal, unexpanded
+string** `${{db.vence-mig2.DATABASE_URL}}` — a manifest interpolation pointing at a database that no longer
+exists. Node's reaction, from your logs (which were excellent here — root cause immediately):
+
+```
+TypeError: Invalid URL … code: 'ERR_INVALID_URL',
+input: '${{db.vence-mig2.DATABASE_URL}}?options=-c statement_timeout=30000 …'
+```
+
+`env/verify` reported `present: true, matchesConfigured: true` — technically correct (the container does
+see what you stored) but useless here, because **what you stored is an unresolved placeholder**.
+
+**Two asks:** (1) an unresolved `${{…}}` reference should **fail the deploy** (or at minimum surface as a
+distinct state), never be passed through literally; and (2) `env/verify` should flag any value still
+matching `^\$\{\{.*\}\}$` as `unresolved_reference`. It is a cheap regex that turns a silent 500 into a
+one-line answer.
+
+*(Related, minor: when a referenced resource is deleted, the apps referencing it keep a dangling reference
+with no warning anywhere in `GET /apps/{id}`.)*
+
+### 🟢 Finding 8 — smaller things, all verified
+
+- **`pause` / `resume` are excellent.** Five paused apps cost nothing and `resume` had the clone serving
+  production HTML in **~45 s** with no rebuild. For a POC that spans weeks this is exactly right.
+- **Backup ledger** (`GET /databases/{id}/backups`) works and reads well: `mode`, `modeReason`
+  (`leader_changed`), `lsn`, sizes, timings.
+- **`GET /databases/{id}/connection` returning `caCert` + `sslVerifiedUri`** with the explicit warning
+  against `NODE_TLS_REJECT_UNAUTHORIZED=0` is the kind of guidance that prevents a real incident — our own
+  POC scripts had that footgun.
+- **Docs vs reality on the Postgres patch level:** `llms.txt` says *"`GET /databases/:id` now returns
+  `postgres: {running, available, behind}`"*. It does not — the field is absent on our cluster. The server
+  actually runs **17.2**, while the docs say PG17 ships **17.5** and our source is **17.6**. Since you
+  correctly tell people to check this after a migration, the field needs to exist.
+- **`GET /apps/{id}/deployments/{id}` and `GET /apps/{id}/events` are 404** (`No such endpoint`). Deployment
+  detail is only reachable by listing. Minor, but it is the first thing you reach for after a failure.
+
+### Status ledger — updated 2026-07-29
+
+| Item | Status |
+|---|---|
+| **A3 — HTML edge caching** | ✅ **CLOSED — measured HIT with bare `s-maxage`, ~60× capacity** |
+| A1 `\restrict` · B1 dump retained · B2 atomic · `preSeed` | ✅ **CLOSED — re-tested end-to-end today** |
+| **A4 — `maintenance_work_mem` too low for ivfflat (new)** | 🔴 **OPEN — blocks managed restore for every pgvector/Supabase source** |
+| N1 — `scale-out` → `replica_unhealthy` | 🔴 OPEN (3rd repro) — **no longer blocks us** |
+| `/rules` `enforcement` message misleads after A3 | 🟡 OPEN — cost us a wrong conclusion on 07-27 |
+| `env/verify` green on unresolved `${{…}}` | 🟡 OPEN |
+| `postgres: {running, available, behind}` missing | 🟡 OPEN |
+| G5 — **price of the plan we need** | ❓ **still the single biggest unknown** |
+
+### Where the migration stands after today
+
+Every technical objection this report has raised over eight days is now either fixed or ours to fix, and
+**the two that mattered most — capacity and edge caching — are closed with measurements, not promises.**
+One free-tier replica now serves 37× our production peak at a p95 of 50 ms, and the latency gap to a
+CloudFront-fronted Fargate fleet is 1.4–2.0×.
+
+What is left is not engineering:
+
+1. **The price of the plan we need** (1–2 replicas × 2 GB, ~35 GB Postgres with PITR, Redis, object storage).
+   This has been the top unknown for four days and it is now the *only* thing between us and a cutover
+   rehearsal.
+2. **A4**, if you want us to use the managed restore rather than `pg_dump | psql` for the real 31 GB load.
+3. On our side: the `getClientIp()` / `CF-Connecting-IP` fix recorded on 07-27, and re-cloning the database
+   (our POC cluster is a schema-only shell today — the populated one was deleted during the POC).
+
+**Tell us the number and we will schedule the rehearsal.**
