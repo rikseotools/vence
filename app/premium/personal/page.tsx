@@ -26,7 +26,7 @@ interface OfertaVista {
 
 export default function PrecioPersonalPage() {
   const { user, loading: authLoading } = useAuth() as { user: { id: string; email: string } | null; loading: boolean }
-  const [oferta, setOferta] = useState<OfertaVista | null>(null)
+  const [ofertas, setOfertas] = useState<OfertaVista[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [pagando, setPagando] = useState(false)
@@ -37,11 +37,12 @@ export default function PrecioPersonalPage() {
     let vivo = true
     ;(async () => {
       try {
-        const data = await apiFetch<{ success: boolean; oferta: OfertaVista | null }>(
+        const data = await apiFetch<{ success: boolean; ofertas?: OfertaVista[]; oferta: OfertaVista | null }>(
           '/api/v2/premium/mi-oferta',
           { method: 'GET', retries: 2 },
         )
-        if (vivo) setOferta(data.oferta)
+        // `ofertas` es lo actual; `oferta` queda como respaldo por si responde un servidor viejo.
+        if (vivo) setOfertas(data.ofertas ?? (data.oferta ? [data.oferta] : []))
       } catch {
         if (vivo) setError('No hemos podido cargar tu precio. Vuelve a intentarlo en un momento.')
       } finally {
@@ -51,8 +52,8 @@ export default function PrecioPersonalPage() {
     return () => { vivo = false }
   }, [user, authLoading])
 
-  async function contratar() {
-    if (!user || !oferta) return
+  async function contratar(oferta: OfertaVista) {
+    if (!user) return
     setPagando(true)
     setError('')
     // Mismo intent tracking que /premium: si el redirect no llega, queda como
@@ -104,7 +105,7 @@ export default function PrecioPersonalPage() {
     )
   }
 
-  if (!oferta) {
+  if (!ofertas.length) {
     return (
       <Marco titulo="Tu precio de fidelidad">
         <p className="text-gray-600 dark:text-gray-300">
@@ -120,31 +121,33 @@ export default function PrecioPersonalPage() {
   return (
     <Marco titulo="Tu precio de fidelidad">
       <p className="text-gray-600 dark:text-gray-300">
-        Por llevar tiempo con nosotros mantienes tu precio, sin cambios.
+        Por llevar tiempo con nosotros mantienes tu precio. Elige el plan que prefieras.
       </p>
 
-      <div className="mt-6 rounded-2xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/40 p-6 text-center">
-        <div className="text-sm uppercase tracking-wide text-blue-700 dark:text-blue-300 font-semibold">
-          Vence Premium
+      {ofertas.map((oferta) => (
+        <div key={oferta.priceId} className="mt-6 rounded-2xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/40 p-6 text-center">
+          <div className="text-sm uppercase tracking-wide text-blue-700 dark:text-blue-300 font-semibold">
+            Vence Premium
+          </div>
+          <div className="mt-2 flex items-baseline justify-center gap-2">
+            <span className="text-5xl font-bold text-gray-900 dark:text-white">{oferta.importe}</span>
+            <span className="text-gray-600 dark:text-gray-300">{oferta.periodicidad}</span>
+          </div>
+          {oferta.intervalo !== 'mensual' && (
+            <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">{oferta.euroPorMes} al mes</div>
+          )}
+          <button
+            onClick={() => contratar(oferta)}
+            disabled={pagando}
+            className="mt-6 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-6 py-4 rounded-xl text-lg"
+          >
+            {pagando ? 'Abriendo el pago…' : 'Activar mi Premium'}
+          </button>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            El pago se realiza de forma segura. Puedes cancelar cuando quieras desde tu perfil.
+          </p>
         </div>
-        <div className="mt-2 flex items-baseline justify-center gap-2">
-          <span className="text-5xl font-bold text-gray-900 dark:text-white">{oferta.importe}</span>
-          <span className="text-gray-600 dark:text-gray-300">{oferta.periodicidad}</span>
-        </div>
-        {oferta.intervalo !== 'mensual' && (
-          <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">{oferta.euroPorMes} al mes</div>
-        )}
-        <button
-          onClick={contratar}
-          disabled={pagando}
-          className="mt-6 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-6 py-4 rounded-xl text-lg"
-        >
-          {pagando ? 'Abriendo el pago…' : 'Activar mi Premium'}
-        </button>
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          El pago se realiza de forma segura. Puedes cancelar cuando quieras desde tu perfil.
-        </p>
-      </div>
+      ))}
 
       {error && (
         <div className="mt-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 p-4 text-red-700 dark:text-red-300 text-sm">

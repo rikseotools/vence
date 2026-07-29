@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-import { getOfertaActiva, ETIQUETA_INTERVALO, formatearImporte, euroPorMes } from '@/lib/api/premium/ofertas'
+import { getOfertasActivas, ETIQUETA_INTERVALO, formatearImporte, euroPorMes } from '@/lib/api/premium/ofertas'
 
 export const maxDuration = 15
 export const dynamic = 'force-dynamic'
@@ -19,23 +19,23 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'unauthorized' }, { status: auth.status })
   }
 
-  const oferta = await getOfertaActiva(auth.userId)
-  if (!oferta) {
-    return NextResponse.json({ success: true, oferta: null })
+  const ofertas = await getOfertasActivas(auth.userId)
+  if (!ofertas.length) {
+    return NextResponse.json({ success: true, oferta: null, ofertas: [] })
   }
 
-  return NextResponse.json({
-    success: true,
-    oferta: {
-      priceId: oferta.stripePriceId,
-      intervalo: oferta.intervalo,
-      periodicidad: ETIQUETA_INTERVALO[oferta.intervalo],
-      importe: formatearImporte(oferta.importeCentimos),
-      importeCentimos: oferta.importeCentimos,
-      euroPorMes: euroPorMes(oferta.importeCentimos, oferta.intervalo),
-      expiraEl: oferta.expiresAt ? oferta.expiresAt.toISOString() : null,
-    },
+  const vista = (oferta: (typeof ofertas)[number]) => ({
+    priceId: oferta.stripePriceId,
+    intervalo: oferta.intervalo,
+    periodicidad: ETIQUETA_INTERVALO[oferta.intervalo],
+    importe: formatearImporte(oferta.importeCentimos),
+    importeCentimos: oferta.importeCentimos,
+    euroPorMes: euroPorMes(oferta.importeCentimos, oferta.intervalo),
+    expiraEl: oferta.expiresAt ? oferta.expiresAt.toISOString() : null,
   })
+
+  // `oferta` (singular) se mantiene para no romper a ningún cliente viejo.
+  return NextResponse.json({ success: true, oferta: vista(ofertas[0]), ofertas: ofertas.map(vista) })
 }
 
 export const GET = withErrorLogging('/api/v2/premium/mi-oferta', _GET)

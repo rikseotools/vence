@@ -95,7 +95,25 @@ function mapear(row: Record<string, unknown>): OfertaPrecio {
   }
 }
 
-/** La oferta viva de una persona (como mucho hay una: lo garantiza el índice único). */
+/**
+ * TODAS las ofertas vivas de una persona.
+ *
+ * Son varias a propósito desde el 29/07: a quien se le mantiene el precio se le pueden
+ * ofrecer su mensual Y su trimestral, y que elija. Devolver solo una obligaba a decidir
+ * por ella cuál — y si el mensaje le prometía dos, veía una y parecía roto.
+ */
+export async function getOfertasActivas(userId: string): Promise<OfertaPrecio[]> {
+  const db = getOfertasDb()
+  const rows = await db.execute(sql`
+    SELECT * FROM user_price_offers
+    WHERE user_id = ${userId} AND redeemed_at IS NULL AND revoked_at IS NULL
+    ORDER BY importe_centimos
+  `)
+  const arr = (rows as unknown as { rows?: unknown[] }).rows ?? (rows as unknown as unknown[])
+  return (arr as Record<string, unknown>[]).map(mapear).filter((o) => ofertaVigente(o))
+}
+
+/** La primera oferta viva (compatibilidad con quien espera una sola). */
 export async function getOfertaActiva(userId: string): Promise<OfertaPrecio | null> {
   const db = getOfertasDb()
   const rows = await db.execute(sql`
