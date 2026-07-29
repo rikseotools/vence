@@ -9,7 +9,7 @@
 #   · DB compartida (prod RDS) por defecto, o Postgres podman propio con --db local
 #
 # Uso:  scripts/sessions/new-session.sh <slug> [--db shared|local] [--own-deps]
-# Cierre: scripts/sessions/end-session.sh <slug>   ·   Ver: scripts/sessions/list-sessions.sh
+# Borrar el worktree al terminar la línea de trabajo: scripts/sessions/borrar-worktree.sh <slug>   ·   Ver: scripts/sessions/list-sessions.sh
 set -euo pipefail
 
 ARGS_ORIG=("$@")
@@ -35,7 +35,7 @@ WT="$SESSIONS_DIR/$SLUG"
 BRANCH="sesion/$SLUG"
 
 # Guardarraíles
-[ -e "$WT" ] && { echo "❌ ya existe $WT — usa otro slug o cierra con end-session.sh $SLUG"; exit 2; }
+[ -e "$WT" ] && { echo "❌ ya existe $WT — usa otro slug o cierra con borrar-worktree.sh $SLUG"; exit 2; }
 git -C "$MAIN_REPO" show-ref --verify --quiet "refs/heads/$BRANCH" && { echo "❌ la rama $BRANCH ya existe"; exit 2; }
 
 echo "→ git fetch origin (base fresca)…"
@@ -129,5 +129,5 @@ cat <<EOF
    db:     $DB_DESC
 
    → cd $WT
-   Al cerrar:  scripts/sessions/end-session.sh $SLUG   (cherry-pick a origin/main + limpia)
+   Al cerrar:  scripts/sessions/borrar-worktree.sh $SLUG   (cherry-pick a origin/main + limpia)
 EOF

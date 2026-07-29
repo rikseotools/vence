@@ -294,7 +294,7 @@ propios → no toca · al día → silencio).
 > 🛠️ **Bootstrap (desde 17/07): `scripts/sessions/`.** No montes el worktree a mano — usa el tooling que impone el buen setup:
 > - `scripts/sessions/new-session.sh <slug> [--db shared|local] [--own-deps]` → worktree **desde `origin/main` fresco** (nunca el main local divergente), copia `.env.local`, symlink de `node_modules` (o `--own-deps`), y escribe un `.session-id` que `cola.cjs` lee solo (claim sin pisarse). `--db local` levanta un Postgres podman propio.
 > - `scripts/sessions/list-sessions.sh` → sesiones vivas (rama, sid, commits sin subir, db), fuente = `git worktree list`.
-> - `scripts/sessions/end-session.sh <slug>` → libera claims, **avisa si hay commits sin llevar a `origin/main`**, y limpia worktree + rama + contenedor.
+> - `scripts/sessions/borrar-worktree.sh <slug>` → libera claims, **avisa si hay commits sin llevar a `origin/main`**, y limpia worktree + rama + contenedor.
 
 ```bash
 git fetch origin
