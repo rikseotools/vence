@@ -78,6 +78,16 @@ Auth.js (`__Secure-authjs.session-token`) cifrada con `AUTH_SECRET`. Resolución
 > usarlo. Nota: los canary de API usan `signCanaryToken` (Bearer); Vence Sim forja **cookie**
 > porque prueba el NAVEGADOR — un Bearer no monta la sesión de la UI.
 
+**La cuenta de test tiene que estar ONBOARDEADA** (`target_oposicion`, `age`, `gender`,
+`ciudad`, `onboarding_completed_at`). Si le falta uno, el modal de onboarding se abre a
+pantalla completa **encima de cualquier journey autenticado** y se traga todos los clics; el
+síntoma que llega es un `locator.click: Timeout` sobre un botón que existe y se ve, y se
+pierde el rato buscando un bug del app que no está ahí (pasó el 28/07). Desde entonces el
+runner lo detecta al navegar y falla diciendo exactamente eso. Al tocar esa fila, ojo: se
+llama *"Smoke Canary (NO TOCAR)"* — solo se completan los campos de onboarding, nada más.
+El perfil va cacheado 60 s (`/api/profile`), así que tras arreglarlo hay que esperar a que
+expire antes de reintentar.
+
 ## Añadir un journey (el flujo que importa)
 Cada bug reportado → un journey nuevo (~20 líneas) que queda como **regresión para siempre**:
 1. Crea `scripts/sim/journeys/<nombre>.ts` con `export default { name, severity, as?, run(ctx) }`.
