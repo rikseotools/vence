@@ -907,7 +907,7 @@ export const RULE_TTS_ERROR_BURST: AlertRule<{
  *   - **≥2 cubos consecutivos en ámbar-o-peor con al menos uno rojo** lo caza, y con ella salen
  *     los tres incidentes que T-254 documenta (24, 27 y 28/07).
  *
- * Volumen medido sobre 7 días de producción con `scripts/sim-latencia-endpoints.ts`: **0,9/día**.
+ * Volumen medido sobre 7 días de producción con `scripts/sim-latencia-endpoints.ts`: **~1/día**.
  * Un detector que no caza su propio caso de origen no vale; uno que se enciende cada hora, tampoco.
  *
  * ## Paridad con el frontend

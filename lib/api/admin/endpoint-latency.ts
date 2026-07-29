@@ -231,7 +231,7 @@ export interface SustainedDegradation {
  *   - «≥2 cubos ROJOS seguidos» → **lo pierde también**: solo un cubo pasó de 5.000 ms.
  *   - Ésta → lo caza, y con ella salen los tres incidentes que describe T-254 (24, 27 y 28/07).
  *
- * Volumen medido sobre 7 días de producción: **0,9/día**. Un detector que no caza su propio caso de
+ * Volumen medido sobre 7 días de producción: **~1/día**. Un detector que no caza su propio caso de
  * origen no vale; uno que se enciende cada hora, tampoco.
  *
  * Solo `user_facing`: una agregación lenta del panel admin no despierta a nadie.

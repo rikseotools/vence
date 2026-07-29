@@ -608,7 +608,7 @@ Los umbrales también están codificados en `app/api/admin/system-health/route.t
 **Latencia POR ENDPOINT** (`endpoint_latency`, T-254 — núcleo en `lib/api/admin/endpoint-latency.ts`):
 - `user_facing`: ámbar ≥ 2.000 ms, rojo ≥ 5.000 ms · `admin`: ámbar ≥ 5.000 ms, rojo ≥ 15.000 ms
 - Se mide el **p95 del PEOR cubo de 5 minutos** de la ventana, no el agregado del periodo. Mínimo **10 muestras** por cubo: por debajo dice `unknown`, nunca verde.
-- La alerta (`endpoint_latency_sustained`, cada 5 min) exige **≥2 cubos consecutivos en ámbar-o-peor con al menos uno rojo**, y solo en endpoints de usuario. Volumen medido: **0,9/día**.
+- La alerta (`endpoint_latency_sustained`, cada 5 min) exige **≥2 cubos consecutivos en ámbar-o-peor con al menos uno rojo**, y solo en endpoints de usuario. Volumen medido: **~1/día**.
 - ⚠️ **El `n` que ves NO son peticiones reales:** los `request_completed` de 2xx/3xx se emiten **muestreados al 10%** (`SUCCESS_TIMING_SAMPLE_RATE`); los 4xx/5xx van al 100%. Una petición lenta observada implica **~10 reales**. Consecuencia directa: con **n<20 el «p95» es de hecho el MÁXIMO del cubo** (`percentile_disc(0.95)` con n=19 devuelve el mayor de 19), y ahí cae el **85% de los hallazgos** — el panel lo marca como *«muestra corta (p95 = máx)»*. La señal sigue siendo válida; lo que no vale es leerla como un percentil. La protección contra el outlier suelto no es el suelo de muestras, es que **la alerta exige que la degradación DURE** (≥2 cubos).
 - ⚠️ Los umbrales están DUPLICADOS en `backend/src/alerts/alert-rules.ts` (el backend no puede importar `lib/`: su Docker solo copia `backend/src`). La divergencia la caza `backend/src/alerts/alert-rules.endpoint-latency.spec.ts` — si tocas un número aquí, ese spec te avisa.
 
