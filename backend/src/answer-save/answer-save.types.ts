@@ -44,6 +44,12 @@ export interface AnswerSaveRequest {
 
   questionText: string;
   options: string[];
+  /**
+   * Permutación con la que se SIRVIÓ la pregunta: option_order[i] = índice ORIGINAL
+   * (0=A en BD) mostrado en la posición i. Sin él, la posición MOSTRADA se compara
+   * contra la clave ORIGINAL y se marca fallo a quien acertó (incidente T-235).
+   */
+  optionOrder?: number[] | null;
   tema?: number;
   questionType?: 'legislative' | 'psychometric';
   article?: AnswerSaveArticle | null;
@@ -108,6 +114,12 @@ export const answerSaveRequestSchema = z
 
     questionText: z.string().min(1),
     options: z.array(z.string()).min(2).max(6),
+    // 🔀 Barajado (T-235): DEBE estar declarado. Zod elimina los campos que no
+    // declara, así que su ausencia aquí hacía que la permutación no llegara nunca a
+    // la BD (`test_questions.option_order` NULL en el 100% de la historia) y que la
+    // respuesta se corrigiera contra la clave equivocada. Mismo contrato que el
+    // esquema de Next (`lib/api/v2/answer-and-save/schemas.ts`).
+    optionOrder: z.array(z.number().int()).nullable().optional(),
     tema: z.number().int().min(0).default(0),
     questionType: z.enum(['legislative', 'psychometric']).default('legislative'),
 

@@ -142,6 +142,11 @@ export const testQuestions = pgTable('test_questions', {
   correctAnswer: text('correct_answer'),
   isCorrect: boolean('is_correct'),
   wasBlank: boolean('was_blank'),
+  // 🔀 Permutación servida al usuario (T-235): option_order[i] = índice ORIGINAL
+  // mostrado en la posición i. El backend NO la tenía declarada, así que la
+  // permutación no llegaba a la BD y las respuestas barajadas se corregían contra
+  // la clave equivocada.
+  optionOrder: integer('option_order').array(),
   confidenceLevel: text('confidence_level'),
   timeSpentSeconds: integer('time_spent_seconds'),
   timeToFirstInteraction: integer('time_to_first_interaction'),

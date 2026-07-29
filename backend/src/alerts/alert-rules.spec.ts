@@ -6,6 +6,8 @@
 
 import {
   ALERT_RULES,
+  RULE_SHUFFLE_ORDER_NOT_PERSISTED,
+  RULE_SHUFFLE_ORDER_INVALID,
   RULE_DISPUTE_SUBMIT_FAILED,
   RULE_DAILY_QUOTA_OVERCHARGE,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
@@ -2069,5 +2071,60 @@ describe('RULE_DISPUTE_SUBMIT_FAILED (impugnaciones perdidas — 29/07, caso Pil
     const q = JSON.stringify(RULE_DISPUTE_SUBMIT_FAILED.query);
     expect(q).toContain('dispute_submit_failed');
     expect(q).not.toContain('http_network_error');
+  });
+});
+
+describe('Alertas del BARAJADO (29/07, tras el incidente del piloto T-235)', () => {
+  describe('RULE_SHUFFLE_ORDER_NOT_PERSISTED — la firma exacta del incidente', () => {
+    const fila = (servidas: number, guardadas: number) => [{ servidas, guardadas }];
+
+    it('dispara cuando se sirve barajado y NO se guarda ni una permutación', () => {
+      // Es lo que pasó el 28/07: 30 peticiones con barajado activo y option_order
+      // NULL en el 100% de la tabla → 56 aciertos marcados como fallo.
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(30, 0))).toBe(true);
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(5, 0))).toBe(true);
+    });
+
+    it('NO dispara si la permutación sí se está guardando (el arreglo funcionando)', () => {
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(30, 12))).toBe(false);
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(30, 1))).toBe(false);
+    });
+
+    it('NO dispara con el barajado apagado o con ruido de una petición suelta', () => {
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(0, 0))).toBe(false);
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire(fila(4, 0))).toBe(false);
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.shouldFire([])).toBe(false);
+    });
+
+    it('es CRÍTICA y su aviso dice cómo apagar (el daño no se puede reparar después)', () => {
+      expect(RULE_SHUFFLE_ORDER_NOT_PERSISTED.severity).toBe('critical');
+      const notif = RULE_SHUFFLE_ORDER_NOT_PERSISTED.buildNotification(fila(30, 0));
+      expect(notif.body).toContain('FEATURE_SHUFFLE_OPTIONS');
+      expect(notif.body).toContain('shuffleOrderParidad');
+    });
+
+    it('cruza el evento del serve con la tabla real, no dos eventos', () => {
+      const q = JSON.stringify(RULE_SHUFFLE_ORDER_NOT_PERSISTED.query);
+      expect(q).toContain('shuffle_options_request_active');
+      expect(q).toContain('test_questions');
+      expect(q).toContain('option_order');
+    });
+  });
+
+  describe('RULE_SHUFFLE_ORDER_INVALID — clave rota', () => {
+    it('dispara con UNO solo (criterio de la ficha: cualquier cosa != 0 → apagar)', () => {
+      expect(RULE_SHUFFLE_ORDER_INVALID.shouldFire([{ n: 1, usuarios: 1 }])).toBe(true);
+    });
+
+    it('no dispara sin eventos', () => {
+      expect(RULE_SHUFFLE_ORDER_INVALID.shouldFire([{ n: 0, usuarios: 0 }])).toBe(false);
+      expect(RULE_SHUFFLE_ORDER_INVALID.shouldFire([])).toBe(false);
+    });
+  });
+
+  it('AMBAS están registradas en el catálogo que corre el cron', () => {
+    const nombres = ALERT_RULES.map((r) => r.name);
+    expect(nombres).toContain('shuffle_order_not_persisted');
+    expect(nombres).toContain('shuffle_option_order_invalid');
   });
 });

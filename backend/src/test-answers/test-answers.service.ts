@@ -196,6 +196,9 @@ export class TestAnswersService {
         correctAnswer: String.fromCharCode(65 + (req.answerData.correctAnswer || 0)),
         isCorrect: req.answerData.isCorrect || false,
         wasBlank: req.answerData.wasBlank === true,
+        // 🔀 Permutación servida (T-235). NULL cuando no hubo barajado: es el caso
+        // normal y el histórico lo interpreta como orden natural.
+        optionOrder: req.answerData.optionOrder ?? null,
 
         // IDs según tipo de pregunta
         questionId: isPsychometric ? null : questionId,

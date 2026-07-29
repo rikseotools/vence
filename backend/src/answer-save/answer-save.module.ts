@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TemaResolverModule } from '../tema-resolver/tema-resolver.module';
+import { ObservabilityModule } from '../observability/observability.module';
 import { TestAnswersModule } from '../test-answers/test-answers.module';
 import { AnswerSaveController } from './answer-save.controller';
 import { AnswerSaveService } from './answer-save.service';
@@ -21,7 +22,9 @@ import { AnswerSaveService } from './answer-save.service';
  * Fase 5 completada: Controller POST con JwtGuard + Zod + quick-fail.
  */
 @Module({
-  imports: [TestAnswersModule, TemaResolverModule],
+  // ObservabilityModule: el detector de 'clave rota' del barajado (T-235) emite
+  // desde el service, así que el módulo necesita el provider.
+  imports: [TestAnswersModule, TemaResolverModule, ObservabilityModule],
   controllers: [AnswerSaveController],
   providers: [AnswerSaveService],
   exports: [AnswerSaveService],

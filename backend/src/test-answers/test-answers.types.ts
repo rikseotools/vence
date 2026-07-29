@@ -50,6 +50,13 @@ export interface AnswerData {
   timeSpent?: number;
   /** Flag para "dejar en blanco" explícito (feature Tinokero 15/4/2026). */
   wasBlank?: boolean;
+  /**
+   * Permutación con la que se sirvió la pregunta (option_order[i] = índice ORIGINAL
+   * mostrado en la posición i). Se PERSISTE para que el histórico pueda reconstruir
+   * qué vio el usuario; sin ella, las estadísticas y el dossier de impugnaciones no
+   * pueden traducir las letras (T-235).
+   */
+  optionOrder?: number[] | null;
 }
 
 export interface SaveAnswerRequest {

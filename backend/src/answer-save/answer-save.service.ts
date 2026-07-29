@@ -21,6 +21,8 @@ import {
   type AnswerSaveRequest,
   type AnswerSaveResponse,
 } from './answer-save.types';
+import { ObservabilityService } from '../observability/observability.service';
+import { displayedToOriginal, isValidOrder } from '../shuffle/permute';
 
 export interface QuestionValidation {
   correctOption: number | null;
@@ -55,6 +57,9 @@ export class AnswerSaveService {
     private readonly cache: CacheService,
     private readonly temaResolver: TemaResolverService,
     private readonly testAnswers: TestAnswersService,
+    // Detector de "clave rota" del barajado (T-235). Opcional para no romper a los
+    // callers que construyen el service a mano en tests.
+    private readonly observability?: ObservabilityService,
   ) {}
 
   // ─── Validation cache (Fase 3) ─────────────────────────────
@@ -167,8 +172,53 @@ export class AnswerSaveService {
 
     const correctOption = validation.correctOption;
     const isBlank = req.isBlank === true;
-    const isCorrect = !isBlank && req.userAnswer === correctOption;
+
+    // 🔀 BARAJADO (T-235) — el bug que costó 56 aciertos marcados como fallo.
+    // Si la pregunta se sirvió permutada, `userAnswer` es la POSICIÓN MOSTRADA y hay
+    // que mapearla al ÍNDICE ORIGINAL antes de compararla con `correct_option` (que
+    // está en coordenadas de BD). Sin `optionOrder` válido → identidad, es decir, el
+    // comportamiento histórico intacto. Mismo criterio que el route de Next.
+    const nOpciones = req.options.length;
+    const hayBarajado = isValidOrder(req.optionOrder, nOpciones);
+    const orden = hayBarajado ? (req.optionOrder as number[]) : null;
+
+    // Observabilidad: un `optionOrder` que llega pero NO es una permutación válida se
+    // trata como identidad (seguro) y se hace VISIBLE. Es el detector de "clave rota":
+    // señal de desincronía serve↔cliente o de manipulación. Mismo evento que emite Next.
+    if (req.optionOrder != null && !hayBarajado) {
+      this.observability
+        ?.emit({
+          source: 'fargate',
+          severity: 'warn',
+          eventType: 'shuffle_option_order_invalid',
+          endpoint: '/api/v2/answer-and-save',
+          userId,
+          metadata: {
+            questionId: req.questionId,
+            numOptions: nOpciones,
+            optionOrderLen: Array.isArray(req.optionOrder)
+              ? req.optionOrder.length
+              : null,
+          },
+        })
+        .catch(() => undefined);
+    }
+
+    // Índice ORIGINAL elegido por el usuario (para validar y para guardar coherente con BD).
+    const originalUserAnswer =
+      req.userAnswer === null || req.userAnswer < 0
+        ? req.userAnswer
+        : displayedToOriginal(orden, req.userAnswer);
+
+    const isCorrect = !isBlank && originalUserAnswer === correctOption;
     const newScore = isCorrect ? currentScore + 1 : currentScore;
+
+    // Posición MOSTRADA de la correcta: es lo que el cliente resalta en pantalla.
+    // Devolver la original con barajado activo señalaría la opción equivocada.
+    const displayedCorrect =
+      orden && orden.indexOf(correctOption) !== -1
+        ? orden.indexOf(correctOption)
+        : correctOption;
 
     // Si el resolver encontró tema, lo usamos. Si no, queda req.tema (puede ser 0).
     const effectiveTema =
@@ -177,7 +227,13 @@ export class AnswerSaveService {
         : (req.tema ?? 0);
 
     // 3. INSERT en test_questions vía TestAnswersService
-    const saveRequest = this.toSaveAnswerRequest(req, correctOption, isCorrect);
+    const saveRequest = this.toSaveAnswerRequest(
+      req,
+      correctOption,
+      isCorrect,
+      originalUserAnswer,
+      orden,
+    );
     const saveResult = await this.testAnswers.insertTestAnswer(
       saveRequest,
       userId,
@@ -212,7 +268,7 @@ export class AnswerSaveService {
     return {
       success: saveResult.success,
       isCorrect,
-      correctAnswer: correctOption,
+      correctAnswer: displayedCorrect,
       explanation: validation.explanation,
       articleNumber: validation.articleNumber,
       lawShortName: validation.lawShortName,
@@ -279,6 +335,8 @@ export class AnswerSaveService {
     req: AnswerSaveRequest,
     correctOption: number,
     isCorrect: boolean,
+    originalUserAnswer: number | null,
+    optionOrder: number[] | null,
   ): SaveAnswerRequest {
     const isBlank = req.isBlank === true;
     return {
@@ -301,11 +359,16 @@ export class AnswerSaveService {
         questionIndex: req.questionIndex,
         // Blancas: -1 para que insertTestAnswer lo interprete como "sin
         // selección" y lo traduzca al marcador BLANK en BD.
-        selectedAnswer: isBlank ? -1 : (req.userAnswer as number),
+        // Con barajado se guarda el índice ORIGINAL, no la posición mostrada: así la
+        // fila es coherente con `questions.correct_option` y con el histórico.
+        selectedAnswer: isBlank ? -1 : (originalUserAnswer as number),
         correctAnswer: correctOption,
         isCorrect,
         timeSpent: req.timeSpent ?? 0,
         wasBlank: isBlank,
+        // 🔀 La permutación SERVIDA. Sin esto `test_questions.option_order` queda NULL
+        // y el histórico no puede reconstruir qué vio el usuario (T-235).
+        optionOrder,
       },
       tema: req.tema,
       confidenceLevel: req.confidenceLevel ?? 'unknown',

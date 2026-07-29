@@ -4244,8 +4244,86 @@ export const RULE_DISPUTE_SUBMIT_FAILED: AlertRule<{
   cooldownMin: 120,
 };
 
+/**
+ * BARAJADO SERVIDO QUE NO SE GUARDA — la firma exacta del incidente T-235.
+ *
+ * El serve emite `shuffle_options_request_active` cuando sirve preguntas permutadas.
+ * Si eso ocurre y NINGUNA respuesta de la misma ventana guarda `option_order`, la
+ * permutación no está volviendo: el servidor corrige la posición MOSTRADA contra la
+ * clave ORIGINAL y marca como FALLO respuestas ACERTADAS. Así se perdieron 56 aciertos
+ * de 8 usuarios de Valencia el 28/07, y NADIE se enteró: no había ninguna regla que
+ * mirase esto (152 reglas y ni una del barajado). Lo descubrió una usuaria.
+ *
+ * Es la condición que la propia ficha T-235 exige comprobar "en la primera hora" tras
+ * encender el piloto — aquí queda automatizada en vez de depender de que alguien mire.
+ */
+export const RULE_SHUFFLE_ORDER_NOT_PERSISTED: AlertRule<{
+  servidas: number;
+  guardadas: number;
+}> = {
+  name: 'shuffle_order_not_persisted',
+  severity: 'critical',
+  query: sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM observable_events
+        WHERE event_type = 'shuffle_options_request_active'
+          AND ts > NOW() - INTERVAL '1 hour') AS servidas,
+      (SELECT COUNT(*)::int FROM test_questions
+        WHERE option_order IS NOT NULL
+          AND created_at > NOW() - INTERVAL '1 hour') AS guardadas
+  `,
+  // Con barajado activo (≥5 peticiones para no saltar por una suelta) tiene que haber
+  // ALGUNA respuesta con la permutación guardada. Cero es la señal de que se pierde.
+  shouldFire: (rows) =>
+    (rows[0]?.servidas ?? 0) >= 5 && (rows[0]?.guardadas ?? 0) === 0,
+  buildNotification: (rows) => {
+    const servidas = rows[0]?.servidas ?? 0;
+    return {
+      title: `Barajado ACTIVO y la permutación NO se guarda (${servidas} peticiones, 0 respuestas con option_order)`,
+      body: `El servidor está sirviendo preguntas barajadas pero \`test_questions.option_order\` sigue vacío. Eso significa que la corrección compara la posición MOSTRADA contra la clave ORIGINAL: se están marcando FALLOS a quien acierta, y las filas quedan coherentes consigo mismas (no se pueden reparar después).\n\nACCIÓN INMEDIATA: apagar el flag.\n\n  aws --profile vence --region eu-west-2 ssm put-parameter --name /vence-frontend/FEATURE_SHUFFLE_OPTIONS --value false --overwrite\n  (+ force-new-deployment del servicio: los secretos se leen al arrancar la tarea)\n\nDespués, comprobar la PARIDAD de las dos implementaciones del endpoint (frontend y backend NestJS): el incidente del 28/07 fue que el backend no declaraba \`optionOrder\` en su Zod y lo borraba en silencio. Guardarraíl: __tests__/guardrails/shuffleOrderParidad.test.ts`,
+      metadata: { servidas, guardadas: rows[0]?.guardadas ?? 0 },
+      fingerprint: 'shuffle_order_not_persisted',
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * CLAVE ROTA — el cliente devolvió un `option_order` que no es una permutación válida.
+ * La ficha T-235 lo dice sin matices: «cualquier cosa distinta de 0 es motivo de apagar
+ * y diagnosticar antes que seguir». Por eso el umbral es 1.
+ */
+export const RULE_SHUFFLE_ORDER_INVALID: AlertRule<{
+  n: number;
+  usuarios: number;
+}> = {
+  name: 'shuffle_option_order_invalid',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n, COUNT(DISTINCT user_id)::int AS usuarios
+    FROM observable_events
+    WHERE event_type = 'shuffle_option_order_invalid'
+      AND ts > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    return {
+      title: `Barajado: ${n} orden(es) de opciones inválido(s) — posible clave rota`,
+      body: `El cliente devolvió un \`option_order\` que no es una permutación válida de las opciones. Se ha tratado como identidad (seguro), pero es señal de desincronía entre lo que se sirve y lo que se guarda, o de manipulación.\n\nCriterio de la ficha T-235: cualquier cosa distinta de 0 es motivo de APAGAR y diagnosticar.\n\n  SELECT ts, user_id, metadata FROM observable_events\n  WHERE event_type='shuffle_option_order_invalid' ORDER BY ts DESC LIMIT 20;`,
+      metadata: { count: n, usuarios: rows[0]?.usuarios ?? 0 },
+      fingerprint: 'shuffle_option_order_invalid',
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Barajado de opciones (2026-07-29, tras el incidente del piloto): sin estas dos, 152
+  // reglas y ninguna miraba si el barajado corrompía los resultados.
+  RULE_SHUFFLE_ORDER_NOT_PERSISTED as AlertRule,
+  RULE_SHUFFLE_ORDER_INVALID as AlertRule,
   // Impugnaciones perdidas en el envío (2026-07-29, caso Pilar): el usuario cree que
   // ha reportado un fallo de contenido y no ha quedado nada.
   RULE_DISPUTE_SUBMIT_FAILED as AlertRule,
