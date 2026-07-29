@@ -41,8 +41,10 @@
 **R1** (CDN enables again) · **R3** (new apps CDN-on by default) · **R4** (image apps auto-deploy, live on 1st attempt in ~25 s) · **R5** (`/rules` now reports `enforcement{enforced,servedBy,note,remedy}` — better than we asked) · **R6** (runtime error codes back) · **the replica/autoscale plan gate is gone** (free tier can now run a 6–10 replica capacity test — the #1 cutover gate, and **we passed it: 109 rps @ 0 % errors on 6 replicas vs our 16.6 rps peak**) · **A1/A2/B1/B2 + C2** shipped as documented in the restored managed restore (`\restrict` stripped, auto-ownership + `POST /databases/:id/fix-ownership`, dump kept on failure, atomic restore) — *documented, end-to-end re-test pending*.
 
 ### 🔴 STILL OPEN — updated 2026-07-29
-- **A4 (new, P0) — the managed restore cannot build a pgvector `ivfflat` index.** `ERROR: memory required is 65 MB, maintenance_work_mem is 64 MB`. `SHOW maintenance_work_mem` → `65536 kB` with **`source: "default"`** (PostgreSQL's factory default, *not* derived from cluster RAM), `PUT /databases/{id}/resources` is `404`, `apply-config` is for node recreation, and your pooler rejects `PGOPTIONS="-c maintenance_work_mem=…"` (`unsupported startup parameter in options`). **Fix: `SET maintenance_work_mem` in the restore session** — it is `USERSET` and we verified the unprivileged `app` role can set it to 256 MB on your own cluster. **Acceptance:** a dump containing `CREATE INDEX … USING ivfflat` over ≥50 k rows restores cleanly on a free-tier cluster.
-- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** **Fifth reproduction** (07-25, 07-27, 07-29 ×3), the longest-lived open bug in this report, always ~24-30 s, always **empty logs**, always **`runner: null`**. **Now proven platform-wide, not our app: it fails identically on a second, unrelated app (`vence-web9`)**, while both apps deploy fine on the normal path minutes before and after. `runner: null` + no logs + no container output says the replica was **never scheduled** — so `replica_unhealthy` is reporting the wrong layer and sends you hunting for a `healthPath` that doesn't exist. **Asks:** (1) distinguish *never scheduled* from *scheduled and unhealthy* (`no_runner_available` / `scale_out_placement_failed`); (2) emit logs on this path — it is the only failure mode on koigrid that does not self-explain; (3) actually return the documented preconditions (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`), because today none are returned yet placement never happens. **No longer blocks us** (A3 works without it), and **no downtime in any of the four attempts** — the last-good deployment kept serving throughout.
+- ~~**A4 — the managed restore cannot build a pgvector `ivfflat` index.**~~ ✅ **CLOSED 2026-07-29 17:55** — fixed and verified end-to-end: the failure line moved past the index build, and a complete dump then restored `done` in 267 s with **61 123 articles + 1 404 laws (exact match with RDS)**, the `ivfflat` index present and `owner = app`. **First fully successful managed restore.** Original report kept below for the record.
+- **A5 (new, small) — `tableCounts` comes back as `[]` on a SUCCESSFUL restore.** Your docs sell it as *"per-table row counts to verify the migration"*; it is what makes a restore trustworthy without a second tool. Empty on success (`{"status":"done","tableCounts":[],"logs":"__KOIOK__"}`), `null` on failure (fair). We had to verify the counts ourselves via `/query`.
+- **A4-OLD (for the record) — the managed restore cannot build a pgvector `ivfflat` index.** `ERROR: memory required is 65 MB, maintenance_work_mem is 64 MB`. `SHOW maintenance_work_mem` → `65536 kB` with **`source: "default"`** (PostgreSQL's factory default, *not* derived from cluster RAM), `PUT /databases/{id}/resources` is `404`, `apply-config` is for node recreation, and your pooler rejects `PGOPTIONS="-c maintenance_work_mem=…"` (`unsupported startup parameter in options`). **Fix: `SET maintenance_work_mem` in the restore session** — it is `USERSET` and we verified the unprivileged `app` role can set it to 256 MB on your own cluster. **Acceptance:** a dump containing `CREATE INDEX … USING ivfflat` over ≥50 k rows restores cleanly on a free-tier cluster.
+- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** **UPDATE 17:55 — half fixed:** `runner` is now recorded (`167.233.84.5`) and `logs` is no longer empty, **but** it contains only the sentinel `KOI_SO_FAIL`, the `error` is still the same `replica_unhealthy` string (so it does **not** yet distinguish "couldn't reach the machine" from "container didn't start"), and `image` is `null` on the failed deployment where successful ones carry the ECR reference. The whole thing fails in **14 s** while the app's own log stream shows `✓ Ready in 0ms`. **Correction we owe koigrid:** our earlier "the replica was never scheduled" diagnosis was inferred from `runner: null` and now looks **wrong** — placement did happen. Narrower ask: **say why the replica was judged unhealthy** (exit code / failed probe / timeout). **Sixth reproduction** (07-25, 07-27, 07-29 ×4), the longest-lived open bug in this report, always ~24-30 s, always **empty logs**, always **`runner: null`**. **Now proven platform-wide, not our app: it fails identically on a second, unrelated app (`vence-web9`)**, while both apps deploy fine on the normal path minutes before and after. `runner: null` + no logs + no container output says the replica was **never scheduled** — so `replica_unhealthy` is reporting the wrong layer and sends you hunting for a `healthPath` that doesn't exist. **Asks:** (1) distinguish *never scheduled* from *scheduled and unhealthy* (`no_runner_available` / `scale_out_placement_failed`); (2) emit logs on this path — it is the only failure mode on koigrid that does not self-explain; (3) actually return the documented preconditions (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`), because today none are returned yet placement never happens. **No longer blocks us** (A3 works without it), and **no downtime in any of the four attempts** — the last-good deployment kept serving throughout.
 - **`/rules` `enforcement` message is misleading now that A3 works.** It still returns `enforced:false, servedBy:"legacy_runner"` with a remedy pointing at `scale-out` — on an app that is demonstrably edge-caching. It cost us a wrong conclusion on 07-27 ("A3 is gated behind N1"). Suggestion: report `documentCaching: "active"` separately from `customRules: "pending_central_edge"`.
 - **`GET /apps/{id}/env/verify` reports green on an unresolved `${{…}}` reference.** Our container received the literal string `${{db.vence-mig2.DATABASE_URL}}` (the referenced DB had been deleted) → every API route `500`; `env/verify` said `present:true, matchesConfigured:true`. Ask: fail the deploy on an unresolved reference, and have `env/verify` flag `^\$\{\{.*\}\}$` as `unresolved_reference`.
 - **`postgres: {running, available, behind}` is documented but absent** from `GET /databases/{id}`. Ours actually runs **17.2** while the docs say PG17 ships 17.5 (our source is 17.6) — and you correctly tell people to check this after a migration.
@@ -1973,3 +1975,92 @@ Capacity is stable across the day (1 replica, 2 GB, free plan, same load test):
 2. **Publish whole-page numbers, not TTFB.** You are at parity and the metric you are being judged on hides it.
 3. **A dated changelog or a version header** (asked this morning, repeating because it would have saved this
    session two full re-test rounds: we cannot tell a no-op release from a real one without re-running everything).
+
+---
+
+## ✅ UPDATE 2026-07-29 (17:55 UTC) — **A4 is fixed and we ran the first fully successful managed restore.** N1 is half-fixed, and we owe you a correction
+
+Both fixes you announced were shipped **without a docs change** (`llms.txt` still byte-identical, md5
+`8ff803a88c`, 865 lines; 189 paths) — so they were only findable by re-running the tests. Both were.
+
+### ⭐ A4 — CLOSED. The ivfflat index builds, and the whole restore now completes
+
+We re-ran the real thing: `pg_dump` from our production RDS 17.6 → your managed restore, on the POC cluster.
+
+**Progression across three jobs, which shows the fix landing precisely:**
+
+| Job | Failed at | Cause |
+|---|---|---|
+| This morning | `psql:<stdin>:**61219**` | `memory required is 65 MB, maintenance_work_mem is 64 MB` ← **A4** |
+| Now, 1st retry | `psql:<stdin>:**61290**` | `no unique constraint matching given keys for referenced table "laws"` ← **ours** |
+| Now, 2nd retry | `psql:<stdin>:61290` | `violates foreign key constraint "articles_law_id_fkey"` ← **ours** |
+| Now, 3rd (complete dump) | — | ✅ **`done` in 267 s** |
+
+The failure line moved past the index build on the first attempt. **A4 is fixed.** The two failures after it
+were entirely our doing: our POC cluster is a degraded schema-only shell from an earlier partial port, so its
+`laws` table had lost its primary key, and we had dumped `articles` without the `laws` rows it references.
+Once we dumped both tables together it went straight through.
+
+**Verified after the restore, not assumed:**
+
+| Check | Result |
+|---|---|
+| `articles` rows | **61 123** — exact match with RDS |
+| `laws` rows | **1 404** — exact match with RDS |
+| The index that used to kill it | ✅ `articles_embedding_idx … USING ivfflat (embedding vector_cosine_ops) WITH (lists='100')` |
+| Ownership (A2) | ✅ `owner = app` |
+| Size / time | 624 MB restored from 242 MB gzip in **267 s** |
+| B1 (dump retained) | ✅ retried twice on the same `dumpKey`, no re-upload |
+| B2 (atomic) | ✅ after each failure, `articles` was **absent** — no half-created objects |
+
+This is **the first end-to-end managed restore we have completed**, and it is the path we would use for the
+real 31 GB load. Thank you — that was our only P0.
+
+### 🟡 One gap in the same feature: `tableCounts` is empty exactly when it succeeds
+
+```json
+{"status":"done","tableCounts":[],"logs":"__KOIOK__"}
+```
+
+Your docs sell `tableCounts` as *"per-table row counts to verify the migration"* — it is the thing that makes
+a restore trustworthy without a second tool. On our **successful** job it came back as an **empty array**, so
+we verified the counts ourselves with `/query`. (On the failed jobs it was `null`, which is fair.) Small fix,
+and it is the difference between "the job says done" and "the job proved it".
+
+### 🟡 N1 — you shipped half of it, and it is the useful half. But the claim about the reason is not true yet
+
+You said the runner and the records are now kept, and that the reason distinguishes *"we couldn't reach the
+machine"* from *"the container didn't start"*. Measured, sixth reproduction:
+
+| Field | Before today | Now |
+|---|---|---|
+| `runner` | `null` | ✅ **`167.233.84.5`** |
+| `logs` | `""` | 🟡 **`"KOI_SO_FAIL\n"`** |
+| `error` | `replica_unhealthy` | ❌ **`replica_unhealthy`** — unchanged |
+| `image` | *(not checked)* | ⚠️ **`null`** |
+
+- ✅ **The runner is now recorded.** That is a real improvement and it settles the question below.
+- 🟡 **`logs` is technically non-empty, but it is a sentinel, not a record.** `KOI_SO_FAIL` names the failure;
+  it does not say anything about it. What we still cannot see is *why* the replica was considered unhealthy.
+- ❌ **The reason does not distinguish the two cases.** It is the same `replica_unhealthy` string as on
+  2026-07-25. If the distinction exists internally, it is not reaching the API.
+- ⚠️ **`image: null` on the failed deployment**, where successful deployments carry the full ECR reference.
+  Worth a look — it may mean the scale-out path fails before resolving the image.
+- ⏱️ The whole thing fails in **14 s** (`createdAt` 17:40:08 → `finishedAt` 17:40:22), which seems short for a
+  health check with any grace period. And the app's own log stream shows the container coming up perfectly:
+  `▲ Next.js 16.2.6 … ✓ Ready in 0ms`.
+
+### 🙏 And a correction we owe you
+
+On 2026-07-29 (morning) we told you, with some confidence, that `runner: null` meant *"the replica was never
+scheduled, so `replica_unhealthy` is reporting a symptom of a scheduling failure"*, and we asked you to add a
+`no_runner_available` code on that basis. **Now that the runner is recorded — `167.233.84.5` — that hypothesis
+looks wrong: placement did happen.** We were reasoning from a field you had not yet populated, and we should
+have flagged it as a guess rather than a diagnosis. The ask stands in a narrower form: **say why the replica
+was judged unhealthy** (exit code, failed probe, timeout), because the container clearly starts.
+
+### Housekeeping
+
+`scale-out` reverted to `false` and redeployed; the app is `running` and serving (`200`). **No downtime in six
+attempts.** The POC app is back to `paused`. The POC database now holds a real, verified `articles` + `laws`
+(61 123 / 1 404 rows) restored entirely through your managed path.
