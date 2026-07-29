@@ -1,0 +1,242 @@
+[
+ {
+  "id": "0c27d6c6-e9d6-482c-ac62-937927dfc75b",
+  "ley": "CE",
+  "enunciado": "El derecho de huelga de los trabajadores en defensa de sus intereses se reconoce en la Constitución Española dentro de los:",
+  "opciones": {
+   "A": "Derechos y deberes de los ciudadanos.",
+   "B": "Principios rectores de la política social y económica.",
+   "C": "Derechos fundamentales y libertades públicas.",
+   "D": "No tiene reconocimiento a nivel constitucional."
+  },
+  "correcta": "C",
+  "correcta_texto": "Derechos fundamentales y libertades públicas.",
+  "art_vinculado": {
+   "numero": "28",
+   "texto": "1. Todos tienen derecho a sindicarse libremente. La ley podrá limitar o exceptuar el ejercicio de este derecho a las Fuerzas o Institutos armados o a los demás Cuerpos sometidos a disciplina militar y regulará las peculiaridades de su ejercicio para los funcionarios públicos. La libertad sindical comprende el derecho a fundar sindicatos y a afiliarse al de su elección, así como el derecho de los sindicatos a formar confederaciones y a fundar organizaciones sindicales internacionales o a afiliarse a las mismas. Nadie podrá ser obligado a afiliarse a un sindicato.\n\n2. Se reconoce el derecho a la huelga de los trabajadores para la defensa de sus intereses. La ley que regule el ejercicio de este derecho establecerá las garantías precisas para asegurar el mantenimiento de los servicios esenciales de la comunidad."
+  },
+  "art_sugerido": {
+   "numero": "27",
+   "texto": "1. Todos tienen el derecho a la educación. Se reconoce la libertad de enseñanza.\n\n2. La educación tendrá por objeto el pleno desarrollo de la personalidad humana en el respeto a los principios democráticos de convivencia y a los derechos y libertades fundamentales.\n\n3. Los poderes públicos garantizan el derecho que asiste a los padres para que sus hijos reciban la formación religiosa y moral que esté de acuerdo con sus propias convicciones.\n\n4. La enseñanza básica es obligatoria y gratuita.\n\n5. Los poderes públicos garantizan el derecho de todos a la educación, mediante una programación general de la enseñanza, con participación efectiva de todos los sectores afectados y la creación de centros docentes.\n\n6. Se reconoce a las personas físicas y jurídicas la libertad de creación de centros docentes, dentro del respeto a los principios constitucionales.\n\n7. Los profesores, los padres y, en su caso, los alumnos intervendrán en el control y gestión de todos los centros sostenidos por la Administración con fondos públicos, en los términos que la ley establezca.\n\n8. Los poderes públicos inspeccionarán y homologarán el sistema educativo para garantizar el cumplimiento de las leyes.\n\n9. Los poderes públicos ayudarán a los centros docentes que reúnan los requisitos que la ley establezca.\n\n10. Se reconoce la autonomía de las Universidades, en los términos que la ley establezca."
+  },
+  "servidas": 278,
+  "verdad": "vinculado_correcto",
+  "porque": "La pregunta es en qué SECCIÓN de la CE se reconoce el derecho de huelga; el art. 28 es donde se reconoce. El 27 (educación) solo casa por palabras genéricas."
+ },
+ {
+  "id": "0f0776ce-105e-4b32-8917-32c5ce4fc552",
+  "ley": "Ley 47/2003",
+  "enunciado": "De acuerdo con la Ley General Presupuestaria, en lo relativo a los escenarios presupuestarios plurianuales, el escenario de ingresos no tendrá en cuenta:",
+  "opciones": {
+   "A": "Los efectos derivados de cambios previstos en la normativa que los regula.",
+   "B": "Los efectos tendenciales de la economía.",
+   "C": "Los efectos coyunturales que puedan estimarse.",
+   "D": "Los recursos disponibles y los medios económicos, materiales y personales necesarios con especificación de los créditos."
+  },
+  "correcta": "D",
+  "correcta_texto": "Los recursos disponibles y los medios económicos, materiales y personales necesarios con especificación de los créditos.",
+  "art_vinculado": {
+   "numero": "28",
+   "texto": "1. Los escenarios presupuestarios plurianuales en los que se enmarcarán anualmente los Presupuestos Generales del Estado, constituyen la programación de la actividad del sector público estatal con presupuesto limitativo en la que se definirán los equilibrios presupuestarios básicos, la previsible evolución de los ingresos y los recursos a asignar a las políticas de gasto, en función de sus correspondientes objetivos estratégicos y los compromisos de gasto ya asumidos. Los escenarios presupuestarios plurianuales determinarán los límites, referidos a los tres ejercicios siguientes, que la acción de gobierno debe respetar en los casos en que sus decisiones tengan incidencia presupuestaria.\n\n2. Los escenarios presupuestarios plurianuales se ajustarán al objetivo de estabilidad presupuestaria correspondiente al Estado y a la Seguridad Social de conformidad con lo establecido en el artículo 15 de la Ley Orgánica 2/2012, de 27 de abril, de Estabilidad Presupuestaria y Sostenibilidad Financiera.\n\n3. Los escenarios presupuestarios plurianuales serán confeccionados por el Ministerio de Hacienda, que dará cuenta de los mismos al Consejo de Ministros con anterioridad a la aprobación del proyecto de Ley de Presupuestos Generales del Estado de cada año y, en su caso, contendrán la actualización de las previsiones contenidas en los escenarios presupuestarios aprobados en el ejercicio anterior.\n\n4. Los escenarios presupuestarios plurianuales estarán integrados por un escenario de ingresos y "
+  },
+  "art_sugerido": {
+   "numero": "29",
+   "texto": "1. Los escenarios presupuestarios plurianuales contendrán la distribución orgánica de los recursos disponibles y se desarrollarán en programas plurianuales, referidos a los tres ejercicios siguientes, y ajustados a sus previsiones y límites, en los que por centros gestores se establecerán los objetivos a conseguir y las acciones necesarias para alcanzarlos así como las dotaciones de los programas presupuestarios.\n\n2. Los programas plurianuales se remitirán anualmente al Ministerio de Hacienda para la elaboración de los escenarios presupuestarios plurianuales.\n\n3. El programa plurianual de cada ministerio contendrá los programas de todos los centros gestores que de él dependan y se aprobará por el Ministro. El Programa plurianual de la Seguridad Social se elaborará separadamente por el Ministro de Trabajo y Asuntos Sociales.\n\n4. Los programas de actuación plurianual de las entidades públicas empresariales, sociedades mercantiles estatales y demás entidades integrantes del sector público estatal sin presupuesto limitativo, establecidos en el artículo 65 de esta ley se integrarán, a efectos informativos, en los programas plurianuales de los ministerios de que dependan funcionalmente.\n\n5. El procedimiento de elaboración y la estructura de los programas plurianuales y de actuación plurianual se establecerá por orden del Ministro de Hacienda, en la que se determinará el plazo y la forma de remisión al Ministerio de Hacienda.\n\n6. Los programas plurianuales establecerán su contenido "
+  },
+  "servidas": 57,
+  "verdad": "vinculado_correcto",
+  "porque": "Pregunta de exclusión («no tendrá en cuenta»): la opción correcta cita el art. 29 PRECISAMENTE porque es lo que el escenario de ingresos del art. 28 deja fuera."
+ },
+ {
+  "id": "6a89fe7f-3d8d-4b14-9ca6-3d65868f72fe",
+  "ley": "Ley 50/1997",
+  "enunciado": "La Ley 50/1997 establece que las disposiciones cuya aprobación corresponda al Gobierno e impongan nuevas obligaciones a personas físicas o jurídicas que desempeñan una actividad económica entrarán en vigor el 2 de enero o el 1 de julio siguientes a su aprobación, ¿en qué casos no resulta de aplicación esta regla?",
+  "opciones": {
+   "A": "A los reales decretos-leyes.",
+   "B": "Para el cumplimiento de los plazos de transposición de directivas europeas.",
+   "C": "Cuando otras razones justificadas así lo aconsejen.",
+   "D": "Todos los casos anteriores están exceptuados de la norma general."
+  },
+  "correcta": "D",
+  "correcta_texto": "Todos los casos anteriores están exceptuados de la norma general.",
+  "art_vinculado": {
+   "numero": "23",
+   "texto": "Sin perjuicio de lo establecido en el artículo 2.1 del Código Civil, las disposiciones de entrada en vigor de las leyes o reglamentos, cuya aprobación o propuesta corresponda al Gobierno o a sus miembros, y que impongan nuevas obligaciones a las personas físicas o jurídicas que desempeñen una actividad económica o profesional como consecuencia del ejercicio de ésta, preverán el comienzo de su vigencia el 2 de enero o el 1 de julio siguientes a su aprobación.\n\nLo previsto en este artículo no será de aplicación a los reales decretos-leyes, ni cuando el cumplimiento del plazo de transposición de directivas europeas u otras razones justificadas así lo aconsejen, debiendo quedar este hecho debidamente acreditado en la respectiva Memoria."
+  },
+  "art_sugerido": {
+   "numero": "26",
+   "texto": "La elaboración de los anteproyectos de ley, de los proyectos de real decreto legislativo y de normas reglamentarias se ajustará al siguiente procedimiento:\n\n1. Su redacción estará precedida de cuantos estudios y consultas se estimen convenientes para garantizar el acierto y la legalidad de la norma.\n\n2. Se sustanciará una consulta pública, a través del portal web del departamento competente, con carácter previo a la elaboración del texto, en la que se recabará opinión de los sujetos potencialmente afectados por la futura norma y de las organizaciones más representativas acerca de:\n\na) Los problemas que se pretenden solucionar con la nueva norma.\n\nb) La necesidad y oportunidad de su aprobación.\n\nc) Los objetivos de la norma.\n\nd) Las posibles soluciones alternativas regulatorias y no regulatorias.\n\nPodrá prescindirse del trámite de consulta pública previsto en este apartado cuando concurra cualquiera de las siguientes circunstancias:\n\na) Cuando se trate de normas presupuestarias u organizativas de la Administración General del Estado o de las organizaciones dependientes o vinculadas a éstas.\n\nb) Cuando concurran razones graves de interés público que lo justifiquen.\n\nc) Cuando la propuesta normativa no tenga un impacto significativo en la actividad económica.\n\nd) Cuando la propuesta no imponga obligaciones relevantes a los destinatarios.\n\ne) Cuando la propuesta regule aspectos parciales de una materia.\n\nf) Cuando se acuerde la tramitación urgente de iniciativas normativas, en lo"
+  },
+  "servidas": 23,
+  "verdad": "vinculado_correcto",
+  "porque": "El art. 23 de la Ley 50/1997 sostiene la opción correcta; el 26 trata otra materia."
+ },
+ {
+  "id": "0270136c-f8d1-4b1e-a38e-2d66a6141db9",
+  "ley": "LO 14/2007",
+  "enunciado": "De acuerdo con lo dispuesto en su Estatuto de Autonomía, en el ejercicio de las competencias exclusivas, corresponderá a la Comunidad de Castilla y León:",
+  "opciones": {
+   "A": "Las potestades legislativa y reglamentaria, y la función ejecutiva, incluida la inspección.",
+   "B": "Únicamente la función ejecutiva, incluyendo la inspección.",
+   "C": "Las potestades legislativa y reglamentaria, y la función ejecutiva, sin incluir la inspección.",
+   "D": "Únicamente las potestades legislativa y reglamentaria."
+  },
+  "correcta": "A",
+  "correcta_texto": "Las potestades legislativa y reglamentaria, y la función ejecutiva, incluida la inspección.",
+  "art_vinculado": {
+   "numero": "70",
+   "texto": "1. La Comunidad de Castilla y León tiene competencia exclusiva en las siguientes materias:\n\n1.º Organización, régimen y funcionamiento de sus instituciones de autogobierno.\n\n2.º Estructura y organización de la Administración de la Comunidad.\n\n3.º Ordenación de la Hacienda de la Comunidad Autónoma, de acuerdo con lo establecido en este Estatuto.\n\n4.º Organización territorial de la Comunidad. Relaciones entre las instituciones de la Comunidad y los entes locales y regulación de los entes locales creados por la Comunidad, en los términos previstos en el presente Estatuto.\n\n5.º Conservación del Derecho consuetudinario de Castilla y León.\n\n6.º Ordenación del territorio, urbanismo y vivienda.\n\n7.º Obras públicas de interés para la Comunidad Autónoma dentro de su propio territorio que no tengan la calificación legal de interés general del Estado ni afecten a otra Comunidad Autónoma.\n\n8.º Ferrocarriles, carreteras y caminos que transcurran íntegramente por el territorio de la Comunidad Autónoma y, en los mismos términos, los transportes terrestres, fluviales, por cable o tubería. Centros de transporte, logística y distribución en el ámbito de la Comunidad.\n\n9.º Aeropuertos, helipuertos, muelles e instalaciones de navegación de carácter deportivo y, en general, los que no desarrollen actividades comerciales.\n\n10.º Asistencia social, servicios sociales y desarrollo comunitario. Promoción y atención de las familias, la infancia, la juventud y los mayores. Prevención, atención e inserció"
+  },
+  "art_sugerido": {
+   "numero": "71",
+   "texto": "1. En el marco de la legislación básica del Estado y, en su caso, en los términos que ella establezca, es competencia de la Comunidad de Castilla y León el desarrollo legislativo y la ejecución de la legislación del Estado en las siguientes materias:\n\n1.º Régimen Local.\n\n2.º Protección de datos de carácter personal que estén bajo la responsabilidad de las instituciones de la Comunidad, de los entes locales y de cualquier entidad pública o privada dependiente de aquéllas.\n\n3.º Seguridad Social, exceptuando el régimen económico y respetando los principios de unidad económico-patrimonial y de solidaridad financiera.\n\n4.º Ordenación farmacéutica.\n\n5.º Defensa de los consumidores y usuarios.\n\n6.º Ordenación del crédito, banca y seguros.\n\n7.º Protección del medio ambiente y de los ecosistemas. Prevención ambiental. Vertidos a la atmósfera y a las aguas superficiales y subterráneas.\n\n8.º Montes, aprovechamientos y servicios forestales, vías pecuarias, pastos y espacios naturales protegidos.\n\n9.º Sanidad agraria y animal.\n\n10.º Régimen minero y energético, incluidas las fuentes renovables de energía.\n\n11.º Tecnologías de la información y el conocimiento.\n\n12.º Prensa, radio, televisión y otros medios de comunicación social. La Comunidad Autónoma podrá regular, crear y mantener los medios de comunicación social que considere necesarios para el cumplimiento de sus fines.\n\n13.º Cámaras Agrarias, de Comercio e Industria y cualesquiera otras de naturaleza equivalente.\n\n14.º Colegios profe"
+  },
+  "servidas": 8,
+  "verdad": "vinculado_correcto",
+  "porque": "El art. 71 del Estatuto de CyL regula competencias COMPARTIDAS y la pregunta va de exclusivas, así que no puede sustentarla."
+ },
+ {
+  "id": "9b47d816-2b8e-4ef9-8a76-6773eba41bdb",
+  "ley": "CP",
+  "enunciado": "En los delitos que se cometan utilizando medios o soportes de difusión mecánicos, ¿qué autores a los que se refiere el artículo 28 del Código Penal, responderán primero de forma escalonada, excluyente y subsidiaria, de los seguidamente relacionados?",
+  "opciones": {
+   "A": "Los directores de la empresa editora, emisora o difusora.",
+   "B": "Los directores de la publicación o programa en que se difundan.",
+   "C": "Los directores de la empresa grabadora, reproductora o impresora.",
+   "D": null
+  },
+  "correcta": "B",
+  "correcta_texto": "Los directores de la publicación o programa en que se difundan.",
+  "art_vinculado": {
+   "numero": "28",
+   "texto": "Son autores quienes realizan el hecho por sí solos, conjuntamente o por medio de otro del que se sirven como instrumento.\n\nTambién serán considerados autores:\n\na) Los que inducen directamente a otro u otros a ejecutarlo.\n\nb) Los que cooperan a su ejecución con un acto sin el cual no se habría efectuado."
+  },
+  "art_sugerido": {
+   "numero": "30",
+   "texto": "1. En los delitos que se cometan utilizando medios o soportes de difusión mecánicos no responderán criminalmente ni los cómplices ni quienes los hubieren favorecido personal o realmente.\n\n2. Los autores a los que se refiere el artículo 28 responderán de forma escalonada, excluyente y subsidiaria de acuerdo con el siguiente orden:\n\n1.º Los que realmente hayan redactado el texto o producido el signo de que se trate, y quienes les hayan inducido a realizarlo.\n\n2.º Los directores de la publicación o programa en que se difunda.\n\n3.º Los directores de la empresa editora, emisora o difusora.\n\n4.º Los directores de la empresa grabadora, reproductora o impresora.\n\n3. Cuando por cualquier motivo distinto de la extinción de la responsabilidad penal, incluso la declaración de rebeldía o la residencia fuera de España, no pueda perseguirse a ninguna de las personas comprendidas en alguno de los números del apartado anterior, se dirigirá el procedimiento contra las mencionadas en el número inmediatamente posterior."
+  },
+  "servidas": 2,
+  "verdad": "sugerido_mejor",
+  "porque": "El art. 30 CP regula la autoría en delitos cometidos por medios de difusión mecánicos; el 28 es la autoría general."
+ },
+ {
+  "id": "3a3ab87b-6625-41f7-8ee8-9dfc5cdd8b41",
+  "ley": "LSP",
+  "enunciado": "Ley de Seguridad Privada. De conformidad con lo dispuesto en la legislación de fuerzas y cuerpos de seguridad, las empresas de seguridad, los despachos de detectives y el personal de seguridad privada tendrán:",
+  "opciones": {
+   "A": "La obligación genérica de auxilio, con aquellas en el ejercicio de sus funciones.",
+   "B": "Especial deber de colaborar, cuando sean requeridos para ello, con aquellas en el ejercicio de sus funciones.",
+   "C": "Especial obligación de auxiliar y colaborar, en todo momento, con aquellas en el ejercicio de sus funciones.",
+   "D": null
+  },
+  "correcta": "C",
+  "correcta_texto": "Especial obligación de auxiliar y colaborar, en todo momento, con aquellas en el ejercicio de sus funciones.",
+  "art_vinculado": {
+   "numero": "11",
+   "texto": "1. Serán objeto de inscripción de oficio en el Registro Nacional de Seguridad Privada del Ministerio del Interior, una vez concedidas las pertinentes autorizaciones o, en su caso, presentadas las declaraciones responsables, u obtenidas las preceptivas habilitaciones o acreditaciones, el personal de seguridad privada, las empresas de seguridad privada y los despachos de detectives privados, así como delegaciones y sucursales, los centros de formación del personal de seguridad privada y las centrales receptoras de alarma de uso propio, cuando no sean objeto de inscripción en los registros de las comunidades autónomas.\n\nIgualmente, se inscribirán en el Registro Nacional de Seguridad Privada las sanciones impuestas en materia de seguridad privada, las comunicaciones de los contratos y sus modificaciones y cuantos datos sean necesarios para las actuaciones de control y gestión de la seguridad privada, cuando tales sanciones, comunicaciones y datos se refieran a servicios de seguridad privada que se presten en un ámbito territorial distinto al de una comunidad autónoma con competencia en materia de seguridad privada.\n\n2. En los registros de las comunidades autónomas, una vez concedidas las pertinentes autorizaciones o, en su caso, presentadas las declaraciones responsables, u obtenidas las preceptivas habilitaciones, se inscribirán de oficio las empresas de seguridad privada y los despachos de detectives privados, así como delegaciones y sucursales, los centros de formación del per"
+  },
+  "art_sugerido": {
+   "numero": "8",
+   "texto": "1. Los servicios y funciones de seguridad privada se prestarán con respeto a la Constitución, a lo dispuesto en esta ley, especialmente en lo referente a los principios de actuación establecidos en el artículo 30, y al resto del ordenamiento jurídico.\n\n2. Los prestadores de servicios de seguridad privada colaborarán, en todo momento y lugar, con las Fuerzas y Cuerpos de Seguridad, con sujeción a lo que éstas puedan disponer en relación con la ejecución material de sus actividades.\n\n3. De conformidad con lo dispuesto en la legislación de fuerzas y cuerpos de seguridad, las empresas de seguridad, los despachos de detectives y el personal de seguridad privada tendrán especial obligación de auxiliar y colaborar, en todo momento, con aquéllas en el ejercicio de sus funciones, de prestarles su colaboración y de seguir sus instrucciones, en relación con los servicios que presten que afecten a la seguridad pública o al ámbito de sus competencias.\n\n4. Las empresas, los despachos y el personal de seguridad privada:\n\na) No podrán intervenir ni interferir, mientras estén ejerciendo los servicios y funciones que les son propios, en la celebración de reuniones y manifestaciones, ni en el desarrollo de conflictos políticos o laborales.\n\nb) No podrán ejercer ningún tipo de control sobre opiniones políticas, sindicales o religiosas, o sobre la expresión de tales opiniones, ni proceder al tratamiento, automatizado o no, de datos relacionados con la ideología, afiliación sindical, religión o cr"
+  },
+  "servidas": 1,
+  "verdad": "sugerido_mejor",
+  "porque": "El art. 8 de la Ley de Seguridad Privada regula el deber de colaboración; el 11 trata otra cosa."
+ },
+ {
+  "id": "9f88ede1-2328-4918-ac1e-d9a87d06ba55",
+  "ley": "CP",
+  "enunciado": "Comete el delito de hurto:",
+  "opciones": {
+   "A": "El que toma cosas muebles ajenas sin la voluntad de su dueño, en cuantía que excede de 400 Euros.",
+   "B": "El que, con ánimo de lucro toma cosas muebles ajenas sin la voluntad de su dueño, en cuantía que excede de 400 Euros.",
+   "C": "El que, con ánimo de lucro toma cosas muebles propias, en cuantía que excede de 400 Euros.",
+   "D": null
+  },
+  "correcta": "B",
+  "correcta_texto": "El que, con ánimo de lucro toma cosas muebles ajenas sin la voluntad de su dueño, en cuantía que excede de 400 Euros.",
+  "art_vinculado": {
+   "numero": "235",
+   "texto": "1. El hurto será castigado con la pena de prisión de uno a tres años:\n\n1.º Cuando se sustraigan cosas de valor artístico, histórico, cultural o científico.\n\n2.º Cuando se trate de cosas de primera necesidad y se cause una situación de desabastecimiento.\n\n3.º Cuando se trate de conducciones, cableado, equipos o componentes de infraestructuras de suministro eléctrico, de hidrocarburos o de los servicios de telecomunicaciones, o de otras cosas destinadas a la prestación de servicios de interés general, y se cause un quebranto grave a los mismos.\n\n4.º Cuando se trate de productos agrarios o ganaderos, o de los instrumentos o medios que se utilizan para su obtención, siempre que el delito se cometa en explotaciones agrícolas o ganaderas, y el valor de lo sustraído exceda de 400 euros.\n\n5.º Cuando revista especial gravedad, atendiendo al valor de los efectos sustraídos, o se produjeren perjuicios de especial consideración.\n\n6.º Cuando ponga a la víctima o a su familia en grave situación económica o se haya realizado abusando de sus circunstancias personales o de su situación de desamparo, o aprovechando la producción de un accidente o la existencia de un riesgo o peligro general para la comunidad que haya debilitado la defensa del ofendido o facilitado la comisión impune del delito.\n\n7.º Cuando al delinquir el culpable hubiera sido condenado ejecutoriamente por al menos tres delitos menos graves o graves comprendidos en este título, siempre que sean de la misma naturaleza. No se te"
+  },
+  "art_sugerido": {
+   "numero": "234",
+   "texto": "1. El que, con ánimo de lucro, tomare las cosas muebles ajenas sin la voluntad de su dueño será castigado, como reo de hurto, con la pena de prisión de seis a dieciocho meses si la cuantía de lo sustraído excediese de 400 euros.\n\n2. Se impondrá la pena de multa de uno a tres meses si la cuantía de lo sustraído no excediese de 400 euros, salvo si concurriere alguna de las circunstancias del artículo 235. No obstante, en el caso de que el culpable hubiera sido condenado ejecutoriamente al menos por tres delitos de la misma naturaleza, comprendidos en este Título, y siendo al menos uno de ellos leve, se impondrá la pena prevista en el apartado 1 de este artículo.\n\nNo se tendrán en cuenta los antecedentes penales cancelados o que debieran serlo.\n\n3. Las penas establecidas en los apartados anteriores se impondrán en su mitad superior cuando en la comisión del hecho se hubieran neutralizado, eliminado o inutilizado, por cualquier medio, los dispositivos de alarma o seguridad instalados en las cosas sustraídas."
+  },
+  "servidas": 0,
+  "verdad": "sugerido_mejor",
+  "porque": "El art. 234.1 CP define el hurto básico con la cuantía de 400 euros, literal en la opción correcta. El 235 es el hurto agravado."
+ },
+ {
+  "id": "0c76f387-d2c0-467a-b587-a5c621b00e94",
+  "ley": "Ley 1/2000",
+  "enunciado": "De conformidad con lo establecido en el artículo 440 de la Ley 1/2000, de Enjuiciamiento Civil, en la citación a la vista de juicio verbal deberá constar las siguientes prevenciones a las partes:",
+  "opciones": {
+   "A": "Que, en el plazo de los diez días siguientes a la recepción de la citación, deben indicar las personas que, por no poderlas presentar ellas mismas, han de ser citadas por el Letrado de la Administración de Justicia a la vista para que declaren en calidad de parte, testigos o peritos.",
+   "B": "Que en el mismo plazo de diez días podrán pedir respuestas escritas a cargo de personas jurídicas o entidades públicas por los trámites establecidos en el artículo 381.",
+   "C": "Que no es necesario que faciliten todos los datos y circunstancias precisos para llevar a cabo la citación de las personas que consideren necesarias para que comparezcan a la vista dado que el Juzgado de oficio procederá a su averiguación.",
+   "D": "Que si no comparece el demandado, se procederá a la celebración del juicio."
+  },
+  "correcta": "D",
+  "correcta_texto": "Que si no comparece el demandado, se procederá a la celebración del juicio.",
+  "art_vinculado": {
+   "numero": "440",
+   "texto": "Contestada la demanda y, en su caso, la reconvención o el crédito compensable, o transcurridos los plazos correspondientes, el letrado o letrada de la Administración de Justicia, cuando haya de celebrarse vista de acuerdo con lo expresado en el artículo 438, citará a las partes a tal fin dentro de los cinco días siguientes. La vista habrá de tener lugar dentro del plazo máximo de un mes.\n\nEn la citación se fijará el día y hora en el que haya de celebrarse la vista, y se informará a las partes de la posibilidad de recurrir a una negociación para intentar solucionar el conflicto, incluido el recurso a una mediación, en cuyo caso aquéllas indicarán en la vista o antes de ella su decisión al respecto y las razones de la misma.\n\nEn la citación se hará constar que la vista no se suspenderá por inasistencia del demandado y se advertirá a los litigantes que, si no asistieren y se hubiere admitido su interrogatorio, podrán considerarse admitidos los hechos del interrogatorio conforme a lo dispuesto en el artículo 304. Asimismo, se prevendrá a la parte demandante y demandada de lo dispuesto en el artículo 442, para el caso de que no comparecieren a la vista."
+  },
+  "art_sugerido": {
+   "numero": "442",
+   "texto": "1. Si el demandante no asistiese a la vista, y el demandado no alegare interés legítimo en la continuación del proceso para que se dicte sentencia sobre el fondo, se tendrá en el acto por desistido a aquél de la demanda, se le impondrán las costas causadas y se le condenará a indemnizar al demandado comparecido, si éste lo solicitare y acreditare los daños y perjuicios sufridos.\n\n2. Si no compareciere el demandado, se procederá a la celebración del juicio."
+  },
+  "servidas": 0,
+  "verdad": "vinculado_correcto",
+  "porque": "El enunciado CITA el art. 440 y es el que regula qué debe constar en la citación a la vista. El 442 regula la incomparecencia, que es otra cosa."
+ },
+ {
+  "id": "620f80c8-e04d-445b-9d18-3d524ed9222b",
+  "ley": "LSP",
+  "enunciado": "Los informes de investigación elaborados por un detective privado deberán conservarse:",
+  "opciones": {
+   "A": "Por un periodo máximo de cinco años.",
+   "B": "Durante al menos tres años.",
+   "C": "Hasta su entrega al cliente que los hubiera solicitado.",
+   "D": null
+  },
+  "correcta": "B",
+  "correcta_texto": "Durante al menos tres años.",
+  "art_vinculado": {
+   "numero": "48",
+   "texto": "1. Los servicios de investigación privada, a cargo de detectives privados, consistirán en la realización de las averiguaciones que resulten necesarias para la obtención y aportación, por cuenta de terceros legitimados, de información y pruebas sobre conductas o hechos privados relacionados con los siguientes aspectos:\n\na) Los relativos al ámbito económico, laboral, mercantil, financiero y, en general, a la vida personal, familiar o social, exceptuada la que se desarrolle en los domicilios o lugares reservados.\n\nb) La obtención de información tendente a garantizar el normal desarrollo de las actividades que tengan lugar en ferias, hoteles, exposiciones, espectáculos, certámenes, convenciones, grandes superficies comerciales, locales públicos de gran concurrencia o ámbitos análogos.\n\nc) La realización de averiguaciones y la obtención de información y pruebas relativas a delitos sólo perseguibles a instancia de parte por encargo de los sujetos legitimados en el proceso penal.\n\n2. La aceptación del encargo de estos servicios por los despachos de detectives privados requerirá, en todo caso, la acreditación, por el solicitante de los mismos, del interés legítimo alegado, de lo que se dejará constancia en el expediente de contratación e investigación que se abra.\n\n3. En ningún caso se podrá investigar la vida íntima de las personas que transcurra en sus domicilios u otros lugares reservados, ni podrán utilizarse en este tipo de servicios medios personales, materiales o técnicos de t"
+  },
+  "art_sugerido": {
+   "numero": "49",
+   "texto": "1. Por cada servicio que les sea contratado, los despachos o los detectives privados encargados del asunto deberán elaborar un único informe en el que reflejarán el número de registro asignado al servicio, los datos de la persona que encarga y contrata el servicio, el objeto de la contratación, los medios, los resultados, los detectives intervinientes y las actuaciones realizadas, en las condiciones y plazos que reglamentariamente se establezcan.\n\n2. En el informe de investigación únicamente se hará constar información directamente relacionada con el objeto y finalidad de la investigación contratada, sin incluir en él referencias, informaciones o datos que hayan podido averiguarse relativos al cliente o al sujeto investigado, en particular los de carácter personal especialmente protegidos, que no resulten necesarios o que no guarden directa relación con dicho objeto y finalidad ni con el interés legítimo alegado para la contratación.\n\n3. Dicho informe estará a disposición del cliente, a quien se entregará, en su caso, al finalizar el servicio, así como a disposición de las autoridades policiales competentes para la inspección, en los términos previstos en el artículo 54.5.\n\n4. Los informes de investigación deberán conservarse archivados, al menos, durante tres años, sin perjuicio de lo dispuesto en el artículo 16.3 de la Ley Orgánica 15/1999, de 13 de diciembre, de protección de datos de carácter personal. Las imágenes y los sonidos grabados durante las investigaciones se des"
+  },
+  "servidas": 0,
+  "verdad": "sugerido_mejor",
+  "porque": "El art. 49 de la Ley de Seguridad Privada regula el informe del detective y su conservación; el 48 solo define los servicios de investigación."
+ },
+ {
+  "id": "3252df5b-8974-44a3-b06f-f087811a605e",
+  "ley": "Ley 16/1985",
+  "enunciado": "Según lo dispuesto en la Ley 16/1985, de 25 de junio, del Patrimonio Histórico Español, la elaboración del Catálogo colectivo de los bienes integrantes del Patrimonio Bibliográfico está encomendada a:",
+  "opciones": {
+   "A": "Las 53 Bibliotecas Públicas del Estado",
+   "B": "Al Instituto del Patrimonio Cultural de España, en colaboración con las demás Administraciones competentes",
+   "C": "La Administración del Estado, en colaboración con las demás Administraciones competentes",
+   "D": "A la Biblioteca Nacional de España, en colaboración con las Bibliotecas centrales de cada Comunidad autónoma"
+  },
+  "correcta": "C",
+  "correcta_texto": "La Administración del Estado, en colaboración con las demás Administraciones competentes",
+  "art_vinculado": {
+   "numero": "1",
+   "texto": "1. Son objeto de la presente Ley la protección, acrecentamiento y transmisión a las generaciones futuras del Patrimonio Histórico Español.\n\n2. Integran el Patrimonio Histórico Español los inmuebles y objetos muebles de interés artístico, histórico, paleontológico, arqueológico, etnográfico, científico o técnico. También forman parte del mismo el patrimonio documental y bibliográfico, los yacimientos y zonas arqueológicas, así como los sitios naturales, jardines y parques, que tengan valor artístico, histórico o antropológico.\n\nAsimismo, forman parte del Patrimonio Histórico Español los bienes que integren el Patrimonio Cultural Inmaterial, de conformidad con lo que establezca su legislación especial.\n\n3. Los bienes más relevantes del Patrimonio Histórico Español deberán ser inventariados o declarados de interés cultural en los términos previstos en esta Ley."
+  },
+  "art_sugerido": {
+   "numero": "2",
+   "texto": "1. Sin perjuicio de las competencias que correspondan a los demás poderes públicos, son deberes y atribuciones esenciales de la Administración del Estado, de conformidad con lo establecido en los artículos 46 y 44, 149.1.1, y 149.2 de la Constitución, garantizar la conservación del Patrimonio Histórico Español, así como promover el enriquecimiento del mismo y fomentar y tutelar el acceso de todos los ciudadanos a los bienes comprendidos en él. Asimismo, de acuerdo con lo dispuesto en el artículo 149.1, 28, de la Constitución, la Administración del Estado protegerá dichos bienes frente a la exportación ilícita y la expoliación.\n\n2. En relación al Patrimonio Histórico Español, la Administración del Estado adoptará las medidas necesarias para facilitar su colaboración con los restantes poderes públicos y la de éstos entre sí, así como para recabar y proporcionar cuanta información fuera precisa a los fines señalados en el párrafo anterior.\n\n3. A la Administración del Estado compete igualmente la difusión internacional del conocimiento de los bienes integrantes del Patrimonio Histórico Español, la recuperación de tales bienes cuando hubiesen sido ilícitamente exportados y el intercambio, respecto a los mismos, de información cultural, técnica y científica con los demás Estados y con los Organismos internacionales, de conformidad con lo establecido en el artículo 149.1, número 3, de la Constitución. Las demás Administraciones competentes colaborarán a estos efectos con la Administ"
+  },
+  "servidas": 0,
+  "verdad": "ninguno",
+  "porque": "Ni el art. 1 ni el 2 de la Ley 16/1985 mencionan el Catálogo Colectivo del Patrimonio Bibliográfico; está en otro título de la ley."
+ }
+]
