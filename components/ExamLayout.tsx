@@ -1413,7 +1413,7 @@ export default function ExamLayout({
                   un toque sobre el propio reloj no lo adivinaba nadie. */}
               <div
                 data-testid="reloj-examen"
-                className={`px-2 py-0.5 rounded-lg border font-mono font-bold text-lg leading-tight ${
+                className={`px-2 py-0.5 rounded-lg border font-mono font-bold text-base sm:text-lg leading-tight whitespace-nowrap ${
                   !modoCuentaAtras
                     ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-200'
                     : estadoDelReloj === 'agotado'
@@ -1451,9 +1451,10 @@ export default function ExamLayout({
                 <button
                   type="button"
                   onClick={arrastreReloj.siNoArrastro(() => setEditandoObjetivo(true))}
-                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2 pr-1"
+                  className="text-[11px] sm:text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2 pr-1 whitespace-nowrap"
+                  title="Tu objetivo de tiempo: púlsalo para cambiarlo"
                 >
-                  objetivo: {Math.round(objetivoSeg / 60)} min
+                  🎯 {Math.round(objetivoSeg / 60)} min
                 </button>
               )}
               </div>
@@ -1461,13 +1462,15 @@ export default function ExamLayout({
               {/* Dos botones nombrados en vez de un reloj que alterna al tocarlo: así se ve de
                   un vistazo QUÉ se está mirando y que hay otra opción. El toque sobre el propio
                   reloj no lo descubría nadie. */}
-              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-[11px] font-semibold">
+              {/* `self-start`: dentro de la píldora (columna flex) se estiraba a todo el ancho y
+                  dejaba un hueco vacío enorme a la derecha del icono. */}
+              <div className="self-start flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-[11px] font-semibold">
                 {([
-                  { modo: false, etiqueta: '⏱️ reloj', aria: 'Ver el tiempo transcurrido' },
-                  { modo: true, etiqueta: '⏳ cuenta atrás', aria: 'Ver la cuenta atrás hasta tu objetivo' },
+                  { modo: false, icono: '⏱️', texto: 'reloj', aria: 'Ver el tiempo transcurrido' },
+                  { modo: true, icono: '⏳', texto: 'cuenta atrás', aria: 'Ver la cuenta atrás hasta tu objetivo' },
                 ] as const).map(op => (
                   <button
-                    key={op.etiqueta}
+                    key={op.texto}
                     type="button"
                     aria-pressed={modoCuentaAtras === op.modo}
                     aria-label={op.aria}
@@ -1481,7 +1484,10 @@ export default function ExamLayout({
                         : 'bg-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
                     }`}
                   >
-                    {op.etiqueta}
+                    {op.icono}
+                    {/* El texto solo cabe en pantallas anchas: en móvil duplicaba el ancho de la
+                        píldora y tapaba el enunciado. El icono + el aria-label bastan. */}
+                    <span className="hidden sm:inline"> {op.texto}</span>
                   </button>
                 ))}
               </div>
@@ -1499,7 +1505,7 @@ export default function ExamLayout({
                 <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
                   {answeredCount}<span className="opacity-60"> / {totalQuestions}</span>
                 </div>
-                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">
                   respondidas
                 </div>
               </div>
