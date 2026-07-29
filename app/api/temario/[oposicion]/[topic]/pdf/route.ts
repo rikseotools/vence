@@ -61,9 +61,13 @@ async function handler(
   // botón ya muestra 👑 + modal, pero un free podría pegar a esta URL directamente →
   // defensa en profundidad (mismo patrón que /api/questions/filtered con isPremiumPlan).
   // 403 → el cliente abre el modal 👑.
+  // `auth` se resuelve AQUÍ y vive hasta el final del handler a propósito: además de la puerta,
+  // el actor hace falta para poder responder «quién» ante un barrido (T-270). Antes estaba en un
+  // bloque y se perdía; ver la corrección del incidente en ARCHITECTURE_ROADMAP.md.
+  const auth = await verifyAuthOptional(req, '/api/temario/pdf').catch(() => null)
+  const userId = auth?.userId ?? null
   {
-    const auth = await verifyAuthOptional(req, '/api/temario/pdf').catch(() => null)
-    const planType = auth?.userId ? await getUserPlanType(auth.userId) : null
+    const planType = userId ? await getUserPlanType(userId) : null
     if (!isPremiumPlan(planType)) {
       return NextResponse.json({ error: 'premium_required', feature: 'print_pdf' }, { status: 403 })
     }
@@ -100,6 +104,12 @@ async function handler(
       metadata: {
         oposicion, tema: topicNumber, served: source, chars, maxArticleChars: maxArt, bytes,
         hash: contentHash,
+        // QUIÉN. Faltaba, y su ausencia costó una conclusión falsa el 29/07: al investigar el
+        // incidente se leyó `count(DISTINCT user_id) = 0` como «fueron peticiones anónimas» y se
+        // llegó a escribir que la ruta era un vector de denegación de servicio abierto. No lo es
+        // —tiene puerta premium— y el cero era un artefacto: el emisor nunca ponía el campo.
+        // Un evento sin actor obliga a adivinar quién, y adivinar sale caro.
+        userId: userId ?? null,
         renderMs: cpu.renderMs, stampMs: cpu.stampMs, cpuMs: cpu.renderMs + cpu.stampMs,
         instanceId: INSTANCE_ID,
       },

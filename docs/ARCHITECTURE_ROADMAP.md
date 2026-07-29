@@ -1061,7 +1061,7 @@ Diagnóstico raíz: ambos cascades comparten el mismo cuello — pool primary ma
 
 Un tema son 21 páginas de mediana, pero **la cola pesa: p95 de 178 páginas y máximo de 760**. Node es monohilo: mientras ese render corre, el event-loop de esa task está bloqueado y **todo lo demás que sirve esa task hace cola detrás** — incluido el guardado de respuestas.
 
-El disparador de ese día fue un barrido de **51 PDFs sobre 44 temas de 2 oposiciones, todos anónimos** (`user_id` NULL en los 51), del que **36 fueron renders frescos** y 15 salieron de caché.
+El disparador de ese día fue un barrido de **51 PDFs sobre 44 temas de 2 oposiciones**, del que **36 fueron renders frescos** y 15 salieron de caché. **Quién lo hizo no se sabe**, y ese es un hueco de observabilidad propio (ver más abajo).
 
 ### La secuencia, minuto a minuto
 
@@ -1082,9 +1082,16 @@ El worker de PDFs (`vence-temario-pdf-worker`) existe **exactamente por esto**, 
 
 Tiene imagen propia, 2 vCPU / 4 GB, vive **fuera del ALB** y aísla el render en un **proceso hijo killeable con timeout**. Es decir: **el camino por LOTES se blindó y el camino BAJO DEMANDA se quedó sin blindar.** El conocimiento estaba escrito; lo que faltó fue algo que impidiera que la excepción sobreviviera.
 
-### Riesgo de disponibilidad, no solo de rendimiento
+### ⚠️ Corrección de la primera versión de este registro: NO es un vector abierto
 
-La ruta es pública, sin autenticación y sin límite de tasa, y cada petición a un tema distinto es un fallo de caché garantizado. **Cualquiera puede degradar la plataforma a voluntad** pidiendo PDFs de temas distintos en bucle, sin ser usuario. El episodio del 29/07 pudo ser un bot o un barrido propio; el mecanismo queda abierto.
+La primera redacción decía que la ruta era pública y sin autenticar y que *«cualquiera puede degradar la plataforma sin ser usuario»*. **Es falso, y conviene entender de dónde salió el error porque es reutilizable.**
+
+- **La ruta SÍ tiene puerta premium** (`route.ts`: `isPremiumPlan(planType)` → `403 premium_required`, feature `print_pdf`). Comprobado contra producción con una petición real. El comentario de cabecera del fichero dice *«ACCESO: pública»* —cierto para el CONTENIDO, que está indexado en SEO— y se leyó como si aplicara al endpoint.
+- **El «todos anónimos» era un artefacto de la consulta.** Se midió `count(DISTINCT user_id) = 0` sobre `temario_pdf_served`… y resulta que **0 de 350 eventos de 30 días llevan `user_id`**, porque el emisor nunca lo ponía. Un cero por construcción se leyó como un cero medido.
+
+**Lo que queda en pie:** el riesgo existe pero es MUCHO menor — hace falta una sesión premium, no un curioso con `curl`. Sigue sin haber límite de tasa, así que un solo usuario de pago (o un script con su sesión) puede reproducirlo, y de hecho el barrido del 29/07 sobre 44 temas de 2 oposiciones tiene toda la pinta de haber sido automatizado. **Quién fue sigue sin saberse**, y eso es lo que se ha arreglado: el evento ya registra el actor.
+
+**Lección de método:** un `count(DISTINCT campo) = 0` no distingue *«no hubo»* de *«no se registra»*. Antes de construir una conclusión sobre un cero, hay que comprobar que ese campo se escribe alguna vez.
 
 ### Por qué el panel no avisó (y por qué ahora sí lo haría)
 

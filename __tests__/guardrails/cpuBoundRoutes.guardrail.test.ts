@@ -9,7 +9,8 @@
 // estuvo a p95 25.070 ms, con el event-loop del frontend bloqueado hasta 215 s en 5 instancias a la
 // vez y la CPU del servicio al 98,5%. El tráfico fue PLANO todo el rato: no fue carga de usuarios.
 //
-// La causa: `app/api/temario/[oposicion]/[topic]/pdf/route.ts` renderiza el PDF EN LÍNEA con
+// La causa: `app/api/temario/[oposicion]/[topic]/pdf/route.ts` (premium, sin límite de tasa)
+// renderiza el PDF EN LÍNEA con
 // `@react-pdf/renderer` y lo sella con `pdf-lib`. Las dos son JS puro y CPU pura dentro del proceso
 // que sirve el tráfico, y un tema puede tener 760 páginas. Node es monohilo: mientras eso corre,
 // todo lo que sirve esa task hace cola detrás.
