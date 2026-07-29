@@ -175,6 +175,8 @@ El trabajo no está hecho hasta que está en `main` (y, si toca código de app, 
 
 - **Un worktree + rama por sesión** (`git worktree add -b feat/<tarea> <ruta> origin/main`). Ninguna sesión toca los ficheros de otra.
 - **Pushear a `main` ≠ desplegar.** Pushear es estacionar + disparar CI: se hace en cuanto TU tarea está completa, sin esperar a nadie. **Desplegar es cumulativo** (sube TODO lo que haya en `main`) y por eso se coordina.
+- **La política es AGRUPAR: no despliegues al pushear** (decisión de Manuel, 29/07). Una sola sesión despliega por todas — un deploy por sesión multiplica build y minutos de Fargate sin que nada llegue antes. Si tu trabajo no se puede verificar hasta estar vivo, **no te quedes esperando: apúntate** con `pause <id> --tras-deploy --superficie …` y suelta el claim. Antes de desplegar, `npm run deploy:pendiente` dice si toca (🔴 = hay tareas terminadas esperando) o si se sigue acumulando (🟡).
+- **Cuando alguien despliega, tu tarea te vuelve sola.** El deploy llama a `backlog.cjs deployed <sha>` y despierta las que ya van dentro; aparecen en `list` bajo **`⏰ LISTA(S) PARA VERIFICAR`** con lo que dejaste escrito en `--falta`. **Míralo al empezar sesión**: puede haber trabajo tuyo (o de otra sesión que ya no existe) a un solo `claim` de poder cerrarse.
 - **El deploy tiene gate de CI y guardarraíl anti-stale**: aborta si los checks de código (unit/typecheck/lint) no están verdes para tu HEAD, o si tu árbol va por detrás de `origin/main`. Con varias sesiones pusheando, sincroniza al último `origin/main` **verde** y reintenta.
 - `integration` en rojo **no** bloquea el deploy (es señal de datos/otras sesiones), pero míralo antes de soltar.
 

@@ -224,12 +224,18 @@ describe('findZombieClaims', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { claimGate, isChronicSnooze, deployWakeReady } = require('@/lib/backlog/claimGate.cjs') as {
+const {
+  claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, deployDebtLevel,
+} = require('@/lib/backlog/claimGate.cjs') as {
   claimGate: (t: unknown, sid: string, now?: Date, openIds?: Set<string>) => {
     ok: boolean; code: string; reason: string | null; forzable: boolean
   }
   isChronicSnooze: (t: unknown, umbral?: number) => boolean
   deployWakeReady: (t: unknown, contiene: { frontend?: boolean; backend?: boolean }) => boolean
+  isAwaitingVerification: (t: unknown, now?: Date) => boolean
+  deployDebtLevel: (i: { commits?: number; tareasEsperando?: number }) => {
+    nivel: string; motivo: string
+  }
 }
 
 const HOY = new Date('2026-07-29T12:00:00Z')
@@ -378,5 +384,81 @@ describe('deployWakeReady', () => {
 
   it('una tarea que no espera deploy siempre está lista', () => {
     expect(deployWakeReady({ wake_on_deploy_sha: null }, {})).toBe(true)
+  })
+})
+
+// ── Aviso de vuelta: quién está LISTA PARA VERIFICAR (T-285) ──────────────
+//
+// El deploy despierta tareas de otras sesiones, pero el aviso se imprimía solo en
+// el log del deploy: quien pausó la tarea no se enteraba nunca. Estos predicados
+// son los que la sacan a `list`, que es donde las sesiones sí miran.
+describe('isAwaitingVerification — el aviso de vuelta', () => {
+  const pausada = {
+    id: 'T-9', status: 'open', resume_check: 'comprobar que el badge baja a 0',
+    wake_on_deploy_sha: null, snooze_until: null, claimed_by: null, lease_until: null,
+  }
+
+  it('pausada, ya desplegada y sin dueño → lista para verificar', () => {
+    expect(isAwaitingVerification(pausada, HOY)).toBe(true)
+  })
+
+  it('si TODAVÍA espera el deploy, no se anuncia (aún no hay nada que verificar)', () => {
+    expect(isAwaitingVerification({ ...pausada, wake_on_deploy_sha: 'abc1234' }, HOY)).toBe(false)
+  })
+
+  it('si espera un reloj que no ha vencido, tampoco', () => {
+    const futuro = new Date(HOY.getTime() + 3600_000).toISOString()
+    expect(isAwaitingVerification({ ...pausada, snooze_until: futuro }, HOY)).toBe(false)
+  })
+
+  it('con el reloj YA vencido sí: la espera terminó', () => {
+    const pasado = new Date(HOY.getTime() - 60_000).toISOString()
+    expect(isAwaitingVerification({ ...pausada, snooze_until: pasado }, HOY)).toBe(true)
+  })
+
+  it('si alguien la está trabajando (lease vivo) no es un aviso para el resto', () => {
+    const lease = new Date(HOY.getTime() + 30 * 60_000).toISOString()
+    expect(isAwaitingVerification({ ...pausada, claimed_by: 'sesion-b', lease_until: lease }, HOY)).toBe(false)
+  })
+
+  it('con el lease CADUCADO vuelve al pool de avisos', () => {
+    const lease = new Date(HOY.getTime() - 60_000).toISOString()
+    expect(isAwaitingVerification({ ...pausada, claimed_by: 'sesion-b', lease_until: lease }, HOY)).toBe(true)
+  })
+
+  it('sin `resume_check` no hay nada que verificar (no toda tarea abierta es un aviso)', () => {
+    expect(isAwaitingVerification({ ...pausada, resume_check: null }, HOY)).toBe(false)
+  })
+
+  it('una tarea ya cerrada no se anuncia', () => {
+    expect(isAwaitingVerification({ ...pausada, status: 'done' }, HOY)).toBe(false)
+  })
+
+  it('no revienta con basura', () => {
+    expect(isAwaitingVerification(null as never, HOY)).toBe(false)
+    expect(isAwaitingVerification({} as never, HOY)).toBe(false)
+  })
+})
+
+describe('deployDebtLevel — cuándo toca desplegar si la política es AGRUPAR', () => {
+  it('sin commits pendientes, al día', () => {
+    expect(deployDebtLevel({ commits: 0, tareasEsperando: 0 }).nivel).toBe('al-dia')
+  })
+
+  it('commits pendientes y NADIE esperando → se sigue agrupando (la política es agrupar)', () => {
+    expect(deployDebtLevel({ commits: 12, tareasEsperando: 0 }).nivel).toBe('acumulando')
+  })
+
+  it('UNA tarea esperando ya inclina la balanza: es trabajo hecho que no se puede cerrar', () => {
+    expect(deployDebtLevel({ commits: 1, tareasEsperando: 1 }).nivel).toBe('toca-desplegar')
+  })
+
+  it('el motivo dice el porqué, no solo el veredicto', () => {
+    expect(deployDebtLevel({ commits: 5, tareasEsperando: 2 }).motivo).toContain('2 tarea')
+    expect(deployDebtLevel({ commits: 5, tareasEsperando: 0 }).motivo).toContain('5 commit')
+  })
+
+  it('no revienta sin argumentos', () => {
+    expect(deployDebtLevel().nivel).toBe('al-dia')
   })
 })

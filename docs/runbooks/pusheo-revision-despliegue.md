@@ -22,9 +22,56 @@
 ```bash
 git fetch origin && git rebase origin/main   # 1) reconciliar sobre lo último
 git push origin HEAD:main                    # 2) publicar (dispara CI); si lo rechaza por no-ff → repite el paso 1
-scripts/deploy-frontend.sh / deploy-backend.sh  # 3) el flock serializa; el gate CI + anti-stale protegen
+npm run deploy:pendiente                     # 3) ¿toca desplegar, o se sigue agrupando?
+scripts/deploy-cuando-verde.sh <superficie>  # 4) SOLO si toca (ver política abajo)
 ```
-**Regla de convergencia:** "si empujas a main, despliegas". El deploy envía `origin/main` HEAD; con el lock, el último push gana y main↔prod convergen solos.
+
+## ⚠️ POLÍTICA DE DESPLIEGUE: AGRUPAR (decisión de Manuel, 29/07/2026)
+
+> **Pushear ≠ desplegar. Una sola sesión despliega por todas.**
+>
+> Hasta el 29/07 aquí ponía *"si empujas a main, despliegas"*. **Ya no.** Con 2-10 sesiones
+> pusheando cada pocos minutos, un deploy por push multiplica el gasto —build + minutos de
+> Fargate, y la cuota de vCPU es la que revierte los deploys de frontend— **sin que nada llegue
+> antes al usuario**: el deploy es cumulativo y sube todo `main` de todas formas.
+>
+> **Qué hace cada sesión al terminar su trabajo:**
+> 1. Pushea a `main` (eso es libre y no se agrupa: publicar es barato).
+> 2. Si lo suyo no se puede verificar hasta que esté vivo, **se apunta**:
+>    `node scripts/backlog.cjs pause <id> --tras-deploy --superficie frontend|backend|both --hecho "…" --falta "…"`.
+> 3. **No despliega.** Salvo urgencia (fuego en producción, ver §rollback), en cuyo caso despliega
+>    y con eso arrastra lo de todos, que es precisamente la gracia.
+>
+> **Cuándo toca desplegar de verdad — `npm run deploy:pendiente`:**
+> ```
+> ¿Toca desplegar?  (política: AGRUPAR — una sola sesión despliega por todas)
+>   frontend  🔴 TOCA-DESPLEGAR — vivo ae10ddb8 · 2 commit(s) sin desplegar
+>             2 tarea(s) terminada(s) esperando este deploy para poder cerrarse
+>             ▶ T-179: verificar que el barrido no abre señales nuevas…
+>   backend   🟡 ACUMULANDO — 3 commit(s) sin desplegar y nadie esperándolos
+> ```
+> La pregunta que decide **no es "¿hay algo sin desplegar?"** (casi siempre sí), sino
+> **"¿hay alguien esperándolo?"**: una tarea pausada con `--tras-deploy` es trabajo **ya
+> terminado** que no se puede cerrar hasta que su commit esté vivo. Con 🟡 se sigue agrupando;
+> con 🔴 desplegar cierra tareas de otras sesiones.
+> Lee el sha vivo de `/api/health` (la fuente de verdad, no las notas de memoria), acota los
+> commits por rutas para no contar como deuda de backend algo que solo tocó el frontend, y cruza
+> con `backlog_tasks`. Solo lee: no despliega ni escribe. Veredicto en el núcleo puro
+> `deployDebtLevel` (`lib/backlog/claimGate.cjs`), testeado.
+>
+> **El aviso de vuelta (lo que hace que agrupar no penalice a nadie):** al terminar, los scripts
+> de deploy llaman solos a `backlog.cjs deployed <sha> --superficie …`, que **despierta las tareas
+> de las OTRAS sesiones** cuyo commit ya va dentro (`merge-base --is-ancestor`; el deploy es
+> cumulativo, así que basta con que esté *contenido*). Eso ahora además:
+> - deja rastro en `observable_events` (`backlog_task_awakened`), porque el log del deploy solo lo
+>   ve quien desplegó, y al final de 10-15 minutos de salida;
+> - **saca las tareas despiertas en `backlog.cjs list`**, bajo `⏰ LISTA(S) PARA VERIFICAR`, que es
+>   donde las sesiones ya miran al empezar.
+>
+> Lo vigila el guardarraíl `__tests__/guardrails/deploy-scripts.test.ts` (validado por mutación):
+> si alguien quita esa llamada, le cambia la superficie o la mueve antes del smoke, CI en rojo —
+> porque si se desconecta, el sistema deja de avisar **en silencio** y las tareas se quedan
+> dormidas para siempre.
 
 ## TL;DR
 

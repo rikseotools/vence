@@ -455,3 +455,48 @@ describe('verificación de release — enganchada al deploy y agnóstica del pro
     expect(journeys.some(src => /postDeploy:\s*true/.test(src))).toBe(true)
   })
 })
+
+/**
+ * El aviso de vuelta a las OTRAS sesiones (T-285).
+ *
+ * La política del proyecto es AGRUPAR deploys: una sola sesión despliega por todas, porque cada
+ * deploy cuesta build + minutos de Fargate. Eso solo funciona si quien despliega **avisa** a las
+ * sesiones cuyo trabajo iba dentro: son tareas ya terminadas, pausadas con `--tras-deploy`, que
+ * no se pueden cerrar hasta que su commit está vivo.
+ *
+ * Ese aviso lo dispara el propio script de deploy llamando a `backlog.cjs deployed <sha>`. Si
+ * alguien lo quita —o le cambia la superficie— el sistema entero deja de avisar EN SILENCIO: las
+ * tareas se quedan dormidas para siempre y nadie lo nota, porque no hay error, solo ausencia.
+ * Por eso se vigila por lectura de código: es un cableado, no un comportamiento observable.
+ */
+describe('deploy — avisa a las sesiones que esperaban ese deploy (T-285)', () => {
+  it('el deploy de frontend despierta las tareas que esperaban SU superficie', () => {
+    expect(frontend).toMatch(/backlog\.cjs["']?\s+deployed/)
+    expect(frontend).toMatch(/--superficie\s+frontend/)
+  })
+
+  it('el deploy de backend despierta las tareas que esperaban SU superficie', () => {
+    expect(backend).toMatch(/backlog\.cjs["']?\s+deployed/)
+    expect(backend).toMatch(/--superficie\s+backend/)
+  })
+
+  it('el aviso es best-effort: no puede tumbar un deploy que ya salió bien', () => {
+    // `|| true` (o equivalente): un fallo escribiendo el aviso no puede marcar como fallido
+    // un deploy cuyo smoke ya pasó — el remedio sería peor que la enfermedad.
+    for (const [nombre, src] of [['frontend', frontend], ['backend', backend]] as const) {
+      // El nombre entra en el mensaje del matcher, no como 2º arg de expect()
+      // (eso es Vitest; en Jest se ignora y el fallo sale sin contexto).
+      const linea = src.split('\n').find((l) => /backlog\.cjs["']?\s+deployed/.test(l))
+      expect(`${nombre}: ${linea ?? '(sin llamada a backlog deployed)'}`).toMatch(/\|\|\s*true/)
+    }
+  })
+
+  it('la llamada va DESPUÉS del smoke (no se avisa de un deploy que no verificó)', () => {
+    for (const [nombre, src] of [['frontend', frontend], ['backend', backend]] as const) {
+      const iAviso = src.search(/backlog\.cjs["']?\s+deployed/)
+      const iSmoke = src.search(/smoke/i)
+      expect({ script: nombre, smoke: iSmoke > -1 }).toEqual({ script: nombre, smoke: true })
+      expect({ script: nombre, avisoTrasSmoke: iAviso > iSmoke }).toEqual({ script: nombre, avisoTrasSmoke: true })
+    }
+  })
+})

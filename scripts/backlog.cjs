@@ -29,7 +29,7 @@ const path = require('path');
 // en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
 const loadPg = () => require('postgres');
 // La decisión de si una tarea se puede coger vive en un solo sitio, compartida con los tests.
-const { claimGate, isChronicSnooze, deployWakeReady } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
+const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
@@ -184,6 +184,19 @@ function parseMd() {
         if (isChronicSnooze(r)) console.log(`         🔁 aplazada ${r.snooze_count} veces`);
       }
       if (enEspera) console.log(`\n  🕒 ${enEspera} en espera (no las sugiere \`next\`; se despiertan solas)`);
+
+      // AVISO DE VUELTA. El deploy despierta tareas de OTRAS sesiones, pero hasta ahora eso
+      // se imprimía solo en el log del deploy —al final de 10-15 min de salida y para quien
+      // desplegaba—. Quien pausó la tarea no se enteraba nunca. Aquí es donde sí se mira.
+      const listas = rows.filter((r) => isAwaitingVerification(r));
+      if (listas.length) {
+        console.log(`  ⏰ ${listas.length} LISTA(S) PARA VERIFICAR — el deploy (o el reloj) ya las despertó:`);
+        for (const r of listas) {
+          console.log(`     ${r.id}  ${String(r.title).slice(0, 58)}`);
+          console.log(`        ▶ falta: ${r.resume_check}`);
+        }
+        console.log('     (cógelas con `claim <id>`: imprime dónde se dejaron)');
+      }
       console.log('');
     }
 
@@ -633,6 +646,17 @@ function parseMd() {
                  WHERE id = ${t.id}`;
         despertadas++;
         console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${t.resume_check || t.title}`);
+        // El aviso no puede morir en el log de ESTE deploy: quien pausó la tarea es otra
+        // sesión, que no lo ve. Se deja rastro en `observable_events` —el bus que ya usa
+        // todo el proyecto— para que el panel de salud y quien mire después se enteren.
+        // Best-effort como el resto del comando: un fallo aquí NUNCA tumba un deploy.
+        try {
+          await s`
+            INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+            VALUES ('fargate', 'info', 'backlog_task_awakened', 'backlog',
+                    ${`${t.id} lista para verificar tras desplegar`},
+                    ${s.json({ task: t.id, sha: String(sha).slice(0, 8), surface: superficie, check: t.resume_check || null })})`;
+        } catch { /* el aviso es un extra, no una precondición del deploy */ }
       }
       if (!despertadas) console.log(`(${esperando.length} esperando deploy, ninguna incluida todavía en ${String(sha).slice(0, 8)})`);
     }
