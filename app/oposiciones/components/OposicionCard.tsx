@@ -1,6 +1,7 @@
 // app/oposiciones/components/OposicionCard.tsx
 // Card de una oposición para el directorio /oposiciones
 import Link from 'next/link'
+import { totalTurnoLibre } from '@/lib/convocatoria/reservaDiscapacidad'
 import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
 
 interface OposicionCardProps {
@@ -8,6 +9,12 @@ interface OposicionCardProps {
   nombre: string
   plazasLibres: number | null
   plazasDiscapacidad: number | null
+  /**
+   * ¿La reserva de discapacidad va DENTRO de `plazasLibres` o se suma aparte?
+   * Sin este dato la tarjeta sumaba siempre y enseñaba plazas que no existen (lo reportó
+   * una usuaria el 29/07/2026: veía 51 en Sevilla cuando la convocatoria tiene 46).
+   */
+  plazasDiscapacidadIncluidas?: boolean | null
   estadoProceso: string | null
   isConvocatoriaActiva: boolean
   examDate: string | null
@@ -37,7 +44,14 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function OposicionCard(props: OposicionCardProps) {
-  const totalPlazas = (props.plazasLibres ?? 0) + (props.plazasDiscapacidad ?? 0)
+  // La reserva NO siempre se suma: en muchas convocatorias va dentro del turno libre.
+  // El núcleo (T-214) es el mismo que usa la landing, para que las dos superficies no se
+  // contradigan — que es justo lo que pasaba: la landing decía 46 y el catálogo 51.
+  const totalPlazas = totalTurnoLibre(
+    props.plazasLibres,
+    props.plazasDiscapacidad,
+    props.plazasDiscapacidadIncluidas,
+  ) ?? 0
   // "Inscripción abierta ahora" se deriva de FECHAS (fuente de verdad, igual que home/SEO/
   // banner), no de estado_proceso (que puede estar desfasado). Si las fechas dicen abierta,
   // la card lo muestra coherentemente aunque el estado no se haya reconciliado todavía.

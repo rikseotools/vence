@@ -3,6 +3,7 @@
  * Muestra NUESTRAS oposiciones (tabla oposiciones) con filtros SEO.
  */
 import { Metadata } from 'next'
+import { totalTurnoLibre } from '@/lib/convocatoria/reservaDiscapacidad'
 import { sql } from 'drizzle-orm'
 import { getDb, getPoolerDb } from '@/db/client'
 import Link from 'next/link'
@@ -39,6 +40,7 @@ interface OposicionRow {
   nombre: string
   plazas_libres: number | null
   plazas_discapacidad: number | null
+  plazas_discapacidad_incluidas: boolean | null
   estado_proceso: string | null
   is_convocatoria_activa: boolean
   exam_date: string | null
@@ -58,7 +60,7 @@ function db() {
 async function getOposiciones(): Promise<OposicionRow[]> {
   try {
     const rows = await db().execute(sql`
-      SELECT slug, nombre, plazas_libres, plazas_discapacidad, estado_proceso,
+      SELECT slug, nombre, plazas_libres, plazas_discapacidad, plazas_discapacidad_incluidas, estado_proceso,
              is_convocatoria_activa,
              exam_date::text AS exam_date,
              inscription_start::text AS inscription_start,
@@ -87,7 +89,14 @@ export default async function OposicionesPage() {
   // card), no de estado_proceso (que puede estar desfasado) — incidente 20/06.
   const conInscripcion = oposiciones.filter(o => isInscripcionAbierta(o))
 
-  const totalPlazas = oposiciones.reduce((sum, o) => sum + (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0), 0)
+  // La reserva de discapacidad NO siempre se suma: en muchas convocatorias va DENTRO del
+  // turno libre. Sumarla a ciegas inflaba el total del directorio y cada tarjeta (lo
+  // reportó una usuaria el 29/07/2026: Sevilla salía con 51 plazas y la convocatoria
+  // tiene 46). Mismo núcleo que la landing, para que no se contradigan.
+  const totalPlazas = oposiciones.reduce(
+    (sum, o) => sum + (totalTurnoLibre(o.plazas_libres, o.plazas_discapacidad, o.plazas_discapacidad_incluidas) ?? 0),
+    0,
+  )
 
   // JSON-LD (orden de fetch: plazas desc — irrelevante para ItemList).
   const jsonLd = {

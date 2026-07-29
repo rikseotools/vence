@@ -17,6 +17,7 @@
 // tiene ≥2 opciones distintas.
 
 import { useMemo, useState } from 'react'
+import { totalTurnoLibre } from '@/lib/convocatoria/reservaDiscapacidad'
 import OposicionCard from '../components/OposicionCard'
 import CatalogadaCard from '../components/CatalogadaCard'
 import {
@@ -32,6 +33,7 @@ export interface OpoItem {
   nombre: string
   plazas_libres: number | null
   plazas_discapacidad: number | null
+  plazas_discapacidad_incluidas: boolean | null
   estado_proceso: string | null
   is_convocatoria_activa: boolean
   exam_date: string | null
@@ -121,7 +123,7 @@ export default function FilteredResults({
         ...o,
         _tipo: oposicionToTipo(o.slug),
         _ccaa: oposicionToCcaa(o.slug),
-        _plazas: (o.plazas_libres ?? 0) + (o.plazas_discapacidad ?? 0),
+        _plazas: totalTurnoLibre(o.plazas_libres, o.plazas_discapacidad, o.plazas_discapacidad_incluidas) ?? 0,
         _abierta: isInscripcionAbierta(o, today),
       })),
     [oposiciones, today],
@@ -404,6 +406,7 @@ export default function FilteredResults({
                   nombre={o.nombre}
                   plazasLibres={o.plazas_libres}
                   plazasDiscapacidad={o.plazas_discapacidad}
+                  plazasDiscapacidadIncluidas={o.plazas_discapacidad_incluidas}
                   estadoProceso={o.estado_proceso}
                   isConvocatoriaActiva={o.is_convocatoria_activa}
                   examDate={o.exam_date}
