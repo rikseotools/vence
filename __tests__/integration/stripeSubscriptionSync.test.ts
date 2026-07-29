@@ -1,66 +1,65 @@
 /**
- * Test de integridad: todas las suscripciones activas en Stripe deben tener
- * una fila correspondiente en user_subscriptions con status 'active'.
- *
- * Detecta el bug de gaditadelgado (suscripción activa en Stripe pero no
- * registrada en user_subscriptions → no recibe email de renovación).
- *
- * Requiere .env.local con STRIPE_SECRET_KEY y credenciales Supabase.
- * Se salta automáticamente si no hay credenciales.
+ * @jest-environment node
  */
-import https from 'https'
+/**
+ * Test de integridad: toda suscripción ACTIVA en Stripe debe tener su fila en
+ * `user_subscriptions`, y viceversa.
+ *
+ * Detecta el bug de gaditadelgado (suscripción activa en Stripe pero no registrada en BD → el
+ * usuario paga y no recibe ni el premium ni el email de renovación). Es la MISMA invariante que
+ * vigila el Pass-2 de `subscription-reconciliation`, medida desde fuera.
+ *
+ * ## Dos arreglos (29/07/2026) — llevaba 25 días en rojo sin detectar nada
+ *
+ * 1. **Miraba SUPABASE, congelado desde el cutover a RDS del 04/07.** Denunciaba 13 suscripciones
+ *    "no registradas", todas creadas entre el 4 y el 6 de julio —justo la ventana del cutover—:
+ *    comprobado a mano, las 13 están en RDS y `active`. Un test que compara contra una base de
+ *    datos que ya nadie escribe no es un falso positivo tolerable: es una vigilancia apagada que
+ *    encima entrena a ignorar su rojo.
+ * 2. **Leía una sola cuenta Stripe.** Con las altas nuevas en la cuenta de Nila, la suscripción
+ *    que este test existe para cazar era justo la que no miraba. Mismo punto ciego que ese día se
+ *    corrigió en /admin/conversiones, check-webhook-health, el Pass-2 y el canary del webhook.
+ */
 import dotenv from 'dotenv'
+import https from 'https'
+import { Client } from 'pg'
 
 dotenv.config({ path: '.env.local', override: true })
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY
-
-const hasCredentials = !!(
-  SUPABASE_URL &&
-  SERVICE_KEY &&
-  STRIPE_KEY &&
-  !SUPABASE_URL.includes('test.supabase.co')
-)
-
-// --- Helpers ---
-
-function supabaseGet<T = unknown>(table: string, params: string): Promise<T[]> {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?${params}`
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        apikey: SERVICE_KEY!,
-        Authorization: `Bearer ${SERVICE_KEY}`,
-      },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch (e) { reject(e) }
-      })
-      res.on('error', reject)
-    })
-  })
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+// RDS presenta un certificado cuya cadena node no valida por defecto, y `sslmode` en la URL
+// GANA sobre la opción `ssl` del cliente: sin normalizarlo, la conexión muere con
+// "self-signed certificate in certificate chain". Mismo tratamiento que en
+// agnosticismoQueries.integration.test.ts (read-only contra la misma BD).
+if (process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = /sslmode=/.test(process.env.DATABASE_URL)
+    ? process.env.DATABASE_URL.replace(/sslmode=[a-z-]+/, 'sslmode=no-verify')
+    : process.env.DATABASE_URL + (process.env.DATABASE_URL.includes('?') ? '&' : '?') + 'sslmode=no-verify'
 }
 
-function stripeGet<T = unknown>(path: string): Promise<T> {
+/** Cuentas conocidas → su env. Espejo del registro (lib/stripe.ts): añadir una = una fila. */
+const CUENTAS: Array<{ cuenta: string; env: string }> = [
+  { cuenta: 'manuel', env: 'STRIPE_SECRET_KEY' },
+  { cuenta: 'nila', env: 'STRIPE_SECRET_KEY_NILA' },
+]
+
+const DB_URL = process.env.DATABASE_URL
+const clavesConfiguradas = CUENTAS.filter((c) => !!process.env[c.env])
+const hasCredentials = !!DB_URL && clavesConfiguradas.length > 0
+
+function stripeGet<T = unknown>(secretKey: string, path: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    https.get(`https://api.stripe.com/v1${path}`, {
-      headers: {
-        Authorization: `Bearer ${STRIPE_KEY}`,
+    https.get(
+      `https://api.stripe.com/v1${path}`,
+      { headers: { Authorization: `Bearer ${secretKey}` } },
+      (res) => {
+        let data = ''
+        res.on('data', (chunk) => { data += chunk })
+        res.on('end', () => {
+          try { resolve(JSON.parse(data)) } catch (e) { reject(e) }
+        })
+        res.on('error', reject)
       },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch (e) { reject(e) }
-      })
-      res.on('error', reject)
-    })
+    )
   })
 }
 
@@ -74,103 +73,101 @@ interface StripeSub {
 interface StripeListResponse {
   data: StripeSub[]
   has_more: boolean
+  error?: { message?: string }
 }
 
-interface DbSub {
-  stripe_subscription_id: string
-  status: string
-  user_id: string
+/** Todas las subs `active` de UNA cuenta, etiquetadas con ella. */
+async function subsActivasDe(
+  cuenta: string,
+  secretKey: string,
+): Promise<Array<StripeSub & { cuenta: string }>> {
+  const out: Array<StripeSub & { cuenta: string }> = []
+  let hasMore = true
+  let startingAfter = ''
+  while (hasMore) {
+    const params = startingAfter
+      ? `status=active&limit=100&starting_after=${startingAfter}`
+      : 'status=active&limit=100'
+    const batch = await stripeGet<StripeListResponse>(secretKey, `/subscriptions?${params}`)
+    if (batch.error) throw new Error(`Stripe [${cuenta}]: ${batch.error.message ?? 'error'}`)
+    const data = batch.data ?? []
+    out.push(...data.map((s) => ({ ...s, cuenta })))
+    hasMore = !!batch.has_more && data.length > 0
+    if (data.length > 0) startingAfter = data[data.length - 1].id
+  }
+  return out
 }
 
 const describeIfCredentials = hasCredentials ? describe : describe.skip
 
-describeIfCredentials('Stripe ↔ user_subscriptions sync', () => {
-  jest.setTimeout(30_000)
+describeIfCredentials('Stripe ↔ user_subscriptions sync (RDS, todas las cuentas)', () => {
+  jest.setTimeout(60_000)
 
-  it('all active Stripe subscriptions have a matching row in user_subscriptions', async () => {
-    // 1. Get all active Stripe subscriptions (paginated)
-    const allStripeSubs: StripeSub[] = []
-    let hasMore = true
-    let startingAfter = ''
+  let client: Client
+  let stripeActivas: Array<StripeSub & { cuenta: string }> = []
 
-    while (hasMore) {
-      const params = startingAfter
-        ? `status=active&limit=100&starting_after=${startingAfter}`
-        : 'status=active&limit=100'
-      const batch = await stripeGet<StripeListResponse>(`/subscriptions?${params}`)
-      allStripeSubs.push(...batch.data)
-      hasMore = batch.has_more
-      if (batch.data.length > 0) {
-        startingAfter = batch.data[batch.data.length - 1].id
-      }
-    }
-
-    // 2. Get all active user_subscriptions
-    const dbSubs = await supabaseGet<DbSub>(
-      'user_subscriptions',
-      'select=stripe_subscription_id,status,user_id&status=eq.active'
-    )
-
-    const dbSubIds = new Set(dbSubs.map((s) => s.stripe_subscription_id))
-
-    // 3. Find active in Stripe but missing in DB
-    const missing = allStripeSubs.filter((s) => !dbSubIds.has(s.id))
-
-    if (missing.length > 0) {
-      const details = missing
-        .map(
-          (s) =>
-            `  - ${s.id} | customer: ${s.customer} | created: ${new Date(s.created * 1000).toISOString().slice(0, 10)}`
-        )
-        .join('\n')
-
-      throw new Error(
-        `${missing.length} active Stripe subscription(s) not tracked in user_subscriptions:\n${details}\n\n` +
-          'Fix: update user_subscriptions with correct stripe_subscription_id, status=active, and period dates.'
-      )
-    }
-
-    expect(allStripeSubs.length).toBeGreaterThan(0)
-    expect(missing.length).toBe(0)
+  beforeAll(async () => {
+    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    await client.connect()
+    await client.query("SET statement_timeout='20000ms'")
+    stripeActivas = (
+      await Promise.all(clavesConfiguradas.map((c) => subsActivasDe(c.cuenta, process.env[c.env]!)))
+    ).flat()
   })
 
-  it('no user_subscriptions rows with status=active point to a non-active Stripe subscription', async () => {
-    // Get all active user_subscriptions that have a real Stripe ID (not sub_manual_*)
-    const dbSubs = await supabaseGet<DbSub>(
-      'user_subscriptions',
-      'select=stripe_subscription_id,status,user_id&status=eq.active&stripe_subscription_id=not.like.sub_manual_*'
+  afterAll(async () => {
+    if (client) await client.end()
+  })
+
+  it('mira TODAS las cuentas Stripe configuradas, no solo la histórica', () => {
+    // Si esta lista se queda corta, los dos tests de abajo dan verde sobre media realidad —
+    // que es exactamente lo que pasaba antes del 29/07.
+    expect(clavesConfiguradas.map((c) => c.cuenta)).toEqual(['manuel', 'nila'])
+    expect(stripeActivas.length).toBeGreaterThan(0)
+  })
+
+  it('toda suscripción activa en Stripe tiene su fila en user_subscriptions', async () => {
+    const { rows } = await client.query<{ stripe_subscription_id: string }>(
+      "SELECT stripe_subscription_id FROM user_subscriptions WHERE status = 'active' AND stripe_subscription_id IS NOT NULL",
     )
+    const enBd = new Set(rows.map((r) => r.stripe_subscription_id))
+    const faltan = stripeActivas.filter((s) => !enBd.has(s.id))
 
-    // Build a Set of active Stripe sub IDs (already fetched in prior test or fetch now)
-    const allStripeSubs: StripeSub[] = []
-    let hasMore = true
-    let startingAfter = ''
-    while (hasMore) {
-      const params = startingAfter
-        ? `status=active&limit=100&starting_after=${startingAfter}`
-        : 'status=active&limit=100'
-      const batch = await stripeGet<StripeListResponse>(`/subscriptions?${params}`)
-      allStripeSubs.push(...batch.data)
-      hasMore = batch.has_more
-      if (batch.data.length > 0) startingAfter = batch.data[batch.data.length - 1].id
-    }
-
-    const activeStripeIds = new Set(allStripeSubs.map((s) => s.id))
-
-    // Find DB rows marked active whose Stripe sub is NOT active
-    const stale = dbSubs.filter((s) => !activeStripeIds.has(s.stripe_subscription_id))
-
-    if (stale.length > 0) {
-      const details = stale
-        .map((s) => `  - ${s.stripe_subscription_id} | user: ${s.user_id}`)
+    if (faltan.length > 0) {
+      const detalle = faltan
+        .map(
+          (s) =>
+            `  - [${s.cuenta}] ${s.id} | customer: ${s.customer} | creada: ${new Date(s.created * 1000).toISOString().slice(0, 10)}`,
+        )
         .join('\n')
-
       throw new Error(
-        `${stale.length} user_subscriptions row(s) marked active but not active in Stripe:\n${details}\n\n` +
-          'Fix: update status in user_subscriptions to match Stripe.'
+        `${faltan.length} suscripción(es) activa(s) en Stripe SIN fila en user_subscriptions:\n${detalle}\n\n` +
+          'Es el caso "pagó y no se le aplicó": lo repara el Pass-2 de subscription-reconciliation ' +
+          '(cron horario). Si persiste, mirar el webhook de ESA cuenta — cada una tiene su signing secret.',
       )
     }
+    expect(faltan).toHaveLength(0)
+  })
 
-    expect(stale.length).toBe(0)
-  }, 60_000)
+  it('ninguna fila active de la BD apunta a una suscripción que ya no está activa en Stripe', async () => {
+    // `sub_manual_*` son altas manuales sin Stripe detrás: no tienen contraparte que comprobar.
+    const { rows } = await client.query<{ stripe_subscription_id: string; user_id: string }>(
+      `SELECT stripe_subscription_id, user_id FROM user_subscriptions
+        WHERE status = 'active' AND stripe_subscription_id IS NOT NULL
+          AND stripe_subscription_id NOT LIKE 'sub_manual_%'`,
+    )
+    const activasEnStripe = new Set(stripeActivas.map((s) => s.id))
+    const fantasma = rows.filter((r) => !activasEnStripe.has(r.stripe_subscription_id))
+
+    if (fantasma.length > 0) {
+      const detalle = fantasma
+        .map((r) => `  - ${r.stripe_subscription_id} (user ${r.user_id})`)
+        .join('\n')
+      throw new Error(
+        `${fantasma.length} fila(s) active en BD sin suscripción activa en NINGUNA cuenta Stripe:\n${detalle}\n\n` +
+          'Es premium regalado: alguien canceló en Stripe y la BD no se enteró (webhook perdido).',
+      )
+    }
+    expect(fantasma).toHaveLength(0)
+  })
 })
