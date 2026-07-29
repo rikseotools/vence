@@ -146,6 +146,12 @@ git stash push -u && npm run test:unit; git stash pop
 > Y ojo con el orden: el guardarraíl **anti-stale** de los scripts ya te obliga a resincronizar, así
 > que un deploy que empieza con el árbol atrasado morirá igualmente más tarde y habrás perdido el build.
 >
+> ⚠️ **PUSHEA ANTES DE LANZAR EL DEPLOY, y no commitees mientras corre.** Esa resincronización es un
+> `reset --hard origin/main` sobre **TU worktree**: un commit tuyo que aún no esté en `origin/main`
+> desaparece del branch (queda solo en el reflog). Pasó el 29/07 — el deploy iba en la vuelta 3 y se
+> llevó por delante un commit hecho durante la espera. Si te ocurre: `git reflog` → `git cherry-pick
+> <sha>`, que sigue estando ahí.
+>
 > **✅ ARREGLADO EN EL SCRIPT (27/07/2026).** Este aprendizaje llevaba escrito aquí un rato mientras el
 > gate seguía metiendo `cancelled` en el mismo saco que `failure` — y ese mismo día volvió a bloquear
 > **tres** deploys seguidos con CERO checks en `failure`. Ahora `FAILED` cuenta solo `failure`/`timed_out`
