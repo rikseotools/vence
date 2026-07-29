@@ -71,6 +71,20 @@ Ambos: build (podman) → push ECR → task def pineada por **digest** clonando 
 - **GHA auto-deploy DESACTIVADO** (metía builds Supabase por sorpresa). Deploy manual con estos scripts.
   - ⚠️ **`backend-deploy.yml` seguía con trigger `push` vivo hasta el 11/07/2026** (pese a este párrafo) y además **pinaba el task def a un digest equivocado** (distinto de la imagen que construía) → al pushear `backend/**` a `main`, ECS intentaba arrancar un task cuya imagen no existía en ECR → **deployment atascada + backend frágil** (el task vivo corría una imagen ya borrada de ECR; una muerte del task = caída no auto-curable; circuit breaker OFF). Recuperación: registrar task def clon apuntando a la imagen REAL (`...@sha256:<digest_existente>`) + `update-service` + esperar estable + smoke. **Fix:** el workflow se pasó a `workflow_dispatch` (sin `push`). No re-activar el `push` sin arreglar antes el pinning por digest.
 
+## Post-deploy: CloudFront, o el cambio no se ve aunque el deploy esté vivo
+
+`deploy-frontend.sh` invalida `/*` en CloudFront tras el smoke. **Si despliegas por otra
+vía, invalida a mano** o la página cacheada tarda hasta 24 h en cambiar aunque el
+contenedor nuevo ya sirva lo correcto:
+
+```bash
+AWS_PROFILE=vence aws cloudfront create-invalidation --distribution-id E1EH4WF1H7ZGLA --paths "/*"
+```
+
+Para distinguir «no se desplegó» de «está cacheado», un query-string cualquiera fuerza ir
+al origen: si con `?nocache=123` sale lo nuevo, el deploy está bien y solo falta la CDN.
+Detalle: `docs/maintenance/cache-revalidation.md` § CloudFront.
+
 ## Post-deploy: el smoke HTTP no lo ve todo
 
 Tras el smoke (`home` 200 + `/api/auth/token` 401), el anti-clobber y el canary premium, el

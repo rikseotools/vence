@@ -186,6 +186,8 @@ Mira también las facturas: si las últimas están `paid` y no hay ninguna poste
 
 **NO ofrecer de entrada mantenerle el precio antiguo** (decisión Manuel 29/07). Los planes largos ya salen **más baratos** que el mensual con descuento que tenían (18 €), así que no hace falta; y mantener un precio a medida sienta precedente con el resto de afectados. Si alguien insiste en seguir mes a mes, el cupón `loyalty_10` (10 %) está clonado en la cuenta nueva y reproduce ese precio exacto sobre el mensual de 20 €, pero eso se decide caso a caso.
 
+> 🛠️ **Si se decide mantenerle el precio (o darle uno concreto), el cómo está en `docs/runbooks/oferta-precio-personalizada.md`.** Una orden: `node scripts/stripe/precio-heredado.cjs crear <email> <importe> --intervalo <…> --motivo "…" --feedback <uuid>`. Crea el precio en Stripe, registra la oferta y ella la contrata en **vence.es/premium/personal** (dentro de Vence, no un enlace de pago suelto). **Avísale de que entre con la sesión iniciada**: sin ella la página solo ofrece iniciar sesión, y el 29/07 eso costó un *«no puedo acceder a la oferta»* y tres horas de espera.
+
 **Aprovecha para el cross-sell de su zona** (§ PRE-VENTA): temario común entre oposiciones + estadísticas independientes por oposición. Nombra **solo oposiciones `is_active = true`**, comprobadas en BD.
 
 **¿Y a los que NO han escrito?** **Nada** (decisión Manuel, 29/07/2026): se atiende a quien reclama, no se contacta proactivamente a los afectados. En la ventana del 18-22/07 hubo **21 suscripciones canceladas** en esa operación y **17 con el periodo ya vencido**; solo una escribió. Avisar al resto sería destapar a gente que no ha notado nada.

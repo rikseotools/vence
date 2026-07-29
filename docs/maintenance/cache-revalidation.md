@@ -428,11 +428,25 @@ AWS_PROFILE=vence aws cloudfront create-invalidation \
 
 ### Automático en cada deploy
 
-El workflow `frontend-deploy.yml` ya invalida `/*` tras el rollout estable (paso
-«Invalidar CloudFront», `continue-on-error`). El rol CI OIDC tiene
-`cloudfront:CreateInvalidation` (en `backend/infra/main.tf`). Por tanto, **a
-partir de ahora un deploy normal propaga el cambio en minutos, no en 24h** — solo
-necesitas invalidación manual para casos fuera de un deploy.
+**`scripts/deploy-frontend.sh` invalida `/*` tras el smoke** (best-effort: un fallo ahí no
+tumba un deploy ya vivo). Es el camino REAL: el workflow `frontend-deploy.yml` también lo
+hace, pero **el auto-deploy por GitHub Actions está desactivado** y los deploys salen del
+script.
+
+> ⚠️ **Corregido el 29/07/2026.** Hasta ese día este manual decía que lo hacía el workflow
+> y se daba por bueno que «un deploy normal propaga en minutos» — pero el script no
+> invalidaba nada. Se vio con el arreglo de las plazas: el contenedor nuevo servía 46 y el
+> catálogo público seguía enseñando 51 **a todo el mundo**, con el deploy en verde y los
+> tags de Next revalidados. Comprobarlo cuesta diez segundos y distingue las dos capas:
+>
+> ```bash
+> curl -s "https://www.vence.es/oposiciones?nocache=$RANDOM" | grep -o '46 plazas'  # ORIGEN
+> curl -s "https://www.vence.es/oposiciones"                 | grep -o '51 plazas'  # CDN
+> ```
+>
+> Si con cache-buster sale lo nuevo y sin él lo viejo, **el deploy está bien y falta
+> invalidar**. Solo hace falta a mano para cambios que no vienen de un deploy (por ejemplo
+> editar datos en la BD que alimentan una página estática).
 
 ---
 

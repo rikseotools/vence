@@ -39,7 +39,7 @@ export default function PrecioPersonalPage() {
       try {
         const data = await apiFetch<{ success: boolean; oferta: OfertaVista | null }>(
           '/api/v2/premium/mi-oferta',
-          { retries: 2 },
+          { method: 'GET', retries: 2 },
         )
         if (vivo) setOferta(data.oferta)
       } catch {
@@ -93,9 +93,9 @@ export default function PrecioPersonalPage() {
 
   if (!user) {
     return (
-      <Marco titulo="Tu precio personalizado">
+      <Marco titulo="Tu precio de fidelidad">
         <p className="text-gray-600 dark:text-gray-300">
-          Inicia sesión con tu cuenta para ver el precio que te hemos guardado.
+          Inicia sesión con tu cuenta para ver tu precio de fidelidad.
         </p>
         <Link href="/login" className="mt-6 inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl">
           Iniciar sesión
@@ -106,9 +106,9 @@ export default function PrecioPersonalPage() {
 
   if (!oferta) {
     return (
-      <Marco titulo="Tu precio personalizado">
+      <Marco titulo="Tu precio de fidelidad">
         <p className="text-gray-600 dark:text-gray-300">
-          No tienes ningún precio personalizado activo en este momento.
+          No tienes ningún precio de fidelidad activo en este momento.
         </p>
         <Link href="/premium" className="mt-6 inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl">
           Ver los planes
@@ -118,9 +118,9 @@ export default function PrecioPersonalPage() {
   }
 
   return (
-    <Marco titulo="Tu precio personalizado">
+    <Marco titulo="Tu precio de fidelidad">
       <p className="text-gray-600 dark:text-gray-300">
-        Hemos guardado tu precio de siempre. Es el mismo que tenías, sin cambios.
+        Por llevar tiempo con nosotros mantienes tu precio, sin cambios.
       </p>
 
       <div className="mt-6 rounded-2xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/40 p-6 text-center">

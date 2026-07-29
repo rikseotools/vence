@@ -53,6 +53,7 @@ export class ApiValidationError extends Error {
 
 export interface ApiFetchOptions<T> {
   timeoutMs?: number         // default: 10000
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   retries?: number           // default: 2 (total attempts)
   retryDelayMs?: number      // default: 1000
   responseSchema?: ZodLikeSchema<T>  // validación Zod opcional (v3 o v4)
@@ -92,6 +93,7 @@ export async function apiFetch<T>(
   const {
     timeoutMs = 10000,
     retries = 2,
+    method = 'POST',
     retryDelayMs = 1000,
     responseSchema,
     headers: extraHeaders,
@@ -110,7 +112,11 @@ export async function apiFetch<T>(
 
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        // POST por defecto (el 90 % de la API v2), pero configurable: sin esto, un
+        // endpoint GET recibía POST y devolvía 405 sin que el cliente lo notara. Le pasó a
+        // una usuaria el 29/07: su página de precio se quedó vacía y acabó pagando la
+        // tarifa pública, tres veces, porque el 405 no se veía por ningún lado.
+        method,
         headers: { 'Content-Type': 'application/json', ...extraHeaders },
         body: JSON.stringify(body),
         signal: controller.signal

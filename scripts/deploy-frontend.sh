@@ -395,6 +395,24 @@ else
   echo "      Prod NO está sirviendo tu código. Coordina el deploy (que nadie más despliegue) y reintenta."
   exit 1
 fi
+# CloudFront: invalidar SIEMPRE tras un deploy.
+#
+# POR QUÉ (29/07/2026): el manual de caché daba por hecho que esto lo hacía el workflow
+# `frontend-deploy.yml`… pero el auto-deploy por GitHub Actions está DESACTIVADO y los
+# deploys reales salen de este script, que no invalidaba. Resultado: el contenedor nuevo
+# servía el HTML correcto y `www.vence.es` seguía enseñando el viejo hasta 24 h (el TTL
+# máximo de la cache policy). Se vio con el arreglo de las plazas: el origen ya decía 46
+# y el catálogo público seguía diciendo 51 a todo el mundo, con el deploy "OK" y los tags
+# de Next revalidados — son capas independientes.
+#
+# `/*` cuenta como UN path del free tier (1000/mes) y tarda 1-2 min. Best-effort: un fallo
+# aquí no invalida el deploy, que ya está vivo.
+echo "→ invalidando CloudFront (si no, la página cacheada tarda hasta 24 h en cambiar)"
+aws --profile "$P" --region "$R" cloudfront create-invalidation \
+  --distribution-id E1EH4WF1H7ZGLA --paths "/*" \
+  --query 'Invalidation.[Id,Status]' --output text 2>/dev/null \
+  || echo "   ⚠️ no se pudo invalidar CloudFront — hazlo a mano (ver docs/maintenance/cache-revalidation.md)"
+
 # Assets: un chunk referenciado por la home viva debe cargar 200 vía CloudFront
 # (detecta rotura del origin group S3/ALB o del pipeline de assets).
 CHUNK=$(curl -s https://www.vence.es/ | grep -oE '/_next/static/chunks/[^"]+\.js' | head -1 || true)
