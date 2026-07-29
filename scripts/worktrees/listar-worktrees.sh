@@ -3,7 +3,7 @@
 # session-id, commits pendientes de llevar a origin/main y si tienen Postgres local.
 # Fuente de verdad: `git worktree list` (no hay registry aparte que driftee).
 #
-# Uso: scripts/sessions/list-sessions.sh
+# Uso: scripts/worktrees/listar-worktrees.sh
 set -euo pipefail
 
 GIT_COMMON="$(git rev-parse --git-common-dir 2>/dev/null)" || { echo "❌ no estás en un repo git"; exit 2; }

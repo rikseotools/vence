@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cierra una sesión creada con new-session.sh: libera sus claims, avisa de commits sin
+# Cierra una sesión creada con crear-worktree.sh: libera sus claims, avisa de commits sin
 # llevar a origin/main, quita el worktree + la rama, para el Postgres local si lo había.
 #
-# Uso: scripts/sessions/borrar-worktree.sh <slug> [--force]
+# Uso: scripts/worktrees/borrar-worktree.sh <slug> [--force]
 #   --force  quita el worktree aunque tenga cambios sin commitear (se PIERDEN)
 set -euo pipefail
 

@@ -8,13 +8,13 @@
 #   · deps por symlink (rápido) o propias con --own-deps
 #   · DB compartida (prod RDS) por defecto, o Postgres podman propio con --db local
 #
-# Uso:  scripts/sessions/new-session.sh <slug> [--db shared|local] [--own-deps]
-# Borrar el worktree al terminar la línea de trabajo: scripts/sessions/borrar-worktree.sh <slug>   ·   Ver: scripts/sessions/list-sessions.sh
+# Uso:  scripts/worktrees/crear-worktree.sh <slug> [--db shared|local] [--own-deps]
+# Borrar el worktree al terminar la línea de trabajo: scripts/worktrees/borrar-worktree.sh <slug>   ·   Ver: scripts/worktrees/listar-worktrees.sh
 set -euo pipefail
 
 ARGS_ORIG=("$@")
 SLUG="${1:-}"
-[ -n "$SLUG" ] || { echo "Uso: new-session.sh <slug> [--db shared|local] [--own-deps]"; exit 2; }
+[ -n "$SLUG" ] || { echo "Uso: crear-worktree.sh <slug> [--db shared|local] [--own-deps]"; exit 2; }
 shift
 DB=shared; OWN_DEPS=0
 while [ $# -gt 0 ]; do
@@ -49,9 +49,9 @@ git -C "$MAIN_REPO" fetch origin --quiet
 # lee de la copia vieja: si difiere de origin/main, se re-ejecuta la versión de origin.
 if [ -z "${VENCE_NEWSESSION_REEXEC:-}" ]; then
   FRESCO="$(mktemp)"
-  if git -C "$MAIN_REPO" show origin/main:scripts/sessions/new-session.sh > "$FRESCO" 2>/dev/null &&
+  if git -C "$MAIN_REPO" show origin/main:scripts/worktrees/crear-worktree.sh > "$FRESCO" 2>/dev/null &&
      [ -s "$FRESCO" ] && ! cmp -s "$FRESCO" "${BASH_SOURCE[0]}"; then
-    echo "⚠️  new-session.sh está desactualizado respecto a origin/main → re-ejecutando la versión fresca"
+    echo "⚠️  crear-worktree.sh está desactualizado respecto a origin/main → re-ejecutando la versión fresca"
     chmod +x "$FRESCO"
     VENCE_NEWSESSION_REEXEC=1 exec bash "$FRESCO" "${ARGS_ORIG[@]}"
   fi
@@ -129,5 +129,5 @@ cat <<EOF
    db:     $DB_DESC
 
    → cd $WT
-   Al cerrar:  scripts/sessions/borrar-worktree.sh $SLUG   (cherry-pick a origin/main + limpia)
+   Al cerrar:  scripts/worktrees/borrar-worktree.sh $SLUG   (cherry-pick a origin/main + limpia)
 EOF

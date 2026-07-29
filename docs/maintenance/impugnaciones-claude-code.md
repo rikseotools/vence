@@ -154,7 +154,7 @@ node scripts/impugnaciones/cola.cjs release <dispute_id> --sid <id>        # sol
 - **Claim = protege el ANÁLISIS.** El cierre (`/resolve` → `resolved`) la saca del pool solo; el backstop 409 sigue evitando doble-email si dos coinciden.
 - 👤 **Una sesión = un usuario entero.** `cola.cjs next` coge la impugnación más antigua libre **y además todas las demás pendientes del MISMO usuario** (respetando las que ya tenga otra sesión). Es a propósito: la misma sesión que ya reunió el journey/oposición de ese usuario resuelve **todas** las suyas → más contexto, mejor diagnóstico y detección del fallo sistémico (§7.5). **Ojo:** coger el cluster es solo para el reparto; se sigue respondiendo **UNA POR UNA** (su propio borrador, su propia aprobación, su propio email — nunca un email agrupado).
 - **Auto-libera a las 2h** (una sesión que muere no bloquea la cola para siempre). No hay cron ni "renew".
-- El id de sesión se coge solo de `CLAUDE_CODE_SESSION_ID` (o del `.session-id` que escribe `new-session.sh`, o `--sid` explícito). Se guarda en `claimed_by`. **No hay que teclear nada.**
+- El id de sesión se coge solo de `CLAUDE_CODE_SESSION_ID` (o del `.session-id` que escribe `crear-worktree.sh`, o `--sid` explícito). Se guarda en `claimed_by`. **No hay que teclear nada.**
 - Alternativa integrada: `revisar-impugnacion.cjs <id> --sid <id>` coge la impugnación al generar el dossier y avisa si otra sesión ya la tiene fresca.
 - Diseño y sizing (2-10 sesiones; el límite real es tu aprobación, no la BD): migración `supabase/migrations/20260717_dispute_feedback_claim.sql`.
 

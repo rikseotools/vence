@@ -25,7 +25,7 @@ function getUrl() {
 }
 function arg(name) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; }
 // El session-id se resuelve solo (nada que teclear): --sid explícito > fichero .session-id
-// (lo escribe new-session.sh) > CLAUDE_CODE_SESSION_ID (cada sesión de Claude Code ya trae
+// (lo escribe crear-worktree.sh) > CLAUDE_CODE_SESSION_ID (cada sesión de Claude Code ya trae
 // el suyo, único). Así el claim funciona sin configurar nada.
 function readSessionId() {
   const path = require('path');

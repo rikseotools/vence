@@ -21,7 +21,7 @@
  * detectores del backend. El `tsconfig.json` de la raíz EXCLUYE `backend`, así
  * que un script en `scripts/` que importe de `backend/src` arrastra medio
  * NestJS al typecheck de la raíz y lo rompe en CI —donde `backend/node_modules`
- * no existe— aunque en local pase por el symlink de `new-session.sh`. Ese fallo
+ * no existe— aunque en local pase por el symlink de `crear-worktree.sh`. Ese fallo
  * ocurrió de verdad el 27/07 al crear este fichero (familia de T-131).
  */
 import fs from 'fs';
