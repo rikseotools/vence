@@ -4198,8 +4198,57 @@ export const RULE_DAILY_QUOTA_OVERCHARGE: AlertRule<{
   cooldownMin: 720,
 };
 
+/**
+ * Impugnaciones que el usuario CREE haber enviado y no se guardaron.
+ *
+ * Nace del caso Pilar (28/07/2026): pulsó impugnar, el POST murió con "Load failed"
+ * (Safari) y la impugnación nunca llegó a existir. Ella se enteró al no verla en su
+ * historial, y lo supimos porque escribió. El único rastro era un `http_network_error`
+ * genérico entre miles de otros endpoints: imposible contar impugnaciones perdidas.
+ *
+ * Desde el 29/07 el envío REINTENTA (`apiFetch`) y, si aun así se pierde, el cliente
+ * emite `dispute_submit_failed` SIN muestreo. Esta regla lo vigila: cada evento es un
+ * usuario que quiso reportar un fallo de contenido y no pudo.
+ *
+ * Umbral bajo a propósito: el baseline sano es ~0 (2 fallos de red en 30 días antes del
+ * arreglo, y ahora encima hay reintentos). 3 en una hora ya es señal de algo roto
+ * (deploy, CORS, endpoint caído), no de mala cobertura puntual.
+ */
+export const RULE_DISPUTE_SUBMIT_FAILED: AlertRule<{
+  n: number;
+  usuarios: number;
+  motivo: string | null;
+}> = {
+  name: 'dispute_submit_failed',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COUNT(DISTINCT user_id)::int AS usuarios,
+           MODE() WITHIN GROUP (ORDER BY error_message) AS motivo
+    FROM observable_events
+    WHERE event_type = 'dispute_submit_failed'
+      AND ts > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const usuarios = rows[0]?.usuarios ?? 0;
+    const motivo = rows[0]?.motivo ?? '(sin motivo)';
+    return {
+      title: `${n} impugnación(es) perdidas en 1 h — ${usuarios} usuario(s)`,
+      body: `Alguien pulsó "impugnar", el envío falló incluso tras los reintentos y la impugnación NO se guardó. El usuario ve el aviso, pero ha perdido el reporte.\n\nMotivo más repetido: ${motivo}\n\nMirar:\n\n  SELECT ts, user_id, error_message, metadata->>'questionId' AS pregunta\n  FROM observable_events WHERE event_type='dispute_submit_failed'\n    AND ts > NOW() - INTERVAL '6 hours' ORDER BY ts DESC;\n\nSi el motivo es el mismo para todos, sospechar de deploy/CORS/endpoint caído, no de la conexión del usuario.`,
+      metadata: { count: n, usuarios, motivo },
+      fingerprint: 'dispute_submit_failed',
+    };
+  },
+  cooldownMin: 120,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Impugnaciones perdidas en el envío (2026-07-29, caso Pilar): el usuario cree que
+  // ha reportado un fallo de contenido y no ha quedado nada.
+  RULE_DISPUTE_SUBMIT_FAILED as AlertRule,
   // Cupo free cobrado de más (2026-07-29, caso Sergio): el contador debe seguir a
   // las respuestas GUARDADAS, no a los eventos del cliente.
   RULE_DAILY_QUOTA_OVERCHARGE as AlertRule,

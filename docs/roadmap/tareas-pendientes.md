@@ -15,6 +15,35 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-267] 🟠 [ABIERTO 29/07] Servimos preguntas de 4 opciones en oposiciones que examinan con 3 (y el motor de barajado permite arreglarlo sin tocar el banco)
+
+- **Quién lo detecta:** Pilar Martín (premium, feedback `ed09cf73`, 28/07), preparando Auxiliar Administrativo del **Ayuntamiento de Madrid**: *«las opciones de respuesta son cuatro cuando en el examen real son tres … ¿hay alguna opción para elegir que haya tres?»*. **Tiene razón, y no existe esa opción.**
+- **CÓMO PUDIMOS FALLAR (la parte importante): el dato correcto ESTABA en casa y no lo lee nadie.** `oposiciones.examen_config` de esa oposición dice `"opciones": 3` desde que se creó… pero ese campo **solo se usa para pintar la landing** (`lib/api/convocatoria/queries.ts`). Al servir, el número de opciones lo decide **la pregunta**, no la oposición: `lib/testFetchers.ts:391` monta `[a,b,c,d,e].filter(no vacías)`. Y `lib/config/oposiciones.ts` **ni siquiera declara** el campo. Es el MISMO patrón que [T-260] (el cupo diario: `incrementDailyCount` existía y no la llamaba nadie): la pieza correcta existe, y el camino que la necesita no la consulta.
+- **Alcance medido (29/07, RDS) — no es un caso aislado:**
+
+  | Oposición (activa, examen de 3 opciones) | Preguntas servidas | De 4 opciones |
+  |---|---|---|
+  | Auxiliar Administrativo Ayto. Granada | 12.075 | 11.222 (93 %) |
+  | Auxiliar Administrativo Ayto. Madrid | 9.045 | 8.359 (92 %) |
+  | Policía Municipal de Madrid | 11.768 | 9.545 (81 %) |
+  | Policía Nacional Escala Básica | 32.585 | 23.083 (71 %) |
+
+  (Las 4 salen de `examen_config` con `opciones=3` en raíz o en alguna parte. Policía Nacional ya estaba documentada en `impugnaciones-claude-code.md` §7.8, pero como "una D vacía NO es un defecto", nunca como "servimos 4 donde el examen tiene 3".)
+- **SOLUCIÓN PROPUESTA (idea de Manuel, 29/07): reutilizar el MOTOR DE BARAJADO para servir un SUBCONJUNTO.** Servir la correcta + 2 distractores es la misma operación que permutar: el serve ya guarda en `test_questions.option_order` lo que vio el usuario. No hay que reescribir ni una pregunta.
+- **Cuánto banco desbloquea hoy** (medido sobre Ayto. Madrid, 8.359 de 4 opciones): **2.565** con `shuffle_safety='safe'` · 519 con `explanation_data` (las ideales) · **317 a EXCLUIR** por contener "todas/ninguna de las anteriores". Con las 686 nativas de 3 → pasa de 686 a **~3.100 preguntas fieles al formato (×4,5)**, y **crece solo** según avanza la transcripción a explicación estructurada ([T-080]).
+- **Condiciones que NO se pueden saltar:**
+  1. **Solo preguntas `safe`.** Si la explicación cita la opción omitida, el opositor lee sobre una opción fantasma. El filtro ya existe y está verificado.
+  2. **Excluir "ninguna/todas las anteriores"** (317 solo en Madrid): quitar una opción cambia el sentido de la pregunta.
+  3. **Qué distractor se quita afecta a la DIFICULTAD** (si se elimina el más plausible, la pregunta se ablanda). Medir con nuestra propia tasa de acierto antes de generalizar.
+  4. **Examen oficial HISTÓRICO: no se toca** (reproducir el examen del año X tal como se publicó; si tenía 4, tenía 4). **Simulacro y modo examen SÍ deben aplicarlo** (matiz de Manuel, 29/07): su razón de ser es parecerse al examen que el opositor va a hacer.
+  5. **`option_order` debe admitir SUBCONJUNTOS** (3 de 4), o mienten las estadísticas y el dossier de impugnaciones, que ya traduce letras a lo que vio el usuario.
+- **LIGADA AL BARAJADO — leer antes de tocar nada:**
+  - **[T-235]** (piloto de barajado en Valencia: decidir si se amplía, se corrige o **se apaga**). Si el piloto se apaga, esto se apaga con él: comparten motor. **No implementar esto mientras T-235 esté sin decidir.**
+  - **[T-262]** (el `intro` de `explanation_data` clava la letra en 1.211 preguntas `safe`). Es exactamente el mismo modo de fallo que aquí: una explicación que nombra una opción que el usuario no vio. **Su reparación aumenta el banco elegible de esta ficha.**
+  - **[T-080]** (fase 2 de explicaciones estructuradas): cuanto más avance, más preguntas elegibles.
+- **Mientras tanto, qué se le dice a quien pregunte:** que hoy no existe la opción de elegir 3 respuestas, sin prometer fecha. Respuesta pendiente de enviar a Pilar (feedback `ed09cf73`).
+- **Origen:** feedback `ed09cf73`, 28/07/2026.
+
 ### [T-262] 🟠 [EN CURSO 29/07 — capas puestas, falta decidir la reparación masiva] El `intro` de la explicación estructurada CLAVA la letra: 1.211 preguntas `safe` que se contradirían al barajar
 - **Qué:** `explanation_data.intro` guarda texto libre que se emite **verbatim** en cualquier orden. En 1.211 activas esa narrativa es literalmente *«La respuesta correcta es la **C**.»*, mientras el render calcula la letra buena más abajo. Al barajar, el mismo recuadro dice **C** arriba y **A** dos líneas después.
 - **Medido (29/07, RDS, con el detector REAL):** 5.119 activas con `explanation_data` · 5.019 marcadas `safe` · **1.211 con la letra clavada en la narrativa**. Exposiciones barajadas servidas en toda la historia de `test_questions`: **0** → mina sin detonar, no daño hecho. Sale a la luz el día que se reencienda `FEATURE_SHUFFLE_OPTIONS` (ver [T-235]).

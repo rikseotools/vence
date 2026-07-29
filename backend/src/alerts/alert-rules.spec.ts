@@ -6,6 +6,7 @@
 
 import {
   ALERT_RULES,
+  RULE_DISPUTE_SUBMIT_FAILED,
   RULE_DAILY_QUOTA_OVERCHARGE,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
   RULE_LAWS_CONFIGURATOR_DEGRADED,
@@ -2033,5 +2034,40 @@ describe('RULE_DAILY_QUOTA_OVERCHARGE (cupo free cobrado de más — 29/07, caso
     // comparación genera falsos positivos con las respuestas de última hora.
     expect(q).toContain('Europe/Madrid');
     expect(q).not.toContain('observable_events');
+  });
+});
+
+describe('RULE_DISPUTE_SUBMIT_FAILED (impugnaciones perdidas — 29/07, caso Pilar)', () => {
+  const fila = (n: number, usuarios = 1, motivo = 'Load failed') => [{ n, usuarios, motivo }];
+
+  it('NO dispara con el baseline sano (0-2 en una hora)', () => {
+    expect(RULE_DISPUTE_SUBMIT_FAILED.shouldFire(fila(0))).toBe(false);
+    expect(RULE_DISPUTE_SUBMIT_FAILED.shouldFire(fila(2))).toBe(false);
+    expect(RULE_DISPUTE_SUBMIT_FAILED.shouldFire([])).toBe(false);
+  });
+
+  it('dispara a partir de 3 en una hora (ya no es mala cobertura puntual)', () => {
+    expect(RULE_DISPUTE_SUBMIT_FAILED.shouldFire(fila(3))).toBe(true);
+    expect(RULE_DISPUTE_SUBMIT_FAILED.shouldFire(fila(20, 14))).toBe(true);
+  });
+
+  it('la notificación dice cuántas, cuántos usuarios y el motivo dominante', () => {
+    const notif = RULE_DISPUTE_SUBMIT_FAILED.buildNotification(fila(7, 5, 'Failed to fetch'));
+    expect(notif.title).toContain('7');
+    expect(notif.title).toContain('5');
+    expect(notif.body).toContain('Failed to fetch');
+    expect(notif.metadata).toMatchObject({ count: 7, usuarios: 5 });
+  });
+
+  it('está registrada en el catálogo que corre el cron', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('dispute_submit_failed');
+  });
+
+  it('mide el evento específico, no el http_network_error genérico', () => {
+    // El genérico es indistinguible entre endpoints: fue justo lo que impidió
+    // contar las impugnaciones perdidas en el caso Pilar.
+    const q = JSON.stringify(RULE_DISPUTE_SUBMIT_FAILED.query);
+    expect(q).toContain('dispute_submit_failed');
+    expect(q).not.toContain('http_network_error');
   });
 });

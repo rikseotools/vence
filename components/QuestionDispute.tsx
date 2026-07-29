@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getDisputeResponseSchema, type ExistingDispute } from '@/lib/api/v2/dispute/schemas'
+import { apiFetch, ApiHttpError } from '@/lib/api/client'
 import {
   LEGISLATIVE_DISPUTE_TYPES,
   PSYCHOMETRIC_DISPUTE_TYPES,
@@ -239,28 +240,23 @@ export default function QuestionDispute({
     try {
       const builtDesc = buildDescription(type, desc)
 
-      const res = await fetch(apiBase, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        body: JSON.stringify({
+      // Envío CON REINTENTOS (apiFetch): un parpadeo de red no puede perder la
+      // impugnación. Reintenta ante red/timeout/5xx y NO ante 4xx (un 409 "ya la
+      // impugnaste" no se repite). Caso Pilar (28/07/2026): el POST murió con
+      // "Load failed" en Safari, no se creó nada y ella creyó haberla enviado.
+      const result = await apiFetch<{ success: boolean; error?: string }>(
+        apiBase,
+        {
           questionId,
           questionType,
           disputeType: type,
           description: builtDesc,
-        }),
-      })
+        },
+        { retries: 3, retryDelayMs: 800, timeoutMs: 15000, headers: authHeaders },
+      )
 
-      const result = await res.json()
-
-      if (!res.ok || !result.success) {
-        if (res.status === 409) {
-          setErrorMessage('Ya has impugnado esta pregunta anteriormente')
-        } else {
-          setErrorMessage(result.error || 'Error al enviar la impugnación')
-        }
+      if (!result?.success) {
+        setErrorMessage(result?.error || 'No se ha podido registrar la impugnación. Inténtalo de nuevo.')
         return
       }
 
@@ -295,7 +291,42 @@ export default function QuestionDispute({
       }, 6000)
     } catch (err) {
       console.error('❌ Error enviando impugnación:', err)
-      setErrorMessage('Error inesperado al enviar la impugnación. Inténtalo de nuevo.')
+
+      // 409 = ya existía; no es una pérdida, es información para el usuario.
+      const yaExistia = err instanceof ApiHttpError && err.status === 409
+      // Mensaje del servidor (validación, reglas de negocio): se respeta si viene.
+      const mensajeServidor =
+        err instanceof ApiHttpError && err.body && typeof err.body === 'object'
+          ? (err.body as { error?: string }).error
+          : undefined
+
+      if (yaExistia) {
+        setErrorMessage('Ya has impugnado esta pregunta anteriormente')
+      } else if (mensajeServidor) {
+        // El servidor SÍ contestó y explicó el motivo: no es una impugnación perdida.
+        setErrorMessage(mensajeServidor)
+      } else {
+        // El envío se ha perdido DE VERDAD (tras los reintentos). Se dice claro que
+        // NO ha quedado registrada, para que nadie se vaya creyendo que sí.
+        setErrorMessage(
+          'No hemos podido registrar tu impugnación (problema de conexión). No se ha guardado: revisa tu conexión e inténtalo de nuevo.',
+        )
+        // Observabilidad sin huecos: hasta ahora esto solo dejaba un
+        // `http_network_error` genérico y era imposible contar las impugnaciones
+        // perdidas. Sin muestreo (SAMPLE_RATES: 1.0).
+        emitClientEvent({
+          severity: 'error',
+          eventType: 'dispute_submit_failed',
+          endpoint: apiBase,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          metadata: {
+            questionId,
+            questionType,
+            disputeType: type,
+            errorName: err instanceof Error ? err.name : 'unknown',
+          },
+        })
+      }
     } finally {
       setSubmitting(false)
       submittingRef.current = false

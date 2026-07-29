@@ -149,6 +149,38 @@ Preguntas que se repiten y ya tienen respuesta acordada con Manuel. **Usa esta l
 
 **No hagas esto:** ofrecerle practicar las leyes del supuesto como sucedáneo. Se propuso en el borrador de Sergio y Manuel lo quitó: el usuario pregunta si tenemos supuestos, y la respuesta es qué tenemos y qué haremos, no un consejo de estudio que no ha pedido.
 
+### «Mi suscripción no se ha renovado / yo no la he cancelado» (línea fijada 29/07/2026, caso Rocío)
+
+**Antes de responder, MIRA STRIPE.** Puede ser una baja del usuario… o una cancelación NUESTRA. En julio de 2026, al vaciar la cuenta antigua de Stripe, se pusieron ~200 suscripciones en «no renovar» (`cancel_at_period_end`) y se fueron apagando solas. A esas personas **les habíamos enviado antes** el correo de recordatorio diciendo *"tu suscripción se renovará automáticamente el DD/MM por X €"* y *"si deseas seguir, no tienes que hacer nada"*. Hicieron lo que les pedimos: nada. Y se quedaron sin premium.
+
+**Cómo distinguirlo (2 minutos):**
+```js
+// Cuenta según `user_profiles.payment_account`; si no aparece, prueba en ambas.
+const subs = await s.subscriptions.list({ customer: cus.id, status: 'all' })
+// canceled_at + cancellation_details.reason:
+//   'cancellation_requested' en una fecha de operación masiva → LA CANCELAMOS NOSOTROS
+//   baja del usuario → coincide con su actividad en el portal
+```
+Mira también las facturas: si las últimas están `paid` y no hay ninguna posterior, no fue impago.
+
+**Respuesta canónica cuando la baja fue nuestra** (aprobada 29/07): reconocer que **tiene razón y que no fue cosa suya**, decir que **su plan antiguo ya no forma parte de los planes actuales** (sin entrar en el detalle interno del cambio de cuenta de cobro) y ofrecer los planes vigentes destacando el **€/mes**, que es donde se ve la ventaja:
+
+| Plan | Precio | €/mes |
+|---|---|---|
+| Trimestral | 35 € | 11,67 |
+| Semestral | 59 € | 9,83 |
+| Anual | 99 € | 8,25 |
+
+**Verifica los precios antes de citarlos** (`stripe.prices.retrieve` con los `NEXT_PUBLIC_STRIPE_PRICE_*_NILA`): cambian, y dar una cifra vieja a alguien a quien ya le hemos fallado es el segundo error.
+
+**NO ofrecer de entrada mantenerle el precio antiguo** (decisión Manuel 29/07). Los planes largos ya salen **más baratos** que el mensual con descuento que tenían (18 €), así que no hace falta; y mantener un precio a medida sienta precedente con el resto de afectados. Si alguien insiste en seguir mes a mes, el cupón `loyalty_10` (10 %) está clonado en la cuenta nueva y reproduce ese precio exacto sobre el mensual de 20 €, pero eso se decide caso a caso.
+
+**Aprovecha para el cross-sell de su zona** (§ PRE-VENTA): temario común entre oposiciones + estadísticas independientes por oposición. Nombra **solo oposiciones `is_active = true`**, comprobadas en BD.
+
+**¿Y a los que NO han escrito?** **Nada** (decisión Manuel, 29/07/2026): se atiende a quien reclama, no se contacta proactivamente a los afectados. En la ventana del 18-22/07 hubo **21 suscripciones canceladas** en esa operación y **17 con el periodo ya vencido**; solo una escribió. Avisar al resto sería destapar a gente que no ha notado nada.
+
+> ⚠️ **Punto ciego conocido:** el recordatorio de renovación **no deja rastro consultable** (no hay tabla, ni columna, ni fila en `email_events` con ese usuario). En el caso Rocío, la única prueba de que se había enviado fue **la captura que mandó ella**. Si necesitas saber a quién se avisó, hoy no se puede: cuéntalo como hueco de observabilidad, no des por hecho que no se envió.
+
 ### «¿Puedo descargar / imprimir el temario para estudiarlo en papel?»
 
 Ver la respuesta canónica en § Feedback de PRE-VENTA (arriba): **la descarga/impresión en PDF es PREMIUM**; el free ve el temario online y practica con el tope diario, pero no descarga.

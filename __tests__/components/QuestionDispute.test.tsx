@@ -483,21 +483,54 @@ describe('QuestionDispute', () => {
       })
     })
 
-    test('error genérico → error inline', async () => {
-      const postMock = {
+    test('error genérico → error inline (tras agotar los reintentos)', async () => {
+      // 29/07/2026: el envío pasa por `apiFetch`, que REINTENTA los 5xx (antes se
+      // rendía al primero y una impugnación se perdía con un blip). Por eso el 500
+      // se simula en TODOS los intentos, no en uno solo. El mensaje del servidor se
+      // sigue respetando: `ApiHttpError` ahora conserva el cuerpo de la respuesta.
+      global.fetch.mockResolvedValue({
         ok: false,
         status: 500,
         json: async () => ({
           success: false,
           error: 'Error interno del servidor',
         }),
-      }
-      await openAndFillForm('no_literal', undefined, postMock)
+      })
+      await openAndFillForm('no_literal', undefined, null)
 
       await waitFor(() => {
         expect(screen.getByText(/Error interno del servidor/)).toBeInTheDocument()
+      }, { timeout: 8000 })
+    }, 15000)
+
+    test('fallo de RED: reintenta y avisa de que NO se ha guardado', async () => {
+      // Caso Pilar (28/07/2026): pulsó impugnar, el POST murió con "Load failed" en
+      // Safari, no se creó nada y ella se quedó creyendo que la había enviado.
+      // GET de comprobación previa → sin impugnación existente.
+      global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: null }) })
+      // POST: la red revienta en todos los intentos.
+      global.fetch.mockRejectedValue(new TypeError('Load failed'))
+
+      renderInline()
+      fireEvent.click(screen.getByText(/Impugnar pregunta/))
+      await waitFor(() => expect(screen.getByText(/Motivo de la impugnación/)).toBeInTheDocument())
+      fireEvent.click(screen.getByLabelText(/no se ajusta exactamente al artículo/))
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'El artículo 14 dice justo lo contrario que la opción marcada' },
       })
-    })
+      fireEvent.click(screen.getByRole('button', { name: /Enviar impugnación/i }))
+
+      // El usuario tiene que enterarse de que NO ha quedado registrada.
+      await waitFor(() => {
+        expect(screen.getByText(/No se ha guardado|No hemos podido registrar/i)).toBeInTheDocument()
+      }, { timeout: 8000 })
+
+      // Y hubo más de un intento (reintento real, no un único disparo).
+      const intentosPost = global.fetch.mock.calls.filter(
+        (c) => c[1] && c[1].method === 'POST',
+      ).length
+      expect(intentosPost).toBeGreaterThan(1)
+    }, 15000)
 
     test('sin usuario → error inline', async () => {
       // GET check → no existing

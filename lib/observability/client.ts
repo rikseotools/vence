@@ -71,6 +71,8 @@ const SAMPLE_RATES: Record<string, number> = {
   http_network_error: 1.0,
   react_error_boundary: 1.0,
   chunk_load_error: 1.0,
+  // Sin muestreo: cada evento es un usuario que cree haber impugnado y no lo ha hecho.
+  dispute_submit_failed: 1.0,
 }
 
 const BUFFER_FLUSH_MS = 5000
@@ -234,6 +236,12 @@ export type ClientEventType =
   | 'react_error_boundary' // app/error.tsx + global-error.tsx
   | 'client_error' // logClientError() — errores manejados en componentes
   | 'chunk_load_error' // chunk viejo 404 tras deploy → auto-reload de recuperación
+  // El usuario pulsa "impugnar" y el envío NO llega a crear la impugnación (red caída,
+  // timeout, 5xx) ni siquiera tras los reintentos. Antes esto era INVISIBLE: solo
+  // quedaba un `http_network_error` genérico y no se podía saber cuántas impugnaciones
+  // se perdían. Caso Pilar (28/07/2026): impugnó, el POST murió con "Load failed" en
+  // Safari y ella se quedó creyendo que la había enviado.
+  | 'dispute_submit_failed'
   // Configurador multi-ley: el usuario arranca un test MIXTO (unas leyes acotadas a
   // artículos/títulos + otra(s) que entran ENTERAS). Es el patrón que hace percibir
   // "salen preguntas fuera de lo seleccionado" (feedback Alfonso 25/07) aunque el motor

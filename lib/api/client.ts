@@ -19,9 +19,17 @@ export class ApiTimeoutError extends Error {
 export class ApiHttpError extends Error {
   name = 'ApiHttpError' as const
   status: number
-  constructor(url: string, status: number) {
+  /**
+   * Cuerpo de la respuesta de error, si venía en JSON. Sin esto, el caller pierde el
+   * mensaje que el servidor quería dar al usuario (p.ej. un 400 de validación con
+   * `{ error: 'La descripción es muy corta' }`) y solo puede enseñar un texto genérico.
+   * Añadido 29/07/2026 al cablear `apiFetch` en el envío de impugnaciones.
+   */
+  body?: unknown
+  constructor(url: string, status: number, body?: unknown) {
     super(`HTTP ${status} from ${url}`)
     this.status = status
+    this.body = body
   }
 }
 
@@ -112,7 +120,10 @@ export async function apiFetch<T>(
 
       // HTTP errors
       if (!response.ok) {
-        const httpError = new ApiHttpError(url, response.status)
+        // Se intenta leer el cuerpo para conservar el mensaje del servidor; si no es
+        // JSON (HTML de un proxy, cuerpo vacío) se sigue sin él, nunca se rompe aquí.
+        const errBody = await response.json().catch(() => undefined)
+        const httpError = new ApiHttpError(url, response.status, errBody)
         // 4xx → don't retry, throw immediately
         if (response.status < 500) throw httpError
         // 5xx → retryable
