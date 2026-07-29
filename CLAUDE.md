@@ -334,6 +334,7 @@ git push origin main
 - **Cuándo consultarlo:** cuando el usuario diga *"busca errores"*, *"qué tal va"*, *"estado del sistema"*, *"salud"*, *"hay fuego"*, o similar, Claude DEBE seguir el runbook ANTES de improvisar.
 - **Panel admin:** `/admin/salud-sistema` (4 indicadores con semáforo verde/ámbar/rojo, auto-refresh 60s)
 - **Indicadores:** errores 5xx 24h, drift de contadores materializados, latencia INSERT a test_questions, salud del cron de drift.
+- **Catch-all de señales (29/07/2026):** la tarjeta **"Todas las señales (24h)"** del panel agrupa TODA señal `error`/`warn` de `observable_events` — también los tipos que no tienen tarjeta ni regla propia — y las benignas van plegadas aparte. El **email** lo garantiza la regla `senal_error_sin_vigilancia` (≥150/h de un tipo `error` que no sea benigno ni tenga regla fina propia, `critical`; umbral calibrado sobre el suelo real medido), así que un evento nuevo nace vigilado: para callarlo hay que declararlo benigno a propósito en `lib/observability/benignSignals.ts` (copia paritaria en el backend, guardarraíl `senalesBenignasParidad`). Nace de la auditoría que encontró 216 tipos emitidos contra 154 reglas, con 13 graves sin vigilar (991 `server_render_error` un mes invisibles). **Triaje paso a paso: runbook §1.ter.a** (4 salidas posibles por señal, ninguna otra).
 - **Comando CLI rápido** (30s para veredicto verde/ámbar/rojo) en la sección 1 del runbook.
 
 ### 🗺️ Salud del contenido — hallazgos → runbook (frases-gatillo)

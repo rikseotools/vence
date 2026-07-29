@@ -8,6 +8,7 @@ import {
   ALERT_RULES,
   RULE_SHUFFLE_ORDER_NOT_PERSISTED,
   RULE_SHUFFLE_ORDER_INVALID,
+  RULE_SENAL_ERROR_SIN_VIGILANCIA,
   RULE_DISPUTE_SUBMIT_FAILED,
   RULE_DAILY_QUOTA_OVERCHARGE,
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE,
@@ -48,6 +49,7 @@ import {
   RULE_AUTH_TOKEN_MINT_FLOOD,
   RULE_AUTH_TOKEN_MINT_WASTE,
 } from './alert-rules';
+import { BENIGN_SIGNALS, CON_REGLA_PROPIA } from './benign-signals';
 
 describe('RULE_LAWS_CONFIGURATOR_DEGRADED (fix configurador 24/07, caso David/Galicia)', () => {
   it('dispara con >=3 errores en 10 min (query rota/timeout)', () => {
@@ -2036,6 +2038,72 @@ describe('RULE_DAILY_QUOTA_OVERCHARGE (cupo free cobrado de más — 29/07, caso
     // comparación genera falsos positivos con las respuestas de última hora.
     expect(q).toContain('Europe/Madrid');
     expect(q).not.toContain('observable_events');
+  });
+});
+
+describe('RULE_SENAL_ERROR_SIN_VIGILANCIA (catch-all — auditoría 29/07)', () => {
+  // Existe porque escribir "una regla por tipo de evento" nunca cierra el hueco: el
+  // hueco lo abre el tipo que aún no existe. 13 tipos graves llevaban un mes sin
+  // ninguna regla (991 server_render_error, 277 pre_hydration_error, 24 cron_error).
+  const fila = (event_type: string, n: number, fuente = 'frontend', top_endpoint: string | null = '/leyes') => ({
+    event_type,
+    n,
+    fuente,
+    top_endpoint,
+  });
+
+  it('NO dispara sin filas (la query ya aplica el HAVING >= 50)', () => {
+    expect(RULE_SENAL_ERROR_SIN_VIGILANCIA.shouldFire([])).toBe(false);
+  });
+
+  it('dispara ante un tipo de evento que NINGUNA otra regla vigila', () => {
+    expect(RULE_SENAL_ERROR_SIN_VIGILANCIA.shouldFire([fila('server_render_error', 991)])).toBe(true);
+  });
+
+  it('la query excluye los benignos Y los que ya tienen regla propia', () => {
+    const q = JSON.stringify(RULE_SENAL_ERROR_SIN_VIGILANCIA.query);
+    for (const t of [...BENIGN_SIGNALS, ...CON_REGLA_PROPIA]) {
+      expect(q).toContain(t);
+    }
+    expect(q).toContain('error');
+  });
+
+  it('el umbral es 150/h — calibrado sobre el suelo real medido (console_error ~75/h)', () => {
+    // Si alguien lo baja sin recalibrar, el correo suena solo por el ruido crónico y
+    // deja de leerse, que es la muerte de un alerting.
+    expect(JSON.stringify(RULE_SENAL_ERROR_SIN_VIGILANCIA.query)).toContain('150');
+  });
+
+  it('ninguna señal está a la vez en benignos y con regla propia (contradicción)', () => {
+    const solape = CON_REGLA_PROPIA.filter((t) => BENIGN_SIGNALS.includes(t));
+    expect(solape).toEqual([]);
+  });
+
+  it('la notificación nombra el tipo dominante y enseña dónde triar', () => {
+    const notif = RULE_SENAL_ERROR_SIN_VIGILANCIA.buildNotification([
+      fila('server_render_error', 991, 'frontend', '/oposiciones'),
+      fila('cron_error', 24, 'backend', null),
+    ]);
+    expect(notif.title).toContain('server_render_error');
+    expect(notif.title).toContain('991');
+    expect(notif.body).toContain('cron_error');
+    expect(notif.body).toContain('/admin/salud-sistema');
+    expect(notif.body).toContain('health-check.md');
+    expect(notif.metadata).toMatchObject({ tipos: 2, top: 'server_render_error' });
+  });
+
+  it('el fingerprint separa por tipo (dos fallos distintos no se tapan entre sí)', () => {
+    const a = RULE_SENAL_ERROR_SIN_VIGILANCIA.buildNotification([fila('server_render_error', 100)]);
+    const b = RULE_SENAL_ERROR_SIN_VIGILANCIA.buildNotification([fila('cron_error', 100)]);
+    expect(a.fingerprint).not.toEqual(b.fingerprint);
+  });
+
+  it('está registrada en el catálogo que corre el cron', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('senal_error_sin_vigilancia');
+  });
+
+  it('es critical: el usuario pidió email solo para caídas y errores muy fuertes', () => {
+    expect(RULE_SENAL_ERROR_SIN_VIGILANCIA.severity).toBe('critical');
   });
 });
 

@@ -45,6 +45,7 @@ import {
   LATENCY_P95_THRESHOLDS,
   type EndpointLatencyBucket,
 } from '@/lib/api/admin/endpoint-latency'
+import { esSenalBenigna, tieneReglaPropia } from '@/lib/observability/benignSignals'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
@@ -724,13 +725,9 @@ async function _GET(request: NextRequest) {
   // ─── Catch-all: TODA señal error/warn (garantía "sin gaps por diseño") ───
   // Benignos conocidos = esperados/ruido → se LISTAN igual (nada oculto) pero NO
   // cuentan para el semáforo. Los que ya tienen tarjeta propia también se marcan.
-  const BENIGN_SIGNALS = new Set<string>([
-    'request_completed', 'auth', 'forbidden', 'rate_limit',
-    'scraping_challenge_shown', 'scraping_force_challenge_set',
-    'react_hydration_mismatch', 'external_heartbeat_skipped',
-    'console_warn', 'tts_session_end', 'custom', 'test_size_shortfall',
-    'browser_extension_error',
-  ])
+  // Lista en `lib/observability/benignSignals.ts` (fuente única compartida con el
+  // runbook §1.ter y con la regla catch-all del backend `senal_error_sin_vigilancia`).
+
   const errorSignalsRows = (errorSignalsResult.error ? [] : (errorSignalsResult.data ?? [])) as Array<{
     source: string; event_type: string; severity: string; n: number; top_endpoint: string | null
   }>
@@ -740,7 +737,11 @@ async function _GET(request: NextRequest) {
     severity: r.severity,
     count: Number(r.n),
     topEndpoint: r.top_endpoint || null,
-    benign: BENIGN_SIGNALS.has(r.event_type),
+    benign: esSenalBenigna(r.event_type),
+    // ¿Tiene regla de alerta fina propia? Si no, la vigila el catch-all por volumen
+    // (>=150/h) y todo lo que quede por debajo se tría AQUÍ, a mano. Es la columna que
+    // dice si alguien se enteraría por email o solo mirando este panel.
+    vigilada: tieneReglaPropia(r.event_type),
   }))
   const actionableSignals = errorSignals.filter((s) => !s.benign)
   const worstSignalCount = actionableSignals.reduce((m, s) => Math.max(m, s.count), 0)
@@ -952,7 +953,7 @@ async function _GET(request: NextRequest) {
         signals: errorSignals,
         actionableCount: actionableSignals.length,
         thresholds: { amber: '≥20 de un tipo no-benigno', red: '≥100' },
-        note: 'Toda señal error/warn de observable_events, agrupada. Garantía por diseño: cualquier evento capturado (incl. tipos futuros) se muestra aquí. Los benignos (esperados: auth, forbidden, scraping…) se marcan y no cuentan.',
+        note: 'Toda señal error/warn de observable_events, agrupada. Garantía por diseño: cualquier evento capturado (incl. tipos futuros) se muestra aquí. Los benignos (lib/observability/benignSignals.ts) se marcan y no cuentan. Email: la regla catch-all `senal_error_sin_vigilancia` avisa ante cualquier señal error ≥50/h aunque no tenga regla propia. Triaje: docs/runbooks/health-check.md §1.ter.',
       },
     },
   }

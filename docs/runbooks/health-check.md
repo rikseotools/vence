@@ -371,6 +371,8 @@ const pgMod = require('/home/manuel/Documentos/github/vence/node_modules/postgre
 const postgres = pgMod.default || pgMod;
 require('/home/manuel/Documentos/github/vence/node_modules/dotenv').config({path:'/home/manuel/Documentos/github/vence/.env.local'});
 const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
+// ⚠️ Esta lista es COPIA de lib/observability/benignSignals.ts (fuente única; el guardarraíl
+// __tests__/guardrails/senalesBenignasParidad.test.ts falla si divergen). NO editar aquí sin editar allí.
 const BENIGN = new Set(['request_completed','auth','forbidden','rate_limit','scraping_challenge_shown','scraping_force_challenge_set','react_hydration_mismatch','external_heartbeat_skipped','console_warn','tts_session_end','custom','test_size_shortfall','browser_extension_error']);
 (async () => {
   const cli = await sql\`SELECT event_type, count(*)::int n, mode() WITHIN GROUP (ORDER BY COALESCE(endpoint,'')) top FROM observable_events WHERE source='frontend' AND severity IN ('error','warn') AND ts >= NOW()-INTERVAL '1 hour' GROUP BY 1 ORDER BY 2 DESC\`;
@@ -392,6 +394,35 @@ const BENIGN = new Set(['request_completed','auth','forbidden','rate_limit','scr
 - `console_error` alto pero con `topEndpoint` de auth/callback → suele ser ruido de 401 pre-login + Google GSI (ya filtrado a `debug` desde 05/07; si reaparece en `error`, revisar el filtro en `lib/observability/client.ts`).
 - `chunk_load_error` → usuarios en bundle viejo tras deploy (el auto-reload los recupera; si sube mucho, revisar el sync a S3 — ver `docs/runbooks/pusheo-revision-despliegue.md`).
 - Cualquier `unhandled_error` / `react_error_boundary` con volumen → **bug real de cliente**, ir a sección 2 (mirar `error_message` + `metadata.stack`).
+
+#### 1.ter.a — TRIAJE de las señales accionables (dónde se ven y qué se hace con cada una)
+
+**Dónde mirar (unificado, no hay otra lista):**
+
+| Sitio | Para qué |
+|-------|----------|
+| `/admin/salud-sistema` → tarjeta **"Todas las señales (24h)"** | La foto completa. Toda señal `error`/`warn` de `observable_events` agrupada por tipo, con el endpoint dominante. Las benignas se listan aparte, plegadas (nada oculto) y no cuentan para el semáforo. |
+| El comando de arriba (§1.ter) | Lo mismo en 1 h, desde la terminal, cuando el panel no está a mano. |
+| Email `[Vence CRITICAL] Errores en volumen…` | La regla **catch-all** `senal_error_sin_vigilancia`: dispara ante cualquier señal `error` **≥150/h** que no sea benigna **ni tenga regla propia**. Es la red de seguridad para los tipos a los que nadie ha escrito alerta. |
+
+**Por qué existe el catch-all (auditoría 29/07/2026):** 216 tipos de evento emitiéndose contra 154 reglas de alerta. Trece tipos GRAVES no aparecían en ninguna regla y el panel los agregaba pero no los pintaba: `server_render_error` (991 en 24 h), `pre_hydration_error` (277), `cron_error` (24), `cron_http_trigger_failed`, `question_image_error`, `law_completeness_regression`, `estado_proceso_drift`, `e2e_smoke_failed`. Estaban en la BD y nadie los miraba. Escribir "una regla por tipo" no cierra el hueco — el hueco lo abre el tipo que aún no existe. Por eso el criterio está invertido: **un evento nuevo nace vigilado; para callarlo hay que declararlo benigno a propósito** en `lib/observability/benignSignals.ts` (+ su copia `backend/src/alerts/benign-signals.ts`, con guardarraíl de paridad).
+
+**Cómo leer la tarjeta.** Cada señal accionable trae una marca:
+- **`✉ alerta propia`** → tiene regla fina en `alert-rules.ts` (`CON_REGLA_PROPIA` en `lib/observability/benignSignals.ts`). Alguien recibe email con SU umbral —3/h para impugnaciones perdidas, 1 para una clave rota— y por eso el catch-all no la cuenta: contarla dos veces mandaría dos correos del mismo incidente y el umbral grueso taparía al fino.
+- **`solo catch-all (≥150/h)`** → nadie la vigila de cerca. Por debajo de ese volumen **solo se ve aquí**: es la cola que hay que triar a mano.
+
+**Umbral del catch-all, calibrado (29/07/2026):** 150/h sale del suelo real medido, no de un número redondo. Tras las exclusiones, el ruido crónico más alto es `console_error` a ~75/h — y dentro hay daño de verdad (`answerSaveQueue Sin token`, timeouts de 15 s, callbacks de login sin sesión) que merece ficha propia, no un correo cada tres horas. Si se baja el umbral sin recalibrar, el correo suena solo y deja de leerse.
+
+**Qué hacer con cada señal accionable — una de estas cuatro, ninguna otra:**
+
+1. **Fallo real con dueño claro** → arreglarlo en esta sesión si es acotado; si no, **ficha en el backlog** (`node scripts/backlog.cjs`, ver `docs/runbooks/tareas-pendientes.md`) citando `event_type`, volumen y endpoint dominante. Nunca "lo miro luego" sin ficha: eso es exactamente lo que dejó 991 `server_render_error` un mes sin dueño.
+2. **Ya cubierto por otra tarjeta del panel** (5xx, drift, pool, crons…) → no duplicar: se tría en su sección de este runbook.
+3. **Ruido esperado POR DISEÑO** (un 401 pre-login, un heartbeat saltado) → declararlo benigno en `lib/observability/benignSignals.ts` **con el porqué en la misma línea** (el guardarraíl exige el comentario) y replicarlo en la copia del backend. Solo lo que es correcto que ocurra; nunca lo que "hace ruido pero deberíamos arreglar".
+4. **Ruido que en realidad es un bug** (p. ej. un `console_error` masivo por un 401 mal clasificado) → se arregla en origen (el emisor), no se silencia. Precedente: el flood del 11/07 (§cabecera) se resolvió dejando de loguear el 401 anónimo, no metiéndolo en la lista de benignos.
+
+**Regla de decisión rápida:** si al leer el `event_type` no sabes decir en una frase por qué es correcto que ocurra, **no es benigno** — es el caso 1.
+
+**Qué NO cierra este catch-all:** vigila el VOLUMEN. Un fallo de 3 al día que arruina a 3 usuarios (una impugnación perdida, un cupo mal cobrado) no llega a 50/h y necesita su regla propia y fina — como `dispute_submit_failed` (≥3/h) o `daily_quota_overcharge`. El catch-all es la red de abajo, no el sustituto.
 
 **Notas sobre los filtros del verdict** (introducidos 2026-05-23 tras detectar dos falsos positivos; sub-categorización admin/user-facing añadida 2026-06-01):
 
@@ -545,6 +576,9 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 ---
 
 ## 4. Umbrales — fuente de verdad
+
+**Catch-all de señales** (añadido 29/07/2026): panel `error_signals` → ámbar ≥20 de un tipo no-benigno en 24 h, rojo ≥100. Email (`senal_error_sin_vigilancia`, `critical`) → ≥50/h de un tipo `error` no-benigno. Fuente de los benignos: `lib/observability/benignSignals.ts`.
+
 
 Los umbrales también están codificados en `app/api/admin/system-health/route.ts`. La clasificación admin/user-facing y sus umbrales viven en `lib/api/admin/endpoint-classification.ts` (importado por el endpoint). Si cambias cualquiera, actualiza también el script bash CLI de §1.
 

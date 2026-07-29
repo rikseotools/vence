@@ -82,6 +82,28 @@ interface SystemHealthResponse {
   success: boolean
   generatedAt: string
   indicators: {
+    /**
+     * CATCH-ALL de señales (el endpoint ya lo calculaba desde el 05/07 con la garantía
+     * "sin gaps por diseño"… pero el panel NO lo pintaba, así que nadie lo veía. Es lo
+     * que dejó 13 tipos de evento graves un mes sin triar, entre ellos 991
+     * `server_render_error`). Auditoría 29/07/2026.
+     */
+    error_signals?: {
+      status: Status
+      actionableCount: number
+      signals: Array<{
+        source: string
+        eventType: string
+        severity: string
+        count: number
+        topEndpoint: string | null
+        benign: boolean
+        /** Tiene regla de alerta propia → suena el email por su umbral fino. */
+        vigilada?: boolean
+      }>
+      thresholds: { amber: string; red: string }
+      note?: string
+    }
     errors_5xx: {
       status: Status
       count: number | null
@@ -500,6 +522,11 @@ export default function SaludSistemaPage() {
 
             {/* 7) Salud de CONTENIDO — snapshot del sweep nocturno (tarjetas de plazas/temas, dual-write, cobertura). Calidad, no fallos de app. */}
             <ContentHealthCard content={content} />
+
+            {/* 8) TODAS las señales (catch-all). El endpoint ya las calculaba; faltaba
+                enseñarlas. Aquí es donde aparece cualquier evento nuevo sin tener que
+                crear una tarjeta por cada uno: se ve, y se tría desde aquí. */}
+            <ErrorSignalsCard signals={data.indicators.error_signals} />
           </div>
         </>
       )}
@@ -658,6 +685,69 @@ function OepConsistencyCard({ oep }: { oep: OepConsistencyResponse | null }) {
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
         Gestión: <code>/admin/oep-signals</code>. Cron <code>advance-estado</code> 06:30 UTC.
       </p>
+    </IndicatorCard>
+  )
+}
+
+/**
+ * Card CATCH-ALL: toda señal error/warn agrupada por tipo.
+ *
+ * Existe porque el endpoint ya devolvía `error_signals` con la garantía "sin gaps por
+ * diseño" y el panel no lo mostraba: la señal estaba y nadie la veía. Las benignas se
+ * listan igual (nada oculto) pero en gris y sin contar para el semáforo, para que lo
+ * accionable no se pierda entre el ruido.
+ */
+function ErrorSignalsCard({ signals }: { signals?: SystemHealthResponse['indicators']['error_signals'] }) {
+  if (!signals) {
+    return (
+      <IndicatorCard title="Todas las señales (24h)" status="unknown" metric="—" hint="El endpoint no devolvió el catch-all">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">Sin datos.</p>
+      </IndicatorCard>
+    )
+  }
+  type Senal = NonNullable<SystemHealthResponse['indicators']['error_signals']>['signals'][number]
+  const accionables = signals.signals.filter((s: Senal) => !s.benign)
+  const benignas = signals.signals.filter((s: Senal) => s.benign)
+  return (
+    <IndicatorCard
+      title="Todas las señales (24h)"
+      status={signals.status}
+      metric={String(signals.actionableCount)}
+      hint={`Ámbar ${signals.thresholds.amber}, rojo ${signals.thresholds.red}. Las benignas se listan abajo pero no cuentan. Triaje: runbook §1.ter.a`}
+    >
+      {accionables.length > 0 ? (
+        <ul className="text-xs space-y-1 mt-2 max-h-56 overflow-y-auto">
+          {accionables.map((s: Senal, i: number) => (
+            <li key={i} className="text-gray-700 dark:text-gray-200 flex items-start gap-2">
+              <span className="font-mono shrink-0 tabular-nums">{s.count}</span>
+              <span>
+                <span className="font-medium">{s.eventType}</span>
+                <span className="text-gray-400"> · {s.source} · {s.severity}</span>
+                {s.topEndpoint ? <span className="text-gray-500 font-mono"> · {s.topEndpoint}</span> : null}
+                {s.vigilada
+                  ? <span className="ml-1 text-[10px] text-green-600 dark:text-green-400">✉ alerta propia</span>
+                  : <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">solo catch-all (≥150/h)</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Sin señales accionables en 24h.</p>
+      )}
+      {benignas.length > 0 && (
+        <details className="mt-3">
+          <summary className="text-xs text-gray-400 cursor-pointer">
+            {benignas.length} señal(es) benigna(s) conocida(s)
+          </summary>
+          <ul className="text-xs space-y-1 mt-2 max-h-40 overflow-y-auto">
+            {benignas.map((s: Senal, i: number) => (
+              <li key={i} className="text-gray-400">
+                <span className="font-mono tabular-nums">{s.count}</span> · {s.eventType}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </IndicatorCard>
   )
 }

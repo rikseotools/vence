@@ -15,6 +15,34 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-272] 🔴 [ABIERTO 29/07] El canal de email de alertas manda 64 correos al día: cuatro reglas se comen el 85% y taparían la caída de verdad
+
+- **Medido el 29/07 sobre 7 días (`observable_events` / `alert_fired`):** 446 alertas disparadas = **~64 emails/día**. Reparto: `critical` 383, `error` 45, `warn` 18. Cuatro reglas son 350 de las 446:
+  - `event_loop_lag` — 178 (25/día)
+  - `canary_pdf_queue_failed` — 109 (15/día)
+  - `cron_overdue` — 36
+  - `canary_ai_model_failed` — 27
+- **Por qué importa:** el encargo es "un email cuando la app se caiga o haya errores muy fuertes". A 64 correos al día ninguno se lee, así que el correo de la caída real llega al mismo sitio que el resto. La fatiga no es una molestia: es la avería del canal.
+- **Además no hay filtro por severidad:** `EmailNotificationAdapter.send()` envía TODO lo que dispara, `warn` incluido (`backend/src/alerts/email-notification.adapter.ts`). Hoy un `warn` de token y una caída del pago llegan igual de fuerte.
+- **Qué hacer (en este orden):**
+  1. Triar las cuatro ruidosas: ¿avería crónica real (arreglarla) o umbral/cooldown mal puestos (recalibrar con el suelo medido, como se hizo con el catch-all a 150/h)? `event_loop_lag` a 25/día huele a umbral, no a incendio.
+  2. Decidir **qué severidades van por email**: propuesta = solo `critical`, con `error`/`warn` visibles en `/admin/salud-sistema` (ya lo están, §1.bis del runbook) y en el resumen. Es una decisión de Manuel: cambia lo que le llega al buzón.
+  3. Revisar cooldowns: una regla con cooldown de 30 min puede mandar 48 correos al día ella sola.
+- **No tocar sin OK:** afecta a qué avisos recibe el usuario. Detectado al montar el catch-all de señales (`senal_error_sin_vigilancia`), que precisamente se puso en `critical` para no engordar este mismo canal.
+- **Relacionadas:** [T-271] (los `console_error` crónicos), runbook §1.bis (fatiga de alertas) y §1.ter.a (triaje de señales).
+
+### [T-271] 🟠 [ABIERTO 29/07] Los `console_error` crónicos del cliente: respuestas que se quedan sin token, timeouts de 15 s y logins que no cuajan
+
+- **Qué se ve (medido 29/07 sobre 6 h, RDS):** 453 `console_error` de severidad `error` (aparte de 1.208 ya archivados como ruido de Google Identity, que está bien clasificado). Los dominantes, todos de código nuestro:
+  - `❌ [answerSaveQueue] Sin token (intento #1..#4)` — 99 eventos. La cola de guardado reintenta hasta 4 veces sin token: la respuesta del usuario está en el aire.
+  - `⏱️ [answerSaveQueue] Timeout 15s del servidor retry #0/#1` — 55.
+  - `❌ [CALLBACK] Error procesando callback: No se estableció sesión tras la autenticación` — 37. Alguien acaba de hacer login y no entra.
+  - `UserAvatar: v2 stats error: Usuario no existe` — 24. Misma firma que [T-245] (sesión con `sub` sin perfil).
+- **Por qué está sin dueño:** `console_error` no tiene regla de alerta propia, y hasta hoy el panel no pintaba el catch-all. Estaba en la BD, con volumen, y no lo miraba nadie. Ahora sale en `/admin/salud-sistema` → "Todas las señales (24h)" marcado *solo catch-all*.
+- **Por qué NO se sube el umbral para callarlo:** ~75/h es el suelo que obligó a poner el catch-all en 150/h. Mientras esto siga así, el catch-all está medio ciego en esa banda.
+- **Qué hacer:** separar las tres firmas (token ausente en la cola / timeout de 15 s / callback sin sesión), medir a cuántos usuarios distintos afecta cada una, y atacar primero la de la cola de guardado — es la única que puede costarle al usuario una respuesta contestada.
+- **Relacionadas:** [T-245] (sesión sin perfil), [T-260] (el cupo que cobraba el cliente), [T-210] (clasificación de ruido de consola).
+
 ### [T-267] 🟠 [ABIERTO 29/07] Servimos preguntas de 4 opciones en oposiciones que examinan con 3 (y el motor de barajado permite arreglarlo sin tocar el banco)
 
 - **Quién lo detecta:** Pilar Martín (premium, feedback `ed09cf73`, 28/07), preparando Auxiliar Administrativo del **Ayuntamiento de Madrid**: *«las opciones de respuesta son cuatro cuando en el examen real son tres … ¿hay alguna opción para elegir que haya tres?»*. **Tiene razón, y no existe esa opción.**

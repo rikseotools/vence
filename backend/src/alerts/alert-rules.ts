@@ -5,6 +5,7 @@ import type {
 } from '../cron-schedule/cron-schedule.service';
 import type { AlertNotification } from './notification-adapter';
 import type { DeployWindow } from './deploy-window';
+import { BENIGN_SIGNALS, CON_REGLA_PROPIA } from './benign-signals';
 
 /**
  * Contexto inyectado a las reglas. Permite que una regla mezcle el
@@ -4318,8 +4319,85 @@ export const RULE_SHUFFLE_ORDER_INVALID: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * CATCH-ALL DE VIGILANCIA — la red que impide que un tipo de evento nuevo pase
+ * desapercibido por no tener regla propia.
+ *
+ * Auditoría 29/07/2026: 216 `event_type` distintos emitiéndose contra 154 reglas. Trece
+ * tipos GRAVES no aparecían en ninguna: `server_render_error` (991 en 24 h),
+ * `pre_hydration_error` (277), `cron_error` (24), `cron_http_trigger_failed`,
+ * `question_image_error`, `estado_proceso_drift`, `e2e_smoke_failed`… El panel los
+ * agregaba (indicador `error_signals`) pero no los pintaba, y ninguna regla mandaba
+ * email: estaban en la BD y nadie los miraba.
+ *
+ * Escribir una regla por tipo no cierra el hueco — el hueco lo abre precisamente el
+ * tipo que AÚN no existe. Esta regla invierte el criterio: **dispara ante cualquier
+ * señal `error` que supere el umbral y NO esté en la lista de benignos conocidos**
+ * (`benign-signals.ts`, copia paritaria de la del frontend). Un evento nuevo nace
+ * vigilado; para silenciarlo hay que declararlo benigno a propósito.
+ *
+ * Excluye dos cosas, cada una por su motivo:
+ *  · los BENIGNOS (`benign-signals.ts`): esperados por diseño;
+ *  · los que YA tienen regla propia y fina (`CON_REGLA_PROPIA`): su umbral decide mejor
+ *    —3/h para impugnaciones perdidas, 1 para una clave rota— y contarlos aquí mandaría
+ *    dos correos del mismo incidente tapando el fino con el grueso.
+ *
+ * UMBRAL 150/h, calibrado contra el tráfico real del 29/07/2026 y NO al revés (elegir
+ * un número redondo y luego descubrir que suena solo). Medido ese día: el ruido crónico
+ * más alto que queda tras las exclusiones es `console_error` a ~75/h, y dentro hay daño
+ * de verdad (`answerSaveQueue Sin token`, timeouts de 15 s, callbacks de login sin
+ * sesión) que merece ficha propia, no un correo cada tres horas. 150/h es el doble de
+ * ese suelo: por debajo se tría en el panel, por encima es una avería.
+ *
+ * Severidad `critical` a propósito: esto es el "errores muy fuertes" del correo, no la
+ * bandeja de triaje fino. El triaje detallado —incluidas las señales por debajo del
+ * umbral— se hace en `/admin/salud-sistema` → "Todas las señales (24h)", runbook §1.ter.a.
+ */
+export const RULE_SENAL_ERROR_SIN_VIGILANCIA: AlertRule<{
+  event_type: string;
+  n: number;
+  fuente: string;
+  top_endpoint: string | null;
+}> = {
+  name: 'senal_error_sin_vigilancia',
+  severity: 'critical',
+  query: sql`
+    SELECT event_type,
+           COUNT(*)::int AS n,
+           MODE() WITHIN GROUP (ORDER BY source) AS fuente,
+           MODE() WITHIN GROUP (ORDER BY COALESCE(endpoint, '')) AS top_endpoint
+    FROM observable_events
+    WHERE severity = 'error'
+      AND ts > NOW() - INTERVAL '1 hour'
+      AND event_type <> ALL(${sql.raw(
+        `ARRAY[${[...BENIGN_SIGNALS, ...CON_REGLA_PROPIA].map((t) => `'${t}'`).join(',')}]::text[]`,
+      )})
+    GROUP BY event_type
+    HAVING COUNT(*) >= 150
+    ORDER BY 2 DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const top = rows[0];
+    const lista = rows
+      .slice(0, 8)
+      .map((r) => `  ${String(r.n).padStart(5)}  ${r.event_type}  (${r.fuente}${r.top_endpoint ? ` · ${r.top_endpoint}` : ''})`)
+      .join('\n');
+    return {
+      title: `Errores en volumen: ${top?.n ?? 0}× ${top?.event_type ?? '?'} en 1 h`,
+      body: `Señales de severidad \`error\` por encima de 50/h que NO son ruido conocido:\n\n${lista}\n\nEsta alerta es el catch-all: salta aunque el tipo de evento no tenga regla propia, para que un fallo nuevo no pase desapercibido.\n\nTriaje completo (todas las señales, también por debajo del umbral): /admin/salud-sistema → "Todas las señales (24h)". Runbook: docs/runbooks/health-check.md §1.ter.\n\n  SELECT ts, source, event_type, endpoint, error_message, metadata\n  FROM observable_events WHERE event_type='${top?.event_type ?? ''}'\n    AND ts > NOW() - INTERVAL '2 hours' ORDER BY ts DESC LIMIT 20;\n\nSi es ruido esperado por diseño, declararlo benigno en lib/observability/benignSignals.ts (y su copia del backend) — nunca subir el umbral para callarlo.`,
+      metadata: { tipos: rows.length, top: top?.event_type ?? null, count: top?.n ?? 0 },
+      fingerprint: `senal_error_sin_vigilancia:${top?.event_type ?? 'na'}`,
+    };
+  },
+  cooldownMin: 180,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   RULE_HTTP_5XX_SPIKE as AlertRule,
+  // Catch-all (2026-07-29): cualquier señal `error` con volumen manda email aunque
+  // nadie le haya escrito una regla. Cierra el hueco estructural de "1 regla por tipo".
+  RULE_SENAL_ERROR_SIN_VIGILANCIA as AlertRule,
   // Barajado de opciones (2026-07-29, tras el incidente del piloto): sin estas dos, 152
   // reglas y ninguna miraba si el barajado corrompía los resultados.
   RULE_SHUFFLE_ORDER_NOT_PERSISTED as AlertRule,
