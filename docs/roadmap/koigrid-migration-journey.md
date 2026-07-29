@@ -2219,3 +2219,111 @@ both in a single deploy. We are treating our own production rollout that way.
   `replica_never_created`.
 - **A5 `tableCounts`** — you fixed it at 17:30; our 33 GB rehearsal is the first job large enough to be a real
   test of it, and it is running now.
+
+---
+
+## 🧪 THE 33 GB REHEARSAL — you were right that scale changes things. Two real bugs, and it is now **blocked on your storage being full**
+
+You told us to rehearse with the full dump before moving production, because *"that is where the timeouts and
+the memory spikes show up"*. You were right, though not in the way either of us expected: **the two failures
+are not about size or memory at all — they are things a 624 MB table-only dump structurally cannot hit.**
+
+### What ran
+
+| Step | Result |
+|---|---|
+| `pg_dump` of production RDS 17.6 (33 GB, 204 tables) | **24.7 GB of SQL → 4.09 GB gzip**, integrity verified (`-- PostgreSQL database dump complete`) |
+| Upload of 4.09 GB to the presigned URL | ✅ **2 min 56 s** |
+| Managed restore, attempt 1 | ❌ failed after **6 min** — see D1 |
+| Managed restore, attempt 2 (clean cluster) | ⛔ **cannot even upload** — see D3 |
+
+### 🔴 D1 — `preSeed` and a **full** `pg_dump` are mutually exclusive
+
+```
+psql:<stdin>:32: ERROR:  schema "extensions" already exists
+```
+
+`preSeed` creates the extension **and, as a side effect, its schema**. A real `pg_dump` of a Supabase-origin
+database emits its own `CREATE SCHEMA extensions;` at line 33 — **without `IF NOT EXISTS`** — so the restore
+dies 32 lines in.
+
+The irony is that this is the exact scenario `preSeed` was built for. It worked in our 624 MB test only
+because a `-t table` dump contains **no** `CREATE SCHEMA` at all. Note your own generated extension lines are
+already idempotent:
+
+```sql
+CREATE SCHEMA extensions;                                        -- ← dies here
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;   -- fine
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;               -- fine
+```
+
+**Fix, in order of preference:** (a) have `preSeed` create the schema with `IF NOT EXISTS` *and* not fail when
+the dump re-creates it; or (b) document that `preSeed` must be omitted when the dump creates the schema
+itself. **Acceptance:** a full `pg_dump` of a Supabase-origin database restores with `preSeed: [{vector,
+extensions}]` without a schema collision.
+
+### 🔴 D2 — a failed `preSeed` leaves an artifact the customer **cannot remove**, so the cluster is burnt
+
+Having hit D1, the obvious recovery is "retry without `preSeed`". It is impossible:
+
+```sql
+DROP SCHEMA IF EXISTS extensions CASCADE;
+ERROR:  must be owner of schema extensions
+```
+
+`preSeed` runs as superuser, so the schema belongs to `postgres` and the `app` role — **the only login you
+give us** — cannot drop it. And because the schema now exists, every subsequent restore of a full dump fails
+on the same line. **One wrong `preSeed` makes the cluster permanently unusable for that dump.** The only way
+out is to delete the database and start over, which on a real migration means re-uploading gigabytes.
+
+Credit where it is due: **B2 (atomicity) worked perfectly.** After the failure the `auth` schema and every
+table were gone — the only thing left was the pre-seeded schema, which is created *outside* the transaction
+by design.
+
+**Fix:** either let the app role own what `preSeed` creates, or expose a way to undo it. `POST
+/databases/:id/fix-ownership` already exists for the post-restore case; the same idea applies here.
+
+### ⛔ D3 — **your dump storage backend is full**, and there is no way for us to clean up
+
+Deleted the burnt cluster, created a clean one, and the re-upload fails instantly:
+
+```xml
+<Error><Code>XMinioStorageFull</Code>
+<Message>Storage backend has reached its minimum free drive threshold.
+         Please delete a few objects to proceed.</Message>
+<BucketName>koi-db-dumps</BucketName></Error>
+```
+
+This is **not our quota** — `GET /usage` reads `0` on every metric (`egress_gb`, `memory_gb_hours`,
+`cpu_seconds`, `requests`) against generous limits. It is the shared `koi-db-dumps` backend.
+
+And we cannot fix it from our side:
+
+- **There is no delete endpoint for dumps.** The surface is `POST upload-url`, `POST restore-dump`,
+  `GET restore-dump/:jobId` — that is all. `DELETE /databases/:id/restore-dump` → **405**.
+- **Deleting the database does not appear to reclaim its dump.** We deleted cluster `2a3279b5…`
+  (`?finalSnapshot=false`) and the space did not come back.
+
+So the customer who follows your advice — *"rehearse with the full dump"* — uploads several GB, and if
+anything goes wrong has **no way to reclaim the space**, for themselves or for the next tenant. We are
+currently unable to complete the rehearsal you asked for, and it is not something we can work around.
+
+**Asks:** (1) free up `koi-db-dumps`; (2) `DELETE /databases/:id/restore-dump/:key` (or auto-expire dumps
+after a successful restore / after N days — a dump is a transient artifact, not storage the customer wants);
+(3) reclaim dumps when their database is deleted; (4) return a **specific** error for this — we got a raw
+MinIO XML through the presigned URL, so an agent following the docs sees `507` and no explanation from
+koigrid at all.
+
+### One more thing, now that we know the real numbers
+
+`maxBytes` on the upload URL is **5 368 709 120** (5 GB) and our gzipped dump is **4 290 143 351** — we fit
+with **20 % to spare**. Vence is a mid-sized app; a database twice ours could not use managed restore at all.
+Worth either raising the cap or supporting multipart.
+
+### What we still cannot answer (and it is the whole point of the rehearsal)
+
+Blocked by D3, so unmeasured: whether the restore **holds for the full duration** without timing out, whether
+`maintenance_work_mem` is now enough for the **ivfflat index at 60 k+ rows in a 24.7 GB restore**, whether
+`tableCounts` (fixed at 17:30) comes back populated at 204 tables, and **how long a real cutover window is**.
+We will re-run the moment there is room. The dump is built and verified on our side, so a retry is one upload
+away.
