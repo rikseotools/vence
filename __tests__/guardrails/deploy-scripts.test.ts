@@ -289,45 +289,84 @@ describe('deploy — auto-sync con origin/main', () => {
 })
 
 /**
- * Las task defs DERIVADAS de la imagen del frontend (tareas programadas que
- * corren ese mismo bundle) tienen que re-pinearse en CADA deploy. El pineado por
- * digest inmutable — que el postmortem #115 introdujo para el servicio — solo es
- * seguro si se refresca: si no, la retención de ECR purga el digest apuntado y la
- * tarea muere en el pull, ANTES del entrypoint, sin logs ni alerta.
+ * Las TAREAS PROGRAMADAS que salen de este mismo árbol pero de otro stage del
+ * Dockerfile (worker de PDFs = stage `worker`) tienen que reconstruirse y
+ * re-pinearse en CADA deploy.
  *
- * Incidente 27→29/07/2026: el worker de PDFs estuvo 2 días muerto exactamente así.
+ * Incidente 27→29/07/2026, dos fallos encadenados que este bloque fija:
+ *   1. La imagen del worker vivía de prestado en el repo del FRONTEND, cuya
+ *      retención conserva solo 10 imágenes con ~6 pushes/día → se purgó y la
+ *      tarea murió 2 días en el pull, sin logs ni alerta.
+ *   2. Re-pinearla a la imagen del frontend NO la arregla: esa es el stage
+ *      `runner` (sin devDependencies) y el worker arranca con `tsx`.
  *
  * Los DOS caminos de deploy (script manual y workflow de GHA) deben invocar el
  * MISMO script, o volverán a divergir.
  */
-describe('re-pineado de task defs derivadas (los 2 caminos de deploy)', () => {
+describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
   const repin = readFileSync(join(ROOT, 'scripts/deploy/repin-derived-taskdefs.sh'), 'utf-8')
   const workflow = readFileSync(join(ROOT, '.github/workflows/frontend-deploy.yml'), 'utf-8')
+  const dockerfile = readFileSync(join(ROOT, 'Dockerfile'), 'utf-8')
 
-  it('el script compartido existe y declara las familias derivadas', () => {
-    expect(repin).toMatch(/DERIVED_TASKDEF_FAMILIES=\(/)
-    expect(repin).toMatch(/vence-temario-pdf-worker/)
+  /** Entradas `familia|stage|repo` declaradas en el script. */
+  const entradas = [...repin.matchAll(/^\s*"([\w-]+)\|([\w-]+)\|([\w-]+)"/gm)].map((m) => ({
+    familia: m[1], stage: m[2], repo: m[3],
+  }))
+
+  it('el script declara al menos una tarea derivada con familia|stage|repo', () => {
+    expect(entradas.length).toBeGreaterThan(0)
+    expect(entradas.map((e) => e.familia)).toContain('vence-temario-pdf-worker')
+  })
+
+  it('cada stage declarado EXISTE en el Dockerfile', () => {
+    // Un stage inventado haría fallar el build en cada deploy.
+    for (const e of entradas) {
+      expect(dockerfile).toMatch(new RegExp(`AS ${e.stage}\\b`))
+    }
+  })
+
+  it('NINGUNA usa el repo del frontend (su retención las purgaría) — causa raíz del incidente', () => {
+    for (const e of entradas) {
+      expect(e.repo).not.toBe('vence-frontend')
+    }
+  })
+
+  it('construye su propio stage: NUNCA reutiliza la imagen del frontend', () => {
+    // El stage `runner` no tiene devDependencies → sin tsx el worker no arranca.
+    expect(repin).toMatch(/--target/)
+    expect(repin).not.toMatch(/vence-frontend@/)
+  })
+
+  it('pinea por DIGEST del push, no por tag mutable (postmortem #115)', () => {
+    expect(repin).toMatch(/--digestfile/)
+    expect(repin).toMatch(/IMAGE_PINNED="\$\{REGISTRY\}\/\$\{REPO\}@\$\{DIGEST\}"/)
+    // Y aborta si el push no devolvió digest, en vez de pinear a ciegas.
+    expect(repin).toMatch(/NO se pinea a ciegas/)
   })
 
   it('el deploy MANUAL lo invoca', () => {
     expect(frontend).toMatch(/repin-derived-taskdefs\.sh/)
-    expect(frontend).toMatch(/IMAGE_PINNED=/)
   })
 
   it('el workflow de GHA lo invoca (mismo script, sin duplicar la lógica)', () => {
     expect(workflow).toMatch(/scripts\/deploy\/repin-derived-taskdefs\.sh/)
-    expect(workflow).toMatch(/IMAGE_PINNED/)
   })
 
-  it('re-pinea al digest recién desplegado, no a un tag mutable', () => {
-    // Un tag (`:latest`, `:sha`) reintroduce el anti-patrón del postmortem #115.
-    expect(repin).toMatch(/IMAGE_PINNED/)
-    expect(repin).not.toMatch(/image\s*=\s*.*:latest/)
-  })
-
-  it('avisa en rojo si alguna task def derivada no se pudo re-pinear', () => {
+  it('avisa en rojo si alguna no se pudo actualizar', () => {
     // Un fallo silencioso aquí devuelve el sistema al punto ciego original.
     expect(repin).toMatch(/exit 1/)
     expect(frontend).toMatch(/REPIN_OK/)
+  })
+
+  it('toda tarea derivada tiene liveness declarada (o no nos enteraríamos de que muere)', () => {
+    // La prevención es específica del proveedor y puede fallar; la detección no.
+    const registry = readFileSync(
+      join(ROOT, 'backend/src/cron-schedule/external-jobs.registry.ts'), 'utf-8',
+    )
+    const declarados = [...registry.matchAll(/^\s*name:\s*'([^']+)'/gm)].map((m) => m[1])
+    for (const e of entradas) {
+      // La familia de la task def lleva el prefijo `vence-`; el job, no.
+      expect(declarados).toContain(e.familia.replace(/^vence-/, ''))
+    }
   })
 })

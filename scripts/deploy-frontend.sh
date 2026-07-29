@@ -358,13 +358,15 @@ else
   echo "   ⚠️ no convergió del todo en 30min (deployments=$NDEP rollout=$RS run=$RUN/$DES) — continúo; la verificación de SHA vivo de abajo decide"
 fi
 
-# Las tareas PROGRAMADAS que usan esta misma imagen (worker de PDFs) tienen su
-# propia task def pineada por digest. Si no se re-pinean aquí, se quedan
-# apuntando a una imagen que la retención de ECR purga en ~10 deploys → mueren en
-# el pull, sin logs ni alerta (incidente 27→29/07). No aborta el deploy: el
-# frontend ya está sano y convergido; se marca en rojo al final.
+# Las tareas PROGRAMADAS que salen de este mismo árbol pero de OTRO stage del
+# Dockerfile (worker de PDFs = stage `worker`) necesitan su propia imagen, en su
+# propio repo, reconstruida en CADA deploy. Sin esto pasa lo del 27→29/07: su
+# imagen vivía de prestado en el repo del frontend, la retención de 10 imágenes
+# la purgó y el worker murió 2 días en silencio. OJO: no vale apuntarlas a la
+# imagen del frontend (stage `runner`, sin devDeps → sin tsx).
+# No aborta el deploy: el frontend ya está sano y convergido; se marca en rojo al final.
 REPIN_OK=1
-AWS_PROFILE="$P" AWS_REGION="$R" IMAGE_PINNED="$IMG_DIGEST" \
+AWS_PROFILE="$P" AWS_REGION="$R" SHA="$SHA" \
   bash "$(dirname "$0")/deploy/repin-derived-taskdefs.sh" || REPIN_OK=0
 
 echo "→ [6/6] smoke post-deploy"

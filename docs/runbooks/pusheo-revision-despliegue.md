@@ -249,18 +249,24 @@ Con **solo-dev + Claude**, el PR-con-aprobación es teatro (yo aprobando lo mío
 
 El **version-check** (`hooks/useVersionCheck.ts`) fuerza reload al cambiar de versión, DIFIRIÉNDOLO en rutas de test para no interrumpir exámenes. Eso controla *cuándo* recarga el usuario, no la existencia de los chunks (por eso hace falta el S3).
 
-## Tareas PROGRAMADAS que corren la imagen del frontend (re-pineado obligatorio)
+## Tareas PROGRAMADAS que salen de este árbol (imagen propia, repo propio, en cada deploy)
 
-**El pineado por digest solo es seguro si se REFRESCA en cada deploy.** El postmortem #115 (26/05) cambió el servicio de un tag mutable a `repo@sha256:<digest>` inmutable, y lo que lo hace seguro no es el digest: es que **el deploy lo vuelve a pinear cada vez**, así que el digest apuntado acaba de pushearse y nunca le da tiempo a ser purgado.
+**Regla:** una tarea programada necesita **su propia imagen, en su propio repo ECR, reconstruida en cada deploy**. Las tres condiciones, no dos.
 
-Las **tareas programadas** que corren esa misma imagen (hoy `vence-temario-pdf-worker`) copiaron el pineado pero **no el refresco**. Su digest se quedó congelado, la retención de ECR (**"conservar solo las últimas 10 imágenes"**, con ~6 pushes al día) lo purgó en ~2 días, y desde entonces cada invocación moría con `CannotPullContainerError` **antes del entrypoint**: sin logs, sin eventos, sin alerta. **El worker de PDFs estuvo 2 días muerto** (27→29/07/2026).
+**Incidente 27→29/07/2026 — el worker de PDFs estuvo 2 días muerto, por dos fallos encadenados:**
+
+1. **No tenía camino de despliegue.** El Dockerfile ya traía su stage `worker` y `deploy-frontend.sh` documentaba que *"el worker se despliega por su propio camino"*… pero ese camino **no existía**. Su imagen se construyó **a mano** una vez (23-24/07) y se subió al repo **`vence-frontend`**, cuya retención conserva **solo las últimas 10 imágenes** con ~6 pushes al día. Estaba condenada a desaparecer en ~2 días. Cuando desapareció, cada tick moría con `CannotPullContainerError` **antes del entrypoint**: sin logs, sin eventos, sin alerta.
+2. **Y no vale apuntarla a la imagen del frontend.** El frontend es el stage **`runner`** (Next standalone, **sin devDependencies**) y el worker arranca con `node_modules/.bin/tsx`, que es devDependency → `Cannot find module '/app/node_modules/.bin/tsx'`. Es el error del **primer** intento del 23/07, y el que se repite si "arreglas" el pineado sin mirar de qué stage sale la imagen.
+
+`vence-content-radar` y `vence-instagram-daily` hacían esto bien desde el principio —repo propio, sin retención agresiva— y son las únicas que siguen vivas.
 
 **Solución (en los DOS caminos de deploy, no tocar sin entender):**
-1. `scripts/deploy/repin-derived-taskdefs.sh` — **fuente única** de las familias derivadas (`DERIVED_TASKDEF_FAMILIES`). Clona la task def viva y solo swapea la imagen, así hereda env/secrets/rol/cpu sin poder olvidarlos.
-2. Lo invocan **el script manual** (`deploy-frontend.sh`, tras converger) y **el workflow de GHA** (tras `Esperar rollout estable`). El guardrail `__tests__/guardrails/deploy-scripts.test.ts` verifica que los dos lo siguen llamando y que no se re-pinea a un tag mutable.
-3. Si el re-pineado falla, el frontend queda sano pero el deploy **termina en rojo** (`REPIN_OK`): lo que queda en riesgo son las tareas programadas.
+1. `scripts/deploy/repin-derived-taskdefs.sh` — **fuente única**: `DERIVED_WORKERS` declara `familia|stage del Dockerfile|repo ECR`. Por cada una: `build --target <stage>` → push a **su** repo capturando el digest con `--digestfile` → clona la task def viva y solo swapea la imagen (hereda env/secrets/rol/cpu sin poder olvidarlos) → registra revisión. Construir su stage es barato: `worker` es `FROM deps`, no dispara el build de Next.
+2. Lo invocan **el script manual** (`deploy-frontend.sh`, tras converger) y **el workflow de GHA** (tras `Esperar rollout estable`). El guardrail `__tests__/guardrails/deploy-scripts.test.ts` verifica que los dos lo llaman, que el stage declarado existe en el Dockerfile, que **ninguna usa el repo del frontend**, que se pinea por digest del push y que toda tarea derivada tiene liveness declarada.
+3. Si falla, el frontend queda sano pero el deploy **termina en rojo** (`REPIN_OK`): lo que queda en riesgo son las tareas programadas.
+4. El scheduler apunta a la **familia sin revisión**, así que coge la última ACTIVE automáticamente. No hay que tocarlo al re-pinear.
 
-> **Al añadir una tarea programada nueva que use la imagen del frontend:** añadirla a `DERIVED_TASKDEF_FAMILIES` **y**, si es periódica, declararla en `backend/src/cron-schedule/external-jobs.registry.ts` para que tenga liveness (`cron_overdue`). Esa segunda parte es la red que **no** depende del proveedor: aunque el re-pineado falle o desaparezca en la migración a koigrid, un job que deje de correr sigue avisando. Ver `health-check.md` §1.bis.b.
+> **Al añadir una tarea programada nueva:** entrada en `DERIVED_WORKERS` (con **repo propio**, nunca el del frontend) **y**, si es periódica, declararla en `backend/src/cron-schedule/external-jobs.registry.ts` para que tenga liveness (`cron_overdue`) — el guardrail exige lo segundo si haces lo primero. Esa segunda parte es la red que **no** depende del proveedor: aunque este paso falle o desaparezca en la migración a koigrid, un job que deje de correr sigue avisando. Ver `health-check.md` §1.bis.b.
 
 ## Backend
 

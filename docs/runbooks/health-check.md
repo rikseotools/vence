@@ -166,6 +166,9 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
      registry, credenciales, scheduler apagado) no escribe ni una línea. Comprobar, por ese
      orden: (a) que el scheduler sigue activo y con la cadencia del catálogo, (b) que la
      **imagen que su task def pinea TODAVÍA EXISTE** — es la causa del incidente 27→29/07 —,
+     (b2) si existe, que es **la imagen correcta**: la del stage propio de la tarea, no la del
+     frontend (`runner` no lleva devDependencies → `Cannot find module … tsx`; se distingue
+     porque la tarea SÍ arranca y muere en el entrypoint, dejando logs),
      (c) las tareas paradas recientes y su `stoppedReason`:
      `aws --profile vence --region eu-west-2 ecs list-tasks --cluster vence-backend --family <familia> --desired-status STOPPED`
      → `describe-tasks` y leer `stoppedReason` (`CannotPullContainerError` = imagen purgada).
