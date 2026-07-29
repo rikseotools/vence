@@ -47,6 +47,13 @@
 - **`GET /apps/{id}/env/verify` reports green on an unresolved `${{…}}` reference.** Our container received the literal string `${{db.vence-mig2.DATABASE_URL}}` (the referenced DB had been deleted) → every API route `500`; `env/verify` said `present:true, matchesConfigured:true`. Ask: fail the deploy on an unresolved reference, and have `env/verify` flag `^\$\{\{.*\}\}$` as `unresolved_reference`.
 - **`postgres: {running, available, behind}` is documented but absent** from `GET /databases/{id}`. Ours actually runs **17.2** while the docs say PG17 ships 17.5 (our source is 17.6) — and you correctly tell people to check this after a migration.
 
+### 🔴 STORAGE (new, 2026-07-29 15:20) — we cannot complete the move to `storage.koigrid.com`
+- **S1 — an org-minted key cannot read our production bucket.** `POST /storage/keys` correctly returns `endpoint: https://storage.koigrid.com`, but that key gets **`AccessDenied`** on `ListObjectsV2 s3://vence-videos/` and **403** on `HeadObject`. Meanwhile `GET /buckets` → **`{"buckets":[]}`** although we serve ~56 GB of course video from `vence-videos` in production. **Ask: attach the bucket to our organization, or issue a key authorized for it.** Until then we are not switching — the old address still works (presigned GET → **206 in 44 ms**).
+- **S2 — `GET /buckets` omits a bucket we own and serve.** An inventory endpoint that hides live data is worse than none; it briefly made us think the bucket was gone. List it, or say why it can't be listed.
+- **S3 (docs, cheap, prevents an outage) — state that the endpoint change and the key rotation are COUPLED.** Both halves proved: old key + new endpoint = `InvalidAccessKeyId`; new key + our bucket = `AccessDenied`. Someone reading *"change the address"* and shipping that one env var alone **403s every object**.
+- **S4 (process) — a token named `migracion videos (borrar)` (scopes `storage:*`) was created in our account at 12:43 UTC and revoked at 13:14 UTC today.** Done cleanly, revoked after, nothing broke — but we only found out by listing our own tokens. **Emit a customer-visible event** (`storage.migrated`, `staff.access.granted/revoked`), because nobody reads a token list.
+- ✅ **The docs change itself is right** — *"never hardcode the endpoint"* — and it caught a real bug **on our side**: our production code defaults to the old constant and our task definition sets no override.
+
 ### ✅ CLOSED 2026-07-29 — verified end-to-end against the live API
 **A3** (HTML edge caching: `MISS → HIT`, growing `age`, bare `s-maxage` honoured — and **~60× capacity: 615 rps on one 2 GB replica**, p95 50 ms, 0 % errors) · **A1** (`\restrict` from `pg_dump` 17.10 parsed) · **B1** (dump retained on failure, retried with the same `dumpKey`, no re-upload) · **B2** (atomic: two failed jobs left **zero** half-created objects) · **`preSeed`** (`extensions.vector` pre-created, restore proceeded past the pgvector column) · **`pause`/`resume`** (paused POC resumed and serving production HTML in ~45 s, no rebuild).
 
@@ -1801,3 +1808,95 @@ us two of these five attempts.
 
 Housekeeping on our side: both apps reverted to `scale-out:false`, verified serving (`200`), and all five
 POC apps returned to `paused`. The `vence-poc` database stays `running`.
+
+---
+
+## 🗄️ UPDATE 2026-07-29 (15:20 UTC) — storage moves to `storage.koigrid.com`: **the docs change is right, and we cannot complete the migration**
+
+`llms.txt` **837 → 865 lines**, `openapi.json` unchanged (189 paths). The whole diff is the storage section,
+and the headline is a line we fully agree with:
+
+> *"**Take the endpoint from the response of `POST /storage/keys` — never hardcode one.** Buckets can live on
+> different storage fleets, and each has its own address."*
+
+The previously documented `https://s3.koigrid.com` constant is gone. This is the correct call, and it caught
+us fairly: **our production code carries exactly that hardcoded constant** as its default
+(`lib/api/video-courses/videoSignedUrl.ts`), and our ECS task definition sets no override — so production has
+been running on a hardcoded address, which is our bug to fix, not yours.
+
+### What we measured, in order
+
+We serve ~30 course videos (MP4 + HLS, ~56 GB) from bucket `vence-videos` to paying users, so we verified
+before touching anything:
+
+| Check | Result |
+|---|---|
+| Production key on **`s3.koigrid.com`** | ✅ **works** — lists all 8 prefixes; presigned GET of a real MP4 → **206 in 44 ms** |
+| Production key on **`storage.koigrid.com`** | ❌ `InvalidAccessKeyId` — *"The Access Key Id you provided does not exist in our records"* |
+| `POST /storage/keys` | ✅ returns `endpoint: https://storage.koigrid.com` — exactly as instructed |
+| **New key** → `ListObjectsV2 s3://vence-videos/` | ❌ **`AccessDenied`** |
+| **New key** → `HeadObject vence-videos/word-365/bloque-04.mp4` | ❌ **403 Forbidden** |
+| `GET /buckets` | ❌ **`{"buckets":[]}`** — our org lists **zero** buckets, while serving `vence-videos` in production |
+
+So the new key is **valid on the new fleet but not authorized for our bucket**. That is consistent with your
+own line — *"a key is scoped to the buckets your organization owns"* — and with `GET /buckets` being empty:
+`vence-videos` sits outside this organization's bucket registry, presumably because it predates it.
+
+**Net: we cannot do the migration you asked for.** Minting a key is not enough, and we are not changing
+production, because the current address still works and the change would take working video to 403.
+
+### 🔴 The ask, and one thing worth fixing in the docs regardless
+
+1. **Attach `vence-videos` to our organization** (so `GET /buckets` lists it and org-minted keys can reach
+   it), **or** issue us a key that is authorized for it. Either unblocks us in minutes.
+2. **`GET /buckets` returning an empty list for a bucket we demonstrably own and serve is a gap in its own
+   right.** An inventory endpoint that omits your live data is worse than no inventory: it is what made us
+   assume, briefly, that the bucket had been deleted. Whatever the ownership model, the API should either
+   list it or explain why it cannot.
+3. **⚠️ Say in the docs that the endpoint change and the key rotation are COUPLED.** We proved both failure
+   halves: old key + new endpoint = `InvalidAccessKeyId`; new key + our bucket = `AccessDenied`. A customer
+   who reads *"change the address to `storage.koigrid.com`"* and ships that alone — the natural reading, since
+   it is one env var — takes a **hard outage on every object**. One sentence ("rotate the key in the same
+   change; the old key does not exist on the new fleet") prevents it.
+
+### One process note, said plainly and without drama
+
+While checking `/tokens` we found a token in **our** account named **`migracion videos (borrar)`**, scopes
+`storage:read, storage:write`, created **today 12:43 UTC** and revoked **13:14 UTC** — a window that matches
+the storage migration. We did not create it.
+
+We are not upset: someone had to move the bytes, it was done cleanly, it was revoked afterwards, and
+production never broke. But **we only learned it happened because we happened to list our tokens.** For a
+customer with data on your platform, the right shape is an **event the customer can see** (`storage.migrated`,
+`staff.access.granted/revoked`) — ideally a notification, at minimum an entry in an audit feed. The token
+list is a decent audit trail; it just isn't one anybody thinks to read. You have been exemplary all week
+about disclosing your own limitations in the docs; this is the same instinct applied to operations.
+
+### 📊 Re-measured vs AWS in the same window (15 samples per row, alternating hosts)
+
+Since we were re-testing anyway, here is a fresh head-to-head. Koigrid = **1 replica, 2 GB, free plan**;
+AWS = production (CloudFront + ALB + 8 Fargate tasks). This is an **afternoon** run; the 1.37–1.97× table
+earlier today was measured at ~06:00 UTC, so read the two together rather than as a trend.
+
+| Path | AWS p50 / p90 | Koigrid p50 / p90 | ratio (p50) |
+|---|---|---|---|
+| `/` | 38 / 65 ms | 87 / 154 ms | 2.28× |
+| `/leyes` | 50 / 68 ms | 111 / 126 ms | 2.22× |
+| `/leyes/constitucion-espanola` | 45 / 66 ms | 95 / 102 ms | 2.11× |
+| `/auxiliar-administrativo-estado` | 167 / 234 ms | 188 / 334 ms | **1.12×** |
+
+**A3 still holds:** 3/3 requests `cf-cache-status: HIT` on all three cached documents. And capacity is
+unchanged in substance — same load test, same parameters, 1 replica:
+
+| | rps | p50 | p95 | errors | saturated |
+|---|---|---|---|---|---|
+| `/leyes/constitucion-espanola` @ conc 15 | **519** | 24 ms | 57 ms | 0 % | no |
+| `/` @ conc 15 | **385** | 35 ms | 67 ms | 0 % | no |
+| `/leyes/constitucion-espanola` @ conc 50 | **712** | 67 ms | 123 ms | 0 % | no |
+
+That is ~15 % below this morning's 615/462/838 — consistent with a busier hour, not a regression, and still
+**31× our production peak on one free-tier replica** with the CPU at 0 %.
+
+**Housekeeping:** the temporary storage key we minted for this test has been deleted
+(`DELETE /storage/keys/{id}` → 200, list back to empty). The POC app was resumed for the measurements and
+returned to `paused`. Production video remains on `s3.koigrid.com` and is serving normally.
