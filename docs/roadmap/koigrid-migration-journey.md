@@ -2064,3 +2064,62 @@ was judged unhealthy** (exit code, failed probe, timeout), because the container
 `scale-out` reverted to `false` and redeployed; the app is `running` and serving (`200`). **No downtime in six
 attempts.** The POC app is back to `paused`. The POC database now holds a real, verified `articles` + `laws`
 (61 123 / 1 404 rows) restored entirely through your managed path.
+
+---
+
+## ✅ UPDATE 2026-07-29 (late) — **storage unblocked: S1 and S2 are CLOSED, verified against the real production bucket**
+
+You attached the bucket and told us to mint a new key. Both verified end-to-end:
+
+| Check | Before | Now |
+|---|---|---|
+| `GET /buckets` | `{"buckets":[]}` | ✅ `vence-videos` (`bucketName: vence-videos`, `region: eu-madrid`, `backend: cluster`) |
+| New key → `ListObjectsV2` | `AccessDenied` | ✅ **all 8 prefixes listed** |
+| New key → `HeadObject` of a real lesson | `403` | ✅ **`ContentLength: 1 643 315 283`, `video/mp4`** |
+| New key → presigned `GET` (what the player does) | — | ✅ **`206` Partial Content** |
+
+Thank you — and note the fix also closed **S2** (the inventory now shows the bucket we own), which we had
+reported as a separate gap.
+
+### ⚠️ One thing that is *not* fixed by this, and that your docs should say out loud
+
+We tested both cross-combinations, and **the two fleets are strictly disjoint**:
+
+| | `s3.koigrid.com` | `storage.koigrid.com` |
+|---|---|---|
+| **Old key** (in production today) | ✅ works | ❌ `InvalidAccessKeyId` |
+| **New key** | ❌ `InvalidAccessKeyId` | ✅ works |
+
+So there is **no safe intermediate state**. A customer cannot rotate the key first and flip the address
+later, or vice versa — either half, on its own, returns `InvalidAccessKeyId` for **every object**. For us
+that is every course video for every paying user.
+
+This is the S3 item we raised earlier, now with both halves measured rather than inferred. **One sentence in
+the storage docs would prevent an outage:** *"the key and the endpoint must change in the same deploy — keys
+are not valid across fleets."* Our own rollout has to be a single atomic change (SSM secrets + endpoint env
+var + deploy), with the old values as the rollback, precisely because of this.
+
+*(Also worth knowing for anyone still on the old address: `s3.koigrid.com` is still serving our production
+traffic normally, so this is a migration and not an outage. If it has a decommission date, tell customers —
+we have no way to discover it.)*
+
+## 🧪 REHEARSAL IN PROGRESS — the full 33 GB, as you asked
+
+Your point is fair and we had flagged it ourselves: what we restored successfully was `articles` + `laws`
+(709 MB SQL / 242 MB gzip), roughly **1/50th** of the real database. A restore that works at 600 MB proves
+the mechanism, not the migration.
+
+So we are running it properly, on a **fresh cluster** (`vence-rehearsal`, PG 17, 4 GB) rather than the POC
+shell, because a real cutover restores into an empty target:
+
+- **Source:** production RDS, PostgreSQL 17.6, **33 GB**, **204 tables** (functions, triggers, generated
+  columns, views, pgvector embeddings with ivfflat).
+- **Dump:** `pg_dump --no-owner --no-acl` piped straight through `gzip -6`.
+- **Then:** presigned upload → `POST /databases/:id/restore-dump` with `preSeed` for `extensions.vector` →
+  verify **row counts table by table against RDS**, not just `status: done`.
+
+Numbers, gotchas and the wall-clock will be added here when it finishes. The specific things we want to learn
+— and that the 600 MB run could not tell us — are: whether the **restore holds for hours** without the job
+or the upload timing out, whether `maintenance_work_mem` is enough for the **ivfflat index at full row
+count** (not just 61 k rows), whether **`tableCounts`** comes back populated at scale (it was `[]` on our
+successful small run), and **how long a real cutover window would be**.
