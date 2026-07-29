@@ -613,6 +613,16 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-283] 🔴 [ABIERTO 29/07] Verificar en producción que la exención del gate anti-scraping exige el secreto
+- **Qué se arregló (29/07, `e049f57ac`):** `/api/questions/filtered` eximía del reto Turnstile a quien enviara `x-vence-canary`, un header SIN secreto. Comprobado contra producción antes del fix: sin header → `403 {"challengeRequired":true}`; con header → `200 {"success":true,"questions":[…]}`. Detrás de ese reto está el banco de preguntas con su respuesta correcta. Ahora la exención exige `x-vence-canary-secret` (comparación en tiempo constante; sin secreto configurado no se exime a nadie), y el contador que alimenta el gate usa el mismo criterio.
+- **Qué falta, y por qué no se pudo cerrar en el momento:** el backend ya está vivo con la prueba (`dfce3342`, task def 136), pero **el frontend es el que EXIGE el secreto** y su despliegue seguía en curso. Hasta que no esté, el agujero sigue abierto en producción.
+- **Comprobaciones al despertar (las tres, en este orden):**
+  1. `curl -s -o /dev/null -w "%{http_code}" -X POST https://www.vence.es/api/questions/filtered -H "Content-Type: application/json" -H "x-vence-canary: 1" -d '{"numQuestions":2,"positionType":"auxiliar_administrativo_estado","topicNumber":1}'` → tiene que dar **403**. Si da 200, el fix no está vivo.
+  2. Los canary del backend que usan la exención (`canary-por-leyes-scope`, `canary-questions-gate`) siguen **verdes**: son lo que este cambio podía romper.
+  3. El journey `examen-controles-flotantes` vuelve a verde **por el camino correcto** (`npx tsx scripts/sim/run.ts examen-controles` con `CANARY_SECRET`), no colándose.
+- **Si algo falla:** el rollback es del frontend; el backend puede quedarse como está (mandar la prueba no molesta a un frontend que no la exige).
+- **Relacionada:** [T-280] (el canary que vigila el gate se exime a sí mismo, así que hoy no podría avisar de esto).
+
 ### [T-282] 🟡 [ABIERTO 29/07 — detector VIVO, quedan 163 por reparar] La explicación se pinta rota: `**` sin pareja heredado de la transcripción
 - **Qué pasa:** desde la Fase 2 de T-080, producción **no sirve la columna `explanation`** — compone el texto desde `explanation_data`. Así que un campo mal formado en la estructura sale a pantalla tal cual, y mirar `explanation` no lo delata (es el resultado del mismo render). La avería dominante es un `**` **sin pareja** en la razón de una opción: la transcripción del histórico partía `- **A) Insertar** — …` y se quedaba con `Insertar** — …`; el render antepone su propio `- **A)** ` y el opositor lee «**A)** Insertar** — El menú Insertar…».
 - **Medido el 29/07:** **163 preguntas activas · 7.989 exposiciones acumuladas** (2,6% de las 6.335 con explicación estructurada). Es defecto de **FORMA**: una pregunta puede estar aquí siendo jurídicamente impecable.
