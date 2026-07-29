@@ -1208,6 +1208,15 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
   - **Por qué se enfrió, que es lo interesante:** la tabla tiene el autovacuum afinado… **por la vía equivocada**. `autovacuum_vacuum_scale_factor=0.01` mira **filas MUERTAS**, y `test_questions` es una tabla de **INSERTS** (3,6 M inserts frente a 40 k updates): los inserts no generan filas muertas, así que ese ajuste **nunca dispara**. El que sí aplica es `autovacuum_vacuum_insert_scale_factor`, que estaba en el **global 0.2** → hacían falta **~368.000 inserts** para un vacuum. Último autovacuum: **24/07**, cinco días de mapa enfriándose.
   - **✅ Arreglo durable aplicado:** `ALTER TABLE test_questions SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)`. Alinea el camino de inserts con lo que ya estaba afinado para el de filas muertas. Es metadatos, instantáneo. El autovacuum arrancó solo acto seguido (con retardo por coste, más suave que un `VACUUM` manual).
   - **⚠️ El alcance es MAYOR que este endpoint:** `test_questions` es la tabla central de estadísticas, así que **cualquier** consulta que dependa de un index-only scan sobre ella estaba pagando lo mismo. Puede explicar parte de la lentitud perseguida en [T-254] y [T-270].
+  - **✅ VERIFICADO, no declarado (29/07, 2 min después del ajuste — el autovacuum arrancó solo y tardó 2 minutos):**
+
+    | | antes | después |
+    |---|---|---|
+    | mapa de visibilidad | 67,5% | **100%** |
+    | heap fetches | 72.695 | **0** |
+    | tiempo de la consulta real | 17.809 ms | **145 ms** |
+
+    **122× más rápido** y muy por debajo del corte de 8 s del cliente. Medido con el mismo `EXPLAIN (ANALYZE, BUFFERS)` sobre el mismo usuario.
   - **Lección de método:** un plan que dice *«Index Only Scan»* no garantiza que sea index-only. **`Heap Fetches` es el número que hay que mirar**, y si es alto el problema es el mapa de visibilidad (vacuum), no la consulta ni los índices.
 - **Cómo (en este orden, y NO tocar el timeout primero):**
   1. **Arreglar la consulta**, que es la causa: ver por qué escala con el historial (¿`count` sobre `test_questions` otra vez? ¿falta índice? ¿debería salir de una MV como el resto de contadores materializados?). Objetivo: p95 muy por debajo de 8 s.
