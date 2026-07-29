@@ -24,6 +24,7 @@ import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { getUserPlanType } from '@/lib/referrals/queries'
@@ -80,11 +81,28 @@ async function handler(
   const fileName = pdfFileName(oposicion, topicNumber)
   const storage = new S3StorageAdapter()
 
+  // Coste de CPU de ESTA petición. Se rellena solo en el camino que renderiza; en un acierto
+  // de caché queda a 0, que es justo la distinción que hay que poder medir.
+  //
+  // Por qué se instrumenta aquí y no basta con `request_completed` (T-270, 29/07): ese evento
+  // está MUESTREADO al 10% para 2xx (`SUCCESS_TIMING_SAMPLE_RATE`), así que de un incidente de
+  // 18 minutos solo sobreviven un puñado de duraciones — con eso no se puede calibrar cuánto
+  // bloquea realmente un render. `temario_pdf_served` NO se muestrea: se emite en cada petición.
+  // Y el `instanceId` dice en QUÉ task cayó, que es lo que decide si el daño se reparte o se
+  // concentra; sin él, 36 renders repartidos entre 12 tasks y 36 sobre la misma son el mismo
+  // número y no el mismo incidente.
+  const cpu = { renderMs: 0, stampMs: 0 }
+
   const emitServed = (source: 's3' | 'generated' | 'too_large', bytes: number) =>
     emitFireAndForget({
       source: 'fargate', severity: 'info', eventType: 'temario_pdf_served',
       endpoint: '/api/temario/[oposicion]/[topic]/pdf',
-      metadata: { oposicion, tema: topicNumber, served: source, chars, maxArticleChars: maxArt, bytes, hash: contentHash },
+      metadata: {
+        oposicion, tema: topicNumber, served: source, chars, maxArticleChars: maxArt, bytes,
+        hash: contentHash,
+        renderMs: cpu.renderMs, stampMs: cpu.stampMs, cpuMs: cpu.renderMs + cpu.stampMs,
+        instanceId: INSTANCE_ID,
+      },
     })
 
   const pdfResponse = (bytes: Uint8Array, source: 's3' | 'generated') => {
@@ -130,15 +148,21 @@ async function handler(
   const sectionNames = await getLawSectionNames(lawIds)
   const model = buildTopicPdfModel(content, new Date(), sectionNames)
   const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
+  const tRender = Date.now()
   const rawBuffer = await renderToBuffer(doc)
+  cpu.renderMs = Date.now() - tRender
 
   // Post-proceso: estampar nº de página + título del tema (pdf-lib). Mismo helper que el worker →
   // resultado idéntico. DEGRADA: si falla, se sirve el PDF sin chrome y se registra un warn.
   let buffer: Buffer = rawBuffer
   try {
+    const tStamp = Date.now()
     const stamped = await stampTopicPdfChrome(rawBuffer, { footer: model.footer, title: model.title })
+    cpu.stampMs = Date.now() - tStamp
     buffer = Buffer.from(stamped.bytes)
-    emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount } })
+    // `pages` vive aquí y el coste de CPU también: juntos dan la relación páginas↔ms que hoy no
+    // existe y sin la cual el umbral de «esto se encola» sería un número elegido a ojo.
+    emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount, chars, renderMs: cpu.renderMs, stampMs: cpu.stampMs, instanceId: INSTANCE_ID } })
   } catch (e) {
     emitFireAndForget({ source: 'fargate', severity: 'warn', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, outcome: 'stamp_failed', error: e instanceof Error ? e.message : 'desconocido' } })
   }

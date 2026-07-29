@@ -17,6 +17,7 @@ import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -69,15 +70,23 @@ export async function pregenerateTopicPdf(
     const sectionNames = await getLawSectionNames(lawIds)
     const model = buildTopicPdfModel(content, new Date(), sectionNames)
     const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
+    // Mismo cronometraje que la ruta pública (T-270): sin la relación páginas↔ms medida, el
+    // umbral de «esto no se renderiza en línea» sería un número elegido a ojo. Aquí además es
+    // donde salen los temas ENORMES (487-651 páginas), que son los que calibran el extremo.
+    const tRender = Date.now()
     const rawBuffer = await renderToBuffer(doc)
+    const renderMs = Date.now() - tRender
+    let stampMs = 0
 
     // Post-proceso: estampar nº de página + título del tema (pdf-lib). DEGRADA: si el estampado
     // falla, se sube el PDF sin chrome y se registra un warn — nunca romper la descarga por esto.
     let buffer: Buffer = rawBuffer
     try {
+      const tStamp = Date.now()
       const stamped = await stampTopicPdfChrome(rawBuffer, { footer: model.footer, title: model.title })
+      stampMs = Date.now() - tStamp
       buffer = Buffer.from(stamped.bytes)
-      emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/admin/temario/pregenerate', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount } })
+      emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/admin/temario/pregenerate', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount, renderMs, stampMs, instanceId: INSTANCE_ID } })
     } catch (e) {
       emitFireAndForget({ source: 'fargate', severity: 'warn', eventType: 'temario_pdf_stamped', endpoint: '/api/admin/temario/pregenerate', metadata: { oposicion, tema: topicNumber, outcome: 'stamp_failed', error: e instanceof Error ? e.message : 'desconocido' } })
     }
