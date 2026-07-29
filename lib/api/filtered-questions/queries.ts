@@ -33,6 +33,8 @@ import { logValidationError } from '@/lib/api/validation-error-log'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { isShuffleServeEligible } from '@/lib/shuffle/classifyShuffleMode'
 import { permutationFor, applyOrder } from '@/lib/shuffle/permute'
+import { subsetOrderFor, tieneOpcionQueDependeDelConjunto } from '@/lib/shuffle/subsetOrder'
+import { opcionesExamenDe } from './opcionesExamen'
 import { isShuffleEnabledFor } from '@/lib/shuffle/flag'
 import {
   isStructuredExplanation,
@@ -201,7 +203,17 @@ export function registrarBarajadoServido(
   return qs
 }
 
-export function transformQuestion(q: QuestionRow, index: number, shuffle = false): FilteredQuestion {
+export function transformQuestion(
+  q: QuestionRow,
+  index: number,
+  shuffle = false,
+  /**
+   * Nº de opciones del examen REAL de la oposición (T-267). Cuando la pregunta tiene más
+   * de las que el examen usa, se sirve un SUBCONJUNTO (la correcta + distractores) en vez
+   * de una permutación completa. `null`/undefined = servir todas, como siempre.
+   */
+  opcionesExamen: number | null = null,
+): FilteredQuestion {
   // Opciones en orden NATURAL (0=A) tal como están en la BD.
   const naturalOptions = [q.optionA, q.optionB, q.optionC, q.optionD, q.optionE].filter(
     (v): v is string => v != null && v !== '',
@@ -243,7 +255,29 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
         : undefined,
     })
   ) {
-    const order = permutationFor(q.id, randomUUID(), naturalOptions.length)
+    // ¿Hay que servir MENOS opciones de las que tiene? (T-267: el examen del Ayuntamiento
+    // de Madrid es de 3 y el banco tiene 4). Solo si la oposición lo declara, la pregunta
+    // tiene de sobra, y NINGUNA opción se refiere al conjunto ("todas las anteriores"):
+    // quitar una opción en ese caso no acorta la pregunta, la vuelve incorrecta.
+    //
+    // NO confundir dos cosas distintas:
+    //   · una PREGUNTA OFICIAL (`is_official_exam`) servida suelta dentro de un test de
+    //     práctica es material de estudio: se baraja desde la Fase 1 y también se recorta,
+    //     porque quien la practica se examinará con el formato de HOY;
+    //   · la REPRODUCCIÓN de un examen oficial pasado (el ejercicio entero tal como cayó)
+    //     no se toca — ni orden ni opciones. Eso no pasa por aquí: el modo examen tiene su
+    //     propio camino (`/api/exam/*`), que no llama a esta función ni pide barajado.
+    const recortar =
+      typeof opcionesExamen === 'number' &&
+      naturalOptions.length > opcionesExamen &&
+      opcionesExamen >= 2 &&
+      !tieneOpcionQueDependeDelConjunto(naturalOptions)
+
+    const nonce = randomUUID()
+    const order = recortar
+      ? (subsetOrderFor(q.id, nonce, naturalOptions.length, opcionesExamen as number, q.correctOption)
+         ?? permutationFor(q.id, nonce, naturalOptions.length))
+      : permutationFor(q.id, nonce, naturalOptions.length)
     // correct_option (original, 0=A en BD) → su nueva posición mostrada.
     const displayed = order.indexOf(q.correctOption)
     if (displayed !== -1) {
@@ -269,7 +303,11 @@ export function transformQuestion(q: QuestionRow, index: number, shuffle = false
       ? renderStructuredExplanation(estructurada, {
           correctOption: q.correctOption,
           optionOrder,
-          nOptions: naturalOptions.length,
+          // Las opciones REALMENTE servidas, que con un subconjunto (T-267) son menos que
+          // las del banco. Si aquí fuera el total, el render descartaría el orden por no
+          // tener la longitud esperada y encima escribiría un bullet de una opción que el
+          // usuario no ha visto.
+          nOptions: optionOrder ? optionOrder.length : naturalOptions.length,
         })
       : q.explanation,
     correct_option: correctOption,
@@ -826,6 +864,12 @@ export async function getFilteredQuestions(
     // por-pregunta ('full' + explicación sin letras) la decide transformQuestion.
     const shuffleOn = shuffleOptions === true && isShuffleEnabledFor(positionType)
 
+    // Nº de opciones del examen REAL de esta oposición (T-267). Se resuelve UNA vez por
+    // request (con caché en proceso) y viaja a cada pregunta. Solo se consulta si el
+    // motor está activo: recortar y barajar son la misma operación y comparten interruptor
+    // — si el piloto se apaga, esto se apaga con él.
+    const opcionesExamen = shuffleOn ? await opcionesExamenDe(positionType) : null
+
     // Observabilidad: 1 evento por request cuando el barajado está activo (baja
     // cardinalidad, cubre todos los paths de serve). Permite medir adopción y
     // detectar si se activa donde no debe (p.ej. examen). Fire-and-forget.
@@ -836,7 +880,14 @@ export async function getFilteredQuestions(
         eventType: 'shuffle_options_request_active',
         endpoint: '/api/questions/filtered',
         userId: userId ?? undefined,
-        metadata: { positionType: String(positionType).slice(0, 80), numQuestions },
+        metadata: {
+          positionType: String(positionType).slice(0, 80),
+          numQuestions,
+          // Nº de opciones del examen real (T-267). Sirve para responder de un vistazo
+          // "¿se está recortando de verdad en esta oposición?" sin abrir el código, y para
+          // detectar el caso silencioso: recortar donde no toca o no recortar donde sí.
+          opcionesExamen,
+        },
       })
     }
 
@@ -864,7 +915,7 @@ export async function getFilteredQuestions(
       return {
         success: true,
         questions: registrarBarajadoServido(
-          scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)),
+          scopeQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn, opcionesExamen)),
           { positionType, userId },
         ),
         totalAvailable: scopeQuestions.length,
@@ -982,7 +1033,7 @@ export async function getFilteredQuestions(
       }
 
       const transformedQuestions = registrarBarajadoServido(
-        failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn)),
+        failedQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn, opcionesExamen)),
         { positionType, userId },
       )
 
@@ -1072,7 +1123,7 @@ export async function getFilteredQuestions(
 
       // Transformar al formato esperado
       const transformedQuestions = registrarBarajadoServido(
-        finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn)),
+        finalQuestions.map((q, i) => transformQuestion({ ...q, sourceTopic: topicNumber || null } as QuestionRow, i, shuffleOn, opcionesExamen)),
         { positionType, userId },
       )
 
@@ -1198,7 +1249,7 @@ export async function getFilteredQuestions(
 
       const transformedQuestions = registrarBarajadoServido(
         globalQuestions.map((q, i) =>
-          transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn)
+          transformQuestion({ ...q, sourceTopic: null } as QuestionRow, i, shuffleOn, opcionesExamen)
         ),
         { positionType, userId },
       )
@@ -1592,7 +1643,7 @@ export async function getFilteredQuestions(
     }
 
     const transformedQuestions: FilteredQuestion[] = registrarBarajadoServido(
-      orderedRows.map((q, i) => transformQuestion(q, i, shuffleOn)),
+      orderedRows.map((q, i) => transformQuestion(q, i, shuffleOn, opcionesExamen)),
       { positionType, userId },
     )
 

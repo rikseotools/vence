@@ -22,7 +22,9 @@ import {
   type AnswerSaveResponse,
 } from './answer-save.types';
 import { ObservabilityService } from '../observability/observability.service';
-import { displayedToOriginal, isValidOrder } from '../shuffle/permute';
+import { displayedToOriginal } from '../shuffle/permute';
+// Admite SUBCONJUNTOS (3 de 4) desde T-267 — ver subset-order.ts.
+import { isValidExposureOrder } from '../shuffle/subset-order';
 
 export interface QuestionValidation {
   correctOption: number | null;
@@ -179,7 +181,7 @@ export class AnswerSaveService {
     // está en coordenadas de BD). Sin `optionOrder` válido → identidad, es decir, el
     // comportamiento histórico intacto. Mismo criterio que el route de Next.
     const nOpciones = req.options.length;
-    const hayBarajado = isValidOrder(req.optionOrder, nOpciones);
+    const hayBarajado = isValidExposureOrder(req.optionOrder, nOpciones);
     const orden = hayBarajado ? (req.optionOrder as number[]) : null;
 
     // Observabilidad: un `optionOrder` que llega pero NO es una permutación válida se

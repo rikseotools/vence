@@ -185,9 +185,12 @@ describe('transformQuestion - transforma correctamente al formato FilteredQuesti
   const fs = require('fs')
   const source = fs.readFileSync('lib/api/filtered-questions/queries.ts', 'utf-8')
 
-  // El 3er parámetro opcional `shuffle` (barajar opciones Fase 1) no cambia los
-  // campos del output — la regex lo acepta para no romper el guardarraíl de campos.
-  const transformMatch = source.match(/function transformQuestion\(q: QuestionRow, index: number(?:, shuffle[^)]*)?\): FilteredQuestion \{([^]*?)\n\}/s)
+  // Los parámetros opcionales del motor de barajado (`shuffle` en la Fase 1,
+  // `opcionesExamen` en T-267) no cambian los campos del output. La firma es multilínea
+  // y lleva comentarios con paréntesis, así que se busca de forma perezosa hasta el tipo
+  // de retorno en vez de enumerar los parámetros: si no, cada parámetro nuevo rompe este
+  // guardarraíl sin que haya nada roto de verdad.
+  const transformMatch = source.match(/function transformQuestion\([\s\S]*?\): FilteredQuestion \{([^]*?)\n\}/s)
   const transformBlock = transformMatch?.[1] || ''
 
   it('transformQuestion incluye image_url en el output', () => {

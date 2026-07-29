@@ -84,22 +84,32 @@ describe('cableado shuffle: SERVE (lib/api/filtered-questions)', () => {
     expect(queries).toContain("from '@/lib/shuffle/structuredExplanation'")
     expect(queries).toContain('isStructuredExplanation(q.explanationData')
     expect(queries).toMatch(/renderStructuredExplanation\(estructurada, \{[\s\S]{0,200}optionOrder/)
-    expect(queries).toMatch(/explanation: estructurada[\s\S]{0,300}: q\.explanation/)
+    // La ventana es amplia a propósito: entre el render y el fallback hay comentarios que
+    // explican por qué `nOptions` son las opciones SERVIDAS y no las del banco (T-267).
+    // Lo que se protege es que exista el fallback, no cuánto se explique por medio.
+    expect(queries).toMatch(/explanation: estructurada[\s\S]{0,900}: q\.explanation/)
     // Y la columna tiene que viajar en el SELECT, o nada de lo anterior se entera.
     expect(queries).toContain('explanationData: questions.explanationData')
   })
   it('el gate es OPT-IN: shuffleOn exige shuffleOptions del request + flag/scope', () => {
     expect(queries).toMatch(/shuffleOn\s*=\s*shuffleOptions === true && isShuffleEnabledFor\(positionType\)/)
   })
-  it('NINGÚN transformQuestion se llama sin decidir shuffle (todos pasan un 3er arg)', () => {
-    // Cada llamada (que no sea la definición) debe pasar shuffleOn como 3er arg.
-    // Una llamada con solo 2 args barajaría=false SIEMPRE (gap silencioso).
-    const calls = queries.match(/transformQuestion\([^)]*\)/g) || []
-    const invocations = calls.filter(c => !c.includes('q: QuestionRow')) // excluye la firma
+  it('NINGUNA llamada a transformQuestion olvida el shuffle NI el nº de opciones del examen', () => {
+    // Una llamada sin `shuffleOn` barajaría=false SIEMPRE (gap silencioso); una sin
+    // `opcionesExamen` serviría 4 opciones donde el examen tiene 3, que es justo el
+    // fallo que reportó Pilar (T-267). Ambas cosas se comprueban en la misma línea.
+    const calls = queries.match(/transformQuestion\((?![\s\S]{0,40}q: QuestionRow)[^;]*?\)/g) || []
+    const invocations = calls.filter((c) => !c.includes('q: QuestionRow'))
     expect(invocations.length).toBeGreaterThanOrEqual(5)
     for (const c of invocations) {
-      expect(c).toMatch(/,\s*shuffleOn\)/)
+      expect(c).toMatch(/,\s*shuffleOn,\s*opcionesExamen\)/)
     }
+  })
+
+  it('el nº de opciones del examen se resuelve UNA vez por request y solo con el motor activo', () => {
+    // Si se resolviera por pregunta serían N consultas por test; y si se resolviera con el
+    // motor apagado, se recortaría sin barajar — recortar y barajar comparten interruptor.
+    expect(queries).toMatch(/const opcionesExamen = shuffleOn \? await opcionesExamenDe\(positionType\) : null/)
   })
   it('filteredQuestionSchema declara option_order (viaja al cliente)', () => {
     expect(schemas).toMatch(/option_order:\s*z\.array\(z\.number\(\)\.int\(\)\)\.nullable\(\)\.optional\(\)/)
@@ -153,9 +163,12 @@ describe('cableado shuffle: VALIDADOR (answer-and-save mapea mostrada→original
   it('el request acepta optionOrder', () => {
     expect(schemas).toMatch(/optionOrder:\s*z\.array\(z\.number\(\)\.int\(\)\)\.nullable\(\)\.optional\(\)/)
   })
-  it('valida con isValidOrder y mapea con displayedToOriginal (funciones REALES)', () => {
+  it('valida con isValidExposureOrder y mapea con displayedToOriginal (funciones REALES)', () => {
     expect(queries).toContain("from '@/lib/shuffle/permute'")
-    expect(queries).toMatch(/isValidOrder\(params\.optionOrder, n\)/)
+    // Desde T-267 el orden puede ser un SUBCONJUNTO (3 de 4): `isValidOrder` exigía
+    // permutación completa y habría tratado esos órdenes como corruptos → identidad →
+    // corrección contra la clave equivocada.
+    expect(queries).toMatch(/isValidExposureOrder\(params\.optionOrder, n\)/)
     expect(queries).toMatch(/displayedToOriginal\(order, params\.userAnswer\)/)
   })
   it('compara el índice ORIGINAL contra correct_option (no la posición mostrada)', () => {

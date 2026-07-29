@@ -15,6 +15,18 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
+
+- **Qué falta:** el simulacro y el modo examen del temario (`ExamLayout` ← `TestExamenPage`) deben servir las opciones barajadas y, en las oposiciones que examinan con 3, recortadas — su razón de ser es parecerse al examen que el opositor va a hacer (decisión Manuel, 29/07). Los tests de práctica ya lo hacen desde [T-267]; el examen no.
+- **NO confundir con el examen oficial REPRODUCIDO** (`/[oposicion]/test/examen-oficial?fecha=…`, servido por `/api/v2/official-exams/questions` y armado por tags + `question_official_exams`): ese es el documento tal como cayó y **no se toca nunca**, ni orden ni opciones.
+- **Por qué NO es "mandar `shuffleOptions: true`" y basta** (investigado 29/07):
+  1. **El modo examen corrige por LETRA.** `lib/api/exam/queries.ts` compara `userAnswer` ('a'|'b'|'c'|'d') contra la letra derivada de `correct_option`. Con barajado, esa letra es la de la posición MOSTRADA: hay que traducirla al índice ORIGINAL en `/api/exam/answer` y en la validación batch de `/api/exam/validate`, o se marcan como fallo respuestas acertadas (el incidente de [T-235], por otra puerta).
+  2. **El examen se REANUDA, y ahí está el peligro de verdad.** `/api/exam/resume` reconstruye las opciones desde la pregunta. Si se baraja al servir y el orden no se persiste EN ESE MOMENTO, quien deje el examen a medias y vuelva verá otro orden, con sus respuestas anteriores apuntando a posiciones que ya no significan lo mismo → **se corrompen exámenes en curso**, que es peor que el problema que se resuelve.
+- **Diseño mínimo:** persistir el orden de exposición al SERVIR el examen (no al responder) y que `resume`, `answer` y `validate` lean de ahí. El núcleo ya existe y está probado: `subsetOrderFor` / `isValidExposureOrder` (`lib/shuffle/subsetOrder.ts`), con copia paritaria en el backend.
+- **Condiciones heredadas de [T-267]** (no repetirlas mal): solo preguntas elegibles (`shuffle_safety='safe'` o explicación estructurada), nunca las que citan al conjunto ("todas las anteriores"), la correcta siempre incluida, y el nº de opciones sale de `examen_config` — nunca hardcodeado.
+- **Relacionadas:** [T-267] (fase 1, hecha), [T-235] (piloto del motor), [T-262] (explicaciones que clavan la letra).
+- **Origen:** feedback `ed09cf73` de Pilar Martín + decisión de Manuel del 29/07.
+
 ### [T-272] 🔴 [ABIERTO 29/07] El canal de email de alertas manda 64 correos al día: cuatro reglas se comen el 85% y taparían la caída de verdad
 
 - **Medido el 29/07 sobre 7 días (`observable_events` / `alert_fired`):** 446 alertas disparadas = **~64 emails/día**. Reparto: `critical` 383, `error` 45, `warn` 18. Cuatro reglas son 350 de las 446:
@@ -70,6 +82,18 @@
   - **[T-262]** (el `intro` de `explanation_data` clava la letra en 1.211 preguntas `safe`). Es exactamente el mismo modo de fallo que aquí: una explicación que nombra una opción que el usuario no vio. **Su reparación aumenta el banco elegible de esta ficha.**
   - **[T-080]** (fase 2 de explicaciones estructuradas): cuanto más avance, más preguntas elegibles.
 - **Mientras tanto, qué se le dice a quien pregunte:** que hoy no existe la opción de elegir 3 respuestas, sin prometer fecha. Respuesta pendiente de enviar a Pilar (feedback `ed09cf73`).
+- **HECHO 29/07 (fase 1 — tests de práctica):** motor de subconjunto (`lib/shuffle/subsetOrder.ts`) + lectura de `examen_config` en el serve (`lib/api/filtered-questions/opcionesExamen.ts`) + integración en `transformQuestion`. Condiciones respetadas: solo preguntas elegibles, se excluyen las que citan al conjunto ("todas las anteriores"), la correcta siempre está y no cae siempre en la misma posición. **Dos fallos silenciosos encontrados al hacerlo**, ambos arreglados con test: (a) la validación al responder exigía permutación COMPLETA → un subconjunto se habría tomado por corrupto y se habría corregido contra la clave original (el bug de los 56 aciertos, por otra puerta); (b) el render de la explicación estructurada descartaba el orden y recorría todas las posiciones → habría escrito un apartado sobre una opción que el usuario no vio.
+
+- **LOS TRES FLUJOS (mapeados el 29/07, para no volver a confundirlos):**
+
+  | Flujo | Cómo se arma | ¿Baraja/recorta? |
+  |---|---|---|
+  | Examen oficial REPRODUCIDO (`/[oposicion]/test/examen-oficial?fecha=…`) | `/api/v2/official-exams/questions` por fecha+parte, reservas incluidas. Camino propio; las preguntas se agrupan por tags (`Examen Oficial`, `Aux Admin Estado`, año, `Primera/Segunda parte`, `Reserva`) y `question_official_exams` | **NO, nunca.** Es el documento tal como cayó: si aquel examen tuvo 4 opciones, fueron 4 |
+  | Modo examen / simulacro del TEMARIO (`ExamLayout` ← `TestExamenPage`) | `/api/questions/filtered`, hoy SIN `shuffleOptions` | **Debe hacerlo** (decisión Manuel 29/07) — pendiente, ver abajo |
+  | Tests de práctica (`TestLayout`, `DynamicTest`) | `/api/questions/filtered` con `shuffleOptions` | **Sí**, desde hoy |
+
+- **PENDIENTE — fase 2: modo examen.** No es "mandar `shuffleOptions: true`": el modo examen corrige **por LETRA** (`userAnswer='b'` contra la letra derivada de `correct_option`, en `lib/api/exam/queries.ts`), así que hay que traducir la letra MOSTRADA al índice original en `/api/exam/answer` y en la validación batch de `/api/exam/validate`. Y sobre todo: **el examen se REANUDA**. Hoy `/api/exam/resume` reconstruye las opciones desde la pregunta; si se baraja al servir sin persistir el orden EN ESE MOMENTO, quien deje el examen a medias y vuelva verá otro orden y sus respuestas previas apuntarán a posiciones que ya no significan lo mismo — se corrompen exámenes en curso, que es peor que el problema que se resuelve. **Diseño mínimo:** persistir el orden al SERVIR (no al responder) y que `resume`/`answer`/`validate` lean de ahí. Tarea de sesión propia.
+
 - **Origen:** feedback `ed09cf73`, 28/07/2026.
 
 

@@ -17,6 +17,7 @@
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
+import { isValidExposureOrder } from '@/lib/shuffle/subsetOrder'
 
 const raiz = process.cwd()
 const leer = (rel: string) => readFileSync(join(raiz, rel), 'utf8')
@@ -32,6 +33,44 @@ describe('paridad del barajado entre frontend y backend', () => {
     expect(leer('backend/src/db/schema.ts')).toMatch(/optionOrder:\s*integer\(["']option_order["']\)\.array\(\)/)
   })
 
+  it('AMBOS validan con la versión que admite SUBCONJUNTOS (T-267)', () => {
+    // Desde T-267 una pregunta puede servirse con 3 de sus 4 opciones. `isValidOrder`
+    // exige permutación completa: con él, esos órdenes se tomarían por corruptos → se
+    // trataría como identidad → se corregiría la posición mostrada contra la clave
+    // original. Es el mismo fallo que marcó 56 aciertos como error, por otra puerta.
+    for (const rel of [
+      'lib/api/v2/answer-and-save/queries.ts',
+      'backend/src/answer-save/answer-save.service.ts',
+    ]) {
+      const src = leer(rel)
+      expect(src).toContain('isValidExposureOrder')
+      expect(src).not.toMatch(/\bisValidOrder\(/)
+    }
+  })
+
+  it('la copia backend de isValidExposureOrder se comporta IGUAL que el original', () => {
+    const cuerpo = leer('backend/src/shuffle/subset-order.ts')
+      .replace(/\/\*\*[\s\S]*?\*\//g, '')
+      .replace(/export const/g, 'const')
+      .replace(/export function/g, 'function')
+      .replace(/order: unknown/g, 'order')
+      .replace(/mostradas: number/g, 'mostradas')
+      .replace(/maxOriginales: number = MAX_OPCIONES_BANCO/g, 'maxOriginales = MAX_OPCIONES_BANCO')
+      .replace(/\): order is number\[\] \{/g, ') {')
+      .replace(/new Set<number>\(\)/g, 'new Set()')
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+    const back = new Function(`${cuerpo}; return { isValidExposureOrder };`)() as {
+      isValidExposureOrder: (o: unknown, m: number) => boolean
+    }
+    const casos: Array<[unknown, number]> = [
+      [[2, 3, 0, 1], 4], [[2, 0, 3], 3], [[3, 1, 0], 3], [[2, 0, 3], 4],
+      [[0, 0, 1], 3], [[0, 1, 9], 3], [[0, 1, -1], 3], [null, 3], ['0,1,2', 3], [[], 0],
+    ]
+    for (const [orden, mostradas] of casos) {
+      expect(back.isValidExposureOrder(orden, mostradas)).toBe(isValidExposureOrder(orden, mostradas))
+    }
+  })
+
   it('AMBOS mapean la posición mostrada al índice original antes de corregir', () => {
     // Comparar `userAnswer === correctOption` a pelo es EXACTAMENTE el bug: marca
     // fallo a quien acertó cuando la pregunta se sirvió barajada.
@@ -41,7 +80,8 @@ describe('paridad del barajado entre frontend y backend', () => {
     ]) {
       const src = leer(rel)
       expect(src).toContain('displayedToOriginal')
-      expect(src).toContain('isValidOrder')
+      // La validación es la que admite subconjuntos (ver el test de arriba).
+      expect(src).toContain('isValidExposureOrder')
     }
   })
 

@@ -22,7 +22,11 @@ import type { AnswerAndSaveRequest, AnswerAndSaveResponse } from './schemas'
 import { resolveTemaByQuestionIdFast } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { OposicionId } from '@/lib/api/tema-resolver/schemas'
-import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
+import { displayedToOriginal } from '@/lib/shuffle/permute'
+// Admite SUBCONJUNTOS (3 de 4): desde T-267 una pregunta puede servirse con menos
+// opciones de las que tiene. `isValidOrder` exigía permutación completa y habría
+// rechazado esos órdenes → identidad → corrección contra la clave equivocada.
+import { isValidExposureOrder } from '@/lib/shuffle/subsetOrder'
 import { emitFireAndForget } from '@/lib/observability/emit'
 
 // ============================================
@@ -212,7 +216,7 @@ export async function validateAndSaveAnswer(
   // correct_option (que está en coordenadas originales). Sin option_order válido
   // → identidad = comportamiento histórico intacto (100% retrocompatible).
   const n = params.options.length
-  const hasShuffle = isValidOrder(params.optionOrder, n)
+  const hasShuffle = isValidExposureOrder(params.optionOrder, n)
   const order = hasShuffle ? (params.optionOrder as number[]) : null
 
   // Observabilidad (detector de "clave rota"): el cliente mandó un option_order
