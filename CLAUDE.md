@@ -33,6 +33,14 @@
 
 ## Funcionalidades Recientes
 
+### Preguntas guardadas / favoritas (Implementado: 29/07/2026 — T-261)
+- **Qué es:** el usuario marca una pregunta con el **corazón** (esquina superior derecha de la tarjeta, `components/FavoriteQuestionButton.tsx`) y la repasa luego en **`/test/favoritas`**, accesible desde el enlace **«❤️ Preguntas guardadas»** del Header (también en el menú móvil; solo con sesión). Petición de una usuaria (feedback `46372450`).
+- **NO confundir con `user_test_favorites`**, que guarda CONFIGURACIONES de test (leyes + artículos). Las preguntas guardadas viven en **`user_question_favorites`** (`UNIQUE (user_id, question_id)` → marcar es idempotente por construcción; `ON DELETE CASCADE` en las dos FKs).
+- **API:** `GET/POST/DELETE /api/v2/question-favorites` (el `userId` sale SIEMPRE del token, nunca del body) y `POST /api/v2/tests/favorite-questions`, **gemelo** de `/api/v2/tests/failed-questions` (mismo shape `TestLayoutQuestion`, así la página de repaso es idéntica salvo el origen de las preguntas). Dominio en `lib/api/question-favorites/`.
+- **Diferencia de fondo con el repaso de fallos:** aquí la selección es **manual** (lo que el usuario decide guardar); el repaso de fallos es **automático** por rendimiento. Se combinan.
+- **Observabilidad:** evento `question_favorite_toggled` (`add`/`remove` + total del usuario) en `observable_events`.
+- **Simulación contra BD real:** `npx tsx --env-file=.env.local scripts/sim/sim-favoritas.ts` (usuario efímero que se limpia solo; comprueba idempotencia, hidratación, vacío y CASCADE).
+
 ### Stripe MULTI-CUENTA (Manuel renovaciones + Nila altas) (Implementado: 07/07/2026)
 - **Objetivo:** operar N cuentas Stripe a la vez SIN que los usuarios lo sufran. Cuenta **Manuel** (`acct_1SnGoj…`) gestionaba las **renovaciones** de lo existente; cuenta **Nila** (`acct_1TogG60lMFwxldqj`) cobra las **altas nuevas**. Las suscripciones NO se mueven entre cuentas; `price_id`, `cus_`, webhooks, portal y cupones son POR-CUENTA.
 - **⚠️ ESTADO Manuel (22/07/2026): APAGADA de cobros.** No hubo renovaciones vivas — las 212 subs activas tenían TODAS `cancel_at_period_end=true` (se apagan solas jul 2026→ene 2027 sin cobrar). Se anularon las 15 facturas impagadas (348€) y se cancelaron las 3 `past_due` → esas pasan a free y re-compran por Nila (flip de altas a Nila verificado). **Manuel = ingreso 0, solo goteo de vencimientos.** Detalle: memoria `project_stripe_dual_cuenta_nila`.

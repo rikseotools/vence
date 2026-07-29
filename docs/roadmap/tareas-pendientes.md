@@ -43,6 +43,51 @@
 - **Alcance de la comprobación:** solo `intro` + `outro` (la narrativa que escribimos nosotros). **La `cita` queda fuera a propósito:** el articulado se cita por letras en lenguaje jurídico corriente ("la letra b) del art. 9.1") y meterla daría falsos positivos sobre citas impecables — el mismo criterio que ya salvó [T-204].
 - **Origen:** impugnación `c204dcb5` (María José Martínez, `pregunta_repetida`, 29/07). Al revisar la explicación de la pregunta que sobrevivía al duplicado apareció el intro con la letra clavada.
 - **Relacionada:** [T-080] Fase 2 · [T-235] (bloquea reencender el piloto) · [T-201]/[T-204]/[T-212] (la misma familia de huecos).
+### [T-261] ✅ [HECHO 29/07] Guardar preguntas con el corazón y repasarlas después
+
+- **Quién lo pidió:** Laura Zurdo (premium, `auxiliar_administrativo_madrid`, feedback `46372450`, 28/07): *«un botón (por ejemplo, con el icono de un corazón en la esquina superior derecha) en cada pregunta … y una sección donde el usuario pueda repasar únicamente las preguntas que ha guardado»*. Literalmente eso es lo que se ha construido, incluida la posición del botón.
+- **Por qué no existía y por qué no valía nada de lo que había:**
+  - `user_test_favorites` **no sirve**: guarda CONFIGURACIONES de test (nombre + leyes + artículos), no preguntas. Nombre parecido, dominio distinto.
+  - El **repaso de fallos** es selección AUTOMÁTICA por rendimiento; esto es selección MANUAL. Son ejes distintos y se combinan (una pregunta puede estar fallada y guardada).
+- **Qué se ha hecho:**
+  - **BD** (`supabase/migrations/20260729_user_question_favorites.sql`, aplicada a RDS): tabla `user_question_favorites` con **UNIQUE (user_id, question_id)** (marcar dos veces es idempotente por construcción, sin comprobar antes → sin carrera de doble clic), **ON DELETE CASCADE** en las dos FKs (RGPD y preguntas retiradas) e índices `(user_id, created_at DESC)` y `(question_id)`.
+  - **Dominio** `lib/api/question-favorites/` (schemas Zod + queries), con `ordenarFavoritas` PURA para poder probar el criterio de orden sin BD.
+  - **API v2**: `GET/POST/DELETE /api/v2/question-favorites` (el `userId` sale del TOKEN, nunca del body) y `POST /api/v2/tests/favorite-questions`, gemelo del de fallos y con el mismo shape `TestLayoutQuestion`.
+  - **UI**: `components/FavoriteQuestionButton.tsx` (optimista con reversión si el servidor falla; el estado final lo fija el servidor, así dos pestañas no se pelean) en la esquina superior derecha de la pregunta; página `/test/favoritas` con vacío explicativo; enlace **«❤️ Preguntas guardadas»** en el Header, que sale también en el menú móvil (parte de los mismos `commonLinks`) y solo con sesión.
+  - **Observabilidad**: evento `question_favorite_toggled` (`add`/`remove` + total) — sin él no se puede saber si la función se usa ni si merece evolucionarla.
+- **Capas de prueba (25 tests + simulación real):**
+  - Unit del dominio: `__tests__/lib/questionFavorites.test.ts` (11) — contratos y orden.
+  - Integración del endpoint: `__tests__/api/v2/questionFavoritesEndpoint.test.ts` (7) — 401 sin sesión, se ignora un `userId` ajeno en el body, 400 sin UUID, evento emitido.
+  - Componente: `__tests__/components/FavoriteQuestionButton.test.tsx` (7) — no se pinta sin sesión, marca/desmarca, **revierte si el servidor falla**.
+  - **Simulación contra la BD real**: `npx tsx --env-file=.env.local scripts/sim/sim-favoritas.ts` — 9 comprobaciones con usuario efímero que se limpia solo (idempotencia, hidratación del test, vacío no-error, CASCADE). Verde el 29/07.
+- **PENDIENTE:** desplegar y **responder a Laura** (el borrador aprobado decía «lo hemos anotado»; una vez desplegado hay que decirle que ya lo tiene disponible y dónde).
+- **Origen:** feedback `46372450`, 28/07/2026.
+
+### [T-260] 🟠 [ABIERTO 29/07] El cupo del plan gratuito lo cobraba el CLIENTE: usuarios free se quedaban sin límite habiendo respondido la mitad
+
+- **Qué le pasaba al usuario:** un free llegaba al tope de 25 preguntas/día habiendo respondido bastantes menos. Caso origen: **Sergio** (`pcsergio0@gmail.com`, feedback `0c4303f7`), el **27/07** hizo **un solo test de 15 preguntas**, lo completó, las 15 quedaron guardadas… y `daily_question_usage` marcó **25**. Al día siguiente pagó el trimestral (39 €, cuenta Nila, cobro verificado en Stripe).
+- **Alcance medido** (tablas completas, sin muestreo, 14 días, descontando ya zona horaria + psicotécnicos + ortografía): **41 usuarios free** agotaron el tope habiendo respondido **una media de 13** preguntas. Ritmo estable de 3-6 casos/día, no era una regresión reciente.
+- **CAUSA RAÍZ:** el contador lo incrementaba **solo el cliente** (`useDailyQuestionLimit.recordAnswer` → `POST /api/v2/daily-question/increment`), desacoplado del guardado:
+  - Si la sesión de test no llegaba a crearse, la respuesta se quedaba en un buffer en memoria (`TestLayout.tsx`, `pendingAnswersBuffer`) y se perdía al salir — **pero el cupo se cobraba igual**.
+  - No había idempotencia: un evento repetido del cliente cobraba dos veces.
+  - `incrementDailyCount` existía en el servidor desde hacía meses… **y no la llamaba nadie**. El comentario del código lo decía explícitamente: *"Daily count se incrementa en el frontend. No incrementar aquí para evitar doble conteo"*.
+- **Por qué nadie lo vio:** la observabilidad de peticiones va **muestreada al 10%** (`lib/api/withErrorLogging.ts` → `SUCCESS_TIMING_SAMPLE_RATE = 0.1`), así que no se pueden contar llamadas; y la BD guardaba lo correcto, de modo que ninguna alerta miraba la divergencia. Solo se ve cruzando contador contra respuestas guardadas.
+- **ARREGLADO (29/07) — cobra el servidor, y solo si la respuesta se persiste:**
+  - Regla pura `debeConsumirCupo(saveAction, isPremium)` en `lib/api/dailyLimit.ts`, con copia paritaria en `backend/src/daily-limit/daily-limit.service.ts` (el mismo endpoint lo sirven las dos implementaciones según el flag de canary).
+  - **La idempotencia no necesita tabla nueva**: la da el índice único `unique_test_question (test_id, question_order)` — un reintento de la cola devuelve `already_saved` y no vuelve a cobrar.
+  - Cableado en `app/api/v2/answer-and-save/route.ts`, `backend/src/answer-save/answer-save.controller.ts` (en background) y en las otras dos modalidades: `app/api/answer/psychometric` y `app/api/answer/spelling`.
+  - El cliente pasa a llevar una cuenta **optimista** para que el gate de la UI siga reaccionando al instante, y reconcilia con el servidor a los 2,5 s.
+  - Un fallo del contador **nunca** degrada la respuesta del usuario (fail-silent + `.catch` explícito): como mucho, una pregunta gratis.
+- **Capas de seguridad puestas:**
+  - Unit de la regla: `__tests__/lib/dailyQuotaConsumePolicy.test.ts` (6).
+  - Integración del endpoint: `__tests__/api/v2/answerAndSaveCobroCupo.test.ts` (5) — cobra 1 con `saved_new`, 0 con `already_saved`, 0 con `save_failed`, 0 en premium, y 200 aunque el contador reviente.
+  - Guardarraíl anti-regresión + paridad: `__tests__/guardrails/dailyQuotaServerSide.test.ts` (5) — ningún componente de cliente puede volver a llamar al endpoint de incremento, los dos servidores cobran por la política, y las dos copias se comportan igual.
+  - Alerta continua: `RULE_DAILY_QUOTA_OVERCHARGE` en `backend/src/alerts/alert-rules.ts` (+6 tests en su spec). Mide sobre las tablas de negocio, no sobre eventos muestreados. Documentada en `docs/runbooks/health-check.md` §4.
+- **PENDIENTE al desplegar:**
+  1. **Verificar en producción a las 24-48 h** que la alerta se mantiene por debajo del umbral y que el desfase medido cae a ~0 (query en el cuerpo de la alerta).
+  2. **Decidir si se repara el dato histórico**: los contadores ya inflados de hoy no se reconstruyen solos. Se puede recalcular el de hoy desde las respuestas reales para no dejar a nadie bloqueado injustamente — es una decisión de Manuel, no la he ejecutado.
+  3. **Psicotécnicos y ortografía siguen sin idempotencia física** (sus tablas de respuestas no tienen índice único por sesión+pregunta): ahí se cobra por guardado correcto, que ya es mejor que por evento de cliente, pero si se añade el índice conviene pasarlas a la misma regla.
+- **Origen:** investigación del feedback `0c4303f7` (Sergio) el 29/07/2026, a raíz de la pregunta "¿por qué siendo free hizo más de 25 preguntas diarias?" — resultó ser lo contrario: hacía menos de las que le cobraban.
 
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.

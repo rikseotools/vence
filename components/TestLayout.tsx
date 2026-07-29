@@ -12,6 +12,7 @@ import { getOposicionSlugFromPathname, resolveOposicionSlugForNav } from '@/lib/
 import { getValidHotArticleTargets } from '@/lib/config/exam-positions'
 import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
+import FavoriteQuestionButton from './FavoriteQuestionButton'
 import ShareQuestion from './ShareQuestion'
 import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
 import MarkdownExplanation from './MarkdownExplanation'
@@ -236,6 +237,28 @@ export default function TestLayout({
 
   // 📊 Meta diaria de estudio (solo para registrar respuestas)
   const { recordAnswerForGoal } = useDailyGoal()
+
+  // Preguntas ya guardadas por el usuario (T-261) — para pintar el corazón relleno
+  // al entrar. Una sola petición por montaje; si falla, los corazones salen vacíos
+  // (degradación silenciosa: marcar sigue funcionando).
+  const [favoritasIniciales, setFavoritasIniciales] = useState<string[]>([])
+  useEffect(() => {
+    if (!user) return
+    let vivo = true
+    ;(async () => {
+      try {
+        const headers = await getAuthHeaders()
+        if (!headers['Authorization']) return
+        const res = await fetch('/api/v2/question-favorites', { headers })
+        if (!res.ok) return
+        const json = await res.json()
+        if (vivo && Array.isArray(json?.questionIds)) setFavoritasIniciales(json.questionIds)
+      } catch {
+        // sin favoritas iniciales; el botón sigue operativo
+      }
+    })()
+    return () => { vivo = false }
+  }, [user])
 
   // 🤖 Detección de bots y análisis de comportamiento (solo usuarios autenticados)
   const { isBot, botScore } = useBotDetection(user?.id ?? null)
@@ -2041,13 +2064,22 @@ export default function TestLayout({
               
               {/* Pregunta actual con dark mode */}
               <div className="mb-6">
-                <div className="mb-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
                   <h2
                     ref={questionHeaderRef}
                     className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2"
                   >
                     Pregunta {currentQuestion + 1}
                   </h2>
+                  {/* Guardar la pregunta para repasarla luego (T-261). Arriba a la
+                      derecha, que es donde la usuaria lo pidió y donde no compite con
+                      las opciones ni con los botones de respuesta. */}
+                  <FavoriteQuestionButton
+                    questionId={(currentQ?.id as string) ?? null}
+                    initialIsFavorite={favoritasIniciales.includes((currentQ?.id as string) ?? '')}
+                    positionType={userOposicionId ?? null}
+                    topicNumber={typeof tema === 'number' && tema > 0 ? tema : null}
+                  />
                   {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
                 </div>
                 

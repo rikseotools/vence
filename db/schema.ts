@@ -3233,6 +3233,40 @@ export const convocatoriasBoe = pgTable("convocatorias_boe", {
 	check("convocatorias_boe_tipo_check", sql`(tipo IS NULL) OR (tipo = ANY (ARRAY['convocatoria'::text, 'admitidos'::text, 'tribunal'::text, 'resultado'::text, 'correccion'::text, 'otro'::text]))`),
 ]);
 
+/**
+ * Preguntas marcadas manualmente por el usuario (corazón) para repasarlas después — T-261.
+ *
+ * NO confundir con `userTestFavorites`, que guarda CONFIGURACIONES de test (leyes y
+ * artículos seleccionados). Aquí una fila = "este usuario guardó esta pregunta".
+ * La unicidad (user_id, question_id) hace el marcado idempotente por construcción.
+ */
+export const userQuestionFavorites = pgTable("user_question_favorites", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	questionId: uuid("question_id").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	// Contexto de DÓNDE la guardó: no reconstruible después (una pregunta vive en
+	// temas distintos según la oposición). NULL legítimo si la guardó fuera de una
+	// oposición o de un tema concreto.
+	positionType: text("position_type"),
+	topicNumber: integer("topic_number"),
+}, (table) => [
+	index("user_question_favorites_user_position_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.positionType.asc().nullsLast()),
+	index("user_question_favorites_user_created_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.createdAt.desc().nullsLast()),
+	index("user_question_favorites_question_idx").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_question_favorites_user_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "user_question_favorites_question_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_question_favorites_unique").on(table.userId, table.questionId),
+]);
+
 export const userTestFavorites = pgTable("user_test_favorites", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),

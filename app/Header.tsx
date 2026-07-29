@@ -384,6 +384,9 @@ export default function HeaderES() {
       { href: '/test/por-leyes', label: 'Test combinando leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
+      // Preguntas guardadas con el corazón (T-261). Solo con sesión: sin cuenta no hay
+      // nada que guardar, y un enlace que lleva a "inicia sesión" es ruido en el menú.
+      ...(user ? [{ href: '/test/favoritas', label: 'Preguntas guardadas', icon: '❤️', title: 'Repasa las preguntas que has marcado con el corazón' }] : []),
       // Recompensas: SOLO premium/legacy (el programa es solo-premium). El nombre user-facing es
       // "Recompensas" (no "Embajadores"): cubre las CINCO fuentes —referido, registro activo, bug,
       // opinión e impugnación aceptada—, mientras que "referidos"/"embajadores" solo nombra una.
@@ -605,6 +608,21 @@ export default function HeaderES() {
                 >
                   <span className="text-lg">📖</span>
                 </Link>
+
+                {/* ❤️ PREGUNTAS GUARDADAS (T-261) — va en ESTA fila, no en la barra
+                    principal: allí el propio código evita añadir iconos "para no
+                    saturar la barra y tapar el avatar" (ver icono de oposiciones
+                    compatibles). Aquí acompaña al resto de accesos de estudio. */}
+                {user && (
+                  <Link
+                    href="/test/favoritas"
+                    className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                    aria-label="Ir a mis preguntas guardadas"
+                    title="Preguntas guardadas — repasa las que marcaste con el corazón"
+                  >
+                    <span className="text-lg">❤️</span>
+                  </Link>
+                )}
 
                 {/* 💬 ICONO DE SOPORTE — en un test abre el modal aquí (no pierde el test); fuera → /soporte */}
                 <SupportButton
