@@ -37,6 +37,19 @@ export type MotivoBanner =
   | 'sin_prompt'
   /** El usuario lo descartó y el descarte sigue vigente. */
   | 'descartado'
+  /** iOS Safari: no hay prompt, pero SÍ se puede instalar a mano (se enseñan las instrucciones). */
+  | 'mostrar_ios'
+
+/**
+ * Qué banner toca. En iOS no existe `beforeinstallprompt` (WebKit no lo implementa), así que
+ * un botón "Instalar" ahí no puede hacer nada: lo que sí funciona es enseñar los dos pasos de
+ * Safari (Compartir → Añadir a pantalla de inicio).
+ *
+ * Sale de los datos, no de una intuición: de los 114 móviles a los que no se les ofreció nada
+ * en las primeras 17 h, 48 eran iPhone/iPad y **ninguno** instaló la app. Los 66 restantes
+ * (Android) ya la tenían, ya la habían visto o ya la habían descartado — ahí no hay hueco.
+ */
+export type VarianteBanner = 'prompt' | 'ios'
 
 export interface EntradaBanner {
   /** ¿La app corre ya como instalada? (`display-mode: standalone`) */
@@ -45,6 +58,8 @@ export interface EntradaBanner {
   esMovil: boolean
   /** ¿Se capturó `beforeinstallprompt` y hay algo que lanzar? */
   promptDisponible: boolean
+  /** ¿Es Safari en iOS? Ahí no hay prompt pero sí se puede instalar a mano. */
+  esIosSafari?: boolean
   /** Marca de tiempo (ms) hasta la que el usuario no quiere verlo. `null` = nunca lo descartó. */
   silenciadoHasta: number | null
   /** Ahora, en ms. Se inyecta para que la decisión sea determinista y testeable. */
@@ -79,14 +94,25 @@ export function silenciarHasta(accion: 'cerrar' | 'ahora_no', ahora: number): nu
  * sale es el más informativo: si alguien ya la tiene instalada, saber además que la descartó
  * hace tres semanas no aporta nada.
  */
-export function decidirBanner(e: EntradaBanner): { mostrar: boolean; motivo: MotivoBanner } {
-  if (e.yaInstalada) return { mostrar: false, motivo: 'ya_instalada' }
-  if (!e.esMovil) return { mostrar: false, motivo: 'no_movil' }
-  if (!e.promptDisponible) return { mostrar: false, motivo: 'sin_prompt' }
-  if (e.silenciadoHasta != null && e.ahora < e.silenciadoHasta) {
-    return { mostrar: false, motivo: 'descartado' }
+export function decidirBanner(
+  e: EntradaBanner,
+): { mostrar: boolean; motivo: MotivoBanner; variante: VarianteBanner } {
+  if (e.yaInstalada) return { mostrar: false, motivo: 'ya_instalada', variante: 'prompt' }
+  if (!e.esMovil) return { mostrar: false, motivo: 'no_movil', variante: 'prompt' }
+
+  // El silencio se respeta ANTES de elegir variante: da igual cómo se instale, si dijo que no
+  // hace dos días no se le vuelve a poner delante.
+  const silenciado = e.silenciadoHasta != null && e.ahora < e.silenciadoHasta
+
+  if (!e.promptDisponible) {
+    // iOS: no hay nada que lanzar, pero sí que enseñar. Fuera de iOS, sin prompt no hay banner.
+    if (!e.esIosSafari) return { mostrar: false, motivo: 'sin_prompt', variante: 'prompt' }
+    if (silenciado) return { mostrar: false, motivo: 'descartado', variante: 'ios' }
+    return { mostrar: true, motivo: 'mostrar_ios', variante: 'ios' }
   }
-  return { mostrar: true, motivo: 'mostrar' }
+
+  if (silenciado) return { mostrar: false, motivo: 'descartado', variante: 'prompt' }
+  return { mostrar: true, motivo: 'mostrar', variante: 'prompt' }
 }
 
 /**
@@ -98,6 +124,19 @@ export function decidirBanner(e: EntradaBanner): { mostrar: boolean; motivo: Mot
  */
 export function esMovil(userAgent: string): boolean {
   return /Android|iPhone|iPad|iPod/i.test(userAgent)
+}
+
+/**
+ * ¿Safari en iOS? Solo Safari puede "Añadir a pantalla de inicio": en Chrome/Firefox de iPhone
+ * esa opción NO existe, así que enseñarles esos pasos sería mandarlos a buscar un botón que no
+ * van a encontrar. A ellos no se les enseña nada (v1); si algún día pesan, el mensaje correcto
+ * es otro ("ábrelo en Safari").
+ */
+export function esIosSafari(userAgent: string): boolean {
+  const esIos = /iPhone|iPad|iPod/i.test(userAgent)
+  if (!esIos) return false
+  // Chrome (CriOS), Firefox (FxiOS), Edge (EdgiOS), Opera (OPiOS) sobre iOS: no pueden instalar.
+  return !/CriOS|FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV/i.test(userAgent)
 }
 
 /** Clave de `localStorage`. Con prefijo del proyecto para no chocar con nada más. */

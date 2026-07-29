@@ -8,6 +8,7 @@
 // los casos de "cuánto dura el descarte" son deterministas en vez de depender del día.
 
 import {
+  esIosSafari,
   decidirBanner,
   silenciarHasta,
   esMovil,
@@ -30,7 +31,7 @@ const base = {
 
 describe('decidirBanner — a quién se le ofrece instalar', () => {
   it('al caso base: móvil, sin instalar y con prompt', () => {
-    expect(decidirBanner(base)).toEqual({ mostrar: true, motivo: 'mostrar' })
+    expect(decidirBanner(base)).toEqual({ mostrar: true, motivo: 'mostrar', variante: 'prompt' })
   })
 
   it('NO a quien ya la tiene instalada', () => {
@@ -38,6 +39,7 @@ describe('decidirBanner — a quién se le ofrece instalar', () => {
     expect(decidirBanner({ ...base, yaInstalada: true })).toEqual({
       mostrar: false,
       motivo: 'ya_instalada',
+      variante: 'prompt',
     })
   })
 
@@ -45,6 +47,7 @@ describe('decidirBanner — a quién se le ofrece instalar', () => {
     expect(decidirBanner({ ...base, esMovil: false })).toEqual({
       mostrar: false,
       motivo: 'no_movil',
+      variante: 'prompt',
     })
   })
 
@@ -53,6 +56,7 @@ describe('decidirBanner — a quién se le ofrece instalar', () => {
     expect(decidirBanner({ ...base, promptDisponible: false })).toEqual({
       mostrar: false,
       motivo: 'sin_prompt',
+      variante: 'prompt',
     })
   })
 
@@ -60,6 +64,7 @@ describe('decidirBanner — a quién se le ofrece instalar', () => {
     expect(decidirBanner({ ...base, silenciadoHasta: AHORA + DIA })).toEqual({
       mostrar: false,
       motivo: 'descartado',
+      variante: 'prompt',
     })
   })
 
@@ -67,6 +72,7 @@ describe('decidirBanner — a quién se le ofrece instalar', () => {
     expect(decidirBanner({ ...base, silenciadoHasta: AHORA - 1 })).toEqual({
       mostrar: true,
       motivo: 'mostrar',
+      variante: 'prompt',
     })
   })
 
@@ -216,5 +222,78 @@ describe('simulación: un usuario de móvil a lo largo de un mes', () => {
         }).mostrar,
       ).toBe(false)
     }
+  })
+})
+
+// ── Variante iOS ─────────────────────────────────────────────────────────────────────────────
+//
+// De dónde sale: en las primeras 17 h del banner, 114 móviles no recibieron ninguna oferta.
+// 48 eran iPhone/iPad y NINGUNO instaló la app; los 66 de Android ya la tenían, ya la habían
+// visto o ya la habían descartado. En iOS no existe `beforeinstallprompt`, así que el hueco no
+// se arregla con un botón: se arregla enseñando los dos pasos de Safari.
+describe('decidirBanner — iOS (sin prompt, pero instalable a mano)', () => {
+  const base = { yaInstalada: false, esMovil: true, promptDisponible: false, silenciadoHasta: null, ahora: 1_000 }
+
+  it('en iOS Safari SÍ se enseña, con motivo propio y variante `ios`', () => {
+    expect(decidirBanner({ ...base, esIosSafari: true })).toEqual({
+      mostrar: true, motivo: 'mostrar_ios', variante: 'ios',
+    })
+  })
+
+  it('sin prompt y sin ser iOS Safari sigue sin enseñarse nada (un botón que no instala es peor)', () => {
+    expect(decidirBanner({ ...base, esIosSafari: false })).toEqual({
+      mostrar: false, motivo: 'sin_prompt', variante: 'prompt',
+    })
+  })
+
+  it('el descarte se respeta igual en iOS', () => {
+    expect(decidirBanner({ ...base, esIosSafari: true, silenciadoHasta: 5_000 })).toEqual({
+      mostrar: false, motivo: 'descartado', variante: 'ios',
+    })
+  })
+
+  it('si ya la tiene instalada, en iOS tampoco se enseña', () => {
+    expect(decidirBanner({ ...base, esIosSafari: true, yaInstalada: true }).mostrar).toBe(false)
+  })
+
+  it('en escritorio no se enseña aunque el UA parezca Safari', () => {
+    expect(decidirBanner({ ...base, esMovil: false, esIosSafari: true }).motivo).toBe('no_movil')
+  })
+
+  it('cuando SÍ hay prompt, manda el prompt (Android no ve instrucciones de Safari)', () => {
+    expect(decidirBanner({ ...base, promptDisponible: true, esIosSafari: true })).toEqual({
+      mostrar: true, motivo: 'mostrar', variante: 'prompt',
+    })
+  })
+})
+
+describe('esIosSafari — solo Safari puede "Añadir a pantalla de inicio"', () => {
+  const SAFARI_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Mobile/15E148 Safari/604.1'
+
+  it('reconoce Safari en iPhone (el caso de los 48 usuarios sin oferta)', () => {
+    expect(esIosSafari(SAFARI_IPHONE)).toBe(true)
+  })
+
+  it('reconoce iPad', () => {
+    expect(esIosSafari('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Safari/604.1')).toBe(true)
+  })
+
+  it('descarta Chrome de iPhone: ahí NO existe "Añadir a pantalla de inicio"', () => {
+    expect(esIosSafari('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) CriOS/120.0 Mobile/15E148 Safari/604.1')).toBe(false)
+  })
+
+  it('descarta Firefox y Edge de iPhone por el mismo motivo', () => {
+    expect(esIosSafari('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) FxiOS/120.0 Mobile/15E148 Safari/605.1.15')).toBe(false)
+    expect(esIosSafari('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) EdgiOS/120.0 Mobile/15E148 Safari/605.1.15')).toBe(false)
+  })
+
+  it('descarta los navegadores dentro de apps (Instagram/Facebook), que tampoco instalan', () => {
+    expect(esIosSafari(`${SAFARI_IPHONE} Instagram 300.0`)).toBe(false)
+    expect(esIosSafari('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15 [FBAN/FBIOS;FBAV/440]')).toBe(false)
+  })
+
+  it('Android y escritorio no son iOS Safari', () => {
+    expect(esIosSafari('Mozilla/5.0 (Linux; Android 14) Chrome/120.0 Mobile Safari/537.36')).toBe(false)
+    expect(esIosSafari('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15')).toBe(false)
   })
 })

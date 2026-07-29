@@ -241,3 +241,65 @@ describe('contrato de severidad', () => {
     expect(src).toContain("ACCIONES_DE_FALLO.has(accion) ? 'error' : 'info'")
   })
 })
+
+// ── iPhone: instrucciones en vez de un botón que no puede instalar ───────────────────────────
+//
+// 48 usuarios de iPhone en 17 h se quedaron sin ninguna oferta y ninguno instaló: en iOS no
+// existe `beforeinstallprompt`, así que el banner de botón nunca les salía. Lo que sí funciona
+// ahí son los dos pasos de Safari.
+const UA_IPHONE_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Mobile/15E148 Safari/604.1'
+const UA_IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) CriOS/120.0 Mobile/15E148 Safari/604.1'
+
+describe('iPhone (Safari): se enseñan los pasos, no un botón', () => {
+  it('aparece SIN esperar a ningún prompt del navegador', () => {
+    configurarNavegador({ ua: UA_IPHONE_SAFARI })
+    render(<PwaInstallBanner />)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText(/Compartir/)).toBeInTheDocument()
+    expect(screen.getByText(/Añadir a pantalla de inicio/)).toBeInTheDocument()
+  })
+
+  it('NO ofrece "Instalar": ahí ese botón no puede hacer nada', () => {
+    configurarNavegador({ ua: UA_IPHONE_SAFARI })
+    render(<PwaInstallBanner />)
+    expect(screen.queryByRole('button', { name: 'Instalar' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entendido' })).toBeInTheDocument()
+  })
+
+  it('se mide con la VARIANTE, para poder saber si sirve de algo', () => {
+    configurarNavegador({ ua: UA_IPHONE_SAFARI })
+    render(<PwaInstallBanner />)
+    const mostrado = emitidos.find((e) => e.metadata?.accion === 'mostrado')
+    expect(mostrado?.metadata?.variante).toBe('ios')
+  })
+
+  it('el descarte se mide con su gesto y su variante, y silencia igual', async () => {
+    configurarNavegador({ ua: UA_IPHONE_SAFARI })
+    render(<PwaInstallBanner />)
+    await userEvent.click(screen.getByRole('button', { name: 'Entendido' }))
+    const descartado = emitidos.find((e) => e.metadata?.accion === 'descartado')
+    expect(descartado?.metadata).toMatchObject({ gesto: 'ahora_no', variante: 'ios' })
+    expect(almacen.get(CLAVE_SILENCIO)).toBeTruthy()
+  })
+
+  it('en Chrome de iPhone NO se enseña: ahí no existe "Añadir a pantalla de inicio"', () => {
+    configurarNavegador({ ua: UA_IPHONE_CHROME })
+    render(<PwaInstallBanner />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('si ya la tiene instalada, tampoco se le enseñan los pasos', () => {
+    configurarNavegador({ ua: UA_IPHONE_SAFARI, standalone: true })
+    render(<PwaInstallBanner />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('en Android el banner sigue siendo el de siempre (con botón, tras el prompt)', () => {
+    configurarNavegador({ ua: UA_MOVIL })
+    render(<PwaInstallBanner />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    dispararPrompt()
+    expect(screen.getByRole('button', { name: 'Instalar' })).toBeInTheDocument()
+    expect(screen.queryByText(/Añadir a pantalla de inicio/)).not.toBeInTheDocument()
+  })
+})

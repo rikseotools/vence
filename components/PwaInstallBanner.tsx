@@ -32,6 +32,8 @@ import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 import {
   CLAVE_SILENCIO,
   decidirBanner,
+  esIosSafari,
+  type VarianteBanner,
   esMovil,
   leerSilencio,
   silenciarHasta,
@@ -74,6 +76,9 @@ function emitir(accion: string, extra?: Record<string, unknown>) {
 
 export default function PwaInstallBanner() {
   const [visible, setVisible] = useState(false)
+  // Qué banner toca: el de botón (Android/Chrome) o el de instrucciones (iOS Safari, donde
+  // `beforeinstallprompt` no existe y la instalación es manual).
+  const [variante, setVariante] = useState<VarianteBanner>('prompt')
   const promptRef = useRef<EventoInstalacion | null>(null)
   // Dos guardas SEPARADAS, y esto tiene historia: al principio era una sola, y el resultado
   // fue que al montar (cuando Chrome aún no ha disparado `beforeinstallprompt`) se emitía
@@ -92,6 +97,7 @@ export default function PwaInstallBanner() {
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true
 
     const movil = esMovil(window.navigator.userAgent)
+    const iosSafari = esIosSafari(window.navigator.userAgent)
     const silenciadoHasta = leerSilencio(safeGet(CLAVE_SILENCIO))
 
     // Se evalúa DOS veces: ahora (para descartar de inmediato los casos que no dependen del
@@ -99,19 +105,23 @@ export default function PwaInstallBanner() {
     // parece, a veces segundos después de cargar, así que decidir solo al montar dejaría el
     // banner sin salir nunca.
     const evaluar = (promptDisponible: boolean) => {
-      const { mostrar, motivo } = decidirBanner({
+      const { mostrar, motivo, variante: cual } = decidirBanner({
         yaInstalada,
         esMovil: movil,
         promptDisponible,
+        esIosSafari: iosSafari,
         silenciadoHasta,
         ahora: Date.now(),
       })
       if (mostrar) {
+        setVariante(cual)
         setVisible(true)
         if (temporizadorSinPrompt.current) clearTimeout(temporizadorSinPrompt.current)
         if (!medidoMostrado.current) {
           medidoMostrado.current = true
-          emitir('mostrado')
+          // La variante viaja en TODOS los eventos: sin ella, las instalaciones de iOS y las
+          // de Android caerían en el mismo saco y no se podría saber si esto sirve de algo.
+          emitir('mostrado', { variante: cual })
         }
         return
       }
@@ -198,8 +208,11 @@ export default function PwaInstallBanner() {
     // `accion` PISABA el nombre de la acción y el evento salía como 'cerrar' en vez de
     // 'descartado'. Lo cazó el test antes de que llegara a producción, donde habría partido
     // el embudo en dos categorías fantasma.
-    emitir('descartado', { gesto })
-  }, [])
+    emitir('descartado', { gesto, variante })
+    // `variante` en las dependencias, y no es un detalle: sin ella el callback se quedaba con
+    // el valor del primer render ('prompt') y en iPhone el descarte se medía como si fuera el
+    // banner de Android. La métrica habría salido creíble y falsa. Lo cazó el test.
+  }, [variante])
 
   if (!visible) return null
 
@@ -217,6 +230,19 @@ export default function PwaInstallBanner() {
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">
               Entra directo desde el icono, a pantalla completa.
             </p>
+            {/* iOS no tiene instalación con un botón: WebKit no implementa el prompt, así que
+                aquí lo único que funciona son los dos pasos de Safari. Poner un "Instalar" que
+                no instala es peor que no poner nada. */}
+            {variante === 'ios' && (
+              <ol className="text-sm text-gray-600 dark:text-gray-300 mt-2 space-y-1 list-decimal list-inside">
+                <li>
+                  Toca <span aria-hidden="true">⬆️</span> <strong>Compartir</strong>, abajo en Safari
+                </li>
+                <li>
+                  Elige <strong>Añadir a pantalla de inicio</strong>
+                </li>
+              </ol>
+            )}
           </div>
           <button
             onClick={() => descartar('cerrar')}
@@ -227,17 +253,21 @@ export default function PwaInstallBanner() {
           </button>
         </div>
         <div className="flex gap-2 mt-3">
-          <button
-            onClick={instalar}
-            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold min-h-[44px]"
-          >
-            Instalar
-          </button>
+          {variante === 'prompt' && (
+            <button
+              onClick={instalar}
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold min-h-[44px]"
+            >
+              Instalar
+            </button>
+          )}
           <button
             onClick={() => descartar('ahora_no')}
-            className="px-4 py-2.5 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium min-h-[44px]"
+            className={`px-4 py-2.5 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium min-h-[44px] ${
+              variante === 'ios' ? 'flex-1' : ''
+            }`}
           >
-            Ahora no
+            {variante === 'ios' ? 'Entendido' : 'Ahora no'}
           </button>
         </div>
       </div>
