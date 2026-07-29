@@ -90,6 +90,23 @@ describe('structuredNarrativeStaleLetters — el detector', () => {
       .toEqual([])
   })
 
+  // 29/07: al reparar el banco quedaron 8 marcadas que eran TODAS narrativa impecable citando el
+  // articulado por letra. La exención ya existía para las RAZONES desde el 28/07 (art. 9.1 LPRL) y
+  // vivía suelta en `aplicar-explicacion.ts`; subirla al núcleo la comparte con el gate de serve y
+  // el sweep. Una bandeja que grita todos los días se deja de mirar.
+  it('NO marca la cita del articulado por letra («la letra a) del artículo 218.6»)', () => {
+    expect(
+      structuredNarrativeStaleLetters(
+        base({ intro: 'Se exige aprobación del Parlamento en los supuestos de la letra a) del artículo 218.6 TFUE.' }),
+      ),
+    ).toEqual([])
+  })
+
+  it('…pero sigue marcando la referencia a una OPCIÓN, que es lo que rompe al barajar', () => {
+    expect(structuredNarrativeStaleLetters(base({ intro: 'Como se ve en la opción B, el plazo es otro.' })))
+      .toEqual(['intro'])
+  })
+
   it('la CITA no se mira: el articulado se cita por letras en lenguaje jurídico corriente', () => {
     // Si la cita entrara al detector, este blockquote impecable marcaría la pregunta como rota.
     const conCitaPorLetras = base({

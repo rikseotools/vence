@@ -223,11 +223,25 @@ export function podarAperturaConLetra(
   return podado || undefined
 }
 
+/**
+ * En Derecho los apartados SE CITAN por letra —«la letra a) del artículo 218.6 TFUE»— y eso NO es
+ * una referencia a la opción A: al barajar sigue siendo verdad, porque nombra la norma, no la
+ * pantalla. Sin esta salvedad el detector marcaba narrativas impecables (8 de las 8 que quedaban
+ * el 29/07 tras reparar las reales: letras de la ley, los grupos A/B/C del EBEP, un `=$C4` de
+ * Excel), y una bandeja que grita todos los días se deja de mirar.
+ *
+ * Es la MISMA regla que `aplicar-explicacion.ts` aplicaba solo a las razones desde el 28/07 (art.
+ * 9.1 LPRL); vive aquí para que la compartan el gate de serve, el sweep y el escritor, en vez de
+ * quedarse en un script.
+ */
+export const CITA_DE_LA_NORMA =
+  /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/gi
+
 export function structuredNarrativeStaleLetters(
   data?: Pick<StructuredExplanation, 'intro' | 'outro'> | null
 ): Array<'intro' | 'outro'> {
   return structuredNarrative(data)
-    .filter(({ texto }) => explanationReferencesLetters(texto))
+    .filter(({ texto }) => explanationReferencesLetters(texto.replace(CITA_DE_LA_NORMA, ' ')))
     .map(({ campo }) => campo)
 }
 

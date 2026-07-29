@@ -146,6 +146,8 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
   //   («como se ve en la B», un "**Clave:** la C es…") queda clavada y contradice a la cabecera
   //   que calcula el render. La regla de arriba solo cubría la apertura canónica; el histórico
   //   transcrito trajo 891 casos justo por ahí. Mismo detector que usan el serve y el sweep.
+  // La salvedad de las citas por letra del articulado la aplica ya el propio detector (vive en el
+  // núcleo desde el 29/07), así que aquí basta con preguntarle.
   const narrativaSucia = structuredNarrativeStaleLetters(estructura)
   if (narrativaSucia.length) {
     throw new ExplicacionRechazada(
