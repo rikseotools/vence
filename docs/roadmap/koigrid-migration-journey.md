@@ -42,7 +42,7 @@
 
 ### 🔴 STILL OPEN — updated 2026-07-29
 - **A4 (new, P0) — the managed restore cannot build a pgvector `ivfflat` index.** `ERROR: memory required is 65 MB, maintenance_work_mem is 64 MB`. `SHOW maintenance_work_mem` → `65536 kB` with **`source: "default"`** (PostgreSQL's factory default, *not* derived from cluster RAM), `PUT /databases/{id}/resources` is `404`, `apply-config` is for node recreation, and your pooler rejects `PGOPTIONS="-c maintenance_work_mem=…"` (`unsupported startup parameter in options`). **Fix: `SET maintenance_work_mem` in the restore session** — it is `USERSET` and we verified the unprivileged `app` role can set it to 256 MB on your own cluster. **Acceptance:** a dump containing `CREATE INDEX … USING ivfflat` over ≥50 k rows restores cleanly on a free-tier cluster.
-- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** Third reproduction (07-25, 07-27, 07-29), always ~30 s, always **empty logs**. New evidence: the failed deployment carries **`runner: null`** while the *same image* deployed fine on the normal path ten minutes earlier — so this looks like a scheduling failure being reported as a health-check failure. None of the documented precondition errors (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`) are returned. **No longer blocks us** (A3 works without it).
+- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** **Fourth reproduction** (07-25, 07-27, 07-29 morning, 07-29 evening on the pricing build), always ~24-30 s, always **empty logs**, always **`runner: null`**. **Now proven platform-wide, not our app: it fails identically on a second, unrelated app (`vence-web9`)**, while both apps deploy fine on the normal path minutes before and after. `runner: null` + no logs + no container output says the replica was **never scheduled** — so `replica_unhealthy` is reporting the wrong layer and sends you hunting for a `healthPath` that doesn't exist. **Asks:** (1) distinguish *never scheduled* from *scheduled and unhealthy* (`no_runner_available` / `scale_out_placement_failed`); (2) emit logs on this path — it is the only failure mode on koigrid that does not self-explain; (3) actually return the documented preconditions (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`), because today none are returned yet placement never happens. **No longer blocks us** (A3 works without it), and **no downtime in any of the four attempts** — the last-good deployment kept serving throughout.
 - **`/rules` `enforcement` message is misleading now that A3 works.** It still returns `enforced:false, servedBy:"legacy_runner"` with a remedy pointing at `scale-out` — on an app that is demonstrably edge-caching. It cost us a wrong conclusion on 07-27 ("A3 is gated behind N1"). Suggestion: report `documentCaching: "active"` separately from `customRules: "pending_central_edge"`.
 - **`GET /apps/{id}/env/verify` reports green on an unresolved `${{…}}` reference.** Our container received the literal string `${{db.vence-mig2.DATABASE_URL}}` (the referenced DB had been deleted) → every API route `500`; `env/verify` said `present:true, matchesConfigured:true`. Ask: fail the deploy on an unresolved reference, and have `env/verify` flag `^\$\{\{.*\}\}$` as `unresolved_reference`.
 - **`postgres: {running, available, behind}` is documented but absent** from `GET /databases/{id}`. Ours actually runs **17.2** while the docs say PG17 ships 17.5 (our source is 17.6) — and you correctly tell people to check this after a migration.
@@ -1706,3 +1706,71 @@ The remaining work is ours: re-clone the database (our POC cluster is a schema-o
 `getClientIp()` / `CF-Connecting-IP` fix before any traffic moves, and put our own Cloudflare in front.
 **A4** (`maintenance_work_mem` too low for ivfflat) only matters if we use your managed restore instead of
 `pg_dump | psql` for the real 31 GB load — we would prefer to use yours.
+
+---
+
+## 🔴 UPDATE 2026-07-29 (evening) — N1 re-tested on the pricing release: **still `replica_unhealthy`, and now proven to be platform-wide, not our app**
+
+Re-ran the `scale-out` path on the build that shipped the cost model. **Fourth consecutive reproduction**
+(2026-07-25 17:02 · 07-27 17:58 · 07-29 06:16 · 07-29 evening), byte-identical failure every time:
+
+```
+PUT  /apps/{id}/scale-out {"enabled":true}
+  → 200 {"scaleOut":{"enabled":true,"servedBy":"central_edge","rulesEnforced":true}}
+POST /apps/{id}/deployments
+  → status: "failed"   error: "replica_unhealthy"   runner: null   logs: ""     (~24 s)
+```
+
+### The new evidence: we ran it on a **second, unrelated app** and it fails the same way
+
+This is the check we had not done before, and it settles what the bug is *not*:
+
+| App | Image | CDN | Normal deploy | `scale-out` deploy |
+|---|---|---|---|---|
+| `vence-web7` | our Next.js 16 clone (ECR) | on | ✅ `running`, serves in 0.05 s | ❌ `replica_unhealthy`, `runner: null`, empty logs |
+| `vence-web9` | different app, different config | on | ✅ `running`, serves in 0.05 s | ❌ **identical failure** |
+
+Both apps deploy fine on the normal path **minutes before and after** the failed scale-out attempt — in
+web7's case, resumed from pause to serving production HTML in **12 s**. So this is not our image, not our
+health endpoint, not our memory footprint and not one app's stored config: **the scale-out path itself fails
+for every app we can point it at.**
+
+### Why we think it is scheduling, not health
+
+`runner: null` on the failed deployment is the tell. On every successful deployment the record carries a
+runner (`docker-ssh`) and logs (`KOI_HEALTH_OK`). Here there is **no runner, no logs, and no container
+output at all** — 24 s from queued to failed. A health check that never had a replica to probe is reporting
+`replica_unhealthy`, which sends the operator to debug the wrong layer entirely (we spent two sessions
+looking for a `healthPath` to tune before noticing there is none to tune).
+
+Three asks, in order of what would have saved us the most time:
+
+1. **Distinguish "never scheduled" from "scheduled and unhealthy."** A code like `no_runner_available` or
+   `scale_out_placement_failed` would have ended this in one attempt instead of four sessions.
+2. **Emit logs on this path.** Every other failure mode on koigrid self-explains — it is the thing this
+   report has praised most consistently. This one is the single exception, and it is the one that has been
+   open longest.
+3. **Return the documented preconditions when they fail.** The docs promise `need_2_meshed_runners` /
+   `scale_out_v1_image_only` / `no_lb_vip`; we get none of them, so from the API's point of view our
+   preconditions are met — yet placement never happens. If the real cause is "no second meshed runner has
+   capacity right now", say exactly that.
+
+**Acceptance test:** on a free-tier account, `scale-out:true` + a deploy of an existing `sourceType:image`
+app reaches `running` with ≥2 replicas — or fails with a code that names the missing precondition.
+
+### Impact on us: still none, and that is worth stating plainly
+
+We reverted both apps to `scale-out:false`, redeployed, and both are `running` and serving normally
+(`200` in 0.05 s). **There was no downtime at any point in four attempts** — the last-good deployment kept
+serving throughout, which is exactly the behaviour you want from a failed deploy and deserves saying.
+
+And the reason this is no longer a blocker for our migration is worth repeating from this morning's finding:
+**A3 (HTML edge caching) works without scale-out.** Your `/rules` endpoint still tells operators otherwise
+(`enforced:false, servedBy:"legacy_runner"`, remedy `PUT /scale-out`) on an app that is demonstrably
+edge-caching at 615 rps. That message is now the most expensive wrong signal in the API: it is what made us
+conclude on 07-27 that A3 was gated behind N1, and it is what sent us back to this broken endpoint twice
+today. **Fixing the message is probably a smaller job than fixing the bug, and would help more people.**
+
+*(Unrelated small datum from the same run, in case it is useful: an app resumed from `paused` served its
+first uncached request in **42 s** — cold start including the redeploy — and then settled at **0.05-0.10 s**
+from the second request on. Not a complaint; worth documenting so nobody benchmarks a just-resumed app.)*
