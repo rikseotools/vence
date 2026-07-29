@@ -383,6 +383,34 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
     expect(BACKEND).toMatch(/explanation ~\* \$\{AUDIT_NOTE_META_RE_SRC\}/)
   })
 
+  // Tercera recaída (29/07/2026): el patrón META exige que el sujeto sea «la explicación», así
+  // que no veía la nota escrita en INFINITIVO («Añadir sección «Por qué las demás…»»). 6 activas,
+  // 0 vistas por los 21 literales ni por el meta; la destapó una impugnación, no el sensor. Si el
+  // backend se quedara sin este tercer patrón, el @Cron —que es el que escribe el snapshot—
+  // volvería a estar ciego a esa clase mientras el CLI la ve.
+  function evalActoRe(src: string): string {
+    const m = src.match(/const AUDIT_NOTE_ACTO_RE_SRC\s*=\s*([\s\S]*?);\n/)
+    if (!m) throw new Error('no se encontró const AUDIT_NOTE_ACTO_RE_SRC en el fuente')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el patrón del ACTO DE EDICIÓN del backend es IDÉNTICO al del núcleo', () => {
+    expect(evalActoRe(BACKEND)).toBe(core.AUDIT_NOTE_ACTO_RE_SRC)
+  })
+
+  it('los DOS gemelos aplican también el patrón del ACTO en su SQL', () => {
+    expect(SCRIPT).toContain('AUDIT_NOTE_ACTO_RE_SRC')
+    expect(BACKEND).toMatch(/explanation ~\* \$\{AUDIT_NOTE_ACTO_RE_SRC\}/)
+  })
+
+  it('el patrón del ACTO va ANCLADO: no marca «añadir secciones» en mitad de una frase', () => {
+    // Caso real del banco (Access): «…se puede cambiar la distribución de los controles de un
+    // informe, añadir secciones y modificar propiedades…». Sin el ancla era falso positivo.
+    expect(core.isAuditNoteExplanation('En esa vista se pueden añadir secciones y modificar propiedades.')).toBe(false)
+    expect(core.isAuditNoteExplanation('Añadir sección «Por qué las demás son correctas:» con el análisis.')).toBe(true)
+  })
+
   it('los dos gemelos siguen emitiendo el kind', () => {
     expect(hasKind(SCRIPT, 'audit_note_explanation')).toBe(true)
     expect(hasKind(BACKEND, 'audit_note_explanation')).toBe(true)

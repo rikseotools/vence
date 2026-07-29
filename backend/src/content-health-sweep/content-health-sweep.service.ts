@@ -1253,6 +1253,12 @@ export class ContentHealthSweepService {
     // ampliada volvió a quedarse en verde: 96 activas cuya explicación se juzga a sí misma y
     // CERO vistas por los 21 literales. Los literales cubren las notas con otro sujeto ("Esta
     // pregunta debería", "Nota técnica:"); el patrón cubre el acto. Van en OR.
+    // El acto de EDITAR (29/07/2026, T-262 → impugnación 278f993d): la nota en infinitivo que
+    // ordena añadir una sección, guardada tal cual como explicación. Va ANCLADA al principio; sin
+    // el ancla, «…añadir secciones y modificar propiedades…» (Access) daba falso positivo.
+    // MANTENER IDÉNTICO a `lib/health/auditNoteExplanation.cjs` (lo vigila content-sweep-parity).
+    const AUDIT_NOTE_ACTO_RE_SRC =
+      '^\\s*(\\*\\*)?\\s*(a[ñn]adir|incluir|reescribir|sustituir|completar|corregir)\\s+(la\\s+)?secci[oó]n';
     const AUDIT_NOTE_META_RE_SRC =
       'la explicaci[oó]n\\s+(es|no|debe|deber|de la respuesta|del enunciado|dada|actual|original|' +
       'proporcionada|aportada|ofrecida|resulta|contiene|confunde|omite|menciona|cita|se refiere|est[aá])';
@@ -1288,7 +1294,9 @@ export class ContentHealthSweepService {
     const anRows = (await this.db.execute(sql`
       SELECT id FROM questions
        WHERE is_active = true
-         AND ((${anClause}) OR explanation ~* ${AUDIT_NOTE_META_RE_SRC})
+         AND ((${anClause})
+              OR explanation ~* ${AUDIT_NOTE_META_RE_SRC}
+              OR explanation ~* ${AUDIT_NOTE_ACTO_RE_SRC})
        LIMIT 50
     `)) as unknown as Array<{ id: string }>;
     if (anRows.length)
