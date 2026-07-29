@@ -6,6 +6,8 @@
 >
 > **Vista admin "ver como el usuario":** en `/admin/embajadores`, pinchar un nombre de "Top embajadores"/"Saldos" abre **`/admin/embajadores/[userId]`** en pestaña nueva = el panel del embajador **tal cual lo ve él** (saldo, vales, enlace, embudo, referidos), read-only (endpoint `/api/admin/embajadores/[userId]/panel`, requireAdmin). **Desde el 27/07/2026 la tarjeta del vale es LITERALMENTE la misma** (`components/embajadores/VoucherCard.tsx`): antes eran dos implementaciones y habían divergido —la de admin ocultaba PIN/serial tras «Revelar» y la del usuario no—, así que «tal cual lo ve él» era falso. Lo fija `__tests__/guardrails/voucherCard.guardrail.test.ts`.
 > **Naming user-facing:** en los MENSAJES al usuario, el programa se llama **"Programa de Recompensas"** (no "de Embajadores"). Los referidos se muestran con nombre abreviado ("Nombre A. B.") y estado premium ("Registrado · No premium" / "Premium").
+>
+> **⚠️ La ruta de usuario es `/recompensas`, NO `/embajadores`** (renombrada el 28/07/2026, commit `161f8478d`; el código vive en `app/recompensas/page.tsx`). `/embajadores` sobrevive **solo como 301** en `next.config.mjs` porque hay emails ya enviados que enlazan ahí — no es la URL a la que se manda a nadie hoy. El panel de ADMIN sí sigue siendo `/admin/embajadores` (y los componentes, `components/embajadores/`): no confundir las dos. *(29/07: al cerrar un pago dije al usuario que la embajadora vería su vale en `/embajadores`, copiándolo de este runbook cuando la ruta llevaba un día renombrada.)*
 
 ## Qué es
 
@@ -58,7 +60,7 @@ Los usuarios ganan **gift cards de Amazon.es** (compradas en Bitrefill con cript
 
 Cualquier **ingreso nuevo** (referido que compra, o bonus bug/ugc que creamos) **enciende el badge** en el icono 🎁 del header (parpadea hasta que lo pincha) — es server-side vía la vista `reward_earnings`, común a las 3 fuentes.
 
-El **email** proactivo, en cambio, **solo se manda en el caso `referido`** (webhook Stripe): ahí no hay hilo de soporte por el que avisar. El email va **SIN spoiler** — dice "tienes una recompensa nueva, entra a verla", no revela importe ni fuente (decisión Manuel 10/07; la revelación celebratoria con confeti vive en `/embajadores`).
+El **email** proactivo, en cambio, **solo se manda en el caso `referido`** (webhook Stripe): ahí no hay hilo de soporte por el que avisar. El email va **SIN spoiler** — dice "tienes una recompensa nueva, entra a verla", no revela importe ni fuente (decisión Manuel 10/07; la revelación celebratoria con confeti vive en `/recompensas`).
 
 En **bug/ugc NO se envía email** (decisión Manuel 10/07): esas recompensas nacen de un feedback que **ya le respondemos por su hilo**, así que el email sería redundante. El usuario se entera por el **badge 🎁 parpadeante**. **NUNCA se menciona la recompensa en el mensaje de respuesta** (decisión Manuel 24/07): queda cutre; el badge ya la comunica. Se crea en silencio y el texto va solo del asunto (el bug/la opinión).
 
@@ -87,7 +89,7 @@ body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la op
 > **⚠️ UGC (opinión, 5 €) ≠ compartir el enlace de referido (referido, 10 €). NO pagar UGC por un link-drop.** (Aprendizaje 11/07, caso Mari.) **ABRE SIEMPRE la captura** antes de crear la recompensa UGC y mira qué publicó de verdad:
 > - **UGC legítimo** = una **reseña/opinión genuina nombrando Vence**, SIN su enlace de referido (ej.: Mari ayudando a alguien en un hilo de Facebook, hablando de su experiencia). → crea la `ugc` 5 €.
 > - **NO es UGC** = soltar su **enlace de referido** (`vence.es/r/<code>`) con un pitch en un grupo. Eso es actividad del **Programa de Referidos** y **ya está incentivada** (10 €/venta + 2 €/registro activo). Pagar además 5 € de "opinión" sería **doble pago por el mismo acto** e **incentivaría a spamear el link** en cada grupo para farmear los 5 €. → **NO crees la recompensa**; respóndele explicando la diferencia (que su enlace ya le da dinero por sí solo) y cierra `resolved`.
-> - Regla de una línea: **con enlace de referido → referido (10 €); nombrando Vence sin enlace → opinión (5 €). Son cosas distintas y nunca se pagan las dos por lo mismo.** La página (`app/embajadores/page.tsx`, tarjetas «Recomienda Vence» y «Comparte tu opinión») ya se lo explica al usuario.
+> - Regla de una línea: **con enlace de referido → referido (10 €); nombrando Vence sin enlace → opinión (5 €). Son cosas distintas y nunca se pagan las dos por lo mismo.** La página (`app/recompensas/page.tsx`, tarjetas «Recomienda Vence» y «Comparte tu opinión») ya se lo explica al usuario.
 
 **Anti-duplicado por MOTIVO (guardarraíl por construcción):** `createRewardSubmission` rechaza (`{ok:false, reason:'duplicate'}` → HTTP 409 + evento `reward_duplicate`) si ya existe una recompensa **no-rejected** con el mismo motivo: `feedback_id` en `bug`, `url` en `ugc` (el referido es idempotente aparte, por la fila `referrals`). Así el motivo no solo queda **registrado**, sino que **físicamente no se puede pagar dos veces lo mismo**. Tests: `__tests__/referrals/rewards-endpoints.test.ts` (unit) + `__tests__/integration/referrals-simulation.test.ts` (RDS).
 
@@ -146,7 +148,7 @@ GET /api/admin/rewards/accumulated
 4. **Registrar el pago** — ⚠️ DOS casos, no confundir:
    - **Pago admin-initiated (sin solicitud previa del usuario):** `payAccumulated({ userId, adminUserId, amount, giftcardRef: JSON.stringify({code,pin,serial}), purchasedVia:'bitrefill' })` → INSERTA una fila `paid` (re-valida denominación + saldo, atómico).
    - **Cumplir una SOLICITUD del usuario (modelo pull — ya existe una fila `reward_payouts` status='pending'):** **NO uses `payAccumulated`** — insertaría una 2ª fila y **descuadraría** (una solicitud `pending` ya RESTA del `getUserOwedBalance`, así que payAccumulated podría duplicar el pago). En su lugar **`UPDATE` esa fila pending → `status='paid'`** con `giftcard_ref`, `purchased_via='bitrefill'`, `approved_by`, `paid_at=now()` (filtra `AND status='pending'` para idempotencia). La sección "🔔 Solicitudes de cobro pendientes" de `/admin/embajadores` lista estas filas. (Aprendizaje 13/07, caso MariSol.)
-   - El vale se guarda como **JSON `{code,pin,serial}`** en `reward_payouts.giftcard_ref`. El usuario lo ve en **/embajadores → "Tus vales"** (endpoint `GET /api/referrals/vouchers`, identidad del token) con **botón Copiar** (copia solo el código) + **PIN/serial**, y **le parpadea el 🎁** (el badge cuenta vales nuevos sin ver, no solo ingresos).
+   - El vale se guarda como **JSON `{code,pin,serial}`** en `reward_payouts.giftcard_ref`. El usuario lo ve en **`/recompensas` → sección "Mis vales 🎁"** (`components/embajadores/MisVales.tsx`, endpoint `GET /api/referrals/vouchers`, identidad del token; *"Tus vales"* es el título de la vista de ADMIN "ver como el usuario") con **botón Copiar** (copia solo el código) + **PIN/serial**, y **le parpadea el 🎁** (el badge cuenta vales nuevos sin ver, no solo ingresos).
    - **TRAZABILIDAD (añadir SIEMPRE, aprendizaje 11/07):** guarda en el mismo `giftcard_ref` claves internas con prefijo `_` — `_invoice_id`, `_order_id`, `_fallback_link` (el `redemption_info.extra_fields."Fallback link"` de revealyourgift.com), `_purchased_at`. **El endpoint de vales solo lee `code`/`pin`/`serial`** (línea `{code:p.code, pin:p.pin, serial:p.serial}`), así que las claves `_*` **NO se exponen al usuario** pero quedan para soporte/seguimiento/reclamación a Bitrefill. La hora exacta ya está en `reward_payouts.paid_at` (el panel muestra solo la fecha — decisión de UI).
 
 **Endpoint fallback:** `POST /api/admin/rewards/issue-giftcard { userId, amount }` hace todo lo anterior en una llamada, pero **solo compra real con `BITREFILL_LIVE=1`** (si no, dry-run con código `DRYRUN-…` que no se muestra al usuario). No se usa mientras el cash-out sea supervisado.
@@ -190,7 +192,7 @@ Consulta de embudo/errores: `SELECT event_type, count(*) FROM observable_events 
 
 ## Referencias
 
-- Código: `lib/referrals/{logic,queries,observability,coupon}.ts`, `app/embajadores/`, `app/admin/embajadores/`, `app/api/admin/{rewards,referrals}/`.
+- Código: `lib/referrals/{logic,queries,observability,coupon}.ts`, `app/recompensas/` (página de usuario), `components/embajadores/` (UI compartida usuario+admin), `app/admin/embajadores/`, `app/api/admin/{rewards,referrals}/`.
 - Vista escalable de ingresos: `reward_earnings` (migración `supabase/migrations/20260710_reward_earnings_view.sql`) — añadir una fuente futura = 1 rama `UNION ALL`.
 - Canary: `scripts/canary-referrals.cjs`.
 - Memoria: `project_programa_recompensas`.
