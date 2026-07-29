@@ -1,7 +1,10 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import { CronJob } from 'cron';
-import { CronScheduleService } from '../cron-schedule/cron-schedule.service';
+import {
+  CronScheduleService,
+  EXTERNAL_SCHEDULED_JOBS_TOKEN,
+} from '../cron-schedule/cron-schedule.service';
 import {
   RULE_CRON_STARTED_NOT_FINISHED,
   findStalledCrons,
@@ -41,6 +44,8 @@ describe('RULE_CRON_STARTED_NOT_FINISHED', () => {
       providers: [
         CronScheduleService,
         { provide: SchedulerRegistry, useValue: registry },
+        // Sin jobs externos: estos tests hablan solo de @Cron in-process.
+        { provide: EXTERNAL_SCHEDULED_JOBS_TOKEN, useValue: [] },
       ],
     }).compile();
     svc = moduleRef.get(CronScheduleService);

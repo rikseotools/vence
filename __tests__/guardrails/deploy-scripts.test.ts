@@ -287,3 +287,47 @@ describe('deploy — auto-sync con origin/main', () => {
     expect(bloque).toMatch(/merge-base --is-ancestor HEAD origin\/main/)
   })
 })
+
+/**
+ * Las task defs DERIVADAS de la imagen del frontend (tareas programadas que
+ * corren ese mismo bundle) tienen que re-pinearse en CADA deploy. El pineado por
+ * digest inmutable — que el postmortem #115 introdujo para el servicio — solo es
+ * seguro si se refresca: si no, la retención de ECR purga el digest apuntado y la
+ * tarea muere en el pull, ANTES del entrypoint, sin logs ni alerta.
+ *
+ * Incidente 27→29/07/2026: el worker de PDFs estuvo 2 días muerto exactamente así.
+ *
+ * Los DOS caminos de deploy (script manual y workflow de GHA) deben invocar el
+ * MISMO script, o volverán a divergir.
+ */
+describe('re-pineado de task defs derivadas (los 2 caminos de deploy)', () => {
+  const repin = readFileSync(join(ROOT, 'scripts/deploy/repin-derived-taskdefs.sh'), 'utf-8')
+  const workflow = readFileSync(join(ROOT, '.github/workflows/frontend-deploy.yml'), 'utf-8')
+
+  it('el script compartido existe y declara las familias derivadas', () => {
+    expect(repin).toMatch(/DERIVED_TASKDEF_FAMILIES=\(/)
+    expect(repin).toMatch(/vence-temario-pdf-worker/)
+  })
+
+  it('el deploy MANUAL lo invoca', () => {
+    expect(frontend).toMatch(/repin-derived-taskdefs\.sh/)
+    expect(frontend).toMatch(/IMAGE_PINNED=/)
+  })
+
+  it('el workflow de GHA lo invoca (mismo script, sin duplicar la lógica)', () => {
+    expect(workflow).toMatch(/scripts\/deploy\/repin-derived-taskdefs\.sh/)
+    expect(workflow).toMatch(/IMAGE_PINNED/)
+  })
+
+  it('re-pinea al digest recién desplegado, no a un tag mutable', () => {
+    // Un tag (`:latest`, `:sha`) reintroduce el anti-patrón del postmortem #115.
+    expect(repin).toMatch(/IMAGE_PINNED/)
+    expect(repin).not.toMatch(/image\s*=\s*.*:latest/)
+  })
+
+  it('avisa en rojo si alguna task def derivada no se pudo re-pinear', () => {
+    // Un fallo silencioso aquí devuelve el sistema al punto ciego original.
+    expect(repin).toMatch(/exit 1/)
+    expect(frontend).toMatch(/REPIN_OK/)
+  })
+})

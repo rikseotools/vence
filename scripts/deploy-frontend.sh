@@ -358,6 +358,15 @@ else
   echo "   ⚠️ no convergió del todo en 30min (deployments=$NDEP rollout=$RS run=$RUN/$DES) — continúo; la verificación de SHA vivo de abajo decide"
 fi
 
+# Las tareas PROGRAMADAS que usan esta misma imagen (worker de PDFs) tienen su
+# propia task def pineada por digest. Si no se re-pinean aquí, se quedan
+# apuntando a una imagen que la retención de ECR purga en ~10 deploys → mueren en
+# el pull, sin logs ni alerta (incidente 27→29/07). No aborta el deploy: el
+# frontend ya está sano y convergido; se marca en rojo al final.
+REPIN_OK=1
+AWS_PROFILE="$P" AWS_REGION="$R" IMAGE_PINNED="$IMG_DIGEST" \
+  bash "$(dirname "$0")/deploy/repin-derived-taskdefs.sh" || REPIN_OK=0
+
 echo "→ [6/6] smoke post-deploy"
 HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/)
 TOKEN_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://www.vence.es/api/auth/token)
@@ -408,6 +417,11 @@ else
   echo "   (canary premium omitido: SUPABASE_JWT_SECRET no accesible en SSM)"
 fi
 echo ""
+if [ "$REPIN_OK" != "1" ]; then
+  echo "⚠️⚠️ FRONTEND DESPLEGADO OK, pero alguna task def derivada NO se re-pineó (ver arriba)."
+  echo "     El frontend está sano; lo que queda en riesgo son las tareas programadas."
+  exit 1
+fi
 echo "✅ DEPLOY OK — $NEWTD"
 echo "   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs"
 echo "   Rollback: aws ecs update-service --cluster vence-backend --service vence-frontend --task-definition $LIVE_TD --profile vence --region eu-west-2"

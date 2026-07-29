@@ -243,6 +243,19 @@ Con **solo-dev + Claude**, el PR-con-aprobación es teatro (yo aprobando lo mío
 
 El **version-check** (`hooks/useVersionCheck.ts`) fuerza reload al cambiar de versión, DIFIRIÉNDOLO en rutas de test para no interrumpir exámenes. Eso controla *cuándo* recarga el usuario, no la existencia de los chunks (por eso hace falta el S3).
 
+## Tareas PROGRAMADAS que corren la imagen del frontend (re-pineado obligatorio)
+
+**El pineado por digest solo es seguro si se REFRESCA en cada deploy.** El postmortem #115 (26/05) cambió el servicio de un tag mutable a `repo@sha256:<digest>` inmutable, y lo que lo hace seguro no es el digest: es que **el deploy lo vuelve a pinear cada vez**, así que el digest apuntado acaba de pushearse y nunca le da tiempo a ser purgado.
+
+Las **tareas programadas** que corren esa misma imagen (hoy `vence-temario-pdf-worker`) copiaron el pineado pero **no el refresco**. Su digest se quedó congelado, la retención de ECR (**"conservar solo las últimas 10 imágenes"**, con ~6 pushes al día) lo purgó en ~2 días, y desde entonces cada invocación moría con `CannotPullContainerError` **antes del entrypoint**: sin logs, sin eventos, sin alerta. **El worker de PDFs estuvo 2 días muerto** (27→29/07/2026).
+
+**Solución (en los DOS caminos de deploy, no tocar sin entender):**
+1. `scripts/deploy/repin-derived-taskdefs.sh` — **fuente única** de las familias derivadas (`DERIVED_TASKDEF_FAMILIES`). Clona la task def viva y solo swapea la imagen, así hereda env/secrets/rol/cpu sin poder olvidarlos.
+2. Lo invocan **el script manual** (`deploy-frontend.sh`, tras converger) y **el workflow de GHA** (tras `Esperar rollout estable`). El guardrail `__tests__/guardrails/deploy-scripts.test.ts` verifica que los dos lo siguen llamando y que no se re-pinea a un tag mutable.
+3. Si el re-pineado falla, el frontend queda sano pero el deploy **termina en rojo** (`REPIN_OK`): lo que queda en riesgo son las tareas programadas.
+
+> **Al añadir una tarea programada nueva que use la imagen del frontend:** añadirla a `DERIVED_TASKDEF_FAMILIES` **y**, si es periódica, declararla en `backend/src/cron-schedule/external-jobs.registry.ts` para que tenga liveness (`cron_overdue`). Esa segunda parte es la red que **no** depende del proveedor: aunque el re-pineado falle o desaparezca en la migración a koigrid, un job que deje de correr sigue avisando. Ver `health-check.md` §1.bis.b.
+
 ## Backend
 
 `scripts/deploy-backend.sh`: build `./backend` → push ECR `vence-backend` → task def por digest → rolling → estable → **smoke `GET https://api.vence.es/health` = 200**. No tiene assets estáticos de cliente (sin problema de chunks). Los crons NestJS se registran al arrancar (verlo en logs `/ecs/vence-backend`: "Nest application successfully started" + "Cron '…' registrado").

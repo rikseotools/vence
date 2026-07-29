@@ -160,6 +160,34 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
    - **(2) roto** → fix real.
    - **(3) el task no estaba vivo al tick** → si a esa misma hora OTROS crons SÍ dispararon, se
      descarta; si no disparó ninguno, mirar deploys/reinicios de ECS a esa hora.
+   - **(4) es un job EXTERNO que no llegó a ARRANCAR** → el email lo marca como
+     `⚠️ job EXTERNO` y `metadata.externalOverdue` lo lista. **No busques logs: no los hay.**
+     Un contenedor programado que muere antes del entrypoint (imagen que ya no existe en el
+     registry, credenciales, scheduler apagado) no escribe ni una línea. Comprobar, por ese
+     orden: (a) que el scheduler sigue activo y con la cadencia del catálogo, (b) que la
+     **imagen que su task def pinea TODAVÍA EXISTE** — es la causa del incidente 27→29/07 —,
+     (c) las tareas paradas recientes y su `stoppedReason`:
+     `aws --profile vence --region eu-west-2 ecs list-tasks --cluster vence-backend --family <familia> --desired-status STOPPED`
+     → `describe-tasks` y leer `stoppedReason` (`CannotPullContainerError` = imagen purgada).
+     Catálogo de estos jobs: `backend/src/cron-schedule/external-jobs.registry.ts`.
+
+> **§1.bis.b — Jobs programados FUERA del proceso del backend (añadido 29/07/2026)**
+>
+> `cron_overdue` enumeraba solo los `@Cron` in-process (vía `SchedulerRegistry`), así que un job
+> con su propio contenedor programado **no tenía liveness ninguna**. El worker de PDFs
+> (`temario-pdf-worker`) estuvo **2 días muerto** sin una sola alerta: su imagen fue purgada de ECR
+> por la retención de "últimas 10 imágenes" y cada invocación moría en el pull. El único síntoma
+> fue `canary_pdf_queue_failed` quejándose de un backlog que envejecía — que **apunta al sitio
+> equivocado**: la cola no estaba atascada, el consumidor no existía.
+>
+> **Regla mental:** un job que muere antes de arrancar no puede avisar de su propia muerte. La
+> única señal posible es la AUSENCIA de señal frente a una cadencia declarada. Por eso estos jobs
+> se declaran en `external-jobs.registry.ts` (nombre + cadencia, **agnóstico de proveedor**) y
+> emiten el mismo contrato que los in-process: `cron_tick` al arrancar, `cron_run` al terminar.
+> Se juzgan con la MISMA regla `cron_overdue` y salen en el mismo email.
+>
+> **Si un canary se queja de un backlog que no drena, comprueba PRIMERO que su consumidor está
+> corriendo** antes de dar por hecho que el trabajo está atascado.
 
 - Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
 - Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).

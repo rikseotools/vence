@@ -1,5 +1,8 @@
 import { sql, type SQL } from 'drizzle-orm';
-import type { CronScheduleService } from '../cron-schedule/cron-schedule.service';
+import type {
+  CronJobInfo,
+  CronScheduleService,
+} from '../cron-schedule/cron-schedule.service';
 import type { AlertNotification } from './notification-adapter';
 import type { DeployWindow } from './deploy-window';
 
@@ -184,6 +187,8 @@ interface OverdueEntry {
   name: string;
   expression: string;
   timeZone: string;
+  /** in-process (@Cron de este proceso) vs external (contenedor programado propio). */
+  origin: CronJobInfo['origin'];
   prevExpectedTick: Date;
   nextExpectedTick: Date;
   lastActualRun: Date | null;
@@ -233,8 +238,17 @@ function findOverdueCrons(
     // Lo que se pierde a cambio: un tick fallado JUSTO ANTES de un reinicio deja de
     // avisar. Es asumible y ya era el criterio de la regla — si el cron sigue roto,
     // su siguiente tick ocurre con el proceso vivo y ahí sí dispara.
-    const startMs = ctx.processStartedAtMs ?? 0;
-    if (startMs > 0 && prevMs < startMs) continue;
+    //
+    // ⚠️ SOLO para crons in-process. Un job EXTERNO corre en su propio contenedor:
+    // su vida no depende de nuestros reinicios, así que "el tick es anterior a
+    // nuestro arranque" no dice nada sobre él. Aplicarle el guard lo silenciaría
+    // en cada despliegue del backend — y un job diario podría esconderse un día
+    // entero detrás de cada deploy, que es justo el punto ciego que este catálogo
+    // viene a cerrar.
+    if (job.origin === 'in-process') {
+      const startMs = ctx.processStartedAtMs ?? 0;
+      if (startMs > 0 && prevMs < startMs) continue;
+    }
 
     const lastRun = lastByEndpoint.get(job.name) ?? null;
     if (lastRun === null) {
@@ -246,6 +260,7 @@ function findOverdueCrons(
         name: job.name,
         expression: job.expression,
         timeZone: job.timeZone,
+        origin: job.origin,
         prevExpectedTick: job.prevExpectedTick,
         nextExpectedTick: job.nextExpectedTick,
         lastActualRun: null,
@@ -258,6 +273,7 @@ function findOverdueCrons(
         name: job.name,
         expression: job.expression,
         timeZone: job.timeZone,
+        origin: job.origin,
         prevExpectedTick: job.prevExpectedTick,
         nextExpectedTick: job.nextExpectedTick,
         lastActualRun: lastRun,
@@ -330,13 +346,30 @@ export const RULE_CRON_OVERDUE: AlertRule<{
       const graceMin = Math.round(
         graceForJob(e.prevExpectedTick, e.nextExpectedTick) / 60000,
       );
-      return `  - ${e.name} ['${e.expression}' ${e.timeZone}, margen ${graceMin}min]\n      esperado: ${e.prevExpectedTick.toISOString()}\n      último real: ${lastStr}\n      próximo: ${e.nextExpectedTick.toISOString()}`;
+      const donde =
+        e.origin === 'external'
+          ? '\n      ⚠️ job EXTERNO (contenedor programado propio, no este proceso)'
+          : '';
+      return `  - ${e.name} ['${e.expression}' ${e.timeZone}, margen ${graceMin}min]${donde}\n      esperado: ${e.prevExpectedTick.toISOString()}\n      último real: ${lastStr}\n      próximo: ${e.nextExpectedTick.toISOString()}`;
     });
+    // El sitio donde mirar NO es el mismo según el origen: un @Cron in-process
+    // falla dentro del backend; un job externo suele ni haber arrancado (imagen
+    // que ya no existe en el registry, credenciales, scheduler apagado) y en ese
+    // caso no deja ni logs — el contenedor muere antes del entrypoint.
+    const hayExternos = overdue.some((e) => e.origin === 'external');
+    const pistas = hayExternos
+      ? 'in-process: logs del backend. EXTERNOS: revisar que el contenedor programado LLEGA A ARRANCAR ' +
+        '(un fallo al descargar la imagen no deja logs), su scheduler sigue activo y su cadencia no cambió. ' +
+        'Catálogo: backend/src/cron-schedule/external-jobs.registry.ts'
+      : 'Verificar el proceso del backend, sus logs, o BD.';
     return {
       title: `${overdue.length} cron${overdue.length > 1 ? 's' : ''} overdue`,
-      body: `Los siguientes crons no emitieron señal de tick ("cron_tick" de arranque ni "cron_run" de completado) para su tick esperado más reciente (margen proporcional al intervalo):\n\n${lines.join('\n\n')}\n\nVerificar ECS task vence-backend, CloudWatch Logs, o BD.`,
+      body: `Los siguientes crons no emitieron señal de tick ("cron_tick" de arranque ni "cron_run" de completado) para su tick esperado más reciente (margen proporcional al intervalo):\n\n${lines.join('\n\n')}\n\n${pistas}`,
       metadata: {
         overdueCrons: overdue.map((e) => e.name),
+        externalOverdue: overdue
+          .filter((e) => e.origin === 'external')
+          .map((e) => e.name),
       },
     };
   },

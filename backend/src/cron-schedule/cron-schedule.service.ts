@@ -1,7 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import type { CronJob } from 'cron';
 import { CronExpressionParser } from 'cron-parser';
+import {
+  EXTERNAL_SCHEDULED_JOBS,
+  type ExternalScheduledJob,
+} from './external-jobs.registry';
+
+/**
+ * Token del catálogo de jobs externos. Inyectable a propósito: sin esto el
+ * catálogo REAL de producción se colaría en cada test de las reglas de cron y
+ * los haría depender de datos de prod (un job nuevo en el catálogo rompería
+ * tests que no hablan de él). Los specs inyectan su propio fixture.
+ */
+export const EXTERNAL_SCHEDULED_JOBS_TOKEN = Symbol('EXTERNAL_SCHEDULED_JOBS');
 
 /**
  * Schedule metadata resolved from a single @Cron registered job.
@@ -17,6 +28,16 @@ export interface CronJobInfo {
   expression: string;
   /** Timezone declared on the @Cron decorator (defaults to 'UTC'). */
   timeZone: string;
+  /**
+   * De dónde sale este job:
+   *   - `in-process`: un @Cron de ESTE proceso (via `SchedulerRegistry`).
+   *   - `external`:   un job programado que corre en su propio contenedor
+   *     (`EXTERNAL_SCHEDULED_JOBS`), fuera de este proceso.
+   *
+   * No es decorativo: las reglas tratan distinto un tick anterior al arranque
+   * del proceso según el origen. Ver `findOverdueCrons` en `alert-rules.ts`.
+   */
+  origin: 'in-process' | 'external';
   /** Most recent tick the schedule says SHOULD have fired strictly before `now`. */
   prevExpectedTick: Date;
   /** Next tick the schedule will fire on or after `now`. */
@@ -24,11 +45,19 @@ export interface CronJobInfo {
 }
 
 /**
- * Single source of truth for the calendar of @Cron jobs.
+ * Single source of truth for the calendar of scheduled jobs.
  *
  * Reads `SchedulerRegistry` (every @Cron auto-registers via its decorator) and
  * resolves prev/next expected ticks using `cron-parser`. Replaces hardcoded
  * mirror maps that diverge from the actual decorators.
+ *
+ * Desde 29/07/2026 incluye TAMBIÉN los jobs que corren fuera de este proceso,
+ * declarados en `EXTERNAL_SCHEDULED_JOBS`. Motivo: `SchedulerRegistry` solo ve
+ * los @Cron locales, así que un job en su propio contenedor programado no
+ * tenía liveness ninguna — `temario-pdf-worker` estuvo 2 días muerto (su
+ * imagen fue purgada del registry y el contenedor fallaba en el pull antes de
+ * arrancar) sin una sola alerta. El catálogo declara cadencia, no proveedor:
+ * ver la cabecera de `external-jobs.registry.ts`.
  *
  * Background — 31/05/2026 incident: a hardcoded `CRON_EXPECTED` map in
  * `alert-rules.ts` listed `{ intervalMin, daysOfWeek }` for each cron, plus a
@@ -47,51 +76,87 @@ export interface CronJobInfo {
 export class CronScheduleService {
   private readonly logger = new Logger(CronScheduleService.name);
 
-  constructor(private readonly registry: SchedulerRegistry) {}
+  private readonly externalJobs: readonly ExternalScheduledJob[];
 
+  constructor(
+    private readonly registry: SchedulerRegistry,
+    @Optional()
+    @Inject(EXTERNAL_SCHEDULED_JOBS_TOKEN)
+    externalJobs?: readonly ExternalScheduledJob[],
+  ) {
+    this.externalJobs = externalJobs ?? EXTERNAL_SCHEDULED_JOBS;
+  }
+
+  /**
+   * Calendario COMPLETO de jobs programados: los @Cron de este proceso más los
+   * declarados en `EXTERNAL_SCHEDULED_JOBS` (que corren en su propio
+   * contenedor). Ambos se juzgan con las mismas reglas — un job externo que no
+   * arranca no emite nada, y la ausencia de señal frente a su cadencia
+   * declarada es exactamente lo que `cron_overdue` sabe detectar.
+   *
+   * Si un nombre externo colisiona con un @Cron in-process, gana el
+   * in-process: el proceso vivo es evidencia más fuerte que una declaración.
+   */
   listCronJobs(now: Date = new Date()): CronJobInfo[] {
-    const jobs = this.registry.getCronJobs();
     const out: CronJobInfo[] = [];
-    for (const [name, job] of jobs) {
-      const info = this.describeJob(name, job, now);
+    const seen = new Set<string>();
+
+    for (const [name, job] of this.registry.getCronJobs()) {
+      const source = job.cronTime?.source;
+      if (typeof source !== 'string') continue;
+      const timeZone = (job.cronTime as { timeZone?: string }).timeZone ?? 'UTC';
+      const info = this.resolveTicks(name, source, timeZone, now, 'in-process');
+      if (info) {
+        out.push(info);
+        seen.add(name);
+      }
+    }
+
+    for (const job of this.externalJobs) {
+      if (seen.has(job.name)) continue;
+      const info = this.resolveTicks(
+        job.name,
+        job.expression,
+        job.timeZone,
+        now,
+        'external',
+      );
       if (info) out.push(info);
     }
+
     return out;
   }
 
-  private describeJob(
+  private resolveTicks(
     name: string,
-    job: CronJob,
+    expression: string,
+    timeZone: string,
     now: Date,
+    origin: CronJobInfo['origin'],
   ): CronJobInfo | null {
-    const source = job.cronTime?.source;
-    if (typeof source !== 'string') {
-      return null;
-    }
-    const timeZone =
-      (job.cronTime as { timeZone?: string }).timeZone ?? 'UTC';
     try {
-      const parsedForPrev = CronExpressionParser.parse(source, {
+      const parsedForPrev = CronExpressionParser.parse(expression, {
         tz: timeZone,
         currentDate: now,
       });
       const prevExpectedTick = parsedForPrev.prev().toDate();
-      const parsedForNext = CronExpressionParser.parse(source, {
+      const parsedForNext = CronExpressionParser.parse(expression, {
         tz: timeZone,
         currentDate: now,
       });
       const nextExpectedTick = parsedForNext.next().toDate();
       return {
         name,
-        expression: source,
+        expression,
         timeZone,
+        origin,
         prevExpectedTick,
         nextExpectedTick,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(
-        `Failed to parse cron expression '${source}' for job '${name}': ${msg}`,
+        `Failed to parse cron expression '${expression}' for job '${name}': ${msg}`,
       );
       return null;
     }

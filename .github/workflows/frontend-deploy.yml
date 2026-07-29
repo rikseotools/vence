@@ -301,6 +301,8 @@ jobs:
             --query 'service.[serviceName,deployments[0].rolloutState]' \
             --output text
           echo "NEW_TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> "$GITHUB_ENV"
+          # Lo consume el step de re-pineado de las task defs derivadas (abajo).
+          echo "IMAGE_PINNED=$IMAGE_PINNED" >> "$GITHUB_ENV"
 
       # Esperar a que el rollout termine. Si el task nuevo falla healthcheck,
       # ECS lo revierte automáticamente (circuit breaker) y este step falla.
@@ -311,6 +313,22 @@ jobs:
             --services vence-frontend \
             --region "${{ env.AWS_REGION }}"
           echo "✅ Rollout estable — task nuevo healthy en ALB."
+
+      # Las tareas PROGRAMADAS que corren esta MISMA imagen (worker de PDFs) tienen
+      # su propia task def pineada por digest. El pineado inmutable solo es seguro si
+      # se REFRESCA en cada deploy: si no, la retención de ECR ("últimas 10 imágenes")
+      # purga el digest apuntado en ~2 días de deploys y la tarea muere en el pull,
+      # ANTES del entrypoint — sin logs, sin eventos y sin alerta. Es el incidente
+      # 27→29/07/2026: el worker de PDFs estuvo 2 días muerto.
+      # Mismo script que usa el deploy manual, para que los dos caminos no diverjan.
+      # continue-on-error: el frontend ya está sano y convergido; un fallo aquí no
+      # justifica tumbar el deploy, y `cron_overdue` cubre la consecuencia.
+      - name: Re-pinear task defs derivadas de esta imagen
+        continue-on-error: true
+        env:
+          IMAGE_PINNED: ${{ env.IMAGE_PINNED }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: bash scripts/deploy/repin-derived-taskdefs.sh
 
       # Smoke post-deploy del gate anti-scraping: verifica que un usuario NORMAL
       # (usuario smoke, por debajo del umbral) puede cargar preguntas SIN que el

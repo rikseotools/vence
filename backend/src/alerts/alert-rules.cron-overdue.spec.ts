@@ -1,7 +1,10 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import { CronJob } from 'cron';
-import { CronScheduleService } from '../cron-schedule/cron-schedule.service';
+import {
+  CronScheduleService,
+  EXTERNAL_SCHEDULED_JOBS_TOKEN,
+} from '../cron-schedule/cron-schedule.service';
 import { RULE_CRON_OVERDUE, type AlertRuleContext } from './alert-rules';
 
 /**
@@ -29,6 +32,10 @@ describe('RULE_CRON_OVERDUE', () => {
       providers: [
         CronScheduleService,
         { provide: SchedulerRegistry, useValue: registry },
+        // Sin jobs externos: estos tests hablan solo de @Cron in-process. El
+        // catálogo real se prueba aparte (external-jobs.spec.ts) — inyectarlo
+        // aquí haría que añadir un job a producción rompiera tests ajenos.
+        { provide: EXTERNAL_SCHEDULED_JOBS_TOKEN, useValue: [] },
       ],
     }).compile();
     svc = moduleRef.get(CronScheduleService);
@@ -248,7 +255,12 @@ describe('RULE_CRON_OVERDUE', () => {
     expect(notif.body).toContain('2026-05-29T10:00:00.000Z'); // prev expected
     expect(notif.body).toContain('2026-05-27T10:00:00.000Z'); // último real
     expect(notif.body).toContain('2026-06-01T10:00:00.000Z'); // próximo
-    expect(notif.metadata).toEqual({ overdueCrons: ['detect-oep-llm'] });
+    expect(notif.metadata).toEqual({
+      overdueCrons: ['detect-oep-llm'],
+      // Un @Cron de este proceso NUNCA se reporta como externo: el email manda
+      // a mirar los logs del backend, no el arranque de un contenedor ajeno.
+      externalOverdue: [],
+    });
   });
 
   it('buildNotification pluraliza con N>1', () => {

@@ -37,6 +37,46 @@ function makeDb() {
 const PT_TO_SLUG: Record<string, string> = {}
 for (const [slug, o] of Object.entries(OPOSICIONES)) PT_TO_SLUG[(o as any).positionType] = slug
 
+/**
+ * Nombre del job para la liveness de crons. DEBE coincidir EXACTO con la entrada de
+ * `EXTERNAL_SCHEDULED_JOBS` en `backend/src/cron-schedule/external-jobs.registry.ts`:
+ * la regla `cron_overdue` une catálogo y señales por este string. Lo fija el
+ * guardarraíl `__tests__/guardrails/externalScheduledJobs.test.ts`.
+ */
+const JOB_NAME = 'temario-pdf-worker'
+
+/**
+ * Señal de LIVENESS del job, con el mismo contrato que `runWithHeartbeat` da a los
+ * @Cron in-process: `cron_tick` al arrancar y `cron_run` al terminar, ambos con
+ * `endpoint = JOB_NAME`. Sin esto el worker es invisible para `cron_overdue` — que es
+ * exactamente lo que pasó del 27 al 29/07: la tarea programada dejó de arrancar (su
+ * imagen había sido purgada del registry) y nadie se enteró en 2 días, porque un job
+ * que muere antes del entrypoint no puede avisar de su propia muerte. La única señal
+ * posible es la AUSENCIA de estas dos.
+ *
+ * Se hace `await` (no fire-and-forget): `main()` cierra la conexión al salir y un
+ * INSERT sin esperar se perdería justo en la señal que sostiene la alerta.
+ */
+async function emitCronSignal(
+  db: any,
+  eventType: 'cron_tick' | 'cron_run',
+  opts: { ms?: number; status?: string; error?: string } = {},
+): Promise<void> {
+  const meta = JSON.stringify(
+    eventType === 'cron_tick' ? { phase: 'start' } : { status: opts.status ?? 'success' },
+  )
+  try {
+    await db.execute(sql`
+      INSERT INTO observable_events (source, severity, event_type, endpoint, duration_ms, error_message, metadata)
+      VALUES ('worker', ${opts.error ? 'error' : 'debug'}, ${eventType}, ${JOB_NAME},
+        ${opts.ms ?? null}, ${opts.error ?? null}, ${meta}::jsonb)
+    `)
+  } catch {
+    // La observabilidad nunca tumba el job. Si se pierde el tick, el `cron_run`
+    // de completado actúa de fallback (la regla lee ambos).
+  }
+}
+
 /** Emite a observable_events por INSERT directo (el worker es un proceso aparte, no el runtime
  * frontend → esquiva el bug del sink de emitFireAndForget). */
 function makeEmit(db: any): EmitFn {
@@ -153,12 +193,31 @@ async function main() {
   try {
     if (cmd === 'enqueue-big') await cmdEnqueueBig(db, Number(a) || PDF_MAX_CHARS, Number(b) || PDF_MAX_ARTICLE_CHARS)
     else if (cmd === 'drain') {
-      // RECONCILIADOR (estado deseado): antes de drenar, asegura que la cola tenga jobs para los
-      // temas grandes cuya firma (versión de plantilla + tamaño) cambió → un bump de plantilla o un
-      // tema nuevo/editado se regenera SOLO, sin intervención. Los ya al día se deduplican (barato,
-      // sin fetch de contenido ni HEAD a S3). Así el worker programado auto-cura cada ciclo.
-      await cmdEnqueueBig(db, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS)
-      await cmdDrain(db, Number(a) || Number.MAX_SAFE_INTEGER)
+      // `drain` es lo que invoca el scheduler → es el tick que la liveness vigila.
+      // El tick va ANTES de cualquier trabajo: mide "¿arrancó el job?", no "¿terminó?".
+      // Una cola vacía es un ciclo perfectamente sano y debe emitir señal igual, o el
+      // silencio de un worker sano sería indistinguible del de uno muerto.
+      const t0 = Date.now()
+      await emitCronSignal(db, 'cron_tick')
+      try {
+        // RECONCILIADOR (estado deseado): antes de drenar, asegura que la cola tenga jobs para los
+        // temas grandes cuya firma (versión de plantilla + tamaño) cambió → un bump de plantilla o un
+        // tema nuevo/editado se regenera SOLO, sin intervención. Los ya al día se deduplican (barato,
+        // sin fetch de contenido ni HEAD a S3). Así el worker programado auto-cura cada ciclo.
+        await cmdEnqueueBig(db, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS)
+        await cmdDrain(db, Number(a) || Number.MAX_SAFE_INTEGER)
+        await emitCronSignal(db, 'cron_run', { ms: Date.now() - t0, status: 'success' })
+      } catch (e) {
+        // Un ciclo que peta SÍ anuncia que terminó: sin `cron_run` la regla
+        // `cron_started_not_finished` lo leería como "arrancó y se colgó", que es
+        // un diagnóstico distinto. El error se propaga igual.
+        await emitCronSignal(db, 'cron_run', {
+          ms: Date.now() - t0,
+          status: 'failure',
+          error: e instanceof Error ? e.message : String(e),
+        })
+        throw e
+      }
     }
     else if (cmd === 'stats') console.log('📊', await pdfJobStats(db))
     else { console.error('uso: enqueue-big [minTotal minArt] | drain [maxJobs] | stats'); process.exitCode = 2 }

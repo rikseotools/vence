@@ -1,7 +1,10 @@
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import { CronJob } from 'cron';
-import { CronScheduleService } from './cron-schedule.service';
+import {
+  CronScheduleService,
+  EXTERNAL_SCHEDULED_JOBS_TOKEN,
+} from './cron-schedule.service';
 
 describe('CronScheduleService', () => {
   let svc: CronScheduleService;
@@ -13,6 +16,9 @@ describe('CronScheduleService', () => {
       providers: [
         CronScheduleService,
         { provide: SchedulerRegistry, useValue: registry },
+        // Estos tests cubren la resolución de ticks de los @Cron in-process.
+        // Los jobs externos tienen su propio spec.
+        { provide: EXTERNAL_SCHEDULED_JOBS_TOKEN, useValue: [] },
       ],
     }).compile();
     svc = moduleRef.get(CronScheduleService);
