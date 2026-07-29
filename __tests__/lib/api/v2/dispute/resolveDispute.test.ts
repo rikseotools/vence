@@ -131,6 +131,10 @@ function setupDispute(opts: {
     userName = 'Test User',
     questionText = 'Cual es la respuesta correcta?',
     userId = VALID_USER_ID,
+    // Desde el 29/07/2026 la PUERTA de barajado exige que una legislativa resuelta tenga su
+    // explicación ya en formato estructurado. El fixture representa el caso normal (la tiene);
+    // los tests de la puerta en sí viven en `__tests__/impugnaciones/shuffleReadinessGate.test.ts`.
+    explanationData = { intro: 'contexto', options: { '0': 'razón A', '1': 'razón B' } } as unknown,
   } = opts
 
   if (found) {
@@ -143,6 +147,7 @@ function setupDispute(opts: {
         uEmail: userEmail,
         uName: userName,
         qText: questionText,
+        qExplanationData: explanationData,
       },
     ])
   } else {
@@ -466,5 +471,38 @@ describe('resolveDispute - manejo de excepciones en BD', () => {
     const r = await resolveDispute(baseRequest())
     expect(r.success).toBe(false)
     if (!r.success) expect(r.error).toBe('db connection lost')
+  })
+})
+
+// ── La PUERTA de barajado, CABLEADA (no solo el núcleo puro) ───────────────────
+// El núcleo se testea aparte; esto comprueba que resolveDispute la respeta de verdad, que es
+// donde fallaba antes: la regla existía en el manual y el endpoint no la miraba.
+describe('puerta de barajado en resolveDispute', () => {
+  it('NO cierra una legislativa resuelta si la pregunta no tiene explicación estructurada', async () => {
+    setupDispute({ explanationData: null })
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Corregido.',
+    } as never)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/aplicar-explicacion/)
+  })
+
+  it('la cierra si se declara un motivo para saltarse la puerta', async () => {
+    setupDispute({ explanationData: null })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Corregido.',
+      skipShuffleReason: 'la pregunta se jubila por irreparable, no procede reescribirla',
+    } as never)
+    expect(r.success).toBe(true)
+  })
+
+  it('no estorba a un RECHAZO, que no toca la pregunta', async () => {
+    setupDispute({ explanationData: null })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'rejected', adminResponse: 'No procede.',
+    } as never)
+    expect(r.success).toBe(true)
   })
 })

@@ -1,0 +1,15 @@
+{
+  "estilo": "impugnacion",
+  "intro": "La Ley Orgánica 3/2007 dedica tres artículos seguidos a los medios: el **36** fija un deber general para todos los medios públicos, el **37** se ocupa de la Corporación RTVE y el **38** de la Agencia EFE. La lista de objetivos de RTVE y la de EFE son casi idénticas, y colaborar con las campañas institucionales aparece en las dos. Lo que decide esta pregunta es, por tanto, el marco en que cada una persigue esos objetivos.",
+  "cita": {
+    "ref": "Artículo 37.1 de la Ley Orgánica 3/2007",
+    "texto": "La Corporación RTVE, en el ejercicio de su función de servicio público, perseguirá en su programación los siguientes objetivos: […] d) Colaborar con las campañas institucionales dirigidas a fomentar la igualdad entre mujeres y hombres y a erradicar la violencia contra las mujeres."
+  },
+  "options": {
+    "0": "La Agencia EFE también tiene entre sus objetivos colaborar con esas campañas (artículo 38.1.d, con la misma redacción), pero los persigue **en su actuación**, no «en su programación», que es el término del enunciado. Además el artículo 38.1 dice «en el ejercicio de sus actividades», sin añadir «públicas y privadas».",
+    "1": "Es lo que dice el artículo 37.1: la Corporación RTVE, en el ejercicio de su función de servicio público, persigue **en su programación** los objetivos enumerados, entre ellos colaborar con las campañas institucionales de igualdad y de erradicación de la violencia contra las mujeres.",
+    "2": "No pueden serlo las dos, porque la formulación referida a la Agencia EFE no se corresponde con el artículo 38: ni el marco («en el ejercicio de sus actividades públicas y privadas») ni el término «programación» son los suyos.",
+    "3": "A los medios de comunicación de titularidad pública el artículo 36 les impone un deber genérico (velar por una imagen igualitaria, plural y no estereotipada, y promover la difusión del principio de igualdad), pero no ese objetivo concreto: colaborar con las campañas institucionales se atribuye nominalmente a RTVE en el artículo 37 y a la Agencia EFE en el 38."
+  },
+  "outro": "**Clave:** el objetivo de colaborar con las campañas institucionales es común a RTVE y a la Agencia EFE, así que la pista está en el marco: **«en su programación»** es RTVE (artículo 37); la Agencia EFE lo persigue **«en su actuación»** (artículo 38)."
+}

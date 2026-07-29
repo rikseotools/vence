@@ -1,0 +1,14 @@
+{
+ "v": 1,
+ "cita": {
+  "ref": "Artículo 35.3 de la Ley 12/2009",
+  "bloque": "**Ley 12/2009 art. 35:** «En los casos que se tramiten las solicitudes mediante el procedimiento de urgencia, y en los casos de admisión a trámite del artículo 20, si la propuesta de resolución de la Oficina de Asilo y Refugio fuese desfavorable se dará un plazo de diez días al ACNUR para que, en su caso, informe.»",
+  "texto": "En los casos que se tramiten las solicitudes mediante el procedimiento de urgencia, y en los casos de admisión a trámite del artículo 20, si la propuesta de resolución de la Oficina de Asilo y Refugio fuese desfavorable se dará un plazo de diez días al ACNUR para que, en su caso, informe."
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "Incorrecta: ACNUR puede personarse en el recurso contencioso-administrativo que interponga la persona solicitante, pero la Ley no le legitima para interponer el recurso en nombre propio contra la resolución.",
+  "1": "Incorrecta: es la Oficina de Asilo y Refugio quien notifica al interesado la propuesta/resolución de inadmisión, no ACNUR (art. 20).",
+  "2": "el art. 35.3 de la Ley 12/2009 prevé expresamente que, en los casos de admisión a trámite del artículo 20, cuando la propuesta de resolución de la Oficina de Asilo y Refugio sea desfavorable, se concede a ACNUR un plazo de diez días para que emita su informe antes de que se dicte la resolución. Ese informe es, precisamente, el cauce por el que ACNUR interviene en la fase de inadmisión a trámite."
+ }
+}

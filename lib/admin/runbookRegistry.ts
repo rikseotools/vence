@@ -367,6 +367,18 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'y texto queden coherentes. NO toques la clave ni el contenido: esto es un defecto de FORMA. Ojo con la ' +
       'rama de la cita: si `cita.bloque` está relleno, el render pinta la cita entera y NO hay defecto.',
   },
+  vinculo_articulo_vecino: {
+    title: 'Pregunta colgada de un artículo que no la responde (lo hace un vecino)',
+    triggerPhrase: 'revisa los vínculos al artículo vecino',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'corre `npm run audit:vinculo-vecino` (BAJO DEMANDA: precisión ≈1 de cada 3, por eso NO pinga el badge). ' +
+      'Cada línea es una SOSPECHA: abre el artículo vinculado y el sugerido en el BOE y mira cuál responde ' +
+      'LITERALMENTE la opción correcta. Solo entonces re-vincula `primary_article_id`. OJO con las preguntas que ' +
+      'abarcan varios artículos a la vez («¿en qué sección de la Constitución se reconoce el derecho de huelga?»): ' +
+      'ahí el vínculo actual suele ser tan defendible como el sugerido. NUNCA re-vincular por cercanía de número. ' +
+      'Al re-vincular, comprueba que el artículo destino está escopado en los mismos temas o la pregunta cambia de sitio.',
+  },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',
     triggerPhrase: 'revisa las leyes duplicadas entre temas',

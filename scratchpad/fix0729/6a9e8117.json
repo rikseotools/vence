@@ -1,0 +1,13 @@
+{
+ "v": 1,
+ "cita": {
+  "ref": "graves consecuencias que puedan poner en peligro la vida, la libertad o la integridad física de una persona",
+  "bloque": "«El juez de instrucción o tribunal podrá acordar excepcionalmente, mediante resolución motivada, la detención o prisión incomunicadas cuando concurra alguna de las siguientes circunstancias: a) necesidad urgente de evitar **graves consecuencias que puedan poner en peligro la vida, la libertad o la integridad física de una persona**...» (Art. 509.1.a) LECrim)"
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "**No, podría cometer un delito de incomunicación ilegal:** La actuación está expresamente amparada por el art. 509 LECrim; no hay ilegalidad cuando concurren los presupuestos legales y se dicta resolución motivada.",
+  "1": "El art. 509.4 LECrim sí fija un límite por edad: «En ningún caso podrán ser objeto de detención incomunicada los menores de dieciséis años». Pero la persona del supuesto tiene dieciséis años cumplidos, así que queda fuera de esa prohibición y la incomunicación puede acordarse.",
+  "2": "El juez actúa con plena cobertura legal: dicta resolución motivada e invoca el supuesto del art. 509.1.a) LECrim (necesidad urgente de evitar graves consecuencias para la vida o integridad). El precepto no establece restricciones por razón de la edad del investigado."
+ }
+}

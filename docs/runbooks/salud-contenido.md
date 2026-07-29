@@ -301,3 +301,54 @@ esto no es un defecto de contenido, y una pregunta puede estar aquí siendo jur�
 | Espejo del `@Cron` (writer real) | `backend/src/content-health-sweep/content-health-sweep.service.ts` |
 | Guardarraíles | `__tests__/health/explicacionEstructuraRota.test.ts`, `content-sweep-parity.test.ts` |
 | El render que lo convierte en lo que se ve | `lib/shuffle/structuredExplanation.ts` |
+
+## Pregunta colgada del artículo equivocado, con el vecino al lado (`vinculo_articulo_vecino`)
+
+*Frase-gatillo: **"revisa los vínculos al artículo vecino"*** · `npm run audit:vinculo-vecino`
+
+### Qué es
+
+Del modelo nuclear: la pregunta cuelga de un artículo y **ese artículo es la fuente de verdad de su
+contenido**. Si el artículo vinculado no dice lo que la pregunta pregunta, se rompen dos cosas a la
+vez: quien abre el artículo desde la pregunta no encuentra la respuesta, y la pregunta se sirve en
+los temas que escopan el artículo equivocado.
+
+Caso raíz (29/07/2026): una pregunta sobre los objetivos de la Corporación RTVE colgaba del
+**artículo 36** de la LO 3/2007 (deber genérico de los medios públicos) cuando su contenido es del
+**37**. La cazó un usuario en una impugnación, no nosotros.
+
+### ⚠️ Es una COLA DE SOSPECHAS, no una lista de arreglos
+
+**Precisión medida ≈ 1 de cada 3.** Por eso es un runner bajo demanda y **no pinga el badge**: un
+detector que acierta un tercio en el panel enseña a ignorar el panel.
+
+Las dos exclusiones que ya lleva dentro (y que hay que respetar si alguien toca el núcleo):
+
+| Se descarta | Por qué |
+|---|---|
+| Enunciados de NEGACIÓN («señale la INCORRECTA», «excepto», «¿cuál NO es?») | El desajuste es **por diseño**: la respuesta correcta cita otro artículo a propósito, porque es la que no encaja. Ejemplo real: una pregunta sobre partidos políticos cuya respuesta correcta es el texto de los **sindicatos** (art. 7 CE) — el vínculo al art. 6 es el BUENO. Eran 122 de 326. |
+| Meta-opciones («Todas son correctas», «A) y B)») | No tienen contenido propio, así que su recall contra cualquier artículo es cero y no dice nada. |
+
+Y aun con las dos, siguen colándose preguntas que **abarcan varios artículos a la vez** («¿en qué
+sección de la Constitución se reconoce el derecho de huelga?»): ahí el vínculo actual suele ser tan
+defendible como el sugerido.
+
+### Cómo se triaje
+
+1. `npm run audit:vinculo-vecino` (o `-- --ley "CE"`, `-- --min-servidas 50`, `-- --json`).
+2. Para cada sospecha: abrir **el artículo vinculado y el sugerido en el BOE** y ver cuál responde
+   LITERALMENTE la opción correcta.
+3. Solo entonces re-vincular `primary_article_id`. **Antes de aplicar, comprobar que el artículo
+   destino está escopado en los mismos temas**, o la pregunta cambia de sitio sin querer. En el caso
+   raíz, el 36 y el 37 estaban los dos en el T4 de Córdoba, así que la pregunta no se movió.
+4. Registrar el cambio como evento observable (`pregunta_relinkada`) con el motivo.
+
+**NUNCA re-vincular por cercanía de número.**
+
+### Piezas
+
+| Qué | Dónde |
+|---|---|
+| Núcleo puro (17 tests) | `lib/health/vinculoArticuloVecino.cjs` |
+| Runner bajo demanda | `scripts/audit-vinculo-articulo-vecino.cjs` · `npm run audit:vinculo-vecino` |
+| Registro | `lib/admin/runbookRegistry.ts` → `vinculo_articulo_vecino` |

@@ -101,6 +101,9 @@ export const resolveDisputeRequestSchema = z.object({
   questionType: questionTypeSchema,
   status: disputeResolutionStatusSchema,
   adminResponse: z.string().max(5000, 'La respuesta no puede superar 5000 caracteres'),
+  // Escape de la puerta de barajado (ver `shuffleReadiness.ts`). Exige MOTIVO, no un booleano:
+  // un `skip: true` se teclea sin pensar; escribir por qué obliga a pensarlo y deja rastro.
+  skipShuffleReason: z.string().min(10, 'Explica por qué se salta la comprobacion (min. 10 caracteres)').max(500).optional(),
 })
 
 export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>

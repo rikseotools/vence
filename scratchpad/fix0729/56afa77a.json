@@ -1,0 +1,13 @@
+{
+ "v": 1,
+ "cita": {
+  "bloque": "La tecla Esc (Escape) es el método universal en Excel 2016 para cancelar la acción en curso o cerrar un cuadro de diálogo sin aceptar los cambios."
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "**Ctrl + G:** en la versión en español de Excel 2016, Ctrl+G **guarda** el archivo (es el equivalente de Ctrl+S en la versión inglesa). Guardar no cancela la acción en curso ni cierra un cuadro de diálogo. El atajo de «Guardar como» es F12.",
+  "1": "La tecla Esc cumple dos funciones fundamentales en Excel 2016: cancela la entrada o edición actual de una celda (descartando lo que se estuviera escribiendo) y cierra cualquier cuadro de diálogo abierto sin aplicar los cambios, equivalente a pulsar el botón \"Cancelar\". Es un atajo estándar en todo el entorno Windows y Office, no solo en Excel.",
+  "2": "**Alt + F6:** Este atajo cambia el foco entre ventanas abiertas del libro o entre el documento y un panel de tareas. No tiene función de cancelar acciones.",
+  "3": "**F12:** La tecla F12 abre el cuadro de diálogo \"Guardar como\" para guardar el archivo con otro nombre o en otra ubicación. No cancela acciones ni cierra diálogos."
+ }
+}

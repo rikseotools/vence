@@ -1,0 +1,13 @@
+{
+ "v": 1,
+ "cita": {
+  "bloque": "«La Administración podrá convalidar los actos anulables, subsanando los vicios de que adolezcan.»\n— Art. 52.1 Ley 39/2015, LPACAP"
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "(la nulidad o anulabilidad de un acto implica la de los sucesivos independientes del primero): el art. 49.1 de la Ley 39/2015 establece lo contrario: la nulidad o anulabilidad de un acto NO implicará la de los sucesivos en el procedimiento que sean *independientes* del primero.",
+  "1": "La **convalidación** es una figura que permite a la Administración sanar los vicios de anulabilidad de un acto administrativo para preservar su eficacia. Solo opera sobre actos anulables (no nulos de pleno derecho) y la inicia la propia Administración.",
+  "2": "(son nulas de pleno derecho las disposiciones que establezcan la irretroactividad de disposiciones sancionadoras no favorables): el art. 47.2 menciona como causa de nulidad las disposiciones que establezcan la *retroactividad* de disposiciones sancionadoras no favorables, no la irretroactividad. La formulación de C invierte el sentido.",
+  "3": "(la convalidación podrá realizarse por el órgano competente, que *podrá ser* superior jerárquico): el art. 52.3 establece que cuando el vicio sea de incompetencia no determinante de nulidad, la convalidación la realiza el órgano competente *cuando sea* superior jerárquico (no \"podrá ser\": la ley establece una condición, no una posibilidad).\n\n*Fuente: arts. 49, 52 Ley 39/2015, de 1 de octubre, LPACAP.*"
+ }
+}

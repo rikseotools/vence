@@ -1,0 +1,1453 @@
+[
+ {
+  "id": "5690295f-e6e4-4b65-aeb9-2f2b85aebea2",
+  "explanation": "La respuesta correcta es **C) Dar las debidas instrucciones a los trabajadores**.\n\n> **Art. 15.1 LPRL — Principios de la acción preventiva:** Entre los principios que el empresario aplicará figuran expresamente:\n> - **(h)** «**Dar las debidas instrucciones a los trabajadores.**»\n> - **(g)** «Adoptar medidas que antepongan la **protección colectiva a la individual**.»\n> - **(d)** «**Adaptar el trabajo a la persona** [...] con miras a atenuar el trabajo monótono y reducir sus efectos en la salud.»\n\n**Por qué C es correcta:** El apartado h) del art. 15.1 LPRL recoge literalmente la obligación de dar las debidas instrucciones a los trabajadores como principio preventivo.\n\n**Por qué las demás son incorrectas:**\n- **A)** \"Adoptar medidas que antepongan la protección individual a la colectiva\": el art. 15.1.g) establece exactamente lo contrario — la **colectiva** prevalece sobre la **individual**.\n- **B)** \"Adaptar persona al trabajo\": el art. 15.1.d) establece lo contrario — se debe **adaptar el trabajo a la persona**, no al revés.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 15.1 LPRL — Principios de la acción preventiva",
+    "bloque": "**Art. 15.1 LPRL — Principios de la acción preventiva:** Entre los principios que el empresario aplicará figuran expresamente:\n- **(h)** «**Dar las debidas instrucciones a los trabajadores.**»\n- **(g)** «Adoptar medidas que antepongan la **protección colectiva a la individual**.»\n- **(d)** «**Adaptar el trabajo a la persona** [...] con miras a atenuar el trabajo monótono y reducir sus efectos en la salud.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Dar las debidas instrucciones a los trabajadores**.",
+   "options": {
+    "0": "\"Adoptar medidas que antepongan la protección individual a la colectiva\": el art. 15.1.g) establece exactamente lo contrario — la **colectiva** prevalece sobre la **individual**.",
+    "1": "\"Adaptar persona al trabajo\": el art. 15.1.d) establece lo contrario — se debe **adaptar el trabajo a la persona**, no al revés.",
+    "2": "El apartado h) del art. 15.1 LPRL recoge literalmente la obligación de dar las debidas instrucciones a los trabajadores como principio preventivo."
+   }
+  }
+ },
+ {
+  "id": "56afa77a-6111-4ca3-9f43-b99bfc538f07",
+  "explanation": "**Respuesta correcta: B) Esc.**\n\n> La tecla Esc (Escape) es el método universal en Excel 2016 para cancelar la acción en curso o cerrar un cuadro de diálogo sin aceptar los cambios.\n\n**Por qué B es correcta:**\nLa tecla Esc cumple dos funciones fundamentales en Excel 2016: cancela la entrada o edición actual de una celda (descartando lo que se estuviera escribiendo) y cierra cualquier cuadro de diálogo abierto sin aplicar los cambios, equivalente a pulsar el botón \"Cancelar\". Es un atajo estándar en todo el entorno Windows y Office, no solo en Excel.\n\n**Por qué las demás son incorrectas:**\n- **A) Ctrl + G:** En la versión en español de Excel 2016, Ctrl+G abre el cuadro de diálogo \"Guardar como\" (equivalente a Ctrl+S en la versión inglesa). No cancela acciones ni cierra cuadros de diálogo.\n- **C) Alt + F6:** Este atajo cambia el foco entre ventanas abiertas del libro o entre el documento y un panel de tareas. No tiene función de cancelar acciones.\n- **D) F12:** La tecla F12 abre el cuadro de diálogo \"Guardar como\" para guardar el archivo con otro nombre o en otra ubicación. No cancela acciones ni cierra diálogos.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "La tecla Esc (Escape) es el método universal en Excel 2016 para cancelar la acción en curso o cerrar un cuadro de diálogo sin aceptar los cambios."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) Esc.**",
+   "options": {
+    "0": "**Ctrl + G:** En la versión en español de Excel 2016, Ctrl+G abre el cuadro de diálogo \"Guardar como\" (equivalente a Ctrl+S en la versión inglesa). No cancela acciones ni cierra cuadros de diálogo.",
+    "1": "La tecla Esc cumple dos funciones fundamentales en Excel 2016: cancela la entrada o edición actual de una celda (descartando lo que se estuviera escribiendo) y cierra cualquier cuadro de diálogo abierto sin aplicar los cambios, equivalente a pulsar el botón \"Cancelar\". Es un atajo estándar en todo el entorno Windows y Office, no solo en Excel.",
+    "2": "**Alt + F6:** Este atajo cambia el foco entre ventanas abiertas del libro o entre el documento y un panel de tareas. No tiene función de cancelar acciones.",
+    "3": "**F12:** La tecla F12 abre el cuadro de diálogo \"Guardar como\" para guardar el archivo con otro nombre o en otra ubicación. No cancela acciones ni cierra diálogos."
+   }
+  }
+ },
+ {
+  "id": "570b01f2-698b-44d9-9454-ba0f66ecbf5e",
+  "explanation": "La respuesta correcta es la **B: La Administración podrá convalidar los actos anulables, subsanando los vicios de que adolezcan**.\n\n> «La Administración podrá convalidar los actos anulables, subsanando los vicios de que adolezcan.»\n> — Art. 52.1 Ley 39/2015, LPACAP\n\n**Por qué B es correcta:** La **convalidación** es una figura que permite a la Administración sanar los vicios de anulabilidad de un acto administrativo para preservar su eficacia. Solo opera sobre actos anulables (no nulos de pleno derecho) y la inicia la propia Administración.\n\n**Por qué las demás son incorrectas:**\n- **A** (la nulidad o anulabilidad de un acto implica la de los sucesivos independientes del primero): el art. 49.2 Ley 39/2015 establece lo contrario: la nulidad o anulabilidad de un acto NO implicará la de los sucesivos en el procedimiento que sean *independientes* del primero.\n- **C** (son nulas de pleno derecho las disposiciones que establezcan la irretroactividad de disposiciones sancionadoras no favorables): el art. 47.2 menciona como causa de nulidad las disposiciones que establezcan la *retroactividad* de disposiciones sancionadoras no favorables, no la irretroactividad. La formulación de C invierte el sentido.\n- **D** (la convalidación podrá realizarse por el órgano competente, que *podrá ser* superior jerárquico): el art. 52.3 establece que cuando el vicio sea de incompetencia no determinante de nulidad, la convalidación la realiza el órgano competente *cuando sea* superior jerárquico (no \"podrá ser\": la ley establece una condición, no una posibilidad).\n\n*Fuente: arts. 49, 52 Ley 39/2015, de 1 de octubre, LPACAP.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«La Administración podrá convalidar los actos anulables, subsanando los vicios de que adolezcan.»\n— Art. 52.1 Ley 39/2015, LPACAP"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B: La Administración podrá convalidar los actos anulables, subsanando los vicios de que adolezcan**.",
+   "options": {
+    "0": "(la nulidad o anulabilidad de un acto implica la de los sucesivos independientes del primero): el art. 49.2 Ley 39/2015 establece lo contrario: la nulidad o anulabilidad de un acto NO implicará la de los sucesivos en el procedimiento que sean *independientes* del primero.",
+    "1": "La **convalidación** es una figura que permite a la Administración sanar los vicios de anulabilidad de un acto administrativo para preservar su eficacia. Solo opera sobre actos anulables (no nulos de pleno derecho) y la inicia la propia Administración.",
+    "2": "(son nulas de pleno derecho las disposiciones que establezcan la irretroactividad de disposiciones sancionadoras no favorables): el art. 47.2 menciona como causa de nulidad las disposiciones que establezcan la *retroactividad* de disposiciones sancionadoras no favorables, no la irretroactividad. La formulación de C invierte el sentido.",
+    "3": "(la convalidación podrá realizarse por el órgano competente, que *podrá ser* superior jerárquico): el art. 52.3 establece que cuando el vicio sea de incompetencia no determinante de nulidad, la convalidación la realiza el órgano competente *cuando sea* superior jerárquico (no \"podrá ser\": la ley establece una condición, no una posibilidad).\n\n*Fuente: arts. 49, 52 Ley 39/2015, de 1 de octubre, LPACAP.*"
+   }
+  }
+ },
+ {
+  "id": "57a46347-19f7-4064-8ec7-0188e74b9c52",
+  "explanation": "**Respuesta correcta: A) 110 por ciento de los ingresos corrientes liquidados o devengados en el ejercicio inmediatamente anterior.**\n\n> «Precisarán de autorización [...] las operaciones de crédito a largo plazo de cualquier naturaleza, incluido el riesgo deducido de los avales, cuando el volumen total del capital vivo de las operaciones de crédito vigentes a corto y largo plazo, incluyendo el importe de la operación proyectada, exceda del 110 por ciento de los ingresos corrientes liquidados o devengados en el ejercicio inmediatamente anterior.»\n\n**Por qué A es correcta:** El artículo 53.2 del RDL 2/2004 fija el umbral del 110% de los ingresos corrientes liquidados o devengados como límite a partir del cual se exige autorización para operaciones de crédito a largo plazo.\n\n**Por qué las demás son incorrectas:**\n- **B)** El 100% no es el porcentaje que establece la ley; el umbral es el 110%.\n- **C)** El 120% no se corresponde con el porcentaje legal.\n- **D)** El 90% tampoco coincide con el porcentaje fijado por la norma.\n\n📚 **Fuente:** [RDL 2/2004, Art. 53](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a53)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Precisarán de autorización [...] las operaciones de crédito a largo plazo de cualquier naturaleza, incluido el riesgo deducido de los avales, cuando el volumen total del capital vivo de las operaciones de crédito vigentes a corto y largo plazo, incluyendo el importe de la operación proyectada, exceda del 110 por ciento de los ingresos corrientes liquidados o devengados en el ejercicio inmediatamente anterior.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) 110 por ciento de los ingresos corrientes liquidados o devengados en el ejercicio inmediatamente anterior.**",
+   "options": {
+    "0": "El artículo 53.2 del RDL 2/2004 fija el umbral del 110% de los ingresos corrientes liquidados o devengados como límite a partir del cual se exige autorización para operaciones de crédito a largo plazo.",
+    "1": "El 100% no es el porcentaje que establece la ley; el umbral es el 110%.",
+    "2": "El 120% no se corresponde con el porcentaje legal.",
+    "3": "El 90% tampoco coincide con el porcentaje fijado por la norma.\n\n📚 **Fuente:** [RDL 2/2004, Art. 53](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a53)"
+   }
+  }
+ },
+ {
+  "id": "595da7fb-aabf-4c68-9809-547c87cfae26",
+  "explanation": "**Respuesta correcta: A) Directo de carácter real, cuyo hecho imponible está constituido por el mero ejercicio, en territorio nacional, de actividades empresariales, profesionales o artísticas, se ejerzan o no en local determinado y se hallen o no especificadas en las tarifas del impuesto.**\n\n> «El Impuesto sobre Actividades Económicas es un tributo directo de carácter real, cuyo hecho imponible está constituido por el mero ejercicio, en territorio nacional, de actividades empresariales, profesionales o artísticas, se ejerzan o no en local determinado y se hallen o no especificadas en las tarifas del impuesto.»\n\n**Por qué A es correcta:** Reproduce literalmente la definición del IAE contenida en el artículo 78.1 del RDL 2/2004.\n\n**Por qué las demás son incorrectas:**\n- **B)** Dice «indirecto» y «territorio autonómico»; el IAE es directo y se aplica en territorio nacional, sin exigir local determinado.\n- **C)** Describe el Impuesto sobre Bienes Inmuebles (art. 60), no el IAE.\n- **D)** Describe el Impuesto sobre Vehículos de Tracción Mecánica (art. 92), no el IAE.\n\n📚 **Fuente:** [RDL 2/2004, Art. 78](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a78)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«El Impuesto sobre Actividades Económicas es un tributo directo de carácter real, cuyo hecho imponible está constituido por el mero ejercicio, en territorio nacional, de actividades empresariales, profesionales o artísticas, se ejerzan o no en local determinado y se hallen o no especificadas en las tarifas del impuesto.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Directo de carácter real, cuyo hecho imponible está constituido por el mero ejercicio, en territorio nacional, de actividades empresariales, profesionales o artísticas, se ejerzan o no en local determinado y se hallen o no especificadas en las tarifas del impuesto.**",
+   "options": {
+    "0": "Reproduce literalmente la definición del IAE contenida en el artículo 78.1 del RDL 2/2004.",
+    "1": "Dice «indirecto» y «territorio autonómico»; el IAE es directo y se aplica en territorio nacional, sin exigir local determinado.",
+    "2": "Describe el Impuesto sobre Bienes Inmuebles (art. 60), no el IAE.",
+    "3": "Describe el Impuesto sobre Vehículos de Tracción Mecánica (art. 92), no el IAE.\n\n📚 **Fuente:** [RDL 2/2004, Art. 78](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a78)"
+   }
+  }
+ },
+ {
+  "id": "59619bc4-1c17-4e5f-861d-6c9cc5b5eadc",
+  "explanation": "La respuesta correcta es **A) El instrumento técnico a través del cual se realiza la ordenación del personal, de acuerdo con las necesidades de los servicios y se precisan los requisitos para el desempeño de cada puesto.**\n\nLa Ley 30/1984, de 2 de agosto, de Medidas para la Reforma de la Función Pública, define las relaciones de puestos de trabajo (RPT) de la Administración del Estado en su artículo 15.\n\n> «Las relaciones de puestos de trabajo de la Administración del Estado son el instrumento técnico a través del cual se realiza la ordenación del personal, de acuerdo con las necesidades de los servicios y se precisan los requisitos para el desempeño de cada puesto en los términos siguientes: [...]»\n\n**Por qué A es correcta:** El texto de la opción A reproduce literalmente la definición legal del artículo 15.1 de la Ley 30/1984: la RPT es el instrumento técnico de ordenación del personal que, atendiendo a las necesidades de los servicios, precisa los requisitos necesarios para el desempeño de cada puesto.\n\n**Por qué las demás son incorrectas:**\n- **B) \"Los instrumentos destinados a lograr una mejor utilización de los recursos humanos, de los puestos de trabajo de la Administración del Estado y de las Comunidades Autónomas\":** esta formulación no se corresponde con la definición legal de las relaciones de puestos de trabajo del artículo 15, que es un instrumento técnico de ordenación del personal, no una descripción genérica de mejora de recursos humanos referida además a las Comunidades Autónomas.\n- **C) \"Un sistema de provisión de puestos de trabajo en el que se tendrán únicamente en cuenta los méritos exigidos en la correspondiente convocatoria\":** describe un sistema de provisión de puestos (propio de un concurso de méritos), no el instrumento técnico de ordenación del personal que regula el artículo 15.\n- **D) \"Los planes de empleo que contendrán de forma conjunta las actuaciones a desarrollar para la óptima utilización de los recursos humanos...\":** confunde la relación de puestos de trabajo con los planes de empleo, que son una figura distinta dentro de la propia Ley 30/1984, no la definición del artículo 15.\n\nFuente: Ley 30/1984, de 2 de agosto, de Medidas para la Reforma de la Función Pública, artículo 15.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Las relaciones de puestos de trabajo de la Administración del Estado son el instrumento técnico a través del cual se realiza la ordenación del personal, de acuerdo con las necesidades de los servicios y se precisan los requisitos para el desempeño de cada puesto en los términos siguientes: [...]»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) El instrumento técnico a través del cual se realiza la ordenación del personal, de acuerdo con las necesidades de los servicios y se precisan los requisitos para el desempeño de cada puesto.**\n\nLa Ley 30/1984, de 2 de agosto, de Medidas para la Reforma de la Función Pública, define las relaciones de puestos de trabajo (RPT) de la Administración del Estado en su artículo 15.",
+   "options": {
+    "0": "El texto de la opción A reproduce literalmente la definición legal del artículo 15.1 de la Ley 30/1984: la RPT es el instrumento técnico de ordenación del personal que, atendiendo a las necesidades de los servicios, precisa los requisitos necesarios para el desempeño de cada puesto.",
+    "1": "\"Los instrumentos destinados a lograr una mejor utilización de los recursos humanos, de los puestos de trabajo de la Administración del Estado y de las Comunidades Autónomas\":** esta formulación no se corresponde con la definición legal de las relaciones de puestos de trabajo del artículo 15, que es un instrumento técnico de ordenación del personal, no una descripción genérica de mejora de recursos humanos referida además a las Comunidades Autónomas.",
+    "2": "\"Un sistema de provisión de puestos de trabajo en el que se tendrán únicamente en cuenta los méritos exigidos en la correspondiente convocatoria\":** describe un sistema de provisión de puestos (propio de un concurso de méritos), no el instrumento técnico de ordenación del personal que regula el artículo 15.",
+    "3": "\"Los planes de empleo que contendrán de forma conjunta las actuaciones a desarrollar para la óptima utilización de los recursos humanos...\":** confunde la relación de puestos de trabajo con los planes de empleo, que son una figura distinta dentro de la propia Ley 30/1984, no la definición del artículo 15.\n\nFuente: Ley 30/1984, de 2 de agosto, de Medidas para la Reforma de la Función Pública, artículo 15."
+   }
+  }
+ },
+ {
+  "id": "5969256b-839a-4471-aa85-040a31d5ace0",
+  "explanation": "La respuesta correcta es **B) Herramientas**.\n\nEn LibreOffice Calc, el submenú **Formularios** se encuentra dentro del menú **Herramientas**. Desde allí se accede a las opciones de diseño de formularios, inserción de controles (botones, casillas, listas desplegables) y configuración de sus propiedades.\n\n**Por qué B es correcta:**\n> Vaya a **Herramientas ▸ Formularios** para acceder a las órdenes de gestión de formularios, incluyendo Modo de diseño, Asistentes para controles y Propiedades de los controles.\n\n**Por qué las demás son incorrectas:**\n- **A) Insertar** — El menú Insertar permite añadir celdas, filas, columnas, gráficos, imágenes o funciones, pero no contiene el submenú Formularios.\n- **C) Archivo** — El menú Archivo gestiona operaciones de documento: abrir, guardar, exportar a PDF, imprimir, etc. No tiene relación con formularios.\n- **D) Hoja** — El menú Hoja contiene opciones para insertar, eliminar, mover, renombrar u ocultar hojas de cálculo, no para trabajar con formularios.\n\nFuente: LibreOffice Help - Submenú Formularios (https://help.libreoffice.org/latest/es/text/shared/menu/forms.html)",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Herramientas**.\n\nEn LibreOffice Calc, el submenú **Formularios** se encuentra dentro del menú **Herramientas**. Desde allí se accede a las opciones de diseño de formularios, inserción de controles (botones, casillas, listas desplegables) y configuración de sus propiedades.",
+   "options": {
+    "0": "Insertar** — El menú Insertar permite añadir celdas, filas, columnas, gráficos, imágenes o funciones, pero no contiene el submenú Formularios.",
+    "1": "> Vaya a **Herramientas ▸ Formularios** para acceder a las órdenes de gestión de formularios, incluyendo Modo de diseño, Asistentes para controles y Propiedades de los controles.",
+    "2": "Archivo** — El menú Archivo gestiona operaciones de documento: abrir, guardar, exportar a PDF, imprimir, etc. No tiene relación con formularios.",
+    "3": "Hoja** — El menú Hoja contiene opciones para insertar, eliminar, mover, renombrar u ocultar hojas de cálculo, no para trabajar con formularios.\n\nFuente: LibreOffice Help - Submenú Formularios (https://help.libreoffice.org/latest/es/text/shared/menu/forms.html)"
+   }
+  }
+ },
+ {
+  "id": "5a67a79d-45aa-4f86-894a-8187d9c13b54",
+  "explanation": "La respuesta correcta es **B) Permite configurar las horas a las que se pueden recibir notificaciones.**\n\nEl **Asistente de concentración** (denominado \"No molestar\" en versiones anteriores) es una funcionalidad de Windows 10 que permite gestionar y silenciar las notificaciones para evitar distracciones.\n\n**Por qué B es correcta:**\n\nEl Asistente de concentración permite al usuario configurar las horas y las condiciones en las que se reciben notificaciones. Se puede activar automáticamente al duplicar la pantalla, reproducir un juego o usar una aplicación en modo de pantalla completa, y el usuario puede determinar en qué nivel se suprimen las notificaciones.\n\n**Por qué las demás son incorrectas:**\n\n- **A)** Obtener una imagen más brillante y una amplia gama de colores no tiene relación con el Asistente de concentración. Eso corresponde a la configuración de **HDR** (High Dynamic Range) de la pantalla.\n\n- **C)** Definir el horario de la configuración de luz nocturna corresponde precisamente a los ajustes de **Luz nocturna**, una funcionalidad distinta dentro de Configuración > Pantalla.\n\n- **D)** Cambiar el brillo, luminosidad y color de la pantalla también pertenece a la configuración de **Luz nocturna**, que reduce la luz azul emitida por la pantalla.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Permite configurar las horas a las que se pueden recibir notificaciones.**\n\nEl **Asistente de concentración** (denominado \"No molestar\" en versiones anteriores) es una funcionalidad de Windows 10 que permite gestionar y silenciar las notificaciones para evitar distracciones.",
+   "options": {
+    "0": "Obtener una imagen más brillante y una amplia gama de colores no tiene relación con el Asistente de concentración. Eso corresponde a la configuración de **HDR** (High Dynamic Range) de la pantalla.",
+    "1": "El Asistente de concentración permite al usuario configurar las horas y las condiciones en las que se reciben notificaciones. Se puede activar automáticamente al duplicar la pantalla, reproducir un juego o usar una aplicación en modo de pantalla completa, y el usuario puede determinar en qué nivel se suprimen las notificaciones.",
+    "2": "Definir el horario de la configuración de luz nocturna corresponde precisamente a los ajustes de **Luz nocturna**, una funcionalidad distinta dentro de Configuración > Pantalla.",
+    "3": "Cambiar el brillo, luminosidad y color de la pantalla también pertenece a la configuración de **Luz nocturna**, que reduce la luz azul emitida por la pantalla."
+   }
+  }
+ },
+ {
+  "id": "5abc8d73-3972-43b1-ab9d-9303c3c5ad15",
+  "explanation": "La respuesta correcta es la **B) Al Reglamento.**\n\n**Por qué B es correcta:**\n\nEl **artículo 80 de la Constitución Española** establece:\n\n> «Las sesiones plenarias de las Cámaras serán públicas, salvo acuerdo en contrario de cada Cámara, adoptado por **mayoría absoluta** o con arreglo **al Reglamento**.»\n\nLas dos vías para celebrar sesiones a puerta cerrada son: acuerdo por mayoría absoluta o conforme a lo que prevea el propio Reglamento de la Cámara.\n\n**Por qué las demás son incorrectas:**\n\n- **A) A la Ley:** El precepto no remite a la ley sino al Reglamento parlamentario; son instrumentos normativos distintos (el Reglamento es la norma interna de la Cámara).\n- **C) A una Ley Orgánica:** Tampoco es la referencia constitucional; el art. 80 CE remite al Reglamento, no a una ley orgánica.\n- **D) A una Orden:** Las Órdenes son normas del ejecutivo de rango reglamentario; no tienen ninguna relevancia en el régimen de publicidad de las sesiones parlamentarias.\n\n*Fuente: art. 80 de la Constitución Española de 1978.*",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B) Al Reglamento.**",
+   "options": {
+    "0": "**A la Ley:** El precepto no remite a la ley sino al Reglamento parlamentario; son instrumentos normativos distintos (el Reglamento es la norma interna de la Cámara).",
+    "1": "El **artículo 80 de la Constitución Española** establece:\n\n> «Las sesiones plenarias de las Cámaras serán públicas, salvo acuerdo en contrario de cada Cámara, adoptado por **mayoría absoluta** o con arreglo **al Reglamento**.»\n\nLas dos vías para celebrar sesiones a puerta cerrada son: acuerdo por mayoría absoluta o conforme a lo que prevea el propio Reglamento de la Cámara.",
+    "2": "**A una Ley Orgánica:** Tampoco es la referencia constitucional; el art. 80 CE remite al Reglamento, no a una ley orgánica.",
+    "3": "**A una Orden:** Las Órdenes son normas del ejecutivo de rango reglamentario; no tienen ninguna relevancia en el régimen de publicidad de las sesiones parlamentarias.\n\n*Fuente: art. 80 de la Constitución Española de 1978.*"
+   }
+  }
+ },
+ {
+  "id": "5aec33ad-4070-4dff-8094-5bc6efef9b09",
+  "explanation": "La respuesta correcta es la **B) Para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.**\n\n**Por qué B es correcta:**\n\nEl **artículo 74.1 de la Constitución Española** dispone literalmente:\n\n> «Las Cámaras se reunirán en sesión conjunta para ejercer las **competencias no legislativas** que el **Título II** atribuye expresamente a las Cortes Generales.»\n\nEl Título II CE (\"De la Corona\") atribuye a las Cortes ciertas funciones (reconocer la inhabilidad del Rey, proveer la sucesión, etc.) que son **no legislativas** y que deben ejercerse en sesión conjunta.\n\n**Por qué las demás son incorrectas:**\n\n- **A)** Omite la palabra «no legislativas»; las sesiones conjuntas se reservan precisamente para las competencias **no** legislativas, no para las legislativas ordinarias.\n- **C)** Habla de «competencias legislativas», contradiciendo el texto del art. 74.1 CE.\n- **D)** Menciona el **Título III** en lugar del Título II; el Título III trata de las Cortes Generales y sus funciones legislativas; las sesiones conjuntas se vinculan al Título II (la Corona).\n\n*Fuente: art. 74.1 de la Constitución Española de 1978.*",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **B) Para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.**",
+   "options": {
+    "0": "Omite la palabra «no legislativas»; las sesiones conjuntas se reservan precisamente para las competencias **no** legislativas, no para las legislativas ordinarias.",
+    "1": "El **artículo 74.1 de la Constitución Española** dispone literalmente:\n\n> «Las Cámaras se reunirán en sesión conjunta para ejercer las **competencias no legislativas** que el **Título II** atribuye expresamente a las Cortes Generales.»\n\nEl Título II CE (\"De la Corona\") atribuye a las Cortes ciertas funciones (reconocer la inhabilidad del Rey, proveer la sucesión, etc.) que son **no legislativas** y que deben ejercerse en sesión conjunta.",
+    "2": "Habla de «competencias legislativas», contradiciendo el texto del art. 74.1 CE.",
+    "3": "Menciona el **Título III** en lugar del Título II; el Título III trata de las Cortes Generales y sus funciones legislativas; las sesiones conjuntas se vinculan al Título II (la Corona).\n\n*Fuente: art. 74.1 de la Constitución Española de 1978.*"
+   }
+  }
+ },
+ {
+  "id": "5b14f487-6d61-4712-9e1d-da631d6ee094",
+  "explanation": "La respuesta correcta es **B) Simplicidad, claridad y proximidad a los ciudadanos**.\n\nEl artículo 3.1 de la Ley 40/2015, de Régimen Jurídico del Sector Público, establece los principios por los que se rigen las Administraciones Públicas en su actuación y relaciones.\n\n> **Art. 3.1 Ley 40/2015 (principios de actuación):** Servicio efectivo a los ciudadanos; **Simplicidad, claridad y proximidad a los ciudadanos**; Participación, objetividad y transparencia; Racionalización y agilidad; Buena fe, confianza legítima y lealtad institucional; Responsabilidad por la gestión pública; Planificación y dirección por objetivos; Eficacia; Economía, suficiencia y adecuación; Eficiencia; **Cooperación, colaboración y coordinación** entre Administraciones.\n\n**Por qué B es correcta:** La opción B reproduce literalmente el apartado b) del artículo 3.1, que es uno de los principios de actuación enumerados.\n\n**Por qué las demás son incorrectas:**\n- **A)** \"Cooperación y colaboración entre administración y ciudadanos\" invierte los destinatarios. El art. 3.1.k) se refiere a cooperación entre las **Administraciones Públicas** entre sí, no entre la Administración y los ciudadanos.\n- **C)** \"Transparencia del administrado y participación de la administración\" invierte los sujetos. El artículo establece la transparencia de la **actuación administrativa** y la participación **de los ciudadanos**.\n- **D)** \"Buena fe y confianza administrativa\" es una reformulación inexacta. El artículo dice \"buena fe, **confianza legítima** y lealtad **institucional**\"; \"confianza administrativa\" no es la expresión correcta.\n\nFuente: Ley 40/2015, de 1 de octubre, art. 3.1.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 3.1 Ley 40/2015 (principios de actuación)",
+    "bloque": "**Art. 3.1 Ley 40/2015 (principios de actuación):** Servicio efectivo a los ciudadanos; **Simplicidad, claridad y proximidad a los ciudadanos**; Participación, objetividad y transparencia; Racionalización y agilidad; Buena fe, confianza legítima y lealtad institucional; Responsabilidad por la gestión pública; Planificación y dirección por objetivos; Eficacia; Economía, suficiencia y adecuación; Eficiencia; **Cooperación, colaboración y coordinación** entre Administraciones."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Simplicidad, claridad y proximidad a los ciudadanos**.\n\nEl artículo 3.1 de la Ley 40/2015, de Régimen Jurídico del Sector Público, establece los principios por los que se rigen las Administraciones Públicas en su actuación y relaciones.",
+   "options": {
+    "0": "\"Cooperación y colaboración entre administración y ciudadanos\" invierte los destinatarios. El art. 3.1.k) se refiere a cooperación entre las **Administraciones Públicas** entre sí, no entre la Administración y los ciudadanos.",
+    "1": "La opción B reproduce literalmente el apartado b) del artículo 3.1, que es uno de los principios de actuación enumerados.",
+    "2": "\"Transparencia del administrado y participación de la administración\" invierte los sujetos. El artículo establece la transparencia de la **actuación administrativa** y la participación **de los ciudadanos**.",
+    "3": "\"Buena fe y confianza administrativa\" es una reformulación inexacta. El artículo dice \"buena fe, **confianza legítima** y lealtad **institucional**\"; \"confianza administrativa\" no es la expresión correcta.\n\nFuente: Ley 40/2015, de 1 de octubre, art. 3.1."
+   }
+  }
+ },
+ {
+  "id": "5be2362b-3ce0-45af-ba00-73a2693a906d",
+  "explanation": "**Respuesta correcta: C) Prudencia Financiera.**\n\n> «Todas las operaciones financieras que suscriban las Corporaciones Locales están sujetas al principio de prudencia financiera.»\n\n**Por qué C es correcta:** El artículo 48 bis del RDL 2/2004 establece expresamente que todas las operaciones financieras de las Corporaciones Locales están sujetas al principio de prudencia financiera.\n\n**Por qué las demás son incorrectas:**\n- **A)** «Imputación de la transacción» no es un principio recogido en este contexto legal.\n- **B)** «Precio de Adquisición» es un principio contable, no aplicable a operaciones financieras de las corporaciones locales en este artículo.\n- **D)** «Devengo» es un principio contable y tributario, pero no es el que rige las operaciones financieras según el artículo 48 bis.\n\n📚 **Fuente:** [RDL 2/2004, Art. 48 bis](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a48bis)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Todas las operaciones financieras que suscriban las Corporaciones Locales están sujetas al principio de prudencia financiera.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: C) Prudencia Financiera.**",
+   "options": {
+    "0": "«Imputación de la transacción» no es un principio recogido en este contexto legal.",
+    "1": "«Precio de Adquisición» es un principio contable, no aplicable a operaciones financieras de las corporaciones locales en este artículo.",
+    "2": "El artículo 48 bis del RDL 2/2004 establece expresamente que todas las operaciones financieras de las Corporaciones Locales están sujetas al principio de prudencia financiera.",
+    "3": "«Devengo» es un principio contable y tributario, pero no es el que rige las operaciones financieras según el artículo 48 bis.\n\n📚 **Fuente:** [RDL 2/2004, Art. 48 bis](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a48bis)"
+   }
+  }
+ },
+ {
+  "id": "5c17dbc0-f4a9-4749-9ba5-6905e34189a7",
+  "explanation": "La respuesta correcta es **C) Cuando el valor de la finca fuera superior a 6.000 euros**.\n\n> **Art. 105.3 Ley 15/2015, de la Jurisdicción Voluntaria:** «En la tramitación del presente expediente será preceptiva la intervención de Abogado si el valor de la finca fuera superior a 6.000 euros.»\n\n**Por qué C es correcta:** El art.105.3 fija el umbral exacto en **6.000 euros**. Por debajo de esa cantidad, la representación letrada no es obligatoria en el expediente de deslinde de fincas no inscritas.\n\n**Por qué las demás son incorrectas:**\n\n- **A) Superior a 15.000 euros:** no existe ese umbral en el art.105 ni en el resto de la Ley 15/2015 para este expediente.\n- **B) Superior a 9.000 euros:** tampoco aparece en el precepto; es una cifra inexistente para este supuesto.\n- **D) Superior a 10.000 euros:** igualmente ajeno al texto del art.105.3, que es claro y no admite otra cantidad.\n\n*Fuente: Ley 15/2015, de 2 de julio, de la Jurisdicción Voluntaria, art.105.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 105.3 Ley 15/2015, de la Jurisdicción Voluntaria",
+    "bloque": "**Art. 105.3 Ley 15/2015, de la Jurisdicción Voluntaria:** «En la tramitación del presente expediente será preceptiva la intervención de Abogado si el valor de la finca fuera superior a 6.000 euros.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Cuando el valor de la finca fuera superior a 6.000 euros**.",
+   "options": {
+    "0": "**Superior a 15.000 euros:** no existe ese umbral en el art.105 ni en el resto de la Ley 15/2015 para este expediente.",
+    "1": "**Superior a 9.000 euros:** tampoco aparece en el precepto; es una cifra inexistente para este supuesto.",
+    "2": "El art.105.3 fija el umbral exacto en **6.000 euros**. Por debajo de esa cantidad, la representación letrada no es obligatoria en el expediente de deslinde de fincas no inscritas.",
+    "3": "**Superior a 10.000 euros:** igualmente ajeno al texto del art.105.3, que es claro y no admite otra cantidad.\n\n*Fuente: Ley 15/2015, de 2 de julio, de la Jurisdicción Voluntaria, art.105.*"
+   }
+  }
+ },
+ {
+  "id": "5c78f02f-2a50-4434-b906-373ed13d2db6",
+  "explanation": "La respuesta correcta es **C) El 29 de diciembre de 1978.**\n\n> **Constitución Española de 1978 – Datos históricos:** \"Aprobada por referéndum: 6 diciembre 1978. Sancionada por el Rey: 27 diciembre 1978. **Publicada en BOE y entrada en vigor: 29 diciembre 1978**.\"\n\n**Por qué C es correcta:** La Constitución Española se publicó en el BOE núm. 311, de **29 de diciembre de 1978**, fecha que determina su entrada en vigor y que es la referencia normativa habitual.\n\n**Por qué las demás son incorrectas:**\n- **A)** El 31 de octubre de 1978 fue la aprobación por las Cortes Generales en sesiones plenarias de Congreso y Senado.\n- **B)** El 27 de diciembre de 1978 fue la sanción por S.M. el Rey ante las Cortes.\n- **D)** El 6 de diciembre de 1978 fue la ratificación por el pueblo español en referéndum.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Constitución Española de 1978 – Datos históricos",
+    "texto": "Aprobada por referéndum: 6 diciembre 1978. Sancionada por el Rey: 27 diciembre 1978. **Publicada en BOE y entrada en vigor: 29 diciembre 1978**.",
+    "bloque": "**Constitución Española de 1978 – Datos históricos:** \"Aprobada por referéndum: 6 diciembre 1978. Sancionada por el Rey: 27 diciembre 1978. **Publicada en BOE y entrada en vigor: 29 diciembre 1978**.\""
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) El 29 de diciembre de 1978.**",
+   "options": {
+    "0": "El 31 de octubre de 1978 fue la aprobación por las Cortes Generales en sesiones plenarias de Congreso y Senado.",
+    "1": "El 27 de diciembre de 1978 fue la sanción por S.M. el Rey ante las Cortes.",
+    "2": "La Constitución Española se publicó en el BOE núm. 311, de **29 de diciembre de 1978**, fecha que determina su entrada en vigor y que es la referencia normativa habitual.",
+    "3": "El 6 de diciembre de 1978 fue la ratificación por el pueblo español en referéndum."
+   }
+  }
+ },
+ {
+  "id": "5cb4c601-5c6d-41f6-9de9-87ea2da944a7",
+  "explanation": "La respuesta correcta es **A) Juristas de reconocida competencia con más de quince años de ejercicio profesional**.\n\n> «Los miembros del Tribunal Constitucional deberán ser nombrados entre Magistrados y Fiscales, Profesores de Universidad, funcionarios públicos y Abogados, todos ellos juristas de reconocida competencia con **más de quince años de ejercicio profesional**.» (Art. 159.2 CE)\n\n**Por qué A es correcta:** El art. 159.2 CE fija expresamente el umbral de **quince años** de ejercicio profesional como requisito mínimo de experiencia.\n\n**Por qué las demás son incorrectas:**\n- **B) Más de doce años:** No coincide con el plazo constitucional de quince años.\n- **C) Más de diez años:** Insuficiente; el art. 159.2 CE exige quince años.\n- **D) Más de veinte años:** Excede el requisito constitucional; sería más restrictivo que lo que exige la Constitución.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "más de quince años de ejercicio profesional",
+    "bloque": "«Los miembros del Tribunal Constitucional deberán ser nombrados entre Magistrados y Fiscales, Profesores de Universidad, funcionarios públicos y Abogados, todos ellos juristas de reconocida competencia con **más de quince años de ejercicio profesional**.» (Art. 159.2 CE)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Juristas de reconocida competencia con más de quince años de ejercicio profesional**.",
+   "options": {
+    "0": "El art. 159.2 CE fija expresamente el umbral de **quince años** de ejercicio profesional como requisito mínimo de experiencia.",
+    "1": "**Más de doce años:** No coincide con el plazo constitucional de quince años.",
+    "2": "**Más de diez años:** Insuficiente; el art. 159.2 CE exige quince años.",
+    "3": "**Más de veinte años:** Excede el requisito constitucional; sería más restrictivo que lo que exige la Constitución."
+   }
+  }
+ },
+ {
+  "id": "5cd987cd-0069-4e83-ae22-573ae08308e3",
+  "explanation": "La respuesta correcta es la **C) Se marca como vencida.**\n\n**Por qué C es correcta:**\n\nCuando una tarea llega a su fecha de vencimiento sin haberse completado, Outlook la mantiene activa en la lista de tareas pero la resalta visualmente —normalmente en rojo— como **vencida**, permitiendo al usuario identificarla rápidamente y decidir qué acción tomar.\n\n> En Outlook 365, las tareas vencidas aparecen destacadas en **rojo** en la lista de tareas. La tarea permanece activa hasta que el usuario la complete, la elimine o cambie su fecha de vencimiento.\n\n**Por qué las demás son incorrectas:**\n\n- **A) Se elimina automáticamente:** Outlook no elimina tareas vencidas; quedan en la lista hasta que el usuario las gestione.\n- **B) Se convierte en cita:** Una tarea no se transforma en cita de calendario al vencer; son dos tipos de elementos distintos en Outlook.\n- **D) Se completa sola:** Outlook no completa tareas automáticamente por el mero hecho de que haya llegado la fecha de vencimiento.\n\n*Fuente: Microsoft Support — Administrar tareas en Outlook.*",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **C) Se marca como vencida.**",
+   "options": {
+    "0": "**Se elimina automáticamente:** Outlook no elimina tareas vencidas; quedan en la lista hasta que el usuario las gestione.",
+    "1": "**Se convierte en cita:** Una tarea no se transforma en cita de calendario al vencer; son dos tipos de elementos distintos en Outlook.",
+    "2": "Cuando una tarea llega a su fecha de vencimiento sin haberse completado, Outlook la mantiene activa en la lista de tareas pero la resalta visualmente —normalmente en rojo— como **vencida**, permitiendo al usuario identificarla rápidamente y decidir qué acción tomar.\n\n> En Outlook 365, las tareas vencidas aparecen destacadas en **rojo** en la lista de tareas. La tarea permanece activa hasta que el usuario la complete, la elimine o cambie su fecha de vencimiento.",
+    "3": "**Se completa sola:** Outlook no completa tareas automáticamente por el mero hecho de que haya llegado la fecha de vencimiento.\n\n*Fuente: Microsoft Support — Administrar tareas en Outlook.*"
+   }
+  }
+ },
+ {
+  "id": "5d7002f8-f604-4ca3-acdf-8829a42aa18e",
+  "explanation": "**Respuesta correcta: A) Como personas al servicio de las Cortes.**\n\n> **Reglamento Defensor Pueblo art. 31.1:** «El personal al servicio del Defensor del Pueblo tendrá la consideración de personal al servicio de las Cortes, sin perjuicio de la dependencia orgánica y funcional del Defensor del Pueblo.»\n\n**Por qué A es correcta:** el artículo lo dice de forma literal: quien presta servicio al Defensor del Pueblo tiene la consideración de personal al servicio de las Cortes Generales.\n\n**Por qué las demás son incorrectas:**\n- **B) Como personas al servicio del Defensor del Pueblo:** incorrecta. La \"dependencia orgánica y funcional del Defensor del Pueblo\" se mantiene, pero la *consideración* jurídica del personal es la de personal al servicio de las Cortes, no la que enuncia esta opción.\n- **C) Como personas al servicio de las Administraciones Públicas:** incorrecta. El art. 31 no los asimila a personal de las Administraciones Públicas; solo el personal procedente de otras Administraciones queda en la situación del art. 35.2 de la Ley Orgánica, sin cambiar su consideración de servicio a las Cortes.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Reglamento Defensor Pueblo art. 31.1",
+    "bloque": "**Reglamento Defensor Pueblo art. 31.1:** «El personal al servicio del Defensor del Pueblo tendrá la consideración de personal al servicio de las Cortes, sin perjuicio de la dependencia orgánica y funcional del Defensor del Pueblo.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Como personas al servicio de las Cortes.**",
+   "options": {
+    "0": "el artículo lo dice de forma literal: quien presta servicio al Defensor del Pueblo tiene la consideración de personal al servicio de las Cortes Generales.",
+    "1": "**Como personas al servicio del Defensor del Pueblo:** incorrecta. La \"dependencia orgánica y funcional del Defensor del Pueblo\" se mantiene, pero la *consideración* jurídica del personal es la de personal al servicio de las Cortes, no la que enuncia esta opción.",
+    "2": "**Como personas al servicio de las Administraciones Públicas:** incorrecta. El art. 31 no los asimila a personal de las Administraciones Públicas; solo el personal procedente de otras Administraciones queda en la situación del art. 35.2 de la Ley Orgánica, sin cambiar su consideración de servicio a las Cortes."
+   }
+  }
+ },
+ {
+  "id": "5e3c0b1d-3819-4bc8-a183-5a277dd0b33d",
+  "explanation": "La respuesta correcta es **C) Metas globales.**\n\n> **Estrategia de Desarrollo Sostenible 2030 – Elementos constituyentes:** \"1. Retos País (8 retos fundamentales); 2. Políticas Aceleradoras del Desarrollo Sostenible; 3. Prioridades de actuación; 4. Marco de indicadores para seguimiento y evaluación. **NOTA: 'Metas globales' NO es un elemento específico de la Estrategia de Desarrollo Sostenible 2030**.\"\n\n**Por qué C es correcta:** Las \"Metas globales\" no forman parte de los elementos constituyentes de la EDS 2030 española. Las 169 metas pertenecen a la Agenda 2030 de Naciones Unidas (vinculadas a los 17 ODS), no a la Estrategia nacional española.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las \"Políticas aceleradoras\" son uno de los elementos de la EDS 2030.\n- **B)** Las \"Prioridades de actuación\" son un elemento constituyente de la EDS 2030.\n- **D)** Los \"Retos país\" son el primer elemento (los 8 retos fundamentales) de la EDS 2030.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Estrategia de Desarrollo Sostenible 2030 – Elementos constituyentes",
+    "texto": "1. Retos País (8 retos fundamentales); 2. Políticas Aceleradoras del Desarrollo Sostenible; 3. Prioridades de actuación; 4. Marco de indicadores para seguimiento y evaluación. **NOTA: 'Metas globales' NO es un elemento específico de la Estrategia de Desarrollo Sostenible 2030**.",
+    "bloque": "**Estrategia de Desarrollo Sostenible 2030 – Elementos constituyentes:** \"1. Retos País (8 retos fundamentales); 2. Políticas Aceleradoras del Desarrollo Sostenible; 3. Prioridades de actuación; 4. Marco de indicadores para seguimiento y evaluación. **NOTA: 'Metas globales' NO es un elemento específico de la Estrategia de Desarrollo Sostenible 2030**.\""
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Metas globales.**",
+   "options": {
+    "0": "Las \"Políticas aceleradoras\" son uno de los elementos de la EDS 2030.",
+    "1": "Las \"Prioridades de actuación\" son un elemento constituyente de la EDS 2030.",
+    "2": "Las \"Metas globales\" no forman parte de los elementos constituyentes de la EDS 2030 española. Las 169 metas pertenecen a la Agenda 2030 de Naciones Unidas (vinculadas a los 17 ODS), no a la Estrategia nacional española.",
+    "3": "Los \"Retos país\" son el primer elemento (los 8 retos fundamentales) de la EDS 2030."
+   }
+  }
+ },
+ {
+  "id": "5e47cceb-28dc-45d2-8925-225216c7f2ce",
+  "explanation": "La respuesta correcta es **D) Que tiene derecho al resarcimiento de los gastos que se le ocasionen**.\n\n> «Se hará saber al receptor que queda obligado a entregar la copia de la resolución o la cédula al destinatario de la comunicación o a darle aviso si sabe su paradero... **que tiene derecho al resarcimiento de los gastos que se le ocasionen**.» (Art. 57.3 LRJS)\n\n**Por qué D es correcta:** El art. 57.3 LRJS establece que el receptor (que no es el destinatario) queda informado de su obligación de entregar/avisar y, como contraprestación, de su derecho al resarcimiento de gastos.\n\n**Por qué las demás son incorrectas:**\n- **A) Que queda constituido en la obligación de averiguar el paradero del receptor:** Lo que se le impone es la obligación de entregar o dar aviso *si sabe el paradero*, no la de investigarlo activamente.\n- **B) Que será procesado por desobediencia si se niega:** El art. 57.3 LRJS no prevé consecuencias penales por negativa a la recepción.\n- **C) Que tiene derecho a recibir una cantidad determinada en el proceso principal por los servicios prestados:** El derecho es al resarcimiento de gastos (no a una cantidad fijada en el proceso principal).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "que tiene derecho al resarcimiento de los gastos que se le ocasionen",
+    "bloque": "«Se hará saber al receptor que queda obligado a entregar la copia de la resolución o la cédula al destinatario de la comunicación o a darle aviso si sabe su paradero... **que tiene derecho al resarcimiento de los gastos que se le ocasionen**.» (Art. 57.3 LRJS)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D) Que tiene derecho al resarcimiento de los gastos que se le ocasionen**.",
+   "options": {
+    "0": "Que queda constituido en la obligación de averiguar el paradero del receptor:** Lo que se le impone es la obligación de entregar o dar aviso *si sabe el paradero*, no la de investigarlo activamente.",
+    "1": "**Que será procesado por desobediencia si se niega:** El art. 57.3 LRJS no prevé consecuencias penales por negativa a la recepción.",
+    "2": "Que tiene derecho a recibir una cantidad determinada en el proceso principal por los servicios prestados:** El derecho es al resarcimiento de gastos (no a una cantidad fijada en el proceso principal).",
+    "3": "El art. 57.3 LRJS establece que el receptor (que no es el destinatario) queda informado de su obligación de entregar/avisar y, como contraprestación, de su derecho al resarcimiento de gastos."
+   }
+  }
+ },
+ {
+  "id": "5e4e160a-c259-4501-9553-d4eaaa51d196",
+  "explanation": "**Respuesta correcta: C) Ctrl+P.**\n\n> Según la documentación oficial de Microsoft: «Ctrl+P — Imprimir una presentación».\n\n**Por qué C es correcta:**\nCtrl+P (Print) abre directamente la vista de impresión de PowerPoint 2016.\n\n**Por qué las demás son incorrectas:**\n- **A) Ctrl+I:** Aplica cursiva al texto seleccionado.\n- **B) Ctrl+N:** Crea una nueva presentación en blanco.\n- **D) Ctrl+E:** Centra el texto en el párrafo seleccionado.\n\n📚 **Fuente:** [Usar métodos abreviados de teclado para crear presentaciones de PowerPoint](https://support.microsoft.com/es-es/office/usar-métodos-abreviados-de-teclado-para-crear-presentaciones-de-powerpoint-ebb3d20e-dcd4-444f-a38e-bb5c5ed180f4)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "Según la documentación oficial de Microsoft: «Ctrl+P — Imprimir una presentación»."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: C) Ctrl+P.**",
+   "options": {
+    "0": "**Ctrl+I:** Aplica cursiva al texto seleccionado.",
+    "1": "**Ctrl+N:** Crea una nueva presentación en blanco.",
+    "2": "Ctrl+P (Print) abre directamente la vista de impresión de PowerPoint 2016.",
+    "3": "**Ctrl+E:** Centra el texto en el párrafo seleccionado.\n\n📚 **Fuente:** [Usar métodos abreviados de teclado para crear presentaciones de PowerPoint](https://support.microsoft.com/es-es/office/usar-métodos-abreviados-de-teclado-para-crear-presentaciones-de-powerpoint-ebb3d20e-dcd4-444f-a38e-bb5c5ed180f4)"
+   }
+  }
+ },
+ {
+  "id": "5e6b1c80-f79d-4102-81ac-36ce1cc31acd",
+  "explanation": "**Respuesta correcta: A) Insertar - Número de Página.**\n\n> En Word 2016, los números de página se insertan desde la pestaña Insertar, grupo Encabezado y pie de página, opción Número de página.\n\n**Por qué A es correcta:**\nEn Word 2016, la ruta correcta para insertar números de página es: pestaña Insertar > grupo Encabezado y pie de página > Número de página. Desde ahí se puede elegir la posición (principio de página, final de página, márgenes, posición actual) y el formato del número. Esta es la forma estándar y directa que ofrece Word 2016 para esta función.\n\n**Por qué las demás son incorrectas:**\n- **B) Inicio – Formato – Número de página:** La pestaña Inicio contiene herramientas de formato de texto (fuente, párrafo, estilos), pero no incluye ninguna opción para insertar números de página. Esta ruta no existe en Word 2016.\n- **C) Insertar – Cuadro de texto – Número de página:** Aunque la pestaña Insertar es correcta, la opción Número de página no se encuentra dentro de Cuadro de texto. Son funciones independientes dentro de la misma pestaña.\n- **D) Revisar – Pie de Página – Número de Página:** La pestaña Revisar contiene herramientas de revisión ortográfica, control de cambios y comentarios. No incluye opciones para insertar encabezados, pies de página ni números de página.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "En Word 2016, los números de página se insertan desde la pestaña Insertar, grupo Encabezado y pie de página, opción Número de página."
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Insertar - Número de Página.**",
+   "options": {
+    "0": "En Word 2016, la ruta correcta para insertar números de página es: pestaña Insertar > grupo Encabezado y pie de página > Número de página. Desde ahí se puede elegir la posición (principio de página, final de página, márgenes, posición actual) y el formato del número. Esta es la forma estándar y directa que ofrece Word 2016 para esta función.",
+    "1": "**Inicio – Formato – Número de página:** La pestaña Inicio contiene herramientas de formato de texto (fuente, párrafo, estilos), pero no incluye ninguna opción para insertar números de página. Esta ruta no existe en Word 2016.",
+    "2": "**Insertar – Cuadro de texto – Número de página:** Aunque la pestaña Insertar es correcta, la opción Número de página no se encuentra dentro de Cuadro de texto. Son funciones independientes dentro de la misma pestaña.",
+    "3": "**Revisar – Pie de Página – Número de Página:** La pestaña Revisar contiene herramientas de revisión ortográfica, control de cambios y comentarios. No incluye opciones para insertar encabezados, pies de página ni números de página."
+   }
+  }
+ },
+ {
+  "id": "5ee37019-adec-450a-9b19-3f9aa9df9b4f",
+  "explanation": "La respuesta correcta es **C) Con al menos 15 días de antelación a la celebración de la vista**.\n\n> «...requerirá a la **Administración demandada que remita el expediente administrativo en soporte electrónico, con al menos quince días de antelación** del término señalado para la vista.» (Art. 78.3 Ley 29/1998, LJCA)\n\n**Por qué C es correcta:** El art. 78.3 LJCA fija un plazo mínimo de **15 días** antes de la vista para la remisión del expediente, no uno máximo de días desde la admisión de la demanda.\n\n**Por qué las demás son incorrectas:**\n- **A) En el plazo de 10 días:** No es el plazo que fija el art. 78.3; además, no se computa desde la admisión sino que se cuenta hacia atrás desde la vista.\n- **B) Con al menos 10 días de antelación:** Inferior al plazo legal de 15 días.\n- **D) En el plazo de 20 días:** Tampoco coincide con el art. 78.3, que establece 15 días de antelación a la vista.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Administración demandada que remita el expediente administrativo en soporte electrónico, con al menos quince días de antelación",
+    "bloque": "«...requerirá a la **Administración demandada que remita el expediente administrativo en soporte electrónico, con al menos quince días de antelación** del término señalado para la vista.» (Art. 78.3 Ley 29/1998, LJCA)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Con al menos 15 días de antelación a la celebración de la vista**.",
+   "options": {
+    "0": "**En el plazo de 10 días:** No es el plazo que fija el art. 78.3; además, no se computa desde la admisión sino que se cuenta hacia atrás desde la vista.",
+    "1": "**Con al menos 10 días de antelación:** Inferior al plazo legal de 15 días.",
+    "2": "El art. 78.3 LJCA fija un plazo mínimo de **15 días** antes de la vista para la remisión del expediente, no uno máximo de días desde la admisión de la demanda.",
+    "3": "**En el plazo de 20 días:** Tampoco coincide con el art. 78.3, que establece 15 días de antelación a la vista."
+   }
+  }
+ },
+ {
+  "id": "5f36bac2-1ef8-441b-9968-211ee4f78c6a",
+  "explanation": "La respuesta correcta es **C) Garantizar los derechos digitales de la ciudadanía conforme al mandato establecido en el artículo 18.4 de la Constitución**.\n\n> **Art. 1 LO 3/2018:** «La presente ley orgánica tiene por objeto: a) Adaptar el ordenamiento jurídico español al **Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo** [...]. b) **Garantizar los derechos digitales de la ciudadanía** conforme al mandato establecido en el **artículo 18.4 de la Constitución**.»\n\n**Por qué C es correcta:** La opción C reproduce fielmente el apartado b) del art. 1 LO 3/2018, que es uno de los dos objetos de la ley.\n\n**Por qué las demás son incorrectas:**\n- **A)** Dice \"decisión UE 2016/679\" cuando debe ser \"**Reglamento** UE 2016/679\"; y el emisor es el \"Parlamento Europeo y el Consejo\", no la \"Comisión\".\n- **B)** Dice \"amparado por el artículo **14**\" cuando el artículo correcto es el **18.4** CE (protección de datos e informática).\n- **D)** Atribuye el Reglamento a \"la **Comisión Europea**\" cuando fue aprobado por \"el **Parlamento Europeo y el Consejo**\".",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 1 LO 3/2018",
+    "bloque": "**Art. 1 LO 3/2018:** «La presente ley orgánica tiene por objeto: a) Adaptar el ordenamiento jurídico español al **Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo** [...]. b) **Garantizar los derechos digitales de la ciudadanía** conforme al mandato establecido en el **artículo 18.4 de la Constitución**.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Garantizar los derechos digitales de la ciudadanía conforme al mandato establecido en el artículo 18.4 de la Constitución**.",
+   "options": {
+    "0": "Dice \"decisión UE 2016/679\" cuando debe ser \"**Reglamento** UE 2016/679\"; y el emisor es el \"Parlamento Europeo y el Consejo\", no la \"Comisión\".",
+    "1": "Dice \"amparado por el artículo **14**\" cuando el artículo correcto es el **18.4** CE (protección de datos e informática).",
+    "2": "La opción C reproduce fielmente el apartado b) del art. 1 LO 3/2018, que es uno de los dos objetos de la ley.",
+    "3": "Atribuye el Reglamento a \"la **Comisión Europea**\" cuando fue aprobado por \"el **Parlamento Europeo y el Consejo**\"."
+   }
+  }
+ },
+ {
+  "id": "5ff35c0e-1189-490d-b21f-f3dcd049e5b9",
+  "explanation": "La respuesta correcta es **B) De los Objetivos de Desarrollo del Milenio (ODM).**\n\n> **Objetivos de Desarrollo del Milenio (ODM) – Antecedentes de los ODS:** \"Los **Objetivos de Desarrollo Sostenible (ODS) son herederos de los Objetivos de Desarrollo del Milenio (ODM)** y buscan ampliar los éxitos alcanzados con ellos, así como lograr aquellas metas que no fueron conseguidas. La Agenda 2030 para el Desarrollo Sostenible amplía y profundiza los compromisos iniciados con los ODM.\"\n\n**Por qué B es correcta:** Los ODM (establecidos por la ONU para el periodo 2000-2015, con 8 objetivos) son los únicos antecedentes oficiales reconocidos de los ODS. La propia documentación de Naciones Unidas los describe como herederos directos.\n\n**Por qué las demás son incorrectas:**\n- **A) Objetivos contra el Cambio Climático (OCC):** No son una categoría oficial de la ONU ni predecesores de los ODS.\n- **C) Objetivos de Desarrollo Mundial 2010-2018:** No existen en el sistema de Naciones Unidas.\n- **D) Objetivos Sociales del Milenio (OSM):** No corresponden a ningún programa oficial de la ONU.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Objetivos de Desarrollo del Milenio (ODM) – Antecedentes de los ODS",
+    "texto": "Los **Objetivos de Desarrollo Sostenible (ODS) son herederos de los Objetivos de Desarrollo del Milenio (ODM)** y buscan ampliar los éxitos alcanzados con ellos, así como lograr aquellas metas que no fueron conseguidas. La Agenda 2030 para el Desarrollo Sostenible amplía y profundiza los compromisos iniciados con los ODM.",
+    "bloque": "**Objetivos de Desarrollo del Milenio (ODM) – Antecedentes de los ODS:** \"Los **Objetivos de Desarrollo Sostenible (ODS) son herederos de los Objetivos de Desarrollo del Milenio (ODM)** y buscan ampliar los éxitos alcanzados con ellos, así como lograr aquellas metas que no fueron conseguidas. La Agenda 2030 para el Desarrollo Sostenible amplía y profundiza los compromisos iniciados con los ODM.\""
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) De los Objetivos de Desarrollo del Milenio (ODM).**",
+   "options": {
+    "0": "**Objetivos contra el Cambio Climático (OCC):** No son una categoría oficial de la ONU ni predecesores de los ODS.",
+    "1": "Los ODM (establecidos por la ONU para el periodo 2000-2015, con 8 objetivos) son los únicos antecedentes oficiales reconocidos de los ODS. La propia documentación de Naciones Unidas los describe como herederos directos.",
+    "2": "**Objetivos de Desarrollo Mundial 2010-2018:** No existen en el sistema de Naciones Unidas.",
+    "3": "**Objetivos Sociales del Milenio (OSM):** No corresponden a ningún programa oficial de la ONU."
+   }
+  }
+ },
+ {
+  "id": "600d68e0-d84b-41d6-8312-f7f8cc6b2707",
+  "explanation": "La respuesta correcta es **B) Asunto:oferta NO primera**.\n\n> En Outlook, el **operador NO** excluye términos de búsqueda. La sintaxis **Asunto:valor** restringe la búsqueda al campo indicado. La combinación `Asunto:oferta NO primera` devuelve mensajes con \"oferta\" en el Asunto que no contengan \"primera\".\n\n**Por qué B es correcta:** Esta es la sintaxis correcta de búsqueda avanzada de Outlook para combinar inclusión y exclusión en un campo.\n\n**Por qué las demás son incorrectas:**\n- **A** (`=oferta <> primera`): El operador `<>` no es sintaxis válida de búsqueda en Outlook.\n- **C** (`Asunto= +oferta -primera`): Outlook no usa `Asunto=` ni los operadores `+/-`.\n- **D** (`SI \"oferta\" NO \"primera\"`): `SI` no es operador de búsqueda en Outlook.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "operador NO",
+    "texto": "oferta",
+    "bloque": "En Outlook, el **operador NO** excluye términos de búsqueda. La sintaxis **Asunto:valor** restringe la búsqueda al campo indicado. La combinación `Asunto:oferta NO primera` devuelve mensajes con \"oferta\" en el Asunto que no contengan \"primera\"."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Asunto:oferta NO primera**.",
+   "options": {
+    "0": "(`=oferta <> primera`): El operador `<>` no es sintaxis válida de búsqueda en Outlook.",
+    "1": "Esta es la sintaxis correcta de búsqueda avanzada de Outlook para combinar inclusión y exclusión en un campo.",
+    "2": "(`Asunto= +oferta -primera`): Outlook no usa `Asunto=` ni los operadores `+/-`.",
+    "3": "(`SI \"oferta\" NO \"primera\"`): `SI` no es operador de búsqueda en Outlook."
+   }
+  }
+ },
+ {
+  "id": "60c675f0-6c9d-4a7c-9731-56ddffe791ac",
+  "explanation": "La respuesta correcta es **A) Al Presidente del Parlamento Europeo.**\n\nEsta previsión se recoge en el **artículo 235.2 del Tratado de Funcionamiento de la Unión Europea (TFUE)**:\n\n> «2. El Consejo Europeo podrá invitar al Presidente del Parlamento Europeo a comparecer ante él.»\n\n**Por qué A es correcta:**\nEl art. 235.2 TFUE prevé expresamente esta invitación, como cauce de relación institucional entre el Consejo Europeo y el Parlamento Europeo, cuyo Presidente no forma parte del Consejo Europeo.\n\n**Por qué las demás son incorrectas:**\n- B) El Presidente del Consejo (Europeo) no puede ser «invitado» a comparecer ante el propio órgano que preside.\n- C) El Alto Representante de la Unión para Asuntos Exteriores y Política de Seguridad ya participa de forma permanente en los trabajos del Consejo Europeo (art. 15.2 TUE), por lo que no necesita ser invitado a comparecer.\n- D) El Presidente de la Comisión Europea es, por el art. 15.2 TUE, miembro de pleno derecho del Consejo Europeo, no un invitado externo.\n\nFuente: Tratado de Funcionamiento de la Unión Europea, artículo 235.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«2. El Consejo Europeo podrá invitar al Presidente del Parlamento Europeo a comparecer ante él.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Al Presidente del Parlamento Europeo.**\n\nEsta previsión se recoge en el **artículo 235.2 del Tratado de Funcionamiento de la Unión Europea (TFUE)**:",
+   "options": {
+    "0": "El art. 235.2 TFUE prevé expresamente esta invitación, como cauce de relación institucional entre el Consejo Europeo y el Parlamento Europeo, cuyo Presidente no forma parte del Consejo Europeo.",
+    "1": "El Presidente del Consejo (Europeo) no puede ser «invitado» a comparecer ante el propio órgano que preside.",
+    "2": "El Alto Representante de la Unión para Asuntos Exteriores y Política de Seguridad ya participa de forma permanente en los trabajos del Consejo Europeo (art. 15.2 TUE), por lo que no necesita ser invitado a comparecer.",
+    "3": "El Presidente de la Comisión Europea es, por el art. 15.2 TUE, miembro de pleno derecho del Consejo Europeo, no un invitado externo.\n\nFuente: Tratado de Funcionamiento de la Unión Europea, artículo 235."
+   }
+  }
+ },
+ {
+  "id": "622b3944-3971-4271-aaff-0f1c73c7e126",
+  "explanation": "La respuesta correcta es **A) Por cumplir la edad de 72 años**.\n\n> «Quienes ocuparen plazas judiciales en régimen de provisión temporal cesarán: (...) c) **Por cumplir la edad de setenta y dos años**.» (Art. 433.1.c) LO 6/1985, LOPJ)\n\n**Por qué A es correcta:** La ley fija expresamente en **72 años** la edad de cese para quienes cubren plazas judiciales en régimen de provisión temporal, superando los 70 años de jubilación ordinaria de la carrera judicial (art. 386 LOPJ).\n\n**Por qué las demás son incorrectas:**\n- **B) 70 años:** Es la edad de jubilación forzosa de los jueces y magistrados de carrera (art. 386 LOPJ), no la de los jueces en provisión temporal.\n- **C) 65 años:** No es la edad de cese prevista para ninguno de los dos colectivos en la LOPJ.\n- **D) 75 años:** Tampoco está prevista en el art. 433 ni en ningún precepto concordante de la LOPJ.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Por cumplir la edad de setenta y dos años",
+    "bloque": "«Quienes ocuparen plazas judiciales en régimen de provisión temporal cesarán: (...) c) **Por cumplir la edad de setenta y dos años**.» (Art. 433.1.c) LO 6/1985, LOPJ)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Por cumplir la edad de 72 años**.",
+   "options": {
+    "0": "La ley fija expresamente en **72 años** la edad de cese para quienes cubren plazas judiciales en régimen de provisión temporal, superando los 70 años de jubilación ordinaria de la carrera judicial (art. 386 LOPJ).",
+    "1": "**70 años:** Es la edad de jubilación forzosa de los jueces y magistrados de carrera (art. 386 LOPJ), no la de los jueces en provisión temporal.",
+    "2": "**65 años:** No es la edad de cese prevista para ninguno de los dos colectivos en la LOPJ.",
+    "3": "**75 años:** Tampoco está prevista en el art. 433 ni en ningún precepto concordante de la LOPJ."
+   }
+  }
+ },
+ {
+  "id": "62ab3886-763e-4f5f-82a2-dcf2c2f1f3f4",
+  "explanation": "**Respuesta correcta: A) Podrán exigir los precios públicos en régimen de autoliquidación.**\n\n> «Las entidades locales podrán exigir los precios públicos en régimen de autoliquidación.»\n\n**Por qué A es correcta:** El artículo 45 del RDL 2/2004 establece literalmente que las entidades locales «podrán» exigir los precios públicos en régimen de autoliquidación, es decir, es una facultad, no una obligación.\n\n**Por qué las demás son incorrectas:**\n- **B)** Utiliza «exigirán» (obligación), cuando la ley dice «podrán» (facultad).\n- **C)** Afirma que no podrán, lo cual contradice directamente el texto legal.\n- **D)** Habla de «precios públicos sobre sanciones», concepto inexistente en la ley.\n\n📚 **Fuente:** [RDL 2/2004, Art. 45](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a45)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Las entidades locales podrán exigir los precios públicos en régimen de autoliquidación.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Podrán exigir los precios públicos en régimen de autoliquidación.**",
+   "options": {
+    "0": "El artículo 45 del RDL 2/2004 establece literalmente que las entidades locales «podrán» exigir los precios públicos en régimen de autoliquidación, es decir, es una facultad, no una obligación.",
+    "1": "Utiliza «exigirán» (obligación), cuando la ley dice «podrán» (facultad).",
+    "2": "Afirma que no podrán, lo cual contradice directamente el texto legal.",
+    "3": "Habla de «precios públicos sobre sanciones», concepto inexistente en la ley.\n\n📚 **Fuente:** [RDL 2/2004, Art. 45](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a45)"
+   }
+  }
+ },
+ {
+  "id": "62e347b2-4c59-4657-b35a-f3b7d6c77439",
+  "explanation": "La respuesta correcta es **A) En cada Comunidad Autónoma**.\n\n> «En cada **comunidad autónoma** existirá como mínimo un Archivo Judicial Territorial dependiente del Presidente del Tribunal Superior de Justicia.» (Art. 8.1 RD 937/2003)\n\n**Por qué A es correcta:** El art. 8.1 RD 937/2003 fija como criterio territorial la **comunidad autónoma** (mínimo uno por CCAA), bajo la dependencia del Presidente del TSJ.\n\n**Por qué las demás son incorrectas:**\n- **B) En cada Audiencia:** Las Audiencias Provinciales no son la unidad de referencia para los Archivos Judiciales Territoriales; hay una Audiencia por provincia, mientras que el Archivo Territorial se organiza por CCAA.\n- **C) En cada término municipal:** Unidad territorial demasiado pequeña; no guarda relación con la organización de los archivos judiciales.\n- **D) En cada Partido Judicial:** Los Archivos de Gestión se ubican en los órganos judiciales de cada partido judicial; los Territoriales tienen un ámbito autonómico.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "comunidad autónoma",
+    "bloque": "«En cada **comunidad autónoma** existirá como mínimo un Archivo Judicial Territorial dependiente del Presidente del Tribunal Superior de Justicia.» (Art. 8.1 RD 937/2003)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) En cada Comunidad Autónoma**.",
+   "options": {
+    "0": "El art. 8.1 RD 937/2003 fija como criterio territorial la **comunidad autónoma** (mínimo uno por CCAA), bajo la dependencia del Presidente del TSJ.",
+    "1": "**En cada Audiencia:** Las Audiencias Provinciales no son la unidad de referencia para los Archivos Judiciales Territoriales; hay una Audiencia por provincia, mientras que el Archivo Territorial se organiza por CCAA.",
+    "2": "**En cada término municipal:** Unidad territorial demasiado pequeña; no guarda relación con la organización de los archivos judiciales.",
+    "3": "**En cada Partido Judicial:** Los Archivos de Gestión se ubican en los órganos judiciales de cada partido judicial; los Territoriales tienen un ámbito autonómico."
+   }
+  }
+ },
+ {
+  "id": "636831b1-c071-45e4-8d22-6c500338e02d",
+  "explanation": "La respuesta correcta es **C) Los actos realizados al amparo del texto de una norma que persigan un resultado prohibido por el ordenamiento jurídico, o contrario a él, se considerarán ejecutados en fraude de ley**.\n\n> **Art. 6.4 Código Civil:** «Los actos realizados al amparo del texto de una norma que persigan un resultado prohibido por el ordenamiento jurídico, o contrario a él, se considerarán ejecutados en fraude de ley y no impedirán la debida aplicación de la norma que se hubiere tratado de eludir.»\n\n**Por qué C es correcta:** Reproduce fielmente el art.6.4 CC, que define el fraude de ley.\n\n**Por qué las demás son incorrectas:**\n- **A)** El art.6.1 CC dice que el error de derecho producirá «únicamente aquellos efectos que las leyes determinen», no «sólo aquellos efectos que no contraríen el interés o el orden público». La redacción de A mezcla el texto real con una adición falsa.\n- **B)** El art.6.2 CC establece que la exclusión voluntaria de la ley aplicable «sólo serán válidas cuando no contraríen el interés o el orden público ni perjudiquen a terceros», no que «no serán válidas» de forma absoluta como afirma B.\n\nFuente: Art. 6 del Código Civil",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 6.4 Código Civil",
+    "bloque": "**Art. 6.4 Código Civil:** «Los actos realizados al amparo del texto de una norma que persigan un resultado prohibido por el ordenamiento jurídico, o contrario a él, se considerarán ejecutados en fraude de ley y no impedirán la debida aplicación de la norma que se hubiere tratado de eludir.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Los actos realizados al amparo del texto de una norma que persigan un resultado prohibido por el ordenamiento jurídico, o contrario a él, se considerarán ejecutados en fraude de ley**.",
+   "options": {
+    "0": "El art.6.1 CC dice que el error de derecho producirá «únicamente aquellos efectos que las leyes determinen», no «sólo aquellos efectos que no contraríen el interés o el orden público». La redacción de A mezcla el texto real con una adición falsa.",
+    "1": "El art.6.2 CC establece que la exclusión voluntaria de la ley aplicable «sólo serán válidas cuando no contraríen el interés o el orden público ni perjudiquen a terceros», no que «no serán válidas» de forma absoluta como afirma B.\n\nFuente: Art. 6 del Código Civil",
+    "2": "Reproduce fielmente el art.6.4 CC, que define el fraude de ley."
+   }
+  }
+ },
+ {
+  "id": "63747959-5500-434d-badb-cdbec5b7545d",
+  "explanation": "La respuesta correcta es la **C) Situaciones administrativas**.\n\n> **Título III TREBEP (Derechos y deberes):** comprende los Caps. I-VI, arts. 14-54. No incluye las situaciones administrativas.\n\n**Por qué C es correcta:** Las situaciones administrativas (servicio activo, servicios especiales, excedencia, etc.) se regulan en el **Título VI**, arts. 85-92, del TREBEP. El Título III no las contiene.\n\n**Por qué las demás son incorrectas:**\n- **A)** Derechos de representación: regulados en el Cap. IV del Título III (arts. 39-44). Sí están en el Título III.\n- **B)** Negociación colectiva: regulada en el Cap. IV del Título III (arts. 33-38). Sí está en el Título III.\n- **D)** Deberes de los empleados públicos: regulados en el Cap. VI del Título III (arts. 52-54). Sí están en el Título III.\n\n*Fuente: RDL 5/2015, de 30 de octubre (TREBEP), estructura por Títulos.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Título III TREBEP (Derechos y deberes)",
+    "bloque": "**Título III TREBEP (Derechos y deberes):** comprende los Caps. I-VI, arts. 14-54. No incluye las situaciones administrativas."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **C) Situaciones administrativas**.",
+   "options": {
+    "0": "Derechos de representación: regulados en el Cap. IV del Título III (arts. 39-44). Sí están en el Título III.",
+    "1": "Negociación colectiva: regulada en el Cap. IV del Título III (arts. 33-38). Sí está en el Título III.",
+    "2": "Las situaciones administrativas (servicio activo, servicios especiales, excedencia, etc.) se regulan en el **Título VI**, arts. 85-92, del TREBEP. El Título III no las contiene.",
+    "3": "Deberes de los empleados públicos: regulados en el Cap. VI del Título III (arts. 52-54). Sí están en el Título III.\n\n*Fuente: RDL 5/2015, de 30 de octubre (TREBEP), estructura por Títulos.*"
+   }
+  }
+ },
+ {
+  "id": "6439905b-f6af-46df-8ada-55b3844775b5",
+  "explanation": "La respuesta correcta es **A) Medidas preventivas, medidas asistenciales y ayudas públicas**.\n\n> **Art. 16 EA (Protección contra la violencia de género):** «Las mujeres tienen derecho a una protección integral contra la violencia de género, que incluirá medidas preventivas, medidas asistenciales y ayudas públicas.»\n\n**Por qué A es correcta:** El art. 16 EA enumera literalmente tres elementos de la protección integral: medidas preventivas, medidas asistenciales y ayudas públicas. La opción A reproduce ese listado con exactitud.\n\n**Por qué las demás son incorrectas:**\n- **B) Acciones públicas, medidas asistenciales y ayudas sociales:** El artículo habla de «medidas preventivas» (no «acciones públicas») y de «ayudas públicas» (no «ayudas sociales»). Dos de los tres términos difieren del texto legal.\n- **C) Medidas de sensibilización, medidas preventivas y atención jurídica:** El artículo no menciona «medidas de sensibilización» ni «atención jurídica». Sustituye «medidas asistenciales y ayudas públicas» por términos que no figuran en el precepto.\n- **D) Medidas asistenciales, medidas de protección y ayudas públicas:** El artículo no incluye «medidas de protección» como categoría autónoma. El término correcto en el primer lugar es «medidas preventivas», no «medidas de protección».",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 16 EA (Protección contra la violencia de género)",
+    "bloque": "**Art. 16 EA (Protección contra la violencia de género):** «Las mujeres tienen derecho a una protección integral contra la violencia de género, que incluirá medidas preventivas, medidas asistenciales y ayudas públicas.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Medidas preventivas, medidas asistenciales y ayudas públicas**.",
+   "options": {
+    "0": "El art. 16 EA enumera literalmente tres elementos de la protección integral: medidas preventivas, medidas asistenciales y ayudas públicas. La opción A reproduce ese listado con exactitud.",
+    "1": "**Acciones públicas, medidas asistenciales y ayudas sociales:** El artículo habla de «medidas preventivas» (no «acciones públicas») y de «ayudas públicas» (no «ayudas sociales»). Dos de los tres términos difieren del texto legal.",
+    "2": "Medidas de sensibilización, medidas preventivas y atención jurídica:** El artículo no menciona «medidas de sensibilización» ni «atención jurídica». Sustituye «medidas asistenciales y ayudas públicas» por términos que no figuran en el precepto.",
+    "3": "Medidas asistenciales, medidas de protección y ayudas públicas:** El artículo no incluye «medidas de protección» como categoría autónoma. El término correcto en el primer lugar es «medidas preventivas», no «medidas de protección»."
+   }
+  }
+ },
+ {
+  "id": "645ea93a-916c-4024-bd87-9ccf5de83393",
+  "explanation": "La respuesta correcta es **B) El Rey**.\n\n> **Art. 91 CE:** «El Rey sancionará en el plazo de quince días las leyes aprobadas por las Cortes Generales, y las promulgará y ordenará su inmediata publicación.»\n\n**Por qué B es correcta:** La sanción es el acto formal por el que el Jefe del Estado (el Rey) confirma y da fuerza ejecutiva a las leyes aprobadas por el Parlamento. La Constitución Española fue sancionada por S. M. el Rey Juan Carlos I el 27 de diciembre de 1978.\n\n**Por qué las demás son incorrectas:**\n- **A** («El pueblo español»): El pueblo español aprueba la Constitución mediante **referéndum** (que ratifica, no sanciona). La sanción es un acto jurídico-formal del Jefe del Estado, no del cuerpo electoral.\n- **C** («Las Cortes Generales»): Las Cortes Generales **aprueban** las leyes (incluida la Constitución), pero la **sanción** es el acto posterior y separado que corresponde al Rey.\n\n*Fuente: Art. 91 Constitución Española.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 91 CE",
+    "bloque": "**Art. 91 CE:** «El Rey sancionará en el plazo de quince días las leyes aprobadas por las Cortes Generales, y las promulgará y ordenará su inmediata publicación.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) El Rey**.",
+   "options": {
+    "0": "(«El pueblo español»): El pueblo español aprueba la Constitución mediante **referéndum** (que ratifica, no sanciona). La sanción es un acto jurídico-formal del Jefe del Estado, no del cuerpo electoral.",
+    "1": "La sanción es el acto formal por el que el Jefe del Estado (el Rey) confirma y da fuerza ejecutiva a las leyes aprobadas por el Parlamento. La Constitución Española fue sancionada por S. M. el Rey Juan Carlos I el 27 de diciembre de 1978.",
+    "2": "(«Las Cortes Generales»): Las Cortes Generales **aprueban** las leyes (incluida la Constitución), pero la **sanción** es el acto posterior y separado que corresponde al Rey.\n\n*Fuente: Art. 91 Constitución Española.*"
+   }
+  }
+ },
+ {
+  "id": "647cebca-4236-42c1-bcf2-fef2687e8388",
+  "explanation": "La respuesta correcta es **B) Menú Insertar/Salto manual marcamos Salto de columna.**\n\nCuando se trabaja con texto en formato de varias columnas en LibreOffice Writer, para terminar de escribir en una columna y pasar a la siguiente (o salir del formato de columnas) es necesario insertar un **salto de columna**.\n\n**Por qué B es correcta:**\n\n> Para insertar un salto de columna se accede a **Insertar > Salto manual** y se marca la opción **\"Salto de columna\"**.\n\nEste es el procedimiento correcto para controlar el flujo del texto entre columnas en Writer.\n\n**Por qué las demás son incorrectas:**\n\n- **A)** Ctrl+Intro inserta un **salto de página**, no un salto de columna.\n- **C)** Mayús+Intro inserta un **salto de línea** dentro del mismo párrafo, sin cambiar de columna.\n- **D)** Alt+Intro no es un atajo válido en Writer (además, \"AltT\" es una errata en la opción).",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Menú Insertar/Salto manual marcamos Salto de columna.**\n\nCuando se trabaja con texto en formato de varias columnas en LibreOffice Writer, para terminar de escribir en una columna y pasar a la siguiente (o salir del formato de columnas) es necesario insertar un **salto de columna**.",
+   "options": {
+    "0": "Ctrl+Intro inserta un **salto de página**, no un salto de columna.",
+    "1": "> Para insertar un salto de columna se accede a **Insertar > Salto manual** y se marca la opción **\"Salto de columna\"**.\n\nEste es el procedimiento correcto para controlar el flujo del texto entre columnas en Writer.",
+    "2": "Mayús+Intro inserta un **salto de línea** dentro del mismo párrafo, sin cambiar de columna.",
+    "3": "Alt+Intro no es un atajo válido en Writer (además, \"AltT\" es una errata en la opción)."
+   }
+  }
+ },
+ {
+  "id": "648eef9a-04c0-4722-9a8a-78549d4e7d35",
+  "explanation": "La respuesta correcta es **B) Las Juntas de Personal elegirán de entre sus miembros un Presidente y un Secretario y elaborarán su propio reglamento de procedimiento, el cual, al igual que sus modificaciones, deberán ser aprobados por los votos favorables de al menos dos tercios de sus miembros.**\n\nEl artículo 39 del Real Decreto Legislativo 5/2015, de 30 de octubre (TREBEP), regula los órganos específicos de representación de los funcionarios. En su apartado 6 establece literalmente que las Juntas de Personal \"elegirán de entre sus miembros un Presidente y un Secretario y elaborarán su propio reglamento de procedimiento\" y que \"El reglamento y sus modificaciones deberán ser aprobados por los votos favorables de, al menos, dos tercios de sus miembros\".\n\n**A)** Incorrecta. Coincide con la redacción del apartado 6 salvo en la mayoría exigida: dice \"tres quintos\", cuando el precepto requiere \"dos tercios\" de los miembros.\n\n**B)** Correcta. Reproduce fielmente el apartado 6 del artículo 39: Presidente, Secretario, reglamento propio y aprobación (del reglamento y sus modificaciones) por al menos dos tercios de los miembros.\n\n**C)** Incorrecta. El apartado 2 atribuye la representación a los Delegados de Personal en unidades electorales con un número de funcionarios \"igual o superior a 6 e inferior a 50\", no \"inferior a 59\" como afirma la opción.\n\n**D)** Incorrecta. El apartado 3 dispone que las Juntas de Personal se constituirán en unidades electorales con un censo mínimo de 50 funcionarios, no de 60.",
+  "explanation_data": {
+   "v": 1,
+   "intro": "La respuesta correcta es **B) Las Juntas de Personal elegirán de entre sus miembros un Presidente y un Secretario y elaborarán su propio reglamento de procedimiento, el cual, al igual que sus modificaciones, deberán ser aprobados por los votos favorables de al menos dos tercios de sus miembros.**\n\nEl artículo 39 del Real Decreto Legislativo 5/2015, de 30 de octubre (TREBEP), regula los órganos específicos de representación de los funcionarios. En su apartado 6 establece literalmente que las Juntas de Personal \"elegirán de entre sus miembros un Presidente y un Secretario y elaborarán su propio reglamento de procedimiento\" y que \"El reglamento y sus modificaciones deberán ser aprobados por los votos favorables de, al menos, dos tercios de sus miembros\".",
+   "estilo": "impugnacion",
+   "options": {
+    "0": "Incorrecta. Coincide con la redacción del apartado 6 salvo en la mayoría exigida: dice \"tres quintos\", cuando el precepto requiere \"dos tercios\" de los miembros.",
+    "1": "Correcta. Reproduce fielmente el apartado 6 del artículo 39: Presidente, Secretario, reglamento propio y aprobación (del reglamento y sus modificaciones) por al menos dos tercios de los miembros.",
+    "2": "Incorrecta. El apartado 2 atribuye la representación a los Delegados de Personal en unidades electorales con un número de funcionarios \"igual o superior a 6 e inferior a 50\", no \"inferior a 59\" como afirma la opción.",
+    "3": "Incorrecta. El apartado 3 dispone que las Juntas de Personal se constituirán en unidades electorales con un censo mínimo de 50 funcionarios, no de 60."
+   }
+  }
+ },
+ {
+  "id": "64db2d1e-fbee-472b-a80e-b45688f27468",
+  "explanation": "La respuesta correcta es **C) en los Tratados.**\n\nSegún el artículo 3.6 del Tratado de la Unión Europea:\n\n> «La Unión perseguirá sus objetivos por los medios apropiados, de acuerdo con las competencias que se le atribuyen en los Tratados.»\n\n**Por qué C es correcta:** El art. 3.6 TUE establece expresamente que las competencias se atribuyen en los Tratados, que son la fuente primaria del Derecho de la Unión.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las competencias no las atribuyen los Estados miembros directamente (sino a través de los Tratados que suscriben).\n- **B)** Las instituciones de la UE ejercen competencias ya atribuidas, no son quienes las atribuyen.\n\n*Fuente: Tratado de la Unión Europea, art. 3.6*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«La Unión perseguirá sus objetivos por los medios apropiados, de acuerdo con las competencias que se le atribuyen en los Tratados.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) en los Tratados.**\n\nSegún el artículo 3.6 del Tratado de la Unión Europea:",
+   "options": {
+    "0": "Las competencias no las atribuyen los Estados miembros directamente (sino a través de los Tratados que suscriben).",
+    "1": "Las instituciones de la UE ejercen competencias ya atribuidas, no son quienes las atribuyen.\n\n*Fuente: Tratado de la Unión Europea, art. 3.6*",
+    "2": "El art. 3.6 TUE establece expresamente que las competencias se atribuyen en los Tratados, que son la fuente primaria del Derecho de la Unión."
+   }
+  }
+ },
+ {
+  "id": "652dfd1a-a4f7-4557-9cf8-220da799d0f3",
+  "explanation": "La respuesta correcta es **C) Por Real Decreto del Consejo de Ministros, a iniciativa del Ministro interesado y a propuesta del Ministro competente**.\n\nEl artículo 59.1 de la Ley 40/2015 establece:\n\n> «Las Subsecretarías, las Secretarías Generales, las **Secretarías Generales Técnicas**, las Direcciones Generales, las Subdirecciones Generales, y órganos similares a los anteriores se crean, modifican y suprimen por **Real Decreto del Consejo de Ministros**, a iniciativa del **Ministro interesado** y a propuesta del **Ministro de Hacienda y Administraciones Públicas**.»\n\n**Por qué C es correcta:** Recoge correctamente los tres elementos: Real Decreto del CM, iniciativa del Ministro interesado y propuesta del Ministro competente en materia de Administración Pública.\n\n**Por qué las demás son incorrectas:**\n- **A)** Habla de \"Disposición del Consejo de Ministros\" (incorrecto) y del \"Ministro competente\" sin mencionar al interesado; además invierte el orden de iniciativa y propuesta.\n- **B)** Dice \"a iniciativa del Ministerio competente\" sin mencionar al Ministro interesado, que es requisito del art. 59.1.\n\n**Fuente:** Art. 59.1 Ley 40/2015 LRJSP.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Secretarías Generales Técnicas",
+    "bloque": "«Las Subsecretarías, las Secretarías Generales, las **Secretarías Generales Técnicas**, las Direcciones Generales, las Subdirecciones Generales, y órganos similares a los anteriores se crean, modifican y suprimen por **Real Decreto del Consejo de Ministros**, a iniciativa del **Ministro interesado** y a propuesta del **Ministro de Hacienda y Administraciones Públicas**.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Por Real Decreto del Consejo de Ministros, a iniciativa del Ministro interesado y a propuesta del Ministro competente**.\n\nEl artículo 59.1 de la Ley 40/2015 establece:",
+   "outro": "**Fuente:** Art. 59.1 Ley 40/2015 LRJSP.",
+   "options": {
+    "0": "Habla de \"Disposición del Consejo de Ministros\" (incorrecto) y del \"Ministro competente\" sin mencionar al interesado; además invierte el orden de iniciativa y propuesta.",
+    "1": "Dice \"a iniciativa del Ministerio competente\" sin mencionar al Ministro interesado, que es requisito del art. 59.1.",
+    "2": "Recoge correctamente los tres elementos: Real Decreto del CM, iniciativa del Ministro interesado y propuesta del Ministro competente en materia de Administración Pública."
+   }
+  }
+ },
+ {
+  "id": "6537e2b1-3ec1-4d05-9f60-bfe805328b04",
+  "explanation": "La respuesta correcta es **D) Celda activa**.\n\nEn **LibreOffice Calc**, la celda sobre la que se encuentra el cursor (donde se van a introducir o editar datos) se denomina **celda activa**. Se identifica visualmente porque sus bordes aparecen resaltados con un **recuadro mas grueso** que el resto de celdas. Ademas, su referencia (por ejemplo, A1 o B3) aparece en el **Cuadro de nombres**, situado en la esquina superior izquierda de la interfaz.\n\n**Por qué D es correcta:**\n> En LibreOffice Calc, la celda activa es la interseccion de fila y columna sobre la que se encuentra el cursor. Se identifica porque sus bordes aparecen **resaltados** y su referencia se muestra en el **Cuadro de nombres**.\n\n**Por qué las demás son incorrectas:**\n- **A) Fila** — La fila es el conjunto horizontal de celdas, identificada con un numero (1, 2, 3...). No es el elemento individual que se resalta con el cursor.\n- **B) Columna** — La columna es el conjunto vertical de celdas, identificada con una letra (A, B, C...). Tampoco corresponde al resaltado del cursor.\n- **C) Celda** — Aunque tecnicamente la celda activa es una celda, el termino generico \"celda\" designa cualquier interseccion de fila y columna. El termino especifico para la que tiene los bordes resaltados es \"celda activa\".",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D) Celda activa**.\n\nEn **LibreOffice Calc**, la celda sobre la que se encuentra el cursor (donde se van a introducir o editar datos) se denomina **celda activa**. Se identifica visualmente porque sus bordes aparecen resaltados con un **recuadro mas grueso** que el resto de celdas. Ademas, su referencia (por ejemplo, A1 o B3) aparece en el **Cuadro de nombres**, situado en la esquina superior izquierda de la interfaz.",
+   "options": {
+    "0": "Fila** — La fila es el conjunto horizontal de celdas, identificada con un numero (1, 2, 3...). No es el elemento individual que se resalta con el cursor.",
+    "1": "Columna** — La columna es el conjunto vertical de celdas, identificada con una letra (A, B, C...). Tampoco corresponde al resaltado del cursor.",
+    "2": "Celda** — Aunque tecnicamente la celda activa es una celda, el termino generico \"celda\" designa cualquier interseccion de fila y columna. El termino especifico para la que tiene los bordes resaltados es \"celda activa\".",
+    "3": "> En LibreOffice Calc, la celda activa es la interseccion de fila y columna sobre la que se encuentra el cursor. Se identifica porque sus bordes aparecen **resaltados** y su referencia se muestra en el **Cuadro de nombres**."
+   }
+  }
+ },
+ {
+  "id": "662b4dd9-5e10-40c4-aad0-20ba9d299d76",
+  "explanation": "La respuesta correcta es **C) Para evitar la pérdida de datos**.\n\n> Se recomienda quitar de forma segura una memoria USB para asegurarse de que todas las operaciones de escritura han finalizado, evitando la pérdida o corrupción de datos.\n\n**Por qué C es correcta:**\nEl sistema puede tener datos en caché pendientes de escribir en el USB. Quitarlo sin el procedimiento seguro puede interrumpir esas escrituras y corromper los archivos.\n\n**Por qué las demás son incorrectas:**\n- **A) En Windows no existe tal recomendación:** falso; Windows 11 dispone de \"Quitar hardware de forma segura y expulsar medios\".\n- **B) Para evitar que se sobrecaliente:** el sobrecalentamiento no está relacionado con el proceso de extracción segura.\n- **D) Para no olvidar que está conectado:** aunque puede ser un recordatorio, no es la razón técnica de la recomendación.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "Se recomienda quitar de forma segura una memoria USB para asegurarse de que todas las operaciones de escritura han finalizado, evitando la pérdida o corrupción de datos."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Para evitar la pérdida de datos**.",
+   "options": {
+    "0": "**En Windows no existe tal recomendación:** falso; Windows 11 dispone de \"Quitar hardware de forma segura y expulsar medios\".",
+    "1": "**Para evitar que se sobrecaliente:** el sobrecalentamiento no está relacionado con el proceso de extracción segura.",
+    "2": "El sistema puede tener datos en caché pendientes de escribir en el USB. Quitarlo sin el procedimiento seguro puede interrumpir esas escrituras y corromper los archivos.",
+    "3": "**Para no olvidar que está conectado:** aunque puede ser un recordatorio, no es la razón técnica de la recomendación."
+   }
+  }
+ },
+ {
+  "id": "662bee29-85f8-4965-9849-10546090d4d6",
+  "explanation": "La respuesta correcta es **C) Alfonso X.**\n\n> **Antecedentes histórico-jurídicos (Preámbulo de la LO 14/2007, de reforma del Estatuto de Autonomía de Castilla y León):** Las **Siete Partidas** son una compilación jurídica medieval elaborada en la segunda mitad del siglo XIII durante el reinado de **Alfonso X el Sabio (1252-1284)**, rey de Castilla y León. Es una de las obras jurídicas más importantes del derecho castellano, inspirada en el derecho romano y canónico.\n\n**Por qué C es correcta:** Las Siete Partidas fueron elaboradas por encargo de Alfonso X el Sabio y se aplicaron en los territorios de la Corona de Castilla y en los de ultramar durante siglos.\n\n**Por qué las demás son incorrectas:**\n- **A) Carlos I:** Reinó desde 1516, más de dos siglos después de las Siete Partidas; no guarda relación con su autoría.\n- **B) Carlos V:** Es la misma persona que Carlos I de España (Carlos V del Sacro Imperio); aplica la misma razón anterior.\n- **D) Carlos IX:** Fue rey de Francia (1560-1574), sin vinculación con Castilla ni con las Siete Partidas.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Antecedentes histórico-jurídicos (Preámbulo de la LO 14/2007, de reforma del Estatuto de Autonomía de Castilla y León)",
+    "bloque": "**Antecedentes histórico-jurídicos (Preámbulo de la LO 14/2007, de reforma del Estatuto de Autonomía de Castilla y León):** Las **Siete Partidas** son una compilación jurídica medieval elaborada en la segunda mitad del siglo XIII durante el reinado de **Alfonso X el Sabio (1252-1284)**, rey de Castilla y León. Es una de las obras jurídicas más importantes del derecho castellano, inspirada en el derecho romano y canónico."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Alfonso X.**",
+   "options": {
+    "0": "**Carlos I:** Reinó desde 1516, más de dos siglos después de las Siete Partidas; no guarda relación con su autoría.",
+    "1": "**Carlos V:** Es la misma persona que Carlos I de España (Carlos V del Sacro Imperio); aplica la misma razón anterior.",
+    "2": "Las Siete Partidas fueron elaboradas por encargo de Alfonso X el Sabio y se aplicaron en los territorios de la Corona de Castilla y en los de ultramar durante siglos.",
+    "3": "**Carlos IX:** Fue rey de Francia (1560-1574), sin vinculación con Castilla ni con las Siete Partidas."
+   }
+  }
+ },
+ {
+  "id": "66910cca-d444-42c7-97e7-a022578fa04e",
+  "explanation": "La respuesta correcta es **C) Nueve**.\n\nEl artículo 20.2 del Tratado de la Unión Europea establece:\n\n> «La decisión de autorizar una cooperación reforzada será adoptada por el Consejo como último recurso [...] a condición de que participen en ella **al menos nueve Estados miembros**.»\n\n**Por qué C es correcta:** El TUE fija en nueve el número mínimo de Estados miembros para una cooperación reforzada.\n\n**Por qué las demás son incorrectas:**\n- **A) Seis:** Por debajo del mínimo legal de nueve.\n- **B) Veinte:** Supera con creces el mínimo legal; no hay ningún supuesto de 20 en este precepto.\n\n**Fuente:** Art. 20.2 TUE (Tratado de la Unión Europea).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "al menos nueve Estados miembros",
+    "bloque": "«La decisión de autorizar una cooperación reforzada será adoptada por el Consejo como último recurso [...] a condición de que participen en ella **al menos nueve Estados miembros**.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Nueve**.\n\nEl artículo 20.2 del Tratado de la Unión Europea establece:",
+   "outro": "**Fuente:** Art. 20.2 TUE (Tratado de la Unión Europea).",
+   "options": {
+    "0": "**Seis:** Por debajo del mínimo legal de nueve.",
+    "1": "**Veinte:** Supera con creces el mínimo legal; no hay ningún supuesto de 20 en este precepto.",
+    "2": "El TUE fija en nueve el número mínimo de Estados miembros para una cooperación reforzada."
+   }
+  }
+ },
+ {
+  "id": "671d483f-0d17-4509-8536-6e5deb07c76f",
+  "explanation": "La respuesta correcta es **A) El número del día de la semana correspondiente a una fecha dada.**\n\nDIASEM es una función de la categoría de Fecha y hora en LibreOffice Calc que convierte una fecha en un valor numérico representativo del día de la semana.\n\n**Por qué A es correcta:**\n\nLa función **DIASEM(fecha)** devuelve un número que indica **qué día de la semana** corresponde a una fecha determinada. Por defecto, asigna 1 al domingo, 2 al lunes, y así sucesivamente hasta 7 para el sábado.\n\n> DIASEM(fecha): día de la semana (1=domingo por defecto)\n\nPor ejemplo, si se introduce =DIASEM(\"15/04/2026\"), la función devolverá el número correspondiente al día de la semana de esa fecha.\n\n**Por qué las demás son incorrectas:**\n\n- **B) El número de días que faltan hasta el domingo.** DIASEM no calcula una diferencia de días, sino que identifica directamente el día de la semana de una fecha.\n\n- **C) El número de semanas completas desde el 1 de enero.** Esa función sería distinta (como NUM.DE.SEMANA). DIASEM solo indica el día de la semana, no cuenta semanas.\n\n- **D) La cantidad de festivos dentro de un mes.** DIASEM no tiene relación con días festivos. Para trabajar con días laborables existen funciones como DIAS.LAB.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) El número del día de la semana correspondiente a una fecha dada.**\n\nDIASEM es una función de la categoría de Fecha y hora en LibreOffice Calc que convierte una fecha en un valor numérico representativo del día de la semana.",
+   "options": {
+    "0": "La función **DIASEM(fecha)** devuelve un número que indica **qué día de la semana** corresponde a una fecha determinada. Por defecto, asigna 1 al domingo, 2 al lunes, y así sucesivamente hasta 7 para el sábado.\n\n> DIASEM(fecha): día de la semana (1=domingo por defecto)\n\nPor ejemplo, si se introduce =DIASEM(\"15/04/2026\"), la función devolverá el número correspondiente al día de la semana de esa fecha.",
+    "1": "El número de días que faltan hasta el domingo.** DIASEM no calcula una diferencia de días, sino que identifica directamente el día de la semana de una fecha.",
+    "2": "El número de semanas completas desde el 1 de enero.** Esa función sería distinta (como NUM.DE.SEMANA). DIASEM solo indica el día de la semana, no cuenta semanas.",
+    "3": "La cantidad de festivos dentro de un mes.** DIASEM no tiene relación con días festivos. Para trabajar con días laborables existen funciones como DIAS.LAB."
+   }
+  }
+ },
+ {
+  "id": "67644e77-6675-4f6f-8301-fce7466b45b1",
+  "explanation": "**La respuesta correcta es A) Todos tienen el derecho a la educación. Se reconoce la libertad de enseñanza.**\n\n> Art. 27.1 CE: «Todos tienen el derecho a la educación. Se reconoce la libertad de enseñanza.»\n\n**Por qué A es correcta:** Es transcripción literal del art. 27.1 CE.\n\n**Por qué las demás son incorrectas:**\n- **B)** La educación básica es **obligatoria** y gratuita (art. 27.4 CE); esta opción omite la obligatoriedad.\n- **C)** La enseñanza básica sí es **gratuita** (art. 27.4 CE); afirmar que no lo es contradice directamente la CE.\n- **D)** La CE reconoce la libertad de **enseñanza** (art. 27.1) y la de **cátedra** (art. 20.1.c); no las confunde como dice esta opción.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "Art. 27.1 CE: «Todos tienen el derecho a la educación. Se reconoce la libertad de enseñanza.»"
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es A) Todos tienen el derecho a la educación. Se reconoce la libertad de enseñanza.**",
+   "options": {
+    "0": "Es transcripción literal del art. 27.1 CE.",
+    "1": "La educación básica es **obligatoria** y gratuita (art. 27.4 CE); esta opción omite la obligatoriedad.",
+    "2": "La enseñanza básica sí es **gratuita** (art. 27.4 CE); afirmar que no lo es contradice directamente la CE.",
+    "3": "La CE reconoce la libertad de **enseñanza** (art. 27.1) y la de **cátedra** (art. 20.1.c); no las confunde como dice esta opción."
+   }
+  }
+ },
+ {
+  "id": "67962819-1c09-48a1-a27b-b289c1d5c3a2",
+  "explanation": "La respuesta correcta es **A) No podrá ser aceptada la renuncia cuando el funcionario esté sujeto a expediente disciplinario**.\n\n> **Art. 64.2 RDL 5/2015 (EBEP):** «No podrá ser aceptada la renuncia cuando el funcionario esté sujeto a expediente disciplinario o haya sido dictado en su contra auto de procesamiento o de apertura de juicio oral por la comisión de algún delito.»\n\n**Por qué A es correcta:** El art.64.2 establece expresamente este impedimento a la aceptación de la renuncia, que A reproduce fielmente.\n\n**Por qué las demás son incorrectas:**\n- **B)** Dice que la renuncia \"será siempre aceptada expresamente por la Administración\": falso, el art.64.2 prevé que no pueda aceptarse en los casos de expediente disciplinario o procesamiento penal.\n- **C)** Afirma que la renuncia inhabilita para volver a ingresar: falso, el art.64.3 establece expresamente lo contrario: \"La renuncia a la condición de funcionario no inhabilita para ingresar de nuevo en la Administración Pública a través del procedimiento de selección establecido.\"\n- **D)** Dice que la renuncia \"podrá ser manifestada por escrito\": el art.64.1 usa el imperativo \"habrá de ser manifestada por escrito\", estableciéndolo como forma obligatoria, no meramente facultativa.\n\nFuente: Art. 64 del RDL 5/2015, Estatuto Básico del Empleado Público",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 64.2 RDL 5/2015 (EBEP)",
+    "bloque": "**Art. 64.2 RDL 5/2015 (EBEP):** «No podrá ser aceptada la renuncia cuando el funcionario esté sujeto a expediente disciplinario o haya sido dictado en su contra auto de procesamiento o de apertura de juicio oral por la comisión de algún delito.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) No podrá ser aceptada la renuncia cuando el funcionario esté sujeto a expediente disciplinario**.",
+   "options": {
+    "0": "El art.64.2 establece expresamente este impedimento a la aceptación de la renuncia, que A reproduce fielmente.",
+    "1": "Dice que la renuncia \"será siempre aceptada expresamente por la Administración\": falso, el art.64.2 prevé que no pueda aceptarse en los casos de expediente disciplinario o procesamiento penal.",
+    "2": "Afirma que la renuncia inhabilita para volver a ingresar: falso, el art.64.3 establece expresamente lo contrario: \"La renuncia a la condición de funcionario no inhabilita para ingresar de nuevo en la Administración Pública a través del procedimiento de selección establecido.\"",
+    "3": "Dice que la renuncia \"podrá ser manifestada por escrito\": el art.64.1 usa el imperativo \"habrá de ser manifestada por escrito\", estableciéndolo como forma obligatoria, no meramente facultativa.\n\nFuente: Art. 64 del RDL 5/2015, Estatuto Básico del Empleado Público"
+   }
+  }
+ },
+ {
+  "id": "67b4f462-74ce-422a-8714-aa25328d6861",
+  "explanation": "La respuesta correcta es **A) La carrera horizontal consiste en la progresión de grado, categoría, escalón u otros conceptos análogos, sin necesidad de cambiar de puesto de trabajo**.\n\n> **Art. 16.3.a TREBEP:** «Carrera horizontal, que consiste en la **progresión de grado, categoría, escalón u otros conceptos análogos, sin necesidad de cambiar de puesto de trabajo** y de conformidad con lo establecido en la letra b) del artículo 17 y en el apartado 3 del artículo 20 de este Estatuto.»\n\n**Por qué A es correcta:** Reproduce literalmente la definición legal de carrera horizontal.\n\n**Por qué las demás son incorrectas:**\n- **B)** \"El ascenso a través de la estructura de puestos de trabajo\" define la **carrera vertical** (art. 16.3.b), no la horizontal.\n- **C)** \"El ascenso desde un Cuerpo o Escala de un Subgrupo a otro superior\" define la **promoción interna vertical** (art. 16.3.c), no la carrera vertical.\n- **D)** \"El acceso a Cuerpos o Escalas de un mismo Subgrupo profesional\" define la **promoción interna horizontal** (art. 16.3.d), no la promoción vertical.\n\nFuente: Art. 16 RDL 5/2015 — TREBEP",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 16.3.a TREBEP",
+    "bloque": "**Art. 16.3.a TREBEP:** «Carrera horizontal, que consiste en la **progresión de grado, categoría, escalón u otros conceptos análogos, sin necesidad de cambiar de puesto de trabajo** y de conformidad con lo establecido en la letra b) del artículo 17 y en el apartado 3 del artículo 20 de este Estatuto.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) La carrera horizontal consiste en la progresión de grado, categoría, escalón u otros conceptos análogos, sin necesidad de cambiar de puesto de trabajo**.",
+   "options": {
+    "0": "Reproduce literalmente la definición legal de carrera horizontal.",
+    "1": "\"El ascenso a través de la estructura de puestos de trabajo\" define la **carrera vertical** (art. 16.3.b), no la horizontal.",
+    "2": "\"El ascenso desde un Cuerpo o Escala de un Subgrupo a otro superior\" define la **promoción interna vertical** (art. 16.3.c), no la carrera vertical.",
+    "3": "\"El acceso a Cuerpos o Escalas de un mismo Subgrupo profesional\" define la **promoción interna horizontal** (art. 16.3.d), no la promoción vertical.\n\nFuente: Art. 16 RDL 5/2015 — TREBEP"
+   }
+  }
+ },
+ {
+  "id": "67bca1a9-1c3c-40b0-95c7-cfd1acbe3109",
+  "explanation": "La respuesta correcta es **A) Como unidad flash USB o con un reproductor de CD o DVD**.\n\nCuando se introduce un CD virgen en el lector/grabador de un ordenador con Windows y se accede a la unidad desde el **Explorador de archivos**, el sistema ofrece dos opciones de grabacion. El usuario puede elegir el nombre del disco y seleccionar entre dos metodos diferentes de grabacion.\n\n**Por qué A es correcta:**\n> \"Deberás elegir entre dos tipos de grabaciones: **Como unidad flash USB** — Graba archivos con el sistema de archivos UFS con el cual el CD virgen se comportará de forma similar a como lo hace una unidad USB. Puedes agregar archivos más tarde. **Con un reproductor de CD o DVD** — Graba el CD o DVD a la vieja usanza, copiando todos los archivos una vez. Este método es el más compatible.\"\n\n**Por qué las demás son incorrectas:**\n- **B) Con un reproductor de CD o con un reproductor de DVD** — Solo menciona uno de los dos metodos (reproductor de CD/DVD), omitiendo la opcion de unidad flash USB.\n- **C) Con un reproductor de CD-R o con un reproductor de CD-RW** — Estas no son las opciones que ofrece Windows; se refieren a tipos de disco, no a metodos de grabacion.\n- **D) Como unidad externa o con disco duro extraíble** — Windows no ofrece estas opciones para grabar CD; son conceptos distintos.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Como unidad flash USB o con un reproductor de CD o DVD**.\n\nCuando se introduce un CD virgen en el lector/grabador de un ordenador con Windows y se accede a la unidad desde el **Explorador de archivos**, el sistema ofrece dos opciones de grabacion. El usuario puede elegir el nombre del disco y seleccionar entre dos metodos diferentes de grabacion.",
+   "options": {
+    "0": "> \"Deberás elegir entre dos tipos de grabaciones: **Como unidad flash USB** — Graba archivos con el sistema de archivos UFS con el cual el CD virgen se comportará de forma similar a como lo hace una unidad USB. Puedes agregar archivos más tarde. **Con un reproductor de CD o DVD** — Graba el CD o DVD a la vieja usanza, copiando todos los archivos una vez. Este método es el más compatible.\"",
+    "1": "Con un reproductor de CD o con un reproductor de DVD** — Solo menciona uno de los dos metodos (reproductor de CD/DVD), omitiendo la opcion de unidad flash USB.",
+    "2": "Con un reproductor de CD-R o con un reproductor de CD-RW** — Estas no son las opciones que ofrece Windows; se refieren a tipos de disco, no a metodos de grabacion.",
+    "3": "Como unidad externa o con disco duro extraíble** — Windows no ofrece estas opciones para grabar CD; son conceptos distintos."
+   }
+  }
+ },
+ {
+  "id": "67cf2ffa-2be3-4a9c-804d-2affdee20764",
+  "explanation": "La respuesta correcta es **A) Para conocer recursos interpuestos por particulares, empresas y algunas organizaciones, así como asuntos relacionados con el derecho de competencia.**\n\nLa competencia del Tribunal General la fija el artículo 256 del Tratado de Funcionamiento de la Unión Europea:\n\n> 1. El Tribunal General será competente para conocer en primera instancia de los recursos contemplados en los artículos 263, 265, 268, 270 y 272, con excepción de los que se atribuyan a un tribunal especializado creado en virtud de lo dispuesto en el artículo 257 y de los que el Estatuto reserve al Tribunal de Justicia.\n\n**Por qué A es correcta:** el artículo 256.1 remite, entre otros, al **artículo 263**, cuyo párrafo cuarto abre expresamente esa vía a los particulares:\n\n> Toda persona física o jurídica podrá interponer recurso, en las condiciones previstas en los párrafos primero y segundo, contra los actos de los que sea destinataria o que la afecten directa e individualmente y contra los actos reglamentarios que la afecten directamente y que no incluyan medidas de ejecución.\n\nEs decir, el Tribunal General es el que conoce en primera instancia de los recursos de **personas físicas y jurídicas** (particulares, empresas y asociaciones). Los asuntos de **derecho de la competencia** llegan por esta misma vía: son recursos de anulación contra decisiones de la Comisión que sancionan a empresas, y de ellos conoce el Tribunal General.\n\n**Por qué las demás son incorrectas:**\n- **B)** Afirma justo lo contrario de lo que dice el artículo 263, párrafo cuarto: los **particulares sí** pueden interponer recurso, y es precisamente el Tribunal General quien los resuelve en primera instancia.\n- **C)** Restringe la legitimación a \"organizaciones públicas\". El artículo 263, párrafo cuarto, no distingue: habla de **toda persona física o jurídica**, sea pública o privada.\n\nFuente: Tratado de Funcionamiento de la Unión Europea, artículos 256 y 263.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "1. El Tribunal General será competente para conocer en primera instancia de los recursos contemplados en los artículos 263, 265, 268, 270 y 272, con excepción de los que se atribuyan a un tribunal especializado creado en virtud de lo dispuesto en el artículo 257 y de los que el Estatuto reserve al Tribunal de Justicia."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Para conocer recursos interpuestos por particulares, empresas y algunas organizaciones, así como asuntos relacionados con el derecho de competencia.**\n\nLa competencia del Tribunal General la fija el artículo 256 del Tratado de Funcionamiento de la Unión Europea:",
+   "options": {
+    "0": "el artículo 256.1 remite, entre otros, al **artículo 263**, cuyo párrafo cuarto abre expresamente esa vía a los particulares:\n\n> Toda persona física o jurídica podrá interponer recurso, en las condiciones previstas en los párrafos primero y segundo, contra los actos de los que sea destinataria o que la afecten directa e individualmente y contra los actos reglamentarios que la afecten directamente y que no incluyan medidas de ejecución.\n\nEs decir, el Tribunal General es el que conoce en primera instancia de los recursos de **personas físicas y jurídicas** (particulares, empresas y asociaciones). Los asuntos de **derecho de la competencia** llegan por esta misma vía: son recursos de anulación contra decisiones de la Comisión que sancionan a empresas, y de ellos conoce el Tribunal General.",
+    "1": "Afirma justo lo contrario de lo que dice el artículo 263, párrafo cuarto: los **particulares sí** pueden interponer recurso, y es precisamente el Tribunal General quien los resuelve en primera instancia.",
+    "2": "Restringe la legitimación a \"organizaciones públicas\". El artículo 263, párrafo cuarto, no distingue: habla de **toda persona física o jurídica**, sea pública o privada.\n\nFuente: Tratado de Funcionamiento de la Unión Europea, artículos 256 y 263."
+   }
+  }
+ },
+ {
+  "id": "680fa519-1560-491e-b314-e57d3e552a23",
+  "explanation": "**Respuesta correcta: B) Ministerio de Hacienda.**\n\n> «En todo caso precisarán de la autorización del Ministerio de Hacienda las operaciones de crédito a corto y largo plazo, la concesión de avales, y las demás operaciones que modifiquen las condiciones contractuales o añadan garantías adicionales.»\n\n**Por qué B es correcta:** El artículo 53.5 del RDL 2/2004 atribuye la competencia de autorización al Ministerio de Hacienda (como órgano institucional), no al Ministro a título personal, ni al Pleno ni al Gobierno.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Ministro de Hacienda no es el órgano mencionado; la ley se refiere al Ministerio como institución.\n- **C)** El Pleno de la corporación local no tiene esta competencia en los supuestos del apartado 5.\n- **D)** El Gobierno no es el órgano competente según este artículo.\n\n📚 **Fuente:** [RDL 2/2004, Art. 53](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a53)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«En todo caso precisarán de la autorización del Ministerio de Hacienda las operaciones de crédito a corto y largo plazo, la concesión de avales, y las demás operaciones que modifiquen las condiciones contractuales o añadan garantías adicionales.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) Ministerio de Hacienda.**",
+   "options": {
+    "0": "El Ministro de Hacienda no es el órgano mencionado; la ley se refiere al Ministerio como institución.",
+    "1": "El artículo 53.5 del RDL 2/2004 atribuye la competencia de autorización al Ministerio de Hacienda (como órgano institucional), no al Ministro a título personal, ni al Pleno ni al Gobierno.",
+    "2": "El Pleno de la corporación local no tiene esta competencia en los supuestos del apartado 5.",
+    "3": "El Gobierno no es el órgano competente según este artículo.\n\n📚 **Fuente:** [RDL 2/2004, Art. 53](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a53)"
+   }
+  }
+ },
+ {
+  "id": "686a3556-4c2f-4194-a1af-2655d6bb4044",
+  "explanation": "La respuesta correcta es **C) Por medios electrónicos salvo cuando no sea posible**.\n\n> **Ley 40/2015 (LRJSP) art. 46.1:** «Todos los documentos utilizados en las actuaciones administrativas se almacenarán por medios electrónicos, salvo cuando no sea posible.»\n\n**Por qué C es correcta:** El art. 46 de la Ley 40/2015, de Régimen Jurídico del Sector Público, regula el *archivo electrónico de documentos* y establece como regla general que **todos** los documentos utilizados en las actuaciones administrativas se almacenan por medios electrónicos, con la única salvedad de que ello no sea posible. La opción C reproduce esa regla literalmente.\n\n**Por qué las demás son incorrectas:**\n\n- **A) En fotocopias** — La ley no contempla las fotocopias como medio de almacenamiento; el soporte exigido es el electrónico.\n- **B) En el papel original** — El papel no es el soporte preferente; la norma impone el almacenamiento electrónico salvo imposibilidad.\n- **D) En discos duros** — Es un soporte electrónico concreto, pero la ley habla genéricamente de «medios electrónicos», sin vincular el almacenamiento a un dispositivo técnico determinado.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Ley 40/2015 (LRJSP) art. 46.1",
+    "bloque": "**Ley 40/2015 (LRJSP) art. 46.1:** «Todos los documentos utilizados en las actuaciones administrativas se almacenarán por medios electrónicos, salvo cuando no sea posible.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Por medios electrónicos salvo cuando no sea posible**.",
+   "options": {
+    "0": "En fotocopias** — La ley no contempla las fotocopias como medio de almacenamiento; el soporte exigido es el electrónico.",
+    "1": "En el papel original** — El papel no es el soporte preferente; la norma impone el almacenamiento electrónico salvo imposibilidad.",
+    "2": "El art. 46 de la Ley 40/2015, de Régimen Jurídico del Sector Público, regula el *archivo electrónico de documentos* y establece como regla general que **todos** los documentos utilizados en las actuaciones administrativas se almacenan por medios electrónicos, con la única salvedad de que ello no sea posible. La opción C reproduce esa regla literalmente.",
+    "3": "En discos duros** — Es un soporte electrónico concreto, pero la ley habla genéricamente de «medios electrónicos», sin vincular el almacenamiento a un dispositivo técnico determinado."
+   }
+  }
+ },
+ {
+  "id": "68f59676-d0c7-4699-8fd6-196972fa6970",
+  "explanation": "La respuesta correcta es **B) En Luxemburgo.**\n\nContexto: Protocolo (nº 6) sobre la fijación de las sedes de las instituciones y de determinados órganos, organismos y servicios de la Unión Europea, artículo único.\n\n> «d) El Tribunal de Justicia de la Unión Europea tendrá su sede en Luxemburgo.»\n\n**Por qué B es correcta:** el Protocolo nº 6 fija la sede de cada institución de la UE. Su letra d) atribuye la sede de «el Tribunal de Justicia de la Unión Europea» a Luxemburgo; esta denominación es la institución en su conjunto que, conforme al artículo 19.1 del TUE, «comprenderá el Tribunal de Justicia, el Tribunal General y los tribunales especializados». Por tanto, el Tribunal General —como órgano integrado en esa institución única— también tiene su sede en Luxemburgo.\n\n**Por qué las demás son incorrectas:**\n- A) La Haya: es la sede de la Oficina Europea de Policía (Europol), según la letra j) del mismo Protocolo, no de ningún órgano judicial de la UE.\n- C) Bruselas: es la sede del Consejo, la Comisión, el Comité Económico y Social y el Comité de las Regiones (letras b, c, f y g), no del Tribunal General.\n- D) Fráncfort: es la sede del Banco Central Europeo (letra i), no de ningún órgano judicial.\n\nFuente: Protocolo (nº 6) sobre la fijación de las sedes de las instituciones y de determinados órganos, organismos y servicios de la Unión Europea, artículo único.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«d) El Tribunal de Justicia de la Unión Europea tendrá su sede en Luxemburgo.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) En Luxemburgo.**\n\nContexto: Protocolo (nº 6) sobre la fijación de las sedes de las instituciones y de determinados órganos, organismos y servicios de la Unión Europea, artículo único.",
+   "options": {
+    "0": "La Haya: es la sede de la Oficina Europea de Policía (Europol), según la letra j) del mismo Protocolo, no de ningún órgano judicial de la UE.",
+    "1": "el Protocolo nº 6 fija la sede de cada institución de la UE. Su letra d) atribuye la sede de «el Tribunal de Justicia de la Unión Europea» a Luxemburgo; esta denominación es la institución en su conjunto que, conforme al artículo 19.1 del TUE, «comprenderá el Tribunal de Justicia, el Tribunal General y los tribunales especializados». Por tanto, el Tribunal General —como órgano integrado en esa institución única— también tiene su sede en Luxemburgo.",
+    "2": "Bruselas: es la sede del Consejo, la Comisión, el Comité Económico y Social y el Comité de las Regiones (letras b, c, f y g), no del Tribunal General.",
+    "3": "Fráncfort: es la sede del Banco Central Europeo (letra i), no de ningún órgano judicial.\n\nFuente: Protocolo (nº 6) sobre la fijación de las sedes de las instituciones y de determinados órganos, organismos y servicios de la Unión Europea, artículo único."
+   }
+  }
+ },
+ {
+  "id": "69efa0ea-9381-4d84-95bc-83027cf2971d",
+  "explanation": "La respuesta correcta es **A) De 30 días**.\n\n> «Las medidas de carácter civil contenidas en la orden de protección tendrán una **vigencia temporal de treinta días**. Si dentro de este plazo fuese incoado a instancia de la víctima o de su representante legal un proceso de familia ante la jurisdicción civil, las medidas adoptadas permanecerán en vigor durante los treinta días siguientes a la presentación de la demanda. En este término las medidas deberán ser confirmadas, modificadas o dejadas sin efecto por el juez de primera instancia que resulte competente.» (Art. 544 ter.7 LECrim)\n\n**Por qué A es correcta:** La vigencia inicial de las medidas civiles de la orden de protección es de **30 días**, con posible prórroga si se incoa proceso de familia.\n\n**Por qué las demás son incorrectas:**\n- **B) De 90 días:** Triplicaría el plazo legal previsto en el art. 544 ter.7 LECrim.\n- **C) De 180 días:** Sextuplicaría el plazo legal; tampoco está previsto en el precepto.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "vigencia temporal de treinta días",
+    "bloque": "«Las medidas de carácter civil contenidas en la orden de protección tendrán una **vigencia temporal de treinta días**. Si dentro de este plazo fuese incoado a instancia de la víctima o de su representante legal un proceso de familia ante la jurisdicción civil, las medidas adoptadas permanecerán en vigor durante los treinta días siguientes a la presentación de la demanda. En este término las medidas deberán ser confirmadas, modificadas o dejadas sin efecto por el juez de primera instancia que resulte competente.» (Art. 544 ter.7 LECrim)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) De 30 días**.",
+   "options": {
+    "0": "La vigencia inicial de las medidas civiles de la orden de protección es de **30 días**, con posible prórroga si se incoa proceso de familia.",
+    "1": "**De 90 días:** Triplicaría el plazo legal previsto en el art. 544 ter.7 LECrim.",
+    "2": "**De 180 días:** Sextuplicaría el plazo legal; tampoco está previsto en el precepto."
+   }
+  }
+ },
+ {
+  "id": "6a02fe40-5f02-465b-acf8-e73e789c7fd1",
+  "explanation": "La respuesta correcta es **B) Ctrl + W**.\n\nEn el Explorador de archivos de Windows, cada ventana se puede cerrar con el atajo de teclado Ctrl + W.\n\n> **Accesos rápidos del Explorador de archivos — Cerrar ventana activa:** `Ctrl + W`\n\n**Por qué B es correcta:** Ctrl + W cierra la ventana activa en el Explorador de Windows, igual que en muchas otras aplicaciones de Windows.\n\n**Por qué las demás son incorrectas:**\n- **A) Ctrl + N:** Abre una nueva ventana del Explorador de archivos, no cierra la actual.\n- **C) Ctrl + X:** Corta los elementos seleccionados (equivalente a Cortar en el portapapeles); no cierra ventanas.\n- **D) Ctrl + E:** Selecciona la barra de búsqueda en el Explorador; no cierra la ventana.\n\nFuente: [Microsoft Support - Métodos abreviados de teclado en Windows](https://support.microsoft.com/es-es/windows/métodos-abreviados-de-teclado-en-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Accesos rápidos del Explorador de archivos — Cerrar ventana activa",
+    "bloque": "**Accesos rápidos del Explorador de archivos — Cerrar ventana activa:** `Ctrl + W`"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Ctrl + W**.\n\nEn el Explorador de archivos de Windows, cada ventana se puede cerrar con el atajo de teclado Ctrl + W.",
+   "options": {
+    "0": "**Ctrl + N:** Abre una nueva ventana del Explorador de archivos, no cierra la actual.",
+    "1": "Ctrl + W cierra la ventana activa en el Explorador de Windows, igual que en muchas otras aplicaciones de Windows.",
+    "2": "**Ctrl + X:** Corta los elementos seleccionados (equivalente a Cortar en el portapapeles); no cierra ventanas.",
+    "3": "**Ctrl + E:** Selecciona la barra de búsqueda en el Explorador; no cierra la ventana.\n\nFuente: [Microsoft Support - Métodos abreviados de teclado en Windows](https://support.microsoft.com/es-es/windows/métodos-abreviados-de-teclado-en-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec)"
+   }
+  }
+ },
+ {
+  "id": "6a3d911e-fa5e-4022-b22f-c3dfe3a65398",
+  "explanation": "La respuesta correcta es **B) El tribunal atendiendo a la naturaleza y contenido de la pretensión y a la valoración que realice sobre el fundamento de la solicitud de la medida**.\n\n> «El tribunal determinará la caución y su modalidad atendiendo a la naturaleza y contenido de la pretensión y a la valoración que realice sobre el fundamento de la solicitud de la medida.» (Art. 728.3 LEC)\n\n**Por qué B es correcta:** El precepto atribuye expresamente al **tribunal** (no al LAJ) la determinación de la caución, tomando como criterios: la naturaleza y contenido de la pretensión, y la valoración del fundamento de la solicitud cautelar.\n\n**Por qué las demás son incorrectas:**\n- **A)** Atribuye la función al Letrado de la Administración de Justicia: error subjetivo, corresponde al tribunal.\n- **C)** También atribuye al LAJ la determinación: incorrecto por el mismo motivo.\n- **D)** Aunque atribuye al tribunal, confunde el criterio: \"valoración de los bienes o derechos que pueden ser perjudicados\" no es el criterio legal; el art. 728.3 habla del fundamento de la solicitud.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«El tribunal determinará la caución y su modalidad atendiendo a la naturaleza y contenido de la pretensión y a la valoración que realice sobre el fundamento de la solicitud de la medida.» (Art. 728.3 LEC)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) El tribunal atendiendo a la naturaleza y contenido de la pretensión y a la valoración que realice sobre el fundamento de la solicitud de la medida**.",
+   "options": {
+    "0": "Atribuye la función al Letrado de la Administración de Justicia: error subjetivo, corresponde al tribunal.",
+    "1": "El precepto atribuye expresamente al **tribunal** (no al LAJ) la determinación de la caución, tomando como criterios: la naturaleza y contenido de la pretensión, y la valoración del fundamento de la solicitud cautelar.",
+    "2": "También atribuye al LAJ la determinación: incorrecto por el mismo motivo.",
+    "3": "Aunque atribuye al tribunal, confunde el criterio: \"valoración de los bienes o derechos que pueden ser perjudicados\" no es el criterio legal; el art. 728.3 habla del fundamento de la solicitud."
+   }
+  }
+ },
+ {
+  "id": "6a67fecd-f03a-45db-a5e2-6f2e4922c373",
+  "explanation": "La respuesta correcta es **C) Se entenderá desestimado**.\n\n> «Transcurrido el plazo de tres meses desde la interposición del recurso extraordinario de revisión sin haberse dictado y notificado la resolución, se entenderá **desestimado**, quedando expedita la vía jurisdiccional contencioso-administrativa.»\n> — Art. 126.3 Ley 39/2015\n\n**Por qué C es correcta:** El silencio administrativo en el recurso extraordinario de revisión es **desestimatorio** transcurridos tres meses desde su interposición sin resolución expresa, lo que abre directamente la vía contencioso-administrativa.\n\n**Por qué las demás son incorrectas:**\n- **A** (no se puede interponer contencioso-administrativo): es justo lo contrario, el art. 126.3 declara expresamente que queda expedita la vía jurisdiccional.\n- **B** (recurso de alzada): el recurso de alzada no procede contra resoluciones presuntas de recursos extraordinarios; la vía siguiente es la contencioso-administrativa.\n- **D** (se entenderá estimado): el silencio es desestimatorio, nunca estimatorio en este recurso.\n",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "desestimado",
+    "bloque": "«Transcurrido el plazo de tres meses desde la interposición del recurso extraordinario de revisión sin haberse dictado y notificado la resolución, se entenderá **desestimado**, quedando expedita la vía jurisdiccional contencioso-administrativa.»\n— Art. 126.3 Ley 39/2015"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Se entenderá desestimado**.",
+   "options": {
+    "0": "(no se puede interponer contencioso-administrativo): es justo lo contrario, el art. 126.3 declara expresamente que queda expedita la vía jurisdiccional.",
+    "1": "(recurso de alzada): el recurso de alzada no procede contra resoluciones presuntas de recursos extraordinarios; la vía siguiente es la contencioso-administrativa.",
+    "2": "El silencio administrativo en el recurso extraordinario de revisión es **desestimatorio** transcurridos tres meses desde su interposición sin resolución expresa, lo que abre directamente la vía contencioso-administrativa.",
+    "3": "(se entenderá estimado): el silencio es desestimatorio, nunca estimatorio en este recurso."
+   }
+  }
+ },
+ {
+  "id": "6a8789c9-4936-4f28-8bfe-3f6e275f0d14",
+  "explanation": "La respuesta correcta es **C) Únicamente de los recursos de suplicación y casación**.\n\n> «La acumulación de recursos de suplicación y casación se regirá por lo dispuesto en el artículo 234.» (Art. 33 LRJS)\n\n**Por qué C es correcta:** El art. 33 LRJS establece expresamente que la única acumulación de recursos permitida en la jurisdicción social es la de **suplicación y casación**, remitiendo su régimen al art. 234.\n\n**Por qué las demás son incorrectas:**\n- **A) Apelación y suplicación:** La LRJS no contempla el recurso de apelación como recurso ordinario en la jurisdicción social (el equivalente es la suplicación).\n- **B) Reposición y apelación:** Ninguna de estas combinaciones aparece en el art. 33; el recurso de reposición es contra resoluciones del LAJ, no acumulable de esta forma.\n- **D) Apelación y casación:** La apelación no es el recurso ordinario en el orden social, por lo que esta combinación no está prevista.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«La acumulación de recursos de suplicación y casación se regirá por lo dispuesto en el artículo 234.» (Art. 33 LRJS)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Únicamente de los recursos de suplicación y casación**.",
+   "options": {
+    "0": "**Apelación y suplicación:** La LRJS no contempla el recurso de apelación como recurso ordinario en la jurisdicción social (el equivalente es la suplicación).",
+    "1": "**Reposición y apelación:** Ninguna de estas combinaciones aparece en el art. 33; el recurso de reposición es contra resoluciones del LAJ, no acumulable de esta forma.",
+    "2": "El art. 33 LRJS establece expresamente que la única acumulación de recursos permitida en la jurisdicción social es la de **suplicación y casación**, remitiendo su régimen al art. 234.",
+    "3": "**Apelación y casación:** La apelación no es el recurso ordinario en el orden social, por lo que esta combinación no está prevista."
+   }
+  }
+ },
+ {
+  "id": "6a9e8117-3abf-47f1-a9d9-5f5381dd3b13",
+  "explanation": "La respuesta correcta es **C) Sí, actúa amparado en la LECrim**.\n\n> «El juez de instrucción o tribunal podrá acordar excepcionalmente, mediante resolución motivada, la detención o prisión incomunicadas cuando concurra alguna de las siguientes circunstancias: a) necesidad urgente de evitar **graves consecuencias que puedan poner en peligro la vida, la libertad o la integridad física de una persona**...» (Art. 509.1.a) LECrim)\n\n**Por qué C es correcta:** El juez actúa con plena cobertura legal: dicta resolución motivada e invoca el supuesto del art. 509.1.a) LECrim (necesidad urgente de evitar graves consecuencias para la vida o integridad). El precepto no establece restricciones por razón de la edad del investigado.\n\n**Por qué las demás son incorrectas:**\n- **A) No, podría cometer un delito de incomunicación ilegal:** La actuación está expresamente amparada por el art. 509 LECrim; no hay ilegalidad cuando concurren los presupuestos legales y se dicta resolución motivada.\n- **B) No, ya que los menores de edad no pueden ser objeto de incomunicación:** El art. 509 LECrim no establece tal prohibición por razón de edad. Para menores mayores de 16 años en delitos de terrorismo existe además el art. 520 bis LECrim, pero el supuesto del art. 509 es de aplicación general.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "graves consecuencias que puedan poner en peligro la vida, la libertad o la integridad física de una persona",
+    "bloque": "«El juez de instrucción o tribunal podrá acordar excepcionalmente, mediante resolución motivada, la detención o prisión incomunicadas cuando concurra alguna de las siguientes circunstancias: a) necesidad urgente de evitar **graves consecuencias que puedan poner en peligro la vida, la libertad o la integridad física de una persona**...» (Art. 509.1.a) LECrim)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Sí, actúa amparado en la LECrim**.",
+   "options": {
+    "0": "**No, podría cometer un delito de incomunicación ilegal:** La actuación está expresamente amparada por el art. 509 LECrim; no hay ilegalidad cuando concurren los presupuestos legales y se dicta resolución motivada.",
+    "1": "No, ya que los menores de edad no pueden ser objeto de incomunicación:** El art. 509 LECrim no establece tal prohibición por razón de edad. Para menores mayores de 16 años en delitos de terrorismo existe además el art. 520 bis LECrim, pero el supuesto del art. 509 es de aplicación general.",
+    "2": "El juez actúa con plena cobertura legal: dicta resolución motivada e invoca el supuesto del art. 509.1.a) LECrim (necesidad urgente de evitar graves consecuencias para la vida o integridad). El precepto no establece restricciones por razón de la edad del investigado."
+   }
+  }
+ },
+ {
+  "id": "6ab25447-3a25-4dd1-8921-011f0f72351a",
+  "explanation": "La respuesta correcta es **A) informe**.\n\n> Para encontrar archivos cuyo nombre contenga la palabra \"informe\", basta con escribir **`informe`** directamente en el cuadro de búsqueda. Windows busca por defecto en el nombre de los archivos.\n\n**Por qué A es correcta:**\nLa búsqueda básica en el Explorador funciona escribiendo la palabra directamente; Windows filtra los archivos cuyos nombres contienen ese texto.\n\n**Por qué las demás son incorrectas:**\n- **B) content:informe:** este filtro busca la palabra dentro del contenido de los archivos, no en el nombre.\n- **C) buscar:informe:** no es un filtro reconocido en el Explorador de archivos de Windows 11.\n- **D) nombre:informe:** aunque parece correcto, la búsqueda por defecto ya actúa sobre el nombre; no es necesario especificarlo.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "`informe`",
+    "texto": "informe",
+    "bloque": "Para encontrar archivos cuyo nombre contenga la palabra \"informe\", basta con escribir **`informe`** directamente en el cuadro de búsqueda. Windows busca por defecto en el nombre de los archivos."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) informe**.",
+   "options": {
+    "0": "La búsqueda básica en el Explorador funciona escribiendo la palabra directamente; Windows filtra los archivos cuyos nombres contienen ese texto.",
+    "1": "**content:informe:** este filtro busca la palabra dentro del contenido de los archivos, no en el nombre.",
+    "2": "**buscar:informe:** no es un filtro reconocido en el Explorador de archivos de Windows 11.",
+    "3": "**nombre:informe:** aunque parece correcto, la búsqueda por defecto ya actúa sobre el nombre; no es necesario especificarlo."
+   }
+  }
+ },
+ {
+  "id": "6ac2919f-70e6-4e3f-8d35-99af76447245",
+  "explanation": "La respuesta correcta es **B) Al Letrado de la Administración de Justicia**.\n\n> «...corresponderá al **secretario judicial** [hoy Letrado de la Administración de Justicia] la **ordenación, custodia y conservación** de los documentos, para lo cual contará con la asistencia y asesoramiento del personal técnico que se determine al efecto.» (Art. 6 RD 937/2003)\n\n**Por qué B es correcta:** Conforme al art. 6 RD 937/2003 y los arts. 287 y 473.3 LOPJ, es el LAJ quien asume la responsabilidad de la ordenación, custodia y conservación del Archivo Judicial de Gestión.\n\n**Por qué las demás son incorrectas:**\n- **A) El Juez o Magistrado titular:** Los jueces supervisan la actividad jurisdiccional, pero la gestión del archivo documental es competencia del LAJ.\n- **C) El funcionario del Cuerpo de Auxilio Judicial:** Prestan apoyo al LAJ pero no tienen la responsabilidad principal del archivo.\n- **D) El Gestor Procesal:** Tampoco asume esta responsabilidad; el art. 6 RD 937/2003 la atribuye expresamente al LAJ.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "secretario judicial",
+    "bloque": "«...corresponderá al **secretario judicial** [hoy Letrado de la Administración de Justicia] la **ordenación, custodia y conservación** de los documentos, para lo cual contará con la asistencia y asesoramiento del personal técnico que se determine al efecto.» (Art. 6 RD 937/2003)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Al Letrado de la Administración de Justicia**.",
+   "options": {
+    "0": "**El Juez o Magistrado titular:** Los jueces supervisan la actividad jurisdiccional, pero la gestión del archivo documental es competencia del LAJ.",
+    "1": "Conforme al art. 6 RD 937/2003 y los arts. 287 y 473.3 LOPJ, es el LAJ quien asume la responsabilidad de la ordenación, custodia y conservación del Archivo Judicial de Gestión.",
+    "2": "**El funcionario del Cuerpo de Auxilio Judicial:** Prestan apoyo al LAJ pero no tienen la responsabilidad principal del archivo.",
+    "3": "**El Gestor Procesal:** Tampoco asume esta responsabilidad; el art. 6 RD 937/2003 la atribuye expresamente al LAJ."
+   }
+  }
+ },
+ {
+  "id": "6acac07e-2c1c-45f6-a7e5-f694d4f692e4",
+  "explanation": "La respuesta correcta es la **C: No bastando con alegarla, sino que además debe resultar probada**.\n\n> «La costumbre sólo regirá en defecto de ley aplicable, siempre que no sea contraria a la moral o al orden público, y que **resulte probada**.»\n> — Art. 1.3 Código Civil\n\n**Por qué C es correcta:** A diferencia de la ley, que se presume conocida por todos (principio iura novit curia), la **costumbre** no se presume conocida por el juez. Quien invoca la costumbre para que se aplique como fuente del derecho debe acreditar su existencia y vigencia mediante prueba. Solo si resulta probada el tribunal podrá aplicarla.\n\n**Por qué las demás son incorrectas:**\n- **A** (bastando con alegarla): el art. 1.3 CC establece expresamente que debe «resultar probada»; la mera alegación no es suficiente.\n- **B** (bastando con alegarla aun siendo contraria al orden público): doblemente incorrecta; no solo basta con alegarla, sino que además el art. 1.3 exige que la costumbre no sea contraria a la moral ni al orden público.\n\n*Fuente: art. 1.3 del Real Decreto de 24 de julio de 1889, por el que se publica el Código Civil.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "resulte probada",
+    "bloque": "«La costumbre sólo regirá en defecto de ley aplicable, siempre que no sea contraria a la moral o al orden público, y que **resulte probada**.»\n— Art. 1.3 Código Civil"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **C: No bastando con alegarla, sino que además debe resultar probada**.",
+   "options": {
+    "0": "(bastando con alegarla): el art. 1.3 CC establece expresamente que debe «resultar probada»; la mera alegación no es suficiente.",
+    "1": "(bastando con alegarla aun siendo contraria al orden público): doblemente incorrecta; no solo basta con alegarla, sino que además el art. 1.3 exige que la costumbre no sea contraria a la moral ni al orden público.\n\n*Fuente: art. 1.3 del Real Decreto de 24 de julio de 1889, por el que se publica el Código Civil.*",
+    "2": "A diferencia de la ley, que se presume conocida por todos (principio iura novit curia), la **costumbre** no se presume conocida por el juez. Quien invoca la costumbre para que se aplique como fuente del derecho debe acreditar su existencia y vigencia mediante prueba. Solo si resulta probada el tribunal podrá aplicarla."
+   }
+  }
+ },
+ {
+  "id": "6b3afe63-8e1e-472e-87be-9498f4cffecd",
+  "explanation": "La respuesta correcta es **A) Ante el órgano administrativo que lo dictó**.\n\n> «Contra los actos firmes en vía administrativa podrá interponerse el recurso extraordinario de revisión ante el **órgano administrativo que los dictó**, que también será el competente para su resolución.» (Art. 125.1 Ley 39/2015)\n\n**Por qué A es correcta:** El recurso extraordinario de revisión se dirige al mismo órgano que dictó el acto, también competente para resolverlo.\n\n**Por qué las demás son incorrectas:**\n- **B) El superior jerárquico del órgano que lo dictó:** Eso describe el recurso de **alzada** (art. 121 LPAC).\n- **C) El superior jerárquico del órgano que debe resolver:** El competente para resolver es el mismo que dictó el acto.\n- **D) El superior jerárquico del órgano jurisdiccional:** La vía del recurso extraordinario de revisión es administrativa.\n\n*Fuente: Art. 125 de la Ley 39/2015, del Procedimiento Administrativo Común.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "órgano administrativo que los dictó",
+    "bloque": "«Contra los actos firmes en vía administrativa podrá interponerse el recurso extraordinario de revisión ante el **órgano administrativo que los dictó**, que también será el competente para su resolución.» (Art. 125.1 Ley 39/2015)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Ante el órgano administrativo que lo dictó**.",
+   "options": {
+    "0": "El recurso extraordinario de revisión se dirige al mismo órgano que dictó el acto, también competente para resolverlo.",
+    "1": "**El superior jerárquico del órgano que lo dictó:** Eso describe el recurso de **alzada** (art. 121 LPAC).",
+    "2": "**El superior jerárquico del órgano que debe resolver:** El competente para resolver es el mismo que dictó el acto.",
+    "3": "**El superior jerárquico del órgano jurisdiccional:** La vía del recurso extraordinario de revisión es administrativa.\n\n*Fuente: Art. 125 de la Ley 39/2015, del Procedimiento Administrativo Común.*"
+   }
+  }
+ },
+ {
+  "id": "6b4f9c91-6fcc-4470-b8c0-9e4bc48e5b99",
+  "explanation": "La respuesta correcta es **A) III Plan de Gobierno Abierto.**\n\n> **III Plan de Gobierno Abierto de España (2017-2019):** Contiene 20 medidas estructuradas en 5 ejes (colaboración, participación, transparencia, rendición de cuentas y formación), e incluye entre sus compromisos la **creación del Foro de Gobierno Abierto**, constituido formalmente mediante la Orden HFP/134/2018. Este Foro fue concebido como espacio permanente de diálogo entre la AGE y la sociedad civil.\n\n**Por qué A es correcta:** El Foro de Gobierno Abierto fue un compromiso específico del **III Plan** (2017-2019), que se materializó con la Orden HFP/134/2018.\n\n**Por qué las demás son incorrectas:**\n- **B) I Plan (2012-2013):** Fue el primer plan español en el marco de la OGP, pero no incluyó la creación del Foro.\n- **C) IV Plan (2020-2024):** Posterior a la creación del Foro, que ya existía cuando este plan fue aprobado.\n- **D) II Plan (2014-2016):** Tampoco incluyó la creación del Foro; ese compromiso correspondió al III Plan.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "III Plan de Gobierno Abierto de España (2017-2019)",
+    "bloque": "**III Plan de Gobierno Abierto de España (2017-2019):** Contiene 20 medidas estructuradas en 5 ejes (colaboración, participación, transparencia, rendición de cuentas y formación), e incluye entre sus compromisos la **creación del Foro de Gobierno Abierto**, constituido formalmente mediante la Orden HFP/134/2018. Este Foro fue concebido como espacio permanente de diálogo entre la AGE y la sociedad civil."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) III Plan de Gobierno Abierto.**",
+   "options": {
+    "0": "El Foro de Gobierno Abierto fue un compromiso específico del **III Plan** (2017-2019), que se materializó con la Orden HFP/134/2018.",
+    "1": "**I Plan (2012-2013):** Fue el primer plan español en el marco de la OGP, pero no incluyó la creación del Foro.",
+    "2": "**IV Plan (2020-2024):** Posterior a la creación del Foro, que ya existía cuando este plan fue aprobado.",
+    "3": "**II Plan (2014-2016):** Tampoco incluyó la creación del Foro; ese compromiso correspondió al III Plan."
+   }
+  }
+ },
+ {
+  "id": "6b763d49-eb90-48fb-88f1-fae4b70bc561",
+  "explanation": "La respuesta correcta es **A) El Delegado del Gobierno mediante el procedimiento de libre designación**.\n\nSegún el **artículo 70 de la Ley 40/2015** (LRJSP):\n\n> \"Serán nombrados por el **Delegado del Gobierno** mediante el procedimiento de **libre designación** entre funcionarios de carrera del Estado, de las Comunidades Autónomas o de las Entidades Locales, pertenecientes a Cuerpos y Escalas clasificados como Subgrupo A1.\"\n\n**A)** CORRECTA — Delegado del Gobierno + libre designación + funcionarios A1 del Estado, CCAA o EELL.\n\n**B)** INCORRECTA — No es el Ministro de Hacienda y Administraciones Públicas (denominación de 2011-2016; actualmente competencias repartidas entre Hacienda y el Ministerio para la Transformación Digital y de la Función Pública, RD 1230/2023). El nombramiento corresponde al Delegado del Gobierno.\n\n**C)** INCORRECTA — No es el Consejo de Ministros ni se usa concurso-oposición. Es libre designación por el Delegado.\n\n**D)** INCORRECTA — El Presidente de la Comunidad Autónoma no interviene. Los Directores Insulares son órganos de la AGE, no autonómicos.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "\"Serán nombrados por el **Delegado del Gobierno** mediante el procedimiento de **libre designación** entre funcionarios de carrera del Estado, de las Comunidades Autónomas o de las Entidades Locales, pertenecientes a Cuerpos y Escalas clasificados como Subgrupo A1.\""
+   },
+   "intro": "La respuesta correcta es **A) El Delegado del Gobierno mediante el procedimiento de libre designación**.\n\nSegún el **artículo 70 de la Ley 40/2015** (LRJSP):",
+   "estilo": "impugnacion",
+   "options": {
+    "0": "CORRECTA — Delegado del Gobierno + libre designación + funcionarios A1 del Estado, CCAA o EELL.",
+    "1": "INCORRECTA — No es el Ministro de Hacienda y Administraciones Públicas (denominación de 2011-2016; actualmente competencias repartidas entre Hacienda y el Ministerio para la Transformación Digital y de la Función Pública, RD 1230/2023). El nombramiento corresponde al Delegado del Gobierno.",
+    "2": "INCORRECTA — No es el Consejo de Ministros ni se usa concurso-oposición. Es libre designación por el Delegado.",
+    "3": "INCORRECTA — El Presidente de la Comunidad Autónoma no interviene. Los Directores Insulares son órganos de la AGE, no autonómicos."
+   }
+  }
+ },
+ {
+  "id": "6c55ed4c-8fa0-439e-8467-668c6cb9e47e",
+  "explanation": "La respuesta correcta es **B) Estereotipo**.\n\n> «Desde el punto de vista social, un estereotipo es una imagen o idea aceptada comúnmente por un grupo o sociedad con carácter inmutable y preconcebida, que no tiene una base racional» ... «Generalización hecha acerca de un grupo étnico, concerniente a la atribución de rasgos que se considera injustificada» (Brigham, 1971) ... «Creencias populares sobre los atributos que caracterizan a una categoría social y sobre los que hay un acuerdo sustancial» (Mackie, 1973).\n\n**Por qué B es correcta:** el estereotipo es precisamente esa creencia generalizadora, formada sin base científica, sobre una categoría de personas (étnica, profesional, de género, etc.). Es el componente cognitivo con el que se etiqueta a un grupo, sin un análisis exhaustivo de la realidad.\n\n**Por qué las demás son incorrectas:**\n- **A) Xenofobia:** no es una creencia, sino una actitud de odio, repugnancia u hostilidad hacia los extranjeros o hacia lo percibido como ajeno; implica un componente afectivo-conductual, no una simple generalización cognitiva.\n- **C) Perjuicio:** tal y como está escrito en el enunciado (con «j», «perjuicio»), el término designa un daño o menoscabo material o moral, sin relación alguna con una creencia generalizada sobre un grupo de personas. (No debe confundirse con «prejuicio», que sí es una actitud negativa previa apoyada en un estereotipo; pero tampoco encajaría aquí, porque la pregunta busca la creencia -el componente cognitivo-, no la actitud hostil derivada de ella.)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Desde el punto de vista social, un estereotipo es una imagen o idea aceptada comúnmente por un grupo o sociedad con carácter inmutable y preconcebida, que no tiene una base racional» ... «Generalización hecha acerca de un grupo étnico, concerniente a la atribución de rasgos que se considera injustificada» (Brigham, 1971) ... «Creencias populares sobre los atributos que caracterizan a una categoría social y sobre los que hay un acuerdo sustancial» (Mackie, 1973)."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Estereotipo**.",
+   "options": {
+    "0": "**Xenofobia:** no es una creencia, sino una actitud de odio, repugnancia u hostilidad hacia los extranjeros o hacia lo percibido como ajeno; implica un componente afectivo-conductual, no una simple generalización cognitiva.",
+    "1": "el estereotipo es precisamente esa creencia generalizadora, formada sin base científica, sobre una categoría de personas (étnica, profesional, de género, etc.). Es el componente cognitivo con el que se etiqueta a un grupo, sin un análisis exhaustivo de la realidad.",
+    "2": "**Perjuicio:** tal y como está escrito en el enunciado (con «j», «perjuicio»), el término designa un daño o menoscabo material o moral, sin relación alguna con una creencia generalizada sobre un grupo de personas. (No debe confundirse con «prejuicio», que sí es una actitud negativa previa apoyada en un estereotipo; pero tampoco encajaría aquí, porque la pregunta busca la creencia -el componente cognitivo-, no la actitud hostil derivada de ella.)"
+   }
+  }
+ },
+ {
+  "id": "6c5fccd6-9afc-4acc-b6cf-79c677f7647f",
+  "explanation": "La respuesta correcta es **A) Horizontalmente colocadas, siendo la amarilla de doble anchura que cada una de las rojas**.\n\n> **Art. 4.1 CE:** «La bandera de España está formada por tres franjas **horizontales**, roja, amarilla y roja, siendo **la amarilla de doble anchura** que cada una de las rojas.»\n\n**Por qué A es correcta:** Reproduce literalmente el art. 4.1 CE: tres franjas horizontales y la franja central (amarilla) tiene el doble de anchura que cada una de las laterales (rojas).\n\n**Por qué las demás son incorrectas:**\n- **B)** Dice \"tres franjas de igual anchura\", pero la CE establece que la amarilla es de doble anchura.\n- **C)** Invierte las proporciones: dice \"la roja de doble anchura\", cuando es la amarilla quien tiene el doble.\n- **D)** Dice \"verticalmente colocadas\", contradiciendo directamente el art. 4.1 que establece franjas horizontales.\n\nFuente: Art. 4 de la Constitución Española de 1978",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 4.1 CE",
+    "bloque": "**Art. 4.1 CE:** «La bandera de España está formada por tres franjas **horizontales**, roja, amarilla y roja, siendo **la amarilla de doble anchura** que cada una de las rojas.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Horizontalmente colocadas, siendo la amarilla de doble anchura que cada una de las rojas**.",
+   "options": {
+    "0": "Reproduce literalmente el art. 4.1 CE: tres franjas horizontales y la franja central (amarilla) tiene el doble de anchura que cada una de las laterales (rojas).",
+    "1": "Dice \"tres franjas de igual anchura\", pero la CE establece que la amarilla es de doble anchura.",
+    "2": "Invierte las proporciones: dice \"la roja de doble anchura\", cuando es la amarilla quien tiene el doble.",
+    "3": "Dice \"verticalmente colocadas\", contradiciendo directamente el art. 4.1 que establece franjas horizontales.\n\nFuente: Art. 4 de la Constitución Española de 1978"
+   }
+  }
+ },
+ {
+  "id": "6c66f93b-d109-4f26-80b5-9402c3d2cc3e",
+  "explanation": "La respuesta correcta es **A) Permiten separar un párrafo de otro.**\n\nLa marca de fin de párrafo (¶), que se inserta al pulsar la tecla **Intro**, delimita la separación entre dos párrafos consecutivos en Writer. Cada marca indica el final de un párrafo y el inicio del siguiente, almacenando además el formato propio de ese párrafo (alineación, sangría, interlineado, etc.).\n\n**Por qué A es correcta:**\n\n> **Formato de párrafo (Formato > Párrafo):** cada párrafo queda delimitado por su marca de fin de párrafo, que se genera al pulsar Intro y separa un párrafo del siguiente.\n\n**Por qué las demás son incorrectas:**\n\n- **B) Mayúsculas+Intro:** esa combinación inserta un **salto de línea manual** dentro del mismo párrafo, no una marca de fin de párrafo.\n- **C) Diferentes formatos a las páginas:** los formatos de página se controlan con **estilos de página** y **saltos de página**, no con marcas de fin de párrafo.\n- **D) Menú Insertar/Párrafo:** no existe tal comando en Writer; el párrafo se genera simplemente pulsando Intro y se configura desde Formato > Párrafo.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Permiten separar un párrafo de otro.**\n\nLa marca de fin de párrafo (¶), que se inserta al pulsar la tecla **Intro**, delimita la separación entre dos párrafos consecutivos en Writer. Cada marca indica el final de un párrafo y el inicio del siguiente, almacenando además el formato propio de ese párrafo (alineación, sangría, interlineado, etc.).",
+   "options": {
+    "0": "> **Formato de párrafo (Formato > Párrafo):** cada párrafo queda delimitado por su marca de fin de párrafo, que se genera al pulsar Intro y separa un párrafo del siguiente.",
+    "1": "**Mayúsculas+Intro:** esa combinación inserta un **salto de línea manual** dentro del mismo párrafo, no una marca de fin de párrafo.",
+    "2": "**Diferentes formatos a las páginas:** los formatos de página se controlan con **estilos de página** y **saltos de página**, no con marcas de fin de párrafo.",
+    "3": "**Menú Insertar/Párrafo:** no existe tal comando en Writer; el párrafo se genera simplemente pulsando Intro y se configura desde Formato > Párrafo."
+   }
+  }
+ },
+ {
+  "id": "6cf5a600-cbd6-48ae-bed7-22d04f914a71",
+  "explanation": "La respuesta correcta es **C) La pertenencia a cada subgrupo o grupo**.\n\n> «Las retribuciones básicas [...] estarán integradas única y exclusivamente por: a) El **sueldo** asignado a cada **Subgrupo o Grupo** de clasificación profesional [...]. b) Los **trienios** [...].» (Art. 23 TREBEP)\n\n**Por qué C es correcta:** Las retribuciones básicas (sueldo y trienios) se fijan según el **grupo o subgrupo de clasificación** (A1, A2, C1, C2, E).\n\n**Por qué las demás son incorrectas:**\n- **A) La antigüedad y productividad:** La **productividad** es retribución complementaria (art. 24.c), no básica.\n- **B) El destino y empleo:** Influyen en las retribuciones **complementarias**, no en las básicas.\n\n*Fuente: Art. 23 del Real Decreto Legislativo 5/2015, TREBEP.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "sueldo",
+    "bloque": "«Las retribuciones básicas [...] estarán integradas única y exclusivamente por: a) El **sueldo** asignado a cada **Subgrupo o Grupo** de clasificación profesional [...]. b) Los **trienios** [...].» (Art. 23 TREBEP)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) La pertenencia a cada subgrupo o grupo**.",
+   "options": {
+    "0": "**La antigüedad y productividad:** La **productividad** es retribución complementaria (art. 24.c), no básica.",
+    "1": "**El destino y empleo:** Influyen en las retribuciones **complementarias**, no en las básicas.\n\n*Fuente: Art. 23 del Real Decreto Legislativo 5/2015, TREBEP.*",
+    "2": "Las retribuciones básicas (sueldo y trienios) se fijan según el **grupo o subgrupo de clasificación** (A1, A2, C1, C2, E)."
+   }
+  }
+ },
+ {
+  "id": "6d030acf-1ea5-4229-8a97-241da3eccdee",
+  "explanation": "La respuesta correcta es **A) 30 horas**.\n\n> **Art. 41.1.d) RDL 5/2015, TREBEP — Escala de crédito horario mensual:**\n> «Hasta 100 funcionarios: 15 horas.\n> De 101 a 250 funcionarios: 20 horas.\n> **De 251 a 500 funcionarios: 30 horas.**\n> De 501 a 750 funcionarios: 35 horas.\n> De 751 en adelante: 40 horas.»\n\n**Por qué A es correcta:** El art.41.1.d) TREBEP fija expresamente **30 horas** mensuales de crédito horario para el tramo de 251 a 500 funcionarios en la unidad electoral.\n\n**Por qué las demás son incorrectas:**\n\n- **B) 25 horas:** no corresponde a ningún tramo de la escala del art.41.1.d).\n- **C) 35 horas:** es el crédito del tramo **501 a 750** funcionarios, no del 251-500.\n- **D) 20 horas:** es el crédito del tramo **101 a 250** funcionarios.\n\n*Fuente: Real Decreto Legislativo 5/2015, de 30 de octubre, TREBEP, art.41.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 41.1.d) RDL 5/2015, TREBEP — Escala de crédito horario mensual",
+    "bloque": "**Art. 41.1.d) RDL 5/2015, TREBEP — Escala de crédito horario mensual:**\n«Hasta 100 funcionarios: 15 horas.\nDe 101 a 250 funcionarios: 20 horas.\n**De 251 a 500 funcionarios: 30 horas.**\nDe 501 a 750 funcionarios: 35 horas.\nDe 751 en adelante: 40 horas.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) 30 horas**.",
+   "options": {
+    "0": "El art.41.1.d) TREBEP fija expresamente **30 horas** mensuales de crédito horario para el tramo de 251 a 500 funcionarios en la unidad electoral.",
+    "1": "**25 horas:** no corresponde a ningún tramo de la escala del art.41.1.d).",
+    "2": "**35 horas:** es el crédito del tramo **501 a 750** funcionarios, no del 251-500.",
+    "3": "**20 horas:** es el crédito del tramo **101 a 250** funcionarios.\n\n*Fuente: Real Decreto Legislativo 5/2015, de 30 de octubre, TREBEP, art.41.*"
+   }
+  }
+ },
+ {
+  "id": "6d27a98a-f96f-4d25-8dc4-e9b01fce6c76",
+  "explanation": "La respuesta correcta es **A) Del Título II**.\n\nEn la LO 2/2007, Estatuto de Autonomía para Andalucía, la rúbrica **\"Competencias de la Comunidad Autónoma\"** corresponde al **Título II**, estructurado en dos capítulos:\n\n> **Título II. Competencias de la Comunidad Autónoma**\n> - Capítulo I: Clasificación y principios\n> - Capítulo II: Competencias\n\n**Por qué A es correcta:** el Título II lleva exactamente esa rúbrica.\n\n**Por qué las demás son incorrectas:**\n- **B)** El Título VII es \"Medio ambiente\".\n- **C)** El Capítulo II del Título III regula la organización territorial interna, no las competencias.\n- **D)** El Título I es \"Derechos sociales, deberes y políticas públicas\".",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Título II. Competencias de la Comunidad Autónoma",
+    "bloque": "**Título II. Competencias de la Comunidad Autónoma**\n- Capítulo I: Clasificación y principios\n- Capítulo II: Competencias"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Del Título II**.\n\nEn la LO 2/2007, Estatuto de Autonomía para Andalucía, la rúbrica **\"Competencias de la Comunidad Autónoma\"** corresponde al **Título II**, estructurado en dos capítulos:",
+   "options": {
+    "0": "el Título II lleva exactamente esa rúbrica.",
+    "1": "El Título VII es \"Medio ambiente\".",
+    "2": "El Capítulo II del Título III regula la organización territorial interna, no las competencias.",
+    "3": "El Título I es \"Derechos sociales, deberes y políticas públicas\"."
+   }
+  }
+ },
+ {
+  "id": "6d5150eb-56e6-4241-9207-fe6faf4a2036",
+  "explanation": "La respuesta correcta es **D) Subdirecciones Generales**.\n\n> **Art. 58.4 Ley 40/2015:** «Las **Direcciones Generales** se organizan en **Subdirecciones Generales** para la distribución de las competencias encomendadas a aquéllas, la realización de las actividades que les son propias y la asignación de objetivos y responsabilidades.»\n\n**Por qué D es correcta:** El precepto es rotundo: la unidad organizativa en que se divide la Dirección General es la Subdirección General.\n\n**Por qué las demás son incorrectas:**\n- **A) Subsecretarías Generales:** Este órgano no existe en la nomenclatura de la Ley 40/2015. La \"Subsecretaría\" (sin \"General\") sí existe y encabeza los servicios comunes de un Ministerio (art. 58.2), siendo de rango superior a las Direcciones Generales.\n- **B) Secretarías Generales:** Son órganos superiores que gestionan un sector de actividad administrativa (art. 58.1), con rango superior al de Dirección General; no son unidades internas de esta.\n- **C) Secretarías Técnicas:** Las Secretarías Generales Técnicas dependen de la Subsecretaría (art. 58.2) y tienen funciones de servicios comunes; tampoco son la unidad en que se organizan las Direcciones Generales.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 58.4 Ley 40/2015",
+    "bloque": "**Art. 58.4 Ley 40/2015:** «Las **Direcciones Generales** se organizan en **Subdirecciones Generales** para la distribución de las competencias encomendadas a aquéllas, la realización de las actividades que les son propias y la asignación de objetivos y responsabilidades.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D) Subdirecciones Generales**.",
+   "options": {
+    "0": "**Subsecretarías Generales:** Este órgano no existe en la nomenclatura de la Ley 40/2015. La \"Subsecretaría\" (sin \"General\") sí existe y encabeza los servicios comunes de un Ministerio (art. 58.2), siendo de rango superior a las Direcciones Generales.",
+    "1": "**Secretarías Generales:** Son órganos superiores que gestionan un sector de actividad administrativa (art. 58.1), con rango superior al de Dirección General; no son unidades internas de esta.",
+    "2": "**Secretarías Técnicas:** Las Secretarías Generales Técnicas dependen de la Subsecretaría (art. 58.2) y tienen funciones de servicios comunes; tampoco son la unidad en que se organizan las Direcciones Generales.",
+    "3": "El precepto es rotundo: la unidad organizativa en que se divide la Dirección General es la Subdirección General."
+   }
+  }
+ },
+ {
+  "id": "6e5b8d84-4806-4603-b746-20460c6c3f4e",
+  "explanation": "La respuesta correcta es **D) Puede interponerse recurso de apelación que será admitido en un solo efecto.**\n\n> «Contra el auto denegatorio de las diligencias pedidas podrá interponerse recurso de apelación, que será admitido en un solo efecto para ante la respectiva Audiencia o Tribunal competente» (art. 311, párrafo 2.º LECrim).\n\n**Por qué D es correcta:** el propio artículo 311 LECrim regula expresamente el recurso frente al auto que deniega las diligencias solicitadas por el Ministerio Fiscal o cualquiera de las partes personadas en el sumario: es un recurso de apelación admitido en un solo efecto (no suspende la tramitación del sumario).\n\n**Por qué las demás son incorrectas:**\n- **A) Recurso de queja:** el art. 311 LECrim reserva el recurso de queja únicamente para el supuesto en que el Fiscal no esté en la misma localidad que el Juez de instrucción y, por ello, no pueda apelar; no es la vía general para todas las partes personadas.\n- **B) Recurso directo de revisión:** no existe tal recurso frente al auto denegatorio de diligencias en el sumario; la revisión no es la vía prevista en este artículo.\n- **C) Recurso de apelación que será admitido en dos efectos:** el artículo es explícito en que el recurso «será admitido en un solo efecto», no en dos efectos (lo que suspendería el procedimiento).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Contra el auto denegatorio de las diligencias pedidas podrá interponerse recurso de apelación, que será admitido en un solo efecto para ante la respectiva Audiencia o Tribunal competente» (art. 311, párrafo 2.º LECrim)."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D) Puede interponerse recurso de apelación que será admitido en un solo efecto.**",
+   "options": {
+    "0": "**Recurso de queja:** el art. 311 LECrim reserva el recurso de queja únicamente para el supuesto en que el Fiscal no esté en la misma localidad que el Juez de instrucción y, por ello, no pueda apelar; no es la vía general para todas las partes personadas.",
+    "1": "**Recurso directo de revisión:** no existe tal recurso frente al auto denegatorio de diligencias en el sumario; la revisión no es la vía prevista en este artículo.",
+    "2": "**Recurso de apelación que será admitido en dos efectos:** el artículo es explícito en que el recurso «será admitido en un solo efecto», no en dos efectos (lo que suspendería el procedimiento).",
+    "3": "el propio artículo 311 LECrim regula expresamente el recurso frente al auto que deniega las diligencias solicitadas por el Ministerio Fiscal o cualquiera de las partes personadas en el sumario: es un recurso de apelación admitido en un solo efecto (no suspende la tramitación del sumario)."
+   }
+  }
+ },
+ {
+  "id": "6e61704a-a45b-407e-81e6-d45dbf14a845",
+  "explanation": "La respuesta correcta es **B) Cuando el cónyuge o pareja de hecho resida en otra localidad por haber obtenido y estar desempeñando un puesto de trabajo de carácter definitivo como personal funcionario de carrera o como personal laboral fijo en cualquiera de las administraciones públicas, organismos públicos y entidades de derecho público vinculados o dependientes de ellas, en los órganos constitucionales o del poder judicial y órganos similares de las comunidades autónomas, así como en la Unión Europea o en organizaciones internacionales.**\n\nEl artículo 175 de la Ley 2/2015, de 29 de abril, del empleo público de Galicia (LEPG) regula la excedencia por agrupación familiar.\n\n**Por qué B es correcta:**\n\nEl artículo 175.1 define con claridad esta situación:\n\n> *El personal funcionario de carrera tiene derecho a la excedencia por agrupación familiar, sin que sea exigible el requisito de haber prestado un tiempo mínimo de servicios previos ni un plazo de permanencia en la misma, cuando el cónyuge o pareja de hecho resida en otra localidad por haber obtenido y estar desempeñando un puesto de trabajo de carácter definitivo como personal funcionario de carrera o como personal laboral fijo en cualquiera de las administraciones públicas.*\n\nLa clave de esta excedencia es que permite al funcionario acompañar a su cónyuge o pareja que ha sido destinado definitivamente a otra localidad.\n\n**Por qué las demás son incorrectas:**\n\n- **A) Para atender al cuidado de cada hijo...** Esto corresponde a la **excedencia por cuidado de hijos**, regulada en otro artículo, no a la excedencia por agrupación familiar.\n\n- **C) El personal funcionario que acceda por promoción interna a otros cuerpos...** Esto describe la situación de **excedencia voluntaria por incompatibilidad**, no la agrupación familiar.\n\n- **D) Para atender al cuidado de un familiar hasta el segundo grado...** Esto corresponde a la **excedencia por cuidado de familiares**, que es una figura distinta.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Cuando el cónyuge o pareja de hecho resida en otra localidad por haber obtenido y estar desempeñando un puesto de trabajo de carácter definitivo como personal funcionario de carrera o como personal laboral fijo en cualquiera de las administraciones públicas, organismos públicos y entidades de derecho público vinculados o dependientes de ellas, en los órganos constitucionales o del poder judicial y órganos similares de las comunidades autónomas, así como en la Unión Europea o en organizaciones internacionales.**\n\nEl artículo 175 de la Ley 2/2015, de 29 de abril, del empleo público de Galicia (LEPG) regula la excedencia por agrupación familiar.",
+   "options": {
+    "0": "Para atender al cuidado de cada hijo...** Esto corresponde a la **excedencia por cuidado de hijos**, regulada en otro artículo, no a la excedencia por agrupación familiar.",
+    "1": "El artículo 175.1 define con claridad esta situación:\n\n> *El personal funcionario de carrera tiene derecho a la excedencia por agrupación familiar, sin que sea exigible el requisito de haber prestado un tiempo mínimo de servicios previos ni un plazo de permanencia en la misma, cuando el cónyuge o pareja de hecho resida en otra localidad por haber obtenido y estar desempeñando un puesto de trabajo de carácter definitivo como personal funcionario de carrera o como personal laboral fijo en cualquiera de las administraciones públicas.*\n\nLa clave de esta excedencia es que permite al funcionario acompañar a su cónyuge o pareja que ha sido destinado definitivamente a otra localidad.",
+    "2": "El personal funcionario que acceda por promoción interna a otros cuerpos...** Esto describe la situación de **excedencia voluntaria por incompatibilidad**, no la agrupación familiar.",
+    "3": "Para atender al cuidado de un familiar hasta el segundo grado...** Esto corresponde a la **excedencia por cuidado de familiares**, que es una figura distinta."
+   }
+  }
+ },
+ {
+  "id": "6e9a2afc-38cf-4221-af01-9b69f7b8bb23",
+  "explanation": "La respuesta correcta es **A) 10 días**.\n\nEl artículo 65.2 de la Ley 39/2015 regula el inicio de oficio de los procedimientos de responsabilidad patrimonial:\n\n> **Art. 65.2 Ley 39/2015:** «El acuerdo de iniciación del procedimiento se notificará a los particulares presuntamente lesionados, concediéndoles un plazo de diez días para que aporten cuantas alegaciones, documentos o información estimen conveniente a su derecho y propongan cuantas pruebas sean pertinentes para el reconocimiento del mismo.»\n\n**Por qué A es correcta:** El artículo 65.2 concede a los particulares presuntamente lesionados un plazo de **diez días**, desde la notificación del acuerdo de iniciación, para aportar alegaciones, documentos e información y proponer pruebas.\n\n**Por qué las demás son incorrectas:**\n- **B) 30 días:** El artículo 65.2 fija expresamente diez días.\n- **C) 15 días:** No corresponde; el plazo del artículo 65.2 es de diez días.\n- **D) 20 días:** El artículo 65.2 no contempla veinte días para este trámite.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 65.2 Ley 39/2015",
+    "bloque": "**Art. 65.2 Ley 39/2015:** «El acuerdo de iniciación del procedimiento se notificará a los particulares presuntamente lesionados, concediéndoles un plazo de diez días para que aporten cuantas alegaciones, documentos o información estimen conveniente a su derecho y propongan cuantas pruebas sean pertinentes para el reconocimiento del mismo.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) 10 días**.\n\nEl artículo 65.2 de la Ley 39/2015 regula el inicio de oficio de los procedimientos de responsabilidad patrimonial:",
+   "options": {
+    "0": "El artículo 65.2 concede a los particulares presuntamente lesionados un plazo de **diez días**, desde la notificación del acuerdo de iniciación, para aportar alegaciones, documentos e información y proponer pruebas.",
+    "1": "**30 días:** El artículo 65.2 fija expresamente diez días.",
+    "2": "**15 días:** No corresponde; el plazo del artículo 65.2 es de diez días.",
+    "3": "**20 días:** El artículo 65.2 no contempla veinte días para este trámite."
+   }
+  }
+ },
+ {
+  "id": "6eb39214-3e36-4378-841a-fec990e54194",
+  "explanation": "La respuesta correcta es **A) Que ya lo hubieren prestado con anterioridad**.\n\n> «No estarán obligados a prestar juramento o promesa quienes ya lo hubieren prestado con anterioridad como Jueces de Paz.» (Art. 21.2 Reglamento 3/1995, de los Jueces de Paz)\n\n**Por qué A es correcta:** La exención al juramento/promesa se aplica exclusivamente a quienes ya juraron en un mandato anterior como Jueces de Paz. Es una medida de simplificación para renovaciones en el cargo.\n\n**Por qué las demás son incorrectas:**\n- **B) Ser licenciados o graduados en Derecho:** La titulación jurídica no exime de prestar juramento; el art. 21.2 no contempla esta excepción.\n- **C) Ser mayores de dieciocho años:** La mayoría de edad es requisito general pero no genera exención del juramento.\n- **D) Haber ejercido otro cargo en el ámbito de justicia:** Tampoco prevista como exención; el precepto es específico para quienes ya fueron Jueces de Paz.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«No estarán obligados a prestar juramento o promesa quienes ya lo hubieren prestado con anterioridad como Jueces de Paz.» (Art. 21.2 Reglamento 3/1995, de los Jueces de Paz)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A) Que ya lo hubieren prestado con anterioridad**.",
+   "options": {
+    "0": "La exención al juramento/promesa se aplica exclusivamente a quienes ya juraron en un mandato anterior como Jueces de Paz. Es una medida de simplificación para renovaciones en el cargo.",
+    "1": "**Ser licenciados o graduados en Derecho:** La titulación jurídica no exime de prestar juramento; el art. 21.2 no contempla esta excepción.",
+    "2": "**Ser mayores de dieciocho años:** La mayoría de edad es requisito general pero no genera exención del juramento.",
+    "3": "**Haber ejercido otro cargo en el ámbito de justicia:** Tampoco prevista como exención; el precepto es específico para quienes ya fueron Jueces de Paz."
+   }
+  }
+ },
+ {
+  "id": "6eeed961-d728-4ec5-bafa-5da90ad7761a",
+  "explanation": "**Respuesta correcta: A) Un reglamento.**\n\n> **TFUE art. 288:** «El reglamento tendrá un alcance general. Será obligatorio en todos sus elementos y directamente aplicable en cada Estado miembro.»\n\n**Por qué A es correcta:** el reglamento es el único acto que reúne las dos notas del enunciado: es **de carácter general** (\"alcance general\") y **de obligatorio cumplimiento para todos los Estados** (\"obligatorio en todos sus elementos y directamente aplicable en cada Estado miembro\").\n\n**Por qué las demás son incorrectas:**\n- **B) Una recomendación:** incorrecta. El art. 288 dice que «las recomendaciones y los dictámenes no serán vinculantes».\n- **C) Una decisión:** incorrecta. La decisión «será obligatoria en todos sus elementos», pero cuando designa destinatarios «sólo será obligatoria para éstos»; carece del alcance general propio del reglamento.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "TFUE art. 288",
+    "bloque": "**TFUE art. 288:** «El reglamento tendrá un alcance general. Será obligatorio en todos sus elementos y directamente aplicable en cada Estado miembro.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: A) Un reglamento.**",
+   "options": {
+    "0": "el reglamento es el único acto que reúne las dos notas del enunciado: es **de carácter general** (\"alcance general\") y **de obligatorio cumplimiento para todos los Estados** (\"obligatorio en todos sus elementos y directamente aplicable en cada Estado miembro\").",
+    "1": "**Una recomendación:** incorrecta. El art. 288 dice que «las recomendaciones y los dictámenes no serán vinculantes».",
+    "2": "**Una decisión:** incorrecta. La decisión «será obligatoria en todos sus elementos», pero cuando designa destinatarios «sólo será obligatoria para éstos»; carece del alcance general propio del reglamento."
+   }
+  }
+ },
+ {
+  "id": "6f1615f8-e134-4114-8541-54577f4f7da6",
+  "explanation": "**Respuesta correcta: B) Art. 35.4 de la Ley General Tributaria 58/2003, de 17 de diciembre.**\n\n> «Son sujetos pasivos de las contribuciones especiales las personas físicas y jurídicas y las entidades a que se refiere el artículo 35.4 de la Ley 58/2003, de 17 de diciembre, General Tributaria, especialmente beneficiadas por la realización de las obras o por el establecimiento o ampliación de los servicios locales que originen la obligación de contribuir.»\n\n**Por qué B es correcta:** El artículo 30.1 del RDL 2/2004 remite expresamente al artículo 35.4 de la LGT para identificar las entidades que, junto con las personas físicas y jurídicas, son sujetos pasivos de las contribuciones especiales.\n\n**Por qué las demás son incorrectas:**\n- **A)** El art. 35.2 LGT no es la referencia correcta; el precepto remite al 35.4.\n- **C)** El art. 35.6 LGT no existe como referencia en este contexto.\n- **D)** El art. 35.3 LGT tampoco es la referencia correcta.\n\n📚 **Fuente:** [RDL 2/2004, Art. 30](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a30)",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Son sujetos pasivos de las contribuciones especiales las personas físicas y jurídicas y las entidades a que se refiere el artículo 35.4 de la Ley 58/2003, de 17 de diciembre, General Tributaria, especialmente beneficiadas por la realización de las obras o por el establecimiento o ampliación de los servicios locales que originen la obligación de contribuir.»"
+   },
+   "frame": "select_correct",
+   "intro": "**Respuesta correcta: B) Art. 35.4 de la Ley General Tributaria 58/2003, de 17 de diciembre.**",
+   "options": {
+    "0": "El art. 35.2 LGT no es la referencia correcta; el precepto remite al 35.4.",
+    "1": "El artículo 30.1 del RDL 2/2004 remite expresamente al artículo 35.4 de la LGT para identificar las entidades que, junto con las personas físicas y jurídicas, son sujetos pasivos de las contribuciones especiales.",
+    "2": "El art. 35.6 LGT no existe como referencia en este contexto.",
+    "3": "El art. 35.3 LGT tampoco es la referencia correcta.\n\n📚 **Fuente:** [RDL 2/2004, Art. 30](https://www.boe.es/buscar/act.php?id=BOE-A-2004-4214#a30)"
+   }
+  }
+ },
+ {
+  "id": "6f47dc17-5823-4aa8-ab54-c30f220c006e",
+  "explanation": "La respuesta correcta es **C) De asimilación de la condición de desviado.**\n\n> «4. Asimilación de la condición de desviado: inclusión definitiva en una subcultura desviada, con identificación plena con los valores del grupo» (Fases de Asimilación de la Conducta Desviada).\n\n**Por qué C es correcta:** el proceso de desviación se desarrolla en cuatro fases sucesivas: inicio, ruptura con el grupo normalizado, irreversibilidad de la condición de desviado y, por último, asimilación de la condición de desviado. Es en esta última fase donde el individuo queda incluido de forma definitiva en la subcultura desviada.\n\n**Por qué las demás son incorrectas:**\n- **A) De ruptura con el grupo normalizado:** es la segunda fase del proceso (distanciamiento progresivo del entorno social convencional), no la fase de inclusión definitiva en la subcultura.\n- **B) De reversibilidad de la condición de desviado:** no existe una fase con ese nombre; la tercera fase del proceso se denomina «irreversibilidad» (no «reversibilidad») de la condición de desviado, y tampoco es la fase en la que se produce la inclusión definitiva en la subcultura.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«4. Asimilación de la condición de desviado: inclusión definitiva en una subcultura desviada, con identificación plena con los valores del grupo» (Fases de Asimilación de la Conducta Desviada)."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) De asimilación de la condición de desviado.**",
+   "options": {
+    "0": "**De ruptura con el grupo normalizado:** es la segunda fase del proceso (distanciamiento progresivo del entorno social convencional), no la fase de inclusión definitiva en la subcultura.",
+    "1": "**De reversibilidad de la condición de desviado:** no existe una fase con ese nombre; la tercera fase del proceso se denomina «irreversibilidad» (no «reversibilidad») de la condición de desviado, y tampoco es la fase en la que se produce la inclusión definitiva en la subcultura.",
+    "2": "el proceso de desviación se desarrolla en cuatro fases sucesivas: inicio, ruptura con el grupo normalizado, irreversibilidad de la condición de desviado y, por último, asimilación de la condición de desviado. Es en esta última fase donde el individuo queda incluido de forma definitiva en la subcultura desviada."
+   }
+  }
+ },
+ {
+  "id": "6f95b43c-0906-4c8f-8596-fd799291efab",
+  "explanation": "La respuesta correcta es **B) Los hechos denunciados que pudieran constituir una infracción administrativa identificarán a los presuntos responsables cuando sea posible**.\n\n> **Artículo 62.2 Ley 39/2015** (segunda frase): \"Cuando dichos hechos pudieran constituir una infracción administrativa, recogerán la fecha de su comisión y, **cuando sea posible, la identificación de los presuntos responsables**.\"\n\n**Por qué B es correcta:** la opción reproduce la regla del art. 62.2 — la denuncia debe contener la identificación de los presuntos responsables cuando sea posible (no es un requisito absoluto, está condicionado a su factibilidad).\n\n**Por qué las demás son incorrectas:**\n\n- **A) INCORRECTA** — Dice justo lo contrario que la ley. El **art. 62.5** establece: *\"La presentación de una denuncia **NO** confiere, por sí sola, la condición de interesado en el procedimiento.\"* La denuncia, por sí sola, no atribuye la condición de interesado.\n\n- **C) INCORRECTA** — El **art. 62.1** define la denuncia como el acto por el que cualquier persona pone en conocimiento de la Administración hechos que justifiquen la **iniciación de oficio** del procedimiento, no \"a instancia de parte\". Es una diferencia esencial: la denuncia desencadena un inicio de oficio, no es un inicio a instancia de parte (que sería una solicitud).\n\n- **D) INCORRECTA** — El art. 62 no contiene esta excepción. De hecho, el art. 62.2 exige que las denuncias **expresen la identidad de la persona o personas que las presentan** (no contempla la denuncia anónima como categoría aparte), y la regla sobre identificación de los presuntos responsables (\"cuando sea posible\") opera con independencia de la identidad del denunciante.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Artículo 62.2 Ley 39/2015",
+    "texto": "Cuando dichos hechos pudieran constituir una infracción administrativa, recogerán la fecha de su comisión y, **cuando sea posible, la identificación de los presuntos responsables**.",
+    "bloque": "**Artículo 62.2 Ley 39/2015** (segunda frase): \"Cuando dichos hechos pudieran constituir una infracción administrativa, recogerán la fecha de su comisión y, **cuando sea posible, la identificación de los presuntos responsables**.\""
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Los hechos denunciados que pudieran constituir una infracción administrativa identificarán a los presuntos responsables cuando sea posible**.",
+   "options": {
+    "0": "INCORRECTA** — Dice justo lo contrario que la ley. El **art. 62.5** establece: *\"La presentación de una denuncia **NO** confiere, por sí sola, la condición de interesado en el procedimiento.\"* La denuncia, por sí sola, no atribuye la condición de interesado.",
+    "1": "la opción reproduce la regla del art. 62.2 — la denuncia debe contener la identificación de los presuntos responsables cuando sea posible (no es un requisito absoluto, está condicionado a su factibilidad).",
+    "2": "INCORRECTA** — El **art. 62.1** define la denuncia como el acto por el que cualquier persona pone en conocimiento de la Administración hechos que justifiquen la **iniciación de oficio** del procedimiento, no \"a instancia de parte\". Es una diferencia esencial: la denuncia desencadena un inicio de oficio, no es un inicio a instancia de parte (que sería una solicitud).",
+    "3": "INCORRECTA** — El art. 62 no contiene esta excepción. De hecho, el art. 62.2 exige que las denuncias **expresen la identidad de la persona o personas que las presentan** (no contempla la denuncia anónima como categoría aparte), y la regla sobre identificación de los presuntos responsables (\"cuando sea posible\") opera con independencia de la identidad del denunciante."
+   }
+  }
+ },
+ {
+  "id": "6f9816d2-596e-4dc3-882a-dd40276af9d7",
+  "explanation": "La respuesta correcta es **C) El menú Formato, comando Carácter.**\n\nEn LibreOffice Writer, para cambiar el tipo de letra de una parte del texto seleccionada se utiliza **Formato > Carácter**, que abre el cuadro de diálogo con todas las opciones de formato de carácter (fuente, estilo, tamaño, color, efectos, etc.).\n\n**Por qué C es correcta:**\n\n> **Formato de carácter (Formato > Carácter o Ctrl+1):**\n> - Fuente: tipo, estilo (negrita, cursiva), tamaño, color\n> - Efectos: subrayado, tachado, sombra, relieve, contorno, mayúsculas\n> - Posición: superíndice, subíndice, espaciado, escala\n\n**Por qué las demás son incorrectas:**\n\n- **A) Editar > Fuente:** el menú Editar contiene comandos de edición (Cortar, Copiar, Pegar, Buscar y reemplazar...), no opciones de formato de fuente.\n- **B) Formato > Fuente:** en Writer el comando se llama \"Carácter\", no \"Fuente\". No existe un comando Formato > Fuente.\n- **D) Formato > Cambiar letra:** no existe ese comando en el menú Formato de Writer.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) El menú Formato, comando Carácter.**\n\nEn LibreOffice Writer, para cambiar el tipo de letra de una parte del texto seleccionada se utiliza **Formato > Carácter**, que abre el cuadro de diálogo con todas las opciones de formato de carácter (fuente, estilo, tamaño, color, efectos, etc.).",
+   "options": {
+    "0": "**Editar > Fuente:** el menú Editar contiene comandos de edición (Cortar, Copiar, Pegar, Buscar y reemplazar...), no opciones de formato de fuente.",
+    "1": "**Formato > Fuente:** en Writer el comando se llama \"Carácter\", no \"Fuente\". No existe un comando Formato > Fuente.",
+    "2": "> **Formato de carácter (Formato > Carácter o Ctrl+1):**\n> - Fuente: tipo, estilo (negrita, cursiva), tamaño, color\n> - Efectos: subrayado, tachado, sombra, relieve, contorno, mayúsculas\n> - Posición: superíndice, subíndice, espaciado, escala",
+    "3": "**Formato > Cambiar letra:** no existe ese comando en el menú Formato de Writer."
+   }
+  }
+ },
+ {
+  "id": "6f9b8017-0f7b-42e1-8ba5-a01ff9057966",
+  "explanation": "La respuesta correcta es **C) Recurso de reposición**.\n\n> «Las resoluciones interlocutorias dictadas durante la tramitación del expediente son susceptibles de **recurso de reposición**, en los términos previstos en la Ley de Enjuiciamiento Civil.» (Art. 80 quinquies.1 Ley 15/2015)\n\n**Por qué C es correcta:** Para las resoluciones **interlocutorias** (las que deciden sobre el procedimiento pero no ponen fin al expediente), el recurso previsto es el de reposición.\n\n**Por qué las demás son incorrectas:**\n- **A) Recurso extraordinario por infracción procesal:** Reservado para sentencias dictadas en segunda instancia en el orden civil (arts. 468 ss. LEC); no para interlocutorias de JV.\n- **B) Recurso de revisión:** Procede contra sentencias firmes (art. 510 LEC), no contra resoluciones interlocutorias.\n- **D) Recurso de apelación:** El art. 80 quinquies.2 Ley 15/2015 lo reserva para la resolución **definitiva**, no para las interlocutorias.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "recurso de reposición",
+    "bloque": "«Las resoluciones interlocutorias dictadas durante la tramitación del expediente son susceptibles de **recurso de reposición**, en los términos previstos en la Ley de Enjuiciamiento Civil.» (Art. 80 quinquies.1 Ley 15/2015)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C) Recurso de reposición**.",
+   "options": {
+    "0": "**Recurso extraordinario por infracción procesal:** Reservado para sentencias dictadas en segunda instancia en el orden civil (arts. 468 ss. LEC); no para interlocutorias de JV.",
+    "1": "**Recurso de revisión:** Procede contra sentencias firmes (art. 510 LEC), no contra resoluciones interlocutorias.",
+    "2": "Para las resoluciones **interlocutorias** (las que deciden sobre el procedimiento pero no ponen fin al expediente), el recurso previsto es el de reposición.",
+    "3": "**Recurso de apelación:** El art. 80 quinquies.2 Ley 15/2015 lo reserva para la resolución **definitiva**, no para las interlocutorias."
+   }
+  }
+ },
+ {
+  "id": "6fe935e9-7bcd-44fe-b467-7ad2c534ff3d",
+  "explanation": "La respuesta correcta es **D) Es elegido por un período de tres años.**\n\n> «El Presidente del Tribunal Constitucional será nombrado entre sus miembros por el Rey, a propuesta del mismo Tribunal en pleno y por un período de tres años» (art. 160 CE).\n\n**Por qué D es correcta:** el artículo 160 CE fija expresamente la duración del mandato del Presidente del Tribunal Constitucional en tres años. (Formalmente es «nombrado» por el Rey y no «elegido» en sentido estricto, pero el dato sustantivo que recoge la opción -la duración de tres años- es literal y exacto, y es el único dato correcto de entre las cuatro opciones.)\n\n**Por qué las demás son incorrectas:**\n- **A) Debe ser Diputado o Senador:** al contrario, la condición de miembro del Tribunal Constitucional es incompatible con todo mandato representativo (art. 159.4 CE), por lo que no puede ser Diputado ni Senador.\n- **B) Debe ser miembro del Gobierno:** la pertenencia al Tribunal Constitucional es igualmente incompatible con cualquier cargo político o administrativo del Gobierno (art. 159.4 CE).\n- **C) Es nombrado por las Cortes Generales por mayoría absoluta:** no es así; el Presidente del TC es nombrado por el Rey a propuesta del propio Tribunal en pleno. Las Cortes Generales intervienen, con mayoría de tres quintos, en la propuesta de designación de algunos magistrados del Tribunal, pero no en el nombramiento del Presidente.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«El Presidente del Tribunal Constitucional será nombrado entre sus miembros por el Rey, a propuesta del mismo Tribunal en pleno y por un período de tres años» (art. 160 CE)."
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D) Es elegido por un período de tres años.**",
+   "options": {
+    "0": "**Debe ser Diputado o Senador:** al contrario, la condición de miembro del Tribunal Constitucional es incompatible con todo mandato representativo (art. 159.4 CE), por lo que no puede ser Diputado ni Senador.",
+    "1": "**Debe ser miembro del Gobierno:** la pertenencia al Tribunal Constitucional es igualmente incompatible con cualquier cargo político o administrativo del Gobierno (art. 159.4 CE).",
+    "2": "**Es nombrado por las Cortes Generales por mayoría absoluta:** no es así; el Presidente del TC es nombrado por el Rey a propuesta del propio Tribunal en pleno. Las Cortes Generales intervienen, con mayoría de tres quintos, en la propuesta de designación de algunos magistrados del Tribunal, pero no en el nombramiento del Presidente.",
+    "3": "el artículo 160 CE fija expresamente la duración del mandato del Presidente del Tribunal Constitucional en tres años. (Formalmente es «nombrado» por el Rey y no «elegido» en sentido estricto, pero el dato sustantivo que recoge la opción -la duración de tres años- es literal y exacto, y es el único dato correcto de entre las cuatro opciones.)"
+   }
+  }
+ },
+ {
+  "id": "6fee22a1-d000-474b-90c6-e1d509cd3259",
+  "explanation": "La respuesta correcta es **B) Ctrl+AvPag.**\n\nEn LibreOffice Writer, la combinación **Ctrl+AvPág** (Ctrl+Page Down) desplaza el cursor al comienzo de la página siguiente, lo que resulta muy útil para navegar rápidamente entre páginas en documentos largos.\n\n**Por qué B es correcta:**\n\nWriter utiliza atajos de teclado estándar para la navegación por páginas. Ctrl+AvPág mueve directamente al inicio de la siguiente página del documento.\n\n**Por qué las demás son incorrectas:**\n\n- **A) Ctrl+Fin:** esta combinación lleva al final del documento completo, no al inicio de la página siguiente.\n- **C) Ctrl+Alt+Fin:** no es un atajo estándar de navegación de página en LibreOffice Writer.\n- **D) Ctrl+flecha abajo:** mueve el cursor al siguiente párrafo, no al inicio de la página siguiente.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B) Ctrl+AvPag.**\n\nEn LibreOffice Writer, la combinación **Ctrl+AvPág** (Ctrl+Page Down) desplaza el cursor al comienzo de la página siguiente, lo que resulta muy útil para navegar rápidamente entre páginas en documentos largos.",
+   "options": {
+    "0": "**Ctrl+Fin:** esta combinación lleva al final del documento completo, no al inicio de la página siguiente.",
+    "1": "Writer utiliza atajos de teclado estándar para la navegación por páginas. Ctrl+AvPág mueve directamente al inicio de la siguiente página del documento.",
+    "2": "**Ctrl+Alt+Fin:** no es un atajo estándar de navegación de página en LibreOffice Writer.",
+    "3": "**Ctrl+flecha abajo:** mueve el cursor al siguiente párrafo, no al inicio de la página siguiente."
+   }
+  }
+ }
+]

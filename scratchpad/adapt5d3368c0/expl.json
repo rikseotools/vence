@@ -1,0 +1,15 @@
+{
+  "estilo": "impugnacion",
+  "intro": "El artículo 10 del Real Decreto 366/2007 fija las condiciones materiales de las Oficinas de Atención. Su apartado 1 es el único que impone un mínimo obligatorio, y lo hace con dos exigencias que hay que leer juntas: **cuántas** áreas y **cómo** deben ser.",
+  "cita": {
+    "ref": "Artículo 10.1 del Real Decreto 366/2007",
+    "texto": "Las Oficinas de Atención deberán contar al menos con un área higiénico-sanitaria accesible, para cuya configuración se tendrán en cuenta las características y especificaciones técnicas a las que se refiere la disposición final segunda de este real decreto."
+  },
+  "options": {
+    "0": "Los sistemas de seguridad contra incendios los trata el apartado 3 del mismo artículo, pero solo para remitir a las especificaciones técnicas de la disposición final segunda: no impone ningún número mínimo de sistemas.",
+    "1": "Se queda a una palabra: el precepto no exige un área higiénico-sanitaria cualquiera, sino que sea **accesible**. Ese adjetivo es el contenido de la norma, no un detalle.",
+    "2": "Recoge las dos exigencias del apartado 1: al menos **un** área higiénico-sanitaria y que sea **accesible**.",
+    "3": "Duplica el mínimo: la norma dice «al menos con **un** área», no con dos. El adjetivo «accesible» sí es correcto, pero el número no."
+  },
+  "outro": "**Clave:** el artículo 10.1 exige **un** área higiénico-sanitaria **accesible**. Las dos palabras cuentan: quitar «accesible» o subir el número a dos deja de reproducir la norma."
+}

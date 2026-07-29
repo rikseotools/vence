@@ -1,0 +1,12 @@
+{
+ "v": 1,
+ "intro": "La Constitución de 1978 acumula cuatro reformas: 1992 (art. 13.2, sufragio pasivo de extranjeros en elecciones municipales), 2011 (art. 135, estabilidad presupuestaria), 2024 (art. 49, personas con discapacidad) y 2026 (art. 69.3, senador propio para Formentera). Ninguna de las cuatro ha afectado al Título Preliminar, a la Sección 1.ª del Capítulo II del Título I ni al Título II, que son las partes cuya reforma exige el procedimiento agravado del artículo 168; por eso las cuatro se tramitaron por el artículo 167.",
+ "outro": "**Clave:** el procedimiento agravado del art. 168 sigue sin estrenarse; todas las reformas han ido por el art. 167.",
+ "estilo": "impugnacion",
+ "options": {
+  "0": "Se queda corta: en 1992 y 2011 hubo dos reformas, pero después llegaron las de 2024 y 2026.",
+  "1": "Era la cuenta correcta hasta 2024, pero en 2026 se reformó el art. 69.3 y pasaron a ser cuatro.",
+  "2": "Son cuatro reformas y las cuatro se tramitaron por el procedimiento ordinario, porque ninguna tocó el Título Preliminar, los derechos fundamentales de la Sección 1.ª del Capítulo II del Título I ni el Título II.",
+  "3": "El número es correcto, pero el procedimiento no: el agravado del art. 168 (que exige disolución de las Cortes y referéndum obligatorio) no se ha utilizado nunca."
+ }
+}

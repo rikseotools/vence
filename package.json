@@ -100,7 +100,8 @@
     "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",
-    "docs:bandeja": "node scripts/convocatoria/bandeja-documentos.cjs"
+    "docs:bandeja": "node scripts/convocatoria/bandeja-documentos.cjs",
+    "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

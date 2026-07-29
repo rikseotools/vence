@@ -1,0 +1,15 @@
+{
+  "estilo": "impugnacion",
+  "intro": "El artículo 9 de la Ley 7/2023 de Galicia lleva por título «Discriminación sexista por asociación» y define una sola figura: la discriminación que sufre alguien no por su propia situación, sino por la de **otra persona con la que está relacionada**. La clave está en la lista de motivos que el precepto enumera y en que no acota el ámbito en que puede darse.",
+  "cita": {
+    "ref": "Artículo 9 de la Ley 7/2023, de 30 de noviembre, para la igualdad efectiva de mujeres y hombres de Galicia",
+    "texto": "La prohibición de la discriminación por razón de sexo incluye la discriminación sexista por asociación, entendida como la sufrida por una persona por razón del sexo, el embarazo, el parto o la maternidad, de la asunción de obligaciones familiares o del estado civil de otra con la que estuviera relacionada."
+  },
+  "options": {
+    "0": "Deja fuera el estado civil, y el precepto lo enumera expresamente entre los motivos («de la asunción de obligaciones familiares o del estado civil de otra con la que estuviera relacionada»). La lista es sexo, embarazo, parto, maternidad, obligaciones familiares y estado civil.",
+    "1": "Las obligaciones familiares son uno de los motivos de la lista, no el único. Decir «únicamente» recorta un precepto que enumera seis situaciones distintas.",
+    "2": "Reproduce lo que dice el artículo: el embarazo, el parto y la maternidad **de otra persona** con la que se esté relacionado son motivos de discriminación sexista por asociación. Lo característico de esta figura es precisamente que la circunstancia concurre en la otra persona, no en quien sufre el trato discriminatorio.",
+    "3": "El artículo no limita la figura al ámbito laboral: describe la discriminación por asociación sin acotar dónde se produce, así que restringirla al trabajo añade una condición que el precepto no impone."
+  },
+  "outro": "**Clave:** en la discriminación por asociación la circunstancia (sexo, embarazo, parto, maternidad, obligaciones familiares o estado civil) concurre en OTRA persona. Las respuestas que dicen «únicamente» o que dejan fuera el estado civil recortan la lista del artículo."
+}

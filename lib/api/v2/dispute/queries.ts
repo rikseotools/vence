@@ -2,6 +2,7 @@
 // Queries Drizzle unificadas para impugnaciones (legislativas y psicotécnicas)
 
 // CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
+import { evaluarPreparacionBarajado } from './shuffleReadiness'
 import { getDb, getPoolerDb } from '@/db/client'
 
 function getV2DisputeDb() {
@@ -15,7 +16,7 @@ import {
   userProfiles,
   notificationLogs,
 } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { maybeRewardResolvedDispute } from '@/lib/referrals/disputeReward'
 import type {
@@ -252,6 +253,7 @@ export async function resolveDispute(
     let userName: string | null = null
     let questionText: string | null = null
     let currentStatus: string | null = null
+    let explanationData: unknown = null
 
     if (questionType === 'psychometric') {
       const [row] = await db
@@ -292,6 +294,9 @@ export async function resolveDispute(
           uEmail: userProfiles.email,
           uName: userProfiles.fullName,
           qText: questions.questionText,
+          // Para la puerta de barajado (2-bis). Va en ESTE select y no en una consulta aparte:
+          // el leftJoin con `questions` ya está hecho, así que sale gratis.
+          qExplanationData: questions.explanationData,
         })
         .from(questionDisputes)
         .leftJoin(userProfiles, eq(userProfiles.id, questionDisputes.userId))
@@ -308,6 +313,7 @@ export async function resolveDispute(
       userEmail = row.uEmail ?? null
       userName = row.uName ?? null
       questionText = row.qText ?? null
+      explanationData = row.qExplanationData ?? null
     }
 
     // 2. Idempotencia: no re-resolver
@@ -320,6 +326,27 @@ export async function resolveDispute(
 
     if (!userId) {
       return { success: false, error: 'La impugnacion no tiene usuario asociado' }
+    }
+
+    // 2-bis. PUERTA de barajado (29/07/2026). No se cierra una impugnación legislativa como
+    // resuelta dejando la pregunta sin explicación estructurada: el manual pide evaluarla SIEMPRE
+    // y dejarla barajable, y hasta hoy eso solo se AVISABA (dossier, validador y este endpoint
+    // callaban). Núcleo puro y testeado en `shuffleReadiness.ts`; escape con `skipShuffleReason`.
+    const veredictoBarajado = evaluarPreparacionBarajado({
+      questionType: questionType === 'psychometric' ? 'psychometric' : 'legislative',
+      status,
+      explanationData,
+      skipReason: params.skipShuffleReason,
+    })
+    if (!veredictoBarajado.ok) return { success: false, error: veredictoBarajado.error }
+    if (veredictoBarajado.saltado) {
+      // El escape deja rastro: sin esto, saltárselo sale gratis y deja de ser un escape.
+      try {
+        await db.execute(sql`
+          INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+          VALUES (gen_random_uuid(), NOW(), 'api:dispute/resolve', 'warn', 'dispute_shuffle_gate_skipped',
+                  ${JSON.stringify({ disputeId, questionId, motivo: veredictoBarajado.motivo })}::jsonb, NOW())`)
+      } catch { /* el registro no puede tumbar el cierre */ }
     }
 
     // 3. UPDATE atomico de la disputa

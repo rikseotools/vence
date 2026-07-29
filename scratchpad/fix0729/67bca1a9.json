@@ -1,0 +1,11 @@
+{
+ "v": 1,
+ "frame": "select_correct",
+ "intro": "Cuando se introduce un CD virgen en el lector/grabador de un ordenador con Windows y se accede a la unidad desde el **Explorador de archivos**, el sistema ofrece dos opciones de grabacion. El usuario puede elegir el nombre del disco y seleccionar entre dos metodos diferentes de grabacion.",
+ "options": {
+  "0": "Es la formulación que ofrece Windows: **como unidad flash USB**, que graba con el sistema de archivos UDF (Universal Disk Format) y deja el disco listo para añadir y borrar archivos como en un pendrive, o **con un reproductor de CD o DVD**, que graba la sesión de una vez para que el disco se lea en reproductores domésticos.",
+  "1": "Solo menciona uno de los dos métodos (reproductor de CD o de DVD) y omite la opción de unidad flash USB.",
+  "2": "No son las opciones que ofrece Windows: CD-R y CD-RW son tipos de disco, no métodos de grabación.",
+  "3": "Windows no ofrece estas opciones al grabar un CD; unidad externa y disco duro extraíble son conceptos distintos."
+ }
+}

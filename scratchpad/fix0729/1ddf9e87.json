@@ -1,0 +1,14 @@
+{
+ "v": 1,
+ "cita": {
+  "ref": "Art. 766.5 LECrim",
+  "texto": "Si en el auto recurrido en apelación se acordare la prisión provisional de alguno de los investigados o encausados, respecto de dicho pronunciamiento podrá el apelante solicitar en el escrito de interposición del recurso la celebración de vista, que acordará la Audiencia respectiva."
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "Atribuye la solicitud al apelado, cuando el art. 766.5 exige que sea el apelante.",
+  "1": "Extiende la obligación de celebrar vista a «cualquier medida cautelar», cuando el art. 766.5 lo limita específicamente a la prisión provisional.",
+  "2": "Refiere a medida cautelar «distinta de la prisión provisional», que no activa la obligación de celebrar vista del art. 766.5.\n\n*Fuente: Art. 766.5 Ley de Enjuiciamiento Criminal.*",
+  "3": "El precepto exige la concurrencia de dos requisitos: (i) que el auto acuerde la **prisión provisional** y (ii) que sea el **apelante** (no el apelado) quien solicite la vista."
+ }
+}

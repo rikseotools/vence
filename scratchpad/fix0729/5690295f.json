@@ -1,0 +1,13 @@
+{
+ "v": 1,
+ "cita": {
+  "ref": "Art. 15.1 LPRL — Principios de la acción preventiva",
+  "bloque": "**Art. 15.1 LPRL — Principios de la acción preventiva:** Entre los principios que el empresario aplicará figuran expresamente:\n- **(i)** «**Dar las debidas instrucciones a los trabajadores.**»\n- **(h)** «Adoptar medidas que antepongan la **protección colectiva a la individual**.»\n- **(d)** «**Adaptar el trabajo a la persona** [...] con miras a atenuar el trabajo monótono y reducir sus efectos en la salud.»"
+ },
+ "frame": "select_correct",
+ "options": {
+  "0": "\"Adoptar medidas que antepongan la protección individual a la colectiva\": el art. 15.1.h) establece exactamente lo contrario — la **colectiva** prevalece sobre la **individual**.",
+  "1": "\"Adaptar persona al trabajo\": el art. 15.1.d) establece lo contrario — se debe **adaptar el trabajo a la persona**, no al revés.",
+  "2": "El apartado i) del art. 15.1 LPRL recoge literalmente la obligación de dar las debidas instrucciones a los trabajadores como principio preventivo."
+ }
+}

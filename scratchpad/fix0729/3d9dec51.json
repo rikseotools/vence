@@ -1,0 +1,15 @@
+{
+ "v": 1,
+ "cita": {
+  "ref": "Artículo 27.4 del Reglamento de la Asamblea de Madrid",
+  "texto": "La agenda parlamentaria y el currículum vitae de los miembros de la Cámara serán públicos y accesibles para la ciudadanía, a través del portal de transparencia de la página web de la Asamblea de Madrid."
+ },
+ "frame": "select_incorrect",
+ "intro": "El Reglamento de la Asamblea de Madrid establece qué información es pública y accesible para la ciudadanía a través del portal de transparencia:",
+ "options": {
+  "0": "La agenda parlamentaria y el currículum vitae — sí son públicos vía portal (art. 27.4).",
+  "1": "Las actas de los órganos colegiados de la Asamblea — sí lo son (art. 19.3).",
+  "2": "La Cuenta Anual de la Asamblea de Madrid — sí lo es (art. 95.4).",
+  "3": "La declaración de bienes patrimoniales de los Diputados **no** se publica en el portal de transparencia. Las declaraciones de los Diputados se inscriben en el **Registro de Intereses** (art. 28), y el acceso de las personas físicas o jurídicas a los datos de ese Registro lo regula la Junta de Portavoces (art. 61.1.a) — no es de acceso libre a través del portal."
+ }
+}

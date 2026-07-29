@@ -19,6 +19,22 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 - **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
 - Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
+- 🚪 **El cierre EXIGE que la explicación esté adaptada al formato estructurado (desde 29/07/2026).**
+  `/api/v2/dispute/resolve` **rechaza** un cierre en `resolved` de una impugnación legislativa si la
+  pregunta sigue sin `explanation_data`. No es un aviso: devuelve error y no cierra. Escríbela con
+  `scripts/aplicar-explicacion.ts … --apply` y vuelve a cerrar. Escape legítimo (jubilar la pregunta,
+  duplicada que se desactiva) → repetir la llamada con `skipShuffleReason: "<por qué>"`, que queda
+  registrado como `dispute_shuffle_gate_skipped`. Núcleo puro: `lib/api/v2/dispute/shuffleReadiness.ts`.
+  **Por qué se cerró así:** el manual pedía «evaluar SIEMPRE la explicación», y las tres piezas del
+  flujo solo AVISABAN (el dossier imprime el check, `validar-explicacion.cjs` dice literalmente «no
+  bloquea», y el endpoint no miraba nada). Medido el 29/07: de 8 impugnaciones resueltas ese día, 1 se
+  cerró dejando la pregunta sin adaptar, y las 4 legislativas pendientes apuntaban a preguntas sin
+  estructura. La puerta exige estar ADAPTADA (tener estructura), **no** que `shuffle_safety` sea
+  `safe`: hay preguntas legítimamente no barajables y confundirlo volvería la puerta un estorbo.
+- ⚠️ **`validar-explicacion.cjs` solo entiende el formato de TEXTO antiguo.** Ante una explicación ya
+  estructurada devuelve ❌ («no empieza con "La respuesta correcta es…"»), que es un falso negativo.
+  Para el formato nuevo, la comprobación equivalente es el **dry-run de `aplicar-explicacion.ts`**,
+  que renderiza con el mismo render que usa el serve.
 - ⚠️ **Listar/consultar SIEMPRE contra RDS (`pg` + `DATABASE_URL`), NUNCA con `@supabase/supabase-js`.** Desde el cutover 04/07 la BD viva es **AWS RDS**; el cliente `@supabase/supabase-js` (`NEXT_PUBLIC_SUPABASE_URL`, sea ANON o SERVICE_ROLE) apunta al **Supabase CONGELADO** y devuelve datos desactualizados — muestra como `pending` disputes que en RDS ya están `resolved` (incidente 17/07: `supabase-js` dio 1 pendiente cuando RDS tenía 6; una dispute "pending" en el backup llevaba resuelta desde el 05/07). **Fíate del dossier `revisar-impugnacion.cjs`** (lee RDS). Ver aviso CLAUDE.md → "CUTOVER A RDS".
 
 **Pasos:**
