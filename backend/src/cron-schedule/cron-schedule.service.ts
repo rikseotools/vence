@@ -38,9 +38,35 @@ export interface CronJobInfo {
    * del proceso según el origen. Ver `findOverdueCrons` en `alert-rules.ts`.
    */
   origin: 'in-process' | 'external';
-  /** Most recent tick the schedule says SHOULD have fired strictly before `now`. */
+  /**
+   * Forma de la cadencia — determina cómo se juzga la liveness:
+   *   - `phase`:    hora de reloj comprometida. `prevExpectedTick` es un tick
+   *     de calendario real y la pregunta correcta es «¿tickeó en él?».
+   *   - `interval`: solo promete un periodo entre arranques (un `rate(...)` no
+   *     tiene fase). La pregunta correcta es «¿cuánto hace del último tick?».
+   *
+   * Juzgar un job de intervalo con el criterio de fase produce un falso
+   * positivo PERMANENTE en cuanto su deriva supera el margen — 4 CRITICAL el
+   * 29/07 contra un `temario-pdf-worker` sano. Ver `external-jobs.registry.ts`.
+   */
+  cadence: 'phase' | 'interval';
+  /**
+   * Periodo nominal entre ticks. Para `phase` es la distancia entre los dos
+   * ticks de calendario; para `interval`, el periodo declarado. Es la base del
+   * margen de tolerancia en las reglas.
+   */
+  intervalMs: number;
+  /**
+   * Most recent tick the schedule says SHOULD have fired strictly before `now`.
+   *
+   * ⚠️ Solo es un instante de calendario cuando `cadence === 'phase'`. En
+   * `interval` no existe tal cosa: se expone la ventana deslizante
+   * (`now - intervalMs`) para que los consumidores que solo necesitan el
+   * periodo sigan funcionando, pero NO debe leerse como «tenía que tickear a
+   * esta hora» — esa lectura es justo el bug que este campo causó.
+   */
   prevExpectedTick: Date;
-  /** Next tick the schedule will fire on or after `now`. */
+  /** Next tick the schedule will fire on or after `now` (misma salvedad). */
   nextExpectedTick: Date;
 }
 
@@ -114,6 +140,29 @@ export class CronScheduleService {
 
     for (const job of this.externalJobs) {
       if (seen.has(job.name)) continue;
+      if (job.cadence === 'interval') {
+        const intervalMs = job.everyMinutes * 60_000;
+        if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+          this.logger.warn(
+            `Job externo '${job.name}' declara everyMinutes inválido: ${job.everyMinutes}`,
+          );
+          continue;
+        }
+        out.push({
+          name: job.name,
+          // Lo que se enseña en el email y en el panel. No es una expresión
+          // cron a propósito: este job no promete hora de reloj, y escribir
+          // una haría creer lo contrario a quien diagnostique.
+          expression: `cada ${job.everyMinutes} min`,
+          timeZone: 'UTC',
+          origin: 'external',
+          cadence: 'interval',
+          intervalMs,
+          prevExpectedTick: new Date(now.getTime() - intervalMs),
+          nextExpectedTick: new Date(now.getTime() + intervalMs),
+        });
+        continue;
+      }
       const info = this.resolveTicks(
         job.name,
         job.expression,
@@ -150,6 +199,8 @@ export class CronScheduleService {
         expression,
         timeZone,
         origin,
+        cadence: 'phase',
+        intervalMs: nextExpectedTick.getTime() - prevExpectedTick.getTime(),
         prevExpectedTick,
         nextExpectedTick,
       };

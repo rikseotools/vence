@@ -168,12 +168,15 @@ const MIN_GRACE_MS = 60 * 1000;
 const MAX_GRACE_MS = 30 * 60 * 1000;
 const GRACE_FRACTION_OF_INTERVAL = 0.2;
 
-function graceForJob(prevTick: Date, nextTick: Date): number {
-  const intervalMs = nextTick.getTime() - prevTick.getTime();
+function graceForInterval(intervalMs: number): number {
   return Math.max(
     MIN_GRACE_MS,
     Math.min(MAX_GRACE_MS, intervalMs * GRACE_FRACTION_OF_INTERVAL),
   );
+}
+
+function graceForJob(prevTick: Date, nextTick: Date): number {
+  return graceForInterval(nextTick.getTime() - prevTick.getTime());
 }
 
 /**
@@ -189,12 +192,15 @@ interface OverdueEntry {
   timeZone: string;
   /** in-process (@Cron de este proceso) vs external (contenedor programado propio). */
   origin: CronJobInfo['origin'];
+  /** Con fase (tick de calendario) o por intervalo (periodo sin hora fija). */
+  cadence: CronJobInfo['cadence'];
+  intervalMs: number;
   prevExpectedTick: Date;
   nextExpectedTick: Date;
   lastActualRun: Date | null;
 }
 
-function findOverdueCrons(
+export function findOverdueCrons(
   rows: Array<{ endpoint: string; lastTs: Date | string | null }>,
   ctx: AlertRuleContext,
   now: Date = new Date(),
@@ -213,7 +219,61 @@ function findOverdueCrons(
 
   for (const job of ctx.cronSchedule.listCronJobs(now)) {
     const prevMs = job.prevExpectedTick.getTime();
-    const graceMs = graceForJob(job.prevExpectedTick, job.nextExpectedTick);
+    // Desde `intervalMs`, NO de restar los ticks: en una cadencia por intervalo
+    // prev/next son una ventana deslizante de ±periodo, así que la resta da el
+    // DOBLE del periodo real y el margen salía inflado al doble.
+    const graceMs = graceForInterval(job.intervalMs);
+
+    // ── Cadencia POR INTERVALO ───────────────────────────────────────────
+    // Un job que solo promete «cada N minutos» no tiene hora de reloj que
+    // cumplir, así que la pregunta de calendario («¿tickeó a las :30?») no
+    // aplica: su fase deriva por diseño. Juzgarlo con ella producía un falso
+    // positivo PERMANENTE — `temario-pdf-worker` tickeaba puntualmente a :20 y
+    // :50 con la fase declarada en :00/:30, y con 20 min de desfase contra un
+    // margen de 6 disparaba CRITICAL en cada ventana mientras drenaba la cola
+    // sin un fallo (4 el 29/07). La pregunta correcta es cuánto hace del
+    // último tick real, comparado con su propio periodo.
+    if (job.cadence === 'interval') {
+      const lastRun = lastByEndpoint.get(job.name) ?? null;
+      if (lastRun === null) {
+        // Nunca observado en la ventana de la query (60 días). Para un job de
+        // cadencia sub-diaria eso es estar muerto, no un arranque en frío; el
+        // único caso legítimo es haberlo AÑADIDO al catálogo hace un momento,
+        // que se descarta esperando a que el proceso lleve vivo la ventana de
+        // bootstrap. Sin esta rama, el fallo que estrenó el catálogo —worker
+        // 2 días muerto sin emitir NADA— volvería a pasar en silencio.
+        const startMs = ctx.processStartedAtMs ?? 0;
+        if (startMs > 0 && nowMs - startMs < CRON_NEVER_OBSERVED_GRACE_MS) {
+          continue;
+        }
+        overdue.push({
+          name: job.name,
+          expression: job.expression,
+          timeZone: job.timeZone,
+          origin: job.origin,
+          cadence: job.cadence,
+          intervalMs: job.intervalMs,
+          prevExpectedTick: job.prevExpectedTick,
+          nextExpectedTick: job.nextExpectedTick,
+          lastActualRun: null,
+        });
+        continue;
+      }
+      if (nowMs - lastRun.getTime() > job.intervalMs + graceMs) {
+        overdue.push({
+          name: job.name,
+          expression: job.expression,
+          timeZone: job.timeZone,
+          origin: job.origin,
+          cadence: job.cadence,
+          intervalMs: job.intervalMs,
+          prevExpectedTick: job.prevExpectedTick,
+          nextExpectedTick: job.nextExpectedTick,
+          lastActualRun: lastRun,
+        });
+      }
+      continue;
+    }
 
     if (nowMs - prevMs < graceMs) {
       // El tick acaba de pasar; aún dentro de la propagación. No se
@@ -261,6 +321,8 @@ function findOverdueCrons(
         expression: job.expression,
         timeZone: job.timeZone,
         origin: job.origin,
+        cadence: job.cadence,
+        intervalMs: job.intervalMs,
         prevExpectedTick: job.prevExpectedTick,
         nextExpectedTick: job.nextExpectedTick,
         lastActualRun: null,
@@ -274,6 +336,8 @@ function findOverdueCrons(
         expression: job.expression,
         timeZone: job.timeZone,
         origin: job.origin,
+        cadence: job.cadence,
+        intervalMs: job.intervalMs,
         prevExpectedTick: job.prevExpectedTick,
         nextExpectedTick: job.nextExpectedTick,
         lastActualRun: lastRun,
@@ -343,13 +407,24 @@ export const RULE_CRON_OVERDUE: AlertRule<{
       const lastStr = e.lastActualRun
         ? e.lastActualRun.toISOString()
         : '(never observed in last 60d)';
-      const graceMin = Math.round(
-        graceForJob(e.prevExpectedTick, e.nextExpectedTick) / 60000,
-      );
+      const graceMin = Math.round(graceForInterval(e.intervalMs) / 60000);
       const donde =
         e.origin === 'external'
           ? '\n      ⚠️ job EXTERNO (contenedor programado propio, no este proceso)'
           : '';
+      // Un job por intervalo no tiene hora de reloj que enseñar: escribir
+      // «esperado: <hora>» ahí sería inventarse un compromiso que no existe y
+      // mandaría a quien diagnostique a buscar un tick que nunca se prometió.
+      if (e.cadence === 'interval') {
+        const silencioMin = e.lastActualRun
+          ? Math.round((Date.now() - e.lastActualRun.getTime()) / 60000)
+          : null;
+        const desde =
+          silencioMin === null
+            ? '(sin señal en 60d)'
+            : `hace ${silencioMin}min`;
+        return `  - ${e.name} [${e.expression}, margen ${graceMin}min]${donde}\n      último real: ${lastStr} ${desde}`;
+      }
       return `  - ${e.name} ['${e.expression}' ${e.timeZone}, margen ${graceMin}min]${donde}\n      esperado: ${e.prevExpectedTick.toISOString()}\n      último real: ${lastStr}\n      próximo: ${e.nextExpectedTick.toISOString()}`;
     });
     // El sitio donde mirar NO es el mismo según el origen: un @Cron in-process
@@ -490,10 +565,9 @@ export function findStalledCrons(
 ): StalledCronEntry[] {
   const intervalByName = new Map<string, number>();
   for (const job of ctx.cronSchedule.listCronJobs(now)) {
-    intervalByName.set(
-      job.name,
-      job.nextExpectedTick.getTime() - job.prevExpectedTick.getTime(),
-    );
+    // `intervalMs` sirve a las dos cadencias; restar los ticks solo funcionaba
+    // con las de fase (en las de intervalo son una ventana deslizante).
+    intervalByName.set(job.name, job.intervalMs);
   }
 
   const stalled: StalledCronEntry[] = [];

@@ -280,6 +280,110 @@ describe('RULE_CRON_OVERDUE', () => {
     );
   });
 
+  // ── Cadencia POR INTERVALO (jobs externos tipo `rate(30 minutes)`) ──
+  //
+  // Regresión del 29/07/2026: `temario-pdf-worker` se declaró `*/30 * * * *`
+  // (fase :00/:30) cuando su scheduler es `rate(30 minutes)`, sin fase. Sus
+  // ticks reales caían a :20 y :50 y la regla —que comparaba contra el tick de
+  // calendario menos un margen de 6 min— lo marcaba overdue en CADA ventana:
+  // 4 CRITICAL en un día contra un worker que estaba drenando la cola sin un
+  // solo fallo. Estos tests fijan el criterio correcto: para una cadencia sin
+  // fase se mide el SILENCIO desde el último tick, no la hora de reloj.
+  describe('jobs de cadencia por intervalo', () => {
+    /** Monta el servicio con un job externo de intervalo y sin @Cron locales. */
+    async function conJobDeIntervalo(everyMinutes: number) {
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          CronScheduleService,
+          { provide: SchedulerRegistry, useValue: registry },
+          {
+            provide: EXTERNAL_SCHEDULED_JOBS_TOKEN,
+            useValue: [
+              {
+                name: 'temario-pdf-worker',
+                cadence: 'interval',
+                everyMinutes,
+                runner: 'ECS scheduled task (EventBridge, rate(30 minutes))',
+                why: 'render CPU-bound fuera del serving',
+              },
+            ],
+          },
+        ],
+      }).compile();
+      return {
+        cronSchedule: moduleRef.get(CronScheduleService),
+      } as AlertRuleContext;
+    }
+
+    it('EL CASO REAL: ticks puntuales a :20/:50 con fase declarada en :00/:30 → NO overdue', async () => {
+      // Instantes tomados de observable_events el 29/07: la alerta disparó a
+      // las 05:40 teniendo un tick sano de las 05:20.
+      freeze('2026-07-29T05:40:00Z');
+      const c = await conJobDeIntervalo(30);
+      const rows = [
+        { endpoint: 'temario-pdf-worker', lastTs: '2026-07-29T05:20:00Z' },
+      ];
+      expect(RULE_CRON_OVERDUE.shouldFire(rows, c)).toBe(false);
+    });
+
+    it('silencio dentro del periodo + margen (35min de 30+6) → NO overdue', async () => {
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      const rows = [
+        { endpoint: 'temario-pdf-worker', lastTs: '2026-07-29T05:25:00Z' },
+      ];
+      expect(RULE_CRON_OVERDUE.shouldFire(rows, c)).toBe(false);
+    });
+
+    it('silencio mayor que el periodo + margen (40min) → SÍ overdue', async () => {
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      const rows = [
+        { endpoint: 'temario-pdf-worker', lastTs: '2026-07-29T05:20:00Z' },
+      ];
+      expect(RULE_CRON_OVERDUE.shouldFire(rows, c)).toBe(true);
+    });
+
+    it('EL INCIDENTE QUE ABRIÓ EL CATÁLOGO: 2 días sin una sola señal → SÍ overdue', async () => {
+      // La imagen del worker fue purgada de ECR y el contenedor moría en el
+      // pull, sin emitir nada. La ausencia de señal es la única prueba posible.
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      const rows = [
+        { endpoint: 'temario-pdf-worker', lastTs: '2026-07-27T06:00:00Z' },
+      ];
+      expect(RULE_CRON_OVERDUE.shouldFire(rows, c)).toBe(true);
+    });
+
+    it('sin señal en 60d y proceso recién arrancado → silencio (job recién catalogado)', async () => {
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      c.processStartedAtMs = new Date('2026-07-29T05:30:00Z').getTime();
+      expect(RULE_CRON_OVERDUE.shouldFire([], c)).toBe(false);
+    });
+
+    it('sin señal en 60d y proceso vivo desde hace rato → SÍ overdue', async () => {
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      c.processStartedAtMs = new Date('2026-07-28T06:00:00Z').getTime();
+      expect(RULE_CRON_OVERDUE.shouldFire([], c)).toBe(true);
+    });
+
+    it('el email no inventa una hora de reloj que el job no promete', async () => {
+      freeze('2026-07-29T06:00:00Z');
+      const c = await conJobDeIntervalo(30);
+      const rows = [
+        { endpoint: 'temario-pdf-worker', lastTs: '2026-07-29T05:00:00Z' },
+      ];
+      const notif = RULE_CRON_OVERDUE.buildNotification(rows, c);
+      expect(notif.body).toContain('cada 30 min');
+      expect(notif.body).toContain('hace 60min');
+      // «esperado: <hora>» mandaría a buscar un tick de calendario inexistente.
+      expect(notif.body).not.toContain('esperado:');
+      expect(notif.metadata?.externalOverdue).toEqual(['temario-pdf-worker']);
+    });
+  });
+
   it('la query lee la señal de ARRANQUE cron_tick (no solo el cron_run de completado)', () => {
     // Anti-regresión del fix 2026-06-12: medir liveness por el arranque del
     // tick, no por el completado — si no, un cron lento (escaneo LLM) falsea

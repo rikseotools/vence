@@ -94,6 +94,7 @@
     "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
     "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs",
     "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs",
+    "sim:cadencia-cron": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cadencia-cron-overdue.ts",
     "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",

@@ -51,8 +51,12 @@ describe('jobs programados externos', () => {
     registry.getCronJobs.mockReturnValue(map);
   }
 
+  // Fixture CON FASE a propósito: estos tests hablan del calendario y de la
+  // resolución de ticks. La cadencia por intervalo del catálogo real tiene sus
+  // propios casos en `alert-rules.cron-overdue.spec.ts`.
   const JOB: ExternalScheduledJob = {
     name: 'temario-pdf-worker',
+    cadence: 'phase',
     expression: '*/30 * * * *',
     timeZone: 'UTC',
     runner: 'contenedor programado',
@@ -107,7 +111,9 @@ describe('jobs programados externos', () => {
   });
 
   it('una expresión inválida se descarta sin tumbar el calendario', async () => {
-    const svc = await build([{ ...JOB, expression: 'no-es-una-cadencia' }]);
+    const svc = await build([
+      { ...JOB, cadence: 'phase' as const, expression: 'no-es-una-cadencia' },
+    ]);
     setCrons({ 'content-health-sweep': '30 7 * * *' });
     const jobs = svc.listCronJobs(new Date('2026-07-29T10:07:00Z'));
 
@@ -199,8 +205,37 @@ describe('jobs programados externos', () => {
 
     it('ninguna cadencia usa rate()/dialecto de proveedor', () => {
       for (const job of EXTERNAL_SCHEDULED_JOBS) {
-        expect(job.expression).not.toMatch(/rate\(|cron\(/i);
-        expect(job.expression.trim().split(/\s+/)).toHaveLength(5);
+        if (job.cadence === 'phase') {
+          expect(job.expression).not.toMatch(/rate\(|cron\(/i);
+          expect(job.expression.trim().split(/\s+/)).toHaveLength(5);
+        } else {
+          expect(typeof job.everyMinutes).toBe('number');
+          expect(job.everyMinutes).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    /**
+     * Paridad entre la forma declarada y la que documenta `runner`.
+     *
+     * Es el invariante que faltaba el 29/07: el catálogo declaraba fase (una
+     * expresión cron de cada 30 min) mientras su propio `runner` decía
+     * `rate(30 minutes)` — dos afirmaciones contradictorias en la MISMA
+     * entrada, y ningún test las comparaba. La consecuencia fue un CRITICAL
+     * diario contra un job sano.
+     *
+     * `runner` es documental y nadie lo lee en runtime, pero aquí sirve de
+     * testigo: si alguien reprograma el job con hora fija, tiene que tocar las
+     * dos líneas o este test lo para.
+     */
+    it('la cadencia declarada concuerda con el programador que documenta `runner`', () => {
+      for (const job of EXTERNAL_SCHEDULED_JOBS) {
+        if (/rate\(/i.test(job.runner)) {
+          expect(job.cadence).toBe('interval');
+        }
+        if (/\bcron\(/i.test(job.runner)) {
+          expect(job.cadence).toBe('phase');
+        }
       }
     });
 

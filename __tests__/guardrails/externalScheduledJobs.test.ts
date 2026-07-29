@@ -61,14 +61,24 @@ describe('guardarraíl — jobs programados externos', () => {
 
   it('el catálogo no declara cadencias en dialecto de proveedor', () => {
     const src = readFileSync(REGISTRY, 'utf8')
-    const exprs = [...src.matchAll(/^\s*expression:\s*'([^']+)'/gm)].map((m) => m[1])
-    expect(exprs.length).toBeGreaterThan(0)
+    // Solo las entradas del ARRAY de producción: las expresiones que aparecen
+    // en los comentarios explicativos (`*/30 * * * *`, `rate(30 minutes)`) son
+    // la documentación del bug, no declaraciones.
+    const array = src.slice(src.indexOf('EXTERNAL_SCHEDULED_JOBS: readonly'))
+    const exprs = [...array.matchAll(/^\s*expression:\s*'([^']+)'/gm)].map((m) => m[1])
     for (const e of exprs) {
       // `rate(30 minutes)` y `cron(0 5 * * ? *)` son de un proveedor concreto;
       // el catálogo es agnóstico y debe sobrevivir a un cambio de proveedor.
       expect(e).not.toMatch(/rate\(|cron\(/i)
       expect(e.trim().split(/\s+/)).toHaveLength(5)
     }
+    // Cada entrada declara una cadencia y solo una: o fase (`expression`) o
+    // intervalo (`everyMinutes`). Un job sin ninguna no entra en el calendario
+    // y se vuelve invisible EN SILENCIO, que es el fallo original.
+    const entradas = (array.match(/^\s*name:\s*'/gm) ?? []).length
+    const cadencias = (array.match(/^\s*cadence:\s*'(phase|interval)'/gm) ?? []).length
+    expect(entradas).toBeGreaterThan(0)
+    expect(cadencias).toBe(entradas)
   })
 })
 
@@ -152,7 +162,10 @@ describe('guardarraíl — el worker no puede acumularse sin límite', () => {
     const registry = readFileSync(
       join(ROOT, 'backend/src/cron-schedule/external-jobs.registry.ts'), 'utf8',
     )
-    const m = registry.match(/name:\s*'temario-pdf-worker'[\s\S]*?expression:\s*'\*\/(\d+) \* \* \* \*'/)
+    // El worker se programa con `rate(30 minutes)`, que NO tiene fase, así que
+    // el catálogo lo declara por intervalo. Declararlo como cron con fase es lo
+    // que provocó los CRITICAL diarios del 29/07 contra un job sano.
+    const m = registry.match(/name:\s*'temario-pdf-worker'[\s\S]*?everyMinutes:\s*(\d+)/)
     expect(m).not.toBeNull()
     expect(Number(m![1]) * 60_000).toBe(WORKER_CADENCE_MS)
   })

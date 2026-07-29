@@ -191,6 +191,42 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 >
 > **Si un canary se queja de un backlog que no drena, comprueba PRIMERO que su consumidor está
 > corriendo** antes de dar por hecho que el trabajo está atascado.
+>
+> ---
+>
+> **§1.bis.b.2 — CON FASE vs POR INTERVALO: declarar mal la cadencia genera un CRITICAL diario
+> contra un job SANO (T-263, 29/07/2026).**
+>
+> El mismo día que se creó el catálogo, `temario-pdf-worker` se declaró con una expresión cron de
+> cada 30 min —fase :00 y :30— cuando su scheduler es un **`rate(30 minutes)`, que NO compromete
+> hora de reloj**: sus ticks reales caían a :20 y :50. `cron_overdue` comparaba el último tick
+> contra el tick de calendario menos un margen del 20 % (6 min para 30), así que un desfase
+> constante de 20 min lo marcaba overdue **en cada ventana**: 4 CRITICAL en un día contra un worker
+> que estaba drenando la cola sin un fallo (verificado: `cron_tick` cada 30 min puntual y un PDF
+> completado cada ~3 min).
+>
+> **Cómo se diagnostica en 1 minuto** — si `cron_overdue` señala un job pero el job parece vivo,
+> mira la FASE de sus ticks reales antes de tocar nada:
+> ```sql
+> SELECT ts, EXTRACT(MINUTE FROM ts)::int % 30 AS fase
+> FROM observable_events
+> WHERE endpoint = '<job>' AND event_type IN ('cron_tick','cron_run')
+> ORDER BY ts DESC LIMIT 10;
+> ```
+> Una `fase` constante distinta de 0 con una cadencia declarada `*/30` = declaración equivocada,
+> no avería. **El job está sano; lo que está roto es lo que se dijo de él.**
+>
+> **Regla mental:** *cada N minutos* y *a las :00 y :30* no son lo mismo. Un `rate()` se declara
+> `cadence: 'interval'` + `everyMinutes`; solo lo que el proveedor garantiza a hora fija se declara
+> `cadence: 'phase'` + expresión cron. El guardarraíl compara la forma declarada con el programador
+> que documenta `runner`, así que una entrada que se contradiga a sí misma ya no pasa CI.
+>
+> **Antes de cambiar la calibración de una alerta, MÍDELO** contra los ticks reales — nunca a ojo:
+> ```bash
+> npm run sim:cadencia-cron -- --dias 7 [--job <nombre>]
+> ```
+> No escribe nada: reproduce la decisión con el `findOverdueCrons` REAL (no una copia) cambiando
+> solo el catálogo, y contrasta con los `alert_fired` que de verdad se mandaron.
 
 - Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
 - Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).
