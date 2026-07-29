@@ -324,12 +324,52 @@ jobs:
       # continue-on-error: el frontend ya está sano y convergido; un fallo aquí no
       # justifica tumbar el deploy, y `cron_overdue` cubre la consecuencia.
       - name: Construir y re-pinear las tareas programadas derivadas
+        id: repin
         continue-on-error: true
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
           BUILDER: docker
           SHA: ${{ github.sha }}
         run: bash scripts/deploy/repin-derived-taskdefs.sh
+
+      # `continue-on-error` deja el fallo SOLO en el log de este run, que nadie lee
+      # salvo que sospeche. Emitirlo al mismo sitio que el resto de señales lo pone
+      # donde sí se mira. Mismo endpoint de ingest que usa el aviso de fallo del
+      # workflow (abajo), para no abrir un canal nuevo.
+      # Sin esto el modo de fallo es: deploy VERDE + worker sin re-pinear + nadie
+      # enterándose hasta que `cron_overdue` lo cace un ciclo después.
+      - name: Avisar si el re-pineado falló
+        if: steps.repin.outcome == 'failure'
+        env:
+          INGEST_URL: https://www.vence.es/api/observability/ingest
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          echo "::warning::El re-pineado de las tareas programadas derivadas FALLÓ — el worker de PDFs puede quedarse con una imagen vieja."
+          if [ -z "${INGEST_SECRET}" ]; then
+            echo "skip ingest — OBSERVABILITY_INGEST_SECRET no configurado"
+            exit 0
+          fi
+          curl -sS -X POST "${INGEST_URL}" \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: ${INGEST_SECRET}" \
+            -d "$(cat <<JSON
+          {
+            "events": [{
+              "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "source": "gha",
+              "severity": "error",
+              "eventType": "deploy_repin_failed",
+              "errorMessage": "El re-pineado de tareas programadas derivadas falló en frontend-deploy run #${{ github.run_number }}",
+              "metadata": {
+                "repo": "${{ github.repository }}",
+                "workflow": "frontend-deploy",
+                "run_id": "${{ github.run_id }}",
+                "sha": "${{ github.sha }}"
+              }
+            }]
+          }
+          JSON
+          )" || true
 
       # Smoke post-deploy del gate anti-scraping: verifica que un usuario NORMAL
       # (usuario smoke, por debajo del umbral) puede cargar preguntas SIN que el

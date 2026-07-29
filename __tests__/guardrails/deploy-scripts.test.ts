@@ -359,6 +359,20 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
     expect(repin).not.toMatch(/describe-images[\s\S]{0,80}imageTag/)
   })
 
+  it('COMPRUEBA que el digest existe en el registry antes de pinear', () => {
+    // Post-condición que hace irrelevante CÓMO se obtuvo el digest — y por tanto
+    // protege también a la rama de builder que no se puede ejecutar en local.
+    // Medido el 29/07: `inspect .RepoDigests` devuelve el digest del manifiesto
+    // LOCAL, que NO es el que el registry almacena; pinearlo reproduce el
+    // incidente original (la tarea muere en el pull).
+    expect(repin).toMatch(/describe-images[\s\S]{0,120}imageDigest="\$DIGEST"/)
+    expect(repin).toMatch(/NO se pinea \(moriría en el pull\)/)
+    // La comprobación va ANTES de construir la imagen pineada.
+    expect(repin.indexOf('imageDigest="$DIGEST"')).toBeLessThan(
+      repin.indexOf('IMAGE_PINNED="${REGISTRY}'),
+    )
+  })
+
   it('el workflow de CI declara el builder que su rama sabe manejar', () => {
     const m = workflow.match(/BUILDER:\s*(\w+)/)
     expect(m).not.toBeNull()

@@ -111,6 +111,34 @@ for ENTRY in "${DERIVED_WORKERS[@]}"; do
     echo "      ⚠️ el push no devolvió digest ($BUILDER) — NO se pinea a ciegas"
     FAILED=1; continue
   fi
+
+  # 2b. POST-CONDICIÓN: el digest tiene que EXISTIR en el registry antes de pinearlo.
+  #
+  # Es la red que hace irrelevante CÓMO se obtuvo el digest, y por tanto protege
+  # también a la rama de builder que no se ha podido ejecutar en local. Nació de
+  # una comprobación real (29/07): `inspect .RepoDigests` —que parecía la forma
+  # elegante de unificar las dos ramas— devuelve el digest del manifiesto LOCAL,
+  # que NO es el que el registry almacena (medido: local 424002ff… vs registry
+  # 035e596c…, y el primero da ImageNotFoundException). Pinear eso habría
+  # reproducido el incidente original: la tarea muriendo en el pull.
+  #
+  # Esto NO es el anti-patrón del postmortem #115: aquello era re-resolver un TAG
+  # para AVERIGUAR el digest (consistencia eventual → digest de otro deploy). Aquí
+  # el digest ya lo sabemos y solo confirmamos su presencia. Con reintentos por la
+  # ventana de propagación justo después del push.
+  EXISTS=0
+  for _try in 1 2 3; do
+    if aws ecr describe-images --repository-name "$REPO" --image-ids imageDigest="$DIGEST" \
+         ${AWS_PROFILE:+--profile "$AWS_PROFILE"} --region "$AWS_REGION" >/dev/null 2>&1; then
+      EXISTS=1; break
+    fi
+    sleep 3
+  done
+  if [ "$EXISTS" != "1" ]; then
+    echo "      ⚠️ el digest $DIGEST NO existe en $REPO — NO se pinea (moriría en el pull)"
+    FAILED=1; continue
+  fi
+
   IMAGE_PINNED="${REGISTRY}/${REPO}@${DIGEST}"
 
   # 3. Clonar la task def VIVA y solo swapear la imagen: hereda env/secrets/rol/
