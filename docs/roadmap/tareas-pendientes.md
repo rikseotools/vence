@@ -1124,6 +1124,45 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **⏱️ PENDIENTE — la medición que solo puede dar el reloj:** el arreglo de la causa raíz (escalonar los 23 crons, `e4ea471fb`) está **desplegado** (backend task def `:130`, 29/07 03:39 CEST) y **funciona estructuralmente**: los crons distintos que arrancan en el minuto 0 pasan de **34 a 17** y el reparto es plano (medido en `observable_events`). Lo que falta es lo que el propio commit dejó dicho — *«medir el efecto mañana en la CPU del servicio: es una hipótesis medida, no un arreglo confirmado»*. Ventana buena: **11:00-13:00 CEST**, que es cuando la CPU del backend tocaba el 100% los días 24, 25, 26, 27 y 28. A las 08:45 CEST del 29/07 la CPU máxima iba en **11-15%** (ayer a esa hora, 62%), pero eso es ANTES del pico y no confirma nada todavía.
 - **Origen:** investigando los timeouts de 15 s que quedaron como «lo real que queda» al cerrar el diagnóstico de [T-210].
 
+### [T-275] 🟠 [ABIERTO 29/07] Nadie vigila el mapa de visibilidad: una tabla insert-only se enfría y degrada consultas en silencio
+- **Qué pasa:** cuando el mapa de visibilidad de una tabla se enfría, los *index-only scans* dejan de serlo y bajan al heap fila por fila. La consulta sigue dando el resultado correcto, solo que tarda **cien veces más**. **Ningún indicador lo ve**: el panel de salud mide 5xx y latencia, y esto no es un error — es una respuesta correcta que llega tarde, el mismo punto ciego que [T-254].
+- **El caso que lo destapa ([T-268], 29/07):** `test_questions` al **67,5% de páginas visibles** → la consulta de `theme-stats` hacía **72.695 heap fetches** y tardaba **17,8 s**, con 17,4 s de I/O puro. Tras calentar el mapa: **0 heap fetches, 145 ms — 122× más rápido.** El opositor veía sus estadísticas vacías porque el cliente corta a los 8 s.
+- **Por qué se enfría, y por qué el ajuste "obvio" NO lo evita:** el autovacuum afinado por tabla (`autovacuum_vacuum_scale_factor`) mira **filas MUERTAS**. Una tabla de **INSERTS** no genera filas muertas, así que **ese ajuste no dispara jamás**. El que aplica es `autovacuum_vacuum_insert_scale_factor`, que estaba en el **global 0.2** → cientos de miles de inserts por vacuum. Es una trampa fina: la tabla *parece* bien configurada.
+- **📊 No es un caso aislado, es un patrón — medido el 29/07.** Nueve tablas de más de 5.000 páginas por debajo del 90% de visibilidad y **ninguna con el ajuste de inserts**:
+
+  | tabla | tamaño | visible | inserts | updates | último autovacuum |
+  |---|---|---|---|---|---|
+  | `law_question_first_attempts` | 1.814 MB | 75,4% | 1,2 M | **0** | **04/07** |
+  | `user_question_history_v2` | 457 MB | **48,2%** | 2,25 M | 83 k | **04/07** |
+  | `question_first_attempts` | 283 MB | **46,0%** | 1,2 M | **0** | **04/07** |
+  | `problematic_articles_rollout_log` | 159 MB | 48,3% | 502 k | **0** | **04/07** |
+  | `user_article_stats` | 203 MB | 69,7% | 1,03 M | 184 k | 24/07 |
+  | `ai_verification_results` | 182 MB | 53,8% | 222 k | 229 k | 10/07 |
+  | `ai_chat_traces` | 130 MB | 62,4% | 59 k | **0** | 04/07 |
+  | `user_sessions` | 90 MB | 60,8% | 93 k | 11 k | 20/07 |
+
+  Las de **`0 updates` son insert-only puras**: por diseño no se vacuumarán solas nunca. Llevaban **25 días**.
+- **✅ Ya aplicado y VERIFICADO (29/07)** — el ajuste dispara el autovacuum solo, y el mapa se repuebla entero:
+
+  | tabla | antes | después | efecto medido |
+  |---|---|---|---|
+  | `test_questions` | 67,5% | **100%** | consulta 17.809 ms → **145 ms** (122×), heap fetches 72.695 → **0** |
+  | `user_question_history_v2` | 48,2% | **100%** | 32.722/32.723 páginas |
+  | `law_question_first_attempts` | 75,4% | **100%** | 213.101/213.103 páginas |
+
+  **Falta el resto** (6 tablas), a aplicar por tandas midiendo cada una: nueve autovacuums a la vez es un pico de I/O innecesario y sin motivo.
+- **Cómo (lo que pide esta ficha):** un hallazgo del **barrido nocturno** (`health-sweep.cjs`) con su chip de runbook, igual que el resto de detectores de contenido. Es una consulta **determinista y barata**, sin IA y sin falsos positivos:
+  ```sql
+  SELECT c.relname, round(100.0*c.relallvisible/NULLIF(c.relpages,0),1) AS pct_visible
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+   WHERE c.relkind = 'r' AND c.relpages > 5000
+     AND (100.0*c.relallvisible/NULLIF(c.relpages,0)) < 90;
+  ```
+  Umbral inicial sugerido: **aviso por debajo del 90%**, error por debajo del 70% en tablas de más de 5.000 páginas. Calibrar con una pasada antes de encenderlo, como se hizo con el detector de latencia por endpoint.
+- **Y el arreglo debería ser automático, no una tarea:** cualquier tabla nueva de alto volumen de inserts nacerá con el mismo defecto. Lo suyo es que el detector avise **y** que exista un guardarraíl que exija el ajuste en tablas insert-heavy, en vez de descubrirlo dentro de seis meses por otro incidente.
+- **Lección de método (vale más que el arreglo):** un plan que dice *«Index Only Scan»* **no garantiza** que lo sea. **`Heap Fetches` es el número que hay que mirar**: si es alto, el problema es el mapa de visibilidad (vacuum), no la consulta ni los índices. Bajada al runbook `health-check.md`.
+- **Relacionada:** [T-268] (el caso que lo destapa), [T-254] (mismo punto ciego: respuestas correctas que llegan tarde).
+
 ### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
 - **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
 - **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
