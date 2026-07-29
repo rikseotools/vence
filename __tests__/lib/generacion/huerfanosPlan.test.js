@@ -304,29 +304,58 @@ describe('naturalezaArticulo', () => {
 })
 
 describe('fidelidad del espejo con filas no numeradas', () => {
-  // Un tema que dispara por sus artículos numerados, MÁS artículos "bis" huérfanos.
-  const numerados = tema({ pt: 'opo_a', topicId: 't1', n: 10, cubiertos: 6 })
+  // Un tema que dispara por sus artículos numerados, MÁS artículos "bis" (que desde el 29/07 SÍ
+  // cuentan) y disposiciones (que siguen sin contar).
+  // 20 artículos con 16 cubiertos (80%): así, al sumar 4 `bis` huérfanos, el tema SIGUE por
+  // encima del 60% de cobertura y el detector lo mantiene. Con el fixture anterior (10/6) los
+  // `bis` lo hundían al 43% y el tema se iba a `low_coverage` — comportamiento correcto pero
+  // otra pregunta, que se fija aparte más abajo.
+  const numerados = tema({ pt: 'opo_a', topicId: 't1', n: 20, cubiertos: 16 })
   const bis = ['24 bis', '70 bis', '70 ter', '103 bis'].map((articulo) => ({
     pt: 'opo_a', topicId: 't1', tema: 1, leySlug: 'ley-x', ley: 'Ley X', articulo, cubierto: false, numerado: false,
   }))
+  const disposiciones = ['DA 3', 'DT 2', 'DF7', 'DD única'].map((articulo) => ({
+    pt: 'opo_a', topicId: 't1', tema: 1, leySlug: 'ley-x', ley: 'Ley X', articulo, cubierto: false, numerado: false,
+  }))
 
-  it('añadir artículos invisibles NO cambia el veredicto del badge', () => {
-    // La garantía que hace honesto al test de paridad: el planificador evalúa el
-    // finding sobre EXACTAMENTE el universo que ve el detector del backend.
+  it('EL ARREGLO (T-146): los `bis` YA cuentan para el veredicto del badge', () => {
+    // Antes del 29/07 se descartaban, así que un tema podía darse por cubierto con sus
+    // artículos de reforma sirviendo cero preguntas — que es justo donde vive el Derecho nuevo.
     const antes = temasQueDisparan(numerados)
     const despues = temasQueDisparan([...numerados, ...bis])
+    expect(despues[0].n).toBe(antes[0].n + bis.length)
+    expect(despues[0].huecos).toEqual(expect.arrayContaining(['ley-x#24 bis', 'ley-x#70 ter']))
+  })
+
+  it('las DISPOSICIONES siguen sin cambiar el veredicto (universo idéntico al del detector)', () => {
+    // La garantía que hace honesto al test de paridad: el planificador evalúa el finding sobre
+    // EXACTAMENTE el universo que ve el detector del backend, ni uno más.
+    const antes = temasQueDisparan(numerados)
+    const despues = temasQueDisparan([...numerados, ...disposiciones])
     expect(despues.map((t) => t.topicId)).toEqual(antes.map((t) => t.topicId))
     expect(despues[0].n).toBe(antes[0].n)
     expect(despues[0].huecos).toEqual(antes[0].huecos)
   })
 
-  it('el ranking los oculta por defecto y los muestra solo si se piden', () => {
-    const filas = [...numerados, ...bis]
+  it('el ranking enseña los `bis` por defecto y las disposiciones solo si se piden', () => {
+    const filas = [...numerados, ...bis, ...disposiciones]
     const arts = (r) => r.map((a) => a.articulo)
-    expect(arts(rankingHuerfanos(filas))).not.toContain('24 bis')
+    expect(arts(rankingHuerfanos(filas))).toContain('24 bis')
+    expect(arts(rankingHuerfanos(filas))).not.toContain('DF7')
     const conInvisibles = rankingHuerfanos(filas, { incluirNoNumerados: true })
-    expect(arts(conInvisibles)).toContain('24 bis')
+    expect(arts(conInvisibles)).toContain('DF7')
     expect(conInvisibles.find((a) => a.articulo === '24 bis').tipo).toBe('reforma')
+  })
+
+  it('si los `bis` hunden la cobertura por debajo del 60%, el tema SALE de este detector', () => {
+    // No es un fallo: la partición con `low_coverage` es deliberada — `article_no_coverage` es
+    // para temas MAYORMENTE cubiertos con huecos puntuales. Al ampliar el universo, algunos
+    // temas cruzan esa frontera y los recoge el otro detector. Conviene saberlo al leer el
+    // badge: un tema que "desaparece" de aquí no está arreglado.
+    const flojo = tema({ pt: 'opo_b', topicId: 't2', n: 10, cubiertos: 6 }) // 60% justo
+    expect(temasQueDisparan(flojo).map((t) => t.topicId)).toEqual(['t2'])
+    const conBis = temasQueDisparan([...flojo, ...bis.map((b) => ({ ...b, pt: 'opo_b', topicId: 't2' }))])
+    expect(conBis).toEqual([]) // 6/14 = 43% → ya no es "mayormente cubierto"
   })
 
   it('`tipos` acota a la familia que interesa cubrir', () => {
@@ -338,12 +367,19 @@ describe('fidelidad del espejo con filas no numeradas', () => {
     expect(r.map((a) => a.articulo)).not.toContain('DF7')
   })
 
-  it('una simulación sobre un tema con invisibles no cuenta con ellos para apagar el finding', () => {
-    // Cubrir los 4 huecos numerados apaga el tema aunque los 4 "bis" sigan a cero:
-    // es exactamente el engaño que documenta la ficha (badge ≠ temario cubierto).
+  it('una simulación NO puede apagar el tema dejando los `bis` a cero (era el engaño de la ficha)', () => {
+    // Antes: cubrir los 4 huecos numerados apagaba el badge aunque los 4 "bis" siguieran a
+    // cero. Ahora cuentan, así que el tema sigue encendido — que es la verdad.
     const filas = [...numerados, ...bis]
-    const imp = simulaCobertura(filas, [7, 8, 9, 10].map((articulo) => ({ leySlug: 'ley-x', articulo: String(articulo) })))
-    expect(imp.temasDespues).toBe(0)
+    const imp = simulaCobertura(filas, [17, 18, 19, 20].map((articulo) => ({ leySlug: 'ley-x', articulo: String(articulo) })))
+    expect(imp.temasDespues).toBe(1)
+  })
+
+  it('y se apaga cuando se cubren TAMBIÉN los `bis`', () => {
+    const filas = [...numerados, ...bis]
+    const cubre = [...[17, 18, 19, 20].map((a) => ({ leySlug: 'ley-x', articulo: String(a) })),
+                   ...bis.map((b) => ({ leySlug: 'ley-x', articulo: b.articulo }))]
+    expect(simulaCobertura(filas, cubre).temasDespues).toBe(0)
   })
 })
 

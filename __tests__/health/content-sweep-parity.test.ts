@@ -486,3 +486,41 @@ describe('el gemelo CLI del sweep es JavaScript válido', () => {
     expect(sospechosas).toEqual([])
   })
 })
+
+// ── Universo del detector de cobertura (T-146) ────────────────────────────────────────────────
+//
+// `article_no_coverage` filtraba por entero puro, así que `bis`/`ter`/`quáter` eran invisibles:
+// 163 artículos escopados sirviendo cero preguntas que el badge no podía ver NUNCA. El universo
+// vive ahora en un sitio (`lib/generacion/huerfanosPlan.js`), el CLI lo importa y el backend lo
+// copia inline porque es un proyecto NestJS aparte y no puede importar de `lib/`. Este bloque es
+// lo que impide que esa copia derive — que es exactamente cómo nació el punto ciego.
+import { SQL_UNIVERSO_COBERTURA } from '../../lib/generacion/huerfanosPlan.js'
+
+const sinEspacios = (s: string) => s.replace(/\s+/g, ' ').trim()
+
+describe('universo del detector de cobertura — núcleo ↔ backend ↔ CLI', () => {
+  it('el backend copia el MISMO predicado que el núcleo', () => {
+    expect(sinEspacios(BACKEND)).toContain(sinEspacios(SQL_UNIVERSO_COBERTURA))
+  })
+
+  it('el CLI NO lo copia: lo importa del núcleo (una definición, no dos)', () => {
+    expect(SCRIPT).toMatch(/require\(['"]\.\.\/lib\/generacion\/huerfanosPlan\.js['"]\)/)
+    expect(SCRIPT).toMatch(/\$\{SQL_UNIVERSO_COBERTURA\}/)
+  })
+
+  it('la familia de REFORMA entra en los dos', () => {
+    for (const txt of [BACKEND, SCRIPT + SQL_UNIVERSO_COBERTURA]) {
+      expect(txt).toMatch(/bis\|ter\|qu\[aá\]ter/)
+    }
+  })
+
+  it('las DISPOSICIONES siguen fuera (meter 503 hallazgos no examinables sería peor que el hueco)', () => {
+    expect(SQL_UNIVERSO_COBERTURA).not.toMatch(/adicional|transitoria|derogatoria|disposici/i)
+  })
+
+  it('ningún mirror castea el número a int (con "6bis" reventaría la consulta entera)', () => {
+    // El cast vivía en el ORDER BY del array_agg de ejemplos.
+    expect(BACKEND).not.toMatch(/ORDER BY \(a\.article_number\)::int/)
+    expect(SCRIPT).not.toMatch(/ORDER BY \(a\.article_number\)::int/)
+  })
+})

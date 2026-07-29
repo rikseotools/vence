@@ -1046,7 +1046,8 @@ export class ContentHealthSweepService {
           SELECT tp.topic_number,
             count(*)::int AS n_content,
             count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov,
-            (array_agg(l.short_name || ' ' || a.article_number ORDER BY (a.article_number)::int)
+            -- Mirror de SQL_ORDEN_ARTICULO: castear a int reventaría en cuanto entra "6bis".
+            (array_agg(l.short_name || ' ' || a.article_number ORDER BY (substring(a.article_number from '^[0-9]+'))::int, a.article_number)
               FILTER (WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)))[1:6] AS ejemplos
           FROM topic_scope ts
           JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
@@ -1054,7 +1055,12 @@ export class ContentHealthSweepService {
           JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
           JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
           WHERE tp.position_type = ${pt} AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
-            AND a.article_number ~ '^[0-9]+$'
+            -- Mirror INLINE de SQL_UNIVERSO_COBERTURA (lib/generacion/huerfanosPlan.js)
+            -- (MANTENER EN SYNC — lo vigila __tests__/health/content-sweep-parity.test.ts).
+            -- Incluye la familia de REFORMA (bis/ter/quáter…), que antes era invisible: 163
+            -- artículos escopados sirviendo cero preguntas que el badge no podía ver. NO
+            -- incluye disposiciones (otras 503, en su mayoría no examinables).
+            AND (a.article_number ~ '^[0-9]+$' OR a.article_number ~* '^[0-9]+ ?(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies)$')
           GROUP BY tp.topic_number
           HAVING count(*) >= 4
              AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)

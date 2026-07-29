@@ -43,6 +43,9 @@ const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
+// Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
+// ejemplos: una sola definición, compartida con el planificador. Ver T-146.
+const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO } = require('../lib/generacion/huerfanosPlan.js');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -116,7 +119,7 @@ async function main() {
         SELECT tp.topic_number,
           count(*)::int AS n_content,
           count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov,
-          (array_agg(l.short_name || ' ' || a.article_number ORDER BY (a.article_number)::int)
+          (array_agg(l.short_name || ' ' || a.article_number ORDER BY ${SQL_ORDEN_ARTICULO})
             FILTER (WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)))[1:6] AS ejemplos
         FROM topic_scope ts
         JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
@@ -124,7 +127,7 @@ async function main() {
         JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
         JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
         WHERE tp.position_type = $1 AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
-          AND a.article_number ~ '^[0-9]+$'
+          AND ${SQL_UNIVERSO_COBERTURA}
         GROUP BY tp.topic_number
         HAVING count(*) >= 4
            AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)
