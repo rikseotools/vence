@@ -266,7 +266,15 @@ El **version-check** (`hooks/useVersionCheck.ts`) fuerza reload al cambiar de ve
 3. Si falla, el frontend queda sano pero el deploy **termina en rojo** (`REPIN_OK`): lo que queda en riesgo son las tareas programadas.
 4. El scheduler apunta a la **familia sin revisión**, así que coge la última ACTIVE automáticamente. No hay que tocarlo al re-pinear.
 
-> **Al añadir una tarea programada nueva:** entrada en `DERIVED_WORKERS` (con **repo propio**, nunca el del frontend) **y**, si es periódica, declararla en `backend/src/cron-schedule/external-jobs.registry.ts` para que tenga liveness (`cron_overdue`) — el guardrail exige lo segundo si haces lo primero. Esa segunda parte es la red que **no** depende del proveedor: aunque este paso falle o desaparezca en la migración a koigrid, un job que deje de correr sigue avisando. Ver `health-check.md` §1.bis.b.
+### ⚠️ Una tarea programada tiene que ACOTAR su duración (o se come la cuota de vCPU)
+
+**El fallo no se ve con la cola vacía.** El worker de PDFs drenaba *hasta vaciar la cola* y el scheduler lo lanza cada 30 min: en operación normal termina en segundos y nunca dio problema. Con un backlog de 111 temas pesados (hasta 30 min por render) cada ejecución dura **horas** y los workers se **acumulan** —uno nuevo cada tick, 2 vCPU cada uno—. Medido el 29/07: 20,25 de **30 vCPU** ya en uso (frontend 8×2 + backend + 2 workers), con la cuota agotada proyectada en ~2,5 h. Y quedarse sin vCPU es exactamente lo que **revierte los deploys de frontend** (ver `project-deploy-frontend-cuota-fargate-vcpu`).
+
+**Invariante:** `tope de ejecución + techo de una unidad de trabajo < 2 × cadencia` → como mucho 2 instancias vivas. Hoy: 20 + 30 < 60 min. Fijado en `__tests__/guardrails/externalScheduledJobs.test.ts`.
+
+La comprobación del tope va **antes de reclamar** el siguiente trabajo, nunca a mitad de uno: cortar un render en curso lo manda a retry y tira el trabajo hecho. El backlog se drena igual, en varios ciclos — la cola es el estado, el worker no guarda nada.
+
+> **Al añadir una tarea programada nueva:** entrada en `DERIVED_WORKERS` (con **repo propio**, nunca el del frontend) **y**, si es periódica, declararla en `backend/src/cron-schedule/external-jobs.registry.ts` para que tenga liveness (`cron_overdue`) — el guardrail exige lo segundo si haces lo primero. Y si procesa una cola, **acótala en el tiempo**: comprueba el invariante de arriba contra la cuota. Esa segunda parte es la red que **no** depende del proveedor: aunque este paso falle o desaparezca en la migración a koigrid, un job que deje de correr sigue avisando. Ver `health-check.md` §1.bis.b.
 
 ## Backend
 
