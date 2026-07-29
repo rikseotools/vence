@@ -13,6 +13,7 @@
 // cabecera, en el mismo recuadro.
 import {
   podarAperturaConLetra,
+  podarAnuncioAlTranscribir,
   renderStructuredExplanation,
   structuredNarrative,
   structuredNarrativeStaleLetters,
@@ -240,6 +241,28 @@ describe('podarAperturaConLetra — la reparación', () => {
   })
 })
 
+// La FUGA del 29/07 por la tarde: el backfill transcribió ~1.200 preguntas y 89 entraron con la
+// letra clavada PESE al arreglo de la mañana, porque aquel solo cubría el anuncio DESNUDO y el
+// formato §5.1 nombra la opción entera en la misma línea. Las dos podas se separan a propósito:
+// reparar de más mutila lo que ya lee el opositor; transcribir de más no puede romper nada,
+// porque la guarda de no-regresión rechaza la migración y la pregunta se queda como estaba.
+describe('podarAnuncioAlTranscribir — la poda de la TRANSCRIPCIÓN es más agresiva a propósito', () => {
+  const conCola = 'La respuesta correcta es **C) De «habeas corpus».**\n\nEl artículo 17.4 CE lo llama así.'
+
+  it('poda el anuncio aunque arrastre el texto de la opción', () => {
+    expect(podarAnuncioAlTranscribir(conCola)).toBe('El artículo 17.4 CE lo llama así.')
+  })
+
+  it('la poda de REPARACIÓN, en cambio, NO lo toca (mutilaría lo que ya se sirve)', () => {
+    expect(podarAperturaConLetra(conCola)).toBe(conCola)
+  })
+
+  it('respeta el intro sin anuncio', () => {
+    const t = 'El artículo 17.4 de la Constitución regula el habeas corpus.'
+    expect(podarAnuncioAlTranscribir(t)).toBe(t)
+  })
+})
+
 describe('la transcripción del histórico ya no importa la letra', () => {
   it('el parser del §5.1 (impugnaciones) poda la apertura', () => {
     const texto = [
@@ -254,6 +277,17 @@ describe('la transcripción del histórico ya no importa la letra', () => {
       '**D)** INCORRECTA. Habla de otra cosa.',
     ].join('\n')
     const parsed = parseImpugnacionFormatExplanation(texto, { correctOption: 2, nOptions: 4, questionText: '¿Con qué deberán contar?' })
+    expect(parsed).not.toBeNull()
+    expect(structuredNarrativeStaleLetters(parsed!)).toEqual([])
+  })
+
+  it('el parser del §5.1 tampoco deja entrar el anuncio CON el texto de la opción (fuga del 29/07)', () => {
+    const texto = [
+      'La respuesta correcta es **C) De «habeas corpus».**', '',
+      '**A)** INCORRECTA. Otra cosa.', '', '**B)** INCORRECTA. Otra más.', '',
+      '**C)** CORRECTA. El art. 17.4 CE lo llama así.', '', '**D)** INCORRECTA. No.',
+    ].join('\n')
+    const parsed = parseImpugnacionFormatExplanation(texto, { correctOption: 2, nOptions: 4 })
     expect(parsed).not.toBeNull()
     expect(structuredNarrativeStaleLetters(parsed!)).toEqual([])
   })

@@ -237,6 +237,34 @@ export function podarAperturaConLetra(
 export const CITA_DE_LA_NORMA =
   /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/gi
 
+/**
+ * Poda la línea que anuncia la clave AL TRANSCRIBIR, aunque arrastre el texto de la opción
+ * («La respuesta correcta es **C) De "habeas corpus".**»).
+ *
+ * **Por qué esta es más agresiva que `podarAperturaConLetra`, y por qué es correcto que lo sea.**
+ * Las dos podan lo mismo, pero el coste de equivocarse es OPUESTO según dónde se apliquen:
+ *   · **Reparando** una pregunta que ya está viva, recortar de más MUTILA lo que el opositor lee
+ *     (pasó el 29/07: quedó «pptm.**» suelto). Por eso allí se exige que la línea sea solo el
+ *     anuncio y lo demás va a revisión humana.
+ *   · **Transcribiendo**, en cambio, no se puede romper nada: si al podar el render deja de
+ *     coincidir con el original, la guarda de no-regresión RECHAZA la migración y la pregunta se
+ *     queda como estaba. El peor caso es «no se transcribe», que es inocuo; el peor caso de NO
+ *     podar es transcribir una letra clavada que mentirá al barajar, que no lo es.
+ *
+ * Lo destapó el barrido de las 18:00 del 29/07: el backfill había transcrito ~1.200 preguntas y 89
+ * entraron con la letra clavada pese al arreglo de la mañana — porque ese arreglo solo cubría el
+ * anuncio DESNUDO y el formato §5.1 nombra la opción entera en la misma línea.
+ */
+export function podarAnuncioAlTranscribir(intro?: string | null): string | undefined {
+  if (!intro) return undefined
+  const lineas = intro.replace(/\r\n/g, '\n').split('\n')
+  const RE_ANUNCIO_CON_COLA =
+    /^[ \t]*\*{0,2}[ \t]*(?:la\s+)?respuesta\s+correcta\s*(?:es|:)[ \t]*(?:la\s+)?[ \t]*\*{0,2}[ \t]*[A-E][ \t]*\)?/i
+  if (!RE_ANUNCIO_CON_COLA.test(lineas[0] ?? '')) return intro
+  const podado = lineas.slice(1).join('\n').trim()
+  return podado || undefined
+}
+
 export function structuredNarrativeStaleLetters(
   data?: Pick<StructuredExplanation, 'intro' | 'outro'> | null
 ): Array<'intro' | 'outro'> {
@@ -489,7 +517,7 @@ export function parseImpugnacionFormatExplanation(
 
   // La apertura con letra NO entra en la estructura: aquí el render la regenera con la letra que
   // corresponda tras barajar, así que podarla deja el texto natural idéntico y el barajado sano.
-  const intro = podarAperturaConLetra(text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim(), { textoCorrecta })
+  const intro = podarAnuncioAlTranscribir(text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim())
   const bloqueCita = text
     .slice(0, marcas[0].ini)
     .split('\n')
@@ -650,7 +678,7 @@ export function parseLetterFormatExplanation(
   //    Y desde T-262 se PODA la apertura con letra: aquí el render no la reemite (la cabecera
   //    «Por qué C es correcta» ya la dice), así que la guarda de no-regresión rechazará la
   //    migración de esas — que es justo lo que se quiere: sin barajar antes que contradiciéndose.
-  const intro = podarAperturaConLetra(introTexto, { textoCorrecta })
+  const intro = podarAnuncioAlTranscribir(introTexto)
 
   const frame: ExplanationFrame = /incorrect|falsa/i.test(cm[0]) ? 'select_incorrect' : 'select_correct'
   const result: StructuredExplanation = { v: 1, options, frame }
