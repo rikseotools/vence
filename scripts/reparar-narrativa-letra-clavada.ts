@@ -36,12 +36,13 @@
  *   npx tsx --env-file=.env.local scripts/reparar-narrativa-letra-clavada.ts            # informe
  *   npm run shuffle:narrativa -- --pregunta <uuid>                                       # una
  *   npm run shuffle:narrativa -- --pregunta <uuid> --apply
- *   npm run shuffle:narrativa -- --limite 200 --apply                                    # lote
+ *   npm run shuffle:narrativa -- --apply --backup /ruta/backup.json                      # lote (red obligatoria ≥50)
  *
  * Relacionado: `lib/shuffle/structuredExplanation.ts` (núcleo puro), el gate de serve en
  * `lib/shuffle/classifyShuffleMode.ts`, el detector nocturno `sweep-shuffle-safety-drift.ts`
  * (kind `shuffle_narrativa_letra_clavada`) y `docs/roadmap/barajar-opciones-verificacion-robusta.md`.
  */
+import { writeFileSync } from 'fs'
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import {
@@ -61,6 +62,7 @@ const arg = (n: string) => {
 const APPLY = argv.includes('--apply')
 const PREGUNTA = arg('--pregunta')
 const LIMITE = arg('--limite') ? parseInt(arg('--limite')!, 10) : undefined
+const BACKUP = arg('--backup')
 
 /** Qué se puede hacer con una pregunta, decidido SIN tocar la BD (función pura, testeable). */
 export type Veredicto =
@@ -69,15 +71,15 @@ export type Veredicto =
   /** La letra no está en la apertura canónica: hay que reescribir a mano, con criterio. */
   | { tipo: 'requiere_criterio'; campos: Array<'intro' | 'outro'> }
 
-export function evaluar(data: unknown, nOptions: number): Veredicto {
+export function evaluar(data: unknown, nOptions: number, textoCorrecta?: string | null): Veredicto {
   if (!isStructuredExplanation(data, nOptions)) return { tipo: 'limpia' }
   const sucios = structuredNarrativeStaleLetters(data)
   if (!sucios.length) return { tipo: 'limpia' }
 
-  // Solo se automatiza la apertura canónica del `intro`. Cualquier otra letra (un outro tipo
-  // "**Clave:** la C es la única que…", una referencia en medio del párrafo) es contenido que
-  // hay que rehacer entendiéndolo — podarlo a ciegas dejaría la frase coja.
-  const podado = podarAperturaConLetra(data.intro)
+  // Solo se automatiza la línea que ANUNCIA la clave, y solo si no lleva contenido propio (ver
+  // `podarAperturaConLetra`). Cualquier otra letra —un outro tipo "**Clave:** letra b) 100.000 €",
+  // una referencia en medio del párrafo— es contenido que hay que rehacer entendiéndolo.
+  const podado = podarAperturaConLetra(data.intro, { textoCorrecta })
   const candidata: StructuredExplanation = { ...data, intro: podado }
   if (structuredNarrativeStaleLetters(candidata).length === 0) {
     return { tipo: 'podable', estructura: candidata }
@@ -104,7 +106,7 @@ async function main() {
     const opciones = [f.option_a, f.option_b, f.option_c, f.option_d, f.option_e].filter(
       (v: string | null) => v != null && v !== '',
     )
-    const v = evaluar(f.explanation_data, opciones.length)
+    const v = evaluar(f.explanation_data, opciones.length, opciones[f.correct_option])
     if (v.tipo === 'limpia') { limpias++; continue }
     if (v.tipo === 'requiere_criterio') { aMano.push({ id: f.id, campos: v.campos }); continue }
 
@@ -143,6 +145,25 @@ async function main() {
     console.log('  DESPUÉS:', ej.despues.split('\n')[0])
     console.log('\n(dry-run — repite con --apply)\n')
     return
+  }
+
+  // RED antes de tocar en lote. Un cambio de 800+ explicaciones que lee el opositor no se hace sin
+  // poder volver: se vuelca el estado ANTERIOR de las dos columnas a un fichero. Obligatorio a
+  // partir de 50 filas — por debajo, revertir a mano es trivial.
+  if (podables.length >= 50 && !BACKUP) {
+    console.error(`\n❌ ${podables.length} filas es un lote: pasa --backup <fichero.json> para poder revertir.\n`)
+    process.exit(2)
+  }
+  if (BACKUP) {
+    writeFileSync(
+      BACKUP,
+      JSON.stringify(
+        podables.map((p) => ({ id: p.id, explanation: p.antes, explanation_data: filas.find((f: any) => f.id === p.id)?.explanation_data })),
+        null,
+        1,
+      ),
+    )
+    console.log(`\n💾 copia de seguridad: ${BACKUP} (${podables.length} filas)`)
   }
 
   for (const p of podables) {

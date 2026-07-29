@@ -159,29 +159,66 @@ export function structuredNarrative(
 // ANTES de aplicarla a 1.155 preguntas — el recuento decía «podable» y el texto decía otra cosa.
 // Esas variantes van a revisión humana: decidir si se pierde la repetición del enunciado de la
 // opción no es una decisión mecánica.
-const RE_APERTURA_CON_LETRA =
-  /^[ \t]*la\s+respuesta\s+correcta\s+es(?:\s+la)?[ \t]*\*{0,2}[ \t]*([A-E])[ \t]*\)?[ \t]*\*{0,2}[ \t]*[.:]?[ \t]*$/im
+// Se admiten las cuatro redacciones que usa el banco (medidas el 29/07 sobre las 1.211):
+//   «La respuesta correcta es la **C**.»      «**La respuesta correcta es A.**»
+//   «La respuesta correcta es **B) 21.**»     «**Respuesta correcta: C) Una ordenanza fiscal.**»
+// El grupo 1 es la letra; el grupo 2, lo que venga detrás (normalmente el texto de la opción).
+const RE_ANUNCIO_DE_LA_CLAVE =
+  /^[ \t]*\*{0,2}[ \t]*(?:la\s+)?respuesta\s+correcta\s*(?:es|:)[ \t]*(?:la\s+)?[ \t]*\*{0,2}[ \t]*([A-E])[ \t]*\)?[ \t]*\*{0,2}[ \t]*[.:]?[ \t]*(.*?)[ \t]*\*{0,2}[ \t]*$/i
+
+const normalizar = (s: string) =>
+  s.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ').replace(/[.;:,]+$/, '').trim().toLowerCase()
 
 /**
- * Poda esa apertura del `intro` al TRANSCRIBIR el histórico (T-262). Importa el orden de los
- * hechos: el intro se empezó a capturar verbatim el 27/07 para dejar de perder el párrafo de
- * contexto, y con él entró la línea de la letra — que en el texto plano era verdad y en una
- * explicación barajable es una mentira fija.
+ * Poda la línea que ANUNCIA la clave por su letra, del `intro` de una explicación estructurada
+ * (T-262). Importa el orden de los hechos: el intro se empezó a capturar verbatim el 27/07 para
+ * dejar de perder el párrafo de contexto, y con él entró esa línea — que en el texto plano era
+ * verdad y en una explicación barajable es una mentira fija.
+ *
+ * **Regla de seguridad:** solo se poda si la línea NO lleva contenido propio. Es decir, si tras la
+ * letra no hay nada, o lo que hay es el TEXTO DE LA OPCIÓN CORRECTA (una repetición de lo que el
+ * opositor ya tiene delante). Para eso hace falta `textoCorrecta`: sin él, la línea con cola se
+ * respeta.
+ *
+ * ⚠️ Sin esa comprobación la poda MUTILA el formato §5.1, que abre nombrando la opción entera
+ * («La respuesta correcta es **B) Podrá aprobarse el remate en favor de una mejor postura…**»):
+ * recortando solo el prefijo quedaba el texto de la opción suelto, en minúscula y con los
+ * asteriscos descolgados. Cazado el 29/07 comprobando la reparación contra 3 casos reales ANTES de
+ * lanzarla sobre 1.155 preguntas, cuando el recuento ya las daba por automáticas.
  *
  * Qué pasa después de podar, por estilo:
- *   · `impugnacion` → el render REGENERA esa línea con la letra que toque, así que el texto en
- *     orden natural sale idéntico y barajado sale correcto. Ganancia limpia.
+ *   · `impugnacion` → el render REGENERA la línea con la letra que toque; el texto en orden
+ *     natural sale igual salvo la repetición del enunciado de la opción.
  *   · `boletin`     → el render no la emite (la cabecera «Por qué C es correcta» ya la dice), así
- *     que el texto pierde esa línea redundante y la guarda de no-regresión RECHAZA la migración.
- *     Es el sesgo de siempre del módulo: **ante la duda, no migrar** — un falso negativo deja la
- *     pregunta sin barajar (inocuo) y un falso positivo sirve una contradicción (grave).
+ *     que se pierde esa línea. En la TRANSCRIPCIÓN eso hace que la guarda de no-regresión rechace
+ *     migrar, que es el sesgo de siempre del módulo: **ante la duda, no migrar** — un falso
+ *     negativo deja la pregunta sin barajar (inocuo) y un falso positivo sirve una contradicción.
  */
-export function podarAperturaConLetra(intro?: string | null): string | undefined {
+export function podarAperturaConLetra(
+  intro?: string | null,
+  opts?: { textoCorrecta?: string | null }
+): string | undefined {
   if (!intro) return undefined
-  // Solo la PRIMERA línea, y solo si es exactamente esa frase: una aparición en medio del párrafo
-  // es contenido con contexto alrededor y recortarla dejaría la frase coja.
+  // Solo la PRIMERA línea: una aparición en medio del párrafo tiene contexto alrededor y
+  // recortarla dejaría la frase coja.
   const lineas = intro.replace(/\r\n/g, '\n').split('\n')
-  if (!RE_APERTURA_CON_LETRA.test(lineas[0] ?? '')) return intro
+  const m = (lineas[0] ?? '').match(RE_ANUNCIO_DE_LA_CLAVE)
+  if (!m) return intro
+
+  const cola = normalizar(m[2] ?? '')
+  if (cola) {
+    const correcta = normalizar(opts?.textoCorrecta ?? '')
+    // (1) La cola es el enunciado de la opción (entero o truncado) → repetición de lo que el
+    //     opositor ya tiene delante.
+    const esRepeticionDeLaOpcion = correcta.length > 0 && (correcta.startsWith(cola) || cola.startsWith(correcta))
+    // (2) O es una GLOSA entre paréntesis y nada más: «(al año)», «(el Tribunal Constitucional)»,
+    //     «(la opción incorrecta según el enunciado)». Resume la opción o recuerda el marco —que
+    //     el render ya expresa con `frame`—, y va pegada a una letra que al barajar miente. Se
+    //     exige que la línea termine ahí: si tras el paréntesis sigue texto, hay razonamiento
+    //     propio y no se toca.
+    const esGlosaEntreParentesis = /^\([^)]{1,120}\)$/.test(cola)
+    if (!esRepeticionDeLaOpcion && !esGlosaEntreParentesis) return intro
+  }
   const podado = lineas.slice(1).join('\n').trim()
   return podado || undefined
 }
@@ -398,7 +435,12 @@ export function inferFrameFromQuestionText(
 
 export function parseImpugnacionFormatExplanation(
   explanation: string | null | undefined,
-  { correctOption, nOptions, questionText }: { correctOption: number; nOptions: number; questionText?: string | null }
+  {
+    correctOption,
+    nOptions,
+    questionText,
+    textoCorrecta,
+  }: { correctOption: number; nOptions: number; questionText?: string | null; textoCorrecta?: string | null }
 ): StructuredExplanation | null {
   if (!explanation || !explanation.trim()) return null
   const text = explanation.replace(/\r\n/g, '\n').trim()
@@ -433,7 +475,7 @@ export function parseImpugnacionFormatExplanation(
 
   // La apertura con letra NO entra en la estructura: aquí el render la regenera con la letra que
   // corresponda tras barajar, así que podarla deja el texto natural idéntico y el barajado sano.
-  const intro = podarAperturaConLetra(text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim())
+  const intro = podarAperturaConLetra(text.slice(0, marcas[0].ini).replace(/^>.*$/gm, '').trim(), { textoCorrecta })
   const bloqueCita = text
     .slice(0, marcas[0].ini)
     .split('\n')
@@ -454,7 +496,13 @@ export function parseImpugnacionFormatExplanation(
 
 export function parseLetterFormatExplanation(
   explanation: string | null | undefined,
-  { correctOption, nOptions }: { correctOption: number; nOptions: number }
+  {
+    correctOption,
+    nOptions,
+    // Texto de la opción correcta. Solo se usa para decidir si la línea que anuncia la clave es
+    // una repetición del enunciado de la opción (podable) o lleva razonamiento propio (no).
+    textoCorrecta,
+  }: { correctOption: number; nOptions: number; textoCorrecta?: string | null }
 ): StructuredExplanation | null {
   if (!explanation || !explanation.trim()) return null
   const text = explanation.replace(/\r\n/g, '\n')
@@ -588,7 +636,7 @@ export function parseLetterFormatExplanation(
   //    Y desde T-262 se PODA la apertura con letra: aquí el render no la reemite (la cabecera
   //    «Por qué C es correcta» ya la dice), así que la guarda de no-regresión rechazará la
   //    migración de esas — que es justo lo que se quiere: sin barajar antes que contradiciéndose.
-  const intro = podarAperturaConLetra(introTexto)
+  const intro = podarAperturaConLetra(introTexto, { textoCorrecta })
 
   const frame: ExplanationFrame = /incorrect|falsa/i.test(cm[0]) ? 'select_incorrect' : 'select_correct'
   const result: StructuredExplanation = { v: 1, options, frame }

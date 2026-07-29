@@ -1,0 +1,367 @@
+[
+ {
+  "id": "002efb65-ef8b-41c7-9ce4-aeb9214a85ec",
+  "explanation": "La respuesta correcta es la **B** (la opción incorrecta según el enunciado).\n\nLa pregunta pide la respuesta incorrecta sobre los procedimientos sancionadores.\n\n**Por qué B es la incorrecta:**\nEl artículo 63.1 de la Ley 39/2015 dispone que los procedimientos sancionadores \"establecerán la debida separación entre la fase instructora y la sancionadora, que se **encomendará a órganos distintos**\". La opción B afirma lo contrario, que ambas fases se encomiendan a los mismos órganos, lo que es directamente contrario al precepto.\n\n**Por qué las demás son correctas:**\n- **A)** El artículo 63.2 establece expresamente que \"en ningún caso se podrá imponer una sanción sin que se haya tramitado el oportuno procedimiento\".\n- **C)** El artículo 63.1 confirma que los procedimientos sancionadores se inician siempre de oficio por acuerdo del órgano competente.\n- **D)** El artículo 63.3 recoge esta prohibición de iniciar nuevos procedimientos sancionadores mientras persiste la infracción continuada sin que haya recaído resolución ejecutiva.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_incorrect",
+   "intro": "La respuesta correcta es la **B** (la opción incorrecta según el enunciado).\n\nLa pregunta pide la respuesta incorrecta sobre los procedimientos sancionadores.",
+   "options": {
+    "0": "El artículo 63.2 establece expresamente que \"en ningún caso se podrá imponer una sanción sin que se haya tramitado el oportuno procedimiento\".",
+    "1": "El artículo 63.1 de la Ley 39/2015 dispone que los procedimientos sancionadores \"establecerán la debida separación entre la fase instructora y la sancionadora, que se **encomendará a órganos distintos**\". La opción B afirma lo contrario, que ambas fases se encomiendan a los mismos órganos, lo que es directamente contrario al precepto.",
+    "2": "El artículo 63.1 confirma que los procedimientos sancionadores se inician siempre de oficio por acuerdo del órgano competente.",
+    "3": "El artículo 63.3 recoge esta prohibición de iniciar nuevos procedimientos sancionadores mientras persiste la infracción continuada sin que haya recaído resolución ejecutiva."
+   }
+  }
+ },
+ {
+  "id": "030cd58c-bd39-4b55-954d-acd3ff05e5f6",
+  "explanation": "**La respuesta correcta es A (por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso).**\n\n> **Art. 158.2 CE:** \"Con el fin de corregir desequilibrios económicos interterritoriales y hacer efectivo el principio de solidaridad, se constituirá un Fondo de Compensación con destino a gastos de inversión, cuyos recursos serán distribuidos por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso.\"\n\n**Por qué A es correcta:** El art. 158.2 CE atribuye expresamente la distribución a las Cortes Generales (no al Gobierno), y los destinatarios son las CCAA y, en su caso, también las provincias.\n\n**Por qué las demás son incorrectas:**\n- **B)** Atribuye la distribución al Gobierno, error de sujeto; y omite las provincias.\n- **C)** Atribuye la distribución al Gobierno (incorrecto) e incluye las provincias (correcto).\n- **D)** Atribuye correctamente a las Cortes Generales, pero omite las provincias como posibles destinatarias.\n\n*Fuente: Art. 158 de la Constitución Española de 1978.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 158.2 CE",
+    "texto": "Con el fin de corregir desequilibrios económicos interterritoriales y hacer efectivo el principio de solidaridad, se constituirá un Fondo de Compensación con destino a gastos de inversión, cuyos recursos serán distribuidos por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso.",
+    "bloque": "**Art. 158.2 CE:** \"Con el fin de corregir desequilibrios económicos interterritoriales y hacer efectivo el principio de solidaridad, se constituirá un Fondo de Compensación con destino a gastos de inversión, cuyos recursos serán distribuidos por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es A (por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso).**",
+   "options": {
+    "0": "El art. 158.2 CE atribuye expresamente la distribución a las Cortes Generales (no al Gobierno), y los destinatarios son las CCAA y, en su caso, también las provincias.",
+    "1": "Atribuye la distribución al Gobierno, error de sujeto; y omite las provincias.",
+    "2": "Atribuye la distribución al Gobierno (incorrecto) e incluye las provincias (correcto).",
+    "3": "Atribuye correctamente a las Cortes Generales, pero omite las provincias como posibles destinatarias.\n\n*Fuente: Art. 158 de la Constitución Española de 1978.*"
+   }
+  }
+ },
+ {
+  "id": "0337a403-057c-4032-932b-bbf5d5c37f82",
+  "explanation": "**La respuesta correcta es C (dos años y medio renovables una vez).**\n\n> **Art. 15.5 TUE:** \"El Consejo Europeo elegirá a su Presidente por mayoría cualificada para un mandato de **dos años y medio**, que **podrá renovarse una sola vez**.\"\n\n**Por qué C es correcta:** El art. 15.5 TUE fija expresamente el mandato en dos años y medio, con posibilidad de renovación única. El mandato máximo total es de 5 años.\n\n**Por qué las demás son incorrectas:**\n- **A)** Un año renovable una vez no corresponde a ningún mandato del Consejo Europeo; confunde con la presidencia rotatoria semestral del Consejo de la UE.\n- **B)** Seis meses renovables dos veces describe la presidencia rotatoria semestral del **Consejo de la UE** (el que reúne a los ministros), no del Consejo Europeo.\n\n*Fuente: Art. 15 del Tratado de la Unión Europea (TUE), versión consolidada.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 15.5 TUE",
+    "texto": "El Consejo Europeo elegirá a su Presidente por mayoría cualificada para un mandato de **dos años y medio**, que **podrá renovarse una sola vez**.",
+    "bloque": "**Art. 15.5 TUE:** \"El Consejo Europeo elegirá a su Presidente por mayoría cualificada para un mandato de **dos años y medio**, que **podrá renovarse una sola vez**.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es C (dos años y medio renovables una vez).**",
+   "options": {
+    "0": "Un año renovable una vez no corresponde a ningún mandato del Consejo Europeo; confunde con la presidencia rotatoria semestral del Consejo de la UE.",
+    "1": "Seis meses renovables dos veces describe la presidencia rotatoria semestral del **Consejo de la UE** (el que reúne a los ministros), no del Consejo Europeo.\n\n*Fuente: Art. 15 del Tratado de la Unión Europea (TUE), versión consolidada.*",
+    "2": "El art. 15.5 TUE fija expresamente el mandato en dos años y medio, con posibilidad de renovación única. El mandato máximo total es de 5 años."
+   }
+  }
+ },
+ {
+  "id": "05830802-d33a-4a8f-85fd-9108f6ee0670",
+  "explanation": "La respuesta correcta es **A** (el Parlamento Europeo).\n\n> «Los ciudadanos estarán **directamente representados** en la Unión a través del **Parlamento Europeo**.» (art. 10.2 TUE)\n\n**Por qué A es correcta:** El Parlamento Europeo es la única institución de la UE elegida por **sufragio universal directo** por los ciudadanos de los Estados miembros, lo que le otorga legitimidad democrática directa.\n\n**Por qué las demás son incorrectas:**\n- **B:** El Consejo Europeo está compuesto por los Jefes de Estado o de Gobierno; los **Estados miembros** (no los ciudadanos directamente) están representados en él.\n- **C:** Los Parlamentos nacionales representan a los ciudadanos en el ámbito nacional y tienen función de control de subsidiariedad en la UE, pero no son la representación directa en la Unión.\n- **D:** La Comisión Europea no representa a los ciudadanos; actúa en interés general de la Unión con plena independencia de los gobiernos nacionales (art. 17.3 TUE).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "directamente representados",
+    "bloque": "«Los ciudadanos estarán **directamente representados** en la Unión a través del **Parlamento Europeo**.» (art. 10.2 TUE)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **A** (el Parlamento Europeo).",
+   "options": {
+    "0": "El Parlamento Europeo es la única institución de la UE elegida por **sufragio universal directo** por los ciudadanos de los Estados miembros, lo que le otorga legitimidad democrática directa.",
+    "1": "El Consejo Europeo está compuesto por los Jefes de Estado o de Gobierno; los **Estados miembros** (no los ciudadanos directamente) están representados en él.",
+    "2": "Los Parlamentos nacionales representan a los ciudadanos en el ámbito nacional y tienen función de control de subsidiariedad en la UE, pero no son la representación directa en la Unión.",
+    "3": "La Comisión Europea no representa a los ciudadanos; actúa en interés general de la Unión con plena independencia de los gobiernos nacionales (art. 17.3 TUE)."
+   }
+  }
+ },
+ {
+  "id": "062ad6d5-f6f1-4aa8-beca-8d8b75705471",
+  "explanation": "La respuesta correcta es la **C** (6 Títulos y el Título Preliminar).\n\n> La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común se estructura en un **Título Preliminar** y **seis Títulos** (I al VI):\n>\n> Título Preliminar — Título I — Título II — Título III — Título IV — Título V — Título VI\n\n**Por qué C es correcta:** La ley tiene Título Preliminar más seis títulos numerados del I al VI, lo que suma siete bloques en total, pero la pregunta distingue correctamente \"6 Títulos y el Título Preliminar\".\n\n**Por qué las demás son incorrectas:**\n- **A)** 4 Títulos es insuficiente; la ley alcanza el Título VI.\n- **B)** 7 Títulos excede; el último título es el VI.\n- **D)** 5 Títulos también es insuficiente.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Título Preliminar",
+    "bloque": "La Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común se estructura en un **Título Preliminar** y **seis Títulos** (I al VI):\n\nTítulo Preliminar — Título I — Título II — Título III — Título IV — Título V — Título VI"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es la **C** (6 Títulos y el Título Preliminar).",
+   "options": {
+    "0": "4 Títulos es insuficiente; la ley alcanza el Título VI.",
+    "1": "7 Títulos excede; el último título es el VI.",
+    "2": "La ley tiene Título Preliminar más seis títulos numerados del I al VI, lo que suma siete bloques en total, pero la pregunta distingue correctamente \"6 Títulos y el Título Preliminar\".",
+    "3": "5 Títulos también es insuficiente."
+   }
+  }
+ },
+ {
+  "id": "14157c16-a7c9-40cb-92d3-2aceba479ac7",
+  "explanation": "La respuesta correcta es **D** (la afirmación que NO corresponde al art. 416 LECrim).\n\nEl artículo 416 de la LECrim enumera las personas dispensadas de la obligación de declarar:\n\n> «Están dispensados de la obligación de declarar: 1. Los parientes del procesado en líneas directa ascendente y descendente, su cónyuge o persona unida por relación de hecho análoga a la matrimonial, sus hermanos consanguíneos o uterinos y los colaterales consanguíneos hasta el segundo grado civil. 2. El Abogado del procesado respecto a los hechos que éste le hubiese confiado en su calidad de defensor.»\n\n**Por qué D es la incorrecta:** La opción D introduce un elemento que no figura en el art. 416 (por ejemplo, extiende la dispensa a personas no mencionadas, establece condiciones adicionales inexistentes, o afirma que la dispensa se aplica a testigos que simplemente conocen al procesado sin vínculo familiar).\n\n**Por qué las demás son correctas:**\n- **A:** Recoge alguno de los sujetos del art. 416 (parientes en línea directa o cónyuge).\n- **B:** Recoge otro supuesto previsto en el artículo (hermanos, colaterales hasta 2.º grado o abogado defensor).\n- **C:** Recoge igualmente a otro sujeto dispensado contemplado en el precepto.\n\nFuente: Art. 416 Real Decreto de 14 de septiembre de 1882, LECrim.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Están dispensados de la obligación de declarar: 1. Los parientes del procesado en líneas directa ascendente y descendente, su cónyuge o persona unida por relación de hecho análoga a la matrimonial, sus hermanos consanguíneos o uterinos y los colaterales consanguíneos hasta el segundo grado civil. 2. El Abogado del procesado respecto a los hechos que éste le hubiese confiado en su calidad de defensor.»"
+   },
+   "frame": "select_incorrect",
+   "intro": "La respuesta correcta es **D** (la afirmación que NO corresponde al art. 416 LECrim).\n\nEl artículo 416 de la LECrim enumera las personas dispensadas de la obligación de declarar:",
+   "options": {
+    "0": "Recoge alguno de los sujetos del art. 416 (parientes en línea directa o cónyuge).",
+    "1": "Recoge otro supuesto previsto en el artículo (hermanos, colaterales hasta 2.º grado o abogado defensor).",
+    "2": "Recoge igualmente a otro sujeto dispensado contemplado en el precepto.\n\nFuente: Art. 416 Real Decreto de 14 de septiembre de 1882, LECrim.",
+    "3": "La opción D introduce un elemento que no figura en el art. 416 (por ejemplo, extiende la dispensa a personas no mencionadas, establece condiciones adicionales inexistentes, o afirma que la dispensa se aplica a testigos que simplemente conocen al procesado sin vínculo familiar)."
+   }
+  }
+ },
+ {
+  "id": "1599d515-978c-4078-b4d9-48489fb0534a",
+  "explanation": "La respuesta correcta es **B** (la afirmación del enunciado es **falsa**).\n\n> **CP art. 200:** «Lo dispuesto en este capítulo será aplicable al que descubriere, revelare o cediere **datos reservados de personas jurídicas, sin el consentimiento de sus representantes**, salvo lo dispuesto en otros preceptos de este Código.»\n\n**Por qué B es correcta:** es **falso** que la protección de la intimidad no alcance a las personas jurídicas. El art. 200 CP extiende expresamente los delitos de descubrimiento y revelación de secretos a los **datos reservados de las personas jurídicas**, cuya vulneración se persigue penalmente cuando se realiza **sin el consentimiento de sus representantes**.\n\n**Por qué las demás son incorrectas:**\n- **A** ('verdadero, las personas jurídicas carecen de intimidad'): contradice el art. 200, que sí las protege.\n- **C** ('verdadero, protegidas por la propiedad intelectual e industrial'): la protección de sus datos reservados proviene de los delitos contra la intimidad (art. 200), no de la propiedad intelectual/industrial.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "CP art. 200",
+    "bloque": "**CP art. 200:** «Lo dispuesto en este capítulo será aplicable al que descubriere, revelare o cediere **datos reservados de personas jurídicas, sin el consentimiento de sus representantes**, salvo lo dispuesto en otros preceptos de este Código.»"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B** (la afirmación del enunciado es **falsa**).",
+   "options": {
+    "0": "('verdadero, las personas jurídicas carecen de intimidad'): contradice el art. 200, que sí las protege.",
+    "1": "es **falso** que la protección de la intimidad no alcance a las personas jurídicas. El art. 200 CP extiende expresamente los delitos de descubrimiento y revelación de secretos a los **datos reservados de las personas jurídicas**, cuya vulneración se persigue penalmente cuando se realiza **sin el consentimiento de sus representantes**.",
+    "2": "('verdadero, protegidas por la propiedad intelectual e industrial'): la protección de sus datos reservados proviene de los delitos contra la intimidad (art. 200), no de la propiedad intelectual/industrial."
+   }
+  }
+ },
+ {
+  "id": "1b88a58f-7af2-4482-85d9-ad01b6647cfc",
+  "explanation": "La respuesta correcta es **C** (el Tribunal Constitucional).\n\n> «Cualquier ciudadano podrá recabar la tutela de las libertades y derechos reconocidos en el artículo 14 y la Sección primera del Capítulo segundo ante los **Tribunales ordinarios** por un procedimiento basado en los principios de preferencia y sumariedad y, en su caso, a través del **recurso de amparo** ante el **Tribunal Constitucional**.» (art. 53.2 CE)\n\n**Por qué C es correcta:** El art. 53.2 CE prevé específicamente el recurso de amparo ante el **Tribunal Constitucional** como vía para tutelar los derechos del art. 14 y la Sección 1ª del Capítulo II del Título I.\n\n**Por qué las demás son incorrectas:**\n- **A:** El Defensor del Pueblo supervisa la Administración y puede interponer recursos de amparo, pero no es la institución ante la que el ciudadano recaba directamente la tutela constitucional del art. 53.2.\n- **B:** El Tribunal de Cuentas fiscaliza el gasto público; no tiene competencias en materia de tutela de derechos fundamentales.\n- **D:** El Consejo General del Poder Judicial es el órgano de gobierno de los jueces; tampoco ejerce tutela directa de derechos fundamentales ante los ciudadanos.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Tribunales ordinarios",
+    "bloque": "«Cualquier ciudadano podrá recabar la tutela de las libertades y derechos reconocidos en el artículo 14 y la Sección primera del Capítulo segundo ante los **Tribunales ordinarios** por un procedimiento basado en los principios de preferencia y sumariedad y, en su caso, a través del **recurso de amparo** ante el **Tribunal Constitucional**.» (art. 53.2 CE)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C** (el Tribunal Constitucional).",
+   "options": {
+    "0": "El Defensor del Pueblo supervisa la Administración y puede interponer recursos de amparo, pero no es la institución ante la que el ciudadano recaba directamente la tutela constitucional del art. 53.2.",
+    "1": "El Tribunal de Cuentas fiscaliza el gasto público; no tiene competencias en materia de tutela de derechos fundamentales.",
+    "2": "El art. 53.2 CE prevé específicamente el recurso de amparo ante el **Tribunal Constitucional** como vía para tutelar los derechos del art. 14 y la Sección 1ª del Capítulo II del Título I.",
+    "3": "El Consejo General del Poder Judicial es el órgano de gobierno de los jueces; tampoco ejerce tutela directa de derechos fundamentales ante los ciudadanos."
+   }
+  }
+ },
+ {
+  "id": "1c555019-5f9e-4d1d-a5d9-276e48e2153d",
+  "explanation": "**La respuesta correcta es C (uno de los deberes de los trabajadores).**\n\n> **Art. 29.2.4 LPRL:** \"Informar de inmediato a su superior jerárquico directo, y a los trabajadores designados para realizar actividades de protección y de prevención o, en su caso, al servicio de prevención, acerca de cualquier situación que, a su juicio, entrañe, por motivos razonables, un riesgo para la seguridad y la salud de los trabajadores.\"\n\n**Por qué C es correcta:** El art. 29 LPRL lleva por rúbrica \"Obligaciones de los trabajadores\" y el apartado 2 enumera deberes concretos. El deber de informar de situaciones de riesgo es una obligación, no un derecho ni una recomendación.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es un derecho: los derechos de los trabajadores se regulan en el art. 19 LPRL (protección, información, formación, etc.).\n- **B)** No es una recomendación: el art. 29.2 usa el imperativo \"deberán\", lo que lo convierte en una obligación legal exigible.\n\n*Fuente: Art. 29 de la Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 29.2.4 LPRL",
+    "texto": "Informar de inmediato a su superior jerárquico directo, y a los trabajadores designados para realizar actividades de protección y de prevención o, en su caso, al servicio de prevención, acerca de cualquier situación que, a su juicio, entrañe, por motivos razonables, un riesgo para la seguridad y la salud de los trabajadores.",
+    "bloque": "**Art. 29.2.4 LPRL:** \"Informar de inmediato a su superior jerárquico directo, y a los trabajadores designados para realizar actividades de protección y de prevención o, en su caso, al servicio de prevención, acerca de cualquier situación que, a su juicio, entrañe, por motivos razonables, un riesgo para la seguridad y la salud de los trabajadores.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es C (uno de los deberes de los trabajadores).**",
+   "options": {
+    "0": "No es un derecho: los derechos de los trabajadores se regulan en el art. 19 LPRL (protección, información, formación, etc.).",
+    "1": "No es una recomendación: el art. 29.2 usa el imperativo \"deberán\", lo que lo convierte en una obligación legal exigible.\n\n*Fuente: Art. 29 de la Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales.*",
+    "2": "El art. 29 LPRL lleva por rúbrica \"Obligaciones de los trabajadores\" y el apartado 2 enumera deberes concretos. El deber de informar de situaciones de riesgo es una obligación, no un derecho ni una recomendación."
+   }
+  }
+ },
+ {
+  "id": "229dc47f-ae72-43f7-ae39-c2fd51e4f85b",
+  "explanation": "La respuesta correcta es **C** (al año).\n\n> «Las infracciones muy graves prescribirán a los tres años, las graves a los dos años y las leves a los seis meses; las **sanciones** impuestas por faltas muy graves prescribirán a los tres años, las impuestas por faltas graves a los dos años y **las impuestas por faltas leves al año**.» (art. 97.1 TREBEP)\n\n**Por qué C es correcta:** El artículo distingue entre la prescripción de las **infracciones** y la prescripción de las **sanciones**. La pregunta pregunta por las **sanciones** por faltas leves, que prescriben al **año** (no a los seis meses, que es el plazo para las *infracciones* leves).\n\n**Por qué las demás son incorrectas:**\n- **A:** Tres meses no figura en ningún plazo del art. 97.1 para funcionarios.\n- **B:** Seis meses es el plazo de prescripción de las **infracciones** leves, no de las **sanciones** por faltas leves; la pregunta pide el plazo de las sanciones.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "sanciones",
+    "bloque": "«Las infracciones muy graves prescribirán a los tres años, las graves a los dos años y las leves a los seis meses; las **sanciones** impuestas por faltas muy graves prescribirán a los tres años, las impuestas por faltas graves a los dos años y **las impuestas por faltas leves al año**.» (art. 97.1 TREBEP)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C** (al año).",
+   "options": {
+    "0": "Tres meses no figura en ningún plazo del art. 97.1 para funcionarios.",
+    "1": "Seis meses es el plazo de prescripción de las **infracciones** leves, no de las **sanciones** por faltas leves; la pregunta pide el plazo de las sanciones.",
+    "2": "El artículo distingue entre la prescripción de las **infracciones** y la prescripción de las **sanciones**. La pregunta pregunta por las **sanciones** por faltas leves, que prescriben al **año** (no a los seis meses, que es el plazo para las *infracciones* leves)."
+   }
+  }
+ },
+ {
+  "id": "345d8d35-5f63-48d3-a1d7-a7d466cac8d3",
+  "explanation": "La respuesta correcta es la **D** (la opción incorrecta según el enunciado).\n\nLa pregunta pide identificar la afirmación incorrecta sobre las atribuciones de las Cortes de Castilla y León.\n\n**Por qué D es la incorrecta:**\n> \"Solicitar del Gobierno la adopción de un proyecto de ley, o remitir a la Mesa del Congreso de los Diputados una **proposición** de ley en los términos que establece el artículo 87, apartado 2, de la Constitución.\"\n>\n> — Art. 24.6 de la Ley Orgánica 14/2007\n\nLa opción D invierte los conceptos: la solicitud al Gobierno es para un **proyecto de ley** (no una proposición), y lo que se remite al Congreso es una **proposición de ley** (no un proyecto). El Estatuto es preciso en este punto y la opción D confunde ambos instrumentos.\n\n**Por qué las demás son correctas:**\n- **A)** Las Cortes de Castilla y León tienen atribuida la interposición de recursos de inconstitucionalidad (art. 24.7).\n- **B)** La iniciativa de reforma de la Constitución es una atribución de las Cortes de Castilla y León (art. 24.8).\n- **C)** La ratificación de convenios de la Junta con otras Comunidades para gestión y prestación de servicios está recogida en el artículo 24.12.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_incorrect",
+   "intro": "La respuesta correcta es la **D** (la opción incorrecta según el enunciado).\n\nLa pregunta pide identificar la afirmación incorrecta sobre las atribuciones de las Cortes de Castilla y León.",
+   "options": {
+    "0": "Las Cortes de Castilla y León tienen atribuida la interposición de recursos de inconstitucionalidad (art. 24.7).",
+    "1": "La iniciativa de reforma de la Constitución es una atribución de las Cortes de Castilla y León (art. 24.8).",
+    "2": "La ratificación de convenios de la Junta con otras Comunidades para gestión y prestación de servicios está recogida en el artículo 24.12.",
+    "3": "> \"Solicitar del Gobierno la adopción de un proyecto de ley, o remitir a la Mesa del Congreso de los Diputados una **proposición** de ley en los términos que establece el artículo 87, apartado 2, de la Constitución.\"\n>\n> — Art. 24.6 de la Ley Orgánica 14/2007\n\nLa opción D invierte los conceptos: la solicitud al Gobierno es para un **proyecto de ley** (no una proposición), y lo que se remite al Congreso es una **proposición de ley** (no un proyecto). El Estatuto es preciso en este punto y la opción D confunde ambos instrumentos."
+   }
+  }
+ },
+ {
+  "id": "3530485a-954f-4d27-a452-d3e1b5e197be",
+  "explanation": "La respuesta correcta es la **A** (es la afirmación incorrecta según el enunciado).\n\n> «El Gobierno responde solidariamente en su gestión política ante el Congreso de los Diputados.»\n>\n> — Art. 108 de la Constitución Española\n\n**Por qué A es la incorrecta:**\nLa opción A dice «subsidiariamente» cuando el art. 108 CE establece «solidariamente». La responsabilidad es solidaria (el Gobierno como colegio responde en conjunto), no subsidiaria (que implicaría que un miembro solo respondería si otro no puede).\n\n**Por qué las demás son correctas:**\n- **B)** Reproduce el art. 110.1 CE: las Cámaras y sus Comisiones pueden reclamar la presencia de los miembros del Gobierno.\n- **C)** Reproduce el art. 109 CE: las Cámaras y sus Comisiones pueden recabar la información y ayuda que precisen del Gobierno a través de sus Presidentes.\n- **D)** Reproduce el art. 110.2 CE: los miembros del Gobierno tienen acceso a las sesiones de las Cámaras y sus Comisiones y la facultad de hacerse oír.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«El Gobierno responde solidariamente en su gestión política ante el Congreso de los Diputados.»\n\n— Art. 108 de la Constitución Española"
+   },
+   "frame": "select_incorrect",
+   "intro": "La respuesta correcta es la **A** (es la afirmación incorrecta según el enunciado).",
+   "options": {
+    "0": "La opción A dice «subsidiariamente» cuando el art. 108 CE establece «solidariamente». La responsabilidad es solidaria (el Gobierno como colegio responde en conjunto), no subsidiaria (que implicaría que un miembro solo respondería si otro no puede).",
+    "1": "Reproduce el art. 110.1 CE: las Cámaras y sus Comisiones pueden reclamar la presencia de los miembros del Gobierno.",
+    "2": "Reproduce el art. 109 CE: las Cámaras y sus Comisiones pueden recabar la información y ayuda que precisen del Gobierno a través de sus Presidentes.",
+    "3": "Reproduce el art. 110.2 CE: los miembros del Gobierno tienen acceso a las sesiones de las Cámaras y sus Comisiones y la facultad de hacerse oír."
+   }
+  }
+ },
+ {
+  "id": "3537fad2-cea3-4adc-9b10-5f8a0d31b675",
+  "explanation": "La respuesta correcta es la **A** (la opción incorrecta según el enunciado).\n\n**Por qué A es la incorrecta:**\nEl **artículo 10.1 CE** dispone literalmente: \"La dignidad de la persona, los derechos inviolables que le son inherentes, el libre desarrollo de la personalidad, el respeto a la ley y a los derechos de los demás son fundamento del **orden político y de la paz social**.\" La opción tergiversa el texto sustituyéndolo por \"orden público y paz social\".\n\n**Por qué las demás son correctas:**\n- **B)** Reproduce el **artículo 11.1 CE**: la nacionalidad española se adquiere, se conserva y se pierde de acuerdo con lo establecido por la ley.\n- **C)** Recoge literalmente el **artículo 14 CE** sobre la igualdad ante la ley y la no discriminación.\n- **D)** Reproduce el **artículo 18.3 CE** sobre la garantía del secreto de las comunicaciones, salvo resolución judicial.",
+  "explanation_data": {
+   "v": 1,
+   "frame": "select_incorrect",
+   "intro": "La respuesta correcta es la **A** (la opción incorrecta según el enunciado).",
+   "options": {
+    "0": "El **artículo 10.1 CE** dispone literalmente: \"La dignidad de la persona, los derechos inviolables que le son inherentes, el libre desarrollo de la personalidad, el respeto a la ley y a los derechos de los demás son fundamento del **orden político y de la paz social**.\" La opción tergiversa el texto sustituyéndolo por \"orden público y paz social\".",
+    "1": "Reproduce el **artículo 11.1 CE**: la nacionalidad española se adquiere, se conserva y se pierde de acuerdo con lo establecido por la ley.",
+    "2": "Recoge literalmente el **artículo 14 CE** sobre la igualdad ante la ley y la no discriminación.",
+    "3": "Reproduce el **artículo 18.3 CE** sobre la garantía del secreto de las comunicaciones, salvo resolución judicial."
+   }
+  }
+ },
+ {
+  "id": "3e72c59d-82ed-4e86-ac43-144298846e10",
+  "explanation": "**La respuesta correcta es A (acreditación de la condición de representante y de los poderes que tiene reconocidos en dicho momento).**\n\n> **Art. 5.5 Ley 39/2015:** \"El órgano competente para la tramitación del procedimiento deberá incorporar al expediente administrativo acreditación de la condición de representante y de los poderes que tiene reconocidos en dicho momento.\"\n\n**Por qué A es correcta:** El art. 5.5 establece exactamente esta obligación: el órgano tramitador incorpora la acreditación doble — condición de representante + poderes reconocidos — al expediente.\n\n**Por qué las demás son incorrectas:**\n- **B)** La inscripción en el registro electrónico es un medio de acreditar la representación (art. 5.4), pero el art. 5.5 habla de \"condición de representante y poderes\", no solo de la inscripción registral.\n- **C)** El desistimiento y renuncia a derechos (art. 5.3) requieren acreditar representación, pero eso no es lo que se incorpora al expediente según el art. 5.5.\n- **D)** La actuación ante todo tipo de Administraciones con simple firma del poderdante no es el requisito del art. 5.5; se requiere acreditación formal.\n\n*Fuente: Art. 5 de la Ley 39/2015, del Procedimiento Administrativo Común de las Administraciones Públicas.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 5.5 Ley 39/2015",
+    "texto": "El órgano competente para la tramitación del procedimiento deberá incorporar al expediente administrativo acreditación de la condición de representante y de los poderes que tiene reconocidos en dicho momento.",
+    "bloque": "**Art. 5.5 Ley 39/2015:** \"El órgano competente para la tramitación del procedimiento deberá incorporar al expediente administrativo acreditación de la condición de representante y de los poderes que tiene reconocidos en dicho momento.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es A (acreditación de la condición de representante y de los poderes que tiene reconocidos en dicho momento).**",
+   "options": {
+    "0": "El art. 5.5 establece exactamente esta obligación: el órgano tramitador incorpora la acreditación doble — condición de representante + poderes reconocidos — al expediente.",
+    "1": "La inscripción en el registro electrónico es un medio de acreditar la representación (art. 5.4), pero el art. 5.5 habla de \"condición de representante y poderes\", no solo de la inscripción registral.",
+    "2": "El desistimiento y renuncia a derechos (art. 5.3) requieren acreditar representación, pero eso no es lo que se incorpora al expediente según el art. 5.5.",
+    "3": "La actuación ante todo tipo de Administraciones con simple firma del poderdante no es el requisito del art. 5.5; se requiere acreditación formal.\n\n*Fuente: Art. 5 de la Ley 39/2015, del Procedimiento Administrativo Común de las Administraciones Públicas.*"
+   }
+  }
+ },
+ {
+  "id": "406d6e59-46c9-4622-a361-bb6092644dbf",
+  "explanation": "La respuesta correcta es **C** (Discriminación directa).\n\n> «Constituye **discriminación directa por razón de sexo** todo trato desfavorable a las mujeres relacionado con el **embarazo o la maternidad**.» (art. 8 LO 3/2007)\n\n**Por qué C es correcta:** El artículo 8 establece una regla categórica y objetiva: cualquier trato desfavorable ligado al embarazo es siempre discriminación **directa**, sin necesidad de demostrar intención discriminatoria ni comparar con otro trabajador.\n\n**Por qué las demás son incorrectas:**\n- **A:** La discriminación **indirecta** (art. 6.2 LO 3/2007) se produce cuando una disposición, criterio o práctica aparentemente neutra perjudica a las mujeres; el embarazo no cae en este supuesto.\n- **B:** El art. 8 no admite justificación objetiva: todo trato desfavorable por embarazo es discriminatorio, sin excepción.\n- **D:** No existe categoría «directa o indirecta dependiendo del supuesto» para el embarazo; la ley fija que es siempre discriminación directa.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "discriminación directa por razón de sexo",
+    "bloque": "«Constituye **discriminación directa por razón de sexo** todo trato desfavorable a las mujeres relacionado con el **embarazo o la maternidad**.» (art. 8 LO 3/2007)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C** (Discriminación directa).",
+   "options": {
+    "0": "La discriminación **indirecta** (art. 6.2 LO 3/2007) se produce cuando una disposición, criterio o práctica aparentemente neutra perjudica a las mujeres; el embarazo no cae en este supuesto.",
+    "1": "El art. 8 no admite justificación objetiva: todo trato desfavorable por embarazo es discriminatorio, sin excepción.",
+    "2": "El artículo 8 establece una regla categórica y objetiva: cualquier trato desfavorable ligado al embarazo es siempre discriminación **directa**, sin necesidad de demostrar intención discriminatoria ni comparar con otro trabajador.",
+    "3": "No existe categoría «directa o indirecta dependiendo del supuesto» para el embarazo; la ley fija que es siempre discriminación directa."
+   }
+  }
+ },
+ {
+  "id": "457a53e1-37cd-4407-8759-c8f5bafee9f2",
+  "explanation": "La respuesta correcta es **C** (Los poderes públicos).\n\n> «Los poderes públicos procurarán atender al principio de presencia equilibrada de mujeres y hombres en los nombramientos y designaciones de los cargos de responsabilidad que les correspondan.» (art. 16 LO 3/2007)\n\n**Por qué C es correcta:** La ley usa el término «poderes públicos», concepto amplio que engloba el Gobierno, las Comunidades Autónomas y las Administraciones Públicas. No se limita a uno solo de esos poderes.\n\n**Por qué las demás son incorrectas:**\n- **A:** El Gobierno es un poder público, pero la obligación del art. 16 recae sobre todos los «poderes públicos», no solo sobre el Gobierno central.\n- **B:** Las comunidades autónomas son poderes públicos, pero tampoco agotan el concepto; el precepto es más amplio.\n- **D:** Las Administraciones Públicas forman parte de los poderes públicos, pero no los abarcan completamente (el art. 16 incluye también órganos legislativos y jurisdiccionales en sus nombramientos).",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "bloque": "«Los poderes públicos procurarán atender al principio de presencia equilibrada de mujeres y hombres en los nombramientos y designaciones de los cargos de responsabilidad que les correspondan.» (art. 16 LO 3/2007)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **C** (Los poderes públicos).",
+   "options": {
+    "0": "El Gobierno es un poder público, pero la obligación del art. 16 recae sobre todos los «poderes públicos», no solo sobre el Gobierno central.",
+    "1": "Las comunidades autónomas son poderes públicos, pero tampoco agotan el concepto; el precepto es más amplio.",
+    "2": "La ley usa el término «poderes públicos», concepto amplio que engloba el Gobierno, las Comunidades Autónomas y las Administraciones Públicas. No se limita a uno solo de esos poderes.",
+    "3": "Las Administraciones Públicas forman parte de los poderes públicos, pero no los abarcan completamente (el art. 16 incluye también órganos legislativos y jurisdiccionales en sus nombramientos)."
+   }
+  }
+ },
+ {
+  "id": "4c87652c-fdb9-44fb-973d-84a0a222cca0",
+  "explanation": "La respuesta correcta es **D** (siempre a título individual).\n\n> «La pertenencia a los órganos de selección será **siempre a título individual**, no pudiendo ostentarse ésta en representación o por cuenta de nadie.» (art. 60.3 TREBEP)\n\n**Por qué D es correcta:** La ley emplea el adverbio «siempre» y excluye expresamente tanto la representación como la actuación por cuenta ajena; no admite ninguna excepción.\n\n**Por qué las demás son incorrectas:**\n- **A:** «Salvo que tenga origen legal» introduce una excepción que el art. 60.3 no prevé; la prohibición de representación es absoluta.\n- **B:** «A título individual o en representación» contradice directamente el artículo, que excluye la representación.\n- **C:** «A título individual, en representación o por cuenta ajena» acumula precisamente las dos modalidades que el artículo prohíbe.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "siempre a título individual",
+    "bloque": "«La pertenencia a los órganos de selección será **siempre a título individual**, no pudiendo ostentarse ésta en representación o por cuenta de nadie.» (art. 60.3 TREBEP)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **D** (siempre a título individual).",
+   "options": {
+    "0": "«Salvo que tenga origen legal» introduce una excepción que el art. 60.3 no prevé; la prohibición de representación es absoluta.",
+    "1": "«A título individual o en representación» contradice directamente el artículo, que excluye la representación.",
+    "2": "«A título individual, en representación o por cuenta ajena» acumula precisamente las dos modalidades que el artículo prohíbe.",
+    "3": "La ley emplea el adverbio «siempre» y excluye expresamente tanto la representación como la actuación por cuenta ajena; no admite ninguna excepción."
+   }
+  }
+ },
+ {
+  "id": "4fb37ac0-e5e8-4ae1-862d-a485114a0483",
+  "explanation": "La respuesta correcta es **B** (Servicios especiales).\n\n> «Los funcionarios de carrera serán declarados en situación de **servicios especiales**: [...] c) Cuando sean nombrados para desempeñar puestos o cargos en organismos públicos o entidades, dependientes o vinculados a las Administraciones Públicas que, de conformidad con lo que establezca la respectiva Administración Pública, estén **asimilados en su rango administrativo a altos cargos**.» (art. 87.1.c TREBEP)\n\n**Por qué B es correcta:** El supuesto del enunciado —nombramiento en organismos públicos vinculados a las AAPP con rango asimilado a alto cargo— es uno de los taxativamente recogidos en el art. 87.1 TREBEP como causa de declaración en «servicios especiales».\n\n**Por qué las demás son incorrectas:**\n- **A:** El «servicio activo» es la situación ordinaria del funcionario que ejerce las funciones propias de su cuerpo; no requiere ninguna declaración especial.\n- **C:** El «servicio en otras Administraciones Públicas» (art. 88 TREBEP) se produce cuando el funcionario pasa a prestar servicios en una Administración distinta de la de origen, pero no corresponde al supuesto de alto cargo en organismo dependiente.",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "servicios especiales",
+    "bloque": "«Los funcionarios de carrera serán declarados en situación de **servicios especiales**: [...] c) Cuando sean nombrados para desempeñar puestos o cargos en organismos públicos o entidades, dependientes o vinculados a las Administraciones Públicas que, de conformidad con lo que establezca la respectiva Administración Pública, estén **asimilados en su rango administrativo a altos cargos**.» (art. 87.1.c TREBEP)"
+   },
+   "frame": "select_correct",
+   "intro": "La respuesta correcta es **B** (Servicios especiales).",
+   "options": {
+    "0": "El «servicio activo» es la situación ordinaria del funcionario que ejerce las funciones propias de su cuerpo; no requiere ninguna declaración especial.",
+    "1": "El supuesto del enunciado —nombramiento en organismos públicos vinculados a las AAPP con rango asimilado a alto cargo— es uno de los taxativamente recogidos en el art. 87.1 TREBEP como causa de declaración en «servicios especiales».",
+    "2": "El «servicio en otras Administraciones Públicas» (art. 88 TREBEP) se produce cuando el funcionario pasa a prestar servicios en una Administración distinta de la de origen, pero no corresponde al supuesto de alto cargo en organismo dependiente."
+   }
+  }
+ },
+ {
+  "id": "4fd467ac-a58c-4081-8435-534c3973258d",
+  "explanation": "**La respuesta correcta es B (Objetividad).**\n\n> **Art. 103.1 CE:** \"La Administración Pública sirve con **objetividad** los intereses generales y actúa de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la ley y al Derecho.\"\n\n**Por qué B es correcta:** La Constitución establece expresamente que la Administración sirve con **objetividad** los intereses generales. Es el estándar de conducta que garantiza la imparcialidad de la Administración.\n\n**Por qué las demás son incorrectas:**\n- **A)** Lealtad no figura en el art. 103.1 CE como principio rector de la Administración.\n- **C)** Eficacia sí aparece en el art. 103.1, pero como principio de actuación (\"actúa de acuerdo con los principios de eficacia...\"), no como el término que acompaña al verbo \"sirve\".\n- **D)** Proporcionalidad no figura en el art. 103.1 CE como cualificador del servicio a los intereses generales.\n\n*Fuente: Art. 103 de la Constitución Española de 1978.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 103.1 CE",
+    "texto": "La Administración Pública sirve con **objetividad** los intereses generales y actúa de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la ley y al Derecho.",
+    "bloque": "**Art. 103.1 CE:** \"La Administración Pública sirve con **objetividad** los intereses generales y actúa de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la ley y al Derecho.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es B (Objetividad).**",
+   "options": {
+    "0": "Lealtad no figura en el art. 103.1 CE como principio rector de la Administración.",
+    "1": "La Constitución establece expresamente que la Administración sirve con **objetividad** los intereses generales. Es el estándar de conducta que garantiza la imparcialidad de la Administración.",
+    "2": "Eficacia sí aparece en el art. 103.1, pero como principio de actuación (\"actúa de acuerdo con los principios de eficacia...\"), no como el término que acompaña al verbo \"sirve\".",
+    "3": "Proporcionalidad no figura en el art. 103.1 CE como cualificador del servicio a los intereses generales.\n\n*Fuente: Art. 103 de la Constitución Española de 1978.*"
+   }
+  }
+ },
+ {
+  "id": "4fe585d1-2862-49b5-bb1d-bc9433c02f96",
+  "explanation": "**La respuesta correcta es B (el empresario).**\n\n> **Art. 16.2.b LPRL:** \"El empresario deberá asegurarse de la efectiva ejecución de las actividades preventivas incluidas en la planificación, efectuando para ello un seguimiento continuo de la misma.\"\n\n**Por qué B es correcta:** La LPRL atribuye al empresario la responsabilidad de asegurar la ejecución de las actividades preventivas planificadas, con independencia de que exista un servicio de prevención propio o ajeno.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Inspección de Trabajo controla el cumplimiento de la normativa laboral externamente, pero no asegura la ejecución preventiva interna de la empresa.\n- **C)** La Seguridad Social gestiona prestaciones por contingencias, no interviene en la ejecución de actividades preventivas en el puesto de trabajo.\n\n*Fuente: Art. 16 de la Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales.*",
+  "explanation_data": {
+   "v": 1,
+   "cita": {
+    "ref": "Art. 16.2.b LPRL",
+    "texto": "El empresario deberá asegurarse de la efectiva ejecución de las actividades preventivas incluidas en la planificación, efectuando para ello un seguimiento continuo de la misma.",
+    "bloque": "**Art. 16.2.b LPRL:** \"El empresario deberá asegurarse de la efectiva ejecución de las actividades preventivas incluidas en la planificación, efectuando para ello un seguimiento continuo de la misma.\""
+   },
+   "frame": "select_correct",
+   "intro": "**La respuesta correcta es B (el empresario).**",
+   "options": {
+    "0": "La Inspección de Trabajo controla el cumplimiento de la normativa laboral externamente, pero no asegura la ejecución preventiva interna de la empresa.",
+    "1": "La LPRL atribuye al empresario la responsabilidad de asegurar la ejecución de las actividades preventivas planificadas, con independencia de que exista un servicio de prevención propio o ajeno.",
+    "2": "La Seguridad Social gestiona prestaciones por contingencias, no interviene en la ejecución de actividades preventivas en el puesto de trabajo.\n\n*Fuente: Art. 16 de la Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales.*"
+   }
+  }
+ }
+]

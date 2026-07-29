@@ -174,9 +174,29 @@ describe('podarAperturaConLetra — la reparación', () => {
   // El fallo que la reparación tuvo el 29/07 y que solo apareció comprobándola contra datos
   // reales: el formato §5.1 abre nombrando la opción ENTERA, y recortar el prefijo dejaba su
   // texto suelto, en minúscula y con los asteriscos descolgados. Esas van a revisión humana.
-  it('NO poda cuando la apertura arrastra el texto de la opción (mutilaría la frase)', () => {
+  it('sin saber el texto de la opción, NO poda una apertura con cola (mutilaría la frase)', () => {
     const t = 'La respuesta correcta es **B) Podrá aprobarse el remate en favor de una mejor postura.**'
     expect(podarAperturaConLetra(t)).toBe(t)
+  })
+
+  // Las tres redacciones que usa el banco para lo mismo (medidas el 29/07 sobre las 1.211). La
+  // cola se poda SOLO si es la repetición del enunciado de la opción, que el opositor ya tiene
+  // delante; si fuera razonamiento propio se perdería contenido.
+  it('con el texto de la opción, poda las variantes de redacción del banco', () => {
+    const casos: Array<[string, string]> = [
+      ['La respuesta correcta es **B) 21.**', '21.'],
+      ['**Respuesta correcta: C) Una ordenanza fiscal.**', 'Una ordenanza fiscal.'],
+      ['**La respuesta correcta es A.**', 'El cotejo de las copias aportadas por el interesado.'],
+      ['La respuesta correcta es **B) Podrá aprobarse el remate.**', 'Podrá aprobarse el remate.'],
+    ]
+    for (const [intro, textoCorrecta] of casos) {
+      expect(podarAperturaConLetra(intro, { textoCorrecta })).toBeUndefined()
+    }
+  })
+
+  it('NO poda si tras la letra hay RAZONAMIENTO, no el enunciado de la opción', () => {
+    const t = 'La respuesta correcta es la **C** porque el precepto exige además la accesibilidad.'
+    expect(podarAperturaConLetra(t, { textoCorrecta: 'Al menos con un área higiénico-sanitaria accesible' })).toBe(t)
   })
 
   it('NO poda una mención en MEDIO del párrafo (tiene contexto alrededor)', () => {
