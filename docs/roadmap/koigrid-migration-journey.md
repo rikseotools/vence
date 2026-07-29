@@ -1900,3 +1900,76 @@ That is ~15 % below this morning's 615/462/838 — consistent with a busier hour
 **Housekeeping:** the temporary storage key we minted for this test has been deleted
 (`DELETE /storage/keys/{id}` → 200, list back to empty). The POC app was resumed for the measurements and
 returned to `paused`. Production video remains on `s3.koigrid.com` and is serving normally.
+
+---
+
+## 📊 UPDATE 2026-07-29 (16:10 UTC) — **on whole-page load you are at parity with AWS.** The TTFB ratio we have been quoting all week oversells the gap
+
+No new release since 15:20 (`llms.txt` byte-identical, md5 `8ff803a88c`, 865 lines; 189 paths). So this is a
+measurement update plus a re-check of what is open.
+
+### ⭐ The new measurement: we had been measuring the wrong thing
+
+Every head-to-head in this report so far quotes **TTFB** (`time_starttransfer`). Today we also measured
+**`time_total`** — the whole document on the wire, which is what a user actually waits for — and checked that
+the payloads are comparable so it is a fair fight:
+
+| Path | AWS total / size | Koigrid total / size | ratio |
+|---|---|---|---|
+| `/` | **105 ms** / 754 KB | **107 ms** / 704 KB | **1.02×** |
+| `/leyes` | **136 ms** / 2 330 KB | **157 ms** / 2 269 KB | **1.15×** |
+| `/leyes/constitucion-espanola` | **91 ms** / 420 KB | **100 ms** / 408 KB | **1.10×** |
+
+**That is parity.** Sizes match within 2–3 % (Koigrid's are marginally *smaller*), so this is like-for-like:
+one 2 GB free-tier replica against CloudFront + ALB + 8 Fargate tasks.
+
+For contrast, the same measurement on **2026-07-25** — before HTML edge caching worked — was Koigrid
+**523 ms** home and **668 ms** `/leyes` against AWS 78 / 128 ms, i.e. **5–6× worse**. A3 did not just improve
+a number; it removed the difference.
+
+**Why the TTFB ratio looks worse than the experience:** TTFB is a small absolute base (≈40 ms vs ≈60 ms), so
+a 20 ms edge-routing difference reads as "1.5× slower" while being invisible next to 100 ms of transfer.
+**If you are ever comparing yourselves to CloudFront in marketing, use whole-page load.** Your own numbers
+are much better than the metric you have been letting us quote at you.
+
+### The honest picture on TTFB: three runs today, and the spread matters more than any one of them
+
+| Run (UTC) | `/` | `/leyes` | `/constitucion` | `/aux-admin-estado` |
+|---|---|---|---|---|
+| ~06:00 | 1.97× | 1.54× | 1.37× | **0.81×** |
+| 15:20 | 2.28× | 2.22× | 2.11× | 1.12× |
+| 16:10 | **1.35×** | **1.44×** | 1.88× | **0.99×** |
+
+Same app, same method (15 samples, alternating hosts, medians). **The run-to-run spread is as large as the
+gap we are trying to measure**, so the fair statement is *"roughly 1.4–1.9× on TTFB for light documents, and
+a tie on the heavy one"* — not any single row. We are flagging this because we have quoted single runs at you
+before and it was not rigorous of us.
+
+Capacity is stable across the day (1 replica, 2 GB, free plan, same load test):
+
+| | 06:00 | 15:20 | 16:10 |
+|---|---|---|---|
+| `/constitucion` @ conc 15 | 615 rps | 519 rps | **523 rps** |
+| `/` @ conc 15 | 462 rps | 385 rps | **412 rps** |
+| `/constitucion` @ conc 50 | 838 rps | 712 rps | **658 rps** |
+
+0 % errors everywhere, never saturated, CPU 0 %. **A3 verified again: 3/3 `HIT` on all three documents.**
+
+### 🔴 Still open, re-checked just now
+
+- **S1 (storage) — unchanged, and it is not a propagation delay.** We minted a *second* fresh key
+  (`POST /storage/keys` → `endpoint: https://storage.koigrid.com`, correct) and it still gets **`AccessDenied`**
+  on `ListObjectsV2 s3://vence-videos/`. `GET /buckets` still returns **`{"buckets":[]}`**. Key deleted after
+  the test. **We remain on `s3.koigrid.com` in production, which continues to serve normally.** The unblock is
+  one action on your side: attach the bucket to our org, or hand us an authorized key.
+- **N1 (`scale-out`)** — untouched since the 5th reproduction this morning; no reason to expect a change with
+  no release in between.
+- **A4 (`maintenance_work_mem` 64 MB)** — unchanged.
+
+### What we would ask for, in one line each
+
+1. **Attach `vence-videos` to our organization** — it is the only thing blocking a customer-visible change you
+   asked us to make.
+2. **Publish whole-page numbers, not TTFB.** You are at parity and the metric you are being judged on hides it.
+3. **A dated changelog or a version header** (asked this morning, repeating because it would have saved this
+   session two full re-test rounds: we cannot tell a no-op release from a real one without re-running everything).
