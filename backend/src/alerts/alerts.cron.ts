@@ -35,6 +35,13 @@ import {
   NOTIFICATION_ADAPTER,
   type NotificationAdapter,
 } from './notification-adapter';
+import {
+  LAST_FIRED_QUERY,
+  isInCooldown,
+  mergeLastFired,
+  parseLastFired,
+  type LastFiredRow,
+} from './alert-cooldown';
 
 /**
  * Rules engine de alertas activas.
@@ -47,11 +54,15 @@ import {
  *   3. Si dispara y NO está en cooldown, llama `buildNotification(rows)`
  *      y envía vía `NotificationAdapter.send()`.
  *
- * Cooldown: tracking in-memory de `lastFiredAt` por regla. Cuando el
- * proceso se reinicia (deploy ECS), todos los cooldowns se resetean —
- * aceptable porque el primer firing tras reinicio es señal útil
- * ("¿pasó algo durante el reinicio?"). Si crece a multi-task, mover el
- * tracking a Redis con TTL == cooldownMin.
+ * Cooldown: `lastFiredAt` por regla, PERSISTIDO en `observable_events`
+ * (T-258). Hasta el 29/07 vivía solo en memoria del proceso y cada reinicio
+ * —cada deploy— lo borraba, así que el canal de email se volvía spam:
+ * `canary_pdf_queue_failed` disparó 37 veces en 31 h con `cooldownMin: 60`,
+ * cuando el techo teórico eran 31. Ahora se hidrata por tick desde los propios
+ * `alert_fired` que este cron ya escribe, lo que además lo hace correcto con
+ * varias instancias (el caso que esta cabecera dejaba pendiente para Redis)
+ * sin infraestructura nueva. Fail-open: si la consulta falla se sigue con el
+ * Map en memoria, es decir, el comportamiento de antes del cambio.
  *
  * El propio cron emite `cron_run` a observable_events — meta-observability
  * (si las alertas dejan de funcionar, lo veremos en queries).
@@ -94,6 +105,10 @@ export class AlertsCron {
     let fired = 0;
     let evaluated = 0;
     let skipped = 0;
+    // De los silenciados, cuántos lo están GRACIAS a la persistencia (el proceso
+    // no tenía memoria de ese disparo). Es la medida directa del spam evitado:
+    // sin T-258 estos habrían mandado correo.
+    let skippedPorPersistencia = 0;
 
     // Detectar ventana de deploy/churn UNA vez por tick (no por regla).
     // Fail-open: si la detección falla, la ventana queda inactiva → no se
@@ -117,17 +132,31 @@ export class AlertsCron {
       processStartedAtMs: this.heartbeatRegistry.getProcessStartedAtMs(),
     };
 
+    // Cooldown persistido (T-258). Se hidrata desde los `alert_fired` que este
+    // mismo cron escribe, para que un reinicio del proceso no reabra el grifo.
+    // Fail-open: si la consulta falla nos quedamos con el Map en memoria, que
+    // es exactamente el comportamiento anterior al cambio.
+    let cooldownHidratado = false;
+    let lastFired = new Map(this.lastFiredAt);
+    try {
+      const lfResult = await this.readDb.execute(LAST_FIRED_QUERY);
+      const lfRows = (Array.isArray(lfResult) ? lfResult : []) as LastFiredRow[];
+      lastFired = mergeLastFired(this.lastFiredAt, parseLastFired(lfRows));
+      cooldownHidratado = true;
+    } catch (err) {
+      this.logger.warn(
+        `Hidratación del cooldown falló (fail-open, se usa el estado en memoria): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
     for (const rule of ALERT_RULES) {
       evaluated++;
       try {
-        // Cooldown check
-        const last = this.lastFiredAt.get(rule.name);
-        if (last !== undefined) {
-          const elapsedMin = (Date.now() - last) / 60_000;
-          if (elapsedMin < rule.cooldownMin) {
-            skipped++;
-            continue;
-          }
+        // Cooldown check — contra el estado hidratado (memoria ∪ BD), no solo memoria.
+        if (isInCooldown(lastFired.get(rule.name), rule.cooldownMin, Date.now())) {
+          skipped++;
+          if (!this.lastFiredAt.has(rule.name)) skippedPorPersistencia++;
+          continue;
         }
 
         // Ejecutar query. Regla de pool/pooler → primario (monitoriza la instancia
@@ -169,6 +198,7 @@ export class AlertsCron {
         });
 
         this.lastFiredAt.set(rule.name, Date.now());
+        lastFired.set(rule.name, Date.now());
         fired++;
         this.logger.warn(
           `Regla '${rule.name}' [${rule.severity}] DISPARADA: ${partial.title}`,
@@ -230,6 +260,11 @@ export class AlertsCron {
         rulesEvaluated: evaluated,
         rulesFired: fired,
         rulesSkippedCooldown: skipped,
+        // T-258: el silencio también se mide. Sin esto, "no dispara" y "está
+        // callado a propósito" son indistinguibles desde fuera — y un motor de
+        // alertas que se calla sin dejar rastro es el fallo de T-162 otra vez.
+        rulesSkippedByPersistedCooldown: skippedPorPersistencia,
+        cooldownHydrated: cooldownHidratado,
         deployWindowActive: deployWindow.active,
         deployWindowReasons: deployWindow.reasons,
       },

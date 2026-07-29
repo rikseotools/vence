@@ -1779,7 +1779,14 @@ export const RULE_CANARY_PDF_QUEUE_FAILED: AlertRule<{
       fingerprint: 'canary_pdf_queue_failed',
     };
   },
-  cooldownMin: 60,
+  // 24 h y no 1 h (T-258, 29/07/2026): esta avería es CRÓNICA y está fichada —
+  // la cola de PDFs no tiene consumidor automático ([T-159]) y la
+  // pre-generación está parada por la cuota de vCPU de Fargate ([T-086]).
+  // Avisar cada hora de algo que nadie puede arreglar hoy no acelera el
+  // arreglo: entierra las alertas que sí importan (lección [T-047]/[T-113]).
+  // Medido: 37 correos en 31 h. Sigue avisando a diario mientras dure, y
+  // cuando T-159 se cierre esto vuelve a su cadencia normal.
+  cooldownMin: 1440,
 };
 
 /**
