@@ -16,6 +16,7 @@ import {
   getPriceTier,
   resolvePriceForAccount,
   getConfiguredAccounts,
+  STRIPE_ACCOUNTS,
   listSubscriptionsAllAccounts,
   DEFAULT_ACCOUNT,
 } from '@/lib/stripe'
@@ -152,6 +153,16 @@ const sub = (id: string, extra: Record<string, unknown> = {}) => ({
   created: 1_700_000_000,
   items: { data: [{ price: { recurring: { interval: 'month', interval_count: 1 } } }] },
   ...extra,
+})
+
+describe('STRIPE_ACCOUNTS (cuentas conocidas)', () => {
+  it('lista TODAS las cuentas conocidas, estén configuradas o no', () => {
+    // El chequeo de salud del webhook compara conocidas vs configuradas para
+    // delatar una cuenta sin vigilar; si esta lista se queda corta, esa cuenta
+    // desaparece del radar en silencio.
+    delete process.env.STRIPE_SECRET_KEY_NILA
+    expect([...STRIPE_ACCOUNTS]).toEqual(['manuel', 'nila'])
+  })
 })
 
 describe('getConfiguredAccounts', () => {

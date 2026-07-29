@@ -57,9 +57,15 @@ export class CheckWebhookHealthCron {
       // Emit doble: cron_run liveness siempre + webhook_unhealthy si aplica.
       // La separación es deliberada para que dashboards puedan medir
       // healthy_rate sin confundir con liveness del cron.
+      //
+      // Tres severidades desde el multi-cuenta (29/07/2026):
+      //   error → alguna cuenta LEGIBLE por encima del umbral (pagos sin aplicar)
+      //   warn  → todas las legibles bien, pero alguna cuenta conocida NO se
+      //           pudo mirar (sin secret key o error de API) = punto ciego
+      //   info  → todas las cuentas conocidas vistas y sanas
       this.observability.emitFireAndForget({
         source: 'fargate',
-        severity: result.healthy ? 'info' : 'error',
+        severity: !result.healthy ? 'error' : result.degraded ? 'warn' : 'info',
         eventType: result.healthy ? 'cron_run' : 'webhook_unhealthy',
         endpoint: 'check-webhook-health',
         durationMs: Date.now() - startedAt,
@@ -70,6 +76,14 @@ export class CheckWebhookHealthCron {
           pending_pct: result.pendingPct,
           threshold_pct: result.thresholdPct,
           healthy: result.healthy,
+          degraded: result.degraded,
+          unhealthy_accounts: result.unhealthyAccounts.join(',') || null,
+          unmonitored_accounts:
+            result.accounts
+              .filter((a) => !a.readable)
+              .map((a) => `${a.account}: ${a.error ?? 'sin leer'}`)
+              .join(' | ') || null,
+          accounts: result.accounts,
           oldest_pending_type: result.oldestPendingType,
           oldest_pending_age_s: result.oldestPendingAgeS,
         },

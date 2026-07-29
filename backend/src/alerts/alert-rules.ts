@@ -1004,6 +1004,7 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
   total: number;
   oldestType: string | null;
   oldestAgeS: number | null;
+  unhealthyAccounts: string | null;
 }> = {
   name: 'webhook_unhealthy',
   severity: 'error',
@@ -1013,7 +1014,8 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
       (metadata->>'pending_events_1h')::int AS pending,
       (metadata->>'total_events_1h')::int AS total,
       metadata->>'oldest_pending_type' AS "oldestType",
-      (metadata->>'oldest_pending_age_s')::int AS "oldestAgeS"
+      (metadata->>'oldest_pending_age_s')::int AS "oldestAgeS",
+      metadata->>'unhealthy_accounts' AS "unhealthyAccounts"
     FROM observable_events
     WHERE event_type = 'webhook_unhealthy'
       AND ts > NOW() - INTERVAL '30 minutes'
@@ -1023,9 +1025,13 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
   shouldFire: (rows) => rows.length > 0,
   buildNotification: (rows) => {
     const r = rows[0];
+    // Las cuentas se evalúan por separado: el fallo puede ser de UNA sola
+    // (cada cuenta tiene su propio signing secret). Nombrarla ahorra el paso
+    // de adivinar en qué dashboard mirar.
+    const cuentas = r.unhealthyAccounts ? ` [cuenta(s): ${r.unhealthyAccounts}]` : '';
     return {
-      title: `Webhook Stripe unhealthy: ${r.pending}/${r.total} eventos pending (${r.pendingPct}%)`,
-      body: `El cron check-webhook-health detectó que ${r.pendingPct}% de los eventos Stripe en la última hora siguen pending. Investigar inmediatamente:\n\n  - Evento más antiguo pending: ${r.oldestType ?? 'unknown'} (${r.oldestAgeS ?? '?'}s)\n  - Stripe Dashboard → Webhooks → /api/stripe/webhook → tab "Webhook attempts"\n\nIncidente origen 2026-05-26: webhook respondía 400 a todos los eventos por un bug en withErrorLogging consumiendo el raw body. Andrea pagó 20€ sin activarse.`,
+      title: `Webhook Stripe unhealthy${cuentas}: ${r.pending}/${r.total} eventos pending (${r.pendingPct}%)`,
+      body: `El cron check-webhook-health detectó que ${r.pendingPct}% de los eventos Stripe en la última hora siguen pending${cuentas}. Investigar inmediatamente:\n\n  - Evento más antiguo pending: ${r.oldestType ?? 'unknown'} (${r.oldestAgeS ?? '?'}s)\n  - Stripe Dashboard de la cuenta afectada → Webhooks → /api/stripe/webhook → tab "Webhook attempts"\n  - Cada cuenta tiene su propio webhook secret (STRIPE_WEBHOOK_SECRET / _NILA): un fallo de firma afecta solo a la suya.\n\nIncidente origen 2026-05-26: webhook respondía 400 a todos los eventos por un bug en withErrorLogging consumiendo el raw body. Andrea pagó 20€ sin activarse.`,
       metadata: {
         pendingPct: r.pendingPct,
         pending: r.pending,

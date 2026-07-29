@@ -209,6 +209,9 @@ export function getWebhookAccounts(): Array<{ account: StripeAccount; secret: st
 // cancel_at_period_end) → MRR 0€, ARR 0€, renovaciones 0€ y churn saturado,
 // mientras Nila tenía 53 subs vivas (~747€/mes) invisibles para el panel.
 
+/** Todas las cuentas CONOCIDAS, estén o no configuradas en este entorno. */
+export const STRIPE_ACCOUNTS: readonly StripeAccount[] = ALL_ACCOUNTS
+
 /** Cuentas con secret key configurada (las que se pueden leer server-side). */
 export function getConfiguredAccounts(): StripeAccount[] {
   return ALL_ACCOUNTS.filter(a => !!process.env[ACCOUNT_ENV[a].secretKey])
