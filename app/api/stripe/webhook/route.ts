@@ -473,15 +473,28 @@ async function handleCheckoutSessionCompleted(
             console.log('✅ Subscription record creado/actualizado')
           }
 
-          // Aplicar cupón de fidelidad inicial para que la 1a renovación tenga descuento
-          try {
-            const { applyInitialLoyaltyCoupon } = await import('@/lib/api/loyalty')
-            const loyaltyResult = await applyInitialLoyaltyCoupon(subscription.id, sc)
-            if (loyaltyResult.applied) {
-              console.log(`🎁 [Loyalty] Cupón inicial ${loyaltyResult.couponId} aplicado en checkout para ${subscription.id}`)
+          // Aplicar cupón de fidelidad inicial para que la 1a renovación tenga descuento.
+          //
+          // EXCEPCIÓN: los precios heredados ya SON el descuento. A quien le mantenemos su
+          // precio anterior (18 €/mes en el caso que estrenó esto) se le está reconociendo
+          // ya su antigüedad en el importe; encima el 10 % de fidelidad lo dejaría en
+          // 16,20 €, que no es lo pactado con esa persona ni con el resto. El precio lo
+          // marca `precio_heredado` en la metadata del price (lo pone
+          // scripts/stripe/precio-heredado.cjs).
+          const esPrecioHeredado =
+            subscription.items?.data?.[0]?.price?.metadata?.tipo === 'precio_heredado'
+          if (esPrecioHeredado) {
+            console.log('🎟️ Precio heredado: se omite el cupón de fidelidad (el precio ya lo incluye)')
+          } else {
+            try {
+              const { applyInitialLoyaltyCoupon } = await import('@/lib/api/loyalty')
+              const loyaltyResult = await applyInitialLoyaltyCoupon(subscription.id, sc)
+              if (loyaltyResult.applied) {
+                console.log(`🎁 [Loyalty] Cupón inicial ${loyaltyResult.couponId} aplicado en checkout para ${subscription.id}`)
+              }
+            } catch (loyaltyErr) {
+              console.error('⚠️ [Loyalty] Error aplicando cupón inicial:', loyaltyErr)
             }
-          } catch (loyaltyErr) {
-            console.error('⚠️ [Loyalty] Error aplicando cupón inicial:', loyaltyErr)
           }
 
           // Programa de embajadores: si este pagador venía de un referido pendiente, calificarlo

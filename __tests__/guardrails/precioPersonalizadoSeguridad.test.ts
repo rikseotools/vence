@@ -51,6 +51,15 @@ describe('seguridad del precio personalizado', () => {
     expect(bloque).toMatch(/catch/)
   })
 
+  it('un precio heredado NO recibe encima el cupón de fidelidad (sería doble descuento)', () => {
+    // El precio heredado YA reconoce la antigüedad en el importe. Con el 10 % encima,
+    // los 18 € pactados se quedarían en 16,20 €, que no es lo dicho ni a esa persona ni
+    // al resto.
+    expect(WEBHOOK).toContain("metadata?.tipo === 'precio_heredado'")
+    const bloque = WEBHOOK.slice(WEBHOOK.indexOf('esPrecioHeredado'), WEBHOOK.indexOf('applyInitialLoyaltyCoupon') + 200)
+    expect(bloque).toMatch(/if \(esPrecioHeredado\)[\s\S]*\} else \{/)
+  })
+
   it('la migración garantiza UNA sola oferta viva por persona', () => {
     const sqlMig = leer('supabase/migrations/20260729_user_price_offers.sql')
     expect(sqlMig).toMatch(/CREATE UNIQUE INDEX[\s\S]*user_price_offers \(user_id\)[\s\S]*WHERE redeemed_at IS NULL AND revoked_at IS NULL/)
