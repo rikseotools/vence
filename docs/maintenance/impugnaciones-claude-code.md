@@ -1,5 +1,18 @@
 # Manual: Resolver Impugnaciones con Claude Code
 
+> 👁️ **Vigía (29/07/2026) — `node scripts/vigia.cjs feedback` / `impugnaciones`.** Avisa de lo que
+> ENTRA en vez de mirar la cola cada rato: con ~7 feedbacks al día, revisar a intervalos fijos son
+> 72 comprobaciones diarias en vacío y aun así llegas tarde. Imprime una línea por novedad
+> (`CLASE|id|tipo|email|plan|texto`) y distingue dos cosas que **no se atienden igual**:
+> **NUEVO** (sin responder) y **REPLICA** (te han contestado). La réplica es la que importa: cuando
+> respondemos, el hilo se cierra como resuelto y el mensaje siguiente de la persona **desaparece de
+> toda lista de pendientes**. El 29/07 eso dejó a una usuaria tres horas esperando mientras
+> abandonaba cuatro pagos. En impugnaciones el equivalente es la **apelación** (con la guarda de no
+> confundirla con la conformidad automática *«Usuario de acuerdo con la respuesta del administrador»*).
+> Con `--loop [--cada 600]` no repite lo ya avisado: es lo que se lanza en segundo plano al empezar
+> una sesión de cola. **Vive solo mientras dure la sesión** — convertirlo en alerta permanente es
+> [T-288].
+
 ## Resumen
 
 Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Code como agente. Es más rápido que el proceso manual y permite verificar artículos directamente en la base de datos.

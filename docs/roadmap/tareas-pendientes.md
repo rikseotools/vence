@@ -158,6 +158,18 @@
 
 
 
+### [T-288] 🟡 [ABIERTO 29/07] El vigía de feedback e impugnaciones muere con la sesión: convertirlo en alerta permanente
+
+- **Qué hay hoy:** `scripts/vigia.cjs feedback|impugnaciones` (documentado en el manual de feedback y en el de impugnaciones). Avisa de lo NUEVO y, sobre todo, de las **RÉPLICAS**: cuando respondemos, el hilo se cierra como resuelto y el siguiente mensaje de la persona desaparece de toda lista de pendientes. En impugnaciones, el equivalente son las apelaciones.
+- **La limitación:** se lanza a mano en una sesión y **se apaga al terminarla**. Si nadie tiene una sesión abierta, nadie se entera — que es justo cuando más falta hace (noche, fin de semana).
+- **Lo que hay que hacer:** una regla de alerta en `backend/src/alerts/alert-rules.ts`, junto al resto. Dos disparos distintos, porque son dos fallos distintos:
+  1. **feedback sin responder** más de N horas (empezar por 12, medir antes de bajarlo);
+  2. **réplica sin atender** — el último mensaje es del usuario, es posterior a nuestra respuesta y lleva más de N horas. Esta es la importante: hoy no la ve nadie, ni el badge ni ninguna lista.
+- **Ojo con la fatiga:** el canal manda ya ~64 correos al día ([T-272]). Si esto entra sin arreglar aquello, se pierde entre el ruido. Mirar T-272 antes de elegir severidad.
+- **Datos para calibrar (medidos el 29/07):** llegan **6,6 feedbacks/día** (0,27/hora), el hueco medio entre uno y otro es de **166 minutos** y las horas punta son 9h, 11h, 16h, 19h y 20h.
+- **Relacionadas:** [T-247] (feedback incontestable, mismo terreno), [T-272] (fatiga del canal de alertas).
+- **Origen:** el 29/07 una usuaria estuvo tres horas esperando —abandonando cuatro pagos— porque su réplica quedó invisible al cerrarse el hilo.
+
 ### [T-287] 🟠 [ABIERTO 29/07] Canary del precio de fidelidad: nadie vigila que quien tiene una oferta pueda pagarla
 
 - **Por qué existe:** el 29/07 a una usuaria (Rocío, feedback `48f1503a`) se le creó un precio de fidelidad y estuvo **tres horas sin poder comprar**. La página cargaba, así que se fue al checkout público, vio la tarifa nueva y **abandonó cuatro pagos**. La causa era invisible desde fuera: `apiFetch` mandaba POST a un endpoint GET y devolvía **405** en silencio. El deploy estaba verde, los tests pasaban y la única señal fue su mensaje.
