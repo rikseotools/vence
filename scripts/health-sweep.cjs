@@ -1013,6 +1013,28 @@ async function main() {
     }
   } catch (e) { console.warn('⚠️ drift barajado no evaluado:', String(e.message || e).slice(0, 120)); }
 
+  // ── Citas NO literales: la explicación atribuye al artículo algo que no dice ──
+  // El criterio ya existía y estaba compartido (`citaNoLiteral` en validar-explicacion.cjs, con
+  // trinquete en criterioCitaUnico.test.ts) y el barrido del banco también — lo que faltaba era
+  // que llegara al badge en vez de vivir en una ficha. Subproceso porque compara la cita contra el
+  // TEXTO del artículo fila a fila: eso no cabe en un `WHERE`.
+  //
+  // Solo se reportan las AJENAS (solape <0.5: el artículo no habla de eso → cita inventada o
+  // pregunta mal vinculada). Las `retocadas` —el artículo dice lo mismo y la cita solo está
+  // reformateada— son 904 y NO son defecto: meterlas dejaría el badge gritando para siempre.
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('node scripts/impugnaciones/barrido-citas.cjs --json', {
+      cwd: process.cwd(), encoding: 'utf8', env: process.env, timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const citas = JSON.parse(out.trim().match(/\{[\s\S]*\}$/)[0]);
+    if (citas.ajenas > 0) {
+      add('content', citas.ajenas_vistas > 0 ? 'error' : 'warn', null, 'cita_no_literal',
+        `${citas.ajenas} pregunta(s) visibles cuya cita en blockquote NO aparece en el artículo vinculado (${citas.ajenas_vistas} ya vistas por usuarios) — cita inventada o pregunta mal vinculada`,
+        { ajenas: citas.ajenas, ajenas_vistas: citas.ajenas_vistas, dudosas: citas.dudosas, retocadas_no_defecto: citas.retocadas, sample: citas.sample });
+    }
+  } catch (e) { console.warn('⚠️ barrido de citas no evaluado:', String(e.message || e).slice(0, 120)); }
+
   // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──
   // Punto ciego de over-inclusion (mira 1 tema vs epígrafe) y de huecos (los temas rebosan).
   // Umbral: ley entera/NULL compartida por >1 tema, o ≥20 arts solapados (1-10 = cross-cutting legítimo).

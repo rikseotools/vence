@@ -44,7 +44,12 @@ const hasKind = (txt: string, kind: string) =>
 // que nadie lea un badge a cero como "no hay ninguna". Promoverlos al @Cron exige un paquete
 // compartido con `lib/shuffle/*` — reimplementar el detector en el backend crearía la segunda
 // copia de patrones que este módulo lleva cuatro calibraciones evitando.
-const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed', 'shuffle_narrativa_letra_clavada'])
+// `cita_no_literal` (29/07) es CLI-only por una razón distinta a las de shuffle: no es que el
+// backend no pueda importar la lib, es que el criterio compara la CITA contra el TEXTO del artículo
+// fila a fila —44.370 explicaciones—, y eso no cabe en un `WHERE`. Se emite desde el subproceso
+// `barrido-citas.cjs --json`. Consecuencia asumida y documentada en el runbook: el badge no se
+// refresca solo; un cero ahí significa «nadie ha corrido el barrido».
+const CLI_ONLY_KINDS = new Set(['shuffle_safe_regressed', 'shuffle_narrativa_letra_clavada', 'cita_no_literal'])
 
 // Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano
 // (y como puerta antes de una campaña), NO el barrido nocturno. Se midieron sobre las 123 landings

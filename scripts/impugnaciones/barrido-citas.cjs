@@ -9,6 +9,7 @@
 // Uso:
 //   node scripts/impugnaciones/barrido-citas.cjs                 # informe (top 40 por tráfico)
 //   node scripts/impugnaciones/barrido-citas.cjs --out f.json    # + volcado completo
+//   node scripts/impugnaciones/barrido-citas.cjs --json           # resumen para health-sweep
 //   node scripts/impugnaciones/barrido-citas.cjs --incluir-elipsis
 //     (por defecto se EXCLUYEN las citas con "…"/"...": el recorte impide comparar texto contiguo,
 //      así que darían falso positivo. Con el flag se incluyen, marcadas `elipsis:true`, para revisión
@@ -259,6 +260,24 @@ if (require.main !== module) {
     const ajenas = hallazgos.filter((h) => h.familia === 'ajena');
     const dudosas = hallazgos.filter((h) => h.familia === 'dudosa');
     const retocadas = hallazgos.filter((h) => h.familia === 'retocada');
+
+    // Modo máquina para el barrido de salud: SOLO el recuento y una muestra de las AJENAS, que
+    // son las únicas accionables. Las `retocadas` (el artículo dice lo mismo, la cita solo está
+    // reformateada) no son defecto y meterlas en el badge lo dejaría gritando para siempre —
+    // exactamente lo que este repo lleva documentado que hace que se deje de mirar una bandeja.
+    if (process.argv.includes('--json')) {
+      process.stdout.write(JSON.stringify({
+        analizadas: filas.length,
+        no_literales: hallazgos.length,
+        ajenas: ajenas.length,
+        ajenas_vistas: ajenas.filter((h) => h.intentos > 0).length,
+        dudosas: dudosas.length,
+        retocadas: retocadas.length,
+        sample: ajenas.slice(0, 10).map((h) => ({ id: h.question_id, articulo: h.articulo, intentos: h.intentos, solape: h.solape })),
+      }));
+      await sql.end();
+      return;
+    }
 
     console.log('═══ BARRIDO DE CITAS (banco visible) ═══');
     console.log(`Explicaciones con blockquote analizadas : ${filas.length}`);

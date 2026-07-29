@@ -356,6 +356,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'la bandera FEATURE_SHUFFLE_OPTIONS está activa y aun así NINGUNA respuesta reciente guarda `option_order`. Son dos escenarios muy distintos y hay que distinguirlos ANTES de tocar nada: (1) el servidor no está barajando de verdad → el piloto es inerte y los datos que se estén usando para juzgarlo no valen; (2) el servidor SÍ baraja y la permutación no vuelve al guardar → el servidor corrige la posición MOSTRADA contra la clave ORIGINAL y está registrando FALLOS FALSOS en silencio (la fila queda coherente consigo misma, así que después es indetectable). Para distinguir: `npx tsx scripts/sim/sim-shuffle-extremo-a-extremo.ts <position_type>` ejecuta la función real de servir con las banderas de producción y dice si devuelve preguntas permutadas; y `observable_events` con event_type=shuffle_options_served trae el orden por pregunta que se sirvió de verdad. Si es el escenario (2): APAGAR la bandera primero (SSM + force-new-deployment, ECS lee los secretos al arrancar) y diagnosticar después; ese daño NO se puede reparar sin el evento de servido, porque la permutación usa un nonce aleatorio por exposición. Caso raíz 28/07/2026: el piloto de Valencia llevaba 8 horas encendido con option_order a NULL en el 100 % de las filas y nada avisó. NUNCA reactivar el piloto sin comprobar en la primera hora que option_order deja de estar a NULL.',
   },
+  cita_no_literal: {
+    title: 'La cita en blockquote no aparece en el artículo vinculado',
+    triggerPhrase: 'revisa las citas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run citas:barrido',
+    claudeHace:
+      'la explicación presenta como CITA LITERAL (blockquote) un texto que no está en el artículo vinculado. Cada hallazgo es una de dos cosas, y las dos son defecto: (a) cita inventada o parafraseada —el caso típico: un resumen con paréntesis vendido como texto de la ley—, o (b) la pregunta está MAL VINCULADA y la cita es de otro artículo. Solo se reportan las AJENAS (solape <0.5); las `retocadas` (el artículo dice lo mismo y la cita solo está reformateada) no son defecto y quedan fuera a propósito. Para cada una: leer el artículo REAL —contra el BOE, no contra nuestra copia— y decidir si se corrige la cita o se re-vincula el artículo; si se re-vincula, comprobar antes el impacto de colocación (el artículo decide en qué tema aparece la pregunta). Reescribir la explicación con `scripts/aplicar-explicacion.ts` y pasarla por `validar-explicacion.cjs`, que es el mismo criterio que produjo el hallazgo. NUNCA auto-corregir la clave ni dar por buena la cita porque "suene" al artículo. Medido el 29/07: 1.032 no literales de 17.470 que pretenden serlo, pero solo 15 AJENAS (8 ya vistas por usuarios).',
+  },
   enunciado_norma_sin_nombrar: {
     title: 'Enunciado que cita un artículo de una norma que no nombra',
     triggerPhrase: 'revisa los enunciados sin norma',

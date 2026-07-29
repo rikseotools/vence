@@ -191,3 +191,46 @@ marcada, la deja para revisión humana en vez de escribir media reparación.
 > de género salía *«de la Decreto 225/2014»*, y sin la condición de cierre la sustitución mordía el
 > «Ley» de *«de la **Ley** 13/2015»* y escribía *«Ley 13/2015 13/2015»*. Las dos están fijadas en
 > `__tests__/health/repararEnunciadoSinNorma.test.ts`.
+
+## La cita del blockquote no está en el artículo (`cita_no_literal`)
+
+**Frase-gatillo:** *"revisa las citas"*.
+
+La explicación presenta como **cita literal** algo que el artículo vinculado no dice. Cada hallazgo
+es una de dos cosas, y las dos son defecto:
+
+- **Cita inventada o parafraseada** — el caso típico es un resumen con paréntesis vendido como texto
+  de la ley: *«La oferta se presentará en un único sobre (cuando no haya criterios evaluables
+  mediante juicio de valor) o en dos sobres (cuando sí los haya)»*.
+- **Pregunta mal vinculada** — la cita es correcta, pero de otro artículo.
+
+**Por qué importa más de lo que parece:** el **43 %** de lo impugnado y aceptado tiene la cita no
+literal, frente al 30,7 % del banco (medido en [T-207]). Y no llega como queja `no_literal`, sino
+como `otro`, `tema_incorrecto` o `respuesta_incorrecta`: **la cita rota es un marcador de pregunta
+enferma**, no un defecto de estilo.
+
+```bash
+npm run citas:barrido                      # informe con desglose por gravedad
+npm run citas:barrido -- --out hallazgos.json
+npm run citas:barrido -- --incluir-elipsis # las que llevan «…», no concluyentes
+```
+
+**Solo se reportan las AJENAS** (solape <0,5: el artículo no habla de eso). Las *retocadas* —el
+artículo dice lo mismo y la cita solo está reformateada— son la inmensa mayoría (904 de 1.032 el
+29/07) y **no son defecto**: incluirlas dejaría el badge gritando todas las noches, que es como se
+consigue que se deje de mirar.
+
+**Medido el 29/07:** 44.370 explicaciones con blockquote · 17.470 pretenden ser cita literal · 1.032
+no lo son · **15 AJENAS, 8 de ellas ya vistas por usuarios**. La cifra de 13.424 que arrastraba
+[T-207] es de un criterio anterior y quedó desfasada tras la campaña de julio.
+
+**Cómo se atiende cada una:** leer el artículo **contra el BOE**, no contra nuestra copia (puede ser
+la copia la que esté incompleta). Después decidir si se corrige la cita o se re-vincula el artículo
+— y si se re-vincula, comprobar antes el impacto de colocación, porque el artículo decide en qué
+tema aparece la pregunta. La explicación se reescribe con `scripts/aplicar-explicacion.ts` y se pasa
+por `validar-explicacion.cjs`, que aplica **el mismo criterio** que produjo el hallazgo. NUNCA
+auto-corregir la clave ni dar por buena una cita porque «suene» al artículo.
+
+> ⚠️ Este hallazgo **no lo refresca el `@Cron` nocturno**: compara la cita contra el texto del
+> artículo fila a fila, así que se emite desde el CLI (`barrido-citas.cjs --json`). Un cero en el
+> badge significa «nadie ha corrido el barrido», no «no hay ninguna».
