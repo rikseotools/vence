@@ -1085,6 +1085,29 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **⏱️ PENDIENTE — la medición que solo puede dar el reloj:** el arreglo de la causa raíz (escalonar los 23 crons, `e4ea471fb`) está **desplegado** (backend task def `:130`, 29/07 03:39 CEST) y **funciona estructuralmente**: los crons distintos que arrancan en el minuto 0 pasan de **34 a 17** y el reparto es plano (medido en `observable_events`). Lo que falta es lo que el propio commit dejó dicho — *«medir el efecto mañana en la CPU del servicio: es una hipótesis medida, no un arreglo confirmado»*. Ventana buena: **11:00-13:00 CEST**, que es cuando la CPU del backend tocaba el 100% los días 24, 25, 26, 27 y 28. A las 08:45 CEST del 29/07 la CPU máxima iba en **11-15%** (ayer a esa hora, 62%), pero eso es ANTES del pico y no confirma nada todavía.
 - **Origen:** investigando los timeouts de 15 s que quedaron como «lo real que queda» al cerrar el diagnóstico de [T-210].
 
+### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
+- **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
+- **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
+
+  | páginas | temas | peor |
+  |---|---|---|
+  | ≤60 | **120** (70%) | 50 |
+  | 61-120 | 24 | 116 |
+  | 121-250 | 13 | 245 |
+  | 251-400 | 6 | 397 |
+  | **>400** | **8** | **651** |
+
+  Solo **14 temas** pasan de 250 páginas. Eso es todo el alcance.
+- **⚠️ NO es el arreglo del incidente del 29/07 ([T-270]) y no debe venderse como tal.** Aquello fueron **36 PDFs medianos** por la ruta pública, **ninguno de más de 154 páginas**; partir los monstruos no lo habría evitado. Los de 487-651 páginas salen de `/api/admin/temario/pregenerate` **de madrugada** y se sirven de caché S3. Confundirlos repetiría el error de [T-254]: un arreglo correcto apuntando a la causa equivocada. Esta tarea **se sostiene sola, por producto**.
+- **Por qué se sostiene sola:** un PDF de 651 páginas es mal material de estudio aunque la infraestructura lo aguantara. Partirlo no es una concesión técnica.
+- **Cómo — el punto clave es CÓMO se parte:**
+  1. **Por ESTRUCTURA, nunca por número de páginas.** Cortar en la página 100 cae a mitad de un artículo y en contenido legal eso no vale. El corte natural es por **ley o bloque**, que además es por donde el opositor navega: *«Parte 2 de 4 — Ley 39/2015 (arts. 1-53)»*. El modelo ya lleva lo necesario (`buildTopicPdfModel`, `getLawSectionNames`).
+  2. **⚠️ Las fronteras tienen que ser ESTABLES: la caché es content-addressed** (`pdfCache.ts`). Si se parte por páginas, cualquier cambio de contenido mueve todos los cortes y **invalida la caché entera**; partiendo por ley, un cambio en una ley solo invalida su parte. Esto no es un detalle de implementación: decide el diseño.
+  3. **Decir el tamaño SIEMPRE, no solo cuando es enorme.** «Tema 29 · 651 páginas · 4 partes» en el botón es útil a cualquier tamaño y no cuesta nada. Enseñarlo solo en los monstruos convierte un dato en una disculpa.
+  4. **Sustituir el 413** por la descarga por partes. El techo (`PDF_MAX_CHARS`, `PDF_MAX_ARTICLE_CHARS` en `topicPdfModel.ts`) deja de ser un muro y pasa a ser el disparador del troceado.
+- **Efecto secundario bueno (no es el objetivo):** cada parte es barata y se cachea por separado, así que también alivia el coste de render. Pero el arreglo del incidente es encolar al worker ([T-270]), no esto.
+- **Relacionada:** [T-270] (el incidente, independiente), [T-086] (pre-generación), [T-159] (cola de PDFs).
+
 ### [T-270] 🔴 [ABIERTO 29/07] La ruta PÚBLICA del PDF del temario renderiza en el contenedor que sirve y tumba el guardado de respuestas
 - **Incidente completo (anatomía, minuto a minuto y lecciones):** `docs/ARCHITECTURE_ROADMAP.md` → *«Incidente 2026-07-29»*. Aquí va solo el plan.
 - **Qué pasa:** `app/api/temario/[oposicion]/[topic]/pdf/route.ts` es pública, sin auth y sin límite de tasa, y cuando el PDF no está en caché lo **renderiza en línea** con `@react-pdf` + `pdf-lib` — JS puro, CPU pura, **en el proceso que sirve el tráfico**. Un tema tiene 21 páginas de mediana pero **p95 de 178 y máximo de 760**. Node es monohilo → esa task queda bloqueada y todo lo demás hace cola.
