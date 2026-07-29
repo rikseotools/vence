@@ -2,6 +2,17 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import {
+  getStripeAccountKeys,
+  type StripeAccount,
+} from '../stripe/stripe-accounts';
+import {
+  isNoOp,
+  pickMatch,
+  profileRepairs,
+  resolvePlanType,
+  type MatchSource,
+} from './pass2-matching';
 
 /**
  * Reconciliación de suscripciones: Pass-1 (BD-only) + Pass-2 (Stripe directo).
@@ -38,7 +49,11 @@ export class SubscriptionReconciliationService {
     const pass1 = await this.runPass1(dryRun);
 
     // ─── PASS 2 ──────────────────────────────────────────────────────────
-    let pass2: Pass2Result = { stripeMissingInDb: 0, stripeMissingFixed: 0, errors: [] };
+    let pass2: Pass2Result = {
+      stripeMissingInDb: 0,
+      stripeMissingFixed: 0,
+      errors: [],
+    };
     try {
       pass2 = await this.runPass2(dryRun);
     } catch (err) {
@@ -68,7 +83,7 @@ export class SubscriptionReconciliationService {
         AND up.plan_type != 'premium'
     `)) as unknown as { rows?: Pass1Row[] };
 
-    const inconsistencies = (rows.rows ?? (rows as unknown as Pass1Row[]) ?? []) as Pass1Row[];
+    const inconsistencies = rows.rows ?? (rows as unknown as Pass1Row[]) ?? [];
     this.logger.log(`Pass-1: ${inconsistencies.length} inconsistencias`);
 
     if (!dryRun) {
@@ -80,7 +95,9 @@ export class SubscriptionReconciliationService {
             WHERE id = ${r.user_id}
           `);
           r.fixed = true;
-          this.logger.log(`Pass-1 fixed: ${r.email} (plan_type free → premium)`);
+          this.logger.log(
+            `Pass-1 fixed: ${r.email} (plan_type free → premium)`,
+          );
         } catch (err) {
           r.fixed = false;
           this.logger.error(
@@ -97,18 +114,111 @@ export class SubscriptionReconciliationService {
     };
   }
 
+  /**
+   * Pass-2 sobre TODAS las cuentas Stripe conocidas.
+   *
+   * Antes leía `STRIPE_SECRET_KEY` a pelo (cuenta Manuel): la red de rescate no
+   * cubría la cuenta por la que entran hoy TODAS las altas nuevas. Una cuenta
+   * que no se puede mirar sale como `degraded`, nunca como "0 pendientes"
+   * (mismo criterio que check-webhook-health).
+   */
   private async runPass2(dryRun: boolean): Promise<Pass2Result> {
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      this.logger.warn('STRIPE_SECRET_KEY no configurada — Pass-2 skipped');
-      return { stripeMissingInDb: 0, stripeMissingFixed: 0, errors: ['no_stripe_key'] };
+    const keys = getStripeAccountKeys();
+    if (keys.every((k) => !k.secretKey)) {
+      this.logger.warn('Ninguna cuenta Stripe configurada — Pass-2 skipped');
+      return {
+        stripeMissingInDb: 0,
+        stripeMissingFixed: 0,
+        errors: ['no_stripe_key'],
+        degraded: true,
+        accounts: keys.map((k) => ({
+          account: k.account,
+          readable: false,
+          error: `Falta ${k.envVar}`,
+          subsScanned: 0,
+          missing: 0,
+          fixed: 0,
+        })),
+      };
     }
 
-    const stripe = new Stripe(stripeKey);
     const since = Math.floor(Date.now() / 1000) - 30 * 24 * 3600; // 30 días
+    const missing: Pass2MissingEntry[] = [];
+    const accounts: Pass2AccountResult[] = [];
+    const errors: string[] = [];
+
+    for (const { account, secretKey, envVar } of keys) {
+      if (!secretKey) {
+        // Cuenta conocida que este entorno no puede mirar: se reporta, no se
+        // omite (omitirla daría un "0 pendientes" que no significa nada).
+        accounts.push({
+          account,
+          readable: false,
+          error: `Falta ${envVar}`,
+          subsScanned: 0,
+          missing: 0,
+          fixed: 0,
+        });
+        continue;
+      }
+
+      try {
+        const result = await this.reconcileAccount(
+          account,
+          secretKey,
+          since,
+          dryRun,
+        );
+        missing.push(...result.entries);
+        accounts.push({
+          account,
+          readable: true,
+          subsScanned: result.scanned,
+          missing: result.entries.length,
+          fixed: result.entries.filter((e) => e.fixed).length,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Pass-2 cuenta '${account}' falló: ${message}`);
+        errors.push(`${account}: ${message}`);
+        accounts.push({
+          account,
+          readable: false,
+          error: message,
+          subsScanned: 0,
+          missing: 0,
+          fixed: 0,
+        });
+      }
+    }
+
+    return {
+      stripeMissingInDb: missing.length,
+      stripeMissingFixed: missing.filter((m) => m.fixed).length,
+      errors,
+      degraded: accounts.some((a) => !a.readable),
+      accounts,
+      sample: missing.slice(0, 5).map((m) => ({
+        userId: m.userId,
+        email: m.email,
+        subscriptionId: m.stripeSubscriptionId,
+        account: m.account,
+        matchedBy: m.matchedBy,
+      })),
+    };
+  }
+
+  /** Reconcilia una cuenta Stripe concreta contra la BD. */
+  private async reconcileAccount(
+    account: StripeAccount,
+    secretKey: string,
+    since: number,
+    dryRun: boolean,
+  ): Promise<{ scanned: number; entries: Pass2MissingEntry[] }> {
+    const stripe = this.createStripe(secretKey);
 
     // Paginar subs active últimos 30 días — máximo 5 páginas (500 subs) como
-    // tope defensivo. Vence típicamente tiene <100 subs activas.
+    // tope defensivo. Vence típicamente tiene <100 subs activas por cuenta.
     // Tipos inferidos vía Awaited<ReturnType<>> porque stripe v22 no expone
     // SubscriptionListParams / Subscription desde el import default.
     type StripeSubscription = Awaited<
@@ -125,13 +235,15 @@ export class SubscriptionReconciliationService {
       if (starting_after) opts.starting_after = starting_after;
       const result = await stripe.subscriptions.list(opts);
       stripeActives.push(...result.data);
-      if (!result.has_more) break;
+      if (!result.has_more || result.data.length === 0) break;
       starting_after = result.data[result.data.length - 1].id;
     }
 
-    this.logger.log(`Pass-2: ${stripeActives.length} subs active en Stripe últimos 30d`);
+    this.logger.log(
+      `Pass-2 [${account}]: ${stripeActives.length} subs active en Stripe últimos 30d`,
+    );
 
-    const missing: Pass2MissingEntry[] = [];
+    const entries: Pass2MissingEntry[] = [];
 
     for (const sub of stripeActives) {
       const customerId =
@@ -143,103 +255,224 @@ export class SubscriptionReconciliationService {
         WHERE stripe_subscription_id = ${sub.id}
         LIMIT 1
       `)) as unknown as Array<{ id: string }>;
-      const existing = existingRows[0];
-      if (existing) continue;
+      if (existingRows[0]) continue;
 
-      // Falta — buscar user_profiles por stripe_customer_id.
-      const profileRows = (await this.db.execute(sql`
-        SELECT id, email FROM user_profiles
-        WHERE stripe_customer_id = ${customerId}
-        LIMIT 1
-      `)) as unknown as Array<{ id: string; email: string }>;
-      const profile = profileRows[0];
+      // Falta. Localizar al dueño por orden de fiabilidad (ver pass2-matching).
+      const metadataUserId =
+        sub.metadata?.supabase_user_id || sub.metadata?.user_id || null;
 
-      const entry: Pass2MissingEntry = {
-        stripeCustomerId: customerId,
-        stripeSubscriptionId: sub.id,
-        userId: profile?.id ?? null,
-        email: profile?.email ?? null,
-        status: sub.status,
-        fixed: false,
-      };
+      const byMetadata = metadataUserId
+        ? ((
+            (await this.db.execute(sql`
+              SELECT id FROM user_profiles WHERE id = ${metadataUserId}::uuid LIMIT 1
+            `)) as unknown as Array<{ id: string }>
+          )[0]?.id ?? null)
+        : null;
 
-      if (!profile?.id) {
-        this.logger.warn(
-          `Pass-2 customer ${customerId} sin user_profiles match — sub ${sub.id} no se puede sincronizar`,
-        );
-        missing.push(entry);
-        continue;
-      }
+      const byCustomerId =
+        (
+          (await this.db.execute(sql`
+            SELECT id FROM user_profiles WHERE stripe_customer_id = ${customerId} LIMIT 1
+          `)) as unknown as Array<{ id: string }>
+        )[0]?.id ?? null;
 
-      if (!dryRun) {
+      // El email cuesta una llamada extra a Stripe: solo si las otras fallan.
+      let byEmail: string | null = null;
+      if (!byMetadata && !byCustomerId) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const item = (sub as any).items.data[0];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const subAny = sub as any;
-          const periodStart = subAny.current_period_start ?? item?.current_period_start ?? sub.created;
-          const periodEnd = subAny.current_period_end ?? item?.current_period_end ?? null;
-          const interval = item?.price?.recurring?.interval;
-          const planType =
-            interval === 'year' ? 'premium_annual' : 'premium_monthly';
-
-          await this.db.execute(sql`
-            INSERT INTO user_subscriptions (
-              user_id, stripe_customer_id, stripe_subscription_id, status,
-              plan_type, trial_start, trial_end,
-              current_period_start, current_period_end
-            ) VALUES (
-              ${profile.id}::uuid,
-              ${customerId},
-              ${sub.id},
-              ${sub.status},
-              ${planType},
-              ${sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null}::timestamptz,
-              ${sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null}::timestamptz,
-              ${periodStart ? new Date(periodStart * 1000).toISOString() : null}::timestamptz,
-              ${periodEnd ? new Date(periodEnd * 1000).toISOString() : null}::timestamptz
-            )
-            ON CONFLICT (user_id) DO UPDATE SET
-              stripe_subscription_id = EXCLUDED.stripe_subscription_id,
-              status = EXCLUDED.status,
-              plan_type = EXCLUDED.plan_type,
-              current_period_end = EXCLUDED.current_period_end
-          `);
-
-          await this.db.execute(sql`
-            UPDATE user_profiles
-            SET plan_type = 'premium', requires_payment = false
-            WHERE id = ${profile.id}::uuid
-          `);
-
-          entry.fixed = true;
-          this.logger.log(
-            `✅ Pass-2 RECOVERED ${profile.email} — sub ${sub.id} sincronizada + premium activado`,
-          );
+          const customer = await stripe.customers.retrieve(customerId);
+          const email =
+            'deleted' in customer && customer.deleted ? null : customer.email;
+          if (email) {
+            byEmail =
+              (
+                (await this.db.execute(sql`
+                  SELECT id FROM user_profiles WHERE lower(email) = lower(${email}) LIMIT 1
+                `)) as unknown as Array<{ id: string }>
+              )[0]?.id ?? null;
+          }
         } catch (err) {
-          this.logger.error(
-            `Pass-2 INSERT/UPDATE falló para ${profile.email}: ${err instanceof Error ? err.message : String(err)}`,
+          this.logger.warn(
+            `Pass-2 [${account}] no se pudo leer el customer ${customerId}: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
       }
 
-      missing.push(entry);
+      const match = pickMatch({ byMetadata, byCustomerId, byEmail });
+
+      const entry: Pass2MissingEntry = {
+        account,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: sub.id,
+        userId: match?.userId ?? null,
+        email: null,
+        matchedBy: match?.matchedBy ?? null,
+        status: sub.status,
+        fixed: false,
+      };
+
+      if (!match) {
+        this.logger.warn(
+          `Pass-2 [${account}] sub ${sub.id} (customer ${customerId}) sin usuario identificable — no se puede sincronizar`,
+        );
+        entries.push(entry);
+        continue;
+      }
+
+      if (match.conflict) {
+        // Dos vías apuntan a usuarios distintos: se aplica la de más prioridad
+        // (metadata), pero queda registrado — son datos cruzados.
+        this.logger.warn(
+          `Pass-2 [${account}] sub ${sub.id}: vías de match discrepan (metadata=${byMetadata} customer=${byCustomerId} email=${byEmail}) — se usa ${match.matchedBy}`,
+        );
+      }
+
+      if (!dryRun) {
+        try {
+          entry.email = await this.repairSubscription(
+            sub as unknown as StripeSubLike,
+            {
+              account,
+              customerId,
+              userId: match.userId,
+            },
+          );
+          entry.fixed = true;
+          this.logger.log(
+            `✅ Pass-2 [${account}] RECOVERED ${entry.email ?? match.userId} — sub ${sub.id} sincronizada (match por ${match.matchedBy})`,
+          );
+        } catch (err) {
+          this.logger.error(
+            `Pass-2 [${account}] reparación falló para ${match.userId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
+      entries.push(entry);
     }
 
-    return {
-      stripeMissingInDb: missing.length,
-      stripeMissingFixed: missing.filter((m) => m.fixed).length,
-      errors: [],
-      sample: missing.slice(0, 5).map((m) => ({
-        userId: m.userId,
-        email: m.email,
-        subscriptionId: m.stripeSubscriptionId,
-      })),
-    };
+    return { scanned: stripeActives.length, entries };
+  }
+
+  /**
+   * Escribe la reparación completa en UNA transacción: la fila de
+   * `user_subscriptions` y los campos del perfil que hayan quedado stale
+   * (premium, customer y CUENTA). Todo o nada — un rescate a medias deja al
+   * usuario con premium pero apuntando a la cuenta Stripe equivocada, y
+   * cancelar/portal/reembolso operarían contra la otra cuenta.
+   *
+   * Devuelve el email del usuario (para el log).
+   */
+  private async repairSubscription(
+    sub: StripeSubLike,
+    ctx: { account: StripeAccount; customerId: string; userId: string },
+  ): Promise<string | null> {
+    const item = sub.items?.data?.[0];
+    const periodStart =
+      sub.current_period_start ?? item?.current_period_start ?? sub.created;
+    const periodEnd =
+      sub.current_period_end ?? item?.current_period_end ?? null;
+    const planType = resolvePlanType(
+      item?.price?.recurring?.interval,
+      item?.price?.recurring?.interval_count,
+    );
+
+    return this.db.transaction(async (tx) => {
+      const profileRows = (await tx.execute(sql`
+        SELECT id, email, plan_type, stripe_customer_id, payment_account
+        FROM user_profiles WHERE id = ${ctx.userId}::uuid LIMIT 1
+      `)) as unknown as Array<{
+        id: string;
+        email: string | null;
+        plan_type: string | null;
+        stripe_customer_id: string | null;
+        payment_account: string | null;
+      }>;
+      const profile = profileRows[0];
+      if (!profile) throw new Error(`user_profiles ${ctx.userId} no existe`);
+
+      await tx.execute(sql`
+        INSERT INTO user_subscriptions (
+          user_id, stripe_customer_id, stripe_subscription_id, status,
+          plan_type, trial_start, trial_end,
+          current_period_start, current_period_end
+        ) VALUES (
+          ${ctx.userId}::uuid,
+          ${ctx.customerId},
+          ${sub.id},
+          ${sub.status},
+          ${planType},
+          ${sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null}::timestamptz,
+          ${sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null}::timestamptz,
+          ${periodStart ? new Date(periodStart * 1000).toISOString() : null}::timestamptz,
+          ${periodEnd ? new Date(periodEnd * 1000).toISOString() : null}::timestamptz
+        )
+        ON CONFLICT (user_id) DO UPDATE SET
+          stripe_customer_id = EXCLUDED.stripe_customer_id,
+          stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+          status = EXCLUDED.status,
+          plan_type = EXCLUDED.plan_type,
+          current_period_start = EXCLUDED.current_period_start,
+          current_period_end = EXCLUDED.current_period_end
+      `);
+
+      const repairs = profileRepairs(
+        {
+          planType: profile.plan_type,
+          stripeCustomerId: profile.stripe_customer_id,
+          paymentAccount: profile.payment_account,
+        },
+        { customerId: ctx.customerId, account: ctx.account },
+      );
+
+      if (!isNoOp(repairs)) {
+        await tx.execute(sql`
+          UPDATE user_profiles SET
+            plan_type = ${repairs.grantPremium ? 'premium' : sql`plan_type`},
+            requires_payment = ${repairs.grantPremium ? false : sql`requires_payment`},
+            stripe_customer_id = ${repairs.stripeCustomerId ?? sql`stripe_customer_id`},
+            payment_account = ${repairs.paymentAccount ?? sql`payment_account`}
+          WHERE id = ${ctx.userId}::uuid
+        `);
+      }
+
+      return profile.email;
+    });
+  }
+
+  /**
+   * Aislado para poder sustituirlo en los tests sin tocar la red.
+   * `InstanceType<typeof Stripe>` porque stripe v22 no deja usar el import
+   * default como tipo (mismo motivo que los `Awaited<ReturnType<>>` de arriba).
+   */
+  protected createStripe(secretKey: string): InstanceType<typeof Stripe> {
+    return new Stripe(secretKey);
   }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────
+
+/**
+ * Lo que la reparación necesita de una suscripción de Stripe. Tipo propio (y
+ * laxo) porque stripe v22 mueve `current_period_*` entre la sub y su item
+ * según la apiVersion, y el import default no se puede usar como tipo.
+ */
+interface StripeSubLike {
+  id: string;
+  status: string;
+  created: number;
+  trial_start?: number | null;
+  trial_end?: number | null;
+  current_period_start?: number | null;
+  current_period_end?: number | null;
+  items?: {
+    data?: Array<{
+      price?: { recurring?: { interval?: string; interval_count?: number } };
+      current_period_start?: number | null;
+      current_period_end?: number | null;
+    }>;
+  };
+}
 
 interface Pass1Row {
   user_id: string;
@@ -258,19 +491,40 @@ export interface Pass1Result {
 }
 
 interface Pass2MissingEntry {
+  account: StripeAccount;
   stripeCustomerId: string;
   stripeSubscriptionId: string;
   userId: string | null;
   email: string | null;
+  matchedBy: MatchSource | null;
   status: string;
   fixed: boolean;
+}
+
+export interface Pass2AccountResult {
+  account: StripeAccount;
+  /** false = no se pudo mirar esta cuenta (sin key o error de API). */
+  readable: boolean;
+  error?: string;
+  subsScanned: number;
+  missing: number;
+  fixed: number;
 }
 
 export interface Pass2Result {
   stripeMissingInDb: number;
   stripeMissingFixed: number;
   errors: string[];
-  sample?: Array<{ userId: string | null; email: string | null; subscriptionId: string }>;
+  /** true si alguna cuenta conocida no se pudo reconciliar. */
+  degraded?: boolean;
+  accounts?: Pass2AccountResult[];
+  sample?: Array<{
+    userId: string | null;
+    email: string | null;
+    subscriptionId: string;
+    account?: StripeAccount;
+    matchedBy?: MatchSource | null;
+  }>;
 }
 
 export interface ReconciliationResult {

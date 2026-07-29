@@ -1611,3 +1611,26 @@ Lo que queda vivo tras el deploy (2 h, medido): 125 usuarios y ~20 acuñaciones 
 **Por qué no lo cazó la observabilidad, que sí lo estaba viendo.** Existía `auth_token_mint_flood`, escrita en julio para este mismo endpoint — pero calibrada para el flood **catastrófico por usuario** (>50 reales/usuario/10 min, el poll de 5 s del caso Natalia). Este régimen es **fino y ancho**: 45 por usuario y hora repartidos entre cientos de usuarios, o sea ~0,7 muestreados/usuario/10 min → habría necesitado ser **7× peor** para disparar. Cerrado con su hermana `auth_token_mint_waste` (>8 reales/usuario/hora, umbral calibrado sobre 7 días: deja 4-8× de margen sobre lo sano y queda 3,7× por debajo del peor régimen bueno observado). **Lección repetida:** una alerta sobre la métrica correcta puede seguir siendo ciega si el umbral se calibró para otra forma del mismo fallo. Dispara sola hasta que el arreglo esté desplegado — y su silencio posterior es la verificación.
 
 **Guardarraíl para que no vuelvan las copias:** `__tests__/guardrails/bearerTokenSinglePath.test.ts` prohíbe el patrón de adquisición fuera de `lib/auth/**`, y es estrecho a propósito (no marca renovar claims tras una compra ni reintentar tras un 401, que son usos legítimos).
+
+## Vigilancia con VARIAS cuentas Stripe: agregar es esconder (29/07/2026)
+
+Desde el flip de altas a Nila hay **dos cuentas Stripe vivas** (`manuel` = renovaciones en vaciado, `nila` = todas las altas nuevas). Tres vigilancias se escribieron cuando solo había una y leían `STRIPE_SECRET_KEY` a pelo, así que **daban verde mirando la cuenta equivocada**:
+
+| Vigilancia | Qué se le escapaba |
+|---|---|
+| `check-webhook-health` (cron 15min) | el webhook de Nila podía estar caído al 100% |
+| `subscription-reconciliation` Pass-2 (cron 1h) | la red de rescate no cubría la cuenta que recibe todo el dinero nuevo |
+| `canary-stripe-webhook` (canary 5min) | la ruta de firma de Nila no se probaba |
+| `/admin/conversiones` (MRR) | MRR 0€ y renovaciones 0€ con 53 subs vivas en Nila |
+
+**Las tres reglas que quedan fijadas** (y que hay que aplicar a cualquier vigilancia nueva que toque Stripe):
+
+1. **Cada cuenta se evalúa POR SEPARADO, nunca agregando.** Agregar diluye el fallo de la cuenta pequeña por debajo del umbral: 100 eventos sanos en una cuenta + 5 de 5 pending en la otra = 4,8% agregado, bajo el umbral del 10%, con un webhook roto entero. Fijado en `check-webhook-health.service.spec.ts`.
+2. **Una cuenta que no se puede mirar NO es un verde.** Sin secret key en el task o con la API caída, sale como `degraded` → severity `warn` y `unmonitored_accounts` en la metadata. Omitirla del recuento daría un "0 pendientes" que no significa nada.
+3. **Las cuentas conocidas se declaran en un registro, no se descubren del entorno.** `backend/src/stripe/stripe-accounts.ts` (backend) y `lib/stripe.ts` (frontend, `STRIPE_ACCOUNTS` vs `getConfiguredAccounts()`). La distinción *conocida* vs *configurada* es justo lo que permite delatar el punto ciego.
+
+**Emparejar una suscripción huérfana con su usuario** (Pass-2): el orden es `metadata.supabase_user_id` → `stripe_customer_id` → email, y **no es indiferente**. `stripe_customer_id` lo escribe el webhook, que es lo que ha fallado cuando Pass-2 entra en acción; un usuario de Manuel que re-compra por Nila conserva el `cus_` viejo y por esa vía no hay match. La metadata la escribe `create-checkout` al crear la suscripción (medido 29/07: la llevan el 100% de las 93 subs activas). Lógica pura y testeada en `subscription-reconciliation/pass2-matching.ts`.
+
+**Al reparar, se repara el perfil ENTERO**: premium + `stripe_customer_id` + `payment_account`, en una transacción. Dejar solo el premium haría que cancelar / portal / reembolso resolvieran la cuenta equivocada.
+
+**Infra:** cada cuenta necesita su secret en SSM **y** en la allowlist del rol de ejecución (`vence-backend-task-execution` → política `vence-backend-read-secrets` enumera parámetro a parámetro). Sin la entrada IAM la task no arranca: `ResourceInitializationError … AccessDeniedException … ssm:GetParameters`.

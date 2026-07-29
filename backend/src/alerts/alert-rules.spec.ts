@@ -47,64 +47,116 @@ import {
 
 describe('RULE_LAWS_CONFIGURATOR_DEGRADED (fix configurador 24/07, caso David/Galicia)', () => {
   it('dispara con >=3 errores en 10 min (query rota/timeout)', () => {
-    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 3, slow: 0 }])).toBe(true);
+    expect(
+      RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 3, slow: 0 }]),
+    ).toBe(true);
   });
   it('dispara con >=3 cómputos lentos (>5s) aunque no haya errores (plan lento de vuelta)', () => {
-    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 5 }])).toBe(true);
+    expect(
+      RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 5 }]),
+    ).toBe(true);
   });
   it('NO dispara con ruido aislado (<3 de cada)', () => {
-    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 2, slow: 2 }])).toBe(false);
+    expect(
+      RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 2, slow: 2 }]),
+    ).toBe(false);
   });
   it('NO dispara con 0 / filas vacías (sano)', () => {
-    expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 0 }])).toBe(false);
+    expect(
+      RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([{ errors: 0, slow: 0 }]),
+    ).toBe(false);
     expect(RULE_LAWS_CONFIGURATOR_DEGRADED.shouldFire([])).toBe(false);
   });
   it('fingerprint único (1 email, no N)', () => {
-    const n = RULE_LAWS_CONFIGURATOR_DEGRADED.buildNotification([{ errors: 4, slow: 1 }]);
+    const n = RULE_LAWS_CONFIGURATOR_DEGRADED.buildNotification([
+      { errors: 4, slow: 1 },
+    ]);
     expect(n.fingerprint).toBe('laws_configurator_degraded');
   });
   it('está registrada en ALERT_RULES', () => {
-    expect(ALERT_RULES.map((r) => r.name)).toContain('laws_configurator_degraded');
+    expect(ALERT_RULES.map((r) => r.name)).toContain(
+      'laws_configurator_degraded',
+    );
   });
 });
 
 describe('RULE_NETWORK_RETRY_EXHAUSTED_SPIKE (fix resiliencia fetch 24/07, caso David)', () => {
   it('dispara con un spike (>30 en 10 min) = regresión que rompe los fetch a todos', () => {
-    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 45, topEndpoint: '/api/questions/filtered' }])).toBe(true);
+    expect(
+      RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([
+        { n: 45, topEndpoint: '/api/questions/filtered' },
+      ]),
+    ).toBe(true);
   });
   it('NO dispara con exhausted disperso (red de usuarios sueltos, no incidente nuestro)', () => {
-    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 30, topEndpoint: null }])).toBe(false);
-    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 3, topEndpoint: null }])).toBe(false);
+    expect(
+      RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([
+        { n: 30, topEndpoint: null },
+      ]),
+    ).toBe(false);
+    expect(
+      RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([
+        { n: 3, topEndpoint: null },
+      ]),
+    ).toBe(false);
   });
   it('NO dispara con 0 / filas vacías (todo verde)', () => {
-    expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([{ n: 0, topEndpoint: null }])).toBe(false);
+    expect(
+      RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([
+        { n: 0, topEndpoint: null },
+      ]),
+    ).toBe(false);
     expect(RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.shouldFire([])).toBe(false);
   });
   it('el aviso lleva el endpoint y fingerprint único (1 email, no N)', () => {
-    const notif = RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.buildNotification([{ n: 45, topEndpoint: '/api/questions/filtered' }]);
-    expect(notif.fingerprint).toBe('network_retry_exhausted_/api/questions/filtered');
+    const notif = RULE_NETWORK_RETRY_EXHAUSTED_SPIKE.buildNotification([
+      { n: 45, topEndpoint: '/api/questions/filtered' },
+    ]);
+    expect(notif.fingerprint).toBe(
+      'network_retry_exhausted_/api/questions/filtered',
+    );
     expect(notif.metadata).toMatchObject({ count: 45, windowMin: 10 });
   });
   it('está registrada en ALERT_RULES', () => {
-    expect(ALERT_RULES.map((r) => r.name)).toContain('network_retry_exhausted_spike');
+    expect(ALERT_RULES.map((r) => r.name)).toContain(
+      'network_retry_exhausted_spike',
+    );
   });
 });
 
 describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
   it('dispara con ≥4 canaries en timeout simultáneo (firma de saturación)', () => {
-    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 8, which: 'auth_failed, answer_save_failed' }])).toBe(true);
-    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 4, which: 'a, b, c, d' }])).toBe(true);
+    expect(
+      RULE_FRONTEND_SATURATION.shouldFire([
+        { canaries: 8, which: 'auth_failed, answer_save_failed' },
+      ]),
+    ).toBe(true);
+    expect(
+      RULE_FRONTEND_SATURATION.shouldFire([
+        { canaries: 4, which: 'a, b, c, d' },
+      ]),
+    ).toBe(true);
   });
   it('NO dispara con <4 (un bug por-endpoint rompe 1-2 canaries, no es saturación)', () => {
-    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 3, which: 'a, b, c' }])).toBe(false);
-    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 1, which: 'auth_failed' }])).toBe(false);
+    expect(
+      RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 3, which: 'a, b, c' }]),
+    ).toBe(false);
+    expect(
+      RULE_FRONTEND_SATURATION.shouldFire([
+        { canaries: 1, which: 'auth_failed' },
+      ]),
+    ).toBe(false);
   });
   it('NO dispara con 0 / filas vacías (todo verde)', () => {
-    expect(RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 0, which: null }])).toBe(false);
+    expect(
+      RULE_FRONTEND_SATURATION.shouldFire([{ canaries: 0, which: null }]),
+    ).toBe(false);
     expect(RULE_FRONTEND_SATURATION.shouldFire([])).toBe(false);
   });
   it('el aviso lleva fingerprint único (1 email, no N)', () => {
-    const n = RULE_FRONTEND_SATURATION.buildNotification([{ canaries: 8, which: 'auth_failed' }]);
+    const n = RULE_FRONTEND_SATURATION.buildNotification([
+      { canaries: 8, which: 'auth_failed' },
+    ]);
     expect(n.fingerprint).toBe('frontend_saturation');
     expect(n.title).toContain('8 canaries');
   });
@@ -112,7 +164,9 @@ describe('RULE_FRONTEND_SATURATION (incidente capacidad 21/07)', () => {
 
 describe('RULE_EVENT_LOOP_LAG (Capa 5 postmortem 21/07)', () => {
   it('dispara con ≥1 evento critical (stall multi-segundo = health-check-killer)', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 1, crit: 1, maxLagMs: 2400 }])).toBe(true);
+    expect(
+      RULE_EVENT_LOOP_LAG.shouldFire([{ n: 1, crit: 1, maxLagMs: 2400 }]),
+    ).toBe(true);
   });
   // Umbral de warn subido de 5 a 12 el 28/07 (T-160). No es aflojar el
   // guardarraíl: es que AHORA un warn significa "stall multisegundo" (antes
@@ -121,18 +175,28 @@ describe('RULE_EVENT_LOOP_LAG (Capa 5 postmortem 21/07)', () => {
   // 12 → 0,4. Se elige 12 y no 10 porque 12 y 15 dan el MISMO resultado
   // (meseta), así que el umbral no se apoya en un borde.
   it('dispara con ≥12 warn sostenidos (loop pegajoso = precursor de cascada)', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 12, crit: 0, maxLagMs: 2400 }])).toBe(true);
+    expect(
+      RULE_EVENT_LOOP_LAG.shouldFire([{ n: 12, crit: 0, maxLagMs: 2400 }]),
+    ).toBe(true);
   });
   it('NO dispara con el racimo que ANTES disparaba (5 warn) — era el grueso del ruido', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 5, crit: 0, maxLagMs: 2400 }])).toBe(false);
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 11, crit: 0, maxLagMs: 3000 }])).toBe(false);
+    expect(
+      RULE_EVENT_LOOP_LAG.shouldFire([{ n: 5, crit: 0, maxLagMs: 2400 }]),
+    ).toBe(false);
+    expect(
+      RULE_EVENT_LOOP_LAG.shouldFire([{ n: 11, crit: 0, maxLagMs: 3000 }]),
+    ).toBe(false);
   });
   it('NO dispara con 0 / filas vacías (loop sano)', () => {
-    expect(RULE_EVENT_LOOP_LAG.shouldFire([{ n: 0, crit: 0, maxLagMs: null }])).toBe(false);
+    expect(
+      RULE_EVENT_LOOP_LAG.shouldFire([{ n: 0, crit: 0, maxLagMs: null }]),
+    ).toBe(false);
     expect(RULE_EVENT_LOOP_LAG.shouldFire([])).toBe(false);
   });
   it('el aviso lleva el pico en segundos y fingerprint único (1 email, no N)', () => {
-    const notif = RULE_EVENT_LOOP_LAG.buildNotification([{ n: 6, crit: 2, maxLagMs: 3100 }]);
+    const notif = RULE_EVENT_LOOP_LAG.buildNotification([
+      { n: 6, crit: 2, maxLagMs: 3100 },
+    ]);
     expect(notif.title).toContain('3.1s');
     expect(notif.fingerprint).toBe('event_loop_lag');
   });
@@ -143,23 +207,35 @@ describe('RULE_EVENT_LOOP_LAG (Capa 5 postmortem 21/07)', () => {
 
 describe('RULE_FILTERED_VALIDATION_REJECTED_SPIKE (incidente Alfonso)', () => {
   it('dispara con un pico sistémico (>30 rechazos/h)', () => {
-    expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([{ n: 45, topReason: 'positionType: invalid_type' }])).toBe(true);
+    expect(
+      RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([
+        { n: 45, topReason: 'positionType: invalid_type' },
+      ]),
+    ).toBe(true);
   });
 
   it('NO dispara con ruido bajo (un usuario reintentando)', () => {
-    expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([{ n: 5, topReason: 'positionType: invalid_type' }])).toBe(false);
+    expect(
+      RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([
+        { n: 5, topReason: 'positionType: invalid_type' },
+      ]),
+    ).toBe(false);
     expect(RULE_FILTERED_VALIDATION_REJECTED_SPIKE.shouldFire([])).toBe(false);
   });
 
   it('la notificación nombra el campo/causa más frecuente', () => {
-    const notif = RULE_FILTERED_VALIDATION_REJECTED_SPIKE.buildNotification([{ n: 40, topReason: 'positionType: invalid_type' }]);
+    const notif = RULE_FILTERED_VALIDATION_REJECTED_SPIKE.buildNotification([
+      { n: 40, topReason: 'positionType: invalid_type' },
+    ]);
     expect(notif.title).toContain('40');
     expect(notif.body).toContain('positionType');
     expect(notif.fingerprint).toBe('filtered_validation_rejected');
   });
 
   it('está registrada en ALERT_RULES', () => {
-    expect(ALERT_RULES.some(r => r.name === 'filtered_validation_rejected_spike')).toBe(true);
+    expect(
+      ALERT_RULES.some((r) => r.name === 'filtered_validation_rejected_spike'),
+    ).toBe(true);
   });
 });
 
@@ -686,12 +762,12 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
   it('dispara con detected≥1 (cualquier sub Stripe sin BD = pago no procesado)', () => {
     expect(
       RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
-        { detected: 1, fixed: 1 },
+        { detected: 1, fixed: 1, affectedAccounts: null },
       ]),
     ).toBe(true);
     expect(
       RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
-        { detected: 3, fixed: 2 },
+        { detected: 3, fixed: 2, affectedAccounts: null },
       ]),
     ).toBe(true);
   });
@@ -699,7 +775,7 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
   it('NO dispara con detected=0 (sin filas tampoco)', () => {
     expect(
       RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
-        { detected: 0, fixed: 0 },
+        { detected: 0, fixed: 0, affectedAccounts: null },
       ]),
     ).toBe(false);
     expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([])).toBe(false);
@@ -710,14 +786,14 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
     // así disparamos porque eso significa que el webhook entrante sigue roto.
     expect(
       RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
-        { detected: 3, fixed: 3 },
+        { detected: 3, fixed: 3, affectedAccounts: null },
       ]),
     ).toBe(true);
   });
 
   it('notification incluye conteo detected/fixed + runbook hacia el bug raíz', () => {
     const notif = RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.buildNotification([
-      { detected: 5, fixed: 5 },
+      { detected: 5, fixed: 5, affectedAccounts: null },
     ]);
     expect(notif.title).toContain('5');
     expect(notif.body).toContain('webhook');
@@ -728,6 +804,24 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
 
   it('severity=error — el daño está mitigado por el auto-fix, pero el bug raíz no', () => {
     expect(RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.severity).toBe('error');
+  });
+  it('nombra la cuenta afectada cuando el evento la trae (multi-cuenta 29/07/2026)', () => {
+    // Cada cuenta Stripe tiene su propio webhook y su propio dashboard: sin el
+    // nombre, el aviso obliga a adivinar dónde mirar.
+    const notif = RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.buildNotification([
+      { detected: 2, fixed: 2, affectedAccounts: 'nila' },
+    ]);
+    expect(notif.title).toContain('nila');
+    expect(notif.body).toContain('nila');
+    expect(notif.body).toContain('STRIPE_WEBHOOK_SECRET');
+  });
+
+  it('sigue sin disparar por una cuenta ciega (detected=0) — eso va a warn, no a email', () => {
+    expect(
+      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB.shouldFire([
+        { detected: 0, fixed: 0, affectedAccounts: null },
+      ]),
+    ).toBe(false);
   });
 });
 
@@ -883,7 +977,9 @@ describe('RULE_AUTH_TOKEN_MINT_WASTE (T-210 — el flood FINO Y ANCHO)', () => {
   it('NO dispara sin datos (hora muerta, no un fallo)', () => {
     expect(RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([])).toBe(false);
     expect(
-      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([{ mintedSampled: 0, users: 0, perUserHour: 0 }]),
+      RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
+        { mintedSampled: 0, users: 0, perUserHour: 0 },
+      ]),
     ).toBe(false);
   });
 
@@ -902,7 +998,9 @@ describe('RULE_AUTH_TOKEN_MINT_WASTE (T-210 — el flood FINO Y ANCHO)', () => {
     // del >5 muestreados/usuario/10min de auth_token_mint_flood. Este test fija POR QUÉ
     // hacen falta las dos: si alguien "unifica" las reglas, aquí se ve lo que se pierde.
     expect(
-      RULE_AUTH_TOKEN_MINT_FLOOD.shouldFire([{ minted: 70, users: 98, perUser: 0.7 }]),
+      RULE_AUTH_TOKEN_MINT_FLOOD.shouldFire([
+        { minted: 70, users: 98, perUser: 0.7 },
+      ]),
     ).toBe(false);
     expect(
       RULE_AUTH_TOKEN_MINT_WASTE.shouldFire([
@@ -1262,9 +1360,15 @@ describe('RULE_SAVE_RECONCILIATION (recalibrada 13/07 anti falso-positivo)', () 
 
 describe('RULE_STATS_PARIDAD_DIVERGENCE (recalibrada 13/07)', () => {
   it('umbral ≥5 divergencias (absorbe fuzz de lag)', () => {
-    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 5 }])).toBe(true);
-    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 4 }])).toBe(false);
-    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 0 }])).toBe(false);
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 5 }])).toBe(
+      true,
+    );
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 4 }])).toBe(
+      false,
+    );
+    expect(RULE_STATS_PARIDAD_DIVERGENCE.shouldFire([{ divergent: 0 }])).toBe(
+      false,
+    );
   });
 
   it('severity=error', () => {
@@ -1794,9 +1898,11 @@ describe('ALERT_RULES — registro de las 4 nuevas reglas del pool', () => {
 });
 
 describe('RULE_CLIENT_EDGE_SUSTAINED (recalibrado 08/07)', () => {
-  const rows = (edge5xx: number, netErr: number, topEndpoint = '/api/auth/session') => [
-    { edge5xx, netErr, topEndpoint },
-  ];
+  const rows = (
+    edge5xx: number,
+    netErr: number,
+    topEndpoint = '/api/auth/session',
+  ) => [{ edge5xx, netErr, topEndpoint }];
 
   it('dispara por edge 5xx/timeout sostenido a partir de 30/h', () => {
     expect(RULE_CLIENT_EDGE_SUSTAINED.shouldFire(rows(30, 0))).toBe(true);

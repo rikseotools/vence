@@ -17,7 +17,7 @@ import { CanaryStripeWebhookService } from './canary-stripe-webhook.service';
  * y verifica response 200 {received:true}.
  *
  * Eventos emitidos:
- *   - canary_stripe_webhook_ok (info)
+ *   - canary_stripe_webhook_ok (info · warn si alguna cuenta quedó sin sondear)
  *   - canary_stripe_webhook_failed (critical, dispara RULE_CANARY_WEBHOOK_FAILED)
  *   - canary_stripe_webhook_skipped (warn, modo idle si falta STRIPE_WEBHOOK_SECRET)
  *   - cron_run (siempre, liveness)
@@ -65,15 +65,25 @@ export class CanaryStripeWebhookCron {
           metadata: { cron: 'canary-stripe-webhook', reason: result.reason },
         });
       } else if (result.ok) {
+        // `degraded` = alguna cuenta Stripe conocida se quedó SIN sondear (no
+        // hay signing secret en el task). No es un fallo del webhook, pero
+        // tampoco es un verde: su ruta de firma no la está probando nadie.
         this.observability.emitFireAndForget({
           source: 'fargate',
-          severity: 'info',
+          severity: result.degraded ? 'warn' : 'info',
           eventType: 'canary_stripe_webhook_ok',
           endpoint: 'canary-stripe-webhook',
           durationMs: result.durationMs,
           metadata: {
             cron: 'canary-stripe-webhook',
             event_id: result.eventId,
+            degraded: !!result.degraded,
+            unprobed_accounts:
+              (result.accounts ?? [])
+                .filter((a) => !a.probed)
+                .map((a) => `${a.account}: ${a.errorMessage ?? 'sin sondear'}`)
+                .join(' | ') || null,
+            accounts: result.accounts ?? null,
           },
         });
       } else {
@@ -89,6 +99,12 @@ export class CanaryStripeWebhookCron {
             cron: 'canary-stripe-webhook',
             step: result.step,
             event_id: result.eventId,
+            failed_accounts:
+              (result.accounts ?? [])
+                .filter((a) => a.probed && !a.ok)
+                .map((a) => a.account)
+                .join(',') || null,
+            accounts: result.accounts ?? null,
           },
         });
       }

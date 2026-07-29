@@ -23,6 +23,20 @@ export const STRIPE_ACCOUNT_SECRET_ENV: Record<StripeAccount, string> = {
   nila: 'STRIPE_SECRET_KEY_NILA',
 };
 
+/**
+ * cuenta → variable con su SIGNING SECRET de webhook.
+ *
+ * Son secrets DISTINTOS de las secret keys: cada cuenta firma sus eventos con
+ * el suyo, y el handler `/api/stripe/webhook` verifica contra todos. Por eso un
+ * fallo de firma puede afectar a UNA sola cuenta, y por eso la sonda sintética
+ * tiene que firmar una vez por cuenta.
+ */
+export const STRIPE_ACCOUNT_WEBHOOK_SECRET_ENV: Record<StripeAccount, string> =
+  {
+    manuel: 'STRIPE_WEBHOOK_SECRET',
+    nila: 'STRIPE_WEBHOOK_SECRET_NILA',
+  };
+
 /** Todas las cuentas CONOCIDAS (estén configuradas o no en este entorno). */
 export const ALL_STRIPE_ACCOUNTS = Object.keys(
   STRIPE_ACCOUNT_SECRET_ENV,
@@ -48,5 +62,27 @@ export function getStripeAccountKeys(
   return ALL_STRIPE_ACCOUNTS.map((account) => {
     const envVar = STRIPE_ACCOUNT_SECRET_ENV[account];
     return { account, envVar, secretKey: env[envVar] || null };
+  });
+}
+
+export interface StripeWebhookSecret {
+  account: StripeAccount;
+  /** null si este entorno no tiene el signing secret → cuenta SIN sonda. */
+  secret: string | null;
+  envVar: string;
+}
+
+/**
+ * Signing secrets de webhook de todas las cuentas conocidas (o null).
+ *
+ * Misma regla que `getStripeAccountKeys`: se devuelven también las que faltan,
+ * porque una cuenta sin sonda es un punto ciego que hay que poder nombrar.
+ */
+export function getStripeWebhookSecrets(
+  env: NodeJS.ProcessEnv = process.env,
+): StripeWebhookSecret[] {
+  return ALL_STRIPE_ACCOUNTS.map((account) => {
+    const envVar = STRIPE_ACCOUNT_WEBHOOK_SECRET_ENV[account];
+    return { account, envVar, secret: env[envVar] || null };
   });
 }

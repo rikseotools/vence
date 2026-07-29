@@ -73,20 +73,36 @@ export class SubscriptionReconciliationCron {
       });
 
       // Pass-2: caso Andrea — Stripe tiene sub OK pero BD vacía.
-      // Solo emitir si hay missing (no spammear cron_run cuando todo OK).
-      if (result.pass2.stripeMissingInDb > 0) {
+      // Se emite si hay missing O si alguna cuenta Stripe no se pudo
+      // reconciliar: "0 pendientes" con una cuenta ciega no es un verde, es
+      // una cuenta sin red de rescate (mismo criterio que check-webhook-health).
+      const p2 = result.pass2;
+      if (p2.stripeMissingInDb > 0 || p2.degraded) {
+        const unreconciled = (p2.accounts ?? [])
+          .filter((a) => !a.readable)
+          .map((a) => `${a.account}: ${a.error ?? 'sin leer'}`);
         this.observability.emitFireAndForget({
           source: 'fargate',
-          severity: 'error', // pago no aplicado = error inmediato
+          // pago no aplicado = error inmediato · cuenta ciega = warn
+          severity: p2.stripeMissingInDb > 0 ? 'error' : 'warn',
           eventType: 'subscription_drift_missing_in_db',
           endpoint: 'subscription-reconciliation',
           durationMs: Date.now() - startedAt,
           metadata: {
             cron: 'subscription-reconciliation',
             pass: 2,
-            detected: result.pass2.stripeMissingInDb,
-            fixed: result.pass2.stripeMissingFixed,
-            sample: result.pass2.sample,
+            detected: p2.stripeMissingInDb,
+            fixed: p2.stripeMissingFixed,
+            degraded: !!p2.degraded,
+            affected_accounts:
+              [
+                ...new Set(
+                  (p2.sample ?? []).map((s) => s.account).filter(Boolean),
+                ),
+              ].join(',') || null,
+            unreconciled_accounts: unreconciled.join(' | ') || null,
+            accounts: p2.accounts ?? null,
+            sample: p2.sample,
           },
         });
       }

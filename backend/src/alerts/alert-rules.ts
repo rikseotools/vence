@@ -1028,7 +1028,9 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
     // Las cuentas se evalúan por separado: el fallo puede ser de UNA sola
     // (cada cuenta tiene su propio signing secret). Nombrarla ahorra el paso
     // de adivinar en qué dashboard mirar.
-    const cuentas = r.unhealthyAccounts ? ` [cuenta(s): ${r.unhealthyAccounts}]` : '';
+    const cuentas = r.unhealthyAccounts
+      ? ` [cuenta(s): ${r.unhealthyAccounts}]`
+      : '';
     return {
       title: `Webhook Stripe unhealthy${cuentas}: ${r.pending}/${r.total} eventos pending (${r.pendingPct}%)`,
       body: `El cron check-webhook-health detectó que ${r.pendingPct}% de los eventos Stripe en la última hora siguen pending${cuentas}. Investigar inmediatamente:\n\n  - Evento más antiguo pending: ${r.oldestType ?? 'unknown'} (${r.oldestAgeS ?? '?'}s)\n  - Stripe Dashboard de la cuenta afectada → Webhooks → /api/stripe/webhook → tab "Webhook attempts"\n  - Cada cuenta tiene su propio webhook secret (STRIPE_WEBHOOK_SECRET / _NILA): un fallo de firma afecta solo a la suya.\n\nIncidente origen 2026-05-26: webhook respondía 400 a todos los eventos por un bug en withErrorLogging consumiendo el raw body. Andrea pagó 20€ sin activarse.`,
@@ -1340,26 +1342,43 @@ export const RULE_SUBSCRIPTION_CANCEL_ERROR_BURST: AlertRule<{
 export const RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB: AlertRule<{
   detected: number;
   fixed: number;
+  affectedAccounts: string | null;
 }> = {
   name: 'subscription_drift_missing_in_db',
   severity: 'error',
   query: sql`
     SELECT
       COALESCE((metadata->>'detected')::int, 0) AS detected,
-      COALESCE((metadata->>'fixed')::int, 0) AS fixed
+      COALESCE((metadata->>'fixed')::int, 0) AS fixed,
+      metadata->>'affected_accounts' AS "affectedAccounts"
     FROM observable_events
     WHERE event_type = 'subscription_drift_missing_in_db'
       AND ts > NOW() - INTERVAL '2 hours'
     ORDER BY ts DESC
     LIMIT 1
   `,
+  // Sigue disparando SOLO con pagos sin sincronizar. Desde el multi-cuenta
+  // (29/07/2026) el cron emite este mismo event_type con detected=0 y
+  // severity=warn cuando una cuenta Stripe no se pudo reconciliar (sin key /
+  // API caída): eso NO manda email — se ve en /admin/salud-sistema junto al
+  // warn equivalente de check-webhook-health, que reporta la misma
+  // misconfiguración. Un tercer aviso por correo cada 30min sería ruido.
   shouldFire: (rows) => (rows[0]?.detected ?? 0) > 0,
   buildNotification: (rows) => {
     const r = rows[0];
+    // Cada cuenta tiene su propio webhook y su propio dashboard: nombrarla
+    // ahorra el paso de adivinar dónde mirar.
+    const cuentas = r.affectedAccounts
+      ? ` [cuenta(s): ${r.affectedAccounts}]`
+      : '';
     return {
-      title: `${r.detected} pago(s) procesado(s) en Stripe sin sincronizar a BD (${r.fixed} auto-fix)`,
-      body: `El cron de reconciliation Pass-2 detectó suscripciones active en Stripe que NO estaban en user_subscriptions de BD — significa que el WEBHOOK STRIPE está roto y usuarios pagan sin recibir premium.\n\nLas ${r.fixed} se han auto-corregido (INSERT user_subscriptions + UPDATE profile.plan_type=premium). El daño al usuario está mitigado.\n\nPERO el bug raíz (webhook) sigue: investigar /api/stripe/webhook URGENTE.\n\n  - Comprobar https://dashboard.stripe.com/webhooks → endpoint vence-produccion → ¿% de errores?\n  - Si signature failed: ver regla stripe_webhook_signature_failed (runbook para rotar secret).\n  - Si 4xx no-signature: ver stripe_webhook_4xx_burst.\n\nIncidente origen: 2026-05-27 (Rocío/Mercedes/Andrea).`,
-      metadata: { detected: r.detected, fixed: r.fixed },
+      title: `${r.detected} pago(s) procesado(s) en Stripe sin sincronizar a BD${cuentas} (${r.fixed} auto-fix)`,
+      body: `El cron de reconciliation Pass-2 detectó suscripciones active en Stripe que NO estaban en user_subscriptions de BD — significa que el WEBHOOK STRIPE está roto y usuarios pagan sin recibir premium.\n\nCuenta(s) afectada(s): ${r.affectedAccounts ?? 'sin determinar'}.\n\nLas ${r.fixed} se han auto-corregido (fila en user_subscriptions + perfil a premium con su stripe_customer_id y payment_account). El daño al usuario está mitigado.\n\nPERO el bug raíz (webhook) sigue: investigar /api/stripe/webhook URGENTE.\n\n  - Dashboard de Stripe de la cuenta afectada → Webhooks → endpoint vence-produccion → ¿% de errores?\n  - Cada cuenta tiene su propio signing secret (STRIPE_WEBHOOK_SECRET / _NILA): el fallo puede ser de una sola.\n  - Si signature failed: ver regla stripe_webhook_signature_failed (runbook para rotar secret).\n  - Si 4xx no-signature: ver stripe_webhook_4xx_burst.\n\nIncidente origen: 2026-05-27 (Rocío/Mercedes/Andrea).`,
+      metadata: {
+        detected: r.detected,
+        fixed: r.fixed,
+        accounts: r.affectedAccounts,
+      },
       fingerprint: 'subscription_drift_missing_in_db',
     };
   },
