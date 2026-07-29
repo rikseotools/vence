@@ -37,7 +37,23 @@
 - **Salvedad:** el T15 (elementos del vehículo: componentes y funcionamiento) es el único con carga técnica de mecánica, no puramente normativa. Su respaldo más cercano son las condiciones técnicas del Reglamento de Vehículos; si no da, es candidato a quedarse en elaboración.
 - **Criterio de disponibilidad aplicado:** un tema se ofrece a partir de **20 preguntas**; por debajo el opositor repite las mismas en dos vueltas. Los 9 temas están en `disponible=false` (salen como "En elaboración"), así que la oposición se puede publicar sin engañar a nadie.
 - **Al terminar:** refrescar la MV (§6.bis del manual de creación) y volver a pasar `audit:served`, o los temas seguirán saliendo "En desarrollo" aunque tengan preguntas.
-- **Go-live:** `is_active=false` a la espera de OK. La landing y las rutas ya están generadas.
+- **Go-live:** `is_active=false` a la espera de OK. La landing y las rutas ya están generadas y DESPLEGADAS (29/07).
+
+- **ESTADO AL CERRAR LA SESIÓN DEL 29/07 — lo que está hecho y lo que NO:**
+
+  **Hecho y verificado** (no hace falta repetirlo):
+  - 15 temas con el temario LITERAL de las bases (Anexos VI y VII), 2 bloques, convocatoria SSOT, 3 hitos con cita del BOE, temario_version, entidad OEP (RD 625/2023 + RD 656/2024) enlazada.
+  - Parte común sirviendo **4.934 preguntas** heredadas por `topic_scope`, sin duplicar nada.
+  - Los 3 gates deterministas en **0 ❌** (`audit:oposicion`, `audit:served` con la MV refrescada, `audit:epigrafe`).
+  - **`verify:scope` registrado** (run `verify_mecanico_conductor_estado_2026-07-29`): 12 `correct`, 3 `issues`. Dos correcciones ya aplicadas: art. 66 Ley de Tráfico (permisos de CIRCULACIÓN) movido de T6 a T7, y arts. 33-34 RGC (pruebas deportivas) fuera de T9.
+  - Código en `main` y desplegado.
+
+  **Lo que queda, por orden:**
+  1. **Generar el banco específico** (la tabla de arriba). Sin esto no se publica: son 60 de las 100 preguntas del examen.
+  2. **Las 3 salvedades del verify:scope**, que decidir al generar: T8 pide "seguridad activa y pasiva" y solo la pasiva tiene artículos (cinturones, retención infantil, cascos); T14 incluye delitos contra la seguridad del tráfico, que son del **Código Penal** y NO está escopado (decidir si se importan los arts. 379-385 o el tema se queda corto); T15 es mecánica pura, con el único respaldo de las condiciones técnicas del Reglamento de Vehículos.
+  3. **Publicar** (`is_active=true`) cuando al menos T9 y T10 (hoy a cero) tengan banco. Antes: refrescar la MV y pasar `audit:served`, o saldrán "En desarrollo" con preguntas dentro.
+  4. **Avisar al usuario que la pidió** — Chema (feedback `e5151a19`), que preguntó expresamente por el temario y los tests y ya echó la instancia. Su feedback sigue abierto a propósito.
+  5. Opcional tras el go-live: campaña de captación (FASE 8 del manual). El plazo de inscripción cerraba ~3/08/2026, así que el público objetivo ya está inscrito y estudiando.
 
 ### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
 
