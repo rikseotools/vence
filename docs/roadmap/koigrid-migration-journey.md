@@ -42,7 +42,7 @@
 
 ### 🔴 STILL OPEN — updated 2026-07-29
 - **A4 (new, P0) — the managed restore cannot build a pgvector `ivfflat` index.** `ERROR: memory required is 65 MB, maintenance_work_mem is 64 MB`. `SHOW maintenance_work_mem` → `65536 kB` with **`source: "default"`** (PostgreSQL's factory default, *not* derived from cluster RAM), `PUT /databases/{id}/resources` is `404`, `apply-config` is for node recreation, and your pooler rejects `PGOPTIONS="-c maintenance_work_mem=…"` (`unsupported startup parameter in options`). **Fix: `SET maintenance_work_mem` in the restore session** — it is `USERSET` and we verified the unprivileged `app` role can set it to 256 MB on your own cluster. **Acceptance:** a dump containing `CREATE INDEX … USING ivfflat` over ≥50 k rows restores cleanly on a free-tier cluster.
-- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** **Fourth reproduction** (07-25, 07-27, 07-29 morning, 07-29 evening on the pricing build), always ~24-30 s, always **empty logs**, always **`runner: null`**. **Now proven platform-wide, not our app: it fails identically on a second, unrelated app (`vence-web9`)**, while both apps deploy fine on the normal path minutes before and after. `runner: null` + no logs + no container output says the replica was **never scheduled** — so `replica_unhealthy` is reporting the wrong layer and sends you hunting for a `healthPath` that doesn't exist. **Asks:** (1) distinguish *never scheduled* from *scheduled and unhealthy* (`no_runner_available` / `scale_out_placement_failed`); (2) emit logs on this path — it is the only failure mode on koigrid that does not self-explain; (3) actually return the documented preconditions (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`), because today none are returned yet placement never happens. **No longer blocks us** (A3 works without it), and **no downtime in any of the four attempts** — the last-good deployment kept serving throughout.
+- **N1 — `PUT /apps/{id}/scale-out {enabled:true}` + deploy fails with `replica_unhealthy`.** **Fifth reproduction** (07-25, 07-27, 07-29 ×3), the longest-lived open bug in this report, always ~24-30 s, always **empty logs**, always **`runner: null`**. **Now proven platform-wide, not our app: it fails identically on a second, unrelated app (`vence-web9`)**, while both apps deploy fine on the normal path minutes before and after. `runner: null` + no logs + no container output says the replica was **never scheduled** — so `replica_unhealthy` is reporting the wrong layer and sends you hunting for a `healthPath` that doesn't exist. **Asks:** (1) distinguish *never scheduled* from *scheduled and unhealthy* (`no_runner_available` / `scale_out_placement_failed`); (2) emit logs on this path — it is the only failure mode on koigrid that does not self-explain; (3) actually return the documented preconditions (`need_2_meshed_runners` / `scale_out_v1_image_only` / `no_lb_vip`), because today none are returned yet placement never happens. **No longer blocks us** (A3 works without it), and **no downtime in any of the four attempts** — the last-good deployment kept serving throughout.
 - **`/rules` `enforcement` message is misleading now that A3 works.** It still returns `enforced:false, servedBy:"legacy_runner"` with a remedy pointing at `scale-out` — on an app that is demonstrably edge-caching. It cost us a wrong conclusion on 07-27 ("A3 is gated behind N1"). Suggestion: report `documentCaching: "active"` separately from `customRules: "pending_central_edge"`.
 - **`GET /apps/{id}/env/verify` reports green on an unresolved `${{…}}` reference.** Our container received the literal string `${{db.vence-mig2.DATABASE_URL}}` (the referenced DB had been deleted) → every API route `500`; `env/verify` said `present:true, matchesConfigured:true`. Ask: fail the deploy on an unresolved reference, and have `env/verify` flag `^\$\{\{.*\}\}$` as `unresolved_reference`.
 - **`postgres: {running, available, behind}` is documented but absent** from `GET /databases/{id}`. Ours actually runs **17.2** while the docs say PG17 ships 17.5 (our source is 17.6) — and you correctly tell people to check this after a migration.
@@ -1774,3 +1774,30 @@ today. **Fixing the message is probably a smaller job than fixing the bug, and w
 *(Unrelated small datum from the same run, in case it is useful: an app resumed from `paused` served its
 first uncached request in **42 s** — cold start including the redeploy — and then settled at **0.05-0.10 s**
 from the second request on. Not a complaint; worth documenting so nobody benchmarks a just-resumed app.)*
+
+---
+
+## 🔁 CHECK 2026-07-29 (11:53 UTC) — no contract change, and **both open items behave exactly as before**
+
+Pulled the docs and re-ran the two open items. Recording it because a negative result is also data, and
+because we would rather you know we re-test on every release than assume.
+
+| | Result |
+|---|---|
+| `llms.txt` | **byte-identical** (md5 `2da160432da9`, 837 lines) to the pricing build |
+| `openapi.json` | **189 paths, no additions, no removals** |
+| **N1 `scale-out`** | ❌ **5th reproduction** — `replica_unhealthy`, `runner: null`, empty logs, 24 s |
+| **A4 `maintenance_work_mem`** | ❌ unchanged — `65536 kB`, `source: "default"`; `PUT /databases/{id}/resources` still `404` |
+
+So either nothing shipped, or what shipped touches neither of the two items we have open. No complaint
+attached to that — you have shipped an extraordinary amount this week — but it does mean **N1 is now the
+longest-lived open bug in this report** (first seen 07-25, five reproductions across four days, two of them
+on different apps).
+
+We could not tell from the outside whether a release had happened: `koigrid.com/docs/changelog` 307s to
+`/docs#changelog`, and that page carries no dated entries. **A dated changelog, or a build/version header on
+the API, would let us re-test only what changed instead of re-running everything.** It would also have saved
+us two of these five attempts.
+
+Housekeeping on our side: both apps reverted to `scale-out:false`, verified serving (`200`), and all five
+POC apps returned to `paused`. The `vence-poc` database stays `running`.
