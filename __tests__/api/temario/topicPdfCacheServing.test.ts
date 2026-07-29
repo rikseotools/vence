@@ -50,7 +50,7 @@ import { GET } from '@/app/api/temario/[oposicion]/[topic]/pdf/route'
 
 const OPO = 'auxiliar-administrativo-estado'
 function call(topic = '1') {
-  const req = {} as never
+  const req = { url: 'https://www.vence.es/api/temario/auxiliar-administrativo-estado/7/pdf' } as never
   return GET(req, { params: Promise.resolve({ oposicion: OPO, topic }) } as never) as Promise<Response>
 }
 // Contenido con un único artículo de N chars (controla chars totales y máximo por-artículo).
@@ -111,7 +111,7 @@ describe('GET PDF temario — servido con caché S3', () => {
   })
 
   it('oposición inexistente → 404 (control negativo)', async () => {
-    const req = {} as never
+    const req = { url: 'https://www.vence.es/api/temario/auxiliar-administrativo-estado/7/pdf' } as never
     const res = (await (GET as never as (r: unknown, c: unknown) => Promise<Response>)(
       req, { params: Promise.resolve({ oposicion: 'no-existe-xyz', topic: '1' }) },
     ))

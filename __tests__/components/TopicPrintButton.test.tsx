@@ -47,10 +47,14 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks())
 
-function mockFetch(res: Partial<Response> & { status: number }) {
+function mockFetch(res: Partial<Response> & { status: number; contentType?: string }) {
+  // `headers` va en el mock porque un Response REAL siempre los trae, y desde T-273 el botón los
+  // mira para distinguir un PDF de la respuesta «este tema va por partes» (JSON). Un mock sin
+  // cabeceras hacía pasar un camino que en producción no existe.
   ;(global as any).fetch = jest.fn().mockResolvedValue({
     ok: res.status >= 200 && res.status < 300,
     status: res.status,
+    headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? (res.contentType ?? 'application/pdf') : null) },
     blob: async () => new Blob(['%PDF-1.3'], { type: 'application/pdf' }),
     ...res,
   })
@@ -62,6 +66,40 @@ describe('TopicPrintButton — descarga del PDF generado en servidor', () => {
     expect(screen.getByText('Descargar PDF')).toBeInTheDocument()
     expect(screen.queryByText('Imprimir PDF')).not.toBeInTheDocument()
   })
+
+  // ── PILOTO T-273: el tema no cabe en un PDF y el servidor lo ofrece TROCEADO ──────────────
+  // Antes, estos temas devolvían 413 y el botón caía a imprimir: el opositor se quedaba sin
+  // material (medido: 5 intentos en 30 días de auxiliar-administrativo-estado T109).
+  test('respuesta por PARTES: descarga todas y NO guarda el JSON como si fuera un PDF', async () => {
+    // El fallo que este test evita: sin mirar el content-type, `res.blob()` sobre el JSON
+    // produciría un fichero .pdf ilegible, que es peor que el 413 que había antes.
+    const partes = [
+      { parte: 1, total: 2, etiqueta: 'Excel 365 (arts. 10-80)', url: '/api/temario/x/109/pdf?parte=1' },
+      { parte: 2, total: 2, etiqueta: 'Excel 365 Escritorio', url: '/api/temario/x/109/pdf?parte=2' },
+    ]
+    ;(global as any).fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ estado: 'disponible_por_partes', tema: 109, partes }),
+      })
+      .mockResolvedValue({
+        ok: true, status: 200,
+        headers: { get: () => 'application/pdf' },
+        blob: async () => new Blob(['%PDF-1.3'], { type: 'application/pdf' }),
+      })
+
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={109} />)
+    fireEvent.click(screen.getByText('Descargar PDF'))
+
+    await waitFor(() => expect(emitted('download')).toBe(true), { timeout: 5000 })
+    // Una descarga POR PARTE, con el nombre diciendo cuál es.
+    expect(clickedAnchors).toHaveLength(2)
+    expect(clickedAnchors[0].download).toMatch(/-parte-1-de-2\.pdf$/)
+    expect(clickedAnchors[1].download).toMatch(/-parte-2-de-2\.pdf$/)
+    // Y NO se cae a la impresión del navegador: eso era el comportamiento del 413.
+    expect(window.print).not.toHaveBeenCalled()
+  }, 10000)
 
   test('logueado: pide el PDF a la ruta correcta y dispara la descarga', async () => {
     mockFetch({ status: 200 })
@@ -124,7 +162,7 @@ describe('TopicPrintButton — descarga del PDF generado en servidor', () => {
     await waitFor(() => expect(screen.getByText('Generando PDF…')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: /Generando/ })).toBeDisabled()
 
-    resolver({ ok: true, status: 200, blob: async () => new Blob(['%PDF']) })
+    resolver({ ok: true, status: 200, headers: { get: () => 'application/pdf' }, blob: async () => new Blob(['%PDF']) })
     await waitFor(() => expect(screen.getByText('Descargar PDF')).toBeInTheDocument())
   })
 

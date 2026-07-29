@@ -1196,6 +1196,20 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
   2. **⚠️ Las fronteras tienen que ser ESTABLES: la caché es content-addressed** (`pdfCache.ts`). Si se parte por páginas, cualquier cambio de contenido mueve todos los cortes y **invalida la caché entera**; partiendo por ley, un cambio en una ley solo invalida su parte. Esto no es un detalle de implementación: decide el diseño.
   3. **Decir el tamaño SIEMPRE, no solo cuando es enorme.** «Tema 29 · 651 páginas · 4 partes» en el botón es útil a cualquier tamaño y no cuesta nada. Enseñarlo solo en los monstruos convierte un dato en una disculpa.
   4. **Sustituir el 413** por la descarga por partes. El techo (`PDF_MAX_CHARS`, `PDF_MAX_ARTICLE_CHARS` en `topicPdfModel.ts`) deja de ser un muro y pasa a ser el disparador del troceado.
+- **✅ PILOTO CONSTRUIDO (29/07) — apagado por defecto, y elegido para que NO PUEDA empeorar nada.**
+  - **Alcance del piloto: SOLO donde hoy hay un 413.** Quien hoy descarga su PDF lo sigue recibiendo idéntico, con el flag encendido o apagado — el camino de generación normal no se toca. El troceado solo entra donde el opositor ahora mismo **no recibe nada** y el botón le manda a imprimir.
+  - **Cómo se parte** (`lib/temario/pdf/planPartes.cjs`, 12 tests): por **bloque de contenido** (ley o contenedor), nunca por páginas; y si un bloque no cabe ni él solo, por **rangos de artículos consecutivos**. Nunca parte un artículo por la mitad — un artículo cortado no sirve para estudiar, así que uno gigante va en su propia parte. El techo es `PDF_MAX_CHARS`, que ya existe y ya significa «esto cabe en una generación síncrona»: no se inventa una constante nueva que nadie sabría recalibrar.
+  - **Las fronteras son estables donde importa:** el recorte se hace ANTES del hash, así que **cada parte se cachea por el hash de SU propio contenido**. Un cambio dentro de un bloque invalida solo su parte, no el tema entero.
+  - **Simulado contra el caso real que hoy da 413** (`auxiliar-administrativo-estado` T109, 485.084 chars): sale en **2 partes** — *«Excel 365 (arts. 10-80)»* (387.861) y *«Excel 365 (art. 90) + Excel 365 Escritorio»* (97.223), las dos bajo el techo.
+  - **El cliente también, porque si no era una chapuza:** el botón hacía `res.blob()` en cualquier 200, así que el JSON de partes se habría descargado como un `.pdf` ilegible — peor que el 413. Ahora distingue por `content-type` y **descarga todas las partes seguidas**, manteniendo la promesa de un clic. Con test que fija justo ese fallo. De paso, el mock de `fetch` del test existente no traía `headers` (un `Response` real siempre los trae) y hacía pasar un camino que en producción no existe.
+  - **Cómo se enciende** (SSM runtime, sin redeploy para revertir):
+    ```
+    FEATURE_TEMARIO_PDF_PARTES=true
+    FEATURE_TEMARIO_PDF_PARTES_SCOPE=auxiliar_administrativo_estado   # el piloto
+    # …validado → SCOPE=all
+    ```
+  - **Cómo se mide:** evento `temario_pdf_partes_ofrecidas` (con `partes`, `chars`, `userId`) y, en el cliente, `download_por_partes`. Antes de ampliar: comprobar que hay descargas completas y **ninguna** caída a `window.print()`.
+  - **⏭️ Pendiente antes de encender:** deploy de frontend (el código está en `main` con el flag OFF) y decidir con Manuel si el piloto arranca por `auxiliar_administrativo_estado`, que es la única oposición con rechazos medidos.
 - **Efecto secundario bueno (no es el objetivo):** cada parte es barata y se cachea por separado, así que también alivia el coste de render. Pero el arreglo del incidente es encolar al worker ([T-270]), no esto.
 - **Relacionada:** [T-270] (el incidente, independiente), [T-086] (pre-generación), [T-159] (cola de PDFs).
 

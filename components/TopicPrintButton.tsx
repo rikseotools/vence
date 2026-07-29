@@ -102,6 +102,39 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
         return
       }
       if (decision.outcome === 'error') throw new Error(`HTTP ${res.status}`)
+
+      // PILOTO T-273 — el tema no cabe en un PDF y el servidor lo ofrece TROCEADO por estructura.
+      // Se distingue por content-type: sin esta comprobación, el JSON se descargaría como si fuera
+      // un PDF y el opositor abriría un fichero roto. Antes de esto, estos temas devolvían 413 y el
+      // botón caía a imprimir, así que el usuario se quedaba sin material.
+      //
+      // Se descargan TODAS las partes seguidas: la promesa del botón es «un clic y tienes tu tema»,
+      // y obligar a elegir parte por parte la rompería. El separador entre descargas existe porque
+      // los navegadores bloquean varias descargas programáticas seguidas si van demasiado juntas.
+      if ((res.headers.get('content-type') || '').includes('application/json')) {
+        const data = await res.json()
+        if (data?.estado === 'disponible_por_partes' && Array.isArray(data.partes)) {
+          emit('download_por_partes', { partes: data.partes.length })
+          for (const p of data.partes) {
+            const rp = await fetch(p.url, { headers: await getAuthHeaders() })
+            if (!rp.ok) throw new Error(`parte ${p.parte}: HTTP ${rp.status}`)
+            const bp = await rp.blob()
+            const up = URL.createObjectURL(bp)
+            const ap = document.createElement('a')
+            ap.href = up
+            ap.download = `${slug}-tema-${topicNumber}-parte-${p.parte}-de-${p.total}.pdf`
+            document.body.appendChild(ap)
+            ap.click()
+            ap.remove()
+            URL.revokeObjectURL(up)
+            await new Promise((r) => setTimeout(r, 600))
+          }
+          emit('download', { ok: true, partes: data.partes.length })
+          return
+        }
+        throw new Error('respuesta JSON inesperada')
+      }
+
       const blob = await res.blob()
 
       // Descarga vía blob + <a download>: funciona en iOS y en navegadores in-app,

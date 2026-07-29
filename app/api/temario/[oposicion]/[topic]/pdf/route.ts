@@ -25,6 +25,11 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
 import { INSTANCE_ID } from '@/lib/observability/instanceId'
+import { isPdfPartesEnabledFor } from '@/lib/temario/pdf/flagPartes'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { planPartes } = require('@/lib/temario/pdf/planPartes.cjs') as {
+  planPartes: (c: unknown, max: number) => { total: number; partes: Array<{ indice: number; total: number; etiqueta: string; chars: number; laws: unknown[] }> }
+}
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { getUserPlanType } from '@/lib/referrals/queries'
@@ -78,11 +83,37 @@ async function handler(
     return NextResponse.json({ error: 'Tema no encontrado' }, { status: 404 })
   }
 
+  // ── PARTE concreta (piloto T-273) ──────────────────────────────────────────────────────────
+  // Se recorta el contenido AQUÍ, ANTES del hash, y eso no es casual: la caché es
+  // content-addressed, así que cada parte queda cacheada por el hash de SU propio contenido. Un
+  // cambio dentro de un bloque invalida solo la parte que lo contiene, no el tema entero — que es
+  // justo lo que se pierde si se parte por páginas.
+  // `new URL(req.url)` y no `req.nextUrl`: es la forma dominante del repo (108 usos frente a 22),
+  // es API web estándar y no ata la ruta a las particularidades de NextRequest.
+  const parteParam = new URL(req.url).searchParams.get('parte')
+  let parteInfo: { indice: number; total: number; etiqueta: string } | null = null
+  if (parteParam && isPdfPartesEnabledFor(oposicion)) {
+    const n = Number(parteParam)
+    const plan = planPartes(content, PDF_MAX_CHARS)
+    const elegida = Number.isInteger(n) ? plan.partes.find((p) => p.indice === n) : undefined
+    if (!elegida) {
+      // Pedir una parte que no existe es un error del cliente, no un tema roto: se dice cuántas hay.
+      return NextResponse.json(
+        { error: 'parte_inexistente', parte: parteParam, partesDisponibles: plan.total },
+        { status: 404 },
+      )
+    }
+    content.laws = elegida.laws as typeof content.laws
+    parteInfo = { indice: elegida.indice, total: elegida.total, etiqueta: elegida.etiqueta }
+  }
+
   const chars = countContentChars(content)
   const maxArt = maxArticleChars(content)
   const contentHash = topicPdfContentHash(content)
   const cacheKey = topicPdfCacheKey(oposicion, topicNumber, contentHash)
-  const fileName = pdfFileName(oposicion, topicNumber)
+  const fileName = parteInfo
+    ? pdfFileName(oposicion, topicNumber).replace(/\.pdf$/i, `-parte-${parteInfo.indice}-de-${parteInfo.total}.pdf`)
+    : pdfFileName(oposicion, topicNumber)
   const storage = new S3StorageAdapter()
 
   // Coste de CPU de ESTA petición. Se rellena solo en el camino que renderiza; en un acierto
@@ -112,6 +143,7 @@ async function handler(
         userId: userId ?? null,
         renderMs: cpu.renderMs, stampMs: cpu.stampMs, cpuMs: cpu.renderMs + cpu.stampMs,
         instanceId: INSTANCE_ID,
+        parte: parteInfo ? `${parteInfo.indice}/${parteInfo.total}` : null,
       },
     })
 
@@ -145,6 +177,34 @@ async function handler(
   //    pero un artículo-cajón de 89k que 504ea; el por-artículo lo reconvierte a 413 gracioso).
   //    Los temas grandes SE ARREGLAN pre-generándolos offline (pueblan la caché de arriba).
   if (!fitsSyncPdf(chars, maxArt)) {
+    // PILOTO (T-273): en vez de dejar al opositor sin nada, ofrecerle el tema TROCEADO por
+    // estructura. Se aplica SOLO aquí —en el camino que hoy devuelve 413— así que no puede
+    // empeorar ninguna descarga que funcione: quien recibe su PDF lo sigue recibiendo idéntico.
+    // Medido: 5 rechazos en 30 días, todos de auxiliar-administrativo-estado T109 (485.084 chars).
+    // Flag OFF por defecto; revertir es apagarlo, sin redeploy.
+    if (isPdfPartesEnabledFor(oposicion)) {
+      const plan = planPartes(content, PDF_MAX_CHARS)
+      if (plan.total > 1) {
+        emitFireAndForget({
+          source: 'fargate', severity: 'info', eventType: 'temario_pdf_partes_ofrecidas',
+          endpoint: '/api/temario/[oposicion]/[topic]/pdf',
+          metadata: { oposicion, tema: topicNumber, chars, partes: plan.total, userId, instanceId: INSTANCE_ID },
+        })
+        return NextResponse.json({
+          estado: 'disponible_por_partes',
+          tema: topicNumber,
+          chars,
+          // El tamaño se dice SIEMPRE, no solo aquí: enseñarlo únicamente cuando el tema es enorme
+          // convierte un dato útil en una disculpa (ver la ficha).
+          partes: plan.partes.map((p) => ({
+            parte: p.indice,
+            total: p.total,
+            etiqueta: p.etiqueta,
+            url: `/api/temario/${oposicion}/${topicNumber}/pdf?parte=${p.indice}`,
+          })),
+        }, { status: 200 })
+      }
+    }
     emitServed('too_large', 0)
     return NextResponse.json(
       { error: 'tema_demasiado_grande', chars, maxChars: PDF_MAX_CHARS, maxArticleChars: maxArt, maxArticle: PDF_MAX_ARTICLE_CHARS },
