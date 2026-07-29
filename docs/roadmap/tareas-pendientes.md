@@ -158,6 +158,28 @@
 
 
 
+### [T-287] 🟠 [ABIERTO 29/07] Canary del precio de fidelidad: nadie vigila que quien tiene una oferta pueda pagarla
+
+- **Por qué existe:** el 29/07 a una usuaria (Rocío, feedback `48f1503a`) se le creó un precio de fidelidad y estuvo **tres horas sin poder comprar**. La página cargaba, así que se fue al checkout público, vio la tarifa nueva y **abandonó cuatro pagos**. La causa era invisible desde fuera: `apiFetch` mandaba POST a un endpoint GET y devolvía **405** en silencio. El deploy estaba verde, los tests pasaban y la única señal fue su mensaje.
+- **Lo que hay hoy:** tests unitarios y de guardarraíl (el código está cubierto) y un journey de Vence Sim (`scripts/sim/journeys/precio-fidelidad-visible.ts`) que comprueba lo correcto — que el endpoint devuelva las ofertas que la persona TIENE y que la página las pinte.
+- **Lo que falta, y es el trabajo de esta ficha:**
+  1. **Que el journey autentique.** Contra producción da **401**: la sesión que forja el sim no llega a ese endpoint (`verifyAuth` espera Bearer; otros journeys van con cookie). Falta que `ctx.api` mande el token de la identidad simulada. Está anotado en el propio fichero.
+  2. **Activarlo:** `postDeploy: true`. Se dejó en `false` a propósito — un guardarraíl que falla siempre se acaba ignorando, y entonces no protege nada.
+  3. **Decidir si además hace falta un canario continuo** de la familia `canary_*` (junto a `canary_answer_save_failed`, `canary_stripe_webhook_failed`). El journey corre en cada despliegue; un canario correría cada pocos minutos. Para este caso el despliegue puede bastar: el fallo lo introdujo un cambio de código, no apareció solo con el tiempo — el mismo razonamiento que el runbook de Vence Sim da para no meter sus journeys en un cron.
+- **Criterio de hecho:** un despliegue con el endpoint roto a propósito (por ejemplo devolviendo 405) tiene que salir en ROJO. Si no lo caza, el canary no sirve.
+- **Relacionadas:** [T-261] (favoritas, mismo patrón de "lanzado y sin vigilar"), `docs/runbooks/vence-sim.md`, `docs/runbooks/oferta-precio-personalizada.md`.
+
+### [T-286] 🟠 [ABIERTO 29/07] Favoritas: el corazón sale marcado sin marcarlo, y dejan de guardarse pasadas 20
+
+- **Quién lo reporta:** Laura Zurdo (premium, feedback `9527a03f`, 29/07) — **la misma persona que pidió la función** ([T-261], lanzada ese mismo día). Que el primer uso real la rompa es lo peor que puede pasarle a una novedad.
+- **Dos fallos distintos, en sus palabras:**
+  1. *«en muchas preguntas sale el corazón de color rojo sin haberlas marcado como favoritas previamente, entonces para poder marcarlas de verdad tienes que pulsar el corazón 2 veces (una para desmarcarlo, y otra para marcarlo otra vez)»*.
+  2. *«al realizar un test de 30 preguntas y marcar 20 en favoritas, esas 20 se han guardado, pero luego he vuelto a realizar otro test y he vuelto a marcar algunas y no se han guardado: en preguntas guardadas solo aparecían 20»*.
+- **Primera hipótesis (sin verificar):** el 20 exacto huele a un tope. Mirar `MAX_FAVORITAS_POR_TEST` en `lib/api/question-favorites/schemas.ts` — si ese límite se está aplicando al GUARDADO o al listado en vez de al tamaño del test de repaso, explica el segundo fallo. Para el primero, sospechar del estado del corazón en `components/FavoriteQuestionButton.tsx`: si la lista de ids marcados se compara mal (o se comparte entre preguntas), el corazón sale relleno de más.
+- **Por qué no lo cazó nada:** los tests cubren marcar/desmarcar UNA pregunta y el endpoint, pero nadie prueba el flujo real —marcar varias en un test, terminarlo, empezar otro y volver a marcar—, que es justo donde falla. Un journey de Vence Sim sería el sitio (`docs/runbooks/vence-sim.md`).
+- **Al arreglarlo:** contestar a Laura, que además tiene [T-261] cerrada con su nombre. Es premium y reportó un bug real: **lleva recompensa** (3 €, ver `docs/runbooks/embajadores-recompensas.md`), y no tiene ninguna previa por esto.
+- **Ficheros:** `components/FavoriteQuestionButton.tsx`, `lib/api/question-favorites/{queries,schemas}.ts`, `app/api/v2/question-favorites/route.ts`, `app/test/favoritas/page.tsx`.
+
 ### [T-278] 🟠 [ABIERTO 29/07] Parque Móvil del Estado: generar el banco de la parte específica (9 temas en elaboración)
 
 - **Contexto:** la oposición está CREADA y con los tres gates deterministas en verde (`audit:oposicion`, `audit:served`, `audit:epigrafe` = 0 ❌). Falta contenido para poder publicarla. Origen: petición de un usuario (feedback `e5151a19`) + convocatoria viva (BOE-A-2026-15052, 98 plazas de acceso libre, inscripción abierta hasta ~3/08/2026).
