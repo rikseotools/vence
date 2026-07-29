@@ -88,8 +88,11 @@ const journey: Journey = {
     const resultados: InvariantResult[] = []
 
     await ctx.step('abrir examen', () => ctx.goto(RUTA), { shot: true })
+    // 60s y no 30: recién desplegado, el contenedor está frío y preparar el examen puede pasar
+    // de medio minuto. Con 30 el journey se ponía rojo por la temperatura del contenedor, no
+    // por un fallo — y un rojo que no es un fallo es peor que no tener el journey.
     const hayPreguntas = await ctx.step('esperar preguntas', async () => {
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 60; i++) {
         if (await ctx.page.locator('[id^=pregunta-]').count()) return true
         await ctx.page.waitForTimeout(1000)
       }
