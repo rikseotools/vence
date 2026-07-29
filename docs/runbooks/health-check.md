@@ -529,6 +529,19 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**Mapa de visibilidad frío: un «Index Only Scan» que no lo es (2026-07-29, detector `visibility_map_frio`)** — si una consulta que usa índice tarda segundos y **no hay ni errores ni pico de tráfico**, mira esto antes que nada. Cuando el mapa de visibilidad se enfría, Postgres sigue diciendo *«Index Only Scan»* en el plan pero baja al heap fila por fila: el resultado es correcto y tarda cien veces más.
+- **El número que hay que mirar es `Heap Fetches`**, no el nombre del nodo. Caso real: `test_questions` al 67,5% de páginas visibles → **72.695 heap fetches y 17.809 ms** en la consulta de `theme-stats`; tras calentar el mapa, **0 y 145 ms** (122×). El opositor veía sus estadísticas vacías porque el cliente corta a los 8 s.
+- **La trampa:** la tabla PARECE bien configurada porque tiene `autovacuum_vacuum_scale_factor` afinado… que mira **filas MUERTAS**. Una tabla de INSERTS no genera ninguna, así que **ese ajuste no dispara jamás**. El que aplica es `autovacuum_vacuum_insert_scale_factor` (global 0.2 = cientos de miles de inserts por vacuum). Medido: 4 de 9 tablas afectadas eran insert-only puras y llevaban 25 días sin vacuum.
+- **Comprobar:**
+  ```sql
+  SELECT c.relname, round(100.0*c.relallvisible/NULLIF(c.relpages,0),1) AS pct_visible
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname='public'
+   WHERE c.relkind='r' AND c.relpages > 5000
+     AND (100.0*c.relallvisible/NULLIF(c.relpages,0)) < 90;
+  ```
+- **Arreglar:** `ALTER TABLE public.<tabla> SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)`. Es metadatos, instantáneo, y el autovacuum arranca solo acto seguido (con retardo por coste, sin pico de I/O). **Verificar el efecto, no declararlo:** repetir el `EXPLAIN (ANALYZE, BUFFERS)` y comprobar `Heap Fetches` a 0.
+- **Vigilancia:** núcleo puro `lib/db/visibilityMap.cjs`, emitido por el barrido nocturno como `visibility_map_frio` (aviso <90%, error <70%, solo tablas de más de 5.000 páginas). Ficha: [T-275].
+
 **El PDF del temario bloquea el frontend y tumba el guardado de respuestas (2026-07-29, ABIERTO — [T-270])** — si `endpoint_latency` se pone rojo en `/api/v2/answer-and-save` **y el tráfico NO ha subido**, mira esto ANTES de sospechar de la BD. `/api/temario/[oposicion]/[topic]/pdf` exige premium pero no tiene límite de tasa, y cuando el PDF no está en caché lo renderiza **en línea** con `@react-pdf` + `pdf-lib` — JS puro y CPU pura **en el proceso que sirve**. Con temas de hasta 760 páginas, eso bloquea el event-loop de esa task y todo lo demás hace cola. Medido el 29/07: 36 renders frescos en 18 min → CPU del frontend 98,5%, event-loop parado 215 s en 5 instancias, `answer-and-save` a p95 25.070 ms. Se recuperó solo al acabar el barrido.
 - **Cómo confirmarlo en 30 s:** `SELECT count(*) FROM observable_events WHERE event_type='temario_pdf_stamped' AND created_at > now() - interval '30 minutes';` — si hay decenas, es esto.
 - **Ojo con el contenedor equivocado:** la primera versión de [T-254] culpó a la CPU del BACKEND. El que se satura es el **frontend**, que es quien sirve `answer-and-save`. *"La CPU del backend está al 100%"* y *"el backend es la causa"* no son la misma frase.

@@ -37,6 +37,7 @@ const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOri
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
+const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 
@@ -1205,6 +1206,31 @@ async function main() {
         { respuestas24h: barajado.respuestas, conOrden: barajado.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null });
     }
   }
+
+  // ── Mapa de visibilidad frío: index-only scans que NO lo son (T-275) ──
+  // Cuando el mapa se enfría, Postgres sigue diciendo «Index Only Scan» en el plan pero baja al
+  // heap fila por fila. La consulta devuelve lo correcto; solo que tarda cien veces más — y por
+  // eso NINGÚN indicador lo veía: no es un error, es una respuesta correcta que llega tarde
+  // (mismo punto ciego que T-254). Caso real 29/07: `test_questions` al 67,5% → 72.695 heap
+  // fetches y 17.809 ms en la consulta de theme-stats; tras calentar el mapa, 0 y 145 ms.
+  //
+  // La decisión vive en `lib/db/visibilityMap.ts` (pura y testeada). Aquí solo la consulta.
+  try {
+    const vm = (await c.query(`
+      SELECT c.relname, c.relpages::int AS relpages, c.relallvisible::int AS relallvisible,
+             (COALESCE(c.reloptions::text,'') ILIKE '%insert_scale%') AS tiene_ajuste
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+       WHERE c.relkind = 'r' AND c.relpages > $1`, [VM_MIN_PAGES])).rows;
+    const frias = tablasFrias(vm.map(r => ({
+      relname: r.relname, relpages: r.relpages, relallvisible: r.relallvisible,
+      tieneAjusteInserts: r.tiene_ajuste,
+    })));
+    for (const f of frias.slice(0, 5)) {
+      add('app', f.status === 'error' ? 'error' : 'warn', null, 'visibility_map_frio',
+        `\`${f.relname}\` con solo el ${f.pctVisible}% de páginas marcadas visibles (${f.paginasFrias.toLocaleString('es-ES')} frías): sus index-only scans bajan al heap y pueden tardar 100× más`,
+        { tabla: f.relname, pctVisible: f.pctVisible, paginasFrias: f.paginasFrias, relpages: f.relpages, remedio: remedioVisibilidad(f) });
+    }
+  } catch (e) { console.warn('⚠️ mapa de visibilidad no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {

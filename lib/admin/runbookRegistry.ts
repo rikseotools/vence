@@ -52,6 +52,9 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   server_render_error: { title: 'Error de render en servidor', ...HEALTH_CHECK },
   render_error: { title: 'Error de render', ...HEALTH_CHECK },
   webhook_unhealthy: { title: 'Webhook roto', ...HEALTH_CHECK },
+  // T-275: no es un error, es una respuesta correcta que llega TARDE — el mismo punto ciego que
+  // T-254. Va con la frase de health-check porque es salud de app/infra, no de contenido.
+  visibility_map_frio: { title: 'Mapa de visibilidad frío (index-only scans que no lo son)', ...HEALTH_CHECK },
   chat_ia_errores: {
     title: 'El chat IA está sirviendo errores',
     triggerPhrase: 'revisa los errores del chat',

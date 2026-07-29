@@ -1150,8 +1150,15 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
   | `user_question_history_v2` | 48,2% | **100%** | 32.722/32.723 páginas |
   | `law_question_first_attempts` | 75,4% | **100%** | 213.101/213.103 páginas |
 
-  **Falta el resto** (6 tablas), a aplicar por tandas midiendo cada una: nueve autovacuums a la vez es un pico de I/O innecesario y sin motivo.
-- **Cómo (lo que pide esta ficha):** un hallazgo del **barrido nocturno** (`health-sweep.cjs`) con su chip de runbook, igual que el resto de detectores de contenido. Es una consulta **determinista y barata**, sin IA y sin falsos positivos:
+  **✅ Y el resto también (29/07):** aplicado a las **10 tablas** restantes que cumplían el criterio — la consulta las saca de `pg_class`, no de una lista escrita a mano, así que cazó más de las 6 que se habían listado a ojo (entre ellas `user_interactions`, ~8 GB, la mayor de la base). **Quedan 0 tablas grandes sin el ajuste.**
+- **✅ DETECTOR CONSTRUIDO (29/07) — ya no depende de que alguien se acuerde:**
+  - Núcleo puro `lib/db/visibilityMap.cjs` (12 tests con los números reales del incidente), emitido por el barrido nocturno como kind **`visibility_map_frio`**: aviso <90%, error <70%, solo tablas de más de 5.000 páginas. Registrado en `runbookRegistry` con la frase-gatillo *«busca errores»* que ya existía — es salud de app, no hacía falta inventar una nueva.
+  - **Ordena por PÁGINAS FRÍAS, no por porcentaje:** una tabla de 8 GB al 80% arrastra mucho más I/O que una de 40 MB al 46%, y el porcentaje las hace parecer iguales.
+  - **El hallazgo trae su arreglo:** si a la tabla le falta el ajuste de inserts, el detalle incluye el `ALTER TABLE` exacto; si ya lo tiene, manda mirar por qué el autovacuum no llega, en vez de repetir el mismo comando.
+  - **Verificado contra producción:** 23 tablas grandes miradas, y tras el arreglo de hoy solo queda 1 en ámbar (`questions` al 80,2%, con su autovacuum aún en cola). Antes del arreglo eran 10.
+  - **⚠️ Y en el `@Cron` del BACKEND, que es el writer REAL.** El script CLI es un espejo; el barrido que corre en producción es `content-health-sweep.service.ts`. Añadirlo solo al CLI habría dejado un detector que **nunca se ejecuta** — lo cazó el guardarraíl de paridad `content-sweep-parity.test.ts` al intentar commitear. El backend no puede importar `lib/` (su Docker solo copia `backend/src`), así que replica los umbrales con la advertencia escrita al lado.
+  - Documentado en `docs/runbooks/health-check.md` §3 con la consulta y el remedio.
+- **Cómo (lo que pedía esta ficha, ya hecho):** un hallazgo del **barrido nocturno** (`health-sweep.cjs`) con su chip de runbook, igual que el resto de detectores de contenido. Es una consulta **determinista y barata**, sin IA y sin falsos positivos:
   ```sql
   SELECT c.relname, round(100.0*c.relallvisible/NULLIF(c.relpages,0),1) AS pct_visible
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'

@@ -2517,6 +2517,53 @@ export class ContentHealthSweepService {
       );
     }
 
+    // ── Mapa de visibilidad frío: index-only scans que NO lo son (T-275) ──
+    // Cuando el mapa se enfría, Postgres sigue diciendo «Index Only Scan» en el plan pero baja al
+    // heap fila por fila: el resultado es correcto y tarda cien veces más. Por eso NINGÚN indicador
+    // lo veía — no es un error, es una respuesta correcta que llega tarde (punto ciego de T-254).
+    // Caso real 29/07: `test_questions` al 67,5% → 72.695 heap fetches y 17.809 ms en la consulta
+    // de theme-stats; tras calentar el mapa, 0 y 145 ms.
+    //
+    // ⚠️ ESPEJO de `lib/db/visibilityMap.cjs` (el núcleo puro y testeado que usa el script CLI).
+    // El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas un
+    // umbral aquí, tócalo allí — `content-sweep-parity.test.ts` vigila los KINDS, y los umbrales
+    // están fijados por los tests del núcleo con los números reales del incidente.
+    try {
+      const VM_MIN_PAGES = 5000, VM_WARN_PCT = 90, VM_ERROR_PCT = 70;
+      const vmRows = (await this.db.execute(sql`
+        SELECT c.relname AS relname, c.relpages::int AS relpages, c.relallvisible::int AS relallvisible,
+               (COALESCE(c.reloptions::text, '') ILIKE '%insert_scale%') AS tiene_ajuste
+          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+         WHERE c.relkind = 'r' AND c.relpages > ${VM_MIN_PAGES}
+      `)) as unknown as Array<{ relname: string; relpages: number; relallvisible: number; tiene_ajuste: boolean }>;
+      const frias = (Array.isArray(vmRows) ? vmRows : [])
+        .map((r) => {
+          const pct = r.relpages > 0 ? Math.round((100 * r.relallvisible) / r.relpages * 10) / 10 : 100;
+          return { ...r, pct, paginasFrias: Math.max(0, r.relpages - r.relallvisible) };
+        })
+        .filter((r) => r.pct < VM_WARN_PCT)
+        // Por PÁGINAS FRÍAS, no por porcentaje: una tabla de 8 GB al 80% arrastra mucho más I/O
+        // que una de 40 MB al 46%, y el porcentaje las hace parecer iguales.
+        .sort((a, b) => b.paginasFrias - a.paginasFrias);
+      for (const f of frias.slice(0, 5)) {
+        add(
+          'app',
+          f.pct < VM_ERROR_PCT ? 'error' : 'warn',
+          null,
+          'visibility_map_frio',
+          `\`${f.relname}\` con solo el ${f.pct}% de páginas marcadas visibles (${f.paginasFrias.toLocaleString('es-ES')} frías): sus index-only scans bajan al heap y pueden tardar 100× más`,
+          {
+            tabla: f.relname, pctVisible: f.pct, paginasFrias: f.paginasFrias, relpages: f.relpages,
+            remedio: f.tiene_ajuste
+              ? 'ya tiene el ajuste de inserts: revisar por qué el autovacuum no llega'
+              : `ALTER TABLE public.${f.relname} SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)`,
+          },
+        );
+      }
+    } catch (e) {
+      this.logger.warn(`mapa de visibilidad no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {
