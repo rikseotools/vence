@@ -329,6 +329,14 @@ async function main() {
   const insertConfig = args.includes('--insert-config'); // FASE 4: inserta la entrada en lib/config/oposiciones.ts
   const doRoutes = args.includes('--routes');             // FASE 5: genera las 8 rutas por-oposición
   const doRegistros = args.includes('--registros');       // FASE 4c: OnboardingModal + perfil + mapeo CCAA
+  // --completar: la fila `oposiciones` YA existe (aspiracional del catálogo) y se quiere
+  // IMPLEMENTAR. En vez de abortar, ACTUALIZA esa fila con los campos del spec y sigue con
+  // el resto de fases. Es el caso §0.4 del manual ("promocionar una aspiracional"), cuya
+  // regla de oro es MANTENER EL MISMO id para que los usuarios con ese `target_oposicion`
+  // hereden la implementación. Sin esto, la única salida era borrar la fila — y eso se
+  // lleva por delante en cascada seguidores, notas de convocatoria y checks de seguimiento
+  // (caso real: Parque Móvil del Estado, 3 seguidores + 8 notas + 24 checks, 29/07/2026).
+  const completar = args.includes('--completar');
   if (!specPath) { console.error('Uso: node scripts/create-oposicion.cjs <spec.json> [--dry-run] [--force]'); process.exit(2); }
 
   let spec;
@@ -346,9 +354,19 @@ async function main() {
   const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, statement_timeout: 30000 });
   await c.connect();
   try {
-    if ((await c.query('select 1 from oposiciones where slug=$1', [SLUG])).rowCount) {
+    const yaExiste = (await c.query('select id from oposiciones where slug=$1', [SLUG])).rows[0];
+    if (yaExiste && !completar) {
       console.error(`⚠️ oposiciones "${SLUG}" ya existe → aborto (idempotente). ${force ? '(--force no borra por seguridad)' : ''}`);
+      console.error('   Si es una ASPIRACIONAL del catálogo que quieres implementar, usa --completar');
+      console.error('   (actualiza la fila y conserva seguidores, notas y checks; manual §0.4).');
       process.exit(0);
+    }
+    if (yaExiste && completar) {
+      const [seg, notas] = await Promise.all([
+        c.query('select count(*)::int n from user_oposiciones_seguidas where oposicion_id=$1', [yaExiste.id]).catch(() => ({ rows: [{ n: 0 }] })),
+        c.query('select count(*)::int n from convocatoria_notas where oposicion_id=$1', [yaExiste.id]).catch(() => ({ rows: [{ n: 0 }] })),
+      ]);
+      console.log(`♻️  --completar: la fila existe (id=${yaExiste.id}). Se ACTUALIZA conservando ${seg.rows[0].n} seguidor(es) y ${notas.rows[0].n} nota(s).`);
     }
 
     const [oCols, bCols, tCols, cCols, hCols] = await Promise.all(
@@ -376,10 +394,22 @@ async function main() {
       examen_config: J(spec.examen_config), landing_faqs: J(landing.faqs || []), landing_estadisticas: J(landing.estadisticas || []),
       landing_description: landing.description || null, seo_title: landing.seo_title || null, seo_description: landing.seo_description || null,
     };
-    const oIns = buildInsert('oposiciones', oCols, oObj);
-    if (oIns.missing.length) throw new Error(`schema-drift: columnas NOT NULL sin default no cubiertas en oposiciones: ${oIns.missing.join(', ')}`);
-    if (oIns.unknown.length) console.warn('  ⚠️ oposiciones: claves ignoradas (no existen):', oIns.unknown.join(', '));
-    const oid = (await c.query(oIns.text, oIns.params)).rows[0].id;
+    let oid;
+    if (yaExiste && completar) {
+      // UPDATE de los campos del spec sobre la fila existente. `is_active` NO se toca aquí:
+      // el go-live es un acto aparte y con OK explícito (manual, paso 5).
+      // `oCols` es un mapa {columna: {nullable, hasDefault}}, no un array.
+      const cols = Object.keys(oObj).filter((k) => Object.prototype.hasOwnProperty.call(oCols, k) && k !== 'is_active');
+      const sets = cols.map((k, i) => `"${k}"=$${i + 2}`).join(', ');
+      await c.query(`update oposiciones set ${sets} where id=$1`, [yaExiste.id, ...cols.map((k) => oObj[k])]);
+      oid = yaExiste.id;
+      console.log(`  ✔ oposiciones actualizada (${cols.length} campos), is_active intacto.`);
+    } else {
+      const oIns = buildInsert('oposiciones', oCols, oObj);
+      if (oIns.missing.length) throw new Error(`schema-drift: columnas NOT NULL sin default no cubiertas en oposiciones: ${oIns.missing.join(', ')}`);
+      if (oIns.unknown.length) console.warn('  ⚠️ oposiciones: claves ignoradas (no existen):', oIns.unknown.join(', '));
+      oid = (await c.query(oIns.text, oIns.params)).rows[0].id;
+    }
 
     // ── bloques ──
     for (const b of bloques) {

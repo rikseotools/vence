@@ -1,0 +1,722 @@
+{
+  "_fuente": "Bases oficiales: https://www.hacienda.gob.es/pme/20260713basesconvocatoria.pdf (Resolución de 8 de julio de 2026, Subsecretaría de Hacienda; CSV OIP_BSCESN4BQS42TGCSO9JX54UBBZXJ). Convocatoria: BOE-A-2026-15052 (BOE de 10/07/2026). Temario literal de los Anexos VI (parte común) y VII (parte específica). Origen: petición de usuario (feedback e5151a19, 28/07/2026).",
+  "identity": {
+    "nombre": "Conducción de Vehículos de Transporte por Carretera del Parque Móvil del Estado",
+    "short_name": "Conductor Parque Móvil",
+    "slug": "mecanico-conductor-estado",
+    "position_type": "mecanico_conductor_estado",
+    "grupo": "E",
+    "subgrupo": "E2",
+    "categoria": "E2",
+    "tipo_acceso": "libre",
+    "administracion": "estado",
+    "administracion_config": "estado",
+    "administracion_display": "Parque Móvil del Estado (Ministerio de Hacienda)",
+    "titulo_requerido": "Título de Técnico en Conducción de Vehículos de Transporte por Carretera, cualquier otro título de Formación Profesional de Grado Medio o, en su defecto, el título de Bachiller. Además, permiso de conducir clase B que habilite para vehículos con cambio de velocidades manual",
+    "coverage_level": "con_tests",
+    "fetcher_type": "http",
+    "headless_required": false,
+    "familia": "otros",
+    "color_primario": "sky",
+    "sistema_selectivo": "oposicion",
+    "emoji": "🚐",
+    "badge": "E2",
+    "hasPsychometricTest": false,
+    "aliases": [
+      "parque movil del estado",
+      "parque móvil del estado",
+      "conductor parque movil",
+      "conductor del parque movil del estado",
+      "mecanico conductor del estado",
+      "conduccion de vehiculos de transporte por carretera",
+      "pme conductor",
+      "conductor age"
+    ],
+    "ccaa": "estado"
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "Bases de la convocatoria (Anexo V, Sección I): «Todas las preguntas tendrán el mismo valor y las contestaciones erróneas se penalizarán descontando un tercio del valor de una respuesta correcta. Las respuestas en blanco no penalizan.»"
+  },
+  "examen_config": {
+    "tipo": "oposición (2 ejercicios)",
+    "opciones": 4,
+    "total_preguntas": 100,
+    "reserva": 6,
+    "duracion_total_minutos": 100,
+    "penalizacion": "1/3 del valor de una respuesta correcta; las respuestas en blanco no penalizan",
+    "partes": [
+      {
+        "nombre": "Primer ejercicio, primera parte: temario común",
+        "preguntas": 40,
+        "reserva": 2,
+        "opciones": 4,
+        "puntuacion_max": 40
+      },
+      {
+        "nombre": "Primer ejercicio, segunda parte: temario específico",
+        "preguntas": 60,
+        "reserva": 4,
+        "opciones": 4,
+        "puntuacion_max": 60
+      }
+    ],
+    "notas": "Primer ejercicio: 100 preguntas con cuatro respuestas alternativas (40 de la parte común y 60 de la específica) en 100 minutos; mínimo 50 puntos para superarlo. Segundo ejercicio: prueba práctica en simulador de conducción de automóvil en escenarios reales de circulación, máximo 15 minutos, de 0 a 50 puntos y mínimo 25. La fase de oposición exige un mínimo de 75 puntos en total. Después hay reconocimiento médico. En caso de empate prevalece la puntuación de la parte específica; la letra de orden de actuación es la «B»."
+  },
+  "convocatoria": {
+    "año": 2026,
+    "estado_proceso": "inscripcion_abierta",
+    "diario_oficial": "BOE",
+    "diario_referencia": "BOE-A-2026-15052",
+    "numero": "Resolución de 8 de julio de 2026",
+    "fecha": "2026-07-08",
+    "diario": "BOE de 10/07/2026",
+    "programa_url": "https://www.hacienda.gob.es/pme/20260713basesconvocatoria.pdf",
+    "seguimiento_url": "https://www.hacienda.gob.es/es-es/areas%20tematicas/parquemovil/paginas/2026procesoselectivopersonallaboralalpi.aspx",
+    "plazas_libres": 84,
+    "plazas_discapacidad": 14,
+    "plazas_promocion_interna": 98,
+    "inscription_start": "2026-07-11"
+  },
+  "landing": {
+    "estadisticas": [
+      {
+        "numero": "98",
+        "texto": "Plazas de acceso libre (84 + 14 discapacidad)",
+        "color": "text-green-600"
+      },
+      {
+        "numero": "15",
+        "texto": "Temas oficiales",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "100",
+        "texto": "Preguntas en el examen",
+        "color": "text-purple-600"
+      },
+      {
+        "numero": "FP/Bach.",
+        "texto": "Título requerido",
+        "color": "text-orange-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "196 plazas en total: 98 de acceso libre (84 del turno general y 14 reservadas a personas con discapacidad) y 98 de promoción interna. Son plazas de personal laboral fijo del grupo profesional E2, especialidad de Conducción de Vehículos de Transporte por Carretera, en el Parque Móvil del Estado."
+      },
+      {
+        "pregunta": "¿Qué titulación necesito?",
+        "respuesta": "El título de Técnico en Conducción de Vehículos de Transporte por Carretera, cualquier otro título de Formación Profesional de Grado Medio o, en su defecto, el título de Bachiller. Además hace falta el permiso de conducir de la clase B que habilite para conducir vehículos con cambio de velocidades manual."
+      },
+      {
+        "pregunta": "¿Cómo es el examen?",
+        "respuesta": "Hay dos ejercicios. El primero es un test de 100 preguntas con cuatro respuestas y una sola correcta, en 100 minutos: 40 preguntas de la parte común y 60 de la parte específica, más 6 de reserva. Cada error resta un tercio del valor de un acierto y las preguntas en blanco no penalizan. El segundo ejercicio es una prueba práctica de 15 minutos en un simulador de conducción, con escenarios reales de circulación."
+      },
+      {
+        "pregunta": "¿Qué nota hay que sacar?",
+        "respuesta": "El primer ejercicio se puntúa sobre 100 y hay que llegar a 50 para pasarlo. El segundo se puntúa sobre 50 y exige un mínimo de 25. Además, la suma de los dos debe alcanzar 75 puntos para superar la fase de oposición. Después hay que pasar un reconocimiento médico."
+      },
+      {
+        "pregunta": "¿Cuántos temas tiene el temario?",
+        "respuesta": "Quince: cinco de la parte común (Constitución, Gobierno y Administración General del Estado, régimen del personal público, contrato de trabajo en la Administración e igualdad) y diez de la parte específica de conducción y seguridad vial."
+      }
+    ],
+    "description": "Prepara la oposición de Conducción de Vehículos de Transporte por Carretera del Parque Móvil del Estado con tests de las 15 materias oficiales. Convocadas 196 plazas de personal laboral fijo del grupo E2 (98 de acceso libre y 98 de promoción interna) por Resolución de 8 de julio de 2026. El examen consta de un test de 100 preguntas y una prueba práctica en simulador de conducción.",
+    "seo_title": "Oposición Conductor Parque Móvil del Estado 2026 | 98 plazas libres | Tests",
+    "seo_description": "Tests para la oposición de Conductor del Parque Móvil del Estado (grupo E2): 196 plazas convocadas, 98 de acceso libre. Temario oficial de 15 temas, preguntas por tema y simulacros con la penalización real del examen."
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Parte común: organización y funcionamiento de la Administración General del Estado"
+    },
+    {
+      "numero": 2,
+      "titulo": "Parte específica: conducción y seguridad vial"
+    }
+  ],
+  "temario": [
+    {
+      "bloque": 1,
+      "numero": 1,
+      "topic_number": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "La Constitución Española de 1978: Características. Los principios constitucionales y los valores superiores. Derechos y deberes fundamentales. La protección de los derechos.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 1,
+      "numero": 2,
+      "topic_number": 2,
+      "titulo": "El Gobierno y la Administración",
+      "epigrafe": "El Gobierno y la Administración. La Administración Central del Estado. El Consejo de Ministros. El Presidente del Gobierno. Los Ministros. Los Secretarios de Estado. Los Subsecretarios y demás órganos administrativos.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 1,
+      "numero": 3,
+      "topic_number": 3,
+      "titulo": "Régimen jurídico del personal al servicio de las Administraciones Públicas",
+      "epigrafe": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El personal funcionario y el personal laboral. Derechos y deberes del personal al servicio de la Administración Pública.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 1,
+      "numero": 4,
+      "topic_number": 4,
+      "titulo": "El contrato de trabajo en la Administración Pública",
+      "epigrafe": "El contrato de trabajo en la Administración Pública. Modalidades. Suspensión. Extinción. Sus causas. El despido. Sindicación del personal Laboral.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 1,
+      "numero": 5,
+      "topic_number": 5,
+      "titulo": "Políticas de igualdad de género, discapacidad e igualdad de trato",
+      "epigrafe": "Políticas de igualdad de Género. Plan de Igualdad de género en la Administración General del Estado y sus Organismos Públicos. Políticas contra la Violencia de género. Discapacidad y Dependencia. Igualdad de trato y no discriminación de las personas LGTBI.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 2,
+      "numero": 6,
+      "topic_number": 6,
+      "titulo": "El conductor",
+      "epigrafe": "El Conductor: Conceptos básicos. Normas Generales de comportamiento en la circulación. Autorizaciones administrativas para conducir: el permiso y la licencia de conducción. Infracciones y sanciones.",
+      "difficulty": "medium",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 7,
+      "topic_number": 7,
+      "titulo": "El vehículo",
+      "epigrafe": "El vehículo: Conceptos básicos. Normas generales. Condiciones técnicas. Autorizaciones de circulación de los vehículos: Matriculación. Documentación de los vehículos. La carga y las personas transportadas.",
+      "difficulty": "medium",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 8,
+      "topic_number": 8,
+      "titulo": "La seguridad activa y pasiva del vehículo",
+      "epigrafe": "La seguridad activa y pasiva del vehículo.",
+      "difficulty": "medium",
+      "estimated_hours": 8
+    },
+    {
+      "bloque": 2,
+      "numero": 9,
+      "topic_number": 9,
+      "titulo": "La vía",
+      "epigrafe": "La vía: partes de la vía. Utilización de la vía. Peligros concretos de la vía.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 2,
+      "numero": 10,
+      "topic_number": 10,
+      "titulo": "La velocidad",
+      "epigrafe": "La velocidad: Límites. Adecuación de velocidad. Distancias entre vehículos.",
+      "difficulty": "medium",
+      "estimated_hours": 8
+    },
+    {
+      "bloque": 2,
+      "numero": 11,
+      "topic_number": 11,
+      "titulo": "Maniobras de circulación",
+      "epigrafe": "Maniobras de circulación: La incorporación a la circulación. Desplazamientos laterales. Adelantamientos. Cambios de dirección y de sentido. Marcha hacia atrás. Detención, parada y estacionamiento. Cruce de vías.",
+      "difficulty": "medium",
+      "estimated_hours": 14
+    },
+    {
+      "bloque": 2,
+      "numero": 12,
+      "topic_number": 12,
+      "titulo": "Conducción nocturna y en condiciones adversas",
+      "epigrafe": "Conducción nocturna y en condiciones meteorológicas y ambientales adversas.",
+      "difficulty": "medium",
+      "estimated_hours": 8
+    },
+    {
+      "bloque": 2,
+      "numero": 13,
+      "topic_number": 13,
+      "titulo": "Las señales de circulación",
+      "epigrafe": "Las señales de circulación: Tipos y significados.",
+      "difficulty": "medium",
+      "estimated_hours": 12
+    },
+    {
+      "bloque": 2,
+      "numero": 14,
+      "topic_number": 14,
+      "titulo": "El accidente de circulación",
+      "epigrafe": "El accidente de circulación. Comportamiento en caso de accidente. Delitos contra la seguridad del tráfico. El alcohol y las drogas.",
+      "difficulty": "medium",
+      "estimated_hours": 10
+    },
+    {
+      "bloque": 2,
+      "numero": 15,
+      "topic_number": 15,
+      "titulo": "Elementos del vehículo",
+      "epigrafe": "Elementos del vehículo: descripción de sus componentes y funcionamiento.",
+      "difficulty": "medium",
+      "estimated_hours": 8
+    }
+  ],
+  "scope": {
+    "1": [
+      {
+        "law": "CE",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55"
+        ]
+      }
+    ],
+    "2": [
+      {
+        "law": "Ley 50/1997",
+        "wholeLaw": true
+      },
+      {
+        "law": "Ley 40/2015",
+        "articles": [
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102"
+        ]
+      }
+    ],
+    "3": [
+      {
+        "law": "RDL 5/2015",
+        "wholeLaw": true
+      }
+    ],
+    "4": [
+      {
+        "law": "RDL 2/2015",
+        "wholeLaw": true
+      }
+    ],
+    "5": [
+      {
+        "law": "LO 3/2007",
+        "wholeLaw": true
+      },
+      {
+        "law": "LO 1/2004",
+        "wholeLaw": true
+      },
+      {
+        "law": "RDL 1/2013",
+        "wholeLaw": true
+      },
+      {
+        "law": "Ley 4/2023",
+        "wholeLaw": true
+      },
+      {
+        "law": "Ley 15/2022",
+        "wholeLaw": true
+      }
+    ],
+    "6": [
+      {
+        "law": "Ley Tráfico",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107",
+          "108",
+          "109",
+          "110",
+          "111",
+          "112",
+          "113",
+          "114",
+          "115"
+        ]
+      },
+      {
+        "law": "RD 818/2009",
+        "wholeLaw": true
+      },
+      {
+        "law": "RGC",
+        "articles": [
+          "3",
+          "17",
+          "18"
+        ]
+      }
+    ],
+    "7": [
+      {
+        "law": "RD 2822/1998",
+        "wholeLaw": true
+      },
+      {
+        "law": "RGC",
+        "articles": [
+          "9",
+          "10",
+          "11",
+          "12",
+          "14",
+          "14 bis",
+          "15",
+          "16"
+        ]
+      }
+    ],
+    "8": [
+      {
+        "law": "RGC",
+        "articles": [
+          "117",
+          "118",
+          "119",
+          "120"
+        ]
+      }
+    ],
+    "9": [
+      {
+        "law": "RGC",
+        "articles": [
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "60",
+          "61"
+        ]
+      }
+    ],
+    "10": [
+      {
+        "law": "RGC",
+        "articles": [
+          "45",
+          "46",
+          "47",
+          "48",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54"
+        ]
+      }
+    ],
+    "11": [
+      {
+        "law": "RGC",
+        "articles": [
+          "56",
+          "62",
+          "64",
+          "66",
+          "67",
+          "68",
+          "70",
+          "73",
+          "74",
+          "75",
+          "76",
+          "78",
+          "79",
+          "81",
+          "82",
+          "83",
+          "84",
+          "86",
+          "87",
+          "88",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95"
+        ]
+      }
+    ],
+    "12": [
+      {
+        "law": "RGC",
+        "articles": [
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "106",
+          "109",
+          "110",
+          "111",
+          "112",
+          "115"
+        ]
+      }
+    ],
+    "13": [
+      {
+        "law": "RGC",
+        "articles": [
+          "132",
+          "133",
+          "134",
+          "136",
+          "137",
+          "138",
+          "139",
+          "140",
+          "141",
+          "142",
+          "143",
+          "144",
+          "146",
+          "147",
+          "148",
+          "149"
+        ]
+      }
+    ],
+    "14": [
+      {
+        "law": "RGC",
+        "articles": [
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "28",
+          "129",
+          "130"
+        ]
+      }
+    ],
+    "15": [
+      {
+        "law": "RD 2822/1998",
+        "articles": [
+          "11",
+          "12"
+        ]
+      }
+    ]
+  },
+  "hitos": [
+    {
+      "fecha": "2026-07-10",
+      "titulo": "Convocatoria publicada en el BOE",
+      "descripcion": "196 plazas de personal laboral fijo del grupo E2, especialidad Conducción de Vehículos de Transporte por Carretera: 98 de acceso libre (84 general y 14 de reserva de discapacidad) y 98 de promoción interna.",
+      "status": "completed",
+      "order_index": 1
+    },
+    {
+      "fecha": "2026-07-11",
+      "titulo": "Plazo de solicitudes abierto",
+      "descripcion": "Veinte días hábiles desde el día siguiente a la publicación en el BOE. Solicitud telemática con certificado digital.",
+      "status": "current",
+      "order_index": 2
+    },
+    {
+      "fecha": "2026-07-13",
+      "titulo": "Bases de la convocatoria publicadas",
+      "descripcion": "Incluyen el temario completo: cinco temas de parte común y diez de parte específica de conducción y seguridad vial, además del segundo ejercicio en simulador y el reconocimiento médico.",
+      "status": "completed",
+      "order_index": 3
+    }
+  ]
+}

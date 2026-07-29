@@ -125,6 +125,8 @@ describeIfDb('Oposición data completeness', () => {
       'auxiliar-administrativo-ayuntamiento-salamanca', // en preparación: BD lista (is_active=false hasta go-live)
       'celador-ics', // en preparación (otra sesión): config sin fila activa en RDS
       'celador-ibsalut', // en preparación (otra sesión): config sin fila activa en RDS
+      'mecanico-conductor-estado', // en preparación: BD lista con temario y gates en verde (is_active=false hasta go-live). 98 plazas libres, BOE-A-2026-15052
+      'administrativo-agencia-tributaria-canaria', // en preparación (otra sesión): config sin fila activa en RDS
     ])
     const dbSlugs = new Set(oposiciones.map(o => o.slug))
     const missing = OPOSICIONES.filter(o => !dbSlugs.has(o.slug) && !KNOWN_PENDING.has(o.slug))

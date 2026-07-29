@@ -151,6 +151,61 @@ export type Oposicion = z.infer<typeof OposicionSchema>
 // ============================================
 
 export const OPOSICIONES: Oposicion[] = [
+  // Conducción de Vehículos de Transporte por Carretera del Parque Móvil del Estado
+  {
+    id: 'mecanico_conductor_estado',
+    slug: 'mecanico-conductor-estado',
+    positionType: 'mecanico_conductor_estado',
+    examScoring: { penaltyDivisor: 3, source: 'Bases de la convocatoria (Anexo V, Sección I): «Todas las preguntas tendrán el mismo valor y las contestaciones erróneas se penalizarán descontando un tercio del valor de una respuesta correcta. Las respuestas en blanco no penalizan.»' },
+    hasPsychometricTest: false,
+    name: 'Conducción de Vehículos de Transporte por Carretera del Parque Móvil del Estado',
+    shortName: 'Conductor Parque Móvil',
+    emoji: '🚐',
+    badge: 'E2',
+    color: 'sky',
+    administracion: 'estado',
+    aliases: ['parque movil del estado', 'parque móvil del estado', 'conductor parque movil', 'conductor del parque movil del estado', 'mecanico conductor del estado', 'conduccion de vehiculos de transporte por carretera', 'pme conductor', 'conductor age'],
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte común: organización y funcionamiento de la Administración General del Estado',
+        subtitle: null,
+        icon: '',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Gobierno y la Administración' },
+          { id: 3, name: 'Régimen jurídico del personal al servicio de las Administraciones Públicas' },
+          { id: 4, name: 'El contrato de trabajo en la Administración Pública' },
+          { id: 5, name: 'Políticas de igualdad de género, discapacidad e igualdad de trato' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte específica: conducción y seguridad vial',
+        subtitle: null,
+        icon: '',
+        themes: [
+          { id: 6, name: 'El conductor' },
+          { id: 7, name: 'El vehículo' },
+          { id: 8, name: 'La seguridad activa y pasiva del vehículo' },
+          { id: 9, name: 'La vía' },
+          { id: 10, name: 'La velocidad' },
+          { id: 11, name: 'Maniobras de circulación' },
+          { id: 12, name: 'Conducción nocturna y en condiciones adversas' },
+          { id: 13, name: 'Las señales de circulación' },
+          { id: 14, name: 'El accidente de circulación' },
+          { id: 15, name: 'Elementos del vehículo' },
+        ],
+      },
+    ],
+    totalTopics: 15,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/mecanico-conductor-estado', label: 'Mi Oposición', icon: '🚐', featured: true },
+      { href: '/mecanico-conductor-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/mecanico-conductor-estado/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
   // Agentes de Tributos - Agencia Tributaria Canaria
   {
     id: 'administrativo_agencia_tributaria_canaria',

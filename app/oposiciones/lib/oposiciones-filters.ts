@@ -73,6 +73,7 @@ export function getAllFilterSlugs(): string[] {
 // Mapear oposición a CCAA slug para filtrado
 export function oposicionToCcaa(opoSlug: string): string | null {
   const map: Record<string, string> = {
+    'mecanico-conductor-estado': 'estado',
     'administrativo-agencia-tributaria-canaria': 'canarias',
     'celador-murcia': 'murcia',
     'oficial-de-gestion-parlamento-de-andalucia': 'andalucia',

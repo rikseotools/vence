@@ -15,6 +15,30 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-278] 🟠 [ABIERTO 29/07] Parque Móvil del Estado: generar el banco de la parte específica (9 temas en elaboración)
+
+- **Contexto:** la oposición está CREADA y con los tres gates deterministas en verde (`audit:oposicion`, `audit:served`, `audit:epigrafe` = 0 ❌). Falta contenido para poder publicarla. Origen: petición de un usuario (feedback `e5151a19`) + convocatoria viva (BOE-A-2026-15052, 98 plazas de acceso libre, inscripción abierta hasta ~3/08/2026).
+- **El hueco, medido:** la parte común reutiliza **4.934 preguntas** del banco existente (Constitución, Ley del Gobierno, Ley 40/2015, TREBEP, igualdad) y cubre las 40 preguntas comunes del examen. La parte **específica**, que son **60 de las 100 preguntas del examen**, solo tiene **68**:
+
+  | Tema | Preguntas | Estado |
+  |---|---|---|
+  | T6 El conductor | 6 | en elaboración |
+  | T7 El vehículo | 3 | en elaboración |
+  | T8 Seguridad activa y pasiva | 5 | en elaboración |
+  | T9 La vía | 0 | en elaboración |
+  | T10 La velocidad | 0 | en elaboración |
+  | T11 Maniobras de circulación | 44 | **disponible** |
+  | T12 Conducción nocturna y adversa | 2 | en elaboración |
+  | T13 Las señales de circulación | 2 | en elaboración |
+  | T14 El accidente de circulación | 5 | en elaboración |
+  | T15 Elementos del vehículo | 1 | en elaboración |
+
+- **Por qué es BARATO:** el articulado ya está importado — **551 artículos** entre Ley de Tráfico (146), Reglamento General de Circulación (224), Reglamento de Vehículos (73) y Reglamento de Conductores (108). Es generar preguntas contra texto legal literal con el pipeline de siempre (`generar-preguntas-con-ia.md` + triple auditoría), sin editor humano y sin importar nada.
+- **Salvedad:** el T15 (elementos del vehículo: componentes y funcionamiento) es el único con carga técnica de mecánica, no puramente normativa. Su respaldo más cercano son las condiciones técnicas del Reglamento de Vehículos; si no da, es candidato a quedarse en elaboración.
+- **Criterio de disponibilidad aplicado:** un tema se ofrece a partir de **20 preguntas**; por debajo el opositor repite las mismas en dos vueltas. Los 9 temas están en `disponible=false` (salen como "En elaboración"), así que la oposición se puede publicar sin engañar a nadie.
+- **Al terminar:** refrescar la MV (§6.bis del manual de creación) y volver a pasar `audit:served`, o los temas seguirán saliendo "En desarrollo" aunque tengan preguntas.
+- **Go-live:** `is_active=false` a la espera de OK. La landing y las rutas ya están generadas.
+
 ### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
 
 - **Qué falta:** el simulacro y el modo examen del temario (`ExamLayout` ← `TestExamenPage`) deben servir las opciones barajadas y, en las oposiciones que examinan con 3, recortadas — su razón de ser es parecerse al examen que el opositor va a hacer (decisión Manuel, 29/07). Los tests de práctica ya lo hacen desde [T-267]; el examen no.

@@ -248,6 +248,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'mecanico_conductor_estado',
+      label: 'Conductor Parque Móvil',
+      data: {
+        name: 'Conducción de Vehículos de Transporte por Carretera del Parque Móvil del Estado',
+        slug: 'mecanico-conductor-estado',
+        categoria: 'E2',
+        administracion: 'Parque Móvil del Estado (Ministerio de Hacienda)'
+      }
+    },
+    {
       value: 'administrativo_agencia_tributaria_canaria',
       label: 'Agentes Tributos Canarias',
       data: {

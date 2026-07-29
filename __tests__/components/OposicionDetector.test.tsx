@@ -109,9 +109,14 @@ describe('OposicionDetector', () => {
       }
     })
 
-    test('categorias son A1, A2, B, C1 o C2', () => {
+    test('la categoría es un grupo real de clasificación (funcionarial o laboral)', () => {
+      // A1/A2/B/C1/C2/AP son los grupos FUNCIONARIALES del TREBEP (art. 76 y DT3ª).
+      // E1/E2/M1/M2/M3 son los grupos PROFESIONALES del personal LABORAL de la AGE
+      // (IV Convenio colectivo único). Añadidos el 29/07/2026 al crear la primera
+      // oposición de personal laboral (Conductor del Parque Móvil del Estado, grupo E2):
+      // hasta entonces la lista solo contemplaba funcionarios y se quedaba corta.
       for (const data of Object.values(OPOSICION_DETECTION)) {
-        expect(['A1', 'A2', 'B', 'C1', 'C2', 'AP', 'E']).toContain(data.categoria)
+        expect(['A1', 'A2', 'B', 'C1', 'C2', 'AP', 'E', 'E1', 'E2', 'M1', 'M2', 'M3']).toContain(data.categoria)
       }
     })
 
