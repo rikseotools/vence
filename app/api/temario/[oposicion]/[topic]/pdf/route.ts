@@ -20,6 +20,7 @@ import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
 import { buildTopicPdfModel, pdfFileName, countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS } from '@/lib/temario/pdf/topicPdfModel'
 import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
+import { getRenderSemaphore, waitMsFromEnv } from '@/lib/temario/pdf/renderSemaphore'
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
@@ -212,6 +213,34 @@ async function handler(
     )
   }
 
+  // 2.bis) CONTENCIÓN (T-270 Fase 1): un render cuesta 7,2 s de CPU MEDIDOS y Node es monohilo,
+  //    así que dos a la vez no van en paralelo: se entrelazan y duplican el tiempo que TODOS los
+  //    demás usuarios esperan. El 29/07 llegaron 36 renders frescos en 18 min y el resultado fue
+  //    el bucle de eventos bloqueado 215 s, `answer-and-save` a p95 25 s y 59 respuestas de
+  //    usuarios sin guardar. Se espera un rato acotado a que la task se libere y, si no, se
+  //    SUELTA CARGA: mejor que este PDF pida reintento a que se caiga el guardado de respuestas
+  //    de todo el mundo. Desaparece con la Fase 2 (encolar + servir de S3).
+  const sem = getRenderSemaphore()
+  const tEspera = Date.now()
+  const slot = await sem.acquire(waitMsFromEnv())
+  const esperaMs = Date.now() - tEspera
+  if (!slot) {
+    emitFireAndForget({
+      source: 'fargate', severity: 'warn', eventType: 'temario_pdf_render_shed',
+      endpoint: '/api/temario/[oposicion]/[topic]/pdf',
+      metadata: {
+        oposicion, tema: topicNumber, chars, userId, instanceId: INSTANCE_ID,
+        enVuelo: sem.inFlight(), techo: sem.max(), esperaMs,
+      },
+    })
+    return NextResponse.json(
+      { error: 'pdf_en_preparacion', reintentarEnSegundos: 30 },
+      { status: 503, headers: { 'Retry-After': '30' } },
+    )
+  }
+
+  try {
+
   // 3) Generar síncrono + POBLAR la caché S3 para la próxima (best-effort: si S3 falla, se
   //    sirve igual el PDF recién hecho; nunca bloquea al usuario).
   const lawIds = (content.laws || []).map(l => l.law.id).filter(Boolean)
@@ -244,6 +273,12 @@ async function handler(
   }).catch(() => {})
 
   return pdfResponse(new Uint8Array(buffer), 'generated')
+
+  } finally {
+    // El slot se devuelve SIEMPRE: un error a medio render que se quedara el slot dejaría la
+    // task sin poder generar ni un PDF más hasta el siguiente despliegue.
+    slot.release()
+  }
 }
 
 export const GET = withErrorLogging('/api/temario/[oposicion]/[topic]/pdf', handler as never)

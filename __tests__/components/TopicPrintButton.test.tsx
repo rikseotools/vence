@@ -142,6 +142,22 @@ describe('TopicPrintButton — descarga del PDF generado en servidor', () => {
     expect(clickedAnchors).toHaveLength(0)
   })
 
+  test('503 (la task está ocupada renderizando): degrada a imprimir, no le pide al usuario que reintente', async () => {
+    // T-270 Fase 1: cuando la task ya tiene un render en vuelo suelta carga con 503, porque un
+    // render cuesta 7,2 s de CPU y Node es monohilo — sin ese freno, una ráfaga de PDFs tumbaba
+    // el guardado de respuestas de TODOS los usuarios (29/07: 59 respuestas sin guardar).
+    // Trasladarle al opositor un "vuelve en 30 segundos" sería pasarle a él un problema nuestro:
+    // se degrada a la impresión del navegador, igual que con el 413.
+    mockFetch({ status: 503 })
+    render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={3} />)
+
+    fireEvent.click(screen.getByText('Descargar PDF'))
+
+    await waitFor(() => expect(window.print).toHaveBeenCalled())
+    expect(emitted('download_en_preparacion')).toBe(true)
+    expect(clickedAnchors).toHaveLength(0)   // no descarga un JSON disfrazado de PDF
+  })
+
   test('error del servidor: avisa al usuario y lo deja registrado', async () => {
     mockFetch({ status: 500 })
     render(<TopicPrintButton loginHref={LOGIN_HREF} topicNumber={7} />)

@@ -87,6 +87,17 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
         if (typeof window !== 'undefined') window.dispatchEvent(new Event('profileUpdated'))
       }
 
+      // 503 = la task está ocupada generando otro PDF y ha soltado carga (T-270 Fase 1: un
+      // render cuesta 7,2 s de CPU y Node es monohilo; sin ese freno, una ráfaga de PDFs
+      // tumbaba el guardado de respuestas de TODOS los usuarios). Degradamos igual que en el
+      // 413 —a la impresión del navegador— para que el opositor nunca se quede sin su tema:
+      // pedirle que reintente en 30 s sería trasladarle a él un problema nuestro.
+      if (res.status === 503) {
+        emit('download_en_preparacion')
+        window.print()
+        return
+      }
+
       // 413 = tema demasiado grande para generarlo en servidor (los "artículos-cajón" de
       // T-040). Degradamos a la impresión del navegador, que es lo que había antes.
       if (decision.outcome === 'too_large') {
