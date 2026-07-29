@@ -459,3 +459,30 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
     expect(hasKind(BACKEND, 'audit_note_explanation')).toBe(true)
   })
 })
+
+// ── El gemelo CLI tiene que PARSEAR ────────────────────────────────────────────
+// La paridad de arriba compara TEXTO: busca el literal del kind en el fichero. Eso no se entera
+// de si el fichero es JavaScript válido, y por eso el 29/07 se descubrió que `health-sweep.cjs`
+// llevaba tiempo sin poder arrancar: un comentario SQL dentro de un template literal se escribió
+// con backticks de markdown (`-- ` + backtick + `programa_url` + backtick + ` a pelo…`), y esas
+// comillas CIERRAN la plantilla y descuadran el resto del fichero. El script moría con
+// «missing ) after argument list» antes de ejecutar una sola consulta.
+//
+// El daño es silencioso por partida doble: el CLI es la vía manual («corre el barrido a ver qué
+// sale») y además es el espejo del que se copia el @Cron, así que un espejo roto se arrastra.
+describe('el gemelo CLI del sweep es JavaScript válido', () => {
+  it('scripts/health-sweep.cjs parsea', () => {
+    const { execFileSync } = require('child_process')
+    expect(() =>
+      execFileSync(process.execPath, ['--check', path.join(REPO, 'scripts/health-sweep.cjs')], {
+        stdio: 'pipe',
+      }),
+    ).not.toThrow()
+  })
+
+  it('ningún template literal del script contiene backticks de markdown en comentarios SQL', () => {
+    // La causa concreta, fijada aparte del --check para que el fallo diga QUÉ buscar.
+    const sospechosas = SCRIPT.split('\n').filter((l) => /^\s*--\s.*`/.test(l))
+    expect(sospechosas).toEqual([])
+  })
+})

@@ -234,3 +234,70 @@ auto-corregir la clave ni dar por buena una cita porque «suene» al artículo.
 > ⚠️ Este hallazgo **no lo refresca el `@Cron` nocturno**: compara la cita contra el texto del
 > artículo fila a fila, así que se emite desde el CLI (`barrido-citas.cjs --json`). Un cero en el
 > badge significa «nadie ha corrido el barrido», no «no hay ninguna».
+
+## La explicación se PINTA rota (`explicacion_estructura_rota`)
+
+*Frase-gatillo: **"revisa las explicaciones descuadradas"***
+
+**No confundir con *"revisa las explicaciones rotas"*** (`audit_note_explanation`). Aquella es de
+FONDO: el campo trae la nota de un pase de IA en lugar de una explicación, y el opositor no recibe
+ninguna explicación. Esta es de FORMA: la explicación es correcta y está bien razonada, pero se
+renderiza mal. Se arreglan distinto y por eso son dos kinds.
+
+### Qué es
+
+Desde la Fase 2 de T-080, producción **no sirve la columna `explanation`**: compone el texto desde
+`explanation_data` con `renderStructuredExplanation`, asignando las letras al orden realmente
+servido. Consecuencia directa: **un campo mal formado en la estructura sale a pantalla tal cual**, y
+mirar la columna `explanation` no lo delata (es el resultado del mismo render).
+
+La avería dominante es un `**` **sin pareja** en la razón de una opción. Viene de la transcripción
+del histórico: el texto original decía `- **A) Insertar** — El menú Insertar…`, la transcripción se
+quedó con la parte de detrás de la letra (`Insertar** — El menú Insertar…`) y el `**` de apertura se
+fue con la etiqueta. El render antepone su propio `- **A)** `, así que el usuario lee:
+
+> - **A)** Insertar** — El menú Insertar permite añadir celdas…
+
+**Medido el 29/07/2026: 163 preguntas activas · 7.989 exposiciones acumuladas** (2,6% de las 6.335
+con explicación estructurada).
+
+### Cómo se destapó (y por qué no lo veía nadie)
+
+Salió de la auditoría posterior a la poda de narrativas del 29/07: cinco agentes revisaron las 115
+preguntas que se acababan de tocar y señalaron «asteriscos huérfanos» en 11. Al comparar contra el
+backup resultó que **ya venían rotas** — la reparación no las había causado. Ningún detector miraba
+la estructura: los que había (`audit_note_explanation`, el cubo de apelotonadas,
+`shuffle_safe_regressed`) razonan sobre el TEXTO.
+
+### Cómo se repara
+
+La razón debe explicar **por qué falla esa opción**, no repetir lo que la opción ya dice. Así que la
+reparación no es "cerrar el asterisco": es quitar la repetición del enunciado, que es lo que sobra.
+
+```
+- ANTES: "Con un reproductor de CD o con un reproductor de DVD** — Solo menciona uno de los dos metodos…"
+- DESPUÉS: "Solo menciona uno de los dos métodos (reproductor de CD o de DVD) y omite la opción de unidad flash USB."
+```
+
+Reescribe con `npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <id> <fichero.json> --apply`,
+que deja estructura y texto coherentes por construcción. **NUNCA toques la clave ni las opciones:**
+esto no es un defecto de contenido, y una pregunta puede estar aquí siendo jurídicamente impecable.
+
+### GOTCHAS
+
+- **`cita.bloque` MANDA sobre `ref`/`texto` en el render.** Si está relleno, la cita se pinta entera
+  y no hay defecto que denunciar. Sin esa guarda, la rama de la cita dispara **1.412 falsos
+  positivos** de golpe — fue la primera medición de esta clase y era falsa entera.
+- **Al corregir una cita, corrige también el `bloque`.** Cambiar solo `ref` no se ve: el render usa
+  el `bloque`. Pasó al reparar `1ddf9e87` y `1332862d` el 29/07.
+- El detector **no** mira `cita.ref` para la negrita: una referencia no es prosa.
+
+### Piezas
+
+| Qué | Dónde |
+|---|---|
+| Núcleo puro (19 tests) | `lib/health/explicacionEstructuraRota.cjs` |
+| Barrido CLI | `scripts/health-sweep.cjs` (kind `explicacion_estructura_rota`) |
+| Espejo del `@Cron` (writer real) | `backend/src/content-health-sweep/content-health-sweep.service.ts` |
+| Guardarraíles | `__tests__/health/explicacionEstructuraRota.test.ts`, `content-sweep-parity.test.ts` |
+| El render que lo convierte en lo que se ve | `lib/shuffle/structuredExplanation.ts` |

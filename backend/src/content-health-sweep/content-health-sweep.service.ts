@@ -2598,6 +2598,55 @@ export class ContentHealthSweepService {
       this.logger.warn(`ruido de boletín en epígrafes no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
+    // ── Explicación estructurada que se RENDERIZA rota (29/07) ──
+    // ⚠️ ESPEJO de `lib/health/explicacionEstructuraRota.cjs` (núcleo puro y testeado que usa el
+    // CLI). El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas la
+    // regla aquí, tócala allí — `content-sweep-parity.test.ts` vigila que los KINDS no diverjan.
+    //
+    // Desde que producción compone el texto desde `explanation_data`, un campo mal formado ahí sale
+    // a pantalla tal cual. El defecto dominante es un `**` sin pareja en una razón, herencia de la
+    // transcripción del histórico, que partía «**A) Insertar** — …» y se quedaba con «Insertar** —».
+    //
+    // La guarda de `bloque` NO es opcional: ese campo es el blockquote íntegro y MANDA sobre
+    // ref/texto en el render. Sin ella, la rama de la cita dispara 1.412 falsos positivos de golpe.
+    try {
+      const impar = (x: unknown) => ((String(x ?? '').match(/\*\*/g) || []).length % 2) === 1;
+      const exRows = (await this.db.execute(sql`
+        SELECT q.id, q.explanation_data,
+               (SELECT count(*) FROM test_questions tq WHERE tq.question_id = q.id)::int AS servidas
+          FROM questions q
+         WHERE q.is_active = true AND q.explanation_data IS NOT NULL
+      `)) as unknown as Array<{ id: string; explanation_data: any; servidas: number }>;
+      const rotas = (Array.isArray(exRows) ? exRows : [])
+        .map((q) => {
+          const d = q.explanation_data ?? {};
+          const averias: string[] = [];
+          const campos = [d.intro, d.outro, ...Object.values(d.options ?? {})];
+          for (const b of d.blocks ?? []) campos.push(b?.intro, b?.texto);
+          if (d.cita && typeof d.cita === 'object') campos.push(d.cita.bloque, d.cita.texto);
+          if (campos.some(impar)) averias.push('negrita_impar');
+          const c = d.cita;
+          if (c && typeof c === 'object' && !String(c.bloque ?? '').trim()) {
+            const ref = String(c.ref ?? '').trim();
+            if (ref && !String(c.texto ?? '').trim()) {
+              averias.push('cita_sin_texto');
+              if (ref.length > 60) averias.push('cita_ref_es_el_texto');
+            }
+          }
+          return { id: q.id, averias, servidas: Number(q.servidas ?? 0) };
+        })
+        .filter((q) => q.averias.length > 0)
+        .sort((a, b) => b.servidas - a.servidas);
+      if (rotas.length) {
+        const exposiciones = rotas.reduce((a, b) => a + b.servidas, 0);
+        add('content', 'warn', null, 'explicacion_estructura_rota',
+          `${rotas.length} explicación(es) estructurada(s) se renderizan rotas (${exposiciones} exposiciones acumuladas)`,
+          { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
+      }
+    } catch (e) {
+      this.logger.warn(`estructura de explicaciones no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
     // ── Escribir snapshot ──
     let wrote = false;
     if (!NO_WRITE) {

@@ -338,6 +338,19 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'razona sobre basura. OJO: «Depósito legal» es materia legítima en biblioteconomía — el detector ya no lo ' +
       'marca solo, pero al limpiar a mano no lo borres.',
   },
+  explicacion_estructura_rota: {
+    title: 'Explicación estructurada que se renderiza rota',
+    triggerPhrase: 'revisa las explicaciones descuadradas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'la explicación es correcta de fondo pero se PINTA rota: casi siempre un `**` sin pareja en la razón de ' +
+      'una opción, herencia de la transcripción del histórico, que partía «**A) Insertar** — …» y se quedaba ' +
+      'con «Insertar** — …» (el opositor ve un asterisco doble suelto en mitad de la frase). Repáralo quitando ' +
+      'la repetición del enunciado de la opción y el asterisco huérfano: la razón debe explicar POR QUÉ falla, ' +
+      'no repetir lo que la opción ya dice. Reescribe con `scripts/aplicar-explicacion.ts` para que estructura ' +
+      'y texto queden coherentes. NO toques la clave ni el contenido: esto es un defecto de FORMA. Ojo con la ' +
+      'rama de la cita: si `cita.bloque` está relleno, el render pinta la cita entera y NO hay defecto.',
+  },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',
     triggerPhrase: 'revisa las leyes duplicadas entre temas',

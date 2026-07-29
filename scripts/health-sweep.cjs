@@ -39,6 +39,7 @@ const { classifyLandingCompleteness } = require('../lib/convocatoria/landingComp
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
+const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 
@@ -493,7 +494,8 @@ async function main() {
            s.estado_proceso AS estado,
            -- Documento de la OEP vigente ya clonado: es el enlace que la landing enseña DE VERDAD
            -- cuando aún no hay convocatoria (F4/T-108). Sin este dato el detector juzga
-           -- `programa_url` a pelo y marca URLs que el opositor no ve (medido 28/07: falsos
+           -- programa_url a pelo y marca URLs que el opositor no ve (medido 28/07: falsos
+           -- (SIN backticks: van DENTRO de un template literal y lo cerrarían).
            -- positivos en administrativo-andalucia y administrativo-castilla-la-mancha, señalados
            -- por su temario cuando la página enseña su BOJA/DOCM correctos).
            (SELECT d.url FROM convocatorias c
@@ -1249,6 +1251,28 @@ async function main() {
         { slug: e.slug, tema: e.tema, marcadores: e.marcadores });
     }
   } catch (e) { console.warn('⚠️ ruido de boletín en epígrafes no evaluado:', String(e.message || e).slice(0, 120)); }
+
+
+  // ── Explicación estructurada que se RENDERIZA rota (29/07) ──
+  // Desde que producción compone el texto desde `explanation_data`, un campo mal formado ahí sale a
+  // pantalla tal cual. El defecto dominante es un `**` sin pareja en una razón, herencia de la
+  // transcripción del histórico: partía «**A) Insertar** — …» y se quedaba con «Insertar** — …».
+  // Lo destapó la auditoría del 29/07 (los agentes lo vieron en 11 de 115 preguntas revisadas, y el
+  // backup demostró que YA venían rotas). Es defecto de FORMA: no dice nada del contenido.
+  try {
+    const filas = (await c.query(`
+      SELECT q.id, q.explanation_data,
+             (SELECT count(*) FROM test_questions tq WHERE tq.question_id = q.id)::int AS servidas
+        FROM questions q
+       WHERE q.is_active = true AND q.explanation_data IS NOT NULL`)).rows;
+    const rotas = explicacionesRotas(filas);
+    if (rotas.length) {
+      const exposiciones = rotas.reduce((a, b) => a + b.servidas, 0);
+      add('content', 'warn', null, 'explicacion_estructura_rota',
+        `${rotas.length} explicación(es) estructurada(s) se renderizan rotas (${exposiciones} exposiciones acumuladas)`,
+        { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
+    }
+  } catch (e) { console.warn('⚠️ estructura de explicaciones no evaluada:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {
