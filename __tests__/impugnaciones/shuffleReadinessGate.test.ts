@@ -47,6 +47,25 @@ describe('NO corta donde no debe', () => {
     expect(v).toEqual({ ok: true, saltado: false })
   })
 
+  it('deja pasar si la pregunta está RETIRADA: no se sirve a nadie', () => {
+    // Primer falso positivo real de la puerta (30/07): una impugnación de `pregunta_repetida` cuya
+    // resolución fue RETIRAR la pregunta impugnada como duplicada. La puerta la paró exigiéndole una
+    // explicación barajable que no protege nada, porque esa pregunta ya no sale en ningún test.
+    const v = evaluarPreparacionBarajado({
+      questionType: 'legislative', status: 'resolved', explanationData: null, isActive: false,
+    })
+    expect(v).toEqual({ ok: true, saltado: false })
+  })
+
+  it('si NO se sabe si está activa, se trata como activa (lado prudente)', () => {
+    expect(evaluarPreparacionBarajado({ questionType: 'legislative', status: 'resolved', explanationData: null, isActive: null }).ok).toBe(false)
+    expect(evaluarPreparacionBarajado({ questionType: 'legislative', status: 'resolved', explanationData: null }).ok).toBe(false)
+  })
+
+  it('una pregunta ACTIVA sin estructura sigue parándose', () => {
+    expect(evaluarPreparacionBarajado({ questionType: 'legislative', status: 'resolved', explanationData: null, isActive: true }).ok).toBe(false)
+  })
+
   it('NO exige que sea barajable: hay preguntas legítimamente no barajables', () => {
     // Esta es la distinción que mantiene la puerta usable. Exigir `shuffle_safety='safe'` bloquearía
     // las preguntas cuyas opciones se citan entre sí («todas las anteriores»), que NO son un defecto.

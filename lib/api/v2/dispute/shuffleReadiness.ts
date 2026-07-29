@@ -25,9 +25,14 @@
 // saltaría — que es justo como mueren los guardarraíles.
 //
 // Solo se aplica a:
-//   · impugnaciones LEGISLATIVAS (las psicotécnicas no tienen explicación estructurada), y
+//   · impugnaciones LEGISLATIVAS (las psicotécnicas no tienen explicación estructurada),
 //   · cierres en `resolved` (aceptamos que había algo que arreglar). Un `rejected` no toca la
-//     pregunta, así que no hay nada que adaptar.
+//     pregunta, así que no hay nada que adaptar, y
+//   · preguntas que siguen ACTIVAS. Este último punto es una corrección del mismo día (30/07): la
+//     puerta paró el cierre de una impugnación de `pregunta_repetida` cuya resolución había sido
+//     RETIRAR la pregunta impugnada como duplicada. Una pregunta retirada no se sirve a nadie, así
+//     que exigirle explicación barajable no protege nada y bloquea una resolución correcta. Fue el
+//     primer falso positivo de la puerta, y lo destapó su primer uso real.
 //
 // ## El escape, con rastro
 //
@@ -44,13 +49,21 @@ export function evaluarPreparacionBarajado(params: {
   status: string
   /** `explanation_data` de la pregunta (null = nunca se transcribió al formato estructurado). */
   explanationData: unknown
+  /**
+   * ¿La pregunta sigue viva? Si está retirada (duplicada, irreparable) no se sirve a nadie y no hay
+   * nada que adaptar. `undefined` = no se sabe → se trata como activa, que es el lado prudente.
+   */
+  isActive?: boolean | null
   /** Motivo declarado para saltarse la puerta. Vacío/ausente = no se salta. */
   skipReason?: string | null
 }): PreparacionBarajado {
-  const { questionType, status, explanationData, skipReason } = params
+  const { questionType, status, explanationData, isActive, skipReason } = params
 
   // Fuera de alcance: no es una impugnación de pregunta legislativa aceptada.
   if (questionType !== 'legislative' || status !== 'resolved') return { ok: true, saltado: false }
+
+  // Pregunta ya retirada: la resolución fue quitarla de circulación (duplicada, irreparable).
+  if (isActive === false) return { ok: true, saltado: false }
 
   const tieneEstructura =
     explanationData !== null &&

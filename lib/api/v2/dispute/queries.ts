@@ -254,6 +254,7 @@ export async function resolveDispute(
     let questionText: string | null = null
     let currentStatus: string | null = null
     let explanationData: unknown = null
+    let preguntaActiva: boolean | null = null
 
     if (questionType === 'psychometric') {
       const [row] = await db
@@ -297,6 +298,7 @@ export async function resolveDispute(
           // Para la puerta de barajado (2-bis). Va en ESTE select y no en una consulta aparte:
           // el leftJoin con `questions` ya está hecho, así que sale gratis.
           qExplanationData: questions.explanationData,
+          qIsActive: questions.isActive,
         })
         .from(questionDisputes)
         .leftJoin(userProfiles, eq(userProfiles.id, questionDisputes.userId))
@@ -314,6 +316,7 @@ export async function resolveDispute(
       userName = row.uName ?? null
       questionText = row.qText ?? null
       explanationData = row.qExplanationData ?? null
+      preguntaActiva = row.qIsActive ?? null
     }
 
     // 2. Idempotencia: no re-resolver
@@ -336,6 +339,7 @@ export async function resolveDispute(
       questionType: questionType === 'psychometric' ? 'psychometric' : 'legislative',
       status,
       explanationData,
+      isActive: preguntaActiva,
       skipReason: params.skipShuffleReason,
     })
     if (!veredictoBarajado.ok) return { success: false, error: veredictoBarajado.error }
