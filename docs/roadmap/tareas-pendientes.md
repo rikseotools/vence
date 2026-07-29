@@ -1125,6 +1125,46 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **⏱️ PENDIENTE — la medición que solo puede dar el reloj:** el arreglo de la causa raíz (escalonar los 23 crons, `e4ea471fb`) está **desplegado** (backend task def `:130`, 29/07 03:39 CEST) y **funciona estructuralmente**: los crons distintos que arrancan en el minuto 0 pasan de **34 a 17** y el reparto es plano (medido en `observable_events`). Lo que falta es lo que el propio commit dejó dicho — *«medir el efecto mañana en la CPU del servicio: es una hipótesis medida, no un arreglo confirmado»*. Ventana buena: **11:00-13:00 CEST**, que es cuando la CPU del backend tocaba el 100% los días 24, 25, 26, 27 y 28. A las 08:45 CEST del 29/07 la CPU máxima iba en **11-15%** (ayer a esa hora, 62%), pero eso es ANTES del pico y no confirma nada todavía.
 - **Origen:** investigando los timeouts de 15 s que quedaron como «lo real que queda» al cerrar el diagnóstico de [T-210].
 
+### [T-268] 🟠 [ABIERTO 29/07] `theme-stats` revienta el corte de 8 s del cliente y el opositor ve sus estadísticas VACÍAS, en silencio — y le pasa MÁS cuanto más estudia
+- **Qué ve el usuario:** entra en su temario y las estadísticas de progreso salen a cero o vacías. No hay error, no hay reintento visible, no hay nada que reportar. `hooks/useTopicUnlock.ts:62` aborta la llamada a los **8.000 ms** y cae a `usando datos vacíos` (`console.warn`, línea 90).
+- **El defecto es de DISEÑO, no mala suerte:** el corte del cliente son **8.000 ms** y el p95 del propio endpoint `/api/v2/topic-progress/theme-stats` es **8.490 ms** (7 días, 3.181 peticiones). El timeout está puesto POR DEBAJO del percentil 95 del servicio al que llama, así que por construcción una parte de las llamadas TIENE que fallar. Máximo medido: **166 segundos**. 166 peticiones por encima de 8 s.
+- **Alcance:** **415 eventos / 243 usuarios distintos** en 7 días (~80 usuarios/día laborable).
+- **🎯 Y castiga justo a quien más usa la plataforma.** Cruzado con `test_questions`:
+
+  | | usuarios | mediana de respuestas | media |
+  |---|---|---|---|
+  | **Sufre el timeout** | 183 | **214** | 1.481 |
+  | Resto | 7.632 | **27** | 205 |
+
+  Ocho veces la mediana. La consulta escala con el historial del usuario, así que **cuanto más estudia alguien, más probable es que vea sus estadísticas vacías** — al revés de lo que debería.
+- **De dónde viene (y por qué lleva tanto sin verse):** el propio comentario del hook lo cuenta — antes era un RPC de Supabase que hacía `count` sobre `test_questions` y tardaba **16 s para una usuaria con 55k respuestas → 504 en Vercel**. El timeout de 8 s + fallback a vacío fue la MITIGACIÓN. Cambió un error visible (504) por una degradación invisible, y la lentitud de fondo nunca se arregló. Un 504 lo reporta alguien; unas estadísticas vacías, no.
+- **Cómo se encontró:** cruzando los «624 timeouts de cliente» que [T-210] dejó como *«lo real que queda»* contra la latencia de servidor medida en [T-254]. Ese saco NO era una sola cosa: los `answerSaveQueue` sí son la familia de T-254, pero el mayor por alcance era éste, de otro endpoint, y nadie lo había separado.
+- **✅ La causa YA está vigilada, no hace falta detector nuevo:** el indicador `endpoint_latency` de [T-254] lo caza solo — `theme-stats` salió en **rojo** en la simulación de 7 días (`npx tsx scripts/sim-latencia-endpoints.ts --dias 7 --detalle`) sin ir a buscarlo. Lo que NO distingue nada es el EFECTO: el fallback se emite como `console_warn` y queda agregado con todos los demás warns del catch-all del panel.
+- **Cómo (en este orden, y NO tocar el timeout primero):**
+  1. **Arreglar la consulta**, que es la causa: ver por qué escala con el historial (¿`count` sobre `test_questions` otra vez? ¿falta índice? ¿debería salir de una MV como el resto de contadores materializados?). Objetivo: p95 muy por debajo de 8 s.
+  2. **Solo después**, revisar el corte de 8 s. Subirlo sin arreglar la consulta cambia «estadísticas vacías» por «la página tarda 20 s»: no es un arreglo, es mover el dolor.
+  3. **Que el fallback deje de ser mudo:** hoy es un `console.warn` indistinguible. Con un `event_type` propio se puede contar cuántos usuarios ven datos vacíos y cerrar el bucle, en vez de deducirlo de un `ILIKE` sobre el mensaje.
+- **Relacionada:** [T-254] (la latencia por endpoint que lo destapa y ya lo vigila), [T-210] (de cuyo saco de timeouts sale), [T-245] (misma clase: pérdida de funcionalidad que el usuario no puede ni reportar).
+
+### [T-238] 🟠 El auto-clonado del `apply` de señales OEP es inerte: pasa 1 de 125
+
+**Qué:** `promoteSignalToConvocatoria` (`lib/api/oep-signals/queries.ts`) clona el decreto al hub solo
+si se cumplen a la vez `detected_year IS NOT NULL` **y** `boletin_doc_key(source_url)` casa
+`^(BOE|BOCM|DOGV|BOCYL|DOGC|BOC|BOJA|DOG|MIA)-`. Medido sobre las 125 señales aplicadas en 7 días:
+**91 tienen año, 4 pasan el prefijo, 1 pasa las dos.**
+**Por qué (🟠):** la causa raíz es que **los sensores guardan en `source_url` la página donde MIRARON,
+no el documento que ENCONTRARON** — sumarios (`bocyl.jcyl.es/boletin.do?fechaBoletin=…`,
+`dogv.gva.es/dogv-portal/dogv?date=…`) y fichas del PAG (`detalleEmpleo.htm?idConvocatoria=…`). Sobre
+un sumario, `boletin_doc_key` devuelve la URL canonicalizada en vez de un id estructurado, así que el
+clonado nunca dispara. Es el mismo hueco que los "239 documentos referenciados sin clonar" de
+`provenance-convocatorias.md`, visto desde el otro lado.
+**Ojo antes de "arreglarlo" ampliando el regex:** clonar el SUMARIO como si fuera el decreto es peor
+que no clonar (envenena la extracción: es la razón documentada de que las capas 2-3 no se automaticen,
+`verificar-convocatorias.md` §"Por qué las capas 2-3 NO se automatizan"). El arreglo correcto va en el
+sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
+**Cómo:** `docs/runbooks/verificar-convocatorias.md` + `docs/runbooks/provenance-convocatorias.md`.
+- **♻️ Rescatada el 29/07 del worktree `sesion-28jul-d`**, que murió con el lease caducado y sin pushear la ficha. La tarea seguía viva en `backlog_tasks`, así que `list` la ofrecía por su título y detrás no había nada que leer — el mismo agujero que se tragó T-251 y T-254 ese día, salvo que ésta no estaba en el historial de `main` y no habría podido recuperarse.
+
 ### [T-240] 🟠 [ABIERTO 28/07] El detector de completitud de leyes cuenta artículos pero no compara el TEXTO: da verde a una ley entera parafraseada
 - **Qué pasa:** `classifyLawCompleteness` / `scripts/audit-law-completeness.cjs` (kind `law_unverified_source`) responden a *«¿están todos los artículos?»*. No responden a *«¿dicen lo que dice la fuente?»*. Son preguntas distintas y hoy solo se hace la primera.
 - **El caso que lo destapó ([T-193], 28/07):** el RGPD figuraba como verificado con este resumen literal — *«RGPD completo: 99 artículos (1-99, sin huecos) = articulado íntegro»*, `is_ok: true`. Y **72 de esos 99 artículos eran una paráfrasis**, no el texto oficial: en el art. 43 la redacción se comía *«Los Estados miembros garantizarán que…»*. Cantidad perfecta, fidelidad nula. La ley se sirve en **49 temas de 49 oposiciones**.

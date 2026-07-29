@@ -367,13 +367,20 @@ function parseMd() {
       // fuente de verdad de los ids es la tabla, así que se pregunta a la tabla.
       const idsMd = md.filter((t) => t.inOpenSection && !t.doneMarked).map((t) => t.id);
       if (idsMd.length) {
-        const { esOtraTarea } = require(path.join(REPO, 'lib', 'backlog', 'syncGuard.cjs'));
+        const { esColisionReal } = require(path.join(REPO, 'lib', 'backlog', 'syncGuard.cjs'));
         const enBd = await s`
           SELECT id, title FROM public.backlog_tasks
            WHERE id IN ${s(idsMd)} AND status IN ('open','in_progress','blocked')`;
         const porId = new Map(enBd.map((r) => [r.id, r.title]));
+        // Solo es colisión si además la ficha NO estaba ya en el historial de ESTE fichero: si
+        // estaba, es nuestra y lo que ha cambiado es el título (retitular al aprender algo es
+        // normal). Sin esta segunda condición, cada retitulado a fondo abortaba el sync de TODAS
+        // las sesiones — pasó dos veces el 29/07 en diez minutos (T-219 y T-089).
         const ajenas = md
-          .filter((t) => porId.has(t.id) && esOtraTarea(porId.get(t.id), t.title))
+          .filter((t) => porId.has(t.id) && esColisionReal({
+            tituloBd: porId.get(t.id), tituloMd: t.title,
+            estuvoEnElHistorial: estuvoEnElHistorial(t.id),
+          }))
           .map((t) => ({ id: t.id, bd: porId.get(t.id), md: t.title }));
         if (ajenas.length) {
           console.error(`❌ sync ABORTADO: ${ajenas.length} id(s) ya ocupado(s) en la BD por OTRA tarea.`);

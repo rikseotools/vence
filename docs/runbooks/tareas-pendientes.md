@@ -34,6 +34,10 @@ Y aborta en los **dos** sitios donde se puede chocar, que no son el mismo:
 | El id sale **dos veces en tu markdown** | dos fichas con el mismo `T-nnn` en el fichero | comparación dentro del markdown |
 | El id **ya es de otra sesión en la BD** | en TU fichero aparece una sola vez (la tuya): su ficha aún no está pusheada | comparación contra `backlog_tasks` (`lib/backlog/syncGuard.cjs`) |
 
+**Pero un retitulado NO es una colisión** (añadido 29/07). Reescribir el título de tu propia ficha cuando el trabajo cambia lo que sabes de ella es normal, y a veces no deja ni una palabra en común — `esOtraTarea` compara vocabulario, así que lo daba por ajeno y **abortaba el `sync` de TODAS las sesiones**. Pasó dos veces en diez minutos: **T-219** (*«308 preguntas de señale la INCORRECTA…»* → *«El marco contradictorio de las preguntas de tipo NEGATIVO»*, y la propia ficha explica el porqué: *«el cubo NO eran 308, era más del TRIPLE»*) y **T-089** (*«gate de PICO SUPERADO»* → *«A3 RESUELTO»*). El discriminante no es el parecido de los títulos sino **si esa ficha ha existido alguna vez en el fichero**: si estaba en el historial es NUESTRA y se reconcilia; si nunca estuvo, es de otra sesión y se para. El caso T-225 —donde la ficha era nueva— sigue abortando igual (`esColisionReal` en `lib/backlog/syncGuard.cjs`, con su test de regresión).
+
+> Y no era solo la molestia de repetir el `sync`: **cada aborto se llevaba por delante los avisos que van después**. El de T-219 estuvo horas ocultando que las fichas de T-251 y T-254 se habían borrado de `main`.
+
 El segundo es el que pasa de verdad y estuvo suelto hasta el 28/07: la otra sesión reservó T-225 a
 las 09:17, en esta copia el markdown no tenía esa ficha, y el `sync` reconcilió el id como propio
 **pisándole el título**. La decisión de parar es pura y testeada (`__tests__/backlog/syncGuard.test.ts`):
