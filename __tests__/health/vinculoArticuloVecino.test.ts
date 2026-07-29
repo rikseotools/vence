@@ -59,6 +59,11 @@ describe('las exclusiones, que son lo que sostiene la precisión', () => {
     'Todas las siguientes son competencias EXCEPTO una',
     '¿Cuál de las siguientes NO es un principio rector?',
     'Indique cuál de estas afirmaciones es falsa',
+    // Añadidos tras el piloto del 29/07: la primera versión de la regex se los comía.
+    'el escenario de ingresos no tendrá en cuenta:',
+    'El órgano no podrá acordar la medida cuando:',
+    '¿Qué documentos no forma parte del expediente?',
+    'La solicitud no incluye:',
   ])('reconoce la negación en: %s', (enunciado) => {
     expect(RE_NEGATIVA.test(enunciado)).toBe(true)
   })
