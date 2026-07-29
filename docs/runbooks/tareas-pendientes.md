@@ -108,7 +108,15 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
 - **`__tests__/guardrails/backlogRegistry.guardrail.test.ts`** (corre en CI, sin BD): toda cabecera lleva id, los ids son únicos y con formato `T-NNN`, toda tarea viva declara prioridad, y existe la sección `## Abiertas`. Si alguien añade una tarea sin id, el CI se pone rojo — porque sin id **nadie puede cogerla**.
 - **`lib/backlog/claim.ts` → `findBacklogDrift()`**: detecta el fallo exacto del 20/07 — tarea `done` en BD que sigue anunciada como abierta en el markdown (y el caso inverso). Testeado en `__tests__/backlog/claim.test.ts`.
 - **`findZombieClaims()`**: `in_progress` con el lease caducado hace >24 h = sesión zombi o cierre olvidado.
-- **`backlog.cjs sync`** avisa de ids que están en la tabla pero no en el markdown (tareas fantasma, sin contexto).
+- **`backlog.cjs sync`** avisa de ids que están en la tabla pero no en el markdown (tareas fantasma, sin contexto). **Ese aviso va lo PRIMERO y separa dos casos que no se parecen** (`lib/backlog/fichaHuerfana.cjs`, testeado en `__tests__/backlog/fichaHuerfana.test.ts`):
+  | Motivo | Qué pasó | Qué hacer |
+  |---|---|---|
+  | 🔴 `borrada` | el id SÍ estuvo en el markdown y ya no está → **regresión** | recuperarla: `git log -S'### [T-NNN]' -- docs/roadmap/tareas-pendientes.md` |
+  | ℹ️ `sin_pushear` | el id nunca estuvo en esta rama → otra sesión lo reservó y su ficha viaja en su worktree | nada: es lo normal con 2-10 sesiones |
+
+  **Por qué se cambió (29/07/2026).** El commit de tests `4127f3e17` subió una **copia rancia** del markdown y borró de `main` las fichas de **T-251 y T-254**. Las dos tareas seguían VIVAS en la tabla, así que `list` las ofrecía por su título y detrás no había ficha que leer — una sesión podía cogerlas sin poder saber qué eran. El aviso que lo cazaba ya existía, pero fallaba por dos motivos independientes: **(1)** se imprimía al FINAL, después de dos `process.exit(2)`, y ese día el `sync` abortaba antes por una colisión de id **ajena** (T-219), así que no llegaba nunca; **(2)** no distinguía la regresión del trabajo en vuelo de las demás sesiones, que es lo habitual — y un aviso que se enciende todos los días por algo sano se acaba ignorando, el mismo final que ya tuvo cuando incluía a las CERRADAS (T-033/T-039/T-046). La prueba de que la ficha existió es el **historial del fichero**, no la antigüedad de la tarea. **Fail-open:** si git no puede contestar, se calla — inventarse una regresión es peor que perderla.
+
+  > **Lección de método:** un hallazgo que solo se publica cuando todo lo demás va bien es un hallazgo que falta justo el día que hace falta. Las comprobaciones de solo lectura van antes que los abortos.
 
 ## Añadir una tarea nueva
 

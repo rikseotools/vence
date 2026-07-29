@@ -31,7 +31,29 @@ const loadPg = () => require('postgres');
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
-const MD = path.join(REPO, 'docs', 'roadmap', 'tareas-pendientes.md');
+const MD_REL = path.join('docs', 'roadmap', 'tareas-pendientes.md');
+const MD = path.join(REPO, MD_REL);
+
+/**
+ * ¿La ficha de este id ESTUVO alguna vez en el markdown? Es la prueba que separa «me la han
+ * borrado» (regresión) de «otra sesión no ha pusheado la suya» (normal con 2-10 sesiones).
+ *
+ * FAIL-OPEN a `false` a propósito, igual que el push-guard hace con la BD: si git no puede
+ * contestar (no es un repo, el fichero se renombró, cualquier avería), lo que NO se puede hacer es
+ * inventarse una regresión y mandar a alguien a buscar una ficha que nunca existió. Un aviso que
+ * miente una vez deja de leerse para siempre.
+ */
+function estuvoEnElHistorial(id) {
+  try {
+    const { execFileSync } = require('child_process');
+    const out = execFileSync(
+      'git', ['log', '--format=%h', '-S', `### [${id}]`, '--', MD_REL],
+      { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15_000 });
+    return out.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -278,6 +300,40 @@ function parseMd() {
       // Solo se reconcilian las VIVAS: en una cerrada, el título con el que se
       // trabajó es historia y reescribirlo falsearía el registro.
       const md = parseMd();
+
+      // FICHAS HUÉRFANAS, ANTES QUE NADA. Es una comprobación de SOLO LECTURA y no depende de
+      // que el resto del sync vaya bien, así que no puede vivir al final: los dos abortos de
+      // abajo hacen `process.exit(2)` y se la llevan por delante.
+      //
+      // Pasó el 29/07 y costó las fichas de T-251 y T-254: un commit de tests (`4127f3e17`) subió
+      // una copia RANCIA del markdown y borró las dos fichas de `main`. La tarea seguía viva en la
+      // tabla, así que `list` la ofrecía por su título… sin ficha detrás que leer. El aviso que lo
+      // habría cazado existía —«VIVA en BD pero SIN ficha»— pero el sync abortaba antes por una
+      // colisión de id AJENA (T-219) y nunca llegaba a imprimirlo. Un hallazgo que solo se publica
+      // cuando todo lo demás está bien es un hallazgo que falta justo el día que hace falta.
+      // Y se SEPARA la regresión del trabajo en vuelo: con 2-10 sesiones a la vez, que otra tenga
+      // el id reservado y la ficha sin pushear es lo normal, no un fallo. Avisar de las dos cosas
+      // igual gasta el aviso — el mismo final que tuvo cuando incluía a las CERRADAS
+      // (T-033/T-039/T-046). La prueba de que la ficha EXISTIÓ es el historial del fichero.
+      const vivas = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
+      const idsEnMd = new Set(md.map((t) => t.id));
+      const sinFicha = vivas.map((r) => r.id).filter((id) => !idsEnMd.has(id));
+      if (sinFicha.length) {
+        const { clasificarHuerfanas } = require(path.join(REPO, 'lib', 'backlog', 'fichaHuerfana.cjs'));
+        const { borradas, sinPushear } = clasificarHuerfanas(
+          sinFicha.map((id) => ({ id, estuvoEnElMarkdown: estuvoEnElHistorial(id) })));
+        if (borradas.length) {
+          console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
+          console.error('   Alguien commiteó el fichero rancio y se llevó la ficha por delante.');
+          for (const id of borradas) {
+            console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
+          }
+        }
+        if (sinPushear.length) {
+          console.log(`ℹ️ sin ficha aquí todavía (otra sesión sin pushear): ${sinPushear.join(', ')}`);
+        }
+      }
+
       // COLISIÓN DE ID antes de escribir nada. Si el markdown trae el mismo id dos veces es que
       // alguien eligió un número "libre" mirando el fichero, sin ver que otra sesión ya lo había
       // ocupado en la BD (que es la fuente de verdad del claim). Seguir adelante sería peor que
@@ -366,14 +422,10 @@ function parseMd() {
       }
       console.log(`sync: ${md.length} en markdown · ${nuevos} nueva(s) insertada(s) · ${reconciliadas} reconciliada(s).`);
       for (const c of cambios) console.log(`   ↻ ${c}`);
-      // Solo las VIVAS pueden ser huérfanas de verdad: una tarea viva sin ficha no se puede
-      // trabajar (nadie sabe qué es). Borrar la ficha de una CERRADA, en cambio, es limpieza
-      // legítima y documentada, así que incluirlas aquí producía un aviso permanentemente
-      // falso (T-033/T-039/T-046) que enseñaba a ignorar la salida del sync.
-      const db = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
-      const mdIds = new Set(md.map((t) => t.id));
-      const huerfanas = db.map((r) => r.id).filter((id) => !mdIds.has(id));
-      if (huerfanas.length) console.log(`⚠️ VIVA en BD pero SIN ficha en el markdown: ${huerfanas.join(', ')}`);
+      // El aviso de fichas huérfanas se da ARRIBA, antes de los abortos (ver el comentario allí).
+      // Solo se miran las VIVAS: una tarea viva sin ficha no se puede trabajar (nadie sabe qué es),
+      // mientras que borrar la ficha de una CERRADA es limpieza legítima y documentada — incluirlas
+      // producía un aviso permanentemente falso (T-033/T-039/T-046) que enseñaba a ignorar el sync.
     }
 
     // ── reserve ────────────────────────────────────────────────────────────────
