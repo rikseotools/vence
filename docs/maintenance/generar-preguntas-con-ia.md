@@ -226,7 +226,16 @@ Segundo tell estructural, independiente del de longitud y de mayor impacto. **Me
 > **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
 >
 > Se escribe un JSON con una razón por opción —referida al CONTENIDO, nunca a la letra— y el
-> texto de siempre lo **genera** la herramienta:
+> texto de siempre lo **genera** la herramienta.
+>
+> ⚠️ **La regla «nunca la letra» vale IGUAL para el `intro` y el `outro`** (T-262, 29/07). Son los
+> únicos campos que el render emite **verbatim en cualquier orden**: una letra ahí queda clavada y
+> contradice a la que calcula el render («La respuesta correcta es la **C**.» arriba, «Por qué
+> **A** es correcta» debajo). NO abras el `intro` anunciando la clave —esa línea la pone el render
+> con la letra que toque— ni cierres el `outro` con «**Clave:** la B es…»; escríbelos por
+> contenido. El aplicador **rechaza** el JSON si encuentra una letra ahí, así que lo sabrás antes
+> de aplicar. Detalle y reparación (`npm run shuffle:narrativa`):
+> `docs/roadmap/barajar-opciones-verificacion-robusta.md`.
 >
 > ```bash
 > npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply

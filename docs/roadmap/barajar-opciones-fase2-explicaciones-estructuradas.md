@@ -58,7 +58,18 @@ Forma del JSON (`lib/shuffle/structuredExplanation.ts` → `StructuredExplanatio
   electrónica". Es lo que hace el formato letra-independiente.
 - La opción correcta se identifica con `questions.correct_option` (índice ORIGINAL), no se marca
   dentro del JSON → una sola fuente de verdad para la clave.
-- `intro`/`cita` son independientes de opción → sobreviven intactos a cualquier permutación.
+- `intro`/`outro`/`cita` son independientes de opción → sobreviven intactos a cualquier permutación.
+- ⚠️ **«Sobreviven intactos» NO es «son seguros», y confundirlo costó 1.211 preguntas (T-262).**
+  Que el `intro` y el `outro` se emitan **verbatim en cualquier orden** es justamente el problema
+  si dentro hay una letra: queda clavada mientras la cabecera la recalcula, y la explicación se
+  contradice sola en el mismo recuadro (*«La respuesta correcta es la **C**.»* arriba, *«Por qué
+  **A** es correcta»* tres líneas después). La **regla de oro de arriba vale para la narrativa
+  igual que para las razones**: nada de letras. La letra la pone el render, siempre.
+  - El escritor (`aplicar-explicacion.ts`) lo rechaza, el gate de serve se niega a barajarlo y el
+    sweep lo reporta como `shuffle_narrativa_letra_clavada`. Detalle y reparación
+    (`npm run shuffle:narrativa`): `barajar-opciones-verificacion-robusta.md`.
+  - La `cita` sí queda fuera del detector: el articulado se cita por letras («la letra b) del
+    art. 9.1») y marcarla daría falsos positivos sobre citas impecables.
 
 ## 2. Render (drop-in, cero cambio de UI)
 
