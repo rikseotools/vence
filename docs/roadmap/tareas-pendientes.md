@@ -826,6 +826,20 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
     - **➡️ Lo que queda es una DECISIÓN, no una investigación:** bajar de ese suelo exige **persistir el token entre cargas de página** (`sessionStorage`/`localStorage`), lo que mete el RS256 en almacenamiento accesible por JS — tiene implicaciones de seguridad y va como tarea propia, con criterio de Manuel. Alternativa más barata y sin ese riesgo: subir el TTL del token o precalentar la caché en el arranque de la app. **NO tocar sin decidir eso primero.**
     - La alerta `auth_token_mint_waste` seguirá disparando mientras el suelo esté por encima de 8/usuario/hora. **Eso ya no es señal de bug**: cuando se tome la decisión, o se baja el suelo o se recalibra el umbral CON el motivo delante (`carga_inicial` dominante = sano; `forzado`/`cache_miss` dominante = regresión).
 
+- **🎯 RESUELTO EL RESIDUO (29/07) — los 624 timeouts y el 401 «sin explicar» son el MISMO suceso, y su causa está fuera de T-210.** Al re-medir (paso 3 de esta ficha) con el ruido ya separado, lo que quedaba no era un goteo: es **episódico y de flota entera**.
+  - **Minuto a minuto del 29/07 (UTC), la correlación es exacta:**
+    | 09:30-09:55 | ráfaga de **51 PDFs de temario generados al vuelo** (`temario_pdf_served`, `served:"generated"`) |
+    | 09:37-09:41 | bloqueos del bucle de eventos de 12-25 s en 4 instancias |
+    | 09:43-09:47 | **5 instancias congeladas a la vez, 151-215 s cada una** (`event_loop_lag`, peor: 215 s) |
+    | 09:40-09:46 | **59 timeouts de 15 s** en la cola de guardado, 16 usuarios |
+    | 09:35-09:55 | **207 respuestas 5xx** repartidas por TODA la app |
+  - **El 401 de `disputes/notifications` queda explicado:** en esa hora hay **55 de los 59 `http_5xx` de `/api/auth/token` del día**. Si el endpoint que acuña el Bearer devuelve 5xx, el cliente se queda sin token válido y **todo lo que llame después responde 401**. No era un bug de expiración residual: es el síntoma aguas abajo de la congelación.
+  - **Los 5xx no son del PDF, son de todo lo demás:** `/api/auth/token` 55 · `/api/interactions` 49 · `/api/auth/session` 14 · `disputes/notifications` 12 · `exam/pending` 6… O sea, **el contenedor que renderiza un PDF deja de atender al resto de usuarios que le tocan**.
+  - **Por qué el render bloquea:** el 76% de los PDFs se genera en el propio contenedor (**268 generados vs 78 servidos de S3** en 7 días) y son grandes: **135.014 caracteres de media, hasta 918.586**. Un render síncrono de ese tamaño monopoliza el bucle de eventos de Node, y mientras tanto ese contenedor no responde a nadie.
+  - **No es de hoy:** hay bloqueos >5 s **todos los días** (24/07: peor 15 s · 25/07: 92 s · 26/07: 74 s · 28/07: 26 s · **29/07: 215 s**), y los días con más PDFs generados son los de más timeouts (29/07: 67 PDFs → 75 timeouts · 28/07: 41 → 41 · 23/07: 65 → 30).
+  - **➡️ El residuo de T-210 se cierra derivándolo a [T-270]** (la ruta pública del PDF renderiza en el contenedor de la app). **Y la premisa de espera de T-270 ya no aplica:** estaba parada *"hasta el pico de mañana"* para conseguir `renderMs`/`instanceId`, pero **el pico de HOY ya produjo la evidencia de impacto** — lo que falta de `renderMs` afina el diagnóstico, no lo sostiene. Lo que sí queda por instrumentar: `temario_pdf_served` NO trae `renderMs` ni `instanceId`, así que la atribución instancia↔render sigue siendo por correlación temporal, no directa.
+  - **Lo que NO hay que hacer:** subir el timeout de 15 s del cliente. Esconde el síntoma y deja al usuario esperando más.
+
 - **Origen:** triaje de salud del 28/07, al desglosar los 5.076 eventos de error de 24h (4.840 eran `console_error`).
 
 ### [T-207] 🟠 [ABIERTO 27/07] Cubo «citas no literales»: 13.424 preguntas activas (30,7%) que los dos detectores de citas nunca pudieron ver
