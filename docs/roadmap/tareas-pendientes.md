@@ -532,6 +532,15 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-280] 🟠 [ABIERTO 29/07] El canary que vigila el gate anti-scraping se exime a sí mismo: su aserción principal es vacía
+- **Qué pasa:** `canary-questions-gate` comprueba, entre otras cosas, que *"el gate NO debe retar a un usuario normal"* — pero manda la cabecera de exención en esa misma petición, así que **está exento cuando lo comprueba**. La aserción pasa siempre, mida lo que mida el gate: si mañana el gate empezara a retar a todo el mundo (el fallo que más duele: usuarios reales sin poder cargar preguntas), ese canary seguiría verde.
+- **Cómo salió:** arreglando el agujero de la exención (29/07, commit `cb22c454e`). Al revisar quién manda la cabecera se ve que este canary la usa también en la prueba que precisamente NO debería estar exenta.
+- **La tensión real, que es lo que hace la tarea interesante:** sin exención, el canary pega cada 5 min con el mismo `SMOKE_USER_ID` y acaba disparando el gate por volumen — o sea, se auto-reta y se pone rojo sin que haya avería. Por eso se le eximió en su día. Hay que separar las dos pruebas:
+  - *"a un usuario normal no se le reta"* → necesita un sujeto que NO acumule volumen (identidad rotatoria, o una cuenta distinta con cuota propia, o mirar el veredicto del gate sin pedir preguntas).
+  - *"a un scraper SÍ se le reta"* → esa sí puede ir exenta o no, pero hoy es la única que de verdad se está comprobando.
+- **Impacto:** 🟠 no rompe nada por sí solo, pero es una alarma que no puede sonar. Justo la clase de cosa que el runbook del radar llama "un cero que parece calma y es un sensor muerto".
+- **Relacionada:** el guardarraíl `__tests__/guardrails/exencion-antiscraping.test.ts` vigila que la exención siga exigiendo secreto; esto es lo otro, que el vigilante mire de verdad.
+
 ### [T-264] 🟡 [ABIERTO 29/07] Medir si el banner de iPhone convierte: instalaciones desde iOS a las 24-48 h
 - **De dónde sale:** en las primeras 17 h del banner de instalación (28/07 14:13 → 29/07 07:03), **114 móviles** no recibieron ninguna oferta. Al abrirlo por navegador: **48 eran iPhone/iPad y NINGUNO instaló la app**; los 66 de Android ya la tenían (20), ya la habían visto (31) o ya la habían descartado (16) — ahí no había hueco. iOS no implementa `beforeinstallprompt`, así que el banner de botón nunca les salía.
 - **Qué se desplegó el 29/07:** variante iOS del banner con los dos pasos de Safari (Compartir → Añadir a pantalla de inicio) en vez del botón. Misma decisión pura (`decidirBanner`), mismo silenciado y misma medición, con `variante: 'ios' | 'prompt'` en todos los eventos.
