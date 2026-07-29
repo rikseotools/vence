@@ -338,10 +338,32 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
   })
 
   it('pinea por DIGEST del push, no por tag mutable (postmortem #115)', () => {
-    expect(repin).toMatch(/--digestfile/)
     expect(repin).toMatch(/IMAGE_PINNED="\$\{REGISTRY\}\/\$\{REPO\}@\$\{DIGEST\}"/)
     // Y aborta si el push no devolvió digest, en vez de pinear a ciegas.
     expect(repin).toMatch(/NO se pinea a ciegas/)
+  })
+
+  it('capta el digest de forma distinta por builder (--digestfile es SOLO de podman)', () => {
+    // El deploy manual usa podman y el de CI usa docker. `docker push --digestfile`
+    // NO existe: el push falla, y como el step de CI va con continue-on-error el
+    // deploy saldría VERDE sin re-pinear nada — exactamente el fallo silencioso que
+    // todo este mecanismo existe para evitar.
+    const digestfileLines = repin.split('\n').filter((l) => l.includes('--digestfile'))
+    expect(digestfileLines.length).toBeGreaterThan(0)
+    for (const l of digestfileLines) expect(l).not.toMatch(/docker/)
+    // Tiene que haber una rama por builder.
+    expect(repin).toMatch(/case "\$BUILDER" in/)
+    expect(repin).toMatch(/podman\)/)
+    // Y la rama de docker saca el digest del propio push, no de un re-lookup por tag.
+    expect(repin).toMatch(/sha256:\[0-9a-f\]\{64\}/)
+    expect(repin).not.toMatch(/describe-images[\s\S]{0,80}imageTag/)
+  })
+
+  it('el workflow de CI declara el builder que su rama sabe manejar', () => {
+    const m = workflow.match(/BUILDER:\s*(\w+)/)
+    expect(m).not.toBeNull()
+    // Si mañana alguien pone otro builder, esta aserción obliga a mirar el script.
+    expect(['docker', 'podman']).toContain(m![1])
   })
 
   it('el deploy MANUAL lo invoca', () => {

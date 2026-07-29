@@ -86,14 +86,29 @@ for ENTRY in "${DERIVED_WORKERS[@]}"; do
   # 2. Subir capturando el digest DIRECTO del push. No re-resolver por tag: ECR
   #    tiene consistencia eventual y con deploys concurrentes devuelve el digest
   #    EQUIVOCADO (mismo motivo documentado en deploy-frontend.sh).
-  DIGESTFILE=$(mktemp)
-  if ! "$BUILDER" push "$IMG_TAG" --digestfile "$DIGESTFILE" >/dev/null 2>&1; then
-    echo "      ⚠️ push a $REPO falló"
-    rm -f "$DIGESTFILE"; FAILED=1; continue
-  fi
-  DIGEST=$(cat "$DIGESTFILE"); rm -f "$DIGESTFILE"
+  #
+  #    ⚠️ Los dos builders capturan el digest de forma DISTINTA y `--digestfile` es
+  #    EXCLUSIVO de podman. Usarlo con docker (que es el builder en CI) hace fallar
+  #    el push → como el step va con continue-on-error, el deploy saldría VERDE sin
+  #    re-pinear nada. Ambas ramas leen el digest del PROPIO push, nunca de un
+  #    re-lookup por tag.
+  DIGEST=""
+  case "$BUILDER" in
+    podman)
+      DIGESTFILE=$(mktemp)
+      if "$BUILDER" push "$IMG_TAG" --digestfile "$DIGESTFILE" >/dev/null 2>&1; then
+        DIGEST=$(cat "$DIGESTFILE")
+      fi
+      rm -f "$DIGESTFILE"
+      ;;
+    *)
+      # `docker push` imprime "<tag>: digest: sha256:… size: N" — sale del push mismo.
+      PUSH_OUT=$("$BUILDER" push "$IMG_TAG" 2>&1) || PUSH_OUT=""
+      DIGEST=$(printf '%s' "$PUSH_OUT" | grep -oE 'sha256:[0-9a-f]{64}' | tail -1)
+      ;;
+  esac
   if [ -z "$DIGEST" ]; then
-    echo "      ⚠️ el push no devolvió digest — NO se pinea a ciegas"
+    echo "      ⚠️ el push no devolvió digest ($BUILDER) — NO se pinea a ciegas"
     FAILED=1; continue
   fi
   IMAGE_PINNED="${REGISTRY}/${REPO}@${DIGEST}"
