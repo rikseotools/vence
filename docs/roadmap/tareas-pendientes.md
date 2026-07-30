@@ -721,6 +721,18 @@ incluida).
 - **CÓMO SE ATACA** (mismo flujo que las 22 de T-282, que salió bien): por **exposición descendente**, en lotes de 20-30, con `docs/maintenance/revisar-preguntas-con-agente.md` — reparación por agentes → gate mecánico → **auditoría ciega** (tumbó el 14% en T-282) → `citaNoLiteral` sobre las citas → `aplicar-explicacion.ts --lote` (dry-run y luego `--apply`) → invalidar caché → **re-verificar sobre la pregunta viva**. La reparación es reescribir la razón **referida al CONTENIDO** de la otra opción («el plazo de tres meses del art. 21» en vez de «el plazo que cita la opción D»), que es lo que sobrevive al barajado.
 - **REGLA:** la clave NUNCA se toca, y una razón solo se da por buena si la sostiene el artículo vinculado.
 - **ORDEN DE MAGNITUD:** 761 preguntas ≈ varias sesiones. Las **20 primeras se llevan el 23% de la exposición**, así que la primera sesión ya vale la pena aunque no se termine.
+- **✅ 30/07 — CLASIFICADO ANTES DE ESCRIBIR NADA, y el cubo NO es homogéneo.** Medido sobre los 964 campos:
+
+  | Familia | Campos | Preguntas que quedan limpias | Arreglo |
+  |---|---|---|---|
+  | **Letra de la LEY**, no de una opción (*«la letra a) del artículo 11»*) | 139 | **82** (625 exp) | **CÓDIGO, ya hecho** (abajo) |
+  | **Auto-referencia**: la razón de la opción X empieza nombrándose a sí misma (*«La opción C reproduce…»*) | 131 | **115** (4.726 exp) | mecánico: quitar el sujeto y empezar por el contenido |
+  | **Ajena**: la razón habla de OTRA opción (*«el plazo que cita la opción D»*) | ~669 | — | reescribir por CONTENIDO, con la fuente delante |
+  | **Posicional** (*«la primera», «la anterior»*) | 25 | — | criterio |
+
+  La primera fila **no era trabajo de contenido, era un defecto de código**, y por eso conviene clasificar antes de mandar agentes: el 14% del cubo se resolvía sin tocar una sola explicación. (Aviso: mi primera lectura de los ejemplos me hizo decir que «el cubo está inflado»; al medirlo son 82 de 761, un 11%. El grueso sí son referencias de verdad.)
+- **✅ 30/07 — HECHO: el gate de serve ahora exime la letra de la ley** (commit `b44dc0b0e`). Había **dos puertas con criterios distintos** sobre el mismo texto: el escritor (`aplicar-explicacion.ts`) eximía la cita legal desde el 28/07 y el gate no, así que una explicación podía escribirse y no barajarse nunca. El patrón vivía replicado en el script y en su propio test —que lo advertía— y ahora vive en `lib/shuffle/classifyShuffleMode.ts` (`neutralizaCitasLegales`), compartido por los dos. **Verificado con el gate REAL, antes y después: 6.126 → 6.207 barajables (+81), ninguna perdida.** Exención estrecha (palabra + letra en minúscula + artículo detrás); «la letra B) del enunciado» NO se exime, y va como test. 9 casos nuevos.
+- **⏭️ SIGUIENTE PASO SUGERIDO:** las **115 de auto-referencia** (4.726 exposiciones, el 24% del cubo) son deterministas — quitar el prefijo que se nombra a sí mismo no cambia lo que la razón dice. Van con propuesta a JSON + `aplicar-explicacion.ts --lote`, con el gate mecánico y una muestra revisada a mano. Después, las ~600 «ajenas» por exposición descendente con el flujo de agentes.
 - **Relacionada:** [T-282] (de donde sale) · [T-262] (la narrativa, ya cerrada) · [T-201] (opciones que se citan entre sí) · [T-080] Fase 2.
 
 ### [T-320] 🟡 [ABIERTO 30/07] Una OPCIÓN que cambia una palabra de la ley: el caso está arreglado, la población no está medida
