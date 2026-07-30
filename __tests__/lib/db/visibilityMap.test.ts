@@ -165,4 +165,51 @@ describe('remedioVisibilidad — el hallazgo trae la CAUSA, no un «revisa»', (
     } as unknown as Tabla)
     expect(remedioVisibilidad(v)).not.toMatch(/NO se arreglará sola/)
   })
+
+  // ── El falso positivo de la COLA (30/07) ────────────────────────────────────────────────────
+  // `test_questions_outbox` sale fría (84,2%) con la maquinaria funcionando: 208 autovacuums, el
+  // último hace 6 minutos, y las muertas por debajo del umbral. Es una cola que se llena y se vacía;
+  // ese es su régimen. El mensaje viejo mandaba a «revisar por qué el autovacuum no llega» cuando
+  // acababa de llegar.
+  it('caso REAL del outbox: a mitad del ciclo de inserts → régimen de rotación, no abandono', () => {
+    // 1.333 inserts pendientes de los 1.342 que disparan su autovacuum (threshold 1000 + 0.01 ×
+    // 34.202 vivas): el 99% del camino. La maquinaria no está parada, está a punto de entrar.
+    const v = classifyVisibility({
+      relname: 'test_questions_outbox', relpages: 6_205, relallvisible: 5_223, tieneAjusteInserts: true,
+      vivas: 34_202, muertas: 2_893, insPendientes: 1_333, scaleFactorMuertas: 0.2,
+      insertThreshold: 1_000, insertScaleFactor: 0.01,
+    } as unknown as Tabla)
+    const r = remedioVisibilidad(v)
+    expect(v.status).toBe('warn') // sigue saliendo en la lista: está fría de verdad
+    expect(r).toMatch(/régimen de rotación alta/)
+    expect(r).toMatch(/1333 inserts pendientes de los 1342/)
+    expect(r).not.toMatch(/no llega/)
+  })
+
+  // LA REGRESIÓN QUE IMPORTA: el primer criterio que se probó para exentar la cola fue el RATIO DE
+  // BORRADO, y medido sobre las 23 tablas grandes resultó que `test_questions` —la del incidente—
+  // tiene ratio 0,709 contra el 0,680 del outbox. Habría silenciado el caso a cazar. El criterio
+  // final es el COMPORTAMIENTO del autovacuum, y este test lo fija: con el autovacuum viejo, la
+  // misma tabla con la misma forma NO se lee como régimen normal.
+  it('el caso del incidente NO se cuela por la exención: 0 inserts pendientes = atascada', () => {
+    const v = classifyVisibility({
+      relname: 'test_questions', relpages: 299_675, relallvisible: 202_281, tieneAjusteInserts: true,
+      vivas: 159_671, muertas: 7_394, insPendientes: 0, scaleFactorMuertas: 0.05,
+      insertThreshold: 1_000, insertScaleFactor: 0.01,
+    } as unknown as Tabla)
+    const r = remedioVisibilidad(v)
+    expect(r).toMatch(/NO se arreglará sola/)
+    expect(r).not.toMatch(/régimen de rotación/)
+  })
+
+  it('recién vaciada (pocos inserts pendientes) tampoco se lee como régimen', () => {
+    // El ciclo acaba de empezar: nada dice que el autovacuum esté a punto de entrar, así que no se
+    // afirma. Sin este corte, cualquier tabla con el ajuste puesto quedaría excusada siempre.
+    const base = {
+      relname: 'cola', relpages: 6_205, relallvisible: 5_223, tieneAjusteInserts: true,
+      vivas: 34_202, muertas: 2_893, scaleFactorMuertas: 0.2, insertThreshold: 1_000, insertScaleFactor: 0.01,
+    }
+    expect(remedioVisibilidad(classifyVisibility({ ...base, insPendientes: 700 } as unknown as Tabla))).toMatch(/régimen de rotación/)
+    expect(remedioVisibilidad(classifyVisibility({ ...base, insPendientes: 300 } as unknown as Tabla))).not.toMatch(/régimen de rotación/)
+  })
 })

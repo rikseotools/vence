@@ -2687,12 +2687,50 @@ export class ContentHealthSweepService {
     // están fijados por los tests del núcleo con los números reales del incidente.
     try {
       const VM_MIN_PAGES = 5000, VM_WARN_PCT = 90, VM_ERROR_PCT = 70;
+      // Se traen también las estadísticas de escritura porque el REMEDIO las necesita: sin ellas el
+      // hallazgo solo podía decir «revisa el autovacuum», que es justo lo que hubo que diagnosticar
+      // a mano en `questions` y lo que mandaba a buscar un problema inexistente en el outbox (T-275).
       const vmRows = (await this.db.execute(sql`
         SELECT c.relname AS relname, c.relpages::int AS relpages, c.relallvisible::int AS relallvisible,
-               (COALESCE(c.reloptions::text, '') ILIKE '%insert_scale%') AS tiene_ajuste
+               (COALESCE(c.reloptions::text, '') ILIKE '%insert_scale%') AS tiene_ajuste,
+               s.n_live_tup::bigint AS vivas, s.n_dead_tup::bigint AS muertas,
+               s.n_ins_since_vacuum::bigint AS ins_pend,
+               COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_insert_threshold=([0-9]+)'),'')::int, 1000) AS ins_threshold,
+               COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_insert_scale_factor=([0-9.]+)'),'')::float, 0.2) AS ins_scale,
+               COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_scale_factor=([0-9.]+)'),'')::float, 0.2) AS scale_muertas
           FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+          JOIN pg_stat_user_tables s ON s.relid = c.oid
          WHERE c.relkind = 'r' AND c.relpages > ${VM_MIN_PAGES}
-      `)) as unknown as Array<{ relname: string; relpages: number; relallvisible: number; tiene_ajuste: boolean }>;
+      `)) as unknown as Array<{
+        relname: string; relpages: number; relallvisible: number; tiene_ajuste: boolean;
+        vivas: string | number; muertas: string | number; ins_pend: string | number;
+        ins_threshold: string | number; ins_scale: string | number; scale_muertas: string | number;
+      }>;
+      // Mirror de `remedioVisibilidad` (lib/db/visibilityMap.cjs) — MANTENER EN SYNC. Las cuatro
+      // ramas están fijadas por los tests del núcleo con los números reales: el outbox al 84,2% con
+      // 1.333 inserts pendientes de 1.342 es RÉGIMEN (el autovacuum va a entrar), `questions` al
+      // 78,5% con 0 pendientes y muertas bajo umbral es ATASCO. Y el criterio no puede ser ni el
+      // ratio de borrado ni un umbral de reloj: los dos se probaron y fallan (ver el núcleo).
+      const VM_CICLO_INSERTS_FRACCION = 0.5;
+      const remedioVm = (r: {
+        relname: string; tiene_ajuste: boolean; vivas: string | number; muertas: string | number;
+        ins_pend: string | number; ins_threshold: string | number; ins_scale: string | number;
+        scale_muertas: string | number;
+      }): string => {
+        if (!r.tiene_ajuste)
+          return `ALTER TABLE public.${r.relname} SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)`;
+        const vivas = Number(r.vivas) || 0;
+        const muertas = Number(r.muertas) || 0;
+        const ins = Number(r.ins_pend) || 0;
+        const scale = Number(r.scale_muertas) || 0.2;
+        const umbral = Math.round(100 + scale * vivas);
+        const umbralIns = Math.round((Number(r.ins_threshold) || 1000) + (Number(r.ins_scale) || 0.2) * vivas);
+        if (umbralIns > 0 && ins >= VM_CICLO_INSERTS_FRACCION * umbralIns && muertas < umbral)
+          return `régimen de rotación alta, NO abandono: el autovacuum está A MITAD DE CICLO (${ins} inserts pendientes de los ${umbralIns} que lo disparan) y las muertas (${muertas}) están por debajo de su umbral (${umbral}) — la maquinaria funciona y la tabla se vuelve a enfriar porque se llena y se vacía sin parar (típico de una cola). Solo importa si alguna consulta suya depende de index-only scans; si no, no hay nada que arreglar`;
+        if (vivas > 0 && muertas < umbral && ins === 0)
+          return `NO se arreglará sola: ${muertas} filas muertas contra un umbral de ${umbral} (scale ${scale}) y 0 inserts pendientes — por debajo de los dos disparadores. Hace falta VACUUM (ANALYZE) manual + bajar autovacuum_vacuum_scale_factor de esta tabla`;
+        return `tiene el ajuste de inserts pero sigue fría: mirar si el autovacuum llega (workers saturados, cost_delay) — ${muertas} muertas / umbral ~${umbral}, ${ins} inserts pendientes`;
+      };
       const frias = (Array.isArray(vmRows) ? vmRows : [])
         .map((r) => {
           const pct = r.relpages > 0 ? Math.round((100 * r.relallvisible) / r.relpages * 10) / 10 : 100;
@@ -2706,8 +2744,7 @@ export class ContentHealthSweepService {
       for (const t of (Array.isArray(vmRows) ? vmRows : []).filter((r) => !r.tiene_ajuste).slice(0, 5)) {
         add('app', 'warn', null, 'visibility_map_sin_ajuste',
           `\`${t.relname}\` (${t.relpages.toLocaleString('es-ES')} páginas) NO tiene el ajuste de autovacuum por inserts: se enfriará tarde o temprano y nadie la despertará`,
-          { tabla: t.relname, relpages: t.relpages,
-            remedio: `ALTER TABLE public.${t.relname} SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)` });
+          { tabla: t.relname, relpages: t.relpages, remedio: remedioVm(t) });
       }
       for (const f of frias.slice(0, 5)) {
         add(
@@ -2718,9 +2755,7 @@ export class ContentHealthSweepService {
           `\`${f.relname}\` con solo el ${f.pct}% de páginas marcadas visibles (${f.paginasFrias.toLocaleString('es-ES')} frías): sus index-only scans bajan al heap y pueden tardar 100× más`,
           {
             tabla: f.relname, pctVisible: f.pct, paginasFrias: f.paginasFrias, relpages: f.relpages,
-            remedio: f.tiene_ajuste
-              ? 'ya tiene el ajuste de inserts: revisar por qué el autovacuum no llega'
-              : `ALTER TABLE public.${f.relname} SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)`,
+            remedio: remedioVm(f),
           },
         );
       }

@@ -1353,6 +1353,10 @@ async function detectarTodo(c, add, now) {
              (COALESCE(c.reloptions::text,'') ILIKE '%insert_scale%') AS tiene_ajuste,
              s.n_live_tup::bigint AS vivas, s.n_dead_tup::bigint AS muertas,
              s.n_ins_since_vacuum::bigint AS ins_pend,
+             -- Los dos parámetros del disparador de inserts: con ellos el remedio sabe si el
+             -- autovacuum está A MITAD DE CICLO (cola en su régimen) o atascado (T-275, 30/07).
+             COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_insert_threshold=([0-9]+)'),'')::int, 1000) AS ins_threshold,
+             COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_insert_scale_factor=([0-9.]+)'),'')::float, 0.2) AS ins_scale,
              COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_scale_factor=([0-9.]+)'),'')::float, 0.2) AS scale_muertas
         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
         JOIN pg_stat_user_tables s ON s.relid = c.oid
@@ -1362,6 +1366,7 @@ async function detectarTodo(c, add, now) {
       tieneAjusteInserts: r.tiene_ajuste,
       vivas: Number(r.vivas), muertas: Number(r.muertas),
       insPendientes: Number(r.ins_pend), scaleFactorMuertas: Number(r.scale_muertas),
+      insertThreshold: Number(r.ins_threshold), insertScaleFactor: Number(r.ins_scale),
     }));
     const frias = tablasFrias(norm);
     // PREVENTIVO: grande y sin la protección puesta, aunque hoy esté caliente. El detector de

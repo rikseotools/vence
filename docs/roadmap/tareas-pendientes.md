@@ -1712,54 +1712,6 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Antes de arreglar, averiguar POR DÓNDE se cuelan:** ¿es el fetcher que arma el test, la MV de conteos, un `topic_scope` editado después de cachear, o preguntas multi-artículo cuyo `primary_article_id` no es el escopado? La cifra dice que pasa; no dice por dónde. **Sin eso, arreglar es adivinar.**
 - **Origen:** caracterizando el 77% de impugnaciones aceptadas que ningún detector vio venir ([T-207]). La familia «temario» era la mayor identificable (14%), y esta es la parte de ella que se puede comprobar a máquina.
 
-### [T-275] 🟠 [ABIERTO 29/07] Nadie vigila el mapa de visibilidad: una tabla insert-only se enfría y degrada consultas en silencio
-- **Qué pasa:** cuando el mapa de visibilidad de una tabla se enfría, los *index-only scans* dejan de serlo y bajan al heap fila por fila. La consulta sigue dando el resultado correcto, solo que tarda **cien veces más**. **Ningún indicador lo ve**: el panel de salud mide 5xx y latencia, y esto no es un error — es una respuesta correcta que llega tarde, el mismo punto ciego que [T-254].
-- **El caso que lo destapa ([T-268], 29/07):** `test_questions` al **67,5% de páginas visibles** → la consulta de `theme-stats` hacía **72.695 heap fetches** y tardaba **17,8 s**, con 17,4 s de I/O puro. Tras calentar el mapa: **0 heap fetches, 145 ms — 122× más rápido.** El opositor veía sus estadísticas vacías porque el cliente corta a los 8 s.
-- **Por qué se enfría, y por qué el ajuste "obvio" NO lo evita:** el autovacuum afinado por tabla (`autovacuum_vacuum_scale_factor`) mira **filas MUERTAS**. Una tabla de **INSERTS** no genera filas muertas, así que **ese ajuste no dispara jamás**. El que aplica es `autovacuum_vacuum_insert_scale_factor`, que estaba en el **global 0.2** → cientos de miles de inserts por vacuum. Es una trampa fina: la tabla *parece* bien configurada.
-- **📊 No es un caso aislado, es un patrón — medido el 29/07.** Nueve tablas de más de 5.000 páginas por debajo del 90% de visibilidad y **ninguna con el ajuste de inserts**:
-
-  | tabla | tamaño | visible | inserts | updates | último autovacuum |
-  |---|---|---|---|---|---|
-  | `law_question_first_attempts` | 1.814 MB | 75,4% | 1,2 M | **0** | **04/07** |
-  | `user_question_history_v2` | 457 MB | **48,2%** | 2,25 M | 83 k | **04/07** |
-  | `question_first_attempts` | 283 MB | **46,0%** | 1,2 M | **0** | **04/07** |
-  | `problematic_articles_rollout_log` | 159 MB | 48,3% | 502 k | **0** | **04/07** |
-  | `user_article_stats` | 203 MB | 69,7% | 1,03 M | 184 k | 24/07 |
-  | `ai_verification_results` | 182 MB | 53,8% | 222 k | 229 k | 10/07 |
-  | `ai_chat_traces` | 130 MB | 62,4% | 59 k | **0** | 04/07 |
-  | `user_sessions` | 90 MB | 60,8% | 93 k | 11 k | 20/07 |
-
-  Las de **`0 updates` son insert-only puras**: por diseño no se vacuumarán solas nunca. Llevaban **25 días**.
-- **✅ Ya aplicado y VERIFICADO (29/07)** — el ajuste dispara el autovacuum solo, y el mapa se repuebla entero:
-
-  | tabla | antes | después | efecto medido |
-  |---|---|---|---|
-  | `test_questions` | 67,5% | **100%** | consulta 17.809 ms → **145 ms** (122×), heap fetches 72.695 → **0** |
-  | `user_question_history_v2` | 48,2% | **100%** | 32.722/32.723 páginas |
-  | `law_question_first_attempts` | 75,4% | **100%** | 213.101/213.103 páginas |
-
-  **✅ Y el resto también (29/07):** aplicado a las **10 tablas** restantes que cumplían el criterio — la consulta las saca de `pg_class`, no de una lista escrita a mano, así que cazó más de las 6 que se habían listado a ojo (entre ellas `user_interactions`, ~8 GB, la mayor de la base). **Quedan 0 tablas grandes sin el ajuste.**
-- **✅ DETECTOR CONSTRUIDO (29/07) — ya no depende de que alguien se acuerde:**
-  - Núcleo puro `lib/db/visibilityMap.cjs` (12 tests con los números reales del incidente), emitido por el barrido nocturno como kind **`visibility_map_frio`**: aviso <90%, error <70%, solo tablas de más de 5.000 páginas. Registrado en `runbookRegistry` con la frase-gatillo *«busca errores»* que ya existía — es salud de app, no hacía falta inventar una nueva.
-  - **Ordena por PÁGINAS FRÍAS, no por porcentaje:** una tabla de 8 GB al 80% arrastra mucho más I/O que una de 40 MB al 46%, y el porcentaje las hace parecer iguales.
-  - **El hallazgo trae su arreglo:** si a la tabla le falta el ajuste de inserts, el detalle incluye el `ALTER TABLE` exacto; si ya lo tiene, manda mirar por qué el autovacuum no llega, en vez de repetir el mismo comando.
-  - **Verificado contra producción:** 23 tablas grandes miradas, y tras el arreglo de hoy solo queda 1 en ámbar (`questions` al 80,2%, con su autovacuum aún en cola). Antes del arreglo eran 10.
-  - **⚠️ Y en el `@Cron` del BACKEND, que es el writer REAL.** El script CLI es un espejo; el barrido que corre en producción es `content-health-sweep.service.ts`. Añadirlo solo al CLI habría dejado un detector que **nunca se ejecuta** — lo cazó el guardarraíl de paridad `content-sweep-parity.test.ts` al intentar commitear. El backend no puede importar `lib/` (su Docker solo copia `backend/src`), así que replica los umbrales con la advertencia escrita al lado.
-  - Documentado en `docs/runbooks/health-check.md` §3 con la consulta y el remedio.
-- **Cómo (lo que pedía esta ficha, ya hecho):** un hallazgo del **barrido nocturno** (`health-sweep.cjs`) con su chip de runbook, igual que el resto de detectores de contenido. Es una consulta **determinista y barata**, sin IA y sin falsos positivos:
-  ```sql
-  SELECT c.relname, round(100.0*c.relallvisible/NULLIF(c.relpages,0),1) AS pct_visible
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
-   WHERE c.relkind = 'r' AND c.relpages > 5000
-     AND (100.0*c.relallvisible/NULLIF(c.relpages,0)) < 90;
-  ```
-  Umbral inicial sugerido: **aviso por debajo del 90%**, error por debajo del 70% en tablas de más de 5.000 páginas. Calibrar con una pasada antes de encenderlo, como se hizo con el detector de latencia por endpoint.
-- **Y el arreglo debería ser automático, no una tarea:** cualquier tabla nueva de alto volumen de inserts nacerá con el mismo defecto. Lo suyo es que el detector avise **y** que exista un guardarraíl que exija el ajuste en tablas insert-heavy, en vez de descubrirlo dentro de seis meses por otro incidente.
-- **Lección de método (vale más que el arreglo):** un plan que dice *«Index Only Scan»* **no garantiza** que lo sea. **`Heap Fetches` es el número que hay que mirar**: si es alto, el problema es el mapa de visibilidad (vacuum), no la consulta ni los índices. Bajada al runbook `health-check.md`.
-- **Relacionada:** [T-268] (el caso que lo destapa), [T-254] (mismo punto ciego: respuestas correctas que llegan tarde).
-- **⛔ VERIFICACIÓN BLOQUEADA por [T-307] (comprobado el 30/07):** el barrido automático de las 07:30 UTC **corre pero aborta** (`cron_run` en `error` el 29 y el 30/07, `status:failure`), así que `visibility_map_frio` no llega a ejecutarse y `content_health_findings` no se escribe desde el 28/07. El único hallazgo `visibility_map_frio` que existe (1 `warn`, 29/07 19:31) es de la pasada MANUAL, no del cron.
-- **Y el mapa no está limpio ahora mismo** (medido 30/07, tablas de más de 5.000 páginas): **`observable_events` al 85,9% con 55.470 páginas frías y SIN el ajuste de inserts** — es hoy la tabla con más páginas frías de la base, y es insert-only puro, el patrón exacto de esta ficha; y `questions` al 78,5% (sí tiene el ajuste, así que ahí toca mirar por qué el autovacuum no llega). O sea: cuando el barrido vuelva a correr, el detector **debería** disparar. La afirmación *«las 23 tablas grandes al 100%»* del 29/07 ya no se sostiene.
-
 ### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
 - **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
 - **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
@@ -3918,6 +3870,63 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Relacionadas:** [T-063] (las dos convocatorias de Madrid), memoria `project-version-software-oposiciones-metodo`, `docs/maintenance/oeps-convocatorias-seguimiento.md`.
 
 ## Hechas
+
+### [T-275] ✅ [HECHA 30/07] Nadie vigila el mapa de visibilidad: una tabla insert-only se enfría y degrada consultas en silencio
+- **Qué pasa:** cuando el mapa de visibilidad de una tabla se enfría, los *index-only scans* dejan de serlo y bajan al heap fila por fila. La consulta sigue dando el resultado correcto, solo que tarda **cien veces más**. **Ningún indicador lo ve**: el panel de salud mide 5xx y latencia, y esto no es un error — es una respuesta correcta que llega tarde, el mismo punto ciego que [T-254].
+- **El caso que lo destapa ([T-268], 29/07):** `test_questions` al **67,5% de páginas visibles** → la consulta de `theme-stats` hacía **72.695 heap fetches** y tardaba **17,8 s**, con 17,4 s de I/O puro. Tras calentar el mapa: **0 heap fetches, 145 ms — 122× más rápido.** El opositor veía sus estadísticas vacías porque el cliente corta a los 8 s.
+- **Por qué se enfría, y por qué el ajuste "obvio" NO lo evita:** el autovacuum afinado por tabla (`autovacuum_vacuum_scale_factor`) mira **filas MUERTAS**. Una tabla de **INSERTS** no genera filas muertas, así que **ese ajuste no dispara jamás**. El que aplica es `autovacuum_vacuum_insert_scale_factor`, que estaba en el **global 0.2** → cientos de miles de inserts por vacuum. Es una trampa fina: la tabla *parece* bien configurada.
+- **📊 No es un caso aislado, es un patrón — medido el 29/07.** Nueve tablas de más de 5.000 páginas por debajo del 90% de visibilidad y **ninguna con el ajuste de inserts**:
+
+  | tabla | tamaño | visible | inserts | updates | último autovacuum |
+  |---|---|---|---|---|---|
+  | `law_question_first_attempts` | 1.814 MB | 75,4% | 1,2 M | **0** | **04/07** |
+  | `user_question_history_v2` | 457 MB | **48,2%** | 2,25 M | 83 k | **04/07** |
+  | `question_first_attempts` | 283 MB | **46,0%** | 1,2 M | **0** | **04/07** |
+  | `problematic_articles_rollout_log` | 159 MB | 48,3% | 502 k | **0** | **04/07** |
+  | `user_article_stats` | 203 MB | 69,7% | 1,03 M | 184 k | 24/07 |
+  | `ai_verification_results` | 182 MB | 53,8% | 222 k | 229 k | 10/07 |
+  | `ai_chat_traces` | 130 MB | 62,4% | 59 k | **0** | 04/07 |
+  | `user_sessions` | 90 MB | 60,8% | 93 k | 11 k | 20/07 |
+
+  Las de **`0 updates` son insert-only puras**: por diseño no se vacuumarán solas nunca. Llevaban **25 días**.
+- **✅ Ya aplicado y VERIFICADO (29/07)** — el ajuste dispara el autovacuum solo, y el mapa se repuebla entero:
+
+  | tabla | antes | después | efecto medido |
+  |---|---|---|---|
+  | `test_questions` | 67,5% | **100%** | consulta 17.809 ms → **145 ms** (122×), heap fetches 72.695 → **0** |
+  | `user_question_history_v2` | 48,2% | **100%** | 32.722/32.723 páginas |
+  | `law_question_first_attempts` | 75,4% | **100%** | 213.101/213.103 páginas |
+
+  **✅ Y el resto también (29/07):** aplicado a las **10 tablas** restantes que cumplían el criterio — la consulta las saca de `pg_class`, no de una lista escrita a mano, así que cazó más de las 6 que se habían listado a ojo (entre ellas `user_interactions`, ~8 GB, la mayor de la base). **Quedan 0 tablas grandes sin el ajuste.**
+- **✅ DETECTOR CONSTRUIDO (29/07) — ya no depende de que alguien se acuerde:**
+  - Núcleo puro `lib/db/visibilityMap.cjs` (12 tests con los números reales del incidente), emitido por el barrido nocturno como kind **`visibility_map_frio`**: aviso <90%, error <70%, solo tablas de más de 5.000 páginas. Registrado en `runbookRegistry` con la frase-gatillo *«busca errores»* que ya existía — es salud de app, no hacía falta inventar una nueva.
+  - **Ordena por PÁGINAS FRÍAS, no por porcentaje:** una tabla de 8 GB al 80% arrastra mucho más I/O que una de 40 MB al 46%, y el porcentaje las hace parecer iguales.
+  - **El hallazgo trae su arreglo:** si a la tabla le falta el ajuste de inserts, el detalle incluye el `ALTER TABLE` exacto; si ya lo tiene, manda mirar por qué el autovacuum no llega, en vez de repetir el mismo comando.
+  - **Verificado contra producción:** 23 tablas grandes miradas, y tras el arreglo de hoy solo queda 1 en ámbar (`questions` al 80,2%, con su autovacuum aún en cola). Antes del arreglo eran 10.
+  - **⚠️ Y en el `@Cron` del BACKEND, que es el writer REAL.** El script CLI es un espejo; el barrido que corre en producción es `content-health-sweep.service.ts`. Añadirlo solo al CLI habría dejado un detector que **nunca se ejecuta** — lo cazó el guardarraíl de paridad `content-sweep-parity.test.ts` al intentar commitear. El backend no puede importar `lib/` (su Docker solo copia `backend/src`), así que replica los umbrales con la advertencia escrita al lado.
+  - Documentado en `docs/runbooks/health-check.md` §3 con la consulta y el remedio.
+- **Cómo (lo que pedía esta ficha, ya hecho):** un hallazgo del **barrido nocturno** (`health-sweep.cjs`) con su chip de runbook, igual que el resto de detectores de contenido. Es una consulta **determinista y barata**, sin IA y sin falsos positivos:
+  ```sql
+  SELECT c.relname, round(100.0*c.relallvisible/NULLIF(c.relpages,0),1) AS pct_visible
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+   WHERE c.relkind = 'r' AND c.relpages > 5000
+     AND (100.0*c.relallvisible/NULLIF(c.relpages,0)) < 90;
+  ```
+  Umbral inicial sugerido: **aviso por debajo del 90%**, error por debajo del 70% en tablas de más de 5.000 páginas. Calibrar con una pasada antes de encenderlo, como se hizo con el detector de latencia por endpoint.
+- **Y el arreglo debería ser automático, no una tarea:** cualquier tabla nueva de alto volumen de inserts nacerá con el mismo defecto. Lo suyo es que el detector avise **y** que exista un guardarraíl que exija el ajuste en tablas insert-heavy, en vez de descubrirlo dentro de seis meses por otro incidente.
+- **Lección de método (vale más que el arreglo):** un plan que dice *«Index Only Scan»* **no garantiza** que lo sea. **`Heap Fetches` es el número que hay que mirar**: si es alto, el problema es el mapa de visibilidad (vacuum), no la consulta ni los índices. Bajada al runbook `health-check.md`.
+- **Relacionada:** [T-268] (el caso que lo destapa), [T-254] (mismo punto ciego: respuestas correctas que llegan tarde).
+- **⛔ VERIFICACIÓN BLOQUEADA por [T-307] (comprobado el 30/07):** el barrido automático de las 07:30 UTC **corre pero aborta** (`cron_run` en `error` el 29 y el 30/07, `status:failure`), así que `visibility_map_frio` no llega a ejecutarse y `content_health_findings` no se escribe desde el 28/07. El único hallazgo `visibility_map_frio` que existe (1 `warn`, 29/07 19:31) es de la pasada MANUAL, no del cron.
+- **Y el mapa no está limpio ahora mismo** (medido 30/07, tablas de más de 5.000 páginas): **`observable_events` al 85,9% con 55.470 páginas frías y SIN el ajuste de inserts** — es hoy la tabla con más páginas frías de la base, y es insert-only puro, el patrón exacto de esta ficha; y `questions` al 78,5% (sí tiene el ajuste, así que ahí toca mirar por qué el autovacuum no llega). O sea: cuando el barrido vuelva a correr, el detector **debería** disparar. La afirmación *«las 23 tablas grandes al 100%»* del 29/07 ya no se sostiene.
+#### ✅ CIERRE (30/07 tarde) — los dos huecos que quedaban, y una calibración que evita el próximo falso positivo
+- **Los dos hallazgos que seguían vivos por la mañana ya están arreglados, y se puede datar quién:** `observable_events` (85,9%, **55.470 páginas frías**, la tabla con más frías de la base y encima aquella contra la que se lanzan todas las consultas de diagnóstico) recibió el ajuste y su autovacuum entró a las **10:16 UTC**; `questions` (78,5%) se arregló con un **VACUUM manual a las 10:15 UTC**. Ahora las **23 tablas grandes** están ≥99% y **las 23 llevan el ajuste de inserts**: `visibility_map_frio` y `visibility_map_sin_ajuste` emiten **0** hallazgos contra los datos de producción.
+- **🔎 Y al verificar apareció el primer FALSO POSITIVO del detector, que es lo más valioso de este cierre:** `test_questions_outbox` salía al **84,2%** con la maquinaria funcionando (209 autovacuums, 508 MB para 34.202 filas vivas). El hallazgo mandaba a *«revisar por qué el autovacuum no llega»* cuando le faltaban **9 inserts** para llegar. Media hora después estaba al **99,9% sola**.
+- **Dos criterios probados y DESCARTADOS con datos** (están escritos en el núcleo para que nadie los repita):
+  1. **Ratio de borrado** («una cola borra lo que recibe»). Medido sobre las 23 tablas grandes: **`test_questions` —la tabla del incidente que originó esta ficha— tiene ratio 0,709, MÁS ALTO que el 0,680 del outbox.** Habría silenciado justo el caso a cazar.
+  2. **«Autovacuum hace menos de una hora».** El outbox se autovacuuma ~cada hora, así que el veredicto del hallazgo cambiaba según el minuto en que corriese el barrido.
+- **El criterio que SÍ distingue no lleva reloj: la aritmética del disparador de Postgres.** `insert_threshold + insert_scale × vivas` es el punto exacto en que entra el autovacuum, y los inserts pendientes dicen cuánto se lleva recorrido. Outbox: **1.333 de 1.342 (99% del camino)** → régimen de rotación, no abandono. Incidente: **0 pendientes y muertas por debajo del umbral** → ninguno de los dos disparadores se alcanzaría nunca, atasco real. Cuatro ramas de remedio, cada una con su acción.
+- **Cableado en los tres sitios, no solo en el núcleo:** `lib/db/visibilityMap.cjs` (+5 tests con los números reales de los dos casos, incluida la regresión de que el caso del incidente NO se cuela por la exención), el gemelo CLI y —esto faltaba— **el @Cron del backend, que es el writer real**: su query no unía `pg_stat_user_tables`, así que su hallazgo solo podía decir «revisa el autovacuum» mientras el CLI ya daba la causa. Ahora los dos dicen lo mismo.
+- **Nota de lectura del panel:** los 2 hallazgos `visibility_map_frio` que hay ahora en `content_health_findings` son del barrido de las 10:01 y ya están **obsoletos** (las tablas se arreglaron a las 10:15). El barrido de esta noche los limpia — es un snapshot, no un histórico.
 
 ### [T-217] ✅ [HECHA 30/07] Verificar que el barrido antifraude corrió POR FIN (primera noche tras 7 muertas)
 - **Qué se comprueba, en 30 segundos:**
