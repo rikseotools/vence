@@ -536,6 +536,39 @@ export function parseImpugnacionFormatExplanation(
   return out
 }
 
+/**
+ * ¿Tiene esta cadena un `**` sin pareja? Misma cuenta que el detector de salud
+ * (`lib/health/explicacionEstructuraRota.cjs`, `negritaDesbalanceada`), y hay un test de paridad
+ * que lo fija: el que EMITE y el que DENUNCIA tienen que medir lo mismo o el panel dirá que algo
+ * está roto cuando el parseo cree haberlo dejado bien.
+ */
+export function tieneNegritaImpar(s: string | null | undefined): boolean {
+  return ((String(s ?? '').match(/\*\*/g) || []).length % 2) === 1
+}
+
+/**
+ * Devuelve su apertura a una razón que empieza con el CIERRE de negritas huérfano.
+ *
+ * Pasa porque el bullet se escribió con la etiqueta DENTRO del marcador
+ * (`- **A) Huella normativa** — No es…`): al separar marcador y razón, la razón se queda con el
+ * `**` de cierre y sin su apertura, y el render produce markdown roto que el opositor ve tal cual.
+ *
+ * ⚠️ El arreglo del 27/07 solo cubría el prefijo terminado en DOS PUNTOS y de menos de 60
+ * caracteres. Medido el 30/07 contra el banco: de las 163 explicaciones rotas, **109 tenían el
+ * texto PERFECTO y solo la estructura mal** — o sea, las metió este corte. Las tres formas que se
+ * escapaban eran la raya (`Huella normativa** — …`), el prefijo largo y la opción entrecomillada
+ * (`"No se exige…"** → …`). Por eso aquí no se enumeran delimitadores: basta que ANTES del primer
+ * `**` no haya ningún asterisco, que es exactamente la firma del cierre huérfano.
+ */
+export function equilibrarNegritaHuerfana(razon: string): string {
+  if (!tieneNegritaImpar(razon)) return razon
+  const i = razon.indexOf('**')
+  if (i <= 0) return razon // abre al principio (o no hay): no es este caso
+  const prefijo = razon.slice(0, i)
+  if (prefijo.includes('*') || prefijo.includes('\n')) return razon
+  return `**${razon}`
+}
+
 export function parseLetterFormatExplanation(
   explanation: string | null | undefined,
   {
@@ -579,7 +612,11 @@ export function parseLetterFormatExplanation(
   const demasIdxInAfter = dm && dm.index != null ? flat.slice(cm.index + cm[0].length).search(demasRe) : -1
   const correctReasonRaw =
     demasIdxInAfter >= 0 ? afterCorrect.slice(0, demasIdxInAfter) : afterCorrect
-  const correctReason = correctReasonRaw.trim()
+  // La cabecera puede llevar una GLOSA entre paréntesis («Por qué A es correcta (y por tanto la
+  // respuesta que señala el enunciado):**»). El patrón de cabecera casa hasta «correcta», así que
+  // la glosa y su `**` de cierre caen aquí y dejan la razón desbalanceada. Medido el 30/07: es la
+  // causa de 449 explicaciones que se transcribían con markdown roto — más que la de los bullets.
+  const correctReason = equilibrarNegritaHuerfana(correctReasonRaw.trim())
   if (!correctReason) return null
 
   // 3) Bullets de distractores: "- **A)** …" (una por opción distractor).
@@ -625,7 +662,7 @@ export function parseLetterFormatExplanation(
     // queda con el cierre de negritas y sin su apertura ("Este equipo:** muestra…"), y el render
     // produce markdown ROTO que el opositor ve tal cual. Medido el 27/07: 503 razones en 186
     // preguntas. Se reequilibra devolviéndole su apertura.
-    if (/^[^*]{1,60}:\*\*/.test(reason)) reason = `**${reason}`
+    reason = equilibrarNegritaHuerfana(reason)
 
     const oi = letterToIndex(bulletStarts[k].letter)
     if (oi < 0 || oi >= nOptions) return null
@@ -685,7 +722,25 @@ export function parseLetterFormatExplanation(
   if (intro) result.intro = intro
   if (cita) result.cita = cita
   if (outro) result.outro = outro
+
+  // POST-CONDICIÓN: esto NO emite markdown roto. Nunca.
+  //
+  // Es la lección de los 109 casos (medidos el 30/07) en los que el texto estaba perfecto y solo
+  // la estructura salió mal: se venía tapando FORMA a FORMA (el 27/07 se cubrió el prefijo con
+  // dos puntos y quedaron fuera la raya, el prefijo largo y la opción entrecomillada). Enumerar
+  // formas es perder la carrera; la invariante es que un `**` sin pareja no sale de aquí. Si algo
+  // se cuela y no se puede reequilibrar, NO se transcribe: producción sigue sirviendo la columna
+  // `explanation`, que es el camino seguro. Vale más no barajar una pregunta que servirla rota.
+  if (camposDeTextoDe(result).some(tieneNegritaImpar)) return null
   return result
+}
+
+/** Todos los campos de texto de una estructura (mismo universo que mira el detector de salud). */
+function camposDeTextoDe(d: StructuredExplanation): (string | undefined)[] {
+  const out: (string | undefined)[] = [d.intro, d.outro]
+  for (const v of Object.values(d.options || {})) out.push(v)
+  if (d.cita) out.push(d.cita.bloque, d.cita.texto)
+  return out
 }
 
 /**

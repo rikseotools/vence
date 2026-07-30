@@ -1,4 +1,5 @@
 import {
+  tieneNegritaImpar,
   StructuredExplanation,
   renderStructuredExplanation,
   parseLetterFormatExplanation,
@@ -514,5 +515,99 @@ describe('frame select_incorrect en estilo impugnación (T-212)', () => {
     const txt = renderStructuredExplanation(sinFrame, { correctOption: 0, optionOrder: null, nOptions: 4 })
     expect(txt).toContain('**A)** CORRECTA —')
     expect(txt).toContain('**B)** INCORRECTA —')
+  })
+})
+
+// ── El parseo NO puede emitir markdown roto (T-282, 30/07) ────────────────────────────────────
+//
+// Medido contra el banco: de 163 explicaciones que se renderizan rotas, **109 tenían el texto
+// PERFECTO y solo la estructura mal** → las metió este corte. El arreglo del 27/07 cubría UNA
+// forma (prefijo con dos puntos, <60 ch) y se escapaban tres: la raya, el prefijo largo y la
+// opción entrecomillada. Aquí se fija la invariante en vez de la lista de formas.
+describe('T-282 — ningún campo sale con `**` sin pareja', () => {
+  const conBullets = (bullets: string) =>
+    `**Por qué B) es correcta:** Lo dice el art. 1.\n\n**Por qué las demás son incorrectas:**\n${bullets}`
+  const parse = (texto: string) =>
+    parseLetterFormatExplanation(texto, { correctOption: 1, nOptions: 4 })
+  const campos = (r: NonNullable<ReturnType<typeof parse>>) =>
+    [r.intro, r.outro, r.cita?.bloque, r.cita?.texto, ...Object.values(r.options)]
+
+  const FORMAS: Array<[string, string]> = [
+    ['dos puntos (la que ya cubría el parche del 27/07)',
+     '- **A) Este equipo:** muestra las unidades.\n- **C) Papelera:** guarda lo borrado.\n- **D) Mis documentos:** es una carpeta.'],
+    ['raya — la forma dominante que se escapaba',
+     '- **A) Huella normativa** — No es un compromiso del V Plan.\n- **C) Datos abiertos** — No figura.\n- **D) Cartas de servicios** — Tampoco.'],
+    ['prefijo de más de 60 caracteres',
+     '- **A) Los sancionados con traslado forzoso, hasta que transcurran dos o cuatro años según el caso** — El plazo no es ese.\n- **C) Otra** — No.\n- **D) Y otra** — Tampoco.'],
+    ['opción entrecomillada con flecha',
+     '- **A) "No se exige ningún requisito adicional"** → El art. 62.1 exige cuatro.\n- **C) "Otra"** → No.\n- **D) "Y otra"** → Tampoco.'],
+  ]
+
+  for (const [nombre, bullets] of FORMAS) {
+    it(`transcribe equilibrado: ${nombre}`, () => {
+      const r = parse(conBullets(bullets))
+      expect(r).not.toBeNull()
+      expect(campos(r!).filter(tieneNegritaImpar)).toEqual([])
+    })
+  }
+
+  it('devuelve la apertura sin tocar el contenido (no borra la repetición: eso es otra tarea)', () => {
+    const r = parse(conBullets('- **A) Huella normativa** — No es un compromiso.\n- **C) X** — No.\n- **D) Y** — Tampoco.'))
+    expect(r!.options['0']).toBe('**Huella normativa** — No es un compromiso.')
+  })
+
+  it('si NO se puede reequilibrar, NO transcribe (mejor sin barajar que servida rota)', () => {
+    // Un `**` suelto en mitad de la razón, con asteriscos antes: no es el cierre huérfano y
+    // reequilibrarlo cambiaría el sentido → la post-condición manda a `null`.
+    const r = parse(conBullets('- **A) **algo** raro ** aquí\n- **C) X** — No.\n- **D) Y** — Tampoco.'))
+    expect(r).toBeNull()
+  })
+
+  it('una explicación sana sigue transcribiéndose igual (sin regresión)', () => {
+    const r = parse(conBullets('- **A)** No es competencia suya.\n- **C)** Tampoco lo regula.\n- **D)** Es de otro órgano.'))
+    expect(r).not.toBeNull()
+    expect(r!.options['0']).toBe('No es competencia suya.')
+  })
+})
+
+describe('T-282 — paridad con el detector de salud', () => {
+  // El que EMITE y el que DENUNCIA tienen que contar igual, o el panel se contradice con el parseo.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { classifyEstructura } = require('../../../lib/health/explicacionEstructuraRota.cjs')
+
+  it('lo que el parseo considera equilibrado, el detector NO lo denuncia', () => {
+    const r = parseLetterFormatExplanation(
+      `**Por qué B) es correcta:** Lo dice el art. 1.\n\n**Por qué las demás son incorrectas:**\n- **A) Huella normativa** — No es.\n- **C) X** — No.\n- **D) Y** — Tampoco.`,
+      { correctOption: 1, nOptions: 4 },
+    )
+    expect(r).not.toBeNull()
+    expect(classifyEstructura({ explanation_data: r }).roto).toBe(false)
+  })
+
+  it('y lo que el detector denuncia, este parseo no lo habría emitido', () => {
+    const rotaAMano = { v: 1, frame: 'select_correct', options: { '0': 'Huella normativa** — No es.', '1': 'ok', '2': 'ok', '3': 'ok' } }
+    expect(classifyEstructura({ explanation_data: rotaAMano }).roto).toBe(true)
+    expect(tieneNegritaImpar(rotaAMano.options['0'])).toBe(true)
+  })
+})
+
+describe('T-282 — cabecera con GLOSA entre paréntesis (la causa más gorda)', () => {
+  // «**Por qué A es correcta (y por tanto la respuesta que señala el enunciado):**» — el patrón de
+  // cabecera casa hasta «correcta», así que la glosa y su `**` de cierre caen en la razón de la
+  // CORRECTA, que no pasaba por el reequilibrado de los bullets. Medido el 30/07: esto solo
+  // explicaba 449 explicaciones transcritas con markdown roto, más que la vía de los bullets.
+  it('la razón de la correcta también se reequilibra', () => {
+    const texto = `**Por qué B) es correcta (y por tanto la que pide el enunciado):** Lo dice el art. 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** No.\n- **C)** Tampoco.\n- **D)** Ni esa.`
+    const r = parseLetterFormatExplanation(texto, { correctOption: 1, nOptions: 4 })
+    expect(r).not.toBeNull()
+    expect(tieneNegritaImpar(r!.options['1'])).toBe(false)
+    expect(r!.options['1']).toContain('y por tanto la que pide el enunciado')
+  })
+
+  it('una cita en blockquote descuadrada NO se reequilibra a ciegas: no se transcribe', () => {
+    // Reequilibrar una cita multilínea cambiaría lo que el opositor LEE. Son 3 en todo el banco:
+    // mejor que esas 3 no se barajen que servirlas con la cita rota.
+    const texto = `> **«No podrán tomar parte:**\n> **a) Los declarados suspensos.\n\n**Por qué B) es correcta:** Lo dice el art. 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** No.\n- **C)** Tampoco.\n- **D)** Ni esa.`
+    expect(parseLetterFormatExplanation(texto, { correctOption: 1, nOptions: 4 })).toBeNull()
   })
 })
