@@ -1933,6 +1933,15 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 
 > **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 - **Incidente completo (anatomía, minuto a minuto y lecciones):** `docs/ARCHITECTURE_ROADMAP.md` → *«Incidente 2026-07-29»*. Aquí va solo el plan.
+
+> **✅ EL ARREGLO YA ESTÁ DECIDIDO (Manuel, 30/07) y vive en [T-159]: el render sale de la ruta y lo hace el worker.**
+> No es «poner un umbral» ni «limitar la tasa»: mientras el render ocurra en el contenedor que sirve,
+> la espera de un usuario la siguen pagando todos —que es literalmente lo que pasó el 29/07—. El worker
+> ya existe para esto (imagen propia, 2 vCPU, fuera del ALB); lo que faltó fue blindar el camino BAJO
+> DEMANDA además del de lotes. Va acompañado de sembrar los 212 temas que faltan en las 8 oposiciones
+> con más alumnos (~6 h de render, 6.270 alumnos cubiertos), porque hoy **la pre-generación cubre el
+> 7,1% del catálogo** (253 de 3.547) y por eso casi cada clic es un render fresco. El detalle completo
+> y lo que queda descartado (columna `priority`, segundo worker, disparo bajo demanda), en T-159.
 - **Qué pasa:** `app/api/temario/[oposicion]/[topic]/pdf/route.ts` **exige premium** pero no tiene límite de tasa, y cuando el PDF no está en caché lo **renderiza en línea** con `@react-pdf` + `pdf-lib` — JS puro, CPU pura, **en el proceso que sirve el tráfico**. Un tema tiene 21 páginas de mediana pero **p95 de 178 y máximo de 760**. Node es monohilo → esa task queda bloqueada y todo lo demás hace cola.
 - **Medido el 29/07 (09:30-09:48 UTC):** 51 PDFs de 44 temas, **36 renders frescos**. CPU del frontend **98,5%**, event-loop bloqueado **215 s** en 5 instancias, `/api/v2/answer-and-save` a **p95 25.070 ms** con peticiones por encima del corte de 15 s del cliente. **Tráfico plano** todo el rato (44-117 req/min): no fue carga de usuarios. A las 09:49, con el barrido terminado, todo volvió a 30-70 ms.
 - **⚠️ CORRECCIÓN (29/07, misma sesión) — la primera redacción de esta ficha decía que la ruta era PÚBLICA y que «cualquiera puede degradar la plataforma sin ser usuario». Es FALSO, y el error es reutilizable:**
@@ -2240,7 +2249,46 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 > `rate(30 minutes)`, `Europe/Madrid`, `FARGATE`, clúster `vence-backend`. Detalle menor: reutiliza el
 > rol `vence-instagram-daily-scheduler-role`, compartido con otro job.
 >
-> **🧭 PROPUESTA DE DISEÑO (30/07) — el carril/prioridad, ya decidible.**
+
+> **✅ DECIDIDO POR MANUEL (30/07) — el diseño es OTRO, y la propuesta de prioridad de abajo QUEDA DESCARTADA.**
+>
+> Manuel lo planteó así: *«esos PDF deben estar descargables al instante, y se deben generar de fondo
+> en backend; el usuario al clicar ya estaba generado»*, y al ver que eso es lo que ya hace el caché,
+> lo remató con *«el primer usuario pincha y espera a que se genere, pero una vez generado ya lo
+> tenemos disponible para otros»*. Tiene razón en las dos cosas, y la segunda **ya está implementada**:
+> la ruta busca en S3 con una clave que incluye el hash del contenido y, si acierta, sirve al instante.
+>
+> **Entonces, ¿por qué alguien espera? Tres huecos medidos el 30/07, y ninguno es la cadencia del worker:**
+>
+> 1. **La pre-generación cubre el 7,1%: 253 temas de 3.547.** Nada siembra el catálogo — la cola SOLO
+>    se alimenta del hook de scope, así que hay PDF de lo que alguien tocó, no de lo que se estudia.
+>    Medido por oposición: **Aux. Admin. del Estado tiene 2 de 28 temas con PDF y 2.207 alumnos**;
+>    Madrid 3 de 21 con 1.465; **CARM 0 de 21 con 551**. Con esa cobertura, «el primer usuario» no es
+>    un caso raro: es casi cada clic.
+> 2. **El render ocurre EN EL CONTENEDOR QUE SIRVE**, y es lo que convierte la espera de uno en el
+>    problema de todos ([T-270], 29/07: 36 renders frescos → CPU 98,5%, event loop bloqueado 215 s y
+>    `answer-and-save` a p95 25 s; o sea, gente que estaba respondiendo tests dejó de poder guardar).
+>    El worker existe justo para esto —imagen propia, 2 vCPU, fuera del ALB— y se blindó el camino por
+>    LOTES dejando sin blindar el de BAJO DEMANDA.
+> 3. **No hay «última versión»**: la clave de caché incluye el `content_hash`, así que en cuanto cambia
+>    el temario el PDF anterior deja de ser alcanzable aunque siga en S3. Servir el último mientras se
+>    regenera exige clave estable por tema + puntero a la vigente (y conviene imprimir la fecha de
+>    generación: es contenido legal).
+>
+> **El diseño decidido, en este orden:**
+> - **(a)** El caché perezoso se queda como está — es correcto.
+> - **(b)** **Sacar el render de la ruta**: lo hace el worker. El primer usuario espera lo mismo, pero
+>   sin arrastrar a nadie. Esto es lo que cierra [T-270].
+> - **(c)** **Sembrar solo donde hay alumnos**, no los 3.547: los **212 temas** que faltan en las 8
+>   oposiciones más pobladas son **~6 h de render** y cubren a **6.270 alumnos**. Las 96 h de sembrarlo
+>   todo NO hacen falta — la cola larga la resuelve el caché perezoso.
+> - **(d)** Servir la última versión mientras se regenera (el punto 3).
+>
+> **Lo que esto DESCARTA:** la columna `priority` y el segundo worker. Con el catálogo sembrado donde
+> hay gente y el render fuera del contenedor, no queda cola en la que adelantar a nadie. El disparo
+> bajo demanda (IAM + vector de abuso) tampoco hace falta.
+
+> **🧭 PROPUESTA DE DISEÑO (30/07) — el carril/prioridad. ⚠️ DESCARTADA por la decisión de arriba; se conserva por el análisis del claim FIFO, que sigue siendo cierto.**
 >
 > **El estado actual, leído del código:** `claimNextPdfJob` hace `ORDER BY created_at` — **FIFO puro**,
 > con `FOR UPDATE SKIP LOCKED`. Y `enqueuePdfJob` hace `ON CONFLICT DO NOTHING`. O sea: una petición
