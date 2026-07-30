@@ -1,69 +1,95 @@
-# A/B de modelos para adjudicar `vinculo_articulo_vecino` — 29/07/2026
+# A/B de modelos — adjudicar `vinculo_articulo_vecino` (29-30/07/2026)
 
-Muestra: `vinculo-vecino-golden.json` (10 casos reales, veredicto adjudicado a mano contra el BOE).
+Muestra: `vinculo-vecino-golden.json` — 10 casos reales, veredicto adjudicado a mano contra el BOE.
 Comando: `npm run llm:ab-vinculo -- --modelos <lista>`.
+**70 modelos probados** por debajo de 3 $/M de entrada, todos con el mismo arnés.
 
-## ⚠️ Lo primero: la primera tanda estaba MAL, y por mi culpa
+---
 
-Con `max_tokens: 400` y sin `response_format`, **diez modelos sacaron 0-2/10 por «SIN_JSON»**. No era
-incapacidad: eran modelos de RAZONAMIENTO que se gastaban el presupuesto pensando y devolvían
-contenido vacío. Al subir a 4.000 tokens y forzar JSON por API:
+## ⚠️ Léase esto antes que la tabla: CUATRO veces el arnés mintió antes que el modelo
 
-| modelo | antes | después |
-|---|---|---|
-| google/gemini-3.5-flash | 1/10 | **10/10** |
-| google/gemini-3.6-flash | 2/10 | 9/10 |
-| deepseek/deepseek-v4-pro | 1/10 | 9/10 |
-| nvidia/nemotron-3-super-120b | 2/10 | 9/10 |
-| z-ai/glm-4.7-flash | 0/10 | 8/10 |
+Ninguna medición sirve si el banco está mal. En dos días, cuatro veces di por malo a un modelo y el
+fallo era mío:
 
-**Medir con el techo bajo no compara modelos, compara arneses.** Es la trampa nº 1 de este tipo de
-banco de pruebas y conviene no repetirla.
-
-## Tabla (34 modelos, todos con el arnés corregido)
-
-| modelo | aciertos | tiempo | coste/10 casos |
+| # | qué pasaba | síntoma | efecto real |
 |---|---|---|---|
-| google/gemini-3.5-flash | **10/10** | 31s | $0,0415 |
-| nvidia/nemotron-3-super-120b-a12b | 9/10 | 89s | $0,0065 |
-| deepseek/deepseek-v4-pro | 9/10 | 118s | $0,0214 |
-| google/gemini-3.6-flash | 9/10 | 22s | $0,0253 |
-| **mistralai/mistral-small-3.2-24b** | 8/10 | 28s | **$0,0009** |
-| deepseek/deepseek-v4-flash | 8/10 | 111s | $0,0020 |
-| deepseek/deepseek-chat | 8/10 | 22s | $0,0027 |
-| openai/gpt-5.4-nano | 8/10 | 36s | $0,0034 |
-| google/gemini-3.1-flash-lite | 8/10 | 16s | $0,0051 |
-| z-ai/glm-4.7-flash | 8/10 | 442s | $0,0084 |
-| x-ai/grok-4.3 | 8/10 | 47s | $0,0243 |
-| x-ai/grok-4.5 | 8/10 | 59s | $0,0372 |
-| anthropic/claude-haiku-4.5 | 8/10 | 55s | $0,0405 |
-| qwen/qwen3-235b-a22b-2507 · gemini-2.5-flash-lite · gemini-3.5-flash-lite · gpt-4.1-mini · deepseek-v3.2 · gpt-5.4-mini · nova-2-lite · gemini-2.5-flash · qwen3.5-plus · mistral-medium-3.1 | 7/10 | — | — |
-| llama-4-maverick · gpt-5-mini · glm-4.5-air · minimax-m2 · qwen3-next-80b · kimi-k2-0905 · qwen3.6-plus | 6/10 | — | — |
-| gpt-4.1-nano | 5/10 | 16s | $0,0011 |
-| gpt-5-nano · gpt-4o-mini | 4/10 | — | — |
-| z-ai/glm-4.6 | 2/10 | 412s | $0,0306 |
+| 1 | `max_tokens: 400` | 10 modelos con «SIN_JSON» | eran modelos de RAZONAMIENTO: gastaban el presupuesto pensando y devolvían vacío. `gemini-3.5-flash` pasó de **1/10 a 10/10** |
+| 2 | el prompt no pedía `"v": 1` | 0/3 «por culpa del modelo» | `isStructuredExplanation` lo exige y rechazaba estructuras perfectas |
+| 3 | gate de no-regresión equivocado | 0/6 en transformación | `mismoContenidoExplicacion` compara dos renders de la MISMA estructura, no un texto con su reestructuración. **El parser determinista de producción también sacaba 0/6**: cuando tu examen suspende al patrón de oro, el examen está mal |
+| 4 | umbral de anclaje a ojo (0,35) | 20-40% en reescritura | **suspendía 13 de las 26 razones de explicaciones escritas a mano y verificadas contra el BOE**. Explicar bien es PARAFRASEAR. Recalibrado al percentil 10 humano (0,12) → **83%** |
 
-**Referencia: el agente Sonnet del manual de revisión sacó 10/10 por ~0,30 $** en los mismos 10 casos.
+**Regla que queda: cuando un modelo saca 0, sospechar del arnés primero.**
 
-## ⚠️ Lo segundo: 10 casos no separan 10/10 de 8/10
+Y un quinto error, este de SELECCIÓN: la primera lista la armé de memoria y me dejé fuera las
+versiones nuevas de media docena de familias — entre ellas **Kimi K3, que saca 10/10**, y
+**claude-sonnet-5, que está a 2 $/M**. Lo señaló Manuel. Ahora la lista se arma consultando el
+catálogo de OpenRouter, no la memoria.
 
-Con esta muestra, ±1 acierto es ruido. La tabla sirve para **descartar** (los de 4-6/10 quedan fuera
-sin discusión) y para ver que hay modelos 7 veces más baratos que el agente en la banda alta. **No
-sirve para coronar un ganador.** Para eso hay que ampliar el golden set a 30-40 casos y correr solo
-los finalistas.
+---
 
-## Lo tercero: los rankings generales NO predicen esta tarea
+## La tabla (los que puntúan 8 o más)
 
-En el índice de Artificial Analysis (julio 2026) varios modelos baratos empatan o superan a Sonnet
-4.6 (35,9): DeepSeek V4 Flash 37,5 · Gemini 3.5 Flash-Lite 36,5. Aquí, sin embargo,
-**gemini-3.5-flash-lite saca 7/10 y gemini-3.5-flash 10/10**, y deepseek-v4-flash 8/10. La dirección
-del ranking acierta (los baratos compiten), el orden concreto no se traslada. Por eso este banco
-existe: se mide en la tarea, no se deduce de una tabla general.
+| modelo | aciertos | tiempo | $/10 casos |
+|---|---|---|---|
+| **google/gemini-3.6-flash** | **10/10** | 21s | 0,0304 |
+| **google/gemini-3.5-flash** | **10/10** | 25s | 0,0397 |
+| **moonshotai/kimi-k3** | **10/10** | 76s | 0,0564 |
+| qwen/qwen3.6-flash | 9/10 | 217s | 0,0242 |
+| openai/gpt-5.4-mini | 9/10 | 54s | 0,0124 |
+| minimax/minimax-m2.5 | 9/10 | 143s | 0,0130 |
+| openai/o4-mini | 9/10 | 27s | 0,0189 |
+| **qwen/qwen3.7-flash** | 8/10 | 111s | **0,0027** |
+| deepseek/deepseek-chat | 8/10 | 34s | 0,0029 |
+| **google/gemma-4-31b-it** | 8/10 | 252s | **0,0032** |
+| openai/gpt-5.4-nano | 8/10 | 22s | 0,0036 |
+| nvidia/nemotron-3-super-120b | 8/10 | 125s | 0,0037 |
+| deepseek/deepseek-v4-flash | 8/10 | 730s | 0,0045 |
+| google/gemma-4-26b-a4b-it | 8/10 | 476s | 0,0050 |
+| google/gemini-3.1-flash-lite | 8/10 | 16s | 0,0051 |
+| mistralai/mistral-small-2603 | 8/10 | 54s | 0,0055 |
+| minimax/minimax-m3 | 8/10 | 84s | 0,0066 |
+| deepseek/deepseek-v3.2 | 8/10 | 573s | 0,0076 |
+| minimax/minimax-m2.7 | 8/10 | 145s | 0,0149 |
+| amazon/nova-premier-v1 | 8/10 | 21s | 0,0322 |
+| x-ai/grok-4.3 / grok-4.5 / grok-build | 8/10 | 42-111s | 0,024-0,046 |
 
-## Los tres casos que separan a un buen adjudicador de uno malo
+**Referencia: el agente Sonnet de Claude Code sacó 10/10.**
 
-1. `0c76f387` — el enunciado CITA el artículo vinculado («de conformidad con el artículo 440»). Es el
-   caso que más modelos falla: proponen re-vincular y **romperían una pregunta correcta**.
-2. `0f0776ce` — pregunta de EXCLUSIÓN («no tendrá en cuenta»): la opción correcta cita el vecino
-   porque es lo que queda fuera.
-3. `3252df5b` — la respuesta no está en ninguno de los dos artículos; hay que saber decir «ninguno».
+### Los que decepcionan (importa tanto como los que ganan)
+
+- **`anthropic/claude-haiku-4.5`: 7/10 por 0,042 $** — de lo peor en calidad/precio de la tabla, y era
+  mi favorito de partida. Cuesta 15 veces más que `qwen3.7-flash`, que acierta más.
+- **`anthropic/claude-sonnet-5` por API: 7/10** — por debajo de tres modelos más baratos, y por debajo
+  del **agente** Sonnet de Claude Code (10/10). El agente delibera; la llamada suelta no.
+- **`stepfun/step-3.5-flash` y `moonshotai/kimi-k2`: 0/10**, diez fallos de formato cada uno. Ni con el
+  arnés arreglado devuelven JSON.
+- `gpt-4o-mini` 4/10 y `gpt-5-nano` 4/10: descartados sin discusión.
+
+---
+
+## El caso que casi todos fallan (y hay que meter en el prompt de producción)
+
+`0c76f387` — Ley de Enjuiciamiento Civil, artículo 440 frente al 442. **El enunciado CITA el artículo
+440.** Casi todos los modelos, incluidos los de 9/10, proponen re-vincular al 442 y **romperían una
+pregunta correcta**. Los otros dos patrones trampa del golden set:
+
+- `0f0776ce` — pregunta de EXCLUSIÓN («no tendrá en cuenta»): la opción correcta cita el vecino
+  precisamente porque es lo que queda FUERA.
+- `3252df5b` — la respuesta no está en ninguno de los dos artículos: hay que saber decir «ninguno».
+
+---
+
+## ⚠️ Con 10 casos NO se corona a un ganador
+
+±1 acierto es ruido. Esta tabla sirve para **descartar** (los de 4-6/10 quedan fuera sin discusión) y
+para ver que la banda alta es asequible. Para elegir entre 10/10 y 8/10 hace falta ampliar el golden
+set. Estado: **11 de 20 casos nuevos salieron unánimes** con un panel de los tres mejores; **9
+necesitan adjudicación humana** — y ese 45% de discrepancia entre los mejores modelos es, en sí
+mismo, la prueba de que adjudicar no se automatiza.
+
+## Los rankings generales no predicen esta tarea
+
+En el índice de Artificial Analysis varios baratos empatan o superan a Sonnet 4.6. Aquí
+`gemini-3.5-flash-lite` saca 7/10 y `gemini-3.5-flash` 10/10; `claude-sonnet-5` saca 7/10 y
+`gemma-4-31b` (75 veces más barato) saca 8/10. La dirección del ranking acierta —los baratos
+compiten— pero el orden concreto **no se traslada**. Por eso este banco existe: se mide en la tarea.
