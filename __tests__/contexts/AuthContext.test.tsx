@@ -44,7 +44,10 @@ jest.mock('../../lib/logClientError', () => ({
 type AuthCallback = (event: string, session: { user: { id: string; email: string } } | null) => void
 
 let authCallback: AuthCallback | null = null
-const mockUnsubscribe = jest.fn()
+// La baja de la suscripción la expone el harness del puerto: el invariante que se quiere
+// proteger («al desmontar, desuscribirse») es de la app, no del proveedor.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mockUnsubscribe = require('../helpers/authPortHarness').espiasPuerto.unsubscribe
 
 // --- Profile fetch mock infrastructure ---
 // loadUserProfile now uses fetch('/api/profile') instead of supabase.from()
@@ -147,65 +150,63 @@ global.fetch = jest.fn().mockImplementation((url: string, options?: RequestInit)
 // Simplified: only auth + rpc + from (for ensureUserProfile's existence check)
 // loadUserProfile now goes through fetch(), not supabase.from()
 
+// ── SIMULACIÓN DE AUTENTICACIÓN ──────────────────────────────────────────────────────────
+//
+// Se simula el PUERTO (`@/lib/auth`), no un proveedor. Hasta el 30/07/2026 este fichero
+// mockeaba `lib/supabase`, y por eso sus 35 tests pasaban en verde **probando el proveedor
+// que ya no corre en producción**: al poner el default en Auth.js (vivo desde el 03/07) se
+// cayeron 30 de golpe. Un test atado al proveedor anula la razón de ser del puerto.
+//
+// Los casos de prueba de abajo NO cambiaron: lo que cambió es la capa de debajo, que ahora
+// habla la lengua del puerto. Así valen para cualquier proveedor futuro.
+jest.mock('@/lib/auth', () => require('../helpers/authPortHarness').mockDelPuerto())
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { puertoAuth } = require('../helpers/authPortHarness')
+
+/** Compat: los tests siguen escribiendo `mockSupabase = createMockSupabase({…})`. */
+let mockSupabase: unknown
+
+/**
+ * Configura la autenticación simulada para un test.
+ *
+ * Conserva el nombre y la firma que usaban los 35 casos (`user`, `ensureProfileData`,
+ * `noInitialSession`) para que migrar el fichero no obligara a reescribirlos uno a uno —
+ * cambiar 35 tests a mano es cómo se cuelan regresiones silenciosas en una migración.
+ */
 function createMockSupabase(options: {
   user?: { id: string; email: string } | null
-  ensureProfileData?: Record<string, unknown> | null // what ensureUserProfile's supabase.from() check returns
-  noInitialSession?: boolean // for safety timeout test
+  /**
+   * Antes decidía qué devolvía `supabase.from()` en la comprobación de existencia de perfil.
+   * Ese camino ya no existe: `AuthContext` carga el perfil por `fetch('/api/profile')` (que
+   * este fichero simula aparte). Se acepta para no tocar las llamadas, y no hace nada.
+   */
+  ensureProfileData?: Record<string, unknown> | null
+  /** No emitir INITIAL_SESSION automáticamente (test del timeout de seguridad). */
+  noInitialSession?: boolean
 }) {
-  const { user = null, ensureProfileData, noInitialSession = false } = options
+  const { user = null, noInitialSession = false } = options
 
-  // Default: ensureUserProfile's check finds the user (profile exists)
-  const ensureData = ensureProfileData !== undefined
-    ? ensureProfileData
-    : (user ? { id: user.id, plan_type: 'free', registration_source: 'organic' } : null)
+  if (user) puertoAuth.sesionDe(user)
+  else puertoAuth.sinSesion()
 
-  const ensureSingle = jest.fn().mockImplementation(() => {
-    if (ensureData) {
-      return Promise.resolve({ data: ensureData, error: null })
-    }
-    return Promise.resolve({ data: null, error: { code: 'PGRST116', message: 'no rows' } })
-  })
-
-  return {
-    auth: {
-      getUser: jest.fn().mockResolvedValue(
-        user
-          ? { data: { user }, error: null }
-          : { data: { user: null }, error: null }
-      ),
-      onAuthStateChange: jest.fn().mockImplementation((cb: AuthCallback) => {
-        authCallback = cb
-        if (!noInitialSession) {
-          setTimeout(() => {
-            cb('INITIAL_SESSION', user ? { user } : null)
-          }, 0)
-        }
-        return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
-      }),
-      getSession: jest.fn().mockResolvedValue({
-        data: { session: user ? { user } : null },
-        error: null
-      }),
-      signOut: jest.fn().mockResolvedValue({ error: null }),
-    },
-    from: jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          single: ensureSingle,
-          abortSignal: jest.fn().mockReturnValue({ single: ensureSingle }),
-        }),
-      }),
-    }),
-    rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+  // `authCallback` sigue siendo el gatillo que usan los tests para simular que el proveedor
+  // avisa de un cambio. Traduce la forma antigua (event, sesión-como-Supabase) a un evento
+  // del puerto, que es lo que la app escucha de verdad.
+  authCallback = (event: string, session: { user: { id: string; email: string } } | null) => {
+    if (session?.user) puertoAuth.sesionDe(session.user)
+    else puertoAuth.sinSesion()
+    puertoAuth.emitir(event as never)
   }
+
+  if (!noInitialSession) {
+    // Igual que antes: el aviso inicial llega DESPUÉS del montaje (el provider se suscribe
+    // al renderizar), no durante.
+    setTimeout(() => puertoAuth.emitir('INITIAL_SESSION'), 0)
+  }
+
+  return {}
 }
-
-// Mock getSupabaseClient — will be set per test
-let mockSupabase: ReturnType<typeof createMockSupabase>
-
-jest.mock('../../lib/supabase', () => ({
-  getSupabaseClient: () => mockSupabase,
-}))
 
 // --- Import after mocks ---
 import { AuthProvider, useAuth } from '../../contexts/AuthContext'

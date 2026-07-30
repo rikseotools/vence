@@ -7,17 +7,19 @@ import type { CompleteTestRequest } from '@/lib/api/v2/complete-test/schemas'
 // MOCK DE SUPABASE
 // ============================================
 
-const mockRefreshSession = jest.fn()
-const mockGetSession = jest.fn()
+// Se simula el PUERTO (`@/lib/auth`), que es con quien habla `completeTestOnServer`
+// (`auth.getAccessToken()`), y no un proveedor concreto.
+//
+// Los casos de este fichero simulaban `refreshSession`/`getSession` de Supabase, es decir la
+// MECÁNICA INTERNA del adaptador: cuándo renovar, si el token caducó, el cooldown anti-429.
+// Nada de eso es responsabilidad del cliente que se prueba aquí —él solo pide un token y
+// actúa según lo reciba— y además ya está cubierto en `__tests__/lib/auth/`. Probarlo desde
+// aquí ataba el test al proveedor: el 30/07, al pasar el default a Auth.js, 21 de 23 casos
+// se cayeron sin que el código bajo prueba hubiera cambiado ni una línea.
+jest.mock('@/lib/auth', () => require('../../../../helpers/authPortHarness').mockDelPuerto())
 
-jest.mock('@/lib/supabase', () => ({
-  getSupabaseClient: () => ({
-    auth: {
-      refreshSession: mockRefreshSession,
-      getSession: mockGetSession,
-    },
-  }),
-}))
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { puertoAuth } = require('../../../../helpers/authPortHarness')
 
 // ============================================
 // MOCK DE FETCH
@@ -38,12 +40,8 @@ beforeEach(() => {
   // decisión de renovar la toma la EXPIRACIÓN y no un reloj de pared, una sesión simulada
   // sin `expires_at` no representa nada real — y además hacía estos tests dependientes del
   // orden (el cooldown anti-429 del adapter es estado compartido entre tests del fichero).
-  mockRefreshSession.mockResolvedValue({
-    data: { session: { access_token: 'tok-renovado', expires_at: EXP_FRESCO, user: { id: 'u1', email: 'a@b.com' } } },
-  })
-  mockGetSession.mockResolvedValue({
-    data: { session: { access_token: 'tok-sesion', expires_at: EXP_FRESCO, user: { id: 'u1', email: 'a@b.com' } } },
-  })
+  puertoAuth.reset()
+  puertoAuth.sesionDe({ id: 'u1', email: 'a@b.com' }, { accessToken: 'tok-sesion', expiresAt: EXP_FRESCO })
 })
 
 /** Sesión con casi una hora por delante: el token vigente SIRVE, no hay que renovar. */
@@ -146,16 +144,17 @@ describe('completeTestOnServer — success', () => {
 
     await completeTestOnServer(validRequest())
 
-    expect(mockRefreshSession).not.toHaveBeenCalled()
+    // Al cliente le corresponde pedir el token UNA vez y usar el que le den; decidir si hay
+    // que renovarlo es del adaptador (y se prueba allí).
+    expect(puertoAuth.espias.getAccessToken).toHaveBeenCalledTimes(1)
     expect(mockFetch.mock.calls[0][1].headers['Authorization']).toBe('Bearer tok-sesion')
   })
 
   it('sesión CADUCADA y renovación imposible → SESSION_EXPIRED, no manda un token muerto', async () => {
     // Mejora de comportamiento de T-210: antes se enviaba el token caducado (401 seguro).
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: 'tok-muerto', expires_at: EXP_CADUCADO, user: { id: 'u1', email: 'a@b.com' } } },
-    })
-    mockRefreshSession.mockResolvedValue({ data: { session: null } })
+    // Sesión caducada y sin renovación posible: el puerto responde SIN token (es él quien
+    // conoce la expiración). Lo que se prueba aquí es la reacción del cliente.
+    puertoAuth.sinToken()
 
     await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')
     expect(mockFetch).not.toHaveBeenCalled()
@@ -187,28 +186,26 @@ describe('completeTestOnServer — success', () => {
 
 describe('completeTestOnServer — SESSION_EXPIRED (no token)', () => {
   it('throws SESSION_EXPIRED when both auth methods return no token', async () => {
-    mockRefreshSession.mockResolvedValue({ data: { session: null } })
-    mockGetSession.mockResolvedValue({ data: { session: null } })
+    puertoAuth.sinSesion()
+    puertoAuth.sinToken()
 
     await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it('throws SESSION_EXPIRED when refreshSession throws and getSession has no token', async () => {
-    mockRefreshSession.mockRejectedValue(new Error('network error'))
-    mockGetSession.mockResolvedValue({ data: { session: null } })
+    // Fallo transitorio al acuñar: el puerto devuelve undefined (no propaga el error).
+    puertoAuth.sinToken()
 
     await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  it('throws SESSION_EXPIRED when session exists but access_token is undefined', async () => {
-    mockRefreshSession.mockResolvedValue({
-      data: { session: { access_token: undefined, user: { id: 'u1', email: 'a@b.com' } } },
-    })
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: undefined, user: { id: 'u1', email: 'a@b.com' } } },
-    })
+  it('hay sesión pero el puerto no entrega token → SESSION_EXPIRED', async () => {
+    // Caso real: la identidad existe, pero acuñar el token falla (401 transitorio, cooldown).
+    // El cliente no debe mandar la petición sin credencial.
+    puertoAuth.sesionDe({ id: 'u1', email: 'a@b.com' })
+    puertoAuth.sinToken()
 
     await expect(completeTestOnServer(validRequest())).rejects.toThrow('SESSION_EXPIRED')
     expect(mockFetch).not.toHaveBeenCalled()

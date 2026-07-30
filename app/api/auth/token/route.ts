@@ -86,7 +86,11 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   }
   userId = decision.sub
 
-  const minted = await mintAccessToken({ sub: userId, email })
+  // T-289: si la sesión es de suplantación, el access token se acuña TAMBIÉN marcado. Sin
+  // esto la marca se quedaría en la cookie y las APIs verían una sesión normal — es decir,
+  // el candado de solo lectura no existiría donde de verdad hace falta.
+  const impersonadoPor = (session as unknown as { impersonadoPor?: string } | null)?.impersonadoPor ?? null
+  const minted = await mintAccessToken({ sub: userId, email, imp: impersonadoPor })
   if (!minted) {
     // Emisor dormido (claves no configuradas) → no romper, señalar indisponible.
     return NextResponse.json({ error: 'issuer_not_configured' }, { status: 503 })

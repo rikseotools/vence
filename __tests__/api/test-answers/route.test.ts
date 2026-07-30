@@ -7,15 +7,43 @@
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
 
-// Mock Supabase before imports
-const mockGetUser = jest.fn()
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-  })),
+// Se simula el VERIFICADOR de la app, no el proveedor.
+//
+// `verifyAuth` es la frontera por la que pasa toda API autenticada, y resuelve el token de
+// una forma u otra según `JWT_LOCAL_VERIFY_MODE`. Mockear `@supabase/supabase-js` solo
+// cubría el modo REMOTO: al poner el default en el modo local —el que corre en producción—
+// estos 11 casos empezaron a devolver 401 sin que la ruta hubiera cambiado (30/07/2026).
+// `mockVerifyAuth` conserva el nombre de la variable para no reescribir los casos.
+const mockVerifyAuth = jest.fn()
+jest.mock('@/lib/api/auth/verifyAuth', () => ({
+  verifyAuth: (...args: unknown[]) => mockVerifyAuth(...args),
 }))
+
+/**
+ * Traduce la forma antigua (respuesta de Supabase) al contrato de `verifyAuth`.
+ *
+ * Respeta la ausencia de cabecera `Authorization`: el verificador real corta ahí antes de
+ * mirar nada más, y hay un caso que lo comprueba. Un mock que devolviera éxito siempre haría
+ * pasar ese test por el motivo equivocado.
+ */
+const respuesta = (user: { id: string } | null) =>
+  user
+    ? { success: true, userId: user.id, email: 'test@vence.es', verifiedBy: 'local' }
+    : { success: false, status: 401, reason: 'local_invalid' }
+
+const conCabecera = (req: unknown) =>
+  !!(req as { headers?: { get?: (k: string) => string | null } })?.headers?.get?.('authorization')
+
+const mockGetUser = {
+  mockResolvedValue: (r: { data: { user: { id: string } | null }; error?: unknown }) =>
+    mockVerifyAuth.mockImplementation(async (req: unknown) =>
+      conCabecera(req) ? respuesta(r.data.user) : { success: false, status: 401, reason: 'no_bearer_token' },
+    ),
+  mockResolvedValueOnce: (r: { data: { user: { id: string } | null }; error?: unknown }) =>
+    mockVerifyAuth.mockImplementationOnce(async (req: unknown) =>
+      conCabecera(req) ? respuesta(r.data.user) : { success: false, status: 401, reason: 'no_bearer_token' },
+    ),
+}
 
 // Mock insert
 const mockInsertTestAnswer = jest.fn()

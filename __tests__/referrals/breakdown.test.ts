@@ -41,3 +41,58 @@ describe('summarizeBreakdown — totales y "pidió el vale"', () => {
     expect(t.paid).toBe(0)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL DESGLOSE, VISTO POR LA PROPIA PERSONA (30/07/2026)
+//
+// Nació para el panel de admin. Lo abrió al embajador María José, premium con 7 € en su
+// cartera: «¿se podría enlazar cada aportación con la pregunta que ha dado ese
+// reconocimiento? En mi caso tengo 7 €, pues que al pinchar en el saldo me diga las
+// preguntas que han hecho eso posible».
+//
+// El dato ya se guardaba (`reward_submissions.dispute_id`), pero faltaban dos cosas:
+// `impugnacion` no existía como fuente —se etiquetaba como «bug»— y no había nombres que
+// significaran algo fuera de casa («ugc», «payout»).
+// ─────────────────────────────────────────────────────────────────────────────
+import { ETIQUETA_FUENTE, etiquetaEstado } from '@/lib/referrals/breakdown'
+
+describe('el desglose que ve el embajador', () => {
+  it('la impugnación es su propia fuente, no un «bug»', () => {
+    expect(ETIQUETA_FUENTE.impugnacion).toBe('Pregunta impugnada')
+    expect(ETIQUETA_FUENTE.bug).toBe('Fallo reportado')
+  })
+
+  it('ninguna fuente se le enseña con jerga interna', () => {
+    for (const texto of Object.values(ETIQUETA_FUENTE)) {
+      expect(texto).not.toMatch(/ugc|payout|bug|kind/i)
+    }
+  })
+
+  it('lo aceptado y lo pagado CUENTA; lo rechazado no', () => {
+    expect(etiquetaEstado('approved')).toEqual({ texto: 'Aceptada', cuenta: true })
+    expect(etiquetaEstado('paid')).toEqual({ texto: 'Pagada', cuenta: true })
+    expect(etiquetaEstado('rejected')).toEqual({ texto: 'No aceptada', cuenta: false })
+  })
+
+  it('lo que está en revisión NO se presenta como ganado', () => {
+    // Si el desglose sumara lo retenido, generaría la queja contraria: «aquí pone 3 € y no
+    // los tengo». Es el error más fácil al abrir esta pantalla.
+    expect(etiquetaEstado('pending').cuenta).toBe(false)
+    expect(etiquetaEstado('hold').cuenta).toBe(false)
+  })
+
+  it('un estado desconocido se trata como NO disponible, nunca como cobrado', () => {
+    expect(etiquetaEstado('vete_a_saber').cuenta).toBe(false)
+    expect(etiquetaEstado('').cuenta).toBe(false)
+  })
+
+  it('los totales cuentan las impugnaciones (antes ni existían en el reparto)', () => {
+    const t = summarizeBreakdown([
+      { kind: 'impugnacion', amount: 1, status: 'approved', date: '2026-07-29', asunto: 'Las Oficinas de Atención al Ciudadano…' },
+      { kind: 'bug', amount: 3, status: 'approved', date: '2026-07-23', asunto: 'va muy lento' },
+      { kind: 'bug', amount: 3, status: 'approved', date: '2026-07-15', asunto: 'psicotécnicos' },
+    ])
+    expect(t.byKind.impugnacion).toEqual({ count: 1, amount: 1 })
+    expect(t.earned).toBe(7) // sus 7 € exactos
+  })
+})

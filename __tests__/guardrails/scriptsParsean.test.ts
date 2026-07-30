@@ -45,6 +45,38 @@ describe('los scripts que corren en cron parsean', () => {
     })
   }
 
+  // ── El mismo fallo, un día después y en otro sitio ────────────────────────────────────
+  //
+  // El 30/07 volvió a pasar DOS veces en `lib/referrals/queries.ts`, escribiendo consultas
+  // nuevas: un comentario `-- El asunto NO puede llevar \`giftcard_ref\`…` cerró el template
+  // literal otra vez. Este guardarraíl existía y no lo cazó, porque solo miraba los tres
+  // `.cjs` de cron. El typecheck sí lo pilla en TypeScript (por eso no llegó a producción),
+  // pero avisa con un error de sintaxis a 200 líneas de distancia que cuesta leer.
+  //
+  // Así que ahora se revisa también el TypeScript que escribe SQL: es donde se está
+  // escribiendo, y donde el patrón se repite. Comentario SQL (`--`) con backtick dentro.
+  const FUENTES_CON_SQL = [
+    'lib/referrals/queries.ts',
+    'lib/api/v2/dispute/queries.ts',
+    'lib/api/convocatoria/queries.ts',
+    'lib/api/laws-configurator/queries.ts',
+  ]
+
+  it('ningún comentario SQL de las consultas en TypeScript lleva backticks', () => {
+    const { readFileSync } = require('fs') as typeof import('fs')
+    const culpables: string[] = []
+    for (const rel of FUENTES_CON_SQL) {
+      const abs = join(RAIZ, rel)
+      if (!existsSync(abs)) continue
+      readFileSync(abs, 'utf8').split('\n').forEach((linea, i) => {
+        if (linea.trimStart().startsWith('--') && linea.includes('`')) {
+          culpables.push(`${rel}:${i + 1} → ${linea.trim().slice(0, 80)}`)
+        }
+      })
+    }
+    expect(culpables.join('\n') || 'ninguno').toBe('ninguno')
+  })
+
   it('ningún comentario SQL dentro de un template literal lleva backticks', () => {
     // La causa exacta del incidente. Se comprueba aparte del `--check` porque el mensaje
     // de Node ("missing ) after argument list") no dice ni de lejos dónde está el problema.

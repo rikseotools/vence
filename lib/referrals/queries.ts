@@ -715,9 +715,25 @@ export async function getEmbajadorBreakdown(userId: string, exec?: Executor): Pr
   const [subsRes, refsRes, paysRes] = await Promise.all([
     db.execute(sql`
       select rs.type as kind, rs.amount::float as amount, rs.status, rs.created_at as date,
-             coalesce(nullif(left(uf.message, 100), ''), rs.url, '(sin asunto)') as asunto
+             -- El asunto de una IMPUGNACION es el enunciado de la pregunta, no el feedback:
+             -- antes solo se miraba feedback_id y las impugnaciones salian (sin asunto),
+             -- que es lo que una embajadora pidio poder ver (30/07, feedback 771c450c).
+             coalesce(
+               nullif(left(q.question_text, 120), ''),
+               nullif(left(uf.message, 100), ''),
+               rs.url,
+               '(sin asunto)'
+             ) as asunto,
+             q.question_text as q_texto,
+             q.option_a as q_a, q.option_b as q_b, q.option_c as q_c, q.option_d as q_d,
+             q.correct_option as q_correcta,
+             rs.dispute_id as dispute_id,
+             fc.id as conversation_id
       from reward_submissions rs
       left join user_feedback uf on uf.id = rs.feedback_id
+      left join question_disputes qd on qd.id = rs.dispute_id
+      left join questions q on q.id = qd.question_id
+      left join feedback_conversations fc on fc.feedback_id = rs.feedback_id
       where rs.user_id = ${userId}`),
     db.execute(sql`
       select coalesce(nullif(r.active_reward_amount, 0), r.bounty_amount, 0)::float as amount,
@@ -726,13 +742,37 @@ export async function getEmbajadorBreakdown(userId: string, exec?: Executor): Pr
       from referrals r left join user_profiles up on up.id = r.referred_user_id
       where r.referrer_user_id = ${userId}`),
     db.execute(sql`
+      -- El asunto de un pago NO puede llevar giftcard_ref: ese campo guarda el vale entero
+      -- en JSON (code + pin) y aquí se pinta en la pantalla del propio
+      -- usuario y en la vista de admin. Salía tal cual —código y PIN a la vista, en crudo—
+      -- hasta que se verificó con datos reales (30/07/2026). El vale ya tiene su sitio, la
+      -- sección «Mis vales», que lo enseña bien y con el aviso de seguridad.
       select p.amount::float as amount, p.status, p.created_at as date,
-             nullif(concat_ws(' · ', p.method, nullif(p.giftcard_ref, ''), nullif(p.reason, '')), '') as asunto
+             -- Y tampoco el reason a secas: es jerga interna ('accumulated'), que en la
+             -- pantalla del usuario no significa nada.
+             case
+               when p.method = 'amazon_giftcard' then 'Tarjeta regalo de Amazon'
+               else coalesce(nullif(p.reason, ''), p.method, 'Pago')
+             end as asunto
       from reward_payouts p where p.beneficiary_user_id = ${userId}`),
   ])
   const submissions: BreakdownRow[] = rowsOf(subsRes).map((r) => ({
-    kind: (r.kind === 'ugc' ? 'ugc' : 'bug') as BreakdownKind,
+    // `impugnacion` es su propio tipo desde el 30/07: antes se etiquetaba como «bug» y la
+    // persona veía «Fallo reportado» donde había impugnado una pregunta.
+    kind: (r.kind === 'ugc' ? 'ugc' : r.kind === 'impugnacion' ? 'impugnacion' : 'bug') as BreakdownKind,
     amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? ''),
+    ...(r.dispute_id ? { disputeId: String(r.dispute_id) } : {}),
+    ...(r.conversation_id ? { conversationId: String(r.conversation_id) } : {}),
+    // Solo cuando hay pregunta detrás (impugnaciones): se despliega en el sitio.
+    ...(r.q_texto
+      ? {
+          pregunta: {
+            texto: String(r.q_texto),
+            opciones: [r.q_a, r.q_b, r.q_c, r.q_d].filter((o) => o != null).map((o) => String(o)),
+            correcta: r.q_correcta == null ? null : Number(r.q_correcta),
+          },
+        }
+      : {}),
   }))
   const referrals: BreakdownRow[] = rowsOf(refsRes).map((r) => ({
     kind: 'referral' as BreakdownKind,

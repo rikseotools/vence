@@ -9,39 +9,14 @@
  * fallbacks, y compatibilidad con TestLayout.
  */
 
-const mockAuthFns = (() => {
-  const getUser = jest.fn()
-  const getSession = jest.fn()
-  return { getUser, getSession }
-})()
+// Se simula el PUERTO (`@/lib/auth`): es de quien `lib/testFetchers` obtiene el token
+// (`auth.getSession()` / `auth.getAccessToken()`), no de un proveedor concreto. Antes se
+// mockeaba `lib/supabase`, y por eso estos casos se cayeron el 30/07 al pasar el default al
+// proveedor que corre en producción, sin que el código bajo prueba hubiera cambiado.
+jest.mock('@/lib/auth', () => require('../../helpers/authPortHarness').mockDelPuerto())
 
-jest.mock('@/lib/supabase', () => ({
-  getSupabaseClient: () => {
-    const mockFrom = jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          not: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              group: jest.fn().mockReturnValue({
-                having: jest.fn().mockReturnValue({
-                  order: jest.fn().mockResolvedValue({ data: [], error: null }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      }),
-    })
-    return {
-      from: mockFrom,
-      rpc: jest.fn(),
-      auth: {
-        getUser: (...args: unknown[]) => mockAuthFns.getUser(...args),
-        getSession: (...args: unknown[]) => mockAuthFns.getSession(...args),
-      },
-    }
-  },
-}))
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { puertoAuth } = require('../../helpers/authPortHarness')
 
 jest.mock('@/lib/lawSlugSync', () => ({
   mapSlugToShortName: jest.fn((s: string) => {
@@ -123,10 +98,8 @@ const mockUser = { id: 'user-rem-1', email: 'test@test.com' }
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockAuthFns.getUser.mockResolvedValue({ data: { user: mockUser }, error: null })
-  // La sesión DEBE incluir user: mapSession() del puerto auth devuelve null si falta
-  // (→ token null → sin Bearer). Mock fiel a la forma real de supabase.auth.getSession.
-  mockAuthFns.getSession.mockResolvedValue({ data: { session: { access_token: 'tok', user: mockUser } }, error: null })
+  puertoAuth.reset()
+  puertoAuth.sesionDe({ id: mockUser.id, email: mockUser.email }, { accessToken: 'tok' })
 })
 afterAll(() => { global.fetch = originalFetch })
 
@@ -377,8 +350,8 @@ describe('fetchMantenerRacha', () => {
   })
 
   test('usuario no autenticado: funciona en modo global', async () => {
-    mockAuthFns.getUser.mockResolvedValue({ data: { user: null }, error: null })
-    mockAuthFns.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    puertoAuth.sinSesion()
+    puertoAuth.sinToken()
     const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
     global.fetch = mockFetch
 
@@ -416,7 +389,9 @@ describe('fetchMantenerRacha', () => {
   })
 
   test('HTTP 500 cae al fallback sin filtros', async () => {
-    mockAuthFns.getUser.mockRejectedValue(new Error('Auth error'))
+    // Fallo al resolver la identidad: el puerto no entrega token y el fetcher debe seguir
+    // funcionando en modo global (sin Bearer), no romperse.
+    puertoAuth.sinToken()
     const mockFetch = jest.fn().mockResolvedValue(okResponse(5))
     global.fetch = mockFetch
 

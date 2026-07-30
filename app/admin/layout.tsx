@@ -431,13 +431,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <span>Conversiones</span>
                   </Link>
                   <Link
-                    href="/admin/embajadores"
+                    href="/admin/referidos"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       payoutsPending > 0 ? 'animate-pulse' : ''
                     }`}
                   >
                     <span>🎁</span>
-                    <span>Embajadores</span>
+                    <span>Referidos</span>
                     {payoutsPending > 0 && (
                       <span
                         className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center font-bold animate-pulse"
@@ -446,6 +446,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {payoutsPending > 99 ? '99+' : payoutsPending}
                       </span>
                     )}
+                  </Link>
+                  {/* T-289 — entrar en la cuenta de un usuario para ver SU pantalla.
+                      Pestaña propia porque el caso de uso llega desde cualquier sitio (un
+                      feedback, una impugnación) y siempre empieza igual: «yo veo X». */}
+                  <Link
+                    href="/admin/impersonacion"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>👁️</span>
+                    <span>Impersonación</span>
                   </Link>
                   <Link
                     href="/admin/ads"

@@ -105,11 +105,15 @@ describe('/api/questions/filtered POST — stale-if-error', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon'
 
-    jest.doMock('@supabase/supabase-js', () => ({
-      createClient: () => ({
-        auth: {
-          getUser: jest.fn().mockResolvedValue({ data: { user: { id: VALID_USER_ID } }, error: null }),
-        },
+    // Se simula el VERIFICADOR de la app (`verifyAuth`), no el proveedor: es la frontera por
+    // la que pasa toda API autenticada y resuelve el token según el modo activo. Mockear
+    // `@supabase/supabase-js` solo cubría el modo remoto (30/07/2026).
+    jest.doMock('@/lib/api/auth/verifyAuth', () => ({
+      verifyAuth: jest.fn().mockResolvedValue({
+        success: true, userId: VALID_USER_ID, email: 'test@vence.es', verifiedBy: 'local',
+      }),
+      verifyAuthOptional: jest.fn().mockResolvedValue({
+        success: true, userId: VALID_USER_ID, email: 'test@vence.es', verifiedBy: 'local',
       }),
     }))
     jest.doMock('@/lib/api/withErrorLogging', () => ({

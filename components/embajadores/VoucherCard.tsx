@@ -2,7 +2,7 @@
 // components/embajadores/VoucherCard.tsx
 // LA tarjeta de un vale (gift card de Amazon.es). Única implementación: la usan tanto el panel del
 // embajador (`MisVales`, en /embajadores) como la vista de admin "ver como el usuario"
-// (`EmbajadorPanelView`, en /admin/embajadores/[userId]).
+// (`EmbajadorPanelView`, en /admin/referidos/[userId]).
 //
 // POR QUÉ EXISTE (27/07/2026). Había DOS implementaciones de esta misma tarjeta y habían divergido:
 // la de admin ocultaba PIN/serial tras "Revelar" y exponía el enlace de la tarjeta original; la del

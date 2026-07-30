@@ -1408,7 +1408,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-blue-900">
-                  {lawsData.length > 1 ? '📖 Filtrar por Leyes' : '📄 Filtrar por Artículos'}
+                  {/* El rótulo nombra SIEMPRE los artículos. Con varias leyes ponía solo
+                      «Filtrar por Leyes», así que quien buscaba filtrar artículos —lo más
+                      pedido: «llevo media ley estudiada»— no encontraba la palabra en la
+                      pantalla y concluía que no existía. Lo reportó Manolo García dos veces
+                      (30/07/2026): la segunda, después de que le indicáramos un rótulo que
+                      solo existe en la página de la ley. La función estaba ahí las dos veces. */}
+                  {lawsData.length > 1 ? '📖 Filtrar por Leyes y Artículos' : '📄 Filtrar por Artículos'}
                 </h3>
                 <button
                   onClick={() => setShowLawsFilter(!showLawsFilter)}
@@ -1422,7 +1428,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                 <div className="space-y-3">
                   {lawsData.length === 1 && (
                     <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                      💡 Puedes filtrar por artículos específicos de esta ley usando el botón "🔧 Filtrar artículos"
+                      💡 Puedes filtrar por artículos concretos de esta ley con el botón "🔧 Artículos" (o coger bloques enteros con "📚 Títulos")
                     </div>
                   )}
                   {lawsData.length > 1 && (

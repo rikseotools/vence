@@ -47,9 +47,14 @@ describe('/api/v2/topic-progress/weak-articles — stale-while-error', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key'
 
-    jest.doMock('@supabase/supabase-js', () => ({
-      createClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: VALID_USER_ID } }, error: null }) },
+    // Se simula el VERIFICADOR de la app, no el proveedor. `verifyAuth` es la frontera real
+    // por la que pasa toda API autenticada, y resuelve el token de forma distinta según el
+    // modo (`JWT_LOCAL_VERIFY_MODE`): mockear `@supabase/supabase-js` solo cubría el modo
+    // remoto, así que estos casos se caían al pasar el default al modo que corre en
+    // producción (30/07/2026). Mockeando la frontera, el test vale para cualquier modo.
+    jest.doMock('@/lib/api/auth/verifyAuth', () => ({
+      verifyAuth: jest.fn().mockResolvedValue({
+        success: true, userId: VALID_USER_ID, email: 'test@vence.es', verifiedBy: 'local',
       }),
     }))
     jest.doMock('@/lib/api/topic-progress', () => ({
@@ -210,10 +215,8 @@ describe('/api/v2/topic-progress/weak-articles — stale-while-error', () => {
   })
 
   it('auth fail → 401, NO toca cache ni BD', async () => {
-    jest.doMock('@supabase/supabase-js', () => ({
-      createClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } }) },
-      }),
+    jest.doMock('@/lib/api/auth/verifyAuth', () => ({
+      verifyAuth: jest.fn().mockResolvedValue({ success: false, status: 401, reason: 'local_invalid' }),
     }))
     const queryFn = jest.fn()
     const getCachedFn = jest.fn()

@@ -29,8 +29,26 @@ describe('clasificar un feedback', () => {
     expect(clasificar(f({ type: 'other', plan: 'free', message: 'hola, una duda del tema 3' }))).toBe('preventa')
   })
 
-  it('un premium que no reporta fallo es premium', () => {
-    expect(clasificar(f({ type: 'suggestion', plan: 'premium', message: 'estaría bien poder filtrar' }))).toBe('premium')
+  it('un premium con una duda normal es premium', () => {
+    expect(clasificar(f({ type: 'suggestion', plan: 'premium', message: '¿el tema 12 entra en el examen?' }))).toBe('premium')
+  })
+
+  // Regla de Manuel (30/07/2026): la sugerencia que hay que DESARROLLAR va la penúltima,
+  // porque se responde después de construirla, no antes.
+  it('un premium que pide algo que hay que construir va a su propio grupo', () => {
+    expect(clasificar(f({ type: 'suggestion', plan: 'premium', message: 'estaría bien poder filtrar por exámenes reales' }))).toBe('construir')
+    expect(clasificar(f({ type: 'suggestion', plan: 'premium', message: 'Me gustaría poder ver de dónde sale cada euro' }))).toBe('construir')
+    expect(clasificar(f({ type: 'other', plan: 'premium', message: '¿podríais añadir un modo repaso?' }))).toBe('construir')
+  })
+
+  it('un BUG que además propone la solución sigue siendo BUG', () => {
+    // Lo que no funciona se arregla ya; no se aparca por venir con una idea dentro.
+    expect(clasificar(f({ type: 'bug', plan: 'premium', message: 'no carga el test, se podría añadir un reintento' }))).toBe('bug')
+  })
+
+  it('una PREVENTA que además propone algo sigue siendo preventa', () => {
+    // Quien está decidiendo si paga no puede esperar a que construyamos su idea.
+    expect(clasificar(f({ type: 'suggestion', plan: 'free', message: '¿tenéis mi oposición? estaría bien poder filtrar' }))).toBe('preventa')
   })
 })
 

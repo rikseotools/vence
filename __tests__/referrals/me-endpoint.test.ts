@@ -16,6 +16,7 @@ jest.mock('@/lib/referrals/queries', () => ({
   getEmbajadorEarnings: jest.fn(),
   getUnseenEarningsCount: jest.fn(),
   getRecentEarnings: jest.fn(),
+  getEmbajadorBreakdown: jest.fn(async () => []),
 }))
 
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'

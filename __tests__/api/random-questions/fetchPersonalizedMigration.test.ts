@@ -10,22 +10,14 @@
  * y compatibilidad con TestLayout.
  */
 
-// Mock supabase — jest.mock se hoistea, así que usamos un objeto compartido
-// que podemos reasignar en beforeEach
-const mockAuthFns = (() => {
-  const getUser = jest.fn()
-  const getSession = jest.fn()
-  return { getUser, getSession }
-})()
-
+// El mock de `@/lib/supabase` conserva SOLO el acceso a datos legacy (`from`/`rpc`).
+// La parte `auth` se retiró el 30/07/2026: el fetcher pide la sesión al PUERTO (mockeado
+// abajo como `mockAuthPort`), así que simular además el proveedor no aportaba nada y sí
+// ataba el test a Supabase — es lo que hizo caer 60 tests al poner el default en Auth.js.
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({
     from: jest.fn(),
     rpc: jest.fn(),
-    auth: {
-      getUser: (...args: unknown[]) => mockAuthFns.getUser(...args),
-      getSession: (...args: unknown[]) => mockAuthFns.getSession(...args),
-    },
   }),
 }))
 
@@ -39,6 +31,8 @@ const mockAuthPort = {
 // Referencias LAZY (dentro de funciones) para evitar el TDZ del hoisting de jest.mock
 // — igual que el mock de @/lib/supabase de arriba.
 jest.mock('@/lib/auth', () => ({
+  // Referencias PEREZOSAS: `jest.mock` se iza por encima del `const mockAuthPort`, así que
+  // nombrarlo directamente aquí da un ReferenceError (zona muerta temporal).
   auth: {
     getUser: (...args: unknown[]) => mockAuthPort.getUser(...args),
     getSession: (...args: unknown[]) => mockAuthPort.getSession(...args),

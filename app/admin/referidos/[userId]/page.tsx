@@ -1,5 +1,5 @@
 'use client'
-// app/admin/embajadores/[userId]/page.tsx — VISTA ADMIN (solo lectura) del panel de un embajador
+// app/admin/referidos/[userId]/page.tsx — VISTA ADMIN (solo lectura) del panel de un embajador
 // concreto: "verlo como lo vería el usuario". Se abre en pestaña nueva desde el escaparate admin.
 // Doble gate: esta página vive tras el guard de admin de app/admin/layout.tsx, y el endpoint
 // /api/admin/embajadores/[userId]/panel exige requireAdmin (defensa en profundidad). Read-only.
@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 import { adminFetch } from '@/lib/api/adminFetch'
 import EmbajadorPanelView, { type EmbajadorPanelData } from '@/components/embajadores/EmbajadorPanelView'
 import AdminBreakdown from '@/components/embajadores/AdminBreakdown'
+import BotonVerComoUsuario from '@/components/admin/BotonVerComoUsuario'
 
 type PanelResponse = (EmbajadorPanelData & { isAmbassador: boolean }) | { isAmbassador: false; firstName: string | null }
 
@@ -42,6 +43,14 @@ export default function AdminEmbajadorPreviewPage() {
         <div className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 rounded-lg px-4 py-2 text-sm font-semibold text-center mb-6">
           👁️ Vista de administrador (solo lectura) — así ve su panel el usuario{firstName ? ` ${firstName}` : ''}
         </div>
+        {/* Esta página reproduce SU panel de embajador. Para el resto de la app (su perfil,
+            su temario, sus límites, lo que de verdad ve al estudiar) hace falta entrar en su
+            sesión: T-289. */}
+        {userId && (
+          <div className="mb-6">
+            <BotonVerComoUsuario userId={userId} nombre={firstName} />
+          </div>
+        )}
         {userId && <AdminBreakdown userId={userId} />}
       </div>
       {error ? (

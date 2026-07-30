@@ -6,8 +6,6 @@
 // MOCKS
 // ============================================
 
-const mockRefreshSession = jest.fn()
-const mockGetSession = jest.fn()
 const mockInsert = jest.fn()
 const mockSelect = jest.fn()
 const mockSingle = jest.fn()
@@ -17,10 +15,6 @@ const mockOrder = jest.fn()
 const mockLimit = jest.fn()
 
 const mockSupabase = {
-  auth: {
-    refreshSession: mockRefreshSession,
-    getSession: mockGetSession,
-  },
   from: jest.fn(() => ({
     insert: mockInsert,
     select: mockSelect,
@@ -36,9 +30,18 @@ mockGte.mockReturnValue({ order: mockOrder })
 mockOrder.mockReturnValue({ limit: mockLimit })
 mockLimit.mockResolvedValue({ data: [], error: null })
 
+// El acceso a DATOS legacy (`from`) se mantiene mockeado; lo que cambia es la
+// AUTENTICACIÓN: el código bajo prueba pide el token al PUERTO (`@/lib/auth`), así que es el
+// puerto lo que hay que simular. Mockear el proveedor ataba estos casos a Supabase y por eso
+// se cayeron el 30/07 al poner el default en el proveedor que corre en producción.
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => mockSupabase,
 }))
+
+jest.mock('@/lib/auth', () => require('../helpers/authPortHarness').mockDelPuerto())
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { puertoAuth } = require('../helpers/authPortHarness')
 
 // Mock fetch for V2 API calls
 const mockFetchResponse = { ok: true, json: jest.fn(), status: 200 }
@@ -88,8 +91,9 @@ describe('saveDetailedAnswerWithRetry - sesión expirada', () => {
 
   it('devuelve session_expired inmediatamente sin reintentos cuando V2 detecta token muerto', async () => {
     // V2 (saveDetailedAnswerV2) detecta que no hay token
-    mockRefreshSession.mockResolvedValue({ data: { session: null }, error: null })
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    puertoAuth.reset()
+    puertoAuth.sinSesion()
+    puertoAuth.sinToken()
 
     const result = await saveDetailedAnswerWithRetry(baseParams)
 
@@ -101,8 +105,9 @@ describe('saveDetailedAnswerWithRetry - sesión expirada', () => {
   })
 
   it('NO hace fallback a V1 cuando la sesión está expirada', async () => {
-    mockRefreshSession.mockResolvedValue({ data: { session: null }, error: null })
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    puertoAuth.reset()
+    puertoAuth.sinSesion()
+    puertoAuth.sinToken()
 
     const result = await saveDetailedAnswerWithRetry(baseParams)
 
@@ -113,10 +118,7 @@ describe('saveDetailedAnswerWithRetry - sesión expirada', () => {
 
   it('SÍ hace fallback a V1 cuando V2 falla por error de red (no por sesión)', async () => {
     // V2 tiene token válido pero falla por red
-    mockRefreshSession.mockResolvedValue({
-      data: { session: { access_token: 'valid-token', user: { id: 'u1', email: 'a@b.com' } } },
-      error: null,
-    })
+    puertoAuth.sesionDe({ id: 'u1', email: 'a@b.com' }, { accessToken: 'valid-token' })
 
     // Mock fetch para simular error de red en V2
     const originalFetch = global.fetch
@@ -155,8 +157,9 @@ describe('createDetailedTestSession - sesión expirada (endpoint RDS agnóstico)
 
     // Por defecto SIN token (cada test lo ajusta). Reseteo explícito para que no
     // se filtre el mockResolvedValue de un test anterior (clearAllMocks no lo borra).
-    mockRefreshSession.mockResolvedValue({ data: { session: null }, error: null })
-    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    puertoAuth.reset()
+    puertoAuth.sinSesion()
+    puertoAuth.sinToken()
     ;(global.fetch as jest.Mock) = jest.fn()
 
     const mod = require('@/utils/testSession')
@@ -174,10 +177,7 @@ describe('createDetailedTestSession - sesión expirada (endpoint RDS agnóstico)
   })
 
   it('con token válido crea el test vía /api/v2/tests (RDS) y devuelve la sesión', async () => {
-    mockRefreshSession.mockResolvedValue({
-      data: { session: { access_token: 'valid-token', user: { id: 'u1', email: 'a@b.com' } } },
-      error: null,
-    })
+    puertoAuth.sesionDe({ id: 'u1', email: 'a@b.com' }, { accessToken: 'valid-token' })
     const newId = '11111111-1111-4111-8111-111111111111'
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: true,

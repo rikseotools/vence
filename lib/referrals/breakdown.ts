@@ -8,7 +8,7 @@
 // pero no dejaba ver, al pinchar, QUÉ compone ese saldo ni el asunto de cada
 // recompensa (qué bug, a quién refirió, qué vale). Esta función arma esa vista.
 
-export type BreakdownKind = 'bug' | 'ugc' | 'referral' | 'payout'
+export type BreakdownKind = 'bug' | 'ugc' | 'referral' | 'payout' | 'impugnacion'
 
 export interface BreakdownRow {
   kind: BreakdownKind
@@ -19,8 +19,62 @@ export interface BreakdownRow {
   /** ISO date. */
   date: string
   /** El "asunto" para tenerlo controlado: extracto del feedback (bug), URL
-   *  (opinión), email del referido (referido) o método+ref (pago). */
+   *  (opinión), email del referido (referido), método+ref (pago) o el ENUNCIADO
+   *  de la pregunta impugnada (impugnación). */
   asunto: string
+  /**
+   * La pregunta ENTERA, solo en las impugnaciones. Permite desplegarla en el sitio —como en
+   * «preguntas guardadas»— en vez de mandar a la persona a otra pantalla: el asunto recortado
+   * no basta para reconocer cuál era, que es justo lo que se pedía («que me diga las preguntas
+   * que han hecho eso posible»).
+   */
+  pregunta?: {
+    texto: string
+    opciones: string[]
+    /** Índice 0-3 de la correcta, o null si no consta. */
+    correcta: number | null
+  }
+  /**
+   * Id de la impugnación, para abrir su ficha COMPLETA (explicación + artículo vinculado +
+   * resolución) en la pantalla de soporte, que ya tiene ese modal construido. No se duplica
+   * aquí: mantener dos vistas de lo mismo garantiza que una se quede vieja.
+   */
+  disputeId?: string
+  /**
+   * Id de la CONVERSACIÓN del aviso que generó la recompensa (bug/opinión), para abrirla en
+   * soporte y releer el hilo entero. Mismo criterio que `disputeId`: se enlaza a la vista que
+   * ya existe, no se reconstruye el chat aquí.
+   */
+  conversationId?: string
+}
+
+/**
+ * ¿Cómo se le llama a cada fuente CUANDO LO VE LA PERSONA?
+ *
+ * El desglose nació para el panel de admin (13/07). Al abrirlo al propio embajador
+ * (30/07, petición de María José: *«que al pinchar en el saldo me diga las preguntas que han
+ * hecho eso posible»*) hacen falta nombres que signifiquen algo fuera de casa: «ugc» o
+ * «payout» no los entiende nadie.
+ */
+export const ETIQUETA_FUENTE: Record<BreakdownKind, string> = {
+  bug: 'Fallo reportado',
+  ugc: 'Opinión compartida',
+  referral: 'Persona invitada',
+  payout: 'Tarjeta regalo',
+  impugnacion: 'Pregunta impugnada',
+}
+
+/**
+ * Estado en palabras, y **sin prometer lo que no es**: una recompensa retenida o rechazada
+ * NO está en el saldo disponible. Enseñar el desglose sin esta distinción genera la queja
+ * contraria («aquí pone 3 € y no los tengo»), que es peor que no enseñarlo.
+ */
+export function etiquetaEstado(status: string): { texto: string; cuenta: boolean } {
+  const s = String(status || '').toLowerCase()
+  if (s === 'rejected' || s === 'expired') return { texto: 'No aceptada', cuenta: false }
+  if (s === 'paid') return { texto: 'Pagada', cuenta: true }
+  if (s === 'approved' || s === 'qualified' || s === 'payable') return { texto: 'Aceptada', cuenta: true }
+  return { texto: 'En revisión', cuenta: false }
 }
 
 /** Fusiona las 3 fuentes en una sola lista ordenada por fecha DESC (lo más
@@ -53,6 +107,7 @@ export function summarizeBreakdown(rows: readonly BreakdownRow[]): BreakdownTota
     ugc: { count: 0, amount: 0 },
     referral: { count: 0, amount: 0 },
     payout: { count: 0, amount: 0 },
+    impugnacion: { count: 0, amount: 0 },
   }
   let earned = 0, paid = 0, requested = 0
   for (const r of rows) {

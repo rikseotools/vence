@@ -277,7 +277,13 @@ describe('verifyAuth — input edge cases', () => {
     expect(result.reason).toBe('no_bearer_token')
   })
 
-  it('flag con valor inválido → fallback a "off" (defensivo)', async () => {
+  // 30/07/2026 — este test fijaba el fallback en "off" (verificar contra el proveedor
+  // REMOTO, o sea Supabase) y lo llamaba «defensivo». Dejó de serlo el día del flip a
+  // Auth.js: desde que los tokens son RS256, pedirle a Supabase que los valide devuelve 401
+  // en TODAS las peticiones. El default pasa a "on" —verificación local, lo que corre en
+  // producción— y este test pasa a fijar eso. Un valor inválido no debe caer en el modo
+  // antiguo, sino en el vivo.
+  it('flag con valor inválido → fallback al modo VIVO ("on", verificación local)', async () => {
     process.env.JWT_LOCAL_VERIFY_MODE = 'invalid_value' as never
 
     jest.resetModules()
@@ -296,9 +302,9 @@ describe('verifyAuth — input edge cases', () => {
     const { verifyAuth } = require('@/lib/api/auth/verifyAuth')
     const result = await verifyAuth(buildReq() as never, '/test/endpoint')
 
-    // Debería comportarse como off
+    // Debe comportarse como el modo que corre en producción, no como el legacy.
     expect(result.success).toBe(true)
     if (!result.success) return
-    expect(result.verifiedBy).toBe('remote')
+    expect(result.verifiedBy).toBe('local')
   })
 })

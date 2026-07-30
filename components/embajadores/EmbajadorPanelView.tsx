@@ -2,10 +2,12 @@
 // components/embajadores/EmbajadorPanelView.tsx
 // Vista presentacional del panel del embajador (saldo, ingresos por fuente, enlace, embudo, referidos).
 // Se alimenta por PROPS con el mismo shape que /api/referrals/me. SIN auth, SIN fetch, SIN efectos:
-// solo pinta lo que recibe. La usa la vista admin /admin/embajadores/[userId] (read-only, datos reales
+// solo pinta lo que recibe. La usa la vista admin /admin/referidos/[userId] (read-only, datos reales
 // de otro usuario). Réplica visual de app/embajadores/page.tsx, sin la parte celebratoria/confeti.
 
 import { useState } from 'react'
+import DesgloseCartera from '@/components/referrals/DesgloseCartera'
+import type { BreakdownRow } from '@/lib/referrals/breakdown'
 import VoucherCard from './VoucherCard'
 import { rewardSourceText } from '@/lib/referrals/logic'
 
@@ -81,6 +83,8 @@ export interface EmbajadorPanelData {
   }
   recent: Array<{ source: string; amount: number }>
   vouchers?: Array<{ amount: number; code: string; pin?: string | null; serial?: string | null; fallbackLink?: string | null; via: string | null; date: string | null }>
+  /** Desglose «de dónde sale cada euro» — el mismo que la persona ve en /recompensas. */
+  breakdown?: BreakdownRow[]
 }
 
 export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData }) {
@@ -144,7 +148,13 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
             ⏳ <strong>«En espera»</strong>: dinero que ya has ganado pero que se libera a <strong>Disponible</strong> cuando cada referido supera su <strong>garantía de reembolso de 15 días</strong> (mientras, podría caerse si pidiera el reembolso). Verás la fecha de liberación en cada referido de abajo.
           </p>
         )}
-        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
+        {/* El desglose aportación por aportación. En la vista de admin va en modo solo
+            lectura: los enlaces a Soporte abrirían la ficha con NUESTRA sesión, y aquí lo
+            que se quiere es ver su pantalla, no navegar por ella. */}
+        {data.breakdown && data.breakdown.length > 0 && (
+          <DesgloseCartera filas={data.breakdown} soloLectura abiertoPorDefecto />
+        )}
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 mt-5">De dónde vienen tus ingresos</h3>
         <div className="space-y-2">
           {e.bySource.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">Todavía sin ingresos.</p>

@@ -15,6 +15,11 @@ jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockAuthReturn,
 }))
 
+// `getAuthHeaders()` pide el token al PUERTO (`@/lib/auth`). Sin simularlo, cada llamada
+// intenta acuñar de verdad y las descargas se quedan a medias — que es lo que pasó el 30/07
+// al cambiar el proveedor por defecto: 2 de 9 casos se cayeron sin tocar el componente.
+jest.mock('@/lib/auth', () => require('../helpers/authPortHarness').mockDelPuerto())
+
 jest.mock('@/lib/observability/client', () => ({
   emitClientEvent: jest.fn(),
 }))
@@ -30,6 +35,9 @@ const emitted = (action: string) =>
 let clickedAnchors: HTMLAnchorElement[]
 
 beforeEach(() => {
+  // Usuario con sesión: el componente descarga con Authorization.
+  require('../helpers/authPortHarness').puertoAuth.reset()
+  require('../helpers/authPortHarness').puertoAuth.sesionDe({ id: 'u1', email: 'a@b.c' })
   emitMock.mockClear()
   mockAuthReturn = { user: { id: 'u1' } }
   window.print = jest.fn()

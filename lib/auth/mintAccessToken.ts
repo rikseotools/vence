@@ -27,6 +27,11 @@ export interface MintAccessTokenArgs {
   email: string | null
   /** Rol del contrato. Default 'authenticated'. */
   role?: string
+  /**
+   * T-289: email del admin que está VIENDO esta cuenta (suplantación). Su presencia marca
+   * el token como de solo lectura — `verifyAuth` rechaza con él cualquier escritura.
+   */
+  imp?: string | null
 }
 
 export interface MintedAccessToken {
@@ -58,6 +63,9 @@ export async function mintAccessToken(
   const token = await new SignJWT({
     email: args.email ?? null,
     role: args.role ?? 'authenticated',
+    // Solo se incluye si viene: un token normal NO lleva el claim, así que no hay forma de
+    // confundir una sesión real con una suplantada.
+    ...(args.imp ? { imp: args.imp } : {}),
   })
     .setProtectedHeader({ alg: AUTH_JWT_ALG, kid, typ: 'JWT' })
     .setSubject(args.sub)

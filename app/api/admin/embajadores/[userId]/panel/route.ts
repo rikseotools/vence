@@ -15,7 +15,7 @@ import { getAdminDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import {
   getReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts,
-  getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings,
+  getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings, getEmbajadorBreakdown,
 } from '@/lib/referrals/queries'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
@@ -49,7 +49,11 @@ async function _GET(
     return NextResponse.json({ isAmbassador: false, firstName })
   }
 
-  const [code, stats, details, funnel, earnings, unseen, recent] = await Promise.all([
+  // `breakdown` es el desglose «de dónde sale cada euro»: lo mismo que ve la persona en
+  // /recompensas. Se incluye aquí para poder mirar SU pantalla antes de escribirle, en vez
+  // de deducirla — deducir una pantalla ya nos costó indicarle a un usuario un rótulo que en
+  // la suya no existía (30/07/2026).
+  const [code, stats, details, funnel, earnings, unseen, recent, breakdown] = await Promise.all([
     getReferralCode(userId, db),
     getReferralStats(userId, db),
     getReferralDetails(userId, db),
@@ -57,6 +61,7 @@ async function _GET(
     getEmbajadorEarnings(userId, db),
     getUnseenEarningsCount(userId, db),
     getRecentEarnings(userId, 10, db),
+    getEmbajadorBreakdown(userId, db),
   ])
 
   // Vales (gift cards) emitidos al usuario — mismo criterio que /api/referrals/vouchers (excluye dry-run).
@@ -97,6 +102,7 @@ async function _GET(
     unseen,
     recent,
     vouchers,
+    breakdown,
   })
 }
 

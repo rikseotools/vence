@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
-import { getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts, getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings } from '@/lib/referrals/queries'
+import { getUserPlanType, getOrCreateReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts, getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings, getEmbajadorBreakdown } from '@/lib/referrals/queries'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 
@@ -21,13 +21,16 @@ async function _GET(request: NextRequest) {
   }
 
   const code = await getOrCreateReferralCode(userId)
-  const [stats, details, funnel, earnings, unseen, recent] = await Promise.all([
+  const [stats, details, funnel, earnings, unseen, recent, breakdown] = await Promise.all([
     getReferralStats(userId),
     getReferralDetails(userId),
     getReferralFunnelCounts(userId),
     getEmbajadorEarnings(userId),
     getUnseenEarningsCount(userId),
     getRecentEarnings(userId),
+    // De dónde sale cada euro de SU saldo (30/07, petición de una embajadora con 7 € que no
+    // sabía qué aportaciones los habían generado). Es su propio userId: no expone a nadie más.
+    getEmbajadorBreakdown(userId),
   ])
   return NextResponse.json({
     isAmbassador: true,
@@ -38,6 +41,7 @@ async function _GET(request: NextRequest) {
     funnel,   // { copies, clicks }
     earnings, // { balance, earnedLifetime, paidLifetime, pending, bySource[] }
     unseen,   // nº ingresos nuevos sin ver (badge)
+    breakdown, // [{ kind, amount, status, date, asunto }] — el origen de cada euro
     recent,   // [{ source, amount, date }] para el bloque celebratorio
   })
 }

@@ -10,6 +10,7 @@ import MisVales from '@/components/embajadores/MisVales'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { payoutDenomination, rewardSourceText, DISPUTE_REWARD_BY_TYPE } from '@/lib/referrals/logic'
 import { ALL_DISPUTE_TYPES, type DisputeType } from '@/lib/api/v2/dispute/types'
+import DesgloseCartera from '@/components/referrals/DesgloseCartera'
 
 interface ActiveReward { state: 'earned' | 'pending' | 'none'; amount: number; testsDone: number; testsNeeded: number }
 interface ReferralDetail {
@@ -29,6 +30,15 @@ interface MeResponse {
   link?: string
   stats?: { registros: number; compradores: number; conversion: number }
   details?: ReferralDetail[]
+  /** De dónde sale cada euro: fuente, importe, estado y ASUNTO (la pregunta impugnada, el
+   *  aviso enviado, la persona invitada…). Lo pidió una embajadora con 7 € que no sabía qué
+   *  aportaciones los habían generado (30/07). */
+  breakdown?: {
+    kind: string; amount: number; status: string; date: string; asunto: string
+    pregunta?: { texto: string; opciones: string[]; correcta: number | null }
+    disputeId?: string
+    conversationId?: string
+  }[]
   funnel?: { copies: number; clicks: number }
   earnings?: Earnings
   unseen?: number
@@ -189,6 +199,7 @@ const PROGRAMAS = [
 
 export default function EmbajadoresPage() {
   const { user, userProfile, loading, isPremium } = useAuth()
+  // Detalle del saldo plegado por defecto: no debe tapar el número, que es lo que se mira.
   const [me, setMe] = useState<MeResponse | null>(null)
   const [copied, setCopied] = useState(false)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
@@ -383,6 +394,13 @@ export default function EmbajadoresPage() {
                 </div>
               </div>
             )}
+            {/* DETALLE: qué aportación concreta generó cada euro.
+                Un saldo sin origen no se puede comprobar, y además no enseña qué tipo de
+                aportación renta. Se pliega por defecto para no tapar el saldo. */}
+            {me.breakdown && me.breakdown.length > 0 && (
+              <DesgloseCartera filas={me.breakdown as any} />
+            )}
+
             {/* MODELO PULL: solicitar el vale cuando hay saldo disponible */}
             <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700">
               {me.earnings.requested > 0 ? (

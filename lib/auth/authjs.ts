@@ -90,6 +90,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (typeof appUserId === 'string' && session.user) {
         session.user.id = appUserId
       }
+      // T-289 — marca de SUPLANTACIÓN. Si esta sesión la acuñó un admin para ver la cuenta
+      // de alguien, `imp` lleva su email. Se propaga a la sesión para dos cosas que no
+      // pueden depender de la interfaz: acuñar el access token también marcado (y que el
+      // candado de solo lectura funcione en las APIs) y pintar la franja de aviso.
+      const imp = token.imp
+      if (typeof imp === 'string' && imp) {
+        ;(session as unknown as { impersonadoPor?: string }).impersonadoPor = imp
+      }
       return session
     },
   },

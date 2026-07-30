@@ -1,5 +1,5 @@
 'use client'
-// app/admin/embajadores/page.tsx — ESCAPARATE de estadísticas del programa de embajadores.
+// app/admin/referidos/page.tsx — ESCAPARATE de estadísticas del programa de embajadores.
 // Filosofía (decisión Manuel 10/07): este panel es SOLO LECTURA de métricas. Las OPERACIONES
 // (crear recompensa/bonus, pagar gift card) las ejecuta Claude Code vía API guiado por
 // docs/runbooks/embajadores-recompensas.md. Las acciones manuales quedan como fallback (abajo).
@@ -167,7 +167,7 @@ export default function AdminEmbajadoresPage() {
           {!stats?.topEmbajadores?.length ? <p className="text-sm text-gray-400 dark:text-gray-500">Aún no hay ingresos.</p>
             : <ol className="space-y-1.5">{stats.topEmbajadores.map((t, i) => (
                 <li key={t.userId} className="flex items-center justify-between gap-2 text-sm">
-                  <a href={`/admin/embajadores/${t.userId}`} target="_blank" rel="noopener noreferrer" title="Ver su panel como lo ve el usuario (nueva pestaña)" className="truncate text-blue-600 dark:text-blue-400 hover:underline">{i + 1}. {t.name || t.email || 'Embajador'}</a>
+                  <a href={`/admin/referidos/${t.userId}`} target="_blank" rel="noopener noreferrer" title="Ver su panel como lo ve el usuario (nueva pestaña)" className="truncate text-blue-600 dark:text-blue-400 hover:underline">{i + 1}. {t.name || t.email || 'Embajador'}</a>
                   <span className="shrink-0 text-blue-600 dark:text-blue-400 font-semibold">{eur(t.earned)} · {t.count}</span>
                 </li>
               ))}</ol>}
@@ -180,7 +180,7 @@ export default function AdminEmbajadoresPage() {
           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">🔔 Solicitudes de cobro pendientes</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Embajadores que HAN PEDIDO el vale (toca pagarles). Pincha para ver su desglose.</p>
           <div className="space-y-2">{payoutRequests.map((r) => (
-            <a key={r.id} href={`/admin/embajadores/${r.userId}`} target="_blank" rel="noopener noreferrer"
+            <a key={r.id} href={`/admin/referidos/${r.userId}`} target="_blank" rel="noopener noreferrer"
                className={`${card} flex flex-wrap items-center justify-between gap-2 border-amber-300 dark:border-amber-700 hover:ring-2 hover:ring-amber-300 transition`}>
               <div className="min-w-0">
                 <div className="font-semibold text-gray-800 dark:text-gray-100 truncate">{r.name || 'Embajador'} <span className="text-amber-600 dark:text-amber-400">· solicitó {eur(r.amount)}</span></div>
@@ -200,7 +200,7 @@ export default function AdminEmbajadoresPage() {
           : <div className="space-y-2">{balances.map((b) => {
               const requested = payoutRequests.some((r) => r.userId === b.userId)
               return (
-              <a key={b.userId} href={`/admin/embajadores/${b.userId}`} target="_blank" rel="noopener noreferrer"
+              <a key={b.userId} href={`/admin/referidos/${b.userId}`} target="_blank" rel="noopener noreferrer"
                  className={`${card} flex flex-wrap items-center justify-between gap-2 hover:ring-2 hover:ring-blue-300 transition`}>
                 <div className="min-w-0">
                   <div className="font-semibold text-gray-800 dark:text-gray-100 truncate">{b.name || 'Embajador'} <span className="text-blue-600 dark:text-blue-400">· {eur(b.balance)}</span>{requested && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">🔔 solicitó vale</span>}</div>

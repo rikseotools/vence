@@ -8,12 +8,15 @@
  */
 
 // Mock del supabase client que importa testFetchers
+// La AUTENTICACIÓN se simula por el PUERTO (`@/lib/auth`), no por el proveedor: es a quien
+// llama el código bajo prueba. Este mock de `@/lib/supabase` conserva solo el acceso a DATOS
+// legacy. (30/07/2026 — mockear el proveedor ataba el test a Supabase: al poner el default
+// en Auth.js, que es lo que corre en producción, 60 tests se cayeron sin que el código
+// cambiara.)
+jest.mock('@/lib/auth', () => require('../helpers/authPortHarness').mockDelPuerto())
+
 jest.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({
-    auth: {
-      getUser: async () => ({ data: { user: { id: 'user-test' } }, error: null }),
-      getSession: async () => ({ data: { session: { access_token: 'token-test' } }, error: null }),
-    },
   }),
 }))
 

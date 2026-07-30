@@ -1,6 +1,7 @@
 import './globals.css'
 import { Suspense } from 'react'
 import ClientLayoutContent from './ClientLayoutContent'
+import FranjaImpersonacion from '@/components/admin/FranjaImpersonacion'
 import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
 import { QuestionProvider } from '../contexts/QuestionContext'
@@ -75,6 +76,10 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                     <Suspense fallback={null}>
                       <AttributionCapture />
                     </Suspense>
+                    {/* T-289 — franja de suplantación. En el layout raíz porque «ver la
+                        cuenta de otra persona» afecta a TODA la app, no a una pantalla.
+                        Sin suplantación no pinta nada. */}
+                    <FranjaImpersonacion />
                     <div className="flex flex-col min-h-screen">
                       <ClientLayoutContent>
                         <main className="flex-1 min-h-0">

@@ -23,6 +23,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
+import { adminQueSuplanta, permitidoDuranteImpersonacion } from '@/lib/admin/impersonacion'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import { decodeProtectedHeader } from 'jose'
 import { verifyJwtLocal, extractBearerToken, type JwtVerifyResult } from './verifyJwtLocal'
 import { verifyJwtRs256 } from './verifyJwtRs256'
@@ -49,6 +51,53 @@ async function verifyLocalToken(token: string): Promise<JwtVerifyResult> {
   return { success: false, error: 'unsupported_alg' }
 }
 
+/**
+ * Lee el claim `imp` del token SIN verificar la firma.
+ *
+ * Parece peligroso y no lo es, porque solo se usa para **denegar**: un token inválido ya se
+ * rechaza por su camino normal, y aquí lo único que puede pasar es que alguien se invente un
+ * `imp` para que le bloqueemos MÁS. Hace falta en los modos que verifican contra el
+ * proveedor remoto, que devuelve identidad pero no el payload completo.
+ */
+function impSinVerificar(token: string): string | null {
+  try {
+    const [, cuerpo] = token.split('.')
+    if (!cuerpo) return null
+    const json = JSON.parse(Buffer.from(cuerpo, 'base64url').toString('utf8'))
+    return typeof json?.imp === 'string' && json.imp ? json.imp : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Si el token es de suplantación y la petición escribe, se corta aquí con 403 y se deja
+ * señal. Devuelve `null` cuando no hay nada que bloquear.
+ */
+function bloquearSiEscribeSuplantando(
+  payload: unknown,
+  metodo: string,
+  endpoint: string,
+): AuthVerifyResult | null {
+  const admin = adminQueSuplanta(payload)
+  if (!admin) return null
+  if (permitidoDuranteImpersonacion(metodo)) return null
+  console.warn(`🔒 [impersonacion] ${admin} intentó ${metodo} ${endpoint} — bloqueado (solo lectura)`)
+  emitFireAndForget({
+    source: 'vercel',
+    severity: 'warn',
+    eventType: 'impersonacion_escritura_bloqueada',
+    endpoint,
+    metadata: { admin, metodo },
+  })
+  return {
+    success: false,
+    status: 403,
+    reason: 'impersonacion_solo_lectura',
+    impersonadoPor: admin,
+  }
+}
+
 export type AuthVerifyResult =
   | {
       success: true
@@ -56,6 +105,15 @@ export type AuthVerifyResult =
       email: string | null
       /** Cómo se verificó: importante para diagnóstico de divergencias. */
       verifiedBy: 'remote' | 'local' | 'shadow_remote'
+      /** Email del admin que está viendo esta cuenta (T-289). null = sesión normal. */
+      impersonadoPor?: string | null
+    }
+  | {
+      success: false
+      /** 403, no 401: la sesión es válida — lo que no se permite es ESCRIBIR con ella. */
+      status: 403
+      reason: 'impersonacion_solo_lectura'
+      impersonadoPor: string
     }
   | {
       success: false
@@ -68,8 +126,21 @@ type Mode = 'off' | 'shadow' | 'on'
 function getMode(): Mode {
   const v = process.env.JWT_LOCAL_VERIFY_MODE
   if (v === 'shadow') return 'shadow'
-  if (v === 'on') return 'on'
-  return 'off' // default seguro
+  if (v === 'off') return 'off'
+  // Default = 'on' (verificación LOCAL), que es lo que corre en producción desde el flip.
+  //
+  // ⚠️ Era 'off' —verificar contra el proveedor REMOTO, es decir Supabase— y se llamaba a sí
+  // mismo «default seguro». Dejó de serlo el día del flip: desde que los tokens son RS256 de
+  // Auth.js, pedirle a Supabase que los valide devuelve 401 **en todas las peticiones**. Así
+  // que cualquier entorno que no defina la variable (local, previews) tenía la sesión rota de
+  // raíz: el perfil no cargaba, el avatar salía sin nombre y la racha a cero, mientras en
+  // producción todo iba bien.
+  //
+  // Junto con el default de `NEXT_PUBLIC_AUTH_PROVIDER` (que también seguía en 'supabase'),
+  // son dos valores por omisión anclados al proveedor viejo cuatro semanas después de
+  // migrar. Un default no es «seguro» por ser el antiguo: es seguro si coincide con lo que
+  // está VIVO. Se descubrió el 30/07 comparando el avatar de producción con el de local.
+  return 'on'
 }
 
 async function verifyRemote(token: string): Promise<{ userId: string; email: string | null } | null> {
@@ -112,11 +183,19 @@ export async function verifyAuth(
     if (!remote) {
       return { success: false, status: 401, reason: 'remote_verify_failed' }
     }
+    // El candado de suplantación va en las TRES ramas. Ponerlo solo en la que corre hoy
+    // (`on`) haría que un cambio de esta variable —una env, no un despliegue de código—
+    // desactivara la protección **en silencio**, que es la peor forma de perderla.
+    const bloqueoOff = bloquearSiEscribeSuplantando(
+      { imp: impSinVerificar(token) }, request.method, endpoint,
+    )
+    if (bloqueoOff) return bloqueoOff
     return {
       success: true,
       userId: remote.userId,
       email: remote.email,
       verifiedBy: 'remote',
+      impersonadoPor: impSinVerificar(token),
     }
   }
 
@@ -128,11 +207,21 @@ export async function verifyAuth(
       console.warn(`🔒 [auth/local] ${endpoint} rejected: ${local.error}`)
       return { success: false, status: 401, reason: `local_${local.error}` }
     }
+    // T-289 — CANDADO DE SOLO LECTURA de la suplantación.
+    //
+    // Va aquí, y no en cada endpoint, porque este es el paso por el que pasan TODAS las
+    // APIs autenticadas: una guarda por endpoint sería confiar en que nadie olvide uno, y
+    // el fallo clásico de esta función es justamente el admin que escribe creyendo que
+    // está en su sesión. Con la marca `imp` dentro del token, escribir es imposible aunque
+    // la interfaz se equivoque.
+    const bloqueo = bloquearSiEscribeSuplantando(local.payload, request.method, endpoint)
+    if (bloqueo) return bloqueo
     return {
       success: true,
       userId: local.userId,
       email: local.email,
       verifiedBy: 'local',
+      impersonadoPor: adminQueSuplanta(local.payload),
     }
   }
 
@@ -191,11 +280,16 @@ export async function verifyAuth(
   if (!remoteOk) {
     return { success: false, status: 401, reason: 'remote_verify_failed' }
   }
+  const bloqueoShadow = bloquearSiEscribeSuplantando(
+    { imp: impSinVerificar(token) }, request.method, endpoint,
+  )
+  if (bloqueoShadow) return bloqueoShadow
   return {
     success: true,
     userId: remoteResult!.userId,
     email: remoteResult!.email,
     verifiedBy: 'shadow_remote',
+    impersonadoPor: impSinVerificar(token),
   }
 }
 

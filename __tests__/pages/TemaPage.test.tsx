@@ -30,12 +30,6 @@ jest.mock('../../lib/supabase', () => ({
       },
       error: null
     }),
-    auth: {
-      getUser: jest.fn().mockResolvedValue({
-        data: { user: { id: 'test_user_123' } },
-        error: null
-      })
-    }
   })
 }))
 
