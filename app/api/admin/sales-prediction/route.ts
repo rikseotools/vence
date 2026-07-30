@@ -767,8 +767,21 @@ async function _GET() {
     // valor → magnitud correcta, no tocar. (El método es teóricamente flojo pero
     // empíricamente acierta; si en el futuro diverge de los settlements, revisar.)
     const newSubsPerMonth = dailyRegistrationRate * 30 * conversionRate
-    // MRR por sub: usar el real (MRR actual ÷ subs activas), no la media ponderada teórica
-    const realMrrPerSub = stripeSubs.length > 0 ? mrr / stripeSubs.length : mrrPerNewSub
+    // ── BASE QUE DE VERDAD PAGA (T-292, 29/07/2026) ───────────────────────────
+    // El MRR ya excluye las suscripciones con `cancel_at_period_end` (no se les
+    // volverá a cobrar), pero se dividía entre TODAS las activas de las dos
+    // cuentas. Con la cuenta de Manuel apagada —sus suscripciones se cancelaron
+    // para que quien quisiera seguir se diera de alta en Nila— eso son 253 subs
+    // para un MRR que solo generan 57: el €/sub salía **1,72 € en vez de 7,63 €**,
+    // 4,4 veces por debajo.
+    //
+    // Y el mismo denominador arrancaba la proyección a 12 meses: partía de 253
+    // clientes cuando solo 57 renuevan. Hoy el mes 0 cuadra por casualidad (un
+    // error compensa al otro), pero la proyección aplicaba el churn a cuatro veces
+    // más clientes de los que hay y valoraba cada venta nueva a un cuarto de lo
+    // que vale. Los dos números tienen que salir de la MISMA base.
+    const payingSubs = activeSubscriptions.filter(s => !s.cancel_at_period_end)
+    const realMrrPerSub = payingSubs.length > 0 ? mrr / payingSubs.length : mrrPerNewSub
 
     // 4. Proyectar mes a mes (12 meses)
     const mrrProjection: Array<{
@@ -782,7 +795,9 @@ async function _GET() {
       examDetails?: string
     }> = []
 
-    let currentSubs = stripeSubs.length
+    // La proyección arranca de la base que PAGA (ver T-292 arriba), no de todas
+    // las activas: las marcadas para no renovar ya están contadas como pérdida.
+    let currentSubs = payingSubs.length
     let runningPremiumByOpos = { ...premiumCountByOpos }
 
     for (let m = 1; m <= 12; m++) {
@@ -857,7 +872,7 @@ async function _GET() {
       newSubsPerMonth: Math.round(newSubsPerMonth * 10) / 10,
       newSubsFormula: `${Math.round(dailyRegistrationRate * 10) / 10} reg/día × 30 × ${Math.round(conversionRate * 1000) / 10}%`,
       mrrPerSub: Math.round(realMrrPerSub * 100) / 100,
-      mrrPerSubSource: `MRR actual (${Math.round(mrr)}€) ÷ ${stripeSubs.length} subs`,
+      mrrPerSubSource: `MRR actual (${Math.round(mrr)}€) ÷ ${payingSubs.length} subs que renuevan (de ${activeSubscriptions.length} activas; las ${cancelingSubscriptions.length} marcadas para no renovar no generan MRR y no diluyen el €/sub)`,
       currentPremiumByOpos: premiumCountByOpos,
       // Incluye los exámenes recientes (ventana de churn) además de los futuros,
       // porque ahora también aplican churn post-examen en el primer mes.

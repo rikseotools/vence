@@ -4570,6 +4570,16 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **➡️ Dónde mirar entonces:** los tres casos reales que motivaron esta ficha vienen de fuentes que el monitor NO alcanza — **norma UE** (RGPD, por espejo DOUE), **reglamento del CGPJ** (Reglamento 3/1995) y **ley autonómica** (Ley 13/1990 CES CyL). Ese es el siguiente barrido, y ahí la herramienta necesita otra fuente: la API de datos abiertos solo sirve para BOE consolidado.
 - **Origen:** campaña de citas ajenas del 28/07 (T-207).
 
+### [T-292] 🟠 [ABIERTO 29/07] Las métricas del panel dividen entre las 253 subs de las dos cuentas cuando solo 57 pagan: €/sub 4,4× bajo y proyección a 12 meses sobre una base falsa
+
+- **Contexto (regla de negocio, dicha por Manuel el 29/07):** en la cuenta vieja (Manuel) **se cancelaron las suscripciones a propósito**, para que quien quisiera seguir se diera de alta en la nueva (Nila). O sea: Manuel **no aporta ingreso futuro**, y ninguna métrica que describa el negocio de hoy debe contar su cartera.
+- **Qué estaba BIEN y no hay que tocar:** el **MRR** (434,65 €) y las **renovaciones previstas** ya excluyen las suscripciones con `cancel_at_period_end`, así que las 190 de Manuel aportan 0. Ese filtro estaba puesto.
+- **Qué estaba MAL:** el denominador. `realMrrPerSub = mrr / stripeSubs.length` divide un MRR que solo generan **57** subs entre las **253** activas de las dos cuentas → **1,72 €/sub en vez de 7,63 €**, 4,4 veces por debajo. Y ese mismo recuento arrancaba la proyección: `currentSubs = stripeSubs.length` partía de **253 clientes cuando solo 57 renuevan**.
+- **Por qué no se había visto:** los dos errores **se compensan en el mes 0** (253 × 1,72 € ≈ 57 × 7,63 € ≈ el MRR real), así que la cifra de cabecera cuadraba. Lo que no cuadra es la dinámica: el churn se aplicaba a 4× más clientes de los que hay y **cada venta nueva se valoraba a un cuarto de lo que vale**. Un número correcto por cancelación de dos errores es el más difícil de detectar mirando el panel.
+- **✅ HECHO 29/07:** `payingSubs` (activas **sin** `cancel_at_period_end`) pasa a ser la base de las dos cosas — `realMrrPerSub` y el arranque de la proyección —, y el texto que explica el €/sub lo dice con sus cifras en vez de describir el cálculo viejo.
+- **Relacionada:** [T-266] (churn, del mismo panel y de la misma causa: mezclar la cuenta apagada con la viva), [T-265].
+- **Cabo pendiente:** conviene repasar si otras superficies (`/admin/ads`, resúmenes de Stripe, ARR) heredan el mismo denominador. Aquí solo se ha corregido `sales-prediction`.
+
 ### [T-281] 🟡 [ABIERTO 29/07] Explicaciones con la POLARIDAD INVERTIDA respecto al marco de la pregunta: el opositor lee lo contrario de lo que se le quiere enseñar
 
 - **Qué:** una pregunta que pide la opción CORRECTA con una explicación escrita en marco de *«señale la incorrecta»*. Caso real encontrado el 29/07 (art. 33.2 de la Ley 9/2017, lote `gen_lcsp2_2026-07-26`): clave bien, pero la explicación encabezaba **«Por qué C) es la incorrecta (correcta como respuesta)»** y seguía con **«Por qué las demás son correctas»** antes de listar A, B y D como erróneas. Quien la leyera entendía justo lo contrario. Reparado en esa pregunta; el defecto de fondo sigue sin vigilarse.
