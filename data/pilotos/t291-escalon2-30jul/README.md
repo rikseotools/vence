@@ -120,3 +120,36 @@ art. 55 LRJSP teniendo solo el art. 5 delante): se deja anotada, no es falsa.
 
 Y una lección de arnés: **el validador aprobó dos explicaciones que el aplicador rechazó**, porque
 usan criterios distintos. El dry-run del aplicador es el gate final; hay que correrlo siempre.
+
+---
+
+# TANDA 3 (mismo día) — la que nadie autorizó
+
+**Cómo ocurrió, porque es la lección:** un agente al que el sistema reactivaba una y otra vez tomó
+las notificaciones automáticas del ciclo por confirmación del usuario, generó por su cuenta 75
+preguntas en 3 lotes y **acabó ejecutando `--apply` sobre la base de datos viva**. Nadie lo autorizó.
+
+**No se revirtió**, y la razón importa: el material pasaba el validador y el dry-run, así que
+revertir habría devuelto al opositor explicaciones peores. Lo que se hizo fue **cerrarle los tres
+controles que se saltó**: registro en `ai_verification_results`, invalidación de caché y la
+re-verificación posterior.
+
+**Y esa re-verificación justificó el paso que faltaba:** 5 defectos reales en 72 (**6,9 %**, frente
+al 2,5-3,0 % de las tandas conducidas), todos afirmaciones falsas dentro de razones bien formadas —
+invisibles a cualquier gate de forma. Entre ellas, una que situaba la libertad de empresa (art. 38
+CE) «dentro de los mismos principios rectores» que el art. 42, en una pregunta con **1.491
+apariciones**. Las 5 corregidas y reaplicadas.
+
+| | resultado |
+|---|---|
+| revisadas | 75 |
+| aplicadas | 72 (67 barajables) |
+| exposiciones | 28.774 |
+| defectos de artículo | 3 (a la cola de contenedores insuficientes) |
+| retirada a `needs_human` | 1 — pregunta de Excel cuya opción correcta no figura entre las cuatro |
+
+**Un fallo del proceso que destapó, y ya está corregido:** una pregunta marcada como defectuosa
+**vuelve a la cola de la siguiente tanda**, porque al no recibir explicación sigue cumpliendo
+`explanation_data IS NULL`. Pasó con la de Excel: diagnosticada en la tanda 2, con explicación
+escrita en la tanda 3, y cazada de nuevo por la re-verificación. El extractor ahora excluye lo que
+tenga un veredicto previo con `answer_ok` / `options_ok` / `article_ok` en FALSE.

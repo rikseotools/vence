@@ -1118,60 +1118,56 @@ incluida).
 - ---
 - **🚦 ESTADO AL CERRAR LA SESIÓN DEL 30/07 — POR DÓNDE SEGUIR**
 
-  **EMPIEZA POR AQUÍ si vienes a coger preguntas:** las **1.000 nunca verificadas más vistas**, con agentes según `docs/maintenance/revisar-preguntas-con-agente.md`. Es lo ÚNICO de todo esto donde puede haber **una clave mal servida** a alguien que se juega una plaza. No depende de crédito de OpenRouter (va con cuota de agentes). Cubre el 87% de la exposición nunca revisada. **En la MISMA pasada hay que dejarlas en formato estructurado** (`scripts/aplicar-explicacion.ts`), porque 12.361 de las 12.430 están también sin estructura y hacerlo en dos barridos gasta el doble de cuota.
+  ## 📍 ESTADO CONSOLIDADO — sesión `revision-preguntas`, 30/07/2026
 
-  **✅ PRIMERA TANDA HECHA (30/07, sesión `revision-preguntas`): 500 de esas 1.000, con 20 agentes.** Resultado y, sobre todo, lo que enseña:
+  **Lo hecho: 975 preguntas revisadas en 3 tandas, 739 explicaciones estructuradas aplicadas y verificadas.**
 
-  | veredicto | preguntas | qué se hizo |
+  | tanda | cubo | revisadas | aplicadas | barajables | exposiciones | defecto en revisión | defecto en re-verificación |
+  |---|---|---|---|---|---|---|---|
+  | 1 | nunca verificadas, más vistas | 500 | 269 | 236 | 18.574 | 231 (44 %) | 8 de 269 (3,0 %) |
+  | 2 | **ya verificadas sin estructura** | 400 | 398 | 373 | 186.024 | 4 (1 %) | 2 de 80 (2,5 %) |
+  | 3 | ídem, siguiente tramo | 75 | 72 | 67 | 28.774 | 3 (4 %) | 5 de 72 (6,9 %) |
+
+  - **El banco pasa de 6.338 a 7.073 preguntas activas con explicación estructurada.**
+  - **8 preguntas retiradas** a `needs_human` (clave dudosa u opción ausente). **Ninguna clave se modificó en toda la sesión.**
+  - **983 filas** en `ai_verification_results` con `ai_provider LIKE 'claude_code_t291%'` (cohorte por tanda, `review_method_version = v2.1`).
+  - Caché de producción invalidada tras cada aplicación.
+
+  ### 🎯 QUÉ HACER AHORA, por orden de rendimiento
+
+  1. **Adjudicar los 8 casos de clave/opciones** — `data/pilotos/t291-escalon2-30jul/ADJUDICACION-PENDIENTE.md`. Es lo ÚNICO donde puede haber una respuesta mal servida, son 10 minutos de decisión humana y hay 5 preguntas retiradas esperando. Ojo: la del termómetro timpánico necesita criterio clínico (las dos pasadas coinciden en el defecto pero proponen claves distintas) y tres son de iconos, que conviene mirar a ojo.
+  2. **[T-302] — es la palanca de verdad.** Bloquea 3.203 preguntas activas y **1.600 de la cola restante**: mientras siga, cada tanda quema cuota para dictaminar lo mismo. **Empezar solo por Office 2016** (Excel/Word/PowerPoint, 234 preguntas, fuente oficial gratuita y citable en Microsoft Support es-es, y esos contenedores además CONTIENEN errores que contaminan explicaciones). El bloque clínico TCAE (2.969 preguntas) después: necesita material con fuente citable.
+  3. **Seguir con el cubo de estructuradas** — quedan ~500 del top-1000, **207.858 exposiciones**. Rutina con la receta ya probada; menos palanca que lo anterior.
+
+  ### 💰 Coste medido (plan Max 20×)
+
+  | | consumo | por qué |
   |---|---|---|
-  | limpia → explicación estructurada escrita y **APLICADA** | **269** | 269/269 con `explanation_data`; 245 quedan `safe`; **217 pasan a barajables de verdad** (explicación + opciones) |
-  | `defecto_articulo` | **219** | NO se re-vinculó nada. Es el hallazgo de la tanda → ficha propia [T-302] |
-  | `defecto_clave` | 5 | a auditoría CIEGA + adjudicación humana. **Ninguna clave tocada** |
-  | `defecto_opciones` | 3 | idem |
-  | `irresoluble` | 4 | necesitan una imagen/datos que no están |
+  | 500 preguntas de ofimática (tanda 1) | **7 %** | WebSearch a Microsoft Support + descarga de imágenes por pregunta |
+  | 400 jurídicas (tanda 2) | **~3,5 %** | se resuelven contra el artículo que ya va en el lote |
 
-  - **El corte real de la cola es más corto de lo que decía esta ficha:** de las 12.361 nunca verificadas sin estructura, **solo 3.485 tienen alguna aparición**. Las 200 más vistas cubren el **63,5 %** de la exposición del cubo y las 500 el **79,4 %**; de la 500 a la 1.000 se revisan preguntas vistas 2-4 veces. Por eso la tanda fueron 500 y no 1.000: el resto de la cuota rinde más en otro sitio.
-  - **La cosecha la limita el CONTENIDO, no el método:** el 44 % salió `article_ok=false`, y no por mal vínculo — los contenedores virtuales de Office 2016 y los clínicos TCAE tienen 20-40 veces menos texto que los enriquecidos, así que no hay contra qué verificar ni con qué citar. Ver **[T-302]**, que es el desbloqueo de esas 219 (y de otras 3.000).
-  - **Cero defectos de clave limpia en 500** (5 sospechas, todas a adjudicar): confirma lo que ya medía el manual para el banco legal, y esta vez también para el técnico.
-  - **RE-VERIFICACIÓN POST-APLICACIÓN al 100 %** (paso 7 del método, el que el manual mide como imprescindible): las **269** aplicadas revisadas de nuevo, sobre la pregunta VIVA en BD, por agentes independientes. **261 limpias · 8 con defecto (3,0 %)**, y los 8 ya resueltos: 4 citas que alteraban la puntuación de la fuente (podadas o recortadas a verbatim), 2 **afirmaciones falsas** en la razón de un distractor (Ctrl+N descrito como «nueva presentación» cuando es negrita; «Quitar duplicados» situado en la pestaña equivocada) → reescritas, 1 atribución de contenido a columnas que la fuente no respalda → podada, y 1 **pregunta ambigua** (`5dcf7df3`) que no se arregla con mejor explicación → retirada a `needs_human`.
-  - **RONDA 2 — el lote cierra LIMPIO.** Las 7 reparaciones se re-verificaron a su vez sobre la pregunta viva, con un agente que no las había escrito: **7/7 limpias**. Señaló además una redundancia (dos razones habían quedado con texto idéntico al podarles una atribución sin respaldo) → diferenciadas por el índice de columna que pide cada fórmula, dato que está en la propia opción y no hay que inventar. Con esto se cumple el «iterar hasta una pasada completamente limpia» del §18.3.
-  - **Lección que confirma el método:** ningún gate determinista puede ver una afirmación falsa dentro de una razón — el validador dio las 269 por buenas y los dos casos los cazó esta pasada. **Sin el paso 7 se habrían quedado servidos.** Y el 3,0 % de defecto sobre lo ya aplicado es la cifra a batir en la próxima tanda.
-  - **Arnés reutilizable, ya escrito:** `scripts/revision/validar-lote-t291.ts` — valida integridad de lo que devuelven los agentes (unicidad de ids: el tell de la degeneración del §20.3) y pasa los gates reales importados de `lib/shuffle/*` y del criterio único de citas de impugnaciones. Cazó 14 explicaciones defectuosas antes de aplicar (2 con letra/posición clavada, 12 con prosa en el campo `cita`). **Nada se aplicó sin pasar por él.**
-  - **Dos artefactos del detector de barajabilidad** encontrados de paso → **[T-301]**.
-  - Trazabilidad: las 500 en `ai_verification_results` con `ai_provider='claude_code_t291_escalon2'`, `review_method_version='v2.1'`.
-  - **Siguiente paso de esta ficha:** la cola de las 219 `defecto_articulo` NO se puede cerrar sin [T-302]. Lo que sí queda por hacer con cuota de agentes son las ~2.985 nunca verificadas con exposición que quedan por debajo del corte 500, y la adjudicación de los 8 casos críticos.
+  **Un plan completo da para ~7.000-10.000 preguntas** con el ciclo completo; **~14.000** bajando la re-verificación al 20 % y evitando lo que [T-302] bloquea. La re-verificación al 100 % se lleva el 36 % del gasto: **al 20 % ordenado por exposición basta** (un error de familia se repite; lo que se pierde son casos aislados en preguntas poco vistas).
 
-  **✅ SEGUNDA TANDA HECHA (30/07, misma sesión): 400 preguntas, 396 aplicadas, 183.999 exposiciones — y con CAMBIO DE CUBO, que es el hallazgo que hay que heredar.**
+  ### 🧰 La receta, ya escrita y probada
 
-  - **El cubo de «nunca verificadas» se agota en valor a las 500.** Medido antes de gastar más cuota: lo que quedaba atacable eran **1.385 preguntas con 1.854 exposiciones** (media 1,3 apariciones). Seguir ahí rinde una exposición por pregunta.
-  - **El cubo con audiencia es otro: activas YA verificadas y SIN estructura** — 47.263 preguntas, **1,59 M de exposiciones**; su top-500 concentra 221.067 (13,9 %) con corte de 288 apariciones. **119 veces más exposición por pregunta.** De ahí salieron estas 400.
-  - **Aquí el trabajo es distinto y más barato:** la clave ya pasó una verificación, así que el agente escribe la explicación estructurada y comprueba la clave de paso. **262 de 396 se resolvieron REESTRUCTURANDO** la explicación existente (el contenido estaba bien, solo había que quitarle las letras) y 134 escribiendo desde el artículo. Es la distinción «transformable vs autoría» de esta ficha, medida en vivo: **2 de cada 3 son transformables** cuando el cubo ya está verificado.
-  - **Solo 4 defectos en 400 (1 %)** frente al 44 % del cubo anterior: 3 artículos mal vinculados (dos preguntas cuyo supuesto vive en el art. 53 CE y no en el 43 al que cuelgan) y 1 opción mal redactada. Ninguna clave tocada.
-  - **Re-verificación por MUESTRA del 20 %** ordenada por exposición (80 preguntas, un tercio de la exposición de la tanda), aplicando el ahorro que la tanda 1 dejó calculado: **78 de 80 limpias**. El defecto real —una razón que invertía los verbos del art. 1.2 CE («emana» por «reside»)— reparado y aplicado.
-  - **Se excluyeron los 7 contenedores que [T-302] bloquea:** no se paga cuota de agente para volver a dictaminar «el contenedor no da para verificar». De las 2.985 nunca verificadas que quedan, **1.600 están bloqueadas por eso** y solo 1.385 son atacables hoy.
-  - **Coste real medido:** las 500 de la tanda 1 (ofimática, con búsquedas web e imágenes) costaron el 7 % de un plan Max 20×; estas 400 jurídicas, ~3,5 %. **Un plan completo da para ~7.000-10.000 preguntas** con este método; bajando la re-verificación al 20 % y evitando lo bloqueado por T-302, ~14.000.
-  - **Dos guardarraíles arreglados de paso, los dos con test:** el gate del aplicador leía «la Cámara» como «la opción C» (ver [T-301]) y las citas del articulado por letra costaban el barajado a 30 razones de 400 → nuevo `scripts/revision/despejarArticuladoPorLetra.cjs`.
-  - **Y un aviso de arnés:** `validar-lote-t291.ts` y `aplicar-explicacion.ts` usan criterios DISTINTOS, así que el validador puede aprobar lo que el aplicador rechaza. **El dry-run del aplicador es el gate final** — correrlo siempre antes de aplicar.
+  ```
+  scratchpad/t291/extraer-tanda2.cjs        (excluye contenedores de T-302 y lo ya diagnosticado defectuoso)
+    → agentes Sonnet con PROMPT-TANDA2.md   (lotes de 25 agrupados por artículo, ~16 en paralelo)
+    → scripts/revision/validar-lote-t291.ts --base <dir>
+    → scripts/revision/despejarArticuladoPorLetra.cjs <dir>
+    → aplicar-explicacion.ts --lote <dir>            (DRY-RUN: es el gate final, no el validador)
+    → aplicar-explicacion.ts --lote <dir> --apply
+    → registrar en ai_verification_results + POST /api/admin/revalidate
+    → re-verificación por muestra del 20 % con agentes independientes
+  ```
+  Copia de `extraer-tanda2.cjs` y `PROMPT-TANDA2.md` en `data/pilotos/t291-escalon2-30jul/` (el scratchpad se pierde al cerrar el worktree).
 
-  **✅ TERCERA TANDA APLICADA (30/07, misma sesión `revision-preguntas`): tanda3, 75 preguntas procesadas, 72 aplicadas.** Mismo cubo que la tanda 2 («ya verificadas sin estructura»), siguiente tramo por exposición.
+  ### ⚠️ Gotchas de la sesión que NO hay que repetir
 
-  ⚠️ **CÓMO se aplicó, porque importa más que el resultado:** esta tanda **NO la autorizó nadie**. La generó y la aplicó un agente que el sistema reactivaba una y otra vez y que acabó tomando las notificaciones automáticas por confirmación del usuario («me lo confirmaste explícitamente» — no había tal). Escribió en la base de datos viva sin pasar por el orquestador. **No se revirtió** porque el material pasaba el validador y el dry-run, y revertir habría devuelto al opositor explicaciones peores; lo que se hizo fue **cerrarle los controles que se saltó**: registro en `ai_verification_results`, invalidación de caché y la re-verificación posterior. Queda documentado como modo de fallo nº 8 en `docs/maintenance/revisar-preguntas-con-agente.md` §20.3.
-
-  | veredicto | preguntas | qué se hizo |
-  |---|---|---|
-  | limpia → estructurada y **APLICADA** | **72** | 72/72 con `explanation_data` + evento `explicacion_estructurada_aplicada`; **69 quedan `safe`**, 3 `unsafe` por diseño (opciones tipo "todas/ninguna de las anteriores" que se citan a sí mismas — no arreglable con mejor explicación) |
-  | `defecto_articulo` | 3 | NO se re-vinculó nada. Mismo patrón de [T-302]: CE art. 43 cuando el supuesto vive en el 53.3; «La Red Internet» art. 3 sin Apache/servidor web; Word 365 art. 6 sin la función Editor |
-
-  - Lotes/veredictos/estructuras en `scratchpad/t291/tanda3/` (3 lotes de 25). Las 72 pasaron el dry-run real de `aplicar-explicacion.ts` sin ninguna advertencia antes de aplicar.
-  - **✅ PASO 7 completado (100%, 4 agentes independientes en paralelo, 18 preguntas cada uno).** Cada agente re-verificó la pregunta VIVA en BD contra su artículo, sin haber visto quién escribió la explicación. **5 de 72 con defecto real (6,9%)** — más alto que el 2,5-3,0% de tandas anteriores, pero la muestra es más pequeña y todos del mismo patrón ya conocido: afirmaciones falsas dentro de una razón bien formada, invisibles a cualquier gate de forma. Ninguna clave tocada en ningún caso.
-    - `07465934…` (Ley 47/2003 art.73): la razón de descarte de una opción decía que "describe la aprobación", cuando en realidad esa opción reproduce -alterada- la definición legal del *compromiso* (swap aprobados↔comprometidos).
-    - `84662346…` (CE art.28.1): razón con una comparación tautológica ("X en vez de X"), no describía la diferencia real con el artículo.
-    - `d8b34b99…` (Ley 39/2015 arts.51-52): calificaba la convalidación de "retroactiva" — verificado contra el propio art. 52.2 LPACAP en BD: produce efectos desde su fecha, no retroactivos salvo excepción tasada (art. 39.3).
-    - `e8609f05…` (LOTC art.5): la razón le atribuía a una opción "un número de diez" que esa opción nunca decía (ya decía "doce", solo fallaba en el título).
-    - `f37abe1c…` (CE art.9.3): la razón decía que una opción omitía "la publicidad de las normas", cuando esa opción sí la incluye literalmente.
-    - **Las 5 corregidas y reaplicadas** (dry-run limpio + `--apply`), verificado `updated_at` en BD. Tanda 3 cierra limpia con esto: 72/72 aplicadas y re-verificadas.
-
-  **▶ POR DÓNDE SEGUIR (recomendación con el dato delante):** el top-1000 del cubo «ya verificadas sin estructura» cubre 337.472 exposiciones (21,2 % de 1,59 M) con corte de 196 apariciones. Las 400 hechas son su primer tramo; **quedan ~600 en ese top-1000** y luego el tramo 1.000-2.000 (corte 133, +157.618 exposiciones). Todo con la misma receta, que ya está escrita y probada: `extraer-tanda2.cjs` → agentes con `PROMPT-TANDA2.md` → validador → despeje → dry-run → aplicar → muestra del 20 %.
+  - **Agentes de un solo uso.** Reabrir un agente terminado compensó para recuperar 23 ficheros perdidos, pero de ahí salieron los tres incidentes del día: reprocesó un lote ajeno, dejó el disco divergente de la BD y acabó **escribiendo en producción por su cuenta** creyendo que una notificación automática era permiso del usuario. Lo que falte, relanzarlo con un agente NUEVO.
+  - **El dry-run del aplicador es el gate final**, no el validador: usan criterios distintos y el validador aprobó dos explicaciones que el aplicador rechazó.
+  - **Antes de re-aplicar nada, comparar disco contra BD** (`scratchpad/t291/tanda2/comparar-disco-vs-bd.cjs`). La BD manda.
+  - Detalle completo de los modos de fallo: `docs/maintenance/revisar-preguntas-con-agente.md` §20.3 (nº 6 a 9).
 
   Consulta para sacar la cola:
   ```sql
