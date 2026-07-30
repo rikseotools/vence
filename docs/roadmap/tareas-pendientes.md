@@ -728,6 +728,24 @@ incluida).
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
+### [T-343] 🔴 [ABIERTO 31/07] Los 385 del vaciado de Stripe: ninguno ha vuelto solo, y a 101 se les apaga en 60 días
+
+- **ORIGEN.** Encargo de Manuel (31/07): *«hubo usuarios de la cuenta vieja de Stripe que cancelé para que se crearan una cuenta nueva… ponerles a ellos en exclusiva un botón de resubscribirse manteniendo el precio que tenían; a dos usuarios nos han reclamado y les hemos hecho un precio personalizado y una página»*.
+- **CONTEXTO Y MEDIDA (31/07, sobre RDS):**
+  - **385 usuarios** con suscripción de la cuenta Manuel cancelada o cancelándose. De ellos **199 ya cayeron a free** (150 mensuales, 46 trimestrales, 3 semestrales) y **186 siguen premium** con fecha de apagado.
+  - **De los 199 que ya cayeron, han vuelto por su cuenta: CERO.** Ni uno. La consulta busca usuarios con una suscripción cancelada y otra viva: 0.
+  - **El calendario aprieta:** se apagan **59 en julio, 42 en agosto, 36 en septiembre** — 101 en los próximos 60 días, y otros 47 hasta diciembre.
+  - **La cohorte reciente sigue caliente:** 83 de los caídos lo fueron en los últimos 30 días.
+  - **La única muestra de conversión que existe:** 2 ofertas creadas a mano (las dos reclamaciones) → **1 canjeada**.
+- **LO QUE YA ESTÁ CONSTRUIDO (y es la clave: esto NO es un desarrollo nuevo).** La página `/premium/personal` («Tu precio»), el endpoint `/api/v2/premium/mi-oferta`, la tabla **`user_price_offers`** (`stripe_price_id`, `stripe_account`, `importe_centimos`, `intervalo`, `motivo`, `expires_at`, `redeemed_at`, `revoked_at`) y un checkout que comprueba que la oferta **es suya**. Se montó el 29-30/07 para el caso Rocío ([T-309]) precisamente porque mandar un enlace de pago suelto por mensaje tenía dos pegas: no se entiende dónde se está contratando y el precio bajo queda a merced de quien tenga el enlace. **El perfil ya pinta el bloque cuando hay oferta**, así que el «botón para todos» aparece solo en cuanto exista la fila.
+- **LO QUE FALTA, y son dos cosas:**
+  1. **Crear las ofertas en lote**, leyendo el precio REAL de cada suscripción de la cuenta Manuel (no un precio inventado ni uno común: cada uno tenía el suyo, mensual/trimestral/semestral) y su equivalente en la cuenta Nila. Con `expires_at`, porque una oferta sin caducidad es una tarifa paralela para siempre.
+  2. **Avisar por correo.** Un botón en el perfil **solo lo ve quien entra**, y los que ya cayeron entran menos por definición — ese es justo el sesgo que hace que el 0% siga siendo 0%.
+- **EL MOMENTO MANDA, y es lo que decide el orden:** a los **186 que aún son premium** hay que decírselo **ANTES** del apagado, mientras tienen la cuenta viva, la costumbre y el precio; en cuanto caen, entran en la cohorte con retorno espontáneo del **0%**. Orden propuesto: (a) los 59 de julio y 42 de agosto, por fecha de apagado; (b) los 83 caídos en los últimos 30 días; (c) el resto de caídos.
+- **LA DECISIÓN QUE NO ES TÉCNICA:** mantenerles el precio anterior significa renunciar, para esta cohorte, a la subida de tarifas del 07/07 ([T-293]). Con el retorno espontáneo medido en **0 de 199**, el coste de NO hacerlo no es la diferencia de precio: es el 100% de esos ingresos.
+- **Riesgos a respetar:** (1) la oferta caduca y se puede revocar — no prometer «para siempre»; (2) los cupones y precios son **por cuenta**, así que la oferta tiene que apuntar a un `price` que exista en **Nila** ([memoria `project-stripe-vigilancias-multicuenta`]); (3) hay un canary pendiente que vigila justo esto ([T-287]: que quien tiene una oferta pueda pagarla); (4) el mensaje lo ve Manuel antes de salir — [[feedback-siempre-borrador-antes-de-cerrar]].
+- **Relacionadas:** [T-309] (la página y sus cuatro fallos encadenados), [T-287] (canary de la oferta), [T-293] (subida de precios), [T-265] (comisiones multi-cuenta).
+
 
 ### [T-333] 🟠 [ABIERTO 30/07] El detector de frontera de scope solo entiende TÍTULOS: los epígrafes que nombran secciones se le escapan enteros
 - **El hueco, en una frase:** `lib/laws/scopeTitleBoundary.js` mapea artículo → **título** de la ley. Cuando el programa oficial no enumera títulos sino **capítulos, secciones o subsecciones**, el runner responde *«epígrafe no mapeable a títulos»* y **se calla**. Ese silencio se lee como verde.
