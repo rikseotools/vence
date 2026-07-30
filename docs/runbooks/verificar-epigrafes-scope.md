@@ -152,6 +152,28 @@ Cuando la decisión de scope/epígrafe **no se resuelve con la ley + el programa
 
 Ejemplo real (SMS T24, 10/07): el temario no dice si Word/Excel es de escritorio o web → `needs_human`, a la espera de nota informativa del SMS o decisión de Manuel, en vez de adivinar la variante.
 
+> **🚫 NO existe «se coge la versión más moderna» (Manuel, 30/07/2026).** Era el tercer escalón
+> del método y se ha borrado porque lía: invita a deducir, y lo que se deduce se le acaba
+> contando a un usuario **como si fuera oficial**. Solo hay **dos** fuentes válidas — la NOTA
+> del órgano de selección y la convocatoria/programa. Si ninguna la fija, la versión está
+> **SIN FIJAR**, y eso es lo que se dice y lo que se sigue vigilando. La versión **se
+> averigua, no se deduce**.
+>
+> **Y esto aplica también cuando lo pregunta un usuario**, no solo al verificar scope: una
+> pregunta tipo *«¿vais a actualizar a Windows 11?»* se resuelve **aquí**, no improvisando.
+> El dossier lo avisa solo desde el 30/07 (`scope-enforcement.cjs` dispara con Windows/Office/
+> versión, con sus tests) — antes no saltaba y por eso se respondió una de estas por libre.
+>
+> Herramientas: `node scripts/leer-notas-oposicion.cjs <slug>` lee el hub oficial y sus PDF;
+> el sensor `detect-notas-convocatoria` lo hace a diario (**ojo: [T-311]** — hay oposiciones
+> con documentos clonados y 0 notas escaneadas, así que no des por hecho que está vigilada).
+>
+> **Y antes de responder, mira si hay DOS convocatorias vivas con versión distinta**: es el
+> caso de Auxiliar Administrativo de la Comunidad de Madrid ([T-063]), donde la de examen
+> octubre 2026 va con Windows 10 y la de 2027 con Windows 11, y son dos oposiciones separadas
+> en la plataforma. Decirle a alguien «vamos a actualizar a Windows 11» sin mirar eso sería
+> mandarle a estudiar lo que NO le entra.
+
 ## Cobertura global (badge)
 ```bash
 node scripts/verify-topic-scope.cjs audit          # legible

@@ -221,3 +221,63 @@ describe('scopeEnforcement — el semáforo no aprueba por ausencia de datos', (
     expect(out).toBe('');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VERSIÓN DE SOFTWARE (30/07/2026)
+//
+// Una usuaria escribió: «¿Vais a actualizar la parte de informática a Windows 11 en las
+// oposiciones de Auxiliar Administrativo para la CAM? Solo está Windows 10». Es una pregunta
+// de TEMARIO con todas las letras, pero el disparador de scope no la tocaba: no dice
+// «temario» ni «no entra». Resultado: se investigó por libre sin abrir el runbook de
+// epígrafes, que tiene la respuesta escrita en su §5-bis desde hace semanas.
+//
+// Y es de las caras de equivocarse. La versión SOLO la fijan la nota del órgano de selección
+// o la convocatoria, y **la nota puede publicarse DESPUÉS**, así que muchas veces la
+// respuesta correcta es «está sin fijar, lo vigilamos», no una versión concreta.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('scopeEnforcement — preguntas de versión de software', () => {
+  const sinCliente = null;
+
+  test('salta con el mensaje REAL de la usuaria', async () => {
+    const out = await scopeEnforcement(sinCliente, {
+      text: 'Hola. Vais a actualizar la parte de informatica a Windows 11 en las oposiciones de Auxiliar Administrativo para la CAM? Solo está Windows 10. Gracias.',
+      oposicion: null,
+    });
+    expect(out).toMatch(/VERSI[ÓO]N DE SOFTWARE/);
+  });
+
+  test('dice las dos únicas fuentes válidas y que NO se deduce', async () => {
+    const out = await scopeEnforcement(sinCliente, { text: '¿que version de Word entra?', oposicion: null });
+    expect(out).toMatch(/NO SE DEDUCE/);
+    expect(out).toMatch(/NOTA del órgano de selección/);
+    expect(out).toMatch(/convocatoria/);
+  });
+
+  test('avisa de que NO existe el criterio de «la más moderna»', async () => {
+    // Es el escalón que se borró: invitaba a contarle a un usuario como oficial una versión
+    // que nadie ha publicado.
+    const out = await scopeEnforcement(sinCliente, { text: 'seguis con office 2010?', oposicion: null });
+    expect(out).toMatch(/más moderna/);
+    expect(out).toMatch(/nadie ha publicado/);
+  });
+
+  test('avisa de que la nota puede llegar DESPUÉS de la convocatoria', async () => {
+    const out = await scopeEnforcement(sinCliente, { text: 'que version de windows entra?', oposicion: null });
+    expect(out).toMatch(/DESPU[ÉE]S de la convocatoria/);
+    expect(out).toMatch(/vigilar/i);
+  });
+
+  test('recuerda que puede haber dos convocatorias vivas con versión distinta', async () => {
+    const out = await scopeEnforcement(sinCliente, { text: 'windows 11 o windows 10?', oposicion: null });
+    expect(out).toMatch(/DOS convocatorias/i);
+  });
+
+  test('un mensaje ajeno a versiones no dispara este aviso', async () => {
+    expect(await scopeEnforcement(sinCliente, { text: 'la pregunta 4 tiene mal la respuesta', oposicion: null })).toBe('');
+    expect(await scopeEnforcement(sinCliente, { text: 'no puedo pagar', oposicion: null })).toBe('');
+  });
+
+  test('«ventanas» o «palabra» sueltas no lo confunden', async () => {
+    expect(await scopeEnforcement(sinCliente, { text: 'no veo la ventana de resultados', oposicion: null })).toBe('');
+  });
+});

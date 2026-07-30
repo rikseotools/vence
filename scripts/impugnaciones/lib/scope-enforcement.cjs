@@ -18,6 +18,21 @@ const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 const SCOPE_TRIGGER = /\b(temario|tema|epigrafe|scope|no entra|no aparece|no esta|no figura|falta|fuera del temario|otro tema|otro bloque|no corresponde|deberia entrar|primera parte|1a parte|segunda parte|entra en el|deberia estar|no deberia)\b/i;
 
 /**
+ * VERSIÓN DE SOFTWARE — el otro disparador, añadido el 30/07/2026.
+ *
+ * *«¿Vais a actualizar la parte de informática a Windows 11? Solo está Windows 10»* es una
+ * pregunta de TEMARIO con todas las letras, y el patrón de arriba no la tocaba: no dice
+ * «temario» ni «no entra». Se respondió investigando por libre, sin abrir el runbook de
+ * epígrafes… que tiene la respuesta escrita en su §5-bis desde hace semanas.
+ *
+ * Y es de las caras de equivocarse: **la versión NO se deduce**. Solo la fija la nota del
+ * órgano de selección o la convocatoria, y **la nota puede publicarse DESPUÉS**, así que la
+ * respuesta correcta muchas veces es «está sin fijar, lo vigilamos», no una versión.
+ */
+const VERSION_SOFTWARE_TRIGGER =
+  /\b(windows\s*\d+|office\s*(?:365|20\d\d)|microsoft\s*365|word\s*(?:365|20\d\d)|excel\s*(?:365|20\d\d)|outlook\s*(?:365|20\d\d)|version(?:es)?\s+(?:de\s+)?(?:windows|office|word|excel|outlook)|que\s+version)\b/i;
+
+/**
  * @param s          cliente postgres
  * @param text       texto del usuario (descripción de la impugnación o mensajes del feedback)
  * @param oposicion  position_type del usuario (target_oposicion)
@@ -25,8 +40,25 @@ const SCOPE_TRIGGER = /\b(temario|tema|epigrafe|scope|no entra|no aparece|no est
  * @returns string   bloque de aviso para imprimir (vacío si no aplica)
  */
 async function scopeEnforcement(s, { text, oposicion, force }) {
-  const triggered = !!force || SCOPE_TRIGGER.test(norm(text));
+  const esVersion = VERSION_SOFTWARE_TRIGGER.test(norm(text));
+  const triggered = !!force || SCOPE_TRIGGER.test(norm(text)) || esVersion;
   if (!triggered) return '';
+
+  // La duda de VERSIÓN tiene su propio procedimiento y su propia trampa, así que se avisa
+  // aparte del bloque de scope: aquí lo que hay que abrir es §5-bis del runbook, no auditar
+  // el scope del tema.
+  const avisoVersion = esVersion
+    ? '\n─── ⚠️ PREGUNTA DE VERSIÓN DE SOFTWARE (Windows/Office) ───\n'
+      + '   La versión SE AVERIGUA, NO SE DEDUCE. Solo la fijan dos fuentes:\n'
+      + '     1) la NOTA del órgano de selección   2) la convocatoria/programa\n'
+      + '   Si ninguna la fija, está SIN FIJAR: se dice tal cual y se sigue vigilando.\n'
+      + '   NO existe un criterio de «la más moderna» (borrado el 30/07: invita a contar como\n'
+      + '   oficial una versión que nadie ha publicado).\n'
+      + '   ⚠️ La nota puede publicarse DESPUÉS de la convocatoria → hay que vigilar hasta el examen.\n'
+      + '   → docs/runbooks/verificar-epigrafes-scope.md §5-bis  ·  node scripts/leer-notas-oposicion.cjs <slug>\n'
+      + '   → Ojo: puede haber DOS convocatorias vivas con versión distinta (caso Madrid, T-063).\n'
+    : '';
+  if (esVersion && !SCOPE_TRIGGER.test(norm(text)) && !force && !oposicion) return avisoVersion;
   if (!oposicion) {
     return '\n─── ⚠️ CHECK SCOPE/EPÍGRAFE (§Regla previa OBLIGATORIA — la queja va de temario) ───\n'
       + '   ⚠️ El usuario NO tiene target_oposicion → identifica la oposición a mano y comprueba su verificación\n'
@@ -43,7 +75,7 @@ async function scopeEnforcement(s, { text, oposicion, force }) {
   const neverSourced = epi.find((r) => r.st === 'never_sourced')?.n || 0;
   const scopeOpen = sco.filter((r) => ['verified_issues', 'never_verified', 'stale'].includes(r.st)).reduce((a, r) => a + r.n, 0);
   const fmt = (rows) => rows.map((r) => `${r.st}=${r.n}`).join(', ') || '(sin datos)';
-  let out = '\n─── ⚠️ CHECK SCOPE/EPÍGRAFE (§Regla previa OBLIGATORIA — la queja va de temario) ───\n';
+  let out = avisoVersion + '\n─── ⚠️ CHECK SCOPE/EPÍGRAFE (§Regla previa OBLIGATORIA — la queja va de temario) ───\n';
   out += `   Oposición del usuario: ${oposicion}\n`;
   out += `   Paso 1 (epígrafe oficial clonado): ${fmt(epi)}\n`;
   out += `   Paso 2 (scope↔epígrafe):           ${fmt(sco)}\n`;
