@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import AvisoConvocatoriasHermanas from '@/components/convocatoria/AvisoConvocatoriasHermanas'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -87,6 +88,8 @@ interface Props {
   bloques: Bloque[]
   basePath: string
   positionType: string
+  /** Otras convocatorias vivas de la misma oposición (temario distinto). Normalmente vacío. */
+  hermanas?: import('@/lib/convocatoria/convocatoriasHermanas').OposicionHermana[]
   officialExams?: OfficialExamConvocatoria[]
   hasSpellingTest?: boolean
   hasPsychometricTest?: boolean
@@ -134,7 +137,7 @@ function getExamStat(
   return examStats[parteKey] || examStats[examDate]
 }
 
-export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, officialExams, hasSpellingTest, hasPsychometricTest }: Props) {
+export default function TestHubClient({ oposicion, oposicionInfo, bloques, basePath, positionType, hermanas, officialExams, hasSpellingTest, hasPsychometricTest }: Props) {
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
 
   // Límite diario para gating de simulacro/debilidades en usuarios FREE.
@@ -355,6 +358,11 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                 {oposicionInfo.name || oposicionInfo.short}
                 <span className="ml-2 text-xs opacity-70 group-hover:opacity-100">Cambiar ›</span>
               </button>
+              {/* Dos convocatorias vivas con temario distinto → que compruebe cuál tiene */}
+              <AvisoConvocatoriasHermanas
+                hermanas={hermanas || []}
+                onCambiar={() => setShowOposicionModal(true)}
+              />
             </div>
 
             {/* Leyenda de colores */}

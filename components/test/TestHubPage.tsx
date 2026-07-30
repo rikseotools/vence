@@ -4,6 +4,9 @@ import { getAdminDb } from '@/db/client'
 import { OPOSICIONES, SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
 import { getThemeQuestionCounts } from '@/lib/api/random-test/queries'
+// Otras convocatorias vivas de la MISMA oposición con temario distinto (caso Madrid,
+// 30/07/2026): si existen, hay que avisar de que compruebe cuál tiene seleccionada.
+import { getConvocatoriasHermanas } from '@/lib/api/convocatoria/hermanas'
 import type { OposicionSlug as RandomTestOposicionSlug } from '@/lib/api/random-test/schemas'
 
 type OposicionSlug = string
@@ -119,6 +122,7 @@ export default async function TestHubPage({ oposicion }: Props) {
     ? { short: oposicionConfig.shortName, name: oposicionConfig.name, badge: oposicionConfig.badge, icon: oposicionConfig.emoji, oposicionId: oposicionConfig.id }
     : { short: oposicion, badge: '', icon: '', oposicionId: '' }
   const basePath = `/${oposicion}/test/tema`
+  const hermanas = await getConvocatoriasHermanas(oposicion)
   const officialExams = oposicionConfig?.officialExams
 
   return (
@@ -128,6 +132,7 @@ export default async function TestHubPage({ oposicion }: Props) {
       bloques={bloques}
       basePath={basePath}
       positionType={positionType}
+      hermanas={hermanas}
       officialExams={officialExams}
       hasSpellingTest={oposicionConfig?.hasSpellingTest}
       hasPsychometricTest={oposicionConfig?.hasPsychometricTest}
