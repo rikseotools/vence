@@ -647,6 +647,15 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-298] 🟠 [ABIERTO 30/07] Triar los 99 comunicados de temario que el detector no veía (68 oposiciones)
+- **De dónde sale:** al arreglar el patrón roto del detector (ver abajo), el aviso *«hay comunicados que afinan el programa, verifica contra ellos»* pasa de **2 oposiciones / 4 documentos** a **68 oposiciones / 99 documentos**. No es que hayan aparecido documentos nuevos: llevaban ahí desde siempre y **el detector no los veía**.
+- **El bug, medido (30/07):** el SQL usaba `'tema\s+[0-9]+'` y el literal se lleva la barra por delante → el motor buscaba `temas+`, que no casa ni con «TEMA 1». Sobre 6.779 documentos reales: el patrón roto detectaba **1**; el correcto (`'tema[[:space:]]+[0-9]+'`, clase POSIX, que no depende del escapado) detecta **306**. La rama de ">=5 Tema N" **no ha disparado nunca**; lo único que funcionaba era la de ofimática (5 docs) — que es justo la que cazó el caso CARM y por eso el detector parecía sano.
+- **Por qué importa:** el caso CARM (25/07) fue que el programa base de 2016 tenía 16 temas y un comunicado de 2025 añadía la ofimática; **casi se jubilan 5 temas oficiales**. El forcing function existe para que eso no se repita, y llevaba desde su creación viendo el 0,3% de los documentos.
+- **Qué hay que hacer:** triar los 99 por oposición (empezando por las de más usuarios), comprobando si el comunicado **afina el temario** frente al `programa_url` base. Método: `docs/runbooks/verificar-epigrafes-scope.md` §comunicados. No todos serán accionables — un documento con muchos «Tema N» puede ser el propio programa base ya recogido.
+- **Impacto:** 🟠 riesgo de temario desalineado en 68 oposiciones, del mismo tipo que estuvo a punto de jubilar 5 temas en CARM. No es 🔴 porque el detector ya no está ciego y el triaje se puede hacer por lotes.
+- **Ya hecho:** patrón corregido en `scripts/temario/detect-temario-revision.cjs` y en el test de paridad, que vuelve a pasar (`temarioComunicadoParity`, 2/2). Ese test **llevaba un mes en rojo por timeout** y su rojo se leía como flaky: por eso nadie vio que la señal SQL no casaba nada. Timeout subido a 60 s con el motivo escrito.
+- **Relacionada:** [T-295], [T-297] (misma familia: vigilancias que existían y no vigilaban).
+
 ### [T-297] 🟠 [ABIERTO 30/07] El gate anti-scraping dejó fuera a los canaries: test rojo y vigilancia posiblemente ciega
 - **Qué pasa:** `__tests__/security/canaryGateAndOutboxPrune.test.ts` falla porque `app/api/questions/filtered/route.ts` **ya no importa `isSyntheticRequest`**. El test exige que el reto anti-scraping **exima al tráfico sintético**, y esa exención desapareció del fichero.
 - **Cómo salió:** ejecutando las categorías que `test:unit` excluye, al investigar otra cosa (29/07). Falla sola, no es contención de la BD.

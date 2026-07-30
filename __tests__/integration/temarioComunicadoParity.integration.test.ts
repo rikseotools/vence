@@ -32,7 +32,7 @@ describeIfDb('temario comunicado — paridad JS ↔ SQL (hub)', () => {
     // muestra mixta: docs con señal SQL positiva + una muestra general
     const rows = await sql`
       SELECT id, extracted_text,
-        ((SELECT count(*) FROM regexp_matches(extracted_text, 'tema\s+[0-9]+', 'gi')) >= 5
+        ((SELECT count(*) FROM regexp_matches(extracted_text, 'tema[[:space:]]+[0-9]+', 'gi')) >= 5
          OR (extracted_text ~* 'powerpoint' AND extracted_text ~* 'excel')) AS sql_flag
       FROM convocatoria_documentos
       WHERE extracted_text IS NOT NULL
@@ -42,7 +42,11 @@ describeIfDb('temario comunicado — paridad JS ↔ SQL (hub)', () => {
       .filter((r) => esTemarioRefiningDoc(r.extracted_text) !== r.sql_flag)
       .map((r) => r.id)
     expect(mismatches).toEqual([])
-  })
+    // 60 s, no los 10 por defecto: la muestra son los documentos MÁS GRANDES a propósito (hasta
+    // 1,2 MB cada uno) y traerlos tarda ~14 s. Con el timeout por defecto el test moría antes de
+    // comparar nada y su rojo se leía como "flaky", que es como se tardó un mes en ver que la
+    // señal SQL no casaba NADA.
+  }, 60_000)
 
   test('el caso CARM: hay >=1 documento de temario (ofimática) en su convocatoria vigente', async () => {
     const rows = await sql`

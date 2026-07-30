@@ -35,7 +35,13 @@ const QUERY = `
     -- verificar contra ellos, no solo el programa_url (caso CARM ofimática).
     (SELECT count(*)::int FROM convocatoria_documentos cd
        WHERE cd.convocatoria_id=cv.id AND cd.extracted_text IS NOT NULL
-         AND ((SELECT count(*) FROM regexp_matches(cd.extracted_text, 'tema\s+[0-9]+', 'gi'))>=5
+-- OJO con el patrón: `\s` NO vale aquí. Medido el 30/07/2026 sobre 6.779 documentos reales:
+    -- `'tema\s+[0-9]+'` detectaba **1** documento y `'tema[[:space:]]+[0-9]+'` detecta **306**. El
+    -- literal SQL se lleva la barra por delante y el motor acaba buscando "temas+", que no casa ni
+    -- con "TEMA 1". La señal de ">=5 Tema N" llevaba desde el principio sin disparar: lo único que
+    -- funcionaba era la rama de ofimática (5 docs), que es justo la que cazó el caso CARM y por eso
+    -- el detector parecía sano. Usar SIEMPRE la clase POSIX, que no depende del escapado.
+         AND ((SELECT count(*) FROM regexp_matches(cd.extracted_text, 'tema[[:space:]]+[0-9]+', 'gi'))>=5
               OR (cd.extracted_text ~* 'powerpoint' AND cd.extracted_text ~* 'excel'))) AS comunicados_temario
   FROM tv
   JOIN oposiciones o ON o.is_active AND replace(o.slug,'-','_')=tv.position_type
