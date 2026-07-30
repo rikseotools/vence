@@ -152,15 +152,24 @@ intentos persiguiendo.
 > 160.166 y `user_profiles` 11.462 vs 11.355 — las diferencias son producción VIVA creciendo desde que se
 > tomó el volcado 19 h antes, no pérdida.
 
-### ⚠️ Consecuencia estratégica: esto DESCARTA el cutover por volcado en frío
+### ⚠️ Consecuencia estratégica — con una CORRECCIÓN a lo que escribí primero
 
-§7 plantea el cutover como *"parar writes un instante, promover BD Koigrid"*. Con **3+ horas** de carga en
-frío eso no es «un instante»: sería una ventana de mantenimiento de media jornada con la web parada o en
-solo-lectura. **No es aceptable para 11.000 usuarios.**
+**Corrección (misma sesión):** dije que esta medición «descarta el cutover por volcado en frío que plantea
+§7». **Era falso y lo dejo escrito para que no se repita:** §7 ya prescribe *"BD Koigrid replicando desde RDS,
+lag≈0 sostenido ≥24h"* — el playbook **siempre** fue replicación lógica, y el «parar writes un instante» es
+DESPUÉS de que la réplica esté al día. No había nada que descartar. Me precipité leyendo solo la frase del
+paso 2.
 
-→ **El camino tiene que ser K2 (replicación lógica RDS→Koigrid) con soak hasta lag≈0**, y el cutover se
-reduce a promover la réplica. El volcado en frío queda solo como plan B o para entornos de prueba. Esta
-medición es la que lo demuestra; antes era una preferencia, ahora es un requisito.
+Lo que la medición sí aporta, que es distinto y sigue siendo valioso:
+
+1. **Confirma la elección con un número.** La replicación lógica no era una preferencia de diseño: un ciclo en
+   frío son **3h10m+**, así que hacerlo en la ventana de cutover nunca fue viable. Ahora está medido.
+2. **Pone precio a la SIEMBRA INICIAL, que el manual no cubría.** La replicación lógica necesita una copia
+   base antes de empezar a seguir el WAL, y esa copia es exactamente este ciclo: **~50 min de `pg_dump` +
+   1h50m de carga + ~30 min de índices**. Es trabajo de K2, no de K4, y **hay que planificarlo**: durante esas
+   ~3h la publicación en RDS acumula WAL, así que el disco de RDS tiene que aguantarlo.
+3. **Deja el orden operativo claro:** siembra (~3h, sin prisa, sin afectar a usuarios) → suscripción y soak
+   hasta lag≈0 (≥24h) → cutover (minutos). La parte larga se hace en frío y en caliente solo se promueve.
 
 ### 🐛 Y un hallazgo NUESTRO que el ensayo destapó: 1 fila huérfana en producción
 

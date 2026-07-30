@@ -685,7 +685,24 @@ resource "aws_appautoscaling_target" "frontend" {
   # tasks healthy durante la ventana del swap = 5xx cascada para usuarios
   # reales. Coste extra ($15/task/mes × 1 task = $15) << coste reputacional
   # de downtime.
-  min_capacity       = 2
+  #
+  # ⚠️ 2→8 el 30/07/2026 — ESTO NO ES UN CAMBIO, es CODIFICAR LA REALIDAD.
+  # La contención del incidente del 21/07 (docs/architecture/incidente-frontend-
+  # healthcheck-cascade-21jul.md) se aplicó ENTERA por CLI y subió el suelo a 8;
+  # el resto de aquella contención (health check tolerante del contenedor y del
+  # target group) sí acabó en este fichero, pero el min se quedó atrás. Producción
+  # llevaba desde entonces con min=8 y el código diciendo 2, así que **un
+  # `terraform apply` de cualquiera habría bajado el suelo de 8 a 2 y reabierto
+  # la cascada de 504** — el propio postmortem lo señala como el cabo que hace
+  # que el incidente RECURRA.
+  #
+  # Y 8 no es un número defensivo: está medido (30/07). El servicio escala por
+  # `ALBRequestCountPerTarget` con objetivo 250/min, y el pico horario real son
+  # ~214 req/target/min → de día las 8 tareas son EXACTAMENTE las que pide la
+  # política; bajar el suelo no ahorra nada porque el autoescalado las repone.
+  # Donde sí sobran es de noche (3-6% del objetivo): eso se ataca con una
+  # scheduled-action, no bajando el suelo. Ver T-089 en tareas-pendientes.md.
+  min_capacity       = 8
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
