@@ -64,6 +64,29 @@ export function etiquetaExamen(fecha: string | Date | null | undefined): string 
 }
 
 /**
+ * La fecha de examen SOLO si el nombre no la lleva ya.
+ *
+ * Los nombres de estas oposiciones suelen incluirla justamente para distinguirlas
+ * («…Comunidad de Madrid (examen junio 2027)»), así que añadir «(examen en junio de 2027)»
+ * detrás lo dice dos veces seguidas y hace que el aviso parezca escrito por una máquina.
+ *
+ * Se compara por MES y AÑO, no por la cadena entera: el nombre escribe «junio 2027» y la
+ * etiqueta «junio de 2027», y una comparación literal no las reconocería como lo mismo.
+ */
+export function fechaComplementaria(
+  nombre: string,
+  fecha: string | Date | null | undefined,
+): string | null {
+  const etq = etiquetaExamen(fecha)
+  if (!etq) return null
+  const [mes, , anio] = etq.split(' ')
+  const n = String(nombre || '').toLowerCase()
+  if (n.includes(mes) && n.includes(anio)) return null // el nombre ya lo dice
+  if (n.includes(anio) && /examen/.test(n)) return null // «(examen 2027)» sin mes: tampoco se repite
+  return etq
+}
+
+/**
  * Texto del aviso. Se construye aquí (y no en el componente) para que se pueda probar y para
  * que diga SIEMPRE lo mismo esté donde esté pintado.
  *

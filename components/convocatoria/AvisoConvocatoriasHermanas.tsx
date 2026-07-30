@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import {
   decidirAvisoHermanas,
   textoAvisoHermanas,
-  etiquetaExamen,
+  fechaComplementaria,
   type OposicionHermana,
 } from '@/lib/convocatoria/convocatoriasHermanas'
 import { emitClientEvent } from '@/lib/observability/client'
@@ -73,7 +73,9 @@ export default function AvisoConvocatoriasHermanas({
     })
   }
 
-  const suExamen = etiquetaExamen(actual.examDate)
+  // Solo si el nombre no lleva ya la fecha: casi todos la llevan, y repetirla seguida hace
+  // que el aviso parezca escrito por una máquina.
+  const suExamen = fechaComplementaria(actual.nombre, actual.examDate)
 
   return (
     <div className="mb-6 mx-auto max-w-2xl rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4 text-left">
@@ -89,7 +91,7 @@ export default function AvisoConvocatoriasHermanas({
           </p>
           <ul className="mt-1 text-sm text-amber-800 dark:text-amber-200">
             {aviso.otras.map((o) => {
-              const e = etiquetaExamen(o.examDate)
+              const e = fechaComplementaria(o.nombre, o.examDate)
               return (
                 <li key={o.slug}>
                   La otra es <strong>{o.nombre}</strong>{e ? ` (examen en ${e})` : ''}.

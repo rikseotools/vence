@@ -82,3 +82,36 @@ describe('etiqueta de la fecha de examen', () => {
     expect(etiquetaExamen('vete a saber')).toBeNull()
   })
 })
+
+// 30/07/2026 — el nombre de estas oposiciones YA lleva la fecha (es lo que las distingue),
+// así que añadirla detrás la decía dos veces: «… (examen junio 2027) (examen en junio de
+// 2027)». Lo vio Manuel en la pantalla en cuanto se pintó.
+describe('no repetir la fecha que el nombre ya dice', () => {
+  const { fechaComplementaria } = require('@/lib/convocatoria/convocatoriasHermanas')
+
+  it('el caso real: el nombre dice «examen junio 2027» → no se añade nada', () => {
+    expect(fechaComplementaria('Auxiliar Administrativo Comunidad de Madrid — Convocatoria 2026 (examen junio 2027)', '2027-06-01')).toBeNull()
+  })
+
+  it('«examen octubre 2026» tampoco se repite', () => {
+    expect(fechaComplementaria('Auxiliar Administrativo Comunidad de Madrid (examen octubre 2026)', '2026-10-15')).toBeNull()
+  })
+
+  it('si el nombre NO lleva la fecha, sí se añade (que es la información útil)', () => {
+    expect(fechaComplementaria('Auxiliar Administrativo de Tal Sitio', '2026-10-15')).toBe('octubre de 2026')
+  })
+
+  it('compara por mes y año, no por la cadena literal («junio 2027» vs «junio de 2027»)', () => {
+    expect(fechaComplementaria('Convocatoria junio 2027', '2027-06-01')).toBeNull()
+    // Mismo año pero otro mes: la fecha SÍ aporta, porque el nombre induce a error.
+    expect(fechaComplementaria('Convocatoria enero 2027', '2027-06-01')).toBe('junio de 2027')
+  })
+
+  it('«(examen 2027)» sin mes tampoco se repite', () => {
+    expect(fechaComplementaria('Oposición X (examen 2027)', '2027-06-01')).toBeNull()
+  })
+
+  it('sin fecha no inventa nada', () => {
+    expect(fechaComplementaria('Oposición X', null)).toBeNull()
+  })
+})
