@@ -22,6 +22,13 @@ export default function FranjaImpersonacion() {
     // Sin la cookie-marca no hay suplantación posible → ni una petición. Este componente vive
     // en el layout raíz, así que preguntar siempre al servidor costaría un fetch por carga de
     // página a todos los usuarios, por una función que usa el administrador.
+    //
+    // T-335 — esto es correcto SOLO porque la marca ya no tiene reloj propio. Hasta el
+    // 30/07/2026 caducaba a los 30 minutos mientras la sesión suplantada se renovaba sola en
+    // cada carga: la franja desaparecía y la suplantación seguía, o sea invisible. Hoy la
+    // marca la re-emite `/api/auth/token` con el restante REAL (`impExp`), así que marca y
+    // sesión mueren a la vez, y si el navegador pierde la marca el siguiente tick de sesión
+    // la repone. Si algún día se le vuelve a dar vida propia, este `return` vuelve a mentir.
     if (!document.cookie.split('; ').some((c) => c.startsWith('vence_imp='))) return
     fetch('/api/auth/session')
       .then((r) => (r.ok ? r.json() : null))

@@ -135,6 +135,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'parecen cascarón — daba 17 falsos positivos. Complementa a `convocatoria_enlace_no_boletin` ' +
       '(T-134), que juzga si la URL es del boletín que promete la etiqueta pero no si el documento VIVE.',
   },
+  // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
+  sim_impersonacion: {
+    titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',
+    ruta: 'scripts/sim/sim-impersonacion.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/suplantacion-ver-como-usuario.md',
+    notas:
+      'npx tsx scripts/sim/sim-impersonacion.ts [userId] [--url …], con AUTH_SECRET y DATABASE_URL ' +
+      'del entorno (`.env.development.local` en local). Navegador real (Playwright) contra servidor ' +
+      'real; NO escribe nada (el POST de prueba usa un id inexistente). 10 comprobaciones del ciclo ' +
+      'entero: identidad del usuario, marca `imp` hasta el access token, escritura 403, lectura 200, ' +
+      'franja visible, salida, y —desde T-335— que con el plazo VENCIDO no se acuña token ni se sirve ' +
+      'la cuenta, incluida la variante «sin reloj» (sesiones anteriores al arreglo). **Lo que le da ' +
+      'valor es el CONTRASTE**: cada rechazo va emparejado con el caso que SÍ debe pasar (la misma ' +
+      'escritura con sesión normal; la misma cookie rotada dentro de plazo). Sin eso, un 401/403 ' +
+      'puede venir de cualquier causa y parecer que la protección funciona — que es exactamente cómo ' +
+      'se coló el fallo del 30/07: la sim daba verde midiendo el arranque de la suplantación, nunca ' +
+      'su final. Correrla tras tocar `verifyAuth`, `authjs.ts`, `mintAccessToken` o el endpoint.',
+  },
   // ── observabilidad de cliente ─────────────────────────────────────────────────────────────
   sim_ruido_console: {
     titulo: 'Medir qué parte de los console_error de cliente es ruido y qué parte es daño (y predecir el efecto del arreglo)',

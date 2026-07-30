@@ -9,6 +9,7 @@
 // del backend (rama RS256/JWKS). Vida ~1h, igual que el HS256 de Supabase.
 
 import { SignJWT } from 'jose'
+import { restanteImpersonacionSeg } from '@/lib/admin/impersonacion'
 import {
   AUTH_JWT_ALG,
   AUTH_JWT_AUDIENCE,
@@ -32,6 +33,12 @@ export interface MintAccessTokenArgs {
    * el token como de solo lectura — `verifyAuth` rechaza con él cualquier escritura.
    */
   imp?: string | null
+  /**
+   * T-335: epoch en que caduca esa suplantación. Recorta la vida del token para que **no
+   * sobreviva a la sesión que lo justifica**: sin esto, un token acuñado en el minuto 29 de
+   * una suplantación de 30 seguía siendo válido 59 minutos después de terminarla.
+   */
+  impExp?: number | null
 }
 
 export interface MintedAccessToken {
@@ -58,14 +65,24 @@ export async function mintAccessToken(
   }
 
   const nowSec = Math.floor(Date.now() / 1000)
-  const expiresAt = nowSec + ACCESS_TOKEN_TTL_SECONDS
+
+  // T-335 — el token no puede durar más que la suplantación que lo justifica.
+  // `restante` es `null` en las sesiones normales (nada que recortar) y `0` si la
+  // suplantación ya caducó, incluido el caso de una marca `imp` sin reloj (fail-closed).
+  const restante = restanteImpersonacionSeg({ imp: args.imp, impExp: args.impExp }, nowSec)
+  if (restante === 0) return null
+  const vida = restante === null ? ACCESS_TOKEN_TTL_SECONDS : Math.min(ACCESS_TOKEN_TTL_SECONDS, restante)
+  const expiresAt = nowSec + vida
 
   const token = await new SignJWT({
     email: args.email ?? null,
     role: args.role ?? 'authenticated',
-    // Solo se incluye si viene: un token normal NO lleva el claim, así que no hay forma de
-    // confundir una sesión real con una suplantada.
+    // Solo se incluyen si vienen: un token normal NO lleva los claims, así que no hay forma
+    // de confundir una sesión real con una suplantada.
     ...(args.imp ? { imp: args.imp } : {}),
+    // El reloj viaja DENTRO del token para que `verifyAuth` pueda cortar por sí mismo, sin
+    // depender de que alguien le pregunte a la sesión.
+    ...(args.imp && typeof args.impExp === 'number' ? { impExp: args.impExp } : {}),
   })
     .setProtectedHeader({ alg: AUTH_JWT_ALG, kid, typ: 'JWT' })
     .setSubject(args.sub)

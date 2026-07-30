@@ -18,6 +18,8 @@ import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import { resolveAppUserId } from './resolveAppUser'
 import { verifyGoogleIdToken } from './verifyGoogleIdToken'
+import { adminQueSuplanta, impersonacionCaducada } from '@/lib/admin/impersonacion'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // En prod el client id llega inlineado como NEXT_PUBLIC_GOOGLE_CLIENT_ID
 // (build-arg); en local existe GOOGLE_CLIENT_ID. Mismo valor, no secreto.
@@ -73,6 +75,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
   callbacks: {
     async jwt({ token, user }) {
+      // T-335 — MUERTE DE LA SUPLANTACIÓN CADUCADA.
+      //
+      // Este callback es el único punto por el que pasa **toda** rotación de la sesión: lo
+      // llama `@auth/core` justo antes de re-firmar la cookie. Devolver `null` aquí hace que
+      // el propio Auth.js ejecute `sessionStore.clean()` y **borre la cookie del navegador**
+      // (`@auth/core/lib/actions/session.js`) — el mismo mecanismo que hasta ahora renovaba
+      // la suplantación pasa a ser el que la termina. Cero peticiones nuevas.
+      //
+      // Va lo PRIMERO a propósito: si la sesión ya no debe existir, nada más que se haga con
+      // ella (resolver el usuario, propagar la marca) tiene sentido.
+      if (impersonacionCaducada(token, Math.floor(Date.now() / 1000))) {
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'info', // No es un error: es la salvaguarda haciendo su trabajo.
+          eventType: 'impersonacion_caducada',
+          endpoint: '/api/auth/session',
+          metadata: { admin: adminQueSuplanta(token), motivo: 'ttl_vencido' },
+        })
+        return null
+      }
+
       // En el primer sign-in, `user` trae el email del proveedor. Resolvemos el
       // UUID canónico UNA vez y lo persistimos en el token de sesión.
       if (user?.email) {
@@ -97,6 +120,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const imp = token.imp
       if (typeof imp === 'string' && imp) {
         ;(session as unknown as { impersonadoPor?: string }).impersonadoPor = imp
+        // Y CUÁNDO caduca (T-335): quien derive algo de esta sesión —el access token, la
+        // cookie-marca de la franja— tiene que poder limitarlo a la vida de la suplantación.
+        // Propagar el «quién» sin el «hasta cuándo» es lo que dejó tokens sobreviviéndola.
+        const impExp = token.impExp
+        if (typeof impExp === 'number') {
+          ;(session as unknown as { impersonadoHasta?: number }).impersonadoHasta = impExp
+        }
       }
       return session
     },

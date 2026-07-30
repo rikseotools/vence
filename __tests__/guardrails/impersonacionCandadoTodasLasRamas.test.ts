@@ -35,6 +35,21 @@ describe('el candado de suplantación cubre las tres ramas', () => {
     expect(candados - 1).toBeGreaterThanOrEqual(exitos)
   })
 
+  it('y cada salida con éxito pasa antes por el RELOJ (T-335)', () => {
+    // Mismo razonamiento que el candado, para la otra mitad de la protección: el candado
+    // impide escribir con una suplantación viva; el reloj impide seguir usándola cuando ya
+    // ha terminado. Una sin la otra deja el agujero por el que se coló el fallo del 30/07.
+    const exitos = (src.match(/success: true,/g) || []).length
+    const relojes = (src.match(/rechazarSiImpersonacionCaducada\(/g) || []).length
+    expect(relojes - 1).toBeGreaterThanOrEqual(exitos)
+  })
+
+  it('la suplantación caducada se rechaza con 401, y deja señal', () => {
+    // 401 —y no el 403 del candado— porque una sesión terminada no vale ni para leer.
+    expect(src).toMatch(/reason: 'impersonacion_caducada'/)
+    expect(src).toMatch(/impersonacion_caducada_rechazada/)
+  })
+
   it('el bloqueo devuelve 403 (sesión válida, escritura prohibida) y NO 401', () => {
     // 401 diría «no estás autenticado», que es falso y confunde al diagnosticar.
     expect(src).toMatch(/status: 403/)

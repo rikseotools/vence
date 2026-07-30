@@ -23,7 +23,11 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
-import { adminQueSuplanta, permitidoDuranteImpersonacion } from '@/lib/admin/impersonacion'
+import {
+  adminQueSuplanta,
+  impersonacionCaducada,
+  permitidoDuranteImpersonacion,
+} from '@/lib/admin/impersonacion'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { decodeProtectedHeader } from 'jose'
 import { verifyJwtLocal, extractBearerToken, type JwtVerifyResult } from './verifyJwtLocal'
@@ -52,22 +56,64 @@ async function verifyLocalToken(token: string): Promise<JwtVerifyResult> {
 }
 
 /**
- * Lee el claim `imp` del token SIN verificar la firma.
+ * Lee los claims de suplantación (`imp` = quién mira, `impExp` = cuándo caduca) SIN verificar
+ * la firma.
  *
  * Parece peligroso y no lo es, porque solo se usa para **denegar**: un token inválido ya se
  * rechaza por su camino normal, y aquí lo único que puede pasar es que alguien se invente un
  * `imp` para que le bloqueemos MÁS. Hace falta en los modos que verifican contra el
  * proveedor remoto, que devuelve identidad pero no el payload completo.
+ *
+ * Devuelve la forma que esperan `adminQueSuplanta` e `impersonacionCaducada`, para que las
+ * tres ramas del verificador decidan con el MISMO núcleo puro y no con lecturas a mano.
  */
-function impSinVerificar(token: string): string | null {
+function impSinVerificar(token: string): { imp: string | null; impExp: number | null } {
+  const vacio = { imp: null, impExp: null }
   try {
     const [, cuerpo] = token.split('.')
-    if (!cuerpo) return null
+    if (!cuerpo) return vacio
     const json = JSON.parse(Buffer.from(cuerpo, 'base64url').toString('utf8'))
-    return typeof json?.imp === 'string' && json.imp ? json.imp : null
+    return {
+      imp: typeof json?.imp === 'string' && json.imp ? json.imp : null,
+      impExp: typeof json?.impExp === 'number' ? json.impExp : null,
+    }
   } catch {
-    return null
+    return vacio
   }
+}
+
+/**
+ * Si el token es una suplantación YA CADUCADA, se corta aquí con 401 (la sesión no debería
+ * existir) y se deja señal. Devuelve `null` cuando no hay nada que cortar.
+ *
+ * ## Por qué existe si el corte «de verdad» está en la rotación de Auth.js
+ *
+ * Porque son caminos distintos y solo uno pasa por Auth.js. La rotación mata la COOKIE; este
+ * verificador ve el ACCESS TOKEN, que ya está firmado y en manos del cliente. Un Bearer vivo
+ * con la suplantación terminada es exactamente el hueco que este corte cierra.
+ *
+ * Y por eso la señal va como `warn`: en régimen normal no debería dispararse casi nunca —el
+ * token se acuña ya capado a la vida de la suplantación—, así que verla subir significa que
+ * alguna de las capas de arriba dejó de funcionar. Es un detector de regresión, no ruido.
+ */
+function rechazarSiImpersonacionCaducada(
+  payload: unknown,
+  endpoint: string,
+): AuthVerifyResult | null {
+  if (!impersonacionCaducada(payload, Math.floor(Date.now() / 1000))) return null
+  const admin = adminQueSuplanta(payload)
+  console.warn(`🔒 [impersonacion] sesión suplantada CADUCADA rechazada en ${endpoint} (admin=${admin})`)
+  emitFireAndForget({
+    source: 'vercel',
+    severity: 'warn',
+    eventType: 'impersonacion_caducada_rechazada',
+    endpoint,
+    metadata: { admin },
+  })
+  // 401 y no 403: aquí la sesión ya no vale para NADA, ni siquiera para leer. El 403 de al
+  // lado dice «válida, pero no escribes»; decir eso de una sesión muerta despistaría al
+  // diagnosticar y dejaría al cliente reintentando en vez de re-autenticar.
+  return { success: false, status: 401, reason: 'impersonacion_caducada' }
 }
 
 /**
@@ -186,16 +232,17 @@ export async function verifyAuth(
     // El candado de suplantación va en las TRES ramas. Ponerlo solo en la que corre hoy
     // (`on`) haría que un cambio de esta variable —una env, no un despliegue de código—
     // desactivara la protección **en silencio**, que es la peor forma de perderla.
-    const bloqueoOff = bloquearSiEscribeSuplantando(
-      { imp: impSinVerificar(token) }, request.method, endpoint,
-    )
+    const claimsOff = impSinVerificar(token)
+    const caducadaOff = rechazarSiImpersonacionCaducada(claimsOff, endpoint)
+    if (caducadaOff) return caducadaOff
+    const bloqueoOff = bloquearSiEscribeSuplantando(claimsOff, request.method, endpoint)
     if (bloqueoOff) return bloqueoOff
     return {
       success: true,
       userId: remote.userId,
       email: remote.email,
       verifiedBy: 'remote',
-      impersonadoPor: impSinVerificar(token),
+      impersonadoPor: claimsOff.imp,
     }
   }
 
@@ -214,6 +261,9 @@ export async function verifyAuth(
     // el fallo clásico de esta función es justamente el admin que escribe creyendo que
     // está en su sesión. Con la marca `imp` dentro del token, escribir es imposible aunque
     // la interfaz se equivoque.
+    // Antes del candado va el reloj: una suplantación caducada no puede ni leer (T-335).
+    const caducada = rechazarSiImpersonacionCaducada(local.payload, endpoint)
+    if (caducada) return caducada
     const bloqueo = bloquearSiEscribeSuplantando(local.payload, request.method, endpoint)
     if (bloqueo) return bloqueo
     return {
@@ -280,16 +330,17 @@ export async function verifyAuth(
   if (!remoteOk) {
     return { success: false, status: 401, reason: 'remote_verify_failed' }
   }
-  const bloqueoShadow = bloquearSiEscribeSuplantando(
-    { imp: impSinVerificar(token) }, request.method, endpoint,
-  )
+  const claimsShadow = impSinVerificar(token)
+  const caducadaShadow = rechazarSiImpersonacionCaducada(claimsShadow, endpoint)
+  if (caducadaShadow) return caducadaShadow
+  const bloqueoShadow = bloquearSiEscribeSuplantando(claimsShadow, request.method, endpoint)
   if (bloqueoShadow) return bloqueoShadow
   return {
     success: true,
     userId: remoteResult!.userId,
     email: remoteResult!.email,
     verifiedBy: 'shadow_remote',
-    impersonadoPor: impSinVerificar(token),
+    impersonadoPor: claimsShadow.imp,
   }
 }
 

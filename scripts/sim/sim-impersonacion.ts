@@ -14,6 +14,13 @@
  *      `/api/admin/*`, cuyo guard exige token de admin — y durante la suplantación el token
  *      es el del usuario, así que devolvía 401 y dejaba atrapado dentro de la cuenta ajena
  *      hasta que caducara sola. Un ciclo a medias no prueba el ciclo.
+ *   6. **se TERMINA sola** (T-335, 30/07/2026). Esto tampoco estaba, y era el hueco de
+ *      verdad: los puntos 1-5 comprueban que la suplantación empieza bien y que se puede
+ *      cerrar A MANO, no que caduque. No caducaba — `exp` lo reescribía Auth.js en cada
+ *      rotación— así que duraba días, y encima sin franja, porque la cookie que la pinta sí
+ *      expiraba a los 30 minutos. Se comprueba con el plazo YA vencido: ni se acuña token ni
+ *      se sirve la cuenta. Incluye la variante «sin reloj», que es lo que quedó en los
+ *      navegadores de antes del arreglo.
  *
  * Uso (requiere el dev server arriba y AUTH_SECRET del entorno real):
  *   AUTH_SECRET=… npx tsx scripts/sim/sim-impersonacion.ts [userId] [--url http://localhost:3000]
@@ -52,6 +59,25 @@ async function main() {
       ? payloadSesionImpersonada({ objetivoUserId: uid, objetivoEmail: email, adminEmail: 'sim@vence.es', nowSec: now })
       : { appUserId: uid, email, sub: uid, iat: now, exp: now + TTL_IMPERSONACION_SEG, jti: `sim-${now}` }
     return encode({ token, secret, salt: 'authjs.session-token', maxAge: TTL_IMPERSONACION_SEG })
+  }
+
+  /**
+   * Cookies que reproducen las DOS formas en que una suplantación sobrevivía a su plazo
+   * (T-335). Se acuñan con `maxAge` de 30 días —no de 30 minutos— porque es justo lo que
+   * deja una rotación de Auth.js: el `exp` largo es el síntoma, no un atajo del simulador.
+   *
+   *  · `rotada`: el plazo (`impExp`) ya pasó, pero el token sigue siendo válido para Auth.js.
+   *  · `legacy`: acuñada antes del arreglo, sin reloj ninguno. Es lo que hay AHORA MISMO en
+   *    el navegador de cualquier admin que suplantara estos días.
+   */
+  const MES = 30 * 24 * 3600
+  const cookieRotada = async (variante: 'vencida' | 'legacy' | 'viva') => {
+    const base = { appUserId: uid, email, sub: uid, imp: 'sim@vence.es', iat: now, exp: now + MES }
+    const token =
+      variante === 'vencida' ? { ...base, impExp: now - 60 }
+      : variante === 'viva' ? { ...base, impExp: now + TTL_IMPERSONACION_SEG }
+      : base // legacy: sin reloj
+    return encode({ token, secret, salt: 'authjs.session-token', maxAge: MES })
   }
 
   const b = await chromium.launch()
@@ -96,6 +122,34 @@ async function main() {
   const rSalida = await pSalida.request.post(`${URL_BASE}/api/impersonacion/salir`)
   const salida = { ok: rSalida.ok(), status: rSalida.status() }
   await ctxSalida.close()
+
+  // ¿Y CUÁNDO EL PLAZO YA PASÓ? (T-335) — la parte que esta simulación no miraba, y donde
+  // estaba el fallo: se comprobaba que la suplantación empezaba bien y que se podía salir,
+  // nunca que terminaba sola. Con el plazo vencido, la app no puede acuñar token ni servir
+  // la cuenta: da igual que la cookie siga siendo criptográficamente válida.
+  //
+  // La variante `viva` es el CONTRASTE, y no es opcional: las tres cookies se acuñan igual
+  // (rotadas, con `exp` de 30 días) y solo se diferencian en el reloj. Si la viva pasara y
+  // las vencidas también, o si fallaran las tres, el 401 no probaría nada — igual que el 403
+  // del candado no prueba nada sin el caso 5.
+  const caducadas: Record<string, { token: number; lectura: number }> = {}
+  for (const variante of ['vencida', 'legacy', 'viva'] as const) {
+    const ctx = await b.newContext()
+    await ctx.addCookies([
+      { name: 'authjs.session-token', value: await cookieRotada(variante), domain: new URL(URL_BASE).hostname, path: '/', httpOnly: true, sameSite: 'Lax' },
+    ])
+    const p = await ctx.newPage()
+    const rt = await p.request.get(`${URL_BASE}/api/auth/token`)
+    const tj = await rt.json().catch(() => ({}))
+    const access = (tj as Record<string, string>)?.accessToken || ''
+    // Si aun así hubiera acuñado, se comprueba que la LECTURA con ese token tampoco pasa:
+    // el 401 tiene que venir del reloj, no de que el token esté vacío.
+    const rl = await p.request.get(`${URL_BASE}/api/v2/question-favorites`, {
+      headers: access ? { Authorization: `Bearer ${access}` } : {},
+    })
+    caducadas[variante] = { token: rt.status(), lectura: rl.status() }
+    await ctx.close()
+  }
   await b.close()
 
   const s = res.suplantada, n = res.normal
@@ -106,12 +160,20 @@ async function main() {
   console.log(linea(s.get === 200, `4) leer suplantando funciona (GET ${s.get})`))
   console.log(linea(n.post !== 403, `5) con sesión NORMAL el mismo POST no da 403 (POST ${n.post}) → el 403 es del candado`))
   console.log(linea(salida.ok, `6) se puede SALIR de la suplantación (POST /api/impersonacion/salir → ${salida.status})`))
+  console.log(linea(caducadas.vencida.token === 401, `7) con el plazo vencido NO se acuña token (vencida → ${caducadas.vencida.token})`))
+  console.log(linea(caducadas.vencida.lectura === 401, `8) …y tampoco se puede LEER la cuenta (vencida → ${caducadas.vencida.lectura})`))
+  console.log(linea(caducadas.legacy.token === 401, `9) una suplantación sin reloj (anterior al arreglo) tampoco vale (legacy → ${caducadas.legacy.token})`))
+  console.log(linea(caducadas.viva.token === 200, `10) la MISMA cookie rotada pero DENTRO de plazo sí funciona (viva → ${caducadas.viva.token}) → el 401 es del reloj`))
   if (!s.imp) fallos.push('la marca no llega al token')
   if (!s.franja) fallos.push('no se ve la franja')
   if (s.post !== 403) fallos.push(`escritura NO bloqueada (${s.post})`)
   if (s.get !== 200) fallos.push(`lectura rota (${s.get})`)
   if (n.post === 403) fallos.push('la sesión normal también da 403 → la prueba no distingue')
   if (!salida.ok) fallos.push(`no se puede salir de la suplantación (${salida.status})`)
+  if (caducadas.vencida.token !== 401) fallos.push(`plazo vencido y AÚN acuña token (${caducadas.vencida.token})`)
+  if (caducadas.vencida.lectura !== 401) fallos.push(`plazo vencido y AÚN sirve la cuenta (${caducadas.vencida.lectura})`)
+  if (caducadas.legacy.token !== 401) fallos.push(`suplantación sin reloj aceptada (${caducadas.legacy.token})`)
+  if (caducadas.viva.token !== 200) fallos.push(`la suplantación EN plazo tampoco funciona (${caducadas.viva.token}) → la prueba no distingue`)
 
   console.log(fallos.length ? `\n❌ ${fallos.length} fallo(s): ${fallos.join(' · ')}` : '\n✅ La suplantación es de solo lectura, visible y contrastada.')
   process.exit(fallos.length ? 1 : 0)
