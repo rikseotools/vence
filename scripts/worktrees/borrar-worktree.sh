@@ -16,8 +16,30 @@ SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$HOME/vence-sessions}"
 WT="$SESSIONS_DIR/$SLUG"
 BRANCH="sesion/$SLUG"
 CONTAINER="vence-sess-$SLUG"
+# Repo de ESTE script (ver la nota en listar-worktrees.sh): las herramientas de sesión pueden no
+# estar en el árbol principal todavía.
+ESTE_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 [ -d "$WT" ] || { echo "❌ no existe la sesión $WT"; exit 2; }
+
+# 0. ¿La está usando alguien AHORA? (T-296) Hasta hoy esta pregunta se contestaba a ojo, mirando la
+#    fecha del directorio — que no vale: una sesión viva pasa horas sin tocar su worktree. Ahora hay
+#    señal con hora (`worktree_sessions`) y procesos con el cwd dentro. `latidos.cjs --slug` sale con
+#    3 si está en uso. Fail-open: si no hay BD o el script no está, se avisa y se sigue (esto no
+#    puede impedir cerrar una sesión muerta), pero si CONTESTA que está viva, se para.
+if [ -f "$ESTE_REPO/scripts/sessions/latidos.cjs" ]; then
+  set +e
+  SENAL="$(cd "$ESTE_REPO" && node scripts/sessions/latidos.cjs --slug "$SLUG" 2>/dev/null)"
+  EN_USO=$?
+  set -e
+  [ -n "$SENAL" ] && echo "$SENAL" | sed 's/^/   /'
+  if [ "$EN_USO" = 3 ] && [ "$FORCE" != 1 ]; then
+    echo ""
+    echo "⛔ Esa sesión está EN USO (señal reciente o procesos dentro). Abortado."
+    echo "   Si de verdad quieres cerrarla: borrar-worktree.sh $SLUG --force"
+    exit 1
+  fi
+fi
 
 # 1. Liberar claims de esta sesión (si hay cola.cjs y session-id)
 if [ -f "$WT/.session-id" ] && [ -f "$WT/scripts/impugnaciones/cola.cjs" ]; then
@@ -60,5 +82,10 @@ git -C "$MAIN_REPO" branch -D "$BRANCH" 2>/dev/null || true
 if command -v podman >/dev/null && podman container exists "$CONTAINER" 2>/dev/null; then
   echo "→ parando Postgres local $CONTAINER…"; podman rm -f "$CONTAINER" >/dev/null
 fi
+
+# Quitar su señal de vida: si no, el listado acumula sesiones que apuntan a directorios borrados y
+# vuelve a ser ruido (T-296). Fail-open, como todo lo de la telemetría.
+[ -f "$ESTE_REPO/scripts/sessions/latir.cjs" ] && \
+  ( cd "$ESTE_REPO" && node scripts/sessions/latir.cjs --cerrar "$SLUG" >/dev/null 2>&1 ) || true
 
 echo "✅ Sesión '$SLUG' cerrada y limpia."

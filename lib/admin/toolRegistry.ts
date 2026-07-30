@@ -195,6 +195,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
       '`deriveChannel` o la política de toques.',
   },
+  latido_sesiones_worktree: {
+    titulo: '¿Qué sesión de trabajo (worktree) está viva? — señal con hora, para saber qué se puede borrar',
+    ruta: 'scripts/sessions/latir.cjs',
+    estado: 'vivo',
+    escribe: ['worktree_sessions'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      'Escritor ÚNICO de `worktree_sessions`. Se invoca solo: `backlog.cjs` late en CADA comando ' +
+      '(subproceso detached, no puede añadir latencia ni fallar) y el hook `pre-push` también — eso ' +
+      'segundo cubre a la sesión que solo lee código y commitea, que antes no dejaba rastro ninguno. ' +
+      '`--cerrar <slug>` quita las filas al borrar el worktree, para que el listado no acumule ' +
+      'directorios que ya no existen. Para LEER: `node scripts/sessions/latidos.cjs` (informe + ' +
+      'candidatas a cerrar), `--tsv` (lo consume `listar-worktrees.sh`) y `--slug <slug>`, cuyo EXIT ' +
+      'CODE 3 usa `borrar-worktree.sh` para NEGARSE a borrar una sesión en uso. Bandas y trampa de ' +
+      'los nombres casi idénticos en el núcleo puro `lib/sessions/latido.js` (24 tests). **Lo que NO ' +
+      'sirve como señal, ya probado (T-296): la fecha del directorio** (una sesión viva pasa horas sin ' +
+      'tocar su worktree), **el `cwd` de las transcripciones** (dice siempre el repo principal) y la ' +
+      'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
+      '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
+  },
   reevaluar_shuffle_safety_por_criterio: {
     titulo: 'Re-evaluar los veredictos de barajabilidad cuando cambia el CRITERIO (no el contenido)',
     ruta: 'scripts/backfill-shuffle-safety.ts',

@@ -13,5 +13,9 @@
 #    deploy-*.sh). Va en el pre-push y no en el pre-commit porque se paga una vez por push
 #    (medido: ~14 s en caliente, ~43 s tocando un módulo de amplio alcance, 72 s en frío) y un
 #    push que solo toca documentación no paga nada. Escape: TYPECHECK_GUARD_SKIP=1 git push …
+# 0) Latido de la sesión (T-296). Va PRIMERO y no puede fallar: es un `spawn` detached que sale
+#    solo. Cubre el hueco del latido de `backlog.cjs`: una sesión que solo lee código y commitea,
+#    sin tocar el backlog, no dejaba ninguna señal y parecía muerta al ir a limpiar worktrees.
+node scripts/sessions/latir.cjs --cmd pre-push >/dev/null 2>&1 || true
 node scripts/backlog-push-guard.cjs || exit 1
 node scripts/typecheck-push-guard.cjs || exit 1

@@ -225,6 +225,17 @@ async function despertarPorDeploy(s, shas, opts = {}) {
 }
 
 (async () => {
+  // LATIDO (T-296): este script se invoca constantemente y ya resuelve el `sid` solo, así que es el
+  // sitio natural para dejar constancia de que esta sesión está viva — el dato que faltaba para
+  // poder contestar «¿puedo borrar este worktree?» sin conjeturas. Va en subproceso DETACHED y sin
+  // esperarlo: la telemetría no puede añadir latencia ni, sobre todo, poder fallar y tumbar un
+  // `claim`. Si no late, se pierde una señal; si bloqueara, alguien dejaría de usar el backlog.
+  try {
+    const { spawn } = require('child_process');
+    const hijo = spawn(process.execPath, [path.join(__dirname, 'sessions', 'latir.cjs'), '--cmd', String(cmd || '')],
+      { detached: true, stdio: 'ignore' });
+    hijo.unref();
+  } catch { /* sin latido se sigue trabajando igual */ }
   try {
     if (cmd === 'list') {
       const all = process.argv.includes('--all');
