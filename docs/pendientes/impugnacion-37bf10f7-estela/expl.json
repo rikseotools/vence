@@ -1,0 +1,15 @@
+{
+  "estilo": "impugnacion",
+  "intro": "La pregunta pide señalar la afirmación **incorrecta**, así que hay que buscar la que se aparta del artículo 9.2.c). El precepto encadena tres requisitos para que una Administración admita «cualquier otro sistema» de identificación, y las opciones reproducen tres de ellos y falsean uno.",
+  "cita": {
+    "ref": "Artículo 9.2.c) de la Ley 39/2015",
+    "texto": "Cualquier otro sistema que las Administraciones públicas consideren válido en los términos y condiciones que se establezca, siempre que cuenten con un registro previo como usuario que permita garantizar su identidad y previa comunicación a la Secretaría General de Administración Digital del Ministerio de Asuntos Económicos y Transformación Digital. Esta comunicación vendrá acompañada de una declaración responsable de que se cumple con todos los requisitos establecidos en la normativa vigente."
+  },
+  "options": {
+    "0": "Es fiel al precepto: el registro como usuario tiene que permitir garantizar su identidad. Es la finalidad que la ley le exige a ese registro.",
+    "1": "Aquí está el error, y es una sola palabra: el artículo exige un registro **previo**. Añadir «o a posteriori» abre una posibilidad que la ley no contempla, porque el sentido del requisito es que la identidad esté garantizada **antes** de usar el sistema.",
+    "2": "Es fiel al precepto: la comunicación va acompañada de una declaración responsable de que se cumplen todos los requisitos establecidos en la normativa vigente.",
+    "3": "Es fiel al precepto: además del registro previo, hace falta comunicarlo a la Secretaría General de Administración Digital. Ojo con un detalle que la ley sí precisa: lo que debe transcurrir antes de que el sistema tenga eficacia jurídica son **dos meses** desde esa comunicación."
+  },
+  "outro": "**Clave:** el registro es **previo**, sin alternativa. Los otros tres requisitos (que el registro garantice la identidad, la comunicación a la Secretaría General de Administración Digital y la declaración responsable que la acompaña) están recogidos tal cual en el artículo."
+}

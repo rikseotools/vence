@@ -783,6 +783,46 @@ incluida).
 
 - **Relacionado:** [T-284] (banco de adjudicación + puerta de barajado) · [T-282] (163 explicaciones que se pintan rotas) · `docs/maintenance/revisar-preguntas-con-agente.md` (lotes de 20-50 por agente, que es la unidad del escalón 2) · `data/pilotos/RESULTADOS-vinculo-vecino.md`.
 
+- ---
+- **🚦 ESTADO AL CERRAR LA SESIÓN DEL 30/07 — POR DÓNDE SEGUIR**
+
+  **EMPIEZA POR AQUÍ si vienes a coger preguntas:** las **1.000 nunca verificadas más vistas**, con agentes según `docs/maintenance/revisar-preguntas-con-agente.md`. Es lo ÚNICO de todo esto donde puede haber **una clave mal servida** a alguien que se juega una plaza. No depende de crédito de OpenRouter (va con cuota de agentes). Cubre el 87% de la exposición nunca revisada. **En la MISMA pasada hay que dejarlas en formato estructurado** (`scripts/aplicar-explicacion.ts`), porque 12.361 de las 12.430 están también sin estructura y hacerlo en dos barridos gasta el doble de cuota.
+
+  Consulta para sacar la cola:
+  ```sql
+  SELECT q.id, left(q.question_text,80),
+         (SELECT count(*) FROM test_questions t WHERE t.question_id=q.id) servidas
+    FROM questions q
+   WHERE q.is_active AND NOT EXISTS (SELECT 1 FROM ai_verification_results v WHERE v.question_id=q.id)
+   ORDER BY servidas DESC LIMIT 1000;
+  ```
+
+  **🔴 BLOQUEADO POR CRÉDITO: se agotó OpenRouter el 30/07 a las 02:00.** Hasta que se recargue (~3 $ bastan) NO se puede: terminar de medir modelos, correr el piloto de Haiku, ni el de reescritura. Gasto de toda la sesión: **1,28 $** por 97 modelos.
+
+  **⚠️ AL LEER CUALQUIER RESULTADO DE LOS BANCOS: filtrar por coste > 0 ANTES de nada.** Un modelo con coste 0,00 $ y menos de un segundo **no es un modelo que falla, es una petición que no salió**. Confundirlo ya invirtió una conclusión (dio «no hay patrón de antigüedad», r=0,128, cuando el real es r=0,473) y me hizo decir «279 modelos probados» cuando eran **97**.
+
+  **Modelos candidatos (medidos, con coste registrado):**
+  | modelo | aciertos | $/10 casos |
+  |---|---|---|
+  | gemini-3.6-flash · gemini-3.5-flash · kimi-k3 | 10/10 | 0,030-0,056 |
+  | **qwen/qwen3.5-flash-02-23** | **10/10** | **0,0105** |
+  | **nex-agi/nex-n2-mini** | 8/10 | **0,0010** |
+  | qwen3-32b · qwen3.7-flash · deepseek-chat · gemma-4-31b | 8/10 | 0,002-0,003 |
+
+  El agente Sonnet de Claude Code saca 10/10. `claude-haiku-4.5` saca **7/10 costando 0,042 $**: de lo peor en calidad/precio.
+
+  **💰 Cambio de Haiku (32 $/mes, el 70% de la factura de IA):** `detect_notas` 17,71 $ y `oep_signals` 14,14 $ en 30 días, 27,4 M de tokens. El banco para el primero ya existe (`npm run llm:ab-notas`) y **no llegó a correr por el crédito**. Para `oep_signals` hay que montarlo. Aviso: 32 $/mes es dinero fácil pero **no mueve la calidad**; va después de las preguntas.
+
+  **Bancos de pruebas listos para usar:**
+  - `npm run llm:ab-vinculo` — adjudicar el vínculo al artículo (golden set de 10 en `data/pilotos/`).
+  - `npm run llm:ab-transformacion` — reestructurar las 13.906 que ya analizan por opción.
+  - `npm run llm:ab-reescritura` — escribir desde el artículo (la población de 105.094). **83% con los gates**, `mistral-small` a 0,18 $/1.000 preguntas.
+  - Núcleo común: `scripts/observabilidad/lib/ab-llm.cjs` (registra el gasto él mismo).
+
+  **Golden set a medias:** los 20 casos nuevos etiquetados con panel de 3 modelos → **11 unánimes, 9 pendientes de que un humano los adjudique** (están en `/tmp/etiquetas20.json`, que se pierde al reiniciar: **hay que re-generarlo** con el runner + panel). Sin ampliar el golden set no se puede elegir entre 10/10 y 8/10.
+
+  **Impugnaciones aparcadas** (Manuel pidió pausarlas para atender los pilotos): la de **Estela Jiménez** (`37bf10f7`) está ANALIZADA y sin cerrar — la clave es correcta, se propone rechazarla y ajustar la opción D, que añade un «antes de registrarse» que el art. 9.2.c) de la Ley 39/2015 no dice (el 22% de los usuarios la elige). Análisis y explicación nueva en `scratchpad/imp37bf10f7/`. Quedan 5 legislativas más libres en la cola.
+
 ### [T-289] 🟠 [ABIERTO 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
 - **El problema, en el ejemplo que lo motivó:** para entender el reporte de un premium hay que ver **SU** perfil, **SUS** hitos de pago, su temario, sus rachas y sus datos personalizados. Hoy no se puede: `npm run dev` te enseña la app con TU cuenta, y mirar su fila en la BD no reproduce lo que él ve (la vista compone caché, plan, scope de su oposición, límites, badges…). Se acaba diagnosticando a ciegas o pidiéndole capturas.
 - **Cómo se llama, para no reinventar el nombre:** **impersonación** (*impersonation*, también *"login as user"*, *"view as"*, *"assume identity"*, *masquerading*, y en algunos productos *"sudo mode"*). Es una función estándar en SaaS de soporte y tiene una forma canónica: el admin **no usa la contraseña del usuario**; el servidor acuña una sesión marcada como suplantada, la app lo muestra con una **franja visible** y todo queda **auditado**.
