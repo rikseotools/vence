@@ -647,6 +647,17 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-297] 🟠 [ABIERTO 30/07] El gate anti-scraping dejó fuera a los canaries: test rojo y vigilancia posiblemente ciega
+- **Qué pasa:** `__tests__/security/canaryGateAndOutboxPrune.test.ts` falla porque `app/api/questions/filtered/route.ts` **ya no importa `isSyntheticRequest`**. El test exige que el reto anti-scraping **exima al tráfico sintético**, y esa exención desapareció del fichero.
+- **Cómo salió:** ejecutando las categorías que `test:unit` excluye, al investigar otra cosa (29/07). Falla sola, no es contención de la BD.
+- **El historial apunta a `e049f57ac`** — *«el reto anti-scraping se saltaba con un header que cualquiera puede escribir»*—, que endureció el gate. Endurecerlo parece correcto; lo que quedó sin actualizar es el contrato que el test fijaba.
+- **Las dos posibilidades, y no son equivalentes:**
+  1. El test está obsoleto → reescribirlo con el criterio nuevo (los canaries se identifican de otra forma).
+  2. Al cerrar el agujero se dejó a los canaries FUERA → **algún canario está chocando con el gate y ha dejado de vigilar en silencio**, que es el modo de fallo más caro.
+- **Cómo distinguirlo (antes de tocar nada):** mirar si los canarios que pegan a `/api/questions/filtered` siguen dando verde en `observable_events` desde la fecha de `e049f57ac`. Si dejaron de pasar, es el caso 2.
+- **Impacto:** 🟠 no rompe producción, pero mientras esté así hay un rojo permanente en la suite de seguridad —y un rojo permanente es ruido que entrena a ignorar la categoría entera, que es exactamente cómo murió el test de suscripciones (ver [T-295])—.
+- **Relacionada:** [T-295] (misma familia: vigilancias apagadas que nadie lee).
+
 ### [T-295] 🟠 [ABIERTO 30/07] Deducir el acceso premium de los hechos en vez de guardarlo en plan_type
 - **El caso que lo destapa (29/07):** un cliente canceló su suscripción **desde nuestra app** el 26/05 (`cancellation_feedback`: `self_service`), Stripe la terminó el 27/05 al acabar el mes pagado… y su fila se quedó en `active` con el perfil en `premium`. **Dos meses y 293 tests con premium regalado.** Encaja con el incidente del webhook roto del 26-27/05 (no demostrable ya: los eventos de Stripe caducan a los 30 días y la observabilidad no empieza hasta el 29/06). Corregido a mano el 29/07; el usuario vuelve a ser free.
 - **Por qué no lo detectó nada:** las **8 reglas de alerta** sobre suscripciones vigilan que ningún usuario se quede sin lo que pagó, o que la maquinaria funcione. **Ninguna miraba lo contrario.** Y el **Pass-1 lo empeoraba**: al ver la fila `active`, cada hora volvía a poner el perfil en premium — la auto-reparación trabajaba a favor de la fuga.
