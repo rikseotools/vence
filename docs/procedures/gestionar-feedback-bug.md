@@ -519,6 +519,8 @@ Reglas estrictas (de feedback de Manuel):
 - **Firma SIEMPRE:** dos líneas → `Un saludo` + `Equipo de Vence`.
 - **Sin guiones largos** (— o -) como conector; usar comas, dos puntos o frases separadas.
 - **Sin disculpas excesivas** ("perdón", "sentimos las molestias" repetido). Directo y cordial.
+- **🚫 PROHIBIDO «gracias por la paciencia» / «sentimos el ir y venir» y variantes (Manuel, 30/07/2026).** Se escribe **«Muchas gracias.»** y punto. Disculparse por un fallo propio delante de quien está decidiendo si pagarnos **nos hace parecer débiles**, y encima subraya lo que salió mal en vez de que ya está resuelto. El fallo se arregla, se cuenta lo justo y se sigue.
+- **No afirmes el arreglo con rotundidad: escribe «ya debería estar resuelto» + «si puedes probar ahora»** (misma decisión, 30/07). Tú no estás delante de su pantalla: puede tener la página cacheada, otra sesión, otro dispositivo. Decir «ya está arreglado» y que le vuelva a fallar cuesta mucho más que haberlo dicho con un condicional — pasó tres veces seguidas con la misma usuaria esta semana.
 - Verbo: "mejorar", nunca "pulir".
 - Párrafos separados por línea en blanco (el email respeta los saltos).
 - Un solo email por usuario aunque tenga varios feedbacks a la vez (agrupar; no enviar correos seguidos). Cerrar los demás en silencio (sin `message`).
