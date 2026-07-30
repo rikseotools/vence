@@ -3910,6 +3910,20 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   4. Revisar después las estadísticas de usuario: no hace falta tocarlas, pero conviene saber que quedan respuestas apuntando a preguntas jubiladas (es lo normal y no rompe).
 - **Regla que nace de aquí (ya en el manual de impugnaciones):** cuando una impugnación puede ser sistémica, **medir en la BD antes de cerrar** — la persona solo ha visto la punta.
 
+### [T-322] 🟡 [ABIERTO 30/07] Oposiciones que nos piden los usuarios y no tenemos montadas
+
+- **Por qué existe:** [T-028] hacía esto y se cerró el 24/07 («las 2 pedidas ya están live»). Desde entonces han entrado peticiones nuevas y no había dónde anotarlas, así que se quedaban en el hilo del feedback y desaparecían al cerrarlo. Esta ficha es el sitio: **cada petición, con quién la pidió y qué sabemos**.
+- **PENDIENTES, con su contexto:**
+
+  | Oposición | Quién y cuándo | Qué sabemos |
+  |---|---|---|
+  | **Universidad de Jaén** — auxiliar (¿administrativo o servicios/conserjería?) | **Chari** (`diversoprodu@gmail.com`, free, feedback `7a81b194`, 29/07) | **Catalogada y NO activa** (`auxiliar-administrativo-universidad-jaen`). Convocatoria 2026 con **19 plazas** de la Escala Auxiliar Administrativa (nombramientos Res. 13/01/2026 → ese ciclo ya avanzado). **Su petición es ambigua** —escribió «auxiliar consejerías»— y se le ha preguntado cuál de las dos es; **esperar su respuesta antes de montar nada**. Ella estudia LOSU a diario, así que el temario común de universidad ya le sirve. Seguimiento: `ujaen.es/servicios/servpod/procesos-selectivos-ptgas`. |
+  | **Ayudantes de IIPP del País Vasco** | usuario **premium**, 11/07 (*«tenéis la intención de añadir…»*) | **No existe en catálogo**. Lo más cercano YA ACTIVO es `ayudantes-ejecucion-penal-pais-vasco`; hay que comprobar si es el mismo cuerpo con otro nombre (probable) antes de montar nada nuevo. |
+  | **«Oposiciones de informática»** | usuario free, 06/07 | Petición **vaga**, sin cuerpo ni administración. En catálogo hay varias de sistemas/informática, ninguna activa. **No accionable** tal cual: si vuelve a preguntarlo alguien, pedir cuál. |
+
+- **Cómo se decide montar una (no por orden de llegada):** demanda medida (cuántos la piden y si son premium) × plazas de la convocatoria × si el temario **reutiliza** banco que ya tenemos. El Parque Móvil se montó con **una sola** petición porque tenía 196 plazas e inscripción abierta y el 40% del examen reutilizaba banco existente.
+- **Al montar cualquiera:** `docs/maintenance/crear-nueva-oposicion.md` + scaffolder, gates `audit:oposicion`/`audit:served`/`verify:scope`, y **avisar a quien la pidió** (está su feedback anotado arriba).
+
 ## Hechas
 
 ### [T-275] ✅ [HECHA 30/07] Nadie vigila el mapa de visibilidad: una tabla insert-only se enfría y degrada consultas en silencio
