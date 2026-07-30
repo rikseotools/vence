@@ -1967,6 +1967,38 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 > `rate(30 minutes)`, `Europe/Madrid`, `FARGATE`, clúster `vence-backend`. Detalle menor: reutiliza el
 > rol `vence-instagram-daily-scheduler-role`, compartido con otro job.
 >
+> **🧭 PROPUESTA DE DISEÑO (30/07) — el carril/prioridad, ya decidible.**
+>
+> **El estado actual, leído del código:** `claimNextPdfJob` hace `ORDER BY created_at` — **FIFO puro**,
+> con `FOR UPDATE SKIP LOCKED`. Y `enqueuePdfJob` hace `ON CONFLICT DO NOTHING`. O sea: una petición
+> de usuario entra **detrás de todo lo pendiente**, y si el tema ya estaba encolado por la
+> pre-generación, la petición **no hace nada en absoluto**.
+>
+> **Opción recomendada — una columna `priority`, no una cola aparte.** Es el cambio más pequeño que
+> resuelve el problema:
+> - `ALTER TABLE temario_pdf_jobs ADD COLUMN priority smallint NOT NULL DEFAULT 0` (+ índice para el claim).
+> - `claimNextPdfJob`: `ORDER BY priority DESC, created_at`. Una línea.
+> - **La parte fina, y la que más valor tiene:** `enqueuePdfJob` pasa de `ON CONFLICT DO NOTHING` a
+>   `ON CONFLICT DO UPDATE SET priority = GREATEST(temario_pdf_jobs.priority, EXCLUDED.priority)`. Así
+>   la petición de un usuario **NO crea un job duplicado: PROMOCIONA el que ya existía**. Hoy ese caso
+>   —tema ya encolado por la pre-generación— deja al usuario sin nada, en silencio.
+>
+> **⚠️ Lo que la prioridad NO resuelve, y hay que decirlo antes de venderla:** el worker reclama de uno
+> en uno y un render puede durar **hasta 30 min** (`DEFAULT_RENDER_TIMEOUT_MS`). Con prioridad, el
+> usuario deja de esperar *todo el backlog* y pasa a esperar *el render que esté en vuelo*. Es una
+> mejora grande, pero **no es una cota**: sigue siendo «hasta 30 minutos» en el peor caso.
+>
+> Para acotarlo de verdad harían falta **dos workers** (uno de lote, otro de demanda), y eso ya es
+> otra tarea Fargate + su disparo + su coste. **No lo recomiendo todavía:** combinado con el umbral
+> de [T-270], quien espera es exactamente el que pide un tema enorme, y a ese se le puede decir la
+> verdad («tu tema son 651 páginas, lo estamos preparando»). Si tras medir resulta que la espera
+> típica es de minutos y no de decenas, el segundo worker no hace falta.
+>
+> **Orden de implementación cuando se decida:** (1) columna + `ORDER BY` + el `ON CONFLICT DO UPDATE`
+> (los tres van juntos o el promocionar no funciona); (2) la ruta encola con `priority=1` solo por
+> encima del umbral de [T-270]; (3) medir la espera REAL antes de plantearse el segundo worker o el
+> disparo bajo demanda. El disparo (IAM + vector de abuso) es lo ÚLTIMO, no lo primero.
+>
 > **Para el que retome esto:** lo que NO hay que hacer es cablear `enqueuePdfJob` en la ruta del 413.
 > Ese caso lo resuelve mejor el piloto de [T-273] (descarga por partes, contenido **al instante**);
 > encolar le haría esperar hasta 30 minutos por lo mismo. La cola sirve para el otro caso: temas que
