@@ -32,6 +32,13 @@ const METODOS_DE_LECTURA = new Set(['GET', 'HEAD', 'OPTIONS'])
 export const TTL_IMPERSONACION_SEG = 30 * 60
 
 /**
+ * Cookie-marca legible por el navegador. NO es una credencial: solo dice «esta sesión es
+ * suplantada» para que la franja de aviso no tenga que preguntarle al servidor en cada
+ * página. La credencial sigue siendo la cookie de sesión, que es httpOnly.
+ */
+export const MARCA_IMPERSONACION = 'vence_imp'
+
+/**
  * ¿Puede esta petición seguir adelante durante una suplantación?
  *
  * Se aplica en el verificador de identidad, que es el paso por el que pasan TODAS las APIs

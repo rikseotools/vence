@@ -26,6 +26,7 @@ import { emitFireAndForget } from '@/lib/observability/emit'
 import {
   decidirImpersonacion,
   payloadSesionImpersonada,
+  MARCA_IMPERSONACION,
   TTL_IMPERSONACION_SEG,
 } from '@/lib/admin/impersonacion'
 
@@ -123,25 +124,24 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
     path: '/',
     maxAge: TTL_IMPERSONACION_SEG,
   })
+  // Marca VISIBLE para el navegador (no httpOnly, sin dato sensible: solo dice «esta sesión
+  // es suplantada»). Existe para que la franja de aviso no tenga que preguntar al servidor:
+  // sin ella, el layout haría un fetch de sesión en CADA carga de página para TODOS los
+  // usuarios —miles de peticiones diarias— por una función que usa el administrador. Falsear
+  // esta cookie a mano solo pinta la franja: no da acceso a nada.
+  respuesta.cookies.set(MARCA_IMPERSONACION, '1', {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: cookieName.startsWith('__Secure-'),
+    path: '/',
+    maxAge: TTL_IMPERSONACION_SEG,
+  })
   return respuesta
 }
 
-async function _DELETE(request: NextRequest): Promise<NextResponse> {
-  // Salir NO exige ser admin: si por lo que sea la sesión quedó suplantada, cualquiera tiene
-  // que poder deshacerla. Borra la cookie y devuelve al login normal.
-  const host = request.headers.get('host') || 'www.vence.es'
-  const cookieName = sessionCookieNameFor(host.split(':')[0])
-  emitFireAndForget({
-    source: 'vercel',
-    severity: 'info',
-    eventType: 'impersonacion_terminada',
-    endpoint: '/api/admin/impersonar',
-  })
-  const respuesta = NextResponse.json({ ok: true })
-  respuesta.cookies.set(cookieName, '', { httpOnly: true, path: '/', maxAge: 0 })
-  return respuesta
-}
+// La SALIDA vive en `/api/impersonacion/salir`, fuera de `/api/admin/*`: aquí el guard de
+// admin la rechazaba con 401, porque durante la suplantación el token es el del usuario. Una
+// puerta de salida que no abre es peor que no tenerla.
 
 export const POST = withErrorLogging('/api/admin/impersonar', _POST)
-export const DELETE = withErrorLogging('/api/admin/impersonar#salir', _DELETE)
-export { _POST, _DELETE }
+export { _POST }

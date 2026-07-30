@@ -9,7 +9,11 @@
  *   1. la sesión suplantada tiene la identidad del USUARIO (si no, no vemos su pantalla);
  *   2. lleva la marca de quién mira, y esa marca llega hasta el access token;
  *   3. **escribir con ella se rechaza** (403) y **leer funciona** (200);
- *   4. la misma escritura con una sesión NORMAL no da 403 → el 403 es del candado.
+ *   4. la misma escritura con una sesión NORMAL no da 403 → el 403 es del candado;
+ *   5. **se puede SALIR**. Esto no estaba y por poco se despliega roto: la salida vivía en
+ *      `/api/admin/*`, cuyo guard exige token de admin — y durante la suplantación el token
+ *      es el del usuario, así que devolvía 401 y dejaba atrapado dentro de la cuenta ajena
+ *      hasta que caducara sola. Un ciclo a medias no prueba el ciclo.
  *
  * Uso (requiere el dev server arriba y AUTH_SECRET del entorno real):
  *   AUTH_SECRET=… npx tsx scripts/sim/sim-impersonacion.ts [userId] [--url http://localhost:3000]
@@ -57,7 +61,12 @@ async function main() {
   for (const suplantada of [true, false]) {
     const ctx = await b.newContext()
     const host = new URL(URL_BASE).hostname
-    await ctx.addCookies([{ name: 'authjs.session-token', value: await cookie(suplantada), domain: host, path: '/', httpOnly: true, sameSite: 'Lax' }])
+    const cookies = [{ name: 'authjs.session-token', value: await cookie(suplantada), domain: host, path: '/', httpOnly: true, sameSite: 'Lax' as const }]
+    // La cookie-marca la pone el endpoint real junto a la sesión, y es la que hace que la
+    // franja se muestre sin preguntar al servidor en cada página. Si la simulación acuña la
+    // sesión a mano y se la salta, mide un escenario que no existe.
+    if (suplantada) cookies.push({ name: 'vence_imp', value: '1', domain: host, path: '/', httpOnly: false, sameSite: 'Lax' as const })
+    await ctx.addCookies(cookies)
     const p = await ctx.newPage()
     const tj = await (await p.request.get(`${URL_BASE}/api/auth/token`)).json().catch(() => ({}))
     const access = (tj as Record<string, string>)?.accessToken || (tj as Record<string, string>)?.access_token
@@ -76,6 +85,17 @@ async function main() {
     }
     await ctx.close()
   }
+  // ¿Se puede salir? Se comprueba con la sesión SUPLANTADA puesta, que es la situación real.
+  const ctxSalida = await b.newContext()
+  const hostSalida = new URL(URL_BASE).hostname
+  await ctxSalida.addCookies([
+    { name: 'authjs.session-token', value: await cookie(true), domain: hostSalida, path: '/', httpOnly: true, sameSite: 'Lax' },
+    { name: 'vence_imp', value: '1', domain: hostSalida, path: '/', httpOnly: false, sameSite: 'Lax' },
+  ])
+  const pSalida = await ctxSalida.newPage()
+  const rSalida = await pSalida.request.post(`${URL_BASE}/api/impersonacion/salir`)
+  const salida = { ok: rSalida.ok(), status: rSalida.status() }
+  await ctxSalida.close()
   await b.close()
 
   const s = res.suplantada, n = res.normal
@@ -85,11 +105,13 @@ async function main() {
   console.log(linea(s.post === 403, `3) escribir suplantando se rechaza (POST ${s.post})`))
   console.log(linea(s.get === 200, `4) leer suplantando funciona (GET ${s.get})`))
   console.log(linea(n.post !== 403, `5) con sesión NORMAL el mismo POST no da 403 (POST ${n.post}) → el 403 es del candado`))
+  console.log(linea(salida.ok, `6) se puede SALIR de la suplantación (POST /api/impersonacion/salir → ${salida.status})`))
   if (!s.imp) fallos.push('la marca no llega al token')
   if (!s.franja) fallos.push('no se ve la franja')
   if (s.post !== 403) fallos.push(`escritura NO bloqueada (${s.post})`)
   if (s.get !== 200) fallos.push(`lectura rota (${s.get})`)
   if (n.post === 403) fallos.push('la sesión normal también da 403 → la prueba no distingue')
+  if (!salida.ok) fallos.push(`no se puede salir de la suplantación (${salida.status})`)
 
   console.log(fallos.length ? `\n❌ ${fallos.length} fallo(s): ${fallos.join(' · ')}` : '\n✅ La suplantación es de solo lectura, visible y contrastada.')
   process.exit(fallos.length ? 1 : 0)
