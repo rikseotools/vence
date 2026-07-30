@@ -69,8 +69,9 @@ async function feedback(sql) {
       FROM user_feedback f
       LEFT JOIN user_profiles p ON p.id = f.user_id
       LEFT JOIN ult u ON u.feedback_id = f.id
-     WHERE f.type <> 'account_deletion'   -- las bajas se atienden al final, no urgen
-       AND f.created_at > NOW() - INTERVAL '30 days'
+     WHERE f.created_at > NOW() - INTERVAL '60 days'
+       -- Las bajas YA NO se excluyen: se atienden al final (la prioridad las manda al fondo),
+       -- pero ocultarlas hacía que no existieran. Una baja sin procesar también es trabajo.
      ORDER BY f.created_at`;
   return filtrarPendientes(filas);
 }

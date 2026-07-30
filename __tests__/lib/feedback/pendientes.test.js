@@ -22,8 +22,10 @@ describe('feedback nuevo, sin responder', () => {
     expect(d).toMatchObject({ pendiente: true, clase: 'NUEVO' })
   })
 
-  it('deja de salir pasada la ventana (ya no es una novedad)', () => {
-    const d = clasificarPendiente({ status: 'pending', created_at: hace(9), ult_admin: null }, AHORA)
+  // La ventana pasó de 6 h a 30 días el 30/07: con 6 h, lo no atendido en media mañana
+  // desaparecía del vigía. Se conserva un límite solo para no arrastrar restos históricos.
+  it('deja de salir pasado el límite histórico (30 días), no antes', () => {
+    const d = clasificarPendiente({ status: 'pending', created_at: hace(24 * 45), ult_admin: null }, AHORA)
     expect(d.pendiente).toBe(false)
     expect(d.motivo).toBe('fuera_de_ventana')
   })
@@ -70,9 +72,9 @@ describe('réplica del usuario', () => {
     expect(d).toMatchObject({ pendiente: true, clase: 'REPLICA' })
   })
 
-  it('una réplica de hace más de un día ya no se avisa', () => {
+  it('una réplica de hace más de una semana ya no se avisa', () => {
     const d = clasificarPendiente(
-      { status: 'pending', created_at: hace(80), ult_admin: hace(50), ult_user: hace(30), resolved_at: null },
+      { status: 'pending', created_at: hace(24 * 20), ult_admin: hace(24 * 15), ult_user: hace(24 * 9), resolved_at: null },
       AHORA,
     )
     expect(d.pendiente).toBe(false)
@@ -106,5 +108,48 @@ describe('filtrarPendientes', () => {
   it('lista vacía o nula no rompe', () => {
     expect(filtrarPendientes([], AHORA)).toEqual([])
     expect(filtrarPendientes(null, AHORA)).toEqual([])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL AGUJERO DE LA VENTANA (30/07/2026)
+//
+// El «sin responder» tenía una ventana de 6 HORAS: pasadas esas, un feedback que nadie había
+// contestado desaparecía del vigía. Lo contrario de para lo que existe.
+//
+// Medido el día que se cazó: el vigía decía «cola limpia» y había NUEVE sin responder — un
+// BUG, un premium preguntando por el cambio de método de suscripción, dos bajas de cuenta — y
+// el más viejo llevaba dos días. Lo vio Manuel mirando el panel, no el vigía.
+//
+// Pendiente es pendiente, tenga la edad que tenga.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('un feedback sin responder no se esconde por viejo', () => {
+  const AHORA2 = new Date('2026-07-30T14:00:00Z').getTime()
+  const hace2 = (h) => new Date(AHORA2 - h * 3600_000).toISOString()
+
+  it('el de hace DOS DÍAS sigue saliendo (antes desaparecía a las 6 h)', () => {
+    const d = clasificarPendiente({ status: 'pending', created_at: hace2(48), ult_admin: null }, AHORA2)
+    expect(d.pendiente).toBe(true)
+    expect(d.clase).toBe('NUEVO')
+  })
+
+  it('y el de hace una semana también', () => {
+    const d = clasificarPendiente({ status: 'pending', created_at: hace2(24 * 7), ult_admin: null }, AHORA2)
+    expect(d.pendiente).toBe(true)
+  })
+
+  it('una réplica de hace tres días sigue contando', () => {
+    const d = clasificarPendiente(
+      { status: 'pending', created_at: hace2(24 * 10), ult_admin: hace2(24 * 5), ult_user: hace2(24 * 3), resolved_at: null },
+      AHORA2,
+    )
+    expect(d.pendiente).toBe(true)
+    expect(d.clase).toBe('REPLICA')
+  })
+
+  it('pero un resto histórico de hace meses ya no se arrastra', () => {
+    const d = clasificarPendiente({ status: 'pending', created_at: hace2(24 * 90), ult_admin: null }, AHORA2)
+    expect(d.pendiente).toBe(false)
+    expect(d.motivo).toBe('fuera_de_ventana')
   })
 })
