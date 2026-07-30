@@ -808,7 +808,8 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Por qué NO se arregló con los otros:** no es mecánico. El endpoint calcula el **tramo de comisión** (5-10% según volumen neto de 4 semanas) y con él el reparto `manuelAmount`/`armandoAmount`. Sumar las dos cuentas sube el volumen → baja el tramo → **cambia el dinero del reparto**. Es una decisión de negocio de Manuel, no de ingeniería.
 - **Qué hay que decidir primero:** ¿el tramo se calcula sobre el volumen AGREGADO de las dos cuentas o por cuenta y luego se suman los repartos? Stripe factura sus comisiones por cuenta; el acuerdo con Armando puede ir por cualquiera de las dos vías.
 - **Cómo:** una vez decidido, `getConfiguredAccounts()` + `getStripeFor()` (ya existen en `lib/stripe.ts`), con desglose por cuenta en la respuesta y el criterio `degraded` que usan los otros. Reglas del multi-cuenta en `docs/runbooks/observability.md` §Vigilancia con VARIAS cuentas Stripe.
-- **Relacionada:** [T-266] (el otro resto del multi-cuenta).
+- **📏 CUÁNTO se está perdiendo (medido 29/07):** cobros de los **últimos 30 días** por cuenta → **Nila 63 cobros / 3.218 €** y **Manuel 53 cobros / 1.437 €** (Manuel tiene más páginas, así que su cifra es un mínimo). El panel de Cobros, que solo lee Manuel, **no ve los 3.218 € de Nila** — la mayor parte de lo cobrado, y la única parte que va a seguir creciendo. La decisión del tramo sigue siendo de Manuel, pero mientras no se tome el panel enseña una foto parcial del dinero, no una foto vieja.
+- **Relacionada:** [T-266] (el otro resto del multi-cuenta), [T-292] (mismo panel de conversiones, denominador).
 
 ### [T-266] 🟡 [ABIERTO 29/07] Churn de /admin/conversiones cuenta el vaciado de Manuel como bajas reales
 - **Qué pasa:** desde que el MRR mira las dos cuentas (29/07), el churn sí se calcula sobre la cartera completa, pero la fórmula sigue siendo `canceladas / activas` y Manuel arrastra ~180 canceladas y 194 en `cancel_at_period_end` que son **el vaciado de la cuenta**, no bajas de clientes. Encima, quien re-compró por Nila cuenta dos veces: como baja en Manuel y como alta en Nila.
@@ -4602,7 +4603,11 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Por qué no se había visto:** los dos errores **se compensan en el mes 0** (253 × 1,72 € ≈ 57 × 7,63 € ≈ el MRR real), así que la cifra de cabecera cuadraba. Lo que no cuadra es la dinámica: el churn se aplicaba a 4× más clientes de los que hay y **cada venta nueva se valoraba a un cuarto de lo que vale**. Un número correcto por cancelación de dos errores es el más difícil de detectar mirando el panel.
 - **✅ HECHO 29/07:** `payingSubs` (activas **sin** `cancel_at_period_end`) pasa a ser la base de las dos cosas — `realMrrPerSub` y el arranque de la proyección —, y el texto que explica el €/sub lo dice con sus cifras en vez de describir el cálculo viejo.
 - **Relacionada:** [T-266] (churn, del mismo panel y de la misma causa: mezclar la cuenta apagada con la viva), [T-265].
-- **Cabo pendiente:** conviene repasar si otras superficies (`/admin/ads`, resúmenes de Stripe, ARR) heredan el mismo denominador. Aquí solo se ha corregido `sales-prediction`.
+- **✅ CABO AUDITADO (29/07) — el denominador NO se ha propagado a otras superficies:**
+  - **`/admin/ads`: limpio.** Su ingreso sale de pagos REALES en BD (`conversion_events.amount` vía `lib/services/googleAds/roi.ts`), no de contar suscripciones. No hay nada que arreglar ahí.
+  - **ARR: limpio.** Es `mrr × 12`, y el MRR ya excluía las que no renuevan.
+  - **El resto de recuentos de `sales-prediction` son informativos, no divisiones:** `activeSubscriptions.length`, el desglose `subsActive` por cuenta y el texto de `mrrCurrent` (que ya dice «excl. N cancelando»).
+  - **Pero SÍ hay otro defecto de multi-cuenta al lado, y ya tiene ficha: [T-265].** `/api/admin/stripe-fees-summary` (paneles `/admin/cobros` y `/armando`) abre Stripe con la cuenta por defecto, así que **solo ve Manuel**. Medido: en 30 días Nila cobró **3.218 €** y Manuel **1.437 €** → el panel de Cobros se pierde la mayor parte del dinero. No es el mismo bug (allí es *qué cuenta se lee*, aquí era *entre cuánto se divide*), pero es la misma causa de fondo: código escrito cuando había una sola cuenta.
 
 ### [T-281] 🟡 [ABIERTO 29/07] Explicaciones con la POLARIDAD INVERTIDA respecto al marco de la pregunta: el opositor lee lo contrario de lo que se le quiere enseñar
 
