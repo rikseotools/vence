@@ -45,6 +45,25 @@ Trigger `BEFORE UPDATE` en `questions`: si el hash del contenido NUEVO difiere d
 - Cuando un edit cambia la explicación sin tocar el hash → difieren → `stale` → deja de barajarse hasta re-verificar.
 - Es `BEFORE UPDATE` puro (solo muta `NEW`), no puede romper el UPDATE.
 
+### El trigger invalida por CONTENIDO; nadie invalida por CRITERIO (T-301, 30/07/2026)
+
+El hash cubre el caso «cambió la explicación». No cubre el otro, que ya ha pasado cuatro veces:
+**cambió el detector**. Cuando se afina `explanationReferencesLetters` (tildes 28/07, «la Cámara» y
+los grados centígrados 30/07), el contenido de la pregunta sigue idéntico → hash idéntico → el
+veredicto viejo se queda escrito. Y `backfill-shuffle-safety.ts` selecciona solo
+`unverified`/`stale`, a propósito, para no deshacer las bajadas de `llm_audit_v1`.
+
+Consecuencia medida: el fix de los grados dejó de marcar 106 activas y **ninguna cambió de estado**
+(las 91 con `shuffle_mode='full'` siguen en `unsafe`). El arreglo del detector es inerte hasta que
+alguien re-evalúe. Camino acotado en [T-306]: re-procesar solo los veredictos que firmó el propio
+backfill (`verified_by='backfill_deterministic_v3'`), nunca los de la auditoría LLM.
+
+> **Y al medir el efecto de un cambio del detector, la población NO puede estar definida por su
+> propia salida.** La primera medición de T-301 filtró por `shuffle_safety='safe'` y dio **0** — pero
+> ese flag lo pone un backfill que consulta ESE MISMO detector, así que las víctimas del falso
+> positivo estaban todas en `unsafe`, justo fuera de la muestra. Medir sobre las activas y repartir
+> por estado después.
+
 ## Gate de serve (defensa en profundidad)
 
 `shuffleEligible(q) = q.shuffle_mode==='full' ∧ q.shuffle_safety==='safe' ∧ !explanationReferencesLetters(q.explanation)`.

@@ -96,7 +96,16 @@ export function explanationReferencesLetters(explanation?: string | null): boole
     .replace(/[*_`~]+/g, '')
     .replace(/\s+/g, ' ')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    // Y se neutralizan las UNIDADES EN GRADOS antes de aplicar los patrones (T-301, 30/07).
+    // `\b` se define sobre `[A-Za-z0-9_]`, as\u00ed que entre \u00ab\u00ba\u00bb y \u00abC\u00bb S\u00cd hay frontera de palabra:
+    // el patr\u00f3n `\b[ABCDE]\)` (\u00abB)\u00bb) encontraba su match DENTRO de \u00ab(2-8 \u00baC)\u00bb y marcaba como
+    // letra-anclada toda explicaci\u00f3n que cierre un par\u00e9ntesis con una temperatura. Afecta de
+    // lleno al banco cl\u00ednico (constantes vitales, cadena de fr\u00edo), donde el par\u00e9ntesis con
+    // magnitud es la forma natural de escribir. La exenci\u00f3n es quir\u00fargica y NO abre ning\u00fan
+    // falso negativo: nadie escribe \u00ab\u00baB)\u00bb para referirse a la opci\u00f3n B. El lookahead evita
+    // comerse una palabra que empiece por C/F tras el s\u00edmbolo.
+    .replace(/[\u00ba\u00b0]\s*[CF](?![\p{L}\p{M}])/gu, ' ');
   return EXPLANATION_LETTER_PATTERNS.some((r) => r.test(norm));
 }
 
@@ -111,7 +120,11 @@ const EXPLANATION_LETTER_PATTERNS: RegExp[] = [
   /\b[ABCDE]\)/, // "B)" (con paréntesis)
   /\bopci[óo]n(?:es)?\s+[ABCDE]\b/i, // "opción C"
   /\bapartado\s+[ABCDE]\b/i, // "apartado A"
-  /\bletra\s+[ABCDE]\b/i, // "letra B"
+  // "letra B" — pero NO la locución adverbial «letra a letra» (igual que «palabra por palabra»),
+  // que leía la «a» como «la letra A». Caso real: pregunta 7005e191, «cambiar mayúsculas y
+  // minúsculas sin retocarlo letra a letra» (T-301). Nadie escribe «letra B letra», así que
+  // exigir que no siga otra «letra» no abre ningún falso negativo.
+  /\bletra\s+[ABCDE]\b(?!\s+letra\b)/i,
   /\brespuesta\s+[ABCDE]\b/i, // "respuesta D"
   /\b(?:es|son)\s+(?:la|las)\s+[ABCDE]\b/i, // "es la B", "son las A"
   /\b(?:correct[ao]|incorrect[ao]|cierta|falsa|verdadera|err[óo]nea)\s+(?:es\s+)?(?:la\s+)?[ABCDE]\b/i, // "correcta es la B"

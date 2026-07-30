@@ -232,6 +232,35 @@ describe('explanationReferencesLetters — referencias por POSICIÓN (28/07)', (
   })
 })
 
+describe('explanationReferencesLetters — grados y locuciones (T-301, 30/07)', () => {
+  // Artefactos MEDIDOS ejecutando el detector real durante la campaña de T-291, no razonados.
+  // La causa es la misma de las tildes: `\b` se define sobre [A-Za-z0-9_], así que entre «º» y
+  // «C» hay frontera de palabra y `\b[ABCDE]\)` casaba dentro de «(2-8 ºC)». Era un falso
+  // positivo SISTEMÁTICO: dejaba fuera del barajado a todo el banco clínico que escribe la
+  // magnitud entre paréntesis (constantes vitales, cadena de frío).
+  test.each([
+    ['ordinal masculino en cadena de frío', 'Se conserva en frigorífico (2-8 ºC) hasta su administración.'],
+    ['símbolo de grado real', 'La temperatura corporal normal es de (36-37 °C) en axila.'],
+    ['sin paréntesis (ya pasaba antes)', 'Se conserva entre 2 y 8 ºC.'],
+    ['grados Fahrenheit', 'El umbral se fija en (100 °F) según la fuente citada.'],
+    ['locución adverbial «letra a letra»', 'Basta con cambiar mayúsculas y minúsculas sin retocarlo letra a letra.'],
+  ])('NO caza: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(false)
+  })
+
+  // Y lo que la exención NO puede llevarse por delante: la referencia de verdad sigue marcando.
+  test.each([
+    ['«opción C» explícita', 'Como se ve en la opción C, el plazo es de tres meses.'],
+    ['letra con paréntesis', 'La respuesta correcta es la B).'],
+    ['«letra B» sin locución', 'Es la letra B la que recoge el plazo.'],
+    // La exención es solo para el símbolo de grado: una palabra que empiece por C tras «º» no
+    // desactiva el patrón (el lookahead exige que no venga otra letra).
+    ['grado seguido de palabra', 'El artículo 5º Continúa diciendo que la opción D es válida.'],
+  ])('sigue cazando: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(true)
+  })
+})
+
 describe('isShuffleServeEligible — tener estructura NO basta (28/07)', () => {
   const base = { shuffle_mode: 'full', shuffle_safety: 'safe', has_structured_explanation: true,
     options: ['Doce meses', 'Seis meses', 'Un año', 'Dos años'] }
