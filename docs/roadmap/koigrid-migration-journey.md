@@ -2755,3 +2755,74 @@ the old shared disk, and is well past **10 minutes** now on the new storage flee
 first, and the fleet change is what unblocked us), but if a 20 GB ceiling is the new promise, upload throughput
 becomes the next thing worth measuring — 20 GB at this rate would be a long wait. We will report the exact
 figure when it lands.
+
+---
+
+## 🐛 2026-07-30 (17:39 UTC) — **the new size-derived deadline is computed from the COMPRESSED size.** One-line bug, and your own docs contain the proof
+
+Re-ran the full rehearsal on the original, unpatched dump with `preSeed`, exactly as you asked. **Your fixes to
+the extension handling work** — it sailed past lines 32, 5 920 and 18 287 without a murmur, which closes D4 and
+D4-bis by measurement. Then:
+
+```
+restore_timeout: se agotó el tiempo tras 30 min (tope 30 min para este tamaño).
+Tu base queda EXACTAMENTE como estaba: la carga se deshace entera y el espacio
+que ocupó se libera solo en unos segundos
+```
+
+**First: the error message itself is exactly what we asked for** — named code, elapsed, the limit that applied,
+and what it means for the database. Yesterday's bare `restore_failed` took a round number and a hunch to
+diagnose. This one handed us the bug in a single run. That is the fix doing its job.
+
+**And the bug it handed us is in the deadline.** Your docs say the deadline is *"roughly 170 MB of **plain SQL**
+per minute … A 25 GB plain dump therefore gets ~2.5 h"*. Ours **is** a ~25 GB plain dump. It got **30 minutes**.
+
+| Input used | Arithmetic | Deadline |
+|---|---|---|
+| Plain SQL — what the docs describe | 25 293 MB ÷ 170 | **149 min ≈ 2.5 h** ← matches your own worked example |
+| **Gzip — what we uploaded** | 4 092 MB ÷ 170 = 24 min → below the floor | **30 min** ← **what we got** |
+
+So the deadline is being derived from the **uploaded (compressed) byte count**, not the plain SQL it expands to.
+
+**Why this hits everyone, not just us:** your API asks for gzip (`contentEncoding: gzip`), your CLI *"gzips+streams
+for you"*, and your own release note says *"un volcado comprime del orden de ocho veces"*. So the deadline is
+systematically **6-8× too short for every compressed upload**. The 30-minute floor hides it on small dumps —
+they finish anyway — and it is fatal on exactly the large ones the feature exists for. Note the new 20 GB
+ceiling makes this worse, not better: a 20 GB gzip is ~150 GB of SQL and would still be handed
+`20 480 ÷ 170 ≈ 2 h` instead of the ~15 h it implies.
+
+**Fix:** size the deadline off the *uncompressed* size. You already know it — either from the
+`Content-Encoding: gzip` object's expanded length, or by taking the gzip footprint × a conservative ratio
+(≥6×), or simply by measuring bytes as you stream them into psql and extending as you go.
+
+**Acceptance test:** upload a gzip whose plain SQL is ~25 GB; `GET …/restore-dump/:jobId` (or the upload-url
+response) reports a deadline of ~2.5 h, not 30 min. Better still: **return the computed deadline in the API
+response** so a customer can see it is wrong *before* spending 40 minutes.
+
+### One measured caveat on the rollback message
+
+The message promises *"el espacio que ocupó se libera solo en unos segundos"*. The logical rollback is real —
+the tables are gone, `public` is back to its 2-table baseline. But the **space** does not come back in seconds:
+
+```
+17:40:18 → 10 GB     17:41:04 → 10 GB     17:41:50 → 11 GB
+```
+
+Yesterday it did eventually return (9 874 MB → 11 MB, observed hours later), so the reclamation works — it just
+is not "a few seconds", and a customer who checks right after the failure will see a database that looks full.
+**We are flagging this narrowly on purpose:** yesterday we reported this same aftermath as a "burnt cluster",
+you corrected us, and you were right. The database is fine. Only the timing in the message is optimistic.
+
+### Where this leaves our rehearsal
+
+Still unmeasured, for the third time: **how long a full load actually takes**, and therefore our cutover window.
+We have now spent ~11 min uploading and 30 min restoring, twice, to learn about the deadline rather than about
+our data.
+
+**We are switching to `pg_dump | psql` for the real timing run** — no cap, and it is the path we will use for the
+cutover anyway. We would still rather use managed restore (fail-fast, `tableCounts`, atomicity are all genuinely
+better), so we will re-test it the day the deadline maths is fixed; the dump is built and sitting here.
+
+**Upload throughput, since the ceiling is now 20 GB:** 4.09 GB took **10 min 47 s** on the new storage fleet
+(~6.3 MB/s), against **3 min 09 s** on the old shared disk yesterday. At that rate a 20 GB dump is ~53 minutes
+of upload before the restore even starts.
