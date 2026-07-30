@@ -728,6 +728,27 @@ incluida).
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
+
+### [T-344] 🟠 [ABIERTO 30/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
+- **Cómo salió:** revisión de salud del 30/07. Era la única señal del catch-all que tocaba dinero, así que se miró primero.
+- **Qué hace mal, exactamente:** el Pase 2 pide a Stripe las suscripciones con `created: { gte: since }` y **`since` son 30 días** (`subscription-reconciliation.service.ts:145`). Con esa lista se llena `activasEnStripe`. El **Pase 3** (`detectarPremiumSinRespaldo`) recorre **TODAS** las filas `status='active'` y marca la que no esté en ese conjunto. Resultado: **toda suscripción creada hace más de 30 días se declara «sin respaldo en Stripe»**, aunque esté viva y al corriente.
+- **Medido (30/07):** el evento reporta **`detected: 159`**, todas con motivo `fila_active_sin_sub_en_stripe`, y **dispara cada hora — 20 veces hoy**. En la base hay **257 filas activas con suscripción de Stripe, de las que 172 se crearon hace más de 30 días**: es decir, el detector señala prácticamente a toda la cartera veterana.
+- **Cuatro de los señalados, comprobados uno a uno** (todos `premium/active`, con periodo en curso y fecha de fin FUTURA):
+
+  | usuario | suscripción creada hace | vence |
+  |---|---|---|
+  | anacarrascomontero@gmail.com | 156 días | 24/08/2026 |
+  | areydue@gmail.com | 117 días | 04/08/2026 |
+  | soniaaguilar1102@gmail.com | 49 días | 11/09/2026 |
+  | vanesachenoll@gmail.com | 44 días | 16/12/2026 |
+
+- **Por qué importa, y no es solo ruido:** este detector existe para cazar **fuga de premium** (alguien con acceso de pago sin nada que lo respalde), que es dinero. Con 159 falsos positivos por hora **entierra al verdadero**: si mañana hay una fuga real, aparece mezclada con 159 clientes legítimos y nadie la ve. Es exactamente la lección de [T-047]/[T-113]/[T-179] — una alarma que grita siempre acaba ignorada, y entonces ya no protege nada.
+- **Lo que NO es** (descartado al investigar, para que nadie lo repita): **no es el fallo multi-cuenta**. El cron recorre las dos cuentas de Stripe y acumula las activas de ambas («una sub viva en CUALQUIER cuenta respalda su fila»), y una cuenta ilegible se reporta como `degraded`, no como cero. Esa parte está bien hecha.
+- **Cómo arreglarlo (dos vías, la segunda es la buena):**
+  1. Quitar la ventana al listar para el Pase 3 (pedir todas las activas). Simple, pero pagina toda la cartera cada hora para responder una pregunta sobre unas pocas.
+  2. **Verificar solo a los sospechosos**: el Pase 3 ya sabe qué `stripe_subscription_id` no encontró; basta un `subscriptions.retrieve(id)` **por cada uno** (en la cuenta que diga `payment_account`, con la otra como respaldo). Es O(sospechosos) en vez de O(cartera) y además da el motivo real cuando de verdad falta.
+- **Al tocarlo, respetar dos cosas que ya están bien:** que **solo detecta** (quitarle el premium a alguien lo confirma una persona) y que las `sub_manual_*` y las cuentas con `premium_grant_reason` quedan fuera a propósito.
+- **Guardarraíl sugerido:** un test que fije que una suscripción **antigua y viva** NO se marca. Hoy no existe: los tests del servicio cubren el Pase 2 y la reparación, no esta comparación.
 ### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
 
 - **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
