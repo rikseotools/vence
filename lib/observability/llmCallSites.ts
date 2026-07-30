@@ -70,6 +70,7 @@ export const LLM_CALL_SITES: LlmCallSite[] = [
   { ruta: 'scripts/observabilidad/ab-modelo-transformacion.cjs', estado: 'instrumentado', feature: 'ab_transformacion' },
   { ruta: 'scripts/observabilidad/ab-modelo-reescritura.cjs', estado: 'instrumentado', feature: 'ab_reescritura' },
   { ruta: 'scripts/observabilidad/lib/ab-llm.cjs', estado: 'instrumentado', feature: 'ab_comun' },
+  { ruta: 'scripts/observabilidad/etiquetar-golden-vinculo.cjs', estado: 'instrumentado', feature: 'etiquetar_golden' },
 
   // ── Crudos: gasto INVISIBLE. Cada uno con lo que hace falta para cerrarlo ──────────────────
   {
