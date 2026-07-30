@@ -29,7 +29,7 @@ const path = require('path');
 // en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
 const loadPg = () => require('postgres');
 // La decisión de si una tarea se puede coger vive en un solo sitio, compartida con los tests.
-const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
+const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
@@ -250,6 +250,29 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
          ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END, id`;
+      // LO PRIMERO que se ve al pedir las tareas pendientes: lo que se puede cerrar YA.
+      // Antes salía al final, detrás de 100+ líneas, y por eso T-273 llevaba 16 h esperando y
+      // T-270 estaba perdiendo su ventana de medición sin que nadie lo supiera (30/07).
+      // Se separan dos cosas que se atienden distinto: lo que verificamos nosotros y lo que
+      // espera una decisión de Manuel — que por muy despierta que esté, Claude no puede cerrar.
+      const listas = rows.filter((r) => isAwaitingVerification(r));
+      const paraVerificar = listas.filter((r) => clasificarEspera(r.resume_check) === 'verificacion');
+      const paraManuel = listas.filter((r) => clasificarEspera(r.resume_check) === 'decision');
+      if (paraVerificar.length) {
+        console.log(`\n⏰ ${paraVerificar.length} LISTA(S) PARA VERIFICAR — trabajo casi terminado, se cierran rápido:`);
+        for (const r of paraVerificar) {
+          console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
+          console.log(`      ▶ falta: ${String(r.resume_check).slice(0, 160)}`);
+        }
+        console.log('   (cógelas con `claim <id>`: imprime dónde se dejaron)');
+      }
+      if (paraManuel.length) {
+        console.log(`\n🙋 ${paraManuel.length} ESPERANDO UNA DECISIÓN DE MANUEL — enséñaselas, no se pueden cerrar solas:`);
+        for (const r of paraManuel) {
+          console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
+          console.log(`      ▶ decide: ${String(r.resume_check).slice(0, 160)}`);
+        }
+      }
       console.log(`\nBACKLOG — ${rows.length} tarea(s)${all ? ' (todas)' : ' abiertas'}:\n`);
       let enEspera = 0;
       for (const r of rows) {
@@ -269,18 +292,6 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       }
       if (enEspera) console.log(`\n  🕒 ${enEspera} en espera (no las sugiere \`next\`; se despiertan solas)`);
 
-      // AVISO DE VUELTA. El deploy despierta tareas de OTRAS sesiones, pero hasta ahora eso
-      // se imprimía solo en el log del deploy —al final de 10-15 min de salida y para quien
-      // desplegaba—. Quien pausó la tarea no se enteraba nunca. Aquí es donde sí se mira.
-      const listas = rows.filter((r) => isAwaitingVerification(r));
-      if (listas.length) {
-        console.log(`  ⏰ ${listas.length} LISTA(S) PARA VERIFICAR — el deploy (o el reloj) ya las despertó:`);
-        for (const r of listas) {
-          console.log(`     ${r.id}  ${String(r.title).slice(0, 58)}`);
-          console.log(`        ▶ falta: ${r.resume_check}`);
-        }
-        console.log('     (cógelas con `claim <id>`: imprime dónde se dejaron)');
-      }
       console.log('');
     }
 
@@ -299,6 +310,18 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
         .sort((a, b) => (rank[a.priority] - rank[b.priority]) || a.id.localeCompare(b.id));
       if (dormidas) console.log(`(${dormidas} en espera por reloj — se saltan; \`list\` las muestra con su hora)`);
+      // Antes que cualquier tarea nueva, lo que ya está hecho y solo falta comprobar: cuesta
+      // minutos, cierra una ficha y libera el backlog. Sin esto se quedaban al fondo de `list`.
+      const listasVerificar = rows
+        .filter((r) => isAwaitingVerification(r) && clasificarEspera(r.resume_check) === 'verificacion');
+      if (listasVerificar.length) {
+        const v = listasVerificar[0];
+        console.log(`\n⏰ ANTES QUE NADA — ${v.id} está lista para verificar y se cierra rápido:`);
+        console.log(`   ${v.title}`);
+        console.log(`   ▶ falta: ${String(v.resume_check).slice(0, 200)}`);
+        console.log(`   cógela con:  node scripts/backlog.cjs claim ${v.id}`);
+        if (listasVerificar.length > 1) console.log(`   (y ${listasVerificar.length - 1} más en \`list\`)`);
+      }
       if (!libre.length) { console.log('No hay tareas libres (todas cogidas, bloqueadas o en espera).'); }
       else {
         console.log(`\nSiguiente sugerida: ${EMOJI[libre[0].priority]} ${libre[0].id} — ${libre[0].title}`);
@@ -407,6 +430,20 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const id = process.argv[3];
       const outcome = arg('--outcome');
       if (!id || !outcome) { console.error('Uso: backlog.cjs done <T-xxx> --outcome "qué pasó de verdad"'); process.exit(2); }
+      // PUERTA, no aviso (30/07). Cerrar con un outcome que confiesa trabajo pendiente saca la
+      // tarea del backlog Y deja el trabajo sin hacer — y encima con apariencia de terminada.
+      // Programar el regreso no puede depender de que alguien se acuerde: si el texto dice que
+      // falta algo, aquí se para y se manda a `pause`, que sí agenda la vuelta.
+      const pend = detectarTrabajoPendiente(outcome);
+      if (pend.pendiente && !process.argv.includes('--igualmente')) {
+        console.error(`❌ NO cerrada: el outcome ${pend.motivo}, así que la tarea NO está terminada.`);
+        console.error('   Si queda trabajo, prográmale la vuelta en vez de cerrarla en falso:');
+        console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie frontend|backend|both \\`);
+        console.error('       --hecho "…lo que ya está…" --falta "…lo que queda…"');
+        console.error(`     node scripts/backlog.cjs pause ${id} --hasta "2026-08-11 07:00" --hecho "…" --falta "…"`);
+        console.error('   Si de verdad está terminada y el texto engaña:  --igualmente');
+        process.exit(2);
+      }
       const [row] = await s`
         UPDATE public.backlog_tasks
            SET status = 'done', outcome = ${outcome}, closed_at = now(),

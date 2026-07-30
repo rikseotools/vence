@@ -214,6 +214,40 @@ El trabajo no está hecho hasta que está en `main` (y, si toca código de app, 
 - **El deploy tiene gate de CI y guardarraíl anti-stale**: aborta si los checks de código (unit/typecheck/lint) no están verdes para tu HEAD, o si tu árbol va por detrás de `origin/main`. Con varias sesiones pusheando, sincroniza al último `origin/main` **verde** y reintenta.
 - `integration` en rojo **no** bloquea el deploy (es señal de datos/otras sesiones), pero míralo antes de soltar.
 
+## Al TERMINAR de trabajar: cuatro salidas, y el CLI no te deja equivocarte
+
+**Programar la vuelta no puede depender de que alguien se acuerde** (Manuel, 30/07: *"si no se
+quedan en el olvido y tengo que fiarme de que tú te acuerdes de ponerles un temporizador"*). Por
+eso `done` es una PUERTA, no un consejo:
+
+| situación | comando | qué pasa |
+|---|---|---|
+| Terminada **y verificada** | `done <id> --outcome "…"` | se cierra |
+| Hecha, **falta verla desplegada** | `pause <id> --tras-deploy --superficie frontend\|backend\|both --hecho "…" --falta "…"` | suelta el claim; **la despierta el deploy** |
+| Hecha, **falta verificar a una hora** | `pause <id> --hasta "2026-08-11 07:00" --hecho "…" --falta "…"` | suelta el claim; **la despierta el reloj** |
+| No avanzo, que la coja otro | `release <id>` | vuelve al pool, sin memoria de lo hecho |
+
+**`done` ABORTA si el `--outcome` confiesa que queda trabajo** — "pendiente", "falta", "queda",
+"sin desplegar", "hay que comprobar", "medir en N días"— y te imprime el `pause` ya escrito.
+Cerrar en falso saca la tarea del backlog **y** deja el trabajo sin hacer, con apariencia de
+terminada: lo peor de los dos mundos. Escape consciente: `--igualmente`.
+Núcleo puro `detectarTrabajoPendiente` (`lib/backlog/claimGate.cjs`), con tests que separan
+*"consolidados los 6 grupos"* (cierra) de *"quedan 6 grupos"* (bloquea).
+
+## Al EMPEZAR: lo primero que enseña `list` es lo que se cierra rápido
+
+Desde el 30/07, pedir las tareas pendientes muestra **arriba del todo**, antes del listado largo:
+
+- **⏰ LISTAS PARA VERIFICAR** — pausadas cuyo deploy o reloj ya llegó. Trabajo casi terminado:
+  se cierran en minutos y liberan el backlog. `next` también las sugiere **antes** que nada nuevo.
+- **🙋 ESPERANDO UNA DECISIÓN DE MANUEL** — por muy despiertas que estén, Claude no puede
+  cerrarlas. Van aparte para poder **enseñárselas en bloque**.
+
+Por qué se separan: el 30/07 había seis tareas despiertas y solo tres eran verificaciones nuestras;
+las otras tres esperaban una decisión suya desde hacía 10, 16 y 1 horas sin que nadie se las
+pusiera delante. Y una, T-270, estaba **perdiendo su ventana de medición** (11:00-13:00) sin que
+nadie lo supiera, porque la sección salía al final de 128 líneas.
+
 ## Manuales relacionados
 
 - **Push y despliegue:** `docs/runbooks/pusheo-revision-despliegue.md` — fuente única del deploy.

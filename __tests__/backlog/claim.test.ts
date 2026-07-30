@@ -462,3 +462,81 @@ describe('deployDebtLevel — cuándo toca desplegar si la política es AGRUPAR'
     expect(deployDebtLevel().nivel).toBe('al-dia')
   })
 })
+
+// ── La puerta que impide cerrar en falso (30/07) ─────────────────────────
+//
+// Manuel: «pon un guardarraíl para que cuando trabajes sobre las tareas pongas cuándo retomarlas,
+// porque si no se quedan en el olvido y tengo que fiarme de que tú te acuerdes».
+// Exacto: programar la vuelta no puede depender de la memoria de nadie. Si el texto con el que se
+// cierra una tarea confiesa que queda trabajo, el CLI se NIEGA y manda a `pause`, que sí agenda
+// el regreso. Es una puerta, no un aviso: un aviso se ignora justo cuando hay prisa.
+describe('detectarTrabajoPendiente — cerrar en falso deja de ser posible', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { detectarTrabajoPendiente, clasificarEspera } = require('@/lib/backlog/claimGate.cjs') as {
+    detectarTrabajoPendiente: (o: unknown) => { pendiente: boolean; motivo: string | null }
+    clasificarEspera: (r: unknown) => string
+  }
+
+  it.each([
+    ['Arreglado y pusheado. PENDIENTE: desplegar backend.', 'pendiente'],
+    ['Hecho, falta verificar el barrido de mañana', 'falta'],
+    ['Calibrado; queda la contrapartida de answerCapped', 'queda'],
+    ['Todo en main pero sin desplegar', 'desplegar'],
+    ['Entregado, hay que comprobar el pico de las 12h', 'comprobación'],
+    ['Listo; verificar tras el deploy', 'verificación'],
+    ['Cerrado, medir en 14 días el efecto', 'futuro'],
+  ])('BLOQUEA: %s', (outcome) => {
+    expect(detectarTrabajoPendiente(outcome).pendiente).toBe(true)
+  })
+
+  it.each([
+    'Verificado en producción: el barrido no abrió ninguna señal falsa.',
+    'Entregado: 25 tests verdes y validado contra los datos reales.',
+    'Descartada — la medición dice que no compensa.',
+    'Consolidados los 6 grupos duplicados; censo posterior a cero.',
+  ])('deja cerrar: %s', (outcome) => {
+    expect(detectarTrabajoPendiente(outcome).pendiente).toBe(false)
+  })
+
+  it('dice POR QUÉ bloquea (si no, se lee como un capricho del CLI)', () => {
+    const r = detectarTrabajoPendiente('hecho pero falta desplegar')
+    expect(r.pendiente).toBe(true)
+    expect(r.motivo).toBeTruthy()
+  })
+
+  it('sin outcome no opina (ese caso ya lo corta el CLI por otro lado)', () => {
+    expect(detectarTrabajoPendiente(null).pendiente).toBe(false)
+    expect(detectarTrabajoPendiente('').pendiente).toBe(false)
+    expect(detectarTrabajoPendiente(42).pendiente).toBe(false)
+  })
+})
+
+describe('clasificarEspera — verificación nuestra vs decisión de Manuel', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { clasificarEspera } = require('@/lib/backlog/claimGate.cjs') as {
+    clasificarEspera: (r: unknown) => string
+  }
+
+  it.each([
+    'DECISION DE MANUEL: encender FEATURE_TEMARIO_PDF_PARTES',
+    'ESPERANDO a que Manuel avise de que koigrid borró la copia',
+    'DECIDIR el diseño de carril/prioridad',
+    'Necesita OK de Manuel antes de tocar producción',
+  ])('espera a Manuel: %s', (t) => {
+    expect(clasificarEspera(t)).toBe('decision')
+  })
+
+  it.each([
+    'Comprobar el barrido automático de las 07:30 UTC',
+    'Que crezca el corpus de huellas v2 y aparezcan bloqueos',
+    'MEDIR EL PICO (11:00-13:00 CEST)',
+  ])('la verificamos nosotros: %s', (t) => {
+    expect(clasificarEspera(t)).toBe('verificacion')
+  })
+
+  it('ante la duda, verificación: esconder una comprobación es peor que colar una decisión', () => {
+    expect(clasificarEspera(null)).toBe('verificacion')
+    expect(clasificarEspera('')).toBe('verificacion')
+    expect(clasificarEspera('texto cualquiera sin marcadores')).toBe('verificacion')
+  })
+})
