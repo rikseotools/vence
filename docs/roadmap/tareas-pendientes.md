@@ -668,6 +668,16 @@ incluida).
 - **Impacto:** 🟠 dinero que se escapa en silencio y un modelo que volverá a desincronizarse. No es 🔴 porque la contención del 30/07 ya lo detecta y hoy hay 0 casos.
 - **Relacionada:** [T-210] (misma familia: la vigilancia que existía miraba a otro lado).
 
+### [T-296] 🟡 [ABIERTO 30/07] El registro de sesiones no tiene latido: no se puede saber qué worktree está vivo
+- **El problema, medido el 30/07 al querer limpiar:** había **15 worktrees de sesión** y **9 conversaciones de Claude activas** en los últimos 40 minutos, y **no hay forma de emparejarlas**. `list-sessions.sh` enseña el `sid`, la rama y si está sucio — nada de eso dice si alguien la está usando AHORA.
+- **Por qué la fecha del directorio NO sirve** (y por qué esta ficha existe): se usó como proxy de "antiguo" y produjo una lista de 10 candidatas a borrar que era **una conjetura vestida de inventario**. Una sesión viva puede llevar horas sin tocar su worktree (entre mensajes no ejecuta nada), y una muerta puede tener el directorio recién tocado por un proceso que dejó suelto.
+- **Por qué las transcripciones tampoco:** todas registran `cwd: /home/manuel/Documentos/github/vence`, porque las sesiones arrancan en el repo principal y entran al worktree por comandos. El `cwd` de la transcripción **no identifica el worktree**.
+- **Lo único que hoy prueba vida** (y por eso solo se pudieron confirmar 3 de 15): procesos con `cwd` dentro del worktree (`/proc/*/cwd`), y el **lease del backlog** si esa sesión tiene una tarea cogida — `backlog_tasks.lease_until` con el `sid` delante (`koigrid-mig2-9ae5aa`, `sesion-0729-b-252d9b`…). Una sesión que no ha cogido tarea no deja rastro ninguno.
+- **Cómo (barato y sin sistema nuevo):** que el propio `backlog.cjs` —que ya se invoca constantemente y ya resuelve el `sid` solo— **estampe la hora en una tabla de sesiones** en cada comando (o que reutilice `backlog_tasks.lease_until` como señal), y que `list-sessions.sh` la pinte: `última señal: hace 3 min` / `hace 2 días`. Con eso, "¿puedo borrar este worktree?" pasa de conjetura a dato.
+- **Ojo con el falso positivo inverso:** una sesión legítima que solo lea código y no toque el backlog seguiría sin latir. Si se quiere cubrir eso, el latido tiene que salir de algo que TODA sesión hace — el `pre-commit`/`pre-push` de husky, o el propio arranque de `session-start.sh` renovado periódicamente.
+- **Trampa observada de paso:** hay dos worktrees que se diferencian por un guion (`sesion-0729-b`, viva, y `sesion-0729b`, sin señales). Equivocarse de directorio al cerrar es fácil; el listado debería marcar los nombres casi idénticos.
+- **Impacto:** 🟡 no rompe producción, pero **el disco se llena de worktrees que nadie se atreve a borrar** (15 hoy, más 10 heredados fuera del sistema) y cada limpieza acaba en una conversación de adivinanzas.
+
 ### [T-291] 🟠 [ABIERTO 30/07] Reparar preguntas a escala: tres escalones (deterministas → modelos baratos → cuota de agentes)
 
 - **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
