@@ -2592,3 +2592,50 @@ where `extensions` is the convention, that is the worst possible default.
 Third attempt running with both relocations seeded. We will report the full result — including whether
 `tableCounts` populates across 204 tables and whether the ivfflat index builds at full row count — as soon as
 it lands.
+
+### 📎 What "a Supabase-origin dump" means, and why this is an ICP problem rather than our misconfiguration
+
+Worth spelling out, because the phrase does a lot of work in the reports above and it would be easy to read D4
+as *"that customer had a weird database"*. It is the opposite: **ours is the standard Supabase layout, and we
+are not even on Supabase any more.**
+
+Vence's database was born on Supabase and was cut over to **AWS RDS on 2026-07-04**. The *host* changed; the
+*schema layout* came across verbatim, because that is what a faithful migration does. Verified just now
+against our live production RDS:
+
+```
+pg_stat_statements  → schema "extensions"
+pgcrypto            → schema "extensions"
+unaccent            → schema "extensions"
+uuid-ossp           → schema "extensions"
+vector              → schema "extensions"
+pg_trgm             → schema "public"
+plpgsql             → schema "pg_catalog"
+```
+
+Schemas present: `auth`, `extensions`, `public`.
+
+A vanilla Postgres puts extensions in `public`. **Supabase puts them in a dedicated `extensions` schema** (and
+adds an `auth` schema). So `pg_dump` correctly emits `WITH SCHEMA extensions`, and **any** database with that
+history — still on Supabase, or migrated off it years ago — produces a dump with the same shape. That is the
+population your docs describe as the target: *"Origin was Supabase … so the schema carries Supabase-era
+conventions"* is in the header of this very report, written on day one.
+
+**So the collision is structural, not incidental:**
+
+- Their dumps say `CREATE EXTENSION IF NOT EXISTS <x> WITH SCHEMA extensions`.
+- You pre-install `vector` and `pg_stat_statements` into `public` on every new cluster.
+- `IF NOT EXISTS` is a **name** check, so it can never correct a schema mismatch — it silently does nothing.
+- The failure surfaces thousands of lines later, blaming a function or view that is perfectly valid.
+
+**And note what we deliberately did *not* do.** The tempting fix on our side is
+`ALTER EXTENSION vector SET SCHEMA public` on our own database so the dump stops asking for `extensions`. We
+rejected that: it would have unblocked us in one command while hiding a defect that every ex-Supabase customer
+after us walks straight into. Our database is not wrong, and neither is `pg_dump` — the mismatch is between
+your pre-install choice and `IF NOT EXISTS` semantics.
+
+**Which is why the fix is worth making on your side, and it is small:** emit `CREATE SCHEMA IF NOT EXISTS` when
+pre-seeding (closes D4), and either pre-flight the dump's `CREATE EXTENSION` lines against `pg_extension` or
+relocate automatically (closes D4-bis). Between them, an ex-Supabase database restores on the first attempt
+instead of the fourth — and "migrate in an afternoon", which is how you pitch managed restore, becomes true for
+the exact customer you are pitching it to.
