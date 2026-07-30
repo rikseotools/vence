@@ -53,10 +53,31 @@ los grados centígrados 30/07), el contenido de la pregunta sigue idéntico → 
 veredicto viejo se queda escrito. Y `backfill-shuffle-safety.ts` selecciona solo
 `unverified`/`stale`, a propósito, para no deshacer las bajadas de `llm_audit_v1`.
 
-Consecuencia medida: el fix de los grados dejó de marcar 106 activas y **ninguna cambió de estado**
-(las 91 con `shuffle_mode='full'` siguen en `unsafe`). El arreglo del detector es inerte hasta que
-alguien re-evalúe. Camino acotado en [T-306]: re-procesar solo los veredictos que firmó el propio
-backfill (`verified_by='backfill_deterministic_v3'`), nunca los de la auditoría LLM.
+Consecuencia medida: el fix de los grados dejó de marcar 106 activas y **ninguna cambió de estado**.
+El arreglo del detector es inerte hasta que alguien re-evalúe.
+
+**Resuelto el 30/07 (T-306) con un modo del propio backfill, no con otra herramienta:**
+
+```bash
+npx tsx scripts/backfill-shuffle-safety.ts --recriterio            # dry-run: lista cada cambio y su dirección
+npx tsx scripts/backfill-shuffle-safety.ts --recriterio --apply    # escribe por record_shuffle_safety
+```
+
+- **Acotado por SQL** a `shuffle_safety_verified_by = 'backfill_deterministic_v3'`. No ve lo que
+  firmó `llm_audit_v1` ni `aplicar-explicacion`: la regla que protege a la 2ª capa se cumple por
+  consulta, no por disciplina (la regresión del 22/07 fue justamente saltársela).
+- **Con historial**: escribe por `record_shuffle_safety`, que deja fila en
+  `question_shuffle_safety_history`. Un cambio de criterio tiene que poder auditarse a posteriori.
+- **Guardarraíl de volumen** (`--max`, 2000 por defecto): más cambios que eso aborta. Un criterio
+  que mueve miles de filas de golpe es más probablemente un detector roto que una mejora.
+- **Idempotente**: la 2ª pasada da 0. Y se verifica con `sweep-shuffle-safety-drift.ts`, que es
+  detector independiente — tras aplicar debe seguir dando 0 regresiones.
+
+**Lo que salió al correrlo la primera vez, y es el argumento de que el modo hacía falta:** 112
+veredictos cambiaron, todos `unsafe→safe`. Solo 91 venían del fix de los grados; los otros **21
+llevaban mal desde el 22/07** por textos como *«es la cámara alta»*, *«son las células óseas»* o
+*«es la Décima Revisión»* — o sea, el endurecimiento de las tildes del 28/07 **también** quedó
+inerte, y nadie lo supo durante ocho días. Esos cinco textos reales están ahora fijados como test.
 
 > **Y al medir el efecto de un cambio del detector, la población NO puede estar definida por su
 > propia salida.** La primera medición de T-301 filtró por `shuffle_safety='safe'` y dio **0** — pero

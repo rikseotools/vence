@@ -195,6 +195,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
       '`deriveChannel` o la política de toques.',
   },
+  reevaluar_shuffle_safety_por_criterio: {
+    titulo: 'Re-evaluar los veredictos de barajabilidad cuando cambia el CRITERIO (no el contenido)',
+    ruta: 'scripts/backfill-shuffle-safety.ts',
+    estado: 'vivo',
+    escribe: ['shuffle_safety'],
+    runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
+    notas:
+      '`--recriterio [--apply] [--max N]`. Dry-run por defecto. Es el modo que faltaba: el trigger de ' +
+      'invalidación mira el **hash del CONTENIDO**, así que cuando lo que mejora es el detector ' +
+      '(`explanationReferencesLetters`) el veredicto viejo se queda escrito para siempre. Medido el ' +
+      '30/07 (T-306): el fix de los grados centígrados (T-301) dejó de marcar 106 activas y **ninguna ' +
+      'cambió de estado**, y el endurecimiento de las tildes del 28/07 llevaba **21 preguntas** ocho ' +
+      'días marcadas `unsafe` por textos como «es la cámara alta» o «son las células óseas». ' +
+      '**Acotado por SQL** a `shuffle_safety_verified_by = backfill_deterministic_v3`: no toca lo que ' +
+      'firmó `llm_audit_v1` ni `aplicar-explicacion` — esa es la regresión del 22/07 y aquí se impide ' +
+      'por consulta, no por disciplina. Escribe por `record_shuffle_safety` (deja fila en ' +
+      '`question_shuffle_safety_history`, porque un cambio de criterio tiene que ser auditable) y emite ' +
+      '`shuffle_safety_recriterio`. Guardarraíl de VOLUMEN: más de `--max` (2000) cambios aborta — un ' +
+      'criterio que mueve miles de filas de golpe es más probablemente un detector roto que una mejora. ' +
+      'Idempotente (2ª pasada = 0 cambios). Verificar después con `sweep-shuffle-safety-drift.ts`, que ' +
+      'es detector independiente: debe seguir dando 0 regresiones. NUNCA aplicarlo sin leer el dry-run: ' +
+      'lista cada cambio con su dirección, y un `safe→unsafe` masivo es una señal, no un trámite.',
+  },
   degradar_origen_hito: {
     titulo: 'Degradar el `origen` de un hito de convocatoria cuando su fecha no consta en ninguna fuente',
     ruta: 'scripts/convocatoria/degradar-origen-hito.cjs',

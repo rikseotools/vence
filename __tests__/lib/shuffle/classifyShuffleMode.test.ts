@@ -261,6 +261,34 @@ describe('explanationReferencesLetters — grados y locuciones (T-301, 30/07)', 
   })
 })
 
+// La familia entera de este defecto —la letra A-E pegada a otra letra, con o sin tilde— y con
+// TEXTOS REALES del banco, que es lo que faltaba. El endurecimiento del 28/07 (`\b` → lookahead
+// Unicode) no llevaba ninguno: sus casos de ejemplo estaban escritos a mano. Consecuencia medida
+// el 30/07 al re-evaluar los veredictos (T-306): **21 preguntas seguían `unsafe`** desde el 22/07
+// por textos como estos, ocho días después de que el detector se arreglara. Un arreglo sin caso
+// real no impide la reincidencia: ya van cuatro sitios (tildes, «la Cámara», grados, «letra a
+// letra»). Si aparece un quinto, que salga aquí en rojo y no en la cara del opositor.
+describe('explanationReferencesLetters — textos REALES que NO son referencias (familia frontera/tilde)', () => {
+  test.each([
+    ['«es la cámara alta» (CE art. 69)', 'El Senado (art. 69 de la CE) es la cámara alta y tiene la representación territorial.'],
+    ['«son las células óseas»', 'Los osteocitos son las células óseas maduras, y los osteoclastos reabsorben el tejido óseo.'],
+    ['«es la Décima Revisión» (CIE-10)', 'La CIE-10 es la Décima Revisión de la Clasificación Internacional de Enfermedades.'],
+    ['«es la estructura de datos»', 'Una tabla de dispersión es la estructura de datos que asocia claves con valores.'],
+    ['«es la Cámara de representación territorial» (literal del art. 69.1)', 'Constitución Española. Artículo 69. 1. El Senado es la Cámara de representación territorial.'],
+  ])('NO caza: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(false)
+  })
+
+  // El contraste que da valor a los de arriba: la MISMA construcción con una letra de verdad
+  // detrás sigue marcando. Si un día se «arregla» ensanchando la exención, esto se pone rojo.
+  test.each([
+    ['«es la C» a secas', 'Tras leer el precepto, la correcta es la C.'],
+    ['«son las A y C»', 'Según el artículo, son las A y C las que recogen el supuesto.'],
+  ])('sigue cazando: %s', (_, texto) => {
+    expect(explanationReferencesLetters(texto)).toBe(true)
+  })
+})
+
 describe('isShuffleServeEligible — tener estructura NO basta (28/07)', () => {
   const base = { shuffle_mode: 'full', shuffle_safety: 'safe', has_structured_explanation: true,
     options: ['Doce meses', 'Seis meses', 'Un año', 'Dos años'] }
