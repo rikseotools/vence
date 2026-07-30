@@ -24,6 +24,15 @@ export interface FavoriteQuestionsResult {
   success: boolean
   questions: TestLayoutQuestion[]
   questionCount: number
+  /**
+   * Cuántas tiene guardadas EN TOTAL, que no es lo mismo que cuántas se sirven.
+   *
+   * Sin este dato la página no podía avisar de que estaba enseñando un subconjunto, y una
+   * usuaria con 40 favoritas veía siempre las mismas 20 y dedujo lo razonable: que las
+   * nuevas no se guardaban (Laura Zurdo, feedback 9527a03f, 29/07/2026). No se perdía
+   * nada; se servía un trozo en silencio, que es peor porque no hay forma de notarlo.
+   */
+  totalGuardadas: number
   message?: string
   error?: string
 }
@@ -130,6 +139,12 @@ export async function getFavoriteQuestionsForUser(params: {
   try {
     const db = getFavoritesDb()
 
+    // Total REAL de guardadas: es lo que permite decir "20 de 40" en vez de callar.
+    const [{ n: totalGuardadas }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(userQuestionFavorites)
+      .where(eq(userQuestionFavorites.userId, userId))
+
     const marcadas = await db
       .select({
         questionId: userQuestionFavorites.questionId,
@@ -145,6 +160,7 @@ export async function getFavoriteQuestionsForUser(params: {
         success: true,
         questions: [],
         questionCount: 0,
+        totalGuardadas,
         message: 'Todavía no has guardado ninguna pregunta',
       }
     }
@@ -186,6 +202,7 @@ export async function getFavoriteQuestionsForUser(params: {
         success: true,
         questions: [],
         questionCount: 0,
+        totalGuardadas,
         message: 'Las preguntas que guardaste ya no están disponibles',
       }
     }
@@ -272,6 +289,7 @@ export async function getFavoriteQuestionsForUser(params: {
       success: true,
       questions: formateadas,
       questionCount: formateadas.length,
+      totalGuardadas,
       message: `Repaso con ${formateadas.length} pregunta(s) guardada(s)`,
     }
   } catch (error) {
@@ -280,6 +298,7 @@ export async function getFavoriteQuestionsForUser(params: {
       success: false,
       questions: [],
       questionCount: 0,
+      totalGuardadas: 0,
       error: 'No se pudieron cargar tus preguntas guardadas',
     }
   }

@@ -15,6 +15,7 @@ import QuestionReviewCard from '@/components/QuestionReviewCard'
 import { getOposicion } from '@/lib/config/oposiciones'
 import FavoriteQuestionButton from '@/components/FavoriteQuestionButton'
 import type { TestLayoutQuestion } from '@/lib/api/tests'
+import { MAX_FAVORITAS_POR_TEST } from '@/lib/api/question-favorites/schemas'
 
 function FavoritasContent() {
   const searchParams = useSearchParams()
@@ -66,7 +67,11 @@ function FavoritasContent() {
           method: 'POST',
           headers: { ...headers, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            numQuestions: parseInt(searchParams.get('n') || '20', 10),
+            // TODAS sus guardadas por defecto, no 20. El defecto de 20 hacía que quien
+            // tuviera más viera siempre las mismas y dedujera que las nuevas no se
+            // guardaban (Laura, 29/07: tenía 40 y veía 20). `?n=` sigue mandando si alguien
+            // quiere un repaso más corto.
+            numQuestions: parseInt(searchParams.get('n') || String(MAX_FAVORITAS_POR_TEST), 10),
             orderBy: searchParams.get('order') === 'random' ? 'random' : 'recent',
           }),
         })
