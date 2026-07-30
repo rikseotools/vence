@@ -38,7 +38,7 @@ const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cj
 const { detectarReservaSinDeclarar } = require('../lib/convocatoria/reservaSinDeclarar.cjs');
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
-const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
+const { tablasFrias, tablasSinAjuste, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
@@ -1310,13 +1310,28 @@ async function detectarTodo(c, add, now) {
   try {
     const vm = (await c.query(`
       SELECT c.relname, c.relpages::int AS relpages, c.relallvisible::int AS relallvisible,
-             (COALESCE(c.reloptions::text,'') ILIKE '%insert_scale%') AS tiene_ajuste
+             (COALESCE(c.reloptions::text,'') ILIKE '%insert_scale%') AS tiene_ajuste,
+             s.n_live_tup::bigint AS vivas, s.n_dead_tup::bigint AS muertas,
+             s.n_ins_since_vacuum::bigint AS ins_pend,
+             COALESCE(NULLIF(substring(COALESCE(c.reloptions::text,'') from 'autovacuum_vacuum_scale_factor=([0-9.]+)'),'')::float, 0.2) AS scale_muertas
         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+        JOIN pg_stat_user_tables s ON s.relid = c.oid
        WHERE c.relkind = 'r' AND c.relpages > $1`, [VM_MIN_PAGES])).rows;
-    const frias = tablasFrias(vm.map(r => ({
+    const norm = vm.map(r => ({
       relname: r.relname, relpages: r.relpages, relallvisible: r.relallvisible,
       tieneAjusteInserts: r.tiene_ajuste,
-    })));
+      vivas: Number(r.vivas), muertas: Number(r.muertas),
+      insPendientes: Number(r.ins_pend), scaleFactorMuertas: Number(r.scale_muertas),
+    }));
+    const frias = tablasFrias(norm);
+    // PREVENTIVO: grande y sin la protección puesta, aunque hoy esté caliente. El detector de
+    // frías llega tarde — el 29/07 se protegieron las 13 frías de ese momento y a la mañana
+    // siguiente `observable_events` (la mayor, ~3 GB) había caído por no estar en aquella lista.
+    for (const t of tablasSinAjuste(norm).slice(0, 5)) {
+      add('app', 'warn', null, 'visibility_map_sin_ajuste',
+        `\`${t.relname}\` (${t.relpages.toLocaleString('es-ES')} páginas) NO tiene el ajuste de autovacuum por inserts: se enfriará tarde o temprano y nadie la despertará`,
+        { tabla: t.relname, relpages: t.relpages, pctVisible: t.pctVisible, remedio: remedioVisibilidad(t) });
+    }
     for (const f of frias.slice(0, 5)) {
       add('app', f.status === 'error' ? 'error' : 'warn', null, 'visibility_map_frio',
         `\`${f.relname}\` con solo el ${f.pctVisible}% de páginas marcadas visibles (${f.paginasFrias.toLocaleString('es-ES')} frías): sus index-only scans bajan al heap y pueden tardar 100× más`,

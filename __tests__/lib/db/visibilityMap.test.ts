@@ -101,6 +101,68 @@ describe('remedioVisibilidad — el hallazgo trae su arreglo', () => {
   it('CON el ajuste ya puesto → manda mirar otra cosa, no repetir el ALTER', () => {
     const v = classifyVisibility(t('test_questions', 298_600, 201_651, true))
     expect(remedioVisibilidad(v)).not.toContain('ALTER TABLE')
-    expect(remedioVisibilidad(v)).toContain('autovacuum no llega')
+    // Sin datos de filas muertas/inserts no se puede afirmar que sea irreparable: manda mirar el
+    // autovacuum, que es lo honesto. La afirmación fuerte («no se arreglará sola») exige la cuenta.
+    expect(remedioVisibilidad(v)).toMatch(/autovacuum llega/)
+    expect(remedioVisibilidad(v)).not.toMatch(/NO se arreglará sola/)
+  })
+})
+
+describe('tablasSinAjuste — marcar ANTES de que se enfríe (30/07)', () => {
+  // El detector de frías llega tarde: el 29/07 se aplicó el ajuste a las 13 que estaban frías EN
+  // ESE MOMENTO y a la mañana siguiente observable_events —la mayor, ~3 GB— había caído al 85,9%
+  // porque no estaba en aquella lista. Perseguirlas de una en una garantiza que siempre haya alguna
+  // esperando a enfriarse.
+  const { tablasSinAjuste } = require('@/lib/db/visibilityMap.cjs') as {
+    tablasSinAjuste: (t: Tabla[]) => Array<Veredicto & { motivo: string }>
+  }
+
+  it('marca una tabla grande sin ajuste AUNQUE esté al 100%', () => {
+    const r = tablasSinAjuste([t('observable_events', 392_136, 392_136, false)])
+    expect(r).toHaveLength(1)
+    expect(r[0].motivo).toBe('sin_ajuste_inserts')
+  })
+
+  it('NO marca la que ya está protegida', () => {
+    expect(tablasSinAjuste([t('test_questions', 299_675, 299_668, true)])).toEqual([])
+  })
+
+  it('NO marca tablas pequeñas (no duelen y ensucian la lista)', () => {
+    expect(tablasSinAjuste([t('chica', VM_MIN_PAGES - 1, 0, false)])).toEqual([])
+  })
+
+  it('ordena por tamaño: la grande primero', () => {
+    const r = tablasSinAjuste([t('mediana', 9_000, 9_000, false), t('enorme', 392_136, 392_136, false)])
+    expect(r.map(x => x.relname)).toEqual(['enorme', 'mediana'])
+  })
+
+  it('tolera lista vacía o ausente', () => {
+    expect(tablasSinAjuste([])).toEqual([])
+    // @ts-expect-error — entrada inválida a propósito
+    expect(tablasSinAjuste(undefined)).toEqual([])
+  })
+})
+
+describe('remedioVisibilidad — el hallazgo trae la CAUSA, no un «revisa»', () => {
+  it('caso REAL de questions: por debajo de los DOS disparadores → no se arregla sola', () => {
+    // 7.394 muertas contra umbral 8.084 (scale 0.05 · 159.671 vivas) y 0 inserts. Podía quedarse al
+    // 78,5% indefinidamente, y con el mensaje viejo («revisa el autovacuum») hubo que diagnosticarlo
+    // a mano.
+    const v = classifyVisibility({
+      relname: 'questions', relpages: 42_183, relallvisible: 33_112, tieneAjusteInserts: true,
+      vivas: 159_671, muertas: 7_394, insPendientes: 0, scaleFactorMuertas: 0.05,
+    } as unknown as Tabla)
+    const r = remedioVisibilidad(v)
+    expect(r).toMatch(/NO se arreglará sola/)
+    expect(r).toMatch(/8084/)
+    expect(r).toMatch(/VACUUM \(ANALYZE\) manual/)
+  })
+
+  it('si hay inserts pendientes, el autovacuum SÍ puede llegar: no dice que sea irreparable', () => {
+    const v = classifyVisibility({
+      relname: 'observable_events', relpages: 392_136, relallvisible: 336_666, tieneAjusteInserts: true,
+      vivas: 9_000_000, muertas: 100, insPendientes: 370_960, scaleFactorMuertas: 0.01,
+    } as unknown as Tabla)
+    expect(remedioVisibilidad(v)).not.toMatch(/NO se arreglará sola/)
   })
 })

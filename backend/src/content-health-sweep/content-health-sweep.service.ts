@@ -2658,6 +2658,13 @@ export class ContentHealthSweepService {
         // Por PÁGINAS FRÍAS, no por porcentaje: una tabla de 8 GB al 80% arrastra mucho más I/O
         // que una de 40 MB al 46%, y el porcentaje las hace parecer iguales.
         .sort((a, b) => b.paginasFrias - a.paginasFrias);
+      // PREVENTIVO (espejo de tablasSinAjuste): grande y sin protección, aunque hoy esté caliente.
+      for (const t of (Array.isArray(vmRows) ? vmRows : []).filter((r) => !r.tiene_ajuste).slice(0, 5)) {
+        add('app', 'warn', null, 'visibility_map_sin_ajuste',
+          `\`${t.relname}\` (${t.relpages.toLocaleString('es-ES')} páginas) NO tiene el ajuste de autovacuum por inserts: se enfriará tarde o temprano y nadie la despertará`,
+          { tabla: t.relname, relpages: t.relpages,
+            remedio: `ALTER TABLE public.${t.relname} SET (autovacuum_vacuum_insert_scale_factor = 0.01, autovacuum_vacuum_insert_threshold = 1000)` });
+      }
       for (const f of frias.slice(0, 5)) {
         add(
           'app',

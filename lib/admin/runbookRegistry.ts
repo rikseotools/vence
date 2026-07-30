@@ -55,6 +55,8 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   // T-275: no es un error, es una respuesta correcta que llega TARDE — el mismo punto ciego que
   // T-254. Va con la frase de health-check porque es salud de app/infra, no de contenido.
   visibility_map_frio: { title: 'Mapa de visibilidad frío (index-only scans que no lo son)', ...HEALTH_CHECK },
+  // Preventivo del anterior: marca la tabla ANTES de que se enfríe, por no tener la protección.
+  visibility_map_sin_ajuste: { title: 'Tabla grande sin el ajuste de autovacuum por inserts', ...HEALTH_CHECK },
   // T-307: el barrido se cortó a mitad. Es el hallazgo que dice «esta foto está INCOMPLETA»: sin
   // él, un detector que revienta deja el resto del panel con los datos de la pasada anterior y
   // pasa por verde (pasó el 29 y el 30/07: dos días de ceguera con el badge tranquilo).
