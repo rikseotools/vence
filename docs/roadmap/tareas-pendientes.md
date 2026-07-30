@@ -1360,6 +1360,21 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Corrige el diagnóstico de [T-254]:** aquella ficha culpaba a la CPU del BACKEND por estampida de crons. El escalonado (`cron-colisiones.ts`) se desplegó el 29/07 a las 03:39 y **la degradación se repitió ese mismo día**. Era correcto pero atacaba otra cosa: el saturado es el **frontend**, que es quien sirve `answer-and-save`.
 - **Relacionada:** [T-254] (el indicador que lo hace visible), [T-089] (Koigrid), [T-159] (cola de PDFs sin consumidor), [T-086] (pre-generación).
 
+- **📊 TRIAJE DEL BADGE 5xx (30/07) — los 21 `http_5xx` del panel son ESTE incidente, y cuantifican su daño en usuarios.**
+  - **Prueba de que no es un fallo de ningún endpoint:** entre los 504 está **`/api/version`**, que solo devuelve una cadena. Si eso expira, lo que falla es el contenedor, no la lógica. Los 21 hallazgos son **todos `504 Gateway Time-out`** repartidos entre endpoints sin relación.
+  - **Dos ráfagas, las dos coincidiendo con generación de PDFs:**
+
+    | ventana (UTC) | eventos 504 | endpoints | **usuarios** | event-loop |
+    |---|---|---|---|---|
+    | 09:42-09:46 | 208 | **28 distintos** | **32** | bloqueado 215 s |
+    | 11:09-11:12 | 21 | 3 | 10 | bloqueado **150 s** |
+
+  - **La segunda ráfaga (11:02-11:12) no estaba documentada** y confirma el mecanismo de forma INDEPENDIENTE del episodio de la mañana: otro barrido de PDFs, mismo bloqueo, mismos 504.
+  - **Lo que esto añade:** el diagnóstico original midió el daño como LATENCIA (p95 de 25 s). Los 504 dicen que es peor — **~43 usuarios no recibieron respuesta en absoluto**, en 28 endpoints. No es «la app va lenta», es «la app no contesta». Es el número de usuarios afectados que la ficha no tenía.
+  - **Ojo con la fuente:** estos 504 NO están en `validation_error_logs` (solo 4 en 24 h) porque son timeouts de **borde** que la app nunca llega a ver. Viven en `observable_events` con `event_type='http_5xx'` y columna **`ts`** (no `created_at`) — buscarlos por `http_status=504` da vacío y hace concluir que no existen.
+  - **Verificado que la foto era fresca** (barrido de 17:31 UTC, 0,7 h antes), así que no es un residuo viejo.
+- **⏭️ Fase 2 — el obstáculo NO es la cadencia del worker.** Análisis completo en [T-159]: son dos cargas en una sola cola, así que la petición del usuario esperaría detrás de un lote de pre-generación de 20 min **aunque se despertara al worker al instante**. Lo que hace falta primero es carril o prioridad, y eso se decide sin esperar datos. El umbral (qué se encola) sí depende del `renderMs` que la Fase 1a instrumentó.
+
 ### [T-238] 🟠 El auto-clonado del `apply` de señales OEP es inerte: pasa 1 de 125
 
 **Qué:** `promoteSignalToConvocatoria` (`lib/api/oep-signals/queries.ts`) clona el decreto al hub solo
@@ -1662,6 +1677,45 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Origen:** barrido de salud del 27/07.
 
 ### [T-159] 🟠 [ABIERTO 27/07] La cola de PDFs del temario no tiene consumidor automático (Fase D de T-086)
+
+> **📐 ANÁLISIS 30/07 — qué haría falta para que el PDF bajo demanda pudiera usar esta cola (Fase 2 de [T-270]).**
+> Salió de preguntarse si la Fase 2 se podía adelantar. La respuesta es que **el obstáculo no es la
+> cadencia del worker, y descubrirlo cambia el diseño.**
+>
+> **Medido (7 días, `observable_events`):** 44 ejecuciones — **29 en vacío** (<10 s) y 15 con trabajo;
+> cuando trabaja tarda **20 min de media y hasta 31**. Y la cola está **completamente drenada**:
+> 514 trabajos, todos `done`. O sea: para la pre-generación nocturna el worker va sobrado y **no hay
+> nada que arreglar ahí**.
+>
+> **🎯 El hallazgo:** son **dos cargas distintas en una sola cola**. Si la petición de un opositor
+> entra en la misma cola que un lote de pre-generación, espera detrás de esos 20 minutos — y eso pasa
+> **igual aunque se despierte al worker al instante**. Por tanto:
+>
+> **El disparo bajo demanda NO arregla el problema por sí solo.** Lo que hace falta primero es que la
+> petición de usuario tenga **prioridad o carril propio**. Es una decisión de diseño de la cola, es
+> más importante que la cadencia, y **se puede tomar ya, sin esperar ninguna medición**.
+>
+> **Las otras dos piezas, para que no se confundan de orden:**
+> 1. **¿Qué se encola y qué no?** → un umbral por coste de render. Depende de los datos de `renderMs`
+>    que [T-270] Fase 1a instrumentó; hasta que haya un pico con tráfico de PDF, elegirlo es ponerlo a ojo.
+> 2. **¿Carril/prioridad para el usuario?** → decidible YA (esta nota).
+> 3. **¿Despertar al worker?** → solo tiene sentido DESPUÉS de (2). Y no es gratis: la ruta necesitaría
+>    `ecs:RunTask` + `iam:PassRole` (cambio de IAM) y abriría un **vector de abuso** —un premium podría
+>    provocar el arranque de tareas Fargate—, así que exigiría deduplicación y límite.
+>
+> **⚠️ Sobre el coste, deliberadamente sin cifras:** bajar la cadencia NO escala con el número de
+> disparos, porque las ejecuciones con trabajo duran 20 min y una cadencia corta **solaparía tareas
+> concurrentes**. Antes de decidir gasto hay que mirar Cost Explorer de verdad, no estimar. Contexto:
+> la factura AWS son ~$491/mes y [T-206] tiene ~$285/mes de suelo Fargate pendientes de decisión.
+>
+> **Cómo se dispara hoy, verificado:** `aws scheduler get-schedule --name vence-temario-pdf-worker` →
+> `rate(30 minutes)`, `Europe/Madrid`, `FARGATE`, clúster `vence-backend`. Detalle menor: reutiliza el
+> rol `vence-instagram-daily-scheduler-role`, compartido con otro job.
+>
+> **Para el que retome esto:** lo que NO hay que hacer es cablear `enqueuePdfJob` en la ruta del 413.
+> Ese caso lo resuelve mejor el piloto de [T-273] (descarga por partes, contenido **al instante**);
+> encolar le haría esperar hasta 30 minutos por lo mismo. La cola sirve para el otro caso: temas que
+> **sí caben** pero cuyo render bloquea la task.
 > **⚠️ CORRECCIÓN 29/07 — la premisa de abajo es FALSA y desvía el diagnóstico.** Sí hay tarea
 > programada: `vence-temario-pdf-worker`, **EventBridge Scheduler** (`rate(30 minutes)`, creada el
 > 23/07, ENABLED). No aparece con `aws events list-rules` —que sale vacío— porque **Scheduler y
