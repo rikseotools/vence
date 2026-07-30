@@ -1428,9 +1428,31 @@ export const RULE_WEBHOOK_UNHEALTHY: AlertRule<{
 };
 
 /**
- * Fallos 5xx en endpoints /api/stripe/* — cada error = un cliente que
+ * Rutas donde un 5xx significa **alguien que quiso pagar y no pudo**.
+ *
+ * Es la lista que decide qué vigila `RULE_STRIPE_CHECKOUT_FAILED`, y está aquí arriba
+ * —exportada— porque el guardarraíl `__tests__/guardrails/rutasCobroVigiladas.test.ts`
+ * (frontend) la LEE de este fichero y comprueba que toda ruta de `app/api` que acaba
+ * hablando con Stripe cae dentro de alguno de estos patrones. Así un endpoint de cobro
+ * nuevo **nace vigilado** en vez de estrenarse mudo.
+ *
+ * Por qué existe la segunda entrada (T-341, 31/07/2026): el camino de pago dejó de vivir
+ * solo en `/api/stripe/*`. `POST /api/v2/premium/recuperar-precio` crea price, enlace de
+ * pago y oferta, y su primera versión devolvía **500 en el primer clic de cualquier
+ * afectado** por un `ON CONFLICT` que no casaba con el índice parcial. Con la regla
+ * mirando únicamente `/api/stripe/%`, ese fallo habría sido **invisible en producción**:
+ * lo cazó una prueba manual contra datos reales, que es justo lo que no se puede repetir
+ * cada día.
+ */
+export const PATRONES_RUTA_COBRO = ['/api/stripe/%', '/api/v2/premium/%'] as const;
+
+/**
+ * Fallos 5xx en los caminos de cobro — cada error = un cliente que
  * intentó pagar y no pudo. Threshold bajo (>=3 en 10min) porque el
  * coste por fallo es directo en ingresos.
+ *
+ * El nombre de la regla se conserva (`stripe_checkout_failed`) aunque ya cubra más que el
+ * checkout: es el identificador con el que se casan el cooldown y las alertas históricas.
  *
  * Origen: incidente 2026-05-27 — bug del Dockerfile (ARG NEXT_PUBLIC_STRIPE_PRICE_*
  * faltante) dejó 'price_quarterly_placeholder' inlinado en el bundle JS
@@ -1452,7 +1474,7 @@ export const RULE_STRIPE_CHECKOUT_FAILED: AlertRule<{
     FROM observable_events
     WHERE source = 'vercel'
       AND http_status >= 500
-      AND endpoint LIKE '/api/stripe/%'
+      AND endpoint LIKE ANY (${sql.raw(`ARRAY[${PATRONES_RUTA_COBRO.map((p) => `'${p}'`).join(', ')}]`)})
       AND ts > NOW() - INTERVAL '10 minutes'
   `,
   shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
@@ -1461,7 +1483,7 @@ export const RULE_STRIPE_CHECKOUT_FAILED: AlertRule<{
     const top = rows[0]?.topEndpoint ?? '/api/stripe/*';
     return {
       title: `${n} fallos en checkout Stripe en 10min — clientes perdidos`,
-      body: `Endpoint: ${top}\n\nCada 5xx en /api/stripe/* es un usuario que intentó pagar y no pudo. Investigar en:\n\n  - SELECT ts, endpoint, http_status, error_message, metadata FROM observable_events\n    WHERE endpoint LIKE '/api/stripe/%' AND http_status >= 500\n      AND ts > NOW() - INTERVAL '15 minutes'\n    ORDER BY ts DESC LIMIT 10;\n  - CloudWatch /ecs/vence-frontend filter "Error creando" OR "Stripe"\n  - Stripe Dashboard → Logs → recent failures\n\nIncidente origen 2026-05-27: bug del Dockerfile dejó 'price_quarterly_placeholder' en el bundle. Usuario perdió 8 intentos de checkout antes de rendirse. Sin esta regla, lo detectamos horas después manualmente.`,
+      body: `Endpoint: ${top}\n\nCada 5xx en un camino de cobro (${PATRONES_RUTA_COBRO.join(', ')}) es un usuario que intentó pagar y no pudo. Investigar en:\n\n  - SELECT ts, endpoint, http_status, error_message, metadata FROM observable_events\n    WHERE endpoint LIKE ANY (ARRAY['${PATRONES_RUTA_COBRO.join("', '")}']) AND http_status >= 500\n      AND ts > NOW() - INTERVAL '15 minutes'\n    ORDER BY ts DESC LIMIT 10;\n  - CloudWatch /ecs/vence-frontend filter "Error creando" OR "Stripe"\n  - Stripe Dashboard → Logs → recent failures\n\nIncidente origen 2026-05-27: bug del Dockerfile dejó 'price_quarterly_placeholder' en el bundle. Usuario perdió 8 intentos de checkout antes de rendirse. Sin esta regla, lo detectamos horas después manualmente.`,
       metadata: { count: n, topEndpoint: top, windowMin: 10 },
       fingerprint: `stripe_checkout_failed_${top}`,
     };

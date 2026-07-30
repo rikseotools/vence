@@ -2413,3 +2413,39 @@ describe('RULE_EVASION_MULTIDISPOSITIVO (cambiar de móvil al topar — T-304, 3
     expect(n.body).toMatch(/no es concluyente/i);
   });
 });
+
+// ── Los caminos de cobro que la alerta vigila de verdad (T-341) ───────────────────────────
+//
+// La regla es la ÚNICA que avisa de que alguien intentó pagar y no pudo. Hasta el 31/07/2026
+// miraba solo `/api/stripe/%`, y el cobro ya no vive únicamente ahí: el endpoint que devuelve
+// el precio heredado devolvía 500 en el primer clic de cualquier afectado y quedaba fuera del
+// radar. Declarar el patrón no basta — lo que cuenta es que la QUERY lo use.
+import { PATRONES_RUTA_COBRO, RULE_STRIPE_CHECKOUT_FAILED } from './alert-rules';
+
+describe('RULE_STRIPE_CHECKOUT_FAILED — qué considera «camino de cobro»', () => {
+  it('la query usa TODOS los patrones declarados (declararlos y no usarlos es peor que no tenerlos)', () => {
+    const q = JSON.stringify(RULE_STRIPE_CHECKOUT_FAILED.query);
+    for (const patron of PATRONES_RUTA_COBRO) expect(q).toContain(patron);
+  });
+
+  it('cubre el precio heredado, que es lo que la dejó ciega', () => {
+    expect(PATRONES_RUTA_COBRO).toContain('/api/v2/premium/%');
+  });
+
+  it('sigue cubriendo el checkout de siempre (ampliar no puede quitar)', () => {
+    expect(PATRONES_RUTA_COBRO).toContain('/api/stripe/%');
+  });
+
+  it('salta con 3 fallos en 10 min y calla por debajo: cada uno es un cliente perdido', () => {
+    expect(RULE_STRIPE_CHECKOUT_FAILED.shouldFire([{ n: 2, topEndpoint: '/api/stripe/create-checkout' }])).toBe(false);
+    expect(RULE_STRIPE_CHECKOUT_FAILED.shouldFire([{ n: 3, topEndpoint: '/api/stripe/create-checkout' }])).toBe(true);
+  });
+
+  it('el aviso nombra el endpoint concreto y da la consulta para investigar', () => {
+    const n = RULE_STRIPE_CHECKOUT_FAILED.buildNotification([
+      { n: 5, topEndpoint: '/api/v2/premium/recuperar-precio' },
+    ]);
+    expect(n.body).toContain('/api/v2/premium/recuperar-precio');
+    expect(n.body).toMatch(/observable_events/);
+  });
+});
