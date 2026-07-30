@@ -20,6 +20,7 @@
  * Uso:
  *   npx tsx --env-file=.env.local scripts/revision/validar-lote-t291.ts
  *   npx tsx --env-file=.env.local scripts/revision/validar-lote-t291.ts --json  (salida máquina)
+ *   … --base scratchpad/t291/tanda2   (otra tanda: espera lotes/, veredictos/, estructuradas/ dentro)
  */
 import { readFileSync, readdirSync, existsSync } from 'fs'
 import { join } from 'path'
@@ -38,7 +39,11 @@ import {
 
 const { citaNoLiteral } = require(join(process.cwd(), 'scripts/impugnaciones/validar-explicacion.cjs'))
 
-const BASE = 'scratchpad/t291'
+// El directorio de la campaña se pasa por argumento: la tanda 1 vive en scratchpad/t291 y la 2 en
+// scratchpad/t291/tanda2. Cablearlo fijo obligaba a editar el script por tanda, que es la forma de
+// que un día se valide la carpeta equivocada y se aplique lo de otra campaña.
+const iBase = process.argv.indexOf('--base')
+const BASE = iBase >= 0 ? process.argv[iBase + 1] : 'scratchpad/t291'
 const JSON_OUT = process.argv.includes('--json')
 
 type Veredicto = {
@@ -254,7 +259,8 @@ async function gates(ctx: ReturnType<typeof main>) {
 
   if (JSON_OUT) { console.log(JSON.stringify(salida, null, 2)); process.exit(0) }
 
-  console.log(`\n📦 lotes entregados: ${salida.lotes_entregados.length}/20 — ${salida.lotes_entregados.join(' ')}`)
+  const totalLotes = readdirSync(join(BASE, 'lotes')).filter((f) => f.endsWith('.json')).length
+  console.log(`\n📦 lotes entregados: ${salida.lotes_entregados.length}/${totalLotes} — ${salida.lotes_entregados.join(' ')}`)
   console.log(`   veredictos: ${salida.con_veredicto}/${salida.preguntas_en_cola} preguntas de la cola`)
   console.log('\n🔎 por veredicto:'); console.table(porVeredicto)
   console.log('🎯 confianza declarada:'); console.table(porConfianza)
