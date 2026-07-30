@@ -117,7 +117,14 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
   // lenguaje jurídico corriente — pasó el 28/07 con el art. 29.2 del Decreto 7/2013 CyL, cuyos
   // cuatro requisitos van por letras y cuyos distractores cambian justo el verbo de cada una.
   // Por eso esta primera va SIN el flag `i`: la mayúscula es la señal.
-  const REFERENCIA_A_OPCION_LETRA = /\b(?:[Ll]a|[Oo]pci[óo]n|[Rr]espuesta|[Ll]etra)\s+[A-E]\b/
+  //
+  // ⚠️ Y detrás de la letra NO puede venir otra letra —tilde incluida—, que es lo que expresa el
+  // lookahead. Con el `\b` de antes, **«la Cámara» se leía como «la opción C»**: `\b` se define en
+  // JavaScript sobre `[A-Za-z0-9_]`, así que entre la «C» y la «á» hay frontera de palabra. En
+  // derecho parlamentario «la Cámara» sale en casi toda explicación, y todas quedaban rechazadas
+  // (medido el 30/07/2026 en la campaña de T-291: 5 razones impecables de 2 preguntas del
+  // Reglamento del Congreso). Mismo agujero de las tildes que ya documenta `classifyShuffleMode`.
+  const REFERENCIA_A_OPCION_LETRA = /\b(?:[Ll]a|[Oo]pci[óo]n|[Rr]espuesta|[Ll]etra)\s+[A-E](?![\p{L}\p{M}])/u
   const REFERENCIA_A_OPCION =
     /\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)\b|\b(opci[óo]n|respuesta|alternativa)\s+(anterior|previa|siguiente)\b/i
   const sospechosas = Object.entries(estructura.options).filter(([, r]) => {
