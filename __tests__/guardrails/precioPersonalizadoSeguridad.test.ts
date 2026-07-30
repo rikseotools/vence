@@ -104,3 +104,28 @@ describe('varias ofertas vivas por persona (29/07)', () => {
     expect(mig).toMatch(/UNIQUE INDEX[\s\S]*\(user_id, stripe_price_id\)/)
   })
 })
+
+describe('la página manda la sesión (30/07)', () => {
+  // Rocío se quedó bloqueada DOS veces por lo mismo con distinta cara: primero porque
+  // `apiFetch` mandaba POST a un endpoint GET (405), y después porque la llamada no
+  // llevaba cabeceras de autenticación (401). En los dos casos la página decía «no tienes
+  // precio activo» a alguien que SÍ lo tenía, y en los dos el endpoint estaba perfecto.
+  //
+  // La lección de verificación: probar el endpoint con un token a mano NO prueba la
+  // página. Salió verde mientras la usuaria seguía sin poder pagar.
+  const PAGINA = leer('app/premium/personal/page.tsx')
+
+  it('la página pide las cabeceras de sesión antes de llamar', () => {
+    expect(PAGINA).toContain('getAuthHeaders')
+    expect(PAGINA).toMatch(/const headers = await getAuthHeaders\(\)/)
+  })
+
+  it('y se las pasa a la llamada (tenerlas y no usarlas es el mismo 401)', () => {
+    const bloque = PAGINA.slice(PAGINA.indexOf('mi-oferta') - 400, PAGINA.indexOf('mi-oferta') + 200)
+    expect(bloque).toMatch(/headers\s*[,}]/)
+  })
+
+  it('la llamada es GET, no POST (el 405 del 29/07)', () => {
+    expect(PAGINA).toMatch(/method:\s*'GET'/)
+  })
+})
