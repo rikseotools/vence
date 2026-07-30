@@ -180,6 +180,7 @@ const PROGRAMAS = [
       `Se abona el euro cuando el motivo es un error que podemos comprobar: ${motivosSegunPremio(true)}.`,
       `Los motivos de valoración personal (${motivosSegunPremio(false)}) no llevan recompensa automática, porque no hay forma objetiva de medirlos. Aun así los leemos todos y mejoramos la explicación cuando toca; y si tu aportación nos resulta especialmente valiosa, te la premiamos a mano.`,
       'Si la desestimamos no pasa nada: no penaliza, simplemente no se abona.',
+      'Un fallo o hallazgo, una recompensa. Si varias impugnaciones son el mismo hallazgo (por ejemplo, la misma pregunta repetida en tres versiones), se abona una sola vez. Si son fallos distintos, cada uno cuenta por separado.',
       'Hasta 10 impugnaciones aceptadas al mes. Cuenta la calidad, no el volumen: impugnar a voleo no suma.',
       'Nos ayudas a cazar errores que ningún control automático ve — y el temario mejora para todos. 🎯',
     ],
