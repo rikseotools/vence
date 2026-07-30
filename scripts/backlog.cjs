@@ -16,6 +16,7 @@
 //   node scripts/backlog.cjs heartbeat                 # renueva el lease de las tuyas
 //   node scripts/backlog.cjs mine
 //   node scripts/backlog.cjs done T-042 --outcome "…"  # cierra + deja constancia
+//   node scripts/backlog.cjs reopen T-042 --motivo "…" # deshace un cierre equivocado
 //   node scripts/backlog.cjs release T-042
 //   node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (no la sugiere `next`)
 //   node scripts/backlog.cjs wake T-042                # la despierta antes de tiempo
@@ -467,6 +468,48 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
     }
 
+    else if (cmd === 'reopen') {
+      // REABRIR una tarea cerrada. El hueco lo destapó el propio sistema, dos veces el mismo día
+      // (30/07): por la mañana hubo que reabrir 3 fichas cerradas EN FALSO y no había comando —se
+      // hizo a mano—; por la tarde, T-270 se cerró y **el guardarraíl `cpuBoundRoutes` lo cazó**
+      // (su lista de excepciones exige ficha ABIERTA, y cerrarla dejaba la excepción huérfana).
+      //
+      // Sin este comando, deshacer un cierre equivocado exige tocar la BD por fuera de la
+      // herramienta que la gobierna, y mientras tanto la tarea **desaparece de `list`**: que es
+      // exactamente enterrar el trabajo, el riesgo que Manuel señaló esa misma mañana.
+      //
+      // Pide motivo a propósito: reabrir es rehacer una decisión y debe quedar por qué.
+      needSid();
+      const id = process.argv[3];
+      const motivo = arg('--motivo');
+      if (!id || !motivo) {
+        console.error('Uso: backlog.cjs reopen <id> --motivo "por qué se reabre"');
+        process.exit(2);
+      }
+      const [prev] = await s`SELECT id, status, outcome FROM public.backlog_tasks WHERE id = ${id}`;
+      if (!prev) { console.error(`❌ ${id} no existe.`); process.exit(1); }
+      if (prev.status !== 'done') {
+        console.error(`❌ ${id} no está cerrada (status: ${prev.status}) — no hay nada que reabrir.`);
+        process.exit(1);
+      }
+      // El outcome anterior NO se borra: se conserva en `progress_note` para que la próxima sesión
+      // vea qué se creyó terminado y por qué no lo estaba. Un reopen que borra la historia obliga
+      // a repetir la investigación que llevó a reabrir.
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET status = 'open', outcome = NULL, closed_at = NULL,
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
+               progress_note = concat_ws(E'\n',
+                 ${'REABIERTA: ' + motivo}::text,
+                 ${'(cierre anterior decía: ' + String(prev.outcome || '—').slice(0, 400) + ')'}::text,
+                 progress_note)
+         WHERE id = ${id} RETURNING id, title`;
+      console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
+      console.log(`   motivo: ${motivo}`);
+      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
+      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
+    }
+
     else if (cmd === 'release') {
       needSid();
       const id = process.argv[3];
@@ -792,7 +835,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | reserve ["título"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | reserve ["título"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);
