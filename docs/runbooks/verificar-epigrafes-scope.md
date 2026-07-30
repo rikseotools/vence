@@ -289,6 +289,38 @@ npm run verify:scope -- record <pt> /tmp/<pt>_p2.json
 
 Medido el 27/07/2026: `tcae_murcia` 40 temas ganaron materia y solo **8** segmentos sin cobertura (37 correct / 6 issues); `tcae_galicia` 22 y **3** (19/3); `auxiliar_administrativo_clm` 21 y **14** (12/9, concentrados en Excel 2019 y Teams/OneDrive). Uno de los de Galicia —*"Representación, participación y negociación colectiva"*— se había detectado antes a mano leyendo el diff: la herramienta lo encuentra sola, que es justo lo que no escala a 75 oposiciones.
 
+> ⚠️ **Mide lo que FALTA, no lo que SOBRA — no cierres el Paso 2 solo con esto (30/07/2026).**
+> `sim-materias-ganadas` responde *"¿servimos la materia nueva?"*. El literal también invalida el
+> Paso 2 **hacia abajo**: al restituir palabras que ACOTAN, un scope que antes parecía correcto pasa
+> a estar de más. `plan-paso2-tras-literal` no puede verlo —conserva el veredicto previo cuando no
+> hay huecos— así que aplicado a ciegas **re-sella el falso verde que acabas de destapar**.
+>
+> Caso que lo fija (`auxiliar_administrativo_sms`, T22): el epígrafe abreviado decía *«Objeto y
+> ámbito. Tipos contractuales; regulación armonizada; …»* y el pase anterior razonó por rango
+> contiguo (`"Ley 9/2017 1-27 Título Preliminar; coincide"`). El literal del BORM dice *«Objeto y
+> ámbito **de aplicación**. **Contratos del sector público**: **delimitación de los** tipos
+> contractuales; contratos **sujetos a una** regulación armonizada; …»* — cuatro rúbricas del BOE
+> **literales, en orden**, saltándose la Sección 2.ª «Negocios y contratos excluidos» (arts 4-11).
+> La medición decía «ganó 5 segmentos, 0 huecos» → habría vuelto a sellarlo `correct` con 19
+> preguntas fuera de programa. **Tras reescribir a literal, repasa también la frontera: ¿el
+> epígrafe nombra rúbricas de la norma? ¿las nombra TODAS o se salta alguna?**
+
+#### Punto ciego: un bloque que sobra DENTRO de una porción ya estrecha
+
+Los tres detectores automáticos dieron **verde** en ese T22, cada uno por su motivo:
+
+| Detector | Por qué no lo ve |
+|---|---|
+| `scope_over_inclusion_suspect` | mide el scope contra el **tamaño de la ley**: 27 de 354 artículos (7,6%) no parece sobre-inclusión de nada |
+| `sim-title-boundary` | el epígrafe nombra **secciones**, no títulos → «epígrafe no mapeable», no opina |
+| `empty_topic` / `low_coverage` | el tema servía 122 preguntas: rebosa |
+
+Es el hueco entre «el scope es casi la ley entera» y «se cuela 1-2 artículos en la frontera»: aquí
+el scope es una porción **ajustada y legítima** de una ley enorme, y dentro de ella sobra un bloque
+entero. Hoy solo lo caza la adjudicación a mano (o un usuario). Si vas a auditar una oposición tras
+reescribir a literal, **mapea cada fragmento del epígrafe a su rúbrica en el índice del BOE** y mira
+qué rúbrica intermedia no aparece: es exactamente donde se esconde.
+
 ### Añadir una ley a un tema: `verify:scope` con `ley_nueva`
 
 El pipeline de scope sabía recortar y ampliar **dentro de una ley que el tema ya tenía**. Desde el 27/07 también admite **añadir una ley nueva** al tema (el movimiento con el que se tapan los huecos que deja una reorganización de temario, y el que hace falta cuando una norma sustituye a otra): basta con proponerla en el `veredicto` con sus `anadir`. El pipeline comprueba que la ley existe, que **sus artículos existen y están activos** (si no, estaría creando artículos fantasma en el scope) y mide **cuántas preguntas pasan a servirse**. Se clasifica **SIEMPRE como puerta de juicio** (`ley_nueva` → exige `--include-gate`): decir "este tema también va de esta norma" no tiene versión mecánica, y el gate de impacto no lo veía porque mide preguntas que SALEN, y una ley nueva no saca ninguna.
