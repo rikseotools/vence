@@ -195,6 +195,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
       '`deriveChannel` o la política de toques.',
   },
+  escopar_ley_entera: {
+    titulo: 'Enganchar una ley COMPLETA al temario de un tema (rescatar preguntas que ningún tema sirve)',
+    ruta: 'scripts/scope/escopar-ley-entera.cjs',
+    estado: 'vivo',
+    escribe: ['topic_scope'],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      '`--pt <position_type> --tema <N> --ley "<short_name>" [--motivo "…"] [--apply]`. Dry-run por ' +
+      'defecto. Para el caso de [T-055]: un contenedor con preguntas activas que **ningún tema sirve** ' +
+      'y un epígrafe que lo pide por su nombre — recuperarlas es re-escopar, no generar. **Se NIEGA si ' +
+      'el epígrafe no nombra la ley**; para cuando la pide con otras palabras hay `--motivo`, que queda ' +
+      'escrito en el evento `topic_scope_ley_entera_anadida` (obligar a explicarlo es la guarda, no el ' +
+      'flag). Idempotente. Expresa «toda la ley» por AUSENCIA de `article_numbers` — así no añade un ' +
+      'escritor más a esa columna, que tiene trinquete por ser el temario servido. Existe porque el repo ' +
+      'acumulaba una docena de `scripts/_xxx.cjs` de un solo uso haciendo este INSERT sin ninguna guarda. ' +
+      '**Dos cosas que hay que comprobar A MANO antes** (ninguna la puede deducir el script): que la ' +
+      'oposición no esté cerrada por `questionTag` en `lib/config/oposiciones.ts` (si lo está, escopar no ' +
+      'basta: hay que etiquetar las preguntas) y que no exista ya un contenedor GEMELO escopado, porque ' +
+      'entonces esto duplica en vez de rescatar. Verificar SIEMPRE con `GET /api/questions/filtered?' +
+      'action=count&topicNumber=N&positionType=…` (cachea 60 s): el HTML se renderiza en cliente y es ' +
+      'idéntico para un tema lleno y uno vacío.',
+  },
   latido_sesiones_worktree: {
     titulo: '¿Qué sesión de trabajo (worktree) está viva? — señal con hora, para saber qué se puede borrar',
     ruta: 'scripts/sessions/latir.cjs',
