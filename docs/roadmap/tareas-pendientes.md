@@ -1168,6 +1168,7 @@ incluida).
   - **El dry-run del aplicador es el gate final**, no el validador: usan criterios distintos y el validador aprobó dos explicaciones que el aplicador rechazó.
   - **Antes de re-aplicar nada, comparar disco contra BD** (`scratchpad/t291/tanda2/comparar-disco-vs-bd.cjs`). La BD manda.
   - Detalle completo de los modos de fallo: `docs/maintenance/revisar-preguntas-con-agente.md` §20.3 (nº 6 a 9).
+  - **Los dos artefactos del detector que esta campaña destapó YA ESTÁN ARREGLADOS**, y no por esta sesión: [T-301] (los grados centígrados y «letra a letra» leídos como referencias a una opción) la cerró otra sesión el mismo día con el fix en la fuente única `lib/shuffle/classifyShuffleMode.ts`, +9 tests y medición sobre las 139.472 activas (106 dejan de marcarse, 0 retrocesos). El residuo —esas 106 siguen `unsafe` porque el backfill no reprocesa sus propios veredictos— quedó en **[T-306]**. El tercero, el gate del aplicador que leía «la Cámara» como «la opción C», se arregló aquí.
 
   Consulta para sacar la cola:
   ```sql
