@@ -4855,6 +4855,34 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 ## Hechas
 
+### [T-309] ✅ [HECHA 30/07] Precio de fidelidad: CUATRO fallos encadenados hasta que la usuaria pudo pagar
+
+- **ORIGEN.** Rocío (feedback `48f1503a`) se quedó sin premium al vaciar la cuenta antigua de Stripe. Se le montó su precio de siempre (18 €/mes y 35 €/trimestre) y se le mandó a `/premium/personal`. Contestó **cinco veces en dos días** diciendo que no podía: *«no puedo acceder a la oferta»*, *«el enlace sigue sin funcionar»*, *«sigue igual, ¿puede ser que esté entrando desde el móvil?»*, *«lo he intentado en el ordenador y tampoco»*, y al final *«ahora sí salen los precios pero al darle para activar da error 404»*.
+- **CONTEXTO Y MEDIDA.** Cada vez que se le dijo «ya está arreglado», lo estaba… de otra cosa. Cuatro fallos distintos, todos en el mismo camino, cada uno tapando al siguiente:
+  1. **405** — `apiFetch` mandaba POST a un endpoint GET. *(Arreglado el 29/07… en apariencia, ver 3.)*
+  2. **401** — la página no mandaba `getAuthHeaders()`, así que el endpoint la rechazaba y ella veía «no tienes precio activo».
+  3. **405 otra vez, y esta era la de verdad.** La firma es `apiFetch(url, body, options)` y la llamada pasaba las opciones —incluido `method: 'GET'`— en la posición del **CUERPO**: `options` quedaba `undefined` y se aplicaba el método por defecto, POST. Medido en `observable_events`: **cuatro POST 405 suyos entre las 04:50 y las 06:57 del 30/07, con el `deploy_version` del despliegue que supuestamente lo arreglaba** — ese dato es el que descartó la hipótesis de «su navegador tiene caché vieja», que era falsa.
+  4. **404** — con la página ya correcta y sus dos precios delante, «Activar mi Premium» llevaba a un 404 de nuestra propia web: el endpoint devuelve `checkoutUrl` y la página leía `data.url`, así que `location.href = undefined` navegaba a «/undefined».
+- **El patrón, que es lo que hay que recordar:** en los cuatro, **el dato existía y quien lo necesitaba lo leía mal** (método por defecto, cabeceras sin pasar, opciones en el argumento equivocado, campo con otro nombre). Y en los cuatro la verificación fue «probar el endpoint con un token a mano», que sale verde mientras la persona sigue sin poder pagar. **Probar el endpoint NO prueba la página.**
+- **RESOLUCIÓN, por capas** (de la más temprana a la más tardía):
+  - **Tipo `CuerpoValido`** en `lib/api/client.ts`: un objeto formado solo por claves de opciones deja de ser un cuerpo válido, así que la llamada mala **no compila**. Tipado sin genérico a propósito: con `apiFetch<T, B>` la comprobación se evapora en cuanto se escribe el parámetro de tipo, que es como se llama en todo el repo.
+  - **`apiGet(url, options)`**: en un GET no hay cuerpo, así que la posición ambigua desaparece.
+  - **`__tests__/lib/api/clientMetodo.test.ts`**: ejecuta la llamada con `fetch` interceptado y comprueba el método REAL que sale por el cable. No existía ninguno.
+  - **Guarda de destino + evento**: nunca se navega a un destino vacío; si falta, se avisa y queda rastro (`checkoutDestino.test.ts`).
+  - **Alerta `client_method_not_allowed`** (umbral 1): un 405 es siempre un contrato roto entre nuestro front y nuestro endpoint. Medido antes de ponerla: **en 14 días de producción hubo 7 respuestas 405 en toda la plataforma, y las 7 eran este fallo**.
+  - El endpoint atiende también POST, para quien siga con la página vieja cargada.
+- **Por qué no lo cazó nada:** `body: unknown` se lo tragaba todo; el guardarraíl buscaba el texto `method: 'GET'` en el fichero **y lo encontraba, en el argumento equivocado** (un test de texto ve las letras, no la posición); y el journey que sí lo habría visto está apagado por falta de autenticación del simulador → **[T-287]**.
+- **Si vuelve a pasar algo parecido:** mirar `observable_events` filtrando por `user_id`, no el endpoint por tu cuenta. `deploy_version` distingue «no le ha llegado el arreglo» de «el arreglo no arregla». Runbook: `docs/runbooks/oferta-precio-personalizada.md` §4-bis.
+
+### [T-310] ✅ [HECHA 30/07] El contador de una ley anunciaba «798 artículos» teniendo 134
+
+- **ORIGEN.** Salió verificando la pregunta de un usuario premium (Manolo García, feedback `6df1e69a`) que quería saber si podía hacer tests de artículos sueltos de una ley larga. Sí se puede; lo que estaba mal era el rótulo de encima.
+- **CONTEXTO Y MEDIDA.** En `/leyes/lo-3-2007` el filtro decía **«798 artículos disponibles»** y al abrirlo ofrecía **136 casillas**. La ley tiene **134 artículos** y **798 preguntas**: `LawTestConfigurator` rellenaba los dos campos de artículos con `lawStats.totalQuestions`. Llevaba así desde que existe la pantalla, en TODAS las leyes.
+- **Por qué no lo cazó nada:** no rompe nada, solo miente, y **ningún tipo lo impedía porque los dos campos son `number`** — el campo estaba relleno, con otra cosa.
+- **RESOLUCIÓN.** El dato se **cuenta** (`count(distinct articles.id)`, misma pasada de `law-stats`, sin query extra); `articles_with_questions` pasa a **opcional** (poder omitirlo es lo que permite callarlo en vez de inventarlo); `lib/laws/contadorArticulos.ts` (puro, 13 tests) decide si se puede enseñar — sin dato no se pinta, y un contador que supera al total de preguntas es imposible y tampoco; evento `ui_contador_incoherente` cuando el dato es contradictorio (no cuando falta: una caché con la forma anterior no debe pitar); guardarraíl estático contra volver a asignar preguntas a un campo de artículos.
+- **La capa que lo habría cazado, y ahora existe:** journey `contador-articulos-coherente` (Vence Sim, postDeploy, anónimo) que compara lo que ANUNCIA el rótulo con las casillas que OFRECE el selector. Es lo único que puede verlo: las dos cifras se pintan por caminos distintos y solo se contradicen en pantalla. **Corrido antes del arreglo, reprodujo el fallo (798 contra 136); ahora está verde con 84.**
+- **Aviso de método:** la primera versión del journey buscaba el patrón en el texto de toda la página y encadenaba un «798» de una línea con el «artículos disponibles» de la siguiente → denunciaba un bug ya arreglado. Se lee del ELEMENTO que lo pinta. **Un guardarraíl que falla cuando no debe se acaba ignorando.**
+
 ### [T-266] ✅ [HECHA 30/07] Churn de /admin/conversiones cuenta el vaciado de Manuel como bajas reales
 - **Qué pasa:** desde que el MRR mira las dos cuentas (29/07), el churn sí se calcula sobre la cartera completa, pero la fórmula sigue siendo `canceladas / activas` y Manuel arrastra ~180 canceladas y 194 en `cancel_at_period_end` que son **el vaciado de la cuenta**, no bajas de clientes. Encima, quien re-compró por Nila cuenta dos veces: como baja en Manuel y como alta en Nila.
 - **Efecto:** el churn satura en el tope del 15% mientras dure el vaciado, y con él las proyecciones de MRR a 6 y 12 meses. El número no es accionable.

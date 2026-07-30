@@ -169,6 +169,40 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
 
 Prioridades: `🔴 crítica` (daño en vivo) · `🟠 alta` · `🟡 media` · `🟢 baja`.
 
+## Lo que arreglas AL VUELO también lleva ficha (regla de Manuel, 30/07/2026)
+
+Atendiendo un feedback, revisando otra cosa o de pura casualidad, aparecen fallos que se
+arreglan en el momento. **Ese arreglo no puede quedarse solo en el commit.** Un commit
+explica qué se cambió; lo que hace falta meses después, cuando el fallo reaparece con otra
+cara, es **qué lo originó, qué se vio y por qué se resolvió así**. Sin ficha, la siguiente
+sesión vuelve a investigarlo desde cero y no sabe siquiera que ya pasó.
+
+**Antes de arreglarlo:**
+
+```bash
+grep -ni "<palabra clave>" docs/roadmap/tareas-pendientes.md   # ¿hay ficha ya?
+node scripts/backlog.cjs list | grep -i "<palabra clave>"      # ¿la tiene alguien cogida?
+```
+
+- **Si YA hay ficha** → trabájala ahí: `claim`, y al cerrar `done --outcome "…"` + mover la
+  entrada a `## Hechas`. No abras una segunda: el mismo fallo con dos fichas es peor que sin
+  ninguna.
+- **Si NO hay** → `reserve` y escríbela **aunque ya lo hayas arreglado**. Nace y muere en el
+  mismo commit, y está bien: lo que importa es que quede el rastro.
+
+**Qué tiene que decir la ficha** (las tres, siempre):
+
+1. **ORIGEN** — cómo apareció. Quién lo reportó y con qué palabras, o qué estabas mirando
+   cuando saltó. *«Salió verificando la pregunta de un usuario premium sobre el filtro de
+   artículos»* vale mucho más que *«bug del contador»*.
+2. **CONTEXTO Y MEDIDA** — qué se vio, con números. Cuánta gente afectada, cuántas veces,
+   desde cuándo. Sin cifra, dentro de un mes nadie sabe si fue un caso o doscientos.
+3. **RESOLUCIÓN** — qué se cambió, **por qué no lo cazó nada antes** y qué capa se añadió
+   para que la próxima vez sí. Esa parte es la que evita repetir el fallo, no el diff.
+
+Y si al arreglarlo descubres que el problema **no era el que creías**, escríbelo también: un
+diagnóstico descartado ahorra la siguiente investigación entera.
+
 ## Cuando termines: pushear y desplegar
 
 El trabajo no está hecho hasta que está en `main` (y, si toca código de app, desplegado). **El procedimiento completo está en [`docs/runbooks/pusheo-revision-despliegue.md`](./pusheo-revision-despliegue.md)** — léelo, no improvises. Resumen de lo que más afecta a este flujo:
