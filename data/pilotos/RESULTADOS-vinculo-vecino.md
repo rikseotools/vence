@@ -2,10 +2,14 @@
 
 Muestra: `vinculo-vecino-golden.json` — 10 casos reales, veredicto adjudicado a mano contra el BOE.
 Comando: `npm run llm:ab-vinculo -- --modelos <lista>`.
-**CATÁLOGO AGOTADO: 279 modelos probados** — todos los del catálogo de OpenRouter por debajo de
-3 $/M con contexto suficiente. Solo **97 se ejecutaron de verdad**; el resto devuelve error sin
-llegar a correr (se reconocen por coste 0,00 $ y menos de un segundo). Quedan fuera 33 más caros que
-Sonnet y 13 con contexto por debajo de 30k, donde no caben los dos artículos por debajo de 3 $/M de entrada, todos con el mismo arnés.
+**97 modelos MEDIDOS de verdad**, de 323 intentados. La diferencia no es despiste: a partir de las
+02:00 del 30/07 **se agotó el crédito de OpenRouter** y los tres últimos barridos (145 + 64 + 46
+modelos) devolvieron 402 sin ejecutarse. Un modelo con **coste 0,00 $ y menos de un segundo NO es un
+modelo que falla: es una petición que no salió** — y contarlo como 0/10 fue el error que más cerca
+estuvo de invertir una conclusión (ver §antigüedad).
+
+**Coste real: 1,28 $ por los 97** (0,013 $ cada uno). Terminar los ~226 restantes cuesta unos **3 $**
+de crédito.
 
 ---
 
@@ -70,12 +74,13 @@ catálogo de OpenRouter, no la memoria.
 
 ---
 
-## Lo que quedaba: nada nuevo en la banda alta
+## Lo que falta por medir
 
-La última tanda de 64 no aportó ningún candidato: el único que llegó a 8/10 fue `openrouter/free`
-(el enrutador a modelos gratuitos), que **no sirve para producción** — no eliges qué modelo responde
-y va con límites de uso. Los otros 63 no se ejecutaron o quedaron por debajo. Es decir: **la banda
-alta ya estaba encontrada**, y los mejores candidatos siguen siendo los de la tabla de arriba.
+Los barridos de 145, 64 y 46 modelos **corrieron sin crédito**, así que sus ceros no significan nada.
+Queda por medir todo lo que no aparece en la tabla de arriba. Con ~3 $ de crédito se cierra.
+
+⚠️ **Al retomarlo, filtrar por coste > 0 antes de leer ningún resultado.** Es la única forma de
+distinguir «este modelo falla» de «esta petición no salió», y ya se coló dos veces en el análisis.
 
 ## El caso que casi todos fallan (y hay que meter en el prompt de producción)
 
