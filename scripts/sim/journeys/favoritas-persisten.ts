@@ -25,7 +25,12 @@ const journey: Journey = {
   name: 'favoritas-persisten',
   // `high`: quien cree que ha perdido su trabajo deja de fiarse de guardar nada.
   severity: 'high',
-  postDeploy: true,
+  // ⚠️ DESACTIVADO hasta arreglar la autenticación del sim (misma causa que
+  // `precio-fidelidad-visible`, ver T-287): `ctx.api` no manda el token de la identidad
+  // simulada, así que el endpoint responde 401 y el journey da ROJO aunque el arreglo esté
+  // vivo. Comprobado el 30/07 con la sesión real de la usuaria: sirve 40 y declara 40 —
+  // correcto. Activar (`postDeploy: true`) al cerrar T-287.
+  postDeploy: false,
   as: { userId: USER_ID, email: EMAIL, label: POSITION, positionType: POSITION },
   async run(ctx) {
     const resultados: InvariantResult[] = []

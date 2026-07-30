@@ -206,6 +206,7 @@
   2. **Activarlo:** `postDeploy: true`. Se dejó en `false` a propósito — un guardarraíl que falla siempre se acaba ignorando, y entonces no protege nada.
   3. **Decidir si además hace falta un canario continuo** de la familia `canary_*` (junto a `canary_answer_save_failed`, `canary_stripe_webhook_failed`). El journey corre en cada despliegue; un canario correría cada pocos minutos. Para este caso el despliegue puede bastar: el fallo lo introdujo un cambio de código, no apareció solo con el tiempo — el mismo razonamiento que el runbook de Vence Sim da para no meter sus journeys en un cron.
 - **Criterio de hecho:** un despliegue con el endpoint roto a propósito (por ejemplo devolviendo 405) tiene que salir en ROJO. Si no lo caza, el canary no sirve.
+- **Ya son DOS los journeys bloqueados por esto** (30/07): `precio-fidelidad-visible` y `favoritas-persisten`. Los dos están escritos, comprueban lo correcto y quedan en `postDeploy: false` porque sin token dan 401 y serían un rojo permanente. Arreglar `ctx.api` los activa a los dos de golpe — por eso esta ficha vale más que su tamaño.
 - **Relacionadas:** [T-261] (favoritas, mismo patrón de "lanzado y sin vigilar"), `docs/runbooks/vence-sim.md`, `docs/runbooks/oferta-precio-personalizada.md`.
 
 ### [T-286] 🟠 [ABIERTO 29/07] Favoritas: el corazón sale marcado sin marcarlo, y dejan de guardarse pasadas 20
