@@ -136,6 +136,60 @@ cada una de ellas puede pasar el cutover en silencio y romperse después.
 
 ---
 
+## 3-ter. ⏱️ VENTANA DE CUTOVER MEDIDA (30/07) — y por qué cambia la estrategia
+
+**Primera medición real de un ciclo completo `pg_dump | psql` a Koigrid.** Es el número que llevábamos tres
+intentos persiguiendo.
+
+| Fase | Tiempo medido |
+|---|---|
+| `pg_dump` de RDS (33 GB → 4,09 GB gzip) | **~50 min** |
+| Carga de datos por `psql` (24,7 GB de SQL) | **1 h 50 min 54 s** |
+| Índices + constraints | **28 min 38 s** (y sin terminar: cortó en una FK, ver abajo) |
+| **TOTAL parcial** | **≈ 3 h 10 min y subiendo** |
+
+> Los datos SÍ cuadran: 24 GB, 204 tablas, `articles` **61.123 = exacto vs RDS**; `questions` 160.181 vs
+> 160.166 y `user_profiles` 11.462 vs 11.355 — las diferencias son producción VIVA creciendo desde que se
+> tomó el volcado 19 h antes, no pérdida.
+
+### ⚠️ Consecuencia estratégica: esto DESCARTA el cutover por volcado en frío
+
+§7 plantea el cutover como *"parar writes un instante, promover BD Koigrid"*. Con **3+ horas** de carga en
+frío eso no es «un instante»: sería una ventana de mantenimiento de media jornada con la web parada o en
+solo-lectura. **No es aceptable para 11.000 usuarios.**
+
+→ **El camino tiene que ser K2 (replicación lógica RDS→Koigrid) con soak hasta lag≈0**, y el cutover se
+reduce a promover la réplica. El volcado en frío queda solo como plan B o para entornos de prueba. Esta
+medición es la que lo demuestra; antes era una preferencia, ahora es un requisito.
+
+### 🐛 Y un hallazgo NUESTRO que el ensayo destapó: 1 fila huérfana en producción
+
+La carga cortó en:
+
+```
+ERROR: insert or update on table "public_user_profiles" violates foreign key constraint
+       "public_user_profiles_id_profiles_fkey"
+DETAIL: Key (id)=(74e3c65c-…) is not present in table "user_profiles".
+```
+
+Comprobado **en RDS de producción**: la constraint existe, es `FOREIGN KEY (id) REFERENCES user_profiles(id)
+ON DELETE CASCADE` y Postgres la da por **`convalidated: true`** … y aun así hay **1 fila huérfana** de 9.337.
+La fila es `display_name: "Adolfo"`, con `created_at = updated_at = 2026-07-04T16:03:19.878Z` — **el día exacto
+del cutover de Supabase a RDS**.
+
+**Diagnóstico:** entró durante aquella migración, con las comprobaciones de FK desactivadas (lo normal en una
+carga masiva), y lleva **26 días invisible**: Postgres cree que la constraint es válida y no la re-verifica.
+
+**Por qué importa más allá de esto:** una BD que no puede restaurarse de su propio volcado tiene un problema
+de integridad, se migre o no. Y este tipo de resto solo aparece cuando alguien intenta recargar los datos —
+que es exactamente lo que hace un ensayo de migración. **Pendiente de decisión de Manuel** (borrar la fila es
+tocar producción); el `ON DELETE CASCADE` dice que debió irse con su usuario.
+
+**Acción preventiva recomendada, independiente de Koigrid:** validar TODAS las FKs de producción contra los
+datos (no fiarse de `convalidated`) para ver si hay más restos del 04/07.
+
+---
+
 ## 4. Fases (cada una reversible; el contenido NO se congela)
 
 | Fase | Qué | Riesgo | Reversible |
