@@ -861,6 +861,20 @@ incluida).
   - Trazabilidad: las 500 en `ai_verification_results` con `ai_provider='claude_code_t291_escalon2'`, `review_method_version='v2.1'`.
   - **Siguiente paso de esta ficha:** la cola de las 219 `defecto_articulo` NO se puede cerrar sin [T-302]. Lo que sí queda por hacer con cuota de agentes son las ~2.985 nunca verificadas con exposición que quedan por debajo del corte 500, y la adjudicación de los 8 casos críticos.
 
+  **✅ SEGUNDA TANDA HECHA (30/07, misma sesión): 400 preguntas, 396 aplicadas, 183.999 exposiciones — y con CAMBIO DE CUBO, que es el hallazgo que hay que heredar.**
+
+  - **El cubo de «nunca verificadas» se agota en valor a las 500.** Medido antes de gastar más cuota: lo que quedaba atacable eran **1.385 preguntas con 1.854 exposiciones** (media 1,3 apariciones). Seguir ahí rinde una exposición por pregunta.
+  - **El cubo con audiencia es otro: activas YA verificadas y SIN estructura** — 47.263 preguntas, **1,59 M de exposiciones**; su top-500 concentra 221.067 (13,9 %) con corte de 288 apariciones. **119 veces más exposición por pregunta.** De ahí salieron estas 400.
+  - **Aquí el trabajo es distinto y más barato:** la clave ya pasó una verificación, así que el agente escribe la explicación estructurada y comprueba la clave de paso. **262 de 396 se resolvieron REESTRUCTURANDO** la explicación existente (el contenido estaba bien, solo había que quitarle las letras) y 134 escribiendo desde el artículo. Es la distinción «transformable vs autoría» de esta ficha, medida en vivo: **2 de cada 3 son transformables** cuando el cubo ya está verificado.
+  - **Solo 4 defectos en 400 (1 %)** frente al 44 % del cubo anterior: 3 artículos mal vinculados (dos preguntas cuyo supuesto vive en el art. 53 CE y no en el 43 al que cuelgan) y 1 opción mal redactada. Ninguna clave tocada.
+  - **Re-verificación por MUESTRA del 20 %** ordenada por exposición (80 preguntas, un tercio de la exposición de la tanda), aplicando el ahorro que la tanda 1 dejó calculado: **78 de 80 limpias**. El defecto real —una razón que invertía los verbos del art. 1.2 CE («emana» por «reside»)— reparado y aplicado.
+  - **Se excluyeron los 7 contenedores que [T-302] bloquea:** no se paga cuota de agente para volver a dictaminar «el contenedor no da para verificar». De las 2.985 nunca verificadas que quedan, **1.600 están bloqueadas por eso** y solo 1.385 son atacables hoy.
+  - **Coste real medido:** las 500 de la tanda 1 (ofimática, con búsquedas web e imágenes) costaron el 7 % de un plan Max 20×; estas 400 jurídicas, ~3,5 %. **Un plan completo da para ~7.000-10.000 preguntas** con este método; bajando la re-verificación al 20 % y evitando lo bloqueado por T-302, ~14.000.
+  - **Dos guardarraíles arreglados de paso, los dos con test:** el gate del aplicador leía «la Cámara» como «la opción C» (ver [T-301]) y las citas del articulado por letra costaban el barajado a 30 razones de 400 → nuevo `scripts/revision/despejarArticuladoPorLetra.cjs`.
+  - **Y un aviso de arnés:** `validar-lote-t291.ts` y `aplicar-explicacion.ts` usan criterios DISTINTOS, así que el validador puede aprobar lo que el aplicador rechaza. **El dry-run del aplicador es el gate final** — correrlo siempre antes de aplicar.
+
+  **▶ POR DÓNDE SEGUIR (recomendación con el dato delante):** el top-1000 del cubo «ya verificadas sin estructura» cubre 337.472 exposiciones (21,2 % de 1,59 M) con corte de 196 apariciones. Las 400 hechas son su primer tramo; **quedan ~600 en ese top-1000** y luego el tramo 1.000-2.000 (corte 133, +157.618 exposiciones). Todo con la misma receta, que ya está escrita y probada: `extraer-tanda2.cjs` → agentes con `PROMPT-TANDA2.md` → validador → despeje → dry-run → aplicar → muestra del 20 %.
+
   Consulta para sacar la cola:
   ```sql
   SELECT q.id, left(q.question_text,80),
