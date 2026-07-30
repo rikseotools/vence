@@ -38,22 +38,6 @@
 - **Observación aparte, NO confundir con esto:** todas las ejecuciones reportan `errors: 179` de 726 documentos comprobados (25%), estable desde el 21/07 y creciendo con el total. Puede ser legítimo (boletines regionales con WAF/403, ver memoria `reference-fetch-boletin-waf-playwright`) o deuda real. **No se toca en esta ficha** — merece medirse por separado antes de decidir si es un problema.
 - **Origen:** análisis de salud del 30/07 (el que abrió [T-272]).
 
-### [T-300] 🟡 [ABIERTO 30/07] Decidir si `error`/`warn` vuelven al buzón: el filtro de severidad deja 18 de 28 problemas sin avisar por correo
-
-- **De dónde sale:** [T-272] bajó el canal de alertas de 56 a 5,0 correos/día con tres capas. Dos de ellas (backoff por problema y agrupación por tick) no tienen contrapartida. La tercera —**solo `critical` va al buzón**— sí la tiene, y quedó registrada dentro de una ficha ya cerrada, que es donde nadie la ve. Por eso vive aquí.
-- **La medida:** el **backoff solo** ya baja a **8,7 correos/día**. Añadir el filtro de severidad lleva a **5,0/día**, o sea **cuesta ~3,7 correos/día**. A cambio, **18 de los 28 problemas medidos dejan de emailear nunca**, entre ellos:
-  - `main_ci_rojo` — ya EXENTO con `emailAlways: true` (es `error` pero bloquea a todo el mundo; coste medido: 1 disparo en 7 días).
-  - `frontend_saturation` (4 canaries en timeout simultáneo) · `endpoint_latency_sustained` (p95 de 13 s) · `client_edge_sustained` — degradación que SÍ nota el usuario.
-  - `cron_started_not_finished` — el que cazó [T-299].
-  - `daily_quota_overcharge` — cobro de más a usuarios free (ver [T-260]).
-- **🔴 EVIDENCIA EN VIVO (30/07, 25 min después de desplegar la política):** el primer disparo real fue **`premium_sin_respaldo`** — el detector de *premium que nadie paga* que OTRA sesión desplegó en ESE MISMO deploy (`b0462fa7e`) — y salió `emailed=false, emailSkipped=severity`. Es decir: alguien construye hoy un detector de un agujero de INGRESOS esperando que avise, y el filtro lo deja mudo el día de su estreno sin que nadie se entere. No es hipotético ni es un caso de borde: es el primer disparo que hubo. Refuerza la salida 1 (env a `warn`) o, como mínimo, revisar la severidad de este detector.
-- **El fondo del problema:** la severidad de este catálogo **no es un buen proxy de "merece correo"**. `event_loop_lag` es `critical` y era el mayor spammer (180 correos en 5 días); `main_ci_rojo` es `error` y bloquea el trabajo de todos. Mientras esa clasificación no se revise, filtrar por severidad silencia por la etiqueta y no por la gravedad.
-- **Las tres salidas, en orden de coste:**
-  1. **`ALERT_EMAIL_MIN_SEVERITY=warn` en SSM** — un parámetro, sin desplegar: vuelve todo al buzón con el backoff puesto (8,7/día). Reversible en un minuto.
-  2. **`emailAlways: true` en las 4-5 reglas que significan "la app está rota"** — quirúrgico, pero hay que elegirlas una a una **con el simulador delante** (`npm run sim:fatiga-email` lista los que quedarían mudos).
-  3. **Revisar la severidad declarada de las 74 reglas** — el arreglo de fondo, el más caro, y el único que hace que el filtro signifique lo que dice.
-- **Cómo decidir:** correr `npm run sim:fatiga-email -- --dias 7 --severidad warn` y comparar con el default. **Es decisión de Manuel: cambia lo que le llega al buzón.**
-- **Relacionadas:** [T-272] (la política), [T-299] (un caso concreto que ya no emailea), [T-260] (otro), runbook `health-check.md` §1.bis.c.
 
 ### [T-210] ✅ [CERRADA 29/07 — el titular bajó a 12%; el residuo era el PDF del temario, derivado a T-270] El 52-68% de los usuarios ACTIVOS ve errores de fetch en el cliente, todos los días, y nadie lo estaba mirando
 - **Medido (6 días, `observable_events.console_error` cruzado con usuarios que responden preguntas):**
@@ -4848,6 +4832,29 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** lote `gen_rgpd_2026-07-29` de la campaña T-115 (29/07). El manual (§8.2, v2.6) afirma *"La pregunta nace barajable y no hay ningún paso que se pueda olvidar"* — hoy no se cumple, y nada avisaba.
 
 ## Hechas
+
+### [T-300] ✅ [CERRADA 30/07] `error`/`warn` vuelven al buzón: el filtro de severidad dejaba 18 de 28 problemas sin avisar
+
+- **De dónde sale:** [T-272] bajó el canal de alertas de 56 a 5,0 correos/día con tres capas. Dos de ellas (backoff por problema y agrupación por tick) no tienen contrapartida. La tercera —**solo `critical` va al buzón**— sí la tiene, y quedó registrada dentro de una ficha ya cerrada, que es donde nadie la ve. Por eso vive aquí.
+- **La medida:** el **backoff solo** ya baja a **8,7 correos/día**. Añadir el filtro de severidad lleva a **5,0/día**, o sea **cuesta ~3,7 correos/día**. A cambio, **18 de los 28 problemas medidos dejan de emailear nunca**, entre ellos:
+  - `main_ci_rojo` — ya EXENTO con `emailAlways: true` (es `error` pero bloquea a todo el mundo; coste medido: 1 disparo en 7 días).
+  - `frontend_saturation` (4 canaries en timeout simultáneo) · `endpoint_latency_sustained` (p95 de 13 s) · `client_edge_sustained` — degradación que SÍ nota el usuario.
+  - `cron_started_not_finished` — el que cazó [T-299].
+  - `daily_quota_overcharge` — cobro de más a usuarios free (ver [T-260]).
+- **🔴 EVIDENCIA EN VIVO (30/07, 25 min después de desplegar la política):** el primer disparo real fue **`premium_sin_respaldo`** — el detector de *premium que nadie paga* que OTRA sesión desplegó en ESE MISMO deploy (`b0462fa7e`) — y salió `emailed=false, emailSkipped=severity`. Es decir: alguien construye hoy un detector de un agujero de INGRESOS esperando que avise, y el filtro lo deja mudo el día de su estreno sin que nadie se entere. No es hipotético ni es un caso de borde: es el primer disparo que hubo. Refuerza la salida 1 (env a `warn`) o, como mínimo, revisar la severidad de este detector.
+- **El fondo del problema:** la severidad de este catálogo **no es un buen proxy de "merece correo"**. `event_loop_lag` es `critical` y era el mayor spammer (180 correos en 5 días); `main_ci_rojo` es `error` y bloquea el trabajo de todos. Mientras esa clasificación no se revise, filtrar por severidad silencia por la etiqueta y no por la gravedad.
+- **Las tres salidas, en orden de coste:**
+  1. **`ALERT_EMAIL_MIN_SEVERITY=warn` en SSM** — un parámetro, sin desplegar: vuelve todo al buzón con el backoff puesto (8,7/día). Reversible en un minuto.
+  2. **`emailAlways: true` en las 4-5 reglas que significan "la app está rota"** — quirúrgico, pero hay que elegirlas una a una **con el simulador delante** (`npm run sim:fatiga-email` lista los que quedarían mudos).
+  3. **Revisar la severidad declarada de las 74 reglas** — el arreglo de fondo, el más caro, y el único que hace que el filtro signifique lo que dice.
+- **Cómo decidir:** correr `npm run sim:fatiga-email -- --dias 7 --severidad warn` y comparar con el default. **Es decisión de Manuel: cambia lo que le llega al buzón.**
+- **Relacionadas:** [T-272] (la política), [T-299] (un caso concreto que ya no emailea), [T-260] (otro), runbook `health-check.md` §1.bis.c.
+- **✅ DECISIÓN DE MANUEL (30/07, el mismo día): `warn`.** Aplicada y **verificada en vivo**, no solo configurada.
+  - **Cómo se aplicó:** clonando la task def VIVA (`vence-backend:138` → `:139`) con la imagen **intacta, pineada por digest** — así el cambio toca SOLO la variable y no puede revertir el código de otra sesión, que es la trampa que documenta la memoria `reference-email-cambios-boe-toggle`. Va como **env var normal, no como secret de SSM**: no es un dato sensible, y por SSM habría obligado a añadir el ARN a la allowlist del rol de ejecución (`vence-backend-read-secrets`) para no ganar nada — y con el riesgo de que la task no arranque si se olvida.
+  - **Detalle que salió al hacerlo:** la variable **no existía** en el task def, o sea producción corría con el default implícito del código. Ahora está declarada: se ve en el task def qué política corre, en vez de deducirla.
+  - **Verificado en el motor, no en el task def:** un task def correcto no prueba que el proceso lea la variable. Los tres primeros sondeos aún daban `emailMinSeverity=critical` (contenedor viejo) y tras el swap: **`emailMinSeverity=warn`, `emailHistoryHydrated=true`**. Servicio estable en `:139`, 1 deployment, smoke `/health=200`.
+- **Estado del buzón:** ~**8,7 correos/día** (desde 56) con **cero problemas mudos** — el backoff y la agrupación, que son el 90 % del ahorro, siguen puestos. Vuelven a avisar `premium_sin_respaldo`, `cron_started_not_finished` (el que vigila [T-299]), `frontend_saturation`, `endpoint_latency_sustained` y `daily_quota_overcharge` ([T-260]).
+- **Si alguien quiere volver a `critical`:** que sea con `npm run sim:fatiga-email -- --dias 7` delante y sabiendo a quién calla — el simulador LISTA los problemas que quedarían mudos. Y que lo cambie donde está: la sección `environment` de la task def viva, no el default del código.
 
 ### [T-272] ✅ [CERRADA 30/07] El canal de email de alertas manda 56 correos al día: 14 por problema, y taparían la caída de verdad
 

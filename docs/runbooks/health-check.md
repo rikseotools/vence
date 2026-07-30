@@ -259,12 +259,36 @@ decide `backend/src/alerts/email-policy.ts` (núcleo puro, 29 tests) en tres cap
 
 | capa | qué hace | dónde se configura |
 |---|---|---|
-| **Severidad mínima** | solo `critical` va al buzón; `error`/`warn` quedan en `/admin/salud-sistema` | env `ALERT_EMAIL_MIN_SEVERITY` (default `critical`; ponerla en `warn` devuelve el comportamiento anterior) |
+| **Severidad mínima** | qué severidades llegan al buzón | env `ALERT_EMAIL_MIN_SEVERITY` (default del CÓDIGO: `critical`) |
 | **Backoff por problema** | mismo `(regla, fingerprint)`: inmediato → 1 h → 6 h → **1/día** mientras siga | `BACKOFF_CURVE_MIN` |
 | **Agrupación por tick** | los supervivientes del mismo tick (5 min) viajan en **un** correo | `EmailNotificationAdapter` |
 
-Medido con `npm run sim:fatiga-email -- --dias 7`: **393 disparos → 35 correos (56 → 5,0/día, −91 %)**.
-El backoff aporta 318 de los 353 ahorrados; la severidad, 40.
+> ### ⚙️ CONFIGURACIÓN VIVA EN PRODUCCIÓN (30/07/2026): `ALERT_EMAIL_MIN_SEVERITY=warn`
+>
+> **El default del código es `critical`, pero producción NO corre con el default.** Está declarada
+> explícitamente en el task def del backend (`vence-backend:139` en adelante, sección `environment`;
+> es una env var normal, NO un secret de SSM — no es un dato sensible y pasarla por SSM obligaría a
+> tocar la allowlist del rol de ejecución sin ganar nada).
+>
+> **Por qué se decidió así, con el dato delante:** el filtro de severidad solo aportaba **3,7
+> correos/día** de ahorro (el backoff hace el 90 % del trabajo) y a cambio dejaba **18 de 28
+> problemas sin avisar nunca**. Lo que cerró la decisión fue el **primer disparo real tras el
+> deploy**: `premium_sin_respaldo` —el detector de *premium que nadie paga*, estrenado en ese mismo
+> deploy— salió con `emailed=false, emailSkipped=severity`. Un agujero de ingresos, mudo el día de
+> su estreno. Ver [T-300].
+>
+> **Consecuencia para quien diagnostique:** hoy `error` y `warn` SÍ llegan al correo. Si alguien
+> vuelve a poner `critical`, que sea con el simulador delante y sabiendo a quién calla.
+> **Comprobar qué corre de verdad** (no fiarse ni de este párrafo ni del default del código):
+> ```sql
+> SELECT ts, metadata->>'emailMinSeverity', metadata->>'emailHistoryHydrated'
+> FROM observable_events WHERE endpoint='alerts-engine' AND event_type='cron_run'
+> ORDER BY ts DESC LIMIT 1;
+> ```
+
+Medido con `npm run sim:fatiga-email -- --dias 7`: con el mínimo en `critical`, **393 disparos → 35
+correos (56 → 5,0/día, −91 %)**; con el mínimo en `warn` —lo que corre hoy— **61 correos (8,7/día,
+−84 %)** y ningún problema mudo. El backoff aporta 318 de los 353 ahorrados; la severidad, 40.
 
 **Lo que NO hace, y hay que tenerlo claro al diagnosticar:**
 - **No silencia la señal, solo el correo.** El `alert_fired` se escribe siempre, con `emailed`,
@@ -272,8 +296,9 @@ El backoff aporta 318 de los 353 ahorrados; la severidad, 40.
   dejaría de ver que el problema sigue vivo: el modo de fallo de [T-162].
 - **Ningún problema se queda mudo por el backoff.** Un `fingerprint` nuevo avisa YA; el backoff solo
   retrasa repeticiones, y la racha se reinicia tras 48 h de silencio.
-- **La severidad SÍ puede dejar mudo a un problema**, y es una decisión consciente: con el mínimo en
-  `critical`, 18 de los 28 problemas medidos dejan de emailear. Para las reglas cuyo significado es
+- **La severidad SÍ puede dejar mudo a un problema** — por eso producción corre en `warn` (ver el
+  recuadro de arriba). Con el mínimo en `critical`, 18 de los 28 problemas medidos dejan de
+  emailear. Para las reglas cuyo significado es
   *la app está rota / nadie puede desplegar* existe `emailAlways: true` en la regla (hoy solo
   `main_ci_rojo`: es `error` pero bloquea a todo el mundo, y su coste medido es 1 disparo en 7 días).
   **`emailAlways` no exime del backoff.**
