@@ -2,7 +2,7 @@
 import { getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
-import { getStripeFor, resolveAccount } from '@/lib/stripe'
+import { getStripeFor, resolveAccount, newSignupAccount } from '@/lib/stripe'
 import type Stripe from 'stripe'
 import { randomUUID } from 'crypto'
 import { emit } from '@/lib/observability/emit'
@@ -124,6 +124,13 @@ export async function getSubscription(
       hasSubscription: true,
       planType: profile.planType,
       stripeCustomerId: profile.stripeCustomerId,
+      // T-341 — ¿su suscripción vive en una cuenta de cobro que ya no admite altas?
+      //
+      // Si es que sí, «reactivar» no es una opción: la suscripción no se puede mover de
+      // cuenta, así que renovarla la ataría a la que estamos vaciando. Lo dice el SERVIDOR,
+      // que es quien sabe en qué cuenta está cada persona, para que la interfaz no tenga
+      // que deducirlo ni enseñar un botón que va a fallar.
+      renovableEnSuCuenta: resolveAccount(profile.paymentAccount) === newSignupAccount(),
       subscription: {
         id: subscription.id,
         status: subscription.status,
@@ -449,7 +456,36 @@ export async function reactivateSubscription(
       return { success: false, error: 'No se encontró suscripción' }
     }
 
-    const sc = getStripeFor(resolveAccount(profile.paymentAccount))
+    const cuenta = resolveAccount(profile.paymentAccount)
+
+    // T-341 — NO se reactiva en una cuenta de cobro que ya no admite altas.
+    //
+    // Una suscripción vive en la cuenta de Stripe donde nació y no se puede mover a otra:
+    // son cuentas distintas, sin clientes ni tarjetas compartidas. Así que «reactivar» a
+    // quien quedó en la cuenta antigua lo ata precisamente a la que estamos vaciando —y le
+    // vuelve a cobrar allí—. Lo que se le ofrece en su lugar es recuperar su PRECIO en la
+    // cuenta actual (`/api/v2/premium/recuperar-precio` → `/premium/personal`).
+    //
+    // La condición se escribe contra `newSignupAccount()` y no contra el nombre de una
+    // cuenta concreta: el día que las altas se muevan a otra, esto sigue siendo cierto sin
+    // que nadie tenga que acordarse.
+    if (cuenta !== newSignupAccount()) {
+      await emit({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'reactivacion_cuenta_antigua_rechazada',
+        endpoint: '/api/stripe/reactivate',
+        userId: params.userId,
+        metadata: { cuenta, cuentaDeAltas: newSignupAccount() },
+      })
+      return {
+        success: false,
+        error: 'cuenta_antigua',
+        message: 'Tu suscripción anterior ya no se puede renovar. Puedes volver a contratar manteniendo tu precio.',
+      }
+    }
+
+    const sc = getStripeFor(cuenta)
 
     // Buscar suscripción reactivable (debe estar cancel_at_period_end=true y
     // todavía en active/trialing — no se puede "reactivar" una past_due/unpaid).

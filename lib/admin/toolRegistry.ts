@@ -172,6 +172,58 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Correrla tras tocar cualquier ruta de /api/stripe o el helper `requireUsuarioPropio`. ' +
       'El guardarraíl estático que la acompaña es `__tests__/guardrails/endpointsPagoIdentidad.test.ts`.',
   },
+  // ── precio heredado del vaciado de la cuenta de cobro antigua ─────────────────────────────
+  //
+  // TRES piezas que escriben `user_price_offers` y crean prices/enlaces en Stripe. Antes de
+  // tocar el precio de nadie, mirar aquí: la tarifa la decide UN solo núcleo puro
+  // (`lib/stripe/precioHeredado.ts`), y una cuarta puerta con criterio propio significaría
+  // cobrar dos importes distintos por el mismo caso.
+  precio_heredado_cli: {
+    titulo: 'Mantenerle a UNA persona el precio que tenía, a mano (caso reclamado por soporte)',
+    ruta: 'scripts/stripe/precio-heredado.cjs',
+    estado: 'vivo',
+    notas:
+      'node scripts/stripe/precio-heredado.cjs — crea el price + Payment Link + la fila de ' +
+      '`user_price_offers` (`creado_por=soporte`) para quien RECLAMA. Es la vía de una en una, ' +
+      'con criterio humano: sirve cuando el importe no se puede derivar o no es una de las tres ' +
+      'tarifas del catálogo. Para el resto está `oferta_heredada_auto`, que hace lo mismo sola ' +
+      'cuando la persona pulsa su botón. Las dos comparten la decisión del importe con ' +
+      '`lib/stripe/precioHeredado.ts` (núcleo puro, con test de paridad): NO duplicar ahí las ' +
+      'tarifas ni los lookup_key, o dos personas del mismo caso acabarán pagando distinto.',
+  },
+  oferta_heredada_auto: {
+    titulo: 'Recuperar automáticamente el precio anterior de los afectados por el vaciado de Stripe',
+    ruta: 'lib/api/premium/ofertaHeredada.ts',
+    estado: 'vivo',
+    notas:
+      'Lo llama `POST /api/v2/premium/recuperar-precio` desde el botón del perfil (T-341). ' +
+      'Deriva la tarifa del histórico REAL en la cuenta antigua y crea la oferta en la cuenta ' +
+      'que HOY cobra — porque una suscripción no se puede mover entre cuentas de Stripe, así ' +
+      'que lo que se recupera es el PRECIO, no la suscripción. Idempotente por dos vías: ' +
+      '`lookup_key` para el price (las personas con la misma tarifa comparten price) y el ' +
+      'índice único **PARCIAL** `user_price_offers_una_por_precio` para la fila. GOTCHA que ' +
+      'costó un 500 en la primera prueba real: ese índice lleva ' +
+      '`WHERE redeemed_at IS NULL AND revoked_at IS NULL`, y un `ON CONFLICT` que no repita ese ' +
+      'predicado NO lo reconoce y hace fallar el INSERT entero. Si la fila no llega a entrar, ' +
+      'el Payment Link recién creado se DESACTIVA: un enlace vivo sin fila detrás es dinero ' +
+      'que puede entrar sin saber por qué, y en Stripe no caducan solos.',
+  },
+  sim_precio_heredado: {
+    titulo: 'Comprobar contra datos reales que el botón «recupera tu precio» cobra lo que debe y una sola vez',
+    ruta: 'scripts/sim/sim-precio-heredado.ts',
+    estado: 'vivo',
+    notas:
+      'npx tsx scripts/sim/sim-precio-heredado.ts [--url=…], con AUTH_SECRET y DATABASE_URL del ' +
+      'entorno y el servidor levantado. 7 comprobaciones contra Stripe y BD REALES: sin sesión ' +
+      'no se crea nada, la afectada recupera su tarifa, el importe es del catálogo del vaciado, ' +
+      'el segundo clic no crea una segunda oferta, la fila queda en la cuenta que hoy cobra, y ' +
+      '«reactivar» en la cuenta antigua se rechaza. **ESCRIBE en Stripe** (price + Payment Link) ' +
+      'y en `user_price_offers`, y por eso limpia al terminar: revoca la fila y desactiva los ' +
+      'enlaces que ha creado. El caso 6 es el que sostiene a los demás: quien ya está en la ' +
+      'cuenta nueva NO debe recibir oferta — sin ese contraste, un endpoint que no creara ' +
+      'ofertas nunca pasaría por bueno. Correrla tras tocar `ofertaHeredada`, `precioHeredado` ' +
+      'o `reactivateSubscription`.',
+  },
   // ── observabilidad de cliente ─────────────────────────────────────────────────────────────
   sim_ruido_console: {
     titulo: 'Medir qué parte de los console_error de cliente es ruido y qué parte es daño (y predecir el efecto del arreglo)',

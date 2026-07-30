@@ -46,6 +46,15 @@ export const getSubscriptionResponseSchema = z.object({
   stripeCustomerId: z.string().nullable().optional(),
   subscription: subscriptionInfoSchema.optional(),
   timeline: z.array(z.object({ type: z.string(), date: z.string() })).optional(),
+  /**
+   * T-341 — ¿la suscripción vive en una cuenta de cobro que TODAVÍA admite altas?
+   *
+   * `false` significa que quedó en la cuenta antigua, donde «reactivar» no es una opción:
+   * una suscripción no se puede mover entre cuentas de Stripe, así que renovarla la ataría
+   * a la que se está vaciando. Ahí lo que se ofrece es recuperar su PRECIO en la cuenta
+   * actual. Lo decide el servidor para que la interfaz no tenga que deducirlo.
+   */
+  renovableEnSuCuenta: z.boolean().optional(),
   error: z.string().optional()
 })
 

@@ -11,6 +11,10 @@ import {
   esIntervaloValido,
   RECURRENCIA,
   INTERVALOS,
+  derivarPrecioHeredado,
+  intervaloDesdeRecurrencia,
+  MAX_CENTIMOS_HEREDABLE,
+  type SuscripcionAnterior,
 } from '@/lib/stripe/precioHeredado'
 
 describe('euroACentimos', () => {
@@ -108,5 +112,68 @@ describe('metadataHeredado', () => {
     const m = metadataHeredado({ userId: 'u', email: 'e', motivo: 'm' })
     expect('feedback_id' in m).toBe(false)
     expect(m.creado_por).toBe('soporte')
+  })
+})
+
+// ── Derivar «el precio que tenía» desde su histórico (T-341) ──────────────────────────────
+//
+// Esto decide lo que se le va a cobrar a 377 personas sin que nadie revise caso por caso,
+// así que lo que importa es que se calle cuando no está seguro: la alternativa a no ofrecer
+// nada es la tarifa normal, y la alternativa a equivocarse es cobrar mal.
+describe('derivarPrecioHeredado', () => {
+  const sub = (over: Partial<SuscripcionAnterior> = {}): SuscripcionAnterior => ({
+    estado: 'canceled',
+    centimos: 2000,
+    intervalo: 'month',
+    intervalCount: 1,
+    creadaEn: 1_700_000_000,
+    ...over,
+  })
+
+  it('devuelve las tres tarifas reales del vaciado', () => {
+    expect(derivarPrecioHeredado([sub()])).toEqual({ centimos: 2000, intervalo: 'mensual' })
+    expect(derivarPrecioHeredado([sub({ centimos: 3500, intervalCount: 3 })]))
+      .toEqual({ centimos: 3500, intervalo: 'trimestral' })
+    expect(derivarPrecioHeredado([sub({ centimos: 5900, intervalCount: 6 })]))
+      .toEqual({ centimos: 5900, intervalo: 'semestral' })
+  })
+
+  it('con varias, manda la MÁS RECIENTE (su último precio, no el más barato)', () => {
+    const elegido = derivarPrecioHeredado([
+      sub({ centimos: 1000, creadaEn: 1_600_000_000 }),
+      sub({ centimos: 2000, creadaEn: 1_700_000_000 }),
+    ])
+    expect(elegido).toEqual({ centimos: 2000, intervalo: 'mensual' })
+  })
+
+  it('ignora las que no sirven y sigue buscando en vez de rendirse', () => {
+    const elegido = derivarPrecioHeredado([
+      sub({ centimos: null, creadaEn: 1_800_000_000 }),          // sin importe
+      sub({ intervalCount: 2, creadaEn: 1_750_000_000 }),        // periodicidad no mapeable
+      sub({ centimos: 3500, intervalCount: 3, creadaEn: 1_700_000_000 }),
+    ])
+    expect(elegido).toEqual({ centimos: 3500, intervalo: 'trimestral' })
+  })
+
+  it('sin nada utilizable devuelve null (la persona va a la tarifa normal)', () => {
+    expect(derivarPrecioHeredado([])).toBeNull()
+    expect(derivarPrecioHeredado([sub({ centimos: 0 })])).toBeNull()
+    expect(derivarPrecioHeredado([sub({ centimos: -100 })])).toBeNull()
+    expect(derivarPrecioHeredado([sub({ intervalo: null, intervalCount: null })])).toBeNull()
+  })
+
+  it('un importe absurdo NO se hereda: es un dato roto, no una tarifa', () => {
+    expect(derivarPrecioHeredado([sub({ centimos: MAX_CENTIMOS_HEREDABLE + 1 })])).toBeNull()
+    expect(derivarPrecioHeredado([sub({ centimos: MAX_CENTIMOS_HEREDABLE })])).not.toBeNull()
+  })
+
+  it('mapea las periodicidades del catálogo y solo esas', () => {
+    expect(intervaloDesdeRecurrencia('month', 1)).toBe('mensual')
+    expect(intervaloDesdeRecurrencia('month', 3)).toBe('trimestral')
+    expect(intervaloDesdeRecurrencia('month', 6)).toBe('semestral')
+    expect(intervaloDesdeRecurrencia('year', 1)).toBe('anual')
+    expect(intervaloDesdeRecurrencia('month', 2)).toBeNull()
+    expect(intervaloDesdeRecurrencia('week', 1)).toBeNull()
+    expect(intervaloDesdeRecurrencia(null, null)).toBeNull()
   })
 })

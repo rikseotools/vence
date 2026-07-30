@@ -103,6 +103,71 @@ export function avisoSiNoMejora(centimosHeredado: number, centimosVigente: numbe
     : `El precio heredado (${(centimosHeredado / 100).toFixed(2)} €) es MÁS CARO que la tarifa vigente (${(centimosVigente / 100).toFixed(2)} €).`
 }
 
+/**
+ * Resumen de una suscripción de la cuenta ANTIGUA, con lo justo para decidir el precio.
+ * Se define aquí (y no se importa el tipo de Stripe) para que esta función siga siendo
+ * pura y testeable sin red.
+ */
+export interface SuscripcionAnterior {
+  /** `active`, `canceled`, `past_due`… tal cual lo da Stripe. */
+  estado: string
+  /** Importe del PRICE, en céntimos. Lo que costaba su plan, sin cupones encima. */
+  centimos: number | null
+  intervalo: 'month' | 'year' | null
+  intervalCount: number | null
+  /** epoch en segundos: para quedarnos con la más reciente cuando hay varias. */
+  creadaEn: number
+}
+
+export interface PrecioDerivado {
+  centimos: number
+  intervalo: IntervaloHeredado
+}
+
+/** Tope de cordura. Un importe por encima de esto no es una tarifa nuestra: es un dato roto. */
+export const MAX_CENTIMOS_HEREDABLE = 20_000
+
+/**
+ * Deriva «el precio que tenía» a partir de sus suscripciones en la cuenta antigua.
+ *
+ * ## Las decisiones, que son de dinero
+ *
+ * - **Se usa el importe del PRICE, no lo último facturado.** Decisión de producto (30/07):
+ *   son tres tarifas limpias —20 €/mes, 35 €/trim., 59 €/sem.— y así dos personas comparten
+ *   el mismo price. Lo facturado puede llevar encima un cupón de fidelidad, y arrastrarlo
+ *   generaría un precio distinto por persona: el runbook ya avisa de que el importe de la
+ *   factura no es el de tarifa.
+ * - **La más reciente manda.** Si alguien cambió de plan, su precio es el último que tuvo,
+ *   no el más barato que llegó a tener.
+ * - **Fuera del catálogo de intervalos, no hay oferta.** Un `interval_count` que no sabemos
+ *   mapear (p. ej. 2 meses) daría un plan que el webhook no reconoce: mejor no ofrecer nada
+ *   que ofrecer algo que no active el premium.
+ * - **Devuelve `null` en vez de adivinar.** Sin datos suficientes, la persona va a la tarifa
+ *   normal; nunca se inventa un importe.
+ */
+export function derivarPrecioHeredado(subs: SuscripcionAnterior[]): PrecioDerivado | null {
+  const candidatas = [...subs].sort((a, b) => b.creadaEn - a.creadaEn)
+  for (const s of candidatas) {
+    if (s.centimos == null || s.centimos <= 0 || s.centimos > MAX_CENTIMOS_HEREDABLE) continue
+    const intervalo = intervaloDesdeRecurrencia(s.intervalo, s.intervalCount)
+    if (!intervalo) continue
+    return { centimos: s.centimos, intervalo }
+  }
+  return null
+}
+
+/** `('month', 3)` → `'trimestral'`. `null` si no es una periodicidad del catálogo. */
+export function intervaloDesdeRecurrencia(
+  interval: string | null,
+  count: number | null,
+): IntervaloHeredado | null {
+  if (!interval || !count) return null
+  for (const [nombre, r] of Object.entries(RECURRENCIA) as [IntervaloHeredado, RecurrenciaStripe][]) {
+    if (r.interval === interval && r.interval_count === count) return nombre
+  }
+  return null
+}
+
 /** Metadata de auditoría del price/enlace: quién, por qué y para quién. */
 export function metadataHeredado(params: {
   userId: string

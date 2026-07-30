@@ -4307,6 +4307,22 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Capas:** simulación `scripts/sim/sim-identidad-pago.ts` (10 casos contra servidor real, **10/10**, cada rechazo emparejado con el caso que sí debe pasar — sin ese contraste un 403 universal se leería como éxito) + guardarraíl `endpointsPagoIdentidad` (17) + 102 tests de stripe/suscripción en verde. Registrada en `toolRegistry` y documentada en el runbook de suplantación.
 - **Lo que queda:** verificar en producción y **limpiar las 3 filas** del historial de esa usuaria. Y hay **38 endpoints más** con el mismo patrón (`userId` del cliente sin verificar) fuera de `/api/stripe` → merecen su propia auditoría.
 
+### [T-341] 🔴 [ABIERTO 30/07] Botón de recuperar el precio anterior para los afectados por el vaciado de Stripe Manuel
+
+- **El problema, en una frase:** al vaciar la cuenta de cobro antigua se marcaron sus suscripciones como «no renueva». A esa gente se le había dicho *«se renueva sola, no tienes que hacer nada»* — **hicieron lo que les pedimos y se quedaron sin premium**. Medido en esa cuenta el 31/07: **181 ya apagadas** y **186 activas que caen solas** entre hoy y enero de 2027.
+- **Por qué «reactivar» no vale, y es el núcleo de todo:** una suscripción vive en la cuenta de Stripe donde nació y **no se puede mover** (son cuentas distintas, sin clientes ni tarjetas compartidas). Reactivarla lo ataría precisamente a la cuenta que estamos vaciando y le volvería a cobrar allí. Lo que se recupera es **el PRECIO**, no la suscripción: se contrata de nuevo en la cuenta que hoy cobra, a la tarifa que tenía.
+- **Lo que había hasta ahora:** el precio se mantenía **una a una y solo a quien reclamaba**, con `scripts/stripe/precio-heredado.cjs` (dos casos atendidos). Los otros ~365 no reclaman: se van.
+#### ✅ HECHO (31/07) — falta desplegar y verificar en producción
+- **Botón en el perfil.** A quien quedó en la cuenta antigua se le ofrece «Continuar con mi precio» en lugar de «Reactivar suscripción». **Cuál toca lo dice el SERVIDOR** (`renovableEnSuCuenta`, contra `newSignupAccount()` y no contra el nombre de una cuenta concreta): la interfaz no lo deduce, y así nadie ve un botón que va a fallar. El día que las altas se muevan a otra cuenta, esto sigue siendo cierto sin que nadie se acuerde.
+- **`POST /api/v2/premium/recuperar-precio`** → deriva su tarifa del histórico REAL en Stripe y le deja la oferta lista en la cuenta actual; después `/premium/personal` la enseña y la contrata. Es **POST y no un GET perezoso** a propósito: crea recursos, y colgarlo de la lectura de ofertas habría hecho que **cualquier visita creara ofertas** —incluida una sesión de suplantación, que es de solo lectura y por tanto puede hacer GET—. Es justo el fallo de [T-340]; no se repite.
+- **Reactivar queda BLOQUEADO en la cuenta antigua** (`reactivateSubscription`), con señal `reactivacion_cuenta_antigua_rechazada`. Sin esto, el botón viejo seguiría cobrando en la cuenta que se está vaciando.
+- **Si no se puede derivar con certeza, NO hay oferta:** va a la tarifa normal. Inventarse un importe es peor que no ofrecer nada. Medido en seco sobre 25 afectados: 22 derivan a las tres tarifas del catálogo (20 €/mes · 35 €/trim. · 59 €/sem.) y 3 caen al camino seguro.
+- **Capas:** núcleo puro compartido con el CLI `lib/stripe/precioHeredado.ts` (**20 tests**, con paridad — la tarifa la decide UN solo sitio o dos personas del mismo caso pagarían distinto) + simulación `scripts/sim/sim-precio-heredado.ts` contra Stripe y BD reales (**7/7**, con limpieza) + las tres piezas registradas en `toolRegistry`.
+- **Dos defectos que solo salieron al probar contra datos reales** (la prueba en seco daba verde):
+  - El índice único de `user_price_offers` es **PARCIAL** (`WHERE redeemed_at IS NULL AND revoked_at IS NULL`) y el `ON CONFLICT` no repetía ese predicado → Postgres no lo reconoce y **fallaba el INSERT entero** (500 en el primer clic de cualquier afectado).
+  - El Payment Link se crea antes que la fila, así que ese fallo dejó **enlaces de pago vivos sin fila detrás** — dinero que puede entrar sin saber por qué, y en Stripe no caducan solos. Ahora, si la fila no entra, el enlace se desactiva. Los 2 huérfanos de la prueba ya están apagados.
+- **Lo que queda:** desplegar y verificar en producción con un afectado real. **No hay aviso a los afectados**: por ahora el botón solo está para quien entra en su perfil; avisar a los ~365 es decisión aparte (y de cuándo).
+
 
 ## Hechas
 

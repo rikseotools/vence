@@ -70,6 +70,14 @@ interface SubscriptionData {
   hasSubscription: boolean
   planType?: string
   stripeCustomerId?: string
+  /**
+   * ¿Su suscripción vive en una cuenta de cobro que TODAVÍA admite altas? (T-341)
+   * `false` = está en la cuenta antigua, donde reactivar no es opción porque una
+   * suscripción no se puede mover de cuenta: ahí se ofrece recuperar su precio.
+   * `undefined` = respuesta de un servidor anterior a este campo → se trata como reactivable,
+   * que es el comportamiento de siempre.
+   */
+  renovableEnSuCuenta?: boolean
   subscription?: {
     id: string
     status: string
@@ -2340,6 +2348,31 @@ function PerfilPageContent() {
     return null
   }
 
+  // 🆕 RECUPERAR EL PRECIO ANTERIOR (T-341)
+  //
+  // Para quien se quedó colgado al cambiar de cuenta de cobro: su suscripción vive en una
+  // cuenta que ya no admite altas y **no se puede mover** (son cuentas de Stripe distintas),
+  // así que reactivarla lo ataría a la que se está vaciando. Lo que se recupera es su
+  // PRECIO: se le prepara la oferta con la tarifa que tenía y se le lleva a contratarla.
+  const handleRecuperarPrecio = async () => {
+    if (!user) return
+    try {
+      setReactivateLoading(true)
+      const response = await fetch('/api/v2/premium/recuperar-precio', {
+        method: 'POST',
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      // Sin precio que recuperar no es un fallo: hay quien nunca tuvo tarifa anterior. Se le
+      // manda a la página de precios normal en vez de enseñarle un error que no lo es.
+      window.location.href = response.ok && data?.tieneOferta ? '/premium/personal' : '/premium'
+    } catch {
+      setMessage('No hemos podido preparar tu precio. Vuelve a intentarlo en un momento.')
+      setTimeout(() => setMessage(''), 5000)
+      setReactivateLoading(false)
+    }
+  }
+
   // 🆕 REACTIVAR SUSCRIPCIÓN
   const handleReactivate = async () => {
     if (!user) return
@@ -2578,20 +2611,31 @@ function PerfilPageContent() {
                     </span>
                   </div>
                   <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
-                    Seguirás teniendo acceso Premium hasta esa fecha. Si cambias de opinión, puedes reactivarla.
+                    {subscriptionData.renovableEnSuCuenta === false
+                      ? 'Seguirás teniendo acceso Premium hasta esa fecha. Si quieres continuar, puedes volver a contratar manteniendo el precio que tenías.'
+                      : 'Seguirás teniendo acceso Premium hasta esa fecha. Si cambias de opinión, puedes reactivarla.'}
                   </p>
+                  {/* T-341 — dos botones distintos porque son dos cosas distintas: renovar la
+                      suscripción que ya existe, o volver a contratar con la tarifa anterior
+                      cuando la suya vive en una cuenta de cobro que ya no admite altas. Cuál
+                      toca lo dice el servidor (`renovableEnSuCuenta`): la interfaz no lo
+                      deduce, y así nadie ve un botón que va a fallar. */}
                   <button
-                    onClick={handleReactivate}
+                    onClick={subscriptionData.renovableEnSuCuenta === false ? handleRecuperarPrecio : handleReactivate}
                     disabled={reactivateLoading}
                     className="mt-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center space-x-2"
                   >
                     {reactivateLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Reactivando...</span>
+                        <span>{subscriptionData.renovableEnSuCuenta === false ? 'Preparando tu precio...' : 'Reactivando...'}</span>
                       </>
                     ) : (
-                      <span>Reactivar suscripción</span>
+                      <span>
+                        {subscriptionData.renovableEnSuCuenta === false
+                          ? 'Continuar con mi precio'
+                          : 'Reactivar suscripción'}
+                      </span>
                     )}
                   </button>
                 </div>
