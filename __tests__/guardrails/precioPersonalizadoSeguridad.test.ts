@@ -125,21 +125,31 @@ describe('la página manda la sesión (30/07)', () => {
     expect(bloque).toMatch(/headers\s*[,}]/)
   })
 
-  it('la llamada es GET, no POST (el 405 del 29/07)', () => {
-    expect(PAGINA).toMatch(/method:\s*'GET'/)
+  // ⚠️ Aquí VIVÍA `expect(PAGINA).toMatch(/method: 'GET'/)`, y es el ejemplo perfecto de
+  // guardarraíl que engaña: estuvo verde tres días mientras la petición salía como POST.
+  // El texto estaba escrito, sí… en el segundo argumento de `apiFetch`, que es el CUERPO.
+  // Comprobar que una cadena aparece en un fichero no dice nada sobre dónde aparece.
+  // Lo que de verdad cierra ese agujero está en `__tests__/lib/api/clientMetodo.test.ts`
+  // (ejecuta la llamada e inspecciona la petición) y en el tipo `CuerpoValido`.
+  it('la página usa apiGet, que no admite escribir el método en el sitio equivocado', () => {
+    expect(PAGINA).toContain('apiGet')
+    expect(PAGINA).not.toMatch(/apiFetch<[^>]*>\(\s*'\/api\/v2\/premium\/mi-oferta'/)
   })
 })
 
-describe('el navegador que se quedó con la página vieja (30/07)', () => {
-  // Tercer día del mismo bloqueo, y el más instructivo: el arreglo del 405 estaba
-  // desplegado y verificado, y Rocío seguía sin poder pagar. Su navegador conservaba el
-  // JavaScript anterior y seguía mandando POST. En `observable_events` hay cuatro POST 405
-  // suyos entre las 04:50 y las 06:57 del 30/07, con el bundle correcto ya en producción.
+describe('el endpoint atiende también a los clientes que sigan mandando POST (30/07)', () => {
+  // Tercer día del mismo bloqueo. El arreglo del 405 se había dado por hecho y Rocío seguía
+  // sin poder pagar: sus eventos del 30/07 (04:50, 04:51, 06:56, 06:57) son POST 405 con
+  // `deploy_version` = el despliegue que supuestamente lo arreglaba.
   //
-  // La lección: **un despliegue arregla el servidor, no los navegadores**. Cuando el
-  // arreglo consiste en cambiar cómo llama el cliente, quien ya tenga la versión anterior
-  // sigue roto hasta que recargue — y nadie le va a pedir a una usuaria que vacíe la caché.
-  // Por eso el endpoint atiende también el método viejo.
+  // La causa no era su navegador: era que la llamada nunca fue GET. `apiFetch(url, body,
+  // options)` recibía las opciones en la posición del cuerpo, así que `options` quedaba
+  // `undefined` y se aplicaba el método por defecto, POST. Arreglado con `apiGet` y con un
+  // tipo que impide repetirlo.
+  //
+  // El endpoint conserva el POST porque TODOS los navegadores que no recarguen siguen
+  // ejecutando la versión anterior: para ellos, esto es la diferencia entre poder pagar hoy
+  // o no. Es una lectura autenticada e idempotente, no cuesta nada mantenerla.
   const ENDPOINT = leer('app/api/v2/premium/mi-oferta/route.ts')
 
   it('el endpoint responde a POST además de a GET', () => {

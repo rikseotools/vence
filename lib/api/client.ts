@@ -61,6 +61,57 @@ export interface ApiFetchOptions<T> {
 }
 
 // ============================================
+// EL ERROR QUE ESTE TIPO IMPIDE (30/07/2026)
+// ============================================
+//
+// La firma es `apiFetch(url, body, options)`. La página de precio de fidelidad llamaba así:
+//
+//     apiFetch('/api/v2/premium/mi-oferta', { method: 'GET', retries: 2, headers })
+//
+// Las opciones iban de CUERPO. `options` quedaba `undefined`, se aplicaban los valores por
+// defecto… y el método por defecto es POST. Resultado: un endpoint GET recibiendo POST,
+// 405, y la página diciendo «no tienes precio activo» a una usuaria que sí lo tenía. Tres
+// días, cuatro intentos de pago abandonados y dos arreglos anteriores que no eran el fallo.
+//
+// Nada lo cazó: `body` era `unknown`, así que TypeScript lo aceptaba encantado; el
+// guardarraíl buscaba el texto `method: 'GET'` en el fichero y ahí estaba, solo que en el
+// argumento equivocado. Un test de TEXTO no distingue el sitio donde se escribe algo.
+//
+// Ahora un objeto formado SOLO por claves de opciones no es un cuerpo válido: la llamada
+// mala deja de compilar. Es la única capa que actúa antes de desplegar.
+// Se tipa SIN genérico a propósito. El primer intento fue `apiFetch<T, B>(url, body: B &
+// CuerpoValido<B>, …)`, y no servía: en cuanto alguien escribe `apiFetch<Respuesta>(…)`
+// —que es como se llama en todo el repo— TypeScript deja de inferir `B` y usa su valor por
+// defecto, con lo que la comprobación se evaporaba justo en las llamadas reales.
+//
+// Con propiedades opcionales de tipo `never`, la prohibición no depende de la inferencia:
+// un objeto que traiga `method` o `retries` no es asignable, se escriban o no los
+// parámetros de tipo. La firma de índice es necesaria para que un cuerpo normal
+// (`{ questionId: 'q1' }`) no choque contra la comprobación de propiedades sobrantes.
+export type CuerpoValido =
+  | ({ [clave: string]: unknown } & {
+      method?: never
+      retries?: never
+      retryDelayMs?: never
+      timeoutMs?: never
+      responseSchema?: never
+    })
+  | unknown[]
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+
+/**
+ * GET sin cuerpo. Existe para que la llamada más propensa al error (la que no tiene body
+ * que pasar, y por eso invita a poner las opciones en su sitio) no pueda escribirse mal.
+ */
+export function apiGet<T>(url: string, options?: Omit<ApiFetchOptions<T>, 'method'>): Promise<T> {
+  return apiFetch<T>(url, null, { ...options, method: 'GET' })
+}
+
+// ============================================
 // IMPLEMENTACIÓN
 // ============================================
 
@@ -87,7 +138,7 @@ function delay(ms: number): Promise<void> {
  */
 export async function apiFetch<T>(
   url: string,
-  body: unknown,
+  body: CuerpoValido,
   options?: ApiFetchOptions<T>
 ): Promise<T> {
   const {
@@ -118,7 +169,9 @@ export async function apiFetch<T>(
         // tarifa pública, tres veces, porque el 405 no se veía por ningún lado.
         method,
         headers: { 'Content-Type': 'application/json', ...extraHeaders },
-        body: JSON.stringify(body),
+        // GET y HEAD no admiten cuerpo: `fetch` lanza TypeError si se le pone, y ese error
+        // se vería como «error de red» (reintentado dos veces) en vez de como lo que es.
+        ...(method === 'GET' ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal
       })
 

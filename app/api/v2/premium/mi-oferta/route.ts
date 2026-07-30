@@ -8,16 +8,19 @@
 //
 // ## Por qué responde también a POST (30/07/2026)
 //
-// La primera versión de la página llamaba con POST (`apiFetch` lo forzaba). Se arregló a
-// GET el 29/07 y se desplegó… y al día siguiente Rocío seguía viendo «no tienes precio
-// activo»: su navegador conservaba el JavaScript ANTIGUO, así que seguía mandando POST y
-// recibiendo 405. Está medido en `observable_events`: cuatro POST 405 suyos entre las
-// 04:50 y las 06:57, con el bundle correcto ya servido en producción.
+// La página llamaba con POST sin querer: `apiFetch(url, body, options)` recibía las
+// opciones —incluido `method: 'GET'`— en la posición del CUERPO, así que `options` quedaba
+// `undefined` y se aplicaba el método por defecto. Se arregló en el cliente (`apiGet` y el
+// tipo `CuerpoValido`, que impide volver a escribirlo así), pero eso solo vale para quien
+// cargue la versión nueva: todo navegador que no recargue sigue ejecutando la anterior y
+// seguirá mandando POST.
 //
-// Un despliegue arregla el código, NO los navegadores que ya se llevaron el anterior. Por
-// eso el método viejo se sigue atendiendo: es una lectura autenticada e idempotente, no
-// cuesta nada mantenerla y evita que quien tenga la página cacheada se quede fuera. Si se
-// retira algún día, será cuando nadie la pida — no por limpieza.
+// Medido en `observable_events`: cuatro POST 405 de la misma usuaria entre las 04:50 y las
+// 06:57 del 30/07, cada uno un intento de pagar que acabó en «no tienes precio activo».
+//
+// Por eso el método viejo se sigue atendiendo. Es una lectura autenticada e idempotente:
+// no cuesta nada y evita que alguien se quede sin poder pagar por un despliegue que aún no
+// ha alcanzado a su pestaña.
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'

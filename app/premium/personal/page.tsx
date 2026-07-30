@@ -12,7 +12,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth'
-import { apiFetch } from '@/lib/api/client'
+import { apiGet } from '@/lib/api/client'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { trackIntent, confirmIntent } from '@/lib/observability/client'
 
@@ -42,9 +42,12 @@ export default function PrecioPersonalPage() {
         // 401 y la página dice «no tienes precio activo» a alguien que SÍ lo tiene — que es
         // lo que le pasó a Rocío dos veces: primero por un 405 y luego por esto.
         const headers = await getAuthHeaders()
-        const data = await apiFetch<{ success: boolean; ofertas?: OfertaVista[]; oferta: OfertaVista | null }>(
+        // `apiGet`, no `apiFetch`: la firma de `apiFetch` es (url, body, options) y aquí no
+        // hay cuerpo que mandar, así que las opciones acababan en la posición del cuerpo y
+        // la petición salía como POST (el 405 que tuvo bloqueada a una usuaria tres días).
+        const data = await apiGet<{ success: boolean; ofertas?: OfertaVista[]; oferta: OfertaVista | null }>(
           '/api/v2/premium/mi-oferta',
-          { method: 'GET', retries: 2, headers },
+          { retries: 2, headers },
         )
         // `ofertas` es lo actual; `oferta` queda como respaldo por si responde un servidor viejo.
         if (vivo) setOfertas(data.ofertas ?? (data.oferta ? [data.oferta] : []))
