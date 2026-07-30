@@ -3666,6 +3666,57 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
 };
 
 /**
+ * MÉTODO NO PERMITIDO (405) — el cliente y el servidor no se entienden (2026-07-30).
+ *
+ * Un 405 no es "un usuario haciendo algo raro": significa que NUESTRO propio JavaScript
+ * está llamando a NUESTRO propio endpoint con un método que no existe. Siempre es un bug
+ * de contrato, y siempre deja una función entera inservible para todo el que pase por ahí.
+ *
+ * Origen: la página de precio de fidelidad llamaba con POST a un endpoint GET (las opciones
+ * de `apiFetch` iban en la posición del cuerpo, así que se aplicaba el método por defecto).
+ * Una usuaria estuvo TRES DÍAS sin poder pagar, con la página diciéndole «no tienes precio
+ * activo». Los 405 quedaron registrados desde el primer intento y nadie los miró: la regla
+ * de 4xx de cliente exige 30 en 15 minutos por endpoint, y aquí fueron 7 en dos días.
+ *
+ * Por eso el umbral es 1. Medido antes de escribirla: en 14 días de producción hubo
+ * EXACTAMENTE 7 respuestas 405 en toda la plataforma, y las 7 eran este fallo. Una señal
+ * sin ruido de fondo no necesita un umbral que la esconda.
+ */
+export const RULE_CLIENT_METHOD_NOT_ALLOWED: AlertRule<{
+  endpoint: string | null;
+  metodo: string | null;
+  n: number;
+}> = {
+  name: 'client_method_not_allowed',
+  severity: 'critical',
+  query: sql`
+    SELECT endpoint,
+           MODE() WITHIN GROUP (ORDER BY metadata->>'method') AS metodo,
+           COUNT(*)::int AS n
+    FROM observable_events
+    WHERE source = 'frontend'
+      AND event_type = 'http_4xx'
+      AND metadata->>'status' IN ('405', '501')
+      AND ts > NOW() - INTERVAL '30 minutes'
+    GROUP BY endpoint
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lineas = rows.map(
+      (r) =>
+        `  - ${r.endpoint ?? '(desconocido)'}: ${r.n} llamada(s) con ${r.metodo ?? 'método desconocido'}`,
+    );
+    return {
+      title: `Cliente llamando con un método que el endpoint no acepta (405)`,
+      body: `Nuestro propio front está llamando a nuestro propio endpoint con un método inexistente, así que esa función NO funciona para nadie que pase por ahí:\n\n${lineas.join('\n')}\n\nQué mirar:\n\n  - El fetcher de ese endpoint. Ojo con \`apiFetch(url, body, options)\`: si las opciones se escriben en la posición del cuerpo, \`options\` queda undefined y sale POST por defecto (causa del incidente del 30/07).\n  - SELECT ts, endpoint, metadata FROM observable_events\n      WHERE event_type='http_4xx' AND metadata->>'status'='405'\n        AND ts > NOW() - INTERVAL '2 hours' ORDER BY ts DESC;\n\nContexto: esto tuvo a una usuaria tres días sin poder pagar, viendo «no tienes precio activo». En 14 días de producción no hubo ningún otro 405, así que esta alerta no debería sonar salvo que algo esté realmente roto.`,
+      metadata: { endpointsAffected: rows.length, total: rows.reduce((s, r) => s + r.n, 0) },
+      fingerprint: `client_method_not_allowed_${rows[0]?.endpoint ?? 'unknown'}`,
+    };
+  },
+  cooldownMin: 120,
+};
+
+/**
  * GUARDADO DE RESPUESTAS ROTO (reconciliación) — 2026-07-05. El hueco C1 (07-04):
  * el cliente respondía pero los tests NO se creaban (PostgREST roto tras el flip)
  * → 168 respondidas / 0 guardadas, INVISIBLE para el canary answer-save (que pega
@@ -4500,6 +4551,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
   RULE_CLIENT_ERROR_SPIKE as AlertRule,
   RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,
+  // Su hermano SILENCIOSO (2026-07-30, caso Rocío): un 405 significa que nuestro front
+  // llama a nuestro endpoint con un método que no existe, y basta UNO para dejar la
+  // función inservible. La regla de arriba pide 30 en 15 min y nunca los ve.
+  RULE_CLIENT_METHOD_NOT_ALLOWED as AlertRule,
   // Guardado roto (reconciliación) + edge sostenido (2026-07-05, huecos del día)
   RULE_SAVE_RECONCILIATION as AlertRule,
   RULE_CLIENT_EDGE_SUSTAINED as AlertRule,

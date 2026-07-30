@@ -48,8 +48,50 @@ import {
   RULE_EVENT_LOOP_LAG,
   RULE_AUTH_TOKEN_MINT_FLOOD,
   RULE_AUTH_TOKEN_MINT_WASTE,
+  RULE_CLIENT_METHOD_NOT_ALLOWED,
 } from './alert-rules';
 import { BENIGN_SIGNALS, CON_REGLA_PROPIA } from './benign-signals';
+
+describe('RULE_CLIENT_METHOD_NOT_ALLOWED (405 del 30/07, caso Rocío)', () => {
+  // Una usuaria estuvo tres días sin poder pagar porque la página llamaba con POST a un
+  // endpoint GET. Los 405 se registraron desde el primer intento; nadie los miró porque la
+  // regla de 4xx de cliente pide 30 en 15 minutos y allí hubo 7 en dos días.
+  it('dispara con UNA sola llamada (basta una para dejar la función inservible)', () => {
+    expect(
+      RULE_CLIENT_METHOD_NOT_ALLOWED.shouldFire([
+        { endpoint: '/api/v2/premium/mi-oferta', metodo: 'POST', n: 1 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('NO dispara sin 405 (en 14 días de producción no hubo ningún otro)', () => {
+    expect(RULE_CLIENT_METHOD_NOT_ALLOWED.shouldFire([])).toBe(false);
+  });
+
+  it('el aviso dice el endpoint y el método, que es lo que se necesita para arreglarlo', () => {
+    const n = RULE_CLIENT_METHOD_NOT_ALLOWED.buildNotification([
+      { endpoint: '/api/v2/premium/mi-oferta', metodo: 'POST', n: 4 },
+    ]);
+    expect(n.body).toContain('/api/v2/premium/mi-oferta');
+    expect(n.body).toContain('POST');
+    // Y la pista de la causa, porque el error es fácil de repetir en cualquier fetcher.
+    expect(n.body).toContain('apiFetch');
+  });
+
+  it('un fingerprint por endpoint (un aviso, no uno por llamada)', () => {
+    const a = RULE_CLIENT_METHOD_NOT_ALLOWED.buildNotification([
+      { endpoint: '/api/x', metodo: 'POST', n: 1 },
+    ]);
+    const b = RULE_CLIENT_METHOD_NOT_ALLOWED.buildNotification([
+      { endpoint: '/api/x', metodo: 'POST', n: 9 },
+    ]);
+    expect(a.fingerprint).toBe(b.fingerprint);
+  });
+
+  it('está registrada en ALERT_RULES (si no, no la ejecuta nadie)', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('client_method_not_allowed');
+  });
+});
 
 describe('RULE_LAWS_CONFIGURATOR_DEGRADED (fix configurador 24/07, caso David/Galicia)', () => {
   it('dispara con >=3 errores en 10 min (query rota/timeout)', () => {
