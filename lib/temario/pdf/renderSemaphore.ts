@@ -29,9 +29,22 @@
 // ## Esperar antes de rechazar
 //
 // Rechazar a la primera convertiría cualquier segundo clic en un error. Se espera un rato
-// acotado (`PDF_RENDER_WAIT_MS`, 20 s) a que la task se libere: con renders de ~7 s, una ráfaga
-// moderada acaba sirviéndose entera, solo que en fila. Pasado ese tiempo se **suelta carga** —que
-// es lo que no pasó el 29/07, y por eso se cayó todo lo demás.
+// acotado (`PDF_RENDER_WAIT_MS`, 20 s) a que la task se libere: una ráfaga moderada acaba
+// sirviéndose entera, solo que en fila. Pasado ese tiempo se **suelta carga** —que es lo que no
+// pasó el 29/07, y por eso se cayó todo lo demás.
+//
+// ## Coste real de un render, MEDIDO (30/07, T-270)
+//
+// Cuando se escribió esto solo había **una** medición (7.195 ms) y de ahí salió el «~7 s». Con 8
+// renders medidos resulta que aquella muestra era casi el **máximo**, no lo típico:
+//
+//   mínimo 831 ms · **mediana 2.183 ms** · media 3.690 ms · máximo 7.600 ms
+//
+// La espera de 20 s absorbe por tanto una cola de ~9 renders medianos, o ~2,6 en el peor caso. Y
+// deja claro que la ráfaga del 29/07 —36 renders frescos, entre 79 s y 4,6 min de CPU— habría
+// soltado carga con holgura, que es justo lo que se busca. **No cambiar los valores por defecto
+// con esto**: confirman el dimensionado, no lo contradicen. Se anota para que nadie vuelva a
+// dimensionar sobre una sola muestra.
 
 export interface RenderSlot {
   /** Devuelve el slot. Idempotente: llamarlo dos veces no resta de más. */
