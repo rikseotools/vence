@@ -2,7 +2,10 @@
 
 Muestra: `vinculo-vecino-golden.json` — 10 casos reales, veredicto adjudicado a mano contra el BOE.
 Comando: `npm run llm:ab-vinculo -- --modelos <lista>`.
-**70 modelos probados** por debajo de 3 $/M de entrada, todos con el mismo arnés.
+**CATÁLOGO AGOTADO: 279 modelos probados** — todos los del catálogo de OpenRouter por debajo de
+3 $/M con contexto suficiente. Solo **97 se ejecutaron de verdad**; el resto devuelve error sin
+llegar a correr (se reconocen por coste 0,00 $ y menos de un segundo). Quedan fuera 33 más caros que
+Sonnet y 13 con contexto por debajo de 30k, donde no caben los dos artículos por debajo de 3 $/M de entrada, todos con el mismo arnés.
 
 ---
 
@@ -67,6 +70,13 @@ catálogo de OpenRouter, no la memoria.
 
 ---
 
+## Lo que quedaba: nada nuevo en la banda alta
+
+La última tanda de 64 no aportó ningún candidato: el único que llegó a 8/10 fue `openrouter/free`
+(el enrutador a modelos gratuitos), que **no sirve para producción** — no eliges qué modelo responde
+y va con límites de uso. Los otros 63 no se ejecutaron o quedaron por debajo. Es decir: **la banda
+alta ya estaba encontrada**, y los mejores candidatos siguen siendo los de la tabla de arriba.
+
 ## El caso que casi todos fallan (y hay que meter en el prompt de producción)
 
 `0c76f387` — Ley de Enjuiciamiento Civil, artículo 440 frente al 442. **El enunciado CITA el artículo
@@ -86,6 +96,29 @@ para ver que la banda alta es asequible. Para elegir entre 10/10 y 8/10 hace fal
 set. Estado: **11 de 20 casos nuevos salieron unánimes** con un panel de los tres mejores; **9
 necesitan adjudicación humana** — y ese 45% de discrepancia entre los mejores modelos es, en sí
 mismo, la prueba de que adjudicar no se automatiza.
+
+## ¿Los modelos nuevos son mejores? SÍ, y medirlo mal casi me hace decir que no
+
+Sobre **97 modelos que de verdad se ejecutaron** (de 215 probados, 118 devolvieron error sin llegar
+a correr):
+
+| semestre de publicación | n | media |
+|---|---|---|
+| 2024-S2 | 10 | 5,2/10 |
+| 2025-S1 | 18 | 5,8/10 |
+| 2025-S2 | 24 | 6,0/10 |
+| **2026-S1** | 37 | **7,5/10** |
+| 2026-S2 | 8 | 7,0/10 |
+
+**r = 0,473.** Dos puntos y medio de mejora en dos años.
+
+**Y el QUINTO artefacto del arnés, que casi invierte la conclusión:** el primer cálculo dio r = 0,128
+(«no hay patrón») porque incluía los 118 que **no se ejecutaron** — se reconocen por **coste 0,00 $ y
+0,4 segundos**, y como muchos son de julio de 2026, hundían justo la cohorte más reciente. Un modelo
+que devuelve error no es un modelo que falla.
+
+**Cómo se usa esto:** priorizar los recientes al elegir a quién probar, **no** darlos por buenos sin
+medir. `deepseek/deepseek-chat` es de diciembre de 2024 y saca 8/10, por encima de bastantes de 2026.
 
 ## Los rankings generales no predicen esta tarea
 
