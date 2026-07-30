@@ -68,6 +68,8 @@ node scripts/backlog.cjs mine
 node scripts/backlog.cjs done T-042 --outcome "qué pasó de verdad"
 node scripts/backlog.cjs release T-042     # soltarla sin cerrar
 node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (ver abajo)
+node scripts/backlog.cjs due T-042 --fecha "2026-08-02 23:59" --motivo "quién lo espera o qué fecha externa lo fija"   # FECHA LÍMITE (lo contrario de snooze)
+node scripts/backlog.cjs due T-042 --quitar
 node scripts/backlog.cjs pause T-042 --tras-deploy --hecho "…" --falta "…"   # empezada, espera deploy
 node scripts/backlog.cjs wake T-042        # la despierta antes de tiempo
 node scripts/backlog.cjs deployed <sha> --superficie frontend   # lo llama el propio deploy

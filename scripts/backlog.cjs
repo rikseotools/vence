@@ -31,6 +31,8 @@ const path = require('path');
 const loadPg = () => require('postgres');
 // La decisión de si una tarea se puede coger vive en un solo sitio, compartida con los tests.
 const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
+// El PLAZO («tiene que estar antes de») es lo contrario de snooze («no la cojas antes de»).
+const { clasificarPlazo, validarPlazo, tareasConPlazo } = require(path.join(__dirname, '..', 'lib', 'backlog', 'plazo.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
@@ -257,7 +259,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       }
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
-               snooze_until, snooze_reason, snooze_count, resume_check,
+               snooze_until, snooze_reason, snooze_count, resume_check, due_at, due_reason,
                wake_on_deploy_sha, wake_on_deploy_surface
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
@@ -267,6 +269,21 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // T-270 estaba perdiendo su ventana de medición sin que nadie lo supiera (30/07).
       // Se separan dos cosas que se atienden distinto: lo que verificamos nosotros y lo que
       // espera una decisión de Manuel — que por muy despierta que esté, Claude no puede cerrar.
+      // LO PRIMERO DE LO PRIMERO: lo que CADUCA. Una tarea que se cierra rápido se cierra igual
+      // mañana; una con plazo, no — pasada la fecha el trabajo no se retrasa, se pierde o se
+      // vuelve dañino (T-330: una newsletter que el 1 de agosto habría anunciado un plazo ya
+      // cerrado). Por eso va por encima incluso de las listas para verificar.
+      const conPlazo = tareasConPlazo(rows, new Date());
+      if (conPlazo.length) {
+        const urgentes = conPlazo.filter((r) => r.plazo.peso <= 2);
+        console.log(`\n${urgentes.length ? '🔥' : '📅'} ${conPlazo.length} CON FECHA LÍMITE${urgentes.length ? ` — ${urgentes.length} vence(n) ya` : ''}:`);
+        for (const r of conPlazo) {
+          const p = r.plazo;
+          const cuanto = p.banda === 'vencida' ? `VENCIÓ hace ${-p.dias} día(s)` : p.banda === 'hoy' ? 'VENCE HOY' : `en ${p.dias} día(s)`;
+          console.log(`   ${p.icono} ${r.id}  ${String(r.title).slice(0, 52).padEnd(54)} ${cuanto}`);
+          console.log(`      ▶ ${String(r.due_reason || '').slice(0, 150)}`);
+        }
+      }
       const listas = rows.filter((r) => isAwaitingVerification(r));
       const paraVerificar = listas.filter((r) => clasificarEspera(r.resume_check) === 'verificacion');
       const paraManuel = listas.filter((r) => clasificarEspera(r.resume_check) === 'decision');
@@ -376,7 +393,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                      WHERE d.id = ANY(COALESCE(backlog_tasks.blocked_by, '{}'))
                        AND d.status IN ('open','in_progress','blocked')))
             FOR UPDATE SKIP LOCKED LIMIT 1)
-        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason, snooze_count`;
+        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason, snooze_count, due_at, due_reason`;
       if (!row) {
         const [cur] = await s`
           SELECT id, title, status, claimed_by, lease_until, snooze_until, snooze_reason, blocked_by,
@@ -408,6 +425,14 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.log('   ── se retoma donde se dejó ──');
         if (notas.progress_note) console.log(`   ✔ hecho:  ${notas.progress_note}`);
         if (notas.resume_check) console.log(`   ▶ falta:  ${notas.resume_check}`);
+      }
+      // El PLAZO se canta al cogerla, no en la ficha: enterarte de que vence hoy después de
+      // leer treinta líneas es enterarte tarde.
+      if (row.due_at) {
+        const p = clasificarPlazo(row.due_at, new Date());
+        const cuanto = p.banda === 'vencida' ? `VENCIÓ hace ${-p.dias} día(s)` : p.banda === 'hoy' ? 'VENCE HOY' : `vence en ${p.dias} día(s)`;
+        console.log(`   ${p.icono} FECHA LÍMITE: ${cuando(row.due_at)} — ${cuanto}`);
+        console.log(`      ${row.due_reason}`);
       }
       console.log(`   lease ${LEASE_MIN} min · renueva con: node scripts/backlog.cjs heartbeat`);
       // Reclamar = LEER: escupimos la ficha entera del markdown. Así no existe "abrir la
@@ -695,6 +720,35 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     // Es lo tercero que faltaba junto al claim (`lease_until`) y la dependencia (`blocked_by`).
     // Ver el porqué en supabase/migrations/20260728_backlog_snooze.sql: T-221 llegó a llevar
     // "⛔ NO COGER HASTA EL 29/07 07:00 UTC" en el TÍTULO, y `next` la ofrecía igual.
+    // FECHA LÍMITE: lo contrario de `snooze`. Aquella dice cuándo EMPEZAR; esta, cuándo deja de
+    // servir. Nació el 31/07/2026 con T-330 (una newsletter cuyo valor moría esa noche, y lo
+    // único que lo decía era la palabra «hoy» en un título escrito el día anterior).
+    else if (cmd === 'due') {
+      const id = process.argv[3];
+      if (!id) { console.error('Uso: backlog.cjs due <T-xxx> --fecha "<ISO|YYYY-MM-DD HH:MM>" --motivo "quién lo espera o qué fecha externa lo fija"  |  --quitar'); process.exit(2); }
+      if (process.argv.includes('--quitar')) {
+        const [row] = await s`UPDATE public.backlog_tasks SET due_at = NULL, due_reason = NULL WHERE id = ${id} RETURNING id, title`;
+        if (!row) { console.error(`❌ ${id} no existe`); process.exit(1); }
+        console.log(`✅ ${row.id} se queda SIN fecha límite — ${row.title}`);
+        return;
+      }
+      const fecha = arg('--fecha') || arg('--hasta');
+      const motivo = arg('--motivo') || arg('--reason');
+      // La guarda vive en el núcleo puro (con tests): un plazo sin motivo externo es una
+      // preferencia disfrazada, y si se permiten en un mes todo es urgente y nada lo es.
+      const v = validarPlazo(fecha, motivo);
+      if (!v.ok) { console.error(`❌ ${v.error}`); process.exit(2); }
+      const [row] = await s`
+        UPDATE public.backlog_tasks SET due_at = ${new Date(fecha)}, due_reason = ${motivo}
+         WHERE id = ${id} AND status IN ('open','in_progress','blocked')
+        RETURNING id, title, due_at, due_reason`;
+      if (!row) { console.error(`❌ ${id} no existe o está cerrada`); process.exit(1); }
+      const p = clasificarPlazo(row.due_at, new Date());
+      console.log(`${p.icono} ${row.id} VENCE ${cuando(row.due_at)} (${p.etiqueta}) — ${row.title}`);
+      console.log(`   motivo: ${row.due_reason}`);
+      console.log('   (sale la PRIMERA en `list`; pasado el plazo no se pospone sola: se decide)');
+    }
+
     else if (cmd === 'snooze') {
       const id = process.argv[3];
       if (!id) { console.error('Uso: backlog.cjs snooze <T-xxx> --hasta <ISO|YYYY-MM-DD HH:MM> | --horas N | --dias N --motivo "…"'); process.exit(2); }
@@ -835,7 +889,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | reserve ["título"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

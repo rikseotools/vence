@@ -10,6 +10,8 @@
 //
 // Mismo patrón que __tests__/lib/admin/runbookRegistry.test.ts (registro ↔ CLAUDE.md).
 import { readFileSync } from 'fs'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { tituloDependeDeFecha } = require('../../lib/backlog/plazo.cjs')
 import { join } from 'path'
 import { parseBacklogMarkdown, findHeadingsWithoutId, findDateLockedTitles } from '@/lib/backlog/claim'
 
@@ -152,6 +154,20 @@ describe('backlog — enforcement del claim por pre-push', () => {
     const vivas = tasks.filter((t) => t.inOpenSection && !t.doneMarked)
     const candados = findDateLockedTitles(vivas)
     expect(candados.map((c) => `${c.id} (${c.patron}): ${c.title}`)).toEqual([])
+  })
+
+  it('ningún título VIVO se apoya en una palabra relativa («hoy», «último día»)', () => {
+    // Hermano del anterior, y el caso peor: aquel caza «NO COGER HASTA EL 29/07», que al menos
+    // parece una fecha. Este caza «hoy es el ÚLTIMO día», que NO lo parece y sin embargo caduca
+    // en 24 horas — se escribe un día y al siguiente el título miente sin que nada cambie.
+    //
+    // Caso real (T-330, 30/07/2026): «Newsletter: hoy es el ÚLTIMO día de plazo de Conserjería
+    // de la UJA». El valor de esa tarea moría el 31/07 a las 23:59 y lo único que lo decía era
+    // ese «hoy», escrito la víspera. Desde el 31/07 hay campo para eso:
+    //    node scripts/backlog.cjs due <id> --fecha "…" --motivo "quién lo espera o qué lo fija"
+    const vivas = tasks.filter((t) => t.inOpenSection && !t.doneMarked)
+    const relativos = vivas.filter((t) => tituloDependeDeFecha(t.title))
+    expect(relativos.map((t) => `${t.id}: ${t.title}`)).toEqual([])
   })
 })
 /**

@@ -850,7 +850,9 @@ incluida).
 - **Avisar al terminar:** responder en el hilo `7a81b194` de Chari, que es lo que se le prometió.
 - **Relacionada:** [T-330] (la newsletter del último día), `docs/maintenance/crear-nueva-oposicion.md`.
 
-### [T-330] 🟠 [ABIERTO 30/07] Newsletter: hoy es el ÚLTIMO día de plazo de Conserjería de la UJA
+### [T-330] 🔴 [ABIERTO 30/07] Newsletter del último día de plazo de Conserjería de la UJA
+- **⏳ CADUCA EL 31/07/2026 A LAS 23:59** (cierre del plazo de solicitudes, verificado en la sede de la UJA). No es una preferencia: **pasada esa hora la tarea no se pospone, se cierra sin hacer**, porque el correo pasaría a anunciar un plazo cerrado. Programada para la mañana del 31/07, así que la ventana real son unas doce horas.
+  *(El título decía «hoy es el ÚLTIMO día», escrito el 30/07. Una palabra relativa en un título envejece sola y acaba mintiendo; la fecha dura va aquí hasta que el backlog tenga campo de plazo.)*
 - **Qué:** mandar una newsletter aprovechando que **el plazo de solicitudes de Técnico/a Auxiliar de Conserjería de la Universidad de Jaén cierra el 31/07 a las 23:59** (9 plazas, concurso-oposición, BOE de 4 de julio). Decisión de Manuel el 30/07.
 - **⏰ Es una tarea de UN SOLO DÍA y sale sola por eso:** queda programada para la mañana del 31/07 (`snooze_until`), porque enviarla por la tarde ya no le sirve a nadie y enviarla el 1 de agosto es peor que no enviarla. **Si no se manda esa mañana, se cierra sin hacer** — no se arrastra.
 - **Decisiones que hay que tomar antes de darle a enviar (no están tomadas):**
