@@ -49,8 +49,38 @@ import {
   RULE_AUTH_TOKEN_MINT_FLOOD,
   RULE_AUTH_TOKEN_MINT_WASTE,
   RULE_CLIENT_METHOD_NOT_ALLOWED,
+  RULE_CHECKOUT_SYNC_MUDO,
 } from './alert-rules';
 import { BENIGN_SIGNALS, CON_REGLA_PROPIA } from './benign-signals';
+
+describe('RULE_CHECKOUT_SYNC_MUDO (la activación inmediata, muda 30 días)', () => {
+  // La pantalla de después de pagar pedía el token a Supabase cuando las sesiones ya las
+  // emitía Auth.js: salía por `no_token` sin llegar a llamar al endpoint. CERO llamadas en
+  // 30 días, sin un solo 5xx — el síntoma era una AUSENCIA. Lo descubrió una usuaria
+  // escribiendo «ya lo he pagado pero no se termina de activar».
+  it('dispara si hubo pagos y NINGUNA sincronización', () => {
+    expect(RULE_CHECKOUT_SYNC_MUDO.shouldFire([{ pagos: 1, sincronizaciones: 0 }])).toBe(true);
+  });
+
+  it('NO dispara si no hubo pagos (sin pagos, no sincronizar es lo normal)', () => {
+    expect(RULE_CHECKOUT_SYNC_MUDO.shouldFire([{ pagos: 0, sincronizaciones: 0 }])).toBe(false);
+  });
+
+  it('NO dispara si las sincronizaciones fluyen', () => {
+    expect(RULE_CHECKOUT_SYNC_MUDO.shouldFire([{ pagos: 3, sincronizaciones: 3 }])).toBe(false);
+    expect(RULE_CHECKOUT_SYNC_MUDO.shouldFire([{ pagos: 3, sincronizaciones: 1 }])).toBe(false);
+  });
+
+  it('el aviso explica que NO se pierde dinero, para no provocar un pánico equivocado', () => {
+    const n = RULE_CHECKOUT_SYNC_MUDO.buildNotification([{ pagos: 2, sincronizaciones: 0 }]);
+    expect(n.body).toMatch(/no se pierde dinero/i);
+    expect(n.body).toMatch(/getAuthHeaders/);
+  });
+
+  it('está registrada en ALERT_RULES', () => {
+    expect(ALERT_RULES.map((r) => r.name)).toContain('checkout_sync_mudo');
+  });
+});
 
 describe('RULE_CLIENT_METHOD_NOT_ALLOWED (405 del 30/07, caso Rocío)', () => {
   // Una usuaria estuvo tres días sin poder pagar porque la página llamaba con POST a un

@@ -3823,6 +3823,53 @@ export const RULE_CLIENT_HTTP_4XX_SPIKE: AlertRule<{
 };
 
 /**
+ * NADIE SINCRONIZA TRAS PAGAR — la activación inmediata está muerta (2026-07-30).
+ *
+ * Al volver de Stripe, `/premium/success` llama a `/api/stripe/checkout-sync` para activar el
+ * premium **en el acto**. Si esa llamada deja de producirse, el premium se sigue activando
+ * por el webhook (nadie pierde dinero) pero la persona ve *«Hemos tenido un problema
+ * técnico»* justo después de pagar, y eso es lo último que se lleva de la compra.
+ *
+ * Es una avería de las que no rompen nada medible: sin 5xx, sin errores, sin latencia. El
+ * síntoma es una AUSENCIA — el endpoint deja de llamarse — y por eso hay que vigilarla al
+ * revés que las demás: comparando **pagos** contra **sincronizaciones**.
+ *
+ * Caso real: la pantalla pedía el token a Supabase cuando las sesiones ya las emitía Auth.js
+ * desde el 03/07. Salía por `no_token` sin llegar a llamar. **Cero llamadas en 30 días**, y
+ * se descubrió porque una usuaria escribió «ya lo he pagado pero no se termina de activar».
+ *
+ * Umbral: hubo pagos en la última hora y NINGUNO sincronizó. Con un solo pago basta para
+ * sospechar; el ruido es nulo porque la ventana solo cuenta si hubo pagos de verdad.
+ */
+export const RULE_CHECKOUT_SYNC_MUDO: AlertRule<{
+  pagos: number;
+  sincronizaciones: number;
+}> = {
+  name: 'checkout_sync_mudo',
+  severity: 'critical',
+  query: sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM observable_events
+        WHERE event_type = 'conversion' AND endpoint = '/api/stripe/webhook'
+          AND ts > NOW() - INTERVAL '60 minutes') AS pagos,
+      (SELECT COUNT(*)::int FROM observable_events
+        WHERE endpoint = '/api/stripe/checkout-sync'
+          AND ts > NOW() - INTERVAL '60 minutes') AS sincronizaciones
+  `,
+  shouldFire: (rows) => (rows[0]?.pagos ?? 0) > 0 && (rows[0]?.sincronizaciones ?? 0) === 0,
+  buildNotification: (rows) => {
+    const p = rows[0]?.pagos ?? 0;
+    return {
+      title: `${p} pago(s) en la última hora y NINGUNA activación inmediata`,
+      body: `Quien acaba de pagar está viendo «Hemos tenido un problema técnico» en /premium/success en vez de su Premium activo. El webhook lo activa igual (no se pierde dinero), pero el último paso de la compra es un mensaje de error.\n\nQué mirar:\n\n  - ¿Llega la llamada?  SELECT ts, http_status, error_message FROM observable_events\n      WHERE endpoint='/api/stripe/checkout-sync' ORDER BY ts DESC LIMIT 20;\n  - ¿Falla por token?   Buscar 'no_token' con metadata->>'pagina'='/premium/success'.\n  - Causa del 30/07: la pantalla pedía el token a Supabase (proveedor legacy) en vez de al\n    puerto (getAuthHeaders). Cero llamadas durante 30 días sin una sola señal.\n\nEs una avería SIN 5xx: el síntoma es la ausencia de llamadas, no un error.`,
+      metadata: { pagos: p, sincronizaciones: rows[0]?.sincronizaciones ?? 0, windowMin: 60 },
+      fingerprint: 'checkout_sync_mudo',
+    };
+  },
+  cooldownMin: 180,
+};
+
+/**
  * MÉTODO NO PERMITIDO (405) — el cliente y el servidor no se entienden (2026-07-30).
  *
  * Un 405 no es "un usuario haciendo algo raro": significa que NUESTRO propio JavaScript
@@ -4851,6 +4898,9 @@ export const ALERT_RULES: AlertRule[] = [
   // llama a nuestro endpoint con un método que no existe, y basta UNO para dejar la
   // función inservible. La regla de arriba pide 30 en 15 min y nunca los ve.
   RULE_CLIENT_METHOD_NOT_ALLOWED as AlertRule,
+  // Avería SIN error (2026-07-30): el endpoint de activación inmediata deja de LLAMARSE.
+  // Se vigila comparando pagos contra sincronizaciones, porque el síntoma es una ausencia.
+  RULE_CHECKOUT_SYNC_MUDO as AlertRule,
   // Guardado roto (reconciliación) + edge sostenido (2026-07-05, huecos del día)
   RULE_SAVE_RECONCILIATION as AlertRule,
   RULE_CLIENT_EDGE_SUSTAINED as AlertRule,

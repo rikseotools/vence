@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import NavigationButton from '@/components/ui/NavigationButton'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { emitClientEvent } from '@/lib/observability/client'
 
 // Estados de la activación síncrona post-checkout. Cada uno tiene su UI
 // específica para no engañar al usuario (caso 27/05/2026: enseñábamos
@@ -30,21 +32,39 @@ async function callSyncEndpoint(sessionId: string): Promise<{
   httpStatus: number
   errorMessage?: string
 }> {
-  const { createClient } = await import('@supabase/supabase-js')
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-  const { data: sessionRes } = await sb.auth.getSession()
-  const token = sessionRes.session?.access_token
-  if (!token) return { httpStatus: 401, errorMessage: 'no_token' }
+  // ⚠️ Aquí se pedía el token a **Supabase** (`createClient(...).auth.getSession()`), que es
+  // el proveedor LEGACY: desde el 03/07/2026 las sesiones las emite **Auth.js** con RS256.
+  // Para cualquiera con sesión nueva ese `getSession()` devuelve vacío, así que esta función
+  // salía por `no_token` y NUNCA llegaba a llamar al endpoint: medido el 30/07, **cero
+  // llamadas a `/api/stripe/checkout-sync` en 30 días**.
+  //
+  // Efecto: todo el que pagaba veía «Hemos tenido un problema técnico» justo después de
+  // pagar. El premium se activaba igual por el webhook —no se perdió dinero— pero el último
+  // paso de la compra era un mensaje de error. Lo reportó una usuaria: «ya lo he pagado pero
+  // no se termina de activar».
+  //
+  // `getAuthHeaders()` es el puerto único de la casa: sirve el token del proveedor que esté
+  // activo y ya lo usa el resto de la aplicación.
+  const headers = await getAuthHeaders()
+  if (!headers.Authorization) {
+    // Sin token no se puede sincronizar, pero que al menos DEJE RASTRO: este fallo llevaba
+    // un mes en producción sin una sola señal, porque solo se pintaba en pantalla.
+    emitClientEvent({
+      severity: 'error',
+      eventType: 'custom',
+      endpoint: '/api/stripe/checkout-sync',
+      errorMessage: 'no_token',
+      metadata: { pagina: '/premium/success', paso: 'sincronizar_tras_pagar' },
+    })
+    return { httpStatus: 401, errorMessage: 'no_token' }
+  }
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 12_000)
   try {
     const res = await fetch('/api/stripe/checkout-sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({ sessionId }),
       signal: controller.signal,
     })
