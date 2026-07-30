@@ -37,7 +37,7 @@ function getUrl() {
   const env = fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8');
   return env.match(/^DATABASE_URL=(.*)$/m)[1].trim();
 }
-const sql = require(path.join(__dirname, '..', 'backend', 'node_modules', 'postgres'))(getUrl(), {
+const sql = require('postgres')(getUrl(), {
   ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60,
 });
 

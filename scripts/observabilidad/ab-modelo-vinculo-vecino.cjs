@@ -53,7 +53,7 @@ const sqlDb = (() => {
   try {
     const url = envVar('DATABASE_URL');
     if (!url) return null;
-    return require(path.join(RAIZ, 'backend', 'node_modules', 'postgres'))(url, {
+    return require('postgres')(url, {
       ssl: { rejectUnauthorized: false }, max: 2, connect_timeout: 30,
     });
   } catch { return null; }

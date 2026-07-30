@@ -65,7 +65,7 @@ const MODELOS = val('--modelos', [
   'anthropic/claude-haiku-4.5',
 ].join(',')).split(',');
 
-const sql = require(path.join(RAIZ, 'backend', 'node_modules', 'postgres'))(envVar('DATABASE_URL'), {
+const sql = require('postgres')(envVar('DATABASE_URL'), {
   ssl: { rejectUnauthorized: false }, max: 3, connect_timeout: 60,
 });
 const registrar = hacerRegistrador(sql, 'script:ab-modelo-reescritura', 'ab_reescritura');
