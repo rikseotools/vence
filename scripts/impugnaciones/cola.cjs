@@ -12,6 +12,7 @@
 //   node scripts/impugnaciones/cola.cjs next  --sid <ID> [--queue disputes|feedback]
 //   node scripts/impugnaciones/cola.cjs mine  --sid <ID>
 //   node scripts/impugnaciones/cola.cjs release <id> --sid <ID>
+//   node scripts/impugnaciones/cola.cjs claim <id> --sid <ID>   # una CONCRETA (el resto las lleva otra sesión)
 //
 // <ID> = tu id de sesión. Usa el UUID de tu carpeta de scratchpad (único por sesión).
 const fs = require('fs');
@@ -53,6 +54,32 @@ const age = (t) => {
   return mins < 60 ? `${mins}m` : `${Math.round(mins / 60)}h`;
 };
 
+/**
+ * Cola de feedback: el ORDEN DE ATENCIÓN lo decide `lib/feedback/prioridadCola.js` (bug →
+ * pre-venta → premium → baja), no la antigüedad.
+ *
+ * Por qué esto existe (30/07/2026): el orden lo fijó Manuel ese día y quedó aplicado solo en
+ * `vigia.cjs`, que **muestra** la cola. Quien la **REPARTE** —esto— seguía ordenando por
+ * `created_at`, así que la primera sesión que pedía trabajo se llevaba la eliminación de cuenta
+ * de hace 44 h… que es precisamente la que va la ÚLTIMA. Dos verdades, y mandaba la equivocada:
+ * la que decide en qué trabaja la gente. Medido en vivo el mismo día.
+ *
+ * Devuelve el id que toca, o null si no hay ninguno libre. No reclama: solo elige.
+ */
+async function elegirFeedbackPorPrioridad(open) {
+  const { ordenarCola } = require(require('path').join(__dirname, '..', '..', 'lib', 'feedback', 'prioridadCola.js'));
+  const libres = await s.unsafe(
+    `SELECT f.id, f.type, f.message, f.created_at, u.plan_type AS plan
+       FROM public.user_feedback f
+       LEFT JOIN public.user_profiles u ON u.id = f.user_id
+      WHERE f.status = ANY($2)
+        AND (f.claimed_by IS NULL OR f.claimed_by = $1 OR f.claimed_at < now() - interval '${stale}')`,
+    [sid, open]
+  );
+  if (!libres.length) return null;
+  return ordenarCola(libres)[0].id;
+}
+
 async function claimFrom(list) {
   // Recorre las tablas en orden y coge la fila abierta más antigua que esté libre.
   // Luego coge TAMBIÉN todas las demás pendientes DEL MISMO USUARIO en esa tabla: una
@@ -60,6 +87,11 @@ async function claimFrom(list) {
   // Detalle: manual impugnaciones §7.5 (clustering mismo-usuario). Sigue respondiéndose UNA POR UNA.
   for (const { tbl, open, kind } of list) {
     const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
+    // El feedback se reparte por PRIORIDAD (ver arriba); las impugnaciones, por antigüedad.
+    // El id elegido entra en el mismo UPDATE atómico con el mismo guard, así que dos sesiones
+    // que elijan a la vez el mismo siguen sin poder llevárselo las dos (FOR UPDATE SKIP LOCKED).
+    const elegido = tbl === 'user_feedback' ? await elegirFeedbackPorPrioridad(open) : null;
+    if (tbl === 'user_feedback' && !elegido) continue;
     const [row] = await s.unsafe(
       `UPDATE public.${tbl}
          SET claimed_by = $1, claimed_at = now()
@@ -67,11 +99,12 @@ async function claimFrom(list) {
          SELECT id FROM public.${tbl}
           WHERE status = ANY($2)
             AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+            ${elegido ? 'AND id = $3' : ''}
           ORDER BY created_at
           FOR UPDATE SKIP LOCKED
           LIMIT 1)
        RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
-      [sid, open]
+      elegido ? [sid, open, elegido] : [sid, open]
     );
     if (!row) continue;
     // Cluster del mismo usuario: coge sus otras pendientes libres (SKIP LOCKED = no bloquea si otra sesión las tiene).
@@ -195,6 +228,50 @@ async function inconsistentesResueltasEnPending() {
       return;
     }
 
+    // Coger UNA CONCRETA. Existe para el caso real de tener varias sesiones a la vez: cuando
+    // otra sesión ya lleva parte de la cola, `next` te daría la que toca por prioridad —que
+    // puede ser justo la suya— y hay que poder decir «esa no, esta». Mismo UPDATE atómico y
+    // mismo guard que `next`, así que sigue siendo imposible que dos sesiones se lleven la
+    // misma fila; y arrastra igualmente las hermanas del mismo usuario (una sesión = un usuario).
+    if (cmd === 'claim') {
+      const id = process.argv[3];
+      if (!id || !sid) { console.error('Uso: cola.cjs claim <id> --sid <ID>'); process.exit(2); }
+      for (const { tbl, open, kind } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
+        const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
+        const [row] = await s.unsafe(
+          `UPDATE public.${tbl}
+             SET claimed_by = $1, claimed_at = now()
+           WHERE id = (
+             SELECT id FROM public.${tbl}
+              WHERE id = $3 AND status = ANY($2)
+                AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+              FOR UPDATE SKIP LOCKED)
+           RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
+          [sid, open, id]
+        );
+        if (!row) continue;
+        console.log(`✅ CLAIM hecho por ${sid.slice(0, 8)} (usuario ${String(row.user_id ?? '?').slice(0, 8)}):`);
+        console.log(`   id:   ${row.id}`);
+        console.log(`   tipo: [${kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
+        if (row.user_id != null) {
+          const hermanas = await s.unsafe(
+            `UPDATE public.${tbl} SET claimed_by = $1, claimed_at = now()
+             WHERE id IN (
+               SELECT id FROM public.${tbl}
+                WHERE user_id = $3 AND id <> $4 AND status = ANY($2)
+                  AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+                FOR UPDATE SKIP LOCKED)
+             RETURNING id, ${typeCol} AS dispute_type`,
+            [sid, open, row.user_id, row.id]
+          );
+          hermanas.forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
+        }
+        return;
+      }
+      console.log('No se pudo coger (¿id inexistente, ya cerrada, o la tiene otra sesión?).');
+      return;
+    }
+
     if (cmd === 'release') {
       const id = process.argv[3];
       if (!id || !sid) { console.error('Uso: cola.cjs release <id> --sid <ID>'); process.exit(2); }
@@ -220,7 +297,7 @@ async function inconsistentesResueltasEnPending() {
       return;
     }
 
-    console.error('Comandos: list | next --sid <ID> [--queue disputes|feedback] | mine --sid <ID> | release <id> --sid <ID> | release-all --sid <ID>');
+    console.error('Comandos: list | next --sid <ID> [--queue disputes|feedback] | claim <id> --sid <ID> | mine --sid <ID> | release <id> --sid <ID> | release-all --sid <ID>');
     process.exit(2);
   } finally { await s.end(); }
 })();

@@ -95,3 +95,38 @@ describe('el orden de la cola', () => {
     expect(tieneSenalDeCompra('la pregunta 34 del tema 2 está mal')).toBe(false)
   })
 })
+
+// ── Quien REPARTE la cola tiene que usar este orden, no solo quien la ENSEÑA ──────────────
+//
+// El 30/07/2026 el orden se aplicó en `scripts/vigia.cjs` (que muestra la cola) y NO en
+// `scripts/impugnaciones/cola.cjs` (que la reparte con claim). Resultado medido ese mismo día:
+// una sesión pidió trabajo con `next --queue feedback` y se llevó una **eliminación de cuenta**
+// de hace 44 h —el grupo que va el ÚLTIMO— mientras esperaban una pre-venta y cuatro premium.
+// Dos verdades, y mandaba la equivocada: la que decide en qué trabaja la gente.
+const fs = require('fs')
+const path = require('path')
+
+describe('el reparto con claim consume este núcleo (no reordena por su cuenta)', () => {
+  const COLA = fs.readFileSync(
+    path.join(__dirname, '..', '..', '..', 'scripts', 'impugnaciones', 'cola.cjs'),
+    'utf8',
+  )
+
+  it('cola.cjs importa ordenarCola de lib/feedback/prioridadCola', () => {
+    expect(COLA).toMatch(/const \{ ordenarCola \} = require\(.*'lib', 'feedback', 'prioridadCola\.js'\)\)/)
+  })
+
+  it('el feedback se elige por prioridad y las impugnaciones siguen por antigüedad', () => {
+    expect(COLA).toMatch(/elegirFeedbackPorPrioridad/)
+    // El id elegido entra en el MISMO UPDATE atómico: si esto se rompiera, dos sesiones
+    // podrían llevarse la misma fila, que es justo lo que el claim existe para impedir.
+    expect(COLA).toMatch(/AND id = \$3/)
+    expect(COLA).toMatch(/FOR UPDATE SKIP LOCKED/)
+    expect(COLA).toMatch(/tbl === 'user_feedback' \? await elegirFeedbackPorPrioridad\(open\) : null/)
+  })
+
+  it('existe `claim <id>` para cuando otra sesión lleva el resto de la cola', () => {
+    expect(COLA).toMatch(/cmd === 'claim'/)
+    expect(COLA).toMatch(/Uso: cola\.cjs claim <id> --sid <ID>/)
+  })
+})
