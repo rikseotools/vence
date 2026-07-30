@@ -710,6 +710,33 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-331] 🟡 [ABIERTO 30/07] SMS Tema 21: generar preguntas del RD 203/2021 arts 50 y 52 (hoy sirven CERO)
+- **Qué pasa:** en el Tema 21 de `auxiliar_administrativo_sms`, los artículos **50** («Referencia temporal de los documentos administrativos electrónicos») y **52** («Ejercicio del derecho de acceso al expediente electrónico y obtención de copias») del **RD 203/2021** están **en el temario, existen y están activos**, pero tienen **0 preguntas**. Son los **dos únicos** de todo el rango escopado (41-55) con el contador a cero, y salen listados así en el selector «🔧 Artículos» que ve el usuario.
+- **Cómo se supo:** lo reportó la usuaria **M / María Luisa** (`daluamva@gmail.com`, premium, Cieza) el 30/07 en el feedback `917b1b29`: *«falta el articulo 50, y 52 del tema 21 en los test»*. No dedujo nada, los vio en pantalla. Es la misma persona que lleva ~25 avisos de temario en 20 días con un solo fallo.
+- **Plazo acordado con Manuel (30/07):** **se editan a lo largo de la semana.** No es urgente (el tema sirve 138 preguntas por lo demás), pero no se cierra el hilo con ella sin esto hecho.
+- **Cómo hacerlo:** `docs/maintenance/generar-preguntas-con-ia.md`, ancladas al **texto del artículo** (los dos son cortos y muy concretos: sellado de tiempo y derecho de acceso al expediente), con la doble auditoría ciega antes de activar. **NUNCA inventar contenido normativo:** el texto sale del BOE consolidado del RD 203/2021 (`BOE-A-2021-5032`).
+- **Verificar al terminar** (no declararlo): que el selector en vivo deje de mostrar `question_count: 0` en esos dos:
+  ```bash
+  curl -s "https://www.vence.es/api/v2/test-config/articles?lawShortName=RD%20203%2F2021&positionType=auxiliar_administrativo_sms&topicNumber=21" \
+    | python3 -c "import json,sys;[print(a['article_number'],a['question_count']) for a in json.load(sys.stdin)['articles'] if a['article_number'] in ('50','52')]"
+  ```
+  Y purgar `test-config` + `test-counts` (la purga es por instancia: repetir ~6 veces).
+- **Contexto:** salió del mismo triaje que destapó la sobre-inclusión del Tema 22 (ya corregida) y el artículo 10 que faltaba en el Tema 11 (ya corregido). Ficha hermana: **[T-332]**.
+- **Al cerrar:** responder en el hilo `917b1b29` (un mensaje por hilo, sin mencionar recompensas).
+
+### [T-332] 🟠 [ABIERTO 30/07] SMS Temas 15 y 16: el scope de la Ley General de la Seguridad Social ignora los «disposiciones generales» del programa
+- **Qué pasa:** el programa oficial (BORM nº 233 de 7/10/2021, anuncio 6104) acota **dos veces** con la coletilla «disposiciones generales», y el `topic_scope` la ignoró y cogió el bloque contiguo entero. Verificado contra el índice del BOE del TRLGSS (`BOE-A-2015-11724`):
+
+  | tema | lo que pide el epígrafe | lo que hay hoy | sobra |
+  |---|---|---|---|
+  | **T15** | Cap II Secc 1.ª *«Disposiciones generales»* (7-11) · Afiliación y Cotización (15-20) · Secc 3.ª **Subsecc 1.ª** *«Disposiciones generales»* (21-27) | `0-41` | **1-6, 12-14, 28-41** |
+  | **T16** | Cap I *Campo de aplicación* (136-137) · Secc 2.ª **Subsecc 1.ª** *«Disposiciones generales»* (141-150) · Secc 3.ª *Recaudación* (154) · Cap III *Aspectos comunes de la acción protectora* (155-160) | `136-166` | **138-140, 151-153, 161-166** |
+
+- **Punto a adjudicar antes de recortar (T15):** los **arts 1-6** (Cap I, «Normas preliminares») son discutibles, porque el epígrafe abre con *«La Ley General de la Seguridad Social.»* a secas y eso puede leerse como preámbulo. Los otros dos bloques (12-14 y 28-41) no: la coletilla los excluye sin ambigüedad.
+- **Por qué está abierto y no arreglado:** es el **mismo patrón que el Tema 22** (que sí se corrigió el 30/07), y lo detecté **corrigiendo un falso verde propio**: ese mismo día sellé T15 y T16 como `verified_correct` razonando que «disposiciones generales acota hacia dentro de lo ya escopado», **sin contrastarlo contra el BOE**. Era falso. Ya están de vuelta en `verified_issues` con el detalle en `findings`.
+- **Cómo:** pipeline `verify:scope plan → apply --include-gate` (irá a puerta de juicio por impacto). Medir antes cuántas preguntas dejan de servirse y comprobar que ninguna procede del examen oficial **del SMS**. Las preguntas no se borran: siguen en BD y en las demás oposiciones que las escopan.
+- **Lección de fondo, ya en el runbook** (`verificar-epigrafes-scope.md`): reescribir un epígrafe al literal invalida el Paso 2 **en las dos direcciones**, y `sim-materias-ganadas`/`plan-paso2-tras-literal` solo miran la de «falta materia».
+
 ### [T-329] 🟠 [ABIERTO 30/07] Construir Técnico/a Auxiliar de Conserjería de la Universidad de Jaén — se le ha dicho a una usuaria que la estamos preparando
 - **Compromiso adquirido:** Chari GAMA (`diversoprodu@gmail.com`, free, alta el 29/07, feedback `7a81b194`) preguntó si podíamos incluirla y se le respondió el 30/07 que **«todavía no lo tenemos, pero lo estamos preparando»** (decisión de Manuel). O sea que esto no es una idea: es una promesa hecha por escrito a una persona concreta que además espera aviso por su hilo cuando esté.
 - **La convocatoria, verificada contra el boletín** (no supuesta): Resolución de 29 de junio de 2026, **BOE núm. 162 de 4 de julio** (`BOE-A-2026-14535`), también en BOJA 2026/132. **9 plazas** de personal laboral, categoría **Técnico/a Auxiliar de Conserjería (Grupo IV)**, sistema **concurso-oposición**. Plazo de solicitudes **06/07 → 31/07/2026 23:59** (confirmado en la sede de la UJA, que es donde vive el estado vigente).
