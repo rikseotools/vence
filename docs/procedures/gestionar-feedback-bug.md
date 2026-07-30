@@ -37,12 +37,14 @@ El claim es atómico (`FOR UPDATE SKIP LOCKED`), se guarda en `user_feedback.cla
 
 ## ⚠️ Orden de prioridad de la cola
 
-**Prioriza los feedbacks con valor de RETENCIÓN/AYUDA primero; las eliminaciones de cuenta van SIEMPRE las ÚLTIMAS.**
+**Orden fijado por Manuel (30/07/2026). Se atiende en este orden, no por antigüedad:**
 
-1. **Bugs** (sobre todo de premium: se cierra la app, no se guarda, no encuentra algo) → churn/reembolso inminente, actuar ya.
-2. **Facturación / confusión de premium recién pagado** → riesgo de reembolso, alto valor de retención.
-3. **Contenido / dudas / demandas de oposición** → ayudar, aclarar, o valorar montar.
-4. **`account_deletion` — SIEMPRE lo ÚLTIMO.** El usuario ya decidió irse: no hay retención que salvar y la eliminación tiene ventana RGPD (no es instantánea), así que se procesa al final, cuando no queda nada con valor de retención por atender. (Sigue teniendo su propio runbook obligatorio, ver abajo — pero NO se prioriza sobre lo demás.)
+1. **BUGS — lo primero y urgente.** Algo no funciona: se cierra la app, no se guarda una respuesta, no puede pagar, no encuentra lo suyo. Cada minuto que pasa es alguien intentándolo otra vez y fallando.
+2. **FREE que pregunta ANTES de comprar (pre-venta).** Va por delante del resto de premium, y no es por generosidad: **esa persona no se fía todavía y está midiendo dos cosas a la vez — si el producto es serio y cuánto tardamos en contestar.** La respuesta es la prueba. Quien ya es premium tiene margen para esperar unas horas; quien está decidiendo, no: se va a otra parte y no vuelve. Señales de pre-venta: pregunta si tenemos su oposición, si el temario está completo, cuánto cuesta, si hay supuestos, si sirve para el examen de tal fecha.
+3. **RESTO DE PREMIUM.** Dudas, contenido, sugerencias, temario. Dentro de este grupo, **primero lo que huele a dinero**: cobro que no reconoce, suscripción que no se renovó, petición de reembolso (→ `docs/procedures/reembolsos.md`).
+4. **`account_deletion` — SIEMPRE lo ÚLTIMO.** Ya decidió irse: no hay retención que salvar y la eliminación tiene ventana RGPD (no es instantánea), así que se procesa cuando no queda nada con valor de retención por atender. (Tiene runbook propio obligatorio, ver abajo — pero NO se prioriza sobre lo demás.)
+
+> **No depende de que te acuerdes:** el orden vive en `lib/feedback/prioridadCola.js` (núcleo puro, con tests) y lo aplica `scripts/vigia.cjs`, que enseña la cola ya ordenada con su etiqueta (`BUG`, `PREVENTA`, `PREMIUM`, `BAJA`). Si cambia el criterio, se cambia ahí y el manual lo cita — no dos verdades.
 
 ## Triaje por `type` antes de empezar
 

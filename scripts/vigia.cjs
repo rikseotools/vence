@@ -32,6 +32,10 @@ require(path.join(REPO, 'node_modules', 'dotenv')).config({ path: path.join(REPO
 const pgMod = require(path.join(REPO, 'node_modules', 'postgres'));
 const postgres = pgMod.default || pgMod;
 
+// El ORDEN de atención (bug → pre-venta → premium → baja) vive en un núcleo puro con
+// tests, no aquí: un orden que solo está escrito en el manual se aplica «casi siempre».
+const { ordenarCola, ETIQUETA } = require(path.join(REPO, 'lib', 'feedback', 'prioridadCola.js'));
+
 const db = () => postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: { rejectUnauthorized: false } });
 
 /** Feedbacks: nuevos sin responder + réplicas posteriores a nuestra última respuesta. */
@@ -97,13 +101,20 @@ const FUENTES = { feedback, impugnaciones };
 
 async function pasada(nombre, vistos, sql) {
   const filas = await FUENTES[nombre](sql);
+  // En feedback se atiende por PRIORIDAD, no por antigüedad: un free preguntando antes de
+  // comprar va por delante de un premium (está midiendo si somos de fiar y cuánto tardamos).
+  // Las réplicas conservan su prioridad de grupo; lo urgente no cambia por ser respuesta.
+  const ordenadas = nombre === 'feedback'
+    ? ordenarCola(filas.map((r) => ({ ...r, message: r.texto })))
+    : filas.map((r) => ({ ...r, grupo: null }));
   const nuevas = [];
-  for (const r of filas) {
+  for (const r of ordenadas) {
     const clave = `${r.clase}:${String(r.id).slice(0, 8)}`;
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     const icono = r.clase === 'REPLICA' ? '↩️  TE HAN CONTESTADO' : '📬 NUEVO';
-    nuevas.push(`${icono} ${r.clase}|${String(r.id).slice(0, 8)}|${r.type}|${r.email}|${r.plan}|${r.texto}`);
+    const etq = r.grupo ? ` ${ETIQUETA[r.grupo]}` : '';
+    nuevas.push(`${icono}${etq} ${r.clase}|${String(r.id).slice(0, 8)}|${r.type}|${r.email}|${r.plan}|${r.texto}`);
   }
   return nuevas;
 }
