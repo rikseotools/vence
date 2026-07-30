@@ -19,6 +19,7 @@ interface Usuario {
   email: string
   nombre: string | null
   plan: string | null
+  ciudad: string | null
   oposicion: string | null
   alta: string | null
   ultimaActividad: string | null
@@ -157,9 +158,18 @@ export default function ImpersonacionPage() {
                   <div className="min-w-0">
                     <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {u.nombre || '(sin nombre)'}
-                      {u.plan === 'premium' && (
+                      {/* El plan se pinta SIEMPRE, también cuando es free. Antes solo salía
+                          la etiqueta de premium, así que «free» había que deducirlo de que no
+                          hubiera nada — y la ausencia de una etiqueta no se distingue de un
+                          dato que no cargó. Es lo primero que se mira para entender un
+                          reporte: los límites diarios y medio producto dependen de eso. */}
+                      {u.plan === 'premium' ? (
                         <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded-full font-medium">
                           premium
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-medium">
+                          free
                         </span>
                       )}
                       {u.esAdmin && (
@@ -170,8 +180,11 @@ export default function ImpersonacionPage() {
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-300 truncate">{u.email}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {u.oposicion || 'sin oposición elegida'} · alta {fecha(u.alta)} · visto{' '}
-                      {fecha(u.ultimaActividad)}
+                      {/* La ciudad va delante de la oposición porque es lo que desempata
+                          entre homónimos: buscar «maria luisa» devuelve cinco personas y el
+                          correo no siempre dice quién es. */}
+                      📍 {u.ciudad || 'sin ciudad'} · {u.oposicion || 'sin oposición elegida'} · alta{' '}
+                      {fecha(u.alta)} · visto {fecha(u.ultimaActividad)}
                     </div>
                   </div>
                   <div className="shrink-0">

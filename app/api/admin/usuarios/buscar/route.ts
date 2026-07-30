@@ -5,7 +5,12 @@
 // significaba no usar la función.
 //
 // Solo lectura y tras `requireAdmin`. Devuelve lo justo para decidir a quién entrar (nombre,
-// correo, plan, oposición, alta, última actividad) — no es un volcado del perfil.
+// correo, plan, CIUDAD, oposición, alta, última actividad) — no es un volcado del perfil.
+//
+// La ciudad y el plan están porque son los dos datos con los que se desempata en la vida real:
+// las búsquedas por nombre devuelven varias personas homónimas (cinco «Maria Luisa»), y quien
+// escribe suele ser identificable por su oposición Y su ciudad. Cubren 11.205 de 11.610
+// perfiles (96,5%), así que casi nunca sale el hueco.
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -31,7 +36,7 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
   const patron = `%${q.replace(/[%_]/g, (m) => '\\' + m)}%`
   const db = getAdminDb()
   const res = await db.execute(sql`
-    select id, email, full_name, plan_type, target_oposicion, created_at, updated_at
+    select id, email, full_name, plan_type, ciudad, target_oposicion, created_at, updated_at
     from user_profiles
     where email ilike ${patron} or full_name ilike ${patron}
     order by
@@ -48,7 +53,11 @@ async function _GET(request: NextRequest): Promise<NextResponse> {
       id: f.id,
       email: f.email,
       nombre: f.full_name,
-      plan: f.plan_type,
+      // `plan_type` solo toma dos valores en el banco (free/premium, sin nulos); se
+      // normaliza igualmente para que la interfaz nunca tenga que adivinar por ausencia.
+      plan: f.plan_type === 'premium' ? 'premium' : 'free',
+      // Cadena vacía = no hay dato. Devolverla como `null` evita pintar un separador suelto.
+      ciudad: typeof f.ciudad === 'string' && f.ciudad.trim() ? f.ciudad.trim() : null,
       oposicion: f.target_oposicion,
       alta: f.created_at,
       ultimaActividad: f.updated_at,
