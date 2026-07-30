@@ -46,7 +46,7 @@ PaaS completo de tarifa plana en EU, "the anti-AWS": API-first (164 endpoints), 
 
 **Apps ofrece:** deploy desde GitHub (`/apps/{id}/github`) o imagen OCI (`docker push koigrid.com/<name>:<tag>`) o `source-upload`; `/apps/{id}/autoscale` (min/max/targetCpuPct); `/scale` (réplicas fijas); `/resources` (RAM/CPU); dominios + TLS auto (`/domains`); CDN (`/cdn`); reglas rewrite/header estilo `vercel.json` (`/rules`); env encriptadas + **reference vars** entre recursos del mismo project (`${{db.main.DATABASE_URL}}`, `${{redis.cache.REDIS_URL}}`); preview-per-branch; rollback sin rebuild; health-check path; volúmenes persistentes EBS-style; private networking intra-project.
 
-### Precios (22/07)
+### Precios (medidos 22/07 · **CONFIRMADOS OFICIALMENTE el 29/07**: koigrid los publicó en `llms.txt` + `/pricing` y coinciden con lo que habíamos inferido)
 
 | Plan | $/mes | Apps | RAM/CPU por app | DB | Storage | Banda | Overage |
 |---|---|---|---|---|---|---|---|
@@ -55,7 +55,7 @@ PaaS completo de tarifa plana en EU, "the anti-AWS": API-first (164 endpoints), 
 | **Pro** | 35 | 8 | 2vCPU/4GB | 4GB/50GB | 100GB | 2TB | storage $0.05/GB, banda $0.03/GB |
 | **Scale** | 89 | 20 | 4vCPU/8GB | 8GB/200GB | 500GB | **5TB** | idem |
 
-**Sin cobro por-request ni por-cpu-second** = plano de verdad. BD prod = 29GB → cabe en Scale (200GB disco). Vence hace ~43M req/mes; 5TB banda holgado. **La incógnita es si 1 app (4vCPU/8GB + réplicas) aguanta el pico** — eso lo decide §6.
+**Sin cobro por-request ni por-cpu-second** = plano de verdad. BD prod = **33GB** (medido 29/07; el dump comprime a **4,09GB**) → cabe en Pro (50GB disco) con 1,5× de margen, y de sobra en Scale. Vence hace ~43M req/mes; 5TB banda holgado. **La incógnita es si 1 app (4vCPU/8GB + réplicas) aguanta el pico** — eso lo decide §6.
 
 ---
 
@@ -134,14 +134,17 @@ Categorías: BD (`DATABASE_URL`, `DATABASE_URL_REPLICA` → reference vars Koigr
 - Reproducir: k6/artillery contra el dominio de staging Koigrid, escalón hasta 2× el pico, mezcla de rutas (home ISR, /test hot-path con queries, /api/answer).
 
 ### 6.2 Métricas GO/NO-GO
-| Métrica | Umbral GO | Fuente |
-|---|---|---|
-| p95 latencia hot-path (/api/answer) | < 400ms bajo 2× pico | k6 |
-| Latencia app→BD (co-ubicada Koigrid) | < 5ms/query | log app / `pg_stat_statements` |
-| Errores 5xx bajo pico | < 0.1% | k6 + `/apps/{id}/logs` |
-| Réplicas necesarias en pico | ≤ límite del plan | `/apps/{id}/scale` |
-| Coste proyectado @ perfil real | ≤ plan elegido + overage tolerable | `/usage`, `/metrics` |
-| Recuperación tras burst (time-to-scale) | comparable o mejor que ECS | observación |
+| Métrica | Umbral GO | Medido | Veredicto |
+|---|---|---|---|
+| Capacidad en pico | aguantar el pico real (~16,6 rps) | **615 rps con 1 réplica de 2GB** (p50 19ms, p95 50ms, CDN+A3 activos), 838 a conc 50 | ✅ **GO — 37× el pico** (25/07: 8,8 rps saturado; lo desbloqueó el edge-caching de HTML) |
+| Errores 5xx bajo pico | < 0,1% | **0,00%** en todas las pasadas, sin saturar, CPU 0% | ✅ **GO** |
+| Latencia app→BD co-ubicada | < 5ms/query | **6,45ms** (22/07, instancia Free mínima) | 🟡 casi: por encima del umbral pero irrelevante al lado de los ~40ms de red que ahorra |
+| Latencia usuario vs AWS | comparable | **página completa: 1,02-1,15×** (105/136/91ms AWS vs 107/157/100ms) con tamaños ±3% | ✅ **GO — paridad.** (TTFB da 1,4-1,9× pero engaña: base pequeña, ver journey) |
+| Réplicas necesarias en pico | ≤ límite del plan | **1** (Pro incluye 5) | ✅ **GO** |
+| Coste proyectado @ perfil real | ≤ plan + overage tolerable | **Pro $35/mes** cubre app (2GB), BD (4GB RAM = paridad exacta con nuestra `db.t4g.medium`), 2TB banda (usamos ~400GB) y 100GB storage | ✅ **GO — 14× más barato que los $619 medidos** |
+| **Restore del dump completo** | **completa y con datos verificados** | **⏳ EN CURSO 30/07 00:36** (24,7GB SQL / 204 tablas). Lo probado hasta ahora eran 624MB = 1/40 | ⏳ **ÚLTIMO GATE ABIERTO** |
+| Recuperación tras burst | ≥ ECS | `resume` de app pausada → sirviendo en **~12-45s**; escalar réplicas ~30s | ✅ GO |
+| Redundancia entre máquinas (`scale-out`) | funcional | **roto**: el contenedor de la réplica nunca se crea (7 repros) | ⚠️ **NO bloquea** (1 réplica sobra y el CDN es nuestro), pero sin HA cross-máquina |
 
 ### 6.3 Protocolo
 1. Clonar BD prod a Koigrid (dump 29GB → restore, o branch si ya hay db Koigrid). **Datos reales**, no sintéticos.
@@ -182,10 +185,22 @@ Mismo patrón que el cutover Supabase→RDS del 04/07 (probado):
 
 ## 9. Bitácora de ejecución
 
+> **Nota de lectura (30/07):** las entradas del 22/07 de abajo se conservan como registro, pero **varias de sus conclusiones quedaron superadas**. En concreto: el «$800+ de AWS» era una estimación (lo medido son **$619/mes**), la BD son **33GB** y no 29, y la duda de si «1 app aguanta el pico» está **resuelta con holgura**. El detalle día a día, con las evidencias y el feedback enviado a koigrid, está en **`koigrid-migration-journey.md`**; aquí solo el resumen decisorio.
+
+- **2026-07-25 → 30/07 — SE CIERRAN TODOS LOS GATES TÉCNICOS Y EL COMERCIAL. Queda uno: el restore completo.**
+  - **A3 (caché de HTML en el edge) resuelto** → es lo que convierte el veredicto: de **8,8 rps saturado con 1 réplica** (25/07) a **615 rps sin saturar** (29/07), con `s-maxage` a secas honrado. **37× nuestro pico** con una sola réplica de 2GB en plan gratis.
+  - **Paridad de latencia con AWS en página completa** (1,02-1,15×), que es la métrica que siente el usuario. El TTFB (1,4-1,9×) exagera la brecha porque parte de una base de 40ms; y la varianza entre pasadas es mayor que la propia diferencia. **Para decidir manda la tabla de página completa.**
+  - **Precio publicado y calculado con nuestros números: Pro $35/mes**, con **paridad exacta de RAM de BD** (4GB, igual que la `db.t4g.medium` de RDS) y 5× de margen de banda. Contra **$619/mes medidos en AWS** = ~**$584/mes ≈ $7.000/año**. Hallazgo del desglose: **$40 de nuestro CloudFront son PETICIONES** (43,3M/mes), y koigrid no las mide.
+  - **Restore gestionado: A1/A2/B1/B2 y `preSeed` verificados**, con la **primera restauración completa** (61.123 `articles` + 1.404 `laws`, exactos vs RDS, índice ivfflat construido, `owner=app`).
+  - **Dos bugs que solo aparecen a tamaño real** (la razón por la que koigrid insistió en el ensayo completo, y tenían razón): **D1** — `preSeed` choca con el `CREATE SCHEMA extensions;` del volcado completo (sin `IF NOT EXISTS`) y muere en la línea 32; en un dump `-t tabla` no pasa porque no hay `CREATE SCHEMA`. **D2** — ese `preSeed` deja un esquema que el rol `app` no puede borrar, así que todo reintento muere igual y hay que **tirar la base**. → **Método correcto para el cutover: restaurar SIN `preSeed` sobre BD limpia.**
+  - **D3 — el ensayo estuvo bloqueado 24h por algo suyo:** el almacén de volcados (`koi-db-dumps`) se llenó, y resulta que **vive en la misma flota que el object storage viejo** → 94GB de vídeo subidos a un sitio equivocado tumbaron el *managed restore*. Sin endpoint para borrar volcados y sin que borrar la BD libere el suyo. Reportado; se desbloqueó al borrar ellos la copia vieja.
+- **2026-07-30 — STORAGE DE VÍDEOS MIGRADO EN PRODUCCIÓN (primer trozo real del cutover, ya hecho).** Producción lee de `storage.koigrid.com`: 2 secretos en SSM + `KOIGRID_VIDEO_ENDPOINT` en el task def, desplegado como **revisión de solo-variables con el mismo digest de imagen** (`:570`→`:571`) para no arrastrar código ajeno. 8/8 tareas, `200` durante todo el rollout, ~28 min. **Paridad verificada objeto por objeto antes de tocar: 56.691 objetos / 99.137.723.146 bytes idénticos, 0 diferencias.** Vídeos confirmados por Manuel en la app. **Plan B verificado:** los backups locales `~/vence-video-{faststart,hls}` cubren el bucket entero → **NO son borrables** (memoria corregida). **Lección para el cutover grande:** llave y endpoint son **atómicos** (cada mitad por separado da `InvalidAccessKeyId` en todos los objetos), y el patrón «deploy de solo-variables» es la forma de mover configuración sin arrastrar `main`.
+- **2026-07-30 — Y una corrección sobre AWS que reordena el ahorro:** el sobrecoste NO se arregla bajando `min-capacity`. Medido: el pico horario son **214 req/target/min contra el objetivo de 250** del autoescalado, así que **de día las 8 tareas son las que pide la política**. Donde sobran es **de noche** (3-6% del objetivo) y eso son ~$25-30/mes, no cientos. Los picos de CPU al 98% tienen postmortem propio (`docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md`): event-loop de Node saturándose por tarea con el RS256 de `/api/auth/token`. **4 de 5 capas del plan están aplicadas** y la telemetría dice que el loop está sano (p99 mediano 22-24ms sobre un suelo de resolución de 20ms). **Cabo abierto más urgente que el dinero: `frontend.tf` dice `min_capacity = 2` y producción está en 8** — un `terraform apply` reabre el incidente de los 504.
+
 - **2026-07-22** — Manual creado + linkado desde agnosticismo. Investigación API: Koigrid = PaaS completo (no solo Postgres); precios verificados; cuenta en Free (1 app demo, 0 DB).
 - **2026-07-22 — K2 ESQUEMA REAL ✅ 100% PORTADO (pg_dump RDS→Koigrid, 0 ERRORES).** `pg_dump --schema-only --no-owner --no-privileges` de RDS (via podman `postgres:17`, `--network host`) → aplicado a Koigrid PG17 con **0 errores**. Portó ÍNTEGRO: **195 tablas (191 public + auth), 245 funciones, 30 vistas+matviews, 81 triggers, columnas GENERATED (`is_active`), la state-machine de lifecycle**. **Ningún supabase-ismo rompió.** Esta es la vía real (no drizzle-kit). Herramienta: podman (sin instalar nada); RDS `sslmode=require` (libpq no verifica → OK pese al cert self-signed).
 - **2026-07-22 — LÍMITES DE PROVISIÓN medidos (no asumidos):** (a) **Compute (app RAM/CPU) SÍ acepta overPlan** → `PUT /apps/{id}/resources {memoryMb:4096,cpus:2}` en cuenta Free devolvió `overPlan:true, clamped:false` = **pay-later real** (facturación mensual, sin dashboard). (b) **CORRECCIÓN — el disco de BD NO tiene cap duro: es ELÁSTICO con overage.** El `diskGb:1` de la respuesta es el *suelo del plan*, no un techo. **Test empírico: escritos 1.3M filas → BD creció a 1473 MB (1,4GB) SIN error** en cuenta Free. Se factura el exceso a **$0.05/GB** (los 31GB ≈ ~$1.5 de overage de storage). → **Los datos SÍ caben en Free facturando después = pay-later real, igual que el compute.** Mi "cap duro" previo (leído del `diskGb:1` de la respuesta) era ERRÓNEO. `PATCH /databases/{id}` solo renombra pero da igual: no hace falta resize, el disco crece solo. **→ La migración COMPLETA (esquema+datos+frontend) es ejecutable en cuenta Free SIN tocar el dashboard**, con overage facturado a fin de mes. (c) No hay API de plan/billing pero **ya no importa** para migrar (overage cubre disco+compute).
-- **2026-07-22 — K2 DDL-compat ✅ PROBADA ($0, BD Free).** Aplicado el esquema Vence a Koigrid PG17: **774 statements OK, 133/135 tablas public + `auth.users`** (el DDL de `db/schema.ts` **crea** `auth.users` → schema auto-contenido/portable, no acoplado externamente; 94 refs `auth.` son FKs a esa tabla). Los **88 fallos = artefactos de `drizzle-kit generate`** (índices con operator-class incorrecto tipo `timestamptz_ops`/`text_ops` sobre columna de otro tipo; 1 default uuid vacío en `verification_queue`) — **fallarían en cualquier Postgres, incluido RDS**, NO son incompatibilidades de Koigrid. **Vía correcta del migration real = `pg_dump --schema-only` de RDS → Koigrid** (fiel, incluye las funciones/triggers/generated de las 160 `.sql` que Drizzle no modela), NO drizzle-kit push (que además es interactivo con views). Estructura + 6 extensiones = 100% compatibles. **Falta para K2-full:** cargar datos (29GB → necesita plan Scale por disco) + replicación lógica desde RDS. El plan de pago es el *coste de la migración misma* ($89 plano vs ~$800+ AWS), no un coste de POC.
+- **2026-07-22 — K2 DDL-compat ✅ PROBADA ($0, BD Free).** Aplicado el esquema Vence a Koigrid PG17: **774 statements OK, 133/135 tablas public + `auth.users`** (el DDL de `db/schema.ts` **crea** `auth.users` → schema auto-contenido/portable, no acoplado externamente; 94 refs `auth.` son FKs a esa tabla). Los **88 fallos = artefactos de `drizzle-kit generate`** (índices con operator-class incorrecto tipo `timestamptz_ops`/`text_ops` sobre columna de otro tipo; 1 default uuid vacío en `verification_queue`) — **fallarían en cualquier Postgres, incluido RDS**, NO son incompatibilidades de Koigrid. **Vía correcta del migration real = `pg_dump --schema-only` de RDS → Koigrid** (fiel, incluye las funciones/triggers/generated de las 160 `.sql` que Drizzle no modela), NO drizzle-kit push (que además es interactivo con views). Estructura + 6 extensiones = 100% compatibles. **Falta para K2-full:** cargar datos (29GB → necesita plan Scale por disco) + replicación lógica desde RDS. El plan de pago es el *coste de la migración misma* ($35-89 plano vs **$619/mes AWS medidos** en Cost Explorer el 30/07 — el «$800+» era una estimación nuestra, no un dato), no un coste de POC.
 - **2026-07-22 — CORRECCIÓN 3 (memoria/build, del Dockerfile real):** (a) El frontend usa **Next.js standalone** (imagen ~180-250MB, runtime idle ~150-300MB) → **CABE en Free 512MB; Pro NO es necesario por memoria.** El "2-4GB" era falso. (b) **BLOQUEO REAL del smoke-deploy = build DB-acoplado, no dinero:** `next build` consulta Postgres en `generateStaticParams` + prerender de ~500 páginas SSG (+ pre-scripts `sync-theme-names-from-bd`). Requiere `DATABASE_URL` con **esquema+datos reales**; la BD POC vacía haría fallar el build. → **Confirma el orden K2 (BD poblada) ANTES de K3 (frontend)**; el frontend no se levanta sin BD. Camino sin gasto = seguir por K2. Build-args necesarios: los 24 `NEXT_PUBLIC_*` + `DATABASE_URL`/`DATABASE_URL_REPLICA` + guard que aborta si `NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY` vacío. Deploy en Koigrid = vía **Dockerfile** (Koigrid lo reusa; standalone) no buildpack.
 - **2026-07-22 — CORRECCIÓN + K1 arquitectura ✅ VALIDADA ($0, sin Pro).** Error previo: framear K1 como "bloqueado por pago". **Se PUEDE desplegar cualquier app en Free** vía `source-upload` (CLI `koigrid apps deploy <name> --dir ./`, sin Docker ni git ni dashboard). Desplegada app POC Node (`vence-poc-web`, 512MB/0.5vCPU) que conecta a la BD Koigrid del mismo project. Resultado clave:
   - **Latencia app→BD co-ubicada = `6.45ms`/query** (private network, 20 SELECT secuenciales, instancia Free minúscula). → **VALIDA la arquitectura full-Koigrid (opción B §2):** co-ubicado es sano (~6ms), NO el desastre cross-provider (~90ms). En Pro (2vCPU/4GB) mejoraría.
@@ -205,13 +220,16 @@ Mismo patrón que el cutover Supabase→RDS del 04/07 (probado):
 - [x] **Deploy real validado ($0):** app POC desplegada vía source-upload; **latencia app→BD co-ubicada 6.45ms** → arquitectura full-Koigrid validada — 22/07
 - [ ] Fix TLS producción: `caCert` como `ssl.ca` en la fontanería de BD (no `NODE_TLS_REJECT_UNAUTHORIZED=0`)
 - [ ] (opcional $0) smoke-deploy del Next.js real en Free → medir footprint de arranque + latencia hot-path a baja concurrencia
-- [ ] Right-sizing del plan se decide en K3 (shadow, tráfico real) — NO requiere pago para decidir la migración
-- [ ] Pago en koigrid.com solo cuando se ejecute la migración real (plan según footprint medido, ~Pro/Scale)
-- [ ] §5: dump exhaustivo de env (SSM + build-args) volcado y mapeado
-- [ ] K1: Next.js real desplegado contra BD Koigrid clonada
-- [ ] §6: load-test al 2× pico corrido, tabla GO/NO-GO rellenada
-- [ ] **GATE:** decisión GO/NO-GO registrada (§9) con datos
+- [x] Right-sizing decidido con datos: **Pro $35/mes** (1-2 réplicas × 2GB, BD 4GB = paridad con RDS, banda 5× de margen) — 29/07
+- [ ] Pago en koigrid.com cuando se ejecute (plan **Pro**, medido; no hace falta Scale)
+- [x] §5: env mapeado (se usó para el cambio de storage de vídeos) — 30/07
+- [x] **K1: Next.js real desplegado contra BD Koigrid** — clon fiel sirviendo, `/api/health` con `database: ok` — 29/07
+- [x] **§6: load-test corrido y tabla GO/NO-GO rellenada** — 615 rps con 1 réplica = 37× el pico, 0% errores — 29/07
+- [x] **GATE técnico + comercial: GO** (§6.2 con datos). **Falta SOLO el restore del dump completo** (en curso 30/07) para tener la VENTANA DE CUTOVER y poder fijar fecha → decisión final de Manuel
 - [ ] K2: BD Koigrid replicando desde RDS, lag≈0 ≥24h
 - [ ] K3: frontend prod Koigrid en shadow, canaries verdes
-- [ ] K4: cutover ejecutado, monitor 30min verde
+- [x] **Cutover del STORAGE de vídeos ejecutado** (trozo real, paridad verificada, confirmado en la app) — 30/07
+- [ ] K4: cutover de app+BD ejecutado, monitor 30min verde
+- [ ] Antes de K4 (obligatorio): fix `getClientIp()`/`CF-Connecting-IP` — hoy confía en una cabecera de CloudFront que detrás de nuestro Cloudflare no existe, y debajo corre el antifraude
+- [ ] Antes de K4: codificar en Terraform la contención del 21/07 (`min_capacity` real) — hoy `frontend.tf` dice 2 y prod está en 8
 - [ ] K5: soak 48-72h → decomiso ECS/RDS (snapshot final guardado)

@@ -2420,3 +2420,55 @@ verified locally; **we retry the moment there is room.**
   *"never hardcode an endpoint"* — it should become a required variable rather than a stale fallback. We left
   it alone deliberately: with cumulative deploys and several sessions pushing, changing the default before the
   credentials were rotated could have been shipped by someone else and taken every video down.
+
+---
+
+## ✅ 2026-07-30 (00:36 UTC) — **D3 confirmed and closed: it was the full backend.** And a shared-fate observation you will want
+
+Once the old video copy was deleted, we retried immediately. Everything that failed yesterday now works:
+
+| | Yesterday | Now |
+|---|---|---|
+| `POST …/restore-dump/upload-url` | `500 {"error":"internal","errorRef":…}` | ✅ `200` with a presigned URL |
+| `PUT` of the 4.09 GB dump | `507 XMinioStorageFull` | ✅ **`200`, 4 290 143 351 bytes in 3 min 09 s** |
+
+So the opaque `500` was the same problem one layer up: **with the backend full, even minting an upload URL
+failed**, and the error told us nothing. Worth wiring the capacity check into that response — an agent that
+sees `internal` has no reason to suspect storage.
+
+### 🔎 The observation: `koi-db-dumps` lives on the fleet you are migrating *away* from
+
+The presigned upload URL you hand out points at the **old** host:
+
+```
+https://s3.koigrid.com/koi-db-dumps/<org>/<db>/<uuid>.sql
+```
+
+…while object storage now lives on `storage.koigrid.com`. That single line explains the whole failure chain
+we spent two days on: **94 GB of video uploaded to the wrong place filled the fleet that also holds database
+dumps**, so a *storage* mistake took out *managed restore* — a different resource type, for the same tenant,
+with no signal connecting them. Yesterday's `XMinioStorageFull` named `koi-db-dumps` and we still could not
+see the link, because nothing tells a customer those two things share a drive.
+
+**Two suggestions, both cheap:**
+1. **Move `koi-db-dumps` off the shared fleet, or give it a reserved quota.** A transient migration artefact
+   should not be able to starve on someone's video upload, and vice versa. This is the kind of blast radius
+   that is invisible until it bites.
+2. **Point dump uploads at `storage.koigrid.com`** for consistency with your own new guidance — right now the
+   docs tell customers never to hardcode an endpoint while the platform's own upload URLs still use the old
+   one.
+
+### 🧪 The rehearsal is running — this time with the method your own bug taught us
+
+Launched **00:36 UTC**: 24.7 GB of SQL, 204 tables, into a **fresh 4 GB PG17 cluster**, **without `preSeed`**.
+We verified the target had no `extensions` schema first, because that is precisely the D1 collision: with
+`preSeed` the dump's own `CREATE SCHEMA extensions;` (line 33, no `IF NOT EXISTS`) dies at line 32.
+
+Dropping `preSeed` is not free, and it is the open question of this run: **the dump's
+`CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions` now has to succeed as whatever role you restore
+with.** `preSeed` exists because that used to need superuser. If this run gets past it, `preSeed` is
+unnecessary for full dumps and the cleanest fix for D1 may simply be to say so in the docs.
+
+Results — duration, whether the job survives the full run, `tableCounts` across 204 tables (your 17:30 fix,
+never yet exercised at scale) and the ivfflat index at full row count — go in the next section as soon as it
+finishes.
