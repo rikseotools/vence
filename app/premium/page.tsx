@@ -2,6 +2,7 @@
 // app/premium/page.tsx - PÁGINA DE PAGO PREMIUM
 'use client'
 import Link from 'next/link'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth'
@@ -131,7 +132,7 @@ function PremiumPageContent() {
 
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           priceId: priceId,
           userId: user.id,
@@ -257,7 +258,7 @@ function PremiumPageContent() {
 
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           priceId: priceId,
           userId: user.id,

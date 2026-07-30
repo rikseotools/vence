@@ -5,6 +5,7 @@ import {
   cancelSubscription
 } from '@/lib/api/subscription'
 
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,8 +38,14 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Cancelar suscripción
-    const result = await cancelSubscription(parseResult.data)
+    // T-340 — la identidad sale del TOKEN, nunca del cuerpo. Antes bastaba con mandar el
+    // UUID de otra persona para cancelarle la suscripción; y, al no pasar por `verifyAuth`,
+    // el candado de solo lectura de la suplantación tampoco cubría este camino.
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel', parseResult.data.userId)
+    if (!identidad.ok) return identidad.response
+
+    // Cancelar suscripción — con el userId autenticado, no con el que llegó en el cuerpo.
+    const result = await cancelSubscription({ ...parseResult.data, userId: identidad.userId })
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 404 })

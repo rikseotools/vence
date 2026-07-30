@@ -71,7 +71,7 @@ export default function PrecioPersonalPage() {
     try {
       const res = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ priceId: oferta.priceId, userId: user.id, mode: 'normal' }),
       })
       const data = await res.json()

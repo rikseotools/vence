@@ -1544,7 +1544,11 @@ function PerfilPageContent() {
     if (!user) return
     try {
       setSubscriptionLoading(true)
-      const response = await fetch(`/api/stripe/subscription?userId=${user.id}`)
+      // El `userId` sigue en la URL por compatibilidad, pero quien manda es el token
+      // (T-340): el servidor sirve los datos del usuario autenticado, no los del id pedido.
+      const response = await fetch(`/api/stripe/subscription?userId=${user.id}`, {
+        headers: await getAuthHeaders(),
+      })
       const data = await response.json()
       if (response.ok) {
         setSubscriptionData(data)
@@ -2343,7 +2347,7 @@ function PerfilPageContent() {
       setReactivateLoading(true)
       const response = await fetch('/api/stripe/reactivate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       })
       const data = await response.json()
@@ -2372,7 +2376,7 @@ function PerfilPageContent() {
 
       const response = await fetch('/api/stripe/subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       })
 

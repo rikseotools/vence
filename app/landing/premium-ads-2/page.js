@@ -1,6 +1,7 @@
 // app/premium-ads-2/page.js - VERSIÓN HONESTA SIN EXAGERACIONES
 'use client'
 import { useState, useEffect } from 'react'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth'
 
@@ -62,7 +63,7 @@ function PremiumAdsContent() {
       // Crear checkout session
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY,
           userId: user.id,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface CancellationFlowProps {
   isOpen: boolean
@@ -55,7 +56,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
     try {
       const response = await fetch('/api/stripe/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }), // sin feedback: flujo 1-clic
       })
 
@@ -84,7 +85,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
     try {
       await fetch('/api/stripe/cancel/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           feedback: {

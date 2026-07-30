@@ -154,6 +154,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se coló el fallo del 30/07: la sim daba verde midiendo el arranque de la suplantación, nunca ' +
       'su final. Correrla tras tocar `verifyAuth`, `authjs.ts`, `mintAccessToken` o el endpoint.',
   },
+  sim_identidad_pago: {
+    titulo: 'Comprobar que en los endpoints de pago la identidad sale del token y no del cliente',
+    ruta: 'scripts/sim/sim-identidad-pago.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/suplantacion-ver-como-usuario.md',
+    notas:
+      'npx tsx scripts/sim/sim-identidad-pago.ts [--url …], con AUTH_SECRET y DATABASE_URL del ' +
+      'entorno. 10 comprobaciones contra servidor real; NO escribe en Stripe (lo único legítimo ' +
+      'que ejerce es abrir un portal de facturación, que no cobra). Cubre el agujero T-340: ' +
+      '`cancel`, `reactivate`, `subscription` (GET y portal), `create-checkout` y ' +
+      '`cancel/feedback` leían el userId del CUERPO sin token → con el UUID de otra persona se ' +
+      'le podía cancelar la suscripción, **reactivársela** (volver a cobrarle), leer su ' +
+      'facturación o abrirle el portal. Cada rechazo va emparejado con el caso que SÍ debe ' +
+      'pasar (leer suplantando, y que el dueño pueda leer y abrir su portal): sin ese ' +
+      'contraste, un endpoint que devolviera 403 a todo el mundo se leería como un éxito. ' +
+      'Correrla tras tocar cualquier ruta de /api/stripe o el helper `requireUsuarioPropio`. ' +
+      'El guardarraíl estático que la acompaña es `__tests__/guardrails/endpointsPagoIdentidad.test.ts`.',
+  },
   // ── observabilidad de cliente ─────────────────────────────────────────────────────────────
   sim_ruido_console: {
     titulo: 'Medir qué parte de los console_error de cliente es ruido y qué parte es daño (y predecir el efecto del arreglo)',

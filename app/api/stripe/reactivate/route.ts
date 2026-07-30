@@ -1,20 +1,23 @@
 // app/api/stripe/reactivate/route.ts - Reactivar suscripción cancelada
+//
+// T-340: la identidad sale del TOKEN, nunca del cuerpo. Hasta el 30/07/2026 este endpoint
+// reactivaba la suscripción de quienquiera que fuese el `userId` del body, sin comprobar
+// nada — o sea, se le podía volver a activar el cobro a otra persona con solo su UUID.
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseReactivateSubscriptionRequest, reactivateSubscription } from '@/lib/api/subscription'
+import { reactivateSubscription } from '@/lib/api/subscription'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
 
 async function _POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
-    const parseResult = safeParseReactivateSubscriptionRequest(body)
-    if (!parseResult.success) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
-    }
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/reactivate', body?.userId)
+    if (!identidad.ok) return identidad.response
 
-    const result = await reactivateSubscription(parseResult.data)
+    const result = await reactivateSubscription({ userId: identidad.userId })
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 })

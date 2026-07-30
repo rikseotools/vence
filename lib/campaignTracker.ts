@@ -1,6 +1,7 @@
 // lib/campaignTracker.ts - UTILIDADES PARA TRACKING DE CAMPAÑAS
 
 import type { User } from '@supabase/supabase-js'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { auth } from './auth'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,7 +107,7 @@ export async function forceCampaignCheckout(user: User): Promise<void> {
     // Crear sesión de Stripe
     const response = await fetch('/api/stripe/create-checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY,
         userId: user.id,

@@ -7,6 +7,7 @@ import {
   createPortalSession
 } from '@/lib/api/subscription'
 
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -29,8 +30,14 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    // Obtener datos de suscripción
-    const result = await getSubscription(parseResult.data)
+    // T-340 — con el `userId` en la query y sin token, esto devolvía los datos de
+    // FACTURACIÓN de cualquiera (importe, plan, fechas, estado) a quien tuviera su UUID.
+    // Es una lectura, así que la suplantación sí puede hacerla: es su razón de ser.
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription', parseResult.data.userId)
+    if (!identidad.ok) return identidad.response
+
+    // Obtener datos de suscripción — del usuario autenticado.
+    const result = await getSubscription({ ...parseResult.data, userId: identidad.userId })
 
     if (result.error && !result.hasSubscription) {
       return NextResponse.json({ error: result.error }, { status: 404 })
@@ -64,8 +71,14 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Crear sesión del portal
-    const result = await createPortalSession(parseResult.data)
+    // T-340 — el peor de los cuatro: esto devuelve un enlace al PORTAL de facturación de
+    // Stripe (facturas, tarjeta, cancelar). Con el `userId` en el cuerpo y sin token, se
+    // obtenía el portal de otra persona. La identidad sale del token y nada más.
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription#portal', parseResult.data.userId)
+    if (!identidad.ok) return identidad.response
+
+    // Crear sesión del portal — del usuario autenticado.
+    const result = await createPortalSession({ ...parseResult.data, userId: identidad.userId })
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 404 })

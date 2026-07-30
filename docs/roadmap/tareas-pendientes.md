@@ -4242,6 +4242,19 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **DÓNDE.** Donde se resuelve el objetivo del usuario y se pinta su temario (el selector de oposición del onboarding y del perfil, y la pantalla de temario). Cuidado: hay que distinguir *«no tiene temario»* de *«fallo al cargar»*, porque el mensaje es distinto y confundirlos genera soporte.
 - **Relacionada:** [T-327] (la funcionalidad de armarse el temario, que es la solución de fondo), [T-328] (la landing, que NO debe publicarse antes que aquella).
 
+### [T-340] 🔴 [ABIERTO 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
+
+- **El fallo:** `/api/stripe/{cancel,reactivate,subscription,create-checkout,cancel/feedback}` leían el `userId` del **cuerpo o de la query**, sin verificar ningún token. Con el UUID de otra persona —que viaja en respuestas de la propia app— se le podía **cancelar la suscripción**, **reactivársela (volver a cobrarle)**, **leer su facturación** o **abrirle el portal de Stripe** (facturas y tarjeta). En `create-checkout` además decidía de quién es un precio personalizado, así que la comprobación se hacía «contra el usuario que dijera el cliente».
+- **Cómo salió (y por qué nadie lo había visto):** por una vía indirecta. Manuel estaba suplantando a una usuaria en **solo lectura** y pulsó «Reactivar suscripción»: **se ejecutó de verdad** sobre su suscripción en la cuenta Stripe vieja. El candado de la suplantación estaba puesto y funcionando —bloqueó otros POST ese mismo minuto— pero vive en `verifyAuth`, «el paso por el que pasan TODAS las APIs», y estos endpoints no pasaban por ahí. **La suplantación fue el síntoma; el agujero de autorización llevaba abierto desde que se escribieron.**
+- **Daño real de aquel clic:** ninguno en facturación (se reactivó y se volvió a cancelar en 37 segundos, la suscripción quedó igual), pero dejó **3 filas en `cancellation_feedback`** y **3 apuntes en el historial visible** de la usuaria, que no son suyos. Pendiente de limpiar.
+#### ✅ ARREGLADO (30/07) — falta verificar en producción
+- **`requireUsuarioPropio`** (`lib/api/shared/auth.ts`): la identidad sale del token; el id que manda el cliente **solo se contrasta**, y si no coincide se corta con 403 + señal `auth_identidad_ajena_rechazada`. Propaga el status real de `verifyAuth` (401 sin sesión, 403 suplantando) en vez de colapsarlo a 401: en un endpoint que mueve dinero, «no estás autenticado» y «no puedes hacer esto» no son lo mismo al diagnosticar.
+- Aplicado a los **6** endpoints; `checkout-sync` ya usaba `verifyAuth` y el `webhook` se autentica por firma (exenciones justificadas por escrito en el guardarraíl).
+- **Los 10 sitios del cliente** que llamaban sin token ahora mandan `getAuthHeaders()` (perfil, flujo de cancelación, /premium, /premium/personal, 3 landings, campaignTracker).
+- **Capas:** simulación `scripts/sim/sim-identidad-pago.ts` (10 casos contra servidor real, **10/10**, cada rechazo emparejado con el caso que sí debe pasar — sin ese contraste un 403 universal se leería como éxito) + guardarraíl `endpointsPagoIdentidad` (17) + 102 tests de stripe/suscripción en verde. Registrada en `toolRegistry` y documentada en el runbook de suplantación.
+- **Lo que queda:** verificar en producción y **limpiar las 3 filas** del historial de esa usuaria. Y hay **38 endpoints más** con el mismo patrón (`userId` del cliente sin verificar) fuera de `/api/stripe` → merecen su propia auditoría.
+
+
 ## Hechas
 
 ### [T-289] 🟢 [HECHA 30/07 · abierta 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)

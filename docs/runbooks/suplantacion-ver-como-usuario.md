@@ -51,6 +51,30 @@ Lo que quedó, y que hay que respetar al tocar esto:
 4. **La ausencia de la cookie-marca no significa «no hay suplantación»**. Es un atajo de render, no
    una fuente de verdad.
 
+## El candado solo protege lo que pasa por `verifyAuth` (T-340, 30/07/2026)
+
+**Lo que descubrió esto:** suplantando a una usuaria, un clic en «Reactivar suscripción»
+**se ejecutó de verdad** sobre su cuenta de Stripe. La franja roja estaba puesta y el candado
+funcionaba —bloqueó otros POST ese mismo minuto— pero `/api/stripe/reactivate` **no pasaba por
+`verifyAuth`**: sacaba el `userId` del cuerpo de la petición.
+
+De ahí salió el fallo de fondo, que era mayor que la suplantación: **cinco endpoints de pago
+aceptaban la identidad que les mandara el cliente**. Con el UUID de otra persona se le podía
+cancelar la suscripción, reactivársela (volver a cobrarle), leer su facturación o abrirle el
+portal de Stripe. Arreglado con `requireUsuarioPropio` (`lib/api/shared/auth.ts`), que saca la
+identidad del token y **rechaza con 403 si el cliente afirma otra**.
+
+Al escribir un endpoint nuevo que reciba un `userId`: **no es identidad, es un dato del
+cliente**. Cualquier ruta bajo `/api/stripe` que no pase por el helper pone en rojo
+`__tests__/guardrails/endpointsPagoIdentidad.test.ts`. Y la lección general vale para todo el
+repo: el candado de la suplantación protege exactamente lo que pasa por `verifyAuth`, ni un
+endpoint más.
+
+```bash
+# Comprueba el control de identidad de los endpoints de pago (10 casos, con contraste)
+npx tsx scripts/sim/sim-identidad-pago.ts
+```
+
 ## Comprobar que sigue sana
 
 ```bash

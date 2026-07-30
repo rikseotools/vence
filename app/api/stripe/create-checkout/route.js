@@ -6,6 +6,7 @@ import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import {
   findBlockingSubscription,
   buildCheckoutIdempotencyKey,
@@ -14,8 +15,8 @@ async function _POST(request) {
   try {
     console.log('🚀 API Stripe llamada - Sistema dual...')
     
-    const { priceId, userId, mode = 'normal' } = await request.json()
-    
+    const { priceId, userId: userIdDelCliente, mode = 'normal' } = await request.json()
+
     if (!priceId) {
       console.error('❌ Price ID faltante')
       return NextResponse.json(
@@ -24,13 +25,14 @@ async function _POST(request) {
       )
     }
 
-    if (!userId) {
-      console.error('❌ User ID requerido')
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
+    // T-340 — la identidad sale del TOKEN. Aquí importa por partida doble: el checkout se
+    // crea a nombre de este usuario (`client_reference_id`, metadata que el webhook usa para
+    // activarle el premium) y además es quien decide si un PRECIO PERSONALIZADO es suyo
+    // (`priceEsDelUsuario`). Con el userId viniendo del cuerpo, esa comprobación se hacía
+    // contra la persona que dijera el cliente, no contra quien está comprando.
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/create-checkout', userIdDelCliente)
+    if (!identidad.ok) return identidad.response
+    const userId = identidad.userId
 
     console.log('👤 Creando checkout para usuario:', userId)
 

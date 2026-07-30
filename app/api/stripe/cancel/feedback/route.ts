@@ -4,6 +4,7 @@
 // endpoint lo actualiza si el usuario decide compartir el motivo.
 import { NextRequest, NextResponse } from 'next/server'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import {
   safeParseSubmitCancellationFeedback,
   submitCancellationFeedback,
@@ -24,7 +25,12 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    const result = await submitCancellationFeedback(parseResult.data)
+    // T-340 — la identidad sale del token: si no, se podía escribir un motivo de
+    // cancelación en el expediente de otra persona con solo su UUID.
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel/feedback', parseResult.data.userId)
+    if (!identidad.ok) return identidad.response
+
+    const result = await submitCancellationFeedback({ ...parseResult.data, userId: identidad.userId })
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || 'No se pudo guardar el feedback' },
