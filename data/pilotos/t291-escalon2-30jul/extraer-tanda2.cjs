@@ -49,6 +49,15 @@ const BLOQUEADOS = ['Excel 2016', 'Word 2016', 'PowerPoint 2016', 'Funciones del
        AND coalesce(e.servidas,0) > 0
        AND coalesce(l.short_name,'') <> ALL(${BLOQUEADOS})
        AND a.content IS NOT NULL AND length(a.content) > 200
+       -- Excluir lo que una pasada anterior ya declaró DEFECTUOSO. Sin esto vuelven a la cola: una
+       -- pregunta marcada `defecto_opciones` no recibe explicación, así que se queda sin
+       -- `explanation_data` y el filtro de arriba la vuelve a seleccionar. Pasó de verdad con
+       -- `15b81b24` (Excel, la opción correcta no está entre las cuatro): la tanda 2 la diagnosticó,
+       -- la tanda 3 le escribió explicación igualmente, y la re-verificación volvió a cazarla.
+       AND NOT EXISTS (
+         SELECT 1 FROM ai_verification_results v
+          WHERE v.question_id = q.id AND coalesce(v.discarded, false) = false
+            AND (v.answer_ok IS FALSE OR v.options_ok IS FALSE OR v.article_ok IS FALSE))
      ORDER BY coalesce(e.servidas,0) DESC, q.id
      LIMIT ${N}`;
 
