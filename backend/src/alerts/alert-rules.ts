@@ -4752,7 +4752,71 @@ export const RULE_DEVICE_LIMIT_MUDO: AlertRule<{
   cooldownMin: 1440,
 };
 
+
+/**
+ * El registro de IP de sesión se ha caído: un WRITER que deja de escribir.
+ *
+ * ── POR QUÉ EXISTE (T-314, 30/07/2026) ──────────────────────────────────────
+ * El 03/07 se flipeó a Auth.js y el registro de IP pasó del **80% al 1%** de las sesiones. Estuvo
+ * **27 días roto sin una sola señal**, porque el fallo era una AUSENCIA: el endpoint no daba
+ * errores, simplemente casi nadie lo llamaba. La IP es la que desempata los casos dudosos del
+ * antifraude (misma huella + IP distinta = probablemente otra persona; misma IP = la misma casa),
+ * así que perderla degrada en silencio todo lo que se apoya en ella.
+ *
+ * Es el mismo patrón que `device_limit_mudo`: **nadie vigila que un writer DEJE de escribir**.
+ * Esta regla mira la COBERTURA, no los errores.
+ *
+ * Umbral en 40%: el histórico sano ronda el 70-85% (nunca fue 100%, siempre hubo sesiones sin IP),
+ * y durante el fallo estuvo en 1-6%. 40% deja holgura para un día raro sin tragarse una caída real.
+ */
+export const RULE_SESSION_IP_COVERAGE_DROP: AlertRule<{
+  sesiones: number;
+  conIp: number;
+  pct: number;
+}> = {
+  name: 'session_ip_coverage_drop',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS sesiones,
+           COUNT(ip_address)::int AS "conIp",
+           COALESCE(ROUND(100.0 * COUNT(ip_address) / NULLIF(COUNT(*), 0))::int, 0) AS pct
+      FROM user_sessions
+     WHERE created_at >= NOW() - INTERVAL '24 hours'
+  `,
+  // Con pocas sesiones el porcentaje es ruido: se exige volumen para opinar.
+  shouldFire: (rows) =>
+    (rows[0]?.sesiones ?? 0) >= 200 && (rows[0]?.pct ?? 100) < 40,
+  buildNotification: (rows) => {
+    const pct = rows[0]?.pct ?? 0;
+    const n = rows[0]?.sesiones ?? 0;
+    return {
+      title: `Solo el ${pct}% de las sesiones registra IP (histórico sano: 70-85%)`,
+      body:
+        `De ${n} sesiones en 24 h, solo ${rows[0]?.conIp ?? 0} tienen IP.\n\n` +
+        `La IP es lo que desempata los casos dudosos del antifraude: misma huella de hardware con ` +
+        `IP distinta es probablemente otra persona con el mismo modelo de móvil; misma IP es la ` +
+        `misma casa. Sin ella, el análisis por dispositivo trabaja a ciegas.\n\n` +
+        `Esto ya pasó del 03/07 al 30/07/2026 (80% → 1%): el disparador colgaba del evento ` +
+        `SIGNED_IN y, al cambiar de proveedor de auth, ese evento dejó de llegar. El endpoint ` +
+        `estaba bien; nadie lo llamaba.\n\n` +
+        `Comprobar por este orden:\n` +
+        `  1. ¿Se llama al endpoint? → observable_events WHERE endpoint LIKE '%track-session-ip%'\n` +
+        `     (si son unas pocas al día con miles de sesiones, el disparador está roto)\n` +
+        `  2. ¿Falla el endpoint? → validation_error_logs del mismo endpoint\n` +
+        `  3. ¿Cambió algo en el flujo de auth? El disparador NO puede depender de un evento de ` +
+        `proveedor: guardarraíl __tests__/guardrails/sessionIpNoColgarDeEvento.test.ts\n\n` +
+        `Runbook: docs/runbooks/revisar-fraudes.md`,
+      metadata: { pct, sesiones: n, conIp: rows[0]?.conIp ?? 0 },
+      fingerprint: 'session_ip_coverage_drop',
+    };
+  },
+  cooldownMin: 1440,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Cobertura de IP de sesión (2026-07-30, T-314): un writer que deja de escribir no da error,
+  // da silencio. 27 días sin IP y nadie se enteró.
+  RULE_SESSION_IP_COVERAGE_DROP as AlertRule,
   // Enforcement por dispositivo mudo (2026-07-30, T-304): un bloqueo que no ocurre no emite
   // nada, así que el silencio hay que vigilarlo a propósito. Tres meses sin cortar.
   RULE_DEVICE_LIMIT_MUDO as AlertRule,

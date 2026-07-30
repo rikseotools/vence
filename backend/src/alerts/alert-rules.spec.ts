@@ -2280,3 +2280,47 @@ describe('RULE_DEVICE_LIMIT_MUDO (enforcement por dispositivo sin cortar — T-3
     expect(n.body).toContain('revisar-fraudes.md');
   });
 });
+
+describe('RULE_SESSION_IP_COVERAGE_DROP (writer que deja de escribir — T-314, 30/07)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_SESSION_IP_COVERAGE_DROP } = require('./alert-rules');
+  const fila = (sesiones: number, pct: number) => [
+    { sesiones, conIp: Math.round((sesiones * pct) / 100), pct },
+  ];
+
+  it('EL CASO REAL: 1% de cobertura con volumen → dispara', () => {
+    // 30/07/2026: 6.273 sesiones en 7 días, 6.189 sin IP.
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(1000, 1))).toBe(true);
+  });
+
+  it('la cobertura sana histórica (70-85%) no dispara', () => {
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(1000, 80))).toBe(false);
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(1000, 70))).toBe(false);
+  });
+
+  it('habría disparado el 04/07, el día de la caída (8%)', () => {
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(600, 8))).toBe(true);
+  });
+
+  it('el 03/07, con la caída a medias (55%), aún no: no se persigue el ruido', () => {
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(600, 55))).toBe(false);
+  });
+
+  it('con poco volumen NO opina (un porcentaje sobre 20 sesiones es ruido)', () => {
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(20, 0))).toBe(false);
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(199, 1))).toBe(false);
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire(fila(200, 1))).toBe(true);
+  });
+
+  it('tolera filas vacías o corruptas (corre en un cron)', () => {
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire([])).toBe(false);
+    expect(RULE_SESSION_IP_COVERAGE_DROP.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso explica qué se pierde y dónde mirar', () => {
+    const n = RULE_SESSION_IP_COVERAGE_DROP.buildNotification(fila(1000, 1));
+    expect(n.title).toContain('1%');
+    expect(n.body).toContain('track-session-ip');
+    expect(n.body).toContain('sessionIpNoColgarDeEvento');
+  });
+});

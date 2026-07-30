@@ -9,6 +9,13 @@ import { auth } from '@/lib/auth'
 import { shouldForceCheckout, forceCampaignCheckout, detectCampaignSource, getCookie } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
 import { useSessionControl } from '../hooks/useSessionControl'
+import {
+  shouldTrackSessionIp,
+  encodeTrackMark,
+  decodeTrackMark,
+} from '@/lib/security/sessionIpTracking'
+import { getFingerprintHeader } from '@/lib/security/fingerprint'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 import SessionWarningModal from '../components/SessionWarningModal'
 import { logClientError } from '../lib/logClientError'
 
@@ -37,11 +44,33 @@ export interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 // 🎯 TRACKING DE IP Y LOCALIDAD - Fire and forget, no bloquea UI
+//
+// ⚠️ NO COLGAR ESTO DE UN EVENTO DE AUTH (T-314, 30/07/2026). Estuvo llamándose solo en
+// `SIGNED_IN` y, al flipear a Auth.js, ese evento dejó de llegar en la práctica: su adaptador
+// emula los eventos por polling y quien vuelve con la cookie de 30 días recibe `INITIAL_SESSION`,
+// no `SIGNED_IN`. El registro de IP cayó del 80% al 1% y estuvo 27 días roto EN SILENCIO.
+// La condición correcta es «hay usuario y hace horas que no registramos su IP» — cierta con
+// cualquier proveedor. Lo decide `shouldTrackSessionIp`, y lo vigila un guardarraíl.
+const TRACK_MARK_KEY = 'vence_ip_tracked'
+
+const trackSessionIPIfDue = (userId: string | null | undefined, sessionId: string | null = null) => {
+  if (typeof window === 'undefined' || !userId) return
+  const { userId: lastUserId, atMs } = decodeTrackMark(safeGet(TRACK_MARK_KEY))
+  if (!shouldTrackSessionIp({ userId, lastTrackedAtMs: atMs, lastTrackedUserId: lastUserId, nowMs: Date.now() })) {
+    return
+  }
+  // Se marca ANTES de la llamada: si el POST falla, no se reintenta en bucle en cada navegación.
+  // Se perdería como mucho una franja, y la siguiente lo recupera.
+  safeSet(TRACK_MARK_KEY, encodeTrackMark(userId, Date.now()))
+  trackSessionIP(userId, sessionId)
+}
+
 const trackSessionIP = (userId: string, sessionId: string | null = null) => {
   if (typeof window === 'undefined') return
 
   const deviceId = localStorage.getItem('vence_device_id') || null
-  const hwFingerprint = localStorage.getItem('vence_hw_fingerprint') || null
+  // Huella v2 si ya está calculada (la que sobrevive a borrar el almacén), v1 mientras tanto.
+  const hwFingerprint = getFingerprintHeader() || localStorage.getItem('vence_hw_fingerprint') || null
 
   fetch('/api/auth/track-session-ip', {
     method: 'POST',
@@ -706,6 +735,13 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         if (event === 'INITIAL_SESSION') {
           // === CARGA INICIAL (token ya refrescado por _initialize) ===
           if (newUser) {
+            // 📍 Tracking de IP TAMBIÉN aquí — y este es el caso REAL (T-314): con la cookie de
+            // 30 días de Auth.js, quien vuelve ya logueado llega por INITIAL_SESSION y jamás por
+            // SIGNED_IN. Tenerlo solo en SIGNED_IN es lo que dejó el registro en el 1% durante
+            // 27 días. La ventana la decide `shouldTrackSessionIp`, así que estar en los dos
+            // sitios no duplica escrituras.
+            trackSessionIPIfDue(newUser.id)
+
             const hasCachedProfile = userProfileRef.current?.id === newUser.id
             console.log('🔐 INITIAL_SESSION: cargando perfil con token válido...', hasCachedProfile ? '(cacheado → refresco en background, sin bloquear UI)' : '')
             // forceRefresh=true: aunque haya perfil cacheado pre-hidratado,
@@ -803,8 +839,8 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         } else if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
           // === LOGIN / REGISTRO (post-INITIAL_SESSION) ===
           if (newUser) {
-            // 📍 Tracking
-            trackSessionIP(newUser.id)
+            // 📍 Tracking (la ventana la decide `shouldTrackSessionIp`, no el evento)
+            trackSessionIPIfDue(newUser.id)
 
             if (event === 'SIGNED_UP') {
               try { GoogleAdsEvents.SIGNUP('google_oauth') } catch {}
