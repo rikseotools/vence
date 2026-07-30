@@ -119,6 +119,48 @@ GET /api/admin/rewards/accumulated
 > - **El canjeable = ese `balance` pagable, nunca el "ganado" bruto del panel.** El panel muestra `earnedLifetime` (todas las fuentes, incluidas las en hold); el pagable excluye lo retenido. Error real: dije "13€ → vale de 10€" contando mal; lo pagable eran 3€ (+5€ del UGC nuevo = 8€ → vale de 5€), y el referido de 10€ seguía en hold.
 > - **Denominación canjeable** = mayor denominación fija de Amazon.es (5/10/20/50…€) **≤ balance pagable**.
 
+### 3.ter — RETIRADA DEL PROPIETARIO (`owner_withdrawal`) — la excepción, y por qué NO es una excepción al pre-check
+
+**Manuel puede comprarse vales con el saldo de Bitrefill.** Es su cuenta y su dinero, y **no necesita
+saldo acumulado**: no es una recompensa, así que el pre-check de §4 —que existe para no pagar a un
+embajador contra un saldo que no tiene— sencillamente **no aplica**. Lo que NO se puede hacer es
+colarlo por el camino de recompensas.
+
+**Cómo se registra (obligatorio, siempre):**
+```
+reason = 'owner_withdrawal'      -- NUNCA 'accumulated'
+purchased_via = 'bitrefill'
+giftcard_ref = {"code":"…","pin":"","serial":"","_invoice_id":"…","_purchased_at":"…","_note":"retirada del propietario …"}
+```
+
+**Por qué importa la etiqueta, con la cifra medida.** Hasta el 30/07 el CHECK de `reason` solo admitía
+`referral|bug|ugc|accumulated`, así que **no había forma de anotarlo bien** y las retiradas se
+registraban como `accumulated`. Resultado: `getReferralAdminStats` —que suma TODOS los payouts
+pagados— declaraba **260 € de coste del programa cuando el real era 50 €**; los otros 210 € eran vales
+que el propietario se había comprado. Cinco veces el coste real. Migración
+`20260730_reward_payouts_owner_withdrawal.sql`: añade el valor al CHECK y reclasifica los históricos.
+
+**Lo que SÍ sigue haciendo:** restar en el saldo por usuario (`getUserOwedBalance`). El propietario ve
+su saldo en negativo, que es exactamente lo que refleja la realidad — se ha llevado más de lo que ha
+ganado. Lo que se excluye es el **coste del programa**, que es otra pregunta.
+
+### 3.quater — CONCILIACIÓN: que las cuentas cuadren siempre
+
+```bash
+npx tsx scripts/conciliar-vales.ts [--limite 50]
+```
+
+Compara **lo comprado en Bitrefill** con **lo anotado en `reward_payouts`** y lista los dos fallos, que
+son asimétricos: **comprado y NO anotado** (dinero que salió sin figurar — el grave) y **anotado sin
+compra** (fila sin respaldo). Ata por `_invoice_id` y, si falta, por **código del vale**: las filas
+anteriores al 14/07 no guardaban el invoice, y buscar solo por él daba un falso positivo por cada una
+(la misma compra salía a la vez en las dos listas).
+
+**Correr esto DESPUÉS de cada compra.** Es lo que faltaba: el descuadre de 210 € del 28/07 no lo
+detectó nadie porque **nada comparaba el proveedor con la base** — se descubrió por casualidad, al ver
+un saldo de −210 € y preguntarse de dónde salía. Estado al crearlo (30/07): 410 € comprados, 410 €
+anotados, **0 descuadres**.
+
 ### 4. Pagar un vale (gift card) — SUPERVISADO, lo compra Claude (NO automático)
 
 > ### ⚠️ El flujo POR DEFECTO es PULL: paga el usuario QUIEN LO PIDE

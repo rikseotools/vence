@@ -762,7 +762,12 @@ export async function getReferralAdminStats(exec?: Executor): Promise<AdminRefer
   const db = exec ?? getReadDb()
   const [earnedRes, paidRes, bySrcRes, earnersRes, statusRes, funnelRes, topRes] = await Promise.all([
     db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_earnings`),
-    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where status = 'paid'`),
+    // ⚠️ EXCLUYE `owner_withdrawal`: son vales que el PROPIETARIO se compra con el saldo de
+    // Bitrefill, no dinero que haya ido a un embajador. Contarlos aquí infla el coste declarado
+    // del programa — medido el 30/07: 210 € de 260 € «pagados» eran retiradas del propietario,
+    // o sea el escaparate decía 5× el coste real. Siguen restando en el saldo POR USUARIO
+    // (`getUserOwedBalance`), que es otra pregunta y esa sí debe incluirlas.
+    db.execute(sql`select coalesce(sum(amount),0)::float as t from reward_payouts where status = 'paid' and reason <> 'owner_withdrawal'`),
     db.execute(sql`select source, sum(amount)::float as earned, count(*)::int as count from reward_earnings group by source order by earned desc`),
     db.execute(sql`select count(distinct user_id)::int as n from reward_earnings`),
     db.execute(sql`select status, count(*)::int as n from referrals group by status`),
