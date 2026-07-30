@@ -32,6 +32,7 @@
   - `frontend_saturation` (4 canaries en timeout simultáneo) · `endpoint_latency_sustained` (p95 de 13 s) · `client_edge_sustained` — degradación que SÍ nota el usuario.
   - `cron_started_not_finished` — el que cazó [T-299].
   - `daily_quota_overcharge` — cobro de más a usuarios free (ver [T-260]).
+- **🔴 EVIDENCIA EN VIVO (30/07, 25 min después de desplegar la política):** el primer disparo real fue **`premium_sin_respaldo`** — el detector de *premium que nadie paga* que OTRA sesión desplegó en ESE MISMO deploy (`b0462fa7e`) — y salió `emailed=false, emailSkipped=severity`. Es decir: alguien construye hoy un detector de un agujero de INGRESOS esperando que avise, y el filtro lo deja mudo el día de su estreno sin que nadie se entere. No es hipotético ni es un caso de borde: es el primer disparo que hubo. Refuerza la salida 1 (env a `warn`) o, como mínimo, revisar la severidad de este detector.
 - **El fondo del problema:** la severidad de este catálogo **no es un buen proxy de "merece correo"**. `event_loop_lag` es `critical` y era el mayor spammer (180 correos en 5 días); `main_ci_rojo` es `error` y bloquea el trabajo de todos. Mientras esa clasificación no se revise, filtrar por severidad silencia por la etiqueta y no por la gravedad.
 - **Las tres salidas, en orden de coste:**
   1. **`ALERT_EMAIL_MIN_SEVERITY=warn` en SSM** — un parámetro, sin desplegar: vuelve todo al buzón con el backoff puesto (8,7/día). Reversible en un minuto.
