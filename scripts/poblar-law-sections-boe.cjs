@@ -158,7 +158,13 @@ async function procesarLey(l, { apply }) {
   const v = await validar(l.id, secs)
   if (!v.ok) return { slug: l.short_name, estado: 'rechazada', motivo: v.motivo, n: secs.length }
   if (!apply) return { slug: l.short_name, estado: 'lista', n: secs.length, tipo: secs[0].tipo }
-  const n = await insertar(l.id, secs, secs[0].tipo)
+  // ⚠️ `v.secs`, NO `secs` (arreglado 30/07/2026). Se insertaban TODAS las secciones,
+  // incluidas las que el validador acababa de descartar por no tener artículos: el propio
+  // script imprimía «1 sección(es) sin artículos, descartadas» y acto seguido la metía. El
+  // resultado en pantalla es un filtro por capítulo que existe y devuelve cero preguntas
+  // (el capítulo derogado del RD 208/1996, por ejemplo). Validar y luego ignorar lo
+  // validado deja el mensaje diciendo una cosa y la base de datos otra.
+  const n = await insertar(l.id, v.secs, v.secs[0].tipo)
   return { slug: l.short_name, estado: 'insertada', n, tipo: secs[0].tipo }
 }
 

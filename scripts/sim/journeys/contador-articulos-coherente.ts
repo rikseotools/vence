@@ -50,9 +50,20 @@ const journey: Journey = {
     })
 
     // 1) Lo que ANUNCIA el rótulo (si no hay número, es correcto: se prefiere callar).
-    const texto = await ctx.page.locator('body').innerText()
-    const anuncio = texto.match(/(\d+)\s+art[íi]culos?\s+disponibles?/i)
-    const anunciados = anuncio ? Number(anuncio[1]) : null
+    //
+    // Se lee del ELEMENTO que lo pinta, no del `innerText` de la página. La primera versión
+    // buscaba el patrón en todo el texto y daba un falso positivo de manual: encadenaba un
+    // «798» de una línea con el «artículos disponibles» de la siguiente y denunciaba un bug
+    // que ya estaba arreglado. Un journey que falla cuando no debe se acaba ignorando, que
+    // es la peor avería posible en un guardarraíl.
+    const anunciados = await ctx.page.evaluate(() => {
+      const hojas = Array.from(document.querySelectorAll('*')).filter(
+        (el) => el.children.length === 0 && /^\s*\d+\s+art[íi]culos?\s+disponibles?\s*$/i.test(el.textContent || ''),
+      )
+      if (!hojas.length) return null
+      const m = (hojas[0].textContent || '').match(/(\d+)/)
+      return m ? Number(m[1]) : null
+    })
 
     // 2) Lo que OFRECE el selector de verdad.
     const btnArticulos = ctx.page.getByRole('button', { name: /🔧\s*Art[íi]culos/ })

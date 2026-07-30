@@ -173,6 +173,39 @@ describe('validarSecciones — una sección derogada no debe tumbar la ley', () 
   it('sin secciones → sin_secciones', () => {
     expect(validarSecciones([]).motivo).toBe('sin_secciones')
   })
+
+  // 30/07/2026 — el umbral relativo es demasiado sensible en leyes con pocas secciones.
+  it('con 3 secciones, UNA vacía ya no tumba la ley (caso RD 208/1996)', () => {
+    // Su capítulo III (Libro de Quejas y Sugerencias) está derogado entero. Antes se
+    // perdían también los capítulos I y II, que están perfectos, y la norma —presente en
+    // 12 oposiciones— se servía como lista plana.
+    const r = validarSecciones([
+      sec('I', 1, 4, 4),
+      sec('II', 5, 14, 10),
+      sec('III', 15, 24, 0), // derogado por el RD 951/2005
+    ])
+    expect(r.ok).toBe(true)
+    expect(r.secs.map((s) => s.num)).toEqual(['I', 'II'])
+    expect(r.vacias.map((s) => s.num)).toEqual(['III'])
+  })
+
+  it('dos vacías por encima del umbral siguen rechazando (eso ya no es derogación)', () => {
+    const r = validarSecciones([sec('I', 1, 10, 5), sec('II', 11, 20, 0), sec('III', 21, 30, 0)])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/demasiadas_vacias\(2\/3\)/)
+  })
+
+  it('una sola sección viva no se inserta: el filtro por títulos necesita al menos dos', () => {
+    const r = validarSecciones([sec('I', 1, 10, 10), sec('II', 11, 20, 0)])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toBe('menos_de_2_secciones_vivas')
+  })
+
+  it('tolerar una vacía NO relaja el solape (lo que de verdad mete basura)', () => {
+    const r = validarSecciones([sec('I', 1, 20, 20), sec('II', 15, 30, 16), sec('III', 31, 40, 0)])
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toBe('solape')
+  })
 })
 
 describe('rubricaVigente — la rúbrica de un bloque del BOE es la ÚLTIMA, no la primera', () => {
