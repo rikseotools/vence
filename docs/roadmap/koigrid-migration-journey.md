@@ -2472,3 +2472,123 @@ unnecessary for full dumps and the cleanest fix for D1 may simply be to say so i
 Results — duration, whether the job survives the full run, `tableCounts` across 204 tables (your 17:30 fix,
 never yet exercised at scale) and the ivfflat index at full row count — go in the next section as soon as it
 finishes.
+
+---
+
+## 🔴 2026-07-30 (00:42 UTC) — **D4: a full Supabase-origin dump cannot be restored *at all* today.** Your two workarounds are mutually exclusive, and we found why
+
+This is the finding the 33 GB rehearsal existed to produce, and it is bigger than D1. We ran both paths on the
+real dump (24.7 GB SQL, 204 tables) into a fresh 4 GB PG17 cluster:
+
+| Attempt | `preSeed` | Died at | Error |
+|---|---|---|---|
+| 1 | `[{vector, extensions}]` | line **32** | `schema "extensions" already exists` |
+| 2 | *(none)* | line **5920** | `type extensions.vector does not exist` |
+
+**Neither works. There is no third option in the API.**
+
+### Root cause: you pre-install `vector` into `public`, and `IF NOT EXISTS` does not relocate
+
+`pg_extension` on a **freshly created** cluster, before any restore:
+
+```
+vector             → public     ← pre-installed by koigrid
+pg_stat_statements → public
+pg_stat_kcache     → public
+set_user           → public
+plpgsql            → pg_catalog
+```
+
+A Supabase-origin dump emits, at line 110:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+```
+
+`IF NOT EXISTS` matches on **extension name, not schema**. `vector` already exists (in `public`), so this is a
+**silent no-op** — it does *not* move it. Nothing fails there. Then 5 810 lines later, the first function body
+that references `extensions.vector` dies, and the reported line points at a function definition that is
+perfectly correct — so the error blames the wrong place entirely.
+
+That is also exactly why `preSeed` exists (your docs say koigrid *"RELOCATES"* the extension as superuser).
+**So `preSeed` is not optional for these dumps — it is mandatory.** And `preSeed` creates the schema, which
+collides with the dump's own non-idempotent `CREATE SCHEMA extensions;`. Mandatory tool, incompatible with the
+input it exists to fix.
+
+### The fix on your side is one word
+
+Emit the schema idempotently when pre-seeding — `CREATE SCHEMA IF NOT EXISTS extensions` — **or** tolerate
+`already exists` on schema creation during restore. Either one makes `preSeed` + a real `pg_dump` work
+together, and this whole class of failure disappears.
+
+Secondary, and worth considering independently: **pre-installing `vector` into `public` on every new cluster
+is what sets the trap.** Every Supabase-origin database — your stated ICP — expects it in `extensions`, and
+the pre-install guarantees the dump's own `CREATE EXTENSION` becomes a no-op. Leaving it uninstalled (or
+installed where the customer asks) would remove the need for `preSeed` in most cases.
+
+**Acceptance test:** `pg_dump` a Supabase-origin database that has `extensions.vector` and restore it with
+`preSeed: [{vector, extensions}]`. It completes. Today it cannot, by either route.
+
+### Our workaround, for the record
+
+We rewrote **one line** of the 24.7 GB stream — `CREATE SCHEMA extensions;` →
+`CREATE SCHEMA IF NOT EXISTS extensions;` (same for `auth`) — via `zcat | sed | gzip`. **Cost: 7 min 19 s of
+CPU and a second 3 min 31 s upload of 4.09 GB**, i.e. ~15 minutes added to a cutover window, plus the need to
+keep two copies of a multi-GB artefact locally. Then restored **with** `preSeed`. Running now; results next.
+
+A customer without a local copy of the dump would have to re-`pg_dump` production to apply that one-line fix.
+
+### Timings measured so far (useful for anyone sizing a cutover)
+
+| Step | Time |
+|---|---|
+| `pg_dump` 33 GB → 4.09 GB gzip (over the internet, from AWS eu-west-2) | ~50 min |
+| Upload 4.09 GB to the presigned URL | **3 min 09 s** / 3 min 31 s |
+| Rewrite one line in the 24.7 GB stream (`zcat|sed|gzip`) | **7 min 19 s** |
+| Restore, time-to-first-error (both failed attempts) | ~6 min |
+
+### 🔴 D4-bis (same trap, second extension) — and it has to be discovered one 7-minute restore at a time
+
+With the schema line fixed and `preSeed: [{vector, extensions}]`, the restore got **much** further and then hit
+the identical failure on a different extension:
+
+```
+psql:<stdin>:18287: ERROR:  relation "extensions.pg_stat_statements" does not exist
+```
+
+`pg_stat_statements` is **also** pre-installed in `public` on your clusters, so its
+`CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;` (line 40) was another silent no-op.
+
+Here is the whole collision, laid out — this is the table we had to reconstruct by hand:
+
+| Extension | Dump wants it in | koigrid pre-installs it in | Collides? |
+|---|---|---|---|
+| `vector` | `extensions` | **`public`** | 🔴 yes |
+| `pg_stat_statements` | `extensions` | **`public`** | 🔴 yes |
+| `pgcrypto` | `extensions` | — | ✅ no |
+| `unaccent` | `extensions` | — | ✅ no |
+| `uuid-ossp` | `extensions` | — | ✅ no |
+| `pg_trgm` | `public` | — | ✅ no |
+| `pg_stat_kcache`, `set_user` | *(not in dump)* | `public` | n/a |
+
+**The cost of this being undiscoverable is the real problem.** Each wrong guess is a **6-7 minute restore**
+that fails at a line which looks unrelated (a function body, a view), and you only learn the *next* missing
+relocation after fixing the previous one. Our progression: line **32** → **5 920** → **18 287**. Three runs,
+~20 minutes of restores, to learn a fact that a single up-front check could have told us.
+
+**Two cheap fixes, either of which closes this:**
+1. **Pre-flight the dump.** You already read it to fail fast — while doing so, collect every
+   `CREATE EXTENSION … WITH SCHEMA <s>` and compare against `pg_extension`. If an extension is installed in a
+   *different* schema than the dump expects, say so **before** loading 24 GB: *"pg_stat_statements is in public,
+   the dump expects extensions — add it to preSeed."* One pass, all mismatches at once.
+2. **Relocate automatically.** `preSeed` already relocates; you have the information to do it without being
+   asked. If the dump says `WITH SCHEMA extensions` and you have it in `public`, move it.
+
+And the underlying decision worth revisiting: **pre-installing extensions into `public` is what creates the
+trap.** `IF NOT EXISTS` can never fix a schema mismatch — it is a name check — so any pre-installed extension
+silently defeats a dump that wants it elsewhere. For a platform whose stated ICP is ex-Supabase databases,
+where `extensions` is the convention, that is the worst possible default.
+
+Third attempt running with both relocations seeded. We will report the full result — including whether
+`tableCounts` populates across 204 tables and whether the ivfflat index builds at full row count — as soon as
+it lands.
