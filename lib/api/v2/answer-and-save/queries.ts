@@ -28,6 +28,8 @@ import { displayedToOriginal } from '@/lib/shuffle/permute'
 // rechazado esos órdenes → identidad → corrección contra la clave equivocada.
 import { isValidExposureOrder } from '@/lib/shuffle/subsetOrder'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { evaluarFases, UMBRAL_LENTA_MS } from '@/lib/observability/fasesLentas'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 
 // ============================================
 // VALIDATION CACHE (tag: 'questions', TTL 1h)
@@ -154,6 +156,13 @@ export async function validateAndSaveAnswer(
 ): Promise<AnswerAndSaveResponse> {
   const db = getAnswerSaveDb()  // canary pooler
 
+  // Cronómetro por FASES (T-312). Hasta hoy, de una petición de 25 s que devolvía 200 OK no se
+  // podía decir NADA: solo `duration_ms`. Pasa entre el 0,3% y el 1,3% de las veces TODOS los días
+  // —50-200 opositores diarios— y cuando el 29/07 hubo un incidente real, atribuirlo costó medio
+  // día y la primera atribución resultó falsa. Tres `Date.now()` cuestan nada y lo contestan.
+  const tInicio = Date.now()
+  let msValidar = 0, msGuardar = 0, msScore = 0
+
   // 1. VALIDAR RESPUESTA + (en paralelo) RESOLVER TEMA
   //
   // Performance: cuando el cliente manda tema=0 (test personalizado u
@@ -183,12 +192,14 @@ export async function validateAndSaveAnswer(
   // todos los users que respondan la misma pregunta comparten cache.
   // Invalidación inmediata cuando se resuelve una dispute (cf. resolveDispute
   // en lib/api/v2/dispute/queries.ts).
+  const tValidar = Date.now()
   const [validation, preResolvedTema] = await Promise.all([
     getQuestionValidationCached(params.questionId),
     shouldResolve
       ? resolveTemaByQuestionIdFast(params.questionId, resolvedOposicionId)
       : Promise.resolve<number | null>(null),
   ])
+  msValidar = Date.now() - tValidar
 
   if (validation) {
     correctOption = validation.correctOption
@@ -311,10 +322,13 @@ export async function validateAndSaveAnswer(
     oposicionId: params.oposicionId,
   }
 
+  const tGuardar = Date.now()
   const saveResult = await insertTestAnswer(saveRequest, userId)
+  msGuardar = Date.now() - tGuardar
 
   // 3. ACTUALIZAR SCORE (solo si se guardó bien)
   if (saveResult.success) {
+    const tScore = Date.now()
     try {
       await db
         .update(tests)
@@ -324,6 +338,28 @@ export async function validateAndSaveAnswer(
       console.error('⚠️ [answer-and-save] Error actualizando score:', scoreError)
       // No fallar por esto — la respuesta se validó y guardó
     }
+    msScore = Date.now() - tScore
+  }
+
+  // Desglose SOLO si fue lenta, pero entonces al 100%. `request_completed` va muestreado al 10% y
+  // ese sesgo es justo el que no se puede permitir: la petición de 25 s es la que NO puede
+  // perderse. Emitir el desglose de una de 40 ms no informaría de nada.
+  const fases = { validarMs: msValidar, guardarMs: msGuardar, scoreMs: msScore, totalMs: Date.now() - tInicio }
+  const veredicto = evaluarFases(fases)
+  if (veredicto.lenta) {
+    emitFireAndForget({
+      source: 'vercel', severity: 'warn', eventType: 'answer_save_lento',
+      endpoint: '/api/v2/answer-and-save', durationMs: fases.totalMs,
+      metadata: {
+        ...fases,
+        dominante: veredicto.dominante,
+        pctDominante: veredicto.pctDominante,
+        noExplicadoMs: veredicto.noExplicadoMs,
+        umbralMs: UMBRAL_LENTA_MS,
+        questionId: params.questionId,
+        instanceId: INSTANCE_ID,
+      },
+    })
   }
 
   const saveAction = saveResult.success

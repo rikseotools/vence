@@ -650,6 +650,21 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**Una petición lenta ya dice POR QUÉ — evento `answer_save_lento` (30/07, T-312).** Si `/api/v2/answer-and-save` se arrastra, **no hace falta adivinar**: cada guardado por encima de **2 s** emite su desglose por fases, al 100% (el `request_completed` va muestreado al 10% y ese sesgo es justo el que no se puede permitir aquí).
+```sql
+SELECT to_char(ts,'HH24:MI') t, duration_ms,
+       metadata->>'dominante' AS fase, metadata->>'pctDominante' AS pct,
+       metadata->>'validarMs' AS validar, metadata->>'guardarMs' AS guardar,
+       metadata->>'scoreMs' AS score, metadata->>'noExplicadoMs' AS no_explicado,
+       metadata->>'instanceId' AS task
+  FROM observable_events WHERE event_type='answer_save_lento'
+   AND ts > now() - interval '24 hours' ORDER BY duration_ms DESC LIMIT 20;
+```
+- **`dominante` es lo primero que hay que mirar.** `guardar` → la escritura en `test_questions` (BD/pool). `validar` → la lectura de la pregunta. `score` → el UPDATE del test.
+- **🎯 `fuera_de_fases` es la respuesta MÁS valiosa cuando aparece:** el handler apenas consumió tiempo, así que el problema **no es su lógica** sino el entorno — event-loop bloqueado, espera de pool, GC o throttle del contenedor. Distinguir «la BD tardó» de «el proceso no llegó a ejecutarme» es exactamente lo que faltó el 29/07, cuando atribuir un incidente costó medio día y la primera atribución (crons del backend) resultó **falsa**.
+- **Contexto de base:** entre el **0,3% y el 1,3%** de los guardados superan los 5 s **todos los días** (~50-200 opositores). Un puñado de estos eventos al día es lo normal, no una regresión; lo que se mira es el cambio de `dominante` o un salto de volumen.
+- ⚠️ **Al medir latencia aquí, cuidado con las ventanas cortas:** el endpoint tiene ~1.600 observaciones/día CON muestreo al 10%, así que en 5 minutos hay 2-3 muestras y `percentile_disc(0.95)` devuelve el MÁXIMO. El 30/07 eso produjo **tres falsas alarmas seguidas** («p95 de 25 s» con n=3). Núcleo puro con suelo de muestras: `lib/api/admin/endpoint-latency.ts` (`LATENCY_MIN_SAMPLES`).
+
 **El detector que se vuelve más lento cuanto más SANA está la base (2026-07-30, T-307)** — el barrido nocturno de salud (`content-health-sweep`) murió entero el 29 y el 30/07, y estuvo dos días sin escribir mientras el panel enseñaba el snapshot del 28 como si fuera de hoy.
 - **Causa inmediata:** la query del detector `audit_note_explanation` tardaba **40,6 s** contra el `statement_timeout: 30000` del cliente del backend (`backend/src/db/database.module.ts`). Como el barrido era todo-o-nada, el throw se llevó a los ~40 detectores restantes **y** al bloque de escritura.
 - **Lo que hay que aprender, que no es el timeout:** la query llevaba `LIMIT 50`. Mientras hubo coincidencias, el escaneo cortaba en las primeras filas y era rápida; **al limpiar el cubo (274 explicaciones reescritas el 29/07) desapareció el atajo y quedó el seq scan completo**. Un detector con `LIMIT` sobre una columna de texto sin índice **es lento justo cuando ya no encuentra nada**. Si escribes uno, mídelo con el cubo VACÍO.
