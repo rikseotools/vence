@@ -2351,3 +2351,72 @@ request on its side. (`errorRef` is there, which is the right instinct; it just 
 **D3 stands and is now the only thing blocking the rehearsal you asked for.** Our 4.09 GB dump is built and
 verified locally; a retry is one 3-minute upload away. The asks are unchanged: free `koi-db-dumps`, give us a
 way to delete a dump, reclaim dumps when their database is deleted, and surface this as a named error.
+
+---
+
+## ✅ 2026-07-30 (00:15 UTC) — **production now reads from `storage.koigrid.com`. You can delete the old copy.**
+
+Done, verified, and with the parity check you would want before an irreversible delete.
+
+### Parity, before touching anything
+
+We did not take "already copied" on trust, because the next step is you deleting the original:
+
+| | old (`s3.koigrid.com`) | new (`storage.koigrid.com`) |
+|---|---|---|
+| Objects | **56 691** | **56 691** |
+| Total bytes | **99 137 723 146** | **99 137 723 146** |
+| Per-object diff (key + size, all 56 691) | — | **zero differences** |
+
+We also read the artefacts the player actually requests, from the new address: an HLS master
+(`index.m3u8` → `200`, `application/vnd.apple.mpegurl`), a segment (`seg_0348.ts` → `200`, `video/mp2t`) and
+a 1.6 GB MP4 (`206` on a ranged GET). 56 541 of the objects are `.ts` segments, so the HLS path was the one
+that mattered.
+
+### The change, exactly as you specified it
+
+1. `POST /api/v1/storage/keys` → new key + `endpoint: https://storage.koigrid.com`. **Verified it reads the
+   bucket *before* writing it anywhere.**
+2. Three values changed: the two credentials in SSM (`KOIGRID_VIDEO_ACCESS_KEY`, `KOIGRID_VIDEO_SECRET_KEY`)
+   and the address as a new `KOIGRID_VIDEO_ENDPOINT` env var. **Bucket unchanged: `vence-videos`.**
+3. Verified. See below.
+
+**We did it as an env-only rolling deploy** — task definition `:570` → `:571` with the *same image digest*,
+one extra variable. No code shipped, so nothing else in `main` rode along. In-place rolling
+(`maximumPercent=100`, `minimumHealthyPercent=80`) with the circuit breaker armed; **8/8 tasks converged and
+`www.vence.es` served `200` throughout** (we polled during the rollout). ~28 minutes, one task at a time.
+
+### How we verified, given we cannot press play in a headless session
+
+We ran **our own signing function** (`presignKoigridKey`) with the exact environment the containers now hold,
+and fetched what it produced:
+
+```
+word-365/bloque-04.mp4                    host=storage.koigrid.com → 206  video/mp4
+hls/word-365/bloque-06/1080p/seg_0348.ts  host=storage.koigrid.com → 206  video/mp2t
+```
+
+So the full chain is proven: SSM holds the new key (version 2) → `:571` carries the new address → all 8 tasks
+run `:571` → our signer resolves `storage.koigrid.com` → real bytes come back with the right content types.
+`/api/health` is `ok` on all five checks (database, pooler, redis, stripe, resend).
+
+### 🟢 Green light — with one caveat that is ours, not yours
+
+**You can delete the old copy.** Our rollback until now was "restore the two SSM values and redeploy `:570`",
+which points back at `s3.koigrid.com` — **that rollback stops working the moment you delete it.** We are
+accepting that knowingly, because parity was verified per-object and the new path is serving.
+
+**Note the sequencing you flagged:** this unblocks **D3** — the full dump upload has been failing with
+`XMinioStorageFull` since yesterday, which is why our 33 GB rehearsal never ran. Our 4.09 GB dump is built and
+verified locally; **we retry the moment there is room.**
+
+### Two housekeeping notes
+
+- `POST /storage/keys` returns no `name` in `GET /storage/keys` even when one is supplied on create — every key
+  lists as unnamed, which makes "which of these is production?" harder than it should be. We had to identify
+  ours by comparing the access key against SSM. Echoing `name` back would fix it.
+- Our own loose end, now recorded: `lib/api/video-courses/videoSignedUrl.ts` still carries
+  `https://s3.koigrid.com` as its *default*. It is inert (the env var wins), but per your own guidance —
+  *"never hardcode an endpoint"* — it should become a required variable rather than a stale fallback. We left
+  it alone deliberately: with cumulative deploys and several sessions pushing, changing the default before the
+  credentials were rotated could have been shipped by someone else and taken every video down.
