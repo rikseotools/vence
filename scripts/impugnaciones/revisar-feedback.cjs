@@ -18,6 +18,8 @@ const fs = require('fs');
 const pg = require('postgres');
 // Enforcement de la Regla previa OBLIGATORIA (scope/epígrafe) — módulo compartido con revisar-impugnacion.cjs
 const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
+// Regla «cada hilo se responde en SU hilo» (30/07, caso Chema): núcleo puro y testeado.
+const { analizarHilos } = require('../lib/hilos-abiertos.cjs');
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -126,6 +128,22 @@ const ago = (d) => {
     // --- Historial de feedbacks + impugnaciones del usuario ---
     const hist = await s`SELECT type, status, left(message, 45) m, created_at FROM user_feedback WHERE user_id=${fb.user_id} ORDER BY created_at DESC`;
     console.log('\nHistorial feedbacks:', hist.map((h) => `[${h.status} ${ago(h.created_at)}] ${h.m}`).join(' | '));
+
+    // --- OTROS HILOS de esta persona (regla: cada hilo se responde en SU hilo) ---
+    // El historial de arriba ya los volcaba, pero en una línea plana y sin ids: con Chema
+    // (30/07) estaban delante y no se vieron, y sus dos hilos de Policía Municipal
+    // llevaban un día esperando mientras se le contestaba eso mismo en otro hilo.
+    const todos = await s`
+      SELECT f.id, f.type, f.status, f.message, f.created_at,
+             (SELECT count(*) FROM feedback_conversations c
+                JOIN feedback_messages m ON m.conversation_id = c.id
+               WHERE c.feedback_id = f.id AND m.is_admin)::int AS "adminMsgs"
+        FROM user_feedback f WHERE f.user_id=${fb.user_id} ORDER BY f.created_at`;
+    const hilos = analizarHilos(todos, String(fb.id));
+    if (hilos.aviso) {
+      console.log('\n─── 🧵 OTROS HILOS DE ESTA PERSONA ───');
+      console.log(hilos.aviso);
+    }
     const disp = await s`SELECT dispute_type, status, created_at FROM question_disputes WHERE user_id=${fb.user_id} ORDER BY created_at DESC LIMIT 5`;
     console.log('Impugnaciones:', disp.length ? disp.map((d) => `${d.dispute_type}/${d.status}`).join(' | ') : 'ninguna');
 
@@ -133,8 +151,9 @@ const ago = (d) => {
     console.log('  [ ] 1. He LEÍDO la conversación entera (arriba), no solo el 1er mensaje.');
     console.log('  [ ] 2. Si el último mensaje es del USUARIO, respondo a ESE (no re-envío lo anterior).');
     console.log('  [ ] 3. Journey/historial mirados (la intención real ≠ texto literal).');
-    console.log('  [ ] 4. Borrador con OK de Manuel ANTES de enviar (nunca envío directo).');
-    console.log('  [ ] 5. Cierro vía /api/v2/feedback/respond (message = responder; sin message = cierre silencioso).');
+    console.log('  [ ] 4. Si tiene MÁS hilos abiertos, un borrador por hilo (no junto asuntos).');
+    console.log('  [ ] 5. Borrador con OK de Manuel ANTES de enviar (nunca envío directo).');
+    console.log('  [ ] 6. Cierro vía /api/v2/feedback/respond (message = responder; sin message = cierre silencioso).');
   } finally {
     await s.end();
   }

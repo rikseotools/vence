@@ -231,6 +231,44 @@ Un feedback con `status='pending'` **NO significa que esté sin atender** — pu
 
 > **⚠️ Síntoma "No puedo leer vuestras respuestas" (visto 03/07/2026 — José Andrés, CARM):** el usuario abre un 2º feedback quejándose de que no ve nuestra respuesta. **Causa típica:** la respuesta al feedback anterior se guardó **solo en `user_feedback.admin_response`** (vía legacy) y **nunca se insertó en `feedback_messages`**, así que su conversación en la app aparece **vacía** (0 mensajes) — el chat lee de `feedback_messages`, no de `admin_response`. El email de aviso (`soporte_respuesta`) puede haberse enviado, pero si el usuario no lo abre (`email_events.open_count = 0`) se queda a ciegas. **Fix:** reponer esa respuesta llamando a `/api/v2/feedback/respond` (que sí inserta en `feedback_messages`), reconociendo al usuario que tenía razón. No basta con tener el texto en `admin_response`.
 
+### 🧵 REGLA DURA: cada hilo se responde en SU hilo (decisión de Manuel, 30/07/2026)
+
+**Un hilo de feedback es una conversación con su pregunta y su cierre.** Se responde
+**dentro del hilo donde se preguntó**, y **solo a lo que se preguntó ahí**. Nunca se
+contesta en un hilo algo que la persona planteó en otro, ni se juntan dos asuntos en un
+mensaje porque «es la misma persona».
+
+Para quien escribe, mezclarlo es un lío: recibe la respuesta donde no preguntó, el hilo que
+sí abrió se queda mudo, y ninguno de los dos se puede cerrar con claridad. Nosotros vemos
+un usuario; la persona ve sus conversaciones abiertas, cada una esperando su respuesta.
+
+**Antes de redactar, mira TODOS sus feedbacks abiertos** (no solo el que estás atendiendo):
+
+```sql
+SELECT id, type, status, created_at, left(replace(message, chr(10), ' '), 90) AS msg
+  FROM user_feedback
+ WHERE user_id = '<uuid>'
+ ORDER BY created_at;
+```
+
+Y decide con eso:
+
+- **Varios hilos, varios asuntos** → un borrador por hilo, cada uno respondiendo a lo suyo.
+  Si un asunto aparece de pasada en otro hilo, se contesta igualmente **en el hilo propio**.
+- **Varios hilos, el MISMO asunto** (duplicados: la persona pulsó dos veces o reescribió a
+  los minutos) → se responde al **primero** y el resto se cierra en **silencio**
+  (`finalStatus:'resolved'` sin `message`, §Paso 10 caso B). Dos avisos con el mismo texto
+  parecen un fallo nuestro.
+- **Un solo hilo con varias preguntas dentro** → ahí sí van juntas, en el orden en que las
+  hizo.
+
+> **Caso origen (Chema, 29-30/07/2026):** abrió tres feedbacks — uno pidiendo el Parque
+> Móvil del Estado y **dos idénticos**, con tres minutos de diferencia, preguntando por los
+> temas incompletos de Policía Municipal de Madrid. Como en el hilo del Parque Móvil también
+> mencionó de pasada la Policía Municipal, el borrador inicial contestaba las dos cosas ahí
+> y dejaba los otros dos hilos sin tocar, sin responder desde el día anterior. Se separó
+> antes de enviar: un mensaje por asunto, en su hilo, y el duplicado cerrado en silencio.
+
 ## Paso 1: Identificar al usuario y contexto
 
 ```js
