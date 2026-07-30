@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import DesgloseCartera from '@/components/referrals/DesgloseCartera'
-import type { BreakdownRow } from '@/lib/referrals/breakdown'
+import { REFERIDO_SIN_SUSCRIBIR, type BreakdownRow } from '@/lib/referrals/breakdown'
 import VoucherCard from './VoucherCard'
 import { rewardSourceText } from '@/lib/referrals/logic'
 
@@ -22,7 +22,7 @@ function statusLabel(s: string): { text: string; cls: string } {
     case 'rejected':
       return { text: 'No válido', cls: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' }
     default: // pending / expired → registrado pero aún NO premium
-      return { text: 'Registrado · No premium', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
+      return { text: REFERIDO_SIN_SUSCRIBIR, cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
   }
 }
 
@@ -72,7 +72,7 @@ export interface EmbajadorPanelData {
   code: string | null
   link: string | null
   stats: { registros: number; compradores: number; conversion: number }
-  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward; selfReferral?: boolean; invalidReason?: 'self_referral' | 'preexisting' | null; accountCreatedAt?: string | null; bountyAmount?: number; holdUntil?: string | null }>
+  details: Array<{ name: string | null; city: string | null; oposicion: string | null; status: string; activeReward?: ActiveReward; selfReferral?: boolean; invalidReason?: 'self_referral' | 'preexisting' | 'same_device' | null; accountCreatedAt?: string | null; bountyAmount?: number; holdUntil?: string | null }>
   funnel: { copies: number; clicks: number }
   earnings: {
     balance: number
@@ -148,20 +148,22 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
             ⏳ <strong>«En espera»</strong>: dinero que ya has ganado pero que se libera a <strong>Disponible</strong> cuando cada referido supera su <strong>garantía de reembolso de 15 días</strong> (mientras, podría caerse si pidiera el reembolso). Verás la fecha de liberación en cada referido de abajo.
           </p>
         )}
-        {/* El desglose aportación por aportación. En la vista de admin va en modo solo
-            lectura: los enlaces a Soporte abrirían la ficha con NUESTRA sesión, y aquí lo
-            que se quiere es ver su pantalla, no navegar por ella. */}
-        {data.breakdown && data.breakdown.length > 0 && (
-          <DesgloseCartera filas={data.breakdown} soloLectura abiertoPorDefecto />
-        )}
-        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 mt-5">De dónde vienen tus ingresos</h3>
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
         <div className="space-y-2">
           {e.bySource.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500">Todavía sin ingresos.</p>
           ) : e.bySource.map((s) => (
-            <div key={s.source} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-2.5">
-              <span className="text-sm text-gray-700 dark:text-gray-200">{sourceText(s.source)}</span>
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{s.earned} € · {s.count}</span>
+            <div key={s.source} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-gray-700 dark:text-gray-200">{sourceText(s.source)}</span>
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">{s.earned} € · {s.count}</span>
+              </div>
+              {/* Cada fuente abre SUS aportaciones aquí mismo: el resumen y el detalle son la
+                  misma cosa, no dos listas que hay que casar a ojo. En la vista de admin va
+                  en solo lectura (cargar su conversación exigiría su sesión, no la nuestra). */}
+              {data.breakdown && data.breakdown.length > 0 && (
+                <DesgloseCartera filas={data.breakdown} fuente={s.source} soloLectura />
+              )}
             </div>
           ))}
         </div>
@@ -215,9 +217,15 @@ export default function EmbajadorPanelView({ data }: { data: EmbajadorPanelData 
               const pb = premiumBadge(d.status, d.bountyAmount, d.holdUntil)
               // motivo de invalidez SIN detallar la IP (decisión Manuel): autoregistro = solo "No
               // válido" (sin subtexto); preexistente = "No válido" + "ya era usuario desde [mes año]".
+              // El motivo se resume SIN detallar la señal (decisión Manuel): ni la IP ni el
+              // dispositivo se nombran. Decir «mismo dispositivo» le enseña a quien lo intenta
+              // exactamente qué esquivar, y a quien es legítimo —dos personas en la misma casa—
+              // no le sirve de nada, porque la revisión la hacemos nosotros.
               const invalidText = d.invalidReason === 'preexisting'
                 ? `Ya era usuario${d.accountCreatedAt ? ` desde ${fmtMonthYear(d.accountCreatedAt)}` : ''}`
-                : null
+                : d.invalidReason === 'same_device'
+                  ? 'No cuenta como captación nueva'
+                  : null
               return (
                 <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
                   <div className="min-w-0">

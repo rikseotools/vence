@@ -55,22 +55,38 @@ describe('los scripts que corren en cron parsean', () => {
   //
   // Así que ahora se revisa también el TypeScript que escribe SQL: es donde se está
   // escribiendo, y donde el patrón se repite. Comentario SQL (`--`) con backtick dentro.
-  const FUENTES_CON_SQL = [
-    'lib/referrals/queries.ts',
-    'lib/api/v2/dispute/queries.ts',
-    'lib/api/convocatoria/queries.ts',
-    'lib/api/laws-configurator/queries.ts',
-  ]
-
   it('ningún comentario SQL de las consultas en TypeScript lleva backticks', () => {
-    const { readFileSync } = require('fs') as typeof import('fs')
+    // Se revisa TODO fichero que escriba SQL, no una lista.
+    //
+    // La primera versión enumeraba cuatro ficheros «los que escriben consultas», y el mismo
+    // día volvió a pasar en un QUINTO (`lib/referrals/activeSignup.ts`) que no estaba en la
+    // lista. Una lista blanca solo protege lo que alguien se acordó de meter, y justo lo que
+    // se está escribiendo hoy es lo que nunca está.
+    const { readFileSync, readdirSync, statSync } = require('fs') as typeof import('fs')
+    const conSql: string[] = []
+    const visitar = (dir: string) => {
+      for (const e of readdirSync(dir)) {
+        if (e === 'node_modules' || e === '.next') continue
+        const p = join(dir, e)
+        if (statSync(p).isDirectory()) visitar(p)
+        else if (/\.(ts|tsx)$/.test(e)) {
+          const src = readFileSync(p, 'utf8')
+          // Marca de consulta: template literal etiquetado `sql\`` (Drizzle) o `.query(\``.
+          if (/sql`|\.query\(\s*`/.test(src)) conSql.push(p)
+        }
+      }
+    }
+    for (const raiz of ['lib', 'app', 'db', 'backend/src']) {
+      const abs = join(RAIZ, raiz)
+      if (existsSync(abs)) visitar(abs)
+    }
+    expect(conSql.length).toBeGreaterThan(10) // si no, el barrido no está mirando nada
+
     const culpables: string[] = []
-    for (const rel of FUENTES_CON_SQL) {
-      const abs = join(RAIZ, rel)
-      if (!existsSync(abs)) continue
+    for (const abs of conSql) {
       readFileSync(abs, 'utf8').split('\n').forEach((linea, i) => {
         if (linea.trimStart().startsWith('--') && linea.includes('`')) {
-          culpables.push(`${rel}:${i + 1} → ${linea.trim().slice(0, 80)}`)
+          culpables.push(`${abs.replace(RAIZ + '/', '')}:${i + 1} → ${linea.trim().slice(0, 70)}`)
         }
       })
     }

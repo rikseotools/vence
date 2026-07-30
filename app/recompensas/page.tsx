@@ -1,4 +1,6 @@
 'use client'
+
+import { REFERIDO_SIN_SUSCRIBIR } from '@/lib/referrals/breakdown'
 // app/recompensas/page.tsx — Programa de Recompensas de Vence.
 // Tono aspiracional/de estatus: el premium descubre que YA es embajador y puede ganar recompensas
 // en tarjetas regalo de Amazon. Explica las 3 formas de ganar. Auth-aware (premium / free / anónimo).
@@ -20,6 +22,9 @@ interface ReferralDetail {
   status: string
   date: string
   activeReward?: ActiveReward
+  /** € del premio por que se hiciera Premium. Lo devuelve /api/referrals/me. */
+  bountyAmount?: number
+  invalidReason?: 'self_referral' | 'preexisting' | 'same_device' | null
 }
 interface EarningsBySource { source: string; earned: number; count: number }
 interface Earnings { balance: number; earnedLifetime: number; paidLifetime: number; requested: number; pending: number; bySource: EarningsBySource[] }
@@ -70,6 +75,31 @@ function activeRewardBadge(ar?: ActiveReward): { text: string; cls: string; titl
     title: `Ganarás ${ar.amount} € cuando complete ${ar.testsNeeded} tests (lleva ${ar.testsDone})` }
 }
 
+/**
+ * Lo ganado por un referido concreto, con las dos partes nombradas.
+ *
+ * La tarjeta enseñaba SOLO el bonus de actividad: en un referido que se hizo Premium ponía
+ * «Premium» y «+2 € ganados», ocultando los 10 € del premio principal — el más importante y
+ * el que la persona espera ver (Manuel, 30/07/2026: «¿por qué no le ponen 10 euros si se hizo
+ * premium?»). Son cosas distintas y suman: 10 € por suscribirse + 2 € por actividad.
+ */
+function premioDelReferido(d: ReferralDetail): { total: number; partes: string[] } | null {
+  if (d.invalidReason) return null
+  const partes: string[] = []
+  let total = 0
+  const cobraBounty = ['qualified', 'payable', 'paid'].includes(d.status)
+  if (cobraBounty && d.bountyAmount) {
+    total += d.bountyAmount
+    partes.push(`${d.bountyAmount} € por suscribirse a Premium`)
+  }
+  if (d.activeReward?.state === 'earned' && d.activeReward.amount) {
+    total += d.activeReward.amount
+    partes.push(`${d.activeReward.amount} € por registro activo`)
+  }
+  if (!total) return null
+  return { total, partes }
+}
+
 // Estado del referido → etiqueta amistosa + color.
 function statusLabel(s: string): { text: string; cls: string } {
   switch (s) {
@@ -80,7 +110,7 @@ function statusLabel(s: string): { text: string; cls: string } {
     case 'rejected':
       return { text: 'No válido', cls: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' }
     default: // pending / expired → registrado pero aún NO premium
-      return { text: 'Registrado · No premium', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
+      return { text: REFERIDO_SIN_SUSCRIBIR, cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' }
   }
 }
 
@@ -386,19 +416,22 @@ export default function EmbajadoresPage() {
                 <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">De dónde vienen tus ingresos</h3>
                 <div className="space-y-2">
                   {me.earnings.bySource.map((s) => (
-                    <div key={s.source} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-2.5">
-                      <span className="text-sm text-gray-700 dark:text-gray-200">{sourceText(s.source)}</span>
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{s.earned} € · {s.count}</span>
+                    <div key={s.source} className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-700 dark:text-gray-200">{sourceText(s.source)}</span>
+                        <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">{s.earned} € · {s.count}</span>
+                      </div>
+                      {/* Cada fuente despliega SUS aportaciones aquí mismo, con la pregunta
+                          impugnada o el hilo del aviso dentro. Antes era una lista aparte que
+                          repetía este resumen y mandaba a otra pantalla a leer la
+                          conversación. */}
+                      {me.breakdown && me.breakdown.length > 0 && (
+                        <DesgloseCartera filas={me.breakdown as any} fuente={s.source} />
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-            {/* DETALLE: qué aportación concreta generó cada euro.
-                Un saldo sin origen no se puede comprobar, y además no enseña qué tipo de
-                aportación renta. Se pliega por defecto para no tapar el saldo. */}
-            {me.breakdown && me.breakdown.length > 0 && (
-              <DesgloseCartera filas={me.breakdown as any} />
             )}
 
             {/* MODELO PULL: solicitar el vale cuando hay saldo disponible */}
@@ -494,7 +527,10 @@ export default function EmbajadoresPage() {
                 <div className="space-y-2">
                   {me.details.map((d, i) => {
                     const st = statusLabel(d.status)
-                    const ar = activeRewardBadge(d.activeReward)
+                    // Si ya ganó algo se muestra el total Y de dónde sale; si aún no, el
+                    // progreso hacia el bonus de actividad.
+                    const ganado = premioDelReferido(d)
+                    const ar = ganado ? null : activeRewardBadge(d.activeReward)
                     const sub = [d.city, prettyOpo(d.oposicion)].filter(Boolean).join(' · ')
                     return (
                       <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
@@ -505,6 +541,21 @@ export default function EmbajadoresPage() {
                         <div className="flex flex-col items-end gap-1">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${st.cls}`}>{st.text}</span>
                           {ar && <span title={ar.title} className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${ar.cls}`}>{ar.text}</span>}
+                          {/* El total y SUS PARTES, a la vista: son dos premios distintos
+                              (suscribirse y estar activo) y el desglose escondido en un
+                              tooltip no se ve en móvil, que es donde más se mira esto. */}
+                          {ganado && (
+                            <>
+                              <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                🎉 +{ganado.total} € ganados
+                              </span>
+                              {ganado.partes.length > 1 && (
+                                <span className="text-[11px] text-gray-500 dark:text-gray-400 text-right">
+                                  {ganado.partes.join(' + ')}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     )

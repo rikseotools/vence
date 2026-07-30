@@ -75,6 +75,29 @@ export async function grantActiveSignupRewards(exec?: Executor): Promise<ActiveS
         AND (r.fraud_flags IS NULL OR jsonb_typeof(r.fraud_flags) = 'null'
              OR r.fraud_flags = '{}'::jsonb OR r.fraud_flags = '[]'::jsonb)
         AND refd.registration_ip IS DISTINCT FROM amb.registration_ip
+        -- Y TAMPOCO el mismo DISPOSITIVO (Manuel, 30/07/2026). La IP de registro se cambia
+        -- sin esfuerzo —basta salir del wifi y tirar de datos móviles, o una VPN—, así que
+        -- por sí sola es una guarda blanda: quien quiera fabricarse referidos solo tiene que
+        -- registrarlos desde otra red con el MISMO teléfono. La tabla user_devices es el
+        -- mismo rastro que ya sostiene la detección de multicuenta, y cuesta bastante más de
+        -- falsear que una IP.
+        --
+        -- Medido al añadirlo: 8 referidos en el sistema, 0 comparten dispositivo. El agujero
+        -- no estaba explotado; se cierra antes de que el programa crezca, que es cuando dejan
+        -- de ser 8 y ya no se revisa a mano.
+        --
+        -- Se cruza por device_id (el identificador que persiste en el navegador) y por
+        -- hw_fingerprint (la huella del equipo): borrar el almacenamiento del navegador
+        -- cambia lo primero pero no lo segundo.
+        AND NOT EXISTS (
+          SELECT 1 FROM user_devices d_amb
+          JOIN user_devices d_ref
+            ON d_ref.device_id = d_amb.device_id
+            OR (d_amb.hw_fingerprint IS NOT NULL
+                AND d_ref.hw_fingerprint = d_amb.hw_fingerprint)
+          WHERE d_amb.user_id = r.referrer_user_id
+            AND d_ref.user_id = r.referred_user_id
+        )
         -- >=N tests DESDE la atribución (created_at > attributed_at), NO de por vida: el bono
         -- premia la actividad que la REFERENCIA generó. Sin esto, referir a un free ya-activo
         -- (que arrastra cientos de tests antiguos) concedía 2€ instantáneos sin que la referencia

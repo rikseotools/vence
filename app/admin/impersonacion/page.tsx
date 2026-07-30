@@ -10,7 +10,7 @@
 // (páginas, APIs, caché por usuario, badges) responde como le responde a ella. Una pantalla
 // de admin que imita a la del usuario diverge con el tiempo y acaba mintiendo.
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import BotonVerComoUsuario from '@/components/admin/BotonVerComoUsuario'
 
@@ -31,27 +31,65 @@ export default function ImpersonacionPage() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [truncado, setTruncado] = useState(false)
+  // Nº de la última búsqueda lanzada. Sirve para descartar respuestas que llegan tarde: al
+  // teclear se disparan varias, y sin esto una respuesta lenta de «fl» puede pisar a la de
+  // «flor» y dejar en pantalla resultados que no corresponden a lo escrito.
+  const ultima = useRef(0)
+  const aborto = useRef<AbortController | null>(null)
 
-  const buscar = async (e?: React.FormEvent) => {
+  const buscar = async (e?: React.FormEvent, texto?: string) => {
     e?.preventDefault()
-    if (q.trim().length < 2) {
-      setError('Escribe al menos 2 letras')
+    const termino = (texto ?? q).trim()
+    if (termino.length < 2) {
+      setError(termino.length === 0 ? null : 'Escribe al menos 2 letras')
+      setUsuarios(null)
       return
     }
+    // Cancela la petición anterior: escribir rápido no debe dejar una cola de consultas
+    // corriendo contra la base por cada tecla.
+    aborto.current?.abort()
+    const ctrl = new AbortController()
+    aborto.current = ctrl
+    const turno = ++ultima.current
     setCargando(true)
     setError(null)
     try {
-      const res = await adminFetch(`/api/admin/usuarios/buscar?q=${encodeURIComponent(q.trim())}`)
-      const body = await res.json()
-      if (!res.ok) throw new Error(body?.error || `Error ${res.status}`)
+      const res = await adminFetch(`/api/admin/usuarios/buscar?q=${encodeURIComponent(termino)}`, {
+        signal: ctrl.signal,
+      })
+      if (turno !== ultima.current) return // llegó tarde: ya hay una búsqueda más nueva
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        // Un 401/403 aquí casi siempre es la sesión, no la búsqueda: decirlo con esas
+        // palabras ahorra el rato de mirar una pantalla en blanco sin saber qué pasa.
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            'Tu sesión de administrador no es válida (o ha caducado). Cierra sesión y vuelve a entrar.',
+          )
+        }
+        throw new Error(body?.error || `La búsqueda falló (error ${res.status})`)
+      }
       setUsuarios(body.usuarios || [])
       setTruncado(!!body.truncado)
     } catch (err) {
-      setError((err as Error).message)
+      if ((err as Error).name === 'AbortError') return // cancelada por otra más nueva
+      if (turno !== ultima.current) return
+      // Nunca dejar la pantalla muda: sin mensaje, un fallo parece «no hace nada».
+      setError((err as Error).message || 'No se pudo completar la búsqueda')
+      setUsuarios(null)
     } finally {
-      setCargando(false)
+      if (turno === ultima.current) setCargando(false)
     }
   }
+
+  // Búsqueda en vivo: filtra según se escribe, con un respiro de 250 ms para no lanzar una
+  // consulta por tecla. La consulta tarda 60-100 ms sobre 11.601 usuarios, así que el
+  // resultado aparece prácticamente al terminar de teclear.
+  useEffect(() => {
+    const t = setTimeout(() => { void buscar(undefined, q) }, 250)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q])
 
   const fecha = (v: string | null) => (v ? new Date(v).toLocaleDateString('es-ES') : '—')
 
@@ -76,9 +114,11 @@ export default function ImpersonacionPage() {
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre o correo…"
+          placeholder="Escribe un nombre o un correo…"
           className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
+        {/* El formulario se queda por el Enter y por accesibilidad, pero ya no hace falta
+            pulsarlo: la lista se filtra sola al escribir. */}
         <button
           type="submit"
           disabled={cargando}
@@ -88,7 +128,11 @@ export default function ImpersonacionPage() {
         </button>
       </form>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+          <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
+        </div>
+      )}
 
       {usuarios && usuarios.length === 0 && (
         <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -26,7 +26,7 @@ import {
   type EligibilityReason,
   type RewardType,
 } from './logic'
-import { mergeBreakdown, type BreakdownRow, type BreakdownKind } from './breakdown'
+import { mergeBreakdown, type BreakdownRow, type BreakdownKind, enmascararEmail } from './breakdown'
 
 // Drizzle db o tx; `any` para no pelear con los genéricos de transacción.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -285,7 +285,7 @@ export interface ReferralDetail {
   activeReward: ActiveRewardView
   selfReferral: boolean   // registrado con la MISMA IP que el embajador → autoregistro (no cobra)
   /** por qué NO cuenta como captación (null = válido). No exponemos el detalle de IP al front. */
-  invalidReason: 'self_referral' | 'preexisting' | null
+  invalidReason: 'self_referral' | 'preexisting' | 'same_device' | null
   accountCreatedAt: string | null   // para "ya era usuario desde [fecha]" en los preexistentes
   bountyAmount: number              // 10 € del referido premium (para desglosar el ingreso)
   holdUntil: string | null          // fecha en que se libera el bounty (fin del hold de 15 días)
@@ -311,6 +311,17 @@ export async function getReferralDetails(
     // Autoregistro: el referido se registró con la MISMA IP que el embajador. `=` (no `is not
     // distinct from`) → solo marca cuando ambas IPs son CONOCIDAS e IGUALES (null no flaguea).
     selfReferral: sql<boolean>`(user_profiles.registration_ip = (select registration_ip from user_profiles where id = ${referrerUserId}))`,
+    // ¿La misma persona con otro correo? La IP de registro se cambia con solo salir del wifi;
+    // el dispositivo, no. Se cruza por el identificador del navegador y por la huella del
+    // equipo, que es el mismo rastro que sostiene la detección de multicuenta.
+    mismoDispositivo: sql<boolean>`exists (
+      select 1 from user_devices d_amb
+      join user_devices d_ref
+        on d_ref.device_id = d_amb.device_id
+        or (d_amb.hw_fingerprint is not null and d_ref.hw_fingerprint = d_amb.hw_fingerprint)
+      where d_amb.user_id = ${referrerUserId}
+        and d_ref.user_id = referrals.referred_user_id
+    )`,
     accountCreatedAt: userProfiles.createdAt,
     bountyAmount: sql<string>`referrals.bounty_amount`,
     holdUntil: referrals.holdUntil,
@@ -331,8 +342,11 @@ export async function getReferralDetails(
     const ageDays = created != null && attributed != null ? (attributed - created) / 86_400_000 : null
     const preexisting = ageDays != null && ageDays > REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS
     // Por qué NO cuenta (prioridad: autoregistro > preexistente). null = válido.
-    const invalidReason: 'self_referral' | 'preexisting' | null =
-      selfReferral ? 'self_referral' : (preexisting ? 'preexisting' : null)
+    // Orden de prioridad: autorregistro > mismo dispositivo > cuenta preexistente. El
+    // dispositivo va antes que la antigüedad porque es la señal más difícil de falsear.
+    const mismoDispositivo = !!r.mismoDispositivo
+    const invalidReason: 'self_referral' | 'preexisting' | 'same_device' | null =
+      selfReferral ? 'self_referral' : mismoDispositivo ? 'same_device' : preexisting ? 'preexisting' : null
     // Inválido → no prometemos el bono (ni progreso X/5 engañoso).
     const activeReward = invalidReason
       ? { state: 'none' as const, amount: 0, testsDone: 0, testsNeeded: 0 }
@@ -738,7 +752,10 @@ export async function getEmbajadorBreakdown(userId: string, exec?: Executor): Pr
     db.execute(sql`
       select coalesce(nullif(r.active_reward_amount, 0), r.bounty_amount, 0)::float as amount,
              r.status, r.created_at as date,
-             coalesce(up.email, up.full_name, 'referido') as asunto
+             -- El nombre antes que el correo: es lo que el embajador reconoce. Y si solo hay
+             -- correo, va ENMASCARADO más abajo (nunca sale entero de aquí).
+             coalesce(up.full_name, up.email, 'referido') as asunto,
+             up.email as email_referido
       from referrals r left join user_profiles up on up.id = r.referred_user_id
       where r.referrer_user_id = ${userId}`),
     db.execute(sql`
@@ -774,10 +791,22 @@ export async function getEmbajadorBreakdown(userId: string, exec?: Executor): Pr
         }
       : {}),
   }))
-  const referrals: BreakdownRow[] = rowsOf(refsRes).map((r) => ({
-    kind: 'referral' as BreakdownKind,
-    amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? ''),
-  }))
+  const referrals: BreakdownRow[] = rowsOf(refsRes).map((r) => {
+    // Mismo criterio de privacidad que las tarjetas de arriba (`abbreviateReferredName`):
+    // «Marta Pérez Llorente» → «Marta P. L.». El desglose lo escribía entero, así que la
+    // misma pantalla enseñaba el nombre abreviado arriba y completo abajo. Y si no hay
+    // nombre, el asunto acaba siendo el correo → enmascarado ANTES de salir del servidor.
+    const bruto = String(r.asunto ?? '')
+    const esCorreo = bruto.includes('@')
+    const asunto = esCorreo ? bruto : (abbreviateReferredName(bruto) ?? bruto)
+    return {
+      kind: 'referral' as BreakdownKind,
+      amount: Number(r.amount),
+      status: String(r.status),
+      date: String(r.date),
+      asunto: esCorreo ? enmascararEmail(asunto) : asunto,
+    }
+  })
   const payouts: BreakdownRow[] = rowsOf(paysRes).map((r) => ({
     kind: 'payout' as BreakdownKind,
     amount: Number(r.amount), status: String(r.status), date: String(r.date), asunto: String(r.asunto ?? '—'),
@@ -989,8 +1018,15 @@ export async function getReferralStats(
   const db = exec ?? getReadDb()
   const rows = await db.select({ status: referrals.status })
     .from(referrals).where(eq(referrals.referrerUserId, referrerUserId))
-  const registros = rows.length
-  const compradores = rows.filter((r: { status: string }) =>
+  // Los RECHAZADOS no cuentan como registro.
+  //
+  // El contador decía «3 registros» y justo debajo una de las tres tarjetas salía marcada
+  // «No válido»: la persona suma tres y espera cobrar por tres (Manuel, 30/07/2026). Un
+  // referido rechazado no es una captación —es una que descartamos— y contarlo infla también
+  // la conversión, que es la métrica con la que se decide si el programa funciona.
+  const validos = rows.filter((r: { status: string }) => r.status !== 'rejected')
+  const registros = validos.length
+  const compradores = validos.filter((r: { status: string }) =>
     ['qualified', 'payable', 'paid'].includes(r.status)).length
   return { registros, compradores, conversion: registros ? compradores / registros : 0 }
 }

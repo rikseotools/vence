@@ -12,8 +12,18 @@ import { useEffect, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import VoucherCard, { type Voucher } from './VoucherCard'
 
+/**
+ * Cuántos vales se ven de entrada.
+ *
+ * Quien lleva tiempo acumula muchos y la sección crecía sin límite, empujando hacia abajo
+ * todo lo demás. El que importa es el último —el que aún no has canjeado—, así que se
+ * enseñan los dos más recientes y el resto se pide.
+ */
+const VISIBLES_POR_DEFECTO = 2
+
 export default function MisVales() {
   const [vouchers, setVouchers] = useState<Voucher[] | null>(null)
+  const [todos, setTodos] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -34,10 +44,20 @@ export default function MisVales() {
         Tarjetas regalo de Amazon.es que has conseguido. Copia el código y canjéalo en Amazon.
       </p>
       <div className="space-y-2">
-        {vouchers.map((v, i) => (
+        {(todos ? vouchers : vouchers.slice(0, VISIBLES_POR_DEFECTO)).map((v, i) => (
           <VoucherCard key={i} voucher={v} />
         ))}
       </div>
+      {vouchers.length > VISIBLES_POR_DEFECTO && (
+        <button
+          onClick={() => setTodos((v) => !v)}
+          className="mt-3 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+        >
+          {todos
+            ? 'Mostrar solo los últimos'
+            : `Mostrar todos (${vouchers.length})`}
+        </button>
+      )}
     </section>
   )
 }
