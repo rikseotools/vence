@@ -647,6 +647,31 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-314] 🟠 [ABIERTO 30/07] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones van sin IP
+- **Cómo salió:** Manuel preguntó, verificando [T-304], *"recuerda trackear cada dispositivo con cuántas cuentas inicia sesión y las IPs, eso ya lo tienes verdad?"*. El dispositivo↔cuentas sí (`user_devices`, 6.257 dispositivos, vivo). **La IP no.**
+- **Medido:** de **6.273 sesiones en 7 días, 6.189 tienen `ip_address` a NULL** — el 99%. Y es una REGRESIÓN con fecha exacta:
+
+  | mes | sesiones | con IP |
+  |---|---|---|
+  | 2026-05 | 21.730 | **82,1 %** |
+  | 2026-06 | 17.829 | **80,4 %** |
+  | 2026-07 | 20.297 | **6,6 %** |
+
+  Por día: 02/07 → 67,8 % · 03/07 → 55,3 % · **04/07 → 8,2 %** · y desde entonces ~1 %.
+- **CAUSA (diagnosticada, no supuesta):** `trackSessionIP()` (`contexts/AuthContext.tsx`) se invoca **en un solo sitio**: dentro del listener de auth, en el evento `SIGNED_IN`/`SIGNED_UP`. Ese listener es el de **Supabase Auth**. El **03/07 se flipeó a Auth.js** (`NEXT_PUBLIC_AUTH_PROVIDER=authjs`) y ese evento dejó de dispararse para casi todos los logins, así que **el endpoint dejó de llamarse**. La fecha del desplome coincide exactamente.
+- **Lo que NO es, para que nadie lo busque donde no está:** el endpoint `/api/auth/track-session-ip` **funciona** — las pocas llamadas que le llegan terminan bien (`request_completed`, cero errores en 7 días). Y tampoco es el problema de [T-089] con `getClientIp()`/`CF-Connecting-IP`, que es sobre **qué IP es fiable** tras cambiar de CDN: aquí no llega ninguna IP porque **no se llama a nadie**. Son dos fallos distintos sobre la misma señal.
+- **Por qué importa (y por qué no es solo cosmético):** la IP es la señal que DESEMPATA los casos dudosos del antifraude. Dos cuentas con la misma huella de hardware pero IPs distintas son probablemente dos personas con el mismo modelo de móvil; con la misma IP, es la misma casa. Sin ella:
+  - el detector `multi_account_reg_ip` y el análisis por IP del runbook de fraudes trabajan a ciegas;
+  - la revisión de la sombra de [T-304] pierde su mejor criterio para separar granja de coincidencia;
+  - y la geolocalización de sesión (país/ciudad) se pierde con ella.
+- **Cómo (en este orden):**
+  1. **Reproducir el flujo real de Auth.js** y comprobar en qué evento hay que colgar el tracking ahora. Es un gancho colgado del proveedor viejo, así que la pregunta correcta no es "por qué falla" sino "cuál es el evento equivalente".
+  2. **Colgarlo de algo que no dependa del proveedor de auth.** Si el gancho vuelve a vivir en un evento de librería, el próximo cambio de auth lo rompe otra vez y tampoco nos enteraremos. Candidato: el propio `/api/auth/token` o el primer request autenticado, que existen sea cual sea el proveedor.
+  3. **Guardarraíl del silencio.** Esto llevaba **27 días roto sin una sola señal** —igual que el enforcement de [T-304]—: nadie vigila que un writer DEJE de escribir. Una regla del tipo «el % de sesiones con IP cae por debajo de X» lo habría cazado el 4 de julio. Es el mismo patrón que `device_limit_mudo`.
+  4. Verificar contra el histórico: el 80 % de junio es el listón, no el 100 % (siempre hubo sesiones sin IP).
+- **Relacionado:** [T-304] (la sombra que quería usar la IP como desempate), [T-089] (`getClientIp` agnóstico de CDN, hecho y sin desplegar — complementario, no lo mismo), `docs/runbooks/revisar-fraudes.md`.
+
+
 ### [T-307] 🔴 [ABIERTO 30/07] El barrido nocturno de salud de contenido lleva 2 días MUERTO: el detector de notas de auditoría supera el `statement_timeout` y aborta el cron ENTERO
 - **Cómo salió:** verificando [T-275] (comprobar que el barrido automático de las 07:30 UTC corre limpio). Corre, pero **falla**. No lo vio nadie porque el panel sigue enseñando los hallazgos del 28/07 como si fueran de hoy: un barrido que no escribe no borra lo anterior, así que **el badge se queda en verde de ayer**.
 - **Medido en prod (`observable_events`, `endpoint='content-health-sweep'`):**
