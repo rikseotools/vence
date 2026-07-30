@@ -65,7 +65,18 @@ export class CanaryQuestionsGateController {
         eventType: 'canary_questions_gate_ok',
         endpoint: 'canary-questions-gate',
         durationMs: result.durationMs,
-        metadata: { questionsServed: result.questionsServed },
+        // `gateAssertion` va en el evento, no solo en la respuesta HTTP (30/07). El resultado lo
+        // lee el workflow que dispara el canary y se pierde; lo que queda para siempre es esta
+        // fila. Sin el veredicto, un `canary_questions_gate_ok` en `observable_events` NO distingue
+        // «comprobé que al usuario normal no se le reta» de «no pude comprobarlo», que es el mismo
+        // defecto que T-280 vino a arreglar una capa más abajo: un verde que no dice qué midió.
+        // `gateServidas`/`gateUmbral` acompañan porque son los que explican POR QUÉ se omitió.
+        metadata: {
+          questionsServed: result.questionsServed,
+          gateAssertion: result.gateAssertion,
+          gateServidas: result.gateServidas,
+          gateUmbral: result.gateUmbral,
+        },
       });
       return result;
     }

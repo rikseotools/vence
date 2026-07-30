@@ -56,6 +56,18 @@ describe('canary del gate — la aserción que importa no puede estar exenta', (
     }
     expect(CANARY).toMatch(/return \{ ok: true[^}]*gateAssertion/)
   })
+
+  it('y el EVENTO verde también lo guarda, no solo la respuesta HTTP', () => {
+    // La respuesta la lee el workflow que dispara el canary y se pierde; lo que queda para siempre
+    // es la fila de `observable_events`. Si el veredicto no viaja ahí, un `canary_questions_gate_ok`
+    // no distingue «comprobado» de «no pude comprobarlo» — el defecto de T-280 una capa más abajo.
+    const CONTROLLER = readFileSync(
+      join(ROOT, 'backend/src/canary-questions-gate/canary-questions-gate.controller.ts'),
+      'utf-8',
+    )
+    const bloqueOk = CONTROLLER.match(/canary_questions_gate_ok[\s\S]{0,700}?\}\);/)?.[0] ?? ''
+    expect(bloqueOk).toMatch(/gateAssertion: result\.gateAssertion/)
+  })
 })
 
 describe('endpoint de estado — el veredicto se puede pedir sin servir preguntas', () => {
