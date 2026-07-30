@@ -232,7 +232,16 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
   } catch (e) {
     console.error(`⚠️  no se pudo registrar el evento: ${(e as Error).message}`)
   }
-  if (!resumido) console.log('\n✅ aplicada: estructura + texto coherentes, y la pregunta nace BARAJABLE.\n')
+  // El cierre dice lo que de VERDAD ha quedado: anunciar «nace BARAJABLE» cuando el aviso de arriba
+  // acaba de dejarla `unsafe` es una contradicción en la misma salida, y quien lea el log después
+  // se queda con la última línea (30/07).
+  if (!resumido) {
+    console.log(
+      cruzadas
+        ? '\n✅ aplicada: estructura + texto coherentes. Queda `unsafe` (una opción cita a otra por su letra).\n'
+        : '\n✅ aplicada: estructura + texto coherentes, y la pregunta nace BARAJABLE.\n'
+    )
+  }
 }
 
 async function main() {

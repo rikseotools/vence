@@ -1957,6 +1957,45 @@ arrancada de tsx, y un rechazo se anota y se sigue con el resto en vez de dejar 
    `explanation` es exactamente el render de `explanation_data`, que la pregunta salió del cubo y
    que `shuffle_safety` quedó coherente. La primera tanda de 145 dio pasada limpia.
 
+### ⚠️ El chequeo mecánico da luz verde a lo que se INVENTA (22 de T-282, 30/07/2026)
+
+Las 22 últimas de [T-282] se hicieron por este flujo y midieron algo que conviene tener escrito: el
+gate mecánico —negrita equilibrada + `explanationReferencesLetters` sobre cada campo— dio **22/22
+limpias**, y la auditoría ciega tumbó **3 (14%)**. Los tres defectos eran del mismo tipo, el que
+ningún script ve: **afirmar lo que la fuente no dice.**
+
+| Lo que pasó | Por qué es grave |
+|---|---|
+| El agente escribió una `cita.bloque` que era **su propio resumen**, no copia del artículo | El opositor lee entre comillas algo que la norma no dice |
+| Añadió una condición inexistente: el art. 522 LECrim protege «su seguridad o la reserva del sumario» y la razón puso «(ni la de los demás…)» | Una condición inventada, presentada como del precepto |
+| Inventó detalles concretos (escalas 50%/100%/…, «dos opciones: diagonal y horizontal») sobre un material de referencia que solo ubica la función en su pestaña | Datos verosímiles y sin respaldo: lo peor de corregir después |
+
+**Conclusión operativa: la auditoría ciega del paso 4 no es opcional ni siquiera cuando el gate
+mecánico está en verde.** Y al revés: pasar el gate es condición necesaria, no suficiente.
+
+Tres gotchas del propio flujo, los tres fallos míos del 30/07:
+
+1. **`citaNoLiteral` se alimenta del TEXTO ENTRECOMILLADO, no del `bloque`.** El bloque lleva
+   delante la referencia en negrita (`**Art. 2 LPRL:**`), que por definición no está en el
+   articulado: pasarlo entero da **16 «no literales» de 22** y son todas el prefijo. Con la cita
+   sola: 0. Un detector que de pronto marca casi todo suele estar mal alimentado.
+2. **El detector de letras de producción colisiona con prosa española corriente.** «esta es la
+   opci**ón a** la que no se le reconoce» y «el apart**ado a)** del propio artículo» (que es una
+   letra de la LEY, no de una opción) lo disparan. **Se reformula la frase, no se desactiva el
+   detector**: su sesgo hacia el falso positivo es deliberado.
+3. **Al entregar al agente solo el artículo vinculado, dará por «no verificable» lo que se apoye en
+   los preceptos vecinos** (arts. 10 y 11 de la Ley 40/2015, 158.2 CE…). No es un defecto de la
+   explicación, es un límite de la extracción: o se entrega el contexto, o se lee el aviso sabiendo
+   qué significa.
+
+Y un hallazgo que salió de rebote y valía más que la propia limpieza: una de las 22 estaba
+`shuffle_safety='safe'` con una opción que dice **«Por la B) o, en su defecto, por la C)»**. Ni
+`optionsReferenceOtherOptions` ni `classifyShuffleMode` la veían (uno exige la palabra «opción»
+delante, el otro la conjunción «y» entre dos letras). Arreglado en `classifyShuffleMode.ts` con el
+patrón del **sustantivo elidido** —16 aciertos y 0 falsos positivos sobre las 139.469 activas, 5
+estaban `safe`—. **Al revisar contenido, mira también el texto de las OPCIONES:** el defecto de
+barajado no siempre vive en la explicación.
+
 ### Lo que de verdad hay dentro del cubo (145 revisadas, 28/07/2026)
 
 «Apelotonada» resultó ser **el síntoma, no el defecto**. La mayoría de esas explicaciones no eran
