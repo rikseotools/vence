@@ -158,15 +158,23 @@ export async function checkAndIncrementDailyLimit(
  */
 export async function checkDeviceDailyUsage(
   deviceId: string | null | undefined,
+  fingerprint?: string | null,
 ): Promise<{ allowed: boolean; deviceTotal: number } | null> {
-  if (!deviceId) return null
+  // Con huella v2 basta: es la que sobrevive a borrar `localStorage`, que es justo el gesto que
+  // hacía inútil el `device_id`. Sin ninguna de las dos no se opina (fail-open).
+  const fpV2 = typeof fingerprint === 'string' && fingerprint.startsWith('fp2_') ? fingerprint : null
+  if (!deviceId && !fpV2) return null
 
   return getOrSet<{ allowed: boolean; deviceTotal: number } | null>(
-    `device_daily:${deviceId}`,
+    `device_daily:${deviceId ?? '-'}:${fpV2 ?? '-'}`,
     30,
     async () => {
       try {
-        const devRes = await getAdminDb().execute(sql`SELECT get_device_daily_usage(${deviceId}) AS total`)
+        // v2 agrupa por device_id UNIÓN huella v2 — nunca cuenta menos que la anterior
+        // (verificado sobre 200 dispositivos reales: 0 regresiones).
+        const devRes = await getAdminDb().execute(
+          sql`SELECT get_device_daily_usage_v2(${deviceId ?? null}, ${fpV2}) AS total`,
+        )
         const total = Number(rowsOf(devRes)[0]?.total) || 0
 
         return {

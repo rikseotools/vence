@@ -85,7 +85,7 @@ async function _POST(request: NextRequest) {
     // aplicamos el device-limit (fail-open) — un blip no debe bloquear saves.
     if (!dailyLimit.isPremium && !dailyLimit.degraded) {
       const deviceUsage = await withDbTimeout(
-        () => checkDeviceDailyUsage(deviceId),
+        () => checkDeviceDailyUsage(deviceId, hwFingerprint),
         8_000
       )
       if (deviceUsage && !deviceUsage.allowed) {

@@ -78,7 +78,7 @@ return NextResponse.json(
 
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId)
+      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint)
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
           {

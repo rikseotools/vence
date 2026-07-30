@@ -112,7 +112,7 @@ export class AnswerSaveController {
               hwFingerprint,
             ),
             this.dailyLimit.getDailyLimitStatus(user.userId),
-            this.dailyLimit.checkDeviceDailyUsage(deviceId),
+            this.dailyLimit.checkDeviceDailyUsage(deviceId, hwFingerprint),
           ]),
         ANTIFRAUD_TIMEOUT_MS,
         'antifraud',

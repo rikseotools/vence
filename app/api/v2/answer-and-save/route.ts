@@ -12,6 +12,8 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
+import { emit } from '@/lib/observability/emit'
+import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
@@ -137,7 +139,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       () => Promise.all([
         registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
         getDailyLimitStatus(user.id),
-        checkDeviceDailyUsage(deviceId),
+        checkDeviceDailyUsage(deviceId, hwFingerprint),
       ]),
       ANTIFRAUD_TIMEOUT_MS,
     )
@@ -161,6 +163,34 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // `!degraded`: si el daily-limit vino de un fallback por timeout de BD,
     // fail-open — un blip no debe bloquear a un usuario (free ni premium).
     if (!dailyLimit.isPremium && !dailyLimit.degraded && deviceUsage && !deviceUsage.allowed) {
+      // OBSERVABLE A PROPÓSITO (T-304). Este bloqueo llevaba desde el 17/04 sin dejar rastro
+      // alguno: por eso pudo estar tres meses sin cortar una sola vez —con 3-11 dispositivos al
+      // día pasándose del tope— sin que nadie se enterara. Un enforcement que no se puede contar
+      // no se puede vigilar, y lo que no se vigila se rompe en silencio.
+      await emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'device_daily_limit_blocked',
+        endpoint: '/api/v2/answer-and-save',
+        userId: user.id,
+        httpStatus: 403,
+        errorMessage: `Dispositivo bloqueado: ${deviceUsage.deviceTotal} preguntas hoy entre sus cuentas`,
+        metadata: {
+          deviceTotal: deviceUsage.deviceTotal,
+          // Qué ancla lo cazó: si esto es siempre `device_id`, la huella v2 no está llegando.
+          anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
+          hasFingerprintV2: Boolean(hwFingerprint?.startsWith('fp2_')),
+        },
+      })
+      // Y queda ANOTADO en su perfil (`fraud_watch_list`, idempotente por usuario: reincidir
+      // sube la puntuación en vez de duplicar filas). Anotar es consecuencia del bloqueo, nunca
+      // condición: fire-and-forget para que un fallo aquí no convierta un 403 correcto en un 500.
+      marcarFarmeoFireAndForget({
+        userId: user.id,
+        deviceTotal: deviceUsage.deviceTotal,
+        anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
+        deviceRef: (hwFingerprint || deviceId || '').slice(0, 40) || null,
+      })
       return NextResponse.json(
         {
           success: false,

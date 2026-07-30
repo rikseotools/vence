@@ -4,6 +4,7 @@
 import { logClientError } from '@/lib/logClientError'
 import { emitClientEvent } from '@/lib/observability/client'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
+import { getFingerprintHeader } from '@/lib/security/fingerprint'
 
 const QUEUE_KEY = 'vence_answer_queue'
 const MAX_RETRIES = 5 // Subido de 3 a 5 para dar más oportunidades
@@ -79,7 +80,8 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
 
   try {
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
-    const hwFp = typeof window !== 'undefined' ? localStorage.getItem('vence_hw_fingerprint') : null
+    // Huella v2 (estable ante borrado de localStorage) con caída a v1 durante la migración.
+    const hwFp = typeof window !== 'undefined' ? getFingerprintHeader() : null
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,

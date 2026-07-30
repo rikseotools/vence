@@ -4523,7 +4523,82 @@ export const RULE_SENAL_ERROR_SIN_VIGILANCIA: AlertRule<{
   cooldownMin: 180,
 };
 
+
+/**
+ * El límite por dispositivo NO está cortando aunque haya dispositivos pasándose del tope.
+ *
+ * ── POR QUÉ EXISTE (T-304, 30/07/2026) ──────────────────────────────────────
+ * El enforcement por dispositivo se construyó el 17/04/2026 —frontend, backend, tests y pantalla
+ * de bloqueo incluidos— y estuvo **tres meses sin cortar ni una sola vez**, mientras 3 a 11
+ * dispositivos al día se pasaban del tope rotando cuentas. Nadie se enteró porque un bloqueo que
+ * no ocurre no genera ninguna señal: el fallo era la AUSENCIA, y la ausencia no dispara nada.
+ *
+ * La causa fue el ancla (el `device_id` de localStorage, que se borra en dos clics), pero la
+ * lección que deja esta regla es otra: **un enforcement sin telemetría de sus bloqueos es
+ * indistinguible de un enforcement apagado**. Esta regla compara las dos mitades —hay farmeo / se
+ * está bloqueando— y grita cuando la segunda es cero y la primera no.
+ *
+ * Umbral deliberadamente laxo (3 días) para no confundir un día tranquilo con una avería: lo que
+ * se persigue es el silencio SOSTENIDO, que es la firma del bug de tres meses.
+ */
+export const RULE_DEVICE_LIMIT_MUDO: AlertRule<{
+  deviceDias: number;
+  bloqueos: number;
+  peor: number;
+}> = {
+  name: 'device_limit_mudo',
+  severity: 'error',
+  query: sql`
+    WITH uso AS (
+      SELECT ud.device_id, dqu.usage_date, SUM(dqu.questions_answered)::int AS total
+        FROM daily_question_usage dqu
+        JOIN user_devices ud ON ud.user_id = dqu.user_id
+        JOIN user_profiles up ON up.id = dqu.user_id
+       WHERE dqu.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 3
+         AND dqu.questions_answered > 0
+         AND COALESCE(up.plan_type, 'free') NOT IN
+             ('premium', 'trial', 'legacy_free', 'premium_semester', 'admin')
+       GROUP BY 1, 2
+      HAVING COUNT(DISTINCT dqu.user_id) >= 2 AND SUM(dqu.questions_answered) > 25
+    )
+    SELECT
+      (SELECT COUNT(*)::int FROM uso) AS "deviceDias",
+      (SELECT COALESCE(MAX(total), 0)::int FROM uso) AS "peor",
+      (SELECT COUNT(*)::int FROM observable_events
+        WHERE event_type = 'device_daily_limit_blocked'
+          AND ts >= NOW() - INTERVAL '3 days') AS "bloqueos"
+  `,
+  // Hay farmeo sostenido Y ni un solo bloqueo: el enforcement está mudo.
+  shouldFire: (rows) =>
+    (rows[0]?.deviceDias ?? 0) >= 3 && (rows[0]?.bloqueos ?? 0) === 0,
+  buildNotification: (rows) => {
+    const d = rows[0]?.deviceDias ?? 0;
+    const peor = rows[0]?.peor ?? 0;
+    return {
+      title: `Límite por dispositivo MUDO: ${d} device-días por encima del tope y 0 bloqueos`,
+      body:
+        `En los últimos 3 días hubo ${d} device-días con 2+ cuentas pasando del tope ` +
+        `(el peor, ${peor} preguntas) y el enforcement no ha bloqueado NI UNA vez.\n\n` +
+        `Esto ya pasó del 17/04 al 30/07/2026: el bloqueo existía y estaba cableado, pero se ` +
+        `anclaba al device_id de localStorage, que el usuario borra en dos clics.\n\n` +
+        `Comprobar por este orden:\n` +
+        `  1. ¿Llega la huella v2? → SELECT count(*) FROM user_devices WHERE hw_fingerprint LIKE 'fp2\\_%';\n` +
+        `     Si es 0 o casi, el cliente no la está mandando (revisar getFingerprintHeader).\n` +
+        `  2. ¿La función agrupa? → SELECT get_device_daily_usage_v2('<device>', '<fp2_...>');\n` +
+        `  3. ¿El camino que sirve tráfico comprueba? Frontend y backend deben pasar la huella a ` +
+        `checkDeviceDailyUsage — el proxy al backend se salta el antifraude LOCAL.\n\n` +
+        `Runbook: docs/runbooks/revisar-fraudes.md §límite por dispositivo.`,
+      metadata: { deviceDias: d, bloqueos: rows[0]?.bloqueos ?? 0, peor },
+      fingerprint: 'device_limit_mudo',
+    };
+  },
+  cooldownMin: 1440,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Enforcement por dispositivo mudo (2026-07-30, T-304): un bloqueo que no ocurre no emite
+  // nada, así que el silencio hay que vigilarlo a propósito. Tres meses sin cortar.
+  RULE_DEVICE_LIMIT_MUDO as AlertRule,
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Catch-all (2026-07-29): cualquier señal `error` con volumen manda email aunque
   // nadie le haya escrito una regla. Cierra el hueco estructural de "1 regla por tipo".

@@ -136,6 +136,55 @@ El panel `/admin/fraudes` muestra además un aviso ámbar explícito en la pesta
 
 **La medición NO depende de `CAPTCHA_ENABLED`** (fix 27/07/2026). Ese flag es el rollback instantáneo del *reto* al usuario; si además apagara la medición, un rollback de captcha dejaría la detección ciega en silencio. Detección y enforcement no comparten interruptor.
 
+
+## 🔒 Límite diario POR DISPOSITIVO — el enforcement que estuvo 3 meses mudo (T-304, 30/07/2026)
+
+**Cuándo mirar aquí:** alerta `device_limit_mudo`, o la pregunta *"¿por qué un free hace 75 preguntas al día?"*.
+
+### Lo que pasó, porque es la lección más cara del subsistema
+El bloqueo por dispositivo se construyó el **17/04/2026**: función SQL, `checkDeviceDailyUsage`,
+cableado en 4 endpoints del frontend **y** en el backend, con tests y su pantalla de bloqueo. Y
+**no cortó ni una sola vez en tres meses**, mientras 3-11 dispositivos al día se pasaban del tope.
+
+No fallaba el enforcement: fallaba **el ancla**. Se agrupaba por el `device_id` de `localStorage`,
+que se borra en dos clics. Medido: el trío `suusyyr`/`susanaborgesr`/`susistrawberryy` aparece bajo
+**tres `device_id` distintos**, rotando de cuenta cada 15 minutos — 25+25+25 = 75 con un tope de 25.
+
+**Regla mental:** un enforcement anclado a algo que el usuario puede borrar no es un enforcement.
+Y sin telemetría de sus bloqueos, es indistinguible de estar apagado — que es justo por qué nadie
+lo notó.
+
+### Cómo funciona ahora
+- **Ancla:** huella de hardware **v2** (`fp2_…`) — SHA-256 de canvas completo + WebGL + AudioContext
+  + RAM + CPU + pantalla normalizada. Sobrevive a borrar `localStorage` porque se **recalcula** del
+  hardware: la caché es caché, no identidad (fijado por test).
+- **Las huellas v1 (`hw_…`) se IGNORAN a propósito**: colisionan hasta **83 cuentas** (hash de 32
+  bits + canvas recortado a su parte constante). Agrupar por ellas sería apagar a usuarias que solo
+  comparten modelo de móvil. No es un olvido: está escrito en la función SQL.
+- **Función:** `get_device_daily_usage_v2(device_id, fingerprint)` = unión de ambas señales. Es
+  **aditiva**: nunca cuenta menos que la anterior (verificado sobre 200 dispositivos, 0 regresiones).
+- **Tope:** 25/día por dispositivo, **el mismo que por cuenta** (decisión de Manuel: las cuentas son
+  individuales). Medido: **0 device-días con UNA sola cuenta se ven afectados** — quien usa su
+  equipo solo nunca lo nota, porque su propio límite ya lo topa en 25.
+- **Cada bloqueo deja rastro:** evento `device_daily_limit_blocked` en `observable_events` (con
+  `anchor`, para saber si lo cazó la huella o el device_id) **y** anotación en `fraud_watch_list`
+  (idempotente por usuario: reincidir sube `suspicion_score` en vez de duplicar filas, y respeta el
+  motivo si ya estaba fichado por otro detector). `confirmed_fraud` lo sigue poniendo una persona.
+
+### Diagnóstico en 3 pasos si vuelve a estar mudo
+```sql
+-- 1) ¿Llega la huella v2? Si es ~0, el cliente no la manda (revisar getFingerprintHeader).
+SELECT count(*) FROM user_devices WHERE hw_fingerprint LIKE 'fp2\_%';
+-- 2) ¿Agrupa la función?
+SELECT get_device_daily_usage_v2('<device_id>', '<fp2_...>');
+-- 3) ¿Hay farmeo sin bloqueos? (es lo que vigila la alerta)
+SELECT count(*) FROM observable_events
+ WHERE event_type='device_daily_limit_blocked' AND ts >= NOW()-INTERVAL '3 days';
+```
+**Y comprueba el camino que sirve el tráfico:** `answer-and-save` hace **proxy al backend** cuando
+el flag está activo, y en ese caso el antifraude LOCAL no se ejecuta. Frontend y backend tienen que
+pasar la huella a `checkDeviceDailyUsage` — si solo lo hace uno, el agujero sigue abierto por el otro.
+
 ## Umbrales (env del sweep, calibrables)
 `FRAUD_DEVICE_ACCOUNTS` (3), `FRAUD_IP_ACCOUNTS` (5), `FRAUD_DEVICE_DAILY_Q` (60), `FRAUD_SCRAPE_MIN_SERVED` (300), `FRAUD_WINDOW_DAYS` (30). Subirlos = menos ruido; bajarlos = más sensibilidad. Ajustar con datos reales (fase F3). Los umbrales de la cosecha (ratio 0,2 y volumen egregio 5.000) viven en `DEFAULTS` de `harvestSignals.js`.
 

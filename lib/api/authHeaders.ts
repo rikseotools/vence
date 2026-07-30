@@ -16,6 +16,7 @@
 // El cooldown anti-429 no desapareció: se movió al `supabaseAdapter`, que es de quien era
 // la mecánica. Guardarraíl: `__tests__/guardrails/bearerTokenSinglePath.test.ts`.
 import { auth } from '@/lib/auth'
+import { getFingerprintHeader } from '@/lib/security/fingerprint'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -37,7 +38,11 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   if (typeof window !== 'undefined') {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY)
     if (deviceId) headers['X-Device-Id'] = deviceId
-    const hwFp = localStorage.getItem('vence_hw_fingerprint')
+    // Huella de hardware: v2 en cuanto esté calculada, v1 mientras tanto (una sola función
+    // decide, ver `lib/security/fingerprint`). El `device_id` de arriba NO sirve como ancla de
+    // cupo — se borra en dos clics y por eso el límite por dispositivo llevaba desde abril sin
+    // cortar una sola vez.
+    const hwFp = getFingerprintHeader()
     if (hwFp) headers['X-Hw-Fingerprint'] = hwFp
   }
 

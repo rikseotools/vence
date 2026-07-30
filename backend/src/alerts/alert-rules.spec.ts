@@ -2238,3 +2238,45 @@ describe('Alertas del BARAJADO (29/07, tras el incidente del piloto T-235)', () 
     expect(nombres).toContain('shuffle_option_order_invalid');
   });
 });
+
+describe('RULE_DEVICE_LIMIT_MUDO (enforcement por dispositivo sin cortar — T-304, 30/07)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_DEVICE_LIMIT_MUDO } = require('./alert-rules');
+  const fila = (deviceDias: number, bloqueos: number, peor = 75) => [
+    { deviceDias, bloqueos, peor },
+  ];
+
+  it('hay farmeo sostenido y CERO bloqueos → dispara (el bug de 3 meses)', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(11, 0))).toBe(true);
+  });
+
+  it('hay farmeo y TAMBIÉN bloqueos → no dispara (está funcionando)', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(11, 4))).toBe(false);
+  });
+
+  it('un solo bloqueo basta para callarla: prueba que el camino está vivo', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(50, 1))).toBe(false);
+  });
+
+  it('sin farmeo no dispara aunque no haya bloqueos (no hay nada que cortar)', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('un par de device-días sueltos no bastan: se persigue el silencio SOSTENIDO', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(2, 0))).toBe(false);
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire(fila(3, 0))).toBe(true);
+  });
+
+  it('tolera filas vacías o corruptas sin lanzar (corre en un cron nocturno)', () => {
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire([])).toBe(false);
+    expect(RULE_DEVICE_LIMIT_MUDO.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso dice DÓNDE mirar, no solo que algo va mal', () => {
+    const n = RULE_DEVICE_LIMIT_MUDO.buildNotification(fila(11, 0, 100));
+    expect(n.title).toContain('MUDO');
+    expect(n.body).toContain('hw_fingerprint');   // la comprobación nº1
+    expect(n.body).toContain('get_device_daily_usage_v2');
+    expect(n.body).toContain('revisar-fraudes.md');
+  });
+});

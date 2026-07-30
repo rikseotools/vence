@@ -317,12 +317,20 @@ export class DailyLimitService {
    */
   async checkDeviceDailyUsage(
     deviceId: string | null,
+    fingerprint?: string | null,
   ): Promise<{ allowed: boolean; deviceTotal: number } | null> {
-    if (!deviceId) return null;
+    // Anclar SOLO a la huella v2: la v1 (`hw_`) colisiona hasta 83 cuentas y agrupar por ella
+    // apagaría a usuarias legítimas que solo comparten modelo de móvil. Ver T-304.
+    const fpV2 =
+      typeof fingerprint === 'string' && fingerprint.startsWith('fp2_')
+        ? fingerprint
+        : null;
+    if (!deviceId && !fpV2) return null;
     try {
-      // RPC devuelve scalar integer (NO table).
+      // RPC devuelve scalar integer (NO table). v2 = device_id UNIÓN huella v2; nunca cuenta
+      // menos que la anterior (verificado sobre 200 dispositivos reales: 0 regresiones).
       const rows = (await this.db.execute(sql`
-        SELECT get_device_daily_usage(${deviceId}::text) AS total
+        SELECT get_device_daily_usage_v2(${deviceId}::text, ${fpV2}::text) AS total
       `)) as unknown as Array<{ total: number | null }>;
 
       const total = Number(rows[0]?.total ?? 0);
@@ -332,7 +340,7 @@ export class DailyLimitService {
       };
     } catch (err) {
       this.logger.warn(
-        `Error en get_device_daily_usage para device ${deviceId.slice(0, 8)} — fail-open:`,
+        `Error en get_device_daily_usage_v2 para device ${(deviceId ?? fpV2 ?? '?').slice(0, 12)} — fail-open:`,
         err,
       );
       return null;

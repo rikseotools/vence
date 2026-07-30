@@ -72,7 +72,7 @@ async function _POST(request: NextRequest) {
     const dailyLimit = await getDailyLimitStatus(tokenUserId)
 
     if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId)
+      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint)
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
           { success: false, error: 'Este dispositivo ha alcanzado el límite diario. Vuelve mañana o hazte premium.', limitReached: true },
