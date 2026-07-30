@@ -10,7 +10,7 @@
 //    así dos pestañas abiertas no se pelean.
 //  · Sin sesión no se pinta: marcar exige cuenta y un corazón que no funciona
 //    frustra más que su ausencia.
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 
@@ -37,6 +37,18 @@ export default function FavoriteQuestionButton({
 }: Props) {
   const { user } = useAuth() as { user: { id: string } | null }
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite)
+
+  // El estado SIGUE a la pregunta. `useState(initialIsFavorite)` solo se evalúa en el
+  // primer render, y en un test React reutiliza esta misma instancia al pasar de pregunta
+  // (se monta sin `key`), así que el corazón se quedaba con el estado de la ANTERIOR: salía
+  // rojo en preguntas no marcadas y había que pulsarlo dos veces, la primera para deshacer
+  // lo heredado. Lo reportó Laura Zurdo el 29/07/2026, el día del estreno.
+  //
+  // Se sincroniza por `questionId` además de por el valor: dos preguntas seguidas pueden
+  // compartir estado (ambas sin marcar) y aun así hay que reiniciar al cambiar de pregunta.
+  useEffect(() => {
+    setIsFavorite(initialIsFavorite)
+  }, [questionId, initialIsFavorite])
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(false)
 

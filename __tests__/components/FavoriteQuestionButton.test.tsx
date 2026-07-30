@@ -105,3 +105,28 @@ describe('FavoriteQuestionButton', () => {
     })
   })
 })
+
+describe('el corazón sigue a la pregunta (bug de Laura, 29/07)', () => {
+  // En un test, React reutiliza esta misma instancia al pasar de pregunta (se monta sin
+  // `key`). Con `useState(initialIsFavorite)` a secas, el estado se quedaba con el de la
+  // pregunta ANTERIOR: la siguiente salía en rojo sin marcarla y había que pulsar dos
+  // veces. Lo reportó la misma usuaria que pidió la función, el día del estreno.
+  it('al cambiar de pregunta, el corazón refleja la NUEVA, no la anterior', () => {
+    const { rerender } = render(
+      <FavoriteQuestionButton questionId="preg-1" initialIsFavorite={true} />,
+    )
+    expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true')
+
+    // Misma posición en el árbol, otra pregunta y NO marcada.
+    rerender(<FavoriteQuestionButton questionId="preg-2" initialIsFavorite={false} />)
+    expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('vuelve a marcado si la siguiente pregunta SÍ era favorita', () => {
+    const { rerender } = render(
+      <FavoriteQuestionButton questionId="preg-1" initialIsFavorite={false} />,
+    )
+    rerender(<FavoriteQuestionButton questionId="preg-2" initialIsFavorite={true} />)
+    expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('true')
+  })
+})
