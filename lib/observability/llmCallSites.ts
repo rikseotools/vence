@@ -68,6 +68,8 @@ export const LLM_CALL_SITES: LlmCallSite[] = [
   { ruta: 'scripts/observabilidad/ab-modelo-notas.cjs', estado: 'instrumentado', feature: 'ab_notas' },
   { ruta: 'scripts/observabilidad/ab-modelo-vinculo-vecino.cjs', estado: 'instrumentado', feature: 'ab_vinculo_vecino' },
   { ruta: 'scripts/observabilidad/ab-modelo-transformacion.cjs', estado: 'instrumentado', feature: 'ab_transformacion' },
+  { ruta: 'scripts/observabilidad/ab-modelo-reescritura.cjs', estado: 'instrumentado', feature: 'ab_reescritura' },
+  { ruta: 'scripts/observabilidad/lib/ab-llm.cjs', estado: 'instrumentado', feature: 'ab_comun' },
 
   // ── Crudos: gasto INVISIBLE. Cada uno con lo que hace falta para cerrarlo ──────────────────
   {

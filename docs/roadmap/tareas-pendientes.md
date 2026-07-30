@@ -709,6 +709,30 @@ incluida).
     2. **Ola 2 — las 105.094 de prosa**: autoría. Necesita una capa de auditoría que sustituya al gate perdido (muestra revisada por agente, o exigir que cada razón esté ANCLADA en el vocabulario del artículo). Priorizada por exposición: las 5.000 más vistas cubren la mitad.
   - **Y una guarda para la ola 2:** escribir razones nuevas sobre una pregunta cuya clave nadie ha verificado es construir sobre arena. Las 12.430 nunca verificadas van ANTES por el escalón 2, y en la misma pasada quedan estructuradas.
 
+- **✅ SIMPLIFICACIÓN (30/07, la señaló Manuel y zanja lo anterior): no hay «transformación» para la prosa. Quien escribe, escribe YA en estructura.**
+  - Su argumento: si la explicación no analiza por opción, un modelo no puede reordenar lo que no existe. Hace falta **razonar sobre el artículo y escribir la respuesta** — y ya que la escribe, la escribe directamente en el formato nuevo.
+  - **Y el proyecto ya había decidido esto**, lo que hace que mi banco de transformación fuera reconstruir el camino abandonado. La cabecera de `scripts/aplicar-explicacion.ts` lo dice literalmente: *«histórico: texto → estructura = PARSE (heurístico, y falla); nuevo: estructura → texto = RENDER (determinista: no puede fallar)»*. El parser es el camino viejo y por eso transcribe solo el 43,7%/15,3%.
+  - **Mapa definitivo, sin el paso intermedio:**
+
+    | población | cuántas | exposición | qué se hace |
+    |---|---|---|---|
+    | ya analizan por opción | 13.906 | 372.835 | **reestructurar** (no se escribe nada). Victoria barata: se hace una vez y se olvida. Banco: `npm run llm:ab-transformacion` |
+    | prosa corrida | 105.094 | 1,17 M | **REESCRIBIR desde el artículo**, directamente en estructura. No es transformación |
+    | nunca verificadas | 12.430 | 26.309 | agente primero (clave + artículo), y en la MISMA pasada queda escrita en estructura |
+
+  - **Lo que cambia para el banco de reescritura (y es lo que mi arnés hacía mal): el modelo necesita el ARTÍCULO delante, no la explicación vieja.** Y con ello cambian los gates, porque ya no hay contenido que conservar:
+
+    | gate | transformar | reescribir |
+    |---|---|---|
+    | una razón por opción | ✅ | ✅ |
+    | narrativa sin letras | ✅ | ✅ |
+    | cita literal (`citaNoLiteral`) | ✅ | ✅ |
+    | reparto sin pérdida ni invención | ✅ | ❌ no aplica |
+    | **anclaje en el artículo** (cobertura del texto escrito contra el texto legal) | — | ✅ **lo sustituye** |
+    | auditoría por muestra (agente) | opcional | **obligatoria**: «anclado» no garantiza «cierto» |
+
+  - **Orden de trabajo:** (1) las 12.430 nunca verificadas por agente —escribir razones sobre una pregunta cuya clave nadie ha comprobado es construir sobre arena—; (2) las 13.906 reestructurables con modelo barato; (3) la reescritura de las 105.094 por exposición, con auditoría.
+
 - **🔧 Dos fallos del ARNÉS antes de culpar a ningún modelo (los dos del 29-30/07):** (1) `max_tokens: 400` daba 0-2/10 a diez modelos de razonamiento que se gastaban el presupuesto pensando; (2) `isStructuredExplanation` exige un campo `"v": 1` que el prompt no pedía, y rechazaba estructuras perfectas. **Regla: cuando un modelo saca 0, sospechar del arnés primero.**
 
 - **El listón a batir ya está medido:** el parser heurístico actual (`scripts/backfill-explanation-data.ts`) transcribe solo el **43,7%** del formato de generación y el **15,3%** del de impugnaciones. Un modelo del escalón 1 solo tiene que superar eso, y los gates lo hacen seguro.
