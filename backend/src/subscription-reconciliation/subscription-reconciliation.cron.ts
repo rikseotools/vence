@@ -23,6 +23,10 @@ import { SubscriptionReconciliationService } from './subscription-reconciliation
  *   2. `subscription_drift_missing_in_db` — Pass-2: Stripe tiene sub que falta
  *      en BD (caso Andrea/Rocío/Mercedes). Alimentado a
  *      RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (severity=error).
+ *   3. `premium_sin_respaldo` — Pass-3: premium que NADIE paga (la dirección
+ *      contraria, que no vigilaba ninguna de las 8 reglas existentes).
+ *      Alimentado a RULE_PREMIUM_SIN_RESPALDO (severity=warn: no hay daño al
+ *      usuario, hay dinero escapándose).
  */
 @Injectable()
 export class SubscriptionReconciliationCron {
@@ -103,6 +107,30 @@ export class SubscriptionReconciliationCron {
             unreconciled_accounts: unreconciled.join(' | ') || null,
             accounts: p2.accounts ?? null,
             sample: p2.sample,
+          },
+        });
+      }
+
+      // Pass-3: premium que nadie paga. La dirección que faltaba — ver el método en el
+      // servicio. Evento propio para que la alerta pueda distinguirlo del caso Andrea, que es
+      // el contrario y se atiende de otra manera.
+      const sinRespaldo = result.pass2.sinRespaldo ?? [];
+      if (sinRespaldo.length > 0) {
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: 'warn', // no es daño al usuario: es dinero que se escapa
+          eventType: 'premium_sin_respaldo',
+          endpoint: 'subscription-reconciliation',
+          durationMs: Date.now() - startedAt,
+          metadata: {
+            cron: 'subscription-reconciliation',
+            pass: 3,
+            detected: sinRespaldo.length,
+            por_motivo: sinRespaldo.reduce<Record<string, number>>((acc, x) => {
+              acc[x.motivo] = (acc[x.motivo] ?? 0) + 1;
+              return acc;
+            }, {}),
+            sample: sinRespaldo.slice(0, 5),
           },
         });
       }

@@ -1634,3 +1634,23 @@ Desde el flip de altas a Nila hay **dos cuentas Stripe vivas** (`manuel` = renov
 **Al reparar, se repara el perfil ENTERO**: premium + `stripe_customer_id` + `payment_account`, en una transacción. Dejar solo el premium haría que cancelar / portal / reembolso resolvieran la cuenta equivocada.
 
 **Infra:** cada cuenta necesita su secret en SSM **y** en la allowlist del rol de ejecución (`vence-backend-task-execution` → política `vence-backend-read-secrets` enumera parámetro a parámetro). Sin la entrada IAM la task no arranca: `ResourceInitializationError … AccessDeniedException … ssm:GetParameters`.
+
+## La vigilancia tenía una sola dirección: premium regalado (30/07/2026)
+
+**El caso.** Un cliente pagó 20 € el 27/04, canceló **desde nuestra app** el 26/05 (`cancellation_feedback`: `self_service`, `requested_via: app`) y Stripe terminó su suscripción el 27/05 al acabar el mes pagado. Su fila de `user_subscriptions` se quedó en `active` y su perfil en `premium`: **dos meses y 293 tests con premium regalado**, hasta que se detectó el 29/07 al arreglar un test de integración.
+
+**No hubo nada raro por parte del usuario.** Canceló por la puerta y Stripe lo ejecutó bien. El fallo es nuestro y encaja con el incidente del webhook roto del 26-27/05 — aunque eso ya **no se puede demostrar**: los eventos de Stripe caducan a los 30 días y `observable_events` no empieza hasta el 29/06. Que la prueba caduque es en sí un dato: sin retención propia de los eventos entrantes, los incidentes de pagos son indemostrables pasado un mes.
+
+**Por qué no saltó ninguna alarma.** Había 8 reglas sobre suscripciones (`subscription_drift`, `subscription_drift_missing_in_db`, `stripe_checkout_failed`, `subscription_void_failed`, `force_cancel_burst`, `cancel_error_burst`, `webhook_signature_failed`, `webhook_4xx_burst`). Todas vigilan **que ningún usuario se quede sin lo que pagó**, o que la maquinaria funcione. **Ninguna vigilaba lo contrario.** No fue un descuido puntual: es una asimetría de diseño — se protegió al cliente y no al negocio.
+
+**Tres agravantes que conviene reconocer:**
+
+1. **La auto-reparación trabajaba a favor de la fuga.** El Pass-1 corrige «fila activa pero perfil sin premium». Como la fila decía `active`, cada hora volvía a conceder el premium. Un reparador que no comprueba la premisa de su reparación la perpetúa.
+2. **El test que lo habría cazado estaba muerto y contabilizado como conocido.** `stripeSubscriptionSync` comparaba contra **Supabase, congelado desde el cutover del 04/07**, y vivía en el saco de «10 fallos conocidos» del workflow. Un rojo permanente no es un aviso: es ruido con nombre propio.
+3. **No se podía distinguir la fuga de la concesión legítima.** `plan_type='premium'` sin suscripción significaba dos cosas incompatibles (cuenta interna / canario / compensación **o** fuga), así que cualquier detector habría chillado a diario por algo sano.
+
+**Lo que se hizo (contención, 30/07):** `user_profiles.premium_grant_reason/granted_at/granted_by` para declarar la concesión, y un **Pass-3** en `subscription-reconciliation` que detecta las dos formas del problema —fila `active` sin suscripción viva en NINGUNA cuenta, y perfil premium sin suscripción ni concesión— con la regla `premium_sin_respaldo` (severity `warn`: aquí no hay daño a un usuario, hay dinero escapándose). **Solo detecta**: quitar premium afecta a una persona real y puede tener una razón que no está en la BD.
+
+**Lo que NO arregla, y por qué está fichado aparte ([T-295]):** `plan_type` sigue siendo un valor derivado que se guarda a mano, con **6 caminos que lo escriben y 81 que lo leen**. Añadir un vigilante más acorta la ventana pero no elimina el fallo, y hace que la invariante dependa de que un cron siga vivo. La cura es la que ya se aplicó a `questions.is_active GENERATED` sobre `lifecycle_state`: **deducir el acceso de los hechos**, para que desincronizarse sea imposible en vez de vigilado.
+
+**La regla general que deja este caso:** por cada invariante que protege al usuario, preguntarse cuál es la simétrica que protege al negocio — y si existe alguien que la mire.

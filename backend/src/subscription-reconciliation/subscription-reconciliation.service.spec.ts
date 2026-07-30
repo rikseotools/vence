@@ -50,6 +50,14 @@ interface FakeDbOptions {
   profileByCustomer?: string | null;
   /** user_id que devuelve la búsqueda por email */
   profileByEmail?: string | null;
+  /** Pass-3 (a): filas `active` en BD, con su sub y su email */
+  filasActivas?: Array<{
+    user_id: string;
+    stripe_subscription_id: string;
+    email: string | null;
+  }>;
+  /** Pass-3 (b): perfiles premium sin suscripción viva ni concesión */
+  premiumSinSub?: Array<{ id: string; email: string | null }>;
   /** estado actual del perfil que se lee dentro de la transacción */
   profileState?: {
     id: string;
@@ -78,6 +86,14 @@ class FakeDb {
     }
     // Pass-1
     if (/INNER JOIN user_profiles/i.test(text)) return Promise.resolve([]);
+    // Pass-3 (a): filas active cuya sub ya no está activa en Stripe
+    if (/JOIN user_profiles up ON up\.id = us\.user_id/i.test(text)) {
+      return Promise.resolve(this.opts.filasActivas ?? []);
+    }
+    // Pass-3 (b): perfiles premium sin suscripción viva ni concesión declarada
+    if (/plan_type = 'premium'/i.test(text)) {
+      return Promise.resolve(this.opts.premiumSinSub ?? []);
+    }
     // ¿la sub ya está en BD?
     if (/FROM user_subscriptions/i.test(text)) {
       const id = /stripe_subscription_id = (\S+)/.exec(text)?.[1];
@@ -371,5 +387,95 @@ describe('Pass-2 multi-cuenta', () => {
 
     expect(r.pass2.errors).toContain('no_stripe_key');
     expect(r.pass2.degraded).toBe(true);
+  });
+});
+
+describe('Pass-3 — premium sin respaldo (la dirección que nadie vigilaba)', () => {
+  it('caza la fila active cuya suscripción ya NO está activa en Stripe', async () => {
+    // El caso real del 29/07: canceló el 26/05, Stripe la terminó el 27/05, la fila se quedó
+    // en active y el perfil en premium — dos meses de premium regalado.
+    const db = new FakeDb({
+      subsInDb: ['sub_viva'],
+      filasActivas: [
+        {
+          user_id: 'u-fuga',
+          stripe_subscription_id: 'sub_muerta',
+          email: 'ana@example.com',
+        },
+        {
+          user_id: 'u-ok',
+          stripe_subscription_id: 'sub_viva',
+          email: 'bea@example.com',
+        },
+      ],
+    });
+    const svc = new FakeService(db, {
+      sk_manuel: [sub('sub_viva')],
+      sk_nila: [],
+    });
+
+    const r = await svc.run(false);
+
+    expect(r.pass2.sinRespaldo).toEqual([
+      {
+        userId: 'u-fuga',
+        email: 'ana@example.com',
+        motivo: 'fila_active_sin_sub_en_stripe',
+        subscriptionId: 'sub_muerta',
+      },
+    ]);
+  });
+
+  it('caza el perfil premium sin suscripción ni concesión declarada', async () => {
+    const db = new FakeDb({
+      subsInDb: ['sub_viva'],
+      premiumSinSub: [{ id: 'u-regalado', email: 'cris@example.com' }],
+    });
+    const svc = new FakeService(db, {
+      sk_manuel: [sub('sub_viva')],
+      sk_nila: [],
+    });
+
+    const r = await svc.run(false);
+
+    expect(r.pass2.sinRespaldo).toEqual([
+      {
+        userId: 'u-regalado',
+        email: 'cris@example.com',
+        motivo: 'premium_sin_suscripcion_ni_concesion',
+        subscriptionId: null,
+      },
+    ]);
+  });
+
+  it('NO acusa a nadie si alguna cuenta Stripe es ilegible', async () => {
+    // Con una cuenta ciega, una suscripción viva de ESA cuenta parecería inexistente y
+    // acusaríamos de fuga a un cliente que sí paga. Mejor no mirar que mirar mal.
+    delete process.env.STRIPE_SECRET_KEY_NILA;
+    const db = new FakeDb({
+      subsInDb: [],
+      filasActivas: [
+        { user_id: 'u-x', stripe_subscription_id: 'sub_de_nila', email: null },
+      ],
+    });
+    const svc = new FakeService(db, { sk_manuel: [] });
+
+    const r = await svc.run(false);
+
+    expect(r.pass2.degraded).toBe(true);
+    expect(r.pass2.sinRespaldo).toEqual([]);
+  });
+
+  it('SOLO detecta: no escribe nada aunque encuentre fugas', async () => {
+    // Quitar premium afecta a una persona real y puede tener una razón que no está en la BD.
+    const db = new FakeDb({
+      subsInDb: [],
+      premiumSinSub: [{ id: 'u-regalado', email: null }],
+    });
+    const svc = new FakeService(db, { sk_manuel: [], sk_nila: [] });
+
+    await svc.run(false);
+
+    expect(db.writes).toHaveLength(0);
   });
 });

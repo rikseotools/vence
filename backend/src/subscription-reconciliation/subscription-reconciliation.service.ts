@@ -146,6 +146,8 @@ export class SubscriptionReconciliationService {
     const missing: Pass2MissingEntry[] = [];
     const accounts: Pass2AccountResult[] = [];
     const errors: string[] = [];
+    /** ids de TODAS las subs activas vistas, para la comprobación inversa (Pass-3). */
+    const activasEnStripe = new Set<string>();
 
     for (const { account, secretKey, envVar } of keys) {
       if (!secretKey) {
@@ -170,6 +172,8 @@ export class SubscriptionReconciliationService {
           dryRun,
         );
         missing.push(...result.entries);
+        // Se acumulan para el Pass-3: una sub viva en CUALQUIER cuenta respalda su fila.
+        for (const id of result.activasIds) activasEnStripe.add(id);
         accounts.push({
           account,
           readable: true,
@@ -192,12 +196,26 @@ export class SubscriptionReconciliationService {
       }
     }
 
+    // Comprobación INVERSA — ver `detectarPremiumSinRespaldo`. Solo si TODAS las cuentas se
+    // pudieron leer: con una cuenta ciega, una sub viva de esa cuenta parecería inexistente y
+    // acusaríamos de fuga a un cliente que paga.
+    const degraded = accounts.some((a) => !a.readable);
+    const sinRespaldo = degraded
+      ? []
+      : await this.detectarPremiumSinRespaldo(activasEnStripe);
+    if (degraded) {
+      this.logger.warn(
+        'Pass-3 (premium sin respaldo) OMITIDO: hay cuentas Stripe ilegibles',
+      );
+    }
+
     return {
       stripeMissingInDb: missing.length,
       stripeMissingFixed: missing.filter((m) => m.fixed).length,
       errors,
-      degraded: accounts.some((a) => !a.readable),
+      degraded,
       accounts,
+      sinRespaldo,
       sample: missing.slice(0, 5).map((m) => ({
         userId: m.userId,
         email: m.email,
@@ -214,7 +232,11 @@ export class SubscriptionReconciliationService {
     secretKey: string,
     since: number,
     dryRun: boolean,
-  ): Promise<{ scanned: number; entries: Pass2MissingEntry[] }> {
+  ): Promise<{
+    scanned: number;
+    entries: Pass2MissingEntry[];
+    activasIds: string[];
+  }> {
     const stripe = this.createStripe(secretKey);
 
     // Paginar subs active últimos 30 días — máximo 5 páginas (500 subs) como
@@ -351,7 +373,88 @@ export class SubscriptionReconciliationService {
       entries.push(entry);
     }
 
-    return { scanned: stripeActives.length, entries };
+    return {
+      scanned: stripeActives.length,
+      entries,
+      activasIds: stripeActives.map((s) => s.id),
+    };
+  }
+
+  /**
+   * Pass-3 — PREMIUM SIN RESPALDO: la dirección que nadie vigilaba.
+   *
+   * Las 8 reglas de alerta sobre suscripciones vigilan que ningún usuario se quede sin lo que
+   * pagó, o que la maquinaria funcione. Ninguna miraba lo contrario. Caso real (29/07/2026): un
+   * cliente canceló desde la app el 26/05, Stripe terminó su suscripción el 27/05, y su fila se
+   * quedó en `active` con el perfil en premium — dos meses y 293 tests regalados. Peor: como la
+   * fila decía `active`, el Pass-1 le RENOVABA el premium cada hora.
+   *
+   * Dos formas del mismo problema:
+   *   (a) fila `active` en BD cuya suscripción ya no está activa en NINGUNA cuenta Stripe
+   *   (b) perfil `premium` sin ninguna fila viva y SIN concesión declarada
+   *
+   * `premium_grant_reason` es lo que hace posible (b): sin esa marca, las cuentas internas y el
+   * canario son indistinguibles de una fuga y el detector chillaría a diario por algo sano —
+   * que es exactamente cómo se acaba ignorando un aviso.
+   *
+   * SOLO DETECTA. Quitarle el premium a alguien afecta a una persona real y puede tener una
+   * razón que no está en la BD; que lo confirme un humano. Y las `sub_manual_*` se excluyen:
+   * son altas sin Stripe detrás, no tienen contraparte que comprobar.
+   */
+  private async detectarPremiumSinRespaldo(
+    activasEnStripe: Set<string>,
+  ): Promise<PremiumSinRespaldo[]> {
+    const out: PremiumSinRespaldo[] = [];
+
+    const filas = (await this.db.execute(sql`
+      SELECT us.user_id, us.stripe_subscription_id, up.email
+        FROM user_subscriptions us
+        JOIN user_profiles up ON up.id = us.user_id
+       WHERE us.status = 'active'
+         AND us.stripe_subscription_id IS NOT NULL
+         AND us.stripe_subscription_id NOT LIKE 'sub_manual_%'
+         AND up.premium_grant_reason IS NULL
+    `)) as unknown as Array<{
+      user_id: string;
+      stripe_subscription_id: string;
+      email: string | null;
+    }>;
+
+    for (const f of filas) {
+      if (activasEnStripe.has(f.stripe_subscription_id)) continue;
+      out.push({
+        userId: f.user_id,
+        email: f.email,
+        motivo: 'fila_active_sin_sub_en_stripe',
+        subscriptionId: f.stripe_subscription_id,
+      });
+    }
+
+    const perfiles = (await this.db.execute(sql`
+      SELECT up.id, up.email
+        FROM user_profiles up
+       WHERE up.plan_type = 'premium'
+         AND up.premium_grant_reason IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM user_subscriptions us
+            WHERE us.user_id = up.id AND us.status IN ('active','trialing','past_due'))
+    `)) as unknown as Array<{ id: string; email: string | null }>;
+
+    for (const p of perfiles) {
+      out.push({
+        userId: p.id,
+        email: p.email,
+        motivo: 'premium_sin_suscripcion_ni_concesion',
+        subscriptionId: null,
+      });
+    }
+
+    if (out.length > 0) {
+      this.logger.warn(
+        `Pass-3: ${out.length} usuario(s) con premium sin respaldo de pago`,
+      );
+    }
+    return out;
   }
 
   /**
@@ -511,6 +614,14 @@ export interface Pass2AccountResult {
   fixed: number;
 }
 
+export interface PremiumSinRespaldo {
+  userId: string;
+  email: string | null;
+  /** fila_active_sin_sub_en_stripe | premium_sin_suscripcion_ni_concesion */
+  motivo: string;
+  subscriptionId: string | null;
+}
+
 export interface Pass2Result {
   stripeMissingInDb: number;
   stripeMissingFixed: number;
@@ -518,6 +629,8 @@ export interface Pass2Result {
   /** true si alguna cuenta conocida no se pudo reconciliar. */
   degraded?: boolean;
   accounts?: Pass2AccountResult[];
+  /** Pass-3: premium que nadie está pagando (solo detección). */
+  sinRespaldo?: PremiumSinRespaldo[];
   sample?: Array<{
     userId: string | null;
     email: string | null;

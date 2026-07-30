@@ -978,7 +978,9 @@ export const RULE_ENDPOINT_LATENCY_SUSTAINED: AlertRule<{
       (r) =>
         `  - ${r.endpoint ?? '(desconocido)'}: ${r.buckets * 5} min degradado, peor p95 ${r.peorP95Ms} ms (desde ${r.desde ?? '?'})`,
     );
-    const critico = rows.some((r) => (r.endpoint ?? '').includes('answer-and-save'));
+    const critico = rows.some((r) =>
+      (r.endpoint ?? '').includes('answer-and-save'),
+    );
     return {
       title: `Latencia sostenida en ${rows.length} endpoint(s) de usuario`,
       body:
@@ -1001,7 +1003,10 @@ export const RULE_ENDPOINT_LATENCY_SUSTAINED: AlertRule<{
         `  3. Solo DESPUÉS, la BD: pool (max:5), pg_stat_activity, CPU/IOPS de RDS.\n` +
         `  4. Detalle por endpoint y cubo: /admin/salud-sistema → «Latencia por endpoint».\n\n` +
         `Ficha: docs/roadmap/tareas-pendientes.md [T-254]. Runbook: docs/runbooks/health-check.md.`,
-      metadata: { endpoints: rows.length, peorP95Ms: Math.max(...rows.map((r) => r.peorP95Ms)) },
+      metadata: {
+        endpoints: rows.length,
+        peorP95Ms: Math.max(...rows.map((r) => r.peorP95Ms)),
+      },
     };
   },
   cooldownMin: 60,
@@ -1583,6 +1588,52 @@ export const RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB: AlertRule<{
     };
   },
   cooldownMin: 30,
+};
+
+/**
+ * Premium sin respaldo de pago — la dirección que NINGUNA de las otras 8 reglas vigilaba.
+ *
+ * Todas las reglas de suscripciones protegen al usuario (que no se quede sin lo que pagó) o
+ * vigilan la maquinaria. Ninguna miraba lo contrario. Caso real del 29/07/2026: un cliente
+ * canceló desde la app el 26/05, Stripe terminó la suscripción el 27/05, la fila se quedó en
+ * `active` y el perfil en premium — dos meses y 293 tests regalados. Y el Pass-1, al ver la fila
+ * activa, le renovaba el premium cada hora: la auto-reparación trabajaba a favor de la fuga.
+ *
+ * severity=warn a propósito: aquí NO hay daño a un usuario, hay dinero escapándose. Mezclarlo con
+ * los errores de pago no aplicado (que sí dejan a alguien sin lo suyo) haría que se atendieran
+ * con la misma urgencia dos cosas que se arreglan de forma distinta.
+ *
+ * El Pass-3 solo DETECTA. Quitar premium afecta a una persona real y puede tener una razón que no
+ * está en la BD (compensación, colaborador): lo confirma un humano, y si es legítimo se declara
+ * con `user_profiles.premium_grant_reason`, que es justo lo que saca al caso de este listado.
+ */
+export const RULE_PREMIUM_SIN_RESPALDO: AlertRule<{
+  detected: number;
+  porMotivo: string | null;
+}> = {
+  name: 'premium_sin_respaldo',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COALESCE((metadata->>'detected')::int, 0) AS detected,
+      metadata->'por_motivo'::text AS "porMotivo"
+    FROM observable_events
+    WHERE event_type = 'premium_sin_respaldo'
+      AND ts > NOW() - INTERVAL '2 hours'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => (rows[0]?.detected ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.detected} usuario(s) con premium que nadie está pagando`,
+      body: `El Pass-3 de reconciliation detectó premium sin respaldo de pago. Dos formas del mismo problema:\n\n  - fila_active_sin_sub_en_stripe: la BD dice que la suscripción sigue activa y en Stripe ya no lo está (webhook de cancelación perdido).\n  - premium_sin_suscripcion_ni_concesion: el perfil es premium, no hay suscripción viva y NADIE declaró que fuera una concesión.\n\nQué hacer, usuario por usuario:\n  1. Si es una concesión legítima (cuenta interna, canario, compensación) → declararla en user_profiles.premium_grant_reason y deja de aparecer aquí.\n  2. Si no lo es → alinear con Stripe (fila a 'canceled', perfil a 'free').\n\nNO se corrige solo a propósito: quitar premium afecta a una persona real.\n\nOrigen: 29/07/2026 — un cliente canceló el 26/05 y siguió con premium dos meses; ninguna de las 8 reglas de suscripciones miraba esta dirección.`,
+      metadata: { detected: r.detected, porMotivo: r.porMotivo },
+      fingerprint: 'premium_sin_respaldo',
+    };
+  },
+  cooldownMin: 720, // 12 h: es dinero, no una caída; avisar cada hora sería ruido
 };
 
 /**
@@ -4381,12 +4432,19 @@ export const RULE_SENAL_ERROR_SIN_VIGILANCIA: AlertRule<{
     const top = rows[0];
     const lista = rows
       .slice(0, 8)
-      .map((r) => `  ${String(r.n).padStart(5)}  ${r.event_type}  (${r.fuente}${r.top_endpoint ? ` · ${r.top_endpoint}` : ''})`)
+      .map(
+        (r) =>
+          `  ${String(r.n).padStart(5)}  ${r.event_type}  (${r.fuente}${r.top_endpoint ? ` · ${r.top_endpoint}` : ''})`,
+      )
       .join('\n');
     return {
       title: `Errores en volumen: ${top?.n ?? 0}× ${top?.event_type ?? '?'} en 1 h`,
       body: `Señales de severidad \`error\` por encima de 50/h que NO son ruido conocido:\n\n${lista}\n\nEsta alerta es el catch-all: salta aunque el tipo de evento no tenga regla propia, para que un fallo nuevo no pase desapercibido.\n\nTriaje completo (todas las señales, también por debajo del umbral): /admin/salud-sistema → "Todas las señales (24h)". Runbook: docs/runbooks/health-check.md §1.ter.\n\n  SELECT ts, source, event_type, endpoint, error_message, metadata\n  FROM observable_events WHERE event_type='${top?.event_type ?? ''}'\n    AND ts > NOW() - INTERVAL '2 hours' ORDER BY ts DESC LIMIT 20;\n\nSi es ruido esperado por diseño, declararlo benigno en lib/observability/benignSignals.ts (y su copia del backend) — nunca subir el umbral para callarlo.`,
-      metadata: { tipos: rows.length, top: top?.event_type ?? null, count: top?.n ?? 0 },
+      metadata: {
+        tipos: rows.length,
+        top: top?.event_type ?? null,
+        count: top?.n ?? 0,
+      },
       fingerprint: `senal_error_sin_vigilancia:${top?.event_type ?? 'na'}`,
     };
   },
@@ -4456,6 +4514,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED as AlertRule,
   RULE_STRIPE_WEBHOOK_4XX_BURST as AlertRule,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB as AlertRule,
+  // La dirección contraria (29/07/2026): premium que NADIE paga. Las 8 reglas de
+  // suscripciones protegían al usuario; ninguna al negocio.
+  RULE_PREMIUM_SIN_RESPALDO as AlertRule,
   // Gap 17 (2026-06-03 post-incidente Eva) — impugnación resuelta sin email al usuario
   RULE_DISPUTE_EMAIL_DROP as AlertRule,
   // Pareja de la anterior: aquella cubre "el email nunca se intentó";
