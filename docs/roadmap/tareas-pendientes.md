@@ -775,19 +775,6 @@ incluida).
 - **Contexto:** salió del mismo triaje que destapó la sobre-inclusión del Tema 22 (ya corregida) y el artículo 10 que faltaba en el Tema 11 (ya corregido). Ficha hermana: **[T-332]**.
 - **Al cerrar:** responder en el hilo `917b1b29` (un mensaje por hilo, sin mencionar recompensas).
 
-### [T-332] 🟠 [ABIERTO 30/07] SMS Temas 15 y 16: el scope de la Ley General de la Seguridad Social ignora los «disposiciones generales» del programa
-- **Qué pasa:** el programa oficial (BORM nº 233 de 7/10/2021, anuncio 6104) acota **dos veces** con la coletilla «disposiciones generales», y el `topic_scope` la ignoró y cogió el bloque contiguo entero. Verificado contra el índice del BOE del TRLGSS (`BOE-A-2015-11724`):
-
-  | tema | lo que pide el epígrafe | lo que hay hoy | sobra |
-  |---|---|---|---|
-  | **T15** | Cap II Secc 1.ª *«Disposiciones generales»* (7-11) · Afiliación y Cotización (15-20) · Secc 3.ª **Subsecc 1.ª** *«Disposiciones generales»* (21-27) | `0-41` | **1-6, 12-14, 28-41** |
-  | **T16** | Cap I *Campo de aplicación* (136-137) · Secc 2.ª **Subsecc 1.ª** *«Disposiciones generales»* (141-150) · Secc 3.ª *Recaudación* (154) · Cap III *Aspectos comunes de la acción protectora* (155-160) | `136-166` | **138-140, 151-153, 161-166** |
-
-- **Punto a adjudicar antes de recortar (T15):** los **arts 1-6** (Cap I, «Normas preliminares») son discutibles, porque el epígrafe abre con *«La Ley General de la Seguridad Social.»* a secas y eso puede leerse como preámbulo. Los otros dos bloques (12-14 y 28-41) no: la coletilla los excluye sin ambigüedad.
-- **Por qué está abierto y no arreglado:** es el **mismo patrón que el Tema 22** (que sí se corrigió el 30/07), y lo detecté **corrigiendo un falso verde propio**: ese mismo día sellé T15 y T16 como `verified_correct` razonando que «disposiciones generales acota hacia dentro de lo ya escopado», **sin contrastarlo contra el BOE**. Era falso. Ya están de vuelta en `verified_issues` con el detalle en `findings`.
-- **Cómo:** pipeline `verify:scope plan → apply --include-gate` (irá a puerta de juicio por impacto). Medir antes cuántas preguntas dejan de servirse y comprobar que ninguna procede del examen oficial **del SMS**. Las preguntas no se borran: siguen en BD y en las demás oposiciones que las escopan.
-- **Lección de fondo, ya en el runbook** (`verificar-epigrafes-scope.md`): reescribir un epígrafe al literal invalida el Paso 2 **en las dos direcciones**, y `sim-materias-ganadas`/`plan-paso2-tras-literal` solo miran la de «falta materia».
-
 ### [T-329] 🟠 [ABIERTO 30/07] Construir Técnico/a Auxiliar de Conserjería de la Universidad de Jaén — se le ha dicho a una usuaria que la estamos preparando
 - **Compromiso adquirido:** Chari GAMA (`diversoprodu@gmail.com`, free, alta el 29/07, feedback `7a81b194`) preguntó si podíamos incluirla y se le respondió el 30/07 que **«todavía no lo tenemos, pero lo estamos preparando»** (decisión de Manuel). O sea que esto no es una idea: es una promesa hecha por escrito a una persona concreta que además espera aviso por su hilo cuando esté.
 - **La convocatoria, verificada contra el boletín** (no supuesta): Resolución de 29 de junio de 2026, **BOE núm. 162 de 4 de julio** (`BOE-A-2026-14535`), también en BOJA 2026/132. **9 plazas** de personal laboral, categoría **Técnico/a Auxiliar de Conserjería (Grupo IV)**, sistema **concurso-oposición**. Plazo de solicitudes **06/07 → 31/07/2026 23:59** (confirmado en la sede de la UJA, que es donde vive el estado vigente).
@@ -4256,6 +4243,20 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 
 
 ## Hechas
+
+### [T-332] ✅ [HECHO 30/07] SMS Temas 15 y 16: el scope de la LGSS ignoraba los «disposiciones generales» del programa
+- **RESULTADO:** recortados contra el índice de `BOE-A-2015-11724`. **T15** 43→20 artículos (fuera 1-6, 12-14 y 28-41: 79 preguntas); **T16** 33→21 (fuera 138-140, 151-153 y 161-166: 28 preguntas). **107 en total.** Verificado en vivo con tres lecturas seguidas: T15 sirve 123 y T16 sirve 96, sin sobrantes. Ninguna de las 8 preguntas de examen oficial afectadas venía del examen del SMS, y las 107 se siguen sirviendo en las 26 oposiciones que también escopan la LGSS. Los arts 1-6 se cortaron también, por coherencia con los precedentes T13 y T20 del mismo programa (nombrar la ley no arrastra su capítulo preliminar). La oposición entera pasa a **24 de 24** en `verified_correct`.
+- **Qué pasa:** el programa oficial (BORM nº 233 de 7/10/2021, anuncio 6104) acota **dos veces** con la coletilla «disposiciones generales», y el `topic_scope` la ignoró y cogió el bloque contiguo entero. Verificado contra el índice del BOE del TRLGSS (`BOE-A-2015-11724`):
+
+  | tema | lo que pide el epígrafe | lo que hay hoy | sobra |
+  |---|---|---|---|
+  | **T15** | Cap II Secc 1.ª *«Disposiciones generales»* (7-11) · Afiliación y Cotización (15-20) · Secc 3.ª **Subsecc 1.ª** *«Disposiciones generales»* (21-27) | `0-41` | **1-6, 12-14, 28-41** |
+  | **T16** | Cap I *Campo de aplicación* (136-137) · Secc 2.ª **Subsecc 1.ª** *«Disposiciones generales»* (141-150) · Secc 3.ª *Recaudación* (154) · Cap III *Aspectos comunes de la acción protectora* (155-160) | `136-166` | **138-140, 151-153, 161-166** |
+
+- **Punto a adjudicar antes de recortar (T15):** los **arts 1-6** (Cap I, «Normas preliminares») son discutibles, porque el epígrafe abre con *«La Ley General de la Seguridad Social.»* a secas y eso puede leerse como preámbulo. Los otros dos bloques (12-14 y 28-41) no: la coletilla los excluye sin ambigüedad.
+- **Por qué está abierto y no arreglado:** es el **mismo patrón que el Tema 22** (que sí se corrigió el 30/07), y lo detecté **corrigiendo un falso verde propio**: ese mismo día sellé T15 y T16 como `verified_correct` razonando que «disposiciones generales acota hacia dentro de lo ya escopado», **sin contrastarlo contra el BOE**. Era falso. Ya están de vuelta en `verified_issues` con el detalle en `findings`.
+- **Cómo:** pipeline `verify:scope plan → apply --include-gate` (irá a puerta de juicio por impacto). Medir antes cuántas preguntas dejan de servirse y comprobar que ninguna procede del examen oficial **del SMS**. Las preguntas no se borran: siguen en BD y en las demás oposiciones que las escopan.
+- **Lección de fondo, ya en el runbook** (`verificar-epigrafes-scope.md`): reescribir un epígrafe al literal invalida el Paso 2 **en las dos direcciones**, y `sim-materias-ganadas`/`plan-paso2-tras-literal` solo miran la de «falta materia».
 
 ### [T-289] 🟢 [HECHA 30/07 · abierta 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
 - **El problema, en el ejemplo que lo motivó:** para entender el reporte de un premium hay que ver **SU** perfil, **SUS** hitos de pago, su temario, sus rachas y sus datos personalizados. Hoy no se puede: `npm run dev` te enseña la app con TU cuenta, y mirar su fila en la BD no reproduce lo que él ve (la vista compone caché, plan, scope de su oposición, límites, badges…). Se acaba diagnosticando a ciegas o pidiéndole capturas.
