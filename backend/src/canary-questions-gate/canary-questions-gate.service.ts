@@ -50,13 +50,21 @@ export class CanaryQuestionsGateService {
       };
     }
 
+    // Veredicto del gate para NUESTRA identidad, que decide si la sonda de abajo puede ir SIN
+    // exención (T-280). `null` = no se pudo saber.
+    let sujetoSaturado: boolean | null = null;
+    let gateServidas: number | undefined;
+    let gateUmbral: number | undefined;
+
     // ─── Paso 0: el gate debe estar ENCENDIDO ───────────────────────────
     // Verificación POSITIVA: un gate apagado parece idéntico a uno funcionando
     // desde el camino feliz (cargar va bien igual). Por eso preguntamos el estado
     // efectivo. Bug 03/06: site key no horneada → enabled=false sin que nada avisara.
     try {
+      // Se pide de paso el veredicto para nuestro sujeto: una sola petición, sin servir preguntas
+      // y sin gastar cuota. Ver el comentario largo del endpoint (T-280).
       const statusRes = await fetch(
-        `${this.TARGET_URL}/api/security/captcha/status`,
+        `${this.TARGET_URL}/api/security/captcha/status?subject=${encodeURIComponent(userId)}`,
         {
           headers: {
             Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}`,
@@ -72,6 +80,12 @@ export class CanaryQuestionsGateService {
           siteKeyPresent?: boolean
           secretPresent?: boolean
           flagOn?: boolean
+          gate?: { served?: number; threshold?: number; wouldChallenge?: boolean }
+        }
+        if (st.gate && typeof st.gate.wouldChallenge === 'boolean') {
+          sujetoSaturado = st.gate.wouldChallenge
+          gateServidas = st.gate.served
+          gateUmbral = st.gate.threshold
         }
         if (st.enabled !== true) {
           return {
@@ -134,6 +148,30 @@ export class CanaryQuestionsGateService {
       proportionalByTopic: false,
     };
 
+    // ⚠️ AQUÍ ESTABA EL AGUJERO (T-280, arreglado 30/07/2026): esta petición mandaba SIEMPRE la
+    // cabecera de exención, así que el Paso 3 —«el gate NO debe retar a un usuario normal»— medía
+    // a alguien EXENTO y pasaba siempre, incluso si el gate hubiera empezado a retar a todo el
+    // mundo, que es el fallo que más duele (usuarios reales sin poder cargar preguntas).
+    //
+    // No basta con quitar la exención: está medido que el usuario smoke acumula volumen de otras
+    // sondas (2.220 servidas el 27/07, 380 el 29/07, umbral 500), así que un día cargado daría
+    // rojo sin avería. Por eso se pregunta primero (Paso 0) y solo se va SIN exención cuando
+    // nuestro propio contador está por debajo del umbral. Si está saturado, la sonda sigue
+    // haciéndose exenta —el resto de comprobaciones valen igual— y la aserción del gate se marca
+    // como NO comprobada, que es lo honesto: mejor un «hoy no lo sé» que un verde inventado.
+    const sondaReal = sujetoSaturado === false;
+    const gateAssertion: CanaryGateAssertion = sondaReal
+      ? 'real'
+      : sujetoSaturado === true
+        ? 'omitida_sujeto_saturado'
+        : 'omitida_veredicto_no_disponible';
+    const exencion: Record<string, string> = sondaReal
+      ? {}
+      : {
+          'x-vence-canary-secret':
+            process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '',
+        };
+
     let res: Response;
     try {
       res = await fetch(`${this.TARGET_URL}/api/questions/filtered`, {
@@ -142,10 +180,10 @@ export class CanaryQuestionsGateService {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
           'User-Agent': 'Vence-Canary-Gate/1.0',
+          // `x-vence-canary` NO exime de nada (solo evita ensuciar el log de errores de usuario);
+          // la exención es la cabecera con secreto de abajo, y solo va cuando toca.
           'x-vence-canary': '1',
-          // Ver nota en canary-por-leyes-scope: la exención ahora se demuestra.
-          'x-vence-canary-secret':
-            process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '',
+          ...exencion,
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
@@ -169,7 +207,9 @@ export class CanaryQuestionsGateService {
         httpStatus: 403,
         errorMessage:
           'El gate anti-scraping exigió verificación humana a un usuario normal ' +
-          '(por debajo del umbral). Posible regresión en la policy o el contador Redis.',
+          `(servidas ${gateServidas ?? '?'} de ${gateUmbral ?? '?'}). ` +
+          'Posible regresión en la policy o el contador Redis.',
+        gateAssertion,
         durationMs: Date.now() - startedAt,
       };
     }
@@ -221,12 +261,28 @@ export class CanaryQuestionsGateService {
       };
     }
 
-    return { ok: true, questionsServed: n, durationMs };
+    // `gateAssertion` viaja en el resultado a propósito: sin él, un verde de este canary no dice
+    // si la comprobación que importa se hizo o se omitió por saturación. Un verde que no distingue
+    // esas dos cosas es justo lo que esta tarea vino a arreglar.
+    return { ok: true, questionsServed: n, durationMs, gateAssertion, gateServidas, gateUmbral };
   }
 }
 
+/** ¿Se comprobó de verdad que el gate no reta a un usuario normal, o no se pudo? */
+export type CanaryGateAssertion =
+  | 'real'
+  | 'omitida_sujeto_saturado'
+  | 'omitida_veredicto_no_disponible';
+
 export type CanaryGateResult =
-  | { ok: true; questionsServed: number; durationMs: number }
+  | {
+      ok: true;
+      questionsServed: number;
+      durationMs: number;
+      gateAssertion: CanaryGateAssertion;
+      gateServidas?: number;
+      gateUmbral?: number;
+    }
   | { skipped: true; reason: string; durationMs: number }
   | {
       ok: false;
@@ -241,5 +297,6 @@ export type CanaryGateResult =
       httpStatus?: number;
       errorMessage: string;
       questionsServed?: number;
+      gateAssertion?: CanaryGateAssertion;
       durationMs: number;
     };
