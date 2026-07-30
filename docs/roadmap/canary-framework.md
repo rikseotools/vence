@@ -13,7 +13,8 @@
 ## Qué es ya profesional (conservar)
 - Synthetic monitoring **end-to-end contra prod real** (no mocks): `canary-answer-save`, `canary-stats-pipeline`, `canary-theme-stats`, `canary-smoke-auth`, `canary-questions-gate`, `canary-db-pool`, `canary-redis`, `canary-topic-data`, `canary-webhook`.
 - Una **regla de alerta por canary** (`RULE_CANARY_*_FAILED`) con cooldown + tolerancia a transitorios (`TRANSIENT_CANARY_ERROR`, n≥2).
-- Firma de token compartida (`canary-shared/canary-token.ts`), header `x-vence-canary` (exime de gate + degrada observabilidad), skip-si-fixture-no-disponible (`fixtureOk`).
+- Firma de token compartida (`canary-shared/canary-token.ts`), header `x-vence-canary` (**degrada observabilidad**: no ensucia el log de errores), skip-si-fixture-no-disponible (`fixtureOk`).
+- ⚠️ **La exención del gate anti-scraping YA NO va con `x-vence-canary` (29/07/2026).** Ese header no lleva secreto y cualquiera podía escribirlo para saltarse el Turnstile de `/api/questions/filtered`: comprobado contra producción, sin header → `403 challengeRequired`, con header → `200` con las preguntas. Un canary nuevo que necesite la exención debe mandar **además** `x-vence-canary-secret: $CANARY_SECRET` (respaldo `CRON_SECRET`, que los canaries ya llevan). Si se olvida, el síntoma es un 403 intermitente que parece del app. Núcleo: `lib/api/syntheticTrust.ts`; guardarraíl: `__tests__/guardrails/exencion-antiscraping.test.ts`.
 
 ## Diseño objetivo
 
