@@ -50,9 +50,18 @@ function despejarArticuladoPorLetra(texto) {
   n = n.replace(/\bletras?\s+[a-eA-E]\)\s+y\s+[a-eA-E]\)\s+del\s+(art[íi]culo|art\.|apartado)\s*/gi, 'el $1 ');
   // «conforme a la letra a)» → «conforme a lo previsto»
   n = n.replace(/\bconforme\s+a\s+la\s+letra\s+[a-eA-E]\)/gi, 'conforme a lo previsto');
-  // resto de «(la) letra X)» / «apartado X)» → «ese apartado»
-  n = n.replace(/\b(?:la\s+)?letra\s+[a-eA-E]\)/gi, 'ese apartado');
+  // resto de «(la) letra X)» / «apartado X)» → «ese apartado».
+  //
+  // ⚠️ El determinante previo hay que COMERLO, no dejarlo delante: sin esto sale «su ese apartado»
+  // (pasó en la campaña, lo cazó un agente al revisar su propio fichero). Con el determinante
+  // absorbido, «su letra a)» → «ese apartado» y la frase sigue siendo gramatical.
+  n = n.replace(/\b(?:su|sus|el|la|los|las|un|una)\s+letra\s+[a-eA-E]\)/gi, 'ese apartado');
+  n = n.replace(/\b(?:del|al)\s+letra\s+[a-eA-E]\)/gi, 'de ese apartado');
+  n = n.replace(/\bletra\s+[a-eA-E]\)/gi, 'ese apartado');
+  n = n.replace(/\b(?:su|sus|el|la|los|las|un|una)\s+apartado\s+[a-eA-E]\)/gi, 'ese apartado');
   n = n.replace(/\bapartado\s+[a-eA-E]\)/gi, 'ese apartado');
+  // red de seguridad: si un despeje anterior dejó un determinante huérfano, se limpia aquí
+  n = n.replace(/\b(su|sus|el|la|los|las|un|una)\s+ese\s+apartado/gi, 'ese apartado');
   // ordinal + «frase» referido al PRECEPTO (el detector lo lee como ordinal de opción)
   n = n.replace(/\bla\s+(primera|segunda|tercera|cuarta)\s+frase\b/gi,
     (_, o) => `el ${ORDINAL_M[o.toLowerCase()] || o} enunciado`);

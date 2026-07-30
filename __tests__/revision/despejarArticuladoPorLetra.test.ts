@@ -58,6 +58,17 @@ describe('despejarArticuladoPorLetra — casos reales de la campaña', () => {
     expect(despejarArticuladoPorLetra(una)).toBe(una)
   })
 
+  test('no deja un determinante huérfano delante ("su ese apartado")', () => {
+    // Regresión de la campaña: la sustitución genérica dejaba «su ese apartado», que se lee fatal.
+    // Lo cazó un agente revisando su propio fichero, no el gate — el gate solo mira las letras.
+    const limpio = despejarArticuladoPorLetra(
+      'El artículo 2 no restringe la accesibilidad: su letra a) habla de accesibilidad universal.',
+    )
+    expect(limpio).not.toMatch(/\b(su|sus|el|la|los|las|un|una)\s+ese\s+apartado/i)
+    expect(limpio).toContain('ese apartado')
+    expect(explanationReferencesLetters(limpio)).toBe(false)
+  })
+
   test('tolera entradas vacías', () => {
     expect(despejarArticuladoPorLetra('')).toBe('')
     expect(despejarArticuladoPorLetra(null)).toBeNull()
