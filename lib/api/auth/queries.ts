@@ -1,6 +1,8 @@
 // lib/api/auth/queries.ts - Logica server-side para auth callback v2 (Drizzle)
 // CANARY pooler (sweep masivo oleada 5 — todos user-facing 2026-05-10):
 import { getDb, getPoolerDb } from '@/db/client'
+import { buscarMarcaPrevia } from '@/lib/api/fraud/marcaPersistente'
+import { emit } from '@/lib/observability/emit'
 
 function getAuthDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
@@ -191,6 +193,38 @@ export async function processAuthCallback(
             updatedAt: new Date().toISOString(),
           },
         })
+
+      // ¿Vuelve alguien que ya estaba marcado? (T-304)
+      //
+      // Este es el punto donde de verdad se cierra el «borro la cuenta y me hago otra»: la marca
+      // persistente está anclada al DISPOSITIVO y al hash del correo, así que sobrevive a la baja.
+      // Aquí solo se DETECTA y se deja constancia — bloquear un alta es una decisión de producto
+      // que toma Manuel, no un efecto colateral de un callback de login. Fire-and-forget: que
+      // esto falle no puede impedir que alguien se registre.
+      void (async () => {
+        try {
+          const previa = await buscarMarcaPrevia({
+            email: userEmail,
+            fingerprint: request.headers.get('x-hw-fingerprint'),
+          })
+          if (!previa) return
+          await emit({
+            source: 'vercel',
+            severity: 'warn',
+            eventType: 'alta_con_marca_previa',
+            endpoint: '/api/auth/callback',
+            userId,
+            errorMessage: `Alta nueva con marca de multicuenta previa (${previa.sesiones} episodios desde ${new Date(previa.desde).toISOString().slice(0, 10)})`,
+            metadata: {
+              episodios: previa.sesiones,
+              desde: previa.desde,
+              motivo: previa.motivo,
+              // El dispositivo, no el correo: lo que se guarda es un hash.
+              deviceRef: previa.deviceId?.slice(0, 12) ?? null,
+            },
+          })
+        } catch { /* la detección nunca puede tumbar un alta */ }
+      })()
 
       // Invalidar cache. El INSERT crea un userId nuevo (sin entry previa),
       // pero si una request previa hizo GET y cacheó "Perfil no encontrado"

@@ -14,6 +14,7 @@ import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { emit } from '@/lib/observability/emit'
 import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
+import { marcarPersistente } from '@/lib/api/fraud/marcaPersistente'
 import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
@@ -194,17 +195,29 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       // condición: fire-and-forget para que un fallo aquí no convierta un 403 correcto en un 500.
       // En sombra NO se marca el perfil: marcar a alguien por un bloqueo que no ha ocurrido
       // sería ensuciar su ficha con una sospecha que aún no hemos validado.
-      if (shouldBlock(deviceLimitMode)) marcarFarmeoFireAndForget({
-        userId: user.id,
-        deviceTotal: deviceUsage.deviceTotal,
-        anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
-        deviceRef: (hwFingerprint || deviceId || '').slice(0, 40) || null,
-      })
+      if (shouldBlock(deviceLimitMode)) {
+        marcarFarmeoFireAndForget({
+          userId: user.id,
+          deviceTotal: deviceUsage.deviceTotal,
+          anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
+          deviceRef: (hwFingerprint || deviceId || '').slice(0, 40) || null,
+        })
+        // Y la marca que SOBREVIVE al borrado de la cuenta: `fraud_watch_list` cuelga de
+        // `user_id` con ON DELETE CASCADE, así que pedir la baja borraría el historial y
+        // permitiría empezar limpio. Esta va anclada al dispositivo y guarda el hash del correo.
+        void marcarPersistente({
+          deviceId,
+          fingerprint: hwFingerprint,
+          userIds: [user.id],
+          emails: [user.email].filter((e): e is string => Boolean(e)),
+          motivo: `Tope de dispositivo superado: ${deviceUsage.deviceTotal} preguntas en el día entre varias cuentas`,
+        }).catch(() => {})
+      }
       if (shouldBlock(deviceLimitMode)) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            error: 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.',
             limitReached: true,
             questionsToday: deviceUsage.deviceTotal,
           } as const,
@@ -222,7 +235,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           success: false,
           error: dailyLimit.isGraduated
             ? 'Vence tiene mucha demanda actualmente. Actualiza a Premium para acceso prioritario.'
-            : 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            : 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.',
           limitReached: true,
           questionsToday: dailyLimit.questionsToday,
           dailyLimit: dailyLimit.dailyLimit,

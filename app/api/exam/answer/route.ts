@@ -92,7 +92,7 @@ async function _POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            error: 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.',
             limitReached: true,
             questionsToday: deviceUsage.deviceTotal,
           },
@@ -107,7 +107,7 @@ async function _POST(request: NextRequest) {
           success: false,
           error: dailyLimit.isGraduated
             ? 'Vence tiene mucha demanda actualmente. Actualiza a Premium para acceso prioritario.'
-            : 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            : 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.',
           limitReached: true,
           questionsToday: dailyLimit.questionsToday,
           dailyLimit: dailyLimit.dailyLimit,

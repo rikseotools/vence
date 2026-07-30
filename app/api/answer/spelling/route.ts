@@ -75,7 +75,7 @@ async function _POST(request: NextRequest) {
       const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint)
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
-          { success: false, error: 'Este dispositivo ha alcanzado el límite diario. Vuelve mañana o hazte premium.', limitReached: true },
+          { success: false, error: 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.', limitReached: true },
           { status: 403 }
         )
       }
@@ -87,7 +87,7 @@ async function _POST(request: NextRequest) {
           success: false,
           error: dailyLimit.isGraduated
             ? 'Vence tiene mucha demanda actualmente. Actualiza a Premium para acceso prioritario.'
-            : 'Has alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            : 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.',
           limitReached: true,
         },
         { status: 403 }
