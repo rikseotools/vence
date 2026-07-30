@@ -265,11 +265,46 @@ export function podarAnuncioAlTranscribir(intro?: string | null): string | undef
   return podado || undefined
 }
 
+/**
+ * Las otras tres cosas que se escriben con una letra A-E y NO son una opción del test (T-317,
+ * 30/07/2026). Medidas sobre TODAS las activas con explicación estructurada, no sobre una muestra:
+ * de las 8 narrativas que el detector marcaba, **5 eran de estas tres formas y ninguna era una
+ * referencia real** — o sea, cero falsos negativos abiertos, que es lo único que importa aquí (un FN
+ * deja una explicación rota a la vista; un FP solo cuesta barajado).
+ *
+ * Van SOLO en el check de la narrativa, no en `CITA_DE_LA_NORMA`, que lo comparten las RAZONES y el
+ * escritor: ensanchar allí es otra decisión y merece su propia medición.
+ */
+const CITA_APARTADO_EN_MINUSCULA =
+  // «letra a) catálogo de procedimientos», «El apartado b) define…», «(y las de la letra d)».
+  // La MINÚSCULA es la señal, y es la convención del propio banco: los apartados de un precepto se
+  // citan en minúscula y las opciones del test en MAYÚSCULA. `CITA_DE_LA_NORMA` ya exime esto, pero
+  // solo si detrás viene «art»/«ap»/un número: «letra a) catálogo» se le escapaba.
+  // La palabra va con las dos capitalizaciones ESCRITAS A MANO en vez de con el flag `i`: con `i`,
+  // el `[a-e]` casaría también mayúsculas y la exención se llevaría «Apartado D)» — que sí puede ser
+  // una opción. Aquí la mayúscula de la palabra es irrelevante y la de la LETRA es la señal.
+  // (Se me escapó en el primer intento: «Apartado d) = …» seguía marcado por empezar con mayúscula.)
+  /\b(?:[Ll]etras?|[Aa]partados?|[Pp][áa]rrafos?|[Ii]ncisos?|[Ee]p[íi]grafes?|[Rr]eglas?)\s+[a-e]\)/g
+const REFERENCIA_DE_CELDA =
+  // Hoja de cálculo: «=$C4», «($C)», «C5», «$C$4». Sale en toda pregunta de referencias absolutas.
+  /=?\$?[A-E]\$?\d+\b|\$[A-E]\b/g
+const GRUPOS_DE_CLASIFICACION =
+  // «son 3 grupos (A, B, C); los subgrupos (A1, A2, C1, C2)» — los grupos del EBEP, no las opciones.
+  /\b(?:sub)?grupos?\s*\(([A-E][0-9]?(?:\s*,\s*[A-E][0-9]?)+)\)/g
+
 export function structuredNarrativeStaleLetters(
   data?: Pick<StructuredExplanation, 'intro' | 'outro'> | null
 ): Array<'intro' | 'outro'> {
   return structuredNarrative(data)
-    .filter(({ texto }) => explanationReferencesLetters(texto.replace(CITA_DE_LA_NORMA, ' ')))
+    .filter(({ texto }) =>
+      explanationReferencesLetters(
+        texto
+          .replace(CITA_DE_LA_NORMA, ' ')
+          .replace(CITA_APARTADO_EN_MINUSCULA, ' ')
+          .replace(GRUPOS_DE_CLASIFICACION, ' grupos ')
+          .replace(REFERENCIA_DE_CELDA, ' celda '),
+      ),
+    )
     .map(({ campo }) => campo)
 }
 

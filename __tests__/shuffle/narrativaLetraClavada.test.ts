@@ -307,3 +307,38 @@ describe('la transcripción del histórico ya no importa la letra', () => {
     if (parsed) expect(structuredNarrativeStaleLetters(parsed)).toEqual([])
   })
 })
+
+// ── Lo que se escribe con una letra A-E y NO es una opción del test (T-317, 30/07/2026) ──────────
+//
+// El detector marcaba 8 narrativas y **ninguna** era una referencia a una opción: eran letras del
+// articulado que la exención de `CITA_DE_LA_NORMA` no cubría (pedía «art»/número detrás, así que
+// «letra a) catálogo» se le escapaba), los grupos de clasificación del EBEP y referencias de celda
+// de hoja de cálculo. Ocho hallazgos permanentes que ningún operador podía cerrar: una bandeja que
+// grita todos los días se deja de mirar, y entonces también se deja de ver la de verdad.
+//
+// Lo que sostiene la exención es el CASO DE LA LETRA, no la palabra: los apartados de un precepto se
+// citan en minúscula («letra a)») y las opciones del test en MAYÚSCULA («la opción D»). Por eso el
+// último bloque de casos —el contraste— es la parte que importa de este test.
+describe('exenciones: letras que no son opciones (T-317)', () => {
+  const conIntro = (intro: string) => ({ v: 1 as const, options: { '0': 'x' }, intro })
+
+  it.each([
+    ['apartado del precepto en minúscula', 'El apartado b) define los Centros de Acogida:'],
+    ['la palabra capitalizada no rompe la exención', 'Apartado d) = «Estudiar, promover e impulsar»'],
+    ['letra + sustantivo (no «art» detrás)', '**Clave:** letra a) catálogo de procedimientos, letra b) cartas de servicios.'],
+    ['grupos y subgrupos del EBEP', 'son 3 grupos (A, B, C); los subgrupos (A1, A2, C1, C2) son una subdivisión.'],
+    ['referencia de celda', 'La referencia **=$C4** tiene la columna fija ($C) y la fila relativa (4).'],
+  ])('exime: %s', (_, intro) => {
+    expect(structuredNarrativeStaleLetters(conIntro(intro))).toEqual([])
+  })
+
+  // EL CONTRASTE. Si algún día se «arregla» un falso positivo ensanchando la exención hasta aquí,
+  // esto se pone rojo — y debe ponerse: un falso negativo deja una explicación que miente al barajar.
+  it.each([
+    ['apartado con la letra en MAYÚSCULA (puede ser la opción)', 'El apartado D) es el que recoge el plazo.'],
+    ['anuncio de la clave', 'La respuesta correcta es la **C**.'],
+    ['opción nombrada en la narrativa', 'El plazo que cita la opción D no aparece en la ley.'],
+  ])('sigue marcando: %s', (_, intro) => {
+    expect(structuredNarrativeStaleLetters(conIntro(intro))).toEqual(['intro'])
+  })
+})

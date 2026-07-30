@@ -1133,6 +1133,17 @@ async function detectarTodo(c, add, now) {
         `${drift.narrative_stale_letters} pregunta(s) con explicación estructurada cuyo intro/outro clava una letra de opción — al barajar se contradicen con la letra que calcula el render`,
         { total: drift.narrative_stale_letters, sample: drift.narrative_sample });
     }
+    // TERCER hallazgo, y su causa es la INVERSA de los otros dos (T-316): aquí el contenido no se
+    // ha movido — se ha movido el CRITERIO. Cuando se afina el detector, el trigger no puede
+    // invalidar nada (invalida por hash del contenido) y el veredicto viejo se queda escrito, así
+    // que la mejora del detector no llega al banco. Medido dos veces: el arreglo de las tildes
+    // (28/07) dejó 21 preguntas mal marcadas ocho días y el de los grados (T-301) otras 91.
+    // No es un defecto de la pregunta, es trabajo pendiente de una línea: por eso `info`.
+    if (drift.criterio_viejo > 0) {
+      add('content', 'info', null, 'shuffle_veredicto_criterio_viejo',
+        `${drift.criterio_viejo} veredicto(s) de barajabilidad que el detector de HOY contradice — el criterio mejoró y nadie los recalculó; se arreglan con backfill-shuffle-safety.ts --recriterio --apply`,
+        { total: drift.criterio_viejo, sample: drift.criterio_sample });
+    }
   } catch (e) { console.warn('⚠️ drift barajado no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Citas NO literales: la explicación atribuye al artículo algo que no dice ──

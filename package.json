@@ -27,6 +27,7 @@
     "audit:oposicion": "npx tsx --env-file=.env.local scripts/audit-oposicion-completa.ts",
     "audit:served": "npx tsx --env-file=.env.local scripts/audit-served-questions.ts",
     "shuffle:narrativa": "npx tsx --env-file=.env.local scripts/reparar-narrativa-letra-clavada.ts",
+    "shuffle:recriterio": "npx tsx --env-file=.env.local scripts/backfill-shuffle-safety.ts --recriterio",
     "enunciados:sin-norma": "npx tsx --env-file=.env.local scripts/reparar-enunciado-sin-norma.ts",
     "citas:barrido": "node scripts/impugnaciones/barrido-citas.cjs",
     "audit:scraped-reconcile": "node scripts/audit-scraped-reconcile.cjs",

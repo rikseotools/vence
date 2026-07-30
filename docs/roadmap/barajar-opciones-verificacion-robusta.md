@@ -59,9 +59,14 @@ El arreglo del detector es inerte hasta que alguien re-evalúe.
 **Resuelto el 30/07 (T-306) con un modo del propio backfill, no con otra herramienta:**
 
 ```bash
-npx tsx scripts/backfill-shuffle-safety.ts --recriterio            # dry-run: lista cada cambio y su dirección
-npx tsx scripts/backfill-shuffle-safety.ts --recriterio --apply    # escribe por record_shuffle_safety
+npm run shuffle:recriterio                     # dry-run: lista cada cambio y su dirección
+npm run shuffle:recriterio -- --apply          # escribe por record_shuffle_safety
 ```
+
+Y **el barrido lo vigila solo** desde T-316: `sweep-shuffle-safety-drift.ts` cuenta los veredictos
+que el detector de hoy contradice y los emite como `shuffle_veredicto_criterio_viejo` (`info`: no es
+un defecto de la pregunta, es trabajo pendiente de una línea). Así la próxima mejora del detector no
+depende de que alguien se acuerde — que es exactamente lo que falló dos veces.
 
 - **Acotado por SQL** a `shuffle_safety_verified_by = 'backfill_deterministic_v3'`. No ve lo que
   firmó `llm_audit_v1` ni `aplicar-explicacion`: la regla que protege a la 2ª capa se cumple por

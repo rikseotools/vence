@@ -89,11 +89,38 @@ async function main() {
     )
   ).rows[0].n as number
 
+  // 3) DRIFT DE CRITERIO (T-316): veredictos que el detector de HOY contradice.
+  //
+  //    Los dos checks de arriba miran si el CONTENIDO se ha ido de su veredicto. Este mira lo
+  //    contrario: si el VEREDICTO se ha quedado atrás porque mejoró el detector. El trigger no lo
+  //    puede ver —invalida por hash del contenido, y aquí el contenido no ha cambiado—, así que un
+  //    arreglo del detector se queda inerte y nadie se entera. Pasó dos veces: el endurecimiento
+  //    de las tildes (28/07) dejó 21 preguntas mal marcadas ocho días, y el de los grados
+  //    centígrados (T-301) otras 91 hasta que una sesión tropezó con ellas (T-306).
+  //
+  //    Solo se cuentan los veredictos que firmó el backfill determinista: los de `llm_audit_v1`
+  //    son de otra capa y no se recalculan con una regex. Se arregla con
+  //    `backfill-shuffle-safety.ts --recriterio --apply`, que aplica exactamente este criterio.
+  const propios = (
+    await c.query(
+      `SELECT id, explanation, shuffle_mode, shuffle_safety FROM public.questions
+        WHERE is_active = true AND shuffle_safety IN ('safe','unsafe')
+          AND shuffle_safety_verified_by = 'backfill_deterministic_v3'`,
+    )
+  ).rows as Array<{ id: string; explanation: string | null; shuffle_mode: string | null; shuffle_safety: string }>
+  const criterioViejo = propios.filter((r) => {
+    const hoy = r.shuffle_mode !== 'full' || explanationReferencesLetters(r.explanation) ? 'unsafe' : 'safe'
+    return hoy !== r.shuffle_safety
+  })
+
   await c.end()
 
   const result = {
     regressions: regressed.length,
     hash_mismatch: hashMismatch,
+    // Ni regresión ni narrativa: veredicto correcto EN SU DÍA que el detector de hoy contradice.
+    criterio_viejo: criterioViejo.length,
+    criterio_sample: criterioViejo.slice(0, 8).map((r) => ({ id: r.id, de: r.shuffle_safety, a: r.shuffle_safety === 'safe' ? 'unsafe' : 'safe' })),
     sample: regressed.slice(0, 8).map((r) => ({ id: r.id, explanation: r.explanation.replace(/\s+/g, ' ').slice(0, 120) })),
     // Cuenta aparte, no sumada a `regressions`: el remedio es distinto (la razón se REESCRIBE; la
     // narrativa se PODA porque el render ya anuncia la letra), y mezclarlas daría a quien lo
@@ -109,14 +136,18 @@ async function main() {
     console.log(`REGRESIONES (safe que citan letras/posición): ${result.regressions}`)
     console.log(`NARRATIVA con letra clavada (intro/outro de estructuradas): ${result.narrative_stale_letters}`)
     console.log(`hash mismatch (trigger no invalidó): ${result.hash_mismatch}`)
+    console.log(`CRITERIO VIEJO (el detector de hoy los contradice): ${result.criterio_viejo}`)
     for (const s of result.sample) console.log(`  - ${s.id}: "${s.explanation}"`)
     for (const s of result.narrative_sample) console.log(`  - ${s.id}: letra clavada en ${s.campos.join(', ')}`)
-    if (result.regressions === 0 && result.hash_mismatch === 0 && result.narrative_stale_letters === 0)
+    for (const s of result.criterio_sample) console.log(`  - ${s.id}: ${s.de} → ${s.a} con el criterio de hoy`)
+    if (result.criterio_viejo > 0)
+      console.log('   ↳ se arregla con: npx tsx scripts/backfill-shuffle-safety.ts --recriterio [--apply]')
+    if (result.regressions === 0 && result.hash_mismatch === 0 && result.narrative_stale_letters === 0 && result.criterio_viejo === 0)
       console.log('✅ sin drift: el conjunto safe es coherente.')
   }
 }
 main().catch((e) => {
-  if (JSON_OUT) process.stdout.write(JSON.stringify({ regressions: 0, hash_mismatch: 0, sample: [], narrative_stale_letters: 0, narrative_sample: [], error: String(e).slice(0, 200) }))
+  if (JSON_OUT) process.stdout.write(JSON.stringify({ regressions: 0, hash_mismatch: 0, sample: [], narrative_stale_letters: 0, narrative_sample: [], criterio_viejo: 0, criterio_sample: [], error: String(e).slice(0, 200) }))
   else console.error(e)
   process.exit(JSON_OUT ? 0 : 1) // en modo json no romper el sweep
 })

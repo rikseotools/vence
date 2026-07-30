@@ -413,6 +413,14 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'la pregunta tiene explicación ESTRUCTURADA (razones keadas a cada opción, letra puesta por el render) y aun así su `intro` o su `outro` nombran una opción por su letra —típicamente «La respuesta correcta es la **C**.», heredado al transcribir el histórico—. Esos dos campos se emiten VERBATIM en cualquier orden, así que al barajar el recuadro dice una letra arriba y otra en la cabecera que calcula el render: se contradice solo. Remedio: PODAR la letra de la narrativa, no reescribir las razones (que están bien). En estilo `impugnacion` el render regenera la apertura con la letra correcta, así que el texto en orden natural queda idéntico; en `boletin` la cabecera «Por qué C es correcta» ya la anuncia, así que la línea sobra. Herramienta: `npm run shuffle:narrativa -- --pregunta <id> --apply` (dry-run por defecto, muestra el antes/después y separa las que requieren criterio humano). NUNCA tocar las razones ni la cita para arreglar esto, y NUNCA marcar `safe` a mano: el gate de serve ya se niega a barajarlas mientras la letra siga ahí.',
   },
+  shuffle_veredicto_criterio_viejo: {
+    title: 'Barajado: veredictos que el detector de HOY contradice (mejoró el criterio y nadie los recalculó)',
+    triggerPhrase: 'revisa el barajado',
+    runbook: 'docs/roadmap/barajar-opciones-verificacion-robusta.md',
+    comando: 'npm run shuffle:recriterio',
+    claudeHace:
+      'la causa es la INVERSA de los otros dos hallazgos de barajado: aquí el contenido de la pregunta no se ha movido — se ha movido el CRITERIO. El trigger de invalidación compara el hash del CONTENIDO, así que cuando se afina `explanationReferencesLetters` el veredicto viejo se queda escrito y la mejora del detector nunca llega al banco. Medido dos veces: el endurecimiento de las tildes (28/07) dejó 21 preguntas mal marcadas OCHO DÍAS, y el de los grados centígrados (T-301) otras 91 hasta que una sesión tropezó con ellas. Remedio: correr `backfill-shuffle-safety.ts --recriterio` (dry-run, lista cada cambio y su dirección), LEER la salida y aplicar con `--apply`. Está acotado por SQL a los veredictos que firmó el propio backfill determinista, así que no puede pisar los de la auditoría LLM. Un `unsafe→safe` masivo tras un arreglo del detector es lo esperado; un `safe→unsafe` masivo NO: eso es señal de que el detector se ha roto, y por eso el script aborta pasados 2000 cambios. Después, comprobar que el barrido vuelve a dar 0 en este kind y que `shuffle_safe_regressed` sigue en 0. NUNCA tocar `shuffle_safety` a mano ni subir el techo de `--max` para que pase.',
+  },
   shuffle_encendido_sin_efecto: {
     title: 'Barajado encendido pero sin efecto (o sin rastro): ninguna respuesta guarda el orden',
     triggerPhrase: 'revisa el barajado',
