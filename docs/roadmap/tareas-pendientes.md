@@ -4588,6 +4588,34 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **➡️ Dónde mirar entonces:** los tres casos reales que motivaron esta ficha vienen de fuentes que el monitor NO alcanza — **norma UE** (RGPD, por espejo DOUE), **reglamento del CGPJ** (Reglamento 3/1995) y **ley autonómica** (Ley 13/1990 CES CyL). Ese es el siguiente barrido, y ahí la herramienta necesita otra fuente: la API de datos abiertos solo sirve para BOE consolidado.
 - **Origen:** campaña de citas ajenas del 28/07 (T-207).
 
+### [T-293] 🟠 [ABIERTO 29/07] Medir si la subida de precios del 07/07 frena la conversión, en la ventana de demanda alta de octubre
+
+- **Qué pasó el 07/07:** al flipear las altas a Nila **se subieron los precios**, porque los `price` son por-cuenta. Comprobado sobre las suscripciones REALES de Nila (66 de 78 van a los importes nuevos): **mensual 20 → 29 € (+45%)**, **trimestral 35 → 39 € (+11%)**, **semestral 59 → 69 € (+17%)** y **anual 99 € nuevo** (en Manuel no existía).
+- **Medido, 3 semanas antes (15/06-05/07) contra 3 después (07/07-27/07):**
+
+  | | Antes | Después | |
+  |---|---|---|---|
+  | Cobros | 100 | 84 | **−16%** |
+  | Ingreso | 3.283 € | 3.430 € | **+4,5%** |
+  | Ticket medio | 32,83 € | 40,83 € | +24% |
+  | Registros nuevos | 1.631 | 1.751 | **+7,4%** |
+  | Conversión | 6,13% | 4,80% | **−22%** |
+
+- **Lectura: ni mejor ni peor en dinero — menos clientes pagando más.** La subida compensó la pérdida de volumen y dejó el ingreso un 4,5% arriba.
+- **⚠️ Lo que NO se puede concluir con estos datos, y por qué:** el −16% de volumen tiene DOS causas posibles que coinciden en el tiempo y empujan igual. (a) el precio; (b) el **calendario de exámenes**: las dos oposiciones más grandes —Auxiliar Administrativo del Estado (2.203 usuarios) y Administrativo del Estado (713)— **no tienen examen hasta 2027**, y CARM (550) examinó el **21/06**, justo antes de la caída. Con la compra concentrada en los 30 días previos al examen, julio es temporada baja para la audiencia actual.
+- **Pero un dato descarta la explicación fácil:** los **registros SUBIERON un 7,4%**. No viene menos gente; compra menor proporción de la que viene. Eso es lo que mantiene viva la hipótesis del precio.
+- **✅ Cómo se resuelve (y por eso esta ficha espera):** la subida **no se ha probado todavía en demanda alta**. El próximo pico es **Madrid, examen 15/10 con 1.455 usuarios** (y tramitación/auxilio judicial el 03/10, 557 más), que entran en su ventana de compra a mediados de septiembre. **Si en octubre la conversión sigue ~22% por debajo del 6,13% de junio, el precio está frenando; si recupera, era el calendario.**
+- **Cómo medirlo (mismo método, para que sea comparable):** cobros y registros por semana cruzados, ventana de 3 semanas, contra el 6,13% de junio como referencia. Ojo: comparar con junio, no con julio, porque julio ya está contaminado.
+- **Origen:** análisis pedido por Manuel el 29/07 al preguntar si las ventas habían mejorado o empeorado tras el cambio de cuenta.
+
+### [T-294] 🟡 [ABIERTO 29/07] Nila tiene NUEVE precios activos, con duplicados del mismo plan a importes distintos
+
+- **Qué:** en la cuenta Nila hay **9 precios activos** y varios son el mismo plan a importe distinto: **mensual a 18 €, 20 € y 29 €**; **trimestral a 35 € y 39 €**; **semestral a 59 € y 69 €**; más el anual de 99 €. En Manuel había exactamente tres (20/35/59).
+- **Riesgo:** lo que paga un usuario depende de **qué `price_id` lleve inlineado el build desplegado** (los `NEXT_PUBLIC_STRIPE_*` se inyectan como build-arg). Con duplicados vivos, un deploy con el valor viejo cobra 20 € donde el resto paga 29 € y nada avisa. Medido: hoy conviven **66 subs a los importes nuevos y 12 a los viejos**.
+- **Detalle que lo hace fácil de pasar por alto:** un `.env.local` de desarrollo puede apuntar a los precios ANTIGUOS y seguir funcionando sin error — pasó el 29/07 al auditar esto, y por un momento pareció que producción cobraba 20 €.
+- **Cómo:** confirmar con Manuel qué cuatro precios son los vigentes, **archivar (`active:false`) los sobrantes** en Stripe —archivar no afecta a las suscripciones que ya los usan, solo impide nuevas altas— y comprobar que los build-args de producción apuntan a los vigentes.
+- **Origen:** auditoría de precios del 29/07 (ver [T-293]).
+
 ### [T-292] 🟠 [ABIERTO 29/07] Las métricas del panel dividen entre las 253 subs de las dos cuentas cuando solo 57 pagan: €/sub 4,4× bajo y proyección a 12 meses sobre una base falsa
 
 - **Contexto (regla de negocio, dicha por Manuel el 29/07):** en la cuenta vieja (Manuel) **se cancelaron las suscripciones a propósito**, para que quien quisiera seguir se diera de alta en la nueva (Nila). O sea: Manuel **no aporta ingreso futuro**, y ninguna métrica que describa el negocio de hoy debe contar su cartera.
