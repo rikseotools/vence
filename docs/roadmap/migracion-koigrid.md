@@ -2,6 +2,8 @@
 
 > **Enlazado desde:** `docs/ARCHITECTURE_ROADMAP.md` §"Principio transversal: agnóstico al proveedor" (eje **hosting/compute**). Este manual es el **destino concreto** de la portabilidad que ese principio exige: la app se diseñó agnóstica *por contrato* precisamente para poder ejecutar este movimiento sin reescribir código.
 >
+> **⚠️ NO SOLO HAY WEB Y BASE DE DATOS — inventario obligatorio antes del cutover (30/07/2026).** Además del frontend y el backend corren **tres tareas programadas** (`vence-temario-pdf-worker` cada 30 min, `vence-content-radar` L-X-V a las 6, `vence-instagram-daily` a diario a las 10) que este manual **no mencionaba**. Migrar sin ellas deja tres trabajos atrás en silencio, y ese fallo ya ocurrió dentro de AWS: el worker de PDFs estuvo **dos días muerto** sin que saltara nada (27→29/07). Inventario completo, con el origen de cada uno: `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN".
+>
 > **Estado:** 🟡 POC WHOLE-STACK PROBADO. NADA en producción migrado (prod sigue 100% en AWS). Cutover gated por load-test de pico (§6) — plan de pago.
 > **Última actualización:** 2026-07-24.
 > **Token API:** SSM `/vence-tools/KOIGRID_API_TOKEN` (perfil `vence`). Memoria: `reference_koigrid_evaluacion_fase_d`.

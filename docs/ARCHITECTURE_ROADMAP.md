@@ -88,6 +88,34 @@ Todo el trabajo de este roadmap se ordena por dos prioridades, **en este orden**
 
 ---
 
+## 🖥️ QUÉ CORRE EN PRODUCCIÓN — inventario (verificado 30/07/2026)
+
+**Por qué existe esta tabla.** Hasta el 30/07 no había inventario en ninguna parte: las **dos** guías de migración a Koigrid (`docs/roadmap/migracion-koigrid.md`, `koigrid-migration-journey.md`) mencionaban **cero** de las tres tareas programadas, y dos de ellas no aparecían en NINGÚN documento. Migrar sin esta lista significa mover la web y el backend y **dejarse tres trabajos atrás sin que nadie se entere** — que no es hipotético: es exactamente lo que pasó del 27 al 29/07, cuando el worker de PDFs estuvo dos días muerto en silencio (§ *Incidente 2026-07-29*).
+
+Se verifica con `aws --profile vence --region eu-west-2 ecs describe-services` y `scheduler list-schedules`.
+
+### Encendidos siempre (atienden tráfico)
+
+| Servicio | Copias (30/07) | Qué es | De dónde sale (contexto completo) |
+|---|---|---|---|
+| `vence-frontend` | 10 | La web (Next.js). **Aquí se fabricaban los PDFs del temario**, y por eso una petición pesada dejaba a esa copia sin atender a nadie | [§ Plan de ejecución activo](#plan-de-ejecución-activo-decidido-2026-05-23--agnóstico-y-arquitectura-como-un-solo-trabajo) (cutover a ECS/Fargate) · el daño y su cronología, en [§ Incidente 2026-07-29](#incidente-2026-07-29--el-pdf-del-temario-bloquea-el-event-loop-del-frontend-y-tumba-el-guardado-de-respuestas) |
+| `vence-backend` | 1 | API NestJS (`api.vence.es`) + los `@Cron` in-process, incluido el barrido nocturno de salud de contenido | [§ Las 6 fases](#las-6-fases) (Fase B) |
+
+### Programadas (arrancan, hacen su faena y se apagan)
+
+| Tarea | Cadencia | Para qué | De dónde sale (contexto completo) |
+|---|---|---|---|
+| `vence-temario-pdf-worker` | `rate(30 minutes)` | Fabrica los PDFs del temario **fuera** de la web, desde la cola `temario_pdf_jobs`, y los sube a S3 | Nace en **[T-086]** ([ficha](roadmap/tareas-pendientes.md), pre-generación de temas grandes: los que no caben en render síncrono devolvían 413 a usuarios premium). **[T-159]** ([ficha](roadmap/tareas-pendientes.md)) le dio repo ECR propio y re-pineado en cada deploy tras morir 2 días, y ahí está el diseño de la cola. Que la web siguiera fabricándolos por su cuenta es **[T-270]** ([ficha](roadmap/tareas-pendientes.md)) |
+| `vence-content-radar` | `cron(0 6 ? * MON,WED,FRI *)` | Radar de contenido social | [runbook](runbooks/radar-contenido-social.md) · diseño en [radar-multicapa](roadmap/radar-multicapa.md) · salud del motor en [salud-radar](runbooks/salud-radar.md) |
+| `vence-instagram-daily` | `cron(0 10 * * ? *)` | Publicación diaria en Instagram | Marketing (`marketing/`). **Sin ficha ni runbook propios** — es el peor documentado de los tres |
+
+### ⚠️ Dos huecos abiertos que esta tabla destapa
+
+1. **La migración a Koigrid (**[T-089]**, [ficha](roadmap/tareas-pendientes.md)) no contempla ninguna de las tres.** Sus dos documentos —[manual de migración](roadmap/migracion-koigrid.md) y [journey](roadmap/koigrid-migration-journey.md)— hablan de web y datos. Las tareas programadas hay que llevárselas explícitamente o se quedan atrás. Aviso ya puesto en la cabecera del manual.
+2. **La vigilancia de que sigan vivas cubre solo UNA de las tres** → **[T-325]** ([ficha](roadmap/tareas-pendientes.md)). El catálogo `backend/src/cron-schedule/external-jobs.registry.ts` —creado precisamente para que un trabajo programado no muera en silencio— declara únicamente `temario-pdf-worker`. `content-radar` e `instagram-daily` **pueden morir igual que murió aquel y nadie se enteraría**: la regla `cron_overdue` no sabe que existen. El precedente completo, en [§ Incidente 2026-07-29](#incidente-2026-07-29--el-pdf-del-temario-bloquea-el-event-loop-del-frontend-y-tumba-el-guardado-de-respuestas).
+
+---
+
 ## Diagnóstico actual (mayo 2026)
 
 | Métrica | Valor | Comentario |

@@ -1784,6 +1784,8 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Relacionada:** [T-270] (el incidente, independiente), [T-086] (pre-generación), [T-159] (cola de PDFs).
 
 ### [T-270] 🔴 [ABIERTO 29/07] La ruta PÚBLICA del PDF del temario renderiza en el contenedor que sirve y tumba el guardado de respuestas
+
+> **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 - **Incidente completo (anatomía, minuto a minuto y lecciones):** `docs/ARCHITECTURE_ROADMAP.md` → *«Incidente 2026-07-29»*. Aquí va solo el plan.
 - **Qué pasa:** `app/api/temario/[oposicion]/[topic]/pdf/route.ts` **exige premium** pero no tiene límite de tasa, y cuando el PDF no está en caché lo **renderiza en línea** con `@react-pdf` + `pdf-lib` — JS puro, CPU pura, **en el proceso que sirve el tráfico**. Un tema tiene 21 páginas de mediana pero **p95 de 178 y máximo de 760**. Node es monohilo → esa task queda bloqueada y todo lo demás hace cola.
 - **Medido el 29/07 (09:30-09:48 UTC):** 51 PDFs de 44 temas, **36 renders frescos**. CPU del frontend **98,5%**, event-loop bloqueado **215 s** en 5 instancias, `/api/v2/answer-and-save` a **p95 25.070 ms** con peticiones por encima del corte de 15 s del cliente. **Tráfico plano** todo el rato (44-117 req/min): no fue carga de usuarios. A las 09:49, con el barrido terminado, todo volvió a 30-70 ms.
@@ -2053,6 +2055,8 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Origen:** barrido de salud del 27/07.
 
 ### [T-159] 🟠 [ABIERTO 27/07] La cola de PDFs del temario no tiene consumidor automático (Fase D de T-086)
+
+> **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 
 > **📐 ANÁLISIS 30/07 — qué haría falta para que el PDF bajo demanda pudiera usar esta cola (Fase 2 de [T-270]).**
 > Salió de preguntarse si la Fase 2 se podía adelantar. La respuesta es que **el obstáculo no es la
@@ -2953,6 +2957,8 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Origen:** iteración del detector de frontera de título / migración `law_sections` 24/07 (fix `parseBoeSections` ti-N). La NOTA está en `lib/laws/parseBoeSections.js`.
 
 ### [T-089] 🟡 [29/07] Migración a Koigrid — **A3 RESUELTO y PRECIO PUBLICADO: no queda bloqueo, ni técnico ni comercial.** Decisión de Manuel: Pro $35/mes vs $491 de AWS
+
+> **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 
 - **💰 SEGUNDA RELEASE del 29/07 (`llms.txt` 810→837, mismas 189 rutas): PUBLICARON LOS PRECIOS.** Era lo único que quedaba abierto. Hecha la cuenta con NUESTROS números medidos:
   - **Lo que necesitamos (medido, no estimado):** app **2 GB × 1 réplica** (el load-test de hoy da 615 rps = 37× nuestro pico, CPU 0%); BD **31 GB de datos sobre 4 GB de RAM** (nuestra RDS es una `db.t4g.medium` Multi-AZ, 100 GB gp3); salida **~370 GB/28 días (~400 GB/mes)**; **43,3 M peticiones/mes**; ~56 GB de vídeo en object storage (ya está en koigrid).
@@ -3875,6 +3881,24 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **FALTA:** con los primeros desgloses reales delante, decidir el agregado por usuario y tema. **No hacerlo a ciegas.**
 - **Relacionadas:** [T-312] (desglose por fases, el patrón a reutilizar) · [T-315] (mismo error de leer un síntoma como degradación).
 
+### [T-325] 🟠 [ABIERTO 30/07] Dos de los tres trabajos programados pueden morir en silencio: el catálogo de liveness solo declara uno
+
+> **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
+
+- **ORIGEN.** Manuel preguntó si los servidores estaban documentados de cara a la migración a Koigrid. Al inventariarlos salieron dos huecos; este es el que puede hacer daño solo.
+- **QUÉ.** `backend/src/cron-schedule/external-jobs.registry.ts` es el catálogo que permite a la regla `cron_overdue` juzgar si un trabajo que corre FUERA del backend sigue vivo. **Declara únicamente `temario-pdf-worker`.** Corriendo hay tres:
+
+  | Tarea | Cadencia | ¿Vigilada? |
+  |---|---|---|
+  | `vence-temario-pdf-worker` | `rate(30 minutes)` | ✅ sí |
+  | `vence-content-radar` | `cron(0 6 ? * MON,WED,FRI *)` | ❌ **no** |
+  | `vence-instagram-daily` | `cron(0 10 * * ? *)` | ❌ **no** |
+
+- **POR QUÉ IMPORTA — no es hipotético, ya pasó.** Ese catálogo se creó (29/07) precisamente porque `temario-pdf-worker` estuvo **dos días muerto sin que saltara una sola alerta**: su imagen se purgó del registro, el contenedor fallaba en el pull **antes** del entrypoint y por tanto no emitía nada. **Un trabajo que muere antes de arrancar no puede avisar de su propia muerte**, y la única señal fiable es la AUSENCIA de señal frente a una cadencia declarada. Los otros dos están hoy exactamente en la situación en la que estaba aquel.
+- **QUÉ HACER.** Declarar los dos que faltan en el catálogo (`name` + cadencia cron portable, **nunca** `rate()` ni ARNs — el catálogo es agnóstico de proveedor a propósito) y comprobar que emiten `cron_tick`/`cron_run`; si no los emiten, ese es el trabajo real, porque sin señal el catálogo no puede juzgarlos. Verificar con una simulación de ausencia, como se hizo con el worker.
+- **⚠️ AL AÑADIRLOS, MIRAR PRIMERO SI DEBEN SEGUIR VIVOS.** Al arreglar el incidente apareció una segunda víctima, `vence-health-digest`, y la decisión correcta fue **borrarla**, no revivirla: era un duplicado de un barrido que ya corre in-process. No dar por hecho que los tres trabajos deben existir.
+- **Relacionadas:** [T-159] (de donde salió el catálogo) · [T-089] (migración a Koigrid: el otro hueco del inventario, ya anotado en el manual y en `ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN").
+
 ### [T-313] 🟠 [ABIERTO 30/07] Se puede elegir qué artículos entran en el test, pero nadie lo encuentra
 
 - **ORIGEN.** Manolo García (premium, feedback `6df1e69a`, 30/07): *«no sé si existe la posibilidad de pedir test de diferentes artículos dentro de una Ley, por ejemplo si una Ley es larga, pongamos de 100 artículos y llevas estudiado la mitad, poder señalar dentro de los 50 que ya has estudiado sin tener que recurrir a darle a test completo de toda la Ley»*. **La función existe desde hace tiempo y hace exactamente eso.** Él lleva 22 días usando la plataforma a diario y no la había visto.
@@ -4239,6 +4263,8 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks editoriales), T-040 (artículos-cajón). Detonante: bug PDF de Julen (`cb4621ae`, T19 aux-Madrid) → 504 por el cajón de 89 KB.
 
 ### [T-086] ✅ [HECHA — verificado 24/07 triage: worker de pre-generación DESPLEGADO y CORRIENDO en AWS (task def vence-temario-pdf-worker 2vCPU + EventBridge rate(30min) + canary); evidencia viva 24/07 (temario_pdf_pregenerated/served/canary_ok); temas grandes servidos desde S3 sin 504; Julen cerrado. Residuales cosméticos = tarea menor aparte] Pre-generación de PDFs del temario (temas grandes)
+
+> **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 
 > **⚠️ AVISO 29/07 — "verificado corriendo" era cierto y aun así insuficiente.** Ese worker se murió
 > **3 días después** y estuvo 2 días muerto sin una sola alerta: su imagen se había subido a mano al
