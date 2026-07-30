@@ -24,6 +24,22 @@ verdad** (explicación estructurada + opciones con `shuffle_mode='full'`).
 - `inventario-defecto-articulo.json` — los 219 `defecto_articulo` agrupados por contenedor, con
   preguntas y exposiciones. Es la entrada de trabajo de **T-302**.
 
+## Re-verificación post-aplicación (paso 7 del método v2.1)
+
+Las **269** explicaciones aplicadas se revisaron **otra vez**, sobre la pregunta viva en BD y con
+agentes independientes: **261 limpias, 8 con defecto (3,0 %)**. Los 8, resueltos:
+
+| defecto | cuántos | qué se hizo |
+|---|---|---|
+| cita que altera la puntuación de la fuente | 4 | podada o recortada a verbatim |
+| **afirmación falsa** en la razón de un distractor | 2 | reescrita (Ctrl+N ≠ nueva presentación; Quitar duplicados está en Herramientas de datos) |
+| atribución de contenido que la fuente no respalda | 1 | podada |
+| **pregunta ambigua** (dos opciones igual de ausentes de la fuente) | 1 | retirada a `needs_human` |
+
+**Lo que esto demuestra:** los gates deterministas dieron las 269 por buenas — no pueden ver una
+afirmación falsa dentro de una razón. Los dos casos los cazó esta pasada. Sin el paso 7 se habrían
+quedado servidos a los opositores.
+
 ## Qué enseñó la tanda
 
 1. **La cola es más corta de lo previsto.** De las 12.361 del cubo, solo 3.485 tienen alguna
