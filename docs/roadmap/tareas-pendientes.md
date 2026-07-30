@@ -788,6 +788,23 @@ incluida).
 - **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
 - **Esfuerzo:** bajo, con una espera de 30 min por medio.
 
+### [T-347] 🟠 [ABIERTO 31/07] Las fuentes del radar siguen igual que en la avería de julio: 101 en error y ninguna revisada
+
+- **MEDIDO EL 31/07:** `detection_sources` tiene **173 fuentes, las 173 marcadas `is_active=true`**. De ellas: **101 con `last_error`**, **99 que no han tenido un solo éxito jamás** (`last_success_at IS NULL`) y **0 revisadas en las últimas 48 horas**.
+- **LO GRAVE NO SON LOS NÚMEROS, ES QUE SON LOS MISMOS.** El runbook `docs/runbooks/salud-radar.md` documenta como incidente del 16/07 exactamente esto: *«101 de 173 fuentes (58%) en error, 99 sin funcionar jamás, 45 días sin ejecutarse. Todas marcadas is_active=true. Ninguna alerta.»* Dos semanas después la foto es idéntica → se escribió el diagnóstico y no se arregló (o volvió, que para el catálogo da igual).
+- **Por qué importa:** `is_active=true` en una fuente rota significa que el panel la cuenta como vigilada. Un badge de OEPs a cero puede ser «no hay convocatorias» o «nadie está mirando», y hoy no se distingue — que es justo el motivo por el que existe ese runbook.
+- **Primeros pasos (sin dar la causa por hecha):** separar las 99 que nunca funcionaron (probablemente mal dadas de alta: URL, selector o fetcher que no aplica) de las que funcionaron y se rompieron. Y comprobar **quién consume `detection_sources`**: si ningún cron las recorre, el problema no son las fuentes sino el proceso que debería visitarlas.
+- **Relacionada:** [T-348], `docs/runbooks/salud-radar.md`.
+
+### [T-348] 🟠 [ABIERTO 31/07] Ningún aviso vigila que un cron deje de arrancar o muera a media pasada
+
+- **CÓMO SE VIO (31/07):** `detect-oep-llm` llevaba **85 horas sin dar señales de vida** y se detectó mirando otra cosa. Resultó estar apagado a propósito por el killswitch de coste ([T-166]), pero **el sistema no sabía distinguirlo de una avería**.
+- **Y hay un segundo modo de fallo, más traicionero:** crons que **arrancan y no terminan**. Comparando `cron_tick{phase:start}` con `cron_run` en `observable_events` (últimos 10 días): `detect-notas-convocatoria` murió a media pasada el 21, 22, 25 y 26/07; `detect-oep-llm`, el 21, 22 y 27/07. **El badge parece sano porque sí llegan algunas señales** — solo faltan las de la mitad del barrido que nunca se hizo.
+- **Las alertas SÍ funcionan, y eso lo hace más evidente:** la noche del 30/07 saltaron `event_loop_lag`, `senal_error_sin_vigilancia`, `auth_token_mint_waste` y `daily_quota_overcharge`, todas con correo. El motor está vivo: falta la regla.
+- **Dos reglas, no una:** (1) **cron mudo** — sin `cron_tick` en su ventana esperada, con la salvedad de que un apagado deliberado NO debe avisar como avería o el aviso se vuelve ruido; (2) **cron que no cierra** — `cron_tick` sin su `cron_run` pasado el presupuesto. Este segundo hoy no lo ve nadie.
+- **Dato para calibrar:** cuando `detect-oep-llm` corría, tardaba ~169 min y fallaba el **24 %** de las descargas (529 de 2.206). El umbral no puede ser «tardó más de X» a secas.
+- **Relacionada:** [T-347], [T-166], `docs/runbooks/salud-radar.md`, `docs/runbooks/observability.md`.
+
 ## Hechas
 
 ### [T-345] ✅ [HECHO 31/07] Fecha límite en el backlog (`due_at` + `due_reason`), el campo que faltaba
@@ -2264,6 +2281,13 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **La alarma de urgencia se DESCARTÓ a propósito** (27/07, decisión de Manuel): se planteó un aviso automático para oposiciones con plazo abierto, por si el triaje humano tardaba días. No hace falta — **Manuel abre sesión cada mañana**, así que la cobertura es igual o mejor que el cron, que además solo corría L-V. Menos piezas que mantener.
 - **Riesgo a vigilar cuando se reactive:** el cubo es el tercer candidato a vertedero. Ya hay dos: **6.886 extracciones de LLM con 0 triadas** y **6.476 de 6.696 documentos tipados como `nota` genérica** (T-147). Si entran 460 páginas/día, el cubo no se vacía. **El embudo no es un extra: es lo que hace el cubo atendible.**
 - **Reutilizar, no duplicar:** cubo `convocatoria_documentos` · patrón `docs:bandeja` · `computeContentHash()` (realineado) · `diag-seguimiento-ruido.cjs` para calibrar · A/B de modelos `scripts/observabilidad/ab-modelo-notas.cjs` si tras el embudo aún compensa mirar modelos más baratos por OpenRouter (`OPENROUTER_API_KEY` ya configurada). **Ojo:** con el embudo quitando el 75-80% de las llamadas, optimizar el precio del resto (~2 USD/día) es de segundo orden — decidir si merece la pena antes de gastar sesión en ello.
+- **🧪 PILOTO CORRIDO EL 31/07 — el hash SÍ es estable, luz verde al embudo.** `node scripts/oep/pilot-hash-gate.cjs --n 60 --espera 90` (no escribe nada; descarga la misma URL dos veces separadas 90 s y mira si el hash se mueve solo). Sobre **55 páginas comparables**:
+  - **53 estables (96,4 %)** ← ese es el TECHO del ahorro por hash.
+  - Solo **2 (3,6 %) se mueven solas** en 90 segundos: `auxiliar-administrativo-universidad-cadiz` y `administrativo-navarra`. Esas pagarán llamada todos los días, haga lo que haga el gate.
+  - **El hash legacy y el del input real del modelo se movieron IGUAL (2 y 2)** en esta muestra — el desalineo no es ruido, es alcance: **8 páginas (14,5 %) exceden la ventana de 20.000 caracteres**, y en ellas un cambio más allá de esa marca movería el hash de hoy sin poder alterar lo que el modelo ve. Ahí está la llamada inútil que el gate correcto se ahorra y el actual no.
+  - **1 de 56 (1,8 %) lleva la fecha de hoy** dentro de la ventana del modelo → esa cambia mañana con total seguridad.
+- **Qué cierra este piloto y qué NO.** Cierra la duda que hundió a T-047: aquí el hash **no** es ruidoso (96,4 % estable frente al 4 % de acierto de aquel sensor), así que el embudo tiene fundamento. **NO mide el ahorro diario**: 90 segundos solo descartan el ruido de recarga. El ahorro real sigue siendo el 52,3 % que no cambia nunca ya medido a 14 días; lo suyo es correr el mismo piloto con `--baseline` hoy y `--comparar` mañana para medirlo sin esperar a nadie.
+- **⚠️ ESTADO DEL SENSOR, VERIFICADO EN AWS EL 31/07:** sigue apagado — `DETECT_OEP_LLM_ENABLED=false` en el task def **vivo** `vence-backend:144` (no en SSM: va como variable de entorno del contenedor). Se comprobó que el apagado es DELIBERADO antes de tratarlo como avería: el sensor no arranca desde el 27/07 a las 12:00, que es exactamente el día de su killswitch. **Reactivar = poner el flag a `true` en `scripts/deploy-backend.sh` y desplegar backend.**
 - **Capas exigidas** (petición explícita de Manuel, 27/07): núcleo PURO compartido cron↔CLI (nunca una copia por gemelo), unit con las páginas reales de los tres grupos medidos, **simulación bank-wide sin escribir ANTES de encender**, paridad CLI↔`@Cron` si se toca el sweep, y canary solo si el embudo llega a decidir solo. Sin silos: frase-gatillo en `runbookRegistry` + CLAUDE.md.
 
 ---
