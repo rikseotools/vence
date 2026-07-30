@@ -3880,6 +3880,24 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   3. Que una oposición con examen próximo y sin notas escaneadas **se note** (badge o hallazgo de salud), en vez de parecer que está vigilada.
 - **Relacionadas:** [T-063] (las dos convocatorias de Madrid), memoria `project-version-software-oposiciones-metodo`, `docs/maintenance/oeps-convocatorias-seguimiento.md`.
 
+### [T-321] 🟠 [ABIERTO 30/07] 3.535 preguntas duplicadas EXACTAS en el banco activo
+
+- **ORIGEN.** Marta (premium) mandó tres impugnaciones de `pregunta_repetida` el mismo día. Al resolver la primera se midió el artículo: había **cuatro versiones** de la misma pregunta sobre los capítulos del Título I. Aplicando la regla de «mira si es sistémico antes de cerrar», el barrido salió mucho peor de lo esperado.
+- **MEDIDO (30/07), con criterio ESTRICTO** — mismo `primary_article_id` + **enunciado normalizado idéntico** + **misma respuesta correcta**, excluyendo supuestos prácticos (`exam_case_id`):
+  - **139.469** preguntas activas analizadas.
+  - **3.410 grupos** de duplicado exacto.
+  - **3.535 preguntas sobrantes** si se dejara una por grupo (**≈2,5% del banco**).
+  - **631 grupos incluyen alguna de examen oficial** → ahí la superviviente debe ser la oficial, que no se toca.
+  - Ejemplos: *«En Microsoft Word 365, si queremos manipular una imagen…»* ×5 · *«Se entiende por Riesgo Laboral…»* ×4 · *«De acuerdo con la Ley 39/2015, la comparecencia de las…»* ×4.
+- **⚠️ EL NÚMERO FÁCIL ESTABA MAL, y conviene que quede escrito.** El primer barrido usó «solape de palabras ≥75%» y dio **3.230 pares solo en 40 artículos**. Al mirar ejemplos, los peores (Respiratorio, Oncología, Salud Mental) **no eran duplicados**: son **casos prácticos** donde varias preguntas distintas comparten el enunciado del supuesto por diseño. Una métrica de parecido sirve para explorar, no para borrar. El criterio que aguanta es **enunciado idéntico Y misma respuesta**.
+- **Por qué importa:** quien estudia por artículos —como Marta— se las come seguidas y percibe el banco como corto y repetitivo. Y falsea sus estadísticas: acertar cinco veces la misma pregunta parece dominio del tema.
+- **Cómo atacarlo (sin romper nada):**
+  1. Conservar **una por grupo** con prioridad: la de **examen oficial** si la hay; si no, la de mejor explicación (estructurada) y más servida.
+  2. Jubilar el resto con `transition_question_state(..., 'retired_duplicate', 'admin_duplicate_of', …)` **anotando de cuál es duplicada** en las notas. Nunca `UPDATE is_active` directo: `is_active` es GENERATED.
+  3. Ir **por lotes con simulación previa** (qué se jubila, qué queda, cuántas preguntas pierde cada tema) y comprobar que **ningún tema baja de su mínimo servible**.
+  4. Revisar después las estadísticas de usuario: no hace falta tocarlas, pero conviene saber que quedan respuestas apuntando a preguntas jubiladas (es lo normal y no rompe).
+- **Regla que nace de aquí (ya en el manual de impugnaciones):** cuando una impugnación puede ser sistémica, **medir en la BD antes de cerrar** — la persona solo ha visto la punta.
+
 ## Hechas
 
 ### [T-275] ✅ [HECHA 30/07] Nadie vigila el mapa de visibilidad: una tabla insert-only se enfría y degrada consultas en silencio
