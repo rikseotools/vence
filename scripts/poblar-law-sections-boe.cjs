@@ -39,6 +39,10 @@ const boeId = (u) => (String(u || '').match(/BOE-A-\d{4}-\d+/) || [])[0]
 // Aquí solo queda lo que necesita red (fetch del índice + rúbrica).
 const { parseBoeSections, validarSecciones } = require('../lib/laws/parseBoeSections')
 const { bloqueVigente } = require('../lib/laws/boeBloqueVigente')
+// Normas EUROPEAS (30/07/2026): la API de legislación consolidada es derecho español y
+// responde «Identificador no válido» a un id DOUE, así que hasta hoy ninguna entraba aquí
+// ([T-228]). Se leen del documento espejo que publica el BOE, con su parser propio.
+const { parseDoueSections, lineasDesdeHtml, esIdDoue } = require('../lib/laws/parseDoueSections')
 
 /** Rúbrica descriptiva de un título/capítulo: viene DENTRO de su bloque, tras el
  *  encabezado "TÍTULO I". Fetch extra por sección (por eso se hace solo al aplicar). */
@@ -119,12 +123,38 @@ async function insertar(lawId, secs, tipo) {
   })
 }
 
+/**
+ * Estructura de una norma EUROPEA desde el documento espejo del BOE.
+ *
+ * A diferencia del consolidado español, aquí no hay índice con bloques: se parsea el texto
+ * del documento. Por eso el parser es desconfiado (rechaza si detecta índice duplicado o
+ * artículos que retroceden) y por eso el resultado pasa igualmente por `validar()` contra
+ * los artículos que existen de verdad en la base de datos.
+ *
+ * La rúbrica viene en el mismo recorrido, así que no hace falta el fetch por sección que sí
+ * necesita el camino del BOE.
+ */
+async function estructuraDoue(did) {
+  const html = await (await fetch(`https://www.boe.es/buscar/doc.php?id=${did}`)).text()
+  const { tipo, secciones, motivo } = parseDoueSections(lineasDesdeHtml(html))
+  if (motivo) return { motivo, secs: [] }
+  return { secs: secciones.map((s) => ({ tipo, blockId: null, num: s.num, from: s.from, to: s.to, rubrica: s.rubrica })) }
+}
+
 async function procesarLey(l, { apply }) {
   const bid = boeId(l.boe_url)
-  if (!bid) return { slug: l.short_name, estado: 'no_boe' }
+  const did = bid ? null : esIdDoue(l.boe_url)
+  if (!bid && !did) return { slug: l.short_name, estado: 'no_boe' }
   const ya = (await sql`SELECT count(*)::int n FROM law_sections WHERE law_id=${l.id}`)[0].n
   if (ya > 0) return { slug: l.short_name, estado: 'ya_poblada', n: ya }
-  const secs = await estructura(bid, { conRubrica: apply })
+  let secs
+  if (did) {
+    const r = await estructuraDoue(did)
+    if (r.motivo) return { slug: l.short_name, estado: 'rechazada', motivo: r.motivo, n: 0 }
+    secs = r.secs
+  } else {
+    secs = await estructura(bid, { conRubrica: apply })
+  }
   const v = await validar(l.id, secs)
   if (!v.ok) return { slug: l.short_name, estado: 'rechazada', motivo: v.motivo, n: secs.length }
   if (!apply) return { slug: l.short_name, estado: 'lista', n: secs.length, tipo: secs[0].tipo }
