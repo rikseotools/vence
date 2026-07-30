@@ -104,6 +104,14 @@ export const resolveDisputeRequestSchema = z.object({
   // Escape de la puerta de barajado (ver `shuffleReadiness.ts`). Exige MOTIVO, no un booleano:
   // un `skip: true` se teclea sin pensar; escribir por qué obliga a pensarlo y deja rastro.
   skipShuffleReason: z.string().min(10, 'Explica por qué se salta la comprobacion (min. 10 caracteres)').max(500).optional(),
+  // «Un fallo o hallazgo, una recompensa» (Manuel, 30/07/2026). Cuando varias impugnaciones
+  // son EL MISMO hallazgo, la primera cobra su euro y las hermanas se cierran igual de
+  // válidas —tenían razón, y rechazarlas enseñaría a no volver a avisar— pero sin abono.
+  //
+  // Exige MOTIVO por lo mismo que el de arriba: un booleano se teclea sin pensar y no deja
+  // rastro de POR QUÉ no se pagó, que es justo lo que habrá que releer dentro de tres meses.
+  // Se espera algo como «mismo hallazgo que ce143c99: la misma pregunta duplicada».
+  skipRewardReason: z.string().min(10, 'Explica por qué esta no lleva recompensa (min. 10 caracteres)').max(500).optional(),
 })
 
 export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>

@@ -242,7 +242,7 @@ export async function resolveDispute(
 ): Promise<ResolveDisputeResponse | DisputeError> {
   try {
     const db = getV2DisputeDb()
-    const { disputeId, questionType, status, adminResponse } = params
+    const { disputeId, questionType, status, adminResponse, skipRewardReason } = params
     const trimmedResponse = adminResponse.trim()
     const now = new Date().toISOString()
 
@@ -391,7 +391,21 @@ export async function resolveDispute(
     // impugnación llega a `resolved` (endpoint admin y scripts CLI incluidos). No lanza nunca: si la
     // concesión falla, la impugnación queda resuelta igual (ver lib/referrals/disputeReward.ts).
     if (status === 'resolved' && userId) {
-      await maybeRewardResolvedDispute({ disputeId, userId, status, questionType })
+      if (skipRewardReason) {
+        // La impugnación es válida (por eso va a `resolved`), pero es el MISMO hallazgo que
+        // otra ya recompensada: «un fallo o hallazgo, una recompensa». No se concede el euro
+        // y queda el motivo escrito, que es lo que permite auditarlo después.
+        console.log(`💶 [Dispute] ${disputeId} resuelta SIN recompensa: ${skipRewardReason}`)
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'dispute_reward_skipped',
+          endpoint: '/api/v2/dispute/resolve',
+          metadata: { disputeId, questionType, userId, motivo: skipRewardReason },
+        })
+      } else {
+        await maybeRewardResolvedDispute({ disputeId, userId, status, questionType })
+      }
     }
 
     // 3.4 Invalidar cache server-side de validation queries (tag 'questions').
