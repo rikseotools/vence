@@ -4903,7 +4903,11 @@ export const RULE_FRAUDE_CONFIRMADO_SIN_ACCION: AlertRule<{
     metadata: { total: rows[0]?.total ?? 0, masAntiguaDias: rows[0]?.masAntiguaDias ?? 0 },
     fingerprint: 'fraude_confirmado_sin_accion',
   }),
-  cooldownMin: 10080, // semanal: es una deuda, no una urgencia
+  // 24 h. Se intentó semanal (10080) y el guardarraíl de [T-258] lo tumbó con razón: el cooldown
+  // persistido se hidrata desde una ventana de 48 h (`LAST_FIRED_LOOKBACK_MIN`), así que cualquier
+  // valor mayor se perdería tras un reinicio y la alerta acabaría disparando más de lo previsto —
+  // silenciosamente. Diario es suficiente para una deuda y cabe holgado en la ventana.
+  cooldownMin: 1440,
 };
 
 /**

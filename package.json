@@ -97,6 +97,7 @@
     "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
     "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs",
     "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs",
+    "fraude:marcar-confirmadas": "node scripts/fraude/marcar-confirmadas.cjs",
     "fraude:dossier": "node scripts/fraude/dossier-confirmadas.cjs",
     "fraude:sombra-device": "node scripts/fraude/analizar-sombra-device-limit.cjs",
     "deploy:pendiente": "node scripts/deploy-pendiente.cjs",

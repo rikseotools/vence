@@ -96,6 +96,9 @@ function makeController(): {
       tierLabel: null,
     }),
     checkDeviceDailyUsage: jest.fn().mockResolvedValue({ allowed: true, deviceTotal: 5 }),
+    // Corte dirigido (T-304): por defecto NADIE está confirmado; los tests que lo necesiten
+    // lo activan. Si faltara, el controller reventaría con «is not a function».
+    esFraudeConfirmado: jest.fn().mockResolvedValue(false),
     // Cobro del cupo diario (T-260, 29/07/2026): el controller lo llama en
     // background cuando la respuesta se guarda por primera vez.
     incrementDailyCount: jest.fn().mockResolvedValue(undefined),
@@ -221,6 +224,38 @@ describe('AnswerSaveController.post', () => {
             allowed: false,
             deviceTotal: 75,
           });
+          const res = makeRes();
+          await expect(
+            controller.post(makeBody(), USER, {}, res),
+          ).resolves.toBeDefined();
+        });
+      });
+
+      it('CONFIRMADO por revisión manual → bloquea AUNQUE el modo sea shadow (corte dirigido)', async () => {
+        // Decisión de Manuel (30/07): a los 8 dispositivos ya revisados uno a uno se les aplica
+        // ya, sin esperar a la sombra. Es la opción de MENOS riesgo: ahí no hay duda que resolver.
+        await conModo('shadow', async () => {
+          const { controller, mocks } = makeController();
+          mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
+            allowed: false,
+            deviceTotal: 75,
+          });
+          mocks.dailyLimit.esFraudeConfirmado.mockResolvedValue(true);
+          const res = makeRes();
+          await expect(
+            controller.post(makeBody(), USER, {}, res),
+          ).rejects.toThrow(ForbiddenException);
+        });
+      });
+
+      it('si la consulta de confirmados falla, NO corta (fail-open)', async () => {
+        await conModo('shadow', async () => {
+          const { controller, mocks } = makeController();
+          mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
+            allowed: false,
+            deviceTotal: 75,
+          });
+          mocks.dailyLimit.esFraudeConfirmado.mockRejectedValue(new Error('BD caída'));
           const res = makeRes();
           await expect(
             controller.post(makeBody(), USER, {}, res),

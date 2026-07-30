@@ -378,4 +378,44 @@ export class DailyLimitService {
   invalidateStatusPremiumCache(userId: string): void {
     this.statusPremiumCache.delete(userId);
   }
+  /**
+   * ¿Está este sujeto en la lista de fraude CONFIRMADO por revisión manual?
+   *
+   * ESPEJO de `lib/api/fraud/esConfirmado.ts`. Sirve para el corte DIRIGIDO: a los confirmados se
+   * les aplica el límite por dispositivo aunque el modo global siga en `shadow`, porque ahí no hay
+   * duda que resolver con más datos — son 8 dispositivos revisados uno a uno con evidencia.
+   *
+   * No es un bloqueo de cuenta: las cuentas del mismo equipo pasan a compartir los 25 del día.
+   *
+   * Fail-open: ante cualquier error, `false`. Un fallo de consulta no puede cortarle a nadie.
+   */
+  async esFraudeConfirmado(
+    userId: string | null,
+    deviceId: string | null,
+    fingerprint?: string | null,
+  ): Promise<boolean> {
+    const fpV2 =
+      typeof fingerprint === 'string' && fingerprint.startsWith('fp2_')
+        ? fingerprint
+        : null;
+    if (!userId && !deviceId && !fpV2) return false;
+    try {
+      const rows = (await this.db.execute(sql`
+        SELECT 1 FROM fraud_confirmations
+         WHERE retention_until > now()
+           AND status = 'confirmed'
+           AND (
+             (${deviceId}::text IS NOT NULL AND device_id = ${deviceId})
+             OR (${fpV2}::text IS NOT NULL AND fingerprint = ${fpV2})
+             OR (${userId}::text IS NOT NULL AND ${userId}::uuid = ANY(user_ids))
+           )
+         LIMIT 1
+      `)) as unknown as unknown[];
+      return Array.isArray(rows) && rows.length > 0;
+    } catch (err) {
+      this.logger.warn('esFraudeConfirmado falló — fail-open:', err);
+      return false;
+    }
+  }
+
 }

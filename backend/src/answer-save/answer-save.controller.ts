@@ -147,11 +147,17 @@ export class AnswerSaveController {
       // nueva (huella v2) agrupa cuentas que antes no se agrupaban, y antes de dejar a alguien
       // sin servicio hay que ver sobre tráfico real a quién estaríamos bloqueando.
       const modo = currentDeviceLimitMode();
+      // Corte DIRIGIDO a los ya confirmados: se aplica aunque el modo global sea `shadow`
+      // (decisión de Manuel, 30/07 — son 8 dispositivos revisados uno a uno). Espejo del
+      // frontend; `answer-and-save` reparte tráfico entre los dos caminos.
+      const confirmado = await this.dailyLimit
+        .esFraudeConfirmado(user.userId, deviceId, hwFingerprint)
+        .catch(() => false);
       this.logger.warn(
         `[device-limit:${modo}] dispositivo con ${deviceUsage.deviceTotal} preguntas hoy entre sus cuentas` +
           (shouldBlock(modo) ? ' — BLOQUEADO' : ' — solo registrado (sombra)'),
       );
-      if (shouldBlock(modo)) {
+      if (shouldBlock(modo) || confirmado) {
         throw new ForbiddenException({
           success: false,
           error:

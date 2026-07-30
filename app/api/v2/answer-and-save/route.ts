@@ -16,6 +16,7 @@ import { emit } from '@/lib/observability/emit'
 import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
 import { marcarPersistente } from '@/lib/api/fraud/marcaPersistente'
 import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
+import { esFraudeConfirmado } from '@/lib/api/fraud/esConfirmado'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
@@ -168,6 +169,16 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // cortarle el servicio a nadie se mide, sobre tráfico real, lo que HABRÍA pasado. Por defecto
     // `shadow` — un despliegue sin decidir mide, no corta.
     const deviceLimitMode = currentDeviceLimitMode()
+    // CORTE DIRIGIDO a los ya confirmados (decisión de Manuel, 30/07). El modo global arranca en
+    // `shadow` para no cortar a ciegas mientras se mide, pero eso sobra con 8 dispositivos
+    // revisados uno a uno y con evidencia (correos que son variantes del mismo nombre, cupos
+    // agotados en cadena la misma noche). A ellos se les aplica ya.
+    // No es un bloqueo de cuenta: las cuentas del mismo equipo comparten los 25 del día.
+    const confirmado = await esFraudeConfirmado({
+      userId: user.id,
+      deviceId,
+      fingerprint: hwFingerprint,
+    }).catch(() => false)
     if (!dailyLimit.isPremium && !dailyLimit.degraded && deviceUsage && !deviceUsage.allowed) {
       // OBSERVABLE A PROPÓSITO (T-304). Este bloqueo llevaba desde el 17/04 sin dejar rastro
       // alguno: por eso pudo estar tres meses sin cortar una sola vez —con 3-11 dispositivos al
@@ -188,14 +199,17 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           hasFingerprintV2: Boolean(hwFingerprint?.startsWith('fp2_')),
           // `shadow` = se registró pero NO se bloqueó. Es lo que se analiza antes de activar.
           mode: deviceLimitMode,
+          // `dirigido` = cortado por estar CONFIRMADO, aunque el modo global sea shadow.
+          dirigido: confirmado,
         },
       })
       // Y queda ANOTADO en su perfil (`fraud_watch_list`, idempotente por usuario: reincidir
       // sube la puntuación en vez de duplicar filas). Anotar es consecuencia del bloqueo, nunca
       // condición: fire-and-forget para que un fallo aquí no convierta un 403 correcto en un 500.
       // En sombra NO se marca el perfil: marcar a alguien por un bloqueo que no ha ocurrido
-      // sería ensuciar su ficha con una sospecha que aún no hemos validado.
-      if (shouldBlock(deviceLimitMode)) {
+      // sería ensuciar su ficha con una sospecha que aún no hemos validado. Con los CONFIRMADOS
+      // sí se marca aunque el modo global sea shadow: ahí la sospecha ya está validada a mano.
+      if (shouldBlock(deviceLimitMode) || confirmado) {
         marcarFarmeoFireAndForget({
           userId: user.id,
           deviceTotal: deviceUsage.deviceTotal,
@@ -213,7 +227,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           motivo: `Tope de dispositivo superado: ${deviceUsage.deviceTotal} preguntas en el día entre varias cuentas`,
         }).catch(() => {})
       }
-      if (shouldBlock(deviceLimitMode)) {
+      if (shouldBlock(deviceLimitMode) || confirmado) {
         return NextResponse.json(
           {
             success: false,
