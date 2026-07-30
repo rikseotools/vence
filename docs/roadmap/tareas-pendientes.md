@@ -743,15 +743,6 @@ incluida).
   Fíjate en el patrón: **el scope siempre es un rango CONTIGUO** y el epígrafe siempre enumera bloques **discontinuos**. Lo introduce el propio `verify:scope` al razonar «Título Preliminar = 1-27» en vez de por pertenencia real.
 - **Casos NEGATIVOS igual de importantes** (si el detector los marca, no sirve): **T4** LPRL `1-4, 14-32` = Cap I + Cap III + Cap IV, exacto; **T11** Ley 3/2009 `10-40, 61-63` = Títulos II+III+IV+VII, exacto. Los dos verificados contra el BOE el 30/07.
 - **Con qué construirlo (ya existe, no empieces de cero):** tabla **`law_sections`** (`section_type` `titulo`/`capitulo`/`seccion`, `title`, `article_range_start/end`) — la de la Ley 3/2009 estaba poblada y correcta. Donde falte, el índice del BOE consolidado se parsea igual que en `sim-title-boundary.ts` (2.ª pasada: bajar la rúbrica y casar por materia, no solo por número).
-- **⛔ PRECONDICIÓN: `law_sections` NO es fiable, hay que validarla contra el BOE antes de apoyar nada en ella.** Encontrado el 30/07 adjudicando el T14 del SMS: en el **EBEP (`RDL 5/2015`) las rúbricas están corridas un puesto** a partir del Título VI, aunque los rangos sí son correctos:
-
-  | | nuestra `law_sections` | el BOE (`BOE-A-2015-11719`) |
-  |---|---|---|
-  | 85-92 | «Provisión de puestos de trabajo y movilidad» | **«Situaciones administrativas»** |
-  | 93-98 | «Situaciones administrativas» | **«Régimen disciplinario»** |
-  | 99+ | «Régimen disciplinario» | **«Cooperación entre las Administraciones Públicas»** |
-
-  («Provisión de puestos y movilidad» no es un Título: es el **Capítulo III del Título V**, arts 78-84.) Un detector que se fíe de esa tabla habría dado el T14 por **sobre-incluido cuando es exacto**: el epígrafe pide *«situaciones administrativas»* y 85-92 es precisamente eso. **Falso positivo con toda la pinta de ser verdadero**, que es el peor tipo. Antes de construir el detector, o se valida la tabla ley por ley contra el BOE, o el detector baja el índice él mismo y no la usa.
 - **Las cuatro trampas, medidas hoy:**
   1. **La rúbrica se repite.** *«Disposiciones generales»* aparece en el TRLGSS media docena de veces. Casar por texto suelto no vale: hay que **anclarla a su padre** (la del Cap II ≠ la de la Secc 3.ª ≠ la del Cap IV).
   2. **El epígrafe tiene que ser LITERAL primero.** El T22 abreviado decía *«Objeto y ámbito»* y perdía justo *«de aplicación»*, que es lo que casa con la Secc 1.ª. Sobre un epígrafe parafraseado esto no puede funcionar → depende del Paso 1.
@@ -852,6 +843,18 @@ incluida).
   - **Lo que NO debe pasar:** que un temario propio se confunda con una oposición del catálogo (con su convocatoria, sus plazas y su SEO). Son cosas distintas y mezclarlas ensucia el catálogo.
 - **Reutiliza lo que ya existe:** `user_test_favorites` (leyes + artículos por configuración, con `position_type`), el configurador por leyes y su selección de artículos, y el fetcher `lib/lawFetchers.ts`. No hace falta un motor nuevo de preguntas: hace falta la capa de organización encima.
 - **Impacto:** 🟠 es funcionalidad nueva, no un arreglo. El valor está en que **abre Vence a las oposiciones que no tenemos montadas** sin construir cada temario a mano — que es hoy el cuello de botella del catálogo.
+- **🔬 MEDIDO EL 30/07 — la mitad que reparte YA ESTÁ CONSTRUIDA, y la que sirve no.** Investigando una baja salió que `custom_oposiciones` existe desde marzo y ya tiene `is_public`, `times_selected` y `created_by_username`: **crear, nombrar, publicar y que otros la elijan como objetivo funciona hoy**. Lo que no hay es temario detrás — la fila es solo una etiqueta (nombre, categoría, administración). Números:
+  - **303 usuarios** tienen una oposición personalizada como objetivo. **127 no han hecho ni un solo test.** **121 se dieron de alta en los últimos 30 días**, así que sigue pasando.
+  - Lo público multiplica el daño: la etiqueta *«Subalterno»* que creó un usuario en marzo se la han llevado ya **25 personas**.
+  - **Los nombres genéricos son la señal de alarma:** *Estudiante* (10 de 14 sin tests), *Renfe* (7 de 8), *Administrativo* (8 de 12), *Auxiliar administrativo Comunidad* (8 de 10). Cuanto más vaga la etiqueta, más gente que no llega a estudiar.
+  - **Caso con nombre y apellidos:** Pedro (`pedro.delibros`) se dio de alta el 24/07, eligió *«Subalterno»*, estuvo cinco días entrando a mirar temarios y **se dio de baja el 29/07 sin hacer un test**. Su baja no es un cese natural: es alguien que no pudo empezar.
+- **🎯 VISIÓN AMPLIADA (Manuel, 30/07): temarios de usuario con SEGUIDORES.** Que cada opositor pueda ampliar o recortar su temario, publicarlo, y que otros se suscriban o lo elijan como objetivo — con la implicación y el reconocimiento («tener seguidores») como motor. Encaja con lo que ya existe (`times_selected`, `created_by_username`) y ataca el cuello de botella del catálogo por el lado bueno: **la gente amplía el catálogo sin que nosotros construyamos cada temario a mano**.
+  - **La palanca que más rinde, y que no es la social:** los temarios más seguidos son una **cola de demanda medida**. Hoy se decide a ciegas qué oposición montar; con esto, los usuarios lo señalan con los pies. Lo que muchos sigan, se monta oficial.
+  - **⚠️ Freno 1 — el daño no es simétrico.** Un temario ajeno mal montado perjudica a la vez a todos sus seguidores, y en oposiciones eso son meses de estudio equivocado; además la culpa recaerá sobre Vence, no sobre el autor. **Separar siempre lo oficial de lo comunitario.**
+    - **DECIDIDO (Manuel, 30/07) — dos cosas visibles y no en la letra pequeña:** (a) decir **en claro que ese temario NO está verificado por Vence**, y (b) **identificar bien a su autor**. No es un descargo legal: es lo que hace que la información sea juzgable. Quien se suscribe tiene que poder decidir de quién se fía, y quien lo monta responde con su nombre de lo que publica — que es, además, el único incentivo real para mantenerlo al día.
+    - **Y el reverso, que importa igual:** si el autor aparece, aparece **bien**. El nombre que se enseñe debe ser el que esa persona haya elegido mostrar, no su correo ni su nombre completo por defecto (mismo criterio de privacidad que ya aplica el panel de referidos, `abbreviateReferredName`). Publicar un temario no puede convertirse en publicar tus datos.
+  - **⚠️ Freno 2 — cuidado con qué se premia.** Si la fama son los seguidores a secas, gana quien mejor nombre pone, no quien mejor lo monta (los datos de arriba ya lo enseñan). Atar el reconocimiento a que el temario esté **completo y mantenido** (bloques con preguntas reales, actualizado tras cada convocatoria), no al número de fans. **Un temario con 200 seguidores y abandonado hace más daño que uno sin nadie.**
+  - **Consecuencia de orden:** publicar debería **ganarse al completar**, no ser un interruptor desde el minuto cero. Hoy es lo segundo, y por eso hay 127 personas apuntadas a etiquetas vacías.
 - **Relacionada:** [T-326] (el filtro que pidió en su otro hilo), [T-328] (la landing), y el precedente de vender premium con temario incompleto.
 
 ### [T-328] 🟠 [ABIERTO 30/07] Landing de «tu oposición a medida»: hay hueco de mercado y nadie lo ofrece
@@ -4230,16 +4233,14 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Es el mismo patrón del `VoucherCard`**, que ya obligó a unificar en su día: dos implementaciones de la misma pantalla convergen en la teoría y divergen en cuanto alguien toca una. Y el daño no fue cosmético: durante un tiempo la persona vio menos dinero del que había ganado.
 - **QUÉ HACER.** Extraer la tarjeta (nombre, estado, motivo de invalidez, premios) a un componente compartido que consuman las dos pantallas, como ya se hizo con el desglose (`components/referrals/DesgloseCartera.tsx`). Ojo al matiz legítimo: el admin la ve en **solo lectura** (no puede cargar la conversación con su sesión), así que el componente necesita esa bandera — no dos copias.
 
-### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
+### [T-339] 🟠 [ABIERTO 30/07] Elegir una oposición personalizada sin temario te deja en el vacío sin avisar
 
-- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
-- **Qué comprobar cuando esté vivo:**
-  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
-  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
-  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
-  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
-- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
-- **Esfuerzo:** bajo, con una espera de 30 min por medio.
+- **QUÉ PASA.** Al elegir como objetivo una oposición personalizada (`custom_oposiciones`) que no tiene temario montado, la app **no lo dice**: la persona aterriza en una pantalla sin contenido y sin ninguna explicación de por qué. Nada le indica qué hacer a continuación.
+- **CUÁNTA GENTE (medido 30/07):** **303** usuarios tienen una de esas como objetivo y **127 no han hecho ni un solo test**. **121** se dieron de alta en los últimos 30 días → no es un residuo antiguo, sigue entrando gente.
+- **CASO QUE LO DESTAPÓ:** Pedro (`pedro.delibros`), alta el 24/07, eligió *«Subalterno»* (etiqueta creada por otro usuario en marzo, ya elegida por 25 personas), cinco días mirando temarios, **0 tests**, baja el 29/07.
+- **POR QUÉ ES BARATO Y URGENTE.** No depende de [T-327]: no hace falta construir la funcionalidad del temario propio para dejar de perder a esta gente. Basta con **decir la verdad y ofrecer una salida** — algo como *«esta oposición todavía no tiene temario; mientras tanto puedes practicar por leyes»*, con enlace al configurador por leyes, que ya existe y funciona.
+- **DÓNDE.** Donde se resuelve el objetivo del usuario y se pinta su temario (el selector de oposición del onboarding y del perfil, y la pantalla de temario). Cuidado: hay que distinguir *«no tiene temario»* de *«fallo al cargar»*, porque el mensaje es distinto y confundirlos genera soporte.
+- **Relacionada:** [T-327] (la funcionalidad de armarse el temario, que es la solución de fondo), [T-328] (la landing, que NO debe publicarse antes que aquella).
 
 ## Hechas
 
@@ -4289,20 +4290,6 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Ojo al enseñarlo:** hay recompensas **rechazadas** (`status='rejected'`) y otras **retenidas** (`hold_until`, en ventana de seguridad). El desglose tiene que distinguirlas o generará la queja contraria («aquí pone 3 € y no los tengo»).
 - **Relacionada:** `docs/runbooks/embajadores-recompensas.md`, `app/recompensas/page.tsx`.
 
-
-### [T-335] ✅ [HECHA 30/07] La suplantación no caducaba a los 30 min y la franja de aviso se apagaba antes que la sesión
-- **Cómo salió:** Manuel abrió `localhost:3000` en una sesión nueva y **seguía dentro de la cuenta de una usuaria** que había suplantado antes, sin franja roja. La cookie es del navegador, así que cerrar la otra sesión de trabajo no cerraba nada — pero al mirarlo aparecieron dos defectos reales.
-- **Defecto 1 — el TTL no existía.** El plazo se guardó en el claim `exp`, **que es de Auth.js**: cada `GET /api/auth/session` (una por carga de página) re-firma la cookie con `setExpirationTime(now + maxAge)` y maxAge por defecto de **30 días** (`@auth/core/jwt.js:58`). El mecanismo que debía apagar la suplantación era justo el que la resucitaba: duraba indefinidamente mientras el admin navegara. También pisa `iat`.
-- **Defecto 2 — el aviso moría antes que el peligro.** La franja roja se disparaba con la cookie-marca `vence_imp`, que sí caducaba a los 30 min y no se renovaba → a partir de ahí la suplantación seguía viva y **era invisible** (sin franja y sin botón de salir).
-- **Por qué ninguna capa lo vio:** las cuatro capas existentes (unit del núcleo, guardarraíl de las 3 ramas, sim Playwright de extremo a extremo, tests de auth) medían el **acuñado** — el test se llamaba literalmente *«caduca sola a los 30 minutos»* y comprobaba `exp - iat === 1800`, que era cierto. El defecto vivía en la **rotación**, que es código de `@auth/core`, y nadie la ejercía.
-- **Alcance real:** no es acceso no autorizado (hacía falta ser admin y quedó auditado), y el candado de **solo lectura** aguantó en todo momento porque depende de `imp`, que sí sobrevive a las rotaciones. Es un fallo de **contención**: la protección declarada no se cumplía y el aviso se apagaba solo.
-#### ✅ RESUELTO (30/07)
-- **Un solo reloj, y nuestro:** claim `impExp` (`CLAIM_CADUCIDAD`) en `lib/admin/impersonacion.ts`. Auth.js copia sin tocar los claims que no conoce — lo sabíamos porque `imp` ya sobrevivía. **Fail-closed:** marca `imp` sin `impExp` = caducada, así mueren solas las sesiones acuñadas antes del arreglo, sin migración ni borrar cookies a mano.
-- **El corte, donde pasa toda rotación:** el callback `jwt` de `lib/auth/authjs.ts` devuelve `null` si está caducada → `@auth/core` ejecuta `sessionStore.clean()` y **borra la cookie del navegador**. El mismo mecanismo que la renovaba pasa a ser el que la termina; cero peticiones nuevas.
-- **Defensa en profundidad:** `verifyAuth` rechaza con 401 (las 3 ramas, junto al candado de escritura); `mintAccessToken` recorta el token a `min(1h, restante)` y se niega a acuñar si ya venció — antes, un Bearer acuñado en el minuto 29 valía 59 minutos **después** de terminar la suplantación.
-- **La franja deja de tener reloj propio:** `/api/auth/token` re-emite `vence_imp` con el restante real, así que marca y sesión mueren a la vez y, si el navegador la pierde, el siguiente tick la repone.
-- **Capas nuevas:** `__tests__/integration/impersonacionRotacionTtl.test.ts` (rotación con el `encode`/`decode` **reales** — un mock habría reproducido lo que creíamos que pasaba, que es el error que se quiere impedir) · guardarraíl `impersonacionRelojPropio` · reloj exigido en las 3 ramas · la **sim Playwright pasa de 6 a 10 comprobaciones**, con la variante «vencida», la «legacy sin reloj» y el **contraste** (la misma cookie rotada dentro de plazo debe dar 200, si no el 401 no prueba nada). Verde: 10/10 contra servidor real, 465 tests de auth/seguridad/admin.
-- **Silo cerrado:** T-289 no estaba en `toolRegistry` ni en ningún manual (`tools:buscar impersonacion` → 0 resultados). Ahora hay runbook `docs/runbooks/suplantacion-ver-como-usuario.md`, entrada en el registro y sección en CLAUDE.md con el gotcha.
 
 ### [T-297] ✅ [HECHA 30/07] El gate anti-scraping dejó fuera a los canaries: test rojo y vigilancia posiblemente ciega
 - **Qué pasa:** `__tests__/security/canaryGateAndOutboxPrune.test.ts` falla porque `app/api/questions/filtered/route.ts` **ya no importa `isSyntheticRequest`**. El test exige que el reto anti-scraping **exima al tráfico sintético**, y esa exención desapareció del fichero.
