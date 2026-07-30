@@ -20,6 +20,9 @@ import {
   type OposicionHermana,
 } from '@/lib/convocatoria/convocatoriasHermanas'
 import { emitClientEvent } from '@/lib/observability/client'
+// `localStorage` desnudo lanza con la cuota llena o en Safari privado y se lleva la interfaz
+// entera; el helper devuelve null/false y además lo reporta. Lo exige el lint.
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const CLAVE = 'vence_aviso_convocatorias_ocultas'
 
@@ -39,7 +42,7 @@ export default function AvisoConvocatoriasHermanas({
     if (!aviso.mostrar || !actual) return
     let cerrado = false
     try {
-      cerrado = (JSON.parse(localStorage.getItem(CLAVE) || '[]') as string[]).includes(actual.slug)
+      cerrado = (JSON.parse(safeGet(CLAVE) || '[]') as string[]).includes(actual.slug)
     } catch {
       // localStorage puede no estar disponible (Safari privado, cuota). Enseñar el aviso es
       // el estado seguro: se prefiere repetirlo a ocultarlo por un fallo de almacenamiento.
@@ -60,8 +63,8 @@ export default function AvisoConvocatoriasHermanas({
   const cerrar = () => {
     setOculto(true)
     try {
-      const previos = JSON.parse(localStorage.getItem(CLAVE) || '[]') as string[]
-      localStorage.setItem(CLAVE, JSON.stringify([...new Set([...previos, actual.slug])]))
+      const previos = JSON.parse(safeGet(CLAVE) || '[]') as string[]
+      safeSet(CLAVE, JSON.stringify([...new Set([...previos, actual.slug])]))
     } catch { /* sin memoria: volverá a salir, que es el lado seguro */ }
     emitClientEvent({
       severity: 'info',
