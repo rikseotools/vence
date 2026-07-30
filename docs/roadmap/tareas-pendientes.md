@@ -647,6 +647,36 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-307] 🔴 [ABIERTO 30/07] El barrido nocturno de salud de contenido lleva 2 días MUERTO: el detector de notas de auditoría supera el `statement_timeout` y aborta el cron ENTERO
+- **Cómo salió:** verificando [T-275] (comprobar que el barrido automático de las 07:30 UTC corre limpio). Corre, pero **falla**. No lo vio nadie porque el panel sigue enseñando los hallazgos del 28/07 como si fueran de hoy: un barrido que no escribe no borra lo anterior, así que **el badge se queda en verde de ayer**.
+- **Medido en prod (`observable_events`, `endpoint='content-health-sweep'`):**
+
+  | día | evento | duración | resultado |
+  |---|---|---|---|
+  | 28/07 05:01 UTC | `cron_run` info | 90.729 ms | **success** — 393 hallazgos, `wrote:true` |
+  | 29/07 07:31 UTC | `cron_run` **error** | 78.077 ms | `status:failure` |
+  | 30/07 07:31 UTC | `cron_run` **error** | 80.048 ms | `status:failure` |
+
+  El `cron_tick` de las 07:30 sí aparece los dos días: **el cron dispara, el trabajo aborta**. Y `content_health_findings` no tiene NI UNA escritura en 12 h (última, la del 28/07).
+- **Quién lo tumba:** la query del detector `audit_note_explanation` (`content-health-sweep.service.ts`, sobre `questions.explanation`). El cliente de escritura del backend fija `statement_timeout: 30000` (`backend/src/db/database.module.ts`) y la query tarda **40,6 s**. Al no haber try/catch por detector, se lleva por delante **todo el barrido**, incluidos los detectores que vienen después.
+- **🔬 Y el culpable NO es lo que parecía.** La sospecha razonable era la regex nueva del *acto* (añadida el 28-29/07, ver la memoria del verde falso). Medido con `EXPLAIN (ANALYZE, BUFFERS)` sobre las 159.671 filas de `questions`:
+
+  | variante | tiempo |
+  |---|---|
+  | **A) tal cual está desplegada** (23 `ILIKE` + 2 regex) | **40.603 ms** ← revienta el timeout de 30 s |
+  | B) solo los 23 `ILIKE '%…%'` | **38.196 ms** (555.532 buffers) |
+  | C) solo la regex META | 1.969 ms |
+  | D) solo la regex ACTO | 463 ms |
+
+  Los 23 `ILIKE` son **38 de los 40 segundos**; las dos regex juntas cuestan 2,4 s. Las regex son las BARATAS.
+- **Por qué ha empezado a fallar AHORA, que es lo interesante:** la query lleva `LIMIT 50`, y las tres variantes devuelven **rows=0**. Mientras el cubo tenía notas de auditoría, el `LIMIT` cortaba el escaneo en las primeras filas y la query era rápida; **al limpiar el cubo (las 274 explicaciones reescritas el 29/07) desapareció el cortocircuito y quedó el seq scan completo**. O sea: **el detector se vuelve más lento cuanto más sana está la base, y al llegar a cero mata el barrido entero.** Es el peor perfil posible para un vigilante — se apaga justo cuando por fin no hay nada que encontrar, y encima apaga a los demás.
+- **Cómo (dos arreglos, y el segundo importa más que el primero):**
+  1. **Barato:** fundir los 23 `ILIKE` en UNA alternancia `~*` (una pasada en vez de 23 → por la medida de C y D, del orden de 2 s). **Mantener la paridad POR VALOR** con `lib/health/auditNoteExplanation.cjs`: lo vigila `content-sweep-parity.test.ts`, así que la lista se cambia en los dos sitios o el CI se pone rojo.
+  2. **El de fondo:** **aislar cada detector** (try/catch + su propio presupuesto de tiempo, y un hallazgo de tipo `detector_caido` cuando uno se pasa). Hoy CUALQUIER detector lento borra del mapa a los ~40 restantes, y el único rastro es un `cron_run` en `error` que nadie mira. Mientras eso no exista, este mismo incidente volverá con otro detector.
+  3. **Y que se cante:** un barrido que no escribe debería salir en el panel como *«datos de hace N días»*, no como verde. Es el mismo punto ciego de [T-254]/[T-275]: una respuesta correcta pero vieja no es un error, y por eso no se ve.
+- **Impacto:** 🔴 **toda** la detección de salud de contenido (~40 kinds: temas vacíos, citas no literales, enlaces de convocatoria, cupos sin declarar…) está ciega desde el 29/07, y el badge dice que no pasa nada.
+- **Relacionada:** [T-275] (su verificación depende de esto: el detector `visibility_map_frio` no llega a correr), [T-254] (mismo punto ciego: lo correcto pero tarde/viejo no dispara nada), [T-282] (la limpieza del cubo que destapó el escaneo completo).
+
 ### [T-306] 🟡 [ABIERTO 30/07] Las 91 preguntas que el detector ya no excluye siguen marcadas `unsafe`: el backfill no revisa sus propios veredictos
 - **De dónde sale:** al arreglar el falso positivo de los grados ([T-301]) se midió que **106 activas dejan de estar marcadas como letra-ancladas** (91 con `shuffle_mode='full'`, 0 retrocesos). Ninguna cambia hoy de comportamiento: **las 91 están en `shuffle_safety='unsafe'`** y ahí se quedan.
 - **Por qué no se mueven solas, y no es un olvido:** `scripts/backfill-shuffle-safety.ts` selecciona **solo** `unverified`/`stale` — y con motivo, escrito en su cabecera: re-procesar filas ya clasificadas deshacía las bajadas de la auditoría LLM (regresión del 22/07, restaurada desde `question_shuffle_safety_history`). Y el trigger de invalidación mira el HASH DEL CONTENIDO, que aquí no ha cambiado: lo que cambió es el criterio. **Ningún camino existente re-evalúa a una pregunta cuando mejora el detector.**
@@ -1545,6 +1575,8 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Y el arreglo debería ser automático, no una tarea:** cualquier tabla nueva de alto volumen de inserts nacerá con el mismo defecto. Lo suyo es que el detector avise **y** que exista un guardarraíl que exija el ajuste en tablas insert-heavy, en vez de descubrirlo dentro de seis meses por otro incidente.
 - **Lección de método (vale más que el arreglo):** un plan que dice *«Index Only Scan»* **no garantiza** que lo sea. **`Heap Fetches` es el número que hay que mirar**: si es alto, el problema es el mapa de visibilidad (vacuum), no la consulta ni los índices. Bajada al runbook `health-check.md`.
 - **Relacionada:** [T-268] (el caso que lo destapa), [T-254] (mismo punto ciego: respuestas correctas que llegan tarde).
+- **⛔ VERIFICACIÓN BLOQUEADA por [T-307] (comprobado el 30/07):** el barrido automático de las 07:30 UTC **corre pero aborta** (`cron_run` en `error` el 29 y el 30/07, `status:failure`), así que `visibility_map_frio` no llega a ejecutarse y `content_health_findings` no se escribe desde el 28/07. El único hallazgo `visibility_map_frio` que existe (1 `warn`, 29/07 19:31) es de la pasada MANUAL, no del cron.
+- **Y el mapa no está limpio ahora mismo** (medido 30/07, tablas de más de 5.000 páginas): **`observable_events` al 85,9% con 55.470 páginas frías y SIN el ajuste de inserts** — es hoy la tabla con más páginas frías de la base, y es insert-only puro, el patrón exacto de esta ficha; y `questions` al 78,5% (sí tiene el ajuste, así que ahí toca mirar por qué el autovacuum no llega). O sea: cuando el barrido vuelva a correr, el detector **debería** disparar. La afirmación *«las 23 tablas grandes al 100%»* del 29/07 ya no se sostiene.
 
 ### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
 - **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
