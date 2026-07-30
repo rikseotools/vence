@@ -6,6 +6,8 @@ import { getLawStats, type LawStats } from '@/lib/lawFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { buildLawRepasoFallosUrl } from '@/lib/test-url/lawRepasoFallosUrl'
+import { decidirContadorArticulos } from '@/lib/laws/contadorArticulos'
+import { emitClientEvent } from '@/lib/observability/client'
 
 interface LawTestConfiguratorProps {
   lawShortName: string
@@ -40,6 +42,27 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
 
     loadData()
   }, [lawShortName])
+
+  // Si el contador de artículos contradice a las preguntas, callarlo NO basta: sin señal,
+  // el próximo cruce de campos volvería a ser invisible hasta que alguien lo mire a ojo
+  // (que es exactamente como se descubrió el de la LO 3/2007). `sospechoso` solo es cierto
+  // cuando el dato es contradictorio, no cuando falta: una caché antigua no debe pitar.
+  useEffect(() => {
+    if (!lawStats) return
+    const d = decidirContadorArticulos(lawStats.articlesWithQuestions, lawStats.totalQuestions)
+    if (!d.sospechoso) return
+    emitClientEvent({
+      severity: 'warn',
+      eventType: 'ui_contador_incoherente',
+      metadata: {
+        campo: 'articles_with_questions',
+        motivo: d.motivo,
+        ley: lawShortName,
+        articulos: lawStats.articlesWithQuestions ?? null,
+        preguntas: lawStats.totalQuestions ?? null,
+      },
+    })
+  }, [lawStats, lawShortName])
 
   // Si hay artículos preseleccionados en la URL, iniciar el test automáticamente
   useEffect(() => {
@@ -77,13 +100,23 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
     )
   }
 
-  // Preparar datos para TestConfigurator
+  // Preparar datos para TestConfigurator.
+  //
+  // ⚠️ Aquí los tres campos valían `lawStats.totalQuestions`, incluidos los DOS de
+  // artículos. La pantalla anunciaba «798 artículos disponibles» para la LO 3/2007 (que
+  // tiene 134) justo encima de un selector con 136 casillas. Lo reportó Manolo García el
+  // 30/07 preguntando por el filtro, y salió al verificarlo.
+  //
+  // El contador ya no se deduce: viene contado de la consulta (`articlesWithQuestions`) y
+  // pasa por `decidirContadorArticulos`, que prefiere no enseñar nada antes que enseñar un
+  // número que no es. `undefined` (no 0) cuando no hay dato: un 0 es una afirmación falsa.
+  const contador = decidirContadorArticulos(lawStats?.articlesWithQuestions, lawStats?.totalQuestions)
   const lawsData = [{
     law_short_name: lawShortName,
     display_name: lawDisplayName,
-    total_articles: lawStats?.totalQuestions || 0,
+    total_articles: contador.n ?? undefined,
     questions_count: lawStats?.totalQuestions || 0,
-    articles_with_questions: lawStats?.totalQuestions || 0,
+    articles_with_questions: contador.n ?? undefined,
   }]
 
   const difficultyStats = {

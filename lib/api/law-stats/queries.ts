@@ -20,6 +20,15 @@ export interface LawStatsResult {
   regularQuestions: number
   hasQuestions: boolean
   hasOfficialQuestions: boolean
+  /**
+   * Artículos DISTINTOS con alguna pregunta activa. Se añadió el 30/07/2026 porque la
+   * pantalla de la ley no lo tenía y rellenaba ese hueco con el total de preguntas: la
+   * LO 3/2007 anunciaba «798 artículos disponibles» teniendo 134, encima de un selector
+   * con 136 casillas. Es opcional a propósito: una respuesta cacheada con la forma
+   * anterior no lo trae, y ahí se prefiere no enseñar nada antes que enseñar otra cosa
+   * (`lib/laws/contadorArticulos.ts` decide).
+   */
+  articlesWithQuestions?: number
   error?: string
 }
 
@@ -37,6 +46,8 @@ export async function queryLawStats(lawShortName: string): Promise<LawStatsResul
       .select({
         total: sql<number>`count(*)`.as('total'),
         official: sql<number>`count(*) filter (where ${questions.isOfficialExam} = true)`.as('official'),
+        // Mismo join, misma pasada: el contador de artículos no cuesta una query aparte.
+        articulos: sql<number>`count(distinct ${articles.id})`.as('articulos'),
       })
       .from(questions)
       .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
@@ -66,6 +77,7 @@ export async function queryLawStats(lawShortName: string): Promise<LawStatsResul
       regularQuestions: Math.max(0, adjustedTotal - official),
       hasQuestions: adjustedTotal > 0,
       hasOfficialQuestions: official > 0,
+      articlesWithQuestions: Number(result?.articulos ?? 0),
     }
   } catch (error) {
     console.error(`❌ [law-stats] Error para ${lawShortName}:`, error)

@@ -132,6 +132,15 @@ export type ClientEventType =
   // mide cuánto trabaja el fix y cuánto es red del usuario irrecuperable. Ver
   // lib/api/fetchWithChallenge.ts + docs/runbooks/observability.md.
   | 'network_retry'
+  // La interfaz iba a pintar un número que no cuadra con sus propios datos (30/07/2026).
+  // Tipo PROPIO por lo mismo que `usage_limit_hit` o `evolution_result_mismatch`: interesa
+  // CONSERVAR visibilidad sin contarlo como error de cliente. Nace del contador de la
+  // pantalla de una ley, que anunciaba «798 artículos disponibles» para la LO 3/2007 (que
+  // tiene 134) porque se rellenaba con el número de PREGUNTAS. Lo grave no fue el número:
+  // fue que era plausible, que ningún tipo lo impedía (ambos campos son `number`) y que no
+  // dejaba rastro — se supo porque un usuario preguntó por otra cosa y salió al mirar.
+  // Ahora la UI calla el dato dudoso y emite esto. `metadata`: { campo, motivo, valores }.
+  | 'ui_contador_incoherente'
   | 'review_oposicion_fallback'
   // Banner de inscripción abierta de la home. Existe porque el banner filtra por familia
   // y por mínimo de plazas (BANNER_MIN_PLAZAS) y ANTES era ciego: descartaba convocatorias

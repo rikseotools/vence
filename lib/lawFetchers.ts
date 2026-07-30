@@ -79,6 +79,8 @@ export interface LawStats {
   regularQuestions: number
   hasQuestions: boolean
   hasOfficialQuestions: boolean
+  /** Artículos DISTINTOS con preguntas activas. Opcional: la caché vieja no lo trae. */
+  articlesWithQuestions?: number
   error?: string
 }
 
@@ -176,6 +178,7 @@ export async function getLawStats(lawShortName: string): Promise<LawStats> {
       regularQuestions: data.regularQuestions,
       hasQuestions: data.hasQuestions,
       hasOfficialQuestions: data.hasOfficialQuestions,
+      articlesWithQuestions: data.articlesWithQuestions,
     }
 
     console.log(`📊 [LAW FETCHER] Estadísticas de ${resolvedShortName}:`, stats)

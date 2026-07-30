@@ -13,7 +13,14 @@ export interface LawData {
   display_name?: string
   total_articles?: number
   questions_count?: number
-  articles_with_questions: number
+  /**
+   * Artículos DISTINTOS con preguntas activas. OPCIONAL desde el 30/07/2026: era
+   * obligatorio, y quien no lo tenía a mano metía ahí lo que fuera con tal de cumplir el
+   * tipo (la pantalla de una ley ponía el total de PREGUNTAS, y anunciaba «798 artículos
+   * disponibles» para una ley de 134). Poder omitirlo es lo que permite callarlo en vez de
+   * inventarlo; la decisión de pintarlo está en `lib/laws/contadorArticulos.ts`.
+   */
+  articles_with_questions?: number
 }
 
 /** Estadísticas recientes del usuario */

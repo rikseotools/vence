@@ -12,6 +12,7 @@ import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal';
 import { activeConfigFeatures } from '@/lib/premium/configFeatures';
 import { trackConfigFeaturesUsed } from '@/lib/services/conversionTracker';
 import { summarizeLawInclusion, inclusionBadgeLabel } from '@/lib/laws/lawInclusionSummary';
+import { decidirContadorArticulos, textoContadorArticulos } from '@/lib/laws/contadorArticulos';
 import { emitClientEvent } from '@/lib/observability/client';
 
 function getOposicionName(positionType: string): string {
@@ -1486,9 +1487,19 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                               <div className="font-medium text-sm text-gray-900">
                                 {law.law_short_name}
                               </div>
-                              <div className="text-xs text-gray-600">
-                                {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
-                              </div>
+                              {/* El contador pasa por `decidirContadorArticulos`: si el dato
+                                  falta o contradice al total de preguntas, no se pinta nada.
+                                  Antes se escribía tal cual, y la pantalla de la ley anunciaba
+                                  «798 artículos disponibles» teniendo 134 (30/07/2026). */}
+                              {textoContadorArticulos(
+                                decidirContadorArticulos(law.articles_with_questions, law.questions_count),
+                              ) && (
+                                <div className="text-xs text-gray-600">
+                                  {textoContadorArticulos(
+                                    decidirContadorArticulos(law.articles_with_questions, law.questions_count),
+                                  )}
+                                </div>
+                              )}
                               {/* Badge de inclusión: hace visible si la ley entra ACOTADA
                                   (artículos/títulos elegidos) o ENTERA. Evita la sorpresa
                                   del feedback Alfonso (25/07). Solo en modo por-leyes. */}
