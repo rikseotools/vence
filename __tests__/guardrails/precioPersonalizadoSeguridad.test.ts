@@ -129,3 +129,35 @@ describe('la página manda la sesión (30/07)', () => {
     expect(PAGINA).toMatch(/method:\s*'GET'/)
   })
 })
+
+describe('el navegador que se quedó con la página vieja (30/07)', () => {
+  // Tercer día del mismo bloqueo, y el más instructivo: el arreglo del 405 estaba
+  // desplegado y verificado, y Rocío seguía sin poder pagar. Su navegador conservaba el
+  // JavaScript anterior y seguía mandando POST. En `observable_events` hay cuatro POST 405
+  // suyos entre las 04:50 y las 06:57 del 30/07, con el bundle correcto ya en producción.
+  //
+  // La lección: **un despliegue arregla el servidor, no los navegadores**. Cuando el
+  // arreglo consiste en cambiar cómo llama el cliente, quien ya tenga la versión anterior
+  // sigue roto hasta que recargue — y nadie le va a pedir a una usuaria que vacíe la caché.
+  // Por eso el endpoint atiende también el método viejo.
+  const ENDPOINT = leer('app/api/v2/premium/mi-oferta/route.ts')
+
+  it('el endpoint responde a POST además de a GET', () => {
+    expect(ENDPOINT).toMatch(/export const GET =/)
+    expect(ENDPOINT).toMatch(/export const POST =/)
+  })
+
+  it('y los dos métodos ejecutan EL MISMO handler (si divergen, vuelve el fallo)', () => {
+    const get = ENDPOINT.match(/export const GET = withErrorLogging\([^,]+,\s*(\w+)\)/)
+    const post = ENDPOINT.match(/export const POST = withErrorLogging\([^,]+,\s*(\w+)\)/)
+    expect(get?.[1]).toBeTruthy()
+    expect(post?.[1]).toBe(get?.[1])
+  })
+
+  it('sigue exigiendo sesión por POST: el método viejo no es una puerta de atrás', () => {
+    // El handler es uno solo, así que `verifyAuth` cubre ambos; se fija por si alguien
+    // separa los caminos más adelante.
+    expect(ENDPOINT).toContain('verifyAuth')
+    expect(ENDPOINT).not.toMatch(/request\.(json|body)/)
+  })
+})
