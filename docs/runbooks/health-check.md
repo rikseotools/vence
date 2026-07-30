@@ -189,6 +189,14 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
    hoy. El sweep de contenido dejó de escribir el 29/07 y el panel siguió enseñando el snapshot del 28
    como si fuera de hoy, badge tranquilo incluido. Desde T-307 el propio barrido lo canta con el hallazgo
    **`sweep_incompleto`** (app/error) cuando se corta a mitad, y el `cron_run` sale con `status: partial`.
+2.ter **«El contenedor estaba vivo» NO se puede afirmar desde `observable_events`** (T-299, 30/07). Si un cron emite su `cron_tick` y nunca su `cron_run`, la tentación es mirar la base de datos, ver que los demás crons seguían emitiendo y concluir que no hubo reinicio. **Es falso: durante un reemplazo rodante emiten las DOS tareas** —la nueva arranca mientras la vieja aún trabaja— y desde la BD se ve idéntico a «no pasó nada». Caso real: `check-boe-changes` arrancó a las 08:00, la tarea nueva arrancó a las 08:11:16 y la vieja cerró sus pools a las 08:12:51 con el cron a medias. El discriminante está en los logs, no en la BD:
+   ```bash
+   S=$(date -u -d '<día> <hora>' +%s%3N); E=$(date -u -d '<día> <hora+4h>' +%s%3N)
+   aws --profile vence --region eu-west-2 logs filter-log-events --log-group-name /ecs/vence-backend \
+     --start-time $S --end-time $E --filter-pattern '"Nest application successfully started"' \
+     --query 'events[].[timestamp,logStreamName]' --output text
+   ```
+   Un `logStreamName` distinto = una tarea ECS distinta = hubo reemplazo. Y el último suspiro de la tarea vieja es la línea de `DatabaseModule` cerrando pools (apagado ordenado, o sea SIGTERM, no crash).
 3. **Para un cron que SÍ está overdue**, distinguir 3 causas con los logs de arranque
    (`aws --profile vence --region eu-west-2 logs filter-log-events --log-group-name /ecs/vence-backend
    --filter-pattern '"<nombre-cron>"'`):
