@@ -4860,7 +4860,107 @@ export const RULE_SESSION_IP_COVERAGE_DROP: AlertRule<{
   cooldownMin: 1440,
 };
 
+
+/**
+ * Fraude CONFIRMADO que lleva días sin que nadie decida nada.
+ *
+ * ── POR QUÉ (30/07/2026) ────────────────────────────────────────────────────
+ * El badge 🚨 cuenta las señales en estado `new`. Al confirmar una, **desaparece del badge** — así
+ * que el trabajo de detectarla y verificarla acaba enterrándola. Medido hoy: **20 confirmadas sin
+ * resolver, la más antigua del 21/07**, con el badge en verde y la sensación de que no había nada
+ * pendiente.
+ *
+ * Es el mismo patrón que `device_limit_mudo` y `session_ip_coverage_drop`: el fallo es una
+ * AUSENCIA, y una ausencia no dispara nada por sí sola. Detectar sin resolver es peor que no
+ * detectar, porque consume triaje y deja el asunto por atendido.
+ *
+ * Umbral en 7 días: hay que dar margen para decidir sin prisa, pero no un mes.
+ */
+export const RULE_FRAUDE_CONFIRMADO_SIN_ACCION: AlertRule<{
+  total: number;
+  masAntiguaDias: number;
+}> = {
+  name: 'fraude_confirmado_sin_accion',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS total,
+           COALESCE(MAX(EXTRACT(DAY FROM now() - COALESCE(reviewed_at, detected_at)))::int, 0) AS "masAntiguaDias"
+      FROM fraud_alerts
+     WHERE status = 'confirmed'
+  `,
+  shouldFire: (rows) =>
+    (rows[0]?.total ?? 0) > 0 && (rows[0]?.masAntiguaDias ?? 0) >= 7,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.total ?? 0} señales de fraude CONFIRMADAS sin resolver (la más antigua, ${rows[0]?.masAntiguaDias ?? 0} días)`,
+    body:
+      `Están verificadas como fraude real y nadie ha decidido qué hacer con ellas.\n\n` +
+      `Ojo: al confirmarlas SALEN del badge 🚨 (que cuenta las 'new'), así que el panel puede estar ` +
+      `en verde con fraude confirmado esperando. Por eso existe esta regla.\n\n` +
+      `Expediente de cada una — quién es, qué consume, si sigue activa:\n` +
+      `  npm run fraude:dossier\n\n` +
+      `Recuerda que activar el límite por dispositivo (DEVICE_LIMIT_MODE=enforce) corta el farmeo ` +
+      `sin bloquear cuentas a mano. Runbook: docs/runbooks/revisar-fraudes.md`,
+    metadata: { total: rows[0]?.total ?? 0, masAntiguaDias: rows[0]?.masAntiguaDias ?? 0 },
+    fingerprint: 'fraude_confirmado_sin_accion',
+  }),
+  cooldownMin: 10080, // semanal: es una deuda, no una urgencia
+};
+
+/**
+ * Cuentas ya marcadas que aparecen bajo un dispositivo NUEVO: evasión en marcha.
+ *
+ * ── POR QUÉ (30/07/2026) ────────────────────────────────────────────────────
+ * Al cerrar el salto del tope por cuenta, Manuel preguntó lo obvio: *"cogerá el móvil de su pareja
+ * y luego el de su hijo"*. Cierto — pero eso deja MÁS rastro, no menos: las mismas cuentas
+ * apareciendo bajo huellas de hardware distintas es una firma más clara que quedarse quieto.
+ *
+ * Esta regla convierte esa evasión en una señal en vez de en un punto ciego. No mide "una cuenta
+ * en dos equipos" (eso es normal: móvil y portátil), sino cuentas **ya marcadas** estrenando
+ * equipo — que es otra cosa.
+ */
+export const RULE_EVASION_MULTIDISPOSITIVO: AlertRule<{
+  cuentas: number;
+  equipos: number;
+}> = {
+  name: 'evasion_multidispositivo',
+  severity: 'warn',
+  query: sql`
+    WITH marcadas AS (
+      SELECT DISTINCT unnest(user_ids) AS user_id, device_id AS device_marcado
+        FROM fraud_confirmations
+       WHERE retention_until > now()
+    )
+    SELECT COUNT(DISTINCT m.user_id)::int AS cuentas,
+           COUNT(DISTINCT ud.device_id)::int AS equipos
+      FROM marcadas m
+      JOIN user_devices ud ON ud.user_id = m.user_id
+     WHERE ud.device_id IS DISTINCT FROM m.device_marcado
+       AND ud.last_seen_at > now() - INTERVAL '3 days'
+  `,
+  // Un equipo nuevo suelto no dice nada (cambio de móvil). Dos cuentas marcadas estrenando
+  // equipo a la vez, sí.
+  shouldFire: (rows) => (rows[0]?.cuentas ?? 0) >= 2,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.cuentas ?? 0} cuentas ya marcadas usando ${rows[0]?.equipos ?? 0} dispositivos NUEVOS`,
+    body:
+      `Cuentas con marca de multicuenta viva que en los últimos 3 días han aparecido en equipos ` +
+      `distintos del que tenían marcado. Es el patrón de quien, al toparse con el límite del ` +
+      `dispositivo, prueba con otro (el móvil de la pareja, el del hijo).\n\n` +
+      `No es concluyente por sí solo —cambiar de móvil es legítimo— pero en cuentas YA marcadas ` +
+      `merece una mirada. Contexto completo:  npm run fraude:dossier`,
+    metadata: { cuentas: rows[0]?.cuentas ?? 0, equipos: rows[0]?.equipos ?? 0 },
+    fingerprint: 'evasion_multidispositivo',
+  }),
+  cooldownMin: 1440,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Fraude confirmado que nadie resuelve (2026-07-30): confirmar una señal la saca del badge,
+  // así que el trabajo bien hecho acababa enterrado. 20 llevaban hasta 9 días.
+  RULE_FRAUDE_CONFIRMADO_SIN_ACCION as AlertRule,
+  // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
+  // convierte en señal en vez de en punto ciego.
+  RULE_EVASION_MULTIDISPOSITIVO as AlertRule,
   // Cobertura de IP de sesión (2026-07-30, T-314): un writer que deja de escribir no da error,
   // da silencio. 27 días sin IP y nadie se enteró.
   RULE_SESSION_IP_COVERAGE_DROP as AlertRule,

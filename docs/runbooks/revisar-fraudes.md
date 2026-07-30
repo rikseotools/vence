@@ -219,6 +219,37 @@ SELECT count(*) FROM observable_events
 el flag está activo, y en ese caso el antifraude LOCAL no se ejecuta. Frontend y backend tienen que
 pasar la huella a `checkDeviceDailyUsage` — si solo lo hace uno, el agujero sigue abierto por el otro.
 
+
+## 🧾 Confirmar una señal la SACA del badge — y por eso hay una alerta (30/07/2026)
+
+El badge 🚨 cuenta las señales en estado `new`. Al confirmar una, **desaparece**: el trabajo de
+detectarla y verificarla acaba enterrándola. Medido el 30/07: **20 confirmadas sin resolver, la más
+antigua del 21/07**, con el badge en verde y la sensación de que no quedaba nada pendiente.
+
+- **`npm run fraude:dossier`** — expediente de cada confirmada sin acción: quién es cada cuenta, qué
+  consume el equipo entero, cuántos días lleva activo, cuánto se sale del tope y si hay algún
+  **premium** implicado (en cuyo caso, no tocar sin mirarlo despacio). Solo lee.
+- **Alerta `fraude_confirmado_sin_accion`** (semanal, a partir de 7 días): impide que vuelva a
+  pasar. Mismo patrón que `device_limit_mudo` — el fallo es una AUSENCIA y una ausencia no dispara
+  nada sola.
+- **Alerta `evasion_multidispositivo`**: cuentas ya marcadas que aparecen en equipos nuevos. Es el
+  patrón de quien, al topar el límite del dispositivo, prueba con el móvil de su pareja. No es
+  concluyente por sí solo (cambiar de móvil es legítimo), pero en cuentas ya marcadas merece mirada.
+
+**La marca de multicuenta ahora SOBREVIVE al borrado de la cuenta.** `fraud_watch_list.user_id` y
+`user_devices.user_id` van con `ON DELETE CASCADE`: pedir la baja limpiaba el historial y permitía
+empezar de cero. La marca persistente vive en `fraud_confirmations`, anclada a la **huella de
+hardware v2** y al **hash SHA-256 de los correos** (nunca el correo en claro), con **retención de 2
+años** — con plazo está amparada por el RGPD art. 17.3; sin plazo, no. Reincidir reinicia la cuenta
+atrás. Al crear una cuenta nueva se comprueba y se emite `alta_con_marca_previa`: **solo detecta**,
+bloquear un alta es decisión de Manuel.
+
+**El mensaje al usuario NO revela el mecanismo.** Antes había dos textos —uno para el límite de
+cuenta y otro para el de dispositivo—, y bastaba compararlos para deducir cómo contamos; sabiéndolo,
+el siguiente paso es coger otro móvil. Ahora es **uno solo e idéntico**, lo fija
+`__tests__/guardrails/limiteDiarioMensajeUnico.test.ts`. Personalizar el del dispositivo «para que
+se entienda mejor» es exactamente el problema.
+
 ## Umbrales (env del sweep, calibrables)
 `FRAUD_DEVICE_ACCOUNTS` (3), `FRAUD_IP_ACCOUNTS` (5), `FRAUD_DEVICE_DAILY_Q` (60), `FRAUD_SCRAPE_MIN_SERVED` (300), `FRAUD_WINDOW_DAYS` (30). Subirlos = menos ruido; bajarlos = más sensibilidad. Ajustar con datos reales (fase F3). Los umbrales de la cosecha (ratio 0,2 y volumen egregio 5.000) viven en `DEFAULTS` de `harvestSignals.js`.
 

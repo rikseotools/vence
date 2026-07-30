@@ -2354,3 +2354,62 @@ describe('RULE_SESSION_IP_COVERAGE_DROP (writer que deja de escribir — T-314, 
     expect(n.body).toContain('sessionIpNoColgarDeEvento');
   });
 });
+
+describe('RULE_FRAUDE_CONFIRMADO_SIN_ACCION (confirmar saca del badge — T-304, 30/07)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_FRAUDE_CONFIRMADO_SIN_ACCION: R } = require('./alert-rules');
+  const fila = (total: number, dias: number) => [{ total, masAntiguaDias: dias }];
+
+  it('EL CASO REAL: 20 confirmadas, la más antigua de 9 días → dispara', () => {
+    expect(R.shouldFire(fila(20, 9))).toBe(true);
+  });
+
+  it('sin confirmadas no dispara', () => {
+    expect(R.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('recién confirmadas NO disparan: hay que dar margen para decidir', () => {
+    expect(R.shouldFire(fila(5, 1))).toBe(false);
+    expect(R.shouldFire(fila(5, 6))).toBe(false);
+    expect(R.shouldFire(fila(5, 7))).toBe(true);
+  });
+
+  it('tolera filas vacías o corruptas', () => {
+    expect(R.shouldFire([])).toBe(false);
+    expect(R.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso explica por qué el badge puede estar verde con fraude pendiente', () => {
+    const n = R.buildNotification(fila(20, 9));
+    expect(n.body).toContain('SALEN del badge');
+    expect(n.body).toContain('fraude:dossier');
+  });
+});
+
+describe('RULE_EVASION_MULTIDISPOSITIVO (cambiar de móvil al topar — T-304, 30/07)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_EVASION_MULTIDISPOSITIVO: R } = require('./alert-rules');
+  const fila = (cuentas: number, equipos: number) => [{ cuentas, equipos }];
+
+  it('varias cuentas marcadas estrenando equipo → dispara', () => {
+    expect(R.shouldFire(fila(3, 2))).toBe(true);
+  });
+
+  it('UNA sola cuenta con equipo nuevo NO dispara: cambiar de móvil es legítimo', () => {
+    expect(R.shouldFire(fila(1, 1))).toBe(false);
+  });
+
+  it('ninguna cuenta marcada moviéndose → silencio', () => {
+    expect(R.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('tolera basura', () => {
+    expect(R.shouldFire([])).toBe(false);
+    expect(R.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso admite que no es concluyente por sí solo', () => {
+    const n = R.buildNotification(fila(3, 2));
+    expect(n.body).toMatch(/no es concluyente/i);
+  });
+});
