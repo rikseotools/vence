@@ -46,6 +46,8 @@ import {
   type EndpointLatencyBucket,
 } from '@/lib/api/admin/endpoint-latency'
 import { esSenalBenigna, tieneReglaPropia } from '@/lib/observability/benignSignals'
+// Núcleo puro en .cjs para poder compartirlo con los barridos, que son CommonJS.
+import { endpointsQueFallanMucho } from '@/lib/observability/tasaFallo.cjs'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
@@ -274,6 +276,7 @@ async function _GET(request: NextRequest) {
     cacheCanaryResult,
     errorSignalsResult,
     endpointLatencyResult,
+    failureRateResult,
   ] = await Promise.all([
     // 1) Errores 5xx servidor (http_status >= 500).
     // El filtro por status excluye los Watchdog client-side (status=null,
@@ -529,6 +532,27 @@ async function _GET(request: NextRequest) {
       `)) as any[]
       return { data: rows, count: null }
     }),
+
+    // 16) TASA de fallo por endpoint (30/07). El conteo de 5xx de arriba ordena y recorta por
+    // CANTIDAD, así que un endpoint de poco tráfico que falla mucho nunca entra en la lista:
+    // `difficulty-insights` llevaba 14 días fallando el 4,6% de las veces (23 fallos, 31 usuarios
+    // distintos esperando 12 s para recibir un 503) por detrás de otros con 6 o 7 fallos al día.
+    // OJO al denominador: los éxitos van muestreados al 10% y los fallos al 100%, así que el ratio
+    // en crudo sale inflado ×10 (daba «32,4%» donde hay 4,6%). Lo des-muestrea `tasaFallo.cjs`.
+    // Solo `request_completed`: los `http_5xx` los emite también el cliente y contarían doble.
+    run(async () => {
+      const rows = (await db.execute(sql`
+        SELECT endpoint,
+               count(*) FILTER (WHERE http_status < 400)::int AS exitos,
+               count(*) FILTER (WHERE http_status >= 500)::int AS fallos
+        FROM observable_events
+        WHERE event_type = 'request_completed'
+          AND endpoint IS NOT NULL
+          AND created_at >= ${since}
+        GROUP BY 1
+      `)) as any[]
+      return { data: rows, count: null }
+    }),
   ])
 
   // ─── Procesar 1-4 (existentes) ───
@@ -763,6 +787,20 @@ async function _GET(request: NextRequest) {
     ? 'unknown'
     : clientErrorTotal >= 500 ? 'red' : clientErrorTotal >= 100 ? 'amber' : 'green'
 
+  // ─── Procesar 16: endpoints que fallan una PROPORCIÓN alta de sus peticiones ───
+  // No mueve el semáforo de `errors_5xx` (ese mide volumen, que es otra pregunta): entra como
+  // sub-bloque informativo para que el endpoint roto de bajo tráfico deje de ser invisible.
+  const failureRateRows = (failureRateResult.error ? [] : (failureRateResult.data ?? [])) as Array<{
+    endpoint: string; exitos: number; fallos: number
+  }>
+  const endpointsPorTasa = endpointsQueFallanMucho(
+    failureRateRows.map((r) => ({
+      endpoint: r.endpoint,
+      exitosObservados: Number(r.exitos),
+      fallos: Number(r.fallos),
+    })),
+  )
+
   const _payload: Record<string, unknown> = {
     success: true,
     generatedAt: new Date().toISOString(),
@@ -782,6 +820,10 @@ async function _GET(request: NextRequest) {
           category: classifyEndpoint(e.endpoint),
         })),
         thresholds: { amber: ERROR_AMBER, red: ERROR_RED },
+        // Los que fallan una PROPORCIÓN alta de sus peticiones, peor tasa primero. Complementa al
+        // conteo: 23 fallos sobre 500 peticiones y 23 sobre 20.000 son la misma cifra y problemas
+        // distintos, y ordenar por cantidad escondía siempre al pequeño roto detrás del grande sano.
+        byRate: endpointsPorTasa.slice(0, 10),
         // Sub-categorización (2026-06-01) — admin vs user_facing.
         byCategory: {
           user_facing: {

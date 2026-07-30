@@ -650,6 +650,12 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**Un endpoint puede fallar MUCHO y ser invisible: mira la TASA, no el conteo (30/07).** El indicador `errors_5xx` ordena y recorta por **cantidad**, así que un endpoint de poco tráfico que falla una proporción alta de sus peticiones nunca entra en la lista, por detrás de otros con más fallos absolutos. Caso real: `/api/v2/difficulty-insights` llevaba 14 días fallando el **4,6%** de las veces —23 fallos, **31 usuarios distintos** esperando 12 s para recibir un 503— mientras la lista la encabezaban endpoints con 6-7 fallos al día.
+- **Dónde mirarlo ahora:** `errors_5xx.byRate` en `/api/admin/system-health` (peor tasa primero). Núcleo: `lib/observability/tasaFallo.cjs`.
+- **⚠️ TRAMPA DEL DENOMINADOR — no calcules la tasa a mano sin esto.** En `observable_events` los éxitos (`request_completed` 2xx/3xx) van **muestreados al 10%** (`SUCCESS_TIMING_SAMPLE_RATE`) y los fallos al **100%**. El ratio en crudo sale inflado **×10**: el caso real daba «32,4%» donde hay 4,6%. Hay que dividir los éxitos observados entre 0,1 antes de dividir.
+- **Y cuenta solo `request_completed`:** los eventos `http_5xx` los emite TAMBIÉN el cliente por su cuenta, así que sumarlos cuenta el mismo fallo dos veces (medido: 45 eventos para 23 fallos).
+- **Qué mira ahora mismo (barrido de 14 días, 206 endpoints, 3 señalados):** `difficulty-insights` 4,6%, `feedback/respond` 1,5%, `oposiciones-compatibles/progress` 1,5%.
+
 **«answer-and-save a 25 segundos» NO es una degradación: es un TIMEOUT (30/07, T-315).** Antes de investigar una supuesta degradación de este endpoint, comprueba **dónde cae el máximo**. Si está clavado en ~25,1 s día tras día, es `ANTIFRAUD_TIMEOUT_MS = 25000` (`app/api/v2/answer-and-save/route.ts`), no lentitud creciente.
 - **Cómo distinguirlo en una consulta** — una lentitud orgánica ADELGAZA en la cola; un timeout se AMONTONA justo antes del corte y se acaba en seco:
   ```sql
