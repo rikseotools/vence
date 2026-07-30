@@ -41,6 +41,45 @@ export const dynamic = 'force-dynamic'
 // 60 s da margen al peor caso sin dejar la request colgada indefinidamente.
 export const maxDuration = 60
 
+/**
+ * Encola un tema que no cabe entero, para que el worker lo deje troceado en S3 (T-273).
+ *
+ * Fire-and-forget deliberado: **nunca** debe hacer esperar ni romper la respuesta del usuario. Si
+ * la cola no está disponible, se registra y ya está — el opositor recibe lo mismo que recibía.
+ * Deduplicado por `content_hash` en la propia tabla (`ON CONFLICT DO NOTHING`), así que N usuarios
+ * pidiendo el mismo tema generan UN trabajo, no N.
+ */
+function encolarParaElWorker(
+  oposicion: string,
+  tema: number,
+  contentHash: string,
+  chars: number,
+  userId: string | null,
+): void {
+  void (async () => {
+    try {
+      const { getDb } = await import('@/db/client')
+      const { enqueuePdfJob } = await import('@/lib/temario/pdf/pdfJobQueue')
+      const nuevo = await enqueuePdfJob(getDb() as unknown as { execute: (q: unknown) => Promise<unknown> }, {
+        oposicion, tema, contentHash,
+      })
+      emitFireAndForget({
+        source: 'fargate', severity: 'info', eventType: 'temario_pdf_encolado_por_usuario',
+        endpoint: '/api/temario/[oposicion]/[topic]/pdf',
+        // `nuevo:false` NO es un fallo: significa que ya estaba encolado. Distinguirlo importa para
+        // saber si un tema se pide muchas veces y el worker no llega, que es la señal de T-159.
+        metadata: { oposicion, tema, chars, nuevo, userId, hash: contentHash, instanceId: INSTANCE_ID },
+      })
+    } catch (e) {
+      emitFireAndForget({
+        source: 'fargate', severity: 'warn', eventType: 'temario_pdf_encolado_por_usuario',
+        endpoint: '/api/temario/[oposicion]/[topic]/pdf',
+        metadata: { oposicion, tema, outcome: 'enqueue_failed', error: e instanceof Error ? e.message : 'desconocido' },
+      })
+    }
+  })()
+}
+
 async function handler(
   req: NextRequest,
   { params }: { params: Promise<{ oposicion: string; topic: string }> }
@@ -178,6 +217,21 @@ async function handler(
   //    pero un artículo-cajón de 89k que 504ea; el por-artículo lo reconvierte a 413 gracioso).
   //    Los temas grandes SE ARREGLAN pre-generándolos offline (pueblan la caché de arriba).
   if (!fitsSyncPdf(chars, maxArt)) {
+    // AUTO-CURACIÓN (T-273/T-159): encolar el tema para que el worker lo prepare.
+    //
+    // Hasta el 30/07 este camino devolvía el error y ahí moría. Era **la única señal de que un
+    // premium REAL quería ESE tema concreto** —la cola solo se alimentaba del hook de scope, que es
+    // ciego y masivo, y de barridos a mano— y se tiraba a la basura. Medido: 5 rechazos en 30 días
+    // que nadie convirtió en trabajo.
+    //
+    // Va SIN await: encolar es para la PRÓXIMA visita, no para ésta, así que hacer esperar al
+    // usuario por ello sería cobrarle el arreglo de otro. Y si la cola falla, el usuario recibe
+    // exactamente lo que recibía antes: la observabilidad no puede degradar la respuesta.
+    //
+    // Solo tiene sentido porque YA existe consumidor automático (`vence-temario-pdf-worker`, cada
+    // 30 min) y porque ese worker ya sabe trocear. Antes de las dos cosas, encolar era escribir en
+    // una cola que nadie vaciaba.
+    encolarParaElWorker(oposicion, topicNumber, contentHash, chars, userId)
     // PILOTO (T-273): en vez de dejar al opositor sin nada, ofrecerle el tema TROCEADO por
     // estructura. Se aplica SOLO aquí —en el camino que hoy devuelve 413— así que no puede
     // empeorar ninguna descarga que funcione: quien recibe su PDF lo sigue recibiendo idéntico.

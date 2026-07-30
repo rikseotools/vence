@@ -658,6 +658,29 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**PDF del temario: el circuito completo, y cómo saber si se está curando solo (30/07, T-273).** Un tema que no cabe entero ya no muere en un error: **se encola** para que `vence-temario-pdf-worker` lo deje troceado en S3, y la próxima petición se sirve al instante. Tres señales cuentan la historia, en este orden:
+
+| Señal | Qué significa |
+|---|---|
+| `temario_pdf_encolado_por_usuario` | Un opositor pidió un tema que no cabe → se encoló. `nuevo:false` **no es un fallo**: es que ya estaba encolado (varios usuarios, un solo trabajo) |
+| `temario_pdf_pregenerated` con `partes:N` | El worker lo troceó y subió sus N partes. `outcome:'partes_incompletas'` = alguna parte falló; el usuario recibe las demás |
+| `temario_pdf_partes_ofrecidas` | La ruta le dio al usuario la lista de partes (la interfaz las descarga todas de un clic) |
+
+```sql
+-- ¿se está curando solo? Lo encolado que el worker YA preparó, y lo que sigue pendiente.
+SELECT metadata->>'oposicion' op, metadata->>'tema' tema,
+       min(ts) FILTER (WHERE event_type='temario_pdf_encolado_por_usuario') AS pedido,
+       max(ts) FILTER (WHERE event_type='temario_pdf_pregenerated')        AS preparado,
+       max(metadata->>'partes') FILTER (WHERE event_type='temario_pdf_pregenerated') AS partes
+  FROM observable_events
+ WHERE event_type IN ('temario_pdf_encolado_por_usuario','temario_pdf_pregenerated')
+   AND ts > now() - interval '7 days'
+ GROUP BY 1,2 ORDER BY pedido DESC;
+```
+- **`preparado` NULL con `pedido` de hace más de una hora = el worker no está llegando.** Es la señal accionable: el worker corre cada 30 min, así que dos ciclos sin preparar un tema pedido significa que la cola está atascada o el worker muerto → mirar §1.bis.b (liveness de jobs externos) antes que la cola.
+- ⚠️ **Un `nuevo:false` repetido muchas veces para el MISMO tema** es el aviso de que se pide una y otra vez y nadie lo prepara. Ahí el problema no es encolar, es el consumidor.
+- **Contexto y decisiones:** [T-273] (troceado) · [T-159] (prioridad en la cola) · [T-270] (por qué no se renderiza en la web).
+
 **Un endpoint puede fallar MUCHO y ser invisible: mira la TASA, no el conteo (30/07).** El indicador `errors_5xx` ordena y recorta por **cantidad**, así que un endpoint de poco tráfico que falla una proporción alta de sus peticiones nunca entra en la lista, por detrás de otros con más fallos absolutos. Caso real: `/api/v2/difficulty-insights` llevaba 14 días fallando el **4,6%** de las veces —23 fallos, **31 usuarios distintos** esperando 12 s para recibir un 503— mientras la lista la encabezaban endpoints con 6-7 fallos al día.
 - **Dónde mirarlo ahora:** `errors_5xx.byRate` en `/api/admin/system-health` (peor tasa primero). Núcleo: `lib/observability/tasaFallo.cjs`.
 - **⚠️ TRAMPA DEL DENOMINADOR — no calcules la tasa a mano sin esto.** En `observable_events` los éxitos (`request_completed` 2xx/3xx) van **muestreados al 10%** (`SUCCESS_TIMING_SAMPLE_RATE`) y los fallos al **100%**. El ratio en crudo sale inflado **×10**: el caso real daba «32,4%» donde hay 4,6%. Hay que dividir los éxitos observados entre 0,1 antes de dividir.
