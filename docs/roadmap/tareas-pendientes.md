@@ -710,6 +710,40 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-329] 🟠 [ABIERTO 30/07] Construir Técnico/a Auxiliar de Conserjería de la Universidad de Jaén — se le ha dicho a una usuaria que la estamos preparando
+- **Compromiso adquirido:** Chari GAMA (`diversoprodu@gmail.com`, free, alta el 29/07, feedback `7a81b194`) preguntó si podíamos incluirla y se le respondió el 30/07 que **«todavía no lo tenemos, pero lo estamos preparando»** (decisión de Manuel). O sea que esto no es una idea: es una promesa hecha por escrito a una persona concreta que además espera aviso por su hilo cuando esté.
+- **La convocatoria, verificada contra el boletín** (no supuesta): Resolución de 29 de junio de 2026, **BOE núm. 162 de 4 de julio** (`BOE-A-2026-14535`), también en BOJA 2026/132. **9 plazas** de personal laboral, categoría **Técnico/a Auxiliar de Conserjería (Grupo IV)**, sistema **concurso-oposición**. Plazo de solicitudes **06/07 → 31/07/2026 23:59** (confirmado en la sede de la UJA, que es donde vive el estado vigente).
+- **El temario ya lo tenemos localizado: son 14 temas y vienen en el ANEXO II de la propia convocatoria** — no hay que buscarlo en ningún sitio raro. Y cuatro de esos catorce **ya están montados en Vence**:
+
+  | tema del Anexo II | ¿lo tenemos? |
+  |---|---|
+  | LO 2/2023 del Sistema Universitario (LOSU) | ✅ (la usuaria ya la está estudiando aquí) |
+  | RDL 5/2015 EBEP | ✅ |
+  | Ley 31/1995 de Prevención de Riesgos Laborales | ✅ |
+  | LO 3/2007 de igualdad | ✅ |
+  | IV Convenio Colectivo del PAS de las Universidades Públicas de Andalucía | ❌ |
+  | Decreto 230/2003, Estatutos de la Universidad de Jaén | ❌ |
+  | Códigos éticos sectoriales de la UJA · Dirección Estratégica · Sistema Integrado de Calidad | ❌ |
+  | Instrucciones Técnicas y Carta de Servicios de la Unidad de Conserjerías · Protocolos de emergencia | ❌ |
+  | Infraestructuras de la UJA · Google GSuite UJA | ❌ |
+
+- **Lo que hace esta oposición BARATA de construir** (y por lo que merece la pena aunque sean 9 plazas): casi un tercio del temario ya existe y es contenido **compartido** con el resto del catálogo (EBEP, LPRL, igualdad, LOSU), así que el trabajo real es la parte propia de la UJA. Y esa parte es **documental y pública** (Estatutos en BOJA, convenio colectivo, cartas de servicio de la Universidad), no hay que inventar nada.
+- **Cómo:** `docs/maintenance/crear-nueva-oposicion.md` con el scaffolder (`scripts/create-oposicion.cjs`) desde un `spec.json`. **El juicio a mano es el de siempre:** el temario **literal** del Anexo II y el mapeo `scope` de cada tema. Gates obligatorios después: `npm run audit:oposicion <slug> && audit:served` + `verify:scope`. **NUNCA inventar temario ni artículos.**
+- **Ojo con el nombre:** ya existe `auxiliar-administrativo-universidad-jaen` (inactiva, examen realizado) y es **otra cosa**. La usuaria tuvo que aclararnos justo esa diferencia cuando le preguntamos. El puesto es *Técnico/a Auxiliar de Conserjería*, laboral Grupo IV.
+- **Avisar al terminar:** responder en el hilo `7a81b194` de Chari, que es lo que se le prometió.
+- **Relacionada:** [T-330] (la newsletter del último día), `docs/maintenance/crear-nueva-oposicion.md`.
+
+### [T-330] 🟠 [ABIERTO 30/07] Newsletter: hoy es el ÚLTIMO día de plazo de Conserjería de la UJA
+- **Qué:** mandar una newsletter aprovechando que **el plazo de solicitudes de Técnico/a Auxiliar de Conserjería de la Universidad de Jaén cierra el 31/07 a las 23:59** (9 plazas, concurso-oposición, BOE de 4 de julio). Decisión de Manuel el 30/07.
+- **⏰ Es una tarea de UN SOLO DÍA y sale sola por eso:** queda programada para la mañana del 31/07 (`snooze_until`), porque enviarla por la tarde ya no le sirve a nadie y enviarla el 1 de agosto es peor que no enviarla. **Si no se manda esa mañana, se cierra sin hacer** — no se arrastra.
+- **Decisiones que hay que tomar antes de darle a enviar (no están tomadas):**
+  1. **A quién.** No a toda la base: mandar «último día» a quien no puede presentarse es ruido que se paga en bajas. Lo razonable es acotar a perfiles con encaje real (Andalucía / Jaén, y quien tenga seleccionada una oposición de subalterno, conserjería, universidad o administración local). El runbook de newsletters tiene el cómo segmentar.
+  2. **Qué se promete.** El temario propio de la UJA **todavía no está montado** ([T-329]), así que el mensaje no puede dar a entender que la oposición está lista en Vence. Lo honesto y lo que además es cierto: cuatro de sus catorce temas (LOSU, EBEP, Prevención de Riesgos, igualdad) **sí se pueden estudiar hoy**, y la estamos preparando.
+- **Por qué merece el esfuerzo pese a ser 9 plazas:** el gancho no es la oposición, es la **urgencia verificada** (un plazo que cierra hoy es el único correo que se abre seguro), y de paso da a conocer que preparamos oposiciones de universidad. Es la misma lógica de pre-venta del manual de feedback: la respuesta rápida ES la prueba de que la plataforma está viva.
+- **Cómo:** `docs/runbooks/newsletter-promociones.md`. **Verificar el plazo otra vez antes de enviar** (en la sede de la UJA, no en el BOE): si lo amplían, el correo cambia de sentido — pasó con Madrid, que amplió por incidencia técnica y solo lo publicó en su sede.
+- **Origen:** feedback `7a81b194` de Chari GAMA, que preguntó por esta oposición el 29/07.
+- **Relacionada:** [T-329] (construirla).
+
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
 - **Quién lo pide:** Sergio (`pcsergio0@gmail.com`, premium, 44 tests en 9 días, feedback `bd8b92d0`): *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. **Ya respondido**: se le ha dicho que lo vamos a añadir.
 - **Qué pasa:** el interruptor «🏛️ Preguntas oficiales» de `TestConfigurator` se pinta si `!hideOfficialQuestions && officialQuestionsCount > 0` (`components/TestConfigurator.tsx:1638`). La página de test por leyes **declara la intención de mostrarlo** (`hideOfficialQuestions={false}`, `app/test/por-leyes/page.tsx:410`) y **sabe llevar el filtro al test** (`params.set('only_official','true')`, línea 151), pero **nunca le pasa `officialQuestionsCount`** → vale 0 por defecto → la condición no se cumple jamás. Las páginas por tema sí lo pasan (`components/test/TemaTestPage.tsx:440`), por eso ahí funciona.
