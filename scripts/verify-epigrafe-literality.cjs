@@ -31,6 +31,7 @@ const { execFileSync } = require('child_process')
 const { canonicalizeBoletinUrl } = require(path.join(__dirname, '..', 'lib', 'convocatoria', 'canonicalizeBoletinUrl.cjs'))
 const { esTemarioRefiningDoc } = require(path.join(__dirname, '..', 'lib', 'temario', 'temarioRefiningDoc.js'))
 const { validarPlanEpigrafe, resolverFuentes } = require(path.join(__dirname, '..', 'lib', 'temario', 'epigrafeApply.js'))
+const { parseTemas } = require(path.join(__dirname, '..', 'lib', 'temario', 'parseTemarioOficial.js'))
 const { recache } = require(path.join(__dirname, 'lib', 'temario-recache.cjs'))
 
 // ── .env.local ──
@@ -92,20 +93,9 @@ function fetchProgramaText(url) {
   return raw.length > 200 ? { text: raw, how: 'html' } : { text: null, how: 'html_empty' }
 }
 
-// ── parseo del temario oficial: "Tema N.- ..." hasta el siguiente ──
-function parseTemas(text) {
-  const temas = {}
-  const markers = [...text.matchAll(/\bTema\s+(\d{1,2})\b/gi)]
-  if (markers.length < 3) return temas
-  for (let i = 0; i < markers.length; i++) {
-    const n = parseInt(markers[i][1], 10)
-    const start = markers[i].index + markers[i][0].length
-    const end = i + 1 < markers.length ? markers[i + 1].index : Math.min(start + 1200, text.length)
-    const body = text.slice(start, end).replace(/\s+/g, ' ').trim().slice(0, 1000)
-    if (!temas[n] || body.length > temas[n].length) temas[n] = body
-  }
-  return temas
-}
+// El parseo del temario oficial ("Tema N.- ..." hasta el siguiente) vive en un núcleo puro con
+// tests: su salida es lo que la guarda `epigrafeApply.js` toma por "lo que dice el boletín", y un
+// artefacto de dos caracteres ahí bloquea la reescritura de una oposición entera.
 
 async function cmdDump(pt) {
   const c = db(); await c.connect()
