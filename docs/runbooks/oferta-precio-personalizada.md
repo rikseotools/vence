@@ -52,8 +52,11 @@ Qué hace, y por qué así:
 - **Registra la oferta** en `user_price_offers`, que es lo que hace que pueda contratarla en
   **vence.es/premium/personal** — dentro de Vence, viendo lo que contrata, en vez de un
   enlace de pago suelto que no dice a dónde lleva.
-- **Una sola oferta viva por persona** (índice único). Si le concedes otra, la anterior se
-  retira sola: con dos, el precio quedaría a suerte de cuál leyera la página.
+- **Varias ofertas vivas por persona, una por precio** (índice único sobre `(user_id,
+  stripe_price_id)`). El índice original era «una sola viva» y se relajó el mismo 29/07: a
+  Rocío se le ofrecieron su mensual Y su trimestral para que eligiera, y con el índice
+  antiguo la segunda habría retirado a la primera. Ojo al concederlas: el endpoint y la
+  página tienen que devolverlas y pintarlas **todas** (`ofertas`, en plural).
 
 Comprobar después:
 
@@ -88,6 +91,49 @@ al precio de otro). Guardarraíl: `__tests__/guardrails/precioPersonalizadoSegur
 
 Además, un precio heredado **no acumula** encima el cupón de fidelidad del 10 %: ese precio
 ya reconoce la antigüedad, y sumar los dos sería contar el mismo beneficio dos veces.
+
+---
+
+## 4-bis. Cómo comprobar que de verdad puede pagar
+
+> **Los tres días que costó aprender esto (29-30/07).** A Rocío se le dijo tres veces que ya
+> lo tenía resuelto, y las tres seguía sin poder pagar: primero un 405, luego un 401, luego
+> otra vez el 405 por una causa distinta. Cada vez se comprobó algo que salía verde y no era
+> lo que ella hacía.
+
+**Probar el endpoint con un token a mano NO prueba nada.** Un `curl` con Bearer devuelve 200
+mientras la página sigue rota: la página puede llamar con otro método, sin cabeceras, o no
+llamar. Lo que hay que mirar es **su camino real**:
+
+```sql
+-- ¿Qué le pasó a ELLA, en su navegador? (source='frontend' = lo emite el cliente)
+SELECT ts, event_type, endpoint, metadata->>'method' AS metodo,
+       metadata->>'status' AS estado, deploy_version
+  FROM observable_events
+ WHERE user_id = '<uuid>' AND ts > NOW() - INTERVAL '24 hours'
+ ORDER BY ts DESC LIMIT 30;
+```
+
+Cómo leerlo:
+
+- **405** → el cliente llama con un método que el endpoint no acepta. Suele ser
+  `apiFetch(url, body, options)` con las opciones escritas en la posición del **cuerpo**:
+  `options` queda `undefined` y sale POST por defecto. Para un GET, usar **`apiGet`**.
+- **401** → la llamada no lleva `getAuthHeaders()`.
+- **200 y la página vacía** → mirar el contrato (¿`ofertas` en plural?, ¿`LIMIT 1` en la
+  consulta?).
+- **`deploy_version`** dice qué versión estaba ejecutando. Es lo que distingue «no le ha
+  llegado el arreglo» de «el arreglo no arregla». El 30/07 salía el despliegue nuevo con un
+  POST, y eso descartó de golpe la hipótesis de la caché.
+
+Y si necesita pagar **ya**, sin esperar a un despliegue: mándale su **Payment Link**
+(`user_price_offers.payment_link_url`). Lleva `supabase_user_id` en la metadata de la
+suscripción, así que el webhook le activa el premium en su cuenta igual que el checkout.
+Comprobar antes que el enlace está activo y con el precio correcto:
+
+```bash
+node scripts/stripe/precio-heredado.cjs listar
+```
 
 ---
 
