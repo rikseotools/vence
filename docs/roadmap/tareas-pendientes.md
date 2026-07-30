@@ -727,6 +727,37 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-333] 🟠 [ABIERTO 30/07] El detector de frontera de scope solo entiende TÍTULOS: los epígrafes que nombran secciones se le escapan enteros
+- **El hueco, en una frase:** `lib/laws/scopeTitleBoundary.js` mapea artículo → **título** de la ley. Cuando el programa oficial no enumera títulos sino **capítulos, secciones o subsecciones**, el runner responde *«epígrafe no mapeable a títulos»* y **se calla**. Ese silencio se lee como verde.
+- **Cuánto se calla:** corrido sobre `auxiliar_administrativo_sms` el 30/07 → *«24 temas · 22 scopes evaluados · **22 con epígrafe no mapeable a títulos** · ✅ Sin overflow»*. Es decir: opinó sobre **0**. CLAUDE.md ya avisa de que a nivel de banco el 91% de los scopes cae en esa zona muerta.
+- **Los tres casos que se le escaparon el mismo día**, todos en esa oposición y todos reales (sirven para fixtures):
+
+  | tema | lo que nombra el epígrafe LITERAL | rango real (BOE) | scope que había | sobra |
+  |---|---|---|---|---|
+  | **T22** Ley 9/2017 | Cap I **Secc 1.ª** *«Objeto y ámbito de aplicación»* + las 3 secciones del Cap II | 1-3 · 12-18 · 19-23 · 24-27 | `1-27` contiguo | **4-11** (Secc 2.ª *«Negocios y contratos excluidos»*, que el epígrafe NO nombra) |
+  | **T15** TRLGSS | Cap II **Secc 1.ª** *«Disposiciones generales»* · Afiliación y Cotización · Secc 3.ª **Subsecc 1.ª** *«Disposiciones generales»* | 7-11 · 15-20 · 21-27 | `0-41` contiguo | **1-6, 12-14, 28-41** |
+  | **T16** TRLGSS | Cap I · Secc 2.ª **Subsecc 1.ª** *«Disposiciones generales»* · Secc 3.ª · Cap III | 136-137 · 141-150 · 154 · 155-160 | `136-166` contiguo | **138-140, 151-153, 161-166** |
+
+  Fíjate en el patrón: **el scope siempre es un rango CONTIGUO** y el epígrafe siempre enumera bloques **discontinuos**. Lo introduce el propio `verify:scope` al razonar «Título Preliminar = 1-27» en vez de por pertenencia real.
+- **Casos NEGATIVOS igual de importantes** (si el detector los marca, no sirve): **T4** LPRL `1-4, 14-32` = Cap I + Cap III + Cap IV, exacto; **T11** Ley 3/2009 `10-40, 61-63` = Títulos II+III+IV+VII, exacto. Los dos verificados contra el BOE el 30/07.
+- **Con qué construirlo (ya existe, no empieces de cero):** tabla **`law_sections`** (`section_type` `titulo`/`capitulo`/`seccion`, `title`, `article_range_start/end`) — la de la Ley 3/2009 estaba poblada y correcta. Donde falte, el índice del BOE consolidado se parsea igual que en `sim-title-boundary.ts` (2.ª pasada: bajar la rúbrica y casar por materia, no solo por número).
+- **Las cuatro trampas, medidas hoy:**
+  1. **La rúbrica se repite.** *«Disposiciones generales»* aparece en el TRLGSS media docena de veces. Casar por texto suelto no vale: hay que **anclarla a su padre** (la del Cap II ≠ la de la Secc 3.ª ≠ la del Cap IV).
+  2. **El epígrafe tiene que ser LITERAL primero.** El T22 abreviado decía *«Objeto y ámbito»* y perdía justo *«de aplicación»*, que es lo que casa con la Secc 1.ª. Sobre un epígrafe parafraseado esto no puede funcionar → depende del Paso 1.
+  3. **Rúbrica de capítulo vs de sección casi idénticas.** Cap I = *«Objeto y ámbito de aplicación **de la Ley**»*, Secc 1.ª = *«Objeto y ámbito de aplicación»*. Tres palabras separan «arts 1-11» de «arts 1-3». Si empatan, es duda, no hallazgo.
+  4. **Preámbulos.** Muchos temarios incluyen el art. 1 sin nombrar su bloque. En el T15 los arts 1-6 son discutibles por eso (ver [T-332]).
+- **Banda:** **on-demand, NO badge**, igual que el de títulos, hasta medir precisión sobre el banco. Salida esperada: lista de candidatos para adjudicar, no un recorte automático. **NUNCA recortar sin abrir el BOE.**
+- **Por qué merece la pena:** los tres defectos de hoy los encontró **una usuaria**, no el sistema, y los tres detectores automáticos daban verde (el de sobre-inclusión mide contra el tamaño de la ley: 27 de 354 artículos no parece nada; los de huecos ven un tema con 122 preguntas). Mientras esto no exista, la vía de detección real es que alguien se queje.
+- **Relacionadas:** [T-332] (los recortes concretos que salieron), [T-334] (provenance del Paso 2), runbook `verificar-epigrafes-scope.md` §«Punto ciego».
+
+### [T-334] 🟡 [ABIERTO 30/07] El Paso 2 acepta un veredicto «correcto» sin ninguna fuente detrás (el Paso 1 no lo permite)
+- **La asimetría:** para marcar un epígrafe como literal (Paso 1) hace falta `source_documento_id` — un documento clonado en el hub. Para marcar un `topic_scope` como `verified_correct` (Paso 2) **no hace falta nada**: `record_topic_verification` acepta cualquier `findings` y lo da por bueno.
+- **El caso que lo destapa (30/07, y lo hizo Claude, no una máquina):** al re-adjudicar `auxiliar_administrativo_sms` tras reescribir los epígrafes al literal, se sellaron **T15 y T16** como `verified_correct` con esta nota: *«el literal añade "disposiciones generales", que ACOTAN hacia dentro de lo ya escopado»*. **Eso no se comprobó contra el BOE y era falso**: la coletilla acota, sí, pero hacia FUERA de lo escopado (ver [T-332]). Quedó registrado como verdad verificada durante unas horas, con la misma forma que las notas legítimas. Ya está corregido a `issues`.
+- **Precedente idéntico:** el pase multi-agente del 21/07 dejó al menos tres falsos verdes en esta oposición (T10, T11 y T22), todos con notas igual de seguras. La nota del T11 lo dice con sus palabras: *«Pase anterior falso verified_correct»*.
+- **Qué construir:** que un veredicto `correct` traiga **provenance** en `findings` — qué se consultó (id del BOE, `law_sections`, documento del hub) o, si no se consultó nada, que lo diga (`fuente: "razonado"`). Y un recuento en el barrido: *cuántos `verified_correct` vivos no declaran fuente*. Sitio: `scripts/verify-topic-scope.cjs` (`cmdRecord`) + la función SQL `record_topic_verification` + tabla `topic_scope_verification`.
+- **⚠️ Limitación que hay que asumir al hacerla, no descubrir después:** esto es **autocertificación**. Un campo que diga «miré el BOE» no prueba que se mirara. Lo único que consigue —y no es poco— es que la ausencia de fuente sea **visible y contable** en vez de indistinguible de una verificación buena. **El guardarraíl de verdad para esta clase de fallo es [T-333]**, que comprueba el hecho en lugar de preguntarlo. Si solo se va a hacer una de las dos, haz la 333.
+- **Relacionadas:** [T-333], [T-332], runbook `verificar-epigrafes-scope.md`.
+
 ### [T-331] 🟡 [ABIERTO 30/07] SMS Tema 21: generar preguntas del RD 203/2021 arts 50 y 52 (hoy sirven CERO)
 - **Qué pasa:** en el Tema 21 de `auxiliar_administrativo_sms`, los artículos **50** («Referencia temporal de los documentos administrativos electrónicos») y **52** («Ejercicio del derecho de acceso al expediente electrónico y obtención de copias») del **RD 203/2021** están **en el temario, existen y están activos**, pero tienen **0 preguntas**. Son los **dos únicos** de todo el rango escopado (41-55) con el contador a cero, y salen listados así en el selector «🔧 Artículos» que ve el usuario.
 - **Cómo se supo:** lo reportó la usuaria **M / María Luisa** (`daluamva@gmail.com`, premium, Cieza) el 30/07 en el feedback `917b1b29`: *«falta el articulo 50, y 52 del tema 21 en los test»*. No dedujo nada, los vio en pantalla. Es la misma persona que lleva ~25 avisos de temario en 20 días con un solo fallo.
