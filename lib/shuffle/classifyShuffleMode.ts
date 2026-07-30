@@ -189,6 +189,18 @@ const OPTION_CROSSREF_PATTERNS: RegExp[] = [
   // los estímulos» casaba —la «a» es preposición— y 103 preguntas se marcaron unsafe sin motivo.
   /\b(?:respuesta|opci[óo]n|alternativa)\s+(?:[a-eA-E]\)|[A-E]\b)/,
   /\b(?:respuestas|opciones)\s+[ABCDE]\s*(?:y|,|e)\s*[ABCDE]\b/i, // "las opciones A y C"
+  // Artículo + letra con paréntesis, con el SUSTANTIVO ELIDIDO: «Por la B) o, en su defecto, por
+  // la C)», «A) y la B) son correctas», «Cierta la A), entendiéndose…», «Respecto a la A), no será
+  // de aplicación…». Encontrado el 30/07 revisando las 22 de T-282: la pregunta `1311556a` (art.
+  // 69.5 CE) estaba `safe`/`full` con una opción que dice literalmente «Por la B) o, en su defecto,
+  // por la C)» — al barajar, esas letras dejan de apuntar a lo que apuntaban. Ni este detector ni
+  // `classifyShuffleMode` la veían: los dos exigían la palabra («opción B») o la conjunción «y»
+  // entre dos letras, y aquí el sustantivo no está y la conjunción es «o».
+  // Se exige MAYÚSCULA y paréntesis, que es lo que separa la referencia de sus dos vecinos
+  // inocentes: la letra de apartado legal va en minúscula («la letra a) del art. 5» — y ahí la
+  // palabra pegada a la letra es «letra», no «la») y la preposición nunca lleva paréntesis.
+  // Medido sobre las 139.469 activas: 16 aciertos, 0 falsos positivos, 5 marcadas `safe`.
+  /\b(?:la|las)\s+[ABCDE]\)/,
   /\b(?:la|las)\s+(?:anterior|anteriores|primera|segunda|tercera|cuarta|[úu]ltima)s?\s+(?:respuesta|opci[óo]n|alternativa)/i,
   /\b(?:todas|ninguna)\s+(?:las|de las)\s+(?:anteriores|respuestas|opciones)\b/i,
 ];

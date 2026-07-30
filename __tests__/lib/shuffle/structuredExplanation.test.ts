@@ -469,6 +469,34 @@ describe('T-201 — los tres huecos que cazó la sesión de impugnaciones', () =
     expect(isShuffleEligible({ shuffle_mode: 'full', explanation: 'Explicación limpia sin letras.', options: ['Uno.', 'Dos.', 'Tres.', 'Cuatro.'] })).toBe(true)
   })
 
+  // ── El sustantivo ELIDIDO (30/07). Salió revisando las 22 que quedaban de T-282: la pregunta
+  // `1311556a` (art. 69.5 CE) estaba `safe`/`full` con una opción que dice «Por la B) o, en su
+  // defecto, por la C)». Ni este detector ni `classifyShuffleMode` la veían — el primero exigía la
+  // palabra («opción B») y el segundo la conjunción «y» entre dos letras, y aquí no hay ninguna de
+  // las dos. Los cuatro textos son REALES, de las 16 que la simulación encontró en el banco vivo.
+  test.each([
+    ['Por la B) o, en su defecto, por la C)', '1311556a — el que lo destapó: disyunción, sin sustantivo'],
+    ['A) y la B)  son correctas.', 'cda60cb2 — estaba safe: el «la» inicial elidido rompía el patrón de modo'],
+    ['Cierta la A), entendiéndose éstas como todas las que formen parte de un día hábil.', 'a6613056 — estaba safe'],
+    ['Respecto a la A), no será de aplicación a los emigrantes ni a los hijos de emigrantes.', '529853f5 — estaba safe'],
+  ])('una opción que cita a otra con el sustantivo elidido impide barajar: %s', (opcion) => {
+    const opciones = ['Lo que dice el artículo.', 'Otra cosa.', 'Una tercera.', opcion]
+    expect(optionsReferenceOtherOptions(opciones)).toBe(true)
+    expect(
+      isShuffleEligible({ shuffle_mode: 'full', explanation: 'Explicación limpia sin letras.', options: opciones })
+    ).toBe(false)
+  })
+
+  // Los dos vecinos inocentes que el patrón NO debe marcar. Son los que costaron 103 falsos
+  // positivos en la primera versión del detector (27/07), así que van clavados como cerrojo.
+  test.each([
+    ['La letra a) del artículo 5 exige acreditar la insuficiencia de recursos.', 'apartado legal en minúscula'],
+    ['A temperatura corporal (36-37 °C) la conservación es distinta.', 'la «A» como preposición'],
+    ['El apartado A) del baremo puntúa la experiencia.', 'la palabra pegada a la letra no es «la»'],
+  ])('NO marca el vecino inocente: %s', (opcion) => {
+    expect(optionsReferenceOtherOptions(['Uno.', 'Dos.', 'Tres.', opcion])).toBe(false)
+  })
+
   test('el veredicto no se duplica si la razón ya lo trae escrito (histórico)', () => {
     const d: any = { v: 1, estilo: 'impugnacion', options: { '0': 'CORRECTA — Sí.', '1': 'INCORRECTA — No.' } }
     const r = renderStructuredExplanation(d, { correctOption: 0, optionOrder: null, nOptions: 2 })
