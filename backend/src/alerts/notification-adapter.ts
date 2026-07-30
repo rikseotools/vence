@@ -25,5 +25,18 @@ export interface AlertNotification {
 }
 
 export interface NotificationAdapter {
-  send(notification: AlertNotification): Promise<void>;
+  /**
+   * Envía los avisos de UN tick del motor.
+   *
+   * Es un LOTE, no un aviso, desde T-272: el 29/07 una sola saturación de
+   * `/api/interactions` mandó 6 correos porque disparaon 6 reglas distintas
+   * (`5xx_spike`, `client_edge_sustained`, `endpoint_latency_sustained`,
+   * `frontend_saturation`, `client_error_spike`×2) en la misma ventana. Un
+   * incidente es UN correo; qué reglas lo vieron es contenido del correo, no
+   * motivo para mandar otro.
+   *
+   * Contrato: con lista vacía no manda nada. NUNCA lanza — un fallo del canal
+   * se registra (log + señal) pero no puede tumbar el tick del motor.
+   */
+  send(notifications: AlertNotification[]): Promise<void>;
 }

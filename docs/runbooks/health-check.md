@@ -42,8 +42,20 @@ Mantenedor: `docs/runbooks/health-check.md`. Referenciado desde `CLAUDE.md`.
 > spikes son intermitentes (cada ~30 min, breves), se declaraba "sana" **entre** spikes mientras
 > el email los cazaba → falso "todo bien". Desde el 21/07 el cron de alertas **persiste cada
 > aviso disparado** en `observable_events` (`event_type='alert_fired'`). **Consúltalo SIEMPRE
-> primero**: es la MISMA señal que la bandeja de entrada, sin muestreo. Si aquí hay filas,
-> NO digas "sana" — investiga esas reglas.
+> primero**: es la señal continua, sin muestreo. Si aquí hay filas, NO digas "sana" —
+> investiga esas reglas.
+>
+> ⚠️ **DESDE T-272 (30/07/2026) `alert_fired` YA NO ES 1:1 CON LA BANDEJA.** Que una regla
+> DISPARE y que además mande CORREO son dos decisiones distintas: el correo lo decide la
+> política de email (severidad mínima + backoff por problema, ver §1.bis.c). La diferencia
+> está EN el dato, no en la cabeza de nadie:
+> - **la bandeja de Manuel** = `alert_fired` **`WHERE metadata->>'emailed' = 'true'`**
+> - **todo lo que el sistema vio** = `alert_fired` a secas (lo que no se emaileó lleva
+>   `emailSkipped` = `severity` \| `backoff`, más `emailStreak`/`emailNextInMin`)
+>
+> Para diagnosticar **usa siempre la segunda**: un problema silenciado en el buzón sigue
+> siendo un problema. La primera solo sirve para responder "¿por qué me llegan tantos/pocos
+> correos?".
 
 ```bash
 node -e "
@@ -53,13 +65,14 @@ const sql = require('postgres')(process.env.DATABASE_URL, { ssl:{rejectUnauthori
 (async () => {
   const rows = await sql\`
     SELECT metadata->>'rule' AS rule, severity, count(*)::int AS veces,
+           count(*) FILTER (WHERE metadata->>'emailed' = 'true')::int AS emailados,
            max(ts) AS ultimo, (array_agg(error_message ORDER BY ts DESC))[1] AS titulo
     FROM observable_events
     WHERE event_type = 'alert_fired' AND ts >= NOW() - INTERVAL '2 hours'
     GROUP BY 1,2 ORDER BY max(ts) DESC\`;
   if (!rows.length) console.log('✅ 0 avisos disparados en 2h — coincide con una bandeja limpia');
-  else { console.log('🔴 avisos disparados (= lo que te llega por email):');
-    rows.forEach(r => console.log('  ['+r.severity+'] '+r.rule+' x'+r.veces+' (últ '+r.ultimo.toISOString().slice(11,16)+'): '+r.titulo)); }
+  else { console.log('🔴 avisos disparados (emailados / total — lo silenciado SIGUE siendo un problema):');
+    rows.forEach(r => console.log('  ['+r.severity+'] '+r.rule+' x'+r.veces+' ('+r.emailados+' al buzón) (últ '+r.ultimo.toISOString().slice(11,16)+'): '+r.titulo)); }
   await sql.end();
 })();
 "
@@ -68,6 +81,10 @@ const sql = require('postgres')(process.env.DATABASE_URL, { ssl:{rejectUnauthori
 Regla de oro: **el veredicto de salud NO puede ser más verde que tu bandeja de email.** Si
 `alert_fired` tiene filas y las métricas crudas salen limpias, es que muestreaste entre spikes
 — el alerting (continuo) manda sobre el snapshot (puntual).
+
+**Corolario desde T-272:** ahora la bandeja puede estar limpia **a propósito** (backoff de una
+avería crónica ya fichada). Así que la bandeja limpia ya NO acredita salud: acredita que no hay
+nada NUEVO. El veredicto sale de `alert_fired` completo, no de cuántos correos llegaron.
 
 ## 1. Comprobación rápida (30 segundos)
 
@@ -227,6 +244,59 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 > ```
 > No escribe nada: reproduce la decisión con el `findOverdueCrons` REAL (no una copia) cambiando
 > solo el catálogo, y contrasta con los `alert_fired` que de verdad se mandaron.
+
+#### 1.bis.c — La POLÍTICA DE EMAIL del canal: por qué un aviso puede no llegar al buzón (T-272, 30/07/2026)
+
+> **El diagnóstico que la motivó:** 392 correos en 7 días (**56/día**) para **28 problemas
+> distintos** = **14 correos por problema**. El canal no estaba inundado de fallos: estaba inundado
+> de REPETICIONES. Y el mecanismo era estructural, no una regla mal puesta: el único silencio era
+> `cooldownMin`, fijo y corto (20-60 min en las ruidosas). Ante una avería **crónica** —que dura
+> días— un cooldown de 20 min no frena, marca cadencia: 72 correos/día. El correo nº 50 del mismo
+> problema pesaba igual que el primero.
+
+**Disparar ≠ mandar correo.** Son dos decisiones. El cooldown gobierna el disparo; el correo lo
+decide `backend/src/alerts/email-policy.ts` (núcleo puro, 29 tests) en tres capas:
+
+| capa | qué hace | dónde se configura |
+|---|---|---|
+| **Severidad mínima** | solo `critical` va al buzón; `error`/`warn` quedan en `/admin/salud-sistema` | env `ALERT_EMAIL_MIN_SEVERITY` (default `critical`; ponerla en `warn` devuelve el comportamiento anterior) |
+| **Backoff por problema** | mismo `(regla, fingerprint)`: inmediato → 1 h → 6 h → **1/día** mientras siga | `BACKOFF_CURVE_MIN` |
+| **Agrupación por tick** | los supervivientes del mismo tick (5 min) viajan en **un** correo | `EmailNotificationAdapter` |
+
+Medido con `npm run sim:fatiga-email -- --dias 7`: **393 disparos → 35 correos (56 → 5,0/día, −91 %)**.
+El backoff aporta 318 de los 353 ahorrados; la severidad, 40.
+
+**Lo que NO hace, y hay que tenerlo claro al diagnosticar:**
+- **No silencia la señal, solo el correo.** El `alert_fired` se escribe siempre, con `emailed`,
+  `emailSkipped`, `emailStreak` y `emailNextInMin` dentro. Si se suprimiera el disparo, el panel
+  dejaría de ver que el problema sigue vivo: el modo de fallo de [T-162].
+- **Ningún problema se queda mudo por el backoff.** Un `fingerprint` nuevo avisa YA; el backoff solo
+  retrasa repeticiones, y la racha se reinicia tras 48 h de silencio.
+- **La severidad SÍ puede dejar mudo a un problema**, y es una decisión consciente: con el mínimo en
+  `critical`, 18 de los 28 problemas medidos dejan de emailear. Para las reglas cuyo significado es
+  *la app está rota / nadie puede desplegar* existe `emailAlways: true` en la regla (hoy solo
+  `main_ci_rojo`: es `error` pero bloquea a todo el mundo, y su coste medido es 1 disparo en 7 días).
+  **`emailAlways` no exime del backoff.**
+
+**Si Manuel dice "me llegan muchos correos" — el orden correcto:**
+1. `alert_fired` **por día y por regla** (no por ventana corrida: mezcla el día de antes del arreglo
+   con el de después y acusa a quien ya está arreglado, ver el aviso de T-258 arriba).
+2. Contar **correos**, no disparos: `count(*) FILTER (WHERE metadata->>'emailed' = 'true')`.
+3. `npm run sim:fatiga-email -- --dias 7` — dice qué regla pesa y qué pasaría al mover la política.
+   **Nunca cambiar la curva, la severidad mínima ni añadir un `emailAlways` sin medirlo antes.**
+4. Y mirar el `cron_run` de `alerts-engine`: `emailsSent`, `emailAlertsBatched`,
+   `emailsSkippedBySeverity`, `emailsSkippedByBackoff`, `emailHistoryHydrated`. **Sin estas cifras,
+   "hoy me llegan menos correos" no se distingue de "el canal está roto y no manda nada."**
+
+⚠️ **Gotcha de diseño que costó un test (no repetir el razonamiento):** el reinicio de racha tiene
+que ser **estrictamente mayor** que el último escalón de la curva. Con los dos a 1440 el backoff
+**se desarma solo**: la avería crónica manda su correo diario, ese hueco de 24 h cuenta ya como
+"silencio", la racha vuelve a 0 y el siguiente correo sale a la hora (9 correos en 3 días donde
+debían salir 4-6). Por eso el reinicio son 48 h. Hay test que fija la relación.
+
+⚠️ Y el gotcha de método: la primera versión del simulador llevaba **la curva copiada** del núcleo,
+y por eso NO vio ese defecto. Las simulaciones de este repo importan el detector REAL — una copia
+miente en cuanto divergen.
 
 - Cruzar con la bandeja `[Vence CRITICAL]`: si un tipo domina el correo pero es un blip transitorio, **recalibrar la alert-rule** (ver `backend/src/alerts/alert-rules.ts` + `[[project_supavisor_zombie_conn_root_cause]]` para el precedente de recalibración pool/canary).
 - Un `event_type` que **desaparece** de golpe (p.ej. geo fill-rate a 0) también es señal — lo cubre el framework de calidad de datos (§ roadmap obs).

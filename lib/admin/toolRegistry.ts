@@ -840,6 +840,51 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       're-check suele mirar solo las reparadas) pero LISTA siempre lo que queda sin acreditar. NO ' +
       'toca lifecycle_state ni el contenido: solo acredita una auditoría ya hecha.',
   },
+
+  // ── Calibración del canal de ALERTAS (las tres simulaciones son hermanas) ─────────────────
+  // Estaban sin registrar: se escribieron una detrás de otra (T-258, T-263, T-272) y cada una
+  // tuvo que redescubrir a las anteriores leyendo el runbook. Van juntas y con su relación
+  // escrita para que la cuarta no nazca duplicando a ninguna.
+  sim_cooldown_persistido: {
+    titulo: 'Medir cuántos correos de alerta evita el cooldown persistido (antes de tocar un cooldownMin)',
+    ruta: 'scripts/alerts/sim-cooldown-persistido.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'node scripts/alerts/sim-cooldown-persistido.cjs [--dias 7]. Solo lectura. Replaya los ' +
+      '`alert_fired` reales con los `cooldownMin` del FUENTE y dice cuántos correos se evitan por ' +
+      'regla (T-258, 7 días: 497 → 347). Responde "¿este cooldown está bien puesto?". Hermana de ' +
+      '`sim_fatiga_email`, que responde otra pregunta distinta: cuántos correos manda la POLÍTICA ' +
+      'del canal (severidad + backoff + agrupación) con los cooldowns ya dados. Cota INFERIOR: no ' +
+      've los disparos que el cooldown ya silenció, porque esos no dejaron fila.',
+  },
+  sim_cadencia_cron: {
+    titulo: 'Medir si `cron_overdue` acusa a un job SANO por declarar mal su cadencia (fase vs intervalo)',
+    ruta: 'backend/scripts/sim-cadencia-cron-overdue.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'npm run sim:cadencia-cron -- --dias 7 [--job <nombre>]. Solo lectura. Importa el ' +
+      '`findOverdueCrons` REAL y solo le cambia el catálogo: mide los correos con la cadencia vieja ' +
+      'vs la nueva contra los ticks que de verdad ocurrieron (T-263: 11 → 0). Úsalo cuando ' +
+      '`cron_overdue` señale un job que parece vivo — una FASE constante distinta de 0 con cadencia ' +
+      '`*/N` es declaración equivocada, no avería.',
+  },
+  sim_fatiga_email: {
+    titulo: 'Medir cuántos correos manda el canal de alertas con la política de email (severidad + backoff + agrupación)',
+    ruta: 'backend/scripts/sim-fatiga-email.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'npm run sim:fatiga-email -- --dias 7 [--severidad critical] [--sin-backoff] [--sin-agrupar]. ' +
+      'Solo lectura. Importa `decideEmail`/`parseEmailHistory` REALES de ' +
+      '`backend/src/alerts/email-policy.ts` — la primera versión llevaba la curva COPIADA y por eso ' +
+      'NO vio el defecto que sí cazó el test unitario (reinicio de racha == último escalón ⇒ el ' +
+      'backoff se desarmaba solo y la avería crónica volvía a 9 correos en 3 días). Medido el ' +
+      '30/07: 393 disparos → 35 correos (56 → 5,0/día). Además LISTA los problemas que no avisarían ' +
+      'nunca con la política puesta: si alguno debe avisar, su regla necesita `emailAlways: true`. ' +
+      'Correr ANTES de tocar la curva, la severidad mínima o de añadir una excepción.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

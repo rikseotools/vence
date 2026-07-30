@@ -90,6 +90,23 @@ export interface AlertRule<T = unknown> {
    * Evita spam si la condición persiste.
    */
   cooldownMin: number;
+
+  /**
+   * Manda correo aunque su `severity` esté por debajo del mínimo del canal
+   * (T-272). Puerta de escape ESTRECHA, no un "es importante": solo para reglas
+   * cuyo significado es *la app está rota o el equipo está bloqueado*.
+   *
+   * Existe porque la severidad de este catálogo no es un buen proxy de
+   * "merece correo", y el filtro por severidad a secas silenciaría cosas que sí:
+   * medido el 30/07, con el mínimo en `critical` **18 de 28 problemas dejaban de
+   * avisar**, entre ellos `main_ci_rojo` (`error`, y bloquea a todo el mundo)
+   * mientras `event_loop_lag` (`critical`) era el mayor spammer con 180 correos.
+   *
+   * NO exime del backoff: la excepción es a la severidad, no a la repetición.
+   * Antes de poner esto en una regla nueva, mídela con
+   * `node scripts/alerts/sim-fatiga-email.cjs`.
+   */
+  emailAlways?: boolean;
 }
 
 /**
@@ -1162,6 +1179,10 @@ export const RULE_MAIN_CI_ROJO: AlertRule<{
     };
   },
   cooldownMin: 20,
+  // Va por correo aunque el canal esté limitado a `critical` (T-272): su
+  // severidad dice `error` pero su significado es "nadie puede commitear ni
+  // desplegar". Coste de fatiga medido: 1 disparo en 7 días.
+  emailAlways: true,
 };
 
 export const RULE_SUBSCRIPTION_DRIFT: AlertRule<{

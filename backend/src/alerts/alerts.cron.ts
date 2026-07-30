@@ -42,6 +42,16 @@ import {
   parseLastFired,
   type LastFiredRow,
 } from './alert-cooldown';
+import {
+  EMAIL_HISTORY_QUERY,
+  decideEmail,
+  parseEmailHistory,
+  parseMinSeverity,
+  problemKey,
+  type AlertSeverity,
+  type EmailHistoryRow,
+} from './email-policy';
+import type { AlertNotification } from './notification-adapter';
 
 /**
  * Rules engine de alertas activas.
@@ -64,6 +74,16 @@ import {
  * sin infraestructura nueva. Fail-open: si la consulta falla se sigue con el
  * Map en memoria, es decir, el comportamiento de antes del cambio.
  *
+ * Política de EMAIL (T-272, 30/07): que una regla DISPARE y que además mande
+ * CORREO son dos decisiones distintas. El cooldown gobierna la primera; la
+ * segunda la decide `email-policy.ts` (severidad mínima + backoff por problema)
+ * y los supervivientes del tick viajan en UN correo. Motivo: 392 correos en 7
+ * días para 28 problemas distintos = 14 por problema; a ese ritmo el correo de
+ * la caída real llega al mismo sitio que el ruido. **El disparo se sigue
+ * registrando siempre** (`alert_fired` con `emailed`/`emailSkipped` dentro): si
+ * se suprimiera la señal y no el correo, el panel dejaría de ver que el problema
+ * sigue vivo — el modo de fallo de T-162.
+ *
  * El propio cron emite `cron_run` a observable_events — meta-observability
  * (si las alertas dejan de funcionar, lo veremos en queries).
  */
@@ -72,6 +92,14 @@ export class AlertsCron {
   private readonly logger = new Logger(AlertsCron.name);
   private readonly lastFiredAt = new Map<string, number>();
   public lastTickAtMs: number | null = null;
+
+  /**
+   * Severidad mínima que llega al buzón. Env para poder cambiar de criterio sin
+   * desplegar código (`ALERT_EMAIL_MIN_SEVERITY=warn` devuelve el
+   * comportamiento anterior a T-272). Un valor inválido cae al default en vez de
+   * apagar el canal — un typo no puede dejar a nadie sin avisos.
+   */
+  private readonly minEmailSeverity: AlertSeverity;
 
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
@@ -82,6 +110,9 @@ export class AlertsCron {
     private readonly cronSchedule: CronScheduleService,
     private readonly heartbeatRegistry: HeartbeatRegistry,
   ) {
+    this.minEmailSeverity = parseMinSeverity(
+      process.env.ALERT_EMAIL_MIN_SEVERITY,
+    );
     heartbeatRegistry.register(
       'alerts-engine',
       () => getLastTickMsAgo(this, 'lastTickAtMs'),
@@ -140,7 +171,9 @@ export class AlertsCron {
     let lastFired = new Map(this.lastFiredAt);
     try {
       const lfResult = await this.readDb.execute(LAST_FIRED_QUERY);
-      const lfRows = (Array.isArray(lfResult) ? lfResult : []) as LastFiredRow[];
+      const lfRows = (
+        Array.isArray(lfResult) ? lfResult : []
+      ) as LastFiredRow[];
       lastFired = mergeLastFired(this.lastFiredAt, parseLastFired(lfRows));
       cooldownHidratado = true;
     } catch (err) {
@@ -149,11 +182,38 @@ export class AlertsCron {
       );
     }
 
+    // Historial de lo YA EMAILEADO por problema, para el backoff (T-272).
+    // Fail-open a propósito: sin historial legible se emailea, que es el
+    // comportamiento anterior. Un motor que se calla porque no pudo leer su
+    // propio historial sería peor que el spam que esto arregla.
+    let emailHistory = new Map<string, number[]>();
+    let emailHistoryHidratado = false;
+    try {
+      const ehResult = await this.readDb.execute(EMAIL_HISTORY_QUERY);
+      const ehRows = (
+        Array.isArray(ehResult) ? ehResult : []
+      ) as EmailHistoryRow[];
+      emailHistory = parseEmailHistory(ehRows);
+      emailHistoryHidratado = true;
+    } catch (err) {
+      this.logger.warn(
+        `Hidratación del historial de email falló (fail-open, se emailea): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // Avisos de ESTE tick que van al buzón. Se acumulan y salen en un correo al
+    // final: un incidente que enciende 6 reglas es 1 correo, no 6.
+    const paraEnviar: AlertNotification[] = [];
+    let emailsSuprimidosPorSeveridad = 0;
+    let emailsSuprimidosPorBackoff = 0;
+
     for (const rule of ALERT_RULES) {
       evaluated++;
       try {
         // Cooldown check — contra el estado hidratado (memoria ∪ BD), no solo memoria.
-        if (isInCooldown(lastFired.get(rule.name), rule.cooldownMin, Date.now())) {
+        if (
+          isInCooldown(lastFired.get(rule.name), rule.cooldownMin, Date.now())
+        ) {
           skipped++;
           if (!this.lastFiredAt.has(rule.name)) skippedPorPersistencia++;
           continue;
@@ -161,7 +221,9 @@ export class AlertsCron {
 
         // Ejecutar query. Regla de pool/pooler → primario (monitoriza la instancia
         // real); resto → réplica (agregación que tolera staleness). Capa 3.
-        const ruleDb = PRIMARY_ONLY_RULES.has(rule.name) ? this.db : this.readDb;
+        const ruleDb = PRIMARY_ONLY_RULES.has(rule.name)
+          ? this.db
+          : this.readDb;
         const result = await ruleDb.execute(rule.query);
         // `result` es un Array de filas en postgres-js
         const rows = Array.isArray(result) ? result : [];
@@ -170,13 +232,36 @@ export class AlertsCron {
 
         // Construir notificación
         const partial = rule.buildNotification(rows, ctx);
+        const fingerprint = partial.fingerprint ?? rule.name;
 
-        // Enviar
-        await this.notifier.send({
-          rule: rule.name,
+        // ¿Además de disparar, va por correo? (T-272). El disparo ya está
+        // decidido; esto solo elige el canal, y queda registrado abajo.
+        const decision = decideEmail({
           severity: rule.severity,
-          ...partial,
+          minSeverity: this.minEmailSeverity,
+          emailAlways: rule.emailAlways,
+          sentAtMs: emailHistory.get(problemKey(rule.name, fingerprint)),
+          nowMs: Date.now(),
         });
+
+        if (decision.email) {
+          paraEnviar.push({
+            rule: rule.name,
+            severity: rule.severity,
+            ...partial,
+          });
+          // Se apunta YA en el historial en memoria para que dos reglas con el
+          // mismo fingerprint en el mismo tick no cuenten como dos correos.
+          const clave = problemKey(rule.name, fingerprint);
+          emailHistory.set(clave, [
+            ...(emailHistory.get(clave) ?? []),
+            Date.now(),
+          ]);
+        } else if (decision.skippedBy === 'severity') {
+          emailsSuprimidosPorSeveridad++;
+        } else {
+          emailsSuprimidosPorBackoff++;
+        }
 
         // Persistir el aviso disparado a observable_events (ADITIVO al email). Antes los
         // avisos SOLO se emaileaban → "revisa la salud" no podía ver qué había saltado y
@@ -192,7 +277,17 @@ export class AlertsCron {
           errorMessage: partial.title,
           metadata: {
             rule: rule.name,
-            fingerprint: partial.fingerprint ?? rule.name,
+            fingerprint,
+            // T-272: `alert_fired` ya NO es 1:1 con la bandeja de entrada, así
+            // que la diferencia tiene que estar EN el dato, no en la cabeza de
+            // nadie. La bandeja es `emailed = 'true'`; el resto es señal que
+            // solo vive en el panel, con el motivo del silencio al lado.
+            emailed: decision.email,
+            emailSkipped: decision.skippedBy,
+            emailStreak: decision.racha,
+            ...(decision.faltanMin !== undefined
+              ? { emailNextInMin: decision.faltanMin }
+              : {}),
             ...(partial.metadata ?? {}),
           },
         });
@@ -201,7 +296,12 @@ export class AlertsCron {
         lastFired.set(rule.name, Date.now());
         fired++;
         this.logger.warn(
-          `Regla '${rule.name}' [${rule.severity}] DISPARADA: ${partial.title}`,
+          `Regla '${rule.name}' [${rule.severity}] DISPARADA: ${partial.title}` +
+            (decision.email
+              ? ''
+              : ` · correo OMITIDO (${decision.skippedBy}${
+                  decision.faltanMin ? `, faltan ${decision.faltanMin}min` : ''
+                })`),
         );
       } catch (err) {
         // ⚠️ QUIÉN VIGILA AL VIGILANTE (27/07/2026, cabo de T-162).
@@ -241,10 +341,40 @@ export class AlertsCron {
       }
     }
 
+    // UN correo con todo lo que sobrevivió a la política. Fuera del bucle a
+    // propósito: es lo que funde en un solo aviso el incidente que enciende
+    // varias reglas a la vez.
+    if (paraEnviar.length) {
+      try {
+        await this.notifier.send(paraEnviar);
+      } catch (err) {
+        // El adapter promete no lanzar, pero si el canal se rompe de otra forma
+        // el fallo NO puede quedarse en un log: sin esto, "no llegó el correo"
+        // sería indistinguible de "no había nada que avisar" — el mismo modo de
+        // fallo que T-162. Con la señal, `senal_error_sin_vigilancia` lo ve.
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Envío del lote de alertas falló: ${msg}`);
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: 'error',
+          eventType: 'alert_email_failed',
+          endpoint: 'alerts-engine',
+          errorMessage: msg,
+          metadata: {
+            avisos: paraEnviar.length,
+            reglas: paraEnviar.map((n) => n.rule),
+          },
+        });
+      }
+    }
+
     const durationMs = Date.now() - startedAt;
     if (fired > 0 || evaluated !== ALERT_RULES.length) {
       this.logger.log(
-        `alerts-engine: ${fired} disparadas, ${skipped} en cooldown, ${evaluated}/${ALERT_RULES.length} evaluadas en ${durationMs}ms`,
+        `alerts-engine: ${fired} disparadas, ${skipped} en cooldown, ` +
+          `${paraEnviar.length ? 1 : 0} correo(s) con ${paraEnviar.length} aviso(s), ` +
+          `${emailsSuprimidosPorSeveridad} sin correo por severidad, ${emailsSuprimidosPorBackoff} por backoff, ` +
+          `${evaluated}/${ALERT_RULES.length} evaluadas en ${durationMs}ms`,
       );
     }
 
@@ -265,6 +395,17 @@ export class AlertsCron {
         // alertas que se calla sin dejar rastro es el fallo de T-162 otra vez.
         rulesSkippedByPersistedCooldown: skippedPorPersistencia,
         cooldownHydrated: cooldownHidratado,
+        // T-272: el canal de email también se mide. `emailsSent` es el número de
+        // CORREOS (0 o 1 por tick), `emailAlertsBatched` los avisos que iban
+        // dentro — su diferencia es lo que ahorró la agrupación. Sin estas tres
+        // cifras, "hoy me han llegado menos correos" no se puede distinguir de
+        // "el canal está roto y no manda nada".
+        emailsSent: paraEnviar.length ? 1 : 0,
+        emailAlertsBatched: paraEnviar.length,
+        emailsSkippedBySeverity: emailsSuprimidosPorSeveridad,
+        emailsSkippedByBackoff: emailsSuprimidosPorBackoff,
+        emailMinSeverity: this.minEmailSeverity,
+        emailHistoryHydrated: emailHistoryHidratado,
         deployWindowActive: deployWindow.active,
         deployWindowReasons: deployWindow.reasons,
       },
