@@ -3845,6 +3845,27 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Cómo:** (a) decidir dónde va el arreglo — lo natural es que el inserter escriba `shuffle_mode` y que el manual deje de prometer que "la pregunta nace barajable" mientras no sea cierto; (b) que `backfill-explanation-data.ts` acepte `--batch <batch_id>` (hoy solo tiene `--pregunta` o el banco entero: para 15 preguntas hubo que llamarlo 15 veces, y sin el filtro se pasa del timeout barriendo todo); (c) repasar la cohorte del 23/07 en adelante.
 - **Origen:** lote `gen_rgpd_2026-07-29` de la campaña T-115 (29/07). El manual (§8.2, v2.6) afirma *"La pregunta nace barajable y no hay ningún paso que se pueda olvidar"* — hoy no se cumple, y nada avisaba.
 
+### [T-319] 🟠 [ABIERTO 30/07] `difficulty-insights` falla el 4,6% de sus peticiones: la única consulta que quedó sin migrar lee 5,6 GB en frío
+
+- **ORIGEN.** No lo reportó nadie: lo encontró el detector de **tasa** de fallo estrenado el 30/07 (`lib/observability/tasaFallo.cjs`). Llevaba **14 días** fallando sin que nadie se enterara, porque el indicador de 5xx ordena por CANTIDAD y con 1-2 fallos al día nunca entraba en la lista.
+- **ALCANCE MEDIDO (14 días):** 23 fallos sobre ~503 peticiones = **4,6%**, **14 usuarios distintos**. Cada fallo es un opositor esperando **12 segundos** para recibir un *«Servicio saturado momentáneamente»*. Uno de ellos (`3260627f`, 35.129 filas) tiene **0 éxitos en 14 días**: para él la pantalla no funciona, sin más.
+- **CAUSA, con el plan delante.** De las 6 consultas del endpoint, **`get_personalized_recommendations` es la única que nunca se migró** a `user_question_history_v2`. Sigue leyendo `test_questions` (**5,6 GB, 1,86 M filas**) y lo hace **dos veces** (bloques `user_stats` y `struggling_topics`). No es un escaneo completo —usa índices— es **entrada/salida a disco**: `I/O Timings: shared read = 1.626 ms` leyendo 2.556 bloques para un usuario ligero; **29.794 bloques** para el pesado.
+- **Por eso el mismo usuario va bien y mal.** El coste lo manda el estado de la CACHÉ, no el usuario. Medido sobre el pesado:
+
+  | | en frío | en caliente |
+  |---|---|---|
+  | RPC de recomendaciones | **9.227 ms** | 400 ms |
+  | lectura directa (sin JOIN) | **19.062 ms** | 106 ms |
+
+  `8ec9fbe3` tiene 5 fallos **y ~80 éxitos** con los mismos datos: unas veces 700 ms, otras 12 s.
+- **HIPÓTESIS DESCARTADAS (no repetirlas).** (a) *usuario pesado*: **no** — 18 de los 23 fallos son de gente con ~2.500 filas; (b) *cola de conexiones*: **no** — en los ±30 s de cada fallo no hay nada más lento; (c) *réplica apagada*: **no** — `USE_READ_REPLICA=true` está en el **task definition**, no en SSM (mirar solo SSM engaña).
+- **⚠️ EL ARREGLO OBVIO ESTÁ MEDIDO Y ES MALO.** Quitar el JOIN a `tests` (que el resto de consultas ya abandonó, `-- JOIN tests eliminado`) mejora al usuario ligero **8×** (689 → 83 ms) pero **empeora al pesado en frío: 9,2 s → 19 s**, porque sigue leyendo los mismos 29.794 bloques. Arreglaría el endpoint rompiéndoselo a los usuarios más activos, que son los premium. **NO hacerlo sin medir en frío.**
+- **DIRECCIÓN PROPUESTA.** Dejar de leer `test_questions` aquí. Las otras cinco consultas van a milisegundos porque leen `user_question_history_v2` (**457 MB**, 12 veces más pequeña). El obstáculo concreto: **esa tabla no tiene `tema_number`**, que es justo lo que agrupa el bloque de temas flojos → hace falta un agregado por usuario y tema, igual que en su día se hizo por usuario y pregunta. Riesgo en 60 usuarios con >5.000 filas (4 con >30k).
+- **⚠️ EL 503 NO LO PRODUCE LA CONSULTA.** `getRecommendations` **se traga su propio error** y devuelve lista vacía (lo destapó el test de integración, no la lectura del código). El 503 lo produce el corte de **12 s** de la ruta (`withDbTimeout` en `app/api/v2/difficulty-insights/route.ts`). Consecuencia práctica: **bajar ese corte sin arreglar la consulta solo adelanta el fallo**, y subirlo deja al usuario esperando más para lo mismo.
+- **✅ HECHO (30/07): instrumentación.** El endpoint ya emite `difficulty_insights_lento` con las 7 consultas por nombre, por encima de 2 s, al 100% **y también en el camino de error** (las marcas viven FUERA del `try` a propósito: si vivieran dentro, un rechazo de `Promise.all` se llevaría el desglose justo en las peticiones que acaban en 503). Reutiliza el núcleo de [T-312], que se **generalizó** (`evaluarFasesNombradas`) en vez de duplicarlo. Tests: `__tests__/lib/observability/difficultyInsightsDesglose.test.ts` (4) + `fasesLentas.test.ts` (17, incluido uno que fija que la generalización no cambió nada). Consulta lista en `health-check.md` §3.
+- **FALTA:** con los primeros desgloses reales delante, decidir el agregado por usuario y tema. **No hacerlo a ciegas.**
+- **Relacionadas:** [T-312] (desglose por fases, el patrón a reutilizar) · [T-315] (mismo error de leer un síntoma como degradación).
+
 ### [T-313] 🟠 [ABIERTO 30/07] Se puede elegir qué artículos entran en el test, pero nadie lo encuentra
 
 - **ORIGEN.** Manolo García (premium, feedback `6df1e69a`, 30/07): *«no sé si existe la posibilidad de pedir test de diferentes artículos dentro de una Ley, por ejemplo si una Ley es larga, pongamos de 100 artículos y llevas estudiado la mitad, poder señalar dentro de los 50 que ya has estudiado sin tener que recurrir a darle a test completo de toda la Ley»*. **La función existe desde hace tiempo y hace exactamente eso.** Él lleva 22 días usando la plataforma a diario y no la había visto.

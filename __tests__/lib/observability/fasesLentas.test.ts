@@ -8,7 +8,7 @@
 // de la que no se podía decir NADA. Entre 0,3% y 1,3% de los guardados superan los 5 s todos los
 // días — 50-200 opositores diarios sin explicación posible.
 
-import { evaluarFases, UMBRAL_LENTA_MS } from '@/lib/observability/fasesLentas'
+import { evaluarFases, evaluarFasesNombradas, UMBRAL_LENTA_MS } from '@/lib/observability/fasesLentas'
 
 describe('evaluarFases — cuándo merece explicación', () => {
   it('una petición rápida NO se registra (un desglose de 40 ms no informa de nada)', () => {
@@ -65,5 +65,52 @@ describe('evaluarFases — entradas degeneradas', () => {
 
   it('un total de 0 no divide por cero', () => {
     expect(evaluarFases({ validarMs: 0, guardarMs: 0, scoreMs: 0, totalMs: 0 }).pctDominante).toBe(0)
+  })
+})
+
+// ── Núcleo general (T-319) ──────────────────────────────────────────────────────────────────────
+// Se generalizó al instrumentar `difficulty-insights`, que necesitaba lo MISMO con otras fases.
+// Estos tests fijan que la generalización no cambió la decisión y que sirve para N fases.
+
+describe('evaluarFasesNombradas — la misma decisión para cualquier endpoint', () => {
+  it('señala la fase dominante entre muchas (caso difficulty-insights: 7 consultas)', () => {
+    // Cifras reales medidas contra producción para el usuario pesado en frío.
+    const v = evaluarFasesNombradas({
+      metrics: 1021, recomendaciones: 9227, tendencias: 709,
+      dificiles: 120, dominadas: 118, desglose: 90, enriquecer: 60,
+    }, 11_600)
+    expect(v.dominante).toBe('recomendaciones')
+    expect(v.lenta).toBe(true)
+    expect(v.pctDominante).toBe(80)
+  })
+
+  it('acusa al ENTORNO solo cuando el tiempo no está en ninguna consulta', () => {
+    const v = evaluarFasesNombradas({ a: 100, b: 50 }, 9_000)
+    expect(v.dominante).toBe('fuera_de_fases')
+    expect(v.noExplicadoMs).toBe(8_850)
+  })
+
+  it('con todo a cero NO culpa al entorno de algo que no ha pasado', () => {
+    expect(evaluarFasesNombradas({ a: 0, b: 0 }, 0).dominante).toBe('a')
+  })
+
+  it('en empate gana la primera declarada (orden estable, no aleatorio)', () => {
+    expect(evaluarFasesNombradas({ a: 500, b: 500 }, 1000).dominante).toBe('a')
+  })
+
+  it('no inventa tiempo no explicado si las fases suman más que el total', () => {
+    expect(evaluarFasesNombradas({ a: 900 }, 500).noExplicadoMs).toBe(0)
+  })
+
+  it('aguanta basura sin romper el camino crítico', () => {
+    expect(() => evaluarFasesNombradas({} as Record<string, number>, NaN)).not.toThrow()
+    expect(evaluarFasesNombradas({ a: undefined as unknown as number }, 0).pctDominante).toBe(0)
+  })
+
+  it('da EXACTAMENTE lo mismo que la versión de tres fases (sin regresión para T-312)', () => {
+    const f = { validarMs: 300, guardarMs: 24_000, scoreMs: 200, totalMs: 25_134 }
+    expect(evaluarFasesNombradas(
+      { validar: f.validarMs, guardar: f.guardarMs, score: f.scoreMs }, f.totalMs,
+    )).toEqual(evaluarFases(f))
   })
 })

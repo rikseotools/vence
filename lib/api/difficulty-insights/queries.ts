@@ -16,6 +16,29 @@ import {
   getPersonalBreakdownV2,
   getProgressTrendsV2,
 } from './queriesV2'
+import { evaluarFasesNombradas, UMBRAL_LENTA_MS } from '@/lib/observability/fasesLentas'
+import { emitFireAndForget } from '@/lib/observability/emit'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
+
+/**
+ * Cronómetro por consulta (T-319).
+ *
+ * Este endpoint falla el **4,6%** de sus peticiones y estuvo 14 días así sin que nadie lo supiera.
+ * Cuando por fin se miró, su evento de error solo guardaba `host`, `method` y `errorRef`: saber
+ * cuál de las 7 consultas se comía los 12 segundos exigió reconstruirlo A MANO contra producción
+ * —planes, `EXPLAIN`, medir en frío y en caliente—. Con esto, la próxima vez se lee en el panel.
+ *
+ * No cambia el comportamiento: envuelve la promesa y anota cuánto tardó. Si la consulta falla, el
+ * tiempo se registra igual y el error sigue su curso (los `.catch()` de fallback siguen mandando).
+ */
+async function cronometrar<T>(nombre: string, marcas: Record<string, number>, p: Promise<T>): Promise<T> {
+  const t0 = Date.now()
+  try {
+    return await p
+  } finally {
+    marcas[nombre] = Date.now() - t0
+  }
+}
 
 // Feature flag: % de usuarios que leen de user_question_history_v2 (lookup PK)
 // en lugar de las RPCs viejas (que escanean test_questions y timeoutean para
@@ -45,8 +68,14 @@ function shouldUseV2(userId: string): boolean {
 }
 
 export async function getDifficultyInsights(userId: string): Promise<GetDifficultyInsightsResponse> {
+  // FUERA del try a propósito: la petición que MÁS interesa explicar es la que falla, y si estas
+  // marcas vivieran dentro, un rechazo de `Promise.all` se llevaría por delante el desglose justo
+  // en ese caso. Se emite en los dos caminos (éxito y error) desde el `finally`.
+  const tInicio = Date.now()
+  const marcas: Record<string, number> = {}
+  let useV2 = false
   try {
-    const useV2 = shouldUseV2(userId)
+    useV2 = shouldUseV2(userId)
     // v2 usa read replica para evitar serialización por max:1 del primary pool.
     // Las 6 queries en Promise.all SÍ se paralelizan en la replica (pool propio).
     // v1 sigue usando primary (legacy) — esa ruta no se mejoró, solo se mantiene
@@ -56,6 +85,8 @@ export async function getDifficultyInsights(userId: string): Promise<GetDifficul
     // Ejecutar las 6 queries en paralelo. v2 usa user_question_history_v2
     // (lookup PK, <50ms incluso para heavy users 33k+ filas). v1 usa RPCs
     // antiguas que escanean test_questions (5-8s para heavy users → timeout).
+    // Cronometradas una a una: van en paralelo, así que la SUMA excede el total y eso es correcto
+    // (lo que interesa es cuál es la más larga, no repartir el reloj de pared).
     const [
       metricsResult,
       personalBreakdownResult,
@@ -64,12 +95,14 @@ export async function getDifficultyInsights(userId: string): Promise<GetDifficul
       trendsResult,
       recommendationsResult,
     ] = await Promise.all([
-      useV2 ? getMetricsV2(db, userId).catch(() => getMetrics(db, userId)) : getMetrics(db, userId),
-      useV2 ? getPersonalBreakdownV2(db, userId).catch(() => getPersonalBreakdown(db, userId)) : getPersonalBreakdown(db, userId),
-      useV2 ? getStrugglingQuestionsV2(db, userId, 5).catch(() => getStrugglingQuestions(db, userId, 5)) : getStrugglingQuestions(db, userId, 5),
-      useV2 ? getMasteredQuestionsV2(db, userId, 5).catch(() => getMasteredQuestions(db, userId, 5)) : getMasteredQuestions(db, userId, 5),
-      useV2 ? getProgressTrendsV2(db, userId).catch(() => getProgressTrends(db, userId)) : getProgressTrends(db, userId),
-      getRecommendations(db, userId), // sin v2 (RPC distinta no relacionada con user_question_history)
+      cronometrar('metrics', marcas, useV2 ? getMetricsV2(db, userId).catch(() => getMetrics(db, userId)) : getMetrics(db, userId)),
+      cronometrar('desglose', marcas, useV2 ? getPersonalBreakdownV2(db, userId).catch(() => getPersonalBreakdown(db, userId)) : getPersonalBreakdown(db, userId)),
+      cronometrar('dificiles', marcas, useV2 ? getStrugglingQuestionsV2(db, userId, 5).catch(() => getStrugglingQuestions(db, userId, 5)) : getStrugglingQuestions(db, userId, 5)),
+      cronometrar('dominadas', marcas, useV2 ? getMasteredQuestionsV2(db, userId, 5).catch(() => getMasteredQuestions(db, userId, 5)) : getMasteredQuestions(db, userId, 5)),
+      cronometrar('tendencias', marcas, useV2 ? getProgressTrendsV2(db, userId).catch(() => getProgressTrends(db, userId)) : getProgressTrends(db, userId)),
+      // La ÚNICA sin v2: sigue leyendo test_questions (5,6 GB) y es la sospechosa número uno — medida
+      // en 9.227 ms en frío frente a 400 ms en caliente para un usuario de 35k filas. Ver T-319.
+      cronometrar('recomendaciones', marcas, getRecommendations(db, userId)),
     ])
 
     // Enriquecer preguntas con datos de ley/artículo para hacerlas accionables
@@ -78,7 +111,7 @@ export async function getDifficultyInsights(userId: string): Promise<GetDifficul
       ...masteredResult.map(q => q.questionId),
     ]
     const enrichment = allQuestionIds.length > 0
-      ? await getQuestionEnrichment(db, allQuestionIds)
+      ? await cronometrar('enriquecer', marcas, getQuestionEnrichment(db, allQuestionIds))
       : new Map<string, { lawSlug: string; lawName: string; articleNumber: string }>()
 
     const enrich = (questions: QuestionResult[]) =>
@@ -104,6 +137,36 @@ export async function getDifficultyInsights(userId: string): Promise<GetDifficul
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
+  } finally {
+    // Desglose SOLO si fue lenta, pero entonces al 100%. `request_completed` va muestreado al 10% y
+    // ese sesgo es justo el que no se puede permitir aquí: la petición que se estrella contra los
+    // 12 s es la que NO puede perderse. El desglose de una de 90 ms no informaría de nada.
+    //
+    // En el `finally` para cubrir también el camino de error, que es el interesante. Va envuelto:
+    // un fallo emitiendo observabilidad JAMÁS puede tumbar la respuesta del usuario.
+    try {
+      const totalMs = Date.now() - tInicio
+      const veredicto = evaluarFasesNombradas(marcas, totalMs)
+      if (veredicto.lenta) {
+        emitFireAndForget({
+          source: 'vercel', severity: 'warn', eventType: 'difficulty_insights_lento',
+          endpoint: '/api/v2/difficulty-insights', durationMs: totalMs,
+          metadata: {
+            ...marcas,
+            totalMs,
+            dominante: veredicto.dominante,
+            pctDominante: veredicto.pctDominante,
+            noExplicadoMs: veredicto.noExplicadoMs,
+            umbralMs: UMBRAL_LENTA_MS,
+            usaV2: useV2,
+            // Cuántas de las 7 llegaron a MEDIRSE (una que falla también deja su tiempo). Si
+            // faltan, la petición murió antes de llegar a ellas, y eso ya dice dónde se quedó.
+            consultasMedidas: Object.keys(marcas).length,
+            instanceId: INSTANCE_ID,
+          },
+        })
+      }
+    } catch { /* la observabilidad nunca rompe el camino crítico */ }
   }
 }
 

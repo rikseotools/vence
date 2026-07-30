@@ -670,6 +670,19 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 - **El desglose por fases ([T-312]) lo parte en dos:** `fuera_de_fases` → es el antifraude (corre en la ruta, antes de las fases instrumentadas); `guardar` → es el INSERT y sus triggers.
 - ⚠️ **No bajar el timeout sin arreglar antes la causa**: devolvería los ~49k req/día con 503 de mayo.
 
+**`difficulty-insights` lento: mira qué CONSULTA fue — evento `difficulty_insights_lento` (30/07, T-319).** Mismo desglose que el de abajo, con las 7 consultas del endpoint por nombre. Se emite por encima de **2 s**, al 100%, **y también cuando la petición falla** (que es el caso interesante: las que acaban en 503).
+```sql
+SELECT to_char(ts,'HH24:MI') t, duration_ms,
+       metadata->>'dominante' AS consulta, metadata->>'pctDominante' AS pct,
+       metadata->>'recomendaciones' AS recomend, metadata->>'metrics' AS metrics,
+       metadata->>'consultasMedidas' AS medidas, metadata->>'noExplicadoMs' AS no_explicado
+  FROM observable_events WHERE event_type='difficulty_insights_lento'
+   AND ts > now() - interval '24 hours' ORDER BY duration_ms DESC LIMIT 20;
+```
+- **Si `dominante` = `recomendaciones`, es lo esperado y está diagnosticado en [T-319]:** es la única de las 7 que sigue leyendo `test_questions` (5,6 GB) y su coste lo manda la **caché**, no el usuario — 9.227 ms en frío frente a 400 ms en caliente para el mismo usuario. **No es un usuario roto ni contención.**
+- **`consultasMedidas` < 7 dice hasta dónde llegó** la petición antes de morir. (7 solo cuando hubo preguntas que enriquecer.)
+- ⚠️ **El 503 no lo produce la consulta:** `getRecommendations` se traga su propio error y devuelve lista vacía. El 503 lo produce el corte de **12 s** de la ruta (`withDbTimeout`). Bajar ese corte sin arreglar la consulta solo adelanta el fallo.
+
 **Una petición lenta ya dice POR QUÉ — evento `answer_save_lento` (30/07, T-312).** Si `/api/v2/answer-and-save` se arrastra, **no hace falta adivinar**: cada guardado por encima de **2 s** emite su desglose por fases, al 100% (el `request_completed` va muestreado al 10% y ese sesgo es justo el que no se puede permitir aquí).
 ```sql
 SELECT to_char(ts,'HH24:MI') t, duration_ms,

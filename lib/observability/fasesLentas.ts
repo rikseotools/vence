@@ -22,8 +22,59 @@
 //
 // Aquí vive solo la DECISIÓN, pura y testeable. Quien llama toma los tiempos y emite.
 
+// ## Generalizado el 30/07 (T-319)
+//
+// Nació para `answer-and-save` con tres fases fijas. Al investigar `difficulty-insights` —4,6% de
+// fallos, 14 días invisible— hizo falta EXACTAMENTE lo mismo con otras fases, y la causa hubo que
+// reconstruirla a mano contra producción porque el endpoint no guardaba desglose.
+//
+// La decisión («¿es lenta? ¿qué fase manda? ¿cuánto queda sin explicar?») es la misma sea cual sea
+// el endpoint, así que vive UNA sola vez en `evaluarFasesNombradas`. `evaluarFases` se queda como
+// estaba —mismo contrato, mismos tests— delegando en ella. Duplicar el núcleo por endpoint habría
+// sido crear el silo que garantiza que dentro de tres meses uno de los dos esté mal.
+
 /** A partir de aquí una petición del camino crítico se considera lenta y merece explicación. */
 export const UMBRAL_LENTA_MS = 2_000
+
+export interface VeredictoFases<K extends string = string> {
+  lenta: boolean
+  /** La fase que se llevó MÁS tiempo, o `fuera_de_fases` si el tiempo no está en ninguna medida. */
+  dominante: K | 'fuera_de_fases'
+  noExplicadoMs: number
+  pctDominante: number
+}
+
+/**
+ * La misma decisión, para cualquier conjunto de fases con nombre.
+ *
+ * En caso de empate gana la PRIMERA declarada, y `fuera_de_fases` se evalúa la última: así, con
+ * todo a cero, no se acusa al entorno de algo que no ha pasado.
+ */
+export function evaluarFasesNombradas<K extends string>(
+  fases: Record<K, number>,
+  totalMs: number,
+  umbralMs: number = UMBRAL_LENTA_MS,
+): VeredictoFases<K> {
+  const limpias = Object.entries(fases ?? {}).map(
+    ([k, v]) => [k, Math.max(0, Number(v) || 0)] as [K, number],
+  )
+  const tot = Math.max(0, Number(totalMs) || 0)
+  const suma = limpias.reduce((a, [, v]) => a + v, 0)
+  const noExplicado = Math.max(0, tot - suma)
+
+  let dominante: K | 'fuera_de_fases' = 'fuera_de_fases'
+  let mayor = -1
+  for (const [nombre, ms] of [...limpias, ['fuera_de_fases', noExplicado] as [K, number]]) {
+    if (ms > mayor) { mayor = ms; dominante = nombre }
+  }
+
+  return {
+    lenta: tot >= umbralMs,
+    dominante,
+    noExplicadoMs: noExplicado,
+    pctDominante: tot > 0 ? Math.round((mayor / tot) * 100) : 0,
+  }
+}
 
 export interface Fases {
   /** Validar la respuesta + resolver el tema (van en paralelo). */
@@ -55,27 +106,11 @@ export interface Veredicto {
  * «el proceso no llegó a ejecutarme» es exactamente lo que faltaba el 29/07.
  */
 export function evaluarFases(f: Fases, umbralMs: number = UMBRAL_LENTA_MS): Veredicto {
-  const val = Math.max(0, Number(f?.validarMs) || 0)
-  const gua = Math.max(0, Number(f?.guardarMs) || 0)
-  const sco = Math.max(0, Number(f?.scoreMs) || 0)
-  const tot = Math.max(0, Number(f?.totalMs) || 0)
-
-  const sumaFases = val + gua + sco
-  const noExplicado = Math.max(0, tot - sumaFases)
-
-  const candidatos: Array<[Veredicto['dominante'], number]> = [
-    ['validar', val], ['guardar', gua], ['score', sco], ['fuera_de_fases', noExplicado],
-  ]
-  let dominante: Veredicto['dominante'] = 'fuera_de_fases'
-  let mayor = -1
-  for (const [nombre, ms] of candidatos) {
-    if (ms > mayor) { mayor = ms; dominante = nombre }
-  }
-
-  return {
-    lenta: tot >= umbralMs,
-    dominante,
-    noExplicadoMs: noExplicado,
-    pctDominante: tot > 0 ? Math.round((mayor / tot) * 100) : 0,
-  }
+  // Contrato intacto: mismas tres fases, mismo orden de desempate. La decisión la toma el núcleo
+  // general, que es el que usan también los demás endpoints instrumentados.
+  return evaluarFasesNombradas(
+    { validar: f?.validarMs, guardar: f?.guardarMs, score: f?.scoreMs } as Record<string, number>,
+    f?.totalMs,
+    umbralMs,
+  ) as Veredicto
 }
