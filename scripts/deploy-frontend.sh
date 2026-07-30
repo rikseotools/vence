@@ -287,7 +287,12 @@ const secrets=(td.containerDefinitions[0].secrets ||= []);
 // asi que cambiarlo obliga a registrar una nueva; por SSM se resuelve al arrancar la tarea, de modo
 // que encender o apagar es cambiar el parametro y forzar un new deployment (~5 min, sin build ni
 // task def nueva). Con FEATURE_SHUFFLE_OPTIONS=false el comportamiento es el historico.
-for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY','FEATURE_SHUFFLE_OPTIONS','FEATURE_SHUFFLE_OPTIONS_SCOPE']) {
+// FEATURE_TEMARIO_PDF_PARTES(_SCOPE): troceado de los PDFs de temas enormes (T-273). Mismo motivo
+// que el de barajado para ir por SSM: encender o apagar es cambiar el parametro y forzar un new
+// deployment, sin build ni task def nueva. _SCOPE='all' = todas las oposiciones (decision de Manuel
+// 30/07: ningun opositor debe quedarse sin su tema por la que estudie); una lista separada por comas
+// lo acota, y 'false' en el primero devuelve el comportamiento historico (413 tema_demasiado_grande).
+for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY','FEATURE_SHUFFLE_OPTIONS','FEATURE_SHUFFLE_OPTIONS_SCOPE','FEATURE_TEMARIO_PDF_PARTES','FEATURE_TEMARIO_PDF_PARTES_SCOPE']) {
   if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
 }
 // Precios Stripe en RUNTIME (server-side). getPricesFor()/priceBelongsToAccount()

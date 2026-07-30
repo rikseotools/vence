@@ -267,6 +267,11 @@ jobs:
               | ensure_secret("KOIGRID_VIDEO_BUCKET")
               | ensure_secret("KOIGRID_VIDEO_ACCESS_KEY")
               | ensure_secret("KOIGRID_VIDEO_SECRET_KEY")
+              # Troceado de los PDFs de temas enormes (T-273). Params SSM creados 30/07.
+              # _SCOPE='all' = todas las oposiciones; 'false' en el primero vuelve al 413.
+              # Van por SSM y no por environment para poder encender/apagar sin task def nueva.
+              | ensure_secret("FEATURE_TEMARIO_PDF_PARTES")
+              | ensure_secret("FEATURE_TEMARIO_PDF_PARTES_SCOPE")
               # Health check TOLERANTE (fix incidente 21/07/2026, ver
               # docs/architecture/incidente-frontend-healthcheck-cascade-21jul.md):
               # los valores estrictos (timeout 5 / retries 3 / startPeriod 60 / wget 4s)
