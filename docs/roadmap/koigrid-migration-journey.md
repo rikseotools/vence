@@ -2639,3 +2639,77 @@ pre-seeding (closes D4), and either pre-flight the dump's `CREATE EXTENSION` lin
 relocate automatically (closes D4-bis). Between them, an ex-Supabase database restores on the first attempt
 instead of the fourth — and "migrate in an afternoon", which is how you pitch managed restore, becomes true for
 the exact customer you are pitching it to.
+
+---
+
+## ⛔ 2026-07-30 (01:38 UTC) — **D5: managed restore has an undocumented ~30-minute wall. A 33 GB database cannot use it at all.** You predicted this exactly
+
+You told us to rehearse with the full dump because *"that is where the timeouts and the memory spikes show
+up"*. **You were right about the timeouts, and it is the finding that matters most.**
+
+The third attempt cleared all three extension traps (lines 32 → 5 920 → 18 287 all passed), started loading
+real data… and died:
+
+```
+startedAt   2026-07-30T01:08:37.466Z
+finishedAt  2026-07-30T01:38:39.688Z
+error       "restore_failed"
+logs        ""
+tableCounts null
+```
+
+**Duration: 1 802.2 seconds. That is 30 min 02 s — a 1 800-second cap, not a coincidence.**
+
+### Three separate problems, and the first one is fatal for our migration
+
+**1. The cap itself.** Our dump is 24.7 GB of SQL. It had loaded **~9.9 GB** when the axe fell, so at that rate
+a full load needs **~75 minutes** — 2.5× the wall. **No amount of fixing D4 makes a 33 GB database restorable
+through this endpoint today.** It is not documented anywhere: we grepped `llms.txt` for any mention of a restore
+timeout and found none, so the only way to discover it is to spend an hour building and uploading a dump.
+For a feature whose pitch is *"migrate in an afternoon"*, the ceiling needs to be either much higher or stated
+in the docs next to `maxBytes`.
+
+**2. The diagnostics invert exactly when you need them.** Every small failure this week gave us a *superb*
+message — `psql:<stdin>:18287: ERROR: relation "extensions.pg_stat_statements" does not exist`, with file, line
+and the raw Postgres error. **The 30-minute run gave `restore_failed` and an empty `logs` string.** We only
+identified the cause because we timestamped the poll loop ourselves and noticed the number was round. A killed
+job should say so — `restore_timeout` with the elapsed limit, and whatever psql had emitted up to that point.
+
+**3. B2 (atomicity) did not hold on this path.** After the failure the cluster is **not** clean:
+
+| | fresh cluster (measured before) | after the timeout |
+|---|---|---|
+| `public` tables | **4** | **2** |
+| Database size | ~40 MB | **9 874 MB** |
+| `auth` schema | absent | absent (dump created it, then gone) |
+| `extensions` schema | absent | **present** (from `preSeed`) |
+
+So ~9.9 GB is consumed by a load that no longer exists logically, the pristine table count changed, and the
+cluster carries the un-droppable `extensions` schema from D2. The clean rollback you shipped works on a
+*statement* error; it does not appear to cover **the job being killed**. Combined with D2 (the app role cannot
+drop what `preSeed` created), the practical consequence is: **a timed-out restore burns the cluster**, and on a
+real migration that means provisioning again and re-uploading gigabytes.
+
+### What this means for our cutover, honestly
+
+**Managed restore is out for us at this size.** The path we will use is the one that already worked:
+`pg_dump | psql` straight at the leader, which has no such cap — that is how we loaded `articles` + `laws`
+(606 MB, 2 m 39 s) and how the original 31 GB POC clone was done in July. It costs us the nice things your
+endpoint provides (fail-fast root cause, `tableCounts` verification, atomicity) but it finishes.
+
+**We still cannot answer the question the rehearsal was for** — how long a full load takes, and therefore what
+the cutover window is — because the endpoint kills the job before it can tell us. Next run will be
+`pg_dump | psql` end to end, timed, and we will report that number here since it is the one that decides our
+migration date.
+
+### Updated ask list for managed restore, in priority order
+
+1. **Raise or remove the 30-minute cap** (and document whatever it becomes, next to `maxBytes`). Ours needs
+   ~75 min; a 5 GB-gzip ceiling implies dumps that routinely take longer than 30 min to load.
+2. **`restore_timeout` as a distinct error**, with elapsed/limit and the partial psql output.
+3. **Clean up after a killed job** — or expose a reset — so a timeout does not burn the cluster (see D2).
+4. `CREATE SCHEMA IF NOT EXISTS` when pre-seeding (**D4**).
+5. Pre-flight `CREATE EXTENSION … WITH SCHEMA` against `pg_extension` (**D4-bis**).
+
+**Credit where it is due:** every one of these was found *because* you pushed us to test at real scale instead
+of accepting our 624 MB green tick. That instinct was correct and it cost you five findings in one night.
