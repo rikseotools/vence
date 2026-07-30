@@ -28,10 +28,15 @@
  * Uso (con el servidor levantado):
  *   set -a && . ./.env.local && . ./.env.development.local && set +a
  *   npx tsx scripts/sim/sim-precio-heredado.ts [--url=http://localhost:3000]
+ *
+ * Contra PRODUCCIÓN hace falta el AUTH_SECRET de allí (el local no vale):
+ *   export AUTH_SECRET=$(aws --profile vence --region eu-west-2 ssm get-parameter \
+ *     --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)
+ *   npx tsx scripts/sim/sim-precio-heredado.ts --url=https://www.vence.es
  */
-import { encode } from 'next-auth/jwt'
 import { Client } from 'pg'
 import Stripe from 'stripe'
+import { mintOwnAuthCookie, sessionCookieNameFor } from '../../lib/sim/session'
 
 const BASE = process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] || 'http://localhost:3000'
 
@@ -67,14 +72,15 @@ async function main() {
 
   const secret = process.env.AUTH_SECRET!
   const now = Math.floor(Date.now() / 1000)
+  // La cookie la acuña `lib/sim/session.ts`, que es de donde salen todos los journeys. NO
+  // reimplementarla aquí: sobre https el nombre lleva prefijo `__Secure-` y ese nombre es
+  // además el SALT del cifrado, así que una copia a mano da 401 contra producción y verde
+  // en local — un rojo falso que parece un fallo de la funcionalidad y no lo es.
+  const host = new URL(BASE).hostname
+  const nombreCookie = sessionCookieNameFor(host)
   const tokenDe = async (id: string, email: string) => {
-    const cookie = await encode({
-      token: { appUserId: id, email, sub: id, iat: now, exp: now + 3600 },
-      secret,
-      salt: 'authjs.session-token',
-      maxAge: 3600,
-    })
-    const r = await fetch(`${BASE}/api/auth/token`, { headers: { Cookie: `authjs.session-token=${cookie}` } })
+    const cookie = await mintOwnAuthCookie({ userId: id, email }, secret, { nowSec: now, ttlSec: 3600, host })
+    const r = await fetch(`${BASE}/api/auth/token`, { headers: { Cookie: `${nombreCookie}=${cookie}` } })
     return (await r.json()).accessToken as string
   }
   const recuperar = async (id: string, email: string) => {
