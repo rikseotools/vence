@@ -39,6 +39,7 @@ const { detectarReservaSinDeclarar } = require('../lib/convocatoria/reservaSinDe
 const { classifyLandingCompleteness } = require('../lib/convocatoria/landingCompleteness.cjs');
 const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, tablasSinAjuste, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
+const { detectarTecho } = require('../lib/observability/techoTimeout.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
@@ -93,6 +94,34 @@ async function main() {
       { hallazgosAntesDelCorte: F.length, error: incompleto.mensaje, queryQueFallo: incompleto.sql });
   }
 
+
+  // ── Techo de timeout: ¿lento, o chocando contra un corte? (T-315) ──
+  // Todos los detectores de latencia miran la MAGNITUD, y un timeout y una lentitud real dan la
+  // misma. Lo que los separa es la FORMA de la cola. Esta capa faltaba y su ausencia costó TRES
+  // atribuciones erróneas del mismo síntoma antes de dar con ANTIFRAUD_TIMEOUT_MS.
+  try {
+    const eps = (await c.query(`
+      SELECT endpoint FROM observable_events
+       WHERE event_type='request_completed' AND duration_ms > 5000
+         AND created_at > now() - interval '14 days' AND endpoint IS NOT NULL
+       GROUP BY endpoint HAVING count(*) >= 20`)).rows;
+    for (const { endpoint } of eps) {
+      const tr = (await c.query(`
+        SELECT lo AS "desdeMs", hi AS "hastaMs",
+               (SELECT count(*)::int FROM observable_events e
+                 WHERE e.event_type='request_completed' AND e.endpoint=$1
+                   AND e.created_at > now() - interval '14 days'
+                   AND e.duration_ms >= lo AND e.duration_ms < hi) AS n
+          FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)`,
+        [endpoint])).rows;
+      const techo = detectarTecho(tr.map(r => ({ desdeMs: Number(r.desdeMs), hastaMs: Number(r.hastaMs), n: Number(r.n) })));
+      if (techo.hayTecho) {
+        add('app', 'warn', null, 'latencia_techo_timeout',
+          `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(techo.techoMs/1000)} s — ${techo.motivo}`,
+          { endpoint, techoMs: techo.techoMs, enTecho: techo.enTecho, porEncima: techo.porEncima, motivo: techo.motivo });
+      }
+    }
+  } catch (e) { console.warn('⚠️ techo de timeout no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
   if (!NO_WRITE) {

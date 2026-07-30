@@ -1184,6 +1184,43 @@ export class ContentHealthSweepService {
             })),
           },
         );
+
+    // ── Techo de timeout: ¿lento, o chocando contra un corte? (T-315) ──
+    // ⚠️ ESPEJO de `lib/observability/techoTimeout.cjs`. El backend no puede importarlo (su Docker
+    // solo copia backend/src). Los detectores de latencia miran la MAGNITUD y un timeout da la
+    // misma que una lentitud real; lo que los separa es la FORMA de la cola: la lentitud adelgaza,
+    // el timeout se amontona justo antes del corte y se acaba en seco.
+    try {
+      const eps = (await this.db.execute(sql`
+        SELECT endpoint FROM observable_events
+         WHERE event_type = 'request_completed' AND duration_ms > 5000
+           AND created_at > now() - interval '14 days' AND endpoint IS NOT NULL
+         GROUP BY endpoint HAVING count(*) >= 20
+      `)) as unknown as Array<{ endpoint: string }>;
+      for (const { endpoint } of (Array.isArray(eps) ? eps : [])) {
+        const tr = (await this.db.execute(sql`
+          SELECT v.lo AS lo, v.hi AS hi,
+                 (SELECT count(*)::int FROM observable_events e
+                   WHERE e.event_type='request_completed' AND e.endpoint=${endpoint}
+                     AND e.created_at > now() - interval '14 days'
+                     AND e.duration_ms >= v.lo AND e.duration_ms < v.hi) AS n
+            FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)
+        `)) as unknown as Array<{ lo: number; hi: number; n: number }>;
+        const t = (Array.isArray(tr) ? tr : []).map((r) => ({ desdeMs: Number(r.lo), hastaMs: Number(r.hi), n: Number(r.n) }));
+        for (let i = 1; i < t.length - 1; i++) {
+          const porEncima = t.slice(i + 1).reduce((a, x) => a + x.n, 0);
+          if (t[i].n > t[i - 1].n && t[i].n >= 8 && porEncima <= Math.max(1, Math.floor(t[i].n * 0.1))) {
+            add('app', 'warn', null, 'latencia_techo_timeout',
+              `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(t[i].hastaMs / 1000)} s — ${t[i].n} peticiones entre ${t[i].desdeMs} y ${t[i].hastaMs} ms (el tramo anterior tenía ${t[i - 1].n}) y solo ${porEncima} por encima`,
+              { endpoint, techoMs: t[i].hastaMs, enTecho: t[i].n, porEncima });
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`techo de timeout no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
       }
 
       // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
