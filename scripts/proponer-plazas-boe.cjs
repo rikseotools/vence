@@ -81,40 +81,23 @@ async function traerYClonar(c, id, convocatoriaId) {
 }
 
 /**
- * Un número EN LETRA, como lo escriben los boletines: 8 → "ocho", 31 → "treinta y uno", 156 → "ciento
- * cincuenta y seis". Hasta 9.999, que cubre cualquier convocatoria real.
- */
-const U = ['cero', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
-  'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
-  'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis',
-  'veintisiete', 'veintiocho', 'veintinueve']
-const D = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
-const C = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos',
-  'setecientos', 'ochocientos', 'novecientos']
-function enLetra(n) {
-  if (n < 30) return U[n]
-  if (n < 100) return D[Math.floor(n / 10)] + (n % 10 ? ` y ${U[n % 10]}` : '')
-  if (n === 100) return 'cien'
-  if (n < 1000) return C[Math.floor(n / 100)] + (n % 100 ? ` ${enLetra(n % 100)}` : '')
-  const mil = Math.floor(n / 1000), r = n % 1000
-  return (mil === 1 ? 'mil' : `${enLetra(mil)} mil`) + (r ? ` ${enLetra(r)}` : '')
-}
-
-/**
- * Todas las formas en que puede estar escrita nuestra cifra: 1030, 1.030 y **en letra**.
+ * Las formas en que un boletín escribe la cifra (dígitos, con separador de millar y en letra, en los
+ * dos géneros) las da el NÚCLEO COMPARTIDO. Aquí vivía una tercera copia de la tabla de numerales
+ * —con `U[1] = 'un'` en vez de `'uno'`, y sin paridad con nada— y no era inocua (T-209, 30/07):
  *
- * ⚠️ La 1ª versión solo buscaba dígitos y dio 22 de 31 "la cifra NO aparece en su documento" — que
- * habría sido una acusación falsa de datos corruptos. La realidad: la Universidad de León dice «**Ocho
- * plazas** para el turno de acceso libre» y Zamora «**Dos plazas** de Administrativo». Nuestros datos
- * eran correctos y probados; el ciego era el script. Y ya lo sabía: la Orden de Madrid escribe «siete
- * (7) plaza» y por eso mismo se me escapó al principio. Los boletines escriben en letra por convención
- * jurídica, sobre todo las cifras pequeñas — que son la mayoría del catálogo.
+ *   · «un» es también el ARTÍCULO indeterminado. Para una convocatoria de 1 plaza, esta herramienta
+ *     daba por candidata cualquier «**un** plazo de veinte días» con la palabra «plaza» cerca: ruido
+ *     con pinta de prueba, y es justo lo que no puede hacer algo que existe para verificar.
+ *   · y a la vez se perdía «**una** plaza», que es como se escribe de verdad.
+ *
+ * Medido antes de unificar: de las 177 cifras de plazas del catálogo, 13 se escriben distinto con una
+ * tabla o con la otra, y solo 3 convocatorias vigentes de oposición activa llevan una de ellas. La
+ * apócope de los compuestos («treinta y un plazas») no aparece en NINGÚN documento donde el núcleo no
+ * vea ya la cifra, así que no se añade: en un detector de evidencia, una forma más sin ganancia medida
+ * es solo riesgo de verde falso. Detalle en `lib/convocatoria/cifraEnTexto.cjs`.
  */
-const formas = (n) => [
-  String(n),
-  String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
-  ...(n <= 9999 ? [enLetra(n)] : []),
-]
+const { formasDeCifra } = require('../lib/convocatoria/cifraEnTexto.cjs')
+const formas = (n) => formasDeCifra(n)
 
 /**
  * Fragmentos donde NUESTRA cifra aparece hablando de plazas.

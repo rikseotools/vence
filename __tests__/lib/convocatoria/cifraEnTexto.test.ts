@@ -190,3 +190,46 @@ describe('esPlazaHuerfana', () => {
     expect(esPlazaHuerfana({ plazas_libres: null, corpus: null, docs: 0 })).toBe(false)
   })
 })
+
+/**
+ * `formasDeCifra` — las formas, compartidas, para que nadie se copie la tabla (T-209, 30/07/2026).
+ *
+ * `scripts/proponer-plazas-boe.cjs` llevaba una TERCERA copia de la tabla de numerales, sin paridad
+ * con el núcleo ni con el mirror del backend, y la que PROPONE cifras de plazas al operador. Su
+ * divergencia (`U[1] = 'un'`) no era cosmética: «un» es el artículo indeterminado, así que para una
+ * convocatoria de 1 plaza daba por evidencia cualquier «un plazo de veinte días» que tuviera la
+ * palabra «plaza» cerca — y a la vez se perdía «una plaza», que es como se escribe.
+ */
+describe('formasDeCifra — una sola tabla para los tres consumidores', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { formasDeCifra } = require('@/lib/convocatoria/cifraEnTexto') as { formasDeCifra: (n: number) => string[] }
+
+  it('el ARTÍCULO indeterminado no es una forma de 1 (era el falso verde de la copia)', () => {
+    expect(formasDeCifra(1)).toEqual(['1', '1', 'uno', 'una'])
+    expect(formasDeCifra(1)).not.toContain('un')
+  })
+
+  it('trae los dos géneros, porque los boletines concuerdan con lo que cuentan', () => {
+    expect(formasDeCifra(31)).toEqual(['31', '31', 'treinta y uno', 'treinta y una'])
+    expect(formasDeCifra(1371)).toContain('mil trescientas setenta y una')
+    expect(formasDeCifra(200)).toEqual(['200', '200', 'doscientos', 'doscientas'])
+  })
+
+  it('dígitos con separador de millar, y sin letra por encima de 9.999', () => {
+    expect(formasDeCifra(1030)).toEqual(['1030', '1.030', 'mil treinta'])
+    expect(formasDeCifra(12345)).toEqual(['12345', '12.345'])
+  })
+
+  it('basura fuera: no hay forma que pueda probar una cifra imposible', () => {
+    for (const n of [-1, 1.5, NaN, Infinity]) expect(formasDeCifra(n)).toEqual([])
+  })
+
+  // Guardarraíl de la copia muda: el problema no era la tabla, era que hubiera OTRA sin paridad.
+  it('el proponedor de plazas NO se trae su propia tabla de numerales', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const src = require('fs').readFileSync('scripts/proponer-plazas-boe.cjs', 'utf-8') as string
+    expect(src).toContain("require('../lib/convocatoria/cifraEnTexto.cjs')")
+    expect(src).not.toMatch(/function\s+enLetra\s*\(/)
+    expect(src).not.toMatch(/const\s+U\s*=\s*\[\s*'cero'/)
+  })
+})
