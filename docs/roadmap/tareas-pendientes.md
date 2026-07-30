@@ -661,6 +661,45 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-302] 🟠 [ABIERTO 30/07] Los contenedores de Office 2016 y los clínicos TCAE están vacíos: 3.203 preguntas activas cuelgan de artículos 20-40 veces más delgados que los enriquecidos
+
+- **Cómo salió a la luz:** revisando con agentes las 500 preguntas nunca verificadas más vistas ([T-291] escalón 2), **219 de 500 salieron `article_ok=false`** — una tasa altísima que al abrirla NO era un problema de vinculación pregunta→artículo. **216 de esas 219 cuelgan de contenedores VIRTUALES** y solo 3 de leyes reales. Los agentes lo dijeron por separado, lote a lote, con las mismas palabras: *«el contenedor es un resumen muy corto que no cubre literalmente el supuesto»*.
+- **El dato que lo prueba** (medido en RDS, media de caracteres por artículo activo):
+
+  | contenedor | arts | media chars/art | preguntas activas |
+  |---|---|---|---|
+  | Excel 2016 | 5 | **841** | 92 |
+  | Constantes vitales | 4 | **1.031** | 760 |
+  | Word 2016 | 5 | **1.089** | 92 |
+  | Comunicación sanitaria | 4 | **1.298** | 558 |
+  | Funciones del TCAE | 4 | **1.498** | 934 |
+  | Farmacología TCAE | 4 | **1.691** | 717 |
+  | PowerPoint 2016 | 5 | 1.794 | 50 |
+  | — comparación — | | | |
+  | Outlook 365 | 4 | 16.806 | 708 |
+  | Excel 365 | 21 | 19.552 | 794 |
+  | Word 365 | 6 | 27.980 | 995 |
+  | Access 365 | 5 | 66.810 | 636 |
+
+  **20-40 veces menos contenido por artículo**, sosteniendo **3.203 preguntas activas** (2.969 clínicas + 234 de Office 2016).
+- **Por qué importa y no es cosmético:** el criterio de `article_ok` (§3.1 del manual) exige que el artículo contenga **literalmente** el supuesto, para poder justificar cada opción citándolo. Con 841 caracteres eso es imposible para casi cualquier pregunta fina, así que (a) esas preguntas no se pueden verificar de verdad —el verificador no tiene contra qué—, (b) **no se les puede escribir una explicación con cita honesta**, que es lo que bloqueó la mitad de la cosecha de T-291, y (c) la pantalla de teoría del tema le ofrece al opositor un resumen de 800 caracteres donde debería haber materia.
+- **Lo que NO es la reparación:** re-vincular las 216 a otro artículo. Los agentes lo comprobaron leyendo los 5 artículos de cada ley virtual: **en la mayoría de casos no existe un artículo mejor** dentro de esa ley. Re-vincular sería mover el problema de sitio.
+- **Y ojo con el atajo tentador:** re-vincular las de Office 2016 a los contenedores **365**, que sí están enriquecidos, **cambia la versión del software que se examina**. La versión importa (memoria `project-version-software-oposiciones-metodo`): un atajo o una ruta de menú puede diferir entre 2016 y 365, y el temario de esa oposición pide 2016. Solo vale si se verifica que el hecho concreto coincide en ambas.
+- **La reparación real:** **enriquecer los 7 contenedores** al nivel de los 365 (importando el contenido oficial de Microsoft Support en español para Office 2016, y material clínico con fuente citable para TCAE), y **luego** re-verificar las preguntas que hoy quedan huérfanas de fuente. Por exposición, el orden es: Excel 2016 (1.048 exp de preguntas huérfanas), Word 2016 (949+883+627+459+435), PowerPoint 2016 (798+483+351), y el bloque clínico (Funciones del TCAE, Farmacología, Comunicación sanitaria, Constantes vitales).
+- **Inventario listo para trabajar:** `scratchpad/t291/inventario-defecto-articulo.json` de la sesión `revision-preguntas` (33 contenedores, con preguntas y exposiciones por artículo) y las 219 filas en `ai_verification_results` con `ai_provider='claude_code_t291_escalon2'` y `article_ok=false`, cada una con su `correct_article_suggestion`.
+- **Impacto:** 🟠 3.203 preguntas activas sin fuente verificable detrás, 9.546 exposiciones solo en las 219 medidas. No es un error visible al opositor —las claves salieron correctas casi siempre—, pero **impide verificar y impide explicar**, que es el cuello de botella de toda la campaña de calidad.
+
+### [T-301] 🟡 [ABIERTO 30/07] El detector de barajabilidad lee los grados centígrados como una referencia a la opción C
+
+- **El artefacto, medido ejecutando el detector real** (no razonando) durante la campaña de revisión de T-291: `explanationReferencesLetters('…en frigorífico (2-8 ºC) …')` devuelve **true**. El patrón culpable es el primero de `EXPLANATION_LETTER_PATTERNS`, `/\b[ABCDE]\)/` ("B)"), y casa porque `º` no pertenece a `[A-Za-z0-9_]`, así que entre `º` y `C` **sí hay frontera de palabra** y `\bC\)` encuentra su match dentro de `ºC)`. Mismo resultado con `°C)` (símbolo de grado real) y con cualquier `(… X)` que termine en mayúscula A-E — p.ej. `hepatitis B)`.
+- **Consecuencia:** toda explicación que cierre un paréntesis con una unidad en grados queda marcada como letra-anclada y por tanto **excluida del barajado** (`isShuffleServeEligible` consulta este mismo detector sobre las razones de la explicación estructurada y sobre `intro`/`outro`). Afecta de lleno al banco clínico —constantes vitales (`36-37 °C`), farmacología y cadena de frío (`2-8 ºC`)—, que es justo donde el paréntesis con magnitud es la forma natural de escribir.
+- **Por qué NO se arregló en el momento:** el módulo declara su sesgo por escrito («0 falsos negativos es SAGRADO; un falso positivo es INOCUO») y este es, en efecto, un falso positivo. Pero **no es inocuo cuando es sistemático**: no rompe nada, simplemente deja fuera del barajado a una familia entera de preguntas, en silencio y sin que ningún detector lo cuente. Tocar el núcleo cambia el comportamiento del serve para 139.478 preguntas activas, así que la decisión es del dueño, no de una sesión nocturna.
+- **Fix propuesto (quirúrgico, riesgo de FN nulo):** eximir la letra cuando viene precedida de símbolo de grado — normalizar `[º°]\s*[CF]` antes de aplicar los patrones. Nadie escribe «ºB)» para referirse a la opción B, así que no abre ningún falso negativo. **No** ampliar la exención a "cualquier paréntesis balanceado": ahí sí se perdería el caso legítimo «la (A) es correcta».
+- **Lo que hay que hacer con el fix, no solo el fix:** (1) test en `__tests__/` con los cuatro casos medidos (`(2-8 ºC)`, `(36-37 °C)`, `2 y 8 ºC` sin paréntesis —que ya pasa—, y «como se ve en la opción C» —que debe seguir marcando); (2) **la copia paritaria del backend** hay que moverla en el mismo commit o el guardarraíl de paridad se pone rojo; (3) medir cuántas activas entran al banco elegible con el cambio (query sobre `explanation_data` + razones), que es el argumento para hacerlo.
+- **Segundo artefacto de la misma familia, encontrado en la misma campaña: «letra a letra».** La narrativa «cambiar mayúsculas y minúsculas sin retocarlo **letra a letra**» queda marcada porque el patrón `/\bletra\s+[ABCDE]\b/i` lee «letra a» como «la letra A». Es locución corriente en español (igual que «palabra por palabra»), así que conviene cubrirla en el mismo fix: exigir que tras la letra no venga otra palabra que la convierta en adverbial. Caso real: pregunta `7005e191`, reescrita a «carácter por carácter» para poder aplicarla.
+- **Caso hermano, distinto y SIN fix propuesto:** las razones que citan el articulado por su letra en minúscula («el que sí figura es el Consejo de la Función Pública (letra d)») también quedan marcadas. Ahí la exención es genuinamente difícil —la letra de un apartado y la letra de una opción se escriben igual— y la salida practicable es de redacción: nombrar el órgano en vez del apartado. Se aplicó así en la pregunta `93124a08` (Ley 7/2005 CyL art.5) durante la campaña.
+- **Impacto:** 🟡 no rompe producción y no engaña a nadie; cuesta barajado en el banco clínico, que es donde más se repite el patrón.
+
 ### [T-298] 🟠 [ABIERTO 30/07] Triar los 99 comunicados de temario que el detector no veía (68 oposiciones)
 - **De dónde sale:** al arreglar el patrón roto del detector (ver abajo), el aviso *«hay comunicados que afinan el programa, verifica contra ellos»* pasa de **2 oposiciones / 4 documentos** a **68 oposiciones / 99 documentos**. No es que hayan aparecido documentos nuevos: llevaban ahí desde siempre y **el detector no los veía**.
 - **El bug, medido (30/07):** el SQL usaba `'tema\s+[0-9]+'` y el literal se lleva la barra por delante → el motor buscaba `temas+`, que no casa ni con «TEMA 1». Sobre 6.779 documentos reales: el patrón roto detectaba **1**; el correcto (`'tema[[:space:]]+[0-9]+'`, clase POSIX, que no depende del escapado) detecta **306**. La rama de ">=5 Tema N" **no ha disparado nunca**; lo único que funcionaba era la de ofimática (5 docs) — que es justo la que cazó el caso CARM y por eso el detector parecía sano.
@@ -799,6 +838,24 @@ incluida).
 - **🚦 ESTADO AL CERRAR LA SESIÓN DEL 30/07 — POR DÓNDE SEGUIR**
 
   **EMPIEZA POR AQUÍ si vienes a coger preguntas:** las **1.000 nunca verificadas más vistas**, con agentes según `docs/maintenance/revisar-preguntas-con-agente.md`. Es lo ÚNICO de todo esto donde puede haber **una clave mal servida** a alguien que se juega una plaza. No depende de crédito de OpenRouter (va con cuota de agentes). Cubre el 87% de la exposición nunca revisada. **En la MISMA pasada hay que dejarlas en formato estructurado** (`scripts/aplicar-explicacion.ts`), porque 12.361 de las 12.430 están también sin estructura y hacerlo en dos barridos gasta el doble de cuota.
+
+  **✅ PRIMERA TANDA HECHA (30/07, sesión `revision-preguntas`): 500 de esas 1.000, con 20 agentes.** Resultado y, sobre todo, lo que enseña:
+
+  | veredicto | preguntas | qué se hizo |
+  |---|---|---|
+  | limpia → explicación estructurada escrita y **APLICADA** | **269** | 269/269 con `explanation_data`; 245 quedan `safe`; **217 pasan a barajables de verdad** (explicación + opciones) |
+  | `defecto_articulo` | **219** | NO se re-vinculó nada. Es el hallazgo de la tanda → ficha propia [T-302] |
+  | `defecto_clave` | 5 | a auditoría CIEGA + adjudicación humana. **Ninguna clave tocada** |
+  | `defecto_opciones` | 3 | idem |
+  | `irresoluble` | 4 | necesitan una imagen/datos que no están |
+
+  - **El corte real de la cola es más corto de lo que decía esta ficha:** de las 12.361 nunca verificadas sin estructura, **solo 3.485 tienen alguna aparición**. Las 200 más vistas cubren el **63,5 %** de la exposición del cubo y las 500 el **79,4 %**; de la 500 a la 1.000 se revisan preguntas vistas 2-4 veces. Por eso la tanda fueron 500 y no 1.000: el resto de la cuota rinde más en otro sitio.
+  - **La cosecha la limita el CONTENIDO, no el método:** el 44 % salió `article_ok=false`, y no por mal vínculo — los contenedores virtuales de Office 2016 y los clínicos TCAE tienen 20-40 veces menos texto que los enriquecidos, así que no hay contra qué verificar ni con qué citar. Ver **[T-302]**, que es el desbloqueo de esas 219 (y de otras 3.000).
+  - **Cero defectos de clave limpia en 500** (5 sospechas, todas a adjudicar): confirma lo que ya medía el manual para el banco legal, y esta vez también para el técnico.
+  - **Arnés reutilizable, ya escrito:** `scripts/revision/validar-lote-t291.ts` — valida integridad de lo que devuelven los agentes (unicidad de ids: el tell de la degeneración del §20.3) y pasa los gates reales importados de `lib/shuffle/*` y del criterio único de citas de impugnaciones. Cazó 14 explicaciones defectuosas antes de aplicar (2 con letra/posición clavada, 12 con prosa en el campo `cita`). **Nada se aplicó sin pasar por él.**
+  - **Dos artefactos del detector de barajabilidad** encontrados de paso → **[T-301]**.
+  - Trazabilidad: las 500 en `ai_verification_results` con `ai_provider='claude_code_t291_escalon2'`, `review_method_version='v2.1'`.
+  - **Siguiente paso de esta ficha:** la cola de las 219 `defecto_articulo` NO se puede cerrar sin [T-302]. Lo que sí queda por hacer con cuota de agentes son las ~2.985 nunca verificadas con exposición que quedan por debajo del corte 500, y la adjudicación de los 8 casos críticos.
 
   Consulta para sacar la cola:
   ```sql

@@ -1,0 +1,200 @@
+[
+  {
+    "contenedor": "Excel 2016 · art.1",
+    "n": 16,
+    "exp": 1048,
+    "virtual": true
+  },
+  {
+    "contenedor": "Word 2016 · art.1",
+    "n": 21,
+    "exp": 949,
+    "virtual": true
+  },
+  {
+    "contenedor": "Word 2016 · art.5",
+    "n": 19,
+    "exp": 883,
+    "virtual": true
+  },
+  {
+    "contenedor": "PowerPoint 2016 · art.3",
+    "n": 7,
+    "exp": 798,
+    "virtual": true
+  },
+  {
+    "contenedor": "Excel 2016 · art.3",
+    "n": 18,
+    "exp": 749,
+    "virtual": true
+  },
+  {
+    "contenedor": "Excel 2016 · art.4",
+    "n": 14,
+    "exp": 732,
+    "virtual": true
+  },
+  {
+    "contenedor": "Excel 2016 · art.2",
+    "n": 8,
+    "exp": 675,
+    "virtual": true
+  },
+  {
+    "contenedor": "Excel 2016 · art.5",
+    "n": 8,
+    "exp": 667,
+    "virtual": true
+  },
+  {
+    "contenedor": "Word 2016 · art.4",
+    "n": 5,
+    "exp": 627,
+    "virtual": true
+  },
+  {
+    "contenedor": "PowerPoint 2016 · art.2",
+    "n": 4,
+    "exp": 483,
+    "virtual": true
+  },
+  {
+    "contenedor": "Word 2016 · art.3",
+    "n": 8,
+    "exp": 459,
+    "virtual": true
+  },
+  {
+    "contenedor": "Word 2016 · art.2",
+    "n": 6,
+    "exp": 435,
+    "virtual": true
+  },
+  {
+    "contenedor": "PowerPoint 2016 · art.4",
+    "n": 3,
+    "exp": 351,
+    "virtual": true
+  },
+  {
+    "contenedor": "Funciones del TCAE · art.2",
+    "n": 11,
+    "exp": 126,
+    "virtual": true
+  },
+  {
+    "contenedor": "Funciones del TCAE · art.3",
+    "n": 4,
+    "exp": 91,
+    "virtual": true
+  },
+  {
+    "contenedor": "Comunicacion sanitaria · art.4",
+    "n": 8,
+    "exp": 60,
+    "virtual": true
+  },
+  {
+    "contenedor": "Farmacologia TCAE · art.2",
+    "n": 10,
+    "exp": 50,
+    "virtual": true
+  },
+  {
+    "contenedor": "Comunicacion sanitaria · art.2",
+    "n": 7,
+    "exp": 44,
+    "virtual": true
+  },
+  {
+    "contenedor": "Decreto 42/2019 GVA · art.7",
+    "n": 1,
+    "exp": 41,
+    "virtual": false
+  },
+  {
+    "contenedor": "Funciones del TCAE · art.4",
+    "n": 7,
+    "exp": 37,
+    "virtual": true
+  },
+  {
+    "contenedor": "Farmacologia TCAE · art.3",
+    "n": 4,
+    "exp": 32,
+    "virtual": true
+  },
+  {
+    "contenedor": "Constantes vitales · art.2",
+    "n": 4,
+    "exp": 30,
+    "virtual": true
+  },
+  {
+    "contenedor": "Constantes vitales · art.3",
+    "n": 6,
+    "exp": 29,
+    "virtual": true
+  },
+  {
+    "contenedor": "Ley 1/2015 Hacienda GVA · art.58",
+    "n": 1,
+    "exp": 28,
+    "virtual": false
+  },
+  {
+    "contenedor": "Farmacologia TCAE · art.4",
+    "n": 5,
+    "exp": 25,
+    "virtual": true
+  },
+  {
+    "contenedor": "Farmacologia TCAE · art.1",
+    "n": 5,
+    "exp": 25,
+    "virtual": true
+  },
+  {
+    "contenedor": "Supuesto Word CyL · art.1",
+    "n": 1,
+    "exp": 14,
+    "virtual": true
+  },
+  {
+    "contenedor": "Supuesto Excel CyL · art.1",
+    "n": 1,
+    "exp": 13,
+    "virtual": true
+  },
+  {
+    "contenedor": "Conceptos Comunicación y Atención · art.4",
+    "n": 1,
+    "exp": 13,
+    "virtual": true
+  },
+  {
+    "contenedor": "Funciones del TCAE · art.1",
+    "n": 3,
+    "exp": 12,
+    "virtual": true
+  },
+  {
+    "contenedor": "RD 1148/2011 · art.2",
+    "n": 1,
+    "exp": 11,
+    "virtual": false
+  },
+  {
+    "contenedor": "Comunicacion sanitaria · art.3",
+    "n": 1,
+    "exp": 5,
+    "virtual": true
+  },
+  {
+    "contenedor": "Constantes vitales · art.1",
+    "n": 1,
+    "exp": 4,
+    "virtual": true
+  }
+]
