@@ -647,6 +647,16 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-303] 🟠 [ABIERTO 30/07] El detector `bot_detected` marca opositoras REALES: 5 señales, 5 usuarias distintas, la misma huella de Chrome Android
+- **Qué pasa:** `bot_detected` (detección client-side, `botScore 90`) lleva **5 señales en 14 días sobre 5 usuarias distintas**, todas con la MISMA huella: `no_plugins` + `zero_dimensions` + `botd:headless_chrome`, siempre sobre `Chrome 150 / Android 10`. **Las revisadas eran todas usuarias reales**, y no de forma dudosa:
+  - `mariasoledadparrabaeza` (29/07): registrada el 21/05, **199 respuestas**, 12 tests practice completados y un examen, estudiando hasta las 23:41.
+  - `cabrerayurely` (30/07): cuenta creada a las 21:55 y **25 respuestas reales** entre las 22:03 y las 22:40 — exactamente el tope del plan free. Un bot no completa tests hasta agotar su cupo.
+- **La causa probable (a verificar, no conclusión):** `botd` clasifica como *headless* a los **navegadores embebidos / WebView** de Android — el que abre Instagram, Facebook o Gmail al pinchar un enlace. `zero_dimensions` encaja con eso. Si es así, estamos marcando como bots justo a las usuarias que nos llegan desde redes, que es por donde entra la publicidad.
+- **Impacto:** 🟠 hoy **no bloquea a nadie** (F0 es solo detección), así que el daño es de RUIDO: cada falso positivo gasta triaje humano y, sobre todo, **entrena a ignorar el badge** — la misma lección de [T-047]/[T-113]/[T-179]. Pero si algún día se cablea enforcement sobre esta señal sin arreglarla antes, estaríamos bloqueando clientas.
+- **Cómo (mismo método que funcionó en [T-179], que es el precedente directo):** NO tocar el umbral a ojo. Sacar la **población** de señales `bot_detected` y mirarlas una a una contra la actividad real de cada cuenta (respuestas guardadas, tests completados, minutos de sesión); cruzar con `userAgent` y `screenResolution` para confirmar si el patrón es WebView; y solo entonces decidir el discriminante — que probablemente NO sea el `botScore`, igual que en cosecha no era el ratio. Un candidato obvio: **una cuenta que responde y completa tests no es un bot**, por mucho que su fingerprint sea raro. Añadir los casos medidos como test de regresión.
+- **Origen:** triaje de señales de fraude del 29 y 30/07. Las 5 están `dismissed` con su evidencia en las notas.
+
+
 ### [T-302] 🟠 [ABIERTO 30/07] Los contenedores de Office 2016 y los clínicos TCAE están vacíos: 3.203 preguntas activas cuelgan de artículos 20-40 veces más delgados que los enriquecidos
 
 - **Cómo salió a la luz:** revisando con agentes las 500 preguntas nunca verificadas más vistas ([T-291] escalón 2), **219 de 500 salieron `article_ok=false`** — una tasa altísima que al abrirla NO era un problema de vinculación pregunta→artículo. **216 de esas 219 cuelgan de contenedores VIRTUALES** y solo 3 de leyes reales. Los agentes lo dijeron por separado, lote a lote, con las mismas palabras: *«el contenedor es un resumen muy corto que no cubre literalmente el supuesto»*.
@@ -1724,77 +1734,6 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **Si corrió bien:** mirar QUÉ abrió. El primer barrido completo dio 9 señales; se triaron todas el 28/07 (4 confirmadas de multicuenta, 2 en observación, 4 descartadas) y el badge quedó a 0. Las nuevas de mañana son material fresco — y las de tipo `curl_scraping`/`harvest_no_answer` alimentan **[T-179]**.
 - **🔴 LA LECCIÓN QUE NO HAY QUE PERDER:** el cron emitía `cron_run`/**error** cada noche, y eso entra en el catch-all de `/admin/salud-sistema`. **La alarma funcionó; falló el triaje** — 7 días de rojo en un panel con ruido. Por eso se hizo T-185. Regla en el runbook: **un badge a 0 con `cron_run=failure` significa CIEGO, no limpio.**
 - **Origen:** sesión del 28/07. Runbook: `docs/runbooks/revisar-fraudes.md` §"El barrido puede estar MUERTO y el badge parecer tranquilo".
-
-### [T-179] 🟠 [ABIERTO 27/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
-- **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
-- **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
-- **Cuándo:** ~1 semana DESPUÉS de que el writer esté desplegado (antes no hay datos: `daily_questions_served` estará vacío y el canary en rojo).
-- **Cómo:** sacar la distribución de `served`, `answered` y el ratio por usuario en 30 días; ver dónde cae el percentil de los usuarios legítimos; ajustar `DEFAULTS` (o `FRAUD_SCRAPE_MIN_SERVED`) para que el corte quede claramente por encima del p99 real. Añadir el caso medido como test de regresión, igual que se hizo con el de 4.897.
-- **✅ El cabo del `orphan` YA está resuelto (no lo vuelvas a investigar):** en las primeras horas salieron 9 de 13 llamadas como `orphan`… y las 9 eran **exámenes ANÓNIMOS** (lote 25, 24-25 contestadas). Sin usuario no hay `tests` al que anclar, así que no pueden traer `testId`. NO era ni scraping ni bug. Reclasificado a `anon_exam`/info en el commit `8ea0cb6fb`.
-
-#### 📊 PRIMERA EVIDENCIA REAL (28/07) — leer antes de calibrar nada
-- **El detector ya ha producido sus 2 primeras señales, y las 2 eran FALSOS POSITIVOS ESTRUCTURALES.** `mpareja19@` (300 servidas / 27 respondidas) y `felixmurod@` (304 / 34), ambas altas del 26/07. Ninguna cosechaba: **las dos tenían el contador diario en 25, o sea toparon el LÍMITE DEL PLAN FREE**. Armaron tests de ~100 preguntas y solo se les permitió contestar 25.
-- **La lección, y es la tercera de la misma forma:** con un tope de 25/día, cualquier free que monte un test grande tiene ratio **≤ 0,25 por construcción** — pegado al umbral de 0,2. La maquinaria del límite diario distorsiona el denominador. Ya pasó el 27/07 con los premium (su contador ni se incrementa) y vuelve a pasar aquí con los free (el contador lo topa el límite).
-- **Ya está mitigado:** `answerCapped` — si el usuario topó su tope, el ratio no es interpretable y no se opina. Cableado en núcleo, espejo, sweep y panel, con tests de regresión sobre los dos casos reales. Tras el arreglo el barrido pasó de 25 hallazgos a 23.
-- **⚠️ CONTRAPARTIDA QUE HAY QUE REVISAR AQUÍ:** un cosechador con cuenta free que conteste hasta su tope queda **exento**. Se aceptó a conciencia (precisión sobre recall: un detector con falsas alarmas se deja de mirar, ver T-185), pero es exactamente lo que esta ficha tiene que decidir con distribución real. Opciones a valorar: comparar servidas contra lo que un usuario capado puede plausiblemente cargar, o tratar aparte a los free capados en vez de exentarlos del todo.
-- **Y el umbral `minServed` 300 quedó señalado:** las dos falsas cayeron en 300 y 304, o sea justo en el corte. Eso no es casualidad: es donde el detector empieza a opinar y donde más ruido hay.
-
-#### 📊 SEGUNDA EVIDENCIA (29/07) — la distribución que esta ficha pedía, y `answerCapped` NO cubre este caso
-- **Otras 2 señales, otros 2 falsos positivos, otra vez clavados en 300.** `leofabra50@` (300 servidas / **0** respondidas) y `yolandamoyaparis@` (300 / **1**). Revisadas y `dismissed` el 29/07.
-- **La diferencia importante con las del 28:** aquellas topaban su límite free (25/día) y por eso se creó `answerCapped`. **Estas NO topan nada** — respondieron 0 y 1, así que la exención no las alcanza. Son un modo de fallo DISTINTO al ya mitigado: **el usuario nuevo que prueba y se va**. `leofabra50` se registró ESE MISMO DÍA, no llegó a crear ni un test y tiene 13 page_views; `yolandamoyaparis` tiene 2 tests `practice` sin completar y 1 respuesta.
-- **DISTRIBUCIÓN MEDIDA (30 días, la que faltaba para calibrar):** hay **29 usuarios** con ratio < 0,2 y ≥ 100 servidas. Su reparto:
-
-  | banda de `served` | usuarios | días distintos con actividad (media) |
-  |---|---|---|
-  | 100-499 | **26** | **1,1** |
-  | 500-999 | 2 | 1,0 |
-  | 1000+ | 1 | 2,0 |
-
-  Y **19 de los 29 se registraron hace menos de 7 días**. O sea: la población que hoy cae bajo el umbral es, casi entera, **gente que entró un día, pidió preguntas y no volvió**.
-- **Conclusión para la calibración (propuesta, no aplicada):** el discriminante que falta no es el ratio ni el volumen — es la **AMPLITUD TEMPORAL**. Cosechar un banco requiere volver; probar y abandonar se agota en un día. Exigir p.ej. ≥3 días distintos con servidas altas dejaría fuera de un plumazo a los 26 de la banda baja sin perder al cosechador real (que por definición insiste). Subir `minServed` a secas NO basta: el problema no es que 300 sea poco, es que **un día no es un patrón**. Medirlo antes de tocar `DEFAULTS`, y añadir estos dos casos como test de regresión junto a los del 28/07.
-- **Ojo al sesgo de la muestra:** el barrido estuvo **CIEGO del 23 al 28/07** (6 noches fallando con el bug de arrays de Drizzle, ver el runbook de fraudes), así que esta distribución es la primera limpia. No tratar los conteos previos como serie continua.
-- **Corrección sobre `smoke@vence.es`:** aparece en la consulta manual de la distribución, pero **el sweep YA lo excluye** (`up.email LIKE 'smoke@%'`, exclusión añadida el 27/07 justo por esto). No era una señal que fuera a dispararse — es una advertencia de que sin esa exclusión nuestros propios canarios son el perfil perfecto de cosechador (ratio ~0 por diseño).
-
-#### ✅ CALIBRADO (29/07) — el discriminante es la AMPLITUD TEMPORAL
-- **Qué se cambió:** nuevo umbral `minActiveDays: 3` en el núcleo `lib/security/harvestSignals.js` y su espejo `backend/src/fraud-sweep/harvest-signals.ts`. Por debajo de 3 días distintos con servidas **no se opina**… salvo que el volumen sea egregio (≥ `egregiousServed`, 5.000): ahí la amplitud NO sirve de coartada, o bastaría con cosechar deprisa para ser invisible (el caso `anferbar987`, 5.495 servidas, sigue marcando aunque fuera en un solo día).
-- **Por qué la amplitud y no subir `minServed`:** el problema nunca fue que 300 fuese poco, sino que **un día no es un patrón**. Subir el volumen dejaría escapar al cosechador modesto y seguiría marcando al novato que pide diez tests de 100.
-- **Cableado en los TRES consumidores** (o el mismo usuario se clasificaría distinto según quién mire): el sweep real del backend, el gemelo CLI `scripts/fraud-sweep.cjs` y el panel `/api/v2/admin/fraud/scripts`. Los tres pasan ahora `activeDays` (`count(DISTINCT usage_date)`).
-- **Capas:** 8 tests de comportamiento en el núcleo + 9 casos nuevos en el guardarraíl de paridad núcleo↔espejo, todos anclados a datos REALES (las 4 señales que el detector ha producido en su vida, más los 3 sujetos de volumen alto) · frontera exacta probada (3 días opina, 2 no) · `activeDays` ausente = comportamiento previo intacto · **simulación sobre los 404 sujetos reales de la ventana de 30 días: 3 señales → 0**, y las 3 eliminadas son los novatos ya identificados. Ninguna señal real se pierde, porque no había ninguna.
-- **Lo que la simulación destapó de paso:** `rafaypili.91@` (600 servidas / 4 respondidas, **alta ese mismo día**) habría abierto una CUARTA señal falsa en el barrido siguiente. Con el cambio, no.
-- **⏳ Falta verificar tras desplegar** (backend para el sweep nocturno, frontend para el panel): que el barrido de las 03:15 UTC siguiente **no abra señales nuevas** de `harvest_no_answer`/`curl_scraping` contra altas nuevas, y que las que abra —si abre— tengan ≥3 días de actividad.
-
-#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
-- **⚠️ ESTADO AL CERRAR: hay 2 commits en `main` SIN DESPLEGAR** — `8ea0cb6fb` (calibración) y `d5ebe23cc` (T-180). Lo desplegado al cerrar era `d397708c`. **Consecuencia mientras no se despliegue:** (a) los exámenes anónimos siguen entrando como `orphan`/**warn** en el panel de salud (17 acumulados en las primeras 4 h), y (b) `smoke@vence.es` sigue sumando al rollup (volvió a 1.560 servidas después de limpiarlo). **Las dos cosas se cortan solas con el siguiente deploy de frontend, no hay que arreglar nada.**
-  > 🔴 **CORRECCIÓN (misma sesión, más tarde):** una versión anterior de esta ficha decía que el sweep nocturno estaba protegido "porque corre desde GitHub Actions leyendo `main`". **Es FALSO.** El barrido que corre en producción es `backend/src/fraud-sweep/` (`@Cron` 03:15 UTC en Fargate); `fraud-sweep.yml` no existe. El detector se portó al backend en esta misma sesión, así que la detección de cosecha necesita **deploy de BACKEND** además del de frontend. Mientras no se despliegue el backend, el barrido nocturno sigue corriendo el D4 viejo (el ciego).
-  Verifica el frontend con:
-  ```bash
-  curl -s https://www.vence.es/api/health | grep -o '"deploy":"[^"]*"'
-  ```
-- **El instrumento lleva midiendo desde el 27/07 ~15:15 UTC.** Antes de esa hora no hay datos: cualquier ventana que los incluya está sesgada a la baja.
-- **Comprobar PRIMERO que la medición está viva** (si está ciega, todo lo demás sobra):
-  ```bash
-  npm run canary:served-rollup      # verde = midiendo; rojo = dice por qué
-  ```
-- **La consulta de calibración** (la distribución que falta para decidir los umbrales):
-  ```sql
-  SELECT s.subject_key, sum(s.served)::int servidas,
-         coalesce(sum(u.questions_answered),0)::int respondidas,
-         round(coalesce(sum(u.questions_answered),0)::numeric / nullif(sum(s.served),0), 3) ratio
-    FROM daily_questions_served s
-    LEFT JOIN daily_question_usage u
-      ON u.user_id::text = s.subject_key AND u.usage_date = s.usage_date
-   WHERE s.subject_kind='user' AND s.usage_date >= CURRENT_DATE - 30
-   GROUP BY 1 ORDER BY servidas DESC;
-  ```
-  Busca dónde cae el p99 de los usuarios legítimos y deja el corte CLARAMENTE por encima.
-- **Los umbrales viven en DOS sitios que hay que tocar a la vez:** `DEFAULTS` de `lib/security/harvestSignals.js` (núcleo: panel admin + gemelo CLI) y `HARVEST_DEFAULTS` de `backend/src/fraud-sweep/harvest-signals.ts` (**el espejo que corre en producción**). El backend compila con `rootDir: src` y no puede importar de la raíz, por eso hay espejo. **No te fíes de acordarte:** `__tests__/backend/fraudSweepHarvestParity.test.ts` falla si divergen. También está el env `FRAUD_SCRAPE_MIN_SERVED`.
-- **⚠️ AVISO, el mismo día ya se calibró MAL dos veces, las dos por razonar sin datos:**
-  1. `harvest_volume` (volumen ≥5.000 servidas) habría marcado al usuario real más intenso — 4.897 respondidas/30d, a un 2 % del corte. **Eliminado**, y no vale reintroducirlo subiendo el número: el fallo era el razonamiento.
-  2. `orphan` en `warn` habría metido ~100-300 avisos/día en el panel de salud.
-  **Moraleja operativa: contrasta CADA umbral contra la distribución real antes de darlo por bueno.**
-- **Cuidado con el ruido de ventana corta:** un usuario a mitad de test tiene ratio bajo de forma legítima (carga 25, lleva 2 contestadas). Por eso existe `minServed`; no lo bajes sin mirar qué entra.
-- **El tráfico sintético está excluido en DOS capas** (writer por `x-vence-canary`, y el sweep por `email LIKE 'smoke@%'`). Si ves un `smoke@` en el rollup, la exención del writer se rompió — el canary ya lo vigila.
-- **Origen:** auditoría anti-scraping del 27/07.
 
 ### [T-168] 🟡 [ABIERTO 27/07] El deploy en caliente recarga la app A MITAD DE TEST y se lleva el test por delante (costó un usuario)
 - **Qué:** `useVersionCheck` fuerza recarga cuando cambia el `deploy_version`. El propio runbook de despliegue dice que la recarga **se DIFIERE en rutas de test para no interrumpir exámenes**, pero en la práctica no siempre ocurre: hay `version_check_reload_immediate` disparándose con el usuario dentro de un test.
@@ -4832,6 +4771,79 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Origen:** lote `gen_rgpd_2026-07-29` de la campaña T-115 (29/07). El manual (§8.2, v2.6) afirma *"La pregunta nace barajable y no hay ningún paso que se pueda olvidar"* — hoy no se cumple, y nada avisaba.
 
 ## Hechas
+
+### [T-179] ✅ [HECHA 30/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
+- **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
+- **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
+- **Cuándo:** ~1 semana DESPUÉS de que el writer esté desplegado (antes no hay datos: `daily_questions_served` estará vacío y el canary en rojo).
+- **Cómo:** sacar la distribución de `served`, `answered` y el ratio por usuario en 30 días; ver dónde cae el percentil de los usuarios legítimos; ajustar `DEFAULTS` (o `FRAUD_SCRAPE_MIN_SERVED`) para que el corte quede claramente por encima del p99 real. Añadir el caso medido como test de regresión, igual que se hizo con el de 4.897.
+- **✅ El cabo del `orphan` YA está resuelto (no lo vuelvas a investigar):** en las primeras horas salieron 9 de 13 llamadas como `orphan`… y las 9 eran **exámenes ANÓNIMOS** (lote 25, 24-25 contestadas). Sin usuario no hay `tests` al que anclar, así que no pueden traer `testId`. NO era ni scraping ni bug. Reclasificado a `anon_exam`/info en el commit `8ea0cb6fb`.
+
+#### 📊 PRIMERA EVIDENCIA REAL (28/07) — leer antes de calibrar nada
+- **El detector ya ha producido sus 2 primeras señales, y las 2 eran FALSOS POSITIVOS ESTRUCTURALES.** `mpareja19@` (300 servidas / 27 respondidas) y `felixmurod@` (304 / 34), ambas altas del 26/07. Ninguna cosechaba: **las dos tenían el contador diario en 25, o sea toparon el LÍMITE DEL PLAN FREE**. Armaron tests de ~100 preguntas y solo se les permitió contestar 25.
+- **La lección, y es la tercera de la misma forma:** con un tope de 25/día, cualquier free que monte un test grande tiene ratio **≤ 0,25 por construcción** — pegado al umbral de 0,2. La maquinaria del límite diario distorsiona el denominador. Ya pasó el 27/07 con los premium (su contador ni se incrementa) y vuelve a pasar aquí con los free (el contador lo topa el límite).
+- **Ya está mitigado:** `answerCapped` — si el usuario topó su tope, el ratio no es interpretable y no se opina. Cableado en núcleo, espejo, sweep y panel, con tests de regresión sobre los dos casos reales. Tras el arreglo el barrido pasó de 25 hallazgos a 23.
+- **⚠️ CONTRAPARTIDA QUE HAY QUE REVISAR AQUÍ:** un cosechador con cuenta free que conteste hasta su tope queda **exento**. Se aceptó a conciencia (precisión sobre recall: un detector con falsas alarmas se deja de mirar, ver T-185), pero es exactamente lo que esta ficha tiene que decidir con distribución real. Opciones a valorar: comparar servidas contra lo que un usuario capado puede plausiblemente cargar, o tratar aparte a los free capados en vez de exentarlos del todo.
+- **Y el umbral `minServed` 300 quedó señalado:** las dos falsas cayeron en 300 y 304, o sea justo en el corte. Eso no es casualidad: es donde el detector empieza a opinar y donde más ruido hay.
+
+#### 📊 SEGUNDA EVIDENCIA (29/07) — la distribución que esta ficha pedía, y `answerCapped` NO cubre este caso
+- **Otras 2 señales, otros 2 falsos positivos, otra vez clavados en 300.** `leofabra50@` (300 servidas / **0** respondidas) y `yolandamoyaparis@` (300 / **1**). Revisadas y `dismissed` el 29/07.
+- **La diferencia importante con las del 28:** aquellas topaban su límite free (25/día) y por eso se creó `answerCapped`. **Estas NO topan nada** — respondieron 0 y 1, así que la exención no las alcanza. Son un modo de fallo DISTINTO al ya mitigado: **el usuario nuevo que prueba y se va**. `leofabra50` se registró ESE MISMO DÍA, no llegó a crear ni un test y tiene 13 page_views; `yolandamoyaparis` tiene 2 tests `practice` sin completar y 1 respuesta.
+- **DISTRIBUCIÓN MEDIDA (30 días, la que faltaba para calibrar):** hay **29 usuarios** con ratio < 0,2 y ≥ 100 servidas. Su reparto:
+
+  | banda de `served` | usuarios | días distintos con actividad (media) |
+  |---|---|---|
+  | 100-499 | **26** | **1,1** |
+  | 500-999 | 2 | 1,0 |
+  | 1000+ | 1 | 2,0 |
+
+  Y **19 de los 29 se registraron hace menos de 7 días**. O sea: la población que hoy cae bajo el umbral es, casi entera, **gente que entró un día, pidió preguntas y no volvió**.
+- **Conclusión para la calibración (propuesta, no aplicada):** el discriminante que falta no es el ratio ni el volumen — es la **AMPLITUD TEMPORAL**. Cosechar un banco requiere volver; probar y abandonar se agota en un día. Exigir p.ej. ≥3 días distintos con servidas altas dejaría fuera de un plumazo a los 26 de la banda baja sin perder al cosechador real (que por definición insiste). Subir `minServed` a secas NO basta: el problema no es que 300 sea poco, es que **un día no es un patrón**. Medirlo antes de tocar `DEFAULTS`, y añadir estos dos casos como test de regresión junto a los del 28/07.
+- **Ojo al sesgo de la muestra:** el barrido estuvo **CIEGO del 23 al 28/07** (6 noches fallando con el bug de arrays de Drizzle, ver el runbook de fraudes), así que esta distribución es la primera limpia. No tratar los conteos previos como serie continua.
+- **Corrección sobre `smoke@vence.es`:** aparece en la consulta manual de la distribución, pero **el sweep YA lo excluye** (`up.email LIKE 'smoke@%'`, exclusión añadida el 27/07 justo por esto). No era una señal que fuera a dispararse — es una advertencia de que sin esa exclusión nuestros propios canarios son el perfil perfecto de cosechador (ratio ~0 por diseño).
+
+#### ✅ CALIBRADO (29/07) — el discriminante es la AMPLITUD TEMPORAL
+- **Qué se cambió:** nuevo umbral `minActiveDays: 3` en el núcleo `lib/security/harvestSignals.js` y su espejo `backend/src/fraud-sweep/harvest-signals.ts`. Por debajo de 3 días distintos con servidas **no se opina**… salvo que el volumen sea egregio (≥ `egregiousServed`, 5.000): ahí la amplitud NO sirve de coartada, o bastaría con cosechar deprisa para ser invisible (el caso `anferbar987`, 5.495 servidas, sigue marcando aunque fuera en un solo día).
+- **Por qué la amplitud y no subir `minServed`:** el problema nunca fue que 300 fuese poco, sino que **un día no es un patrón**. Subir el volumen dejaría escapar al cosechador modesto y seguiría marcando al novato que pide diez tests de 100.
+- **Cableado en los TRES consumidores** (o el mismo usuario se clasificaría distinto según quién mire): el sweep real del backend, el gemelo CLI `scripts/fraud-sweep.cjs` y el panel `/api/v2/admin/fraud/scripts`. Los tres pasan ahora `activeDays` (`count(DISTINCT usage_date)`).
+- **Capas:** 8 tests de comportamiento en el núcleo + 9 casos nuevos en el guardarraíl de paridad núcleo↔espejo, todos anclados a datos REALES (las 4 señales que el detector ha producido en su vida, más los 3 sujetos de volumen alto) · frontera exacta probada (3 días opina, 2 no) · `activeDays` ausente = comportamiento previo intacto · **simulación sobre los 404 sujetos reales de la ventana de 30 días: 3 señales → 0**, y las 3 eliminadas son los novatos ya identificados. Ninguna señal real se pierde, porque no había ninguna.
+- **Lo que la simulación destapó de paso:** `rafaypili.91@` (600 servidas / 4 respondidas, **alta ese mismo día**) habría abierto una CUARTA señal falsa en el barrido siguiente. Con el cambio, no.
+- **✅ VERIFICADO EN PRODUCCIÓN (30/07):** desplegado en las dos superficies (frontend `7103d053`, backend `45a6ad96`, ambos contienen `162eb6e13`) y el barrido de las **03:18 UTC completó con `success`** sin abrir **ni una** señal de cosecha. Contraste: el barrido del día anterior, con la calibración vieja, abrió **2 falsas**. Y `rafaypili.91@` —la cuarta señal falsa que la simulación había predicho para el barrido siguiente— tampoco apareció. La predicción se cumplió.
+- **Lo que queda ABIERTO y no se toca aquí** (contrapartida heredada de `answerCapped`): un cosechador con cuenta free que conteste hasta su tope sigue exento. Ahora además tiene que sostenerlo ≥3 días, así que la rendija es más estrecha, pero existe. Decidir si los free capados se tratan aparte en vez de exentarse del todo.
+
+#### 🧭 CONTEXTO PARA COGERLA EN FRÍO (traspaso de la sesión del 27/07)
+- **⚠️ ESTADO AL CERRAR: hay 2 commits en `main` SIN DESPLEGAR** — `8ea0cb6fb` (calibración) y `d5ebe23cc` (T-180). Lo desplegado al cerrar era `d397708c`. **Consecuencia mientras no se despliegue:** (a) los exámenes anónimos siguen entrando como `orphan`/**warn** en el panel de salud (17 acumulados en las primeras 4 h), y (b) `smoke@vence.es` sigue sumando al rollup (volvió a 1.560 servidas después de limpiarlo). **Las dos cosas se cortan solas con el siguiente deploy de frontend, no hay que arreglar nada.**
+  > 🔴 **CORRECCIÓN (misma sesión, más tarde):** una versión anterior de esta ficha decía que el sweep nocturno estaba protegido "porque corre desde GitHub Actions leyendo `main`". **Es FALSO.** El barrido que corre en producción es `backend/src/fraud-sweep/` (`@Cron` 03:15 UTC en Fargate); `fraud-sweep.yml` no existe. El detector se portó al backend en esta misma sesión, así que la detección de cosecha necesita **deploy de BACKEND** además del de frontend. Mientras no se despliegue el backend, el barrido nocturno sigue corriendo el D4 viejo (el ciego).
+  Verifica el frontend con:
+  ```bash
+  curl -s https://www.vence.es/api/health | grep -o '"deploy":"[^"]*"'
+  ```
+- **El instrumento lleva midiendo desde el 27/07 ~15:15 UTC.** Antes de esa hora no hay datos: cualquier ventana que los incluya está sesgada a la baja.
+- **Comprobar PRIMERO que la medición está viva** (si está ciega, todo lo demás sobra):
+  ```bash
+  npm run canary:served-rollup      # verde = midiendo; rojo = dice por qué
+  ```
+- **La consulta de calibración** (la distribución que falta para decidir los umbrales):
+  ```sql
+  SELECT s.subject_key, sum(s.served)::int servidas,
+         coalesce(sum(u.questions_answered),0)::int respondidas,
+         round(coalesce(sum(u.questions_answered),0)::numeric / nullif(sum(s.served),0), 3) ratio
+    FROM daily_questions_served s
+    LEFT JOIN daily_question_usage u
+      ON u.user_id::text = s.subject_key AND u.usage_date = s.usage_date
+   WHERE s.subject_kind='user' AND s.usage_date >= CURRENT_DATE - 30
+   GROUP BY 1 ORDER BY servidas DESC;
+  ```
+  Busca dónde cae el p99 de los usuarios legítimos y deja el corte CLARAMENTE por encima.
+- **Los umbrales viven en DOS sitios que hay que tocar a la vez:** `DEFAULTS` de `lib/security/harvestSignals.js` (núcleo: panel admin + gemelo CLI) y `HARVEST_DEFAULTS` de `backend/src/fraud-sweep/harvest-signals.ts` (**el espejo que corre en producción**). El backend compila con `rootDir: src` y no puede importar de la raíz, por eso hay espejo. **No te fíes de acordarte:** `__tests__/backend/fraudSweepHarvestParity.test.ts` falla si divergen. También está el env `FRAUD_SCRAPE_MIN_SERVED`.
+- **⚠️ AVISO, el mismo día ya se calibró MAL dos veces, las dos por razonar sin datos:**
+  1. `harvest_volume` (volumen ≥5.000 servidas) habría marcado al usuario real más intenso — 4.897 respondidas/30d, a un 2 % del corte. **Eliminado**, y no vale reintroducirlo subiendo el número: el fallo era el razonamiento.
+  2. `orphan` en `warn` habría metido ~100-300 avisos/día en el panel de salud.
+  **Moraleja operativa: contrasta CADA umbral contra la distribución real antes de darlo por bueno.**
+- **Cuidado con el ruido de ventana corta:** un usuario a mitad de test tiene ratio bajo de forma legítima (carga 25, lleva 2 contestadas). Por eso existe `minServed`; no lo bajes sin mirar qué entra.
+- **El tráfico sintético está excluido en DOS capas** (writer por `x-vence-canary`, y el sweep por `email LIKE 'smoke@%'`). Si ves un `smoke@` en el rollup, la exención del writer se rompió — el canary ya lo vigila.
+- **Origen:** auditoría anti-scraping del 27/07.
+
 
 ### [T-300] ✅ [CERRADA 30/07] `error`/`warn` vuelven al buzón: el filtro de severidad dejaba 18 de 28 problemas sin avisar
 
