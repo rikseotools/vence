@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { auth } from '@/lib/auth'
 import { apiGet } from '@/lib/api/client'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
-import { trackIntent, confirmIntent } from '@/lib/observability/client'
+import { trackIntent, confirmIntent, emitClientEvent } from '@/lib/observability/client'
 
 interface OfertaVista {
   priceId: string
@@ -83,9 +83,27 @@ export default function PrecioPersonalPage() {
         }
         throw new Error(data.message || data.error || 'No se ha podido iniciar el pago')
       }
+      // El endpoint devuelve el destino en `checkoutUrl`. Aquí ponía `data.url`, que no
+      // existe: `location.href = undefined` navega a «/undefined» y la persona acaba en un
+      // 404 de la propia web justo al pulsar «Activar mi Premium». Le pasó a la usuaria del
+      // precio de fidelidad el 30/07, con la página ya correcta y sus dos precios delante.
+      // `data.url` se conserva como respaldo por si el contrato cambia al revés.
+      const destino: string | undefined = data.checkoutUrl || data.url
+      if (!destino) {
+        // Nunca navegar a un destino vacío: mejor decirlo y dejar rastro que mandar a
+        // ninguna parte a quien acaba de decidir pagar.
+        emitClientEvent({
+          severity: 'error',
+          eventType: 'custom',
+          endpoint: '/api/stripe/create-checkout',
+          errorMessage: 'checkout sin URL de destino',
+          metadata: { pagina: '/premium/personal', priceId: oferta.priceId, claves: Object.keys(data || {}) },
+        })
+        throw new Error('No hemos podido abrir la pasarela de pago. Inténtalo de nuevo en un momento.')
+      }
       confirmIntent(intentId)
       try { await auth.refreshSession() } catch { /* el redirect manda igual */ }
-      window.location.href = data.url
+      window.location.href = destino
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se ha podido iniciar el pago')
       setPagando(false)
