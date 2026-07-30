@@ -22,7 +22,13 @@ const ESCRITORES = ['scripts/aplicar-explicacion.ts', 'scripts/backfill-explanat
 describe('los escritores de explicación estructurada consultan el detector de opciones cruzadas', () => {
   test.each(ESCRITORES)('%s importa optionsReferenceOtherOptions y lo usa', (fichero) => {
     const src = readFileSync(path.join(process.cwd(), fichero), 'utf8')
-    expect(src).toMatch(/import \{ optionsReferenceOtherOptions \} from '@\/lib\/shuffle\/classifyShuffleMode'/)
+    // La lista de símbolos importados puede crecer (el 30/07 se le añadió `neutralizaCitasLegales`,
+    // T-324): lo que este trinquete protege es que el detector venga del módulo COMPARTIDO, no que
+    // sea el único import. Exigir la línea literal hacía fallar el guardarraíl por añadir al lado
+    // otra pieza del mismo módulo — un guardarraíl que salta por eso se acaba desactivando.
+    expect(src).toMatch(
+      /import \{[^}]*\boptionsReferenceOtherOptions\b[^}]*\} from '@\/lib\/shuffle\/classifyShuffleMode'/
+    )
     expect(src).toMatch(/optionsReferenceOtherOptions\(/)
   })
 

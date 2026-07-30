@@ -54,7 +54,7 @@ import {
   structuredNarrativeStaleLetters,
   type StructuredExplanation,
 } from '@/lib/shuffle/structuredExplanation'
-import { optionsReferenceOtherOptions } from '@/lib/shuffle/classifyShuffleMode'
+import { optionsReferenceOtherOptions, neutralizaCitasLegales } from '@/lib/shuffle/classifyShuffleMode'
 
 /**
  * Reparte los argumentos entre las dos formas de uso. Es función pura y exportada porque el
@@ -110,7 +110,9 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
   //    sigue siendo verdad, porque nombra la ley, no la pantalla. Sin esta salvedad el guardarraíl
   //    rechazaba explicaciones impecables y obligaba a redactar peor para esquivarlo — pasó el
   //    28/07 con el art. 9.1 LPRL, cuyas funciones de la Inspección se enumeran por letras.
-  const CITA_DE_LA_NORMA = /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/i
+  //    Desde el 30/07 el patrón vive en `lib/shuffle/classifyShuffleMode.ts` (`neutralizaCitasLegales`)
+  //    y lo comparten ESCRITOR y GATE DE SERVE: mientras estuvo replicado aquí, el gate no eximía
+  //    nada y dejaba 82 preguntas sin barajar por citar el articulado por sus letras (T-324).
   // La LETRA de una opción se escribe en MAYÚSCULA («la opción B», «la C es correcta»); los
   // apartados de un precepto van en minúscula («la letra d) no pide acreditar, sino poseer»). Sin
   // esa distinción el guard frena explicaciones que citan el articulado por sus letras, que es
@@ -128,7 +130,7 @@ async function aplicarUna(db: ReturnType<typeof getDb>, qid: string, fichero: st
   const REFERENCIA_A_OPCION =
     /\b(primera|segunda|tercera|cuarta|[úu]ltima|anterior|siguiente)\s+(opci[óo]n|respuesta)\b|\b(opci[óo]n|respuesta|alternativa)\s+(anterior|previa|siguiente)\b/i
   const sospechosas = Object.entries(estructura.options).filter(([, r]) => {
-    const limpia = r.replace(new RegExp(CITA_DE_LA_NORMA.source, 'gi'), ' ')
+    const limpia = neutralizaCitasLegales(r)
     return REFERENCIA_A_OPCION_LETRA.test(limpia) || REFERENCIA_A_OPCION.test(limpia)
   })
   if (sospechosas.length) {

@@ -206,6 +206,28 @@ const OPTION_CROSSREF_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * En Derecho los apartados SE CITAN por letra («la letra e) del artículo 9.1», «el apartado b) del
+ * 4.1»). Eso nombra la NORMA, no la pantalla: al barajar sigue siendo verdad. Este patrón las
+ * reconoce para poder neutralizarlas antes de buscar referencias a opciones.
+ *
+ * Vivía SOLO dentro de `scripts/aplicar-explicacion.ts` —el ESCRITOR— y su propio test avisaba de
+ * que estaba replicado «porque el CLI tiene top-level await y no se puede importar desde Jest».
+ * Resultado: el escritor eximía la letra legal y el GATE DE SERVE no, o sea dos puertas con
+ * criterios distintos sobre el mismo texto. Medido el 30/07: **82 preguntas** (625 exposiciones)
+ * estaban sin barajarse solo por citar el articulado por sus letras.
+ *
+ * Es deliberadamente ESTRECHO: exige la palabra («letra», «apartado»…), la letra en MINÚSCULA y
+ * que detrás venga un artículo/apartado/número. «la letra B) del enunciado» NO queda eximida.
+ */
+export const CITA_LEGAL_POR_LETRA =
+  /\b(letra|apartado|p[áa]rrafo|inciso|ep[íi]grafe|regla)\s+[a-e]\)?\s*(?:de[l]?\s+)?(?:art|ap|n[úu]m|\d)/gi;
+
+/** El texto sin las citas del articulado por letra, para no confundirlas con una opción. */
+export function neutralizaCitasLegales(texto?: string | null): string {
+  return String(texto || '').replace(new RegExp(CITA_LEGAL_POR_LETRA.source, 'gi'), ' ');
+}
+
+/**
  * Predicado de elegibilidad de la Fase 1: barajable ⇔ full ∧ explicación sin letras.
  * Se evalúa DINÁMICAMENTE (no se congela): cuando en la Fase 2 una explicación pase
  * a formato estructurado sin letras, la pregunta pasa a ser elegible sin más.
@@ -268,10 +290,15 @@ export function isShuffleServeEligible(q: {
   if (q.has_structured_explanation) {
     // Las razones se examinan con el MISMO detector que la explicación plana: el problema es
     // idéntico (una referencia que el barajado invalida), solo cambia dónde vive el texto.
-    if ((q.structuredReasons || []).some((r) => explanationReferencesLetters(r))) return false;
+    // …con la MISMA exención que el escritor: citar el articulado por sus letras no es citar una
+    // opción (T-324, 30/07). Sin esto, el gate frenaba explicaciones impecables cuyo único pecado
+    // era decir «la letra a) del artículo 11».
+    if ((q.structuredReasons || []).some((r) => explanationReferencesLetters(neutralizaCitasLegales(r))))
+      return false;
     // La narrativa (intro/outro) se emite verbatim en cualquier orden: una letra ahí queda
     // clavada. Mismo detector, misma consecuencia — no barajar (T-262).
-    if ((q.structuredNarrative || []).some((r) => explanationReferencesLetters(r))) return false;
+    if ((q.structuredNarrative || []).some((r) => explanationReferencesLetters(neutralizaCitasLegales(r))))
+      return false;
     return isShuffleEligible({ ...q, explanation: null });
   }
   return q.shuffle_safety === 'safe' && isShuffleEligible(q);
