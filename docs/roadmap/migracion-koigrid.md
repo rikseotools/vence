@@ -96,6 +96,46 @@ El punto crítico es la **latencia app→BD**. Hoy Fargate y RDS están co-ubica
 
 ---
 
+## 3-bis. ⚠️ AUDITORÍA 30/07 — el diagrama de arriba se queda CORTO. Inventario REAL
+
+> Hecha a raíz de dos preguntas de Manuel: *"¿esto lo tienes documentado para no dejarnos nada?"* y
+> *"en arquitectura hay muchos servidores, revísalo"*. **Tenía razón en las dos.** El diagrama de §3 pinta
+> 4 piezas (frontend, db, redis, CDN) y la infraestructura real tiene **once ficheros Terraform**. Lo que
+> sigue sale de `backend/infra/*.tf` y de la cuenta AWS, no de memoria.
+
+### Piezas que NO aparecen en §3 y hay que decidir qué pasa con ellas
+
+| Pieza | Qué es | Dónde vive | Qué pasa al migrar |
+|---|---|---|---|
+| **PgBouncer HA self-hosted** | `pooler-ha.tf` — **2 instancias Lightsail** (`micro_3_0`), Fase 6 de pool-segregation. Es la línea *Lightsail* de la factura, y `/api/health` la vigila (`self_hosted_pooler: ok`) | AWS | **Probablemente DESAPARECE**: koigrid da `poolPort` nativo. Sería una simplificación, pero hay que **decidirlo y probarlo**, no darlo por hecho |
+| **Lambda headless-fetcher** | `headless-fetcher.tf` — navegador headless para convocatorias en SPA (radar OEP) | AWS Lambda | koigrid no tiene Lambda. O se queda en AWS, o pasa a job/app. **Sin decidir** |
+| **Canary de CloudWatch Synthetics** | `synthetics.tf` (`vence-preview`) — es la observabilidad que cazó la cascada del 21/07 | AWS | **Sin equivalente identificado.** Rehacer o mantener en AWS |
+| **Observabilidad del borde** | `edge-observability.tf` — Gap 14 del manual de observabilidad | AWS | Sin decidir |
+| **2 ALB** + 3 target groups + 3 listeners | `alb.tf` | AWS | koigrid enruta él; se van |
+| **5 alarmas CloudWatch** | repartidas | AWS | **Rehacer** (ver SLOs abajo) |
+| **11 registros Route53** · 2 repos ECR | `route53.tf` | AWS | DNS se queda (dominio propio); ECR deja de hacer falta si se buildea en koigrid |
+| **Servicio ECS `vence-backend`** | NestJS + crons (incl. `health-sweep`) | AWS | §4 lo aparca a "FASE POSTERIOR" — **pero el POC ya lo desplegó y funcionó** (24/07) |
+
+### Los cinco puntos de Manuel, contrastados contra el manual
+
+| Punto | ¿Documentado? | Realidad |
+|---|---|---|
+| **Auth.js** | ✅ §5 | Portable, como él dice. `AUTH_SECRET` + claves RS256 + `AUTH_URL` + callback de Google con el dominio nuevo. **No es el trabajo** |
+| **Secretos (SSM + `NEXT_PUBLIC_*` build-args)** | ✅ §5, con los comandos exactos de volcado | Cubierto. **PERO el volcado exhaustivo NO se ha hecho todavía** — ver corrección del checklist |
+| **Caché / invalidación ISR** | 🟡 a medias | El sink de Redis **ya es agnóstico por diseño** (`lib/cache/redis.ts`: *"Upstash hoy, ElastiCache…"*) → cambiar de proveedor es config. **Lo que NO está documentado es la PROPAGACIÓN de la purga entre instancias**: `lib/cache/isrPurgeWatcher.ts`, `lib/cache/isrPurgeLog.ts`, `/api/internal/isr-apply`, `/api/purge-cache`. Con N réplicas en koigrid eso tiene que seguir funcionando igual (hay simulación: `__tests__/lib/cache/isrPurgeMultiInstancia.sim.test.ts`) |
+| **CDN / purga** | ❌ **NO** | `scripts/deploy-frontend.sh:411` y `.github/workflows/frontend-deploy.yml:431` hacen `aws cloudfront create-invalidation`. **Con nuestro Cloudflare delante eso pasa a ser una llamada a la API de purga de Cloudflare** = cambio de código en el deploy. No estaba en el manual |
+| **Vídeo / S3** | ✅ y **YA HECHO** | No es trabajo pendiente: **se migró el 30/07**. Producción sirve de `storage.koigrid.com`, paridad de 56.691 objetos verificada. El adaptador ya era pluggable, como él dice |
+| **SLOs / CloudWatch** | ❌ **NO** | `docs/SLO.md` (5 menciones de CloudWatch) + 5 alarmas + el canary. **Rehacer entero sobre lo que dé koigrid** (tiene `/metrics` y alertas por recurso). Es trabajo real y no estaba listado |
+
+### Conclusión de la auditoría
+
+El trabajo pendiente NO es la app (contenedor Next.js normal) ni el auth ni la BD. **Es la periferia**: purga de CDN,
+propagación de la purga ISR entre réplicas, SLOs/alarmas/canary, y decidir el destino de las piezas AWS-only
+(pooler HA, Lambda del fetcher, observabilidad de borde). **Añadido al checklist de §10 como bloque propio**, porque
+cada una de ellas puede pasar el cutover en silencio y romperse después.
+
+---
+
 ## 4. Fases (cada una reversible; el contenido NO se congela)
 
 | Fase | Qué | Riesgo | Reversible |
@@ -224,13 +264,20 @@ Mismo patrón que el cutover Supabase→RDS del 04/07 (probado):
 - [ ] (opcional $0) smoke-deploy del Next.js real en Free → medir footprint de arranque + latencia hot-path a baja concurrencia
 - [x] Right-sizing decidido con datos: **Pro $35/mes** (1-2 réplicas × 2GB, BD 4GB = paridad con RDS, banda 5× de margen) — 29/07
 - [ ] Pago en koigrid.com cuando se ejecute (plan **Pro**, medido; no hace falta Scale)
-- [x] §5: env mapeado (se usó para el cambio de storage de vídeos) — 30/07
+- [ ] §5: **dump EXHAUSTIVO de env pendiente.** (Corrección 30/07: lo marqué hecho por haber portado 3 variables del storage de vídeos; eso NO es el inventario completo. Un secreto olvidado = 500 en caliente.)
 - [x] **K1: Next.js real desplegado contra BD Koigrid** — clon fiel sirviendo, `/api/health` con `database: ok` — 29/07
 - [x] **§6: load-test corrido y tabla GO/NO-GO rellenada** — 615 rps con 1 réplica = 37× el pico, 0% errores — 29/07
 - [x] **GATE técnico + comercial: GO** (§6.2 con datos). **Falta SOLO el restore del dump completo** (en curso 30/07) para tener la VENTANA DE CUTOVER y poder fijar fecha → decisión final de Manuel
 - [ ] K2: BD Koigrid replicando desde RDS, lag≈0 ≥24h
 - [ ] K3: frontend prod Koigrid en shadow, canaries verdes
 - [x] **Cutover del STORAGE de vídeos ejecutado** (trozo real, paridad verificada, confirmado en la app) — 30/07
+- [ ] **PERIFERIA (§3-bis) — cada una puede pasar el cutover en silencio y romperse después:**
+  - [ ] Purga de CDN: `create-invalidation` de CloudFront → API de purga de Cloudflare (toca `deploy-frontend.sh` y el workflow)
+  - [ ] Propagación de purga ISR entre réplicas verificada en koigrid (`isrPurgeWatcher` + `/api/internal/isr-apply`)
+  - [ ] SLOs, 5 alarmas CloudWatch y canary de Synthetics rehechos sobre koigrid
+  - [ ] Decidir destino del **PgBouncer HA** (2 Lightsail) — ¿lo sustituye el `poolPort` nativo?
+  - [ ] Decidir destino de la **Lambda headless-fetcher** (koigrid no tiene Lambda)
+  - [ ] Decidir destino de la **observabilidad de borde**
 - [ ] K4: cutover de app+BD ejecutado, monitor 30min verde
 - [ ] Antes de K4 (obligatorio): fix `getClientIp()`/`CF-Connecting-IP` — hoy confía en una cabecera de CloudFront que detrás de nuestro Cloudflare no existe, y debajo corre el antifraude
 - [ ] Antes de K4: codificar en Terraform la contención del 21/07 (`min_capacity` real) — hoy `frontend.tf` dice 2 y prod está en 8

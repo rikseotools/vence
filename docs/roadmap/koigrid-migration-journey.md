@@ -2713,3 +2713,45 @@ migration date.
 
 **Credit where it is due:** every one of these was found *because* you pushed us to test at real scale instead
 of accepting our 624 MB green tick. That instinct was correct and it cost you five findings in one night.
+
+---
+
+## 🎉 2026-07-30 (11:00 UTC) — **you fixed every single thing in this report, overnight.** Verified against the live API
+
+Used the changelog exactly as designed — stored `latest` (`2026-07-29T18:40:00Z`), asked `?since=` — and got
+**12 entries**. Every finding from last night is closed, plus things we had not asked for. Checking them off
+against our own numbering:
+
+| Ours | Their fix | Verified |
+|---|---|---|
+| **D5** — undocumented 30-min cap | 06:10 — deadline now **derived from size** (~170 MB SQL/min, floor 30 min, ceiling 6 h), named `restore_timeout`, and **written next to `maxBytes`** | ✅ docs read; our 24.7 GB gets ~2.4 h |
+| **D4 / D4-bis** — `preSeed` vs `CREATE SCHEMA`, and the per-extension guessing game | 00:20 + 03:50 — schema created idempotently, **and the required extensions + their schemas are now read from the dump itself** | ⏳ under test right now |
+| **D2** — `preSeed` left an un-droppable schema | 00:15 — the schema is now **owned by the app role** | ✅ |
+| **D3** — dump storage full, no way to reclaim | 23:30 + 03:25 — dumps **garbage-collected daily**, moved to a **separate fleet**, and the space check now measures the right thing | ✅ upload URL host is now `storage.koigrid.com` |
+| **"burnt cluster"** (our reading of the timeout aftermath) | 10:40 — docs corrected: the load rolls back and **the space returns on its own**; the old message telling you to `VACUUM` was wrong | ✅ **measured: our cluster went 9 874 MB → 11 MB by itself** |
+| 5 GB upload cap (we flagged we fit with only 20 % headroom) | 03:30 — **20 GB** | ✅ `maxBytes: 21474836480` |
+| **S1/S2** — bucket not in our org, key issued before adoption didn't work | 22:00 — buckets can be **adopted without moving bytes**, and *"an already-issued credential updates when what your organization owns changes"* | ✅ |
+
+Two things deserve calling out beyond the fixes themselves.
+
+**You wrote the history into the docs.** The `llms.txt` entry for the time limit says, unprompted: *"Until
+2026-07-30 the cap was a fixed, UNDOCUMENTED 30 min, so a 33 GB database could not use this endpoint at all — a
+customer found it by spending an hour uploading."* Most vendors quietly ship the fix. Documenting the trap, its
+cost and how it was found is what makes the next person trust the rest of the page.
+
+**And you corrected us where we were wrong.** We reported the timed-out cluster as "burnt" — 9 874 MB consumed,
+table count changed. Your 10:40 entry says the space comes back by itself and the error message that sent us
+looking for damage was itself the bug. **We re-measured and you are right: 11 MB, unchanged, still serving.**
+Our finding was half wrong and we would rather have that on the record than leave a scarier claim standing.
+
+### Now re-running the full 33 GB rehearsal, with the workaround removed
+
+The point of this run is to test **your** fix rather than our patch, so we are uploading the **original,
+unmodified dump** — the one that still contains the bare `CREATE SCHEMA extensions;` at line 33 that killed
+attempt #1 — **with `preSeed`**. If it completes, D4 and D4-bis are closed by measurement, not by changelog.
+
+One observation already: **the upload got noticeably slower** — 4.09 GB took **3 min 09 s** yesterday against
+the old shared disk, and is well past **10 minutes** now on the new storage fleet. Not a complaint (correctness
+first, and the fleet change is what unblocked us), but if a 20 GB ceiling is the new promise, upload throughput
+becomes the next thing worth measuring — 20 GB at this rate would be a long wait. We will report the exact
+figure when it lands.
