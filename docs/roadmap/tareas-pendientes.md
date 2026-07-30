@@ -4230,6 +4230,17 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Es el mismo patrón del `VoucherCard`**, que ya obligó a unificar en su día: dos implementaciones de la misma pantalla convergen en la teoría y divergen en cuanto alguien toca una. Y el daño no fue cosmético: durante un tiempo la persona vio menos dinero del que había ganado.
 - **QUÉ HACER.** Extraer la tarjeta (nombre, estado, motivo de invalidez, premios) a un componente compartido que consuman las dos pantallas, como ya se hizo con el desglose (`components/referrals/DesgloseCartera.tsx`). Ojo al matiz legítimo: el admin la ve en **solo lectura** (no puede cargar la conversación con su sesión), así que el componente necesita esa bandera — no dos copias.
 
+### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
+
+- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
+- **Qué comprobar cuando esté vivo:**
+  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
+  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
+  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
+  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
+- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
+- **Esfuerzo:** bajo, con una espera de 30 min por medio.
+
 ## Hechas
 
 ### [T-289] 🟢 [HECHA 30/07 · abierta 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
