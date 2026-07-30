@@ -4896,6 +4896,26 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Por qué no lo cazó nada:** `body: unknown` se lo tragaba todo; el guardarraíl buscaba el texto `method: 'GET'` en el fichero **y lo encontraba, en el argumento equivocado** (un test de texto ve las letras, no la posición); y el journey que sí lo habría visto está apagado por falta de autenticación del simulador → **[T-287]**.
 - **Si vuelve a pasar algo parecido:** mirar `observable_events` filtrando por `user_id`, no el endpoint por tu cuenta. `deploy_version` distingue «no le ha llegado el arreglo» de «el arreglo no arregla». Runbook: `docs/runbooks/oferta-precio-personalizada.md` §4-bis.
 
+### [T-312] 🟠 [ABIERTO 30/07] Una petición lenta no dice POR QUÉ: 50-200 opositores al día con el guardado a >5 s y causa inaveriguable
+- **El hueco, en una frase:** de una petición de **25 segundos que devolvió 200 OK** guardamos `duration_ms`, host, método, `questionId` y poco más. **Nada de dónde se fueron esos 25 segundos** — ni BD, ni espera de pool, ni antifraude, ni llamada externa. La pregunta «¿por qué tardó?» es literalmente incontestable con lo que hay, y el `grep` lo confirma: **no existe ni una medición interna** en `lib/api/v2/answer-and-save`.
+- **📊 Cuánto pasa, medido (7 días, `request_completed`, muestreo 10%):**
+
+  | día | observadas | >5 s | p95 |
+  |---|---|---|---|
+  | 23/07 | 1.031 | **1,3%** | 1.045 ms |
+  | 24/07 | 1.419 | 1,2% | 1.110 ms |
+  | 27/07 | 1.714 | 1,2% | 407 ms |
+  | 29/07 | 1.609 | 0,4% | 116 ms |
+  | 30/07 | 465 | 0,6% | 137 ms |
+
+  **Entre 0,3% y 1,3% TODOS los días.** Sobre ~16.000 peticiones reales diarias son **50-200 opositores al día** cuyo guardado de respuesta tarda más de 5 segundos. No es un pico: es el suelo.
+- **Por qué importa más que el número:** es el endpoint del **camino crítico** (guardar cada respuesta de cada test). Y cuando el 29/07 hubo un incidente de verdad, se tardó medio día en atribuirlo — y la primera atribución (crons del backend) resultó **falsa**. Con un desglose por fases, esa investigación habría durado minutos.
+- **⚠️ NO es un gap nuevo: es el Gap 12 del manual de observabilidad** (`docs/runbooks/observability.md` §Gap 12, tracing distribuido OpenTelemetry). El manual tiene una postura explícita y razonable: *«solo cuando los otros gaps estén cubiertos — añadir tracing a un sistema sin alertas es overengineering»*. **Lo que cambia hoy** es que (a) las alertas YA existen (el motor corre con ~30 reglas) y (b) ahora hay una cifra de daño que antes no se había medido.
+- **Propuesta PROPORCIONADA (no es OpenTelemetry entero, que el manual estima en 1-2 días):** desglose de fases **solo en el camino caliente**, emitido dentro del `request_completed` que YA se emite — no un sistema paralelo. Algo como `metadata.fases = { auth: 12, antifraude: 340, db_write: 80, score: 25 }`. Ventajas: reutiliza el evento y el sink existentes, no añade dependencia, y el `ObservableEvent` **ya está diseñado compatible con las convenciones OTel** (manual §435), así que es un **peldaño hacia el Gap 12**, no una desviación.
+- **Antes de implementarlo, dos cosas:** (1) medir el coste del propio instrumento (unos `Date.now()` no se notan, pero hay que decirlo con datos); (2) decidir si se muestrea al 10% como el resto o al 100% para las lentas — una petición de 25 s es justo la que NO puede perderse por muestreo, y ese sesgo lo tenemos ya en `request_completed`.
+- **Lección de método que deja esta investigación (vale para cualquiera que mire latencia aquí):** el 30/07 di **tres falsas alarmas seguidas** leyendo ventanas de 5-25 minutos como si fueran tendencia — «p95 de 25 s» con n=3, «8% de lentas» con 37 muestras. Con muestreo al 10% y un endpoint de ~1.600 observaciones/día, **cualquier ventana corta miente**. El `vigia-pico-pdf.ts` ya tiene suelo de muestras por esto; quien mida latencia aquí que lo use o replique.
+- **Relacionada:** [T-270] (el incidente que destapó la ceguera), [T-254] (el indicador de latencia, que dice QUÉ endpoint pero no POR QUÉ), Gap 12 del manual de observabilidad.
+
 ### [T-310] ✅ [HECHA 30/07] El contador de una ley anunciaba «798 artículos» teniendo 134
 
 - **ORIGEN.** Salió verificando la pregunta de un usuario premium (Manolo García, feedback `6df1e69a`) que quería saber si podía hacer tests de artículos sueltos de una ley larga. Sí se puede; lo que estaba mal era el rótulo de encima.

@@ -53,12 +53,20 @@ const sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 2 })
 const dormir = (s: number) => new Promise(r => setTimeout(r, s * 1000))
 const hhmm = (d: Date) => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
-/** Umbrales de lo que se considera «la firma» — los mismos que el detector de T-254. */
-const P95_ROJO = 5_000
+/** Umbrales de la firma — importados del detector REAL, no copiados: un segundo criterio que
+ *  deriva es peor que no tener criterio. */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { LATENCY_P95_THRESHOLDS, LATENCY_MIN_SAMPLES } = require('../lib/api/admin/endpoint-latency') as {
+  LATENCY_P95_THRESHOLDS: { user_facing: { amber: number; red: number } }
+  LATENCY_MIN_SAMPLES: number
+}
+const P95_ROJO = LATENCY_P95_THRESHOLDS.user_facing.red
 const LAG_GRAVE_MS = 10_000
 
 interface Muestra {
   pdfs: number; lagMax: number | null; p95: number | null; e504: number; usuarios504: number
+  /** Cuántas peticiones sostienen ese p95. SIN esto la herramienta miente. */
+  muestras: number
 }
 
 async function muestra(minutos: number): Promise<Muestra> {
@@ -75,6 +83,10 @@ async function muestra(minutos: number): Promise<Muestra> {
           AND duration_ms IS NOT NULL
           AND created_at > now() - (${minutos} || ' minutes')::interval) AS p95,
       (SELECT count(*)::int FROM observable_events
+        WHERE event_type = 'request_completed' AND endpoint = '/api/v2/answer-and-save'
+          AND duration_ms IS NOT NULL
+          AND created_at > now() - (${minutos} || ' minutes')::interval) AS muestras,
+      (SELECT count(*)::int FROM observable_events
         WHERE severity = 'error' AND event_type = 'http_5xx'
           AND ts > now() - (${minutos} || ' minutes')::interval) AS e504,
       (SELECT count(DISTINCT user_id)::int FROM observable_events
@@ -86,8 +98,9 @@ async function muestra(minutos: number): Promise<Muestra> {
 async function main() {
   console.log(`\n👁  Vigía del pico — hasta las ${HASTA}, muestreando cada ${CADA_MIN} min`)
   console.log(`   Firma que busca: PDFs + event-loop bloqueado + p95 de answer-and-save + 504 A LA VEZ.\n`)
-  console.log('   hora   PDFs   lag máx   p95 a&s    504 (usuarios)   veredicto')
-  console.log('   ─────  ─────  ────────  ─────────  ──────────────   ─────────')
+  console.log(`   Suelo de muestras: ${LATENCY_MIN_SAMPLES} — por debajo, el p95 es el máximo y NO cuenta como firma.\n`)
+  console.log('   hora   PDFs   lag máx   p95 a&s          504 (usr)  veredicto')
+  console.log('   ─────  ─────  ────────  ───────────────  ─────────  ─────────')
 
   const alertas: string[] = []
   let vueltas = 0
@@ -98,11 +111,20 @@ async function main() {
 
     // El veredicto exige COINCIDENCIA, no un número suelto: un p95 alto sin PDFs es otra cosa, y
     // unos PDFs sin lag son exactamente lo que queremos ver (que la Fase 1 funcione).
-    const grave = m.pdfs > 0 && ((m.lagMax ?? 0) >= LAG_GRAVE_MS || (m.p95 ?? 0) >= P95_ROJO || m.e504 > 0)
-    const veredicto = grave ? '🔴 FIRMA' : m.pdfs > 0 ? '🟢 PDFs sin daño' : '·'
+    // ⚠️ SUELO DE MUESTRAS — la lección que costó una falsa alarma el 30/07. Con n=3 en 5 minutos,
+    // `percentile_disc(0.95)` devuelve el MÁXIMO, así que 3 peticiones lentas sueltas se leían como
+    // «p95 de 25 s» y parecían una degradación que no existía (sin 504, sin lag, tráfico plano).
+    // El detector del panel ya tenía este suelo; esta herramienta se escribió sin él. Un p95 sin
+    // muestras detrás no es una medida, es el peor caso disfrazado de estadística.
+    const p95Fiable = m.muestras >= LATENCY_MIN_SAMPLES
+    const grave = m.pdfs > 0 && (
+      (m.lagMax ?? 0) >= LAG_GRAVE_MS || m.e504 > 0 || (p95Fiable && (m.p95 ?? 0) >= P95_ROJO))
+    const veredicto = grave ? '🔴 FIRMA'
+      : (m.p95 ?? 0) >= P95_ROJO && !p95Fiable ? `⚠️ pico suelto (n=${m.muestras}, no es p95)`
+      : m.pdfs > 0 ? '🟢 PDFs sin daño' : '·'
     if (grave) alertas.push(`${hhmm(ahora)} · ${m.pdfs} PDFs · lag ${Math.round((m.lagMax ?? 0) / 1000)}s · p95 ${m.p95}ms · ${m.e504} 504 (${m.usuarios504} usuarios)`)
 
-    console.log(`   ${hhmm(ahora)}  ${String(m.pdfs).padStart(5)}  ${String(m.lagMax ?? '—').padStart(8)}  ${String(m.p95 ?? '—').padStart(9)}  ${String(m.e504).padStart(4)} (${m.usuarios504})           ${veredicto}`)
+    console.log(`   ${hhmm(ahora)}  ${String(m.pdfs).padStart(5)}  ${String(m.lagMax ?? '—').padStart(8)}  ${String(m.p95 ?? '—').padStart(9)} (n=${String(m.muestras).padStart(3)})  ${String(m.e504).padStart(4)} (${m.usuarios504})   ${veredicto}`)
     vueltas++
     await dormir(CADA_MIN * 60)
   }
