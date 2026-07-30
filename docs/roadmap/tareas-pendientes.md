@@ -4165,6 +4165,22 @@ Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas tra
 - **Cabo asociado:** tras el flip, cerrar la **impugnación de Laura** (`8cdcba44`) que originó T-079 (flujo de disputes: borrador + OK de Manuel).
 - **Estado:** la pregunta está fuera de servicio (`is_active=false`) con el diagnóstico completo en las notas del AVR. Solo falta la decisión humana del flip.
 
+### [T-305] 🟡 [ABIERTO 30/07] Policía Municipal de Madrid: 29 de sus 40 temas no tienen NADA (ni scope ni preguntas)
+
+- **Quién lo reporta:** Chema (free, prepara esta oposición), en **dos feedbacks** el 29/07 (`5f053647` y `43b7b6a5`, el segundo idéntico tres minutos después): *«no está el temario completo para policia municipal de madrid, muchos temas pone que se estan actualizando, cuanto tardará?»*. Se le respondió el 30/07 diciendo que vamos publicando según terminamos y **ofreciéndole priorizar el tema que nos diga** — esta ficha es lo que sostiene esa promesa.
+- **Medido en RDS (30/07):** **11 de 40 temas disponibles**, 29 con `topic_scope` VACÍO y **0 preguntas**. No es que estén flojos: no tienen ni un artículo escopado, así que ni sirven test ni teoría.
+  - Disponibles: T1-T3 (Constitución), T4 (derecho administrativo), T21 (Código Penal I), T34 (seguridad ciudadana), T35 (extranjería), T37 (violencia de género), T38 (igualdad), T39 (trans y LGTBI), T40 (PRL). Entre todos sirven **11.766 preguntas activas**, así que la oposición **no parece vacía por fuera**: parece completa hasta que abres un tema de los otros 29.
+- **Lo que falta, por bloques** (es lo específico de la oposición, no reutilizable de otras):
+  - **Madrid**: T5 Estatuto de Autonomía, T6 Administración Local, T7 Reglamento Orgánico del Gobierno del Ayuntamiento, T10 Ley 1/2018 de Coordinación de Policías Locales, T36 Ley 5/2002 de drogodependencias.
+  - **El propio cuerpo**: T8 Reglamento del Cuerpo de Policía Municipal (1995), T9 LO 4/2010 de régimen disciplinario, T11-T12 Reglamento Marco, T33 modelo policial.
+  - **Ordenanzas municipales**: T13 taxi, T14 medio ambiente urbano, T15 limpieza, T16 movilidad sostenible, T17 contaminación acústica, T18 venta ambulante, T19 establecimientos y actividades recreativas.
+  - **Código Penal II-VII** (T22-T27) y **T20** tribunales y procedimiento penal.
+  - **Tráfico**: T28 organismos y competencias, T29 señalización, T30 denuncias, T31 accidentes, T32 alcoholemia.
+- **Por dónde empezar (barato → caro):** el bloque de **Código Penal** y el de **tráfico** se apoyan en normas estatales que probablemente ya estén importadas (mirar `laws` antes de nada): ahí el trabajo puede ser sobre todo **escopear y generar**, no importar. Las **ordenanzas de Madrid** son lo caro (hay que importarlas de fuente oficial, verbatim). Comprobar reutilización real antes de estimar.
+- **Demanda:** 15 usuarios con esta oposición en su perfil, **ninguno premium** todavía. **561 plazas** en la convocatoria (`BOE-A-2025-25740`). Es una oposición grande y con poca competencia nuestra; el temario a medias es justo lo que impide que alguno pase a premium.
+- **Reglas que aplican:** temario y artículos **verificados contra fuente oficial**, nunca inventados (`crear-nueva-oposicion.md` FASE 1). Gates obligatorios al terminar cada bloque: `audit:oposicion` + `audit:served` + `verify:scope`. Preguntas generadas con doble auditoría ciega (`generar-preguntas-con-ia.md`).
+- **Al cerrar (o al completar un bloque que le sirva):** avisar a Chema por su hilo `5f053647`.
+
 ## Importar contenido para cerrar residuo CE-relink (7 preguntas) — 19/07
 Del drenaje CE-mislink (837 resueltas) quedan 7 preguntas bloqueadas por FALTA DE CONTENIDO en BD.
 Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra fuente, NUNCA inventar):
