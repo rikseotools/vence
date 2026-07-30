@@ -1749,6 +1749,40 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Origen:** caracterizando el 77% de impugnaciones aceptadas que ningún detector vio venir ([T-207]). La familia «temario» era la mayor identificable (14%), y esta es la parte de ella que se puede comprobar a máquina.
 
 ### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
+
+> **🎯 OBJETIVO COMPLETO, DECIDIDO POR MANUEL (30/07/2026). Esto es lo que hay que construir, no un piloto.**
+>
+> Textualmente: *«debe estar para todas las oposiciones; si un opositor de otra oposición quiere el PDF se debería poder descargar. Cuando un tema cambia, el worker se debería poner a trabajar para crear la nueva versión, y si el PDF es muy grande trocearlo y al usuario dárselo y pintarlo troceado para que lo descargue por partes.»*
+>
+> **Se descartó el piloto de una sola oposición.** Ningún opositor debe quedarse sin su tema por la oposición que estudie.
+>
+> ### Lo que YA está construido y verificado (30/07) — no rehacerlo
+>
+> | Pieza | Estado | Dónde |
+> |---|---|---|
+> | Partir el tema por estructura | ✅ hecho | `lib/temario/pdf/planPartes.cjs` |
+> | La ruta sirve partes | ✅ hecho, tras el interruptor | `app/api/temario/[oposicion]/[topic]/pdf/route.ts` |
+> | **La interfaz descarga TODAS las partes con un clic** | ✅ hecho | `components/TopicPrintButton.tsx` (`estado === 'disponible_por_partes'`). El usuario NO elige parte por parte |
+> | El interruptor admite «todas» | ✅ hecho | `FEATURE_TEMARIO_PDF_PARTES_SCOPE` vacío o `all` = todas (`lib/temario/pdf/flagPartes.ts`) |
+> | **Regenerar al cambiar el tema** | ✅ hecho, y mejor de lo que parece | La clave de S3 lleva un hash del contenido: si cambia el articulado o el `topic_scope`, cambia la clave → *miss* → se regenera. **No hacen falta hooks de invalidación: el hash ES la versión** (`lib/temario/pdf/pdfCache.ts`). Y cada PARTE se cachea por el hash de SU propio contenido, así que cambiar un capítulo no invalida las demás |
+>
+> ### Lo que FALTA (esto es el trabajo)
+>
+> 1. **El worker NO sabe trocear.** Verificado: `scripts/pdf-worker.ts` no menciona partes por ningún lado — de madrugada genera siempre el PDF ENTERO. El troceado vive solo en la ruta que atiende en directo. Mientras siga así, los temas grandes se trocean **en la web, con el usuario esperando**, en vez de estar ya listos en S3.
+> 2. **El 413 no encola nada.** Cuando un tema no cabe, se devuelve el error y ahí muere: es la única señal de que un premium REAL quería ESE tema, y se tira. Ver [T-159], donde esto está acordado como una de las tres piezas que van juntas.
+> 3. **Encender el interruptor para todas** (`FEATURE_TEMARIO_PDF_PARTES=true` + `_SCOPE=all`). Es configuración en el task def + despliegue, no código.
+>
+> ### ⚠️ EL ORDEN IMPORTA, y no es el intuitivo
+>
+> **Encender el interruptor ANTES de que el worker sepa trocear empeora el incidente de [T-270].** Hoy un tema demasiado grande devuelve 413 sin consumir CPU; con el interruptor puesto y sin worker, ese mismo tema se **trocea y renderiza dentro de la web** — más trabajo pesado en el servidor que atiende a todos, justo lo que tumbó la plataforma el 29/07. El freno del semáforo evita la caída, pero el usuario espera igual.
+>
+> **Orden correcto:** (1) el worker aprende a trocear y deja las partes en S3 → (2) el 413 encola → (3) se enciende para todas, y entonces las partes ya están hechas y se sirven al instante.
+>
+> ### Lo que NO hay que confundir
+>
+> - **Esto NO arregla el incidente del 29/07** ([T-270]): aquello fueron 36 PDFs MEDIANOS, ninguno de más de 154 páginas. Partir los monstruos no lo habría evitado. Se sostiene solo, por producto.
+> - **La espera del usuario la decide [T-159]**, no esta ficha: mientras la cola sea por orden de llegada, una petición en directo se pone detrás del lote nocturno (hasta 20 min) y, si su tema ya estaba encolado, **se descarta en silencio**.
+> - **Contexto de infraestructura:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — qué máquinas hay y por qué existe cada una.
 - **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
 - **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
 

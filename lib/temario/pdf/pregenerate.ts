@@ -21,6 +21,11 @@ import { INSTANCE_ID } from '@/lib/observability/instanceId'
 import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS } from '@/lib/temario/pdf/topicPdfModel'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { planPartes } = require('@/lib/temario/pdf/planPartes.cjs') as {
+  planPartes: (c: unknown, max: number) => { total: number; partes: Array<{ indice: number; total: number; etiqueta: string; laws: unknown[] }> }
+}
 
 export interface PregenResult {
   oposicion: string
@@ -32,6 +37,85 @@ export interface PregenResult {
   ms?: number
   chars?: number
   error?: string
+  /** Nº de partes generadas cuando el tema no cabe entero (T-273). Ausente = tema de una pieza. */
+  partes?: number
+}
+
+/**
+ * Genera y sube CADA PARTE de un tema que no cabe entero (T-273).
+ *
+ * Una parte fallida NO aborta las demás: al opositor le sirve más recibir 4 de 5 partes que nada.
+ * El resultado global solo es `ok` si todas salieron, para que el job no se dé por bueno a medias.
+ */
+async function pregenerarPartes(
+  oposicion: string,
+  topicNumber: number,
+  content: NonNullable<Awaited<ReturnType<typeof getTopicContentUncached>>>,
+  plan: { total: number; partes: Array<{ indice: number; total: number; etiqueta: string; laws: unknown[] }> },
+  opts: { force?: boolean },
+  started: number,
+): Promise<PregenResult> {
+  const storage = new S3StorageAdapter()
+  const lawIds = (content.laws || []).map((l) => l.law.id).filter(Boolean)
+  const sectionNames = await getLawSectionNames(lawIds)
+
+  let bytes = 0
+  let subidas = 0
+  let saltadas = 0
+  const fallos: string[] = []
+
+  for (const parte of plan.partes) {
+    // Copia por parte, NUNCA mutar el contenido compartido: recortar `content.laws` in situ haría
+    // que la parte 2 se calculara sobre lo que dejó la 1 y las claves saldrían mal en cadena.
+    const trozo = { ...content, laws: parte.laws as typeof content.laws }
+    const hash = topicPdfContentHash(trozo)
+    const key = topicPdfCacheKey(oposicion, topicNumber, hash)
+
+    if (!opts.force) {
+      const ya = await storage.download({ bucket: TOPIC_PDF_BUCKET, path: key }).catch(() => null)
+      if (ya && ya.success) { saltadas++; bytes += ya.data.length; continue }
+    }
+
+    try {
+      const model = buildTopicPdfModel(trozo, new Date(), sectionNames)
+      const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
+      const raw = await renderToBuffer(doc)
+      // El estampado DEGRADA igual que en el tema entero: si falla, se sube sin chrome.
+      let buffer: Buffer = raw
+      try {
+        const stamped = await stampTopicPdfChrome(raw, { footer: model.footer, title: model.title })
+        buffer = Buffer.from(stamped.bytes)
+      } catch { /* sin chrome antes que sin PDF */ }
+
+      const up = await storage.upload({
+        bucket: TOPIC_PDF_BUCKET, path: key, data: buffer, contentType: 'application/pdf',
+        cacheControl: 'public, max-age=31536000, immutable',
+      })
+      if (!up.success) { fallos.push(`parte ${parte.indice}: upload ${up.error}`); continue }
+      subidas++
+      bytes += buffer.length
+    } catch (e) {
+      fallos.push(`parte ${parte.indice}: ${e instanceof Error ? e.message : 'desconocido'}`)
+    }
+  }
+
+  const ms = Date.now() - started
+  const ok = fallos.length === 0
+  emitFireAndForget({
+    source: 'fargate', severity: ok ? 'info' : 'warn', eventType: 'temario_pdf_pregenerated',
+    endpoint: '/api/admin/temario/pregenerate',
+    metadata: {
+      oposicion, tema: topicNumber, outcome: ok ? (subidas ? 'uploaded' : 'skipped') : 'partes_incompletas',
+      partes: plan.total, subidas, saltadas, fallos: fallos.length, bytes, ms, instanceId: INSTANCE_ID,
+      ...(fallos.length ? { error: fallos.slice(0, 3).join(' | ') } : {}),
+    },
+  })
+  return {
+    oposicion, tema: topicNumber, ok,
+    outcome: ok ? (subidas ? 'uploaded' : 'skipped') : 'error',
+    bytes, ms, partes: plan.total,
+    ...(ok ? {} : { error: fallos.slice(0, 3).join(' | ') }),
+  }
 }
 
 /**
@@ -54,6 +138,30 @@ export async function pregenerateTopicPdf(
   try {
     const content = await getTopicContentUncached(oposicion as OposicionSlug, topicNumber)
     if (!content) return { ...base, error: 'tema_no_encontrado' }
+
+    // ── Temas que NO caben enteros: generar sus PARTES (T-273) ────────────────────────────────
+    //
+    // Hasta el 30/07 esto generaba SIEMPRE el PDF entero, así que el troceado solo existía en la
+    // ruta que atiende al usuario: un tema grande se partía **en la web, con el opositor
+    // esperando**, que es el trabajo pesado que el 29/07 tumbó la plataforma ([T-270]).
+    //
+    // La clave está en generar EXACTAMENTE las mismas partes que la ruta pedirá. Por eso se usan
+    // sus mismas funciones (`planPartes` con `PDF_MAX_CHARS`, y el hash sobre el contenido YA
+    // recortado): si las claves no coincidieran, la ruta no encontraría nada en S3 y volvería a
+    // renderizar en línea — el trabajo del worker no lo aprovecharía nadie y el defecto sería
+    // invisible, porque todo "funcionaría".
+    //
+    // No depende del flag a propósito: pre-generar partes que aún no se sirven no molesta a nadie
+    // (son objetos en S3), y así el día que se enciende ya están hechas en vez de empezar de cero.
+    const chars = countContentChars(content)
+    if (!fitsSyncPdf(chars, maxArticleChars(content))) {
+      const plan = planPartes(content, PDF_MAX_CHARS)
+      if (plan.total > 1) {
+        return await pregenerarPartes(oposicion, topicNumber, content, plan, opts, started)
+      }
+      // total === 1 significa que no hay por dónde partirlo (un solo artículo gigante): se sigue
+      // por el camino normal, que sí sabe generarlo — aquí no hay límite de 60 s del ALB.
+    }
 
     const contentHash = topicPdfContentHash(content)
     const cacheKey = topicPdfCacheKey(oposicion, topicNumber, contentHash)
