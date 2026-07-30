@@ -1,0 +1,608 @@
+[
+  {
+    "id": "06d0e220-105f-4610-877d-fe2c0139e5a8",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 368,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Centro de movilidad.",
+    "q": "En un dispositivo portátil con Windows 11 instalado, queremos configur"
+  },
+  {
+    "id": "0ad48d4e-e5eb-4b58-ac81-8261b25e478d",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 310,
+    "ratio": 1,
+    "toks": 7,
+    "ausentes": [],
+    "clave": "Seleccionar \"Este equipo\" con botón izquierdo de ratón y arrastrar al ",
+    "q": "Si queremos crear un acceso directo de la herramienta \"Este equipo\" en"
+  },
+  {
+    "id": "0e0867f0-7b24-4eff-b461-f2c803666fa0",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 348,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Asistencia rápida.",
+    "q": "Trabajamos en un dispositivo con Windows 11 y necesitamos compartirlo "
+  },
+  {
+    "id": "1389d77a-6dd1-4cad-a510-d1c6401f7a56",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 354,
+    "ratio": 1,
+    "toks": 8,
+    "ausentes": [],
+    "clave": "Es posible optar por ocultar la búsqueda, mostrar únicamente el icono ",
+    "q": "¿Cuál de las siguientes afirmaciones es correcta con respecto a las bú"
+  },
+  {
+    "id": "15b81b24-f003-42b1-8a0f-9a50bf5738ce",
+    "ley": "Excel 365",
+    "num": "210",
+    "exp": 347,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Imprimir selección.",
+    "q": "En un libro de Excel 365 tenemos varias hojas, y en la hoja activa var"
+  },
+  {
+    "id": "1ed7c890-4369-48fb-9c32-215925188d84",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 19,
+    "ratio": 0.7777777777777778,
+    "toks": 9,
+    "ausentes": [
+      "utilice",
+      "configurando"
+    ],
+    "clave": "Inicio → formato condicional → nueva regla que utilice la fórmula “=L2",
+    "q": "¿Cuál es la forma correcta en Excel de conseguir que en la celda B22 d"
+  },
+  {
+    "id": "29e1b5b6-9ccb-4c4c-88e2-1898534ce15b",
+    "ley": "CE",
+    "num": "preámbulo",
+    "exp": 616,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "El pueblo español.",
+    "q": "De acuerdo con su Preámbulo, ¿quién ratifica la Constitución Española "
+  },
+  {
+    "id": "2bd5cd1d-7e1b-4986-b164-2a7540037cdb",
+    "ley": "La Red Internet",
+    "num": "10",
+    "exp": 306,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "Computación en la nube.",
+    "q": "El acceso a servicios informáticos bajo demanda por Internet, a recurs"
+  },
+  {
+    "id": "3356030d-b747-4f31-bd36-90c6f1b519da",
+    "ley": "Excel 2016",
+    "num": "4",
+    "exp": 47,
+    "ratio": 0,
+    "toks": 1,
+    "ausentes": [
+      "toroidal"
+    ],
+    "clave": "Toroidal.",
+    "q": "¿Cuál de los siguientes NO es un tipo de gráfico incluido en Microsoft"
+  },
+  {
+    "id": "439055a4-6933-475d-8e4c-81488be59301",
+    "ley": "Excel CyL",
+    "num": "1",
+    "exp": 14,
+    "ratio": 1,
+    "toks": 5,
+    "ausentes": [],
+    "clave": "BUSCAR, BUSCARV, COLUMNA, FILA, INDICE Y DESREF.",
+    "q": "¿En Excel, cuáles de estas funciones forman parte de las de búsqueda y"
+  },
+  {
+    "id": "44f6e409-3ba6-47ce-864a-0c25e3a40761",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 10,
+    "ratio": 1,
+    "toks": 4,
+    "ausentes": [],
+    "clave": "Seleccionar el rango F9:F24 > pulsar Crtl + Mayús + %",
+    "q": "En la “Hoja Excel 1” del Anexo Excel, ¿qué opción se utiliza para esta"
+  },
+  {
+    "id": "49283903-87b6-4935-9055-af7998fe342e",
+    "ley": "Excel CyL",
+    "num": "1",
+    "exp": 13,
+    "ratio": 1,
+    "toks": 3,
+    "ausentes": [],
+    "clave": "Calcula el número de días entre dos fechas.",
+    "q": "En Excel La función DIAS360, nos devuelve:"
+  },
+  {
+    "id": "493afc20-7cae-480a-958b-d973849d8eb9",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 19,
+    "ratio": 0.8,
+    "toks": 10,
+    "ausentes": [
+      "ajustandola",
+      "correspondientes"
+    ],
+    "clave": "Excel copia automáticamente la fórmula hacia abajo en la columna, ajus",
+    "q": "Si hacemos doble clic con el ratón sobre la esquina inferior derecha d"
+  },
+  {
+    "id": "4a7c00bc-d4ff-4ada-bfcc-57fc06ea6e62",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 393,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "Historial.",
+    "q": "¿Cuál de las siguientes funciones de Windows 11 permite hacer copias d"
+  },
+  {
+    "id": "4aa025af-7a5e-491e-b534-74da25d61060",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 375,
+    "ratio": 1,
+    "toks": 11,
+    "ausentes": [],
+    "clave": "Es una característica de Windows que muestra diferentes imágenes de fo",
+    "q": "¿Qué es el 'Contenido destacado' de Windows 11?"
+  },
+  {
+    "id": "523ebbe2-07c1-4368-86ab-03fe7efab86f",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 60,
+    "ratio": 1,
+    "toks": 4,
+    "ausentes": [],
+    "clave": "=BUSCARV(O2;Categorias;2;FALSO)+BUSCARV(P2;Niveles;2;FALSO)+'Categoria",
+    "q": "En la columna Q del anexo Excel calculamos el salario anual sumando el"
+  },
+  {
+    "id": "5c725e78-ccd1-4fb9-978e-c97c20b30bec",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 18,
+    "ratio": 1,
+    "toks": 14,
+    "ausentes": [],
+    "clave": "Herramientas de tabla dinámica → Analizar → Cálculos → Campos, element",
+    "q": "En la tabla dinámica del supuesto Excel ¿cómo hemos insertado el campo"
+  },
+  {
+    "id": "5cf15668-e949-4bf0-abd3-ec866bfdc2ae",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 13,
+    "ratio": 0.6666666666666666,
+    "toks": 3,
+    "ausentes": [
+      "clicar"
+    ],
+    "clave": "Seleccionar la celda H20 > Clicar en (1) > Clicar en (3)",
+    "q": "En la “Hoja Excel 1” del Anexo Excel, se muestran unas flechas que ind"
+  },
+  {
+    "id": "689eac2b-0c81-4864-a5f4-840a7fcc9572",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 10,
+    "ratio": 1,
+    "toks": 7,
+    "ausentes": [],
+    "clave": "“Aplicar formato únicamente a los valores con rango inferior o superio",
+    "q": "En la “Hoja Excel 1” del Anexo Excel se quiere que, de manera automáti"
+  },
+  {
+    "id": "6ab44c67-ea60-4a00-85f2-32a0aff5e7c3",
+    "ley": "Orden HAP/1949/2014",
+    "num": "8",
+    "exp": 321,
+    "ratio": 1,
+    "toks": 3,
+    "ausentes": [],
+    "clave": "Internet, las oficinas 060 y el teléfono 060.",
+    "q": "Conforme a la regulación contenida en la Orden HAP/1949/2014, de 13 de"
+  },
+  {
+    "id": "6d515fb7-5c4b-4b9a-a986-1ee3a0d529ee",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 354,
+    "ratio": 0.8666666666666667,
+    "toks": 15,
+    "ausentes": [
+      "podamos",
+      "mirar"
+    ],
+    "clave": "Es posible vincular teléfonos Android o iPhone con Windows 11, de modo",
+    "q": "Indique la afirmación correcta con respecto a la configuración de telé"
+  },
+  {
+    "id": "74bd6e7c-7be5-46ef-b1ea-923e6e09ed62",
+    "ley": "CE",
+    "num": "37",
+    "exp": 495,
+    "ratio": 0.5,
+    "toks": 4,
+    "ausentes": [
+      "podra",
+      "regularse"
+    ],
+    "clave": "Sólo por ley podrá regularse el ejercicio de este derecho.",
+    "q": "Señale la respuesta correcta en relación con el derecho a la negociaci"
+  },
+  {
+    "id": "76aeb946-47dc-4f44-9354-edac2400df19",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 61,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "=O2&P2&DERECHA(A2;3)",
+    "q": "En la celda B2 del anexo Excel, se encuentra el identificador del trab"
+  },
+  {
+    "id": "7a68f4cc-cbd3-43de-ba2f-f8da8ab6afe4",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 13,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "=RESIDUO(B9;2)=0",
+    "q": "En la “Hoja Excel 2” del Anexo Excel, al rango de celdas B9:E13 se le "
+  },
+  {
+    "id": "82515bd2-e0ab-47b9-90f2-1c9a96e5006f",
+    "ley": "Agenda 2030",
+    "num": "0",
+    "exp": 331,
+    "ratio": 0.25,
+    "toks": 4,
+    "ausentes": [
+      "planeta",
+      "personas",
+      "prosperidad"
+    ],
+    "clave": "Planeta, personas, prosperidad, paz y alianzas",
+    "q": "Los cinco elementos fundamentales de la Agenda 2030 conocidos como las"
+  },
+  {
+    "id": "87836140-9714-4aa4-89dc-2582f8b0f4cd",
+    "ley": "Informática Básica",
+    "num": "1",
+    "exp": 299,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "Android 16",
+    "q": "De las opciones propuestas, indique cuál es la última versión del Sist"
+  },
+  {
+    "id": "8a393138-7b61-415d-93e3-fac114082304",
+    "ley": "Supuesto Word CyL",
+    "num": "1",
+    "exp": 20,
+    "ratio": 0.8947368421052632,
+    "toks": 19,
+    "ausentes": [
+      "continuacion",
+      "desvincular"
+    ],
+    "clave": "Colocar el cursor al final de la primera página. Hacer clic en “Dispos",
+    "q": "En la segunda página del documento Anexo Word se puede observar que el"
+  },
+  {
+    "id": "8b23bdc4-7f03-45c0-a565-46fc2bfe771d",
+    "ley": "CE",
+    "num": "10",
+    "exp": 302,
+    "ratio": 0,
+    "toks": 1,
+    "ausentes": [
+      "articulo"
+    ],
+    "clave": "Del artículo 10 al 55.",
+    "q": "¿Qué artículos componen el Título I de la Constitución Española?"
+  },
+  {
+    "id": "8bdb4814-4c90-4a8e-90eb-4aaae071a6e5",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 18,
+    "ratio": 1,
+    "toks": 3,
+    "ausentes": [],
+    "clave": "=SUMAR.SI.CONJUNTO(I22:I30; I22:I30; \"<\"&PROMEDIO(I22:I30))",
+    "q": "¿Cuál sería la función correcta en Excel para que en la celda H34 del "
+  },
+  {
+    "id": "8c69cf35-7b24-4ca6-857e-45875a3f9fd2",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 339,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Editor de Registro.",
+    "q": "¿Con qué herramienta accedemos a la base de datos jerárquica que conti"
+  },
+  {
+    "id": "915c35f4-bcab-4447-aa3f-36c3f89ae311",
+    "ley": "Word 365 Escritorio",
+    "num": "4",
+    "exp": 329,
+    "ratio": 0.6666666666666666,
+    "toks": 6,
+    "ausentes": [
+      "posible",
+      "reutilizarlo"
+    ],
+    "clave": "Es posible guardar el remite en Word, para reutilizarlo, en las opcion",
+    "q": "Vamos a escribir e imprimir un sobre con Word 365. ¿Cuál de las siguie"
+  },
+  {
+    "id": "9355afd7-8f65-4c57-b68e-eb597c3819a4",
+    "ley": "CE",
+    "num": "10",
+    "exp": 324,
+    "ratio": 0,
+    "toks": 1,
+    "ausentes": [
+      "correcta"
+    ],
+    "clave": "Ninguna es correcta.",
+    "q": "El artículo 10 de la Constitución Española:"
+  },
+  {
+    "id": "99f38bc9-7fc2-4462-8703-6c16051c2bbc",
+    "ley": "Supuesto Word CyL",
+    "num": "1",
+    "exp": 19,
+    "ratio": 1,
+    "toks": 10,
+    "ausentes": [],
+    "clave": "“Cuadro combinado”, donde las series “2018” y “2019” son de tipo de gr",
+    "q": "En la segunda página del documento de Word anexo se desea cambiar el t"
+  },
+  {
+    "id": "a93b541a-9ce3-4d5a-819b-78bf5a55b0fa",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 13,
+    "ratio": 0.9090909090909091,
+    "toks": 11,
+    "ausentes": [
+      "luego"
+    ],
+    "clave": "Escribir la primera línea de texto en la barra de fórmulas, pulsar la ",
+    "q": "En la “Hoja Excel 1” del Anexo Excel, para escribir dentro de una mism"
+  },
+  {
+    "id": "aad07b55-2633-4275-ba58-a515cd2aa35b",
+    "ley": "Excel CyL",
+    "num": "1",
+    "exp": 60,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "=SI(FECHA.MES(L2;360)<K2;FECHA.MES(L2;360);\"No procede\")",
+    "q": "En la columna N del anexo Excel, se muestra la fecha en la que los tra"
+  },
+  {
+    "id": "b0116080-5d5a-4ba3-a572-c8c9164b03c4",
+    "ley": "Excel CyL",
+    "num": "1",
+    "exp": 13,
+    "ratio": 1,
+    "toks": 4,
+    "ausentes": [],
+    "clave": "Seleccionar “REVISAR” > Proteger libro.",
+    "q": "Si queremos proteger el libro de Excel actual con una contraseña, ¿qué"
+  },
+  {
+    "id": "b7ae3c61-100c-4307-97f2-c0dc192c44a5",
+    "ley": "Outlook 365",
+    "num": "2",
+    "exp": 315,
+    "ratio": 0.625,
+    "toks": 8,
+    "ausentes": [
+      "sitio",
+      "sharepoint",
+      "eventos"
+    ],
+    "clave": "Si hay acceso a un sitio de SharePoint, es posible ver las listas de e",
+    "q": "En Outlook 365, ¿cuál de las siguientes afirmaciones es correcta con r"
+  },
+  {
+    "id": "bbae979c-2a17-48eb-b4af-6281f51e973a",
+    "ley": "CE",
+    "num": "43",
+    "exp": 303,
+    "ratio": 0,
+    "toks": 4,
+    "ausentes": [
+      "capitulo",
+      "tercero",
+      "titulo",
+      "primero"
+    ],
+    "clave": "El Capítulo Tercero del Título Primero.",
+    "q": "El derecho a la protección de la salud reconocido por la Constitución "
+  },
+  {
+    "id": "c56bb7f9-d6b9-451d-b754-c540679b6155",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 393,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Administrador de tareas.",
+    "q": "Queremos saber el impacto en el consumo de energía de una aplicación q"
+  },
+  {
+    "id": "c5d63ae7-bc12-45e1-900c-f0a84c7c5108",
+    "ley": "Equipamientos municipales Córdoba",
+    "num": "6",
+    "exp": 5,
+    "ratio": 1,
+    "toks": 3,
+    "ausentes": [],
+    "clave": "Las Juntas Municipales de Distrito.",
+    "q": "Los distritos en que se organiza el municipio de Córdoba están coordin"
+  },
+  {
+    "id": "ca799c09-d3a0-4628-bba3-08282efe8949",
+    "ley": "Supuesto Excel CyL",
+    "num": "1",
+    "exp": 60,
+    "ratio": 1,
+    "toks": 3,
+    "ausentes": [],
+    "clave": "=MAYUSC(UNIRCADENAS(\" \"; VERDADERO; C2; D2; E2))",
+    "q": "En la celda F2 del anexo Excel, se han combinado el nombre y los apell"
+  },
+  {
+    "id": "d6482ad1-c931-46d4-901c-64e0d38bb246",
+    "ley": "CE",
+    "num": "0",
+    "exp": 745,
+    "ratio": 1,
+    "toks": 1,
+    "ausentes": [],
+    "clave": "El artículo 51.",
+    "q": "¿Cuál de los siguientes artículos de la Constitución Española de 1978 "
+  },
+  {
+    "id": "d8ffcd45-7370-4669-9971-6f9d5d646860",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 359,
+    "ratio": 0.8,
+    "toks": 10,
+    "ausentes": [
+      "obtener",
+      "resultados"
+    ],
+    "clave": "Obtener resultados aún más rápido al buscar archivos, mensajes de corr",
+    "q": "De las siguientes propuestas, ¿cuál es la utilidad principal de indexa"
+  },
+  {
+    "id": "dcc3a220-8b99-4071-92f8-38c7686f7f4e",
+    "ley": "Windows 11",
+    "num": "1",
+    "exp": 358,
+    "ratio": 1,
+    "toks": 7,
+    "ausentes": [],
+    "clave": "Ambos datos están disponibles en la sección 'Acerca de', de la Configu",
+    "q": "En Windows 11, ¿cuál de las siguientes afirmaciones es verdadera con r"
+  },
+  {
+    "id": "dd9d9f87-405c-4a46-99e3-5153985cb6f0",
+    "ley": "Constantes vitales",
+    "num": "2",
+    "exp": 5,
+    "ratio": 0.5,
+    "toks": 2,
+    "ausentes": [
+      "sangre"
+    ],
+    "clave": "Oxigeno en sangre.",
+    "q": "¿Qué mide el pulsioxímetro?"
+  },
+  {
+    "id": "e46acb7e-43a8-4e70-aeed-8035e4872733",
+    "ley": "Word 365",
+    "num": "1",
+    "exp": 336,
+    "ratio": 1,
+    "toks": 2,
+    "ausentes": [],
+    "clave": "Insertar índice.",
+    "q": "¿Cuál de las características de Word 365 será la adecuada para enumera"
+  },
+  {
+    "id": "e7b97b3f-441a-440b-883b-19b07ed8b928",
+    "ley": "Comunicacion sanitaria",
+    "num": "2",
+    "exp": 6,
+    "ratio": 0,
+    "toks": 1,
+    "ausentes": [
+      "sumiso"
+    ],
+    "clave": "Sumiso",
+    "q": "Cuando una persona no expresa sus verdaderos sentimientos y opiniones,"
+  },
+  {
+    "id": "ea844def-546d-434e-b5f6-7d06f3a67f19",
+    "ley": "Constantes vitales",
+    "num": "2",
+    "exp": 5,
+    "ratio": 0.6666666666666666,
+    "toks": 3,
+    "ausentes": [
+      "hemoglobina"
+    ],
+    "clave": "La Saturación de oxígeno de la hemoglobina.",
+    "q": "Con el pulsioxímetro podemos monitorizar:"
+  },
+  {
+    "id": "eb1a0ed0-8d06-478a-b76e-e99d56a78aaf",
+    "ley": "Excel 2016",
+    "num": "4",
+    "exp": 67,
+    "ratio": 0.8,
+    "toks": 5,
+    "ausentes": [
+      "herramientas"
+    ],
+    "clave": "Herramientas de tabla > Diseño de tabla > Herramientas > Quitar duplic",
+    "q": "En Excel 2016, la opción “Quitar duplicados” cuando el rango está conv"
+  },
+  {
+    "id": "f82d2c6f-279e-46f2-9606-d49b3cc0e372",
+    "ley": "Word 2016",
+    "num": "3",
+    "exp": 52,
+    "ratio": 0.5714285714285714,
+    "toks": 7,
+    "ausentes": [
+      "contenido",
+      "dentro",
+      "permanece"
+    ],
+    "clave": "El texto o contenido dentro de la celda se elimina, pero la celda perm",
+    "q": "¿Qué ocurre si seleccionas una celda en una tabla de Word 2016 y presi"
+  }
+]

@@ -1,4 +1,74 @@
-# Adjudicación pendiente — 8 casos críticos de T-291 (30/07/2026)
+# Adjudicación — 8 casos críticos de T-291 (30/07/2026)
+
+> **TERCERA PASADA hecha el 30/07.** Las dos pasadas de abajo (verificación + auditoría ciega) son la
+> materia prima; esta sección es el veredicto, resuelto mirando las imágenes de opción una a una y
+> cruzando cada afirmación de interfaz contra fuente. **Nada se ha escrito todavía en la BD.**
+
+| pregunta | veredicto de la 3.ª pasada | acción propuesta |
+|---|---|---|
+| `55c6e0c9` | **clave mal** — C es el icono `fx` (Fórmulas); Valores es el `123` | clave C → **A** + volver a visible |
+| `d0614236` | **clave mal** — C es `123`+brocha (*valores y formato de origen*); Formato es el de líneas+brocha | clave C → **D** + volver a visible |
+| `d94d07d9` | **clave mal** — en Word **2016** la pestaña es *Presentación*; *Disposición* es de Word 365 | clave B → **C** + volver a visible |
+| `a7ab2b0c` | **clave BIEN** — el botón sí se llama «Modificar» en el Excel español | volver a visible + corregir el contenedor (T-302) |
+| `6f8d7590` | **sin defecto** — `Alt+Ctrl+O` **sí** es nota al pie en el Word español | ninguna + corregir la nota del contenedor (T-302) |
+| `aad17666` | **sin defecto** — `Ctrl+Mayús+V` hoy pega valores, luego solo C es inválida | ninguna |
+| `f1eadf63` | **defecto NUESTRO en el enunciado**, no en las opciones | restaurar el ejemplo del anexo (Burgos→BU) |
+| `1bf7cd05` | **clave mal** (D es falsa), pero **A y B son ambas negativas** → pregunta mal construida | decisión de Manuel (abajo) |
+
+## Cómo se resolvió cada uno
+
+**Los dos de iconos (`55c6e0c9`, `d0614236`).** Descargadas y ampliadas ×6 las 8 imágenes de opción.
+En la de **valores**: A=`123`, B=portapapeles+documento, **C (clave)=`fx`**, D=`%`+brocha → la clave
+marca *Fórmulas* donde se pide *Valores* ⇒ correcta **A**. En la de **formato**: A=`fx`, B=`%`+brocha,
+**C (clave)=`123`+brocha** (*valores y formato de origen*, que sí pega el dato), D=portapapeles con
+líneas formateadas y brocha, **sin indicador de tipo de dato** = el icono real de *Formato* ⇒ correcta
+**D**. Los dos iconos se reutilizan entre ambas preguntas de forma consistente, lo que cierra la lectura.
+
+**`d94d07d9` (Word 2016, Autoajustar).** aulaClic Word 2016 y el propio contenedor coinciden: las
+pestañas de Herramientas de tabla en Word 2016 son *Diseño* y **Presentación**, y *Autoajustar* vive en
+**Presentación > grupo Tamaño de celda**. *Disposición* es el renombrado de Word 365/2019. El enunciado
+fija «En Word 2016» ⇒ correcta **C**. La explicación actual afirma justo lo contrario.
+
+**`a7ab2b0c` (macro de Excel).** El cuadro *Ver macros* del Excel **español** tiene el botón
+**«Modificar»** (automateexcel es). La clave C era correcta desde el principio; **lo que está mal es
+nuestro contenedor**, que afirma que ese botón no existe y que se llama «Editar». La pregunta se retiró
+por un error de nuestra propia fuente.
+
+**`6f8d7590` (nota al pie).** ⚠️ **Falso positivo de las dos pasadas, por la trampa de traducción que
+ya está documentada.** La página `es-es` de Microsoft reproduce los atajos **ingleses**. El set español
+está desplazado en bloque por iniciales: `Alt+Ctrl+E` = vista **E**squema (inglés: Ctrl+Alt+O,
+**O**utline) y `Alt+Ctrl+D` = vista **D**iseño de impresión (inglés: Ctrl+Alt+P), lo que libera la `O`
+⇒ **`Alt+Ctrl+O` = insertar nota al pie**. Confirmado en dos listados españoles independientes
+(epapontevedra, academiacartablanca) coherentes entre sí, y en el hilo de MS Q&A donde WordExperto
+recuerda que la página oficial es una traducción del inglés. **La clave C es correcta.**
+
+**`aad17666` (pegar solo valores).** La duda era si la opción D (`Mayús+Ctrl+V`) también sería inválida,
+lo que daría dos respuestas. Microsoft incorporó `Ctrl+Mayús+V` como pegado de valores real en Excel
+365, así que **hoy D es un método válido** y la única opción inválida sigue siendo C («Pegar sin
+fórmulas» no existe como botón). **Sin defecto.**
+
+**`f1eadf63` (fórmulas de iniciales).** Abierta la imagen del anexo: la tabla real es
+*Provincia / Inicial*, con **B23 = «Burgos»** y **C23 = «BU»**. Nuestro enunciado dice en cambio
+«un nombre completo (por ejemplo, "Manuel García")». Ese ejemplo lo pusimos nosotros y **contradice a
+su propia imagen** — y es lo que crea la ambigüedad: con 13 caracteres,
+`REEMPLAZAR(B23;1;10;…)` deja «MAcía», así que la opción B tampoco daría el resultado y habría dos
+respuestas válidas. Con «Burgos» (6 caracteres) B sí devuelve «BU» y **solo D falla**, por error de
+sintaxis (`MAYUSC` no admite tres argumentos). **La clave D es correcta; el defecto es el ejemplo
+inventado en el enunciado.**
+
+**`1bf7cd05` (termómetro timpánico).** El manual clínico del H. Virgen del Rocío dice literalmente
+«Evitar realizar la medición de la temperatura timpánica en pacientes con infecciones agudas de oído,
+tubo de drenaje timpánico o tapones de cerumen voluminosos», así que la clave actual («Sí, es
+correcto») es **falsa**. Pero **A** («No es correcto dado el estado del paciente») y **B** («No se debe
+poner… ya que alteraría la temperatura») son **las dos negativas y las dos defendibles**: B es la
+respuesta canónica de los bancos TCAE porque da el motivo, pero A no es falsa. Es una pregunta mal
+construida, no solo mal clavada. No es de examen oficial y vive en un contenedor de los que T-302
+bloquea, con 5 apariciones. **Decisión de Manuel:** (a) clave → B y reescribir A como distractor claro,
+o (b) dejarla retirada hasta que T-302 enriquezca el contenedor.
+
+---
+
+## Anexo — las dos pasadas originales
 
 Preguntas donde la revisión detectó un posible defecto de **CLAVE** o de **OPCIONES**. Cada una pasó
 por **dos pasadas independientes**: la verificación del lote y una **auditoría ciega** (otro agente,
@@ -102,21 +172,35 @@ reversible: una transición a `approved` / `tech_approved` las devuelve a los te
 
 ---
 
-## Qué falta decidir
+## Qué queda por autorizar
 
-1. **Las tres con acuerdo pleno** (`55c6e0c9`, `d0614236`, `d94d07d9`): aprobar el cambio de clave (o
-   rechazarlo) y devolver la pregunta a visible. Dos son de **iconos**: los dos agentes descargaron y
-   miraron las imágenes por separado y llegaron al mismo icono, pero conviene una mirada humana antes
-   de fijar la clave.
-2. **`1bf7cd05` (termómetro timpánico en otitis):** las dos pasadas coinciden en que la respuesta
-   marcada está mal, pero **proponen opciones distintas** como correcta. Hay que elegir cuál — y ahí
-   el criterio clínico manda sobre el de los agentes.
-2. **La discrepante (`a7ab2b0c`):** el desacuerdo no es sobre Excel, es sobre **nuestro propio
-   contenedor**, que afirma que el botón «Modificar» no existe cuando sí existe en el Excel español.
-   Si la auditoría tiene razón, la clave estaba bien y lo que hay que arreglar es el contenido → T-302.
-3. **Los defectos de opciones:** son preguntas de examen con una opción mal redactada (un atajo que no
-   corresponde, una fórmula que tampoco produce el resultado). En preguntas oficiales no se toca el
-   enunciado, así que hay que decidir entre dejarlas anotadas o jubilarlas.
+Todo lo adjudicado arriba está **decidido pero sin escribir**. Falta el visto bueno de Manuel para:
+
+1. **Tres cambios de clave** (`55c6e0c9` C→A, `d0614236` C→D, `d94d07d9` B→C) y devolver esas tres a
+   visible.
+2. **Devolver `a7ab2b0c` a visible sin tocar la clave** (se retiró por un error de nuestro contenedor).
+3. **Restaurar el ejemplo de `f1eadf63`** al de su propio anexo (Burgos → «BU»), que es lo que elimina
+   la ambigüedad. No es tocar un examen oficial: es deshacer una paráfrasis nuestra que contradice la
+   imagen adjunta de la propia pregunta.
+4. **Decidir `1bf7cd05`**: repararla (clave → B y reescribir la opción A como distractor claro) o
+   dejarla retirada hasta T-302.
+
+## Lo que esto deja para T-302 (contenido de los contenedores)
+
+Tres errores **de nuestra propia fuente** — y dos de ellos son los que provocaron falsos positivos:
+
+- «Supuesto Excel CyL»: afirma que el botón «Modificar» no existe en *Ver macros* y que se llama
+  «Editar». Es al revés.
+- «Supuesto Word CyL»: lleva una nota interna que da `Alt+Ctrl+O` por erróneo. Es el atajo correcto
+  del Word español.
+- «Word 2016»: el artículo acierta (*Diseño y Presentación*) pero la explicación de la pregunta
+  afirmaba lo contrario; se rehace al reparar la clave.
+
+**Lección de método:** dos de los ocho casos no eran defectos de la pregunta sino **de la fuente contra
+la que se verificó**. Cuando la única prueba de cargo es un contenedor virtual, el veredicto vale lo
+que valga el contenedor. Y un tercero (`6f8d7590`) cayó en la trampa de traducción de los atajos, que
+ya estaba documentada: la página `es-es` de Microsoft **no** refleja los atajos de la instalación
+española.
 
 Trazabilidad en BD: `ai_verification_results` con `ai_provider` `claude_code_t291_escalon2`
 (verificación) y `claude_code_t291_audit_ciega` (auditoría), ambas con `review_method_version = v2.1`.
