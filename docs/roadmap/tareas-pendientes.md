@@ -14,6 +14,32 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+### [T-299] 🟠 [ABIERTO 30/07] `check-boe-changes` perdió el ciclo del 29/07: tick sin `cron_run` con el contenedor VIVO
+
+- **Qué:** el cron (`0 8 * * *` UTC, monitor de cambios del BOE) emitió su `cron_tick` el 29/07 a las 08:00 y **no emitió `cron_run`** — ni de éxito ni de fallo. Un día entero de vigilancia del BOE perdido.
+- **Por qué NO es el patrón de [T-162]:** allí la causa era una ejecución de 6 h atropellada por reinicios del contenedor. Aquí no encaja: este cron **completó los 13 días anteriores sin fallar uno**, tardando entre **5,5 y 20,5 min** (330 s – 1.230 s), y a las 08:00 de ese mismo día **otros seis crons SÍ emitieron `cron_run`** (`process-verification-queue`, `canary-synthetic-external`, `canary-redis-upstash`, `conversion-drain`, `subscription-reconciliation`, `outbox-processor`), así que el proceso estaba vivo. Tampoco hay eventos de boot/deploy en la ventana 06:00-12:00.
+- **Causa: SIN ESTABLECER.** No hay que inventarla: el candidato obvio es que el fetch de un boletín se quedara colgado sin timeout (el cron descarga ~726 documentos, 120-135 MB por ejecución), pero eso hay que **medirlo en los logs de Fargate de esa ventana**, no suponerlo.
+- **Lo detectó bien el sistema:** `cron_started_not_finished` disparó 3 veces (08:50, 14:55, 20:55). Es el detector que nació de T-162 haciendo exactamente su trabajo. ⚠️ **Pero es de severidad `error`, así que desde [T-272] YA NO manda correo**: si esto se repite, solo se ve en `/admin/salud-sistema`. Decidir en T-300 si merece `emailAlways`.
+- **Cómo:** (1) verificar la ejecución del 30/07 08:00 UTC — si completa, fue un incidente aislado y la ficha se cierra con la causa anotada; si vuelve a colgarse, es sistemático; (2) mirar los logs de esa ventana buscando en qué documento se quedó; (3) si es un fetch sin timeout, ponerle uno — un cron que se cuelga en una descarga se lleva el ciclo entero por delante.
+- **Observación aparte, NO confundir con esto:** todas las ejecuciones reportan `errors: 179` de 726 documentos comprobados (25%), estable desde el 21/07 y creciendo con el total. Puede ser legítimo (boletines regionales con WAF/403, ver memoria `reference-fetch-boletin-waf-playwright`) o deuda real. **No se toca en esta ficha** — merece medirse por separado antes de decidir si es un problema.
+- **Origen:** análisis de salud del 30/07 (el que abrió [T-272]).
+
+### [T-300] 🟡 [ABIERTO 30/07] Decidir si `error`/`warn` vuelven al buzón: el filtro de severidad deja 18 de 28 problemas sin avisar por correo
+
+- **De dónde sale:** [T-272] bajó el canal de alertas de 56 a 5,0 correos/día con tres capas. Dos de ellas (backoff por problema y agrupación por tick) no tienen contrapartida. La tercera —**solo `critical` va al buzón**— sí la tiene, y quedó registrada dentro de una ficha ya cerrada, que es donde nadie la ve. Por eso vive aquí.
+- **La medida:** el **backoff solo** ya baja a **8,7 correos/día**. Añadir el filtro de severidad lleva a **5,0/día**, o sea **cuesta ~3,7 correos/día**. A cambio, **18 de los 28 problemas medidos dejan de emailear nunca**, entre ellos:
+  - `main_ci_rojo` — ya EXENTO con `emailAlways: true` (es `error` pero bloquea a todo el mundo; coste medido: 1 disparo en 7 días).
+  - `frontend_saturation` (4 canaries en timeout simultáneo) · `endpoint_latency_sustained` (p95 de 13 s) · `client_edge_sustained` — degradación que SÍ nota el usuario.
+  - `cron_started_not_finished` — el que cazó [T-299].
+  - `daily_quota_overcharge` — cobro de más a usuarios free (ver [T-260]).
+- **El fondo del problema:** la severidad de este catálogo **no es un buen proxy de "merece correo"**. `event_loop_lag` es `critical` y era el mayor spammer (180 correos en 5 días); `main_ci_rojo` es `error` y bloquea el trabajo de todos. Mientras esa clasificación no se revise, filtrar por severidad silencia por la etiqueta y no por la gravedad.
+- **Las tres salidas, en orden de coste:**
+  1. **`ALERT_EMAIL_MIN_SEVERITY=warn` en SSM** — un parámetro, sin desplegar: vuelve todo al buzón con el backoff puesto (8,7/día). Reversible en un minuto.
+  2. **`emailAlways: true` en las 4-5 reglas que significan "la app está rota"** — quirúrgico, pero hay que elegirlas una a una **con el simulador delante** (`npm run sim:fatiga-email` lista los que quedarían mudos).
+  3. **Revisar la severidad declarada de las 74 reglas** — el arreglo de fondo, el más caro, y el único que hace que el filtro signifique lo que dice.
+- **Cómo decidir:** correr `npm run sim:fatiga-email -- --dias 7 --severidad warn` y comparar con el default. **Es decisión de Manuel: cambia lo que le llega al buzón.**
+- **Relacionadas:** [T-272] (la política), [T-299] (un caso concreto que ya no emailea), [T-260] (otro), runbook `health-check.md` §1.bis.c.
+
 ### [T-210] ✅ [CERRADA 29/07 — el titular bajó a 12%; el residuo era el PDF del temario, derivado a T-270] El 52-68% de los usuarios ACTIVOS ve errores de fetch en el cliente, todos los días, y nadie lo estaba mirando
 - **Medido (6 días, `observable_events.console_error` cruzado con usuarios que responden preguntas):**
 
