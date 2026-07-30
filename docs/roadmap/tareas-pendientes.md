@@ -647,6 +647,76 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-291] 🟠 [ABIERTO 30/07] Reparar preguntas a escala: tres escalones (deterministas → modelos baratos → cuota de agentes)
+
+- **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
+- **🎯 Pero NO hay que reparar 133.000, y este es el dato que decide la estrategia.** **82.591 de ellas no las ha visto NADIE** (cero apariciones), y la exposición está muy concentrada:
+
+  | preguntas reparadas | exposiciones cubiertas | corte |
+  |---|---|---|
+  | 2.000 más vistas | 31% | ≥133 apariciones |
+  | 5.000 | 50% | ≥84 |
+  | **10.000** | **71%** | ≥53 |
+  | 20.000 | 92% | ≥18 |
+
+  Con **20.000** se cubre el 92% de lo que un opositor ve de verdad. Cualquier plan que hable de «las 133.000» está dimensionando mal el problema.
+
+- **El recurso escaso NO es el dinero, es la CUOTA de agentes.** Claude Code da agentes Sonnet por suscripción con **límite semanal**, no por token. Valorar un agente en euros (como hice al principio: «0,30 € por 10 casos») lleva a la decisión equivocada. La pregunta correcta no es «¿qué es más barato?» sino **«¿qué eslabón puedo escalar con modelos para no gastar cuota de agente en él?»**.
+
+- **Las TRES poblaciones, que no son la misma cosa y no se atacan igual:**
+
+  | población | cuántas | exposición | quién la ataca |
+  |---|---|---|---|
+  | ya analizan por opción → **transformables** | 13.906 | 372.835 | **escalón 1**: verificable con 4 gates |
+  | prosa corrida → hay que **escribir** las razones | 105.094 | 1,17 M | escalón 1 **+ auditoría** (se pierde el gate de no-regresión) |
+  | **nunca verificadas** contra la ley | **12.430** | 26.309 | **escalón 2**: es juicio, van por el manual de revisión con agentes |
+  | vínculo al artículo sospechoso | 169 | 2.890 | escalón 1 filtra (panel), escalón 2 adjudica |
+
+- **Los tres escalones:**
+
+  | escalón | recurso | coste | qué hace |
+  |---|---|---|---|
+  | **0** | verificadores deterministas | gratis, ilimitado | filtra y VERIFICA; nunca decide contenido |
+  | **1** | modelos baratos por OpenRouter | dinero, paralelismo sin límite práctico | el VOLUMEN, **solo** donde el escalón 0 puede verificar el resultado |
+  | **2** | agentes Sonnet de Claude Code | **cuota semanal** | el JUICIO: qué artículo responde, si la clave está bien, reescribir lo que está mal de fondo |
+
+  **REGLA DE ORO: la cuota de agente no se gasta nunca en algo que un gate determinista o un modelo barato pueda cerrar.** Y hay que **registrar qué escalón resolvió cada pregunta**, o dentro de un mes nadie sabrá si el embudo funciona.
+
+- **Por qué transformar SÍ escala y adjudicar NO** (medido el 29-30/07, es la distinción central):
+  - **Transformar** (texto → estructura barajable) no es juicio: el contenido ya existe y es correcto, se reestructura. Y es **verificable sin humano** con piezas que ya existen: `mismoContenidoExplicacion`, `structuredNarrativeStaleLetters`, una razón por opción, cita literal (`quoteIsLiteral`). Si sale mal, **falla el gate y se descarta: el fallo es barato**.
+  - **Adjudicar** (¿el artículo vinculado es el correcto? ¿la clave?) es juicio y **no hay verificador**. Medido: un panel con los tres mejores modelos (gemini-3.5-flash, nemotron-3-super, deepseek-v4-pro) **discrepa en 9 de 20 casos**. Ahí un error no es neutro: re-vincular mal **rompe una pregunta que estaba bien**.
+  - Corolario: el panel de modelos sirve como **FILTRO, no como juez** — donde los tres coinciden (11 de 20) se acepta; donde discrepan, a cola de agente. Eso **parte por la mitad** el trabajo del escalón 2.
+
+- **🔍 LA OTRA POBLACIÓN: las que NUNCA se han revisado (medido 30/07).** No basta con mirar quién no tiene estructura; hay preguntas que **nadie ha verificado jamás** contra la ley (ni clave, ni artículo, ni opciones). Son **12.430 (8,9% de las activas)** sin una sola fila en `ai_verification_results`. Y la buena noticia es el tamaño real del daño:
+  - suman **26.309 exposiciones** en total (frente a 1,6 millones de las no estructuradas): es un problema **20 veces menor** en impacto;
+  - **8.889 no las ha visto nadie** (cero apariciones);
+  - **las 1.000 más vistas concentran el 87,3%** de esa exposición, y con 3.000 se llega al 97,9%.
+  - **12.361 de las 12.430 están además sin estructura**, o sea que el solape es casi total.
+  - **Consecuencia operativa: una sola pasada, no dos.** Como el manual ya manda transcribir al formato barajable toda explicación reescrita, el agente que revisa una de estas debe dejarla **revisada Y estructurada** en el mismo paso. Hacerlo en dos barridos gastaría el doble de cuota para el mismo resultado.
+  - **Dimensionado:** 1.000 preguntas en lotes de 20-50 por agente son **20-50 agentes** — una o dos semanas de cuota, y cubre el 87% de la exposición nunca revisada. Esto SÍ cabe.
+  - **Dónde ayuda el escalón 1 aquí:** el procedimiento v2.1 es verificar → auditar a ciegas → adjudicar. El **paso de verificar** (marcar sospechosas) lo puede hacer un modelo barato sobre las 12.430 enteras, porque ahí interesa la cobertura más que la precisión; el agente entra solo en la auditoría ciega y la adjudicación de lo marcado. Lo que NO cambia es quién decide: eso sigue siendo escalón 2.
+
+- **⚠️ CORRECCIÓN IMPORTANTE (30/07, encontrada PROBANDO el banco, no razonando): «transformar» solo vale para el 12%.** Al pasar las primeras preguntas por el banco salió 0/3, y al abrirlo no era el modelo: **esa explicación no se podía transformar**. Era un párrafo corrido sobre la BIOS que no analizaba ninguna opción — no hay nada que reestructurar, habría que ESCRIBIR las razones. Medido sobre las 119.000 con texto y sin estructura:
+
+  | | cuántas | exposiciones | qué hace falta |
+  |---|---|---|---|
+  | ya analizan **por opción** (formato §5.1) | **13.906 (11,7%)** | 372.835 | **transformar** → verificable con los 4 gates |
+  | **prosa corrida** | **105.094 (88,3%)** | 1.171.714 | **ESCRIBIR** las razones → autoría |
+
+  - **Por qué importa la diferencia:** en transformación el gate fuerte es `mismoContenidoExplicacion` (el resultado tiene que decir LO MISMO). En autoría **ese gate no se puede usar**, porque el contenido cambia por definición. Quedan los otros tres (una razón por opción, narrativa sin letras, cita literal), que verifican la FORMA pero no que lo escrito sea CIERTO.
+  - **Plan revisado en dos oleadas:**
+    1. **Ola 1 — las 13.906 transformables** (372.835 exposiciones): escalón 1 puro, con los cuatro gates. Es la parte segura y hay que hacerla primero.
+    2. **Ola 2 — las 105.094 de prosa**: autoría. Necesita una capa de auditoría que sustituya al gate perdido (muestra revisada por agente, o exigir que cada razón esté ANCLADA en el vocabulario del artículo). Priorizada por exposición: las 5.000 más vistas cubren la mitad.
+  - **Y una guarda para la ola 2:** escribir razones nuevas sobre una pregunta cuya clave nadie ha verificado es construir sobre arena. Las 12.430 nunca verificadas van ANTES por el escalón 2, y en la misma pasada quedan estructuradas.
+
+- **🔧 Dos fallos del ARNÉS antes de culpar a ningún modelo (los dos del 29-30/07):** (1) `max_tokens: 400` daba 0-2/10 a diez modelos de razonamiento que se gastaban el presupuesto pensando; (2) `isStructuredExplanation` exige un campo `"v": 1` que el prompt no pedía, y rechazaba estructuras perfectas. **Regla: cuando un modelo saca 0, sospechar del arnés primero.**
+
+- **El listón a batir ya está medido:** el parser heurístico actual (`scripts/backfill-explanation-data.ts`) transcribe solo el **43,7%** del formato de generación y el **15,3%** del de impugnaciones. Un modelo del escalón 1 solo tiene que superar eso, y los gates lo hacen seguro.
+
+- **⏭️ SIGUIENTE PASO: el banco de pruebas de TRANSFORMACIÓN.** Gemelo del de adjudicación (`npm run llm:ab-vinculo`), pero con una propiedad que lo hace muy superior: **la métrica no la adjudica un humano**, es el porcentaje que pasa los verificadores deterministas. Se mide solo y se repite solo cada vez que salga un modelo nuevo. Después: piloto sobre 200 preguntas reales aplicando solo lo que pase los gates, auditoría por agente de una muestra, y barrido por lotes **ordenado por exposición**.
+
+- **Relacionado:** [T-284] (banco de adjudicación + puerta de barajado) · [T-282] (163 explicaciones que se pintan rotas) · `docs/maintenance/revisar-preguntas-con-agente.md` (lotes de 20-50 por agente, que es la unidad del escalón 2) · `data/pilotos/RESULTADOS-vinculo-vecino.md`.
+
 ### [T-289] 🟠 [ABIERTO 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
 - **El problema, en el ejemplo que lo motivó:** para entender el reporte de un premium hay que ver **SU** perfil, **SUS** hitos de pago, su temario, sus rachas y sus datos personalizados. Hoy no se puede: `npm run dev` te enseña la app con TU cuenta, y mirar su fila en la BD no reproduce lo que él ve (la vista compone caché, plan, scope de su oposición, límites, badges…). Se acaba diagnosticando a ciegas o pidiéndole capturas.
 - **Cómo se llama, para no reinventar el nombre:** **impersonación** (*impersonation*, también *"login as user"*, *"view as"*, *"assume identity"*, *masquerading*, y en algunos productos *"sudo mode"*). Es una función estándar en SaaS de soporte y tiene una forma canónica: el admin **no usa la contraseña del usuario**; el servidor acuña una sesión marcada como suplantada, la app lo muestra con una **franja visible** y todo queda **auditado**.
