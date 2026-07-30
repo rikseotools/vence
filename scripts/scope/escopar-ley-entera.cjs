@@ -35,16 +35,10 @@ if (!PT || !TEMA || !LEY) {
   process.exit(2)
 }
 
-/** ¿El epígrafe nombra la ley? Compara por palabras significativas, no por igualdad exacta. */
-function epigrafeNombraLey(epigrafe, shortName, fullName) {
-  const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  const epi = norm(epigrafe)
-  for (const candidato of [shortName, fullName]) {
-    const palabras = norm(candidato).split(/[^a-z0-9]+/).filter((w) => w.length > 3)
-    if (palabras.length && palabras.every((w) => epi.includes(w))) return { nombra: true, por: candidato }
-  }
-  return { nombra: false }
-}
+// El criterio de «el epígrafe la nombra» vive en el NÚCLEO, compartido con el detector del barrido
+// (`normaDelEpigrafeSinEscopar`). Aquí tenía su propia copia y habrían divergido en cuanto alguien
+// afinara una: la herramienta que ESCRIBE y el vigilante que MIRA tienen que usar la misma regla.
+const { epigrafeNombraLey } = require('../../lib/health/normaDelEpigrafeSinEscopar.cjs')
 
 async function main() {
   const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })

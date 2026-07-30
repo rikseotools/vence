@@ -195,6 +195,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.google.` — 121 casos en 7 días; un clic desde el correo NO es SEO. Correrlo ANTES de tocar ' +
       '`deriveChannel` o la política de toques.',
   },
+  auditar_normas_del_epigrafe: {
+    titulo: 'Normas que el PROGRAMA nombra y que su oposición no sirve (bajo demanda, NO va al badge)',
+    ruta: 'scripts/scope/audit-normas-del-epigrafe.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Caso que lo motiva: el Tema 1 de Guardia Civil enumeraba 14 normas y escopaba 2; las otras ' +
+      '(DUDH, CEDH, PIDESC, PIDCP, Carta DDFF UE, tortura) existían con 859 preguntas activas y se ' +
+      'servían solo a Policía Nacional. Al engancharlas, el tema pasó de 229 a 1.146 preguntas. ' +
+      '**NO está en `/admin/contenido` a propósito, y la decisión está medida** (30/07): 891 hallazgos ' +
+      'con el criterio inicial → 226 exigiendo 3 palabras significativas y que lo ignore la oposición ' +
+      'entera → 150 excluyendo familias ya servidas; pero al muestrear los mayores, la mayoría eran ' +
+      'FALSOS POSITIVOS por dos causas que un matcher léxico no resuelve: contenedores equivalentes con ' +
+      'otro nombre (`LPRL` ≡ `LEY PREVENCIÓN DE RIESGOS LABORALES ENF`, `Excel 2019` ≡ `Excel 365`) y ' +
+      'epígrafes con un ANEXO del boletín pegado. Un badge así entrena a ignorar la categoría entera. ' +
+      'Se corre a mano, lo adjudica una persona contra el programa oficial, y para enganchar lo ' +
+      'confirmado se usa `escopar_ley_entera`. Núcleo puro `lib/health/normaDelEpigrafeSinEscopar.cjs` ' +
+      '(12 tests, con los falsos positivos medidos fijados como casos negativos).',
+  },
   escopar_ley_entera: {
     titulo: 'Enganchar una ley COMPLETA al temario de un tema (rescatar preguntas que ningún tema sirve)',
     ruta: 'scripts/scope/escopar-ley-entera.cjs',
