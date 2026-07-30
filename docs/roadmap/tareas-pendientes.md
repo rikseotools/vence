@@ -14,6 +14,20 @@
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+
+### [T-286] ✅ [HECHA 29/07] Favoritas: el corazón sale marcado sin marcarlo, y dejan de guardarse pasadas 20
+
+- **Quién lo reporta:** Laura Zurdo (premium, feedback `9527a03f`, 29/07) — **la misma persona que pidió la función** ([T-261], lanzada ese mismo día). Que el primer uso real la rompa es lo peor que puede pasarle a una novedad.
+- **Dos fallos distintos, en sus palabras:**
+  1. *«en muchas preguntas sale el corazón de color rojo sin haberlas marcado como favoritas previamente, entonces para poder marcarlas de verdad tienes que pulsar el corazón 2 veces (una para desmarcarlo, y otra para marcarlo otra vez)»*.
+  2. *«al realizar un test de 30 preguntas y marcar 20 en favoritas, esas 20 se han guardado, pero luego he vuelto a realizar otro test y he vuelto a marcar algunas y no se han guardado: en preguntas guardadas solo aparecían 20»*.
+- **CAUSA DEL SEGUNDO SÍNTOMA — CONFIRMADA (30/07): no se pierde nada, es un tope de VISUALIZACIÓN.** En `lib/api/question-favorites/schemas.ts` el máximo es 100 pero **el defecto es 20**: `numQuestions: z.number().int().min(1).max(MAX_FAVORITAS_POR_TEST).default(20)`, y `queries.ts:127` hace `Math.min(params.numQuestions ?? 20, 100)`. La página de "Preguntas guardadas" no pide un número, así que **siempre sirve 20** — las mismas. Laura tiene sus favoritas nuevas guardadas; simplemente no las ve, y concluye con toda lógica que no se guardaron. Encaja exacto con el número que dio.
+  **Arreglo:** que la página pida todas (o pagine), y **decir cuántas hay** — "20 de N" — porque el fallo real es servir un subconjunto en silencio. Comprobar primero en BD cuántas tiene: si son >20, queda demostrado sin tocar nada.
+- **Primer síntoma (el corazón relleno), SIN verificar:** sospechar del estado en `components/FavoriteQuestionButton.tsx` — si la lista de ids marcados se compara mal o se comparte entre preguntas, el corazón sale relleno de más y hay que pulsar dos veces.
+- **Por qué no lo cazó nada:** los tests cubren marcar/desmarcar UNA pregunta y el endpoint, pero nadie prueba el flujo real —marcar varias en un test, terminarlo, empezar otro y volver a marcar—, que es justo donde falla. Un journey de Vence Sim sería el sitio (`docs/runbooks/vence-sim.md`).
+- **Al arreglarlo:** contestar a Laura, que además tiene [T-261] cerrada con su nombre. **SIN recompensa nueva** (decisión de Manuel, 30/07): el bug es de la misma función que ella propuso, y no se paga dos veces por el mismo asunto aunque el segundo mensaje sea de otro tipo (sugerencia primero, bug después). *Dato para no confundirse: en `reward_submissions` NO consta ninguna recompensa por la propuesta de favoritas — sí tiene tres previas por otros asuntos (bug 17/07 aprobada, bug 19/07 rechazada, impugnación 28/07). La decisión es de criterio, no porque ya cobrara por esto.* La regla general sigue siendo la del manual: mirar el HISTORIAL del usuario, no solo si hay recompensa para ESE feedback_id.
+- **Ficheros:** `components/FavoriteQuestionButton.tsx`, `lib/api/question-favorites/{queries,schemas}.ts`, `app/api/v2/question-favorites/route.ts`, `app/test/favoritas/page.tsx`.
+
 ### [T-299] 🟠 [ABIERTO 30/07] `check-boe-changes` perdió el ciclo del 29/07: tick sin `cron_run` con el contenedor VIVO
 
 - **Qué:** el cron (`0 8 * * *` UTC, monitor de cambios del BOE) emitió su `cron_tick` el 29/07 a las 08:00 y **no emitió `cron_run`** — ni de éxito ni de fallo. Un día entero de vigilancia del BOE perdido.
@@ -208,19 +222,6 @@
 - **Criterio de hecho:** un despliegue con el endpoint roto a propósito (por ejemplo devolviendo 405) tiene que salir en ROJO. Si no lo caza, el canary no sirve.
 - **Ya son DOS los journeys bloqueados por esto** (30/07): `precio-fidelidad-visible` y `favoritas-persisten`. Los dos están escritos, comprueban lo correcto y quedan en `postDeploy: false` porque sin token dan 401 y serían un rojo permanente. Arreglar `ctx.api` los activa a los dos de golpe — por eso esta ficha vale más que su tamaño.
 - **Relacionadas:** [T-261] (favoritas, mismo patrón de "lanzado y sin vigilar"), `docs/runbooks/vence-sim.md`, `docs/runbooks/oferta-precio-personalizada.md`.
-
-### [T-286] 🟠 [ABIERTO 29/07] Favoritas: el corazón sale marcado sin marcarlo, y dejan de guardarse pasadas 20
-
-- **Quién lo reporta:** Laura Zurdo (premium, feedback `9527a03f`, 29/07) — **la misma persona que pidió la función** ([T-261], lanzada ese mismo día). Que el primer uso real la rompa es lo peor que puede pasarle a una novedad.
-- **Dos fallos distintos, en sus palabras:**
-  1. *«en muchas preguntas sale el corazón de color rojo sin haberlas marcado como favoritas previamente, entonces para poder marcarlas de verdad tienes que pulsar el corazón 2 veces (una para desmarcarlo, y otra para marcarlo otra vez)»*.
-  2. *«al realizar un test de 30 preguntas y marcar 20 en favoritas, esas 20 se han guardado, pero luego he vuelto a realizar otro test y he vuelto a marcar algunas y no se han guardado: en preguntas guardadas solo aparecían 20»*.
-- **CAUSA DEL SEGUNDO SÍNTOMA — CONFIRMADA (30/07): no se pierde nada, es un tope de VISUALIZACIÓN.** En `lib/api/question-favorites/schemas.ts` el máximo es 100 pero **el defecto es 20**: `numQuestions: z.number().int().min(1).max(MAX_FAVORITAS_POR_TEST).default(20)`, y `queries.ts:127` hace `Math.min(params.numQuestions ?? 20, 100)`. La página de "Preguntas guardadas" no pide un número, así que **siempre sirve 20** — las mismas. Laura tiene sus favoritas nuevas guardadas; simplemente no las ve, y concluye con toda lógica que no se guardaron. Encaja exacto con el número que dio.
-  **Arreglo:** que la página pida todas (o pagine), y **decir cuántas hay** — "20 de N" — porque el fallo real es servir un subconjunto en silencio. Comprobar primero en BD cuántas tiene: si son >20, queda demostrado sin tocar nada.
-- **Primer síntoma (el corazón relleno), SIN verificar:** sospechar del estado en `components/FavoriteQuestionButton.tsx` — si la lista de ids marcados se compara mal o se comparte entre preguntas, el corazón sale relleno de más y hay que pulsar dos veces.
-- **Por qué no lo cazó nada:** los tests cubren marcar/desmarcar UNA pregunta y el endpoint, pero nadie prueba el flujo real —marcar varias en un test, terminarlo, empezar otro y volver a marcar—, que es justo donde falla. Un journey de Vence Sim sería el sitio (`docs/runbooks/vence-sim.md`).
-- **Al arreglarlo:** contestar a Laura, que además tiene [T-261] cerrada con su nombre. **SIN recompensa nueva** (decisión de Manuel, 30/07): el bug es de la misma función que ella propuso, y no se paga dos veces por el mismo asunto aunque el segundo mensaje sea de otro tipo (sugerencia primero, bug después). *Dato para no confundirse: en `reward_submissions` NO consta ninguna recompensa por la propuesta de favoritas — sí tiene tres previas por otros asuntos (bug 17/07 aprobada, bug 19/07 rechazada, impugnación 28/07). La decisión es de criterio, no porque ya cobrara por esto.* La regla general sigue siendo la del manual: mirar el HISTORIAL del usuario, no solo si hay recompensa para ESE feedback_id.
-- **Ficheros:** `components/FavoriteQuestionButton.tsx`, `lib/api/question-favorites/{queries,schemas}.ts`, `app/api/v2/question-favorites/route.ts`, `app/test/favoritas/page.tsx`.
 
 ### [T-278] 🟠 [ABIERTO 29/07] Parque Móvil del Estado: generar el banco de la parte específica (9 temas en elaboración)
 
