@@ -270,6 +270,19 @@
 - **Por qué está sin dueño:** `console_error` no tiene regla de alerta propia, y hasta hoy el panel no pintaba el catch-all. Estaba en la BD, con volumen, y no lo miraba nadie. Ahora sale en `/admin/salud-sistema` → "Todas las señales (24h)" marcado *solo catch-all*.
 - **Por qué NO se sube el umbral para callarlo:** ~75/h es el suelo que obligó a poner el catch-all en 150/h. Mientras esto siga así, el catch-all está medio ciego en esa banda.
 - **Qué hacer:** separar las tres firmas (token ausente en la cola / timeout de 15 s / callback sin sesión), medir a cuántos usuarios distintos afecta cada una, y atacar primero la de la cola de guardado — es la única que puede costarle al usuario una respuesta contestada.
+- **📈 RE-MEDIDO 30/07 (12:00 UTC, 3 h): 453 `console_error` — el MISMO número que la ficha midió en 6 h, o sea el ritmo se ha DOBLADO.** Y esta vez ya no es solo un cubo sin dueño: disparó la alerta **`senal_error_sin_vigilancia` en `critical`** (185 en una hora a las 08:05, 231 el día anterior). El catch-all está haciendo su trabajo; lo que falta es atender esto.
+- **Reparto de hoy (3 h, por firma):**
+
+  | firma | eventos | qué es |
+  |---|---|---|
+  | `UserAvatar: v2 stats error: Usuario no existe` | ~133 | **bug real** — y el reparto lo señala: **50 en `/auth/callback`**, o sea justo al entrar. Misma firma que [T-245] |
+  | `403 «Este dispositivo ha alcanzado el límite diario»` | 61 | **NO es un fallo: es el muro de pago funcionando** (ver abajo) |
+  | `[answerSaveQueue] Sin token (intento #5..#9)` | ~50 | **bug real**, y peor que cuando se abrió la ficha: entonces reintentaba hasta 4 veces, ahora se ven intentos **#9** |
+  | `[Watchdog] UI congelada visibleMs≈12.400` | resto | ya tiene indicador propio en el panel |
+
+- **🔎 EL HALLAZGO DEL DÍA: parte del volumen que dispara la alerta es un RESULTADO DE NEGOCIO registrado como error.** El 403 «Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.» sale de `/api/exam/answer` y el cliente lo escribe como `❌ Error guardando respuesta en API (permanente)`. **No es un fallo: es el cupo del plan gratuito diciendo su función** (y en `/api/exam/answer` el sujeto solo puede ser el dispositivo, porque el examen se puede hacer sin cuenta). O sea: **el muro de pago está inflando la señal de error y con ella el umbral del catch-all** — el mismo mecanismo que la ficha ya denunciaba («~75/h es el suelo que obligó a poner el listón en 150/h»), pero con una causa que no estaba identificada.
+  - **Comprobado que NO es enforcement nuevo:** estos 403 vienen de ANTES ([28/07 llegó a 102/h](#)), y `device_daily_limit_blocked` —el evento del límite por dispositivo de [T-304]— **no tiene ni un registro**, coherente con que salió en modo sombra. El corpus de huellas v2 ya crece (85 dispositivos). Descartado que el deploy del 30/07 esté cortando a nadie.
+  - **Salida correcta (runbook §1.ter.a):** que un 403 esperado deje de viajar como `console_error`/`error` —en el cliente, en el origen— o, si se prefiere no tocar el cliente, declararlo benigno **a propósito** en `lib/observability/benignSignals.ts` (con su copia del backend). **Lo que NO se hace es subir el umbral.**
 - **Relacionadas:** [T-245] (sesión sin perfil), [T-260] (el cupo que cobraba el cliente), [T-210] (clasificación de ruido de consola).
 
 ### [T-260] 🟠 [ABIERTO 29/07] El cupo del plan gratuito lo cobraba el CLIENTE: usuarios free se quedaban sin límite habiendo respondido la mitad
