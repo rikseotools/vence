@@ -4861,6 +4861,23 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Cómo:** (a) decidir dónde va el arreglo — lo natural es que el inserter escriba `shuffle_mode` y que el manual deje de prometer que "la pregunta nace barajable" mientras no sea cierto; (b) que `backfill-explanation-data.ts` acepte `--batch <batch_id>` (hoy solo tiene `--pregunta` o el banco entero: para 15 preguntas hubo que llamarlo 15 veces, y sin el filtro se pasa del timeout barriendo todo); (c) repasar la cohorte del 23/07 en adelante.
 - **Origen:** lote `gen_rgpd_2026-07-29` de la campaña T-115 (29/07). El manual (§8.2, v2.6) afirma *"La pregunta nace barajable y no hay ningún paso que se pueda olvidar"* — hoy no se cumple, y nada avisaba.
 
+### [T-313] 🟠 [ABIERTO 30/07] Se puede elegir qué artículos entran en el test, pero nadie lo encuentra
+
+- **ORIGEN.** Manolo García (premium, feedback `6df1e69a`, 30/07): *«no sé si existe la posibilidad de pedir test de diferentes artículos dentro de una Ley, por ejemplo si una Ley es larga, pongamos de 100 artículos y llevas estudiado la mitad, poder señalar dentro de los 50 que ya has estudiado sin tener que recurrir a darle a test completo de toda la Ley»*. **La función existe desde hace tiempo y hace exactamente eso.** Él lleva 22 días usando la plataforma a diario y no la había visto.
+- **CONTEXTO, comprobado en producción (`/leyes/lo-3-2007`):**
+  - El bloque **«📄 Filtrar por Artículos» viene PLEGADO** (`showLawsFilter = false` en `components/TestConfigurator.tsx`). Hay que pulsar **«Mostrar»** para que aparezcan los dos botones: **«🔧 Artículos»** (abre el selector, 136 casillas en esa ley) y **«📚 Títulos»**.
+  - **El rótulo miente por defecto:** el bloque se llama «Filtrar por Artículos» pero dentro también está el filtro por **títulos**, que para una ley larga es lo que la mayoría querría.
+  - **Dos cosas distintas con nombre casi igual en la MISMA pantalla:** el botón visible **«📚 Filtrar por Títulos»** que hay más abajo pertenece a la **lista de lectura** (`app/teoria/[law]/LawArticlesClient.tsx`) y NO afecta al test. El del test está escondido. Quien pulsa el visible cree que ya ha filtrado.
+  - **La pista interior nombra un botón que no existe:** dice *«usando el botón "🔧 Filtrar artículos"»* y el botón se llama **«🔧 Artículos»**.
+- **Por qué importa:** es una función que ya está construida y pagada, resuelve una necesidad real de estudio (ir practicando solo lo llevado) y **no cuesta nada activarla mejor**. Si un premium veterano no la encuentra, no la encuentra casi nadie.
+- **Ideas (ninguna decidida — es UX, decide Manuel):**
+  1. **Desplegado por defecto cuando hay una sola ley**: en `/leyes/<ley>` ya sabemos de qué ley habla, así que esconder su filtro no ahorra nada.
+  2. **Renombrar el bloque** a lo que de verdad hace («Elegir qué entra en el test» o «Filtrar por títulos o artículos»).
+  3. **Distinguirlo del filtro de lectura** para que no compitan en la misma pantalla.
+  4. **Sincronizar el texto de la pista** con el nombre real del botón.
+- **Al tocarlo, ojo:** el mismo componente sirve el modo por tema y el modo por ley, así que cualquier cambio hay que mirarlo en los dos. Existe ya el journey `contador-articulos-coherente` (Vence Sim) que abre ese filtro y podría verificar de paso que sigue siendo alcanzable.
+- **Relacionada:** [T-310] (el contador de esa misma pantalla, que anunciaba 798 artículos teniendo 134 — salió al verificar esta misma pregunta).
+
 ### [T-311] 🟠 [ABIERTO 30/07] La versión de software que se examina puede cambiar por una NOTA posterior, y en Madrid nadie la vigila
 
 - **ORIGEN.** Ana Isabel (free, feedback `0a5a4133`) pregunta si actualizaremos la parte de informática a **Windows 11** en Auxiliar Administrativo de la Comunidad de Madrid, porque solo ve Windows 10. La respuesta concreta es buena (dos convocatorias vivas, cada una con su versión → [T-063]), pero al comprobarlo salió el hueco de fondo.
