@@ -743,6 +743,15 @@ incluida).
   Fíjate en el patrón: **el scope siempre es un rango CONTIGUO** y el epígrafe siempre enumera bloques **discontinuos**. Lo introduce el propio `verify:scope` al razonar «Título Preliminar = 1-27» en vez de por pertenencia real.
 - **Casos NEGATIVOS igual de importantes** (si el detector los marca, no sirve): **T4** LPRL `1-4, 14-32` = Cap I + Cap III + Cap IV, exacto; **T11** Ley 3/2009 `10-40, 61-63` = Títulos II+III+IV+VII, exacto. Los dos verificados contra el BOE el 30/07.
 - **Con qué construirlo (ya existe, no empieces de cero):** tabla **`law_sections`** (`section_type` `titulo`/`capitulo`/`seccion`, `title`, `article_range_start/end`) — la de la Ley 3/2009 estaba poblada y correcta. Donde falte, el índice del BOE consolidado se parsea igual que en `sim-title-boundary.ts` (2.ª pasada: bajar la rúbrica y casar por materia, no solo por número).
+- **⛔ PRECONDICIÓN: `law_sections` NO es fiable, hay que validarla contra el BOE antes de apoyar nada en ella.** Encontrado el 30/07 adjudicando el T14 del SMS: en el **EBEP (`RDL 5/2015`) las rúbricas están corridas un puesto** a partir del Título VI, aunque los rangos sí son correctos:
+
+  | | nuestra `law_sections` | el BOE (`BOE-A-2015-11719`) |
+  |---|---|---|
+  | 85-92 | «Provisión de puestos de trabajo y movilidad» | **«Situaciones administrativas»** |
+  | 93-98 | «Situaciones administrativas» | **«Régimen disciplinario»** |
+  | 99+ | «Régimen disciplinario» | **«Cooperación entre las Administraciones Públicas»** |
+
+  («Provisión de puestos y movilidad» no es un Título: es el **Capítulo III del Título V**, arts 78-84.) Un detector que se fíe de esa tabla habría dado el T14 por **sobre-incluido cuando es exacto**: el epígrafe pide *«situaciones administrativas»* y 85-92 es precisamente eso. **Falso positivo con toda la pinta de ser verdadero**, que es el peor tipo. Antes de construir el detector, o se valida la tabla ley por ley contra el BOE, o el detector baja el índice él mismo y no la usa.
 - **Las cuatro trampas, medidas hoy:**
   1. **La rúbrica se repite.** *«Disposiciones generales»* aparece en el TRLGSS media docena de veces. Casar por texto suelto no vale: hay que **anclarla a su padre** (la del Cap II ≠ la de la Secc 3.ª ≠ la del Cap IV).
   2. **El epígrafe tiene que ser LITERAL primero.** El T22 abreviado decía *«Objeto y ámbito»* y perdía justo *«de aplicación»*, que es lo que casa con la Secc 1.ª. Sobre un epígrafe parafraseado esto no puede funcionar → depende del Paso 1.
