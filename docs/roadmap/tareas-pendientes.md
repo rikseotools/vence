@@ -970,17 +970,6 @@ incluida).
 - **Ya hecho:** patrón corregido en `scripts/temario/detect-temario-revision.cjs` y en el test de paridad, que vuelve a pasar (`temarioComunicadoParity`, 2/2). Ese test **llevaba un mes en rojo por timeout** y su rojo se leía como flaky: por eso nadie vio que la señal SQL no casaba nada. Timeout subido a 60 s con el motivo escrito.
 - **Relacionada:** [T-295], [T-297] (misma familia: vigilancias que existían y no vigilaban).
 
-### [T-297] 🟠 [ABIERTO 30/07] El gate anti-scraping dejó fuera a los canaries: test rojo y vigilancia posiblemente ciega
-- **Qué pasa:** `__tests__/security/canaryGateAndOutboxPrune.test.ts` falla porque `app/api/questions/filtered/route.ts` **ya no importa `isSyntheticRequest`**. El test exige que el reto anti-scraping **exima al tráfico sintético**, y esa exención desapareció del fichero.
-- **Cómo salió:** ejecutando las categorías que `test:unit` excluye, al investigar otra cosa (29/07). Falla sola, no es contención de la BD.
-- **El historial apunta a `e049f57ac`** — *«el reto anti-scraping se saltaba con un header que cualquiera puede escribir»*—, que endureció el gate. Endurecerlo parece correcto; lo que quedó sin actualizar es el contrato que el test fijaba.
-- **Las dos posibilidades, y no son equivalentes:**
-  1. El test está obsoleto → reescribirlo con el criterio nuevo (los canaries se identifican de otra forma).
-  2. Al cerrar el agujero se dejó a los canaries FUERA → **algún canario está chocando con el gate y ha dejado de vigilar en silencio**, que es el modo de fallo más caro.
-- **Cómo distinguirlo (antes de tocar nada):** mirar si los canarios que pegan a `/api/questions/filtered` siguen dando verde en `observable_events` desde la fecha de `e049f57ac`. Si dejaron de pasar, es el caso 2.
-- **Impacto:** 🟠 no rompe producción, pero mientras esté así hay un rojo permanente en la suite de seguridad —y un rojo permanente es ruido que entrena a ignorar la categoría entera, que es exactamente cómo murió el test de suscripciones (ver [T-295])—.
-- **Relacionada:** [T-295] (misma familia: vigilancias apagadas que nadie lee).
-
 ### [T-295] 🟠 [ABIERTO 30/07] Deducir el acceso premium de los hechos en vez de guardarlo en plan_type
 - **El caso que lo destapa (29/07):** un cliente canceló su suscripción **desde nuestra app** el 26/05 (`cancellation_feedback`: `self_service`), Stripe la terminó el 27/05 al acabar el mes pagado… y su fila se quedó en `active` con el perfil en `premium`. **Dos meses y 293 tests con premium regalado.** Encaja con el incidente del webhook roto del 26-27/05 (no demostrable ya: los eventos de Stripe caducan a los 30 días y la observabilidad no empieza hasta el 29/06). Corregido a mano el 29/07; el usuario vuelve a ser free.
 - **Por qué no lo detectó nada:** las **8 reglas de alerta** sobre suscripciones vigilan que ningún usuario se quede sin lo que pagó, o que la maquinaria funcione. **Ninguna miraba lo contrario.** Y el **Pass-1 lo empeoraba**: al ver la fila `active`, cada hora volvía a poner el perfil en premium — la auto-reparación trabajaba a favor de la fuga.
@@ -3919,6 +3908,22 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Al montar cualquiera:** `docs/maintenance/crear-nueva-oposicion.md` + scaffolder, gates `audit:oposicion`/`audit:served`/`verify:scope`, y **avisar a quien la pidió** (está su feedback anotado arriba).
 
 ## Hechas
+
+### [T-297] ✅ [HECHA 30/07] El gate anti-scraping dejó fuera a los canaries: test rojo y vigilancia posiblemente ciega
+- **Qué pasa:** `__tests__/security/canaryGateAndOutboxPrune.test.ts` falla porque `app/api/questions/filtered/route.ts` **ya no importa `isSyntheticRequest`**. El test exige que el reto anti-scraping **exima al tráfico sintético**, y esa exención desapareció del fichero.
+- **Cómo salió:** ejecutando las categorías que `test:unit` excluye, al investigar otra cosa (29/07). Falla sola, no es contención de la BD.
+- **El historial apunta a `e049f57ac`** — *«el reto anti-scraping se saltaba con un header que cualquiera puede escribir»*—, que endureció el gate. Endurecerlo parece correcto; lo que quedó sin actualizar es el contrato que el test fijaba.
+- **Las dos posibilidades, y no son equivalentes:**
+  1. El test está obsoleto → reescribirlo con el criterio nuevo (los canaries se identifican de otra forma).
+  2. Al cerrar el agujero se dejó a los canaries FUERA → **algún canario está chocando con el gate y ha dejado de vigilar en silencio**, que es el modo de fallo más caro.
+- **Cómo distinguirlo (antes de tocar nada):** mirar si los canarios que pegan a `/api/questions/filtered` siguen dando verde en `observable_events` desde la fecha de `e049f57ac`. Si dejaron de pasar, es el caso 2.
+- **Impacto:** 🟠 no rompe producción, pero mientras esté así hay un rojo permanente en la suite de seguridad —y un rojo permanente es ruido que entrena a ignorar la categoría entera, que es exactamente cómo murió el test de suscripciones (ver [T-295])—.
+- **Relacionada:** [T-295] (misma familia: vigilancias apagadas que nadie lee).
+#### ✅ RESUELTO (30/07) — era la posibilidad 1, y la 2 se descartó CON DATOS antes de tocar el test
+- **La grave, descartada primero:** `canary-por-leyes-scope` está **verde ahora mismo** — emite `canary_por_leyes_scope_ok` cada 5 minutos con datos reales (`fullMax` 337 / `scopedMax` 122 a las 16:04). O sea que **pasa el gate endurecido**: no hay vigilancia ciega. Esto se miró ANTES de reescribir nada, porque si el canary hubiera dejado de pasar, arreglar el test habría tapado el problema en vez de resolverlo.
+- **Lo que pasaba:** el test exigía el mecanismo VIEJO (`isSyntheticRequest`, el header `x-vence-canary` **sin secreto**) y el gate ya usa `esCanaryDeConfianza` + `secretoCanaryEsperado` desde `cb22c454e` (29/07). El endurecimiento es correcto —comprobado entonces contra producción: una petición anónima con esa línea recibía las preguntas saltándose el Turnstile— así que el desfasado era el guardarraíl.
+- **Reescrito al criterio actual, y con la mitad que le faltaba:** además de exigir que el canary de confianza quede exento, hay ahora un test de **REGRESIÓN** que falla si `isSyntheticRequest` vuelve a aparecer en la condición del gate. Esa es la forma exacta del agujero que se cerró: **afirmar** ser un canary no puede bastar para saltarse una defensa; hay que **demostrarlo**.
+- **Por qué llevaba rojo sin que nadie lo viera, que es el cabo de fondo:** `__tests__/security/` está EXCLUIDO de `test:unit` (el que corre el pre-commit), así que solo lo ve el job de CI *Integration / perf / security*. Se corrió la categoría entera al cerrar: **16 suites, 272 tests, todo verde** — no había más rojos escondidos ahí.
 
 ### [T-299] ✅ [HECHA 30/07] `check-boe-changes` perdió el ciclo del 29/07: tick sin `cron_run` con el contenedor VIVO
 
