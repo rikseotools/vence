@@ -171,6 +171,40 @@ lo notó.
   (idempotente por usuario: reincidir sube `suspicion_score` en vez de duplicar filas, y respeta el
   motivo si ya estaba fichado por otro detector). `confirmed_fraud` lo sigue poniendo una persona.
 
+### Encendido en dos tiempos: primero MIDE, luego corta (`DEVICE_LIMIT_MODE`)
+
+El ancla nueva agrupa cuentas que antes no se agrupaban. Eso es lo que se busca **y** el riesgo:
+si la huella junta a dos personas que no tienen nada que ver, les cortamos el servicio. Ya hay
+precedente en este mismo subsistema (la huella v1 llegó a agrupar 83 cuentas). Por eso NO se
+enciende a ciegas:
+
+| modo | qué hace |
+|---|---|
+| `off` | ni se evalúa — rollback total sin desplegar |
+| **`shadow`** | evalúa y REGISTRA lo que habría pasado. **Nadie se bloquea.** ← por defecto |
+| `enforce` | corta de verdad |
+
+**El defecto es `shadow` a propósito**: un despliegue sin decidir mide, no corta. Y un valor con
+typo (`enfoce`, `activar`) tampoco se lee como `enforce` — un error de configuración no puede dejar
+a nadie sin servicio. Lo fija `__tests__/guardrails/deviceLimitModeParity.test.ts`, que además
+compara el interruptor del frontend con su espejo del backend: `answer-and-save` reparte tráfico
+entre los dos caminos, y si discrepan el mismo usuario se bloquea o no según por dónde entre.
+
+**Tras 1-2 días en sombra, la decisión se toma con esto:**
+```bash
+npm run fraude:sombra-device -- --dias 2
+```
+Lista, uno a uno, **a quién se habría cortado**: su correo, su plan, cuántas respuestas reales
+lleva, en cuántos días distintos, y **con qué otras cuentas comparte equipo**. Ese último dato es
+el que separa una granja de una coincidencia. Cómo leerlo:
+- correos que son variantes del mismo nombre + altas escalonadas → granja, **activar**;
+- correos sin relación y actividad repartida en muchos días → posible familia, **mirar a fondo**;
+- *"comparte equipo con: (nadie)"* → la huella está agrupando mal, **no activar**.
+
+Y ojo con el falso alivio: si el script dice "sin registros", lo primero es comprobar la cobertura
+(`hw_fingerprint LIKE 'fp2\_%'`). Cero registros con cero huellas v2 significa que no estamos
+midiendo, no que no haya farmeo. El script lo avisa solo.
+
 ### Diagnóstico en 3 pasos si vuelve a estar mudo
 ```sql
 -- 1) ¿Llega la huella v2? Si es ~0, el cliente no la manda (revisar getFingerprintHeader).

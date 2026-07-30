@@ -14,6 +14,7 @@ import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { emit } from '@/lib/observability/emit'
 import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
+import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
@@ -162,6 +163,10 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
     // Shared device daily limit (solo para free users).
     // `!degraded`: si el daily-limit vino de un fallback por timeout de BD,
     // fail-open — un blip no debe bloquear a un usuario (free ni premium).
+    // MODO SOMBRA (T-304). El ancla nueva agrupa cuentas que antes no se agrupaban: antes de
+    // cortarle el servicio a nadie se mide, sobre tráfico real, lo que HABRÍA pasado. Por defecto
+    // `shadow` — un despliegue sin decidir mide, no corta.
+    const deviceLimitMode = currentDeviceLimitMode()
     if (!dailyLimit.isPremium && !dailyLimit.degraded && deviceUsage && !deviceUsage.allowed) {
       // OBSERVABLE A PROPÓSITO (T-304). Este bloqueo llevaba desde el 17/04 sin dejar rastro
       // alguno: por eso pudo estar tres meses sin cortar una sola vez —con 3-11 dispositivos al
@@ -180,26 +185,34 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           // Qué ancla lo cazó: si esto es siempre `device_id`, la huella v2 no está llegando.
           anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
           hasFingerprintV2: Boolean(hwFingerprint?.startsWith('fp2_')),
+          // `shadow` = se registró pero NO se bloqueó. Es lo que se analiza antes de activar.
+          mode: deviceLimitMode,
         },
       })
       // Y queda ANOTADO en su perfil (`fraud_watch_list`, idempotente por usuario: reincidir
       // sube la puntuación en vez de duplicar filas). Anotar es consecuencia del bloqueo, nunca
       // condición: fire-and-forget para que un fallo aquí no convierta un 403 correcto en un 500.
-      marcarFarmeoFireAndForget({
+      // En sombra NO se marca el perfil: marcar a alguien por un bloqueo que no ha ocurrido
+      // sería ensuciar su ficha con una sospecha que aún no hemos validado.
+      if (shouldBlock(deviceLimitMode)) marcarFarmeoFireAndForget({
         userId: user.id,
         deviceTotal: deviceUsage.deviceTotal,
         anchor: hwFingerprint?.startsWith('fp2_') ? 'fingerprint_v2' : 'device_id',
         deviceRef: (hwFingerprint || deviceId || '').slice(0, 40) || null,
       })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
-          limitReached: true,
-          questionsToday: deviceUsage.deviceTotal,
-        } as const,
-        { status: 403 },
-      )
+      if (shouldBlock(deviceLimitMode)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+            limitReached: true,
+            questionsToday: deviceUsage.deviceTotal,
+          } as const,
+          { status: 403 },
+        )
+      }
+      // En `shadow` se sigue como si nada: el usuario responde con normalidad y nosotros ya
+      // tenemos el dato de que habría sido bloqueado.
     }
 
     // Per-user daily limit enforcement (free users only)

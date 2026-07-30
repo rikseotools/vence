@@ -19,6 +19,10 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { BackgroundService } from '../background/background.service';
 import { CacheService } from '../cache/cache.service';
 import {
+  currentDeviceLimitMode,
+  shouldBlock,
+} from '../daily-limit/device-limit-mode';
+import {
   isTimeoutError,
   withTimeout,
 } from '../common/with-timeout';
@@ -139,13 +143,23 @@ export class AnswerSaveController {
     }
 
     if (!dailyLimit.isPremium && deviceUsage && !deviceUsage.allowed) {
-      throw new ForbiddenException({
-        success: false,
-        error:
-          'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
-        limitReached: true,
-        questionsToday: deviceUsage.deviceTotal,
-      });
+      // MODO SOMBRA (T-304): por defecto se MIDE lo que habría pasado, no se corta. El ancla
+      // nueva (huella v2) agrupa cuentas que antes no se agrupaban, y antes de dejar a alguien
+      // sin servicio hay que ver sobre tráfico real a quién estaríamos bloqueando.
+      const modo = currentDeviceLimitMode();
+      this.logger.warn(
+        `[device-limit:${modo}] dispositivo con ${deviceUsage.deviceTotal} preguntas hoy entre sus cuentas` +
+          (shouldBlock(modo) ? ' — BLOQUEADO' : ' — solo registrado (sombra)'),
+      );
+      if (shouldBlock(modo)) {
+        throw new ForbiddenException({
+          success: false,
+          error:
+            'Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.',
+          limitReached: true,
+          questionsToday: deviceUsage.deviceTotal,
+        });
+      }
     }
 
     if (!dailyLimit.allowed) {

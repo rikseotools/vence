@@ -184,16 +184,64 @@ describe('AnswerSaveController.post', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('device daily usage exhausted (free user) → ForbiddenException', async () => {
-      const { controller, mocks } = makeController();
-      mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
-        allowed: false,
-        deviceTotal: 25,
+    // El límite por dispositivo se enciende EN DOS TIEMPOS (T-304, 30/07/2026): primero mide sobre
+    // tráfico real lo que habría hecho (`shadow`, por defecto) y solo se activa con los datos
+    // delante. El ancla nueva agrupa cuentas que antes no se agrupaban, y cortarle el servicio a
+    // alguien sin haberlo comprobado es el fallo que se está evitando.
+    describe('device daily usage exhausted (free user)', () => {
+      const conModo = async (modo: string, fn: () => Promise<void>) => {
+        const previo = process.env.DEVICE_LIMIT_MODE;
+        process.env.DEVICE_LIMIT_MODE = modo;
+        try {
+          await fn();
+        } finally {
+          if (previo === undefined) delete process.env.DEVICE_LIMIT_MODE;
+          else process.env.DEVICE_LIMIT_MODE = previo;
+        }
+      };
+
+      it('en `enforce` → ForbiddenException', async () => {
+        await conModo('enforce', async () => {
+          const { controller, mocks } = makeController();
+          mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
+            allowed: false,
+            deviceTotal: 25,
+          });
+          const res = makeRes();
+          await expect(
+            controller.post(makeBody(), USER, {}, res),
+          ).rejects.toThrow(ForbiddenException);
+        });
       });
-      const res = makeRes();
-      await expect(
-        controller.post(makeBody(), USER, {}, res),
-      ).rejects.toThrow(ForbiddenException);
+
+      it('en `shadow` NO bloquea: el usuario responde con normalidad (solo se registra)', async () => {
+        await conModo('shadow', async () => {
+          const { controller, mocks } = makeController();
+          mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
+            allowed: false,
+            deviceTotal: 75,
+          });
+          const res = makeRes();
+          await expect(
+            controller.post(makeBody(), USER, {}, res),
+          ).resolves.toBeDefined();
+        });
+      });
+
+      it('SIN configurar el modo tampoco bloquea (el defecto es medir, no cortar)', async () => {
+        await conModo('', async () => {
+          delete process.env.DEVICE_LIMIT_MODE;
+          const { controller, mocks } = makeController();
+          mocks.dailyLimit.checkDeviceDailyUsage.mockResolvedValue({
+            allowed: false,
+            deviceTotal: 99,
+          });
+          const res = makeRes();
+          await expect(
+            controller.post(makeBody(), USER, {}, res),
+          ).resolves.toBeDefined();
+        });
+      });
     });
 
     it('user daily limit exhausted → ForbiddenException', async () => {
