@@ -540,3 +540,31 @@ describe('clasificarEspera — verificación nuestra vs decisión de Manuel', ()
     expect(clasificarEspera('texto cualquiera sin marcadores')).toBe('verificacion')
   })
 })
+
+// Exenciones del detector, sacadas de OUTCOMES REALES al revisar 70 cierres (30/07).
+// Sin ellas la puerta bloquea cierres legítimos, y un guardarraíl que estorba acaba esquivándose
+// con `--igualmente` — que es como mueren los guardarraíles.
+describe('detectarTrabajoPendiente — narrar un pendiente YA resuelto no es dejar trabajo', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs') as {
+    detectarTrabajoPendiente: (o: unknown) => { pendiente: boolean; motivo: string | null }
+  }
+
+  it.each([
+    'HECHO 20/07. El pendiente era Osakidetza Decreto 255/1997: la ficha decía 7 arts bilingües',
+    'CERRADA por la auditoría del backlog: ya estaba resuelta. Prueba: el drenaje descrito',
+    'Consolidados los 6 grupos de leyes duplicadas (censo posterior: 0 grupos partiendo trabajo)',
+    'CANCELADA / WONTFIX (Manuel, 24/07): NO se trocean los artículos-cajón',
+    'visual_deixis_no_image 5 findings -> 0; las 5 eran falsos positivos',
+  ])('deja cerrar (es historia, no deuda): %s', (o) => {
+    expect(detectarTrabajoPendiente(o).pendiente).toBe(false)
+  })
+
+  it.each([
+    'Arreglado y pusheado. PENDIENTE: desplegar backend.',
+    'Key de idempotencia del email en main, falta desplegar',
+    'Hecho, falta verificar el barrido de mañana',
+  ])('sigue bloqueando lo que de verdad queda: %s', (o) => {
+    expect(detectarTrabajoPendiente(o).pendiente).toBe(true)
+  })
+})

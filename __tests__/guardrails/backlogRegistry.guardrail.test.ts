@@ -154,3 +154,45 @@ describe('backlog — enforcement del claim por pre-push', () => {
     expect(candados.map((c) => `${c.id} (${c.patron}): ${c.title}`)).toEqual([])
   })
 })
+/**
+ * Una ficha CERRADA no puede vivir en la sección «## Abiertas».
+ *
+ * Medido el 30/07/2026: de 184 fichas listadas como abiertas, **70 estaban cerradas en la BD** y
+ * **65 lo decían en su propio título** (`✅`, `HECHA`, `CERRADA`, `CANCELADA`, `RESUELTA`). Las
+ * abiertas de verdad eran 114.
+ *
+ * No es cosmético: quien abre el backlog para elegir trabajo lee 184 entradas y más de un tercio
+ * son ruido. Y el `done` del CLI ya avisa de que hay que mover la entrada — pero avisar no basta,
+ * porque el aviso se ve una vez y el fichero se queda así para siempre.
+ *
+ * Se comprueba por TEXTO a propósito: este guardarraíl corre en CI sin acceso a la base de datos,
+ * así que no puede preguntar el `status`. El título es la señal que sí está a mano, y con ella
+ * habría cazado 65 de los 70 casos.
+ */
+describe('guardarraíl — las fichas cerradas no se quedan en «## Abiertas»', () => {
+  // La marca de cierre tiene que estar en la POSICIÓN DEL ESTADO, no en cualquier parte del
+  // título. Con una regex ingenua, `[30/07 — fuga CERRADA y 141 reparadas]` daba falso positivo:
+  // la cerrada era la fuga, no la tarea. Dos formas válidas, las que usa el fichero:
+  //   `### [T-286] ✅ [HECHA 29/07] …`   → emoji de cerrada justo tras el id
+  //   `### [T-095] … [CANCELADA 24/07] …` → el corchete de estado EMPIEZA por la marca
+  const CERRADA_POR_EMOJI = /^### \[T-\d+\]\s*✅/
+  const CERRADA_POR_ESTADO = /^### \[T-\d+\][^[]*\[\s*(HECHA|CERRADA|CANCELADA|RESUELTA|DESCARTADA)\b/i
+  const CERRADA = { test: (l: string) => CERRADA_POR_EMOJI.test(l) || CERRADA_POR_ESTADO.test(l) }
+
+  function cabecerasDeAbiertas(): string[] {
+    const lineas = readFileSync(MD_PATH, 'utf8').split('\n')
+    const iAb = lineas.findIndex((l) => l.trim() === '## Abiertas')
+    const iHe = lineas.findIndex((l, i) => i > iAb && l.trim() === '## Hechas')
+    if (iAb < 0 || iHe < 0) return []
+    return lineas.slice(iAb, iHe).filter((l) => l.startsWith('### [T-'))
+  }
+
+  it('ninguna cabecera de «## Abiertas» se anuncia como cerrada', () => {
+    const malas = cabecerasDeAbiertas()
+      .filter((l) => CERRADA.test(l))
+      .map((l) => l.slice(0, 110))
+    // El detalle va DENTRO del valor comparado: Jest no acepta un 2º argumento en expect()
+    // (eso es Vitest) y, si se pasa, lanza en vez de comparar — ya me costó un rojo hoy.
+    expect({ fichasCerradasEnAbiertas: malas }).toEqual({ fichasCerradasEnAbiertas: [] })
+  })
+})
