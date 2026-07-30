@@ -35,21 +35,32 @@ const postgres = pgMod.default || pgMod;
 // El ORDEN de atención (bug → pre-venta → premium → baja) vive en un núcleo puro con
 // tests, no aquí: un orden que solo está escrito en el manual se aplica «casi siempre».
 const { ordenarCola, ETIQUETA } = require(path.join(REPO, 'lib', 'feedback', 'prioridadCola.js'));
+// Quién sigue PENDIENTE (cerrar en silencio también es atender): núcleo puro con tests.
+const { filtrarPendientes } = require(path.join(REPO, 'lib', 'feedback', 'pendientes.js'));
 
 const db = () => postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: { rejectUnauthorized: false } });
 
-/** Feedbacks: nuevos sin responder + réplicas posteriores a nuestra última respuesta. */
+/**
+ * Feedbacks: nuevos sin responder + réplicas posteriores a nuestra última respuesta.
+ *
+ * La consulta trae CANDIDATOS con sus fechas; quién sigue pendiente lo decide el núcleo puro
+ * `lib/feedback/pendientes.js`, que está testeado. Antes el criterio vivía aquí, en SQL, y
+ * tenía un agujero: una réplica atendida con **cierre en silencio** (sin escribir, que es lo
+ * que se hace cuando alguien contesta «gracias») no dejaba mensaje nuestro, así que el aviso
+ * reaparecía en cada pasada durante 24 h. Cerrar también es atender.
+ */
 async function feedback(sql) {
-  return sql`
+  const filas = await sql`
     WITH ult AS (
       SELECT c.feedback_id,
              max(m.created_at) FILTER (WHERE NOT m.is_admin) AS ult_user,
              max(m.created_at) FILTER (WHERE m.is_admin)     AS ult_admin
         FROM feedback_messages m JOIN feedback_conversations c ON c.id = m.conversation_id
        GROUP BY c.feedback_id)
-    SELECT f.id, f.type, coalesce(p.email, f.email, '?') AS email,
+    SELECT f.id, f.type, f.status, f.created_at, f.resolved_at,
+           u.ult_user, u.ult_admin,
+           coalesce(p.email, f.email, '?') AS email,
            coalesce(p.plan_type, '?') AS plan,
-           CASE WHEN u.ult_admin IS NULL THEN 'NUEVO' ELSE 'REPLICA' END AS clase,
            left(replace(coalesce(
              (SELECT m2.message FROM feedback_messages m2
                 JOIN feedback_conversations c2 ON c2.id = m2.conversation_id
@@ -59,14 +70,9 @@ async function feedback(sql) {
       LEFT JOIN user_profiles p ON p.id = f.user_id
       LEFT JOIN ult u ON u.feedback_id = f.id
      WHERE f.type <> 'account_deletion'   -- las bajas se atienden al final, no urgen
-       AND (
-         (f.status NOT IN ('resolved','closed','dismissed') AND u.ult_admin IS NULL
-            AND f.created_at > NOW() - INTERVAL '6 hours')
-         -- La réplica cuenta AUNQUE el feedback esté cerrado: es justo cuando se pierde.
-         OR (u.ult_user IS NOT NULL AND u.ult_admin IS NOT NULL AND u.ult_user > u.ult_admin
-            AND u.ult_user > NOW() - INTERVAL '24 hours')
-       )
+       AND f.created_at > NOW() - INTERVAL '30 days'
      ORDER BY f.created_at`;
+  return filtrarPendientes(filas);
 }
 
 /**
