@@ -915,6 +915,8 @@ incluida).
 - **Relacionado:** [T-304] (mismo patrón, mismo método), `docs/runbooks/revisar-fraudes.md` §límite por dispositivo, [T-095] (por qué el enforcement de uso se descartó en su día para free).
 
 
+- **📌 Punto de partida concreto (30/07):** ahora existe todo lo que hace falta para comprobarlo rápido — `esFraudeConfirmado()`, la marca persistente y el dossier. El paso 1 es el mismo que destapó [T-304]: **contar bloqueos reales** (`observable_events`) y compararlos con lo que el detector marca. Si detecta y no bloquea nunca, está mudo. Y el paso 2, mirar a qué se ancla: si es al `device_id` de `localStorage`, está roto por diseño.
+
 ### [T-303] 🟠 [ABIERTO 30/07] El detector `bot_detected` marca opositoras REALES: 5 señales, 5 usuarias distintas, la misma huella de Chrome Android
 - **Qué pasa:** `bot_detected` (detección client-side, `botScore 90`) lleva **5 señales en 14 días sobre 5 usuarias distintas**, todas con la MISMA huella: `no_plugins` + `zero_dimensions` + `botd:headless_chrome`, siempre sobre `Chrome 150 / Android 10`. **Las revisadas eran todas usuarias reales**, y no de forma dudosa:
   - `mariasoledadparrabaeza` (29/07): registrada el 21/05, **199 respuestas**, 12 tests practice completados y un examen, estudiando hasta las 23:41.
@@ -924,6 +926,8 @@ incluida).
 - **Cómo (mismo método que funcionó en [T-179], que es el precedente directo):** NO tocar el umbral a ojo. Sacar la **población** de señales `bot_detected` y mirarlas una a una contra la actividad real de cada cuenta (respuestas guardadas, tests completados, minutos de sesión); cruzar con `userAgent` y `screenResolution` para confirmar si el patrón es WebView; y solo entonces decidir el discriminante — que probablemente NO sea el `botScore`, igual que en cosecha no era el ratio. Un candidato obvio: **una cuenta que responde y completa tests no es un bot**, por mucho que su fingerprint sea raro. Añadir los casos medidos como test de regresión.
 - **Origen:** triaje de señales de fraude del 29 y 30/07. Las 5 están `dismissed` con su evidencia en las notas.
 
+
+- **📌 Contexto para retomarla (30/07):** el método que funcionó en [T-179] es el que hay que repetir — **sacar la población y mirarla una a una**, no tocar el umbral a ojo. Allí resultó que el discriminante no era el ratio sino una dimensión que no se medía (la amplitud temporal); aquí probablemente tampoco sea el `botScore`. Candidato razonable: **una cuenta que responde y completa tests no es un bot**, por raro que sea su fingerprint. Las 5 señales están `dismissed` con la evidencia en sus notas.
 
 ### [T-302] 🟠 [ABIERTO 30/07] Los contenedores de Office 2016 y los clínicos TCAE están vacíos: 3.203 preguntas activas cuelgan de artículos 20-40 veces más delgados que los enriquecidos
 
@@ -5120,6 +5124,9 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **⏳ Pendiente de desplegar** para que surta efecto. **Verificación:** que la cobertura de IP suba del ~1 % actual hacia el 70-85 % histórico, y que `session_ip_coverage_drop` deje de disparar.
 
 
+- **✅ DESPLEGADO Y VIVO (30/07, `67ae7f56`).** ⏳ **Verificar en 24-48 h:** que la cobertura de IP suba del ~1 % actual hacia el **70-85 %** histórico (`SELECT count(ip_address)*100.0/count(*) FROM user_sessions WHERE created_at >= NOW()-INTERVAL '24 hours'`) y que `session_ip_coverage_drop` deje de disparar. Si sigue en el 1 %, el disparador no se está ejecutando: mirar si `/api/auth/track-session-ip` recibe llamadas (antes eran 35 en 7 días con 6.270 sesiones).
+- **Por qué importa para el antifraude:** sin IP, el análisis de la sombra pierde su mejor criterio para separar una granja de una coincidencia (misma huella + IP distinta = probablemente otra persona con el mismo modelo de móvil; misma IP = la misma casa).
+
 ### [T-309] ✅ [HECHA 30/07] Precio de fidelidad: CUATRO fallos encadenados hasta que la usuaria pudo pagar
 
 - **ORIGEN.** Rocío (feedback `48f1503a`) se quedó sin premium al vaciar la cuenta antigua de Stripe. Se le montó su precio de siempre (18 €/mes y 35 €/trimestre) y se le mandó a `/premium/personal`. Contestó **cinco veces en dos días** diciendo que no podía: *«no puedo acceder a la oferta»*, *«el enlace sigue sin funcionar»*, *«sigue igual, ¿puede ser que esté entrando desde el móvil?»*, *«lo he intentado en el ordenador y tampoco»*, y al final *«ahora sí salen los precios pero al darle para activar da error 404»*.
@@ -5291,6 +5298,89 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Lo que queda fuera a propósito:** la prueba E2E con `vence-sim` (Playwright). Simular dos cuentas en el mismo navegador es el escenario natural para ella, pero sin huellas v2 en el corpus la prueba mediría el estado viejo. Tiene sentido en cuanto haya cobertura, no antes.
 - **Relacionado:** [T-095] (por qué el enforcement de uso se descartó en su día: sigue siendo cierto que el upside de ingresos es 0 — esto se hace por integridad del límite, no por caja), [T-308] (mismo patrón para premium compartido), `docs/runbooks/revisar-fraudes.md` §límite por dispositivo.
 
+
+#### 🚢 ESTADO FINAL DE LA SESIÓN DEL 30/07 — DESPLEGADO Y VIVO (`67ae7f56`, frontend + backend)
+
+**Todo lo de abajo está EN PRODUCCIÓN desde el 30/07.** Lo que falta es medir, no construir.
+
+**1. El diagnóstico que lo abrió todo.** El enforcement por dispositivo existía desde el **17/04**
+(commit `e8f1724ed`: función SQL, `checkDeviceDailyUsage`, cableado en 4 endpoints del frontend Y
+en el backend, tests y pantalla de bloqueo) y **en 30 días no cortó ni una vez** — frente a 1.095
+bloqueos del límite por cuenta. No fallaba el bloqueo: fallaba el **ancla**. Se agrupaba por el
+`device_id` de `localStorage`, que se borra en dos clics. Prueba: el trío
+`suusyyr`/`susanaborgesr`/`susistrawberryy` aparece bajo **tres `device_id` distintos** y el 29/07
+rotó en 40 minutos (20:40→20:54, 21:03→21:11, 21:14→21:20), 25 respuestas cada cuenta.
+
+**2. Huella v2** (`lib/security/fingerprint/`): SHA-256 sobre canvas COMPLETO + WebGL
+vendor/renderer + AudioContext + `deviceMemory` + `hardwareConcurrency` + pantalla normalizada por
+orientación. La v1 colisionaba **hasta 83 cuentas** porque recortaba el canvas con
+`toDataURL().slice(-50)` —el cierre del PNG, casi idéntico entre equipos— y hasheaba con 32 bits.
+**Criterio rector: ESTABILIDAD.** Borrar `localStorage` devuelve la MISMA huella (invariante fijado
+por test); girar el móvil no cambia la identidad; una señal ausente ocupa su sitio con `na`.
+
+**3. `get_device_daily_usage_v2(device_id, fingerprint)`** — unión de ambas señales, **ignorando a
+propósito las huellas v1** (agrupar por ellas apagaría a decenas de usuarias que solo comparten
+modelo de móvil). Aditiva: 0 regresiones sobre 200 dispositivos reales.
+
+**4. Encendido en DOS TIEMPOS** (`DEVICE_LIMIT_MODE`, defecto **`shadow`**): mide sin cortar. Un
+despliegue sin decidir MIDE; un typo en la variable tampoco activa el corte. Espejo en el backend
+con guardarraíl de paridad (26 casos), porque `answer-and-save` reparte tráfico entre los dos
+caminos.
+
+**5. CORTE DIRIGIDO YA ACTIVO** a los **8 dispositivos / 25 cuentas** confirmados por revisión
+manual (`esFraudeConfirmado`, caché 5 min, fail-open). Se les aplica **aunque el modo global siga
+en `shadow`**: son casos verificados uno a uno, ahí no hay duda que resolver con más datos. El trío
+pasa de **75 a 25** preguntas/día; el de 4 cuentas, de 100 a 25; las cinco «Rocío», de 60 a 25.
+**No es bloqueo de cuenta**: las cuentas del mismo equipo comparten los 25 del día.
+
+**6. El mensaje NO delata el mecanismo.** Había DOS textos (cuenta vs dispositivo) y bastaba
+compararlos para deducir cómo contamos — y de ahí, coger otro móvil. Ahora es **uno solo e
+idéntico** en las 5 rutas, con guardarraíl. La evasión que queda no es gratis: exige cuenta nueva
+**y** dispositivo distinto, y rotar equipos deja **más** rastro (lo vigila `evasion_multidispositivo`).
+
+**7. La marca SOBREVIVE al borrado de cuenta.** `fraud_watch_list.user_id` y `user_devices.user_id`
+van con `ON DELETE CASCADE`: pedir la baja borraba el historial. La marca persistente vive en
+`fraud_confirmations` —tabla que YA existía con la forma correcta y 0 filas—, anclada a la huella y
+al **hash SHA-256 de los correos** (nunca el correo), con **retención de 2 años** (RGPD art. 17.3;
+«para siempre» es indefendible). Reincidir reinicia la cuenta atrás. Al crear cuenta nueva se
+comprueba y se emite `alta_con_marca_previa`: **solo detecta**, bloquear un alta es decisión de Manuel.
+
+**8. El rechazo abre el modal correcto.** El 403 por cupo de dispositivo moría en la cola asíncrona
+y el usuario seguía respondiendo mientras sus respuestas se perdían. Ahora dispara
+`vence:dailyLimitReached` → modal de Premium. **NO se reutilizó** `deviceLimitReached`, que abre el
+de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
+
+**9. Alertas nuevas** (todas validadas contra producción): `device_limit_mudo`,
+`session_ip_coverage_drop`, `fraude_confirmado_sin_accion`, `evasion_multidispositivo`.
+
+**10. Herramientas:** `npm run fraude:dossier` (expediente de cada confirmada),
+`fraude:sombra-device` (a quién cortaría el modo global), `fraude:marcar-confirmadas` (idempotente).
+
+#### ⏳ QUÉ VERIFICAR (nadie ha hecho esto todavía)
+1. **Que el corte MUERDE**: `observable_events WHERE event_type='device_daily_limit_blocked'` con
+   `metadata->>'dirigido'='true'`. Debería aparecer en cuanto alguna de las 25 cuentas pase del cupo
+   compartido. **Si en 48 h no hay ninguno, algo no está cortando** — mirar por qué.
+2. **Que crece el corpus**: `SELECT count(*) FROM user_devices WHERE hw_fingerprint LIKE 'fp2\_%'`
+   (era 0 antes del deploy). Sin esto, el modo global seguiría ciego.
+3. **Que la alerta `device_limit_mudo` deja de disparar** (antes del deploy diría 18 device-días / 0
+   bloqueos).
+4. **Antes de pasar a `enforce` global**: `npm run fraude:sombra-device -- --dias 2` y revisar
+   **uno a uno** a quién cortaría. Si aparece un solo caso que parezca legítimo, NO activar.
+
+#### 📌 CONTEXTO QUE NO ESTÁ EN EL CÓDIGO (decisiones de Manuel, 30/07)
+- **Tope por dispositivo = 25, el mismo que por cuenta.** Propuse 50 para dejar sitio a una pareja
+  real y lo descartó: *«las cuentas son individuales, no por familias»*, *«hay que ser muy riguroso
+  con las cuentas free»*. Los datos lo respaldan: **0 device-días con UNA sola cuenta se ven
+  afectados** — a quien usa su equipo solo ya lo topa su propio límite.
+- **Cortar YA a los confirmados**, sin esperar a la sombra.
+- **Marcar dispositivo Y cuentas**, para que borrar la cuenta y volver a crearla no limpie el rastro.
+- Descartado tras medirlo: que `/api/v2/daily-question/status` consultara el dispositivo. Lo usan 8
+  componentes, el banner pinta ese número (habría mostrado «75/25 preguntas hoy») y solo ahorraba
+  UNA pregunta antes del muro. Lo frenó Manuel: *«igual lo estás rompiendo»*.
+- **[T-095] sigue siendo válida** en lo suyo: el upside de ingresos del enforcement es ~0 € (los
+  farmers no pagan). Esto se hace por **integridad del límite**, no por caja. Dato que lo matiza:
+  quien topa el límite convierte al **4,8 %**, el doble de la media (2,37 %) — el muro es la palanca
+  de conversión más fuerte medida, así que conviene que funcione.
 
 ### [T-179] ✅ [HECHA 30/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
 - **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
