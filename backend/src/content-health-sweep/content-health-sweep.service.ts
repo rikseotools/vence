@@ -1207,11 +1207,18 @@ export class ContentHealthSweepService {
             FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)
         `)) as unknown as Array<{ lo: number; hi: number; n: number }>;
         const t = (Array.isArray(tr) ? tr : []).map((r) => ({ desdeMs: Number(r.lo), hastaMs: Number(r.hi), n: Number(r.n) }));
+        // DENSIDAD (peticiones por segundo de ancho), no cuenta bruta: los tramos no miden lo mismo.
+        // Y la referencia es el tramo anterior CON DATOS — si está vacío, cualquier densidad da «×∞»
+        // y un hueco se lee como un muro. Medido el 30/07: con cuentas salían 4 techos y solo 2 eran
+        // ciertos (theme-stats y la ruta del PDF eran colas naturales).
+        const dens = t.map((x) => x.n / ((x.hastaMs - x.desdeMs) / 1000));
         for (let i = 1; i < t.length - 1; i++) {
           const porEncima = t.slice(i + 1).reduce((a, x) => a + x.n, 0);
-          if (t[i].n > t[i - 1].n && t[i].n >= 8 && porEncima <= Math.max(1, Math.floor(t[i].n * 0.1))) {
+          let ref = -1;
+          for (let k = i - 1; k >= 0; k--) { if (t[k].n > 0) { ref = k; break } }
+          if (ref >= 0 && dens[i] > dens[ref] && t[i].n >= 8 && porEncima <= Math.max(1, Math.floor(t[i].n * 0.1))) {
             add('app', 'warn', null, 'latencia_techo_timeout',
-              `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(t[i].hastaMs / 1000)} s — ${t[i].n} peticiones entre ${t[i].desdeMs} y ${t[i].hastaMs} ms (el tramo anterior tenía ${t[i - 1].n}) y solo ${porEncima} por encima`,
+              `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(t[i].hastaMs / 1000)} s — ${t[i].n} peticiones entre ${t[i].desdeMs} y ${t[i].hastaMs} ms, la densidad se multiplica ×${(dens[i] / dens[ref]).toFixed(1)} y por encima solo quedan ${porEncima}`,
               { endpoint, techoMs: t[i].hastaMs, enTecho: t[i].n, porEncima });
             break;
           }
