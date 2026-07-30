@@ -1101,6 +1101,33 @@ El indicador de latencia que existía agregaba **todo** el tráfico junto: duran
 
 La ficha de [T-254] atribuía la degradación a la **CPU del contenedor del BACKEND** por una estampida de crons, y ese arreglo (escalonar las fases, `cron-colisiones.ts`) se desplegó el 29/07 a las 03:39. **La degradación se repitió igual ese mismo día**: el escalonado era correcto pero atacaba otra cosa. El saturado no era el backend sino el **frontend**, que es quien sirve `answer-and-save`. Lección: *"la CPU del backend estaba al 100%"* y *"el backend es la causa"* no son la misma frase — hay que comprobar qué contenedor sirve el endpoint que duele.
 
+### ⚠️ Segunda corrección (30/07): eran DOS fenómenos, no uno
+
+Este registro atribuye al render de PDFs la degradación del 29/07. La correlación sigue siendo buena
+para **ese episodio concreto** —los PDFs empiezan, la latencia se hunde, los PDFs acaban, se
+recupera, con el tráfico plano— pero **no explica el techo diario**, y juntarlo todo en una sola
+causa fue precipitado.
+
+**Lo que se descubrió al día siguiente:** el máximo de `answer-and-save` cae en **~25,1 s día tras
+día** (25.111 · 25.131 · 25.241 · 25.070 · 25.134). Eso no es lentitud, es un **timeout**:
+`ANTIFRAUD_TIMEOUT_MS = 25000`. La distribución lo confirma — 6 peticiones entre 20-24 s, **19 entre
+24-26 s** y **cero por encima** —, y es **exclusivo de este endpoint** (ningún otro tiene una sola
+petición en esa banda en 14 días, así que no es el ALB). Detalle y plan en **[T-315]**.
+
+**Y aparece días SIN un solo PDF de por medio** (22, 25 y 26/07), así que convivían dos cosas:
+- el techo de 25 s del antifraude + los 27 triggers del INSERT → **todos los días**, [T-315];
+- el bloqueo del event-loop por el render de PDFs → **el episodio del 29/07**, este registro.
+
+**Tercera hipótesis también descartada:** el cron `detect-notas-convocatoria` (18 minutos diarios
+acabando a las 09:48 UTC) encajaba sospechosamente bien por horario, pero hubo peticiones lentas los
+días 22, 25 y 26 en que **no corrió**.
+
+> **Lección de método, y es la tercera vez que muerde en este incidente:** una correlación temporal
+> limpia invita a cerrar la investigación antes de tiempo. Aquí hubo **tres** atribuciones —crons del
+> backend (refutada midiendo), PDFs (parcial), cron de notas (refutada)— antes de mirar la
+> **distribución** de las duraciones, que era lo que contaba la historia de verdad en una sola
+> consulta. Ante «esto va lento», mirar la FORMA de la cola antes que el calendario.
+
 ### Qué lo cierra (escalonado, ver [T-270])
 
 1. **Contención:** límite de renders frescos concurrentes por task. Convierte "el sitio se degrada 18 minutos" en "algunos PDFs esperan".

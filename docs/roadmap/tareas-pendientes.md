@@ -4935,6 +4935,30 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Por qué no lo cazó nada:** `body: unknown` se lo tragaba todo; el guardarraíl buscaba el texto `method: 'GET'` en el fichero **y lo encontraba, en el argumento equivocado** (un test de texto ve las letras, no la posición); y el journey que sí lo habría visto está apagado por falta de autenticación del simulador → **[T-287]**.
 - **Si vuelve a pasar algo parecido:** mirar `observable_events` filtrando por `user_id`, no el endpoint por tu cuenta. `deploy_version` distingue «no le ha llegado el arreglo» de «el arreglo no arregla». Runbook: `docs/runbooks/oferta-precio-personalizada.md` §4-bis.
 
+### [T-315] 🟠 [ABIERTO 30/07] El techo de 25 s de `answer-and-save` es el TIMEOUT DEL ANTIFRAUDE, no una degradación — y subirlo fue tratar el síntoma
+- **Qué es realmente:** las peticiones que aparecen «a 25 segundos» no se están degradando: están **agotando `ANTIFRAUD_TIMEOUT_MS = 25000`** (`app/api/v2/answer-and-save/route.ts:42`). El propio código lo documenta: *«las 3 RPCs antifraude paralelas pueden tardar **10-20 s bajo carga BD**»* y *«el INSERT a `test_questions` + **27 triggers en cascada** tarda >15 s ocasionalmente»*.
+- **🎯 La prueba: la distribución se amontona contra un muro** (14 días, peticiones de más de 5 s):
+
+  | banda | peticiones |
+  |---|---|
+  | 5-10 s | 66 |
+  | 10-20 s | 65 |
+  | **20-24 s** | **6** |
+  | **24-26 s** | **19** |
+  | **>26 s** | **0** |
+
+  Una lentitud orgánica **adelgaza** en la cola; ésta se acumula justo antes del corte y se acaba en seco. Y es **exclusivo de este endpoint**: ningún otro tiene una sola petición entre 24 y 26 s en 14 días, así que **no es el ALB ni la plataforma** — eso afectaría a todos.
+- **Historia del parche, que es lo que hay que revertir:** el timeout subió **10.000 → 25.000 en dos días** (28 y 29/05) porque el cap de 10 s *«mataba ~49k req/día»* con 503. Es decir, se ensanchó el tubo para dejar de ver errores, **sin tocar por qué las RPCs tardan 10-20 s ni por qué un INSERT dispara 27 triggers**. El opositor dejó de ver un error y pasó a esperar 25 segundos.
+- **⚠️ DOS hipótesis anteriores, y por qué las dos se quedaron cortas** (esto vale más que el hallazgo):
+  1. **Estampida de crons del backend** ([T-254]): **REFUTADA midiendo** — se desplegó el escalonado y la CPU volvió al 100% igual al día siguiente.
+  2. **Render de PDFs bloqueando el event-loop** ([T-270]): explica bien el incidente del 29/07 (correlación limpia, mecanismo respaldado por el `Dockerfile` del worker) pero **NO explica este techo**, que aparece también días sin un solo PDF de por medio (22, 25 y 26/07). Probablemente fueron **dos fenómenos distintos el mismo día** y se juntaron en una sola explicación.
+  - **También se descartó el cron `detect-notas-convocatoria`** (18 min diarios, terminando a las 09:48 UTC, sospechoso por horario): hubo peticiones lentas los días 22, 25 y 26 en que **no corrió**.
+- **Cómo (medir antes de tocar, que es justo lo que no se hizo en mayo):**
+  1. Con el desglose por fases de [T-312] ya desplegado, mirar dónde cae el tiempo: **`fuera_de_fases`** = el antifraude (corre en la ruta, ANTES de las tres fases instrumentadas); **`guardar`** = el INSERT y sus 27 triggers. Eso parte el problema en dos con respuesta.
+  2. Según cuál sea: perfilar las 3 RPCs antifraude, o revisar la cascada de triggers de `test_questions` (¿cuántos son evitables? ¿alguno hace trabajo que podría ir al outbox?).
+  3. **Solo entonces** bajar el timeout. Bajarlo antes devuelve los 503 de mayo.
+- **Relacionada:** [T-312] (el desglose que lo parte en dos), [T-270] (el otro fenómeno del 29/07), [T-254] (la hipótesis refutada), `docs/roadmap/incidente-answer-save-503-28-05.md`.
+
 ### [T-312] 🟠 [ABIERTO 30/07] Una petición lenta no dice POR QUÉ: 50-200 opositores al día con el guardado a >5 s y causa inaveriguable
 - **El hueco, en una frase:** de una petición de **25 segundos que devolvió 200 OK** guardamos `duration_ms`, host, método, `questionId` y poco más. **Nada de dónde se fueron esos 25 segundos** — ni BD, ni espera de pool, ni antifraude, ni llamada externa. La pregunta «¿por qué tardó?» es literalmente incontestable con lo que hay, y el `grep` lo confirma: **no existe ni una medición interna** en `lib/api/v2/answer-and-save`.
 - **📊 Cuánto pasa, medido (7 días, `request_completed`, muestreo 10%):**

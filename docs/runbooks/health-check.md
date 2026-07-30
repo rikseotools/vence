@@ -650,6 +650,20 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**«answer-and-save a 25 segundos» NO es una degradación: es un TIMEOUT (30/07, T-315).** Antes de investigar una supuesta degradación de este endpoint, comprueba **dónde cae el máximo**. Si está clavado en ~25,1 s día tras día, es `ANTIFRAUD_TIMEOUT_MS = 25000` (`app/api/v2/answer-and-save/route.ts`), no lentitud creciente.
+- **Cómo distinguirlo en una consulta** — una lentitud orgánica ADELGAZA en la cola; un timeout se AMONTONA justo antes del corte y se acaba en seco:
+  ```sql
+  SELECT width_bucket(duration_ms, 5000, 30000, 5) b, count(*), min(duration_ms), max(duration_ms)
+    FROM observable_events WHERE event_type='request_completed'
+     AND endpoint='/api/v2/answer-and-save' AND duration_ms > 5000
+     AND created_at > now() - interval '14 days' GROUP BY 1 ORDER BY 1;
+  ```
+  Medido el 30/07: 6 peticiones entre 20-24 s, **19 entre 24-26 s** y **CERO por encima de 26 s**.
+- **Y es exclusivo de este endpoint:** ningún otro tiene una sola petición en esa banda en 14 días. Si el techo apareciera en varios a la vez, sí sería plataforma (ALB/CloudFront); en uno solo, es su propio código.
+- **Qué hay detrás:** el código lo dice — *«las 3 RPCs antifraude paralelas pueden tardar 10-20 s bajo carga BD»* y *«el INSERT a `test_questions` + 27 triggers en cascada tarda >15 s ocasionalmente»*. El timeout se subió de 10 s a 25 s en dos días (28-29/05) para dejar de devolver 503: **se ensanchó el tubo, no se arregló la causa**.
+- **El desglose por fases ([T-312]) lo parte en dos:** `fuera_de_fases` → es el antifraude (corre en la ruta, antes de las fases instrumentadas); `guardar` → es el INSERT y sus triggers.
+- ⚠️ **No bajar el timeout sin arreglar antes la causa**: devolvería los ~49k req/día con 503 de mayo.
+
 **Una petición lenta ya dice POR QUÉ — evento `answer_save_lento` (30/07, T-312).** Si `/api/v2/answer-and-save` se arrastra, **no hace falta adivinar**: cada guardado por encima de **2 s** emite su desglose por fases, al 100% (el `request_completed` va muestreado al 10% y ese sesgo es justo el que no se puede permitir aquí).
 ```sql
 SELECT to_char(ts,'HH24:MI') t, duration_ms,
