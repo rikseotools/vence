@@ -42,7 +42,7 @@ const { tablasFrias, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/vis
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
-const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
+const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO } = require('../lib/generacion/huerfanosPlan.js');
@@ -76,6 +76,90 @@ async function main() {
   const F = []; // {category, severity, slug, kind, message, detail}
   const add = (category, severity, slug, kind, message, detail) => F.push({ category, severity, slug, kind, message, detail: detail || null });
 
+  // ── Detección: AISLADA del resto (T-307, 30/07/2026) ──
+  // Mismo contrato que el @Cron del backend: un detector que revienta NO se lleva la pasada. Se
+  // escribe lo recogido hasta el corte y se añade `sweep_incompleto` para que el panel diga que la
+  // foto está a medias en vez de enseñar la de ayer como si fuera de hoy.
+  let incompleto = null;
+  try {
+    await detectarTodo(c, add, now);
+  } catch (e) {
+    const msg = String(e?.message || e);
+    const m = msg.match(/Failed query:\s*([\s\S]{0,400})/);
+    incompleto = { mensaje: msg.slice(0, 300), sql: m ? m[1].trim().slice(0, 300) : null };
+    console.error('❌ barrido INCOMPLETO:', incompleto.mensaje);
+    add('app', 'error', null, 'sweep_incompleto',
+      `el barrido se cortó a mitad: solo ${F.length} hallazgo(s) de esta pasada son fiables — el resto de detectores NO llegaron a correr`,
+      { hallazgosAntesDelCorte: F.length, error: incompleto.mensaje, queryQueFallo: incompleto.sql });
+  }
+
+
+  // ── Escribir snapshot ──
+  if (!NO_WRITE) {
+    await c.query('TRUNCATE content_health_findings');
+    for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
+    console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
+  }
+  await c.end();
+
+  // ── Emails ──
+  const appErr = F.filter(x => x.category === 'app' && x.severity === 'error');
+  const contErr = F.filter(x => x.category === 'content' && x.severity === 'error');
+  const contWarn = F.filter(x => x.category === 'content' && x.severity === 'warn');
+  const line = (l, col) => `<div style="font-family:monospace;font-size:13px;color:${col}">${esc(l)}</div>`;
+
+  // ANTI-FATIGA del email de app: dispara con fallos DEFINITIVOS (canary: endpoint
+  // caído o tema publicado vacío) SIEMPRE; los 5xx/render de observable_events solo si
+  // un endpoint supera el umbral (un 502/503 puntual es un blip de capacidad, no un bug).
+  // TODOS los hallazgos están igualmente en la tabla → el panel/badge los ven; el filtro
+  // es solo para decidir si merece EMAIL.
+  const APP_OBS_MIN = Number(process.env.APP_OBS_MIN || 10);
+  // `feedback_sin_conversacion` va en la lista de los que alertan SIEMPRE, con
+  // `http_down` y `empty_topic`: aquí el volumen no mide la gravedad. UN feedback
+  // incontestable es UN usuario que escribió y no recibirá respuesta nunca, y esperar a
+  // que se acumulen diez es esperar a tener diez personas ignoradas. (Se descubrió al
+  // correr el sweep de verdad, 28/07: el hallazgo usaba `detail.count` y este filtro lee
+  // `detail.n`, así que además no habría alertado NUNCA por volumen.)
+  const appFire = appErr.filter(f => ['http_down', 'empty_topic', 'feedback_sin_conversacion', 'chat_ia_errores'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
+
+  // Email APP (nightly, si hay fallos que merecen alerta)
+  if (appFire.length) {
+    const html = `<div style="font-family:sans-serif;max-width:640px"><h2 style="color:#b91c1c">🔴 Salud de la APP — ${esc(stamp)}</h2>
+      <p>Fallos donde un usuario topa con un error (actúa):</p>${appFire.map(f => line(f.message, '#b91c1c')).join('')}
+      ${appErr.length > appFire.length ? `<p style="color:#6b7280;font-size:12px">(+${appErr.length - appFire.length} incidencia(s) de bajo volumen — blips — solo en el panel, no alertan.)</p>` : ''}
+      <p style="color:#6b7280;font-size:12px;margin-top:20px">Panel: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a> · Contenido (calidad) va en el resumen semanal.</p></div>`;
+    await sendEmail(`🔴 Vence APP: ${appFire.length} fallo(s)`, html);
+  }
+  // Email CONTENIDO (semanal, lunes)
+  if (isMonday && (contErr.length || contWarn.length)) {
+    const html = `<div style="font-family:sans-serif;max-width:640px"><h2 style="color:#a16207">🟡 Salud del CONTENIDO (semanal) — ${esc(stamp)}</h2>
+      <p>Datos a revisar (la app funciona, no urgente):</p>
+      ${contErr.length ? '<h3>Incoherencias (❌)</h3>' + contErr.map(f => line((f.oposicion_slug ? f.oposicion_slug + ' — ' : '') + f.message, '#b45309')).join('') : ''}
+      ${contWarn.length ? `<h3>Menores (🟡) — ${contWarn.length}</h3>` + contWarn.slice(0, 20).map(f => line((f.oposicion_slug ? f.oposicion_slug + ' — ' : '') + f.message, '#a16207')).join('') + (contWarn.length > 20 ? line(`… y ${contWarn.length - 20} más`, '#a16207') : '') : ''}
+      <p style="color:#6b7280;font-size:12px;margin-top:20px">Pestaña Contenido: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a></p></div>`;
+    await sendEmail(`🟡 Vence contenido semanal: ${contErr.length} ❌ / ${contWarn.length} 🟡`, html);
+  }
+  if (!appFire.length && !(isMonday && (contErr.length || contWarn.length))) console.log(`✅ ${stamp} — sin email (app sin fallos que alerten${isMonday ? ', contenido limpio' : ', contenido va el lunes'}).`);
+  // Una pasada a MEDIAS no sale con 0 (T-307): el que lo invoque —persona o wrapper— tiene que
+  // poder distinguir "barrido completo" de "barrido cortado", igual que el @Cron marca su
+  // `cron_run` en error. Salir con 0 tras escribir un snapshot incompleto sería el mismo falso
+  // verde que este arreglo existe para matar.
+  process.exit(incompleto ? 1 : 0);
+
+  async function sendEmail(subject, html) {
+    if (DRY) { console.log('=== DRY EMAIL ===\nTo:', ALERT_EMAIL, '| Subject:', subject, '\n', html.slice(0, 400), '...'); return; }
+    if (!process.env.RESEND_API_KEY) { console.error('❌ Falta RESEND_API_KEY'); return; }
+    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: `Vence Salud <${FROM_EMAIL}>`, to: [ALERT_EMAIL], subject, html }) });
+    const b = await res.json().catch(() => ({}));
+    console.log(res.ok ? `✅ email enviado: ${subject} (${b.id || 'ok'})` : `❌ fallo email: ${res.status} ${JSON.stringify(b)}`);
+  }
+}
+
+/**
+ * Todos los detectores, en secuencia. Aparte de main() para que main() pueda aislar el fallo de
+ * uno y conservar lo ya recogido (T-307). No escribe nada: solo llena F vía add().
+ */
+async function detectarTodo(c, add, now) {
   // ⚠️ Las tarjetas se leen de `oposiciones_ssot`, NO de `oposiciones` (bug corregido 16/07/2026).
   // La vista resuelve COALESCE(convocatorias, oposiciones): la fila de convocatoria GANA y es lo que
   // ve el opositor. Auditar `oposiciones.landing_estadisticas` es auditar una copia que NADIE VE.
@@ -270,12 +354,13 @@ async function main() {
   // OTRO sujeto ("Esta pregunta debería", "Nota técnica:"); el patrón meta caza el acto de que
   // la explicación se juzgue a sí misma, que ninguna lista de literales alcanzaba (medido: 96
   // activas, 0 vistas por los 21 literales).
-  const anOrs = AUDIT_NOTE_PATS.map((_, i) => `explanation ILIKE $${i + 1}`).join(' OR ');
+  // Los literales van FUNDIDOS en UNA alternancia (`AUDIT_NOTE_LITERAL_RE_SRC` del núcleo), no
+  // como 23 `ILIKE` con OR: así costaban 38 de los 40,6 s y el gemelo del backend reventaba su
+  // `statement_timeout`, tumbando el barrido entero (T-307). Mismo conjunto de resultados.
   const anRows = (await c.query(
-    `SELECT id FROM questions WHERE is_active = true AND ((${anOrs})
-        OR explanation ~* $${AUDIT_NOTE_PATS.length + 1}
-        OR explanation ~* $${AUDIT_NOTE_PATS.length + 2}) LIMIT 50`,
-    [...AUDIT_NOTE_PATS.map(p => '%' + p + '%'), AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC])).rows;
+    `SELECT id FROM questions WHERE is_active = true
+        AND (explanation ~* $1 OR explanation ~* $2 OR explanation ~* $3) LIMIT 50`,
+    [AUDIT_NOTE_LITERAL_RE_SRC, AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC])).rows;
   if (anRows.length) add('content', 'warn', null, 'audit_note_explanation',
     `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
@@ -1297,61 +1382,6 @@ async function main() {
         { plazas_en_duda: h.plazas_en_duda });
     }
   } catch (e) { console.warn('⚠️ reserva de discapacidad sin declarar no evaluada:', String(e.message || e).slice(0, 120)); }
-
-  // ── Escribir snapshot ──
-  if (!NO_WRITE) {
-    await c.query('TRUNCATE content_health_findings');
-    for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
-    console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
-  }
-  await c.end();
-
-  // ── Emails ──
-  const appErr = F.filter(x => x.category === 'app' && x.severity === 'error');
-  const contErr = F.filter(x => x.category === 'content' && x.severity === 'error');
-  const contWarn = F.filter(x => x.category === 'content' && x.severity === 'warn');
-  const line = (l, col) => `<div style="font-family:monospace;font-size:13px;color:${col}">${esc(l)}</div>`;
-
-  // ANTI-FATIGA del email de app: dispara con fallos DEFINITIVOS (canary: endpoint
-  // caído o tema publicado vacío) SIEMPRE; los 5xx/render de observable_events solo si
-  // un endpoint supera el umbral (un 502/503 puntual es un blip de capacidad, no un bug).
-  // TODOS los hallazgos están igualmente en la tabla → el panel/badge los ven; el filtro
-  // es solo para decidir si merece EMAIL.
-  const APP_OBS_MIN = Number(process.env.APP_OBS_MIN || 10);
-  // `feedback_sin_conversacion` va en la lista de los que alertan SIEMPRE, con
-  // `http_down` y `empty_topic`: aquí el volumen no mide la gravedad. UN feedback
-  // incontestable es UN usuario que escribió y no recibirá respuesta nunca, y esperar a
-  // que se acumulen diez es esperar a tener diez personas ignoradas. (Se descubrió al
-  // correr el sweep de verdad, 28/07: el hallazgo usaba `detail.count` y este filtro lee
-  // `detail.n`, así que además no habría alertado NUNCA por volumen.)
-  const appFire = appErr.filter(f => ['http_down', 'empty_topic', 'feedback_sin_conversacion', 'chat_ia_errores'].includes(f.kind) || (f.detail && Number(f.detail.n) >= APP_OBS_MIN));
-
-  // Email APP (nightly, si hay fallos que merecen alerta)
-  if (appFire.length) {
-    const html = `<div style="font-family:sans-serif;max-width:640px"><h2 style="color:#b91c1c">🔴 Salud de la APP — ${esc(stamp)}</h2>
-      <p>Fallos donde un usuario topa con un error (actúa):</p>${appFire.map(f => line(f.message, '#b91c1c')).join('')}
-      ${appErr.length > appFire.length ? `<p style="color:#6b7280;font-size:12px">(+${appErr.length - appFire.length} incidencia(s) de bajo volumen — blips — solo en el panel, no alertan.)</p>` : ''}
-      <p style="color:#6b7280;font-size:12px;margin-top:20px">Panel: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a> · Contenido (calidad) va en el resumen semanal.</p></div>`;
-    await sendEmail(`🔴 Vence APP: ${appFire.length} fallo(s)`, html);
-  }
-  // Email CONTENIDO (semanal, lunes)
-  if (isMonday && (contErr.length || contWarn.length)) {
-    const html = `<div style="font-family:sans-serif;max-width:640px"><h2 style="color:#a16207">🟡 Salud del CONTENIDO (semanal) — ${esc(stamp)}</h2>
-      <p>Datos a revisar (la app funciona, no urgente):</p>
-      ${contErr.length ? '<h3>Incoherencias (❌)</h3>' + contErr.map(f => line((f.oposicion_slug ? f.oposicion_slug + ' — ' : '') + f.message, '#b45309')).join('') : ''}
-      ${contWarn.length ? `<h3>Menores (🟡) — ${contWarn.length}</h3>` + contWarn.slice(0, 20).map(f => line((f.oposicion_slug ? f.oposicion_slug + ' — ' : '') + f.message, '#a16207')).join('') + (contWarn.length > 20 ? line(`… y ${contWarn.length - 20} más`, '#a16207') : '') : ''}
-      <p style="color:#6b7280;font-size:12px;margin-top:20px">Pestaña Contenido: <a href="https://www.vence.es/admin/salud-sistema">/admin/salud-sistema</a></p></div>`;
-    await sendEmail(`🟡 Vence contenido semanal: ${contErr.length} ❌ / ${contWarn.length} 🟡`, html);
-  }
-  if (!appFire.length && !(isMonday && (contErr.length || contWarn.length))) console.log(`✅ ${stamp} — sin email (app sin fallos que alerten${isMonday ? ', contenido limpio' : ', contenido va el lunes'}).`);
-  process.exit(0);
-
-  async function sendEmail(subject, html) {
-    if (DRY) { console.log('=== DRY EMAIL ===\nTo:', ALERT_EMAIL, '| Subject:', subject, '\n', html.slice(0, 400), '...'); return; }
-    if (!process.env.RESEND_API_KEY) { console.error('❌ Falta RESEND_API_KEY'); return; }
-    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: `Vence Salud <${FROM_EMAIL}>`, to: [ALERT_EMAIL], subject, html }) });
-    const b = await res.json().catch(() => ({}));
-    console.log(res.ok ? `✅ email enviado: ${subject} (${b.id || 'ok'})` : `❌ fallo email: ${res.status} ${JSON.stringify(b)}`);
-  }
 }
+
 main().catch(e => { console.error(e?.message || e); process.exit(2); });

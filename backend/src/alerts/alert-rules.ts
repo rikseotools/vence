@@ -805,6 +805,163 @@ export const RULE_CRON_FAILURE_BURST: AlertRule<{
 };
 
 // ────────────────────────────────────────────────────────────────
+// CORRE Y FALLA: el hueco que dejaban las tres reglas de cron (T-307, 30/07/2026)
+//
+// `cron_overdue` pregunta «¿disparó el scheduler?» y `cron_started_not_finished`
+// «¿terminó?». Las dos se callan cuando un cron dispara, termina… y termina MAL.
+// Ese caso lo cubría solo `cron_failure_burst`, que exige **3 fallos en 1 hora** —
+// un listón que un cron DIARIO no puede alcanzar jamás: falla una vez al día.
+//
+// Caso real que lo destapa: `content-health-sweep` (diario, 07:30 UTC) falló el 29
+// y el 30/07 con `cron_run` en severity `error` las dos veces. Ninguna de las
+// cuatro reglas dijo nada, y como el barrido no escribía, el panel seguía
+// enseñando el snapshot del 28/07 **como si fuera de hoy**: dos días de ceguera
+// sobre los ~40 detectores de salud de contenido con el badge tranquilo.
+//
+// El criterio NO es «hubo un fallo» (un fallo aislado que se recupera al tick
+// siguiente es ruido) sino **«no hay ningún ÉXITO reciente y el último intento
+// falló»**, con la ventana derivada del intervalo propio de cada cron — igual que
+// hacen las otras tres, para que sirva a la vez a uno de 5 min y a uno diario.
+// ────────────────────────────────────────────────────────────────
+
+export interface CronSinExitoRow {
+  endpoint: string;
+  lastRun: Date | string | null;
+  lastRunFailed: boolean;
+  lastSuccess: Date | string | null;
+  successes: number;
+}
+
+export interface CronSinExitoEntry {
+  name: string;
+  lastRun: Date;
+  lastSuccess: Date | null;
+  sinExitoMs: number | null;
+  thresholdMs: number;
+}
+
+/**
+ * Mínimo de `cron_run` EXITOSOS en el histórico para que un cron sea juzgable.
+ *
+ * Misma guarda (y mismo motivo medido) que `STALL_MIN_RUNS_BASELINE`, pero sobre
+ * los éxitos: hay una familia de crons que **solo emiten `cron_run` al fallar**
+ * (`pool-capacity-sampler`: 1 run en 43.308 ticks). Para ellos «último run
+ * fallido y ningún éxito» es el estado NORMAL, y sin esta guarda la regla nacería
+ * disparando contra ellos para siempre.
+ */
+const SIN_EXITO_MIN_SUCCESSES = 3;
+
+/**
+ * Cuánto se tolera sin un solo éxito, en múltiplos del intervalo del propio cron.
+ *
+ * Dos ticks: uno puede fallar por una causa transitoria (un reinicio, un pico de
+ * carga, un proveedor caído un rato) y recuperarse en el siguiente. Dos seguidos
+ * ya no son casualidad — es lo que pasó con el sweep. Con suelo de 90 min para que
+ * un cron de 1 min no alerte por dos fallos consecutivos de 60 segundos.
+ */
+const SIN_EXITO_INTERVALOS = 2;
+const SIN_EXITO_MIN_MS = 90 * 60 * 1000;
+
+export function sinExitoThresholdMs(intervalMs: number): number {
+  return Math.max(SIN_EXITO_MIN_MS, intervalMs * SIN_EXITO_INTERVALOS);
+}
+
+/** Crons que están corriendo y fallando: último intento fallido y ningún éxito reciente. */
+export function findCronsSinExito(
+  rows: CronSinExitoRow[],
+  ctx: AlertRuleContext,
+  now: Date = new Date(),
+): CronSinExitoEntry[] {
+  const intervalByName = new Map<string, number>();
+  for (const job of ctx.cronSchedule.listCronJobs(now)) {
+    intervalByName.set(job.name, job.intervalMs);
+  }
+
+  const out: CronSinExitoEntry[] = [];
+  const nowMs = now.getTime();
+
+  for (const row of rows) {
+    // Solo crons vivos en el registro: un endpoint de un cron ya retirado no debe
+    // alertar para siempre (misma fuente de verdad que las otras tres reglas).
+    const intervalMs = intervalByName.get(row.endpoint);
+    if (intervalMs === undefined || intervalMs <= 0) continue;
+    if (row.successes < SIN_EXITO_MIN_SUCCESSES) continue;
+    if (!row.lastRunFailed) continue;
+
+    const lastRun = toDate(row.lastRun);
+    if (lastRun === null) continue;
+    const lastSuccess = toDate(row.lastSuccess);
+    const thresholdMs = sinExitoThresholdMs(intervalMs);
+    const sinExitoMs = lastSuccess === null ? null : nowMs - lastSuccess.getTime();
+    // Sin ningún éxito en la ventana consultada, el hueco es al menos la ventana:
+    // se juzga por el fallo, que ya está confirmado.
+    if (sinExitoMs !== null && sinExitoMs < thresholdMs) continue;
+
+    out.push({ name: row.endpoint, lastRun, lastSuccess, sinExitoMs, thresholdMs });
+  }
+
+  return out.sort((a, b) => (b.sinExitoMs ?? Infinity) - (a.sinExitoMs ?? Infinity));
+}
+
+/**
+ * Un cron que dispara, termina y termina MAL, tick tras tick. El trabajo no se
+ * hace y —lo peor— lo que ese cron alimenta se queda con el último dato bueno,
+ * que a ojo humano es indistinguible de un dato de hoy.
+ */
+export const RULE_CRON_SIN_EXITO: AlertRule<CronSinExitoRow> = {
+  name: 'cron_sin_exito',
+  severity: 'error',
+  query: sql`
+    SELECT endpoint,
+           MAX(ts) AS "lastRun",
+           (MAX(ts) FILTER (WHERE severity IN ('error', 'critical')) = MAX(ts)) AS "lastRunFailed",
+           MAX(ts) FILTER (WHERE severity NOT IN ('error', 'critical')) AS "lastSuccess",
+           COUNT(*) FILTER (WHERE severity NOT IN ('error', 'critical'))::int AS successes
+    FROM observable_events
+    WHERE event_type = 'cron_run'
+      AND endpoint IS NOT NULL
+      AND ts > NOW() - INTERVAL '30 days'
+    GROUP BY endpoint
+  `,
+  shouldFire: (rows, ctx) => {
+    assertContextualRule('cron_sin_exito', ctx);
+    return findCronsSinExito(rows, ctx).length > 0;
+  },
+  buildNotification: (rows, ctx) => {
+    assertContextualRule('cron_sin_exito', ctx);
+    const malos = findCronsSinExito(rows, ctx);
+    const lines = malos.map((e) => {
+      const exito = e.lastSuccess
+        ? `${e.lastSuccess.toISOString()} (hace ${fmtMin(e.sinExitoMs ?? 0)})`
+        : '(ninguno en 30 días)';
+      return `  - ${e.name}\n      último intento (FALLIDO): ${e.lastRun.toISOString()}\n      último éxito: ${exito}\n      tolerancia: ${fmtMin(e.thresholdMs)}`;
+    });
+    return {
+      title: `${malos.length} cron${malos.length > 1 ? 's' : ''} corriendo y FALLANDO`,
+      body:
+        `Estos crons disparan y terminan, pero terminan MAL, y llevan más de dos ticks sin un solo éxito.\n\n${lines.join('\n\n')}\n\n` +
+        `Por qué esta regla existe: "cron_failure_burst" exige 3 fallos en 1 hora, un listón que un cron DIARIO no alcanza nunca. ` +
+        `content-health-sweep falló dos días seguidos (29 y 30/07/2026) sin que ninguna alerta lo dijera.\n\n` +
+        `OJO al daño invisible: lo que alimenta un cron roto NO se queda vacío, se queda con el último dato bueno. ` +
+        `Un panel que enseña la foto de anteayer no se distingue a ojo de uno al día.\n\n` +
+        `ACCIONES:\n` +
+        `  1. Ver el error concreto y desde cuándo:\n` +
+        `     SELECT ts, severity, duration_ms, error_message, metadata FROM observable_events\n` +
+        `     WHERE endpoint='<cron>' AND event_type='cron_run' ORDER BY ts DESC LIMIT 10;\n` +
+        `  2. Si el error es un timeout de query, medir el coste con EXPLAIN (ANALYZE, BUFFERS) antes de tocar nada.\n` +
+        `  3. Comprobar qué depende de ese cron y si está sirviendo datos viejos como si fueran de hoy.\n\n` +
+        `Runbook: docs/runbooks/health-check.md`,
+      metadata: { crons: malos.map((e) => e.name), worst: malos[0]?.name },
+      fingerprint: `cron_sin_exito_${malos.map((e) => e.name).join(',')}`,
+    };
+  },
+  // La condición persiste hasta el siguiente éxito (hasta 24 h en un cron diario).
+  // Mismo razonamiento que `cron_started_not_finished`: el cuerpo lista todos, así
+  // que un email cubre el estado entero y 4/día es el techo.
+  cooldownMin: 360,
+};
+
+// ────────────────────────────────────────────────────────────────
 // Reglas añadidas 2026-05-26 (Bloque 4 Fase 1.6 del roadmap):
 // cubren los eventos nuevos capturados en esta sesión (runtime_kill
 // del Gap 14, tts_error cascade, hydration mismatch tras deploy,
@@ -4642,6 +4799,10 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_ALERT_RULE_FAILING as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
+  // T-307: el cron que corre y FALLA tick tras tick. `cron_failure_burst` exige 3 fallos
+  // en 1 h, así que un cron diario roto no alertaba nunca (el sweep de contenido estuvo
+  // dos días muerto con el panel en verde).
+  RULE_CRON_SIN_EXITO as AlertRule,
   // Reglas Fase 1.6 (2026-05-26) — cierran loop de eventos nuevos
   RULE_RUNTIME_KILL as AlertRule,
   RULE_TTS_ERROR_BURST as AlertRule,

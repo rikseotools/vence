@@ -1,5 +1,7 @@
 const {
   AUDIT_NOTE_PATS,
+  AUDIT_NOTE_LITERAL_RE_SRC,
+  escaparLiteralRe,
   isAuditNoteExplanation,
   matchedAuditNotePatterns,
 } = require('../../../lib/health/auditNoteExplanation.cjs')
@@ -89,12 +91,50 @@ describe('detector audit_note_explanation — forma de la lista', () => {
     }
   })
 
-  it('no hay patrones duplicados ni vacíos (el SQL genera un ILIKE por cada uno)', () => {
+  it('no hay patrones duplicados ni vacíos (van a una alternancia de regex)', () => {
     expect(new Set(AUDIT_NOTE_PATS).size).toBe(AUDIT_NOTE_PATS.length)
     expect(AUDIT_NOTE_PATS.every((p) => typeof p === 'string' && p.trim().length > 3)).toBe(true)
   })
 
-  it('la comparación es insensible a mayúsculas, como el ILIKE de los gemelos', () => {
+  it('la comparación es insensible a mayúsculas, igual que el `~*` de los gemelos', () => {
     expect(isAuditNoteExplanation('la explicación CONFUNDE los dos apartados')).toBe(true)
+  })
+})
+
+// T-307 (30/07/2026): los literales ya no viajan a SQL como 23 `ILIKE '%…%'` (38 de los 40,6 s
+// de la query, que reventaban el statement_timeout y tumbaban el barrido entero) sino fundidos
+// en UNA alternancia. Esto fija el contrato de esa derivación: mismo criterio que el núcleo,
+// escapado a prueba de literales con metacaracteres, y sin lista paralela que mantener.
+describe('alternancia de literales para SQL (AUDIT_NOTE_LITERAL_RE_SRC)', () => {
+  it('se deriva de la lista: un literal fuera de la alternancia sería un patrón perdido', () => {
+    expect(AUDIT_NOTE_LITERAL_RE_SRC.startsWith('(')).toBe(true)
+    expect(AUDIT_NOTE_LITERAL_RE_SRC.endsWith(')')).toBe(true)
+    expect(AUDIT_NOTE_LITERAL_RE_SRC.split('|')).toHaveLength(AUDIT_NOTE_PATS.length)
+    for (const p of AUDIT_NOTE_PATS) {
+      expect(AUDIT_NOTE_LITERAL_RE_SRC).toContain(escaparLiteralRe(p))
+    }
+  })
+
+  it('marca EXACTAMENTE lo mismo que el núcleo en los literales (equivalencia del criterio)', () => {
+    const re = new RegExp(AUDIT_NOTE_LITERAL_RE_SRC, 'i')
+    const corpus = [
+      ...AUDIT_NOTE_PATS.map((p) => `Texto previo. ${p} lo que sea después.`),
+      'El plazo de alegaciones es de 10 días hábiles según el art. 82.2.',
+      'La respuesta correcta es la B porque el art. 14 lo dice literalmente.',
+      'En esa vista se pueden añadir secciones y modificar propiedades.',
+    ]
+    for (const t of corpus) {
+      const porLiteral = AUDIT_NOTE_PATS.some((p) => t.toLowerCase().includes(p.toLowerCase()))
+      expect(re.test(t)).toBe(porLiteral)
+    }
+  })
+
+  it('escapa los metacaracteres: un literal con paréntesis o barra no rompe el SQL', () => {
+    // Nadie ha añadido todavía un literal así, y justo por eso el escape tiene que estar puesto
+    // ANTES: sin él, el primer literal con `(` o `|` convierte la alternancia en otra cosa (o en
+    // un error de sintaxis de Postgres) y el detector se apaga en silencio.
+    const re = new RegExp('(' + escaparLiteralRe('La explicación (nota) es|era') + ')', 'i')
+    expect(re.test('Aquí: La explicación (nota) es|era el borrador.')).toBe(true)
+    expect(re.test('La explicación era correcta.')).toBe(false)
   })
 })

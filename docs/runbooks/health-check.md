@@ -163,6 +163,32 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
    `grep -rn "@Cron(" backend/src --include=*.cron.ts`. Un L-V visto en lunes a las 07:00 lleva
    legítimamente ~71h sin correr (viernes 08:00 → hoy). La regla `cron_overdue` ya hace esto bien
    (lee `SchedulerRegistry` + `cron-parser`): **si ella no lo marca, probablemente está sano**.
+2.bis **Y un cron que corre y FALLA no es un cron overdue — son cuatro preguntas distintas** (T-307,
+   30/07/2026). Las reglas cubren cada una y conviene saber cuál te ha llegado:
+
+   | pregunta | regla |
+   |---|---|
+   | ¿disparó el scheduler? | `cron_overdue` |
+   | ¿terminó lo que arrancó? | `cron_started_not_finished` |
+   | ¿está fallando en ráfaga? (≥3 en 1 h) | `cron_failure_burst` |
+   | **¿corre, termina y termina MAL, tick tras tick?** | **`cron_sin_exito`** |
+
+   La cuarta faltaba y el hueco no era teórico: `cron_failure_burst` exige **3 fallos en una hora**, un
+   listón que un cron **diario** no alcanza jamás. `content-health-sweep` falló el 29 y el 30/07 con
+   `cron_run` en `error` las dos veces y **ninguna regla dijo nada**. `cron_sin_exito` dispara cuando el
+   último intento falló y no hay un solo éxito en **dos ticks** del propio cron (suelo de 90 min), con la
+   guarda de que el cron tenga costumbre de anunciar éxito (≥3 en 30 d) — sin ella marcaría a la familia
+   que solo emite `cron_run` al fallar. Calibrada contra los 53 endpoints reales: **1 disparo (el roto),
+   0 falsos positivos**; se puede re-medir con `npm run sim:cron-sin-exito`.
+
+   **Punto ciego ASUMIDO:** un cron que **nunca** ha tenido éxito (recién nacido y roto) queda fuera por
+   esa misma guarda. Medido el 30/07: ninguno en esa situación.
+
+   **Y lo que hay que mirar SIEMPRE cuando un cron falla: qué alimenta.** Lo que depende de un cron roto
+   no se queda vacío — se queda con **el último dato bueno**, que a ojo humano es idéntico a un dato de
+   hoy. El sweep de contenido dejó de escribir el 29/07 y el panel siguió enseñando el snapshot del 28
+   como si fuera de hoy, badge tranquilo incluido. Desde T-307 el propio barrido lo canta con el hallazgo
+   **`sweep_incompleto`** (app/error) cuando se corta a mitad, y el `cron_run` sale con `status: partial`.
 3. **Para un cron que SÍ está overdue**, distinguir 3 causas con los logs de arranque
    (`aws --profile vence --region eu-west-2 logs filter-log-events --log-group-name /ecs/vence-backend
    --filter-pattern '"<nombre-cron>"'`):
@@ -623,6 +649,12 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 ---
 
 ## 3. Incidentes conocidos (referencias rápidas)
+
+**El detector que se vuelve más lento cuanto más SANA está la base (2026-07-30, T-307)** — el barrido nocturno de salud (`content-health-sweep`) murió entero el 29 y el 30/07, y estuvo dos días sin escribir mientras el panel enseñaba el snapshot del 28 como si fuera de hoy.
+- **Causa inmediata:** la query del detector `audit_note_explanation` tardaba **40,6 s** contra el `statement_timeout: 30000` del cliente del backend (`backend/src/db/database.module.ts`). Como el barrido era todo-o-nada, el throw se llevó a los ~40 detectores restantes **y** al bloque de escritura.
+- **Lo que hay que aprender, que no es el timeout:** la query llevaba `LIMIT 50`. Mientras hubo coincidencias, el escaneo cortaba en las primeras filas y era rápida; **al limpiar el cubo (274 explicaciones reescritas el 29/07) desapareció el atajo y quedó el seq scan completo**. Un detector con `LIMIT` sobre una columna de texto sin índice **es lento justo cuando ya no encuentra nada**. Si escribes uno, mídelo con el cubo VACÍO.
+- **Y el coste no estaba donde parecía.** Medido con `EXPLAIN (ANALYZE, BUFFERS)` sobre 159.671 filas: los 23 `explanation ILIKE '%…%'` costaban **38,2 s**; las dos regex `~*`, **2,4 s**. Fundir los literales en UNA alternancia (`AUDIT_NOTE_LITERAL_RE_SRC` en `lib/health/auditNoteExplanation.cjs`) da el **mismo conjunto de resultados en 6,6 s**. Contraintuitivo y medible: 23 `ILIKE` con case-folding por fila son mucho más caros que un `~*`.
+- **Qué lo impide ahora:** (1) el predicado fundido, con la equivalencia JS↔Postgres y el presupuesto de tiempo fijados en `__tests__/integration/auditNoteSweepBudget.integration.test.ts`; (2) el barrido **ya no es todo-o-nada** — escribe lo recogido y añade `sweep_incompleto` (app/error) diciendo qué se cayó, y el `cron_run` sale con `status: partial` y severity `error`; (3) la regla **`cron_sin_exito`** avisa del cron que corre y falla a diario (ver §1.bis.a).
 
 **Mapa de visibilidad frío: un «Index Only Scan» que no lo es (2026-07-29, detector `visibility_map_frio`)** — si una consulta que usa índice tarda segundos y **no hay ni errores ni pico de tráfico**, mira esto antes que nada. Cuando el mapa de visibilidad se enfría, Postgres sigue diciendo *«Index Only Scan»* en el plan pero baja al heap fila por fila: el resultado es correcto y tarda cien veces más.
 - **El número que hay que mirar es `Heap Fetches`**, no el nombre del nodo. Caso real: `test_questions` al 67,5% de páginas visibles → **72.695 heap fetches y 17.809 ms** en la consulta de `theme-stats`; tras calentar el mapa, **0 y 145 ms** (122×). El opositor veía sus estadísticas vacías porque el cliente corta a los 8 s.

@@ -99,6 +99,7 @@
     "fraude:sombra-device": "node scripts/fraude/analizar-sombra-device-limit.cjs",
     "deploy:pendiente": "node scripts/deploy-pendiente.cjs",
     "sim:cadencia-cron": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cadencia-cron-overdue.ts",
+    "sim:cron-sin-exito": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cron-sin-exito.ts",
     "sim:fatiga-email": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-fatiga-email.ts",
     "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",

@@ -55,6 +55,10 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   // T-275: no es un error, es una respuesta correcta que llega TARDE — el mismo punto ciego que
   // T-254. Va con la frase de health-check porque es salud de app/infra, no de contenido.
   visibility_map_frio: { title: 'Mapa de visibilidad frío (index-only scans que no lo son)', ...HEALTH_CHECK },
+  // T-307: el barrido se cortó a mitad. Es el hallazgo que dice «esta foto está INCOMPLETA»: sin
+  // él, un detector que revienta deja el resto del panel con los datos de la pasada anterior y
+  // pasa por verde (pasó el 29 y el 30/07: dos días de ceguera con el badge tranquilo).
+  sweep_incompleto: { title: 'El barrido de salud se cortó a mitad (panel incompleto)', ...HEALTH_CHECK },
   chat_ia_errores: {
     title: 'El chat IA está sirviendo errores',
     triggerPhrase: 'revisa los errores del chat',

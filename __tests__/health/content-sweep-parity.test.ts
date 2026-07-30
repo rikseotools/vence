@@ -426,6 +426,38 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
     expect(BACKEND).toMatch(/explanation ~\* \$\{AUDIT_NOTE_META_RE_SRC\}/)
   })
 
+  // T-307 (30/07/2026): los 23 `ILIKE '%…%'` costaban 38 de los 40,6 s de esta query, reventaban
+  // el `statement_timeout` de 30 s del backend y tumbaban el barrido COMPLETO. Van fundidos en una
+  // alternancia derivada de la MISMA lista. Estos tres tests son el trinquete: que el valor que
+  // construye el backend sea el del núcleo, que los dos gemelos lo apliquen, y que ninguno vuelva
+  // al `ILIKE` por fila (que es lo que no cabe en el presupuesto).
+  /** Evalúa la derivación del backend (escape + join) con la lista del núcleo. */
+  function evalLiteralRe(src: string): string {
+    const esc = src.match(/const escaparLiteralRe = \(s: string\) =>\s*([\s\S]*?);\n/)
+    const alt = src.match(/const AUDIT_NOTE_LITERAL_RE_SRC =\s*([\s\S]*?);\n/)
+    if (!esc || !alt) throw new Error('no se encontró la derivación del literal en el backend')
+    // eslint-disable-next-line no-new-func
+    return new Function(
+      'AUDIT_NOTE_PATS',
+      `const escaparLiteralRe = (s) => ${esc[1]}; return (${alt[1]})`,
+    )(core.AUDIT_NOTE_PATS)
+  }
+
+  it('la alternancia de literales del backend es IDÉNTICA a la del núcleo', () => {
+    expect(evalLiteralRe(BACKEND)).toBe(core.AUDIT_NOTE_LITERAL_RE_SRC)
+  })
+
+  it('los DOS gemelos consultan por la alternancia, y el CLI la CONSUME del núcleo', () => {
+    expect(BACKEND).toMatch(/explanation ~\* \$\{AUDIT_NOTE_LITERAL_RE_SRC\}/)
+    expect(SCRIPT).toContain('AUDIT_NOTE_LITERAL_RE_SRC')
+    expect(SCRIPT).not.toMatch(/const AUDIT_NOTE_LITERAL_RE_SRC\s*=/)
+  })
+
+  it('ninguno de los dos vuelve a mirar la explicación con ILIKE por literal (presupuesto)', () => {
+    expect(BACKEND).not.toMatch(/explanation ILIKE/)
+    expect(SCRIPT).not.toMatch(/explanation ILIKE/)
+  })
+
   // Tercera recaída (29/07/2026): el patrón META exige que el sujeto sea «la explicación», así
   // que no veía la nota escrita en INFINITIVO («Añadir sección «Por qué las demás…»»). 6 activas,
   // 0 vistas por los 21 literales ni por el meta; la destapó una impugnación, no el sensor. Si el

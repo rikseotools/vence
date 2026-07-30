@@ -38,6 +38,15 @@ export interface SweepSummary {
   contentWarn: number;
   wrote: boolean;
   emailsSent: number;
+  /**
+   * Qué se cayó, si el barrido se cortó a mitad (T-307). `null` = pasada completa.
+   *
+   * Se devuelve en vez de propagar el throw: así `run()` puede terminar su trabajo útil
+   * (escribir lo recogido, mandar los emails) y aun así el cron marca la ejecución como
+   * FALLIDA — que es lo que leen las reglas de alerta. Antes las dos cosas eran incompatibles:
+   * o se escribía, o se avisaba.
+   */
+  incompleto: { mensaje: string; sql: string | null } | null;
 }
 
 const esc = (s: unknown): string =>
@@ -961,6 +970,96 @@ export class ContentHealthSweepService {
         detail: detail || null,
       });
 
+    // ── Detección: AISLADA del resto (T-307, 30/07/2026) ──
+    // El 29 y el 30/07 el barrido murió entero porque UN detector (la query de notas de
+    // auditoría) superó el `statement_timeout` de 30 s: el throw se llevó por delante a los
+    // ~40 restantes Y al bloque de escritura, así que `content_health_findings` se quedó con el
+    // snapshot del 28/07 y el panel lo enseñó como si fuera de hoy. Dos días de ceguera sin una
+    // sola señal visible en el sitio donde se mira.
+    //
+    // Con el try/catch aquí, un detector que revienta ya no es un apagón: se escriben los
+    // hallazgos recogidos HASTA ese punto y se añade uno propio (`sweep_incompleto`, app/error)
+    // que dice que la foto está a medias y por qué. El `cron_run` en error se sigue emitiendo
+    // (lo hace el cron), así que la observabilidad no pierde nada: gana el panel.
+    //
+    // Por qué no un try/catch por detector: son ~45 bloques inline en secuencia; envolverlos uno
+    // a uno es un refactor de otra escala y con más riesgo que el fallo que arregla. Esto corta
+    // el daño (de "cero datos y verde" a "datos parciales y rojo explícito") sin tocar ni un
+    // detector. El aislamiento fino queda anotado en la ficha, no fingido aquí.
+    let incompleto: { mensaje: string; sql: string | null } | null = null;
+    try {
+      await this.detectarTodo(add, now);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // El error de postgres.js trae la query que falló: es lo que identifica al detector.
+      const m = msg.match(/Failed query:\s*([\s\S]{0,400})/);
+      incompleto = { mensaje: msg.slice(0, 300), sql: m ? m[1].trim().slice(0, 300) : null };
+      this.logger.error(`barrido INCOMPLETO: ${msg.slice(0, 300)}`);
+      add(
+        'app',
+        'error',
+        null,
+        'sweep_incompleto',
+        `el barrido se cortó a mitad: solo ${F.length} hallazgo(s) de esta pasada son fiables — el resto de detectores NO llegaron a correr`,
+        {
+          hallazgosAntesDelCorte: F.length,
+          error: incompleto.mensaje,
+          queryQueFallo: incompleto.sql,
+        },
+      );
+    }
+
+    // ── Escribir snapshot ──
+    let wrote = false;
+    if (!NO_WRITE) {
+      await this.db.execute(sql`TRUNCATE content_health_findings`);
+      for (const f of F) {
+        const detailJson = f.detail ? JSON.stringify(f.detail) : null;
+        await this.db.execute(sql`
+          INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail)
+          VALUES (${f.category}, ${f.severity}, ${f.slug}, ${f.kind}, ${f.message}, ${detailJson}::jsonb)
+        `);
+      }
+      wrote = true;
+      this.logger.log(
+        `✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter((x) => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter((x) => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter((x) => x.category === 'content' && x.severity === 'warn').length})`,
+      );
+    }
+
+    // ── Emails ──
+    const emailsSent = await this.sendEmails(F, stamp, isMonday);
+
+    return {
+      total: F.length,
+      appError: F.filter((x) => x.category === 'app' && x.severity === 'error')
+        .length,
+      contentError: F.filter(
+        (x) => x.category === 'content' && x.severity === 'error',
+      ).length,
+      contentWarn: F.filter(
+        (x) => x.category === 'content' && x.severity === 'warn',
+      ).length,
+      wrote,
+      emailsSent,
+      incompleto,
+    };
+  }
+
+  /**
+   * Todos los detectores, en secuencia. Vive aparte de `run()` para que `run()` pueda aislar el
+   * fallo de uno y conservar lo ya recogido (T-307). No escribe nada: solo llena `F` vía `add`.
+   */
+  private async detectarTodo(
+    add: (
+      category: Finding['category'],
+      severity: Finding['severity'],
+      slug: string | null,
+      kind: string,
+      message: string,
+      detail?: Record<string, unknown> | null,
+    ) => void,
+    now: Date,
+  ): Promise<void> {
     const opos = (await this.db.execute(sql`
       SELECT id, slug, landing_estadisticas, temas_count FROM oposiciones WHERE is_active = true ORDER BY slug
     `)) as unknown as Array<{
@@ -1294,14 +1393,21 @@ export class ContentHealthSweepService {
       'conviene aclarar este matiz',
       'por razones bien explicadas',
     ];
-    const anClause = sql.join(
-      AUDIT_NOTE_PATS.map((p) => sql`explanation ILIKE ${'%' + p + '%'}`),
-      sql` OR `,
-    );
+    // Los literales van FUNDIDOS en UNA alternancia, no como 23 `ILIKE` con OR (T-307, 30/07/2026):
+    // así costaban 38 de los 40,6 s de la query y reventaban el `statement_timeout` de 30 s,
+    // tumbando el barrido COMPLETO dos noches seguidas. Fundidos: 6,6 s y el mismo conjunto de
+    // resultados (medido sin LIMIT sobre las 159.671 filas). El razonamiento entero, y por qué el
+    // `LIMIT 50` lo tuvo escondido hasta que se limpió el cubo, está en el núcleo.
+    // MANTENER IDÉNTICO a `AUDIT_NOTE_LITERAL_RE_SRC` de `lib/health/auditNoteExplanation.cjs`
+    // (el guardarraíl content-sweep-parity compara el VALOR, no el texto).
+    const escaparLiteralRe = (s: string) =>
+      String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const AUDIT_NOTE_LITERAL_RE_SRC =
+      '(' + AUDIT_NOTE_PATS.map(escaparLiteralRe).join('|') + ')';
     const anRows = (await this.db.execute(sql`
       SELECT id FROM questions
        WHERE is_active = true
-         AND ((${anClause})
+         AND (explanation ~* ${AUDIT_NOTE_LITERAL_RE_SRC}
               OR explanation ~* ${AUDIT_NOTE_META_RE_SRC}
               OR explanation ~* ${AUDIT_NOTE_ACTO_RE_SRC})
        LIMIT 50
@@ -2677,40 +2783,8 @@ export class ContentHealthSweepService {
       this.logger.warn(`reserva de discapacidad sin declarar no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
-    // ── Escribir snapshot ──
-    let wrote = false;
-    if (!NO_WRITE) {
-      await this.db.execute(sql`TRUNCATE content_health_findings`);
-      for (const f of F) {
-        const detailJson = f.detail ? JSON.stringify(f.detail) : null;
-        await this.db.execute(sql`
-          INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail)
-          VALUES (${f.category}, ${f.severity}, ${f.slug}, ${f.kind}, ${f.message}, ${detailJson}::jsonb)
-        `);
-      }
-      wrote = true;
-      this.logger.log(
-        `✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter((x) => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter((x) => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter((x) => x.category === 'content' && x.severity === 'warn').length})`,
-      );
-    }
-
-    // ── Emails ──
-    const emailsSent = await this.sendEmails(F, stamp, isMonday);
-
-    return {
-      total: F.length,
-      appError: F.filter((x) => x.category === 'app' && x.severity === 'error')
-        .length,
-      contentError: F.filter(
-        (x) => x.category === 'content' && x.severity === 'error',
-      ).length,
-      contentWarn: F.filter(
-        (x) => x.category === 'content' && x.severity === 'warn',
-      ).length,
-      wrote,
-      emailsSent,
-    };
   }
+
 
   private async sendEmails(
     F: Finding[],

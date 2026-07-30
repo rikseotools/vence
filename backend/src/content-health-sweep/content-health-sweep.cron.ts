@@ -63,22 +63,33 @@ export class ContentHealthSweepCron {
     const startedAt = Date.now();
     try {
       const result = await this.service.run();
+      // Una pasada a MEDIAS no es un éxito (T-307, 30/07/2026). El servicio ya no propaga el
+      // throw —así puede escribir lo recogido y mandar los emails— y devuelve `incompleto`. Aquí
+      // se traduce a la señal que leen las reglas de alerta: `cron_run` con severity `error`.
+      // Sin esto, aislar el fallo habría CREADO un falso verde: barrido a medias, cron en verde.
+      const parcial = result.incompleto;
       await this.observability.emit({
         source: 'fargate',
-        severity: 'info',
+        severity: parcial ? 'error' : 'info',
         eventType: 'cron_run',
         endpoint: 'content-health-sweep',
         durationMs: Date.now() - startedAt,
+        errorMessage: parcial ? parcial.mensaje : undefined,
         metadata: {
-          status: 'success',
+          status: parcial ? 'partial' : 'success',
           total: result.total,
           appError: result.appError,
           contentError: result.contentError,
           contentWarn: result.contentWarn,
           wrote: result.wrote,
           emailsSent: result.emailsSent,
+          ...(parcial ? { queryQueFallo: parcial.sql } : {}),
         },
       });
+      if (parcial)
+        this.logger.error(
+          `Cron content-health-sweep INCOMPLETO (${result.total} hallazgos escritos): ${parcial.mensaje}`,
+        );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
