@@ -5,6 +5,7 @@ import { logClientError } from '@/lib/logClientError'
 import { emitClientEvent } from '@/lib/observability/client'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
+import { dispatchDailyLimitEvent } from '@/hooks/useDailyLimitEvent'
 
 const QUEUE_KEY = 'vence_answer_queue'
 const MAX_RETRIES = 5 // Subido de 3 a 5 para dar más oportunidades
@@ -125,9 +126,20 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
       let errorBody: Record<string, unknown> = {}
       try { errorBody = await response.json() } catch {}
 
-      // Si es device limit, emitir evento para que el modal se abra
+      // Si es límite de NÚMERO de dispositivos conectados → su modal («desconecta uno»).
       if (errorBody.deviceLimitReached && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('vence:deviceLimitReached'))
+      }
+
+      // Si es CUPO DIARIO agotado → el modal de Premium (T-304). Son dos cosas distintas y cada
+      // una tiene su modal: mandar a alguien a «desconectar dispositivos» cuando lo que ha pasado
+      // es que se le acabaron las preguntas del día sería decirle que arregle lo que no falla.
+      //
+      // Este puente importa sobre todo para quien cambia de cuenta: su contador empieza a 0, así
+      // que el cliente le deja responder y es el servidor quien corta. Sin esto, el rechazo moría
+      // en la cola y sus respuestas se perdían sin que viera nada.
+      if (errorBody.limitReached && !errorBody.deviceLimitReached) {
+        dispatchDailyLimitEvent()
       }
 
       // Un 403 de LÍMITE (dispositivos/diario) es una respuesta ESPERADA: el usuario

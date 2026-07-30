@@ -1,6 +1,6 @@
 // components/TestLayout.tsx - FIX COMPLETO ANTI-DUPLICADOS
 'use client'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -48,6 +48,7 @@ import UpgradeLimitModal from './UpgradeLimitModal'
 import SessionExpiredModal from './SessionExpiredModal'
 import DeviceLimitModal from './DeviceLimitModal'
 import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
+import { useDailyLimitEvent } from '@/hooks/useDailyLimitEvent'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { usePremiumGate } from '@/hooks/usePremiumGate'
 import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
@@ -281,6 +282,10 @@ export default function TestLayout({
 
   // 📱 Límite de dispositivos
   const { isDeviceLimitOpen, closeDeviceLimit, retryAfterDeviceRemoval } = useDeviceLimitModal()
+  // El servidor puede rechazar por cupo agotado aunque el contador de ESTA cuenta esté a 0
+  // (quien acaba de cambiar de cuenta en el mismo equipo). Sin esto, el rechazo se quedaba en la
+  // cola de guardado y el usuario seguía respondiendo sin que se guardara nada. T-304.
+  useDailyLimitEvent(useCallback(() => setShowUpgradeModal(true), [setShowUpgradeModal]))
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(0)
