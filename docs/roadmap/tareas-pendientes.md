@@ -762,6 +762,20 @@ incluida).
 
 ## Hechas
 
+### [T-345] ✅ [HECHO 31/07] Fecha límite en el backlog (`due_at` + `due_reason`), el campo que faltaba
+- **El hueco:** `backlog_tasks` modelaba cuatro esperas —persona (`claimed_by`), otra tarea (`blocked_by`), reloj (`snooze_until`) y despliegue (`wake_on_deploy_sha`)— y las cuatro significan lo mismo: **«no la cojas todavía»**. Ninguna decía **«tiene que estar ANTES de»**.
+- **Cómo se vio:** buscando dónde anotar un plazo prometido por escrito a una usuaria (T-331), lo primero que se miró fue `snooze_until`… que la habría **bloqueado justo hasta el día en que vencía**. Sin sitio donde ponerlo, el plazo acabó en prosa dentro de la ficha, y **una condición en prosa no es una condición** — la misma lección que ya ganó `snooze_until` cuando T-221 llevaba «⛔ NO COGER HASTA EL 29/07» en el título.
+- **El caso que lo estrena: [T-330].** Una newsletter cuyo valor moría el 31/07 a las 23:59 porque cerraba el plazo que anunciaba. **Doce horas de vida**, y lo único que lo decía era la palabra «hoy» en un título escrito la víspera. Mandarla un día tarde no habría sido un retraso: habría anunciado un plazo cerrado.
+- **Qué entró:**
+  - `due_at` + `due_reason` con **CHECK: van juntas o no van**. El motivo tiene que ser **externo** (quién lo espera, o qué fecha fija un tercero). Con 127 tareas abiertas y tres o cuatro plazos reales, permitir inventarlos hace que en un mes todo sea urgente y nada lo sea; lo impide la BD, no la buena voluntad.
+  - **No toca `priority`** a propósito: urgencia e importancia son cosas distintas y mezclarlas es como estos sistemas acaban con todo en rojo.
+  - Núcleo puro `lib/backlog/plazo.cjs` (33 tests), **sin reloj propio** (el instante se inyecta). Bandas por **días naturales**, para que «vence hoy» diga lo mismo a las 9:00 que a las 22:00.
+  - `list` **abre** con el bloque de plazos, por encima incluso de las listas para verificar: lo que caduca manda sobre lo que se cierra rápido. `claim` lo canta al coger la tarea, no en la ficha (enterarte de que vence hoy tras treinta líneas es enterarte tarde).
+  - **Guardarraíl nuevo:** un título vivo que se apoye en una palabra relativa («hoy es el último día», «mañana», «esta semana») **rompe el CI**. Hermano del que ya prohíbe candados de fecha, y peor: no parece una fecha y caduca en 24 horas.
+- **El detector se afinó con dos falsos positivos REALES que él mismo destapó:** «hoy» en castellano también significa *actualmente* (T-331 «hoy sirven CERO», T-228 «ni puede, hoy»), y «último día» **describe** una campaña cuando no la afirma («Newsletter *del* último día» no envejece; «*Último día* para enviarla», sí). Los tres casos quedaron como tests.
+- **Verificado por mutación** — y la primera mutación fue FALSA: el reemplazo no se aplicó por un escapado y los tests siguieron en verde, lo que parecía «esto no protege». Repetida con una aserción que falla si no encuentra el patrón: **2 tests en rojo**. Un guardarraíl que no has visto fallar no sabes si protege.
+- **Usar:** `node scripts/backlog.cjs due <id> --fecha "…" --motivo "…"` · `--quitar`. Documentado en CLAUDE.md y en `docs/runbooks/tareas-pendientes.md`.
+
 ### [T-343] 🔴 [ABIERTO 31/07] Los 385 del vaciado de Stripe: ninguno ha vuelto solo, y a 101 se les apaga en 60 días
 
 - **ORIGEN.** Encargo de Manuel (31/07): *«hubo usuarios de la cuenta vieja de Stripe que cancelé para que se crearan una cuenta nueva… ponerles a ellos en exclusiva un botón de resubscribirse manteniendo el precio que tenían; a dos usuarios nos han reclamado y les hemos hecho un precio personalizado y una página»*.
@@ -780,6 +794,22 @@ incluida).
 - **Riesgos a respetar:** (1) la oferta caduca y se puede revocar — no prometer «para siempre»; (2) los cupones y precios son **por cuenta**, así que la oferta tiene que apuntar a un `price` que exista en **Nila** ([memoria `project-stripe-vigilancias-multicuenta`]); (3) hay un canary pendiente que vigila justo esto ([T-287]: que quien tiene una oferta pueda pagarla); (4) el mensaje lo ve Manuel antes de salir — [[feedback-siempre-borrador-antes-de-cerrar]].
 - **Relacionadas:** [T-309] (la página y sus cuatro fallos encadenados), [T-287] (canary de la oferta), [T-293] (subida de precios), [T-265] (comisiones multi-cuenta).
 
+
+### [T-346] 🟡 [ABIERTO 31/07] `law_sections` del EBEP: las rúbricas están corridas un puesto desde el Título VI
+- **Qué pasa:** en `RDL 5/2015` (EBEP) los **rangos** de `law_sections` son correctos pero los **títulos** no. Desde el Título VI están desplazados una posición:
+
+  | arts | nuestra `law_sections` | el BOE (`BOE-A-2015-11719`) |
+  |---|---|---|
+  | 85-92 | «Provisión de puestos de trabajo y movilidad» | **«Situaciones administrativas»** |
+  | 93-98 | «Situaciones administrativas» | **«Régimen disciplinario»** |
+  | 99+ | «Régimen disciplinario» | **«Cooperación entre las Administraciones Públicas»** |
+
+  «Provisión de puestos y movilidad» no es un Título: es el **Capítulo III del Título V** (arts 78-84). Alguien lo metió como Título y empujó todo lo demás.
+- **Por qué importa, y no es cosmético:** el 30/07, adjudicando el Tema 14 del SMS, esa tabla decía que el scope 85-92 era «provisión y movilidad» cuando el epígrafe pide *«situaciones administrativas»* — o sea, **habría hecho pasar por sobre-inclusión un scope exacto**. Se salvó porque se contrastó contra el índice del BOE. Un falso positivo con pinta de verdadero es el peor tipo: parece un hallazgo, se recorta, y se le quita temario a gente que sí lo necesita.
+- **Alcance:** el EBEP está escopado en decenas de oposiciones, así que cualquier persona o herramienta que lea esa tabla para razonar sobre el temario del EBEP razona sobre datos falsos.
+- **Cómo:** corregir los tres títulos contra el índice del BOE. **Solo las rúbricas — los rangos no se tocan** (están bien) y esto **no afecta a lo que se sirve**: `law_sections` no interviene en la selección de preguntas, solo en la adjudicación.
+- **Y de paso, la pregunta grande:** si el EBEP está mal, ¿cuántas leyes más? Merece un barrido comparando `law_sections` con el índice del BOE de cada ley con `boe_url`. Es precondición de **[T-333]**, que se apoyaría en esa tabla.
+- **Relacionada:** [T-333].
 
 ### [T-333] 🟠 [ABIERTO 30/07] El detector de frontera de scope solo entiende TÍTULOS: los epígrafes que nombran secciones se le escapan enteros
 - **El hueco, en una frase:** `lib/laws/scopeTitleBoundary.js` mapea artículo → **título** de la ley. Cuando el programa oficial no enumera títulos sino **capítulos, secciones o subsecciones**, el runner responde *«epígrafe no mapeable a títulos»* y **se calla**. Ese silencio se lee como verde.
