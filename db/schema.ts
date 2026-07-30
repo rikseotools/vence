@@ -2509,6 +2509,14 @@ export const oposiciones = pgTable("oposiciones", {
 	shortName: text("short_name"),
 	grupo: text(),
 	subgrupo: text(),
+	/**
+	 * Oposiciones que son la MISMA con dos convocatorias vivas y temario distinto comparten
+	 * este valor (NULL = sin hermanas, que es casi todo el catálogo). Sirve para avisar a la
+	 * persona de que compruebe cuál tiene seleccionada: el caso de Auxiliar Administrativo de
+	 * la Comunidad de Madrid, con examen en octubre de 2026 (Windows 10) y en junio de 2027
+	 * (Windows 11). Migración `20260730_grupo_convocatoria.sql`.
+	 */
+	grupoConvocatoria: text("grupo_convocatoria"),
 	examDate: date("exam_date"),
 	inscriptionStart: date("inscription_start"),
 	inscriptionDeadline: date("inscription_deadline"),
