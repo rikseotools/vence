@@ -40,6 +40,11 @@ VUELTAS="${2:-12}"
 # Lo que NO hace, para que nadie lo suponga: no se lleva por delante cambios sin commitear — se
 # niega a correr con el árbol sucio, unas líneas más abajo. El daño es el otro.
 #
+# Y ojo, que PUSHEAR NO TE PROTEGE EL PUNTERO: `fetch` y `reset` son dos pasos, así que un push que
+# entre entre medias deja el reset apuntando a la referencia recién traída —un commit anterior— y tu
+# rama se queda ahí. El trabajo está a salvo en el remoto; lo que se mueve es tu árbol. Reconstruido
+# con el reflog el 31/07: `reset: moving to origin/main` justo detrás del commit ya pusheado.
+#
 # Caso real: una sesión lanzó el deploy desde su propio worktree, siguió trabajando, y a la vuelta
 # 4 se encontró la rama en un commit anterior y un fichero recién creado «desaparecido». No se
 # perdió nada porque ya estaba pusheado, pero el susto y el rato de investigación sí.

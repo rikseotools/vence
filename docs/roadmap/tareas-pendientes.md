@@ -1205,6 +1205,7 @@ incluida).
 - **RESOLUCIÓN, en los dos sitios:**
   1. **Guarda en el propio script**: si el `PWD` está bajo `~/vence-sessions/*`, avisa de lo que va a pasar y **aborta** (`exit 2`). Escape consciente: `DEPLOY_DESDE_WORKTREE=1`. Se probó: desde un worktree se niega, y el mensaje dice dónde lanzarlo.
   2. **Runbook `pusheo-revision-despliegue.md`**, en el TL;DR —donde se copia el comando— con el porqué, el caso real y la aclaración de lo que NO hace.
+- **▸ AFINADO con el reflog (31/07), y cambia el consejo:** el commit **SÍ estaba pusheado**. Lo que hubo es una carrera — el script hace `git fetch` y *después* `git reset --hard origin/main`, y el push entró entre los dos pasos, así que el reset usó la referencia recién traída (un commit anterior) y dejó la rama ahí. O sea: **pushear no te protege el puntero**; el trabajo está a salvo en el remoto, pero tu árbol se mueve y ves ficheros desaparecer. Por eso el consejo no es «pushea antes» sino **no despliegues desde donde trabajas**.
 - **La regla, en una línea:** el deploy se lanza **desde el repo principal**, que no tiene trabajo en curso. Tu rama no pinta nada: el script sigue a `origin/main` de todas formas.
 - **Por qué la guarda y no solo el documento:** lo mismo que aprendimos con el reloj del backlog — un aviso escrito entre otras diez líneas no es una condición. Aquí el error se comete **una vez y en caliente**, cuando quieres desplegar rápido, que es justo cuando nadie relee un runbook.
 

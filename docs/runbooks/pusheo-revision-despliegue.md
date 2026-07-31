@@ -113,6 +113,12 @@ scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 > Lo que **NO** hace, para que nadie lo suponga al revés: no se lleva por delante los cambios sin
 > commitear — se **niega a correr** con el árbol sucio. El daño es el otro.
 >
+> **Y pushear NO te protege el puntero de la rama.** `fetch` y `reset` son dos pasos: si tu push
+> entra entre ellos, el reset apunta a la referencia recién traída (un commit anterior) y tu rama se
+> queda ahí. Tu trabajo sigue a salvo en `origin/main` —solo se mueve tu árbol—, pero verás ficheros
+> «desaparecer». Reconstruido con el reflog el 31/07: `reset: moving to origin/main` justo detrás del
+> commit que acababa de pushearse.
+>
 > **Caso real (31/07/2026):** una sesión lanzó el deploy desde su propio worktree y siguió
 > trabajando. En la vuelta 4 se encontró la rama en un commit anterior y un fichero recién escrito
 > «desaparecido». No se perdió nada porque ya estaba pusheado, pero costó el susto y un rato de
