@@ -2299,6 +2299,21 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-436] ✅ 🟠 [HECHA 31/07] El repo principal se puso en modo `bare` A MEDIAS, y ninguna sesión sabía si era intencionado
+
+- **CÓMO SALIÓ.** Manuel enseñó la captura de OTRA sesión, bloqueada: *«el principal está en bare… ¿lanzo el deploy o espero a la sesión que está reestructurando?»*, ofreciendo cuatro opciones sin saber cuál. No estaba perdida: **se había encontrado el repositorio a medio cambiar y nadie se lo había dicho**.
+- **QUÉ HABÍA PASADO:** a las **22:54** alguien puso `core.bare = true` en el repo principal. Es una jugada con sentido —un repo `bare` no admite trabajo, así que haría **imposible** el índice compartido de [T-415]— pero se quedó a medias: **los ficheros seguían ahí**. Un repositorio lleno de código marcado como si estuviera vacío.
+- **EL DAÑO REAL no fue técnico, fue de coordinación.** `git status` fallaba en el principal, sí; pero lo caro es que **no había ficha**. Un cambio estructural del repositorio sin registrar significa que **ninguna sesión puede distinguir "intencionado" de "accidente"**, y ante la duda ninguna se atreve a tocarlo ni a seguir. Se paralizó un deploy con 21 commits y 4 tareas esperando.
+- **✅ REVERTIDO** (`git config core.bare false`, decisión de Manuel), con tres motivos medidos:
+  1. **El problema que resolvía ya estaba resuelto, y mejor.** El guardarraíl de [T-415] impide trabajar en el principal **sin romper nada**; el `bare` rompe `git status`, el IDE y cualquier script que asuma un árbol ahí. Con dos soluciones al mismo problema, gana la que no rompe lo de al lado.
+  2. **El `bare` bien hecho NO SE PUEDE TERMINAR hoy.** Un `bare` de verdad no tiene ficheros, pero el principal guarda dos cosas que **no están en el historial**: `.env.local` (12 KB, gitignored) y `node_modules` (1,2 GB), y de ahí las copia/enlaza `crear-worktree.sh` en CADA worktree nuevo. Vaciar el principal deja a las sesiones nuevas **sin configuración y sin dependencias**. Habría que rediseñar de dónde salen — trabajo real para ganar algo que ya se tiene.
+  3. **Un cambio estructural a medias es lo peor de los dos mundos:** ni `bare` ni normal, ambiguo, y costando tiempo a cada sesión que se lo encuentra.
+- **✅ EL HALLAZGO QUE TRANQUILIZÓ EL DEPLOY, y es una casualidad afortunada:** se probó orden por orden y **el deploy funciona con el principal en `bare`** (resolver `origin/main`, `fetch`, crear el árbol de build y la guarda inicial: todo ✅; solo fallan `status` y `show-toplevel`, que **el deploy ya no usa**). Es exactamente por [T-385] de esa misma tarde: al sacar el build al worktree efímero, el deploy dejó de depender del árbol principal. **Con el código de la víspera habría estado roto.** Crear worktrees también seguía funcionando — comprobado creando uno de verdad.
+- **SI ALGUIEN QUIERE RETOMARLO**, esto es lo que hay que resolver ANTES: de dónde saca cada worktree nuevo su `.env.local` y su `node_modules` si el principal se vacía. Sin eso, el `bare` no es una mejora, es un repositorio ambiguo.
+- **La lección, que es la del día repetida:** un cambio estructural que no se registra **no existe para las demás sesiones** — y con 2-10 trabajando a la vez, lo que no se puede distinguir de un accidente paraliza a todo el mundo.
+- **Relacionadas:** [T-415] (el guardarraíl que ya resuelve lo mismo sin romper), [T-385] (por qué el deploy sobrevivió), [T-431].
+
+
 ### [T-431] ✅ 🟡 [HECHA 31/07] Un worktree abandonado con trabajo sin pushear es INVISIBLE hasta que alguien mira
 
 - **ORIGEN.** Limpiando worktrees el 31/07, con Manuel preguntando si «ya estaba todo hecho». Había **5 worktrees con trabajo fuera de `main`** y nadie sabía qué contenían: llevaban entre 3 y 9 días ahí.
