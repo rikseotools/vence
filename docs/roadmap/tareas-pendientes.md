@@ -596,6 +596,21 @@
   - Consulta de partida (RDS): `SELECT left(error_message,80), count(*) FROM observable_events WHERE event_type='console_error' AND severity='error' AND ts > now() - interval '6 hours' GROUP BY 1 ORDER BY 2 DESC LIMIT 15;`
 - **Relacionadas:** [T-245] (sesión sin perfil), [T-260] (el cupo que cobraba el cliente), [T-210] (clasificación de ruido de consola).
 
+- **📈 RE-MEDIDO 31/07 (24 h, sesión `central-izquierdo`) — sigue subiendo, y el reparto por USUARIOS cambia las prioridades.** 1.915 `console_error` con `severity='error'` (frente a los 453/3 h del 30/07). Aparte quedan **3.414 archivados en `debug`**: la clasificación de [T-210] **funciona** —GSI_LOGGER/FedCM y los `failed to fetch` están todos en `debug`, comprobado por `deploy_version`—, así que lo que queda en `error` es prácticamente todo código nuestro.
+
+  | firma | eventos | usuarios | lectura |
+  |---|---|---|---|
+  | `Error cargando notificaciones` | 399 | 38 | incluye el bucle de 401 → ficha propia [T-419] |
+  | `❌ Error guardando respuesta en API (permanente)` | 182 | **4** | el 403 del cupo → [T-418] (ahí está el ángulo del usuario: responde y no se guarda) |
+  | `[answerSaveQueue] Sin token (#1..#4+)` | **642** | 18 (**618 anónimos**) | la firma que más ha crecido |
+  | `[CALLBACK] No se estableció sesión tras la autenticación` | 125 | 11 | **login que no cuaja** |
+  | `Error fetching question history: 401` | 138 | 3 | 401 concentrado |
+  | `UserAvatar: v2 stats error: Usuario no existe` | 81 | **33** | firma de [T-245], y ahora en 33 personas |
+
+  - **El dato nuevo que más ordena el ataque: `Sin token` es sobre todo ANÓNIMO** (618 de 642) y con «0 pendientes», es decir, **la cola arranca y reintenta sin sesión y sin nada que guardar**. Eso cambia el diagnóstico de la ficha: no es (solo) «la respuesta del usuario está en el aire», es **un bucle que se ejecuta donde no debería**. Los 24 restantes, con usuario, sí son el caso preocupante — y hay que separarlos antes de tocar nada, porque el arreglo de cada mitad es distinto.
+  - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
+  - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
+
 ### [T-260] 🟠 [ABIERTO 29/07] El cupo del plan gratuito lo cobraba el CLIENTE: usuarios free se quedaban sin límite habiendo respondido la mitad
 
 - **Qué le pasaba al usuario:** un free llegaba al tope de 25 preguntas/día habiendo respondido bastantes menos. Caso origen: **Sergio** (`pcsergio0@gmail.com`, feedback `0c4303f7`), el **27/07** hizo **un solo test de 15 preguntas**, lo completó, las 15 quedaron guardadas… y `daily_question_usage` marcó **25**. Al día siguiente pagó el trimestral (39 €, cuenta Nila, cobro verificado en Stripe).
@@ -1172,6 +1187,7 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 ### [T-418] 🔴 [ABIERTO 31/07] El usuario free agotado sigue respondiendo preguntas que el servidor RECHAZA una por una: 386 personas en 7 días
 
 - **Esfuerzo: ~2 h** el diagnóstico de producto (¿qué debe ver?); lo que se decida arreglar, aparte.
+- **⚠️ No abras esto sin leer [T-271] primero.** Aquel cubo ya había detectado el mismo 403 desde el lado de la observabilidad (*«el muro de pago registrado como error infla la señal y con ella el umbral del catch-all»*) y decidió **no perseguirlo**. Esta ficha NO lo contradice: aporta el ángulo que allí no se miró, que es **el del usuario** —responde y no se le guarda nada, 2.879 rechazos en 386 personas en 7 días, hasta 9 preguntas seguidas— y por eso es 🔴 aquí y «no perseguir» allí. Las dos cosas son ciertas a la vez: como señal es ruido, como experiencia es un agujero. Coordinad el arreglo: **dejar de emitirlo como `error`** (lo de T-271) y **avisar al usuario antes de que conteste** (lo de aquí) son el mismo cambio bien hecho.
 - **Qué pasa, en una frase:** alguien con el cupo diario agotado **sigue pudiendo abrir un test y contestar**; ve su respuesta corregida al instante (la corrección es client-side, por diseño) y **el servidor rechaza el guardado de cada una** con `403 · «Has alcanzado el límite diario de preguntas del plan gratuito»`. No cuenta para su progreso, ni para su score, ni para sus estadísticas. Él no tiene forma de saberlo mirando la pantalla.
 - **Escala medida el 31/07 (7 días, `observable_events`):** **2.879 rechazos en 386 usuarios distintos.** Por pantalla: `/api/v2/answer-and-save` 2.160 (367 usuarios), `/api/exam/answer` 326 (8), `/api/answer/psychometric` 68 (17). El `questionOrder` más alto observado es **9**: hay quien encadena nueve preguntas seguidas en balde.
 - **Caso concreto para reproducir:** `javiergalinanesvarela@gmail.com` (free), 71 rechazos el 31/07 en `/tramitacion-procesal/test/test-aleatorio-examen`, con `questionOrder` 1, 2, 3, 4, 5… — es decir, **desde la PRIMERA pregunta del examen**: abrió un examen que ya nacía sin cupo.
@@ -1200,30 +1216,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Ojo al mirarlo:** la mayoría son sesiones **anónimas**, así que el 401 puede ser el comportamiento correcto del endpoint (no hay sesión) y el defecto estar en **quién arranca el sondeo**: si la pestaña sondea notificaciones sin usuario, el arreglo es no arrancarlo, no cambiar el endpoint.
 - **De dónde sale:** mismo triaje del 31/07 que [T-418].
 
-
-### [T-420] 🟡 [ABIERTO 31/07] El 95 % de los errores de cliente es ruido, y por eso el panel de salud mide sobre todo dos navegadores
-
-- **Esfuerzo: ~1 h** (es clasificación, no lógica: ampliar el filtro que ya existe y comprobar que no se traga nada real).
-- **Qué pasa:** de los ~1.900 `console_error` de 24 h medidos el 31/07 —que son el **87 % de TODOS los eventos `severity='error'` del sistema** (2.173)—, la inmensa mayoría no describe nada roto:
-  | Eventos | Qué es | Por qué es ruido |
-  |---|---|---|
-  | **1.634** | `[GSI_LOGGER]: FedCM get() rejects with…` (NetworkError 982, AbortError 546, NotSupportedError 106) | Es el widget de Google Sign-In quejándose de FedCM. **No es código nuestro**, y venía de **2 navegadores**: el tipo de error más numeroso del sistema son dos personas con un navegador que no soporta FedCM |
-  | **~600** | `TypeError: Failed to fetch` / `Load failed` en notificaciones (225 en 98 usuarios), artículos (200 en 41), logros, medallas, secciones | Red del cliente: móvil que pierde cobertura o pestaña que se cierra a media petición. Muchos usuarios × pocos eventos = firma de red, no de bug |
-- **Ya se hizo una vez y funcionó:** `lib/observability/consoleNoise.ts` ([T-210], 28/07) nació justo para esto —su cabecera dice *«4.840 `console_error`/24 h, el 95 % del ruido de error del sistema»*— y los bajó a los ~1.900 actuales. **Estas dos familias se le escaparon.** No hace falta diseñar nada: hace falta extender ese filtro y volver a medir.
-- **Por qué importa aunque sea «solo ruido»:** con el 95 % del canal ocupado por FedCM y fallos de red, un error nuevo de verdad entra en un sitio donde nadie mira, y la regla `senal_error_sin_vigilancia` (≥150/h de un tipo `error`) se calibra contra un suelo falso. El objetivo no es que el número baje: es que **lo que quede sea señal**.
-- **Cuidado al filtrar:** `Failed to fetch` es ruido cuando está repartido entre muchos usuarios, pero **concentrado en pocos puede ser un endpoint caído**. Si se suprime en bloque se pierde esa capacidad de detección; mejor bajarlo a `warn` (sigue en la tabla, deja de contar como error) que borrarlo. Los `[GSI_LOGGER]` sí se pueden descartar de raíz: son de un script de terceros.
-- **De dónde sale:** mismo triaje del 31/07 que [T-418] y [T-419].
-
-- **📌 LO QUE ESE TRIAJE NO MIRÓ — para que nadie lo lea como «ya revisado».** Se atacaron las familias por volumen y se paró en las cuatro grandes de `console_error`. Del mismo corte de 24 h quedan **sin abrir**: `ci_integracion_rojo` 60 · `client_error` 57 · `request_completed` 38 (va **muestreado al 10 %**, o sea ~380 reales) · `http_5xx` 31 · `alert_fired` 23 · `unhandled_error` 16 · `alert_rule_failed` 12 · `react_error_boundary` 11 · `invariant_violation` 8 · `server_render_error` 7 · `workflow_failed` 6.
-  - **Los tres que yo abriría primero, y no por tamaño:** `invariant_violation` (algo que el código da por imposible está ocurriendo), `alert_rule_failed` (una regla de alerta que revienta es vigilancia que **no** vigila, y se ve verde) y `react_error_boundary` (pantalla rota en la cara del usuario).
-  - **Colas medidas ese mismo rato y NO triadas:** **43 hallazgos `error`** de salud del contenido (11 `http_5xx`, 9 `plazas_reserva_sin_declarar`, 7 `plazas_afirmadas_sin_documento`, 5 `server_render_error`, 5 `seguimiento_url_stale`, y sueltos de `cita_no_literal`, `temas_card`, `convocatoria_estado_incoherente`, `hito_vencido_abierto`, `convocatoria_timeline_incoherente`, `seguimiento_fuente_ciega`), **9 señales OEP** `pending` y **1 alerta de fraude** `new`. Cada una tiene su frase-gatillo y su runbook en CLAUDE.md.
-  ```sql
-  -- el corte que produjo todo lo anterior, para repetirlo tal cual
-  SELECT coalesce(event_type,'(null)'), count(*) FROM observable_events
-  WHERE severity='error' AND created_at > now() - interval '24 hours'
-  GROUP BY 1 ORDER BY 2 DESC;
-  ```
-  - **Trampa en la que caí, y que cuesta media hora:** agrupar por mensaje truncado (`left(error_message,150)`) parte el stack y dispersa los grupos, y un `tail` en la consola se come justo las filas grandes, que van arriba. Llegué a leer «33 eventos en 9 usuarios» donde había **423**: la diferencia entre «anécdota» y «bucle de cinco horas». **Si dos consultas del mismo hecho no dan lo mismo, reconcilia antes de concluir.**
 
 ### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
 
@@ -1262,6 +1254,10 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Arreglo propuesto:** que `sync` distinga los dos casos y **falle (o grite) en el segundo**, nombrando el commit que la quitó. Encaja donde ya está el guardarraíl anti-colisión de ids —el que aborta cuando dos sesiones reservan el mismo número—, que nació del mismo problema por el otro extremo: aquel evita **pisar** una ficha ajena, este evitaría **borrarla**.
 - **Mientras no exista:** al resolver un conflicto en `tareas-pendientes.md`, **conservar SIEMPRE los dos lados** (son fichas independientes, no versiones de la misma), y antes de pushear comprobar `git diff --stat` sobre ese fichero: si se borran más líneas de las que se añaden en un commit de documentación, casi seguro te estás llevando trabajo ajeno.
 - **De dónde sale:** sesión `central-izquierdo` del 31/07, al volver a documentar y encontrar que sus tres fichas habían desaparecido de `main`.
+
+- **🔁 EL MISMO DESCUIDO POR EL OTRO EXTREMO, y lo cometí yo horas después: abrir una ficha que YA EXISTÍA.** [T-420] («el 95 % de los errores de cliente es ruido») duplicaba a **[T-271]**, abierta el 29/07 con las mismas firmas y mejor medidas. La escribí sin buscar. Cerrada el mismo día y su contenido útil consolidado en T-271. Con 400+ fichas vivas, **abrir una ficha sin buscar antes es tan caro como borrar la de otro**: parte el contexto en dos sitios y el siguiente que llegue trabajará con la mitad.
+  - **El gesto que lo evita cuesta cinco segundos:** `grep -n "<firma del error o palabra clave>" docs/roadmap/tareas-pendientes.md` antes de `reserve`. Es exactamente lo que `npm run tools:buscar` hace con las herramientas —la regla de *«¿esto ya existe?»* de CLAUDE.md— pero para el backlog, donde hoy no existe equivalente.
+  - **Y sugiere una segunda mitad para el arreglo de esta ficha:** si `sync` ya va a comparar markdown y BD, puede además avisar de **títulos muy parecidos entre fichas abiertas** al reservar un id. No hace falta acertar siempre; basta con enseñar los tres candidatos más próximos y que decida quien escribe.
 
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
 
@@ -2312,6 +2308,13 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Capa que lo vigile:** la condición no vive en ningún módulo puro, así que hoy no se puede testear sin BD. Sacarla a `scripts/impugnaciones/lib/` (junto a `scope-enforcement.cjs`, que ya sigue ese patrón) con su test en `__tests__/impugnaciones/` — un caso por estado (`pending` sin respuesta / `pending` con respuesta / `appealed`).
 - **Mitigación mientras tanto:** aviso añadido en `docs/maintenance/impugnaciones-claude-code.md` §0.bis.
 - **✅ RESUELTA (31/07).** El dossier separa ya la **RÉPLICA** (`appealed` → responder, con el `appeal_text` entero volcado) del **desync del 504** (`pending` con respuesta → cerrar en silencio). El criterio vive en el módulo puro `scripts/impugnaciones/lib/paso0.cjs` con 10 tests + guardarraíl anti-inline, verificado contra la fila real de `349b5132`, y el manual §0.bis actualizado. *(La cabecera no llevaba el `✅` y el detector de deriva la señalaba como abierta; triada en [T-429].)*
+### [T-420] ✅ 🟡 [CERRADA 31/07 — no procedía: medición mía equivocada] El 95 % de los errores de cliente es ruido, y por eso el panel de salud mide sobre todo dos navegadores
+
+- **Se cierra el mismo día que se abrió, y conviene leer por qué.** La ficha afirmaba que 1.634 `[GSI_LOGGER]` y ~600 `failed to fetch` estaban contando como error y que había que filtrarlos. **Es falso: ya están todos archivados en `debug`** — lo hace `lib/observability/consoleNoise.ts` desde [T-210] (28/07), comprobado evento a evento por `deploy_version`.
+- **El error fue de MEDICIÓN, no de criterio:** agrupé los `console_error` de 24 h **sin filtrar `severity='error'`**, así que el ranking lo encabezó lo que ya estaba clasificado como ruido. Filtrando bien, de los 5.329 eventos: **3.414 en `debug`** (bien archivados) y **1.915 en `error`**, y estos últimos son casi todos código nuestro.
+- **Y encima ya tenía dueño:** [T-271] cubre exactamente ese cubo desde el 29/07, con las mismas firmas (`answerSaveQueue` sin token, timeouts de 15 s, callback que no cuaja, `UserAvatar`/[T-245]) y mejor medidas. Abrí esta ficha sin buscar antes si existía — el mismo descuido que [T-427] describe para el borrado de fichas, por el otro extremo.
+- **Dónde vive ahora lo útil:** la medición del 31/07 (reparto por firma **y por usuarios**, el hallazgo de que `Sin token` es 618/642 anónimo, y `UserAvatar` en 33 personas) está **añadida a [T-271]**, junto al aviso de cómo NO medir esto.
+- **Lección aplicable a cualquiera:** antes de abrir ficha, `grep` en este mismo fichero por la firma del error. Cuesta cinco segundos y es el equivalente, para el backlog, de lo que `npm run tools:buscar` hace con las herramientas.
 
 ### [T-430] ✅ 🟠 [HECHA 31/07] Una sesión que muere de golpe no llega a despedirse — pero su worktree sí guarda lo que hizo
 
