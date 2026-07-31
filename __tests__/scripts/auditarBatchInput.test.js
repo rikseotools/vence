@@ -1,4 +1,4 @@
-const { numerosCitados } = require('../../scripts/auditar-batch-input')
+const { numerosCitados, esLeyReglamento } = require('../../scripts/auditar-batch-input')
 
 /**
  * Extractor de las remisiones que hacen las EXPLICACIONES, para adjuntarle al auditor
@@ -50,18 +50,34 @@ describe('numerosCitados', () => {
   // el RD 203/2021), así que "del Reglamento" es el mismo cuerpo, no otro. Se descartaba, y el
   // auditor se quedaba sin el art. 41 que una viñeta invocaba. Los arts. 42 y 47 se salvaron por
   // casualidad: otras viñetas los nombraban sin el "del Reglamento".
-  it('"del Reglamento" a secas es el MISMO cuerpo, no otra norma', () => {
-    expect(numerosCitados('lo invoca el artículo 41 del Reglamento cuando la relación…')).toEqual(['41'])
-    expect(numerosCitados('el artículo 42.1 del Reglamento, para las notificaciones')).toEqual(['42'])
-    expect(numerosCitados('conforme al artículo 55 del citado Reglamento')).toEqual(['55'])
+  it('"del Reglamento" a secas es el MISMO cuerpo si la ley del lote ES un reglamento', () => {
+    const R = { leyEsReglamento: true }
+    expect(numerosCitados('lo invoca el artículo 41 del Reglamento cuando la relación…', R)).toEqual(['41'])
+    expect(numerosCitados('el artículo 42.1 del Reglamento, para las notificaciones', R)).toEqual(['42'])
+    expect(numerosCitados('conforme al artículo 55 del citado Reglamento', R)).toEqual(['55'])
   })
 
-  it('…pero un Reglamento IDENTIFICADO sigue siendo otra norma', () => {
-    expect(numerosCitados('el artículo 5 del Reglamento (UE) 2016/679')).toEqual([])
-    expect(numerosCitados('el artículo 5 del Reglamento General de Protección de Datos')).toEqual([])
-    expect(numerosCitados('el artículo 3 del Reglamento de ejecución 2015/2447')).toEqual([])
-    expect(numerosCitados('el artículo 3 del Reglamento n.º 1/2005')).toEqual([])
-    expect(numerosCitados('el artículo 9 del Reglamento delegado')).toEqual([])
+  // …y esta es la otra mitad, que costó un falso positivo el MISMO día. El lote
+  // `gen_lopdgdd_t115_2026-07-31` va sobre la LO 3/2018 y sus explicaciones citan "el artículo 60
+  // del Reglamento" refiriéndose al Reglamento (UE) 2016/679. Con la excepción aplicada a ciegas
+  // se adjuntaron los arts. 56, 60 y 65 de la LEY ORGÁNICA ("Acción exterior", "Admisión a
+  // trámite de las reclamaciones"): el artículo HOMÓNIMO de otra materia, que es peor que nada.
+  it('…pero NO si la ley del lote es una ley (ahí "del Reglamento" es el europeo)', () => {
+    expect(numerosCitados('el artículo 60 del Reglamento establece el procedimiento')).toEqual([])
+    expect(numerosCitados('el artículo 65 del Reglamento prevé la decisión vinculante')).toEqual([])
+    // el defecto se detecta por el NOMBRE de la ley, no se adivina
+    expect(esLeyReglamento('Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos')).toBe(true)
+    expect(esLeyReglamento('Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales')).toBe(false)
+    expect(esLeyReglamento('')).toBe(false)
+  })
+
+  it('…y un Reglamento IDENTIFICADO nunca es el mismo cuerpo, ni siendo reglamento la ley', () => {
+    const R = { leyEsReglamento: true }
+    expect(numerosCitados('el artículo 5 del Reglamento (UE) 2016/679', R)).toEqual([])
+    expect(numerosCitados('el artículo 5 del Reglamento General de Protección de Datos', R)).toEqual([])
+    expect(numerosCitados('el artículo 3 del Reglamento de ejecución 2015/2447', R)).toEqual([])
+    expect(numerosCitados('el artículo 3 del Reglamento n.º 1/2005', R)).toEqual([])
+    expect(numerosCitados('el artículo 9 del Reglamento delegado', R)).toEqual([])
   })
 
   it('el apartado se descarta y el sufijo NO', () => {

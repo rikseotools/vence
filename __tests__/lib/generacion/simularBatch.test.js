@@ -15,6 +15,7 @@ const {
   analizarPregunta,
   analizarLote,
   analizarDuplicados,
+  claveDe,
   clausulaEnEnunciado,
   normalizarPregunta,
   camposParaInsertar,
@@ -226,6 +227,41 @@ describe('simularBatch — dedup del Paso 3', () => {
   it('detecta duplicados dentro del propio lote', () => {
     const t = 'Los recursos de las entidades locales incluyen las participaciones en tributos del Estado'
     expect(analizarDuplicados([{ question_text: t }, { question_text: t }], [])).toHaveLength(1)
+  })
+
+  // 31/07/2026, lote `gen_lopdgdd_t115_2026-07-31`: los 5 avisos intra-lote eran falsos positivos
+  // y todos por la misma causa — §2.2-quater obliga a desarrollar el nombre de la ley en CADA
+  // enunciado, y ahí ese nombre ocupa 118 caracteres. El Jaccard del enunciado subía a 0,46-0,62
+  // mientras el de la CLAVE (el nivel 3 de §2.6, el que dice si dos preguntas evalúan lo mismo)
+  // se quedaba entre 0,00 y 0,14. Adjudicarlo exigía un script a mano; ahora viaja en el aviso.
+  it('el aviso intra-lote lleva el Jaccard de la CLAVE, que es el que adjudica', () => {
+    const ley = 'de la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales'
+    const a = {
+      question_text: `Según el artículo 61 ${ley}, la salvedad aplicable es:`,
+      options: ['Salvo que desarrollase significativamente tratamientos de la misma naturaleza', 'x', 'y', 'z'],
+      correct_option: 0,
+    }
+    const b = {
+      question_text: `Según el artículo 62 ${ley}, la autoridad interesada no principal debe:`,
+      options: ['Informar a la Agencia cuando el asunto sea remitido al Comité', 'x', 'y', 'z'],
+      correct_option: 0,
+    }
+    const [aviso] = analizarDuplicados([a, b], [])
+    expect(aviso.motivo).toMatch(/enunciado 0\.\d+; CLAVE 0\.\d+ → probable falso positivo/)
+  })
+
+  it('…y cuando la clave TAMBIÉN solapa, el aviso manda mirarlo', () => {
+    const t = 'Los recursos de las entidades locales incluyen las participaciones en tributos del Estado'
+    const q = { question_text: t, options: ['Las participaciones en los tributos del Estado y de las comunidades autónomas', 'x', 'y', 'z'], correct_option: 0 }
+    const [aviso] = analizarDuplicados([q, { ...q }], [])
+    expect(aviso.motivo).toContain('→ MÍRALO')
+  })
+
+  it('claveDe resuelve la opción marcada, y no revienta si falta el dato', () => {
+    expect(claveDe({ options: ['a', 'b', 'c', 'd'], correct_option: 2 })).toBe('c')
+    expect(claveDe({ options: ['a'], correct_option: 7 })).toBe('')
+    expect(claveDe({})).toBe('')
+    expect(claveDe(null)).toBe('')
   })
 
   it('jaccard devuelve 0 si algún texto va vacío (no divide por cero)', () => {

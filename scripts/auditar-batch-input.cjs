@@ -56,23 +56,35 @@ const pg = require('postgres')
 // Lo cazaron las DOS auditorías ciegas del lote gen_l19_6bis_20260726 (26/07/2026).
 const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n|Texto Refundido|Estatuto|C[óo]digo)\b/i
 
-// …pero "del Reglamento" A SECAS remite al MISMO cuerpo cuando la norma del lote ES un
-// reglamento, que es el caso siempre que el batch va de un Real Decreto que aprueba uno. Sin
-// esta excepción, "el artículo 41 del Reglamento" se descartaba como cita externa y el auditor
-// se quedaba SIN el artículo que la viñeta invocaba — justo lo que este anexo existe para dar.
-// Medido el 31/07/2026 en `gen_rd203_t331_2026-07-31`: adjuntó 7 de los 8 artículos citados, y
-// el que faltó (41) era el único escrito así; los arts. 42 y 47 se salvaron de rebote porque
-// OTRAS viñetas del mismo lote los nombraban sin el "del Reglamento" — o sea que el fallo
-// estaba tapado por la redundancia y podía haber durado mucho sin que nadie lo viera.
+// …pero "del Reglamento" A SECAS remite al MISMO cuerpo **cuando la norma del lote ES ella misma
+// un reglamento** (todo Real Decreto que aprueba uno). Sin esa excepción, "el artículo 41 del
+// Reglamento" se descartaba como cita externa y el auditor se quedaba SIN el artículo que la
+// viñeta invocaba — justo lo que este anexo existe para dar. Medido el 31/07/2026 en
+// `gen_rd203_t331_2026-07-31`: adjuntó 7 de los 8 citados, y el que faltó (41) era el único
+// escrito así; los arts. 42 y 47 se salvaron de rebote porque otras viñetas los nombraban sin
+// ese inciso, o sea que el fallo estaba tapado por la redundancia.
 //
-// El corte es conservador y mantiene intacto el guardarraíl del homónimo: solo pasa el
-// reglamento SIN IDENTIFICAR. En cuanto viene identificado —"del Reglamento (UE) 2016/679",
-// "del Reglamento General de Protección de Datos", "del Reglamento de ejecución", "del
-// Reglamento n.º 1/2005", "del Reglamento delegado"— sigue contando como otra norma.
+// ⚠️ LA CONDICIÓN «la ley del lote es un reglamento» NO ES ADORNO, y costó un falso positivo el
+// MISMO día: la primera versión aplicaba la excepción siempre, y el lote siguiente
+// (`gen_lopdgdd_t115_2026-07-31`, sobre la LO 3/2018) cita a cada paso "el artículo 60 del
+// Reglamento" refiriéndose al **Reglamento (UE) 2016/679**. Resultado: se adjuntaron los arts.
+// 56, 60 y 65 de la LEY ORGÁNICA —"Acción exterior", "Admisión a trámite de las reclamaciones"—
+// como si fueran los citados. Es exactamente el fallo del artículo HOMÓNIMO que esta guarda
+// existe para impedir, y adjuntar el artículo equivocado es PEOR que no adjuntar ninguno.
+//
+// Doble corte, por tanto: (1) la ley del lote tiene que ser un reglamento, y (2) el reglamento
+// citado tiene que venir SIN IDENTIFICAR. En cuanto se identifica —"del Reglamento (UE)
+// 2016/679", "del Reglamento General de Protección de Datos", "del Reglamento de ejecución",
+// "del Reglamento n.º 1/2005", "del Reglamento delegado"— cuenta como otra norma siempre.
 const REGLAMENTO_SIN_IDENTIFICAR =
   /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?Reglamento\b(?!\s*(?:\(|n[.ºo°]|n[úu]m|\d|de (?:ejecuci[óo]n|desarrollo|la|los|las)|delegado|general|europeo|comunitario))/i
 
-function numerosCitados(texto) {
+/**
+ * `leyEsReglamento`: si la norma del lote es ella misma un reglamento. Se deriva del NOMBRE de
+ * la ley (`esLeyReglamento`), no se adivina. Por defecto **false** = comportamiento estricto de
+ * siempre: ante la duda, no adjuntar.
+ */
+function numerosCitados(texto, { leyEsReglamento = false } = {}) {
   const t = String(texto || '')
   const out = new Set()
   // El sufijo de REFORMA forma parte del número: de "artículo 75 bis.1" hay que sacar
@@ -82,7 +94,8 @@ function numerosCitados(texto) {
   const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*(?:\s*(?:,|\by\b|\be\b)\s*[0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*)*)/gi
   for (const m of t.matchAll(re)) {
     const sigue = t.slice(m.index + m[0].length, m.index + m[0].length + 40)
-    if (OTRA_NORMA.test(sigue) && !REGLAMENTO_SIN_IDENTIFICAR.test(sigue)) continue
+    const mismoCuerpo = leyEsReglamento && REGLAMENTO_SIN_IDENTIFICAR.test(sigue)
+    if (OTRA_NORMA.test(sigue) && !mismoCuerpo) continue
     // El separador debe ir con frontera de palabra: partir por una "e" suelta
     // troceaba "127 octies" en "127 octi" + "s".
     for (const n of m[1].split(/\s*(?:,|\by\b|\be\b)\s*/)) {
@@ -94,7 +107,16 @@ function numerosCitados(texto) {
   return [...out]
 }
 
-module.exports = { numerosCitados }
+/**
+ * ¿La norma del lote es ella misma un reglamento? Se mira el NOMBRE oficial: un Real Decreto que
+ * "aprueba el Reglamento de…" lo es; una Ley Orgánica no, por mucho que sus explicaciones citen
+ * el Reglamento (UE) 2016/679 a cada paso.
+ */
+function esLeyReglamento(nombreLey) {
+  return /\breglamento\b/i.test(String(nombreLey || ''))
+}
+
+module.exports = { numerosCitados, esLeyReglamento }
 if (require.main !== module) return
 
 
@@ -114,7 +136,8 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
 ;(async () => {
   const Q = await s`
     SELECT q.id, q.question_text, q.correct_option, q.option_a, q.option_b, q.option_c, q.option_d,
-           q.explanation, a.article_number, a.title AS article_title, a.content, a.law_id, l.short_name AS ley
+           q.explanation, a.article_number, a.title AS article_title, a.content, a.law_id, l.short_name AS ley,
+           l.name AS ley_nombre
     FROM questions q
     JOIN articles a ON a.id = q.primary_article_id
     JOIN laws l ON l.id = a.law_id
@@ -162,7 +185,7 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
     const vistos = new Set()
     for (const x of p) {
       const law_id = idx.get(x.id).law_id
-      for (const n of numerosCitados(x.explicacion)) {
+      for (const n of numerosCitados(x.explicacion, { leyEsReglamento: esLeyReglamento(idx.get(x.id).ley_nombre) })) {
         const k = `${law_id}|${n}`
         if (enEsteTrozo.has(k) || vistos.has(k)) continue
         vistos.add(k)
