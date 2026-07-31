@@ -17,6 +17,26 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
 
+### [T-330] ✅ [CERRADA SIN ENVIAR 31/07] Newsletter del último día de plazo de Conserjería de la UJA
+- **⏳ CADUCA EL 31/07/2026 A LAS 23:59** (cierre del plazo de solicitudes, verificado en la sede de la UJA). No es una preferencia: **pasada esa hora la tarea no se pospone, se cierra sin hacer**, porque el correo pasaría a anunciar un plazo cerrado. Programada para la mañana del 31/07, así que la ventana real son unas doce horas.
+  *(El título decía «hoy es el ÚLTIMO día», escrito el 30/07. Una palabra relativa en un título envejece sola y acaba mintiendo; la fecha dura va aquí hasta que el backlog tenga campo de plazo.)*
+- **Qué:** mandar una newsletter aprovechando que **el plazo de solicitudes de Técnico/a Auxiliar de Conserjería de la Universidad de Jaén cierra el 31/07 a las 23:59** (9 plazas, concurso-oposición, BOE de 4 de julio). Decisión de Manuel el 30/07.
+- **⏰ Es una tarea de UN SOLO DÍA y sale sola por eso:** queda programada para la mañana del 31/07 (`snooze_until`), porque enviarla por la tarde ya no le sirve a nadie y enviarla el 1 de agosto es peor que no enviarla. **Si no se manda esa mañana, se cierra sin hacer** — no se arrastra.
+- **Decisiones que hay que tomar antes de darle a enviar (no están tomadas):**
+  1. **A quién.** No a toda la base: mandar «último día» a quien no puede presentarse es ruido que se paga en bajas. Lo razonable es acotar a perfiles con encaje real (Andalucía / Jaén, y quien tenga seleccionada una oposición de subalterno, conserjería, universidad o administración local). El runbook de newsletters tiene el cómo segmentar.
+  2. **Qué se promete.** El temario propio de la UJA **todavía no está montado** ([T-329]), así que el mensaje no puede dar a entender que la oposición está lista en Vence. Lo honesto y lo que además es cierto: cuatro de sus catorce temas (LOSU, EBEP, Prevención de Riesgos, igualdad) **sí se pueden estudiar hoy**, y la estamos preparando.
+- **Por qué merece el esfuerzo pese a ser 9 plazas:** el gancho no es la oposición, es la **urgencia verificada** (un plazo que cierra hoy es el único correo que se abre seguro), y de paso da a conocer que preparamos oposiciones de universidad. Es la misma lógica de pre-venta del manual de feedback: la respuesta rápida ES la prueba de que la plataforma está viva.
+- **Cómo:** `docs/runbooks/newsletter-promociones.md`. **Verificar el plazo otra vez antes de enviar** (en la sede de la UJA, no en el BOE): si lo amplían, el correo cambia de sentido — pasó con Madrid, que amplió por incidencia técnica y solo lo publicó en su sede.
+- **Origen:** feedback `7a81b194` de Chari GAMA, que preguntó por esta oposición el 29/07.
+- **Relacionada:** [T-329] (construirla).
+- **✅/❌ 31/07 — CERRADA SIN ENVIAR, por decisión de Manuel: «la oposición primero, creada y perfecta».** El runbook de newsletters ya lo exigía en su gate pre-envío (*«la newsletter manda tráfico a la landing, así que la landing y sus datos deben estar perfectos»*) y yo lo había leído sin aplicarlo: llegué a preparar el borrador antes de comprobar que había landing que enseñar. No la había.
+- **Lo que sí quedó verificado y sirve para la próxima:**
+  - **El plazo, comprobado ESE día en la sede de la UJA** (no en el BOE, que es la trampa): `solicitudes 31/07/2026 - 23:59`, **sin ampliar**, y enlazando el mismo `BOE-A-2026-14535`.
+  - **El temario real: 14 temas del Anexo II, y solo 4 existen en Vence** (LOSU, EBEP, LPRL, igualdad) — y esos hay que recortarlos al scope exacto que pide el programa, no meter la ley entera.
+  - **Los 10 restantes SÍ tienen fuente oficial y accesible**, que es lo que Manuel señaló con razón cuando dije que no se podía: Convenio Colectivo en **BOJA nº 36 de 23/02/2004**, Estatutos en **Decreto 230/2003** (PDF consolidado en la propia UJA, 961 KB, texto extraíble), carta de servicios de Conserjerías en PDF (906 KB) y el resto publicado en `ujaen.es`. **Lo que no cabía en el día no era conseguir el material: era generar las preguntas de esos 10 temas con su doble auditoría.**
+  - **Audiencia calculada y ELEGIDA por Manuel**, por si se reaprovecha en la próxima convocatoria: alcance *Andalucía + perfil afín* (subalterno, conserjería, ordenanza, universidad, ayuntamiento, diputación, auxiliar administrativo) = **679 destinatarios, 27 premium**. Los otros alcances medidos: solo provincia de Jaén 68 · Andalucía + perfil estricto 114 · Andalucía sin filtrar 979.
+- **La lección, que es de proceso y no de esta oposición:** el gancho de urgencia («último día») **no crea la landing**. Si la oposición no está lista, el correo no tiene dónde aterrizar y mandarlo es peor que no mandarlo. La newsletter va DESPUÉS de [T-329], nunca antes.
+
 ### [T-134] ✅ [HECHA 31/07] Auditoría COMPLETA de la landing (datos + enlaces): el botón "Ver convocatoria" puede llevar a cualquier sitio y ningún detector lo ve
 - **[27/07, desde T-147] Los 8 `programa_url` que NO apuntan a un documento, triados — y solo 3 eran accionables.** Salieron de la campaña de clonado: el clonador no podía tipar su documento porque no hay documento, es la ficha web del proceso. Al mirarlos uno a uno con el criterio del runbook (§7 de `salud-contenido.md`), **5 están en `oep_aprobada`**: sin convocatoria publicada no hay documento oficial que enlazar y la página institucional es lo mejor disponible → **NO se tocan** (el detector ya las deja en `warn` por eso).
   - ✅ **`auxiliar-administrativo-ayuntamiento-sevilla` REPUNTADO** a `BOE-A-2024-4098` con etiqueta BOE (su convocatoria ya estaba citada en un hito). Verificado en producción tras purgar caché: el botón dice "Ver convocatoria en BOE" y lleva al documento.
@@ -1199,19 +1219,25 @@ incluida).
 - **Ojo con el nombre:** ya existe `auxiliar-administrativo-universidad-jaen` (inactiva, examen realizado) y es **otra cosa**. La usuaria tuvo que aclararnos justo esa diferencia cuando le preguntamos. El puesto es *Técnico/a Auxiliar de Conserjería*, laboral Grupo IV.
 - **Avisar al terminar:** responder en el hilo `7a81b194` de Chari, que es lo que se le prometió.
 - **Relacionada:** [T-330] (la newsletter del último día), `docs/maintenance/crear-nueva-oposicion.md`.
-
-### [T-330] 🔴 [ABIERTO 30/07] Newsletter del último día de plazo de Conserjería de la UJA
-- **⏳ CADUCA EL 31/07/2026 A LAS 23:59** (cierre del plazo de solicitudes, verificado en la sede de la UJA). No es una preferencia: **pasada esa hora la tarea no se pospone, se cierra sin hacer**, porque el correo pasaría a anunciar un plazo cerrado. Programada para la mañana del 31/07, así que la ventana real son unas doce horas.
-  *(El título decía «hoy es el ÚLTIMO día», escrito el 30/07. Una palabra relativa en un título envejece sola y acaba mintiendo; la fecha dura va aquí hasta que el backlog tenga campo de plazo.)*
-- **Qué:** mandar una newsletter aprovechando que **el plazo de solicitudes de Técnico/a Auxiliar de Conserjería de la Universidad de Jaén cierra el 31/07 a las 23:59** (9 plazas, concurso-oposición, BOE de 4 de julio). Decisión de Manuel el 30/07.
-- **⏰ Es una tarea de UN SOLO DÍA y sale sola por eso:** queda programada para la mañana del 31/07 (`snooze_until`), porque enviarla por la tarde ya no le sirve a nadie y enviarla el 1 de agosto es peor que no enviarla. **Si no se manda esa mañana, se cierra sin hacer** — no se arrastra.
-- **Decisiones que hay que tomar antes de darle a enviar (no están tomadas):**
-  1. **A quién.** No a toda la base: mandar «último día» a quien no puede presentarse es ruido que se paga en bajas. Lo razonable es acotar a perfiles con encaje real (Andalucía / Jaén, y quien tenga seleccionada una oposición de subalterno, conserjería, universidad o administración local). El runbook de newsletters tiene el cómo segmentar.
-  2. **Qué se promete.** El temario propio de la UJA **todavía no está montado** ([T-329]), así que el mensaje no puede dar a entender que la oposición está lista en Vence. Lo honesto y lo que además es cierto: cuatro de sus catorce temas (LOSU, EBEP, Prevención de Riesgos, igualdad) **sí se pueden estudiar hoy**, y la estamos preparando.
-- **Por qué merece el esfuerzo pese a ser 9 plazas:** el gancho no es la oposición, es la **urgencia verificada** (un plazo que cierra hoy es el único correo que se abre seguro), y de paso da a conocer que preparamos oposiciones de universidad. Es la misma lógica de pre-venta del manual de feedback: la respuesta rápida ES la prueba de que la plataforma está viva.
-- **Cómo:** `docs/runbooks/newsletter-promociones.md`. **Verificar el plazo otra vez antes de enviar** (en la sede de la UJA, no en el BOE): si lo amplían, el correo cambia de sentido — pasó con Madrid, que amplió por incidencia técnica y solo lo publicó en su sede.
-- **Origen:** feedback `7a81b194` de Chari GAMA, que preguntó por esta oposición el 29/07.
-- **Relacionada:** [T-329] (construirla).
+- **✅ 31/07 — FASE 1 HECHA (el juicio, que es lo que no puede hacer el scaffolder). Spec en `data/temarios/tecnico-auxiliar-conserjeria-universidad-jaen.json`.**
+  - **Los 14 epígrafes, LITERALES del Anexo II del BOE** (`BOE-A-2026-14535`), transcritos y no reescritos. **Trampa que costó un intento:** el BOE separa el número de tema con **espacio EM (U+2003)**, no con espacio normal, así que un `split` por `\d+\. ` devuelve **1 tema en vez de 14**. Normalizar `[\u00a0\u2000-\u200a\u202f\u205f\u3000]` antes de trocear.
+  - **Fuentes verificadas UNA A UNA (HTTP y tamaño), y todas son oficiales** — que era la duda de fondo: se puede construir.
+    | Tema | Fuente | Estado |
+    |---|---|---|
+    | 1 · IV Convenio Colectivo PAS | **BOJA nº 36 de 23/02/2004** | texto íntegro, 157.587 chars, articulado parseable |
+    | 2 · Estatutos UJA (D. 230/2003) | PDF consolidado en `ujaen.es` | 200, 961 KB, `pdftotext` funciona |
+    | 11 · Carta de servicios Conserjerías | PDF en `ujaen.es` | 200, 906 KB |
+    | 7,8,9,10,12,13,14 | páginas y PDFs de `ujaen.es` | publicados; falta fijar URL exacta de cada uno |
+  - **Los 4 que YA tenemos, con su recorte** (NO meter la ley entera, que sería sobre-inclusión desde el día uno): LOSU completa (203 preg) · EBEP **solo** Títulos I, II cap. I, III caps. II y IV (arts. 19, 20 y 32), IV y VII (1.235 preg) · LPRL **solo** capítulos III, IV y V (1.103 preg) · LO 3/2007 **solo** Título V (796 preg).
+- **⏭️ SIGUIENTE PASO EXACTO:** completar en el spec el `scope` de los temas 3-6 con esos recortes, importar Convenio y Estatutos como leyes reales (verbatim, doble auditoría) y los 8 documentos propios de la UJA como contenedores, y entonces:
+  ```bash
+  node scripts/create-oposicion.cjs data/temarios/tecnico-auxiliar-conserjeria-universidad-jaen.json --dry-run
+  node scripts/create-oposicion.cjs data/temarios/tecnico-auxiliar-conserjeria-universidad-jaen.json --insert-config --routes --registros
+  npm run audit:oposicion tecnico-auxiliar-conserjeria-universidad-jaen && npm run audit:served tecnico-auxiliar-conserjeria-universidad-jaen
+  ```
+  Gotchas del manual §3.bis: anteponer `NODE_TLS_REJECT_UNAUTHORIZED=0` contra RDS, y **`audit:served` dará 0 preguntas hasta refrescar la MV** (§6.bis) aunque el scope esté bien. Después, `verify:scope` con los 2 agentes. Go-live solo con OK de Manuel.
+- **⚠️ Decisión abierta en el spec:** `categoria` está puesta como `"Grupo IV"` (es personal LABORAL, no funcionario C1/C2). Confirmar que el scaffolder y los filtros de la UI lo aceptan, o mapearlo al valor que corresponda.
+- **Lo caro NO es el material, son las PREGUNTAS.** Los 10 temas nuevos parten de cero y cada uno necesita generación + doble auditoría ciega. Por eso [T-330] (la newsletter del último día) se cerró sin enviar: el plazo moría el 31/07 y una landing con 10 temas a cero es justo lo que el gate pre-envío prohíbe.
 
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
 - **Quién lo pide:** Sergio (`pcsergio0@gmail.com`, premium, 44 tests en 9 días, feedback `bd8b92d0`): *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. **Ya respondido**: se le ha dicho que lo vamos a añadir.

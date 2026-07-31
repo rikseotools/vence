@@ -1,0 +1,133 @@
+{
+  "slug": "tecnico-auxiliar-conserjeria-universidad-jaen",
+  "position_type": "tecnico_auxiliar_conserjeria_universidad_jaen",
+  "categoria": "Grupo IV",
+  "convocatoria": "BOE núm. 162, 04/07/2026 (Anexo II) — BOE-A-2026-14535 · Resolución de 29 de junio de 2026 de la Universidad de Jaén · 9 plazas, personal laboral Grupo IV, concurso-oposición",
+  "programa_url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-14535",
+  "_fuentes_por_tema": {
+    "101": "BOJA núm. 36 de 23/02/2004 — https://www.juntadeandalucia.es/boja/2004/36/14 (texto íntegro verificado, 157.587 chars)",
+    "102": "PDF consolidado de la propia UJA — https://www.ujaen.es/gobierno/secgen/sites/gobierno_secgen/files/uploads/A2.pdf (961 KB, texto extraíble). OJO: confirmar que incorpora la reforma del Decreto 235/2011 que cita el programa",
+    "103": "YA EN VENCE — ley `losu` (203 preguntas). Tema completo, sin recorte",
+    "104": "YA EN VENCE — ley `rdl-5-2015` (1.235 preguntas). RECORTAR al scope: Títulos I, II cap. I, III caps. II y IV (arts. 19, 20, 32), IV y VII",
+    "105": "YA EN VENCE — ley `lprl` (1.103 preguntas). RECORTAR al scope: capítulos III, IV y V",
+    "106": "YA EN VENCE — ley `lo-3-2007` (796 preguntas). RECORTAR al scope: Título V completo (caps. I, II y III)",
+    "107": "ujaen.es — código de buen gobierno + código ético del PAS (pendiente localizar URL exacta)",
+    "108": "ujaen.es — III Plan Estratégico 2021-2029 (pendiente localizar URL exacta)",
+    "109": "ujaen.es — SIGC-SUA: política de calidad, manual y procesos PC 03.x (pendiente localizar URL exacta)",
+    "110": "ujaen.es — Instrucciones Técnicas de la Unidad de Conserjerías (pendiente localizar URL exacta)",
+    "111": "https://www.ujaen.es/servicios/uconserjerias/sites/servicio_uconserjerias/files/uploads/Varios/ucon_carta_servicio.pdf (906 KB, verificado 200)",
+    "112": "ujaen.es — infraestructuras: edificios, centros y departamentos (pendiente localizar URL exacta)",
+    "113": "ujaen.es — Google GSuite UJA (pendiente localizar URL exacta)",
+    "114": "ujaen.es — protocolos de emergencia de Conserjerías (pendiente localizar URL exacta)"
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "I. Normativa general y de empleo público"
+    },
+    {
+      "numero": 2,
+      "titulo": "II. La Universidad de Jaén y la Unidad de Conserjerías"
+    }
+  ],
+  "temas": [
+    {
+      "topic_number": 101,
+      "bloque": 1,
+      "display": 1,
+      "title": "IV Convenio Colectivo del Personal Laboral de las Universidades Públicas de Andalucía",
+      "epigrafe": "IV Convenio Colectivo del Personal Laboral de las Universidades Públicas de Andalucía: – Título Preliminar: Objeto, ámbito y vigencia. – Título I: Garantías. – Título II: Normas de organización del trabajo. – Título III: Vacaciones, permisos y licencias. – Título IV: Excedencias y suspensión del contrato de trabajo. – Título X: Acción social. – Título XI: Derechos sindicales."
+    },
+    {
+      "topic_number": 102,
+      "bloque": 1,
+      "display": 2,
+      "title": "Estatutos de la Universidad de Jaén (Decreto 230/2003)",
+      "epigrafe": "Decreto 230/2003, de 29 de julio, por el que se aprueban los Estatutos de la Universidad de Jaén, reformados mediante Decreto 235/2011, de 12 de julio. – Título I: Estructura de la Universidad. – Título II: Participación social, representación, gobierno y gestión de la Universidad: Capítulo I: Disposiciones generales; Capítulo II: Órgano de participación social: Consejo Social; Capítulo III: Órganos de representación, gobierno y gestión generales. – Título III: Comunidad universitaria: Capítulo II: Personal Docente e Investigador; Sección 1, disposiciones comunes; artículo 92; Tipos de Personal Docente e Investigador: Capítulo IV: Personal de Administración y Servicios. – Título IV: Defensor universitario. – Título VI: Servicios universitarios. – Título IX: Reforma de los estatutos."
+    },
+    {
+      "topic_number": 103,
+      "bloque": 1,
+      "display": 3,
+      "title": "Ley Orgánica 2/2023 del Sistema Universitario (LOSU)",
+      "epigrafe": "Ley Orgánica 2/2023, de 22 de marzo, del Sistema Universitario."
+    },
+    {
+      "topic_number": 104,
+      "bloque": 1,
+      "display": 4,
+      "title": "Estatuto Básico del Empleado Público (RDL 5/2015)",
+      "epigrafe": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público: – Título I: Objeto y ámbito de aplicación. – Título II: Personal al servicio de las Administraciones públicas: Capítulo I: Clases de personal. – Título III: Derechos y deberes. Código de conducta de los empleados públicos: Capítulo II: Derecho a la carrera profesional y a la promoción interna. La evaluación del desempeño: artículo 19: Carrera profesional y promoción del personal laboral; artículo 20: La evaluación del desempeño. Capítulo IV: Derecho a la negociación colectiva, representación y participación institucional. Derecho de reunión: artículo 32: Negociación colectiva, representación y participación del personal laboral. – Título IV: Adquisición y pérdida de la relación de servicio. – Título VII: Régimen Disciplinario."
+    },
+    {
+      "topic_number": 105,
+      "bloque": 1,
+      "display": 5,
+      "title": "Ley 31/1995 de Prevención de Riesgos Laborales",
+      "epigrafe": "Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales, en su redacción actual: – Capítulo III: Derechos y obligaciones. – Capítulo IV: Servicios de prevención. – Capítulo V: Consulta y participación de los trabajadores."
+    },
+    {
+      "topic_number": 106,
+      "bloque": 1,
+      "display": 6,
+      "title": "LO 3/2007 de igualdad efectiva: el principio de igualdad en el empleo público",
+      "epigrafe": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres: Título V: El principio de igualdad en el empleo público: Capítulo I: Criterios de actuación de las Administraciones públicas. Capítulo II: El principio de presencia equilibrada en la Administración General del Estado y en los organismos públicos vinculados o dependientes de ella: Capítulo III: Medidas de Igualdad en el empleo para la Administración General del Estado y para los organismos públicos vinculados o dependientes de ella."
+    },
+    {
+      "topic_number": 107,
+      "bloque": 2,
+      "display": 7,
+      "title": "Códigos éticos sectoriales de la Universidad de Jaén",
+      "epigrafe": "Códigos éticos sectoriales de la Universidad de Jaén (https://www.ujaen.es/). – Código de buen gobierno de la Universidad de Jaén. – Código ético del Personal de Administración y Servicios."
+    },
+    {
+      "topic_number": 108,
+      "bloque": 2,
+      "display": 8,
+      "title": "Sistema de Dirección Estratégica de la Universidad de Jaén",
+      "epigrafe": "Sistema de Dirección Estratégica de la Universidad de Jaén (https://www.ujaen.es/). – III Plan estratégico de la Universidad de Jaén 2021-2029: Misión, visión y valores. – Despliegue de objetivos estratégicos."
+    },
+    {
+      "topic_number": 109,
+      "bloque": 2,
+      "display": 9,
+      "title": "Sistema Integrado de Gestión de la Calidad (SIGC-SUA)",
+      "epigrafe": "El Sistema Integrado de Gestión de la Calidad de los Servicios y Unidades Administrativas de la Universidad de Jaén (SIGC-SUA) (https://www.ujaen.es/). – Política de calidad. – Manual de Calidad (0. Presentación, 1. Introducción, 2. Estructura del SIGC-SUA, 5.1. Organigrama de responsabilidades; y 7. Planificación de la calidad y objetivos de calidad del SIGC-SUA). – Participación de la Unidad de Conserjerías en el SIGC-SUA. Manual de Procesos. – PC 03.1 Gestión de la asignación de espacios. – PC 03.11 Gestión de la asignación planificada. – PC 03.12 Gestión de la asignación a demanda.(PC 03.121 Demandas de la comunidad universitaria. PC 03.122 Demandas externas). – PC 03.13 Preparación y montaje. – PC 03.2 Gestión del acceso y control de espacios."
+    },
+    {
+      "topic_number": 110,
+      "bloque": 2,
+      "display": 10,
+      "title": "Instrucciones Técnicas de la Unidad de Conserjerías",
+      "epigrafe": "Instrucciones Técnicas de la Unidad de Conserjerías de la Universidad de Jaén (https://www.ujaen.es/)."
+    },
+    {
+      "topic_number": 111,
+      "bloque": 2,
+      "display": 11,
+      "title": "Carta de servicios de la Unidad de Conserjerías",
+      "epigrafe": "Carta de servicios de la Unidad de Conserjerías de la Universidad de Jaén (https://www.ujaen.es/)."
+    },
+    {
+      "topic_number": 112,
+      "bloque": 2,
+      "display": 12,
+      "title": "Las infraestructuras de la Universidad de Jaén",
+      "epigrafe": "Las infraestructuras de la Universidad de Jaén: denominación, ubicación y tipología de los edificios, centros y departamentos (https://www.ujaen.es/)."
+    },
+    {
+      "topic_number": 113,
+      "bloque": 2,
+      "display": 13,
+      "title": "Google GSuite UJA",
+      "epigrafe": "Google GSuite UJA: – Correo electrónico institucional para la comunicación con la comunidad universitaria: Gmail. – Almacenamiento en la nube, creación y edición de textos y hojas de cálculo: Drive, Google docs y Google sheets. – Calendario integrado para gestionar horarios, espacios y reuniones: Calendar. – Plataforma para videollamadas y reuniones o clases virtuales: Meets."
+    },
+    {
+      "topic_number": 114,
+      "bloque": 2,
+      "display": 14,
+      "title": "Protocolos de emergencia de la Unidad de Conserjerías",
+      "epigrafe": "Unidad de Conserjerías de la Universidad de Jaén: Protocolos de emergencia (https://www.ujaen.es/)."
+    }
+  ]
+}
