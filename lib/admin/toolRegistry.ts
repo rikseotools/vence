@@ -950,6 +950,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'a colectivos — la resta no aparece escrita, mismo patrón que el 2.163 de Policía Nacional, y ' +
       'anunciaba 5 plazas MENOS de las convocadas.',
   },
+  atajos_coherencia: {
+    titulo:
+      '¿El banco se contradice a sí mismo sobre un atajo de teclado? (no dice cuál es el correcto)',
+    ruta: 'scripts/audit-atajos-coherencia.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/revision-preguntas-informatica.md',
+    notas:
+      'Núcleo puro `lib/health/atajoCoherencia.js` (21 tests) + runner `npm run audit:atajos`. BAJO ' +
+      'DEMANDA, no pinga el badge. Nace de T-354: el 30/07/2026 el banco servía a la vez Ctrl+Alt+O ' +
+      '(pregunta oficial, 242 exposiciones) y Ctrl+Alt+F como atajo de nota al pie, y NINGÚN detector ' +
+      'podía verlo porque todos comparan una pregunta contra su fuente — y la fuente también estaba ' +
+      'mal (6 artículos con el set inglés). Este NO consulta fuentes y NO decide cuál es la verdad: ' +
+      'solo señala que no puede haber dos, que es lo que lo hace barato y seguro. Bandas: `interna` ' +
+      '(un mismo texto se contradice, indefendible), `contenedor`, `familia` (Word 365 común vs ' +
+      'Escritorio PUEDEN diferir de verdad: Office para la Web cambia atajos). GOTCHAS de calibración, ' +
+      'los dos medidos: (1) los patrones de acción van ANCLADOS al inicio — sin eso «abrir» juntaba ' +
+      '«abrir Cortana» con «abrir un documento» y daba 30 teclas en un solo hallazgo falso; (2) solo ' +
+      'atajos de LETRA, porque las teclas de función no se localizan y Mayús+F12 es alias legítimo de ' +
+      'Ctrl+G para Guardar. Medido: 247 afirmaciones, 4 hallazgos `interna` y 10 `familia`, casi todos ' +
+      'apuntando al mismo culpable (Word 365 Escritorio art.5).',
+  },
   transponer_posicion_correcta: {
     titulo:
       'Reparar la POSICIÓN de la opción correcta de un lote (§2.2-ter) sin descuadrar la explicación',
