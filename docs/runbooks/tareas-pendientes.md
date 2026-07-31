@@ -73,6 +73,8 @@ node scripts/backlog.cjs due T-042 --quitar
 node scripts/backlog.cjs pause T-042 --tras-deploy --hecho "…" --falta "…"   # empezada, espera deploy
 node scripts/backlog.cjs wake T-042        # la despierta antes de tiempo
 node scripts/backlog.cjs deployed <sha> --superficie frontend   # lo llama el propio deploy
+node scripts/backlog.cjs reap              # SIMULA: qué claims son de sesiones muertas
+node scripts/backlog.cjs reap --apply      # …y los devuelve al pool
 node scripts/backlog.cjs sync              # importa ids nuevos del markdown a la tabla
 ```
 
@@ -90,6 +92,32 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 `lease_until` es un **arriendo renovable**, no un candado eterno. Una sesión que muere (se acaba el contexto, peta, cierras la ventana) libera su tarea sola al caducar el lease; una sesión viva la conserva mientras dé señales con `heartbeat`. Sin esto, el backlog se bloquearía solo la primera vez que una sesión muriese con una tarea cogida.
 
 En `list` verás tres estados: `🟢 libre` · `🔒 <sid> (Xm)` cogida con lease vivo · `🟡 lease caducado (libre)`.
+
+### …pero la fila hay que SEGARLA (`reap`, 31/07)
+
+El lease vencía, sí, pero **nadie limpiaba la fila**: se quedaba `in_progress` con el `claimed_by`
+de una sesión que ya no existe, para siempre. `list` lo pintaba «🟡 lease caducado (libre)» —que es
+cosmético— mientras el registro seguía afirmando que alguien la estaba haciendo. Medido el 31/07:
+**T-214, T-221 y T-238 llevaban 72-79 h así**, y sus sesiones (`cordoba-plazas`,
+`clonado-provenance`, `sesion-28jul-d`) no tenían ni worktree ni latido.
+
+No era solo higiene. El **push-guard sí miraba `claimed_by`** y no el lease, así que cualquiera que
+mencionara una de esas tres en un commit se comía un *«la tiene la sesión X — coordina o espera a
+que libere»* **de un muerto**, sin más salida que `BACKLOG_GUARD_SKIP=1`, que apaga el guard
+ENTERO. Un bloqueo imposible de satisfacer no protege: enseña a saltarse la protección.
+
+```bash
+node scripts/backlog.cjs reap            # simula (por defecto): quién está muerto y desde cuándo
+node scripts/backlog.cjs reap --apply    # las devuelve al pool: open, sin dueño
+```
+
+**Dry-run por defecto a propósito** — soltar el trabajo de otra sesión es justo el accidente que
+este subsistema existe para evitar. El margen (`--horas`, 24 por defecto) se cuenta *sobre* el
+vencimiento: el lease son 90 min, así que 24 h ya es una sesión inequívocamente muerta. **No toca
+la ficha**: el contexto de la tarea se conserva entero.
+
+> Antes de segar, mira si esa sesión dejó trabajo sin pushear (`git -C <wt> status` y
+> `git log origin/main..`). `reap` no borra nada, pero saberlo evita re-hacer lo que ya está hecho.
 
 ## Las CUATRO esperas, y por qué no son la misma
 
@@ -142,6 +170,36 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
 - **Aplazar en bucle no es programar.** Cada `snooze`/`pause` incrementa `snooze_count`; a partir de 3, `list` y `claim` lo cantan: eso ya no es una tarea programada, es una decisión que nadie toma.
 - **Por qué existe (28/07/2026):** T-221 llegó a llevar `⛔ NO COGER HASTA EL 29/07 07:00 UTC` **en el título de la ficha**… y `next` la seguía ofreciendo, porque ni el CLI ni la tabla leen el texto del markdown. Gritar en la ficha no es un mecanismo. Con 2-10 sesiones, eso es otra sesión montando un worktree para descubrir a los cinco minutos que no había nada que medir.
 
+## El push-guard: qué bloquea y las TRES cosas que ya no (31/07)
+
+El guard existe para un fallo concreto: **el olvido de reclamar** (colisión T-047/T-050 del 20/07).
+Ese sigue bloqueando igual. Lo que se quitó son tres bloqueos que **no se podían satisfacer**, y que
+por eso empujaban al `BACKLOG_GUARD_SKIP=1` — que apaga el guard entero, para todos los ficheros del
+push. Un guardarraíl al que se aprende a rodear protege menos que uno que no existe.
+
+| Situación | Antes | Ahora |
+|---|---|---|
+| La tarea la tiene otra sesión **con lease vivo** | ❌ bloquea | ❌ **bloquea** (es su razón de ser) |
+| Tarea viva **sin reclamar** | ❌ bloquea | ❌ **bloquea** (el olvido) |
+| La tiene una sesión cuyo **lease ya venció** | ❌ bloqueaba para siempre | ✅ pasa (con aviso) |
+| La **pausaste tú** (`pause`) y espera deploy/reloj | ❌ callejón sin salida | ✅ pasa (con aviso) |
+| El push toca **solo** `docs/roadmap/tareas-pendientes.md` | ❌ bloqueaba | ✅ pasa (con aviso) |
+
+- **Lease vencido:** `claim` ya entregaba esa fila (`lease_until < now()`); el guard decía lo
+  contrario. **Dos puertas al mismo recurso con criterios distintos no protegen: se contradicen.**
+- **Pausa propia:** `pause` suelta el claim a propósito y `claim` no entrega una tarea en espera,
+  también a propósito. Juntos cerraban la salida — pausas, pusheas, te manda a reclamar, y `claim`
+  se niega. Y el orden natural al terminar es **cerrar la tarea y luego pushear**, así que lo pisaba
+  cualquiera que hiciese las cosas bien.
+- **Solo la ficha:** documentar una tarea **no es trabajarla**. Abrir una ficha para dejar
+  constancia de algo que NO vas a atacar y tener que reclamarla para poder pushear es peor que no
+  reclamar: se la quitas a quien sí iba a hacerla. El corte es estrecho a propósito — **solo ese
+  fichero** (escribir un runbook sí es trabajo), y **cede** si otra sesión la tiene con lease vivo.
+
+**Los avisos se imprimen siempre**, pase o no el push: una excepción silenciosa es una excepción que
+nadie revisa. Núcleo puro en `lib/backlog/pushGuard.cjs`, con tests de las tres reglas y de que
+ninguna abre el hueco del olvido.
+
 ## Guardarraíles (lo que evita que vuelva a pasar lo del 20/07)
 
 - **`__tests__/guardrails/backlogRegistry.guardrail.test.ts`** (corre en CI, sin BD): toda cabecera lleva id, los ids son únicos y con formato `T-NNN`, toda tarea viva declara prioridad, existe la sección `## Abiertas`, y **ningún título codifica un candado de fecha** (`NO COGER HASTA`, `MEDIR EL 11/08`, `⛔`, `⏱`) — eso va a `snooze_until`, que vence solo; un título no. Si alguien añade una tarea sin id, el CI se pone rojo — porque sin id **nadie puede cogerla**.
@@ -156,6 +214,40 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
   **Por qué se cambió (29/07/2026).** El commit de tests `4127f3e17` subió una **copia rancia** del markdown y borró de `main` las fichas de **T-251 y T-254**. Las dos tareas seguían VIVAS en la tabla, así que `list` las ofrecía por su título y detrás no había ficha que leer — una sesión podía cogerlas sin poder saber qué eran. El aviso que lo cazaba ya existía, pero fallaba por dos motivos independientes: **(1)** se imprimía al FINAL, después de dos `process.exit(2)`, y ese día el `sync` abortaba antes por una colisión de id **ajena** (T-219), así que no llegaba nunca; **(2)** no distinguía la regresión del trabajo en vuelo de las demás sesiones, que es lo habitual — y un aviso que se enciende todos los días por algo sano se acaba ignorando, el mismo final que ya tuvo cuando incluía a las CERRADAS (T-033/T-039/T-046). La prueba de que la ficha existió es el **historial del fichero**, no la antigüedad de la tarea. **Fail-open:** si git no puede contestar, se calla — inventarse una regresión es peor que perderla.
 
   > **Lección de método:** un hallazgo que solo se publica cuando todo lo demás va bien es un hallazgo que falta justo el día que hace falta. Las comprobaciones de solo lectura van antes que los abortos.
+
+## Lo que cuenta como ABIERTA lo dice el ✅, no dónde caiga la ficha (31/07)
+
+**Al cerrar, la cabecera lleva `✅`.** No es decoración: es la única marca que leen el `sync`, el
+detector de deriva y los guardarraíles de CI.
+
+```
+### [T-286] ✅ [HECHA 29/07] Título…      ← cerrada
+### [T-342] 🟡 [ABIERTO 30/07] Título…    ← abierta
+```
+
+Hasta el 31/07 «abierta» se deducía de la POSICIÓN: caer entre `## Abiertas` y el siguiente `##`.
+Medido sobre el fichero real, **145 de las 177 tareas vivas quedaban fuera** — hay tres secciones
+`## Hechas` y varias `##` sueltas, y las fichas se escriben donde caben. Consecuencias, todas
+reales y ninguna visible:
+
+- `sync` daba esas 145 por cerradas y **no reconciliaba su título ni su prioridad**. Al arreglarlo
+  saltaron 31 divergencias, **4 de ellas de prioridad 🔴 que la tabla tenía como `media`**: el orden
+  de ataque llevaba días mintiendo (T-244, T-315, T-392, T-399).
+- Peor: el **guardarraíl anti-colisión del `sync`** —el que impide pisarle la ficha a otra sesión,
+  nacido de T-225— solo consultaba los ids «abiertos», o sea **32 de 177**. El 82% del backlog
+  estaba fuera de la protección y nadie lo sabía.
+- Y `findBacklogDrift()` no podía delatar una ficha desfasada, que es su único trabajo.
+
+**Se descartó a propósito** aceptar además la primera etiqueta (`[HECHA …]`) como marca: habría
+acertado 8 casos más pero fallado uno en la dirección **peligrosa** —la ficha viva
+*«[HECHO 24/07 — quedan 3 follow-ups pequeños]»* pasaría por cerrada, en silencio—. Una convención
+que se hace cumplir vale más que un heurístico que adivina, así que hay **guardarraíl de CI**: una
+cabecera que anuncie cierre (`[HECHA …]`, `[CERRADA …]`) sin el `✅` pone el CI rojo.
+
+> El parseo vive en **`lib/backlog/parseMarkdown.cjs`**, que ahora es la **fuente única**: hasta ese
+> día estaba escrito dos veces —`scripts/backlog.cjs` y `lib/backlog/claim.ts`— y los criterios ya
+> habían empezado a divergir. Dos lectores del mismo fichero que no coinciden en qué está abierto
+> son exactamente el fallo que este subsistema existe para evitar.
 
 ## Añadir una tarea nueva
 

@@ -49,6 +49,18 @@ function collectPushText() {
   return `${branch}\n${msgs}`
 }
 
+/**
+ * Ficheros que toca el push. `null` = no se pudo determinar (sin upstream, git mudo): quien
+ * decide trata ese `null` como "no sé", nunca como "no toca nada" — un desconocido no puede
+ * relajar el guard.
+ */
+function collectChangedFiles() {
+  const out = git(['diff', '--name-only', 'origin/main...HEAD'])
+  if (!out) return null
+  const files = out.split('\n').map((l) => l.trim()).filter(Boolean)
+  return files.length ? files : null
+}
+
 async function main() {
   if (process.env.BACKLOG_GUARD_SKIP === '1') {
     console.log('⏭️  backlog-push-guard saltado (BACKLOG_GUARD_SKIP=1)')
@@ -70,7 +82,9 @@ async function main() {
     const postgres = require('postgres')
     const s = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
     try {
-      const rows = await s`SELECT id, status, claimed_by, lease_until FROM public.backlog_tasks WHERE id IN ${s(referencedIds)}`
+      const rows = await s`
+        SELECT id, status, claimed_by, lease_until, snoozed_by, snooze_until, wake_on_deploy_sha
+          FROM public.backlog_tasks WHERE id IN ${s(referencedIds)}`
       for (const r of rows) tasksById.set(r.id, r)
     } finally { await s.end({ timeout: 5 }) }
   } catch (e) {
@@ -85,7 +99,12 @@ async function main() {
     return 0
   }
 
-  const { allowed, violations } = evaluatePush({ referencedIds, tasksById, sid })
+  const { allowed, violations, notices } = evaluatePush({
+    referencedIds, tasksById, sid, changedFiles: collectChangedFiles(),
+  })
+  // Los avisos se imprimen SIEMPRE, pase o no: una excepción silenciosa es una excepción que
+  // nadie revisa. Que se vea por qué el guard dejó pasar algo que antes bloqueaba.
+  for (const n of notices || []) console.log(`ℹ️  backlog-push-guard: ${n.id} — ${n.reason}`)
   if (allowed) return 0
 
   console.error('\n❌ PUSH BLOQUEADO por el guardrail del backlog — commits que mencionan una tarea que NO tienes reclamada:\n')

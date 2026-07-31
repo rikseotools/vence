@@ -6,7 +6,7 @@
 // que el original cambie.
 import {
   isClaimable, claimBlockedReason, pickNext, sortByAttackOrder,
-  parseBacklogMarkdown, findHeadingsWithoutId, findBacklogDrift, findZombieClaims,
+  parseBacklogMarkdown, findHeadingsWithoutId, findBacklogDrift, findZombieClaims, findMarcaIncoherente,
   isSnoozed, snoozeInfo,
   findDateLockedTitles,
   type BacklogTask,
@@ -141,12 +141,38 @@ describe('parseo del markdown', () => {
     '### [T-003] ✅ 🟢 Tarea ya cerrada',
   ].join('\n')
 
-  it('extrae id, prioridad y en qué sección está', () => {
+  it('extrae id, prioridad y si la ficha se declara abierta', () => {
     const t = parseBacklogMarkdown(MD)
     expect(t).toHaveLength(3)
-    expect(t[0]).toMatchObject({ id: 'T-001', priority: 'critica', inOpenSection: true })
-    expect(t[1]).toMatchObject({ id: 'T-002', priority: 'media', inOpenSection: true })
-    expect(t[2]).toMatchObject({ id: 'T-003', inOpenSection: false })
+    expect(t[0]).toMatchObject({ id: 'T-001', priority: 'critica', declaredOpen: true })
+    expect(t[1]).toMatchObject({ id: 'T-002', priority: 'media', declaredOpen: true })
+    expect(t[2]).toMatchObject({ id: 'T-003', declaredOpen: false })
+  })
+
+  // ── T-382: lo abierto lo dice la CABECERA, no dónde cayó la ficha ────────────────────────
+  // El fichero real tiene tres `## Hechas` y varias `##` sueltas, así que la posición dejaba
+  // fuera a 145 de las 177 tareas vivas — incluida la protección anti-colisión del `sync`.
+  it('una ficha VIVA bajo "## Hechas" sigue contando como abierta (el orden no manda)', () => {
+    const md = [
+      '## Hechas',
+      '### [T-100] ✅ Cerrada de verdad',
+      '### [T-101] 🟠 [ABIERTO 31/07] Viva, pero escrita donde cabía',
+    ].join('\n')
+    const t = parseBacklogMarkdown(md)
+    expect(t.find((x: any) => x.id === 'T-101')!.declaredOpen).toBe(true)
+    expect(t.find((x: any) => x.id === 'T-100')!.declaredOpen).toBe(false)
+  })
+
+  it('una ficha CERRADA bajo "## Abiertas" no se cuenta abierta por estar ahí', () => {
+    const md = '## Abiertas\n### [T-102] ✅ [HECHA 31/07] Ya cerrada'
+    expect(parseBacklogMarkdown(md)[0].declaredOpen).toBe(false)
+  })
+
+  it('NO da por cerrada una ficha viva que menciona trabajo HECHO en su etiqueta', () => {
+    // El caso que descartó ampliar la marca a la primera palabra de la etiqueta: es el error
+    // en la dirección peligrosa (viva contada como cerrada = invisible y en silencio).
+    const md = '### [T-103] 🟠 [HECHO 24/07 — quedan 3 follow-ups pequeños] Cosa a medias'
+    expect(parseBacklogMarkdown(md)[0].declaredOpen).toBe(true)
   })
 
   it('limpia el título de emojis y etiquetas de estado', () => {
@@ -170,10 +196,31 @@ describe('parseo del markdown', () => {
   })
 })
 
+// El parser lee UNA marca (✅), así que la marca tiene que ser fiable: una cabecera que anuncia
+// cierre en su etiqueta y no la lleva deja la tarea contada como abierta para siempre.
+describe('findMarcaIncoherente — sostiene el criterio del ✅', () => {
+  const marcas = (md: string) => findMarcaIncoherente(parseBacklogMarkdown(md))
+
+  it('caza [HECHA …] sin ✅', () => {
+    const r = marcas('### [T-336] 🟢 [HECHA 31/07 · abierta 30/07] Tres suites en rojo')
+    expect(r.map((x: any) => x.id)).toEqual(['T-336'])
+    expect(r[0].motivo).toMatch(/falta el ✅/)
+  })
+
+  it('acepta la misma cabecera CON ✅', () => {
+    expect(marcas('### [T-336] ✅ [HECHA 31/07] Tres suites en rojo')).toEqual([])
+  })
+
+  it('no molesta a una ficha abierta que solo NOMBRA trabajo hecho', () => {
+    expect(marcas('### [T-342] 🟡 [ABIERTO 30/07 — DETECTOR HECHO, queda triar 411] Cosa')).toEqual([])
+  })
+})
+
 describe('findBacklogDrift — el guardarraíl que nace del incidente del 20/07', () => {
+  // El ✅ es lo que declara cerrada una ficha (T-382); la sección en que caiga es indiferente.
   const md = parseBacklogMarkdown([
     '## Abiertas', '### [T-001] 🔴 Viva', '### [T-002] 🟠 Cerrada en BD pero aquí abierta',
-    '## Hechas', '### [T-003] 🟢 Cerrada',
+    '## Hechas', '### [T-003] ✅ 🟢 Cerrada',
   ].join('\n'))
 
   it('detecta la tarea cerrada que sigue anunciada como abierta', () => {

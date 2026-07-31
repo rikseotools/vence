@@ -102,6 +102,21 @@ describe('esColisionReal — separar la colisión del retitulado (29/07)', () =>
     expect(esColisionReal({ tituloBd: '', tituloMd: '', estuvoEnElHistorial: false })).toBe(false)
   })
 
+  // El historial cuesta ~1 s por ficha (`git log -S` sobre un markdown de 2 MB). Desde que el
+  // guard mira las 177 tareas vivas y no 32 (T-382), resolverlo para todas dejaba el `sync` en
+  // más de dos minutos. Perezoso, solo se paga por las divergencias reales.
+  it('acepta el historial PEREZOSO (función) además de booleano', () => {
+    const espia = jest.fn(() => true)
+    expect(esColisionReal({ tituloBd: 'Alfa beta gamma', tituloMd: 'Delta epsilon zeta', estuvoEnElHistorial: espia })).toBe(false)
+    expect(espia).toHaveBeenCalledTimes(1)
+  })
+
+  it('NO resuelve el historial si los títulos ya se parecen (ahí no hay nada que decidir)', () => {
+    const espia = jest.fn(() => false)
+    expect(esColisionReal({ tituloBd: 'Alfa beta gamma delta', tituloMd: 'Alfa beta gamma delta épsilon', estuvoEnElHistorial: espia })).toBe(false)
+    expect(espia).not.toHaveBeenCalled()
+  })
+
   it('tolera que no le pasen nada', () => {
     // @ts-expect-error — entrada inválida a propósito
     expect(esColisionReal(undefined)).toBe(false)

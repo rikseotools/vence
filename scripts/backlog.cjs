@@ -138,24 +138,17 @@ function fichaBody(id) {
   return md.slice(start, end).join('\n').trim();
 }
 
-// Parseo del markdown: mismo formato que lib/backlog/claim.ts (### [T-042] 🔴 Título)
+// Parseo del markdown: la implementación es COMPARTIDA con lib/backlog/claim.ts. Ver el porqué
+// (y el cambio de criterio de "abierta") en lib/backlog/parseMarkdown.cjs.
+const { parseBacklogMarkdown } = require(path.join(REPO, 'lib', 'backlog', 'parseMarkdown.cjs'));
+
 function parseMd() {
-  const md = fs.readFileSync(MD, 'utf8');
-  const out = []; let inOpen = false;
-  const E2P = { '🔴': 'critica', '🟠': 'alta', '🟡': 'media', '🟢': 'baja', '⬜': 'ninguna' };
-  for (const line of md.split('\n')) {
-    const h2 = /^##\s+(.*)$/.exec(line);
-    if (h2) { inOpen = /abiertas/i.test(h2[1]); continue; }
-    const h3 = /^###\s+(.*)$/.exec(line);
-    if (!h3) continue;
-    const idM = /\[(T-\d+)\]/.exec(h3[1]);
-    if (!idM) continue;
-    const emoji = Object.keys(E2P).find((e) => h3[1].includes(e));
-    const title = h3[1].replace(/\[(T-\d+)\]/, '').replace(/[🔴🟠🟡🟢⬜✅]/g, '')
-      .replace(/^\s*\[[^\]]*\]\s*/, '').trim();
-    out.push({ id: idM[1], title, priority: emoji ? E2P[emoji] : 'media', inOpenSection: inOpen, doneMarked: h3[1].includes('✅') });
-  }
-  return out;
+  return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
+    ...t,
+    // El núcleo devuelve `null` cuando la cabecera no lleva emoji de prioridad; aquí hace falta
+    // un valor concreto porque esta columna se ESCRIBE en la BD. ⬜ = aparcada a propósito.
+    priority: t.parked ? 'ninguna' : (t.priority ?? 'media'),
+  }));
 }
 
 /**
@@ -546,6 +539,56 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(row ? `✅ ${row.id} liberada.` : '❌ no era tuya (o no existe).');
     }
 
+    // ── reap: devolver al pool los claims de sesiones MUERTAS ───────────────────────────────
+    //
+    // «Lease, no lock» está a medias: `claim` sí entrega una fila con el lease vencido, pero
+    // NADIE limpia la fila. Se queda `in_progress` con el `claimed_by` de una sesión que no
+    // existe, para siempre. Medido el 31/07: T-214, T-221 y T-238 llevaban 72-79 h así, y sus
+    // sesiones (`cordoba-plazas`, `clonado-provenance`, `sesion-28jul-d`) ya no tenían ni
+    // worktree ni latido. `list` las pintaba «🟡 lease caducado (libre)» —cosmético— mientras
+    // el registro seguía diciendo que alguien las estaba haciendo.
+    //
+    // No es solo higiene: cualquiera que MENCIONARA una de esas tres en un commit se comía un
+    // «la tiene la sesión X — coordina o espera a que libere» de un muerto (arreglado también
+    // en lib/backlog/pushGuard.cjs, pero la fila hay que limpiarla igual).
+    //
+    // DRY-RUN por defecto: soltar el trabajo de otra sesión es justo lo que este subsistema
+    // existe para no hacer por accidente. `--horas` (24 por defecto) es el margen sobre el
+    // vencimiento — el lease son 90 min, así que 24 h ya es una sesión inequívocamente muerta.
+    else if (cmd === 'reap') {
+      const horas = Number(arg('--horas') || 24);
+      const aplicar = process.argv.includes('--apply');
+      const muertas = await s`
+        SELECT id, title, claimed_by, lease_until, status
+          FROM public.backlog_tasks
+         WHERE status = 'in_progress'
+           AND claimed_by IS NOT NULL
+           AND lease_until IS NOT NULL
+           AND lease_until < now() - (${horas} || ' hours')::interval
+         ORDER BY lease_until`;
+      if (!muertas.length) {
+        console.log(`✅ ningún claim muerto (lease vencido hace más de ${horas} h).`);
+      } else {
+        console.log(`${aplicar ? '🧹 SEGANDO' : '👁  SIMULACIÓN'} — ${muertas.length} claim(s) de sesión muerta:`);
+        for (const m of muertas) {
+          const h = Math.round((Date.now() - new Date(m.lease_until).getTime()) / 3600_000);
+          console.log(`   ${m.id}  ${String(m.claimed_by).slice(0, 24).padEnd(26)} lease vencido hace ${h} h`);
+          console.log(`      ${String(m.title).slice(0, 88)}`);
+        }
+        if (!aplicar) {
+          console.log('\n   Nada escrito. Para devolverlas al pool:  node scripts/backlog.cjs reap --apply');
+        } else {
+          const ids = muertas.map((m) => m.id);
+          const upd = await s`
+            UPDATE public.backlog_tasks
+               SET status = 'open', claimed_by = NULL, claimed_at = NULL, lease_until = NULL
+             WHERE id IN ${s(ids)} AND status = 'in_progress' AND lease_until < now()
+            RETURNING id`;
+          console.log(`\n✅ ${upd.length} devuelta(s) al pool (open, sin dueño). El contexto de la ficha no se toca.`);
+        }
+      }
+    }
+
     else if (cmd === 'sync') {
       // Importa del markdown los ids que aún no están en la tabla, y RECONCILIA el
       // título y la prioridad de las que ya están.
@@ -631,7 +674,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // markdown el id aparece UNA vez —la tuya— y no hay nada que comparar. Pasó el 28/07 con
       // T-225: el `sync` reconcilió tan tranquilo y le pisó el título a la tarea ajena. La única
       // fuente de verdad de los ids es la tabla, así que se pregunta a la tabla.
-      const idsMd = md.filter((t) => t.inOpenSection && !t.doneMarked).map((t) => t.id);
+      const idsMd = md.filter((t) => t.declaredOpen).map((t) => t.id);
       if (idsMd.length) {
         const { esColisionReal } = require(path.join(REPO, 'lib', 'backlog', 'syncGuard.cjs'));
         const enBd = await s`
@@ -645,7 +688,9 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         const ajenas = md
           .filter((t) => porId.has(t.id) && esColisionReal({
             tituloBd: porId.get(t.id), tituloMd: t.title,
-            estuvoEnElHistorial: estuvoEnElHistorial(t.id),
+            // Perezoso: `git log -S` sobre este markdown cuesta ~1 s y solo hace falta cuando
+            // los títulos ya difieren. Ver el comentario en esColisionReal.
+            estuvoEnElHistorial: () => estuvoEnElHistorial(t.id),
           }))
           .map((t) => ({ id: t.id, bd: porId.get(t.id), md: t.title }));
         if (ajenas.length) {
@@ -669,7 +714,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       for (const t of md) {
         // Una tarea ya cerrada (fuera de "Abiertas" o marcada ✅) entra directamente como
         // done. El constraint backlog_cierre_coherente exige closed_at → se pone aquí.
-        const cerrada = !t.inOpenSection || t.doneMarked;
+        const cerrada = !t.declaredOpen;
         const [r] = await s`
           INSERT INTO public.backlog_tasks (id, title, priority, status, closed_at, outcome)
           VALUES (${t.id}, ${t.title}, ${t.priority},
@@ -930,7 +975,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

@@ -13,7 +13,7 @@ import { readFileSync } from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { tituloDependeDeFecha } = require('../../lib/backlog/plazo.cjs')
 import { join } from 'path'
-import { parseBacklogMarkdown, findHeadingsWithoutId, findDateLockedTitles } from '@/lib/backlog/claim'
+import { parseBacklogMarkdown, findHeadingsWithoutId, findDateLockedTitles, findMarcaIncoherente } from '@/lib/backlog/claim'
 
 const MD_PATH = join(process.cwd(), 'docs', 'roadmap', 'tareas-pendientes.md')
 const md = readFileSync(MD_PATH, 'utf8')
@@ -164,7 +164,7 @@ describe('backlog — enforcement del claim por pre-push', () => {
     // La fecha va en la BD, que sí vence sola:
     //    node scripts/backlog.cjs snooze <id> --hasta <fecha> --motivo "…"
     //    node scripts/backlog.cjs pause  <id> --tras-deploy --hecho "…" --falta "…"
-    const vivas = tasks.filter((t) => t.inOpenSection && !t.doneMarked)
+    const vivas = tasks.filter((t) => t.declaredOpen)
     const candados = findDateLockedTitles(vivas)
     expect(candados.map((c) => `${c.id} (${c.patron}): ${c.title}`)).toEqual([])
   })
@@ -178,11 +178,31 @@ describe('backlog — enforcement del claim por pre-push', () => {
     // de la UJA». El valor de esa tarea moría el 31/07 a las 23:59 y lo único que lo decía era
     // ese «hoy», escrito la víspera. Desde el 31/07 hay campo para eso:
     //    node scripts/backlog.cjs due <id> --fecha "…" --motivo "quién lo espera o qué lo fija"
-    const vivas = tasks.filter((t) => t.inOpenSection && !t.doneMarked)
+    const vivas = tasks.filter((t) => t.declaredOpen)
     const relativos = vivas.filter((t) => tituloDependeDeFecha(t.title))
     expect(relativos.map((t) => `${t.id}: ${t.title}`)).toEqual([])
   })
 })
+/**
+ * La marca ✅ es lo ÚNICO que declara cerrada una ficha (T-382, 31/07) — así que tiene que ser
+ * fiable, y eso no se consigue pidiéndolo en un runbook.
+ *
+ * Antes, "abierta" se deducía de caer entre `## Abiertas` y el siguiente `##`. Medido sobre el
+ * fichero real: **145 de las 177 tareas vivas quedaban fuera**, porque hay tres secciones
+ * `## Hechas` y las fichas se escriben donde caben. Eso no solo impedía reconciliar título y
+ * prioridad: el guardarraíl anti-colisión del `sync` —el que evita pisarle la ficha a otra
+ * sesión, nacido de T-225— solo miraba los ids "abiertos", o sea 32 de 177.
+ *
+ * Con el criterio nuevo el riesgo se invierte: escribir `[HECHA 31/07]` y olvidar el ✅ deja la
+ * tarea contada como abierta para siempre y en silencio. Nueve cabeceras estaban así el 31/07.
+ */
+describe('backlog — la marca de cierre no se contradice con la etiqueta', () => {
+  it('ninguna cabecera anuncia cierre («[HECHA …]», «[CERRADA …]») sin llevar el ✅', () => {
+    const malas = findMarcaIncoherente(tasks).map((m) => `${m.id}: ${m.headline.slice(0, 90)}`)
+    expect({ cabecerasSinMarca: malas }).toEqual({ cabecerasSinMarca: [] })
+  })
+})
+
 /**
  * Una ficha CERRADA no puede vivir en la sección «## Abiertas».
  *

@@ -1249,14 +1249,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 
 
 
-### [T-382] 🟡 [ABIERTO 31/07] El markdown del backlog: solo 16 de 363 fichas caen bajo `## Abiertas` y el `sync` no las reconcilia
-
-- **Qué (medido 31/07):** `parseMd()` marca `inOpenSection` solo entre `## Abiertas` y el **siguiente `##`**. En `tareas-pendientes.md` hay `## Abiertas` (línea 1001) y el siguiente `##` llega en la 1276 → **solo 16 de 363 fichas** cuentan como abiertas. El resto vive bajo **tres secciones `## Hechas`** (1276, 1519, 5270) y varias `##` sueltas.
-- **Consecuencia real, no teórica:** `sync` trata esas 347 como cerradas y **NO reconcilia su título ni su prioridad**. Se descubrió arreglando [T-067]: su título había que ponerlo **a mano en la BD** porque el `sync` se negaba —correctamente, según su propio comentario, para no disfrazar una deriva—.
-- **Por qué NO se arregló al vuelo:** es cirugía de un fichero de ~8.000 líneas que 2-10 sesiones editan a la vez; mover cientos de fichas garantiza conflictos de fusión. Necesita su ventana.
-- **Ojo al arreglar:** la BD es la fuente de verdad del ESTADO; el markdown, del CONTENIDO. Mover una ficha de sección **no** debe cambiar el estado en BD — y `sync` tiene guardarraíles (`esColisionReal`, abortos por id duplicado) que hay que respetar, no rodear.
-- **Sugerencia:** una sola sección `## Abiertas` al principio, una sola `## Hechas`, y un test que exija exactamente una de cada. Alternativa más barata: que `inOpenSection` deje de depender del orden de secciones y se calcule por la marca ✅ de la propia cabecera.
-
 ### [T-380] 🟠 [ABIERTO 31/07] Registrar la fuente oficial de las 153 leyes sin vigilante (4.518 preguntas) — el research por-ley que bloquea toda la vigilancia
 
 - **Por qué es la tarea de verdad:** la vigilancia por hash ([T-026], `npm run laws:vigilar`) ya funciona, pero **solo puede mirar donde hay una URL registrada**. Hoy son 21 leyes. Las otras **153, que sirven 4.518 preguntas, no tienen fuente anotada en ninguna parte**, así que nadie puede comprobar si su texto ha cambiado. No es un problema de herramientas —están todas construidas— sino de **saber de dónde se descarga cada norma**, y eso es research manual: boletines autonómicos, sedes universitarias, tratados.
@@ -1584,16 +1576,6 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - Un helper de conexión **no debe cargar `dotenv` al importarse**: despierta suites dormidas a propósito y tiñe el pre-commit de todo el mundo.
 - CI sigue **ciego** por el secreto `DATABASE_URL_READONLY` que falta (**[T-370]**, necesita a Manuel). Mientras no vuelva, este rojo solo se ve corriéndolo en local.
 
-### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
-
-- **El atasco, reproducido hoy con T-369:** cierras el trabajo → `backlog.cjs pause T-369 --tras-deploy` (que **suelta el claim**, y hace bien) → `git push` → el **push-guard rechaza** el commit porque menciona un `T-` que no tienes reclamado → `claim T-369` → **`claim` se niega** porque la tarea está esperando deploy. Salida cerrada: solo se sale con `BACKLOG_GUARD_SKIP=1` o con un `claim --force` que ensucia el registro con un forzado que no lo es.
-- **Ninguno de los dos guardarraíles está mal.** `pause` suelta el claim a propósito (nada de leases agonizando) y `claim` bloquea las esperas a propósito (T-221). Lo que falta es que **sepan el uno del otro**: una tarea que TÚ acabas de pausar no es una tarea ajena.
-- **Por qué importa y no es cosmético:** el orden natural al terminar es *cerrar la tarea y luego pushear* — el runbook incluso pide programar la vuelta antes de irse. Así que el atasco lo va a pisar cualquier sesión que haga las cosas en ese orden, y la salida fácil es **acostumbrarse a saltarse el guard**, que es justo lo que mata a un guardarraíl (misma lección que su propio fail-open).
-- **Arreglo propuesto (a decidir):** que el push-guard acepte un `T-` **pausado por tu propio session-id** —tiene toda la información: `paused_by`/último `claimed_by` y el sha—, en vez de exigir un claim vivo. Alternativa más pobre: que `claim` deje re-reclamar sin `--force` a quien la pausó.
-- **Segundo roce, el mismo día y por otra puerta:** el commit que **documenta** una ficha nueva también queda bloqueado. Al cerrar T-336 se abrió [T-377] para dejar constancia de 22 suites rojas que NO se iban a atacar en esa sesión; mencionarla en el mensaje del commit bastó para que el guard exigiera reclamarla. Reclamar una tarea que no vas a trabajar solo para poder pushear es peor que no reclamar: ensucia el reparto y hace que otra sesión la vea ocupada. El guard ya nombra este caso («mención suelta») como escape legítimo, así que lo que falta es distinguir **mencionar** de **trabajar** — p.ej. no exigir claim cuando el commit únicamente añade la ficha al markdown.
-- **Mientras tanto:** pushear **ANTES** de `pause`, y usar el escape para las menciones. Es el orden que no choca.
-- **Origen:** cerrando T-369 el 31/07; el push salió con `BACKLOG_GUARD_SKIP=1`, que quedó impreso en la salida.
-
 ### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
 
 - **Lo pide un premium y se le ha PROMETIDO** (feedback `e90d5ee3`, Iván, 31/07): *«¿por qué no suben preguntas y exámenes de las últimas convocatorias de auxiliar administrativo del Gobierno de Canarias? Creo que sería lo lógico para practicar»*. Se le respondió que estamos en ello y que estarán próximamente, así que esto ya no es una mejora opcional.
@@ -1691,6 +1673,37 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-375] ✅ 🟡 [HECHA 31/07] El push-guard bloqueaba tres cosas que NO se podían satisfacer, y por eso enseñaba a apagarlo entero
+
+- **El atasco original, reproducido con T-369:** cierras el trabajo → `pause --tras-deploy` (que **suelta el claim**, y hace bien) → `git push` → el push-guard rechaza porque mencionas un `T-` que no tienes → `claim` → **se niega**, porque la tarea espera deploy. Salida cerrada: solo `BACKLOG_GUARD_SKIP=1` o un `--force` que ensucia el registro con un forzado que no lo era.
+- **Ninguno de los dos guardarraíles estaba mal** — `pause` suelta el claim a propósito, `claim` bloquea las esperas a propósito ([T-221]). Lo que faltaba es que **supieran el uno del otro**.
+- **Y había un TERCER bloqueo imposible, encontrado midiendo:** el guard miraba `claimed_by` y **no el lease**, así que mencionar [T-214], [T-221] o [T-238] —con el lease vencido hacía **72-79 h** y sus sesiones sin worktree ni latido— daba *«la tiene la sesión X, espera a que libere»* **de un muerto**. `claim` sí entregaba esas filas. **Dos puertas al mismo recurso con criterios distintos no protegen: se contradicen.**
+- **✅ ARREGLO (`lib/backlog/pushGuard.cjs`, núcleo puro).** Deja pasar, **imprimiendo siempre el aviso** (una excepción silenciosa es una excepción que nadie revisa):
+  1. **Lease vencido** de otra sesión — misma regla que `claim`.
+  2. **La que pausaste TÚ** (`snoozed_by === sid` con espera activa): tu trabajo no es trabajo ajeno.
+  3. **Push que toca SOLO `docs/roadmap/tareas-pendientes.md`** — documentar una ficha no es trabajarla (el segundo roce: al abrir [T-377] solo para dejar constancia, mencionarla ya exigía reclamarla, y reclamar algo que no vas a hacer se lo quita a quien sí). **Corte estrecho:** solo ese fichero (un runbook sí es trabajo) y **cede si otra sesión la tiene con lease vivo** — verificado contra la BD real: [T-291] siguió bloqueando por estar en curso de verdad.
+- **Lo que NO se relajó, y hay test que lo fija:** tarea viva **sin reclamar** sigue bloqueando (es el olvido del 20/07, la razón de ser del guard) y **lease vivo ajeno** también. Relajar los casos imposibles no toca el caso real.
+- **El razonamiento de fondo:** un bloqueo que no se puede satisfacer no protege — enseña a usar `BACKLOG_GUARD_SKIP=1`, **que apaga el guard ENTERO para todos los ficheros de ese push**. Se cambió una relajación estrecha y medida por quitarle la razón de existir al escape general.
+- **Y la fila muerta también se limpia:** `backlog.cjs reap` (dry-run por defecto, `--apply` para escribir) devuelve al pool los claims de sesiones muertas. Faltaba: «lease, no lock» vencía el arriendo pero **nadie limpiaba la fila**. Segadas las 3 del 31/07.
+- **Capas:** 23 tests en `__tests__/backlog/pushGuard.test.ts` (cada permiso emparejado con su contraste) + verificación de extremo a extremo contra RDS. Documentado en `docs/runbooks/tareas-pendientes.md` y CLAUDE.md con la tabla de qué bloquea y qué no.
+
+### [T-382] ✅ 🟡 [HECHA 31/07] Lo que cuenta como tarea ABIERTA lo decía la POSICIÓN de la ficha, y dejaba fuera a 145 de las 177 vivas
+
+- **Qué pasaba:** `parseMd()` marcaba abierta solo lo que cayera entre `## Abiertas` y el siguiente `##`. El fichero tiene **tres secciones `## Hechas`** y varias `##` sueltas, así que **145 de las 177 tareas VIVAS quedaban fuera**. Medido el 31/07 contra la BD.
+- **Las tres consecuencias, y la segunda es la grave:**
+  1. `sync` daba esas 145 por cerradas y **no reconciliaba título ni prioridad**. Al arreglarlo saltaron **31 divergencias**, y **4 eran de prioridad 🔴 que la tabla tenía como `media`** ([T-244], [T-315], [T-392], [T-399]): el orden de ataque de `list`/`next` llevaba días mintiendo.
+  2. El **guardarraíl anti-colisión del `sync`** —el que impide pisarle la ficha a otra sesión, nacido de [T-225]— solo consultaba los ids «abiertos», o sea **32 de 177**. El **82% del backlog estaba fuera de la protección** sin que nadie lo supiera. Esto es lo que lo convertía en una tarea de multi-sesión y no de cosmética.
+  3. `findBacklogDrift()` no podía delatar una ficha desfasada, que es su único trabajo.
+- **✅ ARREGLO — lo declara la CABECERA (`✅`), no dónde caiga la ficha.** Se eligió la vía barata que la propia ficha proponía: **no hubo que mover ni una ficha**, así que cero conflictos de fusión con las 4 sesiones que estaban editando el markdown a la vez.
+  - **Parseo unificado en `lib/backlog/parseMarkdown.cjs`**, que ahora es fuente única. Estaba escrito **dos veces** (`scripts/backlog.cjs` y `lib/backlog/claim.ts`) y los criterios **ya habían empezado a divergir** (el default de prioridad, el tratamiento de ⬜). Dos lectores del mismo fichero que no coinciden en qué está abierto son justo el fallo que este subsistema evita.
+  - **Se descartó a propósito** aceptar también la etiqueta (`[HECHA …]`) como marca: habría acertado 8 casos más pero fallado uno en la dirección **peligrosa** — la ficha VIVA *«[HECHO 24/07 — quedan 3 follow-ups pequeños]»* ([T-097]) pasaría por cerrada y en silencio. Se corrigieron a mano las 9 cabeceras incoherentes (8 cerradas sin `✅`, más T-097, cuya etiqueta se reescribió porque sigue abierta).
+  - **Guardarraíl de CI:** `findMarcaIncoherente` pone rojo si una cabecera anuncia cierre sin `✅`. La convención se hace cumplir, no se pide.
+- **⚠️ REGRESIÓN CAZADA EN LA PROPIA SESIÓN, que es el aviso reutilizable:** al pasar el guard de 32 a 177 ids, el `sync` se fue de ~50 s a **más de 2 minutos** y hubo que matarlo. La causa: `estuvoEnElHistorial()` hace un `git log -S` sobre un markdown de 2 MB, **~1 s por ficha**. Como esa comprobación solo hace falta cuando los títulos YA difieren, se pasó **perezosa** (`esColisionReal` acepta función además de booleano) → el coste pasa a ser del orden de las divergencias reales, no del tamaño del backlog. **Ampliar el alcance de un guardarraíl puede multiplicar su coste por un factor que no está a la vista.**
+- **Sigue lento por otro motivo, y queda anotado:** `sync` hace **una consulta por ficha** (384 ida y vuelta ≈ 80 s de puro I/O). Es pre-existente y NO se tocó a propósito: reescribir el camino de escritura del `sync` con 4 sesiones editando el fichero era el cambio más arriesgado posible hoy. Va a [T-387], que ya se ocupa de ese fichero.
+- **Deriva que el criterio nuevo saca a la luz (antes invisible, ahora sí reportada):** **9 fichas** dicen `[ABIERTO …]` y están `done` en BD ([T-002], [T-004], [T-011], [T-053], [T-058], [T-088], [T-093], [T-128], [T-232]) y **1** lleva `✅` estando viva ([T-304]). No se tocaron: cada una necesita decidir si manda la BD o la ficha, y eso es triaje, no parseo.
+- **Capas:** 220 tests verdes en `__tests__/backlog/` + `backlogRegistry.guardrail`, con casos de regresión para las dos direcciones (viva bajo `## Hechas`, cerrada bajo `## Abiertas`) y para el falso cierre de T-097.
+
+
 ### [T-386] ✅ [HECHA 31/07] Dos lanzadores de deploy compitiendo, ciegos el uno del otro
 - **Qué pasó (31/07):** dos sesiones lanzaron `deploy-cuando-verde.sh backend` a la vez. El lock los serializa, pero **el deploy es cumulativo**: el segundo no aporta nada, solo consume vueltas y consultas al CI. Uno **murió tras 20 vueltas** —por el guard de [T-364], un motivo ajeno al deploy— y **no avisó a nadie**: T-307, T-361 y T-362 se quedaron dormidas hasta que otra sesión relanzó.
 - **La pregunta que el lanzador NO se hace, y es la única que importa:** *«¿está ya vivo el SHA que persigo?»*. Hoy solo sabe *«¿tengo yo el lock?»*.
@@ -1738,7 +1751,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Pendiente menor que queda anotado:** el art. **72** trae nota de vigencia del BOE (ampliación de plazo del apartado 6 para 2023, DT 3.ª de la Ley 31/2022) que nuestro texto no refleja. No generar sobre ese apartado sin resolverla.
 - **Relacionadas:** [T-115] (el lote que lo destapó), [T-241] (completitud de leyes, CAPA 4).
 
-### [T-336] 🟢 [HECHA 31/07 · abierta 30/07] Tres suites de integración llevan rojas en main sin que nadie lo mire
+### [T-336] ✅ 🟢 [HECHA 31/07 · abierta 30/07] Tres suites de integración llevan rojas en main sin que nadie lo mire
 
 - **Verde: 37/37** en las tres suites (`referrals-queries`, `referrals-simulation`, `correctOptionEndToEnd`), corridas contra RDS real. Eran 20 rojos.
 - **NINGUNO era un fallo de producción**, y el aviso de la ficha (*«un test de dinero arreglado relajando la aserción es peor que un test rojo»*) se respetó: no se ha aflojado una sola aserción. Tres causas distintas, todas «producción cambió a propósito y el test se quedó viejo»:
@@ -1749,7 +1762,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Cubierto el punto ciego que lo causó:** el guard «solo usuarios nuevos» **no tenía ninguna prueba de integración**, así que estrenarlo solo se notó como una avería difusa del CI. Ahora está fijado a los dos lados (cuenta nueva pasa, cuenta de 30 días se rechaza con `referred_not_new`).
 - **Y el hallazgo grande:** con estas verdes se corrió el job ENTERO —lo que nadie había hecho— y hay **22 suites más en rojo por deriva de CONTENIDO**, no por tests podridos. Ficha propia: **[T-377]**.
 
-### [T-373] 🟢 [HECHA 31/07 · abierta 31/07] Los 79 usuarios que perdieron las respuestas por email sin haberlo pedido
+### [T-373] ✅ 🟢 [HECHA 31/07 · abierta 31/07] Los 79 usuarios que perdieron las respuestas por email sin haberlo pedido
 
 - **Cabo de [T-369].** Arreglar el código no deshace el estado que dejó: el botón «Desactivar TODOS los emails» llevaba meses apagando además `email_soporte_disabled`, que es la puerta de nuestra contestación a lo que el usuario escribe **y del aviso de renovación de quien paga**.
 - **El número que decide el criterio:** de los 80 con el soporte apagado, **79 tenían la firma del botón rojo** (`email_soporte_disabled AND unsubscribed_all`) y **1 sola** lo eligió por la categoría «Soporte y transaccional» (`unsubscribed_all=false`). Esa 1 **no se ha tocado**: su preferencia es real y es suya.
@@ -1776,7 +1789,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Relacionadas:** [T-344] (fuga de premium), [T-280] (canary del gate), [T-307] (el barrido, esa sí quedó bien aparcada con `snooze`).
 - **✅ Resultado (31/07):** las dos comprobadas en el backend `a3234ed4`. **(1)** el pase 3 de las 11:00 registró `Pass-3: 161 sospechoso(s) verificados por id · 0 confirmados · 0 no comprobables` — los 161 eran clientes que pagan, con la suscripción viva pero creada hace más de 30 días; **ninguno era fuga**. Último aviso a las 08:00 y las pasadas de 09:00/10:00/11:00 acabaron `success` **en silencio** (~2 correos diarios menos, y el detector vuelve a servir: una fuga real ya no queda enterrada entre 161 legítimos). **(2)** el canary de las 10:48 trae `gateUmbral:500 · gateServidas:0 · gateAssertion:"real"`, así que la aserción del gate se comprueba de verdad en vez de eximirse en silencio. Ninguna falló → no hubo que reabrir [T-344] ni [T-280].
 
-### [T-314] 🟢 [HECHA 31/07 · abierta 30/07] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones iban sin IP
+### [T-314] ✅ 🟢 [HECHA 31/07 · abierta 30/07] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones iban sin IP
 - **Cómo salió:** Manuel preguntó, verificando [T-304], *"recuerda trackear cada dispositivo con cuántas cuentas inicia sesión y las IPs, eso ya lo tienes verdad?"*. El dispositivo↔cuentas sí (`user_devices`, 6.257 dispositivos, vivo). **La IP no.**
 - **Medido:** de **6.273 sesiones en 7 días, 6.189 tienen `ip_address` a NULL** — el 99%. Y es una REGRESIÓN con fecha exacta:
 
@@ -1987,7 +2000,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **La regla, en una línea:** el deploy se lanza desde **un árbol donde nadie esté trabajando** — el principal si está limpio, y si no, uno dedicado. Tu rama no pinta nada: el script sigue a `origin/main` de todas formas.
 - **Por qué la guarda y no solo el documento:** lo mismo que aprendimos con el reloj del backlog — un aviso escrito entre otras diez líneas no es una condición. Aquí el error se comete **una vez y en caliente**, cuando quieres desplegar rápido, que es justo cuando nadie relee un runbook.
 
-### [T-340] 🟢 [HECHA 31/07 · abierta 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
+### [T-340] ✅ 🟢 [HECHA 31/07 · abierta 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
 
 - **El fallo:** `/api/stripe/{cancel,reactivate,subscription,create-checkout,cancel/feedback}` leían el `userId` del **cuerpo o de la query**, sin verificar ningún token. Con el UUID de otra persona —que viaja en respuestas de la propia app— se le podía **cancelar la suscripción**, **reactivársela (volver a cobrarle)**, **leer su facturación** o **abrirle el portal de Stripe** (facturas y tarjeta). En `create-checkout` además decidía de quién es un precio personalizado, así que la comprobación se hacía «contra el usuario que dijera el cliente».
 - **Cómo salió (y por qué nadie lo había visto):** por una vía indirecta. Manuel estaba suplantando a una usuaria en **solo lectura** y pulsó «Reactivar suscripción»: **se ejecutó de verdad** sobre su suscripción en la cuenta Stripe vieja. El candado de la suplantación estaba puesto y funcionando —bloqueó otros POST ese mismo minuto— pero vive en `verifyAuth`, «el paso por el que pasan TODAS las APIs», y estos endpoints no pasaban por ahí. **La suplantación fue el síntoma; el agujero de autorización llevaba abierto desde que se escribieron.**
@@ -2006,7 +2019,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Capas añadidas:** 9 tests unitarios de `requireUsuarioPropio` (el guardarraíl comprueba que la política esté escrita; estos, que HAGA lo que dice), 6 de la regla nueva, guardarraíl ampliado a 26, y 2 casos más en la sim que van **en pareja a propósito** — «el checkout ya no corta» y «cancelar sigue cortando»: por separado, «todo corta» y «nada corta» pasarían cada uno la mitad de la prueba.
 - **Lo que queda:** los **38 endpoints** fuera de `/api/stripe` con el mismo patrón (`userId` del cliente sin verificar) siguen sin auditar, y la causa raíz del cliente rancio es [T-352].
 
-### [T-338] 🟢 [HECHA 31/07 · abierta 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
+### [T-338] ✅ 🟢 [HECHA 31/07 · abierta 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
 
 - **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
 - **Qué comprobar cuando esté vivo:**
@@ -2055,7 +2068,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **De aquí sale el único trabajo real: [T-355]** — el botón no comprueba si la suscripción antigua sigue viva, así que uno de los 186 puede contratar hoy y pagar las dos.
 - **Lección de método:** `npm run tools:buscar` y un vistazo al log de commits recientes habrían bastado. Lo que evitó el trabajo duplicado fue **que Manuel preguntara**, no que el proceso lo detectara: la regla dice buscar ANTES de construir, y yo empecé a diseñar el lote antes de mirar si existía.
 
-### [T-341] 🟢 [HECHA 31/07 · abierta 30/07] Botón de recuperar el precio anterior para los afectados por el vaciado de Stripe Manuel
+### [T-341] ✅ 🟢 [HECHA 31/07 · abierta 30/07] Botón de recuperar el precio anterior para los afectados por el vaciado de Stripe Manuel
 
 - **El problema, en una frase:** al vaciar la cuenta de cobro antigua se marcaron sus suscripciones como «no renueva». A esa gente se le había dicho *«se renueva sola, no tienes que hacer nada»* — **hicieron lo que les pedimos y se quedaron sin premium**. Medido en esa cuenta el 31/07: **181 ya apagadas** y **186 activas que caen solas** entre hoy y enero de 2027.
 - **Por qué «reactivar» no vale, y es el núcleo de todo:** una suscripción vive en la cuenta de Stripe donde nació y **no se puede mover** (son cuentas distintas, sin clientes ni tarjetas compartidas). Reactivarla lo ataría precisamente a la cuenta que estamos vaciando y le volvería a cobrar allí. Lo que se recupera es **el PRECIO**, no la suscripción: se contrata de nuevo en la cuenta que hoy cobra, a la tarifa que tenía.
@@ -4928,7 +4941,7 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 
 - **Verificado el 26/07 (por qué sigue aparcada y no hay nada que hacer):** la ley editorial `diagnostico-por-imagen-radioproteccion` existe y está activa con **4 artículos** y **16 preguntas `approved`**, pero su `topic_scope` es **0** — ninguna oposición las sirve — y las **13 oposiciones TSID del catálogo están TODAS `is_active=false`**. El anclaje está hecho; lo que falta es una condición externa (construir una TSID), no trabajo de esta ficha.
 - **Se le quita la prioridad 🟢 y se marca ⬜ APARCADA** para que `backlog.cjs list/next` deje de ofrecerla como accionable: llevaba desde el 14/07 apareciendo como tarea disponible sin serlo. Revive sola al escopear esta ley en la primera TSID que se construya.
-### [T-097] 🟢 [HECHO 24/07 — quedan 3 follow-ups pequeños] PDF del temario: nº de página + título por hoja + reconciliador auto-curable
+### [T-097] 🟢 [ABIERTO 24/07 — el núcleo se hizo ese día; quedan 3 follow-ups pequeños] PDF del temario: nº de página + título por hoja + reconciliador auto-curable
 - **Qué (raíz):** feedback de Nila (`a67f7c02`+`1397b115`, cerradas): pidió nº de página, título del tema por hoja, y que el título no se separe de su contenido en el PDF pre-generado (react-pdf).
 - **✅ Hecho y en `main` + prod:**
   - `lib/temario/pdf/stampChrome.ts` (NUEVO): post-proceso con **pdf-lib** que estampa pie *"Vence · … · Página X de Y"* + título del tema en la cabecera (hojas 2+). Lo usan los DOS caminos (worker `pregenerate` + ruta síncrona). Degrada: si falla, sirve sin chrome + evento `temario_pdf_stamped` warn.
@@ -5810,7 +5823,7 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Cómo:** pipeline `verify:scope plan → apply --include-gate` (irá a puerta de juicio por impacto). Medir antes cuántas preguntas dejan de servirse y comprobar que ninguna procede del examen oficial **del SMS**. Las preguntas no se borran: siguen en BD y en las demás oposiciones que las escopan.
 - **Lección de fondo, ya en el runbook** (`verificar-epigrafes-scope.md`): reescribir un epígrafe al literal invalida el Paso 2 **en las dos direcciones**, y `sim-materias-ganadas`/`plan-paso2-tras-literal` solo miran la de «falta materia».
 
-### [T-289] 🟢 [HECHA 30/07 · abierta 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
+### [T-289] ✅ 🟢 [HECHA 30/07 · abierta 30/07] Ver la app como la ve un usuario concreto (impersonación de solo lectura, con rastro)
 - **El problema, en el ejemplo que lo motivó:** para entender el reporte de un premium hay que ver **SU** perfil, **SUS** hitos de pago, su temario, sus rachas y sus datos personalizados. Hoy no se puede: `npm run dev` te enseña la app con TU cuenta, y mirar su fila en la BD no reproduce lo que él ve (la vista compone caché, plan, scope de su oposición, límites, badges…). Se acaba diagnosticando a ciegas o pidiéndole capturas.
 - **Cómo se llama, para no reinventar el nombre:** **impersonación** (*impersonation*, también *"login as user"*, *"view as"*, *"assume identity"*, *masquerading*, y en algunos productos *"sudo mode"*). Es una función estándar en SaaS de soporte y tiene una forma canónica: el admin **no usa la contraseña del usuario**; el servidor acuña una sesión marcada como suplantada, la app lo muestra con una **franja visible** y todo queda **auditado**.
 - **NO empezar de cero — ya hay tres piezas que apuntan aquí:**
@@ -5847,7 +5860,7 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **Sigue abierto:** el paso 1 para el **perfil** (extraer secciones de las 3.797 líneas) ya no es urgente — con la suplantación se ve el perfil de verdad. Y el registro de auditoría vive en `observable_events`; si algún día hace falta consultarlo a menudo, merecerá vista propia.
 - **Estado (30/07):** ✅ construido, probado en local de punta a punta y **pendiente de desplegar**.
 
-### [T-323] 🟢 [HECHA 30/07 · abierta 30/07] La cartera de embajador no dice qué aportación generó cada euro
+### [T-323] ✅ 🟢 [HECHA 30/07 · abierta 30/07] La cartera de embajador no dice qué aportación generó cada euro
 
 - **ORIGEN.** María José Martínez (premium, feedback `771c450c`, 29/07), con 7 € en su cartera: *«¿se podría enlazar cada aportación que se hace en nuestras carteras con la pregunta que ha dado ese reconocimiento? En mi caso tengo 7 €, pues que al pinchar en el saldo me diga las preguntas que han hecho eso posible»*. Propone dos sitios: al pinchar el saldo, o en la lista de impugnaciones de soporte, marcando cuáles dieron ganancia.
 - **LO IMPORTANTE: el dato YA ESTÁ GUARDADO.** `reward_submissions` tiene `dispute_id` y `feedback_id`, y se rellenan al conceder la recompensa (`lib/referrals/queries.ts`). Comprobado con su propio caso: su euro del 29/07 apunta a la impugnación `c204dcb5`. **No hay que registrar nada nuevo: hay que enseñarlo.**

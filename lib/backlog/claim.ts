@@ -131,8 +131,14 @@ export interface MarkdownTask {
   id: string
   title: string
   priority: BacklogPriority | null
-  /** true si la cabecera está bajo la sección "## Abiertas". */
-  inOpenSection: boolean
+  /**
+   * true si la ficha se DECLARA abierta en su cabecera (no lleva ✅).
+   *
+   * Antes se llamaba `inOpenSection` y se deducía de la posición respecto a `## Abiertas`;
+   * eso dejaba fuera a 145 de las 177 tareas vivas (T-382). El porqué del cambio y las
+   * medidas están en `lib/backlog/parseMarkdown.cjs`, que es donde vive el parseo.
+   */
+  declaredOpen: boolean
   /** true si la cabecera lleva ✅ (convención del fichero para "ya hecha"). */
   doneMarked: boolean
   /**
@@ -143,40 +149,27 @@ export interface MarkdownTask {
    * una prioridad falsa para algo que se decidió NO priorizar).
    */
   parked: boolean
+  /** La cabecera cruda, para que un guardarraíl pueda explicar QUÉ línea falla. */
+  headline: string
 }
 
 /**
  * Extrae las tareas de `tareas-pendientes.md`.
- * Formato de cabecera esperado: `### [T-042] 🔴 Título…`
- * (el emoji de prioridad puede ir antes o después del id; se acepta cualquiera de los dos).
+ *
+ * La implementación vive en `lib/backlog/parseMarkdown.cjs` porque `scripts/backlog.cjs`
+ * —que corre con node pelado, sin TypeScript— necesita EXACTAMENTE el mismo parseo. Aquí solo
+ * se le pone tipo. Antes había dos copias y ya habían empezado a divergir.
  */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { parseBacklogMarkdown: parseImpl, findMarcaIncoherente: marcaImpl } = require('./parseMarkdown.cjs')
+
 export function parseBacklogMarkdown(md: string): MarkdownTask[] {
-  const out: MarkdownTask[] = []
-  let inOpen = false
-  for (const line of md.split('\n')) {
-    const h2 = /^##\s+(.*)$/.exec(line)
-    if (h2) { inOpen = /abiertas/i.test(h2[1]); continue }
-    const h3 = /^###\s+(.*)$/.exec(line)
-    if (!h3) continue
-    const rest = h3[1]
-    const idM = /\[(T-\d+)\]/.exec(rest)
-    if (!idM) continue                       // cabecera sin id → la caza el guardarraíl
-    const emoji = Object.keys(EMOJI_TO_PRIORITY).find(e => rest.includes(e))
-    const title = rest
-      .replace(/\[(T-\d+)\]/, '')
-      .replace(/[🔴🟠🟡🟢✅⬜]/g, '')
-      .replace(/^\s*\[[^\]]*\]\s*/, '')      // etiquetas tipo [ABIERTO 19/07]
-      .trim()
-    out.push({
-      id: idM[1],
-      title,
-      priority: emoji ? EMOJI_TO_PRIORITY[emoji] : null,
-      inOpenSection: inOpen,
-      doneMarked: rest.includes('✅'),
-      parked: rest.includes('⬜'),
-    })
-  }
-  return out
+  return parseImpl(md) as MarkdownTask[]
+}
+
+/** Cabeceras que anuncian cierre (`[HECHA …]`) sin llevar el ✅ que el parser lee. */
+export function findMarcaIncoherente(tasks: MarkdownTask[]): Array<{ id: string; motivo: string; headline: string }> {
+  return marcaImpl(tasks)
 }
 
 /**
@@ -256,8 +249,8 @@ export function findBacklogDrift(mdTasks: MarkdownTask[], dbTasks: BacklogTask[]
     const d = db.get(id)
     if (!d) continue
     const cerradaEnBd = CLOSED_STATUSES.includes(d.status)
-    if (cerradaEnBd && m.inOpenSection) drift.cerradaPeroAbiertaEnMarkdown.push(id)
-    if (!cerradaEnBd && !m.inOpenSection) drift.vivaPeroCerradaEnMarkdown.push(id)
+    if (cerradaEnBd && m.declaredOpen) drift.cerradaPeroAbiertaEnMarkdown.push(id)
+    if (!cerradaEnBd && !m.declaredOpen) drift.vivaPeroCerradaEnMarkdown.push(id)
   }
   return drift
 }
