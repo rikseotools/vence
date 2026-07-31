@@ -37,6 +37,19 @@ describe('backlog — guardarraíles de tareas-pendientes.md', () => {
     expect(dup).toEqual([])
   })
 
+  it('ninguna cabecera deja el TÍTULO vacío (si no, la tarea es invisible)', () => {
+    // Origen: T-067 (31/07/2026). Quien la reabrió escribió TODO el texto dentro del
+    // corchete de fecha —`### [T-067] 🟡 [REABIERTA 30/07 — falta avisar a Jesús David…]`—
+    // y el parser, que quita ese corchete para quedarse con el título, se quedó sin nada.
+    // Efecto: `next` no la sugería y en `list` salía una línea EN BLANCO, así que una
+    // oposición construida y verificada (celador-murcia, 9.545 preguntas) llevaba días
+    // esperando go-live sin que nadie pudiera verla. El título va DESPUÉS del corchete.
+    const sinTitulo = tasks
+      .filter(t => !t.doneMarked && !String(t.title ?? '').trim())
+      .map(t => `${t.id} (cabecera sin título fuera del corchete)`)
+    expect(sinTitulo).toEqual([])
+  })
+
   it('toda tarea VIVA y NO aparcada declara prioridad con su emoji (🔴/🟠/🟡/🟢)', () => {
     // La prioridad ordena el reparto; sin ella `next` no sabe qué sugerir.
     // Exentas: las cerradas (✅) y las APARCADAS (⬜). Aparcar es una decisión
