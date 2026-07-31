@@ -60,7 +60,17 @@ export function evaluarPreparacionBarajado(params: {
   const { questionType, status, explanationData, isActive, skipReason } = params
 
   // Fuera de alcance: no es una impugnación de pregunta legislativa aceptada.
-  if (questionType !== 'legislative' || status !== 'resolved') return { ok: true, saltado: false }
+  // ⚠️ RECHAZAR TAMBIÉN CUENTA (31/07/2026). La puerta solo miraba `resolved`, y eso dejaba
+  // fuera justo el caso más revelador: **una impugnación que se RECHAZA suele significar que la
+  // persona no entendió la pregunta**, y la primera sospechosa de eso es NUESTRA explicación.
+  //
+  // Caso que lo destapó: una usuaria impugnó una pregunta de negación («señale la incorrecta»)
+  // del art. 9 de la Ley 39/2015. La clave era correcta y se cerró como rechazada… pero la
+  // explicación decía «La opción B es incorrecta», que es a la vez (a) exactamente lo que la
+  // confundió —lo leyó como «tu respuesta está mal»— y (b) una cita por LETRA, que impedía
+  // barajar la pregunta. Nada obligó a mirarlo porque el `status` era `rejected`.
+  if (questionType !== 'legislative') return { ok: true, saltado: false }
+  if (status !== 'resolved' && status !== 'rejected') return { ok: true, saltado: false }
 
   // Pregunta ya retirada: la resolución fue quitarla de circulación (duplicada, irreparable).
   if (isActive === false) return { ok: true, saltado: false }
@@ -79,7 +89,7 @@ export function evaluarPreparacionBarajado(params: {
   return {
     ok: false,
     error:
-      'No se puede cerrar como resuelta: la pregunta sigue SIN explicación estructurada, así que no ' +
+      `No se puede cerrar como ${status === 'rejected' ? 'rechazada' : 'resuelta'}: la pregunta sigue SIN explicación estructurada, así que no ` +
       'podrá barajar sus opciones. El manual pide evaluar SIEMPRE la explicación al trabajar una ' +
       'impugnación y dejarla en formato barajable. Escríbela con ' +
       '`npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply` ' +

@@ -37,9 +37,36 @@ describe('NO corta donde no debe', () => {
     expect(v).toEqual({ ok: true, saltado: false })
   })
 
-  it('no se mete en un RECHAZO: si no aceptamos la queja, no hemos tocado la pregunta', () => {
+  // ⚠️ CAMBIO DE CRITERIO (31/07/2026). Este test decía lo contrario —«si no aceptamos la queja,
+  // no hemos tocado la pregunta»— y ese razonamiento resultó ser justo el punto ciego.
+  //
+  // Lo destapó una impugnación real: una usuaria protestó por una pregunta de negación («señale
+  // la incorrecta») del art. 9 de la Ley 39/2015. La clave era correcta, así que se RECHAZÓ… y
+  // nada obligó a mirar la explicación, que decía «La opción B es incorrecta». Esa frase era a la
+  // vez la CAUSA de su confusión —la leyó como «tu respuesta está mal»— y una cita por LETRA que
+  // dejaba la pregunta sin poder barajarse.
+  //
+  // La lección: que rechacemos la queja no significa que no haya nada que arreglar. Un rechazo
+  // suele significar que la persona no entendió la pregunta, y la primera sospechosa de eso es
+  // NUESTRA explicación. Si de verdad no procede tocarla, está `skipShuffleReason`.
+  it('SÍ se mete en un rechazo: que la queja no prospere no significa que la explicación esté bien', () => {
     const v = evaluarPreparacionBarajado({ questionType: 'legislative', status: 'rejected', explanationData: null })
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.error).toMatch(/rechazada/)
+  })
+
+  it('un rechazo con la explicación ya estructurada pasa sin fricción', () => {
+    const v = evaluarPreparacionBarajado({ questionType: 'legislative', status: 'rejected', explanationData: ESTRUCTURA })
     expect(v).toEqual({ ok: true, saltado: false })
+  })
+
+  it('y en un rechazo también vale el escape, con su motivo', () => {
+    const v = evaluarPreparacionBarajado({
+      questionType: 'legislative', status: 'rejected', explanationData: null,
+      skipReason: 'La pregunta es de examen oficial y su explicacion se revisa en la campana aparte',
+    })
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.saltado).toBe(true)
   })
 
   it('no se mete en las PSICOTÉCNICAS, que no tienen explicación estructurada', () => {

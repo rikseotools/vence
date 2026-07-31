@@ -497,8 +497,22 @@ describe('puerta de barajado en resolveDispute', () => {
     expect(r.success).toBe(true)
   })
 
-  it('no estorba a un RECHAZO, que no toca la pregunta', async () => {
+  // Este test decía lo contrario («no estorba a un RECHAZO, que no toca la pregunta») hasta que
+  // un caso real lo desmintió: una queja RECHAZADA —la clave era correcta— la había provocado
+  // nuestra propia explicación, que citaba una letra. Cerrarla sin mirarla dejaba intacto el
+  // motivo de la queja. Un rechazo es justo cuando más hay que sospechar de la explicación.
+  it('un RECHAZO también pasa por la puerta: la queja suele venir de la explicación', async () => {
     setupDispute({ explanationData: null })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'rejected', adminResponse: 'No procede.',
+    } as never)
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error).toMatch(/aplicar-explicacion/)
+  })
+
+  it('y si la explicación ya está estructurada, el rechazo se cierra sin fricción', async () => {
+    setupDispute({ explanationData: { opciones: [{ letra: 'A', razon: 'porque sí' }] } })
     setupUpdateOk()
     const r = await resolveDispute({
       disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'rejected', adminResponse: 'No procede.',
