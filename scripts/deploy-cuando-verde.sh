@@ -76,6 +76,32 @@ let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
 });'
 }
 
+# ── ¿YA ESTÁ VIVO LO QUE PERSIGO? (T-386) ───────────────────────────────────────────────────
+# El lock SERIALIZA, pero no DEDUPLICA: el deploy es cumulativo, así que un segundo lanzador de la
+# misma superficie no adelanta nada — solo gasta vueltas y consultas al CI. El 31/07 dos sesiones
+# lanzaron backend a la vez; una murió tras 20 vueltas (por un motivo ajeno) y NO avisó a nadie:
+# tres tareas se quedaron dormidas esperando un deploy que otra sesión ya había hecho.
+#
+# La pregunta que faltaba no es «¿tengo yo el lock?» sino «¿está ya dentro el commit que persigo?».
+# Se responde con el MISMO módulo que usan `deploy-pendiente` y `backlog.cjs` (lib/deploy/shaVivo),
+# que lee el contrato observable `/health` y es agnóstico del proveedor. Dos implementaciones del
+# mismo criterio se separarían y el desacuerdo sería invisible.
+#
+# Invariante heredado y deliberado: si NO se puede saber el sha vivo, `shaVivo` devuelve null y
+# aquí se sigue desplegando. "No lo sé" nunca equivale a "ya está hecho".
+ya_esta_vivo() {  # $1=sha objetivo -> 0 si el vivo ya lo contiene
+  local objetivo="$1" vivo
+  vivo=$(node -e '
+    const { shaVivo } = require("./lib/deploy/shaVivo.cjs");
+    shaVivo(process.argv[1]).then(s => process.stdout.write(s || ""));
+  ' "$QUE" 2>/dev/null) || return 1
+  [ -n "$vivo" ] || return 1
+  git cat-file -e "${vivo}^{commit}" 2>/dev/null || return 1   # sha desconocido aquí: no opinar
+  git merge-base --is-ancestor "$objetivo" "$vivo" 2>/dev/null || return 1
+  VIVO_SHA="$vivo"
+  return 0
+}
+
 for v in $(seq 1 "$VUELTAS"); do
   git fetch origin -q
   # SOLO lo trackeado (T-366). Lo que este bucle puede destruir es trabajo sin commitear de
@@ -93,6 +119,13 @@ for v in $(seq 1 "$VUELTAS"); do
   git reset --hard origin/main -q
   SHA=$(git rev-parse HEAD)
   echo "══ vuelta $v/$VUELTAS — siguiendo ${SHA:0:9}"
+
+  # Antes de gastar una vuelta: ¿lo ha desplegado ya otra sesión? (T-386)
+  if ya_esta_vivo "$SHA"; then
+    echo "✅ ${SHA:0:9} YA ESTÁ VIVO en $QUE (desplegado por otra sesión, vivo=${VIVO_SHA})."
+    echo "   El deploy es cumulativo: no hay nada que hacer. Salgo sin competir por el lock."
+    exit 0
+  fi
 
   for i in $(seq 1 20); do
     OUT=$(veredicto "$SHA"); EST="${OUT%%|*}"; MOT="${OUT#*|}"
