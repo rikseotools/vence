@@ -148,11 +148,46 @@ async function main() {
     console.log('\n⚠️  nombres casi idénticos (equivocarse al cerrar borra el trabajo de la otra):')
     for (const [a, b] of pares) console.log(`     ${a}  ↔  ${b}`)
   }
+  // ── Trabajo HUÉRFANO (T-431) ──────────────────────────────────────────────────────────────
+  // Hasta hoy este listado terminaba diciendo «MIRA SI TIENEN TRABAJO SIN PUSHEAR» y remitía a
+  // ejecutar `git status` y `git log origin/main..` a mano, worktree por worktree. Eso es pedirle
+  // al lector que haga de detector — y justo las sesiones que mueren no dejan a nadie que se
+  // acuerde. Ahora la pregunta viene contestada, y con el criterio bueno: lo que se PERDERÍA, no
+  // cuántos commits hay (de 5 worktrees medidos el 31/07, 4 tenían commits y nada que perder).
   const borrables = datos.filter((d) => d.borrable && d.existe)
-  console.log(`\nSin señales y sin procesos (candidatas a cerrar, MIRA SI TIENEN TRABAJO SIN PUSHEAR): ${borrables.length}`)
-  for (const d of borrables) console.log(`     scripts/worktrees/borrar-worktree.sh ${d.slug}`)
-  console.log('\n(«sin señales» = 24 h de silencio. Una sesión que solo lee código y no toca el backlog no late:')
-  console.log(' mira también `git -C <wt> status` y `git log origin/main..` antes de borrar.)\n')
+  console.log(`\nSin señales y sin procesos (candidatas a cerrar): ${borrables.length}`)
+  let huerfanos = []
+  try {
+    const { datosDeWorktree, listarWorktrees } = require(path.join(REPO, 'scripts', 'sessions', 'huerfanos.cjs'))
+    const { clasificarWorktree } = require(path.join(REPO, 'lib', 'sessions', 'trabajoHuerfano.cjs'))
+    const ramaDe = new Map(listarWorktrees().map((w) => [w.ruta, w.rama]))
+    for (const d of borrables) {
+      if (!ramaDe.has(d.worktree_path)) continue
+      const c = clasificarWorktree({
+        slug: d.slug,
+        ...datosDeWorktree(d.worktree_path, ramaDe.get(d.worktree_path)),
+        minSinSenal: d.minutos, procesos: d.procesos,
+      })
+      if (c.veredicto === 'contenido_unico') huerfanos.push({ ...c, ruta: d.worktree_path })
+    }
+  } catch { /* informar no puede romper el mapa */ }
+
+  for (const d of borrables) {
+    const h = huerfanos.find((x) => x.slug === d.slug)
+    console.log(h
+      ? `     ⚠️  ${d.slug} — ${h.motivo}: NO la borres todavía`
+      : `     scripts/worktrees/borrar-worktree.sh ${d.slug}`)
+  }
+  if (huerfanos.length) {
+    console.log(`\n⚠️  ${huerfanos.length} worktree(s) guardan trabajo que no existe en ningún otro sitio:`)
+    for (const h of huerfanos) {
+      for (const f of h.ficherosUnicos.slice(0, 6)) console.log(`        ${h.slug}: ${f}`)
+      if (h.ficherosUnicos.length > 6) console.log(`        ${h.slug}: …y ${h.ficherosUnicos.length - 6} más`)
+      console.log(`        → git -C ${h.ruta} diff origin/main`)
+    }
+  }
+  console.log('\n(«sin señales» = 24 h de silencio. Una sesión que solo lee código y no toca el backlog no late.)')
+  console.log('  Barrido completo, también de las vivas:  npm run sesiones:huerfanos\n')
 }
 
 main().catch((e) => { console.error('❌', String(e.message || e).slice(0, 200)); process.exit(1) })

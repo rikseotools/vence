@@ -107,6 +107,8 @@
     "deploy:pendiente": "node scripts/deploy-pendiente.cjs",
     "deploy:estado": "node scripts/deploy-estado.cjs",
     "sesiones:friccion": "node scripts/friccion-sesiones.cjs",
+    "sesiones:huerfanos": "node scripts/sessions/huerfanos.cjs",
+    "sim:huerfanos": "node scripts/sessions/sim-huerfanos.cjs",
     "sim:cadencia-cron": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cadencia-cron-overdue.ts",
     "sim:cron-sin-exito": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cron-sin-exito.ts",
     "sim:fatiga-email": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-fatiga-email.ts",

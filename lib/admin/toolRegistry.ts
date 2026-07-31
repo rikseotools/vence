@@ -1013,6 +1013,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`lib/sessions/solape.cjs`, 21 tests. Reporta aparte, y más grave, varias sesiones en el ' +
       'MISMO checkout: ahí no hay conflicto de git que avise, se sobrescriben en vivo.',
   },
+  trabajo_huerfano: {
+    titulo: '¿Algún worktree abandonado guarda trabajo que no existe en ningún otro sitio?',
+    ruta: 'scripts/sessions/huerfanos.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run sesiones:huerfanos` (solo lee git + `worktree_sessions`). Criterio puro en ' +
+      '`lib/sessions/trabajoHuerfano.cjs`, COMPARTIDO con el mapa `latidos.cjs` y con el guard de ' +
+      '`borrar-worktree.sh` — tres puertas al mismo recurso con criterios distintos no protegen. ' +
+      'La pregunta NO es cuántos commits hay sino QUÉ SE PERDERÍA: `origin/main...HEAD` (tres ' +
+      'puntos, si no lo que falta de main cuenta como propio) ∩ «difiere hoy de main» (mata los ' +
+      '47 commits de vence-clean, ya arriba por contenido) ∪ lo no commiteado. Medido 31/07: de ' +
+      '5 worktrees con «trabajo», 4 eran ruido y 1 llevaba 3 días con 43 líneas perdidas. NACE EN ' +
+      'SILENCIO (hoy 0 huérfanos), así que la prueba de que encuentra algo es `npm run ' +
+      'sim:huerfanos`, que reconstruye los 5 casos sobre repos de verdad. NO va al barrido ' +
+      'nocturno: los worktrees son locales y el sweep corre en Fargate. Emite `trabajo_huerfano` ' +
+      'al bus de fricción (T-423).',
+  },
   push_guard_menciones: {
     titulo: 'Medir si «citar una tarea» sigue siendo distinguible de «trabajarla» (gate del push-guard)',
     ruta: 'scripts/backlog/sim-push-guard-menciones.cjs',

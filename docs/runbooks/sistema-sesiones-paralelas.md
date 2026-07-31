@@ -181,6 +181,45 @@ anterior, sus ficheros sin commitear y **sus commits sin pushear**.
 > acordarse. Lo que no es derivable —el razonamiento que no llegó a ningún commit, las hipótesis
 > descartadas— se pierde igual; la mitigación real es **commitear pronto y a menudo**.
 
+### 3.9.bis Trabajo HUÉRFANO — lo que queda cuando nadie retoma la tarea
+
+`lib/sessions/trabajoHuerfano.cjs` (criterio puro) · `scripts/sessions/huerfanos.cjs`
+(`npm run sesiones:huerfanos`) · simulación `npm run sim:huerfanos`
+
+§3.9 rescata el trabajo de una sesión muerta **cuando alguien retoma su tarea**. Si nadie la
+retoma —o si lo perdido son documentos que no cuelgan de ninguna ficha, que fue el caso— sigue
+invisible. Esto es el barrido: qué worktrees guardan algo que **no existe en ningún otro sitio**.
+
+**Toda la dificultad está en no gritar en falso.** Medido el 31/07 sobre los cinco worktrees que
+había, de 3 a 9 días de antigüedad:
+
+| worktree | lo que se veía | lo que había de verdad |
+|---|---|---|
+| `vence-clean` | 47 commits sin pushear | los 47 ya en la principal **por contenido** |
+| `pagos-planes` | 7 ficheros | idénticos byte a byte |
+| `umu-golive` | 2 ficheros | versión **desfasada** de algo ya subido |
+| `scrape-opositatest-tai` | 14 ficheros | restos de una limpieza a medias |
+| **`sesion-28jul-d`** | 3 ficheros | ⚠️ **43 líneas que nunca se subieron** |
+
+Cuatro de cinco son ruido. Un detector que cuente commits o ficheros da los cinco, y con esa
+proporción muere ignorado — llevándose el quinto. La pregunta correcta no es *«¿cuánto hay
+aquí?»* sino **«¿qué se PERDERÍA si lo borro?»**: `origin/main...HEAD` (tres puntos, o lo que a
+ti te FALTA de la principal cuenta como tuyo) **∩** lo que difiere hoy de la principal (mata los
+47 commits) **∪** lo que ni siquiera está commiteado.
+
+**Y el mismo criterio recalibra el guard del borrado**, que es donde la pérdida es irreversible.
+`borrar-worktree.sh` ya bloqueaba… contando commits: con `vence-clean` eran 47 de nada, y la
+salida documentada era `--force`, que **en el mismo paso descarta los cambios sin commitear**.
+Ruido 4 de cada 5 veces enseñando a teclear el gesto que destruye.
+
+> **No entra en el barrido nocturno**, que es lo primero que uno piensa: los worktrees viven en la
+> máquina de quien trabaja y el sweep de salud corre en Fargate. Un cron en la nube no puede ver
+> un directorio que no existe ahí.
+
+**Nace en silencio** (hoy hay 0 huérfanos), así que la única prueba de que sabe encontrar algo es
+`npm run sim:huerfanos`: reconstruye los cinco casos sobre repos de git de verdad y falla si
+alguno se clasifica mal — en cualquiera de las dos direcciones.
+
 ### 3.10 Que la regla llegue cuando se empieza a trabajar
 
 `backlog.cjs claim` imprime, además de la ficha, **cuatro líneas con el orden que evita rehacer
@@ -208,6 +247,8 @@ propósito, así que varios de estos procesos estaban *diseñados* para sobreviv
 `lib/observability/friccionSesiones.cjs` + `npm run sesiones:friccion` → tabla `observable_events`.
 
 Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · ≥66% **muerto**.
+También recoge el trabajo huérfano (§3.9.bis) como clase propia: es fricción de la que solo se
+ve el rastro, porque la sesión que la causó ya no está para contarlo.
 
 ---
 

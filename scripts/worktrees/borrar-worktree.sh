@@ -3,7 +3,7 @@
 # llevar a origin/main, quita el worktree + la rama, para el Postgres local si lo había.
 #
 # Uso: scripts/worktrees/borrar-worktree.sh <slug> [--force]
-#   --force  quita el worktree aunque tenga cambios sin commitear (se PIERDEN)
+#   --force  lo quita aunque guarde trabajo que no esté en ningún otro sitio (se PIERDE)
 set -euo pipefail
 
 SLUG="${1:-}"
@@ -48,29 +48,43 @@ if [ -f "$WT/.session-id" ] && [ -f "$WT/scripts/impugnaciones/cola.cjs" ]; then
   ( cd "$WT" && node scripts/impugnaciones/cola.cjs release-all --sid "$SID" ) 2>/dev/null || echo "  (sin claims o cola.cjs no lo soporta; se ignora)"
 fi
 
-# 2. Avisar de commits en la rama que NO están en origin/main
-AHEAD="$(git -C "$MAIN_REPO" rev-list --count "origin/main..$BRANCH" 2>/dev/null || echo 0)"
-if [ "$AHEAD" -gt 0 ]; then
-  echo ""
-  echo "⚠️  la rama $BRANCH tiene $AHEAD commit(s) que NO están en origin/main:"
-  git -C "$MAIN_REPO" log --oneline "origin/main..$BRANCH" | sed 's/^/     /'
-  echo "   Llévalos a origin/main ANTES de cerrar (cherry-pick sobre un worktree limpio, ver runbook de pusheo)."
-  if [ "$FORCE" != 1 ]; then
-    echo "   Aborto para no perderlos. Usa --force si de verdad quieres descartar la rama."
+# 2+3. ¿Se PERDERÍA algo al borrar esto? (T-431)
+#
+# Antes eran dos comprobaciones y las dos preguntaban mal: una contaba commits por delante de
+# origin/main y la otra miraba si el árbol estaba sucio. Medido el 31/07 sobre los cinco worktrees
+# que había: CUATRO habrían bloqueado sin tener nada que perder —47 commits ya presentes en `main`
+# por contenido, ficheros idénticos byte a byte, una versión desfasada de algo ya subido— y solo
+# uno guardaba trabajo real. Un bloqueo que es ruido 4 de cada 5 veces enseña a teclear `--force`…
+# y aquí `--force` descarta TAMBIÉN lo que sí importaba, sin vuelta atrás.
+#
+# Ahora la pregunta es «¿qué existe aquí y en ningún otro sitio?», con el MISMO criterio que usa
+# el barrido (`lib/sessions/trabajoHuerfano.cjs`): dos puertas al mismo recurso con criterios
+# distintos no protegen, se contradicen.
+if [ -f "$ESTE_REPO/scripts/sessions/huerfanos.cjs" ]; then
+  set +e
+  UNICO="$(cd "$ESTE_REPO" && node scripts/sessions/huerfanos.cjs --slug "$SLUG" 2>/dev/null)"
+  HAY_UNICO=$?
+  set -e
+  [ -n "$UNICO" ] && echo "$UNICO" | sed 's/^/   /'
+  if [ "$HAY_UNICO" = 3 ] && [ "$FORCE" != 1 ]; then
+    echo ""
+    echo "⛔ Ahí hay trabajo que no está en ningún otro sitio. Abortado para no perderlo."
+    echo "   Míralo:   git -C $WT diff origin/main"
+    echo "   Llévalo a origin/main (ver runbook de pusheo) y vuelve a cerrar."
+    echo "   Si de verdad quieres DESCARTARLO: borrar-worktree.sh $SLUG --force"
+    exit 1
+  fi
+else
+  # Sin el detector, se cae al criterio viejo: ruidoso, pero no se borra a ciegas.
+  DIRT="$(git -C "$WT" status --porcelain 2>/dev/null | grep -vE '^\?\? \.session-id$' || true)"
+  if [ -n "$DIRT" ] && [ "$FORCE" != 1 ]; then
+    echo "⚠️  hay cambios sin commitear en $WT (no encuentro huerfanos.cjs para afinar). Usa --force para descartarlos."
     exit 1
   fi
 fi
 
-# 3. Cambios sin commitear (ignorando el artefacto .session-id de la propia sesión)
-DIRT="$(git -C "$WT" status --porcelain 2>/dev/null | grep -vE '^\?\? \.session-id$' || true)"
-if [ -n "$DIRT" ] && [ "$FORCE" != 1 ]; then
-  echo "⚠️  hay cambios sin commitear en $WT. Commitéalos o usa --force para descartarlos."
-  echo "$DIRT" | sed 's/^/     /'
-  exit 1
-fi
-
 # 4. Quitar worktree + rama
-# --force siempre: el guard del paso 3 ya protegió el trabajo real; aquí solo quedan
+# --force siempre: el guard del paso 2+3 ya protegió el trabajo real; aquí solo quedan
 # artefactos ignorados/.session-id que git-worktree-remove bloquearía sin motivo.
 echo "→ quitando worktree y rama…"
 rm -f "$WT/.session-id"
