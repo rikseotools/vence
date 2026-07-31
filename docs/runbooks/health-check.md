@@ -86,6 +86,46 @@ Regla de oro: **el veredicto de salud NO puede ser más verde que tu bandeja de 
 avería crónica ya fichada). Así que la bandeja limpia ya NO acredita salud: acredita que no hay
 nada NUEVO. El veredicto sale de `alert_fired` completo, no de cuántos correos llegaron.
 
+### 0.bis — `dispute_email_drop`: descartar el salto legítimo ANTES de reenviar nada (T-422, 31/07/2026)
+
+Esta regla dice *«N impugnaciones resueltas SIN email»* y su instrucción era *«…y reenviar»*.
+**Reenviar sin comprobar es el error**, porque la regla no distingue dos cosas que en los datos
+se ven idénticas:
+
+| Qué pasó | Rastro que deja |
+|---|---|
+| El envío **falló** (Resend, timeout) | fila en `email_events` (`failed`) **o** evento `dispute_email_failed`, y **sí** hay token en `email_unsubscribe_tokens` |
+| Se **saltó a propósito** por preferencia del usuario | **nada**: ni fila, ni token, ni evento (antes de T-422) |
+
+El discriminante es el **token de baja**: `generateUnsubscribeToken()` se inserta *antes* de
+renderizar y enviar, así que **0 filas en `email_events` Y 0 en `email_unsubscribe_tokens`** =
+se salió por el gate de preferencias (`canSendEmail`), no que el proveedor fallara.
+
+```sql
+-- ¿hubo intento de envío para esta impugnación?
+SELECT (SELECT count(*) FROM email_events ee WHERE ee.email_address = up.email
+          AND ee.email_type='impugnacion_respuesta'
+          AND ee.created_at >= qd.resolved_at - interval '2 minutes') AS emails,
+       (SELECT count(*) FROM email_unsubscribe_tokens t WHERE t.user_id = qd.user_id
+          AND t.email_type='impugnacion_respuesta'
+          AND t.created_at >= qd.resolved_at - interval '2 minutes') AS tokens
+  FROM question_disputes qd JOIN user_profiles up ON up.id = qd.user_id
+ WHERE qd.id = '<dispute_id>';
+```
+
+**Y ojo con la preferencia: es MUTABLE, así que no prueba lo que pasó entonces.** El 31/07
+[T-373] restauró `email_soporte_disabled` a 79 usuarios a los que el botón de baja masiva se lo
+había apagado sin que lo pidieran. Las impugnaciones cerradas ANTES —saltadas correctamente— se
+releyeron con la preferencia NUEVA y pasaron a `real_drop`: la alerta disparó **7 veces por 3
+impugnaciones que estaban bien resueltas**, y la ficha que se abrió concluyó que el email «no se
+había intentado nunca», que era justo lo contrario de lo ocurrido.
+
+Desde T-422 el salto **deja evidencia en el momento** (`dispute_email_skipped`, `severity:info`,
+con `disputeId` y `reason`) y el reconciliador la prefiere al valor actual de la columna. Lo que
+no se puede probar se cuenta aparte como `inferredSkips` en el `cron_run` de
+`dispute-email-reconciliation` — **debe tender a 0**; si no baja, el emisor no está llegando a
+producción. Criterio en `backend/src/dispute-email-reconciliation/verdict.ts` (puro, con spec).
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:

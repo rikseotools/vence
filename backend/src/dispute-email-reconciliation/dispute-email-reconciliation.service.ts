@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { clasificarVerdicto, esDropReal } from './verdict';
 
 /**
  * Reconciliación de notificaciones de impugnaciones (Gap 17 del manual de
@@ -37,6 +38,12 @@ export interface DisputeEmailReconciliationResult {
   realDrops: number;
   /** Sin email pero por skip legítimo (soporte off / sin email). */
   expectedSkips: number;
+  /**
+   * Subconjunto de `expectedSkips` deducido de la preferencia ACTUAL, sin evidencia del
+   * momento. Es la zona en la que el criterio viejo podía equivocarse en las dos
+   * direcciones (T-422): se publica para poder vigilar que tiende a 0.
+   */
+  inferredSkips: number;
   sample: Array<{
     disputeId: string;
     userId: string;
@@ -53,7 +60,10 @@ interface ReconcileRow {
   kind: string;
   email: string | null;
   resolved_at: string;
-  verdict: 'real_drop' | 'expected_skip' | 'no_user_email';
+  /** Valor ACTUAL de la preferencia: indicio, no prueba (ver `verdict.ts`). */
+  soporte_disabled: boolean;
+  /** Evidencia del momento: la resolución registró que saltaba el envío. */
+  has_skip_event: boolean;
 }
 
 @Injectable()
@@ -99,17 +109,21 @@ export class DisputeEmailReconciliationService {
             WHERE ee.email_address = up.email
               AND ee.email_type = 'impugnacion_respuesta'
               AND ee.created_at >= d.resolved_at - interval '2 minutes'
-          ) AS has_email_event
+          ) AS has_email_event,
+          -- EVIDENCIA del momento: la ruta de resolución emite este evento cuando salta el
+          -- envío por preferencia del usuario. Es lo que permite no depender de releer una
+          -- columna mutable (ver verdict.ts). Se ancla al disputeId, no al reloj.
+          EXISTS (
+            SELECT 1 FROM observable_events oe
+            WHERE oe.event_type = 'dispute_email_skipped'
+              AND oe.metadata->>'disputeId' = d.dispute_id::text
+          ) AS has_skip_event
         FROM disputes d
         JOIN user_profiles up ON up.id = d.user_id
         LEFT JOIN email_preferences ep ON ep.user_id = d.user_id
       )
       SELECT dispute_id, user_id, kind, email, resolved_at,
-        CASE
-          WHEN email IS NULL THEN 'no_user_email'
-          WHEN soporte_disabled THEN 'expected_skip'
-          ELSE 'real_drop'
-        END AS verdict
+             soporte_disabled, has_skip_event
       FROM classified
       WHERE has_email_event = false
       ORDER BY resolved_at DESC
@@ -119,12 +133,30 @@ export class DisputeEmailReconciliationService {
       (res as unknown as ReconcileRow[]) ??
       []) as ReconcileRow[];
 
-    const realDropRows = rows.filter((r) => r.verdict === 'real_drop');
+    // El veredicto se decide en el núcleo puro (testeado en `verdict.spec.ts`), no en SQL:
+    // es el criterio que falló y el que tiene que poder probarse sin BD.
+    const juzgadas = rows.map((r) => ({
+      row: r,
+      verdict: clasificarVerdicto({
+        email: r.email,
+        soporteDisabled: r.soporte_disabled === true,
+        hasEmailEvent: false, // el SQL ya filtró las que sí tienen email
+        hasSkipEvent: r.has_skip_event === true,
+      }),
+    }));
+
+    const realDropRows = juzgadas.filter((j) => esDropReal(j.verdict)).map((j) => j.row);
+    // Saltos que NO se pueden probar: se dedujeron de la preferencia actual. Deben tender a
+    // 0 según entren cierres nuevos; si no bajan, el emisor de evidencia no está llegando.
+    const inferredSkips = juzgadas.filter(
+      (j) => j.verdict === 'expected_skip_inferred',
+    ).length;
 
     const result: DisputeEmailReconciliationResult = {
       withoutEmail: rows.length,
       realDrops: realDropRows.length,
       expectedSkips: rows.length - realDropRows.length,
+      inferredSkips,
       sample: realDropRows.slice(0, 20).map((r) => ({
         disputeId: r.dispute_id,
         userId: r.user_id,
@@ -137,7 +169,8 @@ export class DisputeEmailReconciliationService {
 
     this.logger.log(
       `Reconciliation impugnaciones: ${result.realDrops} drops reales, ` +
-        `${result.expectedSkips} skips esperados (de ${result.withoutEmail} sin email)`,
+        `${result.expectedSkips} skips esperados (${inferredSkips} inferidos sin evidencia) ` +
+        `de ${result.withoutEmail} sin email`,
     );
     return result;
   }

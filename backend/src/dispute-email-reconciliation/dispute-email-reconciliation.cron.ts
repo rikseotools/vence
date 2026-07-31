@@ -74,6 +74,7 @@ export class DisputeEmailReconciliationCron {
             invariant: 'dispute_resolved_without_email',
             realDrops: result.realDrops,
             expectedSkips: result.expectedSkips,
+            inferredSkips: result.inferredSkips,
             sample: result.sample,
           },
         });
@@ -90,6 +91,7 @@ export class DisputeEmailReconciliationCron {
           status: 'success',
           realDrops: result.realDrops,
           expectedSkips: result.expectedSkips,
+          inferredSkips: result.inferredSkips,
           withoutEmail: result.withoutEmail,
         },
       });

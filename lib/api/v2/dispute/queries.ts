@@ -515,6 +515,29 @@ export async function resolveDispute(
       }
 
       if ('cancelled' in emailResult && emailResult.cancelled) {
+        // Dejar EVIDENCIA de que el salto se decidió aquí y por qué. Sin esto el skip por
+        // preferencia es indistinguible de "no se intentó nunca": no genera fila en
+        // `email_events` ni token de baja, así que el reconciliador solo podía deducirlo
+        // releyendo `email_preferences`… que es MUTABLE. El 31/07 (T-373) se restauró
+        // `email_soporte_disabled` a 79 usuarios y esos saltos pasados se releyeron como
+        // `real_drop`: la alerta `dispute_email_drop` disparó 7 veces por 3 impugnaciones
+        // que sí se habían decidido bien (T-422). Falla también en la dirección peligrosa:
+        // apagar el soporte DESPUÉS de un drop real lo convertiría en "skip esperado".
+        // `await` (no fire-and-forget): igual que la rama de fallo, para que la evidencia
+        // esté persistida antes de que la lambda suspenda.
+        await emit({
+          source: 'vercel',
+          severity: 'info', // decisión correcta, no avería: es contexto para el reconciliador
+          eventType: 'dispute_email_skipped',
+          endpoint: '/api/v2/dispute/resolve',
+          metadata: {
+            disputeId,
+            userId,
+            status,
+            questionType,
+            reason: ('reason' in emailResult && emailResult.reason) || 'preference_blocked',
+          },
+        }).catch(() => { /* la observabilidad nunca rompe el flujo de resolución */ })
         return {
           success: true,
           disputeId,

@@ -394,6 +394,46 @@ describe('resolveDispute - email cancelado por preferencias del usuario', () => 
       expect(r.emailError).toBeNull()
     }
   })
+
+  // T-422: el salto por preferencia NO deja rastro por sí solo — no genera fila en
+  // `email_events` ni token de baja—, así que era indistinguible de "no se intentó nunca".
+  // El reconciliador lo deducía releyendo `email_soporte_disabled`, que es MUTABLE: cuando
+  // T-373 la restauró a 79 usuarios, 3 saltos correctos se releyeron como fallo silencioso y
+  // la alerta disparó 7 veces. La evidencia tiene que emitirse en el momento de la decisión.
+  it('emite `dispute_email_skipped` con el motivo (evidencia para el reconciliador)', async () => {
+    setupDispute({})
+    setupUpdateOk()
+    mockSendEmailV2.mockResolvedValueOnce({ cancelled: true, reason: 'soporte_disabled' })
+
+    await resolveDispute(baseRequest())
+
+    const evento = mockEmit.mock.calls
+      .map((c) => c[0] as Record<string, unknown>)
+      .find((e) => e?.eventType === 'dispute_email_skipped')
+
+    expect(evento).toBeDefined()
+    expect(evento).toMatchObject({
+      severity: 'info', // decisión correcta, no avería: no debe pingar ninguna alerta
+      endpoint: '/api/v2/dispute/resolve',
+    })
+    // El `disputeId` es la clave por la que lo busca el reconciliador: sin él, la evidencia
+    // existe pero no se puede emparejar con la impugnación.
+    expect((evento as { metadata?: Record<string, unknown> }).metadata).toMatchObject({
+      reason: 'soporte_disabled',
+    })
+    expect((evento as { metadata?: { disputeId?: string } }).metadata?.disputeId).toBeTruthy()
+  })
+
+  it('un fallo al emitir la evidencia NO tumba la resolución (telemetría fail-open)', async () => {
+    setupDispute({})
+    setupUpdateOk()
+    mockSendEmailV2.mockResolvedValueOnce({ cancelled: true, reason: 'soporte_disabled' })
+    mockEmit.mockRejectedValueOnce(new Error('observabilidad caída'))
+
+    const r = await resolveDispute(baseRequest())
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.emailSkipReason).toBe('user_preferences')
+  })
 })
 
 describe('resolveDispute - email falla pero la disputa queda resuelta (sin rollback)', () => {

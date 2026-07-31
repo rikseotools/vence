@@ -1606,19 +1606,29 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
   - **Sin ficha propia pero YA EXPLICADAS por otra:** `pool_frontend_saturation_high` (08:05, pico **82** conexiones activas contra un techo estimado de 16) es el mismo minuto de saturación que narra **[T-360]**, no un problema aparte; y `workflow_failure_burst` (14:10, 1 workflow GHA) es la otra cara de `main_ci_rojo`. **No abras ficha para ninguna de las dos.**
 - **Relacionada:** [T-422] (la otra huérfana del mismo triaje), runbook `revisar-fraudes.md`, CLAUDE.md → *«Señales de fraude / abuso»* (donde está escrito que F0 no bloquea).
 
-### [T-422] 🔴 [ABIERTO 31/07] Tres impugnaciones resueltas cuyo email NUNCA se intentó: el reconciliador lleva horas cantándolo y nadie las reenvía
+### [T-422] 🔴 [ABIERTO 31/07] El reconciliador de emails juzga una decisión PASADA con el valor ACTUAL de una columna mutable
 
-- **Esfuerzo: ~30 min** para las tres (leer la respuesta ya escrita y reenviarla). Entender por qué falló el envío puede llevar más.
-- **Qué pasa:** el cron `dispute-email-reconciliation` emite `invariant_violation` / `dispute_resolved_without_email` y la regla `dispute_email_drop` **ha disparado 7 veces el 31/07** (todas emailadas al buzón). Son **3 impugnaciones cerradas con respuesta escrita cuyo email no llegó a intentarse**: no es un `emailSkipReason`, es que no hay ni fila en `email_events`. La persona escribió, se le contestó, y **cree que la ignoramos**.
-- **Las tres, todas de la MISMA usuaria** (`marta_benitopadilla@hotmail.com`, `3260627f-2018-4a5e-8234-e6f07015abb9`), resueltas el 31/07 entre 06:50 y 06:51:
-  - `0c4740ed-2f98-4279-8ec2-58159288cc62`
-  - `c9bf1715-460d-4710-99d1-f0d3649ab9fc`
-  - `d2508ad3-f7cb-4215-9a55-35a67c21d3ae`
-  - Que las tres sean de la misma persona y del mismo minuto apunta a **un cierre en tanda** como causa, no a tres fallos sueltos. Mirar por qué camino se cerraron antes de reenviar.
-- **Ojo al reenviar:** `/api/v2/dispute/resolve` devuelve **409** si la impugnación ya está resuelta, así que no vale con repetir la llamada — el manual lo dice en §"Reintento manual" y deja el hueco reconocido (*«para reintentar solo el email habrá que añadir un endpoint específico»*). Salida por ahora: contactar por el hilo de feedback o crear el endpoint.
-- **NO es [T-369]**, aunque se parezcan y convenga leerlos juntos: allí el email **se intentó y se saltó** por `email_soporte_disabled` (el botón «Desactivar TODOS los emails»); aquí **no se intentó nunca**. Son dos averías distintas con el mismo síntoma para el usuario, y por eso hay dos reglas de alerta que no se solapan.
-- **Cómo salió:** al triar `alert_fired` de las últimas 24 h en una sesión de impugnaciones. La alerta estaba disparando desde primera hora y **seguía disparando al cierre de la sesión**: nadie la había recogido.
-- **Relacionada:** [T-369], manual `impugnaciones-claude-code.md` §6 (comprobar `emailSent`/`emailSkipReason` al cerrar), runbook `health-check.md` §0.
+> **El título anterior era «Tres impugnaciones resueltas cuyo email NUNCA se intentó», y era el
+> diagnóstico al revés.** Se conserva escrito porque la confusión es la lección: los dos casos se
+> ven IDÉNTICOS en los datos, y por eso hubo que construir la diferencia.
+
+- **Esfuerzo declarado: `rato`.** Medido: la investigación fue lo caro; el arreglo, 4 ficheros.
+- **Lo que se creía:** el email de 3 impugnaciones de `marta_benitopadilla@hotmail.com` (cerradas el 31/07 entre 06:50 y 06:51) «no llegó a intentarse», y había que reenviarlo.
+- **Lo que pasó de verdad:** el envío **se saltó a propósito y bien**. Marta pulsó el botón «Desactivar TODOS los emails» el **01/05/2026**, que hasta [T-369] apagaba además `email_soporte_disabled` —la puerta de nuestras respuestas—. Con esa preferencia, `canSendEmail` corta en `sendEmailV2` **antes** de generar el token de baja: no hay fila en `email_events`, no hay token, y (hasta ahora) tampoco evento. **El salto era invisible por construcción.**
+- **La prueba, limpia:** de sus impugnaciones cerradas, **18 de 18 tienen email hasta abril y 0 de 20 desde el 1 de mayo**. El corte es exactamente el botón rojo. Y el discriminante que lo cierra: `email_unsubscribe_tokens` se inserta *antes* de enviar, así que **0 emails + 0 tokens** = se salió por el gate de preferencias, no que Resend fallara.
+- **Por qué la alerta disparó 7 veces ese día, y aquí está el defecto real:** el reconciliador deducía el salto releyendo `email_preferences.email_soporte_disabled`, que es **MUTABLE**. El 31/07 a las 10:43 [T-373] restauró esa columna a 79 usuarios (Marta entre ellos) — con razón, porque no habían pedido perderlo. Los saltos de las 06:50 se releyeron con la preferencia de las 10:43 y pasaron a `real_drop`. **El dato no cambió; cambió la vara de medir.**
+- **Y falla en la dirección PELIGROSA, que es la que decide la ficha:** si alguien apaga el soporte DESPUÉS de un drop real, ese drop se reclasifica como salto esperado y **la alerta no salta nunca**. Un criterio que se puede volver ciego con una escritura posterior no es un criterio. Esto es lo que justifica el arreglo, no el ruido de un día.
+- **Arreglo (31/07):**
+  - `lib/api/v2/dispute/queries.ts` — al saltar por preferencia se emite **`dispute_email_skipped`** (`severity:info`, con `disputeId`, `reason`, `status`). La evidencia se crea **en el momento de la decisión**, que es el único momento en que se sabe.
+  - `backend/src/dispute-email-reconciliation/verdict.ts` — **núcleo puro** con el criterio (antes estaba entero en SQL y no se podía probar): la evidencia manda; sin ella se dice `expected_skip_inferred` en vez de afirmar. Poder decir «no lo sé» es la diferencia con el criterio viejo.
+  - El cron publica **`inferredSkips`** en su `cron_run`: es la cola sin evidencia y **debe tender a 0**. Si no baja, el emisor no está llegando a producción — un trinquete, no un adorno.
+  - El texto de la alerta ya no dice «y reenviar» a secas: manda descartar primero el salto legítimo (fue esa frase la que orientó mal el triaje anterior).
+- **Capas:** 7 tests del núcleo puro (`verdict.spec.ts`, con las dos regresiones: la de T-422 y la dirección peligrosa) + 2 en `__tests__/lib/api/v2/dispute/resolveDispute.test.ts` (que la evidencia se emite con su `disputeId`, y que si la observabilidad falla **no** tumba la resolución) + simulación del SQL nuevo contra RDS antes de dar nada por bueno.
+- **El ruido de hoy se apaga solo** a las ~06:50 del 01/08: la ventana del reconciliador son 24 h. Se descartó un backfill retroactivo de evidencia **porque no sirve para nada** — cuando el backend se despliegue, esos 3 cierres ya habrán salido de la ventana.
+- **Lo que NO se ha hecho, y es decisión de Manuel:** reenviar a Marta las **20** respuestas que se escribieron y no le llegaron. Está anotado en [T-373] con el mismo criterio (reenviar 20 correos antiguos de golpe es spam; las tiene en la campana y en `/soporte`). Lo que ya está arreglado es que **las próximas sí le lleguen**.
+- **Hueco conocido que queda abierto:** el mismo salto silencioso existe para las respuestas a **feedback** (`soporte_respuesta`) — T-369 midió 10 sin entregar — y ahí **no hay reconciliador ninguno**, así que nadie lo vería. Esta ficha no lo cubre.
+- **Cómo salió:** al triar `alert_fired` de las últimas 24 h en una sesión de impugnaciones. La alerta llevaba disparando desde primera hora y nadie la recogía.
+- **Relacionada:** [T-369] (la causa), [T-373] (la restauración que destapó el defecto), runbook `health-check.md` §0.bis (triaje nuevo), manual `impugnaciones-claude-code.md` §6.
 
 ### [T-411] 🟠 [ABIERTO 31/07] Test por leyes: quien estudia una ley no puede practicar los exámenes reales de OTRAS oposiciones sobre esa misma ley
 

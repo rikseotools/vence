@@ -3407,7 +3407,13 @@ export const RULE_DISPUTE_EMAIL_DROP: AlertRule<{ realDrops: number }> = {
     body:
       'El reconciliador detectó impugnaciones cerradas con respuesta cuyo email ' +
       'nunca salió (el usuario cree que le ignoramos). Revisar observable_events ' +
-      "con event_type='invariant_violation' (sample con disputeId) y reenviar.",
+      "con event_type='invariant_violation' (sample con disputeId). ANTES de reenviar, " +
+      'descartar que fuera un salto legítimo por preferencia: si el usuario tenía el ' +
+      'soporte apagado AL CERRARSE y se le restauró después, el envío se decidió bien ' +
+      'y no hay nada que reenviar (T-422). Señal de eso: 0 filas en email_events Y 0 en ' +
+      'email_unsubscribe_tokens para esa impugnación — el token se crea antes de enviar, ' +
+      'así que su ausencia dice que se salió por el gate de preferencias, no que Resend ' +
+      'fallara. Triaje completo en docs/runbooks/health-check.md §0.',
     metadata: { realDrops: rows[0]?.realDrops ?? 0 },
   }),
   cooldownMin: 60,
