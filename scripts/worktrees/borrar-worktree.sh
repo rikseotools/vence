@@ -3,7 +3,7 @@
 # llevar a origin/main, quita el worktree + la rama, para el Postgres local si lo había.
 #
 # Uso: scripts/worktrees/borrar-worktree.sh <slug> [--force]
-#   --force  lo quita aunque guarde trabajo que no esté en ningún otro sitio (se PIERDE)
+#   --force  quita el worktree aunque tenga cambios sin commitear (se PIERDEN)
 set -euo pipefail
 
 SLUG="${1:-}"
@@ -48,43 +48,66 @@ if [ -f "$WT/.session-id" ] && [ -f "$WT/scripts/impugnaciones/cola.cjs" ]; then
   ( cd "$WT" && node scripts/impugnaciones/cola.cjs release-all --sid "$SID" ) 2>/dev/null || echo "  (sin claims o cola.cjs no lo soporta; se ignora)"
 fi
 
-# 2+3. ¿Se PERDERÍA algo al borrar esto? (T-431)
+# 1.bis Tareas del BACKLOG que esta sesión tenga cogidas (T-438)
 #
-# Antes eran dos comprobaciones y las dos preguntaban mal: una contaba commits por delante de
-# origin/main y la otra miraba si el árbol estaba sucio. Medido el 31/07 sobre los cinco worktrees
-# que había: CUATRO habrían bloqueado sin tener nada que perder —47 commits ya presentes en `main`
-# por contenido, ficheros idénticos byte a byte, una versión desfasada de algo ya subido— y solo
-# uno guardaba trabajo real. Un bloqueo que es ruido 4 de cada 5 veces enseña a teclear `--force`…
-# y aquí `--force` descarta TAMBIÉN lo que sí importaba, sin vuelta atrás.
+# El paso anterior soltaba los claims de la cola de impugnaciones pero NO los del backlog: la
+# tarea se quedaba reclamada hasta que caducara el lease (90 min) y, peor, **el contexto de dónde
+# se dejó se perdía**. Quien la retomara encontraba una ficha y ningún «qué falta».
 #
-# Ahora la pregunta es «¿qué existe aquí y en ningún otro sitio?», con el MISMO criterio que usa
-# el barrido (`lib/sessions/trabajoHuerfano.cjs`): dos puertas al mismo recurso con criterios
-# distintos no protegen, se contradicen.
-if [ -f "$ESTE_REPO/scripts/sessions/huerfanos.cjs" ]; then
-  set +e
-  UNICO="$(cd "$ESTE_REPO" && node scripts/sessions/huerfanos.cjs --slug "$SLUG" 2>/dev/null)"
-  HAY_UNICO=$?
-  set -e
-  [ -n "$UNICO" ] && echo "$UNICO" | sed 's/^/   /'
-  if [ "$HAY_UNICO" = 3 ] && [ "$FORCE" != 1 ]; then
+# No se sueltan solas a propósito: soltar sin decir dónde se dejó es indistinguible de un
+# abandono. Se AVISA y se aborta, para que quien cierra elija la salida correcta —`done` si está
+# terminada, `pause --hecho --falta` si no— que es justo lo que hace que la siguiente sesión no
+# empiece de cero.
+if [ -f "$WT/.session-id" ] && [ -f "$WT/scripts/backlog.cjs" ]; then
+  # Se ejecuta desde el REPO PRINCIPAL, no desde $WT: un worktree puede no tener `node_modules`
+  # (o tenerlo a medias) y entonces el comando revienta. Lo que importa es el sid, que se pasa
+  # explícito.
+  SALIDA="$( node scripts/backlog.cjs mine --sid "$SID" 2>&1 )"; RC=$?
+  MIAS="$( printf '%s\n' "$SALIDA" | grep -E '^\s+T-[0-9]+' || true )"
+  if [ "$RC" != 0 ]; then
+    # NO se puede comprobar ≠ no hay nada. Se avisa fuerte pero no se bloquea: dejar una sesión
+    # sin poder cerrarse porque la BD no responde sería peor que el riesgo que evita.
     echo ""
-    echo "⛔ Ahí hay trabajo que no está en ningún otro sitio. Abortado para no perderlo."
-    echo "   Míralo:   git -C $WT diff origin/main"
-    echo "   Llévalo a origin/main (ver runbook de pusheo) y vuelve a cerrar."
-    echo "   Si de verdad quieres DESCARTARLO: borrar-worktree.sh $SLUG --force"
-    exit 1
+    echo "⚠️  NO he podido comprobar si esta sesión tiene tareas del backlog cogidas:"
+    printf '%s\n' "$SALIDA" | head -3 | sed 's/^/     /'
+    echo "   Míralo tú antes de cerrar:  node scripts/backlog.cjs mine --sid $SID"
+  elif [ -n "$MIAS" ]; then
+    echo ""
+    echo "⚠️  esta sesión tiene tareas del BACKLOG cogidas:"
+    echo "$MIAS" | sed 's/^/     /'
+    echo "   Ciérralas o pásalas a pausa ANTES, para que la siguiente sesión sepa dónde las dejaste:"
+    echo "     node scripts/backlog.cjs done  <id> --outcome \"qué pasó de verdad\""
+    echo "     node scripts/backlog.cjs pause <id> --tras-deploy|--hasta <fecha> --hecho \"…\" --falta \"…\""
+    if [ "$FORCE" != 1 ]; then
+      echo "   Aborto: soltarlas sin contexto es indistinguible de un abandono. --force para ignorarlo."
+      exit 1
+    fi
   fi
-else
-  # Sin el detector, se cae al criterio viejo: ruidoso, pero no se borra a ciegas.
-  DIRT="$(git -C "$WT" status --porcelain 2>/dev/null | grep -vE '^\?\? \.session-id$' || true)"
-  if [ -n "$DIRT" ] && [ "$FORCE" != 1 ]; then
-    echo "⚠️  hay cambios sin commitear en $WT (no encuentro huerfanos.cjs para afinar). Usa --force para descartarlos."
+fi
+
+# 2. Avisar de commits en la rama que NO están en origin/main
+AHEAD="$(git -C "$MAIN_REPO" rev-list --count "origin/main..$BRANCH" 2>/dev/null || echo 0)"
+if [ "$AHEAD" -gt 0 ]; then
+  echo ""
+  echo "⚠️  la rama $BRANCH tiene $AHEAD commit(s) que NO están en origin/main:"
+  git -C "$MAIN_REPO" log --oneline "origin/main..$BRANCH" | sed 's/^/     /'
+  echo "   Llévalos a origin/main ANTES de cerrar (cherry-pick sobre un worktree limpio, ver runbook de pusheo)."
+  if [ "$FORCE" != 1 ]; then
+    echo "   Aborto para no perderlos. Usa --force si de verdad quieres descartar la rama."
     exit 1
   fi
 fi
 
+# 3. Cambios sin commitear (ignorando el artefacto .session-id de la propia sesión)
+DIRT="$(git -C "$WT" status --porcelain 2>/dev/null | grep -vE '^\?\? \.session-id$' || true)"
+if [ -n "$DIRT" ] && [ "$FORCE" != 1 ]; then
+  echo "⚠️  hay cambios sin commitear en $WT. Commitéalos o usa --force para descartarlos."
+  echo "$DIRT" | sed 's/^/     /'
+  exit 1
+fi
+
 # 4. Quitar worktree + rama
-# --force siempre: el guard del paso 2+3 ya protegió el trabajo real; aquí solo quedan
+# --force siempre: el guard del paso 3 ya protegió el trabajo real; aquí solo quedan
 # artefactos ignorados/.session-id que git-worktree-remove bloquearía sin motivo.
 echo "→ quitando worktree y rama…"
 rm -f "$WT/.session-id"

@@ -2303,6 +2303,22 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-438] ✅ 🟠 [HECHA 31/07] Cerrar un worktree no exigía cerrar ni pausar las tareas del backlog
+
+- **ORIGEN.** Manuel (31/07): *«cuando quiero cerrar la sesión digo "documenta todo en las tareas y fichas… no dejes cabos sueltos". ¿Está bien, o con hacer `/clear` valdría?»*. Al revisarlo salió que **la frase no era el problema: el problema era que el cierre no lo exigía nadie.**
+- **LO QUE YA HACÍA BIEN `borrar-worktree.sh`:** aborta si hay **commits sin llevar a `origin/main`**, aborta si hay **cambios sin commitear**, y suelta los claims de la **cola de impugnaciones**. O sea, ya impedía perder CÓDIGO aunque a nadie se le ocurriera decirlo.
+- **EL HUECO:** soltaba los claims de la cola pero **NO los del backlog**. La tarea se quedaba reclamada hasta caducar el lease (90 min) y —lo caro— **el «dónde la dejé» se perdía**: quien la retomara encontraba la ficha y ningún «qué falta».
+- **✅ ARREGLO: aborta si la sesión tiene tareas cogidas**, e imprime las dos salidas correctas (`done --outcome` si está terminada, `pause --hecho --falta` si no).
+  - **NO se sueltan solas a propósito.** Soltar sin decir dónde se dejó la tarea es **indistinguible de un abandono**, y la siguiente sesión empieza de cero. La salida correcta la tiene que elegir quien cierra, que es el único que sabe.
+- **⚠️ Y UN FALLO PROPIO, cazado probándolo:** la primera versión ejecutaba la comprobación **dentro del worktree**, que puede no tener `node_modules` → el comando reventaba, el `2>/dev/null || true` se lo tragaba y **te dejaba borrar igual**. Es «no lo sé» leído como «está limpio», justo lo que el manual prohíbe. Ahora corre desde el repo principal con el `sid` explícito, y **si aun así no puede comprobarlo lo DICE** en vez de callar (avisa sin bloquear: dejar una sesión sin poder cerrarse porque la BD no responde sería peor que el riesgo que evita).
+- **La respuesta a la pregunta original, que es lo que hay que recordar:**
+  - **`/clear` NO es cerrar la sesión.** Borra la memoria de la conversación; el worktree sigue ahí y **las tareas siguen reclamadas**. Si solo vas a hacer `/clear`, con actualizar las fichas basta: no se pierde nada.
+  - **Si vas a BORRAR el worktree, lo no subido se pierde para siempre.** El rescate de [T-430] —que enseña el trabajo de la sesión anterior— **solo funciona si el worktree sigue existiendo**.
+  - Y por eso el cierre **ya no depende de la frase**: `borrar-worktree.sh` impide las cuatro formas de perder algo.
+- **Capas:** 6 tests (las cuatro cosas que no puede dejar pasar, que no las suelte solo, y que todo se pueda saltar solo con `--force` explícito). Verificado en vivo: bloqueó un cierre real con T-438 cogida.
+- **Relacionadas:** [T-430] (rescate, que exige que el worktree exista), [T-431], [T-415].
+
+
 ### [T-436] ✅ 🟠 [HECHA 31/07] El repo principal se puso en modo `bare` A MEDIAS, y ninguna sesión sabía si era intencionado
 
 - **CÓMO SALIÓ.** Manuel enseñó la captura de OTRA sesión, bloqueada: *«el principal está en bare… ¿lanzo el deploy o espero a la sesión que está reestructurando?»*, ofreciendo cuatro opciones sin saber cuál. No estaba perdida: **se había encontrado el repositorio a medio cambiar y nadie se lo había dicho**.
