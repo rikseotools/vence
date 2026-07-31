@@ -172,6 +172,17 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
   c.environment = c.environment || [];
   const e=c.environment.find(x=>x.name==='USE_READ_REPLICA');
   if (e) e.value='true'; else c.environment.push({name:'USE_READ_REPLICA', value:'true'});
+  // DEVICE_LIMIT_MODE (T-304): el tope diario COMPARTIDO por dispositivo. Va por SSM y no por
+  // environment A PROPOSITO — un valor horneado en la task def obliga a registrar otra para
+  // cambiarlo; por SSM se resuelve al arrancar, asi que encender o apagar es cambiar el parametro
+  // y forzar un new deployment (~5 min, sin build). Mismo patron que FEATURE_SHUFFLE_OPTIONS.
+  // Se asegura AQUI porque el deploy clona la task def VIVA y solo swapea imagen: sin esta linea
+  // el flag desapareceria en el siguiente deploy y el limite volveria a su defecto (shadow) EN
+  // SILENCIO, que es justo el modo de fallo que este flag existe para vigilar.
+  // ⚠️ Las DOS superficies: answer-and-save proxya al backend cuando el canary esta activo, asi
+  // que con una sola el agujero sigue abierto por la otra.
+  if (!c.secrets.some(s=>s.name==='DEVICE_LIMIT_MODE'))
+    c.secrets.push({name:'DEVICE_LIMIT_MODE', valueFrom:'arn:aws:ssm:eu-west-2:349744179687:parameter/vence-backend/DEVICE_LIMIT_MODE'});
 }
 // check-seguimiento REACTIVADO como TELEMETRIA (T-135, 26/07/2026). Se retiro el 20/07 por el
 // sensor 'hash_change' (4% de acierto) — pero esa señal YA no se emite desde el 26/06: hoy el cron

@@ -300,7 +300,12 @@ const secrets=(td.containerDefinitions[0].secrets ||= []);
 // deployment, sin build ni task def nueva. _SCOPE='all' = todas las oposiciones (decision de Manuel
 // 30/07: ningun opositor debe quedarse sin su tema por la que estudie); una lista separada por comas
 // lo acota, y 'false' en el primero devuelve el comportamiento historico (413 tema_demasiado_grande).
-for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY','FEATURE_SHUFFLE_OPTIONS','FEATURE_SHUFFLE_OPTIONS_SCOPE','FEATURE_TEMARIO_PDF_PARTES','FEATURE_TEMARIO_PDF_PARTES_SCOPE']) {
+// DEVICE_LIMIT_MODE (T-304): el tope diario COMPARTIDO por dispositivo, que cierra el salto del
+// limite free rotando cuentas en el mismo equipo. Mismo motivo que los FEATURE_* para ir por SSM:
+// encender o apagar es cambiar el parametro y forzar un new deployment, sin build ni task def
+// nueva. Y va aqui, en la lista idempotente, porque el deploy clona la task def VIVA: sin esto el
+// flag desapareceria en el siguiente deploy y el limite volveria a su defecto (shadow) EN SILENCIO.
+for (const name of ['STRIPE_SECRET_KEY_NILA','STRIPE_WEBHOOK_SECRET_NILA','STRIPE_NEW_SIGNUPS_ACCOUNT','KOIGRID_VIDEO_BUCKET','KOIGRID_VIDEO_ACCESS_KEY','KOIGRID_VIDEO_SECRET_KEY','FEATURE_SHUFFLE_OPTIONS','FEATURE_SHUFFLE_OPTIONS_SCOPE','FEATURE_TEMARIO_PDF_PARTES','FEATURE_TEMARIO_PDF_PARTES_SCOPE','DEVICE_LIMIT_MODE']) {
   if (!secrets.some(s=>s.name===name)) secrets.push({name, valueFrom:'arn:aws:ssm:'+REGION+':'+ACC+':parameter/vence-frontend/'+name});
 }
 // Precios Stripe en RUNTIME (server-side). getPricesFor()/priceBelongsToAccount()
