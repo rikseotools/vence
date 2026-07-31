@@ -82,6 +82,15 @@ function parseEpigrafe(ep) {
       .map(s => s.trim())
       .filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length;
   }
+  // MIRROR de lib/laws/scopeOverInclusion.ts — enumeraciones con PUNTO (T-137, 31/07/2026),
+  // descontando la CITA de la norma («La Ley 19/2013, de 9 de diciembre, de transparencia…» son
+  // 4 trozos que NO son materias: contarlos haría enumerador a cualquiera que cite la ley).
+  const RE_CITA_NORMA = /\b(?:ley\s+org[áa]nica|ley\s+foral|ley|real\s+decreto(?:\s+legislativo|\s+ley)?|decreto(?:\s+legislativo)?|reglamento|orden|resoluci[óo]n)\s+\d+\/\d{2,4}/i;
+  const RE_SOLO_FECHA = /^de\s+\d{1,2}\s+de\s+[a-záéíóú]+$|^de\s+\d{4}$/i;
+  const segmentsMaterias = (hasColon ? ep.slice(ep.indexOf(':') + 1) : ep)
+    .split(/[;,.]/).map(s => s.trim())
+    .filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s))
+    .filter(s => !RE_SOLO_FECHA.test(s) && !RE_CITA_NORMA.test(s)).length;
 
   // Artículos citados EXPLÍCITAMENTE en el epígrafe ("arts. 45 a 49", "art. 51")
   const explicitArts = new Set();
@@ -98,7 +107,7 @@ function parseEpigrafe(ep) {
   // MIRROR de lib/laws/scopeOverInclusion.ts — materia acotada en prosa (26/07/2026).
   const acotaMateria = (ep.match(/(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i) || [null])[0];
 
-  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length };
+  return { semis, hasColon, segments, segmentsMaterias, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length };
 }
 
 /**
@@ -114,7 +123,8 @@ function classifyScope({ lawTotal, scopedCount, epigrafe }) {
   const nearFull = coverage >= 0.9;
   // Enumerador: colon + >=3 segmentos (por ";" o ","). Cubre enumeraciones con
   // coma (SERMAS) además de las de punto y coma (T11).
-  const enumerator = f.hasColon && f.segments >= 3;
+  // El PUNTO exige el suelo de 60 arts (señal más débil que un ';' tras dos puntos).
+  const enumerator = (f.hasColon && f.segments >= 3) || (lawTotal >= 60 && f.segmentsMaterias >= 3);
 
   // Guardas negativas (limpian el candidato)
   if (f.wholeLawWords) {

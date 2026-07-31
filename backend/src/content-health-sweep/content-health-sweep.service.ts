@@ -264,6 +264,17 @@ function classifyScope(
       .split(/[;,]/)
       .map((s) => s.trim())
       .filter((s) => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length;
+  // MIRROR de lib/laws/scopeOverInclusion.ts — enumeraciones con PUNTO (T-137, 31/07/2026),
+  // descontando la CITA de la norma: «La Ley 19/2013, de 9 de diciembre, de transparencia…» son
+  // 4 trozos que NO son materias, y contarlos haría enumerador a cualquiera que cite la ley.
+  const RE_CITA_NORMA =
+    /\b(?:ley\s+org[áa]nica|ley\s+foral|ley|real\s+decreto(?:\s+legislativo|\s+ley)?|decreto(?:\s+legislativo)?|reglamento|orden|resoluci[óo]n)\s+\d+\/\d{2,4}/i;
+  const RE_SOLO_FECHA = /^de\s+\d{1,2}\s+de\s+[a-záéíóú]+$|^de\s+\d{4}$/i;
+  const segmentsMaterias = (hasColon ? ep.slice(ep.indexOf(':') + 1) : ep)
+    .split(/[;,.]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 4 && /[a-záéíóúñ]/i.test(s))
+    .filter((s) => !RE_SOLO_FECHA.test(s) && !RE_CITA_NORMA.test(s)).length;
   const explicitArts = new Set<number>();
   const reR = /art[íi]?c?u?l?o?s?\.?\s*(\d+)\s*(?:a|al|-|–)\s*(\d+)/gi;
   while ((m = reR.exec(ep)) !== null) {
@@ -277,9 +288,21 @@ function classifyScope(
     /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(
       ep,
     );
+  // MIRROR de lib/laws/scopeOverInclusion.ts — materia acotada en prosa (26/07/2026). Esta regla
+  // llegó al núcleo y al gemelo CLI ese día y NUNCA se copió aquí, o sea que el @Cron nocturno
+  // —el writer real— llevaba desde entonces ciego a la banda entera: el caso que la motivó (el
+  // RGPD con sus 99 artículos escopados para «Conceptos y Principios») no se emitía nunca. Lo
+  // destapó el test de espejo contra fixtures al extenderlo al backend [T-088/T-137].
+  const acotaMateria = (ep.match(
+    /(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i,
+  ) || [null])[0];
   const bigLaw = lawTotal >= 12,
     nearFull = coverage >= 0.9,
-    enumerator = hasColon && segments >= 3;
+    veryBigLawEnum = lawTotal >= 60,
+    // El PUNTO exige el suelo de 60 arts: es señal más débil que un ';' tras dos puntos (el
+    // punto también termina frases normales). Caso etiquetado que lo fija: «El archivo.
+    // Concepto. Tipos de archivos.» sobre 22 artículos es LEGÍTIMO.
+    enumerator = (hasColon && segments >= 3) || (veryBigLawEnum && segmentsMaterias >= 3);
   if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
   if (titComplete && closureWord && nearFull)
     return { band: 'CLEARED', score: 0, coverage, reason: null };
@@ -297,7 +320,14 @@ function classifyScope(
     score += 30;
     reason =
       reason ||
-      `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${segments} bloques`;
+      `ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${Math.max(segments, segmentsMaterias)} bloques`;
+  }
+  // Exige `!enumerator` para no sumarse a la de arriba y promover a HIGH por acumulación.
+  if (veryBigLawEnum && nearFull && !enumerator && acotaMateria) {
+    score += 30;
+    reason =
+      reason ||
+      `ley muy grande (${lawTotal}) escopada al ${(coverage * 100).toFixed(0)}% pero el epígrafe ACOTA la materia en prosa ("${acotaMateria}") sin enumerar bloques`;
   }
   const band = score >= 50 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'NONE';
   return { band, score, coverage, reason };

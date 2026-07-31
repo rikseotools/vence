@@ -1052,6 +1052,15 @@ async function detectarTodo(c, add, now) {
     const closureWord = /\breforma\b|disposici[oó]n(?:es)?\s+(?:adicional|transitoria|derogatoria|final)/i.test(ep);
     let segments = 0;
     if (hasColon) { segments = ep.slice(ep.indexOf(':') + 1).split(/[;,]/).map(s => s.trim()).filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length; }
+    // MIRROR de lib/laws/scopeOverInclusion.ts — enumeraciones con PUNTO (T-137, 31/07/2026),
+    // descontando la CITA de la norma: «La Ley 19/2013, de 9 de diciembre, de transparencia…»
+    // son 4 trozos que NO son materias, y contarlos haría enumerador a todo el que cite la ley.
+    const RE_CITA_NORMA = /\b(?:ley\s+org[áa]nica|ley\s+foral|ley|real\s+decreto(?:\s+legislativo|\s+ley)?|decreto(?:\s+legislativo)?|reglamento|orden|resoluci[óo]n)\s+\d+\/\d{2,4}/i;
+    const RE_SOLO_FECHA = /^de\s+\d{1,2}\s+de\s+[a-záéíóú]+$|^de\s+\d{4}$/i;
+    const segmentsMaterias = (hasColon ? ep.slice(ep.indexOf(':') + 1) : ep)
+      .split(/[;,.]/).map(s => s.trim())
+      .filter(s => s.length >= 4 && /[a-záéíóúñ]/i.test(s))
+      .filter(s => !RE_SOLO_FECHA.test(s) && !RE_CITA_NORMA.test(s)).length;
     const explicitArts = new Set(); const reR = /art[íi]?c?u?l?o?s?\.?\s*(\d+)\s*(?:a|al|-|–)\s*(\d+)/gi;
     while ((m = reR.exec(ep)) !== null) { const a = +m[1], b = +m[2]; if (b - a >= 0 && b - a < 500) for (let i = a; i <= b; i++) explicitArts.add(i); }
     const reS = /art[íi]?c?u?l?o?\.?\s*(\d+)(?!\s*(?:a|al|-|–)\s*\d)/gi;
@@ -1059,7 +1068,11 @@ async function detectarTodo(c, add, now) {
     const wholeLawWords = /[íi]ntegr|en su totalidad|toda la ley|texto [íi]ntegro|el conjunto de la ley|la ley completa/i.test(ep);
     // MIRROR de lib/laws/scopeOverInclusion.ts — materia acotada en prosa (26/07/2026).
     const acotaMateria = (ep.match(/(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i) || [null])[0];
-    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, enumerator = hasColon && segments >= 3, veryBigLaw = lawTotal >= 60;
+    const bigLaw = lawTotal >= 12, nearFull = coverage >= 0.9, veryBigLaw = lawTotal >= 60;
+    // El PUNTO exige el suelo de 60 arts: es señal más débil que un ';' tras dos puntos (el punto
+    // también termina frases normales). Caso etiquetado que lo fija: «El archivo. Concepto. Tipos
+    // de archivos.» sobre 22 artículos es LEGÍTIMO. MIRROR de lib/laws/scopeOverInclusion.ts.
+    const enumerator = (hasColon && segments >= 3) || (veryBigLaw && segmentsMaterias >= 3);
     if (wholeLawWords) return { band: 'CLEARED', score: 0, coverage, reason: null };
     if (titComplete && closureWord && nearFull) return { band: 'CLEARED', score: 0, coverage, reason: null };
     let score = 0, reason = null;

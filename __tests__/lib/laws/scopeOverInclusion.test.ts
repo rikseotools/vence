@@ -85,6 +85,26 @@ const FIXTURES: Array<{ name: string; expect: boolean; lawTotal: number; scopedC
     epigrafe: 'La norma: concepto y principios generales.' },
   { name: 'Ley muy grande YA estrechada (cobertura baja) pese a epígrafe que acota', expect: false, lawTotal: 99, scopedCount: 20,
     epigrafe: 'Protección de datos: conceptos y principios.' },
+  // ── Enumeraciones escritas con PUNTOS (T-137, 31/07/2026) ────────────────────
+  // La regla de enumerador exigía dos puntos y partía por ";"/"," — pero la forma
+  // habitual de enumerar en un temario es con PUNTOS, y esos epígrafes daban NONE.
+  // Caso REAL que abrió la ficha: el tema escopa los 69 artículos de la Ley 22/2009
+  // (incluida toda la maquinaria de gestión de tributos cedidos) para un epígrafe
+  // que pide tres materias, una de ellas «el actual modelo de financiación».
+  { name: 'T-137 real: Ley 22/2009 entera para 3 materias separadas por PUNTOS', expect: true, lawTotal: 69, scopedCount: 69,
+    epigrafe: 'Generalidades. Las normas de atribución y delimitación de las competencias. El actual modelo de financiación de las comunidades autónomas de régimen común.' },
+  // El artefacto que obligó a descontar la cita: partir por puntos y comas convierte
+  // el NOMBRE de la ley en «segmentos» («La Ley 19/2013» · «de 9 de diciembre» ·
+  // «de transparencia» · «acceso a la información…»), así que un epígrafe que se
+  // limita a citar la norma pasaría por enumerador. Medido: 72 filas de ruido.
+  { name: 'Solo la CITA de la norma, sin enumerar materias (no marcar)', expect: false, lawTotal: 99, scopedCount: 99,
+    epigrafe: 'La Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales.' },
+  { name: 'Cita de la norma + fecha, ley grande entera (no marcar)', expect: false, lawTotal: 80, scopedCount: 80,
+    epigrafe: 'Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido del Estatuto Básico del Empleado Público.' },
+  // El suelo de 60 arts para el PUNTO: por debajo, la materia acotada ES la norma
+  // entera. Sin él, el fixture del archivo (22 arts) pasaría a sospechoso.
+  { name: 'Enumeración por puntos en norma de 40 arts (por debajo del suelo, legítimo)', expect: false, lawTotal: 40, scopedCount: 40,
+    epigrafe: 'El registro. Concepto. Clases de registro. Organización del registro.' },
 ]
 
 describe('classifyScope — casos etiquetados', () => {
@@ -242,6 +262,41 @@ describe('sweep mirror ↔ lib (sync)', () => {
       const lib = classifyScope(fx)
       const mir = mirror(fx.lawTotal, fx.scopedCount, fx.epigrafe)
       expect(mir.band).toBe(lib.band)
+    })
+  }
+})
+
+// El WRITER REAL de content_health_findings es el @Cron del backend, no el gemelo CLI — y llevaba
+// su propia copia de classifyScope que NADIE contrastaba: el bloque de arriba solo miraba a
+// scripts/health-sweep.cjs y el test de paridad compara los `kind` que emite cada fichero, no la
+// lógica. Resultado medido el 31/07 [T-088]: el backend pasó cinco días con el criterio viejo y
+// emitía 2 hallazgos que el CLI ya no daba. La tercera copia se contrasta ahora contra las mismas
+// fixtures que las otras dos.
+describe('backend @Cron mirror ↔ lib (sync)', () => {
+  const src = readFileSync('backend/src/content-health-sweep/content-health-sweep.service.ts', 'utf-8')
+  const a = src.indexOf('function romanToInt(')
+  const b = src.indexOf('// Mirror INLINE de lib/convocatoria/linkCoherence.cjs', a)
+
+  it('el bloque mirror existe en el backend', () => {
+    expect(a).toBeGreaterThan(-1)
+    expect(b).toBeGreaterThan(a)
+  })
+
+  // Se COMPILA el TypeScript del mirror en vez de quitarle los tipos con regex: el primer intento
+  // lo hizo a mano y se atragantó con `string | null`. Es una función pura de (lawTotal,
+  // scopedCount, epigrafe) que no depende de nada del módulo salvo romanToInt, así que compilar
+  // ese trozo y evaluarlo es fiel y no obliga a mantener una lista de patrones de tipo.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const ts = require('typescript')
+  const js = ts.transpileModule(src.slice(a, b), {
+    compilerOptions: { target: ts.ScriptTarget.ES2020 },
+  }).outputText
+  // eslint-disable-next-line no-eval
+  const mirror: (lt: number, sc: number, ep: string) => { band: string } = eval(js + '\n(classifyScope)')
+
+  for (const fx of FIXTURES) {
+    it(`backend mirror == lib: ${fx.name}`, () => {
+      expect(mirror(fx.lawTotal, fx.scopedCount, fx.epigrafe).band).toBe(classifyScope(fx).band)
     })
   }
 })

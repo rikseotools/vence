@@ -41,6 +41,12 @@ export interface EpigrafeFeatures {
   hasColon: boolean
   /** segmentos tras el primer colon separados por ";" O "," (enumeración) */
   segments: number
+  /**
+   * Segmentos de MATERIA contando también el PUNTO como separador y descontando la cita de la
+   * norma. Ver `segmentosMaterias`: es lo que permite ver las enumeraciones escritas con puntos
+   * («El acto administrativo. Concepto. Clases. Elementos.»), que son mayoría.
+   */
+  segmentsMaterias: number
   /** títulos nombrados (0=Preliminar), ordenados y únicos */
   titSet: number[]
   /** los títulos nombrados tienen huecos en su secuencia (nombra II y IV, salta III) */
@@ -65,6 +71,39 @@ export interface EpigrafeFeatures {
 }
 
 /** Extrae rasgos deterministas del epígrafe. */
+// ── Enumeraciones escritas con PUNTOS (T-137, 31/07/2026) ──────────────────────────────────
+// La regla de «epígrafe enumerador» partía por ";" y "," y exigía dos puntos. Pero la forma más
+// común de enumerar en un temario es con PUNTOS —«El acto administrativo. Concepto. Clases.
+// Elementos.»— y esos epígrafes quedaban fuera. El caso que abrió la ficha, Parlamento de
+// Andalucía T12 («Generalidades. Las normas de atribución… El actual modelo de financiación…»)
+// con la Ley 22/2009 ENTERA, daba `NONE` por esto.
+//
+// ⚠️ Y por qué NO basta con añadir el punto al separador: medido sobre las 5.964 filas vivas,
+// la versión cruda cuenta como «segmentos» la propia CITA de la norma — «La Ley 19/2013, de 9 de
+// diciembre, de transparencia, acceso a la información pública y buen gobierno.» da 4 trozos que
+// son el NOMBRE de la ley, no materias. Eso convierte en enumerador a cualquier epígrafe que se
+// limite a citar la norma, que es lo contrario de lo que la regla busca. Descontarla quita 72
+// filas de ruido (713 → 641 en la banda MEDIUM).
+const RE_CITA_NORMA =
+  /\b(?:ley\s+org[áa]nica|ley\s+foral|ley|real\s+decreto(?:\s+legislativo|\s+ley)?|decreto(?:\s+legislativo)?|reglamento|orden|resoluci[óo]n)\s+\d+\/\d{2,4}/i
+/** Trozo que es SOLO fecha: «de 9 de diciembre», «de 2015». */
+const RE_SOLO_FECHA = /^de\s+\d{1,2}\s+de\s+[a-záéíóú]+$|^de\s+\d{4}$/i
+
+/**
+ * Segmentos de MATERIA del epígrafe: parte por ";", "," y ".", y descarta los trozos que son
+ * la cita de la norma o una fecha suelta. Si hay dos puntos, mira solo lo que va detrás (el
+ * encabezado suele ser el nombre de la ley).
+ */
+export function segmentosMaterias(ep: string | null | undefined): number {
+  const t = String(ep || '')
+  const cuerpo = t.includes(':') ? t.slice(t.indexOf(':') + 1) : t
+  return cuerpo
+    .split(/[;,.]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 4 && /[a-záéíóúñ]/i.test(s))
+    .filter((s) => !RE_SOLO_FECHA.test(s) && !RE_CITA_NORMA.test(s)).length
+}
+
 export function parseEpigrafe(ep: string | null | undefined): EpigrafeFeatures {
   ep = ep || ''
   const semis = (ep.match(/;/g) || []).length
@@ -103,6 +142,7 @@ export function parseEpigrafe(ep: string | null | undefined): EpigrafeFeatures {
       .map((s) => s.trim())
       .filter((s) => s.length >= 4 && /[a-záéíóúñ]/i.test(s)).length
   }
+  const segmentsMaterias = segmentosMaterias(ep)
 
   // Artículos citados EXPLÍCITAMENTE ("arts. 45 a 49", "art. 51")
   const explicitArts = new Set<number>()
@@ -128,7 +168,7 @@ export function parseEpigrafe(ep: string | null | undefined): EpigrafeFeatures {
       /(concepto[s]?|principio[s]?|disposicion(?:es)? general(?:es)?|[áa]mbito de aplicaci[óo]n|definici[óo]n(?:es)?|especialmente protegid\w*|objeto y [áa]mbito)/i,
     ) || [null])[0]
 
-  return { semis, hasColon, segments, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length }
+  return { semis, hasColon, segments, segmentsMaterias, titSet, titGap, titComplete, closureWord, explicitArts, wholeLawWords, acotaMateria, len: ep.length }
 }
 
 /** Cómo escopan ESA MISMA ley los demás temas activos del banco. */
@@ -214,9 +254,20 @@ export function classifyScope({ lawTotal, scopedCount, epigrafe }: ScopeInput): 
 
   const bigLaw = lawTotal >= 12
   const nearFull = coverage >= 0.9
-  // Enumerador: colon + >=3 segmentos (por ";" o ","). Cubre enumeraciones con
-  // coma (SERMAS) además de las de punto y coma (T11).
-  const enumerator = f.hasColon && f.segments >= 3
+  const veryBigLaw = lawTotal >= 60
+  // Enumerador: colon + >=3 segmentos (por ";" o ","), O >=3 segmentos de MATERIA contando el
+  // PUNTO como separador (T-137). Lo segundo es lo que ve las enumeraciones sin dos puntos, que
+  // son la forma habitual de escribir un temario y dejaban fuera casos reales (el que abrió la
+  // ficha: Parlamento de Andalucía T12 con la Ley 22/2009 entera daba NONE).
+  //
+  // ⚠️ El PUNTO exige además el suelo de 60 artículos, y no es simetría estética: el punto
+  // también termina frases normales, así que la señal es más débil que la de un ";" tras dos
+  // puntos y necesita una norma grande para significar algo — el mismo argumento que ya justificó
+  // ese corte en la regla de «materia acotada en prosa». Lo dice un caso etiquetado del banco:
+  // «El archivo. Concepto. Tipos de archivos. Organización del archivo.» sobre una norma de 22
+  // artículos es LEGÍTIMO (ahí la materia acotada ES la norma entera), y sin el suelo pasaría a
+  // sospechoso. Medido sobre las 5.964 filas vivas: el badge NO se mueve (HIGH 4 → 4).
+  const enumerator = (f.hasColon && f.segments >= 3) || (veryBigLaw && f.segmentsMaterias >= 3)
 
   // Guardas negativas (limpian el candidato)
   if (f.wholeLawWords) {
@@ -242,7 +293,7 @@ export function classifyScope({ lawTotal, scopedCount, epigrafe }: ScopeInput): 
   // MEDIA: ley grande + casi completa + epígrafe enumerador (patrón T11)
   if (bigLaw && nearFull && enumerator) {
     score += 30
-    reasons.push(`ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${f.segments} bloques`)
+    reasons.push(`ley grande (${lawTotal}) casi completa (${(coverage * 100).toFixed(0)}%) con epígrafe que enumera ${Math.max(f.segments, f.segmentsMaterias)} bloques`)
   }
   // MEDIA (26/07/2026) — MATERIA ACOTADA EN PROSA, sin enumerar.
   //
@@ -270,7 +321,6 @@ export function classifyScope({ lawTotal, scopedCount, epigrafe }: ScopeInput): 
   // adjudicación bajo demanda, NO señal de badge (mismo criterio que el patrón
   // T11). Exige `!enumerator` para no sumarse a la regla de arriba y promover a
   // HIGH por acumulación.
-  const veryBigLaw = lawTotal >= 60
   if (veryBigLaw && nearFull && !enumerator && f.acotaMateria) {
     score += 30
     reasons.push(
