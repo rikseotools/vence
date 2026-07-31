@@ -74,6 +74,24 @@ resource "aws_lb" "api" {
   enable_deletion_protection = false
 
   idle_timeout = 60
+
+  # Logs de acceso — activados el 31/07/2026 por CLI y codificados aquí a la vez
+  # (la lección de `min_capacity`: la contención que solo vive en el CLI se pierde
+  # al primer `terraform apply`).
+  #
+  # POR QUÉ: este ALB es internet-facing con el SG en 0.0.0.0/0, así que se puede
+  # llegar a la app saltándose CloudFront y falsificar la cabecera de IP que el
+  # antifraude trata como de confianza (T-357). El arreglo evidente —restringir el
+  # SG a los rangos de CloudFront— **rompería el backend**, porque `api.vence.es`
+  # resuelve DIRECTO a este ALB, sin CDN. Sin logs no se puede saber qué otro
+  # tráfico legítimo hay, así que medir es el paso previo a cerrar nada.
+  #
+  # El bucket caduca a 30 días: esto es para decidir, no un archivo histórico.
+  access_logs {
+    bucket  = "vence-alb-logs-349744179687"
+    prefix  = "alb"
+    enabled = true
+  }
 }
 
 # ─── Target Group del backend ──────────────────────────────────
