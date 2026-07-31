@@ -991,6 +991,28 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-372] 🔴 [ABIERTO 31/07] Punto ciego del antifraude: la pareja de DOS cuentas a 25+25 no la ve NINGUNO de los dos umbrales
+- **Cómo salió:** triando a mano los equipos multi-cuenta que más consumían (31/07, con OK de Manuel). De los 5 revisados, **4 no habían generado JAMÁS una señal**. No era mala suerte: es aritmética.
+- **La aritmética, que es todo el fallo:**
+  - `multi_account_device` exige **≥3 cuentas** por equipo (`FRAUD_DEVICE_ACCOUNTS=3`) → **una pareja tiene 2**.
+  - `device_daily_farming` exige **≥60 preguntas/día** de equipo (`FRAUD_DEVICE_DAILY_Q=60`) → **2 cuentas × el tope de 25 = 50**.
+  - O sea: **el patrón que produce el propio límite free —dos cuentas agotando su cupo— cae justo por debajo de los dos cortes A LA VEZ.** Es el farmeo MÍNIMO VIABLE y es exactamente el invisible. No hace falta que nadie sea listo: le sale así a quien simplemente se hace una segunda cuenta.
+- **Medido en el banco (30 días, equipos de 2 cuentas entre 26 y 59 preguntas/día, sin marca previa):** **14 equipos · 122 device-días**, y **8 de ellos con 3 o más días** (no es un despiste puntual, es rutina). Para comparar: los 8 equipos confirmados el 21/07 sumaban 8 device-días de exceso en la última semana.
+- **Los tres verificados y CONFIRMADOS hoy** (evidencia en `fraud_alerts.details.detectado_por='revision_manual_31_07'`), que ilustran el patrón:
+  | equipo | cuentas | por qué |
+  |---|---|---|
+  | `d60ca3e4…` | `elenapb71@` · `helenpb71@` | el mismo nombre en dos grafías, mismo sufijo, **alta el mismo día**, 50/día en 6 de 14 días, 0 otros equipos, **4 IPs compartidas** |
+  | `002999b0…` | `lady2saeki@` · `vientodelevante.89@` | **ambas creadas el 27/07**, 50/día en 3 de sus 4 días de vida, IPv6 compartida |
+  | `2bbb2177…` | `anamaria291192@` · `cdtoroboxing@` | 50/día en 6 de 14 días (1.106 preguntas), 2 IPs compartidas — dos personas no clavan 25+25 día tras día |
+- **Dos que se dejaron a propósito, y el porqué importa tanto como los confirmados:** `bff26373…` (4 cuentas con apellido común, altas repartidas de enero a abril, IP compartida de MARZO) tiene toda la pinta de **una familia compartiendo el ordenador de casa**, que es legítimo; y `00677a19…` es **un solo día** con 25 preguntas en la segunda cuenta — alguien que chocó con el muro y lo dejó. Cortar ahí sería desproporcionado.
+- **⚠️ Y ese primer caso es el COSTE del `enforce` global que sigue pendiente de decidir en [T-304]:** dos hermanos preparando la misma oposición en el mismo PC quedarían limitados a 25 al día **entre los dos**. No es motivo para no hacerlo —el 77 % del exceso viene de equipos sin mirar— pero hay que decidirlo sabiéndolo, no descubrirlo por una queja.
+- **Cómo arreglarlo (en este orden, y NINGUNO es "bajar el umbral y ya"):**
+  1. **La señal no es el número de cuentas, es la FORMA.** Dos cuentas clavadas en su tope el mismo día, repetido, es una firma mucho más limpia que "≥3 cuentas": distingue al farmer de la familia (que reparte, no clava). Medirlo antes de tocar nada, con `fraude:sombra-device`.
+  2. **Bajar `FRAUD_DEVICE_ACCOUNTS` a 2 a secas inundaría el inbox** de familias y ordenadores compartidos. Si se toca, que sea junto con (1).
+  3. **Y el atajo honesto:** si [T-304] pasa a `enforce` global, este punto ciego deja de importar para el DAÑO (el tope de equipo corta igual sin necesidad de detectar), aunque siga importando para SABER quién lo hace.
+- **Relacionadas:** [T-304] (límite por dispositivo y la decisión del enforce), `docs/runbooks/revisar-fraudes.md` §umbrales.
+
+
 ### [T-370] 🔴 [ABIERTO 31/07] El gate de integración/perf/seguridad lleva días en rojo porque CI se quedó sin base de datos
 - **Qué pasa:** el job **`Integration / perf / security`** de `.github/workflows/test.yml` falla en **todos** los commits. La causa no es ningún test: es que el paso arranca sin BD. El error, literal y repetido en cada suite:
   ```
