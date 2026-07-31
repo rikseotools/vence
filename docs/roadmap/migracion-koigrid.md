@@ -307,8 +307,13 @@ ya están en RDS. **Sin eso, la ventana de rollback de la capa 5 dura lo que tar
 
 ### Orden de ejecución, de menos a más comprometido
 
+0. **Prerrequisito DEL prerrequisito — cerrar el origen ([T-357]).** Medido el 31/07: el ALB acepta
+   `0.0.0.0/0` y sirve la app saltándose CloudFront, así que la IP que marcamos `trusted` **es falsificable
+   hoy**. Detrás de Cloudflare sería idéntico con `CF-Connecting-IP`. **Sin esto, poner el edge nuevo no
+   mejora la seguridad: la traslada.** Vías: SG del ALB a la prefix list de CloudFront + cabecera secreta.
 1. **Prerrequisito** — nuestro Cloudflare delante, apuntando a AWS. Verificar alternancia de origen. *(Y con
-   él, el fix de `getClientIp()`/`CF-Connecting-IP`, que es obligatorio antes de que pase un solo usuario.)*
+   él, `TRUSTED_EDGE` en el task def —hoy no existe— y el fix de `getClientIp()`/`CF-Connecting-IP`, que es
+   obligatorio antes de que pase un solo usuario.)*
 2. **Capa 1** — vídeos. ✅ hecha.
 3. **Capas 4 y 6** — caché y crons: se pueden mover y devolver sin tocar usuarios.
 4. **Siembra de la BD** (~3h10m medidas) + suscripción + soak ≥24h hasta lag≈0. Sin impacto.
