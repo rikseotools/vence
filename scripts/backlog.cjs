@@ -87,6 +87,24 @@ function arg(name) {
 // con dos reglas distintas, y una sesión llegaba a verse a sí misma como ajena.
 const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'));
 
+/**
+ * Deja constancia de un roce en el bus de fricción de [T-423]. Detached y en silencio: nada de
+ * esto puede añadir latencia ni tumbar un comando del backlog.
+ *
+ * Se registran las DOS caras del gate de verificación —cuándo para y cuándo se rodea con
+ * `--igualmente`—, porque el ratio entre ambas es lo que dice si sigue vivo o si se ha convertido
+ * en un peaje que todo el mundo esquiva.
+ */
+function friccion(clase, guard, detalle) {
+  try {
+    const a = ['--clase', clase, '--guard', guard];
+    if (detalle) a.push('--detalle', String(detalle).slice(0, 200));
+    require('child_process')
+      .spawn(process.execPath, [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), ...a], { detached: true, stdio: 'ignore' })
+      .unref();
+  } catch { /* la telemetría nunca estorba */ }
+}
+
 const cmd = process.argv[2];
 const sid = resolverSid({ repo: REPO }).sid;
 const s = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
@@ -689,6 +707,35 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.error(`     node scripts/backlog.cjs pause ${id} --hasta "2026-08-11 07:00" --hecho "…" --falta "…"`);
         console.error('   Si de verdad está terminada y el texto engaña:  --igualmente');
         process.exit(2);
+      }
+
+      // SEGUNDA PUERTA (T-392 F1): la de arriba mira EL TEXTO —caza al que confiesa—; esta mira
+      // LOS HECHOS, que no se pueden maquillar. Si los commits que DECLARAN esta tarea tocan una
+      // superficie servida y el `sha` vivo todavía no los incluye, la tarea no está terminada
+      // diga lo que diga el outcome. Es lo que faltó el 31/07 con T-363, que decide cuándo se le
+      // cobra a alguien y se cerró con el código en `main`, sin desplegar y sin verificar.
+      //
+      // Fail-open y silencioso ante cualquier problema: un fallo de red no puede impedir cerrar.
+      if (!process.argv.includes('--igualmente')) {
+        try {
+          const { analizar } = require(path.join(REPO, 'scripts', 'backlog', 'verificacion.cjs'));
+          const v = await analizar(id);
+          if (v.exige) {
+            const sup = v.superficies.length === 2 ? 'both' : v.superficies[0];
+            console.error(`❌ NO cerrada: ${v.motivo}.`);
+            console.error('   Su código todavía NO está vivo, así que no se puede haber verificado:');
+            for (const f of v.servidos.slice(0, 5)) console.error(`     [${f.superficie}] ${f.fichero}`);
+            if (v.servidos.length > 5) console.error(`     …y ${v.servidos.length - 5} más`);
+            console.error('   Prográmale la vuelta — el propio deploy la despierta:');
+            console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie ${sup} \\`);
+            console.error('       --hecho "…lo que ya está…" --falta "…qué mirar cuando esté vivo…"');
+            console.error('   Si de verdad ya lo verificaste (o el análisis se equivoca):  --igualmente');
+            friccion('guard_bloqueo', 'done-verificacion', id);
+            process.exit(2);
+          }
+        } catch { /* fail-open: el gate no puede tumbar un cierre por un fallo suyo */ }
+      } else {
+        friccion('guard_escape', 'done-verificacion', id);
       }
       const [row] = await s`
         UPDATE public.backlog_tasks
