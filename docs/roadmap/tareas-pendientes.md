@@ -1078,6 +1078,16 @@ incluida).
 
 
 ## Hechas
+### [T-331] ✅ [HECHA 31/07] SMS Tema 21: los arts. 50 y 52 del RD 203/2021 servían CERO preguntas
+- **Resultado: 11 preguntas vivas y verificadas contra producción, dos días antes del plazo.** El selector de artículos del Tema 21 pasa de `50 → 0` y `52 → 0` a **`50 → 6` y `52 → 5`**. Lote `gen_rd203_t331_2026-07-31`.
+- **Y no era solo el SMS: los dos artículos están escopados en 10 oposiciones ACTIVAS** con tema disponible (Administrativo del Estado T203, Madrid T22, Seguridad Social T23, CLM T12, Dip. Cuenca T18, Alcalá de Henares T12, Univ. Granada T204, País Vasco T14, Técnico Informática T108 y Aux. Admin. SMS T21). `batch:servido` comprobó **10/10** contra www.vence.es. Correr la query de cobertura cross-oposición ANTES de generar es lo que convirtió una reparación puntual en una que llega a diez sitios.
+- **Auditorías: 11/11 PERFECT en las tres** (auto-audit, ciega independiente y re-verificación adversarial con agente nuevo), **sin una sola reparación**. Registradas en `ai_verification_results` como `claude_code` + `claude_code_recheck`. El contenedor se contrastó antes contra el BOE consolidado (`BOE-A-2021-5032`): el texto en BD es idéntico al del boletín.
+- **Por qué salió a la primera, que es lo reutilizable:** es el primer lote emitido en **§8.2 puro** — se escribe la ESTRUCTURA y el texto lo renderiza `renderStructuredExplanation`, el mismo módulo que usa el serve. Así las viñetas no pueden descolocarse (van keadas al índice, no a la letra) y las 11 nacen `shuffle_safety='safe'`. Método completo en el manual, **§5.39**.
+- 🔧 **Arreglado de paso un fallo que el propio lote destapó** en `scripts/auditar-batch-input.cjs`: «del Reglamento» se descartaba como cita a OTRA norma, dejando al auditor ciego sin un artículo que la viñeta invocaba (adjuntó 7 de 8; los otros dos se salvaron de rebote porque otras viñetas los nombraban sin ese inciso). Cuando el batch va de un reglamento es el MISMO cuerpo. Corte conservador + 2 tests.
+- **NO se le escribió a la usuaria, y es deliberado (decisión de Manuel, 31/07).** Se revisó el hilo `917b1b29` y lo que se le dijo el 30/07 fue *«estarán disponibles a lo largo de esta semana»* — **no** que la avisaríamos. Responder en el hilo **manda un correo** (`respondFeedback` → `sendEmailV2` + campana), así que cerrar la ficha con un mensaje habría sido mandarle un correo no prometido por algo que ve sola al abrir el tema. El compromiso era tener las preguntas, y están.
+  - Si alguna vez hace falta dejar constancia en un hilo **sin** correo, la vía es responder con `sendEmail: false`: deja el mensaje y solo enciende la campana.
+- **Ficha hermana:** [T-332]. **Continuación natural:** [T-115] (artículos huérfanos), que es el mismo pipeline a escala.
+
 
 ### [T-355] ✅ [HECHA 31/07 — medido: no le ha pasado a nadie, y ya se avisa antes de cobrar] Solape de cobro: quien aún tiene viva la suscripción vieja puede contratar la nueva y pagar dos veces
 
@@ -1332,21 +1342,6 @@ incluida).
 - **Qué construir:** que un veredicto `correct` traiga **provenance** en `findings` — qué se consultó (id del BOE, `law_sections`, documento del hub) o, si no se consultó nada, que lo diga (`fuente: "razonado"`). Y un recuento en el barrido: *cuántos `verified_correct` vivos no declaran fuente*. Sitio: `scripts/verify-topic-scope.cjs` (`cmdRecord`) + la función SQL `record_topic_verification` + tabla `topic_scope_verification`.
 - **⚠️ Limitación que hay que asumir al hacerla, no descubrir después:** esto es **autocertificación**. Un campo que diga «miré el BOE» no prueba que se mirara. Lo único que consigue —y no es poco— es que la ausencia de fuente sea **visible y contable** en vez de indistinguible de una verificación buena. **El guardarraíl de verdad para esta clase de fallo es [T-333]**, que comprueba el hecho en lugar de preguntarlo. Si solo se va a hacer una de las dos, haz la 333.
 - **Relacionadas:** [T-333], [T-332], runbook `verificar-epigrafes-scope.md`.
-
-### [T-331] 🟠 [ABIERTO 30/07] SMS Tema 21: generar preguntas del RD 203/2021 arts 50 y 52 (hoy sirven CERO)
-- **⏳ FECHA LÍMITE: domingo 2 de agosto de 2026.** No es una estimación: es lo que se le **prometió por escrito** a una usuaria que paga, el jueves 30/07 a las 20:16, en el hilo `917b1b29`, con estas palabras: *«Ya las estamos preparando y estarán disponibles a lo largo de esta semana.»* Si llega el domingo sin estar, hemos incumplido con ella, no se nos ha pasado una tarea interna. **El backlog no tiene campo de plazo** (`snooze_until` es «no la cojas antes de», lo contrario), así que la fecha vive aquí: quien haga `claim` la lee en la ficha.
-- **Qué pasa:** en el Tema 21 de `auxiliar_administrativo_sms`, los artículos **50** («Referencia temporal de los documentos administrativos electrónicos») y **52** («Ejercicio del derecho de acceso al expediente electrónico y obtención de copias») del **RD 203/2021** están **en el temario, existen y están activos**, pero tienen **0 preguntas**. Son los **dos únicos** de todo el rango escopado (41-55) con el contador a cero, y salen listados así en el selector «🔧 Artículos» que ve el usuario.
-- **Cómo se supo:** lo reportó la usuaria **M / María Luisa** (`daluamva@gmail.com`, premium, Cieza) el 30/07 en el feedback `917b1b29`: *«falta el articulo 50, y 52 del tema 21 en los test»*. No dedujo nada, los vio en pantalla. Es la misma persona que lleva ~25 avisos de temario en 20 días con un solo fallo.
-- **Ya está respondida y el hilo cerrado** (30/07 20:16, `resolved`): se le confirmó el fallo y se le dijo que puede leer los dos artículos en el temario mientras tanto (el texto íntegro sí está cargado, 1.410 y 1.171 caracteres). O sea que ella ya no espera respuesta: **espera las preguntas**.
-- **Cómo hacerlo:** `docs/maintenance/generar-preguntas-con-ia.md`, ancladas al **texto del artículo** (los dos son cortos y muy concretos: sellado de tiempo y derecho de acceso al expediente), con la doble auditoría ciega antes de activar. **NUNCA inventar contenido normativo:** el texto sale del BOE consolidado del RD 203/2021 (`BOE-A-2021-5032`).
-- **Verificar al terminar** (no declararlo): que el selector en vivo deje de mostrar `question_count: 0` en esos dos:
-  ```bash
-  curl -s "https://www.vence.es/api/v2/test-config/articles?lawShortName=RD%20203%2F2021&positionType=auxiliar_administrativo_sms&topicNumber=21" \
-    | python3 -c "import json,sys;[print(a['article_number'],a['question_count']) for a in json.load(sys.stdin)['articles'] if a['article_number'] in ('50','52')]"
-  ```
-  Y purgar `test-config` + `test-counts` (la purga es por instancia: repetir ~6 veces).
-- **Contexto:** salió del mismo triaje que destapó la sobre-inclusión del Tema 22 (ya corregida) y el artículo 10 que faltaba en el Tema 11 (ya corregido). Ficha hermana: **[T-332]**.
-- **Al cerrar:** responder en el hilo `917b1b29` (un mensaje por hilo, sin mencionar recompensas).
 
 ### [T-329] 🟠 [ABIERTO 30/07] Construir Técnico/a Auxiliar de Conserjería de la Universidad de Jaén — se le ha dicho a una usuaria que la estamos preparando
 - **Compromiso adquirido:** Chari GAMA (`diversoprodu@gmail.com`, free, alta el 29/07, feedback `7a81b194`) preguntó si podíamos incluirla y se le respondió el 30/07 que **«todavía no lo tenemos, pero lo estamos preparando»** (decisión de Manuel). O sea que esto no es una idea: es una promesa hecha por escrito a una persona concreta que además espera aviso por su hilo cuando esté.
