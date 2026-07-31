@@ -709,8 +709,17 @@ async function despertarPorDeploy(s, shas, opts = {}) {
          WHERE id = ${id} RETURNING id, title`;
       console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
+      // Lo PRIMERO es la MARCA, no la posición (T-382, 31/07): desde ese cambio «abierta» la
+      // declara el ✅ de la cabecera, y es lo único que leen el parser, el `sync` y la deriva.
+      // Este aviso solo hablaba de mover la ficha y remataba con «el guardarraíl de CI falla si
+      // se queda en Hechas», que es FALSO: el guardarraíl de posición solo mira el sentido
+      // contrario —una ficha CERRADA que se queda en `## Abiertas`—, así que una reabierta bajo
+      // `## Hechas` pasa el CI… y sin quitarle el ✅ el sistema la sigue contando como cerrada,
+      // que es justo la deriva que se estaba deshaciendo. Verificado con el test el 31/07 [T-429].
+      console.log(`   ⚠️ AHORA quita el ✅ de su cabecera en docs/roadmap/tareas-pendientes.md`);
+      console.log(`      (es la ÚNICA marca que se lee: sin quitarlo la tarea sigue contando como cerrada)`);
+      console.log(`      Y si la ficha está bajo "## Hechas", devuélvela a "## Abiertas" para que se lea`);
+      console.log(`      (eso el CI no lo exige — solo caza lo contrario — pero deja el fichero honesto)`);
     }
 
     else if (cmd === 'release') {
