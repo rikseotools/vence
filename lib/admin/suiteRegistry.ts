@@ -341,14 +341,12 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
   },
   {
     ruta: '__tests__/integration/psychometricDataQuality.test.ts',
-    tipo: 'vigilancia',
-    hueco: 'El barrido de salud no cubre psicotécnicos: todos sus kinds son de temario/convocatoria.',
-    que: 'Calidad de las preguntas psicotécnicas.',
+    tipo: 'vigilancia', kind: 'psicotecnico_integridad',
+    que: 'Calidad de las preguntas psicotécnicas. El hueco que destapó este inventario: ya tiene detector en el barrido (T-384).',
   },
   {
     ruta: '__tests__/integration/psychometricSectionIntegrity.test.ts',
-    tipo: 'vigilancia',
-    hueco: 'Mismo hueco que la anterior: psicotécnicos fuera del barrido.',
-    que: 'Integridad de las secciones psicotécnicas.',
+    tipo: 'vigilancia', kind: 'psicotecnico_integridad',
+    que: 'Integridad de las secciones psicotécnicas. Sus tres invariantes son los que emite ahora el barrido.',
   },
 ]

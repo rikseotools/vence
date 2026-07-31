@@ -1489,6 +1489,47 @@ export class ContentHealthSweepService {
         { count: anRows.length, sample: anRows.slice(0, 15).map((r) => r.id) },
       );
 
+    // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
+    // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido no
+    // cubría los psicotécnicos en absoluto, y sus únicas comprobaciones vivían en dos tests de CI
+    // que, con ese job mudo, no le decían nada a nadie. Son 7.102 preguntas activas servidas.
+    // Los tres invariantes salen de esas suites, no de un criterio nuevo. Medido el 31/07: 0/0/0.
+    const psiRows = (await this.db.execute(sql`
+      SELECT
+        (SELECT count(*) FROM psychometric_questions WHERE is_active AND section_id IS NULL)::int AS sin_seccion,
+        (SELECT count(*) FROM psychometric_questions q JOIN psychometric_sections s ON s.id = q.section_id
+          WHERE q.is_active AND s.category_id <> q.category_id)::int AS seccion_ajena,
+        (SELECT count(*) FROM psychometric_questions WHERE is_active
+          AND (correct_option IS NULL OR correct_option < 0 OR correct_option > 3))::int AS clave_invalida
+    `)) as unknown as Array<{
+      sin_seccion: number
+      seccion_ajena: number
+      clave_invalida: number
+    }>;
+    const psi = psiRows[0] ?? { sin_seccion: 0, seccion_ajena: 0, clave_invalida: 0 };
+    {
+      const partes: string[] = [];
+      if (psi.sin_seccion) partes.push(`${psi.sin_seccion} sin sección (no se sirven)`);
+      if (psi.seccion_ajena)
+        partes.push(`${psi.seccion_ajena} con sección de otra categoría (los totales mienten)`);
+      if (psi.clave_invalida)
+        partes.push(`${psi.clave_invalida} con correct_option inválido (no se pueden corregir)`);
+      if (partes.length)
+        add(
+          'content',
+          'error',
+          null,
+          'psicotecnico_integridad',
+          `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
+          {
+            sinSeccion: psi.sin_seccion,
+            seccionAjena: psi.seccion_ajena,
+            claveInvalida: psi.clave_invalida,
+          },
+        );
+    }
+
     // ── CONTENIDO: preguntas que invocan una imagen/icono AUSENTE (visual deixis sin image_url) ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
     // El enunciado apunta a un visual ("el siguiente icono", "observa la figura", "de la imagen…")

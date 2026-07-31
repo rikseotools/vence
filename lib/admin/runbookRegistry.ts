@@ -247,6 +247,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
     claudeHace: 'localiza la ley "para el año XXXX" ya pasado que sigue escopada, la actualiza a la versión vigente (importándola si falta) y genera las preguntas que falten — NUNCA la quita si el epígrafe la pide.',
   },
+  psicotecnico_integridad: {
+    title: 'Psicotécnicos con la integridad rota (sin sección, sección ajena, clave inválida)',
+    triggerPhrase: 'revisa los psicotécnicos',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'mira los tres invariantes que emite el barrido sobre `psychometric_questions` activas y los repara UNO A UNO contra la fuente, nunca en lote: sin `section_id` (la pregunta existe pero no cae en ninguna sección, así que NO se sirve a nadie) → asignarle la sección que le corresponde por su categoría; sección de OTRA categoría (los totales por categoría mienten y la pregunta sale donde no toca) → corregir el `section_id`, no la categoría, salvo que la materia diga lo contrario; y `correct_option` fuera de 0-3 o nulo (la pregunta no se puede corregir al responderla) → verificar la clave contra el enunciado y las opciones, y si no se puede determinar, desactivar en vez de adivinar. NUNCA fijar una clave a ojo.',
+  },
   audit_note_explanation: {
     title: 'Explicación = nota de auditoría (defecto de pipeline)',
     triggerPhrase: 'revisa las explicaciones rotas',

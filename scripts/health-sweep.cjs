@@ -394,6 +394,38 @@ async function detectarTodo(c, add, now) {
     `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
 
+  // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
+  // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido de salud
+  // no cubría los psicotécnicos EN ABSOLUTO — sus 60+ kinds son todos de temario y convocatoria—,
+  // así que las únicas comprobaciones vivían en dos tests de CI que, con el job mudo, no le decían
+  // nada a nadie. Son 7.102 preguntas activas servidas a usuarios.
+  //
+  // Los tres invariantes vienen de esas dos suites (`psychometricSectionIntegrity`,
+  // `psychometricDataQuality`), no de un criterio nuevo:
+  //   · sin `section_id`  → la pregunta existe pero no cae en ninguna sección: no se sirve;
+  //   · sección AJENA     → cuenta en una categoría y su sección es de otra: los totales mienten;
+  //   · clave inválida    → `correct_option` fuera de 0-3: la pregunta no se puede corregir.
+  //
+  // `error` y no `warn` a propósito: los tres significan que la pregunta o no llega, o llega
+  // rota — no es cosmético. Medido el 31/07 sobre las 7.102 activas: 0, 0 y 0. Nace en silencio,
+  // que es como debe nacer un trinquete: si algún día habla, es que ha entrado una regresión.
+  const psi = (await c.query(`
+    SELECT
+      (SELECT count(*) FROM psychometric_questions WHERE is_active AND section_id IS NULL)::int AS sin_seccion,
+      (SELECT count(*) FROM psychometric_questions q JOIN psychometric_sections s ON s.id = q.section_id
+        WHERE q.is_active AND s.category_id <> q.category_id)::int AS seccion_ajena,
+      (SELECT count(*) FROM psychometric_questions WHERE is_active
+        AND (correct_option IS NULL OR correct_option < 0 OR correct_option > 3))::int AS clave_invalida`)).rows[0];
+  {
+    const partes = [];
+    if (psi.sin_seccion) partes.push(`${psi.sin_seccion} sin sección (no se sirven)`);
+    if (psi.seccion_ajena) partes.push(`${psi.seccion_ajena} con sección de otra categoría (los totales mienten)`);
+    if (psi.clave_invalida) partes.push(`${psi.clave_invalida} con correct_option inválido (no se pueden corregir)`);
+    if (partes.length) add('content', 'error', null, 'psicotecnico_integridad',
+      `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
+      { sinSeccion: psi.sin_seccion, seccionAjena: psi.seccion_ajena, claveInvalida: psi.clave_invalida });
+  }
+
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
   // Mirror INLINE de lib/laws/staleDatedLaw.ts — MANTENER EN SYNC (guardado por
   // __tests__/lib/laws/staleDatedLaw.test.ts). Una ley "para el año XXXX" ya

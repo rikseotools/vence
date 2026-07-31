@@ -29,10 +29,18 @@ const CARPETAS = [
   '__tests__/api/user-stats',
 ]
 
-/** Señales de que una suite habla con la base de datos. */
+/**
+ * Señales de que una suite habla con la base de datos.
+ *
+ * NO se busca el literal de construir un cliente de `pg`: para usarlo hay que importarlo, así que
+ * mirar el import cubre lo mismo. Y además escribirlo aquí ponía rojo al guardarraíl vecino
+ * (`testDbHelper.guardrail`), que caza a los tests que se abren su propia conexión en vez de pasar
+ * por el helper — leería este catálogo de marcadores como una infracción. Un guardarraíl que
+ * dispara contra otro guardarraíl es ruido, y el ruido es lo que acaba desactivando a los dos.
+ */
 const MARCAS_BD = [
-  'getAdminDb', 'getPoolerDb', 'getReadDb', 'new Client(', "from 'pg'", 'from "pg"',
-  'postgres(', 'DATABASE_URL',
+  'getAdminDb', 'getPoolerDb', 'getReadDb', "from 'pg'", 'from "pg"',
+  "require('pg')", 'postgres(', 'DATABASE_URL',
 ]
 
 function listarSuites(): string[] {
