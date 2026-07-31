@@ -818,6 +818,51 @@ incluida).
 - **Mientras no se haga:** las explicaciones de ofimática se escriben en general y sin cifras concretas. Está anotado en el cierre de [T-282].
 
 
+### [T-314] 🔴 [REABIERTA 31/07 — el arreglo del 30/07 NO restauró la señal] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones van sin IP
+- **Cómo salió:** Manuel preguntó, verificando [T-304], *"recuerda trackear cada dispositivo con cuántas cuentas inicia sesión y las IPs, eso ya lo tienes verdad?"*. El dispositivo↔cuentas sí (`user_devices`, 6.257 dispositivos, vivo). **La IP no.**
+- **Medido:** de **6.273 sesiones en 7 días, 6.189 tienen `ip_address` a NULL** — el 99%. Y es una REGRESIÓN con fecha exacta:
+
+  | mes | sesiones | con IP |
+  |---|---|---|
+  | 2026-05 | 21.730 | **82,1 %** |
+  | 2026-06 | 17.829 | **80,4 %** |
+  | 2026-07 | 20.297 | **6,6 %** |
+
+  Por día: 02/07 → 67,8 % · 03/07 → 55,3 % · **04/07 → 8,2 %** · y desde entonces ~1 %.
+- **CAUSA (diagnosticada, no supuesta):** `trackSessionIP()` (`contexts/AuthContext.tsx`) se invoca **en un solo sitio**: dentro del listener de auth, en el evento `SIGNED_IN`/`SIGNED_UP`. Ese listener es el de **Supabase Auth**. El **03/07 se flipeó a Auth.js** (`NEXT_PUBLIC_AUTH_PROVIDER=authjs`) y ese evento dejó de dispararse para casi todos los logins, así que **el endpoint dejó de llamarse**. La fecha del desplome coincide exactamente.
+- **Lo que NO es, para que nadie lo busque donde no está:** el endpoint `/api/auth/track-session-ip` **funciona** — las pocas llamadas que le llegan terminan bien (`request_completed`, cero errores en 7 días). Y tampoco es el problema de [T-089] con `getClientIp()`/`CF-Connecting-IP`, que es sobre **qué IP es fiable** tras cambiar de CDN: aquí no llega ninguna IP porque **no se llama a nadie**. Son dos fallos distintos sobre la misma señal.
+- **Por qué importa (y por qué no es solo cosmético):** la IP es la señal que DESEMPATA los casos dudosos del antifraude. Dos cuentas con la misma huella de hardware pero IPs distintas son probablemente dos personas con el mismo modelo de móvil; con la misma IP, es la misma casa. Sin ella:
+  - el detector `multi_account_reg_ip` y el análisis por IP del runbook de fraudes trabajan a ciegas;
+  - la revisión de la sombra de [T-304] pierde su mejor criterio para separar granja de coincidencia;
+  - y la geolocalización de sesión (país/ciudad) se pierde con ella.
+- **Cómo (en este orden):**
+  1. **Reproducir el flujo real de Auth.js** y comprobar en qué evento hay que colgar el tracking ahora. Es un gancho colgado del proveedor viejo, así que la pregunta correcta no es "por qué falla" sino "cuál es el evento equivalente".
+  2. **Colgarlo de algo que no dependa del proveedor de auth.** Si el gancho vuelve a vivir en un evento de librería, el próximo cambio de auth lo rompe otra vez y tampoco nos enteraremos. Candidato: el propio `/api/auth/token` o el primer request autenticado, que existen sea cual sea el proveedor.
+  3. **Guardarraíl del silencio.** Esto llevaba **27 días roto sin una sola señal** —igual que el enforcement de [T-304]—: nadie vigila que un writer DEJE de escribir. Una regla del tipo «el % de sesiones con IP cae por debajo de X» lo habría cazado el 4 de julio. Es el mismo patrón que `device_limit_mudo`.
+  4. Verificar contra el histórico: el 80 % de junio es el listón, no el 100 % (siempre hubo sesiones sin IP).
+- **Relacionado:** [T-304] (la sombra que quería usar la IP como desempate), [T-089] (`getClientIp` agnóstico de CDN, hecho y sin desplegar — complementario, no lo mismo), `docs/runbooks/revisar-fraudes.md`.
+- **✅ ARREGLADO (30/07) — la causa exacta, confirmada en el código:** en el adaptador de Auth.js los eventos se emulan por polling y la línea que decide es `const event = first ? 'INITIAL_SESSION' : uid ? 'SIGNED_IN' : 'SIGNED_OUT'`. Con la cookie de 30 días, **quien vuelve ya logueado produce `INITIAL_SESSION` y jamás `SIGNED_IN`** — y el tracking colgaba solo de `SIGNED_IN`. Ese ~1% que seguía registrando eran los logins frescos dentro de la misma pestaña.
+- **El arreglo NO es "añadir el evento que falta"**, porque eso volvería a romperse en el siguiente cambio de proveedor y otra vez en silencio. La condición pasa a ser **«hay usuario y hace horas que no registramos su IP»**, que es cierta con Auth.js, con Supabase y con lo que venga: núcleo puro `lib/security/sessionIpTracking.ts` (`shouldTrackSessionIp`), invocado desde `INITIAL_SESSION` **y** `SIGNED_IN`.
+- **Ventana de 6 h con deduplicación por usuario**, para que una navegación no sea una escritura (la lección de `auth_token_mint_waste`). Con una excepción deliberada: **cambiar de cuenta en el mismo navegador registra al instante**, sin esperar a que venza la ventana — es la firma exacta del farmeo multicuenta y el dato que más interesa capturar. De paso, ahora manda la huella v2.
+- **Capas:** 18 tests del núcleo (frontera exacta de la ventana, cambio de cuenta, reloj hacia atrás, marca corrupta → registrar) · **guardarraíl de cableado** que exige que el disparo esté en `INITIAL_SESSION` y que la decisión viva en el núcleo, **validado por mutación** (quitarlo lo pone rojo) · **alerta `session_ip_coverage_drop`** (cobertura <40 % con volumen ≥200 sesiones/24 h): contra producción hoy diría **1.096 sesiones, 0 % → dispara**, y habría avisado el 04/07 con su 8 % · **E2E `e2e/authed/session-ip-se-registra.spec.ts`** con `vence-sim`, que es la ÚNICA capa que ve el fallo real —un navegador cargando con sesión viva—: intercepta la petición, así que no escribe nada en producción.
+- **⏳ Pendiente de desplegar** para que surta efecto. **Verificación:** que la cobertura de IP suba del ~1 % actual hacia el 70-85 % histórico, y que `session_ip_coverage_drop` deje de disparar.
+
+
+- **✅ DESPLEGADO Y VIVO (30/07, `67ae7f56`).** ⏳ **Verificar en 24-48 h:** que la cobertura de IP suba del ~1 % actual hacia el **70-85 %** histórico (`SELECT count(ip_address)*100.0/count(*) FROM user_sessions WHERE created_at >= NOW()-INTERVAL '24 hours'`) y que `session_ip_coverage_drop` deje de disparar. Si sigue en el 1 %, el disparador no se está ejecutando: mirar si `/api/auth/track-session-ip` recibe llamadas (antes eran 35 en 7 días con 6.270 sesiones).
+- **Por qué importa para el antifraude:** sin IP, el análisis de la sombra pierde su mejor criterio para separar una granja de una coincidencia (misma huella + IP distinta = probablemente otra persona con el mismo modelo de móvil; misma IP = la misma casa).
+- **🔴 VERIFICACIÓN POST-DEPLOY FALLIDA (31/07, revisión de salud).** El fix está VIVO —frontend task-def **586**, desplegada el 30/07 a las 22:57 UTC— y la cobertura **no ha vuelto**:
+
+  | ventana | sesiones | con IP |
+  |---|---|---|
+  | desde la task-def 586 (8 h) | 98 | **2 (2 %)** |
+  | 30/07 completo | 1.025 | 148 (14,4 %) |
+  | 29/07 (PRE-fix) | 1.076 | 148 (13,8 %) |
+
+  Es decir: la cifra post-deploy **no se distingue de la de antes del arreglo**, y sigue a 60 puntos del listón de 80 % que fija esta misma ficha.
+- **La pista de dónde mirar, medida:** `/api/auth/track-session-ip` **sí recibe llamadas** (`request_completed`, sin errores), pero solo **3-13 por hora** contra **40-120 sesiones/hora**. O sea: el gancho nuevo dispara —el cableado a `INITIAL_SESSION` funciona— pero en una fracción pequeña de las cargas. Las sospechas a descartar por orden, sin darlas por ciertas: (a) la **ventana de deduplicación de 6 h** por usuario, que con sesiones que se re-crean muchas veces al día haría que la mayoría de filas de `user_sessions` nazcan sin IP aunque el usuario sí esté registrado; (b) que la fila de `user_sessions` se **cree después** de la llamada y por eso no la reciba; (c) que el usuario mayoritario no pase por la rama instrumentada.
+- **Lo que esto enseña, y es lo que hay que llevarse:** la ficha se cerró declarando el arreglo, no midiéndolo — la verificación quedó escrita como pendiente («que la cobertura suba hacia el 70-85 %») y nadie la ejecutó. La alerta `session_ip_coverage_drop` sí hizo su trabajo y siguió disparando (30/07 11:05, «0 % de 1.108 sesiones»); es la señal que destapó que el cierre era falso.
+- **Sigue ciego mientras tanto:** `multi_account_reg_ip` y el desempate por IP de la sombra de [T-304].
+
 ### [T-344] 🟠 [ABIERTO 30/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
 - **Cómo salió:** revisión de salud del 30/07. Era la única señal del catch-all que tocaba dinero, así que se miró primero.
 - **Qué hace mal, exactamente:** el Pase 2 pide a Stripe las suscripciones con `created: { gte: since }` y **`since` son 30 días** (`subscription-reconciliation.service.ts:145`). Con esa lista se llena `activasEnStripe`. El **Pase 3** (`detectarPremiumSinRespaldo`) recorre **TODAS** las filas `status='active'` y marca la que no esté en ese conjunto. Resultado: **toda suscripción creada hace más de 30 días se declara «sin respaldo en Stripe»**, aunque esté viva y al corriente.
@@ -5694,39 +5739,6 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   3. **Alerta `checkout_sync_mudo`**: compara **pagos contra sincronizaciones** cada hora y avisa si hubo pagos y ninguna activación inmediata. Es la única forma de ver esta avería, porque **el síntoma es una AUSENCIA de llamadas**, no un error, y ningún panel vigila ausencias.
 - **La lección, que vale más que el arreglo:** una migración de proveedor (Supabase → Auth.js) deja atrás el código que habla con el proveedor viejo en vez de con el puerto, y ese código **no falla al desplegar: falla cuando alguien lo usa**. Aquí el «alguien» era quien acababa de pagar.
 - **Relacionadas:** [T-309] (los cuatro fallos anteriores del mismo flujo de pago), `docs/roadmap/fase-b-ejecucion-authjs-rs256.md`.
-
-### [T-314] ✅ [HECHA 30/07] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones van sin IP
-- **Cómo salió:** Manuel preguntó, verificando [T-304], *"recuerda trackear cada dispositivo con cuántas cuentas inicia sesión y las IPs, eso ya lo tienes verdad?"*. El dispositivo↔cuentas sí (`user_devices`, 6.257 dispositivos, vivo). **La IP no.**
-- **Medido:** de **6.273 sesiones en 7 días, 6.189 tienen `ip_address` a NULL** — el 99%. Y es una REGRESIÓN con fecha exacta:
-
-  | mes | sesiones | con IP |
-  |---|---|---|
-  | 2026-05 | 21.730 | **82,1 %** |
-  | 2026-06 | 17.829 | **80,4 %** |
-  | 2026-07 | 20.297 | **6,6 %** |
-
-  Por día: 02/07 → 67,8 % · 03/07 → 55,3 % · **04/07 → 8,2 %** · y desde entonces ~1 %.
-- **CAUSA (diagnosticada, no supuesta):** `trackSessionIP()` (`contexts/AuthContext.tsx`) se invoca **en un solo sitio**: dentro del listener de auth, en el evento `SIGNED_IN`/`SIGNED_UP`. Ese listener es el de **Supabase Auth**. El **03/07 se flipeó a Auth.js** (`NEXT_PUBLIC_AUTH_PROVIDER=authjs`) y ese evento dejó de dispararse para casi todos los logins, así que **el endpoint dejó de llamarse**. La fecha del desplome coincide exactamente.
-- **Lo que NO es, para que nadie lo busque donde no está:** el endpoint `/api/auth/track-session-ip` **funciona** — las pocas llamadas que le llegan terminan bien (`request_completed`, cero errores en 7 días). Y tampoco es el problema de [T-089] con `getClientIp()`/`CF-Connecting-IP`, que es sobre **qué IP es fiable** tras cambiar de CDN: aquí no llega ninguna IP porque **no se llama a nadie**. Son dos fallos distintos sobre la misma señal.
-- **Por qué importa (y por qué no es solo cosmético):** la IP es la señal que DESEMPATA los casos dudosos del antifraude. Dos cuentas con la misma huella de hardware pero IPs distintas son probablemente dos personas con el mismo modelo de móvil; con la misma IP, es la misma casa. Sin ella:
-  - el detector `multi_account_reg_ip` y el análisis por IP del runbook de fraudes trabajan a ciegas;
-  - la revisión de la sombra de [T-304] pierde su mejor criterio para separar granja de coincidencia;
-  - y la geolocalización de sesión (país/ciudad) se pierde con ella.
-- **Cómo (en este orden):**
-  1. **Reproducir el flujo real de Auth.js** y comprobar en qué evento hay que colgar el tracking ahora. Es un gancho colgado del proveedor viejo, así que la pregunta correcta no es "por qué falla" sino "cuál es el evento equivalente".
-  2. **Colgarlo de algo que no dependa del proveedor de auth.** Si el gancho vuelve a vivir en un evento de librería, el próximo cambio de auth lo rompe otra vez y tampoco nos enteraremos. Candidato: el propio `/api/auth/token` o el primer request autenticado, que existen sea cual sea el proveedor.
-  3. **Guardarraíl del silencio.** Esto llevaba **27 días roto sin una sola señal** —igual que el enforcement de [T-304]—: nadie vigila que un writer DEJE de escribir. Una regla del tipo «el % de sesiones con IP cae por debajo de X» lo habría cazado el 4 de julio. Es el mismo patrón que `device_limit_mudo`.
-  4. Verificar contra el histórico: el 80 % de junio es el listón, no el 100 % (siempre hubo sesiones sin IP).
-- **Relacionado:** [T-304] (la sombra que quería usar la IP como desempate), [T-089] (`getClientIp` agnóstico de CDN, hecho y sin desplegar — complementario, no lo mismo), `docs/runbooks/revisar-fraudes.md`.
-- **✅ ARREGLADO (30/07) — la causa exacta, confirmada en el código:** en el adaptador de Auth.js los eventos se emulan por polling y la línea que decide es `const event = first ? 'INITIAL_SESSION' : uid ? 'SIGNED_IN' : 'SIGNED_OUT'`. Con la cookie de 30 días, **quien vuelve ya logueado produce `INITIAL_SESSION` y jamás `SIGNED_IN`** — y el tracking colgaba solo de `SIGNED_IN`. Ese ~1% que seguía registrando eran los logins frescos dentro de la misma pestaña.
-- **El arreglo NO es "añadir el evento que falta"**, porque eso volvería a romperse en el siguiente cambio de proveedor y otra vez en silencio. La condición pasa a ser **«hay usuario y hace horas que no registramos su IP»**, que es cierta con Auth.js, con Supabase y con lo que venga: núcleo puro `lib/security/sessionIpTracking.ts` (`shouldTrackSessionIp`), invocado desde `INITIAL_SESSION` **y** `SIGNED_IN`.
-- **Ventana de 6 h con deduplicación por usuario**, para que una navegación no sea una escritura (la lección de `auth_token_mint_waste`). Con una excepción deliberada: **cambiar de cuenta en el mismo navegador registra al instante**, sin esperar a que venza la ventana — es la firma exacta del farmeo multicuenta y el dato que más interesa capturar. De paso, ahora manda la huella v2.
-- **Capas:** 18 tests del núcleo (frontera exacta de la ventana, cambio de cuenta, reloj hacia atrás, marca corrupta → registrar) · **guardarraíl de cableado** que exige que el disparo esté en `INITIAL_SESSION` y que la decisión viva en el núcleo, **validado por mutación** (quitarlo lo pone rojo) · **alerta `session_ip_coverage_drop`** (cobertura <40 % con volumen ≥200 sesiones/24 h): contra producción hoy diría **1.096 sesiones, 0 % → dispara**, y habría avisado el 04/07 con su 8 % · **E2E `e2e/authed/session-ip-se-registra.spec.ts`** con `vence-sim`, que es la ÚNICA capa que ve el fallo real —un navegador cargando con sesión viva—: intercepta la petición, así que no escribe nada en producción.
-- **⏳ Pendiente de desplegar** para que surta efecto. **Verificación:** que la cobertura de IP suba del ~1 % actual hacia el 70-85 % histórico, y que `session_ip_coverage_drop` deje de disparar.
-
-
-- **✅ DESPLEGADO Y VIVO (30/07, `67ae7f56`).** ⏳ **Verificar en 24-48 h:** que la cobertura de IP suba del ~1 % actual hacia el **70-85 %** histórico (`SELECT count(ip_address)*100.0/count(*) FROM user_sessions WHERE created_at >= NOW()-INTERVAL '24 hours'`) y que `session_ip_coverage_drop` deje de disparar. Si sigue en el 1 %, el disparador no se está ejecutando: mirar si `/api/auth/track-session-ip` recibe llamadas (antes eran 35 en 7 días con 6.270 sesiones).
-- **Por qué importa para el antifraude:** sin IP, el análisis de la sombra pierde su mejor criterio para separar una granja de una coincidencia (misma huella + IP distinta = probablemente otra persona con el mismo modelo de móvil; misma IP = la misma casa).
 
 ### [T-309] ✅ [HECHA 30/07] Precio de fidelidad: CUATRO fallos encadenados hasta que la usuaria pudo pagar
 
