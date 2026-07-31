@@ -2,6 +2,24 @@
 
 Manual para escalar Vence a nuevas oposiciones. Marzo 2026.
 
+> ## 🚦 ANTES DE NADA: ¿esta oposición se CONSTRUYE? (regla de producto, Manuel 31/07/2026)
+>
+> **Vence construye contenido de los grupos D, C1 y C2. A1 y A2 NO, por ahora.** El motivo es de
+> negocio, no técnico: son temarios enormes (la Escala Técnica de Gestión de OO.AA. son 120 temas
+> por aspirante) para muy pocas plazas y muy pocos usuarios — el esfuerzo no se paga.
+>
+> **Catalogarlas SÍ.** El objetivo es tener la mayor base de datos de oposiciones de España, así que
+> A1/A2 entran en el catálogo, con su convocatoria, sus plazas y su seguimiento. Lo que no se hace
+> es construirles el temario.
+>
+> **Y hay una salvedad que es su sitio natural:** las oposiciones difíciles, minoritarias o con
+> muchos temas son el público de **«móntate tu propio temario»** ([T-327] y su landing [T-328]) —
+> el usuario elige leyes y artículos en vez de esperar a que alguien construya 120 temas.
+>
+> **Medido el 31/07:** de 124 oposiciones publicadas, **106 son grupo C**; solo 7 son grupo A y
+> entre las 7 suman **26 usuarios**. Caso que motivó la regla: `etgoa-sanidad-consumo` (A2, 98
+> plazas) llevaba publicada con el 17% del temario — ver [T-391].
+
 > 🏗️ **FRAMEWORK (desde 12/07/2026): las FASES 2-5 las hace el scaffolder `scripts/create-oposicion.cjs` desde un `spec.json` — NO a mano.**
 > **Gatillo:** cuando el usuario dice *"haz / crea / monta / construye la oposición X"* (o *"añade la oposición X"* para implementar una aspiracional) → este manual + el scaffolder. Flujo:
 > 1. **FASE 1 + spec (JUICIO, a mano):** investiga el temario oficial del boletín (BOE/autonómico) y **autoriza `data/temarios/<slug>.json`** — `identity` (incl. `emoji`, `badge`, `color_primario`, `aliases`, `familia`, `ccaa`, `administracion_display`), `examScoring`, `convocatoria`, `bloques`, `temario` (con epígrafes **literales**), `scope` por tema (`{topic_number: [{law, articles:[...]}|{law, wholeLaw:true}]}`), `landing`, `hitos`.
