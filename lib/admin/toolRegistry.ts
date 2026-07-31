@@ -1234,6 +1234,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'nunca respondieron una pregunta, y un denominador mal elegido convierte mantenimiento en ' +
       'alarma. Rojo <60%, ámbar <80%, sobre el suelo medido antes del arreglo.',
   },
+
+  marcar_contenedor_institucional: {
+    titulo: 'Marcar is_virtual las «leyes» que son fichas de organismos (FMI, OMS, OTAN…) y no tienen articulado',
+    ruta: 'scripts/laws/marcar-contenedor-institucional.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'node scripts/laws/marcar-contenedor-institucional.cjs [--aplicar]. Simula por defecto. ' +
+      'Criterio PURO y testeado en lib/laws/contenedorInstitucional.js: exige las TRES cosas a la ' +
+      'vez — 1 solo artículo, sin fuente registrada y DECLARADO «contenido institucional» en su ' +
+      'propio texto. Estrecho a propósito: marcar is_virtual saca la ley de la vigilancia de ' +
+      'completitud para siempre y en silencio, así que un Protocolo de la UE de un artículo NO ' +
+      'cumple. Aplicado 31/07/2026 a 7 (FMI, OMS, OTAN, FAO, EUROJUST, TEDH/TJUE, UE-instituciones, ' +
+      '375 preguntas, que se siguen sirviendo igual). Deja traza en observable_events ' +
+      '(law_marcada_virtual). Contexto: [T-026].',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */
