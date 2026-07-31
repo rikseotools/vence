@@ -550,3 +550,42 @@ describe('backlog — el despertar no depende del worktree de quien despliega (T
     expect(fn).toMatch(/if \(!sha\) return false/)
   })
 })
+
+/**
+ * «No despliegues desde donde trabajas» (T-365, 31/07/2026).
+ *
+ * Todo camino de despliegue mueve el árbol en el que corre. Si se lanza desde el worktree en el que
+ * alguien está programando, le cambia los ficheros debajo — y el lanzador, además, le deja la rama
+ * en el commit que hubiera al hacer el `fetch`.
+ *
+ * Este test existe porque el arreglo se hizo DOS veces mal antes de quedar bien, y las dos son
+ * fáciles de repetir:
+ *   1. la comprobación miraba una RUTA (`~/vence-sessions/*`) y se le escapaba `session-start.sh`,
+ *      que crea los worktrees en `.claude/worktrees/`;
+ *   2. y se coló dentro de un `[ -f ./.env.local ] && { … }`, así que solo corría a veces.
+ * Por eso aquí se exige lo concreto: que TODO script de despliegue cargue la guarda compartida.
+ */
+describe('guardia de worktree en los caminos de despliegue', () => {
+  const CAMINOS = ['deploy-frontend.sh', 'deploy-backend.sh', 'deploy-cuando-verde.sh']
+
+  it.each(CAMINOS)('%s carga la guarda compartida', (nombre) => {
+    const src = readFileSync(join(ROOT, 'scripts', nombre), 'utf-8')
+    expect(src).toContain('lib/guardia-worktree.sh')
+    expect(src).toMatch(/guardia_worktree +"/)
+  })
+
+  it('la guarda decide por GIT, no por una ruta (una ruta se esquiva moviendo la carpeta)', () => {
+    const g = readFileSync(join(ROOT, 'scripts/lib/guardia-worktree.sh'), 'utf-8')
+    expect(g).toContain('--git-common-dir')
+    // Lo que se prohíbe es DECIDIR por la ruta, no nombrarla: el comentario que explica por qué la
+    // primera versión (que miraba `~/vence-sessions/*`) estaba mal es justo lo que hay que conservar.
+    expect(g).not.toMatch(/case\s+"\$PWD/)
+    expect(g).not.toMatch(/\$HOME\/vence-sessions/)
+  })
+
+  it('ningún script de despliegue nuevo se queda sin ella', () => {
+    const todos = readdirSync(join(ROOT, 'scripts')).filter((f) => /^deploy-.*\.sh$/.test(f))
+    const sinGuarda = todos.filter((f) => !readFileSync(join(ROOT, 'scripts', f), 'utf-8').includes('guardia-worktree.sh'))
+    expect(sinGuarda).toEqual([])
+  })
+})

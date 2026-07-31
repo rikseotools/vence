@@ -17,6 +17,13 @@
 # Rollback: aws ecs update-service --cluster vence-backend --service vence-frontend \
 #             --task-definition vence-frontend:<N> --profile vence --region eu-west-2
 set -euo pipefail
+
+# No despliegues desde donde trabajas (T-365). Va AQUÍ, lo primero y fuera de cualquier
+# condicional: el primer intento se coló dentro de un `[ -f ./.env.local ] && { … }`, así que la
+# guarda dependía de que existiera ese fichero y corría después de cargar el entorno. Una guarda
+# que se ejecuta a veces no es una guarda.
+. "$(dirname "$0")/lib/guardia-worktree.sh"
+guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
 cd "$(dirname "$0")/.."
 set -a; . ./.env.local; set +a
 # Precios Stripe: fuente de verdad COMMITEADA, sourceada DESPUÉS de .env.local
