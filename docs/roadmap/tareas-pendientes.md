@@ -855,6 +855,22 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-362] 🟠 [ABIERTO 31/07] Dos verificaciones en vivo se quedaron sin dueño porque sus fichas se cerraron antes de comprobarlas
+- **Por qué existe esta ficha** (y es la lección, más que la tarea): **T-344 y T-280 se cerraron con `done` cuando en realidad estaban en «hecho, falta verificar»**. El backlog tiene un estado exacto para eso —`pause --tras-deploy`, que suelta el claim y despierta sola cuando el deploy ocurre— y no se usó. Consecuencia: el «falta comprobar» quedó escrito solo en la prosa de sus fichas, que es justo donde nadie lo va a mirar. **Una tarea cerrada no despierta con el deploy**, y por eso hizo falta esta.
+- **Qué hay que comprobar, con el backend ya desplegado:**
+  1. **[T-344] `premium_sin_respaldo` deja de acusar a quien paga.** El evento debe pasar de **`detected: 159`** (medido el 30/07, con 172 de 257 filas activas creadas hace más de 30 días) a un número pequeño y creíble.
+     ```sql
+     SELECT ts, metadata->>'detected', metadata->>'por_motivo'
+       FROM observable_events WHERE event_type='premium_sin_respaldo'
+      ORDER BY ts DESC LIMIT 3;
+     ```
+     **Y lo que de verdad importa: los que queden hay que mirarlos UNO A UNO.** Ahora sí serán candidatos reales a fuga de premium (dinero), no ruido de la ventana de 30 días. El hallazgo trae `estadoEnStripe` para saber si el cliente canceló o si el id no existe en ninguna cuenta, que son dos historias distintas.
+     De paso deberían caer ~2 correos diarios del buzón.
+  2. **[T-280] el canary del gate anti-scraping comprueba de verdad lo que dice comprobar.** Al desplegar, el workflow lo dispara solo; en su resultado, `gateAssertion` debe salir **`real`**. Si sale `omitida_veredicto_no_disponible`, el endpoint no está devolviendo el bloque `gate` y la aserción sigue sin comprobarse — o sea, el arreglo no llegó. Si sale `omitida_sujeto_saturado`, es correcto pero ese día no cubre esa aserción.
+- **Cómo se cierra:** cuando las dos estén comprobadas. Si alguna falla, **no se cierra**: se reabre la suya (T-344 / T-280) con lo medido.
+- **Para que no se repita:** al terminar algo que no se puede comprobar hasta desplegar, el cierre correcto es `pause --tras-deploy --superficie <…> --hecho "…" --falta "…"`, NUNCA `done`. El guardarraíl de CI vigila que la ficha esté en la sección correcta, pero **no** puede saber si lo que dice «hecho» estaba de verdad verificado.
+- **Relacionadas:** [T-344] (fuga de premium), [T-280] (canary del gate), [T-307] (el barrido, esa sí quedó bien aparcada con `snooze`).
+
 ### [T-357] 🟠 [ABIERTO 31/07] Origen alcanzable saltándose CloudFront: la IP marcada `trusted` es falsificable
 
 - **Qué (medido hoy, no teórico):** el ALB `vence-backend-alb-300489916.eu-west-2.elb.amazonaws.com` es **internet-facing** y su security group (`sg-04f3f6f8dadf350b3`) acepta **`0.0.0.0/0` en 80 y 443**. Con `Host: www.vence.es` sirve la app entera: `GET /api/health` → **200** con el JSON real. Las reglas del listener solo casan por `host-header`; **no hay secreto compartido con CloudFront**.
