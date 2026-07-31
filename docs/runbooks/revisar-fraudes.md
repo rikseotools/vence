@@ -184,6 +184,28 @@ enciende a ciegas:
 | **`shadow`** | evalúa y REGISTRA lo que habría pasado. **Nadie se bloquea.** ← por defecto |
 | `enforce` | corta de verdad |
 
+**⚡ ESTADO 31/07/2026: `enforce` ACTIVADO.** Decisión de Manuel, y con ella la **regla de producto
+que faltaba escrita**: *el límite free son **25 preguntas/día por cuenta Y por dispositivo**. Si en
+una casa hay dos personas, usan dos dispositivos, cada una con su cuenta.* Eso zanja la duda que
+frena a todo el que llega aquí: **una familia compartiendo ordenador limitada a 25 entre todos NO es
+un daño colateral, es el comportamiento querido.**
+
+- **Corolario para el triaje:** dos cuentas en un mismo equipo **no necesitan ser la misma persona**
+  para que el tope aplique. La marca de **fraude** sí exige evidencia (mismo nombre, alta el mismo
+  día, IP compartida); el **límite**, no. No hace falta confirmar a nadie para que el tope corte.
+- **Dónde vive el interruptor:** parámetros SSM `/vence-frontend/DEVICE_LIMIT_MODE` y
+  `/vence-backend/DEVICE_LIMIT_MODE`. Va por SSM y no por `environment` a propósito — un valor
+  horneado en la task def obliga a registrar otra para cambiarlo; por SSM se resuelve al arrancar,
+  así que **encender o apagar es cambiar el parámetro y forzar un new deployment** (~5 min, sin
+  build). Rollback inmediato: ponerlo en `shadow`.
+- **SIEMPRE las dos superficies.** `answer-and-save` hace proxy al backend cuando el canary está
+  activo, y entonces el antifraude local no corre. Con una sola, el agujero sigue abierto por la otra.
+- **Cómo se comprueba que corta de verdad** (no basta con que el deploy termine): que aparezcan
+  eventos `device_daily_limit_blocked` con **`mode:enforce`** — antes de esto el único evento de 7
+  días salía con `mode:shadow`, es decir, midiendo y dejando pasar.
+- El **defecto del código sigue siendo `shadow`** a propósito: si alguien despliega sin el parámetro,
+  el sistema mide en vez de cortar. Un fallo de configuración no puede dejar sin servicio a nadie.
+
 **El defecto es `shadow` a propósito**: un despliegue sin decidir mide, no corta. Y un valor con
 typo (`enfoce`, `activar`) tampoco se lee como `enforce` — un error de configuración no puede dejar
 a nadie sin servicio. Lo fija `__tests__/guardrails/deviceLimitModeParity.test.ts`, que además
@@ -257,5 +279,5 @@ se entienda mejor» es exactamente el problema.
 F0 (esto) = **solo detección + revisión**. Pendiente en `docs/roadmap/`:
 - **F1:** límite diario por `device_id`+IP además de por cuenta (mata el farmeo).
 - **F2:** require-device anti-curl + cap de altas free por device/IP + bloqueo de `confirmed`.
-- El límite free hoy es **25/día POR CUENTA** (`lib/api/daily-limit/config.ts`) → N cuentas = N×25. Ese es el hueco que F1 cierra.
+- ~~El límite free hoy es **25/día POR CUENTA** → N cuentas = N×25.~~ **CERRADO el 31/07/2026:** el tope es ahora por cuenta **Y por dispositivo** (`DEVICE_LIMIT_MODE=enforce`, ver arriba). Rotar cuentas en el mismo equipo ya no multiplica el cupo. Lo que sigue abierto de F1 es el límite por **IP**, que es otra ancla.
 - **El límite free cuenta RESPONDIDAS, no servidas** → es esquivable sin multicuenta: generar preguntas y no contestarlas no consume cupo (caso `anferbar987`: contador en 2, servidas 5.495). Lo hecho el 27/07 es solo **detección** — `daily_questions_served` mide el hueco pero NO lo cierra. Cambiar la base del límite a servidas es una decisión de PRODUCTO (un free que carga un test de 25 y responde 10 gastaría 25), no un arreglo técnico: no hacerlo sin OK de Manuel.
