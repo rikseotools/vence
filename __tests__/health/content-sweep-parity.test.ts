@@ -563,3 +563,46 @@ describe('universo del detector de cobertura — núcleo ↔ backend ↔ CLI', (
     expect(SCRIPT).not.toMatch(/ORDER BY \(a\.article_number\)::int/)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DÓNDE vive un detector es parte de su contrato (T-315, 31/07/2026)
+//
+// El detector de «techo de timeout» mira los endpoints de TODA la app: su resultado no depende de
+// la oposición que el barrido esté recorriendo. Nació dentro del bucle `for (const o of opos)` y
+// ahí se ejecutaba **una vez por oposición activa (~123)** calculando 123 veces lo mismo: medido,
+// ~74 s por vuelta ⇒ unas 2,5 horas por pasada. El barrido del 31/07 llevaba 47 minutos sin
+// terminar cuando se encontró.
+//
+// Y lo que lo hacía invisible: ese detector solo escribe en el log cuando su consulta FALLA. Las
+// vueltas que terminan bien no dejan rastro, así que el coste no se veía en ninguna señal — solo
+// en el reloj de la pasada entera.
+//
+// Este test es barato y fija justo eso: que siga FUERA del bucle. Nadie lo va a recordar dentro de
+// tres meses al mover un bloque de sitio.
+describe('barrido — los detectores globales NO viven dentro del bucle por oposición', () => {
+  /** Balance de llaves entre el `for (const o of opos)` y una línea: >0 = está dentro. */
+  function dentroDelBucle(src: string, marcador: string): boolean {
+    const lineas = src.split('\n')
+    const ini = lineas.findIndex((l) => l.includes('for (const o of opos)'))
+    const objetivo = lineas.findIndex((l) => l.includes(marcador))
+    expect(ini).toBeGreaterThan(-1)
+    expect(objetivo).toBeGreaterThan(-1)
+    if (objetivo < ini) return false
+    let bal = 0
+    for (let i = ini; i <= objetivo; i++) {
+      bal += (lineas[i].match(/\{/g) ?? []).length - (lineas[i].match(/\}/g) ?? []).length
+    }
+    return bal > 0
+  }
+
+  it('el detector de techo de timeout corre UNA vez por pasada, no una por oposición', () => {
+    expect(dentroDelBucle(BACKEND, 'Techo de timeout')).toBe(false)
+  })
+
+  it('el propio bucle sigue existiendo (si no, este test pasaría por vacío)', () => {
+    expect(BACKEND).toContain('for (const o of opos)')
+    // Y algo que SÍ es por oposición sigue dentro, para que el detector de arriba no sea un
+    // falso verde por haberse movido el bucle en vez del bloque.
+    expect(dentroDelBucle(BACKEND, "'temas_card'")).toBe(true)
+  })
+})

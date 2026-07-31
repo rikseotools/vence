@@ -1185,48 +1185,6 @@ export class ContentHealthSweepService {
           },
         );
 
-    // ── Techo de timeout: ¿lento, o chocando contra un corte? (T-315) ──
-    // ⚠️ ESPEJO de `lib/observability/techoTimeout.cjs`. El backend no puede importarlo (su Docker
-    // solo copia backend/src). Los detectores de latencia miran la MAGNITUD y un timeout da la
-    // misma que una lentitud real; lo que los separa es la FORMA de la cola: la lentitud adelgaza,
-    // el timeout se amontona justo antes del corte y se acaba en seco.
-    try {
-      const eps = (await this.db.execute(sql`
-        SELECT endpoint FROM observable_events
-         WHERE event_type = 'request_completed' AND duration_ms > 5000
-           AND created_at > now() - interval '14 days' AND endpoint IS NOT NULL
-         GROUP BY endpoint HAVING count(*) >= 20
-      `)) as unknown as Array<{ endpoint: string }>;
-      for (const { endpoint } of (Array.isArray(eps) ? eps : [])) {
-        const tr = (await this.db.execute(sql`
-          SELECT v.lo AS lo, v.hi AS hi,
-                 (SELECT count(*)::int FROM observable_events e
-                   WHERE e.event_type='request_completed' AND e.endpoint=${endpoint}
-                     AND e.created_at > now() - interval '14 days'
-                     AND e.duration_ms >= v.lo AND e.duration_ms < v.hi) AS n
-            FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)
-        `)) as unknown as Array<{ lo: number; hi: number; n: number }>;
-        const t = (Array.isArray(tr) ? tr : []).map((r) => ({ desdeMs: Number(r.lo), hastaMs: Number(r.hi), n: Number(r.n) }));
-        // DENSIDAD (peticiones por segundo de ancho), no cuenta bruta: los tramos no miden lo mismo.
-        // Y la referencia es el tramo anterior CON DATOS — si está vacío, cualquier densidad da «×∞»
-        // y un hueco se lee como un muro. Medido el 30/07: con cuentas salían 4 techos y solo 2 eran
-        // ciertos (theme-stats y la ruta del PDF eran colas naturales).
-        const dens = t.map((x) => x.n / ((x.hastaMs - x.desdeMs) / 1000));
-        for (let i = 1; i < t.length - 1; i++) {
-          const porEncima = t.slice(i + 1).reduce((a, x) => a + x.n, 0);
-          let ref = -1;
-          for (let k = i - 1; k >= 0; k--) { if (t[k].n > 0) { ref = k; break } }
-          if (ref >= 0 && dens[i] > dens[ref] && t[i].n >= 8 && porEncima <= Math.max(1, Math.floor(t[i].n * 0.1))) {
-            add('app', 'warn', null, 'latencia_techo_timeout',
-              `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(t[i].hastaMs / 1000)} s — ${t[i].n} peticiones entre ${t[i].desdeMs} y ${t[i].hastaMs} ms, la densidad se multiplica ×${(dens[i] / dens[ref]).toFixed(1)} y por encima solo quedan ${porEncima}`,
-              { endpoint, techoMs: t[i].hastaMs, enTecho: t[i].n, porEncima });
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      this.logger.warn(`techo de timeout no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
-    }
 
       }
 
@@ -1321,6 +1279,53 @@ export class ContentHealthSweepService {
             );
         }
       }
+    }
+
+    // ── Techo de timeout: ¿lento, o chocando contra un corte? (T-315) ──
+    //
+    // ⚠️ VA FUERA DEL BUCLE POR OPOSICIÓN, y no es un detalle de estilo (31/07/2026). Nació
+    // DENTRO, y como no depende de la oposición que se esté recorriendo —mira los endpoints de
+    // toda la app— se ejecutaba ~123 veces para calcular 123 veces lo mismo. Medido: 8 endpoints
+    // entran en el bucle interno y el peor tarda 9,2 s, así que una vuelta cuesta ~74 s… por
+    // cada oposición activa. El barrido del 31/07 llevaba 47 minutos sin terminar (su marca son
+    // 90 s) y en el log solo se veían dos `Failed query`: las vueltas que SÍ terminaban no dejan
+    // rastro, así que el coste era invisible salvo mirando el reloj de la pasada entera.
+    try {
+      const eps = (await this.db.execute(sql`
+        SELECT endpoint FROM observable_events
+         WHERE event_type = 'request_completed' AND duration_ms > 5000
+           AND created_at > now() - interval '14 days' AND endpoint IS NOT NULL
+         GROUP BY endpoint HAVING count(*) >= 20
+      `)) as unknown as Array<{ endpoint: string }>;
+      for (const { endpoint } of (Array.isArray(eps) ? eps : [])) {
+        const tr = (await this.db.execute(sql`
+          SELECT v.lo AS lo, v.hi AS hi,
+                 (SELECT count(*)::int FROM observable_events e
+                   WHERE e.event_type='request_completed' AND e.endpoint=${endpoint}
+                     AND e.created_at > now() - interval '14 days'
+                     AND e.duration_ms >= v.lo AND e.duration_ms < v.hi) AS n
+            FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)
+        `)) as unknown as Array<{ lo: number; hi: number; n: number }>;
+        const t = (Array.isArray(tr) ? tr : []).map((r) => ({ desdeMs: Number(r.lo), hastaMs: Number(r.hi), n: Number(r.n) }));
+        // DENSIDAD (peticiones por segundo de ancho), no cuenta bruta: los tramos no miden lo mismo.
+        // Y la referencia es el tramo anterior CON DATOS — si está vacío, cualquier densidad da «×∞»
+        // y un hueco se lee como un muro. Medido el 30/07: con cuentas salían 4 techos y solo 2 eran
+        // ciertos (theme-stats y la ruta del PDF eran colas naturales).
+        const dens = t.map((x) => x.n / ((x.hastaMs - x.desdeMs) / 1000));
+        for (let i = 1; i < t.length - 1; i++) {
+          const porEncima = t.slice(i + 1).reduce((a, x) => a + x.n, 0);
+          let ref = -1;
+          for (let k = i - 1; k >= 0; k--) { if (t[k].n > 0) { ref = k; break } }
+          if (ref >= 0 && dens[i] > dens[ref] && t[i].n >= 8 && porEncima <= Math.max(1, Math.floor(t[i].n * 0.1))) {
+            add('app', 'warn', null, 'latencia_techo_timeout',
+              `\`${endpoint}\` NO va lento: choca contra un TECHO de ~${Math.round(t[i].hastaMs / 1000)} s — ${t[i].n} peticiones entre ${t[i].desdeMs} y ${t[i].hastaMs} ms, la densidad se multiplica ×${(dens[i] / dens[ref]).toFixed(1)} y por encima solo quedan ${porEncima}`,
+              { endpoint, techoMs: t[i].hastaMs, enTecho: t[i].n, porEncima });
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`techo de timeout no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
     // ── APP: observable_events críticos 24h ──
