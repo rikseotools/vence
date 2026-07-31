@@ -1,8 +1,14 @@
 # Adjudicación — 8 casos críticos de T-291 (30/07/2026)
 
-> **TERCERA PASADA hecha el 30/07.** Las dos pasadas de abajo (verificación + auditoría ciega) son la
-> materia prima; esta sección es el veredicto, resuelto mirando las imágenes de opción una a una y
-> cruzando cada afirmación de interfaz contra fuente. **Nada se ha escrito todavía en la BD.**
+> **✅ CERRADO el 30/07 — adjudicado y APLICADO.** Las dos pasadas de abajo (verificación + auditoría
+> ciega) son la materia prima; esta sección es el veredicto, resuelto mirando las imágenes de opción
+> una a una y cruzando cada afirmación de interfaz contra fuente.
+>
+> **Y al tirar del hilo apareció que el problema no eran 8 preguntas.** Dos de los ocho «defectos» lo
+> eran del TEMARIO, y ese error resultó **sistémico**: los contenedores de Word llevaban el set de
+> atajos **inglés** para notas al pie/al final. Barrido completo: **6 artículos y 8 preguntas más**
+> reparados, 1 retirada. Detalle en [T-302]; el hecho fijado, en la memoria
+> `project-informatica-atajos-es-vs-en`.
 
 | pregunta | veredicto de la 3.ª pasada | acción propuesta |
 |---|---|---|
@@ -172,18 +178,19 @@ reversible: una transición a `approved` / `tech_approved` las devuelve a los te
 
 ---
 
-## Qué queda por autorizar
+## Lo aplicado (30/07, verificado contra la BD)
 
-Todo lo adjudicado arriba está **decidido pero sin escribir**. Falta el visto bueno de Manuel para:
-
-1. **Tres cambios de clave** (`55c6e0c9` C→A, `d0614236` C→D, `d94d07d9` B→C) y devolver esas tres a
+1. **Tres claves** (`55c6e0c9` C→A, `d0614236` C→D, `d94d07d9` B→C), cada una con **explicación
+   estructurada nueva y cita literal**, así que las tres pasan a ser barajables. Las tres, de vuelta a
    visible.
-2. **Devolver `a7ab2b0c` a visible sin tocar la clave** (se retiró por un error de nuestro contenedor).
-3. **Restaurar el ejemplo de `f1eadf63`** al de su propio anexo (Burgos → «BU»), que es lo que elimina
-   la ambigüedad. No es tocar un examen oficial: es deshacer una paráfrasis nuestra que contradice la
-   imagen adjunta de la propia pregunta.
-4. **Decidir `1bf7cd05`**: repararla (clave → B y reescribir la opción A como distractor claro) o
-   dejarla retirada hasta T-302.
+2. **`a7ab2b0c` devuelta a visible sin tocar la clave** — se había retirado por un error de nuestro
+   contenedor, no suyo.
+3. **`f1eadf63`**: restaurado el ejemplo de su propio anexo (Burgos → «BU»). No se tocó el examen
+   oficial: se deshizo una paráfrasis nuestra que contradecía la imagen adjunta.
+4. **`1bf7cd05` reparada por los tres sitios a la vez**, que era lo que le faltaba: el artículo se
+   amplió con la contraindicación de la vía timpánica (fuente: Manual Clínico del H. U. Virgen del
+   Rocío), la opción A —que era una segunda negativa igual de defendible— se reescribió como distractor
+   inequívoco, y la clave pasó a B, la única que da el motivo. De vuelta a visible y barajable.
 
 ## Lo que esto deja para T-302 (contenido de los contenedores)
 
