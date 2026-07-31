@@ -31,8 +31,8 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 - 💶 **UN FALLO O HALLAZGO, UNA RECOMPENSA (Manuel, 30/07/2026).** Cuando varias impugnaciones son **el mismo hallazgo** (la misma pregunta duplicada en varias versiones, el mismo error repetido en preguntas hermanas), **solo la primera cobra el euro**. Las demás se cierran **`resolved` igual** —tenían razón, y rechazarlas le enseña a no volver a avisar justo a quien nos encuentra los fallos— pero pasando **`skipRewardReason`** al endpoint con el porqué (p. ej. *«mismo hallazgo que ce143c99: la misma pregunta duplicada»*). Sin ese parámetro el euro se concede solo. Queda registrado como `dispute_reward_skipped`. La condición está **publicada** en `/recompensas`, así que no es arbitrariedad: se puede citar. Caso origen: tres impugnaciones de `pregunta_repetida` de la misma usuaria, del mismo artículo, que eran cuatro versiones de la misma pregunta.
 - 🔒 **CLAIM antes de analizar (varias sesiones a la vez).** Para que 2-10 sesiones repartan la cola SIN pisarse, **coge** cada item antes de trabajarlo: `node scripts/impugnaciones/cola.cjs next` — coge atómicamente la más antigua libre (`FOR UPDATE SKIP LOCKED`). **No hace falta pasar `--sid`: se identifica sola** por `CLAUDE_CODE_SESSION_ID` (cada sesión de Claude Code trae el suyo). `revisar-impugnacion.cjs <id>` también **la reserva de verdad** al abrir el dossier — desde el 31/07 la condición viaja DENTRO del `UPDATE`, así que **arbitra la base de datos**: si no te la da, es de otra y te lo dice en rojo. Antes decidía en JavaScript y escribía sin condición, de modo que dos sesiones que leían «libre» a la vez la escribían las dos y la segunda pisaba a la primera **en silencio** (pasó con un feedback de un usuario). **Y la reserva ya NO caduca por reloj:** caduca cuando MUERE su sesión (deja de latir), con un suelo de 2 h por debajo del cual no se toca. Así una revisión larga pero VIVA la conserva sin tope de horas, y un ordenador apagado la libera solo. Ver [T-412]. `cola.cjs list` muestra la cola con quién tiene qué. **No analices un item que otra sesión ya está revisando.**
 - 🔬 **SI EL FALLO PUEDE SER SISTÉMICO, MÍRALO EN LA BD ANTES DE CERRAR (Manuel, 30/07/2026).** Una impugnación llega por UNA pregunta, pero casi nunca es un caso aislado: quien la escribe solo ha visto la punta. **Antes de responder, mide en la base de datos cuántos casos iguales hay** — mismo artículo, misma ley, mismo patrón — y decide con ese número si basta con arreglar esa pregunta o hace falta ficha aparte. Ejemplo real (30/07): una usuaria impugnó una pregunta repetida sobre los capítulos del Título I; al medir aparecieron **cuatro versiones de esa misma pregunta** y, en ese artículo, **100 pares de enunciados casi idénticos entre 136 preguntas activas**. Arreglar solo la suya habría dejado el problema intacto y a ella impugnando de una en una. *Consulta útil para duplicados: agrupar por `primary_article_id` y comparar enunciados normalizados (solape de palabras ≥70%).*
-  - 🔁 **«Esto ya me salió con OTRA respuesta correcta» → ES la firma de una gemela con clave contradictoria, y ya hay herramienta: `node scripts/calidad/duplicados-exactos.cjs`** (núcleo puro `lib/calidad/duplicados.js`; **no** lo escribas otra vez — `tools:buscar -- duplicadas` no lo devuelve porque el registro lo nombra «duplicad**os**»). El recuerdo del usuario suele ser exacto aunque él dude: el 31/07 Laura Zurdo dijo *«creo recordar… y la respuesta correcta era 64.000»* y había **cuatro versiones** de esa pregunta, **dos servidas a la vez con claves opuestas**. **La banda se decide por el TEXTO de la opción correcta, NUNCA por `correct_option`** (las copias vienen barajadas y el índice difiere de forma legítima).
-  - 🧬 **Al adjudicar una gemela, la explicación te dice cuál es la mala.** Estos clones nacen de **cambiar un detalle del enunciado y dejar la clave y la explicación de la variante original**, así que la errónea se delata sola: preguntaba por `>` y su explicación describía `<`; decía *«el detalle está en que NO aparece entre comillas»* cuando su enunciado sí las llevaba. Antes de decidir por criterio propio, **lee las dos explicaciones**: normalmente una contradice a su propio enunciado. Verificado así el 31/07 en 5 grupos / 12 preguntas ([T-408]).
+  - 🧰 **Para «pregunta repetida» NO improvises la consulta: `node scripts/calidad/duplicados-exactos.cjs`** (31/07/2026). Simula por defecto y cubre los **dos** bancos: `--banco legislativas` (jubila con `retired_duplicate`, TERMINAL) y `--banco psicotecnicas` (desactiva con `is_active=false`, reversible). Y `--parafraseadas` saca la clase que el corte exacto **no puede ver**: mismas opciones con el enunciado redactado distinto — la que se le escapó entera a la deduplicación de mayo y la que destapó la impugnación `b6787619`. El criterio vive en `lib/calidad/duplicados.js` (con tests) y tiene dos guardas que no son opcionales: la banda se decide por el **TEXTO** de la respuesta correcta y nunca por `correct_option` (las copias vienen barajadas), y en psicotécnicas la clave del grupo lleva la huella de `image_url`+`content_data` (sin ella, 95 de 98 grupos son falsos positivos). Colas abiertas: [T-408] (legislativas) y [T-410] (psicotécnicas).
+  - 🧬 **Al adjudicar una gemela, la explicación te dice cuál es la mala — no lo decidas por criterio propio.** Estos clones nacen de **cambiar un detalle del enunciado dejándoles la clave y la explicación de la variante original**, así que la errónea se delata sola: una preguntaba por `>` y su explicación describía `<`; otra decía *«el detalle está en que NO aparece entre comillas»* cuando su propio enunciado sí las llevaba. **Lee las dos explicaciones antes de elegir**: normalmente una contradice a su enunciado. Y **fíate del recuerdo del impugnante aunque él dude**: el 31/07 Laura Zurdo escribió *«creo recordar… y la respuesta correcta era 64.000»* y había cuatro versiones de esa pregunta, dos servidas a la vez con claves opuestas. Verificado así en 5 grupos / 12 preguntas ([T-408]).
 - **UNA POR UNA.** Resolver cada impugnación de forma **individual y completa** (§2): su propio análisis, su propio borrador, su propia aprobación y su propio email. **NUNCA agrupar** varias impugnaciones del mismo usuario en un solo mensaje/email, aunque compartan causa raíz o sea el mismo usuario. El análisis de denominador común (§7.5) sirve para **entender** el fallo, no para **fusionar** la respuesta. No presentar análisis de varias a la vez: terminar una (analizar → borrador → OK → cerrar) antes de empezar la siguiente.
 - SIEMPRE obtener el **nombre real** del usuario antes de redactar (§11). Nombre claramente ficticio → "Hola," sin nombre.
 - Cerrar SIEMPRE vía endpoint `/api/v2/dispute/resolve` — nunca UPDATE directo (§6, §15).
@@ -705,6 +705,43 @@ Equipo de Vence
 - Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
 - **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
+
+### 6.0.bis Cuando NO tiene razón: enseñarle, no ganarle la discusión (31/07/2026)
+
+**Regla:** demostrar que la pregunta está bien **no basta**. La respuesta tiene que llevar el texto
+**literal**, el **enlace** para que lo compruebe él mismo, y sobre todo **reconstruir por qué él vio
+otra cosa**. Un usuario que se queda sin argumentos no es lo mismo que un usuario que lo entiende, y
+solo el segundo vuelve a estudiar tranquilo.
+
+**El caso (`349b5132`, Estela).** Impugnó `desacuerdo_correcta` con una sola palabra:
+*«Desactualizado»*. **No tenía razón** — el párrafo está en el texto vigente. La respuesta que se le
+dio hizo cuatro cosas, y las cuatro cuentan:
+
+1. **Dijo dónde está y por qué se pasa por alto:** *«dentro de la letra c) del artículo 9.2. Va en
+   mitad de esa letra, sin punto y aparte»*. Explica su error sin culparla de nada.
+2. **Citó el párrafo literal**, con las elisiones marcadas `(…)`, y dio el **enlace con ancla**
+   (`…#a9`) para que lo viera ella misma.
+3. **Reconstruyó lo que ELLA estaba mirando** — la pieza que de verdad la convenció: *«Esa redacción
+   la introdujo la Ley 11/2022… La anterior no hablaba de dos meses, sino de una autorización previa
+   de tres, así que si el texto que ves dice eso, tienes seleccionada una redacción antigua (en el
+   BOE hay un desplegable "Seleccionar redacción")»*. No solo le dijo que se equivocaba: le dijo
+   **en qué** se equivocaba y **dónde está el botón** para que no le vuelva a pasar.
+4. **Cogió su propio argumento y le dio la vuelta:** ella citaba la disposición adicional octava, y
+   la respuesta contesta *«tu lectura es correcta… justo por eso confirma que el plazo existe»*.
+   Llevarla a la conclusión con su propio razonamiento, en vez de contradecirla.
+
+**Cómo terminó:** replicó a los pocos minutos diciendo *«no había caído en que estaba consultando
+una redacción distinta, ahora me ha quedado completamente claro»*, se disculpó por insistir y añadió
+que **por esa atención va a contratar Premium**. Es decir: una impugnación **rechazada en el fondo**
+acabó en intención de compra. El «cómo» pesó más que el «quién tenía razón».
+
+> **Tres asteriscos, para que nadie saque de aquí la lección equivocada:**
+> · **Tardamos 25,3 horas** en contestarle, no minutos (ella lo llama «rapidez», pero el número es
+>   ese; no lo uses para concluir que un día de espera está bien).
+> · **Sigue en `free`**: dijo que pagaría, no ha pagado. No lo cuentes como conversión.
+> · **Es 1 caso entre 29** réplicas escritas por una persona en toda la historia (de 427 con
+>   `appeal_text`, **398 son la conformidad automática** que nadie escribió). Esto es un ejemplo de
+>   cómo redactar, **no** un patrón del que derivar reglas de proceso.
 
 Una vez aprobado, **llamar al endpoint `/api/v2/dispute/resolve`** (NO hacer UPDATE directo en BD):
 
