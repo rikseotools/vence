@@ -1,0 +1,427 @@
+[
+  {
+    "question_id": "56c32e28-d91d-4e66-aabf-6ddb7b6b950b",
+    "servidas": 297,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "En relación con los estados excepcionales regulados en el artículo 116 de la Constitución, ¿en qué caso se requiere la autorización del Congreso de los Diputados?",
+    "opciones": {
+      "A": "Para la declaración del estado de sitio",
+      "B": "Para la prórroga del estado de excepción.",
+      "C": "Para la declaración del estado de alarma.",
+      "D": "En todos los casos anteriores."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116 de la Constitución distingue distintos requisitos de intervención del Congreso según el estado excepcional y la fase, declaración o prórroga, de que se trate.\n\n> **CE, art. 116.3**\n> \"no podrá exceder de treinta días, prorrogables por otro plazo igual, con los mismos requisitos.\"\n\n**Por qué B es correcta:** La prórroga del estado de excepción exige los mismos requisitos que su declaración inicial, es decir, la autorización previa del Congreso de los Diputados.\n\n**Por qué las demás son incorrectas:**\n- **A)** El estado de sitio no se autoriza: es el propio Congreso quien lo declara por mayoría absoluta a propuesta del Gobierno, sin un trámite previo de autorización.\n- **C)** La declaración del estado de alarma corresponde al Gobierno, que solo debe dar cuenta al Congreso; la autorización previa se exige para su prórroga, no para su declaración.\n- **D)** No todos los supuestos exigen autorización previa del Congreso: la declaración del estado de alarma solo requiere dar cuenta, y el estado de sitio lo declara directamente el propio Congreso."
+  },
+  {
+    "question_id": "0862d475-2e27-4aad-852b-63d456a98375",
+    "servidas": 296,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Abrimos una consola de Windows PowerShell con un usuario administrador y escribimos: certmgr.msc ¿Qué sucederá?",
+    "opciones": {
+      "A": "Nos dice que no se reconoce como un comando interno y externo.",
+      "B": "Se abre la herramienta de administración de certificados.",
+      "C": "No recibimos respuesta alguna.",
+      "D": "Se abre la herramienta para certificar archivos de Windows."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo describe qué hace exactamente el comando certmgr.msc y desde qué entornos puede lanzarse.\n\n> **Windows 11, art. 1**\n> \"Win+R → `certmgr.msc`, o desde una consola de PowerShell o CMD.\"\n\n**Por qué B es correcta:** Ejecutar certmgr.msc desde una consola de PowerShell abre la consola del Administrador de certificados, tal y como recoge el artículo al describir sus formas de acceso.\n\n**Por qué las demás son incorrectas:**\n- **A)** El sistema sí reconoce certmgr.msc como comando: el artículo lo describe expresamente como una utilidad ejecutable desde PowerShell o CMD.\n- **C)** No es cierto que no haya respuesta alguna: el comando abre la consola del Administrador de certificados de Windows.\n- **D)** certmgr.msc no abre una herramienta para «certificar archivos»: abre el Administrador de certificados, que gestiona certificados de seguridad instalados en el sistema, no certifica archivos."
+  },
+  {
+    "question_id": "540c1a78-51af-422c-859e-5b081fe8fb2c",
+    "servidas": 295,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Conforme al artículo 116 CE, mientras esté declarado el estado de alarma:",
+    "opciones": {
+      "A": "Podrá procederse automáticamente a la disolución del Congreso, asignando a una Comisión ad hoc las competencias al respecto.",
+      "B": "Se procederá de inmediato a la disolución del Congreso, asumiendo las competencias la Diputación Permanente.",
+      "C": "Podrá procederse a la disolución del Congreso, si así lo acuerdan por mayoría simple.",
+      "D": "No podrá procederse a la disolución del Congreso, quedando automáticamente convocadas las Cámaras si no estuvieren en período de sesiones."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.5 CE protege el funcionamiento de las Cámaras mientras esté vigente cualquiera de los estados excepcionales.\n\n> **CE, art. 116.5**\n> \"No podrá procederse a la disolución del Congreso mientras estén declarados algunos de los estados comprendidos en el presente artículo, quedando automáticamente convocadas las Cámaras si no estuvieren en período de sesiones.\"\n\n**Por qué D es correcta:** El artículo 116.5 impide expresamente la disolución del Congreso durante los estados de alarma, excepción y sitio, y ordena convocar automáticamente las Cámaras si no estuvieran en período de sesiones.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Constitución no prevé que una Comisión ad hoc asuma competencias del Congreso durante el estado de alarma; la disolución simplemente no puede producirse.\n- **B)** El texto constitucional no ordena disolver el Congreso durante el estado de alarma, sino justamente lo contrario: impide su disolución.\n- **C)** La disolución no queda condicionada a un acuerdo por mayoría simple: el artículo la prohíbe directamente mientras el estado de alarma esté vigente."
+  },
+  {
+    "question_id": "46a77905-c177-4a3d-9eb8-d739dccc940d",
+    "servidas": 295,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "El estado de excepción será declarado por:",
+    "opciones": {
+      "A": "El Gobierno, dando cuenta a las Cortes Generales.",
+      "B": "El Gobierno, previa autorización de las Cortes Generales.",
+      "C": "El Congreso de los Diputados a propuesta del Gobierno.",
+      "D": "Ninguna de las respuestas anteriores es correcta."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.3 CE precisa qué órgano concreto autoriza la declaración del estado de excepción y en qué momento debe intervenir.\n\n> **CE, art. 116.3**\n> \"previa autorización del Congreso de los Diputados.\"\n\n**Por qué D es correcta:** Es la correcta porque el procedimiento exacto no aparece enunciado en ninguna alternativa: el estado de excepción lo declara el Gobierno mediante decreto acordado en Consejo de Ministros, y con autorización previa del Congreso de los Diputados —no de las Cortes Generales en su conjunto, ni por declaración directa de la Cámara.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Gobierno no se limita a dar cuenta al Congreso en el estado de excepción; ese trámite, más ligero, corresponde al estado de alarma.\n- **B)** La autorización no la presta «las Cortes Generales» como conjunto, sino específicamente el Congreso de los Diputados.\n- **C)** El estado de excepción no lo declara el Congreso a propuesta del Gobierno; esa es la fórmula prevista para el estado de sitio."
+  },
+  {
+    "question_id": "2e31f3c3-e556-41c2-bbd4-71db82b1231c",
+    "servidas": 295,
+    "es_examen_oficial": true,
+    "ley": "Access 365",
+    "articulo": "4",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/92fca46a-1592-4139-a0d0-656ece00f5f9.txt",
+    "enunciado": "Vamos a crear un informe en una base de datos de Access 365. ¿Cuál de las siguientes opciones indica de forma correcta el tipo de objetos sobre los que podemos crear el informe?",
+    "opciones": {
+      "A": "Sólo Consultas.",
+      "B": "Consultas y Formularios.",
+      "C": "Sólo Formularios.",
+      "D": "Tablas y Consultas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "En Access 365, los informes toman sus datos de un origen concreto entre los distintos objetos de la base de datos.\n\n> **Access 365, art. 4**\n> \"basándose en la tabla o consulta seleccionada en el panel de navegación.\"\n\n**Por qué D es correcta:** Un informe se puede crear basándose en una Tabla o en una Consulta del panel de navegación.\n\n**Por qué las demás son incorrectas:**\n- **A)** Limitarlo solo a Consultas deja fuera a las Tablas, que también sirven como origen de un informe.\n- **B)** Los Formularios están pensados para la introducción y visualización de datos, no como origen de un informe.\n- **C)** Limitarlo solo a Formularios deja fuera a Tablas y Consultas, que sí sirven como origen de un informe."
+  },
+  {
+    "question_id": "ca719fc7-0b6f-4dd3-b613-77048d89b242",
+    "servidas": 290,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "De los sistemas de archivos propuestos, indique cuál es el sistema estándar en Windows 11:",
+    "opciones": {
+      "A": "APFS",
+      "B": "JFS",
+      "C": "F2FS",
+      "D": "NTFS"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Windows 11 necesita un sistema de archivos concreto para instalarse y gestionar sus unidades internas.\n\n> **Windows 11, art. 1**\n> \"es el sistema de archivos estándar en Windows 11. Windows 11 requiere una partición NTFS para su instalación.\"\n\n**Por qué D es correcta:** NTFS es el sistema de archivos estándar de Windows 11, con soporte para permisos, cifrado y archivos de gran tamaño.\n\n**Por qué las demás son incorrectas:**\n- **A)** APFS es el sistema de archivos propio de los dispositivos Apple (macOS, iOS), no de Windows.\n- **B)** JFS es un sistema de archivos desarrollado para entornos Unix/Linux, ajeno a Windows.\n- **C)** F2FS se diseñó para memorias flash en Linux y no se emplea en Windows."
+  },
+  {
+    "question_id": "f32bd482-be64-45c1-9d22-8414a6bdf9ec",
+    "servidas": 290,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "No podrá procederse a la disolución del Congreso de los Diputados:",
+    "opciones": {
+      "A": "Durante la vigencia del estado de alarma.",
+      "B": "Durante la vigencia del estado de excepción.",
+      "C": "Durante la vigencia del estado de sitio.",
+      "D": "Todas las respuestas son correctas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.5 CE extiende la prohibición de disolver el Congreso a los tres estados excepcionales regulados en este artículo.\n\n> **CE, art. 116.5**\n> \"mientras estén declarados algunos de los estados comprendidos en el presente artículo\"\n\n**Por qué D es correcta:** El artículo 116.5 se refiere conjuntamente a «algunos de los estados comprendidos en el presente artículo», de modo que la prohibición de disolver el Congreso opera durante los tres: alarma, excepción y sitio.\n\n**Por qué las demás son incorrectas:**\n- **A)** La prohibición de disolución alcanza también al estado de alarma, uno de los tres estados a los que se refiere el artículo 116.\n- **B)** La prohibición de disolución alcanza también al estado de excepción, comprendido igualmente en este artículo.\n- **C)** La prohibición de disolución alcanza también al estado de sitio, el tercero de los estados regulados en el artículo 116."
+  },
+  {
+    "question_id": "2b2ae54f-03b7-4f06-8208-319112d8f96f",
+    "servidas": 289,
+    "es_examen_oficial": true,
+    "ley": "Access 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2fd741a4-26af-439c-a8c1-b2507f6e4cb5.txt",
+    "enunciado": "Indique cuál es el tamaño máximo que puede almacenar un campo de tipo “Datos adjuntos” en una tabla de Access 365.",
+    "opciones": {
+      "A": "Únicamente lo limita el espacio disponible en el disco duro.",
+      "B": "Hasta 2GB.",
+      "C": "255 caracteres.",
+      "D": "64 bytes."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El tipo de campo Datos adjuntos de Access 365 tiene un límite de tamaño propio del formato .accdb.\n\n> **Access 365, art. 1**\n> \"Límite de 2 GB por base de datos .accdb para todos los adjuntos.\"\n\n**Por qué B es correcta:** Los archivos adjuntados en un campo de tipo Datos adjuntos quedan sujetos al límite de 2 GB del formato .accdb.\n\n**Por qué las demás son incorrectas:**\n- **A)** No queda limitado únicamente por el espacio en disco: el formato .accdb impone su propio tope de 2 GB para los adjuntos.\n- **C)** 255 caracteres es el límite del tipo de campo Texto corto, no el de Datos adjuntos.\n- **D)** 64 bytes es una cifra demasiado pequeña para almacenar archivos adjuntos como imágenes o documentos."
+  },
+  {
+    "question_id": "396788b3-5c7b-436d-8045-86e006560fb7",
+    "servidas": 289,
+    "es_examen_oficial": true,
+    "ley": "Ley 30/1984",
+    "articulo": "23",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/920368a0-7663-4d59-8361-2c93afda6ec9.txt",
+    "enunciado": "De acuerdo con la Ley 30/1984, de 2 de agosto, de medidas para la reforma de la Función Pública, las gratificaciones por servicios extraordinarios:",
+    "opciones": {
+      "A": "No podrán ser más de dos al año.",
+      "B": "Serán fijas en su cuantía pero no en su devengo.",
+      "C": "No podrán superar la cuantía del complemento de destino.",
+      "D": "En ningún caso serán fijas en su cuantía."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo regula las retribuciones complementarias de los funcionarios, entre ellas las gratificaciones por servicios extraordinarios fuera de la jornada normal.\n\n> **Ley 30/1984, art. 23.3.d)**\n> \"en ningún caso podrán ser fijas en su cuantía y periódicas en su devengo.\"\n\n**Por qué D es correcta:** Las gratificaciones por servicios extraordinarios en ningún caso podrán ser fijas en su cuantía.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo no establece ningún límite numérico de dos gratificaciones al año.\n- **B)** Es justo lo contrario: la ley dice que en ningún caso podrán ser fijas en su cuantía ni periódicas en su devengo.\n- **C)** El artículo no vincula la cuantía de las gratificaciones con el complemento de destino."
+  },
+  {
+    "question_id": "2af2d75f-1369-4413-8785-c607afddf9af",
+    "servidas": 288,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "En Windows 11, para acceder a una red inalámbrica hay que seguir los siguientes pasos:",
+    "opciones": {
+      "A": "Barra de tareas > Red > Conectar.",
+      "B": "Barra de tareas > Seguridad de Windows > Conexión de Red.",
+      "C": "Inicio > Configuración > Accesibilidad.",
+      "D": "Inicio > Configuración > Sistema."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Windows 11 concentra el acceso rápido a las redes disponibles en los iconos de estado de la barra de tareas.\n\n**Por qué A es correcta:** El icono de red del área de notificaciones de la barra de tareas abre el panel donde aparecen las redes disponibles y el botón para conectarse.\n\n**Por qué las demás son incorrectas:**\n- **B)** Seguridad de Windows gestiona el antivirus y la protección del equipo, no la conexión a redes inalámbricas.\n- **C)** Accesibilidad reúne las ayudas de visión, audición e interacción, sin relación con la conexión Wi-Fi.\n- **D)** Sistema agrupa pantalla, sonido y almacenamiento, no la gestión de redes inalámbricas."
+  },
+  {
+    "question_id": "ec2f37e4-3a2a-4f69-b449-b0b49314e355",
+    "servidas": 288,
+    "es_examen_oficial": true,
+    "ley": "Ley 19/2013",
+    "articulo": "20",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5898cf04-5694-4570-a92e-798bb3246402.txt",
+    "enunciado": "La resolución de peticiones de acceso a expedientes llevadas a cabo en el marco de la Ley 19/2013, de 9 de diciembre, de Transparencia, Acceso a la Información Pública y Buen Gobierno se habrá de realizar, desde la recepción de la solicitud por el órgano competente para resolver, en el plazo de:",
+    "opciones": {
+      "A": "Quince días.",
+      "B": "Un mes.",
+      "C": "Dos meses.",
+      "D": "Tres meses."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo fija el plazo del que dispone el órgano competente para resolver una solicitud de acceso a la información pública.\n\n> **Ley 19/2013, art. 20.1**\n> \"en el plazo máximo de un mes desde la recepción de la solicitud por el órgano competente para resolver.\"\n\n**Por qué B es correcta:** La resolución que concede o deniega el acceso debe notificarse en el plazo máximo de un mes desde la recepción de la solicitud.\n\n**Por qué las demás son incorrectas:**\n- **A)** Quince días no es el plazo que fija este artículo para resolver.\n- **C)** Dos meses no es el plazo previsto por este artículo.\n- **D)** Tres meses es el plazo supletorio de otra normativa, pero la Ley 19/2013 fija expresamente un mes para este trámite."
+  },
+  {
+    "question_id": "e00daf08-ffbf-4baa-b0de-e484f2537d2b",
+    "servidas": 284,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "De acuerdo con el art. 116 CE, ¿cuál es la duración máxima del estado de sitio?",
+    "opciones": {
+      "A": "Quince días, prorrogables.",
+      "B": "La que determine el Congreso de los Diputados.",
+      "C": "Quince días, no prorrogables.",
+      "D": "La que determine el Gobierno."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116.4 CE regula el estado de sitio de forma distinta a los otros dos estados excepcionales, sin fijar un plazo máximo constitucional para él.\n\n> **CE, art. 116.4**\n> \"El Congreso determinará su ámbito territorial, duración y condiciones.\"\n\n**Por qué B es correcta:** Es el propio Congreso, al declarar el estado de sitio, quien fija su duración y sus condiciones, sin un límite temporal establecido en el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Constitución no fija quince días para el estado de sitio; ese plazo corresponde al estado de alarma.\n- **C)** No existe un plazo fijo de quince días para el estado de sitio: su duración la determina el Congreso, no la Constitución.\n- **D)** La duración del estado de sitio no la decide el Gobierno, sino el Congreso de los Diputados, que es quien lo declara."
+  },
+  {
+    "question_id": "eae2b572-0845-4e6a-8ee1-d5ceaf61ac89",
+    "servidas": 284,
+    "es_examen_oficial": false,
+    "ley": "RD 1708/2011",
+    "articulo": "26",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2433733e-a08b-4d01-b9ce-ae016f44b919.txt",
+    "enunciado": "Indique la incorrecta. Según el artículo 26 del Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos y su régimen de acceso, serán de acceso restringido los documentos:",
+    "opciones": {
+      "A": "Que contengan información cuya difusión pudiera entrañar riesgos para la seguridad y la defensa del Estado.",
+      "B": "Que contengan datos personales.",
+      "C": "Declarados reservados por cualquier norma.",
+      "D": "Que contengan información cuya difusión pudiera interferir en la averiguación de los delitos o la tutela judicial efectiva de ciudadanos"
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo enumera de forma tasada los supuestos que hacen que un documento de archivo sea de acceso restringido.\n\n> **RD 1708/2011, art. 26.1**\n> \"así como los declarados reservados por una norma con rango de Ley\"\n\n**Por qué C es correcta:** El artículo exige que la declaración de reservado se haga por una norma con rango de Ley, no por cualquier norma.\n\n**Por qué las demás son incorrectas:**\n- **A)** La información cuya difusión pudiera entrañar riesgos para la seguridad y la defensa del Estado sí figura entre las causas de acceso restringido.\n- **B)** Los documentos que contienen datos personales sí figuran entre las causas de acceso restringido.\n- **D)** La información cuya difusión pudiera interferir en la averiguación de delitos o en la tutela judicial efectiva sí figura entre las causas de acceso restringido."
+  },
+  {
+    "question_id": "0e2a4763-3660-421b-90e9-97c03928ed72",
+    "servidas": 283,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3943265b-f240-4527-98a3-694bf690b006.txt",
+    "enunciado": "¿Cuál de los siguientes fue el primer fabricante de microprocesadores?",
+    "opciones": {
+      "A": "Intel.",
+      "B": "ADM.",
+      "C": "IBM.",
+      "D": "Speadtrum."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "La fabricación de microprocesadores tiene un hito de origen asociado a una empresa y un modelo concretos.\n\n> **Informática Básica, art. 3**\n> \"**Intel** fue el **primer fabricante de microprocesadores** del mundo, con el **Intel 4004** (1971).\"\n\n**Por qué A es correcta:** Intel fue la empresa que fabricó el primer microprocesador del mundo, el Intel 4004, en 1971.\n\n**Por qué las demás son incorrectas:**\n- **B)** ADM no fue la empresa que fabricó el primer microprocesador; ese hito corresponde a Intel.\n- **C)** IBM fabricó ordenadores y sistemas, pero no fue la primera empresa en fabricar un microprocesador.\n- **D)** Speadtrum es un fabricante de chips posterior, no la primera empresa en fabricar microprocesadores."
+  },
+  {
+    "question_id": "344f57e2-0a56-44f7-9efd-46a202e58ecc",
+    "servidas": 282,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "5",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/1df6e323-c381-4323-9c3e-41748bfa406e.txt",
+    "enunciado": "¿Cómo se llama la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización?",
+    "opciones": {
+      "A": "Riesgo.",
+      "B": "Vulnerabilidad.",
+      "C": "Amenaza.",
+      "D": "Impacto."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo define de forma expresa el concepto que se pregunta, dentro del apartado dedicado a las amenazas informáticas.\n\n> **Informática Básica, art. 5**\n> \"informática es la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización.\"\n\n**Por qué C es correcta:** Es la definición exacta que ofrece el artículo: la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización.\n\n**Por qué las demás son incorrectas:**\n- **A)** El riesgo es un concepto distinto, relacionado con la probabilidad de que una amenaza se materialice y el daño esperado, no con la causa potencial en sí misma.\n- **B)** La vulnerabilidad es la debilidad o punto débil de un sistema que puede ser explotado, no la causa potencial del incidente.\n- **D)** El impacto es la consecuencia o daño resultante una vez que el incidente se ha producido, no la causa potencial que lo origina."
+  },
+  {
+    "question_id": "d2adb328-b340-4c27-b389-7ee6582ab716",
+    "servidas": 281,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Señale la respuesta incorrecta. De acuerdo con lo establecido en la Ley 40/2015 de Régimen Jurídico del Sector Público, las Administraciones Públicas actúan de acuerdo con los principios de:",
+    "opciones": {
+      "A": "Publicidad.",
+      "B": "Eficacia.",
+      "C": "Jerarquía.",
+      "D": "Desconcentración."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pide identificar cuál de los términos propuestos NO figura entre los principios de actuación que enumera el artículo 3 de la Ley 40/2015.\n\n> **Ley 40/2015, art. 3.1**\n> \"Las Administraciones Públicas sirven con objetividad los intereses generales y actúan de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la Constitución, a la Ley y al Derecho.\"\n\n**Por qué A es correcta:** No aparece como tal entre los principios del artículo; el precepto sí recoge la participación, la objetividad y la transparencia, pero no emplea literalmente este término.\n\n**Por qué las demás son incorrectas:**\n- **B)** Sí figura expresamente entre los principios recogidos en el artículo.\n- **C)** Sí figura expresamente entre los principios recogidos en el artículo.\n- **D)** Sí figura expresamente entre los principios recogidos en el artículo."
+  },
+  {
+    "question_id": "7e677665-da20-4514-aa7a-55a019cf5a1a",
+    "servidas": 280,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f85c3c54-1e67-417d-a3e5-a1d911acfa02.txt",
+    "enunciado": "¿Qué es una dirección IPv4?",
+    "opciones": {
+      "A": "Es un número binario de 64 bits que identifica a un interfaz en red de un dispositivo que utiliza el protocolo IPv4.",
+      "B": "Es un identificador de 24 bits expresado en código hexadecimal, para identificar de forma única la tarjeta de red.",
+      "C": "Es un identificador de 48 bits expresado en código hexadecimal, para identificar de forma única la tarjeta de red.",
+      "D": "Es un número binario de 4 octetos que identifica a un interfaz en red de un dispositivo que utiliza el protocolo IPv4."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo define de forma expresa qué es una dirección IPv4 dentro del apartado dedicado a redes e Internet.\n\n> **Informática Básica, art. 1**\n> \"es un número binario de **4 octetos** (32 bits) que identifica a una interfaz en red de un dispositivo que utiliza el protocolo IPv4.\"\n\n**Por qué D es correcta:** Coincide de forma literal con la definición del artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es correcto: 64 bits corresponde a parte del espacio de direccionamiento de IPv6, no al tamaño de una dirección IPv4.\n- **B)** No es correcto: esa descripción corresponde a una dirección MAC (y, además, con un número de bits distinto), no a una dirección IPv4.\n- **C)** No es correcto: esa descripción corresponde a una dirección MAC, no a una dirección IPv4."
+  },
+  {
+    "question_id": "c5c5bcc3-a93d-436e-a126-cd68c774b347",
+    "servidas": 280,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Para abrir el explorador de archivos en Windows 11 mediante el teclado, ¿qué teclas de las propuestas es necesario pulsar simultáneamente?",
+    "opciones": {
+      "A": "Tecla Windows + E",
+      "B": "Tecla Ctrl + O",
+      "C": "Tecla Windows + O",
+      "D": "Tecla Ctrl + E"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Windows 11 ofrece un atajo directo de teclado para abrir el Explorador de archivos sin usar el ratón.\n\n> **Windows 11, art. 1**\n> \"**Win + E** (de «Explorer»).\"\n\n**Por qué A es correcta:** Tecla Windows + E abre directamente el Explorador de archivos, independientemente de la aplicación en primer plano.\n\n**Por qué las demás son incorrectas:**\n- **B)** Ctrl + O abre el cuadro de diálogo «Abrir archivo» dentro de una aplicación activa, no el Explorador del sistema.\n- **C)** Tecla Windows + O bloquea la orientación de la pantalla en dispositivos táctiles; no abre el Explorador.\n- **D)** Ctrl + E, dentro del propio Explorador, selecciona el cuadro de búsqueda; desde fuera no lo abre."
+  },
+  {
+    "question_id": "3d606bf3-331e-4d44-9c68-f66dd88d2097",
+    "servidas": 279,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de los siguientes atajos de teclado nos permite ver la carpeta anterior en el Explorador de archivos de Windows 11?",
+    "opciones": {
+      "A": "Alt + flecha izquierda",
+      "B": "Alt + símbolo \"*\"",
+      "C": "Alt + Supr",
+      "D": "Alt + símbolo \"+\""
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "En el Explorador de archivos, la navegación hacia atrás y hacia adelante entre carpetas visitadas tiene sus propios atajos de teclado.\n\n> **Windows 11, art. 1**\n> \"| **Alt + ←** | Ir a la carpeta anterior (Atrás) |\"\n\n**Por qué A es correcta:** Alt + flecha izquierda funciona como el botón «Atrás», llevando a la última carpeta visitada antes de la actual.\n\n**Por qué las demás son incorrectas:**\n- **B)** Alt + «*» (teclado numérico) expande todas las subcarpetas del elemento seleccionado en el panel de navegación; no navega hacia atrás.\n- **C)** Alt + Supr no tiene asignada ninguna función de navegación entre carpetas en el Explorador.\n- **D)** Alt + «+» (teclado numérico) expande la carpeta seleccionada mostrando sus subcarpetas directas; no navega hacia atrás."
+  },
+  {
+    "question_id": "4a247b6c-d2f5-4bee-ab7b-bafaa151a354",
+    "servidas": 279,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "De acuerdo con la Ley 40/2015, las Administraciones Públicas:",
+    "opciones": {
+      "A": "Tienen personalidad jurídica reconocida sólo por normas constitucionales.",
+      "B": "Tienen reconocida personalidad jurídica única en sus leyes reguladoras o en sus normas de creación.",
+      "C": "Todas la tienen reconocida, pero sólo por normas reglamentarias.",
+      "D": "No tienen personalidad jurídica."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo aclara cómo se reconoce y de qué tipo es la personalidad jurídica de cada Administración Pública.\n\n> **Ley 40/2015, art. 3.4**\n> \"actúa para el cumplimiento de sus fines con personalidad jurídica única.\"\n\n**Por qué B es correcta:** Es la opción correcta: cada Administración Pública actúa con personalidad jurídica única, reconocida en sus leyes reguladoras o normas de creación.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es correcto limitar el reconocimiento a normas constitucionales: la personalidad jurídica de cada Administración procede de sus leyes reguladoras o normas de creación.\n- **C)** No es correcto limitar el reconocimiento a normas reglamentarias, que carecen de rango para atribuir personalidad jurídica a una Administración.\n- **D)** Es falso: el propio artículo establece que cada Administración actúa con personalidad jurídica única, luego sí la tienen."
+  },
+  {
+    "question_id": "51181eca-6024-4e74-a0e0-46065c08f62c",
+    "servidas": 278,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "6",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/8780e8f6-71c2-468e-8deb-ac8e722452c4.txt",
+    "enunciado": "Las zonas y sistemas de recepción de las Oficinas de Atención al Ciudadano han de organizarse de modo que se garantice su utilización por las personas con discapacidad. Por ello, se recomienda:",
+    "opciones": {
+      "A": "Si la oficina estuviera dotada de zona de espera, ésta contará con mobiliario concebido con arreglo a criterios de diseño para todos.",
+      "B": "Los sistemas de seguridad tienen que estar debidamente señalizados y ofrecer indicaciones básicas.",
+      "C": "El vestíbulo de recepción contará con una persona que oriente al ciudadano sin ningún otro requisito.",
+      "D": "Cuando el sistema de seguridad y control de acceso no tenga las dimensiones suficientes para permitir el paso a personas en silla de ruedas, se les informará de aquellas oficinas adaptadas y a las que puede acudir."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo enumera un conjunto de recomendaciones para la accesibilidad de las zonas y sistemas de recepción de las Oficinas de Atención al Ciudadano, entre ellas la relativa a la zona de espera.\n\n> **RD 366/2007, art. 6.2.e**\n> \"Si la Oficina estuviera dotada de zona de espera, esta contará con mobiliario concebido con arreglo a criterios de diseño para todos.\"\n\n**Por qué A es correcta:** Reproduce fielmente esta recomendación del artículo sobre la zona de espera.\n\n**Por qué las demás son incorrectas:**\n- **B)** No coincide con el artículo, que exige que los sistemas de seguridad ofrezcan indicaciones precisas sobre qué hacer en casos particulares, no simplemente indicaciones básicas.\n- **C)** No coincide con el artículo, que exige organizar el vestíbulo para facilitar la orientación mediante señalización visual y táctil, no mediante una persona sin ningún otro requisito.\n- **D)** No coincide con el artículo, que exige prever medidas o medios alternativos para pasar el control cuando el sistema de seguridad no tenga dimensiones suficientes, no limitarse a informar de otras oficinas adaptadas."
+  },
+  {
+    "question_id": "5c3ee88c-9457-46e0-a52e-0fc1b5a17804",
+    "servidas": 278,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f85c3c54-1e67-417d-a3e5-a1d911acfa02.txt",
+    "enunciado": "De los siguientes Protocolos de Red, indique cuál se utiliza para poder recibir o transferir correos para servidores remotos de archivos:",
+    "opciones": {
+      "A": "IMAP",
+      "B": "DNS",
+      "C": "HTTP GET",
+      "D": "ARP"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo indica de forma expresa cuál de los protocolos de red citados es el que sirve para este fin.\n\n> **Informática Básica, art. 1**\n> \"se utiliza para recibir o transferir correos desde servidores remotos de archivos.\"\n\n**Por qué A es correcta:** Coincide con lo indicado en el artículo: este protocolo se utiliza precisamente para recibir o transferir correo desde servidores remotos.\n\n**Por qué las demás son incorrectas:**\n- **B)** No guarda relación con el correo electrónico: traduce nombres de dominio en direcciones IP.\n- **C)** No guarda relación con el correo electrónico: se emplea para solicitar páginas web.\n- **D)** No guarda relación con el correo electrónico: resuelve direcciones IP en direcciones MAC dentro de redes locales."
+  },
+  {
+    "question_id": "b8651a40-6bbd-4252-a831-57b2c541bcf2",
+    "servidas": 276,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Señale cuál de las siguientes funciones no corresponde específicamente al Congreso de los Diputados:",
+    "opciones": {
+      "A": "Autorizar al Gobierno para la prórroga del estado de alarma.",
+      "B": "Autorizar al Gobierno para la declaración del estado de alarma.",
+      "C": "Autorizar al Gobierno para la prórroga del estado de excepción.",
+      "D": "Autorizar al Gobierno para la declaración del estado de excepción."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116 distingue cuándo el Congreso debe autorizar una actuación del Gobierno y cuándo solo debe ser informado de ella.\n\n> **CE, art. 116.2**\n> \"El estado de alarma será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso de los Diputados\"\n\n**Por qué B es correcta:** La declaración inicial del estado de alarma no requiere autorización del Congreso, sino solo que el Gobierno le dé cuenta de ella; por eso esta función no le corresponde específicamente al Congreso.\n\n**Por qué las demás son incorrectas:**\n- **A)** Sí corresponde al Congreso: la prórroga del estado de alarma no puede acordarse sin su autorización previa.\n- **C)** Sí corresponde al Congreso: la prórroga del estado de excepción exige los mismos requisitos que su declaración, es decir, su autorización previa.\n- **D)** Sí corresponde al Congreso: la declaración del estado de excepción exige su autorización previa."
+  },
+  {
+    "question_id": "e316738c-867c-4036-b7f6-3bf21fd4d840",
+    "servidas": 272,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Según el artículo 116 CE, mientras está declarado el estado de alarma:",
+    "opciones": {
+      "A": "Podrá procederse automáticamente a la disolución del Congreso, asignando a una Comisión ad hoc las competencias al respecto.",
+      "B": "Se procederá de inmediato a la disolución del Congreso, asumiendo las competencias la Diputación Permanente.",
+      "C": "Podrá procederse a la disolución del Congreso, si así lo acuerdan por mayoría simple.",
+      "D": "No podrá procederse a la disolución del Congreso, quedando automáticamente convocadas las Cámaras si no estuvieren en período de sesiones."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.5 CE protege el funcionamiento de las Cámaras mientras esté vigente cualquiera de los estados excepcionales.\n\n> **CE, art. 116.5**\n> \"No podrá procederse a la disolución del Congreso mientras estén declarados algunos de los estados comprendidos en el presente artículo, quedando automáticamente convocadas las Cámaras si no estuvieren en período de sesiones.\"\n\n**Por qué D es correcta:** El artículo 116.5 impide expresamente la disolución del Congreso durante los estados de alarma, excepción y sitio, y ordena convocar automáticamente las Cámaras si no estuvieran en período de sesiones.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Constitución no prevé que una Comisión ad hoc asuma competencias del Congreso durante el estado de alarma; la disolución simplemente no puede producirse.\n- **B)** El texto constitucional no ordena disolver el Congreso durante el estado de alarma, sino justamente lo contrario: impide su disolución.\n- **C)** La disolución no queda condicionada a un acuerdo por mayoría simple: el artículo la prohíbe directamente mientras el estado de alarma esté vigente."
+  },
+  {
+    "question_id": "07c89d9a-752d-43f4-9b38-89c9b8ce2abc",
+    "servidas": 271,
+    "es_examen_oficial": false,
+    "ley": "LOTC",
+    "articulo": "79",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/29c615fa-9bbe-4d2f-8992-75ae960b335c.txt",
+    "enunciado": "De acuerdo con el artículo 79 de la Ley Orgánica del Tribunal Constitucional, son susceptibles del recurso previo de inconstitucionalidad:",
+    "opciones": {
+      "A": "Los proyectos de leyes.",
+      "B": "Los proyectos de reforma de leyes.",
+      "C": "Las Leyes Orgánicas.",
+      "D": "Los proyectos de Estatutos de Autonomía."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo determina de forma expresa qué textos pueden ser objeto del recurso previo de inconstitucionalidad.\n\n> **LOTC, art. 79.Uno**\n> \"Son susceptibles de recurso de inconstitucionalidad, con carácter previo, los Proyectos de Estatutos de Autonomía y las propuestas de reforma de los mismos.\"\n\n**Por qué D es correcta:** Coincide de forma literal con lo dispuesto en el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es correcto: el artículo no somete al recurso previo a los proyectos de leyes en general.\n- **B)** No es correcto: el artículo no somete al recurso previo a los proyectos de reforma de leyes en general.\n- **C)** No es correcto: el artículo no somete al recurso previo a las Leyes Orgánicas ya aprobadas."
+  }
+]

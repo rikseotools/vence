@@ -1,0 +1,267 @@
+LEY: Excel 365
+ARTÍCULO: 200 — Protección del libro y las hojas
+======================================================================
+## Niveles de protección en Excel
+
+Excel ofrece cuatro niveles de protección independientes que se pueden combinar:
+
+| Nivel | Herramienta | Qué protege |
+|-------|-------------|-------------|
+| Archivo | Archivo > Información > Proteger libro > Cifrar con contraseña | Acceso al archivo completo (cifrado AES) |
+| Libro | Revisar > Proteger libro | Estructura de hojas (añadir, eliminar, mover, renombrar) |
+| Hoja | Revisar > Proteger hoja | Contenido de celdas y objetos de la hoja |
+| Rango | Revisar > Permitir editar rangos | Rangos específicos con contraseñas distintas dentro de una hoja protegida |
+
+---
+
+## Bloqueo de celdas (propiedad Bloqueada)
+
+La propiedad **Bloqueada** se encuentra en **Formato de celdas > pestaña Proteger > casilla Bloqueada** (atajo: Ctrl+1).
+
+- **Estado predeterminado:** todas las celdas de una hoja nueva están bloqueadas por defecto.
+- El bloqueo **no tiene ningún efecto** mientras la hoja no esté protegida.
+- Solo cuando se activa la protección de hoja, las celdas bloqueadas quedan restringidas.
+
+### Flujo correcto para proteger solo algunas celdas
+
+Cuando se quiere que solo determinadas celdas sean editables y el resto quede bloqueado:
+
+1. Seleccionar **todas** las celdas (Ctrl+E o clic en la esquina superior izquierda).
+2. Ctrl+1 > Proteger > **desmarcar Bloqueada** > Aceptar. (Todas quedan desbloqueadas.)
+3. Seleccionar **solo las celdas que deben quedar protegidas**.
+4. Ctrl+1 > Proteger > **marcar Bloqueada** > Aceptar.
+5. Revisar > **Proteger hoja** (con o sin contraseña).
+
+Con este flujo, los usuarios solo pueden editar las celdas que se dejaron desbloqueadas en el paso 2.
+
+**Flujo alternativo (más habitual cuando la mayoría de celdas deben bloquearse):**
+
+1. Seleccionar las celdas que se quieren dejar **editables**.
+2. Ctrl+1 > Proteger > **desmarcar Bloqueada** > Aceptar.
+3. Revisar > **Proteger hoja**.
+
+---
+
+## Ocultar fórmulas (propiedad Oculta)
+
+La propiedad **Oculta** se encuentra en **Formato de celdas > pestaña Proteger > casilla Oculta**.
+
+- Cuando está marcada, la fórmula de la celda **no se muestra** en la barra de fórmulas.
+- Esta propiedad **solo tiene efecto cuando la hoja está protegida**. Antes de protegerla, la fórmula sigue siendo visible aunque la casilla esté marcada.
+- El valor calculado sí sigue siendo visible en la celda; lo que se oculta es la fórmula que lo produce.
+- Se combina con la propiedad Bloqueada: normalmente se marca Oculta en celdas que también están Bloqueadas.
+
+**Pasos para ocultar fórmulas:**
+
+1. Seleccionar las celdas con fórmulas que se desea ocultar.
+2. Ctrl+1 > Proteger > marcar **Oculta** > Aceptar.
+3. Revisar > **Proteger hoja**.
+
+---
+
+## Proteger hoja
+
+**Ruta:** Revisar > Proteger hoja
+
+Impide que los usuarios modifiquen el contenido de la hoja. Al activarla aparece un cuadro de diálogo con:
+
+- Campo **Contraseña para desproteger la hoja** (opcional).
+- Lista de **acciones que los usuarios SÍ pueden realizar** aunque la hoja esté protegida.
+
+### Lista completa de acciones permitidas (cuadro de diálogo)
+
+| Opcion | Qué permite |
+|--------|-------------|
+| **Seleccionar celdas bloqueadas** | Moverse por las celdas que están bloqueadas |
+| **Seleccionar celdas desbloqueadas** | Moverse por las celdas desbloqueadas (y usar Tab) |
+| **Formato de celdas** | Modificar el formato de las celdas |
+| **Aplicar formato a columnas** | Cambiar el ancho o mostrar/ocultar columnas |
+| **Aplicar formato a filas** | Cambiar el alto o mostrar/ocultar filas |
+| **Insertar columnas** | Insertar nuevas columnas |
+| **Insertar filas** | Insertar nuevas filas |
+| **Insertar hipervínculos** | Crear hipervínculos en cualquier celda |
+| **Eliminar columnas** | Eliminar columnas |
+| **Eliminar filas** | Eliminar filas |
+| **Ordenar** | Usar los comandos de ordenación (los rangos bloqueados quedan excluidos) |
+| **Usar Autofiltro** | Usar las flechas desplegables de los autofiltros existentes |
+| **Usar informes de tabla dinámica** | Aplicar formato, actualizar o modificar tablas y gráficos dinámicos |
+| **Modificar objetos** | Editar gráficos, formas, cuadros de texto, imágenes y controles |
+| **Modificar escenarios** | Ver o modificar escenarios ocultos |
+
+> Las dos primeras opciones (**Seleccionar celdas bloqueadas** y **Seleccionar celdas desbloqueadas**) vienen marcadas por defecto.
+
+### Opciones que NO existen en la lista de permisos
+
+Las siguientes opciones **no aparecen** en el cuadro de diálogo de protección de hoja:
+
+- "Asignar nombres" — no existe.
+- "Establecer y eliminar áreas de impresión" — no existe.
+- "Eliminar comentarios" — no existe.
+
+### Con contraseña vs. sin contraseña
+
+- **Sin contraseña:** cualquier usuario puede desproteger la hoja sin necesidad de contraseña. Solo evita modificaciones accidentales.
+- **Con contraseña:** es necesario introducir la contraseña para desprotegerla. Microsoft **no puede recuperar contraseñas olvidadas**. Las contraseñas distinguen mayúsculas de minúsculas.
+
+### Quitar la protección de hoja
+
+Revisar > **Desproteger hoja** (o Archivo > Información > Proteger libro > Desproteger hoja). Si tiene contraseña, se pedirá al desproteger.
+
+---
+
+## Proteger libro
+
+**Ruta:** Revisar > Proteger libro
+
+Protege la **estructura** del libro (las hojas), no el contenido de las celdas.
+
+### Opción Estructura
+
+Cuando está activada, impide que los usuarios:
+
+- Insertar nuevas hojas.
+- Eliminar hojas.
+- Mover o copiar hojas.
+- Ocultar o mostrar hojas.
+- Cambiar el nombre de las hojas.
+- Ver hojas ocultas.
+
+No afecta al contenido de las celdas dentro de cada hoja.
+
+### Opción Ventanas
+
+- Disponible en versiones antiguas de Excel.
+- Impedía mover, cambiar el tamaño o cerrar las ventanas del libro.
+- En Excel 365 esta opción aparece atenuada y no tiene efecto.
+
+### Diferencia clave con proteger hoja
+
+| | Proteger hoja | Proteger libro |
+|-|--------------|----------------|
+| Qué protege | Contenido de celdas y objetos de la hoja | Estructura del libro (hojas) |
+| Impide editar celdas | Sí | No |
+| Impide añadir/eliminar hojas | No | Sí |
+| Ruta | Revisar > Proteger hoja | Revisar > Proteger libro |
+
+---
+
+## Proteger rangos específicos con contraseñas distintas
+
+**Ruta:** Revisar > Permitir editar rangos
+
+Permite definir rangos que podrán editarse con contraseñas diferentes a la de protección general de la hoja. Útil cuando distintos usuarios o departamentos deben acceder a secciones diferentes del mismo libro protegido.
+
+**Pasos:**
+1. Revisar > **Permitir editar rangos** > Nuevo.
+2. Asignar un título al rango, seleccionar las celdas y establecer una contraseña específica.
+3. Repetir para cada rango con acceso diferenciado.
+4. Activar la protección de hoja (Revisar > Proteger hoja).
+
+Cuando un usuario intente editar ese rango, Excel solicitará la contraseña del rango (no la de la hoja).
+
+---
+
+## Contraseña de apertura y contraseña de modificación del archivo
+
+Existen dos contraseñas distintas a nivel de archivo:
+
+### Contraseña de apertura (cifrado)
+
+**Ruta:** Archivo > Información > Proteger libro > **Cifrar con contraseña**
+
+Cifra el archivo completo con AES. El usuario debe introducir la contraseña para poder **abrir** el libro.
+
+- Es una medida de seguridad real: sin la contraseña correcta, el archivo no se puede abrir ni leer.
+- Microsoft **no puede recuperar contraseñas de cifrado perdidas**. Si se olvida, el archivo queda inaccesible.
+- Las contraseñas distinguen mayúsculas de minúsculas.
+
+Para quitar el cifrado: Archivo > Información > Proteger libro > Cifrar con contraseña > **borrar** la contraseña > Aceptar.
+
+### Contraseña de modificación
+
+**Ruta:** Guardar como > (menú) Herramientas > **Opciones generales**
+
+Permite establecer dos contraseñas independientes:
+
+- **Contraseña de apertura:** el archivo no se puede abrir sin ella.
+- **Contraseña de escritura:** el archivo puede abrirse en **modo de solo lectura** sin esta contraseña, pero no se pueden guardar los cambios con el mismo nombre. Solo quien conozca esta contraseña puede guardar cambios en el archivo original.
+
+---
+
+## Marcar como final
+
+**Ruta:** Archivo > Información > Proteger libro > **Marcar como final**
+
+Indica que el documento es una versión definitiva y desactiva la escritura, la edición y las marcas de revisión.
+
+**Qué hace:**
+- Establece la propiedad del documento como "Final".
+- Muestra un aviso informativo en la barra de mensajes.
+- Desactiva los comandos de escritura y edición.
+
+**Qué NO hace:**
+- **No es una medida de seguridad.** Cualquier usuario puede hacer clic en "Editar de todas formas" para eliminar el estado "Final" y editar el documento.
+- No impide que otras personas modifiquen el archivo.
+
+Se usa únicamente como indicación de que el documento está terminado, no como protección real.
+
+---
+
+## Firmas digitales
+
+**Ruta:** Archivo > Información > Proteger libro > **Agregar una firma digital**
+
+Una firma digital autentica la identidad del firmante y garantiza que el contenido no ha sido alterado desde la firma.
+
+**Tipos:**
+- **Firma visible:** aparece como línea de firma en el documento (objeto visual).
+- **Firma invisible:** no es visible en el contenido pero aparece en la pestaña Archivo > Información.
+
+**Comportamiento:**
+- Si el archivo se modifica después de firmarlo, la firma queda **invalidada** automáticamente.
+- Requiere un certificado digital válido emitido por una autoridad de certificación (CA) de confianza.
+- Puede obtenerse a través de socios de Microsoft o generarse un certificado autofirmado (solo para uso interno).
+
+**Para agregar una firma:** Archivo > Información > Proteger libro > Agregar una firma digital > completar el cuadro de diálogo con el propósito de la firma.
+
+**Para quitar una firma:** en la pestaña Archivo > Información, hacer clic con el botón secundario en la firma y elegir Quitar firma.
+
+---
+
+## Tabla resumen de opciones de protección
+
+| Opcion | Ruta | Seguridad real | Reversible sin contraseña |
+|--------|------|----------------|--------------------------|
+| Proteger hoja (sin contraseña) | Revisar > Proteger hoja | No | Sí |
+| Proteger hoja (con contraseña) | Revisar > Proteger hoja | Baja (no cifra) | No |
+| Proteger libro - Estructura | Revisar > Proteger libro | Baja | Depende de contraseña |
+| Permitir editar rangos | Revisar > Permitir editar rangos | Baja | Depende de contraseña |
+| Cifrar con contraseña | Archivo > Información | Alta | No |
+| Contraseña de modificación | Guardar como > Herramientas > Opciones generales | Media | No (modo solo lectura) |
+| Marcar como final | Archivo > Información | Ninguna | Sí (siempre) |
+| Firma digital | Archivo > Información | Alta (autenticidad) | Sí (quita la firma) |
+
+---
+
+## Vínculos externos
+
+Si un libro referencia celdas de otro libro externo, al romper el vínculo (Datos > Editar vínculos > Romper vínculo), todas las fórmulas vinculadas se convierten en sus **valores actuales** (constantes).
+
+---
+
+## Opciones avanzadas de Excel
+
+Archivo > Opciones > Avanzadas > **Opciones de edición**. Configuraciones disponibles:
+
+- Permitir editar directamente en celdas.
+- Extender formatos de rangos de datos.
+- Habilitar la inserción automática de porcentajes.
+- Autocompletar para valores de celda.
+
+La opción **"Usar nombres de tabla en las fórmulas"** NO es configurable desde Opciones de edición.
+
+---
+
+## Personalizar cinta de opciones
+
+Archivo > Opciones > Personalizar cinta de opciones. El botón **Restablecer** elimina todas las personalizaciones y vuelve a la configuración predeterminada de Excel.

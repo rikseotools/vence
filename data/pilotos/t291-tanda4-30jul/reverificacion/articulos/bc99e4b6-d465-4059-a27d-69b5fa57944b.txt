@@ -1,0 +1,538 @@
+LEY: Excel 365
+ARTÍCULO: 120 — Funciones de fecha y hora
+======================================================================
+Las fechas en Excel se almacenan internamente como **números de serie** (enteros que representan días transcurridos desde el 1 de enero de 1900, que equivale al número 1). Las horas se almacenan como la **parte decimal** de ese número: 0,5 equivale a las 12:00 del mediodía, 0,25 a las 6:00, etc.
+
+> La fecha 15/05/2026 corresponde al número de serie **45.957**. Si una celda muestra un número grande en lugar de una fecha, aplica el formato **Fecha** desde el menú de formato.
+
+Gracias a este sistema, sumar y restar fechas es aritméticamente directo: `HOY()+7` devuelve la fecha de dentro de siete días; `AHORA()-0,5` devuelve el instante de hace doce horas; restar dos fechas directamente (`A2-A1`) da el número de días entre ellas.
+
+---
+
+## Funciones de fecha y hora actuales
+
+| Función | Sintaxis | Descripción | Ejemplo |
+|---------|----------|-------------|---------|
+| **HOY** | `=HOY()` | Devuelve la fecha actual como número de serie. Sin argumento. La celda adopta automáticamente formato Fecha si estaba en General. | `=HOY()` → 15/05/2026 |
+| **AHORA** | `=AHORA()` | Devuelve la fecha y hora actuales (número de serie con decimales). | `=AHORA()` → 15/05/2026 14:32 |
+
+Ambas funciones son **volátiles**: se recalculan automáticamente cada vez que se recalcula el libro (al abrir el fichero, al pulsar F9 o al modificar cualquier celda). No se actualizan en tiempo real mientras el libro está abierto sin recálculo.
+
+Ejemplos con AHORA():
+
+| Fórmula | Resultado (si hoy es 07/06/2022 a las 09:46) |
+|---------|----------------------------------------------|
+| `=AHORA()` | 07/06/2022 09:46 |
+| `=AHORA()-0,5` | 06/06/2022 21:46 (hace 12 horas) |
+| `=AHORA()+1` | 08/06/2022 09:46 (mañana a la misma hora) |
+
+Ejemplos con HOY():
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=HOY()` | Fecha de hoy |
+| `=HOY()+30` | La fecha actual más 30 días |
+| `=HOY()-FECHA(2025;4;1)` | Días transcurridos desde el 1 de abril de 2025 (si hoy es 10/04/2025 → 9) |
+
+---
+
+## Funciones de construcción de fechas y horas
+
+### FECHA
+
+```
+=FECHA(año; mes; día)
+```
+
+| Argumento | Tipo | Descripción |
+|-----------|------|-------------|
+| año | Obligatorio | Año con 4 dígitos (recomendado). Valores 0–1899: Excel suma 1900. Valores fuera de rango: `#¡NUM!` |
+| mes | Obligatorio | Entero 1–12. Si es > 12, avanza al año siguiente (mes 13 = enero del año+1). Si es negativo, retrocede. |
+| día | Obligatorio | Entero 1–31. Si supera los días del mes, avanza al mes siguiente. Si es negativo, retrocede. |
+
+Ejemplos:
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=FECHA(2026;5;15)` | 15/05/2026 |
+| `=FECHA(2026;13;1)` | 01/01/2027 (mes 13 → enero del año siguiente) |
+| `=FECHA(2026;1;-5)` | 26/12/2025 (día -5 retrocede en diciembre) |
+| `=FECHA(AÑO(A1)+1;MES(A1);DIA(A1))` | Misma fecha un año después |
+
+> **Uso frecuente:** convertir componentes separados (año en una celda, mes en otra, día en otra) en una fecha real operable en cálculos.
+
+### NSHORA (función de construcción de hora)
+
+```
+=NSHORA(hora; minuto; segundo)
+```
+
+Devuelve la fracción decimal correspondiente a una hora del día (valor entre 0 y < 1). Es la función equivalente a FECHA pero para horas.
+
+| Argumento | Descripción |
+|-----------|-------------|
+| hora | Entero 0–23. Si es > 23, se divide entre 24 y el resto se usa. |
+| minuto | Entero 0–59. Si supera 59, el exceso se convierte en horas. |
+| segundo | Entero 0–59. Si supera 59, el exceso se convierte en minutos. |
+
+Ejemplos:
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=NSHORA(16;45;30)` | 0,698263... (equivale a 16:45:30) |
+| `=NSHORA(12;0;0)` | 0,5 (mediodía) |
+| `=NSHORA(0;0;0)` | 0 (medianoche) |
+
+> **Uso práctico:** convertir una hora en formato 24 horas a su valor decimal para operar con él, o para mostrarla en formato 12 horas (AM/PM) aplicando el formato personalizado `h:mm AM/PM`.
+
+---
+
+## Funciones de extracción de componentes
+
+Estas funciones descomponen una fecha u hora en sus partes individuales.
+
+### Extracción de componentes de fecha
+
+| Función | Sintaxis | Qué devuelve | Ejemplo |
+|---------|----------|--------------|---------|
+| **AÑO** | `=AÑO(fecha)` | Año como entero (1900–9999) | `=AÑO("15/05/2026")` → 2026 |
+| **MES** | `=MES(fecha)` | Mes como entero (1–12) | `=MES(HOY())` → 5 |
+| **DIA** | `=DIA(fecha)` | Día del mes (1–31) | `=DIA("15/05/2026")` → 15 |
+
+Ejemplos adicionales:
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=DÍA(FECHA(2025;12;31))` | 31 |
+| `=MES("31/12/2025")` | 12 |
+| `=MES(HOY())` | Número del mes en curso |
+
+> **Diferencia clave — DIA vs DIAS:** `DIA` extrae el número de día del mes de *una* fecha (DIA("15/05/2026")=15). `DIAS` calcula el número de días entre *dos* fechas (DIAS("01/02/2022";"15/01/2022")=17).
+
+### Extracción de componentes de hora
+
+| Función | Sintaxis | Qué devuelve | Ejemplo |
+|---------|----------|--------------|---------|
+| **HORA** | `=HORA(hora)` | Hora del día (0–23) | `=HORA("16:45:30")` → 16 |
+| **MINUTO** | `=MINUTO(hora)` | Minutos (0–59) | `=MINUTO("16:45:30")` → 45 |
+| **SEGUNDO** | `=SEGUNDO(hora)` | Segundos (0–59) | `=SEGUNDO("16:45:30")` → 30 |
+
+---
+
+## DIASEM — Día de la semana
+
+```
+=DIASEM(núm_de_serie; [tipo])
+```
+
+Devuelve un número entero que representa el día de la semana de una fecha. El resultado depende críticamente del argumento **tipo**.
+
+| Argumento | Descripción |
+|-----------|-------------|
+| núm_de_serie | Obligatorio. Fecha a evaluar. Usar FECHA() o referencias a celdas, no texto. |
+| tipo | Opcional. Determina qué día es el primero y el rango devuelto. Por defecto: 1. |
+
+### Valores del argumento tipo
+
+| tipo | Rango devuelto | Primer día de la semana |
+|------|----------------|------------------------|
+| 1 (u omitido) | 1–7 | **Domingo = 1**, Sábado = 7 |
+| 2 | 1–7 | **Lunes = 1**, Domingo = 7 |
+| 3 | 0–6 | Lunes = 0, Domingo = 6 |
+| 11 | 1–7 | Lunes = 1, Domingo = 7 |
+| 12 | 1–7 | Martes = 1, Lunes = 7 |
+| 13 | 1–7 | Miércoles = 1, Martes = 7 |
+| 14 | 1–7 | Jueves = 1, Miércoles = 7 |
+| 15 | 1–7 | Viernes = 1, Jueves = 7 |
+| 16 | 1–7 | Sábado = 1, Viernes = 7 |
+| 17 | 1–7 | Domingo = 1, Sábado = 7 |
+
+> **Para oposiciones — tipo por defecto vs tipo 2:**
+> - Con **tipo=1** (u omitido): domingo=1, lunes=2, martes=3, miércoles=4, jueves=5, viernes=6, sábado=7.
+> - Con **tipo=2**: lunes=1, martes=2, miércoles=3, jueves=4, viernes=5, sábado=6, domingo=7.
+> - El tipo **2** es el más habitual en contexto europeo. Para obtener 1 a 7 empezando por el lunes, usar **tipo=2**.
+
+Ejemplos con 14/02/2008 (jueves):
+
+| Fórmula | Resultado | Explicación |
+|---------|-----------|-------------|
+| `=DIASEM(FECHA(2008;2;14))` | 5 | tipo=1 (domingo=1), jueves es el 5.º día |
+| `=DIASEM(FECHA(2008;2;14);2)` | 4 | tipo=2 (lunes=1), jueves es el 4.º día |
+| `=DIASEM(FECHA(2008;2;14);3)` | 3 | tipo=3 (lunes=0), jueves es el 3.º |
+
+> **Pregunta de examen frecuente:** "Obtener de 1 a 7 empezando por el lunes como día 1" → `=DIASEM(A1;2)`
+
+### Combinar DIASEM con CAMBIAR para mostrar el nombre del día
+
+```excel
+=CAMBIAR(DIASEM(D5;2);1;"Lunes";2;"Martes";3;"Miércoles";4;"Jueves";5;"Viernes";"Fin de semana")
+```
+
+Con tipo=2, la fórmula convierte cualquier fecha en el nombre del día en español. Los valores 6 (sábado) y 7 (domingo) quedan agrupados en "Fin de semana".
+
+> **Trampa de examen:** la fórmula `=CAMBIAR(DIASEM(D5);1;"Lunes";2;"Martes";...)` sin argumento tipo usa tipo=1 implícito, donde domingo=1. Por tanto, en esa fórmula "Lunes" se asigna al valor 1, que corresponde al **domingo**. Para que lunes=1, la función debe usar tipo=2.
+
+---
+
+## NUM.DE.SEMANA — Número de semana del año
+
+```
+=NUM.DE.SEMANA(núm_de_serie; [tipo_de_devolución])
+```
+
+| Argumento | Descripción |
+|-----------|-------------|
+| núm_de_serie | Obligatorio. Fecha dentro de la semana que se desea numerar. |
+| tipo_de_devolución | Opcional. Define el inicio de la semana y el sistema de numeración. |
+
+| tipo | Inicio semana | Sistema |
+|------|--------------|---------|
+| 1 u omitido | Domingo | Sistema 1 (sem. del 1-ene = sem. 1) |
+| 2 | Lunes | Sistema 1 |
+| 21 | Lunes | Sistema 2 ISO 8601: sem. 1 = la que contiene el primer jueves del año |
+
+Ejemplo: 09/03/2012 → `=NUM.DE.SEMANA(A1)` = **10** (inicio domingo); `=NUM.DE.SEMANA(A1;2)` = **11** (inicio lunes).
+
+---
+
+## Funciones de cálculo de diferencias entre fechas
+
+### Resta directa de fechas
+
+La forma más sencilla de obtener la diferencia en días entre dos fechas es **restarlas directamente**:
+
+```
+=A2 - A1
+```
+
+Si A2="15/05/2026" y A1="01/05/2026", el resultado es **14** (días naturales). Excel aplica la aritmética de números de serie automáticamente. La celda resultado debe formatearse como **Número** (no como Fecha) para ver el valor entero.
+
+### DIAS
+
+```
+=DIAS(fecha_fin; fecha_ini)
+```
+
+Devuelve el número de días entre dos fechas. El orden de los argumentos es **fin primero, inicio segundo** (inverso a lo intuitivo).
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=DIAS("01/02/2022";"15/01/2022")` | 17 |
+| `=DIAS("15/06/2025";"10/06/2025")` | 5 |
+| `=DIAS(HOY();FECHA(2026;1;1))` | Días transcurridos desde el 1-ene-2026 |
+
+> **Atención al orden:** si la fecha de inicio es posterior a la de fin, el resultado es negativo. `=DIAS(A2;A3)` donde A2="02/02/2024" y A3="11/02/2024" devuelve **-9** (A3 es posterior a A2, por lo que fin < ini → negativo).
+
+### DIAS360
+
+```
+=DIAS360(fecha_ini; fecha_fin; [método])
+```
+
+Calcula los días entre dos fechas usando un año de **360 días** (12 meses de 30 días). De uso principalmente financiero (cálculo de intereses).
+
+| Argumento | Descripción |
+|-----------|-------------|
+| fecha_ini | Fecha de inicio |
+| fecha_fin | Fecha de fin |
+| método | FALSO u omitido: método americano (NASD). VERDADERO: método europeo. |
+
+Ejemplo: `=DIAS360("01/01/2026";"31/12/2026")` → 360.
+
+### SIFECHA — Diferencia en unidades completas
+
+```
+=SIFECHA(fecha_inicial; fecha_final; unidad)
+```
+
+> **Atención:** SIFECHA es una función **oculta** heredada de Lotus 1-2-3. No aparece en el Asistente de funciones ni en el autocompletado, pero funciona correctamente. El argumento `unidad` **debe ir entre comillas**; sin ellas devuelve `#¡NOMBRE!`.
+
+| Código unidad | Devuelve |
+|---------------|----------|
+| "y" | Años completos entre las dos fechas |
+| "m" | Meses completos entre las dos fechas |
+| "d" | Días totales entre las dos fechas |
+| "md" | Diferencia de días ignorando mes y año (solo el componente día) |
+| "ym" | Diferencia de meses ignorando el año (solo el componente mes) |
+| "yd" | Diferencia de días ignorando el año (como si fuera el mismo año) |
+
+Ejemplos:
+
+| Fórmula | Resultado | Lectura |
+|---------|-----------|---------|
+| `=SIFECHA("01/01/2022";"01/01/2023";"y")` | 1 | 1 año completo |
+| `=SIFECHA("01/01/2001";"01/01/2003";"y")` | 2 | 2 años completos |
+| `=SIFECHA("01/06/2001";"15/08/2002";"m")` | 14 | 14 meses completos |
+| `=SIFECHA("01/06/2001";"15/08/2002";"d")` | 440 | 440 días totales |
+| `=SIFECHA("01/01/1985";HOY();"y")` | Edad actual en años cumplidos |
+
+> **Uso práctico para calcular edad exacta:**
+> `=SIFECHA(fecha_nacimiento;HOY();"y")&" años, "&SIFECHA(fecha_nacimiento;HOY();"ym")&" meses, "&SIFECHA(fecha_nacimiento;HOY();"md")&" días"`
+
+> **Advertencia:** el código "md" puede producir resultados inexactos o negativos en ciertos rangos de fechas. Microsoft reconoce esta limitación.
+
+> **Error `#¡NUM!`:** ocurre cuando la `fecha_final` es menor que la `fecha_inicial`. SIFECHA no admite rangos negativos.
+
+---
+
+## Funciones de días laborables
+
+### DIAS.LAB
+
+```
+=DIAS.LAB(fecha_ini; fecha_fin; [festivos])
+```
+
+Devuelve el número de días **laborables** (excluyendo sábados y domingos) entre dos fechas.
+
+| Argumento | Tipo | Descripción |
+|-----------|------|-------------|
+| fecha_ini | Obligatorio | Fecha de inicio |
+| fecha_fin | Obligatorio | Fecha de fin |
+| festivos | Opcional | Rango de celdas o constante matricial con fechas de festivos a excluir adicionalmente |
+
+Ejemplos:
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=DIAS.LAB(HOY();HOY()+14)` | 10 (14 días naturales menos 4 fines de semana) |
+| `=DIAS.LAB(B1;C1)` | Días laborables entre las fechas de B1 y C1 |
+
+> **Caso de examen:** `=DIAS.LAB(HOY();HOY()+10)` cuando hoy es **lunes** → el resultado es **9**, porque DIAS.LAB no cuenta la fecha de inicio, y entre el lunes y el décimo día natural caen 2 fines de semana = 2 días excluidos → 10 - 2 = 9 días laborables.
+
+### DIAS.LAB.INTL — Con fin de semana personalizable
+
+```
+=DIAS.LAB.INTL(fecha_inicial; fecha_final; [fin_de_semana]; [vacaciones])
+```
+
+Igual que DIAS.LAB, pero permite definir qué días son festivos semanales (no solo sábado y domingo).
+
+#### Valores del argumento fin_de_semana (numérico)
+
+| Valor | Días no laborables |
+|-------|-------------------|
+| 1 u omitido | Sábado y domingo |
+| 2 | Domingo y lunes |
+| 3 | Lunes y martes |
+| 4 | Martes y miércoles |
+| 5 | Miércoles y jueves |
+| 6 | Jueves y viernes |
+| 7 | Viernes y sábado |
+| 11 | Solo domingo |
+| 12 | Solo lunes |
+| 13 | Solo martes |
+| 14 | Solo miércoles |
+| 15 | Solo jueves |
+| 16 | Solo viernes |
+| 17 | Solo sábado |
+
+#### Formato de cadena de texto para fin_de_semana
+
+También se puede usar una cadena de 7 caracteres ("0" = laborable, "1" = no laborable), donde cada posición representa un día de la semana de **lunes a domingo**:
+
+- `"0000011"` → sábado y domingo no laborables (equivalente al valor 1)
+- `"1000001"` → lunes y domingo no laborables
+- `"0000001"` → solo el domingo no laborable
+
+---
+
+## DIA.LAB — Fecha resultante tras N días laborables
+
+```
+=DIA.LAB(fecha_ini; días; [festivos])
+```
+
+Devuelve la **fecha** que resulta de avanzar (o retroceder) un número dado de días laborables desde una fecha inicial. Es la función inversa de DIAS.LAB: donde DIAS.LAB cuenta días entre dos fechas, DIA.LAB calcula qué fecha se alcanza.
+
+| Argumento | Tipo | Descripción |
+|-----------|------|-------------|
+| fecha_ini | Obligatorio | Fecha de partida. No se cuenta como día laborable (es el "día 0"). |
+| días | Obligatorio | Número de días laborables a avanzar. Negativo para retroceder. |
+| festivos | Opcional | Rango de festivos adicionales a excluir. |
+
+Ejemplos:
+
+| Fórmula | Resultado (si 01/06/2025 es domingo) | Explicación |
+|---------|--------------------------------------|-------------|
+| `=DIA.LAB("01/06/2025";10)` | 13/06/2025 | Desde el domingo 1/6 (no contado), avanza 10 laborables: L2,M3,X4,J5,V6 (5) + L9,M10,X11,J12,V13 (5) = 13/06 |
+| `=DIA.LAB(HOY();-5)` | 5 días laborables antes de hoy |
+| `=DIA.LAB(HOY();0)` | Hoy mismo (0 días a avanzar) |
+
+> **Diferencia clave con DIAS.LAB:**
+> - DIAS.LAB: ¿cuántos días laborables hay entre A y B?
+> - DIA.LAB: ¿qué fecha cae exactamente N días laborables después de A?
+
+### DIA.LAB.INTL — Con fin de semana personalizable
+
+```
+=DIA.LAB.INTL(fecha_ini; días; [fin_de_semana]; [festivos])
+```
+
+Igual que DIA.LAB pero permite definir qué días de la semana son no laborables, con los mismos valores numéricos y de cadena de texto que DIAS.LAB.INTL.
+
+---
+
+## Funciones de desplazamiento por meses
+
+### FECHA.MES
+
+```
+=FECHA.MES(fecha_ini; meses)
+```
+
+Devuelve la fecha resultante de desplazar `meses` meses hacia adelante (positivo) o hacia atrás (negativo) desde `fecha_ini`.
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=FECHA.MES("15/05/2026";3)` | 15/08/2026 (3 meses adelante) |
+| `=FECHA.MES("15/05/2026";-2)` | 15/03/2026 (2 meses atrás) |
+| `=FECHA.MES("31/01/2026";1)` | 28/02/2026 (ajuste al último día de feb.) |
+
+> Útil para calcular vencimientos de facturas, pagarés o plazos contractuales.
+
+### FIN.MES
+
+```
+=FIN.MES(fecha_ini; meses)
+```
+
+Devuelve el **último día del mes** resultante de desplazar `meses` meses desde `fecha_ini`.
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=FIN.MES("11/07/2022";0)` | 31/07/2022 (último día del mismo mes) |
+| `=FIN.MES("11-7-2022";1)` | 31/08/2022 (último día del mes siguiente) |
+| `=FIN.MES("11-7-2022";2)` | 30/09/2022 |
+| `=FIN.MES("11-7-2022";-1)` | 30/06/2022 (último día del mes anterior) |
+| `=FIN.MES("11-7-2022";-2)` | 31/05/2022 |
+
+> **Error `#¡NUM!`:** si el argumento fecha_ini no va entre comillas y se interpreta como una operación aritmética (ej. `=FIN.MES(11-3-2022;2)` → 11-3-2022 = -2014, que no es una fecha válida), el resultado es `#¡NUM!`.
+
+> **Diferencia con FECHA.MES:** FIN.MES siempre devuelve el **último día** del mes de destino; FECHA.MES respeta el día de origen (ajustando si no existe en el mes destino).
+
+---
+
+## Funciones de conversión de texto a fecha/hora
+
+### FECHANUMERO
+
+```
+=FECHANUMERO(texto_de_fecha)
+```
+
+Convierte una cadena de texto que representa una fecha en su **número de serie**. Útil para procesar datos importados de sistemas externos donde las fechas llegan como texto.
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=FECHANUMERO("15/05/2026")` | 45957 (número de serie de esa fecha) |
+| `=FECHANUMERO("01-01-2026")` | Número de serie del 1 de enero de 2026 |
+
+> Después de aplicar FECHANUMERO, formatear la celda como Fecha para ver la fecha en lugar del número de serie.
+
+**Uso para reparar fechas-texto:** cuando `=AÑO(A1)` devuelve `#¡VALOR!` porque la celda contiene texto, aplicar `=FECHANUMERO(A1)` convierte el texto en número de serie operable.
+
+### TIEMPOVALOR
+
+```
+=TIEMPOVALOR(texto_de_hora)
+```
+
+Convierte una cadena de texto que representa una hora en su **valor decimal** (entre 0 y < 1), del mismo modo que NSHORA trabaja con argumentos numéricos.
+
+| Fórmula | Resultado |
+|---------|-----------|
+| `=TIEMPOVALOR("16:45:30")` | 0,698... (fracción del día equivalente a 16:45:30) |
+| `=TIEMPOVALOR("12:00:00")` | 0,5 |
+
+> Útil para importar horas almacenadas como texto y operar aritméticamente con ellas.
+
+---
+
+## Errores frecuentes con fechas
+
+### Fechas almacenadas como texto
+
+El error más común es que Excel interprete una fecha como texto en lugar de número de serie. Esto ocurre cuando:
+
+- La fecha está precedida por un apóstrofo (`'`).
+- El separador de fecha no coincide con la configuración regional del sistema.
+- Se importan datos desde CSV o sistemas externos.
+
+**Síntomas:** la celda muestra la fecha correctamente pero `=AÑO(A1)` devuelve `#¡VALOR!` y la celda no se puede usar en cálculos de fecha.
+
+**Solución:** usar `=FECHANUMERO(A1)` para convertir texto a número de serie, luego formatear la celda como Fecha.
+
+### Error #¡NUM! en SIFECHA
+
+Ocurre cuando la `fecha_final` es menor que la `fecha_inicial`. SIFECHA no admite rangos negativos.
+
+### Error #¡NOMBRE! en SIFECHA
+
+Ocurre cuando el código de unidad se escribe **sin comillas**: `=SIFECHA(A1;B1;y)` falla; debe ser `=SIFECHA(A1;B1;"y")`.
+
+### Error #¡NUM! en FIN.MES
+
+Ocurre cuando el argumento fecha_ini no va entre comillas y se interpreta como operación aritmética. `=FIN.MES(11-3-2022;2)` → 11-3-2022 = -2014, que no es fecha válida → `#¡NUM!`.
+
+### Número en lugar de fecha
+
+Si una celda muestra un número grande (ej. 45957) en lugar de una fecha, la celda está en formato General o Número. Aplicar formato **Fecha corta** o **Fecha larga** desde el grupo Número de la ficha Inicio.
+
+---
+
+## Resumen comparativo de todas las funciones de fecha y hora
+
+### Funciones de consulta actual (volátiles)
+
+| Función | Devuelve | Contiene hora |
+|---------|----------|--------------|
+| `HOY()` | Fecha actual (sin hora) | No |
+| `AHORA()` | Fecha y hora actuales | Sí |
+
+### Funciones de construcción
+
+| Función | Descripción |
+|---------|-------------|
+| `FECHA(año;mes;día)` | Construye una fecha desde sus componentes numéricos |
+| `NSHORA(h;min;seg)` | Construye un valor de hora desde sus componentes |
+
+### Funciones de extracción
+
+| Función | Extraen de una fecha/hora | Rango |
+|---------|--------------------------|-------|
+| `AÑO(fecha)` | El año | 1900–9999 |
+| `MES(fecha)` | El mes | 1–12 |
+| `DIA(fecha)` | El día del mes | 1–31 |
+| `HORA(hora)` | La hora | 0–23 |
+| `MINUTO(hora)` | Los minutos | 0–59 |
+| `SEGUNDO(hora)` | Los segundos | 0–59 |
+| `DIASEM(fecha;[tipo])` | El día de la semana (número) | 0–7 según tipo |
+| `NUM.DE.SEMANA(fecha;[tipo])` | El número de semana del año | 1–54 |
+
+### Funciones de diferencia entre fechas
+
+| Función | Argumentos | Excluye fines de semana | Fin de semana personalizable | Uso típico |
+|---------|-----------|------------------------|------------------------------|------------|
+| Resta directa (`A2-A1`) | dos fechas | No | No | Días naturales rápido |
+| `DIAS(fin;ini)` | fin, ini | No | No | Diferencia en días naturales |
+| `DIAS360(ini;fin;[método])` | ini, fin, [método] | No | No | Cálculos financieros (año 360) |
+| `SIFECHA(ini;fin;"unidad")` | ini, fin, "unidad" | No | No | Edad, antigüedad, plazos |
+| `DIAS.LAB(ini;fin;[fest.])` | ini, fin, [festivos] | Sí (sáb+dom) | No | Días hábiles (semana occidental) |
+| `DIAS.LAB.INTL(ini;fin;[wknd];[fest.])` | ini, fin, [weekend], [festivos] | Sí | Sí | Días hábiles con calendario personalizado |
+
+### Funciones de desplazamiento
+
+| Función | Argumentos | Desplaza por | Devuelve |
+|---------|-----------|--------------|---------|
+| `FECHA.MES(ini;meses)` | ini, meses | Meses | Misma fecha N meses adelante/atrás |
+| `FIN.MES(ini;meses)` | ini, meses | Meses | Último día del mes destino |
+| `DIA.LAB(ini;días;[fest.])` | ini, días, [festivos] | Días laborables | Fecha tras N días laborables |
+| `DIA.LAB.INTL(ini;días;[wknd];[fest.])` | ini, días, [weekend], [festivos] | Días laborables | Fecha tras N días laborables personalizables |
+
+### Funciones de conversión de texto
+
+| Función | Convierte | Devuelve |
+|---------|-----------|---------|
+| `FECHANUMERO(texto)` | Texto → fecha | Número de serie |
+| `TIEMPOVALOR(texto)` | Texto → hora | Fracción decimal |

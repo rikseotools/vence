@@ -1,0 +1,9 @@
+{
+  "question_id": "d9708b11-2ea6-4985-b768-956b8c513d13",
+  "gravedad": "media",
+  "tipo": "afirmacion_falsa",
+  "donde": "intro y las cuatro razones (\"por qué A es correcta\" y las tres de \"por qué las demás son incorrectas\")",
+  "que_dice": "Que en Word 365, para ver la tabla completa en la vista de diseño web, se usa \"Autoajustar a la ventana\" (que adapta el ancho de la tabla a la ventana/navegador), frente a \"Autoajustar al contenido\", \"Ancho de columna fijo\" y \"Alinear al centro\", que no lo consiguen.",
+  "que_dice_el_articulo": "El artículo vinculado (Word 365, art. 1 — Funcionalidades principales de Word y Writer) no menciona en ningún lugar las opciones de autoajuste de tablas (\"Autoajustar a la ventana\", \"Autoajustar al contenido\", \"Ancho de columna fijo\") ni la vista Diseño web en relación con tablas. La explicación no incluye ninguna cita del artículo (no hay bloque `>`), y una búsqueda del término \"autoajust\" en el fichero fuente no da ningún resultado.",
+  "correccion_propuesta": "Mantener la respuesta (es funcionalidad real de Word), pero dejar de presentarla como respaldada por este artículo: o se añade una cita literal de una fuente que sí describa el menú \"Propiedades de tabla > Autoajuste\" de Word, o se retira el enlace a este artículo/sección y se anota que la explicación se apoya en conocimiento general del producto, no en el texto citado."
+}

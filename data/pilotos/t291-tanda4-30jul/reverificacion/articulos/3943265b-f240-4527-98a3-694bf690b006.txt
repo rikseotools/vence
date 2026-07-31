@@ -1,0 +1,540 @@
+LEY: Informática Básica
+ARTÍCULO: 3 — El hardware
+======================================================================
+## El hardware del ordenador
+
+> El **hardware** es el conjunto de los componentes que conforman la parte **física** de una computadora: todo aquello que se puede tocar. Se opone al *software*, que es la parte lógica (intangible).
+
+El hardware se divide en:
+- **Hardware básico** → imprescindible para el funcionamiento (CPU, RAM, placa base, fuente de alimentación, disco duro).
+- **Hardware complementario** → mejora las prestaciones pero no es estrictamente necesario (tarjeta gráfica adicional, tarjeta de sonido, lector óptico, webcam…).
+
+---
+
+## Componentes básicos de un sistema informático
+
+Los tres pilares del sistema informático son:
+
+1. **Hardware** (parte física)
+2. **Software** (parte lógica)
+3. **Factor humano** (*humanware*)
+
+> El *componente mecánico* **no** es un elemento básico de un sistema informático.
+
+El **software** —como el Sistema Operativo, los *drivers* o un procesador de texto— **no forma parte del hardware**, aunque interactúa con él. Un controlador o *driver* tampoco es hardware.
+
+---
+
+## La CPU (Procesador)
+
+### ¿Qué es la CPU?
+
+> La **CPU** (*Central Processing Unit*, Unidad Central de Proceso) es el componente que actúa como **"cerebro"** del ordenador: ejecuta instrucciones, realiza operaciones lógicas y aritméticas y coordina el resto de componentes.
+
+También se denomina **microprocesador**. Los términos CPU, microprocesador y UCP son equivalentes.
+
+### Estructura interna de la CPU
+
+La CPU está formada por:
+
+| Unidad | Función |
+|--------|---------|
+| **Unidad de Control (UC)** | Coordina y dirige las operaciones de la CPU; detecta señales eléctricas de estado de las distintas unidades |
+| **ALU** (*Arithmetic Logic Unit*) | Realiza operaciones aritméticas y lógicas |
+| **UCF** (*Unidad de Coma Flotante*) | Procesa operaciones con números decimales (coma flotante) |
+| **Registros** | Memoria interna ultrarrápida de la CPU; almacena datos temporales durante la ejecución |
+| **Caché** | Memoria interna de alta velocidad (ver sección Caché) |
+
+> La **Unidad de Control** detecta señales eléctricas de estado procedentes de las distintas unidades, indicando su situación o condición de funcionamiento, y coordina las operaciones de la CPU y otros componentes.
+
+### Velocidad de la CPU: frecuencia de reloj
+
+> La **frecuencia de reloj** (o velocidad de reloj) es la cantidad de operaciones que puede realizar un procesador por segundo. Se mide en **gigahercios (GHz)**.
+
+- El **reloj de la CPU** sirve para **sincronizar** las operaciones del ordenador.
+- A mayor frecuencia → mayor velocidad de procesamiento.
+- **Overclocking**: proceso de aumentar intencionadamente la frecuencia de los ciclos de CPU **más allá de la configuración predeterminada de fábrica** para obtener mayor rendimiento.
+
+### Longitud de palabra
+
+> La **longitud de palabra** es la cantidad de información que es capaz de manejar el microprocesador en cada ciclo. Se puede medir en bits.
+
+- Procesadores de **32 bits** → manejan 4 bytes por ciclo.
+- Procesadores de **64 bits** → manejan 8 bytes por ciclo y pueden gestionar mayor cantidad de memoria RAM.
+
+> La **arquitectura de 64 bits** en un procesador indica la **cantidad máxima de memoria** que puede gestionar el procesador y el tamaño de los datos que maneja por ciclo.
+
+### Procesadores multinúcleo
+
+> Los **procesadores multinúcleo** (*multicore*) integran **varios núcleos** de procesamiento en un solo chip, permitiendo **ejecutar varias tareas de forma simultánea** (paralelismo real).
+
+- *Dual-core* = 2 núcleos
+- *Quad-core* = 4 núcleos
+- *Octa-core* = 8 núcleos
+
+### FLOPS
+
+> Las **operaciones de coma flotante por segundo (FLOPS)** son una **medida de rendimiento** de una computadora, especialmente para cálculos científicos y gráficos.
+
+### Primer fabricante de microprocesadores
+
+> **Intel** fue el **primer fabricante de microprocesadores** del mundo, con el **Intel 4004** (1971).
+
+### Zócalo del procesador
+
+> El lugar donde se inserta el microprocesador con su sistema de refrigeración por ventilador o turbina se denomina **zócalo** (*socket*).
+
+---
+
+## La placa base (placa madre)
+
+> La **placa base** (también llamada **placa madre** o *motherboard*) es el circuito impreso principal al que se conectan todos los componentes del ordenador. Aloja la CPU, la RAM, el chipset, la BIOS/UEFI y los conectores de expansión.
+
+### El chipset
+
+> El **chipset** es el conjunto de circuitos integrados de la placa base que controla el **flujo de datos** entre el procesador, la memoria y otros dispositivos.
+
+Tradicionalmente se dividía en dos puentes:
+
+| Puente | Denominación | Función |
+|--------|-------------|---------|
+| **Northbridge** | Puente norte | Gestiona el tráfico de alta velocidad: CPU, RAM y GPU |
+| **Southbridge** | Puente sur | Gestiona dispositivos de baja velocidad: USB, teclado, ratón, SATA, audio |
+
+> El **Southbridge** gestiona la conexión del teclado (y otros dispositivos de E/S de baja velocidad).
+
+> Cuando se menciona el término **"Southbridge"** nos referimos al **chipset** (concretamente al puente sur). El Southbridge es un circuito integrado que coordina los diferentes dispositivos de entrada y salida y algunas otras funcionalidades de baja velocidad dentro de la placa base.
+
+En procesadores modernos, las funciones del Northbridge se han integrado directamente en la CPU, quedando solo el Southbridge (llamado PCH en Intel).
+
+### Formatos (factores de forma) de placa base
+
+| Factor | Características |
+|--------|----------------|
+| ATX | Estándar más común en sobremesa; 305 × 244 mm |
+| Micro-ATX | Más pequeño que ATX |
+| Mini-ITX | Muy compacto; para sistemas pequeños |
+| **LPX** | Usa un slot denominado **Riser Card** |
+| E-ATX | Mayor que ATX; para servidores y estaciones de trabajo |
+
+> El modelo de placa madre que se caracteriza por utilizar un slot denominado **Riser Card** es el **LPX**.
+
+### Slots de expansión
+
+> Los **slots** son los **puntos de anclaje de las tarjetas de expansión** del PC (tarjeta gráfica, tarjeta de sonido, tarjeta de red, etc.).
+
+El estándar moderno es **PCIe** (Peripheral Component Interconnect Express).
+
+---
+
+## La memoria del ordenador
+
+### Jerarquía de memoria
+
+La memoria se organiza por velocidad y capacidad, de mayor a menor velocidad:
+
+- Registros de CPU (más rápida, menos capacidad)
+- Caché L1 / L2 / L3
+- RAM (memoria principal)
+- Disco duro / SSD (almacenamiento masivo)
+- Almacenamiento externo (más lenta, mayor capacidad)
+
+### Memoria RAM
+
+> La **memoria RAM** (*Random Access Memory*, Memoria de Acceso Aleatorio) almacena **temporalmente** los datos e instrucciones que están siendo utilizados por el procesador. Es la **memoria principal** del ordenador.
+
+**Características de la RAM:**
+- **Volátil**: su contenido se **borra al apagar** el equipo.
+- De lectura y escritura.
+- Más rápida que el disco duro.
+- El sistema la usa para ejecutar programas y abrir archivos.
+
+> El **gran inconveniente** de la RAM es que su contenido **se pierde cuando se apaga el ordenador**.
+
+> Si un equipo tiene insuficiente RAM, el sistema utiliza **memoria virtual en el disco** (paginación), lo que ralentiza el sistema.
+
+#### Tipos de RAM
+
+| Tipo | Descripción |
+|------|-------------|
+| **DRAM** (*Dynamic RAM*) | Gran capacidad pero necesita ser **constantemente refrescada** (re-energizada) o perdería su contenido. Base de la RAM moderna. |
+| **SRAM** (*Static RAM*) | No necesita refresco; más rápida y cara; usada en caché. |
+| **SDRAM** | DRAM síncrona con el bus del sistema. |
+| **DDR / DDR2 / DDR3 / DDR4 / DDR5** | Variantes de doble tasa de datos; cada generación incrementa la velocidad. |
+
+> La **DRAM** es un tipo de memoria de gran capacidad pero que **precisa ser constantemente refrescada**.
+
+> La diferencia entre **DRAM y SRAM**: la DRAM necesita ser refrescada constantemente, mientras que la **SRAM no**.
+
+#### RAM vs. ROM
+
+| Característica | RAM | ROM |
+|---------------|-----|-----|
+| Volatilidad | **Volátil** (se borra al apagar) | **No volátil** (persiste sin alimentación) |
+| Acceso | Lectura y escritura | Solo lectura (en origen) |
+| Uso | Memoria de trabajo | Firmware, BIOS |
+| Velocidad | Alta | Más baja |
+
+> La **memoria ROM** (*Read Only Memory*) es de **solo lectura**. Almacena el firmware (BIOS/UEFI) de forma permanente. La fecha, hora y secuencia de arranque se almacenan en la **memoria CMOS** (ROM alimentada por pila).
+
+### Tipos de ROM
+
+| Tipo | Borrado | Características |
+|------|---------|----------------|
+| ROM | No borrable | Solo lectura; fabricada con datos fijos |
+| PROM | No borrable post-fabricación | Programable una sola vez |
+| **EPROM** | **Luz ultravioleta** | Borrable con luz UV intensa |
+| **EEPROM** | **Descarga eléctrica** | Borrable eléctricamente; base de la memoria flash |
+
+> La memoria **EPROM** se puede borrar mediante **exposición a una fuerte luz ultravioleta**.
+
+> La memoria **EEPROM** se puede borrar mediante una **descarga eléctrica**. Es el tipo de ROM que puede ser **programada, borrada y reprogramada eléctricamente**.
+
+### Memoria caché
+
+> La **memoria caché** es una memoria interna de la CPU de **acceso ultrarrápido** que almacena los datos e instrucciones usados frecuentemente para acelerar los accesos del microprocesador al sistema de memoria.
+
+**Función:** acelerar lecturas y escrituras que necesita el microprocesador para que todas las aplicaciones funcionen más rápido.
+
+#### Niveles de caché
+
+| Nivel | Velocidad | Tamaño | Ubicación |
+|-------|----------|--------|-----------|
+| **L1** | Más rápida | Más pequeña (KB) | Dentro del núcleo CPU |
+| **L2** | Media | Media (MB) | Dentro/cerca del núcleo |
+| **L3** | Más lenta | Más grande (MB-GB) | Compartida entre núcleos |
+
+> En un ordenador con caché de dos niveles (L1 y L2): **L2 es más grande y más lenta que L1**.
+
+> La memoria caché es **de acceso más rápido que la memoria principal** (RAM).
+
+> El orden de acceso más rápido a más lento: **Caché > RAM > Disco**.
+
+### Buffer
+
+> Un **buffer** es un espacio de memoria en el que se almacenan datos de manera **temporal** para garantizar que la transmisión entre un dispositivo de entrada y uno de salida se realice adecuadamente. Normalmente para un único uso.
+
+### Memoria flash
+
+> La **memoria flash** es un tipo de memoria **no volátil** (mantiene los datos sin alimentación) que puede ser borrada y reprogramada eléctricamente. Se usa en:
+> - Memorias USB (*pen drives*)
+> - Tarjetas SD / microSD
+> - SSD (unidades de estado sólido)
+
+---
+
+## Almacenamiento masivo
+
+### Disco Duro HDD
+
+> El **HDD** (*Hard Disk Drive*, Disco Duro Magnético) es el dispositivo de almacenamiento tradicional. Usa **discos giratorios** (platos magnéticos) y cabezales de lectura/escritura mecánicos.
+
+**Características:**
+- Almacenamiento **no volátil** (permanente aunque esté apagado).
+- Mayor capacidad a menor coste que los SSD.
+- Más lento y frágil por sus partes mecánicas.
+- Interfaz de conexión principal: **SATA** (Serial ATA).
+
+### Disco SSD
+
+> El **SSD** (*Solid State Drive*, Unidad de Estado Sólido) no tiene partes móviles y usa **tecnología de memoria flash** para almacenar datos.
+
+**Ventajas del SSD sobre el HDD:**
+- Mucho más **rápido** (menor latencia, mayor velocidad de lectura/escritura).
+- **Sin partes mecánicas** → más resistente a golpes.
+- Silencioso.
+- Menor consumo energético.
+
+> La principal diferencia entre HDD y SSD: el **SSD es más rápido y no tiene partes mecánicas**, mientras que el **HDD usa discos giratorios**.
+
+#### ¿Se pueden tener HDD y SSD juntos?
+
+> **Sí**, es perfectamente posible tener instalados en el mismo PC un HDD y un SSD simultáneamente. Son compatibles y se usan de forma complementaria.
+
+### NVMe y M.2
+
+- **M.2** es un factor de forma (conector físico) para SSDs que se instalan directamente en la placa base, ocupando muy poco espacio.
+- **NVMe** (*Non-Volatile Memory Express*) es el protocolo de comunicación de alta velocidad usado por los SSD M.2 modernos, mucho más rápido que SATA.
+
+| Tipo | Interfaz | Velocidad típica |
+|------|---------|-----------------|
+| HDD SATA | SATA III | ~150 MB/s |
+| SSD SATA | SATA III | ~550 MB/s |
+| SSD NVMe (M.2) | PCIe | 2 000 - 7 000 MB/s |
+
+### Unidades ópticas
+
+> Una **unidad óptica** es un dispositivo que permite **leer y escribir discos ópticos** como CDs, DVDs y Blu-rays.
+
+- CD-ROM, DVD-ROM → solo lectura.
+- CD-RW, DVD-RW → lectura y escritura.
+- Un **lector y grabador de DVD** es un **periférico de entrada y salida** (mixto).
+
+> El **CD-ROM** es un soporte de almacenamiento **óptico**.
+
+### RAID
+
+> El **RAID** (*Redundant Array of Independent Disks*) es un sistema que **combina múltiples discos** para mejorar el **rendimiento** y/o la **tolerancia a fallos**.
+
+| Nivel RAID | Descripción |
+|-----------|-------------|
+| RAID 0 | Striping: mejora rendimiento, sin redundancia |
+| RAID 1 | Mirroring: duplica datos, tolerancia a fallos |
+| RAID 5 | Striping con paridad: rendimiento y tolerancia |
+| RAID 10 | Combinación de RAID 1 y RAID 0 |
+
+### Memoria USB (pendrive)
+
+> Una **memoria USB** es un pequeño dispositivo de almacenamiento que utiliza **memoria flash** para guardar información **sin necesidad de baterías** ni partes móviles.
+
+### Unidad de red
+
+> Una **unidad de red** es una ubicación de almacenamiento que **no reside en el ordenador local** sino en otro equipo de la red, a la que se puede acceder como si fuera un disco local.
+
+---
+
+## La GPU (tarjeta gráfica)
+
+> La **tarjeta gráfica** (*GPU, Graphics Processing Unit*) es el componente que **procesa y genera la salida de vídeo**, transformando datos digitales en imágenes visualizables en el monitor.
+
+**Funciones:**
+- Procesar y generar señal de vídeo para el monitor.
+- Renderizar gráficos 2D y 3D.
+- Acelerar tareas de inteligencia artificial y cómputo paralelo.
+
+> La tarjeta gráfica tiene como tarea **procesar datos y transformarlos en información representable en el dispositivo de salida**.
+
+---
+
+## Buses internos
+
+> Un **bus** es el conjunto de elementos de interconexión a través de los cuales **fluye la información** entre las distintas unidades funcionales del ordenador.
+
+**Tipos de bus:**
+
+| Bus | Función |
+|-----|---------|
+| **Bus de datos** | Transfiere la información entre los componentes del sistema |
+| **Bus de direcciones** | Indica la posición de memoria donde se leerán/escribirán datos |
+| **Bus de control** | Transmite señales de control y sincronización |
+
+> La **velocidad de un bus** se define por su **frecuencia** (número de paquetes de datos enviados o recibidos por segundo).
+
+**Nota:** "Bus de Procesador" **no** es un tipo de bus estándar reconocido en la taxonomía habitual de buses.
+
+### PCIe (Peripheral Component Interconnect Express)
+
+> El **puerto PCIe** es un conector físico en la placa base que permite conectar **tarjetas de expansión** como tarjetas gráficas, tarjetas de sonido o tarjetas de red, y comunicarlas con el procesador y la memoria.
+
+---
+
+## Puertos de vídeo
+
+Los puertos de vídeo conectan el ordenador con monitores y pantallas:
+
+| Puerto | Tipo | Características |
+|--------|------|----------------|
+| **VGA** | Analógico | 15 pines; estándar antiguo; resolución limitada |
+| **DVI** | Digital/analógico | Mejor calidad que VGA; sin audio |
+| **HDMI** | Digital | Audio + vídeo; hasta 8K; muy común en TV y monitores |
+| **DisplayPort** | Digital | Alta resolución; ideal para monitores de PC; puede transportar audio |
+| **Thunderbolt** | Digital | Alta velocidad; datos + vídeo + alimentación; compatible con USB-C |
+
+> Los tipos de conexión **VGA** y **HDMI** son **tipos de conexiones del ordenador a pantallas o monitores**.
+
+> **VDI** no es un tipo de puerto de vídeo habitual (los estándares son VGA, DVI, HDMI y DisplayPort; "VDI" no existe como puerto físico de vídeo).
+
+> La respuesta incorrecta como conexión para monitor sería **RRS**: no existe ese estándar de vídeo.
+
+> **DisplayPort** es una interfaz digital para la transmisión de vídeo entre un PC y un monitor.
+
+> **Thunderbolt** es un estándar de interconexión de alta velocidad para transferir datos, vídeo y energía a través de un único cable.
+
+---
+
+## Puertos USB
+
+### ¿Qué es USB?
+
+> **USB** (*Universal Serial Bus*, Bus Universal en Serie) es el conjunto de especificaciones para cables, conectores y protocolos de conexión, comunicación y alimentación entre ordenadores, periféricos y otros dispositivos.
+
+### Versiones USB
+
+| Versión | Velocidad máx. | Símbolo | Notas |
+|---------|---------------|---------|-------|
+| USB 1.0 / 1.1 | 12 Mbps | — | Primera generación |
+| USB 2.0 | 480 Mbps | — | "Hi-Speed" |
+| **USB 3.0** | **5 Gbps** (~600 MB/s) | **SS** (SuperSpeed) | Azul; aumenta la intensidad de corriente |
+| USB 3.1 Gen 2 | 10 Gbps | SS+ | Mayor velocidad |
+| USB 3.2 | 20 Gbps | — | Doble canal |
+| USB 4 | 40 Gbps | — | Basado en Thunderbolt 3 |
+
+> El símbolo **SS** en un puerto USB indica que es un **USB 3.0** con velocidad de transferencia máxima de **600 MB/s** (5 Gbps).
+
+> En **USB 3.0** se aumenta la **intensidad de la corriente** respecto a versiones anteriores.
+
+### Tipos de conector USB
+
+| Tipo | Descripción | Uso común |
+|------|-------------|-----------|
+| **USB-A** | Conector rectangular; el más común | PC, hubs, cargadores |
+| **USB-B** | Conector cuadrado | Impresoras, scanners |
+| **Mini USB** | Conector pequeño | Cámaras antiguas, MP3 |
+| **Micro USB** | Más pequeño que Mini USB | Smartphones Android (antiguo) |
+| **USB-C** | Reversible; oval | Smartphones modernos, portátiles |
+
+### Hubs USB
+
+> Los **HUBs de puertos USB** son dispositivos **mixtos** (entrada y salida): permiten expandir los puertos USB del ordenador conectando varios periféricos a través de un solo puerto.
+
+---
+
+## Puerto FireWire (IEEE 1394)
+
+> **FireWire** (IEEE 1394) fue inventado por **Apple**. Es una interfaz de alta velocidad para transmisión de datos, especialmente vídeo digital profesional.
+
+> Los dispositivos **FireWire NO hacen uso de recursos de sistema** como la memoria del ordenador (esa afirmación es **incorrecta**): FireWire tiene su propio controlador dedicado.
+
+---
+
+## Puertos PS/2
+
+Los **puertos PS/2** son conectores de 6 pines redondos, codificados por color, heredados de la era DOS/Windows 9x:
+
+| Color | Uso |
+|-------|-----|
+| **Verde** | Ratón |
+| **Morado/Lila** | Teclado |
+
+> Los puertos **PS/2 de color verde** son destinados a la **conexión de ratones**.
+
+---
+
+## Puerto RJ-45 y conectividad de red
+
+> El **RJ-45** es el conector estándar para redes Ethernet (cable de red). Permite conectar el equipo a una red local (LAN).
+
+> La **tarjeta de red** permite **conectar el equipo a una red de comunicaciones** (local o internet).
+
+---
+
+## Gateway
+
+> Un **gateway** (puerta de enlace) es el dispositivo que permite **interconectar redes con protocolos y arquitecturas diferentes** a todos los niveles de comunicación, traduciendo la información del protocolo de una red al protocolo de la red de destino.
+
+---
+
+## Periféricos
+
+> Los **periféricos** son los aparatos y dispositivos auxiliares e independientes conectados a la Unidad Central de Procesamiento que permiten la entrada, salida o almacenamiento de información.
+
+### Clasificación de periféricos
+
+| Tipo | Función | Ejemplos |
+|------|---------|---------|
+| **Entrada** | Introducen datos al ordenador | Teclado, ratón, escáner, micrófono, webcam, lector de tarjetas, lápiz óptico, cámara, lector de DNI electrónico, escáner de iris |
+| **Salida** | Muestran o entregan información procesada | Monitor no táctil, impresora, altavoz, plotter |
+| **Entrada/Salida (mixtos)** | Ambas funciones | Monitor táctil, impresora multifunción, lector/grabador DVD, HUB USB, pantalla táctil |
+| **Almacenamiento** | Guardan datos | Disco duro, SSD, memoria USB, CD/DVD |
+
+> El **ratón** es un periférico de **entrada**.
+
+> El **teclado** es un periférico de **entrada**.
+
+> El **monitor no táctil** NO es periférico de entrada; es periférico de salida.
+
+> El **monitor táctil** es periférico de **entrada y salida**.
+
+> Una **pantalla táctil** de portátil es un periférico de **entrada y salida**.
+
+> Una **impresora multifunción** es un periférico de **entrada y salida** (imprime, escanea y copia).
+
+> Un **plotter** es un periférico de **salida**.
+
+> El **altavoz** es un periférico de **salida**.
+
+> Un **lector y grabador de DVD** es un periférico de **entrada y salida**.
+
+> El **escáner** es un periférico de **entrada**.
+
+> Una **cámara web** es un periférico de **entrada**.
+
+> El **lápiz óptico** es un periférico de **entrada**.
+
+> Un **escáner de iris** (control de acceso biométrico) es periférico de **entrada**.
+
+> El **lector de DNI electrónico** es periférico de **entrada** (no mixto).
+
+> El **disco duro** forma parte del hardware (almacenamiento, no es periférico de E/S).
+
+> Un **escáner** NO es un soporte informático válido para guardar y leer archivos: solo captura imágenes.
+
+### El teclado QWERTY
+
+> El término **QWERTY** hace referencia a la **distribución de teclas de un teclado** (denominada así por las primeras seis letras de la fila superior).
+
+### Impresoras
+
+**Por tipo de impacto:**
+
+| Tipo | Mecanismo | Ejemplo |
+|------|-----------|---------|
+| **De impacto** | Golpean físicamente el papel | De agujas (matricial), de margarita |
+| **Sin impacto** | No contactan el papel | Láser, inyección de tinta, térmica |
+
+> Las **impresoras de agujas** (matriciales) pertenecen al grupo de **impacto**. Una impresora matricial o de matriz de puntos es de **impacto**.
+
+> Las **impresoras de inyección de tinta** se caracterizan por **proyectar pequeñas gotas de tinta** sobre el papel.
+
+> Las impresoras **láser** usan un tambor fotosensible y tóner en polvo.
+
+**Velocidad de impresión:** se mide en **PPM** (páginas por minuto).
+
+### Plotter
+
+> Un **plotter** es un tipo de **impresora** especializada en **imprimir planos y gráficos de gran formato** (planos de arquitectura, cartografía, diseño industrial). En un ordenador, el plotter es un periférico de **salida**.
+
+---
+
+## Batería CMOS y reloj del sistema
+
+> La **batería CMOS** es la pila de la placa base que mantiene la **fecha y hora del sistema** cuando el equipo está apagado, alimentando el chip RTC (*Real Time Clock*) y la memoria CMOS donde se guardan los parámetros de la BIOS.
+
+---
+
+## Virtualización y PC Stick
+
+### Virtualización de hardware
+
+> La **virtualización de hardware** es la capacidad de ejecutar **múltiples sistemas operativos** en un solo dispositivo físico mediante un *hipervisor* que crea máquinas virtuales independientes.
+
+### PC Stick / Computer Stick
+
+> Un **PC Stick** es un ordenador de **pequeñas dimensiones** que se conecta a un puerto **HDMI**, disponiendo de procesador, memoria RAM, almacenamiento para ejecutar un sistema operativo y puertos USB.
+
+---
+
+## Latencia
+
+> La **latencia** en hardware se refiere al **tiempo de respuesta** de un componente. A menor latencia, más rápida es la respuesta del dispositivo.
+
+---
+
+## Resumen: hardware vs. software
+
+| Elemento | Categoría |
+|---------|-----------|
+| CPU, RAM, disco duro, placa base | **Hardware** |
+| Sistema Operativo (Linux, Windows) | **Software** |
+| Controlador / Driver | **Software** |
+| BIOS/UEFI | Firmware (software básico) |
+| Procesador de texto (Word) | **Software** |
+| Impresora | **Hardware** (periférico) |
+| Disco duro | **Hardware** |
+| Tarjeta gráfica | **Hardware** |
+
+> El **Sistema Operativo** no se considera parte del **hardware** de un equipo informático.
+
+> Un **controlador o driver** no forma parte del hardware.
+
+> La **impresora** es un componente periférico de la computadora, por lo que **sí se considera parte del hardware**.

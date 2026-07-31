@@ -1,0 +1,244 @@
+LEY: Outlook 365
+ARTÍCULO: 3 — Atajos de teclado
+======================================================================
+## Atajos de teclado en Microsoft Outlook 365
+
+El dominio de los métodos abreviados de teclado permite trabajar con Outlook de forma mucho más ágil. A continuación se recogen todos los atajos que aparecen en las preguntas de examen, organizados por categoría.
+
+---
+
+## Crear elementos nuevos
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl+N** | Nuevo mensaje (desde vista Correo) / Nueva cita (Calendario) / Nuevo contacto (Contactos) / Nueva tarea (Tareas) |
+| **Ctrl+Mayús+M** | Nuevo mensaje de correo desde **cualquier** vista o módulo |
+| **Ctrl+Mayús+A** | Nueva cita en el calendario desde **cualquier** vista |
+| **Ctrl+Mayús+Q** | Nueva convocatoria de reunión desde **cualquier** vista |
+| **Ctrl+Mayús+C** | Nuevo contacto desde **cualquier** vista |
+| **Ctrl+Mayús+L** | Nuevo grupo de contactos (lista de distribución) |
+| **Ctrl+Mayús+K** | Nueva tarea desde **cualquier** vista |
+
+> **Nuevo mensaje de correo:** desde la vista Correo es **Ctrl+N**; desde cualquier vista de Outlook es **Ctrl+Mayús+M**. (No confundir con los atajos de leído/no leído: en Outlook clásico de escritorio, **Ctrl+U** marca como **no leído** y **Ctrl+Q** como **leído**.)
+| **Ctrl+Mayús+E** | Nueva carpeta |
+| **Ctrl+Mayús+N** | Nueva nota |
+
+> **Clave de examen:** Ctrl+Mayús+M crea un **nuevo mensaje**, no abre el calendario. Ctrl+Mayús+Q crea una **nueva solicitud de reunión**, no responde a todos (ese es Ctrl+Mayús+R).
+
+---
+
+## Gestión de mensajes
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl+R** | Responder al remitente |
+| **Ctrl+Mayús+R** | Responder a todos los destinatarios (remitente + CC) |
+| **Ctrl+F** | Reenviar el mensaje seleccionado |
+| **Ctrl+Alt+F** | Reenviar el mensaje como datos adjuntos |
+| **Ctrl+Alt+R** | Responder al mensaje con una convocatoria de reunión |
+| **Ctrl+Enter** | Enviar el mensaje (equivalente al botón Enviar) |
+| **Alt+S** | Enviar el mensaje |
+| **Ctrl+Q** | Marcar el mensaje como leído |
+| **Ctrl+U** | Marcar el mensaje como no leído |
+| **Ctrl+D** | Eliminar el mensaje seleccionado (lo mueve a Elementos eliminados). El atajo para responder es **Ctrl+R** |
+| **Supr** | Eliminar el mensaje seleccionado (mueve a Elementos eliminados) |
+| **Mayús+Supr** | Eliminar permanentemente (sin pasar por Elementos eliminados) |
+| **Ctrl+Mayús+V** | Mover el mensaje a una carpeta específica |
+| **Ctrl+Mayús+G** | Abrir el cuadro de diálogo de seguimiento personalizado (asignar marca de seguimiento) |
+| **Intro (Enter)** | Abrir el mensaje seleccionado |
+| **Mayús+Intro** | Abrir el mensaje seleccionado en una ventana independiente |
+| **Retroceso** | Archivar el elemento seleccionado |
+
+> **Distinción clave:** Ctrl+Q marca como **leído**; Ctrl+U marca como **no leído**.
+
+> **Distinción clave:** **Supr** elimina el mensaje (mueve a Elementos eliminados). En Outlook, **Ctrl+D elimina** el mensaje seleccionado. Para responder se usa **Ctrl+R** (solo al remitente) o **Ctrl+Mayús+R** (a todos).
+
+> **⚠️ Ctrl+D — atajo multifuncional según el módulo activo:**
+>
+> Microsoft asigna distintas acciones a Ctrl+D dentro de Outlook clásico según el módulo en el que estés trabajando:
+>
+> | Módulo activo | Acción de Ctrl+D |
+> |---|---|
+> | **Correo** (mensaje seleccionado) | Eliminar el mensaje (lo mueve a Elementos eliminados) |
+> | **Calendario** (cita/reunión seleccionada) | Eliminar la cita o reunión seleccionada |
+> | **Tareas** | **Eliminar el elemento seleccionado** / Rechazar una solicitud de tarea |
+> | **Contactos (Nuevo Outlook)** | Crear un contacto o lista de contactos (también con la tecla Eliminar) |
+> | **Editor de texto** (al redactar un mensaje) | Abrir el cuadro de diálogo **Fuente** |
+>
+> **Por eso Ctrl+D se asocia con "eliminar":** en Correo, Calendario y Tareas **elimina** el elemento seleccionado (a Elementos eliminados). **No responde** — responder es **Ctrl+R** (al remitente) o **Ctrl+Mayús+R** (a todos). El atajo de eliminar más habitual sigue siendo **Supr**.
+>
+> **Además, el Nuevo Outlook para Windows** permite cambiar el conjunto de atajos en **Configuración → Accesibilidad → Métodos abreviados de teclado** entre cuatro perfiles: "Outlook" (el predeterminado, que es el que se evalúa), "Hotmail", "Gmail" y "Yahoo". En el modo "Hotmail" (heredado de Outlook.com) Ctrl+D pasa a eliminar el mensaje, lo que añade otra fuente de confusión.
+>
+> **Fuente oficial:** [Microsoft Support — Métodos abreviados de teclado para Outlook](https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-para-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd)
+
+---
+
+## Enviar y recibir
+
+| Atajo | Acción |
+|---|---|
+| **F9** | Enviar y recibir todos los correos de todas las cuentas |
+| **Ctrl+M** | Enviar y recibir todos los correos (equivalente a F9) |
+
+> **F9 y Ctrl+M son equivalentes** para sincronizar todas las cuentas configuradas en Outlook.
+
+---
+
+## Búsqueda
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl+E** | Ir al cuadro de búsqueda |
+| **F3** | Ir al cuadro de búsqueda / buscar un contacto u otro elemento |
+| **Ctrl+Mayús+F** | Abrir la búsqueda avanzada |
+| **Ctrl+Mayús+P** | Crear una nueva carpeta de búsqueda |
+
+> **F3 y Ctrl+E** llevan al cuadro de búsqueda. Ctrl+Mayús+P abre la ventana "Nueva carpeta de búsqueda".
+
+---
+
+## Navegación entre módulos
+
+| Atajo | Módulo al que navega (Outlook clásico) |
+|---|---|
+| **Ctrl+1** | Correo (Bandeja de entrada) |
+| **Ctrl+2** | Calendario |
+| **Ctrl+3** | Contactos (Personas) |
+| **Ctrl+4** | Tareas |
+| **Ctrl+5** | Notas |
+| **Ctrl+6** | Lista de carpetas |
+| **Ctrl+7** | Accesos directos |
+| **Ctrl+8** | Diario |
+| **Ctrl+Mayús+I** | Ir a la Bandeja de entrada |
+| **Ctrl+Mayús+O** | Ir a la Bandeja de salida |
+| **Ctrl+Y** | Ir a otra carpeta (abrir cuadro de diálogo) |
+
+> **Nota de versión:** esta numeración es la del **Outlook clásico** de escritorio (el de administraciones y exámenes). En el **Nuevo Outlook para Windows** se intercala Copilot y la numeración cambia: Ctrl+3 = Copilot, Ctrl+4 = Personas (Contactos), Ctrl+5 = To Do.
+
+---
+
+## Libreta de direcciones y contactos
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl+Mayús+B** | Abrir la Libreta de direcciones |
+| **Ctrl+Mayús+C** | Nuevo contacto desde cualquier vista |
+| **F3** | Buscar un contacto (también desde el cuadro de búsqueda general) |
+
+---
+
+## Vistas del Calendario
+
+| Atajo | Vista del calendario |
+|---|---|
+| **Ctrl+Alt+1** | Vista Día |
+| **Ctrl+Alt+2** | Vista Semana laboral (lunes a viernes) |
+| **Ctrl+Alt+3** | Vista Semana (7 días) |
+| **Ctrl+Alt+4** | Vista Mes |
+| **Ctrl+G** | Ir a una fecha específica / configurar periodicidad de la cita |
+
+> **Regla mnemotécnica:** Ctrl+Alt+1 = 1 día, Ctrl+Alt+2 = semana laboral (5 días), Ctrl+Alt+3 = semana completa (7 días), Ctrl+Alt+4 = mes.
+
+---
+
+## Preguntas de examen resueltas sobre atajos
+
+A continuación se resumen las correspondencias que más veces han aparecido en preguntas de oposición:
+
+| Atajo | Acción — descripción completa |
+|---|---|
+| **Ctrl+R** | Responder al remitente del mensaje |
+| **Ctrl+Mayús+R** | Responder a todos (remitente + destinatarios CC). **No** crea una solicitud de reunión |
+| **Ctrl+F** | Reenviar el mensaje. **No** es buscar (en Outlook la búsqueda es Ctrl+E o F3) |
+| **Ctrl+N** | Nuevo elemento según la vista activa |
+| **Ctrl+Mayús+M** | Nuevo mensaje desde **cualquier** módulo. Un opositor que pulse esto pensando que abre el calendario verá que se crea un nuevo mensaje |
+| **Ctrl+Mayús+Q** | Nueva solicitud de reunión desde cualquier módulo. **No** confundir con Ctrl+Mayús+R (responder a todos) |
+| **Ctrl+Mayús+A** | Nueva cita desde cualquier módulo |
+| **Ctrl+Mayús+K** | Nueva tarea desde cualquier módulo |
+| **Ctrl+Mayús+C** | Nuevo contacto desde cualquier módulo |
+| **Ctrl+Mayús+E** | Nueva carpeta |
+| **Ctrl+Mayús+G** | Asignar seguimiento personalizado (abre cuadro de diálogo de marca) |
+| **Ctrl+Mayús+B** | Abrir la Libreta de direcciones |
+| **Ctrl+Mayús+F** | Búsqueda avanzada |
+| **Ctrl+Mayús+P** | Nueva carpeta de búsqueda |
+| **Ctrl+Mayús+I** | Ir a Bandeja de entrada |
+| **Ctrl+Mayús+O** | Ir a Bandeja de salida |
+| **Ctrl+Mayús+N** | Nueva nota |
+| **Ctrl+Enter** | Enviar el mensaje |
+| **Alt+S** | Enviar el mensaje (alternativa a Ctrl+Enter) |
+| **Ctrl+Q** | Marcar como leído |
+| **Ctrl+U** | Marcar como no leído |
+| **Ctrl+D** | Eliminar el mensaje seleccionado (mueve a Elementos eliminados) |
+| **Supr** | Eliminar elemento (mueve a Elementos eliminados) |
+| **Ctrl+P** | Imprimir el elemento seleccionado |
+| **Ctrl+C** | Copiar |
+| **Ctrl+X** | Cortar |
+| **Ctrl+V** | Pegar |
+| **Ctrl+Z** | Deshacer |
+| **F9** | Enviar y recibir todos los mensajes |
+| **F3** | Buscar contacto u otro elemento |
+| **Ctrl+E** | Ir al cuadro de búsqueda |
+| **Ctrl+Alt+1** | Vista Día (calendario) |
+| **Ctrl+Alt+2** | Vista Semana laboral (calendario) |
+| **Ctrl+Alt+3** | Vista Semana (calendario) |
+| **Ctrl+Alt+4** | Vista Mes (calendario) |
+| **Ctrl+G** | Ir a fecha / periodicidad (calendario) |
+| **Ctrl+1** | Ir a Correo |
+| **Ctrl+2** | Ir a Calendario |
+| **Ctrl+3** | Ir a Contactos |
+| **Ctrl+4** | Ir a Tareas |
+| **Ctrl+5** | Ir a Notas |
+| **Ctrl+8** | Ir a Diario |
+| **Intro** | Abrir el mensaje seleccionado |
+| **Mayús+Intro** | Abrir el mensaje en ventana independiente |
+| **Retroceso** | Archivar el elemento seleccionado |
+| **Ctrl+Alt+R** | Responder con convocatoria de reunión |
+| **Ctrl+Alt+F** | Reenviar como datos adjuntos |
+
+---
+
+## Errores frecuentes de confusión
+
+| Error típico | Realidad |
+|---|---|
+| Creer que Ctrl+Mayús+R crea una solicitud de reunión | Ctrl+Mayús+R **responde a todos**; la reunión se crea con Ctrl+Mayús+Q |
+| Creer que Ctrl+F busca (como en Word/Excel) | En Outlook, Ctrl+F **reenvía**; la búsqueda es Ctrl+E o F3 |
+| Creer que Ctrl+Mayús+M abre el calendario | Ctrl+Mayús+M crea un **nuevo mensaje**; el calendario es Ctrl+2 |
+| Creer que Ctrl+Q marca como no leído | Ctrl+Q marca como **leído**; no leído es Ctrl+U |
+| Creer que Supr elimina definitivamente | Supr mueve a Elementos eliminados; para eliminar definitivamente hay que usar Mayús+Supr |
+| Creer que Ctrl+D elimina mensajes | En Outlook, Ctrl+D **elimina** el mensaje seleccionado (lo mueve a Elementos eliminados); para responder se usa **Ctrl+R**. El atajo de eliminación en Correo es **Supr**. Si en tu Nuevo Outlook Ctrl+D elimina, comprueba el conjunto de atajos en Configuración → Accesibilidad → Métodos abreviados de teclado (debería estar en "Outlook", no en "Hotmail") |
+
+---
+
+## ⚠️ Fuente oficial — verifica siempre Microsoft Support
+
+Los atajos de teclado de Outlook **varían según el módulo activo** (Correo, Calendario, Tareas, Contactos, editor de texto) y **según la versión** (Outlook clásico, Nuevo Outlook para Windows, Outlook en la web). Para evitar confusiones — especialmente con **Ctrl+D**, que cambia de significado según el módulo — la fuente oficial y normativa es la documentación de Microsoft Support en español:
+
+📖 **[Métodos abreviados de teclado para Outlook (Microsoft Support, es-es)](https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-para-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd)**
+
+Esta página detalla los atajos para cada versión y módulo. Es la única referencia que debe usarse para resolver dudas o discrepancias con materiales de estudio antiguos.
+
+### Casos típicos de confusión documentados
+
+| Atajo | Confusión habitual | Realidad oficial |
+|---|---|---|
+| **Ctrl+D** | "Elimina mensajes" | Ctrl+D elimina el mensaje seleccionado (lo mueve a Elementos eliminados). |
+| **Ctrl+R** | Responder al mensaje | Ctrl+R responde al remitente; Ctrl+Mayús+R responde a todos. Ctrl+D no responde: elimina. |
+| **Ctrl+Q vs Ctrl+U** | Confundir leído / no leído | **Ctrl+Q = leído**; **Ctrl+U = no leído** (escritorio). En Outlook en la web es **Ctrl+U** para no leído. |
+| **Ctrl+F** | "Buscar (como en Word/Excel)" | En Outlook, Ctrl+F **reenvía** el mensaje. Buscar es **Ctrl+E** o **F3**. |
+| **Supr vs Mayús+Supr** | "Ambos eliminan igual" | **Supr** mueve a Elementos eliminados; **Mayús+Supr** elimina permanentemente. |
+| **Nuevo Outlook — perfil de atajos** | "Mi Ctrl+D elimina y la pregunta dice que responde" | El Nuevo Outlook permite cambiar el set de atajos en *Configuración → Accesibilidad → Métodos abreviados de teclado* entre "Outlook" (predeterminado), "Hotmail", "Gmail" y "Yahoo". En modo "Hotmail" Ctrl+D elimina. Las preguntas evalúan siempre el set por defecto "Outlook". |
+
+
+---
+<!-- ampliado claude_code_mislink_review_2026_07 (Microsoft Support: https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-para-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd) -->
+## Dar formato al texto (editor de mensajes)
+
+Estos atajos actúan sobre el párrafo del cuerpo de un mensaje al redactar (el editor usa el motor de Word):
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl+T** | Aumentar la sangría / crear una sangría francesa |
+| **Ctrl+Mayús+T** | **Disminuir la sangría** del párrafo (reducir la sangría francesa) |
+
+> **Fuente oficial:** Microsoft Support — «Métodos abreviados de teclado para Outlook», sección *Dar formato al texto*. **Ctrl+Mayús+T disminuye la sangría**; no crea correos (Ctrl+N / Ctrl+Mayús+M) ni abre la libreta de direcciones (Ctrl+Mayús+B).

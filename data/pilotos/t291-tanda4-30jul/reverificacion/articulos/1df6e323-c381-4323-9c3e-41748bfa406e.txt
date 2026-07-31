@@ -1,0 +1,531 @@
+LEY: Informática Básica
+ARTÍCULO: 5 — Nociones básicas de seguridad informática
+======================================================================
+## Nociones básicas de seguridad informática
+
+La **seguridad informática** es el conjunto de medidas, procedimientos y técnicas destinadas a proteger los sistemas de información, los datos y las comunicaciones frente a accesos no autorizados, daños, alteraciones o robos.
+
+Un sistema informático seguro debe garantizar tres propiedades fundamentales:
+
+| Propiedad | Definición |
+|-----------|------------|
+| **Confidencialidad** | Solo las personas autorizadas pueden acceder a la información |
+| **Integridad** | La información solo puede modificarse por personas autorizadas y de forma controlada |
+| **Disponibilidad** | La información y los sistemas están accesibles cuando se necesitan |
+
+> **Nota de examen:** La **eficiencia** no es una propiedad de seguridad informática. Las tres propiedades fundamentales son confidencialidad, integridad y disponibilidad (triada CIA).
+
+---
+
+## 1. Tipos de seguridad informática
+
+### 1.1 Seguridad activa y seguridad pasiva
+
+| Tipo | Definición | Ejemplos |
+|------|------------|---------|
+| **Seguridad activa** | Medidas preventivas que evitan que se produzca el incidente | Antivirus, firewall, contraseñas, cifrado |
+| **Seguridad pasiva** | Medidas que minimizan el impacto del ataque o fallo una vez ocurrido | Copias de seguridad, sistemas de redundancia, RAID |
+
+> **Seguridad pasiva:** El conjunto de medidas que hace que el impacto del ataque o el fallo en la seguridad sea lo menor posible una vez que se ha producido.
+
+### 1.2 Seguridad física y seguridad lógica
+
+| Tipo | Definición | Ejemplos |
+|------|------------|---------|
+| **Seguridad física** | Protege el hardware de daños físicos, robos o accesos no autorizados al hardware | Cámaras de seguridad, cerraduras, SAI, control de acceso físico |
+| **Seguridad lógica** | Protege el software, los datos y el acceso lógico al sistema | Contraseñas, antivirus, cifrado, firewall |
+
+> La contraseña que empleamos para acceder a nuestro ordenador es un tipo de **seguridad lógica**.
+
+> La **instalación de antivirus** es un ejemplo de seguridad lógica.
+
+> Tipos de seguridad informática reconocidos: **física, lógica, activa, pasiva, en redes, en bases de datos**. "Seguridad de primer grado y segundo grado" **no son tipos reales** de seguridad informática.
+
+---
+
+## 2. Amenazas informáticas: concepto
+
+Una **amenaza** informática es la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización.
+
+> **Amenaza:** Causa potencial de un incidente que puede causar daños a un sistema de información.
+
+Las amenazas pueden ser:
+- **Internas**: usuarios propios con malas intenciones o errores humanos.
+- **Externas**: atacantes desde fuera de la organización.
+- **Accidentales**: fallos de hardware, desastres naturales, errores de software.
+- **Intencionadas**: ataques deliberados (malware, hackers, etc.).
+
+---
+
+## 3. Malware (software malicioso)
+
+El **malware** (de *malicious software*) es el término que **engloba todo tipo de software malicioso**, diseñado con fines dañinos: para acceder a un dispositivo sin consentimiento, dañar, robar información o alterar el funcionamiento normal.
+
+> **Malware:** Software diseñado para dañar, alterar o acceder sin autorización a un sistema. Engloba virus, troyanos, gusanos, ransomware, spyware y muchas otras variantes.
+
+### 3.1 Virus informático
+
+Un **virus** es un programa que se adhiere a otros archivos o programas y se replica al ejecutarlos, infectando el sistema.
+
+- **Necesita** un archivo huésped para propagarse.
+- **Requiere** la acción del usuario (ejecutar el archivo infectado) para activarse.
+- Puede dañar archivos, borrar datos o corromper el SO.
+
+> **Diferencia clave virus vs. gusano:** El virus necesita un archivo huésped; el gusano **no** necesita archivos huésped para propagarse.
+
+> El hecho de tener un archivo de virus grabado en el disco duro **no implica que el virus se haya ejecutado**: el usuario podría eliminarlo sin ejecutarlo.
+
+### 3.2 Gusano (Worm)
+
+Un **gusano** es un tipo de malware que se propaga automáticamente a través de redes **sin necesitar un archivo huésped** ni la intervención del usuario.
+
+- Se replica a sí mismo enviando copias por la red.
+- Su efecto principal suele ser **saturar el tráfico de red** y los recursos del sistema.
+- No necesita adjuntarse a un archivo existente.
+
+> Los programas que se copian a sí mismos y cuyo principal efecto es **saturar el tráfico por la red** son los **gusanos (worms)**.
+
+### 3.3 Troyano (Trojan)
+
+Un **troyano** es un programa que **se disfraza de software legítimo** para engañar al usuario y que lo instale voluntariamente, pero que contiene una función maliciosa oculta.
+
+- **No se propaga solo**: necesita la intervención del usuario para instalarse.
+- Puede permitir acceso o control remoto de la computadora infectada.
+- Es muy utilizado para crear backdoors (puertas traseras).
+
+| Característica | Virus | Gusano | Troyano |
+|---------------|-------|--------|---------|
+| Necesita archivo huésped | Sí | No | No |
+| Se propaga solo | Sí (al ejecutar) | Sí (por red) | No |
+| Necesita intervención del usuario | Sí | No | Sí (instalación) |
+| Se disfraza de software legítimo | No | No | Sí |
+
+> **Troyano:** Se presenta como legítimo para ocultar una función maliciosa. El troyano **necesita intervención del usuario para instalarse**; el virus se propaga al ejecutar el archivo infectado.
+
+### 3.4 Ransomware
+
+El **ransomware** es un malware que **restringe el acceso al sistema o a los archivos del usuario cifrándolos**, y exige el pago de un rescate (ransom) para recuperar el acceso.
+
+> **Ransomware:** Programa malicioso que cifra los archivos del usuario o restringe el acceso al sistema y muestra una nota de rescate exigiendo pago (generalmente en criptomonedas) para restablecer el acceso.
+
+- Tipo más conocido: **cryptolocker** (cifra archivos).
+- También puede bloquear el acceso al escritorio o al sistema completo.
+- Las variantes modernas usan cifrado asimétrico (muy difícil de revertir sin la clave).
+
+### 3.5 Spyware
+
+El **spyware** es software que **recopila información sobre el usuario u organización sin su conocimiento o consentimiento** y la envía a terceros.
+
+> Las aplicaciones que recopilan información sobre una persona u organización sin su consentimiento se denominan **spyware**.
+
+### 3.6 Adware
+
+El **adware** muestra publicidad no deseada al usuario. Algunos tipos registran hábitos de navegación para mostrar anuncios personalizados.
+
+### 3.7 Keylogger
+
+Un **keylogger** es un tipo de spyware que **registra en secreto las pulsaciones del teclado** del usuario para capturar contraseñas, datos bancarios u otra información confidencial.
+
+> **Keylogger:** Amenaza que puede instalarse sin que el usuario lo sepa y que registra pulsaciones del teclado para robar contraseñas y datos privados.
+
+> **Importante:** El keylogger es una amenaza de tipo **técnico**, no de ingeniería social.
+
+### 3.8 Rootkit
+
+Un **rootkit** es un programa diseñado para **proporcionar a los atacantes acceso administrativo al equipo de forma oculta**, sin que el usuario lo sepa.
+
+> **Rootkit:** Software malicioso instalado de forma oculta que oculta la presencia de malware o actividades maliciosas en el sistema. Da al atacante acceso total sin que el usuario lo note.
+
+**Características del rootkit:**
+- Se instala a nivel profundo del sistema (a veces en el kernel).
+- Puede esconder archivos, procesos y claves del registro.
+- **No se propaga automáticamente** (esto lo diferencia de los gusanos).
+
+> **Importante de examen:** Los rootkits **no pueden propagarse automáticamente** (esta es la respuesta incorrecta frecuente).
+
+> La **principal característica del rootkit** es **ocultar la presencia de malware** en el sistema.
+
+### 3.9 Tabla comparativa de malware
+
+| Malware | Propagación | Acción principal | Se oculta |
+|---------|------------|-----------------|-----------|
+| **Virus** | Necesita archivo huésped + ejecución usuario | Daña archivos, se replica | No especialmente |
+| **Gusano** | Automática por red, sin huésped | Satura tráfico de red | No especialmente |
+| **Troyano** | Usuario lo instala creyendo que es legítimo | Acceso remoto, robo datos | Se disfraza |
+| **Ransomware** | Varios métodos (email, exploits) | Cifra archivos y pide rescate | No |
+| **Spyware** | Descarga silenciosa | Roba información | Sí |
+| **Keylogger** | Descarga silenciosa | Registra teclas pulsadas | Sí |
+| **Rootkit** | Necesita instalación con privilegios | Oculta malware, acceso admin | Sí (especialista) |
+| **Adware** | Software gratuito | Muestra publicidad | Parcialmente |
+| **Botnet** | Infección coordinada | Control remoto masivo | Sí |
+| **Exploit** | Vulnerabilidades software | Acceso no autorizado | Variable |
+
+### 3.10 Otros tipos de malware
+
+| Nombre | Descripción |
+|--------|-------------|
+| **Exploit** | Aprovecha una vulnerabilidad del sistema para provocar un comportamiento no deseado |
+| **Bomba lógica** | Permanece inactivo hasta que se cumple una condición específica, entonces se activa |
+| **Scareware** | Asusta al usuario con mensajes de alerta falsos para que instale o compre software fraudulento |
+| **Dialer** | Realiza llamadas o conexiones de coste elevado sin consentimiento del usuario |
+| **Malware de pop-up** | Se manifiesta mediante ventanas emergentes continuas e invasivas |
+| **Cryptojacking** | Usa recursos del sistema infectado para minar criptomonedas sin consentimiento |
+| **Malvertising** | Publicidad online maliciosa que distribuye malware a través de anuncios legítimos |
+| **Backdoor** | Puerta trasera que permite acceso oculto al sistema sin autenticación normal |
+
+### 3.11 Botnet y ordenadores zombie
+
+Una **botnet** es un conjunto de ordenadores infectados (llamados **bots** o **zombies**) controlados remotamente por un atacante sin que sus propietarios lo sepan.
+
+> **Botnet:** Conjunto de ordenadores denominados bots, infectados con software que permite su control remoto por parte del atacante para realizar acciones coordinadas.
+
+> Un **ordenador zombie** es un ordenador conectado a la red que ha sido comprometido por un hacker, un virus o un troyano y es controlado remotamente.
+
+---
+
+## 4. Ataques informáticos
+
+### 4.1 Phishing
+
+El **phishing** es una técnica de engaño mediante la cual el atacante **suplanta la identidad de una entidad legítima** (banco, organismo oficial, empresa) para robar datos confidenciales (contraseñas, datos bancarios).
+
+> **Phishing:** Estafa cometida a través de medios telemáticos consistente en crear mensajes de correo electrónico o páginas web que aparentemente son de una fuente legítima para obtener información confidencial.
+
+**Características del phishing:**
+- Suele llegar por **correo electrónico**.
+- El mensaje crea urgencia o miedo ("su cuenta será bloqueada").
+- Dirige al usuario a una **web falsa** idéntica a la real.
+- Solicita datos como contraseñas, números de tarjeta, DNI.
+
+**Ejemplo clásico:** Un correo que aparenta proceder de un banco y solicita verificar datos "por motivos de seguridad" → **Phishing**.
+
+#### Variantes del phishing
+
+| Variante | Canal | Descripción |
+|----------|-------|-------------|
+| **Phishing** | Email | Engaño genérico por correo electrónico |
+| **Spear phishing** | Email dirigido | Ataque personalizado a una víctima concreta con información real sobre ella |
+| **Vishing** | Voz/teléfono | Fraude por llamada telefónica para obtener datos confidenciales |
+| **Smishing** | SMS | Phishing a través de mensajes de texto (SMS) |
+| **Whaling** | Email dirigido a directivos | Tipo específico de phishing dirigido a altos cargos o directivos |
+
+> **Vishing:** Ataque de phishing que **utiliza la voz**, es decir, llamadas telefónicas, para obtener datos confidenciales.
+
+> **Smishing:** Phishing que se lleva a cabo a través de **mensajes de texto (SMS)**. El smishing se diferencia del vishing porque usa mensajes de texto en lugar de llamadas.
+
+> **Whaling:** Tipo de phishing dirigido específicamente a **altos cargos o directivos** de organizaciones.
+
+#### Business Email Compromise (BEC)
+
+El **Business Email Compromise (BEC)** es un ataque basado principalmente en la **suplantación de identidades corporativas** para engañar a empleados y conseguir transferencias bancarias fraudulentas u obtener información confidencial.
+
+#### Carta nigeriana (fraude de adelanto)
+
+La **carta nigeriana** es una estafa en la que se promete una herencia millonaria o premio a cambio de adelantar una pequeña cantidad para "gastos de gestión". Es una forma de ingeniería social.
+
+### 4.2 Pharming
+
+El **pharming** es un ataque que **redirige al usuario a una web falsa sin que haya hecho clic en ningún enlace malicioso**, manipulando los servidores DNS o el archivo hosts del sistema.
+
+> **Pharming:** Ataque informático que aprovecha una vulnerabilidad del software de los servidores DNS para modificar o sustituir los registros DNS, redirigiendo el tráfico a páginas web falsas de forma transparente para el usuario.
+
+- El usuario escribe la URL correcta en el navegador pero es redirigido a una web falsa.
+- Es más difícil de detectar que el phishing porque no requiere que el usuario haga clic en nada.
+
+> **Diferencia phishing vs. pharming:** En el phishing, el usuario hace clic en un enlace falso; en el pharming, es redirigido automáticamente aunque escriba la URL correcta.
+
+### 4.3 Spoofing
+
+El **spoofing** es un ataque que consiste en la **falsificación de la identidad del remitente** (email, IP, DNS, ARP) para hacerse pasar por una fuente legítima.
+
+### 4.4 DDoS y DoS
+
+**DoS (Denial of Service - Denegación de Servicio):** Ataque que busca **saturar los recursos de una red o servidor**, haciéndolos inaccesibles a los usuarios legítimos.
+
+**DDoS (Distributed Denial of Service):** Versión distribuida del DoS.
+
+> **Diferencia DoS vs. DDoS:** En un DDoS, el ataque proviene de **múltiples dispositivos o redes** coordinados (botnet), mientras que en un DoS el ataque proviene de una única fuente.
+
+> En el ámbito de la seguridad informática, los ataques **DDoS** consisten en **sobrecargar un sistema con tráfico para hacerlo inaccesible**.
+
+**Flood/Flooder:** Programa que envía mensajes repetidamente y de forma masiva para saturar un servicio. Relacionado con los ataques DoS.
+
+### 4.5 SQL Injection
+
+El **SQL Injection** consiste en insertar código SQL malicioso en formularios web o parámetros de URL para manipular la base de datos del servidor y extraer, modificar o borrar datos.
+
+### 4.6 Man in the Middle (MITM)
+
+El ataque **Man in the Middle** consiste en interceptar la comunicación entre dos partes sin que ninguna de ellas lo sepa, pudiendo leer, modificar o inyectar mensajes.
+
+### 4.7 Ataque por fuerza bruta
+
+Un **ataque por fuerza bruta** es un método que utiliza un sistema de **prueba y error** para descifrar contraseñas o claves, probando todas las combinaciones posibles hasta encontrar la correcta.
+
+### 4.8 Bluejacking
+
+El **Bluejacking** se caracteriza por **enviar mensajes no solicitados** a otros dispositivos a través de conexiones **Bluetooth** sin permiso del receptor.
+
+### 4.9 Ingeniería social
+
+La **ingeniería social** es un conjunto de técnicas que persiguen el **engaño a una víctima ganándose su confianza** para obtener información confidencial o acceso a sistemas, explotando la psicología humana en lugar de vulnerabilidades técnicas.
+
+> **Ingeniería social:** Ataque basado en manipular psicológicamente a las personas para obtener información o acceso a sistemas.
+
+**Tipos de ingeniería social:**
+- Phishing, vishing, smishing, spear phishing
+- Baiting, pretexting
+
+> **Baiting:** Dejar dispositivos físicos infectados (USB, CD) en lugares donde puedan ser encontrados y conectados por usuarios curiosos.
+
+> El **keylogger** es una amenaza **técnica**, NO de ingeniería social.
+
+---
+
+## 5. Medidas de seguridad
+
+### 5.1 Antivirus
+
+El **antivirus** es software diseñado para **detectar, bloquear y eliminar malware** de un sistema informático.
+
+**Tipos de antivirus por función:**
+- **Antivirus descontaminadores:** Se especializan en descontaminar un sistema ya infectado, eliminando el programa malicioso.
+- **Antivirus preventivos:** Monitorizan en tiempo real para evitar la infección.
+
+**Técnica heurística:** La **búsqueda heurística** intenta detectar un virus **por su forma de comportarse o aspecto que presenta**, aunque no esté en la base de datos de virus conocidos. Es fundamental para detectar virus nuevos o desconocidos ("zero-day").
+
+> **Windows Defender** (antivirus de Windows), el **firewall** y las **actualizaciones** del SO son herramientas de seguridad integradas en Windows que funcionan conjuntamente para proteger el sistema.
+
+### 5.2 Firewall (Cortafuegos)
+
+El **firewall** o **cortafuegos** es un elemento (hardware o software) que **controla y filtra el tráfico de red** entre dos redes u ordenadores para impedir accesos no autorizados.
+
+> **Firewall:** Controla el tráfico de datos entre dos redes u ordenadores, filtrando los paquetes según reglas de seguridad definidas.
+
+**Funciones del firewall:**
+- Bloquear accesos no autorizados
+- Filtrar tráfico entrante y saliente
+- Registrar intentos de conexión sospechosos
+- Separar redes confiables de redes no confiables
+
+> Para mayor seguridad en una red inalámbrica, se recomienda el protocolo **WPA2** (Wi-Fi Protected Access 2).
+
+### 5.3 VPN (Red Privada Virtual)
+
+Una **VPN** (Virtual Private Network) es una **red privada virtual** que permite establecer una conexión segura y cifrada a través de una red pública (Internet), como si el usuario estuviera conectado directamente a la red privada.
+
+> **VPN:** Red Privada Virtual que crea un "túnel" cifrado sobre Internet, protegiendo la privacidad y seguridad de las comunicaciones.
+
+### 5.4 Cifrado
+
+El **cifrado** o **encriptación** es el proceso de transformar información en un formato ilegible para quienes no tienen la clave de descifrado. Sirve principalmente para **proteger la confidencialidad**.
+
+**Tipos de cifrado:**
+
+| Tipo | Clave | Velocidad | Uso típico |
+|------|-------|-----------|-----------|
+| **Simétrico** | Una sola clave (misma para cifrar y descifrar) | Rápido | Cifrado de grandes volúmenes de datos |
+| **Asimétrico** | Par de claves (pública y privada) | Más lento | HTTPS, firma digital, certificados |
+
+> **Importante:** En el cifrado simétrico, la clave **no tiene que ser necesariamente un número** (puede ser cualquier cadena de caracteres). Esta afirmación es **incorrecta** y aparece como trampa en exámenes.
+
+### 5.5 Contraseñas seguras
+
+Una **contraseña segura** debe tener:
+- **Mínimo 8-12 caracteres** (más larga, mejor)
+- Combinación de **mayúsculas, minúsculas, números y símbolos**
+- No ser información personal (nombre, fecha de nacimiento)
+- No ser una palabra del diccionario
+
+> **Contraseñas NO seguras:** Tu nombre, fechas de nacimiento, palabras simples como "password" o "123456". También: "P.3Cb" (demasiado corta, menos de 8 caracteres).
+
+### 5.6 Autenticación multifactor (MFA / 2FA)
+
+La **autenticación multifactor (MFA)** o **doble factor de autenticación (2FA)** es una capa adicional de seguridad que requiere **más de un tipo de prueba de identidad** para acceder al sistema.
+
+> **2FA/MFA:** Autenticación que requiere al menos dos credenciales diferentes: algo que sabes (contraseña), algo que tienes (token, móvil), o algo que eres (biometría).
+
+**Factores de autenticación:**
+- **Algo que sabes:** contraseña, PIN
+- **Algo que tienes:** token físico, app de autenticación, SMS con código
+- **Algo que eres:** huella dactilar, reconocimiento facial (biometría)
+
+> **Token de software:** Mecanismo de seguridad almacenado en un dispositivo electrónico de uso general (teléfono móvil) que genera códigos temporales de un solo uso (OTP).
+
+**Las siglas MFA** hacen referencia a la **autenticación de múltiples factores** (*Multi-Factor Authentication*).
+
+> **Autenticación biométrica:** Técnica que busca impedir el acceso no autorizado utilizando características físicas únicas del usuario.
+
+### 5.7 Actualizaciones del sistema
+
+Mantener el SO y el software **actualizados** es una medida de seguridad fundamental:
+- Las actualizaciones corrigen **vulnerabilidades** que pueden ser explotadas.
+- El **mantenimiento preventivo** incluye actualizar regularmente el SO y el software.
+- Sin actualizaciones, los sistemas quedan expuestos a exploits y ataques conocidos.
+
+### 5.8 CAPTCHA
+
+Las páginas web utilizan **CAPTCHA** para **distinguir si el usuario es un humano o un programa automatizado** (bot), evitando spam, registros masivos y ataques automatizados.
+
+---
+
+## 6. Copias de seguridad (Backup)
+
+Una **copia de seguridad** (backup) es una copia de los datos almacenados que permite **recuperar la información en caso de pérdida, corrupción o ataque** (como el ransomware).
+
+> **Backup:** Copia de seguridad de datos. Hacer un backup es hacer una copia de seguridad.
+
+### 6.1 Tipos de backup
+
+| Tipo | Descripción | Ventajas | Desventajas |
+|------|-------------|----------|-------------|
+| **Completa (Full)** | Copia todos los datos seleccionados sin importar si han cambiado | Restauración sencilla | Ocupa mucho espacio y tiempo |
+| **Incremental** | Solo guarda los archivos modificados desde la **última copia** (sea completa o incremental) | Rápida, ocupa poco | Restauración más compleja |
+| **Diferencial** | Solo guarda los archivos modificados desde la **última copia completa** | Equilibrio entre espacio y velocidad | Crece con el tiempo |
+
+> **Backup incremental:** Guarda únicamente los archivos modificados desde la última copia, sea completa o incremental.
+
+> **Backup completo (full backup):** Copia **todos** los datos seleccionados sin importar si han cambiado.
+
+### 6.2 Regla 3-2-1 de backup
+
+> **Regla 3-2-1:** Mantener **3 copias** de los datos, en **2 tipos de soporte diferentes**, con **1 copia fuera de las instalaciones** (offsite). Esta regla garantiza la recuperación ante casi cualquier escenario de pérdida.
+
+### 6.3 Backup como mantenimiento preventivo
+
+El **mantenimiento preventivo** de un ordenador incluye, entre otras acciones:
+- Realización de copias de seguridad de los datos
+- Actualización del SO y software
+- Instalación y actualización de antivirus
+
+---
+
+## 7. Certificado digital y firma electrónica
+
+### 7.1 Certificado digital
+
+Un **certificado digital** es un **archivo que vincula la identidad de una persona o entidad con su clave pública**, emitido por una **Autoridad de Certificación (CA)**.
+
+> **Certificado digital:** Archivo que vincula identidad y clave pública, emitido por una Autoridad de Certificación que garantiza la autenticidad.
+
+**En la Administración electrónica**, las siglas **CA** identifican a una **Autoridad de Certificación** (*Certification Authority*): entidad de confianza que emite y gestiona certificados digitales.
+
+### 7.2 Firma electrónica
+
+La **firma electrónica** permite principalmente:
+- **Identificar al firmante**: garantiza que el documento fue firmado por quien dice ser.
+- **Garantizar la integridad del documento**: asegura que el documento no ha sido modificado desde que se firmó.
+
+> **Firma electrónica:** Permite identificar y garantizar la integridad del documento firmado.
+
+**Autofirma** es la herramienta de escritorio con interfaz gráfica que permite la ejecución de operaciones de firma electrónica desde el navegador, usada en trámites con la Administración electrónica española.
+
+### 7.3 HTTPS, SSL y TLS
+
+- **HTTPS**: protocolo que cifra la comunicación entre el navegador y el servidor web mediante SSL/TLS.
+- **SSL** (Secure Sockets Layer): protocolo de cifrado ya obsoleto, sustituido por TLS.
+- **TLS** (Transport Layer Security): versión moderna y segura de SSL, utilizada actualmente.
+
+Para que una página sea segura, la URL debe comenzar por **https://** y mostrarse el icono del candado en el navegador.
+
+---
+
+## 8. Seguridad en redes inalámbricas
+
+| Protocolo | Seguridad | Estado |
+|-----------|-----------|--------|
+| **WEP** | Baja (rota) | Obsoleto |
+| **WPA** | Media | En desuso |
+| **WPA2** | Alta | Estándar actual recomendado |
+| **WPA3** | Muy alta | Más reciente |
+
+> Para obtener la **mayor seguridad posible** en un dispositivo inalámbrico, se debe usar **WPA2** (o WPA3 si está disponible).
+
+---
+
+## 9. Privacidad y protección de datos
+
+### 9.1 RGPD / GDPR
+
+El **Reglamento General de Protección de Datos (RGPD)**, en inglés **GDPR** (*General Data Protection Regulation*), es la normativa europea (en vigor desde mayo 2018) que regula el tratamiento de datos personales de ciudadanos de la UE.
+
+**Principios clave del RGPD:**
+- **Licitud, lealtad y transparencia**: los datos deben tratarse de forma legal.
+- **Limitación de la finalidad**: los datos solo se recopilan para fines específicos.
+- **Minimización de datos**: solo se recopilan los datos estrictamente necesarios.
+- **Exactitud**: los datos deben estar actualizados.
+- **Limitación del plazo de conservación**: no se guardan más tiempo del necesario.
+- **Integridad y confidencialidad**: se aplican medidas de seguridad adecuadas.
+
+### 9.2 Cookies
+
+Las **cookies** son pequeños archivos de texto que los sitios web almacenan en el navegador del usuario para recordar preferencias, sesiones de usuario o para rastrear la navegación con fines analíticos o publicitarios.
+
+---
+
+## 10. Organismos de ciberseguridad en España
+
+| Organismo | Descripción |
+|-----------|-------------|
+| **INCIBE** (Instituto Nacional de Ciberseguridad) | Organismo del Ministerio de Asuntos Económicos; atiende a ciudadanos y empresas en materia de ciberseguridad; gestiona el teléfono 017 |
+| **CCN-CERT** (Centro Criptológico Nacional - CERT) | Dependiente del CNI; protege las Administraciones Públicas y sistemas clasificados |
+| **CNPIC** | Centro Nacional de Protección de Infraestructuras y Ciberseguridad |
+
+---
+
+## 11. Conceptos complementarios
+
+### 11.1 Bug
+
+Un **bug** es un **error o fallo de un programa (software)** que produce resultados inesperados o un comportamiento no deseado.
+
+> **Bug:** Error o fallo de un programa que produce resultados inesperados.
+
+### 11.2 Minería de datos
+
+La **minería de datos** (*data mining*) es el proceso de **descubrir patrones dentro de grandes volúmenes de datos** para extraer información útil y conocimiento oculto.
+
+### 11.3 Hacker
+
+Según el diccionario de la Real Academia Española (RAE), una de las acepciones de "hacker" es **pirata informático**: persona que accede ilegalmente a sistemas informáticos ajenos.
+
+### 11.4 Robollamada
+
+Una **robollamada** es una llamada realizada automáticamente por un sistema informático, frecuentemente utilizada para fraudes o spam telefónico.
+
+---
+
+## 12. Resumen: amenazas vs. no amenazas
+
+Pregunta frecuente: ¿Cuál de los siguientes NO es una amenaza informática?
+
+| Es una amenaza | NO es una amenaza |
+|---------------|------------------|
+| Virus, gusano, troyano | Freeware (tipo de licencia) |
+| Ransomware, spyware, adware | Shareware (tipo de licencia) |
+| Rootkit, keylogger | Antivirus (medida de seguridad) |
+| DDoS, phishing, pharming | Firewall (medida de seguridad) |
+| Exploit, bomba lógica | Adware (depende del contexto) |
+
+> **El freeware NO es una amenaza informática**: es un tipo de licencia de software gratuito.
+
+---
+
+## 13. Phishing: resumen y variantes
+
+| Tipo | Canal | Objetivo típico |
+|------|-------|----------------|
+| **Phishing** | Email masivo | Usuarios genéricos |
+| **Spear phishing** | Email personalizado | Persona/empresa específica |
+| **Whaling** | Email a directivos | Altos cargos (CEO, directores) |
+| **Vishing** | Llamada telefónica | Cualquier usuario |
+| **Smishing** | SMS | Usuarios de móvil |
+| **Pharming** | Manipulación DNS | Cualquier usuario (sin clic) |
+| **BEC** | Email corporativo | Empresas, departamentos financieros |
+
+
+## Autenticidad
+La **autenticidad** es el principio de seguridad que garantiza que un usuario o entidad es quien dice ser. Se verifica mediante mecanismos de autenticación (algo que sabes —contraseña—, algo que tienes, algo que eres). Cuando un equipo solicita **usuario y contraseña**, está aplicando el principio de autenticidad. Complementa a la triada CIA (confidencialidad, integridad, disponibilidad).
+
+## Hoax (bulo)
+Un **hoax** o bulo es un mensaje de texto (correo electrónico, foros, redes sociales) con una **noticia falsa** redactada para que el receptor la interprete como cierta y la reenvíe. No es malware en sentido estricto (no es código dañino), a diferencia de virus, gusanos, troyanos o spyware.

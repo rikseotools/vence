@@ -1,0 +1,1099 @@
+LEY: Windows 11
+ARTÍCULO: 1 — Fundamentos del Sistema Operativo Windows 11
+======================================================================
+# Fundamentos del Sistema Operativo Windows 11
+
+## Introducción a Windows 11
+
+### ¿Qué es Windows?
+
+**Windows** es un sistema operativo desarrollado por Microsoft que gestiona los recursos hardware y software de un equipo informático. Actúa como intermediario entre el usuario, las aplicaciones y el hardware del equipo, proporcionando una interfaz gráfica y un entorno de ejecución para los programas.
+
+Un sistema operativo no proporciona funcionalidades de aplicaciones de usuario como un procesador de textos: esa es una función de software de aplicación (por ejemplo, Microsoft Word). El sistema operativo se encarga de gestionar la memoria, los procesos, los archivos, los dispositivos de entrada/salida y la seguridad.
+
+Windows es un sistema operativo **multitarea** (permite ejecutar varias aplicaciones o procesos de forma aparentemente simultánea) y **multiusuario** (cada usuario puede tener su propia cuenta con configuración independiente).
+
+Otros ejemplos de sistemas operativos son **Linux** (código abierto) y macOS (Apple). **SOLARIS** es también un sistema operativo, no un sistema de archivos.
+
+### Versiones de Windows y versión actual
+
+| Versión | Año de lanzamiento |
+|---|---|
+| Windows 95 | 1995 |
+| Windows 98 | 1998 |
+| Windows XP | 2001 |
+| Windows Vista | 2007 |
+| Windows 7 | 2009 |
+| Windows 8 / 8.1 | 2012 / 2013 |
+| Windows 10 | 2015 |
+| **Windows 11** | **2021** |
+
+> **Importante:** Microsoft pasó directamente de Windows 8.1 a Windows 10, omitiendo deliberadamente la versión "Windows 9". **Windows 9 nunca existió.**
+
+La **última versión de Windows para escritorio** es Windows 11, lanzado el 5 de octubre de 2021. Es la versión actual y la más moderna del sistema operativo de escritorio de Microsoft.
+
+### Novedades y características de Windows 11
+
+Windows 11 introduce una serie de mejoras visuales y funcionales respecto a Windows 10:
+
+- **Ventanas con esquinas redondeadas**: el diseño visual redondea los bordes de las ventanas, sustituyendo los bordes rectos de versiones anteriores.
+- **Barra de tareas centrada por defecto**: a diferencia de versiones anteriores donde estaba alineada a la izquierda.
+- **Snap Layouts mejorados**: organización visual de ventanas mediante diseños predefinidos.
+- **Escritorios virtuales mejorados**: con miniaturas propias y fondo de escritorio independiente.
+- **Menú Inicio rediseñado**: más limpio, sin grupos de tiles dinámicas.
+- **Widget panel**: acceso rápido a información como clima, noticias y calendario.
+- **Microsoft Copilot integrado**: asistente de IA directamente en el sistema operativo.
+- **DirectStorage**: tecnología que permite a los juegos cargar activos directamente desde el SSD a la GPU, reduciendo tiempos de carga.
+- **Subsistema de Windows para Android (WSA)**: permite ejecutar aplicaciones de Android de forma nativa en Windows 11.
+- **Windows Hello**: autenticación biométrica mediante reconocimiento facial, huella dactilar o PIN reforzado.
+- **Integración mejorada de OneDrive** en el Explorador de archivos.
+
+### Requisitos mínimos de Windows 11
+
+| Componente | Requisito mínimo |
+|---|---|
+| Procesador | 1 GHz o superior, 64 bits, 2 o más núcleos |
+| RAM | 4 GB |
+| Almacenamiento | 64 GB |
+| Firmware | UEFI con Secure Boot |
+| TPM | TPM versión 2.0 |
+| Tarjeta gráfica | DirectX 12 compatible |
+| Pantalla | 720p, 9 pulgadas o mayor |
+| Conexión a Internet | Necesaria para configuración inicial (Home) |
+
+### Verificar la versión de Windows instalada
+
+Para consultar la versión de Windows 11 instalada, existen varias formas:
+
+1. **Win + R → winver**: abre una ventana con la edición y número de compilación exacto.
+2. **Configuración → Sistema → Acerca de**: muestra el nombre del PC, la edición de Windows, la versión y la cantidad de RAM instalada.
+3. **Clic derecho en Este equipo → Propiedades**.
+
+> **Atención:** Abrir el Centro de actividades y hacer clic en "Administrar notificaciones" NO muestra la versión de Windows; esa ruta conduce a la configuración de notificaciones, no a información del sistema.
+
+---
+
+## Escritorio, Barra de Tareas y Menú Inicio
+
+### El Escritorio de Windows 11
+
+El **escritorio** es la superficie principal de trabajo que aparece al iniciar sesión en Windows 11. Es el área donde se pueden colocar accesos directos a archivos, carpetas y programas. Los elementos del escritorio son accesibles en todo momento mediante Win+D (minimiza todas las ventanas para mostrar el escritorio) o Win+M (minimiza todas las ventanas).
+
+### La Barra de Tareas
+
+La **barra de tareas** de Windows 11 presenta varias características distintivas:
+
+- **Está centrada por defecto**: el botón de Inicio, los iconos fijados y las aplicaciones abiertas aparecen centrados en la barra, a diferencia de versiones anteriores.
+- Puede reubicarse a la izquierda mediante Configuración → Personalización → Barra de tareas.
+- Muestra las **aplicaciones abiertas y fijadas**.
+- Incluye acceso a **Búsqueda**, **Vista de tareas** (escritorios virtuales y ventanas), **Widgets** y el **Área de notificaciones**.
+
+Además de mostrar aplicaciones abiertas, la barra de tareas permite acceder a búsqueda, vista de tareas y otras funciones del sistema.
+
+#### Personalización de la búsqueda en la barra de tareas
+
+En Windows 11, al hacer clic derecho en la barra de tareas, se puede optar por:
+- **Ocultar la búsqueda** completamente.
+- **Mostrar únicamente el icono de búsqueda**.
+- **Mostrar el cuadro de búsqueda** completo.
+
+### El Área de Notificaciones (Bandeja del Sistema)
+
+La zona de la barra de tareas que muestra los iconos de **red, volumen, batería y el reloj** se denomina **área de notificaciones** (también llamada **bandeja del sistema** o system tray). Se encuentra en el extremo derecho de la barra de tareas.
+
+Desde el área de notificaciones es posible:
+- Ver y gestionar notificaciones del sistema y aplicaciones.
+- Acceder al Centro de acciones (Win+A).
+- Ver el calendario haciendo clic en el reloj.
+- Controlar iconos de red, volumen y batería.
+
+Las notificaciones se gestionan desde **Configuración > Sistema > Notificaciones**, donde se puede activar o desactivar las notificaciones globalmente o por aplicación.
+
+### El Menú Inicio
+
+El **menú Inicio** de Windows 11 ofrece acceso a:
+- **Aplicaciones instaladas** (con sección de Ancladas y de Recomendadas).
+- **Buscador de Windows**.
+- **Configuración del sistema**.
+- **Opciones de sesión y energía**: apagar, reiniciar, suspender y cerrar sesión.
+
+El menú Inicio de Windows 11 no tiene los grupos de tiles dinámicas de Windows 10. El diseño es más limpio y centrado.
+
+Para abrir el menú Inicio: clic en el botón de Inicio o pulsar la **tecla Windows** o **Ctrl + Esc** (útil en teclados sin tecla del logotipo de Windows).
+
+### La Vista de Tareas (Task View)
+
+La **Vista de tareas** permite **gestionar ventanas abiertas y escritorios virtuales**. Se accede mediante:
+- El icono de Vista de tareas en la barra de tareas.
+- El atajo **Win + Tab**.
+
+Desde la Vista de tareas se pueden:
+- Ver todas las ventanas abiertas como miniaturas.
+- Crear, eliminar y cambiar entre escritorios virtuales.
+- Arrastrar ventanas de un escritorio virtual a otro.
+
+### Widgets
+
+Los **Widgets** de Windows 11 muestran información personalizada como clima, noticias, calendario y actualizaciones de acciones. Se acceden mediante **Win + W** o el icono de Widgets en la barra de tareas.
+
+### Suspender el equipo
+
+La opción **Suspender** en el menú Inicio/Apagado pone el PC en un **modo con bajo consumo de energía** que permite retomar rápidamente el estado en que se dejó el ordenador. A diferencia de Apagar, la sesión y el estado de las aplicaciones se conservan en memoria.
+
+---
+
+## Menú Contextual del Botón Inicio (Win+X) — Menú WinX
+
+### ¿Qué es el Menú WinX?
+
+Al hacer **clic derecho sobre el botón de Inicio** de Windows 11 (o pulsar **Win + X**) se abre el **menú de enlaces rápidos**, también llamado **Menú WinX** o **Power User Menu** (menú de usuario avanzado). Este menú ofrece acceso directo a herramientas avanzadas de administración del sistema.
+
+> El acceso rápido a funciones avanzadas mediante clic derecho en el botón Inicio en Windows 11 se conoce como **Menú WinX** (o Menú de usuario avanzado).
+
+### Opciones disponibles en el Menú WinX
+
+El Menú WinX contiene acceso directo a:
+
+| Opción | Descripción |
+|---|---|
+| Administrador de aplicaciones | Gestionar aplicaciones instaladas |
+| Configuración | Abre la app Configuración |
+| Búsqueda | Barra de búsqueda de Windows |
+| Administrador de tareas | Ver procesos, rendimiento y servicios |
+| Administrador de dispositivos | Gestionar hardware y controladores |
+| Administrador de discos | Gestionar particiones y unidades |
+| Administración de equipos | Consola de gestión del equipo |
+| Explorador de archivos | Abrir el Explorador |
+| Centro de movilidad de Windows | Opciones para portátiles |
+| Opciones de energía | Configurar planes de energía |
+| Visor de eventos | Ver registros del sistema |
+| Símbolo del sistema | CMD (en algunos sistemas) |
+| Windows PowerShell / Terminal | Consola de comandos |
+| Inicio de sesión único | Gestión de red |
+| Panel de control | Configuración clásica |
+| Escritorio | Ir al escritorio |
+| Apagar o cerrar sesión | Opciones de sesión |
+
+---
+
+## Snap Layouts y Gestión de Ventanas
+
+### ¿Qué es Snap?
+
+**Snap** (también llamado Aero Snap) en Windows 11 permite **organizar y ajustar ventanas** en diferentes configuraciones en la pantalla, como dividirla en dos, tres o cuatro zonas. Al arrastrar una ventana hacia un lateral de la pantalla, el sistema la ajusta para ocupar exactamente la mitad de la pantalla en ese lado.
+
+### Snap Layouts
+
+Los **Snap Layouts** son una característica mejorada de Windows 11 que muestra plantillas visuales predefinidas para organizar las ventanas en pantalla. Se activan al **colocar el cursor sobre el botón Maximizar** (o esquina superior derecha) de cualquier ventana.
+
+Los diseños disponibles varían según la resolución de pantalla e incluyen configuraciones de 2, 3 y 4 ventanas en distintas distribuciones.
+
+> Para activar los Snap Layouts, basta con colocar el cursor sobre el botón Maximizar de una ventana; se despliega un panel visual con los diseños de organización disponibles.
+
+### Comportamiento al arrastrar ventanas
+
+| Acción | Resultado |
+|---|---|
+| Arrastrar ventana al borde izquierdo | Ocupa la mitad izquierda de la pantalla |
+| Arrastrar ventana al borde derecho | Ocupa la mitad derecha de la pantalla |
+| Arrastrar ventana hacia arriba | Maximiza la ventana |
+| Arrastrar ventana maximizada hacia un lateral | Ajusta para ocupar la mitad de la pantalla |
+
+Cuando una ventana se acopla a un lado, Windows 11 ofrece elegir una segunda ventana para ocupar el otro lado (Snap Assist).
+
+### Múltiples Monitores
+
+En Windows 11 con dos monitores conectados:
+
+- **Extender pantallas**: amplía el escritorio a través de ambos monitores, permitiendo arrastrar ventanas entre ellos y disponer de más espacio de trabajo.
+- **Duplicar estas pantallas**: muestra lo mismo en las dos pantallas de forma simultánea.
+- **Mostrar solo en 1** o **Mostrar solo en 2**: usa únicamente uno de los monitores.
+- **Pantalla de PC solamente**: usa solo la pantalla del portátil.
+
+La configuración de múltiples pantallas se accede desde **Configuración → Sistema → Pantalla**.
+
+---
+
+## Escritorios Virtuales
+
+### ¿Qué son los escritorios virtuales?
+
+Los **escritorios virtuales** en Windows 11 permiten tener varios espacios de trabajo independientes, cada uno con sus propias ventanas abiertas. Son útiles para separar el trabajo, el ocio o proyectos diferentes.
+
+Se gestionan desde la **Vista de tareas** (Win + Tab) o directamente con atajos de teclado.
+
+### Atajos de teclado para escritorios virtuales
+
+| Atajo | Acción |
+|---|---|
+| **Win + Tab** | Abre Vista de tareas (ver y gestionar escritorios virtuales) |
+| **Win + Ctrl + D** | Crea un nuevo escritorio virtual |
+| **Win + Ctrl + F4** | Cierra el escritorio virtual actual |
+| **Win + Ctrl + →** | Cambiar al escritorio virtual de la derecha |
+| **Win + Ctrl + ←** | Cambiar al escritorio virtual de la izquierda |
+
+---
+
+## Explorador de Archivos
+
+### ¿Qué es el Explorador de Archivos?
+
+El **Explorador de archivos** (File Explorer) es la aplicación de Windows 11 que permite navegar por la estructura de archivos y carpetas del equipo, gestionar documentos, imágenes, descargas y otros recursos.
+
+**Formas de abrir el Explorador de archivos:**
+- Atajo de teclado: **Win + E** (de «Explorer»).
+- Clic en el icono del Explorador en la barra de tareas.
+- Menú WinX → Explorador de archivos.
+- Clic derecho en el botón Inicio → Explorador de archivos.
+
+> **Importante:** La combinación **F4 + E** NO abre el Explorador de archivos. F4 en el contexto del Explorador activa la barra de direcciones, pero no es un atajo de apertura.
+
+### Novedades del Explorador de archivos en Windows 11
+
+Una de las novedades del Explorador de archivos de Windows 11 es la mayor **integración y visibilidad del acceso a OneDrive**. La barra lateral y la barra de herramientas muestran de forma más prominente el estado de sincronización de OneDrive.
+
+Otras mejoras incluyen:
+- Barra de herramientas compacta en la parte superior.
+- Panel de detalles mejorado.
+- Galería de imágenes integrada.
+- Pestañas (en versiones recientes de Windows 11).
+
+### Atajos de teclado en el Explorador de Archivos
+
+| Atajo | Acción |
+|---|---|
+| **Win + E** | Abrir el Explorador de archivos |
+| **Ctrl + N** | Abrir una nueva ventana del Explorador |
+| **Alt + D** | Seleccionar la barra de direcciones |
+| **Alt + ←** | Ir a la carpeta anterior (Atrás) |
+| **Alt + →** | Ir a la carpeta siguiente (Adelante) |
+| **Alt + ↑** | Subir al directorio padre |
+| **F2** | Renombrar el archivo o carpeta seleccionado |
+| **F5** | Actualizar/refrescar el contenido de la ventana |
+| **Alt + Entrar** | Abrir Propiedades del elemento seleccionado |
+| **Ctrl + C** | Copiar |
+| **Ctrl + X** | Cortar |
+| **Ctrl + V** | Pegar |
+| **Ctrl + Z** | Deshacer |
+| **Supr** | Enviar a la Papelera de reciclaje |
+| **Mayús + Supr** | Eliminar permanentemente (sin papelera) |
+
+### Archivos y carpetas ocultos
+
+En el Explorador de archivos de Windows 11, los archivos y carpetas ocultos se muestran desde **Vista > Mostrar > Elementos ocultos** (en versiones anteriores: Herramientas → Opciones de carpeta → Ver → Mostrar archivos, carpetas y unidades ocultos).
+
+### Propiedades de un archivo o carpeta
+
+Al hacer clic derecho sobre un archivo → Propiedades, o pulsar **Alt + Entrar**, aparece un cuadro con varias pestañas:
+
+| Pestaña | Contenido |
+|---|---|
+| **General** | Nombre, tipo, tamaño, fecha, atributos (Solo lectura, Oculto) |
+| **Seguridad** | Permisos de usuario sobre el objeto (NTFS) |
+| **Detalles** | Metadatos avanzados (autor, fecha de creación, etc.) |
+| **Versiones anteriores** | Instantáneas previas del archivo |
+
+> Desde Propiedades se pueden ver y modificar atributos como "Solo lectura" u "Oculto". La pestaña **Seguridad** permite visualizar y administrar los permisos de usuario.
+
+### Menú contextual al hacer clic derecho en una carpeta
+
+Al hacer clic derecho sobre una carpeta en el Explorador de archivos de Windows 11, el menú contextual incluye entre otras opciones **"Restaurar versiones anteriores"**, que permite recuperar versiones previas de la carpeta guardadas por el historial de archivos o puntos de restauración.
+
+### Cambiar nombre de un archivo
+
+Para cambiar el nombre de un archivo en el Explorador de Windows 11:
+- Pulsar la tecla **F2** con el archivo seleccionado.
+- O hacer clic derecho → **Cambiar nombre**.
+- O hacer clic lento (dos clics espaciados) sobre el nombre del archivo.
+
+### Copiar vs. mover archivos
+
+| Acción con teclas modificadoras | Resultado al arrastrar |
+|---|---|
+| Sin tecla modificadora (misma unidad) | **Mueve** el archivo |
+| Sin tecla modificadora (distinta unidad) | **Copia** el archivo |
+| Ctrl + arrastrar | Siempre **copia** |
+| Mayús + arrastrar | Siempre **mueve** |
+| Ctrl + Mayús + arrastrar | Crea un **acceso directo** |
+
+> Al arrastrar un archivo desde una unidad externa (USB) al escritorio **sin teclas modificadoras**, Windows realiza una **copia**, ya que el origen y el destino son unidades distintas.
+
+La opción **"Mover a"** en el Explorador traslada el archivo a otra ubicación sin dejar copia en el origen.
+
+### Búsqueda en el Explorador de archivos
+
+El cuadro de búsqueda del Explorador de Windows 11 **inicia la búsqueda automáticamente al escribir la primera letra**, sin necesidad de pulsar ninguna tecla adicional.
+
+**Operadores de búsqueda disponibles:**
+- `fechademodificación:este mes` → filtra documentos creados o modificados durante el mes actual.
+- `tipo:documento`, `tamaño:grande`, `nombre:`, etc.
+
+### Menú contextual clásico
+
+En Windows 11, el menú contextual (clic derecho) está simplificado por defecto. Para acceder al **menú contextual clásico** completo, se selecciona la opción **"Mostrar más opciones"** (o se pulsa **Mayús + F10**).
+
+---
+
+## Panel de Control y Configuración
+
+### Aplicación Configuración (Win + I)
+
+La **Configuración de Windows 11** es el panel centralizado moderno que ofrece opciones para personalizar y administrar el sistema operativo. Se accede con:
+- Atajo **Win + I**.
+- Menú Inicio → Configuración (icono de engranaje).
+- Menú WinX → Configuración.
+
+Las secciones principales de Configuración incluyen:
+
+| Sección | Contenido principal |
+|---|---|
+| **Sistema** | Pantalla, sonido, notificaciones, energía, Acerca de |
+| **Bluetooth y dispositivos** | Impresoras, ratón, teclado, cámara |
+| **Red e Internet** | Wi-Fi, Ethernet, VPN, proxy |
+| **Personalización** | Fondos, colores, temas, barra de tareas |
+| **Aplicaciones** | Aplicaciones instaladas, predeterminadas |
+| **Cuentas** | Cuentas de usuario, inicio de sesión, sincronización |
+| **Hora e idioma** | Fecha/hora, idioma, región, escritura |
+| **Juegos** | Modo juego, Xbox, DirectStorage |
+| **Accesibilidad** | Visión, audición, interacción |
+| **Privacidad y seguridad** | Permisos de apps (cámara, micrófono), Windows Update |
+| **Windows Update** | Actualizaciones del sistema |
+
+#### Acerca de (Sistema → Acerca de)
+
+La sección **"Acerca de"** en Configuración → Sistema muestra:
+- Nombre del dispositivo.
+- Edición de Windows instalada (Home, Pro, Enterprise).
+- Versión y número de compilación.
+- Cantidad de RAM instalada.
+- Tipo de sistema (32 o 64 bits).
+
+#### Configuración de pantalla y resolución
+
+La ruta para cambiar la **resolución de pantalla** en Windows 11 es **Inicio > Configuración > Sistema > Pantalla**, dentro del apartado «Escala y distribución».
+
+#### Aplicaciones predeterminadas
+
+Para cambiar los programas predeterminados: **Inicio → Configuración → Aplicaciones → Aplicaciones predeterminadas**, donde se puede asociar cada tipo de archivo o protocolo con la aplicación deseada.
+
+#### Privacidad y Cámara
+
+En **Configuración > Privacidad y seguridad > Cámara**, el usuario puede decidir qué aplicaciones concretas tienen acceso a la cámara, con control tanto global (activar/desactivar para todas) como individual por aplicación.
+
+#### Configuración de idioma
+
+El idioma del sistema se configura en el apartado **Configuración de hora e idioma**, dentro de la sección «Idioma y región».
+
+#### Notificaciones
+
+Las notificaciones se gestionan desde **Configuración → Sistema → Notificaciones**.
+
+#### Subtítulos
+
+Para activar los subtítulos automáticos de Windows 11: **Configuración > Accesibilidad > Subtítulos**.
+
+### Panel de Control (Clásico)
+
+El **Panel de control** es la interfaz clásica de gestión del sistema de Windows, heredada de versiones anteriores. Aunque la mayoría de funciones se han migrado a la app Configuración, el Panel de control sigue disponible y es necesario para algunas tareas avanzadas.
+
+**Acceso al Panel de control:**
+- Escribir "Panel de control" en el buscador de Windows.
+- Desde el Menú WinX.
+- Con Win+R → `control`.
+
+**Funciones importantes del Panel de control:**
+
+- **Programas y características**: desinstalar programas instalados.
+- **Sistema**: información del equipo (edición, RAM, nombre del PC).
+- **Opciones de energía**: planes de energía del equipo.
+- **Red e Internet**: configuración de adaptadores de red.
+- **Centro de accesibilidad**: herramientas de accesibilidad clásicas.
+
+#### Desinstalar programas
+
+La forma correcta de eliminar un programa en Windows 11 es desde **Panel de control > Programas > Programas y características**, buscar el programa y hacer clic en "Desinstalar". También se puede hacer desde **Configuración → Aplicaciones → Aplicaciones instaladas**.
+
+---
+
+## Herramientas del Sistema
+
+### Administrador de Tareas
+
+El **Administrador de tareas** es la aplicación de Windows 11 que permite ver las **aplicaciones y procesos en ejecución**, así como gestionar su funcionamiento y monitorizar el rendimiento del sistema.
+
+**Formas de abrir el Administrador de tareas:**
+- **Ctrl + Mayús + Esc**: abre directamente el Administrador de tareas (método más rápido).
+- **Ctrl + Alt + Supr** → seleccionar "Administrador de tareas".
+- Clic derecho en la barra de tareas → Administrador de tareas.
+- Menú WinX → Administrador de tareas.
+
+> **Ctrl + Mayús + Esc** abre directamente el Administrador de tareas sin pasos intermedios, mientras que **Ctrl + Alt + Supr** muestra primero una pantalla de opciones de seguridad.
+
+#### Pestañas del Administrador de Tareas
+
+| Pestaña | Contenido |
+|---|---|
+| **Procesos** | Lista de aplicaciones y procesos activos, con CPU, RAM y uso de red |
+| **Rendimiento** | Gráficas de CPU, memoria, disco y red en tiempo real |
+| **Historial de la aplicación** | Historial de uso de CPU y red por aplicación |
+| **Inicio** | Programas que se inician con Windows y su impacto |
+| **Usuarios** | Sesiones activas y consumo por usuario |
+| **Detalles** | Información detallada de procesos (PID, etc.) |
+| **Servicios** | Lista y gestión de servicios del sistema |
+
+**Funciones del Administrador de tareas:**
+- Ver consumo por usuario.
+- Ver el historial de uso de aplicaciones.
+- Ver el rendimiento del sistema (CPU, RAM, disco, red).
+- Finalizar tareas o procesos que no responden.
+- Gestionar programas de inicio automático.
+
+> **Falso:** En el Administrador de tareas NO existe una pestaña "Planificación" para dar de alta tareas en un calendario. El Programador de tareas es una herramienta separada.
+
+### Visor de Eventos
+
+El **Visor de eventos** es una herramienta administrativa de Windows que permite ver y analizar los **registros de eventos y errores del sistema**, incluyendo advertencias, errores y eventos informativos generados por el sistema operativo y las aplicaciones.
+
+**Acceso:** Win+R → `eventvwr.msc`, o Menú WinX → Visor de eventos.
+
+Categorías de registros principales:
+- **Registros de Windows**: Aplicación, Seguridad, Sistema.
+- **Registros de aplicaciones y servicios**: Eventos específicos por aplicación.
+
+### Administrador de Discos
+
+El **Administrador de discos** de Windows 11 sirve para **gestionar particiones del disco duro**: crear, eliminar, ampliar, reducir y formatear particiones, así como cambiar letras de unidad y gestionar volúmenes.
+
+**Acceso:** Win+R → `diskmgmt.msc`, o Menú WinX → Administrador de discos.
+
+Funciones principales:
+- Dividir y formatear particiones del disco duro.
+- Crear y eliminar volúmenes.
+- Cambiar la letra de unidad asignada.
+- Ver el estado y la capacidad de los discos instalados.
+- Convertir discos entre MBR y GPT.
+
+### Monitor de Recursos
+
+El **Monitor de recursos** proporciona información detallada en tiempo real sobre el uso de CPU, memoria, disco y red, con más detalle que el Administrador de tareas.
+
+**Acceso:** Win+R → `resmon.exe`, o desde el Administrador de tareas → Rendimiento → Abrir Monitor de recursos.
+
+### Administración de Equipos (Computer Management)
+
+La **Administración de equipos** es una consola de gestión que agrupa varias herramientas administrativas:
+- Programador de tareas.
+- Visor de eventos.
+- Carpetas compartidas.
+- Usuarios y grupos locales.
+- Rendimiento.
+- Administrador de dispositivos.
+- Administración de discos.
+- Servicios y aplicaciones.
+
+**Acceso:** Win+R → `compmgmt.msc`, o Menú WinX → Administración de equipos.
+
+### Editor del Registro (regedit)
+
+El **Editor del Registro** (regedit.exe) permite acceder al **Registro de Windows**, una base de datos jerárquica central que almacena la configuración del sistema operativo, los usuarios, las aplicaciones y los dispositivos de hardware.
+
+**Acceso:** Win+R → `regedit`.
+
+> Es una herramienta de uso avanzado. Modificar el registro de forma incorrecta puede causar problemas graves en el sistema.
+
+### Modo Dios (God Mode)
+
+El **Modo Dios** de Windows 11 es una carpeta especial que proporciona acceso directo a más de 200 opciones de configuración y herramientas administrativas del sistema operativo en una sola ventana.
+
+Para activarlo, se crea una carpeta nueva en el escritorio y se le pone el nombre:
+`GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}`
+
+> El Modo Dios es un menú oculto del sistema con gran cantidad de opciones y herramientas que no están activadas por defecto, accesibles desde una única carpeta.
+
+### Diagnóstico de Memoria de Windows
+
+La herramienta **Diagnóstico de Memoria de Windows** (mdsched.exe) comprueba el estado de la **memoria RAM** del equipo, detectando posibles errores en los módulos instalados.
+
+**Acceso:** Win+R → `mdsched.exe`, o buscando "Diagnóstico de memoria" en el buscador.
+
+Requiere reiniciar el equipo para ejecutar la prueba.
+
+### Liberador de Espacio en Disco (Disk Cleanup)
+
+El **Liberador de espacio en disco** (cleanmgr.exe) elimina archivos temporales, archivos de la Papelera de reciclaje, miniaturas, archivos de instalación de Windows y otros datos innecesarios para liberar espacio en el disco.
+
+**Acceso:** Win+R → `cleanmgr`, o buscando "Liberador de espacio en disco" en el buscador.
+
+> Esta herramienta es para limpiar el disco de archivos innecesarios que se pueden eliminar de forma segura. No defragmenta ni analiza errores del disco.
+
+### Herramienta de Recortes (Snipping Tool)
+
+La **Herramienta Recortes** (Snipping Tool) es la aplicación incluida en Windows 11 para capturar porciones de la pantalla en formato imagen.
+
+**Acceso:** Win+Mayús+S (captura directa), o buscando "Recortes" en el buscador.
+
+**Tipos de recorte disponibles:**
+- Recorte de forma libre.
+- Recorte rectangular.
+- Recorte de ventana.
+- Recorte de pantalla completa.
+
+> **El tipo "Recorte circular" NO existe** en la Herramienta Recortes de Windows 11.
+
+Una vez realizada la captura, se puede **escribir o dibujar sobre ella con el botón "Lápiz"**.
+
+### Asistencia Rápida (Quick Assist)
+
+**Asistencia rápida** es la herramienta de Windows 11 que permite a un técnico de soporte **conectarse remotamente al equipo** para ver la pantalla y tomar el control, con el consentimiento del usuario. Es útil para soporte técnico remoto.
+
+**Acceso:** Buscando "Asistencia rápida" en el buscador o desde el menú Inicio.
+
+### Centro de Movilidad de Windows
+
+El **Centro de movilidad de Windows** es la herramienta diseñada para **dispositivos portátiles** que centraliza opciones como:
+- Brillo de pantalla.
+- Volumen.
+- Estado de la batería y plan de energía.
+- Estado de la red inalámbrica.
+- Configuración de pantalla externa.
+- Sincronización.
+
+**Acceso:** Win+R → `mblctr`, o buscando "Centro de movilidad" en el buscador.
+
+### Administrador de Certificados
+
+El comando **certmgr.msc** abre la consola del **Administrador de certificados** de Windows, que permite gestionar los certificados de seguridad instalados en el sistema (de usuario, equipo, entidades certificadoras, etc.).
+
+**Acceso:** Win+R → `certmgr.msc`, o desde una consola de PowerShell o CMD.
+
+### Programador de Tareas
+
+El **Programador de tareas** permite automatizar la ejecución de programas o scripts en momentos específicos o ante determinados eventos del sistema. Es una herramienta separada del Administrador de tareas.
+
+---
+
+## Windows Update y Seguridad
+
+### Windows Update
+
+**Windows Update** es el servicio integrado en Windows 11 que mantiene el sistema operativo actualizado de forma automática, descargando e instalando:
+- Parches de seguridad.
+- Correcciones de errores.
+- Actualizaciones de características (Feature Updates).
+- Actualizaciones de controladores.
+
+**Acceso a Windows Update:** Configuración → Windows Update.
+
+Desde Windows Update se puede:
+- Buscar actualizaciones manualmente.
+- Configurar horas activas (para evitar reinicios durante el trabajo).
+- Ver el historial de actualizaciones.
+- Pausar las actualizaciones temporalmente.
+
+### Windows Hello
+
+**Windows Hello** permite el inicio de sesión en Windows mediante **biometría**:
+- **Reconocimiento facial** (cámara compatible).
+- **Huella dactilar** (lector de huellas compatible).
+- **PIN seguro**.
+
+Es más seguro que la contraseña tradicional porque los datos biométricos no salen del dispositivo.
+
+**Acceso:** Configuración → Cuentas → Opciones de inicio de sesión.
+
+### Pantalla de seguridad (Ctrl + Alt + Supr)
+
+**Ctrl + Alt + Supr** en Windows 11 muestra la **pantalla de opciones de seguridad**, desde la que se puede:
+- Bloquear el equipo.
+- Cambiar de usuario.
+- Cerrar sesión.
+- Cambiar la contraseña.
+- Abrir el Administrador de tareas.
+
+> Ctrl + Alt + Supr en Windows 11 abre la pantalla de opciones de seguridad, desde la que el usuario puede acceder a varias opciones del sistema.
+
+### Restauración del Sistema
+
+La **Restauración del sistema** en Windows permite deshacer cambios del sistema (instalación de programas, controladores, actualizaciones) volviendo a un punto de restauración anterior.
+
+> Importante: La restauración del sistema **no afecta a los archivos personales** del usuario (documentos, fotos, música, etc.) creados después del punto de restauración. Solo afecta a la configuración del sistema y los programas instalados.
+
+**Creación de puntos de restauración:** Configuración → Sistema → Acerca de → Protección del sistema.
+
+---
+
+## Papelera de Reciclaje
+
+La **Papelera de reciclaje** es el área de almacenamiento temporal donde van los archivos y carpetas eliminados con la tecla Supr. Permite recuperarlos antes de eliminarlos definitivamente.
+
+Para **abrir y modificar un fichero que se encuentra en la Papelera de reciclaje**, es necesario **restaurarlo** previamente (sacarlo de la papelera a su ubicación original). No se puede editar directamente desde la Papelera.
+
+**Eliminar sin papelera:** Mayús + Supr elimina el archivo permanentemente sin pasar por la Papelera de reciclaje.
+
+---
+
+## Sistemas de Archivos en Windows
+
+### ¿Qué es un sistema de archivos?
+
+Un sistema de archivos es la estructura que el sistema operativo utiliza para organizar y almacenar datos en un disco. Determina cómo se guardan los archivos, los nombres que pueden tener, los permisos y las características avanzadas.
+
+> **SOLARIS** es un sistema operativo, **no un sistema de archivos**. Tampoco "Sistema Operativo de Archivos" o denominaciones similares inventadas son sistemas de archivos reales.
+
+### Sistemas de archivos compatibles con Windows 11
+
+| Sistema de archivos | Nombre completo | Características principales |
+|---|---|---|
+| **NTFS** | New Technology File System | Sistema **estándar de Windows 11**. Soporta permisos de seguridad, compresión, cifrado (EFS), volúmenes grandes, journaling, nombres largos. |
+| **FAT32** | File Allocation Table 32 | Compatible con muchos dispositivos. Límite de 4 GB por archivo. Sin permisos de seguridad. |
+| **exFAT** | Extended FAT | Diseñado para unidades flash y tarjetas de memoria. Sin límite práctico de tamaño de archivo. Sin journaling. |
+| **ReFS** | Resilient File System | Diseñado para servidores. Mayor resistencia a fallos. Disponible en ediciones empresariales. |
+| **CDFS / UDF** | CD-ROM File System / Universal Disk Format | Para discos ópticos (CD, DVD, Blu-ray). |
+
+> **NTFS** es el sistema de archivos estándar en Windows 11. Windows 11 requiere una partición NTFS para su instalación.
+
+### Nombres de archivo en Windows 11
+
+Los nombres de archivo en Windows 11 pueden contener letras, números, espacios y muchos símbolos, pero **no pueden contener** los siguientes caracteres reservados:
+
+`\ / : * ? " < > |`
+
+> Los caracteres **?** (interrogación) y **<** (menor que) son ejemplos de caracteres NO permitidos en nombres de archivo en Windows 11.
+
+El límite de nombre de archivo en Windows es de 255 caracteres por componente de ruta (con NTFS habilitado con rutas largas puede ampliarse). El sistema distingue el número de caracteres, no solo letras, ya que en el nombre pueden incluirse signos y símbolos respetando las limitaciones anteriores.
+
+---
+
+## Herramientas de Accesibilidad
+
+### ¿Qué es la Accesibilidad en Windows 11?
+
+La opción **Accesibilidad** de Windows 11 está diseñada principalmente para **facilitar el uso del sistema a personas con necesidades específicas**: visuales, auditivas, motoras o cognitivas.
+
+**Acceso:** Configuración → Accesibilidad, o Win+U (abre el Centro de accesibilidad).
+
+### Herramientas de accesibilidad disponibles
+
+| Herramienta | Función |
+|---|---|
+| **Narrador** | Lee en voz alta el contenido que aparece en pantalla (lector de pantalla). Herramienta de accesibilidad para personas con discapacidad visual. |
+| **Lupa** | Amplía una parte o toda la pantalla para facilitar la lectura. |
+| **Contraste alto** | Cambia los colores de la interfaz para mayor contraste visual. |
+| **Subtítulos en vivo** | Genera subtítulos automáticos del audio del sistema en tiempo real. |
+| **Teclas de accesibilidad** | Teclas de filtro, adhesivas, de alternancia y de mouse. |
+| **Reconocimiento de voz** | Permite controlar el equipo y dictar texto con la voz. |
+| **Texto en voz alta** (Read Aloud) | En algunas aplicaciones, lee en voz alta el texto seleccionado. |
+
+> El **Narrador** es la herramienta de accesibilidad de Windows 11 diseñada para **leer en voz alta el contenido que aparece en pantalla**, actuando como lector de pantalla.
+
+> El **Mapa de caracteres** (charmap.exe) es una utilidad de Windows para buscar e insertar símbolos Unicode, pero **no está clasificada como herramienta de accesibilidad**.
+
+> **OneDrive** es un servicio de almacenamiento en la nube, **NO una herramienta de accesibilidad**.
+
+### Accesibilidad → Visión
+
+En Windows 11, el apartado **Accesibilidad > Visión** permite:
+- Ajustar el **contraste alto**.
+- Cambiar el **tamaño del texto**.
+- Ampliar elementos (Lupa).
+- Activar el Narrador.
+
+### Teclas de accesibilidad especiales
+
+| Tecla / Combinación | Función de accesibilidad |
+|---|---|
+| **Win + U** | Abre el Centro de accesibilidad |
+| **Mayús Der (8 segundos)** | Activa/desactiva las **teclas de filtro** |
+| **Mayús (5 veces)** | Activa/desactiva las **teclas especiales** (Sticky Keys) |
+| **Bloqueo Num (5 segundos)** | Activa/desactiva las **teclas de alternancia** |
+| **Alt + Mayús Izq + Re Pág** | Activa/desactiva el **contraste alto** |
+| **Win + + / Win + -** | Activa la **Lupa** y aumenta/reduce zoom |
+
+> El método abreviado para activar y desactivar las **teclas filtro** en Windows es mantener pulsada la tecla **Mayús derecha durante ocho segundos**.
+
+---
+
+## Microsoft Copilot en Windows 11
+
+**Microsoft Copilot** en Windows 11 se caracteriza por estar **integrado en el propio sistema operativo** como asistente, accesible directamente desde la barra de tareas o mediante **Win + C**.
+
+**Funciones de Copilot:**
+- Responder preguntas de uso del sistema.
+- Ayudar a encontrar configuraciones.
+- Crear texto, imágenes y resúmenes.
+- Apoyar al usuario durante el uso del sistema operativo.
+
+> **Importante:** Copilot en Windows 11 **NO ejecuta acciones de forma autónoma sin intervención humana**: requiere siempre confirmación y supervisión del usuario para realizar cambios en el sistema.
+
+---
+
+## Búsqueda en Windows 11
+
+### Búsqueda integrada
+
+La **búsqueda de Windows 11** permite encontrar archivos, aplicaciones, configuraciones y contenido web. Se accede haciendo clic en el icono de búsqueda de la barra de tareas o pulsando la tecla Windows directamente.
+
+### Asistente de concentración (Modo No molestar)
+
+El **Asistente de concentración** (llamado también No molestar en versiones recientes de Windows 11) es una utilidad para configurar el momento y el modo en que se mostrarán las notificaciones de las aplicaciones, permitiendo al usuario trabajar sin interrupciones.
+
+---
+
+## OneDrive
+
+**OneDrive** es el servicio de **almacenamiento en la nube** de Microsoft integrado en Windows 11. Permite sincronizar archivos entre el dispositivo local y la nube, acceder a ellos desde cualquier dispositivo y compartirlos.
+
+En Windows 11, el acceso a OneDrive está integrado y es más visible en el Explorador de archivos, apareciendo en la barra lateral como una ubicación accesible de forma directa.
+
+> OneDrive es un servicio de almacenamiento en la nube, **no es una herramienta de accesibilidad**.
+
+---
+
+## Windows y Dispositivos Vinculados
+
+### Vincular teléfono
+
+En Windows 11 es posible **vincular teléfonos Android o iPhone** mediante la función "Vincular con el teléfono", lo que permite:
+- Enviar mensajes de texto desde el PC.
+- Ver y transferir fotos del teléfono directamente en el equipo.
+- Hacer y recibir llamadas (Android).
+- Acceder a notificaciones del teléfono.
+
+### Proyectar pantalla (Win + K)
+
+**Win + K** abre el panel **"Conectar"** (Cast) en Windows 11, que permite proyectar la pantalla del equipo en dispositivos externos de forma inalámbrica (Miracast, Chromecast, etc.).
+
+---
+
+## Accesos Directos en Windows 11
+
+### ¿Qué es un acceso directo?
+
+Un **acceso directo** en Windows 11 es un fichero simbólico (con extensión **.lnk**) que apunta a un programa, archivo, carpeta o URL, permitiendo acceder a ellos rápidamente sin necesidad de navegar hasta su ubicación real.
+
+- Es posible crear accesos directos a **carpetas y ficheros**.
+- Si el enlace es a un fichero, se abrirá utilizando el **programa asociado a su extensión**.
+- El acceso directo ocupa muy poco espacio y no es una copia del archivo original.
+
+**Para crear un acceso directo de "Este equipo" en el escritorio:** seleccionar "Este equipo" con el botón izquierdo del ratón en el Explorador de archivos y arrastrar al Escritorio.
+
+---
+
+## Diseño Web Adaptativo (Responsive)
+
+Un **diseño web adaptativo** ('responsive') es aquel capaz de **adaptar los elementos de la página web a pantallas de diferentes tamaños y formatos** (ordenadores, tabletas, móviles), ajustando automáticamente la disposición y tamaño de los elementos para ofrecer una buena experiencia de usuario en cualquier dispositivo.
+
+---
+
+## Herramienta de Compresión
+
+**WinZip** es la herramienta de compresión con interfaz estándar más conocida para Microsoft Windows, que permite crear, abrir y gestionar archivos comprimidos en formatos como ZIP, RAR, 7z, entre otros.
+
+Windows 11 también incluye soporte nativo para abrir archivos ZIP sin programas adicionales.
+
+---
+
+## Contenido Destacado de Windows (Windows Spotlight)
+
+El **Contenido destacado de Windows** (Windows Spotlight) es una característica que muestra diferentes **imágenes de fondo en la pantalla de bloqueo** y, en ocasiones, ofrece sugerencias e información sobre la imagen mostrada.
+
+---
+
+## Sistema Multiusuario y Gestión de Usuarios
+
+Windows es un sistema operativo **multiusuario**: cada usuario puede tener su propia cuenta con configuración independiente. En equipos compartidos con Windows 11, cada usuario puede personalizar las aplicaciones Windows, como Correo o Contactos, de forma independiente.
+
+### Configuración del ratón para zurdos
+
+En Windows 11, es posible configurar el ratón para **invertir los botones**, permitiendo hacer el clic principal con el dedo índice de la mano izquierda, desde Configuración → Bluetooth y dispositivos → Ratón → Botón primario del mouse.
+
+### Aplicación Correo — Múltiples destinatarios
+
+En la aplicación **Correo** de Windows 11, los destinatarios múltiples se separan con **punto y coma (;)** por defecto al enviar un correo electrónico a varios destinatarios.
+
+---
+
+## Tabla Completa de Atajos de Teclado de Windows 11
+
+### Atajos con la Tecla Windows (Win)
+
+| Atajo | Acción |
+|---|---|
+| **Win** | Abre/cierra el menú Inicio |
+| **Win + A** | Abre el Centro de acciones y notificaciones |
+| **Win + B** | Mueve el foco al área de notificaciones |
+| **Win + C** | Abre Microsoft Copilot |
+| **Win + D** | Minimiza todas las ventanas y muestra el escritorio (toggle) |
+| **Win + E** | Abre el Explorador de archivos |
+| **Win + F** | Abre el Centro de opiniones (Feedback Hub) |
+| **Win + G** | Abre la barra de juegos (Xbox Game Bar) |
+| **Win + H** | Activa el dictado por voz |
+| **Win + I** | Abre la Configuración de Windows |
+| **Win + J** | Mueve el foco al widget anclado (Copilot) |
+| **Win + K** | Abre el panel "Conectar" para proyectar en otros dispositivos |
+| **Win + L** | Bloquea la sesión o permite cambiar de usuario |
+| **Win + M** | Minimiza todas las ventanas |
+| **Win + N** | Abre el panel de notificaciones |
+| **Win + O** | Bloquea la orientación del dispositivo |
+| **Win + P** | Abre el panel de proyección (modo de pantalla) |
+| **Win + Q** / **Win + S** | Abre la búsqueda de Windows |
+| **Win + R** | Abre el cuadro de diálogo Ejecutar |
+| **Win + T** | Cicla por los elementos de la barra de tareas |
+| **Win + U** | Abre el Centro de accesibilidad |
+| **Win + V** | Abre el historial del portapapeles |
+| **Win + W** | Abre el panel de Widgets |
+| **Win + X** | Abre el Menú WinX (menú de usuario avanzado) |
+| **Win + Z** | Abre los Snap Layouts |
+| **Win + . (punto)** | Abre el selector de emoji y símbolos |
+| **Win + Pausa** | Abre la configuración del sistema (Acerca de) |
+| **Win + Tab** | Abre Vista de tareas (escritorios virtuales y ventanas) |
+| **Win + Espacio** | Cambia el idioma de entrada y el método de entrada |
+| **Win + Mayús + S** | Activa la herramienta de recorte (captura de pantalla) |
+| **Win + Mayús + ←/→** | Mueve la ventana al monitor siguiente/anterior |
+| **Win + + (más)** | Activa la Lupa y aumenta el zoom |
+| **Win + - (menos)** | Reduce el zoom de la Lupa |
+| **Win + Esc** | Cierra la Lupa |
+
+### Atajos de Gestión de Ventanas (Snap)
+
+| Atajo | Acción |
+|---|---|
+| **Win + ←** | Acopla la ventana activa a la mitad izquierda de la pantalla |
+| **Win + →** | Acopla la ventana activa a la mitad derecha de la pantalla |
+| **Win + ↑** | Maximiza la ventana activa |
+| **Win + ↓** | Restaura o minimiza la ventana activa |
+| **Win + Mayús + ↑** | Estira la ventana verticalmente hasta ocupar toda la altura |
+
+### Atajos de Escritorios Virtuales
+
+| Atajo | Acción |
+|---|---|
+| **Win + Tab** | Abre Vista de tareas (ver escritorios virtuales y ventanas) |
+| **Win + Ctrl + D** | Crea un nuevo escritorio virtual |
+| **Win + Ctrl + F4** | Cierra el escritorio virtual actual |
+| **Win + Ctrl + →** | Cambiar al escritorio virtual de la derecha |
+| **Win + Ctrl + ←** | Cambiar al escritorio virtual de la izquierda |
+
+### Atajos de Sistema y Aplicaciones
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + Alt + Supr** | Abre la pantalla de opciones de seguridad del sistema |
+| **Ctrl + Mayús + Esc** | Abre directamente el Administrador de tareas |
+| **Ctrl + Esc** | Abre el menú Inicio |
+| **Alt + F4** | Cierra la aplicación o ventana activa |
+| **Alt + Tab** | Cambia entre ventanas abiertas (muestra miniaturas) |
+| **Alt + Esc** | Se desplaza por los elementos en el orden en que se abrieron |
+| **Alt + Entrar** | Muestra las propiedades del elemento seleccionado |
+| **Alt + Barra espaciadora** | Abre el menú de control de la ventana activa |
+| **Mayús + F10** | Abre el menú contextual clásico del elemento seleccionado |
+
+### Atajos Generales del Sistema
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + C** | Copiar |
+| **Ctrl + X** | Cortar |
+| **Ctrl + V** | Pegar |
+| **Ctrl + Z** | Deshacer la última acción |
+| **Ctrl + Y** | Rehacer la última acción deshecha |
+| **Ctrl + A** | Seleccionar todo |
+| **Ctrl + F** | Buscar (en aplicaciones compatibles) |
+| **Ctrl + N** | Nuevo (nueva ventana en el Explorador, nuevo documento, etc.) |
+| **Ctrl + P** | Imprimir (abre el cuadro de impresión) |
+| **Ctrl + S** | Guardar |
+| **Ctrl + W** | Cerrar la pestaña o ventana actual |
+| **Ctrl + Mayús + N** | Crear nueva carpeta en el Explorador de archivos |
+| **Supr** | Enviar el elemento seleccionado a la Papelera de reciclaje |
+| **Mayús + Supr** | Eliminar permanentemente (sin pasar por la Papelera) |
+| **Esc** | Cancelar la tarea actual / equivale a "Cancelar" en diálogos |
+| **F1** | Mostrar la Ayuda del sistema o aplicación activa |
+| **F2** | Renombrar el elemento seleccionado |
+| **F5** | Actualizar/refrescar la ventana activa |
+| **F10** | Activa la barra de menús de la aplicación activa |
+| **Impr Pant** | Copia una captura de toda la pantalla al portapapeles |
+| **Alt + Impr Pant** | Captura solo la ventana activa al portapapeles |
+| **Alt Gr** | Permite introducir el tercer carácter de una tecla (p. ej. @, \) |
+
+### Atajos en el Explorador de Archivos
+
+| Atajo | Acción |
+|---|---|
+| **Win + E** | Abrir el Explorador de archivos |
+| **Ctrl + N** | Abrir una nueva ventana del Explorador |
+| **Alt + D** | Seleccionar la barra de direcciones |
+| **Alt + ←** | Ir a la carpeta anterior (Atrás) |
+| **Alt + →** | Ir a la carpeta siguiente (Adelante) |
+| **Alt + ↑** | Subir al directorio padre |
+| **F2** | Renombrar el elemento seleccionado |
+| **F5** | Refrescar el contenido de la carpeta |
+| **Alt + Entrar** | Abrir Propiedades del elemento seleccionado |
+
+### Teclas de Función en Contexto Windows
+
+| Tecla | Acción principal en Windows |
+|---|---|
+| **F1** | Mostrar Ayuda del sistema o aplicación activa |
+| **F2** | Renombrar el elemento seleccionado |
+| **F3** | Abrir búsqueda en muchas aplicaciones |
+| **F4** | Activa la barra de direcciones en el Explorador; lista desplegable en diálogos |
+| **F5** | Actualizar/refrescar la ventana activa |
+| **F6** | Cicla por los elementos de pantalla en el Explorador o navegador |
+| **F10** | Activa la barra de menús de la aplicación |
+| **F11** | Activa/desactiva el modo pantalla completa en navegadores y algunas apps |
+| **F12** | En Microsoft Office: abre "Guardar como" |
+
+### Atajos especiales para Menús
+
+| Atajo | Acción en menús |
+|---|---|
+| **Esc** | Cierra el menú activo o cancela la acción actual |
+| **Flecha izquierda** | Abre el siguiente menú de la izquierda o cierra un submenú |
+| **Flecha derecha** | Abre el siguiente menú de la derecha o abre un submenú |
+| **F10** | Activa la barra de menús |
+
+---
+
+## Símbolo del Sistema (CMD) y PowerShell
+
+### Símbolo del Sistema (cmd.exe)
+
+El **Símbolo del sistema** (cmd.exe) es la herramienta de Windows que ofrece una **interfaz de usuario basada en texto** (consola), desde la que se pueden ejecutar comandos y realizar funciones administrativas avanzadas.
+
+**Acceso:** Win+R → `cmd`, o buscando "Símbolo del sistema" en el buscador, o desde el Menú WinX.
+
+**Comandos comunes:**
+
+| Comando | Función |
+|---|---|
+| `dir` | Lista el contenido de una carpeta |
+| `cd` | Cambia de directorio |
+| `copy` | Copia archivos |
+| `move` | Mueve archivos |
+| `del` | Elimina archivos |
+| `ipconfig` | Muestra configuración de red |
+| `ping` | Comprueba conectividad de red |
+| `tasklist` | Lista procesos en ejecución |
+| `taskkill` | Finaliza un proceso |
+| `sfc /scannow` | Comprueba y repara archivos de sistema |
+| `chkdsk` | Comprueba errores en el disco |
+| `winver` | Muestra la versión de Windows |
+
+### Windows PowerShell
+
+**Windows PowerShell** es un intérprete de comandos más avanzado que el Símbolo del sistema, basado en objetos .NET. Permite:
+- Ejecutar scripts (.ps1) para automatización avanzada.
+- Gestionar el sistema operativo, Active Directory, Office 365 y más.
+- Usar cmdlets con sintaxis Verbo-Sustantivo (p. ej. `Get-Process`, `Stop-Service`).
+
+**Acceso:** Win+X → Windows PowerShell / Terminal de Windows, o buscando "PowerShell" en el buscador.
+
+### Comandos de Ejecución (Win + R)
+
+Desde el cuadro de **Ejecutar** (Win + R) se pueden lanzar directamente herramientas y aplicaciones:
+
+| Comando | Herramienta que abre |
+|---|---|
+| `winver` | Versión de Windows |
+| `msconfig` | Configuración del sistema (inicio, arranque) |
+| `mdsched.exe` | Diagnóstico de memoria de Windows |
+| `eventvwr.msc` | Visor de eventos |
+| `diskmgmt.msc` | Administrador de discos |
+| `compmgmt.msc` | Administración de equipos |
+| `regedit` | Editor del Registro |
+| `certmgr.msc` | Administrador de certificados |
+| `resmon.exe` | Monitor de recursos |
+| `mblctr` | Centro de movilidad de Windows |
+| `cleanmgr` | Liberador de espacio en disco |
+| `control` | Panel de control |
+| `msc` (varios) | Consolas de administración (MMC) |
+| `cmd` | Símbolo del sistema |
+| `powershell` | Windows PowerShell |
+
+---
+
+
+## Modo Seguro en Windows 11
+
+El **Modo seguro** (Safe Mode) es un modo de inicio diagnóstico de Windows que carga únicamente los controladores y servicios esenciales del sistema. Se utiliza para solucionar problemas cuando Windows no arranca correctamente o presenta errores graves.
+
+**Tipos de Modo seguro en Windows 11:**
+
+| Modo | Características |
+|---|---|
+| **Modo seguro** | Carga solo los componentes mínimos del sistema. **Sin acceso a internet ni redes.** |
+| **Modo seguro con funciones de red** | Igual que el modo seguro, pero **incluye los controladores de red**, permitiendo el acceso a internet y a redes locales (LAN). |
+| **Modo seguro con símbolo del sistema** | Inicia en modo seguro con una ventana de símbolo del sistema (CMD) en lugar del escritorio gráfico. |
+
+> La principal diferencia entre el **Modo seguro** y el **Modo seguro con funciones de red** es que este último incluye los controladores de red, lo que permite **acceder a internet y a redes locales**, mientras que el modo seguro básico **no tiene acceso a ninguna red**.
+
+**Cómo acceder al Modo seguro:**
+- Configuración → Sistema → Recuperación → Inicio avanzado → Reiniciar ahora
+- O bien: manteniendo pulsada la tecla **Mayús** al hacer clic en **Reiniciar**
+- Tras el reinicio: Solucionar problemas → Opciones avanzadas → Configuración de inicio → Reiniciar
+  - **F4**: Modo seguro
+  - **F5**: Modo seguro con funciones de red
+  - **F6**: Modo seguro con símbolo del sistema
+
+---
+
+## Centro de sincronización de Windows
+
+El **Centro de sincronización** (Sync Center) es una herramienta de Windows que permite **sincronizar archivos entre el equipo y carpetas de red sin conexión** (archivos sin conexión). Facilita el trabajo con archivos de red cuando el equipo no está conectado, y los sincroniza cuando se restablece la conexión.
+
+**Características principales:**
+- Permite gestionar y ver el estado de sincronización de archivos sin conexión.
+- Muestra errores o conflictos de sincronización.
+- Se puede configurar para sincronizar automáticamente al conectarse a la red.
+
+**Cómo acceder:**
+- Win + R → `mobsync` → Aceptar
+- Panel de control → Red e Internet → Centro de sincronización
+
+> **Nota:** El Centro de sincronización se usa principalmente con **carpetas de red compartidas** configuradas para acceso sin conexión. No gestiona la sincronización de OneDrive (que tiene su propio sistema integrado en Windows 11).
+
+---
+## Cuadros de Diálogo en Windows 11
+
+Un **cuadro de diálogo** en Windows es una ventana emergente que solicita información al usuario o presenta opciones para confirmar o cancelar una acción.
+
+**Características de los cuadros de diálogo:**
+- Pueden ser **modales**: bloquean la interacción con la aplicación subyacente hasta que el usuario los cierre o responda.
+- La tecla **Esc** tiene normalmente el mismo efecto que pulsar **Cancelar**: cierra el cuadro sin aplicar ningún cambio.
+- La tecla **Entrar** suele activar el botón predeterminado (normalmente "Aceptar").
+
+---
+
+## Menú Contextual en Windows 11
+
+El **menú contextual** en Windows 11 es la ventana emergente que aparece al **hacer clic con el botón secundario (derecho) del ratón** sobre un elemento, mostrando opciones específicas según el tipo de objeto seleccionado y su contexto.
+
+Los **menús contextuales** ofrecen **opciones específicas según el tipo de objeto seleccionado y su contexto**: las opciones disponibles cambian dependiendo de si se hace clic derecho en el escritorio, en un archivo, en una carpeta, en la barra de tareas, etc.
+
+---
+
+## Resumen de Rutas de Configuración Clave
+
+| Tarea | Ruta en Windows 11 |
+|---|---|
+| Ver versión de Windows | Configuración → Sistema → Acerca de |
+| Cambiar resolución de pantalla | Configuración → Sistema → Pantalla |
+| Gestionar notificaciones | Configuración → Sistema → Notificaciones |
+| Cambiar aplicaciones predeterminadas | Configuración → Aplicaciones → Aplicaciones predeterminadas |
+| Cambiar idioma del sistema | Configuración → Hora e idioma → Idioma y región |
+| Configurar accesibilidad | Configuración → Accesibilidad |
+| Activar subtítulos en vivo | Configuración → Accesibilidad → Subtítulos |
+| Windows Update | Configuración → Windows Update |
+| Privacidad de cámara | Configuración → Privacidad y seguridad → Cámara |
+| Configurar Windows Hello | Configuración → Cuentas → Opciones de inicio de sesión |
+| Desinstalar programas | Panel de control → Programas → Programas y características |
+| Crear punto de restauración | Configuración → Sistema → Acerca de → Protección del sistema |
+| Vincular teléfono | Configuración → Bluetooth y dispositivos → Teléfono móvil |
+| Configurar ratón para zurdos | Configuración → Bluetooth y dispositivos → Ratón |
+| Ajustar pantalla para portátil | Centro de movilidad (Win+R → mblctr) |
+| Ver historial del portapapeles | Win + V |
+| Abrir el Registro de Windows | Win+R → regedit |
+| Abrir Administración de discos | Win+R → diskmgmt.msc |
+| Abrir Visor de eventos | Win+R → eventvwr.msc |
+| Administrador de certificados | Win+R → certmgr.msc |
+| Diagnóstico de memoria RAM | Win+R → mdsched.exe |

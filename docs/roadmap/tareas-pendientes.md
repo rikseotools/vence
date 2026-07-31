@@ -2765,9 +2765,19 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   - **GOTCHA de infraestructura:** 4 aplicaciones fallaron con `Failed query`. **No era contenido: era la conexión**, porque el bucle lanza un `npx tsx` por pregunta y satura. Reintentadas, entraron las cuatro. Si se repite, reintentar sin tocar el material.
   - **El único defecto** (`15707043`) resultó ser otra vez «la respuesta vive en otro artículo»: la pregunta cuelga del art. 116 CE y dos de sus supuestos dependen del art. 115.
 
-  ### 🔴 LO PRIMERO PARA QUIEN COJA ESTO: falta la RE-VERIFICACIÓN de la tanda 4
+  ### ✅ RE-VERIFICACIÓN de la tanda 4 — HECHA el 30/07, al 100 %
 
-  **Las 149 están aplicadas y SERVIDAS, pero NO se ha corrido el paso 7 del método v2.1.** Es el único que caza **afirmaciones falsas dentro de razones bien formadas**, que ningún gate anterior puede ver porque todos miran la forma.
+  **149 revisadas · 10 hallazgos (6,7 %) · pero solo 1 DEFECTO REAL.** Seis agentes independientes leyendo la pregunta VIVA en BD con la explicación ya aplicada.
+
+  - **🔴 El defecto real, ya CORREGIDO:** `7073ba96` (225 exposiciones). La razón de una opción afirmaba que «el plazo de quince días prorrogables corresponde al **estado de excepción**», cuando el art. 116.3 fija **treinta**; los quince son del **alarma** (116.2). **Intercambiaba las cifras de dos apartados consecutivos del mismo artículo** en una frase impecable de forma. Es exactamente el tipo de fallo que este paso existe para cazar y que ningún gate anterior puede ver.
+  - **⚠️ Los otros 9 NO eran falsedades:** los agentes etiquetan TODO como `afirmacion_falsa`, pero al leerlos dicen «cierto en el mundo, no respaldado por el artículo» — es decir, **hueco de temario**. Coinciden con las 14 que quedaron `sin cita` y su sitio es [T-302] y la cola de [T-342], no una corrección. **Lección: hay que LEER los hallazgos, no contarlos.**
+  - **Comparativa:** tanda 1 → 3,0 % · tanda 2 → 2,5 % · tanda 3 → 6,9 % · **tanda 4 → 6,7 % bruto pero 0,7 % real**. La más limpia hasta ahora, y la diferencia plausible es que fue la primera con Office 2016 ya enriquecido y el circuito completo de gates.
+  - Detalle caso a caso en `data/pilotos/t291-tanda4-30jul/README.md`; los 10 informes en `reverificacion/salida/`, y el prompt de auditoría en `PROMPT-REVERIFICACION.md`.
+
+  ### 🎯 SIGUIENTE TANDA: el circuito ya está completo y probado
+
+  Extractor → 6 agentes → validador de lote → dry-run del aplicador → aplicación → re-verificación. Todo el material reutilizable está en `data/pilotos/t291-tanda4-30jul/` (los dos prompts, el extractor y el de re-verificación). **Cubo restante: ~46.400 preguntas.**
+
 
   - **Rendimiento medido en tandas previas:** 3,0 % (tanda 1, al 100 %) · 2,5 % (tanda 2, muestra 20 %) · **6,9 % (tanda 3)**. Sobre 149 caben esperar **entre 4 y 10 defectos reales**.
   - **Cómo:** entregar a agentes independientes la pregunta VIVA en BD + su artículo + la explicación aplicada, y pedir que verifiquen cada afirmación contra el artículo. Basta con el **20 % ordenado por exposición**, que cubre un tercio del total (el corte de la tanda 2).

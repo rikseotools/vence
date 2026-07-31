@@ -1,0 +1,427 @@
+[
+  {
+    "question_id": "397c024d-514e-4424-990b-d5b7af796b4c",
+    "servidas": 226,
+    "es_examen_oficial": false,
+    "ley": "Ley 9/2017",
+    "articulo": "23",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f7f533f1-cc84-4bea-b9d8-3b77e3e86192.txt",
+    "enunciado": "Son contratos subvencionados sujetos a una regulación armonizada los contratos de obras y los contratos de servicios mencionados en el artículo 23 de la Ley de Contratos del Sector Público siempre que:",
+    "opciones": {
+      "A": "Sean subvencionados de forma directa o indirecta en más de un 50 % de su importe.",
+      "B": "Sean subvencionados de forma directa en más de un 50 % de su importe.",
+      "C": "Sean subvencionados de forma directa en más de un 75 % de su importe.",
+      "D": "Sean subvencionados de forma directa o indirecta en más de un 75 % de su importe."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta bajo qué condición los contratos de obras y de servicios del artículo 23 quedan sujetos a regulación armonizada por estar subvencionados.\n\n> **Ley 9/2017, art. 23.1**\n> \"que sean subvencionados, de forma directa y en más de un 50 por 100 de su importe, por entidades que tengan la consideración de poderes adjudicadores\"\n\n**Por qué B es correcta:** El artículo exige exactamente que la subvención sea directa y supere el 50 por 100 de su importe.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo exige que la subvención sea directa, no contempla la subvención indirecta como supuesto habilitante.\n- **C)** El porcentaje que fija el artículo es del 50 por 100, no del 75 por 100.\n- **D)** El artículo no admite la subvención indirecta como supuesto habilitante, y el porcentaje que fija es del 50 por 100, no del 75 por 100."
+  },
+  {
+    "question_id": "1fc3b08a-95ae-4f64-bf47-50ab8257e837",
+    "servidas": 226,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "En Windows, queremos refrescar el contenido de la ventana activa. ¿Qué tecla o teclas de acceso rápido utilizaremos?",
+    "opciones": {
+      "A": "F5",
+      "B": "Ctrl + X",
+      "C": "Alt + F4",
+      "D": "Ctrl + Alt + Tabulador"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Windows 11 tiene una tecla universal para actualizar el contenido mostrado en la ventana con la que se está trabajando.\n\n> **Windows 11, art. 1**\n> \"| **F5** | Actualizar/refrescar la ventana activa |\"\n\n**Por qué A es correcta:** F5 actualiza o refresca el contenido de la ventana activa, ya sea en el Explorador, en un navegador o en el escritorio.\n\n**Por qué las demás son incorrectas:**\n- **B)** Ctrl + X corta el elemento seleccionado al portapapeles; no actualiza la ventana.\n- **C)** Alt + F4 cierra la ventana o aplicación activa; no la refresca.\n- **D)** Ctrl + Alt + Tabulador muestra las ventanas abiertas para seleccionar con las flechas del teclado; no actualiza la ventana."
+  },
+  {
+    "question_id": "7073ba96-4545-40f0-bb8f-cc4bd215f367",
+    "servidas": 225,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "El estado de alarma será declarado:",
+    "opciones": {
+      "A": "Por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de treinta días, dando cuenta al Congreso de los Diputados, reunido inmediatamente al efecto y sin cuya autorización no podrá ser prorrogado dicho plazo. El decreto determinará el ámbito territorial a que se extienden los efectos de la declaración.",
+      "B": "Por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados. La autorización y proclamación del estado de alarma deberá determinar expresamente los efectos del mismo, el ámbito territorial a que se extiende y su duración, que no podrá exceder de treinta días, prorrogables por otro plazo igual, con los mismos requisitos.",
+      "C": "Por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados. La autorización y proclamación del estado de alarma deberá determinar expresamente los efectos del mismo, el ámbito territorial a que se extiende y su duración, que no podrá exceder de quince días, prorrogables por otro plazo igual, con los mismos requisitos.",
+      "D": "Por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso de los Diputados, reunido inmediatamente al efecto y sin cuya autorización no podrá ser prorrogado dicho plazo. El decreto determinará el ámbito territorial a que se extienden los efectos de la declaración."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.2 CE describe con detalle el procedimiento íntegro de declaración del estado de alarma.\n\n> **CE, art. 116.2**\n> \"El estado de alarma será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso de los Diputados, reunido inmediatamente al efecto y sin cuya autorización no podrá ser prorrogado dicho plazo. El decreto determinará el ámbito territorial a que se extienden los efectos de la declaración.\"\n\n**Por qué D es correcta:** El estado de alarma se declara por el Gobierno mediante decreto en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso, reunido inmediatamente y sin cuya autorización no podrá prorrogarse ese plazo, determinando el decreto el ámbito territorial de sus efectos, tal y como recoge literalmente el artículo 116.2.\n\n**Por qué las demás son incorrectas:**\n- **A)** El plazo máximo inicial del estado de alarma es de quince días, no de treinta; treinta días es el límite máximo previsto para el estado de excepción, no para la alarma inicial.\n- **B)** Esa descripción, con autorización previa del Congreso y un plazo de treinta días prorrogable, corresponde al procedimiento del estado de excepción, no al del estado de alarma.\n- **C)** El estado de alarma no requiere autorización previa del Congreso para su declaración, solo darle cuenta; la autorización previa y el plazo de quince días prorrogables por igual plazo corresponden al estado de excepción."
+  },
+  {
+    "question_id": "c7f71b0d-dbc8-46fd-8d80-675538fff613",
+    "servidas": 225,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f1618ab2-bc3e-41d1-a66f-3a7db8c7645a.txt",
+    "enunciado": "¿Cuál de las siguientes opciones permite proteger la información personal e identidad en línea y permite acceder a los recursos de una red local?",
+    "opciones": {
+      "A": "Los controladores de filtro.",
+      "B": "Una red VPN.",
+      "C": "Una red PAN.",
+      "D": "Los controladores de función."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta qué tecnología permite a la vez proteger la información personal e identidad en línea y acceder a los recursos de una red local.\n\n> **La Red Internet, art. 2 (VPN y servidores proxy)**\n> \"Una **VPN** (Virtual Private Network) crea un túnel cifrado entre el dispositivo del usuario y un servidor remoto, ocultando la dirección IP real y cifrando el tráfico. Se usa para acceso seguro a redes corporativas y para preservar la privacidad.\"\n\n**Por qué B es correcta:** Una VPN cifra el tráfico del usuario, oculta su dirección IP real y además permite acceder de forma segura a los recursos de una red local remota, cumpliendo ambas condiciones planteadas.\n\n**Por qué las demás son incorrectas:**\n- **A)** Los controladores de filtro interceptan llamadas a funciones del sistema operativo; no son una solución de privacidad ni de acceso remoto a redes.\n- **C)** Una red PAN es de muy corto alcance para conectar dispositivos personales; no cifra el tráfico de Internet ni da acceso a redes privadas remotas.\n- **D)** Los controladores de función son controladores de hardware específicos; no ofrecen privacidad en línea ni acceso remoto a redes."
+  },
+  {
+    "question_id": "622b4247-d603-4a74-8225-9a08670dae96",
+    "servidas": 225,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3f3a30f5-1467-4e20-803e-36cf1cc8a0ed.txt",
+    "enunciado": "Si buscamos el texto 'pone' (sin comillas) en el cuadro de búsqueda situado en la parte superior de la Bandeja de entrada de Outlook 365, ¿en cuál de las siguientes combinaciones todos los elementos son resultados correctos?",
+    "opciones": {
+      "A": "anteponer, ponencia, 100pone.",
+      "B": "ponencia, poner, ponente.",
+      "C": "ponencia, descomponer, poner.",
+      "D": "100pone, componer, ponente."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta qué combinación de palabras aparecería como resultado al buscar el texto 'pone' en la Bandeja de entrada de Outlook 365.\n\n> **Outlook 365, art. 2 (Búsqueda de mensajes)**\n> \"escribir una palabra devuelve todos los elementos que la contienen (coincidencia por prefijo)\"\n\n**Por qué B es correcta:** «Ponencia», «poner» y «ponente» empiezan las tres por 'pone', que es precisamente el patrón que localiza una búsqueda por prefijo como la de Outlook.\n\n**Por qué las demás son incorrectas:**\n- **A)** «Anteponer» tiene 'pone' en posición intermedia y «100pone» lo tiene al final; la búsqueda por prefijo no encuentra coincidencias en esas posiciones.\n- **C)** «Descomponer» tiene 'pone' en posición intermedia, no al principio de la palabra, por lo que no aparecería entre los resultados de una búsqueda por prefijo.\n- **D)** «100pone» tiene 'pone' al final y «componer» lo tiene en posición intermedia; ninguna de las dos encajaría en una búsqueda por prefijo."
+  },
+  {
+    "question_id": "da7bb00a-2b65-4d61-9a68-4ff1a599341a",
+    "servidas": 224,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "De acuerdo con lo establecido en la Ley 40/2015 de Régimen Jurídico del Sector Público, las Administraciones Públicas no actúan de acuerdo con los principios de:",
+    "opciones": {
+      "A": "Buena fe.",
+      "B": "Eficacia.",
+      "C": "Buen gobierno.",
+      "D": "Desconcentración."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta cuál de los términos propuestos NO figura entre los principios de actuación que enumera el artículo 3 de la Ley 40/2015.\n\n> **Ley 40/2015, art. 3.1.e**\n> \"Buena fe, confianza legítima y lealtad institucional.\"\n\n**Por qué C es correcta:** No figura en ningún apartado del artículo; se trata de un concepto regulado por otra norma distinta, por lo que es la respuesta buscada.\n\n**Por qué las demás son incorrectas:**\n- **A)** Sí figura expresamente citado como principio en el artículo.\n- **B)** Sí figura expresamente entre los principios del primer párrafo del artículo.\n- **D)** Sí figura expresamente entre los principios del primer párrafo del artículo."
+  },
+  {
+    "question_id": "34484d19-5ff0-4c5d-ab72-42f05e50c580",
+    "servidas": 224,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3f3a30f5-1467-4e20-803e-36cf1cc8a0ed.txt",
+    "enunciado": "¿Cuál es la utilidad de la acción 'Combinar correspondencia' en la pestaña Inicio de los contactos de Outlook 365?",
+    "opciones": {
+      "A": "En el caso de tener más de una cuenta agregada a Outlook, redirigir todos los mensajes y citas de las distintas cuentas a la cuenta principal.",
+      "B": "Crear un correo electrónico o carta modelo para enviarlo a un conjunto de contactos. Cada contacto recibirá un correo electrónico o carta modelo individual.",
+      "C": "Permitir la fusión de varios correos electrónicos recibidos para ahorrar espacio en el disco duro.",
+      "D": "Crear una carpeta donde almacenar correos recibidos en diferentes cuentas configuradas en Outlook."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "La pregunta pide identificar para qué sirve la acción 'Combinar correspondencia' disponible en la pestaña Inicio de los contactos de Outlook 365.\n\n**Por qué B es correcta:** Esta acción une la lista de contactos con una plantilla de correo o documento para generar un envío individual y personalizado a cada destinatario.\n\n**Por qué las demás son incorrectas:**\n- **A)** Redirigir mensajes de otras cuentas a la principal es una función de reglas o configuración de cuentas, no de esta acción.\n- **C)** No existe ninguna función que fusione correos recibidos para ahorrar espacio en disco.\n- **D)** Agrupar correos de varias cuentas en una misma carpeta se hace desde la gestión de carpetas, no con esta acción."
+  },
+  {
+    "question_id": "0d3474fd-ef39-4cc0-b2d2-f18672c3bd9a",
+    "servidas": 224,
+    "es_examen_oficial": true,
+    "ley": "Ley 39/2015",
+    "articulo": "31",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/caf6b404-fa6b-4b14-85e5-333dbee7243a.txt",
+    "enunciado": "El funcionamiento del registro electrónico permite:",
+    "opciones": {
+      "A": "La presentación de documentos por Internet pero sólo dentro del horario de apertura del Registro correspondiente.",
+      "B": "La presentación de documentos sólo en los días hábiles del año.",
+      "C": "La presentación de documentos por Internet todos los días del año pero sólo de 9:00 a 23:00.",
+      "D": "La presentación de documentos todos los días del año durante las 24 horas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La pregunta se refiere a las reglas de funcionamiento del registro electrónico que fija la ley.\n\n> **Ley 39/2015, art. 31.2.a)**\n> \"Permitirá la presentación de documentos todos los días del año durante las veinticuatro horas.\"\n\n**Por qué D es correcta:** El registro electrónico permite presentar documentos todos los días del año durante las veinticuatro horas, sin interrupción.\n\n**Por qué las demás son incorrectas:**\n- **A)** Restringir la presentación al horario de apertura del registro es propio de las oficinas de asistencia presencial, no del registro electrónico, que funciona de forma ininterrumpida.\n- **B)** Limitar la presentación a los días hábiles contradice la regla, ya que el registro electrónico admite documentos también en días inhábiles (con otro efecto sobre el cómputo, pero se admiten).\n- **C)** No existe ninguna franja horaria de 9:00 a 23:00 para el registro electrónico; funciona las veinticuatro horas."
+  },
+  {
+    "question_id": "161dc6b2-200f-49fc-a743-7044b45cb45b",
+    "servidas": 223,
+    "es_examen_oficial": false,
+    "ley": "RDL 1/2013",
+    "articulo": "23",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/af7998db-7ea8-452c-90e0-8de9a5a6d4fa.txt",
+    "enunciado": "De acuerdo con lo establecido en el artículo 23 del Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social, tendrá competencia para regular de las condiciones básicas de accesibilidad y no discriminación que garanticen los mismos niveles de igualdad de oportunidades a todas las personas con discapacidad:",
+    "opciones": {
+      "A": "El Congreso de los Diputados, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales.",
+      "B": "El Senado, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales.",
+      "C": "El Gobierno, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales.",
+      "D": "Las Cortes Generales, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta qué órgano tiene la competencia para regular las condiciones básicas de accesibilidad y no discriminación de las personas con discapacidad.\n\n> **RDL 1/2013, art. 23.1**\n> \"El Gobierno, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales, regulará las condiciones básicas de accesibilidad y no discriminación que garanticen los mismos niveles de igualdad de oportunidades a todas las personas con discapacidad.\"\n\n**Por qué C es correcta:** El Gobierno es el órgano al que la norma atribuye expresamente la regulación de estas condiciones básicas, sin perjuicio de las competencias autonómicas y locales.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Congreso de los Diputados es una de las cámaras del poder legislativo, pero la norma atribuye esta competencia al Gobierno, no al Congreso.\n- **B)** El Senado es la otra cámara legislativa y tampoco es el órgano al que la norma atribuye esta competencia.\n- **D)** Las Cortes Generales representan al conjunto del poder legislativo, pero esta regulación corresponde al Gobierno por vía reglamentaria, no a las Cortes."
+  },
+  {
+    "question_id": "628c9736-eac8-4e91-8940-4cc1f9aeebd8",
+    "servidas": 222,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Según el artículo 116 de la Constitución Española, el estado de alarma será declarado:",
+    "opciones": {
+      "A": "Por el Gobierno, previa autorización del Congreso.",
+      "B": "Por el Congreso de los Diputados, previa autorización del Gobierno.",
+      "C": "Por el Congreso de los Diputados, a propuesta del Gobierno.",
+      "D": "Por el Gobierno, dando cuenta al Congreso."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.2 CE define el grado de intervención del Congreso en la declaración del estado de alarma.\n\n> **CE, art. 116.2**\n> \"dando cuenta al Congreso de los Diputados\"\n\n**Por qué D es correcta:** El estado de alarma se declara por el Gobierno mediante decreto en Consejo de Ministros, dando cuenta al Congreso de los Diputados, según el artículo 116.2.\n\n**Por qué las demás son incorrectas:**\n- **A)** La declaración del estado de alarma no exige autorización previa del Congreso; solo se le debe dar cuenta de ella.\n- **B)** El Congreso no declara el estado de alarma ni autoriza al Gobierno en un sentido inverso al del artículo: es el Gobierno quien lo declara.\n- **C)** El Congreso no declara el estado de alarma a propuesta del Gobierno; esa fórmula corresponde al estado de sitio."
+  },
+  {
+    "question_id": "f9268247-4b3d-42fb-8022-b34223b0e154",
+    "servidas": 222,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "0",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2536184c-73ed-4568-9ac7-0bbf1da24dcb.txt",
+    "enunciado": "¿En qué fecha entró en vigor la Constitución Española de 1978?",
+    "opciones": {
+      "A": "El 31 de octubre de 1978, mismo día de su aprobación por las Cortes Españolas.",
+      "B": "El 27 de diciembre de 1978.",
+      "C": "El 6 de diciembre de 1978.",
+      "D": "El 29 de diciembre de 1978, mismo día de la publicación de su texto oficial en el Boletín Oficial del Estado."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La Constitución de 1978 atravesó varias fechas clave —aprobación parlamentaria, referéndum, sanción real y publicación— que conviene no confundir entre sí.\n\n> **CE, estructura**\n> \"29 diciembre 1978: publicación en el BOE y entrada en vigor.\"\n\n**Por qué D es correcta:** La Constitución entró en vigor el 29 de diciembre de 1978, el mismo día en que se publicó su texto oficial en el Boletín Oficial del Estado.\n\n**Por qué las demás son incorrectas:**\n- **A)** El 31 de octubre de 1978 las Cortes aprobaron el texto, pero la Constitución no entró en vigor ese día, sino tras el referéndum y su publicación en el BOE.\n- **B)** El 27 de diciembre de 1978 el Rey sancionó la Constitución, pero la entrada en vigor se produjo dos días después, con su publicación en el BOE.\n- **C)** El 6 de diciembre de 1978 el pueblo español aprobó la Constitución en referéndum, pero la entrada en vigor llegó con su publicación posterior en el BOE."
+  },
+  {
+    "question_id": "cb3d465d-c048-411f-a92d-1b022ef8d8bd",
+    "servidas": 221,
+    "es_examen_oficial": false,
+    "ley": "Ley 7/1985",
+    "articulo": "27",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/005febfb-21d3-49f4-bdd0-4f5ba4add820.txt",
+    "enunciado": "¿Es posible la delegación de competencias por parte del Estado y las Comunidades Autónomas en los Municipios?",
+    "opciones": {
+      "A": "No, salvo una disposición con rango de ley establezca lo contrario, y en la misma se precisen el objeto y alcance de dicha delegación.",
+      "B": "Sí, siempre que no suponga duplicidades de competencias.",
+      "C": "No, en ningún caso.",
+      "D": "Sí, la delegación habrá de mejorar la eficiencia de la gestión pública, contribuir a eliminar duplicidades administrativas y ser acorde con la legislación de estabilidad presupuestaria y sostenibilidad financiera."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta si el Estado y las Comunidades Autónomas pueden delegar competencias en los municipios y bajo qué condiciones.\n\n> **Ley 7/1985, art. 27.1**\n> \"La delegación habrá de mejorar la eficiencia de la gestión pública, contribuir a eliminar duplicidades administrativas y ser acorde con la legislación de estabilidad presupuestaria y sostenibilidad financiera.\"\n\n**Por qué D es correcta:** La delegación es posible siempre que mejore la eficiencia de la gestión pública, contribuya a eliminar duplicidades administrativas y sea acorde con la legislación de estabilidad presupuestaria y sostenibilidad financiera.\n\n**Por qué las demás son incorrectas:**\n- **A)** Exigir una disposición con rango de ley que precise el objeto y alcance no es la vía de delegación de competencias en municipios, que se rige por las condiciones que fija este artículo.\n- **B)** Limitar la delegación solo a que no suponga duplicidad de competencias no recoge todos los requisitos que exige la norma para delegar.\n- **C)** Negar en todo caso la posibilidad de delegación es incorrecto, porque la norma sí permite delegar cumpliendo determinadas condiciones."
+  },
+  {
+    "question_id": "7e07a93d-ca13-4b08-a078-d6dd08f88a4a",
+    "servidas": 221,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "¿Cúal de las siguientes funciones no corresponde al Consejo de Ministros, como órgano colegiado del Gobierno?:",
+    "opciones": {
+      "A": "Aprobar los proyectos de Ley y su remisión al Congreso de los Diputados o, en su caso, al Senado.",
+      "B": "Aprobar el Proyecto de Ley de Presupuestos Generales del Estado.",
+      "C": "Declarar el estado de sitio.",
+      "D": "Declarar el estado de excepción."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116 delimita qué decisiones sobre los estados excepcionales corresponden al Consejo de Ministros como órgano del Gobierno.\n\n> **CE, art. 116.4**\n> \"El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno.\"\n\n**Por qué C es correcta:** Declarar el estado de sitio no corresponde al Consejo de Ministros: el artículo 116.4 atribuye esa declaración al Congreso de los Diputados, por mayoría absoluta, a propuesta exclusiva del Gobierno.\n\n**Por qué las demás son incorrectas:**\n- **A)** Aprobar los proyectos de ley y remitirlos a las Cámaras sí es una función del Consejo de Ministros, ajena a este artículo pero no discutida por él.\n- **B)** Aprobar el Proyecto de Ley de Presupuestos Generales sí es una función del Consejo de Ministros, ajena a este artículo pero no discutida por él.\n- **D)** Declarar el estado de excepción sí corresponde al Gobierno, mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso."
+  },
+  {
+    "question_id": "1d7e1ee3-693f-49d0-8235-0462c81763e2",
+    "servidas": 221,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Señale cuál de las opciones NO es un sistema de archivos:",
+    "opciones": {
+      "A": "FAT32.",
+      "B": "NTFS.",
+      "C": "ext2.",
+      "D": "SOLARIS."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Un sistema de archivos es la estructura que organiza y almacena datos en un disco, algo distinto de un sistema operativo.\n\n> **Windows 11, art. 1**\n> \"**SOLARIS** es un sistema operativo, **no un sistema de archivos**.\"\n\n**Por qué D es correcta:** SOLARIS es un sistema operativo desarrollado por Sun Microsystems, no un sistema de archivos.\n\n**Por qué las demás son incorrectas:**\n- **A)** FAT32 es un sistema de archivos ampliamente usado en dispositivos USB y tarjetas de memoria.\n- **B)** NTFS es el sistema de archivos principal de Windows, con soporte para permisos, cifrado y archivos de gran tamaño.\n- **C)** ext2 es un sistema de archivos de Linux, utilizado en particiones de ese sistema operativo."
+  },
+  {
+    "question_id": "cc5de920-7bef-4d62-834c-744c4e96b9f5",
+    "servidas": 220,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3f3a30f5-1467-4e20-803e-36cf1cc8a0ed.txt",
+    "enunciado": "Outlook 365 permite crear varios tipos de elementos en la opción 'Nuevos elementos' de la pestaña Inicio de la cinta de opciones de la Bandeja de entrada. ¿Qué elemento de los siguientes NO es posible crear con esta opción?",
+    "opciones": {
+      "A": "Presentación.",
+      "B": "Tarea.",
+      "C": "Mensaje de correo electrónico.",
+      "D": "Reunión."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "La opción 'Nuevos elementos' de la pestaña Inicio permite crear varios tipos de elementos en Outlook 365, pero no todos los que existen en otras aplicaciones de Office.\n\n> **Outlook 365, art. 2**\n> \"Nuevo correo electrónico, Nuevos elementos (mensaje, cita, reunión, contacto, tarea, nota)\"\n\n**Por qué A es correcta:** Una presentación es un archivo de PowerPoint; no figura entre los elementos que se pueden crear desde 'Nuevos elementos' en Outlook.\n\n**Por qué las demás son incorrectas:**\n- **B)** La tarea sí está entre los elementos disponibles en 'Nuevos elementos'.\n- **C)** El mensaje de correo electrónico sí está entre los elementos disponibles en 'Nuevos elementos'.\n- **D)** La reunión sí está entre los elementos disponibles en 'Nuevos elementos'."
+  },
+  {
+    "question_id": "e3b69fe3-40ab-4cd5-bf06-ab0925bdf14e",
+    "servidas": 220,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3770f04a-5a90-4b12-948e-b0bbd12b88d2.txt",
+    "enunciado": "La opción 'Columnas' de Word 365 permite seleccionar el número de columnas en que dispondremos el texto. ¿En cuál de las siguientes pestañas de la cinta de opciones de Word 365 se encuentra de forma predeterminada?",
+    "opciones": {
+      "A": "Insertar.",
+      "B": "Vista.",
+      "C": "Correspondencia.",
+      "D": "Disposición."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La opción para repartir el texto en varias columnas, como en un periódico, se agrupa junto con el resto de opciones de configuración de la página.\n\n> **Word 365, art. 2**\n> \"El formato en **columnas** divide el texto en columnas verticales, como en un periódico o revista. Se configura en la ficha **Disposición** > **Columnas**.\"\n\n**Por qué D es correcta:** Disposición es la ficha donde se configura el formato en columnas del texto, junto con márgenes, orientación y saltos de página.\n\n**Por qué las demás son incorrectas:**\n- **A)** Insertar reúne comandos para añadir objetos al documento, no la configuración de columnas de texto.\n- **B)** Vista controla cómo se muestra el documento en pantalla, no la disposición del texto en columnas.\n- **C)** Correspondencia reúne las herramientas para combinar correspondencia, ajena a la disposición en columnas del texto."
+  },
+  {
+    "question_id": "d24651bf-689a-4dc4-858a-9d432c17cfb6",
+    "servidas": 220,
+    "es_examen_oficial": false,
+    "ley": "Ley 9/2017",
+    "articulo": "30",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/255521fb-7864-4331-9e4e-6cbbe9567776.txt",
+    "enunciado": "Señale la respuesta correcta en virtud de lo dispuesto en el artículo 30 de la Ley de Contratos del Sector Público:",
+    "opciones": {
+      "A": "La prestación de servicios se realizará normalmente por la propia Administración por sus propios medios.",
+      "B": "La prestación de servicios se realizará normalmente a través de la contratación de conformidad con lo establecido en el Capítulo V del Título II del Libro II de la Ley 9/2017.",
+      "C": "Excepcionalmente, la prestación de servicios se realizará por la propia Administración por sus propios medios.",
+      "D": "Ninguna de las respuestas anteriores es correcta."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta cuál es la regla general para la prestación de servicios según este artículo de la Ley de Contratos del Sector Público.\n\n> **Ley 9/2017, art. 30.3**\n> \"La prestación de servicios se realizará normalmente por la propia Administración por sus propios medios.\"\n\n**Por qué A es correcta:** La regla general es que la prestación de servicios la realice la propia Administración con sus propios medios, recurriendo a la contratación externa solo cuando carezca de medios suficientes.\n\n**Por qué las demás son incorrectas:**\n- **B)** Presentar la contratación externa como el cauce normal invierte la regla: la ley la reserva para cuando la Administración carezca de medios suficientes.\n- **C)** Calificar la ejecución directa de 'excepcional' contradice la norma, que la establece como la vía normal, no excepcional.\n- **D)** No cabe descartar el conjunto: el artículo sí fija una regla general —la ejecución con medios propios como vía normal— y esa regla figura enunciada tal cual entre las alternativas ofrecidas."
+  },
+  {
+    "question_id": "bb4f21fd-b0dd-4a40-b8fb-5902da19abc8",
+    "servidas": 220,
+    "es_examen_oficial": true,
+    "ley": "RD 1708/2011",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/64605cf3-efd0-4e77-8093-150143a07579.txt",
+    "enunciado": "La definición dada por el Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos y su régimen de acceso, al 'Conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos' se corresponde con:",
+    "opciones": {
+      "A": "Ciclo vital de documentos.",
+      "B": "Expediente electrónico.",
+      "C": "Documento electrónico.",
+      "D": "Sistema archivístico."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta a qué concepto corresponde una definición concreta del Real Decreto 1708/2011.\n\n> **RD 1708/2011, art. 2.2.a)**\n> \"Sistema archivístico: Conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos.\"\n\n**Por qué D es correcta:** El sistema archivístico es precisamente el conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos.\n\n**Por qué las demás son incorrectas:**\n- **A)** El ciclo vital de documentos son las etapas por las que pasa un documento hasta su eliminación o conservación, no el conjunto de normas y órganos que gestionan los archivos.\n- **B)** El expediente electrónico es el conjunto de documentos electrónicos de un procedimiento, no el conjunto de normas y órganos de gestión documental.\n- **C)** El documento electrónico es la información en forma electrónica susceptible de identificación y tratamiento, no el conjunto de normas y órganos de gestión."
+  },
+  {
+    "question_id": "12ace336-7fa2-4893-9ce0-eb260e798f6b",
+    "servidas": 219,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5b435183-cdbd-41e6-9754-0a6333c7b8de.txt",
+    "enunciado": "¿A cuál de las siguientes definiciones corresponden las siglas OCR?",
+    "opciones": {
+      "A": "Biblioteca abierta de gráficos.",
+      "B": "Lenguaje de computación abierto.",
+      "C": "Reconocimiento óptico de caracteres.",
+      "D": "Terminal de red óptica."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta qué significan las siglas OCR.\n\n> **Informática Básica, art. 2 (OCR)**\n> \"Las siglas **OCR** corresponden a *Optical Character Recognition* → **Reconocimiento Óptico de Caracteres**. Tecnología que convierte imágenes de texto en texto editable.\"\n\n**Por qué C es correcta:** OCR corresponde exactamente a Optical Character Recognition, es decir, Reconocimiento óptico de caracteres.\n\n**Por qué las demás son incorrectas:**\n- **A)** Biblioteca abierta de gráficos correspondería más bien a las siglas OGL (Open Graphics Library), no a OCR.\n- **B)** Lenguaje de computación abierto correspondería más bien a las siglas OCL (Open Computing Language), no a OCR.\n- **D)** Terminal de red óptica correspondería más bien a las siglas ONT (Optical Network Terminal), no a OCR."
+  },
+  {
+    "question_id": "0af6ee6a-aae3-4e9c-96e2-54030dfdb972",
+    "servidas": 219,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "De acuerdo con lo previsto en el artículo 3.1 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, las Administraciones Públicas sirven los intereses generales con:",
+    "opciones": {
+      "A": "Objetividad.",
+      "B": "Legalidad.",
+      "C": "Responsabilidad.",
+      "D": "Celeridad."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo precisa con qué cualidad sirven las Administraciones Públicas a los intereses generales.\n\n> **Ley 40/2015, art. 3.1**\n> \"Las Administraciones Públicas sirven con objetividad los intereses generales\"\n\n**Por qué A es correcta:** Coincide de forma literal con el precepto: las Administraciones sirven con esta cualidad los intereses generales.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo la menciona en otro momento del párrafo, como sometimiento pleno a la Ley, no como la cualidad con la que se sirve a los intereses generales.\n- **C)** El artículo la recoge en otro apartado, como responsabilidad por la gestión pública, no en relación con el servicio a los intereses generales.\n- **D)** No aparece en este artículo como cualidad del servicio a los intereses generales."
+  },
+  {
+    "question_id": "d8b8bdfd-91ba-466e-ad2e-55fe7034a3f4",
+    "servidas": 219,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3f3a30f5-1467-4e20-803e-36cf1cc8a0ed.txt",
+    "enunciado": "En la Bandeja de entrada de correo en Outlook 365, en la cinta de opciones, disponemos de la opción 'Ignorar' (u 'Omitir la conversación'). ¿Cuál es su funcionamiento?",
+    "opciones": {
+      "A": "Ignora las peticiones de confirmación de lectura o de entrega para todos los elementos seleccionados.",
+      "B": "Mueve los mensajes actuales y futuros de la conversación seleccionada a la carpeta de Elementos eliminados.",
+      "C": "Ignora las convocatorias de reunión procedentes del usuario que es remitente del correo seleccionado.",
+      "D": "Mueve los mensajes actuales y futuros de la conversación seleccionada a la carpeta de Correo no deseado."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta por el efecto de la opción 'Ignorar' (u 'Omitir la conversación') de la cinta de opciones de la Bandeja de entrada en Outlook 365.\n\n**Por qué B es correcta:** Esta acción envía a la carpeta de Elementos eliminados tanto los mensajes ya recibidos de esa conversación como los que lleguen en el futuro con el mismo asunto.\n\n**Por qué las demás son incorrectas:**\n- **A)** Ignorar peticiones de confirmación de lectura o entrega es un ajuste distinto, relacionado con las opciones de envío del mensaje, no con esta acción.\n- **C)** Ignorar convocatorias de reunión de un remitente concreto no es lo que hace esta acción, que actúa sobre una conversación de correo, no sobre invitaciones de calendario.\n- **D)** Mover los mensajes a Correo no deseado es el efecto de marcar un mensaje como spam, no el de esta acción, que los envía a Elementos eliminados."
+  },
+  {
+    "question_id": "5c746589-adf3-4aac-8337-e4dc84974fab",
+    "servidas": 219,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Cada una de las Administraciones Públicas recogidas en el artículo 2 de la Ley 40/2015 de Régimen Jurídico del Sector Público, actúa para el cumplimiento de sus fines con personalidad jurídica:",
+    "opciones": {
+      "A": "Plena, para cada órgano que integra la Administración del Estado",
+      "B": "Única",
+      "C": "Solidaria",
+      "D": "Propia, para cada órgano que integra la Administración del Estado"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo precisa el tipo de personalidad jurídica con la que actúa cada Administración Pública para el cumplimiento de sus fines.\n\n> **Ley 40/2015, art. 3.4**\n> \"actúa para el cumplimiento de sus fines con personalidad jurídica única.\"\n\n**Por qué B es correcta:** Coincide de forma literal con el precepto: cada Administración actúa con esta personalidad jurídica.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es correcto: el artículo no habla de personalidad \"plena\" ni la atribuye a cada órgano; atribuye una única personalidad a toda la Administración.\n- **C)** No es correcto: el artículo no emplea este término, ajeno al concepto de personalidad jurídica que regula.\n- **D)** No es correcto: el artículo no atribuye personalidad propia a cada órgano, sino una única personalidad a toda la Administración."
+  },
+  {
+    "question_id": "cc839acc-62ee-4581-be0c-f80275994788",
+    "servidas": 218,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "9",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/33f758ab-da7b-4581-918f-8eb04468d4dd.txt",
+    "enunciado": "¿A qué hacemos referencia cuando hablamos de SEO (search engine optimization) con relación a un sitio web?",
+    "opciones": {
+      "A": "La optimización en motores de búsqueda (SEO) o posicionamiento en buscadores es un conjunto de prácticas para mejorar el posicionamiento de un sitio web en la lista de resultados de Google, Bing u otros buscadores de internet.",
+      "B": "La optimización en motores de búsqueda (SEO) hace referencia al nombre que toman los departamentos de investigación y desarrollo de las empresas propietarias de los motores de búsqueda para mejorar sus prestaciones.",
+      "C": "SEO hace referencia a los rankings sobre motores de búsqueda realizados por consultoras de referencia, que recogen qué buscadores son los más utilizados tanto por zonas geográficas como mundialmente.",
+      "D": "El acrónimo SEO hace referencia a la utilización de combinaciones de palabras clave que podemos utilizar en un motor de búsqueda para encontrar un sitio web."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta a qué hace referencia el SEO (search engine optimization) en relación con un sitio web.\n\n> **La Red Internet, art. 9 (SEO)**\n> \"El objetivo principal del SEO es **mejorar la visibilidad de un sitio web en buscadores**.\"\n\n**Por qué A es correcta:** El SEO es precisamente ese conjunto de prácticas orientadas a mejorar el posicionamiento de un sitio web en los resultados de buscadores como Google o Bing.\n\n**Por qué las demás son incorrectas:**\n- **B)** El SEO no designa a los departamentos internos de las empresas propietarias de los buscadores, sino a prácticas aplicadas a los propios sitios web.\n- **C)** El SEO no es un ranking elaborado por consultoras sobre el uso de buscadores, sino el conjunto de prácticas de optimización de un sitio web.\n- **D)** El SEO no describe el uso de palabras clave por parte del usuario que busca, sino las prácticas de optimización que aplica quien gestiona el sitio web."
+  },
+  {
+    "question_id": "bf8a4d53-f548-485b-bbfd-5b046d5874d9",
+    "servidas": 216,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "De acuerdo con el artículo 116.5 CE, en el caso de que se hubiese producido alguna de las situaciones que dan lugar al estado de alarma, disuelto el Congreso o expirado su mandato, ¿quién hubiera asumido las competencias?",
+    "opciones": {
+      "A": "Senado.",
+      "B": "Rey.",
+      "C": "Diputación Permanente.",
+      "D": "Gobierno en funciones."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116.5 CE prevé qué ocurre si el Congreso está disuelto o su mandato ha expirado cuando surge una situación que exigiría declarar uno de estos estados.\n\n> **CE, art. 116.5**\n> \"las competencias del Congreso serán asumidas por su Diputación Permanente.\"\n\n**Por qué C es correcta:** Disuelto el Congreso o expirado su mandato, sus competencias en esta materia las asume la Diputación Permanente, conforme al artículo 116.5.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Senado no asume estas competencias; el artículo se las atribuye a la Diputación Permanente del Congreso.\n- **B)** El Rey no asume estas competencias; corresponden a la Diputación Permanente del Congreso.\n- **D)** El Gobierno en funciones no asume estas competencias; el artículo las atribuye expresamente a la Diputación Permanente del Congreso."
+  },
+  {
+    "question_id": "c34d4f27-4118-4b90-992a-1c2685fd1f8d",
+    "servidas": 216,
+    "es_examen_oficial": false,
+    "ley": "Explorador Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/ce107473-519a-477f-8dba-de78f83a4302.txt",
+    "enunciado": "En el Explorador de archivos de Windows 11, si necesitamos buscar un archivo en particular, pero no nos acordamos del nombre exacto que le hemos puesto, solo estamos seguros de que el título contiene, estás dos palabras “Ficha” y “Repaso”. ¿Cómo podemos buscarlo con los operadores booleanos de búsqueda? \"",
+    "opciones": {
+      "A": "Ficha OR Repaso",
+      "B": "\"Ficha Repaso\"",
+      "C": "(Ficha Repaso)",
+      "D": "[Ficha Repaso]"
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se busca la sintaxis correcta para localizar, con operadores booleanos, un archivo cuyo nombre contiene a la vez las palabras 'Ficha' y 'Repaso'.\n\n> **Explorador de archivos de Windows 11, art. 1**\n> \"(Ficha Repaso)\"\n\n**Por qué C es correcta:** Los paréntesis agrupan las palabras y buscan archivos que contengan ambos términos en el nombre, que es justo lo que se necesita.\n\n**Por qué las demás son incorrectas:**\n- **A)** El operador OR busca cualquiera de las dos palabras por separado, no exige que ambas estén presentes a la vez.\n- **B)** Las comillas dobles buscan la frase exacta en ese orden y sin separación, no archivos que contengan ambas palabras de forma independiente.\n- **D)** Los corchetes no son un operador de búsqueda reconocido en el Explorador de archivos de Windows 11."
+  }
+]

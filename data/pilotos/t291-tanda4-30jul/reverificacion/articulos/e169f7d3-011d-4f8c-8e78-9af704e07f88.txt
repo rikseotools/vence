@@ -1,0 +1,578 @@
+LEY: Excel 365
+ARTÍCULO: 90 — Funciones de texto
+======================================================================
+## Funciones de texto en Excel 365
+
+Las funciones de texto permiten manipular, extraer, combinar y transformar cadenas de caracteres. Son esenciales en el tratamiento de datos importados, limpieza de registros y generación de etiquetas dinámicas.
+
+---
+
+## 1. Funciones de concatenación
+
+### CONCATENAR
+
+```
+=CONCATENAR(texto1; [texto2]; ...)
+```
+
+- **Argumentos:** hasta 255 cadenas de texto o referencias de celda.
+- **Devuelve:** una sola cadena uniendo todos los argumentos en el orden indicado.
+- **No admite rangos:** hay que indicar cada celda individualmente.
+- **Estado:** considerada obsoleta en Excel 365; se prefiere CONCAT o el operador `&`.
+- **Ejemplo:** `=CONCATENAR(A2;" ";B2)` → `"Juan García"`
+
+### CONCAT
+
+```
+=CONCAT(texto1; [texto2]; ...)
+```
+
+- **Argumentos:** hasta 255 textos, referencias o rangos.
+- **Devuelve:** una sola cadena sin separador automático.
+- **Admite rangos completos:** `=CONCAT(A1:A5)` une las cinco celdas en orden.
+- **Sin delimitador:** los textos se unen directamente, sin espacio ni coma entre ellos.
+- **Límite de resultado:** 32.767 caracteres.
+- **Ejemplo:** `=CONCAT(B5;C5)` → `"Número:215"` si B5="Número:" y C5=215.
+
+### UNIRCADENAS
+
+```
+=UNIRCADENAS(delimitador; ignorar_vacíos; texto1; [texto2]; ...)
+```
+
+- **delimitador** (obligatorio): cadena de texto que se inserta entre cada elemento (puede ser `""` para ninguno).
+- **ignorar_vacíos** (obligatorio): `VERDADERO` omite las celdas vacías; `FALSO` las incluye generando delimitadores consecutivos.
+- **texto1, texto2...**: hasta 252 argumentos de texto o rangos.
+- **Devuelve:** todos los textos unidos con el delimitador elegido.
+- **Ejemplo:** `=UNIRCADENAS(", ";VERDADERO;A1:A5)` → `"Madrid, Sevilla, Valencia"` (omite celdas vacías).
+- **Ejemplo con espacios:** `=MAYUSC(UNIRCADENAS(" ";VERDADERO;C2;D2;E2))` → nombre completo en mayúsculas.
+
+### Operador &
+
+```
+=A1&" "&B1
+```
+
+- **Comportamiento:** equivale a CONCATENAR para dos o más valores; sintaxis más compacta.
+- **No requiere función:** puede combinarse directamente con texto literal entre comillas.
+- **Ejemplo:** `=A1&" "&B1&" "&C1` → nombre + apellidos con espacios.
+- **Ejemplo con texto fijo:** `="Destinatario: "&D2`
+
+### Comparativa: CONCATENAR vs CONCAT vs UNIRCADENAS vs &
+
+| Característica | CONCATENAR | CONCAT | UNIRCADENAS | & |
+|---|---|---|---|---|
+| Admite rangos | No | **Sí** | **Sí** | No |
+| Delimitador automático | No | No | **Sí** (parámetro) | No (manual) |
+| Ignora celdas vacías | No | No | **Sí** (parámetro) | No |
+| Max. argumentos | 255 | 255 | 252 texto + delimitador | Ilimitado (anidado) |
+| Estado en Excel 365 | Obsoleta | Actual | Actual | Actual |
+| Cuándo usarla | Compatibilidad con archivos antiguos | Unir rangos sin separador | Unir listas con separador, omitir vacíos | Unión simple de 2-3 valores |
+
+**Recomendación:** usar **&** para uniones simples, **CONCAT** para rangos sin separador y **UNIRCADENAS** cuando se necesite un delimitador o descartar celdas vacías.
+
+---
+
+## 2. Funciones de extracción de subcadenas
+
+### IZQUIERDA
+
+```
+=IZQUIERDA(texto; [núm_de_caracteres])
+```
+
+- **texto** (obligatorio): cadena de la que se extraen los caracteres.
+- **núm_de_caracteres** (opcional): cuántos caracteres se extraen desde el inicio. Si se omite, equivale a 1.
+- **Devuelve:** los primeros `núm_de_caracteres` de la cadena.
+- **Error:** `#¡VALOR!` si `núm_de_caracteres` es negativo.
+- **Ejemplo:** `=IZQUIERDA("Expediente";4)` → `"Expe"`
+- **Ejemplo:** `=IZQUIERDA(A1;3)` → los tres primeros caracteres del contenido de A1.
+
+### DERECHA
+
+```
+=DERECHA(texto; [núm_de_caracteres])
+```
+
+- **texto** (obligatorio): cadena de la que se extraen los caracteres.
+- **núm_de_caracteres** (opcional): cuántos caracteres se extraen desde el final. Si se omite, equivale a 1.
+- **Devuelve:** los últimos `núm_de_caracteres` de la cadena.
+- **Error:** `#¡VALOR!` si `núm_de_caracteres` es negativo.
+- **Ejemplo:** `=DERECHA("Expediente";3)` → `"nte"`
+
+### EXTRAE (también llamada MED en versiones antiguas)
+
+```
+=EXTRAE(texto; posición_inicial; núm_de_caracteres)
+```
+
+- **texto** (obligatorio): cadena de la que se extraen caracteres.
+- **posición_inicial** (obligatorio): posición del primer carácter que se extrae (la posición 1 es el primer carácter). Debe ser mayor que 0.
+- **núm_de_caracteres** (obligatorio): cuántos caracteres se devuelven a partir de `posición_inicial`.
+- **Devuelve:** la subcadena indicada. Si `posición_inicial + núm_de_caracteres` supera la longitud real, devuelve todo el texto disponible sin error.
+- **Errores:**
+  - `#¡VALOR!` si `posición_inicial` ≤ 0 o si `núm_de_caracteres` < 0.
+  - `#¿NOMBRE?` si el argumento `texto` se escribe sin comillas y no es una referencia válida: `=EXTRAE(Vence;1;3)` falla; `=EXTRAE("Vence";1;3)` devuelve `"Ven"`.
+- **Nota:** la fórmula `=EXTRAE("Excel";2.3)` da `#¡VALOR!` porque le falta el tercer argumento obligatorio.
+- **Ejemplos:**
+
+| Fórmula | Resultado |
+|---|---|
+| `=EXTRAE("Vence365";1;5)` | `"Vence"` |
+| `=EXTRAE("Vence";1;3)` | `"Ven"` |
+| `=EXTRAE("Vence";4;7)` | `"ce"` (solo quedan 2 caracteres desde pos. 4) |
+| `=EXTRAE("Vence";1;16)` | `"Vence"` (no hay más caracteres) |
+| `=EXTRAE("PreparaTest";1;7)` | `"Prepara"` |
+| `=EXTRAE("Oposiciones";1;7)` | `"Oposici"` |
+| `=EXTRAE("Archivo judicial";9;7)` | `"judicia"` |
+| `=EXTRAE("Referencia 01";12;2)` | `"01"` |
+| `=EXTRAE("Señor Gómez";5;7)` | `"r Gómez"` |
+
+---
+
+## 3. Funciones de longitud
+
+### LARGO
+
+```
+=LARGO(texto)
+```
+
+- **texto** (obligatorio): cualquier cadena de texto o referencia de celda.
+- **Devuelve:** el número total de caracteres, incluyendo espacios, signos de puntuación y caracteres especiales como tildes y ñ.
+- **Los espacios cuentan:** `LARGO(" A ")` = 3.
+- **Ejemplo:** `=LARGO("Trámite")` → `7` (T-r-á-m-i-t-e).
+- **Uso típico:** validar longitud de códigos, DNI, referencias.
+
+---
+
+## 4. Funciones de cambio de mayúsculas/minúsculas
+
+### MAYUSC
+
+```
+=MAYUSC(texto)
+```
+
+- **Devuelve:** la cadena con todos los caracteres alfabéticos en MAYÚSCULAS.
+- **No afecta:** números, espacios ni símbolos.
+- **Ejemplo:** `=MAYUSC("administración")` → `"ADMINISTRACIÓN"`
+
+### MINUSC
+
+```
+=MINUSC(texto)
+```
+
+- **Devuelve:** la cadena con todos los caracteres alfabéticos en minúsculas.
+- **No afecta:** números, espacios ni símbolos.
+- **Ejemplo:** `=MINUSC("JUAN")` → `"juan"`
+
+### NOMPROPIO
+
+```
+=NOMPROPIO(texto)
+```
+
+- **Devuelve:** la primera letra de cada palabra en mayúscula y el resto en minúscula.
+- **Define "palabra"** como cualquier secuencia separada por espacio, guion u otro carácter no alfanumérico.
+- **Útil para:** normalizar nombres importados en bloque de mayúsculas.
+- **Ejemplo:** `=NOMPROPIO("JUAN GÓMEZ")` → `"Juan Gómez"`
+- **Ejemplo en celda:** `=NOMPROPIO(A2)` si A2 contiene "JUAN GARCÍA" → `"Juan García"`
+
+---
+
+## 5. Funciones de limpieza de cadenas
+
+### ESPACIOS
+
+```
+=ESPACIOS(texto)
+```
+
+- **Devuelve:** la cadena sin espacios iniciales ni finales, y con los espacios internos múltiples reducidos a uno solo.
+- **No elimina** caracteres no imprimibles (para eso, usar LIMPIAR).
+- **Ejemplo:** `=ESPACIOS("  Juan  García  ")` → `"Juan García"`
+- **Caso de uso:** datos importados con espacios sobrantes al inicio.
+
+### LIMPIAR
+
+```
+=LIMPIAR(texto)
+```
+
+- **Devuelve:** la cadena con todos los caracteres no imprimibles eliminados (códigos ASCII 1-31).
+- **No elimina** espacios normales; para eso usar ESPACIOS.
+- **Habitual:** importaciones desde sistemas externos, archivos de texto, bases de datos legacy.
+- **Ejemplo:** `=LIMPIAR(A1)` elimina tabulaciones, saltos de línea ocultos, etc.
+- **Uso combinado:** `=ESPACIOS(LIMPIAR(A1))` limpia caracteres no imprimibles y luego espacios sobrantes.
+
+---
+
+## 6. Funciones de búsqueda dentro de cadenas
+
+### ENCONTRAR
+
+```
+=ENCONTRAR(texto_buscado; dentro_del_texto; [núm_inicial])
+```
+
+- **texto_buscado** (obligatorio): cadena que se quiere localizar.
+- **dentro_del_texto** (obligatorio): cadena en la que se busca.
+- **núm_inicial** (opcional): posición desde la que empieza la búsqueda (por defecto 1).
+- **Devuelve:** la posición del primer carácter de la primera coincidencia encontrada (contando desde 1).
+- **Distingue mayúsculas de minúsculas:** `"e"` y `"E"` son diferentes.
+- **No admite comodines.**
+- **Error:** `#¡VALOR!` si no hay coincidencia.
+- **Ejemplo:** `=ENCONTRAR("e";"Vence";1)` → `4`
+- **Segunda ocurrencia:** `=ENCONTRAR("a";A1;ENCONTRAR("a";A1)+1)`
+
+### HALLAR (también llamada BUSCAR)
+
+```
+=HALLAR(texto_buscado; dentro_del_texto; [núm_inicial])
+```
+
+- **texto_buscado** (obligatorio): cadena o patrón con comodines.
+- **dentro_del_texto** (obligatorio): cadena en la que se busca.
+- **núm_inicial** (opcional): posición desde la que empieza la búsqueda (por defecto 1).
+- **Devuelve:** la posición del primer carácter de la coincidencia.
+- **No distingue mayúsculas de minúsculas:** `"v"` encuentra `"V"`.
+- **Admite comodines:**
+  - `?` sustituye exactamente un carácter: `HALLAR("c?sa";"La casa")` → `4`
+  - `*` sustituye cero o más caracteres: `HALLAR("c*a";"La casa")` → `4`
+- **Error:** `#¡VALOR!` si no hay coincidencia.
+- **Ejemplo:** `=HALLAR("v";"Vence";1)` → `1` (no distingue mayúsculas)
+
+### Comparativa ENCONTRAR vs HALLAR
+
+| Característica | ENCONTRAR | HALLAR / BUSCAR |
+|---|---|---|
+| Distingue mayúsculas | **Sí** | No |
+| Admite comodines (`*`, `?`) | **No** | **Sí** |
+| Error si no encuentra | `#¡VALOR!` | `#¡VALOR!` |
+| Cuándo usarla | El texto tiene mayúsculas significativas | Búsquedas flexibles, sin importar capitalización |
+
+---
+
+## 7. Funciones de sustitución y reemplazo
+
+### SUSTITUIR
+
+```
+=SUSTITUIR(texto; texto_original; texto_nuevo; [número_de_ocurrencia])
+```
+
+- **texto** (obligatorio): cadena sobre la que se actúa.
+- **texto_original** (obligatorio): cadena exacta que se quiere reemplazar.
+- **texto_nuevo** (obligatorio): cadena que la sustituye.
+- **número_de_ocurrencia** (opcional): qué aparición se sustituye (1.ª, 2.ª...). Si se omite, **todas** las apariciones.
+- **Opera por contenido:** busca la cadena concreta sin importar su posición.
+- **Distingue mayúsculas.**
+- **Ejemplo sin 4.º argumento:** `=SUSTITUIR("AA-BB-CC";"-";"/")` → `"AA/BB/CC"`
+- **Ejemplo con 4.º argumento:** `=SUSTITUIR("AA-BB-CC";"-";"/";2)` → `"AA-BB/CC"` (solo el segundo guion)
+
+### REEMPLAZAR
+
+```
+=REEMPLAZAR(texto_original; núm_inicial; núm_de_caracteres; texto_nuevo)
+```
+
+- **texto_original** (obligatorio): cadena de origen.
+- **núm_inicial** (obligatorio): posición del primer carácter que se sustituye.
+- **núm_de_caracteres** (obligatorio): cuántos caracteres se eliminan a partir de `núm_inicial`.
+- **texto_nuevo** (obligatorio): cadena que se inserta en esa posición.
+- **Opera por posición:** no importa qué diga el texto, sino dónde está.
+- **Siempre reemplaza una sola zona.**
+- **Ideal cuando:** la estructura de la cadena es fija (p. ej., cambiar el año en un código con formato constante).
+- **Ejemplo:** `=REEMPLAZAR("AB-2024";4;4;"2025")` → `"AB-2025"`
+
+### Comparativa SUSTITUIR vs REEMPLAZAR
+
+| Característica | SUSTITUIR | REEMPLAZAR |
+|---|---|---|
+| Opera por | Contenido (qué dice) | Posición (dónde está) |
+| Reemplaza todas las ocurrencias | Sí (sin 4.º arg) | No (solo la zona indicada) |
+| Reemplaza una ocurrencia concreta | Sí (con 4.º arg numérico) | Siempre una sola zona |
+| Cuándo usarla | El texto a sustituir es conocido pero su posición varía | La estructura es fija y la posición es siempre la misma |
+
+**Ejemplos comparados:**
+
+| Fórmula | Resultado |
+|---|---|
+| `=SUSTITUIR("AA-BB-CC";"-";"/")` | `"AA/BB/CC"` (todos los guiones) |
+| `=SUSTITUIR("AA-BB-CC";"-";"/";2)` | `"AA-BB/CC"` (solo el segundo) |
+| `=REEMPLAZAR("AA-BB-CC";3;1;"/")` | `"AA/BB-CC"` (posición 3, 1 carácter) |
+
+---
+
+## 8. Funciones de conversión entre texto y número
+
+### TEXTO
+
+```
+=TEXTO(valor; formato)
+```
+
+- **valor** (obligatorio): número, fecha o referencia de celda con valor numérico.
+- **formato** (obligatorio): cadena entre comillas con los códigos de formato del cuadro de formato de celdas.
+- **Devuelve:** el valor como **texto** con el formato indicado. El resultado ya no es un número: no se puede operar matemáticamente con él.
+- **Códigos de formato habituales:**
+
+| Código | Ejemplo de resultado |
+|---|---|
+| `"#.##0,00"` | `1.234,50` |
+| `"0%"` | `75%` |
+| `"dd/mm/aaaa"` | `15/05/2026` |
+| `"mmmm aaaa"` | `mayo 2026` |
+| `"€#.##0"` | `€1.235` |
+
+- **Ejemplo:** `=TEXTO(1234,5;"#.##0,00")` → `"1.234,50"`
+
+### VALOR
+
+```
+=VALOR(texto)
+```
+
+- **texto** (obligatorio): cadena de texto que representa un número (puede incluir separador decimal y de miles según la configuración regional).
+- **Devuelve:** el valor numérico equivalente. Permite operar matemáticamente con números que llegaron como texto.
+- **Error:** `#¡VALOR!` si la cadena contiene caracteres no numéricos distintos del separador decimal o de miles.
+- **Uso típico:** datos importados donde los números están alineados a la izquierda (indicio de que son texto).
+- **Ejemplo:** `=VALOR("1.234,50")` → `1234,5`
+
+### DECIMAL
+
+```
+=DECIMAL(número; [decimales]; [no_separar_millares])
+```
+
+- **número** (obligatorio): valor numérico a formatear.
+- **decimales** (opcional): número de dígitos a la derecha del separador decimal. Por defecto 2. Si es negativo, redondea a la izquierda del separador.
+- **no_separar_millares** (opcional): `VERDADERO` suprime el separador de miles; `FALSO` (predeterminado) lo incluye.
+- **Devuelve:** el número redondeado y formateado como **texto** (no como número).
+- **Diferencia con TEXTO:** DECIMAL es específica para números con decimales y separador de miles; TEXTO es más general y acepta fechas y cualquier código de formato personalizado.
+- **Ejemplo:** `=DECIMAL(1234,567;2)` → `"1.234,57"`
+- **Ejemplo sin separador de miles:** `=DECIMAL(1234,567;2;VERDADERO)` → `"1234,57"`
+- **Ejemplo con decimales negativos:** `=DECIMAL(1234,567;-2)` → `"1.200"` (redondea a centenas)
+
+### MONEDA
+
+```
+=MONEDA(número; [núm_de_decimales])
+```
+
+- **número** (obligatorio): valor numérico a formatear.
+- **núm_de_decimales** (opcional): número de dígitos decimales. Por defecto 2. Si es negativo, redondea a la izquierda del separador decimal.
+- **Devuelve:** el número como **texto** con el símbolo de moneda de la configuración regional del equipo (€ en España, $ en EE.UU.) y el formato estándar de moneda.
+- **El resultado es texto:** no se puede operar matemáticamente con él directamente (usar VALOR si fuera necesario).
+- **Diferencia con formato de celda:** el formato de celda mantiene el valor como número; MONEDA lo convierte en texto.
+- **Ejemplo:** `=MONEDA(1234,5)` → `"1.234,50 €"` (o equivalente según región)
+- **Ejemplo con 0 decimales:** `=MONEDA(1234,5;0)` → `"1.235 €"`
+
+---
+
+## 9. Funciones de caracteres y códigos ASCII
+
+### CODIGO
+
+```
+=CODIGO(texto)
+```
+
+- **texto** (obligatorio): cualquier cadena de texto.
+- **Devuelve:** el código numérico ANSI/ASCII del **primer carácter** de la cadena. El resto de caracteres se ignoran.
+- **Error:** `#¡VALOR!` si se pasa texto vacío `""`.
+- **Ejemplo:** `=CODIGO("A")` → `65`
+- **Ejemplo:** `=CODIGO("a")` → `97` (las minúsculas tienen código diferente)
+- **Relación:** es la función inversa de CARACTER.
+
+### CARACTER
+
+```
+=CARACTER(número)
+```
+
+- **número** (obligatorio): código numérico entre 1 y 255 (conjunto de caracteres ANSI).
+- **Devuelve:** el carácter correspondiente al código indicado.
+- **Relación:** es la función inversa de CODIGO.
+- **Ejemplo:** `=CARACTER(65)` → `"A"`
+- **Ejemplo:** `=CARACTER(97)` → `"a"`
+- **Uso especial:** `CARACTER(10)` genera un salto de línea dentro de una celda (requiere activar **Ajustar texto**):
+  - `=A1&CARACTER(10)&B1` muestra A1 y B1 en dos líneas dentro de la misma celda.
+
+### Referencia de códigos ANSI frecuentes
+
+| Código | Carácter | Uso |
+|---|---|---|
+| 10 | Salto de línea | Dentro de celdas con Ajustar texto |
+| 32 | Espacio | |
+| 65-90 | A-Z | Mayúsculas |
+| 97-122 | a-z | Minúsculas |
+| 48-57 | 0-9 | Dígitos |
+
+---
+
+## 10. Funciones de repetición
+
+### REPETIR
+
+```
+=REPETIR(texto; núm_de_veces)
+```
+
+- **texto** (obligatorio): cadena o carácter que se repite.
+- **núm_de_veces** (obligatorio): número entero de repeticiones. Si es 0, devuelve texto vacío `""`. Si es negativo, produce error.
+- **Devuelve:** la cadena concatenada el número de veces indicado.
+- **Límite:** el resultado no puede superar 32.767 caracteres.
+- **Ejemplo:** `=REPETIR("* ";3)` → `"* * * "`
+- **Uso típico:** generar barras de progreso visuales, rellenos de longitud fija o separadores decorativos.
+- **Ejemplo de barra:** `=REPETIR("|";A1)` muestra tantas barras como el valor de A1.
+
+---
+
+## 11. Funciones de comparación de texto
+
+### IGUAL
+
+```
+=IGUAL(texto1; texto2)
+```
+
+- **Devuelve:** `VERDADERO` si ambas cadenas son exactamente iguales, `FALSO` en caso contrario.
+- **Distingue mayúsculas de minúsculas:** es la única función de comparación en Excel sensible a este aspecto.
+- **Los operadores = no distinguen mayúsculas:** `"A"="a"` devuelve VERDADERO. Solo IGUAL las distingue.
+- **Ejemplos:**
+
+| Fórmula | Resultado |
+|---|---|
+| `=IGUAL("Vence";"Vence")` | `VERDADERO` |
+| `=IGUAL("Vence";"vence")` | `FALSO` |
+| `=IGUAL("ejemplo";"ejemplo")` | `VERDADERO` |
+| `=IGUAL(vence;vence)` | `#¿NOMBRE?` (sin comillas, Excel busca un rango llamado vence) |
+
+---
+
+## 12. Funciones de detección de tipo
+
+### ESTEXTO
+
+```
+=ESTEXTO(valor)
+```
+
+- **Devuelve:** `VERDADERO` si la celda o valor es de tipo texto.
+- **Ejemplo:** `=ESTEXTO("abc")` → `VERDADERO`; `=ESTEXTO(123)` → `FALSO`
+
+### ESNOTEXTO
+
+```
+=ESNOTEXTO(valor)
+```
+
+- **Devuelve:** `VERDADERO` si la celda no contiene texto (número, fecha, error, vacía).
+- **Ejemplo:** `=ESNOTEXTO(123)` → `VERDADERO`; `=ESNOTEXTO("abc")` → `FALSO`
+- **Útil para:** validaciones de entrada de datos.
+
+---
+
+## 13. Funciones exclusivas de Excel 365 / 2021+
+
+### TEXTOANTES
+
+```
+=TEXTOANTES(texto; delimitador; [núm_instancia]; [modo_coincidencia]; [coincidir_final]; [si_no_encontrado])
+```
+
+- **texto** (obligatorio): cadena de origen.
+- **delimitador** (obligatorio): cadena que delimita dónde se corta.
+- **núm_instancia** (opcional): qué aparición del delimitador se usa. Por defecto 1 (primera). Negativo cuenta desde el final.
+- **modo_coincidencia** (opcional): 0 distingue mayúsculas (por defecto); 1 no distingue.
+- **si_no_encontrado** (opcional): valor a devolver si el delimitador no existe (si se omite, devuelve `#N/D`).
+- **Devuelve:** todo el texto que aparece **antes** del delimitador indicado.
+- **Ejemplo:** `=TEXTOANTES("Juan García";" ")` → `"Juan"`
+- **Solo Excel 365 / 2021+.** En versiones anteriores hay que emularla con ENCONTRAR + EXTRAE.
+
+### TEXTODESPUES
+
+```
+=TEXTODESPUES(texto; delimitador; [núm_instancia]; [modo_coincidencia]; [coincidir_final]; [si_no_encontrado])
+```
+
+- Mismos argumentos que TEXTOANTES.
+- **Devuelve:** todo el texto que aparece **después** del delimitador indicado.
+- **Ejemplo:** `=TEXTODESPUES("Juan García";" ")` → `"García"`
+- **`núm_instancia` negativo:** cuenta desde el final de la cadena.
+- **Solo Excel 365 / 2021+.**
+
+### FORMULATEXTO
+
+```
+=FORMULATEXTO(referencia)
+```
+
+- **referencia** (obligatorio): celda cuya fórmula se quiere ver.
+- **Devuelve:** la fórmula de la celda referenciada como cadena de texto.
+- **Ejemplo:** si A1 contiene `=SUMA(B1:B10)`, entonces `=FORMULATEXTO(A1)` → `"=SUMA(B1:B10)"`
+- **Útil para:** documentar hojas, auditorías de fórmulas.
+
+| Función | Disponibilidad | Descripción |
+|---|---|---|
+| TEXTOANTES | Excel 365 / 2021+ | Extrae texto antes de un delimitador |
+| TEXTODESPUES | Excel 365 / 2021+ | Extrae texto después de un delimitador |
+| CONCAT | Excel 365 / 2019+ | Sustituto moderno de CONCATENAR con soporte de rangos |
+| UNIRCADENAS | Excel 365 / 2019+ | Concatenación con delimitador y omisión de vacíos |
+
+> En versiones anteriores a Excel 2019, TEXTOANTES y TEXTODESPUES no existen; hay que emularlas con combinaciones de ENCONTRAR + EXTRAE + LARGO.
+
+---
+
+## 14. Errores frecuentes por función
+
+| Función | Error habitual | Causa |
+|---|---|---|
+| ENCONTRAR / HALLAR | `#¡VALOR!` | El texto buscado no existe en la cadena |
+| EXTRAE | `#¡VALOR!` | `posición_inicial` ≤ 0 o `núm_de_caracteres` < 0 |
+| EXTRAE | `#¿NOMBRE?` | El argumento texto está sin comillas y no es una referencia válida |
+| IZQUIERDA / DERECHA | `#¡VALOR!` | `núm_de_caracteres` es negativo |
+| VALOR | `#¡VALOR!` | El texto no representa un número válido |
+| CODIGO | `#¡VALOR!` | Texto vacío `""` como argumento |
+| TEXTOANTES / TEXTODESPUES | `#N/D` | Delimitador no encontrado (sin argumento `si_no_encontrado`) |
+| IGUAL | `#¿NOMBRE?` | Argumentos de texto sin comillas interpretados como nombres de rango |
+
+---
+
+## 15. Resumen rápido de todas las funciones
+
+| Función | Categoría | Devuelve |
+|---|---|---|
+| LARGO(texto) | Longitud | Número de caracteres |
+| IZQUIERDA(texto; n) | Extracción | Primeros n caracteres |
+| DERECHA(texto; n) | Extracción | Últimos n caracteres |
+| EXTRAE(texto; inicio; n) | Extracción | n caracteres desde posición inicio |
+| CONCATENAR(t1; t2...) | Concatenación | Cadenas unidas (obsoleta) |
+| CONCAT(t1; t2...) | Concatenación | Cadenas unidas, admite rangos |
+| UNIRCADENAS(delim; vac; t...) | Concatenación | Cadenas unidas con delimitador |
+| & | Concatenación | Operador directo de unión |
+| MAYUSC(texto) | Mayúsculas | Texto en MAYÚSCULAS |
+| MINUSC(texto) | Mayúsculas | Texto en minúsculas |
+| NOMPROPIO(texto) | Mayúsculas | Primera Letra De Cada Palabra |
+| ESPACIOS(texto) | Limpieza | Sin espacios extra |
+| LIMPIAR(texto) | Limpieza | Sin caracteres no imprimibles |
+| ENCONTRAR(busc; texto; ini) | Búsqueda | Posición; distingue mayúsculas |
+| HALLAR(busc; texto; ini) | Búsqueda | Posición; no distingue; comodines |
+| SUSTITUIR(texto; orig; nuevo; n) | Sustitución | Por contenido |
+| REEMPLAZAR(texto; ini; n; nuevo) | Sustitución | Por posición |
+| TEXTO(valor; formato) | Conversión | Número a texto con formato |
+| VALOR(texto) | Conversión | Texto a número |
+| DECIMAL(num; dec; sin_sep) | Conversión | Número a texto con decimales |
+| MONEDA(num; dec) | Conversión | Número a texto con símbolo moneda |
+| CODIGO(texto) | ASCII | Código del primer carácter |
+| CARACTER(número) | ASCII | Carácter del código dado |
+| REPETIR(texto; n) | Utilidad | Cadena repetida n veces |
+| IGUAL(t1; t2) | Comparación | VERDADERO/FALSO (distingue mayúsculas) |
+| ESTEXTO(valor) | Detección | VERDADERO si es texto |
+| ESNOTEXTO(valor) | Detección | VERDADERO si NO es texto |
+| TEXTOANTES(texto; delim; ...) | Extracción 365 | Texto antes del delimitador |
+| TEXTODESPUES(texto; delim; ...) | Extracción 365 | Texto después del delimitador |
+| FORMULATEXTO(ref) | Utilidad 365 | Fórmula de la celda como texto |

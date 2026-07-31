@@ -1,0 +1,860 @@
+LEY: Access 365
+ARTÍCULO: 3 — Formularios en Access 365
+======================================================================
+# Formularios en Access 365
+
+## 1. Concepto de formulario
+
+Un **formulario** en Microsoft Access 365 es un objeto de base de datos que proporciona una **interfaz gráfica de usuario** diseñada para ver, introducir y editar los datos almacenados en tablas o recuperados mediante consultas. A diferencia de trabajar directamente sobre la hoja de datos de una tabla, los formularios permiten:
+
+- Presentar la información de manera ordenada y visualmente atractiva.
+- Mostrar datos de varias tablas relacionadas en una sola pantalla.
+- Incluir controles especiales (listas desplegables, botones, casillas de verificación) que facilitan la entrada de datos.
+- Aplicar validaciones y automatizaciones mediante macros o código VBA.
+- Ocultar campos que el usuario final no debe ver o modificar.
+- Guiar al usuario a través de procesos de entrada de datos complejos.
+
+Los formularios son el elemento de Access más orientado al **usuario final**: mientras el diseñador de la base de datos trabaja con tablas, consultas e informes, el usuario cotidiano interactúa principalmente a través de formularios.
+
+> **Clave de examen:** Un formulario no almacena datos por sí mismo. Los datos siguen residiendo en las tablas. El formulario es únicamente la interfaz de presentación y edición.
+
+---
+
+## 2. Tipos de formularios en Access 365
+
+Access 365 ofrece varios tipos de formularios que se adaptan a distintas necesidades. Se crean desde la ficha **Crear** de la cinta de opciones, en el grupo **Formularios**.
+
+### 2.1 Formulario (vista formulario estándar)
+
+Muestra **un solo registro a la vez** en pantalla. Es el tipo más habitual y el más intuitivo para la entrada de datos. Cada campo del registro ocupa su propio control en la pantalla, y el usuario navega entre registros con los botones de desplazamiento situados en la parte inferior del formulario.
+
+- Se crea automáticamente con todos los campos de la tabla o consulta seleccionada.
+- Ideal cuando cada registro requiere atención individual y el usuario no necesita comparar varios registros simultáneamente.
+
+### 2.2 Formulario dividido
+
+El **formulario dividido** presenta el mismo origen de datos en **dos paneles sincronizados**:
+
+- La parte superior muestra los datos en **vista formulario** (un registro con detalle completo).
+- La parte inferior muestra los mismos datos en **vista hoja de datos** (varios registros en filas y columnas).
+
+Al seleccionar un registro en la hoja de datos inferior, el panel superior muestra automáticamente ese mismo registro con todos sus detalles. Esta sincronización bidireccional permite localizar registros rápidamente en la hoja de datos y editarlos cómodamente en el panel de formulario.
+
+> **Clave de examen:** En el formulario dividido, ambos paneles están **siempre sincronizados**: lo que se selecciona en uno se refleja en el otro. La posición del panel (arriba/abajo, izquierda/derecha) se configura en las propiedades del formulario.
+
+### 2.3 Varios elementos (hoja de datos de formulario)
+
+También denominado **formulario tabular** o **hoja de datos de formulario**. Muestra **múltiples registros simultáneamente** en un diseño con filas y columnas, similar a una hoja de datos pero con la posibilidad de aplicar el formato y los controles propios de los formularios.
+
+- Permite añadir fondos, imágenes, controles especiales y formato enriquecido.
+- Útil cuando el usuario necesita ver y comparar varios registros a la vez.
+- Se diferencia de la vista hoja de datos pura en que puede personalizarse visualmente.
+
+### 2.4 Formulario en blanco
+
+Crea un formulario **completamente vacío** sin ningún control predefinido. En el panel de tareas se muestra la **lista de campos** disponibles de las tablas de la base de datos, y el usuario arrastra los campos que desea incluir.
+
+- Proporciona el máximo control sobre el diseño desde el primer momento.
+- Recomendado para diseñadores experimentados que quieren construir la interfaz desde cero.
+
+### 2.5 Asistente para formularios
+
+El **Asistente para formularios** guía al usuario paso a paso en la creación del formulario mediante una serie de cuadros de diálogo:
+
+1. **Selección de tabla o consulta** de origen y de los campos que se incluirán.
+2. **Elección de la disposición** de los controles:
+   - **En columnas:** cada campo en una fila separada (etiqueta a la izquierda, control a la derecha). Equivale al formulario estándar.
+   - **Tabular:** campos en columnas con encabezados, registros en filas. Equivale al formulario de varios elementos.
+   - **Hoja de datos:** presentación similar a la hoja de datos de tabla.
+   - **Justificado:** campos distribuidos de izquierda a derecha y de arriba abajo rellenando el espacio disponible.
+3. **Selección del estilo** visual (tema de color y fuente).
+4. **Asignación del título** del formulario.
+
+El asistente permite incorporar campos de **varias tablas relacionadas** en un solo formulario, generando automáticamente subformularios si es necesario.
+
+> **Clave de examen:** Las cuatro disposiciones del asistente para formularios son: **En columnas, Tabular, Hoja de datos y Justificado**.
+
+### 2.6 Autoformulario
+
+El **autoformulario** (también llamado simplemente botón **Formulario** en la ficha Crear) crea automáticamente un formulario con **todos los campos** de la tabla o consulta seleccionada, aplicando un diseño predeterminado. Es la forma más rápida de crear un formulario funcional sin ninguna configuración adicional.
+
+### 2.7 Formulario de navegación
+
+El **formulario de navegación** es un formulario especial que actúa como **menú de navegación** entre otros formularios e informes de la base de datos. Contiene un control de navegación con pestañas o botones que, al hacer clic, abren los formularios o informes correspondientes en el área de contenido del formulario de navegación.
+
+- Se utiliza para crear la interfaz principal de una aplicación de base de datos de escritorio.
+- Permite definir jerarquías de navegación de hasta dos niveles (pestañas horizontales y verticales).
+- El formulario de navegación puede configurarse como **formulario de inicio** que se abre automáticamente al abrir la base de datos.
+
+> **Clave de examen:** El formulario de navegación se utiliza para bases de datos de **escritorio** (ficheros .accdb locales), no para aplicaciones web de Access.
+
+### 2.8 Formulario modal (cuadro de diálogo)
+
+Un **formulario modal** es aquel cuya propiedad **Emergente** se establece en «Sí» y cuya propiedad **Modal** también se establece en «Sí». Esto hace que el formulario se comporte como un **cuadro de diálogo**: mientras está abierto, el usuario no puede interactuar con ningún otro objeto de la base de datos hasta que lo cierre o responda a él.
+
+Se utiliza habitualmente para:
+- Solicitar confirmaciones del usuario.
+- Pedir parámetros de filtrado o búsqueda antes de abrir otro formulario o informe.
+- Mostrar mensajes de advertencia o información crítica.
+
+| Tipo de formulario | Registros visibles | Uso típico |
+|---|---|---|
+| Formulario estándar | Uno a la vez | Entrada y edición detallada |
+| Formulario dividido | Uno (detalle) + varios (lista) | Localización y edición combinadas |
+| Varios elementos | Varios en filas | Consulta y comparación de registros |
+| Formulario en blanco | Configurable | Diseño personalizado desde cero |
+| Asistente para formularios | Configurable | Creación guiada paso a paso |
+| Autoformulario | Uno a la vez | Creación rápida automática |
+| Formulario de navegación | Menú | Pantalla principal de aplicación |
+| Formulario modal | Configurable | Cuadros de diálogo y confirmaciones |
+
+---
+
+## 3. Vistas de formulario
+
+Un formulario puede mostrarse en distintas **vistas**, cada una orientada a un propósito diferente:
+
+### 3.1 Vista Formulario
+
+Es la vista de **uso final**. El usuario ve el formulario tal como fue diseñado y puede navegar, introducir y editar datos. Es la vista que verá el usuario cotidiano de la base de datos.
+
+### 3.2 Vista Diseño
+
+Es la vista de **desarrollo**. Muestra la estructura del formulario con una cuadrícula de diseño, las secciones (encabezado, detalle, pie) y todos los controles representados como cuadros. Permite añadir, eliminar, mover y redimensionar controles, así como modificar todas sus propiedades. Los datos reales **no son visibles** en esta vista.
+
+### 3.3 Vista Presentación
+
+Es una vista intermedia que permite **modificar el diseño mientras se ven los datos reales**. Es útil para ajustar el tamaño de los controles en función del contenido real. Sin embargo, ofrece menos posibilidades de modificación que la Vista Diseño (por ejemplo, no permite añadir ciertas secciones ni reorganizar libremente los controles).
+
+### 3.4 Vista Hoja de datos
+
+Muestra el formulario en formato tabular, con los registros en filas y los campos en columnas, similar a la hoja de datos de una tabla. Está disponible solo si el formulario lo permite (propiedad **Permitir vista hoja de datos**).
+
+| Vista | Datos visibles | Modificación de diseño | Uso |
+|---|---|---|---|
+| Vista Formulario | Sí | No | Usuario final |
+| Vista Diseño | No | Completa | Diseñador |
+| Vista Presentación | Sí | Parcial | Ajuste visual con datos reales |
+| Vista Hoja de datos | Sí (tabular) | No | Consulta rápida |
+
+> **Clave de examen:** La **Vista Presentación** es la que permite modificar el diseño **viendo los datos reales** al mismo tiempo.
+
+---
+
+## 4. Secciones del formulario
+
+Los formularios en Vista Diseño se dividen en **secciones** que controlan dónde y cuántas veces aparece cada parte del formulario en pantalla y al imprimirse.
+
+### 4.1 Encabezado del formulario
+
+- Aparece una sola vez en la **parte superior** del formulario, tanto en pantalla como al imprimirse.
+- Se utiliza habitualmente para incluir el **título del formulario**, un logotipo de la empresa, la fecha o botones de acción generales.
+- Al imprimirse un formulario de varios registros, el encabezado aparece solo en la primera página.
+
+### 4.2 Sección Detalle
+
+- Es la **sección principal** y obligatoria del formulario.
+- Contiene los controles que muestran los datos de cada registro.
+- En un formulario estándar (un registro a la vez), la sección detalle ocupa casi toda la pantalla.
+- En un formulario tabular o de hoja de datos, la sección detalle se repite para cada registro visible.
+
+### 4.3 Pie del formulario
+
+- Aparece una sola vez en la **parte inferior** del formulario.
+- Se utiliza para totales, contadores, botones de navegación personalizados, botones de cierre o de apertura de otros formularios.
+- Al imprimirse, el pie del formulario aparece al final de la última página.
+
+### 4.4 Encabezado de página y Pie de página
+
+- Estas dos secciones adicionales **solo son visibles al imprimir** el formulario; no aparecen en pantalla durante el uso normal.
+- El **encabezado de página** aparece en la parte superior de cada página impresa.
+- El **pie de página** aparece en la parte inferior de cada página impresa.
+- Se activan desde el menú **Organizar > Encabezado o pie de página** en Vista Diseño.
+
+> **Clave de examen:** Las secciones Encabezado de página y Pie de página **solo aparecen al imprimir**, no durante el uso normal del formulario en pantalla.
+
+| Sección | Aparece en pantalla | Aparece al imprimir | Cuántas veces |
+|---|---|---|---|
+| Encabezado del formulario | Sí | Solo primera página | Una vez |
+| Detalle | Sí | Sí | Por cada registro |
+| Pie del formulario | Sí | Solo última página | Una vez |
+| Encabezado de página | No | Sí | En cada página |
+| Pie de página | No | Sí | En cada página |
+
+---
+
+## 5. Controles de formulario
+
+Los **controles** son los elementos individuales que se colocan en las secciones del formulario. Se clasifican en tres categorías según su relación con los datos:
+
+- **Controles dependientes (enlazados):** su origen de control es un campo de la tabla o consulta. Muestran y permiten editar los datos de ese campo.
+- **Controles independientes (no enlazados):** no están vinculados a ningún campo. Se usan para mostrar información estática, decoración o como botones de acción.
+- **Controles calculados:** su origen de control es una expresión (comienza por =). Calculan y muestran un valor derivado de otros campos o funciones.
+
+### 5.1 Cuadro de texto
+
+El control más habitual. Permite **mostrar y editar datos** de un campo (dependiente) o **mostrar el resultado de una expresión** (calculado).
+
+- Dependiente: origen de control = nombre de campo (ej: Apellidos).
+- Calculado: origen de control = expresión (ej: =[Precio]*1,21 para calcular precio con IVA; =[Nombre] & " " & [Apellidos] para concatenar).
+- Independiente: cuadro de texto sin origen de control, para que el usuario introduzca datos que serán usados por macros o código VBA.
+
+### 5.2 Etiqueta
+
+Muestra **texto estático** descriptivo, como el nombre de un campo o instrucciones para el usuario. No está enlazada a ningún dato de la base de datos y no cambia según el registro mostrado.
+
+- Suele generarse automáticamente junto a cada control dependiente.
+- Puede editarse directamente haciendo doble clic sobre ella.
+
+### 5.3 Cuadro combinado (desplegable)
+
+Combina un **campo de texto** con una **lista desplegable**. El usuario puede:
+- Escribir directamente el valor en el campo de texto.
+- Desplegar la lista y seleccionar un valor de ella.
+
+La lista puede obtener sus valores de una tabla o consulta, de una lista de valores introducida manualmente, o de una lista de nombres de campo. Es muy útil para campos que deben contener uno de un conjunto predefinido de valores, garantizando la integridad de los datos.
+
+Propiedades clave del cuadro combinado:
+- **Origen de la fila:** define de dónde provienen los valores de la lista (tabla/consulta, lista de valores, lista de campos).
+- **Tipo de origen de fila:** Tabla/Consulta, Lista de valores o Lista de campos.
+- **Columna dependiente:** qué columna de la lista se almacena en el campo.
+- **Número de columnas:** cuántas columnas muestra la lista desplegable.
+- **Ancho de columnas:** anchura de cada columna (se puede ocultar una columna poniendo su ancho a 0).
+- **Limitar a lista:** si es «Sí», el usuario solo puede seleccionar valores de la lista; no puede escribir valores nuevos.
+
+### 5.4 Cuadro de lista
+
+Similar al cuadro combinado pero **siempre visible** (no se despliega). Muestra la lista de valores en todo momento, ocupando el espacio asignado en el formulario. El usuario solo puede seleccionar un valor de la lista; no puede escribir texto libre.
+
+- Se usa cuando el espacio lo permite y se quiere que el usuario vea todas las opciones disponibles sin necesidad de desplegar.
+- Admite selección múltiple si se configura la propiedad **Selección múltiple**.
+
+> **Clave de examen:** La diferencia principal entre cuadro combinado y cuadro de lista es que el **cuadro combinado** tiene campo de texto + lista desplegable (permite escribir), mientras que el **cuadro de lista** solo permite seleccionar de la lista siempre visible.
+
+### 5.5 Botón de comando
+
+Ejecuta una **acción** al hacer clic. La acción puede ser:
+- Una **macro** de Access.
+- Un procedimiento **VBA** (Visual Basic for Applications).
+- Una acción predefinida seleccionada mediante el **Asistente de botones de comando**.
+
+El asistente organiza las acciones predefinidas en categorías:
+- **Navegación de registros:** Ir al primer registro, Ir al último registro, Ir al siguiente registro, Ir al registro anterior, Buscar registro, Ir a un registro específico.
+- **Operaciones de registros:** Agregar nuevo registro, Eliminar registro, Duplicar registro, Imprimir registro, Guardar registro, Deshacer registro.
+- **Operaciones de formulario:** Abrir formulario, Cerrar formulario, Imprimir formulario actual, Actualizar datos del formulario.
+- **Operaciones de informe:** Abrir informe, Enviar informe a correo electrónico, Imprimir informe, Obtener vista previa de informe.
+- **Aplicación:** Salir de la aplicación.
+- **Miscelánea:** Ejecutar consulta, Ejecutar macro, Imprimir tabla.
+
+### 5.6 Botón de opción (radio button)
+
+Permite hacer una **selección mutuamente exclusiva** dentro de un grupo de opciones. Solo puede estar seleccionado un botón de opción a la vez dentro del mismo grupo de opciones. Se representa con un círculo pequeño que se rellena al seleccionarse.
+
+Generalmente se coloca dentro de un **grupo de opciones** para que Access gestione automáticamente la exclusividad de la selección.
+
+### 5.7 Casilla de verificación
+
+Control para campos de tipo **Sí/No (booleano)**. Cuando está marcada (con una marca de verificación) representa el valor «Sí» o «Verdadero»; cuando está desmarcada, representa «No» o «Falso».
+
+- Es el control predeterminado para los campos de tipo Sí/No en Access.
+- Puede usarse también dentro de un grupo de opciones.
+
+### 5.8 Botón de alternar (toggle)
+
+Funciona de manera similar a la casilla de verificación: representa un valor **Sí/No** o activo/inactivo. Sin embargo, visualmente se presenta como un **botón** que aparece presionado cuando el valor es «Sí» y sin presionar cuando es «No». Es útil cuando se quiere una apariencia más visual que la casilla de verificación.
+
+### 5.9 Grupo de opciones
+
+El **grupo de opciones** es un **marco (rectángulo)** que contiene botones de opción, casillas de verificación o botones de alternar relacionados. El grupo en su conjunto está enlazado a un único campo numérico de la tabla: cada opción dentro del grupo tiene asignado un **valor numérico**, y cuando el usuario selecciona una opción, ese número se almacena en el campo.
+
+Ejemplo: un grupo de opciones «Estado civil» con las opciones:
+- Soltero = 1
+- Casado = 2
+- Divorciado = 3
+- Viudo = 4
+
+Si el usuario selecciona «Casado», el valor 2 se almacena en el campo «EstadoCivil» de la tabla.
+
+> **Clave de examen:** El grupo de opciones siempre devuelve un **número** (el valor asignado a la opción seleccionada), no texto. El campo al que está enlazado debe ser de tipo numérico.
+
+### 5.10 Subformulario / Subinforme
+
+El **subformulario** es un formulario incrustado dentro de otro formulario (formulario principal). Se utiliza para mostrar los **registros relacionados** en una relación de **uno a varios**: el formulario principal muestra el registro «uno» (ej: un cliente) y el subformulario muestra todos los registros «varios» relacionados con él (ej: los pedidos de ese cliente).
+
+La relación entre el formulario principal y el subformulario se establece mediante dos propiedades:
+- **Campo secundario:** campo en la tabla del subformulario que actúa como clave foránea.
+- **Campo principal:** campo en la tabla del formulario principal que actúa como clave primaria.
+
+Access enlaza automáticamente ambos campos para que el subformulario muestre solo los registros relacionados con el registro actual del formulario principal.
+
+El subformulario puede mostrarse en distintas vistas: formulario, hoja de datos (la más habitual en subformularios) o tabular.
+
+> **Clave de examen:** Las propiedades que enlazan un subformulario con su formulario principal son **Campo secundario** (en la tabla del subformulario) y **Campo principal** (en la tabla del formulario principal).
+
+### 5.11 Imagen
+
+Permite insertar una **imagen estática** (logotipo, ilustración, icono) en el formulario. La imagen no está enlazada a ningún dato de la tabla; es meramente decorativa o informativa.
+
+### 5.12 Marco de objeto independiente y marco de objeto dependiente
+
+- **Marco de objeto independiente:** contiene un objeto OLE (hoja de cálculo de Excel, documento de Word, etc.) que **no cambia** según el registro mostrado. El objeto es el mismo para todos los registros.
+- **Marco de objeto dependiente:** contiene un objeto OLE almacenado en un campo de tipo Objeto OLE de la tabla. El objeto **cambia** según el registro actual (ej: una fotografía por cada empleado).
+
+### 5.13 Línea y Rectángulo
+
+Elementos **decorativos** que no contienen datos. Se usan para separar visualmente secciones del formulario, agrupar controles relacionados o mejorar la presentación.
+
+### 5.14 Salto de página
+
+Inserta un salto de página en el formulario, dividiéndolo en **páginas** por las que el usuario navega con teclas de avance/retroceso de página. Es útil para formularios largos que se quieren dividir en pasos o pantallas.
+
+### 5.15 Control de pestaña
+
+El **control de pestaña** (también llamado control de ficha) crea un formulario con **múltiples pestañas**, cada una de las cuales puede contener un conjunto diferente de controles. Permite organizar formularios complejos con muchos campos en secciones temáticas sin que el formulario ocupe demasiado espacio en pantalla.
+
+El usuario navega entre las secciones haciendo clic en las pestañas. Cada pestaña es en realidad una página del control que puede contener cualquier tipo de control, incluidos subformularios.
+
+| Control | Tipo | Descripción |
+|---|---|---|
+| Cuadro de texto | Dependiente / Calculado / Independiente | Muestra y edita datos o expresiones |
+| Etiqueta | Independiente | Texto estático descriptivo |
+| Cuadro combinado | Dependiente | Lista desplegable + campo de texto |
+| Cuadro de lista | Dependiente | Lista siempre visible, solo seleccionar |
+| Botón de comando | Independiente | Ejecuta acción al hacer clic |
+| Botón de opción | Dependiente | Selección exclusiva (radio button) |
+| Casilla de verificación | Dependiente | Valor Si/No con marca |
+| Botón de alternar | Dependiente | Valor Si/No con apariencia de botón |
+| Grupo de opciones | Dependiente | Marco con opciones, devuelve número |
+| Subformulario | Dependiente | Formulario dentro de formulario (1:N) |
+| Imagen | Independiente | Imagen estática decorativa |
+| Marco obj. independiente | Independiente | Objeto OLE estático |
+| Marco obj. dependiente | Dependiente | Objeto OLE por registro |
+| Linea / Rectángulo | Independiente | Elementos decorativos |
+| Salto de página | Independiente | Divide formulario en páginas |
+| Control de pestaña | Independiente | Organiza controles en pestañas |
+
+---
+
+## 6. Propiedades del formulario
+
+La **hoja de propiedades** del formulario se abre en Vista Diseño o Vista Presentación con la tecla **F4** o desde la ficha **Diseño > Herramientas > Hoja de propiedades**. Organiza las propiedades en cinco pestañas.
+
+### 6.1 Pestaña Datos
+
+Controla la fuente de datos y los permisos de modificación:
+
+| Propiedad | Descripción |
+|---|---|
+| **Origen del registro** | Tabla, consulta o instrucción SQL de la que obtiene los datos |
+| **Filtro** | Condición de filtrado que se aplica automáticamente al abrir el formulario |
+| **Ordenar por** | Campo o campos por los que se ordenan los registros al abrir el formulario |
+| **Permitir filtros** | Si/No. Si es No, el usuario no puede aplicar filtros en Vista Formulario |
+| **Permitir ediciones** | Si/No. Si es No, el formulario es de solo lectura (no permite modificar registros) |
+| **Permitir eliminaciones** | Si/No. Si es No, no permite eliminar registros |
+| **Permitir adiciones** | Si/No. Si es No, no permite añadir registros nuevos |
+| **Entrada de datos** | Si/No. Si es Si, el formulario abre siempre en blanco para introducir un registro nuevo |
+| **Vista predeterminada** | Formulario individual, Varios elementos, Hoja de datos, Formulario dividido |
+
+> **Clave de examen:** La propiedad **Entrada de datos = Si** hace que el formulario abra siempre listo para introducir un registro nuevo, sin mostrar los registros existentes. Se usa en formularios de captura de datos.
+
+### 6.2 Pestaña Formato
+
+Controla la apariencia y las vistas disponibles:
+
+| Propiedad | Descripción |
+|---|---|
+| **Título** | Texto que aparece en la barra de título de la ventana del formulario |
+| **Vista predeterminada** | Vista en la que se abre el formulario |
+| **Permitir vista formulario** | Si/No |
+| **Permitir vista hoja de datos** | Si/No |
+| **Desplazarse por** | Solo el formulario activo / Todos los registros |
+| **Selector de registros** | Si/No. Muestra/oculta el selector de registros (barra lateral izquierda) |
+| **Botones de desplazamiento** | Si/No. Muestra/oculta los botones de navegación en la parte inferior |
+| **Separadores de registro** | Si/No. Muestra/oculta las líneas entre registros (en vista varios elementos) |
+| **Auto centrar** | Si/No. Centra el formulario en pantalla al abrirlo |
+| **Auto cambiar tamaño** | Si/No. Ajusta el tamaño del formulario al tamaño de la ventana |
+| **Ajustar tamaño** | Si/No. Permite al usuario cambiar el tamaño de la ventana |
+| **Emergente** | Si/No. El formulario flota sobre los demás objetos |
+| **Modal** | Si/No. El usuario debe cerrar el formulario antes de pasar a otro objeto |
+| **Barra de desplazamiento** | Ninguna / Horizontal / Vertical / Ambas |
+
+### 6.3 Pestaña Eventos
+
+Define las **macros o procedimientos VBA** que se ejecutan en respuesta a acciones del usuario o del sistema:
+
+| Evento | Cuándo se desencadena |
+|---|---|
+| **Al cargar** | Cuando el formulario se abre y los datos se muestran |
+| **Al activar** | Cuando el formulario recibe el foco (se convierte en formulario activo) |
+| **Al desactivar** | Cuando el formulario pierde el foco |
+| **Al cerrar** | Cuando el formulario se cierra |
+| **Al hacer clic** | Al hacer clic en el formulario (no en un control específico) |
+| **Al cambiar** | Cuando el valor en el control actual cambia |
+| **Antes de actualizar** | Antes de guardar los cambios en el registro (permite cancelar) |
+| **Después de actualizar** | Después de guardar los cambios en el registro |
+| **Al insertar** | Cuando se empieza a introducir un nuevo registro |
+| **Antes de insertar** | Justo antes de que se guarde el primer carácter de un nuevo registro |
+| **Antes de confirmar eliminación** | Antes de eliminar un registro (permite cancelar) |
+
+> **Clave de examen:** El evento **Antes de actualizar** es especialmente importante porque permite ejecutar código de validación y, si la validación falla, cancelar el guardado del registro (Cancel = True en VBA).
+
+### 6.4 Pestaña Otras
+
+| Propiedad | Descripción |
+|---|---|
+| **Nombre** | Nombre interno del formulario (usado en macros y VBA) |
+| **Menú contextual** | Menú que aparece al hacer clic derecho |
+| **Modo de ciclo** | Comportamiento de Tab al llegar al último campo: Todos los registros / Registro actual / Página actual |
+| **Tecla de entrada predeterminada** | Comportamiento de la tecla Intro: Nueva línea / Saltar al siguiente campo |
+| **Teclas del cursor** | Comportamiento de las teclas de dirección en campos de texto |
+
+---
+
+## 7. Propiedades de los controles
+
+Cada control tiene su propia hoja de propiedades con opciones específicas. Las propiedades más importantes aplicables a la mayoría de controles son:
+
+### 7.1 Propiedades de datos
+
+| Propiedad | Descripción |
+|---|---|
+| **Nombre** | Identificador del control usado en expresiones y VBA (ej: Me.txtNombre) |
+| **Origen del control** | Campo de la tabla o expresión al que está enlazado |
+| **Formato** | Formato de visualización del valor (fecha, moneda, porcentaje, etc.) |
+| **Decimales** | Número de posiciones decimales para valores numéricos |
+| **Máscara de entrada** | Patrón de formato para la entrada de datos (ej: 000-00-00 para fechas) |
+| **Título** | Texto de la etiqueta asociada al control (solo en controles dependientes) |
+| **Valor predeterminado** | Valor que aparece automáticamente en el control para registros nuevos |
+| **Regla de validación** | Expresión booleana que el valor debe cumplir (ej: >0, Entre 1 Y 100) |
+| **Texto de validación** | Mensaje de error que se muestra si no se cumple la regla de validación |
+
+### 7.2 Propiedades de formato
+
+| Propiedad | Descripción |
+|---|---|
+| **Visible** | Si/No. Muestra u oculta el control en tiempo de ejecución |
+| **Habilitado** | Si/No. Si es No, el control no puede recibir el foco |
+| **Bloqueado** | Si/No. Si es Si, muestra los datos pero no permite editarlos |
+
+> **Clave de examen:** Diferencia entre **Habilitado** y **Bloqueado**: un control deshabilitado (Habilitado = No) aparece en gris y no puede recibir el foco ni editarse; un control bloqueado (Bloqueado = Si) puede recibir el foco y se puede leer pero no editar.
+
+### 7.3 Propiedades de tabulación
+
+| Propiedad | Descripción |
+|---|---|
+| **Orden de tabulación** | Posición del control en la secuencia de Tab (número de orden) |
+| **Índice de tabulación** | Número de posición en la secuencia de tabulación (equivalente al anterior) |
+| **Acceso a tabulación** | Si/No. Si es No, el control se omite en la secuencia de Tab |
+
+### 7.4 Propiedades de ayuda
+
+| Propiedad | Descripción |
+|---|---|
+| **Ayuda emergente** | Texto que aparece en la barra de estado cuando el control tiene el foco |
+| **Información sobre la herramienta** | Texto emergente (tooltip) que aparece al pasar el ratón sobre el control |
+
+---
+
+## 8. Subformularios: configuración y funcionamiento
+
+El subformulario es fundamental para representar relaciones **uno a varios** en la interfaz de usuario. Su correcto funcionamiento depende de la configuración de los campos de enlace.
+
+### 8.1 Crear un subformulario
+
+Existen dos métodos principales:
+
+1. **Arrastrar un formulario existente** desde el panel de navegación hasta la sección Detalle del formulario principal en Vista Diseño. Access inserta automáticamente el control Subformulario.
+2. **Usar el control Subformulario/Subinforme** del grupo Controles y seguir el asistente, que permite seleccionar la tabla, consulta o formulario del subformulario y configurar los campos de enlace.
+
+### 8.2 Campos de enlace
+
+| Propiedad | Campo de enlace | Descripción |
+|---|---|---|
+| **Campo secundario** | Tabla del subformulario | Campo que contiene la clave foránea |
+| **Campo principal** | Tabla del formulario principal | Campo que contiene la clave primaria |
+
+Ejemplo: formulario principal basado en la tabla «Clientes» (campo clave: «ClienteID»), subformulario basado en «Pedidos» (campo clave foránea: «ClienteIDPedido»):
+- Campo secundario: ClienteIDPedido
+- Campo principal: ClienteID
+
+Con esta configuración, el subformulario mostrará automáticamente solo los pedidos del cliente visible en el formulario principal.
+
+### 8.3 Acceso a datos del subformulario desde expresiones
+
+Para referenciar el valor de un control en el subformulario desde el formulario principal se usa la sintaxis:
+
+=[NombreControlSubformulario].[Form]![NombreControl]
+
+Para obtener totales del subformulario (ej: suma de importes de pedidos), el control calculado del subformulario contiene: =Suma([Importe]), y se referencia desde el formulario principal como:
+
+=[NombreControlSubformulario].[Form]![NombreControlCalculado]
+
+---
+
+## 9. Orden de tabulación
+
+El **orden de tabulación** define la secuencia en la que el cursor se desplaza entre los controles del formulario al pulsar la tecla **Tab**. Un orden de tabulación lógico (siguiendo el flujo natural de lectura y entrada de datos) mejora considerablemente la usabilidad del formulario.
+
+### 9.1 Modificar el orden de tabulación
+
+1. Abrir el formulario en **Vista Diseño**.
+2. Ir a la ficha **Diseño** > grupo **Herramientas** > **Orden de tabulación**.
+3. En el cuadro de diálogo, se muestran todos los controles de la sección seleccionada en su orden actual.
+4. Se puede arrastrar las filas para cambiar el orden, o hacer clic en **Auto Order** para que Access asigne automáticamente el orden de izquierda a derecha y de arriba abajo.
+
+### 9.2 Excluir controles de la tabulación
+
+Si se quiere que un control no sea alcanzable mediante la tecla Tab (por ejemplo, etiquetas decorativas o controles de solo visualización), se establece su propiedad **Acceso a tabulación = No**.
+
+---
+
+## 10. Accesos de teclado en formularios
+
+Durante el uso del formulario en **Vista Formulario**, Access ofrece numerosos atajos de teclado para navegar y editar datos de manera eficiente:
+
+### 10.1 Navegación entre controles
+
+| Tecla | Acción |
+|---|---|
+| **Tab** | Mover al siguiente control según el orden de tabulación |
+| **Mayús + Tab** | Mover al control anterior |
+| **F6** | Mover entre las secciones del formulario y el subformulario |
+
+### 10.2 Navegación entre registros
+
+| Tecla | Acción |
+|---|---|
+| **Ctrl + Av Pág** | Ir al siguiente registro |
+| **Ctrl + Re Pág** | Ir al registro anterior |
+| **Ctrl + Fin** | Ir al último registro |
+| **Ctrl + Inicio** | Ir al primer registro |
+| **F5** | Mover el cursor al cuadro de número de registro (para ir a un registro específico) |
+
+### 10.3 Edición de datos
+
+| Tecla | Acción |
+|---|---|
+| **F2** | Alternar entre modo navegación y modo edición en un campo de texto |
+| **Esc (una vez)** | Deshacer los cambios en el campo actual (restaura el valor anterior) |
+| **Esc (dos veces)** | Deshacer todos los cambios en el registro actual |
+| **Mayús + Intro** | Guardar el registro actual sin moverse a otro |
+| **Ctrl + Z** | Deshacer la última acción de edición |
+| **Ctrl + C** | Copiar la selección |
+| **Ctrl + X** | Cortar la selección |
+| **Ctrl + V** | Pegar |
+| **Ctrl + A** | Seleccionar todo el texto en el control actual |
+| **Ctrl + ;** | Insertar la fecha actual |
+| **Ctrl + :** | Insertar la hora actual |
+| **Ctrl + Alt + Espacio** | Insertar el valor predeterminado del campo |
+| **Ctrl + '** | Copiar el valor del mismo campo del registro anterior |
+| **Ctrl + +** | Agregar nuevo registro |
+| **Ctrl + -** | Eliminar el registro actual |
+
+### 10.4 Formularios emergentes y modales
+
+| Tecla | Acción |
+|---|---|
+| **Alt + F4** | Cerrar el formulario activo |
+| **Intro** | Activar el botón predeterminado (si hay uno configurado) |
+| **Esc** | Activar el botón Cancelar o cerrar el formulario modal |
+
+---
+
+## 11. Formularios y macros integradas
+
+Access 365 permite asociar **macros de datos** y **macros de interfaz de usuario** a los eventos de los controles y del formulario. Las macros más usadas en formularios son:
+
+| Macro | Descripción |
+|---|---|
+| **AbrirFormulario** | Abre otro formulario, opcionalmente con un filtro |
+| **CerrarVentana** | Cierra el formulario actual u otro objeto |
+| **IrAControl** | Mueve el foco a un control específico |
+| **IrARegistro** | Navega a un registro específico (primero, último, siguiente, anterior, nuevo) |
+| **BuscarRegistro** | Busca un registro que cumpla un criterio |
+| **EstablecerValor** | Asigna un valor a un control, campo o propiedad |
+| **MostrarMensaje** | Muestra un cuadro de mensaje al usuario |
+| **EjecutarConsulta** | Ejecuta una consulta de acción |
+| **GuardarRegistro** | Guarda el registro actual |
+| **CancelarEvento** | Cancela el evento actual (útil en Antes de actualizar) |
+
+---
+
+## 12. Propiedades de automatización: VBA en formularios
+
+Para automatizaciones más complejas que no pueden resolverse con macros, Access 365 permite usar **Visual Basic for Applications (VBA)**. Desde Vista Diseño, haciendo clic en el botón «...» de cualquier evento en la hoja de propiedades y eligiendo «Procedimiento de evento», se abre el editor de VBA con el esqueleto del procedimiento.
+
+Conceptos clave de VBA en formularios:
+- **Me:** hace referencia al formulario actual.
+- **Me.NombreControl:** accede al valor de un control.
+- **Cancel = True:** en eventos «Antes de...», cancela la acción.
+- **SetFocus:** mueve el foco a un control determinado.
+
+Ejemplo de procedimiento en el evento **Antes de actualizar** para validar que el precio es positivo: se comprueba el valor de Me.Precio y, si es menor o igual a cero, se muestra un mensaje de error, se mueve el foco al campo Precio y se asigna Cancel = True para cancelar el guardado.
+
+---
+
+## 13. Formularios para impresión
+
+Aunque los **informes** son el objeto principal de Access para imprimir datos, los formularios también pueden imprimirse. Para ello conviene:
+
+- Utilizar las secciones **Encabezado de página** y **Pie de página** (solo visibles al imprimir).
+- Configurar la propiedad **Vista predeterminada** según la presentación deseada.
+- Usar la opción **Imprimir** desde el menú **Archivo > Imprimir** o con **Ctrl + P**.
+- Vista previa de impresión disponible desde **Archivo > Imprimir > Vista previa de impresión**.
+
+---
+
+## 14. Resumen de conceptos clave para oposiciones
+
+| Concepto | Detalle |
+|---|---|
+| Qué es un formulario | Interfaz gráfica para ver, introducir y editar datos de tablas/consultas |
+| Dónde se guardan los datos | En las **tablas**, nunca en el formulario |
+| Formulario estándar | Muestra **un registro** a la vez |
+| Formulario dividido | Formulario (arriba) + Hoja de datos (abajo), sincronizados |
+| Varios elementos | Varios registros en diseño tabular (como hoja de datos con formato) |
+| Asistente: disposiciones | **En columnas, Tabular, Hoja de datos, Justificado** |
+| Sección Detalle | Sección obligatoria; se repite por cada registro |
+| Encabezado/Pie de página | Solo visibles **al imprimir** (no en pantalla) |
+| Vista Presentación | Permite editar el diseño **viendo datos reales** |
+| Cuadro combinado | Lista desplegable + campo de texto; puede escribirse |
+| Cuadro de lista | Lista siempre visible; solo seleccionar |
+| Grupo de opciones | Devuelve un **número** al campo enlazado |
+| Subformulario | Representa relaciones **uno a varios** |
+| Campo secundario | Campo de la tabla del **subformulario** (clave foránea) |
+| Campo principal | Campo de la tabla del **formulario principal** (clave primaria) |
+| Entrada de datos = Si | El formulario abre siempre en blanco para nuevo registro |
+| Antes de actualizar | Evento para validar; Cancel = True cancela el guardado |
+| Habilitado = No | Control en gris, no recibe foco |
+| Bloqueado = Si | Control visible y con foco pero no editable |
+| F5 en Vista Formulario | Va al cuadro de número de registro |
+| F2 en Vista Formulario | Alterna modo navegación / modo edición |
+| Esc (una vez) | Deshace cambios en el **campo** actual |
+| Esc (dos veces) | Deshace cambios en el **registro** actual |
+| Ctrl + Av Pág | Siguiente registro |
+| Ctrl + Re Pág | Registro anterior |
+| Formulario modal | Debe cerrarse antes de usar otro objeto de la BD |
+| Control de pestaña | Organiza controles en pestañas dentro del formulario |
+
+
+---
+
+## 15. Funciones de fecha y hora en controles calculados
+
+Los controles calculados de un formulario de Access pueden usar las funciones de fecha y hora del motor Jet/ACE para formatear o calcular valores temporales. Las más habituales en los formularios son **FormatoFechaHora**, **Diffecha** y **DateDiff**.
+
+### 15.1 FormatoFechaHora (FormatDateTime)
+
+La función **FormatoFechaHora** devuelve una expresión de fecha u hora formateada según un código de formato predefinido. Se usa en el **Origen del control** de un cuadro de texto calculado:
+
+`= FormatoFechaHora([NombreCampo], Formato)`
+
+El segundo parámetro es un número entero que indica el formato deseado:
+
+| Código | Constante | Resultado |
+|---|---|---|
+| **0** | vbGeneralDate | Fecha corta si hay fecha, hora larga si hay hora, ambas si el valor contiene fecha y hora |
+| **1** | vbLongDate | Fecha larga (ej: jueves, 16 de mayo de 2026) |
+| **2** | vbShortDate | Fecha corta (ej: 16/05/2026) |
+| **3** | vbLongTime | Hora larga (ej: 14:30:00) — **solo la hora, sin la fecha** |
+| **4** | vbShortTime | Hora corta en formato 24h (ej: 14:30) — **solo la hora, sin la fecha** |
+
+> **Clave de examen:** El código **3** (vbLongTime) muestra **solo la hora** en formato largo, sin la fecha. El código **1** muestra la fecha en formato largo. El código **2** muestra la fecha en formato corto. Los códigos **3 y 4** nunca muestran la fecha, solo la hora.
+
+Ejemplo en un formulario:
+
+`= FormatoFechaHora([FechaFactura], 3)`
+
+Devuelve únicamente la hora del campo FechaFactura en formato largo (ej: 9:30:00). No muestra la parte de la fecha.
+
+`= FormatoFechaHora([FechaFactura], 1)`
+
+Devuelve la fecha en formato largo (ej: jueves, 16 de mayo de 2026). No muestra la hora.
+
+### 15.2 Diffecha / DateDiff — intervalo entre dos fechas
+
+La función **Diffecha** (nombre en español de Access) o **DateDiff** (nombre en inglés/VBA) calcula el **número de intervalos** (días, meses, semanas, etc.) transcurridos entre dos fechas. Es la función que se debe usar en un control calculado de formulario para obtener diferencias temporales.
+
+Sintaxis:
+
+`Diffecha(intervalo, fecha1, fecha2)`
+
+El primer parámetro **intervalo** es una cadena de texto que especifica la unidad de tiempo en la que se expresa el resultado:
+
+| Intervalo | Significado | Ejemplo de resultado |
+|---|---|---|
+| **d** | Días | Número de días entre las dos fechas |
+| **ww** | Semanas | Número de semanas completas |
+| **m** | Meses | Número de meses completos |
+| **q** | Trimestres | Número de trimestres |
+| **yyyy** | Años | Número de años |
+| **h** | Horas | Número de horas |
+| **n** | Minutos | Número de minutos |
+| **s** | Segundos | Número de segundos |
+| **w** | Día de la semana | Número de días de la semana (0-6) |
+| **y** | Día del año | Número de días del año (1-365) |
+
+> **Clave de examen:** La función **Diffecha** (o DateDiff) puede devolver el intervalo en **días, semanas, meses, años, horas o cualquier unidad temporal** según el primer parámetro. No devuelve un único tipo de valor fijo: la unidad de medida del resultado depende enteramente del argumento de intervalo que se especifique. Por tanto, una sola función Diffecha puede devolver días, semanas o meses, según lo que se le pida.
+
+Ejemplo en formulario para mostrar los días transcurridos desde la fecha de contrato:
+
+`= Diffecha(d, [FechaContrato], Ahora())`
+
+Para mostrar los meses:
+
+`= Diffecha(m, [FechaContrato], Ahora())`
+
+La propiedad que debe configurarse en el control del formulario para incluir esta expresión es el **Origen del control** (la expresión debe comenzar con el signo =).
+
+### 15.3 Otras funciones de fecha útiles en formularios
+
+| Función | Descripción |
+|---|---|
+| **Ahora()** | Devuelve la fecha y hora actuales del sistema |
+| **Fecha()** | Devuelve solo la fecha actual del sistema |
+| **Hora()** | Devuelve el número de hora (0–23) de una expresión de hora (no da formato de texto) |
+| **DateValue()** | Devuelve la parte de fecha de una expresión fecha/hora |
+| **DateSerial(año, mes, día)** | Construye una fecha a partir de sus componentes numéricos |
+| **Year(), Month(), Day()** | Extraen el año, mes o día de una fecha como número entero |
+
+> **Nota:** La función **Hora()** (Hour en inglés) devuelve un número entero (0–23), NO da formato de texto a la hora. Para formatear la hora como texto con un formato concreto se usa **FormatoFechaHora** con los códigos 3 o 4.
+
+---
+
+## 16. Funciones de formato numérico y monetario
+
+Además de las funciones de fecha, Access proporciona funciones específicas para formatear valores numéricos y monetarios en controles calculados de formularios e informes.
+
+### 16.1 FormatoMoneda (FormatCurrency)
+
+La función **FormatoMoneda** devuelve un número formateado con el **símbolo de moneda del sistema** (el configurado en la configuración regional de Windows).
+
+Sintaxis:
+
+`FormatoMoneda(expresión [, NumDecimales])`
+
+Ejemplo: `= FormatoMoneda([Precio])` devuelve algo como `19,95 €` (con el símbolo de moneda del sistema operativo).
+
+> **Clave de examen:** La función que muestra valores numéricos con el **símbolo de moneda del sistema** es **FormatoMoneda**. No debe confundirse con **FormatoNumero** (que formatea números sin símbolo de moneda) ni con **EuroConvert** (que convierte entre monedas de la zona euro) ni con **GUIDFromString** (que convierte cadenas a GUID, sin relación con moneda).
+
+### 16.2 FormatoNumero (FormatNumber)
+
+La función **FormatoNumero** devuelve un número formateado con separadores de miles y decimales pero **sin símbolo de moneda**:
+
+Sintaxis:
+
+`FormatoNumero(expresión [, NumDecimales])`
+
+Ejemplo: `= FormatoNumero([Precio], 2)` devuelve `19,95` sin símbolo de moneda.
+
+### 16.3 FormatoPercent (FormatPercent)
+
+Devuelve el número multiplicado por 100 y seguido del símbolo de porcentaje:
+
+`= FormatoPercent([Descuento], 1)` devuelve algo como `15,0%`.
+
+### 16.4 Resumen de funciones de formato
+
+| Función | Símbolo | Ejemplo de resultado |
+|---|---|---|
+| **FormatoMoneda** | Símbolo de moneda del sistema | 19,95 € |
+| **FormatoNumero** | Ninguno | 19,95 |
+| **FormatoPercent** | Porcentaje (%) | 15,0% |
+| **FormatoFechaHora** | N/A (fecha/hora) | 16/05/2026 o 14:30:00 |
+
+---
+
+## 17. Tipos de formulario que NO existen en Access 365
+
+Para las preguntas que piden identificar tipos de formulario **no válidos**, conviene conocer los tipos que Access 365 **sí** ofrece y distinguirlos de denominaciones inventadas o de otros productos.
+
+### Tipos de formulario que SÍ existen en Access 365
+
+- **Formulario** (formulario estándar, un registro a la vez)
+- **Formulario dividido** (Split Form — parte formulario + parte hoja de datos sincronizadas)
+- **Varios elementos** (formulario tabular, varios registros visibles)
+- **Formulario en blanco** (sin controles predefinidos)
+- **Asistente para formularios** (creación guiada)
+- **Formulario de navegación** (menú con pestañas o botones)
+- **Cuadro de diálogo modal** (formulario con Modal = Sí y Emergente = Sí)
+- **Subformulario** (incrustado en otro formulario)
+- **Formulario Hoja de datos** (en vista de cuadrícula)
+
+### Tipos de formulario que NO existen en Access 365
+
+- **Formularios Paramétricos:** NO existe este tipo de formulario en Access 365. Un formulario puede estar basado en una consulta paramétrica, pero el formulario en sí no se denomina ni clasifica como «paramétrico». Cuando se abre un formulario basado en una consulta paramétrica, Access solicita el valor del parámetro antes de mostrar los datos, pero el formulario sigue siendo un formulario estándar, dividido, etc.
+- **Formulario de barras:** NO existe.
+- **Formulario combinado:** NO existe (no es una denominación oficial de Access).
+- **Formulario de gráficos** como tipo independiente: los gráficos se insertan como controles dentro de los formularios estándar, no como un tipo de formulario diferente.
+
+> **Clave de examen:** Si una pregunta de examen menciona «Formularios Paramétricos» como tipo de formulario, la respuesta es que **NO existe** ese tipo en Access 365. Un formulario puede usar consultas paramétricas como origen de datos, pero eso no lo convierte en un tipo distinto de formulario.
+
+---
+
+## 18. Asistente para formularios: distribuciones disponibles
+
+El **Asistente para formularios** (accesible desde la ficha **Crear > Asistente para formularios**) propone exactamente **cuatro distribuciones** para la disposición de los controles:
+
+| Distribución | Descripción |
+|---|---|
+| **En columnas** | Cada campo en una fila, etiqueta a la izquierda y control a la derecha. Un registro a la vez. Es la disposición más similar al formulario estándar. |
+| **Tabular** | Campos en columnas con encabezados en la parte superior, registros en filas horizontales. Similar al formulario de varios elementos. |
+| **Hoja de datos** | Presentación en cuadrícula exactamente igual a la hoja de datos de una tabla. |
+| **Justificado** | Los campos se distribuyen de izquierda a derecha y de arriba abajo rellenando el espacio disponible del formulario. |
+
+> **Clave de examen crítica:** Las distribuciones del Asistente para formularios son exactamente estas cuatro: **En columnas, Tabular, Hoja de datos y Justificado**. La opción **Pestañas** (control de pestaña / Tab) **NO es una distribución del asistente**; el control de pestaña existe en Access como control individual que se añade manualmente en Vista Diseño, pero no es una opción del asistente para formularios.
+
+---
+
+## 19. Formulario de inicio y macro AutoExec
+
+Access 365 ofrece dos mecanismos para ejecutar acciones automáticas al abrir una base de datos:
+
+### 19.1 Formulario de inicio (opciones de programa)
+
+En el menú **Archivo > Opciones > Base de datos actual**, existe la opción **Mostrar formulario** que permite seleccionar el formulario que se abrirá automáticamente cada vez que se abra la base de datos. También en este mismo apartado se puede configurar el título de la aplicación, el icono, las opciones de navegación, etc.
+
+> **Clave de examen:** La opción para definir el formulario de inicio está en **Archivo > Opciones > Base de datos actual**. La categoría de opciones es **«Base de datos actual»**, no «General», no «Hoja de datos» ni «Diseñadores de objetos».
+
+Para **omitir temporalmente** el formulario de inicio sin modificar la configuración, basta con mantener pulsada la tecla **Mayús** mientras se abre la base de datos. Esto impide que se ejecuten el formulario de inicio y la macro AutoExec.
+
+### 19.2 Macro AutoExec
+
+La macro denominada exactamente **AutoExec** (sin espacios, con esa ortografía) se ejecuta automáticamente cada vez que se abre la base de datos, antes de que aparezca ninguna ventana. Es el mecanismo de automatización estándar de Access para tareas de inicio.
+
+La macro AutoExec puede:
+- Abrir el formulario principal de la aplicación.
+- Maximizar la ventana de Access.
+- Mostrar mensajes de bienvenida.
+- Ejecutar consultas de inicialización.
+- Configurar variables de entorno de la aplicación.
+
+> **Clave de examen:** Si se quiere que Access ejecute acciones automáticamente al abrir la base de datos, se puede usar **cualquiera de las dos vías o ambas**: la opción de formulario en **Archivo > Opciones > Base de datos actual**, o una **macro llamada AutoExec**. Ambas son válidas y complementarias.
+
+La tecla **Mayús** al abrir la base de datos omite tanto el formulario de inicio configurado en las opciones como la macro AutoExec.
+
+
+
+## Tecla Mayús al abrir — frases de examen para formularios
+
+Una base de datos de Access configurada para arrancar un formulario de inicio o una macro AutoExec **puede saltarse esa configuración** de inicio:
+
+> **Pulsando la tecla Mayús al abrir la base de datos**, se omite la configuración de inicio (no se abre el formulario de inicio ni se ejecuta la macro AutoExec).
+
+Frases equivalentes que aparecen en exámenes:
+- "Pulsando la tecla Mayús al abrir la base de datos" → correcto
+- "Manteniendo pulsada la tecla Mayús durante la apertura" → correcto
+- "Se omite la configuración de inicio" → efecto que se produce
+
+Esta técnica es útil cuando el formulario de inicio tiene un error o cuando se necesita acceder al Panel de navegación directamente.
+
+### DateDiff (DifFecha) en formularios — posibles resultados
+
+La función DateDiff / DifFecha puede devolver distintos tipos de resultado según el intervalo:
+- Número de días entre dos fechas (intervalo "d")
+- Número de meses entre dos fechas (intervalo "m")
+- Número de años (intervalo "yyyy")
+- Número de semanas (intervalo "ww")
+- Todos estos resultados son válidos dependiendo del intervalo especificado
+
+Si una pregunta pregunta "qué valor obtendremos si utilizamos DateDiff" y todas las opciones muestran diferentes unidades (días, meses, años, semanas), la respuesta puede ser "Todas las respuestas son correctas" si los ejemplos son coherentes con sus respectivos intervalos.

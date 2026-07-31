@@ -1,0 +1,427 @@
+[
+  {
+    "question_id": "08b7b28e-ac6a-4b6d-81bb-6a469a88c6a2",
+    "servidas": 270,
+    "es_examen_oficial": true,
+    "ley": "Ley 19/2013",
+    "articulo": "26",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/05ce772a-c625-434d-a521-0645635e5318.txt",
+    "enunciado": "Según el artículo 26 de la Ley 19/2013, ¿cuál de los siguientes es uno de los principios de buen gobierno que deben observar las personas en el ámbito de aplicación?",
+    "opciones": {
+      "A": "Actuar únicamente según sus criterios personales",
+      "B": "Actuar de acuerdo con la Constitución y el resto del ordenamiento jurídico",
+      "C": "Priorizar los intereses particulares sobre los generales",
+      "D": "Mantener la confidencialidad absoluta en todas las actuaciones"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo fija el principio general de buen gobierno que deben observar las personas comprendidas en su ámbito de aplicación.\n\n> **Ley 19/2013, art. 26.1**\n> \"observarán en el ejercicio de sus funciones lo dispuesto en la Constitución Española y en el resto del ordenamiento jurídico y promoverán el respeto a los derechos fundamentales y a las libertades públicas.\"\n\n**Por qué B es correcta:** Coincide con lo dispuesto en el artículo: se exige actuar conforme a la Constitución y al resto del ordenamiento jurídico.\n\n**Por qué las demás son incorrectas:**\n- **A)** Es justamente lo contrario de lo que exige el artículo, que obliga a actuar conforme al ordenamiento jurídico y no según criterios personales.\n- **C)** Es justamente lo contrario de lo que exige el artículo, que obliga a promover el respeto a los derechos fundamentales y las libertades públicas al servicio del interés general.\n- **D)** No se corresponde con el artículo, que exige actuar con transparencia, no con confidencialidad absoluta."
+  },
+  {
+    "question_id": "9c306920-9cba-41fc-9608-18f62490606e",
+    "servidas": 269,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "9",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/11a6d70d-7088-43f2-8a3f-bc0fd1cce516.txt",
+    "enunciado": "A efectos de lo establecido en el RD 366/2007, en relación con la configuración de los sistemas de información complementaria existentes en las Oficinas de Atención al Ciudadano, se tendrán en cuenta las siguientes recomendaciones:",
+    "opciones": {
+      "A": "Toda la información en formato texto debe estar también en modo sonoro.",
+      "B": "Toda la información sonora debe estar transcrita en formato texto.",
+      "C": "Debe existir confirmación con mensajes sonoros de todas las acciones activadas.",
+      "D": "Todas las respuestas son correctas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo enumera un conjunto de recomendaciones para la configuración de los sistemas de información complementaria en las Oficinas de Atención al Ciudadano.\n\n> **RD 366/2007, art. 9.2.c**\n> \"Toda la información en formato texto debe estar también en modo sonoro.\"\n\n**Por qué D es correcta:** Es la respuesta correcta, porque las tres recomendaciones anteriores figuran literalmente en el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** Coincide de forma literal con una de las recomendaciones que enumera el artículo.\n- **B)** Coincide de forma literal con otra de las recomendaciones que enumera el artículo (que la información sonora esté transcrita en formato texto).\n- **C)** Coincide de forma literal con otra de las recomendaciones que enumera el artículo (confirmación con mensajes sonoros de las acciones activadas)."
+  },
+  {
+    "question_id": "7bb20ea0-9052-4d02-a5e8-ac9fa9e22fec",
+    "servidas": 269,
+    "es_examen_oficial": true,
+    "ley": "Ley 40/2015",
+    "articulo": "63",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/4019d3f8-3eea-448a-97a3-56a72dbcd8d8.txt",
+    "enunciado": "De acuerdo con el artículo 63 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, la jefatura superior de todo el personal de un Ministerio será desempeñada por:",
+    "opciones": {
+      "A": "El Secretario de Estado.",
+      "B": "El Ministro.",
+      "C": "El Subsecretario.",
+      "D": "El Secretario General Técnico."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo, dedicado a los Subsecretarios, atribuye expresamente esta función entre las que ejercen en el Ministerio.\n\n> **Ley 40/2015, art. 63.1.f**\n> \"Desempeñar la jefatura superior de todo el personal del Departamento.\"\n\n**Por qué C es correcta:** Coincide con la función que el artículo atribuye expresamente al Subsecretario.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo no atribuye esta función al Secretario de Estado, que dirige un sector de actividad concreto.\n- **B)** El artículo atribuye esta función al Subsecretario, no directamente al Ministro.\n- **D)** El artículo no atribuye esta función al Secretario General Técnico, cuyas competencias son de asesoramiento técnico y jurídico."
+  },
+  {
+    "question_id": "4a6976ef-dc05-409d-ba34-de1c055f50ab",
+    "servidas": 268,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "80",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3004f093-ef1b-465a-ba4b-431235776609.txt",
+    "enunciado": "En Excel 365, si aplicamos la función \"MODA\" sobre los números 7,5,8,1,7,4,3,2,2,7 el resultado es:",
+    "opciones": {
+      "A": "2",
+      "B": "5",
+      "C": "6",
+      "D": "7"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo recoge exactamente este mismo conjunto de números como ejemplo de aplicación de la función que devuelve el valor más frecuente.\n\n> **Excel 365, art. 80**\n> \"`=MODA(7;5;8;1;7;4;3;2;2;7)` → 7\"\n\n**Por qué D es correcta:** Coincide con el resultado que muestra el artículo para este mismo ejemplo: es el valor que más veces se repite.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es el resultado: aunque el 2 se repite, aparece con menos frecuencia que otro valor del conjunto.\n- **B)** No es el resultado: el 5 solo aparece una vez en el conjunto de números.\n- **C)** No es el resultado: el 6 ni siquiera forma parte del conjunto de números."
+  },
+  {
+    "question_id": "bbe2cfb8-d429-4244-98d0-b43def0e7057",
+    "servidas": 268,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/bf87a5b0-636f-4a50-a3ee-f93596801fcd.txt",
+    "enunciado": "En Outlook 365, ¿qué combinación de teclas nos permite acceder a la carpeta de contactos?",
+    "opciones": {
+      "A": "CTRL+ 3",
+      "B": "CTRL+ 4",
+      "C": "CTRL+ 5",
+      "D": "CTRL+ 2"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Situar el atajo de teclado que abre el módulo de Contactos en el Outlook clásico de escritorio, la referencia que se usa en las oposiciones.\n\n> **Outlook 365, art. 3**\n> \"| **Ctrl+3** | Contactos (Personas) |\"\n\n**Por qué A es correcta:** Ctrl+3 abre el módulo de Contactos (Personas) en el Outlook clásico de escritorio.\n\n**Por qué las demás son incorrectas:**\n- **B)** Ctrl+4 lleva al módulo de Tareas, no al de Contactos.\n- **C)** Ctrl+5 abre el módulo de Notas, no el de Contactos.\n- **D)** Ctrl+2 lleva al Calendario, no a Contactos."
+  },
+  {
+    "question_id": "7d705a47-c1b7-4ce1-a710-8cd9a7875317",
+    "servidas": 267,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de las siguientes NO es una herramienta de accesibilidad de Windows 11?",
+    "opciones": {
+      "A": "Lupa.",
+      "B": "Mapa de caracteres.",
+      "C": "Narrador.",
+      "D": "Reconocimiento de voz de Windows."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Windows 11 agrupa varias utilidades bajo el apartado de Accesibilidad, pero no todas las herramientas del sistema entran en esa categoría.\n\n> **Windows 11, art. 1**\n> \"El **Mapa de caracteres** (charmap.exe) es una utilidad de Windows para buscar e insertar símbolos Unicode, pero **no está clasificada como herramienta de accesibilidad**.\"\n\n**Por qué B es correcta:** El Mapa de caracteres sirve para buscar e insertar símbolos Unicode; es una utilidad de texto, no una herramienta de accesibilidad.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Lupa amplía partes de la pantalla y sí es una herramienta de accesibilidad visual.\n- **C)** El Narrador lee en voz alta el contenido de la pantalla y sí está clasificado como herramienta de accesibilidad.\n- **D)** El Reconocimiento de voz permite controlar el equipo y dictar texto, y sí forma parte de las herramientas de accesibilidad."
+  },
+  {
+    "question_id": "97afaeb2-0126-4966-82e3-4561e16b203e",
+    "servidas": 266,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "20",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2df21c3f-aa8c-4c1c-99d2-83606c41dcda.txt",
+    "enunciado": "En Excel 365, si en la celda A1 de la Hoja1 queremos copiar el valor de la celda A2 de la Hoja2 deberemos:",
+    "opciones": {
+      "A": "Introducir la fórmula =Hoja1!A1 en la celda A1 de la Hoja 1.",
+      "B": "Introducir la fórmula =Hoja1!A1 en la celda A1 de la Hoja 2.",
+      "C": "Introducir la fórmula =Hoja2!A1 en la celda A1 de la Hoja 1.",
+      "D": "Introducir la fórmula =Hoja2!A2 en la celda A1 de la Hoja 1."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Para traer a una celda el valor de otra hoja, la fórmula debe indicar la hoja de origen y la celda de origen, y escribirse en la celda de destino.\n\n> **Excel 365, art. 20**\n> \"Para referenciar una celda o rango de otra hoja del mismo libro se usa el signo de exclamación (`!`) como separador:\"\n\n**Por qué D es correcta:** La fórmula indica la hoja de origen (Hoja2) y la celda de origen (A2) tal como exige la sintaxis NombreHoja!Referencia, y se introduce en la celda de destino, A1 de Hoja1.\n\n**Por qué las demás son incorrectas:**\n- **A)** La fórmula =Hoja1!A1 apunta a la propia Hoja1, no a la Hoja2 donde está el dato que se quiere copiar; además crearía una referencia circular al escribirse en esa misma celda.\n- **B)** Aunque cita la Hoja1, esta fórmula se coloca en la Hoja2 y aun así no señala a la Hoja2, sino a la propia Hoja1; ni la celda ni la hoja de destino son las correctas.\n- **C)** La hoja de origen es la correcta (Hoja2), pero la celda referenciada es A1, no A2, que es donde está el valor que se quiere traer."
+  },
+  {
+    "question_id": "d704aa2e-5112-4a59-9172-f86cdab56156",
+    "servidas": 265,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "6",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/8f7e450a-8460-4984-8fd8-487b2e195e36.txt",
+    "enunciado": "En un sistema Windows se ha configurado la obtención automática de direcciones IP para acceder a una LAN. ¿Cómo se llama este servicio?",
+    "opciones": {
+      "A": "DHCP",
+      "B": "TTL",
+      "C": "HTTPS",
+      "D": "AUTOIP"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El servicio que asigna automáticamente direcciones IP a los equipos de una red local tiene un nombre propio, distinto de otros protocolos habituales de Internet.\n\n> **La Red Internet, art. 6**\n> \"Cuando en Windows se configura \"obtención automática de dirección IP\", se está usando el servicio DHCP.\"\n\n**Por qué A es correcta:** DHCP es el servicio que permite la obtención automática de direcciones IP en una red local, que es justo lo que describe el enunciado.\n\n**Por qué las demás son incorrectas:**\n- **B)** TTL es un campo de los paquetes IP que limita su tiempo de vida en la red, no un servicio de asignación de direcciones.\n- **C)** HTTPS es el protocolo de comunicación cifrada entre navegador y servidor web, ajeno a la asignación de direcciones IP.\n- **D)** AUTOIP no es el servicio que interviene aquí; la obtención automática de direcciones IP en Windows se llama DHCP."
+  },
+  {
+    "question_id": "acef0407-6731-4666-8ed5-a6cecba1f710",
+    "servidas": 264,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Señale la respuesta correcta. Las Administraciones Públicas deberán respetar en su actuación y relaciones los siguientes principios:",
+    "opciones": {
+      "A": "Servicio efectivo a los ciudadanos",
+      "B": "Simplicidad, claridad y proximidad a los ciudadanos",
+      "C": "Economía, suficiencia y adecuación estricta de los medios a los fines institucionales",
+      "D": "Todas las opciones son correctas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 3.1 enumera una larga lista de principios de actuación de las Administraciones Públicas, entre los que figuran los tres propuestos.\n\n> **Ley 40/2015, art. 3.1.i**\n> \"Economía, suficiencia y adecuación estricta de los medios a los fines institucionales.\"\n\n**Por qué D es correcta:** Es la respuesta correcta, porque las tres afirmaciones anteriores coinciden literalmente con principios recogidos en el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** Es uno de los principios que enumera literalmente el artículo (servicio efectivo a los ciudadanos).\n- **B)** Es también uno de los principios que enumera literalmente el artículo (simplicidad, claridad y proximidad a los ciudadanos).\n- **C)** Es igualmente uno de los principios que enumera literalmente el artículo, tal y como aparece citado."
+  },
+  {
+    "question_id": "8fe19cec-732e-4d68-9f06-a51f5f2be796",
+    "servidas": 261,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál es la función de Windows Update en Windows 11?",
+    "opciones": {
+      "A": "Administrar la configuración de las actualizaciones de Windows 11.",
+      "B": "Mantener la fecha y la hora de Windows actualizadas.",
+      "C": "Crear eventos, como citas, en el Calendario de Windows.",
+      "D": "Adquirir a través de Microsoft Store actualizaciones de productos Microsoft."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Windows Update es el servicio de Windows 11 dedicado a mantener el sistema al día con las novedades de Microsoft.\n\n> **Windows 11, art. 1**\n> \"es el servicio integrado en Windows 11 que mantiene el sistema operativo actualizado de forma automática, descargando e instalando\"\n\n**Por qué A es correcta:** Windows Update descarga e instala parches de seguridad y mejoras, y permite configurar horas activas o pausar las actualizaciones.\n\n**Por qué las demás son incorrectas:**\n- **B)** La fecha y la hora del sistema se configuran en Hora e idioma, no en Windows Update.\n- **C)** Los eventos y citas se gestionan desde la aplicación Calendario o Correo, no desde Windows Update.\n- **D)** Las compras de productos Microsoft se realizan en Microsoft Store, no en Windows Update."
+  },
+  {
+    "question_id": "f75bc936-cced-42be-bfd5-5e18441078a6",
+    "servidas": 261,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Si el Gobierno quisiese prorrogar la duración del estado de alarma deberá solicitar la autorización del Congreso de los Diputados, ¿qué mayoría se exige para la aprobación de dicha prórroga?",
+    "opciones": {
+      "A": "Mayoría de 3/5 de la Cámara.",
+      "B": "Mayoría absoluta.",
+      "C": "Mayoría simple.",
+      "D": "Mayoría de 2/3 de la Cámara."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116 CE fija expresamente una mayoría cualificada solo para uno de los tres estados excepcionales que regula.\n\n**Por qué C es correcta:** El artículo 116 no impone ninguna mayoría cualificada para autorizar la prórroga del estado de alarma, por lo que rige la regla general de aprobación por mayoría simple del Congreso.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Constitución no exige una mayoría de tres quintos para autorizar la prórroga del estado de alarma; esa exigencia cualificada no aparece en el artículo 116.\n- **B)** No se requiere mayoría absoluta para autorizar la prórroga del estado de alarma: esa mayoría reforzada solo se exige, dentro del artículo 116, para la declaración del estado de sitio.\n- **D)** Tampoco se exige una mayoría de dos tercios: esa exigencia no figura en el artículo 116 para la prórroga del estado de alarma."
+  },
+  {
+    "question_id": "56161d56-819d-42e9-9fd7-dfdb6638477f",
+    "servidas": 260,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "190",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2d107da1-0550-4bfd-bb21-ae778fed2dd8.txt",
+    "enunciado": "¿Qué tipo de gráfico combina valores en puntos de datos únicos y los muestra en intervalos irregulares en Excel 365?",
+    "opciones": {
+      "A": "Un gráfico de columnas.",
+      "B": "Un gráfico de líneas.",
+      "C": "Un gráfico de dispersión.",
+      "D": "Un gráfico de área."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Excel ofrece un tipo de gráfico pensado específicamente para representar pares de valores sin que el eje horizontal tenga que estar distribuido de forma regular.\n\n> **Excel 365, art. 190**\n> \"Combina valores X e Y en puntos de datos únicos y los muestra en **intervalos irregulares**.\"\n\n**Por qué C es correcta:** El gráfico de dispersión combina valores en puntos de datos únicos y los representa en intervalos irregulares, tal como pide el enunciado.\n\n**Por qué las demás son incorrectas:**\n- **A)** El gráfico de columnas compara valores entre categorías en intervalos regulares, no en intervalos irregulares.\n- **B)** El gráfico de líneas está pensado para tendencias a intervalos iguales, no para puntos con intervalos irregulares.\n- **D)** El gráfico de área muestra la magnitud del cambio acumulado a lo largo del tiempo, también en intervalos regulares."
+  },
+  {
+    "question_id": "79977f1f-0043-4ddd-a0c0-c7fdcd663a3d",
+    "servidas": 260,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "¿Qué órgano tiene la iniciativa en la adopción del Estado de Excepción?",
+    "opciones": {
+      "A": "El Gobierno y el Congreso de los Diputados",
+      "B": "Sólo el Gobierno",
+      "C": "El Gobierno y las Cortes Generales",
+      "D": "Las Cortes Generales"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116.3 CE distingue quién propone o inicia la declaración del estado de excepción y quién debe autorizarla.\n\n> **CE, art. 116.3**\n> \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.\"\n\n**Por qué B es correcta:** La iniciativa para declarar el estado de excepción corresponde en exclusiva al Gobierno, que la articula mediante decreto en Consejo de Ministros; el Congreso solo interviene autorizándola.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Congreso de los Diputados no comparte la iniciativa: su papel se limita a autorizar la declaración que propone el Gobierno.\n- **C)** Las Cortes Generales como tal no tienen esta iniciativa; el artículo atribuye la autorización al Congreso de los Diputados, no a las Cortes Generales en conjunto, y la iniciativa sigue siendo del Gobierno.\n- **D)** Las Cortes Generales no tienen la iniciativa de esta declaración; corresponde al Gobierno, quedando el Congreso limitado a autorizarla."
+  },
+  {
+    "question_id": "0eea2c96-08d3-4a8e-b672-1f0c7343af11",
+    "servidas": 260,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/b7a10d7f-9453-4b89-974c-eb5138aec1d2.txt",
+    "enunciado": "En Outlook 365 SMTP es:",
+    "opciones": {
+      "A": "Un protocolo de mensajería que identifica unívocamente al receptor y al emisor.",
+      "B": "Un protocolo de autentificación de correo entre el servidor y el cliente.",
+      "C": "Un protocolo de cifrado de mensajes entre servidor y cliente.",
+      "D": "Un protocolo de transferencia simple de correo empleado para el intercambio de mensajes entre dispositivos."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "SMTP cumple una función muy concreta dentro del funcionamiento del correo electrónico, distinta de otras tareas como la autenticación o el cifrado.\n\n> **Outlook 365, art. 1**\n> \"Su función es exclusivamente el **envío** (no la recepción).\"\n\n**Por qué D es correcta:** SMTP es precisamente el protocolo de transferencia simple de correo que se usa para intercambiar mensajes entre servidores y clientes de correo.\n\n**Por qué las demás son incorrectas:**\n- **A)** SMTP no identifica de forma unívoca a emisor y receptor; su función es transportar el mensaje entre servidores.\n- **B)** SMTP no es un protocolo de autenticación entre servidor y cliente; esa función corresponde a otros mecanismos.\n- **C)** SMTP no cifra los mensajes; el cifrado se añade con tecnologías como TLS/SSL por encima de SMTP."
+  },
+  {
+    "question_id": "c6d612ff-1e53-4fd7-b50c-9ea44a38d9e4",
+    "servidas": 259,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Conforme al artículo 116 de la Constitución, ¿cómo se declara el estado de excepción?",
+    "opciones": {
+      "A": "Por el Gobierno, informando posteriormente a las Cortes Generales.",
+      "B": "Por el Gobierno, con autorización previa de las Cortes Generales.",
+      "C": "Por el Congreso de los Diputados a propuesta gubernamental.",
+      "D": "Por el Gobierno, con autorización previa del Congreso de los Diputados."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.3 CE establece el procedimiento exacto para declarar el estado de excepción.\n\n> **CE, art. 116.3**\n> \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.\"\n\n**Por qué D es correcta:** El estado de excepción se declara por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados, tal y como recoge expresamente el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El estado de excepción no se declara dando cuenta posterior a las Cortes Generales; ese trámite, y con el Congreso y no con las Cortes Generales, corresponde al estado de alarma.\n- **B)** La autorización previa no la presta «las Cortes Generales» como conjunto, sino específicamente el Congreso de los Diputados.\n- **C)** El estado de excepción no lo declara el Congreso a propuesta del Gobierno; esa fórmula es la prevista para el estado de sitio."
+  },
+  {
+    "question_id": "fb3db15b-46c7-4221-aa65-d9524a01afe6",
+    "servidas": 258,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, establece que las Administraciones Públicas actúan con sometimiento pleno:",
+    "opciones": {
+      "A": "A la Constitución, a la Ley y al Derecho",
+      "B": "A la Constitución y al principio de legalidad",
+      "C": "A la Ley y al Derecho",
+      "D": "A la Constitución y a las leyes"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo cierra el enunciado de principios de actuación fijando a qué se somete plenamente la actuación administrativa.\n\n> **Ley 40/2015, art. 3.1**\n> \"con sometimiento pleno a la Constitución, a la Ley y al Derecho.\"\n\n**Por qué A es correcta:** Coincide de forma literal con el precepto: sometimiento pleno a la Constitución, a la Ley y al Derecho.\n\n**Por qué las demás son incorrectas:**\n- **B)** No es correcta: sustituye la referencia a la Ley y al Derecho por el principio de legalidad, expresión que no emplea el artículo.\n- **C)** No es correcta: omite la referencia expresa a la Constitución, que el artículo sí menciona en primer lugar.\n- **D)** No es correcta: el artículo habla de sometimiento a \"la Ley\" (en singular) y al Derecho, no de sometimiento a \"las leyes\" en plural."
+  },
+  {
+    "question_id": "78d7d70e-6a7c-4def-a9be-a42f5da6a914",
+    "servidas": 257,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "De acuerdo con la Constitución Española, no es uno de los instrumentos constitucionales atribuidos al Gobierno para ejercer la dirección política:",
+    "opciones": {
+      "A": "La subordinación de las Fuerzas y Cuerpos de Seguridad.",
+      "B": "La elaboración de los Presupuestos Generales.",
+      "C": "Dictar Decretos-Leyes.",
+      "D": "Declarar el Estado de Sitio."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.4 CE atribuye la declaración del estado de sitio a un órgano distinto del Gobierno, a diferencia de otros instrumentos de dirección política que sí ejerce el Gobierno.\n\n> **CE, art. 116.4**\n> \"El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno.\"\n\n**Por qué D es correcta:** Declarar el estado de sitio no lo decide el Gobierno: el artículo 116.4 atribuye esa declaración al propio Congreso de los Diputados, por mayoría absoluta y a propuesta exclusiva del Gobierno, que solo propone, no declara.\n\n**Por qué las demás son incorrectas:**\n- **A)** La subordinación de las Fuerzas y Cuerpos de Seguridad sí es un instrumento de dirección política atribuido al Gobierno, en su función de dirección de la Administración y la defensa del Estado.\n- **B)** La elaboración de los Presupuestos Generales sí corresponde al Gobierno como instrumento de dirección política y económica.\n- **C)** Dictar Decretos-Leyes sí es una facultad atribuida al Gobierno en el ejercicio de su función de dirección política."
+  },
+  {
+    "question_id": "d61c2947-5cf6-455e-8392-cb0142ec9fba",
+    "servidas": 256,
+    "es_examen_oficial": true,
+    "ley": "Ley 40/2015",
+    "articulo": "38",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/37eb6bde-003f-436d-a536-11da2f4eb0c3.txt",
+    "enunciado": "De acuerdo con la Ley 40/2015, la sede electrónica se define como:",
+    "opciones": {
+      "A": "Aquella dirección electrónica, disponible para los ciudadanos a través de redes de telecomunicaciones, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias.",
+      "B": "El punto de acceso electrónico cuya titularidad corresponde a una Administración Pública, organismo público o entidad de Derecho Público que permite el acceso a través de internet a la información publicada y a la sede electrónica correspondiente.",
+      "C": "El sistema de identificación mediante sello electrónico utilizado para identificarse ante las Administraciones Públicas.",
+      "D": "Cualquier acto o actuación realizada íntegramente a través de medios electrónicos por una Administración Pública."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo 38 de la Ley 40/2015 define la sede electrónica, un concepto que conviene no confundir con otras figuras próximas como el punto de acceso general o la actuación administrativa automatizada.\n\n> **Ley 40/2015, art. 38.1**\n> \"La sede electrónica es aquella dirección electrónica, disponible para los ciudadanos a través de redes de telecomunicaciones, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias.\"\n\n**Por qué A es correcta:** Esta es la definición legal de sede electrónica: dirección electrónica disponible para los ciudadanos cuya titularidad corresponde a una Administración, organismo o entidad de Derecho Público.\n\n**Por qué las demás son incorrectas:**\n- **B)** Esta descripción corresponde al punto de acceso general electrónico, el portal que permite acceder a la información y a las distintas sedes, no a la sede electrónica en sí.\n- **C)** Esta definición corresponde a un sistema de identificación, como el sello electrónico, no a una dirección electrónica con titular responsable.\n- **D)** Esta descripción corresponde a la actuación administrativa automatizada, realizada íntegramente por medios electrónicos, no a la sede electrónica."
+  },
+  {
+    "question_id": "483fd85f-1b94-49cc-a815-cd26325c9890",
+    "servidas": 255,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "De conformidad con lo dispuesto en el artículo 116 de la CE, ¿cuál de las siguientes funciones le corresponde al Congreso de los Diputados?",
+    "opciones": {
+      "A": "Declarar el estado de excepción.",
+      "B": "Declarar el estado de sitio.",
+      "C": "Declarar el estado de alarma.",
+      "D": "Declarar el estado de calamidad."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116 reparte de forma distinta la declaración de cada estado excepcional entre el Gobierno y el Congreso.\n\n> **CE, art. 116.4**\n> \"El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno.\"\n\n**Por qué B es correcta:** Declarar el estado de sitio corresponde al propio Congreso de los Diputados, por mayoría absoluta, a propuesta exclusiva del Gobierno.\n\n**Por qué las demás son incorrectas:**\n- **A)** Declarar el estado de excepción corresponde al Gobierno, previa autorización del Congreso, no al Congreso directamente.\n- **C)** Declarar el estado de alarma corresponde al Gobierno mediante decreto en Consejo de Ministros, no al Congreso.\n- **D)** El artículo 116 no regula ningún «estado de calamidad»; solo contempla los estados de alarma, excepción y sitio."
+  },
+  {
+    "question_id": "5a241e07-d37a-4cb5-aea8-57ccd4a142de",
+    "servidas": 254,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de las siguientes opciones es FALSA con respecto al Administrador de Tareas de Windows 11?",
+    "opciones": {
+      "A": "En la pestaña Procesos podemos visualizar los procesos que se están ejecutando, así como su consumo de CPU, memoria, disco, etc.",
+      "B": "En la pestaña Inicio podemos visualizar los programas que se ejecutan al arrancar Windows 11.",
+      "C": "En la pestaña Planificación podemos dar de alta las tareas diarias en un planificador de calendario.",
+      "D": "En la pestaña Rendimiento podemos visualizar, entre otros datos, el consumo de CPU, memoria y disco del dispositivo."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El Administrador de tareas de Windows 11 organiza su información en un conjunto fijo de pestañas.\n\n> **Windows 11, art. 1**\n> \"**Falso:** En el Administrador de tareas NO existe una pestaña \"Planificación\" para dar de alta tareas en un calendario. El Programador de tareas es una herramienta separada.\"\n\n**Por qué C es correcta:** El Administrador de tareas no tiene ninguna pestaña llamada «Planificación»; dar de alta tareas en un calendario corresponde al Programador de tareas, una herramienta distinta.\n\n**Por qué las demás son incorrectas:**\n- **A)** La pestaña Procesos sí muestra los procesos en ejecución junto con su consumo de CPU, memoria y disco.\n- **B)** La pestaña Inicio sí muestra los programas que se ejecutan al arrancar Windows 11.\n- **D)** La pestaña Rendimiento sí muestra el consumo de CPU, memoria y disco del dispositivo."
+  },
+  {
+    "question_id": "07950339-201c-41f2-8916-62491647c455",
+    "servidas": 254,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Conforme a lo dispuesto en el artículo 3 de la Ley 40/2015, la actuación de la Administración Pública respectiva se desarrolla para alcanzar los objetivos que establecen las leyes y el resto del ordenamiento jurídico, bajo la dirección de (señale la respuesta incorrecta):",
+    "opciones": {
+      "A": "El Gobierno de la Nación.",
+      "B": "Los órganos de gobierno de las Entidades Locales.",
+      "C": "Las entidades de derecho privado vinculadas o dependientes de las administraciones públicas.",
+      "D": "Los órganos de gobierno de las Comunidades Autónomas."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo señala expresamente bajo qué dirección se desarrolla la actuación de cada Administración Pública para alcanzar los objetivos fijados por el ordenamiento jurídico.\n\n> **Ley 40/2015, art. 3.3**\n> \"Bajo la dirección del Gobierno de la Nación, de los órganos de gobierno de las Comunidades Autónomas y de los correspondientes de las Entidades Locales, la actuación de la Administración Pública respectiva se desarrolla para alcanzar los objetivos que establecen las leyes y el resto del ordenamiento jurídico.\"\n\n**Por qué C es correcta:** No aparece en el precepto: las entidades de derecho privado vinculadas o dependientes son instrumentos dirigidos por las Administraciones, no órganos que dirijan su actuación, por lo que es la respuesta buscada.\n\n**Por qué las demás son incorrectas:**\n- **A)** Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa.\n- **B)** Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa.\n- **D)** Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa."
+  },
+  {
+    "question_id": "df7130e8-4ad4-4748-a2a7-95d13be58e2f",
+    "servidas": 253,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/b7a10d7f-9453-4b89-974c-eb5138aec1d2.txt",
+    "enunciado": "En Outlook 365, la opción \"Marcar todos como leídos\" se encuentra en la pestaña:",
+    "opciones": {
+      "A": "Enviar y recibir.",
+      "B": "Archivo.",
+      "C": "Carpeta.",
+      "D": "Vista."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "La opción para marcar de una sola vez todos los mensajes de una carpeta como leídos se agrupa junto con el resto de comandos de gestión de esa carpeta.\n\n**Por qué C es correcta:** Carpeta agrupa los comandos de gestión de la carpeta activa, entre ellos marcar todos sus mensajes como leídos.\n\n**Por qué las demás son incorrectas:**\n- **A)** Enviar y recibir agrupa las opciones de sincronización y descarga de correo, no el marcado de mensajes como leídos.\n- **B)** Archivo da acceso a la configuración de cuentas y a las opciones generales, no a marcar mensajes como leídos.\n- **D)** Vista gestiona la apariencia y disposición del correo, no el estado de lectura de los mensajes."
+  },
+  {
+    "question_id": "c146bd8a-3f86-405f-a22c-af8e946b882b",
+    "servidas": 253,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Qué herramienta de Windows ofrece una pantalla de interfaz de usuario basado en texto, que puede utilizarse para ejecutar comandos y realizar funciones administrativas avanzadas?",
+    "opciones": {
+      "A": "Bloc de notas.",
+      "B": "Liberador de espacio en disco.",
+      "C": "Símbolo del sistema.",
+      "D": "Mapa de caracteres."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Windows incluye herramientas con propósitos muy distintos, desde editores de texto hasta consolas de administración.\n\n> **Windows 11, art. 1**\n> \"El **Símbolo del sistema** (cmd.exe) es la herramienta de Windows que ofrece una **interfaz de usuario basada en texto** (consola), desde la que se pueden ejecutar comandos y realizar funciones administrativas avanzadas.\"\n\n**Por qué C es correcta:** El Símbolo del sistema ofrece una consola de texto desde la que ejecutar comandos y realizar tareas administrativas avanzadas.\n\n**Por qué las demás son incorrectas:**\n- **A)** El Bloc de notas es un editor de texto plano; no permite ejecutar comandos del sistema.\n- **B)** El Liberador de espacio en disco es una herramienta gráfica para eliminar archivos temporales; no ofrece una interfaz de comandos.\n- **D)** El Mapa de caracteres permite copiar caracteres especiales; no proporciona una interfaz de comandos administrativos."
+  },
+  {
+    "question_id": "d2b4eaaf-e15e-47b8-8b35-a24d3ec00d10",
+    "servidas": 252,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Las Administraciones Públicas se relacionarán entre sí y con sus órganos, organismos públicos y entidades vinculados o dependientes a través de:",
+    "opciones": {
+      "A": "Medios electrónicos",
+      "B": "Fax",
+      "C": "Correo ordinario",
+      "D": "Los medios disponibles"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo fija el cauce obligatorio a través del cual se relacionan entre sí las Administraciones Públicas y sus organismos y entidades dependientes.\n\n> **Ley 40/2015, art. 3.2**\n> \"Las Administraciones Públicas se relacionarán entre sí y con sus órganos, organismos públicos y entidades vinculados o dependientes a través de medios electrónicos, que aseguren la interoperabilidad y seguridad de los sistemas y soluciones adoptadas por cada una de ellas\"\n\n**Por qué A es correcta:** Es la respuesta correcta: el precepto exige expresamente que la relación se produzca a través de este cauce.\n\n**Por qué las demás son incorrectas:**\n- **B)** No se menciona en el artículo; es un medio que no garantiza la interoperabilidad y seguridad que exige el precepto.\n- **C)** No se menciona en el artículo; no cumple los requisitos de interoperabilidad y seguridad que exige el precepto.\n- **D)** No es correcta: el artículo no deja la elección abierta a cualquier medio, sino que exige específicamente el cauce citado."
+  },
+  {
+    "question_id": "c963a40f-d1ae-4e1a-9ebb-c42a68c5d156",
+    "servidas": 251,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "0",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2536184c-73ed-4568-9ac7-0bbf1da24dcb.txt",
+    "enunciado": "De acuerdo con su Preámbulo, ¿quién ratifica la Constitución Española de 1978?",
+    "opciones": {
+      "A": "El pueblo español.",
+      "B": "Las Cortes Generales.",
+      "C": "El Gobierno.",
+      "D": "El Rey."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El Preámbulo de la Constitución de 1978 distingue a los distintos actores que intervinieron en su elaboración y aprobación: quién la redactó, quién la aprobó y quién la ratificó finalmente.\n\n**Por qué A es correcta:** Fue el pueblo español quien ratificó la Constitución mediante el referéndum del 6 de diciembre de 1978, tal como recoge el propio Preámbulo.\n\n**Por qué las demás son incorrectas:**\n- **B)** Las Cortes Generales aprobaron el texto constitucional, pero aprobar y ratificar son actos distintos; la ratificación correspondió al pueblo español.\n- **C)** El Gobierno no interviene en la ratificación constitucional, que corresponde al pueblo español mediante referéndum.\n- **D)** El Rey sancionó y promulgó la Constitución una vez ratificada, pero la ratificación en sí fue obra del pueblo español."
+  }
+]

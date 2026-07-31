@@ -1,0 +1,961 @@
+LEY: Informática Básica
+ARTÍCULO: 1 — Conceptos fundamentales de informática
+======================================================================
+## Conceptos Fundamentales de Informática
+
+La **informática** es la ciencia que estudia el tratamiento automático y racional de la información mediante ordenadores. El término proviene de la contracción de las palabras "información" y "automática". La informática abarca tanto el **hardware** (componentes físicos) como el **software** (componentes lógicos) de los sistemas computacionales.
+
+Un **dato** es la representación simbólica de un hecho, evento o entidad. La **información** es el conjunto de datos procesados y organizados de forma significativa para el receptor. El **algoritmo** es un conjunto de instrucciones o pasos ordenados y finitos que permiten resolver un problema o realizar una tarea computacional.
+
+El **hardware** es el conjunto de los componentes que conforman la parte material de una computadora: circuitos integrados, cables, placas, periféricos y demás elementos físicos. El **software** es el equipamiento lógico e intangible de un ordenador: programas, datos e instrucciones que permiten al hardware realizar tareas.
+
+---
+
+## Sistemas de Numeración
+
+Los ordenadores trabajan internamente con el sistema **binario**, aunque los humanos interactuamos principalmente con el sistema **decimal**.
+
+### Sistema Decimal (Base 10)
+
+Utiliza 10 dígitos: 0, 1, 2, 3, 4, 5, 6, 7, 8 y 9. Es el sistema de numeración habitual en matemáticas cotidianas.
+
+### Sistema Binario (Base 2)
+
+> **Emplea únicamente dos dígitos: el valor 0 y el valor 1.** Es el lenguaje nativo de los ordenadores, ya que los circuitos electrónicos solo pueden representar dos estados: ausencia o presencia de corriente eléctrica.
+
+Cada dígito en sistema binario recibe el nombre de **bit** (del inglés *Binary Digit*).
+
+### Sistema Octal (Base 8)
+
+Utiliza 8 dígitos: 0, 1, 2, 3, 4, 5, 6 y 7. Se emplea como abreviatura del binario, ya que un dígito octal equivale a 3 bits.
+
+### Sistema Hexadecimal (Base 16)
+
+Utiliza 16 símbolos: los dígitos 0-9 y las letras A (10), B (11), C (12), D (13), E (14) y F (15). Muy utilizado en programación y representación de colores, direcciones de memoria y código máquina, ya que un dígito hexadecimal equivale a 4 bits (un nibble).
+
+---
+
+## Unidades de Medida de la Información
+
+### El Bit y el Byte
+
+La **unidad mínima de información** es el **bit** (abreviatura de *Binary Digit*). Un bit puede tener únicamente dos valores: 0 o 1.
+
+> **Un byte está formado por 8 bits.** Es la unidad básica de almacenamiento que representa un carácter alfanumérico.
+
+Un **nibble** equivale a 4 bits (medio byte).
+
+### Tabla Completa de Unidades de Almacenamiento
+
+| Unidad | Símbolo | Equivalencia decimal | Equivalencia binaria (potencia de 2) |
+|--------|---------|---------------------|--------------------------------------|
+| Bit | b | 1 bit | 1 bit |
+| Nibble | — | 4 bits | 4 bits |
+| **Byte** | B | **8 bits** | 2³ bits |
+| Kilobyte | KB | 1.000 bytes | 2¹⁰ = 1.024 bytes |
+| Megabyte | MB | 1.000.000 bytes | 2²⁰ = 1.048.576 bytes |
+| Gigabyte | GB | 1.000.000.000 bytes | 2³⁰ = 1.073.741.824 bytes |
+| **Terabyte** | **TB** | **1.000 GB** | 2⁴⁰ bytes |
+| Petabyte | PB | 1.000 TB | 2⁵⁰ bytes |
+| Exabyte | EB | 1.000 PB | 2⁶⁰ bytes |
+| Zettabyte | ZB | 1.000 EB | 2⁷⁰ bytes |
+| Yottabyte | YB | 1.000 ZB | 2⁸⁰ bytes |
+
+> **1 Terabyte = 1.024 Gigabytes.** Equivale a 1.000 gigabytes (GB) o 1.000.000 megabytes (MB).
+
+### Medición de Velocidades
+
+La velocidad de procesamiento de los microprocesadores se mide en **hercios (Hz)** y sus múltiplos:
+
+- **Megahercio (MHz):** Un millón de ciclos por segundo. Un megahercio puede ejecutar **un millón de ciclos por segundo**.
+- **Gigahercio (GHz):** Mil millones de ciclos por segundo.
+
+El **ancho de banda** de un componente indica la cantidad de datos que puede transmitir en un tiempo determinado.
+
+---
+
+## Representación de Datos
+
+### Código ASCII
+
+**ASCII** (American Standard Code for Information Interchange) es el sistema de codificación estándar para el intercambio de información. Asigna un número a cada carácter alfanumérico y de control. Los caracteres **ASCII** son comunes y estándar a la mayoría de sistemas operativos.
+
+### Unicode
+
+**Unicode** es un estándar de codificación de caracteres que permite representar prácticamente todos los sistemas de escritura del mundo. A diferencia de ASCII (128 caracteres), Unicode puede representar más de 1 millón de caracteres distintos.
+
+### Tipos de Datos en Programación
+
+| Tipo | Descripción | Ejemplo |
+|------|-------------|---------|
+| **Entero** | Números sin decimales | 42, -7, 0 |
+| **Real/Flotante** | Números con decimales | 3.14, -2.5 |
+| **Carácter** | Un símbolo alfanumérico | 'A', 'z', '3' |
+| **Cadena (String)** | Secuencia de caracteres | "Hola mundo" |
+| **Booleano** | Valores lógicos | **Verdadero o Falso** |
+
+> **El tipo de dato booleano** se utiliza para valores lógicos del tipo Verdadero o Falso. Solo puede contener uno de esos dos valores.
+
+---
+
+## El Ordenador: Historia y Generaciones
+
+### Generaciones de Ordenadores
+
+| Generación | Periodo | Tecnología clave | Características |
+|------------|---------|-----------------|----------------|
+| 1ª | 1940-1955 | Válvulas de vacío | Enormes, lentos, mucho calor |
+| 2ª | 1955-1964 | Transistores | Más pequeños, rápidos y fiables |
+| 3ª | 1964-1971 | Circuitos integrados | Miniaturización, menor coste |
+| 4ª | 1971-presente | Microprocesadores | PC personales, gran capacidad |
+| 5ª | Actualidad | IA, computación cuántica | Sistemas inteligentes |
+
+### Tipos de Ordenadores
+
+| Tipo | Descripción |
+|------|-------------|
+| **Mainframe** | Ordenadores de gran capacidad para empresas y organizaciones |
+| **Superordenador** | Equipos extremadamente potentes con cientos de procesadores trabajando en paralelo, con gran capacidad de cálculo |
+| **Servidor** | Equipo que proporciona servicios a otros equipos en red |
+| **Ordenador personal (PC)** | Uso doméstico y ofimático individual |
+| **Portátil (Laptop)** | PC de sobremesa compacto y transportable |
+| **Tablet** | Dispositivo táctil con pantalla integrada |
+| **Smartphone** | Teléfono inteligente con capacidades computacionales |
+
+---
+
+## Componentes Internos del Ordenador
+
+### La Placa Base (Motherboard)
+
+La **placa base** o *motherboard* es el componente principal que interconecta todos los elementos del ordenador. Su soporte físico recibe el nombre de **PCB** (*Printed Circuit Board*, Placa de Circuito Impreso).
+
+En ella se encuentran:
+- El zócalo del procesador
+- Ranuras de memoria RAM
+- Conectores de almacenamiento (SATA, M.2)
+- **Slots de expansión**: ranuras donde se instalan tarjetas adicionales (gráfica, sonido, red)
+- Conectores de alimentación
+- El chipset
+
+### El Chipset
+
+El **chipset** actúa como intermediario entre el microprocesador y los distintos dispositivos. Existen **dos tipos de chipset**:
+
+- **Northbridge (Puente Norte):** Ayuda al microprocesador en su interrelación con las memorias y la tarjeta gráfica. Gestiona comunicaciones de alta velocidad.
+- **Southbridge (Puente Sur):** Gestiona los dispositivos de almacenamiento, puertos USB, audio y otros periféricos. Cuando mencionamos el término "Southbridge" nos referimos al **chipset**.
+
+> **No existe un chipset denominado "Westbridge"**, por lo que esta opción es incorrecta cuando se pregunte por tipos de chipset.
+
+### La CPU (Unidad Central de Proceso)
+
+El **procesador** o **CPU** (*Central Processing Unit*) es el componente más importante del ordenador. También se le denomina **Unidad Central de Proceso** o **microprocesador**. Se encarga fundamentalmente de **ejecutar instrucciones y procesar datos**.
+
+#### Componentes Internos de la CPU
+
+| Componente | Función |
+|------------|---------|
+| **ALU** (Unidad Aritmético-Lógica) | Realiza operaciones matemáticas y lógicas |
+| **CU** (Unidad de Control) | Controla y coordina el funcionamiento del resto de componentes |
+| **Registros** | Pequeñas memorias ultra-rápidas dentro del procesador para datos en uso inmediato |
+| **Caché interna** | Memoria de acceso ultrarrápido integrada en el procesador |
+
+#### Los Buses del Sistema
+
+Los **buses** son canales de comunicación que transportan datos entre los componentes del ordenador. Los tipos principales son:
+
+- **Bus de datos:** Transporta los datos entre componentes.
+- **Bus de direcciones:** Transporta las direcciones de memoria.
+- **Bus de control:** Transporta señales de control.
+
+> **No existe el "Bus de Procesador"** como tipo de bus estándar.
+
+En un ordenador con un **bus de 30 hilos** (líneas de dirección), se pueden direccionar **1 GiB** de posiciones de memoria (2³⁰ = 1.073.741.824 posiciones).
+
+### El Disipador y Refrigeración
+
+El **disipador** recoge el calor generado por el procesador y lo transmite al ambiente. Los **ventiladores y sistemas de refrigeración** (agua, aire forzado) son los componentes responsables de la **refrigeración activa del sistema**, disipando el calor generado por el procesador y otros componentes.
+
+---
+
+## La Memoria
+
+### Tipos Principales de Memoria
+
+#### Memoria RAM (Random Access Memory)
+
+La **RAM** (*Random Access Memory* — **Memoria de Acceso Aleatorio**) es la memoria principal de trabajo del ordenador.
+
+> **El gran inconveniente de la Memoria RAM es que su contenido se pierde cuando se apaga el ordenador.** Es una memoria **volátil**.
+
+Características:
+- **Volátil:** se borra al apagar el equipo
+- Acceso aleatorio: el procesador accede a cualquier posición directamente
+- Es la intermediaria entre el disco duro y las aplicaciones en ejecución
+- Un equipo con **8 GB de RAM** dispone de 8 gigabytes de memoria volátil de acceso rápido donde el sistema operativo y las aplicaciones cargan temporalmente los datos mientras el equipo está encendido
+
+#### Memoria RAM DRAM
+
+La **DRAM** (*Dynamic RAM*) es un tipo de memoria RAM que tiene una gran capacidad pero que **precisa ser constantemente refrescada (re-energizada)** o perdería su contenido.
+
+#### Memoria ROM (Read Only Memory)
+
+La **ROM** (*Read Only Memory* — Memoria de Solo Lectura) es una memoria **no volátil**: conserva su contenido aunque se apague el equipo. Almacena la información crucial que gestiona la BIOS, como la fecha, la hora y la secuencia de arranque.
+
+Tipos de ROM:
+
+| Tipo | Descripción |
+|------|-------------|
+| **ROM** | Solo lectura, grabada en fábrica, no modificable |
+| **PROM** | Programable una sola vez por el usuario |
+| **EPROM** | Borrable mediante luz ultravioleta y reprogramable |
+| **EEPROM** | Borrable eléctricamente y reprogramable sin extraer el chip |
+| **Flash** | Variante de EEPROM de alta densidad, usada en SSDs y USB |
+
+> **La memoria PROM** puede ser programada por el usuario una única vez. Las respuestas a y b sobre la PROM son correctas (es programable una vez y es de solo lectura tras su programación).
+
+#### Memoria Caché
+
+La memoria **caché** es una memoria de acceso ultrarrápido que actúa como intermediaria entre la CPU y la RAM, almacenando datos de uso frecuente para **acelerar el acceso a datos frecuentes del procesador**.
+
+Niveles de caché:
+
+| Nivel | Ubicación | Velocidad | Tamaño |
+|-------|-----------|-----------|--------|
+| **L1** | Dentro del propio procesador | Más rápida | Más pequeña (KB) |
+| **L2** | Dentro del procesador o muy próxima | Rápida | Media (KB-MB) |
+| **L3** | Compartida entre núcleos | Más lenta que L1/L2 | Mayor (MB) |
+
+> La memoria caché **L1** se caracteriza por estar **localizada dentro del propio procesador**.
+
+La memoria caché tiene como objetivo principal **acelerar el acceso a datos frecuentes del procesador** y **reducir el tiempo de acceso a datos frecuentemente utilizados por la CPU**.
+
+#### Memoria Virtual y SWAP
+
+La **memoria virtual** es una técnica del sistema operativo que permite usar parte del disco duro como si fuera RAM, ampliando el espacio de memoria disponible para los programas.
+
+La **memoria SWAP** es el tipo de memoria virtual que tiene por objeto **simular a la memoria RAM**, con el fin de almacenar información a través del disco duro cuando dicha memoria se encuentra parcialmente llena, consiguiendo así un flujo de datos continuo sin necesidad de interferir en el proceso de datos.
+
+El **swapping** es un mecanismo o modo de interrelacionar la memoria principal con la secundaria.
+
+#### Buffer (Memoria Tampón)
+
+El **buffer** es el espacio de memoria en el que se almacenan datos de forma temporal para garantizar que la transmisión entre un dispositivo de entrada a uno de salida se realiza de forma adecuada.
+
+#### Stack (Pila)
+
+El **stack** se usa para la asignación de memoria estática y automática (variables locales). El principal riesgo asociado con el stack es el **Stack Overflow** (desbordamiento de pila).
+
+#### Almacenamiento Secundario
+
+El **almacenamiento secundario** se caracteriza principalmente por **conservar los datos incluso cuando el sistema está apagado**. En un sistema operativo, se entiende por almacenamiento secundario la **memoria a largo plazo**.
+
+Entre los elementos de memoria secundaria se encuentran: el **disco duro** o **SSD**.
+
+---
+
+## Dispositivos de Almacenamiento
+
+### Disco Duro HDD (Hard Disk Drive)
+
+Las unidades de discos duros **HDD** son dispositivos de almacenamiento que emplean un **sistema de grabación magnética**. El disco duro tiene como función principal el almacenamiento permanente de datos.
+
+Componentes físicos:
+- **Platos:** Discos metálicos giratorios que almacenan la información. Los discos duros HDD están compuestos por **platos** (discos metálicos giratorios).
+- **Cabezales de lectura/escritura:** Leen y escriben datos en los platos.
+- **Actuador:** Mueve los cabezales sobre los platos.
+
+La **velocidad de giro** del disco duro se mide en **RPM** (revoluciones por minuto).
+
+El tiempo de acceso a la información en un disco duro viene dado por:
+- **Tiempo de búsqueda:** tiempo en situar el cabezal en la pista correcta.
+- **Tiempo de latencia rotacional:** tiempo medio que tarda el cabezal en situarse en el **sector deseado**, una vez posicionado en la pista.
+
+La **unidad mínima de almacenamiento** que establece el sistema operativo se denomina **clúster**, formado por uno o varios sectores.
+
+### Disco SSD (Solid State Drive)
+
+Los dispositivos SSD integran memoria **NAND Flash** como único sistema de almacenamiento y pretenden sustituir a los discos duros tradicionales. Las **ventajas** de los SSD en comparación con los HDD son:
+- Mayor velocidad de lectura/escritura
+- Menor consumo energético
+- Sin partes móviles (mayor resistencia a golpes)
+- Menor latencia de acceso
+
+Los dispositivos de almacenamiento del tipo USB (**Pendrives**) también hacen uso de memorias de tipo **flash**.
+
+### Discos Ópticos (CD/DVD/Blu-ray)
+
+La tecnología óptica **emplea un láser sobre una superficie reflectante** para leer y escribir datos. Las zonas que almacenan la información en un disco CD o DVD se conocen como **pits y lands**.
+
+| Sigla | Significado |
+|-------|-------------|
+| **CD** | Compact Disc |
+| **DVD** | **Digital Versatile Disk** |
+| **Blu-ray** | Alta definición, mayor capacidad que DVD |
+
+### Tipos de Almacenamiento en Red
+
+| Tipo | Descripción |
+|------|-------------|
+| **DAS** | *Direct Attached Storage* — Almacenamiento directamente conectado a la máquina |
+| **NAS** | *Network Attached Storage* — Dispositivo de almacenamiento conectado a red de alta capacidad |
+| **SAN** | *Storage Area Network* — Red de almacenamiento integral |
+
+### RAID (Redundant Array of Independent Disks)
+
+**RAID** significa *Redundant Array of Independent Disks* (matriz redundante de discos independientes). Es una tecnología para tener redundancia en el almacenamiento de datos, evitando pérdida accidental o intencionada de información.
+
+El sistema RAID crea un único volumen con varios discos duros funcionando en conjunto. Sus técnicas principales son:
+- **Disk Striping:** Distribución de datos en bloques entre varios discos para mayor velocidad.
+- **Disk Mirroring:** Duplicación de datos en múltiples discos para tolerancia a fallos.
+
+| Nivel RAID | Descripción | Discos mínimos | Característica |
+|------------|-------------|----------------|---------------|
+| **RAID 0** | Almacena información de forma alterna entre varios discos, sin duplicarla. Solo aumenta velocidad, sin tolerancia a fallos | 2 | Solo striping |
+| **RAID 1** | Duplica toda la información en lugar de usar paridad. Mayor coste | 2 | Solo mirroring |
+| **RAID 5** | Striping con paridad distribuida. Mejor relación precio/rendimiento | **3 discos mínimo** | Striping + paridad |
+| **RAID 6** | Como RAID 5 pero con doble paridad | 4 | Mayor tolerancia |
+
+> **RAID 5** es el que tiene la mejor relación precio/rendimiento entre los tipos más comunes. Requiere un **mínimo de tres discos duros**.
+
+---
+
+## Sistemas de Archivos
+
+Un **sistema de archivos** (o sistema de ficheros) es el conjunto de normas y restricciones que dictan la forma en que deben almacenarse los archivos en un dispositivo de almacenamiento. **Estructuran la información guardada en una unidad de almacenamiento**.
+
+Los sistemas de archivos actúan como una **interfaz entre el sistema operativo y todos los dispositivos de almacenamiento internos y externos**.
+
+Para asignar un sistema de archivos a un dispositivo de almacenamiento se realiza un **formateo** del soporte de datos.
+
+Los sistemas de archivos presentan una **estructura de árbol** para organizar los archivos, que parte del directorio raíz. Esta estructura se denomina **estructura arborescente** (o jerárquica).
+
+### Funciones del Sistema de Archivos
+
+El sistema de archivos suministra los medios para:
+- Crear, leer, modificar y eliminar archivos
+- Organizar archivos en directorios o carpetas
+- Controlar permisos de acceso
+- Gestionar el espacio de almacenamiento
+
+> **No es función del sistema de archivos automatizar la gestión de la memoria primaria.**
+
+### Sistemas de Archivos de Windows
+
+| Sistema | Significado | Características |
+|---------|-------------|----------------|
+| **FAT** | File Allocation Table | Sistema antiguo, compatible, limitaciones de tamaño |
+| **FAT32** | FAT de 32 bits | Tamaño máximo de **archivo: 4 GB**, partición máxima: **2 TB**, nombres hasta **255 caracteres** |
+| **exFAT** | *Extended File Allocation Table* | Diseñado para **medios de almacenamiento extraíbles**. Supera limitaciones de FAT32 |
+| **NTFS** | *New Technology File System* — **Sistema de Archivos de Nueva Tecnología** | Sistema actual de Windows, sin limitaciones prácticas de tamaño |
+| **HPFS** | *High Performance File System* | Desarrollado para **OS/2** |
+
+**Características exclusivas de NTFS frente a FAT32:**
+- Tamaño máximo de archivo: **16 TB** (con clúster predeterminado en versiones actuales)
+- Tamaño mínimo de clúster: **512 bytes**
+- Soporte de **permisos** de acceso y seguridad avanzada
+- Registro de transacciones (journaling) para recuperación ante fallos
+- Cifrado con **EFS** (*Encrypting File System*), que usa **sistemas de cifrado simétricos y asimétricos combinados**
+- Compresión nativa de archivos
+- **Tabla Maestra de Archivos (MFT):** estructura que utiliza NTFS para gestionar los archivos
+- Sistema de archivos de las **versiones más actuales de Windows**
+- Mejor opción para volúmenes de **400 MB o más**, ya que su rendimiento no se degrada con volúmenes grandes
+
+> En FAT, los nombres de archivo NO se basan en Unicode (sí en NTFS y HFS+). **NTFS y HFS+ comparten**: soporte Unicode y journaling.
+
+**¿Qué sistema de archivos no es de Windows?** **SOLARIS** no es un sistema de archivos.
+
+**Para una unidad USB de 2 GB a 16 GB** se aconseja usar **FAT32**, ya que la hace compatible con la mayoría de equipos y reproductores de música o multimedia.
+
+### Sistemas de Archivos de Linux/Unix
+
+| Sistema | Descripción |
+|---------|-------------|
+| **ext2** | Sistema de archivos básico de Linux |
+| **ext3** | Añade journaling a ext2 |
+| **ext4** | Sistema estándar actual de Linux. Novedad principal: función **extents** (optimiza archivos grandes). Volumen máximo: **1 EB** |
+| **Reiser4** | Sistema de última generación con capacidad de optimizar espacio de archivos pequeños (menos de un bloque) |
+| **XFS** | Sistema de archivos de alto rendimiento |
+
+> **EXT4** es el sistema de archivos estándar de muchos sistemas **Linux**. Incorpora la función **extents**, que optimiza la gestión de archivos grandes y evita la fragmentación.
+
+### Sistemas de Archivos de Apple
+
+| Sistema | Descripción |
+|---------|-------------|
+| **HFS+** | *Hierarchical File System Plus*. Sistema tradicional de macOS. Usa codificación **Unicode**. Tamaño máximo de archivo: **8 EB**. |
+| **APFS** | *Apple File System*. Lanzado en **2017** por Apple. Recomendado para **SSD**. Sistema predeterminado en macOS 10.13 o posterior. Diseñado para todos los sistemas Apple (macOS, iOS, tvOS, watchOS). |
+
+> **APFS** responde a las siglas *Apple File System*. Es el sistema de archivos universal para todos los sistemas operativos de Apple.
+
+> **El sistema operativo Mac OS X / macOS emplea AMBOS sistemas de archivos: HFS+ (tradicional, desde 1998) y APFS (introducido en macOS High Sierra, 2017, predeterminado desde entonces para SSD).** Ambos son sistemas de archivos propios de Apple.
+
+### Otros Sistemas de Archivos
+
+| Sistema | Uso |
+|---------|-----|
+| **UDF** | Utilizado en **DVD-ROM** |
+| **FAT** (antiguo) | Compatible con múltiples sistemas operativos |
+| **exFAT** | Medios extraíbles de gran capacidad |
+| **NTFS** | Windows (modo lectura en macOS y Linux) |
+
+### Sector de Arranque MBR
+
+El **MBR** (*Master Boot Record* — **Registro de Arranque Principal**) es el sector de arranque que contiene la tabla de particiones del disco.
+
+### Estructura Lógica del Disco
+
+Las **particiones** de un disco duro pertenecen a la **estructura lógica del disco**.
+
+---
+
+## La BIOS y UEFI
+
+### BIOS (Basic Input/Output System)
+
+La **BIOS** es el firmware del sistema: un conjunto de instrucciones almacenadas en una memoria ROM (o EEPROM/Flash) que se ejecuta al arrancar el ordenador.
+
+> **La función principal de la BIOS es inicializar el hardware y arrancar el sistema operativo.** La BIOS puede clasificarse dentro del **Firmware**.
+
+La BIOS gestiona la fecha, hora y secuencia de arranque, almacenando esta información en una memoria ROM que la conserva incluso cuando el equipo está apagado.
+
+### UEFI (Unified Extensible Firmware Interface)
+
+La **UEFI** es el sustituto moderno de la BIOS tradicional. Su función principal es **inicializar el hardware y arrancar el sistema operativo**, ofreciendo además:
+- Arranque más seguro (*Secure Boot*)
+- Soporte para discos de más de 2 TB (GPT)
+- Interfaz gráfica
+- Arranque más rápido
+
+### Firmware
+
+El **firmware** es el software que conecta directamente el hardware con el software del sistema. Se conoce así al conjunto de instrucciones de un programa informático que se encuentra registrado en una **memoria ROM, flash o similar**. La BIOS es el ejemplo más conocido de firmware en un PC.
+
+---
+
+## El Sistema Operativo (SO)
+
+### Definición y Función
+
+> **Un sistema operativo es un programa, o conjunto de programas, que actúa como intermediario entre el usuario y el hardware del ordenador.**
+
+El sistema operativo está compuesto por un conjunto de **paquetes de software** que pueden utilizarse para gestionar las interacciones con el hardware.
+
+Las siglas del sistema operativo son: **SO** (español) y **OS** (*Operating System*, inglés).
+
+El sistema operativo **NO** tiene como función:
+- Crear documentos de texto
+- Optimizar, automatizar y mejorar tareas de oficina
+- Generar sentencias SQL para páginas web
+- Registrar la presencia en sistemas de teletrabajo
+
+### Componentes del Sistema Operativo
+
+| Componente | Función |
+|------------|---------|
+| **Núcleo o Kernel** | Parte más importante. Gestiona memoria RAM, procesos, errores. Interfaz entre hardware y software |
+| **Shell** | Intérprete de comandos. Interfaz entre el usuario y el kernel |
+| **Sistema de archivos** | Gestiona el almacenamiento secundario |
+| **API (librerías)** | Provee los servicios del núcleo a los programas de aplicación |
+
+> **El Núcleo o Kernel** representa las funciones básicas del sistema operativo. Es el interfaz entre el hardware y el software. En Linux, el núcleo se llama **Linux** (el proyecto en conjunto es GNU/Linux).
+
+> **No existe el "Sistema ALU"** como componente del sistema operativo.
+
+### Clasificación de los Sistemas Operativos
+
+#### Según la Administración de Tareas
+
+| Tipo | Descripción |
+|------|-------------|
+| **Monotarea** | Solo puede ejecutar un proceso a la vez |
+| **Multitarea** | Permite ejecutar varios procesos aparentemente simultáneos. El procesador cambia de una tarea a otra dando la apariencia de ejecución concurrente |
+
+> **Todos los sistemas operativos multiproceso son multitarea.**
+
+La **planificación de procesos preemptive** se da cuando el sistema puede **interrumpir el proceso para ejecutar otro diferente**.
+
+El **multithreading** es la posibilidad de un sistema operativo de ejecutar diferentes partes de un programa simultáneamente.
+
+El **modo Batch** (*batch work*) es el modo de trabajo mediante el cual se introducen los comandos a ejecutar en un archivo y se ejecutan en bloque de forma automatizada.
+
+#### Según la Administración de Usuarios
+
+| Tipo | Descripción |
+|------|-------------|
+| **Monousuario** | Solo puede trabajar un usuario a la vez |
+| **Multiusuario** | Permite el acceso simultáneo de distintos usuarios, compartiendo el mismo entorno físico |
+
+> **MS-DOS** es un sistema operativo **monousuario y monotarea**.
+
+Puede existir un sistema **multiusuario y monotarea**: admite varios usuarios simultáneos, pero cada uno puede hacer solo una tarea a la vez.
+
+#### Según la Organización Interna (Estructura)
+
+| Tipo | Descripción |
+|------|-------------|
+| **Monolítico** | La mayoría de funciones en el núcleo. Núcleo grande y pesado. Sistemas Windows anteriores a XP |
+| **Jerárquico** | Dividido en pequeñas partes perfectamente definidas con interfaces claros entre sí |
+| **Núcleo Híbrido** | Combinación de monolítico y microkernel. Windows desde XP |
+| **Microkernel** | Núcleo mínimo; servicios extra fuera del núcleo |
+
+> Windows en versiones de escritorio anteriores a XP usaba estructura **monolítica**. A partir de XP usa **Núcleo Híbrido**.
+
+#### Según la Administración de Recursos
+
+| Tipo | Descripción |
+|------|-------------|
+| **Centralizado** | Un único procesador gestiona los recursos |
+| **Distribuido/Descentralizado** | Los recursos se distribuyen entre múltiples procesadores o nodos |
+
+#### Según el Número de Procesadores
+
+| Tipo | Descripción |
+|------|-------------|
+| **Monoproceso** | Un solo procesador |
+| **Multiproceso simétrico** | Las tareas se distribuyen por igual a todos los procesadores |
+| **Multiproceso asimétrico** | Existe jerarquía entre procesadores; unos controlan a otros |
+
+#### Sistemas Operativos de Red (NOS)
+
+Un **sistema operativo de red** (*NOS — Network Operating System*) permite la interconexión de ordenadores para acceder a servicios y recursos hardware y software, creando redes.
+
+Sus componentes habituales son: **servidores, clientes y dominios**.
+
+#### Sistemas Operativos de Tiempo Real
+
+Un sistema operativo de tiempo real es el más conveniente para sistemas de control de procesos industriales críticos (infraestructuras críticas), ya que responde en tiempos garantizados.
+
+#### Máquinas Virtuales
+
+Una **máquina virtual** ofrece la capacidad de emular un sistema operativo independiente, simulando otro sistema totalmente independiente dentro del sistema operativo anfitrión.
+
+---
+
+## Sistemas Operativos: Historia y Versiones
+
+### MS-DOS
+
+- Desarrollado por **Microsoft**
+- Sistema operativo **monousuario y monotarea**
+- Interfaz de línea de comandos (sin entorno gráfico)
+- Dispone de **109 comandos**
+- Última versión: **MS-DOS 8.0** (hasta que fue sustituido por SO con interfaz gráfica)
+- En **Windows XP** fue sustituido por **CMD**
+
+### Windows
+
+| Versión | Característica clave |
+|---------|---------------------|
+| Windows NT | Primera versión en orden cronológico de la familia NT |
+| Windows 95 | Primera versión con interfaz gráfica integrada para el gran público |
+| Windows 98 | Inmediatamente anterior a Windows Me y Windows 2000 |
+| Windows 2000 Server | Incorporó sesiones multiusuario mediante entorno gráfico |
+| Windows XP | Sustituyó CMD a MS-DOS; estructura de Núcleo Híbrido |
+| Windows Vista | Incorporó **BitLocker** (cifrado de unidades) |
+| Windows 7, 8, 8.1 | Versiones intermedias |
+| **Windows 10** | Versión ampliamente extendida |
+| **Windows 11** | Lanzado en octubre de **2021**. Novedad: posibilidad de ejecutar aplicaciones del sistema operativo **Android** |
+
+> **Windows 97 no existe** — nunca hubo una versión con ese nombre.
+
+La interfaz gráfica de usuario basada en ventanas, iconos y menús fue desarrollada primero por **Apple** y llevada al gran público. Actualmente en Windows 10, el atajo para bloquear el equipo más rápido es **Tecla Windows + L**.
+
+**Atajos de teclado de Windows:**
+
+| Combinación | Función |
+|-------------|---------|
+| Win + L | Bloquear el equipo |
+| Win + G | Abrir la barra de juegos (con un juego abierto) |
+| Win + U | Abrir el Centro de accesibilidad |
+| Win + A | Abrir la **Configuración Rápida** |
+| Alt + F4 | Cerrar aplicación o ventana (Windows) |
+| Comando + Q | Cerrar aplicación (Mac) |
+
+**Registro de Windows:** Base de datos jerarquizada que almacena toda la información del sistema, usuarios, aplicaciones instaladas y configuración del hardware. Es uno de los componentes principales del sistema en Windows.
+
+**Explorador de Windows:** Programa que permite administrar las unidades, carpetas y archivos.
+
+**Desfragmentador de disco:** Herramienta que **reorganiza la información almacenada en el disco** para que pueda funcionar de forma más eficaz. Permite **volver a escribir las partes de un archivo en zonas contiguas** del disco duro para aumentar la velocidad de acceso. La desfragmentación **NO aumenta el tamaño en disco de los archivos**.
+
+**Liberador de espacio en disco:** Herramienta para liberar espacio en la unidad de disco duro cuando no hay suficiente espacio libre.
+
+**BitLocker:** Utilidad incorporada en Windows Vista. Es un **sistema de cifrado para proteger los archivos de una unidad**.
+
+**Cambiar programas predeterminados en Windows 10:** Inicio → Configuración → Aplicaciones → **Aplicaciones predeterminadas**.
+
+**PowerShell:** Intérprete de comandos avanzado que incluye Windows, de modo texto.
+
+### Unix
+
+**Unix** es un sistema operativo **multiusuario y multitarea**, aparecido en la década de los 70. Se caracteriza por:
+- **El uso de ficheros de texto** para almacenar los datos
+- Tratar a los dispositivos como archivos (no como carpetas independientes)
+- Portabilidad entre plataformas
+- Soporte para múltiples usuarios y procesos
+
+**BSD** (*Berkeley Software Distribution*) apareció a finales de los 70 con todas las modificaciones que la comunidad universitaria y científica había hecho sobre el sistema Unix original, acabando siendo un sistema operativo libre.
+
+**Sistema gráfico de Unix:** El principal sistema gráfico de Unix se llama **Servidor X** (X Window System).
+
+### Linux
+
+Linux es el núcleo (kernel) de un sistema operativo libre y de código abierto, desarrollado como proyecto **GNU**.
+
+> Linux surgió **a principios de los años 90**. Su crecimiento fue impulsado por la comunidad open source y por internet.
+
+**Características de GNU/Linux:**
+- Código abierto y libre
+- **No es monotarea** (es multitarea)
+- Multiusuario
+- Alta estabilidad y seguridad
+
+**El superusuario en Linux** se llama **Root**. Su directorio de trabajo es **/root**.
+
+**Distribuciones populares:** Ubuntu, Debian, Fedora, CentOS, **Kodachi** (basada en Debian, enfocada en privacidad y seguridad). **Novell** no es una distribución de Linux.
+
+**Gestores de escritorio gráfico de GNU/Linux:** Gnome, **KDE**, Cinnamon.
+
+**Repositorio:** Origen desde el que Linux puede descargar e instalar aplicaciones y sus dependencias a petición.
+
+**Forma de uso de las distribuciones Linux:** pueden usarse como sistema de escritorio o como servidor (ambas formas son correctas).
+
+**Directorio raíz en Linux:** En la estructura de archivos Linux, el nivel más alto se denomina **Raíz** (/). La estructura es **jerárquica, de tipo árbol**.
+
+**Proceso zombi en Unix:** Un proceso hijo que ha acabado de realizar sus tareas, pero cuyo padre todavía no ha ejecutado la orden de esperar a que el hijo acabe.
+
+**IBM AIX** es un sistema operativo para servidores (de tipo Unix).
+
+**Meego:** Sistema operativo auspiciado por la Linux Foundation, preparado para funcionar en netbooks, dispositivos portátiles, sistemas en vehículos, televisiones y teléfonos multimedia.
+
+**Fuchsia:** El nuevo sistema operativo de tiempo real desarrollado por **Google**.
+
+### macOS (Mac OS X)
+
+El sistema operativo macOS está basado en **Unix**. Su interfaz gráfica se llama **Aqua**.
+
+| Versión | Nombre |
+|---------|--------|
+| Mac OS X 10.9 | **Mavericks** |
+| macOS moderno | Basado en BSD/Unix |
+
+**Elementos de macOS:**
+- **Sistemas de archivos:** macOS emplea **HFS+** (tradicional) y **APFS** (Apple File System, predeterminado desde macOS 10.13, año 2017).
+- **Finder:** Aplicación responsable de la gestión de todos los archivos del ordenador (equivalente al Explorador de Windows).
+- **Dock:** Barra situada por defecto en la parte inferior desde donde pueden lanzarse las aplicaciones más utilizadas.
+- **File Vault:** Tecnología de macOS que permite **cifrar los datos**.
+- **Boot Camp:** Software incluido en macOS que permite instalar de forma asistida **Windows o GNU/Linux** en el sistema.
+
+### iOS (Apple)
+
+- **iOS** significa: **iPhone Operative System** (también *iPhone OS*: su nombre proviene de *iPhone OS*).
+- Deriva directamente de **Mac OS X**.
+- Es **exclusivo** para los dispositivos de la marca Apple.
+- Es un **sistema cerrado y exclusivo** (no es open source).
+- **No tiene soporte para Adobe Flash.**
+- Las aplicaciones iOS se distribuyen en formato **.ipa**
+- Las aplicaciones se instalan desde **App Store**
+- **Jailbreak:** proceso de acceso privilegiado al sistema iOS (equivalente al *rooting* en Android).
+- Sistema de capas (layers) de iOS: **Cocoa Touch, Media Services, Core Services y Core OS**.
+
+**iPad:** Utiliza **iPadOS** (derivado de iOS).
+
+**iOS y sistemas de archivos:** compatibilidad con APFS y HFS+ (ambas son correctas).
+
+### Android
+
+Android es un sistema operativo diseñado para dispositivos móviles, adquirido y desarrollado por **Google**. Está basado en el **núcleo Linux** y otros software de código abierto.
+
+> Android fue presentado en **2007**, junto con la fundación **Open Handset Alliance**.
+
+**Componentes de Android:**
+- Núcleo basado en **Linux** (no en NT)
+- Bibliotecas: funciones generalmente programadas en **C o C++** que el sistema operativo provee al resto de componentes del sistema para el acceso al almacenamiento, bases de datos, entorno gráfico, etc.
+- **ART** (Android Runtime): entorno de ejecución actual de Android.
+- **AOT** (*Ahead-Of-Time*): característica de ART que realiza compilación anticipada para ejecutar el binario resultante de manera más rápida y eficiente.
+
+**Versiones de Android:**
+
+| Versión | Nombre |
+|---------|--------|
+| Android 4.1-4.3 | **Jelly Bean** |
+| Android 10 | **Android 10** (sin nombre de postre) |
+| Android 11 | **Red Velvet Cake** |
+| Android 12 | **Snow Cone** |
+| Android 16 | Última versión disponible |
+
+**Aplicaciones Android:**
+- Se empaquetan, comprimen y distribuyen con formato **APK** (*Android Packet*).
+- Se instalan desde **Google Play Store**.
+- Google Play Store **no funciona en iPhone** (iOS usa App Store).
+
+**Rooting:** técnica que permite a los usuarios de dispositivos Android acceder a un control privilegiado del equipo. También llamada "rootear". Se diferencia del **Jailbreak** (que es para iOS).
+
+**Asistente virtual de Android:** **Google Assistant**. También es el asistente de voz Android.
+
+**Problema principal de Android frente a iOS:** La **fragmentación** (múltiples versiones y fabricantes).
+
+**Sistema operativo de Google basado en Linux:** El sistema de Google depende de Linux para servicios básicos. Su nuevo sistema operativo de tiempo real es **Fuchsia**.
+
+**Sistemas operativos móviles NO:** **HP-UX** no es un SO para dispositivos móviles. **MVP** no está entre los sistemas operativos móviles.
+
+---
+
+## Tipos de Software
+
+### Clasificación Principal
+
+Los **tres grandes tipos de software** son:
+
+1. **Software de sistema:** Gestiona los recursos del hardware. Incluye el sistema operativo y los controladores (drivers). La serie de programas preinstalados que permiten interactuar con el SO, dar soporte a otros programas y garantizar el control digital del hardware se conoce como **software de sistema**.
+
+2. **Software de programación:** Herramientas para desarrollar nuevos programas (compiladores, IDEs, depuradores).
+
+3. **Software de aplicación:** Conjunto de programas diseñados para facilitar la realización de tareas específicas (ofimática, multimedia, etc.). Se conoce también como **aplicaciones** o **programas**.
+
+### Tipos de Licencias de Software
+
+| Tipo | Descripción |
+|------|-------------|
+| **Software propietario** | El fabricante mantiene el control sobre su desarrollo y distribución |
+| **Freeware** | Distribución gratuita, pero el usuario **no puede modificar su código** |
+| **Software libre / código abierto** | Licencia que permite su uso, modificación y redistribución de forma libre |
+| **Copyleft** | Variante del software libre que obliga a que las obras derivadas mantengan la misma licencia |
+
+> **El software de código abierto** (*open source*) es aquel cuyo código fuente está publicado bajo una licencia que permite su uso, modificación o redistribución de forma libre.
+
+**El código fuente:** Texto legible por un ser humano, redactado en un lenguaje de programación, cuyo objetivo es crear normas y disposiciones claras para el ordenador para que este sea capaz de traducirlas a su propio lenguaje.
+
+**Controlador de dispositivo (Driver):** Software que conecta el sistema operativo directamente con los componentes del hardware de un ordenador. También conocido como **driver**.
+
+### Algoritmo
+
+Un **algoritmo** es un conjunto de instrucciones o pasos ordenados y finitos que permiten resolver un problema o realizar una tarea computacional. Es la base de cualquier programa informático.
+
+---
+
+## Periféricos
+
+Los periféricos son dispositivos que se conectan al ordenador para ampliar sus capacidades de entrada, salida o almacenamiento.
+
+### Periféricos de Entrada
+
+Dispositivos que introducen datos en el ordenador:
+- Teclado
+- Ratón
+- Escáner (**periférico de entrada**)
+- Micrófono
+- Cámara web
+- Dispositivos de reconocimiento facial (**periféricos de entrada biométrica**)
+- Lector de huella dactilar
+
+> **El monitor no táctil NO es un periférico de entrada.**
+
+### Periféricos de Salida
+
+Dispositivos que muestran o extraen datos del ordenador:
+- **Monitor de PC** (periférico de salida)
+- Altavoces
+- **Plóter** (dispositivo de impresión, periférico de salida)
+- **Impresora** (componente periférico de la computadora, parte del hardware)
+
+La velocidad de impresión de una impresora se mide en **PPM** (páginas por minuto).
+
+En un ordenador, un **plotter** es un periférico de **salida**.
+
+### Periféricos de Entrada y Salida (Mixtos)
+
+Dispositivos que realizan ambas funciones:
+- **Auriculares con micrófono** (entrada: micrófono; salida: auriculares)
+- **Impresora multifunción** (entrada: escáner; salida: impresión)
+- **Lector/grabador de DVD** (entrada: lectura; salida: grabación)
+- **Unidades de memoria USB** (mixtos)
+- **HUBs de puertos USB** (mixtos)
+
+### Conectores y Puertos
+
+| Puerto/Conector | Descripción |
+|-----------------|-------------|
+| **USB** | *Universal Serial Bus*. Estándar más común. En USB 3.0 se aumenta la intensidad de la corriente respecto a versiones anteriores. |
+| **Thunderbolt** | Interfaz de alta velocidad desarrollada por Intel y Apple. |
+| **HDMI** | *High Definition Multimedia Interface*. Audio y vídeo digital de alta definición. |
+| **VGA** | *Video Graphics Array*. Conector analógico de vídeo. |
+| **DisplayPort** | Conector digital de vídeo y audio. |
+
+**Función de un slot de expansión:** Permitir la instalación de tarjetas adicionales (gráfica, sonido, red, etc.).
+
+**Función de una tarjeta de red Wi-Fi integrada:** Conectar el equipo a redes inalámbricas.
+
+---
+
+## Seguridad Informática
+
+### Principios de Seguridad
+
+Como regla general, un sistema informático será seguro o fiable si puede garantizar tres aspectos:
+
+> **Confidencialidad, Integridad y Disponibilidad.** (Tríada CIA)
+
+- **Confidencialidad:** Solo los usuarios autorizados acceden a la información.
+- **Integridad:** La información no ha sido alterada sin autorización.
+- **Disponibilidad:** Los sistemas están accesibles cuando se necesitan.
+
+### Tipos de Seguridad Informática
+
+| Tipo | Descripción |
+|------|-------------|
+| **Seguridad física** | Protege el hardware de posibles desastres naturales o accesos físicos no autorizados |
+| **Seguridad lógica** | Protege el software, datos y accesos lógicos |
+| **Seguridad activa** | Medidas preventivas para evitar ataques |
+| **Seguridad pasiva** | Medidas para que, una vez producido el ataque o fallo, el impacto sea el menor posible y activa mecanismos de recuperación |
+
+> **No existe la clasificación "seguridad de primer grado y seguridad de segundo grado"** como tipo estándar de seguridad informática.
+
+### Malware (Software Malicioso)
+
+El **malware** es software diseñado para causar daño. Los tres términos que NO son tipos de malware son: **interfaz de usuario** y otros términos de software legítimo.
+
+| Tipo de malware | Descripción |
+|-----------------|-------------|
+| **Virus** | Programa que se adjunta a otros archivos y se propaga cuando se ejecutan. Sus antivirus/cortafuegos pueden desactivarse o desaparecer |
+| **Gusano (Worm)** | **No requiere intervención humana** para propagarse e infectar. Infecta una sola vez y usa redes informáticas para propagarse en otros equipos |
+| **Troyano** | Permite el **acceso o control remoto** de un computador por parte de un tercero. Se disfraza de software legítimo |
+| **Ransomware** | Software malicioso que **restringe el acceso al sistema** y exige el pago de un rescate para eliminar la restricción |
+| **Spyware** | Espía al usuario y recopila información sin consentimiento |
+| **Adware** | Se caracteriza principalmente por **mostrar publicidad no deseada** |
+| **Keylogger** | Tipo de spyware que **registra en secreto las pulsaciones del teclado** para obtener contraseñas, datos bancarios y personales |
+| **Rootkit** | Diseñado para mantener **acceso persistente y oculto** en un sistema comprometido. **Nota:** los rootkits no se propagan automáticamente |
+| **Bomba lógica** | Programa malicioso que **permanece inactivo hasta que se cumple una condición específica** para activarse |
+| **Zombie** | Ordenador conectado a la red que ha sido comprometido por un hacker, virus o troyano |
+| **APT** | (*Advanced Persistent Threat*) Malware de amenaza persistente avanzada |
+| **Spam** | Programa para enviar mensajes repetidamente y de forma masiva, mediante correo electrónico, mensajería instantánea, chats, foros, etc. |
+
+### Técnicas de Ataque y Engaño
+
+| Técnica | Descripción |
+|---------|-------------|
+| **Phishing** | Robo de información personal (contraseñas, datos bancarios) mediante **correos electrónicos fraudulentos** o sitios web falsos |
+| **Ingeniería social** | Técnicas que **aprovechan el factor humano** para obtener información. Ejemplo: engañar a un usuario para que revele un código o instale algo |
+| **Ataque DoS/DDoS** | Busca **saturar los recursos** de una red o servidor, haciéndolos inaccesibles a usuarios legítimos |
+| **Búsqueda heurística** | Como función de seguridad, intenta detectar un virus **por la forma de comportarse** o aspecto que presenta determinado programa |
+| **Robollamada** | Llamada realizada **automáticamente por un sistema informático** |
+| **Bulo informático** | Se diferencia de otros fraudes porque se **basa en información falsa o alarmista** |
+
+### Herramientas de Seguridad
+
+| Herramienta | Descripción |
+|-------------|-------------|
+| **Cortafuegos (Firewall)** | Elemento que **controla el tráfico de datos** entre dos redes u ordenadores de una misma red |
+| **Cifrado** | Técnica para proteger la confidencialidad de los datos al **transformarlos en un formato ilegible** sin la clave adecuada |
+| **SAI** | *Sistema de Alimentación Ininterrumpida*. Protege ante cortes de suministro eléctrico |
+| **Antivirus** | Software que detecta y elimina malware |
+
+**Herramientas de cifrado de disco:**
+- **LUKS** (Linux)
+- **BitLocker** (Windows)
+- **FileVault** (macOS)
+
+### Copias de Seguridad (Backup)
+
+Un **backup** es una copia de seguridad de los datos.
+
+| Tipo de backup | Descripción |
+|----------------|-------------|
+| **Completo** | Copia todos los datos |
+| **Incremental** | Copia solo los archivos creados o modificados **desde la última copia** (ya sea completa o incremental) |
+| **Diferencial** | Copia los archivos modificados desde el último backup completo |
+
+> El tipo de respaldo que copia, tras un backup incremental, los archivos creados o modificados desde la última copia realizada se denomina **Incremental**.
+
+Para **recuperar archivos eliminados** de un disco duro: se pueden recuperar tanto si se realiza desde el propio sistema operativo como desde uno diferente.
+
+---
+
+## Redes e Internet
+
+### Protocolo IPv4
+
+Una **dirección IPv4** es un número binario de **4 octetos** (32 bits) que identifica a una interfaz en red de un dispositivo que utiliza el protocolo IPv4.
+
+### Protocolo IMAP
+
+De los protocolos de red, **IMAP** (*Internet Message Access Protocol*) se utiliza para recibir o transferir correos desde servidores remotos de archivos.
+
+### Cookies
+
+Una **Cookie** es una pequeña información enviada por un sitio web y almacenada en el navegador del usuario, de manera que el sitio web puede consultar la actividad previa del navegador.
+
+### Tim Berners-Lee
+
+**Tim Berners-Lee** se le conoce como el **padre de la World Wide Web** (WWW). Su contribución fue fundamental para el surgimiento de internet tal como lo conocemos.
+
+### El Metaverso
+
+El **Metaverso** es un entorno virtual inmersivo donde los usuarios pueden interactuar entre sí y con objetos digitales en tiempo real.
+
+### Sistema Operativo de Red
+
+Un sistema **NOS** (*Network Operating System*) permite la interconexión de ordenadores para poder acceder a los servicios y recursos hardware y software, creando redes.
+
+---
+
+## Elementos del Escritorio y Usabilidad
+
+### Conceptos Básicos del Escritorio
+
+- **Icono:** Imagen pequeña dispuesta en el escritorio con una descripción en su parte inferior.
+- **Ventanas:** Área rectangular en pantalla que muestra el contenido de una aplicación.
+
+### Extensiones de Archivos
+
+Respecto a la extensión que aparece en un nombre de archivo: **normalmente son tres caracteres**, pero también pueden aparecer extensiones de distinta longitud.
+
+### Recuperación de Archivos y Particiones
+
+- Los archivos se pueden recuperar tanto desde el propio sistema operativo como desde uno diferente.
+- Las particiones de un disco duro pertenecen a la **estructura lógica del disco**.
+
+---
+
+## Resumen de Acrónimos y Siglas Clave
+
+| Sigla | Significado |
+|-------|-------------|
+| **BIT** | *Binary Digit* |
+| **RAM** | *Random Access Memory* — Memoria de Acceso Aleatorio |
+| **ROM** | *Read Only Memory* — Memoria de Solo Lectura |
+| **CPU** | *Central Processing Unit* — Unidad Central de Proceso |
+| **BIOS** | *Basic Input Output System* — Sistema Básico de Entrada y Salida |
+| **UEFI** | *Unified Extensible Firmware Interface* |
+| **HDD** | *Hard Disk Drive* — Disco Duro |
+| **SSD** | *Solid State Drive* — Unidad de Estado Sólido |
+| **DVD** | *Digital Versatile Disk* |
+| **RAID** | *Redundant Array of Independent Disks* |
+| **FAT** | *File Allocation Table* |
+| **FAT32** | *File Allocation Table* de 32 bits |
+| **exFAT** | *Extended File Allocation Table* |
+| **NTFS** | *New Technology File System* — Sistema de Archivos de Nueva Tecnología |
+| **HPFS** | *High Performance File System* |
+| **APFS** | *Apple File System* |
+| **MFT** | *Master File Table* — Tabla Maestra de Archivos (NTFS) |
+| **MBR** | *Master Boot Record* — Registro de Arranque Principal |
+| **PCB** | *Printed Circuit Board* — Placa de Circuito Impreso |
+| **ALU** | *Arithmetic Logic Unit* — Unidad Aritmético-Lógica |
+| **SAI** | Sistema de Alimentación Ininterrumpida |
+| **NAS** | *Network Attached Storage* |
+| **DAS** | *Direct Attached Storage* |
+| **SAN** | *Storage Area Network* |
+| **NOS** | *Network Operating System* |
+| **iOS** | *iPhone Operative System* |
+| **APK** | *Android Packet* |
+| **ART** | *Android Runtime* |
+| **AOT** | *Ahead-Of-Time* |
+| **PPM** | Páginas Por Minuto (velocidad de impresión) |
+| **RPM** | Revoluciones Por Minuto (velocidad disco duro) |
+| **MHz** | Megahercio — un millón de ciclos por segundo |
+| **SWAP** | Memoria de intercambio virtual |
+| **BSD** | *Berkeley Software Distribution* |
+| **EFS** | *Encrypting File System* (cifrado en NTFS) |
+| **UDF** | *Universal Disk Format* (DVD-ROM) |
+| **XFS** | Sistema de archivos de alto rendimiento (Linux) |
+| **MBR** | *Master Boot Record* |

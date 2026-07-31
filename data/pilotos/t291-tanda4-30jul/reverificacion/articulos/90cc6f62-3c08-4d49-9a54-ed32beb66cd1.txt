@@ -1,0 +1,30 @@
+LEY: RD 203/2021
+ARTÍCULO: 40 — Oficinas de asistencia en materia de registros en el ámbito de la Administración General del Estado
+======================================================================
+1. Las Oficinas de asistencia en materia de registros tienen naturaleza de órgano administrativo de acuerdo con lo dispuesto en el artículo 5 de la Ley 40/2015, de 1 de octubre.
+
+La creación de nuevas Oficinas, así como la modificación o supresión de las existentes se realizará conforme a lo previsto en el artículo 59.2 de la Ley 40/2015, de 1 de octubre.
+
+2. La Administración General del Estado contará con un directorio geográfico de las Oficinas de asistencia en materia de registros que será gestionado por el Ministerio de Política Territorial y Función Pública. A tal efecto, el órgano del que dependa la correspondiente Oficina de asistencia deberá comunicar de forma inmediata al citado Ministerio la aprobación de la norma por la que se cree, modifique o suprima dicha oficina, de acuerdo con lo establecido en el Esquema Nacional de Interoperabilidad, garantizando su actualización permanente.
+
+3. Las Oficinas de asistencia en materia de registros desarrollarán las siguientes funciones:
+
+a) La digitalización de las solicitudes, escritos y comunicaciones en papel que se presenten o sean recibidos en la Oficina y se dirijan a cualquier órgano, organismo público o entidad de derecho público de cualquier Administración Pública, así como su anotación en el Registro Electrónico General o Registro electrónico de cada organismo o entidad según corresponda.
+
+b) La anotación, en su caso, de los asientos de salida que se realicen de acuerdo con lo dispuesto en el artículo 16 de la Ley 39/2015, de 1 de octubre.
+
+c) La emisión del correspondiente recibo que acredite la fecha y hora de presentación de solicitudes, comunicaciones y documentos que presenten las personas interesadas.
+
+d) La expedición de copias electrónicas auténticas tras la digitalización de cualquier documento original o copia auténtica que presenten las personas interesadas y que se vaya a incorporar a un expediente administrativo a través de dicha oficina en el registro electrónico correspondiente.
+
+e) La información en materia de identificación y firma electrónica, para la presentación de solicitudes, escritos y comunicaciones a través de medios electrónicos en los trámites y procedimientos para los que se haya conferido habilitación.
+
+f) La identificación o firma electrónica del interesado, cuando se trate de una persona no obligada a la relación electrónica con la Administración, en los procedimientos administrativos para los que se haya previsto habilitación.
+
+g) La práctica de notificaciones, en el ámbito de actuación de esa Oficina, cuando el interesado o su representante comparezcan de forma espontánea en la Oficina y solicite la comunicación o notificación personal en ese momento.
+
+h) La comunicación a las personas interesadas del código de identificación del órgano, organismo público o entidad a la que se dirige la solicitud, escrito o comunicación.
+
+i) La iniciación de la tramitación del apoderamiento presencial apud acta en los términos previstos en el artículo 6 de la Ley 39/2015, de 1 de octubre.
+
+j) Cualesquiera otras funciones que se les atribuyan legal o reglamentariamente.

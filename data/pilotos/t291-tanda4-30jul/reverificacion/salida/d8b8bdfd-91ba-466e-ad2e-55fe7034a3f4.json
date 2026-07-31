@@ -1,0 +1,9 @@
+{
+  "question_id": "d8b8bdfd-91ba-466e-ad2e-55fe7034a3f4",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "explicación completa (intro + las cuatro razones)",
+  "que_dice": "Toda la explicación describe el funcionamiento de la opción 'Ignorar' (u 'Omitir la conversación') de la Bandeja de entrada de Outlook 365 (mueve los mensajes actuales y futuros de la conversación a Elementos eliminados) sin ninguna cita del artículo.",
+  "que_dice_el_articulo": "El artículo fichero (Outlook 365, art. 2 — El entorno de trabajo) no menciona en ningún punto la opción 'Ignorar' ni 'Omitir la conversación'. No hay ningún pasaje que respalde ni la definición de la opción ni el efecto que se describe para cada alternativa (A, B, C, D).",
+  "correccion_propuesta": "Añadir al artículo fuente la definición de la opción 'Ignorar'/'Omitir la conversación' antes de usarla como base de la explicación, o sustituir la explicación por una que cite literalmente el artículo disponible. Tal como está, la respuesta puede ser correcta en el mundo real de Outlook 365, pero no está respaldada por la fuente que se le muestra al opositor."
+}

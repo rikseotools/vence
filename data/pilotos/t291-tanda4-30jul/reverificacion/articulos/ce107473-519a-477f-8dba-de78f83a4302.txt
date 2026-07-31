@@ -1,0 +1,519 @@
+LEY: Explorador Windows 11
+ARTÍCULO: 1 — Explorador de archivos de Windows 11
+======================================================================
+## El Explorador de archivos de Windows 11
+
+El **Explorador de archivos** (File Explorer) es la aplicación de administración de archivos integrada en Windows 11. Permite navegar por la estructura de carpetas del equipo, gestionar archivos y carpetas, acceder a unidades de almacenamiento y recursos de red, así como realizar operaciones como copiar, mover, eliminar, comprimir y buscar contenido. Es una herramienta fundamental del sistema operativo que el usuario utiliza a diario.
+
+Se abre mediante el atajo **Win + E** o desde la barra de tareas haciendo clic en el icono de la carpeta.
+
+---
+
+## Interfaz del Explorador de archivos
+
+La ventana del Explorador de archivos de Windows 11 está compuesta por varios elementos:
+
+### Barra de título
+
+Situada en la parte superior de la ventana, muestra el nombre de la carpeta actual. En Windows 11, la barra de título presenta un diseño más limpio y moderno que en versiones anteriores.
+
+### Barra de comandos (Ribbon simplificado)
+
+En Windows 11 se sustituyó la clásica cinta de opciones (Ribbon) de versiones anteriores por una **barra de comandos simplificada** ubicada en la parte superior. Este cambio importante respecto a versiones anteriores hace que el acceso a las opciones de la cinta de opciones sea más visual y directo. Esta barra incluye los botones más frecuentes:
+
+- **Cortar**, **Copiar**, **Pegar**, **Renombrar**, **Compartir**, **Eliminar**
+- Menú de ordenación (**Ordenar**)
+- Menú de vistas (**Ver**)
+- Menú de opciones adicionales (botón **...**)
+
+### Barra de direcciones
+
+La **barra de dirección** (también llamada barra de navegación) muestra la ruta de la ubicación actual en formato jerárquico. Indica el punto o nombre de carpeta perteneciente a la estructura jerárquica del sistema de archivos en que nos encontramos. Permite:
+
+- **Ver la ruta actual** como una sucesión de carpetas clicables (migas de pan / breadcrumbs)
+- **Escribir directamente** una ruta pulsando **Alt + D** o **Ctrl + L** para activar el modo de escritura
+- **Navegar** haciendo clic en cualquier carpeta del recorrido
+- **Desplegar** la lista de ubicaciones disponibles con **F4**
+
+Ejemplo de uso: para acceder a la carpeta Informes dentro de la unidad D, se escribe `D:\Departamento\Informes` en la barra de dirección.
+
+### Barra de búsqueda
+
+Situada a la derecha de la barra de dirección, permite buscar archivos y carpetas dentro de la ubicación actual y sus subcarpetas. Se activa con **Ctrl + E**, **Ctrl + F** o **F3**. Admite texto libre, filtros avanzados (tipo, tamaño, fecha, autor, extensión) y operadores booleanos (AND, OR, NOT, comillas).
+
+### Barra de estado
+
+Barra inferior de la ventana que muestra el número de elementos seleccionados y su tamaño total. También incluye botones para cambiar rápidamente entre la vista de detalles y la vista de iconos grandes.
+
+### Área de contenido
+
+Zona central y principal de la ventana donde se muestran los archivos y carpetas de la ubicación actual, según la vista seleccionada.
+
+---
+
+## Panel de navegación
+
+El **panel de navegación** (también llamado panel de árbol) se encuentra a la izquierda de la ventana. Muestra la estructura jerárquica del sistema de archivos y permite acceder rápidamente a las ubicaciones más usadas. Contiene las siguientes secciones principales:
+
+### Acceso rápido
+
+Muestra las **carpetas frecuentes** (aquellas a las que el usuario accede habitualmente) y los **archivos recientes**. Por defecto muestra carpetas frecuentes y archivos recientes. Permite fijar (anclar) carpetas concretas para tenerlas siempre a mano. Para quitar una carpeta del Acceso rápido: clic derecho sobre ella > **Desanclar del Acceso rápido**.
+
+### OneDrive
+
+Integración con el servicio de **almacenamiento en la nube de Microsoft**. OneDrive es un servicio de almacenamiento en la nube integrado de forma nativa en Windows 11. Permite acceder a los archivos sincronizados en la nube directamente desde el Explorador.
+
+### Este equipo
+
+Muestra la información agrupada sobre los recursos del equipo en tres categorías:
+
+- **Carpetas**: Documentos, Descargas, Escritorio, Imágenes, Música, Vídeos
+- **Dispositivos y unidades**: discos duros, SSD, unidades ópticas, memorias USB
+- **Ubicaciones de red**: unidades de red asignadas
+
+Permite ver de forma rápida los dispositivos de almacenamiento conectados al equipo.
+
+### Red
+
+Permite navegar por los recursos compartidos en la red local (otros equipos, servidores NAS, impresoras de red, etc.).
+
+---
+
+## Vistas disponibles
+
+El Explorador de archivos ofrece distintos modos de visualización para mostrar los archivos y carpetas. Se acceden desde el menú **Ver** de la barra de comandos o con **Ctrl + rueda del ratón** para cambiar el tamaño de iconos. Las vistas disponibles son:
+
+| Vista | Descripción |
+|---|---|
+| **Iconos extra grandes** | Miniaturas muy grandes, ideal para imágenes y vídeos |
+| **Iconos grandes** | Miniaturas grandes con nombre debajo |
+| **Iconos medianos** | Tamaño intermedio, equilibrio entre información visual y espacio |
+| **Iconos pequeños** | Iconos compactos con nombre a la derecha |
+| **Lista** | Muestra los elementos en una lista con solo el nombre e icono pequeño |
+| **Detalles** | Lista con columnas: nombre, fecha de modificación, tipo, tamaño. Permite ordenar haciendo clic en el nombre de la columna |
+| **Mosaicos** | Iconos medianos con información básica del archivo (tipo, tamaño) |
+| **Contenido** | Vista amplia con previsualización del contenido y metadatos del archivo |
+
+**Pantalla completa no es una vista del Explorador** — no existe esa opción en los modos de visualización.
+
+La vista **Detalles** es la más completa para ordenar y gestionar archivos, ya que permite hacer clic en las cabeceras de columna (Nombre, Fecha, Tipo, Tamaño) para ordenar en orden ascendente o descendente. Es posible ordenar los archivos por distintos campos, aunque dichos campos no se muestren en el diseño seleccionado. También es posible seleccionar distintos diseños para mostrar los archivos y agruparlos por diferentes columnas.
+
+---
+
+## Paneles del Explorador
+
+Además del panel de navegación, el Explorador dispone de dos paneles opcionales que se muestran a la derecha del área de contenido:
+
+### Panel de vista previa
+
+- **Atajo:** **Alt + P**
+- Muestra una previsualización del archivo seleccionado (imagen, documento, PDF, etc.) sin necesidad de abrirlo con su aplicación.
+- Muy útil para revisar imágenes, documentos Word o PDF rápidamente.
+- Se muestra/oculta con el mismo atajo Alt + P.
+
+### Panel de detalles
+
+- **Atajo:** **Alt + Mayús + P**
+- Muestra las propiedades y metadatos del archivo seleccionado: autor, número de páginas, dimensiones de imagen, duración de vídeo/audio, fecha de creación, de modificación, etc.
+- Ejemplo: al seleccionar un archivo .docx, el panel de detalles muestra el autor y el número de páginas del documento.
+
+---
+
+## Operaciones básicas con archivos y carpetas
+
+### Crear carpeta nueva
+
+- **Ctrl + Mayús + N**: atajo de teclado directo
+- Botón derecho del ratón > **Nuevo** > **Carpeta**
+- Botón **Nueva carpeta** en la barra de comandos
+
+### Copiar y pegar
+
+- **Ctrl + C** para copiar, luego navegar al destino y **Ctrl + V** para pegar
+- También mediante el menú contextual (botón derecho) o la barra de comandos
+- Si se arrastra un archivo a una carpeta manteniendo **Ctrl** pulsado, el archivo será copiado a la carpeta de destino en lugar de moverse
+
+### Mover (cortar y pegar)
+
+- **Ctrl + X** para cortar, luego **Ctrl + V** en el destino
+- Al arrastrar un archivo entre carpetas de la misma unidad, se mueve por defecto
+- Al arrastrar entre unidades distintas, se copia por defecto
+
+### Eliminar
+
+- **Supr**: elimina el elemento enviándolo a la **Papelera de reciclaje** (recuperable)
+- **Mayús + Supr**: elimina el elemento de forma **permanente** sin pasar por la Papelera
+
+### Cambiar nombre (renombrar)
+
+- Seleccionar el archivo o carpeta y pulsar **F2**
+- También con clic lento (doble clic espaciado) sobre el nombre, o clic derecho > **Cambiar nombre**
+- Tras pulsar F2, escribir el nuevo nombre y confirmar con **Enter**
+
+### Deshacer y rehacer
+
+- **Ctrl + Z**: deshace la última acción (mover, copiar, renombrar, eliminar)
+- **Ctrl + Y**: rehace la acción deshecha
+
+### Selección de elementos
+
+- **Clic** sobre un elemento: selecciona solo ese elemento
+- **Ctrl + clic**: selecciona varios elementos individuales (no contiguos)
+- **Mayús + clic**: selecciona un rango de elementos contiguos
+- **Ctrl + A**: selecciona todos los elementos de la carpeta actual
+- **Casillas de elemento**: opción en Ver > Mostrar que añade una casilla junto a cada elemento para facilitar la selección múltiple sin usar el teclado
+
+### Propiedades de archivos y carpetas
+
+- **Alt + Enter** o clic derecho > **Propiedades**: abre la ventana de propiedades
+- Muestra: nombre, tipo de archivo, ubicación, tamaño, tamaño en disco, fechas (creación, modificación, acceso) y atributos
+- **Atributos disponibles:**
+  - **Solo lectura**: el archivo puede abrirse y leerse, pero no modificarse ni sobrescribirse directamente
+  - **Oculto**: el archivo no se muestra por defecto en el Explorador
+  - **Sistema**: archivos del sistema operativo
+  - **Archivo**: marca que el archivo ha cambiado desde la última copia de seguridad
+
+### Conflictos al copiar o mover
+
+Cuando se intenta copiar o mover un archivo a una ubicación donde ya existe otro con el mismo nombre, Windows 11 muestra un **cuadro de diálogo** con tres opciones:
+
+- **Reemplazar el archivo en el destino**
+- **Omitir este archivo**
+- **Comparar la información de ambos archivos** (permite elegir cuál conservar o ambos)
+
+---
+
+## Barra de dirección: navegación avanzada
+
+La barra de dirección permite varias formas de navegación:
+
+- **Clic en una carpeta del recorrido**: navega directamente a esa carpeta
+- **Alt + D** o **Ctrl + L**: activa la barra para escribir una ruta directamente
+- **F4**: despliega la lista de ubicaciones visitadas recientemente
+- **Alt + ←** (Flecha izquierda): va a la carpeta anterior en el historial de navegación
+- **Alt + →** (Flecha derecha): va a la carpeta siguiente en el historial de navegación
+- **Alt + ↑** (Flecha arriba): sube un nivel en la jerarquía (carpeta padre)
+
+Ejemplo: para acceder a `D:\Departamento\Informes`, se pulsa Alt + D y se escribe esa ruta.
+
+---
+
+## Búsqueda de archivos
+
+### Activar la búsqueda
+
+- **Ctrl + E**, **Ctrl + F** o **F3**: activa el cuadro de búsqueda
+- La búsqueda se realiza dentro de la carpeta actual y sus subcarpetas
+
+### Búsqueda básica
+
+Para buscar archivos que contengan una palabra en el nombre, simplemente se escribe esa palabra en el cuadro de búsqueda. Por ejemplo, para encontrar todos los archivos con la palabra "informe" en su nombre, se escribe: `informe`
+
+### Operadores booleanos
+
+El cuadro de búsqueda admite operadores para refinar los resultados:
+
+| Operador | Uso | Ejemplo |
+|---|---|---|
+| **AND** | Incluye ambas palabras | `informe AND 2024` |
+| **OR** | Incluye cualquiera de las palabras | `informe OR acta` |
+| **NOT** | Excluye una palabra de los resultados | `informe NOT borrador` |
+| **" "** (comillas) | Busca varias palabras en el mismo orden exacto | `"informe anual"` |
+| **( )** (paréntesis) | Agrupa condiciones; busca archivos que contengan las palabras | `(Ficha Repaso)` |
+
+Para excluir una palabra de los resultados se usa el operador **NOT**.
+
+### Filtros por tipo, tamaño y fecha
+
+Desde la pestaña **Herramientas de búsqueda** (que aparece al activar la búsqueda) se pueden aplicar filtros:
+
+**Por tipo de archivo:**
+
+- Documentos, imágenes, música, vídeos, correo, calendario, etc.
+- No incluye: historial web (no es un tipo de filtro disponible en el Explorador)
+
+**Por tamaño:**
+
+- Vacío (0 KB), Diminuto (0-16 KB), Pequeño (16-1 MB), Mediano (1-128 MB), Grande (128 MB-1 GB), Enorme (> 1 GB)
+
+**Por fecha de modificación:**
+
+- Hoy, Esta semana, Este mes, Este año, Año pasado
+- **Este trimestre no es una opción disponible**
+
+**Por otras propiedades:**
+
+- Autor, etiquetas, y otros metadatos del archivo
+- La **fecha de modificación** NO aparece dentro de "Otras propiedades" ya que tiene su propio filtro dedicado
+
+**Opciones avanzadas de herramientas de búsqueda:** Todas las opciones disponibles de fecha, tipo y tamaño forman parte de las opciones avanzadas. No existen opciones adicionales que no estén en esas categorías.
+
+### Filtros avanzados por comando
+
+Se pueden escribir directamente en el cuadro de búsqueda filtros con la sintaxis `filtro:valor`:
+
+| Comando | Descripción |
+|---|---|
+| `ext:jpg` | Archivos con extensión .jpg |
+| `tipo:imagen` | Todos los archivos de tipo imagen |
+| `tamaño:grande` | Archivos de tamaño grande |
+| `fecha:hoy` | Archivos modificados hoy |
+| `autor:García` | Archivos de un autor concreto |
+| `nombre:informe` | Archivos con esa palabra en el nombre |
+| `clase:=carpeta word` | Carpetas que contienen "word" en su nombre |
+| `ancho:70` | Imágenes con un ancho exacto de 70 píxeles |
+
+---
+
+## Extensiones de archivo
+
+Las **extensiones** son los caracteres que aparecen tras el punto en el nombre de un archivo (por ejemplo, `.docx`, `.pdf`) e identifican el tipo de archivo y el programa asociado para abrirlo.
+
+### Mostrar u ocultar extensiones
+
+Por defecto, Windows 11 **oculta las extensiones** de los archivos conocidos. Para mostrarlas:
+
+- **Ver** > **Mostrar** > **Extensiones de nombre de archivo**
+
+La opción **"Mostrar extensiones de nombre de archivo"** muestra los caracteres finales del nombre de los archivos que identifican el tipo de archivo o de formato.
+
+### Extensiones de archivo comunes
+
+| Extensión | Tipo de archivo | Aplicación habitual |
+|---|---|---|
+| **.docx** | Documento Word | Microsoft Word |
+| **.xlsx** | Hoja de cálculo Excel | Microsoft Excel |
+| **.pptx** | Presentación PowerPoint | Microsoft PowerPoint |
+| **.pdf** | Documento PDF | Adobe Acrobat, navegadores |
+| **.txt** | Texto sin formato | Bloc de notas |
+| **.jpg / .jpeg** | Imagen JPEG | Visor de fotos, editores |
+| **.png** | Imagen PNG (con transparencia) | Visor de fotos, editores |
+| **.gif** | Imagen animada GIF | Navegadores, visores |
+| **.mp3** | Audio MPEG | Reproductores de audio |
+| **.mp4** | Vídeo MPEG-4 | Reproductor de Windows |
+| **.zip** | Archivo comprimido ZIP | Explorador de archivos (nativo) |
+| **.rar** | Archivo comprimido RAR | WinRAR (externo) |
+| **.exe** | Ejecutable de Windows | Sistema operativo |
+| **.html / .htm** | Página web | Navegadores |
+| **.xml** | Datos estructurados XML | Editores de texto |
+
+---
+
+## Archivos ocultos
+
+Windows 11 oculta por defecto ciertos archivos y carpetas del sistema para evitar que el usuario los modifique accidentalmente. Para mostrarlos:
+
+- **Ver** > **Mostrar** > **Elementos ocultos**
+
+Los archivos ocultos aparecen en el Explorador con un **icono semitransparente** (atenuado), lo que los diferencia visualmente de los archivos normales.
+
+Un archivo puede ocultarse activando el **atributo Oculto** en sus propiedades (Alt + Enter > pestaña General > casilla Oculto).
+
+---
+
+## Sistema de archivos NTFS
+
+El **sistema de archivos predeterminado** utilizado por Windows 11 es **NTFS** (New Technology File System). Sus características principales son:
+
+- Soporte para archivos y volúmenes de gran tamaño
+- Registro de transacciones (journaling) para mayor integridad
+- Control de acceso y permisos por usuario
+- Soporte para cifrado con BitLocker
+- Compatibilidad con metadatos avanzados
+
+---
+
+## Papelera de reciclaje
+
+La **Papelera de reciclaje** es el recurso que pone a disposición Windows 11 para recuperar los archivos eliminados por error. Cuando se elimina un archivo con la tecla **Supr**, este se envía a la Papelera (no se elimina definitivamente).
+
+### Restaurar archivos
+
+- Abrir la Papelera de reciclaje (en el escritorio) > seleccionar el archivo > clic derecho > **Restaurar**
+- Al restaurar, el archivo vuelve a su **ubicación original** (la carpeta desde la que fue eliminado)
+
+### Vaciar la Papelera
+
+- Clic derecho en el icono de la Papelera > **Vaciar Papelera de reciclaje**
+- O desde dentro de la Papelera > **Administrar** > **Vaciar Papelera de reciclaje**
+- Una vez vaciada, los archivos se eliminan de forma permanente
+
+### Eliminación permanente sin Papelera
+
+- **Mayús + Supr**: elimina el archivo directamente sin enviarlo a la Papelera
+
+### Configuración de la Papelera
+
+- Clic derecho en el icono > **Propiedades**: permite configurar el tamaño máximo que ocupa la Papelera en cada unidad y si se deben eliminar inmediatamente sin pasar por ella.
+
+---
+
+## Accesos directos (Shortcuts)
+
+Un **acceso directo** es un enlace que apunta a un archivo, carpeta, unidad o programa sin ser el elemento original. Sus características son:
+
+- Se identifican por una **pequeña flecha** en la esquina inferior izquierda del icono
+- Al eliminar un acceso directo, **no se elimina el elemento original**
+- Es posible crear accesos directos a carpetas y ficheros; si el enlace es a un fichero, se abrirá utilizando el programa asociado a su extensión
+- Se pueden crear haciendo clic derecho > **Crear acceso directo**
+- Se pueden colocar en el escritorio, en carpetas, en la barra de tareas
+- En sus **propiedades** (Alt + Enter) se puede ver y modificar el destino al que apunta, el icono, los argumentos de inicio, etc.
+
+---
+
+## Bibliotecas de Windows
+
+Las **Bibliotecas** son ubicaciones virtuales que agrupan carpetas de distintas ubicaciones del disco (o de la red) en una sola vista, sin mover los archivos físicamente. Por defecto, Windows incluye las bibliotecas:
+
+- **Documentos**
+- **Imágenes**
+- **Música**
+- **Vídeos**
+
+Las bibliotecas no son carpetas reales: son colecciones que apuntan a varias carpetas reales. Se pueden crear bibliotecas personalizadas añadiendo las carpetas deseadas.
+
+---
+
+## Comprimir archivos (ZIP nativo)
+
+Windows 11 incluye soporte nativo para crear y extraer archivos **ZIP** sin necesidad de software externo.
+
+Un **archivo comprimido** es un archivo que ocupa menos espacio en disco al aplicar un método de compresión sobre su contenido.
+
+### Comprimir archivos o carpetas
+
+1. Seleccionar los archivos o carpetas a comprimir
+2. Clic derecho > **Comprimir en archivo ZIP** (o desde la barra de comandos)
+3. Escribir el nombre del archivo ZIP y confirmar
+
+### Extraer archivos comprimidos
+
+1. Seleccionar el archivo ZIP
+2. Clic derecho > **Extraer todo...**
+3. Elegir la carpeta de destino y confirmar
+
+Para formatos como .rar o .7z se necesita software externo (WinRAR, 7-Zip).
+
+---
+
+## Casillas de elemento
+
+La opción **Casillas de elemento** (en Ver > Mostrar) añade una pequeña casilla de verificación junto a cada archivo o carpeta en el Explorador. Esto permite seleccionar uno o varios elementos haciendo clic en la casilla, sin necesidad de usar las teclas Ctrl o Mayús. Es especialmente útil en pantallas táctiles.
+
+---
+
+## Atajos de teclado del Explorador de archivos
+
+### Apertura y ventanas
+
+| Atajo | Acción |
+|---|---|
+| **Win + E** | Abrir el Explorador de archivos |
+| **Ctrl + N** | Abrir una nueva ventana del Explorador |
+| **Ctrl + W** | Cerrar la ventana actual |
+
+### Navegación
+
+| Atajo | Acción |
+|---|---|
+| **Alt + D** o **Ctrl + L** | Seleccionar / activar la barra de dirección |
+| **F4** | Desplegar la lista de la barra de direcciones |
+| **Alt + ←** | Ir a la carpeta anterior (historial) |
+| **Alt + →** | Ir a la carpeta siguiente (historial) |
+| **Alt + ↑** | Subir un nivel (carpeta padre) |
+| **Ctrl + Mayús + E** | Mostrar todas las carpetas superiores a la carpeta seleccionada |
+| **Bloq Num + (+)** | Mostrar el contenido de la carpeta seleccionada (árbol) |
+| **Bloq Num + (-)** | Contraer la carpeta seleccionada (árbol) |
+
+### Búsqueda
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + E** / **Ctrl + F** / **F3** | Seleccionar el cuadro de búsqueda |
+
+### Selección
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + A** | Seleccionar todos los elementos |
+| **Ctrl + clic** | Seleccionar elementos individuales no contiguos |
+| **Mayús + clic** | Seleccionar un rango de elementos |
+
+### Operaciones con archivos
+
+| Atajo | Acción |
+|---|---|
+| **F2** | Renombrar el elemento seleccionado |
+| **Ctrl + C** | Copiar |
+| **Ctrl + X** | Cortar |
+| **Ctrl + V** | Pegar |
+| **Ctrl + Z** | Deshacer |
+| **Ctrl + Y** | Rehacer |
+| **Supr** | Eliminar (enviar a la Papelera) |
+| **Mayús + Supr** | Eliminar permanentemente (sin Papelera) |
+| **Alt + Enter** | Abrir Propiedades del elemento seleccionado |
+
+### Crear y actualizar
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + Mayús + N** | Crear nueva carpeta |
+| **F5** | Actualizar el contenido de la carpeta |
+
+### Paneles y vistas
+
+| Atajo | Acción |
+|---|---|
+| **Alt + P** | Mostrar / ocultar el panel de vista previa |
+| **Alt + Mayús + P** | Mostrar / ocultar el panel de detalles |
+| **Ctrl + rueda del ratón** | Cambiar el tamaño de los iconos |
+
+---
+
+## Este equipo
+
+La sección **Este equipo** del panel de navegación agrupa la información sobre los recursos del equipo en tres categorías:
+
+1. **Carpetas**: Documentos, Descargas, Escritorio, Imágenes, Música, Objetos 3D, Vídeos
+2. **Dispositivos y unidades**: Disco local (C:), otras particiones, unidades USB, lectores de tarjetas
+3. **Ubicaciones de red**: Unidades de red asignadas
+
+Permite ver de forma rápida qué dispositivos de almacenamiento están conectados al equipo.
+
+---
+
+## Opciones de carpeta y configuración del Explorador
+
+Desde **Ver** > **Opciones** (o el menú **...** > Opciones) se accede a la configuración avanzada del Explorador:
+
+- **Elementos ocultos**: mostrar u ocultar archivos y carpetas marcados como ocultos
+- **Extensiones de nombre de archivo**: mostrar u ocultar las extensiones
+- **Casillas de elemento**: activar la selección mediante casillas
+- **Archivos del sistema protegidos**: mostrar u ocultar archivos críticos del sistema
+- **Carpeta de inicio**: definir qué carpeta se abre al iniciar el Explorador
+
+---
+
+## Formas de abrir el Explorador de archivos
+
+| Método | Descripción |
+|---|---|
+| **Win + E** | Atajo de teclado directo |
+| **Clic en icono de carpeta** | En la barra de tareas |
+| **Menú Inicio** | Buscando "Explorador de archivos" |
+| **Clic derecho en Inicio** | Menú contextual del botón Inicio |
+
+**No es válido** acceder al Explorador desde: Inicio > Configuración de Windows > Sistema > Explorador de archivos (esa ruta no existe). Tampoco es válido usar **Ctrl + Mayúsculas + Esc** (eso abre el Administrador de tareas).
+
+---
+
+## Funcionalidades no propias del Explorador
+
+El Explorador de archivos es una herramienta de gestión de archivos. No son propias de él:
+
+- **Realizar cálculos numéricos** (eso es función de la Calculadora)
+- **Editar texto con formato** (eso es función del Bloc de notas o Word)
+- **Navegar por internet** (eso es función de un navegador)
+- **Ejecutar comandos MS-DOS** (para eso se usa el Símbolo de sistema)
+
+Es importante no confundir el Explorador de archivos con el Explorador de Windows de versiones antiguas ni con el Administrador de tareas.

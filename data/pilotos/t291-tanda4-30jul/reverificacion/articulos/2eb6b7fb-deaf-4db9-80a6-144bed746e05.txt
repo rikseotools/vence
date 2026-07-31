@@ -1,0 +1,564 @@
+LEY: Excel 365
+ARTÍCULO: 10 — Interfaz y estructura básica
+======================================================================
+Microsoft Excel 365 es una aplicación de hoja de cálculo que forma parte del conjunto Microsoft 365. Un archivo de Excel se denomina **libro** (workbook) y contiene una o más **hojas de cálculo** (worksheets). Cada hoja está compuesta por una cuadrícula de **celdas** organizadas en **filas** y **columnas**.
+
+---
+
+## Elementos principales de la interfaz
+
+### Barra de título
+Situada en la parte superior de la ventana de la aplicación. Muestra el nombre del libro activo y el nombre de la aplicación (Microsoft Excel). En la barra de título se encuentran los botones de control de ventana: **Minimizar**, **Maximizar/Restaurar** y **Cerrar**, así como el menú de cuenta y las opciones de la cinta.
+
+### Barra de acceso rápido
+Situada en la parte superior izquierda (encima o debajo de la cinta, configurable). Contiene comandos de uso frecuente siempre visibles independientemente de la pestaña activa. Por defecto incluye: **Guardar** (Ctrl+G), **Deshacer** (Ctrl+Z) y **Rehacer** (Ctrl+Y). Se puede personalizar de dos formas:
+- **Clic derecho** sobre cualquier comando de la cinta > "Agregar a la barra de herramientas de acceso rápido"
+- **Clic derecho** sobre la propia barra de acceso rápido > "Personalizar barra de herramientas de acceso rápido" > "Más comandos"
+
+### Cinta de opciones (Ribbon)
+Barra horizontal con pestañas que organiza todos los comandos de Excel. Cada pestaña agrupa comandos relacionados en **grupos**. Se puede minimizar con Ctrl+F1 o haciendo doble clic en la pestaña activa.
+
+| Pestaña | Principales grupos y comandos |
+|---------|-------------------------------|
+| **Archivo** | Nueva, Abrir, Guardar, Guardar como, Imprimir, Compartir, Exportar, Opciones de Excel |
+| **Inicio** | Portapapeles, Fuente, Alineación, Número, Estilos, Celdas, Modificar |
+| **Insertar** | Tablas, Ilustraciones, Gráficos, Minigráficos, Filtros, Vínculos, Texto, Símbolos |
+| **Diseño de página** | Temas, Configurar página, Ajustar área de impresión, Opciones de la hoja, Organizar |
+| **Fórmulas** | Biblioteca de funciones, Nombres definidos, Auditoría de fórmulas, Cálculo |
+| **Datos** | Obtener y transformar datos, Consultas y conexiones, Ordenar y filtrar, Herramientas de datos, Previsión |
+| **Revisar** | Revisión, Idioma, Accesibilidad, Información, Proteger, Entrada de lápiz |
+| **Vista** | Vistas de libro, Mostrar, Zoom, Ventana, Macros |
+| **Ayuda** | Ayuda, Comunidad, Novedades |
+
+> La pestaña **Archivo** abre la vista **Backstage**, donde se gestionan archivos, cuentas y opciones globales del programa. No muestra la hoja de cálculo mientras está activa.
+
+**Grupos que NO pertenecen a la pestaña Inicio:** "Tablas" es un grupo de la pestaña **Insertar**, no de Inicio. "Referencias" no existe como pestaña ni como grupo en la cinta de Excel 365. "Formato" no existe como pestaña independiente en la cinta (los comandos de formato están distribuidos en Inicio y otras pestañas).
+
+Las pestañas **contextuales** (por ejemplo, "Herramientas de tabla", "Herramientas de gráfico") aparecen automáticamente en la cinta cuando se selecciona un objeto que las requiere, y desaparecen al deseleccionarlo.
+
+#### Personalizar la cinta de opciones
+Desde Archivo > Opciones > Personalizar cinta de opciones se pueden agregar, eliminar o reorganizar pestañas y grupos. El botón **Restablecer** en esta ventana elimina todas las personalizaciones realizadas y devuelve la cinta a su configuración predeterminada de fábrica.
+
+### Cuadro de nombres (Name Box)
+Situado en el extremo izquierdo de la barra de fórmulas. Muestra la **referencia de la celda activa** (ej. A1, B3, Z100) o el **nombre del rango** si la celda pertenece a uno. Usos:
+- Navegar directamente a una celda: escribir la referencia y pulsar Intro
+- Seleccionar un rango: escribir el rango (ej. A1:C10) y pulsar Intro
+- Asignar nombre a un rango: seleccionar el rango, hacer clic en el cuadro de nombres, escribir el nombre y pulsar Intro
+- Ver el nombre del objeto seleccionado (gráfico, imagen, etc.)
+
+### Barra de fórmulas (Formula Bar)
+Barra horizontal a la derecha del cuadro de nombres. Muestra y permite editar el **contenido real de la celda activa**:
+- Si la celda contiene un número o texto: muestra ese valor
+- Si la celda contiene una fórmula: muestra la fórmula completa (ej. =SUMA(A1:A10)), no el resultado
+- Si la celda contiene una fecha: muestra la fecha formateada
+
+**El contenido de la celda activa aparece en la barra de fórmulas, NO en la barra de estado.**
+
+Botones en la barra de fórmulas:
+- **X** (Cancelar) - descarta los cambios (equivale a Esc)
+- **V** (Aceptar) - confirma los cambios (equivale a Intro)
+- **fx** (Insertar función) - abre el asistente de funciones
+
+Se puede ampliar la barra de fórmulas haciendo clic en la flecha del extremo derecho o arrastrando su borde inferior.
+
+### Área de trabajo (cuadrícula de celdas)
+La zona central donde se introducen y visualizan los datos. Está formada por columnas (identificadas por letras) y filas (identificadas por números).
+
+### Barra de estado
+Situada en la parte inferior de la ventana, entre las etiquetas de hoja y los controles de zoom. Muestra información contextual y estadísticas de la selección actual. Se personaliza haciendo **clic derecho** sobre ella.
+
+**Elementos que puede mostrar la barra de estado:**
+
+| Elemento | Descripción |
+|----------|-------------|
+| **Modo de celda** | Estado actual: Listo, Modificar, Introducir, Señalar |
+| **Suma** | Suma de las celdas numéricas seleccionadas |
+| **Promedio** | Promedio de las celdas numéricas seleccionadas |
+| **Recuento** | Número de celdas seleccionadas con datos (cualquier tipo) |
+| **Recuento numérico** | Solo celdas con valores numéricos |
+| **Mín** | Valor mínimo del rango seleccionado |
+| **Máx** | Valor máximo del rango seleccionado |
+| **Zoom** | Control deslizante y porcentaje de zoom actual |
+| **Vistas** | Botones de acceso rápido a Normal, Diseño de página, Vista previa de salto de página |
+| **Bloq Mayús / Bloq Num / Bloq Despl** | Estado de las teclas de bloqueo del teclado |
+| **Firma** | Indica si el libro tiene firma digital |
+| **Directiva de información** | Si hay directivas de Information Rights Management |
+| **Macro en ejecución** | Indica si se está grabando una macro |
+
+Por defecto, la barra de estado muestra: **Promedio**, **Recuento** y **Suma** cuando hay celdas numéricas seleccionadas.
+
+> **"Producto" no es una función disponible en la barra de estado.** Las funciones estadísticas rápidas de la barra de estado son: Suma, Promedio, Recuento, Recuento numérico, Mín y Máx. Para calcular el producto de un rango hay que usar la función PRODUCTO() en una celda.
+
+> **El contenido de la celda activa no aparece en la barra de estado**; se muestra en la barra de fórmulas.
+
+### Etiquetas de hoja
+Pestañas en la parte inferior izquierda que identifican cada hoja del libro (Hoja1, Hoja2, etc.). A su izquierda hay botones de navegación entre hojas cuando no caben todas en pantalla.
+
+---
+
+## Celdas, filas y columnas
+
+### Columnas
+- Identificadas por **letras** en los encabezados superiores: A, B, C … Z, AA, AB … XFD
+- Los encabezados de columna aparecen **horizontalmente** en la parte superior de la cuadrícula
+- Excel 365 admite hasta **16.384 columnas** (de la A a la XFD)
+- Dispuestas **verticalmente** en la cuadrícula (cada columna agrupa celdas de arriba a abajo)
+- Seleccionar columna completa: clic en la letra del encabezado, o **Ctrl + Barra espaciadora**
+- Seleccionar columnas no adyacentes: mantener pulsada la tecla **Ctrl** mientras se hace clic en cada encabezado de columna
+- Ancho ajustable: arrastrar el borde del encabezado, o doble clic para autoajustar
+
+### Filas
+- Identificadas por **números** en los encabezados de la izquierda: 1, 2, 3 …
+- Excel 365 admite hasta **1.048.576 filas**
+- Dispuestas **horizontalmente** en la cuadrícula
+- Seleccionar fila completa: clic en el número del encabezado, o **Mayús + Barra espaciadora**
+- Seleccionar filas no adyacentes: mantener pulsada la tecla **Ctrl** mientras se hace clic en cada número de fila
+- Alto ajustable: arrastrar el borde del encabezado de fila, o doble clic para autoajustar
+
+### Mostrar u ocultar encabezados de fila y columna
+Los encabezados de fila (números) y de columna (letras) pueden ocultarse o mostrarse desde la pestaña **Vista > grupo Mostrar > casilla Encabezados**. Si la casilla está desmarcada, los encabezados desaparecen y la cuadrícula aparece sin letras ni números. Para restaurarlos, volver a marcar la casilla.
+
+### Celda
+- **Intersección** de una columna y una fila. Ejemplo: B3 = columna B, fila 3
+- Capacidad máxima de una celda: **32.767 caracteres**
+- La celda activa (seleccionada) muestra un borde de color (verde o azul) y su referencia aparece en el cuadro de nombres
+
+### Celda activa
+La celda donde se introducirán los datos al escribir. Se identifica por:
+- Borde resaltado (normalmente verde)
+- Su referencia en el Cuadro de nombres
+- Su contenido en la Barra de fórmulas
+
+La celda activa está seleccionada y lista para editar.
+
+### Rango
+Conjunto de celdas al que se puede hacer referencia como una unidad:
+- **Rango contiguo**: A1:C5 (dos puntos, todas las celdas del rectángulo). Ejemplo: A1:G1 es un rango que incluye todas las celdas desde A1 hasta G1.
+- **Rango no contiguo**: A1;C5 o A1,C5 (punto y coma o coma según configuración regional; separa grupos de celdas no adyacentes)
+- **Fila completa**: 3:3
+- **Columna completa**: C:C
+- **Toda la hoja**: Ctrl+E o clic en el botón de la esquina superior izquierda (intersección de encabezados)
+
+### Referencias de celda
+| Tipo | Sintaxis | Comportamiento al copiar |
+|------|----------|--------------------------|
+| Relativa | A1 | Se ajusta automáticamente |
+| Absoluta | $A$1 | No cambia nunca |
+| Mixta (columna fija) | $A1 | La columna no cambia, la fila sí |
+| Mixta (fila fija) | A$1 | La fila no cambia, la columna sí |
+
+Alternar entre tipos de referencia: seleccionar la referencia en la barra de fórmulas y pulsar **F4** repetidamente.
+
+---
+
+## Hojas de cálculo
+
+Un libro puede contener múltiples hojas. Por defecto, al crear un nuevo libro en Excel 365 se crea **1 hoja** (Hoja1). (Nota: versiones anteriores de Excel creaban 3 hojas por defecto; Excel 365 crea solo 1.)
+
+### Operaciones con hojas
+
+| Acción | Procedimiento |
+|--------|---------------|
+| **Insertar hoja** | Clic en **+** al final de las etiquetas, o **Mayús+F11**, o clic derecho > Insertar, o Inicio > Celdas > Insertar > Insertar hoja |
+| **Eliminar hoja** | Clic derecho sobre la etiqueta > Eliminar (la eliminación es **definitiva**, no va a la Papelera) |
+| **Cambiar nombre** | Doble clic sobre la etiqueta, o clic derecho > Cambiar nombre |
+| **Mover hoja** | Arrastrar la etiqueta, o clic derecho > Mover o copiar |
+| **Copiar hoja** | Clic derecho > Mover o copiar > marcar "Crear una copia" |
+| **Color de etiqueta** | Clic derecho > Color de etiqueta, o Inicio > Celdas > Formato > Color de etiqueta |
+| **Ocultar hoja** | Clic derecho > Ocultar |
+| **Mostrar hoja oculta** | Clic derecho sobre cualquier etiqueta > Mostrar |
+
+### Trabajar con varias hojas simultáneamente
+- Seleccionar hojas contiguas: clic en la primera, Mayús+clic en la última
+- Seleccionar hojas no contiguas: Ctrl+clic en cada etiqueta
+- Cuando hay varias hojas seleccionadas, lo que se escribe en una aparece en todas en la misma posición (**grupo de trabajo**)
+- Para desagrupar: clic en una hoja no seleccionada, o clic derecho > Desagrupar hojas
+
+> Si se seleccionan varias hojas y se escribe en una celda, el valor se introduce en esa misma celda en todas las hojas seleccionadas simultáneamente.
+
+### Navegación entre hojas
+- Clic en la etiqueta correspondiente
+- Ctrl+AvPág → siguiente hoja; Ctrl+RePág → hoja anterior
+- Clic derecho en los botones de navegación de etiquetas (izquierda de las etiquetas) para ver la lista de todas las hojas
+
+---
+
+## Tipos de datos en una celda
+
+| Tipo | Descripción | Alineación por defecto |
+|------|-------------|------------------------|
+| **Número** | Enteros, decimales, negativos, fracciones | Derecha |
+| **Texto** | Cadenas de caracteres, incluidos dígitos tratados como texto | Izquierda |
+| **Fecha / Hora** | Internamente almacenadas como números seriales; se muestran con formato de fecha u hora | Derecha |
+| **Fórmula** | Empieza con = (o + o –); Excel evalúa y muestra el resultado | Según el resultado |
+| **Booleano** | VERDADERO / FALSO | Centrado |
+| **Error** | Valores de error: #¡DIV/0!, #¡VALOR!, #¡REF!, #¿NOMBRE?, #¡NULO!, #N/A, #¡NUM! | Derecha |
+
+> Una **constante** es un valor que no se calcula y que siempre permanece invariable (número, texto, fecha introducida directamente). No comienza con = y no cambia salvo edición manual.
+
+Excel permite en sus celdas los siguientes tipos de contenido: **texto, números, fórmulas, fechas y objetos** (gráficos, imágenes, etc.).
+
+### Comportamientos automáticos al introducir datos
+
+| Lo que escribe | Lo que Excel interpreta |
+|----------------|-------------------------|
+| **20-2** (sin formato de celda definido) | Fecha: **20-feb** |
+| **+ o –** al inicio | Añade automáticamente **=** (trata el valor como fórmula) |
+| **Apóstrofo (')** antes del contenido | Texto literal; el apóstrofo no se muestra pero fuerza tipo texto. Ejemplo: escribir '=A1 muestra el texto "=A1", no calcula la fórmula |
+| Fórmula **sin =** al inicio | Se almacena como texto, no se calcula |
+| Número entre **paréntesis** | Excel lo interpreta como número **negativo** (ej. (5) = -5) |
+| **1/2** en celda sin formato | Excel lo interpreta como fecha (1 de febrero o 1/2 del año) |
+
+---
+
+## Relleno automático y Relleno rápido
+
+### Controlador de relleno (Fill Handle)
+Pequeño cuadrado verde en la esquina inferior derecha de la celda o rango seleccionado. Permite:
+- **Copiar** el contenido de la celda arrastrando hacia abajo o los lados
+- **Rellenar series** automáticamente: si la celda contiene un número, fecha, día de la semana, mes o texto con número, Excel continúa la serie al arrastrar
+- Doble clic en el controlador: rellena automáticamente hasta la última fila con datos adyacentes
+
+**Ejemplos de series que Excel reconoce y extiende:**
+- Enero, Febrero, Marzo…
+- Lunes, Martes, Miércoles…
+- 1, 2, 3… (con dos celdas seleccionadas que marcan el paso)
+- 2, 4, 6… (serie aritmética; con tres celdas seleccionadas con valores 5, 10, 15, arrastrando se obtiene 20, 25…)
+- T1-2024, T2-2024, T3-2024…
+- Producto1, Producto2, Producto3…
+
+Al soltar el arrastre aparece el botón **Opciones de relleno automático** (etiqueta inteligente) que permite elegir entre:
+
+| Opción | Descripción |
+|--------|-------------|
+| **Copiar celdas** | Repite el mismo valor en todas las celdas |
+| **Rellenar serie** | Continúa la secuencia numérica o de fechas |
+| **Rellenar solo formato** | Copia el formato sin copiar el contenido |
+| **Rellenar sin formato** | Continúa la serie sin copiar el formato |
+| **Rellenar días** | Rellena con días consecutivos del calendario |
+| **Rellenar días laborables de la semana** | Rellena solo con días de lunes a viernes, omitiendo sábado y domingo |
+| **Rellenar meses** | Rellena con meses consecutivos |
+| **Rellenar años** | Rellena con años consecutivos |
+
+> Para completar automáticamente los días de la semana de lunes a viernes (sin incluir el fin de semana), debe seleccionarse la opción **"Rellenar días laborables de la semana"** en la etiqueta inteligente de relleno.
+
+### Relleno rápido (Flash Fill)
+Funcionalidad introducida en Excel 2013, disponible en Excel 365. Detecta **patrones** en los datos y rellena automáticamente una columna completa sin necesidad de fórmulas.
+
+- **Activación automática**: Excel lo sugiere (en gris) cuando detecta el patrón al escribir en la columna adyacente
+- **Activación manual**:
+  - Atajo de teclado: **Ctrl+E**
+  - Inicio > Modificar > Relleno > Relleno rápido
+  - Datos > Herramientas de datos > Relleno rápido
+
+**Casos de uso típicos:**
+- Separar nombre y apellido en columnas distintas
+- Extraer partes de un texto (ej. dominio de un email)
+- Cambiar formato (ej. de "JUAN GARCÍA" a "Juan García")
+- Combinar datos de varias columnas
+
+> Relleno rápido trabaja con **patrones de texto** a partir de ejemplos, sin necesidad de fórmulas. No actualiza los datos si los originales cambian (es una operación de una sola vez). No es lo mismo que la Validación de datos (que crea desplegables de valores permitidos), ni está relacionado con la vinculación de celdas entre hojas.
+
+---
+
+## Vistas de la hoja de cálculo
+
+Accesibles desde la pestaña **Vista** o desde los botones en la barra de estado (extremo derecho).
+
+| Vista | Descripción | Uso principal |
+|-------|-------------|---------------|
+| **Normal** | Vista estándar de edición; muestra la cuadrícula completa sin márgenes de impresión | Trabajo diario de introducción y edición de datos |
+| **Diseño de página** | Muestra la hoja tal como se imprimirá, con márgenes, encabezados y pies de página editables en línea, regla horizontal y vertical | Preparar documentos para impresión |
+| **Vista previa de salto de página** | Muestra saltos de página como líneas azules (automáticos) o discontinuas (manuales) arrastrables; las áreas fuera del área de impresión aparecen en gris | Ajustar qué se imprime en cada página |
+
+Vistas adicionales en la pestaña Vista:
+- **Nueva ventana**: abre el mismo libro en una ventana adicional, permitiendo trabajar con dos vistas del mismo libro al mismo tiempo (es el comando para crear un duplicado exacto del libro activo para trabajar con ambos simultáneamente)
+- **Organizar todo**: organiza múltiples ventanas abiertas
+- **Dividir**: divide la hoja en hasta 4 paneles independientes con barras de desplazamiento propias
+- **Inmovilizar paneles**: bloquea filas y/o columnas para que sigan visibles al desplazarse
+
+### Inmovilizar paneles (Freeze Panes)
+Vista > Inmovilizar paneles:
+- **Inmovilizar fila superior**: mantiene visible la primera fila al desplazarse hacia abajo
+- **Inmovilizar primera columna**: mantiene visible la columna A al desplazarse hacia la derecha
+- **Inmovilizar paneles**: inmoviliza todas las filas encima y todas las columnas a la izquierda de la celda seleccionada
+- **Movilizar paneles**: desactiva la inmovilización
+
+### Zoom
+- Control deslizante en la barra de estado (esquina inferior derecha): de 10% a 400%
+- Vista > Zoom para opciones predefinidas
+- **Ctrl + rueda del ratón**: aumenta o reduce el zoom
+- Ajustar selección: hace zoom para que el rango seleccionado ocupe toda la pantalla
+
+---
+
+## Portapapeles de Office
+
+- El portapapeles de Office admite hasta **24 elementos** copiados simultáneamente
+- A diferencia del portapapeles de Windows (que solo conserva 1 elemento), el de Office acumula los últimos 24 elementos copiados o cortados desde cualquier aplicación de Office
+- Se activa desde: Inicio > grupo Portapapeles > clic en el iniciador del grupo (flecha pequeña)
+- Permite pegar cualquiera de los 24 elementos guardados en cualquier orden
+
+---
+
+## Atajos de teclado esenciales de la interfaz
+
+| Atajo | Acción |
+|-------|--------|
+| **Ctrl+G** | Guardar |
+| **Ctrl+Z** | Deshacer |
+| **Ctrl+Y** | Rehacer |
+| **Ctrl+F1** | Mostrar/ocultar cinta de opciones |
+| **F2** | Entrar en modo edición de la celda activa |
+| **Esc** | Cancelar la edición de la celda / salir de la vista Backstage |
+| **Intro** | Confirmar entrada y mover a la celda inferior |
+| **Tab** | Confirmar entrada y mover a la celda de la derecha |
+| **Ctrl+Inicio** | Ir a la celda A1 |
+| **Ctrl+Fin** | Ir a la última celda con datos |
+| **Ctrl+AvPág** | Ir a la siguiente hoja |
+| **Ctrl+RePág** | Ir a la hoja anterior |
+| **Mayús+F11** | Insertar nueva hoja |
+| **Ctrl+E** | Seleccionar toda la hoja / activar Relleno rápido (Flash Fill) |
+| **Ctrl + Barra espaciadora** | Seleccionar columna completa |
+| **Mayús + Barra espaciadora** | Seleccionar fila completa |
+| **F4** | Alternar tipo de referencia (relativa/absoluta/mixta) en la barra de fórmulas |
+| **Alt+Intro** | Insertar salto de línea dentro de la celda |
+| **Ctrl+1** | Abrir diálogo Formato de celdas |
+| **Mayús+F3** | Abrir el cuadro de diálogo Insertar función (equivalente al botón *fx* en la barra de fórmulas) |
+| **F9** | Recalcular todas las fórmulas del libro (en modo de cálculo manual) |
+| **Ctrl+B** | Abrir Buscar |
+| **Ctrl+L** | Abrir Buscar y reemplazar |
+| **F5 / Ctrl+G** | Abrir el diálogo Ir a |
+
+---
+
+## Selección de celdas
+
+| Qué seleccionar | Cómo |
+|-----------------|------|
+| Una celda | Clic en la celda o usar teclas de dirección |
+| Rango contiguo | Clic en la primera celda y arrastrar, o Mayús+clic en la última |
+| Rango no contiguo | **Ctrl+clic** en cada celda o rango adicional |
+| Fila completa | Clic en el número de fila o Mayús+Barra espaciadora |
+| Columna completa | Clic en la letra de la columna o Ctrl+Barra espaciadora |
+| Columnas no adyacentes | Mantener pulsada **Ctrl** y hacer clic en cada encabezado de columna |
+| Filas no adyacentes | Mantener pulsada **Ctrl** y hacer clic en cada número de fila |
+| Toda la hoja | Ctrl+E o clic en el botón de intersección de encabezados (esquina superior izquierda) |
+| Desde la celda activa hasta el final de datos | Ctrl+Mayús+Fin |
+| Desde la celda activa hasta A1 | Ctrl+Mayús+Inicio |
+
+---
+
+## Modos de la barra de estado (indicador de modo)
+
+La barra de estado muestra el **modo actual** de Excel en su extremo izquierdo:
+
+| Modo | Cuándo aparece |
+|------|----------------|
+| **Listo** | La celda está seleccionada pero no en edición |
+| **Introducir** | Se está escribiendo contenido nuevo en la celda |
+| **Modificar** | Se está editando el contenido existente de la celda (F2) |
+| **Señalar** | Se está seleccionando un rango para introducirlo en una fórmula |
+
+---
+
+## Fórmulas y funciones
+
+### Fórmula vs. función
+- Una **fórmula** es una expresión personalizada escrita por el usuario que puede combinar referencias, constantes y operadores. Ejemplo: `=A1+B1-C1` o `=D5-D6`
+- Una **función** es un procedimiento predefinido de Excel con un nombre y argumentos que realiza un cálculo específico. Ejemplo: `=SUMA(A1:A10)`, `=PROMEDIO(B1:B5)`
+- Las funciones pueden formar parte de una fórmula: `=SUMA(A1:A10)*2` es una fórmula que contiene una función
+
+### Cómo iniciar una fórmula o función
+Para que Excel interprete el contenido de una celda como una fórmula (y no como texto), el primer carácter debe ser:
+- **= (signo igual)**: el operador estándar y correcto para comenzar una fórmula
+- **+ (signo más)** o **- (signo menos)**: Excel añade automáticamente el = al final de la escritura
+
+El primer paso para añadir una fórmula o función es escribir el signo = en la celda, o utilizar el comando **Insertar función** (botón fx o Mayús+F3).
+
+### Componentes de una fórmula
+
+Una fórmula en Excel puede contener cuatro tipos de elementos:
+
+| Componente | Descripción | Ejemplo |
+|-----------|-------------|---------|
+| **Funciones** | Procedimientos predefinidos que realizan cálculos | SUMA, PROMEDIO, SI |
+| **Referencias** | Direcciones de celdas o rangos | A1, B2:D10, Hoja2!C3 |
+| **Constantes** | Valores fijos introducidos directamente | 3,14 ; "Madrid" ; VERDADERO |
+| **Operadores** | Símbolos que indican la operación a realizar | + - * / ^ & = < > |
+
+> **Lo que NO puede formar parte de una fórmula:** hipervínculos, variables (Excel no tiene variables en el sentido de lenguaje de programación). Los hipervínculos son objetos independientes y no son un componente de una fórmula.
+
+### Estructura de una función
+Una función tiene la forma: `=NOMBRE_FUNCIÓN(argumento1; argumento2; …)`
+
+Los **argumentos** son los datos que se proporcionan a la función para que realice sus operaciones. Pueden ser números, texto, referencias de celda, rangos u otras funciones anidadas.
+
+### Operadores en Excel
+
+| Tipo | Operadores | Descripción |
+|------|-----------|-------------|
+| **Aritméticos** | + - * / ^ | Suma, resta, multiplicación, división, potencia |
+| **Comparación** | = < > <= >= <> | Devuelven VERDADERO o FALSO |
+| **Texto** | & | Concatenar cadenas de texto |
+| **Referencia** | : ; (espacio) | Dos puntos (rango), punto y coma (unión), espacio (intersección) |
+
+### Fórmulas matriciales
+
+Una **fórmula matricial** (array formula) opera sobre un rango de valores en lugar de sobre una única celda y puede devolver múltiples resultados a la vez.
+
+Características:
+- Se introducen con **Ctrl+Mayús+Intro** en lugar de solo Intro
+- Excel muestra la fórmula entre **llaves** `{}` en la barra de fórmulas para indicar que es matricial (ej. `{=SUMA(A1:A3*2;B1:B3*3;C1:C3*-1)}`)
+- Las llaves **no se escriben manualmente**; Excel las añade automáticamente al confirmar con Ctrl+Mayús+Intro
+- No se puede editar solo una celda de un rango matricial; hay que seleccionar todo el rango para modificarla
+
+### Opciones de cálculo
+
+Accesibles desde Fórmulas > Cálculo > Opciones para el cálculo, o desde Archivo > Opciones > Fórmulas:
+
+| Opción | Comportamiento |
+|--------|---------------|
+| **Automático** | Excel recalcula todas las fórmulas cada vez que cambia un dato (comportamiento por defecto) |
+| **Automático excepto para tablas de datos** | Recalcula todo excepto las tablas de datos de análisis hipotético |
+| **Manual** | Excel solo recalcula cuando el usuario pulsa F9 (todas las hojas) o Mayús+F9 (hoja activa) |
+
+> Las **opciones de cálculo** son las opciones que permiten ajustar cómo y cuándo Excel recalcula las fórmulas dentro de una hoja de cálculo.
+
+### Insertar celdas, filas o columnas
+Desde la pestaña **Inicio > grupo Celdas > Insertar**, o haciendo clic derecho sobre una celda, fila o columna y seleccionando "Insertar", se puede:
+- **Insertar celdas** (desplazando las existentes a la derecha o hacia abajo)
+- **Insertar filas** de hoja
+- **Insertar columnas** de hoja
+- **Insertar hoja**
+
+---
+
+## Herramientas de búsqueda y navegación
+
+### Buscar y reemplazar (Ctrl+B / Ctrl+L)
+
+El cuadro de diálogo **Buscar y reemplazar** permite buscar contenido en la hoja o el libro. Los parámetros configurables son:
+
+| Parámetro | Valores posibles |
+|-----------|-----------------|
+| **Buscar en** | Fórmulas / Valores / Notas |
+| **Buscar** (dirección) | Por filas / Por columnas |
+| **Dentro de** | Hoja / Libro |
+| **Coincidir mayúsculas y minúsculas** | Sí / No |
+| **Coincidir con el contenido de toda la celda** | Sí / No |
+
+> **"Buscar en Celda" no existe** como parámetro de búsqueda en Excel. Las únicas opciones de "Buscar en" son: Fórmulas, Valores y Notas.
+
+### Ir a / Ir a Especial (F5 o Ctrl+G)
+
+El comando **Ir a** (F5 o Ctrl+G) permite navegar directamente a una celda o rango. El botón **Especial** abre **Ir a Especial**, que permite seleccionar celdas que cumplan un criterio específico:
+
+| Opción de Ir a Especial | Selecciona |
+|------------------------|-----------|
+| **Fórmulas** | Todas las celdas que contienen fórmulas (con subfiltros: números, texto, lógicas, errores) |
+| **Constantes** | Celdas con valores no calculados |
+| **Celdas en blanco** | Celdas vacías del rango seleccionado |
+| **Región actual** | El bloque de datos adyacente a la celda activa |
+| **Matriz actual** | La fórmula matricial completa si la celda activa pertenece a una |
+| **Objetos** | Objetos (gráficos, imágenes, formas) en la hoja |
+| **Diferencias entre filas / columnas** | Celdas que difieren de la celda de referencia |
+| **Celdas dependientes / precedentes** | Celdas que dependen de o son usadas por la fórmula activa |
+| **Última celda** | La celda más a la derecha y abajo con datos |
+| **Solo celdas visibles** | Excluye las filas/columnas ocultas |
+| **Formato condicional** | Celdas con formato condicional aplicado |
+| **Validación de datos** | Celdas con reglas de validación de datos |
+
+> **"Hojas" no es una opción de Ir a Especial.** Ir a Especial actúa sobre celdas, no sobre hojas.
+
+Para **seleccionar todas las celdas que contienen fórmulas**: Inicio > Buscar y seleccionar > Fórmulas, o F5 > Especial > Fórmulas, o Ctrl+G > Especial > Fórmulas. Ambas vías son igualmente válidas.
+
+---
+
+## Hipervínculos
+
+Un **hipervínculo** es un acceso directo que, al hacer clic, salta a otra ubicación. En Excel puede apuntar a:
+- Otra celda o rango dentro del mismo libro
+- Otra hoja del mismo libro
+- Un archivo en el sistema o en red
+- Una página en la intranet o en Internet
+- Una dirección de correo electrónico
+
+Insertar hipervínculo: Insertar > Vínculos > Insertar hipervínculo (Ctrl+Alt+K).
+
+> Los hipervínculos son **objetos independientes** de la celda; **no son un componente de una fórmula** y no pueden formar parte de una expresión de cálculo.
+
+---
+
+## Indicadores visuales en las celdas
+
+| Indicador | Posición en la celda | Significado |
+|-----------|---------------------|-------------|
+| **Triángulo verde** | Esquina superior izquierda | Error potencial detectado por Excel (ej. número almacenado como texto) |
+| **Triángulo rojo** | Esquina superior derecha | La celda tiene una **nota** (comentario) asociada; al situar el puntero sobre la celda se muestra el texto de la nota |
+| **Triángulo azul/morado** | Esquina inferior derecha | En algunos contextos indica datos enlazados o vinculados |
+
+> Para ver la nota, sitúe el puntero sobre la celda con el triángulo rojo. Para insertar o editar notas: clic derecho > Nueva nota (o Insertar nota).
+
+---
+
+## Herramienta Análisis rápido
+
+El botón **Análisis rápido** aparece automáticamente en la esquina inferior derecha de la selección cuando se selecciona un **rango de celdas contiguas con datos**. Ofrece acceso rápido a:
+
+- **Formato**: barras de datos, escalas de color, conjuntos de iconos, mayor que, 10 mejores
+- **Gráficos**: sugerencias de gráfico según los datos seleccionados
+- **Totales**: suma, promedio, recuento, % total, total acumulado en filas o columnas
+- **Tablas**: convertir a tabla de Excel o tabla dinámica
+- **Minigráficos**: insertar sparklines de línea, columna o de pérdidas y ganancias
+
+> El análisis rápido no aparece si la selección está vacía, contiene una sola celda, o si se ha desactivado desde Archivo > Opciones > General.
+
+---
+
+## Comportamiento del texto en celdas
+
+### Desbordamiento visual
+
+Cuando una celda contiene texto cuya longitud supera el ancho de la columna:
+- Si la **celda adyacente a la derecha está vacía**, el texto se **desborda visualmente** hacia esa celda (el texto sigue perteneciendo a la celda original; la celda adyacente no contiene ningún dato)
+- Si la **celda adyacente tiene contenido**, el texto de la primera celda queda **truncado visualmente** (cortado), aunque el contenido completo sigue almacenado en la celda
+- El ancho real de la columna no cambia en ningún caso; es solo una representación visual
+
+---
+
+## Opciones de Excel — Avanzadas: Opciones de edición
+
+Archivo > Opciones > Avanzadas > sección **Opciones de edición** contiene configuraciones relacionadas con el comportamiento al introducir y editar datos:
+
+Opciones disponibles en esta sección (selección representativa):
+
+- Después de presionar Intro, mover la selección (y elegir la dirección)
+- Insertar un punto decimal automáticamente (con configuración de posición)
+- Habilitar el controlador de relleno y arrastrar y colocar celdas
+- Alertar antes de reemplazar celdas
+- Permitir la edición directamente en las celdas
+- Ampliar los formatos y las fórmulas del rango de datos
+- Habilitar Autocompletar para valores de celda
+- Usar IntelliSense para la función sugerida
+- Usar separadores de sistema (y configurar separadores de decimales/miles)
+- Acercar el puntero para Deshacer o Rehacer
+- Mover la selección automáticamente después de la entrada con lápiz
+
+> **"Usar nombres de tabla en las fórmulas" NO es una opción de Opciones de edición.** Esa configuración pertenece a la sección **Fórmulas** de las Opciones de Excel (Archivo > Opciones > Fórmulas > sección "Trabajar con fórmulas").
+
+---
+
+## Salir de la vista Backstage (pestaña Archivo)
+
+La vista **Backstage** se abre al hacer clic en la pestaña **Archivo**. Para volver a la hoja de cálculo:
+- Pulsar **Esc**
+- Hacer clic en la **flecha de retroceso** (←) en la esquina superior izquierda de la vista Backstage
+
+Ambas vías son igualmente válidas para salir de la vista Backstage.
+
+---
+
+## Breve historia de las hojas de cálculo
+
+**VisiCalc** (1979) fue la primera hoja de cálculo para ordenadores personales. Desarrollada por Dan Bricklin y Bob Frankston para el Apple II, es considerada la aplicación que impulsó la adopción masiva del ordenador personal en el ámbito empresarial. Le siguieron Lotus 1-2-3 (1983) y más adelante Microsoft Excel (1985 en Mac, 1987 en Windows).

@@ -1,0 +1,9 @@
+{
+  "question_id": "fe316311-5ac0-46e9-a638-48ade9ec9ab8",
+  "gravedad": "media",
+  "tipo": "afirmacion_falsa",
+  "donde": "intro y las cuatro razones (toda la explicación; no hay cita del artículo)",
+  "que_dice": "Que la interfaz de usuario no es software malicioso, y que virus, troyano y spyware sí lo son, presentando estas definiciones como si vinieran del artículo vinculado (Windows 11, art. 1).",
+  "que_dice_el_articulo": "El artículo (Windows 11, art. 1 — Fundamentos del Sistema Operativo Windows 11) no contiene ninguna sección sobre software malicioso, virus, troyanos o spyware; una búsqueda de esos términos en el fichero fuente no da ningún resultado. El único uso de \"interfaz de usuario\" en el artículo aparece en un contexto totalmente distinto, describiendo el Símbolo del sistema (cmd.exe) como \"interfaz de usuario basada en texto\", no como parte de una comparación con malware.",
+  "correccion_propuesta": "El contenido puede ser correcto en el mundo real, pero no está respaldado por este artículo. Añadir una cita literal de una fuente que sí trate seguridad/malware, o retirar el vínculo a este artículo concreto y anotar que la explicación se basa en conocimiento general, no en el texto citado (que de hecho no se cita en absoluto en esta explicación)."
+}

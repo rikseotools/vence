@@ -1,0 +1,208 @@
+LEY: La Red Internet
+ARTÍCULO: 10 — Estado actual: IA, cloud, ciberseguridad
+======================================================================
+## Estado actual de Internet: IA, cloud computing, IoT y ciberseguridad
+
+### 1. Inteligencia Artificial (IA)
+
+La **Inteligencia Artificial (IA)** es un **tipo de software que imita la inteligencia humana**, capaz de realizar tareas que normalmente requieren inteligencia humana (comprensión del lenguaje, toma de decisiones, reconocimiento de imágenes).
+
+| Herramienta | Empresa | Función principal |
+|-------------|---------|-------------------|
+| **ChatGPT** | OpenAI | Generar respuestas en lenguaje natural, facilitar conversaciones |
+| **Copilot** | Microsoft | Asistente IA integrado en Word, Excel, Outlook y otras apps de Microsoft |
+| **Gemini** | Google | Plataforma de IA con modelos de lenguaje y visión |
+| **Qwen** | Alibaba | Ayuda a escribir y generar texto |
+
+**ChatGPT** es un sistema de chat basado en la Inteligencia Artificial desarrollado por OpenAI. **Microsoft Copilot** utiliza inteligencia artificial para ayudar al usuario y está disponible en varias aplicaciones: **Word, Excel, Outlook**, entre otras. No se limita a una sola aplicación ni a tareas de diseño únicamente.
+
+**Gemini** es una plataforma de IA desarrollada por **Google** que integra modelos de lenguaje y visión.
+
+**Qwen** es la herramienta de IA de **Alibaba** y ayuda a escribir y generar texto.
+
+### 2. Prompting en IA generativa
+
+El **prompt** o **prompting** en el contexto de la IA generativa es la **instrucción o texto que un usuario introduce para guiar la respuesta de la IA**. También: "la formulación de un texto de entrada" o "el proceso de proporcionar una entrada o comando a un modelo de IA para obtener una respuesta específica".
+
+El prompting no es la creación de código fuente de IA, ni la automatización de la recopilación de datos, ni el comando para iniciar sesión en un navegador.
+
+### 3. Machine Learning, deepfake y automatización inteligente
+
+El **entrenamiento** de un modelo de machine learning es el **proceso de ajustar un modelo a los datos para mejorar su rendimiento**. No es la prueba del modelo, ni la programación desde cero, ni la recopilación de datos.
+
+La **automatización inteligente** hace referencia a la **automatización de procesos que requieren decisiones complejas**, basándose en la IA. No es simplemente automatización de tareas simples.
+
+Un **deepfake** es un **contenido falso (imagen, vídeo o audio) generado con inteligencia artificial** que simula de forma realista a personas reales. No es una técnica de SEO, ni una red social, ni una técnica de programación HTML.
+
+Uno de los riesgos más importantes asociados al uso de IA en el lugar de trabajo es el **desplazamiento de trabajadores humanos**.
+
+### 4. Cloud Computing (Computación en la nube)
+
+La **computación en la nube** (cloud computing) es el **acceso a servicios informáticos bajo demanda a través de Internet**, incluyendo servidores, almacenamiento de datos, herramientas de desarrollo y capacidades de redes.
+
+Características:
+- **Acceso a recursos informáticos bajo demanda** a través de Internet.
+- **Escalabilidad** de recursos.
+- Pago por uso.
+
+No se caracteriza por la ausencia de seguridad ni por el almacenamiento exclusivo en dispositivos locales.
+
+La tecnología que permite el **almacenamiento de datos en servidores remotos accesibles desde cualquier lugar** es el **cloud computing**.
+
+### 5. Internet de las Cosas (IoT)
+
+El **IoT** (Internet of Things) representa la **conexión de objetos físicos cotidianos a Internet** (electrodomésticos, sensores, vehículos, dispositivos médicos, etc.).
+
+El crecimiento del IoT implica principalmente que **dispositivos físicos diversos se conectan y transmiten datos a través de la red**. No elimina la necesidad de direcciones IP; al contrario, ha impulsado la adopción de IPv6.
+
+### 6. Neutralidad de la red
+
+La **neutralidad de la red** (Net Neutrality) implica que **los datos deben tratarse de forma igualitaria, sin discriminación por origen, destino o contenido**. Los proveedores de acceso a Internet no pueden priorizar ni discriminar el tráfico en función de su fuente, destino o tipo de contenido.
+
+No significa que el tráfico cifrado tenga prioridad, ni que todo sea gratuito, ni que los routers deban desconectarse de servidores gubernamentales.
+
+### 7. Red Tor y navegación anónima
+
+La **red Tor** se caracteriza por ofrecer **navegación completamente anónima mediante múltiples capas de cifrado** (el nombre "Tor" procede de "The Onion Router", enrutado en cebolla). No está integrada por defecto en los navegadores convencionales.
+
+### 8. Ciberseguridad: HTTPS, SSL/TLS, malware y listas negras
+
+El protocolo **HTTPS** y los certificados **SSL/TLS** son la base del cifrado de las comunicaciones web actuales. La implantación generalizada del HTTPS basado en TLS ha extendido el cifrado en el estado actual de Internet.
+
+Un **certificado SSL/TLS** garantiza que la conexión entre el navegador y el sitio esté **cifrada y segura**.
+
+La tecnología que permite asegurar la autenticidad y confidencialidad de los datos en las comunicaciones web actuales es **SSL/TLS**.
+
+### 9. Accesibilidad web
+
+La **Directiva (UE) 2016/2102** sobre accesibilidad de sitios web define la accesibilidad como el **conjunto de principios y técnicas que se deben respetar a la hora de diseñar, construir, mantener y actualizar los sitios web y las aplicaciones para dispositivos móviles para que sean más accesibles a los usuarios, en particular a las personas con discapacidad**.
+
+No se refiere únicamente al diseño gráfico, ni a sistemas de registro de usuarios, ni a la capacidad de acceder desde cualquier ordenador.
+
+
+**Desde cuándo se aplican estas normas: 2002.** Las primeras normas y leyes para garantizar la accesibilidad web en la Unión Europea y en España se aplican **desde 2002**. En el ámbito europeo, la **Resolución del Consejo de 25 de marzo de 2002**, sobre el plan de acción **eEurope 2002: accesibilidad de los sitios web públicos y su contenido**, alentó a los Estados miembros a hacer accesibles los sitios web públicos en todos los niveles de la administración; en España, la **Ley 34/2002, de 11 de julio**, de servicios de la sociedad de la información y de comercio electrónico (LSSI-CE), recogió esa exigencia en su **disposición adicional quinta, «Accesibilidad de los sitios de Internet de las Administraciones públicas»**. La Directiva (UE) 2016/2102 es muy posterior: no es el punto de partida, sino la norma que armoniza y refuerza esas obligaciones.
+
+### 10. Organizaciones reguladoras de Internet
+
+| Organización | Nombre completo | Función |
+|--------------|----------------|---------|
+| **ICANN** | Internet Corporation for Assigned Names and Numbers | Coordina el sistema global de DNS y asignación de nombres de dominio y direcciones IP |
+| **IANA** | Internet Assigned Numbers Authority | Gestión técnica de asignación de números; opera bajo ICANN |
+| **W3C** | World Wide Web Consortium | Desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo; responsable de las prácticas de accesibilidad web |
+| **IETF** | Internet Engineering Task Force | Desarrollo de estándares técnicos de Internet (protocolos) |
+| **Red.es** | — | Gestión del registro de dominios .es en España |
+
+El **W3C** es responsable de generar estándares y buenas prácticas de **accesibilidad web**.
+
+La organización responsable de coordinar el sistema global de nombres de dominio (DNS) es la **ICANN**. La **IANA** gestiona la asignación de números y parámetros bajo el paraguas de la ICANN.
+
+### 11. Wi-Fi (tecnología actual de conexión inalámbrica)
+
+La tecnología que permite a los dispositivos conectarse de forma **inalámbrica** a Internet en la actualidad es el **Wi-Fi**. NFC y Bluetooth son tecnologías inalámbricas de corto alcance con otros usos; Ethernet es por cable.
+
+### 12. Netiqueta
+
+La **netiqueta** son las **normas de comportamiento general en Internet**: el equivalente digital de las normas de cortesía y buenas maneras.
+
+---
+
+### 13. Sistemas de detección y prevención de intrusiones (IDS, IPS, SIEM)
+
+Un **IDS** (*Intrusion Detection System*, sistema de detección de intrusiones) es una herramienta que **monitoriza el tráfico y la actividad de la red o de un equipo en busca de actividad sospechosa** y genera alertas cuando detecta una posible intrusión. Detecta y avisa, pero **no bloquea por sí mismo** el ataque.
+
+#### Tipos de IDS según el método de detección
+
+| Tipo | Siglas | Cómo detecta | Detecta amenazas desconocidas |
+|------|--------|--------------|-------------------------------|
+| **Basado en firmas** | **SIDS** (*Signature-based IDS*) | Compara el tráfico con una base de datos de **patrones (firmas) de ataques ya conocidos** | **No** (solo lo ya catalogado) |
+| **Basado en anomalías** | **SIDA / AIDS** (*Anomaly-based IDS*) | Aprende el **comportamiento normal** del sistema y alerta ante cualquier **desviación** | **Sí** |
+
+> **Clave de examen:** el IDS capaz de detectar **intrusiones cuyas pautas de funcionamiento o indicadores de compromiso NO son conocidos** es el **basado en anomalías (SIDA)**. El **SIDS** (basado en firmas) solo reconoce amenazas previamente catalogadas; por eso no puede detectar ataques nuevos (*zero-day*).
+
+#### Tipos de IDS según su ubicación
+
+- **NIDS** (*Network IDS*): trabaja **a nivel de la red**, analizando el tráfico que circula por ella.
+- **HIDS** (*Host IDS*): es un **sistema de detección de intrusiones que trabaja a nivel de equipo (host)**, vigilando un dispositivo concreto (sus ficheros, procesos, logs y actividad interna). No trabaja a nivel de red empresarial, sino del equipo individual.
+
+#### IPS y SIEM
+
+- **IPS** (*Intrusion Prevention System*, sistema de prevención de intrusiones): va un paso más allá del IDS. No solo detecta la amenaza, sino que **lanza una respuesta preestablecida de forma preventiva** para bloquearla (cortar la conexión, descartar paquetes, etc.). Por eso, un **SOC** (*Security Operations Center*, centro de operaciones de seguridad) emplea un **sistema IPS** para detectar amenazas de forma preventiva y reaccionar automáticamente.
+- **SIEM** (*Security Information and Event Management*): solución **híbrida y centralizada** que **analiza en tiempo real las alertas de seguridad que lanzan otros dispositivos hardware y software de la red**, correlacionando eventos de múltiples fuentes. Recopila y analiza, pero la prevención activa preestablecida corresponde al IPS.
+
+> **Resumen:** **IDS** detecta y avisa · **IPS** detecta y bloquea (respuesta preventiva) · **SIEM** centraliza y correlaciona alertas de toda la red.
+
+### 14. Firewall (cortafuegos)
+
+Un **firewall** (cortafuegos) es un **dispositivo de seguridad de la red que monitoriza el tráfico entrante y saliente y decide si debe permitir o bloquear un tráfico específico en función de un conjunto de restricciones de seguridad ya definidas**. Es la primera línea de defensa entre una red de confianza (p. ej. la red local) y una red no confiable (Internet).
+
+> No debe confundirse con un **proxy**, que es una aplicación o dispositivo hardware que hace de **intermediario** entre los usuarios (normalmente de una red local) e Internet; ni con un **SIEM**, que analiza en tiempo real las alertas que lanzan otros dispositivos de la red.
+
+#### Tipos de firewall
+
+| Tipo | Funcionamiento |
+|------|----------------|
+| **Firewall de inspección activa** (*stateful*) | Firewall hoy considerado **"tradicional"**: permite o bloquea el tráfico en función del **estado, el puerto y el protocolo**, y además **monitorea toda la actividad desde la apertura hasta el cierre de una conexión** |
+| **Firewall proxy** | Actúa como intermediario filtrando el tráfico a nivel de aplicación, ocultando la red interna |
+| **UTM** (*Unified Threat Management*) | Dispositivo que **unifica varias funciones de seguridad** (firewall, antivirus, IDS/IPS, VPN…) en un único equipo |
+| **NGFW** (*Next-Generation Firewall*) | Firewall de nueva generación con inspección profunda de paquetes y control de aplicaciones |
+
+> **Clave de examen:** el firewall que permite/bloquea según **estado, puerto y protocolo** y **monitorea la conexión completa (apertura→cierre)** es el firewall de **inspección activa** (*stateful inspection*).
+
+### 15. Malware y ataques a través del navegador
+
+#### Tipos de malware y software malicioso
+
+| Término | Definición |
+|---------|------------|
+| **Botnet** | **Conjunto de ordenadores infectados con un tipo de malware, controlados remotamente por un atacante**, que pueden ser utilizados de manera conjunta para realizar actividades maliciosas (envío de spam, ataques DDoS, etc.). Cada equipo infectado se denomina *bot* o *zombi* |
+| **Rogue / Scareware** | **Sitios web o programas que simulan ser una aplicación de seguridad** (generalmente gratuita, p. ej. un falso antivirus), **pero que en realidad instalan otros programas dañinos**. El *scareware* asusta al usuario ("¡tu equipo está infectado!") para inducir la descarga |
+| **Ransomware** | Malware que **cifra** los datos de la víctima y exige un **rescate** para liberarlos |
+| **Troyano** | Programa que se hace pasar por software legítimo para colarse en el equipo y abrir una puerta trasera |
+| **Spyware** | Software espía que recopila información del usuario sin su consentimiento |
+
+> No confundir: un *rogue/scareware* **finge ser seguridad**; una *botnet* es una **red de equipos zombi**; el *ransomware* **secuestra y pide rescate**.
+
+#### Ataques a través del navegador web
+
+Entre los ataques que un usuario puede sufrir **a través del navegador** se encuentran:
+
+- **Exploit:** el atacante **se aprovecha de una determinada vulnerabilidad** (del navegador, un plugin o el sistema) **para inyectar código dañino en el equipo**.
+- **Malvertising** (*malicious advertising*): vía de infección que consiste en **ejecutar código dañino por medio de anuncios**, aparentemente inofensivos, distribuidos en un gran número de páginas web legítimas.
+
+> Ambos (exploit y malvertising) son ataques típicos a través del navegador.
+
+### 16. Protección criptográfica
+
+Llamamos **protección criptográfica** a **cifrar información mediante algoritmos matemáticos**, de modo que solo quien posee la clave correcta pueda descifrar y leer los datos. Garantiza la **confidencialidad** (y, según el esquema, también la integridad y autenticidad) de la información.
+
+- **No** es simplemente una clave de acceso a un portal o página concreta.
+- **No** es una copia de seguridad de los datos personales (eso es un *backup*).
+
+La criptografía puede ser **simétrica** (misma clave para cifrar y descifrar) o **asimétrica** (par de claves pública/privada), y es la base de tecnologías como **SSL/TLS** y la firma digital.
+
+### 17. Cuestiones éticas en el uso de la red
+
+El uso de Internet plantea numerosas **cuestiones éticas** que afectan tanto a usuarios como a empresas y administraciones. Entre las principales:
+
+- **La propiedad intelectual** (respeto a los derechos de autor frente a la copia y distribución no autorizada).
+- **El acceso universal** (que todas las personas puedan acceder a la red sin discriminación, evitando la brecha digital).
+- **La privacidad** (protección de los datos personales y de la vida privada).
+- **La confianza** (uso honesto y veraz de la información y de las relaciones digitales).
+
+> **Clave de examen:** son cuestiones éticas en la red tanto **la propiedad intelectual y el acceso universal** como **la privacidad y la confianza** (todas son válidas).
+
+### 18. Enfermedades y trastornos derivados del uso de Internet, el móvil y las redes sociales
+
+El uso excesivo o inadecuado de Internet, el teléfono móvil y las redes sociales puede derivar en diversos trastornos psicológicos:
+
+| Trastorno | Definición |
+|-----------|------------|
+| **Dependencia de Internet** | **Ansiedad enfermiza de estar todo el tiempo conectado a la red**; necesidad compulsiva de permanencia en línea |
+| **Nomofobia** | Miedo irracional a **quedarse sin teléfono móvil** o sin cobertura/batería (*no-mobile-phone phobia*) |
+| **Cibercondria** | Trastorno de quienes están **convencidos de sufrir enfermedades** que han "conocido" o investigado **a través de Internet** (hipocondría alimentada por búsquedas web de síntomas) |
+| **FOMO** (*Fear Of Missing Out*) | Miedo a perderse algo que ocurre en las redes sociales |
+
+> **Clave de examen:**
+> - **Ansiedad enfermiza por estar siempre conectado a la red → Dependencia de Internet.**
+> - **Convencimiento de sufrir enfermedades conocidas a través de Internet → Cibercondria.**
+> - Miedo a quedarse sin móvil → Nomofobia.

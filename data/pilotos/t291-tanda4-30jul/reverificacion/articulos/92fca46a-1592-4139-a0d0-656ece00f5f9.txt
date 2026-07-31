@@ -1,0 +1,1308 @@
+LEY: Access 365
+ARTÍCULO: 4 — Informes, macros y datos externos en Access 365
+======================================================================
+## Informes, macros y datos externos en Access 365
+
+Este artículo cubre tres pilares fundamentales de Microsoft Access 365 para la preparación de oposiciones administrativas: los informes (presentación y exportación de datos), las macros (automatización de tareas) y la gestión de datos externos (importación, vinculación y exportación).
+
+---
+
+## 1. INFORMES EN ACCESS 365
+
+### 1.1 Concepto de informe
+
+Un **informe** es un objeto de Access que permite presentar los datos de una tabla o consulta de forma formateada, estructurada y visualmente clara, orientada principalmente a la **impresión en papel** o a la **exportación** a otros formatos (PDF, Excel, Word, etc.). A diferencia de los formularios, los informes no permiten la edición de datos: son exclusivamente de lectura y presentación.
+
+Los informes pueden mostrar agrupaciones de datos, totales, promedios, recuentos y otros cálculos estadísticos. Son especialmente útiles para generar facturas, listados de empleados, estadísticas de ventas, inventarios o cualquier documento que deba distribuirse fuera de la base de datos.
+
+### 1.2 Tipos de informes
+
+Access 365 ofrece distintos tipos de informes según la distribución visual de los datos:
+
+| Tipo de informe | Descripción | Uso típico |
+|---|---|---|
+| **En columna** | Muestra un único registro por página, con los campos dispuestos verticalmente (etiqueta a la izquierda, valor a la derecha) | Fichas individuales de empleados, contratos |
+| **Tabular** | Muestra varios registros por página, con los campos en columnas y cada registro en una fila | Listados, inventarios, registros múltiples |
+| **Justificado** | Distribuye los campos de forma equilibrada por toda la anchura de la página, rellenando espacio | Directorios, catálogos |
+| **Etiquetas de correo** | Diseñado para imprimir etiquetas adhesivas (formato Avery u otros) | Envíos postales, identificadores |
+| **Gráfico** | Incluye un gráfico generado a partir de los datos de la tabla o consulta subyacente | Informes estadísticos, dashboards |
+
+### 1.3 Formas de crear un informe
+
+Access 365 ofrece cuatro métodos principales para crear informes, accesibles desde la pestaña **Crear** de la cinta de opciones:
+
+#### a) Informe (automático)
+- Crea un informe tabular de forma instantánea basándose en la tabla o consulta seleccionada en el panel de navegación.
+- Incluye automáticamente **todos los campos** del origen de datos.
+- No permite personalización durante la creación: la modificación se hace posteriormente en Vista diseño o Vista presentación.
+
+#### b) Diseño de informe (en blanco)
+- Abre un lienzo vacío en Vista diseño donde el usuario construye el informe desde cero.
+- Es el método más flexible: permite añadir controles, secciones y formato de forma totalmente libre.
+- Requiere conocimiento de las secciones y propiedades del informe.
+
+#### c) Asistente para informes
+El asistente guía al usuario mediante una serie de pasos:
+
+1. **Selección de tabla/consulta**: se elige el origen de datos y se seleccionan los campos que se incluirán.
+2. **Niveles de agrupación**: se pueden añadir hasta 10 niveles de agrupación de registros (por ejemplo, agrupar empleados por departamento).
+3. **Criterio de ordenación**: se especifica el orden de los registros dentro de cada grupo (hasta 4 campos de ordenación), y se pueden añadir funciones de resumen (Suma, Promedio, Mínimo, Máximo).
+4. **Distribución**: se elige la distribución visual (escalonado, de bloque, sin esquema) y la orientación de página (vertical u horizontal).
+5. **Título**: se asigna un nombre al informe y se decide si se abre en Vista informe o Vista diseño.
+
+#### d) Etiquetas
+- Herramienta especializada para generar etiquetas de correo o identificadoras.
+- Permite seleccionar el **tamaño de etiqueta** (formatos Avery y otros estándar) o definir uno personalizado.
+- Se seleccionan los campos que aparecerán en la etiqueta y se organiza su disposición.
+- Admite texto literal combinado con campos de datos (por ejemplo: `[Nombre] [Apellidos]`).
+
+### 1.4 Vistas de un informe
+
+Un informe puede visualizarse en cuatro vistas distintas, accesibles desde el botón **Ver** en la cinta de opciones o haciendo clic derecho sobre el objeto:
+
+| Vista | Descripción |
+|---|---|
+| **Vista diseño** | Permite modificar la estructura del informe: añadir/eliminar secciones y controles, cambiar propiedades, ajustar formato |
+| **Vista presentación** | Muestra datos reales mientras se modifica el diseño; permite ajustes de tamaño y posición con datos visibles |
+| **Vista informe** | Presenta el informe en pantalla tal como se verá al imprimirlo; permite desplazarse por los registros pero no imprimir |
+| **Vista preliminar** | Simula exactamente cómo quedará el informe impreso, con paginación real; desde aquí se imprime o exporta |
+
+### 1.5 Secciones del informe
+
+La estructura de un informe se organiza en **secciones**, cada una con un propósito específico. El número de secciones disponibles depende de si se han definido grupos. Las secciones son:
+
+#### Secciones siempre presentes:
+- **Encabezado del informe**: aparece una sola vez, al inicio del informe (primera página). Se usa para el título principal del informe, logotipos, fecha de generación y datos de encabezado general.
+- **Encabezado de página**: aparece en la parte superior de **cada página**. Se usa para los títulos de columna (en informes tabulares), el nombre del informe repetido, etc.
+- **Detalle**: es la sección central, que se repite para **cada registro** del origen de datos. Contiene los controles enlazados a los campos de datos.
+- **Pie de página**: aparece en la parte inferior de **cada página**. Se usa habitualmente para el número de página (`=[Página]`) y la fecha (`=Fecha()`).
+- **Pie del informe**: aparece una sola vez, al final del informe (última página). Se usa para totales generales (`=Suma([Importe])`), recuentos globales y conclusiones.
+
+#### Secciones de grupo (cuando hay agrupación):
+- **Encabezado de grupo**: aparece antes de cada nuevo grupo de registros. Muestra el valor del campo de agrupación (por ejemplo, el nombre del departamento).
+- **Pie de grupo**: aparece al final de cada grupo de registros. Muestra subtotales, conteos parciales u otras estadísticas del grupo.
+
+**Resumen de la secuencia de secciones en un informe con grupos:**
+
+```
+Encabezado del informe
+  Encabezado de página
+    Encabezado de grupo (nivel 1)
+      Encabezado de grupo (nivel 2)
+        Detalle (por cada registro)
+      Pie de grupo (nivel 2)
+    Pie de grupo (nivel 1)
+  Pie de página
+Pie del informe
+```
+
+### 1.6 Ordenar y agrupar registros
+
+La agrupación y ordenación se configura desde el panel **Ordenar y agrupar** (accesible desde la pestaña Diseño > botón **Agrupar y ordenar**).
+
+**Características clave:**
+- Se pueden definir hasta **10 niveles de agrupación** en un mismo informe.
+- Cada nivel puede basarse en un **campo** de datos o en una **expresión** calculada (por ejemplo, `=Año([FechaContrato])`).
+- Para cada nivel de grupo se puede elegir si se muestra **encabezado de grupo**, **pie de grupo** o ambos.
+
+**Intervalos de agrupación disponibles según el tipo de dato:**
+
+| Tipo de campo | Intervalos posibles |
+|---|---|
+| Texto | Por valor completo, por primer carácter, por primeros dos caracteres |
+| Fecha/Hora | Por valor exacto, por semana, por mes, por trimestre, por año |
+| Numérico | Por valor exacto, por intervalos definidos (cada 10, cada 100, etc.) |
+| Sí/No | Por valor (Sí / No) |
+
+**Opciones adicionales de agrupación:**
+- **Mantener sección unida**: evita que un grupo se corte entre dos páginas, forzando un salto de página si no cabe completo.
+- **Mostrar encabezado de grupo en la misma página que el detalle**: garantiza que el encabezado del grupo no quede solo al final de una página.
+
+### 1.7 Controles calculados en informes
+
+Los informes permiten insertar **controles calculados** (cuadros de texto con expresiones) para mostrar totales, estadísticas y datos derivados:
+
+| Función | Expresión en el control | Descripción |
+|---|---|---|
+| Suma | `=Suma([Precio])` | Suma todos los valores del campo en la sección donde está |
+| Contar registros | `=Cuenta(*)` | Cuenta el número de registros |
+| Promedio | `=Promedio([Nota])` | Calcula la media de los valores |
+| Máximo | `=Máx([Fecha])` | Devuelve el valor máximo |
+| Mínimo | `=Mín([Salario])` | Devuelve el valor mínimo |
+| Número de página | `=[Página]` | Muestra el número de página actual |
+| Total de páginas | `=[Páginas]` | Muestra el total de páginas del informe |
+| Página / total | `=[Página] & " de " & [Páginas]` | Formato "3 de 12" |
+| Fecha actual | `=Fecha()` | Muestra la fecha del sistema |
+| Hora actual | `=Ahora()` | Muestra fecha y hora del sistema |
+
+**Nota importante para los exámenes:** la colocación del control calculado determina el alcance del cálculo. Un `=Suma([Precio])` colocado en el **Pie de grupo** suma solo los registros de ese grupo; colocado en el **Pie del informe** suma todos los registros.
+
+### 1.8 Propiedades de impresión de secciones
+
+Cada sección del informe tiene propiedades que controlan el comportamiento en la impresión:
+
+| Propiedad | Opciones / Descripción |
+|---|---|
+| **Forzar nueva página** | Ninguno (predeterminado) / Antes de la sección / Después de la sección / Antes y después |
+| **Mantener unido** | Sí / No: si es Sí, intenta mantener toda la sección en la misma página |
+| **Puede ampliar** | Sí / No: permite que el control/sección crezca verticalmente si el contenido es largo |
+| **Puede reducir** | Sí / No: permite que el control/sección se contraiga si no hay contenido |
+| **Visible** | Sí / No: controla si la sección se muestra o se oculta |
+
+La propiedad **Forzar nueva página** es muy habitual en exámenes:
+- **Antes de la sección**: inserta un salto de página justo antes de que comience la sección (útil en encabezados de grupo para que cada grupo comience en página nueva).
+- **Después de la sección**: inserta un salto de página justo después de la sección.
+- **Antes y después**: combina ambos saltos.
+
+### 1.9 Exportar un informe
+
+Desde **Vista preliminar**, la pestaña **Datos externos** o el menú contextual, un informe puede exportarse a múltiples formatos:
+
+| Formato | Extensión | Observaciones |
+|---|---|---|
+| **PDF / XPS** | .pdf / .xps | Formato más usado; conserva diseño y paginación exactos |
+| **Excel** | .xlsx | Exporta los datos como hoja de cálculo |
+| **Word** | .rtf | Formato de texto enriquecido compatible con Word |
+| **HTML** | .html | Para publicación en intranet/web |
+| **XML** | .xml | Formato estructurado de datos |
+| **Texto** | .txt | Texto plano, sin formato |
+
+---
+
+## 2. MACROS EN ACCESS 365
+
+### 2.1 Concepto de macro
+
+Una **macro** en Access es una herramienta de automatización que permite ejecutar una secuencia de **acciones predefinidas** sin necesidad de escribir código de programación (VBA). Cada acción realiza una tarea concreta: abrir un formulario, ejecutar una consulta, mostrar un mensaje, filtrar registros, etc.
+
+Las macros son ideales para:
+- Automatizar tareas repetitivas (abrir objetos al pulsar un botón).
+- Controlar el flujo de trabajo de una aplicación de Access.
+- Validar datos antes de guardar un registro.
+- Personalizar el comportamiento de formularios e informes sin programar.
+
+### 2.2 Tipos de macros según su almacenamiento
+
+| Tipo | Descripción | Cuándo se usa |
+|---|---|---|
+| **Macro independiente** | Se guarda como un objeto separado en el panel de navegación (bajo la categoría Macros) | Cuando la macro debe ser reutilizable desde múltiples objetos o ejecutarse de forma autónoma |
+| **Macro incrustada** | Se almacena directamente en la propiedad de evento de un formulario, informe o control | Cuando la macro es específica de un único evento de un objeto concreto; no aparece en el panel de navegación |
+
+La diferencia clave para los exámenes: las **macros incrustadas** no son visibles en el panel de navegación porque forman parte del objeto que las contiene.
+
+### 2.3 El generador de macros (editor de macros)
+
+El editor de macros de Access 365 presenta una interfaz visual donde se añaden acciones mediante listas desplegables. Cada acción tiene **argumentos** específicos que la configuran. El editor incluye:
+
+- **Catálogo de acciones** (panel derecho): lista de todas las acciones disponibles, agrupadas por categoría.
+- **Panel de acciones** (área central): donde se construye la secuencia de acciones.
+- **Argumentos** (parte inferior o en línea): parámetros específicos de cada acción.
+- **Si / SiNo / Fin Si**: bloques condicionales que permiten ejecutar acciones solo si se cumple una condición.
+- **Para cada registro en**: bucle para recorrer registros de una tabla o consulta.
+
+### 2.4 Acciones de macro más importantes
+
+A continuación se detallan las acciones de macro que con mayor frecuencia aparecen en exámenes de oposiciones:
+
+#### Acciones para abrir y cerrar objetos
+
+| Acción | Descripción | Argumentos principales |
+|---|---|---|
+| **AbrirFormulario** | Abre un formulario en la vista especificada | Nombre del formulario; Vista (Formulario, Diseño, Hoja de datos, Tabla dinámica, Gráfico dinámico); Condición Where; Modo de datos (Sólo agregar, Sólo lectura, Editar, Solo lectura con diseño bloqueado); Modo de ventana (Normal, Oculto, Icono, Cuadro de diálogo) |
+| **AbrirInforme** | Abre un informe en la vista especificada | Nombre del informe; Vista (Informe, Diseño, Vista preliminar); Condición Where (filtra los registros del informe) |
+| **AbrirConsulta** | Abre o ejecuta una consulta | Nombre de la consulta; Vista (Hoja de datos, Diseño, Vista preliminar); Modo de datos |
+| **AbrirTabla** | Abre una tabla en la vista especificada | Nombre de la tabla; Vista (Hoja de datos, Diseño, Vista preliminar) |
+| **CerrarVentana** | Cierra el objeto activo o uno especificado | Tipo de objeto; Nombre del objeto; Guardar (Sí, No, Preguntar) |
+
+**Nota de examen:** el argumento **Modo de datos** de AbrirFormulario determina si el usuario puede agregar, editar o solo ver los registros. **Modo de ventana: Cuadro de diálogo** hace que el formulario se abra como un diálogo modal (el usuario no puede interactuar con el resto de la aplicación hasta cerrarlo).
+
+#### Acciones de navegación entre registros
+
+| Acción | Descripción | Argumentos principales |
+|---|---|---|
+| **BuscarRegistro** | Busca el primer registro que cumple un criterio en el campo actual | Buscar: valor a buscar; Coincidencia (Cualquier parte del campo, Principio del campo, Todo el campo); Distinguir mayúsculas; Buscar en: campo actual o todos los campos |
+| **BuscarSiguiente** | Repite la última búsqueda de BuscarRegistro, encontrando la siguiente ocurrencia | (sin argumentos) |
+| **IrAControl** | Mueve el foco al control especificado del formulario o informe activo | Nombre del control |
+| **IrARegistro** | Mueve el puntero a un registro concreto | Tipo de objeto; Nombre del objeto; Registro (Primero, Último, Siguiente, Anterior, Nuevo, Ir a) |
+
+**Nota de examen:** la acción **IrARegistro** con argumento Registro = **Nuevo** coloca el cursor en un nuevo registro en blanco (equivalente a pulsar el botón de nuevo registro).
+
+#### Acciones de modificación de datos y propiedades
+
+| Acción | Descripción | Observaciones |
+|---|---|---|
+| **EstablecerValor** | Asigna un valor a un campo, control o propiedad | No recomendado para establecer valores directamente en campos de tabla; preferir controles de formulario |
+| **EstablecerPropiedad** | Cambia una propiedad de un control del formulario o informe activo en tiempo de ejecución | Nombre del control; Propiedad (Habilitado, Bloqueado, Visible, Color de fondo, Título, Valor, etc.); Valor |
+| **AplicarFiltro** | Aplica un filtro o criterio a los registros visibles de un formulario o informe | Nombre del filtro (nombre de consulta) o Condición Where |
+| **QuitarFiltro** | Elimina el filtro activo del formulario o informe | (sin argumentos) |
+| **EjecutarSQL** | Ejecuta una instrucción SQL de acción (INSERT, UPDATE, DELETE, CREATE TABLE) | Instrucción SQL |
+
+**Nota de examen:** **EstablecerPropiedad** es clave para hacer controles visibles/invisibles, habilitarlos/deshabilitarlos dinámicamente en respuesta a acciones del usuario.
+
+#### Acciones de control de flujo y utilidad
+
+| Acción | Descripción | Argumentos principales |
+|---|---|---|
+| **CuadroDeMensaje** | Muestra un cuadro de diálogo con un mensaje informativo | Mensaje (texto a mostrar); Bip (Sí/No); Tipo (ninguno, crítico, advertencia, información, pregunta); Título (título del cuadro) |
+| **DetenerMacro** | Detiene la ejecución de la macro actual | (sin argumentos) |
+| **DetenerTodasMacros** | Detiene la ejecución de todas las macros activas | (sin argumentos) |
+| **EjecutarMacro** | Llama y ejecuta otra macro (independiente) | Nombre de la macro; Número de repeticiones; Condición de repetición |
+| **GuardarObjeto** | Guarda el objeto especificado o el activo | Tipo de objeto; Nombre del objeto |
+| **Comentario** | Añade un comentario descriptivo a la macro (no ejecuta ninguna acción) | Texto del comentario |
+
+### 2.5 Submacros
+
+Una **macro independiente** puede contener varias **submacros** agrupadas bajo un mismo nombre de objeto. Cada submacro tiene su propio nombre y puede ser llamada de forma independiente.
+
+**Sintaxis de llamada a una submacro:**
+`NombreMacro.NombreSubmacro`
+
+**Ejemplo:** Si la macro independiente se llama "MacrosNavegacion" y tiene una submacro llamada "IrAlPrimero", se referencia como: `MacrosNavegacion.IrAlPrimero`
+
+**Ventajas de las submacros:**
+- Permiten agrupar macros relacionadas en un único objeto del panel de navegación, manteniendo la base de datos ordenada.
+- Cada submacro puede asignarse a un evento diferente.
+
+### 2.6 Condiciones en macros
+
+Access 365 permite incluir lógica condicional en las macros mediante bloques **Si / SiNo / Fin Si**:
+
+```
+Si [Forms]![Formulario1]![CampoEdad] < 18 Entonces
+    CuadroDeMensaje "El solicitante debe ser mayor de edad"
+    DetenerMacro
+SiNo
+    AbrirFormulario "frmSolicitud", ...
+Fin Si
+```
+
+Las condiciones se escriben usando **expresiones de Access** y pueden hacer referencia a:
+- Valores de controles: `[Forms]![NombreFormulario]![NombreControl]`
+- Funciones de Access: `EsNulo([Campo])`, `Longitud([Texto])`
+- Valores de variables temporales: `[TempVars]![NombreVariable]`
+
+### 2.7 La macro Autoexec
+
+**Autoexec** es una macro independiente con ese nombre exacto (**Autoexec**, sin espacios y con esa capitalización exacta) que Access ejecuta **automáticamente al abrir la base de datos**, antes de que el usuario pueda interactuar con ella.
+
+**Usos típicos de Autoexec:**
+- Abrir el formulario principal de la aplicación.
+- Mostrar una pantalla de bienvenida.
+- Comprobar condiciones iniciales (permisos, versión, etc.).
+- Maximizar la ventana de la aplicación.
+
+**Para omitir la ejecución de Autoexec:** mantener pulsada la tecla **Mayúsculas (Shift)** mientras se abre la base de datos.
+
+**Nota de examen:** Autoexec es una macro **independiente**, no incrustada. Si no existe ninguna macro con ese nombre, Access no ejecuta nada al inicio.
+
+### 2.8 Convertir macros a código VBA
+
+Las macros independientes e incrustadas pueden convertirse a código **Visual Basic para Aplicaciones (VBA)** para una mayor flexibilidad de programación:
+
+- **Macro independiente:** Seleccionar la macro en el panel de navegación > clic derecho > **Convertir a código de Visual Basic**.
+- **Macro incrustada en formulario:** En Vista diseño del formulario > seleccionar el formulario > pestaña Diseño > botón **Convertir macros de formulario a Visual Basic**.
+
+La conversión genera un módulo VBA con subrutinas equivalentes a cada acción de la macro. No todas las acciones se convierten de forma exacta; algunas requieren ajustes manuales.
+
+---
+
+## 3. DATOS EXTERNOS EN ACCESS 365
+
+La pestaña **Datos externos** de la cinta de opciones centraliza todas las operaciones de intercambio de datos entre Access y otras aplicaciones o fuentes de datos.
+
+### 3.1 Importar datos
+
+**Importar** significa traer datos de una fuente externa y crear una **nueva tabla** en la base de datos de Access actual (o añadir los datos a una tabla existente). Los datos importados son una **copia**: los cambios posteriores en el origen no se reflejan en Access, ni viceversa.
+
+#### Fuentes de importación disponibles en Access 365:
+
+| Fuente | Detalles del proceso de importación |
+|---|---|
+| **Excel (.xlsx, .xls)** | Asistente en varios pasos: seleccionar hoja o rango con nombre; indicar si la primera fila contiene encabezados de columna; definir tipo de dato e índice por campo; elegir clave principal (generar automática, usar campo existente, sin clave); asignar nombre a la tabla nueva o existente |
+| **Texto / CSV** | Seleccionar delimitador (coma, punto y coma, tabulador, espacio) o anchos fijos; identificar fila de encabezados; definir tipos de datos por campo |
+| **XML (.xml)** | Access interpreta la estructura del XML para crear tablas; puede importar datos, estructura o ambos |
+| **ODBC** | Conectar con cualquier base de datos con controlador ODBC instalado (SQL Server, Oracle, MySQL, etc.) mediante una cadena de conexión DSN |
+| **HTML (.html, .htm)** | Importa datos de tablas HTML de una página web |
+| **Outlook / Exchange** | Importa carpetas de contactos, tareas u otros elementos de Outlook |
+| **Otra base de datos Access (.accdb, .mdb)** | Importa tablas, consultas, formularios, informes, macros o módulos de otra base de datos Access |
+| **Lista de SharePoint** | Importa listas de SharePoint como tablas de Access |
+
+#### Proceso general del Asistente para importar datos de Excel (muy frecuente en exámenes):
+
+1. Seleccionar el archivo de Excel.
+2. Elegir la **hoja de cálculo** o el **rango con nombre** que contiene los datos.
+3. Indicar si la primera fila contiene **encabezados de columna** (se usarán como nombres de campo).
+4. Configurar cada campo: nombre, tipo de datos (Texto, Número, Fecha/Hora, etc.) e índice (Sin duplicados, Con duplicados, Sin índice).
+5. Definir la **clave principal**: que Access la genere automáticamente (campo autonumérico), usar un campo existente o no definir clave principal.
+6. Asignar el **nombre de la tabla** de destino.
+7. Opcionalmente, guardar los **pasos de importación** para repetirlos en el futuro sin asistente.
+
+### 3.2 Vincular tablas externas
+
+**Vincular** crea un **enlace dinámico** a la tabla de datos externa: la tabla permanece físicamente en el archivo de origen, y Access muestra y trabaja con sus datos a través del enlace. Las modificaciones realizadas en Access se guardan directamente en el archivo de origen.
+
+**Características de las tablas vinculadas:**
+- Aparecen en el panel de navegación con un **icono de flecha** que indica que son externas.
+- Se puede leer y modificar el contenido de los registros (si el formato lo permite).
+- **No se puede modificar la estructura** (añadir/eliminar campos, cambiar tipos de datos) desde Access.
+- Si el archivo de origen se mueve o elimina, el enlace se rompe y Access muestra un error.
+
+**Fuentes que pueden vincularse:**
+- Libros de Excel (.xlsx, .xls)
+- Archivos de texto / CSV
+- Bases de datos Access externas (.accdb, .mdb)
+- Listas de SharePoint
+- Fuentes ODBC (SQL Server, Oracle, etc.)
+
+| Comparativa | Importar | Vincular |
+|---|---|---|
+| Los datos se copian en Access | Sí | No |
+| Los cambios en el origen se reflejan en Access | No | Sí |
+| Los cambios en Access se guardan en el origen | No | Sí |
+| Se puede modificar la estructura desde Access | Sí | No |
+| Depende del archivo externo para funcionar | No | Sí |
+
+### 3.3 Administrador de tablas vinculadas
+
+El **Administrador de tablas vinculadas** (pestaña Datos externos > grupo Importar y vincular) permite gestionar y actualizar todas las tablas vinculadas de la base de datos:
+
+- **Ver** todas las tablas vinculadas y sus rutas de archivo de origen.
+- **Actualizar** los enlaces cuando el archivo de origen se ha movido o renombrado.
+- **Volver a vincular** seleccionando manualmente la nueva ubicación del archivo.
+- **Eliminar** el enlace a tablas que ya no existen o no son necesarias.
+
+Es una herramienta fundamental cuando se traslada una base de datos a otro equipo o carpeta diferente.
+
+### 3.4 Exportar datos desde Access
+
+**Exportar** envía datos de Access (tablas, consultas, formularios o informes) a un archivo externo. Los datos exportados son una copia en el momento de la exportación; los cambios posteriores en Access no se reflejan en el archivo exportado.
+
+| Destino | Formato | Accesible desde |
+|---|---|---|
+| **Excel** | .xlsx / .xls | Datos externos > Excel |
+| **Texto / CSV** | .txt / .csv | Datos externos > Archivo de texto |
+| **XML** | .xml | Datos externos > Archivo XML |
+| **PDF / XPS** | .pdf / .xps | Datos externos > PDF o XPS |
+| **HTML** | .html | Datos externos > Más > HTML |
+| **Word** | .rtf | Datos externos > Más > Combinar con Microsoft Word |
+| **ODBC** | Varía | Datos externos > Más > Base de datos ODBC |
+| **Lista de SharePoint** | Lista online | Datos externos > Más > Lista de SharePoint |
+| **Correo electrónico** | Adjunto en Outlook | Datos externos > Más > Correo electrónico |
+
+**Guardar pasos de exportación:** al igual que con la importación, Access permite guardar la configuración de una exportación para repetirla más tarde con un clic.
+
+### 3.5 Compactar y reparar la base de datos
+
+Con el uso continuado, los archivos .accdb pueden aumentar de tamaño debido a objetos eliminados, registros borrados y fragmentación interna. La función **Compactar y reparar** (Archivo > Información > Compactar y reparar base de datos) realiza dos operaciones:
+
+- **Compactar**: reordena y optimiza el archivo, eliminando el espacio desperdiciado por objetos y registros eliminados. Reduce el tamaño del archivo .accdb.
+- **Reparar**: intenta corregir posibles corrupciones menores en la estructura del archivo.
+
+**Nota:** es recomendable hacer una copia de seguridad antes de compactar y reparar. Access también puede configurarse para compactar automáticamente al cerrar la base de datos (Archivo > Opciones > Base de datos actual > Compactar al cerrar).
+
+### 3.6 Copias de seguridad de la base de datos
+
+Access 365 incluye una función integrada de copia de seguridad:
+
+**Ruta:** Archivo > Guardar como > **Copia de seguridad de la base de datos**
+
+- Genera una copia del archivo .accdb con la fecha del día añadida al nombre (por ejemplo: `BaseDeDatos_2026-05-15.accdb`).
+- La copia incluye todos los objetos de la base de datos en su estado actual.
+- Es una práctica recomendada antes de realizar cambios estructurales importantes o usar Compactar y reparar.
+
+---
+
+## 4. RESUMEN DE CONCEPTOS CLAVE PARA EXÁMENES
+
+### Sobre informes:
+
+- **Cuándo usar pie de grupo vs. pie de informe:** los cálculos en el **pie de grupo** operan sobre el subconjunto de registros de ese grupo; en el **pie de informe** operan sobre todos los registros del informe.
+- **Vista preliminar** es la única desde la que se puede imprimir directamente el informe.
+- **Autoinforme** (informe automático) incluye todos los campos sin intervención del usuario.
+- El **Asistente para informes** es el único método que guía paso a paso la selección de campos, grupos, ordenación y diseño.
+- La propiedad **Forzar nueva página = Antes de la sección** en un Encabezado de grupo hace que cada grupo comience en una página nueva.
+- El **Asistente para informes** permite definir hasta **10 niveles de agrupación**.
+- El **Asistente para informes** permite ordenar por hasta **4 campos** dentro de cada grupo.
+
+### Sobre macros:
+
+- **Autoexec** = se ejecuta al abrir la BD. Para saltarse Autoexec, mantener **Mayúsculas (Shift)** al abrir.
+- **AbrirFormulario con Modo de ventana = Cuadro de diálogo** = formulario modal que bloquea el resto de la aplicación.
+- **EstablecerPropiedad** modifica propiedades de controles en tiempo de ejecución (visible, habilitado, valor...).
+- **Submacro** se llama como `NombreMacro.NombreSubmacro`.
+- Las macros incrustadas **no aparecen** en el panel de navegación.
+- Convertir macro a VBA: clic derecho sobre la macro > Convertir a código de Visual Basic.
+- **CuadroDeMensaje** solo muestra información; no devuelve la opción elegida por el usuario (para eso se necesita VBA con MsgBox).
+- **EjecutarSQL** permite lanzar consultas de acción (INSERT, UPDATE, DELETE) directamente desde una macro.
+
+### Sobre datos externos:
+
+- **Importar** = copia los datos en Access. Independiente del origen una vez importado.
+- **Vincular** = enlace dinámico. Los cambios van al origen. No se puede modificar estructura.
+- Las tablas vinculadas tienen **icono de flecha** en el panel de navegación.
+- **Administrador de tablas vinculadas** = actualiza rutas cuando el archivo origen se mueve.
+- **Compactar y reparar** = reduce tamaño del .accdb y corrige corrupciones menores.
+- Al importar Excel: el asistente pregunta por hoja/rango, encabezados, tipos de datos, clave principal y nombre de tabla.
+- Para omitir el ejecutar Autoexec al abrir: mantener pulsada la tecla **Mayúsculas**.
+
+---
+
+## 5. TABLA COMPARATIVA DE MÉTODOS DE CREACIÓN DE INFORMES
+
+| Método | Control del usuario | Campos incluidos | Agrupación automática | Para qué sirve |
+|---|---|---|---|---|
+| **Informe** (automático) | Ninguno | Todos | No | Vista rápida de todos los datos |
+| **Diseño de informe** | Total | Ninguno (añadir a mano) | No | Informe personalizado desde cero |
+| **Asistente para informes** | Guiado paso a paso | Los que el usuario elige | Sí (hasta 10 niveles) | Informes estructurados con grupos y totales |
+| **Etiquetas** | Guiado | Los que el usuario elige | No | Etiquetas postales o de identificación |
+
+---
+
+## 6. TABLA DE SECCIONES DEL INFORME (RESUMEN)
+
+| Sección | Frecuencia de aparición | Contenido habitual |
+|---|---|---|
+| Encabezado del informe | Una vez (inicio) | Título principal, logotipo, fecha del informe |
+| Encabezado de página | Cada página | Títulos de columna, número de página |
+| Encabezado de grupo | Antes de cada grupo | Nombre/valor del campo de agrupación |
+| Detalle | Cada registro | Datos de cada registro (campos enlazados) |
+| Pie de grupo | Después de cada grupo | Subtotales, conteos parciales del grupo |
+| Pie de página | Cada página | Número de página, fecha |
+| Pie del informe | Una vez (final) | Totales generales, recuento total, conclusión |
+
+---
+
+## 7. PREGUNTAS TIPO TEST FRECUENTES
+
+**P: ¿Qué sección de un informe se imprime una sola vez al final del informe?**
+R: El Pie del informe.
+
+**P: ¿Desde qué vista de un informe se puede imprimir directamente?**
+R: Desde la Vista preliminar.
+
+**P: ¿Cuántos niveles de agrupación máximos permite el Asistente para informes?**
+R: 10 niveles de agrupación.
+
+**P: ¿Qué nombre debe tener una macro para que se ejecute automáticamente al abrir la base de datos?**
+R: Autoexec.
+
+**P: ¿Qué tecla se mantiene pulsada para evitar que se ejecute la macro Autoexec al abrir la BD?**
+R: La tecla Mayúsculas (Shift).
+
+**P: ¿Qué diferencia existe entre importar y vincular una tabla de Excel en Access?**
+R: Al importar, los datos se copian en Access y son independientes del archivo Excel original. Al vincular, los datos permanecen en Excel y Access accede a ellos de forma dinámica; los cambios en Access se guardan en Excel.
+
+**P: ¿Qué icono diferencia una tabla vinculada de una tabla local en el panel de navegación?**
+R: Las tablas vinculadas muestran un icono de flecha.
+
+**P: ¿Qué herramienta permite actualizar las rutas de archivos cuando se han movido las tablas vinculadas?**
+R: El Administrador de tablas vinculadas.
+
+**P: Si se coloca la expresión =Suma([Importe]) en el Pie de grupo, ¿qué calcula?**
+R: La suma de los valores del campo Importe solo para los registros de ese grupo concreto, no para todos los registros del informe.
+
+**P: ¿Qué hace la acción de macro AbrirFormulario con Modo de ventana = Cuadro de diálogo?**
+R: Abre el formulario como un diálogo modal, impidiendo que el usuario interactúe con el resto de la aplicación hasta que lo cierre.
+
+**P: ¿Qué acción de macro permite cambiar en tiempo de ejecución si un control está visible o habilitado?**
+R: EstablecerPropiedad.
+
+**P: ¿Cómo se llama a una submacro llamada "Guardar" dentro de la macro independiente "MacrosPrincipales"?**
+R: MacrosPrincipales.Guardar.
+
+**P: ¿Qué hace la función Compactar y reparar en Access?**
+R: Reduce el tamaño del archivo .accdb eliminando espacio de objetos/registros eliminados e intenta corregir corrupciones menores.
+
+**P: ¿Qué propiedad de sección hace que cada grupo comience en una nueva página del informe?**
+R: Forzar nueva página = Antes de la sección (configurada en el Encabezado de grupo).
+
+**P: ¿Desde qué pestaña de la cinta se accede a importar, vincular y exportar datos?**
+R: Desde la pestaña Datos externos.
+
+---
+
+## 8. CATÁLOGO DE ACCIONES: CATEGORÍAS COMPLETAS
+
+El panel **Catálogo de acciones** del editor de macros organiza todas las acciones disponibles en categorías. Conocer estas categorías y la acción exacta que pertenece a cada una es un tema recurrente en exámenes de oposiciones.
+
+### 8.1 Categoría: Flujo de programa
+
+Esta categoría contiene las estructuras de control que determinan el orden de ejecución de la macro:
+
+| Acción | Descripción |
+|---|---|
+| **Si** / **SiNo** | Bloques condicionales IF/ELSE. Ejecutan acciones solo si se cumple la condición especificada. |
+| **Grupo** | Agrupa un conjunto de acciones bajo un nombre descriptivo (solo organizativo, no afecta a la ejecución). |
+| **Submacro** | Define un bloque de acciones con nombre propio dentro de una macro independiente. Se invoca con la sintaxis `NombreMacro.NombreSubmacro`. |
+| **EnCasoDeError** | Establece cómo debe reaccionar la macro ante un error: detener la ejecución, continuar con la siguiente acción o ir a una submacro de tratamiento de errores. |
+| **SalirMacro** | Detiene la ejecución de la macro actual. Equivale a `DetenerMacro`. |
+| **EjecutarMacro** | Llama y ejecuta otra macro independiente. Puede repetirse un número de veces indicado. |
+| **EjecutarCódigo** | Ejecuta una función de Visual Basic para Aplicaciones (VBA) definida en un módulo de la base de datos. |
+| **CancelarEvento** | Cancela el evento (por ejemplo, `AntesDe actualizar`) que desencadenó la macro incrustada. |
+| **Detener todos los macros** | Detiene la ejecución de todas las macros activas simultáneamente. |
+
+**Nota de examen:** `EnCasoDeError` es la única forma de implementar manejo de errores dentro de una macro sin recurrir a VBA. `EjecutarCódigo` es el puente que permite llamar funciones VBA desde una macro.
+
+### 8.2 Categoría: Comandos de interfaz de usuario
+
+Contiene las acciones para abrir objetos, navegar y manipular la interfaz:
+
+| Acción | Descripción |
+|---|---|
+| **AbrirFormulario** | Abre un formulario en vista Formulario, Diseño, Hoja de datos o como Cuadro de diálogo. |
+| **AbrirInforme** | Abre un informe en Vista previa o lo imprime directamente. |
+| **AbrirConsulta** | Abre una consulta en Hoja de datos, Diseño o Vista preliminar. |
+| **AbrirTabla** | Abre una tabla en Hoja de datos, Diseño o Vista preliminar. |
+| **CerrarVentana** | Cierra el objeto activo o un objeto especificado. |
+| **MensajeEmergente** | Muestra un cuadro de mensaje no modal con información. No espera respuesta del usuario. |
+| **IrAControl** | Mueve el foco a un control concreto del formulario o informe activo. |
+| **IrARegistro** | Navega a un registro: Primero, Último, Siguiente, Anterior, Nuevo o Ir a (por número). |
+| **EstablecerValor** | Asigna un valor a un campo, control o propiedad de un control. |
+| **BuscarRegistro** | Busca el primer registro que coincide con un criterio en el campo actual. |
+| **BuscarSiguiente** | Continúa la búsqueda anterior iniciada con `BuscarRegistro`. |
+| **ActualizarRegistro** | Guarda el registro actualmente en edición (equivale a mover el foco fuera del registro). |
+| **EliminarRegistro** | Elimina el registro actualmente seleccionado. |
+| **Filtrar** | Aplica un filtro a los registros visibles usando una condición Where. |
+| **QuitarFiltro** | Elimina cualquier filtro activo del formulario o informe. |
+| **AplicarFiltro** | Aplica un filtro guardado (nombre de consulta) o una condición Where. |
+| **OrdenarPorEsto** | Ordena los registros del objeto activo por el campo y dirección especificados. |
+| **EjecutarComandoMenudo** | Ejecuta un comando del menú o de la cinta de opciones de Access. |
+| **Minimizar** / **Maximizar** / **Restaurar** | Cambia el estado de la ventana del objeto activo. |
+| **Eco** | Activa (Eco = Sí) o desactiva (Eco = No) el refresco de pantalla durante la ejecución de la macro, para mejorar la velocidad y evitar parpadeos. |
+| **RelojDeArena** | Muestra u oculta el cursor de reloj de arena (indicador de espera) mientras se ejecuta una operación. |
+| **SalirDeMicrosoftAccess** | Cierra la aplicación Access (con opción de guardar objetos modificados). |
+
+### 8.3 Categoría: Administración de datos
+
+Contiene las acciones para transferir datos entre Access y otros formatos o fuentes:
+
+| Acción | Descripción |
+|---|---|
+| **ImportarExportarTexto** | Importa o exporta archivos de texto delimitado o de ancho fijo. |
+| **ImportarExportarHojaDeCalculo** | Importa, exporta o vincula hojas de cálculo de Excel o Lotus. |
+| **TransferirBaseDeDatos** | Importa, exporta o vincula objetos desde otra base de datos Access o dBASE. |
+| **TransferirTexto** | Importa o exporta texto usando una especificación de importación/exportación guardada. |
+| **TransferirHojaDeCalculo** | Importa, exporta o vincula una hoja de cálculo mediante una especificación guardada. |
+| **EjecutarSQL** | Ejecuta una instrucción SQL de acción: INSERT INTO, UPDATE, DELETE, CREATE TABLE, DROP TABLE. |
+| **GuardarRegistro** | Guarda el registro actual en la base de datos sin necesidad de mover el foco. |
+
+### 8.4 Macros de datos (Data Macros)
+
+Introducidas en **Access 2010**, las **macros de datos** son macros especiales que se definen directamente en una tabla (desde la Vista Diseño de la tabla o la Hoja de datos, pestaña **Tabla > grupo Antes de eventos / Después de eventos**).
+
+**Características:**
+
+- Se ejecutan automáticamente al crear, modificar o eliminar registros en la tabla.
+- No aparecen en el panel de navegación como objetos independientes.
+- Se dividen en:
+  - **Macros de datos de eventos**: se disparan antes o después de Insert, Update o Delete.
+  - **Macros de datos con nombre**: macros de datos que pueden ser invocadas explícitamente desde otras macros o macros de datos.
+- Utilizan un subconjunto reducido de acciones (principalmente acciones de datos: `BuscarRegistro`, `EditarRegistro`, `CrearRegistro`, `EliminarRegistro`, `EstablecerCampo`, `SalirParaElMacroDeDatos`).
+
+**Nota de examen:** las macros de datos permiten implementar lógica de negocio a nivel de tabla, independientemente del formulario que se use para modificar los datos.
+
+---
+
+## 9. HERRAMIENTAS DE ANÁLISIS DE LA BASE DE DATOS
+
+Access 365 incluye en la pestaña **Herramientas de base de datos > grupo Analizar** tres herramientas de diagnóstico y documentación:
+
+### 9.1 Analizador de tablas
+
+**Ruta:** Herramientas de base de datos > Analizar > Analizar tabla
+
+El **Analizador de tablas** detecta redundancias e inconsistencias en tablas no normalizadas y propone una estructura normalizada:
+
+**Funcionamiento:**
+1. El asistente muestra las tablas de la base de datos; el usuario selecciona la tabla a analizar.
+2. Access detecta columnas con datos repetidos (por ejemplo, el nombre de un departamento repetido en miles de filas).
+3. Propone dividir la tabla en dos o más tablas relacionadas (**normalización**), eliminando la redundancia.
+4. El usuario puede aceptar la propuesta automática o reorganizar manualmente los campos entre las nuevas tablas.
+5. Access crea automáticamente las **relaciones** necesarias entre las nuevas tablas.
+6. Ofrece la opción de crear una **consulta de compatibilidad** con el mismo nombre que la tabla original, para que los formularios e informes existentes sigan funcionando sin cambios.
+
+**Cuándo usarlo:** cuando una tabla tiene columnas que almacenan el mismo valor repetido en muchas filas (señal de falta de normalización).
+
+### 9.2 Analizador de rendimiento
+
+**Ruta:** Herramientas de base de datos > Analizar > Analizar rendimiento
+
+El **Analizador de rendimiento** examina los objetos seleccionados de la base de datos y genera una lista de sugerencias para mejorar el rendimiento:
+
+**Tipos de sugerencias:**
+
+| Tipo | Descripción | Acción de Access |
+|---|---|---|
+| **Recomendación** | Mejora segura que Access puede aplicar automáticamente sin inconvenientes | Access puede aplicarla con un clic |
+| **Sugerencia** | Mejora que Access puede aplicar, pero que puede tener efectos secundarios que el usuario debe valorar | Access puede aplicarla, pero advierte al usuario |
+| **Idea** | Sugerencia que el usuario debe implementar manualmente (Access no puede hacerlo automáticamente) | El usuario debe actuar |
+
+**Objetos analizables:** tablas, consultas, formularios, informes, macros y módulos. El usuario puede seleccionar qué tipos de objetos analizar antes de ejecutar el análisis.
+
+**Ejemplos de sugerencias habituales:**
+- Crear un índice en un campo usado frecuentemente en criterios de búsqueda (**Recomendación**).
+- Cambiar un tipo de dato Texto a un tamaño menor (**Sugerencia**).
+- Usar una consulta en lugar de un tipo de datos Memo en un campo (**Idea**).
+
+**Nota de examen:** el Analizador de rendimiento clasifica sus resultados en exactamente tres categorías: **Recomendación**, **Sugerencia** e **Idea**. Solo las Recomendaciones y Sugerencias pueden ser aplicadas automáticamente por Access.
+
+### 9.3 Documentador de la base de datos
+
+**Ruta:** Herramientas de base de datos > Analizar > Documentador de la base de datos
+
+El **Documentador** genera un **informe detallado de la estructura** de los objetos seleccionados de la base de datos:
+
+**Información que puede incluir:**
+- Propiedades de tablas (nombre, fecha de creación/modificación).
+- Definición de campos (nombre, tipo de dato, tamaño, formato, reglas de validación).
+- Índices y sus propiedades.
+- Relaciones entre tablas.
+- Propiedades de consultas, formularios, informes, módulos y macros.
+
+**Uso:** el informe generado puede imprimirse o exportarse. Es útil para documentar la estructura de una BD antes de realizar cambios estructurales o para entregar documentación técnica.
+
+---
+
+## 10. ESPECIFICACIONES DE IMPORTACIÓN Y EXPORTACIÓN GUARDADAS
+
+### 10.1 Qué son las especificaciones
+
+Cuando se importa o exporta un archivo de texto (.txt, .csv) o una hoja de cálculo, Access ofrece al final del asistente la opción de **guardar los pasos** de esa operación con un nombre. Estas configuraciones guardadas se denominan **especificaciones de importación/exportación**.
+
+**Qué guardan:**
+- Formato del archivo (delimitado, ancho fijo, Excel...).
+- Delimitador de campo y calificador de texto (para archivos delimitados).
+- Codificación de caracteres.
+- Asignación de columnas a campos de la tabla de Access.
+- Si la primera fila contiene encabezados.
+- Nombre de la tabla o consulta de destino/origen.
+
+### 10.2 Gestión de especificaciones guardadas
+
+Las especificaciones guardadas son accesibles desde:
+- **Pestaña Datos externos > grupo Importar y vincular > Importaciones guardadas**: para volver a ejecutar importaciones guardadas.
+- **Pestaña Datos externos > grupo Exportar > Exportaciones guardadas**: para volver a ejecutar exportaciones guardadas.
+
+Desde estos paneles se puede:
+- **Ejecutar** una especificación guardada sin pasar por el asistente.
+- **Editar** el nombre o eliminar la especificación.
+- **Crear una tarea de Outlook** asociada para recordar ejecutar la importación/exportación periódicamente.
+
+### 10.3 Uso en macros
+
+Las especificaciones guardadas se pueden invocar desde una macro usando las acciones:
+- **TransferirTexto** (argumento: Nombre de especificación) — para archivos de texto.
+- **TransferirHojaDeCalculo** — para archivos de Excel.
+
+Esto permite automatizar completamente la importación o exportación periódica de datos sin intervención del usuario.
+
+**Nota de examen:** guardar una especificación de importación es la forma recomendada de automatizar importaciones recurrentes en Access. La macro `TransferirTexto` con el nombre de especificación guardada puede ejecutar la importación completa sin mostrar ningún asistente.
+
+---
+
+## 11. NOTA SOBRE Alt+F8 EN ACCESS
+
+**Aclaración importante:** en Microsoft Access, la combinación de teclas **Alt+F8** abre el cuadro de diálogo **"Lista de campos"** (Field List), que permite añadir campos al formulario o informe que está abierto en Vista Diseño o Vista Presentación.
+
+La **lista de macros** no tiene un atajo de teclado directo equivalente; las macros se gestionan desde el panel de navegación o desde la ficha **Herramientas de base de datos > grupo Macros > Ejecutar macro** (para ejecutar) o directamente haciendo doble clic sobre la macro en el panel de navegación.
+
+> En otras aplicaciones de Office (Word, Excel), Alt+F8 abre el cuadro de diálogo de macros. En Access este comportamiento es diferente: Alt+F8 abre la Lista de campos.
+
+---
+
+## 12. PREGUNTAS TIPO TEST ADICIONALES
+
+**P: ¿En qué categoría del Catálogo de acciones se encuentra la acción `EnCasoDeError`?**
+R: En la categoría **Flujo de programa**.
+
+**P: ¿Qué acción de la categoría Flujo de programa permite llamar a una función de VBA desde una macro?**
+R: `EjecutarCódigo`.
+
+**P: ¿Qué efecto tiene la acción `Eco = No` en una macro?**
+R: Desactiva el refresco de pantalla durante la ejecución de la macro, evitando parpadeos y mejorando la velocidad aparente.
+
+**P: ¿Qué herramienta de Access detecta datos redundantes en una tabla y propone dividirla en varias tablas relacionadas?**
+R: El **Analizador de tablas** (Herramientas de base de datos > Analizar > Analizar tabla).
+
+**P: El Analizador de rendimiento clasifica sus sugerencias en tres tipos. ¿Cuáles son?**
+R: **Recomendación**, **Sugerencia** e **Idea**.
+
+**P: ¿Qué tipo de sugerencia del Analizador de rendimiento NO puede aplicar Access automáticamente?**
+R: Las **Ideas**; deben ser implementadas manualmente por el usuario.
+
+**P: ¿Qué herramienta de Access genera un informe con la estructura completa de los objetos (tablas, campos, índices, relaciones)?**
+R: El **Documentador de la base de datos** (Herramientas de base de datos > Analizar > Documentador de la base de datos).
+
+**P: ¿Qué son las macros de datos en Access y dónde se definen?**
+R: Son macros que se ejecutan automáticamente al insertar, modificar o eliminar registros en una tabla. Se definen directamente en la tabla, desde la Vista Diseño o la Hoja de datos, en la pestaña Tabla.
+
+**P: ¿Qué hace la acción `TransferirTexto` cuando se le indica un nombre de especificación guardada?**
+R: Ejecuta la importación o exportación de texto usando la configuración guardada en esa especificación, sin mostrar ningún asistente.
+
+**P: ¿Desde qué panel de la pestaña Datos externos se pueden volver a ejecutar importaciones guardadas previamente?**
+R: Desde **Importaciones guardadas** (Datos externos > grupo Importar y vincular > Importaciones guardadas).
+
+**P: ¿Qué abre la combinación de teclas Alt+F8 en Microsoft Access?**
+R: El cuadro de diálogo **Lista de campos**, que permite añadir campos al formulario o informe en Vista Diseño.
+
+**P: ¿Qué opción ofrece el Asistente para importar cuando finaliza, para no tener que repetir la configuración en el futuro?**
+R: Ofrece guardar los pasos de importación como una especificación con nombre, accesible desde **Importaciones guardadas**.
+
+**P: ¿Qué ventaja ofrece la acción `CancelarEvento` en una macro incrustada en el evento `Antes de actualizar` de un formulario?**
+R: Cancela la actualización del registro, impidiendo que los datos se guarden si no se cumplen las condiciones de validación definidas en la macro.
+
+**P: ¿Cuándo se introdujeron las macros de datos (Data Macros) en Access?**
+R: En **Access 2010**.
+
+**P: ¿Qué acción de macro permite ejecutar directamente una instrucción SQL de acción (como DELETE o UPDATE) sin necesidad de crear una consulta?**
+R: `EjecutarSQL`.
+
+
+
+---
+
+## 13. FUNCIONES DE TEXTO EN EXPRESIONES DE INFORME
+
+Los controles calculados de un informe pueden usar funciones de texto de Access para manipular cadenas de caracteres. Estas funciones son equivalentes a las de VBA y se usan con la misma sintaxis en el generador de expresiones.
+
+### 13.1 Funciones de extracción de subcadenas
+
+| Función | Sintaxis | Descripción | Ejemplo |
+|---|---|---|---|
+| **Izq** | `=Izq([Campo]; n)` | Devuelve los n primeros caracteres del campo (por la izquierda) | `=Izq([NombreAlumno]; 1)` devuelve la inicial del nombre |
+| **Der** | `=Der([Campo]; n)` | Devuelve los n últimos caracteres del campo (por la derecha) | `=Der([CodPostal]; 2)` devuelve los dos últimos dígitos |
+| **Medio** | `=Medio([Campo]; inicio; longitud)` | Devuelve una subcadena desde la posición `inicio` con la longitud indicada | `=Medio([DNI]; 3; 5)` extrae 5 caracteres a partir del tercer carácter |
+
+**Nota de examen:**
+- `Izq` = caracteres desde la izquierda (inicio de la cadena).
+- `Der` = caracteres desde la derecha (final de la cadena).
+- `Medio` = subcadena desde una posición interior.
+- Para obtener la **inicial de un nombre**: `=Izq([NombreAlumno]; 1)` (respuesta correcta).
+- La numeración de posiciones comienza en **1** (no en 0).
+
+### 13.2 Otras funciones de texto útiles en informes
+
+| Función | Sintaxis | Descripción |
+|---|---|---|
+| **Longitud** | `=Longitud([Campo])` | Número de caracteres del campo |
+| **LMayús** | `=LMayús([Campo])` | Convierte toda la cadena a mayúsculas |
+| **LMín** | `=LMín([Campo])` | Convierte toda la cadena a minúsculas |
+| **Recortar** | `=Recortar([Campo])` | Elimina espacios al inicio y al final |
+| **EsNulo** | `=EsNulo([Campo])` | Devuelve Verdadero si el campo está vacío/nulo |
+| **Nz** | `=Nz([Campo]; "valor")` | Sustituye el valor nulo por el segundo argumento |
+
+---
+
+## 14. FUNCIONES DE FECHA Y HORA EN INFORMES
+
+### 14.1 Funciones básicas de fecha
+
+| Función | Sintaxis | Resultado |
+|---|---|---|
+| **Fecha** | `=Fecha()` | Fecha actual del sistema (sin hora) |
+| **Ahora** | `=Ahora()` | Fecha y hora actuales del sistema |
+| **Año** | `=Año([Campo])` | Componente año del campo de tipo Fecha/Hora |
+| **Mes** | `=Mes([Campo])` | Componente mes (número del 1 al 12) |
+| **Día** | `=Día([Campo])` | Componente día del mes |
+| **DiaSem** | `=DiaSem([Campo])` | Día de la semana como número (1 = domingo, 7 = sábado) |
+
+### 14.2 Función AgregFecha (añadir intervalo a una fecha)
+
+La función **AgregFecha** (equivalente a `DateAdd` en VBA) calcula una nueva fecha sumando o restando un intervalo a una fecha dada. Es la función correcta cuando se necesita calcular una fecha futura o pasada.
+
+**Sintaxis:**
+```
+=AgregFecha(intervalo; número; fecha)
+```
+
+| Argumento | Descripción |
+|---|---|
+| `intervalo` | Tipo de intervalo (ver tabla siguiente) |
+| `número` | Cantidad de intervalos a añadir (negativo para restar) |
+| `fecha` | Fecha de referencia (puede ser un campo, `Fecha()`, etc.) |
+
+**Intervalos disponibles:**
+
+| Código | Intervalo |
+|---|---|
+| `"d"` | Días |
+| `"m"` | Meses |
+| `"yyyy"` | Años |
+| `"ww"` | Semanas |
+| `"q"` | Trimestres |
+| `"h"` | Horas |
+| `"n"` | Minutos |
+| `"s"` | Segundos |
+
+**Ejemplo:** Para calcular la fecha de un campo más 45 días:
+```
+=AgregFecha("d"; 45; [FechaContratacion])
+```
+
+**Nota de examen:** `AgregFecha` (no `DifFecha`, no `Fecha`, no `EsFecha`) es la función para **añadir un intervalo** a una fecha. `DifFecha` calcula la **diferencia** entre dos fechas.
+
+### 14.3 Función DifFecha (diferencia entre fechas)
+
+La función **DifFecha** calcula la diferencia entre dos fechas expresada en el tipo de intervalo indicado.
+
+**Sintaxis en Access (con punto y coma como separador de argumentos):**
+```
+=DifFecha("intervalo"; fecha_inicio; fecha_fin)
+```
+
+**Importante:** en Access 365 en español, el separador de argumentos en las expresiones de controles es el **punto y coma (;)**, no la coma. Esta es la sintaxis correcta para el Origen del control de un cuadro de texto.
+
+**Ejemplo:** Días transcurridos desde la contratación hasta hoy:
+```
+=DifFecha("d"; [FechaContratacion]; Fecha())
+```
+Resultado: número entero de días entre la fecha de contratación y la fecha actual.
+
+| Código | Diferencia calculada |
+|---|---|
+| `"d"` | Días completos |
+| `"m"` | Meses completos |
+| `"yyyy"` | Años completos |
+| `"ww"` | Semanas completas |
+
+### 14.4 Formatos de fecha aplicables a la función Ahora()
+
+Cuando se inserta `=Ahora()` en un control de informe, el resultado depende del **formato** aplicado al control (propiedad Formato de la ficha Formato en el panel de propiedades):
+
+| Formato aplicado | Resultado mostrado (ejemplo) |
+|---|---|
+| **Fecha larga** | miércoles, 7 de mayo de 2025 |
+| **Fecha media** | 07-may-2025 |
+| **Fecha corta** | 07/05/2025 |
+| **Hora larga** | 14:32:05 |
+| **Hora media** | 2:32 PM |
+| **Hora corta** | 14:32 |
+| Sin formato | 07/05/2025 14:32:05 |
+
+**Nota de examen:** `=Ahora()` con formato **Fecha larga** muestra el día de la semana escrito, el número del día, el mes en texto y el año (por ejemplo: _miércoles, 1 de mayo de 2024_). Si solo se quiere la fecha sin hora, se usa `=Fecha()`.
+
+---
+
+## 15. FUNCIÓN CONMUTADOR EN EXPRESIONES DE INFORME
+
+La función **Conmutador** evalúa una lista de expresiones lógicas en orden y devuelve el valor correspondiente a la primera expresión que sea verdadera. Es equivalente a una cadena de `Si/SiNo` simplificada.
+
+**Sintaxis:**
+```
+=Conmutador(expr1; valor1; expr2; valor2; ...; exprN; valorN)
+```
+
+Los argumentos se disponen en **pares**: (condición, valor a devolver). Se evalúan de izquierda a derecha y se devuelve el valor del primer par cuya condición sea verdadera.
+
+**Ejemplo para mostrar la moneda según el país:**
+```
+=Conmutador([País]="UK"; "Libra"; [País]="USA"; "Dólar"; [País]="JP"; "Yen")
+```
+
+| Condición | Si es verdadera, devuelve |
+|---|---|
+| `[País]="UK"` | "Libra" |
+| `[País]="USA"` | "Dólar" |
+| `[País]="JP"` | "Yen" |
+
+**Nota de examen:**
+- La función `Conmutador` es la correcta para múltiples condiciones con múltiples valores de retorno.
+- La sintaxis es siempre: `=Conmutador([Campo]="valor1"; "resultado1"; [Campo]="valor2"; "resultado2")`.
+- Si ninguna condición es verdadera, devuelve `Nulo`.
+- No confundir con `Elegir`, que selecciona por posición numérica (1, 2, 3...), no por condición booleana.
+
+---
+
+## 16. GRÁFICOS EN INFORMES DE ACCESS 365
+
+### 16.1 Insertar un gráfico
+
+En Access 365, se puede insertar un gráfico en un informe (o formulario) desde la pestaña **Diseño > grupo Controles > botón Gráfico moderno** (en versiones recientes) o mediante el control de gráfico heredado disponible en la cinta.
+
+**Origen de datos del gráfico:** el gráfico puede basarse en:
+- Una **tabla** de la base de datos.
+- Una **consulta** de la base de datos.
+- El propio **origen del informe** (tabla o consulta que usa el informe).
+
+### 16.2 Tipos de gráfico disponibles en Access 365
+
+Access 365 (con el control de gráfico moderno) ofrece los siguientes tipos de gráfico:
+
+| Categoría | Tipos disponibles |
+|---|---|
+| **Columna** | Columna agrupada, Columna apilada, Columna 100% apilada |
+| **Barra** | Barra agrupada, Barra apilada, Barra 100% apilada |
+| **Línea** | Línea, Línea apilada, Línea 100% apilada |
+| **Circular** | Circular (Pastel), con sus variantes |
+| **Área** | Área, Área apilada, Área 100% apilada |
+| **Dispersión** | Puntos de dispersión XY |
+| **Combinado** | Mezcla de dos tipos (por ejemplo, columna + línea) |
+| **Cascada** | Para mostrar valores incrementales y decrementales |
+
+**Tipos NO disponibles en Access 365:**
+- **Radial** (también llamado gráfico de araña o tela de araña): NO está disponible en Access.
+- **Sectores**: este término hace referencia a un subtipo propio de herramientas como Excel; en Access el gráfico de sectores se llama **Circular**. Por tanto, si en un examen aparece "Sectores" como opción independiente de "Circular", "Sectores" es el que NO corresponde.
+
+**Nota de examen:**
+- Los tipos disponibles son: Columna, Barra, Línea, Circular, Área, Dispersión, Combinado.
+- **Radial** NO está disponible.
+- **Sectores** como nombre propio tampoco figura en la lista de Access (el equivalente es "Circular").
+
+---
+
+## 17. EVENTOS DE CONTROLES EN FORMULARIOS E INFORMES
+
+### 17.1 Concepto de evento
+
+Un **evento** es una acción reconocida por Access que ocurre en un objeto (formulario, informe o control) y a la que se puede asociar una macro o código VBA para ejecutarse en respuesta.
+
+Los eventos se configuran en la **ficha Evento** del panel de propiedades del objeto.
+
+### 17.2 Eventos del botón de comando
+
+El control más habitual para ejecutar acciones en formularios es el **Botón de comando**. Sus eventos principales son:
+
+| Evento | Nombre interno | Cuándo se dispara |
+|---|---|---|
+| **Al hacer clic** | `onclick` | Cuando el usuario hace clic en el botón |
+| **Al presionar tecla** | `onkeypress` | Cuando se pulsa una tecla con el botón enfocado |
+| **Al recibir el enfoque** | `ongotfocus` | Cuando el botón recibe el foco del teclado |
+| **Al perder el enfoque** | `onlostfocus` | Cuando el botón pierde el foco |
+
+**El evento más importante:** `onclick` (**Al hacer clic**). Es el evento estándar para asociar una macro o código VBA que se ejecuta cuando el usuario pulsa el botón.
+
+**Nota de examen:** si se crea un botón en un formulario para que muestre un informe, la macro o el código VBA que llama a `AbrirInforme` debe asociarse al evento **Al hacer clic** (`onclick`) del botón.
+
+### 17.3 Eventos de formulario más relevantes
+
+| Evento | Cuándo se dispara | Uso típico |
+|---|---|---|
+| **Al cargar** | Cuando el formulario se abre y carga los datos | Inicializar controles, establecer valores por defecto |
+| **Al activar registro** | Cuando el foco se mueve a un nuevo registro | Actualizar controles dependientes del registro actual |
+| **Antes de actualizar** | Antes de guardar los cambios del registro en curso | Validar datos; usar `CancelarEvento` si la validación falla |
+| **Después de actualizar** | Después de guardar los cambios del registro | Actualizar listas, registros relacionados |
+| **Al eliminar** | Cuando el usuario solicita eliminar un registro | Confirmar o cancelar la eliminación |
+| **Al cerrar** | Cuando el formulario se cierra | Limpiar variables, actualizar datos relacionados |
+
+---
+
+## 18. MÓDULOS VBA: TIPOS Y DIFERENCIAS
+
+### 18.1 Concepto de módulo
+
+Un **módulo** en Access es un objeto que contiene código escrito en **Visual Basic para Aplicaciones (VBA)**. El código se organiza en subrutinas (`Sub ... End Sub`) y funciones (`Function ... End Function`).
+
+El editor de VBA se abre con **Alt+F11**.
+
+### 18.2 Tipos de módulos
+
+Access dispone de tres tipos de módulos:
+
+| Tipo | Nombre en inglés | Descripción | Visibilidad en el panel de navegación |
+|---|---|---|---|
+| **Módulo estándar** | Module | Contiene código de uso general, accesible desde cualquier parte de la base de datos (subrutinas y funciones globales, constantes, variables públicas) | Sí, aparece en la sección Módulos |
+| **Módulo de clase** | Class Module | Define una clase de objeto personalizada con propiedades y métodos propios. Permite la programación orientada a objetos dentro de Access | Sí, aparece en la sección Módulos |
+| **Módulo de formulario / informe** | Form/Report module | Asociado a un formulario o informe concreto; contiene el código de los eventos de ese objeto (procedimientos de evento) | No de forma independiente; se accede desde el diseño del formulario/informe |
+
+### 18.3 Diferencia clave entre módulo estándar y módulo de clase
+
+| Característica | Módulo estándar | Módulo de clase |
+|---|---|---|
+| Propósito | Funciones y subrutinas reutilizables en toda la BD | Definir tipos de objetos con propiedades y métodos |
+| Instanciación | No se instancia (el código se llama directamente) | Se crea una instancia: `Dim obj As New NombreClase` |
+| Uso típico | Utilidades, funciones de validación comunes, constantes globales | Encapsular lógica compleja en un objeto reutilizable |
+| Keyword de acceso | `Public` / `Private` | `Property Get`, `Property Let`, `Property Set` para propiedades |
+
+**Nota de examen:** si se necesita añadir un **módulo de clase** en Access, el lenguaje a usar es **VBA** (Visual Basic para Aplicaciones). Los módulos de clase NO se pueden crear con el generador visual de macros.
+
+### 18.4 Ventana Inmediato del editor VBA
+
+La **Ventana Inmediato** (accesible con **Ctrl+G** dentro del editor de VBA) permite ejecutar instrucciones VBA de forma interactiva, sin necesidad de crear una subrutina. Es útil para:
+- Probar expresiones y funciones rápidamente.
+- Depurar código comprobando valores de variables.
+- Ejecutar sentencias SQL o llamar a funciones de la BD.
+
+---
+
+## 19. CATEGORÍA "COMANDOS DEL SISTEMA" EN EL CATÁLOGO DE ACCIONES
+
+La categoría **Comandos del sistema** del Catálogo de acciones contiene las acciones relacionadas con operaciones del sistema operativo y del entorno de Access:
+
+| Acción | Descripción |
+|---|---|
+| **Bip** | Emite un pitido de aviso a través del altavoz del equipo. No tiene argumentos. |
+| **EjecutarAplicación** | Ejecuta una aplicación externa de Windows (por ejemplo, abre el Bloc de notas o un programa externo). |
+| **Shell** | Ejecuta un comando del sistema operativo (equivale al comando Shell de la línea de comandos). |
+| **EnviarTeclas** | Envía pulsaciones de teclado a la ventana activa (Access u otra aplicación). |
+
+**Nota de examen clave:**
+- La acción **Bip** (para emitir un sonido de alerta) se encuentra en la categoría **Comandos del sistema**, NO en "Comandos de interfaz de usuario" ni en "Flujo de programa".
+- La acción **CuadroDeMensaje** (para mostrar un cuadro de mensaje) se encuentra en **Comandos de interfaz de usuario**.
+- Esta distinción es frecuente en preguntas de examen que preguntan por la categoría correcta de cada acción.
+
+**Resumen de ubicación de acciones por categoría (preguntas frecuentes):**
+
+| Acción | Categoría en el Catálogo |
+|---|---|
+| `Bip` | Comandos del sistema |
+| `CuadroDeMensaje` | Comandos de interfaz de usuario |
+| `Si` / `SiNo` / `EnCasoDeError` | Flujo de programa |
+| `AbrirFormulario` / `AbrirInforme` | Comandos de interfaz de usuario |
+| `EjecutarSQL` | Administración de datos |
+| `IrARegistro` / `BuscarRegistro` | Comandos de interfaz de usuario |
+| `EjecutarMacro` | Flujo de programa |
+| `EjecutarCódigo` | Flujo de programa |
+
+---
+
+## 20. DIVISOR DE BASES DE DATOS
+
+### 20.1 Qué es el Divisor de bases de datos
+
+El **Divisor de bases de datos** es un asistente de Access que divide una base de datos en dos archivos separados:
+
+- **Base de datos back-end** (datos): contiene únicamente las **tablas** con todos los datos. Suele ubicarse en una unidad de red compartida.
+- **Base de datos front-end** (interfaz): contiene los **formularios, informes, consultas, macros y módulos**. Cada usuario del equipo tiene su copia del front-end. El front-end accede a los datos del back-end mediante **tablas vinculadas**.
+
+**Ruta de acceso:** Herramientas de base de datos > grupo Mover datos > Base de datos de Access (Divisor de BD).
+
+### 20.2 Ventajas del divisor
+
+| Ventaja | Descripción |
+|---|---|
+| Multiusuario | Varios usuarios pueden trabajar simultáneamente con los datos del back-end sin conflictos |
+| Actualizaciones sencillas | El front-end puede actualizarse (nuevos formularios, informes) sin interrumpir los datos |
+| Protección de datos | El archivo de datos (back-end) puede protegerse por separado |
+| Rendimiento | El front-end local es más rápido; solo los datos viajan por la red |
+
+### 20.3 Funcionamiento
+
+Al ejecutar el Divisor:
+1. Access crea un nuevo archivo .accdb que contiene solo las tablas (back-end).
+2. Las tablas de la base de datos original se eliminan y se reemplazan por **vínculos** (tablas enlazadas con icono de flecha) al archivo back-end.
+3. La base de datos original conserva todos los demás objetos y se convierte en el front-end.
+
+**Nota de examen:** el Divisor de bases de datos **mueve las tablas** a un back-end y sustituye las tablas originales por vínculos. NO divide las tablas en dos partes por criterios de contenido (eso no existe en Access).
+
+---
+
+## 21. PROPIEDAD AllowBypassKey
+
+### 21.1 Qué es
+
+La propiedad **AllowBypassKey** de la base de datos controla si el usuario puede pulsar la tecla **Mayúsculas (Shift)** al abrir la base de datos para omitir:
+- La ejecución de la macro **AutoExec**.
+- La apertura del formulario definido en las Opciones de inicio ("Mostrar formulario").
+- Las restricciones de navegación establecidas en las Opciones de inicio.
+
+### 21.2 Valores y efecto
+
+| Valor | Efecto |
+|---|---|
+| **True** (predeterminado) | El usuario puede pulsar Mayúsculas al abrir para saltarse AutoExec y las opciones de inicio |
+| **False** | La tecla Mayúsculas al abrir queda desactivada; AutoExec y las opciones de inicio se ejecutan siempre |
+
+### 21.3 Cómo establecerla
+
+**No se puede establecer desde la interfaz gráfica de Access directamente.** Debe hacerse mediante código **VBA** desde la Ventana Inmediato o desde un módulo:
+
+```vba
+Application.SetOption "AllowBypassKey", False
+```
+
+O mediante la creación de una propiedad personalizada en la colección `Properties` de la base de datos:
+
+```vba
+Dim db As DAO.Database
+Set db = CurrentDb()
+db.Properties("AllowBypassKey") = False
+```
+
+### 21.4 Propósito de seguridad
+
+Establecer `AllowBypassKey = False` es una medida de seguridad habitual en aplicaciones Access distribuidas, para impedir que usuarios avanzados:
+- Accedan al panel de navegación (si está oculto en las opciones de inicio).
+- Modifiquen el diseño de los objetos.
+- Ejecuten macros o consultas no previstas.
+
+**Nota de examen:**
+- La propiedad que evita que el usuario omita la configuración de inicio y AutoExec es **AllowBypassKey** establecida a **False**.
+- NO existe una opción visual directa en el menú; se establece por código VBA.
+
+---
+
+## 22. OPCIONES DE INICIO DE LA BASE DE DATOS
+
+Access permite configurar un conjunto de opciones que determinan cómo se comporta la base de datos al abrirse, desde **Archivo > Opciones > Base de datos actual**:
+
+| Opción | Descripción |
+|---|---|
+| **Título de la aplicación** | Texto que aparece en la barra de título de la ventana de Access |
+| **Icono de la aplicación** | Archivo de icono (.ico) que se muestra en la barra de título y en la barra de tareas |
+| **Mostrar formulario** | Formulario que se abre automáticamente al iniciar la base de datos |
+| **Mostrar barra de estado** | Muestra u oculta la barra de estado inferior |
+| **Mostrar panel de navegación** | Si está desactivado, oculta el panel de navegación (el usuario no ve las tablas, formularios, etc.) |
+| **Compactar al cerrar** | Ejecuta Compactar y reparar automáticamente cada vez que se cierra la BD |
+| **Habilitar acceso completo a menús** | Si está desactivado, oculta opciones avanzadas de los menús (especialmente las de diseño) |
+| **Usar acceso especial a teclas** | Controla si están activas teclas como F11 (panel de navegación), Ctrl+G (VBA) y Alt+F11 (editor VBA) |
+
+**Relación con AllowBypassKey:** incluso con estas opciones configuradas (formulario de inicio, panel oculto, etc.), si `AllowBypassKey = True` el usuario puede pulsar Mayúsculas al abrir y saltarse toda la configuración. Establecer `AllowBypassKey = False` garantiza que la configuración de inicio no pueda omitirse.
+
+---
+
+## 23. EXPRESIONES DE NUMERACIÓN DE PÁGINA EN INFORMES
+
+### 23.1 Variables de página disponibles
+
+En los controles calculados de un informe, Access proporciona dos variables especiales para la paginación:
+
+| Variable | Descripción | Equivalente en inglés |
+|---|---|---|
+| `[Página]` | Número de la página actual | `[Page]` |
+| `[Páginas]` | Número total de páginas del informe | `[Pages]` |
+
+### 23.2 Expresiones de numeración habituales
+
+| Expresión | Resultado en Vista preliminar |
+|---|---|
+| `=[Página]` | 1, 2, 3... (solo el número de página) |
+| `=[Páginas]` | Número total de páginas |
+| `="Página " & [Página] & " de " & [Páginas]` | Página 1 de 4, Página 2 de 4... |
+| `=[Página] & " de " & [Páginas]` | 1 de 4, 2 de 4... |
+
+**Nota de examen:** la expresión `="Página " & [Page] & " de " & [Pages]` (con los nombres en inglés `Page` y `Pages`) produce exactamente el mismo resultado que con los nombres en español, porque Access reconoce ambas variantes. El resultado en Vista preliminar es, por ejemplo, **Página 1 de 4**.
+
+La pregunta del examen (Q85) presenta la expresión `="Página " & [Page] & " de " & [Pages]` y pregunta qué se mostrará. La respuesta correcta es **Página 1 de 4** (donde 1 es el número de la página actual y 4 el total de páginas del informe).
+
+---
+
+## 24. FORMATOS DE EXPORTACIÓN DISPONIBLES DESDE VISTA PRELIMINAR
+
+Desde la **Vista preliminar** de un informe, la cinta de opciones muestra la pestaña **Vista preliminar** con el grupo **Datos** que permite exportar directamente. Los formatos disponibles son:
+
+| Formato | Disponible |
+|---|---|
+| PDF o XPS | Sí |
+| Excel | Sí |
+| Texto | Sí |
+| XML | Sí |
+| Word (RTF) | Sí |
+| Más > HTML | Sí |
+| Más > Lista de SharePoint | Sí |
+| **Visio** | **No** |
+| **PowerPoint** | No de forma directa |
+
+**Nota de examen:** **Visio NO es un formato de exportación disponible** desde Access (ni desde Vista preliminar ni desde la pestaña Datos externos). Si en un examen se pregunta qué formato NO está disponible entre PDF, Excel, Word y Visio, la respuesta es **Visio**.
+
+---
+
+## 25. PREGUNTAS TIPO TEST ADICIONALES (SECCIONES 13-24)
+
+**P: ¿Qué función de texto devuelve los primeros n caracteres de un campo?**
+R: `Izq([Campo]; n)`.
+
+**P: ¿Qué expresión obtiene la inicial de un campo NombreAlumno?**
+R: `=Izq([NombreAlumno]; 1)`.
+
+**P: ¿Qué función de texto extrae caracteres desde una posición interior de la cadena?**
+R: `Medio([Campo]; posición_inicio; longitud)`.
+
+**P: ¿Qué función permite calcular una fecha futura sumando 45 días a un campo de fecha?**
+R: `=AgregFecha("d"; 45; [FechaContratacion])`.
+
+**P: ¿Qué función calcula la diferencia en días entre dos fechas?**
+R: `=DifFecha("d"; [FechaInicio]; [FechaFin])`.
+
+**P: ¿Qué resultado devuelve `=Ahora()` con el formato Fecha larga aplicado al control?**
+R: El día de la semana escrito, el número del día, el mes y el año; por ejemplo: _miércoles, 1 de mayo de 2024_.
+
+**P: ¿Qué función evalúa varias condiciones y devuelve el valor correspondiente a la primera verdadera?**
+R: `Conmutador`.
+
+**P: ¿Cuál es la sintaxis correcta de Conmutador para devolver "Libra" si el país es "UK" y "Dólar" si es "USA"?**
+R: `=Conmutador([País]="UK"; "Libra"; [País]="USA"; "Dólar")`.
+
+**P: ¿Qué tipos de gráfico están disponibles en informes de Access 365?**
+R: Columna, Barra, Línea, Circular, Área, Dispersión y Combinado. El tipo **Radial** NO está disponible.
+
+**P: ¿Qué evento del botón de comando se usa para ejecutar una macro cuando el usuario pulsa el botón?**
+R: El evento **Al hacer clic** (`onclick`).
+
+**P: ¿Qué tipo de módulo VBA define clases de objetos personalizadas con propiedades y métodos?**
+R: El **módulo de clase** (Class Module).
+
+**P: ¿Qué lenguaje se usa para añadir un módulo de clase en Access?**
+R: **VBA** (Visual Basic para Aplicaciones).
+
+**P: ¿En qué categoría del Catálogo de acciones se encuentra la acción Bip?**
+R: En **Comandos del sistema**.
+
+**P: ¿Qué expresión muestra "Página 3 de 10" en un pie de página de informe?**
+R: `="Página " & [Página] & " de " & [Páginas]`.
+
+**P: ¿Qué formato de exportación NO está disponible en Access desde Vista preliminar: PDF, Excel, Word o Visio?**
+R: **Visio** no está disponible como formato de exportación en Access.
+
+**P: ¿Qué propiedad de la base de datos debe ponerse a False para que el usuario no pueda omitir AutoExec con la tecla Mayúsculas?**
+R: La propiedad **AllowBypassKey**.
+
+**P: ¿Qué hace el Divisor de bases de datos en Access?**
+R: Divide la base de datos en dos archivos: un back-end con las tablas (en red compartida) y un front-end con formularios, informes y consultas (en el equipo local), conectados mediante tablas vinculadas.
+
+**P: ¿Cuál es el evento estándar de un botón de comando para ejecutar una acción al pulsarlo?**
+R: El evento **Al hacer clic** (`onclick`).
+
+**P: ¿Desde qué categoría del Catálogo de acciones se puede emitir un sonido en una macro de Access?**
+R: Desde **Comandos del sistema**, usando la acción **Bip**.
+
+
+
+## Orígenes de datos NO compatibles para importación directa en Access 365
+
+Access puede importar desde muchos orígenes, pero hay formatos que **no aparecen en el asistente de importación nativo** y que el examen pregunta como respuesta incorrecta:
+
+| Origen | ¿Importable nativamente? | Notas |
+|--------|--------------------------|-------|
+| Microsoft Excel (.xlsx, .xls) | **Sí** | Soporte nativo |
+| Texto delimitado / CSV | **Sí** | Soporte nativo |
+| XML | **Sí** | Soporte nativo |
+| HTML (tabla) | **Sí** | Soporte nativo |
+| Otra BD de Access (.accdb, .mdb) | **Sí** | Soporte nativo |
+| ODBC (SQL Server, Oracle...) | **Sí** | Mediante controlador ODBC |
+| **LibreOffice Base (.odb)** | **No** | No es un formato reconocido por Access 365 |
+| **Documentos OpenDocument (.ods, .odt)** | **No** | Access no incluye soporte nativo para OpenDocument |
+| PDF | **No** | Access no puede leer el contenido de un PDF directamente |
+| Word (.docx) | **No** | No es un origen de datos tabular compatible |
+
+**Para el examen:** LibreOffice Base y los documentos OpenDocument (.ods, .odt) **no son compatibles** para importación directa en Access 365. Son la respuesta incorrecta cuando aparecen como opción junto a formatos sí compatibles (Excel, CSV, XML, HTML).
+
+---
+
+## Controles calculados en informes — sintaxis exacta con =Sum()
+
+En un informe de Access, los controles calculados se definen en la propiedad **Origen del control** del cuadro de texto, precediendo siempre la expresión con el signo igual (=):
+
+### Funciones de agregado (van en secciones de pie)
+
+| Expresión | Resultado |
+|-----------|-----------|
+| =Sum([VentasAnuales]) | Suma total del campo VentasAnuales |
+| =Avg([VentasAnuales]) | Promedio |
+| =Count([VentasAnuales]) | Cuenta de registros con valor no nulo |
+| =Max([VentasAnuales]) | Valor máximo |
+| =Min([VentasAnuales]) | Valor mínimo |
+| =Sum([Cantidad]*[PrecioUnitario]) | Suma de expresión calculada |
+
+**Regla importante:** Las funciones Sum(), Avg(), Count(), Max(), Min() solo devuelven el resultado correcto cuando el control está en una **sección de pie** (pie de grupo, pie de página o pie del informe). En la sección Detalle calculan sobre el registro actual únicamente.
+
+### Funciones de texto en campos calculados de informe
+
+| Expresión | Resultado |
+|-----------|-----------|
+| =Izq([NombreAlumno]; 1) | Primera letra del nombre |
+| =Der([NombreAlumno]; 3) | Últimos 3 caracteres |
+| =Largo([NombreAlumno]) | Número de caracteres del nombre |
+| =[Nombre] & " " & [Apellido] | Concatenación de dos campos |
+| =Conmutador([Pais]="UK";"Libra";[Pais]="USA";"Dolar";Verdad;"Euro") | Valor condicional según campo |
+
+**Nota:** El separador de argumentos en Access español es el **punto y coma** (;). En versiones en inglés se usa la coma (,).

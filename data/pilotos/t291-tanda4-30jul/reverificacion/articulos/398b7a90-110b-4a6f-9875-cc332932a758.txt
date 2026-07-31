@@ -1,0 +1,893 @@
+LEY: Word 365
+ARTÍCULO: 1 — Funcionalidades principales de Word y Writer
+======================================================================
+# Funcionalidades principales de Microsoft Word 365
+
+Microsoft Word 365 es el procesador de textos de referencia en el ámbito administrativo español y uno de los programas más evaluados en las oposiciones de Auxiliar Administrativo del Estado. Su dominio es imprescindible para superar las pruebas prácticas y teóricas de estos procesos selectivos.
+
+---
+
+## 1. La interfaz de Word 365: elementos principales
+
+La interfaz de Word 365 sigue el modelo Fluent Design introducido con Office 2007 y perfeccionado en versiones posteriores. Sus elementos principales son:
+
+### 1.1. Barra de título
+
+Situada en la parte superior de la ventana, muestra el nombre del documento activo y el nombre de la aplicación ("Word"). En documentos guardados en OneDrive o SharePoint, también aparece el icono de sincronización y el estado de autoguardado. En el extremo derecho se encuentran los botones clásicos de ventana: **Minimizar**, **Restaurar/Maximizar** y **Cerrar**.
+
+### 1.2. Barra de herramientas de acceso rápido (QAT)
+
+La **Barra de herramientas de acceso rápido** (Quick Access Toolbar, QAT) se sitúa por defecto a la izquierda de la barra de título, aunque puede reubicarse debajo del Ribbon. Contiene comandos de uso frecuente que el usuario puede personalizar. Los botones predeterminados son:
+
+- **Guardar** (Ctrl+G)
+- **Deshacer** (Ctrl+Z)
+- **Rehacer** (Ctrl+Y)
+
+Para añadir o eliminar comandos, se hace clic en la flecha desplegable situada al final de la barra y se elige "Más comandos" para acceder a todas las opciones disponibles. También se puede hacer clic derecho sobre cualquier comando del Ribbon y seleccionar "Agregar a la barra de herramientas de acceso rápido".
+
+### 1.3. La cinta de opciones (Ribbon)
+
+La **cinta de opciones** o **Ribbon** es el elemento central de la interfaz de Office. Se organiza en **pestañas** (fichas), cada una de las cuales agrupa **comandos** relacionados en **grupos**. Las pestañas principales de Word 365 son:
+
+1. **Archivo** (da acceso a la Vista Backstage)
+2. **Inicio**
+3. **Insertar**
+4. **Diseño**
+5. **Disposición** (antes llamada "Diseño de página" en versiones anteriores)
+6. **Referencias**
+7. **Correspondencia**
+8. **Revisar**
+9. **Vista**
+10. **Ayuda**
+
+Adicionalmente aparecen **pestañas contextuales** (también llamadas "fichas de herramientas") que solo son visibles cuando se selecciona un objeto concreto, como una imagen, una tabla o un gráfico. Por ejemplo: "Herramientas de tabla", "Herramientas de imagen", "Herramientas de dibujo".
+
+**Minimizar y mostrar el Ribbon:** Se puede ocultar temporalmente la cinta haciendo doble clic en una pestaña activa, pulsando **Ctrl+F1** o usando el botón "Contraer la cinta de opciones" (el icono ^ situado en el extremo inferior derecho del Ribbon). Para fijarla de nuevo se despliega y se hace clic en "Anclar la cinta de opciones".
+
+### 1.4. Barra de estado
+
+La **barra de estado** se sitúa en la parte inferior de la ventana de Word y ofrece información sobre el documento activo. Sus elementos más relevantes para las oposiciones son:
+
+| Elemento | Descripción |
+|---|---|
+| Número de página | Muestra la página actual y el total (ej. "Página 3 de 12") |
+| Número de palabras | Recuento en tiempo real de palabras del documento |
+| Idioma del corrector | Idioma configurado para la corrección ortográfica |
+| Modo de revisión | Indica si el seguimiento de cambios está activo |
+| Accesos directos de vista | Botones para cambiar entre vistas (Diseño de impresión, Lectura, Web) |
+| Control deslizante de zoom | Permite ajustar el nivel de zoom de forma rápida |
+
+Se puede personalizar haciendo clic derecho sobre ella y activando o desactivando elementos.
+
+### 1.5. El panel de navegación
+
+El **panel de navegación** se activa desde **Vista > Mostrar > Panel de navegación** o con el atajo **Ctrl+F** (que abre la búsqueda dentro del panel). Tiene tres pestañas:
+
+- **Títulos:** muestra el esquema del documento basado en los estilos de título (Título 1, Título 2, etc.), lo que permite saltar entre secciones con un clic.
+- **Páginas:** muestra miniaturas de todas las páginas para una navegación visual rápida.
+- **Resultados:** muestra los resultados de la búsqueda de texto dentro del documento.
+
+### 1.6. La regla
+
+Word 365 dispone de una **regla horizontal** (visible en la parte superior del área de edición) y una **regla vertical** (visible en el margen izquierdo en la vista Diseño de impresión). Se activan y desactivan desde **Vista > Mostrar > Regla**.
+
+La regla horizontal permite:
+- Establecer y modificar **sangrías** (primera línea, francesa, izquierda, derecha)
+- Ajustar **tabulaciones** arrastrando los marcadores
+- Modificar los **márgenes** de la página
+
+### 1.7. Control de zoom
+
+El nivel de zoom se puede ajustar de varias formas:
+- Con el control deslizante de la barra de estado
+- Con los botones + y - situados junto al control deslizante
+- Desde **Vista > Zoom** (abre un cuadro de diálogo con opciones precisas)
+- Manteniendo presionada la tecla **Ctrl** y girando la rueda del ratón
+
+Los niveles habituales son 75 %, 100 %, 125 %, 150 %, 200 %. También se puede usar "Ancho de página" y "Toda la página".
+
+---
+
+## 2. Pestañas del Ribbon: contenido detallado
+
+### 2.1. Pestaña Inicio
+
+Es la pestaña que aparece seleccionada por defecto al abrir Word. Contiene los comandos de edición y formato más habituales, agrupados en:
+
+**Grupo Portapapeles:**
+- Pegar (Ctrl+V) — con opciones de pegado especial
+- Cortar (Ctrl+X)
+- Copiar (Ctrl+C)
+- Copiar formato (Alt+Ctrl+C para copiar, Alt+Ctrl+V para pegar formato)
+
+**Grupo Fuente:**
+- Tipo de fuente (nombre de la letra)
+- Tamaño de fuente (en puntos)
+- Aumentar/Disminuir tamaño de fuente
+- Borrar formato
+- **Negrita** (Ctrl+N)
+- *Cursiva* (Ctrl+K)
+- Subrayado (Ctrl+S) — con opciones de estilo de línea
+- Tachado
+- Subíndice (Ctrl+=)
+- Superíndice (Ctrl+Mayús+=)
+- Efectos de texto y tipografía
+- Color de resaltado del texto
+- Color de fuente
+
+**Grupo Párrafo:**
+- Viñetas, numeración y lista multinivel
+- Aumentar/Disminuir sangría
+- Ordenar
+- Mostrar todo (marcas de formato) — Ctrl+*
+- Alineación: izquierda (Ctrl+Q), centrada (Ctrl+T), derecha (Ctrl+D), justificada (Ctrl+J)
+- Interlineado y espacio entre párrafos
+- Sombreado de párrafo
+- Bordes de párrafo
+
+**Grupo Estilos:**
+- Galería de estilos rápidos (Normal, Sin espaciado, Título 1, Título 2, etc.)
+- Botón "Más" para desplegar la galería completa
+- Crear un estilo
+- Administrar estilos
+
+**Grupo Edición:**
+- Buscar (Ctrl+B) — abre el panel de navegación
+- Buscar y reemplazar (Ctrl+L)
+- Seleccionar — seleccionar todo, seleccionar objetos, seleccionar texto con formato similar
+
+### 2.2. Pestaña Insertar
+
+Permite añadir al documento elementos distintos al texto puro.
+
+**Grupo Páginas:**
+- Portada — inserta una portada prediseñada
+- Página en blanco
+- Salto de página (Ctrl+Intro)
+
+**Grupo Tablas:**
+- Tabla — insertar cuadrícula, dibujar tabla, insertar hoja de cálculo de Excel, tablas rápidas
+
+**Grupo Ilustraciones:**
+- Imágenes (desde archivo, desde stock o desde en línea)
+- Formas
+- Iconos
+- Modelos 3D
+- SmartArt
+- Gráfico
+- Captura de pantalla
+
+**Grupo Complementos:**
+- Obtener complementos, Mis complementos
+
+**Grupo Multimedia:**
+- Vídeo en línea
+
+**Grupo Vínculos:**
+- Vínculo (hipervínculo) — Ctrl+Alt+H
+- Marcador
+- Referencia cruzada
+
+**Grupo Comentarios:**
+- Nuevo comentario
+
+**Grupo Encabezado y pie de página:**
+- Encabezado — Editar encabezado
+- Pie de página
+- Número de página (principio de página, final, márgenes, posición actual)
+
+**Grupo Texto:**
+- Cuadro de texto
+- Elementos rápidos (texto automático, propiedad del documento, campo)
+- WordArt
+- Letra capital
+- Línea de firma
+- Fecha y hora
+- Objeto
+
+**Grupo Símbolos:**
+- Ecuación (Alt+=)
+- Símbolo
+
+### 2.3. Pestaña Diseño
+
+Controla el aspecto general y el tema del documento.
+
+**Grupo Formato del documento:**
+- Temas: conjunto predefinido de colores, fuentes y efectos
+- Colores del tema
+- Fuentes del tema
+- Efectos del tema
+- Establecer como predeterminado
+
+**Grupo Fondo de página:**
+- Marca de agua
+- Color de página
+- Bordes de página
+
+### 2.4. Pestaña Disposición
+
+Anteriormente llamada "Diseño de página" en Word 2010-2016. Controla la disposición del texto y los elementos en la página.
+
+**Grupo Configurar página:**
+- Márgenes (Normal: 2,54 cm todos; Estrecho: 1,27 cm; Moderado; Ancho; Reflejado)
+- Orientación (Vertical / Horizontal)
+- Tamaño (A4: 21 x 29,7 cm; Carta: 21,59 x 27,94 cm; etc.)
+- Columnas
+- Saltos (de página, de columna, de sección: continuo, página par, página impar)
+- Números de línea
+- Guiones
+
+**Grupo Párrafo:**
+- Sangría izquierda y derecha (en cm)
+- Espacio antes y después del párrafo (en puntos)
+
+**Grupo Organizar:**
+- Posición del objeto en la página
+- Ajuste del texto alrededor de objetos flotantes
+- Traer al frente / Enviar al fondo
+- Panel de selección
+- Alinear, agrupar, girar
+
+### 2.5. Pestaña Referencias
+
+Gestiona los elementos académicos y de referencia del documento.
+
+**Grupo Tabla de contenido:**
+- Tabla de contenido (automática o manual)
+- Agregar texto (asignar nivel de título)
+- Actualizar tabla
+
+**Grupo Notas al pie:**
+- Insertar nota al pie (Alt+Ctrl+O)
+- Insertar nota al final (Alt+Ctrl+L)
+- Siguiente nota al pie
+- Mostrar notas
+
+**Grupo Citas y bibliografía:**
+- Insertar cita
+- Administrar fuentes
+- Estilo de bibliografía (APA, Chicago, MLA, etc.)
+- Bibliografía
+
+**Grupo Títulos:**
+- Insertar título (para figuras, tablas, ecuaciones)
+- Insertar tabla de ilustraciones
+- Actualizar tabla
+
+**Grupo Índice:**
+- Marcar entrada (Alt+Mayús+X)
+- Insertar índice
+- Actualizar índice
+
+**Grupo Tabla de autoridades:**
+- Marcar cita, insertar tabla de autoridades
+
+### 2.6. Pestaña Correspondencia
+
+Permite crear cartas y documentos en serie (combinación de correspondencia).
+
+**Grupo Crear:**
+- Sobres
+- Etiquetas
+
+**Grupo Iniciar combinación de correspondencia:**
+- Iniciar combinación de correspondencia (cartas, mensajes de correo, sobres, etiquetas, directorio, documento normal)
+- Seleccionar destinatarios (lista existente, contactos de Outlook, escribir nueva lista)
+- Editar lista de destinatarios
+
+**Grupo Escribir e insertar campos:**
+- Resaltar campos de combinación
+- Bloque de direcciones
+- Línea de saludo
+- Insertar campo de combinación
+- Reglas
+- Asignar campos
+- Actualizar etiquetas
+
+**Grupo Vista previa de resultados:**
+- Vista previa de resultados
+- Registro anterior/siguiente
+- Buscar destinatario
+- Comprobar errores
+
+**Grupo Finalizar:**
+- Finalizar y combinar: editar documentos individuales, imprimir documentos, enviar mensajes de correo
+
+### 2.7. Pestaña Revisar
+
+Agrupa las herramientas de corrección, comentarios y colaboración.
+
+**Grupo Corrección:**
+- Ortografía y gramática (F7)
+- Editor (comprueba ortografía, gramática y claridad)
+- Sinónimos (Mayús+F7)
+- Recuento de palabras
+
+**Grupo Accesibilidad:**
+- Comprobar accesibilidad
+
+**Grupo Idioma:**
+- Traducir (documento, selección, mini traductor)
+- Idioma (establecer idioma de corrección, preferencias de idioma)
+
+**Grupo Comentarios:**
+- Nuevo comentario
+- Eliminar, anterior, siguiente
+- Mostrar comentarios
+
+**Grupo Seguimiento:**
+- Control de cambios (Ctrl+Mayús+E) — activa/desactiva el seguimiento
+- Mostrar para revisión (Original / Original con revisiones / Todas las revisiones / Sin revisiones)
+- Mostrar revisiones
+- Panel de revisiones
+
+**Grupo Cambios:**
+- Aceptar (el cambio actual o todos)
+- Rechazar
+- Anterior / Siguiente cambio
+
+**Grupo Comparar:**
+- Comparar (dos versiones de un documento)
+- Combinar (revisiones de varios autores)
+
+**Grupo Proteger:**
+- Bloquear autores
+- Restringir edición — impide modificaciones no autorizadas
+
+### 2.8. Pestaña Vista
+
+Controla cómo se muestra el documento en pantalla.
+
+**Grupo Vistas:**
+- **Diseño de impresión** — vista predeterminada, muestra el documento tal como se imprimirá
+- **Modo de lectura** (antes llamado "Lectura de pantalla completa") — optimizado para leer
+- **Diseño web** — muestra el documento como una página web
+- **Esquema** — permite trabajar con la estructura jerárquica del documento
+- **Borrador** — vista simplificada para redacción rápida, sin márgenes ni encabezados visibles
+
+**Grupo Inmersivo:**
+- Lector inmersivo
+
+**Grupo Mostrar:**
+- Regla
+- Líneas de cuadrícula
+- Panel de navegación
+
+**Grupo Zoom:**
+- Zoom (abre cuadro de diálogo)
+- 100 %
+- Una página / Varias páginas / Ancho de página
+
+**Grupo Ventana:**
+- Nueva ventana (abre el mismo documento en otra ventana)
+- Organizar todo
+- Dividir (divide la ventana en dos paneles para ver distintas partes del documento simultáneamente)
+- Ver en paralelo
+- Desplazamiento sincrónico
+- Restablecer posición de ventana
+- Cambiar ventanas
+
+**Grupo Macros:**
+- Ver macros (Alt+F8)
+- Grabar macro
+- Pausar grabación
+
+---
+
+## 3. Gestión de documentos
+
+### 3.1. Crear un nuevo documento
+
+- **Ctrl+U** o desde **Archivo > Nuevo**
+- Al pulsar Ctrl+U o hacer clic en "Nuevo", aparece la pantalla de inicio con opciones de plantillas y el documento en blanco
+- Un documento en blanco nuevo utiliza por defecto la plantilla Normal.dotm
+
+### 3.2. Abrir un documento existente
+
+- **Ctrl+A** o desde **Archivo > Abrir**
+- Permite buscar en el equipo, en OneDrive, en SharePoint o en ubicaciones recientes
+- La lista de documentos **recientes** guarda los últimos documentos abiertos (por defecto, 25; configurable en Opciones de Word)
+- Se puede **anclar** un documento a la lista de recientes haciendo clic en el icono de chincheta para que no desaparezca
+
+### 3.3. Guardar un documento
+
+- **Ctrl+G** — guarda el documento con el nombre y formato actuales
+- Si el documento es nuevo (no se ha guardado nunca), Ctrl+G abre el cuadro de diálogo "Guardar como"
+- **F12** o **Archivo > Guardar como** — permite cambiar nombre, ubicación y formato en cualquier momento
+- Al guardar, Word puede guardar en el equipo o directamente en **OneDrive** si el usuario tiene sesión iniciada con cuenta Microsoft
+
+### 3.4. Autoguardado
+
+El **autoguardado** (AutoSave) es una función de Word 365 que guarda automáticamente los cambios cada pocos segundos cuando el documento está almacenado en OneDrive o SharePoint Online. El interruptor de autoguardado aparece en la esquina superior izquierda de la ventana.
+
+Características del autoguardado:
+- Solo funciona con documentos en la nube (OneDrive / SharePoint)
+- Cuando está activo, el historial de versiones se actualiza continuamente
+- Permite recuperar versiones anteriores desde **Archivo > Información > Historial de versiones**
+- El **Autorecuperación** (configurable en Opciones > Guardar) guarda copias temporales para recuperar documentos en caso de fallo del sistema
+
+### 3.5. Cerrar un documento
+
+- **Ctrl+F4** — cierra el documento activo (pero no cierra Word)
+- Si hay cambios sin guardar, Word pregunta si desea guardarlos
+
+---
+
+## 4. Formatos de archivo en Word 365
+
+El formato de archivo determina cómo se almacena el contenido del documento. Word 365 puede abrir y guardar en múltiples formatos. Los más relevantes para las oposiciones son:
+
+| Extensión | Nombre | Descripción |
+|---|---|---|
+| **.docx** | Word Open XML | Formato predeterminado desde Word 2007. Basado en XML comprimido en ZIP. Compatible con versiones recientes de Word y LibreOffice. |
+| **.doc** | Word 97-2003 | Formato binario antiguo. Totalmente compatible con versiones anteriores a Office 2007. Se usa para interoperabilidad con sistemas antiguos. |
+| **.docm** | Word con macros habilitadas | Como .docx pero permite almacenar macros VBA. |
+| **.dotx** | Plantilla de Word | Plantilla sin macros. Se usa como base para crear nuevos documentos. |
+| **.dotm** | Plantilla con macros | Plantilla que permite almacenar macros VBA. La plantilla Normal.dotm es la que usa Word por defecto. |
+| **.pdf** | Portable Document Format | Formato de Adobe para distribución. Word puede exportar a PDF sin necesidad de software adicional. |
+| **.xps** | XML Paper Specification | Alternativa de Microsoft al PDF, con diseño fijo. |
+| **.odt** | OpenDocument Text | Estándar ISO/IEC 26300. Formato nativo de LibreOffice Writer y OpenOffice. Word puede abrir y guardar en este formato. |
+| **.rtf** | Rich Text Format | Formato de intercambio que conserva el formato básico y es compatible con la mayoría de procesadores de texto. |
+| **.txt** | Texto sin formato | Solo guarda el texto, sin ningún tipo de formato. Puede perderse información al guardar. |
+| **.htm / .html** | Página web | Guarda el documento como página web, con o sin archivos auxiliares. |
+| **.mht / .mhtml** | Página web de un solo archivo | Todo el contenido HTML en un único archivo. |
+| **.xml** | Word XML (2003) | Versión XML del formato Word 2003. |
+
+**Nota importante para oposiciones:** El formato **.docx** es el formato estándar actual de Word. El formato **.doc** es el de compatibilidad con Word 97-2003. La extensión **.dotx** corresponde a plantillas (sin macros) y **.dotm** a plantillas con macros.
+
+### 4.1. Guardar en un formato diferente
+
+Desde **Archivo > Guardar como** o **Archivo > Exportar**:
+- Para guardar como PDF: **Archivo > Exportar > Crear documento PDF/XPS** o directamente desde "Guardar como" eligiendo PDF en el tipo de archivo
+- Para guardar como .odt: "Guardar como" > tipo de archivo > "Texto de OpenDocument"
+- Word avisará si el formato elegido no es compatible con algunas características del documento
+
+---
+
+## 5. La Vista Backstage (pestaña Archivo)
+
+Al hacer clic en la pestaña **Archivo** (resaltada en color en el Ribbon), Word entra en la **Vista Backstage**, una interfaz especial que ocupa toda la ventana y gestiona el documento como archivo. Para salir de la Vista Backstage y volver al documento, se pulsa **Escape** o se hace clic en la flecha de retroceso.
+
+Las secciones de la Vista Backstage en Word 365 son:
+
+### 5.1. Inicio / Inicio de Archivo
+
+Muestra documentos recientes, documentos anclados y la opción de abrir o crear documentos nuevos.
+
+### 5.2. Información
+
+Contiene metadatos y opciones del documento:
+
+- **Proteger documento:** permite cifrar con contraseña, restringir edición, marcar como final, agregar firma digital
+- **Comprobar si hay problemas:** Inspector de documento (elimina metadatos ocultos), Comprobar accesibilidad, Comprobar compatibilidad (con versiones anteriores de Word)
+- **Administrar documento:** acceso a versiones guardadas automáticamente, recuperar documentos sin guardar
+- **Propiedades del documento** (columna derecha): título, etiquetas, comentarios, autor, fecha de última modificación, fecha de creación, número de palabras, número de páginas, etc.
+
+### 5.3. Nuevo
+
+Permite crear documentos en blanco o desde plantillas predefinidas. Las plantillas se organizan por categorías y se pueden buscar en línea desde la propia Vista Backstage.
+
+### 5.4. Abrir
+
+Acceso a documentos recientes, documentos anclados y explorador de archivos para buscar en el equipo o en la nube.
+
+### 5.5. Guardar y Guardar como
+
+- **Guardar (Ctrl+G):** guarda en la ubicación y formato actuales
+- **Guardar como (F12):** permite cambiar nombre, formato y ubicación
+
+### 5.6. Imprimir
+
+Acceso directo a la impresión del documento. Incluye:
+- Selección de impresora
+- Configuración de páginas a imprimir (todo el documento, selección, página actual, rango de páginas)
+- Impresión a una cara o doble cara
+- Intercalado
+- Orientación
+- Tamaño del papel
+- Márgenes
+- Páginas por hoja
+- **Vista previa de impresión** integrada en el panel derecho
+
+### 5.7. Compartir
+
+Permite compartir el documento con otras personas:
+- Compartir con OneDrive (enviar vínculo de acceso)
+- Enviar como adjunto por correo (documento Word o PDF)
+- Compartir en tiempo real para coedición
+
+### 5.8. Exportar
+
+- **Crear PDF/XPS**
+- **Cambiar el tipo de archivo:** seleccionar entre formatos .docx, .doc, .dotx, .dotm, .odt, .txt, etc.
+
+### 5.9. Transformar
+
+En versiones recientes, permite convertir el documento a una página web o a otros formatos de Microsoft 365.
+
+### 5.10. Cerrar
+
+Cierra el documento actual sin cerrar Word.
+
+### 5.11. Cuenta
+
+Información de la cuenta Microsoft del usuario, estado de la suscripción de Office, configuración de conectados, tema de Office.
+
+### 5.12. Opciones
+
+Abre el cuadro de diálogo **Opciones de Word**, que permite personalizar en profundidad el comportamiento del programa:
+
+- **General:** nombre de usuario, opciones de inicio, ScreenTips
+- **Mostrar:** opciones de visualización de marcas de formato
+- **Revisión:** Autocorrección, reglas de corrección ortográfica y gramatical
+- **Guardar:** formato predeterminado, autorecuperación, ubicación predeterminada
+- **Idioma:** idiomas de edición y pantalla
+- **Accesibilidad**
+- **Avanzado:** opciones de edición, copiar/pegar, imagen, compatibilidad
+- **Personalizar cinta de opciones:** añadir, eliminar o reorganizar pestañas y grupos
+- **Barra de herramientas de acceso rápido**
+- **Complementos**
+- **Centro de confianza**
+
+---
+
+## 6. Plantillas en Word 365
+
+Una **plantilla** es un documento modelo que sirve de base para crear nuevos documentos. Conserva estilos, formatos, macros y elementos de diseño predefinidos.
+
+### 6.1. Tipos de plantillas
+
+| Extensión | Tipo |
+|---|---|
+| .dotx | Plantilla de Word (sin macros) |
+| .dotm | Plantilla de Word con macros habilitadas |
+
+### 6.2. La plantilla Normal.dotm
+
+La plantilla **Normal.dotm** es la plantilla global de Word. Todos los documentos en blanco nuevos se basan en ella. Sus características predeterminadas en Word 365 son:
+- Fuente: Calibri 11 pt
+- Interlineado: Múltiple 1,08
+- Espacio después del párrafo: 8 pt
+- Márgenes: 2,54 cm en todos los lados
+
+Si se modifica la plantilla Normal.dotm (por ejemplo, cambiando la fuente predeterminada), todos los nuevos documentos en blanco adoptarán esos cambios.
+
+### 6.3. Usar una plantilla
+
+- Desde **Archivo > Nuevo**, buscar entre las plantillas disponibles (en línea o instaladas)
+- Hacer doble clic en la plantilla o hacer clic en "Crear" para abrir un nuevo documento basado en ella
+
+### 6.4. Crear una plantilla
+
+1. Diseñar y formatear el documento con los elementos deseados
+2. Ir a **Archivo > Guardar como**
+3. En "Tipo", seleccionar "Plantilla de Word (*.dotx)" o "Plantilla de Word habilitada para macros (*.dotm)"
+4. Word sugiere automáticamente guardarla en la carpeta de plantillas personalizadas del usuario
+
+### 6.5. Guardar cambios en la plantilla adjunta
+
+Al guardar un documento, los cambios en los estilos pueden guardarse también en la plantilla adjunta. Desde **Desarrollador > Plantillas de documento** se pueden gestionar las plantillas globales activas.
+
+---
+
+## 7. Vistas del documento
+
+Word 365 ofrece varias vistas para trabajar con el documento según el contexto:
+
+### 7.1. Diseño de impresión
+
+Es la vista **predeterminada** de Word. Muestra el documento exactamente como se imprimirá, incluyendo márgenes, encabezados, pies de página y columnas. Permite ver y editar cualquier elemento del documento.
+
+### 7.2. Modo de lectura
+
+Optimizado para **leer** documentos sin editar. El texto se redistribuye en columnas para facilitar la lectura en pantalla. Las herramientas de edición se ocultan. Se puede activar desde **Vista > Vistas > Modo de lectura**. Para salir y volver a editar: **Escape** o **Vista > Editar documento**.
+
+Características del Modo de lectura:
+- Diseño en dos columnas (configurable)
+- Permite ver comentarios y cambios realizados
+- Herramienta de búsqueda inteligente integrada
+- Permite insertar comentarios en modo lectura
+
+### 7.3. Diseño web
+
+Muestra el documento como se vería en un navegador web. El texto se ajusta a la ventana y no se muestran los márgenes de página. Útil para crear contenido web.
+
+### 7.4. Esquema
+
+Permite ver y trabajar con la **estructura jerárquica** del documento. Se pueden ascender o descender niveles de título, mostrar u ocultar cuerpos de texto, mover secciones enteras. Requiere usar los estilos de título (Título 1, Título 2, etc.) para que funcione correctamente.
+
+### 7.5. Borrador
+
+Vista simplificada que muestra solo el texto sin márgenes, encabezados ni pies de página. Aumenta la velocidad de desplazamiento en documentos largos. Los saltos de sección se muestran como líneas discontinuas.
+
+---
+
+## 8. Comparar y combinar documentos
+
+### 8.1. Comparar documentos
+
+La función **Comparar** permite confrontar dos versiones de un documento e identificar diferencias:
+
+1. Ir a **Revisar > Comparar > Comparar**
+2. Seleccionar el documento original y el revisado
+3. Word genera un tercer documento con las diferencias marcadas mediante el seguimiento de cambios
+4. Se puede configurar qué tipos de cambios comparar (formato, mayúsculas, espacios en blanco, etc.)
+
+Esta función es útil para ver qué modificaciones introdujo un colaborador en un documento sin haber usado el seguimiento de cambios.
+
+### 8.2. Combinar documentos
+
+La función **Combinar** consolida las revisiones de varios autores en un único documento:
+
+1. Ir a **Revisar > Comparar > Combinar**
+2. Seleccionar el documento original y los documentos revisados
+3. Word genera un documento combinado con todos los cambios de todos los autores, atribuidos a cada uno por nombre
+
+Esta función es especialmente útil en entornos de trabajo colaborativo donde varios revisores han hecho cambios en paralelo sobre el mismo documento original.
+
+---
+
+## 9. Propiedades del documento
+
+Las **propiedades del documento** (metadatos) almacenan información sobre el archivo. Se accede a ellas desde **Archivo > Información > Propiedades** (columna derecha) o desde **Archivo > Información > Propiedades > Propiedades avanzadas** (para el cuadro de diálogo completo).
+
+### 9.1. Propiedades estándar
+
+- **Título, Asunto, Autor, Categoría, Palabras clave (etiquetas), Comentarios**
+- Estas propiedades ayudan a organizar y buscar documentos en exploradores de archivos y sistemas de gestión documental
+
+### 9.2. Propiedades automáticas
+
+Que Word actualiza solo:
+- Fecha de creación
+- Fecha de última modificación
+- Autor de la última modificación
+- Número de revisiones
+- Tiempo de edición total
+- Número de páginas, palabras, caracteres, párrafos y líneas
+
+### 9.3. Propiedades personalizadas
+
+Se pueden añadir propiedades adicionales desde el cuadro de diálogo de propiedades avanzadas, pestaña "Personalizar".
+
+### 9.4. Inspeccionar el documento
+
+Antes de compartir un documento, es recomendable usar el **Inspector de documento** (**Archivo > Información > Comprobar si hay problemas > Inspeccionar documento**) para eliminar información personal o metadatos no deseados como:
+- Comentarios y revisiones
+- Versiones del documento
+- Anotaciones de tinta
+- Texto oculto
+- Datos XML personalizados
+- Encabezados, pies de página y marcas de agua
+- Propiedades del documento e información personal
+
+---
+
+## 10. Operaciones básicas de edición y atajos de teclado fundamentales
+
+Aunque las preguntas sobre Word en las oposiciones se centran frecuentemente en atajos de teclado, la siguiente tabla recoge los más importantes:
+
+| Acción | Atajo de teclado |
+|---|---|
+| Nuevo documento | Ctrl+U |
+| Abrir documento | Ctrl+A |
+| Guardar | Ctrl+G |
+| Guardar como | F12 |
+| Imprimir | Ctrl+P |
+| Cerrar documento | Ctrl+F4 |
+| Deshacer | Ctrl+Z |
+| Rehacer | Ctrl+Y |
+| Cortar | Ctrl+X |
+| Copiar | Ctrl+C |
+| Pegar | Ctrl+V |
+| Seleccionar todo | Ctrl+E |
+| Buscar | Ctrl+B |
+| Buscar y reemplazar | Ctrl+L |
+| Negrita | Ctrl+N |
+| Cursiva | Ctrl+K |
+| Subrayado | Ctrl+S |
+| Alineación izquierda | Ctrl+Q |
+| Centrar | Ctrl+T |
+| Alineación derecha | Ctrl+D |
+| Justificar | Ctrl+J |
+| Ortografía y gramática | F7 |
+| Sinónimos | Mayús+F7 |
+| Seguimiento de cambios | Ctrl+Mayús+E |
+| Nota al pie | Alt+Ctrl+O |
+| Nota al final | Alt+Ctrl+L |
+| Salto de página | Ctrl+Intro |
+| Ir a... (número de página) | Ctrl+I |
+| Zoom (aumentar con rueda) | Ctrl + rueda ratón |
+| Marcar entrada de índice | Alt+Mayús+X |
+| Actualizar campos | F9 |
+| Mostrar/ocultar marcas | Ctrl+* |
+| Insertar hipervínculo | Ctrl+Alt+K |
+| Vínculo (hipervínculo) | Ctrl+Alt+H |
+| Insertar ecuación | Alt+= |
+| Minimizar/restaurar Ribbon | Ctrl+F1 |
+| Ayuda | F1 |
+| Vista previa de impresión | Ctrl+P |
+| Cerrar Vista Backstage | Escape |
+
+---
+
+## 11. Personalización de la interfaz
+
+### 11.1. Personalizar el Ribbon
+
+Desde **Archivo > Opciones > Personalizar cinta de opciones** se puede:
+- Crear nuevas pestañas personalizadas
+- Añadir grupos personalizados a pestañas existentes
+- Agregar comandos a esos grupos
+- Cambiar el orden de las pestañas
+- Mostrar u ocultar pestañas predeterminadas
+
+**Nota:** No es posible añadir comandos directamente a los grupos predeterminados del Ribbon; solo se pueden crear grupos nuevos.
+
+### 11.2. Personalizar la barra de acceso rápido
+
+- Clic en la flecha al final de la QAT > activar/desactivar comandos predefinidos
+- "Más comandos" para añadir cualquier comando de Word
+- Se puede situar encima o debajo del Ribbon
+
+### 11.3. Temas de Office
+
+Desde **Archivo > Cuenta > Tema de Office** se puede elegir entre:
+- Colorido (el predeterminado)
+- Oscuro
+- Gris oscuro
+- Blanco
+
+---
+
+## 12. Impresión de documentos
+
+### 12.1. Acceso
+
+- **Ctrl+P** o **Archivo > Imprimir**
+
+### 12.2. Opciones de impresión
+
+- **Impresora:** seleccionar la impresora disponible; "Imprimir en PDF de Microsoft" es una impresora virtual que genera archivos PDF
+- **Configuración:**
+  - Imprimir todas las páginas / página actual / selección / rango de páginas personalizado
+  - Imprimir a una cara o a doble cara (si la impresora lo soporta)
+  - Intercalado: activo (1-2-3, 1-2-3) o inactivo (1-1-1, 2-2-2)
+  - Orientación: vertical u horizontal
+  - Tamaño del papel
+  - Márgenes
+  - Páginas por hoja (1, 2, 4, 6, 8, 16 páginas por hoja)
+  - Escalar al papel
+- **Vista previa:** el panel derecho muestra en tiempo real cómo quedará la impresión con la configuración elegida
+
+---
+
+## 13. Protección de documentos
+
+Desde **Archivo > Información > Proteger documento:**
+
+| Opción | Descripción |
+|---|---|
+| Marcar como final | El documento se pone en modo de solo lectura y se indica que es la versión final. No es una protección real, cualquier usuario puede desactivarla. |
+| Cifrar con contraseña | Requiere contraseña para abrir el documento. Protección real: sin la contraseña no se puede abrir. |
+| Restringir edición | Limita los tipos de cambios permitidos: sin cambios (solo lectura), con comentarios, con relleno de formularios, con cambios controlados. |
+| Restringir el acceso | Usa Information Rights Management (IRM) con cuenta Microsoft/AAD para definir permisos de lectura, edición, impresión, copiado, etc. |
+| Agregar una firma digital | Añade una firma digital invisible que certifica la integridad del documento. |
+
+---
+
+## 14. Seguimiento de cambios y revisión colaborativa
+
+El **seguimiento de cambios** es una herramienta fundamental en entornos de trabajo colaborativo. Cuando está activo (Ctrl+Mayús+E o Revisar > Control de cambios):
+
+- Las **inserciones** se muestran subrayadas en color
+- Las **eliminaciones** se muestran tachadas en color (o en el margen como globo)
+- Los **cambios de formato** se indican en el margen
+- Cada cambio se atribuye a un autor con su nombre y la fecha/hora
+
+### 14.1. Aceptar y rechazar cambios
+
+- **Aceptar cambio:** incorpora la modificación definitivamente al documento
+- **Rechazar cambio:** deshace la modificación
+- Se puede aceptar o rechazar de uno en uno o todos a la vez desde **Revisar > Cambios**
+
+### 14.2. Comentarios
+
+Los comentarios (Revisar > Nuevo comentario o Ctrl+Alt+M) permiten añadir anotaciones al margen sin modificar el texto. En Word 365 los comentarios son conversacionales: se puede responder a un comentario para crear un hilo de discusión. Los comentarios se pueden marcar como **resueltos**.
+
+---
+
+## 15. Referencia rápida para oposiciones: preguntas frecuentes
+
+**¿Cuál es el atajo para guardar como?** F12
+
+**¿Cuál es el formato predeterminado de Word 365?** .docx (Word Open XML)
+
+**¿Qué extensión tienen las plantillas de Word sin macros?** .dotx
+
+**¿Qué extensión tienen las plantillas de Word con macros?** .dotm
+
+**¿Qué extensión tienen los documentos Word con macros?** .docm
+
+**¿Qué extensión tiene el formato compatible con Word 97-2003?** .doc
+
+**¿Qué es la Vista Backstage?** La interfaz que aparece al hacer clic en la pestaña Archivo, que gestiona el documento como archivo (abrir, guardar, imprimir, compartir, etc.)
+
+**¿Cómo se sale de la Vista Backstage?** Pulsando Escape o haciendo clic en la flecha de retroceso
+
+**¿Dónde se encuentra la Barra de herramientas de acceso rápido?** Por defecto, en la parte superior izquierda de la ventana, a la izquierda de la barra de título (o puede estar debajo del Ribbon)
+
+**¿Cuál es la plantilla global de Word?** Normal.dotm
+
+**¿Qué fuente y tamaño usa Word 365 por defecto?** Calibri 11 pt
+
+**¿Cuál es el atajo para activar el seguimiento de cambios?** Ctrl+Mayús+E
+
+**¿Qué hace el Inspector de documento?** Detecta y elimina información personal o metadatos ocultos antes de compartir el documento
+
+**¿Cuál es la diferencia entre Comparar y Combinar documentos?** Comparar enfrenta dos versiones (original vs. revisado) en un tercer documento; Combinar consolida revisiones de varios autores sobre el mismo original
+
+**¿Qué pestaña del Ribbon gestiona la combinación de correspondencia?** Correspondencia
+
+**¿Con qué atajo se inserta una nota al pie?** Alt+Ctrl+O
+
+**¿Con qué atajo se inserta una nota al final?** Alt+Ctrl+L
+
+**¿Qué vista de Word muestra el documento tal como se imprimirá?** Diseño de impresión (es la vista predeterminada)
+
+**¿Cómo se activa el panel de navegación?** Desde Vista > Mostrar > Panel de navegación o con Ctrl+F
+
+**¿Qué hace Ctrl+* en Word?** Muestra u oculta las marcas de formato (marcas de párrafo, espacios, tabulaciones, etc.)
+
+**¿Qué es el autoguardado en Word 365?** Una función que guarda automáticamente los cambios en tiempo real cuando el documento está almacenado en OneDrive o SharePoint
+
+**¿Cuál es el atajo para buscar y reemplazar?** Ctrl+L
+
+**¿Qué formato es el estándar ISO para documentos de texto?** .odt (OpenDocument Text)
+
+**¿Qué opción de Archivo permite eliminar metadatos?** Archivo > Información > Comprobar si hay problemas > Inspeccionar documento
+
+**¿Cuál es el atajo para insertar un salto de página?** Ctrl+Intro
+
+**¿Qué pestaña contiene las opciones de márgenes y orientación del documento?** Disposición (antes llamada "Diseño de página")
+
+**¿Qué pestaña contiene las opciones de notas al pie y tabla de contenido?** Referencias
+
+**¿Dónde se configura el idioma del corrector ortográfico?** En Revisar > Idioma > Establecer idioma de corrección
+
+**¿Qué atajo abre el cuadro Ir a (para ir a una página específica)?** Ctrl+I
+
+**¿Cómo se puede medir la densidad del texto en la barra de estado?** Con el contador de palabras que aparece en la barra de estado y se actualiza en tiempo real
+
+**¿Qué es el formato RTF?** Rich Text Format: formato de intercambio que conserva el formato básico y es compatible con casi todos los procesadores de texto
+
+**¿Puede Word 365 guardar documentos en formato OpenDocument?** Sí, desde Guardar como se puede elegir "Texto de OpenDocument (*.odt)"
+
+
+## Imprimir páginas concretas
+En el cuadro de impresión (Ctrl+P), para imprimir páginas **salteadas** (no consecutivas) se separan con **coma** (ej.: 1,3,5) y para un **rango** de páginas consecutivas se usa el **guion** (ej.: 1-5). Ambos formatos pueden combinarse (ej.: 1,3,5-8).
+
+---
+<!-- ampliado claude_code_mislink_review_2026_07 (Microsoft Support: https://support.microsoft.com/es-es/office/imprimir-un-documento-en-word-591022c4-53e3-4242-95b5-58ca393ba0ee) -->
+**Propiedades de impresora (opciones avanzadas del dispositivo).** En la ventana **Archivo > Imprimir**, justo debajo del nombre de la impresora seleccionada aparece el vinculo **Propiedades de impresora**. Al pulsarlo se abre el cuadro de dialogo del **controlador (driver) de la impresora**, donde estan las **posibilidades avanzadas de impresion propias del dispositivo**: calidad/resolucion, tipo y bandeja de papel, doble cara por hardware, gestion del color, etc. Estas opciones dependen del modelo de impresora y **no** deben confundirse con **Configuracion** (rango de paginas, orientacion, intercalado, paginas por hoja, todo dentro de Word) ni con **Configurar pagina** (margenes, tamano y orientacion del documento).
+
+---
+<!-- ampliado claude_code_mislink_review_2026_07 (Microsoft Support: Microsoft Support — Uso de caracteres comodín en las búsquedas: https://support.microsoft.com/es-es/office/uso-de-caracteres-comod%C3%ADn-en) -->
+### Búsqueda con caracteres comodín
+
+En el cuadro **Buscar y reemplazar** (Ctrl+L), al activar la casilla **Usar caracteres comodín** se habilitan operadores para búsquedas avanzadas. Los comodines básicos de Word son:
+
+| Comodín | Significado | Ejemplo |
+|---------|-------------|---------|
+| **?** | Cualquier **carácter individual** (uno solo) | «c?sa» encuentra casa, cosa, cesa |
+| **\*** | Cualquier **cadena de caracteres** (cero o más) | «c\*a» encuentra ca, casa, comida |
+| **[ ]** | **Uno** de los caracteres especificados dentro de los corchetes | «[aeiou]» encuentra cualquier vocal |
+| **[x-y]** | Uno de los caracteres del **rango** indicado con guion | «[a-z]» encuentra cualquier letra minúscula; «[0-9]» cualquier dígito |
+| **[!x]** | Cualquier carácter **excepto** el indicado | «[!a]» cualquier carácter que no sea la «a» |
+| **<** | Marca el **principio de una palabra** (límite inicial) | «<ba» encuentra las palabras que empiezan por «ba» (banco, base), no «tuba» |
+| **>** | Marca el **final de una palabra** (límite final) | «ar>» encuentra las palabras que terminan en «ar» (cantar, sonar) |
+
+Para buscar literalmente un carácter que también es comodín (por ejemplo, un interrogante), se antepone la barra invertida: **\?**.
+
+Los operadores **<** y **>** delimitan los límites de una palabra: el símbolo **<** indica que los caracteres buscados deben aparecer al **principio de una palabra** (por ejemplo, «<ba» encuentra las palabras que comienzan por «ba»), mientras que **>** indica que deben aparecer al **final de una palabra**.

@@ -1,0 +1,427 @@
+[
+  {
+    "question_id": "d6e02467-38d4-491d-9010-742ea0757b66",
+    "servidas": 251,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/1d2e076c-4170-4db6-b4cb-83fc03edda49.txt",
+    "enunciado": "¿Cuál de los siguientes lenguajes de programación pueden interpretar los navegadores web de forma nativa para mejorar las funcionalidades y dinamismo de las páginas web?",
+    "opciones": {
+      "A": "Basic",
+      "B": "C#",
+      "C": "Pascal",
+      "D": "JavaScript"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Los navegadores web procesan distintos lenguajes para construir una página, pero solo uno de ellos añade comportamiento e interactividad de forma nativa, sin necesidad de complementos.\n\n> **La Red Internet, art. 3**\n> \"El navegador interpreta el código **HTML** (estructura), **CSS** (presentación) y **JavaScript** (comportamiento) para mostrar páginas web al usuario.\"\n\n**Por qué D es correcta:** JavaScript es el lenguaje que el navegador interpreta de forma nativa, junto con HTML y CSS, para dotar de comportamiento y dinamismo a las páginas web.\n\n**Por qué las demás son incorrectas:**\n- **A)** Basic es un lenguaje de propósito general que no se ejecuta de forma nativa dentro de un navegador web.\n- **B)** C# se ejecuta en el entorno .NET o en el servidor, no de forma nativa dentro del navegador.\n- **C)** Pascal es un lenguaje orientado a la enseñanza que tampoco cuenta con soporte nativo en los navegadores."
+  },
+  {
+    "question_id": "cdf5107c-883e-42af-b953-ae15217df501",
+    "servidas": 250,
+    "es_examen_oficial": false,
+    "ley": "RD 203/2021",
+    "articulo": "40",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/90cc6f62-3c08-4d49-9a54-ed32beb66cd1.txt",
+    "enunciado": "De acuerdo con lo dispuesto en el artículo 40 del Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos, las oficinas de asistencia en materia de registros tienen naturaleza de órgano:",
+    "opciones": {
+      "A": "Judicial.",
+      "B": "Gestor.",
+      "C": "Tecnológico.",
+      "D": "Administrativo."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 40.1 del RD 203/2021 fija expresamente qué naturaleza jurídica tienen las oficinas de asistencia en materia de registros.\n\n> **RD 203/2021, art. 40.1**\n> \"Las Oficinas de asistencia en materia de registros tienen naturaleza de órgano administrativo de acuerdo con lo dispuesto en el artículo 5 de la Ley 40/2015, de 1 de octubre.\"\n\n**Por qué D es correcta:** El propio artículo 40.1 establece que estas oficinas tienen naturaleza de órgano administrativo, conforme al artículo 5 de la Ley 40/2015.\n\n**Por qué las demás son incorrectas:**\n- **A)** La naturaleza judicial corresponde a juzgados y tribunales del Poder Judicial, no a las oficinas de asistencia en materia de registros.\n- **B)** La categoría de órgano \"gestor\" no es la denominación que emplea el reglamento para estas oficinas.\n- **C)** La naturaleza \"tecnológica\" tampoco es una categoría jurídica reconocida por el reglamento para estas oficinas."
+  },
+  {
+    "question_id": "89159295-3a69-4409-b2d7-b7fe008ad66b",
+    "servidas": 250,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "5",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/9836bfaa-edb2-482b-bf1d-8e1b6df75d4a.txt",
+    "enunciado": "Indique la afirmación incorrecta en relación a lo dispuesto en el artículo 5 del Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado:",
+    "opciones": {
+      "A": "El suelo será continuo entre el espacio exterior e interior. Cualquier elemento en el suelo como canaletas de recogida de agua, felpudos, etc., estará enrasado con el pavimento.",
+      "B": "Los intercomunicadores y sistemas de aviso o llamada serán accesibles, tanto por su modalidad de uso (texto y voz) como por su localización.",
+      "C": "Junto a la entrada principal, preferiblemente a la izquierda de la puerta, un cartel indicará, en su caso, el número y letra del portal, además del uso, en casos de edificios de interés general.",
+      "D": "El espacio adyacente, tanto interior como exterior, a la puerta de acceso a la Oficina debe ser horizontal y no presentar obstáculos, permitiendo la aproximación y la apertura de la puerta de forma autónoma a todos los usuarios."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 5 del RD 366/2007 recoge varias recomendaciones de accesibilidad para el acceso a las Oficinas de Atención al Ciudadano; una de las opciones altera uno de esos datos concretos.\n\n> **RD 366/2007, art. 5.2.c)**\n> \"Junto a la entrada principal, preferiblemente a la derecha de la puerta, un cartel indicará, en su caso, el número y letra del portal, además del uso, en casos de edificios de interés general.\"\n\n**Por qué C es correcta:** El cartel con el número y letra del portal se sitúa preferiblemente a la derecha de la puerta, no a la izquierda como dice esta afirmación, por lo que es la incorrecta.\n\n**Por qué las demás son incorrectas:**\n- **A)** Esta afirmación reproduce fielmente la recomendación sobre continuidad del suelo y elementos enrasados con el pavimento.\n- **B)** Esta afirmación reproduce fielmente la recomendación sobre accesibilidad de intercomunicadores y sistemas de aviso o llamada.\n- **D)** Esta afirmación reproduce fielmente la recomendación sobre el espacio adyacente horizontal y sin obstáculos junto a la puerta."
+  },
+  {
+    "question_id": "3c3c16f7-b825-404c-add0-6fcdf36fb2d8",
+    "servidas": 250,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/398b7a90-110b-4a6f-9875-cc332932a758.txt",
+    "enunciado": "En Word 365 si se desea cambiar el estilo de una lista de numeración, ¿cómo se debe proceder?",
+    "opciones": {
+      "A": "Pestaña Inicio, en grupo párrafo elegimos lista multinivel y definir nuevo estilo de lista.",
+      "B": "Pestaña Insertar, numeración, profundidad.",
+      "C": "Pestaña Diseño, numeración, profundidad.",
+      "D": "Pestaña Inicio, en grupo párrafo elegimos lista multinivel y definir nueva lista multinivel."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Word distingue entre definir una lista multinivel puntual y crear un estilo de lista reutilizable, dos opciones accesibles desde el mismo desplegable de la cinta.\n\n> **Word 365, art. 1**\n> \"Viñetas, numeración y lista multinivel\"\n\n**Por qué A es correcta:** Desde Inicio, grupo Párrafo, el desplegable de lista multinivel permite definir un nuevo estilo de lista, que es la vía pensada para modificar de forma reutilizable el estilo de numeración.\n\n**Por qué las demás son incorrectas:**\n- **B)** La pestaña Insertar no contiene una opción de numeración con profundidad para listas multinivel.\n- **C)** La pestaña Diseño no incluye herramientas de numeración ni de listas multinivel.\n- **D)** Definir una nueva lista multinivel crea una lista puntual para la selección actual, pero no un estilo reutilizable como el que pide cambiar el estilo de la lista."
+  },
+  {
+    "question_id": "ba97b479-24fc-4021-b91d-fed8890f4f08",
+    "servidas": 249,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Según el artículo 116 CE, la declaración del estado de alarma no modificará:",
+    "opciones": {
+      "A": "El principio de seguridad jurídica del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes.",
+      "B": "El principio de confidencialidad del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes.",
+      "C": "El principio de publicidad del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes.",
+      "D": "El principio de responsabilidad del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116.6 CE cierra la regulación de los estados excepcionales garantizando que su declaración no altere un principio concreto.\n\n> **CE, art. 116.6**\n> \"La declaración de los estados de alarma, de excepción y de sitio no modificarán el principio de responsabilidad del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes.\"\n\n**Por qué D es correcta:** El artículo 116.6 establece que la declaración de estos estados no modificará el principio de responsabilidad del Gobierno y de sus agentes, reconocido en la Constitución y en las leyes.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo no habla de un principio de seguridad jurídica del Gobierno, sino del principio de responsabilidad del Gobierno y sus agentes.\n- **B)** El precepto no protege la confidencialidad del Gobierno; se refiere expresamente al principio de responsabilidad.\n- **C)** El precepto no protege la publicidad del Gobierno; se refiere expresamente al principio de responsabilidad."
+  },
+  {
+    "question_id": "886f314c-dc3d-41e7-a488-5be2ab84a916",
+    "servidas": 249,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "120",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/bc99e4b6-d465-4059-a27d-69b5fa57944b.txt",
+    "enunciado": "A partir de una fecha en la celda A1 queremos obtener el día de la semana (un número de 1 a 7 empezando por el lunes como día 1 y terminando con el domingo como día 7), ¿cuál de las siguientes funciones de Excel 365 utilizaremos?",
+    "opciones": {
+      "A": "=DIASEM(A1)",
+      "B": "=DIA.LABINTL(A1)",
+      "C": "=DIA.LAB(A1)",
+      "D": "=DIASEM(A1;2)"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La función DIASEM devuelve el día de la semana de una fecha, y su segundo argumento determina qué día se numera como 1.\n\n> **Excel 365, art. 120**\n> \"Con **tipo=2**: lunes=1, martes=2, miércoles=3, jueves=4, viernes=5, sábado=6, domingo=7.\"\n\n**Por qué D es correcta:** =DIASEM(A1;2) usa el tipo 2, en el que el lunes es el día 1 y el domingo el día 7, justo lo que pide el enunciado.\n\n**Por qué las demás son incorrectas:**\n- **A)** =DIASEM(A1) usa el tipo por defecto, en el que domingo es el día 1, no el lunes.\n- **B)** DIA.LABINTL calcula días laborables entre fechas, no el número del día de la semana.\n- **C)** DIA.LAB también calcula días laborables, no el día de la semana de una fecha concreta."
+  },
+  {
+    "question_id": "84c81360-760d-41c8-993a-be7cb0b160c2",
+    "servidas": 249,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/b7a10d7f-9453-4b89-974c-eb5138aec1d2.txt",
+    "enunciado": "En la cinta de opciones de Outlook 365 encontramos las pestañas:",
+    "opciones": {
+      "A": "Bandeja de entrada, Elementos eliminados, Bandeja de salida.",
+      "B": "Archivo, Mensaje, Insertar y Opciones.",
+      "C": "Cuenta de office, Comentarios, Opciones y Salir.",
+      "D": "Archivo, Inicio, Enviar y Recibir, Carpeta y Vista."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La ventana principal de Outlook 365 organiza sus comandos en un conjunto fijo de pestañas en la cinta de opciones.\n\n> **Outlook 365, art. 1**\n> \"**Cinta de opciones**: contiene las pestañas **Archivo, Inicio, Enviar y Recibir, Carpeta y Vista**.\"\n\n**Por qué D es correcta:** Archivo, Inicio, Enviar y Recibir, Carpeta y Vista son las pestañas fijas de la cinta de opciones de la ventana principal de Outlook 365.\n\n**Por qué las demás son incorrectas:**\n- **A)** Bandeja de entrada, Elementos eliminados y Bandeja de salida son carpetas del panel de navegación, no pestañas de la cinta de opciones.\n- **B)** Archivo, Mensaje, Insertar y Opciones son las pestañas de la ventana de redacción de un mensaje nuevo, no de la ventana principal.\n- **C)** Cuenta de Office, Comentarios, Opciones y Salir son elementos del menú Archivo (vista Backstage), no pestañas propias de la cinta."
+  },
+  {
+    "question_id": "da268512-cc2d-4a39-96d3-51c39f57d70e",
+    "servidas": 248,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "70",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f2b24b39-5560-4104-a11f-9474ad1f2677.txt",
+    "enunciado": "En Excel 365, ¿cuál de las siguientes opciones NO está disponible en el Formato condicional de una celda?",
+    "opciones": {
+      "A": "Barras de datos.",
+      "B": "Escalas de color.",
+      "C": "Líneas.",
+      "D": "Conjuntos de iconos."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El menú de Formato condicional de Excel ofrece un conjunto cerrado de tipos de regla visual, y solo uno de ellos no forma parte de esa lista.\n\n> **Excel 365, art. 70**\n> \"**Tipo \"Líneas\"** NO existe en el formato condicional. No es un tipo de regla disponible.\"\n\n**Por qué C es correcta:** \"Líneas\" no existe como tipo de regla del formato condicional; ese elemento gráfico no forma parte de las opciones disponibles.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las barras de datos sí están disponibles en el formato condicional; muestran una barra proporcional al valor dentro de cada celda.\n- **B)** Las escalas de color sí están disponibles; aplican un degradado de color según el valor de cada celda.\n- **D)** Los conjuntos de iconos sí están disponibles; muestran un icono en la celda según el rango en que se encuentre su valor."
+  },
+  {
+    "question_id": "9de1d78a-ff55-4315-8cf0-a6f33ed8a22f",
+    "servidas": 248,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3770f04a-5a90-4b12-948e-b0bbd12b88d2.txt",
+    "enunciado": "¿Cómo se puede conseguir un subrayado no predeterminado en Word 365?",
+    "opciones": {
+      "A": "Desde la Pestaña Diseño, grupo fuente, más subrayados.",
+      "B": "Desde la Pestaña Vista, grupo fuente, más subrayados.",
+      "C": "Desde la Pestaña Inicio, grupo fuente, más subrayados.",
+      "D": "Desde la Pestaña Insertar, grupo fuente, más subrayados."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El subrayado de Word incluye, además del estilo simple predeterminado, otras variantes que se seleccionan desde una opción concreta del grupo Fuente.\n\n> **Word 365, art. 2**\n> \"El subrayado tiene opciones adicionales: subrayado simple (por defecto), doble, punteado, ondulado, grueso, etc.\"\n\n**Por qué C es correcta:** Desde el grupo Fuente de la pestaña Inicio se accede a los subrayados adicionales al simple predeterminado, como el doble, el punteado o el ondulado.\n\n**Por qué las demás son incorrectas:**\n- **A)** La pestaña Diseño no contiene un grupo Fuente con opciones de subrayado.\n- **B)** La pestaña Vista no incluye un grupo Fuente ni opciones de subrayado.\n- **D)** La pestaña Insertar tampoco contiene esta opción de subrayados adicionales."
+  },
+  {
+    "question_id": "5de23a40-b38b-45bf-8fca-ac178df5097f",
+    "servidas": 247,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de los siguientes enunciados describe qué es un diseño web adaptativo ('responsive' en inglés)?",
+    "opciones": {
+      "A": "Es aquel en el que se utilizan programas de chat en línea para proporcionar asistencia a los usuarios sobre el uso de la web.",
+      "B": "Es el diseño que incluye programas de reconocimiento de voz para poder navegar por la web mediante el dictado de instrucciones.",
+      "C": "Es aquel capaz de adaptar los elementos de la página web a pantallas de diferentes tamaños y formatos.",
+      "D": "Es el diseño que cumple las recomendaciones de accesibilidad para facilitar la navegación a usuarios con discapacidad."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El diseño web adaptativo describe cómo se comporta una página web frente a distintos dispositivos de visualización.\n\n> **Windows 11, art. 1**\n> \"es aquel capaz de **adaptar los elementos de la página web a pantallas de diferentes tamaños y formatos**\"\n\n**Por qué C es correcta:** El diseño web adaptativo ('responsive') adapta los elementos de la página a pantallas de diferentes tamaños y formatos.\n\n**Por qué las demás son incorrectas:**\n- **A)** Describe el uso de chats en línea para asistir a los usuarios, no el diseño responsive.\n- **B)** Describe el reconocimiento de voz para navegar mediante dictado, una tecnología distinta del diseño adaptativo.\n- **D)** Describe las recomendaciones de accesibilidad para usuarios con discapacidad, un concepto relacionado pero distinto del diseño responsive."
+  },
+  {
+    "question_id": "b5a54c96-280c-4978-9f3b-9012221e8c87",
+    "servidas": 247,
+    "es_examen_oficial": true,
+    "ley": "Access 365",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/af70d613-d2cc-492a-a67a-e007c269ce5d.txt",
+    "enunciado": "Señale la afirmación correcta. En Access 365 existen formularios:",
+    "opciones": {
+      "A": "De columnas, tabulares y de gráficos.",
+      "B": "De barras, tabulares y subformularios.",
+      "C": "De columnas, tabulares y subformularios.",
+      "D": "De columnas, combinados y subformularios."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta qué tipos de formularios existen realmente en Access 365, entre las combinaciones de denominaciones propuestas.\n\n> **Access 365, art. 3 (Tipos de formulario que NO existen en Access 365)**\n> \"**Formulario de barras:** NO existe.\"\n\n**Por qué C es correcta:** El formulario en columnas (registro a registro), el formulario tabular (varios registros en filas y columnas) y el subformulario (incrustado dentro de otro para relaciones uno a varios) son los tres tipos que sí existen realmente.\n\n**Por qué las demás son incorrectas:**\n- **A)** Los gráficos no constituyen un tipo de formulario independiente: se insertan como controles dentro de un formulario estándar, no como una categoría propia.\n- **B)** «Barras» no es una denominación de formulario en Access; no existe ese tipo entre los disponibles en la ficha Crear.\n- **D)** «Combinados» no es una denominación oficial de formulario en Access; no corresponde a ninguno de los tipos disponibles."
+  },
+  {
+    "question_id": "82fc1102-3d16-409a-8744-94c76da57268",
+    "servidas": 247,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Sin perjuicio de la prórroga que pueda acordarse, el estado de alarma no tendrá una duración superior a:",
+    "opciones": {
+      "A": "10 días.",
+      "B": "15 días.",
+      "C": "20 días.",
+      "D": "30 días."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116.2 CE fija el límite temporal inicial del estado de alarma, sin perjuicio de su posible prórroga.\n\n> **CE, art. 116.2**\n> \"por un plazo máximo de quince días\"\n\n**Por qué B es correcta:** El estado de alarma no podrá tener una duración inicial superior a quince días, según el artículo 116.2, sin perjuicio de la prórroga que pueda acordarse.\n\n**Por qué las demás son incorrectas:**\n- **A)** El plazo máximo inicial no es de diez días; el artículo fija quince días para el estado de alarma.\n- **C)** El plazo máximo inicial no es de veinte días; el artículo fija quince días para el estado de alarma.\n- **D)** El plazo máximo inicial no es de treinta días; ese es el límite previsto para el estado de excepción, no para el de alarma."
+  },
+  {
+    "question_id": "39606e68-ad9d-436e-a271-77f00e84ffe2",
+    "servidas": 247,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de las siguientes afirmaciones referidas a un acceso directo de Windows es verdadera?",
+    "opciones": {
+      "A": "Es posible crear accesos directos a ficheros, que se abren utilizando el programa asociado a su extensión, pero no es posible crear accesos directos a carpetas.",
+      "B": "Es posible crear accesos directos a carpetas y ficheros pero, en el caso de los ficheros, no se ejecuta la aplicación asociada a su extensión, sino que se abren en el Explorador de archivos.",
+      "C": "Es posible crear accesos directos a carpetas y ficheros. Si el enlace es a un fichero, se abrirá utilizando el programa asociado a su extensión.",
+      "D": "Es posible crear accesos directos a carpetas en local y en OneDrive, pero no a ficheros de ningún tipo."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Un acceso directo en Windows 11 es un enlace a un elemento situado en otra parte del sistema, y su comportamiento al abrirse depende de a qué apunte.\n\n> **Windows 11, art. 1**\n> \"Es posible crear accesos directos a **carpetas y ficheros**.\n- Si el enlace es a un fichero, se abrirá utilizando el **programa asociado a su extensión**.\"\n\n**Por qué C es correcta:** Se pueden crear accesos directos a carpetas y a ficheros, y si el enlace es a un fichero se abre con el programa asociado a su extensión.\n\n**Por qué las demás son incorrectas:**\n- **A)** Sí es posible crear accesos directos a carpetas, además de a ficheros; no está limitado solo a estos últimos.\n- **B)** Cuando el acceso directo apunta a un fichero, este se abre con el programa asociado a su extensión, no en el Explorador de archivos.\n- **D)** También es posible crear accesos directos a ficheros, no solo a carpetas en local o en OneDrive."
+  },
+  {
+    "question_id": "c17ce832-4b34-4060-9c03-44e94d4928d3",
+    "servidas": 246,
+    "es_examen_oficial": true,
+    "ley": "LO 3/1983",
+    "articulo": "26",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3988274b-4022-4189-a48f-140f3ffc1203.txt",
+    "enunciado": "La Comunidad de Madrid no tiene competencia exclusiva en materia de:",
+    "opciones": {
+      "A": "Aeropuertos que desarrollen actividades comerciales.",
+      "B": "Pesca fluvial.",
+      "C": "Espectáculos públicos.",
+      "D": "Helipuertos deportivos."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta por una materia que queda fuera de la competencia exclusiva de la Comunidad de Madrid recogida en el artículo 26 del Estatuto de Autonomía.\n\n> **LO 3/1983, art. 26.1.7**\n> \"Instalaciones de navegación y deporte en aguas continentales, aeropuertos y helipuertos deportivos, así como los que no desarrollen actividades comerciales\"\n\n**Por qué A es correcta:** La competencia autonómica sobre aeropuertos y helipuertos deportivos se limita a los que no desarrollan actividades comerciales; los aeropuertos con actividad comercial quedan fuera de esa competencia exclusiva.\n\n**Por qué las demás son incorrectas:**\n- **B)** La pesca fluvial y lacustre sí figura expresamente como competencia exclusiva de la Comunidad de Madrid.\n- **C)** Los espectáculos públicos sí figuran expresamente como competencia exclusiva de la Comunidad de Madrid.\n- **D)** Los helipuertos deportivos sí están incluidos expresamente entre las competencias exclusivas de la Comunidad de Madrid."
+  },
+  {
+    "question_id": "e09618d7-0f56-4b6e-af45-b0082c14cb68",
+    "servidas": 246,
+    "es_examen_oficial": true,
+    "ley": "LO 3/1981",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/692241fd-00fd-4441-94cd-5ba9ded682e2.txt",
+    "enunciado": "De acuerdo con la Ley Orgánica 3/1981, del Defensor del Pueblo, es elegido por las Cortes Generales para un período máximo de:",
+    "opciones": {
+      "A": "5 años",
+      "B": "4 años",
+      "C": "24 meses",
+      "D": "10 años"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta por la duración del mandato para el que las Cortes Generales eligen al Defensor del Pueblo.\n\n> **LO 3/1981, art. 2.Uno**\n> \"El Defensor del Pueblo será elegido por las Cortes Generales para un periodo de cinco años\"\n\n**Por qué A es correcta:** El artículo fija expresamente un periodo de cinco años para el mandato del Defensor del Pueblo.\n\n**Por qué las demás son incorrectas:**\n- **B)** Cuatro años no es la duración que establece el artículo para el mandato del Defensor del Pueblo.\n- **C)** Veinticuatro meses (dos años) no corresponde a la duración fijada por el artículo, que es sensiblemente mayor.\n- **D)** Diez años excede la duración que fija el artículo para el mandato del Defensor del Pueblo."
+  },
+  {
+    "question_id": "75f0d474-5e5d-43e8-ac95-f62930927510",
+    "servidas": 245,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de las siguientes funciones de Windows NO es una ayuda de accesibilidad?",
+    "opciones": {
+      "A": "Lupa.",
+      "B": "Narrador.",
+      "C": "OneDrive.",
+      "D": "Subtítulos."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Windows agrupa bajo Accesibilidad una serie de funciones para facilitar el uso del sistema a personas con necesidades específicas.\n\n> **Windows 11, art. 1**\n> \"**OneDrive** es un servicio de almacenamiento en la nube, **NO una herramienta de accesibilidad**.\"\n\n**Por qué C es correcta:** OneDrive es un servicio de almacenamiento y sincronización en la nube, no una ayuda de accesibilidad.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Lupa amplía partes de la pantalla y sí es una ayuda de accesibilidad visual.\n- **B)** El Narrador es el lector de pantalla integrado y sí está clasificado como ayuda de accesibilidad.\n- **D)** Los subtítulos automáticos en tiempo real sí son una función de accesibilidad para personas con dificultades auditivas."
+  },
+  {
+    "question_id": "1cf661d3-1b9b-4967-9892-3ad519b577df",
+    "servidas": 245,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "69",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5e3551f1-d76f-4634-a9eb-7cf21c1fbdd0.txt",
+    "enunciado": "De acuerdo con la Constitución española, ¿cuántos senadores elegirán las poblaciones de Ceuta y Melilla?",
+    "opciones": {
+      "A": "1 senador cada una",
+      "B": "2 senadores cada una",
+      "C": "3 senadores cada una",
+      "D": "4 senadores cada una"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta por el número de Senadores que corresponde elegir a cada una de las poblaciones de Ceuta y Melilla.\n\n> **CE, art. 69.4**\n> \"Las poblaciones de Ceuta y Melilla elegirán cada una de ellas dos Senadores.\"\n\n**Por qué B es correcta:** El artículo asigna expresamente dos Senadores a cada una de estas poblaciones.\n\n**Por qué las demás son incorrectas:**\n- **A)** Un senador por cada una no es la cifra que recoge el artículo; el número fijado es mayor.\n- **C)** Tres senadores por cada una no corresponde a Ceuta y Melilla, sino al criterio de reparto de las islas mayores en el apartado anterior del mismo artículo.\n- **D)** Cuatro senadores por cada una excede la cifra que fija el artículo para estas poblaciones."
+  },
+  {
+    "question_id": "992b44fb-af83-449f-b3d3-ee3614b0dd98",
+    "servidas": 245,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "9",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/11a6d70d-7088-43f2-8a3f-bc0fd1cce516.txt",
+    "enunciado": "Las pantallas táctiles de información complementaria de los puntos de información públicos que no estén atendidos directamente por personal:",
+    "opciones": {
+      "A": "Deberán ser antirreflectantes y tener buen contraste.",
+      "B": "Deberán ser móviles y fácilmente transportables.",
+      "C": "Deberán ser en blanco y negro o colores claros.",
+      "D": "Son correctas las opciones a y b."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo recoge recomendaciones para la configuración de las pantallas de información complementaria en puntos de información públicos no atendidos por personal.\n\n> **RD 366/2007, art. 9.2.h**\n> \"Las pantallas deben de ser antirreflectantes y tener buen contraste.\"\n\n**Por qué A es correcta:** Recoge fielmente esta exigencia de accesibilidad del artículo.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo no exige que las pantallas sean móviles ni transportables; exige que su ubicación sea accesible y localizable y que sus dimensiones sean adecuadas, no su movilidad.\n- **C)** El artículo no establece que deban ser en blanco y negro o colores claros; exige buen contraste, que puede lograrse con diversas combinaciones cromáticas.\n- **D)** No es correcta, porque una de las otras opciones no se corresponde con lo dispuesto en el artículo."
+  },
+  {
+    "question_id": "fe316311-5ac0-46e9-a638-48ade9ec9ab8",
+    "servidas": 245,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "¿Cuál de los siguientes términos NO corresponde a un tipo de software malicioso?",
+    "opciones": {
+      "A": "Virus.",
+      "B": "Troyano.",
+      "C": "Interfaz de usuario.",
+      "D": "Spyware."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Existen distintas categorías de software malicioso diseñadas para dañar o comprometer un sistema sin conocimiento del usuario.\n\n**Por qué C es correcta:** La interfaz de usuario es el conjunto de elementos visuales e interactivos con los que el usuario opera un programa; no es software malicioso.\n\n**Por qué las demás son incorrectas:**\n- **A)** El virus es software malicioso que se replica adjuntándose a programas legítimos y puede dañar el sistema.\n- **B)** El troyano es malware que se disfraza de software legítimo para engañar al usuario y ejecutar acciones dañinas sin su conocimiento.\n- **D)** El spyware es software espía que recopila información del usuario sin su consentimiento."
+  },
+  {
+    "question_id": "67317c59-0166-46b2-9508-836bfe6d4d80",
+    "servidas": 244,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "8",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/49ed8711-8aea-4753-8428-126ff7d5c92f.txt",
+    "enunciado": "De acuerdo con lo dispuesto en el Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado, en la configuración de los puestos de Atención al Ciudadano, al menos una parte del mostrador o mesa de atención:",
+    "opciones": {
+      "A": "Ha de estar a la altura de una mesa de trabajo.",
+      "B": "No debe superar los 50 cm de ancho.",
+      "C": "Ha de estar a la altura de la señal luminosa correspondiente.",
+      "D": "No debe superar los 100 cm de alto."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta qué recomendación de altura debe cumplir, al menos en parte, el mostrador o mesa de un puesto de Atención al Ciudadano.\n\n> **RD 366/2007, art. 8.2.a**\n> \"Al menos una parte del mostrador o mesa de atención ha de estar a la altura de una mesa de trabajo, para atender a personas de diferentes alturas, usuarios de sillas de ruedas y muletas o, en general, personas que necesiten sentarse.\"\n\n**Por qué A es correcta:** El artículo exige expresamente que al menos una parte del mostrador esté a la altura de una mesa de trabajo, para atender a personas con distintas necesidades de movilidad.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo no fija ningún límite de anchura para los mostradores; esa medida no aparece en el precepto.\n- **C)** El artículo no vincula la altura del mostrador a ninguna señal luminosa; esa referencia no figura en el texto.\n- **D)** El artículo no establece un máximo de altura en centímetros; la referencia que da es la altura de una mesa de trabajo, no una medida numérica."
+  },
+  {
+    "question_id": "d9708b11-2ea6-4985-b768-956b8c513d13",
+    "servidas": 244,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/398b7a90-110b-4a6f-9875-cc332932a758.txt",
+    "enunciado": "En Word 365, ¿cuál de las siguientes opciones se utiliza para garantizar que se puede ver correctamente la tabla completa en la vista de diseño web?",
+    "opciones": {
+      "A": "Autoajustar a la ventana.",
+      "B": "Autoajustar al contenido.",
+      "C": "Ancho de columna fijo.",
+      "D": "Alinear al centro."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Al mostrar una tabla en la vista de diseño web de Word, existe una opción concreta pensada para que la tabla se adapte al ancho disponible en pantalla.\n\n**Por qué A es correcta:** Autoajustar a la ventana adapta el ancho de la tabla al de la ventana o del navegador, garantizando que se vea completa en la vista de diseño web.\n\n**Por qué las demás son incorrectas:**\n- **B)** Autoajustar al contenido ajusta las columnas al texto que contienen, por lo que la tabla puede acabar excediendo el ancho de la ventana.\n- **C)** Ancho de columna fijo mantiene medidas constantes sin adaptarse al espacio disponible en la ventana.\n- **D)** Alinear al centro solo centra la tabla en la página, pero no ajusta su ancho para que quepa entera en la ventana."
+  },
+  {
+    "question_id": "86418849-6ee3-4ae8-93ab-3cb57a3646f5",
+    "servidas": 244,
+    "es_examen_oficial": false,
+    "ley": "LOTC",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/ea0164c8-cc78-4dc1-aca2-e1fb1e8440b3.txt",
+    "enunciado": "El Tribunal Constitucional tiene jurisdicción en todo el territorio español y es competente para conocer:",
+    "opciones": {
+      "A": "De los conflictos entre los órganos constitucionales del Estado.",
+      "B": "De la declaración sobre la constitucionalidad de los tratados internacionales.",
+      "C": "De la impugnación por el Gobierno de las disposiciones y resoluciones adoptadas por los órganos de las Comunidades Autónomas.",
+      "D": "Todas las respuestas anteriores son correctas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta sobre las materias de las que es competente el Tribunal Constitucional según el artículo 2 de su Ley Orgánica.\n\n> **LOTC, art. 2**\n> \"Uno. El Tribunal Constitucional conocerá en los casos y en la forma que esta Ley determina:\"\n\n**Por qué D es correcta:** Al figurar las tres materias anteriores entre las recogidas expresamente en el listado del artículo 2, ninguna de ellas puede descartarse como incorrecta.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo recoge expresamente entre las competencias del Tribunal los conflictos entre los órganos constitucionales del Estado.\n- **B)** El artículo recoge expresamente entre las competencias del Tribunal la declaración sobre la constitucionalidad de los tratados internacionales.\n- **C)** El artículo recoge expresamente entre las competencias del Tribunal las impugnaciones de disposiciones y resoluciones de los órganos de las Comunidades Autónomas previstas en el artículo 161.2 de la Constitución."
+  },
+  {
+    "question_id": "c068c60f-a850-43a8-ac77-1fb29139a53c",
+    "servidas": 243,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f1618ab2-bc3e-41d1-a66f-3a7db8c7645a.txt",
+    "enunciado": "Una dirección IP está compuesta por:",
+    "opciones": {
+      "A": "4 grupos de números separados por puntos.",
+      "B": "4 grupos alfanuméricos separados por guiones.",
+      "C": "3 grupos de números separados por puntos.",
+      "D": "3 grupos alfanuméricos separados por guiones."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta por la estructura de una dirección IP.\n\n> **La Red Internet, art. 2 (Direcciones IP: IPv4 e IPv6)**\n> \"Una **dirección IPv4** se compone de 32 bits, representados como cuatro grupos de números decimales separados por puntos (ej. 192.168.1.1).\"\n\n**Por qué A es correcta:** Una dirección IPv4 se representa exactamente como cuatro grupos de números decimales separados por puntos.\n\n**Por qué las demás son incorrectas:**\n- **B)** Los grupos alfanuméricos separados por guiones no corresponden a la notación de una dirección IP, sino a otro tipo de identificador (como las direcciones MAC).\n- **C)** Tres grupos de números separados por puntos no forman una dirección IP completa; una IPv4 se compone de cuatro grupos, no de tres.\n- **D)** Los grupos alfanuméricos separados por guiones no corresponden a la notación de ninguna versión de dirección IP."
+  },
+  {
+    "question_id": "987f0ad1-b47d-423e-ba82-be1a7ec4945b",
+    "servidas": 242,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/398b7a90-110b-4a6f-9875-cc332932a758.txt",
+    "enunciado": "En Word 365, ¿qué combinación de teclas se debe pulsar para insertar una nota al pie?",
+    "opciones": {
+      "A": "Alt + Ctrl + A",
+      "B": "Alt + Ctrl + O",
+      "C": "Alt + Ctrl + C",
+      "D": "Alt + Ctrl + W"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Word 365 en español asigna combinaciones de teclas propias, distintas de las de la versión inglesa, para insertar notas al pie y notas al final.\n\n> **Word 365, art. 1**\n> \"Insertar nota al pie (Alt+Ctrl+O)\"\n\n**Por qué B es correcta:** Alt+Ctrl+O es la combinación que inserta una nota al pie en la versión en español de Word 365.\n\n**Por qué las demás son incorrectas:**\n- **A)** Alt+Ctrl+A no corresponde al atajo de insertar una nota al pie en Word 365 en español.\n- **C)** Alt+Ctrl+C no es el atajo asignado a la inserción de notas al pie.\n- **D)** Alt+Ctrl+W no corresponde a ninguna de las combinaciones de notas al pie o al final de Word 365."
+  },
+  {
+    "question_id": "952edcf6-f451-489a-954d-76c0a5f6f97d",
+    "servidas": 242,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Según la CE, el estado de excepción será declarado por:",
+    "opciones": {
+      "A": "El Gobierno, mediante decreto acordado por el Consejo de Ministros dando cuenta al Congreso de los Diputados.",
+      "B": "La mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno.",
+      "C": "El Gobierno, mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.",
+      "D": "La mayoría simple del Congreso de los Diputados, a propuesta exclusiva del Gobierno."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116 asigna a cada estado excepcional un procedimiento de declaración distinto, con distinto grado de intervención del Congreso.\n\n> **CE, art. 116.3**\n> \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.\"\n\n**Por qué C es correcta:** El estado de excepción se declara por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados, tal y como establece el artículo 116.3.\n\n**Por qué las demás son incorrectas:**\n- **A)** Ese procedimiento, con decreto en Consejo de Ministros y dando cuenta al Congreso, corresponde al estado de alarma, no al de excepción.\n- **B)** Esa fórmula, mayoría absoluta del Congreso a propuesta exclusiva del Gobierno, es la prevista para el estado de sitio, no para el de excepción.\n- **D)** El estado de excepción no lo declara el Congreso por mayoría simple; ni esa mayoría ni ese órgano decisorio corresponden a este estado."
+  }
+]

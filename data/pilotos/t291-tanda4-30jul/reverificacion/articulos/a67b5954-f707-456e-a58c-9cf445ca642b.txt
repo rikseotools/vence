@@ -1,0 +1,111 @@
+LEY: Windows 10
+ARTÍCULO: 4 — Seguridad y mantenimiento de Windows 10
+======================================================================
+# Seguridad y mantenimiento de Windows 10
+
+## Introducción
+
+La seguridad en Windows 10 combina herramientas integradas del sistema operativo con buenas prácticas de uso. Entre los componentes de seguridad más destacados se encuentran el **Firewall de Windows Defender**, **Windows Defender Antivirus**, **Windows Update**, **Windows Hello** y el **Control de cuentas de usuario (UAC)**. Esta sección documenta el funcionamiento del cortafuegos y otras herramientas de seguridad de Windows 10.
+
+---
+
+## 1. Cortafuegos (Firewall) de Windows 10
+
+### ¿Qué es el cortafuegos?
+
+El **cortafuegos o firewall** de Windows 10 es una herramienta de seguridad de red que **bloquea accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados**. Actúa como barrera entre el equipo y las redes externas (como Internet), filtrando el tráfico de entrada y salida según reglas configuradas.
+
+### Función principal del firewall
+
+El cortafuegos **no** es específicamente un antivirus, ni está diseñado exclusivamente para un tipo concreto de malware. Su función principal es:
+
+- **Controlar el tráfico de red**: permite o bloquea conexiones según reglas.
+- **Bloquear accesos no autorizados**: impide que programas externos no autorizados accedan al equipo a través de la red.
+- **Permitir comunicaciones autorizadas**: deja pasar el tráfico legítimo de aplicaciones y servicios configurados.
+
+### ¿Qué NO es el firewall?
+
+- **No** es un antispyware exclusivo contra Spyware, Gusanos y Troyanos (eso corresponde a Windows Defender Antivirus).
+- **No** es un monitor de tráfico de red para auditorías DNS (eso es lo que hace un analizador de protocolos o sniffer como Wireshark).
+- **No** actúa únicamente contra gusanos que se propagan por listas de contactos.
+
+### Tipos de amenazas de red que mitiga el firewall
+
+| Amenaza | Descripción | ¿El firewall ayuda? |
+|---|---|---|
+| Accesos no autorizados desde Internet | Intentos de conexión remota sin permiso | Sí, bloquea puertos no autorizados |
+| Gusanos de red (network worms) | Se propagan explotando vulnerabilidades de red | Sí, bloquea conexiones entrantes sospechosas |
+| Troyanos con comunicación remota | Intentan establecer conexiones salientes a C&C | Sí, puede bloquear conexiones salientes no autorizadas |
+| Spyware con comunicación de red | Envía datos a servidores externos | Parcialmente (si hay reglas de salida configuradas) |
+
+### Acceder al Firewall de Windows Defender
+
+En Windows 10, el Firewall de Windows Defender se configura en:
+
+**Panel de control > Sistema y seguridad > Firewall de Windows Defender**
+
+O bien: **Configuración > Actualización y seguridad > Seguridad de Windows > Firewall y protección de red**.
+
+---
+
+## 2. Windows Defender Antivirus
+
+**Windows Defender Antivirus** es el software antimalware integrado en Windows 10. Protege el equipo en tiempo real contra:
+
+- **Virus** – Código malicioso que se adjunta a otros programas.
+- **Spyware** – Software que espía la actividad del usuario.
+- **Gusanos (Worms)** – Se propagan por la red sin necesidad de un archivo huésped.
+- **Troyanos** – Se disfrazan de software legítimo.
+- **Ransomware** – Cifra los archivos y pide rescate.
+
+---
+
+## 3. Windows Update y mantenimiento del sistema
+
+**Windows Update** mantiene el equipo actualizado con parches de seguridad, actualizaciones de calidad y nuevas características. Aplicar actualizaciones regularmente es una práctica esencial de mantenimiento y seguridad en Windows 10.
+
+---
+
+## 4. Control de Cuentas de Usuario (UAC)
+
+El **Control de Cuentas de Usuario (UAC)** solicita confirmación antes de que una aplicación realice cambios que requieran privilegios de administrador, protegiendo el sistema frente a modificaciones no autorizadas.
+
+---
+
+## 5. Windows Hello: autenticación biométrica
+
+**Windows Hello** es el sistema de autenticación biométrica de Windows 10, que permite iniciar sesión con reconocimiento facial, huella dactilar o PIN. Proporciona un nivel de seguridad superior a la contraseña tradicional.
+
+---
+
+## 6. Centro de seguridad de Windows Defender
+
+El **Centro de seguridad de Windows Defender** (Seguridad de Windows) es el panel unificado de seguridad de Windows 10 que muestra el estado de:
+
+- Protección antivirus y contra amenazas.
+- Firewall y protección de red.
+- Control de aplicaciones y navegador.
+- Seguridad del dispositivo.
+- Rendimiento y estado del dispositivo.
+- Opciones de familia.
+
+---
+
+## 7. Cifrado BitLocker
+
+**BitLocker** es la herramienta de cifrado de disco de Windows 10 (ediciones Pro, Enterprise y Education) que protege los datos en caso de pérdida o robo del dispositivo, cifrando todo el contenido de la unidad.
+
+---
+
+## 8. Buenas prácticas de mantenimiento en Windows 10
+
+Para mantener el equipo seguro y en buen rendimiento:
+
+1. Mantener Windows Update activado y aplicar actualizaciones.
+2. Usar Windows Defender Antivirus o un antivirus de terceros actualizado.
+3. No deshabilitar el Firewall de Windows Defender.
+4. Usar contraseñas seguras o Windows Hello.
+5. Hacer copias de seguridad regulares (Historial de archivos / Copia de seguridad de Windows).
+6. Usar el Sensor de almacenamiento para liberar espacio.
+7. Deshabilitar programas de inicio innecesarios.
+8. No instalar software de fuentes no confiables.

@@ -1,0 +1,469 @@
+LEY: Outlook 365
+ARTÍCULO: 2 — El entorno de trabajo
+======================================================================
+## El entorno de trabajo en Microsoft Outlook 365
+
+Microsoft Outlook 365 integra en una única ventana principal todos los módulos de gestión de comunicación y productividad: correo, calendario, contactos, tareas y notas. Comprender su interfaz es imprescindible para trabajar con eficiencia.
+
+---
+
+## La ventana principal de Outlook
+
+Al iniciar Outlook, la pantalla se divide en varias áreas funcionales que permanecen visibles en todo momento:
+
+- **Cinta de opciones** (parte superior): contiene las pestañas con todos los comandos organizados por función.
+- **Panel de navegación / Barra de navegación** (lateral izquierdo): acceso rápido a los distintos módulos.
+- **Lista de elementos** (centro): muestra los mensajes, citas, contactos o tareas del módulo activo.
+- **Panel de lectura** (derecha o inferior): previsualiza el elemento seleccionado sin necesidad de abrirlo.
+- **Barra de tareas pendientes** (derecha): resumen de tareas y citas próximas.
+- **Barra de estado** (parte inferior): información contextual sobre el estado de la aplicación.
+
+---
+
+## La cinta de opciones (Ribbon)
+
+La cinta de opciones organiza los comandos en **pestañas** (tabs). Cada pestaña agrupa comandos relacionados en **grupos**. Las pestañas principales en la vista de Correo son:
+
+### Pestaña Inicio
+
+Es la pestaña activa por defecto en la vista de Correo. Contiene los comandos más utilizados:
+
+| Grupo | Comandos principales |
+|---|---|
+| **Nuevo** | Nuevo correo electrónico, Nuevos elementos (mensaje, cita, reunión, contacto, tarea, nota) |
+| **Eliminar** | Eliminar, Limpiar conversación (purgar duplicados), Correo no deseado |
+| **Responder** | Responder, Responder a todos, Reenviar, Reunión de respuesta |
+| **Mover** | Reglas, Mover a carpeta, Copiar en carpeta, Archivar |
+| **Etiquetas** | Seguimiento, Categorizar, Marcar/desmarcar como leído |
+| **Buscar** | Filtrar correo electrónico, Buscar contacto |
+
+### Pestaña Enviar y recibir
+
+Permite sincronizar las cuentas de correo con el servidor:
+
+| Grupo | Comandos principales |
+|---|---|
+| **Enviar y recibir** | Enviar/Recibir todas las carpetas (F9), Enviar todo |
+| **Servidor** | Actualizar carpeta, Cancelar todo |
+| **Descargar** | Descargar encabezados, Descargar el resto del mensaje |
+| **Preferencias** | Definir grupos Enviar/Recibir, Trabajar sin conexión |
+
+### Pestaña Carpeta
+
+Gestiona las carpetas del buzón:
+
+| Grupo | Comandos principales |
+|---|---|
+| **Nuevo** | Nueva carpeta, Nueva carpeta de búsqueda |
+| **Acciones** | Cambiar nombre, Copiar, Mover, Eliminar carpeta, Marcar todo como leído |
+| **Limpiar** | Limpiar carpeta (eliminar duplicados), Recuperar elementos eliminados |
+| **Propiedades** | Directiva, Configuración de Autoarchivar, Permisos de carpeta, Mostrar recuento de todas las carpetas |
+
+> **Importante para el examen:** La opción **Configuración de Autoarchivar** se encuentra en la pestaña **Carpeta**, no en Vista ni en Archivo.
+
+### Pestaña Vista
+
+Controla cómo se visualizan los elementos en Outlook:
+
+| Grupo | Comandos principales |
+|---|---|
+| **Vista actual** | Cambiar vista (Compacto, Único, Vista previa), Configuración de vista, Restablecer vista |
+| **Mensajes** | Mostrar mensajes en conversaciones, Configuración de conversación |
+| **Organización** | Panel de lectura, Panel de personas, Barra de tareas pendientes |
+| **Diseño** | Panel de carpetas, Barra de acceso rápido |
+| **Ventana** | Abrirla en nueva ventana |
+
+### Pestaña Ayuda
+
+Acceso a la ayuda en línea de Microsoft, formación y soporte técnico.
+
+### Pestaña Archivo (Backstage)
+
+Al hacer clic en **Archivo** (extremo izquierdo de la cinta), se abre la vista **Backstage**, que no es una pestaña de cinta al uso. Desde aquí se accede a:
+
+- **Información:** estado de la cuenta, configuración de la cuenta, herramientas de limpieza de buzón.
+- **Abrir y exportar:** abrir archivos .pst, importar/exportar contactos y datos.
+- **Guardar como:** guardar mensajes en formatos externos.
+- **Opciones:** configuración general de Outlook (correo, calendario, contactos, tareas, firmas, respuestas automáticas, etc.).
+- **Administrar reglas y alertas:** crear y editar reglas de mensajes.
+
+---
+
+## Panel de navegación y Barra de navegación
+
+### Barra de navegación
+
+La **barra de navegación** (lateral o inferior según la versión) permite cambiar entre los módulos principales de Outlook. De forma predeterminada muestra **4 iconos**:
+
+1. **Correo** (sobre)
+2. **Calendario**
+3. **Contactos** (Personas)
+4. **Tareas** (To Do)
+
+El número máximo de botones o iconos visibles que se pueden configurar en la barra de navegación es **8**. Los iconos adicionales se pueden agregar desde las opciones de configuración de la barra.
+
+> **Pregunta frecuente:** El número máximo de iconos visibles en la barra de navegación de Outlook 365 es **8**. Los predeterminados son **4**.
+
+### Panel de carpetas
+
+Dentro del módulo de Correo, el panel de carpetas muestra la jerarquía de carpetas del buzón. Las **carpetas predeterminadas** en Outlook son:
+
+| Carpeta | Descripción |
+|---|---|
+| **Bandeja de entrada** | Recibe los mensajes entrantes |
+| **Borradores** | Guarda automáticamente los mensajes sin enviar |
+| **Elementos enviados** | Copia de cada mensaje enviado correctamente |
+| **Elementos eliminados** | Mensajes borrados (papelera de Outlook) |
+| **Correo no deseado** | Mensajes filtrados como spam |
+| **Archivo** | Carpeta de archivado de mensajes |
+| **Bandeja de salida** | Mensajes pendientes de ser enviados |
+
+> **Importante:** Los mensajes que no se terminan de redactar se guardan automáticamente en **Borradores**. Al eliminar un mensaje (tecla Supr o Ctrl+D), se mueve a **Elementos eliminados**. Si se vacía esa carpeta, los mensajes se **eliminan definitivamente**.
+
+### Gestión de carpetas
+
+Desde la pestaña **Carpeta** o haciendo clic derecho sobre una carpeta se puede:
+
+- **Crear** nuevas carpetas (también con Ctrl+Mayús+E).
+- **Renombrar** carpetas existentes.
+- **Mover** carpetas a otras ubicaciones.
+- **Eliminar** carpetas (y su contenido pasa a Elementos eliminados).
+- **Configurar el Autoarchivar** para cada carpeta individualmente.
+
+---
+
+## Panel de lectura
+
+El **panel de lectura** muestra una vista previa del mensaje seleccionado sin necesidad de abrirlo. Se puede configurar en tres posiciones:
+
+- **A la derecha** (posición predeterminada): el panel aparece a la derecha de la lista de mensajes.
+- **En la parte inferior**: el panel aparece debajo de la lista de mensajes.
+- **Desactivado**: el panel queda oculto. Para ocultarlo completamente se usa la pestaña **Vista > Panel de lectura > Desactivado**.
+
+---
+
+## Panel de personas
+
+El **panel de personas** (People Pane) aparece en la parte inferior del panel de lectura y muestra información sobre el remitente del mensaje seleccionado: nombre, foto de perfil, mensajes recientes, archivos compartidos y redes sociales conectadas.
+
+---
+
+## Barra de tareas pendientes
+
+La **barra de tareas pendientes** (To-Do Bar) se muestra a la derecha de la ventana y ofrece un resumen accesible desde cualquier vista de Outlook. Muestra:
+
+- Un **miniconsultario** (navegador de fechas).
+- Las **citas próximas** de los días siguientes.
+- Las **tareas pendientes** con fecha de vencimiento.
+
+> Es accesible y visible desde cualquier módulo de Outlook (correo, calendario, contactos, tareas).
+
+---
+
+## Barra de estado
+
+La **barra de estado** se sitúa en la parte inferior de la ventana de Outlook. Muestra información contextual sobre el módulo activo:
+
+- **Número de elementos** en la carpeta seleccionada.
+- **Número de mensajes no leídos**.
+- **Estado de conexión** (conectado / trabajando sin conexión).
+- **Progreso** de operaciones de envío y recepción.
+- **Controles de zoom** del panel de lectura.
+
+> **Lo que NO muestra la barra de estado:** el espacio disponible en la cuenta o la dirección de correo del remitente del mensaje seleccionado.
+
+---
+
+## Barra de herramientas de acceso rápido
+
+La **barra de herramientas de acceso rápido** (Quick Access Toolbar, QAT) se encuentra en la parte **superior izquierda** de la ventana, sobre la cinta de opciones. Permite personalizar atajos de acceso rápido a los comandos más usados. Los accesos predeterminados incluyen: Enviar y recibir, Deshacer y Rehacer.
+
+---
+
+## Vistas de la lista de mensajes
+
+En la vista de Correo, los mensajes se pueden visualizar de tres formas (Vista actual > Cambiar vista):
+
+| Vista | Descripción |
+|---|---|
+| **Compacto** | Muestra el remitente, asunto y un fragmento del mensaje en líneas reducidas |
+| **Único** | Muestra cada mensaje en una fila única con columnas separadas para remitente, asunto y fecha |
+| **Vista previa** | Muestra varias líneas del mensaje bajo el asunto |
+
+---
+
+## Vista Conversación
+
+La **vista de conversación** agrupa todos los mensajes que comparten el mismo **asunto** (y sus respuestas y reenvíos) en un único hilo expandible. Se activa desde **Vista > Mostrar mensajes en conversaciones**.
+
+Dentro de la **Configuración de conversación** (pestaña Vista, grupo Mensajes) están disponibles estas opciones:
+
+- Mostrar mensajes de otras carpetas.
+- Expandir siempre la conversación seleccionada.
+- Usar vista con sangría clásica.
+- Mostrar siempre los remitentes encima del asunto.
+
+> **Lo que NO es una opción de Configuración de conversación:** "Ocultar remitentes duplicados" no existe como opción en este menú.
+
+Al usar **"Responder a todos"** en un mensaje recibido, el nuevo mensaje tendrá como destinatarios al remitente original y a todos los que estaban en el campo **CC** del mensaje recibido.
+
+---
+
+## Búsqueda de mensajes
+
+La **barra de búsqueda** de Outlook 365 permite localizar mensajes, contactos, citas y tareas mediante texto libre u operadores de búsqueda:
+
+- **Búsqueda simple:** escribir una palabra devuelve todos los elementos que la contienen (coincidencia por prefijo). Ejemplo: escribir "proyecto" devuelve mensajes que contienen "proyecto", "proyectos", "proyección", etc.
+- **Búsqueda de frase exacta:** poner la frase entre comillas. Ejemplo: "solicitud aprobada".
+- **Operadores de campo:** restringen la búsqueda a un campo concreto. Ejemplo: Asunto:oferta busca solo en el campo Asunto.
+- **Operador NO (NOT):** excluye términos. Ejemplo: Asunto:oferta NO primera busca mensajes con "oferta" en el asunto pero sin la palabra "primera".
+- **Búsqueda avanzada:** Ctrl+Mayús+F.
+
+Desde la pestaña **Inicio**, el grupo **Buscar** incluye el comando **Filtrar correo electrónico** con opciones para mostrar solo mensajes: No leídos, Con marca, Adjuntos, A mí, En copia, Categorizados, Urgentes, Próximos 7 días, etc.
+
+En Microsoft Outlook, el criterio de disposición **"Para"** permite agrupar los mensajes de una carpeta según su destinatario.
+
+---
+
+## Gestión de mensajes
+
+### Importancia y seguimiento
+
+Los mensajes en Outlook pueden marcarse con tres niveles de **importancia**:
+
+- **Alta** (exclamación roja `!`): indica que el mensaje requiere atención prioritaria.
+- **Normal**: valor predeterminado.
+- **Baja** (flecha hacia abajo azul).
+
+> **Atención:** Un correo con **exclamación roja** tiene marcada importancia alta.
+
+Las **marcas de seguimiento** permiten añadir un recordatorio a mensajes recibidos o enviados para gestionarlos posteriormente. Se pueden aplicar a cualquier mensaje de correo electrónico. Las opciones de seguimiento disponibles incluyen: Hoy, Mañana, Esta semana, La semana que viene, Sin fecha y Personalizada. El comando de **seguimiento personalizado** se abre con **Ctrl+Mayús+G**.
+
+> **Lo que NO es una opción de Seguimiento:** "Mes siguiente" no aparece en el menú de seguimiento de Outlook.
+
+**Bandera roja** junto a un correo: sirve para marcar el seguimiento de un correo, indicando que requiere atención o acción posterior.
+
+### Categorías de color
+
+Las **categorías de color** permiten asignar una etiqueta visual a cualquier elemento de Outlook (mensajes, citas, contactos, tareas). Hay varias categorías habilitadas por defecto que se pueden modificar, eliminar o renombrar. También es posible **crear nuevas categorías** y **asignar teclas de método abreviado** a cada una.
+
+### Correo no deseado (spam)
+
+Outlook incluye un **filtro antispam** que evalúa los mensajes entrantes y mueve automáticamente los sospechosos a la carpeta **Correo no deseado**. Se puede configurar el **nivel de protección**:
+
+- Cuanto mayor sea el nivel de protección, mayor será el riesgo de que mensajes legítimos (falsos positivos) sean clasificados como no deseados.
+
+Si un usuario marca un mensaje como **"No es correo no deseado"**, el mensaje vuelve a la Bandeja de entrada y el remitente puede añadirse a la lista de remitentes seguros.
+
+Los **correos de phishing** son los que tratan de conseguir información confidencial (contraseñas, datos bancarios) de forma fraudulenta, haciéndose pasar por entidades legítimas. El **spam** es correo comercial no solicitado.
+
+### Eliminar y purgar mensajes
+
+- **Supr:** mueve el mensaje a Elementos eliminados. *(Ctrl+D en el módulo Correo responde al mensaje; en Tareas sí elimina el elemento)*
+- **Mayús+Supr:** elimina permanentemente (no pasa por Elementos eliminados).
+- **Vaciar Elementos eliminados:** elimina definitivamente todos los mensajes de esa carpeta.
+- **Limpiar conversación / Purgar:** el comando **Purgar** de Outlook elimina los mensajes repetidos o redundantes de la carpeta seleccionada enviándolos a Elementos eliminados.
+
+---
+
+## Redacción de mensajes
+
+Al crear un nuevo mensaje, la ventana de redacción incluye sus propias pestañas:
+
+| Pestaña | Contenido principal |
+|---|---|
+| **Mensaje** | Comandos de portapapeles, fuente, párrafo, responder, etiquetas y zoom |
+| **Insertar** | Adjuntar archivo, firma, tablas, imágenes, hipervínculo, emoji, elementos rápidos |
+| **Opciones** | CCO, De (remitente alternativo), Cifrado, Retrasar entrega, Confirmaciones (entrega, lectura), Responder a |
+| **Formato del texto** | Negrita, cursiva, color de fuente, estilos, Cambiar estilos (conjunto de estilos, colores, fuentes) |
+| **Revisar** | Ortografía y gramática, sinónimos, traducir |
+
+> **Importante para el examen:** El botón **"Cambiar estilos"** (que modifica el conjunto de estilos, colores, fuentes y espacio entre párrafos) se encuentra en la pestaña **Formato del texto** de la ventana de redacción.
+
+### Campos del mensaje
+
+| Campo | Descripción |
+|---|---|
+| **Para** | Destinatario principal (obligatorio para enviar) |
+| **CC** (Con Copia) | Destinatarios en copia (pueden ver todos los destinatarios) |
+| **CCO** (Con Copia Oculta) | Destinatarios en copia oculta (los demás no pueden verlos) |
+| **Asunto** | Título breve que describe el contenido del mensaje |
+| **Cuerpo** | Contenido del mensaje |
+
+> Para enviar correo a varios destinatarios sin que se vean entre sí: usar el campo **CCO**.
+
+Los tres elementos mínimos obligatorios para enviar un correo son: **dirección del destinatario (Para)**, **asunto** y **cuerpo del mensaje**.
+
+### Adjuntos y opciones de envío
+
+El tamaño máximo que generalmente permite Microsoft Outlook para archivos adjuntos es de **20 MB**.
+
+La opción **Retrasar entrega** (pestaña Opciones del mensaje) permite programar una fecha y hora concretas para que el mensaje se envíe. Mientras no llega ese momento, el mensaje permanece en la **Bandeja de salida**. Si se pulsa "Enviar" accidentalmente y el mensaje está todavía en la Bandeja de salida, aún es posible abrirlo y borrarlo.
+
+Desde la pestaña Opciones del mensaje se pueden solicitar:
+
+- **Confirmación de entrega:** notifica cuando el mensaje llega al servidor del destinatario.
+- **Confirmación de lectura:** notifica cuando el destinatario abre el mensaje (si este lo permite).
+
+### Responder, Responder a todos, Reenviar
+
+Estos tres comandos se encuentran en la pestaña **Inicio** de la cinta de opciones (grupo Responder):
+
+| Acción | Resultado |
+|---|---|
+| **Responder** | Nuevo mensaje dirigido solo al remitente original |
+| **Responder a todos** | Nuevo mensaje al remitente y a todos los del campo CC |
+| **Reenviar** | Nuevo mensaje con el contenido original para enviarlo a un tercero |
+
+> El prefijo **RE:** al inicio del asunto indica que el mensaje es una respuesta. El prefijo **RV:** indica que es un reenvío.
+
+### Respuestas automáticas (fuera de la oficina)
+
+Las respuestas automáticas se configuran desde **Archivo > Respuestas automáticas** (también desde la pestaña **Inicio**). Permiten establecer un mensaje automático que se envía cuando se recibe un correo durante el período configurado (inicio y fin). Se pueden configurar mensajes distintos para personas de dentro y fuera de la organización.
+
+> **Pestaña donde se encuentran las Respuestas automáticas:** **Inicio** (pero también accesibles desde Archivo).
+
+### Identidades múltiples y campo "Responder a"
+
+Desde un cliente Outlook, sí es posible enviar correos con **identidades diferentes** si se tienen varias cuentas configuradas o si se usa el campo **"De"** (pestaña Opciones). El campo **"Responder a"** (pestaña Opciones) permite redirigir las respuestas a una cuenta diferente de la que envía el mensaje.
+
+---
+
+## Reglas de mensajes
+
+Las **reglas** permiten automatizar la gestión del correo (mover, eliminar, reenviar, categorizar, marcar, etc.) según condiciones definidas por el usuario.
+
+Existen dos tipos:
+
+- **Reglas basadas en servidor:** se ejecutan en el servidor Exchange aunque Outlook no esté abierto.
+- **Reglas solo de cliente:** se ejecutan únicamente cuando Outlook está en ejecución en el equipo local.
+
+Para crear o gestionar reglas: **Inicio > Mover > Reglas > Administrar reglas y alertas** o desde **Archivo > Administrar reglas y alertas**.
+
+Las reglas pueden basarse en condiciones como: remitente, asunto, tamaño, importancia, palabras clave, etc. Las acciones disponibles incluyen: mover a carpeta, eliminar, reenviar, responder con plantilla, marcar con seguimiento, cambiar importancia, etc.
+
+---
+
+## Grupos de envío y recepción
+
+Los **grupos de envío y recepción** permiten configurar qué cuentas de correo se sincronizan, con qué frecuencia y qué carpetas se descargan. Se configuran desde **Enviar y recibir > Definir grupos Enviar/Recibir**.
+
+---
+
+## Limpieza del buzón
+
+Outlook 365 incluye varias herramientas para administrar el tamaño del buzón, accesibles desde **Archivo > Herramientas de limpieza del buzón**:
+
+- **Limpieza de buzón:** muestra estadísticas del tamaño del buzón y permite encontrar y eliminar elementos grandes o antiguos.
+- **Autoarchivar:** mueve elementos antiguos a un archivo .pst automáticamente.
+- **Vaciar carpeta Elementos eliminados.**
+- **Limpiar carpeta Elementos eliminados.**
+
+---
+
+## Módulo Calendario
+
+### Vistas del calendario
+
+El calendario de Outlook ofrece las siguientes vistas:
+
+| Vista | Descripción | Atajo |
+|---|---|---|
+| **Día** | Muestra las horas de un solo día | Ctrl+Alt+1 |
+| **Semana laboral** | Muestra los días laborables (lun-vie) | Ctrl+Alt+2 |
+| **Semana** | Muestra los 7 días de la semana | Ctrl+Alt+3 |
+| **Mes** | Vista mensual completa | Ctrl+Alt+4 |
+| **Programación** | Vista en franjas horizontales para comparar calendarios | — |
+
+> **Al hacer doble clic sobre un día en la vista Mes:** se abre la vista de Día de esa fecha.
+
+### Tipos de elementos del calendario
+
+| Tipo | Descripción |
+|---|---|
+| **Cita** | Evento personal sin invitados externos; solo afecta al propio calendario |
+| **Reunión** | Evento con invitados; Outlook envía convocatoria por correo electrónico |
+| **Evento** | Ocupa todo el día (o varios días) sin bloquear franjas horarias específicas |
+
+- Las reuniones permiten usar la **Vista de programación** para ver la disponibilidad de todos los invitados antes de confirmar la hora.
+- Las citas recurrentes (diarias, semanales, mensuales, anuales) al eliminarse ofrecen la opción de borrar **solo esa ocurrencia** o **todas las recurrencias**.
+
+---
+
+## Módulo Contactos (Personas)
+
+Outlook permite gestionar contactos individuales y **grupos de contactos** (antes llamados listas de distribución). Un grupo de contactos agrupa varias direcciones de correo para simplificar el envío masivo.
+
+> En la página **Contactos**, para crear un grupo de contactos hay que seleccionar **Nuevo grupo de contactos** (no "Nueva lista de correo" ni "Nueva libreta de direcciones").
+
+Desde la vista de contactos se puede:
+
+- Ver, crear, editar y eliminar contactos.
+- Enviar correo electrónico a un contacto.
+- Programar una reunión con un contacto.
+- Compartir contactos individuales (adjuntándolos como .vcf / vCard).
+- Exportar contactos a CSV desde Archivo > Abrir y exportar > Importar/Exportar.
+
+La **libreta de direcciones** centraliza todos los contactos y listas de distribución. Se abre con **Ctrl+Mayús+B**. Desde la pestaña **Inicio** del módulo Contactos también se puede **Agregar una libreta de direcciones**.
+
+> **Permisos al compartir una carpeta de contactos:** Lector, Autor, Editor. No existe el permiso "Propietario" como opción estándar de compartición de carpetas.
+
+---
+
+## Módulo Tareas
+
+Las tareas de Outlook permiten registrar compromisos con fecha de vencimiento, prioridad, estado y porcentaje de completado.
+
+### Campos de una tarea
+
+| Campo | Descripción |
+|---|---|
+| **Asunto** | Nombre de la tarea |
+| **Fecha de inicio** | Cuándo empieza |
+| **Fecha de vencimiento** | Fecha límite (se configura haciendo clic en "Fecha de vencimiento" en la ventana de la tarea) |
+| **Estado** | Sin comenzar / En curso / Completada / Esperando a otra persona / Aplazada |
+| **Prioridad** | Baja / Normal / Alta |
+| **% completado** | Porcentaje de avance |
+| **Recordatorio** | Alerta en fecha/hora específica |
+
+- Al marcar una tarea como **Recurrente**, se crea una nueva ocurrencia de la tarea automáticamente al completar la anterior.
+- Al **arrastrar un correo electrónico a la sección de Tareas**, Outlook crea una nueva tarea usando el asunto y el cuerpo del mensaje (copia del correo como tarea).
+- Para **eliminar varias tareas a la vez**: seleccionarlas con Ctrl+clic y pulsar Supr.
+
+### Diferencia entre tarea, cita y reunión
+
+La **tarea** solo tiene fecha de vencimiento y no bloquea la agenda ni tiene invitados. La **cita** tiene fecha/hora fija y bloquea la agenda pero no tiene invitados. La **reunión** tiene fecha/hora fija, bloquea la agenda y envía convocatoria a los invitados.
+
+La **barra de tareas pendientes** (To-Do Bar) muestra un resumen de tareas y citas próximas accesible desde cualquier vista.
+
+---
+
+## Ejecución inicial, cuentas y seguridad
+
+Si se ejecuta Outlook sin ninguna cuenta configurada, el asistente de configuración de cuentas se inicia automáticamente. Se puede añadir una nueva cuenta desde **Archivo > Agregar cuenta**.
+
+Recomendaciones de seguridad básica: no abrir mensajes de remitentes desconocidos, no hacer clic en enlaces ni descargar adjuntos sospechosos, usar contraseñas seguras y activar la verificación en dos pasos. Responder correos desde dispositivos móviles no es una recomendación de seguridad específica.
+
+Los **sistemas de acceso al correo que NO son webmail** (clientes de escritorio): Microsoft Outlook, Mozilla Thunderbird, Apple Mail. Los **webmail** son accesibles por navegador: Gmail, Outlook.com, Yahoo Mail.
+
+
+---
+<!-- ampliado claude_code_mislink_review_2026_07 (Microsoft Support: https://support.microsoft.com/es-es/office/agregar-gr%C3%A1ficos-a-mensajes-en-outlook-114bb251-861f-41cd-b20f-7e7289630c5b) -->
+## Insertar gráficos de Excel en un mensaje
+
+Outlook permite **crear** un gráfico de Excel directamente desde el editor de mensajes, sin tener que crearlo antes en Excel:
+
+1. Haga clic en el cuerpo del mensaje.
+2. En la pestaña **Insertar**, grupo **Ilustraciones**, elija **Gráfico**.
+3. Elija el tipo de gráfico y pulse **Aceptar**.
+4. En la hoja de cálculo de Excel que aparece, escriba los datos y ciérrela.
+
+> **Fuente oficial:** Microsoft Support — «Agregar gráficos a mensajes en Outlook». La ruta correcta es **Insertar → Ilustraciones → Gráfico** (no «Opciones → grupo Excel»).
+
+---
+<!-- ampliado claude_code_mislink_review_2026_07 (Microsoft Support: https://support.microsoft.com/es-es/office/compartir-y-obtener-acceso-al-buz%C3%B3n-o-carpeta-de-otra-persona-en-outlook-a909ad30-e413-40b5-) -->
+## Corrección — Niveles de permiso al compartir una carpeta (contactos, calendario, correo)
+
+Al compartir una carpeta, Outlook ofrece niveles de permiso predefinidos que descienden de mayor a menor derecho: **Propietario**, **Editor de publicación**, **Editor**, **Autor de publicación**, **Autor**, **Autor no editor**, **Revisor** (solo lectura), **Colaborador** y **Ninguno**.
+
+> **Fuente oficial:** Microsoft Support — «Compartir y obtener acceso al buzón o carpeta de otra persona en Outlook». **Propietario SÍ es un nivel de permiso válido** (el más alto). «Solo lectura» se corresponde con **Revisor**. NO existe el nivel «Administrador del sistema».

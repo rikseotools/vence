@@ -1,0 +1,30 @@
+LEY: RD 1708/2011
+ARTÍCULO: 2 — Definiciones
+======================================================================
+1. A los efectos de este Real Decreto, y sin perjuicio de lo dispuesto en el artículo 59.1 de la Ley 16/1985, de 25 de junio, del Patrimonio Histórico Español, y de la correspondiente legislación autonómica, se entiende por archivo:
+
+a) El conjunto orgánico de documentos, o la reunión de varios de ellos, producidos o reunidos por las personas físicas o jurídicas, públicas o privadas
+
+b) Las entidades, que de acuerdo con las normas internacionales de descripción archivística, comprenden instituciones, personas y familias, que reúnen, conservan, organizan, describen y difunden los conjuntos orgánicos y las colecciones de documentos.
+
+2. A los efectos de este Real Decreto se entiende por:
+
+a) Sistema archivístico: Conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos.
+
+b) Documento de archivo: Ejemplar en cualquier tipo de soporte, testimonio de las actividades y funciones de las personas físicas y jurídicas, públicas o privadas.
+
+c) Documento electrónico: De acuerdo con lo establecido en la Ley 11/2007, de 22 de junio, de acceso electrónico de los ciudadanos a los Servicios Públicos, se entenderá por documento electrónico la información de cualquier naturaleza en forma electrónica, archivada en un soporte electrónico, según un formato determinado y susceptible de identificación y tratamiento diferenciado.
+
+d) Expediente electrónico: De acuerdo con lo establecido en la Ley 11/2007, de 22 de junio, de acceso electrónico de los ciudadanos a los Servicios Públicos, se entenderá por expediente electrónico el conjunto de documentos electrónicos correspondientes a un procedimiento administrativo, cualquiera que sea el tipo de información que contengan.
+
+e) Ciclo vital de documentos: Son las diferentes etapas por las que atraviesan los documentos desde que se producen hasta su eliminación conforme al procedimiento establecido, o en su caso, su conservación permanente.
+
+f) Calendario de conservación: Es el instrumento de trabajo fruto del proceso de valoración documental, en el que se recoge el plazo de permanencia de los documentos de archivo en cada una de las fases del ciclo vital para su selección, eliminación o conservación permanente y, en su caso, el método y procedimiento de selección, eliminación o conservación en otro soporte.
+
+g) Identificación: Es la fase del tratamiento archivístico que consiste en la investigación y sistematización de las categorías administrativas y archivísticas en que se sustenta la estructura de un fondo.
+
+h) Valoración documental: Es el estudio y análisis de las características administrativas, jurídicas, fiscales, informativas e históricas de los documentos u otras agrupaciones documentales.
+
+i) Eliminación de documentos: Consiste en la destrucción física de unidades o series documentales por el órgano responsable del archivo u oficina pública en que se encuentren, empleando cualquier método que garantice la imposibilidad de reconstrucción de los mismos y su posterior utilización.
+
+j) Metadato: Se entiende por metadato cualquier descripción estandarizada de las características de un conjunto de datos. En el contexto del documento electrónico cualquier tipo de información en forma electrónica asociada a los documentos electrónicos, de carácter instrumental e independiente de su contenido, destinada al conocimiento inmediato y automatizable de alguna de sus características, con la finalidad de garantizar la disponibilidad, el acceso, la conservación y la interoperabilidad del propio documento.

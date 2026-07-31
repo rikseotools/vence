@@ -1,0 +1,283 @@
+LEY: Excel 365
+ARTÍCULO: 80 — Funciones matemáticas y estadísticas
+======================================================================
+## Estructura de una función en Excel
+
+Una función en Excel tiene tres partes fundamentales:
+
+| Parte | Descripción | Ejemplo |
+|-------|-------------|---------|
+| **Nombre** | Identifica la función | `SUMA`, `PROMEDIO` |
+| **Paréntesis** | Siempre obligatorios, aunque no haya argumentos | `=PI()`, `=HOY()` |
+| **Argumentos** | Los datos necesarios que la función necesita para realizar sus operaciones. Se separan con punto y coma (;). | `SUMA(A1;B2;C3)` |
+
+> **Regla clave:** En la versión española de Excel, el separador de argumentos es el **punto y coma (;)**, no la coma (,). Usar coma produce error. No existen funciones RESTA ni DIVIDIR: se usan los operadores `-` y `/`.
+
+---
+
+## Categorías de funciones en Excel
+
+Excel organiza sus funciones en categorías accesibles desde la pestaña **Fórmulas** de la cinta de opciones:
+
+| Categoría | Ejemplos destacados |
+|-----------|---------------------|
+| Matemáticas y trigonométricas | SUMA, REDONDEAR, POTENCIA, RAIZ, SUBTOTALES, CONVERTIR, ABS, ENTERO, TRUNCAR |
+| Estadísticas | PROMEDIO, MAX, MIN, CONTAR, MEDIANA, MODA.UNO, DESVEST, VAR, K.ESIMO.MAYOR |
+| Texto | CONCATENAR, MAYUSC, MINUSC, IZQUIERDA, DERECHA, EXTRAE |
+| Lógicas | SI, Y, O, NO, SI.ERROR |
+| Búsqueda y referencia | BUSCARV, BUSCARH, INDICE, COINCIDIR |
+| Fecha y hora | HOY, AHORA, DIA, MES, AÑO, DIAS.LAB |
+| Información | ESBLANCO, ESNUMERO, ESTEXTO, ESERROR, ES.PAR, ES.IMPAR |
+| Ingeniería | BESSELI, BESSELJ, BIN.A.DEC, DEC.A.BIN, CONVERTIR (en algunas versiones), ACOSH, SENO.HIP |
+| Base de datos | BDMAX, BDMIN, BDSUMA, BDPROMEDIO, BDCONTAR |
+| Financieras | PAGO, TIR, VNA, TASA |
+| Cubo | MIEMBROKPICUBO, VALORKPICUBO |
+
+> **Nota importante:** La categoría **Ingeniería** incluye funciones para cálculos con la función de Bessel, conversiones entre diferentes sistemas de numeración (binario, octal, hexadecimal, decimal) y funciones hiperbólicas como ACOSH (coseno hiperbólico inverso). La categoría **Estadísticas** incluye funciones para contar, calcular media aritmética, desviación estándar, varianza, etc. Las funciones **BDMAX y BDMIN** pertenecen a la categoría **Base de datos**.
+
+---
+
+## Funciones matemáticas y trigonométricas
+
+### Referencia completa
+
+| Función | Sintaxis | Descripción | Qué devuelve | Ejemplo |
+|---------|----------|-------------|--------------|---------|
+| **SUMA** | `=SUMA(número1;[número2];...)` | Suma sus argumentos. Acepta hasta 255 argumentos: valores, celdas o rangos. | La suma de todos los argumentos | `=SUMA(A2:A10)` → suma A2 hasta A10 |
+| **SUMAR.SI** | `=SUMAR.SI(rango;criterios;[rango_suma])` | Suma las celdas de un rango que cumplen **un** criterio. Si se omite rango_suma, suma el propio rango. | Suma de celdas que cumplen el criterio | `=SUMAR.SI(A2:A10;"manzanas";B2:B10)` |
+| **SUMAR.SI.CONJUNTO** | `=SUMAR.SI.CONJUNTO(rango_suma;rango_crit1;crit1;[rango_crit2;crit2];...)` | Suma las celdas de un rango que cumplen **múltiples** criterios simultáneamente. Hasta 127 pares rango/criterio. | Suma de celdas que cumplen todos los criterios | `=SUMAR.SI.CONJUNTO(C2:C10;A2:A10;"Madrid";B2:B10;">5")` |
+| **PRODUCTO** | `=PRODUCTO(número1;[número2];...)` | Multiplica todos sus argumentos. Ignora celdas vacías y texto. | El producto de todos los argumentos | `=PRODUCTO(A2:A5)` → A2×A3×A4×A5 |
+| **RESIDUO** | `=RESIDUO(dividendo;divisor)` | Devuelve el **resto** de una división. El resultado tiene el mismo signo que el divisor. | Resto entero de la división | `=RESIDUO(10;3)` → 1; `=RESIDUO(10;5)` → 0 |
+| **COCIENTE** | `=COCIENTE(numerador;denominador)` | Devuelve la **parte entera** de una división (descarta el resto). | Parte entera de la división | `=COCIENTE(8;3)` → 2 |
+| **REDONDEAR** | `=REDONDEAR(número;núm_decimales)` | Redondea al número de decimales especificado. Con 0 redondea al entero más próximo. Aplica la regla estándar (si el siguiente dígito >= 5, redondea hacia arriba). | Número redondeado | `=REDONDEAR(2,567;2)` → 2,57; `=REDONDEAR(15,678;1)` → 15,7 |
+| **REDONDEAR.MAS** | `=REDONDEAR.MAS(número;núm_decimales)` | Redondea **alejándose de cero** (siempre hacia arriba en valor absoluto), independientemente del dígito siguiente. | Número redondeado hacia arriba | `=REDONDEAR.MAS(2,1;0)` → 3; `=REDONDEAR.MAS(-2,1;0)` → -3 |
+| **REDONDEAR.MENOS** | `=REDONDEAR.MENOS(número;núm_decimales)` | Redondea **acercándose a cero** (siempre hacia abajo en valor absoluto), independientemente del dígito siguiente. | Número redondeado hacia abajo | `=REDONDEAR.MENOS(2,9;0)` → 2; `=REDONDEAR.MENOS(-2,9;0)` → -2 |
+| **TRUNCAR** | `=TRUNCAR(número;[núm_decimales])` | Elimina los decimales de un número **sin redondear**. Si se omite núm_decimales, usa 0 (elimina toda la parte decimal). | Número sin la parte decimal indicada | `=TRUNCAR(15,9;0)` → 15; `=TRUNCAR(A10;2)` → primeros 2 decimales sin redondear |
+| **ENTERO** | `=ENTERO(número)` | Redondea hacia abajo hasta el **entero menor o igual** al número. Con negativos, se aleja de cero. | Entero inmediatamente inferior o igual | `=ENTERO(8,9)` → 8; `=ENTERO(-8,9)` → -9 |
+| **ABS** | `=ABS(número)` | Devuelve el **valor absoluto** de un número (siempre positivo). | Valor absoluto (sin signo) | `=ABS(-4/2)` → 2; `=ABS(-7,4)` → 7,4 |
+| **POTENCIA** | `=POTENCIA(número;potencia)` | Devuelve el resultado de elevar un número a una potencia. Equivalente al operador `^`. | Número elevado a la potencia | `=POTENCIA(2;8)` → 256; equivale a `=2^8` |
+| **RAIZ** | `=RAIZ(número)` | Devuelve la raíz cuadrada positiva de un número. | Raíz cuadrada positiva | `=RAIZ(16)` → 4; `=RAIZ(-4)` → **#¡NUM!** |
+| **ALEATORIO** | `=ALEATORIO()` | Devuelve un número aleatorio real entre 0 (incluido) y 1 (excluido). Se **recalcula en cada cambio** de la hoja. | Número decimal entre 0 y 1 | `=ALEATORIO()` → p. ej. 0,7358... |
+| **ALEATORIO.ENTRE** | `=ALEATORIO.ENTRE(inferior;superior)` | Devuelve un número **entero** aleatorio entre los valores inferior y superior (ambos incluidos). Se recalcula en cada cambio. | Número entero aleatorio en el rango | `=ALEATORIO.ENTRE(1;100)` → p. ej. 47 |
+| **PI** | `=PI()` | Devuelve el valor de pi (π) con 15 dígitos de precisión. Los paréntesis son obligatorios. | 3,14159265358979 | `=PI()` → 3,14159265358979 |
+| **SENO** | `=SENO(número)` | Devuelve el seno de un ángulo expresado en **radianes**. | Seno del ángulo | `=SENO(PI()/2)` → 1 |
+| **COS** | `=COS(número)` | Devuelve el coseno de un ángulo expresado en **radianes**. | Coseno del ángulo | `=COS(PI())` → -1 |
+| **TAN** | `=TAN(número)` | Devuelve la tangente de un ángulo expresado en **radianes**. | Tangente del ángulo | `=TAN(PI()/4)` → 1 |
+| **LOG** | `=LOG(número;[base])` | Devuelve el logaritmo de un número en la base especificada. Si se omite base, usa **10**. | Logaritmo en la base indicada | `=LOG(100;10)` → 2; `=LOG(8;2)` → 3 |
+| **LOG10** | `=LOG10(número)` | Devuelve el logaritmo en **base 10** de un número. | Logaritmo decimal | `=LOG10(1000)` → 3 |
+| **LN** | `=LN(número)` | Devuelve el logaritmo **natural** (neperiano, base e) de un número. | Logaritmo natural | `=LN(EXP(1))` → 1 |
+| **EXP** | `=EXP(número)` | Devuelve e elevado a la potencia del número indicado. e ≈ 2,71828... | e elevado al número | `=EXP(1)` → 2,71828... |
+| **FACT** | `=FACT(número)` | Devuelve el factorial de un número. FACT(0) = 1. Número debe ser no negativo. | Factorial del número | `=FACT(5)` → 120 (5×4×3×2×1) |
+| **COMBINAT** | `=COMBINAT(número;tamaño)` | Devuelve el número de **combinaciones** posibles para un número de elementos, sin importar el orden. número = total de elementos; tamaño = elementos de cada grupo. | Número de combinaciones C(n,k) | `=COMBINAT(5;2)` → 10 (grupos de 2 de entre 5 sin orden) |
+| **PERMUTACIONES** | `=PERMUTACIONES(número;tamaño)` | Devuelve el número de **permutaciones** posibles para un número de elementos, donde el orden sí importa. número = total; tamaño = elementos seleccionados. | Número de permutaciones P(n,k) | `=PERMUTACIONES(5;2)` → 20 (pares ordenados de entre 5) |
+| **MCD** | `=MCD(número1;[número2];...)` | Devuelve el **máximo común divisor** de dos o más números enteros. | Mayor entero que divide exactamente a todos los argumentos | `=MCD(10;5)` → 5; `=MCD(12;8)` → 4 |
+| **MCM** | `=MCM(número1;[número2];...)` | Devuelve el **mínimo común múltiplo** de dos o más números enteros. | Menor entero positivo múltiplo de todos los argumentos | `=MCM(10;5)` → 10; `=MCM(4;6)` → 12 |
+| **SUBTOTALES** | `=SUBTOTALES(núm_función;ref1;[ref2];...)` | Devuelve un subtotal en una lista. Ignora filas ocultas por filtro (códigos 1-11) o por ocultación manual (códigos 101-111). | El cálculo indicado por el código solo sobre celdas visibles | `=SUBTOTALES(9;A2:A10)` → suma solo filas visibles |
+| **CONVERTIR** | `=CONVERTIR(número;"de_unidad";"a_unidad")` | Convierte un número de un sistema de medida a otro. Las unidades van entre comillas dobles y distinguen mayúsculas de minúsculas. | El valor convertido a la unidad destino | `=CONVERTIR(H7;"mi";"m")` → convierte millas a metros; `=CONVERTIR(100;"C";"F")` → 212 |
+
+### Diferencia entre COMBINAT y PERMUTACIONES
+
+| Función | Orden importa | Fórmula | COMBINAT(5;2) | PERMUTACIONES(5;2) |
+|---------|--------------|---------|----------------|---------------------|
+| COMBINAT | No | C(n,k) = n! / (k! × (n-k)!) | 10 | — |
+| PERMUTACIONES | Sí | P(n,k) = n! / (n-k)! | — | 20 |
+
+### Diferencia entre SUMAR.SI y SUMAR.SI.CONJUNTO
+
+| Característica | SUMAR.SI | SUMAR.SI.CONJUNTO |
+|----------------|----------|-------------------|
+| Criterios | Solo 1 | Hasta 127 pares rango/criterio |
+| Posición de rango_suma | Tercer argumento (opcional) | **Primer argumento** (obligatorio) |
+| Disponible desde | Excel 2003 | Excel 2007 |
+| Ejemplo | `=SUMAR.SI(A2:A10;"Juan";B2:B10)` | `=SUMAR.SI.CONJUNTO(C5:C12;E5:E12;"Juan")` |
+
+---
+
+### Funciones de paridad
+
+| Función | Sintaxis | Descripción | Ejemplo |
+|---------|----------|-------------|---------|
+| **ES.PAR** | `=ES.PAR(número)` | Devuelve VERDADERO si el número es par. Pertenece a la categoría Información. | `=ES.PAR(4)` → VERDADERO |
+| **ES.IMPAR** | `=ES.IMPAR(número)` | Devuelve VERDADERO si el número es impar. Pertenece a la categoría Información. | `=ES.IMPAR(3)` → VERDADERO |
+
+---
+
+### SUBTOTALES: tabla completa de códigos
+
+La función `SUBTOTALES` recibe un código numérico que determina qué cálculo realizar:
+
+- **Códigos 1-11:** Incluyen las filas ocultadas manualmente, pero **ignoran las ocultas por filtro automático**.
+- **Códigos 101-111:** Ignoran tanto las ocultas por filtro como las **ocultadas manualmente**.
+
+| Código | Código (ignora ocultos manuales) | Función equivalente |
+|--------|----------------------------------|---------------------|
+| 1 | 101 | PROMEDIO |
+| 2 | 102 | CONTAR |
+| 3 | 103 | CONTARA |
+| 4 | 104 | MAX |
+| 5 | 105 | MIN |
+| 6 | 106 | PRODUCTO |
+| 7 | 107 | DESVEST (muestra) |
+| 8 | 108 | DESVESTA (muestra, incluye lógicos y texto) |
+| 9 | 109 | SUMA |
+| 10 | 110 | VAR (varianza de muestra) |
+| 11 | 111 | VARA (varianza de muestra, incluye lógicos y texto) |
+
+**Ejemplos:**
+
+```
+=SUBTOTALES(9;A2:A10)    → suma solo filas visibles tras aplicar filtro
+=SUBTOTALES(3;J2:J10)    → CONTARA de filas visibles (celdas ocupadas en J2:J10)
+=SUBTOTALES(103;J2:J10)  → CONTARA ignorando también ocultos manuales
+=SUBTOTALES(1;B2:B20)    → promedio de filas visibles (filtradas)
+```
+
+> Si un rango contiene otras funciones SUBTOTALES anidadas, estas se ignoran para evitar doble conteo.
+
+---
+
+### CONVERTIR: unidades habituales
+
+Las unidades se especifican como texto entre **comillas dobles** y son **sensibles a mayúsculas/minúsculas**.
+
+| Categoría | De | A | Ejemplo |
+|-----------|-----|---|---------|
+| Masa | kilogramos ("kg") | libras ("lbm") | `=CONVERTIR(1;"kg";"lbm")` → 2,2046 |
+| Masa | gramos ("g") | onzas ("ozm") | `=CONVERTIR(100;"g";"ozm")` → 3,527 |
+| Distancia | metros ("m") | pies ("ft") | `=CONVERTIR(1;"m";"ft")` → 3,2808 |
+| Distancia | millas ("mi") | metros ("m") | `=CONVERTIR(H7;"mi";"m")` → H7 millas en metros |
+| Distancia | kilómetros ("km") | millas ("mi") | `=CONVERTIR(1;"km";"mi")` → 0,6214 |
+| Distancia | pulgadas ("in") | centímetros ("cm") | `=CONVERTIR(1;"in";"cm")` → 2,54 |
+| Temperatura | Celsius ("C") | Fahrenheit ("F") | `=CONVERTIR(100;"C";"F")` → 212 |
+| Temperatura | Celsius ("C") | Kelvin ("K") | `=CONVERTIR(0;"C";"K")` → 273,15 |
+| Tiempo | días ("day") | horas ("hr") | `=CONVERTIR(1;"day";"hr")` → 24 |
+| Tiempo | horas ("hr") | minutos ("mn") | `=CONVERTIR(1;"hr";"mn")` → 60 |
+| Masa | gramos ("g") | toneladas métricas ("t") | `=CONVERTIR(1000000;"g";"t")` → 1 |
+
+---
+
+## Funciones estadísticas
+
+### Funciones de suma, máximo y mínimo condicionales
+
+| Función | Sintaxis | Descripción | Ejemplo |
+|---------|----------|-------------|---------|
+| **SUMAR.SI** | `=SUMAR.SI(rango;criterios;[rango_suma])` | Suma celdas que cumplen **un** criterio. | `=SUMAR.SI(A:A;"Juan";B:B)` |
+| **SUMAR.SI.CONJUNTO** | `=SUMAR.SI.CONJUNTO(rango_suma;rango_c1;c1;...)` | Suma celdas que cumplen **múltiples** criterios. | `=SUMAR.SI.CONJUNTO(C5:C12;E5:E12;"Juan")` |
+| **MAX.SI.CONJUNTO** | `=MAX.SI.CONJUNTO(rango_max;rango_c1;c1;[rango_c2;c2];...)` | Valor **máximo** condicionado a uno o varios criterios. Disponible desde Excel 2019/365. | `=MAX.SI.CONJUNTO(C6:C11;D6:D11;"A")` → máximo de artículos tipo A |
+| **MIN.SI.CONJUNTO** | `=MIN.SI.CONJUNTO(rango_min;rango_c1;c1;[rango_c2;c2];...)` | Valor **mínimo** condicionado a uno o varios criterios. Disponible desde Excel 2019/365. | `=MIN.SI.CONJUNTO(C6:C11;D6:D11;"A")` → mínimo de artículos tipo A |
+
+### Referencia completa de funciones estadísticas
+
+| Función | Sintaxis | Descripción | Qué devuelve | Ejemplo |
+|---------|----------|-------------|--------------|---------|
+| **PROMEDIO** | `=PROMEDIO(número1;[número2];...)` | Media aritmética de sus argumentos. Ignora celdas vacías; el texto vacío `""` provoca `#¡VALOR!`. | Media aritmética | `=PROMEDIO(G11;J14)` → media de G11 y J14 |
+| **PROMEDIO.SI** | `=PROMEDIO.SI(rango;criterios;[rango_promedio])` | Media de celdas que cumplen **un** criterio. Si se omite rango_promedio, promedia el propio rango. | Media de celdas que cumplen el criterio | `=PROMEDIO.SI(B:B;">1000")` → media de valores >1000 |
+| **PROMEDIO.SI.CONJUNTO** | `=PROMEDIO.SI.CONJUNTO(rango_prom;rango_c1;c1;[rango_c2;c2];...)` | Media de celdas que cumplen **múltiples** criterios. Hasta 127 pares. | Media condicional múltiple | `=PROMEDIO.SI.CONJUNTO(D5:D12;F5:F12;"Madrid")` |
+| **MAX** | `=MAX(número1;[número2];...)` | Valor **máximo** de un conjunto. Ignora texto y celdas vacías. | El mayor valor numérico | `=MAX(A1:A5)` → mayor de A1:A5 |
+| **MAXA** | `=MAXA(valor1;[valor2];...)` | Valor máximo incluyendo **texto** (cuenta como 0) y **valores lógicos** (VERDADERO=1, FALSO=0). | Mayor valor, incluyendo lógicos y texto | `=MAXA(A2:A10)` |
+| **MIN** | `=MIN(número1;[número2];...)` | Valor **mínimo** de un conjunto. Ignora texto y celdas vacías. | El menor valor numérico | `=MIN(A2:A20)` |
+| **MINA** | `=MINA(valor1;[valor2];...)` | Valor mínimo incluyendo **texto** (cuenta como 0) y **valores lógicos**. | Menor valor, incluyendo lógicos y texto | `=MINA(A2:A10)` |
+| **CONTAR** | `=CONTAR(valor1;[valor2];...)` | Cuenta celdas con **números**. Ignora texto, vacías y lógicos. "23" (texto) no se cuenta. | Número de celdas numéricas | `=CONTAR(A1:A10)` → solo conta números |
+| **CONTARA** | `=CONTARA(valor1;[valor2];...)` | Cuenta celdas **no vacías** (cualquier contenido: número, texto, lógico, error). | Número de celdas no vacías | `=CONTARA(A1:A6)` → celdas que contienen valores |
+| **CONTAR.BLANCO** | `=CONTAR.BLANCO(rango)` | Cuenta celdas **vacías** en un rango. También cuenta fórmulas que devuelven `""`. | Número de celdas vacías | `=CONTAR.BLANCO(A2:A20)` |
+| **CONTAR.SI** | `=CONTAR.SI(rango;criterios)` | Cuenta celdas que cumplen **un** criterio. Admite comodines `*` y `?`. | Número de celdas que cumplen el criterio | `=CONTAR.SI(A2:A10;"Sí")`; `=CONTAR.SI(G:G;">2500")` |
+| **CONTAR.SI.CONJUNTO** | `=CONTAR.SI.CONJUNTO(rango_c1;c1;[rango_c2;c2];...)` | Cuenta celdas que cumplen **múltiples** criterios simultáneamente. | Número de celdas que cumplen todos los criterios | `=CONTAR.SI.CONJUNTO(A2:A10;"Madrid";B2:B10;">100")` |
+| **MEDIANA** | `=MEDIANA(número1;[número2];...)` | Valor central de un conjunto ordenado. Con cantidad par de valores, promedia los dos centrales. | Valor de la mitad | `=MEDIANA(3;8;2;10;5)` → 5 |
+| **MODA** | `=MODA(número1;[número2];...)` | Valor más frecuente. Función heredada (compatible con versiones anteriores). | Valor más repetido | `=MODA(7;5;8;1;7;4;3;2;2;7)` → 7 |
+| **MODA.UNO** | `=MODA.UNO(número1;[número2];...)` | Valor más repetido. Si hay empate, devuelve el primero que aparece. Devuelve `#N/A` si ningún valor se repite. | Valor más frecuente (versión moderna) | `=MODA.UNO(4;2;4;3;4;2)` → 4 |
+| **MODA.VARIOS** | `=MODA.VARIOS(número1;[número2];...)` | Devuelve **todos los valores** más frecuentes cuando hay empate (función matricial). | Matriz de valores más frecuentes | `=MODA.VARIOS(1;2;2;3;3)` → {2;3} |
+| **K.ESIMO.MAYOR** | `=K.ESIMO.MAYOR(matriz;k)` | El k-ésimo mayor valor del conjunto. K=1 equivale a MAX. | El k-ésimo valor por orden descendente | `=K.ESIMO.MAYOR(A2:A10;2)` → 2.º mayor |
+| **K.ESIMO.MENOR** | `=K.ESIMO.MENOR(matriz;k)` | El k-ésimo menor valor del conjunto. K=1 equivale a MIN. | El k-ésimo valor por orden ascendente | `=K.ESIMO.MENOR(A2:A10;3)` → 3.er menor |
+| **DESVEST** | `=DESVEST(número1;[número2];...)` | Desviación estándar de una **muestra** (método n-1). Ignora texto y lógicos. Función heredada. | Desviación estándar muestral | `=DESVEST(B2:B10)` |
+| **DESVEST.M** | `=DESVEST.M(número1;[número2];...)` | Desviación estándar de una **muestra** (método n-1). Versión moderna de DESVEST. Ignora texto y valores lógicos. | Desviación estándar muestral (moderna) | `=DESVEST.M(B2:B10)` |
+| **DESVEST.P** | `=DESVEST.P(número1;[número2];...)` | Desviación estándar de la **población completa** (método n). Ignora texto y valores lógicos. | Desviación estándar poblacional | `=DESVEST.P(B2:B10)` |
+| **DESVESTA** | `=DESVESTA(valor1;[valor2];...)` | Desviación estándar de una **muestra** incluyendo texto (=0) y valores lógicos (VERDADERO=1, FALSO=0). | Desviación estándar muestral con lógicos y texto | `=DESVESTA(A2:A10)` |
+| **VAR** | `=VAR(número1;[número2];...)` | Varianza de una **muestra** (método n-1). Función heredada. | Varianza muestral | `=VAR(B2:B10)` |
+| **VAR.M** | `=VAR.M(número1;[número2];...)` | Varianza de una **muestra** (método n-1). Versión moderna de VAR. Ignora texto y lógicos. | Varianza muestral (moderna) | `=VAR.M(B2:B10)` |
+| **VAR.P** | `=VAR.P(número1;[número2];...)` | Varianza de la **población completa** (método n). Ignora texto y lógicos. | Varianza poblacional | `=VAR.P(B2:B10)` |
+| **MEDIA.ARMO** | `=MEDIA.ARMO(número1;[número2];...)` | Media **armónica** de un conjunto de valores positivos. Se usa cuando los valores son tasas o razones. | Media armónica | `=MEDIA.ARMO(2;4;8)` → 3,428... |
+| **MEDIA.GEOM** | `=MEDIA.GEOM(número1;[número2];...)` | Media **geométrica** de un conjunto de valores positivos. Se usa para crecimientos porcentuales. | Media geométrica | `=MEDIA.GEOM(2;8)` → 4 |
+
+---
+
+## Tablas comparativas clave
+
+### CONTAR vs CONTARA vs CONTAR.BLANCO
+
+| Función | Cuenta | Ignora | Categoría |
+|---------|--------|--------|-----------|
+| **CONTAR** | Solo celdas con **números** (no "23" como texto) | Texto, vacías, lógicos (VERDADERO/FALSO) | Estadísticas |
+| **CONTARA** | Celdas **no vacías** (cualquier contenido) | Solo celdas realmente vacías | Estadísticas |
+| **CONTAR.BLANCO** | Celdas **vacías** (incluye fórmulas que devuelven "") | Celdas con contenido | Estadísticas |
+
+> CONTAR(A1:A3) con A1=5, A2="Texto", A3=VERDADERO → devuelve **1** (solo A1 es número).
+
+### REDONDEAR vs REDONDEAR.MAS vs REDONDEAR.MENOS vs TRUNCAR vs ENTERO
+
+| Función | Comportamiento | 2,3 | 2,7 | -2,3 | -2,7 |
+|---------|---------------|-----|-----|------|------|
+| **REDONDEAR(x;0)** | Al más próximo (regla estándar: >=5 sube) | 2 | 3 | -2 | -3 |
+| **REDONDEAR.MAS(x;0)** | Siempre **alejándose de cero** | 3 | 3 | -3 | -3 |
+| **REDONDEAR.MENOS(x;0)** | Siempre **acercándose a cero** | 2 | 2 | -2 | -2 |
+| **TRUNCAR(x;0)** | Elimina decimales sin redondear | 2 | 2 | -2 | -2 |
+| **ENTERO(x)** | Al entero **menor o igual** | 2 | 2 | -3 | -3 |
+
+> Diferencia clave entre TRUNCAR y ENTERO: con números negativos, TRUNCAR(-2,7;0) = -2, pero ENTERO(-2,7) = -3.
+
+### DESVEST.M vs DESVEST.P vs DESVESTA
+
+| Función | Incluye texto/lógicos | Método | Uso |
+|---------|----------------------|--------|-----|
+| **DESVEST / DESVEST.M** | No | n-1 (muestra) | Cuando los datos son una muestra de la población |
+| **DESVEST.P** | No | n (población) | Cuando los datos son toda la población |
+| **DESVESTA** | Sí (texto=0, VERDADERO=1) | n-1 (muestra) | Cuando se deben incluir valores lógicos y texto |
+
+### MAX/MIN vs MAXA/MINA
+
+| Función | Incluye texto | Incluye lógicos | Resultado diferente cuando hay VERDADERO |
+|---------|--------------|-----------------|------------------------------------------|
+| **MAX / MIN** | No (ignora) | No (ignora) | No afecta |
+| **MAXA / MINA** | Sí (texto=0) | Sí (VERDADERO=1, FALSO=0) | VERDADERO puede ser el máximo (=1) |
+
+---
+
+## Análisis rápido — pestaña Totales
+
+La herramienta **Análisis rápido** (aparece al seleccionar un rango con datos, esquina inferior derecha) incluye la pestaña **Totales**:
+
+**Disponibles en Totales (se insertan automáticamente):**
+- SUMA (por columnas o por filas)
+- PROMEDIO
+- CONTAR
+- % del total
+- SUMA acumulada
+
+**No disponibles en Totales** (hay que escribir la fórmula manualmente):
+- **Máximo** y **Mínimo** (MAX y MIN)
+- MEDIANA, MODA.UNO
+- SUMAR.SI, CONTAR.SI, PROMEDIO.SI
+- SUBTOTALES, K.ESIMO.MAYOR, K.ESIMO.MENOR
+- DESVEST, VAR
+
+---
+
+## Errores frecuentes y casos especiales
+
+| Situación | Resultado |
+|-----------|-----------|
+| `=PROMEDIO(A2:A5)` con A3 vacía | La celda vacía se **ignora** (no cuenta como 0) |
+| `=PROMEDIO(5;"";15)` | Devuelve `#¡VALOR!` (texto vacío no es número) |
+| `=RAIZ(-4)` | Devuelve `#¡NUM!` (raíz de negativo no existe en reales) |
+| `=COCIENTE(5;0)` o `=RESIDUO(10;0)` | Devuelve `#¡DIV/0!` |
+| `=MODA.UNO(1;2;3)` | Devuelve `#N/A` (ningún valor se repite) |
+| `=MAX(45, 57, 25)` (con comas) | **Error** (en Excel español el separador es punto y coma) |
+| `=MÍNIMO(A1:A12)` | Error de nombre (la función se llama MIN, no MÍNIMO) |
+| `=PI` (sin paréntesis) | Error de nombre (`=PI()` es la forma correcta) |
+| `=CONTAR(A1:A3)` con A1=5, A2="Texto", A3=VERDADERO | Devuelve **1** (solo A1 es número) |
+| `=SUMA(A1,A123)` (con coma) | La función no es correcta en Excel español |
+| No existe RESTA(…) ni DIVIDIR(…) | Usar `=A1-B1` y `=A1/B1` |
+
+
+## Comportamiento de SUMA con argumentos escritos directamente
+Cuando los argumentos se escriben **directamente** en la función (no como referencias a celdas), SUMA **convierte a número** el texto que representa un número y los valores lógicos: VERDADERO equivale a 1 y FALSO a 0. Así, =SUMA("5";15;VERDADERO) devuelve **21** (5+15+1). En cambio, cuando esos mismos valores están en **celdas referenciadas**, el texto y los lógicos se ignoran.

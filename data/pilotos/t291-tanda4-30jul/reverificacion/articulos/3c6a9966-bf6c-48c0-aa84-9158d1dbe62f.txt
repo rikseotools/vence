@@ -1,0 +1,227 @@
+LEY: La Red Internet
+ARTÍCULO: 7 — Tipos de redes
+======================================================================
+## Tipos de redes: LAN, WAN, intranet, VPN y dominios
+
+### 1. Clasificación de redes por extensión geográfica
+
+| Tipo | Nombre completo | Extensión típica | Ejemplo |
+|------|----------------|-----------------|---------|
+| **PAN** | Personal Area Network (Red de Área Personal) | Pocos metros | Bluetooth entre móvil y auriculares |
+| **LAN** | Local Area Network (Red de Área Local) | Edificio, campus | Red de oficina o doméstica |
+| **WLAN** | Wireless LAN (LAN inalámbrica) | Edificio, campus | Wi-Fi en oficina u hogar |
+| **MAN** | Metropolitan Area Network | Ciudad | Red universitaria metropolitana |
+| **WAN** | Wide Area Network (Red de Área Amplia) | 100-1.000 km | Internet troncal, interconexión de países |
+| **CAN** | Campus Area Network | Campus universitario | Red de campus |
+
+**WAN** significa **Wide Area Network** o **Red de Área Amplia**. La red WAN cubre distancias de entre **100 y 1.000 km**.
+
+Las siglas que corresponden a una red de área **amplia** son **WAN**. LAN es área local, PAN es personal.
+
+### 2. Red de Área Personal (PAN)
+
+Un ejemplo típico de red **PAN** es la **conexión entre un teléfono móvil y unos auriculares Bluetooth**. No es la red que conecta distintas universidades por fibra óptica, ni la conexión entre múltiples oficinas de diferentes ciudades.
+
+### 3. Red de Área Local Inalámbrica (WLAN)
+
+Una red **WLAN** permite la **conexión inalámbrica de dispositivos a través de tecnologías como Wi-Fi**, proporcionando movilidad y flexibilidad dentro de un área geográfica limitada (oficina, hogar). Afirmaciones incorrectas: que usa cables de fibra óptica; que interconecta dispositivos en área extensa como una ciudad; que requiere un servidor central.
+
+### 4. Intranet
+
+Una **intranet** es una red que aplica tecnologías de Internet (TCP/IP, HTTP, HTML) en el ámbito de una organización privada. Sus características fundamentales:
+
+- Los ordenadores que forman parte de una **red reducida** (casa, edificio, oficina, campus) conectados entre sí.
+- **Se puede acceder desde el exterior usando una VPN** (Red Privada Virtual), que establece un túnel cifrado sobre Internet.
+- Utiliza los **mismos protocolos que Internet** (no protocolos distintos).
+
+La opción que describe la intranet en exámenes: "ordenadores que forman parte de una red reducida (casa, edificio, oficina, campus) conectados entre sí".
+
+### 5. Extranet y VPN
+
+Una **extranet** amplía la intranet para permitir el acceso controlado a socios, proveedores o clientes externos.
+
+Una **VPN** (Virtual Private Network) establece un túnel cifrado sobre Internet, permitiendo que usuarios externos accedan de forma segura a la intranet de una organización.
+
+### 6. Sistema de nombres de dominio (DNS)
+
+El **DNS** (Domain Name System) convierte nombres de dominio en direcciones IP. La organización responsable de coordinar el sistema global de DNS y la asignación de direcciones IP es la **ICANN** (Internet Corporation for Assigned Names and Numbers).
+
+### 7. Estructura de un nombre de dominio
+
+En una dirección como **"soporte.empresaNNXX.es"**:
+- **"es"** es el dominio de primer nivel (TLD)
+- **"empresaNNXX"** es el dominio de segundo nivel
+- **"soporte"** es el **subdominio**
+
+Los dominios de primer nivel que representan un país utilizan **dos letras** (.es, .fr, .de).
+
+### 8. Dominios genéricos de primer nivel
+
+| Dominio | Uso previsto |
+|---------|-------------|
+| **.com** | Entidades comerciales |
+| **.org** | Organizaciones sin ánimo de lucro |
+| **.edu** | Instituciones educativas |
+| **.gov** | Instituciones gubernamentales de EE. UU. |
+| **.mil** | Instituciones militares del **Gobierno de EE. UU.** |
+| **.net** | Proveedores de red e Internet |
+| **.es** | Dominio territorial de España |
+
+La extensión **.mil** está dirigida a las **instituciones militares del Gobierno de EE. UU.** (no de la ONU, ni de España, ni de Europa).
+
+El sistema de dominios como ".com", ".org" o ".edu" **clasifica los sitios según su propósito o entidad**.
+
+La autoridad de registro de los nombres de dominio **.es** en España está encomendada a **Red.es**.
+
+### 9. URL (Uniform Resource Locator)
+
+Una **URL** es la **dirección exacta de un recurso web accesible por un navegador**; también: la dirección única y específica que se asigna a cada recurso en Internet. No es un programa antivirus, ni un protocolo de cifrado, ni una herramienta de programación.
+
+La forma más habitual de comenzar las direcciones en Internet es **http://www.**
+
+En los nombres de direcciones web, el dominio de primer nivel o principal que representa un país consta de **dos letras**.
+
+---
+
+### 10. ¿Qué es una red informática?
+
+Una **red informática** es un **conjunto de equipos o dispositivos conectados entre sí mediante cables, señales y ondas, cuya finalidad es transportar datos** y compartir recursos (archivos, impresoras, conexión a Internet, etc.).
+
+La definición correcta incluye SIEMPRE estos tres elementos:
+- **Dispositivos** (no solo "equipos" ni solo "cables").
+- **Medios de unión:** cables, señales y ondas (es decir, medios guiados Y no guiados).
+- **Finalidad:** transportar datos (no únicamente "compartir documentos").
+
+> No es válido definirla solo como "cables" ni limitarla a "compartir documentos": una red transporta datos de cualquier tipo entre los dispositivos conectados.
+
+### 11. Clasificación de redes según la relación entre los ordenadores
+
+Según el **método de comunicación o la relación existente** entre los ordenadores conectados, las redes se dividen en:
+
+- **Redes cliente/servidor:** existe un equipo central (**servidor**) que ofrece servicios y recursos, y varios equipos (**clientes**) que los solicitan.
+- **Redes entre iguales (peer to peer, P2P o "entre pares"):** todos los equipos tienen el mismo rango y pueden actuar a la vez como cliente y como servidor, sin jerarquía.
+
+> Atención a no confundir esta clasificación con la de extensión geográfica (LAN, MAN, WAN) ni con la de titularidad (públicas, privadas, de valor añadido). La pregunta por "relación entre los ordenadores" se responde con **cliente/servidor y entre iguales**.
+
+### 12. Redes punto a punto vs. redes broadcast (de difusión)
+
+Según **cómo se transmite la información por el medio**, las redes se clasifican en dos grandes tipos:
+
+| Tipo | Definición |
+|------|-----------|
+| **Punto a punto** | Existen **conexiones individuales entre pares de máquinas**. La información viaja de un nodo a otro siguiendo un enlace dedicado; puede haber nodos intermedios que la reenvían. |
+| **Broadcast (difusión)** | **Todas las máquinas comparten un único medio de transmisión.** La información se emite por el canal y **la reciben todos los ordenadores**, pero **solo la utiliza aquel al que va dirigida**. |
+
+- **Red punto a punto:** aquella en la que existen **conexiones individuales entre pares de máquinas**.
+- **Red broadcast:** aquella que **transmite la información a todos los ordenadores, independientemente de si va dirigida a uno de ellos o a todos**; cada equipo comprueba si el mensaje es para él y lo descarta en caso contrario.
+
+### 13. Red de Área de Almacenamiento (SAN)
+
+La **red SAN** (**Storage Area Network**, Red de Área de Almacenamiento) es una red **concebida específicamente para conectar servidores de almacenamiento**, ayudando a mejorar la **rapidez, la seguridad y la eficiencia** en el acceso a los datos.
+
+- Dedica una red propia (independiente de la red de datos de los usuarios) al tráfico de almacenamiento.
+- No confundir con PAN (área personal) ni con denominaciones inexistentes como "CAS".
+
+### 14. Medios de transmisión: guiados y no guiados
+
+Se denomina **medio de transmisión** al **soporte físico mediante el cual el emisor y el receptor establecen la comunicación**. Atendiendo a la naturaleza de ese soporte, los medios de transmisión se clasifican en:
+
+- **Guiados (por cable):** la señal viaja confinada por un soporte físico.
+- **No guiados (inalámbricos):** la señal se propaga libremente por el aire o el espacio.
+
+> Cuidado con los distractores: "simplex / semidúplex / dúplex" clasifica el **sentido** de la comunicación, y "analógicos / digitales" clasifica el **tipo de señal**, pero la clasificación de los **medios de transmisión** propiamente dichos es **guiados y no guiados**.
+
+#### 14.1. Medios guiados
+
+| Medio guiado | Características |
+|--------------|----------------|
+| **Par trenzado (UTP/STP)** | Pares de cobre trenzados; el más común en redes LAN. |
+| **Cable coaxial** | Conductor central rodeado de malla; usado en antiguas LAN y TV. |
+| **Fibra óptica** | Transmite mediante pulsos de luz; gran ancho de banda, inmune a interferencias. |
+
+#### 14.2. Medios no guiados (inalámbricos)
+
+| Medio no guiado | Características |
+|-----------------|----------------|
+| **Infrarrojos** | **Distancias cortas; emisor y receptor deben estar en línea directa de visión** (no atraviesan paredes). |
+| **Microondas / Wi-Fi** | Ondas de radio de alta frecuencia; mayor alcance y sin necesidad de visión directa. |
+| **Bluetooth** | Radio de corto alcance para redes personales (PAN). |
+| **Radio / satélite** | Largas distancias mediante ondas de radio. |
+
+Cuando se afirma que un medio no guiado **"se utiliza para distancias cortas y que emisor y receptor deben estar en línea directa de visión"**, se está describiendo los **infrarrojos**.
+
+### 15. Cableado y conectores en redes LAN
+
+#### 15.1. Cable estándar de LAN: UTP
+
+El cable estándar de una conexión LAN es el **par trenzado no apantallado UTP** (*Unshielded Twisted Pair*). Es el medio guiado más extendido en redes locales Ethernet por su bajo coste y facilidad de instalación.
+
+> No confundir: **FDDI** es una tecnología de red en anillo sobre fibra; **RTB** es la Red Telefónica Básica. El estándar de cable LAN es **UTP**.
+
+#### 15.2. Conector de los cables de red Ethernet: RJ45
+
+Los cables de red que se conectan a la **tarjeta Ethernet** llevan un conector **RJ45** (un conector modular de 8 contactos, similar pero mayor que el RJ11 telefónico).
+
+#### 15.3. Conectores de fibra óptica
+
+Para líneas de **fibra óptica** existen distintos conectores según el uso:
+
+| Conector | Uso |
+|----------|-----|
+| **BFOC** | Conector tipo bayoneta (también conocido como ST) para fibra. |
+| **MT-Array** | Conector **multifibra de alta densidad**, utilizado en **transmisiones de alta intensidad de datos** (agrupa varias fibras en un mismo conector). |
+
+Para **transmisiones de fibra óptica de alta intensidad de datos**, el conector de referencia es el **MT-Array**, ya que permite agrupar múltiples fibras y manejar grandes volúmenes de tráfico.
+
+### 16. Dispositivos de red
+
+Un **router, un switch y un hub** son **dispositivos de red a los que los ordenadores se conectan y que gestionan el paso de la información entre ellos, distribuyendo los datos correctamente**. No son "capas" del modelo de comunicación, sino equipos físicos (hardware).
+
+| Dispositivo | Función |
+|-------------|---------|
+| **Hub (concentrador)** | Interconecta varios ordenadores de una red local; **reenvía los datos recibidos a TODOS los ordenadores conectados**, no solo al destinatario (trabaja por difusión). Es el más sencillo y poco eficiente. |
+| **Switch (conmutador)** | Interconecta equipos pero **envía los datos únicamente al ordenador destinatario** (gestiona direcciones), reduciendo el tráfico innecesario. |
+| **Router (encaminador)** | **Interconecta redes distintas** y dirige (encamina) el tráfico entre ellas; conecta, por ejemplo, la red local con Internet. |
+| **Módem** | Convierte la señal digital del ordenador en analógica para la línea (y viceversa). |
+
+El dispositivo que **interconecta varios ordenadores de una red local enviando los datos a todos ellos y no solo al destinatario** es el **hub**.
+
+#### 16.1. El módem como dispositivo mixto
+
+Un **módem** es un dispositivo **mixto**, es decir, de **entrada y de salida** a la vez: **modula** (convierte la señal digital del ordenador en analógica para transmitirla, función de salida) y **demodula** (convierte la señal analógica recibida en digital, función de entrada). De ahí su nombre: **MO**dulador-**DEM**odulador.
+
+#### 16.2. Tarjeta o adaptador de red
+
+Los **adaptadores físicos que se instalan en un ordenador para ofrecer un punto de conexión a una red** se denominan **tarjetas de red** (también llamadas adaptadores de red o NIC, *Network Interface Card*).
+
+El elemento **imprescindible para crear la conexión física** de un equipo a la red es el **adaptador de red** (tarjeta de red): sin él, el ordenador no puede conectarse al medio, ni siquiera disponiendo de hub, switch o protocolos.
+
+### 17. Estándares IEEE 802
+
+El **IEEE** (Instituto de Ingenieros Eléctricos y Electrónicos) ha definido la familia de estándares **802** para redes de área local y metropolitana. Los más relevantes:
+
+| Estándar | Tipo de red |
+|----------|-------------|
+| **802.3** | Redes **Ethernet** (LAN cableada, par trenzado). |
+| **802.5** | Redes **Token Ring** (paso de testigo en anillo). |
+| **802.11** | Redes **inalámbricas (Wi-Fi)**, en la banda de las **microondas**. |
+
+- El estándar definido por el IEEE para las **redes inalámbricas que utilizan la banda de las microondas** es el **802.11**.
+- El estándar **802.5** corresponde a las redes **Token Ring**.
+- El estándar **802.3** corresponde a las redes **Ethernet**.
+
+### 18. Seguridad en redes inalámbricas: WEP, WPA y WPA2
+
+En las comunicaciones inalámbricas se emplean **algoritmos de cifrado** para impedir que cualquier persona no autorizada acceda a la red:
+
+| Protocolo | Características |
+|-----------|----------------|
+| **WEP** (*Wired Equivalent Privacy*) | Primer sistema de cifrado Wi-Fi; **quedó obsoleto e inseguro** y fue **sustituido por WPA**. |
+| **WPA** (*Wi-Fi Protected Access*) | Sistema de cifrado destinado a **evitar que personas no autorizadas accedan a la red**; **sucesor del WEP**, con claves dinámicas (TKIP). |
+| **WPA2** | También conocido como **RSN** (*Robust Security Network*); se basa en el algoritmo criptográfico **AES** (*Advanced Encryption Standard*), **sustituto del clásico DES**. Es el estándar de seguridad robusto. |
+
+Puntos clave para examen:
+- El sistema de cifrado inalámbrico que evita el acceso no autorizado mediante un algoritmo de cifrado es el **WPA** (frente a distractores como "WEP2" o "WPS", que no son algoritmos de cifrado equivalentes).
+- El protocolo conocido como **RSN** (Robust Security Network), basado en **AES** y sustituto del **DES**, es el **WPA2**.
+- El protocolo **WEP** fue **sustituido por el WPA** (no existe un "WEP 2.0" estándar; WAP es un protocolo de aplicaciones móviles, no de cifrado Wi-Fi).
+- **WPS** (*Wi-Fi Protected Setup*) es un método para **configurar/conectar** dispositivos fácilmente, **no** un algoritmo de cifrado de seguridad.

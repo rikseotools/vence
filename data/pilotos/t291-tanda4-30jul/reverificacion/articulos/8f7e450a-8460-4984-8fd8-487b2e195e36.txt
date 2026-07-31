@@ -1,0 +1,232 @@
+LEY: La Red Internet
+ARTÍCULO: 6 — Protocolos y direccionamiento
+======================================================================
+## Protocolos y direccionamiento en Internet
+
+### 1. TCP/IP: la suite de protocolos de Internet
+
+**TCP/IP** es una **suite de protocolos** (conjunto de protocolos) que constituye la base de las comunicaciones en Internet. No es un virus informático, ni una suite ofimática, ni una extensión de navegador. Es un **tipo de protocolo** (suite de protocolos de red).
+
+| Protocolo | Nombre completo | Función principal |
+|-----------|----------------|-------------------|
+| **TCP** | Transmission Control Protocol | Control de transmisión fiable, segmentación y reensamblaje de datos |
+| **IP** | Internet Protocol | Direccionamiento y encaminamiento de paquetes |
+| **HTTP** | HyperText Transfer Protocol | Comunicación entre navegador y servidor web |
+| **HTTPS** | HTTP Secure | HTTP cifrado con SSL/TLS |
+| **FTP** | File Transfer Protocol | Transferencia de archivos entre un ordenador cliente y un servidor |
+| **SMTP** | Simple Mail Transfer Protocol | Envío de correo electrónico |
+| **IMAP** | Internet Message Access Protocol | Recepción de correo electrónico desde servidor |
+| **POP3** | Post Office Protocol v3 | Recepción de correo electrónico desde servidor |
+| **DNS** | Domain Name System | Resolución de nombres de dominio a direcciones IP |
+| **DHCP** | Dynamic Host Configuration Protocol | Asignación automática de direcciones IP en una red local |
+| **Telnet** | — | Conexión remota a terminales; no cifra las comunicaciones |
+
+Los **dos principales protocolos estándar para recibir correos electrónicos** desde un servidor de correo son **IMAP y POP3** (no IMAC ni SMPT).
+
+El protocolo **FTP** es el protocolo de transferencia de archivos entre un ordenador cliente y un servidor.
+
+### 2. Protocolo HTTP y HTTPS
+
+El protocolo que utilizan para comunicarse un servidor web y un navegador es **HTTP** (HyperText Transfer Protocol).
+
+El protocolo **HTTPS** garantiza la **integridad y confidencialidad de los datos transmitidos** entre el navegador y el servidor. No mejora la estética del sitio ni impide cargar imágenes.
+
+La tecnología que permite asegurar la autenticidad y confidencialidad de los datos en las comunicaciones web actuales es **SSL/TLS**.
+
+### 3. Protocolo Telnet
+
+**Telnet** es un protocolo estándar de **nivel de aplicación** (modelo OSI) que permite establecer una conexión remota entre un cliente y un servidor. La afirmación **incorrecta** sobre Telnet es que sea seguro: la conexión Telnet **no está cifrada** y no ofrece alta seguridad. Para conexiones remotas seguras se usa SSH.
+
+### 4. Modelo de capas TCP/IP (4 capas)
+
+El **modelo TCP/IP** comprende **4 capas**:
+
+| Capa | Descripción |
+|------|-------------|
+| **Capa de acceso a red** | Acceso físico a la red, recursos para transmitir datos a través de la red física |
+| **Capa de Internet** | Define los datagramas IP y administra las nociones de direcciones IP |
+| **Capa de transporte** | Permite que las aplicaciones que se ejecutan en equipos remotos puedan comunicarse |
+| **Capa de aplicación** | Contiene las aplicaciones de red que permiten la comunicación mediante las capas inferiores |
+
+La capa de **transporte** permite que las aplicaciones que se ejecutan en equipos remotos puedan comunicarse. La capa de **internet** define los datagramas y administra las nociones de direcciones IP. La capa de aplicación **contiene las aplicaciones de red**.
+
+### 5. Modelo OSI (7 capas)
+
+El **modelo OSI** (Open Systems Interconnection) es un modelo de referencia que comprende **7 capas**:
+
+1. Física
+2. Enlace de datos
+3. Red
+4. Transporte
+5. Sesión
+6. Presentación
+7. Aplicación
+
+**No existe ninguna capa denominada "capa de interconexión"** en el modelo OSI. Esa denominación no corresponde a ninguna de las siete capas.
+
+### 6. Direccionamiento IP: IPv4
+
+Cada ordenador conectado a Internet tiene una **dirección IP** (Internet Protocol) que lo identifica de forma única, representada por una serie de números.
+
+En **IPv4**:
+- Las direcciones tienen **4 octetos** (grupos de 8 bits), separados por puntos.
+- Los valores van de **0 a 255** (NO de 0 a 256). La afirmación de que van de 0 a 256 es **incorrecta**.
+- El espacio de direcciones IPv4 es de **32 bits**.
+- Las **direcciones IP privadas** (para redes locales) incluyen rangos como **192.168.x.x**, **10.x.x.x** y **172.16.x.x a 172.31.x.x**. Por ejemplo, **192.168.45.100** es una dirección privada típica.
+
+### 7. Direccionamiento IP: IPv6
+
+El motivo principal para crear **IPv6** fue el **agotamiento de las direcciones disponibles en IPv4**.
+
+Con IPv6:
+- El tamaño de las direcciones es de **128 bits**.
+- Las direcciones IPv6 se agrupan en **tres tipos básicos**:
+  - **Dirección de difusión única** (unicast)
+  - **Dirección de difusión múltiple** (multicast)
+  - **Dirección de difusión indiferente** (anycast)
+
+No existe una dirección de difusión genérica en IPv6 (a diferencia de IPv4, donde existía broadcast). La combinación correcta es: **unicast + multicast + anycast**.
+
+### 8. DHCP
+
+El servicio **DHCP** (Dynamic Host Configuration Protocol) permite la **obtención automática de direcciones IP** en una red local. Cuando en Windows se configura "obtención automática de dirección IP", se está usando el servicio DHCP.
+
+### 9. DNS
+
+El **DNS** (Domain Name System) es el servicio que **convierte nombres de dominio en direcciones IP**. Es esencial en Internet porque permite acceder a los recursos mediante nombres legibles en lugar de recordar números.
+
+La organización responsable de coordinar el sistema global de nombres de dominio (DNS) es la **ICANN**. La **IANA** gestiona la asignación técnica de números y parámetros bajo el paraguas de la ICANN.
+
+---
+
+### 10. Clases de direcciones IP (A, B y C)
+
+En **IPv4**, las direcciones se reparten tradicionalmente en **clases** según **cuántos bytes (octetos) se dedican a identificar la red** y cuántos a identificar a los hosts (ordenadores). Las clases **se enumeran con letras (A, B, C, D, E)**, NO con dígitos. Las que se usan para direccionamiento de equipos son la **A, B y C**.
+
+| Clase | Bytes para RED | Bytes para HOST | Estructura (R = red, H = host) | Uso típico |
+|-------|----------------|------------------|-------------------------------|------------|
+| **A** | 1 byte | 3 bytes | **R.H.H.H** | Redes enormes (pocas redes, muchísimos hosts) |
+| **B** | 2 bytes | 2 bytes | **R.R.H.H** | Redes medianas/grandes |
+| **C** | 3 bytes | 1 byte | **R.R.R.H** | Redes pequeñas (muchas redes, pocos hosts) |
+| **D** | — | — | Reservada para **multicast** | Difusión múltiple |
+| **E** | — | — | Reservada (experimental) | Investigación |
+
+**Reglas clave que conviene memorizar:**
+
+- En la **clase A**, el **primer bloque (primera serie de números) identifica a la RED** y los **tres bloques restantes identifican a los ordenadores (hosts)**.
+- En la **clase B**, los **dos primeros bloques identifican a la RED** y los **dos restantes a los hosts**.
+- En la **clase C**, los **tres primeros bloques identifican a la RED** y solo el **último identifica a los hosts**.
+
+Por tanto, la clase en la que **el primer bloque identifica a la red y los tres restantes al host es la clase A**. La clase en la que **el primer bloque identifica a la red y el resto a los ordenadores** también es la **clase A** (R.H.H.H).
+
+**Red doméstica WiFi:** una red de un **domicilio particular** con infraestructura inalámbrica tipo WiFi (pocos equipos) es habitualmente una red de **clase C** (rango privado típico 192.168.x.x, donde solo el último octeto varía para cada dispositivo, permitiendo un número reducido de hosts).
+
+### 11. Máscara de red y máscara de subred (subnetting)
+
+La **máscara de red** (o máscara de subred) es el elemento que **indica qué parte de la dirección IP corresponde a la RED y qué parte corresponde al HOST**. Se escribe como una secuencia de bits a 1 (parte de red) seguida de bits a 0 (parte de host); por ejemplo, 255.0.0.0 (clase A), 255.255.0.0 (clase B) o 255.255.255.0 (clase C).
+
+- Para **distinguir de qué clase es una dirección IP** (clase A, B o C) se utiliza **la máscara de red**, ya que es la que delimita los bytes de red frente a los de host. (No se usa para ello ni el DHCP ni el DNS.)
+- La **máscara de subred indica al sistema cuál es el esquema de particionamiento de la subred**, es decir, cómo se ha dividido (particionado) la red en subredes. NO es un identificador único de interfaz (eso es la IP o la MAC), ni un código que resuma un conjunto de datos (eso sería un hash/código).
+- **Modificando la máscara de red de un host se pueden crear subredes o superredes** en la red de comunicaciones: tomando bits de la parte de host se crean **subredes** (subnetting), y agrupando redes contiguas se crean **superredes** (supernetting/CIDR). No produce por sí misma pérdida de paquetes ni altera la velocidad.
+
+#### Direcciones especiales dentro de una red
+
+Dentro de cada red o subred hay dos direcciones que **no se pueden asignar a un host**:
+
+- **Dirección de red:** la primera del rango (parte de host todo a 0). **Identifica a la red en sí**.
+- **Dirección de broadcast (difusión):** la última del rango (parte de host todo a 1). **Es la dirección destino de los paquetes que deben recibir TODOS los equipos de la red** simultáneamente. No es la dirección de la red ni la de la puerta de enlace.
+
+#### Cálculo de IPs en asignación dinámica (DHCP)
+
+En una red con **asignación dinámica (DHCP)** hay que contar **una IP para cada host cliente que esté encendido a la vez MÁS una IP para la puerta de enlace (gateway/router)**, que siempre necesita su propia dirección.
+
+> **Ejemplo:** red con 5 host cliente de los que como mínimo deben estar encendidos y conectados **tres** a la vez. Mínimo de IPs = **3 (hosts encendidos) + 1 (puerta de enlace)** = **4 direcciones IP**.
+
+### 12. Tipos de transmisión: unicast, multicast y broadcast
+
+Según el número de destinatarios de una transmisión de datos:
+
+| Tipo | Destinatarios | Definición |
+|------|---------------|------------|
+| **Unicast** | Uno a uno | Intercambio de información entre **solo dos usuarios/equipos** de la red (una única fuente y un único destino) |
+| **Multicast** | Uno a varios (un grupo) | El paquete se entrega a un **grupo concreto** de equipos suscritos |
+| **Broadcast** | Uno a todos | El paquete lo reciben **todos** los equipos de la red (dirección de difusión) |
+
+Por tanto, una transmisión en la que **existe intercambio de información entre solo dos usuarios** de la red se denomina **unicast**.
+
+### 13. Direcciones MAC (dirección física / hardware)
+
+La **dirección MAC** (Media Access Control) es el **identificador físico o de hardware** que cada interfaz de red (tarjeta de red, adaptador WiFi…) trae grabado de fábrica y que la identifica de forma única.
+
+- Está compuesta por **6 bytes** (= 48 bits).
+- Se representa habitualmente como **6 grupos de dos dígitos hexadecimales** separados por dos puntos o guiones. Por ejemplo, **`00:1B:44:11:3A:B7`** es una **dirección MAC** (no una IP ni un nombre DNS).
+- A diferencia de la IP (lógica, puede cambiar), la MAC es la dirección **física** del dispositivo.
+
+### 14. ARP y RARP: resolución de direcciones
+
+| Protocolo | Convierte | Función |
+|-----------|-----------|---------|
+| **ARP** (Address Resolution Protocol) | IP → MAC | **Protocolo de resolución de direcciones**: a partir de una dirección **IP** conocida, encuentra la **dirección de hardware (Ethernet/MAC)** correspondiente |
+| **RARP** (Reverse ARP) | MAC → IP | **Protocolo de resolución de direcciones inversa**: a partir de una **dirección hardware (MAC)** conocida, obtiene la **dirección IP** correspondiente |
+
+- El protocolo responsable de **encontrar la dirección de hardware (Ethernet MAC) que corresponde a una determinada dirección IP** es el **ARP** (Protocolo de resolución de direcciones).
+- El protocolo utilizado para **resolver la dirección IP a partir de una dirección hardware** dada (la operación inversa) es el **RARP** (Protocolo de resolución de direcciones inversa). No debe confundirse con IARP.
+
+### 15. ICMP y el comando PING
+
+El protocolo **ICMP** (Internet Control Message Protocol) es un protocolo de la capa de Internet que se utiliza para **detectar y notificar errores en la red** y para enviar mensajes de control y diagnóstico entre equipos. No transporta datos de aplicación de usuario.
+
+El comando **ping** es la herramienta de diagnóstico que **comprueba el estado de la comunicación del ordenador local con uno o varios equipos remotos** que ejecuten IP:
+
+- El comando **ping utiliza el protocolo ICMP** (envía mensajes ICMP de tipo *echo request* y espera *echo reply*). No usa RIP ni IGMP.
+- Permite saber si **un sistema está accesible**: comprueba mediante el programa del mismo nombre **si el destino de la emisión de datos está disponible y se realiza la transmisión** (mide también la latencia y la pérdida de paquetes). No "refresca" ni reinicia nada.
+
+> Otros comandos relacionados: **ipconfig** muestra la configuración IP del equipo, **netstat** muestra las conexiones de red activas y **traceroute/tracert** muestra la ruta (saltos) hasta el destino. Para *comprobar conectividad* la respuesta es siempre **ping**.
+
+### 16. Direcciones de Internet: la URL y sus partes
+
+Una **dirección de Internet** es una **URL** (Uniform Resource Locator): es la forma estándar de localizar un recurso en la red. No es lo mismo que WWW (un servicio) ni que FTP (un protocolo).
+
+Estructura general de una URL:
+
+```
+protocolo://nombre_de_dominio/ruta(path)/recurso
+http://www.google.es/intercomunicaciones.html
+```
+
+| Parte | Ejemplo | Qué es |
+|-------|---------|--------|
+| **Protocolo** | `http` | Protocolo de acceso al recurso |
+| **Nombre de dominio** | `google.es` (en `www.google.es`) | Identifica el **dominio** del servidor |
+| **Ruta o path** | carpetas intermedias | Camino de directorios hasta el recurso |
+| **Recurso / archivo** | `e_basica.html` | Documento solicitado |
+
+**Ejemplos resueltos:**
+
+- En `http://www.google.es/intercomunicaciones.html`, la parte que representa el **nombre del dominio** es **`google.es`** (`http` es el protocolo; `intercomunicaciones.html` es el archivo/recurso).
+- En `http://www.policia.es/oposiciones/e_basica.html`, la **ruta o path** es **`oposiciones/e_basica.html`** (todo lo que va tras el dominio: las carpetas más el recurso final).
+
+### 17. ADSL (acceso a Internet por par de cobre)
+
+El **ADSL** (Asymmetric Digital Subscriber Line) es una tecnología de acceso a Internet de **banda ancha sobre la línea telefónica de par de cobre**.
+
+- Es una **línea completamente digital que sirve a la vez para conectarse a Internet y para llamar por teléfono** sobre el mismo par de cobre.
+- Para poder **hablar y navegar al mismo tiempo**, la voz y los datos **se transmiten en frecuencias diferentes pero en el mismo instante de tiempo** sobre el mismo cable: la voz viaja en la banda de baja frecuencia y los datos en bandas de alta frecuencia, por lo que **no se interfieren**. Un **filtro o splitter** separa ambas señales. (No viajan por cables distintos ni hace falta convertir la voz a TCP/IP.)
+- El término **asimétrica** indica que la velocidad de **bajada (descarga)** es mayor que la de **subida**.
+
+### 18. Comunicación del correo electrónico: asíncrona
+
+El **correo electrónico** es un servicio de comunicación **asíncrona**: el emisor envía el mensaje y el receptor **no tiene por qué estar conectado en ese mismo momento**; lo leerá cuando quiera. No requiere coincidencia temporal entre las partes (a diferencia de un chat o una videollamada, que son síncronos).
+
+### 19. Protocolo WAP (acceso a Internet desde móviles antiguos)
+
+El **WAP** (Wireless Application Protocol) es el **protocolo pensado para las pequeñas pantallas de los antiguos teléfonos móviles**, que permitía un acceso simplificado a contenidos de Internet adaptados a sus limitaciones.
+
+- Las páginas WAP se escribían en **WML** (Wireless Markup Language), un lenguaje de marcado que **solo permitía texto y gráficos simples**.
+- WAP es un **protocolo de aplicación**; no debe confundirse con tecnologías de acceso a la red móvil como **GPRS** o **3G**, que son tecnologías de transmisión de datos móviles, ni con WML, que es el lenguaje.
+
+### 20. Calidad de servicio (QoS) en IPv6 y puerto de DNS
+
+Además de ampliar enormemente el espacio de direcciones (128 bits frente a 32 bits de IPv4), **IPv6 integra por defecto la calidad de servicio (QoS)**: incorpora en la cabecera campos (*Traffic Class* y *Flow Label*) que permiten **configurar distintas prioridades según el tipo de información que contenga un paquete**, mejorando la gestión del tráfico en tiempo real (voz, vídeo). IPv6 **no** introduce un nuevo tipo de dirección broadcast (de hecho elimina el broadcast clásico, sustituido por multicast/anycast).
+
+**Puerto del servicio DNS:** el sistema de nombres de dominio (DNS) utiliza el **puerto 53, tanto en TCP como en UDP (TCP/53 y UDP/53)**. Usa UDP/53 para las consultas habituales de resolución y TCP/53 para operaciones de mayor tamaño (por ejemplo, transferencias de zona).

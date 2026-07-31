@@ -1,0 +1,9 @@
+{
+  "question_id": "7073ba96-4545-40f0-bb8f-cc4bd215f367",
+  "gravedad": "media",
+  "tipo": "afirmacion_falsa",
+  "donde": "razón de la opción C",
+  "que_dice": "la autorización previa y el plazo de quince días prorrogables por igual plazo corresponden al estado de excepción",
+  "que_dice_el_articulo": "CE, art. 116.3: \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados. La autorización y proclamación del estado de excepción deberá determinar expresamente los efectos del mismo, el ámbito territorial a que se extiende y su duración, que no podrá exceder de TREINTA días, prorrogables por otro plazo igual, con los mismos requisitos.\" El plazo del estado de excepción es de TREINTA días, no de quince (los quince días son el plazo del estado de ALARMA, art. 116.2, que no exige autorización previa sino solo dar cuenta).",
+  "correccion_propuesta": "El estado de alarma no requiere autorización previa del Congreso para su declaración, solo darle cuenta, por lo que la exigencia de autorización previa que recoge esta opción no corresponde a la alarma. El estado de excepción sí exige esa autorización previa del Congreso, pero su plazo es de treinta días (no de quince, como dice esta opción), por lo que la combinación de esta opción no coincide con ninguno de los dos estados regulados en el artículo 116."
+}

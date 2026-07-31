@@ -1,0 +1,527 @@
+LEY: Outlook 365
+ARTÍCULO: 1 — Conceptos y funcionamiento
+======================================================================
+## Qué es el correo electrónico
+
+> **El correo electrónico** es un servicio de red que permite enviar y recibir mensajes digitales a través de redes de comunicación electrónica. Funciona de forma análoga al correo postal tradicional, pero se realiza íntegramente por Internet, con entrega prácticamente instantánea.
+
+El correo electrónico es un **sistema de comunicación asíncrona**: el emisor envía el mensaje cuando lo desea y el receptor lo lee cuando le conviene, sin necesidad de que ambos estén conectados simultáneamente.
+
+### Ventajas del correo electrónico
+
+- **Rapidez**: entrega prácticamente inmediata.
+- **Coste**: sin coste adicional más allá de la conexión a Internet.
+- **Adjuntos**: permite enviar documentos, imágenes, vídeos, etc.
+- **Registro**: queda constancia de todos los mensajes.
+- **Accesibilidad**: desde cualquier dispositivo con Internet.
+- **Masividad**: envío a múltiples destinatarios simultáneamente.
+
+> **Importante**: El correo puede **dificultar la concentración** (interrumpe el flujo de trabajo); esto NO es una ventaja.
+
+### Elementos mínimos para enviar un correo
+
+Para que un correo electrónico pueda enviarse correctamente son necesarios **tres elementos mínimos**:
+
+1. **Destinatario** (dirección de correo en el campo Para, CC o CCO)
+2. **Remitente** (Sender / campo De) — la cuenta desde la que se envía
+3. **Mensaje** (cuerpo del correo)
+
+El asunto es **opcional** desde el punto de vista técnico, aunque se considera altamente recomendable porque ayuda al destinatario a identificar el contenido antes de abrir el mensaje. El único campo verdaderamente imprescindible para que Outlook permita el envío es la **dirección del destinatario**.
+
+---
+
+## Estructura de una dirección de correo electrónico
+
+El formato estándar de una dirección de correo electrónico, definido por la norma **RFC 5322**, es:
+
+```
+nombre_buzon@servidor_de_correo
+```
+
+| Parte | Nombre técnico | Ejemplo en `nombre.apellido@upm.es` |
+|---|---|---|
+| Parte izquierda del @ | Nombre de usuario / buzón | `nombre.apellido` |
+| Símbolo separador | Arroba (@) | `@` |
+| Parte inmediatamente tras el @ | Host / servidor de correo | `upm` |
+| Dominio completo (host + extensión) | Dominio de correo | `upm.es` |
+| Extensión final | Dominio de nivel superior (TLD) | `.es` |
+
+Ejemplos de direcciones válidas: `mi_nombre@mihogar.com`, `lope.de.vega@inap.es`, `abcdef@gmail.es`
+
+### Límites técnicos de las direcciones
+
+Según el estándar **RFC 5321**, una dirección de correo electrónico puede tener un máximo de **320 caracteres** en total:
+- Hasta **64 caracteres** para la parte local (nombre de usuario, antes de la @)
+- Hasta **255 caracteres** para el dominio (parte tras la @)
+
+### Partes estructurales de un mensaje de correo
+
+Un mensaje de correo electrónico se compone de **dos partes fundamentales**:
+
+- **Cabecera (header)**: contiene los campos De, Para, CC, CCO, Asunto, fecha y demás metadatos del mensaje.
+- **Cuerpo del mensaje**: la zona donde el remitente redacta el contenido principal, el texto o información que desea comunicar.
+
+Los archivos adjuntos forman parte del contenido del mensaje y se envían junto con él a través de los servidores de correo.
+
+---
+
+## Protocolos de correo electrónico
+
+Los protocolos regulan cómo se envían, reciben y almacenan los correos. Los principales son:
+
+### SMTP — Protocolo de envío
+
+> **SMTP** (Simple Mail Transfer Protocol) es el protocolo estándar para el **envío** de correos electrónicos entre servidores y desde clientes de correo hacia los servidores.
+
+SMTP localiza al servidor destinatario mediante consultas al **DNS**. Por sí solo no puede entregar el correo en el buzón final del usuario; necesita obligatoriamente de **POP3 o IMAP** para esa entrega final. Su función es exclusivamente el **envío** (no la recepción).
+
+### POP3 — Protocolo de recepción clásico
+
+> **POP3** (Post Office Protocol versión 3) es el protocolo que usan los clientes de correo para **recibir y descargar** los mensajes almacenados en un servidor remoto.
+
+Características clave de POP3:
+
+- **Descarga los mensajes** del servidor al dispositivo local.
+- **Por defecto, elimina los mensajes del servidor** una vez descargados (configurable para conservar copias).
+- Los mensajes quedan almacenados **localmente**; no sincroniza carpetas ni estado de lectura entre dispositivos.
+
+### IMAP — Protocolo de recepción moderno
+
+> **IMAP** (Internet Message Access Protocol) permite acceder y sincronizar los correos almacenados en el servidor desde cualquier dispositivo con conexión a Internet.
+
+Características clave de IMAP:
+
+- Los mensajes permanecen **sincronizados en el servidor** de forma permanente.
+- Permite acceso desde **múltiples dispositivos** con estado sincronizado (leído/no leído, carpetas...).
+- **Requiere conexión a Internet** continua, ya que trabaja en línea con el servidor.
+- Los cambios realizados en un dispositivo se reflejan en todos los demás.
+
+### Tabla comparativa: POP3 vs IMAP
+
+| Característica | POP3 | IMAP |
+|---|---|---|
+| Almacenamiento de mensajes | En el dispositivo local | En el servidor |
+| Sincronización multidispositivo | No | Sí |
+| Conexión permanente necesaria | No (solo para descargar) | Sí (trabaja en línea) |
+| Elimina mensajes del servidor | Sí (por defecto) | No |
+| Sincronización de carpetas | No | Sí |
+| Adecuado para múltiples dispositivos | No | Sí |
+| Uso sin conexión tras descarga | Sí | Limitado |
+
+### Microsoft Exchange
+
+> **Exchange** es el protocolo y servidor de mensajería de Microsoft, diseñado para entornos empresariales. Va mucho más allá de la simple gestión de correo electrónico.
+
+A diferencia de IMAP y POP3, Exchange proporciona:
+
+- Sincronización bidireccional en tiempo real entre todos los dispositivos.
+- Gestión integrada de **correo, calendario, contactos y tareas**.
+- Funciones colaborativas: carpetas compartidas, delegación de acceso, convocatorias de reunión.
+- La posibilidad de recuperar mensajes enviados (si el destinatario no los ha abierto y ambos usan Exchange).
+
+### MAPI
+
+> **MAPI** (Messaging Application Programming Interface) es el protocolo de Microsoft que permite la integración profunda entre Outlook y los servidores Exchange, sincronizando funciones avanzadas como calendario, contactos y tareas en tiempo real.
+
+### Otros protocolos relacionados
+
+| Protocolo | Nombre completo | Función |
+|---|---|---|
+| DNS | Domain Name System | Resolución de nombres de dominio (necesario para SMTP) |
+| SSL | Secure Sockets Layer | Cifrado de comunicaciones de correo |
+| TLS | Transport Layer Security | Cifrado moderno de comunicaciones (sucesor de SSL) |
+| FTP | File Transfer Protocol | Transferencia de archivos (NO es un protocolo de correo) |
+| HTTP/HTTPS | HyperText Transfer Protocol (Secure) | Protocolo web (usado en webmail) |
+| RTP | Real-time Transport Protocol | Transmisión de audio y vídeo en tiempo real (NO es de correo) |
+
+> **FTP** y **DNS** no son protocolos de correo. DNS es necesario para SMTP (resuelve nombres) pero no es de correo. TLS y SSL son tecnologías de cifrado. Las tres formas habituales de acceder al correo son: **POP, IMAP y webmail**.
+
+---
+
+## Campos de un mensaje de correo electrónico
+
+### Campo Para (destinatarios principales)
+
+> El campo **"Para"** indica los **destinatarios principales** del mensaje. Se pueden incluir varias direcciones separadas por **punto y coma (;)**. El límite en Outlook 365 es de **500 destinatarios únicos** por mensaje.
+
+### Campo CC (Copia Carbón)
+
+> El campo **CC** (Con Copia / Copia Carbón) permite enviar una copia del mensaje a destinatarios adicionales. **Todos los receptores** (Para, CC y CCO) pueden ver las direcciones del campo CC.
+
+Si un destinatario en CC usa "Responder a todos", todos los destinatarios de Para y CC verán la respuesta.
+
+### Campo CCO (Copia Carbón Oculta)
+
+> El campo **CCO** (Con Copia Oculta / Copia Carbón Oculta) permite incluir destinatarios que reciben el mensaje pero **cuya identidad permanece oculta** para todos los demás destinatarios (ni los del campo Para ni los de CC pueden ver a quienes están en CCO).
+
+Los destinatarios en CCO **no pueden ver** las direcciones de los demás (ni Para, ni CC, ni otros CCO). Solo el **remitente** sabe a quiénes se envió la copia oculta. Los destinatarios en CCO que usen "Responder a todos" solo responden al remitente.
+
+### Tabla comparativa: Para, CC y CCO
+
+| Campo | Visibilidad para otros | Uso |
+|---|---|---|
+| **Para** | Visible para todos | Destinatarios principales |
+| **CC** | Visible para todos | Destinatarios secundarios informados |
+| **CCO** | Oculto para todos | Destinatarios privados, sin revelar su identidad |
+
+### Campo Asunto
+
+> El campo **Asunto** sirve para describir brevemente el tema o motivo del mensaje, facilitando al destinatario identificar de qué trata antes de abrirlo.
+
+El asunto es **opcional** desde el punto de vista técnico, pero altamente recomendable. En Outlook, el asunto muestra prefijos automáticos según la acción realizada:
+
+| Prefijo | Significado |
+|---|---|
+| **RE:** | Respuesta a un correo recibido previamente (del inglés *Reply*) |
+| **RV:** | Reenvío de un mensaje anterior (en español, *Reenviado*) |
+
+### Campo De, Cuerpo y Archivos adjuntos
+
+El campo **De** identifica al remitente y se rellena automáticamente con la cuenta configurada.
+
+> El **cuerpo del mensaje** es la zona donde el remitente redacta el contenido principal del correo.
+
+Los archivos adjuntos se envían como parte del contenido del mensaje. El envío no está condicionado a que el receptor tenga el programa para abrirlos; se transmiten como datos binarios. El **tamaño máximo** depende del **servidor de correo** (Exchange, Outlook.com...) y la configuración. El límite predeterminado en Outlook 365 es de **25 MB** por mensaje. Por seguridad, Outlook bloquea por defecto los archivos ejecutables (`.exe`).
+
+---
+
+## Seguridad en el correo electrónico
+
+### Spam (correo no deseado)
+
+> El **spam** (también llamado correo basura) son mensajes no solicitados, no deseados o de remitente desconocido, enviados de forma masiva, generalmente con fines publicitarios o comerciales.
+
+El spam se reconoce porque llega de forma periódica, en grandes cantidades, de remitentes desconocidos. El elemento más importante para evitarlo son los **filtros**. Outlook dispone del **Filtro de correo electrónico no deseado** que mueve el spam a la carpeta **Correo no deseado**.
+
+### Phishing
+
+> El **phishing** consiste en correos electrónicos fraudulentos que pretenden captar ilícitamente datos personales, especialmente información bancaria o credenciales de acceso, mediante la suplantación de identidad de entidades legítimas.
+
+Los correos de phishing suelen suplantar a bancos, administraciones públicas u otras entidades conocidas para engañar al usuario y obtener sus datos.
+
+### Hoax
+
+> Un **hoax** es una cadena de correos que difunde información falsa (bulos, noticias falsas) de manera masiva a través del correo electrónico.
+
+### Cifrado, 2FA y recomendaciones de seguridad
+
+Los servidores de correo modernos usan **SSL** y **TLS** para cifrar las comunicaciones. **S/MIME** y **PGP** son estándares de cifrado de extremo a extremo para el contenido de los mensajes. DNS no es tecnología de cifrado.
+
+No habilitar la **autenticación de dos factores (2FA)** aumenta el riesgo de accesos no autorizados. Algunos servicios requieren una **contraseña de aplicación** al configurar Outlook. Las buenas prácticas incluyen no abrir correos de remitentes desconocidos, no clicar en enlaces sospechosos y no descargar adjuntos inesperados.
+
+---
+
+## Webmail vs. cliente de correo de escritorio
+
+| Característica | Webmail | Cliente de escritorio (ej. Outlook) |
+|---|---|---|
+| Acceso | Desde el navegador web | Mediante aplicación instalada |
+| Instalación | No requiere | Sí requiere |
+| Trabajo sin conexión | Limitado o ninguno | Sí (con modo caché) |
+| Sincronización | Siempre actualizado | Depende de la sincronización |
+| Almacenamiento | En el servidor | Puede ser local o en servidor |
+| Ejemplos | Gmail (web), Outlook.com | Microsoft Outlook, Mozilla Thunderbird |
+
+> **Mozilla Thunderbird** es un **cliente de correo de escritorio**, no un webmail. Se instala localmente y accede al correo mediante IMAP o POP3. Gmail y Outlook.com son ejemplos de webmail.
+
+---
+
+## Formatos de mensaje en Outlook
+
+Outlook permite redactar correos en tres formatos de texto, accesibles desde la pestaña **Formato de texto**:
+
+| Formato | Características | Uso recomendado |
+|---|---|---|
+| **HTML** | Texto enriquecido, imágenes, tablas, listas, estilos. Es el formato predeterminado. | Comunicaciones externas y generales |
+| **Texto sin formato** | Sin formato alguno. **Máxima compatibilidad** con cualquier plataforma o dispositivo. | Compatibilidad universal |
+| **Texto enriquecido (RTF)** | Admite algunas características de formato. Formato **propietario de Microsoft**, usado principalmente en mensajería interna Exchange. | Entornos internos Exchange |
+
+> **El formato HTML es el predeterminado en Outlook 365** y el que ofrece mayores posibilidades de formato (imágenes, tablas, listas con viñetas, formatos avanzados). **PDF y XML no son formatos de redacción** de correos en Outlook.
+
+---
+
+## Microsoft Outlook 365
+
+> **Outlook 365** es el programa de gestión de información personal de Microsoft, incluido en el paquete Microsoft 365. Integra correo electrónico, calendario, contactos, tareas y notas en una sola aplicación.
+
+### Interfaz principal de Outlook
+
+La interfaz de Outlook 365 se organiza en varias áreas:
+
+- **Cinta de opciones**: contiene las pestañas **Archivo, Inicio, Enviar y Recibir, Carpeta y Vista**.
+- **Panel de carpetas** (a la izquierda): muestra las carpetas del buzón. El número entre paréntesis junto al nombre de cada carpeta indica los **mensajes sin leer**.
+- **Panel de navegación** (inferior): accesos directos a Correo, Calendario, Contactos, Tareas. Muestra hasta **8 botones o iconos** como máximo. La opción "Vistas" no forma parte de la barra de acceso rápido.
+- **Panel de lectura**: muestra el contenido del mensaje seleccionado.
+- **Barra de estado** (inferior): muestra el número de elementos y el estado de conexión. NO muestra "Lista de contactos favoritos" ni "Mensajes en seguimiento".
+
+### Configuración inicial y gestión de cuentas
+
+La **primera acción** al usar Outlook 365 es configurar una cuenta de correo. La configuración automática requiere: nombre del usuario, dirección de correo y contraseña. **No se requiere** teléfono ni correo alternativo. Para enviar correos es imprescindible configurar la **dirección del servidor SMTP**.
+
+Outlook 365 permite configurar **varias cuentas en un mismo perfil**, sin límite fijo. Para cada cuenta se configuran los protocolos correspondientes (SMTP para envío, IMAP/POP3 para recepción).
+
+---
+
+## Carpetas del buzón de Outlook
+
+Las carpetas estándar que se encuentran en cualquier gestor de correo electrónico son:
+
+| Carpeta | Contenido |
+|---|---|
+| **Bandeja de entrada** | Mensajes recibidos |
+| **Bandeja de salida** | Mensajes pendientes de envío (cola temporal) |
+| **Elementos enviados** | Copia de los mensajes enviados correctamente |
+| **Borradores** | Mensajes en redacción guardados sin enviar |
+| **Correo no deseado** | Mensajes identificados como spam |
+| **Elementos eliminados / Papelera** | Mensajes borrados (recuperables) |
+| **Archivo** | Mensajes archivados sin borrar |
+
+> **"Bandeja de importantes"** no es una carpeta universal estándar en todos los gestores de correo.
+
+### Bandeja de salida
+
+La **Bandeja de salida** actúa como cola de envío temporal. Cuando se pulsa "Enviar" en Outlook, el mensaje pasa primero por la bandeja de salida antes de ser transmitido al servidor. Si un mensaje permanece en la bandeja de salida, es señal de que **está pendiente de envío** (puede deberse a problemas de conexión o configuración).
+
+### Borradores
+
+Los correos en proceso de redacción guardados sin enviar se almacenan en la carpeta **Borradores**. Outlook guarda automáticamente los mensajes en redacción en Borradores cada **3 minutos** por defecto.
+
+Si se cierra Outlook mientras se está redactando un mensaje y se guardan los cambios, el correo queda en **Borradores** disponible para continuar editándose.
+
+### Archivado
+
+La función **Archivar** mueve el mensaje a la carpeta de archivo, donde permanece accesible para consulta y búsqueda posterior sin ocupar espacio en la bandeja de entrada principal (no lo borra). La opción **Purgar** elimina permanentemente los correos de la carpeta de Elementos eliminados, sin posibilidad de recuperación.
+
+### Limpieza del buzón
+
+La herramienta **Limpieza del buzón** (Archivo → Herramientas → Limpieza del buzón) ofrece:
+
+- Buscar elementos por antigüedad y tamaño
+- Autoarchivar
+- Vaciar elementos eliminados
+
+---
+
+## Acciones sobre mensajes recibidos
+
+### Responder vs. Responder a todos vs. Reenviar
+
+| Acción | Destinatario de la respuesta | Adjuntos del original |
+|---|---|---|
+| **Responder** | Solo al remitente original | No se incluyen |
+| **Responder a todos** | Al remitente y a todos los destinatarios visibles (Para y CC) | No se incluyen |
+| **Reenviar (RV)** | A un nuevo destinatario elegido por el usuario | Sí se incluyen automáticamente |
+
+> **Responder** (flecha curvada hacia la izquierda) **no** envía la respuesta a todos los destinatarios del mensaje original; solo al remitente. Para incluir a todos, se debe usar "Responder a todos".
+
+### Iconos visuales en mensajes
+
+| Icono | Significado |
+|---|---|
+| Flecha azul hacia abajo | Importancia baja |
+| Exclamación roja (!) | Importancia alta / mensaje urgente |
+| Clip (sujetapapeles) | El mensaje contiene archivos adjuntos |
+| Flecha curvada hacia la izquierda | Mensaje al que se ha respondido |
+| Bandera roja | Mensaje marcado para seguimiento |
+| Sobre cerrado | Mensaje sin leer |
+
+### Importancia, lectura e ignorar conversación
+
+Los mensajes pueden marcarse con tres niveles de importancia: **alta** (exclamación roja !), **normal** (sin icono) y **baja** (flecha azul hacia abajo).
+
+**Marcar como leído** elimina el resaltado de mensaje nuevo. Si se marca como "No leído" tras haberlo abierto, Outlook muestra de nuevo el sobre cerrado, pero conserva internamente la fecha de lectura original.
+
+La opción **Ignorar conversación** mueve los mensajes actuales y **futuros** de esa conversación a Elementos eliminados de forma automática.
+
+---
+
+## Reglas de correo en Outlook
+
+> Una **regla de correo** en Outlook 365 es una instrucción que el programa ejecuta automáticamente sobre los mensajes según condiciones que el usuario define.
+
+Las reglas permiten: clasificar mensajes, moverlos a carpetas, eliminarlos, marcarlos, cambiar su importancia, reenviarlos, etc.
+
+### Tipos de reglas
+
+Outlook 365 distingue **dos tipos de reglas**:
+
+- **Reglas basadas en servidor**: se ejecutan en el servidor Exchange aunque Outlook esté cerrado.
+- **Reglas solo de cliente**: se ejecutan únicamente cuando Outlook está abierto en el equipo.
+
+### Crear una regla
+
+Para crear una regla desde un mensaje existente: **clic con el botón derecho → Reglas → Crear regla**.
+
+Las reglas se administran desde: **Inicio → Reglas → Administrar reglas y alertas**.
+
+Una regla configurada para aplicarse "al recibir mensajes" se ejecuta en el **momento exacto de la recepción**, sin necesidad de ninguna acción manual.
+
+### Limitaciones de las reglas
+
+Las reglas automáticas de Outlook **no pueden modificar el contenido del cuerpo del mensaje**. Sí pueden mover, marcar, responder automáticamente y realizar otras acciones sobre el mensaje, pero el cuerpo del texto queda fuera de su alcance.
+
+Si se desactiva una regla, esta **deja de ejecutarse automáticamente** sin ser eliminada, y puede reactivarse cuando se desee.
+
+### Diferencia entre regla y filtro
+
+| | Regla | Filtro de búsqueda |
+|---|---|---|
+| Ejecución | Automática | Manual |
+| Propósito | Automatizar acciones | Mostrar mensajes según criterio |
+| Configuración | Condición + acción | Criterio de visualización |
+
+---
+
+## Búsqueda en Outlook
+
+La **barra de búsqueda** de Outlook 365 (parte superior de la interfaz) permite localizar rápidamente correos, contactos, citas y otros elementos del buzón.
+
+### Sintaxis de búsqueda avanzada
+
+| Búsqueda | Descripción |
+|---|---|
+| `"frase exacta"` | Busca la frase entre comillas de forma literal |
+| `Asunto:oferta NO primera` | Busca mensajes cuyo asunto contiene "oferta" pero no "primera" |
+| Texto sin comillas (ej: `pone`) | Busca palabras que contienen ese fragmento (ponencia, poner, ponente) |
+
+### Ámbito de búsqueda
+
+Cuando se tiene más de una cuenta configurada y se selecciona "Buzón actual", la búsqueda se realiza sobre **todas las carpetas del buzón de la cuenta activa**, no sobre todas las cuentas.
+
+### Filtrar correo electrónico
+
+El comando **Filtrar correo electrónico** (disponible en la cinta de opciones) permite mostrar únicamente los mensajes que cumplan un determinado criterio: sin leer, con adjuntos, de hoy, de la última semana, etc.
+
+---
+
+## Categorías en Outlook
+
+> Las **categorías** son una herramienta de organización visual que permite clasificar mensajes, citas, contactos y tareas mediante colores y etiquetas personalizadas.
+
+Se pueden asignar **múltiples categorías a un mismo elemento**. Mejoran la organización de todos los elementos de la aplicación (correos, calendario, contactos, tareas) y permiten agruparlos y localizarlos con mayor facilidad mediante **colores**.
+
+---
+
+## Seguimiento de mensajes
+
+> El **seguimiento de mensajes** en Outlook permite añadir avisos y recordatorios tanto a los correos recibidos como a los enviados, para no olvidar acciones pendientes relacionadas con ese mensaje.
+
+Al marcar un correo con seguimiento, Outlook **crea automáticamente una tarea asociada** a ese mensaje en la lista de tareas.
+
+### Marcas de seguimiento predeterminadas
+
+Las marcas de seguimiento predeterminadas disponibles en Outlook son:
+
+- **Hoy**
+- **Mañana**
+- **Esta semana**
+- **La próxima semana**
+- **Sin fecha**
+- **Personalizar**
+
+> **"La semana pasada"**, **"Ayer"** y **"Este mes"** NO son marcas de seguimiento predeterminadas. El seguimiento se orienta hacia el futuro, no hacia el pasado.
+
+Un mensaje puede tener marcas de importancia (alta/normal/baja) y marcas de seguimiento **simultáneamente**; ambas configuraciones coexisten de forma independiente.
+
+---
+
+## Firmas, respuestas automáticas y envío programado
+
+> La **firma** en Outlook 365 inserta automáticamente un bloque de texto personalizado al final de los mensajes. Se pueden crear **varias firmas** para distintos propósitos (nueva, respuesta, reenvío).
+
+> Las **respuestas automáticas** (fuera de oficina) permiten enviar un mensaje predefinido automáticamente cuando el usuario no está disponible. Se configuran desde **Archivo → Respuestas automáticas**.
+
+La opción **Retrasar entrega** (pestaña Opciones al redactar) permite programar el envío para una fecha y hora futuras. El mensaje permanece en la **Bandeja de salida** hasta la hora programada. Con cuenta Exchange/Microsoft 365, si Outlook está cerrado, el correo **se envía desde los servidores en la nube**.
+
+El atajo de teclado para enviar un correo en Outlook 365 es **Ctrl + Enter**.
+
+---
+
+## Recuperar un mensaje enviado
+
+En Outlook 365 es posible recuperar un mensaje enviado si: el destinatario **no lo ha abierto aún** y **ambos** (remitente y destinatario) están conectados a un servidor **Microsoft Exchange**. Si no se cumplen estas condiciones, no es posible recuperarlo.
+
+---
+
+## Modo sin conexión y sincronización
+
+La opción **Trabajo sin conexión** (pestaña Enviar/Recibir) desconecta Outlook del servidor. Mientras está activa, **no se pueden enviar ni recibir mensajes nuevos**; los mensajes redactados quedan en la Bandeja de salida. En **modo caché**, los mensajes escritos también quedan retenidos hasta recuperar la conexión.
+
+La sincronización automática es cada **30 minutos** por defecto. Para forzar la recepción manual: pestaña **"Enviar y recibir"** → **"Actualizar carpeta"**.
+
+---
+
+## Libreta de direcciones y contactos
+
+> La **libreta de direcciones** en Outlook 365 integra los contactos propios del usuario con las listas de distribución y directorios disponibles según la cuenta configurada (p. ej. el directorio global de Exchange).
+
+- Se puede tener **más de una libreta de direcciones** (corresponden a carpetas de Contactos distintas).
+- Los contactos se almacenan en el **servidor de correo** cuando se usa Outlook con Exchange/Microsoft 365.
+
+### Gestión de contactos
+
+Un contacto en Outlook puede tener múltiples **direcciones de correo** (correo 1, 2, 3...), teléfonos, dirección postal, empresa, campo **Notas** y categorías de color. Un contacto **no puede tener** el campo "Cuenta bancaria del sistema" ni "Carpeta de búsqueda".
+
+- Para **compartir un contacto**: arrastrarlo a un correo como adjunto (genera un archivo VCard automáticamente).
+- Para **crear un contacto desde un correo**: clic derecho sobre el remitente → "Agregar a contactos de Outlook".
+- Los contactos eliminados van a **Elementos eliminados** y pueden recuperarse antes de vaciar esa carpeta.
+- Si se cambia la dirección de un contacto, se **actualiza** su ficha sin afectar al historial de conversaciones.
+- La **Vista Tarjeta** muestra cada contacto como una tarjeta individual.
+
+### Formato VCard
+
+> El formato **VCard** (.vcf) es el estándar para enviar información de contacto de forma interoperable entre distintos programas.
+
+### Grupos de contactos (Listas de distribución)
+
+> Un **grupo de contactos** contiene varias direcciones agrupadas bajo un nombre, permitiendo enviar a todos sus miembros con una sola entrada.
+
+Para crearlo en Outlook 365: sección **"Personas"** → menú **"Inicio"** → **"Nuevo grupo de contactos"**. La dirección de un integrante **no puede modificarse directamente**; hay que eliminarlo y añadirlo de nuevo. Al crear el grupo se determina si será **privado** o **público**.
+
+---
+
+## Delegación de acceso
+
+La función **Delegar acceso** de Outlook 365 permite que otra persona:
+
+- Envíe elementos en nombre del propietario de la cuenta.
+- Cree y responda a convocatorias de reuniones.
+- Acceda a la bandeja de entrada sin necesidad de compartir la contraseña.
+
+El nivel de permiso **Editor** es el más completo de los niveles de delegación básica y permite enviar elementos en nombre del propietario y gestionar convocatorias de reunión.
+
+---
+
+## Archivos de datos de Outlook
+
+Outlook utiliza archivos de datos para almacenar los mensajes y demás elementos localmente:
+
+| Extensión | Nombre | Descripción |
+|---|---|---|
+| **.pst** | Personal Storage Table | Archivo de datos personal de Outlook. Almacena mensajes, calendarios, contactos, etc. localmente. |
+| **.ost** | Offline Storage Table | Copia local de los datos del servidor Exchange para trabajo sin conexión. |
+| **.eml** | Electronic Mail | Formato estándar para guardar mensajes individuales. Desarrollado por Microsoft para Outlook y Outlook Express. |
+
+### Importar y exportar contactos
+
+Para importar contactos desde otro programa, Outlook utiliza la función **Importar/Exportar** (accesible desde Archivo).
+
+---
+
+## Grupos de envío y recepción, formato condicional y encabezados
+
+Los **Grupos de envío o recepción** permiten agrupar cuentas de correo para programar la sincronización. Es posible crear un grupo con una **sola cuenta** (la afirmación contraria es incorrecta).
+
+El **formato condicional** permite configurar que los mensajes de un determinado contacto aparezcan con una fuente o estilo distinto en la Bandeja de entrada.
+
+Los **encabezados** (headers) de un correo contienen la información técnica y de enrutamiento del mensaje: campos De, Para, CC, Asunto, fecha y hora, ruta de servidores y protocolos usados. Son útiles para rastrear el origen de un mensaje o detectar phishing.
+
+---
+
+## Funcionamiento técnico del correo electrónico
+
+El proceso completo: (1) el remitente redacta el mensaje en su cliente de correo; (2) al pulsar Enviar, el mensaje va al **servidor SMTP** del remitente; (3) SMTP consulta el **DNS** para localizar el servidor destino; (4) el mensaje viaja entre **servidores intermedios** hasta el servidor del destinatario; (5) el mensaje se **almacena en el buzón** del destinatario; (6) el destinatario lo recupera con **IMAP, POP3 o webmail**.
+
+> El servidor de correo actúa como intermediario: **recibe, almacena y pone a disposición** los mensajes hasta que el destinatario los lee.
+
+Si la dirección del destinatario es incorrecta o inexistente, el servidor SMTP genera un **rebote** (bounced email) y el remitente recibe un aviso de error.

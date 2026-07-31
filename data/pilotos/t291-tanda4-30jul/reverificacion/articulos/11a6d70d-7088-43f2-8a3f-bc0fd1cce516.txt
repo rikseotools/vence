@@ -1,0 +1,26 @@
+LEY: RD 366/2007
+ARTÍCULO: 9 — Sistemas interactivos de información
+======================================================================
+1. Los puntos de información que no estén atendidos directamente por personal estarán dotados de sistemas de información complementaria tales como paneles gráficos, sistemas audiovisuales y planos táctiles.
+
+2. A los efectos de lo dispuesto en el apartado anterior, en la configuración de los sistemas de información complementaria se tendrán en cuenta las siguientes recomendaciones:
+
+a) Su ubicación será accesible y fácilmente localizable.
+
+b) Su altura y demás dimensiones deberán ser las adecuadas para un uso normalizado por todo tipo de personas con discapacidad. Deberá asegurarse su interacción regular con personas con dificultades de manipulación.
+
+c) Toda la información en formato texto debe estar también en modo sonoro.
+
+d) Toda la información sonora debe estar transcrita en formato texto.
+
+e) Los dispositivos audiovisuales que se empleen deben contar con sistemas de amplificación y mejora de la señal auditiva.
+
+f) Debe existir confirmación con mensajes sonoros de todas las acciones activadas.
+
+g) Los mandos, el teclado y los botones deberán estar adaptados con etiquetas o iconos de alto contraste, letras grandes, en altorrelieve y braille.
+
+h) Las pantallas deben de ser antirreflectantes y tener buen contraste.
+
+i) La información debe ser clara, sin demasiadas opciones en una misma pantalla y permitir un dilatado tiempo de respuesta.
+
+j) Las pantallas táctiles tendrán un sistema alternativo de acceder a la información para todas las personas que lo precisen. Este sistema se basará en la verbalización de las distintas opciones de información y se activará mediante la pulsación de un área sensible al tacto situado en la parte inferior izquierda y etiquetado con la expresión «uso fácil» que una vez pulsada informará con breves instrucciones sobre cómo utilizar el sistema.

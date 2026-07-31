@@ -1,0 +1,368 @@
+LEY: Excel 365
+ARTÍCULO: 20 — Tipos de referencia en fórmulas
+======================================================================
+Las referencias determinan qué celdas usa una fórmula y cómo se comportan al copiar, mover o cortar la fórmula. Excel distingue cuatro tipos de referencia, con sintaxis y comportamiento distintos.
+
+## Tipos de referencia
+
+| Tipo | Notación | Columna al copiar | Fila al copiar | Caso de uso típico |
+|------|----------|-------------------|----------------|--------------------|
+| **Relativa** | A1 | Se ajusta | Se ajusta | Operaciones que se repiten fila a fila o columna a columna |
+| **Absoluta** | $A$1 | Fija | Fija | Constantes, tablas de conversión, celdas con parámetros |
+| **Mixta (columna fija)** | $A1 | Fija | Se ajusta | Comparar cada fila contra una misma columna |
+| **Mixta (fila fija)** | A$1 | Se ajusta | Fija | Comparar cada columna contra una misma fila |
+
+El tipo **predeterminado** al escribir una referencia es el **relativo** (A1). Las referencias en Excel identifican la ubicación de una celda o rango de celdas en el libro. De forma predeterminada, todas las referencias son **relativas**.
+
+### Qué es una referencia de celda válida
+
+Una referencia de celda combina siempre la **letra de columna** seguida del **número de fila**: A1, B3, C10, AA200. No es válida ninguna combinación que empiece por número (por ejemplo, `45A` no es una referencia válida).
+
+### Cómo funciona el ajuste relativo
+
+Cuando se copia una fórmula con referencias relativas, Excel recalcula la referencia en función del desplazamiento. Si en la celda D4 tienes `=B4*C4` y copias esa celda a D5, la fórmula pasa a ser `=B5*C5` (desplazamiento de una fila hacia abajo).
+
+| Fórmula original | Dirección del copiado | Fórmula resultante |
+|------------------|-----------------------|--------------------|
+| `=B4*C4` (en D4) | Una fila abajo (D5) | `=B5*C5` |
+| `=B4*C4` (en D4) | Una columna a la derecha (E4) | `=C4*D4` |
+| `=SUMA(A1:A3)` (en C2) | Una fila abajo (C3) | `=SUMA(A2:A4)` |
+
+### Cómo funciona la referencia absoluta
+
+Al agregar `$` delante de la columna y la fila (`$B$4`), la referencia no cambia al copiar la fórmula a cualquier otra celda. Se usa, por ejemplo, para multiplicar un rango de precios por un tipo de IVA almacenado en una celda fija.
+
+El símbolo que convierte una referencia relativa en absoluta es el **signo dólar** ($). Se antepone a la letra de columna, al número de fila, o a ambos.
+
+### Cómo funcionan las referencias mixtas
+
+- `$A1` — la **columna A está fija**; la fila se ajusta al copiar hacia arriba o hacia abajo.
+- `A$1` — la **fila 1 está fija**; la columna se ajusta al copiar hacia la izquierda o la derecha.
+
+Ejemplo: en una tabla de multiplicar con encabezados de fila en la columna A y encabezados de columna en la fila 1, la fórmula `=$A2*B$1` en la celda B2 puede copiarse a toda la tabla sin cambios manuales.
+
+| Referencia | Comportamiento al copiar hacia abajo | Comportamiento al copiar a la derecha |
+|------------|--------------------------------------|---------------------------------------|
+| `A1` (relativa) | Fila aumenta | Columna avanza |
+| `$A$1` (absoluta) | No cambia | No cambia |
+| `$A1` (mixta: columna fija) | Fila aumenta | Columna no cambia |
+| `A$1` (mixta: fila fija) | Fila no cambia | Columna avanza |
+
+## Tecla F4 — ciclo de tipos de referencia
+
+Al editar una fórmula en la barra de fórmulas, selecciona una referencia y pulsa **F4** repetidamente para recorrer el ciclo:
+
+> A1 → $A$1 → A$1 → $A1 → A1 → …
+
+| Pulsación F4 | Resultado | Descripción |
+|-------------|-----------|-------------|
+| 1.ª | $A$1 | Absoluta: columna y fila fijas |
+| 2.ª | A$1 | Mixta: fila fija, columna relativa |
+| 3.ª | $A1 | Mixta: columna fija, fila relativa |
+| 4.ª | A1 | Relativa: ambas se ajustan |
+
+## Comportamiento al copiar, mover y cortar
+
+| Acción | Referencias relativas | Referencias absolutas | Referencias mixtas |
+|--------|-----------------------|-----------------------|--------------------|
+| **Copiar** (Ctrl+C → Ctrl+V) | Se ajustan según el desplazamiento | No cambian | El componente relativo se ajusta; el fijo, no |
+| **Mover** (Ctrl+X → Ctrl+V o arrastrar) | **No cambian** | No cambian | **No cambian** |
+
+> Cuando se **mueve** una fórmula, Excel actualiza las referencias para que sigan apuntando a las mismas celdas originales, independientemente del tipo de referencia. Solo al **copiar** se aplican los ajustes relativos.
+
+**Ejemplo de mover:** si en C5 tienes `=$C4+C$3` y cortas (Ctrl+X) y pegas en H20, el contenido de H20 será `=$C4+C$3` exactamente igual, sin modificar ningún componente.
+
+**Ejemplo de copiar con mixta:** si en C5 tienes `=$C4` (columna fija, fila relativa) y copias (Ctrl+C) y pegas en H20, la fila se ajusta según el desplazamiento (16 filas abajo), resultando `=$C19`.
+
+## Operadores de cálculo en fórmulas
+
+Excel dispone de cuatro categorías de operadores para construir fórmulas.
+
+### Operadores aritméticos
+
+Realizan operaciones matemáticas y devuelven un resultado numérico.
+
+| Operador | Símbolo | Ejemplo | Resultado |
+|----------|---------|---------|-----------|
+| Suma | `+` | `=3+2` | 5 |
+| Resta | `-` | `=10-4` | 6 |
+| Multiplicación | `*` | `=3*4` | 12 |
+| División | `/` | `=15/3` | 5 |
+| Porcentaje | `%` | `=50%` | 0,5 |
+| Exponenciación | `^` | `=2^3` | 8 |
+
+### Operadores de comparación
+
+Comparan dos valores y devuelven el valor lógico VERDADERO o FALSO.
+
+| Operador | Significado | Ejemplo |
+|----------|-------------|---------|
+| `=` | Igual a | `=A1=B1` |
+| `>` | Mayor que | `=A1>10` |
+| `<` | Menor que | `=A1<10` |
+| `>=` | Mayor o igual que | `=A1>=5` |
+| `<=` | Menor o igual que | `=A1<=5` |
+| `<>` | Distinto de | `=A1<>B1` |
+
+### Operador de concatenación de texto
+
+Une o concatena una o más cadenas de texto para producir una sola cadena.
+
+| Operador | Símbolo | Ejemplo | Resultado |
+|----------|---------|---------|-----------|
+| Concatenación | `&` | `="Hola"&" "&"Mundo"` | Hola Mundo |
+
+> En la función CONCATENAR (o CONCAT), los argumentos se separan con **punto y coma** (;), no con coma adicional al final. Una expresión como `=CONCATENAR("Código:"; A1; )` contiene un argumento vacío al final y producirá un error de sintaxis.
+
+### Operadores de referencia
+
+Combinan rangos de celdas para los cálculos.
+
+| Operador | Símbolo | Descripción | Ejemplo |
+|----------|---------|-------------|---------|
+| **Rango** | `:` (dos puntos) | Define un rango rectangular entre dos celdas | `A1:C10` → todas las celdas de A1 a C10 |
+| **Unión** | `;` (punto y coma) | Une dos o más referencias no contiguas | `A1:A5;C1:C5` → las dos columnas |
+| **Intersección** | ` ` (espacio) | Devuelve las celdas comunes a dos rangos | `A1:C5 B2:D4` → B2:C4 (zona común) |
+
+**Nota:** las referencias 3D **no** pueden usarse con el operador de intersección (espacio).
+
+### Ejemplos de operadores de referencia
+
+```
+=SUMA(A1:A10)          → suma el rango continuo A1 hasta A10
+=SUMA(A1:A5;C1:C5)     → suma dos rangos no contiguos
+=SUMA(A1:C3 B2:D4)     → suma solo las celdas en la intersección (B2:C3)
+```
+
+### Precedencia de operadores
+
+Cuando una fórmula tiene varios operadores, Excel los evalúa en este orden:
+
+| Prioridad | Operador | Descripción |
+|-----------|----------|-------------|
+| 1 | `:` ` ` `;` | Operadores de referencia |
+| 2 | `-` | Negación (ej. –1) |
+| 3 | `%` | Porcentaje |
+| 4 | `^` | Exponenciación |
+| 5 | `* /` | Multiplicación y división |
+| 6 | `+ –` | Suma y resta |
+| 7 | `&` | Concatenación de texto |
+| 8 | `= < > <= >= <>` | Comparación |
+
+Para cambiar el orden de evaluación, se usan **paréntesis**: la parte entre paréntesis se evalúa primero.
+
+## Constantes en fórmulas
+
+Una **constante** es un valor que no se calcula y que **siempre permanece invariable**: por ejemplo, el número `3,14`, el texto `"Total"` o la fecha `01/01/2024`. A diferencia de las referencias de celda, las constantes no cambian a menos que el usuario las modifique directamente en la fórmula.
+
+Las constantes pueden ser:
+- **Numéricas:** `=A1*0,21` (0,21 es la constante del tipo de IVA)
+- **De texto:** `="Importe: "&A1`
+- **Lógicas:** `=SI(A1>0;VERDADERO;FALSO)`
+
+En los rangos con nombre también se pueden definir constantes: al crear un nombre cuya referencia sea un valor (p. ej., `=0,21`), ese nombre actúa como constante con nombre reutilizable en todo el libro.
+
+## Referencias entre hojas
+
+Para referenciar una celda o rango de otra hoja del mismo libro se usa el signo de exclamación (`!`) como separador:
+
+```
+=Hoja2!B2
+=Ventas2021!H20
+='Datos 2024'!A1
+='Resumen enero-marzo'!C5:C20
+```
+
+- Si el nombre de la hoja contiene **espacios u otros caracteres especiales**, se encierra entre **comillas simples** (`'`).
+- Si el nombre de la hoja es **puramente numérico** (p. ej., `2019`), también debe ir entre comillas simples: `='2019'!H30`.
+- La referencia completa tiene el formato: `NombreHoja!Referencia`.
+
+También es posible referenciar celdas de **dos hojas distintas en una misma fórmula**:
+
+```
+=Dato!B1+Resultados!B1              → suma B1 de la hoja Dato y B1 de la hoja Resultados
+=Presupuesto_1!A2-Presupuesto_2!C3  → resta A2 de la primera hoja menos C3 de la segunda
+```
+
+Ambas hojas deben estar en el **mismo libro** que contiene la fórmula.
+
+## Referencias 3D (varias hojas consecutivas)
+
+Las referencias 3D permiten aplicar una función al mismo rango en varias hojas contiguas con una sola fórmula. Se usan, por ejemplo, para **consolidar datos** de hojas que representan distintos periodos (meses, trimestres, años).
+
+```
+=SUMA(Hoja1:Hoja3!A1)
+=PROMEDIO(Enero:Diciembre!B5)
+=MAX(T1:T4!C2:C100)
+```
+
+**Sintaxis:** `=Función(HojaInicio:HojaFin!Rango)`
+
+> Las referencias a celdas de otras hojas (tanto referencias simples como 3D) se denominan **referencias 3D** en Excel.
+
+### Funciones que admiten referencias 3D
+
+SUMA, PROMEDIO, PROMEDIOA, CONTAR, CONTARA, MAX, MAXA, MIN, MINA, PRODUCTO, DESVEST, DESVESTPA, VAR, VARA, entre otras.
+
+**Funciones que NO admiten referencias 3D:** BUSCARV, SI, SUMAPRODUCTO, DESREF, INDIRECTO, entre otras.
+
+### Efecto de insertar, eliminar o mover hojas
+
+| Acción | Efecto en la referencia 3D |
+|--------|----------------------------|
+| **Insertar o copiar** una hoja entre los extremos | Se incluye en el cálculo automáticamente |
+| **Mover** una hoja al interior del rango | Se incluye en el cálculo |
+| **Mover** una hoja fuera del rango | Se excluye del cálculo |
+| **Eliminar** una hoja intermedia | Se excluye del cálculo |
+| **Desplazar el extremo inicial o final** | El rango se recalcula con el nuevo extremo |
+
+## Rangos con nombre
+
+Un nombre es un identificador que se asigna a una celda, rango, constante o fórmula para reemplazar la referencia en las fórmulas, haciéndolas más legibles y fáciles de mantener.
+
+Un **rango con nombre** en Excel es un rango de celdas al que se asigna un identificador para facilitar su uso en fórmulas. Por ejemplo, se puede llamar `Ventas` al rango `A2:A50` y luego usar `=SUMA(Ventas)` en lugar de `=SUMA(A2:A50)`.
+
+Para nombrar un rango también se usa la notación de dos puntos: `B3:C7` representa el rango desde B3 hasta C7, que puede recibir un nombre descriptivo.
+
+### Crear un nombre
+
+**Método 1 — Cuadro de nombres:**
+1. Selecciona la celda o rango.
+2. Haz clic en el **Cuadro de nombres** (arriba a la izquierda, donde aparece la referencia de celda).
+3. Escribe el nombre y pulsa **Enter**.
+
+**Método 2 — Fórmulas > Definir nombre:**
+1. Selecciona el rango.
+2. Ve a **Fórmulas > Definir nombre**.
+3. Introduce el nombre, elige el ámbito y confirma.
+
+**Método 3 — Crear a partir de la selección:**
+1. Selecciona el rango incluyendo las etiquetas de fila o columna.
+2. Ve a **Fórmulas > Crear a partir de la selección**.
+3. Indica dónde están las etiquetas (fila superior, columna izquierda, etc.) y confirma.
+
+### Administrador de nombres
+
+Acceso: **Fórmulas > Administrador de nombres** (atajo: **Ctrl+F3**)
+
+El **Administrador de nombres** se encuentra en la ficha (pestaña) **Fórmulas** de la cinta de opciones, en el grupo **Nombres definidos**. Permite **crear, editar, eliminar y buscar** todos los nombres definidos en el libro. Muestra el nombre, el valor actual, la referencia, el ámbito y un comentario opcional.
+
+### Ámbito (scope)
+
+| Ámbito | Disponibilidad | Uso en fórmula |
+|--------|---------------|----------------|
+| **Libro** | En cualquier hoja del libro | `=SUMA(Ventas)` |
+| **Hoja** | Solo en la hoja donde se definió | `=SUMA(Hoja1!Ventas)` desde otra hoja |
+
+Desde el **Administrador de nombres** se puede asignar un ámbito de **libro** u **hoja individual** al definir o editar un nombre.
+
+Si hay dos nombres iguales con distinto ámbito, el de la hoja tiene prioridad sobre el del libro dentro de esa hoja.
+
+### Reglas para nombres válidos
+
+- El primer carácter debe ser una **letra**, un **guion bajo** (`_`) o una **barra invertida** (`\`).
+- Los caracteres restantes pueden ser letras, números, puntos o guiones bajos.
+- **No se permiten** espacios (usar guion bajo o punto como separador: `Tipo_IVA`, `Precio.Base`).
+- Los nombres **no distinguen mayúsculas de minúsculas** (`Ventas` = `VENTAS`).
+- Longitud máxima: **255 caracteres**.
+- No pueden coincidir con una referencia de celda válida (p. ej., no se puede llamar `C3` a un nombre).
+- No se pueden usar las letras `r` o `c` solas como nombres (reservadas para filas y columnas en la notación L1C1).
+
+### Usar nombres en fórmulas
+
+```
+=SUMA(Ventas)              → equivale a =SUMA(A2:A50) si Ventas apunta a ese rango
+=Ingresos-Gastos           → resta dos rangos con nombre
+=BUSCARV(A2,TablaPrecios,2,0)   → nombre usado como argumento de función
+```
+
+Al escribir el nombre en la barra de fórmulas, Excel muestra un **autocompletado**. También se puede usar **Fórmulas > Usar en fórmula** para seleccionar el nombre de una lista.
+
+### Eliminar un nombre
+
+Abre el **Administrador de nombres**, selecciona el nombre y haz clic en **Eliminar**. Si el nombre se usa en alguna fórmula, esa fórmula mostrará el error `#¿NOMBRE?`.
+
+## Referencias circulares
+
+Una **referencia circular** ocurre cuando una fórmula hace referencia, directa o indirectamente, a la celda en la que está ubicada. Por ejemplo, si en la celda A1 se escribe `=A1+1`, Excel no puede calcular el resultado porque la celda depende de sí misma.
+
+### Tipos
+
+- **Directa:** la fórmula referencia explícitamente su propia celda (`=A1+1` en A1).
+- **Indirecta:** A1 referencia B1 y B1 referencia A1.
+
+### Cómo detectarlas
+
+- La primera vez que Excel encuentra una referencia circular, muestra un **mensaje de advertencia**.
+- La **barra de estado** (esquina inferior izquierda) muestra el texto "Referencias circulares" junto con la dirección de la celda afectada.
+- En la ficha **Fórmulas > Auditoría de fórmulas > Comprobación de errores > Referencias circulares** se puede ver la lista de todas las celdas con referencia circular del libro.
+
+### Cómo resolverlas
+
+1. Identificar la celda que provoca el ciclo mediante las herramientas de auditoría.
+2. Corregir la fórmula para que no se referencie a sí misma (cambiar la celda de destino o la lógica de cálculo).
+3. Si la referencia circular es intencionada (cálculo iterativo), habilitarla en **Archivo > Opciones > Fórmulas > Habilitar cálculo iterativo**, especificando el número máximo de iteraciones y el cambio máximo.
+
+## Referencias estructuradas en tablas
+
+Cuando los datos se formatean como **tabla de Excel** (**Insertar > Tabla** o **Ctrl+T**), Excel asigna automáticamente un nombre a la tabla (p. ej., `Tabla1`) y permite usar **referencias estructuradas** en lugar de referencias de celda convencionales.
+
+### Sintaxis básica
+
+```
+=SUMA(DeptVentas[Importe de ventas])
+```
+
+Equivale a `=SUMA(C2:C7)` si la columna "Importe de ventas" ocupa C2:C7, pero la referencia estructurada se actualiza automáticamente cuando se añaden o eliminan filas.
+
+### Especificadores especiales
+
+| Especificador | Referencia |
+|---------------|------------|
+| `[#Todas]` | Toda la tabla: encabezados + datos + totales |
+| `[#Datos]` | Solo las filas de datos (sin encabezados ni totales) |
+| `[#Encabezados]` | Solo la fila de encabezados |
+| `[#Totales]` | Solo la fila de totales (devuelve nulo si no existe) |
+| `[#Esta fila]` o `@` | Solo la celda de la fila actual |
+
+### Operadores en referencias estructuradas
+
+| Operador | Ejemplo | Resultado |
+|----------|---------|----------|
+| Rango (`:`) | `[[Comercial]:[Región]]` | Todas las columnas entre Comercial y Región |
+| Unión (`;`) | `[Ventas];[Comisión]` | Las dos columnas no contiguas |
+| Intersección (` `) | `[#Datos] [Ventas]` | Solo los datos de la columna Ventas |
+
+### Ejemplos de fórmulas con referencias estructuradas
+
+```
+=DeptVentas[[#Datos],[% Comisión]]        → datos de la columna % Comisión
+=DeptVentas[[#Encabezados]:[#Totales]]    → desde encabezados hasta totales
+=DeptVentas[@[Importe de comisión]]       → valor de la fila actual en esa columna
+=SUMA(DeptVentas[Importe de ventas])      → suma toda la columna de datos
+```
+
+### Referencia calificada vs. no calificada
+
+- **Dentro de la tabla:** `=[Ventas]*[% Comisión]` (no calificada; Excel infiere la tabla)
+- **Fuera de la tabla:** `=DeptVentas[Ventas]*DeptVentas[% Comisión]` (calificada con el nombre de la tabla)
+
+Si el nombre de columna contiene caracteres especiales (coma, dos puntos, corchete, etc.), se doblan los corchetes: `[[Total $ Cantidad]]`.
+
+## Resumen comparativo
+
+| Característica | Referencia de celda | Rango con nombre | Referencia estructurada |
+|----------------|--------------------|--------------------|------------------------|
+| Legibilidad | Baja (`C2:C7`) | Alta (`Ventas`) | Alta (`Tabla1[Ventas]`) |
+| Actualización automática al agregar filas | No | No (rango fijo) | Sí |
+| Ámbito configurable | No | Sí (libro u hoja) | Solo libro |
+| Requiere tabla de Excel | No | No | Sí |
+| Disponible desde versión | Siempre | Siempre | Excel 2007+ |
+
+## Relleno rápido (Flash Fill)
+
+Detecta automáticamente un patrón en los datos y completa la columna. Se activa con **Ctrl+E** o **Datos > Relleno rápido**. Ejemplo: si en A1 tienes "Juan García" y en B1 escribes "Juan", al pulsar Ctrl+E Excel completa toda la columna B con el primer nombre.
+
+## Fórmulas matriciales
+
+Cuando la barra de fórmulas muestra **{ }** (llaves) alrededor de la fórmula, indica una **fórmula matricial**. En Excel 365 las matrices dinámicas se calculan automáticamente; en versiones anteriores se introducían con **Ctrl+Mayús+Enter**.

@@ -1,0 +1,219 @@
+LEY: La Red Internet
+ARTÍCULO: 9 — Plataformas y servicios web
+======================================================================
+## Plataformas y servicios web
+
+### 1. Navegadores web
+
+Un **navegador web** (o browser) es el **software que permite ver la información que contiene una página web**: interpreta y muestra el contenido HTML, CSS, imágenes y vídeo.
+
+| Navegador | Desarrollador | Notas |
+|-----------|---------------|-------|
+| **Nexus** (WorldWideWeb) | Tim Berners-Lee | Primer navegador de la historia |
+| **MOSAIC** | NCSA (1993) | Primer navegador gráfico popular |
+| **Netscape Navigator** | Netscape | Primer navegador con gran popularidad comercial |
+| **Internet Explorer** | Microsoft | Dominante en los 2000 |
+| **Microsoft Edge** | Microsoft | Sustituyó a Internet Explorer en Windows 11 |
+| **Mozilla Firefox** | Mozilla Foundation | Software libre; botón "Olvidar" para borrar historial |
+| **Google Chrome** | Google | El más usado actualmente |
+| **Safari** | Apple | Navegador predeterminado en Mac y dispositivos Apple |
+| **Opera** | Opera Software | Existe actualmente |
+| **Burkina** | — | No existe actualmente |
+
+El **navegador predeterminado en Windows 11** que sustituyó a Internet Explorer es **Microsoft Edge**.
+
+El navegador **Safari** fue desarrollado por **Apple** y se ejecuta en Mac y dispositivos Apple.
+
+El navegador **Nexus** fue el **primer browser o navegador que salió al mercado**.
+
+**Netscape Navigator** fue el primer navegador en adquirir gran popularidad comercial.
+
+Los navegadores pueden interpretar y ejecutar **JavaScript** directamente. Pascal, Fortran y SQL no son lenguajes que los navegadores ejecuten de forma nativa.
+
+En **Mozilla Firefox**, el botón que elimina el historial de navegación en la franja de tiempo establecida sin afectar al resto de la información se denomina **"Olvidar"**.
+
+Los **frames** (marcos) permiten **dividir la ventana del navegador en diferentes subventanas**.
+
+### 2. HTML y lenguajes web
+
+**HTML** (HyperText Markup Language) es el **lenguaje de marcado predominante** para la construcción de páginas web. Fue creado por **Tim Berners-Lee**.
+
+Los navegadores pueden ejecutar directamente **JavaScript**. También interpretan HTML y CSS, pero JavaScript es el lenguaje de programación ejecutable nativo en los navegadores.
+
+### 3. Cookies
+
+Una **cookie** es una **pequeña información enviada por un sitio web y almacenada en el navegador del usuario**, de manera que el sitio web puede consultar la actividad previa del navegador. Las cookies no son virus ni programas ejecutables; son archivos de texto con datos de sesión o preferencias.
+
+### 4. Web Feeds y RSS
+
+Los **web feeds** o **fuentes web** son un medio que permite conocer los **cambios que se producen en los contenidos de una página web previa suscripción al servicio**. No son tipos de letra, ni formas de presentación gráfica.
+
+### 5. Buscadores web
+
+Un **motor de búsqueda** o **buscador** es un sistema informático que **indexa archivos almacenados en servidores web** y, cuando se solicita información, proporciona enlaces a las webs donde encontrar esa información.
+
+Los principales buscadores actuales son **Google, Bing y DuckDuckGo**. Su función principal es **indexar y recuperar información de páginas web mediante palabras clave**.
+
+**Wandex** fue el **primer motor de búsqueda** de Internet.
+
+**Archie** es un sistema para la **localización de información sobre archivos, ficheros y directorios** en servidores FTP, no un buscador web convencional.
+
+#### Operadores de búsqueda en Google
+
+| Operador | Función |
+|----------|---------|
+| Texto entre comillas | Busca el grupo de palabras exactas |
+| Signo menos (-palabra) | Excluye esa palabra de los resultados |
+
+Para excluir palabras en Google se escribe el signo **"-"** delante de la palabra. Para buscar un grupo de palabras exactas se usan **comillas**.
+
+### 6. SEO (Search Engine Optimization)
+
+**SEO** (Optimización en Motores de Búsqueda) es un **conjunto de prácticas para mejorar el posicionamiento de un sitio web** en la lista de resultados de buscadores como Google o Bing. El objetivo principal del SEO es **mejorar la visibilidad de un sitio web en buscadores**.
+
+No es el nombre de los departamentos internos de buscadores, ni un ranking elaborado por consultoras, ni el uso de palabras clave en un motor de búsqueda.
+
+### 7. LMS: Learning Management System (Moodle)
+
+Un **LMS** (Sistema de Gestión del Aprendizaje) es una plataforma para la administración, documentación, seguimiento y entrega de cursos o programas de formación. **Moodle** es un LMS de **distribución libre** muy utilizado en entornos educativos. No son LMS plataformas como Skype, OneDrive o Facebook.
+
+### 8. CMS: Content Management System (WordPress)
+
+Un **CMS** (Sistema de Gestión de Contenidos) permite crear y gestionar contenido web sin necesidad de programar. **WordPress** es el CMS más utilizado del mundo. Spotify, Instagram y Gmail no son CMS.
+
+### 9. Redes sociales y Web 2.0
+
+La **Web 2.0** define la evolución de Internet hacia un modelo en el que el **contenido es generado, compartido y modificado por los propios usuarios** (redes sociales, wikis, blogs).
+
+La aparición de las **redes sociales** supuso un **aumento exponencial del contenido generado por los usuarios**.
+
+| Generación | Características |
+|------------|----------------|
+| **Web 1.0** | Web estática; el usuario solo consume contenido |
+| **Web 2.0** | Contenido generado y compartido por usuarios; redes sociales |
+| **Web Semántica** (Web 3.0) | Metadatos para que las máquinas interpreten el significado |
+
+### 10. Chat en Internet
+
+La **primera red de chat en Internet** fue el **IRC** (Internet Relay Chat). ICQ fue el primer cliente de mensajería instantánea personal de masas, pero IRC fue la red de chat pionera.
+
+### 11. Meme y diseño web
+
+Un **meme** en el contexto de Internet es una imagen, vídeo o texto, por lo general distorsionado con fines caricaturescos, que se difunde principalmente a través de Internet.
+
+El **diseño web adaptativo** (responsive design) es aquel **capaz de adaptar los elementos de la página web a pantallas de diferentes tamaños y formatos**.
+
+### 12. Seguridad básica en navegación
+
+**Malware**: programa que realiza **acciones dañinas en un sistema informático de forma intencionada**. Incluye virus, troyanos, ransomware, spyware.
+
+Una **lista negra** en correo electrónico es una **lista de direcciones IP y dominios bloqueados por prácticas de spam**.
+
+Un certificado **SSL/TLS** en un sitio web garantiza que la conexión entre el navegador y el sitio esté **cifrada y segura**.
+
+La **netiqueta** son las **normas de comportamiento general en Internet**.
+
+---
+
+### 13. Blogs
+
+Un **blog** (o bitácora) es un **sitio web donde uno o varios autores exponen sus artículos (entradas o *posts*), actualizando su contenido muy a menudo**. Los contenidos se muestran en **orden cronológico inverso** (lo más reciente arriba) y suelen permitir comentarios de los lectores.
+
+- No es un dispositivo hardware ni una web de comercio electrónico: es un servicio web de publicación de contenidos.
+- Es uno de los servicios característicos de la **Web 2.0**, ya que el contenido lo genera el propio autor/usuario.
+- Plataformas habituales para crear blogs: WordPress, Blogger.
+
+### 14. Microblogging y Twitter (X)
+
+El **microblogging** es el **servicio web que permite a los usuarios enviar y publicar mensajes breves a un muro o panel general**. Se diferencia del blog tradicional en que los mensajes son cortos y de publicación muy frecuente.
+
+- No debe confundirse con el **email** ni con los **SMS**: el microblogging es un servicio web de difusión pública a un muro.
+- La red social de microblogging por excelencia es **Twitter** (actualmente llamado **X**). Facebook y YouTube **no** son redes de microblogging.
+
+#### Símbolos en Twitter / X
+
+| Símbolo | Nombre | Función |
+|---------|--------|---------|
+| **@** | arroba / mención | **Indica nombres de usuario** en los *tweets* (menciona o hace referencia a un usuario). |
+| **#** | almohadilla / hashtag | **Precede a las palabras consideradas palabras clave** (etiquetas temáticas para agrupar y buscar contenido). |
+
+- El símbolo **@** se usa para **indicar nombres de usuario** en los tweets (p. ej. `@policia`).
+- El símbolo **#** (**hashtag**) **precede a las palabras consideradas palabras clave**, agrupando los mensajes sobre un mismo tema (p. ej. `#oposiciones`).
+
+### 15. Clasificación de las redes sociales
+
+Según el público al que se dirigen, las redes sociales se clasifican en:
+
+| Tipo | Definición | Ejemplos |
+|------|------------|----------|
+| **Horizontales** | Dirigidas a **todo tipo de usuarios**, sin una temática concreta; de uso general. | Facebook, Instagram, Twitter/X |
+| **Verticales** | **Especializadas o temáticas**, dirigidas a un grupo concreto de usuarios con intereses comunes (profesionales, aficiones, etc.). | **LinkedIn** (profesional), Strava, etc. |
+
+- Las redes sociales **horizontales** son las dirigidas **a todo tipo de usuarios** (genéricas).
+- Las redes sociales **verticales** son las temáticas/especializadas; **LinkedIn** es el ejemplo clásico de red vertical (orientada al ámbito profesional).
+
+### 16. Metabuscadores
+
+Un **metabuscador** es un **buscador que basa su funcionamiento en la búsqueda, a su vez, en otros buscadores**. No dispone de su propio índice: lanza la consulta a varios motores de búsqueda a la vez y combina/unifica los resultados que estos devuelven.
+
+- No se denominan "alfabuscadores" ni "multibuscadores": el término correcto es **metabuscadores**.
+- Ejemplos históricos: Metacrawler, Dogpile.
+
+### 17. Servidor proxy
+
+Un **servidor proxy** es **un equipo que actúa de intermediario entre un explorador (navegador) web e Internet**. Las peticiones del usuario pasan primero por el proxy, que las reenvía a Internet y devuelve la respuesta.
+
+Funciones habituales de un proxy:
+
+- **Intermediación** entre el cliente y los servidores de Internet.
+- **Caché** de páginas para acelerar accesos repetidos.
+- **Filtrado y control de acceso** a determinados contenidos.
+- **Anonimato**, al ocultar la IP real del usuario.
+
+### 18. El correo electrónico (email)
+
+#### Estructura de una dirección de correo
+
+Una dirección de correo electrónico se divide en **dos partes separadas por el símbolo arroba (@)**:
+
+```
+nombreusuario @ dominio.com
+   (izquierda)    (derecha)
+```
+
+| Parte | Posición | Qué indica |
+|-------|----------|------------|
+| **Nombre de usuario** | A la **izquierda** de la @ | Identifica al usuario o buzón. |
+| **Nombre de dominio** | A la **derecha** de la @ | **El nombre de dominio del servidor de correo** que gestiona ese buzón. |
+
+La **parte derecha** de la arroba indica, por tanto, **el nombre de dominio del servidor de correo**.
+
+#### Campos de destinatario
+
+| Campo | Significado | Comportamiento |
+|-------|-------------|----------------|
+| **Para (To)** | Destinatario principal | Visible para todos. |
+| **CC** | Con Copia | Copia visible: todos ven quién la recibe. |
+| **CCO** | **Con Copia Oculta** | Copia **oculta**: el resto de destinatarios **no ven** que esa persona ha recibido el correo. |
+
+Para **enviar un correo a un destinatario sin que el resto lo sepa**, se pone su dirección en el campo **CCO** (Copia de Carbón Oculta). El campo "CCP" no existe.
+
+#### Clientes de correo: Thunderbird
+
+**Mozilla Thunderbird** es un **cliente de correo electrónico** gratuito y de software libre. Entre sus características:
+
+- **Permite configurar múltiples cuentas de correo** (de distintos proveedores) en un único programa.
+- **Permite administrar múltiples calendarios** (mediante el complemento/función Lightning, ya integrada).
+- Gestiona contactos, filtros, carpetas y mensajería.
+
+### 19. VoIP (Voz sobre IP)
+
+**VoIP** (*Voice over IP*) es la tecnología que permite **transmitir la voz a través de Internet** (redes de datos IP) en lugar de hacerlo por la red telefónica tradicional.
+
+Aplicaciones que permiten VoIP:
+
+- **Skype**
+- **Viber**
+- (También WhatsApp, Zoom, Microsoft Teams, etc.)
+
+Tanto **Skype como Viber** permiten realizar llamadas mediante VoIP.

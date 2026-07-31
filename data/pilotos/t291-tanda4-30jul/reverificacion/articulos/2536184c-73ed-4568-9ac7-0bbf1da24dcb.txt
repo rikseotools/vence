@@ -1,0 +1,149 @@
+LEY: CE
+ARTÍCULO: 0 — Estructura de la Constitucion CE
+======================================================================
+ANTECEDENTES Y ELABORACIÓN DE LA CONSTITUCIÓN ESPAÑOLA DE 1978:
+
+Tras la muerte de Franco (1975) y la aprobación de la Ley para la Reforma Política (1976), se celebran las primeras elecciones democráticas.
+• 15 junio 1977: elecciones a Cortes Constituyentes.
+• 1 agosto 1977: se designa la Ponencia constitucional, formada por 7 diputados ("padres de la Constitución"): Gabriel Cisneros, Miguel Herrero de Miñón y José Pedro Pérez-Llorca (UCD); Gregorio Peces-Barba (PSOE); Manuel Fraga (AP); Miquel Roca (Minoría Catalana); Jordi Solé Tura (PCE-PSUC).
+• 31 octubre 1978: las Cortes Generales (Congreso y Senado) aprueban el texto definitivo.
+• 6 diciembre 1978: referéndum de ratificación (aprobada por el 87,78% de los votantes; 58,97% del censo electoral).
+• 27 diciembre 1978: sanción y promulgación por el Rey Juan Carlos I en sesión conjunta de ambas Cámaras.
+• 29 diciembre 1978: publicación en el BOE y entrada en vigor.
+La Constitución fue elaborada por CONSENSO de las principales fuerzas políticas de la Transición.
+
+CARACTERÍSTICAS DE LA CONSTITUCIÓN ESPAÑOLA:
+• Escrita y codificada: recogida en un único texto solemne.
+• Extensa: 169 artículos, una de las más largas de nuestra historia constitucional.
+• Rígida: su reforma exige procedimientos especiales y agravados (Título X, arts. 166-169), más difíciles que los de una ley ordinaria.
+• Consensuada o de compromiso: fruto del acuerdo entre fuerzas de distinto signo ideológico.
+• Derivada: inspirada en el constitucionalismo europeo de posguerra (Alemania, Italia) y en la tradición constitucional española.
+• Ideológicamente ecléctica y abierta: no impone un modelo económico o social cerrado; permite desarrollos legislativos diversos.
+• Con una amplia declaración de derechos y garantías (Título I).
+• Establece un Estado social y democrático de Derecho (art. 1.1), cuya forma política es la Monarquía parlamentaria (art. 1.3), residiendo la soberanía nacional en el pueblo español (art. 1.2).
+
+ESTRUCTURA COMPLETA DE LA CONSTITUCIÓN ESPAÑOLA 1978:
+
+PREÁMBULO
+
+TÍTULO PRELIMINAR (Arts. 1-9): Principios generales, valores superiores, lenguas, símbolos, partidos políticos, sindicatos, Fuerzas Armadas.
+
+TÍTULO I - DE LOS DERECHOS Y DEBERES FUNDAMENTALES (Arts. 10-55):
+• Cap. I - Españoles y extranjeros (Arts. 11-13)
+• Cap. II - Derechos y libertades (Arts. 14-38):
+  - Art. 14: Igualdad ante la ley
+  - Sección 1.ª: Derechos fundamentales (Arts. 15-29)
+  - Sección 2.ª: Derechos y deberes ciudadanos (Arts. 30-38)
+• Cap. III - Principios rectores (Arts. 39-52)
+• Cap. IV - Garantías de derechos (Arts. 53-54)
+• Cap. V - Suspensión de derechos (Art. 55)
+
+TÍTULO II - DE LA CORONA (Arts. 56-65): Rey, sucesión, regencias, funciones.
+
+TÍTULO III - DE LAS CORTES GENERALES (Arts. 66-96):
+• Cap. I - De las Cámaras (Arts. 66-80)
+• Cap. II - Elaboración de leyes (Arts. 81-92)
+• Cap. III - Tratados internacionales (Arts. 93-96)
+
+TÍTULO IV - DEL GOBIERNO Y LA ADMINISTRACIÓN (Arts. 97-107)
+
+TÍTULO V - RELACIONES GOBIERNO-CORTES (Arts. 108-116)
+
+TÍTULO VI - DEL PODER JUDICIAL (Arts. 117-127)
+
+TÍTULO VII - ECONOMÍA Y HACIENDA (Arts. 128-136)
+
+TÍTULO VIII - ORGANIZACIÓN TERRITORIAL (Arts. 137-158):
+• Cap. I - Principios generales (Arts. 137-139)
+• Cap. II - Administración Local (Arts. 140-142)
+• Cap. III - Comunidades Autónomas (Arts. 143-158)
+
+TÍTULO IX - DEL TRIBUNAL CONSTITUCIONAL (Arts. 159-165)
+
+TÍTULO X - DE LA REFORMA CONSTITUCIONAL (Arts. 166-169)
+
+DISPOSICIONES:
+• 4 Disposiciones Adicionales
+• 9 Disposiciones Transitorias
+• 1 Disposición Derogatoria
+• 1 Disposición Final
+
+TOTAL: 169 artículos + Disposiciones
+
+DATOS HISTÓRICOS:
+• Aprobada por referéndum: 6 diciembre 1978
+• Sancionada por el Rey: 27 diciembre 1978
+• Publicada en BOE y entrada en vigor: 29 diciembre 1978
+
+REFORMAS DE LA CONSTITUCIÓN ESPAÑOLA — CUATRO REFORMAS HASTA LA FECHA (2026)
+
+CUADRO RESUMEN:
+| Reforma | Año | Artículo | Objeto | Procedimiento |
+|---|---|---|---|---|
+| 1ª | 1992 | 13.2 | Sufragio pasivo UE en municipales | Art. 167 (ordinario) |
+| 2ª | 2011 | 135 | Estabilidad presupuestaria | Art. 167 (ordinario) |
+| 3ª | 2024 | 49 | Personas con discapacidad | Art. 167 (ordinario) |
+| 4ª | 2026 | 69.3 | Senador propio para Formentera | Art. 167 (ordinario) |
+
+NINGUNA de las cuatro reformas ha afectado al Título Preliminar, a la Sección 1.ª del Capítulo II del Título I (derechos fundamentales) ni al Título II (Corona), por lo que todas se han tramitado por el procedimiento ordinario del Art. 167 y NO por el agravado del Art. 168.
+
+PRIMERA REFORMA (1992)
+
+• Artículo reformado: 13.2 CE.
+• Contenido: Se añadió la expresión "y pasivo" al derecho de sufragio de extranjeros en elecciones municipales.
+• Objetivo: Permitir que los ciudadanos de la Unión Europea puedan ser elegidos (sufragio pasivo), no solo votar (sufragio activo), en las elecciones municipales españolas.
+• Motivación: Adaptar el ordenamiento constitucional al Tratado de la Unión Europea de Maastricht (1992), que reconocía el derecho de sufragio activo y pasivo a todo ciudadano de la UE en su Estado miembro de residencia.
+• Procedimiento: Art. 167 CE (procedimiento ordinario, mayoría de 3/5 en cada Cámara).
+• Sanción del Rey: 27 de agosto de 1992.
+• Publicación BOE: BOE núm. 207, de 28 de agosto de 1992.
+
+SEGUNDA REFORMA (2011)
+
+• Artículo reformado: 135 CE (sustitución íntegra del artículo).
+• Contenido: Incorporación del principio de estabilidad presupuestaria como principio rector de todas las Administraciones Públicas. El nuevo Art. 135 fija límites al déficit estructural del Estado y las CCAA, y exige que las Entidades Locales presenten equilibrio presupuestario. Una ley orgánica fijará el déficit estructural máximo permitido.
+• Objetivo: Limitar el déficit público y la deuda de las administraciones públicas en el contexto de la crisis económica iniciada en 2008 y de las exigencias del Pacto de Estabilidad y Crecimiento de la Unión Europea.
+• Procedimiento: Art. 167 CE.
+• Sanción del Rey: 27 de septiembre de 2011.
+• Publicación BOE: BOE núm. 233, de 27 de septiembre de 2011.
+• Particularidad: fue tramitada por lectura única y procedimiento de urgencia, con un debate parlamentario muy breve, lo que generó debate político por la rapidez del proceso.
+
+TERCERA REFORMA (2024)
+
+• Artículo reformado: 49 CE.
+• Contenido: Sustitución del término "disminuidos físicos, sensoriales y psíquicos" por "personas con discapacidad". Se reconoce expresamente que las personas con discapacidad ejercen los derechos previstos en el Título I en condiciones de libertad e igualdad reales y efectivas, y que los poderes públicos impulsarán las políticas que garanticen la plena autonomía personal y la inclusión social.
+• Objetivo: Actualizar el lenguaje constitucional (la terminología original de 1978 había quedado obsoleta y resultaba ofensiva) y reforzar el reconocimiento de la dignidad y derechos plenos del colectivo, en línea con la Convención Internacional sobre los Derechos de las Personas con Discapacidad (Naciones Unidas, 2006).
+• Procedimiento: Art. 167 CE.
+• Publicación BOE: BOE núm. 43, de 17 de febrero de 2024.
+• Fecha de entrada en vigor: 17 de febrero de 2024.
+
+CUARTA REFORMA (2026)
+
+• Artículo reformado: 69.3 CE.
+• Contenido: Eliminación de la agrupación "Ibiza-Formentera". Ibiza y Formentera pasan a ser circunscripciones independientes a efectos de elección de Senadores, con un senador propio cada una. La nueva redacción suprime también la fórmula "o agrupación de ellas" y reformula la lista como: "Ibiza, Formentera, Menorca, Fuerteventura, La Gomera, El Hierro, Lanzarote y La Palma".
+• Objetivo: Reconocer la singularidad insular de Formentera (que cuenta con Consejo Insular propio desde 2007) y dotarla de representación propia en el Senado, separándola de Ibiza.
+• Iniciativa: Parlamento de las Illes Balears.
+• Procedimiento: Art. 167 CE, lectura única en ambas Cámaras.
+• Aprobación Congreso: 26 de marzo de 2026, mayoría 3/5.
+• Aprobación Senado: 22 de abril de 2026.
+• Sanción del Rey Felipe VI: 19 de mayo de 2026.
+• Publicación BOE: BOE-A-2026-10881, de 20 de mayo de 2026.
+• Fecha de entrada en vigor: 20 de mayo de 2026.
+• Disposición adicional única: la efectividad de la creación de la circunscripción del Senado para la isla de Formentera se demora hasta las inmediatas elecciones al Senado posteriores a la entrada en vigor.
+
+EL PROCEDIMIENTO DE REFORMA CONSTITUCIONAL — TÍTULO X (Arts. 166-169)
+
+INICIATIVA (Art. 166): Corresponde al Gobierno, al Congreso, al Senado y a las Asambleas Legislativas de las CCAA (Art. 87.1 y 2 CE).
+
+PROCEDIMIENTO ORDINARIO (Art. 167): aplicable a la reforma de cualquier precepto que no esté incluido en el ámbito del Art. 168.
+• Aprobación por mayoría de 3/5 en cada Cámara.
+• Si no se alcanza acuerdo en redacción → Comisión Mixta paritaria.
+• Si tampoco hay acuerdo → mayoría absoluta del Senado y 2/3 en el Congreso.
+• Referéndum: facultativo (solo si lo solicitan 1/10 de los miembros de cualquiera de las Cámaras dentro de los 15 días siguientes a la aprobación).
+
+PROCEDIMIENTO AGRAVADO (Art. 168): aplicable a la reforma TOTAL de la CE o que afecte al Título Preliminar, a la Sección 1.ª del Capítulo II del Título I (derechos fundamentales y libertades públicas, Arts. 15-29) o al Título II (Corona).
+• Aprobación por mayoría de 2/3 en cada Cámara.
+• DISOLUCIÓN inmediata de las Cortes.
+• Nuevas Cámaras elegidas → deben ratificar la decisión + estudiar y aprobar el nuevo texto por mayoría de 2/3 en cada Cámara.
+• Referéndum: OBLIGATORIO, una vez aprobado por las nuevas Cortes.
+
+LÍMITES TEMPORALES (Art. 169): No podrá iniciarse la reforma constitucional en tiempo de guerra ni durante la vigencia de los estados de alarma, excepción o sitio (Art. 116 CE).

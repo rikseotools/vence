@@ -1,0 +1,9 @@
+{
+  "question_id": "df7130e8-4ad4-4748-a2a7-95d13be58e2f",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "intro | razón de la opción C",
+  "que_dice": "La explicación afirma, sin ninguna cita del artículo, que la opción \"Marcar todos como leídos\" se agrupa en la pestaña Carpeta junto con el resto de comandos de gestión de esa carpeta (\"Carpeta agrupa los comandos de gestión de la carpeta activa, entre ellos marcar todos sus mensajes como leídos\"), y usa esa afirmación como justificación de que C es la clave correcta.",
+  "que_dice_el_articulo": "El artículo (ficha Outlook 365, art. 1) solo dice: \"Cinta de opciones: contiene las pestañas Archivo, Inicio, Enviar y Recibir, Carpeta y Vista.\" No menciona en ningún punto el comando \"Marcar todos como leídos\" ni en qué pestaña se encuentra; el fichero solo trata, sobre lectura de mensajes, que \"Marcar como leído\" elimina el resaltado de nuevo (línea 332), sin ubicarlo en ninguna pestaña.",
+  "correccion_propuesta": "Añadir al artículo/explicación una cita real que respalde la ubicación del comando (p. ej. documentar en la ficha que la pestaña Carpeta incluye el comando \"Marcar todos como leídos\"), o si no se puede citar, reformular la razón para no afirmar un dato no presente en la fuente."
+}

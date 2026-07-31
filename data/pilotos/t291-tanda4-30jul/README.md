@@ -80,3 +80,62 @@ que es el corte que se usó en la tanda 2.
 ```bash
 npx tsx --env-file=.env.local scripts/revision/validar-lote-t291.ts --base <dir-con-lotes-y-veredictos>
 ```
+
+---
+
+# ✅ RE-VERIFICACIÓN (paso 7) — HECHA el 30/07
+
+**149 revisadas al 100 %** (no muestra), por 6 agentes independientes, leyendo **la pregunta viva en
+BD con la explicación ya aplicada** y contrastando cada afirmación contra el artículo.
+
+| | |
+|---|---|
+| revisadas | **149** |
+| hallazgos | **10 (6,7 %)** |
+| **defectos REALES** | **1** |
+| afirmaciones ciertas pero **sin respaldo en el artículo** | **9** |
+
+## 🔴 El único defecto real: `7073ba96` (225 exposiciones) — CORREGIDO
+
+Pregunta: «El estado de alarma será declarado…». La razón de la opción C afirmaba que **«la
+autorización previa y el plazo de quince días prorrogables por igual plazo corresponden al estado de
+excepción»**.
+
+Es falso, y de la clase exacta que este paso existe para cazar: **el art. 116.3 fija treinta días**
+para la excepción, no quince. Los quince son el plazo del **alarma** (art. 116.2), que además no
+exige autorización previa sino dar cuenta. La razón intercambiaba las dos cifras de dos apartados
+consecutivos del mismo artículo — una frase impecable de forma, con el dato cambiado.
+
+Reescrita: ahora explica que la opción **mezcla los dos regímenes** y por qué.
+
+## Los otros 9 NO son defectos de la explicación
+
+Los agentes los etiquetaron todos como `afirmacion_falsa`, pero al leerlos dicen otra cosa: **la
+afirmación es cierta en el mundo real y el artículo no la respalda**. Ejemplos:
+
+- `d9708b11` (244 exp) — «Autoajustar a la ventana» en tablas de Word: cierto, pero `Word 365` art.1
+  no menciona las opciones de autoajuste.
+- `fe316311` (245 exp) — virus, troyano y spyware como software malicioso: cierto, pero
+  `Windows 11` art.1 no tiene sección de malware.
+- `3a4127af` (232 exp) — adjuntos de correo, colgada de un artículo sobre bits y bytes.
+- Y seis más de Outlook 365, Word 365 y Explorador de Windows 11.
+
+**Son huecos de temario, no falsedades**, y coinciden con las 14 que quedaron `sin cita`. Su sitio es
+[T-302] (enriquecer el contenedor) y la cola de [T-342], no una corrección de la explicación.
+
+> ⚠️ **Lección de método:** los agentes de re-verificación **no distinguen «falso» de «no
+> respaldado»** y lo etiquetan todo como `afirmacion_falsa`. Hay que leer los 10, no contarlos. Aquí
+> la proporción fue 1 real / 9 de temario.
+
+## Comparativa con las tandas anteriores
+
+| tanda | alcance | defecto |
+|---|---|---|
+| 1 | 100 % de 269 | 3,0 % |
+| 2 | muestra 20 % de 396 | 2,5 % |
+| 3 | 100 % de 72 | 6,9 % |
+| **4** | **100 % de 149** | **6,7 % bruto · 0,7 % real** |
+
+El 6,7 % bruto es comparable a las anteriores; separando el tipo, el **defecto real de explicación
+fue de 1 sobre 149**. Es la tanda más limpia hasta ahora, y la diferencia plausible es que fue la
+primera con los contenedores de Office 2016 ya enriquecidos y con el circuito completo de gates.

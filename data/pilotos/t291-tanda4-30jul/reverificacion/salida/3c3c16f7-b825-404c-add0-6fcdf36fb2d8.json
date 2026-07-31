@@ -1,0 +1,9 @@
+{
+  "question_id": "3c3c16f7-b825-404c-add0-6fcdf36fb2d8",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "razón de la opción A (\"por qué A es correcta\") y razón de la opción D",
+  "que_dice": "La explicación afirma que el desplegable de \"lista multinivel\" (grupo Párrafo, pestaña Inicio) distingue entre \"definir nuevo estilo de lista\" (vía para un estilo reutilizable) y \"definir nueva lista multinivel\" (una lista puntual para la selección actual), y que solo la primera cambia el estilo de numeración de forma reutilizable.",
+  "que_dice_el_articulo": "El artículo (Word 365, art. 1) solo menciona \"Viñetas, numeración y lista multinivel\" como una entrada más del Grupo Párrafo de la pestaña Inicio (línea \"Viñetas, numeración y lista multinivel\"). No detalla en ningún punto las opciones del submenú de lista multinivel, ni distingue \"definir nuevo estilo de lista\" de \"definir nueva lista multinivel\", ni explica cuál de las dos es reutilizable.",
+  "correccion_propuesta": "Por qué A es correcta: desde Inicio, grupo Párrafo, el desplegable de lista multinivel da acceso a la opción para definir un nuevo estilo de lista, la vía pensada para modificar el estilo de numeración de forma reutilizable. (Nota: esta distinción entre \"definir nuevo estilo de lista\" y \"definir nueva lista multinivel\" no está recogida en el artículo vinculado; conviene respaldarla con una fuente que sí detalle el submenú de Word, o generalizar la cita al epígrafe del Grupo Párrafo sin atribuirle el detalle que no contiene.)"
+}

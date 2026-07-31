@@ -1,0 +1,572 @@
+LEY: Excel 365
+ARTÍCULO: 100 — Funciones lógicas
+======================================================================
+## Categorías de funciones
+
+Las funciones tratadas en este artículo pertenecen a dos categorías del cuadro de inserción de funciones:
+
+- **Lógicas:** SI, Y, O, NO, XO, SI.ERROR, SI.ND, SI.CONJUNTO, CAMBIAR, VERDADERO, FALSO
+- **Información:** ESBLANCO, ESERR, ESERROR, ESLOGICO, ESNOD, ESNOTEXTO, ESNUMERO, ESREF, ESTEXTO, ESFORMULA, ES.PAR, ES.IMPAR
+
+Funciones como LOG, SUMA, PROMEDIO o CONTAR **no pertenecen** al grupo de funciones lógicas. LOG pertenece a la categoría **Matemáticas y trigonometría**.
+
+---
+
+## Funciones lógicas
+
+### Tabla de referencia rápida
+
+| Función | Sintaxis resumida | Devuelve |
+|---------|-------------------|---------|
+| SI | `=SI(condición;si_verdadero;si_falso)` | Cualquier valor según condición |
+| Y | `=Y(cond1;cond2;...)` | VERDADERO / FALSO |
+| O | `=O(cond1;cond2;...)` | VERDADERO / FALSO |
+| NO | `=NO(lógico)` | VERDADERO / FALSO (invertido) |
+| XO | `=XO(cond1;cond2;...)` | VERDADERO / FALSO (OR exclusivo) |
+| SI.ERROR | `=SI.ERROR(valor;si_error)` | valor o si_error |
+| SI.ND | `=SI.ND(valor;si_nd)` | valor o si_nd |
+| SI.CONJUNTO | `=SI.CONJUNTO(cond1;val1;cond2;val2;...)` | El valor correspondiente a la primera condición verdadera |
+| CAMBIAR | `=CAMBIAR(expr;val1;res1;...;[defecto])` | El resultado que coincida con la expresión |
+| VERDADERO | `=VERDADERO()` | VERDADERO lógico |
+| FALSO | `=FALSO()` | FALSO lógico |
+
+---
+
+### SI
+
+**Sintaxis completa:**
+```
+=SI(prueba_lógica; valor_si_verdadero; valor_si_falso)
+```
+
+| Argumento | Obligatorio | Descripción |
+|-----------|-------------|-------------|
+| prueba_lógica | Sí | Condición que se evalúa como VERDADERO o FALSO |
+| valor_si_verdadero | Sí | Valor devuelto si la condición es verdadera |
+| valor_si_falso | No | Valor devuelto si la condición es falsa. Si se omite, devuelve FALSO |
+
+**Tabla de verdad:**
+
+| prueba_lógica | valor_si_verdadero | valor_si_falso | Resultado |
+|---------------|--------------------|----------------|-----------|
+| VERDADERO | "Aprobado" | "Suspendido" | "Aprobado" |
+| FALSO | "Aprobado" | "Suspendido" | "Suspendido" |
+
+**Operadores de comparación utilizables en prueba_lógica:**
+
+| Operador | Significado | Ejemplo |
+|----------|-------------|---------|
+| = | Igual a | A1=100 |
+| > | Mayor que | A1>50 |
+| < | Menor que | A1<0 |
+| >= | Mayor o igual | A1>=18 |
+| <= | Menor o igual | A1<=100 |
+| <> | Distinto de | A1<>"" |
+
+**Ejemplos:**
+```
+=SI(A1>=5;"Aprobado";"Suspendido")
+=SI(B2="";"Sin datos";B2)
+=SI(C3>0;C3*0.21;0)
+=SI(E20>1000;"Grande";"Pequeño")
+```
+
+**Ejemplo con porcentajes:**
+```
+' Comparación con porcentaje: ambas formas son equivalentes según el contenido de la celda
+=SI(B10=21%;"IVA normal";"IVA reducido")   → si la celda contiene el número 0,21 (formateado como %)
+=SI(B10="21%";"IVA normal";"IVA reducido") → si la celda contiene el texto "21%"
+```
+
+> 21% equivale al valor numérico 0,21. Si la celda contiene el número 0,21 formateado como porcentaje, la comparación correcta es =SI(B10=21%;...). Si la celda contiene el texto "21%", se usa la comparación con texto entre comillas.
+
+**SI anidado (múltiples condiciones):**
+
+Se pueden anidar hasta **64 niveles** de SI en Excel 365. Cada SI anidado actúa como el argumento valor_si_falso del SI anterior:
+
+```
+=SI(A1>=9;"Sobresaliente";SI(A1>=7;"Notable";SI(A1>=5;"Aprobado";"Suspendido")))
+```
+
+Ejemplo concreto: dado A1=25 y A2=50, la fórmula `=SI(A1<A2;A1+3;A2+3)` devuelve **28** porque A1<A2 es verdadero (25<50), por tanto devuelve A1+3 = 25+3 = 28.
+
+> A partir de varios niveles, la legibilidad disminuye. Se recomienda usar **SI.CONJUNTO** como alternativa moderna.
+
+**Advertencias y errores comunes:**
+
+| Error | Causa | Ejemplo incorrecto | Forma correcta |
+|-------|-------|--------------------|----------------|
+| `#¿NOMBRE?` | Texto sin comillas dobles en argumento | `=SI(A1=5;Correcto)` | `=SI(A1=5;"Correcto")` |
+| `#¿NOMBRE?` | Texto sin comillas en valor_si_falso | `=SI(A1<>"NO";"Correcto";Incorrecto)` | `=SI(A1<>"NO";"Correcto";"Incorrecto")` |
+| Resultado inesperado | Argumento valor_si_falso omitido | `=SI(A1=5;"Correcto")` devuelve FALSO si A1≠5 | Añadir siempre el tercer argumento |
+
+> El separador de argumentos en la configuración regional española es el punto y coma (;). En inglés se usa la coma (,).
+
+**Función anidada:** Excel define "función anidada" como una función usada como argumento de otra función. Por ejemplo, en `=SI(Y(A1>0;A1<100);"OK";"Fuera")`, la función Y está anidada dentro de SI.
+
+---
+
+### Y
+
+**Sintaxis:**
+```
+=Y(valor_lógico1; [valor_lógico2]; ...)
+```
+
+Acepta hasta **255 condiciones**. Devuelve VERDADERO únicamente si **todas** las condiciones son verdaderas. Si cualquiera es falsa, devuelve FALSO.
+
+**Tabla de verdad completa:**
+
+| Cond 1 | Cond 2 | Y(Cond1;Cond2) |
+|--------|--------|-----------------|
+| VERDADERO | VERDADERO | **VERDADERO** |
+| VERDADERO | FALSO | FALSO |
+| FALSO | VERDADERO | FALSO |
+| FALSO | FALSO | FALSO |
+
+**Regla mnemotécnica:** Y es exigente — basta con un FALSO para que el resultado sea FALSO.
+
+**Ejemplos:**
+```
+=Y(A1>0;A1<100)                          → VERDADERO si A1 está entre 1 y 99
+=Y(2=2;3=3;4<>5)                         → VERDADERO (las tres condiciones son verdaderas)
+=SI(Y(B1>=$B$7;C1>=$B$5);B1*$B$8;0)     → Bonus solo si se cumplen ambos objetivos
+```
+
+Ejemplo: `=SI(Y(2=2;3=3;4<>5);"OK";"Error")` devuelve **OK** porque las tres condiciones son VERDADERO.
+
+> Excel evalúa todos los argumentos de Y (no aplica cortocircuito). Si un argumento produce error, la función puede devolver error aunque el resultado lógico sea determinable.
+
+---
+
+### O
+
+**Sintaxis:**
+```
+=O(valor_lógico1; [valor_lógico2]; ...)
+```
+
+Acepta hasta **255 condiciones**. Devuelve VERDADERO si **alguna** condición es verdadera. Solo devuelve FALSO cuando todas son falsas.
+
+**Tabla de verdad completa:**
+
+| Cond 1 | Cond 2 | O(Cond1;Cond2) |
+|--------|--------|-----------------|
+| VERDADERO | VERDADERO | VERDADERO |
+| VERDADERO | FALSO | VERDADERO |
+| FALSO | VERDADERO | VERDADERO |
+| FALSO | FALSO | **FALSO** |
+
+**Regla mnemotécnica:** O es permisivo — basta con un VERDADERO para que el resultado sea VERDADERO.
+
+**Ejemplos:**
+```
+=O(2=2;5<3;8=9)                           → VERDADERO (2=2 es verdadero, aunque las otras dos sean falsas)
+=O(A1="Sí";A1="Yes";A1="Oui")            → VERDADERO si A1 contiene cualquiera de esas palabras
+=SI(O(B1>=$B$4;C1>=$B$5);B1*$B$6;0)     → Comisión si se cumple al menos uno de los objetivos
+```
+
+La función O pertenece a la categoría **Lógicas** de Excel.
+
+---
+
+### NO
+
+**Sintaxis:**
+```
+=NO(lógico)
+```
+
+Invierte el valor lógico de su argumento. Solo acepta **un argumento**.
+
+**Tabla de verdad:**
+
+| Entrada | NO(entrada) |
+|---------|-------------|
+| VERDADERO | FALSO |
+| FALSO | VERDADERO |
+
+**Ejemplos:**
+```
+=NO(A1>100)                                          → VERDADERO si A1 NO supera 100
+=SI(Y(NO(A1<0);NO(A1>50));A1;"Fuera de rango")      → Rango válido: 0 a 50
+```
+
+---
+
+### Combinar SI con Y, O y NO
+
+La potencia de las funciones lógicas se multiplica al usarlas como argumento de SI:
+
+```
+' Condición doble (ambas deben cumplirse):
+=SI(Y(A1>0;A1<100);"Dentro de rango";"Fuera de rango")
+
+' Condición alternativa (basta una):
+=SI(O(B1="Madrid";B1="Barcelona");"Capital";"Otra ciudad")
+
+' Condición inversa:
+=SI(NO(A1="");"Dato introducido";"Celda vacía")
+
+' Combinación compleja:
+=SI(Y(A1>=18;O(B1="Español";B1="Residente"));"Puede votar";"No puede votar")
+```
+
+---
+
+### XO (OR exclusivo)
+
+**Sintaxis:**
+```
+=XO(valor_lógico1; [valor_lógico2]; ...)
+```
+
+Acepta hasta **254 condiciones**. Devuelve VERDADERO cuando el **número de condiciones verdaderas es impar**. Devuelve FALSO cuando dicho número es par (incluido cero).
+
+**Tabla de verdad completa:**
+
+| Cond 1 | Cond 2 | Verdaderos | XO(Cond1;Cond2) |
+|--------|--------|------------|------------------|
+| VERDADERO | VERDADERO | 2 (par) | FALSO |
+| VERDADERO | FALSO | 1 (impar) | VERDADERO |
+| FALSO | VERDADERO | 1 (impar) | VERDADERO |
+| FALSO | FALSO | 0 (par) | FALSO |
+
+**Diferencia clave entre O y XO:**
+
+| Condición | O | XO |
+|-----------|---|----|
+| Una sola verdadera | VERDADERO | VERDADERO |
+| Ambas verdaderas | VERDADERO | FALSO |
+| Ninguna verdadera | FALSO | FALSO |
+
+**Ejemplos:**
+```
+=XO(3>0;2<9)      → FALSO  (ambas son verdaderas: 2 verdaderas = par)
+=XO(1>0;2>9)      → VERDADERO (solo una verdadera: 1 = impar)
+=XO(A1>10;B1>10)  → VERDADERO si exactamente uno de los dos supera 10
+```
+
+---
+
+### SI.ERROR
+
+**Sintaxis:**
+```
+=SI.ERROR(valor; valor_si_error)
+```
+
+| Argumento | Descripción |
+|-----------|-------------|
+| valor | La fórmula o expresión a evaluar |
+| valor_si_error | Valor a devolver si valor produce cualquier error |
+
+Devuelve el resultado de *valor* si no hay error. Si *valor* produce cualquier tipo de error, devuelve *valor_si_error*.
+
+**Errores que captura (todos los tipos de error de Excel):**
+
+| Código de error | Significado |
+|-----------------|-------------|
+| `#N/A` | Valor no disponible |
+| `#¡VALOR!` | Tipo de dato incorrecto |
+| `#¡REF!` | Referencia no válida |
+| `#¡DIV/0!` | División por cero |
+| `#¡NUM!` | Número no válido |
+| `#¿NOMBRE?` | Nombre de función no reconocido |
+| `#¡NULO!` | Intersección incorrecta |
+
+**Ejemplos:**
+```
+=SI.ERROR(210/35;"Error")                             → 6 (sin error)
+=SI.ERROR(55/0;"Error en el cálculo")                 → "Error en el cálculo"
+=SI.ERROR(A2/B2;"Error en el cálculo")                → "Error en el cálculo" si B2=0
+=SI.ERROR(BUSCARV(A1;B:C;2;0);"No encontrado")        → "No encontrado" si A1 no existe en B:C
+=SI.ERROR(A2/B2;"Debes cambiar el valor inicial")     → Mensaje personalizado para evitar mostrar errores
+```
+
+SI.ERROR pertenece a la categoría **Lógicas** de Excel.
+
+---
+
+### SI.ND
+
+**Sintaxis:**
+```
+=SI.ND(valor; valor_si_nd)
+```
+
+Similar a SI.ERROR, pero **solo captura el error `#N/A`**. Todos los demás errores se propagan sin modificar.
+
+**Comparación SI.ERROR vs SI.ND:**
+
+| Característica | SI.ERROR | SI.ND |
+|----------------|----------|-------|
+| Captura `#N/A` | Sí | Sí |
+| Captura `#¡VALOR!` | Sí | No |
+| Captura `#¡REF!` | Sí | No |
+| Captura `#¡DIV/0!` | Sí | No |
+| Captura `#¡NUM!` | Sí | No |
+| Captura `#¿NOMBRE?` | Sí | No |
+| Captura `#¡NULO!` | Sí | No |
+| Uso típico | Control general de errores | BUSCARV / BUSCARX cuando el valor puede no existir |
+
+**Ejemplos:**
+```
+=SI.ND(BUSCARV("Madrid";A:B;2;0);"No encontrado")    → Solo oculta el #N/A
+=SI.ERROR(BUSCARV("Madrid";A:B;2;0);"No encontrado") → Oculta cualquier error
+```
+
+> Se prefiere **SI.ND** cuando se quiere que otros errores (como `#¡REF!` por fórmula rota) sean visibles para detectar problemas en la hoja.
+
+---
+
+### SI.CONJUNTO
+
+**Sintaxis:**
+```
+=SI.CONJUNTO(prueba_lógica1; valor_si_verdadero1; [prueba_lógica2; valor_si_verdadero2]; ...)
+```
+
+Evalúa múltiples condiciones en orden y devuelve el valor correspondiente a la primera que sea verdadera. Es la alternativa moderna y legible al SI anidado. Disponible desde **Excel 2019 / Microsoft 365**.
+
+**Límite:** hasta **127 pares** condición/valor.
+
+**Caso de uso principal:** clasificaciones y calificaciones con múltiples rangos.
+
+```
+' Calificación de notas:
+=SI.CONJUNTO(A1>=9;"Sobresaliente";A1>=7;"Notable";A1>=5;"Aprobado";VERDADERO;"Suspendido")
+
+' Clasificación de clientes por facturación (malos <3000, regulares 3000-6000, buenos >6000):
+=SI.CONJUNTO(A1<3000;"Malo";A1<6000;"Regular";VERDADERO;"Bueno")
+```
+
+**Equivalencia con SI anidado:**
+
+```
+' Con SI anidado (difícil de leer):
+=SI(A1>=9;"Sobresaliente";SI(A1>=7;"Notable";SI(A1>=5;"Aprobado";"Suspendido")))
+
+' Con SI.CONJUNTO (más legible):
+=SI.CONJUNTO(A1>=9;"Sobresaliente";A1>=7;"Notable";A1>=5;"Aprobado";VERDADERO;"Suspendido")
+```
+
+> El último par `VERDADERO;"Suspendido"` actúa como caso por defecto (equivalente al valor_si_falso final del SI anidado). Si ninguna condición es verdadera y no hay caso por defecto, la función devuelve `#N/A`.
+
+**Advertencias:**
+- Si se proporciona una prueba_lógica sin su correspondiente valor_si_verdadero, Excel muestra el error "Ha especificado muy pocos argumentos".
+- Las condiciones se evalúan de izquierda a derecha: la primera verdadera gana.
+
+---
+
+### CAMBIAR
+
+**Sintaxis:**
+```
+=CAMBIAR(expresión; valor1; resultado1; [valor2; resultado2]; ...; [valor_predeterminado])
+```
+
+Compara una *expresión* con una lista de valores y devuelve el resultado del primero que coincida. Si no hay coincidencia y se ha proporcionado un valor predeterminado, lo devuelve; si no, devuelve `#N/A`.
+
+| Argumento | Descripción |
+|-----------|-------------|
+| expresión | Valor a comparar (número, texto, fecha, referencia) |
+| valorN | Valor con el que se compara la expresión (igualdad exacta) |
+| resultadoN | Valor devuelto si valorN coincide con la expresión |
+| valor_predeterminado | Devuelto si no hay ninguna coincidencia (debe ser el último argumento) |
+
+**Límite:** hasta **126 pares** valor/resultado. Disponible desde **Excel 2019 / Microsoft 365**.
+
+**Diferencia con SI.CONJUNTO:**
+
+| Característica | SI.CONJUNTO | CAMBIAR |
+|----------------|-------------|---------|
+| Tipo de comparación | Condición lógica libre (>, <, >=, etc.) | Igualdad exacta con valor fijo |
+| Ejemplo de uso | Rangos de notas (>=9, >=7...) | Días de semana (1→"Lunes", 2→"Martes"...) |
+| Caso por defecto | Usar VERDADERO como última condición | Último argumento sin pareja |
+| Sin coincidencia | `#N/A` | `#N/A` |
+| Disponibilidad | Excel 2019 / Microsoft 365 | Excel 2019 / Microsoft 365 |
+
+**Ejemplos:**
+```
+=CAMBIAR(DIASEM(A2;2);1;"Lunes";2;"Martes";3;"Miércoles";4;"Jueves";5;"Viernes";"Fin de semana")
+=CAMBIAR(A3;1;"Domingo";2;"Lunes";3;"Martes";"Ninguna coincidencia")
+```
+
+---
+
+### VERDADERO y FALSO
+
+Estas funciones devuelven el valor lógico correspondiente sin necesidad de argumentos:
+
+```
+=VERDADERO()   → VERDADERO
+=FALSO()       → FALSO
+```
+
+En la práctica, escribir directamente `VERDADERO` o `FALSO` como constante en una fórmula produce el mismo resultado. La forma de función (`VERDADERO()`) se usa principalmente por compatibilidad con otros programas de hoja de cálculo.
+
+**Uso típico:** como condición por defecto en SI.CONJUNTO para capturar el caso restante:
+```
+=SI.CONJUNTO(A1>10;"Alto";A1>5;"Medio";VERDADERO;"Bajo")
+```
+
+---
+
+## Funciones de información (ES/IS)
+
+Las funciones ES comprueban el tipo o estado de un valor y devuelven siempre VERDADERO o FALSO. Pertenecen a la categoría **Información** en Excel.
+
+**Sintaxis común a todas:** `=FUNCION(valor)` donde *valor* es la celda, referencia o expresión a comprobar.
+
+### Tabla completa de funciones ES
+
+| Función | Devuelve VERDADERO cuando... | Devuelve FALSO cuando... |
+|---------|------------------------------|--------------------------|
+| ESBLANCO | La celda está vacía | La celda contiene cualquier contenido |
+| ESERR | El valor es un error **excepto** `#N/A` | El valor no es error, o es `#N/A` |
+| ESERROR | El valor es **cualquier** tipo de error | El valor no es un error |
+| ESLOGICO | El valor es VERDADERO o FALSO lógico | El valor no es lógico |
+| ESNOD | El valor es el error `#N/A` | El valor es otro error o no es error |
+| ESNOTEXTO | El valor no es texto (incluidas celdas vacías) | El valor es texto |
+| ESNUMERO | El valor es un número | El valor no es número |
+| ESREF | El valor es una referencia válida a celda/rango | El valor no es referencia |
+| ESTEXTO | El valor es texto | El valor no es texto |
+| ESFORMULA | La celda contiene una fórmula | La celda contiene un valor o está vacía |
+| ES.PAR | El número es par | El número es impar |
+| ES.IMPAR | El número es impar | El número es par |
+
+### Detalle de cada función
+
+**ESBLANCO**
+```
+=ESBLANCO(A1)   → VERDADERO si A1 está completamente vacía
+```
+Nota: una celda con una cadena vacía `""` no es blanco para ESBLANCO.
+
+**ESERR y ESERROR**
+```
+=ESERR(A1)     → VERDADERO para #¡VALOR!, #¡REF!, #¡DIV/0!, #¡NUM!, #¿NOMBRE?, #¡NULO! (NO para #N/A)
+=ESERROR(A1)   → VERDADERO para TODOS los errores incluyendo #N/A
+```
+
+**ESLOGICO**
+```
+=ESLOGICO(FALSO)  → VERDADERO (FALSO es un valor lógico)
+=ESLOGICO(1=1)    → VERDADERO
+=ESLOGICO(1)      → FALSO (1 es número, no valor lógico)
+```
+
+**ESNOD**
+```
+=ESNOD(A1)     → VERDADERO solo si A1 contiene el error #N/A
+```
+Equivalente funcional a `ESERR` pero para el único error que ESERR no captura.
+
+**ESNUMERO y ESTEXTO**
+```
+=ESNUMERO(A1)  → VERDADERO si A1 es numérico (incluidas fechas y horas, que son números internamente)
+=ESTEXTO(A1)   → VERDADERO si A1 es texto
+=ESNOTEXTO(A1) → VERDADERO si A1 NO es texto (números, lógicos, errores, celdas vacías)
+```
+
+Para comprobar si el contenido de una celda es texto, son válidas tanto **ESTEXTO** (devuelve VERDADERO si es texto) como **ESNOTEXTO** (devuelve VERDADERO si NO es texto, útil para verificar que no es texto).
+
+**ESREF**
+```
+=ESREF(A1)     → VERDADERO (A1 es una referencia válida)
+=ESREF("A1")   → FALSO (la cadena de texto "A1" no es una referencia)
+```
+
+**ESFORMULA**
+```
+=ESFORMULA(A1) → VERDADERO si A1 contiene una fórmula (aunque la fórmula genere un error)
+=ESFORMULA(A1) → FALSO si A1 contiene un valor literal o está vacía
+```
+Disponible desde Excel 2013 / Microsoft 365.
+
+**ES.PAR y ES.IMPAR**
+```
+=ES.PAR(4)    → VERDADERO
+=ES.PAR(3)    → FALSO
+=ES.IMPAR(7)  → VERDADERO
+=ES.IMPAR(2)  → FALSO
+```
+Los decimales se truncan antes de evaluar: `ES.PAR(2,9)` → VERDADERO (se evalúa como 2).
+
+### Combinación con SI para control de errores
+
+Las funciones ES se usan habitualmente como condición dentro de SI:
+
+```
+=SI(ESBLANCO(A1);"Sin dato";A1*1.21)
+=SI(ESNUMERO(A1);A1*2;"No es número")
+=SI(ESERROR(BUSCARV(D1;A:B;2;0));"No encontrado";BUSCARV(D1;A:B;2;0))
+```
+
+La última fórmula se puede simplificar con SI.ERROR:
+```
+=SI.ERROR(BUSCARV(D1;A:B;2;0);"No encontrado")
+```
+
+---
+
+## Diferencias clave entre funciones similares
+
+### ESERR vs ESERROR vs ESNOD
+
+| Error | ESERR | ESERROR | ESNOD |
+|-------|-------|---------|-------|
+| `#N/A` | FALSO | VERDADERO | VERDADERO |
+| `#¡VALOR!` | VERDADERO | VERDADERO | FALSO |
+| `#¡REF!` | VERDADERO | VERDADERO | FALSO |
+| `#¡DIV/0!` | VERDADERO | VERDADERO | FALSO |
+| `#¡NUM!` | VERDADERO | VERDADERO | FALSO |
+| `#¿NOMBRE?` | VERDADERO | VERDADERO | FALSO |
+| `#¡NULO!` | VERDADERO | VERDADERO | FALSO |
+
+### Errores frecuentes en fórmulas con SI
+
+| Fórmula incorrecta | Error que produce | Causa | Fórmula correcta |
+|--------------------|-------------------|-------|------------------|
+| `=SI(A1=5;Correcto)` | `#¿NOMBRE?` | "Correcto" sin comillas dobles | `=SI(A1=5;"Correcto")` |
+| `=SI(A1<>"NO";"Correcto";Incorrecto)` | `#¿NOMBRE?` | "Incorrecto" sin comillas dobles | `=SI(A1<>"NO";"Correcto";"Incorrecto")` |
+| `=RESIDUO(A1/B1;"-")` | `#¡VALOR!` | RESIDUO no sirve para gestionar errores de división | `=SI.ERROR(A1/B1;"-")` |
+
+### Evitar errores de división por cero en columnas
+
+Para mostrar el resultado de dividir la columna A entre la columna B, evitando el error cuando B=0:
+
+```
+' Forma válida con SI:
+=SI(B1=0;"-";A1/B1)
+
+' Forma válida con SI.ERROR:
+=SI.ERROR(A1/B1;"-")
+
+' Forma válida con SI.ERROR y mensaje personalizado:
+=SI.ERROR(A1/B1;"Debes cambiar el valor inicial")
+
+' Forma INVALIDA (RESIDUO no gestiona errores, produce #¡VALOR!):
+=RESIDUO(A1/B1;"-")
+```
+
+---
+
+## Resumen: qué función usar en cada situación
+
+| Necesidad | Función recomendada |
+|-----------|---------------------|
+| Evaluar una condición y mostrar un valor distinto según el resultado | SI |
+| Verificar que se cumplen varias condiciones simultáneamente | Y (dentro de SI) |
+| Verificar que se cumple al menos una de varias condiciones | O (dentro de SI) |
+| Invertir el resultado de una condición lógica | NO |
+| Clasificar en más de dos categorías (rangos) | SI.CONJUNTO |
+| Clasificar según valores exactos (días de semana, códigos...) | CAMBIAR |
+| Evitar que cualquier error se muestre | SI.ERROR |
+| Evitar solo el error #N/A (BUSCARV sin resultado) | SI.ND |
+| Comprobar si una celda está vacía | ESBLANCO |
+| Comprobar si el contenido es un número | ESNUMERO |
+| Comprobar si el contenido es texto | ESTEXTO o ESNOTEXTO |
+| Comprobar si hay cualquier error (incluido #N/A) | ESERROR |
+| Comprobar si hay error distinto de #N/A | ESERR |

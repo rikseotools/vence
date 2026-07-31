@@ -1,0 +1,410 @@
+[
+  {
+    "question_id": "95430c73-6fcb-4b73-9a0b-096206f1194c",
+    "servidas": 216,
+    "es_examen_oficial": true,
+    "ley": "Outlook 365",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3f3a30f5-1467-4e20-803e-36cf1cc8a0ed.txt",
+    "enunciado": "Outlook 365 ofrece tres opciones de vista para el Panel de lectura. ¿Cuál de las siguientes NO es una de ellas?",
+    "opciones": {
+      "A": "Derecha.",
+      "B": "Superior.",
+      "C": "Inferior.",
+      "D": "Desactivado."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El Panel de lectura de Outlook 365 solo admite un número concreto de posiciones, y hay que identificar cuál de las opciones ofrecidas no es una de ellas.\n\n> **Outlook 365, art. 2**\n> \"Se puede configurar en tres posiciones:\n\n- **A la derecha** (posición predeterminada): el panel aparece a la derecha de la lista de mensajes.\n- **En la parte inferior**: el panel aparece debajo de la lista de mensajes.\n- **Desactivado**: el panel queda oculto.\"\n\n**Por qué B es correcta:** Superior no existe como posición del Panel de lectura; las posiciones reales son derecha, inferior y desactivado.\n\n**Por qué las demás son incorrectas:**\n- **A)** A la derecha sí es una de las tres posiciones disponibles para el Panel de lectura.\n- **C)** Inferior sí es una de las tres posiciones disponibles para el Panel de lectura.\n- **D)** Desactivado sí es una de las tres posiciones disponibles para el Panel de lectura."
+  },
+  {
+    "question_id": "bd1db890-62fe-4d29-8aa9-4349ba375b52",
+    "servidas": 215,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/04a43832-7178-4b8c-96b8-9c116b906b91.txt",
+    "enunciado": "Se consideran medios preferentes de relación con los ciudadanos, que deben cumplir las condiciones de accesibilidad, los siguientes:",
+    "opciones": {
+      "A": "Oficinas de Atención al Ciudadano",
+      "B": "Modelos normalizados",
+      "C": "Ninguna respuesta es correcta",
+      "D": "A y B son correctas"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cuáles son los medios preferentes de relación con los ciudadanos que deben cumplir las condiciones de accesibilidad según el artículo 1.\n\n> **RD 366/2007, art. 1.2**\n> \"A estos efectos, se consideran medios preferentes de relación con los ciudadanos, que deben cumplir las condiciones de accesibilidad, los siguientes:\"\n\n**Por qué D es correcta:** El artículo enumera exactamente dos medios preferentes de relación con los ciudadanos: las Oficinas de Atención al Ciudadano y los Modelos normalizados, ambos recogidos expresamente en el apartado 2.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las Oficinas de Atención al Ciudadano son uno de los medios preferentes que recoge el artículo, pero no el único.\n- **B)** Los Modelos normalizados son uno de los medios preferentes que recoge el artículo, pero no el único.\n- **C)** El artículo sí enumera medios preferentes concretos, por lo que descartar que exista alguno correcto no se ajusta al texto."
+  },
+  {
+    "question_id": "02f41e35-54fc-4394-a43e-a75d76dd8d3f",
+    "servidas": 214,
+    "es_examen_oficial": false,
+    "ley": "Ley 9/2017",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/c35a4f48-cb85-4a9d-9171-87756fec5663.txt",
+    "enunciado": "A los efectos de la Ley de Contratos del Sector Público se entenderá que un contrato tiene carácter oneroso, de acuerdo con el artículo 2.1 de la Ley 9/2017:",
+    "opciones": {
+      "A": "Cuando el contratista obtenga algún tipo de beneficio económico directo.",
+      "B": "Cuando cualquiera de las partes obtenga algún tipo de beneficio económico directo.",
+      "C": "Cuando el contratista obtenga algún tipo de beneficio económico, ya sea de forma directa o indirecta.",
+      "D": "Cuando el contratista obtenga algún tipo de beneficio, ya sea de forma directa o indirecta."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta cuándo se entiende que un contrato tiene carácter oneroso a los efectos de la Ley de Contratos del Sector Público.\n\n> **Ley 9/2017, art. 2.1**\n> \"Se entenderá que un contrato tiene carácter oneroso en los casos en que el contratista obtenga algún tipo de beneficio económico, ya sea de forma directa o indirecta.\"\n\n**Por qué C es correcta:** El contrato es oneroso cuando el contratista obtiene algún beneficio económico, ya sea de forma directa o indirecta, tal y como recoge la ley.\n\n**Por qué las demás son incorrectas:**\n- **A)** Exigir que el beneficio sea siempre directo no coincide con la norma, que también admite el beneficio indirecto.\n- **B)** La norma habla del beneficio que obtenga el contratista, no de cualquiera de las partes del contrato.\n- **D)** La norma se refiere a un beneficio económico concreto, no a cualquier tipo de beneficio sin más precisión."
+  },
+  {
+    "question_id": "cce219e6-3d38-4341-bd06-1501ed94ed0e",
+    "servidas": 214,
+    "es_examen_oficial": false,
+    "ley": "Explorador Windows 11",
+    "articulo": "5",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/05f3d9f4-6576-4569-8eff-3aa9795cc64a.txt",
+    "enunciado": "Indique la herramienta de Windows a la que corresponde la siguiente descripción \"editor de texto incluido en el sistema operativo de funcionalidades muy simples\":",
+    "opciones": {
+      "A": "Windows Media Player.",
+      "B": "Escritorio remoto.",
+      "C": "Herramienta Recortes.",
+      "D": "Bloc de notas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta qué herramienta de Windows corresponde a la descripción de un editor de texto sencillo incluido en el sistema.\n\n> **Explorador de Windows 11, art. 5**\n> \"editor de texto incluido en el sistema operativo que permite crear y editar texto **sin formato**, y almacenarlo como documento de texto (`.txt`).\"\n\n**Por qué D es correcta:** El Bloc de notas es precisamente el editor de texto sin formato incluido en el sistema operativo, con funcionalidades muy simples.\n\n**Por qué las demás son incorrectas:**\n- **A)** Windows Media Player es un reproductor multimedia, no un editor de texto.\n- **B)** Escritorio remoto sirve para conectarse a otro equipo, no para editar texto.\n- **C)** Herramienta Recortes sirve para hacer capturas de pantalla, no para editar texto."
+  },
+  {
+    "question_id": "67ec691e-2bfd-4654-b2bb-d0330ab8f682",
+    "servidas": 214,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "Según el artículo 116 de la Constitución Española, los estados de alarma y de excepción son declarados por el Gobierno mediante decreto acordado en:",
+    "opciones": {
+      "A": "El Congreso de los Diputados.",
+      "B": "La presidencia del Gobierno.",
+      "C": "El Consejo de Ministros.",
+      "D": "El Ministerio del Interior."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116 exige que tanto el estado de alarma como el de excepción se articulen mediante un mismo tipo de acuerdo gubernamental.\n\n> **CE, art. 116.2 y 116.3**\n> \"mediante decreto acordado en Consejo de Ministros\"\n\n**Por qué C es correcta:** Tanto el estado de alarma como el de excepción se declaran mediante decreto acordado en Consejo de Ministros, según recoge el artículo 116.\n\n**Por qué las demás son incorrectas:**\n- **A)** El decreto no lo acuerda el Congreso de los Diputados; su papel es dar cuenta o autorizar, según el estado, no acordar el decreto.\n- **B)** El artículo no atribuye este acuerdo a la presidencia del Gobierno en solitario, sino al Consejo de Ministros como órgano colegiado.\n- **D)** El artículo no atribuye esta decisión al Ministerio del Interior, sino al Consejo de Ministros."
+  },
+  {
+    "question_id": "86d885b4-646d-4a82-ab3f-f4debbf6c53c",
+    "servidas": 214,
+    "es_examen_oficial": false,
+    "ley": "Windows 10",
+    "articulo": "4",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a67b5954-f707-456e-a58c-9cf445ca642b.txt",
+    "enunciado": "¿Para qué sirve el cortafuegos o firewall en Windows 10?",
+    "opciones": {
+      "A": "Sirve para protegernos contra códigos o programas maliciosos siempre que sean del tipo Spyware, los Gusanos y los Troyanos.",
+      "B": "Sirve solo para evitar que los gusanos informáticos obtengan las direcciones de otros ordenadores mediante sus listas de contactos para enviarles sus copias y tratar de infectarlos también.",
+      "C": "Sirve para capturar, monitorizar y analizar el de tráfico de red en un equipo informático con el fin de realizar posteriormente una auditoría de sistemas de nombres de dominio (DNS).",
+      "D": "Sirve para bloquear accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cuál es la función del cortafuegos o firewall en Windows 10.\n\n> **Windows 10, art. 4**\n> \"bloquea accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados\"\n\n**Por qué D es correcta:** El cortafuegos bloquea los accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados, controlando el tráfico de red.\n\n**Por qué las demás son incorrectas:**\n- **A)** Limitar su función a proteger solo contra spyware, gusanos y troyanos corresponde al antivirus, no describe la función del cortafuegos.\n- **B)** Restringir su función solo a evitar el reenvío de copias por gusanos a través de los contactos describe apenas una consecuencia parcial, no la función del cortafuegos.\n- **C)** Capturar y analizar el tráfico de red para auditorías de DNS es la función de un analizador de protocolos, no de un cortafuegos."
+  },
+  {
+    "question_id": "32c3693f-23c3-47c1-9d39-a9fc00f1cf42",
+    "servidas": 214,
+    "es_examen_oficial": true,
+    "ley": "LO 4/1982 Estatuto de Autonomía de Murcia",
+    "articulo": "27",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7617d012-c664-465a-8067-6f8827bee809.txt",
+    "enunciado": "Conforme al artículo 27.4 del Estatuto de Autonomía de la Región de Murcia. ¿Cuándo el Presidente no podrá acordar la disolución de la Asamblea Regional anticipadamente?",
+    "opciones": {
+      "A": "Cuando se esté tramitando una moción de confianza.",
+      "B": "Cuando haya transcurrido menos de un año desde su constitución.",
+      "C": "Cuando se esté eligiendo a su Presidente.",
+      "D": "Durante el primer período de sesiones de la legislatura."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta por uno de los supuestos en los que el Presidente no puede acordar la disolución anticipada de la Asamblea Regional de Murcia.\n\n> **Estatuto de Autonomía de la Región de Murcia, art. 27.4**\n> \"El Presidente no podrá acordar la disolución de la Asamblea durante el primer período de sesiones de la legislatura, cuando reste menos de un año para su terminación, ni cuando se encuentre en tramitación una moción de censura.\"\n\n**Por qué D es correcta:** El precepto impide expresamente la disolución durante el primer período de sesiones de la legislatura.\n\n**Por qué las demás son incorrectas:**\n- **A)** El precepto habla de que esté en tramitación una moción de censura, no una moción de confianza.\n- **B)** El precepto impide la disolución cuando reste menos de un año para la terminación de la legislatura, no cuando haya transcurrido menos de un año desde su constitución.\n- **C)** La elección de Presidente de la Comunidad no figura entre los supuestos que impiden la disolución anticipada de la Asamblea recogidos en este apartado."
+  },
+  {
+    "question_id": "1925b004-686f-4f35-879b-3841279a8166",
+    "servidas": 213,
+    "es_examen_oficial": true,
+    "ley": "LO 4/1982 Estatuto de Autonomía de Murcia",
+    "articulo": "30",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/c7c9a318-2f1b-4f90-ac84-2c979af7d919.txt",
+    "enunciado": "Según el artículo 30.3 del Estatuto de Autonomía de la Región de Murcia. Los decretos-leyes deberán ser convalidados o derogados por la Asamblea Regional en el plazo:",
+    "opciones": {
+      "A": "Prorrogable de 30 días desde su promulgación.",
+      "B": "Improrrogable de 30 días desde su aprobación.",
+      "C": "Improrrogable de 30 días desde su promulgación.",
+      "D": "Prorrogable de 30 días desde su aprobación."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta en qué plazo deben ser convalidados o derogados los decretos-leyes por la Asamblea Regional de Murcia y desde qué momento se cuenta.\n\n> **Estatuto de Autonomía de la Región de Murcia, art. 30.3**\n> \"En el plazo improrrogable de treinta días desde su promulgación, los decretos-leyes deberán ser convalidados o derogados por la Asamblea Regional después de un debate y votación de totalidad.\"\n\n**Por qué C es correcta:** El plazo es improrrogable de treinta días y se cuenta desde la promulgación del decreto-ley, tal y como recoge el precepto.\n\n**Por qué las demás son incorrectas:**\n- **A)** El plazo es improrrogable, no prorrogable, y se cuenta desde la promulgación, no desde la aprobación.\n- **B)** El plazo se cuenta desde la promulgación del decreto-ley, no desde su aprobación.\n- **D)** El plazo no es prorrogable y, además, se cuenta desde la promulgación, no desde la aprobación."
+  },
+  {
+    "question_id": "b65ecd9c-75cf-400f-a334-e31d17c0f3ad",
+    "servidas": 213,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f1618ab2-bc3e-41d1-a66f-3a7db8c7645a.txt",
+    "enunciado": "La URL (Uniform Resource Locator) incluye:",
+    "opciones": {
+      "A": "El protocolo.",
+      "B": "El nombre del dominio del equipo en el cual se almacena la información.",
+      "C": "La ubicación del contenido.",
+      "D": "Todas las respuestas anteriores son correctas."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta qué elementos incluye una URL (Uniform Resource Locator).\n\n> **La Red Internet, art. 2 (Estructura de una URL)**\n> \"protocolo://usuario:contraseña@dominio:puerto/ruta?parámetros#fragmento\"\n\n**Por qué D es correcta:** El protocolo, el dominio y la ruta del contenido son, todos ellos, elementos que integran la estructura de una URL.\n\n**Por qué las demás son incorrectas:**\n- **A)** El protocolo forma parte de la estructura de la URL, pero no es el único elemento que la compone.\n- **B)** El nombre de dominio forma parte de la estructura de la URL, pero no es el único elemento que la compone.\n- **C)** La ubicación o ruta del contenido forma parte de la estructura de la URL, pero no es el único elemento que la compone."
+  },
+  {
+    "question_id": "3d19cfe8-decb-4c7f-be45-b5b9b5818814",
+    "servidas": 212,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/04a43832-7178-4b8c-96b8-9c116b906b91.txt",
+    "enunciado": "¿Cuál es la normativa por la que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado?",
+    "opciones": {
+      "A": "Ley 26/2011, de 16 de marzo",
+      "B": "Real Decreto 366/2007, de 16 de marzo",
+      "C": "Real Decreto 366/2011, de 16 de mayo",
+      "D": "Real Decreto 36/2007, de 16 de junio"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta cuál es la normativa que establece las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado.\n\n> **RD 366/2007, art. 1.1**\n> \"El presente real decreto regula las condiciones de accesibilidad y no discriminación que, respecto de las personas con discapacidad, deben presentar las Oficinas de Atención al Ciudadano, impresos y cualquier otro medio que la Administración General del Estado dedica específicamente y en el ámbito de sus competencias a las relaciones con los ciudadanos.\"\n\n**Por qué B es correcta:** El propio texto regula exactamente esas condiciones de accesibilidad y no discriminación para las personas con discapacidad en sus relaciones con la Administración General del Estado, y corresponde al Real Decreto 366/2007, de 16 de marzo.\n\n**Por qué las demás son incorrectas:**\n- **A)** Esta denominación no corresponde a la norma que regula precisamente esta materia con esa fecha.\n- **C)** Ni el número ni el año ni el mes de esta combinación corresponden a la norma real que regula esta materia.\n- **D)** Ni el número ni el mes de esta combinación corresponden a la norma real que regula esta materia."
+  },
+  {
+    "question_id": "89d0a05d-13ee-4bdc-a021-336aee087dbf",
+    "servidas": 212,
+    "es_examen_oficial": false,
+    "ley": "Ley 7/1985",
+    "articulo": "25",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/ec84f1eb-022a-4ff7-9c4a-5590ef17d4f5.txt",
+    "enunciado": "Conforme a lo dispuesto en el artículo 25 de la Ley 7/1985, de 2 de abril, reguladora de las Bases del Régimen Local, el municipio ejercerá en todo caso como competencias propias:",
+    "opciones": {
+      "A": "Protección civil y atención inmediata a personas en situación de exclusión social.",
+      "B": "Abastecimiento de agua potable y tratamiento de aguas residuales y estancadas.",
+      "C": "Protección de la salubridad pública.",
+      "D": "Promoción y difusión de la cultura y construcción de equipamientos culturales."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta cuál de las materias listadas es una competencia propia que el municipio ejerce en todo caso según este artículo.\n\n> **Ley 7/1985, art. 25.2.j)**\n> \"Protección de la salubridad pública.\"\n\n**Por qué C es correcta:** La protección de la salubridad pública es, literalmente, una de las competencias que el municipio ejerce en todo caso según este artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo recoge por separado la atención a personas en exclusión social y, en otra letra distinta, la protección civil; unir ambas en una sola opción no reproduce el texto de ninguna de las dos letras.\n- **B)** El artículo habla del abastecimiento de agua potable y de la evacuación y tratamiento de aguas residuales, sin mencionar las aguas estancadas.\n- **D)** El artículo habla de promoción de la cultura y equipamientos culturales, sin mencionar la difusión de la cultura ni la construcción de equipamientos."
+  },
+  {
+    "question_id": "6755fb74-bd01-434c-9dd7-fa91053895a5",
+    "servidas": 211,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "De acuerdo con el artículo 3.1 de la Ley 40/2015, ¿cuál de las siguientes opciones NO es un principio que las Administraciones Públicas deban respetar en su actuación?",
+    "opciones": {
+      "A": "Buena fe, confianza legítima y lealtad institucional.",
+      "B": "Servicio efectivo a los ciudadanos.",
+      "C": "Responsabilidad por la gestión pública.",
+      "D": "Cercanía, respeto y colaboración con los ciudadanos."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pide identificar cuál de las opciones NO es un principio que enumera literalmente el artículo 3.1 de la Ley 40/2015.\n\n> **Ley 40/2015, art. 3.1.b**\n> \"Simplicidad, claridad y proximidad a los ciudadanos.\"\n\n**Por qué D es correcta:** No coincide con el precepto: el artículo habla de proximidad a los ciudadanos (no de cercanía) y de cooperación, colaboración y coordinación entre Administraciones Públicas (no con los ciudadanos), por lo que es la respuesta buscada.\n\n**Por qué las demás son incorrectas:**\n- **A)** Sí figura expresamente en el artículo, como principio de buena fe, confianza legítima y lealtad institucional.\n- **B)** Sí figura expresamente en el artículo, como principio de servicio efectivo a los ciudadanos.\n- **C)** Sí figura expresamente en el artículo, como principio de responsabilidad por la gestión pública."
+  },
+  {
+    "question_id": "884679c7-31b4-413b-b826-e680ba8c99e4",
+    "servidas": 211,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "10",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3aeff912-08f7-4400-805d-800983df38c5.txt",
+    "enunciado": "¿Cuál es la función del World Wide Web Consortium (W3C)?",
+    "opciones": {
+      "A": "El desarrollo del buscador de Google.",
+      "B": "La gestión y mantenimiento de la Wikipedia.",
+      "C": "Es responsable de las prácticas antimonopolio en Internet.",
+      "D": "El desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cuál es la función del World Wide Web Consortium (W3C).\n\n> **La Red Internet, art. 10**\n> \"Desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo\"\n\n**Por qué D es correcta:** El W3C se dedica al desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El desarrollo del buscador de Google corresponde a Google LLC, no al W3C.\n- **B)** La gestión y mantenimiento de la Wikipedia corresponde a la Fundación Wikimedia, no al W3C.\n- **C)** Las prácticas antimonopolio en Internet corresponden a organismos reguladores como la Comisión Europea, no al W3C."
+  },
+  {
+    "question_id": "f592ac77-1185-4979-9ad9-78998c592fb7",
+    "servidas": 211,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Cada una de las Administraciones Públicas recogidas en el artículo 2 de la Ley 40/2015 de Régimen Jurídico del Sector Público, actúa para el cumplimiento de sus fines con personalidad jurídica:",
+    "opciones": {
+      "A": "Propia.",
+      "B": "Única.",
+      "C": "Solidaria.",
+      "D": "Plena."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo precisa el tipo de personalidad jurídica con la que actúa cada Administración Pública para el cumplimiento de sus fines.\n\n> **Ley 40/2015, art. 3.4**\n> \"actúa para el cumplimiento de sus fines con personalidad jurídica única.\"\n\n**Por qué B es correcta:** Coincide de forma literal con el precepto: cada Administración actúa con esta personalidad jurídica.\n\n**Por qué las demás son incorrectas:**\n- **A)** No es correcto: el artículo no emplea este término, que induce a confusión con la personalidad única que sí atribuye.\n- **C)** No es correcto: este término, propio del Derecho de obligaciones, no aparece en el artículo.\n- **D)** No es correcto: el artículo no emplea este término para referirse a la personalidad jurídica de las Administraciones."
+  },
+  {
+    "question_id": "6f5272e6-2db8-4001-9b58-e513f70ff369",
+    "servidas": 211,
+    "es_examen_oficial": true,
+    "ley": "Ley 1/1983 CM",
+    "articulo": "36",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f39d315a-8bfe-4ccd-a36d-4a810d35e138.txt",
+    "enunciado": "Las normas con rango de ley emanadas del Consejo de Gobierno de la Comunidad de Madrid por delegación de la Asamblea son denominadas:",
+    "opciones": {
+      "A": "Decretos legislativos.",
+      "B": "Decretos Leyes.",
+      "C": "Reales Decretos.",
+      "D": "Decretos."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta cómo se denominan las normas con rango de ley que dicta el Consejo de Gobierno de Madrid por delegación de la Asamblea.\n\n> **Ley 1/1983 CM, art. 36.1**\n> \"la Asamblea podrá delegar en el Consejo de Gobierno la potestad de dictar normas con rango de Ley, denominadas Decretos legislativos\"\n\n**Por qué A es correcta:** Cuando la Asamblea delega en el Consejo de Gobierno la potestad de dictar normas con rango de ley, estas se denominan precisamente Decretos legislativos.\n\n**Por qué las demás son incorrectas:**\n- **B)** Los Decretos-leyes responden a razones de extraordinaria y urgente necesidad, no a una delegación de la Asamblea.\n- **C)** Los Reales Decretos son normas reglamentarias del Gobierno de la Nación, no normas con rango de ley de una Comunidad Autónoma.\n- **D)** Los Decretos sin más son normas reglamentarias del Consejo de Gobierno que desarrollan las leyes, por lo que no tienen rango de ley."
+  },
+  {
+    "question_id": "df38050b-c65c-4e46-bf60-58725839d674",
+    "servidas": 211,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "7",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/3c6a9966-bf6c-48c0-aa84-9158d1dbe62f.txt",
+    "enunciado": "¿Cuál de las siguientes es la denominación para un grupo de ordenadores conectados?",
+    "opciones": {
+      "A": "Red informática.",
+      "B": "Lenguaje de programación.",
+      "C": "Protocolo de comunicación.",
+      "D": "Algoritmo informático."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta cómo se denomina a un grupo de ordenadores conectados entre sí.\n\n> **La Red Internet, art. 7**\n> \"conjunto de equipos o dispositivos conectados entre sí mediante cables, señales y ondas, cuya finalidad es transportar datos\"\n\n**Por qué A es correcta:** Un conjunto de equipos o dispositivos conectados entre sí para transportar datos es precisamente lo que se denomina red informática.\n\n**Por qué las demás son incorrectas:**\n- **B)** Un lenguaje de programación es un conjunto de instrucciones para escribir software, no un grupo de ordenadores conectados.\n- **C)** Un protocolo de comunicación son las reglas de transmisión de datos, no un grupo de ordenadores conectados.\n- **D)** Un algoritmo informático es una secuencia de pasos para resolver un problema, no un grupo de ordenadores conectados."
+  },
+  {
+    "question_id": "6444ae5b-d46c-4db3-b875-6ae9fd0c931f",
+    "servidas": 210,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "8",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/49ed8711-8aea-4753-8428-126ff7d5c92f.txt",
+    "enunciado": "Señale la respuesta incorrecta. En la configuración de los puestos de Atención al Ciudadano se estará a lo dispuesto en las siguientes recomendaciones:",
+    "opciones": {
+      "A": "Los mostradores y puntos de atención deberán contar con sistemas de bucle de inducción magnética.",
+      "B": "Los mostradores y puntos de atención dispondrán de vidrios que no dificulten la transmisión del sonido y la comunicación visual entre el usuario y el empleado.",
+      "C": "Los puntos con información telefónica estarán dotados con sistemas de telefonía de texto, de fax y, de permitirlo técnicamente, de videotelefonía para facilitar la lectura labial.",
+      "D": "Al menos una parte del mostrador o mesa de atención ha de estar a la altura de una mesa de trabajo, para atender a personas de diferentes alturas."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pide señalar cuál de las recomendaciones sobre configuración de los puestos de Atención al Ciudadano NO se ajusta a lo dispuesto en el artículo.\n\n> **RD 366/2007, art. 8.2.c**\n> \"Los mostradores y puntos de atención no dispondrán de vidrios u otros obstáculos que dificultan la transmisión del sonido y la comunicación visual entre el usuario y el empleado.\"\n\n**Por qué B es correcta:** El precepto formula una prohibición: los mostradores NO dispondrán de vidrios u otros obstáculos que dificulten el sonido y la comunicación visual. Afirmar que sí dispondrán de esos vidrios invierte el sentido de la norma, que no admite ese elemento con esa condición.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo exige expresamente sistemas de bucle de inducción magnética en los mostradores y puntos de atención, así que esta afirmación sí se ajusta al precepto.\n- **C)** El artículo exige expresamente sistemas de telefonía de texto, fax y, si es técnicamente posible, videotelefonía para facilitar la lectura labial, así que esta afirmación sí se ajusta al precepto.\n- **D)** El artículo exige expresamente que al menos una parte del mostrador esté a la altura de una mesa de trabajo, así que esta afirmación sí se ajusta al precepto."
+  },
+  {
+    "question_id": "68baefb4-ba74-47f9-af90-9e1c3d97ce99",
+    "servidas": 210,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "100",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/943cd991-b6fd-4cf3-84c4-5a9a20823bcb.txt",
+    "enunciado": "¿Cuál de las siguientes opciones describe el funcionamiento de la siguiente fórmula de Excel 365? =SI(A12>50;\"Comprar\";\"No comprar\")",
+    "opciones": {
+      "A": "Evalúa si el valor de la celda A12 es superior a 50, y si se cumple esta condición muestra el valor de la celda y 'Comprar'. Si no se cumple, muestra el valor de la celda y 'No comprar'.",
+      "B": "Evalúa si el valor de la celda A12 es superior a 50, y si se cumple esta condición muestra 'No comprar', y si no se cumple, muestra 'Comprar'.",
+      "C": "Evalúa si el valor de la celda A12 es superior a 50, y si se cumple esta condición muestra el valor de la celda y 'No comprar'. Si no se cumple, muestra el valor de la celda y 'Comprar'.",
+      "D": "Evalúa si el valor de la celda A12 es superior a 50, y si se cumple esta condición muestra 'Comprar', y si no se cumple, muestra 'No comprar'."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta qué hace la fórmula =SI(A12>50;\"Comprar\";\"No comprar\") de Excel 365.\n\n> **Excel 365, art. 100**\n> \"=SI(prueba_lógica; valor_si_verdadero; valor_si_falso)\"\n\n**Por qué D es correcta:** La fórmula evalúa si A12 es mayor que 50 y, si se cumple, muestra 'Comprar'; si no se cumple, muestra 'No comprar', sin mostrar el valor de la celda.\n\n**Por qué las demás son incorrectas:**\n- **A)** La función SI devuelve únicamente el texto indicado en el argumento correspondiente, sin mostrar además el valor de la celda evaluada.\n- **B)** Esta opción invierte los resultados: la fórmula muestra 'Comprar' cuando se cumple la condición y 'No comprar' cuando no se cumple, no al revés.\n- **C)** La función SI devuelve únicamente el texto indicado, sin mostrar el valor de la celda, y además esta opción invierte el orden de los resultados."
+  },
+  {
+    "question_id": "ac8d0cb3-594d-421f-a215-fbb5c1e0e89a",
+    "servidas": 210,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "90",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/e169f7d3-011d-4f8c-8e78-9af704e07f88.txt",
+    "enunciado": "En la celda B5 de una hoja de Excel 365 introducimos el texto 'Número:' (sin comillas). En la celda C5 introducimos el número 215. En la celda D5 visualizamos lo siguiente: 'Número:215' (sin comillas). ¿Qué fórmula contiene la celda D5?",
+    "opciones": {
+      "A": "=IGUAL(B5;C5)",
+      "B": "=SUMA(B5;C5)",
+      "C": "=B5+C5",
+      "D": "=CONCAT(B5;C5)"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta qué fórmula produce en D5 el resultado 'Número:215' a partir del texto de B5 y el número de C5.\n\n> **Excel 365, art. 90**\n> \"`=CONCAT(B5;C5)` → `\"Número:215\"` si B5=\"Número:\" y C5=215.\"\n\n**Por qué D es correcta:** CONCAT une el contenido de las celdas indicadas como texto, por lo que con B5=\"Número:\" y C5=215 produce exactamente 'Número:215'.\n\n**Por qué las demás son incorrectas:**\n- **A)** IGUAL compara si dos valores son idénticos y devuelve VERDADERO o FALSO; no une el contenido de dos celdas.\n- **B)** SUMA opera con valores numéricos; al incluir una celda de texto como B5, produciría un error en lugar de unir los contenidos.\n- **C)** El operador + es aritmético y no puede combinarse con una celda de texto como B5 para producir esa cadena."
+  },
+  {
+    "question_id": "3ebfd2af-cc21-4bc1-b760-46006fb06f1c",
+    "servidas": 209,
+    "es_examen_oficial": true,
+    "ley": "Ley 40/2015",
+    "articulo": "73",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/bb90ce28-4953-4320-9790-d7a097852d80.txt",
+    "enunciado": "Entre las competencias de los Delegados del Gobierno se encuentra:",
+    "opciones": {
+      "A": "Informar, con carácter preceptivo, las propuestas de nombramiento de los subdelegados de Gobierno en las provincias de su ámbito territorial",
+      "B": "Proponer la suspensión de los actos dictados por los órganos de la delegación del Gobierno cuando le corresponda resolver el recurso, de acuerdo con el art. 117.2 de la LPAC",
+      "C": "Proponer ante el Consejo de Ministros las medidas precisas para evitar la duplicidad de estructuras administrativas, tanto en la propia Administración General Estado como en otras Administraciones Públicas",
+      "D": "Informar las medidas de optimización de recursos humanos y materiales en su ámbito territorial, especialmente las que afecten a más de un departamento"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cuál de las siguientes es una competencia de los Delegados del Gobierno en las Comunidades Autónomas.\n\n> **Ley 40/2015, art. 73.1.e).4º**\n> \"Informar las medidas de optimización de recursos humanos y materiales en su ámbito territorial, especialmente las que afecten a más de un Departamento.\"\n\n**Por qué D es correcta:** Informar las medidas de optimización de recursos humanos y materiales en su ámbito territorial, en especial las que afecten a más de un departamento, es una competencia expresa de los Delegados del Gobierno.\n\n**Por qué las demás son incorrectas:**\n- **A)** La norma atribuye a los Delegados informar el nombramiento de titulares de órganos territoriales de la AGE, no el de los propios Subdelegados del Gobierno, cuyo nombramiento les corresponde a ellos directamente.\n- **B)** La norma reserva al Delegado suspender directamente los actos impugnados cuando le corresponda resolver el recurso, y solo proponer la suspensión en los restantes casos; esta opción invierte esa distinción.\n- **C)** La norma dirige esa propuesta sobre duplicidad de estructuras administrativas al Ministro de Hacienda y Administraciones Públicas, no al Consejo de Ministros."
+  },
+  {
+    "question_id": "37a8631f-8ac9-4895-8f2a-ff4b8d1e293d",
+    "servidas": 209,
+    "es_examen_oficial": false,
+    "ley": "Ley 7/1985",
+    "articulo": "25",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/ec84f1eb-022a-4ff7-9c4a-5590ef17d4f5.txt",
+    "enunciado": "Según el art. 25 de la Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local, los municipios no tienen competencia en materia de:",
+    "opciones": {
+      "A": "Cementerios y actividades funerarias.",
+      "B": "Conservación o mantenimiento de centros sanitarios asistenciales de titularidad de la Comunidad Autónoma.",
+      "C": "Prevención y extinción de incendios.",
+      "D": "Tráfico, estacionamiento de vehículos y movilidad."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta en qué materia, de las cuatro propuestas, los municipios NO tienen competencia según este artículo.\n\n**Por qué B es correcta:** La conservación o mantenimiento de centros sanitarios asistenciales de titularidad autonómica no figura entre las materias que este artículo atribuye en todo caso al municipio.\n\n**Por qué las demás son incorrectas:**\n- **A)** Cementerios y actividades funerarias sí figura entre las competencias propias que el municipio ejerce en todo caso.\n- **C)** La prevención y extinción de incendios sí figura, junto con la protección civil, entre las competencias propias que el municipio ejerce en todo caso.\n- **D)** El tráfico, estacionamiento de vehículos y movilidad sí figura entre las competencias propias que el municipio ejerce en todo caso."
+  },
+  {
+    "question_id": "b0a56c1e-64f5-4284-9676-2a9752775acc",
+    "servidas": 209,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Para el cumplimiento de sus fines, las Administraciones Públicas recogidas en el artículo 2 de la Ley 40/2015 de Régimen Jurídico del Sector Público, actúan:",
+    "opciones": {
+      "A": "Con personalidad jurídica única.",
+      "B": "Con plena capacidad pública y privada.",
+      "C": "Bajo la dirección del Congreso de los Diputados.",
+      "D": "Todas son correctas."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo describe con qué personalidad jurídica actúa cada Administración Pública para el cumplimiento de sus fines.\n\n> **Ley 40/2015, art. 3.4**\n> \"actúa para el cumplimiento de sus fines con personalidad jurídica única.\"\n\n**Por qué A es correcta:** Es la opción correcta: coincide de forma literal con lo dispuesto en el artículo.\n\n**Por qué las demás son incorrectas:**\n- **B)** No se menciona en el artículo; este concepto no forma parte de lo que regula el precepto sobre personalidad jurídica.\n- **C)** No es correcto: el artículo atribuye la dirección de la actuación administrativa al Gobierno de la Nación, a los órganos de gobierno de las Comunidades Autónomas y a los de las Entidades Locales, no al Congreso de los Diputados.\n- **D)** No es correcta, porque dos de las otras opciones no coinciden con lo que dispone el artículo."
+  },
+  {
+    "question_id": "3077f99a-e524-4ef8-aef1-6df2c6c88f22",
+    "servidas": 208,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "10",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2eb6b7fb-deaf-4db9-80a6-144bed746e05.txt",
+    "enunciado": "En una hoja Excel 365 seleccionamos tres celdas de una columna con los valores 5, 10 y 15. Arrastramos el controlador de relleno (esquina inferior derecha de la selección) a las dos celdas inferiores que están vacías. ¿Qué obtendremos en esas dos celdas inferiores?",
+    "opciones": {
+      "A": "La suma (30) en la celda inmediatamente inferior. La siguiente celda quedará en blanco.",
+      "B": "El valor 20 en la primera celda y 25 en la segunda.",
+      "C": "Las celdas quedan vacías, tal y como estaban.",
+      "D": "En las dos celdas inferiores se mostrará la suma (30) de los valores seleccionados."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta qué ocurre al seleccionar tres celdas con una serie numérica (5, 10, 15) y arrastrar el controlador de relleno a las dos celdas vacías siguientes en Excel 365.\n\n> **Excel 365, art. 10**\n> \"con tres celdas seleccionadas con valores 5, 10, 15, arrastrando se obtiene 20, 25…\"\n\n**Por qué B es correcta:** Excel 365 detecta el incremento de +5 entre los valores seleccionados y continúa la serie con 20 en la primera celda y 25 en la segunda.\n\n**Por qué las demás son incorrectas:**\n- **A)** Mostrar la suma en la primera celda inferior y dejar la otra en blanco no corresponde al comportamiento de relleno de series de Excel 365.\n- **C)** Las celdas no quedan vacías: Excel 365 las rellena automáticamente al detectar el patrón de la serie.\n- **D)** Excel 365 no suma los valores seleccionados al arrastrar el controlador de relleno; continúa la serie aritmética."
+  },
+  {
+    "question_id": "d3da86ec-b2a9-4913-a153-1d6e557188bc",
+    "servidas": 208,
+    "es_examen_oficial": true,
+    "ley": "TUE",
+    "articulo": "16",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5191e8f7-0a35-4b85-a529-a9869916b1c9.txt",
+    "enunciado": "Según el Tratado de la Unión Europea, el Consejo:",
+    "opciones": {
+      "A": "Estará compuesto por representantes de los ciudadanos de la Unión.",
+      "B": "Estará compuesto por los Jefes de Estado.",
+      "C": "Estará compuesto por los Jefes de Gobierno de los Estados miembros.",
+      "D": "Estará compuesto por un representante de cada Estado miembro de rango ministerial."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta por la composición del Consejo según el Tratado de la Unión Europea.\n\n> **TUE, art. 16.2**\n> \"El Consejo estará compuesto por un representante de cada Estado miembro, de rango ministerial, facultado para comprometer al Gobierno del Estado miembro al que represente y para ejercer el derecho de voto.\"\n\n**Por qué D es correcta:** El Consejo está compuesto por un representante de cada Estado miembro, de rango ministerial, facultado para comprometer a su Gobierno y ejercer el derecho de voto.\n\n**Por qué las demás son incorrectas:**\n- **A)** Los representantes de los ciudadanos de la Unión componen el Parlamento Europeo, no el Consejo.\n- **B)** Los Jefes de Estado componen el Consejo Europeo junto con sus Presidentes y el Presidente de la Comisión, no el Consejo.\n- **C)** Los Jefes de Gobierno también forman parte del Consejo Europeo, no del Consejo."
+  }
+]

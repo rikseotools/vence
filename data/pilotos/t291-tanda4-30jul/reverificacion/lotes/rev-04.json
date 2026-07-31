@@ -1,0 +1,427 @@
+[
+  {
+    "question_id": "4903c485-ba38-4d91-815d-51a6cbbf36c3",
+    "servidas": 241,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "6",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/8f7e450a-8460-4984-8fd8-487b2e195e36.txt",
+    "enunciado": "Cada ordenador conectado a Internet tiene una dirección para identificarse representada por una serie de números. ¿Cuál es su nombre?",
+    "opciones": {
+      "A": "IP",
+      "B": "DNS",
+      "C": "COM",
+      "D": "DOM"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Cada equipo conectado a Internet necesita un identificador numérico único para poder comunicarse con los demás.\n\n> **La Red Internet, art. 6**\n> \"Cada ordenador conectado a Internet tiene una **dirección IP** (Internet Protocol) que lo identifica de forma única, representada por una serie de números.\"\n\n**Por qué A es correcta:** La dirección IP es precisamente ese identificador numérico único que recibe cada dispositivo conectado a Internet.\n\n**Por qué las demás son incorrectas:**\n- **B)** El DNS traduce nombres de dominio a direcciones IP, pero no es en sí mismo el identificador numérico del equipo.\n- **C)** COM es una extensión de dominio de nivel superior, no un identificador numérico de un dispositivo.\n- **D)** DOM es una interfaz de programación para documentos web, sin relación con la identificación numérica de equipos en la red."
+  },
+  {
+    "question_id": "8ef523b3-9032-413c-9cca-b0fdd1465d4a",
+    "servidas": 239,
+    "es_examen_oficial": true,
+    "ley": "Word 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/398b7a90-110b-4a6f-9875-cc332932a758.txt",
+    "enunciado": "En Word 365 la opción \"Contar palabras\", ¿qué estadísticas muestra?",
+    "opciones": {
+      "A": "Páginas, palabras, párrafos, objetos y líneas.",
+      "B": "Páginas, palabras, caracteres con y sin espacios, párrafos y líneas.",
+      "C": "Páginas, palabras, caracteres con y sin espacios y líneas únicamente del encabezado.",
+      "D": "Páginas, palabras, caracteres con y sin espacios, caracteres especiales, fórmulas, párrafos y líneas."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "La herramienta Contar palabras de Word ofrece un conjunto concreto de estadísticas sobre el documento, más amplio que el simple recuento de palabras de la barra de estado.\n\n**Por qué B es correcta:** Contar palabras muestra páginas, palabras, caracteres con y sin espacios, párrafos y líneas: el conjunto completo de estadísticas que ofrece esta herramienta.\n\n**Por qué las demás son incorrectas:**\n- **A)** Word no contabiliza \"objetos\" como estadística de este recuento, y en cambio sí incluye los caracteres con y sin espacios, que esta opción omite.\n- **C)** El recuento no se limita al encabezado; abarca todo el documento, por lo que restringirlo así no es correcto.\n- **D)** Contar palabras no incluye \"caracteres especiales\" ni \"fórmulas\" entre sus estadísticas."
+  },
+  {
+    "question_id": "22b361d1-a14f-47a7-a45f-42ac689ca0d1",
+    "servidas": 239,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Las Administraciones Públicas:",
+    "opciones": {
+      "A": "Tienen reconocida personalidad jurídica en sus leyes reguladoras o en sus normas de creación",
+      "B": "Tienen personalidad jurídica reconocida sólo por normas constitucionales",
+      "C": "Todas tienen reconocida personalidad jurídica, pero sólo por nomas reglamentarias",
+      "D": "No tienen personalidad jurídica"
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo aclara cómo y de qué tipo es la personalidad jurídica de cada Administración Pública.\n\n> **Ley 40/2015, art. 3.4**\n> \"actúa para el cumplimiento de sus fines con personalidad jurídica única.\"\n\n**Por qué A es correcta:** Es la opción correcta: cada Administración Pública tiene personalidad jurídica única, reconocida en sus leyes reguladoras o normas de creación.\n\n**Por qué las demás son incorrectas:**\n- **B)** No es correcto limitar el reconocimiento a normas constitucionales: procede de las leyes reguladoras o normas de creación de cada Administración.\n- **C)** No es correcto limitar el reconocimiento a normas reglamentarias, que carecen de rango para atribuir personalidad jurídica.\n- **D)** Es falso: el propio artículo establece que cada Administración actúa con personalidad jurídica única, luego sí la tienen."
+  },
+  {
+    "question_id": "b10a25e4-8b8d-46a6-85cd-bc7a0d8a87fe",
+    "servidas": 239,
+    "es_examen_oficial": false,
+    "ley": "RD 366/2007",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/04a43832-7178-4b8c-96b8-9c116b906b91.txt",
+    "enunciado": "Las medidas aprobadas mediante el Real Decreto 366/2007, se estructuran en las siguientes áreas:",
+    "opciones": {
+      "A": "Todas las respuestas son correctas.",
+      "B": "Medidas de accesibilidad de las Oficinas de Atención al Ciudadano.",
+      "C": "Medidas para garantizar la accesibilidad en relación con los impresos y documentos administrativos.",
+      "D": "Medidas para garantizar la accesibilidad en la prestación de servicios de atención al ciudadano."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta en qué áreas se estructuran las medidas de accesibilidad aprobadas por el Real Decreto 366/2007.\n\n**Por qué A es correcta:** El Real Decreto organiza sus medidas precisamente en esas tres áreas: la accesibilidad de las Oficinas de Atención al Ciudadano, la de los impresos y documentos administrativos, y la de la prestación de servicios de atención al ciudadano, por lo que las tres afirmaciones son ciertas.\n\n**Por qué las demás son incorrectas:**\n- **B)** La accesibilidad de las Oficinas de Atención al Ciudadano es una de las áreas que regula el Real Decreto, pero no la única.\n- **C)** La accesibilidad en relación con los impresos y documentos administrativos es una de las áreas que regula el Real Decreto, pero no la única.\n- **D)** La accesibilidad en la prestación de servicios de atención al ciudadano es una de las áreas que regula el Real Decreto, pero no la única."
+  },
+  {
+    "question_id": "8a845f9c-446e-4094-9c73-27c14f170f99",
+    "servidas": 238,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "La declaración del estado de excepción corresponde:",
+    "opciones": {
+      "A": "A las Cortes Generales.",
+      "B": "Al Gobierno, previa autorización del Congreso de los Diputados.",
+      "C": "Al Congreso de los Diputados, a propuesta exclusiva del Gobierno.",
+      "D": "Al Gobierno, dando cuenta al Congreso de los Diputados."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 116.3 CE identifica con precisión quién declara el estado de excepción y qué trámite previo exige.\n\n> **CE, art. 116.3**\n> \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.\"\n\n**Por qué B es correcta:** La declaración del estado de excepción corresponde al Gobierno, previa autorización del Congreso de los Diputados, conforme al artículo 116.3.\n\n**Por qué las demás son incorrectas:**\n- **A)** No son las Cortes Generales quienes declaran el estado de excepción, sino el Gobierno, con autorización previa del Congreso de los Diputados.\n- **C)** El Congreso no declara directamente el estado de excepción a propuesta del Gobierno; esa fórmula corresponde al estado de sitio.\n- **D)** El Gobierno no se limita a dar cuenta al Congreso en este caso; necesita su autorización previa, a diferencia de lo que ocurre con la declaración del estado de alarma."
+  },
+  {
+    "question_id": "0c90e02f-2941-4675-9673-e243bcf94383",
+    "servidas": 238,
+    "es_examen_oficial": false,
+    "ley": "Ley 40/2015",
+    "articulo": "3",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/7f64c387-d8e5-4e2c-a4c6-685fae3205cf.txt",
+    "enunciado": "Las Administraciones Públicas sirven con objetividad los intereses generales y actúan de acuerdo con los principios de: (Señale la respuesta incorrecta)",
+    "opciones": {
+      "A": "Transparencia y publicidad.",
+      "B": "Eficacia.",
+      "C": "Descentralización y desconcentración.",
+      "D": "Jerarquía y coordinación."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El primer párrafo del artículo 3 enumera los cinco principios clásicos de actuación de las Administraciones Públicas, y se pide identificar cuál de las opciones no coincide con ellos.\n\n> **Ley 40/2015, art. 3.1**\n> \"Las Administraciones Públicas sirven con objetividad los intereses generales y actúan de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la Constitución, a la Ley y al Derecho.\"\n\n**Por qué A es correcta:** Esta combinación no figura entre los cinco principios de ese primer párrafo; el artículo menciona la transparencia más adelante, junto a la objetividad y la participación, pero no como binomio con la publicidad, por lo que es la respuesta buscada.\n\n**Por qué las demás son incorrectas:**\n- **B)** Sí figura expresamente entre esos cinco principios.\n- **C)** Sí figuran expresamente entre esos cinco principios.\n- **D)** Sí figuran expresamente entre esos cinco principios."
+  },
+  {
+    "question_id": "bfa40cfe-5925-4cd8-9429-7cf74b78c3e8",
+    "servidas": 237,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f1618ab2-bc3e-41d1-a66f-3a7db8c7645a.txt",
+    "enunciado": "¿Qué es un FTP?",
+    "opciones": {
+      "A": "Un protocolo para conectar ordenadores a Internet mediante wifi.",
+      "B": "Un protocolo de transferencia de ficheros.",
+      "C": "Un protocolo de capa de acceso al medio.",
+      "D": "Un tipo de servidor web."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Se pregunta qué es un FTP.\n\n> **La Red Internet, art. 2 (Protocolo FTP)**\n> \"**FTP** (File Transfer Protocol) permite transferir archivos entre cliente y servidor.\"\n\n**Por qué B es correcta:** FTP son las siglas de File Transfer Protocol, es decir, el protocolo dedicado precisamente a la transferencia de ficheros entre cliente y servidor.\n\n**Por qué las demás son incorrectas:**\n- **A)** La conexión de un ordenador a Internet mediante wifi corresponde a otros protocolos (Wi-Fi, TCP/IP), no al FTP, que se dedica a la transferencia de archivos.\n- **C)** Un protocolo de capa de acceso al medio pertenece a la capa de enlace, no es lo que designa FTP.\n- **D)** FTP no es un tipo de servidor web; los servidores web se apoyan en HTTP/HTTPS, no en FTP."
+  },
+  {
+    "question_id": "8abbabd2-1975-4190-bd4d-bf623018e4ae",
+    "servidas": 237,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Si se pulsa el clic derecho de ratón sobre el icono de inicio de Windows 11, ¿qué ocurre?",
+    "opciones": {
+      "A": "Se abre un menú con diversas opciones de configuración y administración de Windows.",
+      "B": "Se abre el Explorador de archivos.",
+      "C": "Se abre Cortana.",
+      "D": "Se abre el explorador web Microsoft Edge."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El botón de Inicio de Windows 11 tiene un comportamiento distinto según se pulse con el botón izquierdo o el derecho del ratón.\n\n> **Windows 11, art. 1**\n> \"Al hacer **clic derecho sobre el botón de Inicio** de Windows 11 (o pulsar **Win + X**) se abre el **menú de enlaces rápidos**, también llamado **Menú WinX**\"\n\n**Por qué A es correcta:** El clic derecho sobre el icono de Inicio abre el Menú WinX, con accesos directos a herramientas de configuración y administración del sistema.\n\n**Por qué las demás son incorrectas:**\n- **B)** El Explorador de archivos se abre con Win+E o desde la barra de tareas, no mediante clic derecho en Inicio.\n- **C)** Cortana se activa desde la barra de búsqueda, no mediante clic derecho en el icono de Inicio.\n- **D)** Microsoft Edge tiene su propio icono en la barra de tareas; el clic derecho en Inicio no lo abre."
+  },
+  {
+    "question_id": "e14167a8-6ea1-47ac-93c5-99f4fa1a4a02",
+    "servidas": 236,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "En el Panel de navegación del Explorador de archivos de Windows 11, ¿cuál es el comportamiento de la opción Expandir del menú contextual de las carpetas?",
+    "opciones": {
+      "A": "Extiende las particiones de disco.",
+      "B": "Despliega el árbol de carpetas que está dentro de la carpeta seleccionada.",
+      "C": "Abre la ventana Administración de discos.",
+      "D": "Abre una nueva ventana del Explorador de archivos con la carpeta seleccionada."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El panel de navegación del Explorador de archivos permite desplegar la estructura de carpetas sin necesidad de abrir cada una en una ventana.\n\n**Por qué B es correcta:** La opción Expandir despliega el árbol de subcarpetas contenidas dentro de la carpeta seleccionada, sin abrir una nueva ventana.\n\n**Por qué las demás son incorrectas:**\n- **A)** Extender particiones de disco es una función del Administrador de discos, no de la opción Expandir del menú contextual.\n- **C)** Abrir la Administración de discos se hace desde el Menú WinX u otras vías, no con la opción Expandir de una carpeta.\n- **D)** Abrir una nueva ventana del Explorador con esa carpeta se consigue con la opción «Abrir en nueva ventana», no con Expandir."
+  },
+  {
+    "question_id": "313e396f-6366-40f7-af50-984cfe14a66e",
+    "servidas": 235,
+    "es_examen_oficial": true,
+    "ley": "Access 365",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2fd741a4-26af-439c-a8c1-b2507f6e4cb5.txt",
+    "enunciado": "¿Qué respuesta corresponde a la definición \"Lenguaje de computación para trabajar con conjuntos de datos y las relaciones entre ellos, como Microsoft Office Access\"?",
+    "opciones": {
+      "A": "MDB",
+      "B": "SQL",
+      "C": "ACDB",
+      "D": "ODB"
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "Los sistemas gestores de bases de datos relacionales como Access se apoyan en un lenguaje estándar para definir y consultar los datos y sus relaciones.\n\n**Por qué B es correcta:** SQL (Structured Query Language) es el lenguaje estándar para trabajar con conjuntos de datos y sus relaciones en sistemas como Access.\n\n**Por qué las demás son incorrectas:**\n- **A)** MDB es la extensión de los archivos de bases de datos de versiones antiguas de Access, no un lenguaje de computación.\n- **C)** ACDB no corresponde a ningún lenguaje reconocido; es una variación del nombre del formato de archivo .accdb.\n- **D)** ODB es la extensión de los archivos de bases de datos de OpenDocument, no un lenguaje de consulta."
+  },
+  {
+    "question_id": "4dc2ccd0-b7f4-4422-8f50-1cf5c0203c01",
+    "servidas": 235,
+    "es_examen_oficial": true,
+    "ley": "Excel 365",
+    "articulo": "200",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/243e83d1-9f0d-49b7-8909-6567ed7a2e6c.txt",
+    "enunciado": "En un fichero Excel 365, ¿cuál es el resultado de activar la función Proteger libro, marcando la opción Estructura?",
+    "opciones": {
+      "A": "El libro queda protegido por una contraseña, necesaria para abrirlo.",
+      "B": "No será posible modificar los valores en las hojas del libro.",
+      "C": "No será posible modificar el nombre o posición de las hojas ni insertar nuevas hojas.",
+      "D": "Se bloquean las opciones de formato de las columnas."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "Se pregunta qué ocurre al activar Proteger libro marcando la opción Estructura en un fichero Excel 365.\n\n> **Excel 365, art. 200 (Proteger libro > Opción Estructura)**\n> \"Insertar nuevas hojas.\n- Eliminar hojas.\n- Mover o copiar hojas.\n- Ocultar o mostrar hojas.\n- Cambiar el nombre de las hojas.\"\n\n**Por qué C es correcta:** La opción Estructura de Proteger libro impide precisamente insertar, eliminar, mover, ocultar/mostrar y renombrar las hojas del libro, sin afectar al contenido de las celdas.\n\n**Por qué las demás son incorrectas:**\n- **A)** La protección por contraseña necesaria para abrir el libro corresponde a Cifrar con contraseña, no a la opción Estructura de Proteger libro.\n- **B)** Impedir modificar los valores de las hojas corresponde a Proteger hoja, que actúa sobre el contenido de las celdas, no a Proteger libro, que actúa sobre la estructura.\n- **D)** Bloquear el formato de las columnas es un efecto de Proteger hoja, no de la opción Estructura de Proteger libro, que no actúa sobre el contenido de las hojas."
+  },
+  {
+    "question_id": "f4e8d96d-5157-4f11-8e47-d94012f30fc8",
+    "servidas": 234,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Seleccionamos un archivo en el Explorador de archivos de Windows 11. ¿Cuál de las siguientes opciones emplearemos si queremos llevar el archivo a otra ubicación sin dejar copia en la carpeta de origen?",
+    "opciones": {
+      "A": "Mover a.",
+      "B": "Copiar a.",
+      "C": "Fácil acceso.",
+      "D": "Copiar ruta de acceso."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El Explorador de archivos ofrece varias opciones para gestionar la ubicación de un archivo, cada una con un resultado distinto.\n\n> **Windows 11, art. 1**\n> \"La opción **\"Mover a\"** en el Explorador traslada el archivo a otra ubicación sin dejar copia en el origen.\"\n\n**Por qué A es correcta:** «Mover a» traslada el archivo a otra ubicación sin dejar copia en la carpeta de origen.\n\n**Por qué las demás son incorrectas:**\n- **B)** «Copiar a» duplica el archivo, de modo que el original permanece en el origen.\n- **C)** «Fácil acceso» sirve para anclar la carpeta al acceso rápido o sincronizarla, no para trasladar el archivo.\n- **D)** «Copiar ruta de acceso» solo copia la ubicación del archivo como texto al portapapeles, sin moverlo."
+  },
+  {
+    "question_id": "6fefc94e-3d71-45e2-aac3-540e7590c8ce",
+    "servidas": 234,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f85c3c54-1e67-417d-a3e5-a1d911acfa02.txt",
+    "enunciado": "¿Cuál es la definición del término 'Cookie', utilizado por los navegadores web?",
+    "opciones": {
+      "A": "Pequeña información enviada por un sitio web y almacenada en el navegador del usuario, de manera que el sitio web puede consultar la actividad previa del navegador.",
+      "B": "Pequeño programa ejecutable cargado en el sistema, sin conocimiento del usuario, a través del correo electrónico.",
+      "C": "Pequeño terminal informático que se puede trasladar fácilmente de una ubicación física a otra y se utiliza para proteger la información almacenada.",
+      "D": "Formas diferentes de la venta directa de convertir en dinero los servicios o productos ofrecidos a través del comercio electrónico."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "El artículo recoge de forma expresa la definición técnica del término empleado por los navegadores web.\n\n> **Informática Básica, art. 1**\n> \"es una pequeña información enviada por un sitio web y almacenada en el navegador del usuario, de manera que el sitio web puede consultar la actividad previa del navegador.\"\n\n**Por qué A es correcta:** Coincide de forma literal con la definición que ofrece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **B)** Describe un comportamiento propio de software malicioso instalado sin conocimiento del usuario, ajeno al concepto que define el artículo.\n- **C)** Describe un dispositivo físico portátil, sin relación con el concepto que define el artículo.\n- **D)** Describe modelos de negocio del comercio electrónico, sin relación con el concepto que define el artículo."
+  },
+  {
+    "question_id": "fd256a85-2091-4732-8aa1-d2c26db9f4c6",
+    "servidas": 234,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "El estado de excepción será declarado:",
+    "opciones": {
+      "A": "Por el Congreso de los Diputados por mayoría absoluta, a propuesta exclusiva del Gobierno.",
+      "B": "Por el Gobierno mediante decreto acordado en Consejo de Ministros dando cuenta al Congreso de los Diputados.",
+      "C": "Por las Cortes Generales por mayoría absoluta, a propuesta exclusiva del Gobierno.",
+      "D": "Por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "El artículo 116 prevé tres procedimientos distintos de declaración según el estado excepcional de que se trate.\n\n> **CE, art. 116.3**\n> \"El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados.\"\n\n**Por qué D es correcta:** El estado de excepción se declara por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados, según establece el artículo 116.3.\n\n**Por qué las demás son incorrectas:**\n- **A)** Esa fórmula, mayoría absoluta del Congreso a propuesta exclusiva del Gobierno, corresponde al estado de sitio, no al de excepción.\n- **B)** Ese procedimiento, decreto en Consejo de Ministros dando cuenta al Congreso, es el previsto para el estado de alarma, no para el de excepción.\n- **C)** La autorización previa no la prestan «las Cortes Generales» como conjunto, sino específicamente el Congreso de los Diputados."
+  },
+  {
+    "question_id": "67e78d81-7cd4-4019-843d-6336cfc1ee34",
+    "servidas": 233,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "0",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2536184c-73ed-4568-9ac7-0bbf1da24dcb.txt",
+    "enunciado": "La constitución española se compone de un total de:",
+    "opciones": {
+      "A": "170 artículos.",
+      "B": "167 artículos.",
+      "C": "168 artículos.",
+      "D": "169 artículos."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "La Constitución Española de 1978 se compone de un número concreto de artículos, organizados en un Título Preliminar y diez títulos numerados.\n\n> **CE, estructura**\n> \"Extensa: 169 artículos, una de las más largas de nuestra historia constitucional.\"\n\n**Por qué D es correcta:** La Constitución Española se compone de 169 artículos, siendo una de las más extensas de nuestra historia constitucional.\n\n**Por qué las demás son incorrectas:**\n- **A)** 170 artículos no es la cifra correcta; el articulado de la Constitución termina en el artículo 169.\n- **B)** 167 artículos se queda corto: ese es el artículo dedicado al procedimiento ordinario de reforma, pero el articulado continúa hasta el 169.\n- **C)** 168 artículos tampoco es la cifra correcta: ese artículo regula la revisión total de la Constitución, pero todavía sigue el artículo 169."
+  },
+  {
+    "question_id": "3a4127af-ded0-423e-9a69-5e0877d913e0",
+    "servidas": 232,
+    "es_examen_oficial": true,
+    "ley": "Informática Básica",
+    "articulo": "2",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5b435183-cdbd-41e6-9754-0a6333c7b8de.txt",
+    "enunciado": "¿Cuál de los siguientes enunciados es verdadero con respecto al envío por correo electrónico de un fichero con un formato determinado, por ejemplo, un fichero 'psd' de Photoshop?",
+    "opciones": {
+      "A": "Para enviar el fichero será necesario tener un programa que permita abrirlo, no así para recibirlo.",
+      "B": "Es necesario que ambos equipos cuenten con un programa que permita abrir el fichero para poder enviarlo.",
+      "C": "No es necesario tener un programa que permita abrir el fichero para enviarlo, pero sí para recibirlo.",
+      "D": "Es posible enviarlo y recibirlo, indistintamente de que quien lo envíe o reciba tengan un programa que permita abrirlo."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta qué ocurre al enviar por correo electrónico un fichero de un formato específico (como un .psd de Photoshop) en cuanto a la necesidad de tener un programa que lo abra.\n\n**Por qué D es correcta:** Tanto el envío como la recepción de un adjunto de correo electrónico son independientes de que emisor o receptor dispongan de un programa que permita abrir ese formato de archivo; el adjunto se transmite igualmente y solo hace falta el programa adecuado para abrirlo y visualizar su contenido.\n\n**Por qué las demás son incorrectas:**\n- **A)** El correo electrónico no exige tener el programa correspondiente ni para enviar ni para recibir el adjunto; el archivo viaja como datos adjuntos con independencia de quién pueda abrirlo, así que restringir esa exigencia solo al envío no se corresponde con cómo funciona el adjunto.\n- **B)** El envío y la recepción de un adjunto de correo no requieren tener instalado el programa que lo abre; ese programa solo hace falta para visualizar o editar el contenido del fichero una vez recibido, no para transmitirlo.\n- **C)** Tampoco es necesario tener el programa para recibirlo: el adjunto llega igualmente al buzón del destinatario aunque este no disponga de un programa que lo abra; lo único que no podrá hacer sin él es visualizar su contenido."
+  },
+  {
+    "question_id": "aa61445a-bdb3-44a7-a540-557543dcd72e",
+    "servidas": 231,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "116",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/a5b3c115-1ada-4436-90ba-b0584dec15d4.txt",
+    "enunciado": "El Congreso de los Diputados a propuesta del Gobierno podrá declarar:",
+    "opciones": {
+      "A": "El estado de alarma.",
+      "B": "El estado de excepción.",
+      "C": "El estado de sitio.",
+      "D": "Ninguna de las respuestas anteriores es correcta."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El artículo 116.4 CE es el único de los tres apartados que atribuye la declaración de un estado excepcional al Congreso, y no al Gobierno.\n\n> **CE, art. 116.4**\n> \"El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno.\"\n\n**Por qué C es correcta:** El estado de sitio es el único que declara el propio Congreso de los Diputados, por mayoría absoluta, a propuesta exclusiva del Gobierno, conforme al artículo 116.4.\n\n**Por qué las demás son incorrectas:**\n- **A)** El estado de alarma no lo declara el Congreso a propuesta del Gobierno, sino el propio Gobierno mediante decreto en Consejo de Ministros.\n- **B)** El estado de excepción tampoco lo declara el Congreso a propuesta del Gobierno; lo declara el Gobierno, previa autorización del Congreso.\n- **D)** Sí existe una respuesta correcta entre las anteriores: el Congreso, a propuesta del Gobierno, puede declarar el estado de sitio."
+  },
+  {
+    "question_id": "7f427e26-a987-4a82-8e03-a6ea146ed8d6",
+    "servidas": 231,
+    "es_examen_oficial": true,
+    "ley": "RD 366/2007",
+    "articulo": "5",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/9836bfaa-edb2-482b-bf1d-8e1b6df75d4a.txt",
+    "enunciado": "Los accesos a las Oficinas de Atención al Ciudadano, en relación con el diseño y ejecución de los mismos, deben tener en consideración:",
+    "opciones": {
+      "A": "El espacio adyacente, tanto interior como exterior, a la puerta de acceso a la Oficina debe ser vertical y no presentar obstáculos.",
+      "B": "Cuando las puertas sean acristaladas se señalizarán mediante dos bandas horizontales de 20 centímetros de ancho, de contraste cromático con el resto de la superficie.",
+      "C": "Las puertas de entrada serán accesibles a los usuarios, debiendo ser en todo caso, de tipo corredera.",
+      "D": "Cualquier elemento en el suelo como canaletas de recogida de agua, felpudos, etc., que se encuentre enrasado con el pavimento debe ser suprimido."
+    },
+    "clave_marcada": "B",
+    "explicacion_aplicada": "El artículo 5.2 del RD 366/2007 recoge distintas recomendaciones sobre el diseño de los accesos a las Oficinas de Atención al Ciudadano.\n\n> **RD 366/2007, art. 5.2.h)**\n> \"Cuando las puertas sean acristaladas o de vidrios se protegerán de forma que se eviten roturas por impacto y se señalizarán mediante dos bandas horizontales de 20 centímetros de ancho, de contraste cromático con el resto de la superficie, colocada, la primera, a una altura entre 100 y 120 centímetros, y la segunda entre 150 y 170 centímetros.\"\n\n**Por qué B es correcta:** Las puertas acristaladas deben señalizarse con dos bandas horizontales de 20 centímetros de contraste cromático, tal como recoge esta recomendación.\n\n**Por qué las demás son incorrectas:**\n- **A)** El espacio adyacente a la puerta debe ser horizontal, no vertical, para permitir la aproximación y apertura de la puerta.\n- **C)** Las puertas de entrada pueden ser correderas o abatibles; no se exige que sean necesariamente correderas.\n- **D)** Los elementos del suelo como canaletas o felpudos deben quedar enrasados con el pavimento, no suprimidos."
+  },
+  {
+    "question_id": "6c5e337e-28c5-4053-8f62-a934c876dc05",
+    "servidas": 231,
+    "es_examen_oficial": false,
+    "ley": "CE",
+    "articulo": "0",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/2536184c-73ed-4568-9ac7-0bbf1da24dcb.txt",
+    "enunciado": "¿Cuándo se produjo la primera reforma de la Constitución Española?",
+    "opciones": {
+      "A": "La Constitución Española nunca se ha reformado.",
+      "B": "En 1995.",
+      "C": "En 1992.",
+      "D": "En 1986."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "La Constitución Española ha sido reformada en distintas ocasiones desde 1978, y conviene situar en el tiempo cuál fue la primera de esas reformas.\n\n> **CE, estructura**\n> \"Adaptar el ordenamiento constitucional al Tratado de la Unión Europea de Maastricht (1992), que reconocía el derecho de sufragio activo y pasivo a todo ciudadano de la UE en su Estado miembro de residencia.\"\n\n**Por qué C es correcta:** La primera reforma constitucional se produjo en 1992, para adaptar el artículo 13.2 al Tratado de Maastricht y reconocer el sufragio pasivo de los ciudadanos de la Unión Europea en las elecciones municipales.\n\n**Por qué las demás son incorrectas:**\n- **A)** La Constitución sí se ha reformado a lo largo de su historia; la primera de esas reformas se remonta a 1992.\n- **B)** 1995 no corresponde a ninguna reforma constitucional; la primera reforma es anterior, de 1992.\n- **D)** 1986 no corresponde a ninguna reforma constitucional; la primera reforma llegaría después, en 1992."
+  },
+  {
+    "question_id": "34b76916-c4df-49bc-b61e-0fbe069eb469",
+    "servidas": 229,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "149",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/379d013a-0860-4bda-92dd-a51f417e7920.txt",
+    "enunciado": "De acuerdo con el principio de supletoriedad previsto en el art. 149.3 de la CE, el derecho estatal será:",
+    "opciones": {
+      "A": "Supletorio del derecho de las CC. AA., pero únicamente en lo que esté atribuido a la exclusiva competencia del Estado.",
+      "B": "Supletorio del derecho de las CC. AA., pero únicamente en lo que no esté atribuido a la exclusiva competencia de estas.",
+      "C": "Nunca supletorio del derecho de las CC. AA.",
+      "D": "En todo caso, supletorio del derecho de las CC. AA."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cómo opera, según el principio de supletoriedad del artículo 149.3 CE, el derecho estatal respecto del derecho de las Comunidades Autónomas.\n\n> **CE, art. 149.3**\n> \"El derecho estatal será, en todo caso, supletorio del derecho de las Comunidades Autónomas.\"\n\n**Por qué D es correcta:** El artículo establece expresamente que el derecho estatal será, en todo caso, supletorio del derecho de las Comunidades Autónomas, sin condicionarlo a ninguna materia concreta.\n\n**Por qué las demás son incorrectas:**\n- **A)** Limitar la supletoriedad solo a las materias de competencia exclusiva del Estado no se corresponde con el texto, que no introduce esa restricción.\n- **B)** Limitar la supletoriedad a lo que no sea competencia exclusiva de las Comunidades Autónomas tampoco se corresponde con el texto, que la establece sin esa condición.\n- **C)** Negar por completo la supletoriedad contradice directamente el precepto, que la establece de forma expresa."
+  },
+  {
+    "question_id": "833c1125-f8aa-4400-b767-455c233112de",
+    "servidas": 229,
+    "es_examen_oficial": true,
+    "ley": "CE",
+    "articulo": "69",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/5e3551f1-d76f-4634-a9eb-7cf21c1fbdd0.txt",
+    "enunciado": "¿Cuántos senadores se eligen en Ceuta y en Melilla?",
+    "opciones": {
+      "A": "Ceuta y Melilla no eligen senadores",
+      "B": "4 senadores cada una de ellas",
+      "C": "1 senador cada una de ellas",
+      "D": "2 senadores cada una de ellas"
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta por el número de Senadores que se eligen en Ceuta y en Melilla.\n\n> **CE, art. 69.4**\n> \"Las poblaciones de Ceuta y Melilla elegirán cada una de ellas dos Senadores.\"\n\n**Por qué D es correcta:** El artículo asigna expresamente dos Senadores a cada una de estas poblaciones.\n\n**Por qué las demás son incorrectas:**\n- **A)** Ceuta y Melilla sí eligen Senadores; el propio artículo se lo atribuye expresamente.\n- **B)** Cuatro senadores cada una no es la cifra que recoge el artículo para estas poblaciones.\n- **C)** Un senador cada una no corresponde a la cifra fijada por el artículo, que es el doble."
+  },
+  {
+    "question_id": "cbc21eb7-8080-480c-abd2-38fac5d7c8f6",
+    "servidas": 228,
+    "es_examen_oficial": true,
+    "ley": "Ley 1/1984 CM",
+    "articulo": "64",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/f98fb18b-c3d2-47e7-99d8-beb1fc947479.txt",
+    "enunciado": "La constitución y disolución de sociedades mercantiles en cuyo capital sea mayoritaria la participación, directa o indirecta, de la Comunidad de Madrid, sus Organismos Autónomos, Entidades de Derecho público y demás Entes Públicos:",
+    "opciones": {
+      "A": "Se autorizará por Acuerdo del Gobierno, a propuesta del Consejero de Economía, Empleo y Hacienda, comunicado a la Asamblea de Madrid y publicado en el Boletín Oficial de la Comunidad de Madrid.",
+      "B": "Se autorizará por Acuerdo del Gobierno, a propuesta del Consejero de Economía, Empleo y Hacienda, comunicado a la Asamblea de Madrid y publicado en el Boletín Oficial del Estado.",
+      "C": "Se autorizará por la Asamblea de Madrid, a propuesta del Presidente del Gobierno, comunicado a la Asamblea de Madrid y publicado en el Boletín Oficial de la Comunidad de Madrid.",
+      "D": "Se autorizará por la Asamblea de Madrid, a propuesta del Consejero de Economía, Empleo y Hacienda, comunicado al Consejo de Gobierno y publicado en el Boletín Oficial de la Comunidad de Madrid."
+    },
+    "clave_marcada": "A",
+    "explicacion_aplicada": "Se pregunta cómo se autoriza la constitución y disolución de sociedades mercantiles en cuyo capital es mayoritaria la participación de la Comunidad de Madrid.\n\n> **Ley 1/1984 CM, art. 64.1**\n> \"La constitución y disolución de sociedades mercantiles de la Comunidad de Madrid se autorizará por acuerdo del Consejo de Gobierno, a propuesta del titular de la Consejería competente en materia de hacienda.\"\n\n**Por qué A es correcta:** El artículo exige acuerdo del Consejo de Gobierno a propuesta del titular de la Consejería competente en materia de hacienda, comunicado a la Asamblea de Madrid y publicado en el Boletín Oficial de la Comunidad de Madrid, tal y como recoge esta combinación.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo exige la publicación en el Boletín Oficial de la Comunidad de Madrid, no en el Boletín Oficial del Estado.\n- **C)** El artículo atribuye la autorización al Consejo de Gobierno, no a la Asamblea de Madrid, y la propuesta corresponde al titular competente en hacienda, no al Presidente del Gobierno.\n- **D)** El artículo invierte los papeles respecto de lo que realmente dispone: quien autoriza es el Consejo de Gobierno y quien recibe la comunicación es la Asamblea de Madrid, no al revés."
+  },
+  {
+    "question_id": "caf28660-c90c-47ad-8f56-3bfab987317e",
+    "servidas": 228,
+    "es_examen_oficial": true,
+    "ley": "La Red Internet",
+    "articulo": "9",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/33f758ab-da7b-4581-918f-8eb04468d4dd.txt",
+    "enunciado": "¿Cuál es el navegador predeterminado en Windows 11 que sustituyó a Internet Explorer?",
+    "opciones": {
+      "A": "Chrome.",
+      "B": "Firefox.",
+      "C": "Opera.",
+      "D": "Microsoft Edge."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta cuál es el navegador que Windows 11 trae predeterminado en sustitución de Internet Explorer.\n\n> **La Red Internet, art. 9 (Navegadores web)**\n> \"El **navegador predeterminado en Windows 11** que sustituyó a Internet Explorer es **Microsoft Edge**.\"\n\n**Por qué D es correcta:** El texto identifica expresamente a este navegador como el predeterminado en Windows 11 que sustituyó a Internet Explorer.\n\n**Por qué las demás son incorrectas:**\n- **A)** Chrome es un navegador de terceros desarrollado por Google, no el predeterminado de Windows 11.\n- **B)** Firefox es un navegador de terceros desarrollado por Mozilla, no el predeterminado de Windows 11.\n- **C)** Opera es un navegador de terceros, no el predeterminado de Windows 11."
+  },
+  {
+    "question_id": "ba2ce239-2a1f-4823-b1a2-b0afc5efe73f",
+    "servidas": 228,
+    "es_examen_oficial": false,
+    "ley": "LO 4/1982 Estatuto de Autonomía de Murcia",
+    "articulo": "33",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/4f99db18-805b-4e44-ade7-7831b4ad7473.txt",
+    "enunciado": "Según el artículo 33.4, la moción de censura deberá de incluir un candidato a la Presidencia del Consejo de Gobierno y no podrá ser votada hasta que transcurran cinco días desde su presentación, pudiendo, en los dos primeros días de dicho plazo, presentarse mociones alternativas. Si la moción de censura no fuese aprobada, ninguno de los signatarios podrá presentar otra en el plazo de un año desde aquella, dentro de la misma legislatura. ¿Pero deberá ser propuesta por al menos?",
+    "opciones": {
+      "A": "Deberá ser propuesta por el cincuenta por ciento, al menos, de los Diputados regionales.",
+      "B": "Deberá ser propuesta por el diez por ciento, al menos, de los Diputados regionales.",
+      "C": "Deberá ser propuesta por el quince por ciento, al menos, de los Diputados nacionales.",
+      "D": "Deberá ser propuesta por el quince por ciento, al menos, de los Diputados regionales."
+    },
+    "clave_marcada": "D",
+    "explicacion_aplicada": "Se pregunta por el porcentaje mínimo de Diputados que debe proponer la moción de censura regulada en el artículo 33.4 del Estatuto de Autonomía de Murcia.\n\n> **LO 4/1982 (Estatuto de Autonomía de Murcia), art. 33.4**\n> \"La moción de censura deberá ser propuesta por el quince por ciento, al menos, de los Diputados regionales\"\n\n**Por qué D es correcta:** El artículo exige expresamente que la moción de censura sea propuesta por, al menos, el quince por ciento de los Diputados regionales.\n\n**Por qué las demás son incorrectas:**\n- **A)** El cincuenta por ciento no es el porcentaje que exige el artículo para proponer la moción; ese umbral tan alto no figura en el precepto para esta fase.\n- **B)** El diez por ciento es inferior al porcentaje que exige realmente el artículo para poder proponer la moción.\n- **C)** El porcentaje que fija el artículo se refiere a los Diputados regionales, no a los Diputados nacionales."
+  },
+  {
+    "question_id": "b0fcff27-cb55-4678-9fb3-394d0aa16a36",
+    "servidas": 226,
+    "es_examen_oficial": true,
+    "ley": "Windows 11",
+    "articulo": "1",
+    "articulo_fichero": "data/pilotos/t291-tanda4-30jul/reverificacion/articulos/514fe942-d773-4ef0-9812-c759e84f93a1.txt",
+    "enunciado": "Desde el Explorador de archivos de Windows 11 abrimos las propiedades de un elemento. ¿En qué pestaña visualizamos los permisos de usuario sobre el objeto?",
+    "opciones": {
+      "A": "General.",
+      "B": "Versiones anteriores.",
+      "C": "Seguridad.",
+      "D": "Detalles."
+    },
+    "clave_marcada": "C",
+    "explicacion_aplicada": "El cuadro de Propiedades de un archivo o carpeta en el Explorador de archivos reparte su información en varias pestañas.\n\n> **Windows 11, art. 1**\n> \"La pestaña **Seguridad** permite visualizar y administrar los permisos de usuario.\"\n\n**Por qué C es correcta:** La pestaña Seguridad muestra y permite administrar los permisos de acceso de usuarios y grupos sobre el objeto.\n\n**Por qué las demás son incorrectas:**\n- **A)** La pestaña General muestra tipo de archivo, ubicación, tamaño y fechas, pero no los permisos de usuario.\n- **B)** Versiones anteriores muestra las copias de seguridad y puntos de restauración del archivo, no los permisos.\n- **D)** Detalles muestra metadatos del archivo (autor, dimensiones, codificación, etc.), no los permisos de acceso."
+  }
+]

@@ -1,0 +1,372 @@
+LEY: Excel 365
+ARTÍCULO: 190 — Gráficos y minigráficos
+======================================================================
+## Gráficos en Excel 365
+
+Un gráfico es una representación visual de los datos de una hoja de cálculo. Cuando los datos de origen cambian, el gráfico vinculado se **actualiza automáticamente**.
+
+---
+
+## Tipos de gráfico disponibles
+
+### Columnas
+
+Muestra categorías en el eje horizontal y valores en el eje vertical. Ideal para comparar valores entre categorías o mostrar cambios a lo largo del tiempo.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Columnas agrupadas | Compara valores entre categorías (2D o 3D) |
+| Columnas apiladas | Muestra la contribución de cada valor al total (2D o 3D) |
+| Columnas 100% apiladas | Compara el porcentaje de contribución de cada valor (2D o 3D) |
+| Columnas 3D | Tres ejes modificables: horizontal, vertical y de profundidad |
+
+### Barras
+
+Igual que las columnas pero con orientación **horizontal**. Especialmente útil cuando los nombres de categoría son largos o los valores representan duraciones de tiempo.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Barras agrupadas | Compara valores entre categorías (2D o 3D) |
+| Barras apiladas | Muestra contribución al total (2D o 3D) |
+| Barras 100% apiladas | Compara porcentajes de contribución (2D o 3D) |
+
+### Líneas
+
+Idóneos para mostrar **tendencias en datos a intervalos iguales** (meses, trimestres, ejercicios fiscales). Recomendados cuando hay varias series de datos.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Línea | Línea continua sin marcadores |
+| Línea con marcadores | Marca cada punto de dato |
+| Línea apilada | Muestra la tendencia de la contribución acumulada |
+| Línea apilada con marcadores | Línea apilada con marcadores en cada punto |
+| Línea 100% apilada | Tendencia del porcentaje acumulado |
+| Línea 3D | Representación tridimensional con cinta |
+
+### Área
+
+Muestra la magnitud del cambio a lo largo del tiempo y el valor total acumulado. Enfatiza la relación entre las partes y el conjunto.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Área | Área continua (2D o 3D) |
+| Área apilada | Contribución acumulada al total (2D o 3D) |
+| Área 100% apilada | Porcentaje de contribución acumulada (2D o 3D) |
+
+### Circular (Sectores o Tarta)
+
+Muestra el tamaño de cada elemento **en proporción a la suma total**. Solo admite **una serie de datos**; todos los valores deben ser positivos y se recomienda no más de siete categorías.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Circular | Gráfico de tarta estándar |
+| Circular 3D | Versión tridimensional |
+| Circular con subgráfico circular | Separa sectores pequeños en un segundo gráfico circular |
+| Circular con subgráfico de barras | Separa sectores pequeños en un gráfico de barras secundario |
+
+### Anillos (Donut)
+
+Similar al circular pero admite **múltiples series de datos**. Cada anillo representa una serie. No son fáciles de leer; se recomienda valorar gráficos de columnas apiladas como alternativa.
+
+### Dispersión (XY)
+
+Combina valores X e Y en puntos de datos únicos y los muestra en **intervalos irregulares**. No requiere que los valores del eje horizontal estén distribuidos uniformemente. Útil para correlaciones y comparar grandes conjuntos de datos independientemente del tiempo.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Dispersión | Solo puntos |
+| Dispersión con líneas suavizadas | Curva suavizada con o sin marcadores |
+| Dispersión con líneas rectas | Líneas rectas con o sin marcadores |
+
+### Burbujas
+
+Variante del gráfico de dispersión: el **tamaño de la burbuja** representa una tercera variable numérica. Compara conjuntos de tres valores en lugar de dos.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Burbujas | Burbujas en 2D |
+| Burbujas con efecto 3D | Burbujas con apariencia tridimensional |
+
+### Cotizaciones
+
+Muestra fluctuaciones de precios de valores bursátiles. Requiere que los datos estén en un **orden específico** según el subtipo.
+
+| Subtipo | Datos necesarios (en orden) |
+|---------|----------------------------|
+| Máximos, mínimos y cierre | 3 series: máx, mín, cierre |
+| Apertura, máximos, mínimos y cierre | 4 series: aper, máx, mín, cierre |
+| Volumen, máximos, mínimos y cierre | 4 series: vol, máx, mín, cierre (eje secundario) |
+| Volumen, apertura, máximos, mínimos y cierre | 5 series completas |
+
+### Superficie
+
+Útil para encontrar **combinaciones óptimas entre dos conjuntos de datos**. Los colores indican áreas del mismo rango de valor; no representan series de datos.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Superficie 3D | Vista tridimensional continua |
+| Trama de superficie 3D | Cuadrícula sin colores de relleno (más rápida de renderizar) |
+| Contorno | Vista topográfica 2D desde arriba |
+| Contorno reticular | Cuadrícula sin colores de relleno en 2D |
+
+### Radial
+
+Cada **categoría tiene su propio eje** que parte desde el centro. Los valores de los ejes van desde el centro hacia fuera. Útil para comparar valores agregados de varias series.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Radial | Sin marcadores en los puntos |
+| Radial con marcadores | Marca cada punto de dato |
+| Radial relleno | Área entre series rellena de color |
+
+### Mapa de árbol (Treemap)
+
+Proporciona una **vista jerárquica** mediante rectángulos anidados. El tamaño y el color de cada rectángulo representan el valor. Ideal para comparar proporciones dentro de una jerarquía y visualizar grandes volúmenes de datos de categoría.
+
+### Proyección solar (Sunburst)
+
+Similar al mapa de árbol pero con **anillos concéntricos**. Cada nivel de la jerarquía se representa con un anillo. El círculo interior es el nivel superior; los anillos exteriores muestran cómo se subdividen los anillos interiores.
+
+### Histograma
+
+Muestra la **frecuencia de distribución** de valores agrupados en rangos (bins). Excel calcula automáticamente los intervalos.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Histograma | Distribución de frecuencias estándar |
+| Pareto | Columnas ordenadas de mayor a menor frecuencia con línea de porcentaje acumulado (diagrama de Pareto o 80/20) |
+
+### Caja y bigotes (Box and Whisker)
+
+Muestra la **distribución de datos** a través de cuartiles. Las líneas que sobresalen de las cajas (bigotes) indican la variabilidad fuera de los cuartiles superior e inferior. Útil para comparar varios conjuntos de datos relacionados y detectar valores atípicos.
+
+### Cascada (Waterfall)
+
+Muestra el **efecto acumulativo** de valores positivos y negativos sucesivos sobre un valor inicial. Los valores positivos y negativos se codifican con colores diferenciados. Muy utilizado en análisis financiero.
+
+### Embudo (Funnel)
+
+Muestra los valores a través de **varias fases de un proceso**. Los valores disminuyen progresivamente de fase en fase. Habitual en análisis de procesos de ventas o conversión.
+
+### Mapa (Map)
+
+Compara valores y categorías en **regiones geográficas** (países, comunidades autónomas, provincias, códigos postales). Disponible en Excel para Microsoft 365.
+
+### Combinado (Combo)
+
+Combina **dos o más tipos de gráfico** en uno solo para facilitar la comprensión cuando los datos varían ampliamente. Permite asignar un eje secundario a una de las series.
+
+| Subtipo | Descripción |
+|---------|-------------|
+| Columna agrupada + Línea | Combina barras y línea, con eje secundario opcional |
+| Área apilada + Columna agrupada | Combina área y barras agrupadas |
+| Combinación personalizada | Asignación manual de tipo y eje por serie |
+
+> **Nota:** Los tipos Toroidal, Cónico, Piramidal y similares **NO existen** en Excel 365 como tipos independientes (son variaciones históricas eliminadas en versiones recientes).
+
+---
+
+## Cuándo usar cada tipo
+
+| Objetivo | Tipo recomendado |
+|----------|-----------------|
+| Comparar valores entre categorías | Columnas o Barras |
+| Mostrar tendencias en el tiempo | Líneas |
+| Ver proporciones de un total (una serie) | Circular (Sectores) |
+| Ver proporciones de un total (varias series) | Anillos |
+| Mostrar correlación entre variables | Dispersión (XY) |
+| Comparar tres variables simultáneas | Burbujas |
+| Ver distribución estadística | Histograma o Caja y bigotes |
+| Analizar jerarquías | Mapa de árbol o Proyección solar |
+| Mostrar flujos acumulados | Cascada |
+| Representar etapas de un proceso | Embudo |
+| Datos geográficos | Mapa |
+| Combinar escala normal y secundaria | Combinado |
+
+---
+
+## Crear un gráfico
+
+### Método estándar (paso a paso)
+
+1. Seleccionar el rango de datos, incluyendo encabezados de filas y columnas.
+2. Ir a la pestaña **Insertar** > grupo **Gráficos**.
+3. Hacer clic en **Gráficos recomendados** para que Excel analice los datos y sugiera los tipos más adecuados, o bien elegir directamente un tipo de gráfico en la cinta de opciones.
+4. En el cuadro de diálogo **Insertar gráfico**, seleccionar el subtipo deseado en la pestaña **Gráficos recomendados** o explorar todos los tipos en la pestaña **Todos los gráficos**.
+5. Hacer clic en **Aceptar** para insertar el gráfico **incrustado** en la hoja activa.
+
+### Métodos abreviados de teclado
+
+| Atajo | Resultado |
+|-------|-----------|
+| **Alt+F1** | Inserta un gráfico **incrustado** en la hoja activa con el tipo predeterminado |
+| **F11** | Crea el gráfico en una **hoja de gráfico independiente** (nueva pestaña) |
+
+> **F11** es el método más rápido para crear un gráfico en hoja separada sin pasar por el menú. **Alt+F1** lo inserta incrustado en la hoja actual.
+
+### Gráficos recomendados
+
+La opción **Gráficos recomendados** (Insertar > Gráficos recomendados) analiza los datos seleccionados y muestra una vista previa de los tipos de gráfico más apropiados. Permite explorar todas las opciones en la pestaña **Todos los gráficos**.
+
+---
+
+## Elementos de un gráfico
+
+Cada gráfico puede incorporar los siguientes elementos. Para añadir o quitar elementos: seleccionar el gráfico > botón **+** (Elementos de gráfico) que aparece en la esquina superior derecha, o bien pestaña **Diseño de gráfico** > **Agregar elemento de gráfico**.
+
+| Elemento | Descripción | Cómo añadir / modificar |
+|----------|-------------|--------------------------|
+| **Área del gráfico** | Área completa que engloba todos los demás elementos | Siempre presente; formatear con clic derecho > Dar formato al área del gráfico |
+| **Área de trazado** | Zona delimitada donde se representan gráficamente los datos | Clic en el área de trazado > Dar formato al área de trazado |
+| **Título del gráfico** | Etiqueta descriptiva del contenido del gráfico | Botón + > Título del gráfico; opciones: centrado superpuesto o encima del gráfico |
+| **Títulos de ejes** | Etiquetas descriptivas para el eje horizontal y/o vertical | Botón + > Títulos de ejes; seleccionar eje principal horizontal / vertical |
+| **Eje horizontal (categorías)** | Eje X; muestra las categorías o intervalos de tiempo | Botón + > Ejes > Eje horizontal principal |
+| **Eje vertical (valores)** | Eje Y; muestra la escala de valores numéricos | Botón + > Ejes > Eje vertical principal |
+| **Eje secundario** | Segundo eje Y para series con escalas muy diferentes | Habitual en gráficos combinados; activar en Dar formato a serie de datos > Eje secundario |
+| **Leyenda** | Identifica cada serie de datos por color o patrón | Botón + > Leyenda; posición: abajo, arriba, izquierda, derecha, superior derecha |
+| **Etiquetas de datos** | Valores numéricos o porcentuales sobre cada punto o barra | Botón + > Etiquetas de datos; posición: centro, extremo interior, extremo exterior, base interior |
+| **Tabla de datos** | Tabla con los valores fuente mostrada debajo del gráfico | Botón + > Tabla de datos; opción con o sin teclas de leyenda |
+| **Líneas de cuadrícula** | Líneas horizontales o verticales de referencia | Botón + > Líneas de cuadrícula; principales y/o secundarias, horizontales y/o verticales |
+| **Líneas de tendencia** | Línea que muestra la dirección general de los datos | Botón + > Línea de tendencia; tipos: lineal, exponencial, logarítmica, polinómica, potencia, media móvil |
+| **Barras de error** | Indican el margen de error o grado de incertidumbre de cada punto | Botón + > Barras de error; opciones: error estándar, porcentaje, desviación estándar, valor fijo |
+
+Para **formatear** cualquier elemento: doble clic sobre él (abre el panel de formato a la derecha) o clic derecho > Dar formato a [elemento].
+
+Para **eliminar** un elemento: seleccionarlo y pulsar **Supr**, o desmarcarlo en el botón **+**.
+
+---
+
+## Editar un gráfico
+
+### Cambiar el tipo de gráfico
+
+1. Seleccionar el gráfico.
+2. Pestaña **Diseño de gráfico** > **Cambiar tipo de gráfico**.
+3. En el cuadro de diálogo, elegir el nuevo tipo y subtipo > **Aceptar**.
+
+También es posible hacer clic derecho sobre el gráfico > **Cambiar tipo de gráfico**.
+
+### Seleccionar datos (rango, series y etiquetas)
+
+1. Seleccionar el gráfico.
+2. Pestaña **Diseño de gráfico** > **Seleccionar datos**.
+3. En el cuadro de diálogo **Seleccionar origen de datos**:
+   - **Rango de datos del gráfico:** modifica el rango completo.
+   - **Entradas de leyenda (series):** añadir, editar o quitar series de datos individualmente.
+   - **Etiquetas del eje horizontal (categorías):** editar las etiquetas del eje X.
+   - Botón **Cambiar fila/columna:** intercambia filas y columnas (equivale a la opción de la cinta).
+
+### Cambiar filas por columnas
+
+Pestaña **Diseño de gráfico** > **Cambiar entre filas y columnas**. Alterna si las series se toman de las filas o de las columnas del rango de datos.
+
+### Mover el gráfico
+
+1. Seleccionar el gráfico.
+2. Pestaña **Diseño de gráfico** > **Mover gráfico**.
+3. En el cuadro de diálogo:
+   - **Hoja nueva:** crea una hoja de gráfico independiente con el nombre que se indique.
+   - **Objeto en:** incrusta el gráfico en la hoja de trabajo seleccionada.
+
+Para mover un gráfico incrustado dentro de la misma hoja: hacer clic sobre el área del gráfico y arrastrar.
+
+Para cambiar el tamaño: seleccionar el gráfico y arrastrar uno de los controladores de esquina o de borde.
+
+### Pestañas contextuales del gráfico
+
+Al seleccionar un gráfico aparecen dos pestañas adicionales en la cinta de opciones:
+
+| Pestaña | Funciones principales |
+|---------|----------------------|
+| **Diseño de gráfico** | Agregar elemento de gráfico, diseños rápidos, cambiar colores, estilos de gráfico, cambiar fila/columna, seleccionar datos, cambiar tipo, mover gráfico |
+| **Formato** | Seleccionar elemento del gráfico, estilos de forma, estilos de WordArt, organizar (posición, alineación, agrupación), tamaño exacto |
+
+---
+
+## Mover y cambiar de tamaño un gráfico incrustado
+
+- **Mover:** hacer clic sobre el área del gráfico y arrastrar a la nueva posición dentro de la hoja.
+- **Cambiar tamaño:** seleccionar el gráfico y arrastrar uno de los controladores de tamaño (cuadrados en los bordes y esquinas).
+- Para mover a una posición exacta o establecer tamaño preciso: pestaña **Formato** > grupo **Tamaño**.
+
+---
+
+## Minigráficos (Sparklines)
+
+Un minigráfico es un **gráfico miniatura situado en una sola celda** de la hoja de cálculo. Proporciona una representación visual compacta de tendencias o variaciones sin ocupar el espacio de un gráfico completo. No incluye ejes visibles, leyenda ni etiquetas de datos por defecto.
+
+### Tipos de minigráfico
+
+| Tipo | Descripción | Uso recomendado |
+|------|-------------|-----------------|
+| **Línea** | Muestra la tendencia de los valores como una línea continua | Tendencias continuas (ventas mensuales, precios de acciones) |
+| **Columna** | Compara valores individuales mediante barras verticales | Comparar valores discretos entre categorías |
+| **Pérdidas y ganancias** | Muestra únicamente si cada valor es positivo (arriba) o negativo (abajo), sin escala numérica | Resultados binarios: ganancia/pérdida, victorias/derrotas |
+
+### Insertar minigráficos
+
+1. Seleccionar la celda (o rango de celdas) donde se desea mostrar el minigráfico.
+2. Ir a **Insertar** > grupo **Minigráficos** > elegir **Línea**, **Columna** o **Pérdidas y ganancias**.
+3. En el cuadro de diálogo **Crear grupo de minigráficos**, especificar el **Rango de datos** (las celdas con los valores a representar) y confirmar el **Rango de ubicación**.
+4. Hacer clic en **Aceptar**.
+
+Para aplicar minigráficos a varias filas simultáneamente, seleccionar todo el rango de celdas de destino antes de insertarlos. También es posible arrastrar el controlador de relleno desde la primera celda con minigráfico.
+
+### Grupo de minigráficos
+
+Cuando se insertan minigráficos en un rango de celdas al mismo tiempo, forman un **grupo**. Las acciones aplicadas al grupo (cambio de tipo, estilo, marcadores, eje) afectan a todos los minigráficos del grupo simultáneamente. Es posible desagruparlos para modificarlos individualmente: pestaña **Minigráfico** > **Desagrupar**.
+
+### Personalización (pestaña contextual Minigráfico)
+
+Al seleccionar una celda con minigráfico aparece la pestaña **Minigráfico**:
+
+**Tipo:**
+- Cambiar entre Línea, Columna y Pérdidas y ganancias.
+
+**Mostrar marcadores (puntos especiales):**
+
+| Marcador | Descripción |
+|----------|-------------|
+| Punto alto | Resalta el valor máximo |
+| Punto bajo | Resalta el valor mínimo |
+| Primer punto | Resalta el primer valor de la serie |
+| Último punto | Resalta el último valor de la serie |
+| Puntos negativos | Resalta todos los valores negativos |
+| Marcadores (todos) | Resalta todos los puntos de dato (solo en tipo Línea) |
+
+**Estilo:** aplicar un estilo predefinido de la galería o personalizar el color del minigráfico y el color de cada tipo de marcador.
+
+**Eje:** opciones de configuración del eje del minigráfico:
+- **Tipo de valor mínimo del eje / máximo del eje:** automático para cada minigráfico (independiente), igual para todos los minigráficos del grupo, o valor fijo personalizado. Usar el mismo mínimo/máximo para todos permite comparar visualmente los minigráficos entre sí con la misma escala.
+- **Mostrar eje:** muestra una línea horizontal en el valor cero (útil cuando hay valores positivos y negativos).
+- **Trazar datos de derecha a izquierda:** invierte el orden de representación.
+
+### Eliminar minigráficos
+
+Seleccionar la celda o el grupo de minigráficos > pestaña **Minigráfico** > **Borrar** > elegir:
+- **Borrar minigráficos seleccionados:** elimina solo el minigráfico de la celda seleccionada.
+- **Borrar grupos de minigráficos seleccionados:** elimina todos los minigráficos del grupo.
+
+> **Importante:** pulsar la tecla **Supr** sobre una celda con minigráfico no lo elimina (solo borra el contenido de texto si lo hubiera). Es necesario usar el comando **Borrar** de la pestaña contextual Minigráfico.
+
+### Diferencias entre gráficos y minigráficos
+
+| Característica | Gráfico | Minigráfico |
+|----------------|---------|-------------|
+| Espacio que ocupa | Objeto flotante o hoja independiente | Una sola celda |
+| Ejes visibles | Sí (configurables) | No por defecto (opcional eje horizontal) |
+| Leyenda | Sí | No |
+| Etiquetas de datos | Sí | No |
+| Series múltiples | Sí | Una serie por celda |
+| Interactividad | Seleccionable, movible, redimensionable | Fija en la celda |
+| Eliminación | Tecla Supr o clic derecho > Eliminar | Solo mediante pestaña Minigráfico > Borrar |
+| Grupo | No aplica | Los del mismo rango forman un grupo |
+| Uso principal | Análisis detallado, presentaciones | Resumen rápido junto a los datos |
+
+---
+
+## Gráficos dinámicos
+
+Un **gráfico dinámico** está vinculado a una tabla dinámica. Se actualiza automáticamente al cambiar los filtros o la estructura de la tabla dinámica. Para insertarlo: seleccionar la tabla dinámica > pestaña **Analizar tabla dinámica** > **Gráfico dinámico**, o bien **Insertar** > **Gráfico dinámico**.
+
+> **Fuente:** [Tipos de gráfico disponibles en Office](https://support.microsoft.com/es-es/office/tipos-de-gr%C3%A1fico-disponibles-en-office-a6187218-807e-4103-9e0a-27cdb19afb90) — Microsoft Support España

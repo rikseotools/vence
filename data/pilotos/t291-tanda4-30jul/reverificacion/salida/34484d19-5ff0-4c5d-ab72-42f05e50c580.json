@@ -1,0 +1,9 @@
+{
+  "question_id": "34484d19-5ff0-4c5d-ab72-42f05e50c580",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "explicación completa (intro + las cuatro razones)",
+  "que_dice": "Toda la explicación describe la utilidad de 'Combinar correspondencia' en la pestaña Inicio de los contactos de Outlook 365 (crear un correo o carta modelo para un conjunto de contactos, con un envío individual y personalizado a cada uno) sin ninguna cita del artículo.",
+  "que_dice_el_articulo": "El artículo fichero (Outlook 365, art. 2 — El entorno de trabajo) no menciona en ningún punto 'Combinar correspondencia' ni el módulo Contactos incluye esa acción en su listado de funciones (solo cita: ver/crear/editar/eliminar contactos, enviar correo, programar reunión, compartir como vCard, exportar a CSV, libreta de direcciones). No hay ningún pasaje que respalde la definición dada.",
+  "correccion_propuesta": "Añadir al artículo fuente la definición de 'Combinar correspondencia' antes de usarla como base de la explicación, o sustituir la explicación por una que cite literalmente el artículo disponible. Tal como está, la respuesta puede ser correcta en el mundo real de Outlook 365, pero no está respaldada por la fuente que se le muestra al opositor."
+}

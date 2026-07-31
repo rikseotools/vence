@@ -1,0 +1,43 @@
+LEY: Explorador Windows 11
+ARTÍCULO: 5 — Accesorios de Windows
+======================================================================
+## Accesorios de Windows 11
+
+Los **accesorios** son las aplicaciones sencillas que Windows incluye de serie para tareas cotidianas, sin necesidad de instalar programas de terceros. En Windows 11 se encuentran en el **menú Inicio → Todas las aplicaciones**, y muchos se abren escribiendo su nombre en el cuadro de búsqueda de la barra de tareas.
+
+### 1. Bloc de notas (Notepad)
+
+El **Bloc de notas** es el **editor de texto sin formato** incluido en Windows. Se utiliza para tomar anotaciones rápidas y guardarlas como **documentos de texto**, con extensión **`.txt`** por defecto.
+
+> **Bloc de notas:** editor de texto incluido en el sistema operativo que permite crear y editar texto **sin formato**, y almacenarlo como documento de texto (`.txt`).
+
+Su rasgo definitorio es precisamente que **no aplica formato** (ni negritas, ni tipos de letra por documento, ni imágenes): guarda solo los caracteres. Por eso se usa para notas, ficheros de configuración o código. Si se necesita formato, lo propio es un procesador de textos como Word.
+
+No confundirlo con:
+- **Paint**: editor de **imágenes** (dibujo y retoque básico).
+- **Recortes**: captura de pantalla (total, de ventana o de una región).
+- **Calculadora**: cálculos, con modos estándar, científica, gráfica y conversor de unidades.
+
+### 2. Símbolo del sistema (cmd)
+
+El **Símbolo del sistema** es el **intérprete de línea de comandos** de Windows. Es el accesorio que se utiliza para **ejecutar comandos y programas en modo MS-DOS**, escribiendo instrucciones de texto en lugar de usar la interfaz gráfica.
+
+> **Símbolo del sistema:** intérprete de comandos que permite ejecutar órdenes y programas escribiéndolos como texto, en modo MS-DOS.
+
+Se abre escribiendo **`cmd`** en la búsqueda de la barra de tareas o en el cuadro **Ejecutar** (`Win + R`). Órdenes clásicas son `dir` (listar el contenido de una carpeta), `cd` (cambiar de directorio) o `ipconfig` (ver la configuración de red).
+
+Junto a él conviven en Windows 11 otras dos consolas, más modernas y con más capacidades:
+- **PowerShell**: consola orientada a la automatización y administración del sistema.
+- **Terminal de Windows**: aplicación que agrupa en pestañas el Símbolo del sistema, PowerShell y otras consolas.
+
+### 3. Cómo se abren
+
+| Accesorio | Vía rápida |
+|---|---|
+| Bloc de notas | Buscar «Bloc de notas», o `notepad` en Ejecutar (`Win + R`) |
+| Símbolo del sistema | Buscar «cmd», o `cmd` en Ejecutar |
+| Calculadora | Buscar «Calculadora» |
+| Paint | Buscar «Paint», o `mspaint` en Ejecutar |
+| Recortes | `Win + Mayús + S` para capturar una región |
+
+Fuente: [Microsoft Support — Ayuda y aprendizaje de Windows](https://support.microsoft.com/es-es/windows)

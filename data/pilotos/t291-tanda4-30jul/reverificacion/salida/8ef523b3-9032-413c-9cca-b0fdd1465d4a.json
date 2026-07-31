@@ -1,0 +1,9 @@
+{
+  "question_id": "8ef523b3-9032-413c-9cca-b0fdd1465d4a",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "intro + razón de la opción B (sin cita del artículo)",
+  "que_dice": "\"Contar palabras muestra páginas, palabras, caracteres con y sin espacios, párrafos y líneas: el conjunto completo de estadísticas que ofrece esta herramienta\", sin ninguna cita del artículo.",
+  "que_dice_el_articulo": "El artículo (Word 365, art. 1) solo menciona 'Recuento de palabras' como un ítem del grupo Corrección de la pestaña Revisar (línea 305), sin detallar qué estadísticas muestra. La única lista de estadísticas de documento que aparece literalmente en el artículo es 'Número de páginas, palabras, caracteres, párrafos y líneas' (línea 648), pero corresponde a las 'Propiedades automáticas' (metadatos del archivo, sección 9.2) — una función distinta de la herramienta Contar palabras — y no desglosa los caracteres en 'con y sin espacios'.",
+  "correccion_propuesta": "No atribuir a 'Contar palabras' un desglose (caracteres con/sin espacios) que el artículo no recoge para esa herramienta. O bien citar literalmente el pasaje del artículo (que solo nombra la existencia de 'Recuento de palabras' en Revisar), o documentar en el artículo qué estadísticas concretas muestra el cuadro de diálogo antes de usarlo como fuente de la explicación. Tal como está, la respuesta es correcta en el Word real, pero no está respaldada por el texto que se le muestra al opositor."
+}

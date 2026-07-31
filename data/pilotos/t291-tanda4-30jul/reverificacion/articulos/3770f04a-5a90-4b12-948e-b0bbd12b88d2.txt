@@ -1,0 +1,608 @@
+LEY: Word 365
+ARTÍCULO: 2 — Formatos de fuente, página y párrafo
+======================================================================
+# Formatos de fuente, página y párrafo en Microsoft Word 365
+
+Microsoft Word 365 es el procesador de textos de referencia en el entorno administrativo español. Dominar sus opciones de formato es imprescindible tanto para el ejercicio profesional como para superar los exámenes de oposición, donde aparecen decenas de preguntas sobre atajos de teclado, valores por defecto, nombres exactos de opciones y comportamientos específicos de la aplicación.
+
+---
+
+## 1. Formato de fuente
+
+### 1.1 Conceptos fundamentales
+
+El **formato de fuente** (también llamado formato de carácter) determina el aspecto visual de cada carácter individual. Se aplica mediante el grupo **Fuente** de la ficha **Inicio**, o a través del cuadro de diálogo **Fuente** (accesible con **Ctrl+M** o haciendo clic en el iniciador de cuadro de diálogo del grupo Fuente).
+
+La **fuente predeterminada en Microsoft Word 365** es **Calibri** a **11 puntos**. Este dato es fundamental para los exámenes, pues suele preguntarse el tipo de letra y el tamaño por defecto.
+
+### 1.2 Tipo de fuente
+
+La fuente es el diseño tipográfico de los caracteres. Word 365 muestra en la lista desplegable de fuentes una vista previa de cada tipo. Algunas fuentes habituales en entornos administrativos:
+
+| Fuente | Clasificación | Uso habitual |
+|---|---|---|
+| Calibri | Sans-serif (palo seco) | Fuente por defecto Word 365 |
+| Times New Roman | Serif | Documentos formales, escritos judiciales |
+| Arial | Sans-serif | Documentos administrativos modernos |
+| Cambria | Serif | Títulos y encabezados |
+| Courier New | Monoespaciada | Código, formularios |
+
+Para cambiar la fuente: seleccionar el texto y elegir la fuente en el cuadro **Fuente** del grupo Fuente de la ficha Inicio.
+
+### 1.3 Tamaño de fuente
+
+El tamaño se mide en **puntos tipográficos** (pt). Un punto equivale aproximadamente a 0,353 mm. La escala más empleada en documentos administrativos es de **10 a 12 puntos** para el cuerpo del texto.
+
+- El **tamaño por defecto en Word 365** es **11 puntos**.
+- El cuadro de tamaño admite valores entre 1 y 1638 puntos.
+- Se puede aumentar o disminuir el tamaño con los botones **Aumentar tamaño de fuente** (Ctrl+>) y **Disminuir tamaño de fuente** (Ctrl+<) del grupo Fuente.
+
+### 1.4 Estilos de fuente: negrita, cursiva y subrayado
+
+Estos tres estilos son los más preguntados en los exámenes. Sus atajos de teclado son:
+
+| Estilo | Atajo de teclado | Botón en cinta |
+|---|---|---|
+| **Negrita** | **Ctrl+N** | **N** |
+| *Cursiva* | **Ctrl+K** | *K* |
+| Subrayado | **Ctrl+S** | **S** |
+
+El subrayado tiene opciones adicionales: subrayado simple (por defecto), doble, punteado, ondulado, grueso, etc. El tipo y el color del subrayado se configuran en el cuadro de diálogo **Fuente**.
+
+> **Nota para el examen:** En la versión española de Word, los atajos de negrita, cursiva y subrayado son Ctrl+N, Ctrl+K y Ctrl+S respectivamente. En la versión inglesa son Ctrl+B, Ctrl+I y Ctrl+U. En los exámenes de oposición siempre se pregunta por la versión **española**.
+
+### 1.5 Tachado
+
+El **tachado** (strikethrough) muestra una línea horizontal sobre el texto. Existe también el **tachado doble**. Ambas opciones están disponibles en el cuadro de diálogo **Fuente** (sección Efectos) o, el tachado simple, en el grupo Fuente de la ficha Inicio.
+
+Ejemplo visual: ~~texto tachado~~
+
+### 1.6 Subíndice y superíndice
+
+- **Subíndice** (x₂): texto reducido y desplazado hacia abajo. Atajo: **Ctrl+=**
+- **Superíndice** (x²): texto reducido y desplazado hacia arriba. Atajo: **Ctrl+Mayús+=**
+
+Usos habituales: fórmulas químicas (H₂O), referencias numéricas (1ª), notas al pie (texto¹).
+
+### 1.7 Color de fuente y resaltado
+
+- **Color de fuente:** cambia el color de los caracteres. Se aplica con el botón **Color de fuente** (icono A con subrayado de color) del grupo Fuente. El color por defecto es **Automático** (normalmente negro).
+- **Color de resaltado:** simula un marcador fluorescente sobre el texto. Se aplica con el botón **Color de resaltado del texto** (icono de marcador). Disponible en colores: amarillo, verde, cian, magenta, rojo, azul oscuro, verde oscuro, etc. Para eliminar el resaltado se elige **Sin color**.
+
+### 1.8 Efectos de texto y tipografía
+
+Word 365 incluye efectos avanzados de texto (botón **A** con resplandor en el grupo Fuente): sombra, reflexión, resplandor, biselado, contorno. Se trata de efectos decorativos, no recomendados para documentos formales.
+
+En el cuadro de diálogo **Fuente > Efectos de texto** se pueden configurar: relleno de texto (sólido, degradado, imagen o textura) y efectos 3D.
+
+### 1.9 Cambiar mayúsculas y minúsculas
+
+El botón **Cambiar mayúsculas y minúsculas** (Aa) del grupo Fuente ofrece cinco opciones:
+
+| Opción | Resultado |
+|---|---|
+| Tipo oración | Primera letra en mayúscula, resto en minúscula |
+| minúsculas | Todo el texto en minúsculas |
+| MAYÚSCULAS | Todo el texto en mayúsculas |
+| Poner en mayúsculas cada palabra | Primera letra de cada palabra en mayúscula |
+| Alternar mayúsculas y minúsculas | Invierte el estado de cada letra |
+
+Atajo de teclado: **Mayús+F3** cicla entre las opciones más comunes (minúsculas, MAYÚSCULAS, Tipo oración).
+
+### 1.10 Efectos de fuente adicionales en el cuadro de diálogo
+
+El cuadro de diálogo **Fuente** (Ctrl+M) permite configurar opciones no visibles directamente en la cinta:
+
+- **Versales:** el texto en minúsculas se muestra como mayúsculas pero de menor tamaño.
+- **Oculto:** el texto no se imprime (visible solo si se activa "Mostrar todo").
+- **Espacio entre caracteres:** normal, expandido o comprimido (en puntos o porcentaje).
+- **Posición:** elevada o disminuida respecto a la línea base.
+
+### 1.11 Borrar formato
+
+Para eliminar todo el formato aplicado a un texto seleccionado:
+
+- Botón **Borrar todo el formato** (icono A con goma de borrar) en el grupo Fuente de la ficha Inicio.
+- Atajo de teclado: **Ctrl+Barra espaciadora** (elimina formato de carácter).
+
+Esta acción devuelve el texto al estilo predeterminado del documento (normalmente el estilo **Normal**).
+
+---
+
+## 2. Formato de párrafo
+
+### 2.1 Conceptos fundamentales
+
+El **formato de párrafo** afecta a párrafos completos (desde el punto de inserción hasta la siguiente marca de párrafo). Se aplica desde el grupo **Párrafo** de la ficha **Inicio**, o mediante el cuadro de diálogo **Párrafo** (iniciador de cuadro de diálogo del grupo Párrafo).
+
+Un párrafo en Word termina con la pulsación de **Intro** (marca ¶). Un salto de línea manual (Mayús+Intro) no crea un párrafo nuevo sino un salto de línea dentro del mismo párrafo.
+
+### 2.2 Alineación
+
+La alineación determina cómo se distribuye el texto horizontalmente entre los márgenes. Word 365 ofrece cuatro tipos:
+
+| Alineación | Atajo | Descripción |
+|---|---|---|
+| Izquierda | **Ctrl+Q** | El texto se alinea con el margen izquierdo (predeterminada) |
+| Centrada | **Ctrl+T** | El texto se centra entre ambos márgenes |
+| Derecha | **Ctrl+D** | El texto se alinea con el margen derecho |
+| Justificada | **Ctrl+J** | El texto se distribuye entre ambos márgenes |
+
+> **Nota importante:** La alineación predeterminada en Word 365 es **izquierda**. En los exámenes suelen preguntar los cuatro atajos de teclado; es fundamental memorizarlos.
+
+La alineación justificada es la más habitual en textos formales y publicaciones. El último renglón de un párrafo justificado queda alineado a la izquierda por defecto.
+
+### 2.3 Interlineado
+
+El **interlineado** (espaciado entre líneas) determina la distancia vertical entre las líneas de un párrafo. Se configura desde el botón **Interlineado y espaciado entre párrafos** del grupo Párrafo, o desde el cuadro de diálogo **Párrafo > Sangría y espacio**.
+
+| Opción | Valor | Descripción |
+|---|---|---|
+| Sencillo | 1,0 | Una línea de altura |
+| 1,5 líneas | 1,5 | Una línea y media |
+| Doble | 2,0 | Dos líneas de altura |
+| Mínimo | En puntos | Mínimo necesario para el texto más grande |
+| Exacto | En puntos | Valor fijo, no se ajusta automáticamente |
+| Múltiple | Factor | Permite valores como 1,15 (predeterminado Word 365), 3, etc. |
+
+El interlineado predeterminado en Word 365 es **Múltiple a 1,08** (aproximadamente), lo que equivale a decir que el interlineado no es exactamente sencillo sino ligeramente mayor para mejorar la legibilidad.
+
+### 2.4 Espaciado antes y después del párrafo
+
+El espaciado añade espacio extra antes o después de cada párrafo sin necesidad de pulsar Intro adicionales. Se mide en **puntos**.
+
+- **Espacio antes:** espacio por encima del párrafo.
+- **Espacio después:** espacio por debajo del párrafo.
+
+En el estilo **Normal** de Word 365, el espaciado después predeterminado es **8 puntos**. Esto separa visualmente los párrafos sin usar líneas en blanco.
+
+> **Consejo de examen:** No confundir el espaciado entre párrafos con el interlineado. El interlineado afecta al espacio entre líneas dentro del mismo párrafo; el espaciado antes/después afecta al espacio entre párrafos distintos.
+
+### 2.5 Sangrías
+
+La **sangría** desplaza el texto desde los márgenes. Word 365 ofrece cuatro tipos:
+
+| Tipo de sangría | Descripción |
+|---|---|
+| Sangría izquierda | Desplaza todo el párrafo desde el margen izquierdo |
+| Sangría derecha | Desplaza todo el párrafo desde el margen derecho |
+| Sangría de primera línea | Solo la primera línea del párrafo se desplaza a la derecha |
+| Sangría francesa | La primera línea queda en el margen y el resto se desplaza a la derecha |
+
+La sangría de primera línea es la más habitual en textos continuos. La sangría francesa se usa habitualmente en glosarios, bibliografías y listas.
+
+Los botones **Aumentar sangría** (Ctrl+S, según contexto) y **Disminuir sangría** del grupo Párrafo aplican sangrías en incrementos de 1,25 cm por defecto.
+
+La sangría también puede ajustarse arrastrando los marcadores de la **regla horizontal**:
+- Triángulo superior izquierdo: sangría de primera línea.
+- Triángulo inferior izquierdo: sangría francesa.
+- Cuadrado inferior izquierdo: sangría izquierda del párrafo completo.
+- Triángulo derecho: sangría derecha.
+
+### 2.6 Tabulaciones
+
+Las **tabulaciones** (marcas de tabulador) permiten alinear texto en columnas dentro de un párrafo. La tecla **Tab** avanza hasta la siguiente tabulación.
+
+#### Tipos de tabulación
+
+| Tipo | Símbolo en regla | Alineación del texto |
+|---|---|---|
+| Izquierda | L | El texto se desarrolla a la derecha de la marca |
+| Derecha | ⌐ (invertida) | El texto crece hacia la izquierda de la marca |
+| Centrada | Arriba-abajo | El texto se centra en la marca |
+| Decimal | ⌐. | La coma/punto decimal queda en la marca |
+| Barra | | | Inserta una línea vertical (no alinea texto) |
+
+Las tabulaciones se configuran:
+1. Haciendo clic en la **regla horizontal** (preseleccionando el tipo en el selector del extremo izquierdo de la regla).
+2. Mediante el cuadro de diálogo **Tabulaciones** (desde el cuadro de diálogo **Párrafo > Tabulaciones**).
+
+En el cuadro de diálogo se puede configurar la **tabulación por defecto** (inicialmente 1,25 cm) y añadir **caracteres de relleno** (puntos, guiones o líneas) entre el texto y la tabulación.
+
+> **Importante para el examen:** La tabulación predeterminada en Word 365 es cada **1,25 cm**.
+
+---
+
+## 3. Estilos
+
+### 3.1 Concepto de estilo
+
+Un **estilo** es un conjunto de características de formato (fuente, tamaño, alineación, sangría, interlineado, etc.) guardado con un nombre. Al aplicar un estilo, se aplican todas esas características de una sola vez, garantizando coherencia visual en todo el documento.
+
+### 3.2 Galería de estilos
+
+La **galería de estilos** se encuentra en la ficha **Inicio**, grupo **Estilos**. Muestra miniaturas de los estilos más usados. El botón con flecha desplegable permite ver todos los estilos disponibles.
+
+### 3.3 Estilos predefinidos principales
+
+| Estilo | Uso típico |
+|---|---|
+| Normal | Texto de párrafo estándar (base de todos los demás) |
+| Sin espaciado | Como Normal pero sin espacio entre párrafos |
+| Título 1 | Encabezado de primer nivel |
+| Título 2 | Encabezado de segundo nivel |
+| Título 3 a Título 9 | Encabezados de niveles 3 a 9 |
+| Subtítulo | Subtítulo del documento |
+| Cita destacada | Citas largas en párrafo propio |
+| Énfasis | Cursiva |
+| Énfasis intenso | Cursiva + color de acento |
+| Referencia intensa | Negrita + color de acento + versales |
+| Código | Fuente monoespaciada para código |
+
+Los estilos **Título 1 a Título 9** son especialmente importantes porque generan la estructura del documento (usada en el Panel de navegación, tabla de contenido automática, etc.).
+
+### 3.4 Crear y modificar estilos
+
+**Crear un estilo nuevo:**
+1. Formatear un párrafo con las características deseadas.
+2. Hacer clic en **Más** en la galería de estilos > **Crear un estilo**.
+3. Asignar nombre y configurar opciones.
+
+**Modificar un estilo existente:**
+1. Clic derecho sobre el estilo en la galería > **Modificar**.
+2. Cambiar las propiedades (fuente, párrafo, etc.).
+3. Elegir si el cambio afecta solo al documento actual o a la plantilla.
+
+La opción **Actualizar [nombre del estilo] para que coincida con la selección** aplica el formato del texto seleccionado al estilo, actualizando automáticamente todos los párrafos que lo usen.
+
+### 3.5 Panel de estilos
+
+El panel de estilos (botón en el extremo del grupo Estilos) muestra todos los estilos del documento con más detalle. Permite gestionar, crear, inspeccionar y limpiar estilos.
+
+---
+
+## 4. Temas del documento
+
+### 4.1 Concepto de tema
+
+Un **tema** es un conjunto coordinado de colores, fuentes y efectos que se aplican de forma global al documento. Se accede desde la ficha **Diseño** > grupo **Temas**.
+
+### 4.2 Componentes de un tema
+
+| Componente | Descripción |
+|---|---|
+| Colores del tema | 12 colores coordinados (fondos, textos, énfasis) |
+| Fuentes del tema | Una fuente para títulos y otra para el cuerpo del texto |
+| Efectos del tema | Efectos visuales de objetos (sombras, biselados, etc.) |
+
+### 4.3 Tema predeterminado
+
+El tema predeterminado en Word 365 se llama **Office**. Sus fuentes son:
+- Títulos: **Calibri Light**
+- Cuerpo: **Calibri**
+
+### 4.4 Personalizar y guardar temas
+
+Es posible:
+- Cambiar los **Colores del tema** (ficha Diseño > Colores).
+- Cambiar las **Fuentes del tema** (ficha Diseño > Fuentes).
+- Cambiar los **Efectos del tema** (ficha Diseño > Efectos).
+- Guardar el tema personalizado como archivo **.thmx** para reutilizarlo.
+
+---
+
+## 5. Secciones del documento
+
+### 5.1 Concepto de sección
+
+Una **sección** es una parte del documento que puede tener su propio formato de página independiente (márgenes, orientación, tamaño, columnas, encabezados y pies, etc.). Por defecto, un documento tiene una sola sección.
+
+Las secciones se crean insertando **saltos de sección** desde la ficha **Disposición** (o **Formato** en versiones anteriores) > **Saltos**.
+
+### 5.2 Tipos de salto de sección
+
+| Tipo | Descripción |
+|---|---|
+| **Página siguiente** | La nueva sección comienza en la siguiente página |
+| **Continua** | La nueva sección comienza en la misma página (útil para columnas) |
+| **Página par** | La nueva sección comienza en la siguiente página par |
+| **Página impar** | La nueva sección comienza en la siguiente página impar |
+
+> **Para el examen:** Los cuatro tipos de salto de sección son objeto frecuente de preguntas. El más común es **Página siguiente**. El tipo **Continua** permite cambiar el número de columnas en medio de una página.
+
+Los saltos de sección se visualizan como líneas dobles punteadas al activar **Mostrar todo** (Ctrl+*).
+
+### 5.3 Saltos de página
+
+Los **saltos de página** (diferentes de los saltos de sección) se insertan desde **Insertar > Salto de página** o con el atajo **Ctrl+Intro**. No crean una nueva sección; la nueva página hereda el formato de la anterior.
+
+### 5.4 Columnas
+
+El formato en **columnas** divide el texto en columnas verticales, como en un periódico o revista. Se configura en la ficha **Disposición** > **Columnas**.
+
+#### Opciones de columnas
+
+| Opción | Descripción |
+|---|---|
+| Número de columnas | 1, 2, 3 o un número personalizado |
+| Ancho de columna | Ancho de cada columna (puede ser igual o diferente) |
+| Espacio entre columnas | Distancia entre columnas |
+| Línea entre columnas | Añade una línea vertical separadora |
+| Columnas de igual ancho | Hace todas las columnas del mismo ancho |
+
+Para aplicar columnas a solo una parte del documento sin afectar al resto, se selecciona el texto y se aplica el formato de columnas (Word inserta automáticamente saltos de sección continuos).
+
+---
+
+## 6. Encabezados y pies de página
+
+### 6.1 Concepto
+
+Los **encabezados** y **pies de página** son áreas situadas en los márgenes superior e inferior de cada página que contienen texto o imágenes que se repiten en todas (o en determinadas) páginas del documento: título del documento, nombre del autor, número de página, logotipo, fecha, etc.
+
+Se insertan desde la ficha **Insertar** > grupo **Encabezado y pie de página**.
+
+### 6.2 Activación y edición
+
+Al activar el encabezado o pie, el área principal del documento queda atenuada y aparece la ficha contextual **Encabezado y pie de página** en la cinta. Para volver al texto principal: doble clic en el texto, o botón **Cerrar encabezado y pie de página**.
+
+Atajo para activar la edición del encabezado: doble clic en el área del encabezado.
+
+### 6.3 Opciones importantes de encabezado y pie
+
+| Opción | Descripción |
+|---|---|
+| **Primera página diferente** | El encabezado/pie de la primera página es distinto (o puede estar vacío) |
+| **Páginas pares e impares diferentes** | Permite tener encabezados/pies distintos en páginas pares e impares (útil para libros) |
+| **Vincular al anterior** | El encabezado/pie hereda el contenido de la sección anterior. Desactivarlo permite independizarlos entre secciones |
+| Posición desde el borde | Distancia del encabezado/pie al borde del papel |
+
+> **Para el examen:** La opción **Primera página diferente** es muy frecuente en los test. Permite que la portada no muestre el encabezado/pie. La opción **Vincular al anterior** es clave para encabezados diferentes entre secciones.
+
+### 6.4 Numeración de páginas
+
+La numeración de páginas se inserta desde **Insertar > Número de página** o desde la ficha contextual **Encabezado y pie de página**.
+
+#### Posición del número de página
+
+- Principio de página (encabezado): arriba izquierda, centrada, derecha.
+- Final de página (pie): abajo izquierda, centrada, derecha.
+- Márgenes de página: margen izquierdo o derecho.
+- Posición actual: donde esté el cursor.
+
+#### Formato del número de página
+
+Opciones de formato accesibles desde **Insertar > Número de página > Formato de número de página**:
+
+| Formato | Ejemplo |
+|---|---|
+| 1, 2, 3, ... | Números arábigos (predeterminado) |
+| i, ii, iii, ... | Números romanos en minúscula |
+| I, II, III, ... | Números romanos en mayúscula |
+| a, b, c, ... | Letras minúsculas |
+| A, B, C, ... | Letras mayúsculas |
+
+Además, se puede configurar:
+- **Incluir número de capítulo** (si se usan estilos de título).
+- **Iniciar en:** permite comenzar la numeración en un número diferente a 1 (útil cuando un documento continúa la paginación de otro, o para que el cuerpo del documento empiece en la página 1 aunque tenga portada y páginas preliminares).
+
+---
+
+## 7. Configuración de página
+
+### 7.1 Márgenes
+
+Los **márgenes** son los espacios en blanco alrededor del texto, entre el borde del papel y el área de escritura. Se configuran en la ficha **Disposición** > **Márgenes** o en el cuadro de diálogo **Configurar página**.
+
+#### Márgenes predefinidos en Word 365
+
+| Nombre | Superior | Inferior | Izquierdo | Derecho |
+|---|---|---|---|---|
+| **Normal** | 2,5 cm | 2,5 cm | 2,5 cm | 2,5 cm |
+| **Estrecho** | 1,27 cm | 1,27 cm | 1,27 cm | 1,27 cm |
+| **Moderado** | 2,54 cm | 2,54 cm | 1,91 cm | 1,91 cm |
+| **Ancho** | 2,54 cm | 2,54 cm | 5,08 cm | 5,08 cm |
+| **Reflejado** | 2,54 cm | 2,54 cm | 3,18 cm (interior) | 2,54 cm (exterior) |
+
+> **Para el examen:** El margen **Normal** de Word 365 es de **2,5 cm** en todos los lados. El margen **Estrecho** es de **1,27 cm** en todos los lados. Estos valores son muy preguntados.
+
+El margen **Reflejado** (o Simétrico) se usa para documentos que se encuadernan: el margen interior (hacia el lomo) es mayor para dejar espacio de encuadernación.
+
+El **margen de encuadernación** añade espacio extra al margen especificado, desplazando el texto hacia dentro para dejar espacio al encuadernado.
+
+### 7.2 Orientación
+
+La **orientación** determina si el papel está en posición vertical u horizontal:
+
+| Orientación | Descripción | Uso habitual |
+|---|---|---|
+| **Vertical** (Portrait) | El lado corto del papel está arriba | Predeterminada; cartas, informes |
+| **Horizontal** (Landscape) | El lado largo del papel está arriba | Tablas anchas, presentaciones |
+
+La orientación se configura en **Disposición > Orientación**. Se puede aplicar a todo el documento o solo a una sección.
+
+### 7.3 Tamaño de papel
+
+El tamaño de papel se configura en **Disposición > Tamaño**. Los tamaños más habituales en el contexto español:
+
+| Tamaño | Dimensiones | Uso |
+|---|---|---|
+| **A4** | 21 × 29,7 cm | Estándar europeo (documentos, cartas) |
+| **A3** | 29,7 × 42 cm | Planos, mapas, documentos grandes |
+| **A5** | 14,8 × 21 cm | Folletos, notas |
+| **Carta (Letter)** | 21,59 × 27,94 cm | Estándar norteamericano |
+| **Folio** | 21,5 × 33 cm | Usado en la Administración española |
+| **Legal** | 21,59 × 35,56 cm | Documentos legales anglosajones |
+
+> **Para el examen:** El tamaño de papel predeterminado en Word 365 (versión española) puede ser **A4** o **Carta** según la configuración regional. En el entorno administrativo español se usa **A4**. El **folio** (21,5 × 33 cm) es un tamaño histórico muy usado en la Administración española.
+
+---
+
+## 8. Fondo de página
+
+### 8.1 Marca de agua
+
+Una **marca de agua** es un texto o imagen semitransparente que se muestra detrás del contenido del documento. Se inserta desde la ficha **Diseño** > **Marca de agua**.
+
+Opciones:
+- Marcas de agua predefinidas: CONFIDENCIAL, NO COPIAR, BORRADOR, URGENTE (en varios idiomas).
+- Marca de agua personalizada: texto propio con fuente, tamaño, color, orientación (diagonal u horizontal) y nivel de transparencia; o imagen.
+
+La marca de agua se coloca en el encabezado del documento para aparecer en todas las páginas.
+
+Para eliminar la marca de agua: **Diseño > Marca de agua > Quitar marca de agua**.
+
+### 8.2 Color de página
+
+La opción **Color de página** (ficha **Diseño** > **Color de página**) aplica un color de fondo a todas las páginas del documento. Puede ser:
+- Un color sólido.
+- Un degradado, textura, trama o imagen (**Efectos de relleno**).
+
+> **Importante:** El color de página se muestra en pantalla pero, por defecto, **no se imprime**. Para que se imprima debe activarse la opción **Imprimir colores e imágenes de fondo** en **Archivo > Opciones > Mostrar**.
+
+### 8.3 Bordes de página
+
+Los **bordes de página** añaden un borde decorativo o funcional alrededor de cada página. Se configuran en la ficha **Diseño** > **Bordes de página**.
+
+El cuadro de diálogo **Bordes y sombreado** (pestaña **Borde de página**) permite:
+
+| Opción | Descripción |
+|---|---|
+| Valor | Ninguno, Cuadro, Sombra, 3D, Personalizado |
+| Estilo | Tipo de línea (continua, punteada, doble, etc.) |
+| Color | Color del borde |
+| Ancho | Grosor del borde (en puntos) |
+| Arte | Bordes decorativos con dibujos (árboles, estrellas, etc.) |
+| Aplicar a | Todo el documento, esta sección, primera página, etc. |
+| Opciones | Distancia del borde al texto o al borde del papel |
+
+---
+
+## 9. Resumen de atajos de teclado clave
+
+Este resumen recoge los atajos más preguntados en los exámenes de oposición:
+
+### Formato de fuente
+
+| Acción | Atajo |
+|---|---|
+| Negrita | Ctrl+N |
+| Cursiva | Ctrl+K |
+| Subrayado | Ctrl+S |
+| Subíndice | Ctrl+= |
+| Superíndice | Ctrl+Mayús+= |
+| Aumentar tamaño fuente | Ctrl+> |
+| Disminuir tamaño fuente | Ctrl+< |
+| Cambiar mayúsculas/minúsculas | Mayús+F3 |
+| Borrar formato de carácter | Ctrl+Barra espaciadora |
+| Abrir cuadro de diálogo Fuente | Ctrl+M |
+
+### Formato de párrafo
+
+| Acción | Atajo |
+|---|---|
+| Alineación izquierda | Ctrl+Q |
+| Alineación centrada | Ctrl+T |
+| Alineación derecha | Ctrl+D |
+| Alineación justificada | Ctrl+J |
+| Interlineado sencillo | Ctrl+1 |
+| Interlineado 1,5 líneas | Ctrl+5 |
+| Interlineado doble | Ctrl+2 |
+| Sangría izquierda (aumentar) | Ctrl+M (en modo párrafo) |
+| Sangría izquierda (disminuir) | Ctrl+Mayús+M |
+
+### Navegación y edición
+
+| Acción | Atajo |
+|---|---|
+| Insertar salto de página | Ctrl+Intro |
+| Mostrar/ocultar marcas de párrafo | Ctrl+* (Ctrl+Mayús+8) |
+| Abrir cuadro Configurar página | Doble clic en la regla |
+
+---
+
+## 10. Preguntas tipo test frecuentes: errores habituales
+
+Para superar los exámenes es importante conocer no solo las respuestas correctas sino también los **distractores** más habituales:
+
+**Sobre la fuente predeterminada:**
+- Error frecuente: confundir Calibri con Arial, o el tamaño 11 con el 12 o el 10.
+- Correcto: Word 365 usa **Calibri 11pt** por defecto.
+
+**Sobre los atajos de teclado:**
+- Error frecuente: confundir la versión española con la inglesa (Ctrl+B en inglés = Ctrl+N en español).
+- Error frecuente: creer que Ctrl+S guarda el documento en vez de aplicar subrayado (en Word en español, Ctrl+S es subrayado; guardar es Ctrl+G).
+
+**Sobre los márgenes:**
+- Error frecuente: decir que el margen Normal es de 3 cm o de 2 cm.
+- Correcto: el margen Normal es **2,5 cm** en todos los lados.
+
+**Sobre los tipos de salto de sección:**
+- Error frecuente: confundir "salto de página" (Ctrl+Intro) con "salto de sección tipo Página siguiente".
+- Un salto de página no crea sección nueva; el salto de sección sí.
+
+**Sobre la marca de agua:**
+- Error frecuente: creer que la marca de agua se inserta desde la ficha Insertar.
+- Correcto: se inserta desde la ficha **Diseño**.
+
+**Sobre el interlineado:**
+- Error frecuente: creer que el interlineado predeterminado de Word 365 es "Sencillo" (1,0).
+- Correcto: el interlineado predeterminado es **Múltiple 1,08** (ligeramente mayor que sencillo).
+
+**Sobre la alineación:**
+- Error frecuente: confundir los atajos (Ctrl+Q izquierda, Ctrl+T centrada, Ctrl+D derecha, Ctrl+J justificada).
+- Mnemotecnia: Q de "quierda" (izquierda), T de "centrada" (like Top center), D de "Derecha", J de "Justificada".
+
+---
+
+## 11. Tablas de referencia rápida para el examen
+
+### Valores por defecto en Word 365
+
+| Parámetro | Valor por defecto |
+|---|---|
+| Fuente | Calibri |
+| Tamaño de fuente | 11 pt |
+| Alineación | Izquierda |
+| Interlineado | Múltiple 1,08 |
+| Espacio después de párrafo | 8 pt |
+| Espacio antes de párrafo | 0 pt |
+| Márgenes | 2,5 cm (Normal) |
+| Tamaño de papel | A4 (21 × 29,7 cm) |
+| Orientación | Vertical |
+| Tabulación por defecto | 1,25 cm |
+| Tema | Office |
+| Fuentes del tema (títulos) | Calibri Light |
+| Fuentes del tema (cuerpo) | Calibri |
+
+### Tipos de sangría
+
+| Tipo | Afecta a | Marcador en regla |
+|---|---|---|
+| Primera línea | Solo la primera línea | Triángulo superior izquierdo |
+| Francesa | Todas las líneas excepto la primera | Triángulo inferior izquierdo |
+| Izquierda | Todo el párrafo desde el margen izquierdo | Cuadrado inferior izquierdo |
+| Derecha | Todo el párrafo desde el margen derecho | Triángulo derecho |
+
+### Tipos de tabulación
+
+| Tipo | Alineación del texto respecto a la marca |
+|---|---|
+| Izquierda | Se desarrolla a la derecha |
+| Derecha | Se desarrolla a la izquierda |
+| Centrada | Se centra en la marca |
+| Decimal | El separador decimal queda en la marca |
+| Barra | Inserta una línea vertical (no alinea texto) |
+
+### Formatos de número de página
+
+| Formato | Ejemplo |
+|---|---|
+| Arábigo | 1, 2, 3, 4... |
+| Romano minúscula | i, ii, iii, iv... |
+| Romano mayúscula | I, II, III, IV... |
+| Alfabético minúscula | a, b, c, d... |
+| Alfabético mayúscula | A, B, C, D... |
+
+### Tipos de salto de sección
+
+| Tipo | Inicio de nueva sección |
+|---|---|
+| Página siguiente | Siguiente página (par o impar) |
+| Continua | Misma página |
+| Página par | Siguiente página par |
+| Página impar | Siguiente página impar |
+
+---
+
+*Este artículo cubre los contenidos de formato de fuente, párrafo, estilos, temas, secciones, encabezados, pies y configuración de página en Microsoft Word 365, tal como se exige en los exámenes de Auxiliar Administrativo del Estado y otras oposiciones de la Administración Pública española.*

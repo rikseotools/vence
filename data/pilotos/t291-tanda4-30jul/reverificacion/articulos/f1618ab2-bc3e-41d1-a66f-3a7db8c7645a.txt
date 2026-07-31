@@ -1,0 +1,184 @@
+LEY: La Red Internet
+ARTÍCULO: 2 — Conceptos elementales sobre protocolos y servicios en Internet
+======================================================================
+## Conceptos elementales sobre protocolos y servicios en Internet
+
+### El modelo OSI y la arquitectura TCP/IP
+
+La comunicación en Internet se organiza en capas de abstracción. El **modelo OSI** (Open Systems Interconnection) define siete capas: Física, Enlace de datos, Red, Transporte, Sesión, Presentación y Aplicación. En la práctica, Internet utiliza el **modelo TCP/IP**, que agrupa esas capas en cuatro: Acceso a la red, Internet, Transporte y Aplicación.
+
+**TCP/IP** (Transmission Control Protocol / Internet Protocol) es el conjunto de protocolos que sustenta Internet. IP se encarga del direccionamiento y enrutamiento de paquetes; TCP proporciona una comunicación fiable, orientada a conexión, con control de errores y reordenación de paquetes.
+
+### Protocolos de transporte: TCP y UDP
+
+**TCP** (Transmission Control Protocol) establece una conexión mediante el «saludo en tres pasos» (SYN, SYN-ACK, ACK) antes de transmitir datos. Garantiza la entrega ordenada y sin errores. Se usa en HTTP, correo electrónico, FTP y cualquier aplicación donde la integridad de los datos es crítica.
+
+**UDP** (User Datagram Protocol) es un protocolo sin conexión y sin garantía de entrega. Es más rápido y ligero que TCP, ideal para streaming de vídeo, videollamadas, juegos online y DNS, donde la velocidad prima sobre la fiabilidad.
+
+### Direcciones IP: IPv4 e IPv6
+
+Una **dirección IPv4** se compone de 32 bits, representados como cuatro grupos de números decimales separados por puntos (ej. 192.168.1.1). Permite aproximadamente 4 300 millones de direcciones únicas, un número insuficiente ante el crecimiento de Internet.
+
+**IPv6** utiliza 128 bits, expresados en ocho grupos de cuatro dígitos hexadecimales separados por dos puntos (ej. 2001:0db8:85a3::8a2e:0370:7334). Ofrece un espacio de direcciones prácticamente ilimitado (3,4 × 10³⁸ direcciones).
+
+Rangos reservados en IPv4: 10.x.x.x, 172.16-31.x.x y 192.168.x.x son direcciones **privadas** (no enrutables en Internet); 127.0.0.1 es la dirección de **loopback** (localhost).
+
+### Puertos y sockets
+
+Un **puerto** es un número de 16 bits (0-65535) que identifica un servicio específico dentro de un host. Los **puertos bien conocidos** (0-1023) están reservados para servicios estándar. Un **socket** es la combinación de dirección IP y puerto que identifica unívocamente un extremo de una comunicación.
+
+Puertos más importantes:
+- **20/21** – FTP (datos/control)
+- **22** – SSH
+- **23** – Telnet
+- **25** – SMTP
+- **53** – DNS
+- **80** – HTTP
+- **110** – POP3
+- **143** – IMAP
+- **443** – HTTPS
+- **587** – SMTP con autenticación (STARTTLS)
+- **993** – IMAPS
+- **995** – POP3S
+- **3389** – RDP
+
+### DNS (Domain Name System)
+
+El **DNS** traduce nombres de dominio legibles por humanos (www.ejemplo.es) en direcciones IP (93.184.216.34). Funciona de forma jerárquica: servidores raíz → servidores TLD (Top-Level Domain: .es, .com, .org) → servidores autoritativos del dominio.
+
+El proceso de resolución: el cliente consulta su **servidor DNS recursivo** (normalmente el del ISP o uno público como 8.8.8.8 de Google o 1.1.1.1 de Cloudflare), que recorre la jerarquía hasta obtener la respuesta. Los resultados se almacenan en caché según el **TTL** (Time To Live) del registro.
+
+### DHCP (Dynamic Host Configuration Protocol)
+
+**DHCP** asigna automáticamente parámetros de red a los dispositivos: dirección IP, máscara de subred, puerta de enlace predeterminada y servidores DNS. Opera en el puerto UDP 67 (servidor) y 68 (cliente). Sin DHCP, cada dispositivo requeriría configuración manual.
+
+### Protocolos de aplicación web: HTTP y HTTPS
+
+**HTTP** (HyperText Transfer Protocol) es el protocolo de la World Wide Web. Funciona mediante solicitudes y respuestas: el cliente envía una petición (GET, POST, PUT, DELETE, HEAD, OPTIONS) y el servidor responde con un código de estado y el contenido.
+
+Códigos de estado HTTP más relevantes:
+- **1xx** – Informativos (100 Continue)
+- **2xx** – Éxito (200 OK, 201 Created, 204 No Content)
+- **3xx** – Redirecciones (301 Moved Permanently, 302 Found, 304 Not Modified)
+- **4xx** – Errores del cliente (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found)
+- **5xx** – Errores del servidor (500 Internal Server Error, 503 Service Unavailable)
+
+**HTTPS** (HTTP Secure) cifra la comunicación mediante **TLS** (Transport Layer Security), la evolución de SSL (Secure Sockets Layer). TLS garantiza confidencialidad, integridad y autenticación del servidor mediante certificados digitales. El navegador verifica que el certificado sea válido, esté firmado por una autoridad de certificación (CA) de confianza y corresponda al dominio accedido.
+
+### Estructura de una URL
+
+Una **URL** (Uniform Resource Locator) identifica de forma única un recurso en Internet y sigue el formato:
+
+> protocolo://usuario:contraseña@dominio:puerto/ruta?parámetros#fragmento
+
+Ejemplo: https://www.ejemplo.es:443/pagina/articulo?id=5&lang=es#seccion1
+- **Esquema/Protocolo:** https
+- **Dominio:** www.ejemplo.es
+- **Puerto:** 443 (implícito en HTTPS)
+- **Ruta:** /pagina/articulo
+- **Parámetros (query string):** id=5&lang=es
+- **Fragmento (ancla):** seccion1
+
+### Protocolo FTP
+
+**FTP** (File Transfer Protocol) permite transferir archivos entre cliente y servidor. Usa el puerto 21 para control y el puerto 20 para datos. **FTPS** añade cifrado TLS. **SFTP** (SSH File Transfer Protocol) es un protocolo distinto que cifra toda la sesión sobre SSH (puerto 22).
+
+### Protocolos de correo electrónico
+
+- **SMTP** (Simple Mail Transfer Protocol, puerto 25/587): envío de correo entre servidores y desde clientes al servidor.
+- **POP3** (Post Office Protocol v3, puerto 110/995): descarga el correo al cliente y lo elimina del servidor (por defecto).
+- **IMAP** (Internet Message Access Protocol, puerto 143/993): sincroniza el correo entre servidor y múltiples dispositivos; los mensajes permanecen en el servidor.
+
+### VPN y servidores proxy
+
+Una **VPN** (Virtual Private Network) crea un túnel cifrado entre el dispositivo del usuario y un servidor remoto, ocultando la dirección IP real y cifrando el tráfico. Se usa para acceso seguro a redes corporativas y para preservar la privacidad.
+
+Un **servidor proxy** actúa como intermediario entre el cliente e Internet. Puede cachear contenido, filtrar accesos, anonimizar al usuario o controlar el ancho de banda. El **proxy inverso** (reverse proxy) se sitúa delante de los servidores web para distribuir carga y añadir seguridad.
+
+### Computación en la nube (cloud computing)
+
+La **nube** ofrece recursos informáticos bajo demanda a través de Internet. Los modelos de servicio son:
+- **IaaS** (Infrastructure as a Service): infraestructura virtualizada (servidores, almacenamiento, redes). Ej.: AWS EC2, Azure VMs.
+- **PaaS** (Platform as a Service): plataforma para desarrollar y desplegar aplicaciones. Ej.: Google App Engine, Heroku.
+- **SaaS** (Software as a Service): aplicaciones completas accesibles vía navegador. Ej.: Gmail, Microsoft 365, Dropbox.
+
+Los modelos de despliegue son: nube pública, nube privada, nube híbrida y multinube.
+
+### Ancho de banda y latencia
+
+El **ancho de banda** es la capacidad máxima de transmisión de datos de una red, expresado en bits por segundo (bps, Kbps, Mbps, Gbps). La **latencia** es el tiempo que tarda un paquete en llegar desde el origen al destino, medida en milisegundos. La latencia se mide con el comando ping. El **jitter** es la variación de la latencia, especialmente relevante en comunicaciones en tiempo real.
+
+### Servicios web y APIs REST
+
+Un **servicio web** expone funcionalidades a través de HTTP/HTTPS para que otras aplicaciones puedan consumirlas. La arquitectura **REST** (Representational State Transfer) utiliza los métodos HTTP estándar (GET, POST, PUT, PATCH, DELETE) y trabaja con recursos identificados por URL. Las respuestas se sirven habitualmente en formato **JSON** o XML. Las **APIs** (Application Programming Interfaces) son la interfaz que define cómo interactuar con un servicio.
+
+---
+
+### Servicios clásicos de Internet: Telnet e IRC
+
+Además de los protocolos web y de correo, Internet ofrece servicios «clásicos» que conviene conocer:
+
+- **Telnet:** es un servicio de **conexión remota con otro host**. Permite que el ordenador cliente actúe como **terminal virtual** del ordenador servidor, de modo que el usuario maneja la máquina remota como si estuviera sentado físicamente ante ella. Opera sobre TCP en el puerto **23**. Su gran inconveniente es que transmite los datos (incluidas las credenciales) **en texto plano, sin cifrar**, por lo que en la práctica ha sido sustituido por **SSH** (puerto 22), que ofrece la misma funcionalidad de acceso remoto pero con la sesión cifrada.
+
+- **IRC** (Internet Relay Chat): es un **sistema de conversación (chat) en tiempo real** a través de redes de ordenadores. Los usuarios se conectan a un servidor IRC y conversan dentro de **canales** temáticos (salas) o mediante mensajes privados. Fue uno de los primeros sistemas de mensajería instantánea masiva de Internet. No debe confundirse con FTP (transferencia de archivos) ni con Telnet (terminal virtual remota).
+
+**Cuadro resumen para no confundir servicios:**
+
+| Servicio | Definición | Función principal |
+|----------|------------|-------------------|
+| **FTP** | File Transfer Protocol | Transferencia / intercambio de **archivos** cliente-servidor |
+| **Telnet** | Terminal remota | **Conexión con otro host**: el cliente hace de terminal virtual del servidor |
+| **IRC** | Internet Relay Chat | **Chat en tiempo real** (conversación) en redes de ordenadores |
+| **HTTP/HTTPS** | Web | Navegación y consulta de páginas web |
+
+### Modos de conexión del FTP: activo y pasivo
+
+El protocolo **FTP** permite **dos modos de conexión**: **activo** y **pasivo**. La diferencia está en **quién inicia la conexión de datos** (recuérdese que FTP usa dos canales: el de **control** en el puerto 21 y el de **datos**, normalmente en el puerto 20).
+
+- **Modo activo:** el cliente abre el canal de control hacia el puerto 21 del servidor e informa de un puerto propio; a continuación es **el servidor** quien inicia la conexión de datos hacia el cliente (tradicionalmente desde su puerto 20). Este modo da problemas cuando el cliente está detrás de un **cortafuegos o NAT**, porque la conexión entrante desde el servidor suele quedar bloqueada.
+
+- **Modo pasivo:** para resolver lo anterior, **es el cliente** quien inicia **ambas** conexiones (control y datos). El servidor, en lugar de conectarse al cliente, abre un puerto y se lo comunica para que el cliente se conecte a él. Es el modo más compatible con cortafuegos y NAT, y el habitual en navegadores y clientes modernos.
+
+> En resumen: FTP admite **dos modos de conexión, activo y pasivo** (no «sincrónico/asincrónico» ni «ordenado/paralelo/secuencial»).
+
+### Modos de transmisión: simplex, half-duplex y full-duplex
+
+Según el **sentido** en que pueden circular los datos por un canal de comunicación, se distinguen tres modos:
+
+- **Simplex:** la comunicación es **unidireccional**; los datos viajan siempre en un único sentido (emisor → receptor), sin posibilidad de respuesta por el mismo canal. Ejemplo clásico: la radiodifusión o la televisión.
+
+- **Half-duplex (semidúplex):** la comunicación es **bidireccional, pero no simultánea**; ambos extremos pueden emitir y recibir, pero **por turnos**, nunca a la vez. Ejemplo clásico: un walkie-talkie.
+
+- **Full-duplex (dúplex completo):** la comunicación es **bidireccional y simultánea**; ambos extremos pueden **emitir y recibir al mismo tiempo**. Ejemplo clásico: la conversación telefónica.
+
+> Por tanto, la comunicación **bidireccional y simultánea** se denomina **full-duplex**.
+
+| Modo | Sentido | ¿Simultáneo? | Ejemplo |
+|------|---------|--------------|---------|
+| Simplex | Unidireccional | No (solo un sentido) | Radio, TV |
+| Half-duplex | Bidireccional | No (por turnos) | Walkie-talkie |
+| Full-duplex | Bidireccional | **Sí** | Teléfono |
+
+### Señal analógica y señal digital
+
+La información puede transmitirse mediante dos tipos de señal:
+
+- **Señal analógica:** varía de forma **continua** en el tiempo, pudiendo tomar infinitos valores intermedios (por ejemplo, una onda senoidal). Es sensible al **ruido** y a la **atenuación**, que degradan progresivamente la señal y resultan difíciles de eliminar.
+
+- **Señal digital:** representa la información mediante **valores discretos** (típicamente dos niveles, 0 y 1). Es más robusta frente al ruido (puede regenerarse) y permite cifrado, compresión y corrección de errores con facilidad.
+
+**Ventajas de la señal digital** frente a la analógica: mayor inmunidad al ruido, posibilidad de regeneración sin pérdida, facilidad de procesamiento, cifrado y multiplexación.
+
+**Principal desventaja de la señal digital** frente a la analógica: la digitalización (muestreo y codificación de la señal) **requiere un mayor ancho de banda** para transmitir la misma información, ya que cada valor analógico se traduce en múltiples bits. (No es cierto que genere más ruido ni que sufra más atenuación por meteorología; precisamente es más resistente al ruido.)
+
+### El bit y la representación binaria
+
+El **bit** (binary digit) es la **unidad mínima de información** en informática. Al ser **binario**, un solo bit solo puede encontrarse en **dos estados** posibles: **0 o 1**. Por tanto, **la cantidad máxima de valores distintos que puede representar un solo bit es 2** (representados en binario como `0` y `1`).
+
+De forma general, con **n** bits se pueden representar **2ⁿ** valores distintos: 1 bit → 2 valores; 2 bits → 4 valores; 8 bits (1 **byte**) → 256 valores (de 0 a 255). Esta es la base de la codificación digital de toda la información que circula por las redes.
+
+### El bit y su representación en binario
+
+Un **bit** (*binary digit*) es la unidad mínima de información y solo puede tomar **dos valores**: 0 o 1. Por tanto, **la cantidad máxima de valores que puede representar un solo bit es 2** (en decimal).
+
+Si ese número —2— se expresa **en base binaria**, se escribe **«10»** (porque 1×2¹ + 0×2⁰ = 2). Así, cuando se pregunta «en binario» por el número de valores que representa un bit, la respuesta correcta es **10** (no «2», que es la cifra en decimal).

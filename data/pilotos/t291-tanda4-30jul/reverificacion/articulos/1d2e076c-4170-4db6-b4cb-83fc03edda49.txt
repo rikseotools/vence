@@ -1,0 +1,237 @@
+LEY: La Red Internet
+ARTÍCULO: 3 — Funcionalidades básicas de los navegadores web
+======================================================================
+## Funcionalidades básicas de los navegadores web
+
+### Concepto y función de un navegador web
+
+Un **navegador web** (browser) es una aplicación que permite acceder, visualizar e interactuar con páginas y recursos publicados en la World Wide Web mediante el protocolo HTTP/HTTPS. Los navegadores más utilizados son Google Chrome, Mozilla Firefox, Microsoft Edge, Safari y Opera.
+
+El navegador interpreta el código **HTML** (estructura), **CSS** (presentación) y **JavaScript** (comportamiento) para mostrar páginas web al usuario. El componente encargado de este proceso se denomina **motor de renderizado** (rendering engine): Blink en Chrome/Edge/Opera, Gecko en Firefox, WebKit en Safari.
+
+### Barra de direcciones (omnibox)
+
+La **barra de direcciones** permite introducir URL o términos de búsqueda directamente. Los navegadores modernos integran funciones avanzadas:
+- Autocompletado con historial y marcadores
+- Sugerencias de búsqueda en tiempo real
+- Indicadores de seguridad (candado para HTTPS, advertencias para sitios no seguros)
+- Atajos de búsqueda por palabras clave configurables
+- Modo de lectura de la URL activa (selección con un clic)
+
+### Pestañas (tabs)
+
+Las **pestañas** permiten navegar por varias páginas simultáneamente en una misma ventana. Características:
+- Apertura de enlace en nueva pestaña (Ctrl+clic o clic derecho → «Abrir en nueva pestaña»)
+- Anclaje de pestañas (pin) para fijarlas a la izquierda y protegerlas de cierre accidental
+- Agrupación de pestañas por colores y nombres
+- Vista previa al pasar el ratón sobre la pestaña
+- Restauración de pestañas cerradas recientemente
+
+### Marcadores (bookmarks / favoritos)
+
+Los **marcadores** guardan URL para acceder rápidamente a páginas frecuentes. Funciones:
+- Organización en carpetas y subcarpetas
+- Barra de marcadores visible bajo la barra de direcciones
+- Importación y exportación (formato HTML estándar)
+- Sincronización entre dispositivos vinculados a la misma cuenta del navegador
+- Edición del nombre y URL de cualquier marcador
+
+### Historial de navegación
+
+El **historial** registra las páginas visitadas con URL, título y fecha/hora. Permite:
+- Buscar dentro del historial por palabras clave
+- Retomar sesiones de navegación anteriores
+- Eliminar entradas individuales o por rango de fechas
+- Borrado completo del historial
+- Sincronización del historial entre dispositivos (si el usuario está autenticado)
+
+### Caché del navegador
+
+La **caché** almacena localmente recursos web (imágenes, hojas de estilo, scripts) para acelerar la carga de páginas visitadas. Ventajas: menor consumo de ancho de banda y tiempos de carga más rápidos. El usuario puede vaciar la caché cuando los recursos están desactualizados. La caché es independiente por navegador e incluso por perfil.
+
+### Cookies
+
+Las **cookies** son pequeños ficheros de texto que los sitios web almacenan en el navegador para:
+- Mantener la sesión del usuario (autenticación)
+- Recordar preferencias (idioma, tema, carrito de compra)
+- Rastreo analítico y publicitario
+
+Tipos: cookies de sesión (se eliminan al cerrar el navegador), cookies persistentes (tienen fecha de caducidad), cookies de terceros (de dominios distintos al visitado, usadas en publicidad). La normativa RGPD exige consentimiento informado para cookies no esenciales.
+
+### Navegación privada (modo incógnito)
+
+El **modo de navegación privada** (Incógnito en Chrome, Ventana privada en Firefox/Edge/Safari) no guarda historial, cookies ni caché en el dispositivo una vez cerrada la ventana. **No** garantiza anonimato en la red: el ISP, el administrador de red y los sitios web pueden seguir identificando al usuario por su IP.
+
+### Extensiones y complementos (add-ons)
+
+Las **extensiones** son pequeños programas que amplían las funcionalidades del navegador:
+- Bloqueadores de anuncios (uBlock Origin, AdBlock Plus)
+- Gestores de contraseñas (Bitwarden, 1Password)
+- Herramientas de productividad (Pocket, Grammarly)
+- Extensiones de seguridad y privacidad (HTTPS Everywhere)
+
+Las extensiones se instalan desde las tiendas oficiales (Chrome Web Store, Firefox Add-ons, Microsoft Edge Add-ons). Requieren ciertos permisos que el usuario debe revisar.
+
+### Herramientas de desarrollo (DevTools)
+
+Las **herramientas de desarrollador** (F12 o Ctrl+Mayús+I) ofrecen:
+- **Inspector de elementos:** visualización y edición en tiempo real del DOM y CSS
+- **Consola:** ejecución de JavaScript y visualización de errores
+- **Red (Network):** análisis de peticiones HTTP, tiempos de carga, tamaños
+- **Rendimiento (Performance):** perfil de ejecución y cuellos de botella
+- **Almacenamiento:** gestión de cookies, localStorage, sessionStorage, IndexedDB
+- **Aplicación:** service workers, caché, manifests de PWA
+
+### Gestión de descargas
+
+El **gestor de descargas** muestra el progreso, permite pausar, reanudar y cancelar descargas. Accesible mediante Ctrl+J o desde el menú del navegador. Los archivos se guardan por defecto en la carpeta de Descargas del sistema.
+
+### Motor de búsqueda predeterminado
+
+El navegador puede configurarse para usar distintos **motores de búsqueda** (Google, Bing, DuckDuckGo, Yahoo, Ecosia...) como predeterminado. El motor se invoca al escribir directamente en la barra de direcciones. Es posible añadir motores personalizados y asignarles palabras clave.
+
+### Bloqueo de ventanas emergentes (pop-ups)
+
+Los navegadores modernos bloquean por defecto las **ventanas emergentes** no solicitadas. El usuario puede:
+- Permitir pop-ups de sitios específicos (lista blanca)
+- Bloquear sitios concretos
+- Gestionar notificaciones push de forma similar
+
+### Gestión de certificados y seguridad
+
+El navegador verifica los **certificados TLS** de cada sitio HTTPS. Si el certificado ha caducado, no corresponde al dominio o no está firmado por una CA de confianza, muestra una advertencia. El usuario puede ver los detalles del certificado haciendo clic en el candado de la barra de direcciones.
+
+Indicadores visuales:
+- **Candado cerrado (gris/verde):** conexión HTTPS válida
+- **Candado abierto o barra roja:** conexión no segura o certificado inválido
+- **«No es seguro»:** sitio HTTP sin cifrado
+
+### Zoom y accesibilidad
+
+El navegador permite ajustar el nivel de zoom de la página:
+- Ctrl++ para aumentar
+- Ctrl+- para reducir
+- Ctrl+0 para restablecer al 100%
+
+También ofrece modo de lectura (reader mode) para eliminar distracciones, y es compatible con tecnologías de asistencia como lectores de pantalla.
+
+### Impresión desde el navegador
+
+Ctrl+P abre el diálogo de impresión, que permite seleccionar impresora, escala, orientación, páginas a imprimir y vista previa. La opción «Guardar como PDF» genera un documento PDF de la página actual sin necesidad de instalar software adicional.
+
+### Gestor de contraseñas y autocompletado
+
+Los navegadores incluyen un **gestor de contraseñas** integrado que ofrece guardar, autocompletar y generar contraseñas seguras. Las contraseñas se sincronizan entre dispositivos mediante la cuenta del navegador. El **autocompletado** (autofill) también funciona con formularios de dirección y tarjetas de crédito.
+
+### Perfiles de usuario
+
+Los **perfiles** permiten que varias personas compartan el mismo navegador con configuraciones separadas (marcadores, extensiones, historial, contraseñas). Chrome, Edge y Firefox soportan múltiples perfiles. Los perfiles pueden vincularse a cuentas de Google, Microsoft o Firefox para sincronizar datos en la nube.
+
+### Diseño adaptable (responsive design)
+
+Los navegadores modernos soportan **diseño adaptable**, ajustando automáticamente la presentación de la página al tamaño de la pantalla. Las DevTools permiten simular distintos dispositivos móviles para comprobar la visualización.
+
+### Sincronización entre dispositivos
+
+Los navegadores modernos ofrecen **sincronización** de marcadores, historial, contraseñas, extensiones y configuración entre todos los dispositivos del usuario mediante una cuenta de Google (Chrome), Microsoft (Edge) o Firefox. La sincronización usa cifrado de extremo a extremo opcionalmente.
+
+### Configuración de la página de inicio (homepage)
+
+El usuario puede establecer qué página se abre al lanzar el navegador o al pulsar el botón Inicio: una URL específica, la página de nueva pestaña por defecto, las páginas abiertas en la sesión anterior o un grupo de URLs. También se puede configurar la **página de nueva pestaña** con accesos directos, noticias o un buscador.
+
+### Lectura sin conexión y modo sin conexión
+
+Los navegadores modernos compatibles con **PWA** (Progressive Web Apps) permiten que ciertas aplicaciones web funcionen sin conexión a Internet almacenando recursos mediante **Service Workers**. Esto es especialmente útil para consultar páginas previamente cargadas sin necesidad de conectividad.
+
+---
+
+### Canales de actualización de Microsoft Edge
+
+Microsoft Edge distribuye sus actualizaciones a través de cuatro **canales oficiales**, cada uno con distinto nivel de estabilidad y frecuencia de actualización:
+
+| Canal | Descripción |
+|-------|-------------|
+| **Canal estable** | La versión principal de producción, actualizada cada cuatro semanas. Recomendado para usuarios generales. |
+| **Canal estable extendido** | Actualizado cada ocho semanas. Pensado para entornos empresariales que necesitan más tiempo entre actualizaciones. |
+| **Canal beta** | Versión previa con actualizaciones cada cuatro semanas, para probar novedades antes de que lleguen al canal estable. |
+| **Canal Dev** | Actualizado semanalmente con características en desarrollo. |
+| **Canal Canary** | Actualizado a diario con las versiones más recientes y experimentales. |
+
+> Los cuatro canales **oficialmente documentados** en la distribución empresarial de Edge son: **Canal estable**, **Canal estable extendido**, **Canal beta** y **Canal Dev**. El canal denominado **«Canal open»** NO existe en Microsoft Edge. Esta es una denominación inventada que no corresponde a ningún canal real de actualización.
+
+---
+
+### Lista de lectura de Chrome
+
+La **Lista de lectura** de Google Chrome es una función integrada en el navegador que permite **guardar páginas web para leerlas más adelante**, incluso cuando no se dispone de conexión a Internet. A diferencia de los marcadores (favoritos), que se organizan en carpetas y son para acceso frecuente, la Lista de lectura está orientada a artículos o páginas que se quieren leer en un momento posterior.
+
+Características de la Lista de lectura de Chrome:
+- Guarda la URL y el título de la página.
+- Permite acceder al contenido guardado sin conexión en dispositivos compatibles.
+- Se accede desde el icono de marcadores o desde el menú lateral del navegador.
+- No es una herramienta de anotaciones literarias ni de citas (eso correspondería a una aplicación de notas externas).
+
+> La Lista de lectura de Chrome NO es para hacer listas de libros ni anotaciones; es una función para **guardar páginas web y leerlas después, incluso sin conexión**.
+
+---
+
+---
+
+### Protocolo HTTP y la World Wide Web
+
+Las páginas web se transfieren entre servidor y navegador mediante el protocolo **HTTP**, cuyas siglas significan **HyperText Transfer Protocol** (Protocolo de Transferencia de Hipertexto). Es el protocolo de la capa de aplicación sobre el que se construye la World Wide Web: define cómo el navegador (cliente) solicita recursos y cómo el servidor responde.
+
+- **HTTP** transfiere los recursos en texto plano (sin cifrar).
+- **HTTPS** (HyperText Transfer Protocol **Secure**) es la versión segura: añade una capa de cifrado **TLS/SSL** sobre HTTP, de modo que la información viaja protegida frente a interceptaciones.
+
+> Cuidado con las siglas «trampa»: no es *Transmission* Protocol ni *total* transfer; la **T** de HTTP corresponde a **Transfer** (transferencia).
+
+### Hipertexto e hiperenlaces
+
+El contenido de la web se organiza mediante **hipertexto**: texto que contiene referencias (enlaces) hacia otros documentos o recursos, permitiendo una lectura no lineal saltando de una página a otra.
+
+- **Hipertexto:** el sistema o estructura de textos interconectados. Es el concepto general que da nombre al lenguaje **HTML** (HyperText Markup Language).
+- **Hiperenlace (hyperlink) o vínculo:** es concretamente el **texto resaltado (o imagen) que, al pulsarlo, abre otra página relacionada**. Suele mostrarse subrayado y en color distinto, y al pasar el ratón el cursor cambia a una mano. Es el elemento «pulsable» que materializa la navegación por hipertexto.
+
+> Distinción clave de examen: si la pregunta describe **el texto resaltado que se pulsa para ir a otra página**, la respuesta es **hiperenlace** (no «hipertexto», que es el concepto general del sistema de enlaces).
+
+### La URL: localizador uniforme de recursos
+
+Las siglas **URL** significan **Uniform Resource Locator** (Localizador Uniforme de Recursos). Es la dirección que identifica de forma unívoca un recurso (página, imagen, fichero) en Internet y que se introduce en la barra de direcciones del navegador.
+
+> Siglas «trampa»: no es *Unit Real Localitation* ni *Unique Resource Lan*; el desarrollo correcto es **U**niform **R**esource **L**ocator.
+
+Una URL que apunta a una página web concreta puede descomponerse en **tres partes** fundamentales:
+
+| Parte | Ejemplo | Función |
+|-------|---------|---------|
+| **Protocolo** | `https://` | Indica el esquema/protocolo de acceso (HTTP, HTTPS, FTP...). |
+| **Nombre de dominio** | `www.ejemplo.es` | Identifica el servidor o host donde reside el recurso. |
+| **Ruta (path)** | `/seccion/pagina.html` | Localiza el recurso concreto dentro de ese servidor. |
+
+Así, una URL completa como `https://www.ejemplo.es/seccion/pagina.html` consta de **protocolo + nombre de dominio + ruta**. (No se describe en términos de «prefijo, ruta y sufijo».)
+
+### Indicadores del candado en la barra de direcciones (Firefox)
+
+Además del candado cerrado (conexión HTTPS válida) y la advertencia de «No es seguro» (HTTP sin cifrar), el navegador puede mostrar estados intermedios:
+
+- **Candado con triángulo amarillo de advertencia:** la conexión **está cifrada (HTTPS), pero solo de forma parcial**. Significa que la página segura carga además algún recurso por HTTP no cifrado (**contenido mixto**, p. ej. una imagen o un script). Por ello **se aconseja no enviar información sensible** en esa página, ya que parte del contenido no está protegido.
+- **Candado tachado / barra roja:** certificado inválido, caducado o que no corresponde al dominio.
+
+> Matiz de examen: el candado con triángulo amarillo **no** indica que la conexión esté sin cifrar ni que el certificado haya expirado, sino **cifrado parcial** (contenido mixto), por lo que conviene evitar datos sensibles.
+
+### Banner: espacio publicitario de la página
+
+Un **banner** es un **espacio publicitario insertado en una página web**, normalmente en forma de imagen o animación rectangular, sobre el que se puede hacer clic para acceder al sitio del anunciante. Su finalidad es la promoción comercial y la generación de ingresos por publicidad.
+
+> No confundir: un banner **no** es otra forma de nombrar los hiperenlaces, ni son las partes independientes que componen una página (eso serían los *frames* o marcos). Un banner es, específicamente, un **espacio publicitario**.
+
+### Lenguajes de programación frente a otros tipos de software
+
+Conviene distinguir un **lenguaje de programación** de otros productos informáticos que a veces se confunden:
+
+- **Java:** es un **lenguaje de programación** de propósito general, orientado a objetos, multiplataforma (su lema histórico es «escribe una vez, ejecuta en cualquier sitio» gracias a la máquina virtual de Java, JVM). Se usa tanto en aplicaciones de escritorio como en web y móviles. **No confundir con JavaScript**, que es otro lenguaje distinto, propio de la web del lado del cliente.
+- **Informix:** **no** es un lenguaje de programación, sino un **sistema gestor de bases de datos** (SGBD) relacional.
+- **Acrobat:** **no** es un lenguaje de programación, sino el nombre del **software de Adobe** para crear y manejar documentos **PDF**.
+
+> De estas opciones, el único **lenguaje de programación** es **Java**.

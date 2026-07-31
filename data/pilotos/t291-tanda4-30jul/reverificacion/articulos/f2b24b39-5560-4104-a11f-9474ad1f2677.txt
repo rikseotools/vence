@@ -1,0 +1,218 @@
+LEY: Excel 365
+ARTÍCULO: 70 — Formato condicional
+======================================================================
+El formato condicional aplica estilos visuales a las celdas automáticamente según sus valores o condiciones. Se accede desde **Inicio > grupo Estilos > Formato condicional**. Permite resaltar tendencias, detectar duplicados, comparar rangos y visualizar datos sin modificar su contenido.
+
+## Tipos de regla
+
+### Reglas para resaltar celdas
+
+Aplica color de relleno, fuente o borde cuando la celda cumple una condición concreta. Los subtipos disponibles son:
+
+| Subtipo | Descripción |
+|---|---|
+| **Mayor que** | La celda supera el valor indicado |
+| **Menor que** | La celda es inferior al valor indicado |
+| **Entre** | La celda se encuentra dentro de un intervalo numérico |
+| **Es igual a** | La celda coincide exactamente con el valor indicado |
+| **Texto que contiene** | La celda incluye la cadena de texto especificada |
+| **Una fecha que corresponde a** | Coincide con un periodo: hoy, ayer, mañana, esta semana, la semana pasada, el mes pasado, el mes próximo, etc. |
+| **Valores duplicados** | Localiza celdas repetidas o, con la opción alternativa, valores únicos dentro del rango |
+
+El formato por defecto es relleno rojo claro con texto rojo oscuro, pero puede cambiarse a cualquier combinación de colores o a un formato personalizado.
+
+### Reglas superiores e inferiores
+
+Resalta los valores más altos o más bajos de un rango:
+
+| Subtipo | Descripción |
+|---|---|
+| **Los X elementos superiores** | Los N valores más altos del rango (N configurable, por defecto 10) |
+| **Los X elementos inferiores** | Los N valores más bajos del rango |
+| **El X % de valores superiores** | El porcentaje más alto del rango (porcentaje configurable, por defecto 10 %) |
+| **El X % de valores inferiores** | El porcentaje más bajo del rango |
+| **Por encima del promedio** | Celdas cuyo valor supera la media aritmética del rango |
+| **Por debajo del promedio** | Celdas cuyo valor está por debajo de la media aritmética del rango |
+
+### Barras de datos
+
+Muestra una barra proporcional al valor **dentro de la misma celda**. Cuanto mayor el valor, más larga la barra.
+
+**Variantes de relleno:**
+- **Relleno degradado**: la barra va de un color sólido en el extremo izquierdo a un tono más claro hacia la derecha.
+- **Relleno sólido**: la barra tiene un color uniforme de extremo a extremo.
+
+**Opciones de configuración avanzada** (boton "Mas reglas..." o editar regla):
+
+| Opción | Descripción |
+|---|---|
+| Valor mínimo / máximo | Valor más bajo, Número, Porcentaje, Percentil, Fórmula, Automático |
+| Color de la barra | Color de relleno y color de borde independientes |
+| Dirección de la barra | Contexto (según idioma), De izquierda a derecha, De derecha a izquierda |
+| Mostrar solo la barra | Oculta el valor numérico de la celda; solo se ve la barra |
+| Valores negativos y eje | Color de relleno y borde distintos para valores negativos; posición del eje (punto medio de la celda o valor cero) |
+
+> El tipo de valor mínimo y máximo permite fijar puntos de anclaje: por ejemplo, con "Número" se puede establecer que la barra sea nula por debajo de 0 y máxima a partir de 100, independientemente de los valores reales del rango.
+
+### Escalas de color
+
+Aplica un degradado de color a todo el rango según el valor de cada celda. Corresponde al tipo "Aplicar formato a todas las celdas según sus valores".
+
+**Escala de 2 colores**: define un color para el valor mínimo y otro para el máximo; los valores intermedios reciben una mezcla proporcional.
+
+**Escala de 3 colores**: añade un punto medio (por defecto, percentil 50) con su propio color, lo que permite representar valores bajos, medios y altos con tres tonos distintos.
+
+Para cada punto (mínimo, punto medio, máximo) se puede establecer el tipo de valor:
+
+| Tipo | Descripción |
+|---|---|
+| Valor más bajo / Valor más alto | El mínimo o máximo real del rango |
+| Número | Un valor fijo introducido manualmente |
+| Porcentaje | Un porcentaje del rango total (0 % = mínimo, 100 % = máximo) |
+| Percentil | Posición relativa en la distribución ordenada del rango |
+| Fórmula | Resultado de una fórmula de Excel |
+
+Excel incluye varios esquemas de colores predefinidos (verde-amarillo-rojo, azul-blanco-rojo, etc.) accesibles directamente desde el submenú.
+
+### Conjuntos de iconos
+
+Muestra un icono dentro de la celda según el rango en que se encuentra su valor. Excel divide el rango automáticamente en intervalos iguales según el número de iconos del conjunto: 33 %/67 % para conjuntos de 3 iconos; 25 % para conjuntos de 4 iconos; 20 % para conjuntos de 5 iconos.
+
+Los conjuntos están organizados en cuatro categorías:
+
+**Direccional (flechas)**
+- 3 flechas de color / 3 flechas grises
+- 4 flechas de color / 4 flechas grises
+- 5 flechas de color / 5 flechas grises
+- 3 triángulos
+
+**Formas**
+- 3 semáforos sin marco (circulos verde, amarillo y rojo)
+- 3 semáforos con marco (mismo concepto con borde cuadrado)
+- 4 semáforos (verde, amarillo, naranja y rojo)
+- 3 señales (rombos verde, amarillo y rojo)
+- Rojo a negro (escala de circulos del rojo al negro)
+
+**Indicadores**
+- 3 símbolos con círculo (círculo verde con marca de verificación, amarillo con exclamación, rojo con aspa)
+- 3 símbolos sin círculo (marca de verificación verde, signo de exclamación amarillo, aspa roja)
+- 3 indicadores (bandera verde, bandera amarilla, bandera roja)
+
+**Calificaciones (valoración)**
+- 3 estrellas (estrella llena, media y vacía)
+- 4 valoraciones (barras de señal de 0 a 4 niveles)
+- 5 valoraciones (barras de señal de 0 a 5 niveles)
+- 5 cuartos (circulo vacío, 1/4, 1/2, 3/4 y lleno)
+- 5 casillas (cuadros rellenos progresivamente de 0 a 5)
+
+**Opciones de configuración de conjuntos de iconos:**
+
+| Opción | Descripción |
+|---|---|
+| Invertir orden de iconos | Intercambia qué icono corresponde a valores altos y bajos |
+| Mostrar solo el icono | Oculta el valor numérico de la celda |
+| Sin icono de celda | Asigna "ningún icono" a un intervalo para que algunas celdas no muestren icono |
+| Tipo de umbral | Número, Porcentaje, Percentil o Fórmula |
+| Operador | >= (mayor o igual) o > (estrictamente mayor) para cada umbral |
+| Iconos personalizados | Permite combinar iconos de distintos conjuntos dentro de la misma regla |
+
+### Nueva regla
+
+Abre el cuadro de diálogo completo para crear una regla desde cero. Ofrece seis tipos:
+
+| N.º | Tipo de regla |
+|---|---|
+| 1 | Aplicar formato a todas las celdas según sus valores |
+| 2 | Aplicar formato únicamente a las celdas que contengan |
+| 3 | Aplicar formato únicamente a los valores con rango superior o inferior |
+| 4 | Aplicar formato únicamente a los valores por encima o por debajo del promedio |
+| 5 | Aplicar formato únicamente a los valores únicos o duplicados |
+| 6 | Utilice una fórmula que determine las celdas para aplicar formato |
+
+El tipo 2 ("celdas que contengan") permite condicionar el formato a: valor de celda (con operadores Igual a, Entre, Mayor que, etc.), texto específico, fechas que correspondan a un periodo, celdas en blanco, celdas sin blancos, errores y celdas sin errores.
+
+> **Tipo "Líneas"** NO existe en el formato condicional. No es un tipo de regla disponible.
+
+## Reglas basadas en fórmulas
+
+El tipo 6 de "Nueva regla" permite escribir cualquier fórmula lógica. Requisitos:
+- Debe comenzar con el signo **=**
+- Debe devolver **VERDADERO** (1) o **FALSO** (0)
+- Se usan **referencias relativas** para que la fórmula se adapte a cada celda del rango (la referencia se ajusta fila a fila o columna a columna)
+- Para fijar una columna o fila de referencia, se usan **referencias absolutas** con el signo $ (por ejemplo, `$B2` fija la columna B pero deja libre la fila)
+- Si la fórmula devuelve un error, el formato **no se aplica** a esa celda
+
+Ejemplos habituales:
+
+| Fórmula | Efecto |
+|---|---|
+| `=B2<HOY()` | Resalta fechas vencidas |
+| `=Y(B3="Cereales",D3<500)` | Aplica formato cuando se cumplen dos condiciones a la vez |
+| `=RESIDUO(FILA(),2)=1` | Sombrea filas alternas (filas impares) |
+| `=$C2="Completado"` | Resalta filas enteras cuando la columna C contiene un valor concreto |
+| `=ESBLANCO(A1)` | Detecta celdas vacías con lógica personalizada |
+
+## Administrar reglas y prioridad
+
+**Inicio > Formato condicional > Administrar reglas** muestra todas las reglas del rango seleccionado o de toda la hoja. Desde este panel se puede:
+- Crear, editar o eliminar reglas
+- Ver el rango al que se aplica cada regla (**Se aplica a**)
+- Cambiar la prioridad con las flechas arriba/abajo: la regla que aparece más arriba en la lista tiene mayor prioridad y se evalúa primero
+
+**Comportamiento cuando varias reglas coinciden:**
+- Si los formatos no son contradictorios (por ejemplo, una regla añade negrita y otra cambia el color de relleno), **se aplican los dos**.
+- Si los formatos son contradictorios (dos reglas cambian el color de fuente), **gana la regla con mayor prioridad** (la que está más arriba en la lista).
+
+### Detener si es verdad
+
+La casilla **Detener si es verdad** (columna derecha del panel Administrar reglas) indica a Excel que, si esa regla se cumple, **deje de evaluar las reglas de menor prioridad** para esa celda.
+
+- Útil para crear lógica excluyente: si la celda cumple la primera condición, no se comprueban las siguientes.
+- **No está disponible** para reglas de tipo Barra de datos, Escala de color o Conjunto de iconos; esos tipos siempre evalúan todas las reglas.
+
+## Copiar y pegar formato condicional
+
+Para copiar un formato condicional a otras celdas:
+
+1. Selecciona la celda o rango que ya tiene el formato condicional.
+2. En la pestaña **Inicio**, haz clic en **Copiar formato** (icono de brocha de pintura).
+3. Arrastra sobre el rango de destino y suelta.
+4. Pulsa **Esc** para desactivar la herramienta.
+
+También se puede usar **Ctrl + C** sobre la celda origen, seleccionar el destino, y en **Inicio > Pegar > Pegado especial** elegir **Formatos** (atajo: **Ctrl + Alt + V**, seleccionar Formatos).
+
+> Al copiar reglas basadas en fórmulas con referencias relativas, las referencias se ajustan automáticamente al nuevo destino. Conviene verificar siempre que el ajuste sea el deseado.
+
+## Eliminar reglas
+
+**Inicio > Formato condicional > Borrar reglas** ofrece varios alcances:
+
+| Opción | Efecto |
+|---|---|
+| **Borrar reglas de las celdas seleccionadas** | Elimina solo las reglas que afectan al rango actualmente seleccionado |
+| **Borrar reglas de toda la hoja** | Elimina todas las reglas de formato condicional de la hoja activa |
+| **Borrar reglas de esta tabla** | Disponible cuando el cursor está dentro de una tabla de Excel; elimina las reglas de esa tabla |
+| **Borrar reglas de esta tabla dinámica** | Disponible en tablas dinámicas; elimina las reglas de la tabla dinámica activa |
+
+> Borrar reglas no elimina el formato manual aplicado a las celdas, solo las reglas condicionales.
+
+## Herramienta Análisis rápido
+
+Al seleccionar un rango de datos, aparece el botón **Análisis rápido** en la esquina inferior derecha de la selección (también con **Ctrl + Q**). La pestaña **Formato** ofrece accesos directos a los formatos condicionales más comunes:
+
+| Tipo de dato | Opciones disponibles |
+|---|---|
+| Números o mixto | Barras de datos, Escala de colores, Conjunto de iconos, Mayor que..., 10 % superiores, Borrar formato |
+| Solo texto | Texto que contiene, Duplicados, Únicos, Es igual a..., Borrar formato |
+
+## Concepto "Se aplica a"
+
+Cada regla tiene un campo **Se aplica a** que define el rango de celdas sobre el que actúa. Permite que una misma regla cubra rangos discontinuos separados por punto y coma (por ejemplo, `$B$2:$B$10;$D$2:$D$10`).
+
+## Prioridad visual frente al formato manual
+
+El formato condicional **tiene prioridad visual** sobre el formato manual de la celda cuando ambos afectan al mismo atributo. Por ejemplo, si el formato manual establece relleno azul y una regla condicional activa establece relleno rojo, la celda se ve roja mientras la condición se cumpla.
+
+## Filtrar por color de formato condicional
+
+Para filtrar filas según el color aplicado por el formato condicional, el rango debe tener el **Filtro automático** activado (**Datos > Filtro** o **Ctrl + Mayus + L**). A continuación, en el desplegable de la columna, se elige **Filtrar por color**.

@@ -1,0 +1,368 @@
+LEY: Informática Básica
+ARTÍCULO: 2 — Introducción a la informática
+======================================================================
+## Introducción a la informática
+
+> **La informática** es la ciencia que se ocupa del tratamiento automático de la información por medios electrónicos. Abarca el hardware, el software y los métodos que permiten almacenar, procesar y transmitir datos.
+
+La palabra *informática* procede del francés *informatique*, contracción de *information automatique* (información automática). En inglés se usa el término *computer science* o *computing*.
+
+---
+
+## El dato, la información y el bit
+
+### El bit: unidad mínima de información
+
+> **Un bit** (*binary digit*, dígito binario) es la unidad mínima de información que puede manejar un ordenador. Solo puede tomar dos valores: **0** o **1**.
+
+- **BIT** = Binary Digit → valor 0 o 1.
+- **Nibble** = 4 bits.
+- **Byte** = 8 bits. Es la unidad básica de almacenamiento.
+
+### Jerarquía de unidades de almacenamiento
+
+En notación binaria tradicional, cada unidad es **1024 veces** mayor que la anterior:
+
+| Unidad | Símbolo | Equivalencia |
+|--------|---------|-------------|
+| Byte | B | 8 bits |
+| Kilobyte | KB | 1 024 B |
+| Megabyte | MB | 1 024 KB |
+| Gigabyte | GB | 1 024 MB |
+| Terabyte | TB | 1 024 GB |
+| Petabyte | PB | 1 024 TB |
+| Exabyte | EB | 1 024 PB |
+| Zettabyte | ZB | 1 024 EB |
+| Yottabyte | YB | 1 024 ZB |
+
+> **Orden de mayor a menor:** YB > ZB > EB > PB > TB > GB > MB > KB > B > bit.
+
+**Ejemplos de conversión:**
+- 1 kilobyte = 1 024 bytes.
+- 9 megabytes = 9 × 1 024 = **9 216 kilobytes**.
+- 2 KB = **2 048 bytes**.
+- 1 TB = 1 024 GB.
+- Un Petabyte equivale aproximadamente a **un billón de bytes** (10¹⁵ bytes en notación decimal).
+
+---
+
+## Sistemas numéricos en informática
+
+Los ordenadores trabajan internamente en sistema **binario** (base 2). Los programadores también usan el sistema **hexadecimal** (base 16) por su comodidad.
+
+| Sistema | Base | Dígitos usados | Ejemplo |
+|---------|------|----------------|---------|
+| **Binario** | 2 | 0, 1 | 00101110 |
+| Octal | 8 | 0-7 | 56 |
+| Decimal | 10 | 0-9 | 46 |
+| **Hexadecimal** | 16 | 0-9, A-F | 2E |
+
+> El sistema **binario** es el único que usa exclusivamente 0 y 1, reproduciendo el estado de los circuitos electrónicos (apagado / encendido).
+
+El sistema **hexadecimal** utiliza dígitos (0-9) y letras (A-F) para representar cantidades, siendo muy útil para representar valores de memoria de forma compacta.
+
+### Código ASCII
+
+El **código ASCII** (*American Standard Code for Information Interchange*) es el estándar de codificación de caracteres más extendido. Opera a nivel de **byte** y asigna un valor numérico a cada carácter (letras, dígitos, signos de puntuación).
+
+- 7 bits → 128 caracteres originales.
+- Extended ASCII → 256 caracteres (8 bits).
+- Su sucesor es **Unicode** (y su codificación **UTF-8**), que cubre todos los alfabetos del mundo.
+
+> El código ASCII **no es** Linux, Java ni ningún sistema operativo o lenguaje: es un *estándar de codificación*.
+
+---
+
+## Etapas del procesamiento de la información
+
+El funcionamiento básico de cualquier sistema informático sigue tres fases:
+
+1. **Entrada** (*Input*) → el usuario o un sensor introduce datos al sistema.
+2. **Proceso** (*Processing*) → la CPU ejecuta instrucciones sobre los datos.
+3. **Salida** (*Output*) → el sistema devuelve el resultado al usuario o lo almacena.
+
+> Esquema esencial: **Entrada → Proceso → Salida**.
+
+---
+
+## Componentes básicos de un sistema informático
+
+Un sistema informático se compone de **tres elementos fundamentales**:
+
+1. **Hardware** → parte física (CPU, RAM, disco duro, periféricos).
+2. **Software** → parte lógica (sistema operativo, aplicaciones, firmware).
+3. **Factor humano** (*humanware*) → los usuarios y técnicos que lo operan.
+
+> El "componente mecánico" **no existe** como elemento básico de un sistema informático. La respuesta correcta siempre excluye ese término.
+
+---
+
+## Tipos de software
+
+### Software de sistema
+- **Sistema operativo** (Windows, Linux, macOS, Android…)
+- **Controladores** (*drivers*)
+- **Firmware**
+
+### Software de aplicación
+- Procesadores de texto (Word, LibreOffice Writer)
+- Hojas de cálculo (Excel)
+- Navegadores web
+- Bases de datos
+
+### Firmware
+
+> El **firmware** es el software básico grabado en una memoria no volátil (ROM, flash) que controla directamente el hardware. La BIOS es el ejemplo más conocido.
+
+La BIOS (*Basic Input Output System*) se clasifica como **firmware**, no como sistema operativo ni como aplicación.
+
+---
+
+## Tipos de datos
+
+| Tipo | Ejemplo | Descripción |
+|------|---------|-------------|
+| Entero | 6 | Número sin decimales |
+| **Coma flotante** | 6,21 | Número con parte decimal |
+| Carácter | 'A' | Un solo símbolo |
+| Cadena (string) | "Hola" | Secuencia de caracteres |
+| Booleano | true/false | Valor lógico verdadero/falso |
+
+> El dato **6,21** es de tipo **coma flotante** (*floating point*).
+
+---
+
+## Generaciones de ordenadores
+
+La historia de la computación se divide en cinco generaciones según la tecnología electrónica dominante:
+
+| Generación | Período aprox. | Tecnología clave |
+|-----------|---------------|-----------------|
+| **1ª** | 1940-1956 | Válvulas de vacío (*tubos de vacío*) |
+| **2ª** | 1956-1963 | Transistores (reemplazan las válvulas) |
+| **3ª** | 1964-1971 | **Circuitos integrados** (chips) |
+| **4ª** | 1971-presente | **Microprocesadores** (Intel 4004, 1971) |
+| 5ª | Futuro/actual | Inteligencia artificial, computación cuántica |
+
+- 1ª generación → válvulas de vacío.
+- 2ª generación → válvulas sustituidas por **transistores**.
+- 3ª generación → circuitos integrados (mayor capacidad, menos fallos).
+- 4ª generación → aparición del **microprocesador** (Intel fue el primer fabricante).
+
+> **Intel** fue el **primer fabricante de microprocesadores** del mundo (Intel 4004, 1971).
+
+---
+
+## Clasificación de los ordenadores
+
+### Por capacidad de procesamiento y uso
+
+| Tipo | Características |
+|------|----------------|
+| **Supercomputadora** | Altísima capacidad de cálculo; cientos de procesadores en paralelo; usos científicos |
+| **Mainframe** | Gran computadora central; millones de instrucciones/segundo; uso empresarial |
+| **Servidor** | Presta servicios a otros equipos en red |
+| **Ordenador personal (PC)** | Uso individual; escritorio o portátil |
+| **Tablet / Smartphone** | Dispositivos móviles |
+| **PC Stick / Computer Stick** | Ordenador en formato HDMI; incluye CPU, RAM, almacenamiento y puertos USB |
+
+> Las **supercomputadoras** se caracterizan por su altísima capacidad de cálculo, compuestas por cientos de procesadores trabajando en paralelo.
+
+> Un **MAINFRAME** es una gran computadora central capaz de realizar millones de instrucciones por segundo.
+
+### Por funcionamiento interno
+
+- **Digitales** → trabajan con señales discretas (0 y 1).
+- **Analógicos** → trabajan con señales continuas.
+- **Híbridos** → combinan ambos tipos.
+
+---
+
+## La BIOS y el firmware de arranque
+
+### ¿Qué es la BIOS?
+
+> **BIOS** (*Basic Input Output System*, Sistema Básico de Entrada/Salida) es el firmware almacenado en la **memoria ROM** de la placa base. Es lo primero que se ejecuta al encender el ordenador.
+
+**Funciones principales de la BIOS:**
+1. Inicializar y testear el hardware (proceso **POST** - Power-On Self Test).
+2. Cargar el sistema operativo.
+3. Poner las funciones básicas a disposición del usuario.
+
+**¿Dónde se almacena?** En la **memoria ROM** (de solo lectura, no volátil).
+
+**¿Qué ocurre si se modifica incorrectamente?** El **sistema operativo no se iniciará correctamente**.
+
+### Batería CMOS
+
+Para mantener los parámetros de la BIOS cuando el ordenador está apagado (fecha, hora, secuencia de arranque), la placa base dispone de una **pila o acumulador CMOS** (pequeña batería de litio). Esta alimenta la **memoria RAM CMOS** donde se guardan esos parámetros.
+
+### BIOS vs. UEFI
+
+| Característica | BIOS | UEFI |
+|---------------|------|------|
+| Interfaz | Texto básico | Gráfica con ratón |
+| Arranque | MBR | GPT |
+| Tamaño máximo de disco | 2 TB | Sin límite práctico |
+| Seguridad | Sin Secure Boot | Secure Boot |
+| Velocidad arranque | Más lenta | Más rápida |
+
+---
+
+## Sistemas operativos
+
+> Un **sistema operativo** (SO) es el software que gestiona los recursos del hardware y proporciona servicios a las aplicaciones. Es el intermediario entre el usuario y la máquina.
+
+### Clasificación por número de tareas y usuarios
+
+| Tipo | Descripción |
+|------|-------------|
+| **Monotarea** | Solo ejecuta una tarea a la vez |
+| **Multitarea** | Ejecuta varias tareas aparentemente simultáneas, compartiendo la CPU |
+| **Monousuario** | Un único usuario a la vez |
+| **Multiusuario** | Varios usuarios simultáneamente |
+| **Multiprocesador** | Usa varios procesadores |
+
+> Un sistema **multitarea** permite ejecutar varias aplicaciones a la vez compartiendo recursos, dando mayor o menor prioridad a cada tarea.
+
+### Sistemas operativos principales
+
+| Sistema | Desarrollador | Plataforma |
+|---------|--------------|-----------|
+| **Windows** | Microsoft | PC, servidor |
+| **Linux** | Comunidad (kernel de Linus Torvalds) | Servidor, PC, embebido |
+| **macOS** | Apple | Mac |
+| **Android** | Google | Móviles/tablets |
+| **iOS** | Apple | iPhone/iPad |
+
+> **Linux** es un **sistema operativo** (no un lenguaje de programación ni un estándar de codificación).
+
+> **Java** es un **lenguaje de programación** (no un sistema operativo).
+
+---
+
+## Sistemas de archivos y almacenamiento
+
+### Sistemas de archivos comunes
+
+| Sistema de archivos | Límite archivo | SO principal | Notas |
+|--------------------|---------------|-------------|-------|
+| **FAT32** | 4 GB | Windows/USB | Compatible, pero limitado |
+| **exFAT** | Sin límite práctico | Dispositivos extraíbles | Pensado para almacenamiento externo; supera el límite de 4 GB de FAT32 |
+| **NTFS** | 16 TB | Windows | Permisos, journaling |
+| **ext4** | 16 TB | Linux | Sistema nativo Linux |
+| **APFS** | Sin límite | macOS | Optimizado para SSD |
+
+> **exFAT** está pensado para dispositivos de almacenamiento extraíble y **no tiene el límite de 4 GB** de FAT32.
+
+### Directorios y carpetas
+
+El conjunto organizado de archivos almacenados en un dispositivo se denomina **directorio** o **carpeta** (ambos términos son equivalentes).
+
+---
+
+## Formatos de archivo relevantes
+
+### Imágenes
+
+| Formato | Transparencia | Tipo | Características |
+|---------|-------------|------|----------------|
+| PNG | Sí | Mapa de bits | Sin pérdida, ideal para web |
+| GIF | Sí | Mapa de bits | Animaciones, 256 colores |
+| JPEG/JPG | No | Mapa de bits | Compresión con pérdida; fotos |
+| **BMP** | **No** | Mapa de bits | Sin compresión; gran tamaño |
+| SVG | Sí | Vectorial | Escalable sin pérdida |
+
+> El formato **BMP no permite transparencias**. Los formatos PNG y GIF sí las admiten.
+
+### Imagen vectorial vs. mapa de bits
+
+- **Vectorial** (SVG, AI, EPS): basada en fórmulas matemáticas. **Puede escalarse sin perder calidad**.
+- **Mapa de bits** (BMP, PNG, JPG): basada en píxeles. **Pierde calidad al ampliarse**.
+
+### PDF
+
+> Un archivo **PDF** (*Portable Document Format*) es un formato universal que conserva las fuentes, las imágenes y la maquetación del documento original, independientemente del sistema o programa utilizado para verlo.
+
+---
+
+## Conceptos avanzados y terminología
+
+### Plug and Play
+
+> **Plug and Play** (conectar y usar) significa que solo es necesario **conectar el dispositivo** para que el sistema operativo lo reconozca y configure automáticamente, sin intervención manual del usuario.
+
+### Buffer
+
+> Un **buffer** es un espacio de memoria en el que se almacenan datos de manera **temporal**, normalmente para un único uso, garantizando que la transmisión entre un dispositivo de entrada y uno de salida se realice de forma adecuada.
+
+### OCR
+
+Las siglas **OCR** corresponden a *Optical Character Recognition* → **Reconocimiento Óptico de Caracteres**. Tecnología que convierte imágenes de texto en texto editable.
+
+### Metadatos
+
+> Los **metadatos** son datos que describen otros datos. Por ejemplo, en una fotografía digital: fecha de captura, resolución, cámara usada, ubicación GPS.
+
+### Open Data (datos abiertos)
+
+> El concepto de **dato abierto** (*open data*) hace referencia a datos que pueden ser **utilizados, reutilizados y redistribuidos libremente** por cualquier persona.
+
+### Big Data
+
+> **Big Data** hace referencia a grandes volúmenes de datos con alta **variedad** y **velocidad** de generación, que no pueden procesarse con herramientas tradicionales. Se caracteriza por las "3 V": Volumen, Velocidad, Variedad.
+
+### Digitalización
+
+> La **digitalización** es la conversión de información analógica (continua) en formato **digital** (discreto, representable como 0 y 1).
+
+### Software de código abierto
+
+> Un código fuente publicado bajo una licencia que permite su uso, modificación o redistribución de forma libre se conoce como **software de código abierto** (*open source*).
+
+### Certificado electrónico
+
+> El **certificado electrónico FNMT de Ciudadano** es el documento digital que contiene los datos identificativos de su suscriptor, le vincula con unos datos de verificación de firma y confirma su identidad ante la Administración.
+
+### Virtualización
+
+> La **virtualización de hardware** es la capacidad de ejecutar **múltiples sistemas operativos** en un solo dispositivo físico, gracias a un software llamado *hipervisor*.
+
+---
+
+## Gestores de bases de datos (SGBD)
+
+Un **Sistema Gestor de Base de Datos (SGBD)** es el software que permite crear, gestionar y consultar bases de datos.
+
+Ejemplos de SGBD:
+- **Microsoft SQL Server**
+- Oracle Database
+- MySQL / MariaDB
+- PostgreSQL
+- Microsoft Access
+
+> **Microsoft SQL Server** es un sistema gestor de base de datos (SGBD).
+
+---
+
+## Puerto y bus: conceptos de conectividad
+
+### Puerto
+
+> Un **puerto** es una conexión que permite la comunicación entre el ordenador y otros dispositivos.
+
+### Bus
+
+> Un **bus** es el conjunto de líneas de comunicación que permiten la transferencia de datos entre los componentes internos de un ordenador. La velocidad de un bus se mide por su **frecuencia** (número de paquetes de datos enviados/recibidos por segundo).
+
+**Tipos de bus:**
+- **Bus de datos** → transfiere la información entre componentes.
+- **Bus de direcciones** → indica la posición de memoria donde se leerán/escribirán datos.
+- **Bus de control** → transmite señales de control y sincronización.
+
+> En la arquitectura de Von Neumann, el **bus de direcciones** indica la posición de memoria o dispositivo donde se leerán o escribirán datos.
+
+### DisplayPort y Thunderbolt
+
+- **DisplayPort** → interfaz digital para transmisión de vídeo entre PC y monitor.
+- **Thunderbolt** → estándar de interconexión de alta velocidad para transferir datos, vídeo y energía a través de un solo cable.

@@ -1,0 +1,9 @@
+{
+  "question_id": "e14167a8-6ea1-47ac-93c5-99f4fa1a4a02",
+  "gravedad": "baja",
+  "tipo": "afirmacion_falsa",
+  "donde": "explicación completa (intro + las cuatro razones), sin cita del artículo",
+  "que_dice": "\"La opción Expandir despliega el árbol de subcarpetas contenidas dentro de la carpeta seleccionada\", presentado como el comportamiento del Panel de navegación del Explorador de archivos de Windows 11.",
+  "que_dice_el_articulo": "El artículo fichero (Windows 11, art. 1) no menciona en ningún punto el 'Panel de navegación' del Explorador de archivos ni una opción de menú contextual llamada 'Expandir'. No hay ningún pasaje que respalde esta definición.",
+  "correccion_propuesta": "Añadir al artículo fuente una sección sobre el Panel de navegación del Explorador de archivos (con la opción 'Expandir' de su menú contextual) antes de usarla como base de la explicación, o sustituir la explicación por una que cite literalmente contenido ya presente en el artículo. Tal como está, la respuesta es correcta en el Windows 11 real, pero no está respaldada por la fuente que se le muestra al opositor."
+}
