@@ -320,6 +320,15 @@ for (const name of ['NEXT_PUBLIC_STRIPE_PRICE_MONTHLY','NEXT_PUBLIC_STRIPE_PRICE
 // Off/ausente = solo MP4 progresivo (fase 1). El player cae a MP4 ante cualquier error.
 // Rollback: cambiar a 'false' aqui (o quitar la linea) + redeploy. Solo comillas simples.
 { const e=env.find(x=>x.name==='HLS_ENABLED'); if (e) e.value='true'; else env.push({name:'HLS_ENABLED', value:'true'}); }
+// TRUSTED_EDGE (T-357, 31/07/2026): dice ante QUE borde estamos, y con ello resolveClientIp
+// solo acepta como de CONFIANZA la cabecera de ESE proveedor. Sin esta variable el modulo
+// corre en modo laxo (historico): aceptaria una cf-connecting-ip INYECTADA por el cliente
+// como si fuera buena, y encima de esa IP corre el antifraude (multi_account_reg_ip, IP de
+// captacion). Va aqui y no en SSM porque no es secreto y porque el dia que cambiemos de CDN
+// esto es la UNICA linea que hay que tocar en el codigo — ese es el punto del modulo agnostico.
+// El cierre del origen (secreto X-Origin-Verify en la regla 110 del ALB) es lo que hace que
+// 'trusted' sea verdad; esta variable es lo que hace que se exija el borde correcto.
+{ const e=env.find(x=>x.name==='TRUSTED_EDGE'); if (e) e.value='cloudfront'; else env.push({name:'TRUSTED_EDGE', value:'cloudfront'}); }
 // Guardarrail anti-colision env/secret (incidente 11/07 referral-hold): ECS RECHAZA
 // registrar un task def donde un mismo name este a la vez en environment y en secrets
 // (error criptico 'The secret name must be unique and not shared...'). Lo detectamos
