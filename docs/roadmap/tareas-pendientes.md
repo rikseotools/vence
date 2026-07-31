@@ -1296,12 +1296,32 @@ incluida).
 
   Los 24 que quedan coinciden **exactamente** con el inventario original de esta ficha: eso es la deriva de contenido de verdad, ahora sin ruido encima y con el job corriendo en 2 minutos en vez de 21.
 - **Efecto colateral que valía la tarea sola: 3 canarios no podían mirar la BD** — `canary-familia`, `canary-renewal-reminders` y `canary-landing-vs-bd` (este último es el que vigila que las cifras publicadas de una landing cuadren con la BD, la red de seguridad de [T-142]). Fallaban ruidosamente (`exit 1`), pero con un error de infraestructura que nadie tradujo a *"esto no está comprobando nada"*. Arreglados y comprobados en vivo: dos en verde y **`canary-familia` en rojo por un defecto REAL que estaba tapado — cobertura de familia 41% frente al umbral de 80%** (el mismo que canta la suite `familiaClassification`).
-- **Cola pendiente de esta ficha — los 24 reales, por familia** (nada de esto está arreglado):
-  1. **Datos/BD (9):** ETGOA config 120 temas ↔ 20 activos en BD *(ver abajo)* · `oposicion_bloques` ↔ `topics.bloque_number` · familia (cobertura 41% + consistencia del clasificador) · trinquete de temario placeholder *(es [T-374])* · `user_stats_summary` no cuadra con `count(*)` de un usuario pesado · vista SQL de completitud ↔ módulo TS · `temario_versions` sin versión para alguna convocatoria vigente · norma citada ≠ ley del artículo vinculado.
-  2. **Entorno, no producto (8):** `deviceFingerprintV2` — jsdom no implementa canvas/WebGL, así que la huella sale inválida. **Deja una pregunta legítima que nadie ha contestado:** un navegador real con canvas bloqueado (Firefox endurecido, Brave) produciría también huella inválida, y eso sí sería un agujero de la detección multicuenta.
-  3. **Dobles/mocks desfasados (7):** `warmCache` y `resolveAlias` — el `fetch` global está stubbeado en ese entorno y los tests esperan otra cosa. Test viejo, no defecto.
+- **Cola pendiente de esta ficha — el rojo REAL, corrido como lo corre CI:** `11 suites · 16 tests` de 2.095. **Ni un fallo de entorno: los 11 son de DATOS.** (Los 8 de `deviceFingerprintV2` y los 7 de `warmCache`/`resolveAlias` que aparecían antes eran artefacto del comando de reproducción, ver arriba — no había nada que arreglar en ellos.)
+
+  | suite | qué dice |
+  |---|---|
+  | `configDbIntegrity` | ETGOA promete 120 temas y sirve 20 *(ver abajo)* |
+  | `placeholderTemarioGuard` | trinquete de preguntas sobre artículos vacíos — **es [T-374]** |
+  | `familiaClassification` | cobertura 41% en abiertas + 16/300 desajustes clasificador↔BD *(medido, ver abajo)* |
+  | `temarioDataQuality` | `oposicion_bloques` ↔ `topics.bloque_number`, epígrafes sin scope, description=title |
+  | `temarioVersions` | convocatoria vigente de oposición activa sin versión de temario |
+  | `temarioEpigrafeIntegrity` | integridad de epígrafes |
+  | `topicScopeIntegrity` / `topicScopeVerification` | scope |
+  | `lawCompletenessConsistency` | la vista SQL y el módulo TS no dan el mismo estado a todas las leyes |
+  | `seguimientoFuentesCiegas` | fuentes de seguimiento que no vigilan nada |
+  | `schemaColumnDrift` | deriva de columnas |
+  | `positionTypeIntegrity` | integridad de `position_type` |
+  | `userStatsSummary` | el resumen precomputado no cuadra con `count(*)` de un usuario pesado |
+
+  Cada una tiene ya su frase-gatillo y su runbook en CLAUDE.md: **no se atacan desde aquí a lo bruto**, se atacan por su puerta. Lo que esta ficha aporta es que ahora se VEN.
+- **Familia, ya medido y con herramienta lista (31/07):** la cobertura del banner personalizado está al **41%** entre las catalogadas con plazo abierto hoy (13 de 22 sin familia útil), y el clasificador discrepa de la BD en **16 de 300** — casos como *«Maestros - Comunidad de Madrid»* guardado como `otros`. Es la forma conocida: **el criterio mejoró y nadie recalculó**. `scripts/backfill-familia.cjs` **ya tiene `--dry-run`** (no lo tenía: o no lo corrías o lo corrías a ciegas sobre 2.658 filas) y dice exactamente esto: **147 cambiarían**, de las cuales **111 ganan** familia concreta y **6 la PIERDEN** (`social→otros` ×3, `sanidad→otros`, `administracion_general→otros`, `tecnica→otros`) — esas 6 son correcciones a mano que la pasada completa destruiría. Por eso el script **ya no degrada**: `otros` es el comodín del clasificador y no puede pisar una decisión concreta. **Queda pendiente decidir si se ejecuta la escritura** (147 filas del catálogo vivo).
 - **Sobre ETGOA, ya medido para que nadie lo repita:** `etgoa-sanidad-consumo` está **activa** y su config promete **120 temas**; en BD hay **120 filas pero solo 20 activas** (la parte común 1-20) y los **100 específicos (101-200) están inactivos y con 0 `topic_scope`**. Son 4 usuarios, 1 premium. El home publica *"120 temas"* (`app/page.tsx`). **Es la ÚNICA oposición del catálogo con esa brecha** (128 en config, 1 con hueco), así que no es campaña: es una decisión. **Y OJO con la salida fácil:** poner `comingSoon: true` NO arregla nada — esa bandera **solo la lee este test** (0 oposiciones la usan, nadie más la consulta), así que serviría para callar el rojo dejando al usuario viendo exactamente lo mismo. O se construye la parte específica, o se deja de prometer 120.
-- **Reproducir (2 min ahora, no 21):** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config`
+- **⚠️ EL COMANDO DE REPRODUCIR DE ESTA FICHA FABRICABA ROJOS FANTASMA (31/07).** El `--setupFiles dotenv/config` **NO se añade a la configuración: la SUSTITUYE**, así que desactiva `jest.setup.js` y con él los dobles globales (`global.fetch = jest.fn()`, `localStorage`…). Resultado: 7 de los "24 fallos" eran `TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')` — el test pidiendo un mock que ese comando acababa de quitar. Corridas con el comando bueno, **`lawSlugFailureModes` da 14/14 en verde**. No había nada que arreglar ahí.
+- **Reproducir COMO LO HACE CI** (que es lo único que cuenta; CI inyecta `DATABASE_URL` en el step, ver `.github/workflows/test.yml`):
+  ```bash
+  export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
+  npm run test:integration
+  ```
 
 ### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
 

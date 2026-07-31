@@ -410,6 +410,19 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
       '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
   },
+  clasificar_familia_oposiciones: {
+    titulo: 'Clasificar la familia de las oposiciones del catálogo (la que personaliza el banner)',
+    ruta: 'scripts/backfill-familia.cjs',
+    estado: 'vivo',
+    notas:
+      '`--dry-run` enseña el diff sin escribir · sin flags re-clasifica TODO · `--only-null` solo las ' +
+      'filas sin familia, que es el reconcile tras cada pasada del feed. **NO degrada**: `otros` es el ' +
+      'comodín del clasificador, no un veredicto, así que nunca pisa una familia concreta (regla en ' +
+      '`lib/oposiciones/familiaBackfill.cjs`, con tests). Medido el 31/07 (T-377): sin esa regla la ' +
+      'pasada completa borraba 6 correcciones a mano, y el `--dry-run` no existía — solo podías no ' +
+      'correrlo o correrlo a ciegas sobre 2.658 filas. Lo vigila `scripts/canary-familia.cjs` ' +
+      '(cobertura de abiertas ≥80% + clasificador↔BD).',
+  },
   reevaluar_shuffle_safety_por_criterio: {
     titulo: 'Re-evaluar los veredictos de barajabilidad cuando cambia el CRITERIO (no el contenido)',
     ruta: 'scripts/backfill-shuffle-safety.ts',
