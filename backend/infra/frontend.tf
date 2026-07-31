@@ -361,6 +361,54 @@ resource "aws_lb_listener_rule" "frontend_preview" {
       values = ["preview-aws.vence.es", "www.vence.es", "vence.es"]
     }
   }
+
+  # ── T-357 (31/07/2026): el host NO basta ──────────────────────────────────
+  # Este ALB es internet-facing con el SG en 0.0.0.0/0, así que cualquiera podía
+  # llegar al frontend con `Host: www.vence.es` y **falsificar
+  # `CloudFront-Viewer-Address`** — la cabecera que `lib/api/clientIp.ts` trata como
+  # de CONFIANZA y sobre la que corre el antifraude (`multi_account_reg_ip`, IP de
+  # captación). Medido, no supuesto: `GET /api/health` directo al ALB devolvía 200.
+  #
+  # Por qué un secreto y NO el SG restringido a los rangos de CloudFront: porque
+  # `api.vence.es` resuelve **DIRECTO a este ALB, sin CDN**, así que cerrar el SG
+  # tumbaría el backend entero. El secreto solo afecta a ESTA regla (el frontend);
+  # la default (backend) queda intacta.
+  #
+  # Rotación: cambiar SIEMPRE primero en CloudFront (custom origin header del origen
+  # `vence-alb-origin`), esperar a `Deployed`, y solo entonces aquí. Al revés = caída.
+  # Valor vivo en SSM `/vence-frontend/CLOUDFRONT_ORIGIN_SECRET`.
+  condition {
+    http_header {
+      http_header_name = "X-Origin-Verify"
+      values           = [data.aws_ssm_parameter.cloudfront_origin_secret.value]
+    }
+  }
+}
+
+data "aws_ssm_parameter" "cloudfront_origin_secret" {
+  name = "/vence-frontend/CLOUDFRONT_ORIGIN_SECRET"
+}
+
+# Sin el secreto, la regla 110 no casa y la petición caería a la default (backend),
+# que respondería un 404 confuso. Mejor decirlo claro: 403 explícito.
+resource "aws_lb_listener_rule" "frontend_sin_secreto" {
+  listener_arn = data.aws_lb_listener.https.arn
+  priority     = 111 # justo DESPUÉS de la 110: solo llega aquí quien no traía el secreto
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      status_code  = "403"
+      message_body = "Direct origin access is not allowed. Use https://www.vence.es"
+    }
+  }
+
+  condition {
+    host_header {
+      values = ["preview-aws.vence.es", "www.vence.es", "vence.es"]
+    }
+  }
 }
 
 # Permitir que el ALB hable con las tasks frontend en puerto 3000.
