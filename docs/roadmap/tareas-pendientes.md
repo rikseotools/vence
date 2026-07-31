@@ -1154,6 +1154,28 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Dato de contexto:** en las 502 activas de Access se verificaron a mano pares idénticos (`821259c4`/`e9af0377`, `32fbe5e1`/`c774a064`), así que la duplicación es real y no un artefacto de la normalización.
 - **Capa que lo vigile:** el kind ES la capa (núcleo puro + test: normalización con tildes y espacios, opciones NULL que no cuentan, y las oposiciones de 3 opciones con D nula, que es el falso positivo obvio).
 - **Relacionada:** [T-406] (opciones duplicadas dentro de una pregunta), [T-405], manual `impugnaciones-claude-code.md` (regla «si el fallo puede ser sistémico, mídelo en la BD antes de cerrar», que es la que hizo aflorar esto).
+### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 42 grupos que la deduplicación de mayo no podía ver
+
+- **Esfuerzo: ~2 h.** No hay que construir nada: la consulta está escrita aquí abajo. Lo que lleva tiempo es **adjudicar grupo por grupo** (hay falsos positivos reales) y desactivar la copia sobrante de cada uno.
+- **De dónde sale:** la impugnación `b6787619` (Esther Ramos, 31/07) era un falso positivo, pero al mirar esa pregunta en la BD aparecieron **dos copias activas** de ella — `49a8e1d9` (oficial, Guardia Civil 2009) y `63626258` — con **el enunciado redactado distinto**: *«¿Qué palabra sobra en cuanto a la característica del objeto que representa?»* frente a *«¿Qué palabra sobra?»*, mismas cuatro opciones y misma clave. La segunda ya está desactivada.
+- **Por qué se escapó:** la campaña de deduplicación de mayo (las que hoy llevan `duplicate_cross_oposicion:` / `duplicate_keep_official`) agrupó **por enunciado exacto**. Este caso comparte opciones y clave pero **no el texto**, así que quedó entero fuera del barrido — no es que se decidiera conservarlo, es que nunca se miró.
+- **Medido el 31/07 sobre las 7.101 psicotécnicas activas:**
+  - **Duplicados exactos** (enunciado + opciones + imagen + `content_data` + clave): **3 grupos → 3 copias sobrantes. YA DESACTIVADAS** (`727d861d`/`88b5cc9f`, `6581be38`/`b8b856c9`, `e5df9032`/`34af2e63`; se conservó en cada par la de mejor explicación). Esa parte está cerrada.
+  - **Clase parafraseada, que es lo que queda:** mismas 4 opciones normalizadas + enunciado distinto → **42 grupos · 94 preguntas · hasta 52 copias sobrantes**. Casi todas son vocabulario importado dos veces con la redacción cambiada: `15a1fee1`/`9ac9bdea` (JACTAR), `922437c6`/`312c9c66` (PRECAVIDO), `395e29f8`/`50116c54` (CINISMO), `782ad84c`/`41ef1a23` (FANÁTICO), `f024fafc`/`53db41bd` (SOSEGADO), `67f797f3`/`4f09ba8a` (analogía Ineptitud→Paridad)…
+- **⚠️ Los dos sesgos que hay que respetar al adjudicar** (medidos, no teóricos):
+  1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*, *«¿Cuántos errores hay en la fila 4?»*) y se diferencian en la **imagen** o en el `content_data`. Sin mirar esos dos campos, el barrido miente en el 97 % de los casos.
+  2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta (no su índice — las opciones vienen barajadas entre copias), las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` a secas daría alarmas falsas en cascada.
+- **Consulta que reproduce la cola** (solo lectura; agrupar por conjunto de opciones normalizado, exigir enunciado distinto y descartar juegos genéricos):
+  ```sql
+  -- normalizar: lower + quitar HTML + quitar todo lo que no sea alfanumérico
+  -- clave del grupo = las 4 opciones normalizadas y ORDENADAS (vienen barajadas)
+  -- filtros anti-ruido: length(opciones) > 24, no puramente numéricas, sin 'figura'
+  -- exigir: count(*) > 1 AND count(DISTINCT enunciado_normalizado) > 1
+  ```
+  (script completo en el histórico de la sesión `central-inferior` del 31/07; son ~20 líneas de SQL sobre `psychometric_questions WHERE is_active = true`).
+- **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`. Criterio para elegir cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la más antigua. Ojo: las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección (es correcto: el opositor la vería dos veces).
+- **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno ya tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las dos guardas de arriba** lo convierte en trinquete, y el núcleo puro se puede compartir con el detector de duplicados de importación.
+- **Relacionada: [T-408]**, que es el mismo hueco en las **legislativas** (1.955 activas repetidas literalmente) y propone el kind `pregunta_duplicada`. Las dos fichas se escribieron el mismo día sin saber una de otra, lo que refuerza el diagnóstico: **ningún detector compara una pregunta con otra**. Si ese kind se construye, que nazca cubriendo también `psychometric_questions` — pero **la normalización no puede ser la misma**: aquí el contenido vive en `content_data`/`image_url` y sin mirarlos el 97 % de los grupos son falsos positivos.
 
 ### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
 
