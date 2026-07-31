@@ -1374,6 +1374,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'deduplicación de mayo. El criterio (normalización, clave de opciones, quién sobrevive, ' +
       'banda error/warn por el TEXTO de la respuesta y no por su índice) vive en el módulo puro ' +
       '`lib/calidad/duplicados.js`, con tests, para que los dos bancos no diverjan. ' +
+      '**`--adjudicados <fichero.json> [--aplicar]` (T-439)**: aplica una adjudicación hecha A MANO. ' +
+      'Existe aquí y no en un script aparte porque `lifecycle_state` tiene trinquete de escritores; rehusa jubilar una pregunta de examen OFICIAL y aborta entero si algún estado cambió desde que se adjudicó. ' +
       '**`--banco legislativas --parafraseadas` (T-425, 31/07)**: el mismo corte para `questions`, ' +
       'que NO se podía trasladar tal cual — agrupar solo por opciones da 3.376 grupos casi todos ' +
       'legítimos (series de variante: `polvorín semienterrado`/`superficial`, `ingreso`/`reintegro`, ' +

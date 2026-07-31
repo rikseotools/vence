@@ -78,6 +78,8 @@ const POR_EXPOSICION = argv.includes('--por-exposicion')
 // Vuelca los grupos con los enunciados ENTEROS. El listado de pantalla trunca a 150 caracteres y
 // con eso no se puede adjudicar: la diferencia que decide suele estar al final de la frase.
 const JSON_OUT = argv.includes('--json')
+// Fichero con la adjudicación ya hecha a mano. Simula salvo que se añada --aplicar.
+const ADJUDICADOS = valor('--adjudicados')
 
 if (!['legislativas', 'psicotecnicas', 'ambos'].includes(BANCO)) {
   console.error(`❌ --banco debe ser legislativas | psicotecnicas | ambos (recibido: ${BANCO})`)
@@ -364,6 +366,7 @@ async function listadoParafraseadas(c) {
 const SQL_PARAFRASEADAS_LEG = `
   with base as (
     select q.id, q.question_text, q.is_official_exam, q.primary_article_id, q.created_at,
+           q.lifecycle_state, length(coalesce(q.explanation,'')) as expl,
            ${N('q.question_text')} as norm,
            (select string_agg(x, '|' order by x) from unnest(array[
               ${N('q.option_a')}, ${N('q.option_b')}, ${N('q.option_c')}, ${N('q.option_d')}]) x
@@ -376,7 +379,8 @@ const SQL_PARAFRASEADAS_LEG = `
   )
   select ops, primary_article_id as art, count(*)::int n,
          json_agg(json_build_object('id', id, 'texto', question_text, 'oficial', is_official_exam,
-                                    'alta', created_at, 'textoCorrecta', texto_correcta)) as miembros
+                                    'alta', created_at, 'textoCorrecta', texto_correcta,
+                                    'estado', lifecycle_state, 'expl', expl)) as miembros
     from base
    where ops is not null and ops <> ''
    group by ops, primary_article_id
@@ -446,6 +450,8 @@ async function listadoParafraseadasLegislativas(c) {
       ordenDistinto: g.ordenDistinto,
       solape: Number(g.par.solape.toFixed(3)), distintas: g.par.distintas,
       miembros: g.miembros.map((m) => ({ id: m.id, veces: m.veces ?? null, oficial: m.oficial,
+                                         estado: m.estado, expl: m.expl, alta: m.alta,
+                                         correcta: m.textoCorrecta,
                                          texto: String(m.texto).replace(/\s+/g, ' ').trim() })),
     })), null, 1))
     return
@@ -482,10 +488,69 @@ async function listadoParafraseadasLegislativas(c) {
   console.log('\n  (listado: no se ha tocado nada — se adjudica a mano, ver T-425)\n')
 }
 
+// ── Aplicar una adjudicación HECHA A MANO ────────────────────────────────────────────────
+//
+// El corte parafraseado NO puede jubilar solo (ver arriba: los falsos positivos sobreviven a
+// cualquier umbral). Pero la adjudicación humana tiene que poder escribir por algún sitio, y ese
+// sitio es ESTE, no un script nuevo: `lifecycle_state` es un recurso con trinquete de escritores
+// y dos puertas al mismo recurso con criterios distintos no protegen, se contradicen.
+//
+// El fichero es una lista de decisiones explícitas — nada se deduce aquí:
+//   [{ "quedaId": "<uuid>", "jubilar": [{"id":"<uuid>","estado":"approved"}], "motivo": "…" }]
+//
+// Se rehúsa jubilar una pregunta de examen OFICIAL: en este barrido no se toca ninguna, porque
+// borrar de forma TERMINAL el registro de que algo cayó en un examen real necesita más que un
+// parecido de texto.
+async function aplicarAdjudicados(c, ruta) {
+  const plan = JSON.parse(require('fs').readFileSync(ruta, 'utf8'))
+  const ids = plan.flatMap((p) => p.jubilar.map((j) => j.id))
+  const { rows: info } = await c.query(
+    'select id, is_official_exam, lifecycle_state from questions where id = any($1::uuid[])', [ids])
+  const porId = new Map(info.map((r) => [r.id, r]))
+
+  const problemas = []
+  for (const p of plan) for (const j of p.jubilar) {
+    const r = porId.get(j.id)
+    if (!r) problemas.push(`${j.id.slice(0, 8)}: no existe`)
+    else if (r.is_official_exam) problemas.push(`${j.id.slice(0, 8)}: es de examen OFICIAL`)
+    else if (r.lifecycle_state !== j.estado) problemas.push(`${j.id.slice(0, 8)}: estado cambió (${j.estado} → ${r.lifecycle_state})`)
+  }
+  console.log(`\n═══ ADJUDICACIÓN MANUAL · ${plan.length} grupo(s), ${ids.length} a jubilar ═══`)
+  if (problemas.length) {
+    console.log(`\n❌ ${problemas.length} problema(s) — no se aplica nada:`)
+    problemas.slice(0, 20).forEach((x) => console.log(`   · ${x}`))
+    process.exitCode = 1
+    return
+  }
+  if (!APLICAR) {
+    console.log('\n  (simulación: todo verificado, añade --aplicar para jubilar)\n')
+    return
+  }
+  const { rows: adm } = await c.query("select id from user_profiles where email='manueltrader@gmail.com'")
+  let ok = 0, fallos = 0
+  for (const p of plan) for (const j of p.jubilar) {
+    try {
+      await c.query('select public.transition_question_state($1,$2,$3,$4,$5,null,$6)', [
+        j.id, j.estado, 'retired_duplicate', 'admin_duplicate_of', adm[0].id,
+        `Duplicado de ${p.quedaId}. ${p.motivo} Adjudicado a mano, uno a uno (T-439).`,
+      ])
+      ok++
+    } catch (e) {
+      fallos++
+      console.log(`   ⚠️ ${String(j.id).slice(0, 8)}: ${e.message.slice(0, 110)}`)
+    }
+  }
+  console.log(`\n  jubiladas: ${ok} · fallos: ${fallos}\n`)
+}
+
 async function main() {
   const c = new Client(pgConfig())
   await c.connect()
   try {
+    if (ADJUDICADOS) {
+      await aplicarAdjudicados(c, ADJUDICADOS)
+      return
+    }
     if (PARAFRASEADAS) {
       if (BANCO === 'legislativas' || BANCO === 'ambos') await listadoParafraseadasLegislativas(c)
       if (BANCO === 'psicotecnicas' || BANCO === 'ambos') await listadoParafraseadas(c)

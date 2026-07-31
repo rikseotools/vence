@@ -1379,6 +1379,25 @@ software**, que ya tiene sistema propio (`audit:display-drift`, APP_DRIFT/OFFICE
 distintas oposiciones examinan distintas versiones. Jubilar la genérica puede dejar un temario sin
 preguntas. Se sacan de aquí y se tratan allí.
 
+#### ✅ APLICADO (31/07): 21 preguntas jubiladas, verificadas en BD
+
+De los 87: **13 son ofimática** (fuera, van por `audit:display-drift`), **19 resultaron mecánicos**
+—misma secuencia de palabras de contenido, solo cambia la forma de citar la norma— y de esos se
+jubilaron **21 preguntas en 18 grupos**. El 19.º se saltó entero: sus dos copias son de examen oficial.
+
+- Leídos uno a uno antes de aplicar, y comprobado además que **todo el grupo comparte la respuesta
+  correcta** — la banda solo verificaba eso en la MEJOR pareja, y en un grupo de tres o cinco eso no
+  basta. (Los 19 salieron homogéneos, pero la comprobación se queda.)
+- Se aplican con `--adjudicados <fichero.json> [--aplicar]`, un modo nuevo del **mismo runner**: no un
+  script aparte, porque `lifecycle_state` tiene trinquete de escritores. Rehúsa jubilar una oficial y
+  **aborta entero** si algún `lifecycle_state` cambió desde que se adjudicó.
+- Verificado después: 21 en `retired_duplicate`/`is_active=false`, los 18 supervivientes activos, y 21
+  filas en `question_lifecycle_history` con `admin_duplicate_of` y la nota que dice de cuál es copia.
+
+**⏳ QUEDAN 55 grupos por leer** (los que cambian alguna palabra de contenido). Ahí es donde vive el
+criterio caro: hay que decidir si la palabra cambiada hace otra pregunta. El comando y los cajones son
+los de arriba.
+
 **Regla adoptada sobre las oficiales:** no se jubila ninguna `is_official_exam` en este barrido. Son
 56 de las 249 y solo cambia el resultado en 8 grupos (los que tienen dos o más); a cambio evita borrar
 de forma TERMINAL el registro de que algo cayó en un examen real. Esos 8 se miran aparte, con la
