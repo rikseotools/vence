@@ -757,7 +757,16 @@ incluida).
 
 - **Un test existente exigía que los `bis` NO se mapearan.** Era comportamiento **incidental** —el regex viejo sencillamente no los casaba— fijado en un test como si fuera la regla. Se actualizó explicando el porqué: `articles.article_number` guarda `"32 bis"`, y lo que de verdad importaba (que el bis no desplace al artículo simple) se conserva, porque van en claves distintas.
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
-- **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
+- **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
+
+### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
+
+- **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.
+- **POR QUÉ NO ES COPIAR-PEGAR EL ARREGLO:** [T-340] terminó demostrando que el contraste es un **detector, no un control**, y que cortar por él tiene coste real (17 intentos de compra bloqueados). Así que aquí la pregunta por endpoint no es «¿lo contrasto?» sino **«¿qué daño hace equivocarse de cuenta?»** — la misma política `alDiscrepar` de `requireUsuarioPropio`, elegida a conciencia y declarada por escrito.
+- **EMPEZAR POR MEDIR, no por parchear:** cuántos de esos 38 reciben hoy un id que **no coincide** con el del token en producción. La señal `auth_identidad_ajena_rechazada` ya existe; basta con instrumentarlos en modo «seguir-con-el-token» y mirar una semana. Si alguno tiene tráfico con id ajeno, ahí hay o un cliente roto ([T-352]) o algo peor.
+- **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
+- **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
+`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## 🔢 Por dónde empezar
 
@@ -905,17 +914,6 @@ incluida).
   2. **Verificar solo a los sospechosos**: el Pase 3 ya sabe qué `stripe_subscription_id` no encontró; basta un `subscriptions.retrieve(id)` **por cada uno** (en la cuenta que diga `payment_account`, con la otra como respaldo). Es O(sospechosos) en vez de O(cartera) y además da el motivo real cuando de verdad falta.
 - **Al tocarlo, respetar dos cosas que ya están bien:** que **solo detecta** (quitarle el premium a alguien lo confirma una persona) y que las `sub_manual_*` y las cuentas con `premium_grant_reason` quedan fuera a propósito.
 - **Guardarraíl sugerido:** un test que fije que una suscripción **antigua y viva** NO se marca. Hoy no existe: los tests del servicio cubren el Pase 2 y la reparación, no esta comparación.
-### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
-
-- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
-- **Qué comprobar cuando esté vivo:**
-  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
-  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
-  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
-  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
-- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
-- **Esfuerzo:** bajo, con una espera de 30 min por medio.
-
 ### [T-347] 🟠 [ABIERTO 31/07] Las fuentes del radar siguen igual que en la avería de julio: 101 en error y ninguna revisada
 
 - **MEDIDO EL 31/07:** `detection_sources` tiene **173 fuentes, las 173 marcadas `is_active=true`**. De ellas: **101 con `last_error`**, **99 que no han tenido un solo éxito jamás** (`last_success_at IS NULL`) y **0 revisadas en las últimas 48 horas**.
@@ -934,6 +932,36 @@ incluida).
 - **Relacionada:** [T-347], [T-166], `docs/runbooks/salud-radar.md`, `docs/runbooks/observability.md`.
 
 ## Hechas
+
+### [T-340] 🟢 [HECHA 31/07 · abierta 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
+
+- **El fallo:** `/api/stripe/{cancel,reactivate,subscription,create-checkout,cancel/feedback}` leían el `userId` del **cuerpo o de la query**, sin verificar ningún token. Con el UUID de otra persona —que viaja en respuestas de la propia app— se le podía **cancelar la suscripción**, **reactivársela (volver a cobrarle)**, **leer su facturación** o **abrirle el portal de Stripe** (facturas y tarjeta). En `create-checkout` además decidía de quién es un precio personalizado, así que la comprobación se hacía «contra el usuario que dijera el cliente».
+- **Cómo salió (y por qué nadie lo había visto):** por una vía indirecta. Manuel estaba suplantando a una usuaria en **solo lectura** y pulsó «Reactivar suscripción»: **se ejecutó de verdad** sobre su suscripción en la cuenta Stripe vieja. El candado de la suplantación estaba puesto y funcionando —bloqueó otros POST ese mismo minuto— pero vive en `verifyAuth`, «el paso por el que pasan TODAS las APIs», y estos endpoints no pasaban por ahí. **La suplantación fue el síntoma; el agujero de autorización llevaba abierto desde que se escribieron.**
+- **Daño real de aquel clic:** ninguno en facturación (se reactivó y se volvió a cancelar en 37 segundos, la suscripción quedó igual), pero dejó **3 filas en `cancellation_feedback`** y **3 apuntes en el historial visible** de la usuaria, que no son suyos. Pendiente de limpiar.
+#### ✅ ARREGLADO (30/07) — falta verificar en producción
+- **`requireUsuarioPropio`** (`lib/api/shared/auth.ts`): la identidad sale del token; el id que manda el cliente **solo se contrasta**, y si no coincide se corta con 403 + señal `auth_identidad_ajena_rechazada`. Propaga el status real de `verifyAuth` (401 sin sesión, 403 suplantando) en vez de colapsarlo a 401: en un endpoint que mueve dinero, «no estás autenticado» y «no puedes hacer esto» no son lo mismo al diagnosticar.
+- Aplicado a los **6** endpoints; `checkout-sync` ya usaba `verifyAuth` y el `webhook` se autentica por firma (exenciones justificadas por escrito en el guardarraíl).
+- **Los 10 sitios del cliente** que llamaban sin token ahora mandan `getAuthHeaders()` (perfil, flujo de cancelación, /premium, /premium/personal, 3 landings, campaignTracker).
+- **Capas:** simulación `scripts/sim/sim-identidad-pago.ts` (10 casos contra servidor real, **10/10**, cada rechazo emparejado con el caso que sí debe pasar — sin ese contraste un 403 universal se leería como éxito) + guardarraíl `endpointsPagoIdentidad` (17) + 102 tests de stripe/suscripción en verde. Registrada en `toolRegistry` y documentada en el runbook de suplantación.
+#### ✅ VERIFICADO EN PRODUCCIÓN (31/07) — y con una lección
+- **Sim 10/10 contra `https://www.vence.es`**, con los casos de contraste (leer suplantando, la dueña leyendo lo suyo, la dueña abriendo su portal) en **200**: está midiendo de verdad, no dando un 403 universal.
+- **Las 3 filas del historial de esa usuaria, purgadas** con `scripts/purgar-feedback-espurio.cjs` (dry-run por defecto, respaldo completo en `observable_events` → `dato_espurio_purgado` en la misma transacción, su baja real de febrero intacta). Reconstruirlas = leer el evento de purga.
+- **⚠️ LA LECCIÓN, que costó una venta a punto de perderse.** El arreglo cortaba con 403 cuando el id del cliente no coincidía con el del token. Pero **ese id no autoriza nada**: en los seis endpoints se sobrescribe siempre con el del token (`{ ...datos, userId: identidad.userId }`). Era un **detector**, y lo estábamos usando como control de acceso. Resultado: `rdiazprados@gmail.com` intentó comprar premium **17 veces en 10 minutos** y no pudo, porque su navegador mandaba el id de un usuario que ni siquiera existe ([T-352]).
+- **Cómo quedó:** la política ya no la decide la ruta sino **el daño de equivocarse de cuenta**. `alDiscrepar: 'cortar'` en lo destructivo (cancelar, reactivar, escribir en el historial: equivocarse ahí no se deshace solo) y `'seguir-con-el-token'` en lo demás (checkout, portal, lectura: el peor caso es cobrarse a uno mismo lo que iba a pagar). **El defecto es `cortar`**, para que olvidarse falle del lado seguro, y el guardarraíl exige que **cada endpoint declare la suya por escrito** — nadie había ELEGIDO cortar en el checkout, se heredó.
+- **El otro hueco: un 403 en la caja no avisaba a nadie.** `stripe_checkout_failed` solo cuenta 5xx. Diecisiete intentos de pago bloqueados, cero alertas, descubierto a mano al día siguiente. Nueva regla `cobro_bloqueado_auth` (backend) sobre los mismos `PATRONES_RUTA_COBRO`, umbral 3 en 10 min.
+- **Capas añadidas:** 9 tests unitarios de `requireUsuarioPropio` (el guardarraíl comprueba que la política esté escrita; estos, que HAGA lo que dice), 6 de la regla nueva, guardarraíl ampliado a 26, y 2 casos más en la sim que van **en pareja a propósito** — «el checkout ya no corta» y «cancelar sigue cortando»: por separado, «todo corta» y «nada corta» pasarían cada uno la mitad de la prueba.
+- **Lo que queda:** los **38 endpoints** fuera de `/api/stripe` con el mismo patrón (`userId` del cliente sin verificar) siguen sin auditar, y la causa raíz del cliente rancio es [T-352].
+
+### [T-338] 🟢 [HECHA 31/07 · abierta 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
+
+- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
+- **Qué comprobar cuando esté vivo:**
+  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
+  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
+  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
+  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
+- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
+- **Esfuerzo:** bajo, con una espera de 30 min por medio.
 
 ### [T-341] 🟢 [HECHA 31/07 · abierta 30/07] Botón de recuperar el precio anterior para los afectados por el vaciado de Stripe Manuel
 
@@ -4519,25 +4547,6 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 - **POR QUÉ ES BARATO Y URGENTE.** No depende de [T-327]: no hace falta construir la funcionalidad del temario propio para dejar de perder a esta gente. Basta con **decir la verdad y ofrecer una salida** — algo como *«esta oposición todavía no tiene temario; mientras tanto puedes practicar por leyes»*, con enlace al configurador por leyes, que ya existe y funciona.
 - **DÓNDE.** Donde se resuelve el objetivo del usuario y se pinta su temario (el selector de oposición del onboarding y del perfil, y la pantalla de temario). Cuidado: hay que distinguir *«no tiene temario»* de *«fallo al cargar»*, porque el mensaje es distinto y confundirlos genera soporte.
 - **Relacionada:** [T-327] (la funcionalidad de armarse el temario, que es la solución de fondo), [T-328] (la landing, que NO debe publicarse antes que aquella).
-
-### [T-340] 🔴 [ABIERTO 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
-
-- **El fallo:** `/api/stripe/{cancel,reactivate,subscription,create-checkout,cancel/feedback}` leían el `userId` del **cuerpo o de la query**, sin verificar ningún token. Con el UUID de otra persona —que viaja en respuestas de la propia app— se le podía **cancelar la suscripción**, **reactivársela (volver a cobrarle)**, **leer su facturación** o **abrirle el portal de Stripe** (facturas y tarjeta). En `create-checkout` además decidía de quién es un precio personalizado, así que la comprobación se hacía «contra el usuario que dijera el cliente».
-- **Cómo salió (y por qué nadie lo había visto):** por una vía indirecta. Manuel estaba suplantando a una usuaria en **solo lectura** y pulsó «Reactivar suscripción»: **se ejecutó de verdad** sobre su suscripción en la cuenta Stripe vieja. El candado de la suplantación estaba puesto y funcionando —bloqueó otros POST ese mismo minuto— pero vive en `verifyAuth`, «el paso por el que pasan TODAS las APIs», y estos endpoints no pasaban por ahí. **La suplantación fue el síntoma; el agujero de autorización llevaba abierto desde que se escribieron.**
-- **Daño real de aquel clic:** ninguno en facturación (se reactivó y se volvió a cancelar en 37 segundos, la suscripción quedó igual), pero dejó **3 filas en `cancellation_feedback`** y **3 apuntes en el historial visible** de la usuaria, que no son suyos. Pendiente de limpiar.
-#### ✅ ARREGLADO (30/07) — falta verificar en producción
-- **`requireUsuarioPropio`** (`lib/api/shared/auth.ts`): la identidad sale del token; el id que manda el cliente **solo se contrasta**, y si no coincide se corta con 403 + señal `auth_identidad_ajena_rechazada`. Propaga el status real de `verifyAuth` (401 sin sesión, 403 suplantando) en vez de colapsarlo a 401: en un endpoint que mueve dinero, «no estás autenticado» y «no puedes hacer esto» no son lo mismo al diagnosticar.
-- Aplicado a los **6** endpoints; `checkout-sync` ya usaba `verifyAuth` y el `webhook` se autentica por firma (exenciones justificadas por escrito en el guardarraíl).
-- **Los 10 sitios del cliente** que llamaban sin token ahora mandan `getAuthHeaders()` (perfil, flujo de cancelación, /premium, /premium/personal, 3 landings, campaignTracker).
-- **Capas:** simulación `scripts/sim/sim-identidad-pago.ts` (10 casos contra servidor real, **10/10**, cada rechazo emparejado con el caso que sí debe pasar — sin ese contraste un 403 universal se leería como éxito) + guardarraíl `endpointsPagoIdentidad` (17) + 102 tests de stripe/suscripción en verde. Registrada en `toolRegistry` y documentada en el runbook de suplantación.
-#### ✅ VERIFICADO EN PRODUCCIÓN (31/07) — y con una lección
-- **Sim 10/10 contra `https://www.vence.es`**, con los casos de contraste (leer suplantando, la dueña leyendo lo suyo, la dueña abriendo su portal) en **200**: está midiendo de verdad, no dando un 403 universal.
-- **Las 3 filas del historial de esa usuaria, purgadas** con `scripts/purgar-feedback-espurio.cjs` (dry-run por defecto, respaldo completo en `observable_events` → `dato_espurio_purgado` en la misma transacción, su baja real de febrero intacta). Reconstruirlas = leer el evento de purga.
-- **⚠️ LA LECCIÓN, que costó una venta a punto de perderse.** El arreglo cortaba con 403 cuando el id del cliente no coincidía con el del token. Pero **ese id no autoriza nada**: en los seis endpoints se sobrescribe siempre con el del token (`{ ...datos, userId: identidad.userId }`). Era un **detector**, y lo estábamos usando como control de acceso. Resultado: `rdiazprados@gmail.com` intentó comprar premium **17 veces en 10 minutos** y no pudo, porque su navegador mandaba el id de un usuario que ni siquiera existe ([T-352]).
-- **Cómo quedó:** la política ya no la decide la ruta sino **el daño de equivocarse de cuenta**. `alDiscrepar: 'cortar'` en lo destructivo (cancelar, reactivar, escribir en el historial: equivocarse ahí no se deshace solo) y `'seguir-con-el-token'` en lo demás (checkout, portal, lectura: el peor caso es cobrarse a uno mismo lo que iba a pagar). **El defecto es `cortar`**, para que olvidarse falle del lado seguro, y el guardarraíl exige que **cada endpoint declare la suya por escrito** — nadie había ELEGIDO cortar en el checkout, se heredó.
-- **El otro hueco: un 403 en la caja no avisaba a nadie.** `stripe_checkout_failed` solo cuenta 5xx. Diecisiete intentos de pago bloqueados, cero alertas, descubierto a mano al día siguiente. Nueva regla `cobro_bloqueado_auth` (backend) sobre los mismos `PATRONES_RUTA_COBRO`, umbral 3 en 10 min.
-- **Capas añadidas:** 9 tests unitarios de `requireUsuarioPropio` (el guardarraíl comprueba que la política esté escrita; estos, que HAGA lo que dice), 6 de la regla nueva, guardarraíl ampliado a 26, y 2 casos más en la sim que van **en pareja a propósito** — «el checkout ya no corta» y «cancelar sigue cortando»: por separado, «todo corta» y «nada corta» pasarían cada uno la mitad de la prueba.
-- **Lo que queda:** los **38 endpoints** fuera de `/api/stripe` con el mismo patrón (`userId` del cliente sin verificar) siguen sin auditar, y la causa raíz del cliente rancio es [T-352].
 
 ## Hechas
 
