@@ -1033,6 +1033,30 @@ incluida).
 - **Arreglo propuesto (simétrico y sin reabrir el agujero):** añadir `grantRewardReason` a `/api/v2/dispute/resolve` —gemelo de `skipRewardReason`— y exponerlo en `scripts/impugnaciones/cerrar.ts` como `--con-recompensa "<motivo>"`. El automatismo sigue retirado; lo que cambia es que **conceder deja de ser un trabajo aparte y pasa a ser un parámetro que queda registrado** (como `dispute_reward_skipped`, su reflejo: `dispute_reward_granted`).
 - **Cuidado con dos cosas al implementarlo:** (1) el tope de 10 €/mes por usuario debe seguir aplicándose también a las concesiones manuales, o el parámetro se convierte en la puerta trasera de lo que se cerró en julio; (2) **NUNCA mencionar la recompensa en el mensaje al usuario** — el badge 🎁 ya se lo comunica, y prometerla por escrito convierte una queja en una factura.
 
+### [T-390] 🟡 [ABIERTO 31/07] 791 temas activos sin descripción en 23 oposiciones: el trinquete de calidad del temario ya está desbordado
+
+- **Qué mide y por cuánto se pasa:** `temarioEpigrafeIntegrity` exige **< 500** temas activos sin `description` y hay **791**. No es un número abstracto: la `description` es lo que el opositor lee bajo el título en el listado del temario, así que ahí ve el título y nada más.
+- **Está CONCENTRADO, que es lo que lo hace abordable** (medido 31/07): 791 temas en **23 oposiciones**, y el top-12 acumula **556 (70%)**. No es polvo repartido por el catálogo, son oposiciones enteras que se montaron sin descripciones.
+
+  | temas sin descripción | oposición |
+  |---|---|
+  | 53 | `ayudantes_ejecucion_penal_pais_vasco` |
+  | 50 | `enfermero_scs_canarias` |
+  | 50 | `auxiliar_archivos_bibliotecas_museos_madrid` |
+  | 50 | `ayudante_instituciones_penitenciarias` |
+  | 48 | `auxiliar_museos_estado` · `auxiliar_archivos_estado` · `auxiliar_biblioteca_estado` |
+  | 47 | `administrativo_madrid` |
+  | 44 | `oficial_de_gestion_parlamento_de_andalucia` |
+  | 42 | `administrativo_andalucia` |
+  | 40 | `administrativo_cantabria` |
+  | 36 | `administrativo_seguridad_social` |
+
+- **Hermanos del mismo test, que van juntos:** `descripcion_corta` no resume bien en **64** casos (techo 45) y **título ↔ epígrafe** se contradicen por encima del techo de 20. Los tres se arreglan escribiendo el mismo texto una vez por tema.
+- **Cómo hacerlo bien:** la descripción se escribe **desde el epígrafe oficial del tema**, que ya está en BD (`topics.epigrafe`) y es la fuente verificada. **NUNCA inventar contenido de temario** — si el epígrafe está vacío o sucio, eso es otro defecto (ver *"revisa los epígrafes sucios"*) y se arregla antes.
+- **Dos avisos antes de automatizarlo:** (1) el techo de 500 es un **trinquete**, así que al arreglar hay que **bajarlo**, o vuelve a admitir deuda nueva en silencio; (2) que 23 oposiciones nacieran así apunta a que **el camino de creación no exige descripción** — mirar `scripts/create-oposicion.cjs` y el spec, porque si no, esto se vuelve a llenar.
+- **Cabo suelto del mismo sitio:** el backfill de versiones de temario reporta **175 temas activos HUÉRFANOS** (`position_type` que no corresponde a ninguna oposición activa) que se quedan sin versión. No rompe ningún test hoy, pero es la misma familia de higiene.
+- **De dónde sale:** del inventario real de [T-377], al separar el rojo de contenido del ruido de conexión.
+
 ### [T-385] 🔴 [ABIERTO 31/07] El deploy construye desde el checkout COMPARTIDO, y por eso necesita dos guardarraíles que no deberían existir
 - **Cómo salió:** al cerrar la sesión del 31/07, midiendo por qué el trabajo se atascó tres veces. **91 commits en un día** tocan `tareas-pendientes.md`, hay **22 worktrees** vivos y varias sesiones escriben en el checkout principal a la vez.
 - **El acoplamiento, exacto:** `deploy-{frontend,backend}.sh` hace `git reset --hard origin/main` **en el árbol desde el que se ejecuta** y construye con `podman build … ./backend` desde ese mismo árbol. O sea: **el deploy necesita que un recurso compartido esté quieto y limpio**, cosa que con 2-10 sesiones no se puede garantizar.
@@ -1339,9 +1363,9 @@ incluida).
   | `configDbIntegrity` | ETGOA promete 120 temas y sirve 20 *(ver abajo)* |
   | `placeholderTemarioGuard` | trinquete de preguntas sobre artículos vacíos — **es [T-374]** |
   | `familiaClassification` | cobertura 41% en abiertas + 16/300 desajustes clasificador↔BD *(medido, ver abajo)* |
-  | `temarioDataQuality` | `oposicion_bloques` ↔ `topics.bloque_number`, epígrafes sin scope, description=title |
-  | `temarioVersions` | convocatoria vigente de oposición activa sin versión de temario |
-  | `temarioEpigrafeIntegrity` | integridad de epígrafes |
+  | `temarioDataQuality` | **RESUELTA su causa: es ETGOA otra vez** — el bloque «Área de Consumo» declarado sin un solo tema activo. 5 de sus 6 pruebas pasan |
+  | ~~`temarioVersions`~~ | ✅ **ARREGLADA 31/07**: era 1 fila (`auxiliar-administrativo-diputacion-cadiz`). La causa no era el dato sino la herramienta: `backfill-temario-versions.cjs` apuntaba la convocatoria **solo al CREAR la versión**, así que una convocatoria nacida después (rollover) se quedaba a NULL para siempre y ninguna herramienta la curaba. Arreglado el hueco + aplicado. Suite en verde |
+  | `temarioEpigrafeIntegrity` | 4 fallos, todos trinquetes desbordados: **791** temas sin descripción (techo 500), 64 `descripcion_corta`, título↔epígrafe, y 12 bloques sin temas (uno es ETGOA). **Ficha propia: [T-390]** |
   | `topicScopeIntegrity` / `topicScopeVerification` | scope |
   | `lawCompletenessConsistency` | la vista SQL y el módulo TS no dan el mismo estado a todas las leyes |
   | `seguimientoFuentesCiegas` | fuentes de seguimiento que no vigilan nada |

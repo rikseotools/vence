@@ -36,7 +36,7 @@ async function main() {
     )).rows;
 
     if (APPLY) await c.query('BEGIN');
-    let creadas = 0, yaTenian = 0, topicsAsignados = 0, sinConvocatoria = 0;
+    let creadas = 0, yaTenian = 0, topicsAsignados = 0, sinConvocatoria = 0, convApuntadas = 0;
     for (const o of opos) {
       // ¿ya tiene versión default? (idempotencia)
       const has = (await c.query(`SELECT id FROM temario_versions WHERE oposicion_id=$1 AND es_default LIMIT 1`, [o.id])).rows[0];
@@ -57,6 +57,28 @@ async function main() {
         }
         creadas++;
       }
+      // Apuntar la convocatoria VIGENTE que se haya quedado sin versión.
+      // Antes esto solo pasaba al CREAR la versión, así que una convocatoria nacida
+      // después (rollover, ciclo nuevo) se quedaba con temario_version_id a NULL para
+      // siempre y el invariante saltaba sin que ninguna herramienta lo curase. Caso que
+      // lo destapó (31/07, T-377): auxiliar-administrativo-diputacion-cadiz.
+      // Idempotente: solo toca las que están a NULL.
+      {
+        const pend = (await c.query(
+          `SELECT id FROM convocatorias WHERE oposicion_id=$1 AND is_current AND temario_version_id IS NULL`, [o.id]
+        )).rows;
+        if (pend.length) {
+          if (APPLY && versionId) {
+            for (const cv of pend) {
+              await c.query(`UPDATE convocatorias SET temario_version_id=$2, updated_at=now() WHERE id=$1`, [cv.id, versionId]);
+              convApuntadas++;
+            }
+          } else if (!APPLY) {
+            convApuntadas += pend.length;
+          }
+        }
+      }
+
       // asignar topics de esta oposición (por position_type) que aún no tienen versión
       if (APPLY && versionId) {
         const r = await c.query(`UPDATE topics SET temario_version_id=$2, updated_at=now() WHERE position_type=$1 AND temario_version_id IS NULL`, [o.pt, versionId]);
@@ -73,7 +95,7 @@ async function main() {
     )).rows[0].n;
 
     if (APPLY) await c.query('COMMIT');
-    console.log(`${APPLY ? 'APLICADO' : 'DRY-RUN'} — oposiciones=${opos.length} · versiones creadas=${creadas} (ya tenían=${yaTenian}) · topics asignados=${topicsAsignados} · oposiciones sin convocatoria=${sinConvocatoria}`);
+    console.log(`${APPLY ? 'APLICADO' : 'DRY-RUN'} — oposiciones=${opos.length} · versiones creadas=${creadas} (ya tenían=${yaTenian}) · topics asignados=${topicsAsignados} · convocatorias vigentes apuntadas=${convApuntadas} · oposiciones sin convocatoria=${sinConvocatoria}`);
     console.log(`   topics activos HUÉRFANOS (position_type sin oposición) = ${huerfanos}${huerfanos ? ' ⚠️ (quedan sin versión, revisar)' : ' ✅'}`);
     if (!APPLY) console.log('(usa --apply para escribir; transaccional)');
   } catch (e) {
