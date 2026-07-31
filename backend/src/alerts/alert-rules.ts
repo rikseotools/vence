@@ -5127,6 +5127,54 @@ export const RULE_SESSION_IP_COVERAGE_DROP: AlertRule<{
  * Umbral en 3 días: triar es cuestión de minutos, y el vigía ya canta las nuevas en el momento;
  * esto es la red por si nadie estuvo mirando.
  */
+/**
+ * Un alta que NO consigue perfil: el usuario nace sin poder pagar ni quejarse.
+ *
+ * ── POR QUÉ (T-434, 31/07/2026) ─────────────────────────────────────────────
+ * Cuando `resolveAppUserId` no puede resolver ni crear el perfil, el callback `jwt` de
+ * Auth.js **firma la sesión igual** y `session.user.id` se queda con el id por defecto, que
+ * no existe en `user_profiles`. A partir de ahí, todo lo que se indexa por ese id rebota:
+ * las estadísticas («Usuario no existe»), el checkout (`404 · User not found in database`)
+ * y **el propio formulario de soporte** — o sea que el afectado tampoco puede avisarnos.
+ *
+ * Hasta hoy eso ocurría **en silencio absoluto**: la única huella era un `console.warn` que
+ * no se persiste (medido: 0 eventos en `observable_events` y en `validation_error_logs`),
+ * mientras 29-31 usuarios AL DÍA navegaban rotos, algunos desde el 7 de julio y uno con 16
+ * intentos de compra rechazados.
+ *
+ * Umbral en 1: no hay volumen mínimo aceptable. Un solo usuario en este estado es alguien
+ * que quiso pagar y no pudo, y que no tiene forma de decírnoslo.
+ */
+export const RULE_ALTA_SIN_PERFIL: AlertRule<{ usuarios: number; veces: number }> = {
+  name: 'alta_sin_perfil',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT metadata->>'emailPrefijo')::int AS usuarios,
+           COUNT(*)::int AS veces
+      FROM observable_events
+     WHERE event_type = 'auth_alta_sin_perfil'
+       AND ts >= now() - interval '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.usuarios ?? 0} alta(s) sin perfil en 24 h: nacen sin poder pagar`,
+    body:
+      `El alta se completó y la sesión se firmó, pero NO hay fila en user_profiles para ese ` +
+      `usuario. Consecuencia inmediata: sus estadísticas fallan, el checkout le devuelve ` +
+      `«User not found in database» y el formulario de soporte también, así que no puede ni ` +
+      `avisarnos.\n\n` +
+      `Quiénes son (el email va troceado a propósito: prefijo + dominio):\n` +
+      `  SELECT metadata->>'emailPrefijo', metadata->>'dominio', count(*)\n` +
+      `    FROM observable_events WHERE event_type='auth_alta_sin_perfil'\n` +
+      `   AND ts >= now() - interval '24 hours' GROUP BY 1,2;\n\n` +
+      `Si el dominio se repite, sospecha del proveedor de identidad; si son sueltos, mira ` +
+      `create_organic_user. Ficha con el diagnóstico completo: T-434.`,
+    metadata: { usuarios: rows[0]?.usuarios ?? 0, veces: rows[0]?.veces ?? 0 },
+    fingerprint: 'alta_sin_perfil',
+  }),
+  cooldownMin: 1440,
+};
+
 export const RULE_FRAUDE_SIN_TRIAR: AlertRule<{
   total: number;
   masAntiguaDias: number;
@@ -5342,6 +5390,7 @@ export const ALERT_RULES: AlertRule[] = [
   // Fraude confirmado que nadie resuelve (2026-07-30): confirmar una señal la saca del badge,
   // así que el trabajo bien hecho acababa enterrado. 20 llevaban hasta 9 días.
   RULE_FRAUDE_SIN_TRIAR as AlertRule,
+  RULE_ALTA_SIN_PERFIL as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
   // convierte en señal en vez de en punto ciego.
   RULE_EVASION_MULTIDISPOSITIVO as AlertRule,

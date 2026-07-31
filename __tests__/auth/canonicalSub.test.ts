@@ -87,6 +87,39 @@ describe('[T-245] cableado en /api/auth/token', () => {
   })
 })
 
+// GUARDARRAÍL DE CABLEADO [T-434]: el alta que no consigue perfil tiene que DEJAR RASTRO.
+//
+// Por qué hace falta un guardarraíl y no basta con el código: el fallo ya existía y era
+// invisible —`resolveAppUserId` solo dejaba un `console.warn`, que no se persiste en ningún
+// sitio (medido el 31/07: 0 eventos en `observable_events` y en `validation_error_logs`)—
+// mientras 29-31 usuarios AL DÍA navegaban con una sesión cuyo id no existe en
+// `user_profiles`: sin stats, sin poder pagar (404 «User not found in database») y sin poder
+// escribir a soporte. Si alguien quita esta emisión, el problema vuelve a ser mudo y solo se
+// descubre cuando un usuario se queja… que es justo lo que no puede hacer.
+describe('[T-434] cableado en el callback jwt de Auth.js', () => {
+  const fuente = fs.readFileSync(path.join(process.cwd(), 'lib/auth/authjs.ts'), 'utf8')
+
+  it('emite `auth_alta_sin_perfil` cuando resolveAppUserId no devuelve id', () => {
+    expect(fuente).toContain('auth_alta_sin_perfil')
+    // La emisión va en la rama del fallo, no en la del caso bueno.
+    const iAsigna = fuente.indexOf('token.appUserId = appUserId')
+    const iEmite = fuente.indexOf('auth_alta_sin_perfil')
+    expect(iAsigna).toBeGreaterThan(-1)
+    expect(iEmite).toBeGreaterThan(iAsigna)
+  })
+
+  it('la señal es `error`: el usuario queda sin poder pagar ni quejarse', () => {
+    const bloque = fuente.slice(fuente.indexOf('auth_alta_sin_perfil') - 400, fuente.indexOf('auth_alta_sin_perfil') + 200)
+    expect(bloque).toContain("severity: 'error'")
+  })
+
+  it('NUNCA manda el email en claro (solo prefijo y dominio)', () => {
+    const bloque = fuente.slice(fuente.indexOf('auth_alta_sin_perfil'), fuente.indexOf('auth_alta_sin_perfil') + 500)
+    expect(bloque).toContain('emailPrefijo')
+    expect(bloque).not.toMatch(/email:\s*user\.email/)
+  })
+})
+
 // ============================================================
 // [T-245] Segunda línea de defensa: el mensaje del usuario NO se pierde
 // ============================================================

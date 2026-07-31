@@ -101,6 +101,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.email) {
         const appUserId = await resolveAppUserId(user.email, user.name)
         if (appUserId) token.appUserId = appUserId
+        else {
+          // [T-434] El perfil NO se pudo resolver ni crear. Sin esto, el fallo es INVISIBLE:
+          // `resolveAppUserId` solo deja un `console.warn` que no se persiste en ninguna parte
+          // (medido el 31/07: CERO rastro en `observable_events` y en `validation_error_logs`).
+          //
+          // Y no es inocuo. El comentario de aquella función supone que devolver null es seguro
+          // «porque el emisor no acuñará token sin sub válido (503)», y NO es lo que pasa: la
+          // sesión se firma igual, `session.user.id` se queda con el id por defecto de Auth.js
+          // —que no existe en `user_profiles`— y el usuario navega roto. Todo lo que se indexa
+          // por ese id le rebota: `/api/v2/user-stats` («Usuario no existe»), el checkout
+          // (`404 · User not found in database`) y el propio formulario de soporte, así que
+          // **tampoco puede avisarnos**.
+          //
+          // Medido el 31/07: 29-31 usuarios AL DÍA, algunos desde el 7 de julio, uno con 1.127
+          // eventos y otro con 16 intentos de compra rechazados. La reconciliación de [T-245]
+          // no les alcanza porque su `sub` nunca llegó a existir.
+          //
+          // Esto NO arregla el alta —esa decisión es aparte, ver [T-434]—: la hace VISIBLE.
+          emitFireAndForget({
+            source: 'vercel',
+            severity: 'error',
+            eventType: 'auth_alta_sin_perfil',
+            endpoint: '/api/auth/session',
+            // El email nunca en claro: basta el dominio para distinguir un proveedor caído
+            // de un caso suelto, y el prefijo para reconocer al usuario si escribe.
+            metadata: {
+              emailPrefijo: user.email.slice(0, 3),
+              dominio: user.email.split('@')[1] ?? null,
+              motivo: 'resolveAppUserId_null',
+            },
+          })
+        }
         token.email = user.email
       }
       return token

@@ -2623,3 +2623,37 @@ describe('RULE_DAILY_QUOTA_OVERCHARGE — mide días CERRADOS, no el que está e
     expect(body).toContain("d.usage_date = (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1");
   });
 });
+
+describe('RULE_ALTA_SIN_PERFIL (el alta que nace sin poder pagar — T-434, 31/07)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_ALTA_SIN_PERFIL: R, ALERT_RULES } = require('./alert-rules');
+  const fila = (usuarios: number, veces: number) => [{ usuarios, veces }];
+
+  it('UNA sola alta rota ya dispara: no hay volumen mínimo aceptable', () => {
+    expect(R.shouldFire(fila(1, 1))).toBe(true);
+  });
+
+  it('sin altas rotas, silencio', () => {
+    expect(R.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('tolera filas vacías o corruptas', () => {
+    expect(R.shouldFire([])).toBe(false);
+    expect(R.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('es `error`: el afectado no puede pagar NI avisarnos', () => {
+    expect(R.severity).toBe('error');
+  });
+
+  it('el aviso dice a quién afecta y dónde mirar, sin email en claro', () => {
+    const n = R.buildNotification(fila(2, 5));
+    expect(n.body).toContain('emailPrefijo');
+    expect(n.body).toContain('T-434');
+    expect(n.body).not.toMatch(/@[a-z]+\.[a-z]+/);
+  });
+
+  it('está registrada en ALERT_RULES (si no, la señal nace sin quien la mire)', () => {
+    expect(ALERT_RULES.some((r: { name: string }) => r.name === 'alta_sin_perfil')).toBe(true);
+  });
+});
