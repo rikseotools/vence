@@ -223,7 +223,15 @@ git push origin main
 > **Todos los datos vivos están en RDS; Supabase quedó CONGELADO como backup** (a decomisionar tras 48-72h).
 > - **La sección "Consultas a Base de Datos desde Claude Code" (abajo) usa el cliente Supabase (ANON key) →
 >   apunta a Supabase CONGELADO → datos desactualizados.** Para consultar la BD VIVA, conectar a RDS con
->   `postgres`/`pg` usando la URL de RDS (memoria `project_cutover_rds_prod`; `ssl:{rejectUnauthorized:false}`).
+>   `postgres`/`pg` usando la URL de RDS (memoria `project_cutover_rds_prod`).
+> - ⚠️ **GOTCHA de conexión con `pg` (node-postgres) — `ssl:{rejectUnauthorized:false}` NO BASTA.** La URL
+>   lleva `sslmode=require` y **ese `sslmode` PISA la opción `ssl`**, así que la conexión sigue verificando
+>   una CA privada de AWS y muere con `self-signed certificate in certificate chain`. Hay que **QUITAR el
+>   `sslmode` de la URL** además de poner el `ssl`. **No lo escribas a mano: usa `pgConfig()` de
+>   `lib/db/pgSsl.cjs`** (los tests, por `__tests__/helpers/db.ts`). Con `postgres` (porsager) no pasa —
+>   por eso convivían scripts que funcionaban con otros que no. Medido el 31/07 (T-377): esta receta a
+>   medias dejaba **14 suites de integración sin poder conectar** (51 de sus 80 fallos) contadas como
+>   "rojo de contenido", y **3 canarios sin poder mirar la BD**.
 > - El pool de la app es `max:5` (era `max:1`, workaround de Supabase); pooler self-hosted bypassed.
 > - Detalle + gotchas: memoria `project_cutover_rds_prod`, `docs/roadmap/migracion-datos-supabase-a-rds.md`.
 
