@@ -2093,6 +2093,19 @@ incluida).
   - **O sea: el fallo que esta ficha vino a matar está muerto; lo que falta es ver una pasada COMPLETA**, y eso exige el deploy del arreglo de T-315. Sin él, el barrido tampoco completaría aunque este código sea correcto.
 - **⚠️ Falta VERIFICAR EN VIVO:** exige **deploy de backend**. Al desplegar (con el arreglo de [T-315] dentro), comprobar el `cron_run` de las 07:30 UTC del día siguiente (`status:'success'`, sin `sweep_incompleto`) y que `content_health_findings` vuelve a escribirse a diario.
 
+
+- **Medido el 31/07 a las 15:30, y hay dato nuevo:** el deploy con el arreglo entró **entre las 08:00 y las 09:00**, o sea DESPUÉS del barrido de las 07:30 — así que el de hoy corrió todavía con el código viejo y **no sirve para verificar**. Lo que dejó es peor que un fallo: **solo el evento `debug` de arranque y ningún evento terminal**, ni éxito ni fallo (los días 29 y 30 al menos emitían `failure` a los ~80 s).
+
+  | pasada | resultado |
+  |---|---|
+  | 28/07 03:01 | ✅ success · 90,7 s · 393 hallazgos |
+  | 29/07 07:31 | ❌ failure · 78,1 s |
+  | 30/07 07:31 | ❌ failure · 80,0 s |
+  | 31/07 07:30 | ⚠️ arrancó y **no dejó evento terminal** |
+
+- **Consecuencia que conviene tener presente mientras tanto:** el último barrido que llegó a ESCRIBIR hallazgos es del **30/07 a las 10:01**, así que `/admin/contenido` y el badge de salud del contenido llevan **más de un día enseñando la foto de anteayer**. No es que no haya hallazgos: es que nadie los ha vuelto a contar. Al leer el panel hoy, mirar la fecha antes de sacar conclusiones.
+- **Lo único que la cierra:** la pasada de **mañana 01/08 a las 07:30 UTC**, ya con el arreglo dentro. Verde = `success` con `total` poblado; si sale `partial`, el `sweep_incompleto` dirá qué detector se quedó fuera (que es exactamente para lo que se añadió).
+
 ### [T-308] 🟠 [ABIERTO 30/07] Premium compartido: comprobar si el enforcement existe y está MUDO, igual que pasó con el límite por dispositivo
 - **Por qué se abre (encargo de Manuel, 30/07):** al cerrar [T-304] apareció un patrón que da miedo por lo repetible — **el enforcement por dispositivo llevaba tres meses construido, cableado y sin cortar ni una vez**, y nadie lo sabía porque un bloqueo que no ocurre no emite ninguna señal. La sospecha razonable es que **`premium_sharing` esté igual**: detectado por el barrido (`fraud_alerts`), quizá con código de bloqueo escrito… y sin cortar nada.
 - **Qué hay hoy, sin verificar:** el runbook de fraudes lista `premium_sharing` como uno de los `kind` del sweep («dispositivo compartido que incluye premium + ≥2 cuentas activas»), y F0 es **solo detección**. Lo que NO se ha comprobado es si existe algún camino que limite de verdad una cuenta premium usada desde varios dispositivos/personas.
