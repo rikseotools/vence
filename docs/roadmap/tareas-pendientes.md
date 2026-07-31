@@ -1082,6 +1082,19 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-396] 🟠 [ABIERTO 31/07] 🙋 DECISIÓN DE MANUEL — ETGOA Sanidad y Consumo publica «120 temas» y sirve 20
+
+- **Los números, medidos el 31/07:** `etgoa-sanidad-consumo` está **activa** (`is_active=true`, estado `inscripcion_cerrada`). Su config declara **120 temas** (20 de parte común + 100 del «Área de Consumo»); en BD hay **120 filas pero solo 20 activas** (T1-T20) y **las 100 específicas (T101-T200) están inactivas y con 0 `topic_scope`**. El home publica *«120 temas»* (`app/page.tsx:327`). **4 usuarios apuntados, 1 de ellos premium.**
+- **Es la ÚNICA oposición del catálogo con esa brecha** — 128 en config, 1 con hueco. No es una campaña, es una decisión.
+- **⚠️ La salida fácil NO vale:** poner `comingSoon: true` en la config **no cambia nada de lo que ve el usuario**. Esa bandera **la lee un solo consumidor en todo el repo: el test `configDbIntegrity`** (comprobado: 0 oposiciones la usan, ningún componente la consulta). Serviría exactamente para callar el rojo dejando al opositor viendo lo mismo. El `comingSoon` que sí pinta algo (`TestHubClient`) es de convocatorias de examen, otra cosa.
+- **Los dos caminos reales:**
+  1. **Construir la parte específica** (100 temas del Área de Consumo). Caro pero es lo que se prometió al publicarla.
+  2. **Dejar de anunciar 120**: ajustar la config a lo que de verdad se sirve y decirlo en la landing. Barato y honesto. Si se hace, **avisar al premium** — pagó por una oposición cuyo temario específico no existe.
+- **Bloquea 2 suites del job de integración**, que es lo que hace que se note: `configDbIntegrity` («count de topics en BD >= totalTopics», «cada theme.id tiene topic_number») y `temarioDataQuality` («integridad `oposicion_bloques` ↔ `topics.bloque_number`», porque el bloque «Área de Consumo» está declarado sin un solo tema activo). Decidir esto pone las dos en verde.
+- **Comprobar antes de decidir:** si la convocatoria de 2025 (`BOE-A-2025-26903`) sigue siendo la vigente o hay uno nuevo — la decisión de construir cambia si hay convocatoria fresca.
+- **De dónde sale:** inventario real de [T-377].
+- **Relacionada:** [T-377], [T-374] (las 7.202 placeholder, otra decisión tuya del mismo tipo).
+
 ### [T-395] 🟠 [ABIERTO 31/07] 9 leyes con `is_ok:false` se publican como VERIFICADAS: el criterio de completitud ignora el veredicto del propio summary
 
 - **El caso, medido el 31/07:** hay 9 leyes cuyo `last_verification_summary` dice literalmente **`"is_ok": false`** y a las que el sistema asigna el estado **`verified`**, que es el más favorable posible. Y no son leyes muertas: **OPCAT (114 preguntas activas)**, Convenio Schengen (25), Orden 22/07/1987 (20), Convención Apátridas (6), RD 1087/2010 (3), Tratado Prüm (2), Convenio Prevención Tortura (1), Orden HFP/147/2022 (1), Protocolo Sedes UE (0).
@@ -1435,7 +1448,7 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **NO tocar el baseline del trinquete.** Subirlo a 7.202 para que CI pase sería exactamente lo que el trinquete existe para impedir.
 - **Relacionadas:** [T-370] (por qué el rojo no se oyó), [T-377] (el resto del job), memoria `project-placeholder-temario-backlog` (la campaña de 2026-06 que lo dejó en 0).
 
-### [T-377] 🟠 [ABIERTO 31/07] El job de integración tiene 22 suites MÁS en rojo, y no son tests podridos: es deriva de contenido
+### [T-377] 🟠 [ABIERTO 31/07] El job de integración estaba rojo y NADIE sabía por qué: dos tercios era una conexión rota, no contenido
 
 - **Cómo salió:** cerrando [T-336] (3 suites rojas de referidos + `correct_option`, ya arregladas). Con esas verdes, se corrió el job **entero** contra RDS real —lo que nadie había hecho— y salieron **24 tests rojos en 22 suites más**, de 2.023.
 - **NO es el mismo problema que T-336.** Allí el código de producción cambió a propósito y los tests se quedaron viejos. Aquí, en la muestra que se abrió, **el test tiene razón y los datos no**: `configDbIntegrity` falla porque la config declara **120 temas** para la Escala Técnica de Gestión de OO.AA. (Sanidad y Consumo) y en la BD hay **20**. Eso no se arregla tocando el test — es una oposición a medio construir que el job estaba cantando y nadie escuchaba.
@@ -1493,6 +1506,44 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
   export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
   npm run test:integration
   ```
+
+
+---
+
+**📌 ESTADO AL CERRAR LA SESIÓN (31/07, worktree `centro-abajo` eliminado)**
+
+**Todo lo de esta ficha está en `origin/main`.** No queda nada en el worktree.
+
+**Dónde está el rojo hoy** (`8 suites → 6`; empezó en 32 suites / 579 tests):
+
+| suite | quién la tiene |
+|---|---|
+| `configDbIntegrity` · `temarioDataQuality` | **[T-396]** — decisión de Manuel (ETGOA). Las dos caen con la misma decisión |
+| `placeholderTemarioGuard` | **[T-374]** — decisión de Manuel (7.202 placeholder) |
+| `temarioEpigrafeIntegrity` | **[T-390]** — 791 temas sin descripción |
+| `positionTypeIntegrity` | **[T-393]** — oposición de Madrid a medias, 3 usuarios |
+| `seguimientoFuentesCiegas` | ⚠️ **LA ÚNICA SIN MIRAR.** Falla su invariante *«nada marcado como ciego tiene contenido de sobra»*. No se ha diagnosticado: puede ser dato o umbral |
+
+**Arregladas y verificadas en esta sesión:** `familiaClassification` · `temarioVersions` · `schemaColumnDrift` · `lawCompletenessConsistency` (+ las 14 suites que ni conectaban).
+
+**Fichas que nacieron de aquí, todas con su contexto:** [T-381] (canary `served-rollup` rojo, envenena el ratio anti-cosecha) · [T-390] · [T-393] · [T-395] (9 leyes `is_ok:false` publicadas como verificadas) · [T-396].
+
+**Escrituras a producción hechas hoy, con su vuelta atrás:**
+- `oposiciones.familia`: 141 filas reclasificadas. **Estado previo completo en `~/vence-backups/t377-familia-previa.json`** (2.658 filas, FUERA del repo a propósito → sobrevive al borrado del worktree).
+- `convocatorias.temario_version_id`: 1 fila (Diputación de Cádiz), vía la propia herramienta.
+- Vista `law_verification_effective`: redefinida por migración `20260731_law_verification_effective_db_count_desconocido.sql`.
+
+**Cómo retomar, en dos comandos:**
+```bash
+export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
+npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de arriba
+```
+
+**Lo que NO hay que volver a descubrir:**
+- El comando con `--setupFiles dotenv/config` **fabrica 15 rojos fantasma**. El bueno es `npm run test:integration` con `DATABASE_URL` exportada, que es lo que corre CI.
+- Con `pg` contra RDS hay que **quitar el `sslmode` de la URL**; poner `ssl` no basta. Usar `pgConfig()` de `lib/db/pgSsl.cjs` (tests: `testDbConfig()`). Guardarraíl puesto.
+- Un helper de conexión **no debe cargar `dotenv` al importarse**: despierta suites dormidas a propósito y tiñe el pre-commit de todo el mundo.
+- CI sigue **ciego** por el secreto `DATABASE_URL_READONLY` que falta (**[T-370]**, necesita a Manuel). Mientras no vuelva, este rojo solo se ve corriéndolo en local.
 
 ### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
 
