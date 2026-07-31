@@ -282,6 +282,75 @@ cabecera que anuncie cierre (`[HECHA …]`, `[CERRADA …]`) sin el `✅` pone e
 > habían empezado a divergir. Dos lectores del mismo fichero que no coinciden en qué está abierto
 > son exactamente el fallo que este subsistema existe para evitar.
 
+## ⛔ UNA SESIÓN POR DIRECTORIO — el `pre-commit` lo hace cumplir (T-415, 31/07)
+
+Si otra sesión viva trabaja en TU mismo directorio, **el commit se para**.
+
+```
+scripts/worktrees/crear-worktree.sh <un-nombre>     # el arreglo, 30 segundos
+INDICE_COMPARTIDO_OK=1 git commit …                 # el escape, si de verdad hace falta
+```
+
+**Por qué no basta con tener cuidado:** `git add` escribe en el índice del **REPOSITORIO**, no de
+tu sesión. Con dos sesiones en el mismo directorio, el `add` de una y el `commit` de la otra son
+**la misma cola**, y git no puede saber quién puso qué — el dato de «quién» no existe, así que
+ningún guardarraíl sobre el contenido puede arreglarlo.
+
+Pasó el 31/07: el trabajo de una sesión (una migración, un núcleo puro, sus tests y un
+guardarraíl) acabó en `main` **bajo el mensaje de commit de otra**. No se perdió nada, pero la
+historia miente y el `outcome` de la ficha no correspondía a su commit. El mismo día se midieron
+**cinco sesiones latiendo desde el checkout principal**.
+
+> **Este bloqueo SÍ bloquea, y el mismo día se quitaron tres que no.** Los de T-375 eran
+> *imposibles de satisfacer* (esperar a una sesión muerta) y por eso enseñaban a apagar el guard
+> entero. Éste se arregla con **un comando**, y la alternativa corrompe trabajo ajeno de forma
+> irreversible. **Una sola** sesión en el checkout principal es lo normal y no dispara nada: el
+> problema no es el sitio, es la concurrencia.
+
+## Una sola identidad de sesión (T-407)
+
+Todo el reparto —claim, lease, cola de impugnaciones, push-guard, latido, mapa de solape— cuelga
+del `session-id`. Se resuelve en **un solo sitio** (`lib/sessions/sid.cjs`): `--sid` > el fichero
+`.session-id` del worktree > `CLAUDE_CODE_SESSION_ID`. **El fichero gana a la variable** porque es
+del worktree y describe dónde estás trabajando, mientras que la variable puede venir heredada.
+
+Había **seis copias** de esa resolución con **dos reglas distintas**, y una sesión llegaba a verse
+a sí misma como ajena («la tiene otra sesión» siendo ella). Un guardarraíl de CI impide que nadie
+vuelva a leer el fichero o la variable por su cuenta.
+
+## Esfuerzo y tiempo: se declara en cajones y se MIDE (T-414)
+
+```bash
+node scripts/backlog.cjs reserve "Título" --esfuerzo rato   # OBLIGATORIO: sin él, aborta
+node scripts/backlog.cjs esfuerzo T-042 sesion_propia       # cambiarlo después
+```
+
+| cajón | qué decisión habilita |
+|---|---|
+| `minutos` | se cierra ya — encaja al final de cualquier sesión |
+| `rato` | una hora larga; cabe en una sesión con otras cosas |
+| `larga` | media sesión: ya no cabe junto a otra tarea grande |
+| `sesion_propia` | necesita una sesión entera para ella sola |
+
+- **En cajones y no en horas** a propósito: una estimación en horas se vuelve ficción («2h» para
+  todo) y envejece sola, igual que las fechas que se escribían en los títulos. **La frontera que
+  de verdad cambia una decisión es la última.**
+- **`list` y `next` ordenan por prioridad y, a igualdad, por lo más CORTO.** Lo **no declarado va
+  al final** de su prioridad, nunca al principio: no se puede afirmar que algo sea rápido si nadie
+  lo ha mirado.
+- **Se MIDE solo** (`worked_seconds`): se acumula el rato con la tarea reclamada de verdad, por
+  tramos. Al cerrar, `done` canta el contraste: *«3h 12m — declaraste rato (techo 2 h): se PASÓ»*.
+  Antes de esto había **0 tareas con duración medible** —cerrar borraba `claimed_at`— así que
+  ninguna estimación se podía desmentir, y un campo que nadie puede desmentir se rellena a ojo.
+- **Deuda:** las 182 tareas anteriores no lo llevan; se declara según se tocan. `list` cuenta
+  cuántas faltan. **No se rellenaron en bloque a propósito**: sería una tarde inventando datos.
+
+**Tareas RELACIONADAS: no hay campo que rellenar.** `claim` las deduce de los `[T-nnn]` que la
+propia ficha ya cita y enseña las que están vivas y libres. Derivarlo es mejor que pedirlo: un
+campo obligatorio se rellena vacío o miente; el enlace lo escribe quien sabe que existe, mientras
+escribe. Y el contexto es lo caro — si acabas de leerte un subsistema, la siguiente tarea de ese
+subsistema cuesta la mitad.
+
 ## Añadir una tarea nueva
 
 0. **Pide el id con `node scripts/backlog.cjs reserve "<título>"`. NUNCA lo elijas mirando el markdown.**

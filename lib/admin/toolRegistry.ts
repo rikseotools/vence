@@ -918,6 +918,75 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(11 tests), el mismo criterio que aplican los scripts de deploy en jq, con paridad vigilada ' +
       'por `__tests__/guardrails/ciGateParidad.test.ts`.',
   },
+  sesiones_solape: {
+    titulo: '¿Otra sesión está tocando mis mismos ficheros? (mapa en vivo)',
+    ruta: 'scripts/sessions/latidos.cjs',
+    estado: 'vivo',
+    escribe: ['worktree_sessions'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`node scripts/sessions/latidos.cjs`. El claim del backlog reparte IDS DE TAREA; las ' +
+      'sesiones chocan por FICHEROS, y eso no lo veía nadie (T-361 fue el mismo bug encontrado ' +
+      'por dos sesiones el mismo día; T-375 y T-382 se cogieron por separado siendo los mismos ' +
+      'ficheros). Cada sesión publica su HUELLA —sucio + lo que va por delante de origin/main, ' +
+      'sacado de GIT y no declarado, porque una intención anotada se pudre y el estado observado ' +
+      'no— y la escribe el propio latido, sin pedir disciplina. Avisa también en `backlog.cjs ' +
+      'claim`. NUNCA bloquea: dos sesiones pueden tocar un fichero por motivos legítimos, y un ' +
+      'corte por solape se acabaría rodeando. Calibrado sobre worktrees reales (el único fichero ' +
+      'compartido por 3+ era el markdown del backlog, así que está excluido). Núcleo puro ' +
+      '`lib/sessions/solape.cjs`, 21 tests. Reporta aparte, y más grave, varias sesiones en el ' +
+      'MISMO checkout: ahí no hay conflicto de git que avise, se sobrescriben en vivo.',
+  },
+  indice_compartido: {
+    titulo: 'Impedir que dos sesiones compartan el índice de git (pre-commit)',
+    ruta: 'scripts/check-indice-compartido.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      'Lo invoca `.husky/pre-commit`. Para el commit si OTRA sesión viva trabaja en tu mismo ' +
+      'directorio. La causa no es descuido: `git add` escribe en el índice del REPOSITORIO, así ' +
+      'que el add de una sesión y el commit de otra son la misma cola y git no puede saber quién ' +
+      'puso qué — el dato de «quién» NO EXISTE, y por eso ningún guardarraíl de contenido lo ' +
+      'arregla. El 31/07 el trabajo de una sesión acabó en main bajo el mensaje de otra. Este SÍ ' +
+      'bloquea (a diferencia de los tres que se quitaron ese día en T-375) porque se satisface ' +
+      'con un comando —`scripts/worktrees/crear-worktree.sh`— y la alternativa es irreversible. ' +
+      'Una SOLA sesión en el checkout principal no dispara nada: el problema es la concurrencia, ' +
+      'no el sitio. Fail-open total; escape `INDICE_COMPARTIDO_OK=1`. Núcleo `lib/sessions/' +
+      'indiceCompartido.cjs`, 14 tests.',
+  },
+  backlog_esfuerzo: {
+    titulo: 'Esfuerzo declarado en cajones + tiempo REAL medido por tarea',
+    ruta: 'lib/backlog/esfuerzo.cjs',
+    estado: 'vivo',
+    escribe: ['backlog_tasks'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`backlog.cjs reserve "…" --esfuerzo minutos|rato|larga|sesion_propia` (ABORTA sin él) y ' +
+      '`backlog.cjs esfuerzo <id> <cajón>`. En cajones y NO en horas: una estimación en horas se ' +
+      'vuelve ficción y envejece sola. `list`/`next` ordenan por prioridad y, a igualdad, por lo ' +
+      'más corto, con lo NO declarado al final. El tiempo se acumula solo (`worked_seconds`, por ' +
+      'tramos con la tarea reclamada — NO closed_at-created_at, que mide espera) y `done` canta ' +
+      'el contraste. Antes había CERO tareas con duración medible porque cerrar ponía ' +
+      'claimed_at=NULL: sin poder desmentirla, una estimación se rellena a ojo y muere. En ' +
+      '`reap` NO se acumula, a propósito (sesiones muertas con claimed_at de hace días). 17 tests.',
+  },
+  cola_reserva: {
+    titulo: 'La reserva de la cola caduca cuando muere su sesión, no por reloj',
+    ruta: 'lib/impugnaciones/reserva.cjs',
+    estado: 'vivo',
+    escribe: ['user_feedback', 'question_disputes', 'psychometric_question_disputes'],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'Criterio ÚNICO que usan `cola.cjs` y los dos `revisar-*.cjs`. Con un reloj fijo no hay ' +
+      'número bueno: corto traiciona a la sesión VIVA que lleva horas con un caso difícil (dos ' +
+      'sesiones acabaron en el mismo feedback el 31/07), largo deja el caso bloqueado si se apaga ' +
+      'el ordenador. Ahora la reserva caduca cuando su sesión deja de LATIR, con dos frenos: un ' +
+      'suelo de 2 h por debajo del cual no se toca (el peor caso sigue siendo el de antes) y no ' +
+      'inventar veredicto si el dueño no publica latido. Los comandos de revisión LATEN al abrir ' +
+      'un caso: trabajar ES la señal. Hay versión SQL además de JS porque la decisión tiene que ' +
+      'ir DENTRO del UPDATE atómico; su paridad está testeada. 12 tests.',
+  },
   deploy_estado: {
     titulo: '¿Hay alguien desplegando AHORA? (sin competir por el lock)',
     ruta: 'scripts/deploy-estado.cjs',
