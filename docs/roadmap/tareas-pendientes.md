@@ -1080,6 +1080,15 @@ incluida).
 
 
 ## Hechas
+
+### [T-366] ✅ [HECHA 31/07] El lanzador de deploy se bloqueaba con el scratch SIN TRACKEAR de otras sesiones
+- **Cómo salió:** yendo a desplegar el backend con tres tareas terminadas esperándolo (T-307, T-361, T-362). `deploy-cuando-verde.sh backend` abortó con *«árbol SUCIO»* señalando `scratchpad/t115/`, `scratchpad/t331/` y `.claude/settings.local.json` — ninguno mío y ninguno trackeado.
+- **La incoherencia, exacta:** el lanzador comprobaba `git status --porcelain` (que incluye lo no trackeado) mientras `deploy-frontend.sh` y `deploy-backend.sh` —los que de verdad construyen— usan `--untracked-files=no` desde siempre. El guardián de la puerta era más estricto que la puerta.
+- **Por qué la protección sigue intacta:** lo que ese bucle puede destruir es trabajo sin commitear de ficheros **ya trackeados**, porque acto seguido hace `git reset --hard origin/main`. Un `reset --hard` **no toca los ficheros sin trackear** (eso sería `git clean`, que aquí no se usa), así que contarlos no protegía de nada.
+- **Por qué importa con varias sesiones:** en un checkout compartido por 2-10 sesiones **siempre** hay scratch ajeno tirado. Es decir, el lanzador quedaba inservible **justo cuando más falta hace**: cuando hay trabajo de varias sesiones esperando un deploy. Y su razón de existir es precisamente esa (el 28/07, desplegar un fix de una línea necesitó siete intentos por la ventana de árbol-limpio + CI verde + lock libre).
+- **Lo que NO se hizo, a propósito:** meter `scratchpad/` o `.claude/` en `.gitignore`. Hay ficheros **trackeados** dentro de los dos (`scratchpad/citas-inv3.json`, `.claude/workflows/*.js`), así que ignorarlos en bloque habría escondido cambios reales.
+- **Arreglo:** una línea, alineando el lanzador con los scripts de deploy. `__tests__/guardrails/deploy-scripts.test.ts` sigue en verde (76 tests).
+
 ### [T-331] ✅ [HECHA 31/07] SMS Tema 21: los arts. 50 y 52 del RD 203/2021 servían CERO preguntas
 - **Resultado: 11 preguntas vivas y verificadas contra producción, dos días antes del plazo.** El selector de artículos del Tema 21 pasa de `50 → 0` y `52 → 0` a **`50 → 6` y `52 → 5`**. Lote `gen_rd203_t331_2026-07-31`.
 - **Y no era solo el SMS: los dos artículos están escopados en 10 oposiciones ACTIVAS** con tema disponible (Administrativo del Estado T203, Madrid T22, Seguridad Social T23, CLM T12, Dip. Cuenca T18, Alcalá de Henares T12, Univ. Granada T204, País Vasco T14, Técnico Informática T108 y Aux. Admin. SMS T21). `batch:servido` comprobó **10/10** contra www.vence.es. Correr la query de cobertura cross-oposición ANTES de generar es lo que convirtió una reparación puntual en una que llega a diez sitios.

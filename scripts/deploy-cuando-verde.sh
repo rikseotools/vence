@@ -90,9 +90,16 @@ let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
 
 for v in $(seq 1 "$VUELTAS"); do
   git fetch origin -q
-  if [ -n "$(git status --porcelain)" ]; then
+  # SOLO lo trackeado (T-366). Lo que este bucle puede destruir es trabajo sin commitear de
+  # ficheros YA trackeados, porque acto seguido hace `reset --hard`: eso sí hay que proteger.
+  # Los ficheros SIN trackear sobreviven intactos a un `reset --hard` —los borraría un `git clean`,
+  # que aquí no se usa— y `deploy-{frontend,backend}.sh` ya los tolera con este mismo flag. Con
+  # 2-10 sesiones compartiendo checkout, el scratch ajeno (`scratchpad/tNNN/`, ajustes locales)
+  # está SIEMPRE ahí, así que contarlo dejaba el lanzador inservible justo cuando más falta hace:
+  # cuando hay trabajo de varias sesiones esperando un deploy.
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     echo "❌ árbol SUCIO: el build usa el working tree, así que no toco nada. Commitea o descarta y reintenta."
-    git status --short | head -5
+    git status --short --untracked-files=no | head -5
     exit 1
   fi
   git reset --hard origin/main -q
