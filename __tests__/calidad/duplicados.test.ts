@@ -364,3 +364,54 @@ describe('mismoOrdenDeContenido — lo que el conjunto de palabras no puede ver'
                                      'Según el artículo 13 de la Ley 39/2015')).toBe(false)
   })
 })
+
+describe('validarAdjudicacion — la puerta antes de una escritura TERMINAL', () => {
+  const vivos = (arr: any[]) => new Map(arr.map((r) => [r.id, r]))
+
+  it('deja pasar lo que se adjudicó y no ha cambiado', () => {
+    const plan = [{ quedaId: 'A', jubilar: [{ id: 'B', estado: 'approved' }] }]
+    expect(dup.validarAdjudicacion(plan, vivos([
+      { id: 'B', is_official_exam: false, lifecycle_state: 'approved' }]))).toEqual([])
+  })
+
+  it('rehúsa jubilar una pregunta de examen OFICIAL', () => {
+    const plan = [{ quedaId: 'A', jubilar: [{ id: 'B', estado: 'approved' }] }]
+    const p = dup.validarAdjudicacion(plan, vivos([
+      { id: 'B', is_official_exam: true, lifecycle_state: 'approved' }]))
+    expect(p).toHaveLength(1)
+    expect(p[0].causa).toBe('examen_oficial')
+  })
+
+  it('rehúsa si el estado cambió entre adjudicar y aplicar', () => {
+    // Entre leer los grupos y escribir puede pasar una hora, y otra sesión o un cron haber
+    // movido la pregunta. Aplicar con el estado viejo es escribir sobre lo que ya no se vio.
+    const plan = [{ quedaId: 'A', jubilar: [{ id: 'B', estado: 'approved' }] }]
+    const p = dup.validarAdjudicacion(plan, vivos([
+      { id: 'B', is_official_exam: false, lifecycle_state: 'needs_human' }]))
+    expect(p[0]).toMatchObject({ causa: 'estado_cambiado', esperado: 'approved', actual: 'needs_human' })
+  })
+
+  it('rehúsa un id que no existe (se copió mal a mano)', () => {
+    const plan = [{ quedaId: 'A', jubilar: [{ id: 'ZZ', estado: 'approved' }] }]
+    expect(dup.validarAdjudicacion(plan, vivos([]))[0]?.causa).toBe('no_existe')
+  })
+
+  it('rehúsa jubilar al propio superviviente', () => {
+    // Un despiste al escribir el plan dejaría el grupo ENTERO fuera del banco.
+    const plan = [{ quedaId: 'B', jubilar: [{ id: 'B', estado: 'approved' }] }]
+    const causas = dup.validarAdjudicacion(plan, vivos([
+      { id: 'B', is_official_exam: false, lifecycle_state: 'approved' }])).map((x: any) => x.causa)
+    expect(causas).toContain('se_jubila_al_superviviente')
+  })
+
+  it('un solo problema para el plan ENTERO, no solo su grupo', () => {
+    const plan = [
+      { quedaId: 'A', jubilar: [{ id: 'B', estado: 'approved' }] },
+      { quedaId: 'C', jubilar: [{ id: 'D', estado: 'approved' }] },
+    ]
+    const p = dup.validarAdjudicacion(plan, vivos([
+      { id: 'B', is_official_exam: false, lifecycle_state: 'approved' },
+      { id: 'D', is_official_exam: true, lifecycle_state: 'approved' }]))
+    expect(p).toHaveLength(1)  // el runner aborta entero con que haya uno
+  })
+})

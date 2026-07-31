@@ -60,7 +60,7 @@ const { Client } = require('pg')
 const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes,
         compararEnunciados, bandaParafraseada, mismaRespuesta, corteAcumulado,
-        mismoOrdenDeContenido } = require('../../lib/calidad/duplicados.js')
+        mismoOrdenDeContenido, validarAdjudicacion } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -508,13 +508,9 @@ async function aplicarAdjudicados(c, ruta) {
     'select id, is_official_exam, lifecycle_state from questions where id = any($1::uuid[])', [ids])
   const porId = new Map(info.map((r) => [r.id, r]))
 
-  const problemas = []
-  for (const p of plan) for (const j of p.jubilar) {
-    const r = porId.get(j.id)
-    if (!r) problemas.push(`${j.id.slice(0, 8)}: no existe`)
-    else if (r.is_official_exam) problemas.push(`${j.id.slice(0, 8)}: es de examen OFICIAL`)
-    else if (r.lifecycle_state !== j.estado) problemas.push(`${j.id.slice(0, 8)}: estado cambió (${j.estado} → ${r.lifecycle_state})`)
-  }
+  // El criterio vive en el módulo puro, con tests: aquí solo se le da lo que hay en la BD.
+  const problemas = validarAdjudicacion(plan, porId).map(
+    (x) => `${String(x.id).slice(0, 8)}: ${x.causa}${x.actual ? ` (${x.esperado} → ${x.actual})` : ''}`)
   console.log(`\n═══ ADJUDICACIÓN MANUAL · ${plan.length} grupo(s), ${ids.length} a jubilar ═══`)
   if (problemas.length) {
     console.log(`\n❌ ${problemas.length} problema(s) — no se aplica nada:`)
