@@ -1284,29 +1284,47 @@ export class ContentHealthSweepService {
     // ── Techo de timeout: ¿lento, o chocando contra un corte? (T-315) ──
     //
     // ⚠️ VA FUERA DEL BUCLE POR OPOSICIÓN, y no es un detalle de estilo (31/07/2026). Nació
-    // DENTRO, y como no depende de la oposición que se esté recorriendo —mira los endpoints de
-    // toda la app— se ejecutaba ~123 veces para calcular 123 veces lo mismo. Medido: 8 endpoints
-    // entran en el bucle interno y el peor tarda 9,2 s, así que una vuelta cuesta ~74 s… por
-    // cada oposición activa. El barrido del 31/07 llevaba 47 minutos sin terminar (su marca son
-    // 90 s) y en el log solo se veían dos `Failed query`: las vueltas que SÍ terminaban no dejan
-    // rastro, así que el coste era invisible salvo mirando el reloj de la pasada entera.
+    // DENTRO —peor: dentro del `if` de otro detector— y, como no depende de la oposición que se
+    // esté recorriendo (mira los endpoints de toda la app), se ejecutaba ~123 veces para calcular
+    // 123 veces lo mismo. Medido por las dos sesiones que lo encontraron a la vez: 8 endpoints
+    // entran en el bucle interno y el peor tarda 9,2 s, así que una vuelta costaba ~74 s por cada
+    // oposición activa; el barrido del 31/07 llevaba 47 minutos sin terminar (su marca son 90 s).
+    // Y el coste era casi invisible: las vueltas que SÍ terminaban no dejan rastro, y las que
+    // agotaban el `statement_timeout` sólo escribían un `warn` AL LOG, que no mira ni el panel ni
+    // las alertas.
+    //
+    // ⚠️ ESPEJO de `lib/observability/techoTimeout.cjs`. El backend no puede importarlo (su Docker
+    // solo copia backend/src). Los detectores de latencia miran la MAGNITUD y un timeout da la
+    // misma que una lentitud real; lo que los separa es la FORMA de la cola: la lentitud adelgaza,
+    // el timeout se amontona justo antes del corte y se acaba en seco.
+    //
+    // UNA SOLA PASADA para todos los endpoints y todas las bandas (T-361): antes eran 1 consulta
+    // + otra POR ENDPOINT con 6 subconsultas correlacionadas. Con `observable_events` en 10,5 M de
+    // filas, el filtro selecciona ~1.081 filas y tardaba 117 s en encontrarlas — se escanean
+    // millones para quedarse con mil. Por eso el arreglo de verdad es el ÍNDICE PARCIAL de
+    // `supabase/migrations/20260731_observable_events_indice_peticiones_lentas.sql`: **sin él, aun
+    // en una sola pasada la consulta tarda 55 s y no cabe en el techo de 30 s del pool**, así que
+    // el detector seguiría mudo sin que nada fallara.
+    const BANDAS: ReadonlyArray<readonly [number, number]> = [
+      [5000, 10000], [10000, 20000], [20000, 24000], [24000, 26000], [26000, 60000], [60000, 600000],
+    ];
     try {
-      const eps = (await this.db.execute(sql`
-        SELECT endpoint FROM observable_events
+      const filas = (await this.db.execute(sql`
+        SELECT endpoint,
+               count(*) FILTER (WHERE duration_ms >= 5000  AND duration_ms < 10000)::int  b0,
+               count(*) FILTER (WHERE duration_ms >= 10000 AND duration_ms < 20000)::int  b1,
+               count(*) FILTER (WHERE duration_ms >= 20000 AND duration_ms < 24000)::int  b2,
+               count(*) FILTER (WHERE duration_ms >= 24000 AND duration_ms < 26000)::int  b3,
+               count(*) FILTER (WHERE duration_ms >= 26000 AND duration_ms < 60000)::int  b4,
+               count(*) FILTER (WHERE duration_ms >= 60000 AND duration_ms < 600000)::int b5
+          FROM observable_events
          WHERE event_type = 'request_completed' AND duration_ms > 5000
            AND created_at > now() - interval '14 days' AND endpoint IS NOT NULL
          GROUP BY endpoint HAVING count(*) >= 20
-      `)) as unknown as Array<{ endpoint: string }>;
-      for (const { endpoint } of (Array.isArray(eps) ? eps : [])) {
-        const tr = (await this.db.execute(sql`
-          SELECT v.lo AS lo, v.hi AS hi,
-                 (SELECT count(*)::int FROM observable_events e
-                   WHERE e.event_type='request_completed' AND e.endpoint=${endpoint}
-                     AND e.created_at > now() - interval '14 days'
-                     AND e.duration_ms >= v.lo AND e.duration_ms < v.hi) AS n
-            FROM (VALUES (5000,10000),(10000,20000),(20000,24000),(24000,26000),(26000,60000),(60000,600000)) v(lo,hi)
-        `)) as unknown as Array<{ lo: number; hi: number; n: number }>;
-        const t = (Array.isArray(tr) ? tr : []).map((r) => ({ desdeMs: Number(r.lo), hastaMs: Number(r.hi), n: Number(r.n) }));
+      `)) as unknown as Array<Record<string, unknown>>;
+      for (const fila of (Array.isArray(filas) ? filas : [])) {
+        const endpoint = String(fila.endpoint);
+        const t = BANDAS.map(([lo, hi], i) => ({ desdeMs: lo, hastaMs: hi, n: Number(fila[`b${i}`] ?? 0) }));
         // DENSIDAD (peticiones por segundo de ancho), no cuenta bruta: los tramos no miden lo mismo.
         // Y la referencia es el tramo anterior CON DATOS — si está vacío, cualquier densidad da «×∞»
         // y un hueco se lee como un muro. Medido el 30/07: con cuentas salían 4 techos y solo 2 eran

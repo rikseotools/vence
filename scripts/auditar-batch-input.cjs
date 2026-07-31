@@ -56,6 +56,22 @@ const pg = require('postgres')
 // Lo cazaron las DOS auditorías ciegas del lote gen_l19_6bis_20260726 (26/07/2026).
 const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n|Texto Refundido|Estatuto|C[óo]digo)\b/i
 
+// …pero "del Reglamento" A SECAS remite al MISMO cuerpo cuando la norma del lote ES un
+// reglamento, que es el caso siempre que el batch va de un Real Decreto que aprueba uno. Sin
+// esta excepción, "el artículo 41 del Reglamento" se descartaba como cita externa y el auditor
+// se quedaba SIN el artículo que la viñeta invocaba — justo lo que este anexo existe para dar.
+// Medido el 31/07/2026 en `gen_rd203_t331_2026-07-31`: adjuntó 7 de los 8 artículos citados, y
+// el que faltó (41) era el único escrito así; los arts. 42 y 47 se salvaron de rebote porque
+// OTRAS viñetas del mismo lote los nombraban sin el "del Reglamento" — o sea que el fallo
+// estaba tapado por la redundancia y podía haber durado mucho sin que nadie lo viera.
+//
+// El corte es conservador y mantiene intacto el guardarraíl del homónimo: solo pasa el
+// reglamento SIN IDENTIFICAR. En cuanto viene identificado —"del Reglamento (UE) 2016/679",
+// "del Reglamento General de Protección de Datos", "del Reglamento de ejecución", "del
+// Reglamento n.º 1/2005", "del Reglamento delegado"— sigue contando como otra norma.
+const REGLAMENTO_SIN_IDENTIFICAR =
+  /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?Reglamento\b(?!\s*(?:\(|n[.ºo°]|n[úu]m|\d|de (?:ejecuci[óo]n|desarrollo|la|los|las)|delegado|general|europeo|comunitario))/i
+
 function numerosCitados(texto) {
   const t = String(texto || '')
   const out = new Set()
@@ -65,7 +81,8 @@ function numerosCitados(texto) {
   // el art. 75 bis.1 de la LBRL, cuya glosa era exacta.
   const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*(?:\s*(?:,|\by\b|\be\b)\s*[0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*)*)/gi
   for (const m of t.matchAll(re)) {
-    if (OTRA_NORMA.test(t.slice(m.index + m[0].length, m.index + m[0].length + 40))) continue
+    const sigue = t.slice(m.index + m[0].length, m.index + m[0].length + 40)
+    if (OTRA_NORMA.test(sigue) && !REGLAMENTO_SIN_IDENTIFICAR.test(sigue)) continue
     // El separador debe ir con frontera de palabra: partir por una "e" suelta
     // troceaba "127 octies" en "127 octi" + "s".
     for (const n of m[1].split(/\s*(?:,|\by\b|\be\b)\s*/)) {

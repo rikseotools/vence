@@ -46,6 +46,24 @@ describe('numerosCitados', () => {
     expect(numerosCitados('según el artículo 80 de esta Ley')).toEqual(['80'])
   })
 
+  // 31/07/2026, lote `gen_rd203_t331_2026-07-31`: el batch iba de un REGLAMENTO (el aprobado por
+  // el RD 203/2021), así que "del Reglamento" es el mismo cuerpo, no otro. Se descartaba, y el
+  // auditor se quedaba sin el art. 41 que una viñeta invocaba. Los arts. 42 y 47 se salvaron por
+  // casualidad: otras viñetas los nombraban sin el "del Reglamento".
+  it('"del Reglamento" a secas es el MISMO cuerpo, no otra norma', () => {
+    expect(numerosCitados('lo invoca el artículo 41 del Reglamento cuando la relación…')).toEqual(['41'])
+    expect(numerosCitados('el artículo 42.1 del Reglamento, para las notificaciones')).toEqual(['42'])
+    expect(numerosCitados('conforme al artículo 55 del citado Reglamento')).toEqual(['55'])
+  })
+
+  it('…pero un Reglamento IDENTIFICADO sigue siendo otra norma', () => {
+    expect(numerosCitados('el artículo 5 del Reglamento (UE) 2016/679')).toEqual([])
+    expect(numerosCitados('el artículo 5 del Reglamento General de Protección de Datos')).toEqual([])
+    expect(numerosCitados('el artículo 3 del Reglamento de ejecución 2015/2447')).toEqual([])
+    expect(numerosCitados('el artículo 3 del Reglamento n.º 1/2005')).toEqual([])
+    expect(numerosCitados('el artículo 9 del Reglamento delegado')).toEqual([])
+  })
+
   it('el apartado se descarta y el sufijo NO', () => {
     expect(numerosCitados('el artículo 102.3')).toEqual(['102'])
     expect(numerosCitados('el artículo 102 bis.3')).toEqual(['102 bis'])
