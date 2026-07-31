@@ -1452,6 +1452,20 @@ incluida).
 - **Reversible:** borrar las dos acciones y el suelo vuelve al `min_capacity=8` del target.
 
 
+### [T-363] ✅ [HECHA 31/07] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
+
+- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
+- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
+- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
+- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
+- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
+- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
+- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
+- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
+- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
+- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
+- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
+
 ### [T-376] ✅ [HECHA 31/07] Los artículos desfasados del RDL 2/2004, y el falso «truncado» que los acompañaba
 - **Resultado: los tres artículos coinciden ya con el BOE vigente**, y por el camino se arregló un fallo de un núcleo compartido que llevaba dando falsos positivos.
 - 🔴 **EL HALLAZGO GORDO NO ERA EL DE LA FICHA: `bloqueVigente` NO PODABA LA REDACCIÓN DEROGADA.** El BOE la envuelve en `<blockquote class="noDesde20140101">` (la clase lleva la fecha desde la que ya no rige) y la poda del módulo casaba solo `<blockquote>` **a secas**, que es como viene la nota de pie. Resultado: la redacción antigua ENTERA se colaba en el texto que llamamos «oficial».

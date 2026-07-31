@@ -171,3 +171,35 @@ describe('el endpoint atiende también a los clientes que sigan mandando POST (3
     expect(ENDPOINT).not.toMatch(/request\.(json|body)/)
   })
 })
+
+/**
+ * El precio heredado no puede cobrarse dos veces (T-363, 31/07/2026).
+ *
+ * Quien vuelve puede tener todavía servicio PAGADO en la cuenta antigua. Como son dos cuentas de
+ * Stripe distintas no hay prorrateo posible, así que la suscripción nueva arranca con `trial_end` el
+ * día en que se le acaba lo pagado. Medido el 31/07: **180 personas** a las que eso les evita pagar
+ * dos veces el mismo periodo.
+ *
+ * Se vigila aquí porque es dinero y porque el fallo sería INVISIBLE: la pantalla se vería igual de
+ * bien, y el doble cargo aparecería en el banco del usuario.
+ */
+describe('T-363 — el checkout aplaza el primer cobro si queda servicio pagado', () => {
+  const CHECKOUT_JS = CHECKOUT   // ya cargado arriba con el helper del fichero
+
+  it('manda `trial_end` a Stripe', () => {
+    expect(CHECKOUT_JS).toMatch(/trial_end:\s*cobertura\.trialEnd/)
+  })
+
+  it('SOLO para el precio heredado (a quien paga tarifa normal no se le regala nada)', () => {
+    expect(CHECKOUT_JS).toMatch(/if\s*\(\s*precioPersonalizado\s*\)/)
+    expect(CHECKOUT_JS).toContain('coberturaPendiente')
+  })
+
+  it('la fecha se calcula en el CLIC, no se guarda con la oferta', () => {
+    // Si se precalculara al crear la oferta, quien tardara dos meses en pulsar tendría dos meses
+    // de regalo: el enlace se guarda y se reutiliza.
+    const ofertas = leer('lib/api/premium/ofertaHeredada.ts')
+    expect(ofertas).not.toContain('trial_end')
+    expect(ofertas).not.toContain('trial_period_days')
+  })
+})

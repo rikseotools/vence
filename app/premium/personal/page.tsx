@@ -17,7 +17,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { trackIntent, confirmIntent, emitClientEvent } from '@/lib/observability/client'
 
 interface AvisoVista {
-  solapa: boolean
+  aplica: boolean
   dias: number
   texto: string
 }
@@ -160,11 +160,10 @@ export default function PrecioPersonalPage() {
         Por llevar tiempo con nosotros mantienes tu precio. Elige el plan que prefieras.
       </p>
 
-      {/* T-355: si todavía le queda suscripción viva, decírselo ANTES de que pague. No se le
-          bloquea el botón a propósito: hay quien prefiere contratar ya para no arriesgarse a
-          quedarse sin servicio. Se le da la fecha y decide él. */}
-      {aviso?.solapa && (
-        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm text-amber-900 dark:text-amber-200">
+      {/* T-363: si le queda servicio pagado, el primer cobro se aplaza a esa fecha (`trial_end`),
+          así que esto no es un aviso de peligro sino una buena noticia — de ahí el verde. */}
+      {aviso?.aplica && (
+        <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 p-4 text-sm text-emerald-900 dark:text-emerald-200">
           {aviso.texto}
         </div>
       )}

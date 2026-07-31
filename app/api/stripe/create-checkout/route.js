@@ -71,11 +71,22 @@ async function _POST(request) {
     // Fail-CLOSED a propósito (al revés que los demás guardias de este fichero): ante un
     // fallo de consulta, mejor un checkout menos que un cobro al precio de otro.
     let precioPersonalizado = false
+    let cobertura = null   // T-363: días ya pagados en la cuenta antigua, si los hay
     const esDelCatalogo = priceBelongsToAccount(priceId, targetAccount) || !!resolvePriceForAccount(priceId, targetAccount)
     if (!esDelCatalogo) {
       try {
         const { priceEsDelUsuario } = await import('@/lib/api/premium/ofertas')
         precioPersonalizado = await priceEsDelUsuario(userId, priceId)
+        // Se calcula AQUÍ, en el clic, y no al crear la oferta: el enlace se guarda y se reutiliza,
+        // así que unos días calculados hace dos meses serían dos meses de regalo (T-363).
+        if (precioPersonalizado) {
+          const { premiumVigenteHasta } = await import('@/lib/api/premium/ofertas')
+          const { coberturaPendiente } = await import('@/lib/api/premium/cobertura')
+          cobertura = coberturaPendiente(await premiumVigenteHasta(userId))
+          if (cobertura.aplica) {
+            console.log(`🎁 [T-363] precio heredado con cobertura viva: primer cobro aplazado ${cobertura.dias} día(s)`)
+          }
+        }
         if (precioPersonalizado) console.log(`🎟️ Precio personalizado válido para ${userId}: ${priceId}`)
       } catch (ofertaErr) {
         console.error('❌ No se pudo verificar la oferta personalizada:', ofertaErr.message)
@@ -296,7 +307,16 @@ async function _POST(request) {
             registration_source: user.registration_source,
             plan_type: user.plan_type,
             payment_account: targetAccount
-          }
+          },
+          // NO COBRAR DOS VECES AL QUE VUELVE (T-363). Quien contrata su precio heredado puede
+          // tener todavía servicio PAGADO en la cuenta antigua. Como son dos cuentas de Stripe
+          // distintas no hay prorrateo posible, así que la suscripción nueva arranca con
+          // `trial_end` el día en que se le acaba lo que ya pagó: contrata hoy y la primera
+          // factura sale entonces. El acceso no se resiente — `trialing` ya cuenta como premium
+          // en el webhook, en el validador y en la comprobación de acceso.
+          //
+          // Solo para el precio heredado: a quien contrata a tarifa normal no se le regala nada.
+          ...(cobertura?.aplica ? { trial_end: cobertura.trialEnd } : {})
         },
         success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/premium/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/premium?cancelled=true`,

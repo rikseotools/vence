@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getOfertasActivas, premiumVigenteHasta, ETIQUETA_INTERVALO, formatearImporte, euroPorMes } from '@/lib/api/premium/ofertas'
-import { avisoSolape } from '@/lib/api/premium/solapeAviso'
+import { coberturaPendiente } from '@/lib/api/premium/cobertura'
 
 export const maxDuration = 15
 export const dynamic = 'force-dynamic'
@@ -51,10 +51,10 @@ async function _handler(request: NextRequest): Promise<NextResponse> {
     expiraEl: oferta.expiresAt ? oferta.expiresAt.toISOString() : null,
   })
 
-  // AVISO DE SOLAPE (T-355): a quien todavía le queda suscripción viva hay que decírselo ANTES de
-  // que pague, porque las dos cuentas de Stripe no comparten nada y no hay prorrateo posible entre
-  // ellas. Se calcula aquí y no en el cliente: la fecha es un dato, no una opinión de la vista.
-  const aviso = avisoSolape(await premiumVigenteHasta(auth.userId))
+  // T-363: a quien le queda servicio pagado no se le cobra hasta que se le acabe (`trial_end` en el
+  // checkout), así que el mensaje ya no avisa de un solape — informa de cuándo será el primer cobro.
+  // Se calcula en el servidor: la fecha es un dato, no una opinión de la vista.
+  const aviso = coberturaPendiente(await premiumVigenteHasta(auth.userId))
 
   // `oferta` (singular) se mantiene para no romper a ningún cliente viejo.
   return NextResponse.json({ success: true, oferta: vista(ofertas[0]), ofertas: ofertas.map(vista), aviso })
