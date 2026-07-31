@@ -104,6 +104,29 @@ describe('checkoutsCompartidos — varias sesiones en el MISMO directorio', () =
     expect(checkoutsCompartidos([ses({ sid: 'a', worktree_path: '/repo' })], AHORA)).toEqual([])
   })
 
+  // El caso NORMAL, no el raro: cuando una sesión se muda a un worktree coge la identidad del
+  // `.session-id` que hay allí, nace una fila nueva y **la vieja se queda congelada** apuntando
+  // al directorio del que se fue. Con la ventana de 24 h que había antes, esas filas fantasma
+  // hacían que el aviso siguiera en rojo DESPUÉS de arreglar el problema — que es la forma más
+  // rápida de que un aviso se ignore. Medido el 31/07 mudando ocho sesiones.
+  it('IGNORA las filas fantasma de sesiones que ya se mudaron (ventana corta)', () => {
+    const r = checkoutsCompartidos([
+      ses({ sid: 'aqui', worktree_path: '/repo', last_signal_at: hace(5) }),
+      ses({ sid: 'fantasma1', worktree_path: '/repo', last_signal_at: hace(90) }),
+      ses({ sid: 'fantasma2', worktree_path: '/repo', last_signal_at: hace(120) }),
+    ], AHORA)
+    expect(r).toEqual([])   // solo queda UNA viva ahí: no es «compartido»
+  })
+
+  it('pero SÍ avisa si de verdad hay dos trabajando ahora', () => {
+    const r = checkoutsCompartidos([
+      ses({ sid: 'a', worktree_path: '/repo', last_signal_at: hace(2) }),
+      ses({ sid: 'b', worktree_path: '/repo', last_signal_at: hace(9) }),
+      ses({ sid: 'fantasma', worktree_path: '/repo', last_signal_at: hace(200) }),
+    ], AHORA)
+    expect(r[0].sids.sort()).toEqual(['a', 'b'])
+  })
+
   it('no cuenta a las muertas: dos sesiones que ya no están no se pisan', () => {
     expect(checkoutsCompartidos([
       ses({ sid: 'a', worktree_path: '/repo' }),
