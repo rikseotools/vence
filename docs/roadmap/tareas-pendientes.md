@@ -933,6 +933,23 @@ incluida).
 - **Un test existente exigía que los `bis` NO se mapearan.** Era comportamiento **incidental** —el regex viejo sencillamente no los casaba— fijado en un test como si fuera la regla. Se actualizó explicando el porqué: `articles.article_number` guarda `"32 bis"`, y lo que de verdad importaba (que el bis no desplace al artículo simple) se conserva, porque van en claves distintas.
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
+### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
+
+- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
+- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
+- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
+- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
+- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
+- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
+- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
+- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
+- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
+- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
+- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
+- **⚠️ REABIERTA EL MISMO DÍA, y el motivo importa más que la tarea.** La cerré con `done` teniendo el código **en `main` pero sin desplegar**, así que nadie iba a comprobar en producción que la primera factura sale en la fecha correcta. Lo cazó Manuel preguntando: *«las tareas que esperan el despliegue, ¿se supone que tienen puesto que cuando desplieguen las chequeen? ¿siempre se chequean los cambios y funcionalidades nuevas?»*. La respuesta medida era **no**: de las 5 tareas de hoy que tocan código servido, **ninguna** estaba puesta para verificarse tras el deploy. Ahora esta sí (`pause --tras-deploy`), con las tres comprobaciones concretas en `--falta`.
+- **Y deja una pregunta abierta para el sistema:** la puerta del `done` impide cerrar cuando el *texto* confiesa trabajo pendiente, pero no sabe que **el código toca una superficie servida y aún no está desplegado**. Eso es comprobable —hay `sha` desplegado y hay ficheros tocados— y sería el siguiente escalón del mismo guardarraíl.
+
+
 
 ### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
 
@@ -1514,20 +1531,6 @@ incluida).
 - **Medición que lo sostiene (30/07, por hora, req/target contra el objetivo de 15.000/h):** 02:00 → 7,9% · 03:00 → 5,4% · **04:00 → 2,2%** · 05:00 → 4,7% · 06:00 → 9,0%. A 5 tareas eso sube a ~12,7%: sigue sobrando de largo.
 - **Reversible:** borrar las dos acciones y el suelo vuelve al `min_capacity=8` del target.
 
-
-### [T-363] ✅ [HECHA 31/07] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
-
-- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
-- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
-- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
-- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
-- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
-- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
-- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
-- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
-- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
-- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
-- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
 
 ### [T-376] ✅ [HECHA 31/07] Los artículos desfasados del RDL 2/2004, y el falso «truncado» que los acompañaba
 - **Resultado: los tres artículos coinciden ya con el BOE vigente**, y por el camino se arregló un fallo de un núcleo compartido que llevaba dando falsos positivos.
