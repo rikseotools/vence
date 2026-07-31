@@ -867,6 +867,47 @@ async function despertarPorDeploy(s, shas, opts = {}) {
 
     else if (cmd === 'reserve') {
       const titulo = process.argv[3] || 'RESERVADA — ficha pendiente de escribir en el markdown';
+
+      // ── GUARDARRAÍL ANTI-DUPLICADO (T-359, 31/07) ─────────────────────────────────────────
+      // El 31/07 una sesión empezó a construir un lote de 385 ofertas de precio que OTRA había
+      // terminado y verificado el día antes (T-341 vs T-343). No lo detectó ningún proceso: lo
+      // detectó Manuel preguntando. El claim impide que dos sesiones cojan la MISMA ficha, no que
+      // se creen dos fichas para el mismo trabajo — y `list` solo enseña lo ABIERTO, así que una
+      // tarea cerrada ayer es justo la que no se ve.
+      //
+      // Avisa con 4 palabras distintivas en común y EXIGE motivo escrito con 5. Calibrado sobre
+      // los 359 títulos reales: avisa en el 21% y exige motivo en el 9%. El caso que lo motivó
+      // compartía 5 («boton», «vaciado», «stripe», «oferta», «avisar»), así que habría parado.
+      // Avisa en vez de bloquear en la banda baja a propósito: un guardarraíl que aborta por
+      // parecido léxico se acaba esquivando, y entonces no protege nada.
+      if (process.argv[3]) {
+        const { fichasParecidas } = require(path.join(__dirname, '..', 'lib', 'backlog', 'fichaDuplicada.cjs'));
+        const universo = await s`
+          SELECT id, title, status, outcome FROM public.backlog_tasks
+           WHERE status <> 'done' OR closed_at > now() - interval '60 days'`;
+        const parecidas = fichasParecidas(titulo, universo, { minComunes: 4 });
+        const fuertes = parecidas.filter((p) => p.comunes.length >= 5);
+        if (parecidas.length) {
+          console.log(`\n⚠️  Ya hay ficha(s) que se parecen a lo que vas a crear — LÉELAS antes de escribir nada:`);
+          for (const p of parecidas.slice(0, 3)) {
+            console.log(`   · ${p.id} [${p.status}] ${String(p.title).slice(0, 78)}`);
+            console.log(`       comparten: ${p.comunes.join(', ')}`);
+          }
+        }
+        if (fuertes.length && !arg('--aunque')) {
+          console.error(`\n❌ NO reservado: ${fuertes[0].id} se parece demasiado (${fuertes[0].comunes.length} palabras).`);
+          console.error('   Si de verdad es otra cosa, dilo por escrito y queda registrado:');
+          console.error(`     node scripts/backlog.cjs reserve "${String(titulo).slice(0, 40)}…" --aunque "en qué se diferencia de ${fuertes[0].id}"`);
+          process.exit(3);
+        }
+        if (fuertes.length) {
+          try {
+            await s`INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+                    VALUES (gen_random_uuid(), now(), 'backlog:reserve', 'info', 'backlog_ficha_parecida_ignorada',
+                            ${JSON.stringify({ titulo, parecidas: fuertes.map((f) => f.id), motivo: arg('--aunque'), sid })}::jsonb, now())`;
+          } catch { /* el rastro es un extra, no una precondición */ }
+        }
+      }
       // Se reintenta por si otra sesión gana la carrera entre el SELECT y el INSERT:
       // la unicidad la garantiza la PK, no este cálculo.
       let reservado = null;
@@ -889,7 +930,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

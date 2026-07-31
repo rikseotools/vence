@@ -984,6 +984,21 @@ incluida).
 - **Cabo suelto de entorno (NO es del repo, no hace falta ficha):** en un checkout con `.next/` viejo, el pre-**push** puede fallar el typecheck por `validator.ts` generados que referencian páginas ya borradas (`app/embajadores`, `app/admin/errores-validacion`). Son artefactos de build: `rm -f .next/types/validator.ts .next/dev/types/validator.ts` y a correr.
 
 
+### [T-359] ✅ [HECHA 31/07] Guardarraíl en `reserve`: avisar si la ficha que vas a crear ya existe
+
+- **ORIGEN.** Lo pidió Manuel el 31/07 al ver que había estado a punto de rehacer un trabajo terminado: *«¿se puede hacer un guardarraíl para evitar que vuelva a pasar?»*. El caso: [T-343] iba a construir un lote de 385 ofertas de precio que [T-341] había terminado **y verificado en producción el día anterior**.
+- **POR QUÉ NO BASTABA LO QUE HABÍA**, y es lo que define dónde va el arreglo:
+  - el **claim** impide que dos sesiones cojan LA MISMA ficha — no que existan dos fichas para el mismo trabajo;
+  - **`tools:buscar`** cubre HERRAMIENTAS, no tareas;
+  - y **`list` solo enseña lo ABIERTO**, así que una tarea cerrada ayer es justo la que no se ve. T-341 llevaba cerrada 24 horas.
+- **DÓNDE:** en **`reserve`**, que es el punto por el que toda ficha nueva tiene que pasar y que hasta hoy solo repartía números.
+- **CRITERIO:** palabras **distintivas** compartidas (>3 letras, descartando las que salen en medio backlog: «premium», «usuarios», «sistema», «error», «tema»…). En las CERRADAS se mira también el `outcome`, que es donde está lo que de verdad se hizo — y es de ahí de donde salió el 5.º término del caso real. Sin IA ni embeddings a propósito: corre dentro de `reserve`, en frío y en milisegundos; un aviso que tarda se acaba quitando.
+- **CALIBRADO SOBRE LOS 359 TÍTULOS REALES antes de cablearlo** (la lección del detector de esta misma mañana): con 2 palabras saltaría el 86% —inservible—, con 3 el 50%, con 4 el **21%**. Bandas elegidas: **avisa con 4** y **exige motivo escrito con 5** (9% de las reservas). El caso que lo motivó compartía **5** («boton», «vaciado», «stripe», «oferta», «avisar»), así que **habría parado**.
+- **AVISA en la banda baja y solo BLOQUEA en la alta, a propósito:** un guardarraíl que aborta por parecido léxico se acaba esquivando, y entonces no protege nada. El escape es el de la casa (`claim --force --motivo`): `reserve "…" --aunque "en qué se diferencia de T-341"`, que deja rastro en `observable_events` (`backlog_ficha_parecida_ignorada`).
+- **Probado contra el caso real, no contra un ejemplo:** al reservar hoy el título de T-343, el guardarraíl lo para y enseña T-341 y T-343 con las palabras compartidas. 8 tests en `__tests__/backlog/fichaDuplicada.test.ts`, incluidos los negativos (un título que solo comparte el vocabulario de la casa NO salta) porque un aviso que salta siempre se ignora.
+- **SU LÍMITE, dicho para que nadie lo suponga resuelto:** caza que **ya exista una ficha**. No caza a una sesión que esté haciendo el trabajo **sin ficha todavía** — ahí la única defensa sigue siendo la regla escrita (todo trabajo lleva ficha, y `reserve` es obligatorio). Y no distingue dos fichas legítimas que hablan de lo mismo con otras palabras.
+- **Relacionadas:** [T-343] (el duplicado que lo motivó), [T-341] (lo que ya estaba hecho), [T-130] (el mismo problema una capa más abajo: herramientas duplicadas).
+
 ### [T-344] ✅ [HECHA 31/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
 - **Cómo salió:** revisión de salud del 30/07. Era la única señal del catch-all que tocaba dinero, así que se miró primero.
 - **Qué hace mal, exactamente:** el Pase 2 pide a Stripe las suscripciones con `created: { gte: since }` y **`since` son 30 días** (`subscription-reconciliation.service.ts:145`). Con esa lista se llena `activasEnStripe`. El **Pase 3** (`detectarPremiumSinRespaldo`) recorre **TODAS** las filas `status='active'` y marca la que no esté en ese conjunto. Resultado: **toda suscripción creada hace más de 30 días se declara «sin respaldo en Stripe»**, aunque esté viva y al corriente.
