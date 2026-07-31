@@ -978,6 +978,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Mitigación: nombrar siempre la ley al citar un artículo ajeno, y pedirle al auditor que diga ' +
       '"me falta el art. X" en vez de juzgar contra el texto que no tiene.',
   },
+  duplicados_exactos: {
+    titulo: 'Duplicados EXACTOS del banco: simula el barrido y jubila los sobrantes por lotes',
+    ruta: 'scripts/calidad/duplicados-exactos.cjs',
+    estado: 'vivo',
+    escribe: ['lifecycle_state'],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`[--dia YYYY-MM-DD] [--aplicar] [--limite N]`. SIMULA por defecto; solo escribe con ' +
+      '`--aplicar`, y con motivo — `retired_duplicate` es un estado TERMINAL y no hay vuelta atrás. ' +
+      'Criterio ESTRICTO a propósito: mismo artículo + enunciado normalizado idéntico + LAS MISMAS ' +
+      'CUATRO OPCIONES, y excluye los supuestos (`exam_case_id`), porque los casos prácticos ' +
+      'comparten enunciado POR DISEÑO — una métrica de parecido dio 3.230 falsos pares en T-321 y ' +
+      'no sirve para borrar. Conserva por prioridad: examen OFICIAL > explicación estructurada > ' +
+      'más servida > más antigua. GUARDA: aparta los grupos cuyo artículo se quedaría con menos de ' +
+      '4 preguntas — jubilar ahí cambia la repetición por un artículo que no da ni para un test. ' +
+      'Transiciona por `transition_question_state` (nunca UPDATE de `lifecycle_state`) y cada ' +
+      'jubilación anota de cuál es duplicada. Origen: 3 impugnaciones de Marta (31/07/2026); el ' +
+      'lote del 21/03 se saldó con 287 jubiladas y 3 apartadas por la guarda.',
+  },
   aprobar_batch_generado: {
     titulo: 'Paso 6: transicionar un batch `draft` → `approved` (lo hace VISIBLE), con gate y resumen de auditoría',
     ruta: 'scripts/aprobar-batch-generado.cjs',

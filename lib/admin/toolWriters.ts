@@ -54,6 +54,15 @@ export interface RecursoSensible {
    */
   moduloGuardarrail?: string
   /**
+   * Función SQL que es la ÚNICA vía legítima de escribir el recurso (p. ej.
+   * `transition_question_state` para `lifecycle_state`).
+   *
+   * Sin esto, el detector solo veía `UPDATE`/`INSERT`/Drizzle y **una herramienta que hace lo
+   * correcto parecía no escribir nada** — el guardarraíl la marcaba como «dice escribir y no lo
+   * hace», empujando justo a lo contrario de lo que se quiere: a escribir a pelo.
+   */
+  funcionPuerta?: string
+  /**
    * Solo en `trinquete`: número de escritores medido al fijar el trinquete. Bajarlo es bienvenido
    * (consolidación); subirlo exige tocar este fichero a conciencia.
    */
@@ -98,7 +107,13 @@ export const RECURSOS_SENSIBLES: RecursoSensible[] = [
     columna: 'lifecycle_state',
     propiedad: 'lifecycleState',
     regla: 'trinquete',
-    techo: 19,
+    funcionPuerta: 'transition_question_state',
+    // 42, no 19 (31/07/2026). No aparecieron 23 escritores nuevos: el detector no reconocía la
+    // llamada a `transition_question_state`, así que **los que usaban la vía CORRECTA eran
+    // invisibles** y el trinquete se calibró contando solo a los que escribían a pelo. Al añadir
+    // la función-puerta salieron todos. El número sirve igual como trinquete —que no crezca—,
+    // pero ahora mide lo que decía medir.
+    techo: 42,
     guardarrailPropio:
       'función SQL `transition_question_state` + trigger `tg_questions_lifecycle_audit_fallback` (registra cualquier UPDATE directo como `bypass_detected`) — ver CLAUDE.md §Lifecycle',
     porQue:
@@ -145,6 +160,11 @@ export function escribeRecurso(codigo: string, recurso: RecursoSensible): boolea
     // Drizzle: .set({ … camelCase: … })  ·  .values({ … camelCase: … })
     new RegExp(`\\.(?:set|values)\\(\\s*\\{[\\s\\S]{0,600}?\\b${prop}\\b\\s*:`),
   ]
+
+  // La función-puerta cuenta como escritura: es la vía CORRECTA de tocar el recurso.
+  if (recurso.funcionPuerta) {
+    patrones.push(new RegExp(`\\b${escapa(recurso.funcionPuerta)}\\s*\\(`, 'i'))
+  }
   return patrones.some((re) => re.test(codigo))
 }
 
