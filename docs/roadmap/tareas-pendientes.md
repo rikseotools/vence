@@ -111,7 +111,53 @@
 - **Fuera de alcance a propósito:** Windows/Explorador. Sus combinaciones (`Win+E`, `Win+R`) no se traducen, así que ahí el detector solo produciría ruido.
 - **Lo que queda:** limpiar lo que ha encontrado es [T-351]. Y la idea generaliza — el mismo patrón («dos afirmaciones del banco sobre el mismo hecho») sirve para cifras y fechas, pero eso es otra tarea.
 
-### [T-351] 🟠 [ABIERTO 30/07] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
+### [T-351] 🟡 [ABIERTO 30/07 — Word CERRADO, queda Excel/LibreOffice/Access] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
+
+> **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
+> **4 contradicciones `interna` + 10 `familia` → 2 + 3**, y **Word queda limpio del todo**.
+>
+> - **`Word 365 Escritorio` art.5 no tenía filas mal: tenía la PREMISA mal.** Afirmaba que en Word 365
+>   los atajos siguen mnemónicos ingleses, que los españoles *«ya no son válidos»*, y remataba
+>   instruyendo al opositor a *«verificar siempre el atajo contra Microsoft Support es-ES»* — justo la
+>   página traducida que da las teclas inglesas. **La trampa elevada a doctrina**, en un artículo del
+>   que cuelgan 69 preguntas y 2.032 exposiciones. Encima se contradecía en su propia primera tabla
+>   (`Ctrl+U` era a la vez «nuevo documento» y «subrayado»).
+> - **Reparado trayendo su gemelo `Word 365` art.5**, que es EL MISMO DOCUMENTO ya corregido (misma
+>   estructura, sección de teclas de función idéntica) y trae la tabla de contraste ES/EN. Menos
+>   superficie de error que parchear veinte filas. Se conservó la única fila exclusiva que sostenía una
+>   pregunta viva (`Ctrl+Alt+I`, vista preliminar → `a1bc1366`, 28 exp).
+> - **🔴 Y destapó un fallo de la reparación del 30/07 (mía):** al arreglar las notas al pie en el
+>   art. 6 no miré el art. 5 del mismo contenedor, cuya sección de vistas daba `Alt+Ctrl+O` = **vista
+>   Esquema** — contradiciendo de frente el `Alt+Ctrl+O` = nota al pie que acababa de escribir.
+>   Corregido en los dos: en español **`Alt+Ctrl+D`** = Diseño de impresión, **`Alt+Ctrl+E`** = Esquema,
+>   **`Alt+Ctrl+I`** = vista preliminar — **y es esa localización la que deja libres la O y la L para
+>   las notas**, que es la explicación que faltaba. Retirada la fila `Alt+Ctrl+L = Vista Lectura`: no
+>   está verificada y choca con `Alt+Ctrl+L` = nota al final, que sí lo está.
+> - **Cerrado también el cabo que quedó abierto el 30/07:** `Supuesto Word CyL` daba la nota al final
+>   en `Alt+Ctrl+D` porque las fuentes se partían. Zanjado con el mnemotécnico español del temario AGE
+>   (la «L» de documento fina**L**) + once sitios del propio banco que ya decían L.
+> - **Otros arreglos de la misma pasada:** `Ctrl+F`→`Ctrl+B` (Buscar) en los art. 6 de los dos
+>   contenedores · `Ctrl+Alt+H`→`Ctrl+Alt+K` (Hipervínculo) en los art. 1 · `Outlook 2016` art. 2, que
+>   daba dos atajos distintos para «Buscar» en la misma lista (`Ctrl+Mayús+F` es la **búsqueda
+>   avanzada**, otra acción) · y la pregunta `641db440` (25 exp), cuya tabla resumen servía
+>   `Ctrl+H` = Reemplazar en vez de `Ctrl+L`.
+> - Caché invalidada (`teoria`, `temario`, `laws`) en las 6 instancias.
+>
+> **LO QUE QUEDA** (correr `npm run audit:atajos` para verlo con detalle):
+> 1. **Access 365** — usa `Ctrl+S` para guardar en los arts. 1, 2 y 5; en español es `Ctrl+G`. Es el
+>    contenedor más rico del banco (66.810 chars/artículo) y sostiene **636 preguntas activas**, así que
+>    es el siguiente por rendimiento. *(El detector no lo saca como contradicción porque Access es
+>    coherentemente inglés — no se contradice, se equivoca entero: aquí hace falta la fuente, no el
+>    detector.)*
+> 2. **Excel** — `Excel 365` y `Excel 365 Escritorio` art.150 dan `Ctrl+L` y `Ctrl+H` para Reemplazar.
+>    Verificar cuál opera en el Excel español antes de tocar.
+> 3. **LibreOffice** — dos avisos de `familia` (negrita/cursiva) y uno `interna` (`Ctrl+Alt+B` como
+>    «atajo alternativo, versión 4.1»). El último parece **alias legítimo documentado**, no defecto.
+> 4. **Punto ciego del detector detectado por el camino:** «Fuente» no está en su vocabulario de
+>    acciones, y el banco tiene dos respuestas para ella (`Ctrl+M` en `8d7b1a8e` frente a
+>    `Ctrl+Mayús+F` en `86000eb8` y `f98e1daa`). Ampliar `ACCIONES` o resolverlo a mano.
+
+
 
 - **Cómo salió:** cerrando los cabos de [T-291]. Reparado el atajo de nota al pie en los 6 artículos de Word (ver [T-302]), se barrieron los **88 artículos virtuales que mencionan `Ctrl+`** buscando la forma INGLESA de los atajos que Microsoft **sí localiza** (guardar, nuevo, negrita, cursiva, subrayado, buscar, seleccionar todo). La mayoría de los avisos son sanos —artículos que explican bien la diferencia ES/EN—, pero quedan tres focos reales.
 - **⚠️ El peor: `Word 365 Escritorio` art.5 se contradice a sí mismo y encima lo justifica.** Contiene a la vez `Ctrl+S | Guardar` y `Ctrl+G | Guardar`, `Ctrl+A | Seleccionar todo` y `Ctrl+E | Seleccionar todo`, bajo un epígrafe que los llama *«atajos polisémicos… según la tabla de Microsoft Support»*. Es la trampa de la página traducida elevada a doctrina: en vez de elegir, el artículo da las dos y deja al opositor sin criterio. **Su gemelo `Word 365` art.5 lo tiene BIEN**, con los mnemónicos españoles (`Ctrl+G` Guardar, `Ctrl+E` sEleccionar). Dos contenedores hermanos, la misma materia, respuestas opuestas.
