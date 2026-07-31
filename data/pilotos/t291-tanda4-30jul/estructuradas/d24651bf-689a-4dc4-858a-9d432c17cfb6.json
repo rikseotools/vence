@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 9/2017, art. 30.3",
+    "texto": "La prestación de servicios se realizará normalmente por la propia Administración por sus propios medios."
+  },
+  "intro": "Se pregunta cuál es la regla general para la prestación de servicios según este artículo de la Ley de Contratos del Sector Público.",
+  "options": {
+    "0": "La regla general es que la prestación de servicios la realice la propia Administración con sus propios medios, recurriendo a la contratación externa solo cuando carezca de medios suficientes.",
+    "1": "Presentar la contratación externa como el cauce normal invierte la regla: la ley la reserva para cuando la Administración carezca de medios suficientes.",
+    "2": "Calificar la ejecución directa de 'excepcional' contradice la norma, que la establece como la vía normal, no excepcional.",
+    "3": "No cabe descartar el conjunto: el artículo sí fija una regla general —la ejecución con medios propios como vía normal— y esa regla figura enunciada tal cual entre las alternativas ofrecidas."
+  },
+  "estilo": "boletin"
+}

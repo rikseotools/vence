@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 9.2.c",
+    "texto": "Toda la información en formato texto debe estar también en modo sonoro."
+  },
+  "intro": "El artículo enumera un conjunto de recomendaciones para la configuración de los sistemas de información complementaria en las Oficinas de Atención al Ciudadano.",
+  "options": {
+    "0": "Coincide de forma literal con una de las recomendaciones que enumera el artículo.",
+    "1": "Coincide de forma literal con otra de las recomendaciones que enumera el artículo (que la información sonora esté transcrita en formato texto).",
+    "2": "Coincide de forma literal con otra de las recomendaciones que enumera el artículo (confirmación con mensajes sonoros de las acciones activadas).",
+    "3": "Es la respuesta correcta, porque las tres recomendaciones anteriores figuran literalmente en el artículo."
+  },
+  "estilo": "boletin"
+}

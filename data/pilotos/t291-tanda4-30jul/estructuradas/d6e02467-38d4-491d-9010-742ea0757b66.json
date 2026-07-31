@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "La Red Internet, art. 3", "texto": "El navegador interpreta el código **HTML** (estructura), **CSS** (presentación) y **JavaScript** (comportamiento) para mostrar páginas web al usuario." },
+  "intro": "Los navegadores web procesan distintos lenguajes para construir una página, pero solo uno de ellos añade comportamiento e interactividad de forma nativa, sin necesidad de complementos.",
+  "options": {
+    "0": "Basic es un lenguaje de propósito general que no se ejecuta de forma nativa dentro de un navegador web.",
+    "1": "C# se ejecuta en el entorno .NET o en el servidor, no de forma nativa dentro del navegador.",
+    "2": "Pascal es un lenguaje orientado a la enseñanza que tampoco cuenta con soporte nativo en los navegadores.",
+    "3": "JavaScript es el lenguaje que el navegador interpreta de forma nativa, junto con HTML y CSS, para dotar de comportamiento y dinamismo a las páginas web."
+  },
+  "estilo": "boletin"
+}

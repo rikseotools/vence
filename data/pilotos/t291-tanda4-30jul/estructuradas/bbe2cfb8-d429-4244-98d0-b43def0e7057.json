@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Outlook 365, art. 3", "texto": "| **Ctrl+3** | Contactos (Personas) |" },
+  "intro": "Situar el atajo de teclado que abre el módulo de Contactos en el Outlook clásico de escritorio, la referencia que se usa en las oposiciones.",
+  "options": {
+    "0": "Ctrl+3 abre el módulo de Contactos (Personas) en el Outlook clásico de escritorio.",
+    "1": "Ctrl+4 lleva al módulo de Tareas, no al de Contactos.",
+    "2": "Ctrl+5 abre el módulo de Notas, no el de Contactos.",
+    "3": "Ctrl+2 lleva al Calendario, no a Contactos."
+  },
+  "estilo": "boletin"
+}

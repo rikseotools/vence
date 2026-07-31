@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.2",
+    "texto": "dando cuenta al Congreso de los Diputados"
+  },
+  "intro": "El artículo 116.2 CE define el grado de intervención del Congreso en la declaración del estado de alarma.",
+  "options": {
+    "0": "La declaración del estado de alarma no exige autorización previa del Congreso; solo se le debe dar cuenta de ella.",
+    "1": "El Congreso no declara el estado de alarma ni autoriza al Gobierno en un sentido inverso al del artículo: es el Gobierno quien lo declara.",
+    "2": "El Congreso no declara el estado de alarma a propuesta del Gobierno; esa fórmula corresponde al estado de sitio.",
+    "3": "El estado de alarma se declara por el Gobierno mediante decreto en Consejo de Ministros, dando cuenta al Congreso de los Diputados, según el artículo 116.2."
+  },
+  "estilo": "boletin"
+}

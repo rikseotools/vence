@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.4",
+    "texto": "El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno."
+  },
+  "intro": "El artículo 116 reparte de forma distinta la declaración de cada estado excepcional entre el Gobierno y el Congreso.",
+  "options": {
+    "0": "Declarar el estado de excepción corresponde al Gobierno, previa autorización del Congreso, no al Congreso directamente.",
+    "1": "Declarar el estado de sitio corresponde al propio Congreso de los Diputados, por mayoría absoluta, a propuesta exclusiva del Gobierno.",
+    "2": "Declarar el estado de alarma corresponde al Gobierno mediante decreto en Consejo de Ministros, no al Congreso.",
+    "3": "El artículo 116 no regula ningún «estado de calamidad»; solo contempla los estados de alarma, excepción y sitio."
+  },
+  "estilo": "boletin"
+}

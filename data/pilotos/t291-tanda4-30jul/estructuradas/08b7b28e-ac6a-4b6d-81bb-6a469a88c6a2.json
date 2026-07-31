@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 19/2013, art. 26.1",
+    "texto": "observarán en el ejercicio de sus funciones lo dispuesto en la Constitución Española y en el resto del ordenamiento jurídico y promoverán el respeto a los derechos fundamentales y a las libertades públicas."
+  },
+  "intro": "El artículo fija el principio general de buen gobierno que deben observar las personas comprendidas en su ámbito de aplicación.",
+  "options": {
+    "0": "Es justamente lo contrario de lo que exige el artículo, que obliga a actuar conforme al ordenamiento jurídico y no según criterios personales.",
+    "1": "Coincide con lo dispuesto en el artículo: se exige actuar conforme a la Constitución y al resto del ordenamiento jurídico.",
+    "2": "Es justamente lo contrario de lo que exige el artículo, que obliga a promover el respeto a los derechos fundamentales y las libertades públicas al servicio del interés general.",
+    "3": "No se corresponde con el artículo, que exige actuar con transparencia, no con confidencialidad absoluta."
+  },
+  "estilo": "boletin"
+}

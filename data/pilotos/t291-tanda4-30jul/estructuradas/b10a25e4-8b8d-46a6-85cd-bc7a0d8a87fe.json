@@ -1,0 +1,11 @@
+{
+  "intro": "Se pregunta en qué áreas se estructuran las medidas de accesibilidad aprobadas por el Real Decreto 366/2007.",
+  "options": {
+    "0": "El Real Decreto organiza sus medidas precisamente en esas tres áreas: la accesibilidad de las Oficinas de Atención al Ciudadano, la de los impresos y documentos administrativos, y la de la prestación de servicios de atención al ciudadano, por lo que las tres afirmaciones son ciertas.",
+    "1": "La accesibilidad de las Oficinas de Atención al Ciudadano es una de las áreas que regula el Real Decreto, pero no la única.",
+    "2": "La accesibilidad en relación con los impresos y documentos administrativos es una de las áreas que regula el Real Decreto, pero no la única.",
+    "3": "La accesibilidad en la prestación de servicios de atención al ciudadano es una de las áreas que regula el Real Decreto, pero no la única.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

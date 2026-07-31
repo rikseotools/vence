@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Ley 19/2013, art. 20.1", "texto": "en el plazo máximo de un mes desde la recepción de la solicitud por el órgano competente para resolver." },
+  "intro": "El artículo fija el plazo del que dispone el órgano competente para resolver una solicitud de acceso a la información pública.",
+  "options": {
+    "0": "Quince días no es el plazo que fija este artículo para resolver.",
+    "1": "La resolución que concede o deniega el acceso debe notificarse en el plazo máximo de un mes desde la recepción de la solicitud.",
+    "2": "Dos meses no es el plazo previsto por este artículo.",
+    "3": "Tres meses es el plazo supletorio de otra normativa, pero la Ley 19/2013 fija expresamente un mes para este trámite."
+  },
+  "estilo": "boletin"
+}

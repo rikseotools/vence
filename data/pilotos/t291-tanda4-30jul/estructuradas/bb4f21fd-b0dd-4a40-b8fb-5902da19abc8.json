@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "RD 1708/2011, art. 2.2.a)",
+    "texto": "Sistema archivístico: Conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos."
+  },
+  "intro": "Se pregunta a qué concepto corresponde una definición concreta del Real Decreto 1708/2011.",
+  "options": {
+    "0": "El ciclo vital de documentos son las etapas por las que pasa un documento hasta su eliminación o conservación, no el conjunto de normas y órganos que gestionan los archivos.",
+    "1": "El expediente electrónico es el conjunto de documentos electrónicos de un procedimiento, no el conjunto de normas y órganos de gestión documental.",
+    "2": "El documento electrónico es la información en forma electrónica susceptible de identificación y tratamiento, no el conjunto de normas y órganos de gestión.",
+    "3": "El sistema archivístico es precisamente el conjunto de normas reguladoras, así como de órganos, centros y servicios competentes en la gestión eficaz de los documentos y de los archivos."
+  },
+  "estilo": "boletin"
+}

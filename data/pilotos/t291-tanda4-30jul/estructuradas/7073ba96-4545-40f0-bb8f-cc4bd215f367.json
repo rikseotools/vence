@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.2",
+    "texto": "El estado de alarma será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso de los Diputados, reunido inmediatamente al efecto y sin cuya autorización no podrá ser prorrogado dicho plazo. El decreto determinará el ámbito territorial a que se extienden los efectos de la declaración."
+  },
+  "intro": "El artículo 116.2 CE describe con detalle el procedimiento íntegro de declaración del estado de alarma.",
+  "options": {
+    "0": "El plazo máximo inicial del estado de alarma es de quince días, no de treinta; treinta días es el límite máximo previsto para el estado de excepción, no para la alarma inicial.",
+    "1": "Esa descripción, con autorización previa del Congreso y un plazo de treinta días prorrogable, corresponde al procedimiento del estado de excepción, no al del estado de alarma.",
+    "2": "El estado de alarma no requiere autorización previa del Congreso para su declaración, solo darle cuenta; la autorización previa y el plazo de quince días prorrogables por igual plazo corresponden al estado de excepción.",
+    "3": "El estado de alarma se declara por el Gobierno mediante decreto en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso, reunido inmediatamente y sin cuya autorización no podrá prorrogarse ese plazo, determinando el decreto el ámbito territorial de sus efectos, tal y como recoge literalmente el artículo 116.2."
+  },
+  "estilo": "boletin"
+}

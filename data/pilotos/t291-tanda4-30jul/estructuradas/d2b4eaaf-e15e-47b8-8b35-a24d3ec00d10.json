@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.2",
+    "texto": "Las Administraciones Públicas se relacionarán entre sí y con sus órganos, organismos públicos y entidades vinculados o dependientes a través de medios electrónicos, que aseguren la interoperabilidad y seguridad de los sistemas y soluciones adoptadas por cada una de ellas"
+  },
+  "intro": "El artículo fija el cauce obligatorio a través del cual se relacionan entre sí las Administraciones Públicas y sus organismos y entidades dependientes.",
+  "options": {
+    "0": "Es la respuesta correcta: el precepto exige expresamente que la relación se produzca a través de este cauce.",
+    "1": "No se menciona en el artículo; es un medio que no garantiza la interoperabilidad y seguridad que exige el precepto.",
+    "2": "No se menciona en el artículo; no cumple los requisitos de interoperabilidad y seguridad que exige el precepto.",
+    "3": "No es correcta: el artículo no deja la elección abierta a cualquier medio, sino que exige específicamente el cauce citado."
+  },
+  "estilo": "boletin"
+}

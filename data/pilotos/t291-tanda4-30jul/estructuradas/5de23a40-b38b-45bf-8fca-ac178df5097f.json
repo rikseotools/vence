@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "es aquel capaz de **adaptar los elementos de la página web a pantallas de diferentes tamaños y formatos**" },
+  "intro": "El diseño web adaptativo describe cómo se comporta una página web frente a distintos dispositivos de visualización.",
+  "options": {
+    "0": "Describe el uso de chats en línea para asistir a los usuarios, no el diseño responsive.",
+    "1": "Describe el reconocimiento de voz para navegar mediante dictado, una tecnología distinta del diseño adaptativo.",
+    "2": "El diseño web adaptativo ('responsive') adapta los elementos de la página a pantallas de diferentes tamaños y formatos.",
+    "3": "Describe las recomendaciones de accesibilidad para usuarios con discapacidad, un concepto relacionado pero distinto del diseño responsive."
+  },
+  "estilo": "boletin"
+}

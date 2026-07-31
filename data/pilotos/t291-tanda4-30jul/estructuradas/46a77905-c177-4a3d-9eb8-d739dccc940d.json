@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.3",
+    "texto": "previa autorización del Congreso de los Diputados."
+  },
+  "intro": "El artículo 116.3 CE precisa qué órgano concreto autoriza la declaración del estado de excepción y en qué momento debe intervenir.",
+  "options": {
+    "0": "El Gobierno no se limita a dar cuenta al Congreso en el estado de excepción; ese trámite, más ligero, corresponde al estado de alarma.",
+    "1": "La autorización no la presta «las Cortes Generales» como conjunto, sino específicamente el Congreso de los Diputados.",
+    "2": "El estado de excepción no lo declara el Congreso a propuesta del Gobierno; esa es la fórmula prevista para el estado de sitio.",
+    "3": "Es la correcta porque el procedimiento exacto no aparece enunciado en ninguna alternativa: el estado de excepción lo declara el Gobierno mediante decreto acordado en Consejo de Ministros, y con autorización previa del Congreso de los Diputados —no de las Cortes Generales en su conjunto, ni por declaración directa de la Cámara."
+  },
+  "estilo": "boletin"
+}

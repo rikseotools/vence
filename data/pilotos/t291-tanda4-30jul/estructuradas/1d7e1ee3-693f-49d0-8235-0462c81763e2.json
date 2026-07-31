@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "**SOLARIS** es un sistema operativo, **no un sistema de archivos**." },
+  "intro": "Un sistema de archivos es la estructura que organiza y almacena datos en un disco, algo distinto de un sistema operativo.",
+  "options": {
+    "0": "FAT32 es un sistema de archivos ampliamente usado en dispositivos USB y tarjetas de memoria.",
+    "1": "NTFS es el sistema de archivos principal de Windows, con soporte para permisos, cifrado y archivos de gran tamaño.",
+    "2": "ext2 es un sistema de archivos de Linux, utilizado en particiones de ese sistema operativo.",
+    "3": "SOLARIS es un sistema operativo desarrollado por Sun Microsystems, no un sistema de archivos."
+  },
+  "estilo": "boletin"
+}

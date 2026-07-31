@@ -1,0 +1,10 @@
+{
+  "intro": "El panel de navegación del Explorador de archivos permite desplegar la estructura de carpetas sin necesidad de abrir cada una en una ventana.",
+  "options": {
+    "0": "Extender particiones de disco es una función del Administrador de discos, no de la opción Expandir del menú contextual.",
+    "1": "La opción Expandir despliega el árbol de subcarpetas contenidas dentro de la carpeta seleccionada, sin abrir una nueva ventana.",
+    "2": "Abrir la Administración de discos se hace desde el Menú WinX u otras vías, no con la opción Expandir de una carpeta.",
+    "3": "Abrir una nueva ventana del Explorador con esa carpeta se consigue con la opción «Abrir en nueva ventana», no con Expandir."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 1/1983 CM, art. 36.1",
+    "texto": "la Asamblea podrá delegar en el Consejo de Gobierno la potestad de dictar normas con rango de Ley, denominadas Decretos legislativos"
+  },
+  "intro": "Se pregunta cómo se denominan las normas con rango de ley que dicta el Consejo de Gobierno de Madrid por delegación de la Asamblea.",
+  "options": {
+    "0": "Cuando la Asamblea delega en el Consejo de Gobierno la potestad de dictar normas con rango de ley, estas se denominan precisamente Decretos legislativos.",
+    "1": "Los Decretos-leyes responden a razones de extraordinaria y urgente necesidad, no a una delegación de la Asamblea.",
+    "2": "Los Reales Decretos son normas reglamentarias del Gobierno de la Nación, no normas con rango de ley de una Comunidad Autónoma.",
+    "3": "Los Decretos sin más son normas reglamentarias del Consejo de Gobierno que desarrollan las leyes, por lo que no tienen rango de ley."
+  },
+  "estilo": "boletin"
+}

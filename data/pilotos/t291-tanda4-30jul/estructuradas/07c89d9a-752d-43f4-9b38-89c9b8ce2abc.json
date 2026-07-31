@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "LOTC, art. 79.Uno",
+    "texto": "Son susceptibles de recurso de inconstitucionalidad, con carácter previo, los Proyectos de Estatutos de Autonomía y las propuestas de reforma de los mismos."
+  },
+  "intro": "El artículo determina de forma expresa qué textos pueden ser objeto del recurso previo de inconstitucionalidad.",
+  "options": {
+    "0": "No es correcto: el artículo no somete al recurso previo a los proyectos de leyes en general.",
+    "1": "No es correcto: el artículo no somete al recurso previo a los proyectos de reforma de leyes en general.",
+    "2": "No es correcto: el artículo no somete al recurso previo a las Leyes Orgánicas ya aprobadas.",
+    "3": "Coincide de forma literal con lo dispuesto en el artículo."
+  },
+  "estilo": "boletin"
+}

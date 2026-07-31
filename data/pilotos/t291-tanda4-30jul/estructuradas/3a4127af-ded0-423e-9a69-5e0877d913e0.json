@@ -1,0 +1,11 @@
+{
+  "intro": "Se pregunta qué ocurre al enviar por correo electrónico un fichero de un formato específico (como un .psd de Photoshop) en cuanto a la necesidad de tener un programa que lo abra.",
+  "options": {
+    "0": "El correo electrónico no exige tener el programa correspondiente ni para enviar ni para recibir el adjunto; el archivo viaja como datos adjuntos con independencia de quién pueda abrirlo, así que restringir esa exigencia solo al envío no se corresponde con cómo funciona el adjunto.",
+    "1": "El envío y la recepción de un adjunto de correo no requieren tener instalado el programa que lo abre; ese programa solo hace falta para visualizar o editar el contenido del fichero una vez recibido, no para transmitirlo.",
+    "2": "Tampoco es necesario tener el programa para recibirlo: el adjunto llega igualmente al buzón del destinatario aunque este no disponga de un programa que lo abra; lo único que no podrá hacer sin él es visualizar su contenido.",
+    "3": "Tanto el envío como la recepción de un adjunto de correo electrónico son independientes de que emisor o receptor dispongan de un programa que permita abrir ese formato de archivo; el adjunto se transmite igualmente y solo hace falta el programa adecuado para abrirlo y visualizar su contenido.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

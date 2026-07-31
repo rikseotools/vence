@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.4",
+    "texto": "actúa para el cumplimiento de sus fines con personalidad jurídica única."
+  },
+  "intro": "El artículo precisa el tipo de personalidad jurídica con la que actúa cada Administración Pública para el cumplimiento de sus fines.",
+  "options": {
+    "0": "No es correcto: el artículo no emplea este término, que induce a confusión con la personalidad única que sí atribuye.",
+    "1": "Coincide de forma literal con el precepto: cada Administración actúa con esta personalidad jurídica.",
+    "2": "No es correcto: este término, propio del Derecho de obligaciones, no aparece en el artículo.",
+    "3": "No es correcto: el artículo no emplea este término para referirse a la personalidad jurídica de las Administraciones."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,10 @@
+{
+  "intro": "La opción para marcar de una sola vez todos los mensajes de una carpeta como leídos se agrupa junto con el resto de comandos de gestión de esa carpeta.",
+  "options": {
+    "0": "Enviar y recibir agrupa las opciones de sincronización y descarga de correo, no el marcado de mensajes como leídos.",
+    "1": "Archivo da acceso a la configuración de cuentas y a las opciones generales, no a marcar mensajes como leídos.",
+    "2": "Carpeta agrupa los comandos de gestión de la carpeta activa, entre ellos marcar todos sus mensajes como leídos.",
+    "3": "Vista gestiona la apariencia y disposición del correo, no el estado de lectura de los mensajes."
+  },
+  "estilo": "boletin"
+}

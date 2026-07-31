@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1",
+    "texto": "con sometimiento pleno a la Constitución, a la Ley y al Derecho."
+  },
+  "intro": "El artículo cierra el enunciado de principios de actuación fijando a qué se somete plenamente la actuación administrativa.",
+  "options": {
+    "0": "Coincide de forma literal con el precepto: sometimiento pleno a la Constitución, a la Ley y al Derecho.",
+    "1": "No es correcta: sustituye la referencia a la Ley y al Derecho por el principio de legalidad, expresión que no emplea el artículo.",
+    "2": "No es correcta: omite la referencia expresa a la Constitución, que el artículo sí menciona en primer lugar.",
+    "3": "No es correcta: el artículo habla de sometimiento a \"la Ley\" (en singular) y al Derecho, no de sometimiento a \"las leyes\" en plural."
+  },
+  "estilo": "boletin"
+}

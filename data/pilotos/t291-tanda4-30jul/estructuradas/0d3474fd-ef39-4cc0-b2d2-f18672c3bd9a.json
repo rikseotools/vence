@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 39/2015, art. 31.2.a)",
+    "texto": "Permitirá la presentación de documentos todos los días del año durante las veinticuatro horas."
+  },
+  "intro": "La pregunta se refiere a las reglas de funcionamiento del registro electrónico que fija la ley.",
+  "options": {
+    "0": "Restringir la presentación al horario de apertura del registro es propio de las oficinas de asistencia presencial, no del registro electrónico, que funciona de forma ininterrumpida.",
+    "1": "Limitar la presentación a los días hábiles contradice la regla, ya que el registro electrónico admite documentos también en días inhábiles (con otro efecto sobre el cómputo, pero se admiten).",
+    "2": "No existe ninguna franja horaria de 9:00 a 23:00 para el registro electrónico; funciona las veinticuatro horas.",
+    "3": "El registro electrónico permite presentar documentos todos los días del año durante las veinticuatro horas, sin interrupción."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "La pestaña **Seguridad** permite visualizar y administrar los permisos de usuario." },
+  "intro": "El cuadro de Propiedades de un archivo o carpeta en el Explorador de archivos reparte su información en varias pestañas.",
+  "options": {
+    "0": "La pestaña General muestra tipo de archivo, ubicación, tamaño y fechas, pero no los permisos de usuario.",
+    "1": "Versiones anteriores muestra las copias de seguridad y puntos de restauración del archivo, no los permisos.",
+    "2": "La pestaña Seguridad muestra y permite administrar los permisos de acceso de usuarios y grupos sobre el objeto.",
+    "3": "Detalles muestra metadatos del archivo (autor, dimensiones, codificación, etc.), no los permisos de acceso."
+  },
+  "estilo": "boletin"
+}

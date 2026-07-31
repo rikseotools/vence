@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1.b",
+    "texto": "Simplicidad, claridad y proximidad a los ciudadanos."
+  },
+  "intro": "Se pide identificar cuál de las opciones NO es un principio que enumera literalmente el artículo 3.1 de la Ley 40/2015.",
+  "options": {
+    "0": "Sí figura expresamente en el artículo, como principio de buena fe, confianza legítima y lealtad institucional.",
+    "1": "Sí figura expresamente en el artículo, como principio de servicio efectivo a los ciudadanos.",
+    "2": "Sí figura expresamente en el artículo, como principio de responsabilidad por la gestión pública.",
+    "3": "No coincide con el precepto: el artículo habla de proximidad a los ciudadanos (no de cercanía) y de cooperación, colaboración y coordinación entre Administraciones Públicas (no con los ciudadanos), por lo que es la respuesta buscada."
+  },
+  "estilo": "boletin"
+}

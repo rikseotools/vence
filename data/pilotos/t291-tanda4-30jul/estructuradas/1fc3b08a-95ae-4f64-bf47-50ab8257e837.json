@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "| **F5** | Actualizar/refrescar la ventana activa |" },
+  "intro": "Windows 11 tiene una tecla universal para actualizar el contenido mostrado en la ventana con la que se está trabajando.",
+  "options": {
+    "0": "F5 actualiza o refresca el contenido de la ventana activa, ya sea en el Explorador, en un navegador o en el escritorio.",
+    "1": "Ctrl + X corta el elemento seleccionado al portapapeles; no actualiza la ventana.",
+    "2": "Alt + F4 cierra la ventana o aplicación activa; no la refresca.",
+    "3": "Ctrl + Alt + Tabulador muestra las ventanas abiertas para seleccionar con las flechas del teclado; no actualiza la ventana."
+  },
+  "estilo": "boletin"
+}

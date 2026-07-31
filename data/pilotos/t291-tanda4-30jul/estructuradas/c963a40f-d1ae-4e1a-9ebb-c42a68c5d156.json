@@ -1,0 +1,10 @@
+{
+  "intro": "El Preámbulo de la Constitución de 1978 distingue a los distintos actores que intervinieron en su elaboración y aprobación: quién la redactó, quién la aprobó y quién la ratificó finalmente.",
+  "options": {
+    "0": "Fue el pueblo español quien ratificó la Constitución mediante el referéndum del 6 de diciembre de 1978, tal como recoge el propio Preámbulo.",
+    "1": "Las Cortes Generales aprobaron el texto constitucional, pero aprobar y ratificar son actos distintos; la ratificación correspondió al pueblo español.",
+    "2": "El Gobierno no interviene en la ratificación constitucional, que corresponde al pueblo español mediante referéndum.",
+    "3": "El Rey sancionó y promulgó la Constitución una vez ratificada, pero la ratificación en sí fue obra del pueblo español."
+  },
+  "estilo": "boletin"
+}

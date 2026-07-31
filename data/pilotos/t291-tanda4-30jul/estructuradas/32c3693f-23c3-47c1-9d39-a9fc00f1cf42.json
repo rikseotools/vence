@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Estatuto de Autonomía de la Región de Murcia, art. 27.4",
+    "texto": "El Presidente no podrá acordar la disolución de la Asamblea durante el primer período de sesiones de la legislatura, cuando reste menos de un año para su terminación, ni cuando se encuentre en tramitación una moción de censura."
+  },
+  "intro": "Se pregunta por uno de los supuestos en los que el Presidente no puede acordar la disolución anticipada de la Asamblea Regional de Murcia.",
+  "options": {
+    "0": "El precepto habla de que esté en tramitación una moción de censura, no una moción de confianza.",
+    "1": "El precepto impide la disolución cuando reste menos de un año para la terminación de la legislatura, no cuando haya transcurrido menos de un año desde su constitución.",
+    "2": "La elección de Presidente de la Comunidad no figura entre los supuestos que impiden la disolución anticipada de la Asamblea recogidos en este apartado.",
+    "3": "El precepto impide expresamente la disolución durante el primer período de sesiones de la legislatura."
+  },
+  "estilo": "boletin"
+}

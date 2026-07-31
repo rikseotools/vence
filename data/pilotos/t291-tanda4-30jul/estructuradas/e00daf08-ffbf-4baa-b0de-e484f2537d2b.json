@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.4",
+    "texto": "El Congreso determinará su ámbito territorial, duración y condiciones."
+  },
+  "intro": "El artículo 116.4 CE regula el estado de sitio de forma distinta a los otros dos estados excepcionales, sin fijar un plazo máximo constitucional para él.",
+  "options": {
+    "0": "La Constitución no fija quince días para el estado de sitio; ese plazo corresponde al estado de alarma.",
+    "1": "Es el propio Congreso, al declarar el estado de sitio, quien fija su duración y sus condiciones, sin un límite temporal establecido en el artículo.",
+    "2": "No existe un plazo fijo de quince días para el estado de sitio: su duración la determina el Congreso, no la Constitución.",
+    "3": "La duración del estado de sitio no la decide el Gobierno, sino el Congreso de los Diputados, que es quien lo declara."
+  },
+  "estilo": "boletin"
+}

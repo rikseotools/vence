@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 7",
+    "texto": "conjunto de equipos o dispositivos conectados entre sí mediante cables, señales y ondas, cuya finalidad es transportar datos"
+  },
+  "intro": "Se pregunta cómo se denomina a un grupo de ordenadores conectados entre sí.",
+  "options": {
+    "0": "Un conjunto de equipos o dispositivos conectados entre sí para transportar datos es precisamente lo que se denomina red informática.",
+    "1": "Un lenguaje de programación es un conjunto de instrucciones para escribir software, no un grupo de ordenadores conectados.",
+    "2": "Un protocolo de comunicación son las reglas de transmisión de datos, no un grupo de ordenadores conectados.",
+    "3": "Un algoritmo informático es una secuencia de pasos para resolver un problema, no un grupo de ordenadores conectados."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "La Red Internet, art. 6", "texto": "Cuando en Windows se configura \"obtención automática de dirección IP\", se está usando el servicio DHCP." },
+  "intro": "El servicio que asigna automáticamente direcciones IP a los equipos de una red local tiene un nombre propio, distinto de otros protocolos habituales de Internet.",
+  "options": {
+    "0": "DHCP es el servicio que permite la obtención automática de direcciones IP en una red local, que es justo lo que describe el enunciado.",
+    "1": "TTL es un campo de los paquetes IP que limita su tiempo de vida en la red, no un servicio de asignación de direcciones.",
+    "2": "HTTPS es el protocolo de comunicación cifrada entre navegador y servidor web, ajeno a la asignación de direcciones IP.",
+    "3": "AUTOIP no es el servicio que interviene aquí; la obtención automática de direcciones IP en Windows se llama DHCP."
+  },
+  "estilo": "boletin"
+}

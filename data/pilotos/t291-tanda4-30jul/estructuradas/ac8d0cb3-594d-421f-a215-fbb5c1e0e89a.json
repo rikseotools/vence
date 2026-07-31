@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Excel 365, art. 90",
+    "texto": "`=CONCAT(B5;C5)` → `\"Número:215\"` si B5=\"Número:\" y C5=215."
+  },
+  "intro": "Se pregunta qué fórmula produce en D5 el resultado 'Número:215' a partir del texto de B5 y el número de C5.",
+  "options": {
+    "0": "IGUAL compara si dos valores son idénticos y devuelve VERDADERO o FALSO; no une el contenido de dos celdas.",
+    "1": "SUMA opera con valores numéricos; al incluir una celda de texto como B5, produciría un error en lugar de unir los contenidos.",
+    "2": "El operador + es aritmético y no puede combinarse con una celda de texto como B5 para producir esa cadena.",
+    "3": "CONCAT une el contenido de las celdas indicadas como texto, por lo que con B5=\"Número:\" y C5=215 produce exactamente 'Número:215'."
+  },
+  "estilo": "boletin"
+}

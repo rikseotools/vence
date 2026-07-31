@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.3",
+    "texto": "Bajo la dirección del Gobierno de la Nación, de los órganos de gobierno de las Comunidades Autónomas y de los correspondientes de las Entidades Locales, la actuación de la Administración Pública respectiva se desarrolla para alcanzar los objetivos que establecen las leyes y el resto del ordenamiento jurídico."
+  },
+  "intro": "El artículo señala expresamente bajo qué dirección se desarrolla la actuación de cada Administración Pública para alcanzar los objetivos fijados por el ordenamiento jurídico.",
+  "options": {
+    "0": "Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa.",
+    "1": "Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa.",
+    "2": "No aparece en el precepto: las entidades de derecho privado vinculadas o dependientes son instrumentos dirigidos por las Administraciones, no órganos que dirijan su actuación, por lo que es la respuesta buscada.",
+    "3": "Aparece expresamente citado como uno de los tres niveles de dirección de la actuación administrativa."
+  },
+  "estilo": "boletin"
+}

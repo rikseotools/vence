@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "RD 366/2007, art. 5.2.c)", "texto": "Junto a la entrada principal, preferiblemente a la derecha de la puerta, un cartel indicará, en su caso, el número y letra del portal, además del uso, en casos de edificios de interés general." },
+  "intro": "El artículo 5 del RD 366/2007 recoge varias recomendaciones de accesibilidad para el acceso a las Oficinas de Atención al Ciudadano; una de las opciones altera uno de esos datos concretos.",
+  "options": {
+    "0": "Esta afirmación reproduce fielmente la recomendación sobre continuidad del suelo y elementos enrasados con el pavimento.",
+    "1": "Esta afirmación reproduce fielmente la recomendación sobre accesibilidad de intercomunicadores y sistemas de aviso o llamada.",
+    "2": "El cartel con el número y letra del portal se sitúa preferiblemente a la derecha de la puerta, no a la izquierda como dice esta afirmación, por lo que es la incorrecta.",
+    "3": "Esta afirmación reproduce fielmente la recomendación sobre el espacio adyacente horizontal y sin obstáculos junto a la puerta."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "LO 3/1981, art. 2.Uno",
+    "texto": "El Defensor del Pueblo será elegido por las Cortes Generales para un periodo de cinco años"
+  },
+  "intro": "Se pregunta por la duración del mandato para el que las Cortes Generales eligen al Defensor del Pueblo.",
+  "options": {
+    "0": "El artículo fija expresamente un periodo de cinco años para el mandato del Defensor del Pueblo.",
+    "1": "Cuatro años no es la duración que establece el artículo para el mandato del Defensor del Pueblo.",
+    "2": "Veinticuatro meses (dos años) no corresponde a la duración fijada por el artículo, que es sensiblemente mayor.",
+    "3": "Diez años excede la duración que fija el artículo para el mandato del Defensor del Pueblo.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

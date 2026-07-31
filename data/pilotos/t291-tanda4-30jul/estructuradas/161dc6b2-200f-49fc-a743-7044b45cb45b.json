@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "RDL 1/2013, art. 23.1",
+    "texto": "El Gobierno, sin perjuicio de las competencias atribuidas a las comunidades autónomas y a las entidades locales, regulará las condiciones básicas de accesibilidad y no discriminación que garanticen los mismos niveles de igualdad de oportunidades a todas las personas con discapacidad."
+  },
+  "intro": "Se pregunta qué órgano tiene la competencia para regular las condiciones básicas de accesibilidad y no discriminación de las personas con discapacidad.",
+  "options": {
+    "0": "El Congreso de los Diputados es una de las cámaras del poder legislativo, pero la norma atribuye esta competencia al Gobierno, no al Congreso.",
+    "1": "El Senado es la otra cámara legislativa y tampoco es el órgano al que la norma atribuye esta competencia.",
+    "2": "El Gobierno es el órgano al que la norma atribuye expresamente la regulación de estas condiciones básicas, sin perjuicio de las competencias autonómicas y locales.",
+    "3": "Las Cortes Generales representan al conjunto del poder legislativo, pero esta regulación corresponde al Gobierno por vía reglamentaria, no a las Cortes."
+  },
+  "estilo": "boletin"
+}

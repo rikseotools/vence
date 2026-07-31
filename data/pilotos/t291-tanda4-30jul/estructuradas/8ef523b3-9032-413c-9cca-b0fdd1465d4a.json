@@ -1,0 +1,10 @@
+{
+  "intro": "La herramienta Contar palabras de Word ofrece un conjunto concreto de estadísticas sobre el documento, más amplio que el simple recuento de palabras de la barra de estado.",
+  "options": {
+    "0": "Word no contabiliza \"objetos\" como estadística de este recuento, y en cambio sí incluye los caracteres con y sin espacios, que esta opción omite.",
+    "1": "Contar palabras muestra páginas, palabras, caracteres con y sin espacios, párrafos y líneas: el conjunto completo de estadísticas que ofrece esta herramienta.",
+    "2": "El recuento no se limita al encabezado; abarca todo el documento, por lo que restringirlo así no es correcto.",
+    "3": "Contar palabras no incluye \"caracteres especiales\" ni \"fórmulas\" entre sus estadísticas."
+  },
+  "estilo": "boletin"
+}

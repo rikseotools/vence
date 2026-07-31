@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "**OneDrive** es un servicio de almacenamiento en la nube, **NO una herramienta de accesibilidad**." },
+  "intro": "Windows agrupa bajo Accesibilidad una serie de funciones para facilitar el uso del sistema a personas con necesidades específicas.",
+  "options": {
+    "0": "La Lupa amplía partes de la pantalla y sí es una ayuda de accesibilidad visual.",
+    "1": "El Narrador es el lector de pantalla integrado y sí está clasificado como ayuda de accesibilidad.",
+    "2": "OneDrive es un servicio de almacenamiento y sincronización en la nube, no una ayuda de accesibilidad.",
+    "3": "Los subtítulos automáticos en tiempo real sí son una función de accesibilidad para personas con dificultades auditivas."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Excel 365, art. 20", "texto": "Para referenciar una celda o rango de otra hoja del mismo libro se usa el signo de exclamación (`!`) como separador:" },
+  "intro": "Para traer a una celda el valor de otra hoja, la fórmula debe indicar la hoja de origen y la celda de origen, y escribirse en la celda de destino.",
+  "options": {
+    "0": "La fórmula =Hoja1!A1 apunta a la propia Hoja1, no a la Hoja2 donde está el dato que se quiere copiar; además crearía una referencia circular al escribirse en esa misma celda.",
+    "1": "Aunque cita la Hoja1, esta fórmula se coloca en la Hoja2 y aun así no señala a la Hoja2, sino a la propia Hoja1; ni la celda ni la hoja de destino son las correctas.",
+    "2": "La hoja de origen es la correcta (Hoja2), pero la celda referenciada es A1, no A2, que es donde está el valor que se quiere traer.",
+    "3": "La fórmula indica la hoja de origen (Hoja2) y la celda de origen (A2) tal como exige la sintaxis NombreHoja!Referencia, y se introduce en la celda de destino, A1 de Hoja1."
+  },
+  "estilo": "boletin"
+}

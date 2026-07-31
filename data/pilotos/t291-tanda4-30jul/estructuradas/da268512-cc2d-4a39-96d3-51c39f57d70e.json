@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Excel 365, art. 70", "texto": "**Tipo \"Líneas\"** NO existe en el formato condicional. No es un tipo de regla disponible." },
+  "intro": "El menú de Formato condicional de Excel ofrece un conjunto cerrado de tipos de regla visual, y solo uno de ellos no forma parte de esa lista.",
+  "options": {
+    "0": "Las barras de datos sí están disponibles en el formato condicional; muestran una barra proporcional al valor dentro de cada celda.",
+    "1": "Las escalas de color sí están disponibles; aplican un degradado de color según el valor de cada celda.",
+    "2": "\"Líneas\" no existe como tipo de regla del formato condicional; ese elemento gráfico no forma parte de las opciones disponibles.",
+    "3": "Los conjuntos de iconos sí están disponibles; muestran un icono en la celda según el rango en que se encuentre su valor."
+  },
+  "estilo": "boletin"
+}

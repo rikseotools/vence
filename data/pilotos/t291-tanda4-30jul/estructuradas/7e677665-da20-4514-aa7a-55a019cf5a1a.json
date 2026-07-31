@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Informática Básica, art. 1",
+    "texto": "es un número binario de **4 octetos** (32 bits) que identifica a una interfaz en red de un dispositivo que utiliza el protocolo IPv4."
+  },
+  "intro": "El artículo define de forma expresa qué es una dirección IPv4 dentro del apartado dedicado a redes e Internet.",
+  "options": {
+    "0": "No es correcto: 64 bits corresponde a parte del espacio de direccionamiento de IPv6, no al tamaño de una dirección IPv4.",
+    "1": "No es correcto: esa descripción corresponde a una dirección MAC (y, además, con un número de bits distinto), no a una dirección IPv4.",
+    "2": "No es correcto: esa descripción corresponde a una dirección MAC, no a una dirección IPv4.",
+    "3": "Coincide de forma literal con la definición del artículo."
+  },
+  "estilo": "boletin"
+}

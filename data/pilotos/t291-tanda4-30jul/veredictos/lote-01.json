@@ -1,0 +1,200 @@
+[
+  {
+    "question_id": "56c32e28-d91d-4e66-aabf-6ddb7b6b950b",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "46a77905-c177-4a3d-9eb8-d739dccc940d",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "540c1a78-51af-422c-859e-5b081fe8fb2c",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "f32bd482-be64-45c1-9d22-8414a6bdf9ec",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "e00daf08-ffbf-4baa-b0de-e484f2537d2b",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "b8651a40-6bbd-4252-a831-57b2c541bcf2",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "e316738c-867c-4036-b7f6-3bf21fd4d840",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "f75bc936-cced-42be-bfd5-5e18441078a6",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "79977f1f-0043-4ddd-a0c0-c7fdcd663a3d",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "c6d612ff-1e53-4fd7-b50c-9ea44a38d9e4",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "78d7d70e-6a7c-4def-a9be-a42f5da6a914",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "483fd85f-1b94-49cc-a815-cd26325c9890",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "ba97b479-24fc-4021-b91d-fed8890f4f08",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "82fc1102-3d16-409a-8744-94c76da57268",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "952edcf6-f451-489a-954d-76c0a5f6f97d",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "15707043-3a11-4b35-8d5b-1af1b986ab03",
+    "veredicto": "defecto_articulo",
+    "confianza": "media",
+    "notas": "La pregunta pide identificar la afirmación INCORRECTA entre cuatro supuestos en los que no procedería la disolución del Congreso. Dos de ellos (vigencia del estado de sitio y del estado de excepción) están cubiertos por el art. 116.5 CE, que prohíbe la disolución mientras estén declarados esos estados. Pero los otros dos (moción de censura en trámite y cuestión de confianza en trámite) dependen del art. 115 CE, que no está en el texto proporcionado: el art. 115.3 CE prohíbe presentar la propuesta de disolución cuando esté en trámite una moción de censura, pero no menciona la cuestión de confianza. El art. 116 no cubre este supuesto, así que no puede verificarse ni justificarse la clave (C) solo con el artículo entregado."
+  },
+  {
+    "question_id": "8a845f9c-446e-4094-9c73-27c14f170f99",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "fd256a85-2091-4732-8aa1-d2c26db9f4c6",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "aa61445a-bdb3-44a7-a540-557543dcd72e",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "7073ba96-4545-40f0-bb8f-cc4bd215f367",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "628c9736-eac8-4e91-8940-4cc1f9aeebd8",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "7e07a93d-ca13-4b08-a078-d6dd08f88a4a",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "bf8a4d53-f548-485b-bbfd-5b046d5874d9",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "67ec691e-2bfd-4654-b2bb-d0330ab8f682",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  },
+  {
+    "question_id": "0862d475-2e27-4aad-852b-63d456a98375",
+    "veredicto": "ok_estructurada",
+    "article_ok": true,
+    "answer_ok": true,
+    "options_ok": true,
+    "explanation_ok": true
+  }
+]

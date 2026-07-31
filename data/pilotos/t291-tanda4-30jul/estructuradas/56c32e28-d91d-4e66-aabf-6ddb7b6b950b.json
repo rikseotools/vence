@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.3",
+    "texto": "no podrá exceder de treinta días, prorrogables por otro plazo igual, con los mismos requisitos."
+  },
+  "intro": "El artículo 116 de la Constitución distingue distintos requisitos de intervención del Congreso según el estado excepcional y la fase, declaración o prórroga, de que se trate.",
+  "options": {
+    "0": "El estado de sitio no se autoriza: es el propio Congreso quien lo declara por mayoría absoluta a propuesta del Gobierno, sin un trámite previo de autorización.",
+    "1": "La prórroga del estado de excepción exige los mismos requisitos que su declaración inicial, es decir, la autorización previa del Congreso de los Diputados.",
+    "2": "La declaración del estado de alarma corresponde al Gobierno, que solo debe dar cuenta al Congreso; la autorización previa se exige para su prórroga, no para su declaración.",
+    "3": "No todos los supuestos exigen autorización previa del Congreso: la declaración del estado de alarma solo requiere dar cuenta, y el estado de sitio lo declara directamente el propio Congreso."
+  },
+  "estilo": "boletin"
+}

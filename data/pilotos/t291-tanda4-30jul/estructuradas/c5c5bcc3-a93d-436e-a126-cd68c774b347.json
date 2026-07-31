@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "**Win + E** (de «Explorer»)." },
+  "intro": "Windows 11 ofrece un atajo directo de teclado para abrir el Explorador de archivos sin usar el ratón.",
+  "options": {
+    "0": "Tecla Windows + E abre directamente el Explorador de archivos, independientemente de la aplicación en primer plano.",
+    "1": "Ctrl + O abre el cuadro de diálogo «Abrir archivo» dentro de una aplicación activa, no el Explorador del sistema.",
+    "2": "Tecla Windows + O bloquea la orientación de la pantalla en dispositivos táctiles; no abre el Explorador.",
+    "3": "Ctrl + E, dentro del propio Explorador, selecciona el cuadro de búsqueda; desde fuera no lo abre."
+  },
+  "estilo": "boletin"
+}

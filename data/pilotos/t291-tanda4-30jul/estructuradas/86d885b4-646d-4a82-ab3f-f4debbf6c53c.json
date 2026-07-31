@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Windows 10, art. 4",
+    "texto": "bloquea accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados"
+  },
+  "intro": "Se pregunta cuál es la función del cortafuegos o firewall en Windows 10.",
+  "options": {
+    "0": "Limitar su función a proteger solo contra spyware, gusanos y troyanos corresponde al antivirus, no describe la función del cortafuegos.",
+    "1": "Restringir su función solo a evitar el reenvío de copias por gusanos a través de los contactos describe apenas una consecuencia parcial, no la función del cortafuegos.",
+    "2": "Capturar y analizar el tráfico de red para auditorías de DNS es la función de un analizador de protocolos, no de un cortafuegos.",
+    "3": "El cortafuegos bloquea los accesos no autorizados a un ordenador mientras permite la comunicación con otros servicios autorizados, controlando el tráfico de red."
+  },
+  "estilo": "boletin"
+}

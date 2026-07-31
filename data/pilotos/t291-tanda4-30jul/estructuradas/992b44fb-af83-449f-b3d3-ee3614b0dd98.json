@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 9.2.h",
+    "texto": "Las pantallas deben de ser antirreflectantes y tener buen contraste."
+  },
+  "intro": "El artículo recoge recomendaciones para la configuración de las pantallas de información complementaria en puntos de información públicos no atendidos por personal.",
+  "options": {
+    "0": "Recoge fielmente esta exigencia de accesibilidad del artículo.",
+    "1": "El artículo no exige que las pantallas sean móviles ni transportables; exige que su ubicación sea accesible y localizable y que sus dimensiones sean adecuadas, no su movilidad.",
+    "2": "El artículo no establece que deban ser en blanco y negro o colores claros; exige buen contraste, que puede lograrse con diversas combinaciones cromáticas.",
+    "3": "No es correcta, porque una de las otras opciones no se corresponde con lo dispuesto en el artículo."
+  },
+  "estilo": "boletin"
+}

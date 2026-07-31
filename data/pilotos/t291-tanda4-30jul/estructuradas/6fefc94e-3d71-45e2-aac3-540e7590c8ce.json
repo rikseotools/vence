@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Informática Básica, art. 1",
+    "texto": "es una pequeña información enviada por un sitio web y almacenada en el navegador del usuario, de manera que el sitio web puede consultar la actividad previa del navegador."
+  },
+  "intro": "El artículo recoge de forma expresa la definición técnica del término empleado por los navegadores web.",
+  "options": {
+    "0": "Coincide de forma literal con la definición que ofrece el artículo.",
+    "1": "Describe un comportamiento propio de software malicioso instalado sin conocimiento del usuario, ajeno al concepto que define el artículo.",
+    "2": "Describe un dispositivo físico portátil, sin relación con el concepto que define el artículo.",
+    "3": "Describe modelos de negocio del comercio electrónico, sin relación con el concepto que define el artículo."
+  },
+  "estilo": "boletin"
+}

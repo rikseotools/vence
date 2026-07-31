@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1",
+    "texto": "Las Administraciones Públicas sirven con objetividad los intereses generales y actúan de acuerdo con los principios de eficacia, jerarquía, descentralización, desconcentración y coordinación, con sometimiento pleno a la Constitución, a la Ley y al Derecho."
+  },
+  "intro": "Se pide identificar cuál de los términos propuestos NO figura entre los principios de actuación que enumera el artículo 3 de la Ley 40/2015.",
+  "options": {
+    "0": "No aparece como tal entre los principios del artículo; el precepto sí recoge la participación, la objetividad y la transparencia, pero no emplea literalmente este término.",
+    "1": "Sí figura expresamente entre los principios recogidos en el artículo.",
+    "2": "Sí figura expresamente entre los principios recogidos en el artículo.",
+    "3": "Sí figura expresamente entre los principios recogidos en el artículo."
+  },
+  "estilo": "boletin"
+}

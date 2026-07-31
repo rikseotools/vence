@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 7/1985, art. 27.1",
+    "texto": "La delegación habrá de mejorar la eficiencia de la gestión pública, contribuir a eliminar duplicidades administrativas y ser acorde con la legislación de estabilidad presupuestaria y sostenibilidad financiera."
+  },
+  "intro": "Se pregunta si el Estado y las Comunidades Autónomas pueden delegar competencias en los municipios y bajo qué condiciones.",
+  "options": {
+    "0": "Exigir una disposición con rango de ley que precise el objeto y alcance no es la vía de delegación de competencias en municipios, que se rige por las condiciones que fija este artículo.",
+    "1": "Limitar la delegación solo a que no suponga duplicidad de competencias no recoge todos los requisitos que exige la norma para delegar.",
+    "2": "Negar en todo caso la posibilidad de delegación es incorrecto, porque la norma sí permite delegar cumpliendo determinadas condiciones.",
+    "3": "La delegación es posible siempre que mejore la eficiencia de la gestión pública, contribuya a eliminar duplicidades administrativas y sea acorde con la legislación de estabilidad presupuestaria y sostenibilidad financiera."
+  },
+  "estilo": "boletin"
+}

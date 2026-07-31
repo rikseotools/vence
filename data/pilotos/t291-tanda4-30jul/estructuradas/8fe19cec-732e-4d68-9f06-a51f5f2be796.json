@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "es el servicio integrado en Windows 11 que mantiene el sistema operativo actualizado de forma automática, descargando e instalando" },
+  "intro": "Windows Update es el servicio de Windows 11 dedicado a mantener el sistema al día con las novedades de Microsoft.",
+  "options": {
+    "0": "Windows Update descarga e instala parches de seguridad y mejoras, y permite configurar horas activas o pausar las actualizaciones.",
+    "1": "La fecha y la hora del sistema se configuran en Hora e idioma, no en Windows Update.",
+    "2": "Los eventos y citas se gestionan desde la aplicación Calendario o Correo, no desde Windows Update.",
+    "3": "Las compras de productos Microsoft se realizan en Microsoft Store, no en Windows Update."
+  },
+  "estilo": "boletin"
+}

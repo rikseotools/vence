@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.2",
+    "texto": "por un plazo máximo de quince días"
+  },
+  "intro": "El artículo 116.2 CE fija el límite temporal inicial del estado de alarma, sin perjuicio de su posible prórroga.",
+  "options": {
+    "0": "El plazo máximo inicial no es de diez días; el artículo fija quince días para el estado de alarma.",
+    "1": "El estado de alarma no podrá tener una duración inicial superior a quince días, según el artículo 116.2, sin perjuicio de la prórroga que pueda acordarse.",
+    "2": "El plazo máximo inicial no es de veinte días; el artículo fija quince días para el estado de alarma.",
+    "3": "El plazo máximo inicial no es de treinta días; ese es el límite previsto para el estado de excepción, no para el de alarma."
+  },
+  "estilo": "boletin"
+}

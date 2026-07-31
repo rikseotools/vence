@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Informática Básica, art. 1",
+    "texto": "se utiliza para recibir o transferir correos desde servidores remotos de archivos."
+  },
+  "intro": "El artículo indica de forma expresa cuál de los protocolos de red citados es el que sirve para este fin.",
+  "options": {
+    "0": "Coincide con lo indicado en el artículo: este protocolo se utiliza precisamente para recibir o transferir correo desde servidores remotos.",
+    "1": "No guarda relación con el correo electrónico: traduce nombres de dominio en direcciones IP.",
+    "2": "No guarda relación con el correo electrónico: se emplea para solicitar páginas web.",
+    "3": "No guarda relación con el correo electrónico: resuelve direcciones IP en direcciones MAC dentro de redes locales."
+  },
+  "estilo": "boletin"
+}

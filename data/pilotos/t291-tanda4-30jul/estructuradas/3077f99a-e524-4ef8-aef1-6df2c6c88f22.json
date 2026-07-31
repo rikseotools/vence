@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Excel 365, art. 10",
+    "texto": "con tres celdas seleccionadas con valores 5, 10, 15, arrastrando se obtiene 20, 25…"
+  },
+  "intro": "Se pregunta qué ocurre al seleccionar tres celdas con una serie numérica (5, 10, 15) y arrastrar el controlador de relleno a las dos celdas vacías siguientes en Excel 365.",
+  "options": {
+    "0": "Mostrar la suma en la primera celda inferior y dejar la otra en blanco no corresponde al comportamiento de relleno de series de Excel 365.",
+    "1": "Excel 365 detecta el incremento de +5 entre los valores seleccionados y continúa la serie con 20 en la primera celda y 25 en la segunda.",
+    "2": "Las celdas no quedan vacías: Excel 365 las rellena automáticamente al detectar el patrón de la serie.",
+    "3": "Excel 365 no suma los valores seleccionados al arrastrar el controlador de relleno; continúa la serie aritmética."
+  },
+  "estilo": "boletin"
+}

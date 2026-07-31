@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "Al hacer **clic derecho sobre el botón de Inicio** de Windows 11 (o pulsar **Win + X**) se abre el **menú de enlaces rápidos**, también llamado **Menú WinX**" },
+  "intro": "El botón de Inicio de Windows 11 tiene un comportamiento distinto según se pulse con el botón izquierdo o el derecho del ratón.",
+  "options": {
+    "0": "El clic derecho sobre el icono de Inicio abre el Menú WinX, con accesos directos a herramientas de configuración y administración del sistema.",
+    "1": "El Explorador de archivos se abre con Win+E o desde la barra de tareas, no mediante clic derecho en Inicio.",
+    "2": "Cortana se activa desde la barra de búsqueda, no mediante clic derecho en el icono de Inicio.",
+    "3": "Microsoft Edge tiene su propio icono en la barra de tareas; el clic derecho en Inicio no lo abre."
+  },
+  "estilo": "boletin"
+}

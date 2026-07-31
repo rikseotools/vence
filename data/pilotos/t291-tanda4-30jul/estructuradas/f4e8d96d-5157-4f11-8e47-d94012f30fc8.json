@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "La opción **\"Mover a\"** en el Explorador traslada el archivo a otra ubicación sin dejar copia en el origen." },
+  "intro": "El Explorador de archivos ofrece varias opciones para gestionar la ubicación de un archivo, cada una con un resultado distinto.",
+  "options": {
+    "0": "«Mover a» traslada el archivo a otra ubicación sin dejar copia en la carpeta de origen.",
+    "1": "«Copiar a» duplica el archivo, de modo que el original permanece en el origen.",
+    "2": "«Fácil acceso» sirve para anclar la carpeta al acceso rápido o sincronizarla, no para trasladar el archivo.",
+    "3": "«Copiar ruta de acceso» solo copia la ubicación del archivo como texto al portapapeles, sin moverlo."
+  },
+  "estilo": "boletin"
+}

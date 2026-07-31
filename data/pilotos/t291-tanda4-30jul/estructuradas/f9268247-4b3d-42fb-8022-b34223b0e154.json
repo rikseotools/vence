@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "CE, estructura", "texto": "29 diciembre 1978: publicación en el BOE y entrada en vigor." },
+  "intro": "La Constitución de 1978 atravesó varias fechas clave —aprobación parlamentaria, referéndum, sanción real y publicación— que conviene no confundir entre sí.",
+  "options": {
+    "0": "El 31 de octubre de 1978 las Cortes aprobaron el texto, pero la Constitución no entró en vigor ese día, sino tras el referéndum y su publicación en el BOE.",
+    "1": "El 27 de diciembre de 1978 el Rey sancionó la Constitución, pero la entrada en vigor se produjo dos días después, con su publicación en el BOE.",
+    "2": "El 6 de diciembre de 1978 el pueblo español aprobó la Constitución en referéndum, pero la entrada en vigor llegó con su publicación posterior en el BOE.",
+    "3": "La Constitución entró en vigor el 29 de diciembre de 1978, el mismo día en que se publicó su texto oficial en el Boletín Oficial del Estado."
+  },
+  "estilo": "boletin"
+}

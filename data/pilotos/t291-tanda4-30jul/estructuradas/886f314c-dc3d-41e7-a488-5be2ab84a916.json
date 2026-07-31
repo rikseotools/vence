@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Excel 365, art. 120", "texto": "Con **tipo=2**: lunes=1, martes=2, miércoles=3, jueves=4, viernes=5, sábado=6, domingo=7." },
+  "intro": "La función DIASEM devuelve el día de la semana de una fecha, y su segundo argumento determina qué día se numera como 1.",
+  "options": {
+    "0": "=DIASEM(A1) usa el tipo por defecto, en el que domingo es el día 1, no el lunes.",
+    "1": "DIA.LABINTL calcula días laborables entre fechas, no el número del día de la semana.",
+    "2": "DIA.LAB también calcula días laborables, no el día de la semana de una fecha concreta.",
+    "3": "=DIASEM(A1;2) usa el tipo 2, en el que el lunes es el día 1 y el domingo el día 7, justo lo que pide el enunciado."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.5",
+    "texto": "las competencias del Congreso serán asumidas por su Diputación Permanente."
+  },
+  "intro": "El artículo 116.5 CE prevé qué ocurre si el Congreso está disuelto o su mandato ha expirado cuando surge una situación que exigiría declarar uno de estos estados.",
+  "options": {
+    "0": "El Senado no asume estas competencias; el artículo se las atribuye a la Diputación Permanente del Congreso.",
+    "1": "El Rey no asume estas competencias; corresponden a la Diputación Permanente del Congreso.",
+    "2": "Disuelto el Congreso o expirado su mandato, sus competencias en esta materia las asume la Diputación Permanente, conforme al artículo 116.5.",
+    "3": "El Gobierno en funciones no asume estas competencias; el artículo las atribuye expresamente a la Diputación Permanente del Congreso."
+  },
+  "estilo": "boletin"
+}

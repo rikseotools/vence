@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "La Red Internet, art. 6", "texto": "Cada ordenador conectado a Internet tiene una **dirección IP** (Internet Protocol) que lo identifica de forma única, representada por una serie de números." },
+  "intro": "Cada equipo conectado a Internet necesita un identificador numérico único para poder comunicarse con los demás.",
+  "options": {
+    "0": "La dirección IP es precisamente ese identificador numérico único que recibe cada dispositivo conectado a Internet.",
+    "1": "El DNS traduce nombres de dominio a direcciones IP, pero no es en sí mismo el identificador numérico del equipo.",
+    "2": "COM es una extensión de dominio de nivel superior, no un identificador numérico de un dispositivo.",
+    "3": "DOM es una interfaz de programación para documentos web, sin relación con la identificación numérica de equipos en la red."
+  },
+  "estilo": "boletin"
+}

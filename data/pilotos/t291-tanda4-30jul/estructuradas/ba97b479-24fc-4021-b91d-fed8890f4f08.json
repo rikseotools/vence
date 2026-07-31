@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.6",
+    "texto": "La declaración de los estados de alarma, de excepción y de sitio no modificarán el principio de responsabilidad del Gobierno y de sus agentes reconocidos en la Constitución y en las leyes."
+  },
+  "intro": "El artículo 116.6 CE cierra la regulación de los estados excepcionales garantizando que su declaración no altere un principio concreto.",
+  "options": {
+    "0": "El artículo no habla de un principio de seguridad jurídica del Gobierno, sino del principio de responsabilidad del Gobierno y sus agentes.",
+    "1": "El precepto no protege la confidencialidad del Gobierno; se refiere expresamente al principio de responsabilidad.",
+    "2": "El precepto no protege la publicidad del Gobierno; se refiere expresamente al principio de responsabilidad.",
+    "3": "El artículo 116.6 establece que la declaración de estos estados no modificará el principio de responsabilidad del Gobierno y de sus agentes, reconocido en la Constitución y en las leyes."
+  },
+  "estilo": "boletin"
+}

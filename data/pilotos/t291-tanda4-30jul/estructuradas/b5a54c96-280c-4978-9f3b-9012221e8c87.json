@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Access 365, art. 3 (Tipos de formulario que NO existen en Access 365)",
+    "texto": "**Formulario de barras:** NO existe."
+  },
+  "intro": "Se pregunta qué tipos de formularios existen realmente en Access 365, entre las combinaciones de denominaciones propuestas.",
+  "options": {
+    "0": "Los gráficos no constituyen un tipo de formulario independiente: se insertan como controles dentro de un formulario estándar, no como una categoría propia.",
+    "1": "«Barras» no es una denominación de formulario en Access; no existe ese tipo entre los disponibles en la ficha Crear.",
+    "2": "El formulario en columnas (registro a registro), el formulario tabular (varios registros en filas y columnas) y el subformulario (incrustado dentro de otro para relaciones uno a varios) son los tres tipos que sí existen realmente.",
+    "3": "«Combinados» no es una denominación oficial de formulario en Access; no corresponde a ninguno de los tipos disponibles.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

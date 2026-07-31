@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Ley 1/1984 CM, art. 64.1",
+    "texto": "La constitución y disolución de sociedades mercantiles de la Comunidad de Madrid se autorizará por acuerdo del Consejo de Gobierno, a propuesta del titular de la Consejería competente en materia de hacienda."
+  },
+  "intro": "Se pregunta cómo se autoriza la constitución y disolución de sociedades mercantiles en cuyo capital es mayoritaria la participación de la Comunidad de Madrid.",
+  "options": {
+    "0": "El artículo exige acuerdo del Consejo de Gobierno a propuesta del titular de la Consejería competente en materia de hacienda, comunicado a la Asamblea de Madrid y publicado en el Boletín Oficial de la Comunidad de Madrid, tal y como recoge esta combinación.",
+    "1": "El artículo exige la publicación en el Boletín Oficial de la Comunidad de Madrid, no en el Boletín Oficial del Estado.",
+    "2": "El artículo atribuye la autorización al Consejo de Gobierno, no a la Asamblea de Madrid, y la propuesta corresponde al titular competente en hacienda, no al Presidente del Gobierno.",
+    "3": "El artículo invierte los papeles respecto de lo que realmente dispone: quien autoriza es el Consejo de Gobierno y quien recibe la comunicación es la Asamblea de Madrid, no al revés.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

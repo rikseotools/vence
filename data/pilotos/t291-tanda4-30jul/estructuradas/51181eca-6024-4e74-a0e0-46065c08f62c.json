@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 6.2.e",
+    "texto": "Si la Oficina estuviera dotada de zona de espera, esta contará con mobiliario concebido con arreglo a criterios de diseño para todos."
+  },
+  "intro": "El artículo enumera un conjunto de recomendaciones para la accesibilidad de las zonas y sistemas de recepción de las Oficinas de Atención al Ciudadano, entre ellas la relativa a la zona de espera.",
+  "options": {
+    "0": "Reproduce fielmente esta recomendación del artículo sobre la zona de espera.",
+    "1": "No coincide con el artículo, que exige que los sistemas de seguridad ofrezcan indicaciones precisas sobre qué hacer en casos particulares, no simplemente indicaciones básicas.",
+    "2": "No coincide con el artículo, que exige organizar el vestíbulo para facilitar la orientación mediante señalización visual y táctil, no mediante una persona sin ningún otro requisito.",
+    "3": "No coincide con el artículo, que exige prever medidas o medios alternativos para pasar el control cuando el sistema de seguridad no tenga dimensiones suficientes, no limitarse a informar de otras oficinas adaptadas."
+  },
+  "estilo": "boletin"
+}

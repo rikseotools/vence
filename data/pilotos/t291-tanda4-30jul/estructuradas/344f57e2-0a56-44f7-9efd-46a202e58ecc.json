@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Informática Básica, art. 5",
+    "texto": "informática es la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización."
+  },
+  "intro": "El artículo define de forma expresa el concepto que se pregunta, dentro del apartado dedicado a las amenazas informáticas.",
+  "options": {
+    "0": "El riesgo es un concepto distinto, relacionado con la probabilidad de que una amenaza se materialice y el daño esperado, no con la causa potencial en sí misma.",
+    "1": "La vulnerabilidad es la debilidad o punto débil de un sistema que puede ser explotado, no la causa potencial del incidente.",
+    "2": "Es la definición exacta que ofrece el artículo: la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización.",
+    "3": "El impacto es la consecuencia o daño resultante una vez que el incidente se ha producido, no la causa potencial que lo origina."
+  },
+  "estilo": "boletin"
+}

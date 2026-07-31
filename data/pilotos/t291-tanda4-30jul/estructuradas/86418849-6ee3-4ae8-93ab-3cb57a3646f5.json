@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "LOTC, art. 2",
+    "texto": "Uno. El Tribunal Constitucional conocerá en los casos y en la forma que esta Ley determina:"
+  },
+  "intro": "Se pregunta sobre las materias de las que es competente el Tribunal Constitucional según el artículo 2 de su Ley Orgánica.",
+  "options": {
+    "0": "El artículo recoge expresamente entre las competencias del Tribunal los conflictos entre los órganos constitucionales del Estado.",
+    "1": "El artículo recoge expresamente entre las competencias del Tribunal la declaración sobre la constitucionalidad de los tratados internacionales.",
+    "2": "El artículo recoge expresamente entre las competencias del Tribunal las impugnaciones de disposiciones y resoluciones de los órganos de las Comunidades Autónomas previstas en el artículo 161.2 de la Constitución.",
+    "3": "Al figurar las tres materias anteriores entre las recogidas expresamente en el listado del artículo 2, ninguna de ellas puede descartarse como incorrecta.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 1.2",
+    "texto": "A estos efectos, se consideran medios preferentes de relación con los ciudadanos, que deben cumplir las condiciones de accesibilidad, los siguientes:"
+  },
+  "intro": "Se pregunta cuáles son los medios preferentes de relación con los ciudadanos que deben cumplir las condiciones de accesibilidad según el artículo 1.",
+  "options": {
+    "0": "Las Oficinas de Atención al Ciudadano son uno de los medios preferentes que recoge el artículo, pero no el único.",
+    "1": "Los Modelos normalizados son uno de los medios preferentes que recoge el artículo, pero no el único.",
+    "2": "El artículo sí enumera medios preferentes concretos, por lo que descartar que exista alguno correcto no se ajusta al texto.",
+    "3": "El artículo enumera exactamente dos medios preferentes de relación con los ciudadanos: las Oficinas de Atención al Ciudadano y los Modelos normalizados, ambos recogidos expresamente en el apartado 2.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

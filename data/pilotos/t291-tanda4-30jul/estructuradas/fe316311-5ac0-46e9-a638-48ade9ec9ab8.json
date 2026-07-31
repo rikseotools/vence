@@ -1,0 +1,10 @@
+{
+  "intro": "Existen distintas categorías de software malicioso diseñadas para dañar o comprometer un sistema sin conocimiento del usuario.",
+  "options": {
+    "0": "El virus es software malicioso que se replica adjuntándose a programas legítimos y puede dañar el sistema.",
+    "1": "El troyano es malware que se disfraza de software legítimo para engañar al usuario y ejecutar acciones dañinas sin su conocimiento.",
+    "2": "La interfaz de usuario es el conjunto de elementos visuales e interactivos con los que el usuario opera un programa; no es software malicioso.",
+    "3": "El spyware es software espía que recopila información del usuario sin su consentimiento."
+  },
+  "estilo": "boletin"
+}

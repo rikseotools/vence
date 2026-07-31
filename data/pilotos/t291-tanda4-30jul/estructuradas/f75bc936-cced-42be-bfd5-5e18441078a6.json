@@ -1,0 +1,10 @@
+{
+  "intro": "El artículo 116 CE fija expresamente una mayoría cualificada solo para uno de los tres estados excepcionales que regula.",
+  "options": {
+    "0": "La Constitución no exige una mayoría de tres quintos para autorizar la prórroga del estado de alarma; esa exigencia cualificada no aparece en el artículo 116.",
+    "1": "No se requiere mayoría absoluta para autorizar la prórroga del estado de alarma: esa mayoría reforzada solo se exige, dentro del artículo 116, para la declaración del estado de sitio.",
+    "2": "El artículo 116 no impone ninguna mayoría cualificada para autorizar la prórroga del estado de alarma, por lo que rige la regla general de aprobación por mayoría simple del Congreso.",
+    "3": "Tampoco se exige una mayoría de dos tercios: esa exigencia no figura en el artículo 116 para la prórroga del estado de alarma."
+  },
+  "estilo": "boletin"
+}

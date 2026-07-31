@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "El **Símbolo del sistema** (cmd.exe) es la herramienta de Windows que ofrece una **interfaz de usuario basada en texto** (consola), desde la que se pueden ejecutar comandos y realizar funciones administrativas avanzadas." },
+  "intro": "Windows incluye herramientas con propósitos muy distintos, desde editores de texto hasta consolas de administración.",
+  "options": {
+    "0": "El Bloc de notas es un editor de texto plano; no permite ejecutar comandos del sistema.",
+    "1": "El Liberador de espacio en disco es una herramienta gráfica para eliminar archivos temporales; no ofrece una interfaz de comandos.",
+    "2": "El Símbolo del sistema ofrece una consola de texto desde la que ejecutar comandos y realizar tareas administrativas avanzadas.",
+    "3": "El Mapa de caracteres permite copiar caracteres especiales; no proporciona una interfaz de comandos administrativos."
+  },
+  "estilo": "boletin"
+}

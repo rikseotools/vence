@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "RD 203/2021, art. 40.1", "texto": "Las Oficinas de asistencia en materia de registros tienen naturaleza de órgano administrativo de acuerdo con lo dispuesto en el artículo 5 de la Ley 40/2015, de 1 de octubre." },
+  "intro": "El artículo 40.1 del RD 203/2021 fija expresamente qué naturaleza jurídica tienen las oficinas de asistencia en materia de registros.",
+  "options": {
+    "0": "La naturaleza judicial corresponde a juzgados y tribunales del Poder Judicial, no a las oficinas de asistencia en materia de registros.",
+    "1": "La categoría de órgano \"gestor\" no es la denominación que emplea el reglamento para estas oficinas.",
+    "2": "La naturaleza \"tecnológica\" tampoco es una categoría jurídica reconocida por el reglamento para estas oficinas.",
+    "3": "El propio artículo 40.1 establece que estas oficinas tienen naturaleza de órgano administrativo, conforme al artículo 5 de la Ley 40/2015."
+  },
+  "estilo": "boletin"
+}

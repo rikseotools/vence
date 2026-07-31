@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 1.1",
+    "texto": "El presente real decreto regula las condiciones de accesibilidad y no discriminación que, respecto de las personas con discapacidad, deben presentar las Oficinas de Atención al Ciudadano, impresos y cualquier otro medio que la Administración General del Estado dedica específicamente y en el ámbito de sus competencias a las relaciones con los ciudadanos."
+  },
+  "intro": "Se pregunta cuál es la normativa que establece las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado.",
+  "options": {
+    "0": "Esta denominación no corresponde a la norma que regula precisamente esta materia con esa fecha.",
+    "1": "El propio texto regula exactamente esas condiciones de accesibilidad y no discriminación para las personas con discapacidad en sus relaciones con la Administración General del Estado, y corresponde al Real Decreto 366/2007, de 16 de marzo.",
+    "2": "Ni el número ni el año ni el mes de esta combinación corresponden a la norma real que regula esta materia.",
+    "3": "Ni el número ni el mes de esta combinación corresponden a la norma real que regula esta materia.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Informática Básica, art. 2 (OCR)",
+    "texto": "Las siglas **OCR** corresponden a *Optical Character Recognition* → **Reconocimiento Óptico de Caracteres**. Tecnología que convierte imágenes de texto en texto editable."
+  },
+  "intro": "Se pregunta qué significan las siglas OCR.",
+  "options": {
+    "0": "Biblioteca abierta de gráficos correspondería más bien a las siglas OGL (Open Graphics Library), no a OCR.",
+    "1": "Lenguaje de computación abierto correspondería más bien a las siglas OCL (Open Computing Language), no a OCR.",
+    "2": "OCR corresponde exactamente a Optical Character Recognition, es decir, Reconocimiento óptico de caracteres.",
+    "3": "Terminal de red óptica correspondería más bien a las siglas ONT (Optical Network Terminal), no a OCR.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

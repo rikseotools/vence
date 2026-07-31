@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 2 (VPN y servidores proxy)",
+    "texto": "Una **VPN** (Virtual Private Network) crea un túnel cifrado entre el dispositivo del usuario y un servidor remoto, ocultando la dirección IP real y cifrando el tráfico. Se usa para acceso seguro a redes corporativas y para preservar la privacidad."
+  },
+  "intro": "Se pregunta qué tecnología permite a la vez proteger la información personal e identidad en línea y acceder a los recursos de una red local.",
+  "options": {
+    "0": "Los controladores de filtro interceptan llamadas a funciones del sistema operativo; no son una solución de privacidad ni de acceso remoto a redes.",
+    "1": "Una VPN cifra el tráfico del usuario, oculta su dirección IP real y además permite acceder de forma segura a los recursos de una red local remota, cumpliendo ambas condiciones planteadas.",
+    "2": "Una red PAN es de muy corto alcance para conectar dispositivos personales; no cifra el tráfico de Internet ni da acceso a redes privadas remotas.",
+    "3": "Los controladores de función son controladores de hardware específicos; no ofrecen privacidad en línea ni acceso remoto a redes.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

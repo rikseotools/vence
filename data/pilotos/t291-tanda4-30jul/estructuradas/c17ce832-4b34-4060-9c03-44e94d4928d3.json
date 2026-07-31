@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "LO 3/1983, art. 26.1.7",
+    "texto": "Instalaciones de navegación y deporte en aguas continentales, aeropuertos y helipuertos deportivos, así como los que no desarrollen actividades comerciales"
+  },
+  "intro": "Se pregunta por una materia que queda fuera de la competencia exclusiva de la Comunidad de Madrid recogida en el artículo 26 del Estatuto de Autonomía.",
+  "options": {
+    "0": "La competencia autonómica sobre aeropuertos y helipuertos deportivos se limita a los que no desarrollan actividades comerciales; los aeropuertos con actividad comercial quedan fuera de esa competencia exclusiva.",
+    "1": "La pesca fluvial y lacustre sí figura expresamente como competencia exclusiva de la Comunidad de Madrid.",
+    "2": "Los espectáculos públicos sí figuran expresamente como competencia exclusiva de la Comunidad de Madrid.",
+    "3": "Los helipuertos deportivos sí están incluidos expresamente entre las competencias exclusivas de la Comunidad de Madrid.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.5",
+    "texto": "No podrá procederse a la disolución del Congreso mientras estén declarados algunos de los estados comprendidos en el presente artículo, quedando automáticamente convocadas las Cámaras si no estuvieren en período de sesiones."
+  },
+  "intro": "El artículo 116.5 CE protege el funcionamiento de las Cámaras mientras esté vigente cualquiera de los estados excepcionales.",
+  "options": {
+    "0": "La Constitución no prevé que una Comisión ad hoc asuma competencias del Congreso durante el estado de alarma; la disolución simplemente no puede producirse.",
+    "1": "El texto constitucional no ordena disolver el Congreso durante el estado de alarma, sino justamente lo contrario: impide su disolución.",
+    "2": "La disolución no queda condicionada a un acuerdo por mayoría simple: el artículo la prohíbe directamente mientras el estado de alarma esté vigente.",
+    "3": "El artículo 116.5 impide expresamente la disolución del Congreso durante los estados de alarma, excepción y sitio, y ordena convocar automáticamente las Cámaras si no estuvieran en período de sesiones."
+  },
+  "estilo": "boletin"
+}

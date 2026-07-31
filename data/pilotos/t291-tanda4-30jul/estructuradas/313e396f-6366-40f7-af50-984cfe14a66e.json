@@ -1,0 +1,10 @@
+{
+  "intro": "Los sistemas gestores de bases de datos relacionales como Access se apoyan en un lenguaje estándar para definir y consultar los datos y sus relaciones.",
+  "options": {
+    "0": "MDB es la extensión de los archivos de bases de datos de versiones antiguas de Access, no un lenguaje de computación.",
+    "1": "SQL (Structured Query Language) es el lenguaje estándar para trabajar con conjuntos de datos y sus relaciones en sistemas como Access.",
+    "2": "ACDB no corresponde a ningún lenguaje reconocido; es una variación del nombre del formato de archivo .accdb.",
+    "3": "ODB es la extensión de los archivos de bases de datos de OpenDocument, no un lenguaje de consulta."
+  },
+  "estilo": "boletin"
+}

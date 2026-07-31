@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "LO 4/1982 (Estatuto de Autonomía de Murcia), art. 33.4",
+    "texto": "La moción de censura deberá ser propuesta por el quince por ciento, al menos, de los Diputados regionales"
+  },
+  "intro": "Se pregunta por el porcentaje mínimo de Diputados que debe proponer la moción de censura regulada en el artículo 33.4 del Estatuto de Autonomía de Murcia.",
+  "options": {
+    "0": "El cincuenta por ciento no es el porcentaje que exige el artículo para proponer la moción; ese umbral tan alto no figura en el precepto para esta fase.",
+    "1": "El diez por ciento es inferior al porcentaje que exige realmente el artículo para poder proponer la moción.",
+    "2": "El porcentaje que fija el artículo se refiere a los Diputados regionales, no a los Diputados nacionales.",
+    "3": "El artículo exige expresamente que la moción de censura sea propuesta por, al menos, el quince por ciento de los Diputados regionales.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

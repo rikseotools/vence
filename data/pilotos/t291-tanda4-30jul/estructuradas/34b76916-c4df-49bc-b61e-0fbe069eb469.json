@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "CE, art. 149.3",
+    "texto": "El derecho estatal será, en todo caso, supletorio del derecho de las Comunidades Autónomas."
+  },
+  "intro": "Se pregunta cómo opera, según el principio de supletoriedad del artículo 149.3 CE, el derecho estatal respecto del derecho de las Comunidades Autónomas.",
+  "options": {
+    "0": "Limitar la supletoriedad solo a las materias de competencia exclusiva del Estado no se corresponde con el texto, que no introduce esa restricción.",
+    "1": "Limitar la supletoriedad a lo que no sea competencia exclusiva de las Comunidades Autónomas tampoco se corresponde con el texto, que la establece sin esa condición.",
+    "2": "Negar por completo la supletoriedad contradice directamente el precepto, que la establece de forma expresa.",
+    "3": "El artículo establece expresamente que el derecho estatal será, en todo caso, supletorio del derecho de las Comunidades Autónomas, sin condicionarlo a ninguna materia concreta.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

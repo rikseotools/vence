@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Explorador de archivos de Windows 11, art. 1",
+    "texto": "(Ficha Repaso)"
+  },
+  "intro": "Se busca la sintaxis correcta para localizar, con operadores booleanos, un archivo cuyo nombre contiene a la vez las palabras 'Ficha' y 'Repaso'.",
+  "options": {
+    "0": "El operador OR busca cualquiera de las dos palabras por separado, no exige que ambas estén presentes a la vez.",
+    "1": "Las comillas dobles buscan la frase exacta en ese orden y sin separación, no archivos que contengan ambas palabras de forma independiente.",
+    "2": "Los paréntesis agrupan las palabras y buscan archivos que contengan ambos términos en el nombre, que es justo lo que se necesita.",
+    "3": "Los corchetes no son un operador de búsqueda reconocido en el Explorador de archivos de Windows 11."
+  },
+  "estilo": "boletin"
+}

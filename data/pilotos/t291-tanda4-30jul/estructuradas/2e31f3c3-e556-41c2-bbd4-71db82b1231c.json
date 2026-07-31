@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Access 365, art. 4", "texto": "basándose en la tabla o consulta seleccionada en el panel de navegación." },
+  "intro": "En Access 365, los informes toman sus datos de un origen concreto entre los distintos objetos de la base de datos.",
+  "options": {
+    "0": "Limitarlo solo a Consultas deja fuera a las Tablas, que también sirven como origen de un informe.",
+    "1": "Los Formularios están pensados para la introducción y visualización de datos, no como origen de un informe.",
+    "2": "Limitarlo solo a Formularios deja fuera a Tablas y Consultas, que sí sirven como origen de un informe.",
+    "3": "Un informe se puede crear basándose en una Tabla o en una Consulta del panel de navegación."
+  },
+  "estilo": "boletin"
+}

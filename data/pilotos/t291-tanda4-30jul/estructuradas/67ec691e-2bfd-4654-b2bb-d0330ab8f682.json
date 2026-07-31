@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.2 y 116.3",
+    "texto": "mediante decreto acordado en Consejo de Ministros"
+  },
+  "intro": "El artículo 116 exige que tanto el estado de alarma como el de excepción se articulen mediante un mismo tipo de acuerdo gubernamental.",
+  "options": {
+    "0": "El decreto no lo acuerda el Congreso de los Diputados; su papel es dar cuenta o autorizar, según el estado, no acordar el decreto.",
+    "1": "El artículo no atribuye este acuerdo a la presidencia del Gobierno en solitario, sino al Consejo de Ministros como órgano colegiado.",
+    "2": "Tanto el estado de alarma como el de excepción se declaran mediante decreto acordado en Consejo de Ministros, según recoge el artículo 116.",
+    "3": "El artículo no atribuye esta decisión al Ministerio del Interior, sino al Consejo de Ministros."
+  },
+  "estilo": "boletin"
+}

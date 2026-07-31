@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Word 365, art. 2", "texto": "El formato en **columnas** divide el texto en columnas verticales, como en un periódico o revista. Se configura en la ficha **Disposición** > **Columnas**." },
+  "intro": "La opción para repartir el texto en varias columnas, como en un periódico, se agrupa junto con el resto de opciones de configuración de la página.",
+  "options": {
+    "0": "Insertar reúne comandos para añadir objetos al documento, no la configuración de columnas de texto.",
+    "1": "Vista controla cómo se muestra el documento en pantalla, no la disposición del texto en columnas.",
+    "2": "Correspondencia reúne las herramientas para combinar correspondencia, ajena a la disposición en columnas del texto.",
+    "3": "Disposición es la ficha donde se configura el formato en columnas del texto, junto con márgenes, orientación y saltos de página."
+  },
+  "estilo": "boletin"
+}

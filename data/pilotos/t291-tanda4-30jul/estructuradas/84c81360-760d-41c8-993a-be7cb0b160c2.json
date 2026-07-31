@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Outlook 365, art. 1", "texto": "**Cinta de opciones**: contiene las pestañas **Archivo, Inicio, Enviar y Recibir, Carpeta y Vista**." },
+  "intro": "La ventana principal de Outlook 365 organiza sus comandos en un conjunto fijo de pestañas en la cinta de opciones.",
+  "options": {
+    "0": "Bandeja de entrada, Elementos eliminados y Bandeja de salida son carpetas del panel de navegación, no pestañas de la cinta de opciones.",
+    "1": "Archivo, Mensaje, Insertar y Opciones son las pestañas de la ventana de redacción de un mensaje nuevo, no de la ventana principal.",
+    "2": "Cuenta de Office, Comentarios, Opciones y Salir son elementos del menú Archivo (vista Backstage), no pestañas propias de la cinta.",
+    "3": "Archivo, Inicio, Enviar y Recibir, Carpeta y Vista son las pestañas fijas de la cinta de opciones de la ventana principal de Outlook 365."
+  },
+  "estilo": "boletin"
+}

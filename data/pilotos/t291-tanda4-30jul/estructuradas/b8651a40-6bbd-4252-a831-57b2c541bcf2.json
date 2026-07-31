@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.2",
+    "texto": "El estado de alarma será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros por un plazo máximo de quince días, dando cuenta al Congreso de los Diputados"
+  },
+  "intro": "El artículo 116 distingue cuándo el Congreso debe autorizar una actuación del Gobierno y cuándo solo debe ser informado de ella.",
+  "options": {
+    "0": "Sí corresponde al Congreso: la prórroga del estado de alarma no puede acordarse sin su autorización previa.",
+    "1": "La declaración inicial del estado de alarma no requiere autorización del Congreso, sino solo que el Gobierno le dé cuenta de ella; por eso esta función no le corresponde específicamente al Congreso.",
+    "2": "Sí corresponde al Congreso: la prórroga del estado de excepción exige los mismos requisitos que su declaración, es decir, su autorización previa.",
+    "3": "Sí corresponde al Congreso: la declaración del estado de excepción exige su autorización previa."
+  },
+  "estilo": "boletin"
+}

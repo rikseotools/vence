@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 9/2017, art. 2.1",
+    "texto": "Se entenderá que un contrato tiene carácter oneroso en los casos en que el contratista obtenga algún tipo de beneficio económico, ya sea de forma directa o indirecta."
+  },
+  "intro": "Se pregunta cuándo se entiende que un contrato tiene carácter oneroso a los efectos de la Ley de Contratos del Sector Público.",
+  "options": {
+    "0": "Exigir que el beneficio sea siempre directo no coincide con la norma, que también admite el beneficio indirecto.",
+    "1": "La norma habla del beneficio que obtenga el contratista, no de cualquiera de las partes del contrato.",
+    "2": "El contrato es oneroso cuando el contratista obtiene algún beneficio económico, ya sea de forma directa o indirecta, tal y como recoge la ley.",
+    "3": "La norma se refiere a un beneficio económico concreto, no a cualquier tipo de beneficio sin más precisión."
+  },
+  "estilo": "boletin"
+}

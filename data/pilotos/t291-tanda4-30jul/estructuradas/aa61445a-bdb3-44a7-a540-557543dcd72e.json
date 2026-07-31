@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.4",
+    "texto": "El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno."
+  },
+  "intro": "El artículo 116.4 CE es el único de los tres apartados que atribuye la declaración de un estado excepcional al Congreso, y no al Gobierno.",
+  "options": {
+    "0": "El estado de alarma no lo declara el Congreso a propuesta del Gobierno, sino el propio Gobierno mediante decreto en Consejo de Ministros.",
+    "1": "El estado de excepción tampoco lo declara el Congreso a propuesta del Gobierno; lo declara el Gobierno, previa autorización del Congreso.",
+    "2": "El estado de sitio es el único que declara el propio Congreso de los Diputados, por mayoría absoluta, a propuesta exclusiva del Gobierno, conforme al artículo 116.4.",
+    "3": "Sí existe una respuesta correcta entre las anteriores: el Congreso, a propuesta del Gobierno, puede declarar el estado de sitio."
+  },
+  "estilo": "boletin"
+}

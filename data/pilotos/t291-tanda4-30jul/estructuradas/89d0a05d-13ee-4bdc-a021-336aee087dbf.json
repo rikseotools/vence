@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 7/1985, art. 25.2.j)",
+    "texto": "Protección de la salubridad pública."
+  },
+  "intro": "Se pregunta cuál de las materias listadas es una competencia propia que el municipio ejerce en todo caso según este artículo.",
+  "options": {
+    "0": "El artículo recoge por separado la atención a personas en exclusión social y, en otra letra distinta, la protección civil; unir ambas en una sola opción no reproduce el texto de ninguna de las dos letras.",
+    "1": "El artículo habla del abastecimiento de agua potable y de la evacuación y tratamiento de aguas residuales, sin mencionar las aguas estancadas.",
+    "2": "La protección de la salubridad pública es, literalmente, una de las competencias que el municipio ejerce en todo caso según este artículo.",
+    "3": "El artículo habla de promoción de la cultura y equipamientos culturales, sin mencionar la difusión de la cultura ni la construcción de equipamientos."
+  },
+  "estilo": "boletin"
+}

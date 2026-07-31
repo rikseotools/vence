@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.4",
+    "texto": "actúa para el cumplimiento de sus fines con personalidad jurídica única."
+  },
+  "intro": "El artículo aclara cómo y de qué tipo es la personalidad jurídica de cada Administración Pública.",
+  "options": {
+    "0": "Es la opción correcta: cada Administración Pública tiene personalidad jurídica única, reconocida en sus leyes reguladoras o normas de creación.",
+    "1": "No es correcto limitar el reconocimiento a normas constitucionales: procede de las leyes reguladoras o normas de creación de cada Administración.",
+    "2": "No es correcto limitar el reconocimiento a normas reglamentarias, que carecen de rango para atribuir personalidad jurídica.",
+    "3": "Es falso: el propio artículo establece que cada Administración actúa con personalidad jurídica única, luego sí la tienen."
+  },
+  "estilo": "boletin"
+}

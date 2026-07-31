@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Excel 365, art. 100",
+    "texto": "=SI(prueba_lógica; valor_si_verdadero; valor_si_falso)"
+  },
+  "intro": "Se pregunta qué hace la fórmula =SI(A12>50;\"Comprar\";\"No comprar\") de Excel 365.",
+  "options": {
+    "0": "La función SI devuelve únicamente el texto indicado en el argumento correspondiente, sin mostrar además el valor de la celda evaluada.",
+    "1": "Esta opción invierte los resultados: la fórmula muestra 'Comprar' cuando se cumple la condición y 'No comprar' cuando no se cumple, no al revés.",
+    "2": "La función SI devuelve únicamente el texto indicado, sin mostrar el valor de la celda, y además esta opción invierte el orden de los resultados.",
+    "3": "La fórmula evalúa si A12 es mayor que 50 y, si se cumple, muestra 'Comprar'; si no se cumple, muestra 'No comprar', sin mostrar el valor de la celda."
+  },
+  "estilo": "boletin"
+}

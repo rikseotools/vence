@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 10",
+    "texto": "Desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo"
+  },
+  "intro": "Se pregunta cuál es la función del World Wide Web Consortium (W3C).",
+  "options": {
+    "0": "El desarrollo del buscador de Google corresponde a Google LLC, no al W3C.",
+    "1": "La gestión y mantenimiento de la Wikipedia corresponde a la Fundación Wikimedia, no al W3C.",
+    "2": "Las prácticas antimonopolio en Internet corresponden a organismos reguladores como la Comisión Europea, no al W3C.",
+    "3": "El W3C se dedica al desarrollo de estándares que aseguran el crecimiento de la Web a largo plazo."
+  },
+  "estilo": "boletin"
+}

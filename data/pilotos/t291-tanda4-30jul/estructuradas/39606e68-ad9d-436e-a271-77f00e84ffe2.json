@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "Es posible crear accesos directos a **carpetas y ficheros**.\n- Si el enlace es a un fichero, se abrirá utilizando el **programa asociado a su extensión**." },
+  "intro": "Un acceso directo en Windows 11 es un enlace a un elemento situado en otra parte del sistema, y su comportamiento al abrirse depende de a qué apunte.",
+  "options": {
+    "0": "Sí es posible crear accesos directos a carpetas, además de a ficheros; no está limitado solo a estos últimos.",
+    "1": "Cuando el acceso directo apunta a un fichero, este se abre con el programa asociado a su extensión, no en el Explorador de archivos.",
+    "2": "Se pueden crear accesos directos a carpetas y a ficheros, y si el enlace es a un fichero se abre con el programa asociado a su extensión.",
+    "3": "También es posible crear accesos directos a ficheros, no solo a carpetas en local o en OneDrive."
+  },
+  "estilo": "boletin"
+}

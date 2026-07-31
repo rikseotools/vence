@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.3",
+    "texto": "El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados."
+  },
+  "intro": "El artículo 116.3 CE distingue quién propone o inicia la declaración del estado de excepción y quién debe autorizarla.",
+  "options": {
+    "0": "El Congreso de los Diputados no comparte la iniciativa: su papel se limita a autorizar la declaración que propone el Gobierno.",
+    "1": "La iniciativa para declarar el estado de excepción corresponde en exclusiva al Gobierno, que la articula mediante decreto en Consejo de Ministros; el Congreso solo interviene autorizándola.",
+    "2": "Las Cortes Generales como tal no tienen esta iniciativa; el artículo atribuye la autorización al Congreso de los Diputados, no a las Cortes Generales en conjunto, y la iniciativa sigue siendo del Gobierno.",
+    "3": "Las Cortes Generales no tienen la iniciativa de esta declaración; corresponde al Gobierno, quedando el Congreso limitado a autorizarla."
+  },
+  "estilo": "boletin"
+}

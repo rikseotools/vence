@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "**Falso:** En el Administrador de tareas NO existe una pestaña \"Planificación\" para dar de alta tareas en un calendario. El Programador de tareas es una herramienta separada." },
+  "intro": "El Administrador de tareas de Windows 11 organiza su información en un conjunto fijo de pestañas.",
+  "options": {
+    "0": "La pestaña Procesos sí muestra los procesos en ejecución junto con su consumo de CPU, memoria y disco.",
+    "1": "La pestaña Inicio sí muestra los programas que se ejecutan al arrancar Windows 11.",
+    "2": "El Administrador de tareas no tiene ninguna pestaña llamada «Planificación»; dar de alta tareas en un calendario corresponde al Programador de tareas, una herramienta distinta.",
+    "3": "La pestaña Rendimiento sí muestra el consumo de CPU, memoria y disco del dispositivo."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1.e",
+    "texto": "Buena fe, confianza legítima y lealtad institucional."
+  },
+  "intro": "Se pregunta cuál de los términos propuestos NO figura entre los principios de actuación que enumera el artículo 3 de la Ley 40/2015.",
+  "options": {
+    "0": "Sí figura expresamente citado como principio en el artículo.",
+    "1": "Sí figura expresamente entre los principios del primer párrafo del artículo.",
+    "2": "No figura en ningún apartado del artículo; se trata de un concepto regulado por otra norma distinta, por lo que es la respuesta buscada.",
+    "3": "Sí figura expresamente entre los principios del primer párrafo del artículo."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "El **Mapa de caracteres** (charmap.exe) es una utilidad de Windows para buscar e insertar símbolos Unicode, pero **no está clasificada como herramienta de accesibilidad**." },
+  "intro": "Windows 11 agrupa varias utilidades bajo el apartado de Accesibilidad, pero no todas las herramientas del sistema entran en esa categoría.",
+  "options": {
+    "0": "La Lupa amplía partes de la pantalla y sí es una herramienta de accesibilidad visual.",
+    "1": "El Mapa de caracteres sirve para buscar e insertar símbolos Unicode; es una utilidad de texto, no una herramienta de accesibilidad.",
+    "2": "El Narrador lee en voz alta el contenido de la pantalla y sí está clasificado como herramienta de accesibilidad.",
+    "3": "El Reconocimiento de voz permite controlar el equipo y dictar texto, y sí forma parte de las herramientas de accesibilidad."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,10 @@
+{
+  "intro": "La pregunta pide identificar para qué sirve la acción 'Combinar correspondencia' disponible en la pestaña Inicio de los contactos de Outlook 365.",
+  "options": {
+    "0": "Redirigir mensajes de otras cuentas a la principal es una función de reglas o configuración de cuentas, no de esta acción.",
+    "1": "Esta acción une la lista de contactos con una plantilla de correo o documento para generar un envío individual y personalizado a cada destinatario.",
+    "2": "No existe ninguna función que fusione correos recibidos para ahorrar espacio en disco.",
+    "3": "Agrupar correos de varias cuentas en una misma carpeta se hace desde la gestión de carpetas, no con esta acción."
+  },
+  "estilo": "boletin"
+}

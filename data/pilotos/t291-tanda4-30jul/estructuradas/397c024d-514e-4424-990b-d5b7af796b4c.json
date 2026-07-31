@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Ley 9/2017, art. 23.1",
+    "texto": "que sean subvencionados, de forma directa y en más de un 50 por 100 de su importe, por entidades que tengan la consideración de poderes adjudicadores"
+  },
+  "intro": "Se pregunta bajo qué condición los contratos de obras y de servicios del artículo 23 quedan sujetos a regulación armonizada por estar subvencionados.",
+  "options": {
+    "0": "El artículo exige que la subvención sea directa, no contempla la subvención indirecta como supuesto habilitante.",
+    "1": "El artículo exige exactamente que la subvención sea directa y supere el 50 por 100 de su importe.",
+    "2": "El porcentaje que fija el artículo es del 50 por 100, no del 75 por 100.",
+    "3": "El artículo no admite la subvención indirecta como supuesto habilitante, y el porcentaje que fija es del 50 por 100, no del 75 por 100.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

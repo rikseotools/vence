@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Outlook 365, art. 1", "texto": "Su función es exclusivamente el **envío** (no la recepción)." },
+  "intro": "SMTP cumple una función muy concreta dentro del funcionamiento del correo electrónico, distinta de otras tareas como la autenticación o el cifrado.",
+  "options": {
+    "0": "SMTP no identifica de forma unívoca a emisor y receptor; su función es transportar el mensaje entre servidores.",
+    "1": "SMTP no es un protocolo de autenticación entre servidor y cliente; esa función corresponde a otros mecanismos.",
+    "2": "SMTP no cifra los mensajes; el cifrado se añade con tecnologías como TLS/SSL por encima de SMTP.",
+    "3": "SMTP es precisamente el protocolo de transferencia simple de correo que se usa para intercambiar mensajes entre servidores y clientes de correo."
+  },
+  "estilo": "boletin"
+}

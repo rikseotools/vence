@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Ley 40/2015, art. 38.1", "texto": "La sede electrónica es aquella dirección electrónica, disponible para los ciudadanos a través de redes de telecomunicaciones, cuya titularidad corresponde a una Administración Pública, o bien a una o varios organismos públicos o entidades de Derecho Público en el ejercicio de sus competencias." },
+  "intro": "El artículo 38 de la Ley 40/2015 define la sede electrónica, un concepto que conviene no confundir con otras figuras próximas como el punto de acceso general o la actuación administrativa automatizada.",
+  "options": {
+    "0": "Esta es la definición legal de sede electrónica: dirección electrónica disponible para los ciudadanos cuya titularidad corresponde a una Administración, organismo o entidad de Derecho Público.",
+    "1": "Esta descripción corresponde al punto de acceso general electrónico, el portal que permite acceder a la información y a las distintas sedes, no a la sede electrónica en sí.",
+    "2": "Esta definición corresponde a un sistema de identificación, como el sello electrónico, no a una dirección electrónica con titular responsable.",
+    "3": "Esta descripción corresponde a la actuación administrativa automatizada, realizada íntegramente por medios electrónicos, no a la sede electrónica."
+  },
+  "estilo": "boletin"
+}

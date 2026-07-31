@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "CE, estructura", "texto": "Extensa: 169 artículos, una de las más largas de nuestra historia constitucional." },
+  "intro": "La Constitución Española de 1978 se compone de un número concreto de artículos, organizados en un Título Preliminar y diez títulos numerados.",
+  "options": {
+    "0": "170 artículos no es la cifra correcta; el articulado de la Constitución termina en el artículo 169.",
+    "1": "167 artículos se queda corto: ese es el artículo dedicado al procedimiento ordinario de reforma, pero el articulado continúa hasta el 169.",
+    "2": "168 artículos tampoco es la cifra correcta: ese artículo regula la revisión total de la Constitución, pero todavía sigue el artículo 169.",
+    "3": "La Constitución Española se compone de 169 artículos, siendo una de las más extensas de nuestra historia constitucional."
+  },
+  "estilo": "boletin"
+}

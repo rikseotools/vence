@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 8.2.c",
+    "texto": "Los mostradores y puntos de atención no dispondrán de vidrios u otros obstáculos que dificultan la transmisión del sonido y la comunicación visual entre el usuario y el empleado."
+  },
+  "intro": "Se pide señalar cuál de las recomendaciones sobre configuración de los puestos de Atención al Ciudadano NO se ajusta a lo dispuesto en el artículo.",
+  "options": {
+    "0": "El artículo exige expresamente sistemas de bucle de inducción magnética en los mostradores y puntos de atención, así que esta afirmación sí se ajusta al precepto.",
+    "1": "El precepto formula una prohibición: los mostradores NO dispondrán de vidrios u otros obstáculos que dificulten el sonido y la comunicación visual. Afirmar que sí dispondrán de esos vidrios invierte el sentido de la norma, que no admite ese elemento con esa condición.",
+    "2": "El artículo exige expresamente sistemas de telefonía de texto, fax y, si es técnicamente posible, videotelefonía para facilitar la lectura labial, así que esta afirmación sí se ajusta al precepto.",
+    "3": "El artículo exige expresamente que al menos una parte del mostrador esté a la altura de una mesa de trabajo, así que esta afirmación sí se ajusta al precepto.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

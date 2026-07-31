@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Excel 365, art. 200 (Proteger libro > Opción Estructura)",
+    "texto": "Insertar nuevas hojas.\n- Eliminar hojas.\n- Mover o copiar hojas.\n- Ocultar o mostrar hojas.\n- Cambiar el nombre de las hojas."
+  },
+  "intro": "Se pregunta qué ocurre al activar Proteger libro marcando la opción Estructura en un fichero Excel 365.",
+  "options": {
+    "0": "La protección por contraseña necesaria para abrir el libro corresponde a Cifrar con contraseña, no a la opción Estructura de Proteger libro.",
+    "1": "Impedir modificar los valores de las hojas corresponde a Proteger hoja, que actúa sobre el contenido de las celdas, no a Proteger libro, que actúa sobre la estructura.",
+    "2": "La opción Estructura de Proteger libro impide precisamente insertar, eliminar, mover, ocultar/mostrar y renombrar las hojas del libro, sin afectar al contenido de las celdas.",
+    "3": "Bloquear el formato de las columnas es un efecto de Proteger hoja, no de la opción Estructura de Proteger libro, que no actúa sobre el contenido de las hojas.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

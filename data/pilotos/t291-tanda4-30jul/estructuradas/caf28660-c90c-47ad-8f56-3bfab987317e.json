@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 9 (Navegadores web)",
+    "texto": "El **navegador predeterminado en Windows 11** que sustituyó a Internet Explorer es **Microsoft Edge**."
+  },
+  "intro": "Se pregunta cuál es el navegador que Windows 11 trae predeterminado en sustitución de Internet Explorer.",
+  "options": {
+    "0": "Chrome es un navegador de terceros desarrollado por Google, no el predeterminado de Windows 11.",
+    "1": "Firefox es un navegador de terceros desarrollado por Mozilla, no el predeterminado de Windows 11.",
+    "2": "Opera es un navegador de terceros, no el predeterminado de Windows 11.",
+    "3": "El texto identifica expresamente a este navegador como el predeterminado en Windows 11 que sustituyó a Internet Explorer.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

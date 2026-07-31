@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Excel 365, art. 190", "texto": "Combina valores X e Y en puntos de datos únicos y los muestra en **intervalos irregulares**." },
+  "intro": "Excel ofrece un tipo de gráfico pensado específicamente para representar pares de valores sin que el eje horizontal tenga que estar distribuido de forma regular.",
+  "options": {
+    "0": "El gráfico de columnas compara valores entre categorías en intervalos regulares, no en intervalos irregulares.",
+    "1": "El gráfico de líneas está pensado para tendencias a intervalos iguales, no para puntos con intervalos irregulares.",
+    "2": "El gráfico de dispersión combina valores en puntos de datos únicos y los representa en intervalos irregulares, tal como pide el enunciado.",
+    "3": "El gráfico de área muestra la magnitud del cambio acumulado a lo largo del tiempo, también en intervalos regulares."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Outlook 365, art. 2",
+    "texto": "Se puede configurar en tres posiciones:\n\n- **A la derecha** (posición predeterminada): el panel aparece a la derecha de la lista de mensajes.\n- **En la parte inferior**: el panel aparece debajo de la lista de mensajes.\n- **Desactivado**: el panel queda oculto."
+  },
+  "intro": "El Panel de lectura de Outlook 365 solo admite un número concreto de posiciones, y hay que identificar cuál de las opciones ofrecidas no es una de ellas.",
+  "options": {
+    "0": "A la derecha sí es una de las tres posiciones disponibles para el Panel de lectura.",
+    "1": "Superior no existe como posición del Panel de lectura; las posiciones reales son derecha, inferior y desactivado.",
+    "2": "Inferior sí es una de las tres posiciones disponibles para el Panel de lectura.",
+    "3": "Desactivado sí es una de las tres posiciones disponibles para el Panel de lectura."
+  },
+  "estilo": "boletin"
+}

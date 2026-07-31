@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.5",
+    "texto": "mientras estén declarados algunos de los estados comprendidos en el presente artículo"
+  },
+  "intro": "El artículo 116.5 CE extiende la prohibición de disolver el Congreso a los tres estados excepcionales regulados en este artículo.",
+  "options": {
+    "0": "La prohibición de disolución alcanza también al estado de alarma, uno de los tres estados a los que se refiere el artículo 116.",
+    "1": "La prohibición de disolución alcanza también al estado de excepción, comprendido igualmente en este artículo.",
+    "2": "La prohibición de disolución alcanza también al estado de sitio, el tercero de los estados regulados en el artículo 116.",
+    "3": "El artículo 116.5 se refiere conjuntamente a «algunos de los estados comprendidos en el presente artículo», de modo que la prohibición de disolver el Congreso opera durante los tres: alarma, excepción y sitio."
+  },
+  "estilo": "boletin"
+}

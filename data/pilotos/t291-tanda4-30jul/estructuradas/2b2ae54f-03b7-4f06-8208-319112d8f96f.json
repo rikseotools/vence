@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Access 365, art. 1", "texto": "Límite de 2 GB por base de datos .accdb para todos los adjuntos." },
+  "intro": "El tipo de campo Datos adjuntos de Access 365 tiene un límite de tamaño propio del formato .accdb.",
+  "options": {
+    "0": "No queda limitado únicamente por el espacio en disco: el formato .accdb impone su propio tope de 2 GB para los adjuntos.",
+    "1": "Los archivos adjuntados en un campo de tipo Datos adjuntos quedan sujetos al límite de 2 GB del formato .accdb.",
+    "2": "255 caracteres es el límite del tipo de campo Texto corto, no el de Datos adjuntos.",
+    "3": "64 bytes es una cifra demasiado pequeña para almacenar archivos adjuntos como imágenes o documentos."
+  },
+  "estilo": "boletin"
+}

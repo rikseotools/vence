@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "es el sistema de archivos estándar en Windows 11. Windows 11 requiere una partición NTFS para su instalación." },
+  "intro": "Windows 11 necesita un sistema de archivos concreto para instalarse y gestionar sus unidades internas.",
+  "options": {
+    "0": "APFS es el sistema de archivos propio de los dispositivos Apple (macOS, iOS), no de Windows.",
+    "1": "JFS es un sistema de archivos desarrollado para entornos Unix/Linux, ajeno a Windows.",
+    "2": "F2FS se diseñó para memorias flash en Linux y no se emplea en Windows.",
+    "3": "NTFS es el sistema de archivos estándar de Windows 11, con soporte para permisos, cifrado y archivos de gran tamaño."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 63.1.f",
+    "texto": "Desempeñar la jefatura superior de todo el personal del Departamento."
+  },
+  "intro": "El artículo, dedicado a los Subsecretarios, atribuye expresamente esta función entre las que ejercen en el Ministerio.",
+  "options": {
+    "0": "El artículo no atribuye esta función al Secretario de Estado, que dirige un sector de actividad concreto.",
+    "1": "El artículo atribuye esta función al Subsecretario, no directamente al Ministro.",
+    "2": "Coincide con la función que el artículo atribuye expresamente al Subsecretario.",
+    "3": "El artículo no atribuye esta función al Secretario General Técnico, cuyas competencias son de asesoramiento técnico y jurídico."
+  },
+  "estilo": "boletin"
+}

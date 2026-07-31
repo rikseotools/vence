@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Estatuto de Autonomía de la Región de Murcia, art. 30.3",
+    "texto": "En el plazo improrrogable de treinta días desde su promulgación, los decretos-leyes deberán ser convalidados o derogados por la Asamblea Regional después de un debate y votación de totalidad."
+  },
+  "intro": "Se pregunta en qué plazo deben ser convalidados o derogados los decretos-leyes por la Asamblea Regional de Murcia y desde qué momento se cuenta.",
+  "options": {
+    "0": "El plazo es improrrogable, no prorrogable, y se cuenta desde la promulgación, no desde la aprobación.",
+    "1": "El plazo se cuenta desde la promulgación del decreto-ley, no desde su aprobación.",
+    "2": "El plazo es improrrogable de treinta días y se cuenta desde la promulgación del decreto-ley, tal y como recoge el precepto.",
+    "3": "El plazo no es prorrogable y, además, se cuenta desde la promulgación, no desde la aprobación."
+  },
+  "estilo": "boletin"
+}

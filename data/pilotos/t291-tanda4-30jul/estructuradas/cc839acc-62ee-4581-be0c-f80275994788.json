@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 9 (SEO)",
+    "texto": "El objetivo principal del SEO es **mejorar la visibilidad de un sitio web en buscadores**."
+  },
+  "intro": "Se pregunta a qué hace referencia el SEO (search engine optimization) en relación con un sitio web.",
+  "options": {
+    "0": "El SEO es precisamente ese conjunto de prácticas orientadas a mejorar el posicionamiento de un sitio web en los resultados de buscadores como Google o Bing.",
+    "1": "El SEO no designa a los departamentos internos de las empresas propietarias de los buscadores, sino a prácticas aplicadas a los propios sitios web.",
+    "2": "El SEO no es un ranking elaborado por consultoras sobre el uso de buscadores, sino el conjunto de prácticas de optimización de un sitio web.",
+    "3": "El SEO no describe el uso de palabras clave por parte del usuario que busca, sino las prácticas de optimización que aplica quien gestiona el sitio web.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

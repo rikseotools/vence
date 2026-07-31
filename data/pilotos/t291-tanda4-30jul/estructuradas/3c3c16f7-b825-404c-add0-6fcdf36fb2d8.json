@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Word 365, art. 1", "texto": "Viñetas, numeración y lista multinivel" },
+  "intro": "Word distingue entre definir una lista multinivel puntual y crear un estilo de lista reutilizable, dos opciones accesibles desde el mismo desplegable de la cinta.",
+  "options": {
+    "0": "Desde Inicio, grupo Párrafo, el desplegable de lista multinivel permite definir un nuevo estilo de lista, que es la vía pensada para modificar de forma reutilizable el estilo de numeración.",
+    "1": "La pestaña Insertar no contiene una opción de numeración con profundidad para listas multinivel.",
+    "2": "La pestaña Diseño no incluye herramientas de numeración ni de listas multinivel.",
+    "3": "Definir una nueva lista multinivel crea una lista puntual para la selección actual, pero no un estilo reutilizable como el que pide cambiar el estilo de la lista."
+  },
+  "estilo": "boletin"
+}

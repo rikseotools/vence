@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Ley 30/1984, art. 23.3.d)", "texto": "en ningún caso podrán ser fijas en su cuantía y periódicas en su devengo." },
+  "intro": "El artículo regula las retribuciones complementarias de los funcionarios, entre ellas las gratificaciones por servicios extraordinarios fuera de la jornada normal.",
+  "options": {
+    "0": "El artículo no establece ningún límite numérico de dos gratificaciones al año.",
+    "1": "Es justo lo contrario: la ley dice que en ningún caso podrán ser fijas en su cuantía ni periódicas en su devengo.",
+    "2": "El artículo no vincula la cuantía de las gratificaciones con el complemento de destino.",
+    "3": "Las gratificaciones por servicios extraordinarios en ningún caso podrán ser fijas en su cuantía."
+  },
+  "estilo": "boletin"
+}

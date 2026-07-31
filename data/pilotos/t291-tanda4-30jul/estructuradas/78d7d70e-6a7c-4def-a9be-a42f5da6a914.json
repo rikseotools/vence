@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.4",
+    "texto": "El estado de sitio será declarado por la mayoría absoluta del Congreso de los Diputados, a propuesta exclusiva del Gobierno."
+  },
+  "intro": "El artículo 116.4 CE atribuye la declaración del estado de sitio a un órgano distinto del Gobierno, a diferencia de otros instrumentos de dirección política que sí ejerce el Gobierno.",
+  "options": {
+    "0": "La subordinación de las Fuerzas y Cuerpos de Seguridad sí es un instrumento de dirección política atribuido al Gobierno, en su función de dirección de la Administración y la defensa del Estado.",
+    "1": "La elaboración de los Presupuestos Generales sí corresponde al Gobierno como instrumento de dirección política y económica.",
+    "2": "Dictar Decretos-Leyes sí es una facultad atribuida al Gobierno en el ejercicio de su función de dirección política.",
+    "3": "Declarar el estado de sitio no lo decide el Gobierno: el artículo 116.4 atribuye esa declaración al propio Congreso de los Diputados, por mayoría absoluta y a propuesta exclusiva del Gobierno, que solo propone, no declara."
+  },
+  "estilo": "boletin"
+}

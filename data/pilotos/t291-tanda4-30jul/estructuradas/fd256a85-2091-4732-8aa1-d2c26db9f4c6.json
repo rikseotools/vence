@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "CE, art. 116.3",
+    "texto": "El estado de excepción será declarado por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados."
+  },
+  "intro": "El artículo 116 prevé tres procedimientos distintos de declaración según el estado excepcional de que se trate.",
+  "options": {
+    "0": "Esa fórmula, mayoría absoluta del Congreso a propuesta exclusiva del Gobierno, corresponde al estado de sitio, no al de excepción.",
+    "1": "Ese procedimiento, decreto en Consejo de Ministros dando cuenta al Congreso, es el previsto para el estado de alarma, no para el de excepción.",
+    "2": "La autorización previa no la prestan «las Cortes Generales» como conjunto, sino específicamente el Congreso de los Diputados.",
+    "3": "El estado de excepción se declara por el Gobierno mediante decreto acordado en Consejo de Ministros, previa autorización del Congreso de los Diputados, según establece el artículo 116.3."
+  },
+  "estilo": "boletin"
+}

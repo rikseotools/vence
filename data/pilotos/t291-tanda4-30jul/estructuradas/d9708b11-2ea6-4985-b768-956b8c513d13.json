@@ -1,0 +1,10 @@
+{
+  "intro": "Al mostrar una tabla en la vista de diseño web de Word, existe una opción concreta pensada para que la tabla se adapte al ancho disponible en pantalla.",
+  "options": {
+    "0": "Autoajustar a la ventana adapta el ancho de la tabla al de la ventana o del navegador, garantizando que se vea completa en la vista de diseño web.",
+    "1": "Autoajustar al contenido ajusta las columnas al texto que contienen, por lo que la tabla puede acabar excediendo el ancho de la ventana.",
+    "2": "Ancho de columna fijo mantiene medidas constantes sin adaptarse al espacio disponible en la ventana.",
+    "3": "Alinear al centro solo centra la tabla en la página, pero no ajusta su ancho para que quepa entera en la ventana."
+  },
+  "estilo": "boletin"
+}

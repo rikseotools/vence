@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 2 (Protocolo FTP)",
+    "texto": "**FTP** (File Transfer Protocol) permite transferir archivos entre cliente y servidor."
+  },
+  "intro": "Se pregunta qué es un FTP.",
+  "options": {
+    "0": "La conexión de un ordenador a Internet mediante wifi corresponde a otros protocolos (Wi-Fi, TCP/IP), no al FTP, que se dedica a la transferencia de archivos.",
+    "1": "FTP son las siglas de File Transfer Protocol, es decir, el protocolo dedicado precisamente a la transferencia de ficheros entre cliente y servidor.",
+    "2": "Un protocolo de capa de acceso al medio pertenece a la capa de enlace, no es lo que designa FTP.",
+    "3": "FTP no es un tipo de servidor web; los servidores web se apoyan en HTTP/HTTPS, no en FTP.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

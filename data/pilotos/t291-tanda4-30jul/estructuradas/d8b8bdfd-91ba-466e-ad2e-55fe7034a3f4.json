@@ -1,0 +1,10 @@
+{
+  "intro": "Se pregunta por el efecto de la opción 'Ignorar' (u 'Omitir la conversación') de la cinta de opciones de la Bandeja de entrada en Outlook 365.",
+  "options": {
+    "0": "Ignorar peticiones de confirmación de lectura o entrega es un ajuste distinto, relacionado con las opciones de envío del mensaje, no con esta acción.",
+    "1": "Esta acción envía a la carpeta de Elementos eliminados tanto los mensajes ya recibidos de esa conversación como los que lleguen en el futuro con el mismo asunto.",
+    "2": "Ignorar convocatorias de reunión de un remitente concreto no es lo que hace esta acción, que actúa sobre una conversación de correo, no sobre invitaciones de calendario.",
+    "3": "Mover los mensajes a Correo no deseado es el efecto de marcar un mensaje como spam, no el de esta acción, que los envía a Elementos eliminados."
+  },
+  "estilo": "boletin"
+}

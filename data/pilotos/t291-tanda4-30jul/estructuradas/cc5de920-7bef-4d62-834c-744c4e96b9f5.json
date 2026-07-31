@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Outlook 365, art. 2",
+    "texto": "Nuevo correo electrónico, Nuevos elementos (mensaje, cita, reunión, contacto, tarea, nota)"
+  },
+  "intro": "La opción 'Nuevos elementos' de la pestaña Inicio permite crear varios tipos de elementos en Outlook 365, pero no todos los que existen en otras aplicaciones de Office.",
+  "options": {
+    "0": "Una presentación es un archivo de PowerPoint; no figura entre los elementos que se pueden crear desde 'Nuevos elementos' en Outlook.",
+    "1": "La tarea sí está entre los elementos disponibles en 'Nuevos elementos'.",
+    "2": "El mensaje de correo electrónico sí está entre los elementos disponibles en 'Nuevos elementos'.",
+    "3": "La reunión sí está entre los elementos disponibles en 'Nuevos elementos'."
+  },
+  "estilo": "boletin"
+}

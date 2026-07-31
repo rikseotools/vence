@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 73.1.e).4º",
+    "texto": "Informar las medidas de optimización de recursos humanos y materiales en su ámbito territorial, especialmente las que afecten a más de un Departamento."
+  },
+  "intro": "Se pregunta cuál de las siguientes es una competencia de los Delegados del Gobierno en las Comunidades Autónomas.",
+  "options": {
+    "0": "La norma atribuye a los Delegados informar el nombramiento de titulares de órganos territoriales de la AGE, no el de los propios Subdelegados del Gobierno, cuyo nombramiento les corresponde a ellos directamente.",
+    "1": "La norma reserva al Delegado suspender directamente los actos impugnados cuando le corresponda resolver el recurso, y solo proponer la suspensión en los restantes casos; esta opción invierte esa distinción.",
+    "2": "La norma dirige esa propuesta sobre duplicidad de estructuras administrativas al Ministro de Hacienda y Administraciones Públicas, no al Consejo de Ministros.",
+    "3": "Informar las medidas de optimización de recursos humanos y materiales en su ámbito territorial, en especial las que afecten a más de un departamento, es una competencia expresa de los Delegados del Gobierno."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,10 @@
+{
+  "intro": "Se pregunta en qué materia, de las cuatro propuestas, los municipios NO tienen competencia según este artículo.",
+  "options": {
+    "0": "Cementerios y actividades funerarias sí figura entre las competencias propias que el municipio ejerce en todo caso.",
+    "1": "La conservación o mantenimiento de centros sanitarios asistenciales de titularidad autonómica no figura entre las materias que este artículo atribuye en todo caso al municipio.",
+    "2": "La prevención y extinción de incendios sí figura, junto con la protección civil, entre las competencias propias que el municipio ejerce en todo caso.",
+    "3": "El tráfico, estacionamiento de vehículos y movilidad sí figura entre las competencias propias que el municipio ejerce en todo caso."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Word 365, art. 2", "texto": "El subrayado tiene opciones adicionales: subrayado simple (por defecto), doble, punteado, ondulado, grueso, etc." },
+  "intro": "El subrayado de Word incluye, además del estilo simple predeterminado, otras variantes que se seleccionan desde una opción concreta del grupo Fuente.",
+  "options": {
+    "0": "La pestaña Diseño no contiene un grupo Fuente con opciones de subrayado.",
+    "1": "La pestaña Vista no incluye un grupo Fuente ni opciones de subrayado.",
+    "2": "Desde el grupo Fuente de la pestaña Inicio se accede a los subrayados adicionales al simple predeterminado, como el doble, el punteado o el ondulado.",
+    "3": "La pestaña Insertar tampoco contiene esta opción de subrayados adicionales."
+  },
+  "estilo": "boletin"
+}

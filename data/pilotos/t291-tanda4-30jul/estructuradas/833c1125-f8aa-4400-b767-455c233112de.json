@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "CE, art. 69.4",
+    "texto": "Las poblaciones de Ceuta y Melilla elegirán cada una de ellas dos Senadores."
+  },
+  "intro": "Se pregunta por el número de Senadores que se eligen en Ceuta y en Melilla.",
+  "options": {
+    "0": "Ceuta y Melilla sí eligen Senadores; el propio artículo se lo atribuye expresamente.",
+    "1": "Cuatro senadores cada una no es la cifra que recoge el artículo para estas poblaciones.",
+    "2": "Un senador cada una no corresponde a la cifra fijada por el artículo, que es el doble.",
+    "3": "El artículo asigna expresamente dos Senadores a cada una de estas poblaciones.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

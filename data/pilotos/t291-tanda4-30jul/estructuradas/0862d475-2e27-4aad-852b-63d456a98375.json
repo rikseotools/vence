@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Windows 11, art. 1",
+    "texto": "Win+R → `certmgr.msc`, o desde una consola de PowerShell o CMD."
+  },
+  "intro": "El artículo describe qué hace exactamente el comando certmgr.msc y desde qué entornos puede lanzarse.",
+  "options": {
+    "0": "El sistema sí reconoce certmgr.msc como comando: el artículo lo describe expresamente como una utilidad ejecutable desde PowerShell o CMD.",
+    "1": "Ejecutar certmgr.msc desde una consola de PowerShell abre la consola del Administrador de certificados, tal y como recoge el artículo al describir sus formas de acceso.",
+    "2": "No es cierto que no haya respuesta alguna: el comando abre la consola del Administrador de certificados de Windows.",
+    "3": "certmgr.msc no abre una herramienta para «certificar archivos»: abre el Administrador de certificados, que gestiona certificados de seguridad instalados en el sistema, no certifica archivos."
+  },
+  "estilo": "boletin"
+}

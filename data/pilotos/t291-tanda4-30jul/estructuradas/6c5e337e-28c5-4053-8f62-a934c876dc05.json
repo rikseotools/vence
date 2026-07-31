@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "CE, estructura", "texto": "Adaptar el ordenamiento constitucional al Tratado de la Unión Europea de Maastricht (1992), que reconocía el derecho de sufragio activo y pasivo a todo ciudadano de la UE en su Estado miembro de residencia." },
+  "intro": "La Constitución Española ha sido reformada en distintas ocasiones desde 1978, y conviene situar en el tiempo cuál fue la primera de esas reformas.",
+  "options": {
+    "0": "La Constitución sí se ha reformado a lo largo de su historia; la primera de esas reformas se remonta a 1992.",
+    "1": "1995 no corresponde a ninguna reforma constitucional; la primera reforma es anterior, de 1992.",
+    "2": "La primera reforma constitucional se produjo en 1992, para adaptar el artículo 13.2 al Tratado de Maastricht y reconocer el sufragio pasivo de los ciudadanos de la Unión Europea en las elecciones municipales.",
+    "3": "1986 no corresponde a ninguna reforma constitucional; la primera reforma llegaría después, en 1992."
+  },
+  "estilo": "boletin"
+}

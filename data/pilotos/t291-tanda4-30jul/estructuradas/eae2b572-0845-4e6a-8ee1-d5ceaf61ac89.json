@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "RD 1708/2011, art. 26.1", "texto": "así como los declarados reservados por una norma con rango de Ley" },
+  "intro": "El artículo enumera de forma tasada los supuestos que hacen que un documento de archivo sea de acceso restringido.",
+  "options": {
+    "0": "La información cuya difusión pudiera entrañar riesgos para la seguridad y la defensa del Estado sí figura entre las causas de acceso restringido.",
+    "1": "Los documentos que contienen datos personales sí figuran entre las causas de acceso restringido.",
+    "2": "El artículo exige que la declaración de reservado se haga por una norma con rango de Ley, no por cualquier norma.",
+    "3": "La información cuya difusión pudiera interferir en la averiguación de delitos o en la tutela judicial efectiva sí figura entre las causas de acceso restringido."
+  },
+  "estilo": "boletin"
+}

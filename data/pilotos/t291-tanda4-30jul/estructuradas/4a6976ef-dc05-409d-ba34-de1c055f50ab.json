@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Excel 365, art. 80",
+    "texto": "`=MODA(7;5;8;1;7;4;3;2;2;7)` → 7"
+  },
+  "intro": "El artículo recoge exactamente este mismo conjunto de números como ejemplo de aplicación de la función que devuelve el valor más frecuente.",
+  "options": {
+    "0": "No es el resultado: aunque el 2 se repite, aparece con menos frecuencia que otro valor del conjunto.",
+    "1": "No es el resultado: el 5 solo aparece una vez en el conjunto de números.",
+    "2": "No es el resultado: el 6 ni siquiera forma parte del conjunto de números.",
+    "3": "Coincide con el resultado que muestra el artículo para este mismo ejemplo: es el valor que más veces se repite."
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Outlook 365, art. 2 (Búsqueda de mensajes)",
+    "texto": "escribir una palabra devuelve todos los elementos que la contienen (coincidencia por prefijo)"
+  },
+  "intro": "Se pregunta qué combinación de palabras aparecería como resultado al buscar el texto 'pone' en la Bandeja de entrada de Outlook 365.",
+  "options": {
+    "0": "«Anteponer» tiene 'pone' en posición intermedia y «100pone» lo tiene al final; la búsqueda por prefijo no encuentra coincidencias en esas posiciones.",
+    "1": "«Ponencia», «poner» y «ponente» empiezan las tres por 'pone', que es precisamente el patrón que localiza una búsqueda por prefijo como la de Outlook.",
+    "2": "«Descomponer» tiene 'pone' en posición intermedia, no al principio de la palabra, por lo que no aparecería entre los resultados de una búsqueda por prefijo.",
+    "3": "«100pone» tiene 'pone' al final y «componer» lo tiene en posición intermedia; ninguna de las dos encajaría en una búsqueda por prefijo.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Word 365, art. 1", "texto": "Insertar nota al pie (Alt+Ctrl+O)" },
+  "intro": "Word 365 en español asigna combinaciones de teclas propias, distintas de las de la versión inglesa, para insertar notas al pie y notas al final.",
+  "options": {
+    "0": "Alt+Ctrl+A no corresponde al atajo de insertar una nota al pie en Word 365 en español.",
+    "1": "Alt+Ctrl+O es la combinación que inserta una nota al pie en la versión en español de Word 365.",
+    "2": "Alt+Ctrl+C no es el atajo asignado a la inserción de notas al pie.",
+    "3": "Alt+Ctrl+W no corresponde a ninguna de las combinaciones de notas al pie o al final de Word 365."
+  },
+  "estilo": "boletin"
+}

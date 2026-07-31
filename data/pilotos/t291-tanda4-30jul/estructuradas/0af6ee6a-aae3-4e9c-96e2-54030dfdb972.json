@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1",
+    "texto": "Las Administraciones Públicas sirven con objetividad los intereses generales"
+  },
+  "intro": "El artículo precisa con qué cualidad sirven las Administraciones Públicas a los intereses generales.",
+  "options": {
+    "0": "Coincide de forma literal con el precepto: las Administraciones sirven con esta cualidad los intereses generales.",
+    "1": "El artículo la menciona en otro momento del párrafo, como sometimiento pleno a la Ley, no como la cualidad con la que se sirve a los intereses generales.",
+    "2": "El artículo la recoge en otro apartado, como responsabilidad por la gestión pública, no en relación con el servicio a los intereses generales.",
+    "3": "No aparece en este artículo como cualidad del servicio a los intereses generales."
+  },
+  "estilo": "boletin"
+}

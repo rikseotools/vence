@@ -2739,9 +2739,26 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   | **[T-354]** | detector de contradicciones internas del banco (`npm run audit:atajos`) | ✅ hecha — llevó de 4+10 a 1+2 |
   | **[T-364]** | el test de PDF troceado tumba el pre-commit de forma intermitente | 🟡 abierta — trabajo en vuelo de otra sesión |
 
-  **Cifras del banco al cierre del 30/07** (medidas, no estimadas): **6.998 preguntas activas con explicación estructurada**, de ellas **6.860 barajables de verdad**.
+  **Cifras del banco al cierre del 30/07** (medidas, no estimadas): **7.207 preguntas activas con explicación estructurada**, de ellas **7.008 barajables de verdad**.
 
   **Nada de esto necesita deploy:** todo son datos (preguntas y artículos) más un runner CLI. La caché de producción se invalidó tras cada tanda.
+
+  ### 🚀 TANDA 4 — 30/07, la primera con el circuito completo
+
+  **149 aplicadas de 150 · 36.247 exposiciones · 135 barajables · 0 citas inventadas · ninguna clave tocada.** Material íntegro en **`data/pilotos/t291-tanda4-30jul/`** (lotes, las 149 explicaciones, veredictos, el prompt exacto y el extractor).
+
+  - **Novedad del corte:** entra **Office 2016**, porque sus 15 artículos se enriquecieron ese mismo día ([T-302]). Antes los agentes solo podían dictaminar «el contenedor no da para verificar». Siguen fuera los clínicos TCAE.
+  - **Las dos puertas atraparon UNA CADA UNA, y distinta** — confirmación de que hacen falta las dos: el **validador de lote** rechazó `d24651bf` («todas las opciones anteriores») y el **dry-run del aplicador** rechazó `46a77905`, que el validador **había dejado pasar**. Las dos, razones con referencia posicional que el barajado rompe.
+  - **GOTCHA de infraestructura:** 4 aplicaciones fallaron con `Failed query`. **No era contenido: era la conexión**, porque el bucle lanza un `npx tsx` por pregunta y satura. Reintentadas, entraron las cuatro. Si se repite, reintentar sin tocar el material.
+  - **El único defecto** (`15707043`) resultó ser otra vez «la respuesta vive en otro artículo»: la pregunta cuelga del art. 116 CE y dos de sus supuestos dependen del art. 115.
+
+  ### 🔴 LO PRIMERO PARA QUIEN COJA ESTO: falta la RE-VERIFICACIÓN de la tanda 4
+
+  **Las 149 están aplicadas y SERVIDAS, pero NO se ha corrido el paso 7 del método v2.1.** Es el único que caza **afirmaciones falsas dentro de razones bien formadas**, que ningún gate anterior puede ver porque todos miran la forma.
+
+  - **Rendimiento medido en tandas previas:** 3,0 % (tanda 1, al 100 %) · 2,5 % (tanda 2, muestra 20 %) · **6,9 % (tanda 3)**. Sobre 149 caben esperar **entre 4 y 10 defectos reales**.
+  - **Cómo:** entregar a agentes independientes la pregunta VIVA en BD + su artículo + la explicación aplicada, y pedir que verifiquen cada afirmación contra el artículo. Basta con el **20 % ordenado por exposición**, que cubre un tercio del total (el corte de la tanda 2).
+  - **Por qué importa:** en la tanda 3, una explicación situaba la libertad de empresa «dentro de los mismos principios rectores» que el art. 42, en una pregunta con **1.491 apariciones**. Eso solo lo caza este paso.
 
   ### 🎯 QUÉ HACER AHORA, por orden de rendimiento
 

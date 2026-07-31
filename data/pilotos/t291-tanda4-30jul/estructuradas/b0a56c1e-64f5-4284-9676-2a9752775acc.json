@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.4",
+    "texto": "actúa para el cumplimiento de sus fines con personalidad jurídica única."
+  },
+  "intro": "El artículo describe con qué personalidad jurídica actúa cada Administración Pública para el cumplimiento de sus fines.",
+  "options": {
+    "0": "Es la opción correcta: coincide de forma literal con lo dispuesto en el artículo.",
+    "1": "No se menciona en el artículo; este concepto no forma parte de lo que regula el precepto sobre personalidad jurídica.",
+    "2": "No es correcto: el artículo atribuye la dirección de la actuación administrativa al Gobierno de la Nación, a los órganos de gobierno de las Comunidades Autónomas y a los de las Entidades Locales, no al Congreso de los Diputados.",
+    "3": "No es correcta, porque dos de las otras opciones no coinciden con lo que dispone el artículo."
+  },
+  "estilo": "boletin"
+}

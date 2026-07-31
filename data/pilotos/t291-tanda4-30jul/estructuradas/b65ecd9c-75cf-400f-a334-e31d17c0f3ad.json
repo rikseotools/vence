@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "La Red Internet, art. 2 (Estructura de una URL)",
+    "texto": "protocolo://usuario:contraseña@dominio:puerto/ruta?parámetros#fragmento"
+  },
+  "intro": "Se pregunta qué elementos incluye una URL (Uniform Resource Locator).",
+  "options": {
+    "0": "El protocolo forma parte de la estructura de la URL, pero no es el único elemento que la compone.",
+    "1": "El nombre de dominio forma parte de la estructura de la URL, pero no es el único elemento que la compone.",
+    "2": "La ubicación o ruta del contenido forma parte de la estructura de la URL, pero no es el único elemento que la compone.",
+    "3": "El protocolo, el dominio y la ruta del contenido son, todos ellos, elementos que integran la estructura de una URL.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

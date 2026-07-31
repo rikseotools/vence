@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Windows 11, art. 1", "texto": "| **Alt + ←** | Ir a la carpeta anterior (Atrás) |" },
+  "intro": "En el Explorador de archivos, la navegación hacia atrás y hacia adelante entre carpetas visitadas tiene sus propios atajos de teclado.",
+  "options": {
+    "0": "Alt + flecha izquierda funciona como el botón «Atrás», llevando a la última carpeta visitada antes de la actual.",
+    "1": "Alt + «*» (teclado numérico) expande todas las subcarpetas del elemento seleccionado en el panel de navegación; no navega hacia atrás.",
+    "2": "Alt + Supr no tiene asignada ninguna función de navegación entre carpetas en el Explorador.",
+    "3": "Alt + «+» (teclado numérico) expande la carpeta seleccionada mostrando sus subcarpetas directas; no navega hacia atrás."
+  },
+  "estilo": "boletin"
+}

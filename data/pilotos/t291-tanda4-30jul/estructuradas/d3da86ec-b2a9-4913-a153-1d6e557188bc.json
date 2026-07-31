@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "TUE, art. 16.2",
+    "texto": "El Consejo estará compuesto por un representante de cada Estado miembro, de rango ministerial, facultado para comprometer al Gobierno del Estado miembro al que represente y para ejercer el derecho de voto."
+  },
+  "intro": "Se pregunta por la composición del Consejo según el Tratado de la Unión Europea.",
+  "options": {
+    "0": "Los representantes de los ciudadanos de la Unión componen el Parlamento Europeo, no el Consejo.",
+    "1": "Los Jefes de Estado componen el Consejo Europeo junto con sus Presidentes y el Presidente de la Comisión, no el Consejo.",
+    "2": "Los Jefes de Gobierno también forman parte del Consejo Europeo, no del Consejo.",
+    "3": "El Consejo está compuesto por un representante de cada Estado miembro, de rango ministerial, facultado para comprometer a su Gobierno y ejercer el derecho de voto."
+  },
+  "estilo": "boletin"
+}

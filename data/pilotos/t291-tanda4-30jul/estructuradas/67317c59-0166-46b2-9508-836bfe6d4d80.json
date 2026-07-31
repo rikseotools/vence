@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "RD 366/2007, art. 8.2.a",
+    "texto": "Al menos una parte del mostrador o mesa de atención ha de estar a la altura de una mesa de trabajo, para atender a personas de diferentes alturas, usuarios de sillas de ruedas y muletas o, en general, personas que necesiten sentarse."
+  },
+  "intro": "Se pregunta qué recomendación de altura debe cumplir, al menos en parte, el mostrador o mesa de un puesto de Atención al Ciudadano.",
+  "options": {
+    "0": "El artículo exige expresamente que al menos una parte del mostrador esté a la altura de una mesa de trabajo, para atender a personas con distintas necesidades de movilidad.",
+    "1": "El artículo no fija ningún límite de anchura para los mostradores; esa medida no aparece en el precepto.",
+    "2": "El artículo no vincula la altura del mostrador a ninguna señal luminosa; esa referencia no figura en el texto.",
+    "3": "El artículo no establece un máximo de altura en centímetros; la referencia que da es la altura de una mesa de trabajo, no una medida numérica.",
+    "4": null
+  },
+  "estilo": "boletin"
+}

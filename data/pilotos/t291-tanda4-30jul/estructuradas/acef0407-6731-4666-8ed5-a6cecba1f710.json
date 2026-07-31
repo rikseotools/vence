@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Ley 40/2015, art. 3.1.i",
+    "texto": "Economía, suficiencia y adecuación estricta de los medios a los fines institucionales."
+  },
+  "intro": "El artículo 3.1 enumera una larga lista de principios de actuación de las Administraciones Públicas, entre los que figuran los tres propuestos.",
+  "options": {
+    "0": "Es uno de los principios que enumera literalmente el artículo (servicio efectivo a los ciudadanos).",
+    "1": "Es también uno de los principios que enumera literalmente el artículo (simplicidad, claridad y proximidad a los ciudadanos).",
+    "2": "Es igualmente uno de los principios que enumera literalmente el artículo, tal y como aparece citado.",
+    "3": "Es la respuesta correcta, porque las tres afirmaciones anteriores coinciden literalmente con principios recogidos en el artículo."
+  },
+  "estilo": "boletin"
+}

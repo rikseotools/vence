@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "Informática Básica, art. 3", "texto": "**Intel** fue el **primer fabricante de microprocesadores** del mundo, con el **Intel 4004** (1971)." },
+  "intro": "La fabricación de microprocesadores tiene un hito de origen asociado a una empresa y un modelo concretos.",
+  "options": {
+    "0": "Intel fue la empresa que fabricó el primer microprocesador del mundo, el Intel 4004, en 1971.",
+    "1": "ADM no fue la empresa que fabricó el primer microprocesador; ese hito corresponde a Intel.",
+    "2": "IBM fabricó ordenadores y sistemas, pero no fue la primera empresa en fabricar un microprocesador.",
+    "3": "Speadtrum es un fabricante de chips posterior, no la primera empresa en fabricar microprocesadores."
+  },
+  "estilo": "boletin"
+}

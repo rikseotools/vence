@@ -1,0 +1,11 @@
+{
+  "cita": { "ref": "RD 366/2007, art. 5.2.h)", "texto": "Cuando las puertas sean acristaladas o de vidrios se protegerán de forma que se eviten roturas por impacto y se señalizarán mediante dos bandas horizontales de 20 centímetros de ancho, de contraste cromático con el resto de la superficie, colocada, la primera, a una altura entre 100 y 120 centímetros, y la segunda entre 150 y 170 centímetros." },
+  "intro": "El artículo 5.2 del RD 366/2007 recoge distintas recomendaciones sobre el diseño de los accesos a las Oficinas de Atención al Ciudadano.",
+  "options": {
+    "0": "El espacio adyacente a la puerta debe ser horizontal, no vertical, para permitir la aproximación y apertura de la puerta.",
+    "1": "Las puertas acristaladas deben señalizarse con dos bandas horizontales de 20 centímetros de contraste cromático, tal como recoge esta recomendación.",
+    "2": "Las puertas de entrada pueden ser correderas o abatibles; no se exige que sean necesariamente correderas.",
+    "3": "Los elementos del suelo como canaletas o felpudos deben quedar enrasados con el pavimento, no suprimidos."
+  },
+  "estilo": "boletin"
+}

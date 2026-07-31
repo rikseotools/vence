@@ -1,0 +1,10 @@
+{
+  "intro": "Windows 11 concentra el acceso rápido a las redes disponibles en los iconos de estado de la barra de tareas.",
+  "options": {
+    "0": "El icono de red del área de notificaciones de la barra de tareas abre el panel donde aparecen las redes disponibles y el botón para conectarse.",
+    "1": "Seguridad de Windows gestiona el antivirus y la protección del equipo, no la conexión a redes inalámbricas.",
+    "2": "Accesibilidad reúne las ayudas de visión, audición e interacción, sin relación con la conexión Wi-Fi.",
+    "3": "Sistema agrupa pantalla, sonido y almacenamiento, no la gestión de redes inalámbricas."
+  },
+  "estilo": "boletin"
+}

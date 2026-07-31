@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Explorador de Windows 11, art. 5",
+    "texto": "editor de texto incluido en el sistema operativo que permite crear y editar texto **sin formato**, y almacenarlo como documento de texto (`.txt`)."
+  },
+  "intro": "Se pregunta qué herramienta de Windows corresponde a la descripción de un editor de texto sencillo incluido en el sistema.",
+  "options": {
+    "0": "Windows Media Player es un reproductor multimedia, no un editor de texto.",
+    "1": "Escritorio remoto sirve para conectarse a otro equipo, no para editar texto.",
+    "2": "Herramienta Recortes sirve para hacer capturas de pantalla, no para editar texto.",
+    "3": "El Bloc de notas es precisamente el editor de texto sin formato incluido en el sistema operativo, con funcionalidades muy simples."
+  },
+  "estilo": "boletin"
+}
