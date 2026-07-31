@@ -62,6 +62,10 @@ Salieron de fallos reales, no de teoría. Si portas el sistema, porta esto prime
     escrito para ese caso— deja de ser papel pintado.
 11. **Un proceso de fondo tiene que MORIR con quien lo lanzó.** Si sobrevive, no falla: sigue
     trabajando y contándoselo a nadie, que es peor — se comporta como si vigilara.
+12. **Un cambio ESTRUCTURAL sin ficha no existe para las demás sesiones — y las paraliza.** Con
+    2-10 trabajando a la vez, lo que no se puede distinguir de un accidente bloquea a todo el
+    mundo: nadie se atreve a seguir ni a revertirlo. Si tocas la forma del repositorio, regístralo
+    ANTES de tocarlo.
 
 ---
 
@@ -250,6 +254,29 @@ Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · �
 También recoge el trabajo huérfano (§3.9.bis) como clase propia: es fricción de la que solo se
 ve el rastro, porque la sesión que la causó ya no está para contarlo.
 
+### 3.13 El repo principal: NO lo pongas en `bare`
+
+Es tentador: un repo `bare` no admite trabajo, así que haría **imposible** el índice compartido
+(§3.5). Se intentó el 31/07 y hubo que revertirlo. **Los tres motivos, por si vuelve la idea:**
+
+1. **Ya está resuelto, y mejor.** El guardarraíl de `pre-commit` impide trabajar en el principal
+   **sin romper nada**; el `bare` rompe `git status`, el IDE y todo script que asuma un árbol ahí.
+   Con dos soluciones al mismo problema, gana la que no rompe lo de al lado.
+2. **No se puede terminar sin rediseñar algo primero.** Un `bare` de verdad no tiene ficheros,
+   pero el principal guarda dos cosas **que no están en el historial**: la configuración local
+   (gitignored) y `node_modules` — y de ahí las copia/enlaza el creador de worktrees en CADA uno
+   nuevo. Vaciarlo deja a las sesiones nuevas sin configuración y sin dependencias.
+3. **A medias es lo peor de los dos mundos:** un repositorio lleno de ficheros marcado como vacío.
+   Ni `bare` ni normal. Ambiguo.
+
+> **Y el daño no fue técnico, fue de coordinación.** Se hizo sin ficha, así que ninguna sesión
+> podía distinguir «intencionado» de «accidente» — y ante la duda nadie sigue ni revierte. Paralizó
+> un deploy con 21 commits esperando. Revertir fue **una línea**; decidir si podía revertirse costó
+> una conversación entera.
+
+**Si alguien lo retoma**, lo que hay que resolver ANTES es de dónde saca cada worktree nuevo su
+configuración local y sus dependencias.
+
 ---
 
 ## 4. Tablas
@@ -305,6 +332,7 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
 | Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
 | **Un proceso de fondo que sobrevive a su sesión** | sigue trabajando y avisando a nadie; si recuerda lo avisado, lo marca como visto |
+| **Cambio estructural del repo sin ficha** | nadie distingue intencionado de accidente → todos se paran |
 | La regla escrita solo al arrancar la sesión | queda sepultada justo cuando toca aplicarla |
 | **Crear el worktree ≠ entrar en él** | la sesión que ejecuta el script se queda donde estaba: worktrees perfectos y VACÍOS |
 | `git reset --soft` + índice compartido | deja **borrados staged** de ficheros que sí están en la rama: el siguiente commit los borra |
