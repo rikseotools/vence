@@ -1,0 +1,11 @@
+Hola María José,
+
+Un apunte más, porque tenías más razón de la que te dimos.
+
+Cuando decías que llevas usando Ctrl+E desde versiones anteriores de Windows, estabas en lo cierto: en el Explorador de Windows 10 ese era efectivamente el atajo para seleccionar todo. El cambio a Ctrl+A llegó con Windows 11, y por eso deja de responder lo que llevabas años usando.
+
+Hemos completado la explicación de la pregunta para que recoja también esa diferencia entre versiones, y no solo la que hay entre el Explorador y los documentos.
+
+Muchas gracias.
+
+Equipo de Vence
