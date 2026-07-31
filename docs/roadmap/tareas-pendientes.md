@@ -793,6 +793,24 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
+### [T-360] 🔴 [ABIERTO 31/07] `observable_events` (6,9 GB) satura la BD: el motor de alertas la escanea y se pierden respuestas de opositores
+
+- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás había un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503 «Servicio saturado»), la ingesta de observabilidad tardando hasta **35 s**, y la alerta `5xx_spike` disparando (la vigilancia sí funcionó).
+- **LA PISTA FALSA, y por qué la descarto:** `refresh-rankings` pasó de **104 ms a 19,3 s** en 25 minutos (07:29 → 07:49) y parecía la causa. Pero lleva 36 horas planas en ~110 ms y lo que cambió no fue él: es **la víctima más visible** porque corre cada 5 minutos y tiene reloj. Se degradó encolado detrás de lo demás.
+- **LO MEDIDO (31/07):**
+  - `observable_events`: **6,9 GB · 10.733.632 filas**, creciendo **~70.000/día** (2.000-5.400 por hora).
+  - La consulta de la regla de latencia (`SELECT endpoint … WHERE event_type='request_completed' AND duration_ms > …`) usa el índice **solo por fecha** (`idx_observable_events_ts_desc`) y filtra después: para **una hora** lee 4.663 filas para devolver 23 y tarda **1,9 s**. El motor lanza varias a la vez — medidas **tres simultáneas** en `pg_stat_activity`.
+  - Un **autovacuum de esa tabla terminó a las 07:12**, minutos antes de que empezara la escalada.
+  - `last_analyze` del 27/07; `last_autoanalyze` del 30/07 04:00.
+- **EL PRECEDENTE QUE LO DELATA COMO SILO:** ya existe `idx_observable_events_cron_covering` — `(event_type, ts DESC) INCLUDE (endpoint, duration_ms) WHERE event_type IN ('cron_tick','cron_run')`. Alguien chocó con ESTE mismo problema, lo arregló **solo para los eventos de cron** y las demás reglas se quedaron con el escaneo lento. La solución existe; falta aplicarla donde duele.
+- **QUÉ HACER, por orden de valor:**
+  1. **Retención.** Una tabla de eventos para alertar no necesita ~150 días calientes. Es el arreglo de fondo: sin él, lo demás solo retrasa el problema. **Decisión de producto:** la retención borra histórico de observabilidad, hay que elegir ventana (y si se archiva antes de borrar). Comprobar primero si ya existe alguna purga — no se pudo confirmar en el momento del diagnóstico.
+  2. **Índice cubridor para `request_completed`**, calcado del de crons.
+  3. **Escalonar las reglas** para que no coincidan varias barridas pesadas en el mismo tick.
+- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son *parte del problema*. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Usar ventanas cortas y `EXPLAIN` en vez de contar.
+- **Relacionada:** `docs/runbooks/health-check.md` (§ salud de la BD y del motor de alertas).
+
+
 ### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
 
 - **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.

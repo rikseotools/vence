@@ -242,6 +242,21 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ofertas nunca pasaría por bueno. Correrla tras tocar `ofertaHeredada`, `precioHeredado` ' +
       'o `reactivateSubscription`.',
   },
+  robustez_push_guard: {
+    titulo: 'Bloquear el push de código de producción que va sin capas, y de señales que nadie vigila',
+    ruta: 'scripts/robustez-push-guard.cjs',
+    estado: 'vivo',
+    notas:
+      'Hook `.husky/pre-push`, entre el guard del backlog y el typecheck. Dos preguntas, las ' +
+      'dos contestables con el diff: (1) ¿toca producción sin UNA sola capa (test, spec, sim, ' +
+      'canary, guardarraíl)?; (2) ¿estrena un `eventType` que no aparece en alert-rules ni en ' +
+      'los catálogos de señales? No juzga si los tests son buenos —un hook no puede saberlo—, ' +
+      'solo si los hay. Núcleo puro `lib/calidad/robustezPushGuard.cjs` (14 tests). Fail-open ' +
+      'y con escape `ROBUSTEZ_GUARD_SKIP=1`, que se imprime: un gate que no se puede saltar en ' +
+      'un hotfix acaba desactivado entero. **GOTCHA que costó una prueba negativa:** el rango ' +
+      'es `origin/main...HEAD` con TRES puntos; con dos se colaban los ficheros de otras ' +
+      'sesiones y, como casi siempre traen algún test, dejaba pasar cualquier cosa.',
+  },
   purgar_feedback_espurio: {
     titulo: 'Borrar del historial de una persona los apuntes que escribió otro (con respaldo y rastro)',
     ruta: 'scripts/purgar-feedback-espurio.cjs',
