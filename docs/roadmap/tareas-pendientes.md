@@ -1095,6 +1095,20 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Ritmo real medido:** 12 preguntas por tanda con verificación completa (leer artículo, comprobar clave, escribir, validar cita, aplicar, re-verificar). Quedan **8 lotes / 85 preguntas** en esta banda; después toca bajar a `--min-impresiones 2` y volver a medir.
 - **Lo que NO cubre este trabajo:** la **auditoría ciega independiente** (paso 4 del método v2.1). El manual la exige aunque el gate mecánico esté en verde —midió un 14% de defectos que ningún script ve— y necesita un agente distinto del que escribió. En esta sesión no se lanzó: quien siga el cubo debería pasarla sobre las 11 ya aplicadas antes de dar el lote por auditado.
 - **Relacionadas:** el manual `docs/maintenance/revisar-preguntas-con-agente.md` (§ del cubo, con el pipeline y los tres pasos que no se pueden saltar) y la memoria `project-cubo-explicaciones-apelotonadas`.
+### [T-425] 🟡 [ABIERTO 31/07] Dos versiones casi idénticas de la misma pregunta (autonomía municipal, CE 137): ¿cuántas más hay así?
+
+- **Esfuerzo: rato.** Medir es una consulta; decidir qué se hace con lo que salga es lo que puede alargarse.
+- **ORIGEN.** Al resolver la impugnación `e60091bd` (T-409) aparecieron **dos preguntas activas que preguntan lo mismo con las mismas cuatro opciones**, solo cambiando el orden y una palabra del enunciado:
+  | id | enunciado | opciones | expuesta |
+  |---|---|---|---|
+  | `373bed31` | «…el principio de autonomía de los municipios **para la gestión de sus respectivos intereses** en su artículo:» | 147 / 115 / **137** / 148 | 130 veces |
+  | `6f9e4831` | «…el principio de autonomía de los municipios **y provincias** en su artículo:» | 148 / 115 / 147 / **137** | 100 veces |
+- **Por qué no lo cerré yo:** la impugnación se resolvió mejorando `373bed31` (explicación estructurada + enunciado desambiguado frente al art. 140, que era lo que la usuaria confundía). Fusionar o jubilar una de las dos **no es urgente y no era el objeto de la impugnación**, pero dejarlas sin mirar es dejar que la misma persona se las encuentre las dos y crea que le repetimos preguntas — que es justo la queja `pregunta_repetida` que ya llegó de otra usuaria el 30/07.
+- **Lo que hay que MEDIR antes de tocar nada** (regla del manual de impugnaciones, 30/07: «si el fallo puede ser sistémico, míralo en la BD antes de cerrar»): agrupar preguntas activas por `primary_article_id` y comparar enunciados normalizados con solape ≥70%. La vez que se midió sobre UN artículo salieron **100 pares casi idénticos entre 136 preguntas**, así que es de esperar que esto sea ancho.
+- **Decisión que hará falta (de Manuel):** con dos versiones válidas de la misma pregunta, ¿se jubila una como `retired_duplicate`, se deja porque son variantes legítimas de examen, o se reformula una para que pregunten cosas distintas del mismo artículo? Afecta a cuánto banco se pierde, así que no lo decide la sesión.
+- **NO confundir con T-409:** aquel es «la explicación es el artículo copiado» (defecto de explicación); esto es «la pregunta ya existe» (defecto de banco). Se cruzaron porque la misma impugnación destapó los dos.
+- **Relacionadas:** T-409, `docs/maintenance/impugnaciones-claude-code.md` (regla del fallo sistémico y la de «un hallazgo, una recompensa»).
+
 
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
 
@@ -1113,12 +1127,12 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Relacionadas:** [T-345] (el plazo, que ya existía), [T-392] (ciclo de vida completo), [T-252] (las fechas que se escribían en los títulos).
 
 
-### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.185 preguntas servidas que no explican nada
+### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.137 preguntas servidas que no explican nada
 
-- **Esfuerzo:** el detector ya está hecho (esta sesión). Lo que queda es **cola larga de reescritura**: 2.185 preguntas en 137 lotes de 16, ~1 h por lote. Va por tandas, atacando por exposición.
+- **Esfuerzo: sesion_propia por tandas.** El detector ya está hecho y en `main`; lo que queda es **cola de reescritura**: ~2.137 preguntas, 16 por lote, **unos 15 min por tanda de cuatro** (una hora larga por lote). Se ataca por exposición y se puede parar en cualquier tanda.
 - **ORIGEN — una impugnación que parecía de clave y era de explicación.** Natalia impugnó `e60091bd` («¿en qué artículo establece la CE el principio de autonomía de los municipios?») diciendo que la clave estaba mal. La clave era correcta (art. 137), pero la pregunta llevaba **46% de acierto en 130 exposiciones** y su explicación entera era el artículo 137 copiado, con su encabezado. No decía por qué el 140 —el que uno tiene en la cabeza— no era la respuesta. **La impugnación no era el fallo: era el síntoma.**
 - **Qué es el cubo:** pregunta activa cuya explicación (a) **no razona ninguna opción** y (b) su contenido **ya está en el artículo vinculado**. Se exigen LAS DOS: solo (b) marcaría las citas legítimas dentro de una explicación que sí razona; solo (a) marcaría media base de datos.
-- **Medido el 31/07** (≥10 impresiones en 90 días): **2.185 preguntas · ~78.700 impresiones** — 1.040 copia literal y 1.145 casi literal. Concentración: Ley 39/2015 (511), CE (439), Ley 40/2015 (225), LPRL (190), LO 3/2018 (131). El lote de cabeza son 16 preguntas con 3.131 impresiones.
+- **Medido el 31/07** (≥10 impresiones en 90 días): **2.185 preguntas · ~78.700 impresiones** — 1.040 copia literal y 1.145 casi literal. Concentración: Ley 39/2015 (511), CE (439), Ley 40/2015 (225), LPRL (190), LO 3/2018 (131). Calibrado sobre **muestra ciega de 600 preguntas** (8,2% caen en el cubo), no filtrando por su propia salida.
 - **Punto ciego de los cubos que ya había.** «Apelotonada» mira la FORMA (>400 caracteres sin un salto), así que una transcripción bien maquetada se le escapa entera y una explicación buena escrita de corrido cae en él sin tener este defecto. «Nota de auditoría» es la explicación que habla de sí misma; aquí no habla: calla y copia.
 - **Herramientas (ya en `main`):** núcleo puro `lib/health/explicacionTranscripcion.cjs` (13 tests) + cubo nuevo del extractor de siempre: `node scripts/apelotonadas/extraer-lote.cjs --cubo transcripcion --min-impresiones 10 --out <dir>`. El criterio necesita el artículo, así que el predicado SQL es solo prefiltro y el juicio lo pone el núcleo sobre las filas ya traídas.
 - **Cómo se repara (una a una, NUNCA en automático):** verificar la clave contra el artículo → reescribir en formato estructurado con `scripts/aplicar-explicacion.ts` (una razón por opción, referida al CONTENIDO) → la pregunta nace **barajable**. Comprobar la cita con `citaNoLiteral` antes de aplicar. Si la clave no se sostiene, va a `needs_human`; no se auto-corrige.
@@ -1127,6 +1141,40 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **AVANCE previo — lote 01 (16 preguntas · 3.131 impresiones).** Las 16 verificadas contra su artículo (las 16 claves eran correctas: el defecto era solo la explicación), reescritas estructuradas y **las 16 quedan `safe`** y fuera del cubo al re-medirlas. Caché purgada. Reparto: 9 CE, 4 Ley 39/2015, 1 LO 4/2001 y la impugnada `e60091bd`. Lotes en `scratchpad/t409/` (regenerables con el comando de arriba). 
 - **Patrón que se repite y conviene saber antes de empezar una tanda:** casi todas son preguntas de «¿en qué artículo está X?» o de enumeración, con distractores que son artículos VECINOS. La explicación útil no es la cita —esa ya estaba—: es decir **qué hay en el artículo de al lado**, que es lo que el opositor confundió (137 frente a 140, 28.1 frente a 28.2, los valores del 1.1 frente a los fundamentos del 10.1, el ingreso del 31.1 frente al gasto del 31.2).
 - **Relacionadas:** T-249 (cubo `nota-auditoria`, mismo pipeline), T-080 Fase 2 (explicación estructurada), `docs/maintenance/revisar-preguntas-con-agente.md`.
+
+#### 📋 RECETA COMPLETA — cómo retomar esto desde cero (worktree nuevo, sin contexto)
+
+1. **Sacar la cola** (los lotes NO están en ningún sitio: se regeneran, y es gratis):
+   `node scripts/apelotonadas/extraer-lote.cjs --cubo transcripcion --min-impresiones 10 --tam 16 --out scratchpad/t409`
+   Imprime cuántas quedan y las reparte por exposición descendente.
+   ⚠️ **La numeración de los lotes NO es estable entre ejecuciones, y es a propósito.** Las ya reparadas salen del cubo (tienen `explanation_data`), así que al regenerar, **el `lote_01` de tu ejecución son las siguientes por atacar**. No busques «el lote 04»: empieza por el 01 de tu propia salida.
+2. **Volcar una tanda de 4** con el artículo delante:
+   `node -e "const l=require('./scratchpad/t409/lote_01.json'); l.slice(0,4).forEach(q=>{console.log('══',q.id,'|',q.ley,'art',q.article_number); console.log('P:',q.question_text); ['a','b','c','d','e'].forEach((k,i)=>{if(q['option_'+k])console.log(' ',(q.correct_option===i?'✔':' '),String.fromCharCode(65+i)+')',q['option_'+k])}); console.log('ART:',q.article_content.slice(0,900))})"`
+3. **Verificar la clave contra el artículo** (viene en el propio JSON, no hace falta ir al BOE salvo duda). Si no se sostiene → `needs_human`, NUNCA auto-corregir la clave.
+4. **Escribir el JSON de la explicación** (uno por pregunta, en `scratchpad/t409/exp/<8-primeros-del-id>.json`):
+   `{ "cita": {"ref":"Art. X de la Ley Y","texto":"…literal del artículo…"}, "intro":"…", "options": {"0":"…","1":"…","2":"…","3":"…"}, "outro":"**Clave:** …" }`
+   - Las razones se refieren al **CONTENIDO** de cada opción, **nunca a su letra ni a su posición** («la primera», «la anterior»): no sobreviven al barajado.
+   - `intro` y `outro` se emiten VERBATIM en cualquier orden → **jamás nombres la clave por su letra ahí** (el aplicador rechaza el JSON si lo haces).
+   - La `cita` se copia LITERAL del `article_content` del propio lote. Si no casa, el guardarraíl la caza.
+5. **Aplicar** (dry-run quitando `--apply`):
+   `npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> scratchpad/t409/exp/<f>.json --apply`
+6. **Verificar la tanda y purgar caché** al cerrar el lote: contar que las 16 tengan `explanation_data`, re-medirlas con `clasificaTranscripcion` (deben salir 0 en el cubo) y `POST /api/admin/revalidate` con `{"tag":"questions"}` y el `x-cron-secret`.
+7. **Anotar el avance en esta ficha** y `release` de la tarea. Es lo único que sobrevive a la sesión.
+
+#### ⚠️ Gotchas ya pagados (no los redescubras)
+
+- **`unsafe` al aplicar NO es un fallo tuyo.** Son las de «Todas las anteriores» / «A) y B) son correctas»: no se barajan por construcción. Comprobado además que **`shuffle_mode='no_shuffle'` manda por encima de `shuffle_safety`**, así que una de esas marcada `safe` tampoco se permuta.
+- **Un fallo suelto de `aplicar-explicacion.ts` suele ser de CONEXIÓN.** Pasó una vez en mitad de un bucle de cuatro; al reintentarla sola entró sin cambiar nada. Reintenta antes de investigar.
+- **La cita del blockquote se comprueba entera**, no solo los primeros caracteres (§5.1.bis del manual de impugnaciones).
+- **Medir sin sesgo:** para re-calibrar el detector, muestra ciega con `scripts/apelotonadas/muestra-transcripcion.cjs` (no filtra por la salida del propio detector; imprime también los NEGATIVOS para poder juzgarlos).
+
+#### 📈 Avance
+
+- **31/07 — lotes 01, 02 y 03 cerrados: 48 preguntas · 7.656 impresiones**, los tres de más exposición de toda la cola. Las 48 con explicación estructurada, ninguna sigue en el cubo al re-medirla, caché purgada.
+- **48 de 48 claves correctas.** Con tres lotes seguidos ya se puede afirmar: en este cubo el defecto es SIEMPRE la explicación, nunca la respuesta. Por eso la reparación es segura y rápida, y no abre `needs_human`.
+- Reparto de lo hecho: 26 de CE, 8 de Ley 39/2015, 4 de Ley 40/2015, y una de LO 4/2001, Ley 7/1985, LPRL, TUE y RD 951/2005.
+- **Patrón que se repite y conviene saber antes de empezar una tanda:** casi todas son preguntas de «¿en qué artículo está X?» o de enumeración, con distractores que son artículos VECINOS o listas hermanas. La explicación útil no es la cita —esa ya estaba—: es decir **qué hay en el artículo de al lado**, que es lo que el opositor confundió: 137 frente a 140, 28.1 (libertad sindical) frente a 28.2 (huelga), los valores superiores del 1.1 frente a los fundamentos del 10.1, el ingreso del 31.1 frente al gasto del 31.2, las garantías del 9.3 frente a los principios de organización del 103.1, o el decreto legislativo del 85 frente al decreto-ley del 86. Otras se juegan en UNA palabra: «marco general» frente a específico, elecciones «municipales» frente a autonómicas.
+- **Relacionadas:** T-249 (cubo `nota-auditoria`, mismo pipeline), T-080 Fase 2 (explicación estructurada), T-425 (las casi duplicadas que aparecieron por el camino), `docs/maintenance/revisar-preguntas-con-agente.md`.
 
 ### [T-403] 🟡 [ABIERTO 31/07] El push-guard no distingue TRABAJAR una tarea de CITARLA en el cuerpo del commit
 
@@ -1441,6 +1489,14 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
   - `626059c8` («A y C son idénticas») → mirar si son de verdad idénticas o **variantes de literalidad**: hoy pasó con Laura (`997c0e17`), donde tres opciones se parecían a propósito y la queja no procedía… pero al revisarla apareció una errata nuestra («tiene» donde el BOE dice «tienen»). **Rechazar la queja no exime de mirar la pregunta.**
   - `32b0d55e` («me ha aparecido otra vez») → repetición. Herramienta: `node scripts/calidad/duplicados-exactos.cjs` (simula por defecto). Ojo: **repetir NO es duplicar** — el banco tiene variantes legítimas del mismo artículo.
   - `b9ae32e2` («según el texto literal sí, pero en la práctica…») → suena a la trampa de **literal vs realidad**; hoy salió dos veces (art. 8 CE con «Ejército del Aire» vs denominación actual, y Ctrl+E/Ctrl+A por versión de Windows). Verificar SIEMPRE contra el BOE y **fijar de qué versión/texto habla la pregunta**.
+- **ESTADO al cierre de la sesión del 31/07 (tarde) — la cola quedó así, compruébalo igualmente con `cola.cjs list` antes de fiarte:**
+  | id | estado | quién espera |
+  |---|---|---|
+  | `349b5132` | **`appealed` — RÉPLICA de Estela sin contestar, 28 h** | pide la fuente literal del BOE del art. 9.2 Ley 39/2015; el `claim` está caducado, o sea LIBRE |
+  | `bd8b92d0` | feedback `pending`, 48 h | Sergio (premium); sigue necesitando tu decisión, ver arriba |
+  | `e60091bd` | ✅ cerrada `rejected` el 31/07 | Natalia; clave 137 correcta, se le explicó el 137 frente al 140 y se mejoró la pregunta (ver [T-409] y [T-425]) |
+  Las demás de la tabla de abajo las cogieron y cerraron otras sesiones.
+- **La réplica de Estela es lo PRIMERO de esta ficha ahora.** Y ya no hay excusa para cerrarla muda: desde [T-402] el dossier imprime `🔁 PASO 0 — ES UNA RÉPLICA` con su `appeal_text` entero y manda responder. Antes decía justo lo contrario.
 - **Reglas que esta sesión aplicó y conviene no perder** (todas están en el manual, pero cuestan de recordar):
   1. **Toda impugnación legislativa que se cierre —se acepte o se rechace— exige explicación estructurada.** El endpoint lo bloquea; no es un consejo. Se hace con `scripts/aplicar-explicacion.ts` (dry-run primero) y las razones se escriben referidas al CONTENIDO, nunca a la letra de la opción.
   2. **Cerrar SIEMPRE por el endpoint**, con `scripts/impugnaciones/cerrar.ts` (creado hoy). Un UPDATE directo no manda email, no da el euro y se salta la puerta.
