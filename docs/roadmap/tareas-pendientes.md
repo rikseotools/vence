@@ -3646,7 +3646,16 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Cómo (feature, NO tweak):** (1) parser: cuando hay bloques `l<romano>` (LIBRO), usar el libro como sección de nivel superior (probado: LEC→4 libros, CP→3, válidos); (2) **tratar el Título Preliminar PRE-libro** (LEC arts 1-4, CP 1-9 quedan fuera del primer libro → huérfanos si no se modela); (3) **la app debe manejar `section_type='libro'`**: `lib/api/temario/queries.ts:547` hace bucket solo para `/título/`|`/capítulo/` → un libro se CAE (revisar también PDF `topicPdfModel.ts` y SSR); (4) migración + verificación de no-regresión (huérfanos internos, cobertura) sobre esas leyes grandes/sensibles. NUNCA meterlo a medias (degradaría CP/LEC).
 - **Origen:** iteración del detector de frontera de título / migración `law_sections` 24/07 (fix `parseBoeSections` ti-N). La NOTA está en `lib/laws/parseBoeSections.js`.
 
-### [T-089] 🟡 [29/07] Migración a Koigrid — **A3 RESUELTO y PRECIO PUBLICADO: no queda bloqueo, ni técnico ni comercial.** Decisión de Manuel: Pro $35/mes vs $491 de AWS
+### [T-089] 🟡 [APARCADA 31/07 — decisión de Manuel] Migración a Koigrid — probada y a favor, pero NO se retoma hasta cerrar T-357 y la periferia
+
+> **⛔ APARCADA POR DECISIÓN DE MANUEL (31/07): «aparca migrar hasta que esté todo esto solventado».** En la tabla queda `status='blocked'`, `blocked_by=['T-357']` y **sin claim**, así que `list` la enseña bloqueada y `next` no la sugiere. **No es un no:** lo técnico está probado y lo económico también ($35/mes contra $619 medidos). Es un **orden**: primero se cierra lo que hay que hacer igual, migremos o no.
+>
+> **Qué la desbloquea, en concreto:**
+> 1. **[T-357]** — cerrar el origen (hoy el ALB acepta `0.0.0.0/0` y la IP `trusted` es falsificable). Es prerrequisito literal del §7-pre: mover el borde sin esto **traslada** el problema en vez de arreglarlo.
+> 2. **La periferia auditada en §3-bis** del manual: purga de CDN, propagación de la purga ISR entre réplicas, SLOs/alarmas/canary, y decidir destino del pooler HA y de la Lambda del fetcher.
+> 3. **`TRUSTED_EDGE` + el código de IP ya commiteado** (`67e60daff`), pendientes de desplegar.
+>
+> **Lo que NO hay que rehacer al retomarla** (está medido y no caduca): capacidad (615 rps con 1 réplica = 37× el pico), paridad de latencia en página completa (1,02-1,15×), precio (Pro $35), y la **ventana de siembra: ~3h10m** — de ahí sale que el cutover tiene que ser por replicación lógica, no en frío.
 
 > **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 
