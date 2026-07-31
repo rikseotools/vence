@@ -144,7 +144,17 @@ scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 > (escape consciente: `DEPLOY_DESDE_WORKTREE=1`).
 >
 > Tu rama no pinta nada en un deploy: el script sigue a `origin/main`. Por eso el sitio correcto es
-> el repo principal, que no tiene trabajo en curso.
+> **un árbol donde nadie esté trabajando**.
+>
+> **Y ese árbol NO siempre es el principal.** El 31/07, al ir a desplegar allí, el principal tenía
+> trabajo sin commitear de otra sesión (`scratchpad/t115`, `t115b`) — y los scripts se niegan con el
+> árbol sucio, así que habría fallado igual. `scratchpad/` **no se puede ignorar**: tiene ficheros
+> trackeados, otras sesiones commitean ahí. Por eso la guarda **comprueba si el principal está
+> limpio** antes de mandarte a él, y si no lo está te ofrece las dos salidas reales:
+>
+> 1. que la sesión dueña de esos ficheros los commitee o los limpie, o
+> 2. desplegar desde un **árbol dedicado a desplegar** —uno donde nadie programe— con
+>    `DEPLOY_DESDE_WORKTREE=1`. Es lo que se hizo ese día para sacar los dos despliegues.
 
 > **¿Por qué un lanzador y no ejecutar el script a pelo?** Los guardarraíles de abajo son correctos
 > uno a uno, pero exigen que coincidan CUATRO cosas: árbol limpio, al día con `origin/main`, lock de
