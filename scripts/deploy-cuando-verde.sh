@@ -51,21 +51,26 @@ VUELTAS="${2:-12}"
 #
 # Por eso: se despliega desde el REPO PRINCIPAL, que no tiene trabajo en curso. El script sigue a
 # `origin/main` de todas formas, así que tu rama no pinta nada aquí.
-SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$HOME/vence-sessions}"
-case "$PWD/" in
-  "$SESSIONS_DIR"/*)
-    echo "⚠️  Estás lanzando el deploy DESDE UN WORKTREE DE SESIÓN:"
-    echo "      $PWD"
-    echo "   Este script hace 'git reset --hard origin/main' en cada vuelta: te moverá el HEAD"
-    echo "   mientras trabajas y descartará los commits de esta rama que no hayas pusheado."
-    echo "   Despliega desde el repo principal, que no tiene trabajo en curso."
-    if [ "${DEPLOY_DESDE_WORKTREE:-}" != "1" ]; then
-      echo "   Si de verdad quieres hacerlo aquí:  DEPLOY_DESDE_WORKTREE=1 $0 $*"
-      exit 2
-    fi
-    echo "   (DEPLOY_DESDE_WORKTREE=1 — sigo, pero no edites nada en este worktree hasta que acabe)"
-    ;;
-esac
+# La comprobación NO va por ruta, y la primera versión sí: miraba `~/vence-sessions/*` y se le
+# escapaba entero `scripts/session-start.sh`, que crea los worktrees en `.claude/worktrees/`. Un
+# guardarraíl que depende de dónde puso alguien el directorio protege solo la mitad de los casos.
+# Git lo sabe sin ambigüedad: en un worktree ENLAZADO, `--git-dir` (…/.git/worktrees/<slug>) y
+# `--git-common-dir` (…/.git) son distintos; en el árbol principal son el mismo.
+GIT_DIR_ACTUAL="$(git rev-parse --git-dir 2>/dev/null || echo '')"
+GIT_COMMON_ACTUAL="$(git rev-parse --git-common-dir 2>/dev/null || echo '')"
+if [ -n "$GIT_DIR_ACTUAL" ] && [ "$GIT_DIR_ACTUAL" != "$GIT_COMMON_ACTUAL" ]; then
+  echo "⚠️  Estás lanzando el deploy DESDE UN WORKTREE, no desde el árbol principal:"
+  echo "      $PWD"
+  echo "   Este script hace 'git reset --hard origin/main' en cada vuelta: te moverá el HEAD"
+  echo "   mientras trabajas y dejará tu rama en el commit que hubiera al hacer el fetch."
+  echo "   Despliega desde el repo principal, que no tiene trabajo en curso:"
+  echo "      cd $(dirname "$(cd "$(dirname "$GIT_COMMON_ACTUAL")" && pwd)")/$(basename "$(cd "$(dirname "$GIT_COMMON_ACTUAL")" && pwd)")"
+  if [ "${DEPLOY_DESDE_WORKTREE:-}" != "1" ]; then
+    echo "   Si de verdad quieres hacerlo aquí:  DEPLOY_DESDE_WORKTREE=1 $0 $*"
+    exit 2
+  fi
+  echo "   (DEPLOY_DESDE_WORKTREE=1 — sigo, pero no edites nada aquí hasta que acabe)"
+fi
 case "$QUE" in
   backend|frontend) SCRIPT="scripts/deploy-${QUE}.sh" ;;
   *) echo "uso: $0 backend|frontend [vueltas]"; exit 2 ;;

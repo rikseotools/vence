@@ -20,11 +20,19 @@
 
 **Enviar a prod = 3 pasos (main = única verdad; el tooling serializa):**
 ```bash
-git fetch origin && git rebase origin/main   # 1) reconciliar sobre lo último
+git fetch origin && git rebase origin/main   # 1) reconciliar sobre lo último   ← en TU worktree
 git push origin HEAD:main                    # 2) publicar (dispara CI); si lo rechaza por no-ff → repite el paso 1
 npm run deploy:pendiente                     # 3) ¿toca desplegar, o se sigue agrupando?
-scripts/deploy-cuando-verde.sh <superficie>  # 4) SOLO si toca (ver política abajo)
+
+# 4) SOLO si toca, y OJO: desde el REPO PRINCIPAL, no desde tu worktree (ver aviso más abajo).
+cd <repo-principal> && scripts/deploy-cuando-verde.sh <superficie>
 ```
+
+> **Los pasos 1-3 son en TU worktree; el 4 NO.** El lanzador hace `git reset --hard origin/main` en
+> el árbol desde el que corre, así que desplegar desde donde programas te mueve el HEAD debajo de
+> los pies. Desde el 31/07 el script **se niega** a arrancar en un worktree (detecta que `--git-dir`
+> y `--git-common-dir` difieren, así que da igual dónde esté el directorio). Detalle y caso real en
+> el aviso del TL;DR.
 
 ## ⚠️ POLÍTICA DE DESPLIEGUE: AGRUPAR (decisión de Manuel, 29/07/2026)
 
