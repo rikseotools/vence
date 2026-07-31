@@ -983,6 +983,19 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-369] 🔴 [ABIERTO 31/07] «Desactivar TODOS los emails» apaga también las respuestas a lo que el usuario nos escribe
+
+- **El defecto en una línea:** el botón rojo de `/unsubscribe` pone `email_soporte_disabled = true` (`lib/emails/emailService.server.ts:252`, rama *«Nuclear: disable everything»*), y esa columna es la que gobierna la **entrega de nuestras respuestas** a impugnaciones y feedback. Quien se da de baja de la publicidad deja de recibir, sin saberlo, la contestación a lo que él mismo ha preguntado.
+- **Su propio texto promete lo contrario.** Bajo el botón se lee *«No recibirás ningún email **automático** de Vence.es»*. Una respuesta a tu impugnación no es un email automático: es la contestación a algo que tú escribiste. La palabra «automático» es exactamente la promesa que se incumple.
+- **Y el código ya declaraba la intención correcta**, en `lib/api/emails/queries.ts`: *«Transactional: only blocked by soporte toggle, NOT by unsubscribed_all»*. Es decir, el diseño SÍ quería proteger las transaccionales de la baja masiva — y el unsubscribe masivo lo sortea apagando el interruptor directamente en vez de fijar `unsubscribed_all`. El guardarraíl estaba puesto y se entra por la ventana.
+- **Nadie eligió esto (el número que decide la ficha):** de los **80** usuarios con el soporte apagado, **79 llegaron por el botón rojo** y **1 solo** marcó la categoría «Soporte y transaccional» a propósito. Cuando el 99% de los que están en un estado no lo eligieron, no es una preferencia: es un efecto colateral.
+- **Lo que ya ha costado, medido el 31/07:** **29 respuestas a impugnaciones** y **10 a feedbacks** escritas y no entregadas por email. Concentradas en 3 personas: 22 a `marta_benitopadilla@hotmail.com` (la última, del 30/07 — **sigue impugnando activamente y lleva desde mayo sin recibir una sola respuesta por correo**), 6 a `luciacn1984@gmail.com` y 1 a `mbelen177@gmail.com`. Les llegó la campana; el correo, no.
+- **Arreglo propuesto** (dos piezas, la segunda es la de fondo):
+  1. Que el botón masivo apague lo **automático** —que es lo que su texto promete— y NO el soporte. Quien quiera cortar también las respuestas ya tiene la categoría «Soporte y transaccional», que existe, está bien descrita (*«Respuestas a impugnaciones, soporte técnico, recordatorio de renovación»*) y funciona.
+  2. Decidir qué se hace con los 79 que están así **sin haberlo pedido**. No es automático: cambiarles la preferencia por su cuenta es tan discutible como habérsela cambiado sin avisar. Propuesta: restaurar solo el soporte a quienes tienen respuestas sin entregar, y a Marta re-entregarle lo que se le contestó. **Requiere OK de Manuel.**
+- **La capa que falta, y es la razón de que esto durara meses:** `resolveDispute` y `respondFeedback` **ya devuelven** `emailSkipReason: 'user_preferences'` cuando no entregan… y nadie lo mira. Una respuesta escrita que no llega no emite ninguna señal. Debería: es el tipo de fallo que solo se nota cuando alguien se queja de que no le contestamos, y para entonces ya te ha dado de baja.
+- **Origen:** apareció comprobando, a raíz de una pregunta de Manuel, si un usuario con los emails desactivados recibe la respuesta a su impugnación (31/07, tras cerrar `ab3b9e43`).
+
 ### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
 
 - **Lo pide un premium y se le ha PROMETIDO** (feedback `e90d5ee3`, Iván, 31/07): *«¿por qué no suben preguntas y exámenes de las últimas convocatorias de auxiliar administrativo del Gobierno de Canarias? Creo que sería lo lógico para practicar»*. Se le respondió que estamos en ello y que estarán próximamente, así que esto ya no es una mejora opcional.

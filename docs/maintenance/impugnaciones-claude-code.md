@@ -727,6 +727,18 @@ const result = await res.json();
 
 > **El email se envía en el mismo flujo de aplicación** (`sendEmailV2` directo, sin saltos HTTP intermedios). Si `emailSent === false`, revisar `emailError` o `emailSkipReason`. La disputa **siempre queda resuelta** aunque el email falle (no hay rollback).
 
+> ⚠️ **`emailSkipReason: 'user_preferences'` NO es un detalle técnico: significa que le has contestado
+> y NO se ha enterado** (le queda la campana dentro de la app, nada más). Y casi nunca es una
+> elección suya: la respuesta a una impugnación es categoría `soporte`, que solo bloquea
+> `email_soporte_disabled`… pero el botón **«Desactivar TODOS los emails»** de `/unsubscribe` apaga
+> esa columna de propina, pese a prometer bajo el propio botón que solo corta lo *«automático»*.
+> Medido el 31/07/2026: de los **80** usuarios con el soporte apagado, **79 llegaron por ese botón**
+> y solo **1** lo eligió a propósito; hay **29 respuestas a impugnaciones y 10 a feedbacks** escritas
+> y no entregadas, 22 de ellas a la misma persona, que sigue impugnando. **Si ves ese
+> `emailSkipReason`, dilo en el resumen de la sesión** — no lo des por cerrado. Arreglo de fondo:
+> [T-369]. Los dos scripts de cierre (`cerrar.ts`, `cerrar-feedback.ts`) ya lo cantan en vez de
+> enterrarlo en el JSON.
+
 > **NO hagas UPDATE directo en BD.** El trigger PG antiguo fue eliminado el 14/04/2026 porque fallaba en silencio por cold-start de Vercel. Si haces UPDATE directo, **NO se enviará email al usuario**.
 
 ## 6.bis Cerrar como `resolved` concede 1 € al usuario (post-28/07/2026)
