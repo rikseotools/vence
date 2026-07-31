@@ -1080,7 +1080,20 @@ incluida).
 - **Mientras no se haga:** las explicaciones de ofimática se escriben en general y sin cifras concretas. Está anotado en el cierre de [T-282].
 
 
-### [T-314] 🔴 [REABIERTA 31/07 — el arreglo del 30/07 NO restauró la señal] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones van sin IP
+### [T-352] 🟠 [ABIERTO 31/07] El navegador de un usuario se cree otra cuenta: manda un `userId` que ya no existe
+
+- **CÓMO SE VIO (31/07, revisando las señales de [T-340]):** `rdiazprados@gmail.com` intentó comprar premium **17 veces entre las 05:54 y las 06:04** y recibió 403 en todas. Su sesión era válida y el token decía correctamente quién era. Lo que fallaba: **su navegador mandaba en el cuerpo el id `140ef91a-2d5a-4f36-a38a-c872467763a8`, que NO existe en `user_profiles`.** Acabó pagando a las 06:10, probablemente tras recargar.
+- **NO es solo el pago.** A las 05:50, antes de intentar comprar, sus llamadas a `/api/v2/user-stats` ya daban 401 **con ese mismo id fantasma**. O sea que la aplicación entera le estaba respondiendo como a otra persona: lo que vio en pantalla durante esos minutos no era su cuenta.
+- **Alcance medido:** 1 usuario en 30 días (16 rechazos). Poco — pero es un usuario que estaba pagando, y el patrón es silencioso: sin las señales de T-340 no habría constancia de ninguno.
+- **YA MITIGADO, que no arreglado ([T-340], 31/07):** en la ruta de pago el contraste de identidad dejó de cortar (`alDiscrepar: 'seguir-con-el-token'`), así que un cliente en este estado ya puede pagar. La alerta `cobro_bloqueado_auth` avisa si vuelve a pasar. **Pero la causa sigue ahí:** ese navegador continúa creyéndose otra cuenta hasta que recarga.
+- **LO QUE FALTA — la pregunta antes que el parche:** de dónde sale ese id. Las tres hipótesis, en orden de probabilidad: (a) identidad cacheada en `localStorage`/`AuthContext` de una cuenta anterior en ese mismo dispositivo, que no se limpia al cambiar de sesión; (b) una cuenta borrada cuyo id sobrevive en el cliente; (c) un id que nunca existió, escrito por un bug de hidratación. **Comprobar primero si `140ef91a` aparece en `auth.users`, en backups o en alguna tabla huérfana**: si nunca existió, la hipótesis cambia entera.
+- **El arreglo, cuando se sepa la causa:** al acuñar el token, si la identidad que el cliente tiene cacheada no es la del token, limpiarla y recargar el estado — con su señal, para poder medir cuántos estaban así sin saberlo.
+- **Relacionadas:** [T-340] (el contraste que lo destapó), y los **38 endpoints fuera de `/api/stripe`** con el mismo patrón de `userId` sin verificar, que siguen sin auditar.
+
+
+## Hechas
+
+### [T-314] 🟢 [HECHA 31/07 · abierta 30/07] La IP de sesión dejó de registrarse el 03/07 al flipear a Auth.js: el 99% de las sesiones iban sin IP
 - **Cómo salió:** Manuel preguntó, verificando [T-304], *"recuerda trackear cada dispositivo con cuántas cuentas inicia sesión y las IPs, eso ya lo tienes verdad?"*. El dispositivo↔cuentas sí (`user_devices`, 6.257 dispositivos, vivo). **La IP no.**
 - **Medido:** de **6.273 sesiones en 7 días, 6.189 tienen `ip_address` a NULL** — el 99%. Y es una REGRESIÓN con fecha exacta:
 
@@ -1141,22 +1154,11 @@ incluida).
 - **Lo que esto enseña, y es lo que hay que llevarse:** la ficha se cerró **declarando** el arreglo, no midiéndolo — la verificación quedó escrita como pendiente («que la cobertura suba hacia el 70-85 %») y nadie la ejecutó. Y el arreglo era correcto en lo que miraba: el disparador. Lo que no se comprobó es que el dato llegara a su sitio. La alerta `session_ip_coverage_drop` sí hizo su trabajo y siguió disparando (30/07 11:05, «0 % de 1.108 sesiones»): es la señal que destapó que el cierre era falso.
 - **Sigue ciego hasta el deploy:** `multi_account_reg_ip` y el desempate por IP de la sombra de [T-304].
 
-#### 📊 MEDIDO EN PRODUCCIÓN (31/07) — mejora de verdad, pero NO llega
-- Cobertura de IP en `user_sessions` por día de creación: **2,8% (27/07) → 3,2% → 6,4% → 14,8% → 18,9% (30/07) → 19,0% (31/07)**.
-- El objetivo de la ficha era **70-85%**. Con el 19% queda **el 81% de las sesiones sin IP**: el despliegue mejoró la cosa (×7) pero hay algo más que la sigue perdiendo. **NO se puede cerrar**: falta encontrar qué.
-
-### [T-352] 🟠 [ABIERTO 31/07] El navegador de un usuario se cree otra cuenta: manda un `userId` que ya no existe
-
-- **CÓMO SE VIO (31/07, revisando las señales de [T-340]):** `rdiazprados@gmail.com` intentó comprar premium **17 veces entre las 05:54 y las 06:04** y recibió 403 en todas. Su sesión era válida y el token decía correctamente quién era. Lo que fallaba: **su navegador mandaba en el cuerpo el id `140ef91a-2d5a-4f36-a38a-c872467763a8`, que NO existe en `user_profiles`.** Acabó pagando a las 06:10, probablemente tras recargar.
-- **NO es solo el pago.** A las 05:50, antes de intentar comprar, sus llamadas a `/api/v2/user-stats` ya daban 401 **con ese mismo id fantasma**. O sea que la aplicación entera le estaba respondiendo como a otra persona: lo que vio en pantalla durante esos minutos no era su cuenta.
-- **Alcance medido:** 1 usuario en 30 días (16 rechazos). Poco — pero es un usuario que estaba pagando, y el patrón es silencioso: sin las señales de T-340 no habría constancia de ninguno.
-- **YA MITIGADO, que no arreglado ([T-340], 31/07):** en la ruta de pago el contraste de identidad dejó de cortar (`alDiscrepar: 'seguir-con-el-token'`), así que un cliente en este estado ya puede pagar. La alerta `cobro_bloqueado_auth` avisa si vuelve a pasar. **Pero la causa sigue ahí:** ese navegador continúa creyéndose otra cuenta hasta que recarga.
-- **LO QUE FALTA — la pregunta antes que el parche:** de dónde sale ese id. Las tres hipótesis, en orden de probabilidad: (a) identidad cacheada en `localStorage`/`AuthContext` de una cuenta anterior en ese mismo dispositivo, que no se limpia al cambiar de sesión; (b) una cuenta borrada cuyo id sobrevive en el cliente; (c) un id que nunca existió, escrito por un bug de hidratación. **Comprobar primero si `140ef91a` aparece en `auth.users`, en backups o en alguna tabla huérfana**: si nunca existió, la hipótesis cambia entera.
-- **El arreglo, cuando se sepa la causa:** al acuñar el token, si la identidad que el cliente tiene cacheada no es la del token, limpiarla y recargar el estado — con su señal, para poder medir cuántos estaban así sin saberlo.
-- **Relacionadas:** [T-340] (el contraste que lo destapó), y los **38 endpoints fuera de `/api/stripe`** con el mismo patrón de `userId` sin verificar, que siguen sin auditar.
-
-
-## Hechas
+#### ✅ VERIFICADO EN PRODUCCIÓN (31/07) — 100% de cobertura tras el deploy
+- **Filas creadas después del deploy de las 09:15 UTC: 25 de 25 con IP (100%)**, contra **0-5% en las horas previas de esa misma mañana**. Por encima del listón histórico (80% en junio). La alerta `session_ip_coverage_drop` no dispara desde el 30/07 11:05, antes del despliegue.
+- **⚠️ OJO AL MEDIRLO, que casi lo doy por roto:** la primera medición fue **por día** y daba **19%** — porque el día mezcla las horas de antes y de después del deploy. Con una regresión que se arregla a media mañana, agrupar por día esconde el arreglo. **Agrupar por hora, o filtrar por el minuto exacto del deploy.**
+- Muestra pequeña (25 filas, ~20 min), pero el salto es de 0% a 100% y la alerta queda vigilando la regresión — que es justo para lo que se puso.
+- Las 34.732 filas viejas se quedan sin IP a propósito.
 
 ### [T-366] ✅ [HECHA 31/07] El lanzador de deploy se bloqueaba con el scratch SIN TRACKEAR de otras sesiones
 - **Cómo salió:** yendo a desplegar el backend con tres tareas terminadas esperándolo (T-307, T-361, T-362). `deploy-cuando-verde.sh backend` abortó con *«árbol SUCIO»* señalando `scratchpad/t115/`, `scratchpad/t331/` y `.claude/settings.local.json` — ninguno mío y ninguno trackeado.
