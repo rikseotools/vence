@@ -844,14 +844,19 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'solo QUITA números enumerados en el plan y en la misma transacción que re-ancla.',
   },
   actualizar_articulo_oficial: {
-    titulo: 'Poner al día el `content` de artículos contra su fuente oficial (normas UE: EUR-Lex)',
+    titulo: 'Poner al día el `content` de artículos contra su fuente oficial (BOE y EUR-Lex)',
     ruta: 'scripts/actualizar-articulo-oficial.cjs',
     estado: 'vivo',
     escribe: ['content'],
     runbook: 'docs/maintenance/generar-preguntas-con-ia.md',
     notas:
       'Dry-run por defecto. Hermano de `reactivar_articulo_boe`, que reactiva UN artículo apagado ' +
-      'contra el BOE; esto pone al día EN TANDA el texto de artículos ACTIVOS. Nace de T-184: el ' +
+      'contra el BOE; esto pone al día EN TANDA el texto de artículos ACTIVOS. **Admite las DOS ' +
+      'fuentes: `BOE-A-AAAA-N` y `CELEX:0…`** (T-376, 31/07/2026) — antes solo EUR-Lex, así que ' +
+      'para las leyes del BOE, que son la mitad del catálogo, no había ninguna puerta. La lectura ' +
+      'del BOE vive en `lib/laws/fuenteOficialBoe.cjs` y reutiliza `bloqueVigente`, el mismo ' +
+      'extractor del Paso 1; la política NO se duplicó. Los ids `DOUE-*` siguen fuera a propósito. ' +
+      'Nace de T-184: el ' +
       'RGPD servía 41.381 caracteres de menos (el art. 28, 12 párrafos; el 40, 21). **La fuente de ' +
       'una norma UE es EUR-Lex CONSOLIDADO (CELEX que empieza por 0), NO el espejo del BOE**, que ' +
       'reproduce el DOUE original CON erratas: comparando contra él "divergían" 80 de 99 artículos ' +

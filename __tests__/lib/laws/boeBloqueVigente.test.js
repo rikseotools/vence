@@ -32,7 +32,44 @@ const XML_DESORDENADO = `<?xml version="1.0" encoding="utf-8"?>
   </bloque>
 </data></response>`
 
+// Réplica reducida del art. 69 REAL del RDL 2/2004: el BOE mete la redacción DEROGADA dentro de
+// un `<blockquote class="noDesde20140101">` — con atributo. La poda de blockquotes solo casaba
+// `<blockquote>` a secas (la del `nota_pie`), así que la redacción antigua ENTERA se colaba en el
+// texto «oficial» (T-376, 31/07/2026).
+const XML_REDACCION_EN_BLOCKQUOTE = `<?xml version="1.0" encoding="utf-8"?>
+<response><status><code>200</code></status><data>
+  <bloque id="a69" tipo="precepto" titulo="Art&iacute;culo 69">
+    <version id_norma="BOE-A-2013-11331" fecha_publicacion="20131030" fecha_vigencia="20131031">
+      <p class="articulo">Art&iacute;culo 69. Valor base de la reducci&oacute;n.</p>
+      <p class="parrafo">TEXTO VIGENTE del art&iacute;culo.</p>
+      <blockquote class="noDesde20140101">
+        <p class="parrafo">Esta &uacute;ltima actualizaci&oacute;n surte efectos desde el 1 de enero de 2014. <a class="refPost">Ref. BOE-A-2013-11331</a>.</p>
+        <p class="cita_con_pleca">Redacci&oacute;n hasta el 31 de diciembre de 2013:</p>
+        <p class="parrafo">TEXTO DEROGADO que no debe servirse.</p>
+        <p class="parrafo_2">a) Otro trozo DEROGADO.</p>
+      </blockquote>
+      <blockquote>
+        <p class="nota_pie">Se modifica por el art. 7.2.2 de la Ley 16/2013. <a class="refPost">Ref. BOE-A-2013-11331</a>.</p>
+      </blockquote>
+    </version>
+  </bloque>
+</data></response>`
+
 describe('bloqueVigente (BOE consolidado)', () => {
+  // El daño de este fallo era doble, y el segundo es el grave: (1) FALSO DIVERGE en el Paso 1 —el
+  // art. 69 del RDL 2/2004 salía «BD 2.450 / oficial 4.805» con nuestro texto PERFECTO, y por eso
+  // se excluyó de un lote un artículo sano; (2) en cuanto existió una herramienta que ESCRIBE
+  // `content` desde el BOE, ese texto se habría guardado y habríamos metido la redacción derogada
+  // en el temario. Lo paró la previsualización, no un test. Ahora lo para un test.
+  it('poda la REDACCIÓN DEROGADA que el BOE envuelve en un blockquote CON atributos', () => {
+    const b = bloqueVigente(XML_REDACCION_EN_BLOCKQUOTE)
+    expect(b.texto).toBe('TEXTO VIGENTE del artículo.')
+    expect(b.texto).not.toMatch(/DEROGADO/)
+    expect(b.texto).not.toMatch(/Redacción hasta el/)
+    // …y la nota de pie sigue fuera, como antes.
+    expect(b.texto).not.toMatch(/Se modifica por/)
+  })
+
   it('elige la versión por fecha_vigencia, NO la última del documento', () => {
     const b = bloqueVigente(XML_DESORDENADO)
     expect(b.vigencia).toBe('20131231')

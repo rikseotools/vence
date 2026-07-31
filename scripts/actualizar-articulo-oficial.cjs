@@ -38,6 +38,7 @@ const { compararArticuloOficial } = require(path.join(__dirname, '..', 'lib', 'l
 const { parrafosDeEurLex, articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
 const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
 const { decidirReescritura, revisarTextoOficial, resumirPlan } = require(path.join(__dirname, '..', 'lib', 'laws', 'actualizarArticuloGuardas'))
+const { esIdBoe, abrirFuenteBoe } = require(path.join(__dirname, '..', 'lib', 'laws', 'fuenteOficialBoe.cjs'))
 
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
@@ -53,12 +54,14 @@ const [SLUG, FUENTE, ...RESTO] = argv.filter((a) => !a.startsWith('--'))
 const ARTS = RESTO
 
 if (!SLUG || !FUENTE) {
-  console.error('uso: node scripts/actualizar-articulo-oficial.cjs <law_slug> <CELEX:0…> [<art>…] [--apply]')
+  console.error('uso: node scripts/actualizar-articulo-oficial.cjs <law_slug> <CELEX:0…|BOE-A-…> [<art>…] [--apply]')
   process.exit(1)
 }
-if (!esIdEurLex(FUENTE)) {
-  console.error(`❌ fuente no soportada: "${FUENTE}". Hoy solo EUR-Lex (id CELEX). Para leyes del BOE`)
-  console.error('   usa scripts/reactivar-articulo-boe.cjs o amplía este script reutilizando `bloqueVigente`.')
+// Dos fuentes, UNA sola política. Lo que cambia entre ellas es de dónde sale el texto oficial; las
+// guardas, la transacción y el ROLLBACK son los mismos (T-376).
+if (!esIdEurLex(FUENTE) && !esIdBoe(FUENTE)) {
+  console.error(`❌ fuente no soportada: "${FUENTE}". Se admiten EUR-Lex (CELEX:0…) y BOE (BOE-A-AAAA-N).`)
+  console.error('   Los ids DOUE-* quedan fuera a propósito: reproducen el acto ORIGINAL con erratas.')
   process.exit(1)
 }
 if (esCelexNoConsolidado(FUENTE)) {
@@ -72,7 +75,23 @@ if (esCelexNoConsolidado(FUENTE)) {
   // cuando nos raciona, y `202` pasa el filtro `r.ok` → los 99 artículos salían «sin oficial»
   // y el script informaba de que no había nada que reescribir. Cae a Cellar y lanza si no hay
   // ninguna fuente utilizable.
-  const { html } = await descargarDocumentoOficial(FUENTE, { log: (m) => console.log(`   ${m}`) })
+  // Lector común: `articulo(n, title) → {texto, rubrica}`. EUR-Lex se baja UNA vez y se recorta en
+  // memoria; el BOE consolidado sirve un bloque POR ARTÍCULO, así que resuelve el id contra el
+  // índice y pide ese bloque. La diferencia se encapsula aquí para que el resto no la note.
+  let fuente
+  if (esIdBoe(FUENTE)) {
+    fuente = await abrirFuenteBoe(FUENTE, { log: (m) => console.log(`   ${m}`) })
+  } else {
+    const { html } = await descargarDocumentoOficial(FUENTE, { log: (m) => console.log(`   ${m}`) })
+    fuente = {
+      tipo: 'eurlex',
+      async articulo(n, title) {
+        const p = parrafosDeEurLex(html, n, title)
+        if (!p) return null
+        return { texto: p.texto, rubrica: (articuloDeEurLex(html, n, title) || {}).rubrica || null }
+      },
+    }
+  }
 
   // GOTCHA `pg` + RDS: si la URL trae `sslmode=require`, ESE parámetro gana sobre la opción `ssl`
   // y revienta con "self-signed certificate in certificate chain" (RDS presenta su propia CA).
@@ -94,8 +113,8 @@ if (esCelexNoConsolidado(FUENTE)) {
 
   const plan = []
   for (const a of arts) {
-    const of_ = parrafosDeEurLex(html, a.n, a.title)
-    const rubricaOficial = of_ ? (articuloDeEurLex(html, a.n, a.title) || {}).rubrica : null
+    const of_ = await fuente.articulo(a.n, a.title)
+    const rubricaOficial = of_ ? of_.rubrica : null
     const cmp = compararArticuloOficial(a.content, of_ ? of_.texto : '')
     const d = decidirReescritura(cmp.clase, { incluirReordenado: INCLUIR_REORDENADO, incluirParafrasis: INCLUIR_PARAFRASIS })
     plan.push({ ...a, oficial: of_ ? of_.texto : '', rubricaOficial, clase: cmp.clase, resumen: cmp.resumen, ...d })
