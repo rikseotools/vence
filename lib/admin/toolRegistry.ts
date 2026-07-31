@@ -764,6 +764,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'núcleo puro `lib/laws/rubricaSeccion.js`, con tests.',
   },
 
+  // ── campos de referencia que la landing PUBLICA ────────────────────────────────────────────
+  sanear_referencia_publicada: {
+    titulo: 'Sacar de la landing las notas internas coladas en los campos de referencia',
+    ruta: 'scripts/convocatoria/sanear-referencia-publicada.cjs',
+    estado: 'vivo',
+    escribe: ['boe_reference', 'diario_referencia', 'convocatoria_numero', 'oep_decreto'],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'Dry-run por defecto. Esos campos se PINTAN en el hero y bajo el botón oficial, y se usaban ' +
+      'como bloc de notas de auditoría: medidas 7 landings activas el 31/07 (T-435), la peor ' +
+      'sirviendo «⚠️ SIN VERIFICAR: la fila afirma 688 plazas…». NO TIRA NADA Y NO INVENTA NADA: ' +
+      'conserva lo que va DELANTE del marcador (la cita del boletín, que es la convención de la ' +
+      'casa) y MUDA la nota a `convocatoria_verification` como `needs_human` — la duda deja de ' +
+      'publicarse pero sigue viva. Si el valor EMPIEZA por el marcador no toca nada: la referencia ' +
+      'se pasa con `--referencia` tras abrir el boletín, y `--verificado` (que la exige) marca ' +
+      '`verified_correct`. Dual-write en `convocatorias` (de donde lee la vista SSOT) y en ' +
+      '`oposiciones`. Detección: `lib/convocatoria/notaInternaPublicada.cjs` (kind ' +
+      '`nota_interna_publicada`), que mira `oposiciones_ssot` — sobre la tabla base da CERO con el ' +
+      'texto en pantalla. **NO clona nada**: `--verificado` exige `--cita` y la CONTRASTA contra el ' +
+      '`extracted_text` del documento ya clonado en el hub (`convocatoria_documentos`), enlazando ' +
+      '`source_url` + `verified_source_hash`; si el documento falta, manda al clonador canónico ' +
+      '`backend/scripts/clonar-documento.ts` en vez de abrir un segundo camino de escritura al hub. ' +
+      'Tras aplicar hay que invalidar caché y comprobar el HTML SERVIDO.',
+  },
+
   // ── seguimiento_url ────────────────────────────────────────────────────────────────────────
   repuntar_seguimiento_url: {
     titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',

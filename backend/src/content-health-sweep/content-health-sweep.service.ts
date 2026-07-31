@@ -578,6 +578,56 @@ const ESTADOS_FICHA_VIVA = new Set([
 function procesoConFichaViva(estadoProceso: string | null | undefined): boolean {
   return ESTADOS_FICHA_VIVA.has(estadoProceso as string);
 }
+// ── Mirror INLINE de lib/convocatoria/notaInternaPublicada.cjs — MANTENER EN SYNC ──────────
+// Detecta una NOTA INTERNA nuestra colada en un campo que la landing PUBLICA. Los campos de
+// referencia se pintan en el hero y bajo el botón oficial; el 31/07/2026 había 7 landings activas
+// sirviendo cosas como «⚠️ SIN VERIFICAR: la fila afirma 688 plazas…».
+//
+// Calibración que sostiene el detector (NO tocar sin re-medir): la referencia LARGA con cita
+// literal del boletín es la convención de la casa —mediana 210 caracteres sobre 119 landings
+// activas, p90 599— así que marcarla daría 60-90 hallazgos y mataría el badge. Solo se habla ante
+// una marca inequívoca de que el texto no se escribió para el usuario.
+//
+// Paridad de COMPORTAMIENTO vigilada por __tests__/health/notaInternaPublicadaMirror.parity.test.ts.
+const NOTA_FAMILIAS: Array<{ tipo: string; re: RegExp }> = [
+  {
+    tipo: 'duda_publicada',
+    re: /\bsin verificar\b|\bno verificable\b|\bno verificad[oa]\b|\bsin confirmar\b|\bpendientes? de verificar\b/i,
+  },
+  {
+    tipo: 'rastro_herramienta',
+    re: /\bvia Capa \d|\bsitemap-coverage\b|\bfuente competidor\b|\bcompetidores\b|\boposiciones\.es\b|\bopositatest\b|\bgokoan\b|\bopositas\b/i,
+  },
+  {
+    tipo: 'nota_tecnica',
+    re: /\bTODO:|\bFIXME\b|\bREVISAR:|\bOJO:|\bXXX\b|pendiente de identificar|falta identificar|sin identificar|\bno\s+(?:está|estan|están)\s+verificad[oa]s?\b/i,
+  },
+  { tipo: 'aviso_visual', re: /(⚠️?|🔴|❗|❌)/u },
+];
+const NOTA_CAMPOS = ['boe_reference', 'diario_referencia', 'convocatoria_numero', 'oep_decreto'];
+
+function clasificarNotasInternas(
+  filas: Array<{ slug: string; isActive: boolean; campos: Record<string, string | null> }>,
+): { todos: Array<{ slug: string; campo: string; tipo: string; severity: string; extracto: string }> } {
+  const todos: Array<{ slug: string; campo: string; tipo: string; severity: string; extracto: string }> = [];
+  for (const fila of filas || []) {
+    for (const campo of NOTA_CAMPOS) {
+      const valor = (fila.campos || {})[campo];
+      if (typeof valor !== 'string' || !valor.trim()) continue;
+      const fam = NOTA_FAMILIAS.find((f) => f.re.test(valor));
+      if (!fam) continue;
+      todos.push({
+        slug: fila.slug,
+        campo,
+        tipo: fam.tipo,
+        severity: fila.isActive ? 'error' : 'warn',
+        extracto: valor.slice(0, 200),
+      });
+    }
+  }
+  return { todos };
+}
+
 // ── Mirror INLINE de lib/convocatoria/seguimientoVigilable.cjs — MANTENER EN SYNC ──────────
 // Decide si una `seguimiento_url` es REALMENTE vigilable por el cron (que hashea el HTML servido
 // sin ejecutar JS). Umbrales calibrados el 26/07/2026 sobre las 428 fuentes con HTTP 2xx: solo 15
@@ -2199,6 +2249,48 @@ export class ContentHealthSweepService {
         r.slug,
         'seguimiento_fuente_ciega',
         `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`,
+      );
+    }
+
+    // ── NOTAS INTERNAS PUBLICADAS EN LA LANDING (nota_interna_publicada, T-435) ──
+    // Los campos de REFERENCIA se PINTAN en el hero y bajo el botón oficial, y se estaban usando
+    // como bloc de notas de auditoría. Medido el 31/07: 7 landings activas sirviendo cosas como
+    // «⚠️ SIN VERIFICAR: la fila afirma 688 plazas…», o sea, contándole al opositor que no nos
+    // fiamos de nuestra propia cifra.
+    //
+    // Se lee de `oposiciones_ssot` y no de `oposiciones`: el mismo barrido sobre la tabla base da
+    // CERO con el texto en pantalla, porque la nota vive en `convocatorias` y la vista resuelve
+    // desde ahí. Núcleo puro compartido con el CLI — un solo criterio, sin copia que derive.
+    const notaRows = (
+      await this.db.execute(sql`
+        SELECT slug, is_active, boe_reference, diario_referencia, convocatoria_numero, oep_decreto
+          FROM oposiciones_ssot`)
+    ).rows as unknown as Array<{
+      slug: string;
+      is_active: boolean;
+      boe_reference: string | null;
+      diario_referencia: string | null;
+      convocatoria_numero: string | null;
+      oep_decreto: string | null;
+    }>;
+    for (const h of clasificarNotasInternas(
+      notaRows.map((r) => ({
+        slug: r.slug,
+        isActive: r.is_active,
+        campos: {
+          boe_reference: r.boe_reference,
+          diario_referencia: r.diario_referencia,
+          convocatoria_numero: r.convocatoria_numero,
+          oep_decreto: r.oep_decreto,
+        },
+      })),
+    ).todos) {
+      add(
+        'content',
+        h.severity as 'error' | 'warn',
+        h.slug,
+        'nota_interna_publicada',
+        `${h.slug}: el campo ${h.campo} publica una nota interna [${h.tipo}] — ${h.extracto.slice(0, 90)}`,
       );
     }
 

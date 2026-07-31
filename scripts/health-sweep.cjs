@@ -666,6 +666,29 @@ async function detectarTodo(c, add, now) {
     FROM oposiciones_ssot s
     JOIN oposiciones o ON o.slug = s.slug
     WHERE s.is_active`)).rows;
+  // ── NOTAS INTERNAS PUBLICADAS (T-435) ────────────────────────────────────────────────────────
+  // Los campos de referencia se PINTAN en el hero y bajo el botón oficial, y se estaban usando
+  // como bloc de notas de auditoría. Medido el 31/07: 7 landings activas sirviendo cosas como
+  // «⚠️ SIN VERIFICAR: la fila afirma 688 plazas…» — es decir, contándole al opositor que no nos
+  // fiamos de nuestro propio dato. Se mira sobre `oposiciones_ssot`, que es lo que la landing LEE:
+  // el barrido sobre la tabla base daba CERO con el texto en pantalla, porque la nota vivía en
+  // `convocatorias` y la vista resuelve desde ahí.
+  const notaRows = (await c.query(`
+    SELECT slug, is_active, boe_reference, diario_referencia, convocatoria_numero, oep_decreto
+      FROM oposiciones_ssot`)).rows;
+  const { clasificarLote: clasificarNotas } = require('../lib/convocatoria/notaInternaPublicada.cjs');
+  for (const h of clasificarNotas(notaRows.map((r) => ({
+    slug: r.slug, isActive: r.is_active,
+    campos: {
+      boe_reference: r.boe_reference, diario_referencia: r.diario_referencia,
+      convocatoria_numero: r.convocatoria_numero, oep_decreto: r.oep_decreto,
+    },
+  }))).todos) {
+    add('content', h.severity, h.slug, 'nota_interna_publicada',
+      `${h.slug}: el campo ${h.campo} publica una nota interna [${h.tipo}] — ${h.extracto.slice(0, 90)}`,
+      h.extracto);
+  }
+
   for (const r of linkRows) {
     const issues = checkConvocatoriaLinks({
       boeReference: r.ref, programaUrl: r.url, diarioOficial: r.etiqueta, estadoProceso: r.estado,
