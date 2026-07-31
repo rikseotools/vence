@@ -276,6 +276,8 @@ CONTEXTO_GUARD_SKIP=1 git push …
 Escape **propio**, no el del otro guard: compartirlo apagaría los dos de una vez. Se imprime y se
 cuenta (`npm run sesiones:friccion`).
 
+**No confundir con el aviso de fichas huérfanas del `sync`** (`lib/backlog/fichaHuerfana.cjs`): aquél parte de la **BD** (fila viva sin ficha), informa y no bloquea, y es la red que recoge lo que llegue por cualquier vía. Éste parte del **markdown**, en el `pre-push`, y bloquea. Por eso ve dos cosas que el otro no puede ver: la ficha **vaciada** —el id sigue ahí, así que su fila no es huérfana y para él está sana— y el **momento**, porque lo para antes de que entre en `main` en vez de contarlo después. Y al revés, él cubre la ficha que nunca llegó a escribirse. Se solapan solo en «ficha desaparecida», y ese solape es a propósito: una red detrás de una puerta.
+
 **Calibrado, no intuido.** `npm run sim:perdida-contexto` pasa el detector por los 1.063 commits del
 fichero: dispara en el **0,9%** de ellos, y en el **91%** de las fichas que señala alguien tuvo que
 restaurarlas a mano después. Comprobación de extremo a extremo con repo de usar y tirar:

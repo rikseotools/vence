@@ -327,7 +327,11 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'restaurarlas a mano. Umbral: pierde ≥600 caracteres Y ≥50% del cuerpo; cerrar con ✅ exime ' +
       '(pero se reporta, para que un borrado no se disfrace de cierre). Fail-open; escape PROPIO ' +
       '`CONTEXTO_GUARD_SKIP=1` — compartirlo con otro guard apagaría dos de una vez. Mide su ' +
-      'fricción (bloqueo y escape) vía `friccion-emitir.cjs`, T-423.',
+      'fricción (bloqueo y escape) vía `friccion-emitir.cjs`, T-423. **NO es el detector de fichas '+
+      'huérfanas** (`lib/backlog/fichaHuerfana.cjs`, dentro de `backlog.cjs sync`): aquél parte de la BD '+
+      '(fila viva sin ficha), informa y no bloquea; éste parte del markdown, bloquea en el pre-push, y ve '+
+      'además la ficha VACIADA —que para el otro está sana, porque su id sigue existiendo—. Se solapan '+
+      'solo en «desaparecida»: red detrás de puerta, no dos puertas con criterios distintos.',
   },
   purgar_feedback_espurio: {
     titulo: 'Borrar del historial de una persona los apuntes que escribió otro (con respaldo y rastro)',
