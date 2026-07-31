@@ -1010,6 +1010,7 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 ### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
 
 - **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
+- **Sigue reapareciendo, y su segunda alerta es de esta misma familia:** el 31/07 a las 08:05 disparó `pool_frontend_saturation_high` (**5 muestras con ≥13 conexiones activas, pico 82** contra un techo estimado de 16), quince minutos después del `5xx_spike` de las 07:50. **Es el mismo incidente visto desde el pool, no uno nuevo** — anotado al triar las alertas del día ([T-426]) para que nadie le abra ficha aparte ni lo investigue de cero.
 - **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
   1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
   2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
@@ -1587,7 +1588,11 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Las dos salidas, y hay que elegir una** (no valen las dos a medias):
   1. **Decidir F1** (aunque sea el trozo más pequeño: el límite free es 25/día **por cuenta**, así que N cuentas en un device = N×25 — ese es el hueco que F1 cierra). Entonces «confirmada» pasa a significar algo y la alerta recupera sentido.
   2. **Reformular la alerta** para que mida lo que sí se puede hacer (p. ej. señales `new` sin revisar en X días) y dejar de pedir una acción inexistente. Una alerta que no se puede atender **enseña a ignorar el buzón**, que es el daño real y se contagia a las demás reglas.
-- **Cómo salió:** triando `alert_fired` de 24 h en una sesión de impugnaciones. De las ~20 reglas que habían disparado ese día, **todas menos dos ya tenían ficha**; esta solo aparecía como mención suelta en una lista (línea de `session_ip_coverage_drop`…), sin nadie describiendo el atasco. La otra sin ficha era [T-422].
+- **Cómo salió:** triando `alert_fired` de 24 h en una sesión de impugnaciones. Esta regla solo aparecía como **mención suelta** dentro de una lista, sin nadie describiendo el atasco.
+- **El triaje completo de ese día, comprobado regla a regla** (lo dejo escrito para que nadie repita el barrido):
+  - **Con dueño:** `main_ci_rojo`, `cron_started_not_finished`, `cron_sin_exito`, `canary_pdf_queue_failed`, `cobro_bloqueado_auth`, `premium_sin_respaldo`, `session_ip_coverage_drop`, `auth_token_mint_waste`, `event_loop_lag`, `daily_quota_overcharge`, `senal_error_sin_vigilancia`, `alert_rule_failing`, `endpoint_latency_sustained`, `evasion_multidispositivo`, `5xx_spike` (este último es el incidente de [T-360]).
+  - **Sin ficha propia y SIN dueño → las dos que nacieron aquí:** esta y [T-422].
+  - **Sin ficha propia pero YA EXPLICADAS por otra:** `pool_frontend_saturation_high` (08:05, pico **82** conexiones activas contra un techo estimado de 16) es el mismo minuto de saturación que narra **[T-360]**, no un problema aparte; y `workflow_failure_burst` (14:10, 1 workflow GHA) es la otra cara de `main_ci_rojo`. **No abras ficha para ninguna de las dos.**
 - **Relacionada:** [T-422] (la otra huérfana del mismo triaje), runbook `revisar-fraudes.md`, CLAUDE.md → *«Señales de fraude / abuso»* (donde está escrito que F0 no bloquea).
 
 ### [T-422] 🔴 [ABIERTO 31/07] Tres impugnaciones resueltas cuyo email NUNCA se intentó: el reconciliador lleva horas cantándolo y nadie las reenvía
