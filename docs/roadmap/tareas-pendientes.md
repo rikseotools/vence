@@ -3999,6 +3999,15 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Relacionado:** [T-142] (de donde sale y quien lo mide), [T-134] (auditoría de la landing), `docs/runbooks/provenance-convocatorias.md`.
 
 ### [T-146] 🟠 [DETECTOR ARREGLADO 29/07 — queda generar las preguntas] Punto ciego del detector: 715 artículos servidos con 0 preguntas que el badge NUNCA verá (numeración no numérica)
+- **✅ VERIFICADO EL 31/07 — el badge YA cuenta los artículos de reforma.** Barrido de las 12:28 UTC: de sus **98 hallazgos `article_no_coverage`, 12 incluyen artículos `bis`/`ter`** en sus ejemplos, y salen **27 artículos de reforma distintos** listados como huecos. Antes ninguno podía aparecer como trabajo pendiente por mucho que sirviera cero preguntas. Muestra de lo que ahora se ve: `Ley 29/1998 87 ter` (en 5 hallazgos), `Ley 3/2001 CyL 48 bis` y `48 ter`, `LECrim 14 bis` y `17 bis`, `CP 31 ter`, `Ley 15/2015 26 bis`, `DL 2/1998 Asturias 67 bis/quater/quinquies`. **Esta mitad de la ficha está cerrada.**
+- **📋 LA SEGUNDA MITAD, YA PRIORIZADA (31/07) — son 293, no 163.** Medido sobre artículos de reforma ACTIVOS, escopados en tema disponible de oposición activa, con texto real (>200 ch), sin «derogado» y con **0 preguntas activas**: **293**. Ordenados por ALCANCE VIVO (el criterio que el 31/07 demostró valer 10× frente al ranking por defecto del planificador):
+  | ley | artículos | temas | notas |
+  |---|---|---|---|
+  | **Ley 12/2007 Igualdad de Género (Andalucía)** | `11 bis`, `15 bis`, `21 bis`, `26 bis`, `37 bis`, `48 bis`, `50 bis`, `50 ter`, `50 quater`, `52 bis` | **6 temas / 6 oposiciones** cada uno | **el mejor lote: una sola ley, 9-10 artículos, 600-2.600 ch, ninguno con nota de vigencia** |
+  | Ley 39/2006 | `25 bis` (1.061 ch) | 7 temas / 7 oposiciones | el de más alcance individual |
+  | Ley 13/2007 Violencia de Género | `25 bis`, `35 bis` | 5 temas / 4 oposiciones | |
+  | Ley 29/1998 | `87 ter` (2.728 ch) | 6 temas / 5 oposiciones | ⚠️ **tiene nota de vigencia**: resolverla antes de generar |
+  - Consulta que lo reproduce: `scratchpad/t115/reforma_plan.cjs` (solo lectura). El flujo de generación es el de [T-115]; **empieza por la Ley 12/2007**.
 - **Qué:** el detector `article_no_coverage` y su consulta de recuento filtran **`a.article_number ~ '^[0-9]+$'`** (`content-health-sweep.service.ts` líneas ~728 y ~1109), y el planificador `huerfanos:plan` y el verificador `batch:boe` (modo "todos los artículos") heredan el mismo filtro. Consecuencia: **todo artículo cuya numeración no sea un entero puro es invisible a la campaña de cobertura** — `bis`/`ter`/`quater`, disposiciones adicionales, transitorias, finales.
 - **Medido (26/07, sobre `topic_scope` de temas activos):** **1.312 artículos activos escopados** son no numéricos, en **165 leyes**. De ellos **831 sirven 0 preguntas activas**, y **715 tienen texto real (>200 ch)**. Son huecos idénticos a los de [T-115] salvo en una cosa: **el badge no los cuenta, así que nunca aparecen como trabajo pendiente**. La deuda visible eran ~3.100 huérfanos; esto añade 715 que están estructuralmente escondidos.
 - **Triaje por naturaleza (no todos merecen preguntas):**
@@ -4313,6 +4322,36 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Impacto:** 🟡 media: palanca de monetización/retención (empuja a planes largos). Toca modelo de suscripción + UX de onboarding.
 - **Cómo (detalle de diseño a decidir con Manuel):** (1) si el usuario **FREE** debe poder fijar/cambiar su ÚNICA oposición objetivo en el onboarding (para no matar la exploración inicial) o bloqueo total; (2) cómo se comunica el gate (CTA al plan largo). Cablear el gate donde hoy se cambia de oposición (selector del breadcrumb del test — ver `feedback-cambio-oposicion-via-perfil`).
 - **Origen:** 21/07. Nota: ficha **reconstruida el 25/07** desde `backlog_tasks` (vivía en el registro sin ficha en el markdown).
+
+### [T-399] 🔴 [ABIERTO 31/07] El backend NO PUEDE DESPLEGAR: el rol de ejecución de ECS no tiene permiso para leer un secreto nuevo de SSM
+- **Estado ahora mismo (31/07, 18:10):** hay un deployment de backend **atascado en bucle desde las 17:47**. ECS arranca una tarea cada ~5 min y muere antes de encender el contenedor. `describe-services` da `PRIMARY / IN_PROGRESS` con **0 running y 0 pending**. **Producción NO está caída**: el deployment viejo sigue sirviendo con 1 tarea `ACTIVE / COMPLETED`. Lo que no entra es la versión nueva.
+- **El error, literal:**
+  ```
+  ResourceInitializationError: unable to pull secrets or registry auth:
+  unable to retrieve secrets from ssm: AccessDeniedException:
+  User: .../vence-backend-task-execution is not authorized to perform:
+  ssm:GetParameters on resource: .../parameter/vence-backend/DEVICE_LIMIT_MODE
+  ```
+- **Causa exacta, ya localizada — no hace falta investigar nada más:**
+  - `scripts/deploy-backend.sh` (líneas 184-185) **añade `DEVICE_LIMIT_MODE` a la task definition** en cada deploy. Lo introdujo el commit **`202b78cc6` — «feat(T-304): cablea DEVICE_LIMIT_MODE por SSM en las dos superficies»**.
+  - Pero la política inline **`vence-backend-read-secrets`** del rol **`vence-backend-task-execution`** enumera los parámetros **UNO A UNO, sin comodín**. Medido: **23 secretos en la task def, 22 permitidos, y el único que falta es exactamente `vence-backend/DEVICE_LIMIT_MODE`.**
+  - O sea: el helper que registra el secreto en SSM y lo cablea a la task def **no toca el IAM**, y el permiso se concede por enumeración. Cada secreto nuevo rompe el deploy hasta que alguien añade su ARN a mano.
+- **Arreglo (una de las dos, es DECISIÓN):**
+  1. **Añadir el ARN que falta** a la política. Mínimo cambio, mismo agujero para el próximo secreto:
+     ```bash
+     aws iam get-role-policy --role-name vence-backend-task-execution \
+       --policy-name vence-backend-read-secrets --profile vence > /tmp/pol.json
+     # añadir "arn:aws:ssm:eu-west-2:349744179687:parameter/vence-backend/DEVICE_LIMIT_MODE"
+     # al array Resource del Statement con Action ssm:GetParameters, y:
+     aws iam put-role-policy --role-name vence-backend-task-execution \
+       --policy-name vence-backend-read-secrets --policy-document file:///tmp/pol.json --profile vence
+     ```
+  2. **Pasar a comodín** `arn:aws:ssm:eu-west-2:349744179687:parameter/vence-backend/*` — cierra la clase entera de fallo, a cambio de que el rol pueda leer cualquier parámetro futuro de ese prefijo. **Es lo que yo haría**, porque el modo de fallo es silencioso y caro: no avisa al añadir el secreto, avisa una hora después en forma de deploy que no converge.
+- **⏳ NO hace falta hacer rollback: el deployment atascado se CURA SOLO.** ECS sigue reintentando; en cuanto el permiso exista, la siguiente tarea arranca y converge sin volver a desplegar. Si aun así se quiere parar el bucle:
+  `aws ecs update-service --cluster vence-backend --service vence-backend --task-definition arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-backend:143 --profile vence --region eu-west-2`
+- **Qué queda bloqueado detrás:** **[T-380]** (cron `law-source-watch` de las 08:30) y **[T-384]** (el `@Cron` nocturno que emite `temas_card`) están TERMINADAS y esperando este deploy para poder verificarse; sus commits ya están en `main`. Y cualquier trabajo de backend posterior.
+- **Cabo de proceso, no de código:** el `flock` de deploy (`/tmp/vence-deploy.lock`) lo retiene un `deploy-backend.sh` de otra sesión que sigue esperando una convergencia que no va a llegar. **Mientras ese proceso viva, ninguna sesión puede desplegar.** Mi lanzador y su hijo ya los he terminado yo; el ajeno (PID 3068244 el 31/07) hay que dejarlo morir o matarlo. El lock se libera solo al morir el proceso, borrar el fichero NO sirve.
+- **Relacionadas:** [T-304] (la que introdujo el secreto y sigue esperando decisión), [T-380], [T-384], [T-385] (el deploy y el checkout compartido), [T-386] (dos lanzadores ciegos).
 
 ### [T-115] 🔴 [ABIERTO 25/07] Generar preguntas para los artículos huérfanos del temario (`article_no_coverage`, 104)
 - **Qué:** 104 findings de artículos que están en el `topic_scope` con **texto real importado** pero **0 preguntas activas** → al usuario nunca le salen en los tests aunque el tema en conjunto tenga preguntas. Es **la mitad del badge** y la palanca real para bajarlo. **NO es internet:** la fuente es el texto del artículo que YA está en la BD (verbatim del BOE).
