@@ -118,13 +118,15 @@ código escribe con lo que la BD admite.
 la alegación (`appeal_text`). No es una impugnación nueva: es una segunda vuelta sobre algo que ya
 contestaste, y el usuario merece que se le note que lo has leído.
 
-> ⚠️ **IGNORA el «🛑 PASO 0 — YA RESPONDIDA → NO re-respondas» cuando el estado es `appealed`**
-> (defecto conocido, [T-402]). Ese aviso caza el desync del 504 (respuesta emailada, estado sin
-> voltear) mirando si hay `admin_response`… y en una apelación **siempre la hay**: es justo la
-> respuesta que la persona está replicando. Salta, por tanto, en el 100 % de las réplicas y te
-> manda cerrarla en silencio. Una réplica **se contesta** por el flujo normal (`cerrar.ts` →
-> `/resolve`, que manda el email nuevo). El aviso solo es de verdad cuando el estado es `pending`.
-> Y el `appeal_text` **no sale en el dossier**: sácalo de `question_disputes` antes de analizar.
+> ✅ **El dossier ya distingue la réplica del desync (T-402, 31/07/2026).** Con `appealed` imprime
+> **`🔁 PASO 0 — ES UNA RÉPLICA`**, tu `admin_response` anterior, el **`appeal_text` entero** (antes
+> había que sacarlo a mano de `question_disputes`) y te manda **responder** por el flujo normal
+> (`cerrar.ts` → `/resolve`, que envía el email nuevo). El viejo **`🛑 PASO 0 — YA RESPONDIDA →
+> cierra en silencio`** queda solo para lo que nació a cazar: `pending` **con** `admin_response`, o
+> sea el desync del 504 (respuesta emailada, estado sin voltear). Se separaron porque el aviso
+> miraba únicamente si había respuesta previa, y en una apelación **siempre la hay** —es justo lo
+> que la persona replica—, así que saltaba en el 100 % de las réplicas mandando cerrarlas mudas.
+> Criterio en el módulo puro `scripts/impugnaciones/lib/paso0.cjs` (10 tests).
 
 > 💡 **`cerrar.ts` necesita `AUTH_SECRET`** (no está en `.env.local`). El script te imprime el
 > comando; en una línea:
