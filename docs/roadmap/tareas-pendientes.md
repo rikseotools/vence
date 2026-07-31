@@ -1006,6 +1006,23 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+
+### [T-382] 🟡 [ABIERTO 31/07] El markdown del backlog: solo 16 de 363 fichas caen bajo `## Abiertas` y el `sync` no las reconcilia
+
+- **Qué (medido 31/07):** `parseMd()` marca `inOpenSection` solo entre `## Abiertas` y el **siguiente `##`**. En `tareas-pendientes.md` hay `## Abiertas` (línea 1001) y el siguiente `##` llega en la 1276 → **solo 16 de 363 fichas** cuentan como abiertas. El resto vive bajo **tres secciones `## Hechas`** (1276, 1519, 5270) y varias `##` sueltas.
+- **Consecuencia real, no teórica:** `sync` trata esas 347 como cerradas y **NO reconcilia su título ni su prioridad**. Se descubrió arreglando [T-067]: su título había que ponerlo **a mano en la BD** porque el `sync` se negaba —correctamente, según su propio comentario, para no disfrazar una deriva—.
+- **Por qué NO se arregló al vuelo:** es cirugía de un fichero de ~8.000 líneas que 2-10 sesiones editan a la vez; mover cientos de fichas garantiza conflictos de fusión. Necesita su ventana.
+- **Ojo al arreglar:** la BD es la fuente de verdad del ESTADO; el markdown, del CONTENIDO. Mover una ficha de sección **no** debe cambiar el estado en BD — y `sync` tiene guardarraíles (`esColisionReal`, abortos por id duplicado) que hay que respetar, no rodear.
+- **Sugerencia:** una sola sección `## Abiertas` al principio, una sola `## Hechas`, y un test que exija exactamente una de cada. Alternativa más barata: que `inOpenSection` deje de depender del orden de secciones y se calcule por la marca ✅ de la propia cabecera.
+
+### [T-383] 🟢 [ABIERTO 31/07] Suelo nocturno del frontend en AWS: de madrugada sobran tareas (~$25-30/mes)
+
+- **Qué:** el frontend corre con `min_capacity=8` las 24 horas. **De día está justificado** (medido: el pico son ~214 req/target/min contra el objetivo 250 de `ALBRequestCountPerTarget`, o sea que la política pide esas 8). **De noche no:** entre 01:00 y 05:00 el tráfico está al **3-6% del objetivo** con las mismas 8 tareas, y **no hay ninguna `scheduled-action`**.
+- **Cuánto:** ~25 de 192 task-horas/día ≈ **13% de la línea de frontend ≈ $25-30/mes**. Modesto pero recurrente, reversible en un minuto y **totalmente independiente de la migración** ([T-089], aparcada).
+- **⚠️ Aviso que evita repetir mi error:** yo mismo sugerí primero *"bajar `min-capacity`"* como la vía rápida al ahorro y **me equivoqué en el orden de magnitud** — de día el autoescalado repone las tareas y no ahorra nada. La palanca es una **scheduled-action nocturna**, no bajar el suelo. Detalle y mediciones en [T-089] §"la factura de AWS".
+- **Antes de tocar:** `frontend.tf` ya declara `min_capacity=8` (codificado el 30/07); la scheduled-action debe ir **también en Terraform**, no solo por CLI — es la lección de que la contención del 21/07 vivió meses solo en el CLI.
+- **Requiere OK de Manuel** (config de producción) y hacerlo con la flota estable, no encadenado a un despliegue.
+
 ### [T-380] 🟠 [ABIERTO 31/07] Registrar la fuente oficial de las 153 leyes sin vigilante (4.518 preguntas) — el research por-ley que bloquea toda la vigilancia
 
 - **Por qué es la tarea de verdad:** la vigilancia por hash ([T-026], `npm run laws:vigilar`) ya funciona, pero **solo puede mirar donde hay una URL registrada**. Hoy son 21 leyes. Las otras **153, que sirven 4.518 preguntas, no tienen fuente anotada en ninguna parte**, así que nadie puede comprobar si su texto ha cambiado. No es un problema de herramientas —están todas construidas— sino de **saber de dónde se descarga cada norma**, y eso es research manual: boletines autonómicos, sedes universitarias, tratados.
