@@ -976,6 +976,16 @@ incluida).
 - **La lección, que es la de siempre en este repo:** un detector que falla **en silencio** parece un detector que no encuentra nada. Aquí el aviso existía (`this.logger.warn`) pero iba al log, no a `observable_events`, así que **ni el panel ni las alertas lo veían**. Y el coste no se notó hasta que [T-307] dejó de matar el barrido antes de llegar aquí: dos defectos se estaban tapando el uno al otro.
 - **Relacionadas:** [T-315] (quien lo escribió, 30/07), [T-307] (el barrido que dejó de morir y destapó esto), [T-275] (`observable_events` y su tamaño).
 
+### [T-367] 🟡 [ABIERTO 31/07] Llegar al filtro por artículos desde el temario (prometido por escrito a un usuario)
+
+- **Es un compromiso adquirido, no una idea.** El 31/07, en el hilo `6df1e69a`, se le escribió a un usuario premium: *«Vamos a hacer que se pueda llegar a ese filtro también desde tu temario, que es por donde entras habitualmente.»* Esa frase no estaba anotada en ningún sitio hasta esta ficha. Una promesa que solo vive dentro de un hilo cerrado es una promesa que no se va a cumplir.
+- **Lo que pidió:** hacer test de una parte de una ley larga («llevo estudiados 50 de los 100 artículos, quiero test solo de esos») sin tener que tirar del test completo. Se puede: el filtro está en el configurador (`components/TestConfigurator.tsx`, apartado «📄 Filtrar por Artículos», plegado por defecto).
+- **Por qué no lo encontraba, que es el fondo del asunto:** desde su temario el botón le lleva **directo a las preguntas** y se salta la pantalla donde vive el filtro. Se le dio la ruta larga (Teoría → la ley → «🎯 Test» → «Filtrar por Artículos») y **se desvió**: en `/teoria/[law]` hay un botón **«📚 Filtrar por Títulos»** (`LawArticlesClient.tsx:526`) que se llama casi igual y filtra **la lectura**, no el test. Su journey lo enseña pulsando títulos y «Aplicar filtro» en esa pantalla, convencido de que estaba configurando el test.
+- **Dos cosas, entonces:**
+  1. **Un camino al filtro desde el temario** (que es por donde entra la gente), sin obligar a pasar por Teoría.
+  2. **Desambiguar los dos botones**, que hoy compiten por el mismo nombre. Uno filtra lo que LEES y otro lo que te PREGUNTAN, y la única pista es el emoji (📚 vs 📄).
+- **Cuidado al medirlo:** no basta con que el filtro exista y funcione (existe y funciona). Lo que falla es **encontrarlo**, así que la comprobación es de recorrido: entrar por el temario y llegar a un test de artículos escogidos sin pasar por Teoría.
+- **Origen:** feedback `6df1e69a` (cerrado en silencio: el usuario ya no esperaba respuesta). Tercer feedback suyo sobre lo mismo en dos semanas.
 
 ### [T-362] 🟠 [ABIERTO 31/07] Dos verificaciones en vivo se quedaron sin dueño porque sus fichas se cerraron antes de comprobarlas
 - **Por qué existe esta ficha** (y es la lección, más que la tarea): **T-344 y T-280 se cerraron con `done` cuando en realidad estaban en «hecho, falta verificar»**. El backlog tiene un estado exacto para eso —`pause --tras-deploy`, que suelta el claim y despierta sola cuando el deploy ocurre— y no se usó. Consecuencia: el «falta comprobar» quedó escrito solo en la prosa de sus fichas, que es justo donde nadie lo va a mirar. **Una tarea cerrada no despierta con el deploy**, y por eso hizo falta esta.

@@ -1148,6 +1148,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'nunca con la política puesta: si alguno debe avisar, su regla necesita `emailAlways: true`. ' +
       'Correr ANTES de tocar la curva, la severidad mínima o de añadir una excepción.',
   },
+
+  // ── Cerrar la cola de atención (impugnaciones y feedback) ─────────────────────────────────
+  cerrar_impugnacion: {
+    titulo: 'Cerrar una impugnación por el endpoint (que es lo que manda el email y concede el euro)',
+    ruta: 'scripts/impugnaciones/cerrar.ts',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts <dispute_id> --estado ' +
+      'resolved|rejected --mensaje <f.txt> [--aplicar]. Dry-run por defecto. Existe porque el ' +
+      'manual PROHÍBE el UPDATE directo: sin el endpoint no sale el email (el trigger que lo hacía ' +
+      'se eliminó el 14/04/2026 por fallar en silencio), no se concede el 1 € de recompensa y se ' +
+      'salta la puerta de barajado. Antes se improvisaba un script suelto por sesión. ' +
+      'GOTCHAS: (1) AUTH_SECRET NO está en .env.local, sale de SSM /vence-frontend/AUTH_SECRET; ' +
+      '(2) el admin tiene que ser el de la whitelist (manueltrader@gmail.com), otro da 403; ' +
+      '(3) canta si cierra SIN email en vez de enterrarlo en el JSON. ' +
+      '`--sin-recompensa "<motivo>"` para el mismo hallazgo repetido (un fallo, una recompensa).',
+  },
+  cerrar_feedback: {
+    titulo: 'Responder o cerrar en silencio un feedback por el endpoint',
+    ruta: 'scripts/impugnaciones/cerrar-feedback.ts',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'npx tsx --env-file=.env.local scripts/impugnaciones/cerrar-feedback.ts <feedback_id> ' +
+      '[--mensaje <f.txt> | --silencioso] [--aplicar]. El modo SILENCIOSO cierra sin escribir: es ' +
+      'para el hilo que acaba en cortesía («gracias, lo pruebo»), que si no se queda en ' +
+      '`waiting_admin` contando como pendiente para todas las sesiones. Comparte identidad de ' +
+      'admin con cerrar_impugnacion vía scripts/impugnaciones/lib/admin-token.ts (misma whitelist, ' +
+      'mismo TTL: duplicarla garantizaba que un día divergieran). ' +
+      'GOTCHA: este endpoint exige `adminUserId` en el CUERPO — el de impugnaciones lo saca del token.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */
