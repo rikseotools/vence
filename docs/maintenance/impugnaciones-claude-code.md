@@ -706,6 +706,43 @@ Equipo de Vence
 - **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
+### 6.0.bis Cuando NO tiene razón: enseñarle, no ganarle la discusión (31/07/2026)
+
+**Regla:** demostrar que la pregunta está bien **no basta**. La respuesta tiene que llevar el texto
+**literal**, el **enlace** para que lo compruebe él mismo, y sobre todo **reconstruir por qué él vio
+otra cosa**. Un usuario que se queda sin argumentos no es lo mismo que un usuario que lo entiende, y
+solo el segundo vuelve a estudiar tranquilo.
+
+**El caso (`349b5132`, Estela).** Impugnó `desacuerdo_correcta` con una sola palabra:
+*«Desactualizado»*. **No tenía razón** — el párrafo está en el texto vigente. La respuesta que se le
+dio hizo cuatro cosas, y las cuatro cuentan:
+
+1. **Dijo dónde está y por qué se pasa por alto:** *«dentro de la letra c) del artículo 9.2. Va en
+   mitad de esa letra, sin punto y aparte»*. Explica su error sin culparla de nada.
+2. **Citó el párrafo literal**, con las elisiones marcadas `(…)`, y dio el **enlace con ancla**
+   (`…#a9`) para que lo viera ella misma.
+3. **Reconstruyó lo que ELLA estaba mirando** — la pieza que de verdad la convenció: *«Esa redacción
+   la introdujo la Ley 11/2022… La anterior no hablaba de dos meses, sino de una autorización previa
+   de tres, así que si el texto que ves dice eso, tienes seleccionada una redacción antigua (en el
+   BOE hay un desplegable "Seleccionar redacción")»*. No solo le dijo que se equivocaba: le dijo
+   **en qué** se equivocaba y **dónde está el botón** para que no le vuelva a pasar.
+4. **Cogió su propio argumento y le dio la vuelta:** ella citaba la disposición adicional octava, y
+   la respuesta contesta *«tu lectura es correcta… justo por eso confirma que el plazo existe»*.
+   Llevarla a la conclusión con su propio razonamiento, en vez de contradecirla.
+
+**Cómo terminó:** replicó a los pocos minutos diciendo *«no había caído en que estaba consultando
+una redacción distinta, ahora me ha quedado completamente claro»*, se disculpó por insistir y añadió
+que **por esa atención va a contratar Premium**. Es decir: una impugnación **rechazada en el fondo**
+acabó en intención de compra. El «cómo» pesó más que el «quién tenía razón».
+
+> **Tres asteriscos, para que nadie saque de aquí la lección equivocada:**
+> · **Tardamos 25,3 horas** en contestarle, no minutos (ella lo llama «rapidez», pero el número es
+>   ese; no lo uses para concluir que un día de espera está bien).
+> · **Sigue en `free`**: dijo que pagaría, no ha pagado. No lo cuentes como conversión.
+> · **Es 1 caso entre 29** réplicas escritas por una persona en toda la historia (de 427 con
+>   `appeal_text`, **398 son la conformidad automática** que nadie escribió). Esto es un ejemplo de
+>   cómo redactar, **no** un patrón del que derivar reglas de proceso.
+
 Una vez aprobado, **llamar al endpoint `/api/v2/dispute/resolve`** (NO hacer UPDATE directo en BD):
 
 ```javascript
