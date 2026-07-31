@@ -68,7 +68,34 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+
+      # ── Preflight: ¿hay base de datos? ────────────────────────────────────────────
+      # Si el secret no existe, GitHub lo sustituye por CADENA VACÍA: el env llega
+      # puesto-pero-vacío y cada suite muere por separado con "DATABASE_URL environment
+      # variable is not set". Eso son 22 errores idénticos que parecen 22 problemas y son
+      # uno solo, de configuración del repo. Distinguirlo aquí es lo que permite que la
+      # alerta de abajo diga CUÁL de las dos cosas pasa (T-370, 31/07/2026).
+      - name: Preflight — el secret de BD existe
+        id: preflight
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::El secret DATABASE_URL_READONLY no existe o está vacío."
+            echo "Sin BD, esta categoría entera (integración/perf/seguridad) NO verifica NADA:"
+            echo "  invariantes de topic_scope · integridad de la entidad OEP · aislamiento entre"
+            echo "  usuarios · circuito de referidos (dinero) · guardarraíles anti-scraping."
+            echo "Se repone en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "✅ DATABASE_URL presente"
+
       - name: Run integration / perf / security tests
+        id: tests
+        # Solo si hay BD: sin ella, 22 suites gritando lo mismo tapan el diagnóstico.
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
         env:
           # Estos tests pegan a BD real (read-only en producción + datos snapshot).
           # Suministrados como secrets del repo. Si faltan, el step falla y se
@@ -83,10 +110,79 @@ jobs:
       # promete un boletín y lleva a otro, o si una tarjeta/temas_count no cuadra con la BD.
       # Nace del 25/07: una landing llevaba SEMANAS publicada a medias y solo se vio al ir
       # a mandarle una newsletter. Núcleos puros con tests: lib/convocatoria/{landingCompleteness,linkCoherence}.cjs
+      #
+      # Corre aunque los tests hayan salido rojos (son cosas distintas), pero NO sin BD.
       - name: Gate — coherencia de landings publicadas
+        id: landings
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
         run: npm run audit:coherencia:gate
+
+      # ── Que el rojo SE NOTE ───────────────────────────────────────────────────────
+      # Este job lleva `continue-on-error: true` a nivel de JOB, y esa es exactamente la
+      # razón de que pudiera estar roto ≥5 días sin que nadie se enterara: con él, su
+      # fallo NO hace `failure()` en el workflow, así que el job `notify-failure` de abajo
+      # —que corre con `if: failure()`— nunca llegaba a dispararse, no se emitía
+      # `workflow_failed`, y la regla `main_ci_rojo` no tenía nada que mirar. Silencio
+      # completo por diseño accidental.
+      #
+      # Se arregla mirando el `outcome` de los steps (que SÍ es fiable con
+      # continue-on-error) y emitiendo una señal propia. No se reutiliza `workflow_failed`
+      # a propósito: aquella alerta dice «nadie puede commitear ni desplegar», y eso aquí
+      # es MENTIRA — este job no bloquea nada, y una alerta que exagera se acaba ignorando.
+      - name: Avisar si la categoría quedó en rojo
+        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure') }}
+        env:
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          if [ "${{ steps.preflight.outcome }}" = "failure" ]; then
+            CAUSA="sin_base_de_datos"
+            MSG="El gate de integración/perf/seguridad NO verificó nada: falta el secret DATABASE_URL_READONLY"
+          elif [ "${{ steps.tests.outcome }}" = "failure" ]; then
+            CAUSA="tests_en_rojo"
+            MSG="El gate de integración/perf/seguridad corrió con BD y tiene tests en rojo"
+          else
+            CAUSA="landings_incoherentes"
+            MSG="El gate de coherencia de landings publicadas falló"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg causa "$CAUSA" \
+            --arg msg "$MSG" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{events:[{
+              source:"gha",
+              severity:"error",
+              eventType:"ci_integracion_rojo",
+              endpoint:"Integration / perf / security",
+              deployVersion:($sha|.[0:8]),
+              errorMessage:$msg,
+              metadata:{ causa:$causa, ref:$ref, runUrl:$run_url,
+                         runId:"${{ github.run_id }}", actor:"${{ github.actor }}" }
+            }]}')
+
+          # Best-effort: la observabilidad no amplifica un fallo de CI.
+          if [ -z "$INGEST_SECRET" ]; then
+            echo "⚠️ OBSERVABILITY_INGEST_SECRET no configurado — skipping ingest"
+            exit 0
+          fi
+          curl -sS -X POST 'https://www.vence.es/api/observability/ingest' \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: $INGEST_SECRET" \
+            -d "$PAYLOAD" -o /tmp/ingest-int.txt -w "HTTP=%{http_code}\n" || echo "curl falló"
+          cat /tmp/ingest-int.txt 2>/dev/null || true
+
+      # El job sigue marcándose en rojo en la UI (informativo: `continue-on-error` a nivel
+      # de job impide que tumbe el workflow, pero el rojo debe VERSE en el listado).
+      # VA EL ÚLTIMO a propósito: si cortara antes, se llevaría por delante los pasos que
+      # aún tienen algo que decir — que es la misma forma de ceguera que arregla esta tarea.
+      - name: Reflejar el rojo en el job
+        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure') }}
+        run: exit 1
 
   lint:
     name: Lint

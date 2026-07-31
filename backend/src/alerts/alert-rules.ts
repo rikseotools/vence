@@ -1342,6 +1342,79 @@ export const RULE_MAIN_CI_ROJO: AlertRule<{
   emailAlways: true,
 };
 
+/**
+ * T-370 (2026-07-31) — el gate de integración/perf/seguridad en rojo.
+ *
+ * Hermana de `main_ci_rojo`, y separada de ella A PROPÓSITO. Aquella dice «nadie puede
+ * commitear ni desplegar», que es verdad para el CI de código; aquí sería mentira — este job
+ * lleva `continue-on-error: true` y no bloquea nada. Una alerta que exagera se acaba ignorando,
+ * y el problema que resuelve esta es justamente que **nadie miraba**.
+ *
+ * Por qué hacía falta: ese mismo `continue-on-error` impedía que el fallo del job hiciera
+ * `failure()` en el workflow, así que `notify-failure` nunca corría y NO se emitía
+ * `workflow_failed`. Resultado: la categoría estuvo ≥5 días sin verificar nada —invariantes de
+ * `topic_scope`, entidad OEP, aislamiento entre usuarios, circuito de referidos (dinero),
+ * guardarraíles anti-scraping— y el panel, en verde.
+ *
+ * Distingue las DOS causas, porque la respuesta es distinta:
+ *   · `sin_base_de_datos` → no verificó NADA; se repone un secret (5 min, Settings del repo).
+ *   · `tests_en_rojo`     → sí verificó y encontró cosas; hay que triarlas.
+ */
+export const RULE_CI_INTEGRACION_ROJO: AlertRule<{
+  causa: string | null;
+  sha: string | null;
+  run_url: string | null;
+}> = {
+  name: 'ci_integracion_rojo',
+  severity: 'error',
+  query: sql`
+    SELECT metadata->>'causa' AS causa,
+           deploy_version AS sha,
+           metadata->>'runUrl' AS run_url
+    FROM observable_events
+    WHERE event_type = 'ci_integracion_rojo'
+      AND metadata->>'ref' = 'refs/heads/main'
+      AND ts > NOW() - INTERVAL '90 minutes'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    const sinBd = r?.causa === 'sin_base_de_datos';
+    const landings = r?.causa === 'landings_incoherentes';
+    const explicacion = sinBd
+      ? `El job corrió SIN base de datos: el secret \`DATABASE_URL_READONLY\` no existe o está ` +
+        `vacío, así que la categoría entera pasó de largo sin comprobar nada.\n\n` +
+        `Se repone en Settings → Secrets and variables → Actions.\n\n`
+      : landings
+        ? `Falló el gate de coherencia de landings PUBLICADAS: hay alguna servida a medias, con el ` +
+          `botón oficial apuntando a otro boletín, o con una cifra que no cuadra con la BD. ` +
+          `Frase-gatillo: «audita la landing».\n\n`
+        : `El job corrió CON base de datos y hay tests en rojo. Aquí el rojo es información: ` +
+          `conviene mirar cuáles antes de suponer que son «los de siempre».\n\n`;
+    return {
+      title: sinBd
+        ? 'El gate de integración NO está verificando nada (le falta la BD)'
+        : landings
+          ? 'Hay una landing publicada incoherente (gate de coherencia en rojo)'
+          : 'El gate de integración/perf/seguridad está en rojo',
+      body:
+        explicacion +
+        `Lo que deja de vigilarse mientras tanto: invariantes de \`topic_scope\`, integridad de la ` +
+        `entidad OEP, aislamiento entre usuarios, el circuito de referidos (dinero) y los ` +
+        `guardarraíles anti-scraping.\n\n` +
+        `OJO: este job NO bloquea merges ni deploys (\`continue-on-error: true\`), así que si nadie ` +
+        `lee este aviso no lo va a parar nada — es exactamente como estuvo ≥5 días en silencio.\n\n` +
+        `Commit: ${r?.sha ?? '(sha?)'}\nRun: ${r?.run_url ?? '(sin url)'}`,
+      metadata: { causa: r?.causa ?? null, sha: r?.sha ?? null, runUrl: r?.run_url ?? null },
+    };
+  },
+  // 12 h: es un estado persistente (mientras el secret falte, cada push lo repite). Un aviso al
+  // día basta para que no se olvide, sin convertirlo en ruido que se filtra a la papelera.
+  cooldownMin: 720,
+};
+
 export const RULE_SUBSCRIPTION_DRIFT: AlertRule<{
   detected: number;
   fixed: number;
@@ -5186,6 +5259,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Un CI rojo en `main` bloquea a TODAS las sesiones (commit y deploy): avisa al primer fallo,
   // sin esperar racimo. 28/07/2026.
   RULE_MAIN_CI_ROJO as AlertRule,
+  // Su hermana muda (31/07/2026, T-370): el gate de integración lleva `continue-on-error`,
+  // así que su rojo NO hacía `failure()`, no emitía `workflow_failed` y `main_ci_rojo` no
+  // podía verlo. Estuvo ≥5 días sin verificar nada con el panel en verde.
+  RULE_CI_INTEGRACION_ROJO as AlertRule,
   // Subscription health (2026-05-26 post-incidente Andrea/Lidia)
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,

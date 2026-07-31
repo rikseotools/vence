@@ -58,7 +58,7 @@ export const BENIGN_SIGNALS: readonly string[] = [
  */
 export const CON_REGLA_PROPIA: readonly string[] = [
   'alert_rule_failed', 'canary_answer_save_failed', 'canary_auth_failed',
-  'canary_db_pool_failed', 'canary_identidad_pago_failed',
+  'canary_db_pool_failed', 'ci_integracion_rojo', 'canary_identidad_pago_failed',
   'canary_pdf_queue_failed', 'canary_questions_gate_failed',
   'canary_redis_failed', 'canary_save_contract_failed', 'canary_stats_pipeline_failed',
   'canary_stripe_webhook_failed', 'canary_synthetic_external_failed',

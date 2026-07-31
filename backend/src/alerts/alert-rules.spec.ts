@@ -24,6 +24,7 @@ import {
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED,
   RULE_STRIPE_WEBHOOK_4XX_BURST,
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
+  RULE_CI_INTEGRACION_ROJO,
   RULE_DISPUTE_EMAIL_DROP,
   RULE_EMAIL_SEND_FAILED,
   RULE_CANARY_AUTH_FAILED,
@@ -900,6 +901,53 @@ describe('RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB (Pass-2)', () => {
         { detected: 0, fixed: 0, affectedAccounts: null },
       ]),
     ).toBe(false);
+  });
+});
+
+describe('RULE_CI_INTEGRACION_ROJO (T-370 — el gate que estuvo ≥5 días mudo)', () => {
+  const fila = (causa: string) => ({ causa, sha: 'abc12345', run_url: 'https://gh/run/1' });
+
+  it('dispara con cualquiera de las tres causas', () => {
+    expect(RULE_CI_INTEGRACION_ROJO.shouldFire([fila('sin_base_de_datos')])).toBe(true);
+    expect(RULE_CI_INTEGRACION_ROJO.shouldFire([fila('tests_en_rojo')])).toBe(true);
+    expect(RULE_CI_INTEGRACION_ROJO.shouldFire([fila('landings_incoherentes')])).toBe(true);
+  });
+
+  it('no dispara si no hay señal en la ventana', () => {
+    expect(RULE_CI_INTEGRACION_ROJO.shouldFire([])).toBe(false);
+  });
+
+  // Lo que justifica que sea una regla aparte y no un `workflow_failed` más: el mensaje tiene
+  // que decir CUÁL de las dos cosas pasa, porque la reacción es distinta (reponer un secret
+  // en 5 min vs. triar tests).
+  it('distingue «no verificó nada» de «verificó y hay rojos»', () => {
+    const sinBd = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('sin_base_de_datos')]);
+    expect(sinBd.title).toMatch(/NO está verificando nada/i);
+    expect(sinBd.body).toMatch(/DATABASE_URL_READONLY/);
+
+    const rojos = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('tests_en_rojo')]);
+    expect(rojos.title).toMatch(/en rojo/i);
+    expect(rojos.body).toMatch(/CON base de datos/);
+
+    // Tercera causa: el gate de landings vive en el mismo job pero no es un test.
+    // Si el aviso lo llamara «tests en rojo» mandaría a buscar donde no es.
+    const land = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('landings_incoherentes')]);
+    expect(land.title).toMatch(/landing/i);
+    expect(land.body).toMatch(/audita la landing/);
+    expect(land.body).not.toMatch(/hay tests en rojo/);
+  });
+
+  // El aviso NO debe heredar el «nadie puede commitear ni desplegar» de `main_ci_rojo`: aquí
+  // es falso y una alerta que exagera se acaba ignorando — que es el fallo original.
+  it('dice la verdad sobre su propio poder: NO bloquea merges ni deploys', () => {
+    const n = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('tests_en_rojo')]);
+    expect(n.body).toMatch(/NO bloquea merges ni deploys/);
+    expect(n.body).not.toMatch(/nadie puede commitear/);
+  });
+
+  it('es error y no repite más de una vez al día (estado persistente)', () => {
+    expect(RULE_CI_INTEGRACION_ROJO.severity).toBe('error');
+    expect(RULE_CI_INTEGRACION_ROJO.cooldownMin).toBe(720);
   });
 });
 
