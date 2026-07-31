@@ -1181,6 +1181,18 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Relacionadas:** [T-245] (el arreglo que no basta), [T-271] (el cubo de `console_error` donde apareció la firma), [T-260].
 
 
+
+- **📊 MEDIDO POR OTRA SESIÓN (31/07 ~00:20) — ESTO NO ES HISTÓRICO, ESTÁ PASANDO AHORA:**
+  - **359 eventos en las últimas 24 h**, 7 en la última hora, **el último hace 1 minuto**.
+  - Por día, la última semana: `07-31=337 · 07-30=387 · 07-29=511 · 07-28=405 · 07-27=422 · 07-26=239 · 07-25=210`. **No decae: es un caudal estable.**
+  - Consulta para reproducirlo:
+    ```sql
+    SELECT count(*) FROM observable_events
+     WHERE error_message ILIKE '%usuario no existe%' AND created_at > now() - interval '24 hours';
+    ```
+  - **QUÉ CAMBIA ESTO:** la investigación estaba escrita en pasado («desde el 7 de julio»), y con ese marco la hipótesis viva —que el perfil no llegue a crearse en el alta— habría que confirmarla **reconstruyéndola del historial**. Con usuarios entrando **ahora mismo** se puede confirmar o descartar **HOY**, mirando un alta en vivo: si se acuña token en la rama de fallo de creación de perfil, se ve en el momento.
+  - **Y cambia la prioridad, no solo el método:** no es una investigación de algo que pasó. **Hay gente sin poder pagar en este instante**, y lleva así semanas. Merece fecha límite (`backlog.cjs due`), no solo 🔴.
+
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
