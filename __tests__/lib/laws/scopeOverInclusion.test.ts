@@ -161,13 +161,30 @@ describe('CLI scope-over-inclusion.cjs ↔ lib (sync)', () => {
 // que son trabajo pendiente y deben seguir pesando.
 describe('el badge respeta las adjudicaciones', () => {
   const SWEEP = readFileSync('scripts/health-sweep.cjs', 'utf-8')
+  // El @Cron del backend es el writer PROGRAMADO real de content_health_findings; el sweep
+  // CLI es su gemelo manual. Hasta el 31/07 estos asserts solo miraban al gemelo, así que la
+  // guarda llegó al CLI el 26/07 y el writer real se quedó cinco días con el criterio viejo
+  // sin que nada lo dijera. El test de paridad tampoco podía verlo: compara los `kind` que
+  // emite cada fichero, no la LÓGICA con que los emite. Medido al arreglarlo: el CLI daba 0
+  // hallazgos y el @Cron 2, y los 2 eran casos ya adjudicados `ok` — hallazgos que el panel
+  // no podía bajar hiciera lo que hiciera nadie. Un badge que no puede llegar a cero deja de
+  // leerse. Por eso los asserts van contra los DOS. [T-088]
+  const BACKEND = readFileSync('backend/src/content-health-sweep/content-health-sweep.service.ts', 'utf-8')
 
   it('el sweep consulta la tabla de adjudicaciones', () => {
     expect(SWEEP).toContain('scope_over_inclusion_adjudications')
   })
 
+  it('el backend @Cron (writer real) también la consulta', () => {
+    expect(BACKEND).toContain('scope_over_inclusion_adjudications')
+  })
+
   it('excluye los adjudicados como ok', () => {
     expect(/NOT EXISTS[\s\S]{0,400}scope_over_inclusion_adjudications[\s\S]{0,200}verdict\s*=\s*'ok'/.test(SWEEP)).toBe(true)
+  })
+
+  it('el backend @Cron también excluye los adjudicados como ok', () => {
+    expect(/NOT EXISTS[\s\S]{0,400}scope_over_inclusion_adjudications[\s\S]{0,200}verdict\s*=\s*'ok'/.test(BACKEND)).toBe(true)
   })
 
   it('NO excluye los adjudicados como over_inclusion (siguen siendo trabajo pendiente)', () => {
@@ -176,9 +193,10 @@ describe('el badge respeta las adjudicaciones', () => {
   })
 })
 
-describe('NULL = toda la ley (sweep ↔ CLI, sin divergencia)', () => {
+describe('NULL = toda la ley (sweep ↔ CLI ↔ backend @Cron, sin divergencia)', () => {
   const SWEEP = readFileSync('scripts/health-sweep.cjs', 'utf-8')
   const CLI = readFileSync('scripts/scope-over-inclusion.cjs', 'utf-8')
+  const BACKEND = readFileSync('backend/src/content-health-sweep/content-health-sweep.service.ts', 'utf-8')
   // Acepta cualquier formato razonable: lo que se exige es que el NULL se
   // resuelva a law_total y NO a 0.
   const trataNull = (src: string) =>
@@ -192,11 +210,18 @@ describe('NULL = toda la ley (sweep ↔ CLI, sin divergencia)', () => {
     expect(trataNull(CLI)).toBe(true)
   })
 
+  // El writer REAL es éste, y era el único que seguía contando "toda la ley" como cero
+  // artículos: 1.924 de 5.964 scopes (32%) invisibles al detector en el @Cron nocturno. [T-088]
+  it('el backend @Cron resuelve article_numbers NULL a law_total', () => {
+    expect(trataNull(BACKEND)).toBe(true)
+  })
+
   it('ninguno vuelve al patrón `(article_numbers || [])` para contar la cobertura', () => {
     // Ese patrón es exactamente el bug: convierte "toda la ley" en "cero artículos".
     const patronBug = /const\s+scoped(Count)?\s*=\s*\(r\.article_numbers\s*\|\|\s*\[\]\)/
     expect(patronBug.test(SWEEP)).toBe(false)
     expect(patronBug.test(CLI)).toBe(false)
+    expect(patronBug.test(BACKEND)).toBe(false)
   })
 })
 

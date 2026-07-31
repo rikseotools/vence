@@ -81,7 +81,36 @@ Clasifica cada oposición en 4 buckets (los 3 patrones recurrentes de la campañ
 
 **GOTCHA que cazó:** `article_numbers=NULL` = LEY/CONTENEDOR ENTERO; un check de solape por rango numérico da "limpio" en falso. El clasificador cuenta NULL-compartido como duplicado. Núcleo puro testeable (`--simulate`, 9 casos ground-truth).
 
-## Procedimiento
+## La cola de recortes YA ADJUDICADOS — `npm run scope:pendientes`
+
+Adjudicar un scope y aplicarlo son **dos trabajos distintos**, y entre uno y otro la cosa se
+quedaba parada sin que nada lo dijera. El detector `scope_over_inclusion_suspect` marca lo que
+**huele** a sobre-inclusión y deja de contarlo en cuanto se adjudica; a partir de ahí, el recorte
+—ya decidido contra el BOE— vivía solo en la tabla `scope_over_inclusion_adjudications`, que no
+mira nadie.
+
+> **Medido el 31/07 (T-088):** el badge de sospechosos estaba a **0** y había **16 recortes
+> confirmados en 12 oposiciones** esperando. El pipeline había funcionado, y **su propio éxito
+> hizo desaparecer su salida del panel**: verde significaba *«nada que adjudicar»*, no *«nada que
+> hacer»*. Es el mismo patrón que «un badge a cero no es temario cubierto».
+
+```bash
+npm run scope:pendientes            # la cola, ordenada por IMPACTO (arts. que salen del scope)
+npm run scope:pendientes -- --json  # para encadenar
+```
+
+Lo publica el kind **`scope_over_inclusion_confirmed`** (frase-gatillo *«revisa los recortes de
+temario pendientes»*) en los dos gemelos del sweep, así que la cola se ve en
+`/admin/salud-sistema` sin que nadie tenga que acordarse de mirar una tabla.
+
+**Orden de ataque: de MENOR a mayor impacto**, que es lo que el flujo aprendió a base de fallos —
+los de impacto 0 son higiene segura y los de >150 preguntas son decisiones de programa. Las
+interpretaciones institucionales y los recortes grandes **no se auto-aplican**: piden releer el
+epígrafe oficial y, si toca, decisión de Manuel.
+
+**Baja sola**, que es la condición para que la señal sirva: aplicar marca la fila
+`verificado=false` con `razon='[RECORTE APLICADO …]'`, y `--reguard` degrada a `ok` lo que ya no
+tiene recorte que aplicar.
 
 ### 0. Pipeline semi-autónomo (RECOMENDADO desde 13/07)
 En vez de ensamblar a mano cada paso (fuente de fallos: olvidar recache/record, medir mal el impacto, borrar contenido implícito), usa el pipeline. Hace **la parte mecánica sola** y **para en la parte de juicio**:

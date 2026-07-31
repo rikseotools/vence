@@ -535,6 +535,60 @@ async function runReguard() {
   console.log(`✅ reguard: ${fixed} sin recorte pendiente (falsos positivos O ya recortados). Cola de recorte confirmada: ${conf}.`);
 }
 
+// --pendientes: la COLA de recortes ya adjudicados contra la fuente oficial y sin aplicar.
+// Es la puerta de entrada del kind `scope_over_inclusion_confirmed` del panel de salud: el
+// badge dice CUÁNTOS, esto dice CUÁLES y por dónde empezar.
+//
+// Va en ESTA herramienta y no en una nueva a propósito: es la misma tabla, el mismo criterio
+// de cola que usa `--reguard` y el mismo runbook. Una segunda puerta al mismo recurso acaba
+// divergiendo del original (la lección de T-130, el quinto escritor de `seguimiento_url`).
+//
+// Ordena por IMPACTO —preguntas activas del tema que salen del scope al recortar— porque es
+// la regla que el propio flujo aprendió a base de fallos: los de impacto 0 son higiene segura
+// y los grandes son decisiones de programa que piden criterio humano.
+async function runPendientes(asJson) {
+  require('dotenv').config({ path: '.env.local' });
+  const sql = require('postgres')(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false }, max: 1 });
+  const rows = await sql`
+    SELECT t.position_type pt, t.topic_number tn, l.short_name ley, a.band,
+           a.arts_correctos, a.titulos_excluidos, a.razon, a.adjudicado_at::date adjudicado,
+           ts.article_numbers,
+           (SELECT count(*)::int FROM articles ar WHERE ar.law_id=ts.law_id AND ar.article_number ~ '^[0-9]+$') law_total,
+           (SELECT count(*)::int FROM questions q
+              WHERE q.is_active AND q.primary_article_id IN (
+                SELECT ar.id FROM articles ar WHERE ar.law_id = ts.law_id)) preguntas_ley
+      FROM scope_over_inclusion_adjudications a
+      JOIN topics t ON t.id=a.topic_id
+      JOIN laws l ON l.id=a.law_id
+      JOIN topic_scope ts ON ts.topic_id=a.topic_id AND ts.law_id=a.law_id
+     WHERE a.verdict='over_inclusion' AND a.verificado AND t.is_active = true
+     ORDER BY t.position_type, t.topic_number`;
+  const conImpacto = rows.map(r => {
+    const scopeSet = r.article_numbers === null
+      ? new Set(Array.from({ length: Number(r.law_total) }, (_, i) => i + 1))
+      : new Set(r.article_numbers.filter(x => /^[0-9]+$/.test(x)).map(Number));
+    const ov = excludedOverlap(r.titulos_excluidos, scopeSet);
+    return { ...r, arts_a_quitar: ov.inScope, arts_excluidos: ov.total, preguntas_ley: Number(r.preguntas_ley) };
+  }).sort((a, b) => a.arts_a_quitar - b.arts_a_quitar);
+  await sql.end();
+
+  if (asJson) { console.log(JSON.stringify(conImpacto, null, 2)); return; }
+  if (!conImpacto.length) { console.log('✅ 0 recortes confirmados sin aplicar: la cola está vacía.'); return; }
+  const nOpos = new Set(conImpacto.map(r => r.pt)).size;
+  console.log(`\n📐 ${conImpacto.length} recorte(s) CONFIRMADO(s) sin aplicar, en ${nOpos} oposición(es)`);
+  console.log('   (adjudicados contra la fuente oficial; esos temas siguen sirviendo materia fuera de programa)\n');
+  for (const r of conImpacto) {
+    console.log(`  ${String(r.arts_a_quitar).padStart(3)} art. a quitar · ${r.band.padEnd(6)} · ${r.pt} T${r.tn} · ${r.ley}`);
+    console.log(`      quedaría: ${String(r.arts_correctos || '(quitar la ley entera del tema)').slice(0, 110)}`);
+    console.log(`      adjudicado ${r.adjudicado.toISOString().slice(0, 10)} · ${String(r.razon || '').slice(0, 110)}`);
+  }
+  console.log('\n  Aplicar (por oposición, el flujo probado):');
+  console.log('    node scripts/verify-topic-scope.cjs plan <pt> <propuestas.json>');
+  console.log('    node scripts/verify-topic-scope.cjs apply <pt> --include-gate      # SIN el jsonPath');
+  console.log('  Después: marcar la fila con razon=\'[RECORTE APLICADO …]\' o correr --reguard.');
+  console.log('  Detalle y gotchas: docs/runbooks/verificar-epigrafes-scope.md\n');
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -543,6 +597,7 @@ if (require.main === module) {
   else if (args.includes('--scan')) runScan(args.includes('--json')).catch(e => { console.error(e.message); process.exit(1); });
   else if (args.includes('--suspects')) runSuspects(args.includes('--only-new')).catch(e => { console.error(e.message); process.exit(1); });
   else if (args.includes('--reguard')) runReguard().catch(e => { console.error(e.message); process.exit(1); });
+  else if (args.includes('--pendientes')) runPendientes(args.includes('--json')).catch(e => { console.error(e.message); process.exit(1); });
   else if (args.includes('--record')) {
     if (!fileArg) { console.error('Uso: --record <fichero.json>'); process.exit(1); }
     runRecord(fileArg).catch(e => { console.error(e.message); process.exit(1); });
@@ -551,7 +606,7 @@ if (require.main === module) {
     const [pt, tn, ...ley] = args.slice(i + 1);
     if (!pt || !tn || !ley.length) { console.error('Uso: --peers <position_type> <topic_number> <short_name>'); process.exit(1); }
     runPeers(pt, tn, ley.join(' ')).catch(e => { console.error(e.message); process.exit(1); });
-  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --peers <pt> <tema> <ley> | --record <json> | --reguard'); process.exit(1); }
+  } else { console.log('Uso: --simulate | --scan [--json] | --suspects [--only-new] | --pendientes [--json] | --peers <pt> <tema> <ley> | --record <json> | --reguard'); process.exit(1); }
 }
 
 module.exports = { classifyScope, consensoBanco, parseEpigrafe, romanToInt, contentHash, excludedOverlap, internalGaps };

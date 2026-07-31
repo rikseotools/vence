@@ -121,7 +121,8 @@
     "canary:cobertura-dispositivos": "node scripts/canary-cobertura-dispositivos.cjs",
     "laws:vigilar": "node scripts/laws/vigilar-fuentes-legales.cjs",
     "sim:contexto-guard": "node scripts/backlog/sim-contexto-guard.cjs",
-    "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs"
+    "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",
+    "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

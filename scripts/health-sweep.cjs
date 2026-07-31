@@ -1090,6 +1090,40 @@ async function detectarTodo(c, add, now) {
       { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
   }
 
+  // ── CONTENIDO: recortes de sobre-inclusión ya CONFIRMADOS y sin aplicar ──
+  // Hermano del de arriba y su continuación natural. El de arriba dice «esto HUELE a
+  // sobre-inclusión, alguien tiene que adjudicarlo»; éste dice «ya se adjudicó contra el
+  // BOE, el recorte está decidido y el tema SIGUE sirviendo la materia de más».
+  //
+  // POR QUÉ HACÍA FALTA, y no es una intuición (medido el 31/07, T-088): el kind de
+  // sospechosos está a **0** —todos los HIGH se adjudicaron— mientras hay **16 recortes
+  // confirmados en 12 oposiciones** esperando. O sea que el pipeline funcionó, y su propio
+  // éxito hizo DESAPARECER su salida del panel: el badge en verde significaba «nada que
+  // adjudicar», que no es «nada que hacer». Exactamente el patrón de «un badge a cero no es
+  // temario cubierto».
+  //
+  // La definición de la cola es la MISMA que usa `--reguard` para su contador
+  // (`cola_recorte_confirmada`), a propósito: dos criterios distintos para la misma cola es
+  // como se empieza a discutir con el panel en vez de con los datos. Y baja sola, porque el
+  // flujo de aplicación marca la fila `verificado=false` (y la guarda determinista de
+  // `--reguard` degrada a `ok` lo que ya no tiene recorte que aplicar).
+  const oiConf = (await c.query(`
+    SELECT t.position_type pt, t.topic_number tn, l.short_name ley, a.band,
+           left(coalesce(a.arts_correctos, ''), 80) AS arts_correctos,
+           a.adjudicado_at::date AS adjudicado
+      FROM scope_over_inclusion_adjudications a
+      JOIN topics t ON t.id = a.topic_id
+      JOIN laws l ON l.id = a.law_id
+     WHERE a.verdict = 'over_inclusion' AND a.verificado
+       AND t.is_active = true
+     ORDER BY t.position_type, t.topic_number`)).rows;
+  if (oiConf.length) {
+    const nOpos = new Set(oiConf.map(x => x.pt)).size;
+    add('content', 'warn', null, 'scope_over_inclusion_confirmed',
+      `${oiConf.length} recorte(s) de scope ya ADJUDICADOS contra la fuente oficial y sin aplicar, en ${nOpos} oposición(es) — esos temas siguen sirviendo materia fuera de programa; aplicar con verify:scope plan/apply`,
+      { count: oiConf.length, oposiciones: nOpos, sample: oiConf.slice(0, 20) });
+  }
+
   // NOTA: el detector de OFF-BY-ONE DE FRONTERA DE TÍTULO (art. escopado de un
   // título que el epígrafe no nombra; caso Mario/LOSU 24/07) NO se ejecuta aquí
   // como kind que pinga el badge. La simulación bank-wide (24/07) dio recall alto

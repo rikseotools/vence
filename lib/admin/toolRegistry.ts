@@ -690,6 +690,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se modela (Código Civil, CP, LECrim, LOPJ): sus títulos reinician por libro y se rechazan a ' +
       'propósito, es la tarea T-104.',
   },
+  scope_recortes_pendientes: {
+    titulo: 'La cola de recortes de scope YA adjudicados contra la fuente oficial y sin aplicar',
+    ruta: 'scripts/scope-over-inclusion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Flag `--pendientes [--json]` (`npm run scope:pendientes`) de la MISMA herramienta que emite ' +
+      'los sospechosos y aplica la guarda determinista: misma tabla, mismo criterio de cola que ' +
+      '`--reguard`, una sola puerta. Es la entrada del kind `scope_over_inclusion_confirmed` del ' +
+      'panel de salud — el badge dice CUÁNTOS, esto dice CUÁLES. Ordena por IMPACTO (artículos ' +
+      'que salen del scope al recortar), que es la regla que el flujo aprendió a base de fallos: ' +
+      'impacto 0 = higiene segura, >150 preguntas = decisión de programa. POR QUÉ EXISTE (medido ' +
+      'el 31/07, T-088): adjudicar y aplicar son dos trabajos distintos, y entre uno y otro la ' +
+      'cola era invisible — el badge de sospechosos estaba a 0 (todos adjudicados) con 16 ' +
+      'recortes confirmados esperando en 12 oposiciones. Solo LEE.',
+  },
   scope_peers_comparados: {
     titulo: 'Encontrar el tema HERMANO que ya acotó esta misma ley, para adjudicar un scope por evidencia comparada',
     ruta: 'scripts/scope-over-inclusion.cjs',

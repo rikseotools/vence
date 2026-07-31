@@ -2483,12 +2483,26 @@ export class ContentHealthSweepService {
 
     // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
     // Solo banda HIGH (título con hueco / arts citados = precisión alta); MEDIUM (prosa) no pinga.
+    // Las dos guardas de abajo llegaron al gemelo CLI el 26/07 y NO se copiaron aquí, que es
+    // el writer REAL: hasta el 31/07 el @Cron nocturno escribía este kind con el criterio
+    // viejo. Medido ese día sobre datos vivos: el CLI daba 0 y el @Cron 2, y los 2 eran casos
+    // YA adjudicados `ok` — o sea, hallazgos que el panel no podía bajar hiciera lo que
+    // hiciera nadie. El test de paridad no lo vio porque compara los `kind` que emite cada
+    // fichero, no la LÓGICA con que los emite (punto ciego anotado en [T-088]).
     const overIncl = (await this.db.execute(sql`
       SELECT t.position_type pt, t.topic_number tn, l.short_name ley, t.epigrafe,
              ts.article_numbers,
              (SELECT count(*) FROM articles a WHERE a.law_id = ts.law_id AND a.article_number ~ '^[0-9]+$') law_total
       FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id JOIN laws l ON l.id = ts.law_id
       WHERE t.is_active = true
+        -- (1) El badge tiene que poder BAJAR: fuera los (tema, ley) ya adjudicados con
+        -- veredicto 'ok', que es el estado final tanto de un falso positivo como de un
+        -- recorte YA APLICADO. Los adjudicados 'over_inclusion' SÍ siguen contando aquí:
+        -- son trabajo por hacer, y además tienen su propio kind (..._confirmed).
+        AND NOT EXISTS (
+          SELECT 1 FROM scope_over_inclusion_adjudications adj
+           WHERE adj.topic_id = ts.topic_id AND adj.law_id = ts.law_id AND adj.verdict = 'ok'
+        )
     `)) as unknown as Array<{
       pt: string;
       tn: number;
@@ -2505,7 +2519,13 @@ export class ContentHealthSweepService {
       motivo: string | null;
     }> = [];
     for (const r of overIncl) {
-      const scoped = (r.article_numbers || []).filter((x) => /^[0-9]+$/.test(x)).length;
+      // (2) NULL en `article_numbers` = TODA la ley (convención del proyecto). Contarlo como
+      // 0 artículos dejaba **1.924 de 5.964 scopes (32%)** invisibles a este detector aquí
+      // — justo los que más pueden pasarse de ancho.
+      const scoped =
+        r.article_numbers === null
+          ? Number(r.law_total)
+          : r.article_numbers.filter((x) => /^[0-9]+$/.test(x)).length;
       const v = classifyScope(Number(r.law_total), scoped, r.epigrafe);
       if (v.band === 'HIGH')
         oiHigh.push({
@@ -2526,6 +2546,35 @@ export class ContentHealthSweepService {
         'scope_over_inclusion_suspect',
         `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
         { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) },
+      );
+    }
+
+    // ── CONTENIDO: recortes de sobre-inclusión ya CONFIRMADOS y sin aplicar ──
+    // Mirror de scripts/health-sweep.cjs — MANTENER EN SYNC.
+    // El kind de arriba dice «esto huele a sobre-inclusión, hay que adjudicarlo»; éste dice
+    // «ya se adjudicó contra el BOE y el tema SIGUE sirviendo la materia de más». Medido el
+    // 31/07 (T-088): sospechosos 0, confirmados sin aplicar 16 en 12 oposiciones — el
+    // pipeline funcionó y su propio éxito hizo desaparecer su salida del panel.
+    const oiConf = (await this.db.execute(sql`
+      SELECT t.position_type pt, t.topic_number tn, l.short_name ley, a.band,
+             left(coalesce(a.arts_correctos, ''), 80) AS arts_correctos,
+             a.adjudicado_at::date AS adjudicado
+        FROM scope_over_inclusion_adjudications a
+        JOIN topics t ON t.id = a.topic_id
+        JOIN laws l ON l.id = a.law_id
+       WHERE a.verdict = 'over_inclusion' AND a.verificado
+         AND t.is_active = true
+       ORDER BY t.position_type, t.topic_number
+    `)) as unknown as Array<{ pt: string; tn: number; ley: string | null }>;
+    if (oiConf.length) {
+      const nOpos = new Set(oiConf.map((x) => x.pt)).size;
+      add(
+        'content',
+        'warn',
+        null,
+        'scope_over_inclusion_confirmed',
+        `${oiConf.length} recorte(s) de scope ya ADJUDICADOS contra la fuente oficial y sin aplicar, en ${nOpos} oposición(es) — esos temas siguen sirviendo materia fuera de programa; aplicar con verify:scope plan/apply`,
+        { count: oiConf.length, oposiciones: nOpos, sample: oiConf.slice(0, 20) },
       );
     }
 

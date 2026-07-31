@@ -303,6 +303,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada tema señalado (banda HIGH: el epígrafe cita títulos con huecos o artículos concretos pero el scope mete casi toda la ley) corre el adjudicador verify:scope: obtén la estructura oficial de la ley (títulos/capítulos y sus rangos), mapea cada materia que NOMBRA el epígrafe a su título/capítulo, y LISTA los títulos con preguntas escopadas que el epígrafe NO nombra. Si el epígrafe realmente acota (deja títulos fuera), recorta el article_numbers a lo que pide el epígrafe (las preguntas fuera de programa quedan en BD, dejan de servirse en ese tema); si el epígrafe abarca de verdad toda la ley, es falso positivo y se deja. NUNCA recortes un bloque que el epígrafe sí pide ni des por buena la ley entera sin mapear su estructura (ese atajo fue el falso verde del caso T11).',
   },
+  scope_over_inclusion_confirmed: {
+    title: 'Recorte de scope ya adjudicado contra la fuente oficial y sin aplicar',
+    triggerPhrase: 'revisa los recortes de temario pendientes',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    comando: 'npm run scope:pendientes',
+    claudeHace: 'corre `npm run scope:pendientes` (la cola sale ordenada por IMPACTO: artículos que salen del scope al recortar) y aplica de MENOR a mayor con el flujo probado: propuesta `[{tema, veredicto:[{ley, quitar, anadir, razon}]}]` → `node scripts/verify-topic-scope.cjs plan <pt> <json>` → `apply <pt> --include-gate` (¡SIN pasarle el jsonPath: con él falla EN SILENCIO, sin COMMIT — verifica en BD que el scope cambió antes de darlo por aplicado!) → marcar la fila con `razon=\'[RECORTE APLICADO …]\'` o correr `--reguard`. Los de impacto grande (>150 preguntas) y las interpretaciones institucionales NO se auto-aplican: exigen releer el epígrafe oficial y, si toca, decisión de Manuel. Si el recorte deja la ley a 0 artículos, se quita la FILA de topic_scope entera, no se vacía el array. NUNCA apliques un recorte sin comprobar antes que su adjudicación sigue casando con el scope actual (el scope pudo cambiar desde que se adjudicó).',
+  },
   scope_title_boundary_overflow: {
     title: 'Artículo escopado de un título que el epígrafe NO nombra (off-by-one de frontera)',
     triggerPhrase: 'revisa las fronteras de título del temario',
