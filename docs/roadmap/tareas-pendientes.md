@@ -1107,6 +1107,45 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cabo asociado:** hay que decidir **si `last_verification_summary` puede seguir usándose de bitácora**. Si el detector de URLs necesita dejar rastro, que sea en su propio campo o con una clave que el criterio entienda — no ocupando el sitio de la evidencia.
 - **De dónde sale:** de `lawCompletenessConsistency` en el inventario real de [T-377]. El test señalaba **otra** discrepancia (1 ley), y esta apareció al mirar por qué.
 - **Relacionada:** [T-377], frase-gatillo *"revisa la completitud de las leyes"* → `docs/runbooks/completitud-leyes.md`, memoria `project-completitud-leyes-vs-fuente`.
+### [T-398] 🔴 [ABIERTO 31/07] Cola de atención al cerrar la sesión: 1 feedback esperando respuesta y 7 impugnaciones, con el contexto de cada una
+
+- **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
+- **🔴 LO PRIMERO, porque hay alguien esperando: feedback `bd8b92d0` (Sergio, premium).** Es una RÉPLICA del 31/07 sin contestar: *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*. **No es una preferencia: su oposición (`agente_hacienda`) tiene CERO temas** — ver [T-397]. Lo que pide (filtrar preguntas oficiales en el test por leyes) está diagnosticado en [T-326] y es un arreglo pequeño. **Decisión pendiente de Manuel:** arreglar [T-326] y avisarle, o responderle mientras tanto. No cerrar el hilo sin contestarle: se le prometió por escrito que la idea era buena.
+- **Las 7 impugnaciones pendientes** (todas legislativas, ninguna analizada aún):
+  | id | tipo | plan | lo que dice |
+  |---|---|---|---|
+  | `ee09f030` | desacuerdo_correcta | premium | «Cuando hablamos de la regla general…» (Jesús Quesada) |
+  | `b816cd3a` | mal_formulada | premium | «No concuerda la pregunta con las respuestas» (Estela) |
+  | `cf376ad0` | mal_formulada | premium | «Pregunta cuándo tendrán capacidad de obrar…» (Jesús Quesada) |
+  | `b9ae32e2` | desacuerdo_correcta | free | «Según el texto literal de la ley sí, pero en la práctica…» (Roberto Benito) |
+  | `e60091bd` | desacuerdo_correcta | free | sin detalle (Natalia Suárez) |
+  | `626059c8` | otro | free | «la respuesta A y C son idénticas, las dos estarían correctas» (Marcos Sánchez) |
+  | `32b0d55e` | otro | premium | «creo recordar que esta pregunta me ha aparecido alguna otra vez» (Laura Zurdo) |
+- **Pistas de lo aprendido HOY, que ahorran tiempo en tres de ellas:**
+  - `626059c8` («A y C son idénticas») → mirar si son de verdad idénticas o **variantes de literalidad**: hoy pasó con Laura (`997c0e17`), donde tres opciones se parecían a propósito y la queja no procedía… pero al revisarla apareció una errata nuestra («tiene» donde el BOE dice «tienen»). **Rechazar la queja no exime de mirar la pregunta.**
+  - `32b0d55e` («me ha aparecido otra vez») → repetición. Herramienta: `node scripts/calidad/duplicados-exactos.cjs` (simula por defecto). Ojo: **repetir NO es duplicar** — el banco tiene variantes legítimas del mismo artículo.
+  - `b9ae32e2` («según el texto literal sí, pero en la práctica…») → suena a la trampa de **literal vs realidad**; hoy salió dos veces (art. 8 CE con «Ejército del Aire» vs denominación actual, y Ctrl+E/Ctrl+A por versión de Windows). Verificar SIEMPRE contra el BOE y **fijar de qué versión/texto habla la pregunta**.
+- **Reglas que esta sesión aplicó y conviene no perder** (todas están en el manual, pero cuestan de recordar):
+  1. **Toda impugnación legislativa que se cierre —se acepte o se rechace— exige explicación estructurada.** El endpoint lo bloquea; no es un consejo. Se hace con `scripts/aplicar-explicacion.ts` (dry-run primero) y las razones se escriben referidas al CONTENIDO, nunca a la letra de la opción.
+  2. **Cerrar SIEMPRE por el endpoint**, con `scripts/impugnaciones/cerrar.ts` (creado hoy). Un UPDATE directo no manda email, no da el euro y se salta la puerta.
+  3. **Medir si el fallo es sistémico ANTES de cerrar** — hoy evitó romper una pregunta buena con 92 exposiciones ([T-389] explica por qué esto no debería depender de la memoria).
+  4. **Borrador aprobado por Manuel antes de enviar**, sin excepción.
+
+### [T-397] 🔴 [ABIERTO 31/07] 592 usuarios (3 de ellos PREMIUM) han elegido una oposición sin ningún tema: se puede pagar por lo que no existe
+
+- **Cómo salió:** atendiendo el feedback `bd8b92d0` de un premium que pedía filtrar preguntas oficiales en el test por leyes. Al preguntarle el dossier por su temario saltó el aviso: *«esa oposición NO TIENE TEMARIO (0 temas activos)»*. Su frase —*«el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*— no era una preferencia de estudio: **era el único modo que le funciona**.
+- **Medido el 31/07 (excluidas las personalizadas, ver la trampa abajo):** **183 oposiciones del catálogo elegidas por 592 usuarios y con CERO temas activos**.
+  - **Lo urgente son 3 premium**, que están pagando: **2 en `agente_hacienda`** (16 usuarios en total, última alta 21/07) y **1 en `cuerpo_de_gestion_de_la_administracion_gobierno_de_canarias`** (2 usuarios, alta 01/07).
+  - Las de más volumen en free: `enfermero` (58), `auxiliar_ayuntamiento` (37), `auxiliar_enfermeria` (27), `subalterno_ordenanza_conserje_administracion_local` (24), `policia_local` (24), `bombero` (17).
+- **⚠️ TRAMPA DE MEDIDA, y ya hizo caer a una sesión (no repetirla):** hay usuarios cuyo `target_oposicion` es un **UUID**, no un slug. **NO están rotos**: son **oposiciones personalizadas** (`custom_oposiciones`), con su temario en otra tabla, y es una función legítima. En una medición anterior se contaron como error y hubo que rectificar. **Filtrar siempre** `target_oposicion !~ '^[0-9a-f]{8}-[0-9a-f]{4}-'` antes de dar una cifra.
+- **Qué significa para quien lo sufre:** al entrar no hay temario, ni temas que practicar, ni progreso por bloques. Solo queda el test por leyes, buscando artículo por artículo — y ahí falta justo el filtro de preguntas oficiales ([T-326]), así que el modo de estudio de reserva también está a medias. **Es la peor combinación posible: te dejamos elegir algo que no existe y encima la única salida está incompleta.**
+- **Por qué no lo detecta nada:** el catálogo permite elegir una oposición `catalogada` (vigilada pero **no preparada**, `is_active=false`), y el cobro **no comprueba** si esa oposición tiene temario. No hay ningún detector que cruce «oposición elegida» con «tiene temas». Los badges de salud de contenido miran temas vacíos y cobertura **dentro** de las oposiciones que preparamos; a esta gente no la ve nadie.
+- **Tres decisiones, y son de PRODUCTO (de Manuel), no técnicas:**
+  1. **¿Se puede seguir eligiendo una oposición sin temario?** O el selector la marca («la vigilamos, aún no la preparamos») o directamente no se ofrece. Hoy no se distingue de una preparada.
+  2. **Qué se hace con los 3 premium.** Avisarles, ofrecerles cambiar de oposición o compensarles. Son identificables y pocos: es abordable hoy.
+  3. **¿Se construye `agente_hacienda`?** 16 personas la eligieron sin que existiera, que es señal de demanda REAL (no una encuesta: gente que buscó y se registró).
+- **Contexto previo:** hay memoria del proyecto sobre premium con temario incompleto, así que el patrón no es nuevo — lo nuevo es el número y que ahora hay nombres concretos.
+- **Al arreglarlo, la comprobación honesta** no es que el contador baje, sino que **ningún usuario nuevo pueda quedarse en una oposición sin temas sin haber sido advertido**, y que los 3 premium actuales tengan una respuesta.
 
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
@@ -2150,6 +2189,12 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Ojo al contar:** el conteo por tema usa `ownOfficialPredicate(positionType)` — solo las oficiales **de esa oposición**, no cross-oposición (ver el comentario de `lib/api/topic-data/queries.ts`: contar cross infló el label de Seg. Social T3 a 115 cuando la propia era ~1). El de por-leyes debe usar el mismo criterio o dirá otra cosa que el resto de la app.
 - **Impacto:** 🟠 no rompe nada, pero es una función terminada que nadie puede usar en la pantalla donde más sentido tiene: quien estudia **por leyes** (los que no tienen temario cerrado) es justo quien más quiere medirse con preguntas de examen real.
 - **Relacionada:** [T-327] (la funcionalidad grande que pidió el mismo usuario en su otro hilo).
+
+- **📌 CONTEXTO AÑADIDO 31/07 — por qué esto YA no es una comodidad: hay un premium para quien es la ÚNICA vía de estudio.**
+  - **Quién lo pide:** `pcsergio0@gmail.com` (premium, alta 21/07), feedback `bd8b92d0`. Preguntó *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. Se le respondió el 30/07 que la idea nos parece muy buena y que en el test por leyes todavía no aparece. **Él replicó el 31/07 y su hilo sigue ABIERTO esperando respuesta:** *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*.
+  - **Y tiene toda la razón, por un motivo que no se ve en su mensaje:** su oposición es **`agente_hacienda`, que tiene CERO temas** y está `is_active=false` (catalogada, no preparada). No está eligiendo un modo de estudio: **es el único que le funciona**. Ver ficha hermana sobre los premium sin temario.
+  - **Confirmado en el código (31/07), sigue exactamente como describe esta ficha:** `app/test/por-leyes/page.tsx` declara `hideOfficialQuestions={false}` (línea 410) y sabe llevar el filtro al test (`params.set('only_official','true')`, línea 151), pero **no calcula ni pasa `officialQuestionsCount`** → 0 por defecto → el interruptor no se pinta nunca. El camino bueno está en `components/test/TemaTestPage.tsx`, que lo trae del endpoint (`setOfficialQuestionsCount(data.officialQuestionsCount || 0)`, líneas 151 y 228) y lo usa para decidir si pintar (línea 364).
+  - **Qué hace falta al arreglarlo**, para no repetir el defecto: que el contador venga del MISMO sitio que en la página por tema (no calcularlo aparte), comprobar que con el filtro activo el test sirve **solo** oficiales, y **avisar a Sergio en su hilo** cuando esté vivo — se le prometió que la idea era buena y lleva desde el 31/07 esperando.
 
 ### [T-327] 🟠 [ABIERTO 30/07] Oposición personalizada: que el usuario arme su propio temario eligiendo leyes y artículos
 - **De dónde sale:** Sergio (`pcsergio0@gmail.com`, premium, feedback `dfc8d0e2`): *«posibilidad de crear tu oposición con el temario de las leyes y artículos que uno seleccione»*. **Ya respondido**: se le ha dicho que lo vamos a implementar.
