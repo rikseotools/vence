@@ -4,17 +4,20 @@ Manual para escalar Vence a nuevas oposiciones. Marzo 2026.
 
 > ## 🚦 ANTES DE NADA: ¿esta oposición se CONSTRUYE? (regla de producto, Manuel 31/07/2026)
 >
-> **Vence construye contenido de los grupos D, C1 y C2. A1 y A2 NO, por ahora.** El motivo es de
-> negocio, no técnico: son temarios enormes (la Escala Técnica de Gestión de OO.AA. son 120 temas
-> por aspirante) para muy pocas plazas y muy pocos usuarios — el esfuerzo no se paga.
+> **CATALOGAR es ancho; CONSTRUIR es estrecho.** No son la misma decisión y confundirlas hace daño
+> en los dos sentidos.
 >
-> **Catalogarlas SÍ.** El objetivo es tener la mayor base de datos de oposiciones de España, así que
-> A1/A2 entran en el catálogo, con su convocatoria, sus plazas y su seguimiento. Lo que no se hace
-> es construirles el temario.
+> - **Catalogar: TODOS los grupos** (A1, A2, B, C1, C2, AP, E). Es política desde el **04/07/2026**
+>   (Fase 0 del radar, que eliminó el guardarraíl que excluía A1/A2/B). Misión: la BD de oposiciones
+>   más grande y fresca de España. **El grupo prioriza, NUNCA descarta.** Fuente:
+>   `docs/maintenance/oeps-convocatorias-seguimiento.md` §«TODOS los grupos al radar».
+> - **Construir contenido: solo D, C1 y C2.** **A1 y A2 NO, por ahora** — temarios enormes para muy
+>   pocas plazas y usuarios: el esfuerzo no se paga. La Escala Técnica de Gestión de OO.AA. son
+>   **120 temas por aspirante** (20 comunes + una de cuatro áreas de 100).
 >
-> **Y hay una salvedad que es su sitio natural:** las oposiciones difíciles, minoritarias o con
-> muchos temas son el público de **«móntate tu propio temario»** ([T-327] y su landing [T-328]) —
-> el usuario elige leyes y artículos en vez de esperar a que alguien construya 120 temas.
+> **Su sitio natural es «móntate tu propio temario»** ([T-327] y su landing [T-328]): las
+> oposiciones difíciles, minoritarias o con muchos temas son exactamente ese público — el usuario
+> elige leyes y artículos en vez de esperar a que alguien construya 120 temas.
 >
 > **Medido el 31/07:** de 124 oposiciones publicadas, **106 son grupo C**; solo 7 son grupo A y
 > entre las 7 suman **26 usuarios**. Caso que motivó la regla: `etgoa-sanidad-consumo` (A2, 98
