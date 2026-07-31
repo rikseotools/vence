@@ -58,6 +58,21 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Preferencias de email: reparación del efecto colateral del botón de baja masiva ──────
+  restaurar_soporte_baja_masiva: {
+    titulo: 'Devolver las respuestas por email a quien no pidió perderlas (T-369/T-373)',
+    ruta: 'scripts/emails/restaurar-soporte-baja-masiva.cjs',
+    estado: 'historico',
+    notas:
+      'YA EJECUTADO el 31/07/2026 (79 filas). Se deja registrado para no reconstruirlo y por si ' +
+      'reaparece el patrón. Dry-run por defecto, `--apply` escribe, y vuelca el estado previo a ' +
+      '~/vence-backups/ (FUERA del repo: lleva correos reales y `scratchpad/` no está gitignoreado). ' +
+      'Toca SOLO la firma del botón rojo (`email_soporte_disabled AND unsubscribed_all`): quien ' +
+      'eligió la categoría «Soporte y transaccional» tiene `unsubscribed_all=false` y NO se toca. ' +
+      'NO reactiva marketing ni newsletter — siguen de baja de la publicidad, que es lo que pidieron. ' +
+      'La causa ya está cerrada en `processUnsubscribeByToken` (casilla `includeSoporte`), así que ' +
+      'si esto vuelve a dar >0 filas, el defecto ha REAPARECIDO: mirar ahí antes de re-ejecutar.',
+  },
   // ── Consumo de LLM (API facturable + suscripción de Claude Code) ──────────────────────────
   llm_gasto: {
     titulo: 'Ver el consumo de LLM del sistema: lo que se factura y lo que consume cuota',

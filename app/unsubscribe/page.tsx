@@ -70,6 +70,10 @@ function UnsubscribePageContent() {
   const [selectedCategories, setSelectedCategories] = useState<Set<CategoryId>>(new Set())
   const [showConfirmAll, setShowConfirmAll] = useState(false)
   const [tokenCategory, setTokenCategory] = useState<CategoryId | null>(null)
+  // T-369: la baja masiva NO se lleva las respuestas a lo que el usuario nos escribe
+  // salvo que lo marque aquí. Desmarcada a propósito: hasta ahora se apagaban siempre
+  // y 79 de los 80 usuarios que las tienen apagadas nunca lo pidieron.
+  const [alsoSoporte, setAlsoSoporte] = useState(false)
 
   const token = searchParams.get('token')
 
@@ -173,6 +177,7 @@ function UnsubscribePageContent() {
         body: JSON.stringify({
           token,
           unsubscribeAll: true,
+          includeSoporte: alsoSoporte,
         }),
       })
 
@@ -180,7 +185,11 @@ function UnsubscribePageContent() {
 
       if (result.success) {
         setStatus('success')
-        setMessage('Te has dado de baja de TODOS los emails. No recibiras mas emails automaticos.')
+        setMessage(
+          alsoSoporte
+            ? 'Te has dado de baja de TODOS los emails, incluidas las respuestas a lo que tu nos escribas. Las seguiras viendo dentro de la web, en tu buzon de Vence.'
+            : 'Te has dado de baja de TODOS los emails automaticos. Si nos escribes, nuestra respuesta si te llegara por email.'
+        )
       } else {
         setStatus('error')
         setMessage(result.error || 'Error procesando la baja de emails')
@@ -400,9 +409,29 @@ function UnsubscribePageContent() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Estas seguro?</h3>
                 <p className="text-gray-600 mb-4">
-                  Desactivar <strong>todos los emails</strong> significa que no recibiras alertas, novedades ni respuestas de soporte por email.
+                  Desactivar <strong>todos los emails</strong> significa que no recibiras
+                  alertas ni novedades por email.
                 </p>
               </div>
+
+              {/* T-369: cortar TAMBIEN la respuesta a lo que tu nos escribes es un acto
+                  aparte y deliberado. Antes iba incluido en el boton rojo sin marcarlo. */}
+              <label className="flex items-start gap-3 mb-6 text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alsoSoporte}
+                  onChange={(e) => setAlsoSoporte(e.target.checked)}
+                  className="mt-1 h-4 w-4 flex-shrink-0"
+                />
+                <span className="text-sm text-gray-600">
+                  Dejar de recibir tambien las <strong>respuestas a lo que yo escriba</strong>{' '}
+                  (impugnaciones y soporte).
+                  <span className="block text-xs text-gray-400 mt-1">
+                    Si lo marcas, cuando te contestemos no te avisaremos por email: tendras
+                    que entrar en la web para leer la respuesta.
+                  </span>
+                </span>
+              </label>
 
               <div className="space-y-3">
                 <button
@@ -412,7 +441,12 @@ function UnsubscribePageContent() {
                   Si, desactivar todos
                 </button>
                 <button
-                  onClick={() => setShowConfirmAll(false)}
+                  onClick={() => {
+                    // Al cancelar se olvida la casilla: si vuelve a abrir el modal,
+                    // la opción que corta sus respuestas parte otra vez de desmarcada.
+                    setAlsoSoporte(false)
+                    setShowConfirmAll(false)
+                  }}
                   className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
                 >
                   Cancelar

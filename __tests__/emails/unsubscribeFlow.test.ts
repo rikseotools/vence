@@ -218,7 +218,18 @@ describe('processUnsubscribeByToken', () => {
     expect(result.warnings).toContain('mark_token_used_failed')
   })
 
-  test('unsubscribeAll: aplica todas las categorías', async () => {
+  // ── T-369: la baja masiva y las RESPUESTAS a lo que el usuario nos escribe ──
+  //
+  // `email_soporte_disabled` gobierna la entrega de nuestra contestación a
+  // impugnaciones y feedback (y el aviso de renovación: `recordatorio_renovacion`
+  // también es categoría 'soporte'). Hasta el 31/07/2026 el botón masivo la apagaba
+  // SIEMPRE: 79 de los 80 usuarios que la tienen apagada llegaron por ahí sin
+  // pedirlo, y eso dejó 29 respuestas a impugnaciones sin entregar.
+  //
+  // Cortarlas sigue siendo posible — pero solo marcándolo. Los dos tests de abajo
+  // fijan las dos mitades de esa decisión; el primero es el que faltaba.
+
+  test('unsubscribeAll SIN marcar la casilla: apaga lo automático y NO las respuestas', async () => {
     mockValidToken()
 
     const result = await processUnsubscribeByToken(VALID_TOKEN, null, true, null)
@@ -226,7 +237,37 @@ describe('processUnsubscribeByToken', () => {
     expect(result.updatedPreferences).toMatchObject({
       unsubscribed_all: true,
       email_newsletter_disabled: true,
+    })
+    // Lo que de verdad se está fijando: la respuesta a lo que TÚ nos escribes sigue llegando.
+    expect(result.updatedPreferences).not.toHaveProperty('email_soporte_disabled')
+  })
+
+  test('unsubscribeAll con includeSoporte=true: apaga también las respuestas', async () => {
+    mockValidToken()
+
+    const result = await processUnsubscribeByToken(VALID_TOKEN, null, true, null, true)
+    expect(result.success).toBe(true)
+    expect(result.updatedPreferences).toMatchObject({
+      unsubscribed_all: true,
+      email_newsletter_disabled: true,
       email_soporte_disabled: true,
     })
+  })
+
+  test('la categoría "soporte" sigue siendo la vía directa para cortarlas', async () => {
+    mockValidToken()
+
+    const result = await processUnsubscribeByToken(VALID_TOKEN, null, false, ['soporte'])
+    expect(result.success).toBe(true)
+    expect(result.updatedPreferences).toMatchObject({ email_soporte_disabled: true })
+  })
+
+  test('un caller que no manda includeSoporte cae del lado que no hace daño', async () => {
+    mockValidToken()
+
+    // Firma vieja (4 argumentos): cualquier cliente sin actualizar, o un enlace de
+    // newsletter cacheado, NO puede apagar las respuestas por omisión.
+    const result = await processUnsubscribeByToken(VALID_TOKEN, null, true, null)
+    expect(result.updatedPreferences).not.toHaveProperty('email_soporte_disabled')
   })
 })

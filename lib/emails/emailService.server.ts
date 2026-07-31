@@ -227,7 +227,14 @@ export async function processUnsubscribeByToken(
   token: string,
   specificTypes: string[] | null = null,
   unsubscribeAll = false,
-  categories: string[] | null = null
+  categories: string[] | null = null,
+  /**
+   * Solo para `unsubscribeAll`: ¿la baja masiva se lleva también las RESPUESTAS a lo
+   * que el usuario nos escribe (impugnaciones y soporte)? Ver T-369 en la rama nuclear.
+   * Por defecto NO: apagar la contestación a tu propia pregunta tiene que ser un acto
+   * deliberado, no el efecto colateral de darse de baja de la publicidad.
+   */
+  includeSoporte = false
 ): Promise<UnsubscribeResult> {
   try {
     const tokenResult = await validateUnsubscribeToken(token)
@@ -243,13 +250,29 @@ export async function processUnsubscribeByToken(
     const updateData: Record<string, boolean | string> = {}
 
     if (unsubscribeAll) {
-      // Nuclear: disable everything
+      // Nuclear: apaga todo lo AUTOMÁTICO (marketing, avisos, newsletter). Las
+      // RESPUESTAS a lo que el usuario nos escribe solo caen si las ha marcado
+      // EXPRESAMENTE (`includeSoporte`, casilla desmarcada por defecto).
+      //
+      // Por qué la casilla y no un apagado automático (T-369, 31/07/2026):
+      // `email_soporte_disabled` gobierna la entrega de nuestra contestación a
+      // impugnaciones y feedback. Este botón la apagaba siempre, así que de los 80
+      // usuarios que hoy la tienen apagada, 79 llegaron por aquí y 1 solo la eligió
+      // en su categoría. Coste: 29 respuestas a impugnaciones y 10 a feedbacks
+      // escritas y nunca entregadas — una usuaria llevaba meses impugnando sin
+      // recibir una sola por correo. Poder cortarlas sigue siendo legítimo; lo que
+      // no lo es, es cortarlas sin haberlo pedido.
+      //
+      // El resto del diseño ya iba en esta dirección (lib/api/emails/queries.ts:
+      // "Transactional: only blocked by soporte toggle, NOT by unsubscribed_all").
       for (const key of VALID_EMAIL_PREF_KEYS) {
         updateData[key] = false
       }
       updateData.unsubscribed_all = true
       updateData.email_newsletter_disabled = true
-      updateData.email_soporte_disabled = true
+      if (includeSoporte) {
+        updateData.email_soporte_disabled = true
+      }
       updateData.unsubscribed_at = new Date().toISOString()
     } else if (categories && categories.length > 0) {
       // Category-based unsubscribe

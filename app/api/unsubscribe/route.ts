@@ -6,11 +6,21 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { token, unsubscribeAll = false, specificTypes = null, categories = null } = body as {
+    const {
+      token,
+      unsubscribeAll = false,
+      specificTypes = null,
+      categories = null,
+      // T-369: la baja masiva solo se lleva las respuestas a lo que el usuario nos
+      // escribe si lo marca. Ausente = false = NO se las lleva (el cliente viejo,
+      // o cualquier caller que no lo mande, cae en el lado que no hace daño).
+      includeSoporte = false,
+    } = body as {
       token?: string
       unsubscribeAll?: boolean
       specificTypes?: string[] | null
       categories?: string[] | null
+      includeSoporte?: boolean
     }
 
     if (!token) {
@@ -20,7 +30,13 @@ async function _POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await processUnsubscribeByToken(token, specificTypes, unsubscribeAll, categories)
+    const result = await processUnsubscribeByToken(
+      token,
+      specificTypes,
+      unsubscribeAll,
+      categories,
+      includeSoporte === true
+    )
 
     if (!result.success) {
       // db_error / internal_error → 500 para que withErrorLogging los marque como critical
