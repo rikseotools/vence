@@ -1013,6 +1013,46 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 
 **Incidente que motiva la regla (02/06/2026 — Roberto, LCSP art. 22):** umbral de regulación armonizada de servicios para entidades distintas de la AGE marcado en **216.000 €**. Es correcto: es el valor **vigente desde el 1 de enero de 2026** (Orden HAC/1517/2025); en 2024-2025 era 221.000 € — justo lo que despistaba al usuario. Fix: mantener la cifra, reestructurar la explicación con los tres umbrales + nota de vigencia. Reconcilia con la trampa de "contenido volátil entre versiones" del §5.1.3 (allí informática, aquí legislación).
 
+## 7.3.ter «Según la ley sí, pero en la práctica no»: la jurisprudencia va a la EXPLICACIÓN, no a la clave (post-31/07/2026)
+
+Hay un tipo de impugnación que llega bien argumentada y **no cambia la respuesta**: la que opone
+a la letra del artículo una **doctrina del TC o del TS** que lo ha dejado inaplicable, matizado o
+vaciado en la práctica. El usuario suele tener razón en el fondo y equivocarse en la conclusión.
+
+**Regla:** verifica las dos cosas por separado.
+
+1. **¿Qué dice el artículo VIGENTE?** Es lo que se examina, y de las opciones ofrecidas normalmente
+   solo una lo refleja. Si la clave es esa, **la clave se queda**.
+2. **¿Qué dice la sentencia que él cita?** Léela en el BOE — no te fíes del resumen de un blog ni
+   del titular. Importa muchísimo el **fallo**: una sentencia puede razonar que el precepto no se
+   aplica a cierto supuesto y aun así **desestimar** la cuestión, dejándolo vigente.
+
+Y entonces: **`rejected`, pero con la explicación reescrita incluyendo la nota jurisprudencial.**
+La impugnación no procede (la respuesta no cambia) y aun así el usuario ha detectado algo cierto
+que a la explicación le faltaba. Es el mismo movimiento que §7.3.bis hace con las cifras volátiles
+—mantener el dato, añadir la nota que despeja la confusión— y el mismo espíritu que el caso
+Tinokero de §7.3: *rechazar la queja no exime de mejorar la pregunta*.
+
+**Incidente que motiva la regla (31/07/2026 — Roberto Benito, impugnación `b9ae32e2`):** pregunta
+oficial (Aux. Admin. Madrid OEP 2020-2022) sobre el plazo para interponer el recurso
+contencioso-administrativo contra un **acto presunto**; clave *seis meses*, que es literal del
+**art. 46.1 LJCA**. Él alegó que «según modificación del TC no hay plazo». Y es verdad: la **STC
+52/2014, de 10 de abril** (Pleno) razona que *«la impugnación jurisdiccional de las desestimaciones
+por silencio no está sujeta al plazo de caducidad previsto en el art. 46.1 LJCA»*, en línea con el
+TS. **Pero su fallo DESESTIMA la cuestión de inconstitucionalidad**: el precepto sigue vigente con
+esa redacción y es lo que pregunta el examen. Se cerró `rejected`, reconociéndole expresamente que
+tenía razón en el fondo, y la explicación pasó a incluir la cita del artículo + la nota de la STC.
+
+> ⚠️ **La pregunta era OFICIAL**, así que no se podía atender lo que además pedía («que la pregunta
+> diga "según la Ley 29/1998"»): en oficiales no se toca enunciado ni opciones (§7.3). Cuando la
+> petición del usuario sea razonable pero imposible por eso, **dilo en el mensaje** en vez de
+> ignorarla; si no, parece que no se le ha leído.
+
+**Y mide si hay hermanas antes de cerrar** (regla de los fallos sistémicos): buscando por el
+enunciado apareció `d54d7dd4`, la MISMA pregunta con las opciones en otro orden y no oficial. Su
+clave también era correcta, pero era una **duplicada servida** — se jubiló como `retired_duplicate`
+(`admin_duplicate_of`). Un `ILIKE` sobre `question_text` cuesta un minuto.
+
 ## 7.4 Cross-contamination de explicaciones entre preguntas (post-14/04/2026)
 
 **Patrón detectado:** preguntas cuya explicación pertenece a **otra pregunta distinta** del banco — texto coherente y bien formateado, pero del tema equivocado.

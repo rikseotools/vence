@@ -1235,6 +1235,111 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Decisión que hará falta (de Manuel):** con dos versiones válidas de la misma pregunta, ¿se jubila una como `retired_duplicate`, se deja porque son variantes legítimas de examen, o se reformula una para que pregunten cosas distintas del mismo artículo? Afecta a cuánto banco se pierde, así que no lo decide la sesión.
 - **NO confundir con T-409:** aquel es «la explicación es el artículo copiado» (defecto de explicación); esto es «la pregunta ya existe» (defecto de banco). Se cruzaron porque la misma impugnación destapó los dos.
 - **Relacionadas:** T-409, `docs/maintenance/impugnaciones-claude-code.md` (regla del fallo sistémico y la de «un hallazgo, una recompensa»).
+### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
+
+- **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
+- **ORIGEN.** Sergio (`pcsergio0@gmail.com`, premium, feedback `bd8b92d0`) pidió filtrar por preguntas de exámenes reales en el test por leyes. [T-326] lo construyó el 31/07 (commit `40022cec7`) **y a él sigue sin llegarle**. Esta ficha es lo que [T-326] no cubre.
+- **Por qué no le llega — dos motivos independientes, y cada uno basta por sí solo:**
+
+  | Ruta | Filtro | Contador |
+  |---|---|---|
+  | `/test/por-leyes` (la que arregló T-326) | ✅ habilitado (`page.tsx:410`, `hideOfficialQuestions={false}`) | ❌ le da **0**: la página manda **su** oposición (`page.tsx:413`) y `agente_hacienda` **no está en `EXAM_POSITION_MAP`** → fail-safe de `lib/api/test-config/queries.ts:291-296` → `count: 0` → la casilla no se pinta (`TestConfigurator.tsx:1699`) |
+  | `/leyes/<ley>` (la que él usa) | ❌ oculto a propósito (`LawTestConfigurator.tsx:180`) | ✅ saldría: **por accidente**, ver abajo |
+
+  Y el efecto que pide el contador arranca con `if (tema || hideOfficialQuestions) return;` (`TestConfigurator.tsx:530`), así que en su ruta ni se pide.
+- **Qué ruta usa, MEDIDO (30 días, `user_interactions`):** **438** configuraciones en `/leyes/<ley>` y **3.973** tests en `/leyes/ley-39-2015/avanzado`, frente a **6** eventos en `/test/por-leyes` (el último el 29/07). El **98,6%** de su uso ocurre donde el filtro está tapado.
+- **⚠️ EL ACCIDENTE QUE NO HAY QUE CONSOLIDAR.** En `/leyes/<ley>` el contador saldría porque `LawTestConfigurator` **no pasa `positionType`** (0 ocurrencias en el fichero) y `TestConfigurator` cae a su valor por defecto `'auxiliar_administrativo_estado'` (`TestConfigurator.tsx:73`). El día que alguien «arregle» eso pasándole la oposición real del usuario, a Sergio se le queda en **0** y la función desaparece sin que nadie lo note. **No construyas encima de ese default.**
+- **ARQUEOLOGÍA: el ocultamiento nunca tuvo una razón.** Viene del commit `a9cb5ff72` (**17/10/2025**), cuyo asunto es *«FIX: Corregir navegación "← Volver a Tests" en tests de leyes»*. El último de sus ocho puntos dice, entero: *«Ocultar elementos innecesarios en configurador de leyes (preguntas oficiales, artículos imprescindibles)»*. Ni medición, ni discusión, ni número: se declaró «innecesario» de pasada en un commit sobre un botón. **Esa misma frase se copió ese día a `CLAUDE.md`**, que es de donde viene la apariencia de que había criterio detrás. No lo hay.
+- **La hipótesis razonable («en una sola ley habrá pocas oficiales») es CIERTA para la cola larga y FALSA justo donde importa.** Medido el 31/07 sobre las **1.137** leyes con preguntas activas, criterio «ha caído en un examen oficial» sin mirar oposición:
+
+  | Oficiales en la ley | Leyes | |
+  |---|---|---|
+  | 0 | **810 (71%)** | la casilla **ya se oculta sola** (`officialCount > 0`) |
+  | 1-4 | 171 | test escuálido, pero el número se ve antes de marcar |
+  | 5-19 | 97 | |
+  | **≥20** | **59** | |
+
+  Y en las troncales, que son las que tienen página de ley visitada: **CE 1.019** (22%), **LECrim 573** (27%), **Ley 39/2015 526** (17%), CP 382, Ley 1/2000 313, LO 6/1985 287, Ley 40/2015 258. **El caso malo que se temía ya lo cubre el código solo**: ocultar a mano no protegía de nada que no estuviera protegido.
+- **HALLAZGO COLATERAL: el bloque CSS que «oculta» la casilla es código muerto.** `LawTestConfigurator.tsx` ~157-170 usa `:has(span:contains("🏛️"))`. **`:contains()` no existe en CSS** (es de jQuery) y un selector inválido dentro de una lista separada por comas **invalida la regla entera**. Lo que oculta de verdad es el prop. Llevamos nueve meses con diez líneas decorativas que nadie comprobó. **Al limpiarlo, ojo:** ese mismo bloque nombra «artículos imprescindibles», que se oculta por su propio prop (`hideEssentialArticles`) y **no se está decidiendo aquí**.
+- **🙋 LA DECISIÓN PENDIENTE, Y ES DE MANUEL: qué es «oficial» para quien tiene la oposición sin montar.** Manuel dijo el 31/07: *«las preguntas oficiales son las que han caído en un examen oficial»*. Tres salidas:
+  1. **Dejar el criterio de hoy** (solo las de tu oposición): Sergio ve cero y esto no le sirve de nada.
+  2. **Quitar la restricción en todas partes:** coherente, pero cambia lo que ven miles de usuarios en las pantallas **por tema** y contradice una decisión ya medida (ver abajo).
+  3. **Hacerlo explícito:** que la casilla diga de qué examen son y que quien no tiene oposición montada pueda pedir «de cualquier examen oficial». Es la única que responde bien a los dos usuarios a la vez y quita la dependencia del prop por defecto.
+- **⛔ LO QUE NO SE PUEDE HACER, y era mi propuesta inicial hasta que Manuel la cuestionó:** cambiar el criterio **solo** en la pantalla de leyes. Deja **dos definiciones de «oficial» en el mismo producto** (la misma ley con distinto número según por dónde entres) y **se salta un fail-safe puesto a propósito**: el filtro por oposición se añadió tras medir que contar de más infló la etiqueta de un tema de Seguridad Social a **115** cuando las suyas eran **~1** (ver el comentario de `lib/api/topic-data/queries.ts` y [T-326]).
+- **Si se destapa, va CON estas capas — no son opcionales, las exige la política de la casa:**
+  1. **Etiqueta honrada.** Hoy dice `🏛️ Preguntas oficiales de <nombre de la oposición> (N)` (`TestConfigurator.tsx` ~1731). Con la salida 2 o 3 ese «de» pasa a ser mentira y hay que reescribirlo.
+  2. **Telemetría.** Se enciende en una pantalla una opción tapada nueve meses: sin evento no podremos responder a «¿la usa alguien?» ni a «¿le está dando tests de 3 preguntas?». El componente ya tiene la equivalente para filtros que dejan 0 preguntas en modo tema; copiar ese patrón.
+  3. **Guardarraíl de paridad entre las dos superficies de leyes.** El defecto de fondo **no es el flag**: es que dos pantallas que hacen lo mismo divergen en qué opciones ofrecen. Por eso T-326 arregló una y dejó la otra. Sin un test que falle cuando vuelvan a divergir, esto se repite a la tercera.
+- **Relacionada:** [T-326] (lo ya construido), [T-327] (la oposición personalizada que pidió el mismo usuario, **con plazo al 05/08**), [T-328] (la landing).
+
+
+### [T-417] 🟡 [ABIERTO 31/07] Psicotécnicas: 121 explicaciones usan la plantilla «series intercaladas» sin que nadie haya comprobado que la serie lo sea
+
+- **Esfuerzo:** medio. El trabajo es **el detector**, no la reparación: hasta que exista no se sabe cuántas están mal.
+- **ORIGEN.** Impugnación `fd96fd15` (sandra fernandez, free, 31/07, `explicacion_confusa`). Serie `6-9-7-8-11-9-10-13-¿?`, clave **C = 11 CORRECTA** (los saltos son un ciclo `+3, −2, +1`, y 13 − 2 = 11). La explicación, en cambio, describía **dos series intercaladas** cuyos números **no salen de partir la serie por posiciones** (decía `Serie A: 6,7,9,10` y `Serie B: 9,8,11,13`; partiendo de verdad salen `6,7,11,10` y `9,8,9,13`) y **se contradecía sola**: afirmaba alternar `+1/+2` y luego aplicaba `+1` después de un `+1`. **Su propia regla daba 12, que es el distractor B.** Reescrita y la impugnación cerrada como `resolved`.
+- **POR QUÉ IMPORTA, y por qué no lo ve ningún detector:** la clave suele estar **bien** (aquí lo estaba), así que no hay señal de contenido que salte. El daño es que la explicación **enseña un método que no lleva a la respuesta**, y en este caso apuntaba a una opción equivocada.
+- **Lo que hay medido:** **121** psicotécnicas activas con la plantilla «series intercaladas»; **32** con la frase exacta *«Analizamos las dos series intercaladas»*.
+- **⚠️ NO HAY NÚMERO FIABLE DE CUÁNTAS ESTÁN MAL, Y NO SE DEBE INVENTAR.** Se intentó medir el 31/07 con una heurística (partir por posiciones pares/impares y exigir diferencia constante) y **no vale**: dio *11 encajan / 20 no / 90 sin parsear*, pero varios «no encajan» son **falsos positivos** — `2, 11, 4, 11, 8, 11, ?` **sí** es intercalada (una mitad constante, la otra geométrica) y `7-14-7-21-7-28-?` también. El regex sobre el enunciado además arrastra números que no son de la serie.
+- **Cómo hacerlo bien:** parser que entienda los formatos reales del enunciado (`6-9-7-…`, `6, 9, 7, …`, terminadores `¿?` / `?` / `....`) y, para cada serie, un catálogo de patrones que se prueban en orden (diferencia constante · **ciclo de diferencias** · intercalada aritmética · intercalada geométrica · intercalada con término constante). El hallazgo es «la explicación describe un patrón distinto del que de verdad encaja». Núcleo puro con tests, como el resto de detectores; **bajo demanda al principio**, sin pingar el badge, hasta medir su precisión.
+- **Contexto que conviene saber:** el barrido de salud **no cubría psicotécnicas en absoluto** hasta el 31/07, y el kind que se añadió (`psicotecnico_integridad`, [T-384]) mira **integridad** (`section_id`, `correct_option`, sección de otra categoría), **no** la coherencia de la explicación. Este hueco sigue entero.
+- **Relacionada:** [T-384] (el barrido que ahora sí mira psicotécnicas), `docs/procedures/revisar-preguntas-con-agente.md`.
+
+### [T-427] 🟠 [ABIERTO 31/07] Un cherry-pick entre sesiones borró 5 fichas del backlog, y el aviso que lo delataba se lee como benigno
+
+- **Esfuerzo: rato** (el aviso ya existe y los datos para distinguirlo también; es cambiar cómo se interpreta).
+- **Qué pasó, medido:** el commit `a9797ae3a` (de otra sesión) dejó el fichero del backlog con **180 líneas eliminadas frente a 42 añadidas** y se llevó por delante **cinco fichas recién escritas por DOS sesiones distintas** —`T-416`, `T-417` (ajenas) y `T-418`, `T-419`, `T-420` (de la sesión `central-izquierdo`)— más los añadidos de `T-398`. Todas habían llegado a `origin/main` correctamente antes. Restauradas a mano el 31/07 desde `62d54da21`.
+- **Y ya había avisado, en su propio mensaje:** el commit inmediatamente anterior de esa misma sesión se llama *«fix(docs): restaurar la sección que mi cherry-pick se llevó por delante»*. Es decir: **se notó el daño, se reparó lo propio y no se miró si se había llevado lo de otros.** Con 2-10 sesiones escribiendo el mismo markdown, «restauro lo mío» no cierra el incidente.
+- **La señal EXISTE y está catalogada como benigna, que es lo peor de todo:** al correr `backlog.cjs sync` con las fichas ya borradas, imprimió *«ℹ️ sin ficha aquí todavía (otra sesión sin pushear): T-414, T-416, T-422…»*. O sea, el CLI **vio** que había ids `open` en `backlog_tasks` sin ficha en el markdown y lo explicó con la hipótesis inocente. Las dos situaciones son indistinguibles **hoy**, pero no en los datos:
+  - «otra sesión aún no ha pusheado» → el id **nunca** estuvo en el markdown.
+  - «alguien la borró» → el id **estuvo** en el markdown en un commit anterior y ya no está. `git log -S"### [T-NNN]"` lo responde en un segundo.
+- **Arreglo propuesto:** que `sync` distinga los dos casos y **falle (o grite) en el segundo**, nombrando el commit que la quitó. Encaja donde ya está el guardarraíl anti-colisión de ids —el que aborta cuando dos sesiones reservan el mismo número—, que nació del mismo problema por el otro extremo: aquel evita **pisar** una ficha ajena, este evitaría **borrarla**.
+- **Mientras no exista:** al resolver un conflicto en `tareas-pendientes.md`, **conservar SIEMPRE los dos lados** (son fichas independientes, no versiones de la misma), y antes de pushear comprobar `git diff --stat` sobre ese fichero: si se borran más líneas de las que se añaden en un commit de documentación, casi seguro te estás llevando trabajo ajeno.
+- **De dónde sale:** sesión `central-izquierdo` del 31/07, al volver a documentar y encontrar que sus tres fichas habían desaparecido de `main`.
+
+### [T-418] 🔴 [ABIERTO 31/07] El usuario free agotado sigue respondiendo preguntas que el servidor RECHAZA una por una: 386 personas en 7 días
+
+- **Esfuerzo: ~2 h** el diagnóstico de producto (¿qué debe ver?); lo que se decida arreglar, aparte.
+- **Qué pasa, en una frase:** alguien con el cupo diario agotado **sigue pudiendo abrir un test y contestar**; ve su respuesta corregida al instante (la corrección es client-side, por diseño) y **el servidor rechaza el guardado de cada una** con `403 · «Has alcanzado el límite diario de preguntas del plan gratuito»`. No cuenta para su progreso, ni para su score, ni para sus estadísticas. Él no tiene forma de saberlo mirando la pantalla.
+- **Escala medida el 31/07 (7 días, `observable_events`):** **2.879 rechazos en 386 usuarios distintos.** Por pantalla: `/api/v2/answer-and-save` 2.160 (367 usuarios), `/api/exam/answer` 326 (8), `/api/answer/psychometric` 68 (17). El `questionOrder` más alto observado es **9**: hay quien encadena nueve preguntas seguidas en balde.
+- **Caso concreto para reproducir:** `javiergalinanesvarela@gmail.com` (free), 71 rechazos el 31/07 en `/tramitacion-procesal/test/test-aleatorio-examen`, con `questionOrder` 1, 2, 3, 4, 5… — es decir, **desde la PRIMERA pregunta del examen**: abrió un examen que ya nacía sin cupo.
+  ```sql
+  SELECT user_id, endpoint, error_message, created_at FROM observable_events
+  WHERE error_message LIKE '%límite diario%' AND created_at > now() - interval '7 days'
+  ORDER BY created_at DESC;
+  ```
+- **Lo que NO está comprobado y hay que mirar primero (no lo des por hecho):** si la UI le enseña el banner de límite en ese momento. Existe uno en el modo examen (`ExamLayout`, ver los tests de «Banner de límite no debe mostrarse en resultados»), así que el defecto puede ser (a) que no se pinte en esta ruta, (b) que se pinte y aun así se le deje contestar, o (c) que el examen se sirva completo y el gate solo actúe al guardar. **Cada una lleva a un arreglo distinto**, así que la primera media hora es reproducirlo con una cuenta free agotada, no tocar código.
+- **Por qué es 🔴 y no una curiosidad:** es el momento exacto en que un free decide si paga o se va, y hoy lo vive como *«contesté veinte preguntas y no me aparecen»*. Enlaza con lo que ya sabemos del churn por el límite diario. Si la decisión es que el cupo se acabó, hay que **decírselo antes de que conteste**, no rechazarle en silencio cada respuesta.
+- **Y un defecto de observabilidad de propina:** ese 403 se registra como `console_error` con `severity='error'` y el texto *«Error guardando respuesta en API (permanente)»*. **Una regla de negocio funcionando no es un error**: ensucia el conteo de errores del panel de salud (182 de los ~1.900 `console_error` de 24 h) y confunde a quien triaje. Al arreglarlo, que deje de contarse como error — ver [T-420].
+- **De dónde sale:** triaje de errores de cliente del 31/07 (sesión `central-izquierdo`), buscando por qué había 2.173 eventos `severity='error'` en 24 h.
+
+
+### [T-419] 🟠 [ABIERTO 31/07] El sondeo de notificaciones reintenta contra un 401 durante HORAS: una sola pestaña generó 308 errores en 308 minutos
+
+- **Esfuerzo: ~1 h** (parar el bucle es pequeño; lo que lleva tiempo es decidir qué hace la pestaña cuando la sesión ya no vale).
+- **Qué pasa:** el cliente pide `disputes/notifications`, recibe **401**, y **vuelve a pedirlo al minuto siguiente, indefinidamente**. Un 401 no se arregla reintentando: la sesión no va a volver sola.
+- **Medido el 31/07:** **423 eventos en 24 h** (11 usuarios/sesiones) y **1.402 en 7 días**. La distribución es lo que delata el bucle, no el total: **una sesión anónima produjo 308 eventos a lo largo de 308 minutos** (uno por minuto, cinco horas seguidas) y otra estuvo **1.361 minutos** (22 h). El resto son ráfagas de 1-18 min. Mensaje literal: `Error cargando notificaciones: Error: disputes/notifications 401`.
+  ```sql
+  SELECT user_id, count(*), min(created_at), max(created_at) FROM observable_events
+  WHERE error_message LIKE '%disputes/notifications 401%' AND created_at > now() - interval '24 hours'
+  GROUP BY 1 ORDER BY 2 DESC;
+  ```
+- **Qué hay que decidir (no es solo «no reintentar»):** ante un 401, o se **renueva** la sesión una vez y se reintenta, o se **para el sondeo** hasta que haya sesión nueva. Lo que no puede seguir es pedir cada minuto durante cinco horas: son peticiones a un endpoint que ya dijo que no, y ruido permanente en el panel de errores.
+- **Ojo al mirarlo:** la mayoría son sesiones **anónimas**, así que el 401 puede ser el comportamiento correcto del endpoint (no hay sesión) y el defecto estar en **quién arranca el sondeo**: si la pestaña sondea notificaciones sin usuario, el arreglo es no arrancarlo, no cambiar el endpoint.
+- **De dónde sale:** mismo triaje del 31/07 que [T-418].
+
+
+### [T-420] 🟡 [ABIERTO 31/07] El 95 % de los errores de cliente es ruido, y por eso el panel de salud mide sobre todo dos navegadores
+
+- **Esfuerzo: ~1 h** (es clasificación, no lógica: ampliar el filtro que ya existe y comprobar que no se traga nada real).
+- **Qué pasa:** de los ~1.900 `console_error` de 24 h medidos el 31/07 —que son el **87 % de TODOS los eventos `severity='error'` del sistema** (2.173)—, la inmensa mayoría no describe nada roto:
+  | Eventos | Qué es | Por qué es ruido |
+  |---|---|---|
+  | **1.634** | `[GSI_LOGGER]: FedCM get() rejects with…` (NetworkError 982, AbortError 546, NotSupportedError 106) | Es el widget de Google Sign-In quejándose de FedCM. **No es código nuestro**, y venía de **2 navegadores**: el tipo de error más numeroso del sistema son dos personas con un navegador que no soporta FedCM |
+  | **~600** | `TypeError: Failed to fetch` / `Load failed` en notificaciones (225 en 98 usuarios), artículos (200 en 41), logros, medallas, secciones | Red del cliente: móvil que pierde cobertura o pestaña que se cierra a media petición. Muchos usuarios × pocos eventos = firma de red, no de bug |
+- **Ya se hizo una vez y funcionó:** `lib/observability/consoleNoise.ts` ([T-210], 28/07) nació justo para esto —su cabecera dice *«4.840 `console_error`/24 h, el 95 % del ruido de error del sistema»*— y los bajó a los ~1.900 actuales. **Estas dos familias se le escaparon.** No hace falta diseñar nada: hace falta extender ese filtro y volver a medir.
+- **Por qué importa aunque sea «solo ruido»:** con el 95 % del canal ocupado por FedCM y fallos de red, un error nuevo de verdad entra en un sitio donde nadie mira, y la regla `senal_error_sin_vigilancia` (≥150/h de un tipo `error`) se calibra contra un suelo falso. El objetivo no es que el número baje: es que **lo que quede sea señal**.
+- **Cuidado al filtrar:** `Failed to fetch` es ruido cuando está repartido entre muchos usuarios, pero **concentrado en pocos puede ser un endpoint caído**. Si se suprime en bloque se pierde esa capacidad de detección; mejor bajarlo a `warn` (sigue en la tabla, deja de contar como error) que borrarlo. Los `[GSI_LOGGER]` sí se pueden descartar de raíz: son de un script de terceros.
+- **De dónde sale:** mismo triaje del 31/07 que [T-418] y [T-419].
 
 
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
@@ -1642,13 +1747,33 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 
 - **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
 - **🔴 LO PRIMERO, porque hay alguien esperando: feedback `bd8b92d0` (Sergio, premium).** Es una RÉPLICA del 31/07 sin contestar: *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*. **No es una preferencia: su oposición (`agente_hacienda`) tiene CERO temas** — ver [T-397]. Lo que pide (filtrar preguntas oficiales en el test por leyes) está diagnosticado en [T-326] y es un arreglo pequeño. **Decisión pendiente de Manuel:** arreglar [T-326] y avisarle, o responderle mientras tanto. No cerrar el hilo sin contestarle: se le prometió por escrito que la idea era buena.
+
+  - **✅ CONTESTADO el 31/07 a las 18:06 desde otra sesión — el hilo está `resolved` y sin claim. NO le vuelvas a escribir por esto.** Se le dijo que el filtro «sigue en pie» y que la oposición personalizada ([T-327]) la tendrá «en unos días» para probarla y opinar. **Ese «en unos días» es el plazo que cuelga de [T-327]**, no de esta ficha.
+  - **📌 LO QUE SIGUE VIVO a 31/07 noche (sesión `central-izquierdo`) — léelo antes de anunciarle nada:**
+    - **[T-326] YA ESTÁ IMPLEMENTADA y pusheada** (`40022cec7`), **sin desplegar**. La ficha quedó en pausa esperando el deploy de frontend para verificarla en vivo. O sea: lo que se le prometió existe, pero todavía no lo puede usar.
+    - ⚠️ **AL DESPLEGAR, NO le anuncies el filtro sin leer el punto siguiente**: para él estará vacío, y avisarle de algo que ve vacío es peor que no avisarle.
+    - ⚠️ **El dato que cambia el mensaje, y que no se ve en su texto: el arreglo NO le va a servir.** Su oposición **no tiene ni una sola pregunta oficial** en el banco (`exam_position ILIKE '%hacienda%'` → **0** de 7.552 oficiales activas), y el filtro sirve solo las de la propia oposición → su contador será 0 y **la casilla le seguirá saliendo oculta**. Lo que a él le valdría son las oficiales de OTRAS oposiciones sobre las mismas leyes: eso es **[T-411]**, abierta y sin decidir.
+    - **Borrador que se redactó y NO se envió** (lo respondió otra sesión con otro texto). Se guarda porque **el segundo párrafo sigue siendo la conversación pendiente**: es la forma de contarle la limitación cuando toque, sin que suene a excusa. Reutilizable tal cual:
+      > Hola Sergio,
+      >
+      > Tienes razón: si el tema no encaja con tu temario, mandarte a practicar por tema no te sirve de nada. Ya hemos preparado el filtro de preguntas de exámenes reales en el test por leyes, que es donde tú estudias, y estará disponible en la próxima actualización.
+      >
+      > Te aviso de una cosa para que no te lleves un chasco al verlo: las preguntas de exámenes reales que tenemos de Agente de Hacienda son, por ahora, ninguna, y el filtro muestra solo las de tu propia oposición. Sí tenemos muchas preguntas caídas en exámenes de otras convocatorias sobre las mismas leyes que tú estudias (la Ley 39/2015 o la Constitución son las mismas para todos), así que estamos viendo cómo ofrecértelas ahí, que es lo que de verdad te sirve.
+      >
+      > Te escribimos por aquí en cuanto lo tengamos.
+      >
+      > Muchas gracias.
+      >
+      > Equipo de Vence
+    - **La decisión que queda abierta:** si se le cuenta la limitación (y cuándo), o si se resuelve antes con [T-411] y entonces se le avisa de algo que sí puede usar. Lo que **no** vale es anunciarle el filtro a secas: lo abrirá y no verá nada.
+    - Y ojo con el plazo: **[T-327]** (oposición personalizada, lo que pidió en su OTRO hilo) tiene fecha límite y el 31/07 se le dijo por escrito que lo tendría «en unos días» **para probarlo y decirnos si le sirve** — o sea, se le ha pedido que responda: cuando esté, hay que volver a ese hilo.
 - **Las 7 impugnaciones pendientes** (todas legislativas, ninguna analizada aún):
   | id | tipo | plan | lo que dice |
   |---|---|---|---|
   | `ee09f030` | desacuerdo_correcta | premium | «Cuando hablamos de la regla general…» (Jesús Quesada) |
   | `b816cd3a` | mal_formulada | premium | «No concuerda la pregunta con las respuestas» (Estela) |
   | `cf376ad0` | mal_formulada | premium | «Pregunta cuándo tendrán capacidad de obrar…» (Jesús Quesada) |
-  | `b9ae32e2` | desacuerdo_correcta | free | «Según el texto literal de la ley sí, pero en la práctica…» (Roberto Benito) |
+  | ~~`b9ae32e2`~~ | desacuerdo_correcta | free | ✅ **CERRADA 31/07** (`rejected`, email entregado) — ver abajo |
   | `e60091bd` | desacuerdo_correcta | free | sin detalle (Natalia Suárez) |
   | `626059c8` | otro | free | «la respuesta A y C son idénticas, las dos estarían correctas» (Marcos Sánchez) |
   | `32b0d55e` | otro | premium | «creo recordar que esta pregunta me ha aparecido alguna otra vez» (Laura Zurdo) |
@@ -1669,6 +1794,13 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
   2. **Cerrar SIEMPRE por el endpoint**, con `scripts/impugnaciones/cerrar.ts` (creado hoy). Un UPDATE directo no manda email, no da el euro y se salta la puerta.
   3. **Medir si el fallo es sistémico ANTES de cerrar** — hoy evitó romper una pregunta buena con 92 exposiciones ([T-389] explica por qué esto no debería depender de la memoria).
   4. **Borrador aprobado por Manuel antes de enviar**, sin excepción.
+
+- **✅ `b9ae32e2` cerrada el 31/07 (sesión `central-izquierdo`), y lo que dejó aprendido:**
+  - **La clave era correcta y el usuario también tenía razón**, cada uno en su plano: la pregunta (oficial, Aux. Admin. Madrid OEP 2020-2022) pregunta el plazo para recurrir un acto presunto y la clave es *seis meses*, que es la letra del **art. 46.1 LJCA** (verificado contra el BOE consolidado). Y Roberto tenía razón en que **la STC 52/2014, de 10 de abril** razonó que *«la impugnación jurisdiccional de las desestimaciones por silencio no está sujeta al plazo de caducidad previsto en el art. 46.1 LJCA»* — pero **desestimó** la cuestión, así que el precepto sigue vigente y es lo que se examina. Cerrada como **`rejected`** (la clave no cambia) con la explicación reescrita e incluyendo esa nota jurisprudencial.
+  - **Patrón reutilizable:** cuando alguien impugna *«según la ley sí, pero en la práctica no»*, casi nunca hay que tocar la clave — hay que **añadir la nota de jurisprudencia a la explicación**. Es el mismo criterio que §7.3.bis aplica a las cifras volátiles.
+  - **El chequeo sistémico encontró una hermana:** `d54d7dd4`, la MISMA pregunta con las opciones en otro orden (no oficial, mismo artículo). Clave correcta también. **Jubilada** como `retired_duplicate` / `admin_duplicate_of` con OK de Manuel. Buscar hermanas por `question_text ILIKE` antes de cerrar cuesta un minuto y aquí destapó una duplicada servida.
+
+- **⚠️ AVISO OPERATIVO para quien siga desde una sesión abierta hoy (no es del contenido, es del tooling):** [T-407] arregló que hubiera **dos identidades de sesión** (el `.session-id` del worktree y `CLAUDE_CODE_SESSION_ID`), pero el arreglo entró en `70f5007db`. **Un worktree creado ANTES de ese commit sigue con el defecto**: `cola.cjs` reclama con una identidad y los dossiers comparan con la otra, así que el dossier avisa de que *«ya lo está revisando otra sesión»* siendo tú mismo — y, peor, un claim tomado con una identidad no se puede soltar con la otra. Pasó de verdad el 31/07 y costó una investigación entera creyendo que dos sesiones habían cogido el mismo feedback (no había tal: la reserva funcionó). **Si tu worktree es de antes, `git rebase origin/main` antes de tocar la cola.** Se reconoce mirando `node -e "console.log(require('./lib/sessions/sid.cjs').resolverSid({repo:process.cwd()}))"`: si el fichero no existe, ese módulo tampoco y estás en la versión vieja.
 
 ### [T-397] 🔴 [ABIERTO 31/07] 592 usuarios (3 de ellos PREMIUM) han elegido una oposición sin ningún tema: se puede pagar por lo que no existe
 

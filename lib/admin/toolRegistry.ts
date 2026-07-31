@@ -150,6 +150,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'parecen cascarón — daba 17 falsos positivos. Complementa a `convocatoria_enlace_no_boletin` ' +
       '(T-134), que juzga si la URL es del boletín que promete la etiqueta pero no si el documento VIVE.',
   },
+  // ── configurador de tests ─────────────────────────────────────────────────────────────────
+  sim_estimate_por_leyes: {
+    titulo: 'Comprobar que el contador del configurador "por leyes" dice la verdad',
+    ruta: 'scripts/sim/sim-estimate-por-leyes.ts',
+    estado: 'vivo',
+    runbook: 'docs/roadmap/tareas-pendientes.md',
+    notas:
+      'npx tsx --env-file=.env.local scripts/sim/sim-estimate-por-leyes.ts. Solo lectura. Contrasta ' +
+      '`estimateAvailableQuestions` SIN tema (modo por leyes, T-326) contra SQL escrito aparte: total ' +
+      'por ley, oficiales de la propia oposición, acotado a artículos concretos, oposición sin banco ' +
+      'oficial propio (debe dar 0, NO el cross-oposición) y sin selección. **Lo que vigila no es la ' +
+      'aritmética sino el CRITERIO**: ese número es el que enciende la casilla "🏛️ Preguntas ' +
+      'oficiales" y el que el usuario lee antes de decidir, así que si cuenta oficiales de otras ' +
+      'oposiciones sobre leyes compartidas (CE, LOTC…) promete preguntas que el test no va a servir ' +
+      '— el bug del label "115" de Seg. Social T3, por el otro lado. Un test con mocks no lo caza. ' +
+      'Correrla al tocar `lib/api/test-config/queries.ts` o el conteo de oficiales.',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',
