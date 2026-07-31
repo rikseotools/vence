@@ -973,6 +973,15 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
+
+- **Lo pide un premium y se le ha PROMETIDO** (feedback `e90d5ee3`, Iván, 31/07): *«¿por qué no suben preguntas y exámenes de las últimas convocatorias de auxiliar administrativo del Gobierno de Canarias? Creo que sería lo lógico para practicar»*. Se le respondió que estamos en ello y que estarán próximamente, así que esto ya no es una mejora opcional.
+- **Lo que hay hoy, medido:** del Gobierno de Canarias solo **44 preguntas** (+4 de reserva), y son la *«Primera parte»* del 1er ejercicio del 9 de marzo de 2024 (OEP 2022). Falta el resto de ese examen. Las 1.629 preguntas oficiales que se le sirven a un opositor de Canarias vienen en su mayoría de exámenes de otras administraciones que comparten leyes: útiles, pero no es lo que pide quien se prepara ESTA oposición.
+- **Lo que falta y por qué corre prisa:** la convocatoria de 2024 (285 plazas) **ya examinó, el 13/03/2026**, y ese examen no está subido. Y la convocatoria de 2026 (278 plazas) tiene **la inscripción ya cerrada**, es decir, hay gente esperando examen que querría practicar justo con el anterior. El examen más reciente es el que más se busca.
+- **Orden sugerido:** (1) el ejercicio del 13/03/2026; (2) la segunda parte del de marzo de 2024, que está a medias; (3) los de reserva.
+- **Cómo se hace, sin reinventarlo:** `docs/maintenance/importar-examen-oficial-completo.md`. Reglas que NO se saltan: enunciado y opciones **verbatim** del documento oficial, `is_official_exam=true` con su `exam_source` y `exam_date`, vinculación al artículo real, y doble auditoría antes de activar. Un examen oficial mal transcrito es peor que no tenerlo.
+- **Ojo con el punto ciego:** que la pregunta exista no basta — tiene que estar **escopada** en los temas de `auxiliar_administrativo_canarias`, o no se le servirá a nadie (es el patrón de los artículos fantasma del scope).
+
 ### [T-361] 🔴 [ABIERTO 31/07] El detector de «techo de timeout» corría una vez POR OPOSICIÓN y siempre agotaba los 30 s: el barrido pasó de 1,3 min a más de 45
 - **Cómo salió:** verificando [T-307] (que el barrido de contenido volviera a cerrar). Cerró de morir, sí — pero hoy, en su **primera pasada completa desde el 29/07**, lleva **más de 45 minutos** sin terminar cuando su histórico son **1,1-1,5 min** (12 días medidos).
 - **Dos defectos encadenados, los dos medidos:**
