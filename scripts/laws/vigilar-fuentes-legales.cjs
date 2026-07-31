@@ -52,25 +52,35 @@ async function main() {
   })
   await c.connect()
 
-  // ⚠️ GOTCHA que costó un 8-de-8 en falso: `verified_source_hash` lo escribe
+  // ⚠️ GOTCHA nº1 (costó un 8-de-8 en falso): `verified_source_hash` lo escribe
   // `verify-law-source.cjs` como `sha256(texto CRUDO).slice(0,32)`, mientras que la vigilancia
   // hashea el texto NORMALIZADO y completo. Son dos criterios distintos y compararlos da
   // «cambiada» siempre. Cada herramienta conserva el suyo: la línea base de la vigilancia sale
-  // de SU propia serie en el historial (`verified_by='vigilancia-hash'`), y `verified_source_hash`
-  // no se toca — es la evidencia de la verificación, no el reloj de la vigilancia.
+  // de SU propia serie en el historial (`verified_by='vigilancia-hash'`).
+  //
+  // ⚠️ GOTCHA nº2: la fuente de una ley puede estar registrada en DOS sitios distintos, según
+  // qué herramienta la verificó — `law_source_verification.source_url` (verify-law-source) o
+  // `laws.boe_url` con evidencia en `last_verification_summary` (aplicar-evidencia-completitud).
+  // Mirar solo uno deja fuera a la otra mitad: el TUE (807 preguntas, 39 oposiciones) se
+  // verificó por el segundo camino el 31/07 y quedaba SIN VIGILAR teniendo su URL guardada.
+  // Aquí se leen los dos con COALESCE, priorizando el registro específico de fuentes. [T-380]
   const { rows: leyes } = await c.query(
-    `select v.law_id, l.short_name, v.source_url, v.verified_at,
+    `select l.id as law_id, l.short_name,
+            coalesce(v.source_url, nullif(l.boe_url, '')) source_url,
             (select h.source_hash from law_source_verification_history h
-              where h.law_id = v.law_id and h.verified_by = 'vigilancia-hash'
+              where h.law_id = l.id and h.verified_by = 'vigilancia-hash'
               order by h.created_at desc limit 1) verified_source_hash,
             (select count(*)::int from questions q
                join articles a on a.id = q.primary_article_id
               where a.law_id = l.id and q.is_active) preg
-       from law_source_verification v
-       join laws l on l.id = v.law_id
-      where v.source_url is not null and v.source_url <> ''
-        and l.is_active
-        and ($1::uuid is null or v.law_id = $1::uuid)
+       from laws l
+       left join law_source_verification v on v.law_id = l.id and v.source_url is not null and v.source_url <> ''
+      where l.is_active
+        and coalesce(l.is_virtual, false) = false
+        and coalesce(v.source_url, nullif(l.boe_url, '')) is not null
+        -- Solo las que el cron del BOE NO cubre: si ya las vigila él, aquí sobran.
+        and (v.source_url is not null or l.boe_url like '%/doc.php%' or l.scope = 'eu')
+        and ($1::uuid is null or l.id = $1::uuid)
       order by preg desc`,
     [LEY],
   )

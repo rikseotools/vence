@@ -1000,6 +1000,34 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-380] 🟠 [ABIERTO 31/07] Registrar la fuente oficial de las 153 leyes sin vigilante (4.518 preguntas) — el research por-ley que bloquea toda la vigilancia
+
+- **Por qué es la tarea de verdad:** la vigilancia por hash ([T-026], `npm run laws:vigilar`) ya funciona, pero **solo puede mirar donde hay una URL registrada**. Hoy son 21 leyes. Las otras **153, que sirven 4.518 preguntas, no tienen fuente anotada en ninguna parte**, así que nadie puede comprobar si su texto ha cambiado. No es un problema de herramientas —están todas construidas— sino de **saber de dónde se descarga cada norma**, y eso es research manual: boletines autonómicos, sedes universitarias, tratados.
+- **Las 12 de más impacto (medido 31/07), y las tres primeras son abordables YA:**
+  | preguntas | oposiciones | ley |
+  |---|---|---|
+  | 807 | 39 | **TUE** |
+  | 765 | 35 | **TFUE** |
+  | 217 | 49 | **RGPD UE 2016/679** |
+  | 142 | 2 | V Convenio Laboral JdE |
+  | 129 | 2 | Decreto 225/2014 AE Ext |
+  | 114 | 1 | OPCAT |
+  | 95 | 2 | Regl. UE 2015/2219 CEPOL |
+  | 95 | 3 | Carta Derechos Ciudadanos Justicia |
+  - **TUE + TFUE + RGPD son 1.789 preguntas y las tres tienen espejo en el BOE** (`DOUE-*`), así que su research está resuelto de antemano: es aplicar el método, no investigar. Empezar por ahí.
+- **🔎 HALLAZGO que hay que arreglar ANTES de dar por buena ninguna cuenta: hay DOS registros de evidencia y no se hablan.**
+  - `aplicar-evidencia-completitud.cjs` escribe en **`laws.boe_url` + `laws.last_verification_summary`**.
+  - `verify-law-source.cjs` escribe en **`law_source_verification`** (`source_url` + `verified_source_hash`).
+  - **La vigilancia lee el segundo.** Consecuencia inmediata y comprobada: el **TUE, verificado el 31/07 por el primer camino, sigue apareciendo como «sin fuente registrada» y NO entra en la vigilancia** pese a tener su URL guardada. Dos sitios para el mismo dato es garantía de que uno de los dos miente. **Unificar (o que la vigilancia mire los dos) es requisito previo**, o el trabajo de esta ficha se hará y la vigilancia seguirá ciega.
+- **✅ ARREGLADO EL 31/07 (era requisito previo): la vigilancia ya lee LOS DOS registros de evidencia.** Con `coalesce(v.source_url, laws.boe_url)` pasa de vigilar **21 leyes a 55**, y entran las tres grandes — TUE (807 preguntas), TFUE (765) y RGPD (217): **1.789 preguntas que estaban ciegas teniendo su URL guardada**. Línea base fijada para las 55.
+- **🚧 17 de esas 55 salen `inaccesible`, y la causa está diagnosticada: EUR-Lex responde `HTTP 202 Accepted` con `Content-Length: 0`** (acepta la petición y no devuelve nada; es anti-bot). Afecta a CEPOL, Europol, Frontex, eIDAS, Schengen y el resto de reglamentos UE. **Dos vías, y la primera está PROBADA:** (a) registrar como fuente el **espejo del BOE** (`https://www.boe.es/doue/…`, que descarga sin problema — 440.756 chars en la prueba del Reglamento Europol), que además es la vía que ya usa el resto del repo para normas UE; (b) fetcher **headless**, que el sistema ya contempla (`generic_source_checks.fetcher_type`). La (a) es más barata y no añade dependencia al cron. **Ninguna de las 17 es un cambio de la norma: `inaccesible` está bien clasificado**, solo hay que darles una fuente descargable.
+- **Método por ley, sin inventar nada:** localizar el documento oficial → `node scripts/verify-law-source.cjs --law <uuid>` (descarga, compara artículo por artículo y escribe la evidencia con su URL y su hash) → si no parsea, **NO se falsea**: deja `never_verified` y emite `law_source_unparseable`. Después, `npm run laws:vigilar -- --aplicar` fija su línea base y ya queda vigilada.
+- **⏳ EL ENGANCHE AL CRON ESTÁ BLOQUEADO POR UNA DECISIÓN DE INFRAESTRUCTURA (medido 31/07, no estimado).** Hoy `laws:vigilar` solo corre si alguien lo escribe, y eso no es vigilar. El sitio natural sería una segunda fase de `check-boe-changes` (`@Cron` diario en Fargate, con heartbeat registrado). **Pero el contenedor del backend es `node:22-slim` y NO trae `pdftotext` ni `curl`**, y la mayoría de estas fuentes son PDFs de boletines: el port no es mecánico. Tres salidas, con su coste real:
+  1. **Añadir `poppler-utils` (+`curl`) al `backend/Dockerfile`.** La más limpia y la que mantiene un solo extractor. Coste: engorda la imagen de TODOS los despliegues del backend y toca infraestructura compartida → **decisión de Manuel, no se hace de tapadillo**.
+  2. **Reescribir la descarga en Node puro** (`fetch` nativo + librería JS de PDF). Sin dependencias del sistema, pero **cambia el texto extraído respecto a `pdftotext -layout`** y por tanto **el hash**: sería el mismo error que ya costó un 8-de-8 en falso (dos partes leyendo distinto), solo que esta vez entre el CLI y el cron. **Desaconsejado.**
+  3. **Un workflow de GitHub Actions** que instale poppler y ejecute el comando. Funciona hoy sin tocar el backend, a cambio de reintroducir un cron fuera de Fargate justo después de haberlos migrado (`check-boe-changes.yml.DISABLED`).
+  - **Mientras no se decida, la vigilancia depende de que alguien se acuerde** — que es exactamente lo que [T-304] enseñó a no hacer: un vigilante que no corre solo es indistinguible de no tener vigilante.
+
 ### [T-378] 🟠 [ABIERTO 31/07] El badge de soporte va en el botón de Soporte, no sumado en la campana (que así nunca baja de 9+)
 
 - **Lo reporta una usuaria premium y tiene razón en las dos cosas** (feedback `70cbcfc9`, Laura, 31/07): *«En la campanita siempre me pone 9+. Realizo los tres que hay en ese apartado, pero sigue apareciendo 9+. Nunca entendí esta opción, ya que mezcla preguntas de examen elegido como principal, y todas las conversaciones con soporte, pero nunca se pone en 0».*
