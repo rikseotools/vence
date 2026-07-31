@@ -262,6 +262,65 @@ Categorías: BD (`DATABASE_URL`, `DATABASE_URL_REPLICA` → reference vars Koigr
 
 ---
 
+## 7-pre. 🧅 DISEÑO POR CAPAS: mover rápido y volver en segundos (decisión 31/07)
+
+**Principio (Manuel):** dejarlo todo preparado para que el cambio sea rápido y, si algo falla, se vuelva
+atrás **en un segundo y por capas**. De acuerdo — con un matiz que hay que fijar antes de escribir el
+playbook: **«un segundo» no significa lo mismo en cada capa, y en una de ellas es mentira si no se prepara.**
+
+### El inventario de capas, con su palanca de ida y de vuelta
+
+| # | Capa | Palanca de IDA | Palanca de VUELTA | Vuelta real |
+|---|---|---|---|---|
+| 1 | **Vídeos / storage** | 2 secretos + `KOIGRID_VIDEO_ENDPOINT` + deploy | restaurar los 3 valores | **✅ YA HECHA (30/07).** ⚠️ Su vuelta atrás **ya no existe**: koigrid borró la copia vieja. El plan B son los backups locales |
+| 2 | **Borde / CDN** | poner **nuestro** Cloudflare delante | cambiar el origen en Cloudflare | **segundos** |
+| 3 | **Cómputo (frontend)** | origen de Cloudflare → app koigrid | origen → ALB de AWS | **segundos** (porque el edge es NUESTRO) |
+| 4 | **Caché / Redis** | env + deploy | env + deploy | ~5 min |
+| 5 | **Base de datos** | promover réplica + `DATABASE_URL` | ⚠️ **puerta de un solo sentido** — ver abajo | ver abajo |
+| 6 | **Backend / crons** | apagar aquí, encender allí | al revés | minutos |
+
+### 🔑 Lo que hace que esto funcione: el edge tiene que ser NUESTRO
+
+Hoy `www.vence.es` es un CNAME con **TTL 60** y el ápice es un ALIAS a CloudFront. Volver atrás **por DNS**
+son ~1-2 minutos de propagación en el mejor caso, y en la práctica más, porque hay resolvers que ignoran TTLs
+bajos. **Eso no es «un segundo».**
+
+Con **nuestro Cloudflare por delante** el conmutador deja de ser el DNS y pasa a ser **el origen configurado
+en Cloudflare**: cambiarlo es una llamada a su API y surte efecto en el edge en segundos, sin propagación.
+→ **Poner nuestro Cloudflare delante NO es una tarea de la migración: es el PRERREQUISITO que hace que las
+capas 2, 3 y 6 sean reversibles de verdad.** Se hace ANTES, apuntando todavía a AWS, y se verifica que
+alternar origen AWS↔AWS funciona. Solo entonces se toca nada más.
+
+### ⚠️ La capa 5 es la única puerta de un solo sentido, y hay que tratarla aparte
+
+Las capas 1-4 y 6 son *stateless*: volver es apuntar a donde estaba. **La base de datos no**: en cuanto
+koigrid acepta la primera escritura, RDS queda desfasada y «volver» significa **perder esas escrituras**.
+
+Y hay una restricción física que impide separarla del cómputo: app y BD **tienen que estar juntas**
+(co-ubicadas son ~6,45 ms; cruzadas entre proveedores, ~90 ms). Así que **las capas 3 y 5 se mueven en el
+MISMO paso** — es el único paso atómico de todo el plan.
+
+**Lo que lo hace reversible: replicación INVERSA armada ANTES de conmutar.** Es decir, dejar montada la
+suscripción koigrid→RDS *antes* de aceptar la primera escritura en koigrid, de forma que RDS siga recibiendo
+todo. Con eso, volver atrás es cambiar el origen en Cloudflare (segundos) y las escrituras hechas en koigrid
+ya están en RDS. **Sin eso, la ventana de rollback de la capa 5 dura lo que tarde la primera escritura.**
+
+### Orden de ejecución, de menos a más comprometido
+
+1. **Prerrequisito** — nuestro Cloudflare delante, apuntando a AWS. Verificar alternancia de origen. *(Y con
+   él, el fix de `getClientIp()`/`CF-Connecting-IP`, que es obligatorio antes de que pase un solo usuario.)*
+2. **Capa 1** — vídeos. ✅ hecha.
+3. **Capas 4 y 6** — caché y crons: se pueden mover y devolver sin tocar usuarios.
+4. **Siembra de la BD** (~3h10m medidas) + suscripción + soak ≥24h hasta lag≈0. Sin impacto.
+5. **Armar la replicación INVERSA** koigrid→RDS y probarla en seco.
+6. **Paso atómico: capas 3+5** — promover BD y cambiar el origen a koigrid. Rollback = origen de vuelta.
+7. **Soak 48-72h** con AWS entero encendido. Solo entonces se apaga nada.
+
+**Regla:** ninguna capa avanza si su vuelta atrás no está probada. Y la prueba se hace **antes**, no el día
+del cutover — se ensaya cada rollback con tráfico real y se cronometra.
+
+---
+
 ## 7. Playbook de cutover (K4) — near-zero-downtime
 
 Mismo patrón que el cutover Supabase→RDS del 04/07 (probado):
