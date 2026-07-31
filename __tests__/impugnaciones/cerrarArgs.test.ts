@@ -3,7 +3,7 @@
 // equivocado o cierra sin escribir. Por eso `parsearArgs` es puro y está testeado — el resto
 // del script (red + BD) no se puede probar aquí, pero la DECISIÓN sí.
 
-import { parsearArgs as parsearDispute } from '@/scripts/impugnaciones/cerrar'
+import { parsearArgs as parsearDispute, resolverTipo } from '@/scripts/impugnaciones/cerrar'
 import { parsearArgs as parsearFeedback } from '@/scripts/impugnaciones/cerrar-feedback'
 
 describe('cerrar.ts — reparto de argumentos', () => {
@@ -40,6 +40,35 @@ describe('cerrar.ts — reparto de argumentos', () => {
   it('distingue la psicotécnica, que va a otra tabla', () => {
     expect(parsearDispute(['id', '--estado', 'resolved', '--mensaje', 'm.txt']).psicotecnica).toBe(false)
     expect(parsearDispute(['id', '--estado', 'resolved', '--mensaje', 'm.txt', '--psicotecnica']).psicotecnica).toBe(true)
+  })
+})
+
+describe('cerrar.ts — contra qué tabla se cierra', () => {
+  // El defecto que esto fija: sin --psicotecnica, una psicotécnica se enviaba como legislativa y
+  // el endpoint contestaba 404 «Impugnacion no encontrada», que se lee como «no existe».
+  it('detecta la psicotécnica aunque no se pase el flag', () => {
+    expect(resolverTipo({ flagPsicotecnica: false, enLegislativas: false, enPsicotecnicas: true }))
+      .toEqual({ tipo: 'psychometric', detectado: true })
+  })
+
+  it('detecta la legislativa sin flag', () => {
+    expect(resolverTipo({ flagPsicotecnica: false, enLegislativas: true, enPsicotecnicas: false }))
+      .toEqual({ tipo: 'legislative', detectado: true })
+  })
+
+  it('el flag correcto no cambia el resultado, solo deja de ser un descubrimiento', () => {
+    expect(resolverTipo({ flagPsicotecnica: true, enLegislativas: false, enPsicotecnicas: true }))
+      .toEqual({ tipo: 'psychometric', detectado: false })
+  })
+
+  it('aborta si el flag contradice a la BD, en vez de mandar la petición que va a dar 404', () => {
+    expect(() => resolverTipo({ flagPsicotecnica: true, enLegislativas: true, enPsicotecnicas: false }))
+      .toThrow(/es legislativa/)
+  })
+
+  it('un id que no está en ninguna tabla lo dice claro (no es que falte un flag)', () => {
+    expect(() => resolverTipo({ flagPsicotecnica: false, enLegislativas: false, enPsicotecnicas: false }))
+      .toThrow(/no está en question_disputes ni en psychometric_question_disputes/)
   })
 })
 
