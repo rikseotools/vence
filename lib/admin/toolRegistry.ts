@@ -902,6 +902,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(11 tests), el mismo criterio que aplican los scripts de deploy en jq, con paridad vigilada ' +
       'por `__tests__/guardrails/ciGateParidad.test.ts`.',
   },
+  deploy_estado: {
+    titulo: '¿Hay alguien desplegando AHORA? (sin competir por el lock)',
+    ruta: 'scripts/deploy-estado.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/pusheo-revision-despliegue.md',
+    notas:
+      '`npm run deploy:estado` (también sale al final de `npm run deploy:pendiente`). La COLA de ' +
+      'deploys ya existía y funciona —el `flock` de /tmp/vence-deploy.lock serializa a todas las ' +
+      'sesiones—, pero era INVISIBLE: la única forma de saber que otra sesión desplegaba era ' +
+      'lanzar el deploy y quedarse bloqueado hasta 45 min, así que varias sesiones proponían ' +
+      'desplegar a la vez sin poder verse. Cruza TRES fuentes en vez de creerse una: la tabla ' +
+      '`deploy_runs` (lo que alguien declaró al empezar), el PROCESO del lanzador (la verdad, ' +
+      'pero solo desde el mismo host) y un sondeo NO BLOQUEANTE del propio flock. Cuando ' +
+      'discrepan lo dice —una fila abierta de un deploy que murió NO es "ocupado", que es la ' +
+      'lección de los claims zombi que hubo que segar con `backlog.cjs reap`—. Salidas: 0 libre, ' +
+      '3 ocupado, 4 dudoso. Núcleo puro `lib/deploy/estado.cjs` (15 tests). Lo escriben los ' +
+      'propios `deploy-*.sh` vía `scripts/deploy-marcar.cjs`, best-effort y con `trap`, así que ' +
+      'un build que aborta no deja la fila abierta y la telemetría nunca puede tumbar un deploy.',
+  },
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',

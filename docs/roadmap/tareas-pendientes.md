@@ -1113,6 +1113,27 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capa que lo vigile:** el propio kind es la capa (hoy no hay ninguna). Cuando exista, un guardarraíl de paridad entre lo que la verificación escribe y lo que el barrido lee.
 - **Relacionada:** [T-036] (la matriz de verificación: qué dimensiones se miran), memoria `project-answer-false-active-sweep` (por qué NO se actúa en bloque sobre este pool), [T-317] (la lección de no llenar el badge de hallazgos no accionables).
 
+### [T-406] 🟡 [ABIERTO 31/07] 48 preguntas activas repiten LITERALMENTE dos de sus opciones, y en 8 la clave está en el par: son irresolubles
+
+- **Esfuerzo: ~2 h** (el detector es una consulta determinista de 10 líneas; lo que lleva tiempo es reparar las 8 graves contra su artículo, una a una).
+- **Qué pasa:** hay preguntas activas con dos opciones **idénticas carácter a carácter** tras normalizar espacios y mayúsculas. Cuando el par NO incluye la respuesta buena es una chapuza cosmética (el opositor ve dos distractores clonados y descarta los dos). Cuando **sí la incluye, la pregunta no tiene solución posible**: marque la que marque, acierta y falla a la vez según cuál de las dos gemelas cogiera el corrector.
+- **Medido hoy (31/07, banco activo):**
+  | Corte | Preguntas |
+  |---|---|
+  | Dos opciones literalmente idénticas | **48** |
+  | …de ellas, con la **clave dentro del par** (irresolubles) | **8** |
+  | …oficiales (no se toca enunciado/opciones, solo se documenta) | 1 |
+  | Exposiciones en 90 días / usuarios distintos | 94 / **64** |
+  - Nacidas entre **oct-2025 y jul-2026**: no es un lote puntual que se pueda revertir, es goteo del pipeline de generación.
+- **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero la consulta que se hizo para comprobarlo destapó las 48 de verdad. El caso de un usuario era un falso positivo; el fenómeno que describía existe.
+- **Por qué no lo caza nada:** ningún detector de `health-sweep` mira la coherencia **interna entre opciones** — todos los kinds de contenido comparan la pregunta con su ARTÍCULO, con el epígrafe o con la convocatoria, nunca la pregunta consigo misma. `npm run tools:buscar -- "opciones duplicadas"` no devuelve escritor ni detector alguno. Es el mismo hueco de [T-405] visto desde otro lado: allí el veredicto existía y no llegaba a ninguna cola; aquí **ni siquiera se mira**.
+- **Propuesta (por orden de coste):**
+  1. **Reparar las 8 graves a mano** contra el artículo vinculado: casi siempre una de las gemelas debía llevar la variante que la convierte en distractor (el par «denunciante/denunciado» de este mismo caso enseña la forma). Si no se puede determinar cuál era, **desactivar en vez de adivinar**.
+  2. Kind determinista en el barrido (`opciones_duplicadas`), con dos bandas: **`error`** = clave dentro del par (irresoluble), **`warn`** = par de distractores. Es medida exacta, sin LLM y sin falsos positivos: o los dos textos son iguales o no lo son.
+  3. Valorar un **trinquete** que impida que el número suba (mismo patrón que `toolWriters`), ya que el goteo viene del generador.
+- **Capa que lo vigile:** el kind ES la capa; núcleo puro con su test (pares idénticos, opciones vacías/NULL que NO cuentan como par, D nula legítima de las oposiciones de 3 opciones → ver manual de impugnaciones §7.8, que es el falso positivo obvio a evitar).
+- **Relacionada:** [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
+
 ### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
 
 - **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).
@@ -1738,6 +1759,23 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-404] ✅ 🟠 [HECHA 31/07] La cola de deploys ya existía y funcionaba — lo que faltaba era poder PREGUNTARLA
+
+- **ORIGEN.** Manuel (31/07): *«muchas me dicen de desplegar y deberían mirar con el latido y ya hay otras desplegando? o ponerse en cola para desplegar o no lo sé»*.
+- **LO PRIMERO fue mirar si ya estaba construido** (`npm run tools:buscar -- deploy`, que es la lección de [T-130]), y **sí lo estaba**: el `flock` de `/tmp/vence-deploy.lock` serializa a todas las sesiones —front y back comparten lock— con 45 min de espera ([T-386]), y `deploy-cuando-verde.sh` va más allá y **deduplica**: se pregunta *«¿está ya dentro el commit que persigo?»* y sale sin competir, porque el deploy es cumulativo. **La cola no había que construirla.**
+- **EL HUECO REAL, que es otro:** ese lock es **invisible hasta que lo usas**. La única forma de saber que otra sesión desplegaba era **lanzar el deploy y quedarte bloqueado hasta 45 minutos**. No aparece en `list`, ni en el mapa de sesiones, ni en `deploy:pendiente`. Por eso varias sesiones proponen desplegar a la vez: ninguna puede ver que otra ya va. Y un fichero en `/tmp` tampoco lo contesta — no distingue *«tomado»* de *«un deploy murió y dejó el fichero»*.
+- **✅ `npm run deploy:estado`** (y sale también al final de `npm run deploy:pendiente`, que es donde se decide si toca: saber que TOCA sin saber que otra sesión YA VA es justo cómo se acaba compitiendo por el lock).
+- **Cruza TRES fuentes en vez de creerse una, y cuando discrepan LO DICE:**
+  1. la tabla `deploy_runs` — quién, qué superficie y desde cuándo, consultable desde cualquier sesión; pero si un deploy muere de golpe su fila queda abierta;
+  2. el **proceso** del lanzador — la verdad, pero solo comprobable desde el mismo host (`process.kill(pid, 0)`), lo que permite afirmar en vez de deducir por antigüedad — importante porque un frontend medido tardó **más de 30 min** y la edad no puede desmentir a un proceso vivo;
+  3. un sondeo **NO BLOQUEANTE** del propio `flock` (`flock -n`), que es exactamente la pregunta que no se podía hacer.
+- **Una fila abierta cuyo proceso ya no existe sale «huérfana», NO «ocupado».** Es la lección recién pagada con los claims zombi ([T-375]/`reap`): un marcador rancio leído como ocupado manda a esperar a alguien que no está, y eso enseña a ignorar el aviso. Y lo que no se puede confirmar sale **`dudoso`**, nunca `libre`: un verde que no se puede sostener es peor que una duda.
+- **No añade ningún riesgo al deploy:** lo escriben los propios `deploy-*.sh` justo tras coger el lock, con `trap` para cerrar la fila aunque el build aborte, y **best-effort** — si la telemetría no puede escribir, el deploy sigue igual. Un deploy es lo más caro que hacemos; que se cayera por no poder anotarse sería un intercambio ridículo.
+- **Lo que NO arregla, y es lo estructural:** [T-385] 🔴 — el deploy construye desde el checkout COMPARTIDO. Y esta misma sesión midió **4 sesiones latiendo desde ese checkout a la vez** ([T-400]). Esto hace visible la coordinación; aquello quita la necesidad de coordinarse.
+- **Capas:** migración con índice parcial sobre lo abierto, núcleo puro `lib/deploy/estado.cjs` (**15 tests**, incluida la distinción entre «no» y «no lo sé»), prueba de extremo a extremo con un deploy simulado y con el lock realmente tomado, y registro en `toolRegistry` para que la próxima sesión no lo reconstruya.
+- **Relacionadas:** [T-386] (el lock), [T-385] (el checkout compartido), [T-400] (la huella de sesiones), [T-130] (mirar si ya existe).
+
 
 ### [T-400] ✅ 🟠 [HECHA 31/07] El claim protege la TAREA, pero las sesiones chocan por los FICHEROS — ahora se ve en vivo
 

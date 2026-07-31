@@ -153,6 +153,19 @@ function commitsPendientes(shaBase, rutas) {
       ? '\n  → Hay trabajo TERMINADO esperando: desplegar cierra tareas. `scripts/deploy-cuando-verde.sh <superficie>`\n'
       : '\n  → Nadie espera nada: se puede seguir agrupando.\n',
   );
+
+  // ¿Y hay alguien desplegando YA? (T-404) Es la otra mitad de la decisión: saber que TOCA
+  // desplegar sin saber que otra sesión está en ello es cómo dos sesiones acaban compitiendo por
+  // el lock. Se consulta sin bloquearse; si falla, no estorba.
+  try {
+    const { execFileSync } = require('child_process');
+    const salida = execFileSync(process.execPath, [path.join(__dirname, 'deploy-estado.cjs')],
+      { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] });
+    console.log(salida.split('\n').map((l) => (l ? `  ${l}` : l)).join('\n'));
+  } catch (e) {
+    // exit 3 = ocupado, exit 4 = dudoso: NO son errores, son la respuesta.
+    if (e && e.stdout) console.log(String(e.stdout).split('\n').map((l) => (l ? `  ${l}` : l)).join('\n'));
+  }
 })().catch((e) => {
   console.error('❌', e.message);
   process.exit(1);

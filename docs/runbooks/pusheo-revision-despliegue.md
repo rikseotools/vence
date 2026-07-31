@@ -339,6 +339,38 @@ trabajo es posible: **árbol sucio**, o **`HEAD` con commits propios sin pushear
 laboratorio con los cuatro casos (limpio-atrasado → resincroniza · sucio → no toca · commits
 propios → no toca · al día → silencio).
 
+## ANTES de desplegar: ¿hay alguien desplegando ya? (T-404, 31/07)
+
+```bash
+npm run deploy:estado        # 🟢 libre · 🔴 en curso · 🟠 hay una fila abierta pero el lock está libre
+```
+
+También sale al final de `npm run deploy:pendiente`, que es donde se decide si toca desplegar:
+saber que **toca** sin saber que **otra sesión ya va** es exactamente cómo dos sesiones acaban
+compitiendo por el lock.
+
+**La cola ya existía y funciona** — el `flock` de `/tmp/vence-deploy.lock` serializa a todas las
+sesiones (front y back comparten lock), y `deploy-cuando-verde.sh` incluso *deduplica*: si el
+commit que persigues ya está dentro, sale sin competir. Lo que faltaba era poder **preguntarlo**:
+hasta hoy la única forma de saber que otra sesión desplegaba era lanzar el deploy y quedarte
+bloqueado hasta 45 minutos.
+
+Cruza tres fuentes en vez de fiarse de una, y **cuando discrepan lo dice**:
+
+| fuente | qué aporta | su límite |
+|---|---|---|
+| `deploy_runs` (BD) | quién, qué superficie, desde cuándo — consultable desde cualquier sesión | si un deploy muere de golpe, su fila queda abierta |
+| el **proceso** del lanzador | la verdad | solo se puede comprobar desde la misma máquina |
+| sondeo **no bloqueante** del `flock` | quién serializa de verdad | no dice quién ni desde cuándo |
+
+Por eso una fila abierta cuyo proceso ya no existe sale como *«huérfana»* y **no** como ocupado:
+un marcador rancio leído como «ocupado» manda a esperar a alguien que no está — la misma lección
+que dejaron los claims zombi del backlog (`backlog.cjs reap`).
+
+> Lo escriben los propios `deploy-{frontend,backend}.sh` justo después de coger el lock, con
+> `trap` para cerrar la fila aunque el build aborte, y **best-effort**: si la telemetría no puede
+> escribir, el deploy sigue igual. Un deploy no se cae porque no se pueda anotar.
+
 ## Sesiones paralelas (varias sesiones de Claude a la vez)
 
 > 🔑 **Distinción clave — pushear a `main` ≠ desplegar** (causa de confusión 09/07, dos sesiones lo leían opuesto):

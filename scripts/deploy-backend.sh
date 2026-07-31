@@ -50,6 +50,15 @@ else
   echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano."
 fi
 
+# ── DEJAR CONSTANCIA PARA LAS DEMÁS SESIONES (T-404) ─────────────────────────
+# Ver el comentario gemelo en deploy-frontend.sh: el lock serializa pero no se puede consultar
+# sin bloquearse. Esto lo publica donde el resto de sesiones ya mira (scripts/deploy-estado.cjs).
+# Best-effort, y el `trap` cierra la fila aunque el build aborte.
+DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie backend --sha "$SHA" --pid $$ 2>/dev/null || true)"
+if [ -n "$DEPLOY_RUN_ID" ]; then
+  trap 'node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" --outcome "$([ "$?" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true' EXIT
+fi
+
 # ── AUTO-SINCRONIZACIÓN CON origin/main (antes del gate de CI) ───────────────
 # El build sale del WORKING TREE, así que el guardarraíl anti-stale de más abajo aborta si
 # tu árbol no contiene todo origin/main. Correcto — pero con varias sesiones pusheando,

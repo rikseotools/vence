@@ -68,6 +68,18 @@ else
   echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano con otras sesiones."
 fi
 
+# ── DEJAR CONSTANCIA PARA LAS DEMÁS SESIONES (T-404) ─────────────────────────
+# El lock ya serializa, pero es INVISIBLE hasta que lo intentas: nadie podía preguntar «¿hay
+# alguien desplegando?» sin lanzar el deploy y quedarse esperando 45 min. Esto lo publica donde
+# el resto de sesiones ya mira (`node scripts/deploy-estado.cjs`).
+# Best-effort en las dos direcciones: si no puede escribir, el deploy sigue igual. Y el `trap`
+# cierra la fila pase lo que pase — un build que aborta no puede dejarla abierta para siempre,
+# que es el fallo que hubo que segar a mano con los claims zombi.
+DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie frontend --sha "$SHA" --pid $$ 2>/dev/null || true)"
+if [ -n "$DEPLOY_RUN_ID" ]; then
+  trap 'node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" --outcome "$([ "$?" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true' EXIT
+fi
+
 # GUARDARRAÍL árbol sucio (incidente 07/07/2026): el build usa el WORKING TREE
 # (podman COPY . .), NO el commit. Si hay ficheros TRACKED modificados, la imagen
 # deploy-${SHA} NO se corresponde con el commit ${SHA} → se puede desplegar código
