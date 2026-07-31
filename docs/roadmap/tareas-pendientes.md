@@ -1118,6 +1118,15 @@ incluida).
 - **DESCARTADA — la señal de «respuesta escrita y no entregada».** `resolveDispute` y `respondFeedback` devuelven `emailSkipReason:'user_preferences'` y nadie lo mira; se llegó a escribir la señal + su regla de alerta y **se retiró por decisión de Manuel**: a partir de ahora quien esté en ese estado lo habrá elegido marcando la casilla, y la campana dentro de la app ya se lo comunica. Queda escrito aquí por si el criterio cambia — el trabajo era pequeño (un módulo, dos cableados y una regla).
 - **Origen:** apareció comprobando, a raíz de una pregunta de Manuel, si un usuario con los emails desactivados recibe la respuesta a su impugnación (31/07, tras cerrar `ab3b9e43`).
 
+### [T-377] 🟠 [ABIERTO 31/07] El job de integración tiene 22 suites MÁS en rojo, y no son tests podridos: es deriva de contenido
+
+- **Cómo salió:** cerrando [T-336] (3 suites rojas de referidos + `correct_option`, ya arregladas). Con esas verdes, se corrió el job **entero** contra RDS real —lo que nadie había hecho— y salieron **24 tests rojos en 22 suites más**, de 2.023.
+- **NO es el mismo problema que T-336.** Allí el código de producción cambió a propósito y los tests se quedaron viejos. Aquí, en la muestra que se abrió, **el test tiene razón y los datos no**: `configDbIntegrity` falla porque la config declara **120 temas** para la Escala Técnica de Gestión de OO.AA. (Sanidad y Consumo) y en la BD hay **20**. Eso no se arregla tocando el test — es una oposición a medio construir que el job estaba cantando y nadie escuchaba.
+- **Tampoco es lo mismo que [T-370]** (el gate se quedó sin BD en CI). Son las dos mitades del mismo silencio: sin BD, el job muere antes de poder decir esto; con BD, dice esto. **Arreglar T-370 sin mirar esto llenará el CI de rojo real** — conviene leerlas juntas.
+- **Las 22 suites** (todas contra RDS): `configDbIntegrity`, `convocatoriaCiclo`, `convocatoriaVerification`, `deleteUserIndexCoverage`, `examCaseExclusion`, `familiaClassification`, `lawCompletenessConsistency`, `lawSlugFailureModes`, `legislativeImageBase64Pipeline`, `placeholderTemarioGuard`, `positionTypeIntegrity`, `questionArticleMismatch`, `schemaColumnDrift`, `seguimientoFuentesCiegas`, `temarioDataQuality`, `temarioEpigrafeIntegrity`, `temarioVersions`, `topicEpigrafeVerification`, `topicScopeIntegrity`, `topicScopeVerification`, `userStatsSummary`, `deviceFingerprintV2`.
+- **Cómo atacarlo (y cómo NO):** una a una, y **la pregunta primero es siempre «¿tiene razón el test?»**. Por la muestra, muchas parecen hallazgos de contenido reales que ya tienen su frase-gatillo y su runbook (temario/scope/convocatorias). Ajustar la aserción para que pase sería borrar el hallazgo, que es justo lo que lleva meses pasando por otra vía.
+- **Reproducir:** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config` (~9 min).
+
 ### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
 
 - **El atasco, reproducido hoy con T-369:** cierras el trabajo → `backlog.cjs pause T-369 --tras-deploy` (que **suelta el claim**, y hace bien) → `git push` → el **push-guard rechaza** el commit porque menciona un `T-` que no tienes reclamado → `claim T-369` → **`claim` se niega** porque la tarea está esperando deploy. Salida cerrada: solo se sale con `BACKLOG_GUARD_SKIP=1` o con un `claim --force` que ensucia el registro con un forzado que no lo es.
@@ -1236,6 +1245,17 @@ incluida).
 
 
 ## Hechas
+
+### [T-336] 🟢 [HECHA 31/07 · abierta 30/07] Tres suites de integración llevan rojas en main sin que nadie lo mire
+
+- **Verde: 37/37** en las tres suites (`referrals-queries`, `referrals-simulation`, `correctOptionEndToEnd`), corridas contra RDS real. Eran 20 rojos.
+- **NINGUNO era un fallo de producción**, y el aviso de la ficha (*«un test de dinero arreglado relajando la aserción es peor que un test rojo»*) se respetó: no se ha aflojado una sola aserción. Tres causas distintas, todas «producción cambió a propósito y el test se quedó viejo»:
+  1. **11 rojos — el fixture era imposible de satisfacer.** Las dos suites de referidos cogían «tres `user_profiles` cualesquiera» (`LIMIT 3`, sin ORDER BY) como embajador y referidos. Cuando producción estrenó el guard **«solo usuarios nuevos»** (`REFERRAL_NEW_ACCOUNT_MAX_AGE_DAYS = 7`), cualquier usuario real pasó a ser cuenta vieja → **toda atribución se rechazaba con `referred_not_new`**. Arreglo: fixture compartido `__tests__/integration/helpers/referralsFixture.ts` que **crea usuarios efímeros dentro de la tx** (rollback, no persiste nada), así el referido es captación nueva de verdad. Único para las dos suites: duplicado es como divergieron sin que se notara.
+  2. **3 rojos — la aserción hablaba de la base entera, no del caso.** `promoteEligibleToPayable` es **global** por diseño (promociona TODA fila `qualified` con el hold vencido), así que `toBe(0)`/`toBe(1)` afirmaba algo sobre los referidos reales de producción. Se cambió por el estado de NUESTRA fila (`qualified` antes del hold, `payable` después; `rejected` aguanta el cron tras un clawback). **Esto aprieta, no afloja**: lo que importa del hold no es cuántas filas movió la pasada, sino que este referido no cobre antes de tiempo.
+  3. **1 rojo — expectativa anterior a una decisión de producto.** El test del panel esperaba el bonus UGC «en hold»; el UGC **no tiene hold** desde el 11/07 (`createRewardSubmission` → `holdUntil = null`, *«no hay venta que reembolsar»*), y otra prueba de la misma suite ya lo fijaba. Corregido a saldo 15 / pendiente 0, citando la decisión.
+  4. **1 rojo — el patrón exigía un bug.** `correctOptionEndToEnd` grepeaba el literal `correct_option: q.correctOption`, pero desde el barajado (T-080) la clave servida es la **posición remapeada**. Exigir el literal viejo sería exigir que se sirva la clave sin remapear (el usuario acertaría pulsando otra letra). Se afirma el contrato + una línea nueva que fija el remapeo.
+- **Cubierto el punto ciego que lo causó:** el guard «solo usuarios nuevos» **no tenía ninguna prueba de integración**, así que estrenarlo solo se notó como una avería difusa del CI. Ahora está fijado a los dos lados (cuenta nueva pasa, cuenta de 30 días se rechaza con `referred_not_new`).
+- **Y el hallazgo grande:** con estas verdes se corrió el job ENTERO —lo que nadie había hecho— y hay **22 suites más en rojo por deriva de CONTENIDO**, no por tests podridos. Ficha propia: **[T-377]**.
 
 ### [T-373] 🟢 [HECHA 31/07 · abierta 31/07] Los 79 usuarios que perdieron las respuestas por email sin haberlo pedido
 
@@ -5176,14 +5196,6 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
 
 - **Cómo se decide montar una (no por orden de llegada):** demanda medida (cuántos la piden y si son premium) × plazas de la convocatoria × si el temario **reutiliza** banco que ya tenemos. El Parque Móvil se montó con **una sola** petición porque tenía 196 plazas e inscripción abierta y el 40% del examen reutilizaba banco existente.
 - **Al montar cualquiera:** `docs/maintenance/crear-nueva-oposicion.md` + scaffolder, gates `audit:oposicion`/`audit:served`/`verify:scope`, y **avisar a quien la pidió** (está su feedback anotado arriba).
-
-### [T-336] 🟠 [ABIERTO 30/07] Tres suites de integración llevan rojas en main sin que nadie lo mire
-
-- **QUÉ.** El job de CI *Integration / perf / security* está en **failure** en `main`: 3 suites, 20 tests. Son `__tests__/integration/correctOptionEndToEnd.test.ts`, `referrals-queries.test.ts` y `referrals-simulation.test.ts`.
-- **COMPROBADO QUE NO LO ROMPIÓ LA SESIÓN QUE LO ENCONTRÓ (30/07):** se corrieron esas mismas suites con el `lib/referrals/` del commit ANTERIOR (`ffa4e2373`) y fallan igual — 6 rojos en `referrals-queries` con y sin los cambios de la cartera. Venían de antes.
-- **POR QUÉ IMPORTA Y NO ES RUIDO.** El gate del despliegue solo exige el CI de **código** (unit + typecheck + lint), así que un rojo aquí **no bloquea nada** y puede quedarse meses sin que nadie lo mire. Y estas tres cubren justo lo que más duele si se rompe: el circuito de dinero de los referidos (atribuir → calificar → hold → pagar, con su clawback) y que la respuesta correcta llegue entera de punta a punta.
-- **Síntoma de la primera:** `attributeReferral` devuelve `{ok:false}` donde el test espera `{ok:true, referrerUserId}`. Puede ser el test (datos que ya no existen) o la función; hay que mirarlo con la BD delante, porque corren contra RDS en transacción con rollback.
-- **CUIDADO al arreglarlo:** un test de dinero «arreglado» relajando la aserción es peor que un test rojo — al menos el rojo se ve. Si la función cambió a propósito, se actualiza el test explicando el porqué; si no, es un fallo real de producción sin descubrir.
 
 ### [T-337] 🟡 [ABIERTO 30/07] La tarjeta del referido está implementada dos veces y ya divergió
 

@@ -8,9 +8,8 @@
 // A diferencia de la integración por-función, aquí importa que la SECUENCIA entera encaje.
 
 import { eq, sql } from 'drizzle-orm'
-import { getAdminDb } from '@/db/client'
 import { referrals, rewardPayouts, rewardSubmissions } from '@/db/referralSchema'
-import { userProfiles } from '@/db/schema'
+import { withTx } from './helpers/referralsFixture'
 import {
   getOrCreateReferralCode,
   getReferralCode,
@@ -34,16 +33,9 @@ import {
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
-const ROLLBACK = new Error('__ROLLBACK_SENTINEL__')
 
-async function withTx(fn: (tx: any, users: string[]) => Promise<void>): Promise<void> {
-  const db = getAdminDb()
-  const users = (await db.select({ id: userProfiles.id }).from(userProfiles).limit(3)).map((r: any) => r.id)
-  if (users.length < 3) throw new Error('se necesitan 3 user_profiles reales')
-  try {
-    await db.transaction(async (tx: any) => { await fn(tx, users); throw ROLLBACK })
-  } catch (e) { if (e !== ROLLBACK) throw e }
-}
+// Fixture compartido con la suite de integración: usuarios efímeros creados dentro de la tx,
+// porque el guard «solo usuarios nuevos» rechaza cualquier cuenta real (T-336).
 
 describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
   it('camino feliz: atribuir → cupón aplicable → pagar → calificar → hold → payable', async () => {
@@ -71,9 +63,11 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       expect(await hasPendingReferral(referido, tx)).toBe(false)
       expect(await getReferralStats(embajador, tx)).toMatchObject({ registros: 1, compradores: 1 })
 
-      // 6) pasa el hold → el cron lo promueve a payable (listo para payout)
+      // 6) pasa el hold → el cron lo promueve a payable (listo para payout).
+      // Se comprueba en NUESTRA fila y no en el contador: `promoteEligibleToPayable` es global y
+      // su número incluye los referidos reales que también venzan en ese instante (T-336).
       const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
-      expect(await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)).toBe(1)
+      await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)
       const [fin] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
       expect(fin.status).toBe('payable')
     })
@@ -94,8 +88,12 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       const [after] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
       expect(after.status).toBe('rejected')
 
-      // el cron ya NO lo promueve (no está qualified) y no cuenta como comprador
-      expect(await promoteEligibleToPayable(new Date(Date.now() + 30 * DAY).toISOString(), tx)).toBe(0)
+      // el cron ya NO lo promueve (no está qualified) y no cuenta como comprador.
+      // Lo que hay que probar es que ESTE referido reembolsado NO cobra: el contador global de la
+      // función mezcla las filas reales de producción y no dice nada de este caso (T-336).
+      await promoteEligibleToPayable(new Date(Date.now() + 30 * DAY).toISOString(), tx)
+      const [trasCron] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
+      expect(trasCron.status).toBe('rejected')   // sigue rechazado: el clawback aguanta al cron
       expect(await getReferralStats(embajador, tx)).toMatchObject({ compradores: 0 })
     })
   })
@@ -239,14 +237,17 @@ describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
       const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, referido)).limit(1)
       await promoteEligibleToPayable(new Date(new Date(q.holdUntil).getTime()).toISOString(), tx)
 
-      // Bonus UGC (5 €) para el mismo embajador, EN HOLD (no disponible aún)
+      // Bonus UGC (5 €) para el mismo embajador. SIN hold: el hold es la ventana de reembolso de
+      // una VENTA, y en bug/ugc no hay venta que reembolsar (decisión de Manuel del 11/07, ver
+      // `createRewardSubmission` → `holdUntil = null`). La suite ya lo fija en «recompensa UGC:
+      // SIN hold»; este test seguía esperando el comportamiento ANTERIOR y por eso estaba rojo.
       await createRewardSubmission({ userId: embajador, type: 'ugc', url: 'https://t.me/x' }, tx)
 
-      // Earnings: ganado 15; disponible 10 (referido payable; ugc en hold NO); en proceso 5
+      // Earnings: ganado 15 y disponible 15 (referido payable 10 + ugc 5 sin hold); nada en proceso.
       const earn = await getEmbajadorEarnings(embajador, tx)
       expect(earn.earnedLifetime).toBe(15)
-      expect(earn.balance).toBe(10)
-      expect(earn.pending).toBe(5)
+      expect(earn.balance).toBe(15)
+      expect(earn.pending).toBe(0)
       const bySrc = Object.fromEntries(earn.bySource.map((s) => [s.source, s.earned]))
       expect(bySrc).toEqual({ referido: 10, ugc: 5 })
 

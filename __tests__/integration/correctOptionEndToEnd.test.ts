@@ -11,7 +11,14 @@ const ROOT = path.resolve(__dirname, '../..')
 const TRANSFORMERS = [
   { name: 'testFetchers', file: 'lib/testFetchers.ts', pattern: /correct_option:\s*q\.correct_option/ },
   { name: 'lawFetchers', file: 'lib/lawFetchers.ts', pattern: /correct_option:\s*q\.correct_option/ },
-  { name: 'filtered-questions queries', file: 'lib/api/filtered-questions/queries.ts', pattern: /correct_option:\s*q\.correctOption/ },
+  // OJO con este (T-336): desde el barajado de opciones (T-080) la clave que se sirve NO es
+  // `q.correctOption` sino su posición REMAPEADA al nuevo orden (`order.indexOf(q.correctOption)`).
+  // El patrón viejo exigía el literal `q.correctOption` y se puso rojo al llegar el barajado —
+  // pero exigirlo hoy sería exigir un BUG: serviría la clave sin remapear y el usuario acertaría
+  // pulsando la letra equivocada. Se afirma el contrato (sale un `correct_option`), y el remapeo
+  // lo cubre aparte la línea de abajo.
+  { name: 'filtered-questions queries', file: 'lib/api/filtered-questions/queries.ts', pattern: /correct_option:\s*correctOption/ },
+  { name: 'filtered-questions remapea la clave al barajar', file: 'lib/api/filtered-questions/queries.ts', pattern: /order\.indexOf\(q\.correctOption\)/ },
   { name: 'filtered-questions schema', file: 'lib/api/filtered-questions/schemas.ts', pattern: /correct_option:\s*z\.number/ },
   { name: 'LawTestPageWrapper', file: 'components/LawTestPageWrapper.tsx', pattern: /correct_option:\s*q\.correct_option/ },
   { name: 'multi-ley', file: 'app/test/multi-ley/page.tsx', pattern: /correct_option:\s*q\.correct_option/ },

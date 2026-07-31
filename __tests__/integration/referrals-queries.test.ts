@@ -7,9 +7,8 @@
 // Ver memoria feedback_feature_multiples_capas_seguridad + docs/roadmap/programa-referidos-embajadores.md.
 
 import { eq } from 'drizzle-orm'
-import { getAdminDb } from '@/db/client'
 import { referrals } from '@/db/referralSchema'
-import { userProfiles } from '@/db/schema'
+import { withTx, crearUsuarioEfimero } from './helpers/referralsFixture'
 import {
   getOrCreateReferralCode,
   attributeReferral,
@@ -20,22 +19,9 @@ import {
 } from '@/lib/referrals/queries'
 
 const DAY = 86_400_000
-const ROLLBACK = new Error('__ROLLBACK_SENTINEL__')
 
-// Ejecuta fn dentro de una tx que SIEMPRE hace rollback. Inyecta 3 user_profiles reales.
-async function withTx(fn: (tx: any, users: string[]) => Promise<void>): Promise<void> {
-  const db = getAdminDb()
-  const users = (await db.select({ id: userProfiles.id }).from(userProfiles).limit(3)).map((r: any) => r.id)
-  if (users.length < 3) throw new Error('se necesitan 3 user_profiles reales para el test')
-  try {
-    await db.transaction(async (tx: any) => {
-      await fn(tx, users)
-      throw ROLLBACK
-    })
-  } catch (e) {
-    if (e !== ROLLBACK) throw e
-  }
-}
+// El fixture (usuarios efímeros creados dentro de la tx) vive en un solo sitio compartido con
+// la suite de simulación — ver el porqué en helpers/referralsFixture.ts (T-336).
 
 describe('referrals queries — integración RDS (tx rollback)', () => {
   it('getOrCreateReferralCode es idempotente por owner', async () => {
@@ -67,6 +53,26 @@ describe('referrals queries — integración RDS (tx rollback)', () => {
         .toMatchObject({ ok: false, reason: 'self_referral' })
       expect(await attributeReferral({ code, referredUserId: u2, referrerIsActivePremium: true, referredHasEverPaid: true }, tx))
         .toMatchObject({ ok: false, reason: 'referred_not_new_payer' })
+    })
+  })
+
+  // El guard que dejó 11 tests rojos sin que nadie tocara un test (T-336): producción empezó a
+  // exigir que el referido sea una cuenta NUEVA (≤ 7 días) y aquí no había nada que lo afirmara,
+  // así que el cambio solo se «notó» como una avería difusa del CI. Ahora está fijado a los dos
+  // lados: la cuenta recién creada pasa, la vieja se rechaza con su motivo exacto.
+  it('solo capta usuarios NUEVOS: una cuenta preexistente se rechaza con referred_not_new', async () => {
+    await withTx(async (tx, [u1]) => {
+      const code = await getOrCreateReferralCode(u1, tx)
+
+      const recienRegistrado = await crearUsuarioEfimero(tx, 'nuevo', 0)
+      expect(await attributeReferral(
+        { code, referredUserId: recienRegistrado, referrerIsActivePremium: true, referredHasEverPaid: false }, tx))
+        .toMatchObject({ ok: true })
+
+      const cuentaVieja = await crearUsuarioEfimero(tx, 'preexistente', 30)
+      expect(await attributeReferral(
+        { code, referredUserId: cuentaVieja, referrerIsActivePremium: true, referredHasEverPaid: false }, tx))
+        .toMatchObject({ ok: false, reason: 'referred_not_new' })
     })
   })
 
@@ -107,12 +113,25 @@ describe('referrals queries — integración RDS (tx rollback)', () => {
       await qualifyReferralOnPayment({ referredUserId: u2, planType: 'annual', paymentRef: 'pi_h', paidAt }, tx)
       const [q] = await tx.select().from(referrals).where(eq(referrals.referredUserId, u2)).limit(1)
       const hold = new Date(q.holdUntil).getTime()
-      // antes del hold: no promueve
-      expect(await promoteEligibleToPayable(new Date(hold - 1000).toISOString(), tx)).toBe(0)
-      // en/after del hold: promueve
-      expect(await promoteEligibleToPayable(new Date(hold).toISOString(), tx)).toBe(1)
-      const [after] = await tx.select().from(referrals).where(eq(referrals.referredUserId, u2)).limit(1)
-      expect(after.status).toBe('payable')
+      const estadoDeNuestraFila = async () => {
+        const [r] = await tx.select().from(referrals).where(eq(referrals.referredUserId, u2)).limit(1)
+        return r.status
+      }
+
+      // Se mira el estado de NUESTRA fila, no el número que devuelve la función (T-336).
+      //
+      // `promoteEligibleToPayable` es GLOBAL por diseño: promociona toda fila `qualified` con el
+      // hold vencido, así que su contador incluye los referidos reales de producción que también
+      // toquen en ese instante. Afirmar `toBe(0)`/`toBe(1)` era afirmar algo sobre el resto de la
+      // base, no sobre este caso — y el día que hubo un referido real cualificado, rojo.
+      //
+      // Esto NO afloja la aserción, la aprieta: lo que de verdad importa del hold no es cuántas
+      // filas movió la pasada, sino que ESTE referido no cobre antes de tiempo y sí después.
+      await promoteEligibleToPayable(new Date(hold - 1000).toISOString(), tx)
+      expect(await estadoDeNuestraFila()).toBe('qualified')   // un segundo antes: intacto
+
+      await promoteEligibleToPayable(new Date(hold).toISOString(), tx)
+      expect(await estadoDeNuestraFila()).toBe('payable')     // cumplido el hold: promociona
     })
   })
 
