@@ -1153,6 +1153,9 @@ incluida).
   1. **Escribir el temario** de los 56 contenedores. Es lo correcto y es una campaña de contenido, no una sesión.
   2. **Ocultar el enlace a teoría** cuando el contenedor es un placeholder: barato y honesto (deja de prometer lo que no hay), no toca lo que se sirve ni el temario.
   3. **Desactivar las 7.134** hasta que haya temario: quita el problema y le arranca a enfermería una de cada cinco preguntas.
+- **✅ DECIDIDO EL 31/07 (Manuel): se deja como está, a sabiendas.** No es un descuido ni un cabo suelto — **no lo "arregles" al pasar por aquí.** El razonamiento: la exposición hoy son 5 usuarios, y las tres alternativas cuestan más de lo que evitan en este momento (ocultar el enlace es maquillaje sobre un banco que igualmente no tiene teoría; escribir 56 temarios es una campaña; desactivar le arranca a seis oposiciones publicadas una de cada cinco preguntas).
+  - **Lo que cambia respecto a antes de hoy:** ya no está ciego. El trinquete se queda ROJO a propósito y, desde [T-370], su rojo **sí avisa**. Si esto crece, se va a oír.
+  - **Cuándo volver a mirarlo:** cuando enfermería tenga tráfico. Se remide con la consulta de exposición de esta ficha (respuestas y usuarios distintos sobre esas preguntas); si sube de forma apreciable, la opción 1 o la 3 dejan de ser caras en comparación.
 - **NO tocar el baseline del trinquete.** Subirlo a 7.202 para que CI pase sería exactamente lo que el trinquete existe para impedir.
 - **Relacionadas:** [T-370] (por qué el rojo no se oyó), [T-377] (el resto del job), memoria `project-placeholder-temario-backlog` (la campaña de 2026-06 que lo dejó en 0).
 
