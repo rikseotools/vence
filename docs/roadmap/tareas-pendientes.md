@@ -980,6 +980,19 @@ incluida).
 - **Dato para calibrar:** cuando `detect-oep-llm` corría, tardaba ~169 min y fallaba el **24 %** de las descargas (529 de 2.206). El umbral no puede ser «tardó más de X» a secas.
 - **Relacionada:** [T-347], [T-166], `docs/runbooks/salud-radar.md`, `docs/runbooks/observability.md`.
 
+### [T-356] 🟠 [ABIERTO 31/07] 204 artículos tan pobres que su único duplicado es lo que los mantiene vivos
+
+- **DE DÓNDE SALE.** Del barrido de duplicados [T-321]. Al jubilar 1.416 copias exactas quedaron **220 grupos que la guarda NO deja tocar**: si se jubilara la copia, su artículo se quedaría con menos de 4 preguntas. Afectan a **204 artículos de 84 leyes**.
+- **EL NÚMERO QUE LO EXPLICA TODO:** de esos artículos, **71 tienen SOLO 2 preguntas activas… y son la misma**, y **67 tienen 3**. Es decir, ahí el duplicado no sobra: **es lo único que hace que el artículo parezca cubierto**. Quitarlo dejaría artículos con una sola pregunta, que no dan ni para un test.
+- **POR ESO NO ES UNA TAREA DE PODA, ES DE CONTENIDO.** El trabajo aquí es **generar preguntas** para esos artículos y, cuando tengan fondo suficiente, jubilar la copia. Hacerlo al revés —jubilar primero— empeora el producto: cambia «me sale repetida» por «este artículo no tiene con qué practicar».
+- **Muestra real (los más pobres):** CE disposición adicional · CEDH arts 3 y 27 · Código Civil art 930 · Convenio Schengen arts 40 y 92 · CP arts 158 y 454. Todos con 2 preguntas activas que son la misma.
+- **CÓMO ATACARLO (y con qué NO empezar):**
+  1. Cruzar los 204 con **`npm run huerfanos:plan`**, que ya ordena los huecos de contenido **por alcance real** (a cuántos usuarios llega cada artículo) y avisa de las leyes con lote reciente de otra sesión. Un artículo del CP o de la CE pesa mucho más que uno de un convenio que casi nadie escopa.
+  2. Generar con el flujo normal (`docs/maintenance/generar-preguntas-con-ia.md`), ancladas al texto del artículo y con doble auditoría antes de activar.
+  3. **Solo entonces** volver a pasar `node scripts/calidad/duplicados-exactos.cjs --aplicar`: la guarda dejará caer solas las copias en cuanto su artículo supere el mínimo.
+- **Consulta para listarlos** (la del barrido, filtrando por los que la guarda aparta): agrupar `questions` activas por `primary_article_id` + enunciado normalizado + las 4 opciones ordenadas, y quedarse con los grupos cuyo artículo tenga menos de 4 activas.
+- **Relacionada:** [T-321] (el barrido que los destapó), `huerfanos:plan`, y el detector `article_no_coverage` — que **no los ve**, porque exige ≥4 artículos sin NINGUNA pregunta en un tema y estos tienen una.
+
 ## Hechas
 
 ### [T-340] 🟢 [HECHA 31/07 · abierta 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
@@ -4556,17 +4569,11 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   - **La simulación evitó tres destrozos:** 3 preguntas se apartaron porque jubilarlas dejaba su artículo con **1 sola pregunta** — eso cambia la repetición por un artículo que no da ni para un test. La guarda del mínimo servible (4) va ya en el script.
   - En **18 grupos** la superviviente era de examen oficial (no se tocan). **289 transiciones** quedaron en `question_lifecycle_history` anotando de cuál es duplicada cada una.
   - **Fallo propio que casi lo estropea:** la primera pasada del script devolvió **0 grupos en silencio** porque comparaba la fecha del lote como texto (`String(Date)` da «Sat Mar 21 2026…»). De haberme fiado, habría concluido que el lote no existía.
-- **📍 DÓNDE VA ESTO (31/07, para retomarlo sin releer nada):**
-  - **Hecho:** lote **21/03** → 287 jubiladas · lote **27/04** → 862 jubiladas. **1.149 en total, 0 fallos, ninguna visible**, todas con su transición en `question_lifecycle_history` diciendo de cuál son duplicadas.
-  - **Estado del banco:** de **2.030** sobrantes se ha bajado a **487** (482 grupos).
-  - **Siguiente comando, tal cual:**
-    ```bash
-    node scripts/calidad/duplicados-exactos.cjs              # simula TODO lo que queda
-    node scripts/calidad/duplicados-exactos.cjs --dia 2026-04-06 --aplicar
-    ```
-  - **Lo que queda, por lote:** 06/04 → 155 · 27/04 → 135 (los que la guarda apartó) · 25/04 → 90 · 25/12 → 19 · 19/04 → 11.
-  - **⚠️ Los 135 del 27/04 NO son un olvido:** son los que la guarda apartó porque su artículo se quedaría con menos de 4 preguntas. **No se jubilan sin más** — hay que mirarlos aparte, porque en muchos casos el artículo entero se importó duplicado y lo que falta ahí es CONTENIDO, no una poda. Mismo caso, más pequeño, en los 3 del 21/03.
-  - **El patrón cambia según el lote, y conviene saberlo antes de mirar:** el 21/03 son copias de preguntas viejas (la copia entra meses después); el 27/04 son duplicados **dentro del mismo día** — una importación que se duplicó a sí misma, con las copias casi sin servir (0-1 veces).
+- **📍 DÓNDE VA ESTO (31/07 — barrido de poda TERMINADO):**
+  - **1.416 preguntas jubiladas** en tres pasadas: lote 21/03 → 287 · lote 27/04 → 862 · resto → 267. **0 fallos, ninguna visible**, todas con su transición en `question_lifecycle_history` diciendo de cuál son duplicadas.
+  - **De 2.030 sobrantes a 220.** Y esos 220 **no son poda pendiente**: son los que la guarda protege → viven ahora en **[T-356]**, que es una tarea de CONTENIDO, no de limpieza.
+  - Para re-comprobar en cualquier momento: `node scripts/calidad/duplicados-exactos.cjs` (simula, no escribe).
+  - **El patrón cambió según el lote:** el 21/03 son copias de preguntas viejas (la copia entra meses después); el 27/04 es una importación que se duplicó **a sí misma**, con las copias casi sin servir (0-1 veces).
 - **HUECO DEL DETECTOR DE HERRAMIENTAS, arreglado de paso (31/07):** `escribeRecurso` reconocía `UPDATE`/`INSERT`/Drizzle pero **no la llamada a `transition_question_state`**, que es la ÚNICA vía legítima de tocar `lifecycle_state`. Consecuencia: una herramienta que hacía lo correcto figuraba como «dice escribir y no lo hace», empujando justo a escribir a pelo. Ahora un recurso puede declarar su `funcionPuerta`. Al verla, los escritores de `lifecycle_state` pasaron de 19 a **42**: no son nuevos, es que **los que usaban la vía correcta eran invisibles** y el trinquete se había calibrado contando solo a los que la esquivaban.
 - **Regla que nace de aquí (ya en el manual de impugnaciones):** cuando una impugnación puede ser sistémica, **medir en la BD antes de cerrar** — la persona solo ha visto la punta.
 
