@@ -919,17 +919,6 @@ incluida).
 - **Relacionadas:** [T-340] (el contraste que lo destapó), y los **38 endpoints fuera de `/api/stripe`** con el mismo patrón de `userId` sin verificar, que siguen sin auditar.
 
 
-### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
-
-- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
-- **Qué comprobar cuando esté vivo:**
-  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
-  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
-  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
-  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
-- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
-- **Esfuerzo:** bajo, con una espera de 30 min por medio.
-
 ## Hechas
 
 ### [T-344] ✅ [HECHA 31/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
