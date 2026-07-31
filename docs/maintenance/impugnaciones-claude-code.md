@@ -118,6 +118,18 @@ código escribe con lo que la BD admite.
 la alegación (`appeal_text`). No es una impugnación nueva: es una segunda vuelta sobre algo que ya
 contestaste, y el usuario merece que se le note que lo has leído.
 
+> ⚠️ **IGNORA el «🛑 PASO 0 — YA RESPONDIDA → NO re-respondas» cuando el estado es `appealed`**
+> (defecto conocido, [T-402]). Ese aviso caza el desync del 504 (respuesta emailada, estado sin
+> voltear) mirando si hay `admin_response`… y en una apelación **siempre la hay**: es justo la
+> respuesta que la persona está replicando. Salta, por tanto, en el 100 % de las réplicas y te
+> manda cerrarla en silencio. Una réplica **se contesta** por el flujo normal (`cerrar.ts` →
+> `/resolve`, que manda el email nuevo). El aviso solo es de verdad cuando el estado es `pending`.
+> Y el `appeal_text` **no sale en el dossier**: sácalo de `question_disputes` antes de analizar.
+
+> 💡 **`cerrar.ts` necesita `AUTH_SECRET`** (no está en `.env.local`). El script te imprime el
+> comando; en una línea:
+> `AUTH_SECRET="$(aws --profile vence --region eu-west-2 ssm get-parameter --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)" npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts <id> --estado resolved|rejected --mensaje <fichero> --aplicar`
+
 ## 1. Ver Impugnaciones Pendientes
 
 ```
