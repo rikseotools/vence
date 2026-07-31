@@ -14,6 +14,16 @@
 #    bloqueados invisibles porque la alerta solo contaba 5xx. Lógica pura en
 #    lib/calidad/robustezPushGuard.cjs (14 tests). Fail-open. Escape: ROBUSTEZ_GUARD_SKIP=1.
 #
+# 2.bis) Pérdida de contexto (T-428): si el push BORRA el cuerpo de una ficha viva de
+#    `docs/roadmap/tareas-pendientes.md` que ya está publicada en origin/main, bloquea. Es el
+#    fichero que TODAS las sesiones tocan y las fichas nuevas se insertan en el mismo sitio, así
+#    que el conflicto es lo normal; resolverlo quedándose con «su» lado borra el trabajo de
+#    documentar de otra sesión y NADA lo veía (el id sigue existiendo → CI verde). Compara contra
+#    origin/main, no contra el padre, porque el caso del merge es invisible desde el padre.
+#    Calibrado sobre los 1.063 commits del fichero: dispara en el 0,9%, y en el 91% de las fichas
+#    que señala alguien tuvo que restaurarlas a mano. Puro en lib/backlog/perdidaDeContexto.cjs.
+#    Fail-open. Escape PROPIO: CONTEXTO_GUARD_SKIP=1 (compartirlo apagaría dos guardarraíles).
+#
 # 3) Typecheck (T-225, 28/07): `tsc` NO estaba en ningún hook y los tests unitarios no ven un
 #    error de tipos → el único sitio donde se detectaba era el CI, o sea DESPUÉS de pushear.
 #    Y el `Typecheck` en rojo en `main` BLOQUEA EL DEPLOY DE TODAS LAS SESIONES (gate de CI de
@@ -25,5 +35,6 @@
 #    sin tocar el backlog, no dejaba ninguna señal y parecía muerta al ir a limpiar worktrees.
 node scripts/sessions/latir.cjs --cmd pre-push >/dev/null 2>&1 || true
 node scripts/backlog-push-guard.cjs || exit 1
+node scripts/contexto-push-guard.cjs || exit 1
 node scripts/robustez-push-guard.cjs || exit 1
 node scripts/typecheck-push-guard.cjs || exit 1

@@ -245,6 +245,43 @@ npm run sesiones:friccion      # ratio de escape por guardarraíl: sano / erosi�
 No se añadió un evento aparte a propósito: dos emisores del mismo hecho no miden el doble, divergen.
 
 
+## El OTRO guard del push: no borrar la ficha de otra sesión (T-428, 31/07)
+
+El de arriba mira **claims**. Este mira **contenido**, y son cosas distintas: puedes tener tu tarea
+perfectamente reclamada y aun así llevarte por delante la documentación de otro.
+
+**Qué bloquea:** que tu push borre el cuerpo de una ficha **viva** que ya está publicada en
+`origin/main` — la ficha entera (`desaparecida`) o más de la mitad de su texto (`mermada`).
+
+**Por qué hacía falta.** Este fichero es el que **todas** las sesiones tocan, y las fichas nuevas se
+insertan todas en el mismo sitio, así que el conflicto de merge no es la excepción: es lo normal
+(cuatro veces en una sola tarde del 31/07). Resolverlo quedándose con «su» lado borra el trabajo del
+otro **en silencio**, y no lo veía nada: `backlogRegistry.guardrail` comprueba que los **ids** sean
+únicos —y un id sigue siendo único después de que le borres el cuerpo entero—, `sync` reconcilia
+título y prioridad, y el push-guard mira claims. **La ficha podía quedarse en una línea con el CI en
+verde.** Pasó dos veces el mismo día (T-427 perdió 5 fichas por un cherry-pick) y las dos se
+recuperaron por casualidad, porque alguien volvió a abrir la ficha.
+
+**Si te bloquea, lo más probable es que sea correcto.** Mira qué se pierde con
+`git diff origin/main -- docs/roadmap/tareas-pendientes.md` y **conserva los dos lados**: son fichas
+distintas de sesiones distintas, casi nunca hay que elegir.
+
+**Si el borrado es a propósito** (renumerar una ficha, quitar una entrada que no era una tarea —los
+dos casos legítimos que aparecieron al medir la historia—):
+
+```bash
+CONTEXTO_GUARD_SKIP=1 git push …
+```
+
+Escape **propio**, no el del otro guard: compartirlo apagaría los dos de una vez. Se imprime y se
+cuenta (`npm run sesiones:friccion`).
+
+**Calibrado, no intuido.** `npm run sim:perdida-contexto` pasa el detector por los 1.063 commits del
+fichero: dispara en el **0,9%** de ellos, y en el **91%** de las fichas que señala alguien tuvo que
+restaurarlas a mano después. Comprobación de extremo a extremo con repo de usar y tirar:
+`npm run sim:contexto-guard` (8 casos, incluido el del merge). Núcleo puro
+`lib/backlog/perdidaDeContexto.cjs`, 29 tests.
+
 ## Saber EN VIVO si otra sesión va a lo mismo (T-400, 31/07)
 
 El claim reparte **ids de tarea**. El trabajo colisiona en **rutas de fichero**, y eso el claim no

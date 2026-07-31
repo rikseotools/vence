@@ -305,6 +305,30 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'es `origin/main...HEAD` con TRES puntos; con dos se colaban los ficheros de otras ' +
       'sesiones y, como casi siempre traen algún test, dejaba pasar cualquier cosa.',
   },
+  contexto_push_guard: {
+    titulo: 'Bloquear el push que borra el contexto de una ficha viva del backlog',
+    ruta: 'scripts/contexto-push-guard.cjs',
+    estado: 'vivo',
+    notas:
+      'Hook `.husky/pre-push`, justo tras el guard de claims. Caza el modo de fallo del 31/07: ' +
+      '`docs/roadmap/tareas-pendientes.md` es el fichero que TODAS las sesiones tocan y las fichas ' +
+      'nuevas se insertan en el mismo sitio, así que el conflicto es lo normal (cuatro veces en una ' +
+      'tarde) — y resolverlo quedándose con «su» lado borra el trabajo de documentar de la otra. ' +
+      '**Nada lo veía:** `backlogRegistry.guardrail` mira ids únicos (un id sigue siendo único con ' +
+      'el cuerpo borrado), `sync` reconcilia título y prioridad, y el push-guard mira claims → la ' +
+      'ficha podía quedarse en una línea con el CI en verde. **Compara contra `origin/main`, NO ' +
+      'contra el padre de tus commits**, porque el caso del MERGE es invisible desde el padre: si ' +
+      'resuelves tirando el bloque ajeno, tus commits nunca borraron nada respecto de su propio ' +
+      'padre. Si HEAD no contiene `origin/main` NO opina (no puede atribuir la pérdida). Núcleo ' +
+      'puro `lib/backlog/perdidaDeContexto.cjs` (29 tests) + simulación de extremo a extremo con ' +
+      'repo de usar y tirar `scripts/backlog/sim-contexto-guard.cjs` (8 casos, incluido el merge). ' +
+      'Calibrado sobre los 1.063 commits del fichero con `scripts/backlog/sim-perdida-contexto.cjs`: ' +
+      'dispara en el 0,9% de los commits y en el 91% de las fichas que señala alguien tuvo que ' +
+      'restaurarlas a mano. Umbral: pierde ≥600 caracteres Y ≥50% del cuerpo; cerrar con ✅ exime ' +
+      '(pero se reporta, para que un borrado no se disfrace de cierre). Fail-open; escape PROPIO ' +
+      '`CONTEXTO_GUARD_SKIP=1` — compartirlo con otro guard apagaría dos de una vez. Mide su ' +
+      'fricción (bloqueo y escape) vía `friccion-emitir.cjs`, T-423.',
+  },
   purgar_feedback_espurio: {
     titulo: 'Borrar del historial de una persona los apuntes que escribió otro (con respaldo y rastro)',
     ruta: 'scripts/purgar-feedback-espurio.cjs',

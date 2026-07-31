@@ -123,6 +123,25 @@ trabajo ajeno de forma irreversible. Una sola sesión en el directorio principal
 que menciona una tarea viva que no tienes. **No** bloquea: lease vencido ajeno, tarea que tú
 pausaste, ni un push que solo toca el fichero de fichas.
 
+### 3.6.bis Push — no borrar la documentación de otro
+
+`lib/backlog/perdidaDeContexto.cjs` + `scripts/contexto-push-guard.cjs` (en `pre-push`). Cierra el
+modo de fallo *«resolver un conflicto con `--theirs`»* de §7, que hasta el 31/07 estaba **listado y
+sin cubrir**. Bloquea el push que borra el cuerpo de una ficha VIVA que ya está publicada.
+
+Tres decisiones que son la tarea entera:
+
+- **Compara contra `origin/main`, no contra el padre de tus commits.** La pregunta no es «¿qué
+  cambiaron mis commits?» sino «¿qué se pierde de lo publicado cuando esto entre?». Solo la segunda
+  ve el MERGE: si resuelves el conflicto tirando el bloque ajeno, tus commits nunca borraron nada
+  respecto de su propio padre — el contenido jamás estuvo en tu rama.
+- **Si no puede atribuir la pérdida, NO opina** (HEAD que no contiene `origin/main`). Un guardarraíl
+  que acusa cuando no sabe se acaba apagando entero, y entonces deja de proteger también donde sí sabía.
+- **El umbral lo fijó la historia, no una intuición**: `sim-perdida-contexto.cjs` pasó los 1.063
+  commits del fichero. Dispara en el **0,9%**, y en el **91%** de las fichas que señala alguien tuvo
+  que restaurarlas a mano después — que es el discriminador honesto entre borrado accidental e
+  intencionado (si volvió, es que hacía falta).
+
 ### 3.7 Deploy — árbol propio y estado consultable
 
 | pieza | fichero |
@@ -180,7 +199,7 @@ Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · �
 | gancho | qué corre |
 |---|---|
 | `pre-commit` | sintaxis de lo staged · **índice compartido** |
-| `pre-push` | latido · **guard del backlog** · robustez · typecheck |
+| `pre-push` | latido · **guard del backlog** · **pérdida de contexto** · robustez · typecheck |
 | deploy | marcar inicio/fin · árbol efímero · despertar tareas pausadas |
 | CLI del backlog | latido en cada invocación |
 
@@ -189,7 +208,10 @@ Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · �
 ## 6. Escapes, y por qué están nombrados
 
 `BACKLOG_GUARD_SKIP=1` · `INDICE_COMPARTIDO_OK=1` · `ROBUSTEZ_GUARD_SKIP=1` ·
-`PRECOMMIT_TESTS_SKIP=1`
+`PRECOMMIT_TESTS_SKIP=1` · `CONTEXTO_GUARD_SKIP=1`
+
+Cada guardarraíl tiene el **suyo**, a propósito: si compartieran uno, apagar el que estorba hoy
+apagaría de paso el que protege de otra cosa.
 
 Cada uno **se imprime al usarse** y **se cuenta**. Un escape con nombre es infinitamente mejor
 que `--no-verify`, que apaga todo a la vez y no deja rastro. Y contarlos es lo que permite saber
@@ -209,7 +231,7 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Un bloqueo imposible de satisfacer | empuja al escape general, que apaga *todo* |
 | Claims de sesiones muertas | el lease vencía, pero la fila seguía diciendo que alguien trabajaba |
 | Commit que se lleva ficheros ajenos | el índice es del repositorio; no hay dato de «quién» |
-| Resolver un conflicto con `--theirs` por comodidad | borra el trabajo del otro **en silencio** |
+| Resolver un conflicto con `--theirs` por comodidad | borra el trabajo del otro **en silencio** — el id sigue existiendo, así que el CI sigue verde (cubierto desde 31/07 por §3.6.bis) |
 | Reescribir el mismo módulo N veces | sin registro de herramientas, cada sesión reconstruye |
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
 | Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
