@@ -2239,6 +2239,21 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-430] ✅ 🟠 [HECHA 31/07] Una sesión que muere de golpe no llega a despedirse — pero su worktree sí guarda lo que hizo
+
+- **ORIGEN.** Manuel (31/07): *«estaría bien que las sesiones, a la vez que trabajan, vayan documentando la ficha sobre la que trabajan, por si se apaga el ordenador o se cierra la sesión por falta de RAM, o si otra sesión necesita consultar algo. ¿Es posible o no merece la pena?»*.
+- **MERECE LA PENA, PERO NO COMO NOTAS PERIÓDICAS.** El sistema ya tiene un sitio para eso —el `--hecho`/`--falta` del `pause`— y funciona… **solo para quien tiene la oportunidad de despedirse**. Justo las sesiones que mueren de golpe no la tienen. Y pedir notas cada X minutos habría decaído como decae todo lo que depende de acordarse: es la lección que este mismo día se pagó tres veces.
+- **✅ LO QUE SÍ RINDE: derivarlo de lo que git YA guardó.** Al retomar una tarea, `claim` enseña lo que dejó su sesión anterior: su worktree, los ficheros sin commitear y **sus commits sin pushear**.
+  - **Los mensajes de esos commits son la mejor nota que existe:** se escribieron cuando esa sesión tenía todo el contexto, son durables, y **no costaron ni un gramo de disciplina extra**. Es el mismo principio que la huella de ficheros ([T-400]): se observa, no se declara.
+- **Lo que faltaba era saber A QUIÉN preguntar.** `claimed_by` se pone a NULL al soltar, pausar o segar, así que el rastro se borraba justo cuando hacía falta. Nueva columna `last_claimed_by`, que **se escribe sola al reclamar**.
+- **Medido en los worktrees vivos al construirlo:** siete sesiones con trabajo recuperable (47 commits sin pushear en una, 14 ficheros sin commitear en otra). Eso era contexto que **existía y nadie veía** al coger la tarea.
+- **Verificado en vivo, y la demostración salió redonda:** al reclamar una tarea cuya dueña anterior era `central-izquierdo`, enseñó sus tres commits sin pushear — uno de ellos *«restaurar las 5 fichas que un cherry-pick se llevó»*, que era exactamente la información que otra sesión necesitaba, y otro reconciliando que **dos sesiones habían restaurado lo mismo a la vez**.
+- **Fail-open:** si el worktree ya no existe, si git no contesta o si la consulta falla, se calla y sigue. Informar jamás puede impedir coger una tarea.
+- **Lo que NO cubre, dicho claro:** el razonamiento que no llegó a ningún commit —las hipótesis descartadas, el «probé X y no funcionaba»— se pierde igual. Eso no es derivable, y obligar a escribirlo cada rato produciría notas de trámite. La mitigación real es **commitear pronto y a menudo**, que ya era buena idea por otros motivos.
+- **Capas:** 8 tests (que siga cableado, que lea al dueño anterior ANTES de pisarlo, que no se ofrezca a sí mismo y que sea incapaz de estorbar) + migración additiva.
+- **Relacionadas:** [T-400] (observar en vez de declarar), [T-415] (por qué cada sesión necesita su worktree), [T-296] (el latido).
+
+
 ### [T-407] ✅ 🟠 [HECHA 31/07] Seis resolvedores de session-id con dos reglas distintas: una sesión se veía a sí misma como ajena
 
 - **ORIGEN.** Lo reportó **otra sesión** y lo dio por cosmético: *«el worktree usa dos identidades de sesión distintas (`cola.cjs` coge el `.session-id`, `revisar-impugnacion.cjs` la variable de entorno), así que el dossier avisa de "otra sesión" siendo yo mismo. Cosmético, pero despista»*.

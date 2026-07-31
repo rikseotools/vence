@@ -125,6 +125,47 @@ function needSid() {
 }
 
 /**
+ * Al retomar una tarea, enseña lo que dejó la sesión ANTERIOR sin pushear (T-430).
+ *
+ * Cuando una sesión muere de golpe —se apaga el ordenador, se queda sin contexto, la cierran— no
+ * llega a escribir el `--hecho`/`--falta` del `pause`: ese hueco solo lo llena quien tiene la
+ * oportunidad de despedirse, y justo las que mueren no la tienen.
+ *
+ * Pero su worktree conserva el trabajo, y **los mensajes de sus commits sin pushear son la mejor
+ * nota que existe**: se escribieron cuando esa sesión tenía todo el contexto y no costaron ni un
+ * gramo de disciplina extra. Pedir notas periódicas habría decaído como decae todo lo que depende
+ * de acordarse; esto se deriva de lo que git ya guardó.
+ *
+ * Solo informa, y es fail-open: no puede impedir coger una tarea.
+ */
+async function ofrecerTrabajoDeLaSesionAnterior(s, sidAnterior) {
+  if (!sidAnterior) return;
+  try {
+    const [ses] = await s`
+      SELECT slug, worktree_path, last_signal_at FROM public.worktree_sessions WHERE sid = ${sidAnterior}`;
+    if (!ses || !ses.worktree_path || !fs.existsSync(ses.worktree_path)) return;
+    const { execFileSync } = require('child_process');
+    const git = (a) => { try { return execFileSync('git', a, { cwd: ses.worktree_path, encoding: 'utf8', stdio: ['ignore','pipe','ignore'], timeout: 6000 }).trim(); } catch { return ''; } };
+    const sucios = git(['status', '--porcelain', '--untracked-files=no']).split('\n').filter(Boolean);
+    const commits = git(['log', 'origin/main..HEAD', '--format=%h %s', '-8']).split('\n').filter(Boolean);
+    if (!sucios.length && !commits.length) return;
+    const min = ses.last_signal_at ? Math.round((Date.now() - new Date(ses.last_signal_at).getTime()) / 60000) : null;
+    console.log(`\n📦 LA SESIÓN ANTERIOR (${ses.slug}${min != null ? `, sin señal desde hace ${min} min` : ''}) DEJÓ TRABAJO SIN PUSHEAR:`);
+    console.log(`   ${ses.worktree_path}`);
+    if (commits.length) {
+      console.log(`   ${commits.length} commit(s) sin pushear — sus mensajes son lo más parecido a sus notas:`);
+      for (const c of commits) console.log(`      ${c.slice(0, 96)}`);
+    }
+    if (sucios.length) {
+      console.log(`   ${sucios.length} fichero(s) sin commitear:`);
+      for (const f of sucios.slice(0, 8)) console.log(`      ${f}`);
+      if (sucios.length > 8) console.log(`      …y ${sucios.length - 8} más`);
+    }
+    console.log('   Míralo antes de empezar de cero — puede estar medio hecho.');
+  } catch { /* informar no puede impedir reclamar */ }
+}
+
+/**
  * Al RECLAMAR, avisa si otra sesión viva ya está tocando los ficheros de esta tarea (T-400).
  *
  * El claim protege el id de la tarea; las sesiones chocan por los FICHEROS. Casos medidos: T-361
@@ -468,11 +509,19 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.error('❌ --force exige --motivo "por qué te saltas la espera/el bloqueo" (queda registrado)');
         process.exit(2);
       }
+      // Quién la tuvo ANTES, leído antes de pisarlo: si murió sin pushear, su worktree guarda
+      // el contexto que su sesión no llegó a escribir (T-430).
+      const [previo] = await s`SELECT last_claimed_by FROM public.backlog_tasks WHERE id = ${id}`;
+      const dueñoAnterior = previo && previo.last_claimed_by && previo.last_claimed_by !== sid ? previo.last_claimed_by : null;
       const [row] = await s`
         UPDATE public.backlog_tasks t
            SET claimed_by = ${sid}, claimed_at = now(),
                -- Primera vez que alguien la coge: separa «costó mucho» de «esperó mucho» (T-414).
                first_claimed_at = COALESCE(t.first_claimed_at, now()),
+               -- Quién la tiene por última vez (T-430): claimed_by se pone a NULL al soltar,
+               -- pausar o segar, así que sin esto no hay a quién preguntar cuando una sesión
+               -- muere de golpe y deja trabajo sin pushear en su worktree.
+               last_claimed_by = ${sid},
                lease_until = now() + (${LEASE_MIN} || ' minutes')::interval,
                status = CASE WHEN t.status = 'open' THEN 'in_progress' ELSE t.status END,
                force_claim_reason = CASE WHEN ${force} THEN ${forceMotivo || null} ELSE t.force_claim_reason END,
@@ -541,6 +590,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       if (ficha) console.log(`\n${'─'.repeat(60)}\n${ficha}\n${'─'.repeat(60)}`);
       await avisarSolape(s, row.id, ficha);
       await sugerirRelacionadas(s, row.id, ficha);
+      await ofrecerTrabajoDeLaSesionAnterior(s, dueñoAnterior);
     }
 
     else if (cmd === 'heartbeat') {
