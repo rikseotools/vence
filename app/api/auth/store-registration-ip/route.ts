@@ -30,7 +30,7 @@ async function _POST(request: Request) {
     // IP del request, con VEREDICTO de confianza. Esta IP alimenta el antifraude
     // (multi_account_reg_ip), asi que importa de donde salio: una cabecera de borde
     // no es falsificable, x-forwarded-for si.
-    const { ip, trust, source } = resolveClientIp(request.headers)
+    const { ip, trust, source, foreignEdgeHeaders } = resolveClientIp(request.headers)
 
     // OBSERVABILIDAD DEL PROPIO FALLO (27/07): si algun dia cambiamos de CDN y la
     // cabecera de confianza desaparece, esto degradaria en SILENCIO a una IP que el
@@ -44,6 +44,24 @@ async function _POST(request: Request) {
         endpoint: '/api/auth/store-registration-ip',
         errorMessage: `IP de registro obtenida de una fuente ${trust} (${source}): el antifraude por IP pierde garantias`,
         metadata: { trust, ipSource: source, userId },
+      })
+    }
+
+    // EL PUNTO CIEGO QUE FALTABA (31/07): la degradacion de arriba se ve porque la
+    // cabecera BUENA desaparece. Pero el caso inverso —que llegue la cabecera de OTRO
+    // borde— no se veia: sin `TRUSTED_EDGE` se aceptaba como buena, y con el puesto se
+    // ignora... en silencio. Estando detras de un solo CDN esto deberia ser SIEMPRE
+    // cero, asi que si aparece solo puede ser (a) alguien inyectando cabeceras tras
+    // saltarse el CDN, o (b) que hayamos cambiado de proveedor y no de `TRUSTED_EDGE`.
+    // Severity error, no warn: en (a) es un intento de falsear el antifraude por IP.
+    if (foreignEdgeHeaders.length > 0) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'error',
+        eventType: 'client_ip_foreign_edge_header',
+        endpoint: '/api/auth/store-registration-ip',
+        errorMessage: `Cabecera de borde AJENO en el registro (${foreignEdgeHeaders.join(', ')}) estando tras "${process.env.TRUSTED_EDGE}": o alguien la inyecta saltandose el CDN, o TRUSTED_EDGE esta mal tras un cambio de proveedor`,
+        metadata: { foreignEdgeHeaders, trustedEdge: process.env.TRUSTED_EDGE ?? null, ipSource: source, userId },
       })
     }
 

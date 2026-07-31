@@ -53,6 +53,22 @@ export interface ClientIp {
   trust: IpTrust;
   /** Qué la produjo (`cloudfront`, `cloudflare`, `x-forwarded-for`…). Para trazas. */
   source: string;
+  /**
+   * Ids de bordes **que NO son el nuestro** cuya cabecera venía en la petición.
+   *
+   * Estando detrás de un solo CDN, esto debería estar SIEMPRE vacío: nadie tiene
+   * motivo para mandar `cf-connecting-ip` si el borde es CloudFront. Si aparece,
+   * solo hay dos explicaciones y las dos hay que verlas:
+   *   · alguien **inyecta** cabeceras de borde (llegó al origen saltándose el CDN), o
+   *   · nos hemos **equivocado de `TRUSTED_EDGE`** tras un cambio de proveedor.
+   *
+   * Es el punto ciego que quedaba: sin `TRUSTED_EDGE`, una cabecera falsificada de
+   * OTRO proveedor se aceptaba como buena y no se distinguía de la legítima. Con
+   * `TRUSTED_EDGE` deja de aceptarse, pero seguiría siendo invisible — por eso se
+   * REPORTA además de ignorarse. Volumen esperado: **cero**, así que emitirlo no
+   * escala mal; si deja de ser cero, es justo lo que queremos saber.
+   */
+  foreignEdgeHeaders: string[];
 }
 
 /** Sólo lo que necesitamos de `Request`: así se puede testear sin fabricar uno. */
@@ -102,11 +118,18 @@ export function resolveClientIp(
     ? EDGE_PROVIDERS.filter((p) => p.id === trustedEdge)
     : EDGE_PROVIDERS;
 
+  // Cabeceras de borde AJENO presentes. Solo tiene sentido cuando sabemos cuál es el
+  // nuestro: sin `TRUSTED_EDGE` no hay "ajeno" que valga y se deja vacío (no inventamos
+  // una alarma que no podemos justificar).
+  const foreignEdgeHeaders = trustedEdge
+    ? EDGE_PROVIDERS.filter((p) => p.id !== trustedEdge && headers.get(p.header)).map((p) => p.id)
+    : [];
+
   for (const p of permitidos) {
     const raw = headers.get(p.header);
     if (raw) {
       const ip = p.parse(raw);
-      if (ip) return { ip, trust: 'trusted', source: p.id };
+      if (ip) return { ip, trust: 'trusted', source: p.id, foreignEdgeHeaders };
     }
   }
 
@@ -116,11 +139,11 @@ export function resolveClientIp(
     const raw = headers.get(h);
     if (raw) {
       const ip = raw.split(',')[0]?.trim();
-      if (ip) return { ip, trust: 'untrusted', source: h };
+      if (ip) return { ip, trust: 'untrusted', source: h, foreignEdgeHeaders };
     }
   }
 
-  return { ip: 'unknown', trust: 'unknown', source: 'none' };
+  return { ip: 'unknown', trust: 'unknown', source: 'none', foreignEdgeHeaders };
 }
 
 /**

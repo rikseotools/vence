@@ -23,7 +23,7 @@ describe('resolveClientIp', () => {
   describe('bordes de confianza', () => {
     it('CloudFront: quita el puerto (formato IP:puerto)', () => {
       const r = resolveClientIp(h({ 'cloudfront-viewer-address': '203.0.113.7:44321' }), undefined)
-      expect(r).toEqual({ ip: '203.0.113.7', trust: 'trusted', source: 'cloudfront' })
+      expect(r).toEqual({ ip: '203.0.113.7', trust: 'trusted', source: 'cloudfront', foreignEdgeHeaders: [] })
     })
 
     it('CloudFront con IPv6: corta por el ÚLTIMO ":"', () => {
@@ -34,7 +34,7 @@ describe('resolveClientIp', () => {
 
     it('Cloudflare: CF-Connecting-IP viene pelada', () => {
       const r = resolveClientIp(h({ 'cf-connecting-ip': '198.51.100.4' }), undefined)
-      expect(r).toEqual({ ip: '198.51.100.4', trust: 'trusted', source: 'cloudflare' })
+      expect(r).toEqual({ ip: '198.51.100.4', trust: 'trusted', source: 'cloudflare', foreignEdgeHeaders: [] })
     })
 
     it('añadir un proveedor es UNA fila: los declarados se resuelven todos', () => {
@@ -50,12 +50,12 @@ describe('resolveClientIp', () => {
   describe('respaldo falsificable — nunca asciende a "trusted"', () => {
     it('x-forwarded-for se marca untrusted y coge el PRIMER salto', () => {
       const r = resolveClientIp(h({ 'x-forwarded-for': '203.0.113.1, 70.41.3.18' }), undefined)
-      expect(r).toEqual({ ip: '203.0.113.1', trust: 'untrusted', source: 'x-forwarded-for' })
+      expect(r).toEqual({ ip: '203.0.113.1', trust: 'untrusted', source: 'x-forwarded-for', foreignEdgeHeaders: [] })
     })
 
     it('sin ninguna cabecera: unknown, y NO revienta', () => {
       expect(resolveClientIp(h({}), undefined)).toEqual({
-        ip: 'unknown', trust: 'unknown', source: 'none',
+        ip: 'unknown', trust: 'unknown', source: 'none', foreignEdgeHeaders: [],
       })
     })
   })
@@ -84,6 +84,45 @@ describe('resolveClientIp', () => {
     it('devuelve solo la IP, misma prioridad', () => {
       expect(getClientIp({ headers: h({ 'cloudfront-viewer-address': '203.0.113.7:1' }) })).toBe('203.0.113.7')
       expect(getClientIp({ headers: h({}) })).toBe('unknown')
+    })
+  })
+
+  describe('cabecera de borde AJENO (31/07): el punto ciego que quedaba', () => {
+    // Por qué: sin `TRUSTED_EDGE` una `cf-connecting-ip` falsificada se aceptaba como
+    // buena. Ponerlo la ignora — pero en SILENCIO, que es el mismo pecado que motivó el
+    // módulo. Ahora se ignora Y se reporta.
+    it('estando tras CloudFront, una cf-connecting-ip inyectada NI se usa NI se calla', () => {
+      const r = resolveClientIp(
+        h({ 'cloudfront-viewer-address': '203.0.113.7:1', 'cf-connecting-ip': '9.9.9.9' }),
+        'cloudfront',
+      )
+      expect(r.ip).toBe('203.0.113.7')            // gana la nuestra
+      expect(r.trust).toBe('trusted')
+      expect(r.foreignEdgeHeaders).toEqual(['cloudflare'])  // …y queda constancia
+    })
+
+    it('el caso peligroso: sin la cabecera buena, la ajena NO asciende a trusted', () => {
+      const r = resolveClientIp(h({ 'cf-connecting-ip': '9.9.9.9' }), 'cloudfront')
+      expect(r.trust).not.toBe('trusted')
+      expect(r.ip).not.toBe('9.9.9.9')
+      expect(r.foreignEdgeHeaders).toEqual(['cloudflare'])
+    })
+
+    it('el día que cambiemos a Cloudflare, basta cambiar TRUSTED_EDGE (agnóstico)', () => {
+      const cabeceras = h({ 'cf-connecting-ip': '9.9.9.9' })
+      expect(resolveClientIp(cabeceras, 'cloudflare')).toMatchObject({
+        ip: '9.9.9.9', trust: 'trusted', source: 'cloudflare', foreignEdgeHeaders: [],
+      })
+    })
+
+    it('en el caso normal (solo nuestro borde) no reporta nada: no hay ruido', () => {
+      const r = resolveClientIp(h({ 'cloudfront-viewer-address': '203.0.113.7:1' }), 'cloudfront')
+      expect(r.foreignEdgeHeaders).toEqual([])
+    })
+
+    it('sin TRUSTED_EDGE no inventa alarmas (no hay "ajeno" que valga)', () => {
+      const r = resolveClientIp(h({ 'cf-connecting-ip': '9.9.9.9' }), undefined)
+      expect(r.foreignEdgeHeaders).toEqual([])
     })
   })
 
