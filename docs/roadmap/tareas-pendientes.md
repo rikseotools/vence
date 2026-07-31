@@ -1164,6 +1164,25 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-445] 🟠 [ABIERTO 31/07] El clasificador de fichas huérfanas solo mira SU rama: no distingue «perdida» de «sin fusionar»
+
+- **ORIGEN.** Otra sesión reportó que su ficha **T-435 se había perdido**: `git log -S'### [T-435]'` no la encontraba en ninguna revisión, y el aviso de `sync` la clasificó como `sin_pushear`. Concluyó —razonablemente— que el detector había funcionado y el hueco estaba en otro sitio.
+- **PERO LA FICHA NO ESTABA PERDIDA.** Con `--all` sí aparece: commiteada en `refs/heads/sesion/esquina-superior-derecha` (`01014e458`, con el mensaje *«reescribir la ficha, que se perdió antes»*). **Estaba en su rama, sin fusionar.**
+- **EL FALLO, en una palabra:** `estuvoEnElHistorial()` (`scripts/backlog.cjs`) ejecuta `git log -S … -- <fichero>` **sin `--all`**, así que solo ve la rama actual. Y con **un worktree y una rama por sesión, que la ficha viva en otra rama es la situación NORMAL**.
+- **CONFUNDE TRES COSAS QUE NO SON LA MISMA:**
+  | situación | qué es | qué dice hoy |
+  |---|---|---|
+  | ficha en `main` | ✅ | (no avisa) |
+  | **commiteada en la rama de otra sesión** | pendiente de fusionar | ❌ «nunca existió» |
+  | **escrita y perdida sin commitear** | **trabajo perdido** | ❌ «nunca existió» |
+  | estuvo en `main` y ya no | regresión | ✅ la caza |
+  Las dos del medio se ven **idénticas**, y una es normal mientras la otra es trabajo perdido. Por eso quien lo sufre **no puede saber cuál le tocó**.
+- **Y las DOS ocurren de verdad, el mismo día:** T-435 era «sin fusionar» (falsa alarma), y **T-407 se perdió de verdad** —escrita, cerrada en la BD, y nunca en ningún commit— y hubo que reescribirla a mano.
+- **ARREGLO (pequeño, pero hay que hacerlo con cuidado):** añadir `--all` y devolver **tres** estados en vez de dos (`en_main` · `en_otra_rama` · `nunca_commiteada`), y que el mensaje diga cuál. Ojo con el efecto de borde: con `--all`, una ficha que solo existe en una rama ajena dejaría de ser `sin_pushear` y **no debe** clasificarse como `borrada` —no es una regresión, es trabajo en vuelo—.
+- **Dónde:** `estuvoEnElHistorial()` en `scripts/backlog.cjs` y `lib/backlog/fichaHuerfana.cjs` (que ya tiene tests).
+- **Relacionadas:** [T-407] (la que sí se perdió), [T-443] (misma familia, la lleva otra sesión), [T-382].
+
+
 ### [T-434] 🔴 [ABIERTO 31/07] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
 
 - **Esfuerzo: larga** (el diagnóstico está hecho; falta encontrar por qué la reconciliación no les alcanza, y eso es tocar identidad).
