@@ -39,26 +39,14 @@ const REPO = path.join(__dirname, '..');
 const MD_REL = path.join('docs', 'roadmap', 'tareas-pendientes.md');
 const MD = path.join(REPO, MD_REL);
 
-/**
- * ¿La ficha de este id ESTUVO alguna vez en el markdown? Es la prueba que separa «me la han
- * borrado» (regresión) de «otra sesión no ha pusheado la suya» (normal con 2-10 sesiones).
- *
- * FAIL-OPEN a `false` a propósito, igual que el push-guard hace con la BD: si git no puede
- * contestar (no es un repo, el fichero se renombró, cualquier avería), lo que NO se puede hacer es
- * inventarse una regresión y mandar a alguien a buscar una ficha que nunca existió. Un aviso que
- * miente una vez deja de leerse para siempre.
- */
-function estuvoEnElHistorial(id) {
-  try {
-    const { execFileSync } = require('child_process');
-    const out = execFileSync(
-      'git', ['log', '--format=%h', '-S', `### [${id}]`, '--', MD_REL],
-      { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15_000 });
-    return out.trim().length > 0;
-  } catch {
-    return false;
-  }
-}
+// Los hechos de git sobre una ficha viven en su propio módulo (T-427): con el `cwd` inyectado se
+// pueden ejercitar contra un repositorio de prueba que reproduzca el incidente. Estaban aquí dentro,
+// y por eso el punto ciego de «solo miro mi rama» sobrevivió a tener tests: lo testeable era la
+// decisión, no los datos con los que se decide.
+const {
+  estuvoEnElHistorialLocal, hechosDeOrigin, commitQueLaQuito, refrescarOrigin,
+} = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
+const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -889,15 +877,46 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const idsEnMd = new Set(md.map((t) => t.id));
       const sinFicha = vivas.map((r) => r.id).filter((id) => !idsEnMd.has(id));
       if (sinFicha.length) {
+        // La prueba de que una ficha existió está en `origin/main`, NO en mi rama (T-427). Se
+        // refresca la ref antes de opinar: sin fetch, una ficha borrada hace diez minutos se ve
+        // «todavía presente» y el aviso llega tarde. Best-effort y con techo de tiempo — que no
+        // haya red no puede dejar el `sync` colgado, y el caso se degrada solo hacia
+        // `desactualizada`/`no_verificable`, que son avisos honestos y no un verde falso.
+        refrescarOrigin({ cwd: REPO });
         const { clasificarHuerfanas } = require(path.join(REPO, 'lib', 'backlog', 'fichaHuerfana.cjs'));
-        const { borradas, sinPushear } = clasificarHuerfanas(
-          sinFicha.map((id) => ({ id, estuvoEnElMarkdown: estuvoEnElHistorial(id) })));
+        const { borradas, noVerificables, desactualizadas, sinPushear } = clasificarHuerfanas(
+          sinFicha.map((id) => ({
+            id,
+            estuvoEnElMarkdown: estuvoEnElHistorialLocal(id, GIT_FICHAS),
+            origen: hechosDeOrigin(id, GIT_FICHAS),
+          })));
         if (borradas.length) {
           console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
           console.error('   Alguien commiteó el fichero rancio y se llevó la ficha por delante.');
           for (const id of borradas) {
+            const culpable = commitQueLaQuito(id, GIT_FICHAS);
+            if (culpable) console.error(`   ${id} ← la quitó:  ${culpable}`);
             console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
+            // OBSERVABILIDAD — que no dependa de que alguien esté mirando esta terminal.
+            // La lección entera de T-427 es que el aviso se imprimió y no pasó nada: quien BORRA
+            // la ficha no es quien corre el `sync` después, y la sesión víctima puede estar ya
+            // muerta. Con el evento queda serie temporal (¿cuántas veces al mes se destruye
+            // contexto?) y la regla `backlog_ficha_borrada` lo saca por correo. Best-effort: la
+            // telemetría no puede tumbar un `sync`.
+            try {
+              await s`INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+                VALUES (gen_random_uuid(), now(), 'cli', 'warn', 'backlog_ficha_borrada',
+                        ${s.json({ tarea: id, commit: culpable || null, detectada_por: sid })}, now())`;
+            } catch { /* observabilidad fail-open, nunca bloquea el sync */ }
           }
+        }
+        if (noVerificables.length) {
+          console.error(`⚠️  no puedo comprobar si estas fichas existieron (sin ver origin/main): ${noVerificables.join(', ')}`);
+          console.error('   No es «están bien»: es que no lo sé. Comprueba el remoto y vuelve a correr el sync.');
+        }
+        if (desactualizadas.length) {
+          console.log(`↻ están en origin/main y tu rama va por detrás: ${desactualizadas.join(', ')}`);
+          console.log('   No falta nada: actualiza la rama (git pull --rebase origin main).');
         }
         if (sinPushear.length) {
           console.log(`ℹ️ sin ficha aquí todavía (otra sesión sin pushear): ${sinPushear.join(', ')}`);

@@ -5268,7 +5268,74 @@ export const RULE_LAW_SOURCE_CHANGED: AlertRule = {
   cooldownMin: 720,
 };
 
+/**
+ * A una tarea VIVA del backlog le han borrado la ficha de `origin/main`. [T-427]
+ *
+ * ── POR QUÉ EXISTE ──────────────────────────────────────────────────────────
+ * `docs/roadmap/tareas-pendientes.md` lo tocan las 2-10 sesiones a la vez y las fichas nuevas se
+ * insertan todas en el mismo sitio, así que el conflicto es lo normal. Resolverlo quedándose con
+ * «mi lado» borra el contexto que otra sesión acababa de escribir — pasó el 29/07 (T-251, T-254)
+ * y otra vez el 31/07 (cinco fichas de dos sesiones distintas, commit `a9797ae3a`).
+ *
+ * El CLI ya lo grita al correr `sync`, y aun así hace falta esto: **quien borra la ficha no es
+ * quien corre el `sync` después**, y la sesión víctima puede haber muerto ya. Las dos veces se
+ * descubrió por casualidad, al volver a abrir la ficha por otro motivo. Un daño que solo se ve si
+ * alguien pasa por delante es un daño invisible.
+ *
+ * Regla PROPIA y no el catch-all, por el mismo motivo que `law_source_changed`:
+ * `senal_error_sin_vigilancia` está calibrado para inundaciones (≥150/h) y esto son uno o dos
+ * avisos por semana — nacería invisible justo por ser poco frecuente.
+ */
+export const RULE_BACKLOG_FICHA_BORRADA: AlertRule = {
+  name: 'backlog_ficha_borrada',
+  severity: 'warn',
+  emailAlways: true,
+  query: sql`
+    SELECT metadata->>'tarea' AS tarea,
+           metadata->>'commit' AS commit,
+           metadata->>'detectada_por' AS sesion,
+           MAX(ts) AS "lastTs"
+    FROM observable_events
+    WHERE event_type = 'backlog_ficha_borrada'
+      AND ts > NOW() - INTERVAL '24 hours'
+    GROUP BY 1, 2, 3
+    ORDER BY "lastTs" DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lineas = rows
+      .slice(0, 10)
+      .map((r) => {
+        const x = r as { tarea?: string; commit?: string };
+        return `   · ${x.tarea ?? '?'}${x.commit ? `\n     la quitó: ${x.commit}` : ''}`;
+      })
+      .join('\n');
+    return {
+      title: `🗑️ ${rows.length} ficha(s) del backlog borradas de main con la tarea aún VIVA`,
+      body:
+        `Una tarea sigue abierta en \`backlog_tasks\` y su ficha ya no está en el markdown de ` +
+        `\`origin/main\`. \`list\` la seguirá ofreciendo por su título y detrás no habrá nada que ` +
+        `leer, así que quien la coja empieza sin contexto:\n\n${lineas}\n\n` +
+        `Recuperarla (el contenido NO se ha perdido, está en el historial):\n` +
+        `  git log -S'### [T-NNN]' -- docs/roadmap/tareas-pendientes.md\n\n` +
+        `Causa habitual: resolver un conflicto de \`tareas-pendientes.md\` quedándose con un solo ` +
+        `lado. Son fichas independientes, no versiones de la misma: se conservan LAS DOS. ` +
+        `Runbook: docs/runbooks/tareas-pendientes.md.`,
+      metadata: { fichas: rows.length },
+      fingerprint: `backlog_ficha_borrada:${rows
+        .map((r) => (r as { tarea?: string }).tarea)
+        .join(',')}`,
+    };
+  },
+  // 12 h: recuperar la ficha es un `git log` y un pegado, pero si nadie está delante no sirve de
+  // nada repetirlo cada hora. Que insista una vez al día hasta que se arregle.
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Ficha de tarea viva borrada de main (2026-07-31, T-427): el contexto de trabajo se destruye en
+  // silencio al resolver conflictos, y las dos veces que pasó se descubrió por casualidad.
+  RULE_BACKLOG_FICHA_BORRADA,
   // Fuente legal cambiada (2026-07-31, T-380): regla propia porque el catch-all solo ve
   // inundaciones y esto son uno o dos avisos al día.
   RULE_LAW_SOURCE_CHANGED,
