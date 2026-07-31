@@ -1083,6 +1083,25 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-431] 🟡 [ABIERTO 31/07] Un worktree abandonado con trabajo sin pushear es INVISIBLE hasta que alguien mira
+
+- **ORIGEN.** Limpiando worktrees el 31/07, con Manuel preguntando si «ya estaba todo hecho». Había **5 worktrees con trabajo fuera de `main`** y nadie sabía qué contenían: llevaban entre 3 y 9 días ahí.
+- **EL RESULTADO DE MIRARLOS UNO A UNO, que es el dato que justifica esta ficha:**
+  | worktree | qué tenía | veredicto |
+  |---|---|---|
+  | `vence-clean` | **47 commits** sin pushear | los 47 ya estaban en `main` por contenido (`git cherry`) |
+  | `pagos-planes` | 7 ficheros | **idénticos** a `main`, byte a byte |
+  | `umu-golive` | 2 ficheros | versión DESFASADA; la UC3M ya estaba en `main` |
+  | `scrape-opositatest-tai` | 14 ficheros | markdown de antes de los ids `T-nnn` + limpieza a medias |
+  | **`sesion-28jul-d`** | 3 ficheros | ⚠️ **43 líneas de documentación que NUNCA se subieron** |
+- **O sea: 4 de 5 eran ruido y 1 tenía contenido real que llevaba TRES DÍAS perdido.** Y no era menor: dos gotchas con coste medido —que catalogar exige escribir también `convocatorias` (15 filas quedaron en callejón sin salida), y que el BOE por `txt.php` clona el armazón del portal sin ninguna cifra—. Rescatadas a `main` en esa misma sesión.
+- **EL HUECO:** `scripts/worktrees/listar-worktrees.sh` **sí** enseña los commits sin pushear… pero **nada lo vigila**. No hay barrido, ni cron, ni señal: solo lo ves si te acuerdas de ejecutarlo. Y justo las sesiones que mueren no dejan a nadie que se acuerde.
+- **Por qué no basta con [T-430]:** aquello enseña el trabajo de la sesión anterior **cuando alguien retoma su tarea**. Si nadie la retoma —o si el trabajo perdido son documentos que no cuelgan de ninguna ficha, como fue el caso— sigue invisible. Son complementarios: T-430 cubre el rescate dirigido, esto cubre el barrido.
+- **Cómo hacerlo, con la calibración clara:** un chequeo que liste worktrees **sin latido reciente Y con `origin/main..HEAD` no vacío o ficheros sin commitear**. La calibración que lo hace útil es distinguir **contenido único de estar desfasado**: casi todo lo que parece trabajo perdido ya está en `main`, así que el detector debe usar `git cherry` (equivalencia de parche) y no contar commits, o dará 5 avisos de los que 4 son ruido — y morirá como muere todo aviso que grita en falso.
+- **Dónde:** encaja en el barrido nocturno o como aviso en `latidos.cjs`, que ya es el sitio donde se mira quién está vivo.
+- **Relacionadas:** [T-430] (rescate al retomar), [T-415] (una sesión por directorio), [T-296] (el latido).
+
+
 ### [T-428] 🟠 [ABIERTO 31/07] Una sesión borra las fichas de otra al resolver el conflicto de `tareas-pendientes.md`, y no lo caza nada
 
 - **Esfuerzo: ~1 h** (el detector es una comparación de dos versiones del mismo fichero; lo puro se testea sin git).
