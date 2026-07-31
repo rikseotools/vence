@@ -1051,18 +1051,6 @@ incluida).
 - **Ojo al arreglar:** la BD es la fuente de verdad del ESTADO; el markdown, del CONTENIDO. Mover una ficha de sección **no** debe cambiar el estado en BD — y `sync` tiene guardarraíles (`esColisionReal`, abortos por id duplicado) que hay que respetar, no rodear.
 - **Sugerencia:** una sola sección `## Abiertas` al principio, una sola `## Hechas`, y un test que exija exactamente una de cada. Alternativa más barata: que `inOpenSection` deje de depender del orden de secciones y se calcule por la marca ✅ de la propia cabecera.
 
-### [T-383] 🟢 [ABIERTO 31/07] Suelo nocturno del frontend en AWS: de madrugada sobran tareas (~$25-30/mes)
-
-- **Qué:** el frontend corre con `min_capacity=8` las 24 horas. **De día está justificado** (medido: el pico son ~214 req/target/min contra el objetivo 250 de `ALBRequestCountPerTarget`, o sea que la política pide esas 8). **De noche no:** entre 01:00 y 05:00 el tráfico está al **3-6% del objetivo** con las mismas 8 tareas, y **no hay ninguna `scheduled-action`**.
-- **Cuánto:** ~25 de 192 task-horas/día ≈ **13% de la línea de frontend ≈ $25-30/mes**. Modesto pero recurrente, reversible en un minuto y **totalmente independiente de la migración** ([T-089], aparcada).
-- **⚠️ Aviso que evita repetir mi error:** yo mismo sugerí primero *"bajar `min-capacity`"* como la vía rápida al ahorro y **me equivoqué en el orden de magnitud** — de día el autoescalado repone las tareas y no ahorra nada. La palanca es una **scheduled-action nocturna**, no bajar el suelo. Detalle y mediciones en [T-089] §"la factura de AWS".
-- **Antes de tocar:** `frontend.tf` ya declara `min_capacity=8` (codificado el 30/07); la scheduled-action debe ir **también en Terraform**, no solo por CLI — es la lección de que la contención del 21/07 vivió meses solo en el CLI.
-- **✅ HECHO 31/07 (autorizado por Manuel).** Dos acciones programadas, en UTC a propósito para que el horario de verano no mueva la ventana: `vence-frontend-noche-baja` a la **01:00 UTC** (min 8→5) y `vence-frontend-dia-sube` a las **07:00 UTC** (min 5→8, antes de que el tráfico suba: a las 07:00 ya va por el 22,8%). **Codificadas en `backend/infra/frontend.tf` a la vez que se aplicaron.**
-- **🔑 EL SUELO NOCTURNO ES 5 Y NO 3, y no es prudencia sino aritmética:** el servicio despliega en-sitio con `maximumPercent=100`/`minimumHealthyPercent=80`, y ECS **redondea hacia arriba** las tareas sanas exigidas. Con suelo 4 exige 4 sanas y el tope son 4 → **no puede parar ninguna para reemplazarla: el deploy se queda bloqueado**. Comprobado ANTES de aplicar: suelo 3 ❌ · 4 ❌ · 5 ✅ · 6 ✅ · 8 ✅. Si algún día se relaja `minimumHealthyPercent`, este 5 se puede revisar a la baja.
-- **📉 Ahorro real, corregido a la baja por lo anterior:** 3 tareas menos × 6 h/día = **18 de 192 task-horas ≈ 9%** de la línea de frontend, no el 13% que estimé antes de ver la restricción del deploy. Del orden de **$15-20/mes**, no $25-30. Prefiero el número bueno que el titular.
-- **Medición que lo sostiene (30/07, por hora, req/target contra el objetivo de 15.000/h):** 02:00 → 7,9% · 03:00 → 5,4% · **04:00 → 2,2%** · 05:00 → 4,7% · 06:00 → 9,0%. A 5 tareas eso sube a ~12,7%: sigue sobrando de largo.
-- **Reversible:** borrar las dos acciones y el suelo vuelve al `min_capacity=8` del target.
-
 ### [T-380] 🟠 [ABIERTO 31/07] Registrar la fuente oficial de las 153 leyes sin vigilante (4.518 preguntas) — el research por-ley que bloquea toda la vigilancia
 
 - **Por qué es la tarea de verdad:** la vigilancia por hash ([T-026], `npm run laws:vigilar`) ya funciona, pero **solo puede mirar donde hay una URL registrada**. Hoy son 21 leyes. Las otras **153, que sirven 4.518 preguntas, no tienen fuente anotada en ninguna parte**, así que nadie puede comprobar si su texto ha cambiado. No es un problema de herramientas —están todas construidas— sino de **saber de dónde se descarga cada norma**, y eso es research manual: boletines autonómicos, sedes universitarias, tratados.
@@ -1429,6 +1417,19 @@ incluida).
 
 
 ## Hechas
+
+### [T-383] ✅ [HECHA 31/07] Suelo nocturno del frontend en AWS: de madrugada sobran tareas (~$25-30/mes)
+
+- **Qué:** el frontend corre con `min_capacity=8` las 24 horas. **De día está justificado** (medido: el pico son ~214 req/target/min contra el objetivo 250 de `ALBRequestCountPerTarget`, o sea que la política pide esas 8). **De noche no:** entre 01:00 y 05:00 el tráfico está al **3-6% del objetivo** con las mismas 8 tareas, y **no hay ninguna `scheduled-action`**.
+- **Cuánto:** ~25 de 192 task-horas/día ≈ **13% de la línea de frontend ≈ $25-30/mes**. Modesto pero recurrente, reversible en un minuto y **totalmente independiente de la migración** ([T-089], aparcada).
+- **⚠️ Aviso que evita repetir mi error:** yo mismo sugerí primero *"bajar `min-capacity`"* como la vía rápida al ahorro y **me equivoqué en el orden de magnitud** — de día el autoescalado repone las tareas y no ahorra nada. La palanca es una **scheduled-action nocturna**, no bajar el suelo. Detalle y mediciones en [T-089] §"la factura de AWS".
+- **Antes de tocar:** `frontend.tf` ya declara `min_capacity=8` (codificado el 30/07); la scheduled-action debe ir **también en Terraform**, no solo por CLI — es la lección de que la contención del 21/07 vivió meses solo en el CLI.
+- **✅ HECHO 31/07 (autorizado por Manuel).** Dos acciones programadas, en UTC a propósito para que el horario de verano no mueva la ventana: `vence-frontend-noche-baja` a la **01:00 UTC** (min 8→5) y `vence-frontend-dia-sube` a las **07:00 UTC** (min 5→8, antes de que el tráfico suba: a las 07:00 ya va por el 22,8%). **Codificadas en `backend/infra/frontend.tf` a la vez que se aplicaron.**
+- **🔑 EL SUELO NOCTURNO ES 5 Y NO 3, y no es prudencia sino aritmética:** el servicio despliega en-sitio con `maximumPercent=100`/`minimumHealthyPercent=80`, y ECS **redondea hacia arriba** las tareas sanas exigidas. Con suelo 4 exige 4 sanas y el tope son 4 → **no puede parar ninguna para reemplazarla: el deploy se queda bloqueado**. Comprobado ANTES de aplicar: suelo 3 ❌ · 4 ❌ · 5 ✅ · 6 ✅ · 8 ✅. Si algún día se relaja `minimumHealthyPercent`, este 5 se puede revisar a la baja.
+- **📉 Ahorro real, corregido a la baja por lo anterior:** 3 tareas menos × 6 h/día = **18 de 192 task-horas ≈ 9%** de la línea de frontend, no el 13% que estimé antes de ver la restricción del deploy. Del orden de **$15-20/mes**, no $25-30. Prefiero el número bueno que el titular.
+- **Medición que lo sostiene (30/07, por hora, req/target contra el objetivo de 15.000/h):** 02:00 → 7,9% · 03:00 → 5,4% · **04:00 → 2,2%** · 05:00 → 4,7% · 06:00 → 9,0%. A 5 tareas eso sube a ~12,7%: sigue sobrando de largo.
+- **Reversible:** borrar las dos acciones y el suelo vuelve al `min_capacity=8` del target.
+
 
 ### [T-376] ✅ [HECHA 31/07] Los artículos desfasados del RDL 2/2004, y el falso «truncado» que los acompañaba
 - **Resultado: los tres artículos coinciden ya con el BOE vigente**, y por el camino se arregló un fallo de un núcleo compartido que llevaba dando falsos positivos.
