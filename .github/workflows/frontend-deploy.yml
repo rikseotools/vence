@@ -419,6 +419,45 @@ jobs:
             emit_trigger_failure "$CODE"
           fi
 
+      # Smoke post-deploy de la POLÍTICA DE IDENTIDAD en los pagos (T-340). Prueba las dos
+      # mitades a la vez: que el checkout NO corta con un id desincronizado —el fallo del
+      # 31/07, 17 intentos de compra bloqueados sin que saltara ninguna alerta— y que cancelar
+      # SÍ sigue cortando. Por separado no prueban nada: una pasaría con todo abierto y la
+      # otra con todo cerrado. El deploy es el único momento en que esa política cambia.
+      - name: Smoke post-deploy — identidad en los pagos
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INGEST_URL: https://www.vence.es/api/observability/ingest
+          INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
+        run: |
+          emit_trigger_failure() {
+            [ -z "${INGEST_SECRET}" ] && { echo "skip emit — sin INGEST_SECRET"; return; }
+            curl -sS -X POST "${INGEST_URL}" \
+              -H "Content-Type: application/json" \
+              -H "x-ingest-secret: ${INGEST_SECRET}" \
+              -d "{\"events\":[{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"source\":\"gha\",\"severity\":\"critical\",\"eventType\":\"canary_identidad_pago_failed\",\"errorMessage\":\"Disparo del canary de identidad no llegó (HTTP $1) en frontend-deploy #${{ github.run_number }}\",\"metadata\":{\"step\":\"trigger_unreachable\",\"httpCode\":\"$1\"}}]}" \
+              >/dev/null && echo "→ emitido canary_identidad_pago_failed (trigger_unreachable)"
+          }
+
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "⚠️ CRON_SECRET no configurado — no se puede disparar el canary"
+            emit_trigger_failure 0
+            exit 0
+          fi
+          CODE=$(curl -s -o /tmp/identidad.json -w '%{http_code}' --max-time 35 \
+            -X POST https://api.vence.es/api/v2/canary/run-identidad-pago \
+            -H "Authorization: Bearer ${CRON_SECRET}" || echo 000)
+          echo "HTTP $CODE"; cat /tmp/identidad.json 2>/dev/null; echo
+          if [ "$CODE" = "200" ]; then
+            echo "✅ identidad OK — la caja no se cierra por un id desincronizado y cancelar sigue cortando."
+          elif [ "$CODE" = "503" ]; then
+            echo "⚠️ canary corrió y FALLÓ (503) — el backend ya emitió la alerta [Vence CRITICAL]."
+          else
+            echo "⚠️ disparo no llegó al canary (HTTP $CODE) — emitiendo a observabilidad."
+            emit_trigger_failure "$CODE"
+          fi
+
       # Invalidar CloudFront. Las páginas prerenderizadas (ISR) las cachea
       # CloudFront hasta max_ttl (1 día, ver frontend.tf cache policy
       # frontend_default). Sin esto, un cambio de página estática (p.ej. el

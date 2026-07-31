@@ -3158,6 +3158,65 @@ export const RULE_CANARY_QUESTIONS_GATE_FAILED: AlertRule<{
 };
 
 /**
+ * El canary de la política de identidad en los pagos falló (31/07/2026).
+ *
+ * Prueba en vivo, tras cada deploy, las DOS mitades de esa política: que el checkout **no**
+ * corta cuando el cliente manda un id desincronizado, y que cancelar **sí** corta. Por
+ * separado no prueban nada —una pasaría con todo abierto y la otra con todo cerrado—, así que
+ * cualquiera de las dos en rojo es una regresión real.
+ *
+ * Nace del caso del 31/07: alguien intentó comprar premium 17 veces en 10 minutos y recibió
+ * 403 en todas, y no se enteró nadie hasta el día siguiente.
+ */
+export const RULE_CANARY_IDENTIDAD_PAGO_FAILED: AlertRule<{
+  n: number;
+  lastStep: string | null;
+  lastError: string | null;
+  lastStatus: number | null;
+}> = {
+  name: 'canary_identidad_pago_failed',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(metadata->>'step' ORDER BY created_at DESC))[1] AS "lastStep",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS "lastError",
+           (ARRAY_AGG(http_status ORDER BY created_at DESC))[1] AS "lastStatus"
+    FROM observable_events
+    WHERE event_type = 'canary_identidad_pago_failed'
+      AND created_at > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🚨 Canary de identidad en pagos FALLÓ (${r.n}) — o no se puede pagar, o se cancela de más`,
+      body:
+        `El canary post-deploy probó la política de identidad de /api/stripe y algo cambió.\n\n` +
+        `Último fallo:\n  - step: ${r.lastStep ?? '(n/a)'}\n  - http_status: ${r.lastStatus ?? '(n/a)'}\n  - error: ${r.lastError ?? '(n/a)'}\n\n` +
+        `ACCIONES SEGÚN STEP:\n` +
+        `  - checkout_cerrado (403): el checkout volvió a cortar por identidad. Un cliente con la\n` +
+        `    sesión desincronizada NO PUEDE PAGAR — es el caso del 31/07 (17 intentos bloqueados).\n` +
+        `    Mirar \`alDiscrepar\` en app/api/stripe/create-checkout/route.js: debe ser\n` +
+        `    'seguir-con-el-token'.\n` +
+        `  - cancel_abierto: PEOR. Cancelar aceptó un userId ajeno; con una pantalla desincronizada\n` +
+        `    se cancelaría la suscripción de quien tiene el token, en silencio. Debe ser 'cortar'.\n` +
+        `  - sesion_inutil: el canary no pudo ni leer lo suyo. No dice nada de la política: mirar\n` +
+        `    SMOKE_USER_ID / SUPABASE_JWT_SECRET y verifyAuth antes de tocar los pagos.\n\n` +
+        `Contexto: T-340. La política y su porqué, en lib/api/shared/auth.ts.`,
+      metadata: {
+        count: r.n,
+        lastStep: r.lastStep,
+        lastError: r.lastError,
+        lastStatus: r.lastStatus,
+        windowMin: 15,
+      },
+      fingerprint: 'canary_identidad_pago_failed',
+    };
+  },
+  cooldownMin: 15,
+};
+
+/**
  * Scraping / barrido del banco de preguntas.
  *
  * Detecta cuentas (incluido premium, que NO tiene límite diario) que se sirven
@@ -5207,6 +5266,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SCRAPING_SWEEP as AlertRule,
   // Canary post-deploy del gate anti-scraping: que NO bloquee a usuarios normales.
   RULE_CANARY_QUESTIONS_GATE_FAILED as AlertRule,
+  // Su gemelo para la política de identidad en los pagos (31/07/2026).
+  RULE_CANARY_IDENTIDAD_PAGO_FAILED as AlertRule,
   // Meta-observabilidad: guardarraíl anti-flood del log de errores (11/07/2026,
   // tras el flood de 401 anónimos que tumbó el panel admin). Auto-detecta el
   // próximo bucket que inunde validation_error_logs antes de que sea un problema.

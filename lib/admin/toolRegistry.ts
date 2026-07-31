@@ -208,6 +208,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'el Payment Link recién creado se DESACTIVA: un enlace vivo sin fila detrás es dinero ' +
       'que puede entrar sin saber por qué, y en Stripe no caducan solos.',
   },
+  canary_identidad_pago: {
+    titulo: 'Comprobar tras cada deploy que la caja no se cierra por un id desincronizado (y que cancelar sigue cortando)',
+    ruta: 'backend/src/canary-identidad-pago/canary-identidad-pago.service.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'POST /api/v2/canary/run-identidad-pago (CRON_SECRET). Lo dispara el workflow ' +
+      '`frontend-deploy` — el deploy es el único momento en que esa política cambia—, no un ' +
+      'cron. Prueba **las dos mitades juntas**: que `create-checkout` NO corta con un userId ' +
+      'ajeno y que `cancel` SÍ corta; por separado no prueban nada (una pasa con todo abierto ' +
+      'y la otra con todo cerrado). Nace del 31/07: 17 intentos de compra bloqueados con 403 ' +
+      'y ninguna alerta. **La sonda destructiva no puede hacer daño**: antes comprueba en vivo ' +
+      'que su sujeto no tiene suscripción, y si la tuviera se omite y lo dice ' +
+      '(`cancelAssertion`) en vez de arriesgarse o inventarse un verde. Integrado sin silos: ' +
+      "`endpoint='canary-identidad-pago'` entra en el uptime de `/admin/salud-sistema` (que " +
+      "agrega por `canary-%`), la regla `canary_identidad_pago_failed` manda el correo, y el " +
+      'tipo está en `CON_REGLA_PROPIA` para que el catch-all no duplique el aviso.',
+  },
   sim_precio_heredado: {
     titulo: 'Comprobar contra datos reales que el botón «recupera tu precio» cobra lo que debe y una sola vez',
     ruta: 'scripts/sim/sim-precio-heredado.ts',

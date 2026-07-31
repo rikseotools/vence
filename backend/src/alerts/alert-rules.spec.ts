@@ -2494,3 +2494,39 @@ describe('RULE_COBRO_BLOQUEADO_AUTH — el 403 en la caja también es una venta 
     expect(n.body).toContain('/api/stripe/create-checkout');
   });
 });
+
+// ── El canary de identidad en pagos (31/07/2026) ─────────────────────────────────────────
+import { RULE_CANARY_IDENTIDAD_PAGO_FAILED } from './alert-rules';
+
+describe('RULE_CANARY_IDENTIDAD_PAGO_FAILED', () => {
+  const fila = (n: number, lastStep = 'checkout_cerrado') => [
+    { n, lastStep, lastError: 'el checkout volvió a cortar', lastStatus: 403 },
+  ];
+
+  it('un solo fallo ya avisa: es post-deploy, no hay racimo que esperar', () => {
+    expect(RULE_CANARY_IDENTIDAD_PAGO_FAILED.shouldFire(fila(1))).toBe(true);
+    expect(RULE_CANARY_IDENTIDAD_PAGO_FAILED.shouldFire(fila(0))).toBe(false);
+  });
+
+  it('escucha el evento que emite el controlador', () => {
+    expect(JSON.stringify(RULE_CANARY_IDENTIDAD_PAGO_FAILED.query)).toContain(
+      'canary_identidad_pago_failed',
+    );
+  });
+
+  it('el aviso distingue los dos fallos, que piden arreglos opuestos', () => {
+    const n = RULE_CANARY_IDENTIDAD_PAGO_FAILED.buildNotification(fila(1));
+    // Uno significa «nadie puede pagar»; el otro, «se cancela la cuenta equivocada».
+    expect(n.body).toMatch(/checkout_cerrado/);
+    expect(n.body).toMatch(/cancel_abierto/);
+    expect(n.body).toMatch(/seguir-con-el-token/);
+  });
+
+  it('avisa de que una sesión inútil NO habla de la política', () => {
+    // Sin esto, un `sesion_inutil` se leería como «los pagos están rotos» y se tocaría
+    // justo lo que no falla.
+    expect(RULE_CANARY_IDENTIDAD_PAGO_FAILED.buildNotification(fila(1)).body).toMatch(
+      /sesion_inutil/,
+    );
+  });
+});

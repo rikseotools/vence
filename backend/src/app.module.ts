@@ -94,6 +94,7 @@ import { CanaryStatsPipelineModule } from './canary-stats-pipeline/canary-stats-
 import { CanaryRunnerModule } from './canary-runner/canary-runner.module';
 // Canary del gate anti-scraping (Turnstile en /api/questions/filtered). SIN cron:
 // se dispara POST-DEPLOY vía POST /api/v2/canary/run-questions-gate (CRON_SECRET).
+import { CanaryIdentidadPagoModule } from './canary-identidad-pago/canary-identidad-pago.module';
 import { CanaryQuestionsGateModule } from './canary-questions-gate/canary-questions-gate.module';
 // External heartbeat — watcher del watcher. Único monitoreo que SOBREVIVE
 // a una caída total del Fargate (la alarma viene de Healthchecks.io externo).
@@ -196,6 +197,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CanaryStatsPipelineModule, // cada 5min — respuesta sintética → verifica propagación e2e a uqh_v2
     CanaryRunnerModule, // POST /api/v2/canary/run-now — dispara los 5 on-demand
     CanaryQuestionsGateModule, // POST /api/v2/canary/run-questions-gate — gate post-deploy
+    CanaryIdentidadPagoModule, // POST /api/v2/canary/run-identidad-pago — política de identidad en pagos
     ExternalHeartbeatModule, // cada 5min — ping a Healthchecks.io (watcher del watcher)
     // Sprint 1 outbox test_questions (28/05/2026) — Fase 1.2 infra worker
     // (no-op handlers todavía; Fases 1.3+ añaden lógica con shadow mode).
