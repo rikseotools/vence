@@ -1082,6 +1082,23 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
+
+- **ORIGEN.** Manuel (31/07): *«el que escribe la ficha y tarea, ¿debería poner tiempo aprox de esfuerzo y fecha límite para ejecutarla? esas dos variables para hacer mejor triaje»*.
+- **De las dos, una YA EXISTÍA:** `due_at`/`due_reason` ([T-345]). La usa **1 de 182 tareas abiertas**, y eso es lo CORRECTO, no un olvido: un CHECK exige que el motivo sea EXTERNO (quién lo espera, o qué fecha fija un tercero) precisamente para que no se inventen. Con 182 tareas y tres plazos reales, permitir inventarlos hace que en un mes todo sea urgente y nada lo sea. **No se tocó.**
+- **⚠️ LO QUE SALIÓ AL IR A AÑADIR EL ESFUERZO, y cambió el orden del trabajo: había CERO tareas con duración medible.** `done`, `release` y `pause` ponían `claimed_at = NULL` — o sea, **borrábamos el único dato que permite contrastar una estimación**. Sin eso, cualquier cajón de esfuerzo sería incontrastable PARA SIEMPRE: dentro de tres meses nadie podría decir si significan algo, y el campo moriría como mueren todos los que nadie puede desmentir. **Por eso la medición va primero y la estimación después.**
+- **✅ MEDICIÓN (`worked_seconds`, `first_claimed_at`).** Se acumula el rato en que alguien la tenía reclamada DE VERDAD, sumando tramos (una tarea se coge y se suelta varias veces). **No** `closed_at - created_at`: el tiempo de pared miente — una tarea abierta el 19/07 y cerrada el 31/07 no costó doce días, estuvo esperando. Y `first_claimed_at` separa *«costó mucho»* de *«esperó mucho a que alguien la cogiera»*.
+  - **Ojo con `reap`: ahí NO se acumula, a propósito.** Son sesiones MUERTAS y su `claimed_at` puede tener tres días; sumarlo envenenaría la única medida que sirve, y una medida envenenada es peor que no tenerla. Lo detecté al revisar en qué CINCO sitios había caído la acumulación.
+- **✅ ESFUERZO en cuatro cajones**, no en horas: `minutos` · `rato` · `larga` · `sesion_propia`. Una estimación en horas se vuelve ficción («2h» para todo) y envejece sola, igual que las fechas que se escribían en los títulos ([T-252]). **La frontera que de verdad cambia una decisión es la última**: si necesita sesión propia, no la encajas al final de la que tienes.
+  - `list` y `next` ordenan **por prioridad y, a igualdad, por lo más CORTO** — la preferencia ya expresada de *«de tareas cortas a largas»*, que hasta hoy se hacía a ojo leyendo la ficha.
+  - **Lo NO declarado va al FINAL de su prioridad, nunca al principio.** Si el hueco se ordenara como «corto», la cabeza de la lista se llenaría de tareas que nadie ha mirado: el campo empeoraría justo lo que viene a mejorar.
+  - **`done` canta el contraste**: *«3h 12m — declaraste rato (techo 2 h): se PASÓ»*. Ese momento es la razón de ser del campo.
+- **✅ Y TAREAS RELACIONADAS, sin pedir ningún campo nuevo.** Las fichas ya se cruzan con `[T-nnn]` en la prosa y **ese dato no lo usaba nadie**: ahora `claim` enseña las relacionadas que están VIVAS y LIBRES. Derivarlo es infinitamente mejor que pedirlo — un campo que hay que rellenar se queda vacío o miente, mientras que el enlace lo escribe quien sabe que existe, mientras escribe. Y el contexto es lo caro: si acabas de leerte el detector de scope, la siguiente tarea de scope cuesta la mitad.
+- **⏳ LO QUE FALTA, y tiene fecha: CALIBRAR.** A las 4-6 semanas habrá tareas cerradas con esfuerzo declarado y tiempo medido: entonces se contrasta y se ajustan los techos de los cajones. **Antes de eso no hay dato que leer** — por eso la ficha duerme, en vez de quedarse abierta fingiendo que hay trabajo.
+- **Capas:** núcleo puro `lib/backlog/esfuerzo.cjs` con **17 tests** (incluido que lo desconocido no se promociona y que el contraste NO opina sin datos), migración additiva con CHECK sobre los cajones, y verificación en vivo de que `first_claimed_at` se fija al reclamar y la acumulación cuenta.
+- **Relacionadas:** [T-345] (el plazo, que ya existía), [T-392] (ciclo de vida completo), [T-252] (las fechas que se escribían en los títulos).
+
+
 ### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.185 preguntas servidas que no explican nada
 
 - **Esfuerzo:** el detector ya está hecho (esta sesión). Lo que queda es **cola larga de reescritura**: 2.185 preguntas en 137 lotes de 16, ~1 h por lote. Va por tandas, atacando por exposición.

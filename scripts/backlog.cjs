@@ -185,6 +185,37 @@ async function avisarSolape(s, id, ficha) {
   } catch { /* fail-open: un aviso roto no puede impedir reclamar */ }
 }
 
+/**
+ * Al reclamar, enseña las tareas RELACIONADAS que están libres (T-414).
+ *
+ * No hace falta un campo nuevo: las fichas ya se cruzan entre sí con `[T-nnn]` en la prosa
+ * («Relacionadas: …», «el fallo que lo motivó», «gemelo de…»), y ese dato no lo usaba nadie.
+ * Derivarlo es infinitamente mejor que pedirlo: un campo que hay que rellenar a mano se queda
+ * vacío o miente, y aquí el enlace lo escribe quien de verdad sabe que existe, mientras escribe.
+ *
+ * Por qué importa: el contexto es lo caro. Si acabas de leerte el detector de scope, la SIGUIENTE
+ * tarea de scope te cuesta la mitad — y hoy eso dependía de que alguien se acordara de mirar.
+ * Se muestran solo las VIVAS y LIBRES: enseñar cerradas o ajenas es ruido.
+ */
+async function sugerirRelacionadas(s, id, ficha) {
+  try {
+    const ids = [...new Set([...String(ficha || '').matchAll(/\bT-\d{3}\b/g)].map((m) => m[0]))]
+      .filter((x) => x !== id);
+    if (!ids.length) return;
+    const rows = await s`
+      SELECT id, title, priority, effort, claimed_by, lease_until, status
+        FROM public.backlog_tasks
+       WHERE id IN ${s(ids)} AND status IN ('open','in_progress','blocked')`;
+    const libres = rows.filter((r) => !r.claimed_by || (r.lease_until && new Date(r.lease_until) < new Date()));
+    if (!libres.length) return;
+    console.log(`\n🔗 ${libres.length} tarea(s) RELACIONADA(s) y libres — el contexto que acabas de cargar sirve para ellas:`);
+    for (const r of libres.slice(0, 6)) {
+      const esf = r.effort ? ` · ${r.effort}` : '';
+      console.log(`   ${EMOJI[r.priority] || ' '} ${r.id}${esf}  ${String(r.title).slice(0, 66)}`);
+    }
+  } catch { /* una sugerencia rota no puede estorbar un claim */ }
+}
+
 // Cuerpo de la ficha de una tarea: desde su cabecera `### [T-xxx]` hasta la siguiente `###`.
 // Lo usa `claim` para que reclamar imprima el detalle (reclamar = leer).
 function fichaBody(id) {
@@ -199,6 +230,8 @@ function fichaBody(id) {
 // Parseo del markdown: la implementación es COMPARTIDA con lib/backlog/claim.ts. Ver el porqué
 // (y el cambio de criterio de "abierta") en lib/backlog/parseMarkdown.cjs.
 const { parseBacklogMarkdown } = require(path.join(REPO, 'lib', 'backlog', 'parseMarkdown.cjs'));
+// Esfuerzo declarado en cajones + contraste con lo que costó de verdad (T-414).
+const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 
 function parseMd() {
   return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
@@ -311,10 +344,15 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
                snooze_until, snooze_reason, snooze_count, resume_check, due_at, due_reason,
-               wake_on_deploy_sha, wake_on_deploy_surface
+               wake_on_deploy_sha, wake_on_deploy_surface, effort
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
-         ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END, id`;
+         ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END,
+                  -- A igualdad de prioridad, lo más CORTO primero (T-414). Lo no declarado va al
+                  -- final: no se puede afirmar que algo sea rápido si nadie lo ha mirado, y
+                  -- colarlo delante llenaría la cabeza de la lista de tareas que no se cierran.
+                  CASE effort WHEN 'minutos' THEN 0 WHEN 'rato' THEN 1 WHEN 'larga' THEN 2 WHEN 'sesion_propia' THEN 3 ELSE 9 END,
+                  id`;
       // LO PRIMERO que se ve al pedir las tareas pendientes: lo que se puede cerrar YA.
       // Antes salía al final, detrás de 100+ líneas, y por eso T-273 llevaba 16 h esperando y
       // T-270 estaba perdiendo su ventana de medición sin que nadie lo supiera (30/07).
@@ -365,11 +403,19 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           : vivo ? `🔒 ${String(r.claimed_by).slice(0, 8)} (${left(r.lease_until)})`
                  : `🟡 lease caducado hace ${age(r.lease_until)} (libre)`;
         const dep = (r.blocked_by || []).length ? ` ⛔ bloqueada por ${r.blocked_by.join(',')}` : '';
-        console.log(`  ${EMOJI[r.priority]} ${r.id}  ${String(r.title).slice(0, 58).padEnd(60)} ${r.status.padEnd(12)} ${lock}${dep}`);
+        // El esfuerzo se pinta con un icono corto: si no se VE, el campo no cambia ninguna
+        // decisión y se deja de rellenar (T-414). El hueco cuenta como «sin declarar».
+        const esf = { minutos: '⚡', rato: '◔', larga: '◑', sesion_propia: '⬛' }[r.effort] || ' ';
+        console.log(`  ${EMOJI[r.priority]}${esf} ${r.id}  ${String(r.title).slice(0, 57).padEnd(59)} ${r.status.padEnd(12)} ${lock}${dep}`);
         if (dormida(r) && r.snooze_reason) console.log(`         ↳ ${r.snooze_reason}`);
         if (enEsperaAlguna(r) && r.resume_check) console.log(`         ▶ al despertar: ${r.resume_check}`);
         if (isChronicSnooze(r)) console.log(`         🔁 aplazada ${r.snooze_count} veces`);
       }
+      // La deuda se hace VISIBLE pero no se exige retroactivamente: `reserve` obliga a las
+      // nuevas, y estas se van declarando según se tocan. Obligar de golpe sería una tarde
+      // rellenando campos a ojo, que es exactamente cómo se consigue un campo lleno de mentiras.
+      const sinEsf = rows.filter((r) => !r.effort).length;
+      console.log(`\n  esfuerzo: ⚡ minutos · ◔ un rato · ◑ larga · ⬛ sesión propia · (en blanco) sin declarar${sinEsf ? ` — ${sinEsf} sin declarar` : ''}`);
       if (enEspera) console.log(`\n  🕒 ${enEspera} en espera (no las sugiere \`next\`; se despiertan solas)`);
 
       console.log('');
@@ -378,7 +424,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     else if (cmd === 'next') {
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason,
-               wake_on_deploy_sha
+               wake_on_deploy_sha, effort
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const openIds = new Set(rows.map((r) => r.id));
       const rank = { critica: 0, alta: 1, media: 2, baja: 3, ninguna: 9 };
@@ -388,7 +434,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         .filter((r) => r.priority !== 'ninguna') // aparcadas: no se sugieren nunca
         .filter((r) => !enEsperaAlguna(r))       // aplazadas o esperando deploy: hoy no hay nada que hacer
         .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
-        .sort((a, b) => (rank[a.priority] - rank[b.priority]) || a.id.localeCompare(b.id));
+        .sort((a, b) => (rank[a.priority] - rank[b.priority]) || ESF.pesoEsfuerzo(a.effort) - ESF.pesoEsfuerzo(b.effort) || a.id.localeCompare(b.id));
       if (dormidas) console.log(`(${dormidas} en espera por reloj — se saltan; \`list\` las muestra con su hora)`);
       // Antes que cualquier tarea nueva, lo que ya está hecho y solo falta comprobar: cuesta
       // minutos, cierra una ficha y libera el backlog. Sin esto se quedaban al fondo de `list`.
@@ -425,6 +471,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const [row] = await s`
         UPDATE public.backlog_tasks t
            SET claimed_by = ${sid}, claimed_at = now(),
+               -- Primera vez que alguien la coge: separa «costó mucho» de «esperó mucho» (T-414).
+               first_claimed_at = COALESCE(t.first_claimed_at, now()),
                lease_until = now() + (${LEASE_MIN} || ' minutes')::interval,
                status = CASE WHEN t.status = 'open' THEN 'in_progress' ELSE t.status END,
                force_claim_reason = CASE WHEN ${force} THEN ${forceMotivo || null} ELSE t.force_claim_reason END,
@@ -492,6 +540,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const ficha = fichaBody(row.id);
       if (ficha) console.log(`\n${'─'.repeat(60)}\n${ficha}\n${'─'.repeat(60)}`);
       await avisarSolape(s, row.id, ficha);
+      await sugerirRelacionadas(s, row.id, ficha);
     }
 
     else if (cmd === 'heartbeat') {
@@ -536,11 +585,32 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const [row] = await s`
         UPDATE public.backlog_tasks
            SET status = 'done', outcome = ${outcome}, closed_at = now(),
+               -- Acumular lo trabajado ANTES de soltar el claim (T-414): hasta hoy esto ponía
+               -- claimed_at a NULL y con ello se BORRABA el único dato que permite contrastar
+               -- una estimación de esfuerzo. Medido antes del cambio: 0 tareas con duración
+               -- medible en todo el backlog.
+               worked_seconds = COALESCE(worked_seconds, 0)
+                              + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
                claimed_by = NULL, claimed_at = NULL, lease_until = NULL
          WHERE id = ${id} AND (claimed_by = ${sid} OR claimed_by IS NULL)
-        RETURNING id, title`;
+        RETURNING id, title, effort, worked_seconds`;
       if (!row) { console.error(`❌ no pude cerrar ${id} (¿la tiene otra sesión?)`); process.exit(1); }
       console.log(`✅ ${row.id} cerrada.`);
+      // Contrastar lo DECLARADO con lo que costó. Es la razón de ser del campo de esfuerzo: sin
+      // este momento, la estimación no se puede desmentir nunca y acaba siendo decorativa.
+      if (row.worked_seconds > 0) {
+        const c = ESF.contrastar({ effort: row.effort, workedSeconds: row.worked_seconds });
+        const dur = ESF.formatearDuracion(row.worked_seconds);
+        if (c.veredicto === 'sin_datos') {
+          console.log(`   ⏱ ${dur} trabajados${row.effort ? '' : ' (sin esfuerzo declarado: se pierde el contraste)'}`);
+        } else if (c.veredicto === 'acertada') {
+          console.log(`   ⏱ ${dur} — declaraste «${row.effort}»: ajustado.`);
+        } else if (c.veredicto === 'pasada') {
+          console.log(`   ⏱ ${dur} — declaraste «${row.effort}» (techo ${c.techo} h): se PASÓ. Vale para calibrar.`);
+        } else {
+          console.log(`   ⏱ ${dur} — declaraste «${row.effort}» y salió MÁS CORTA de lo previsto.`);
+        }
+      }
       console.log(`   ⚠️ AHORA mueve su entrada a "## Hechas" en docs/roadmap/tareas-pendientes.md`);
       console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
     }
@@ -575,6 +645,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const [row] = await s`
         UPDATE public.backlog_tasks
            SET status = 'open', outcome = NULL, closed_at = NULL,
+               -- Acumular lo trabajado ANTES de soltar el claim (T-414): hasta hoy esto ponía
+               -- claimed_at a NULL y con ello se BORRABA el único dato que permite contrastar
+               -- una estimación de esfuerzo. Medido antes del cambio: 0 tareas con duración
+               -- medible en todo el backlog.
+               worked_seconds = COALESCE(worked_seconds, 0)
+                              + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
                claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
                progress_note = concat_ws(E'\n',
                  ${'REABIERTA: ' + motivo}::text,
@@ -592,7 +668,13 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const id = process.argv[3];
       const [row] = await s`
         UPDATE public.backlog_tasks
-           SET claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
+           SET -- Acumular lo trabajado ANTES de soltar el claim (T-414): hasta hoy esto ponía
+               -- claimed_at a NULL y con ello se BORRABA el único dato que permite contrastar
+               -- una estimación de esfuerzo. Medido antes del cambio: 0 tareas con duración
+               -- medible en todo el backlog.
+               worked_seconds = COALESCE(worked_seconds, 0)
+                              + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
                status = CASE WHEN status = 'in_progress' THEN 'open' ELSE status END
          WHERE id = ${id} AND claimed_by = ${sid} RETURNING id`;
       console.log(row ? `✅ ${row.id} liberada.` : '❌ no era tuya (o no existe).');
@@ -640,11 +722,39 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           const ids = muertas.map((m) => m.id);
           const upd = await s`
             UPDATE public.backlog_tasks
-               SET status = 'open', claimed_by = NULL, claimed_at = NULL, lease_until = NULL
+               -- Aquí NO se acumula tiempo trabajado, a propósito (T-414). Estas son sesiones
+               -- MUERTAS: su claimed_at puede tener tres días y nadie estuvo trabajando tres
+               -- días. Sumarlo envenenaría la única medida que sirve para contrastar las
+               -- estimaciones — y una medida envenenada es peor que no tenerla.
+               SET status = 'open',
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL
              WHERE id IN ${s(ids)} AND status = 'in_progress' AND lease_until < now()
             RETURNING id`;
           console.log(`\n✅ ${upd.length} devuelta(s) al pool (open, sin dueño). El contexto de la ficha no se toca.`);
         }
+      }
+    }
+
+    // ── esfuerzo: declarar cuánto se cree que cuesta, en cajones (T-414) ──────────────────
+    // No en horas: una estimación en horas se vuelve ficción («2h» para todo) y envejece sola,
+    // igual que las fechas que se escribían en los títulos. El corte que cambia una decisión es
+    // el último: si necesita sesión propia, no la encajas al final de la que tienes.
+    else if (cmd === 'esfuerzo') {
+      const id = process.argv[3];
+      const cajon = process.argv[4];
+      if (!id || !ESF.esValido(cajon)) {
+        console.error('Uso: backlog.cjs esfuerzo <T-xxx> <' + ESF.CAJONES.join('|') + '>');
+        for (const c of ESF.CAJONES) console.error(`   ${c.padEnd(14)} ${ESF.DESCRIPCION[c]}`);
+        process.exit(2);
+      }
+      const [row] = await s`
+        UPDATE public.backlog_tasks SET effort = ${cajon}
+         WHERE id = ${id} RETURNING id, title, effort, worked_seconds`;
+      if (!row) { console.error(`❌ ${id} no existe`); process.exit(1); }
+      console.log(`✅ ${row.id} → esfuerzo «${row.effort}»: ${ESF.DESCRIPCION[row.effort]}`);
+      const c = ESF.contrastar({ effort: row.effort, workedSeconds: row.worked_seconds });
+      if (c.veredicto !== 'sin_datos') {
+        console.log(`   (ya lleva ${ESF.formatearDuracion(row.worked_seconds)} trabajados → estimación ${c.veredicto})`);
       }
     }
 
@@ -927,6 +1037,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                progress_note = ${hecho},
                resume_check = ${falta},
                -- suelta el claim: que no quede un lease agonizando durante días
+               -- Acumular lo trabajado ANTES de soltar el claim (T-414): hasta hoy esto ponía
+               -- claimed_at a NULL y con ello se BORRABA el único dato que permite contrastar
+               -- una estimación de esfuerzo. Medido antes del cambio: 0 tareas con duración
+               -- medible en todo el backlog.
+               worked_seconds = COALESCE(worked_seconds, 0)
+                              + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
                claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
                status = CASE WHEN status = 'in_progress' THEN 'open' ELSE status END
          WHERE id = ${id} AND status IN ('open','in_progress','blocked')
@@ -971,6 +1087,27 @@ async function despertarPorDeploy(s, shas, opts = {}) {
 
     else if (cmd === 'reserve') {
       const titulo = process.argv[3] || 'RESERVADA — ficha pendiente de escribir en el markdown';
+
+      // ── GUARDARRAÍL: NINGUNA FICHA NUEVA NACE SIN ESFUERZO DECLARADO (T-414) ──────────────
+      // Regla de Manuel, 31/07: «que todo tenga guardarraíl, porque si no, por mucho que lo
+      // digas, si no se obliga no se hace y el listado de tareas se descontrola».
+      //
+      // Va AQUÍ y no en un test de CI a propósito: el esfuerzo vive en la BD, así que el CI —que
+      // corre sin base de datos— no puede verlo. El único punto donde se puede EXIGIR es el
+      // momento de crear la ficha, que además es cuando quien la escribe tiene el juicio fresco.
+      // Es la misma decisión que T-387: impedir en el punto de escritura en vez de detectar tarde.
+      //
+      // Solo se exige a las NUEVAS. Las 182 que ya existen se declaran cuando alguien las toque:
+      // obligar retroactivamente sería una tarde de rellenar campos a ojo, que es justo cómo se
+      // consigue un campo lleno de datos falsos.
+      const esfuerzo = arg('--esfuerzo') || arg('--effort');
+      if (!ESF.esValido(esfuerzo)) {
+        console.error('❌ falta --esfuerzo: una ficha sin esfuerzo declarado no se puede triar,');
+        console.error('   y el listado se descontrola. Elige el cajón (no son horas, es la DECISIÓN que habilita):');
+        for (const c of ESF.CAJONES) console.error(`     --esfuerzo ${c.padEnd(14)} ${ESF.DESCRIPCION[c]}`);
+        console.error('\n   Ej:  node scripts/backlog.cjs reserve "Título" --esfuerzo rato');
+        process.exit(2);
+      }
 
       // ── GUARDARRAÍL ANTI-DUPLICADO (T-359, 31/07) ─────────────────────────────────────────
       // El 31/07 una sesión empezó a construir un lote de 385 ofertas de precio que OTRA había
@@ -1022,8 +1159,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           .filter((n) => Number.isFinite(n));
         const siguiente = `T-${String(Math.max(0, ...nums) + 1).padStart(3, '0')}`;
         const [r] = await s`
-          INSERT INTO public.backlog_tasks (id, title, priority, status)
-          VALUES (${siguiente}, ${titulo}, 'media', 'open')
+          INSERT INTO public.backlog_tasks (id, title, priority, status, effort)
+          VALUES (${siguiente}, ${titulo}, 'media', 'open', ${esfuerzo})
           ON CONFLICT (id) DO NOTHING RETURNING id`;
         if (r) reservado = r.id;
       }
@@ -1034,7 +1171,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

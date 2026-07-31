@@ -114,16 +114,22 @@ if (require.main !== module) {
       } catch (e) { claimWarn = `(claim no aplicado: ${e.message})`; }
     }
 
-    // --- PASO 0: dos situaciones que en la BD se parecen (admin_response relleno, estado sin
-    //     cerrar) y para el usuario son OPUESTAS: el desync del 504 (ya se le contestó → cerrar en
-    //     silencio) y la RÉPLICA (`appealed`: ha vuelto a escribir → contestarle). Tratarlas igual
-    //     mandaba cerrar muda al 100 % de las apelaciones (T-402). El criterio vive en un módulo
-    //     puro para que tenga test: aquí dentro no se podía probar sin conexión a producción.
+    // --- PASO 0: ¿YA está respondida? Caza el desync status=pending PERO admin_response ya escrito
+    //     (gotcha 504/partial-close: la respuesta se guardó/emailó pero el estado no se volteó).
     //     Trigger SOLO por admin_response (es por-dispute, fiable). NO por email_events: esa tabla no
     //     tiene dispute_id, así que un email 'impugnacion_respuesta' de OTRA dispute del mismo usuario
     //     daría falso positivo (visto 24/07 con Cristina: 3 disputes, cerrar una marcaba las otras). ---
-    const { avisoPaso0 } = require('./lib/paso0.cjs');
-    const alreadyWarn = avisoPaso0(d).texto;
+    let alreadyWarn = '';
+    if (['pending', 'appealed'].includes(d.status)) {
+      const hasResp = d.admin_response && String(d.admin_response).trim().length > 0;
+      if (hasResp) {
+        alreadyWarn = '🛑 PASO 0 — YA RESPONDIDA (status=' + d.status + ' pero ya tiene admin_response'
+          + (d.updated_at ? ' de ' + new Date(d.updated_at).toISOString().slice(0, 16) : '') + '):\n'
+          + '   • ' + String(d.admin_response).replace(/\s+/g, ' ').trim().slice(0, 90) + '…\n'
+          + '   → NO re-respondas (duplicarías el email). Solo falta CERRAR el estado (silent close):\n'
+          + "     UPDATE status → 'resolved'/'rejected' preservando admin_response, SIN /resolve (reenviaría email).";
+      }
+    }
 
     const [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
 

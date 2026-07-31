@@ -184,6 +184,36 @@ describe('backlog — enforcement del claim por pre-push', () => {
   })
 })
 /**
+ * Ninguna ficha NUEVA puede nacer sin esfuerzo declarado (T-414).
+ *
+ * Regla de Manuel (31/07): «que todo tenga guardarraíl, porque si no, por mucho que lo digas, si
+ * no se obliga no se hace y el listado de tareas se descontrola». Es la misma lección que hoy se
+ * pagó tres veces por otras puertas: un aviso que se puede ignorar se ignora.
+ *
+ * La exigencia vive en `reserve` —el punto de ESCRITURA— y no en un test de CI, porque el campo
+ * vive en la base de datos y el CI corre sin ella. Lo que este guardarraíl protege es que esa
+ * exigencia siga ahí: si alguien la quita, el listado vuelve a crecer sin poder triarse.
+ */
+describe('backlog — ninguna ficha nueva nace sin esfuerzo declarado', () => {
+  const cli = readFileSync(join(process.cwd(), 'scripts/backlog.cjs'), 'utf8')
+
+  it('`reserve` EXIGE --esfuerzo y aborta sin él', () => {
+    const bloque = cli.slice(cli.indexOf("cmd === 'reserve'"), cli.indexOf("cmd === 'reserve'") + 2500)
+    expect(bloque).toMatch(/--esfuerzo/)
+    expect(bloque).toMatch(/ESF\.esValido\(esfuerzo\)/)
+    expect(bloque).toMatch(/process\.exit\(2\)/)
+  })
+
+  it('el mensaje ENSEÑA los cajones (un error que no dice qué hacer se salta con --force mental)', () => {
+    expect(cli).toMatch(/ESF\.DESCRIPCION\[c\]/)
+  })
+
+  it('y lo guarda de verdad al reservar (si no, el guardarraíl solo daría la lata)', () => {
+    expect(cli).toMatch(/INSERT INTO public\.backlog_tasks \(id, title, priority, status, effort\)/)
+  })
+})
+
+/**
  * La marca ✅ es lo ÚNICO que declara cerrada una ficha (T-382, 31/07) — así que tiene que ser
  * fiable, y eso no se consigue pidiéndolo en un runbook.
  *
