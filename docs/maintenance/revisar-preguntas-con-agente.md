@@ -1945,6 +1945,15 @@ npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts --lote <dir> [--app
 El modo `--lote` recorre un directorio con un fichero `<question_id>.json` por pregunta: una sola
 arrancada de tsx, y un rechazo se anota y se sigue con el resto en vez de dejar el lote a medias.
 
+> ⚠️ **En `"estilo": "boletin"` NO escribas `CORRECTA —` / `INCORRECTA —` al principio de la razón:
+> el render ya pone el veredicto** («**Por qué C es correcta:** …», «- **A)** …»), así que el prefijo
+> sale duplicado (*«Por qué C es correcta: CORRECTA — …»*). Se cuela con facilidad porque el formato
+> §5.1 que este mismo manual exige —el de **impugnaciones**, donde la línea es `**A)** CORRECTA — …`—
+> sí lo lleva: **el prefijo es del estilo `impugnacion`, no del `boletin`**. Con `frame:
+> "select_incorrect"` pasa igual con `VERDADERA` / `ES LA INCORRECTA`. Ningún gate lo caza (no es un
+> defecto de estructura ni de cita), así que **la única defensa es leer el dry-run antes de aplicar**.
+> Cazado el 31/07 en el lote 1 de la banda 5-9 impresiones ([T-424]).
+
 ### Los tres pasos que NO se pueden saltar
 
 1. **Traza con `ai_provider` propio** (§5.1): `node scripts/apelotonadas/registrar-verificacion.cjs
