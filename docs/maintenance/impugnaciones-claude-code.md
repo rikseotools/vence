@@ -132,6 +132,14 @@ contestaste, y el usuario merece que se le note que lo has leído.
 > `/resolve`, que manda el email nuevo). El aviso solo es de verdad cuando el estado es `pending`.
 > Y el `appeal_text` **no sale en el dossier**: sácalo de `question_disputes` antes de analizar.
 
+> ⚠️ **Si la impugnación es PSICOTÉCNICA, `cerrar.ts` necesita `--psicotecnica`, y si se te olvida
+> el endpoint responde `HTTP 404: «Impugnacion no encontrada»`** (31/07/2026). Ese mensaje se lee
+> como *«ese id no existe / ya no está pendiente»* y manda a comprobar la cola, cuando lo único que
+> pasa es que se buscó en la tabla equivocada: sin el flag, el cuerpo va con
+> `questionType: 'legislative'` y `question_disputes` no tiene esa fila. Las psicotécnicas viven en
+> `psychometric_question_disputes` — la cola las marca `[psychometric]`, así que ahí es donde se
+> mira antes de dar por perdida la impugnación.
+>
 > 💡 **`cerrar.ts` necesita `AUTH_SECRET`** (no está en `.env.local`). El script te imprime el
 > comando; en una línea:
 > `AUTH_SECRET="$(aws --profile vence --region eu-west-2 ssm get-parameter --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)" npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts <id> --estado resolved|rejected --mensaje <fichero> --aplicar`
