@@ -111,7 +111,7 @@
 - **Fuera de alcance a propósito:** Windows/Explorador. Sus combinaciones (`Win+E`, `Win+R`) no se traducen, así que ahí el detector solo produciría ruido.
 - **Lo que queda:** limpiar lo que ha encontrado es [T-351]. Y la idea generaliza — el mismo patrón («dos afirmaciones del banco sobre el mismo hecho») sirve para cifras y fechas, pero eso es otra tarea.
 
-### [T-351] 🟡 [ABIERTO 30/07 — Word CERRADO, queda Excel/LibreOffice/Access] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
+### [T-351] 🟡 [ABIERTO 30/07 — Word y Access CERRADOS, queda Excel/LibreOffice] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
 
 > **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
 > **4 contradicciones `interna` + 10 `familia` → 2 + 3**, y **Word queda limpio del todo**.
@@ -143,17 +143,27 @@
 >   `Ctrl+H` = Reemplazar en vez de `Ctrl+L`.
 > - Caché invalidada (`teoria`, `temario`, `laws`) en las 6 instancias.
 >
+> **✅ FASE ACCESS HECHA (30/07).** Los arts. **1, 2 y 5** daban `Ctrl+S` para Guardar — el atajo de la
+> versión **inglesa** (*Save*) — en el contenedor **más rico del banco** (66.810 chars/artículo, **636
+> preguntas activas**). Corregido a **`Ctrl+G`**, con nota de contraste ES/EN en el art. 5. `Mayús+F12`
+> se deja intacto: es tecla de función, no se localiza y es alias legítimo.
+> - **Lo que zanjó la duda fue la COHERENCIA entre apps, no una sola cita:** Office localiza este atajo
+>   igual en las tres — Word «guardar el documento», Excel «guardar el libro», Access «guardar el
+>   objeto», todas `Ctrl+G`. La fuente de oposiciones (`josenrique.es`) las lista juntas. Las dos
+>   fuentes que daban `Ctrl+S` eran **traducciones**: la página es-es de Microsoft y una web con texto
+>   de traducción automática evidente. Mismo patrón que costó las notas al pie.
+> - **Riesgo nulo de clave:** ninguna pregunta activa de Access menciona `Ctrl+S`/`Ctrl+G`. Era
+>   corrección de temario pura.
+> - ⚠️ **Y este caso el detector NO lo saca**, porque Access era *coherentemente* inglés: no se
+>   contradecía, se equivocaba entero. **El detector encuentra desacuerdos, no errores unánimes** — es
+>   su límite estructural y conviene tenerlo presente antes de fiarse de un verde suyo.
+>
 > **LO QUE QUEDA** (correr `npm run audit:atajos` para verlo con detalle):
-> 1. **Access 365** — usa `Ctrl+S` para guardar en los arts. 1, 2 y 5; en español es `Ctrl+G`. Es el
->    contenedor más rico del banco (66.810 chars/artículo) y sostiene **636 preguntas activas**, así que
->    es el siguiente por rendimiento. *(El detector no lo saca como contradicción porque Access es
->    coherentemente inglés — no se contradice, se equivoca entero: aquí hace falta la fuente, no el
->    detector.)*
-> 2. **Excel** — `Excel 365` y `Excel 365 Escritorio` art.150 dan `Ctrl+L` y `Ctrl+H` para Reemplazar.
+> 1. **Excel** — `Excel 365` y `Excel 365 Escritorio` art.150 dan `Ctrl+L` y `Ctrl+H` para Reemplazar.
 >    Verificar cuál opera en el Excel español antes de tocar.
-> 3. **LibreOffice** — dos avisos de `familia` (negrita/cursiva) y uno `interna` (`Ctrl+Alt+B` como
+> 2. **LibreOffice** — dos avisos de `familia` (negrita/cursiva) y uno `interna` (`Ctrl+Alt+B` como
 >    «atajo alternativo, versión 4.1»). El último parece **alias legítimo documentado**, no defecto.
-> 4. **Punto ciego del detector detectado por el camino:** «Fuente» no está en su vocabulario de
+> 3. **Punto ciego del detector detectado por el camino:** «Fuente» no está en su vocabulario de
 >    acciones, y el banco tiene dos respuestas para ella (`Ctrl+M` en `8d7b1a8e` frente a
 >    `Ctrl+Mayús+F` en `86000eb8` y `f98e1daa`). Ampliar `ACCIONES` o resolverlo a mano.
 
