@@ -1241,6 +1241,21 @@ incluida).
 - **DESCARTADA — la señal de «respuesta escrita y no entregada».** `resolveDispute` y `respondFeedback` devuelven `emailSkipReason:'user_preferences'` y nadie lo mira; se llegó a escribir la señal + su regla de alerta y **se retiró por decisión de Manuel**: a partir de ahora quien esté en ese estado lo habrá elegido marcando la casilla, y la campana dentro de la app ya se lo comunica. Queda escrito aquí por si el criterio cambia — el trabajo era pequeño (un módulo, dos cableados y una regla).
 - **Origen:** apareció comprobando, a raíz de una pregunta de Manuel, si un usuario con los emails desactivados recibe la respuesta a su impugnación (31/07, tras cerrar `ab3b9e43`).
 
+### [T-384] 🟠 [ABIERTO 31/07] Separar el job de CI: tests de código con BD efímera vs vigilancias de datos al barrido
+
+- **El diagnóstico, que no era el que parecía.** El job «Integration / perf / security» estaba en rojo por falta de un secret ([T-370]), pero reponerlo no arregla nada de fondo: el job **mezcla dos cosas con semánticas de fallo opuestas** — un test de código en rojo dice *«tú acabas de romper esto»* (debe bloquear) y una vigilancia de datos en rojo dice *«hay un hallazgo de contenido»* de hace semanas (no puede bloquear). Esa mezcla es la que obligó a `continue-on-error`, ese flag dejó el job MUDO, y por eso una vigilancia pudo cazar 7.134 preguntas sobre contenedores vacíos sin que nadie la oyera ([T-379]).
+- **✅ F1 HECHA (31/07) — el inventario, que no existía en ningún sitio.** `lib/admin/suiteRegistry.ts`, cuarto registro de la familia de `landingSurfaces` / `runbookRegistry` / `toolRegistry`, con guardarraíl propio (11 tests, sin BD ni red).
+  - **Tres tipos, y el del medio es el hallazgo:** `codigo` (determinista), **`codigo_datos_prestados`** (prueba código pero leyendo filas de producción — es lo que rompió las 20 de [T-336]: *«coge tres usuarios cualesquiera»*) y `vigilancia` (monitor de contenido). Son **21 prestadas**: ésas son el trabajo de F2, no las vigilancias.
+  - **Solo se declara lo que exige juicio.** Las 58 suites que no tocan la BD son deterministas por construcción y el guardarraíl las clasifica solo: nada de entradas de relleno que nadie mantendría.
+  - **Anti-silo:** cada `vigilancia` cita un `kind` REAL de `runbookRegistry` o declara su hueco con motivo. Salieron **5 huecos**: la deriva config↔BD (el hallazgo #1 de [T-377]), `position_type` sin config, familia, y los DOS de psicotécnicos — el barrido de salud no cubre psicotécnicos en absoluto, todos sus kinds son de temario/convocatoria.
+  - Documentado en `docs/runbooks/pusheo-revision-despliegue.md`, que es donde se mira antes de subir.
+- **✅ Arreglado de camino, y es de SEGURIDAD:** de las 9 suites que ESCRIBEN, 7 estaban gateadas por `INTEGRATION_DB_WRITABLE` y **las 2 de referidos no** — por eso eran justo ellas las que intentaban correr en un CI sin BD escribible y salían rojas mientras sus hermanas se saltaban con educación. Ya están alineadas, y el guardarraíl lo comprueba **contra el fichero**: es lo que impide que una suite escriba en producción el día que CI reciba una credencial con permiso de escritura.
+- **Pendiente:**
+  - **F2** — BD efímera en CI (contenedor Postgres) + migrar las 21 prestadas a fixtures propios. **Obstáculo real y medido:** el schema NO se reconstruye desde las 360 migraciones (Drizzle funciona por introspección; la fuente de verdad es producción). El puente es un `pg_dump --schema-only` versionado, con `schemaColumnDrift` —que ya existe— vigilando el desfase.
+  - **F3** — mover las vigilancias al barrido, cada una con su frase-gatillo; los 5 huecos necesitan `kind` nuevo.
+  - **F4** — quitar `continue-on-error`: el gate vuelve a bloquear de verdad.
+- **Y entonces la pregunta del secret se disuelve:** los tests de código no necesitan credencial de producción, y las vigilancias solo leen → **réplica**. Ni primaria ni dos secrets.
+
 ### [T-379] 🟠 [ABIERTO 31/07] 7.134 preguntas de enfermería se sirven sobre un contenedor que dice «⏳ Teoría pendiente»
 
 - **Qué es, literal:** 56 leyes virtuales cuyo artículo tiene por todo contenido `⏳ Teoría pendiente (contenedor enfermería).` (43 caracteres), con **7.134 preguntas activas** colgando. El opositor responde, pincha para leer la fuente, y encuentra eso.

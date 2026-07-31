@@ -23,7 +23,14 @@ const DAY = 86_400_000
 // El fixture (usuarios efímeros creados dentro de la tx) vive en un solo sitio compartido con
 // la suite de simulación — ver el porqué en helpers/referralsFixture.ts (T-336).
 
-describe('referrals queries — integración RDS (tx rollback)', () => {
+// Escribe (aunque haga ROLLBACK) → se gatea como sus 7 hermanas que también escriben. Hasta
+// T-384 era una de las DOS únicas sin gatear, y por eso era de las pocas que INTENTABA correr
+// en un CI sin base de datos escribible: su rojo era del entorno, no del código. La regla que
+// fija el guardarraíl `suiteRegistry`: una suite que crea datos declara su gate.
+const describeIf =
+  process.env.DATABASE_URL && process.env.INTEGRATION_DB_WRITABLE === '1' ? describe : describe.skip
+
+describeIf('referrals queries — integración RDS (tx rollback)', () => {
   it('getOrCreateReferralCode es idempotente por owner', async () => {
     await withTx(async (tx, [u1]) => {
       const c1 = await getOrCreateReferralCode(u1, tx)

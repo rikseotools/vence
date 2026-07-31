@@ -37,7 +37,11 @@ const DAY = 86_400_000
 // Fixture compartido con la suite de integración: usuarios efímeros creados dentro de la tx,
 // porque el guard «solo usuarios nuevos» rechaza cualquier cuenta real (T-336).
 
-describe('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
+// Escribe (con ROLLBACK) → gateada como el resto de suites que escriben (T-384).
+const describeIf =
+  process.env.DATABASE_URL && process.env.INTEGRATION_DB_WRITABLE === '1' ? describe : describe.skip
+
+describeIf('SIMULACIÓN E2E — circuito de referido (RDS, tx rollback)', () => {
   it('camino feliz: atribuir → cupón aplicable → pagar → calificar → hold → payable', async () => {
     await withTx(async (tx, [embajador, referido]) => {
       // 1) el embajador (premium) genera su código

@@ -376,6 +376,26 @@ Por defecto, TODA feature o fix lleva estas capas; **saltarse una se JUSTIFICA**
 
 **Clave (lección 09/07):** las capas solo valen si cubren **superficies DISTINTAS**, no el mismo slice 5 veces — la capa que tocas **+ las de al lado que ve el usuario** (conteos, selectores) + las **combinaciones** + el **timing de cliente**. Detalle: memoria `feedback_feature_multiples_capas_seguridad`.
 
+## El job «Integration / perf / security»: qué significa su rojo (T-384)
+
+**Inventario:** `lib/admin/suiteRegistry.ts` · **guardarraíl:** `__tests__/guardrails/suiteRegistry.guardrail.test.ts`
+
+Ese job mezcla dos cosas con semánticas de fallo **opuestas**, y por eso su rojo se venía leyendo mal:
+
+| Tipo | Su rojo significa | Destino |
+|---|---|---|
+| `codigo` | **Tú acabas de romper esto.** Determinista: no toca BD, o crea lo que lee | BD efímera en CI → gate BLOQUEANTE |
+| `codigo_datos_prestados` | Ni una cosa ni otra: prueba código pero leyendo filas de producción, así que **depende de datos que nadie controla** | migrar a fixtures propios |
+| `vigilancia` | **Hay un hallazgo de contenido**, normalmente de semanas atrás y ajeno a tu commit | el barrido de salud, con su frase-gatillo |
+
+**Por qué importa:** mezclarlas obligó a poner `continue-on-error: true`, y ese flag dejó el job **mudo** — su fallo no hace `failure()`, así que el aviso nunca salía. Estuvo ≥5 días sin verificar nada mientras una vigilancia cazaba 7.134 preguntas sobre contenedores vacíos ([T-379]). Detalle del silencio: [T-370].
+
+**Reglas que el guardarraíl hace cumplir (no dependen de que leas esto):**
+- Una suite nueva que hable con la BD **obliga** a declarar qué clase de verdad comprueba.
+- Una `vigilancia` cita un `kind` REAL de `runbookRegistry`, o declara su hueco. Nada sin dueño.
+- **Una suite que CREA datos está detrás de `INTEGRATION_DB_WRITABLE=1`**, y se comprueba contra el fichero. Es lo que impide que escriba en producción el día que CI reciba una credencial con permiso de escritura.
+- Las que no tocan la BD no se declaran: ya son deterministas, y meterlas sería ruido.
+
 ## Antes de mergear: revisión independiente (features/fixes no triviales)
 
 Los tests que escribe el autor se agrupan alrededor de lo que el autor cambió y de su modelo mental → **heredan sus puntos ciegos**. Por eso, antes de mergear a `main`, una **revisión adversarial por un agente FRESCO** (sin contexto de autor) sobre el diff, con el mandato de **romperlo**:
