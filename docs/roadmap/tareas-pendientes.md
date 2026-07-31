@@ -1198,9 +1198,7 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Herramientas (ya en `main`):** núcleo puro `lib/health/explicacionTranscripcion.cjs` (13 tests) + cubo nuevo del extractor de siempre: `node scripts/apelotonadas/extraer-lote.cjs --cubo transcripcion --min-impresiones 10 --out <dir>`. El criterio necesita el artículo, así que el predicado SQL es solo prefiltro y el juicio lo pone el núcleo sobre las filas ya traídas.
 - **Cómo se repara (una a una, NUNCA en automático):** verificar la clave contra el artículo → reescribir en formato estructurado con `scripts/aplicar-explicacion.ts` (una razón por opción, referida al CONTENIDO) → la pregunta nace **barajable**. Comprobar la cita con `citaNoLiteral` antes de aplicar. Si la clave no se sostiene, va a `needs_human`; no se auto-corrige.
 - **Por qué merece la pena aunque sea larga:** son preguntas que YA se están sirviendo, con explicación inútil justo en el momento en que el opositor la abre porque ha fallado. Y cada una reparada sale del pozo de las que no pueden barajar.
-- **AVANCE 31/07 — lotes 01, 02 y 03 cerrados (48/2.185 · 7.656 impresiones, los tres de más exposición de toda la cola).** **48 de 48 claves correctas**: en este cubo el defecto es SIEMPRE la explicación, así que la reparación es segura y no abre `needs_human`. **Siguiente tanda: `lote_04.json`.**
-- **Del lote 03, dos cosas que conviene saber:** (a) las que quedan `unsafe` son las de «Todas las anteriores» / «A) y B) son correctas» y es correcto — no se barajan por construcción; comprobado además que `shuffle_mode='no_shuffle'` manda por encima de `shuffle_safety`, así que una de esas marcada `safe` tampoco se permuta; (b) `aplicar-explicacion.ts` falló una vez con un error de conexión suelto y al reintentar entró sin más: si una se cae en mitad de un bucle, reintenta antes de investigar.
-- **AVANCE previo — lotes 01 y 02 (32 preguntas · 5.609 impresiones).** En el lote 02, **32 de 32 claves correctas** también: el defecto es siempre la explicación, nunca la respuesta. Quedan `unsafe` 3 preguntas del lote 02 y es correcto: son las de «Todas las anteriores» / «A) y B) son correctas», que no se pueden barajar por construcción. 
+- **AVANCE 31/07 — lotes 01 y 02 cerrados (32/2.185 · 5.609 impresiones, los dos de más exposición de toda la cola).** En el lote 02, **32 de 32 claves correctas** también: el defecto es siempre la explicación, nunca la respuesta. Quedan `unsafe` 3 preguntas del lote 02 y es correcto: son las de «Todas las anteriores» / «A) y B) son correctas», que no se pueden barajar por construcción. **Siguiente tanda: `lote_03.json`.**
 - **AVANCE previo — lote 01 (16 preguntas · 3.131 impresiones).** Las 16 verificadas contra su artículo (las 16 claves eran correctas: el defecto era solo la explicación), reescritas estructuradas y **las 16 quedan `safe`** y fuera del cubo al re-medirlas. Caché purgada. Reparto: 9 CE, 4 Ley 39/2015, 1 LO 4/2001 y la impugnada `e60091bd`. Lotes en `scratchpad/t409/` (regenerables con el comando de arriba). 
 - **Patrón que se repite y conviene saber antes de empezar una tanda:** casi todas son preguntas de «¿en qué artículo está X?» o de enumeración, con distractores que son artículos VECINOS. La explicación útil no es la cita —esa ya estaba—: es decir **qué hay en el artículo de al lado**, que es lo que el opositor confundió (137 frente a 140, 28.1 frente a 28.2, los valores del 1.1 frente a los fundamentos del 10.1, el ingreso del 31.1 frente al gasto del 31.2).
 - **Relacionadas:** T-249 (cubo `nota-auditoria`, mismo pipeline), T-080 Fase 2 (explicación estructurada), `docs/maintenance/revisar-preguntas-con-agente.md`.
@@ -1238,18 +1236,44 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 
 ### [T-413] 🟡 [ABIERTO 31/07] 284 preguntas activas sirven «⏳ Explicación pendiente de redactar» como explicación
 
-- **Esfuerzo: ~4 h** (redactar 284 explicaciones, o desactivarlas hasta tenerlas).
-- **Qué pasa:** la pregunta se corrige bien, pero al desplegar el resultado el opositor lee literalmente *«⏳ Explicación pendiente de redactar.»*. Es un marcador interno de importación que se quedó publicado.
-- **Medido hoy (31/07):** **284 activas**, **0 oficiales**, nacidas entre el **26/06 y el 07/07/2026** (una tanda concreta). Concentradas en contenido sanitario: `BIOÉTICA ENF` 78, `Gestión y planificación sanitaria` 52, `HIGIENE DE CENTROS SANITARIOS ENF` 29, `LEY DE AUTONOMÍA DEL PACIENTE ENF` 14. Exposición en 90 días: **1 / 1 usuario** — es contenido recién importado que aún no circula, y por eso conviene atacarlo **antes** de que empiece a servirse.
-- **Cómo salió:** reparando [T-406]; **11 de aquellas 33** tenían este texto por explicación. El defecto de las opciones y este son la misma tanda de importación mal terminada.
-- **Por qué no lo caza nada:** el detector de explicaciones rotas (`audit_note_explanation`) busca **notas de auditoría** (*«La explicación debería…»*, *«posible errata»*); este marcador no está entre sus patrones, así que pasa limpio. Es literalmente una línea más en ese grep.
-- **Propuesta:** (1) añadir el patrón al detector que ya existe, que es gratis; (2) redactar las 284 en lotes por ley con el flujo de `revisar-preguntas-con-agente.md`, aplicando con `aplicar-explicacion.ts` (nacen barajables); (3) mirar el importador de esa tanda para que no vuelva a publicar el marcador.
-- **Relacionada:** [T-406] (misma tanda), `salud-contenido.md` → *«revisa las explicaciones rotas»*.
+- **Esfuerzo: ~15 min** el detector (punto 1) **+ ~4 h** redactar las 284 (punto 2). Se pueden hacer por separado y en sesiones distintas.
+- **Qué pasa:** la pregunta se responde bien, pero al desplegar el resultado el opositor lee literalmente *«⏳ Explicación pendiente de redactar.»*. Es un marcador interno de importación que se quedó publicado.
+- **Medido el 31/07 (banco activo):** **284 activas**, **0 oficiales**, nacidas entre el **26/06 y el 07/07/2026** (una tanda concreta). Exposición en 90 días: **1 impresión / 1 usuario** — contenido recién importado que aún no circula, y por eso conviene atacarlo **antes** de que empiece a servirse.
+  ```sql
+  -- la cola exacta, y con esto se re-mide en 2 segundos
+  SELECT count(*) FROM questions
+   WHERE is_active AND explanation ILIKE '%pendiente de redactar%';
+  ```
+  | Ley (`laws.short_name` del artículo vinculado) | Preguntas |
+  |---|---|
+  | `BIOÉTICA ENF` | 78 |
+  | `Gestión y planificación sanitaria` | 52 |
+  | `HIGIENE DE CENTROS SANITARIOS ENF` | 29 |
+  | `LEY DE AUTONOMÍA DEL PACIENTE ENF` | 14 |
+  | `CONSTITUCIÓN ESPAÑOLA ENF` | 13 |
+  | `SALUD MENTAL ENF` | 12 |
+  | resto (cola larga) | 86 |
+- **Cómo salió:** reparando [T-406]; **11 de aquellas 33** tenían este texto por explicación. El defecto de las opciones duplicadas y este son **la misma tanda de importación mal terminada** — quien mire el importador arregla los dos.
+- **Por qué no lo caza nada, y dónde va exactamente el arreglo:** el detector de explicaciones rotas (`audit_note_explanation`) busca **notas de auditoría** (*«La explicación debería…»*, *«Nota técnica:»*, *«posible errata»*), y este marcador no está entre sus patrones, así que pasa limpio. Los patrones NO están sueltos en el barrido: viven en el núcleo puro **`lib/health/auditNoteExplanation.cjs`** (`AUDIT_NOTE_LITERAL_RE_SRC`), fundidos en **una sola alternancia** a propósito — como 23 `ILIKE … OR` costaban 38 de los 40,6 s del barrido y reventaban el `statement_timeout` del gemelo del backend, tumbándolo entero ([T-307]). **Añade el literal a esa alternancia, no una consulta nueva.**
+  - Consumidores que hay que tocar/verificar a la vez: `scripts/health-sweep.cjs` (~línea 398) y su **espejo del `@Cron`** en `backend/src/content-health-sweep/`, con los tests ya existentes `__tests__/lib/health/auditNoteExplanation.test.js`, `__tests__/health/content-sweep-parity.test.ts` y `__tests__/integration/auditNoteSweepBudget.integration.test.ts` (este último es el que vigila que no se vuelva a disparar el coste).
+  - **Ojo al banco de pruebas:** el kind tiene `LIMIT 50`, así que al añadir el patrón el hallazgo pasará a decir «50+». No es un pico nuevo, es esta cola.
+- **Propuesta:** (1) añadir el literal al núcleo (gratis, y hace visible el resto); (2) redactar las 284 por ley en lotes con el flujo de `revisar-preguntas-con-agente.md`, aplicando **siempre** con `scripts/aplicar-explicacion.ts` (escribe estructura + texto coherentes y **nacen barajables**); (3) mirar el importador de la tanda 26/06-07/07 para que no vuelva a publicar el marcador.
+- **Lo que NO hay que hacer:** rellenar las explicaciones a ojo. Es contenido sanitario; cada una se redacta contra su artículo vinculado, y la que no se pueda fundamentar se deja en `needs_human` en vez de inventarla.
+- **Relacionada:** [T-406] (misma tanda de importación), [T-307] (por qué los patrones van fundidos), `salud-contenido.md` → frase-gatillo *«revisa las explicaciones rotas»*.
 
 ### [T-406] 🟡 [ABIERTO 31/07] 33 preguntas activas repiten LITERALMENTE un distractor: se quedan en tres opciones sin decirlo
 
+- **🟢 NADA QUE DESPLEGAR:** la reparación es de DATOS (`questions.option_*` en RDS) y ya está viva; la caché `questions` se invalidó al terminar. Nadie tiene que esperar a un deploy para verlo. Lo que sí necesitará deploy es el detector del punto 2, porque toca el `@Cron` del backend.
 - **✅ REPARADAS LAS 33 el 31/07** (`scratchpad/t406/reparar.cjs`, con tres guardas: no tocar la clave, exigir que la opción siga duplicada, y que el texto nuevo no choque con otra opción). Cada distractor clonado recibió el contenido que le tocaba —casi siempre la casilla que faltaba de una rejilla evidente: `Uniform/Universal × Locator/Library`, `natural/artificial × activa/pasiva`, las cuatro categorías OMS—. Verificado: **0 duplicadas en el banco**, caché `questions` invalidada. **Queda por hacer el detector (punto 2) y el trinquete (punto 3)**, que es lo que impide que vuelva.
 - **Esfuerzo restante: ~1 h** (el detector).
+- **Cómo auditar esas 33 reparaciones si alguien quiere revisarlas:** el cambio fue un `UPDATE` directo de `questions.option_*` y **eso no deja rastro en ninguna tabla de historial** (el audit trail de `question_lifecycle_history` solo cubre `lifecycle_state`). La única traza es `updated_at`:
+  ```sql
+  SELECT id, question_text, option_a, option_b, option_c, option_d, correct_option
+    FROM questions
+   WHERE is_active AND updated_at::date = DATE '2026-07-31'
+   ORDER BY updated_at;   -- las 33 + la explicación reescrita de 6ebca38f
+  ```
+  Criterio que se siguió, por si hay que rehacer alguna: se reescribió **siempre una opción que NO era la clave**, dándole el contenido que le faltaba a la rejilla de la propia pregunta (Uniform/Universal × Locator/Library; natural/artificial × activa/pasiva; las cuatro categorías OMS; los cuatro principios de la bioética). En las de *«señale la FALSA»* el distractor nuevo tiene que ser una afirmación **verdadera** — es el error fácil de cometer ahí (caso `b30ad9fd`, hiperplasia benigna de próstata).
 - **Qué pasa:** hay preguntas activas donde **dos opciones son idénticas carácter a carácter**. La clave nunca está en el par (medido), así que **ninguna es irresoluble**: el daño es que el opositor ve dos opciones clonadas, la pregunta se queda de hecho en tres alternativas y parece descuidada.
 - **Medido hoy (31/07, banco activo, 138.108 preguntas):**
   | Corte | Preguntas |
@@ -1266,11 +1290,26 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero al comprobarlo apareció el fenómeno de verdad, en otras preguntas.
 - **Por qué no lo caza nada:** ningún detector de `health-sweep` mira la coherencia **interna entre opciones** — todos los kinds de contenido comparan la pregunta con su ARTÍCULO, con el epígrafe o con la convocatoria, nunca la pregunta consigo misma. `npm run tools:buscar -- "opciones duplicadas"` no devuelve escritor ni detector alguno. Es el mismo hueco de [T-405] visto desde otro lado: allí el veredicto existía y no llegaba a ninguna cola; aquí **ni siquiera se mira**.
 - **Propuesta (por orden de coste):**
-  1. **Reparar las 33 a mano** dando al distractor clonado el contenido que le tocaba. Varias lo cantan solas: `e8d1767e` (siglas URL) tiene A y C con *«Universal Resource Library»* siendo la rejilla evidente Uniform/Universal × Locator/Library; `92277697` (binario de 456) repite `010001000` en C y D. Donde no se pueda determinar, **desactivar en vez de inventar**.
-  2. Kind determinista en el barrido (`opciones_duplicadas`), con dos bandas: **`error`** = clave dentro del par (hoy 0, pero es el caso que de verdad rompe la pregunta y hay que vigilar), **`warn`** = par de distractores. Sin LLM: o los dos textos son iguales o no lo son — siempre que se respeten las dos familias de falso positivo de arriba.
-  3. Valorar un **trinquete** que impida que el número suba (mismo patrón que `toolWriters`), ya que el goteo viene del generador.
-- **Capa que lo vigile:** el kind ES la capa; núcleo puro con su test (pares idénticos, opciones vacías/NULL que NO cuentan como par, D nula legítima de las oposiciones de 3 opciones → ver manual de impugnaciones §7.8, que es el falso positivo obvio a evitar).
-- **Relacionada:** [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
+  1. ~~Reparar las 33 a mano~~ → **HECHO el 31/07** (ver arriba).
+  2. **PENDIENTE — kind determinista `opciones_duplicadas` en el barrido**, con dos bandas: **`error`** = clave dentro del par (hoy 0, pero es el caso que de verdad rompe la pregunta: sea cual sea la que marque el opositor, acierta y falla a la vez), **`warn`** = par de distractores. Sin LLM: o los dos textos son iguales o no lo son.
+  3. **PENDIENTE — trinquete** que impida que el número suba (mismo patrón que `toolWriters`), porque el goteo viene del importador/generador y hoy nace a cero: es el momento perfecto para poner el trinquete, cuando el número es 0 y cualquier subida es una regresión demostrable.
+- **📋 TODO LO QUE HACE FALTA PARA EL PUNTO 2 (para no re-descubrirlo):**
+  - **El criterio entero, que cabe en cinco líneas.** Va en JS, en un núcleo puro (`lib/health/opcionesDuplicadas.cjs`), NO en SQL — ver la segunda familia de falso positivo:
+    ```js
+    const norm = (s) => (s == null ? null : String(s).trim().replace(/\s+/g, ' '))
+    // por pregunta activa, con opts = [option_a, option_b, option_c, option_d].map(norm)
+    for (let i = 0; i < 4; i++)
+      for (let j = i + 1; j < 4; j++)
+        if (opts[i] && opts[j] && opts[i] === opts[j])       // ← sin lower(), sin quitar tildes
+          emitir({ i, j, banda: correct_option === i || correct_option === j ? 'error' : 'warn' })
+    ```
+  - **Dónde enchufarlo:** `scripts/health-sweep.cjs` (patrón de cualquier kind de contenido: `add('content', banda, null, 'opciones_duplicadas', mensaje, { count, sample })`) **y su espejo** del `@Cron` en `backend/src/content-health-sweep/content-health-sweep.service.ts`, que es el que corre de verdad en Fargate a las 03:00 UTC (memoria `project-health-sweep-cron-fargate`). El barrido de `scripts/` es el gemelo CLI: **tocar uno solo deja el otro mintiendo**, y hay test de paridad (`__tests__/health/content-sweep-parity.test.ts`).
+  - **Registrar la frase-gatillo** en `lib/admin/runbookRegistry.ts` (p. ej. *«revisa las opciones duplicadas»* → `salud-contenido.md`) — hay guardarraíl que compara el registro con CLAUDE.md (`__tests__/lib/admin/runbookRegistry.test.ts`), así que **si no se registra, el CI se pone rojo**. Y añadir la línea correspondiente al mapa de frases-gatillo de `CLAUDE.md`.
+  - **Casos que el test del núcleo debe fijar** (los tres primeros son los falsos positivos reales, medidos, no hipótesis): (a) dos opciones que solo difieren en mayúsculas → **NO es hallazgo**; (b) opción vacía o `NULL` → **no cuenta como par** (si no, toda pregunta con dos opciones vacías salta); (c) **D nula legítima** de las oposiciones de 3 opciones (Policía Nacional: 989/991 oficiales con D vacía) → ver manual `impugnaciones-claude-code.md` §7.8; (d) par de distractores → `warn`; (e) par que incluye la clave → `error`.
+  - **Nace en verde a propósito** (0 hallazgos hoy), igual que el kind de psicotécnicos: es un trinquete contra regresiones, no una bandeja de trabajo.
+- **⚠️ El script de reparación (`scratchpad/t406/reparar.cjs`) NO está versionado y es desechable** — su mapeo ya se consumió (las 33 están hechas). Lo único que había que conservar es el criterio de detección, que está inline aquí arriba. No lo busques si no aparece.
+- **Capa que lo vigile:** el kind ES la capa (hoy no hay ninguna).
+- **Relacionada:** [T-413] (misma tanda de importación: 11 de estas 33 servían «explicación pendiente de redactar»), [T-408] (allí se repite la PREGUNTA entera en el banco; aquí se repiten dos OPCIONES dentro de una pregunta), [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
 
 ### [T-408] 🟠 [ABIERTO 31/07] El banco sirve la MISMA pregunta duplicada: 1.955 activas repetidas literalmente, y las gemelas pueden contradecirse en la clave
 
@@ -1312,6 +1351,46 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 >    calibración antes de tocar el badge.
 > 4. El banco **psicotécnico** ya entra por el mismo script (`--banco psicotecnicas`) con la guarda
 >    de la huella de imagen/`content_data`. Detalle en [T-410].
+
+> **✅ PASO 1 HECHO (31/07, sesión de impugnaciones) — la banda `error` de LEGISLATIVAS está a CERO.
+> No la rehagas.** Las **5 gemelas con clave contradictoria (12 preguntas activas)** que medía esta
+> ficha se adjudicaron **una a una contra su fuente** y se jubilaron 7 con
+> `transition_question_state(… 'admin_duplicate_of' → 'retired_duplicate')`, cada una con el motivo
+> escrito en `question_lifecycle_history`. Verificación posterior: **0 grupos contradictorios**;
+> los duplicados literales bajan de 959/1.955 a **954/1.943**.
+>
+> | Grupo | Se conserva | Jubiladas | Fuente que decidió |
+> |---|---|---|---|
+> | `>` en máscara de Access | `0ad3b52a` (mayúsculas) | `6ce0d945`, `e7a1ad70` (minúsculas) + `7c40e6be` (clon correcto redundante) | Microsoft: *«`>` convierte todos los caracteres que le siguen a mayúscula»* |
+> | Máscara DNI/NIE | `26cac6c0` (`>? 99.999.999 >?`) | `a997b705` (`>? 90.000.000 >?`) | Microsoft: `0` = dígito **obligatorio**, `9` = **opcional**. La jubilada exige 8 dígitos y **rechaza el NIE**, que tiene 7 |
+> | `=IGUAL("ejemplo";"ejemplo")` | `2b10a3a5` (VERDADERO) | `e8d5c1ca` (`#¿NOMBRE?`) | Los argumentos SÍ van entrecomillados |
+> | `=IGUAL(vence;vence)` | `1a6a1dd5` (`#¿NOMBRE?`) | `63fc8fb3` (VERDADERO) | Sin comillas, Excel lee nombres inexistentes |
+> | Art. 72.2 LO 3/2007 | `b49017b3` | `b5831b3a` | BOE-A-2007-6115: el precepto termina en *«validez y eficacia del contrato»*; la jubilada añadía *«y sin perjuicio del derecho a la indemnización»*, que **no está en el texto** |
+>
+> **LA CAUSA RAÍZ, que es lo que esta ficha no sabía y cambia el diseño del detector:** no son claves
+> puestas al azar. Son **clones a los que se cambió un detalle del ENUNCIADO y se les dejó la clave y
+> la explicación de la variante original**. Se ve en el texto: las gemelas malas del grupo de máscaras
+> preguntan por `>` y su explicación **describe `<`**; la de Excel dice *«el detalle clave está en que
+> NO aparece entre comillas»* cuando su propio enunciado **las lleva**. O sea que la firma no es solo
+> «dos preguntas iguales»: es **explicación que contradice a su enunciado**, y eso es detectable por sí
+> solo. Merece la pena mirarlo al construir el kind.
+>
+> **Alcance de lo reparado:** 70 respuestas de **49 usuarios distintos** en 90 días sobre las versiones
+> erróneas.
+>
+> **Lo que queda vivo aquí sigue siendo lo de arriba** (kind al badge + corte borroso) **más la banda
+> `warn`: 954 grupos / 1.943 preguntas** que ya no se contradicen pero siguen saliendo repetidas. Se
+> triarían **por exposición** (las más servidas primero) jubilando el clon redundante de cada grupo,
+> exactamente con el criterio de la tabla. Consulta del corte exacto, por si se quiere sin el script:
+> agrupar las activas por `(enunciado normalizado, juego de opciones ordenado)` con `HAVING count(*)>1`,
+> y la banda la decide el **TEXTO** de la opción correcta, nunca `correct_option` (las copias vienen
+> barajadas).
+>
+> **Cabo que salió de aquí y NO se puede resolver en esta ficha:** la superviviente del grupo legal
+> (`b49017b3`) responde con el **art. 72.2** pero está anclada al **71**; `reanclar-preguntas.cjs`
+> **bloqueó** el movimiento porque la sacaría de 13 temas. Se corrigió la explicación (que atribuía al
+> 71 lo que dice el 72) y el hueco de scope se fichó aparte → **[T-421]**.
+
 ### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 42 grupos que la deduplicación de mayo no podía ver
 
 - **Esfuerzo: ~2 h.** No hay que construir nada: la consulta está escrita aquí abajo. Lo que lleva tiempo es **adjudicar grupo por grupo** (hay falsos positivos reales) y desactivar la copia sobrante de cada uno.
@@ -1329,6 +1408,30 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno ya tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las dos guardas de arriba** lo convierte en trinquete, y el núcleo puro se puede compartir con el detector de duplicados de importación.
 - **Relacionada: [T-408]**, el mismo hueco en las **legislativas**. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de [T-321] ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»—. **Ya están unificadas:** un solo script, un solo criterio en `lib/calidad/duplicados.js`. Lo que queda en T-408 es llevar el kind al badge y calibrar el corte borroso; lo que queda aquí es **adjudicar los 40 grupos**.
 - **Pendiente de una decisión, no de trabajo:** el corte exacto de psicotécnicas señala **3 grupos nuevos** (`41ef1a23`/`782ad84c`, `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`) que la normalización estricta hizo aflorar. Son seguros por construcción, pero **el script no ha escrito nada**: se aplican con `--banco psicotecnicas --aplicar` cuando alguien lo mire.
+
+### [T-421] 🟡 [ABIERTO 31/07] El art. 72 de la LO 3/2007 falta en 13 temas que sí escopan el 71, y otros 17 lo tienen: la misma materia, partida según la oposición
+
+- **Esfuerzo: ~1 h.** No hay que construir nada: los 13 temas están listados abajo y la decisión es una por tema (mirar su epígrafe y añadir `72` al `article_numbers` o dejarlo).
+- **Qué pasa:** el art. 71 LO 3/2007 (*«Factores actuariales»*) solo **PROHÍBE** usar el sexo como factor de cálculo. La **consecuencia** de incumplirlo —la asimilación de primas y prestaciones— vive en el **art. 72**. Trece `topic_scope` escopan el 71 **sin** el 72; otros **17 escopan los dos**. Es la misma materia del mismo Título VI resuelta de dos formas distintas según la oposición, así que al menos una de las dos está mal.
+- **Consecuencia práctica, medida:** una pregunta cuyo contenido es literal del art. 72.2 (`b49017b3`) **no se puede anclar donde vive su respuesta**: `reanclar-preguntas.cjs` **bloqueó** el movimiento avisando de que la sacaría de **13 temas** (guarda de huérfanas, funcionó como debía). Quedó anclada al 71 con la explicación corregida — o sea, el opositor que abre el artículo desde la pregunta llega a la prohibición, no a la consecuencia que se le pregunta. Y el art. 72 solo tiene **2 preguntas activas**, coherente con estar medio fuera de programa.
+- **Los 13 temas (71 sin 72):** `administrativo_asturias/T215`, `administrativo_estado/T307`, `administrativo_junta_general_asturias/T4`, `administrativo_seguridad_social/T21`, `auxiliar_administrativo_ayuntamiento_alcala_henares/T23`, `auxiliar_administrativo_ayuntamiento_madrid/T16`, `auxiliar_administrativo_baleares/T19`, `auxiliar_administrativo_canarias/T10`, `auxiliar_administrativo_universidad_alcala/T6`, `auxiliar_administrativo_universidad_complutense/T11`, `auxilio_judicial/T2`, `ayudantes_ejecucion_penal_pais_vasco/T7`, `etgoa_sanidad_consumo/T12`.
+- **Cómo se resuelve (y cómo NO):** es trabajo del pipeline `verify:scope` contra el **epígrafe oficial** de cada tema, no un `UPDATE` a mano. Si el epígrafe pide el Título VI o «la igualdad en el acceso a bienes y servicios», el 72 entra; si enumera artículos concretos y no lo nombra, se queda fuera y entonces lo que sobra es la pregunta ahí. **NUNCA añadir el 72 a los 13 por simetría con los 17**: la simetría no es fuente.
+- **Cómo salió:** revisando las gemelas con clave contradictoria de [T-408]. El hueco no lo cazó ningún detector — lo destapó **la guarda del re-anclaje al negarse a mover la pregunta**, que es un sitio raro para encontrar un problema de temario.
+- **Relacionada:** [T-408] (de donde sale), frase-gatillo *«revisa los huecos del temario»* (`scope_titulo_huerfano`) — este caso es su versión pequeña: no falta un título entero, falta **el artículo siguiente**, y por eso el detector de títulos huérfanos no lo ve.
+
+### [T-422] 🔴 [ABIERTO 31/07] Tres impugnaciones resueltas cuyo email NUNCA se intentó: el reconciliador lleva horas cantándolo y nadie las reenvía
+
+- **Esfuerzo: ~30 min** para las tres (leer la respuesta ya escrita y reenviarla). Entender por qué falló el envío puede llevar más.
+- **Qué pasa:** el cron `dispute-email-reconciliation` emite `invariant_violation` / `dispute_resolved_without_email` y la regla `dispute_email_drop` **ha disparado 7 veces el 31/07** (todas emailadas al buzón). Son **3 impugnaciones cerradas con respuesta escrita cuyo email no llegó a intentarse**: no es un `emailSkipReason`, es que no hay ni fila en `email_events`. La persona escribió, se le contestó, y **cree que la ignoramos**.
+- **Las tres, todas de la MISMA usuaria** (`marta_benitopadilla@hotmail.com`, `3260627f-2018-4a5e-8234-e6f07015abb9`), resueltas el 31/07 entre 06:50 y 06:51:
+  - `0c4740ed-2f98-4279-8ec2-58159288cc62`
+  - `c9bf1715-460d-4710-99d1-f0d3649ab9fc`
+  - `d2508ad3-f7cb-4215-9a55-35a67c21d3ae`
+  - Que las tres sean de la misma persona y del mismo minuto apunta a **un cierre en tanda** como causa, no a tres fallos sueltos. Mirar por qué camino se cerraron antes de reenviar.
+- **Ojo al reenviar:** `/api/v2/dispute/resolve` devuelve **409** si la impugnación ya está resuelta, así que no vale con repetir la llamada — el manual lo dice en §"Reintento manual" y deja el hueco reconocido (*«para reintentar solo el email habrá que añadir un endpoint específico»*). Salida por ahora: contactar por el hilo de feedback o crear el endpoint.
+- **NO es [T-369]**, aunque se parezcan y convenga leerlos juntos: allí el email **se intentó y se saltó** por `email_soporte_disabled` (el botón «Desactivar TODOS los emails»); aquí **no se intentó nunca**. Son dos averías distintas con el mismo síntoma para el usuario, y por eso hay dos reglas de alerta que no se solapan.
+- **Cómo salió:** al triar `alert_fired` de las últimas 24 h en una sesión de impugnaciones. La alerta estaba disparando desde primera hora y **seguía disparando al cierre de la sesión**: nadie la había recogido.
+- **Relacionada:** [T-369], manual `impugnaciones-claude-code.md` §6 (comprobar `emailSent`/`emailSkipReason` al cerrar), runbook `health-check.md` §0.
 
 ### [T-411] 🟠 [ABIERTO 31/07] Test por leyes: quien estudia una ley no puede practicar los exámenes reales de OTRAS oposiciones sobre esa misma ley
 
@@ -1962,7 +2065,9 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Fail-open total:** sin sid, sin ruta, sin BD o sin red, **deja pasar**. Que la telemetría no responda no puede impedirle a nadie commitear; es la misma regla del latido y del push-guard.
 - **Capas:** núcleo puro `lib/sessions/indiceCompartido.cjs` con **14 tests** (incluidos los cuatro casos que NO deben molestar y los tres de fail-open), puente fino en `scripts/check-indice-compartido.cjs`, y verificación en vivo: bloqueó de verdad este commit, con dos compañeras detectadas.
 - **Honestidad sobre este commit:** salió con `INDICE_COMPARTIDO_OK=1`, porque migrar a un worktree a mitad de la sesión habría sido peor. Queda impreso en la salida, que es justo para lo que existe el escape con nombre.
-- **Relacionadas:** [T-385] (mismo acoplamiento, capa de abajo), [T-400] (que midió las 5 sesiones), [T-375] (por qué un bloqueo imposible se acaba rodeando), [T-296] (el latido del que se lee la señal).
+- **Confirmado dos veces más el mismo 31/07, en las dos direcciones** (sesión de impugnaciones, [T-406]): primero **otra sesión se llevó mi fichero** —mi `pre-commit` falló, mi cambio se quedó en el árbol y acabó dentro de su commit `bbcb07e5`, así que la ficha T-406 entró en `main` bajo un mensaje de T-404—; después, al reintentar, **mi `git add` encontró en el índice ficheros ajenos** (`.husky/pre-commit`, `toolRegistry.ts`, dos tests nuevos) y un `git commit` normal los habría publicado a medias.
+  - 💡 **Salida limpia sin tocar el índice ajeno, para quien se lo encuentre igual:** `git commit -m "…" -- <ruta>`. El commit parcial por ruta coge el contenido de ESE fichero del árbol de trabajo y **deja intactas las entradas de índice de las demás sesiones**. Es lo que desatascó este caso. (No sustituye al arreglo de verdad, que es un árbol por sesión.)
+- **Relacionadas:** [T-385] (mismo acoplamiento, capa de abajo), [T-400] (que midió las 5 sesiones), [T-375] (por qué un bloqueo imposible se acaba rodeando), [T-296] (el latido del que se lee la señal), [T-406] (la sesión donde volvió a pasar dos veces).
 
 
 ### [T-349] ✅ [HECHA 31/07] El pre-commit no pasa lint: un error de sintaxis llega a `main` y bloquea el deploy de TODAS las sesiones
