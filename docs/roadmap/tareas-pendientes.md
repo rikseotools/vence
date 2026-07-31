@@ -1209,6 +1209,16 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cuidado al filtrar:** `Failed to fetch` es ruido cuando está repartido entre muchos usuarios, pero **concentrado en pocos puede ser un endpoint caído**. Si se suprime en bloque se pierde esa capacidad de detección; mejor bajarlo a `warn` (sigue en la tabla, deja de contar como error) que borrarlo. Los `[GSI_LOGGER]` sí se pueden descartar de raíz: son de un script de terceros.
 - **De dónde sale:** mismo triaje del 31/07 que [T-418] y [T-419].
 
+- **📌 LO QUE ESE TRIAJE NO MIRÓ — para que nadie lo lea como «ya revisado».** Se atacaron las familias por volumen y se paró en las cuatro grandes de `console_error`. Del mismo corte de 24 h quedan **sin abrir**: `ci_integracion_rojo` 60 · `client_error` 57 · `request_completed` 38 (va **muestreado al 10 %**, o sea ~380 reales) · `http_5xx` 31 · `alert_fired` 23 · `unhandled_error` 16 · `alert_rule_failed` 12 · `react_error_boundary` 11 · `invariant_violation` 8 · `server_render_error` 7 · `workflow_failed` 6.
+  - **Los tres que yo abriría primero, y no por tamaño:** `invariant_violation` (algo que el código da por imposible está ocurriendo), `alert_rule_failed` (una regla de alerta que revienta es vigilancia que **no** vigila, y se ve verde) y `react_error_boundary` (pantalla rota en la cara del usuario).
+  - **Colas medidas ese mismo rato y NO triadas:** **43 hallazgos `error`** de salud del contenido (11 `http_5xx`, 9 `plazas_reserva_sin_declarar`, 7 `plazas_afirmadas_sin_documento`, 5 `server_render_error`, 5 `seguimiento_url_stale`, y sueltos de `cita_no_literal`, `temas_card`, `convocatoria_estado_incoherente`, `hito_vencido_abierto`, `convocatoria_timeline_incoherente`, `seguimiento_fuente_ciega`), **9 señales OEP** `pending` y **1 alerta de fraude** `new`. Cada una tiene su frase-gatillo y su runbook en CLAUDE.md.
+  ```sql
+  -- el corte que produjo todo lo anterior, para repetirlo tal cual
+  SELECT coalesce(event_type,'(null)'), count(*) FROM observable_events
+  WHERE severity='error' AND created_at > now() - interval '24 hours'
+  GROUP BY 1 ORDER BY 2 DESC;
+  ```
+  - **Trampa en la que caí, y que cuesta media hora:** agrupar por mensaje truncado (`left(error_message,150)`) parte el stack y dispersa los grupos, y un `tail` en la consola se come justo las filas grandes, que van arriba. Llegué a leer «33 eventos en 9 usuarios» donde había **423**: la diferencia entre «anécdota» y «bucle de cinco horas». **Si dos consultas del mismo hecho no dan lo mismo, reconcilia antes de concluir.**
 
 ### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
 
