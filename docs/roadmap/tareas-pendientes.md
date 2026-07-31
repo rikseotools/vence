@@ -1234,6 +1234,8 @@ incluida).
   - **Por qué el secreto y no el security group:** porque `api.vence.es` resuelve **directo a este ALB sin CDN**, así que cerrar el SG a los rangos de CloudFront habría tumbado el backend. El secreto solo afecta a la regla del frontend.
   - **Codificado en `backend/infra/frontend.tf`** (regla 110 + 111 + `data.aws_ssm_parameter`) a la vez que se aplicó. Secreto en SSM `/vence-frontend/CLOUDFRONT_ORIGIN_SECRET`.
   - **Lo que esto SÍ arregla:** ya no se puede falsificar `CloudFront-Viewer-Address` llegando al origen → la IP que el antifraude trata como de confianza vuelve a serlo. **Lo que NO:** el ALB sigue siendo alcanzable (responde 403, no rechaza la conexión); eso es el SG, y sigue esperando a los logs.
+- **✅ DESPLEGADO Y VERIFICADO 31/07 (`vence-frontend:588`, SHA `7ecbbc2a`):** `TRUSTED_EDGE=cloudfront` vivo + el código de `foreignEdgeHeaders`. Salud 5/5, web y `api.vence.es` en 200, y el **403 del origen AGUANTÓ dos despliegues seguidos** (el mío y el de otra sesión) — la regla del listener es independiente del task def, confirmado con datos.
+- **🔑 DECISIÓN DE DISEÑO QUE HAY QUE RESPETAR:** `TRUSTED_EDGE` se puso en el **transform de `scripts/deploy-frontend.sh`**, NO a mano en el task def. Por eso **sobrevive a los despliegues de otras sesiones** (verificado: la `589` ajena lo llevaba). Si alguien lo mueve al task def a mano, el siguiente deploy ajeno lo borra y volvemos al modo laxo **en silencio** — que es justo el fallo que esta tarea existe para evitar.
 - **➡️ SIGUIENTE (cuando haya 2-3 días de logs):** ver qué tráfico legítimo hay más allá de CloudFront y del backend, y entonces elegir. La vía que **hoy ya es segura sin esperar** es la **cabecera secreta** CloudFront→ALB aplicada **solo a la regla del frontend**, dejando intacta la del backend: no depende de rangos IP, no toca `api.vence.es`, y cierra la falsificación en la ruta que le importa al antifraude (la web).
 - **Refs:** `lib/api/clientIp.ts` (precondición en el docstring), `__tests__/lib/api/clientIp.test.ts` (17), `scripts/fraud-sweep.cjs` (D2 `multi_account_reg_ip`), `backend/infra/alb.tf` (logs), T-089 §7-pre.
 
@@ -4162,6 +4164,16 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 > 1. **[T-357]** — cerrar el origen (hoy el ALB acepta `0.0.0.0/0` y la IP `trusted` es falsificable). Es prerrequisito literal del §7-pre: mover el borde sin esto **traslada** el problema en vez de arreglarlo.
 > 2. **La periferia auditada en §3-bis** del manual: purga de CDN, propagación de la purga ISR entre réplicas, SLOs/alarmas/canary, y decidir destino del pooler HA y de la Lambda del fetcher.
 > 3. **`TRUSTED_EDGE` + el código de IP ya commiteado** (`67e60daff`), pendientes de desplegar.
+>
+> **🧹 LIMPIEZA AL CERRAR SESION (31/07).** Recursos de koigrid dejados en mínimos: **BD `vence-poc` running**
+> (512MB, con `articles`+`laws` reales) y **las 5 apps pausadas** (coste cero, `/resume` en ~40s sin rebuild).
+> **Borradas** las dos BD de ensayo: `vence-rehearsal2` (basura de los intentos fallidos, sin snapshot) y
+> `vence-cutover-test` **CON snapshot final** — o sea que el ensayo de 24GB verificado es **recuperable** por
+> `POST /databases/:id/restore` con el id de la borrada, si algún día hace falta.
+>
+> **⚠️ Y un cambio que afecta a quien retome:** los volcados locales (~12GB en `~/.cache/koigrid-mig`) se
+> **BORRARON a propósito**. Motivo: producción crece a diario, así que en cuanto pasen días el volcado miente,
+> y guardarlo da falsa sensación de "ya está hecho". **Re-volcar son ~50 min** y el procedimiento está en §3-ter.
 >
 > **Lo que NO hay que rehacer al retomarla** (está medido y no caduca): capacidad (615 rps con 1 réplica = 37× el pico), paridad de latencia en página completa (1,02-1,15×), precio (Pro $35), y la **ventana de siembra: ~3h10m** — de ahí sale que el cutover tiene que ser por replicación lógica, no en frío.
 
