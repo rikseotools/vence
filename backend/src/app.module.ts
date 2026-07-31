@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ArchiveInteractionsModule } from './archive-interactions/archive-interactions.module';
 import { TelemetryRetentionModule } from './telemetry-retention/telemetry-retention.module';
 import { BoeChangesModule } from './boe-changes/boe-changes.module';
+import { LawSourceWatchModule } from './law-source-watch/law-source-watch.module';
 import { LawCompletenessModule } from './law-completeness/law-completeness.module';
 import { AnnulledVigenciaSweepModule } from './annulled-vigencia-sweep/annulled-vigencia-sweep.module';
 import { validateEnv } from './config/env';
@@ -154,6 +155,8 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     EmailModule,
     // Crons — sub-etapa 1a
     BoeChangesModule,
+    // [T-380] Vigilancia por hash de las fuentes que BoeChangesModule excluye a propósito.
+    LawSourceWatchModule,
     // Cron — completitud de leyes vs fuente (Capa 4: snapshot + alerta de regresión)
     LawCompletenessModule,
     AnnulledVigenciaSweepModule,

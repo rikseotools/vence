@@ -5185,7 +5185,67 @@ export const RULE_EVASION_MULTIDISPOSITIVO: AlertRule<{
   cooldownMin: 1440,
 };
 
+
+/**
+ * La fuente oficial de una ley que servimos ha CAMBIADO. [T-380]
+ *
+ * Regla PROPIA y no el catch-all a propósito: `senal_error_sin_vigilancia` está calibrado
+ * para inundaciones (≥150 eventos/h de un tipo), y esto son uno o dos avisos al día — nacería
+ * invisible justo por ser poco frecuente, que es lo contrario de lo que interesa. Un cambio en
+ * el BOJA o en un boletín autonómico puede dejar desactualizadas decenas de preguntas.
+ *
+ * No dispara con `law_source_unreachable`: una descarga fallida NO es un cambio (el BORM
+ * devuelve captchas), y mezclarlas quemaría la señal.
+ */
+export const RULE_LAW_SOURCE_CHANGED: AlertRule = {
+  name: 'law_source_changed',
+  severity: 'warn',
+  emailAlways: true,
+  query: sql`
+    SELECT metadata->>'short_name' AS ley,
+           metadata->>'url' AS url,
+           (metadata->>'preguntas')::int AS preguntas,
+           MAX(ts) AS "lastTs"
+    FROM observable_events
+    WHERE event_type = 'law_source_changed'
+      AND ts > NOW() - INTERVAL '24 hours'
+    GROUP BY 1, 2, 3
+    ORDER BY preguntas DESC NULLS LAST
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const total = rows.reduce<number>(
+      (n, r) => n + (Number((r as { preguntas?: number }).preguntas) || 0),
+      0,
+    );
+    const lineas = rows
+      .slice(0, 10)
+      .map((r) => {
+        const x = r as { ley?: string; url?: string; preguntas?: number };
+        return `   · ${x.ley ?? '?'} (${x.preguntas ?? 0} preguntas)\n     ${x.url ?? ''}`;
+      })
+      .join('\n');
+    return {
+      title: `📜 La fuente oficial de ${rows.length} ley(es) ha cambiado (${total} preguntas afectadas)`,
+      body:
+        `La vigilancia por hash ha detectado que el documento oficial ya no es el que teníamos ` +
+        `verificado. El hash dice QUE cambió, no QUÉ cambió:\n\n${lineas}\n\n` +
+        `Para revisarlo, dile a Claude: «revisa los cambios de fuentes legales».\n` +
+        `NO re-verificar sin abrir el documento: pisar la línea base silencia el aviso sin ` +
+        `haber mirado nada.`,
+      fingerprint: `law_source_changed:${rows.map((r) => (r as { ley?: string }).ley).join(',')}`,
+    };
+  },
+  // 12 h: el aviso se repite una vez al día como mucho. Un cambio de fuente no se resuelve en
+  // minutos (hay que abrir el documento y comparar articulado), así que insistir antes solo
+  // enseña a ignorarlo.
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Fuente legal cambiada (2026-07-31, T-380): regla propia porque el catch-all solo ve
+  // inundaciones y esto son uno o dos avisos al día.
+  RULE_LAW_SOURCE_CHANGED,
   // Fraude confirmado que nadie resuelve (2026-07-30): confirmar una señal la saca del badge,
   // así que el trabajo bien hecho acababa enterrado. 20 llevaban hasta 9 días.
   RULE_FRAUDE_CONFIRMADO_SIN_ACCION as AlertRule,

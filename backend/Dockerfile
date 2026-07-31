@@ -14,6 +14,22 @@ RUN npm run build
 # ---- runtime ----
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production
+
+# poppler-utils (pdftotext) + curl: dependencias REALES de la vigilancia de fuentes legales
+# [T-380]. Casi todas las fuentes que el monitor del BOE no cubre son PDFs de boletines
+# autonómicos, y hay que convertirlos a texto para hashearlos.
+#
+# Por qué se instala aquí y no se resuelve con una librería JS: el CLI
+# (`scripts/laws/vigilar-fuentes-legales.cjs`) extrae con `pdftotext -layout`, y un extractor
+# distinto produce un TEXTO distinto del mismo PDF — y por tanto otro hash. Las dos mitades
+# tienen que leer igual o la línea base fijada por una da «cambiada» vista por la otra: ese
+# fallo ya costó un 8-de-8 en falso el 31/07 entre dos criterios de hash distintos, y aquí se
+# evita por construcción compartiendo el mismo extractor.
+#
+# `--no-install-recommends` y limpieza de listas para que el coste sea el mínimo (~30-50 MB).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends poppler-utils curl \
+  && rm -rf /var/lib/apt/lists/*
 # SHA del commit horneado en la imagen → /health lo expone para que el deploy
 # verifique que prod sirve lo que construyó (anti-clobber, incidente 11/07).
 ARG GIT_COMMIT_SHA=
