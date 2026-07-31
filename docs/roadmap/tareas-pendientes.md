@@ -1082,6 +1082,23 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-429] 🟡 [ABIERTO 31/07] Triar las 11 fichas en DERIVA que destapó el criterio nuevo de abierto/cerrado
+
+- **ORIGEN.** Salieron al arreglar [T-382]. Hasta ese día «abierta» se deducía de la POSICIÓN de la ficha en el markdown, y con tres secciones `## Hechas` el detector de deriva **no podía ver a 145 de las 177 tareas vivas**. Al pasar el criterio a la marca `✅` de la cabecera, aparecieron **11 divergencias que llevaban tiempo invisibles**.
+- **NO se arreglaron en el momento a propósito:** cada una necesita **decidir quién tiene razón**, la BD o la ficha, y eso es juicio, no parseo. Arreglarlas en bloque sería inventar un veredicto — el mismo error que este repo evita en todos sus detectores.
+- **Las 10 que dicen `[ABIERTO …]` y están `done` en BD:** [T-002], [T-004], [T-011], [T-053], [T-058], [T-088], [T-093], [T-128], [T-232], [T-402].
+  - Por cada una: leer la ficha, mirar el `outcome` en BD y decidir. Si el trabajo se hizo → poner `✅` en la cabecera. Si la ficha describe trabajo que sigue vivo (ojo: [T-088] habla de *«cola de 21 recortes»*) → **reabrir** con `backlog.cjs reopen <id> --motivo "…"`, que existe justo para esto.
+- **Y 1 al revés:** [T-304] lleva `✅` en la cabecera pero sigue VIVA en BD (esperaba deploy del frontend). Ahí manda la BD: hay que quitarle el ✅ o cerrarla si ya se verificó.
+- **Cómo verlas en cualquier momento:**
+  ```bash
+  npx tsx -e "import {readFileSync} from 'fs'; import {parseBacklogMarkdown,findBacklogDrift} from './lib/backlog/claim'; …"
+  ```
+  (o simplemente `node scripts/backlog.cjs sync`, que avisa de las huérfanas en ambos sentidos).
+- **Por qué merece la pena y no es papeleo:** una ficha que anuncia trabajo ya hecho hace que otra sesión monte un worktree para nada — es **el incidente del 20/07 que creó todo este sistema** (la ficha del RD 176/2022 decía *«9 mislinks EN VIVO»* cuando ya estaban resueltos). Ahora por fin se pueden ver; lo que falta es mirarlas.
+- **Relacionadas:** [T-382] (el criterio que las destapó), [T-392] (ciclo de vida completo).
+
+
+
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
@@ -2124,6 +2141,25 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-407] ✅ 🟠 [HECHA 31/07] Seis resolvedores de session-id con dos reglas distintas: una sesión se veía a sí misma como ajena
+
+- **ORIGEN.** Lo reportó **otra sesión** y lo dio por cosmético: *«el worktree usa dos identidades de sesión distintas (`cola.cjs` coge el `.session-id`, `revisar-impugnacion.cjs` la variable de entorno), así que el dossier avisa de "otra sesión" siendo yo mismo. Cosmético, pero despista»*.
+- **NO era cosmético.** El síntoma sí; la causa no. **Todo el reparto entre sesiones cuelga de ese identificador**: el claim del backlog y su lease, la cola de impugnaciones, el guardarraíl de push, el latido y el mapa de solape de [T-400]. Con dos identidades para el mismo worktree, ese andamiaje **miente sin romperse**, que es la peor forma de fallar — y en concreto: **un claim tomado bajo una identidad no se puede soltar con la otra**.
+- **Lo medido: SEIS copias de la misma función, con DOS reglas.**
+  | regla | ficheros |
+  |---|---|
+  | `--sid` > fichero `.session-id` > variable | `backlog.cjs`, `backlog-push-guard.cjs`, `cola.cjs`, `latir.cjs`, `deploy-marcar.cjs` |
+  | **SOLO** la variable de entorno | `revisar-impugnacion.cjs`, `revisar-feedback.cjs` |
+- **Por eso el aviso era real y al revés de lo que parecía:** `crear-worktree.sh` escribe un `.session-id` en **todos** los worktrees del tooling, así que `cola.cjs` reclamaba con el id del fichero y el dossier comparaba con el de la variable. En un worktree hecho a mano (sin fichero) coincidían y el fallo no aparecía: de ahí que llevara tiempo sin cazarse.
+- **Y el detalle que decidió el diseño: una de las seis copias se escribió ESE MISMO DÍA** — la de `deploy-marcar.cjs`, en la sesión de [T-404], repitiendo el patrón sin querer. Un fallo que se reproduce solo mientras lo estás arreglando no se corrige puntualmente: se corrige con un módulo y un guardarraíl.
+- **✅ ARREGLO: `lib/sessions/sid.cjs`, fuente única**, y las siete herramientas migradas. Orden: `--sid` > `.session-id` (cwd, luego repo) > `CLAUDE_CODE_SESSION_ID`.
+  - **El fichero gana a la variable a propósito:** el fichero es del **worktree** y describe dónde estás trabajando; la variable la pone el entorno del proceso y puede venir heredada. Ante la duda, la identidad la manda el sitio donde está el trabajo. Alinear el grupo B hacia el A es además la dirección correcta: los claims vivos de la cola los tomó `cola.cjs`, o sea con el fichero.
+  - **Devuelve también el `origen`** (`flag`/`fichero`/`entorno`). No es adorno: cuando dos herramientas vuelvan a discrepar, saber de DÓNDE sacó cada una su identidad es la diferencia entre arreglarlo en un minuto y volver a dudar.
+- **Capas:** 12 tests del núcleo (incluida la **regresión exacta**: con fichero y variable a la vez, backlog, dossier y latido resuelven lo mismo) + **guardarraíl de CI** `sidUnico.guardrail` que exige que las siete usen el módulo y que **ninguna vuelva a leer el fichero ni la variable por su cuenta** — detectado sobre el código sin comentarios, así que mencionarlo en prosa no lo dispara. Verificado con un worktree simulado con fichero y variable distintos.
+- **Relacionadas:** [T-400] (el mapa de solape, que depende de esta identidad), [T-404] (donde se escribió la sexta copia), [T-296] (el latido), [T-412] (la reserva de la cola, que este fallo hacía gritar en falso).
+
+
 
 ### [T-423] ✅ 🟠 [HECHA 31/07] Nadie medía cuándo se RODEA un guardarraíl, que es como se mueren sin que te enteres
 
