@@ -5,6 +5,7 @@
 //
 // Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07).
 
+import { testDbConfig } from '../helpers/db'
 import { EXAM_POSITION_MAP, getValidExamPositions } from '@/lib/config/exam-positions'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
@@ -23,7 +24,7 @@ describeIfDb('BD Real: filtro exam_position', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

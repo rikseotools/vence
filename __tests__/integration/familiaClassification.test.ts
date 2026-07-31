@@ -10,6 +10,7 @@
 //
 // Lee de RDS. Skip si no hay DATABASE_URL (mismo patrón que configDbIntegrity).
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { classifyFamilia, FAMILIA_KEYS } from '@/lib/oposiciones/familia'
@@ -22,7 +23,7 @@ const describeIfDb = DB_URL ? describe : describe.skip
 describeIfDb('Familia ↔ BD (integración)', () => {
   let client: Client
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
   })
   afterAll(async () => { await client?.end() })

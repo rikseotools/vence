@@ -18,6 +18,7 @@
  *
  * Si se salta: falta DATABASE_URL en .env.local.
  */
+import { testDbConfig } from '../helpers/db'
 import fs from 'fs'
 import path from 'path'
 import dotenv from 'dotenv'
@@ -41,10 +42,7 @@ d('Catálogo de teoría · matview + búsqueda (BD real, TX rollback)', () => {
   beforeAll(async () => {
     // RDS presenta una cadena self-signed → verificación relajada (patrón del
     // proyecto post-cutover, memoria project_cutover_rds_prod).
-    client = new Client({
-      connectionString: (DB_URL as string).replace(/\?.*$/, ''),
-      ssl: { rejectUnauthorized: false },
-    })
+    client = new Client(testDbConfig())
     await client.connect()
     await client.query('BEGIN')
     const sql = fs.readFileSync(MIGRATION, 'utf8')

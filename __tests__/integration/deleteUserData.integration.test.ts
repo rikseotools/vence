@@ -15,6 +15,7 @@
 // db/client crea su cliente postgres.js EN EL IMPORT leyendo DATABASE_URL → se
 // ajusta el env (sslmode no-verify por el cert self-signed de RDS en local) ANTES
 // de importar, y se carga deleteUserData con import() dinámico dentro de beforeAll.
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { randomUUID } from 'crypto'
@@ -41,7 +42,7 @@ describeIfDb('delete_user_account — borrado real contra RDS (SSOT + cascada)',
   const email = `integ-del-${userId.slice(0, 8)}@vence-integration.invalid`
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     // Usuario DESECHABLE por el camino real de alta (misma fn que resolveAppUser).
     await client.query('SELECT public.create_organic_user($1::uuid, $2, $3)', [userId, email, 'Integ Delete Test'])

@@ -10,6 +10,7 @@
 // el 26/07 la simulación marcó `administrativo-diputacion-jaen` como ciega usando el
 // `content_preview` de su URL ANTERIOR, minutos después de repuntarla.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -62,7 +63,7 @@ describeIfDb('Detector de fuentes ciegas de seguimiento (integración)', () => {
   let filas: FilaDetector[]
 
   beforeAll(async () => {
-    client = new Client({ connectionString: urlSinSslMode(DB_URL as string), ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     filas = (await client.query(SQL_DETECTOR)).rows
   }, 60000)

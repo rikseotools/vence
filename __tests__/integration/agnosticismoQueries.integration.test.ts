@@ -10,6 +10,7 @@
 // inexistente en RDS + tabla vacía— y FALLABA en RDS; se reescribió nativa).
 //
 // Solo lee (SELECT); no necesita INTEGRATION_DB_WRITABLE, solo DATABASE_URL.
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -27,7 +28,7 @@ const describeIfDb = DB_URL ? describe : describe.skip
 describeIfDb('agnosticismo — paridad de queries migradas (RDS, read-only)', () => {
   let client: Client
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     await client.query("SET statement_timeout='10000ms'")
   })

@@ -14,6 +14,7 @@
  * de Supabase está desactualizado y desaparecerá al decomisionarlo.
  */
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -60,7 +61,7 @@ describeIfDb('Psychometric questions data quality', () => {
   let questions: PsyQuestion[]
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
     const { rows } = await client.query<PsyQuestion>(`
       SELECT id, question_text, option_a, option_b, option_c, option_d,

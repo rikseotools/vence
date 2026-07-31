@@ -12,6 +12,7 @@
  *
  * Si se salta: falta DATABASE_URL en .env.local.
  */
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import {
@@ -52,10 +53,7 @@ d('Buscador de contenido /teoria (FTS, BD real)', () => {
   })
 
   it('AISLAMIENTO: existe teoria_content_tsv y el content_tsv del chat sigue vivo', async () => {
-    const c = new Client({
-      connectionString: (DB_URL as string).replace(/\?.*$/, ''),
-      ssl: { rejectUnauthorized: false },
-    })
+    const c = new Client(testDbConfig())
     await c.connect()
     try {
       const cols = await c.query<{ column_name: string }>(

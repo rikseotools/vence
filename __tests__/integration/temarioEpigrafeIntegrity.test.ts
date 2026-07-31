@@ -3,6 +3,7 @@
 // Verifica que la fuente única de verdad (BD) tiene datos completos y consistentes.
 // Se salta en CI si no hay credenciales reales.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -49,7 +50,7 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
   beforeAll(async () => {
     // Quitar sslmode de la URL (si no, pg ignora la opción ssl) + rejectUnauthorized:false:
     // RDS presenta cadena self-signed. Sin esto el test falla con SELF_SIGNED_CERT_IN_CHAIN.
-    client = new Client({ connectionString: (DB_URL || '').replace(/[?&]sslmode=[^&]+/, ''), ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     topics = (await client.query<Topic>('SELECT * FROM topics WHERE is_active = true')).rows
     bloques = (await client.query<Bloque>('SELECT * FROM oposicion_bloques')).rows

@@ -7,6 +7,7 @@
 //   - la vista _effective deriva 'outdated_convocatoria' cuando el programa_last_hash cambia
 // Tema aislado ('__verif_test_e__') + convocatoria+oposición aisladas → no toca datos reales.
 // Escribe: requiere INTEGRATION_DB_WRITABLE.
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 
 if (process.env.DATABASE_URL) {
@@ -27,7 +28,7 @@ describeIf('topic_epigrafe_verification — invariantes S2 (RDS, aislado)', () =
   const SLUG = 'verif-test-e2' // = replace(PT, '_', '-') — así el join topics→oposiciones cuadra
 
   beforeAll(async () => {
-    c = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    c = new Client(testDbConfig())
     await c.connect()
     oposicionId = (await c.query(
       `INSERT INTO oposiciones (slug, nombre, tipo_acceso, administracion, is_active)

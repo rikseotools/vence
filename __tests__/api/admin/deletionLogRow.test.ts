@@ -14,6 +14,7 @@
 //
 // Ambas importan las funciones REALES de producción (nunca copias).
 
+import { testDbConfig } from '../../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 dotenv.config({ path: '.env.local', override: true })
@@ -74,7 +75,7 @@ describeIntegration('ensureDeletionLogRow (integración real contra RDS)', () =>
   const email = `test-ensurelog-${Date.now()}@vence-sim.invalid`
 
   beforeAll(async () => {
-    pg = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    pg = new Client(testDbConfig())
     await pg.connect()
     const r = await pg.query(
       `INSERT INTO user_profiles (id, email, full_name, plan_type, target_oposicion) VALUES (gen_random_uuid(), $1, 'Sim', 'free', 'auxiliar_administrativo_estado') RETURNING id`,

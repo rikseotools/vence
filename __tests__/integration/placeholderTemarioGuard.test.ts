@@ -19,6 +19,7 @@
 //
 // CI-safe: se salta sin DATABASE_URL.
 
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 import dotenv from 'dotenv'
 
@@ -37,7 +38,7 @@ const BASELINE_PLACEHOLDER_QUESTIONS = 0
 describeIfDb('Guardarraíl: temario placeholder en leyes virtuales', () => {
   let client: Client
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
   afterAll(async () => {

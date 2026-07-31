@@ -5,6 +5,7 @@
  * Detecta bugs como usar 'administrativo' en vez de 'administrativo_estado'.
  * Requiere .env.local con credenciales reales de Supabase.
  */
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
@@ -22,7 +23,7 @@ describeIfDb('position_type integrity', () => {
   let dbPositionTypes: string[]
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
     const { rows } = await client.query<{ position_type: string }>(
       'SELECT DISTINCT position_type FROM topics WHERE position_type IS NOT NULL',

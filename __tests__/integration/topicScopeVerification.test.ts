@@ -7,6 +7,7 @@
 //
 // Usa un TEMA AISLADO (position_type '__verif_test__') creado y borrado en el
 // propio test → no toca datos reales. Escribe, así que requiere INTEGRATION_DB_WRITABLE.
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 
 if (process.env.DATABASE_URL) {
@@ -25,7 +26,7 @@ describeIf('topic_scope_verification — invariantes (RDS, escribe tema aislado)
   let lawId: string
 
   beforeAll(async () => {
-    c = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    c = new Client(testDbConfig())
     await c.connect()
     // una ley cualquiera existente (solo la referenciamos en el scope de prueba)
     lawId = (await c.query(`SELECT id FROM laws LIMIT 1`)).rows[0].id

@@ -22,6 +22,7 @@
  * test_questions del usuario), filtered-questions, simulacro.
  */
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -38,7 +39,7 @@ describe('exam_case_id exclusion in isolated tests', () => {
 
   let client: Client
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
   afterAll(async () => { await client?.end() })

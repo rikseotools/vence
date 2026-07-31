@@ -19,6 +19,7 @@
 // Guardado por DATABASE_URL (patrón oposicionIdentityBD): se SALTA en CI sin BD,
 // corre en local/post-deploy con:
 //   DATABASE_URL=... NODE_TLS_REJECT_UNAUTHORIZED=0 npx jest shuffleRoundtripBD
+import { testDbConfig } from '../helpers/db'
 import { transformQuestion } from '@/lib/api/filtered-questions/queries'
 import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
 import {
@@ -74,7 +75,7 @@ d('CANARY BD: barajar preserva la clave en preguntas reales elegibles', () => {
   beforeAll(async () => {
     const { Client } = await import('pg')
     const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
-    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    const c = new Client(testDbConfig())
     await c.connect()
     // Muestra amplia de preguntas elegibles (full). El filtro de explicación-sin-letras
     // se aplica en JS con la función real (más fiel que un LIKE).
@@ -200,7 +201,7 @@ d('CANARY BD: gate shuffle_safety coherente con el detector', () => {
     const { isShuffleEligible } = await import('@/lib/shuffle/classifyShuffleMode')
     const { Client } = await import('pg')
     const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
-    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    const c = new Client(testDbConfig())
     await c.connect()
     const safe = (
       await c.query(
@@ -224,7 +225,7 @@ d('CANARY BD: coherencia del predicado de elegibilidad', () => {
   it('ninguna full con explicación que cite letras se considera elegible', async () => {
     const { Client } = await import('pg')
     const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
-    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    const c = new Client(testDbConfig())
     await c.connect()
     const sample = (
       await c.query(`

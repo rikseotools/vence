@@ -6,6 +6,7 @@
 //
 // Guardado por DATABASE_URL (patrón officialExamsCoherence): se SALTA en CI sin BD,
 // corre en local/post-deploy con `DATABASE_URL=... npx jest oposicionIdentityBD`.
+import { testDbConfig } from '../helpers/db'
 import { ALL_OPOSICION_IDS, OPOSICIONES } from '@/lib/config/oposiciones'
 import { resolveUserOposicion } from '@/lib/oposicion/resolveUserOposicion'
 
@@ -18,7 +19,7 @@ d('CANARY: perfiles con target_oposicion sin blob resuelven a oposición conocid
   beforeAll(async () => {
     const { Client } = await import('pg')
     const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
-    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    const c = new Client(testDbConfig())
     await c.connect()
     affected = (await c.query(`
       SELECT target_oposicion AS id, COUNT(*)::int AS n

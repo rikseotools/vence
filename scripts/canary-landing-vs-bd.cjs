@@ -19,10 +19,12 @@
  */
 require('dotenv').config({ path: '.env.local' });
 const {Client}=require('pg');
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
+
 const {normalizarEtiquetaBoletin, checkConvocatoriaLinks}=require('../lib/convocatoria/linkCoherence.cjs');
 const fmt=n=>n==null?'—':String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 (async()=>{
-const c=new Client({connectionString:process.env.DATABASE_URL, ssl:{rejectUnauthorized:false}, statement_timeout:40000});
+const c=new Client({...pgConfig(), statement_timeout:40000});
 await c.connect();
 const rows=(await c.query(`select slug, plazas_libres l, plazas_promocion_interna p, plazas_total t, temas_count tc, landing_estadisticas le, estado_proceso estado
   from oposiciones_ssot where is_active and jsonb_typeof(landing_estadisticas)='array'

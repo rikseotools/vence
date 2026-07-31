@@ -15,6 +15,7 @@
  *
  * Se salta solo si faltan credenciales (CI sin secrets).
  */
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 import dotenv from 'dotenv'
 import { getUserThemeStatsByOposicion } from '@/lib/api/theme-stats/queries'
@@ -49,7 +50,7 @@ maybe('Modelo de theme-stats (artículo→topic_scope) — invariantes anti-V4',
   let expectedInScope: number
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     // Usuario más pesado con oposición activa.
     const u = await client.query(`

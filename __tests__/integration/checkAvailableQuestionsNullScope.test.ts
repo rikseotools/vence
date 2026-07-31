@@ -12,6 +12,7 @@
 //
 // CI-safe: se salta si no hay DATABASE_URL.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import {
@@ -46,7 +47,7 @@ describeIfDb('checkAvailableQuestions honra article_numbers NULL (toda la ley)',
   }, 30000)
 
   it('la condición vieja (= ANY suelto, sin guarda NULL) habría dado 0 — confirma que el fix es lo que rescata', async () => {
-    const client = new Client({ connectionString: DB_URL })
+    const client = new Client(testDbConfig())
     await client.connect()
     try {
       const q = (nullSafe: boolean) =>

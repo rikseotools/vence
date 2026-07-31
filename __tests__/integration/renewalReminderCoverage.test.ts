@@ -6,6 +6,7 @@
 // forma inminente (48h), activa, sin cancelar y con ciclo maduro (>8 días) DEBE tener
 // un `recordatorio_renovacion` en los últimos 9 días. Vigila el punto ciego que el
 // heartbeat no ve: "el cron ticó pero envió 0". Skip si no hay DATABASE_URL.
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -17,7 +18,7 @@ const describeIfDb = DB_URL ? describe : describe.skip
 describeIfDb('Cobertura de recordatorios de renovación (integración)', () => {
   let client: Client
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
   })
   afterAll(async () => { await client?.end() })

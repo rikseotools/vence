@@ -1034,6 +1034,21 @@ incluida).
   3. **Un workflow de GitHub Actions** que instale poppler y ejecute el comando. Funciona hoy sin tocar el backend, a cambio de reintroducir un cron fuera de Fargate justo después de haberlos migrado (`check-boe-changes.yml.DISABLED`).
   - **Mientras no se decida, la vigilancia depende de que alguien se acuerde** — que es exactamente lo que [T-304] enseñó a no hacer: un vigilante que no corre solo es indistinguible de no tener vigilante.
 
+### [T-381] 🟠 [ABIERTO 31/07] El canary `served-rollup` está ROJO: el tráfico sintético se cuenta como servido y envenena el ratio anti-cosecha
+
+- **Qué dice el canario, hoy** (`npm run canary:served-rollup`, exit 1):
+  ```
+  servidas 24h: 1762 filas (232 usuario / 853 dispositivo / 677 ip), 132.656 preguntas
+  ❌ la medición anti-cosecha NO está viva
+     · tráfico sintético contabilizado (2 servidas de un usuario smoke) → la exención
+       x-vence-canary del writer no está aplicando; envenena el ratio del detector de cosecha
+  ```
+- **Por qué importa y no es cosmético:** desde el 27/07 la detección de cosecha del banco de preguntas **se apoya en `daily_questions_served`** (respondidas/servidas), no en las respuestas guardadas. Si en ese rollup entra tráfico que no es de un opositor, el ratio miente **en la dirección mala**: infla las servidas y hace que un cosechador real parezca normal. El propio runbook lo anticipaba (*«si ves un `smoke@` en el rollup, la exención del writer se rompió»*), y es justo lo que está pasando.
+- **Hipótesis con la que empezar (NO comprobada):** el 29/07 se endureció la exención — `x-vence-canary` a secas ya no exime, ahora hace falta `x-vence-canary-secret` (`esCanaryDeConfianza` + `secretoCanaryEsperado`, commit `e049f57ac`). Es coherente con el síntoma: el endurecimiento arregló un agujero real (una petición anónima con ese header se llevaba las preguntas saltándose el Turnstile) y de paso dejó al **writer del rollup** contando el tráfico del smoke porque este no manda el secreto. **Confirmar antes de tocar**: mirar si el smoke envía el secreto y si el writer usa el mismo criterio que el gate.
+- **Cómo se descubrió:** de rebote, arreglando la conexión a RDS de los canarios en [T-377]. Este NO estaba roto de conexión — conecta y falla por su propio motivo, y llevaba en rojo sin dueño.
+- **Cuidado al arreglarlo:** la exención tiene DOS capas (writer por header, sweep por `email LIKE 'smoke@%'`). Tocar solo una deja el defecto medio vivo. Y **no relajar el secreto** para que el smoke pase: el agujero que cerró el endurecimiento era real.
+- **Relacionadas:** [T-377] (de donde sale), runbook `revisar-fraudes.md`, `docs/runbooks/health-check.md`.
+
 ### [T-378] 🟠 [ABIERTO 31/07] El badge de soporte va en el botón de Soporte, no sumado en la campana (que así nunca baja de 9+)
 
 - **Lo reporta una usuaria premium y tiene razón en las dos cosas** (feedback `70cbcfc9`, Laura, 31/07): *«En la campanita siempre me pone 9+. Realizo los tres que hay en ese apartado, pero sigue apareciendo 9+. Nunca entendí esta opción, ya que mezcla preguntas de examen elegido como principal, y todas las conversaciones con soporte, pero nunca se pone en 0».*
@@ -1201,6 +1216,35 @@ incluida).
 - **Las 22 suites** (todas contra RDS): `configDbIntegrity`, `convocatoriaCiclo`, `convocatoriaVerification`, `deleteUserIndexCoverage`, `examCaseExclusion`, `familiaClassification`, `lawCompletenessConsistency`, `lawSlugFailureModes`, `legislativeImageBase64Pipeline`, `placeholderTemarioGuard`, `positionTypeIntegrity`, `questionArticleMismatch`, `schemaColumnDrift`, `seguimientoFuentesCiegas`, `temarioDataQuality`, `temarioEpigrafeIntegrity`, `temarioVersions`, `topicEpigrafeVerification`, `topicScopeIntegrity`, `topicScopeVerification`, `userStatsSummary`, `deviceFingerprintV2`.
 - **Cómo atacarlo (y cómo NO):** una a una, y **la pregunta primero es siempre «¿tiene razón el test?»**. Por la muestra, muchas parecen hallazgos de contenido reales que ya tienen su frase-gatillo y su runbook (temario/scope/convocatorias). Ajustar la aserción para que pase sería borrar el hallazgo, que es justo lo que lleva meses pasando por otra vía.
 - **Reproducir:** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config` (~9 min).
+
+
+- **⚠️ LA PREMISA DE ARRIBA ERA MEDIA VERDAD (medido el 31/07).** Corriendo el job entero en un entorno limpio salían **579 tests rojos en 32 suites**, no 24 en 22. La diferencia NO era contenido: **51 de los 80 bloques de fallo (64%) eran `self-signed certificate in certificate chain`** — 14 suites que **no llegaban a conectar** con RDS y llevaban meses contadas como "rojo de contenido". Cuántas cosas de las que este backlog da por vigiladas dependían de esas 14, es la parte que asusta.
+- **La causa, con nombre y apellidos:** desde el cutover a RDS (04/07) la URL lleva `sslmode=require`; **en node-postgres ese `sslmode` PISA la opción `ssl` que le pases**, y el certificado de RDS lo firma una CA privada de AWS. Así que la forma que estaba copiada por todas partes —`new Client({ connectionString: DB_URL })`— no conecta… **y la "cura" evidente tampoco**:
+
+  | forma | resultado |
+  |---|---|
+  | `{ connectionString: <url con sslmode>, ssl:{rejectUnauthorized:false} }` | ❌ self-signed certificate |
+  | `{ connectionString: <url SIN sslmode>, ssl:{rejectUnauthorized:false} }` | ✅ conecta |
+
+  Por eso convivían suites que funcionaban con otras que no sin patrón aparente: quien había dado con quitar el `sslmode` funcionaba, y quien solo añadió `ssl` seguía roto creyendo que lo había arreglado. **`postgres` (porsager) NO sufre esto**, lo que explica que los scripts que lo usan estuvieran bien.
+- **Arreglado así (no parcheando 36 sitios):** núcleo único `lib/db/pgSsl.cjs` (`sinSslMode` + `pgConfig`), del que cuelgan **tanto los tests** (`__tests__/helpers/db.ts` → `testDbConfig/openTestClient/openTestPool`) **como los scripts**. 36 ficheros de test migrados. Capas: 7 tests unitarios del núcleo + guardarraíl `testDbHelper.guardrail.test.ts` que **no acepta el "ya lleva un ssl"** (era justo la cura falsa) y obliga a pasar por la puerta única.
+- **Resultado medido, mismo job, mismo entorno:**
+
+  | | antes | después |
+  |---|---|---|
+  | tests rojos | 579 | **24** |
+  | suites rojas | 32 | **22** |
+  | errores de certificado | 1.126 | **0** |
+  | duración | 1.276 s | **122 s** (10×) |
+
+  Los 24 que quedan coinciden **exactamente** con el inventario original de esta ficha: eso es la deriva de contenido de verdad, ahora sin ruido encima y con el job corriendo en 2 minutos en vez de 21.
+- **Efecto colateral que valía la tarea sola: 3 canarios no podían mirar la BD** — `canary-familia`, `canary-renewal-reminders` y `canary-landing-vs-bd` (este último es el que vigila que las cifras publicadas de una landing cuadren con la BD, la red de seguridad de [T-142]). Fallaban ruidosamente (`exit 1`), pero con un error de infraestructura que nadie tradujo a *"esto no está comprobando nada"*. Arreglados y comprobados en vivo: dos en verde y **`canary-familia` en rojo por un defecto REAL que estaba tapado — cobertura de familia 41% frente al umbral de 80%** (el mismo que canta la suite `familiaClassification`).
+- **Cola pendiente de esta ficha — los 24 reales, por familia** (nada de esto está arreglado):
+  1. **Datos/BD (9):** ETGOA config 120 temas ↔ 20 activos en BD *(ver abajo)* · `oposicion_bloques` ↔ `topics.bloque_number` · familia (cobertura 41% + consistencia del clasificador) · trinquete de temario placeholder *(es [T-374])* · `user_stats_summary` no cuadra con `count(*)` de un usuario pesado · vista SQL de completitud ↔ módulo TS · `temario_versions` sin versión para alguna convocatoria vigente · norma citada ≠ ley del artículo vinculado.
+  2. **Entorno, no producto (8):** `deviceFingerprintV2` — jsdom no implementa canvas/WebGL, así que la huella sale inválida. **Deja una pregunta legítima que nadie ha contestado:** un navegador real con canvas bloqueado (Firefox endurecido, Brave) produciría también huella inválida, y eso sí sería un agujero de la detección multicuenta.
+  3. **Dobles/mocks desfasados (7):** `warmCache` y `resolveAlias` — el `fetch` global está stubbeado en ese entorno y los tests esperan otra cosa. Test viejo, no defecto.
+- **Sobre ETGOA, ya medido para que nadie lo repita:** `etgoa-sanidad-consumo` está **activa** y su config promete **120 temas**; en BD hay **120 filas pero solo 20 activas** (la parte común 1-20) y los **100 específicos (101-200) están inactivos y con 0 `topic_scope`**. Son 4 usuarios, 1 premium. El home publica *"120 temas"* (`app/page.tsx`). **Es la ÚNICA oposición del catálogo con esa brecha** (128 en config, 1 con hueco), así que no es campaña: es una decisión. **Y OJO con la salida fácil:** poner `comingSoon: true` NO arregla nada — esa bandera **solo la lee este test** (0 oposiciones la usan, nadie más la consulta), así que serviría para callar el rojo dejando al usuario viendo exactamente lo mismo. O se construye la parte específica, o se deja de prometer 120.
+- **Reproducir (2 min ahora, no 21):** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config`
 
 ### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
 

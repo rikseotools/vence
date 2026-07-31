@@ -17,6 +17,7 @@
  * Integración: necesita BD. Se salta solo si no hay DATABASE_URL (mismo patrón que el resto de
  * `__tests__/integration`).
  */
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 
 const RAW = process.env.DATABASE_URL
@@ -29,10 +30,7 @@ describeSiHayBD('cobertura de índices del borrado RGPD', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({
-      connectionString: (RAW || '').replace(/[?&]sslmode=require/, ''),
-      ssl: { rejectUnauthorized: false },
-    })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

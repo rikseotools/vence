@@ -23,6 +23,7 @@
 //
 // CI-safe: se salta solo si no hay DATABASE_URL, como el resto de integración.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { getTableName, getTableColumns, is } from 'drizzle-orm'
@@ -60,10 +61,7 @@ describeIfDb('drift de COLUMNAS entre RDS y db/schema.ts (trinquete)', () => {
   let porTabla: Map<string, Set<string>>
 
   beforeAll(async () => {
-    client = new Client({
-      connectionString: urlSinSslMode(DB_URL!),
-      ssl: { rejectUnauthorized: false },
-    })
+    client = new Client(testDbConfig())
     await client.connect()
     const { rows } = await client.query<{ table_name: string; column_name: string }>(
       `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public'`,

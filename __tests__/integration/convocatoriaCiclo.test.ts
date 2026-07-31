@@ -7,6 +7,7 @@
 //   - el ciclo archivado conserva su verdad INTACTA
 //   - borrar una convocatoria con hitos FALLA (RESTRICT) en vez de comerse el timeline
 // Oposición aislada → no toca datos reales. Requiere INTEGRATION_DB_WRITABLE.
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 
 if (process.env.DATABASE_URL) {
@@ -25,7 +26,7 @@ describeIf('ciclo de convocatoria — inmutable y trazable (RDS, aislado)', () =
   const SLUG = 'ciclo-test-opo'
 
   beforeAll(async () => {
-    c = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    c = new Client(testDbConfig())
     await c.connect()
     oposicionId = (await c.query(
       `INSERT INTO oposiciones (slug, nombre, tipo_acceso, administracion, is_active)

@@ -8,6 +8,7 @@
 //   - verdict inválido se rechaza
 //   - la vista _effective devuelve 'never_verified' cuando no hay fila
 // Oposición+convocatoria aisladas → no toca datos reales. Requiere INTEGRATION_DB_WRITABLE.
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 
 if (process.env.DATABASE_URL) {
@@ -26,7 +27,7 @@ describeIf('convocatoria_verification — invariantes (RDS, aislado)', () => {
   const SLUG = 'verif-test-conv'
 
   beforeAll(async () => {
-    c = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    c = new Client(testDbConfig())
     await c.connect()
     oposicionId = (await c.query(
       `INSERT INTO oposiciones (slug, nombre, tipo_acceso, administracion, is_active)

@@ -39,8 +39,8 @@ d('CANARY T-073: el CTA de test de ley del temario desplegado va ACOTADO al tema
 
   beforeAll(async () => {
     const { Client } = await import('pg')
-    const url = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '')
-    const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
+    const { testDbConfig } = await import('../helpers/db')
+    const c = new Client(testDbConfig())
     await c.connect()
     // Fixture: oposición ACTIVA + tema que escopa CE a un SUBCONJUNTO (5-40 arts).
     const r = await c.query(`

@@ -18,6 +18,7 @@
 //
 // CI-safe: se salta si no hay DATABASE_URL.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { checkQuestionAvailability } from '@/lib/api/random-test/queries'
@@ -54,7 +55,7 @@ describeIfDb('checkQuestionAvailability honra focusEssentialArticles (caso Pilar
   let noOfficialsThemes: number[] = []
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
 
     // Oposición SIN oficiales propios en su scope (escenario del caso Pilar).

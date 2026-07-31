@@ -8,6 +8,7 @@
 // daba falsos negativos (p.ej. Subalterno GVA ya tiene sus 15 topics activos en
 // RDS pero en Supabase seguían inactivos).
 
+import { testDbConfig } from '../helpers/db'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
@@ -21,7 +22,7 @@ describeIfDb('Integridad config ↔ BD', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

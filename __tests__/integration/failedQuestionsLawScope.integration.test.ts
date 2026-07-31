@@ -18,6 +18,7 @@
  * Si NIVEL A se salta: faltan credenciales Supabase en .env.local.
  */
 
+import { testDbConfig } from '../helpers/db'
 import fs from 'fs'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
@@ -56,7 +57,7 @@ describe('INTEGRACIÓN — repaso de fallos scope=law (BD real)', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
 
     // 1. Par (usuario, ley) con material real: ≥3 falladas y ≥1 solo-acertada.

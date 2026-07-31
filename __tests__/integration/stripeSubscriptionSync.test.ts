@@ -28,6 +28,7 @@
  * verde sobre media realidad, que es justo el defecto que este arreglo corrige—. Añadir una
  * cuenta al registro basta para que este test la cubra, sin tocarlo.
  */
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -70,7 +71,7 @@ describeIfCredentials('Stripe ↔ user_subscriptions sync (RDS, todas las cuenta
   let cuentasIlegibles: string[] = []
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     await client.query("SET statement_timeout='20000ms'")
     // Mismo barrido multi-cuenta que usa el panel: una implementación, no una copia.

@@ -15,10 +15,12 @@
 // Uso:  node scripts/canary-renewal-reminders.cjs   (DATABASE_URL en .env.local)
 
 const { Client } = require('pg')
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
+
 require('dotenv').config({ path: '.env.local' })
 
 async function main() {
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const c = new Client(pgConfig())
   await c.connect()
   try {
     const { rows } = await c.query(`

@@ -10,6 +10,7 @@
  * Lee de la BD VIVA (RDS) vía pg. NO Supabase (congelado desde 04/07).
  */
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -24,7 +25,7 @@ describe('Article content — no placeholders', () => {
 
   beforeAll(async () => {
     if (!hasDb) return
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

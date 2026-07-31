@@ -12,6 +12,8 @@ const { TextEncoder: TE, TextDecoder: TD } = require('util')
 if (!globalThis.TextEncoder) { globalThis.TextEncoder = TE; (globalThis as any).TextDecoder = TD }
 const { Pool } = require('pg')
 require('dotenv').config({ path: '.env.local', override: true })
+// Conexión por la puerta única (SSL de RDS incluido) — ver __tests__/helpers/db.ts
+const { testDbConfig } = require('../../helpers/db')
 
 // SIN fallback hardcoded — el test SOLO corre si DATABASE_URL está en el entorno.
 // (Antes había un fallback con credenciales reales que GitGuardian detectó como
@@ -24,7 +26,7 @@ let pool: Pool
 
 beforeAll(() => {
   if (!hasDb) return // describe.skip lo gestiona; evita crear pool inválido
-  pool = new Pool({ connectionString: DATABASE_URL })
+  pool = new Pool(testDbConfig())
 })
 
 afterAll(async () => {

@@ -3,6 +3,7 @@
 // Se salta automáticamente si no hay credenciales reales de Supabase (CI-safe).
 // Usa https nativo de Node para evitar que el mock de fetch en jest.setup.js interfiera.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { normalizeArticleNumber as boeNormalize } from '@/lib/boe-extractor'
@@ -39,7 +40,7 @@ describeIfDb('Integridad topic_scope', () => {
   let virtualLawIds: Set<string>
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
     ;[topics, scopes, articles, laws] = await Promise.all([
       client.query<Topic>('SELECT id, title FROM topics WHERE is_active = true').then(r => r.rows),

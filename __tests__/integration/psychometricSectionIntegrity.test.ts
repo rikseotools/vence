@@ -7,6 +7,7 @@
 // Bug original: 3089 preguntas sin section_id causaban que la página
 // mostrara totales por categoría que no cuadraban con las subcategorías.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -21,7 +22,7 @@ describeIf('Psicotécnicas — Integridad de secciones', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

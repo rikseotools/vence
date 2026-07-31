@@ -15,6 +15,7 @@
 // eso ajustamos el env (sslmode=no-verify para el cert self-signed de RDS en
 // local) ANTES de importarlo, y cargamos createTestSession con import() dinámico
 // dentro de beforeAll — un import estático se hoistea por encima del env.
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -45,7 +46,7 @@ describeIfDb('tests.position_type — persistencia real (INSERT en RDS)', () => 
   const createdIds: string[] = []
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } })
+    client = new Client(testDbConfig())
     await client.connect()
     // Un user real cualquiera (tests.user_id tiene FK a user_profiles).
     const { rows } = await client.query<{ id: string }>('SELECT id FROM user_profiles LIMIT 1')

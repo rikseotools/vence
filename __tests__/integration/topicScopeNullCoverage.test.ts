@@ -14,6 +14,7 @@
 //
 // CI-safe: se salta si no hay DATABASE_URL (conexión directa Postgres).
 
+import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 import dotenv from 'dotenv'
 
@@ -28,7 +29,7 @@ describeIfDb('Guardarraíl: cobertura de scope con NULL (toda la ley)', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL })
+    client = new Client(testDbConfig())
     await client.connect()
   })
 

@@ -5,6 +5,7 @@
 // Detecta anomalías de calidad en datos de temario. Usa SQL agregado (escalable).
 // Corre sobre TODAS las oposiciones automáticamente.
 
+import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
@@ -19,7 +20,7 @@ describeIf('Calidad datos temario (escalable - todas las oposiciones)', () => {
   let client: Client
 
   beforeAll(async () => {
-    client = new Client({ connectionString: DB_URL! })
+    client = new Client(testDbConfig())
     await client.connect()
   }, 30000)
 
