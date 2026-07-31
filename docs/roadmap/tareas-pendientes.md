@@ -1138,6 +1138,21 @@ incluida).
 - **DESCARTADA — la señal de «respuesta escrita y no entregada».** `resolveDispute` y `respondFeedback` devuelven `emailSkipReason:'user_preferences'` y nadie lo mira; se llegó a escribir la señal + su regla de alerta y **se retiró por decisión de Manuel**: a partir de ahora quien esté en ese estado lo habrá elegido marcando la casilla, y la campana dentro de la app ya se lo comunica. Queda escrito aquí por si el criterio cambia — el trabajo era pequeño (un módulo, dos cableados y una regla).
 - **Origen:** apareció comprobando, a raíz de una pregunta de Manuel, si un usuario con los emails desactivados recibe la respuesta a su impugnación (31/07, tras cerrar `ab3b9e43`).
 
+### [T-379] 🟠 [ABIERTO 31/07] 7.134 preguntas de enfermería se sirven sobre un contenedor que dice «⏳ Teoría pendiente»
+
+- **Qué es, literal:** 56 leyes virtuales cuyo artículo tiene por todo contenido `⏳ Teoría pendiente (contenedor enfermería).` (43 caracteres), con **7.134 preguntas activas** colgando. El opositor responde, pincha para leer la fuente, y encuentra eso.
+- **Está VIVO, no en construcción:** escopado en **6 oposiciones publicadas** (`is_active=true`) — `enfermero_sms`, `enfermero_scs_cantabria`, `enfermero_scs_canarias`, `enfermero_sacyl`, `enfermero_sas_andalucia`, `enfermero_ics` — más `cuidador_diputacion_cordoba` (1.064), `tcae_extremadura` (448) y `auxiliar_museos_estado` (68, este con un epígrafe suelto en vez del placeholder).
+- **Cuánto pesa dentro de cada oposición:** entre el **17% y el 21%** de todo lo que se sirve. No es un rincón: es una de cada cinco preguntas.
+- **Exposición real HASTA HOY, que es baja:** **16 respuestas de 5 usuarios** en todo julio (10, 14, 21, 28 y 29). Enfermería es nueva y aún no tiene tráfico. El daño es pequeño **ahora** y crece solo, según entre gente.
+- **Todas las preguntas nacieron en 2026-07:** es un lote de este mes, no deuda heredada. El trinquete estaba en **0** desde el 15/06 justamente porque se había limpiado entero.
+- **Por qué nadie se enteró, y aquí está lo interesante:** el guardarraíl FUNCIONÓ — `placeholderTemarioGuard` es un trinquete y se puso rojo al primer lote. Lo que falló fue el mensajero: ese test vive en el job de integración, que llevaba ≥5 días sin BD y, por `continue-on-error`, **no podía ni avisar de su propio rojo** ([T-370], ya arreglado). El detector estaba encendido y amordazado.
+- **Tres salidas, y la elección es de producto (Manuel):**
+  1. **Escribir el temario** de los 56 contenedores. Es lo correcto y es una campaña de contenido, no una sesión.
+  2. **Ocultar el enlace a teoría** cuando el contenedor es un placeholder: barato y honesto (deja de prometer lo que no hay), no toca lo que se sirve ni el temario.
+  3. **Desactivar las 7.134** hasta que haya temario: quita el problema y le arranca a enfermería una de cada cinco preguntas.
+- **NO tocar el baseline del trinquete.** Subirlo a 7.202 para que CI pase sería exactamente lo que el trinquete existe para impedir.
+- **Relacionadas:** [T-370] (por qué el rojo no se oyó), [T-377] (el resto del job), memoria `project-placeholder-temario-backlog` (la campaña de 2026-06 que lo dejó en 0).
+
 ### [T-377] 🟠 [ABIERTO 31/07] El job de integración tiene 22 suites MÁS en rojo, y no son tests podridos: es deriva de contenido
 
 - **Cómo salió:** cerrando [T-336] (3 suites rojas de referidos + `correct_option`, ya arregladas). Con esas verdes, se corrió el job **entero** contra RDS real —lo que nadie había hecho— y salieron **24 tests rojos en 22 suites más**, de 2.023.
