@@ -291,3 +291,26 @@ describe('mismaRespuesta — el texto de la correcta, nunca su índice', () => {
     expect(dup.mismaRespuesta('', '')).toBe(false)
   })
 })
+
+describe('corteAcumulado — convertir «319 grupos» en «empieza por estos 87»', () => {
+  it('devuelve cuántos elementos juntan la fracción pedida', () => {
+    // 80 de 100: el primero solo llega a 0,50; hacen falta dos.
+    expect(dup.corteAcumulado([50, 30, 10, 10], 0.8)).toBe(2)
+  })
+
+  it('una cola larga de ceros no engorda el corte', () => {
+    // Los 122 grupos que no se han servido nunca no son trabajo prioritario.
+    expect(dup.corteAcumulado([100, 0, 0, 0, 0], 0.8)).toBe(1)
+  })
+
+  it('sin exposición no hay «el 80%»: devuelve 0, no la lista entera', () => {
+    // Si esto devolviera length, una tanda que no ha visto NADIE se presentaría como
+    // trabajo urgente al completo, que es justo lo contrario de para qué sirve el corte.
+    expect(dup.corteAcumulado([0, 0, 0], 0.8)).toBe(0)
+    expect(dup.corteAcumulado([], 0.8)).toBe(0)
+  })
+
+  it('si todo está repartido por igual, el corte es proporcional a la fracción', () => {
+    expect(dup.corteAcumulado([1, 1, 1, 1, 1], 0.8)).toBe(4)
+  })
+})

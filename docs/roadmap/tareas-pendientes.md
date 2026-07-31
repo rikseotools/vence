@@ -1232,75 +1232,29 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Ritmo real medido:** 12 preguntas por tanda con verificación completa (leer artículo, comprobar clave, escribir, validar cita, aplicar, re-verificar). Quedan **8 lotes / 85 preguntas** en esta banda; después toca bajar a `--min-impresiones 2` y volver a medir.
 - **Lo que NO cubre este trabajo:** la **auditoría ciega independiente** (paso 4 del método v2.1). El manual la exige aunque el gate mecánico esté en verde —midió un 14% de defectos que ningún script ve— y necesita un agente distinto del que escribió. En esta sesión no se lanzó: quien siga el cubo debería pasarla sobre las 11 ya aplicadas antes de dar el lote por auditado.
 - **Relacionadas:** el manual `docs/maintenance/revisar-preguntas-con-agente.md` (§ del cubo, con el pipeline y los tres pasos que no se pueden saltar) y la memoria `project-cubo-explicaciones-apelotonadas`.
-### [T-425] 🟡 [ABIERTO 31/07] Dos versiones casi idénticas de la misma pregunta (autonomía municipal, CE 137): ¿cuántas más hay así?
+### [T-439] 🟡 [ABIERTO 31/07] Adjudicar los 87 grupos de preguntas gemelas que concentran el 80% de la exposición
 
-- **Esfuerzo: rato.** Medir es una consulta; decidir qué se hace con lo que salga es lo que puede alargarse.
-- **ORIGEN.** Al resolver la impugnación `e60091bd` (T-409) aparecieron **dos preguntas activas que preguntan lo mismo con las mismas cuatro opciones**, solo cambiando el orden y una palabra del enunciado:
-  | id | enunciado | opciones | expuesta |
-  |---|---|---|---|
-  | `373bed31` | «…el principio de autonomía de los municipios **para la gestión de sus respectivos intereses** en su artículo:» | 147 / 115 / **137** / 148 | 130 veces |
-  | `6f9e4831` | «…el principio de autonomía de los municipios **y provincias** en su artículo:» | 148 / 115 / 147 / **137** | 100 veces |
-- **Por qué no lo cerré yo:** la impugnación se resolvió mejorando `373bed31` (explicación estructurada + enunciado desambiguado frente al art. 140, que era lo que la usuaria confundía). Fusionar o jubilar una de las dos **no es urgente y no era el objeto de la impugnación**, pero dejarlas sin mirar es dejar que la misma persona se las encuentre las dos y crea que le repetimos preguntas — que es justo la queja `pregunta_repetida` que ya llegó de otra usuaria el 30/07.
-- **Lo que hay que MEDIR antes de tocar nada** (regla del manual de impugnaciones, 30/07: «si el fallo puede ser sistémico, míralo en la BD antes de cerrar»): agrupar preguntas activas por `primary_article_id` y comparar enunciados normalizados con solape ≥70%. La vez que se midió sobre UN artículo salieron **100 pares casi idénticos entre 136 preguntas**, así que es de esperar que esto sea ancho.
-- **Decisión que hará falta (de Manuel):** con dos versiones válidas de la misma pregunta, ¿se jubila una como `retired_duplicate`, se deja porque son variantes legítimas de examen, o se reformula una para que pregunten cosas distintas del mismo artículo? Afecta a cuánto banco se pierde, así que no lo decide la sesión.
-- **NO confundir con T-409:** aquel es «la explicación es el artículo copiado» (defecto de explicación); esto es «la pregunta ya existe» (defecto de banco). Se cruzaron porque la misma impugnación destapó los dos.
-- **Relacionadas:** T-409, `docs/maintenance/impugnaciones-claude-code.md` (regla del fallo sistémico y la de «un hallazgo, una recompensa»).
+- **Esfuerzo: sesión propia.** Son 87 grupos y cada uno se decide leyendo los dos enunciados enteros;
+  no es un barrido que se lance y se mire al final.
+- **Viene de [T-425], que ya midió y ya tiene decisión de Manuel (31/07).** Ahí está el porqué del
+  criterio; aquí solo está el trabajo.
+- **La lista, ordenada por donde duele, sale de un comando:**
+  `node scripts/calidad/duplicados-exactos.cjs --banco legislativas --parafraseadas --por-exposicion --limite 87`
+- **REGLA DURA: no se jubila en automático, ni siquiera la banda alta.** La precisión medida es 18/20 y
+  `retired_duplicate` es TERMINAL. Los dos falsos positivos conocidos —«prevención secundaria»/
+  «terciaria» y «¿cuántos dictámenes?»/«¿cuántos informes?»— **puntúan `solape=1,000 · distintas=0`**,
+  o sea que endurecer el umbral no los quita: hay que leer los dos textos. Un test fija ese límite.
+- **Cómo se decide cada grupo:** si los dos enunciados preguntan LO MISMO (difieren en puntuación,
+  tilde, orden de palabras, «hombres y mujeres»/«mujeres y hombres», versión de producto), es duplicado
+  → sobrevive el que diga `decidirSuperviviente` (oficial > explicación estructurada > más servida >
+  más antigua) y el resto va a `retired_duplicate` por `transition_question_state`. Si el intercambio
+  cambia lo que se pregunta, **no se toca** y se anota por qué.
+- **Los 122 grupos sin servir NO entran.** No los ha visto nadie: gastar criterio humano ahí no cambia
+  nada para ningún usuario. Quedan listados por si algún día sobra tiempo.
+- **Por qué importa:** la queja `pregunta_repetida` ya llegó de una usuaria el 30/07. En **174 grupos**
+  las dos copias se han servido de verdad, así que no es hipotético.
+- **Relacionadas:** T-425 (medición y criterio), T-409 (la impugnación que destapó el primer par).
 
-#### ✅ MEDIDO Y CON HERRAMIENTA (31/07, sesión `centro-inferior`)
-
-**Comando:** `node scripts/calidad/duplicados-exactos.cjs --banco legislativas --parafraseadas [--limite N]`
-— extiende el runner que YA existía en vez de abrir otro; el criterio vive en `lib/calidad/duplicados.js`
-(el mismo módulo que usan los dos bancos), con 12 tests nuevos sobre pares reales de este barrido.
-
-**Lo primero que salió: el método que proponía esta ficha no vale, y el corte que ya existía tampoco.**
-
-- Agrupar por `primary_article_id` + solape ≥70% es **lo que ya probó T-321**: 3.230 pares cuyos
-  peores casos eran supuestos prácticos. Aquí se reprodujo igual.
-- El corte «parafraseado» que existe para psicotécnicas **no se traslada**: agrupando solo por juego
-  de opciones salen **3.376 grupos** y casi todos son legítimos por diseño — gramática inglesa
-  (`another/other/others`), etapas del PAE, `estadio I-IV`, `grado I-IV`. Y encima su filtro
-  `esJuegoGenerico` **descarta justo el par que originó esta ficha**, porque sus opciones son cuatro
-  números de artículo (`115|137|147|148`) — en el banco legislativo eso sí discrimina.
-
-**Lo que sí separa las dos cosas** es cruzar el ratio de solape con el número **ABSOLUTO** de palabras
-no compartidas. El ratio solo dice «se parecen»; el absoluto dice «se parecen POR POCO TEXTO», que es
-lo que distingue la errata de la familia de supuesto (mismo preámbulo largo, pregunta final distinta,
-ratio 0,90 sin ser gemelas):
-
-| ratio \ palabras distintas | ≤2 | 3-5 | 6-10 | 11-20 | >20 |
-|---|---|---|---|---|---|
-| ≥0,95 | **347** | 37 | 8 | 1 | 0 |
-| 0,90-0,95 | 213 | 132 | 12 | 4 | 4 |
-| 0,80-0,90 | 82 | 223 | 164 | 14 | 12 |
-| 0,70-0,80 | 2 | 55 | 204 | 86 | 10 |
-
-**El resultado, sobre las activas (sin supuestos):**
-
-| banda | criterio | grupos | preguntas | sobrantes |
-|---|---|---|---|---|
-| 🟥 **gemela** | solape ≥0,95 · ≤2 palabras distintas · **misma respuesta** | **318** | 817 | **499** |
-| ⬜ cola de revisión | solape ≥0,70, no concluyente | 1.292 | — | — |
-
-Precisión de la banda alta: **18 de 20** revisadas a mano. Son erratas, versiones (`Excel 365`/`Excel`),
-tildes, orden de palabras — duplicados de verdad.
-
-**⚠️ Ni la banda alta autoriza a jubilar en automático, y no es pereza: es irreducible.** Los dos falsos
-positivos que sobreviven al umbral son *«prevención **secundaria**»/«**terciaria**»* y *«¿cuántos
-**dictámenes**?»/«¿cuántos **informes**?»* — un intercambio de UNA palabra de contenido hace otra
-pregunta, y en el segundo caso el conjunto de palabras es idéntico (las dos palabras ya salen en el
-preámbulo), así que el solape da 1,000 y las distintas dan 0. **Hay un test que fija ese límite** para
-que nadie lo «arregle» sin darse cuenta de lo que abre.
-
-**NO pinga el badge a propósito.** Es on-demand hasta que se decida qué se hace con lo que salga: una
-alerta sin remediación construida enseña a ignorar el buzón entero, que es exactamente lo que está
-pasando con `fraude_confirmado_sin_accion` en [T-426].
-
-**🙋 LO QUE FALTA ES LA DECISIÓN DE MANUEL** (la misma que ya pedía la ficha, ahora con cifras
-delante): de las **499 preguntas sobrantes** de la banda alta, ¿se jubilan como `retired_duplicate`
-—estado TERMINAL, no hay vuelta atrás—, se dejan por ser variantes legítimas de examen, o se
-reformulan? Con la decisión tomada, aplicar es un rato: el runner ya identifica el grupo y el módulo
-ya sabe quién sobrevive (`decidirSuperviviente`: oficial > explicación estructurada > más servida >
-más antigua). Sin ella, no se toca nada.
 ### [T-427] 🟠 [ABIERTO 31/07] Un cherry-pick entre sesiones borró 5 fichas del backlog, y el aviso que lo delataba se lee como benigno
 
 - **Esfuerzo: rato** (el aviso ya existe y los datos para distinguirlo también; es cambiar cómo se interpreta).
@@ -2371,6 +2325,99 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Relacionadas:** [T-430] (rescate al retomar), [T-415] (una sesión por directorio), [T-296] (el latido).
 
 
+
+### [T-425] ✅ [HECHA 31/07] Dos versiones casi idénticas de la misma pregunta (autonomía municipal, CE 137): ¿cuántas más hay así?
+
+- **Esfuerzo: rato.** Medir es una consulta; decidir qué se hace con lo que salga es lo que puede alargarse.
+- **ORIGEN.** Al resolver la impugnación `e60091bd` (T-409) aparecieron **dos preguntas activas que preguntan lo mismo con las mismas cuatro opciones**, solo cambiando el orden y una palabra del enunciado:
+  | id | enunciado | opciones | expuesta |
+  |---|---|---|---|
+  | `373bed31` | «…el principio de autonomía de los municipios **para la gestión de sus respectivos intereses** en su artículo:» | 147 / 115 / **137** / 148 | 130 veces |
+  | `6f9e4831` | «…el principio de autonomía de los municipios **y provincias** en su artículo:» | 148 / 115 / 147 / **137** | 100 veces |
+- **Por qué no lo cerré yo:** la impugnación se resolvió mejorando `373bed31` (explicación estructurada + enunciado desambiguado frente al art. 140, que era lo que la usuaria confundía). Fusionar o jubilar una de las dos **no es urgente y no era el objeto de la impugnación**, pero dejarlas sin mirar es dejar que la misma persona se las encuentre las dos y crea que le repetimos preguntas — que es justo la queja `pregunta_repetida` que ya llegó de otra usuaria el 30/07.
+- **Lo que hay que MEDIR antes de tocar nada** (regla del manual de impugnaciones, 30/07: «si el fallo puede ser sistémico, míralo en la BD antes de cerrar»): agrupar preguntas activas por `primary_article_id` y comparar enunciados normalizados con solape ≥70%. La vez que se midió sobre UN artículo salieron **100 pares casi idénticos entre 136 preguntas**, así que es de esperar que esto sea ancho.
+- **Decisión que hará falta (de Manuel):** con dos versiones válidas de la misma pregunta, ¿se jubila una como `retired_duplicate`, se deja porque son variantes legítimas de examen, o se reformula una para que pregunten cosas distintas del mismo artículo? Afecta a cuánto banco se pierde, así que no lo decide la sesión.
+- **NO confundir con T-409:** aquel es «la explicación es el artículo copiado» (defecto de explicación); esto es «la pregunta ya existe» (defecto de banco). Se cruzaron porque la misma impugnación destapó los dos.
+- **Relacionadas:** T-409, `docs/maintenance/impugnaciones-claude-code.md` (regla del fallo sistémico y la de «un hallazgo, una recompensa»).
+
+#### ✅ MEDIDO Y CON HERRAMIENTA (31/07, sesión `centro-inferior`)
+
+**Comando:** `node scripts/calidad/duplicados-exactos.cjs --banco legislativas --parafraseadas [--limite N]`
+— extiende el runner que YA existía en vez de abrir otro; el criterio vive en `lib/calidad/duplicados.js`
+(el mismo módulo que usan los dos bancos), con 12 tests nuevos sobre pares reales de este barrido.
+
+**Lo primero que salió: el método que proponía esta ficha no vale, y el corte que ya existía tampoco.**
+
+- Agrupar por `primary_article_id` + solape ≥70% es **lo que ya probó T-321**: 3.230 pares cuyos
+  peores casos eran supuestos prácticos. Aquí se reprodujo igual.
+- El corte «parafraseado» que existe para psicotécnicas **no se traslada**: agrupando solo por juego
+  de opciones salen **3.376 grupos** y casi todos son legítimos por diseño — gramática inglesa
+  (`another/other/others`), etapas del PAE, `estadio I-IV`, `grado I-IV`. Y encima su filtro
+  `esJuegoGenerico` **descarta justo el par que originó esta ficha**, porque sus opciones son cuatro
+  números de artículo (`115|137|147|148`) — en el banco legislativo eso sí discrimina.
+
+**Lo que sí separa las dos cosas** es cruzar el ratio de solape con el número **ABSOLUTO** de palabras
+no compartidas. El ratio solo dice «se parecen»; el absoluto dice «se parecen POR POCO TEXTO», que es
+lo que distingue la errata de la familia de supuesto (mismo preámbulo largo, pregunta final distinta,
+ratio 0,90 sin ser gemelas):
+
+| ratio \ palabras distintas | ≤2 | 3-5 | 6-10 | 11-20 | >20 |
+|---|---|---|---|---|---|
+| ≥0,95 | **347** | 37 | 8 | 1 | 0 |
+| 0,90-0,95 | 213 | 132 | 12 | 4 | 4 |
+| 0,80-0,90 | 82 | 223 | 164 | 14 | 12 |
+| 0,70-0,80 | 2 | 55 | 204 | 86 | 10 |
+
+**El resultado, sobre las activas (sin supuestos):**
+
+| banda | criterio | grupos | preguntas | sobrantes |
+|---|---|---|---|---|
+| 🟥 **gemela** | solape ≥0,95 · ≤2 palabras distintas · **misma respuesta** | **318** | 817 | **499** |
+| ⬜ cola de revisión | solape ≥0,70, no concluyente | 1.292 | — | — |
+
+Precisión de la banda alta: **18 de 20** revisadas a mano. Son erratas, versiones (`Excel 365`/`Excel`),
+tildes, orden de palabras — duplicados de verdad.
+
+**⚠️ Ni la banda alta autoriza a jubilar en automático, y no es pereza: es irreducible.** Los dos falsos
+positivos que sobreviven al umbral son *«prevención **secundaria**»/«**terciaria**»* y *«¿cuántos
+**dictámenes**?»/«¿cuántos **informes**?»* — un intercambio de UNA palabra de contenido hace otra
+pregunta, y en el segundo caso el conjunto de palabras es idéntico (las dos palabras ya salen en el
+preámbulo), así que el solape da 1,000 y las distintas dan 0. **Hay un test que fija ese límite** para
+que nadie lo «arregle» sin darse cuenta de lo que abre.
+
+**NO pinga el badge a propósito.** Es on-demand hasta que se decida qué se hace con lo que salga: una
+alerta sin remediación construida enseña a ignorar el buzón entero, que es exactamente lo que está
+pasando con `fraude_confirmado_sin_accion` en [T-426].
+
+**🙋 LO QUE FALTA ES LA DECISIÓN DE MANUEL** (la misma que ya pedía la ficha, ahora con cifras
+delante): de las **499 preguntas sobrantes** de la banda alta, ¿se jubilan como `retired_duplicate`
+—estado TERMINAL, no hay vuelta atrás—, se dejan por ser variantes legítimas de examen, o se
+reformulan? Con la decisión tomada, aplicar es un rato: el runner ya identifica el grupo y el módulo
+ya sabe quién sobrevive (`decidirSuperviviente`: oficial > explicación estructurada > más servida >
+más antigua). Sin ella, no se toca nada.
+
+#### ✅ DECIDIDO POR MANUEL (31/07): adjudicar los 87 grupos más expuestos
+
+**Lo que inclinó la decisión fue medir la EXPOSICIÓN, no el recuento.** Las 499 sobrantes no pesan
+igual: el daño de esta ficha no es «hay copias en la BD», es **«a la misma persona le salen las dos»**,
+y eso solo ocurre donde las dos se sirven.
+
+| | grupos | |
+|---|---|---|
+| nunca servidos (0 exposiciones) | **122** | no molestan a nadie — pueden esperar |
+| con exposición | 196 | ~27.900 veces servidas en total |
+| …de ellos, con **ambas** copias servidas | **174** | aquí vive la queja `pregunta_repetida` |
+| …y el **80% de toda la exposición** cabe en | **87** | ← lo que se adjudica |
+
+- **Se adjudican los 87, no los 499 ni los 174.** Uno a uno, confirmando contra la fuente, y se jubila
+  como `retired_duplicate` **solo lo confirmado**. Los 122 sin servir no se tocan: gastar criterio
+  humano en una copia que nadie ha visto es gastarlo donde no cambia nada.
+- **Descartado jubilar la banda entera en automático**, y no por prudencia genérica: con precisión
+  18/20 son **~50 preguntas buenas borradas de forma TERMINAL**, y el sub-corte más estricto no salva —
+  el falso positivo de «dictámenes»/«informes» puntúa exactamente `solape=1,000 · distintas=0`.
+- **Reproducible y ordenado por donde duele:** `--parafraseadas --por-exposicion` añade a cada grupo las
+  veces que se ha servido (`test_questions`), los ordena y marca el corte del 80%. Va en el runner y no
+  en un script suelto justamente porque **es lo que decide el orden del trabajo**, no un dato de una vez.
 
 ### [T-433] ✅ 🟠 [HECHA 31/07] El recordatorio de calidad llegaba al ARRANCAR la sesión, no al empezar la tarea
 

@@ -59,7 +59,7 @@ const { Client } = require('pg')
 // El `sslmode` de la URL PISA la opción `ssl` en `pg`: la receta va en un solo sitio.
 const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes,
-        compararEnunciados, bandaParafraseada, mismaRespuesta } = require('../../lib/calidad/duplicados.js')
+        compararEnunciados, bandaParafraseada, mismaRespuesta, corteAcumulado } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -71,6 +71,9 @@ const APLICAR = argv.includes('--aplicar')
 const LIMITE = parseInt(valor('--limite') || '0', 10)
 const BANCO = valor('--banco') || 'legislativas'
 const PARAFRASEADAS = argv.includes('--parafraseadas')
+// Ordena los grupos por veces servidas y marca el corte del 80% de la exposición. No es un extra
+// informativo: es lo que decide POR DÓNDE se empieza a adjudicar (T-425, decisión de Manuel 31/07).
+const POR_EXPOSICION = argv.includes('--por-exposicion')
 
 if (!['legislativas', 'psicotecnicas', 'ambos'].includes(BANCO)) {
   console.error(`❌ --banco debe ser legislativas | psicotecnicas | ambos (recibido: ${BANCO})`)
@@ -389,6 +392,25 @@ function mejorPareja(miembros) {
   return mejor
 }
 
+/**
+ * Cuántas veces se ha servido cada copia (`test_questions`). Es la medida que ordena el trabajo:
+ * el daño de un duplicado no es existir, es que a la MISMA persona le salgan los dos.
+ */
+async function anotarExposicion(c, grupos) {
+  const ids = [...new Set(grupos.flatMap((g) => g.miembros.map((m) => m.id)))]
+  if (!ids.length) return
+  const { rows } = await c.query(
+    `select question_id, count(*)::int veces from test_questions
+      where question_id = any($1::uuid[]) group by question_id`, [ids])
+  const porId = new Map(rows.map((r) => [r.question_id, r.veces]))
+  for (const g of grupos) {
+    for (const m of g.miembros) m.veces = porId.get(m.id) || 0
+    g.expuesta = g.miembros.reduce((a, m) => a + m.veces, 0)
+    // Servidas ≥2 copias = ya hay usuarios que se han encontrado la repetición.
+    g.copiasServidas = g.miembros.filter((m) => m.veces > 0).length
+  }
+}
+
 async function listadoParafraseadasLegislativas(c) {
   const { rows } = await c.query(SQL_PARAFRASEADAS_LEG)
   const grupos = []
@@ -405,6 +427,13 @@ async function listadoParafraseadasLegislativas(c) {
   const gemelas = grupos.filter((g) => g.banda === 'gemela').sort((x, y) => y.par.solape - x.par.solape)
   const cola = grupos.filter((g) => g.banda === 'cola')
 
+  let corte = 0
+  if (POR_EXPOSICION) {
+    await anotarExposicion(c, gemelas)
+    gemelas.sort((x, y) => y.expuesta - x.expuesta)
+    corte = corteAcumulado(gemelas.map((g) => g.expuesta), 0.8)
+  }
+
   console.log('\n═══ CANDIDATOS PARAFRASEADOS · LEGISLATIVAS (solo listado) ═══')
   console.log(`  grupos examinados: ${rows.length}`)
   console.log(`  🟥 GEMELAS (mismo artículo y opciones, enunciado casi calcado, misma respuesta): ${gemelas.length}`)
@@ -414,9 +443,18 @@ async function listadoParafraseadasLegislativas(c) {
   console.log('  ⚠️ Ni la banda alta autoriza a jubilar en automático: un intercambio de UNA palabra')
   console.log('     de contenido («prevención secundaria»/«terciaria») hace otra pregunta y pasa el')
   console.log('     umbral. Se adjudica a mano, de una en una. Ver T-425.')
+  if (POR_EXPOSICION) {
+    const sinServir = gemelas.filter((g) => g.expuesta === 0).length
+    const ambas = gemelas.filter((g) => g.copiasServidas >= 2).length
+    console.log('')
+    console.log(`  📊 EXPOSICIÓN — el recuento y el daño no se reparten igual:`)
+    console.log(`     nunca servidos: ${sinServir}  ·  con ambas copias servidas: ${ambas}  ·  total: ${gemelas.reduce((a, g) => a + g.expuesta, 0).toLocaleString('es')} veces`)
+    console.log(`     ▶ el 80% de la exposición cabe en los ${corte} primeros — empieza por ahí.`)
+  }
   console.log('')
   for (const g of gemelas.slice(0, LIMITE || 40)) {
-    console.log(`\n  · solape=${g.par.solape.toFixed(3)} distintas=${g.par.distintas} n=${g.n}${g.miembros.some((m) => m.oficial) ? ' [hay OFICIAL en el grupo]' : ''}`)
+    const exp = POR_EXPOSICION ? ` expuesta=${g.expuesta}${g.copiasServidas >= 2 ? ' [AMBAS servidas]' : ''}` : ''
+    console.log(`\n  · solape=${g.par.solape.toFixed(3)} distintas=${g.par.distintas} n=${g.n}${exp}${g.miembros.some((m) => m.oficial) ? ' [hay OFICIAL en el grupo]' : ''}`)
     console.log(`      ${String(g.par.a.id).slice(0, 8)}: ${String(g.par.a.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
     console.log(`      ${String(g.par.b.id).slice(0, 8)}: ${String(g.par.b.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
   }
