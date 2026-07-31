@@ -97,6 +97,14 @@
 
   `gateAssertion: "real"` es lo que la ficha pedía comprobar, y `gateServidas 0 / umbral 500` dice **por qué** pudo serlo: el sujeto estaba muy por debajo del umbral, así que la sonda corrió **sin exención**. La aserción se está midiendo de verdad, no omitiendo.
 - **⏭️ AÑADIDO al verificarla — el mismo defecto una capa más abajo, ya arreglado y esperando deploy (`807290f23`):** la respuesta HTTP traía el veredicto, pero **el EVENTO no**. `canary_questions_gate_ok` guardaba solo `questionsServed`, así que la fila que queda para siempre en `observable_events` **no distinguía «comprobado» de «no pude comprobarlo»** — que es justo lo que esta tarea vino a arreglar. Ahora el evento lleva `gateAssertion`, `gateServidas` y `gateUmbral`, con un caso más en el test. **Se verifica solo con mirar un evento verde después del próximo deploy de backend.**
+### [T-364] 🟡 [ABIERTO 30/07] El test de descarga troceada del PDF filtra un click al siguiente test y tumba el pre-commit de forma intermitente
+
+- **Qué pasa:** `__tests__/components/TopicPrintButton.test.tsx` falla **solo en la suite completa**, nunca aislado (ahí da 9/9). El test de la descarga normal espera **1** ancla y recibe **2**: la suya (`…tema-7.pdf`) y una **del test anterior** (`…tema-109-parte-2-de-2.pdf`), el de la descarga troceada de [T-273].
+- **Por qué NO es el reset:** el fichero ya limpia `clickedAnchors = []` en `beforeEach`. Lo que se escapa es un **click asíncrono** del caso troceado —que descarga dos partes— y que **no se espera**: cuando la máquina va más cargada, el segundo click cae ya dentro del test siguiente. Es una carrera, no un olvido.
+- **Impacto real, y por eso merece ficha:** bloquea el `pre-commit` de **cualquiera**, no solo de quien toca esa zona. El 30/07 tumbó un commit de temario y pasó al reintentar (20.575 tests en verde), que es la firma clásica del *flake*: **invita a saltarse el guardarraíl**, que es justo lo que no se debe hacer.
+- **Cómo:** en el caso troceado, esperar explícitamente a que se disparen **las dos** descargas antes de terminar (o quedarse con timers falsos y vaciarlos), de modo que ningún click quede pendiente al salir del test.
+- **Nota:** es trabajo EN VUELO de otra sesión ([T-273], piloto de troceado por estructura), así que no se tocó desde fuera. Se documenta para quien lo tenga reclamado.
+
 ### [T-354] ✅ [HECHA 30/07] Nadie buscaba contradicciones INTERNAS del banco: el mismo atajo con dos respuestas distintas
 
 - **El agujero:** todos los detectores comparan una pregunta **contra su fuente**. Si la fuente también está mal, el veredicto sale limpio. El 30/07 el banco servía a la vez `Ctrl+Alt+O` (pregunta `987f0ad1`, examen **oficial**, 242 exposiciones) y `Ctrl+Alt+F` (`1ee365af`) como atajo de «insertar nota al pie», las dos activas, y **ningún detector podía verlo** — porque los 6 artículos de Word también decían `Ctrl+Alt+F`. Costó retirar dos preguntas CORRECTAS por creer al temario ([T-291], [T-302]).
@@ -158,11 +166,36 @@
 >   contradecía, se equivocaba entero. **El detector encuentra desacuerdos, no errores unánimes** — es
 >   su límite estructural y conviene tenerlo presente antes de fiarse de un verde suyo.
 >
-> **LO QUE QUEDA** (correr `npm run audit:atajos` para verlo con detalle):
-> 1. **Excel** — `Excel 365` y `Excel 365 Escritorio` art.150 dan `Ctrl+L` y `Ctrl+H` para Reemplazar.
->    Verificar cuál opera en el Excel español antes de tocar.
-> 2. **LibreOffice** — dos avisos de `familia` (negrita/cursiva) y uno `interna` (`Ctrl+Alt+B` como
->    «atajo alternativo, versión 4.1»). El último parece **alias legítimo documentado**, no defecto.
+> **✅ FASE EXCEL HECHA (30/07).** `Excel 365` y `Excel 365 Escritorio` art.150 daban `Ctrl+L` **y**
+> `Ctrl+H` para Reemplazar como si las dos operasen, y el art.140 usaba directamente la inglesa.
+> Verificado (exceltotal.com + fuentes de oposiciones; y nuestro propio `Excel 365` art.10 ya lo tenía
+> bien): en el Excel español **`Ctrl+B` = Buscar y `Ctrl+L` = Reemplazar**; `Ctrl+F`/`Ctrl+H` son los
+> ingleses. La fila de `Ctrl+H` se conserva **marcada como convención inglesa**, que es más útil que
+> borrarla: es el distractor típico.
+> - **Y había una clave mal con 40 exposiciones:** `7fa76a85` («¿qué atajo abre el cuadro Reemplazar?»)
+>   tenía marcada `Ctrl+H` y **`Ctrl+L` no figuraba entre las cuatro opciones** — el mismo patrón que
+>   `1ee365af`. Corregida la opción y reescrita la explicación en formato estructurado, así que además
+>   pasa a ser barajable. No es examen oficial.
+>
+> **LO QUE QUEDA — solo LibreOffice, y NO es mecánico:**
+> 1. ⚠️ **LibreOffice: la evidencia está DIVIDIDA y hay una clave en juego. No tocar sin resolverlo.**
+>    Nuestro banco se contradice: `LibreOffice Writer` arts. 1 y 3 dan `Ctrl+B` negrita / `Ctrl+I`
+>    cursiva, y `LibreOffice Calc` art.3 da `Ctrl+N` / `Ctrl+K` «en versión española». Y hay **dos
+>    preguntas casi gemelas con claves opuestas**: `317154d8` (13 exp, Calc) responde `Ctrl+N` y
+>    `d79c9b70` (2 exp, Writer) responde `Ctrl+I`.
+>    - **A favor de Writer:** la **ayuda oficial de LibreOffice en español**
+>      (`help.libreoffice.org/latest/es/text/shared/04/01010000.html`) dice literalmente `Ctrl+B` →
+>      «adopta el atributo *Negrita*» y `Ctrl+I` → «adopta el atributo *Itálica*». Es decir,
+>      **LibreOffice NO localiza los atajos aunque la interfaz esté en español**, al revés que
+>      Microsoft Office — que es justo la trampa en sentido contrario.
+>    - **A favor de Calc:** varias fuentes españolas dan `Ctrl+N`/`Ctrl+K`, y alguna dice que en
+>      LibreOffice ES funcionan **las dos** para cursiva.
+>    - **Cómo cerrarlo bien:** abrir un LibreOffice instalado en español y probarlo, o mirar
+>      `Herramientas ▸ Personalizar ▸ Teclado` de una instalación ES. Con eso se decide en un minuto
+>      lo que las fuentes secundarias no resuelven. **Hasta entonces no se flipa ninguna clave.**
+> 2. El aviso `interna` de LibreOffice (`Ctrl+Alt+B` para Buscar y reemplazar) es **falso positivo**:
+>    el propio artículo lo etiqueta como *«atajo alternativo, versión 4.1»*, y la ayuda oficial ES
+>    confirma `Ctrl+H` como el principal. Alias documentado, no defecto.
 > 3. **Punto ciego del detector detectado por el camino:** «Fuente» no está en su vocabulario de
 >    acciones, y el banco tiene dos respuestas para ella (`Ctrl+M` en `8d7b1a8e` frente a
 >    `Ctrl+Mayús+F` en `86000eb8` y `f98e1daa`). Ampliar `ACCIONES` o resolverlo a mano.
