@@ -142,21 +142,11 @@ describe('ambos scripts — coordinación de sesiones paralelas (incidente 11/07
       // DEPLOY_LOCK_WAIT, así que se aceptan las dos formas: literal o variable con default.
       expect(s).toMatch(/flock -w (\d+|"\$\{DEPLOY_LOCK_WAIT:-\d+\}") 9/)
     })
-    // Anti-stale: el build sale del working tree; si tu rama no contiene origin/main,
-    // desplegar dejaría caer trabajo de otra sesión (clobber). Exigir ancestría.
-    //
-    // ⚠️ SOLO FRONTEND desde T-385. El backend ya no construye el working tree: construye
-    // `origin/main` en un worktree efímero, así que este invariante se cumple POR CONSTRUCCIÓN
-    // y comprobar la ancestría de HEAD dejó de significar nada. Su sustituto —más fuerte— está
-    // en el bloque «backend — construye origin/main en un árbol propio». Cuando el frontend
-    // adopte lo mismo (fase 2), este test se retira, no se relaja.
-    if (name === 'frontend') {
-      it(`${name}: aborta si HEAD no contiene origin/main (anti clobber stale)`, () => {
-        expect(s).toMatch(/git fetch origin main/)
-        expect(s).toMatch(/merge-base --is-ancestor origin\/main HEAD/)
-        expect(s).toMatch(/SKIP_MAIN_SYNC/)
-      })
-    }
+    // El anti-stale («HEAD debe contener origin/main») desapareció de los DOS scripts en T-385:
+    // ninguno construye ya el working tree, así que la ancestría de HEAD dejó de decir nada. Su
+    // sustituto, MÁS fuerte, está en «construye origin/main en un árbol propio». No se relajó:
+    // se volvió imposible de incumplir.
+
     // Dedupe env/secret: ECS rechaza un name presente en environment Y secrets.
     // Detectarlo en el transform con mensaje claro > el error críptico de register.
     it(`${name}: detecta colisión env↔secret antes de registrar el task def`, () => {
@@ -253,9 +243,11 @@ describe('gate de CI — `cancelled` no es `failure`', () => {
     const src = readFileSync(join(process.cwd(), rel), 'utf8')
     expect(src).toMatch(/CANCELLED=\$\(/)
     expect(src).toMatch(/\$\{CANCELLED:-0\}/)
-    const accion = rel.includes('backend') ? /CANCELADO[\s\S]{0,400}RELANZA/
-                                           : /CANCELADO[\s\S]{0,400}reset --hard origin\/main/
-    expect(src).toMatch(accion)
+    // Desde T-385 los dos construyen origin/main en un árbol propio, así que en ninguno hay
+    // nada que resincronizar: la acción correcta es RELANZAR cuando el CI del origin/main nuevo
+    // esté verde. Exigir el texto viejo fijaría un consejo equivocado.
+    expect(src).toMatch(/CANCELADO[\s\S]{0,400}RELANZA/)
+    expect(src).not.toMatch(/CANCELADO[\s\S]{0,400}reset --hard/)
   })
 })
 
@@ -285,8 +277,8 @@ describe('gate de CI — `cancelled` no es `failure`', () => {
  * que es lo que costó, todo el 31/07, un guard nuevo (T-364), un lanzador bloqueado por el
  * scratch ajeno (T-366), un lanzador muerto tras 20 vueltas y un push a siete intentos.
  */
-describe('backend — construye origin/main en un árbol propio (T-385)', () => {
-  const s = readFileSync(join(ROOT, 'scripts/deploy-backend.sh'), 'utf8')
+describe.each(['backend', 'frontend'])('%s — construye origin/main en un árbol propio (T-385)', (cual) => {
+  const s = readFileSync(join(ROOT, `scripts/deploy-${cual}.sh`), 'utf8')
   const helper = readFileSync(join(ROOT, 'scripts/lib/deploy-worktree.sh'), 'utf8')
 
   it('el commit a desplegar sale de origin/main, no de HEAD', () => {
@@ -294,8 +286,14 @@ describe('backend — construye origin/main en un árbol propio (T-385)', () => 
     expect(s).toMatch(/git fetch origin main/)
   })
 
-  it('construye desde el árbol EFÍMERO, nunca desde ./backend del árbol de trabajo', () => {
-    expect(s).toMatch(/podman build[^\n]*"\$BUILD_DIR\/backend"/)
+  it('construye desde el árbol EFÍMERO, nunca desde el árbol de trabajo', () => {
+    // El contexto del `podman build` es lo único que cambia entre los dos: el backend construye
+    // el subdirectorio `backend/` y el frontend la raíz. Lo que NO puede cambiar es que salga
+    // del árbol efímero — si vuelve a ser `.` o `./backend`, el deploy vuelve a depender de que
+    // un directorio compartido esté quieto, que es todo lo que esta tarea quita.
+    const contexto = cual === 'backend' ? /"\$BUILD_DIR\/backend"/ : /"\$BUILD_DIR"/
+    expect(s).toMatch(contexto)
+    expect(s).not.toMatch(/^\s*-t "\$IMG" \.\s*$/m)
     expect(s).not.toMatch(/podman build[^\n]*\s\.\/backend\s*$/m)
   })
 
@@ -325,7 +323,7 @@ describe('backend — construye origin/main en un árbol propio (T-385)', () => 
     // secas: el nombre aparece antes en un comentario y el test comparaba contra ESE — o sea,
     // pasaba o fallaba por dónde estuviera la prosa. Un guardarraíl que mide comentarios no
     // mide nada.
-    const carga = s.indexOf('set -a; . ./.env.local')
+    const carga = s.indexOf('. ./.env.local')
     const construye = s.indexOf('BUILD_DIR="$(crear_arbol_de_build')
     expect(carga).toBeGreaterThan(-1)
     expect(construye).toBeGreaterThan(-1)
@@ -364,42 +362,25 @@ describe('backend — construye origin/main en un árbol propio (T-385)', () => 
   })
 })
 
-describe('deploy — auto-sync con origin/main', () => {
-  // SOLO FRONTEND desde T-385: el backend ya no auto-sincroniza porque ya no construye el árbol
-  // de trabajo. Su invariante equivalente, y más fuerte, se comprueba en el bloque de arriba.
-  // Cuando el frontend adopte el árbol efímero (fase 2), este describe entero desaparece.
-  const scripts = ['scripts/deploy-frontend.sh']
-  const src = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
-
-  it.each(scripts)('%s: existe y se puede desactivar (NO_AUTO_SYNC=1)', (rel) => {
-    const s = src(rel)
-    expect(s).toContain('AUTO-SINCRONIZACIÓN CON origin/main')
-    expect(s).toMatch(/\$\{NO_AUTO_SYNC:-0\}/)
-  })
-
-  it.each(scripts)('%s: corre ANTES del gate de CI (si no, validaría un SHA que no despliega)', (rel) => {
-    const s = src(rel)
-    expect(s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')).toBeLessThan(s.indexOf('GATE CI (Fase 2'))
-  })
-
-  it.each(scripts)('%s: recalcula SHA y FULL_SHA tras resincronizar', (rel) => {
-    const s = src(rel)
-    const ini = s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')
-    const bloque = s.slice(ini, s.indexOf('GATE CI (Fase 2', ini))
-    expect(bloque).toMatch(/reset --hard origin\/main/)
-    expect(bloque).toMatch(/SHA=\$\(git rev-parse HEAD \| cut -c1-8\)/)
-    expect(bloque).toMatch(/FULL_SHA=\$\(git rev-parse HEAD\)/)
-  })
-
-  it.each(scripts)('%s: NO resincroniza con árbol sucio ni con commits propios sin pushear', (rel) => {
-    const s = src(rel)
-    const ini = s.indexOf('AUTO-SINCRONIZACIÓN CON origin/main')
-    const bloque = s.slice(ini, s.indexOf('GATE CI (Fase 2', ini))
-    // guarda 1: árbol limpio
-    expect(bloque).toMatch(/git status --porcelain --untracked-files=no/)
-    // guarda 2: HEAD ya contenido en origin/main (nada propio que perder)
-    expect(bloque).toMatch(/merge-base --is-ancestor HEAD origin\/main/)
-  })
+/**
+ * El auto-sync con `origin/main` (y sus cuatro invariantes) EXISTIÓ hasta T-385 y ya no existe
+ * en ninguno de los dos scripts. Se deja escrito aquí en vez de borrarlo sin más, porque la
+ * diferencia importa: **no se relajó, se volvió innecesario**.
+ *
+ * Servía para que el WORKING TREE —que era lo que se construía— se pareciera a `origin/main`, a
+ * base de `git reset --hard` sobre un directorio que podía ser de otra sesión. Con el árbol de
+ * build efímero el commit se lee directamente y se construye ahí: no hay nada que sincronizar.
+ * Lo que ahora protege ese terreno es el bloque «construye origin/main en un árbol propio».
+ */
+describe('deploy — el auto-sync ya no existe (T-385)', () => {
+  it.each(['scripts/deploy-frontend.sh', 'scripts/deploy-backend.sh'])(
+    '%s: no queda ni `reset --hard` ni `NO_AUTO_SYNC` en el CÓDIGO', (rel) => {
+      const codigo = readFileSync(join(process.cwd(), rel), 'utf8')
+        .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
+      expect(codigo).not.toMatch(/git reset --hard/)
+      expect(codigo).not.toMatch(/NO_AUTO_SYNC/)
+      expect(codigo).not.toMatch(/ALLOW_DIRTY/)
+    })
 })
 
 /**

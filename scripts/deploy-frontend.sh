@@ -25,25 +25,17 @@ set -euo pipefail
 ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
 . "$(dirname "$0")/lib/guardia-worktree.sh"
 guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
+# Construir en un árbol PROPIO y efímero, sin tocar el de nadie (T-385).
+. "$(dirname "$0")/lib/deploy-worktree.sh"
 cd "$(dirname "$0")/.."
+# El `.env.local` sale del checkout ORIGINAL, y tiene que ser aquí: está gitignorado, así que no
+# llega al árbol de build efímero (T-385), y de él salen el GITHUB_PAT del gate de CI y los
+# secretos que se inyectan como build-args.
 set -a; . ./.env.local; set +a
-# Precios Stripe: fuente de verdad COMMITEADA, sourceada DESPUÉS de .env.local
-# para SOBREESCRIBIR cualquier price ID viejo que traiga el .env.local per-worktree
-# (incidente 09/07 task def :386: un .env.local stale tumbó create-checkout en 3
-# de 4 planes). Así todos los worktrees despliegan los mismos precios.
-set -a; . ./scripts/stripe-prices.sh; set +a
-# Guardrail: los 8 price IDs deben estar presentes tras sourcear (si el fichero
-# faltara o se vaciara, abortar antes de construir un bundle sin precios).
-for _v in NEXT_PUBLIC_STRIPE_PRICE_MONTHLY NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY NEXT_PUBLIC_STRIPE_PRICE_SEMESTER NEXT_PUBLIC_STRIPE_PRICE_ANNUAL \
-          NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA; do
-  if [ -z "${!_v:-}" ]; then echo "❌ abort: $_v vacío tras sourcear scripts/stripe-prices.sh"; exit 1; fi
-done
+# Los precios de Stripe se sourcean MÁS ABAJO, desde el ÁRBOL DE BUILD (ver allí el porqué).
 
 P=vence; R=eu-west-2; ACC=349744179687
 REG="${ACC}.dkr.ecr.${R}.amazonaws.com/vence-frontend"
-SHA=$(git rev-parse HEAD | cut -c1-8)      # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07)
-TAG="deploy-${SHA}"
-IMG="${REG}:${TAG}"
 
 # ── CERROJO DE CONCURRENCIA (flock) ──────────────────────────────────────────
 # Varias sesiones de Claude en el MISMO repo pueden lanzar deploys a la vez → dos
@@ -62,11 +54,22 @@ if command -v flock >/dev/null 2>&1; then
     # Ajustable con DEPLOY_LOCK_WAIT si algún día el build crece más.
     flock -w "${DEPLOY_LOCK_WAIT:-2700}" 9 || { echo "❌ el lock sigue tomado tras $(( ${DEPLOY_LOCK_WAIT:-2700} / 60 )) min — abortado. ¿Un build largo delante? Usa scripts/deploy-cuando-verde.sh, que reintenta."; exit 1; }
   fi
-  : >&9; echo "frontend $SHA pid=$$ $(date -u +%FT%TZ)" >&9   # quién tiene el lock (informativo)
   echo "🔒 lock de deploy adquirido ($LOCK)."
 else
   echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano con otras sesiones."
 fi
+
+# ── QUÉ COMMIT SE DESPLIEGA: origin/main, SIEMPRE (T-385 fase 2) ─────────────
+# Igual que el backend. Se resuelve DESPUÉS del lock —esperarlo puede costar 45 min y en ese rato
+# origin/main se mueve— y ANTES de anotar el lock y la fila de `deploy_runs`, para que ambos
+# nombren el commit que SE DESPLIEGA y no el HEAD de quien lanza.
+git fetch origin main --quiet 2>/dev/null || true
+FULL_SHA=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+SHA=$(printf '%s' "$FULL_SHA" | cut -c1-8)   # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07)
+TAG="deploy-${SHA}"
+IMG="${REG}:${TAG}"
+[ -e /proc/self/fd/9 ] && { : >&9; echo "frontend $SHA pid=$$ $(date -u +%FT%TZ)" >&9; } || true
+echo "→ se desplegará origin/main = ${SHA} (el árbol de trabajo no se toca)"
 
 # ── DEJAR CONSTANCIA PARA LAS DEMÁS SESIONES (T-404) ─────────────────────────
 # El lock ya serializa, pero es INVISIBLE hasta que lo intentas: nadie podía preguntar «¿hay
@@ -76,69 +79,47 @@ fi
 # cierra la fila pase lo que pase — un build que aborta no puede dejarla abierta para siempre,
 # que es el fallo que hubo que segar a mano con los claims zombi.
 DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie frontend --sha "$SHA" --pid $$ 2>/dev/null || true)"
-if [ -n "$DEPLOY_RUN_ID" ]; then
-  trap 'node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" --outcome "$([ "$?" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true' EXIT
-fi
 
-# GUARDARRAÍL árbol sucio (incidente 07/07/2026): el build usa el WORKING TREE
-# (podman COPY . .), NO el commit. Si hay ficheros TRACKED modificados, la imagen
-# deploy-${SHA} NO se corresponde con el commit ${SHA} → se puede desplegar código
-# stale/WIP sin que el SHA lo delate. Justo así se colaron rutas de respuesta que
-# bloqueaban a premium y tardamos horas en verlo. Untracked (scripts sueltos) = OK.
-DIRTY=$(git status --porcelain --untracked-files=no)
-if [ -n "$DIRTY" ]; then
-  echo "⚠️  ÁRBOL SUCIO — ficheros TRACKED modificados; la imagen NO será igual al commit ${SHA}:"
-  echo "$DIRTY" | sed 's/^/     /'
-  if [ "${ALLOW_DIRTY:-0}" != "1" ]; then
-    echo "   ABORTADO. Commitea/descarta esos cambios, o repite con ALLOW_DIRTY=1 si es intencional."
-    exit 1
-  fi
-  echo "   ALLOW_DIRTY=1 → continúo pese al árbol sucio."
-fi
+# ── UNA SOLA SALIDA (en bash un segundo `trap … EXIT` REEMPLAZA al primero) ──
+# Hay DOS cosas que cerrar —la fila de `deploy_runs` (T-404) y el árbol de build efímero
+# (T-385)— y registrarlas por separado habría anulado la primera SIN avisar.
+_al_salir() {
+  local code=$?
+  [ -n "${DEPLOY_RUN_ID:-}" ] && node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" \
+    --outcome "$([ "$code" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true
+  # Por ARGUMENTO: `crear_arbol_de_build` corre en un subshell y su global no llega hasta aquí.
+  borrar_arbol_de_build "${BUILD_DIR:-}"
+  return $code
+}
+trap _al_salir EXIT
 
-# ── AUTO-SINCRONIZACIÓN CON origin/main (antes del gate de CI) ───────────────
-# El build sale del WORKING TREE, así que el guardarraíl anti-stale de más abajo aborta si
-# tu árbol no contiene todo origin/main. Correcto — pero con varias sesiones pusheando,
-# CUALQUIER push ajeno durante la ventana «verificar CI → construir» tumbaba el deploy y el
-# operador acababa haciendo a mano `fetch` + `reset --hard` + reintentar. Medido el 27/07:
-# tres abortos seguidos por esto (más otros tres por tratar `cancelled` como fallo).
-#
-# Cuando NO hay nada propio que perder —árbol limpio y HEAD ya contenido en origin/main—
-# resincronizar es seguro POR CONSTRUCCIÓN y no cambia la semántica: el deploy ya es
-# cumulativo, así que subir «el origin/main de este instante» es justo lo que se esperaba.
-# Va ANTES del gate de CI a propósito, para que los checks se verifiquen sobre el SHA que
-# de verdad se construye; y recalcula SHA/FULL_SHA, que si no el build se pinearía al viejo
-# y el anti-clobber del final daría un falso positivo.
-#
-# NO auto-sincroniza (y aborta como siempre) si el árbol está sucio o si HEAD tiene commits
-# propios sin pushear: ahí perder trabajo sí es posible y la decisión es del operador.
-# Desactivar: NO_AUTO_SYNC=1.
-git fetch origin main --quiet 2>/dev/null || true
-if [ "${NO_AUTO_SYNC:-0}" != "1" ] && [ "${SKIP_MAIN_SYNC:-0}" != "1" ] \
-   && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    echo "↻ [auto-sync] árbol SUCIO y detrás de origin/main → no toco nada; resuélvelo tú."
-  elif git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-    echo "↻ [auto-sync] árbol limpio y detrás de origin/main (otra sesión pusheó) → resincronizo."
-    if git reset --hard origin/main --quiet; then
-      SHA=$(git rev-parse HEAD | cut -c1-8)
-      FULL_SHA=$(git rev-parse HEAD)
-      echo "   → ahora en ${SHA}; el gate de CI verificará ESTE SHA."
-    else
-      echo "   ⚠️  no pude resincronizar; sigo y que decida el guardarraíl anti-stale."
-    fi
-  else
-    echo "↻ [auto-sync] HEAD tiene commits propios que NO están en origin/main → no auto-sincronizo (los perdería)."
-    echo "   Pushea tu rama o rebasa a mano; el guardarraíl anti-stale abortará si no."
-  fi
-fi
+# ── EL GUARDARRAÍL DE «ÁRBOL SUCIO» YA NO HACE FALTA (T-385 fase 2) ──────────
+# Existía porque el build salía del WORKING TREE (`podman build … .`): con ficheros tracked
+# modificados, la imagen `deploy-${SHA}` NO correspondía al commit ${SHA} y se podía desplegar
+# código WIP sin que el SHA lo delatara (incidente 07/07: se colaron rutas que bloqueaban a
+# premium y costó horas verlo). Ahora el build sale de un worktree recién creado en el commit
+# exacto, así que la imagen NO PUEDE contener nada que no esté en ese commit: el invariante se
+# cumple por construcción. No se relaja el guardarraíl — deja de tener objeto, igual que el
+# `reset --hard` y la guarda anti-stale. Y con él se va `ALLOW_DIRTY`, que era la puerta para
+# saltárselo.
+
+# ── POR QUÉ AQUÍ YA NO HAY AUTO-SYNC (T-385 fase 2) ─────────────────────────
+# Se auto-sincronizaba el árbol con `git reset --hard origin/main` para que el WORKING TREE
+# —que era lo que se construía— coincidiera con lo que el CI verificaba. Con el árbol efímero
+# eso ya no hace falta: el commit se lee de `origin/main` directamente y se construye ahí.
+# Desaparece con ello el `reset --hard` DESTRUCTIVO sobre un árbol que puede ser de otra sesión,
+# que es lo que obligó a inventar el guard de T-364.
 
 # GATE CI (Fase 2, 08/07/2026): NO desplegar código que no pasó CI. Consulta los
 # check-runs de GHA para el SHA (via GITHUB_PAT de .env.local). Override: SKIP_CI_GATE=1.
 # SOLO gatean los checks de CÓDIGO (unit+typecheck+lint). `integration` pega a la BD
 # real y puede estar en rojo por dato en construcción / otra sesión paralela → es
 # señal aparte (como salud/canary), NO bloquea el deploy de código. Ver docs/runbooks/pusheo-revision-despliegue.md.
-FULL_SHA=$(git rev-parse HEAD)
+#
+# ⚠️ AQUÍ HABÍA UN `FULL_SHA=$(git rev-parse HEAD)` y hubo que QUITARLO (T-385 fase 2): pisaba el
+# SHA de `origin/main` resuelto arriba, así que el gate habría verificado el CI del HEAD de quien
+# lanza y el árbol de build se habría creado en ESE commit — o sea, el cambio entero anulado por
+# una línea. Lo cazó releer el fichero de una pasada; ningún test lo habría visto.
 if [ "${SKIP_CI_GATE:-0}" = "1" ]; then
   echo "→ [gate CI] OMITIDO (SKIP_CI_GATE=1)."
 elif [ -z "${GITHUB_PAT:-}" ] || ! command -v jq >/dev/null 2>&1; then
@@ -168,27 +149,35 @@ else
   elif [ "${FAILED:-0}" -gt 0 ]; then
     echo "   ❌ CI de CÓDIGO en ROJO: ${FAILED} check(s) (unit/typecheck/lint) fallando en ${SHA}. Arréglalo (o SKIP_CI_GATE=1)."; exit 1
   elif [ "${CANCELLED:-0}" -gt 0 ]; then
-    echo "   ↻ CI CANCELADO para ${SHA}: ${CANCELLED} check(s) (otro push llegó después; NO es un fallo de tu código). Resincroniza y reintenta:  git fetch origin && git reset --hard origin/main"; exit 1
+    echo "   ↻ CI CANCELADO para ${SHA}: ${CANCELLED} check(s) (otro push llegó después; NO es un fallo de tu código). Espera al CI del nuevo origin/main y RELANZA este script — no hay que tocar tu árbol."; exit 1
   elif [ "${PENDING:-0}" -gt 0 ]; then
     echo "   ⏳ CI de CÓDIGO aún EN CURSO: ${PENDING} check(s) en ${SHA}. Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
   echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo, no gatea]"
 fi
 
-# ── GUARDA ANTI-STALE (reconciliar sobre origin/main) ────────────────────────
-# El build sale del WORKING TREE de ESTA rama/worktree. Si tu rama NO contiene los
-# últimos commits de origin/main (otra sesión avanzó main), desplegar DEJARÍA CAER
-# ese trabajo — clobber stale. Casi pasó 11/07: feat/uc3m-golive no contenía el
-# dashboard cache que ya estaba en main → desde ahí se habría revertido. Exigimos que
-# HEAD contenga TODO origin/main. main = única verdad. Override: SKIP_MAIN_SYNC=1.
-git fetch origin main --quiet 2>/dev/null || true
-if [ "${SKIP_MAIN_SYNC:-0}" != "1" ] && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-  echo "❌ origin/main tiene commits que tu rama NO incluye → desplegar los perdería (clobber stale)."
-  echo "   Reconcilia primero:  git fetch origin && git rebase origin/main"
-  echo "   (o cherry-pickea tu trabajo sobre un worktree nuevo desde origin/main y pushea a main)."
-  echo "   Override consciente: SKIP_MAIN_SYNC=1"
-  exit 1
-fi
+# ── ÁRBOL DE BUILD PROPIO Y EFÍMERO (T-385 fase 2) ──────────────────────────
+# Aquí estaba la guarda anti-stale que exigía que HEAD contuviera origin/main. Ya no se construye
+# HEAD: se construye origin/main. El guardarraíl no se relaja — su invariante se cumple por
+# construcción, y el nuevo es MÁS fuerte (se construye el commit EXACTO cuyo CI se acaba de ver).
+BUILD_DIR="$(crear_arbol_de_build "$FULL_SHA")" || { echo "❌ no pude preparar el árbol de build"; exit 1; }
+echo "→ árbol de build efímero: $BUILD_DIR (se borra al salir, pase lo que pase)"
+
+# ── PRECIOS DE STRIPE: DEL COMMIT QUE SE DESPLIEGA, no del árbol de quien lanza ──
+# Fuente de verdad COMMITEADA, sourceada DESPUÉS de `.env.local` para SOBREESCRIBIR cualquier
+# price ID viejo que traiga un `.env.local` per-worktree (incidente 09/07, task def :386: un
+# .env.local stale tumbó create-checkout en 3 de 4 planes).
+#
+# Y desde T-385 se lee del ÁRBOL DE BUILD, no del checkout del lanzador: construir el código de
+# `origin/main` con los precios de OTRO commit sería exactamente la mezcla que este cambio
+# elimina — y en este fichero esa mezcla se cobra en euros.
+set -a; . "$BUILD_DIR/scripts/stripe-prices.sh"; set +a
+# Guardrail: los 8 price IDs deben estar presentes tras sourcear (si el fichero
+# faltara o se vaciara, abortar antes de construir un bundle sin precios).
+for _v in NEXT_PUBLIC_STRIPE_PRICE_MONTHLY NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY NEXT_PUBLIC_STRIPE_PRICE_SEMESTER NEXT_PUBLIC_STRIPE_PRICE_ANNUAL \
+          NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA; do
+  if [ -z "${!_v:-}" ]; then echo "❌ abort: $_v vacío tras sourcear $BUILD_DIR/scripts/stripe-prices.sh"; exit 1; fi
+done
 
 echo "→ [1/6] build ${IMG} (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)${NO_CACHE:+ [--no-cache]}"
 # NO_CACHE=1 → build desde cero (bustea capas cacheadas de podman). Incidente
@@ -222,7 +211,7 @@ podman build ${NO_CACHE:+--no-cache} \
   --build-arg GIT_COMMIT_SHA="$SHA" \
   --build-arg NEXT_PUBLIC_GIT_COMMIT_SHA="$SHA" \
   --target runner \
-  -t "$IMG" .
+  -t "$IMG" "$BUILD_DIR"
 # --target runner OBLIGATORIO: el Dockerfile tiene un stage `worker` (PDF, FROM deps) DESPUÉS
 # de `runner`. Sin --target, podman construye el ÚLTIMO stage (worker) → imagen sin .next/static
 # y [2b] falla ("/app/.next/static no existe"). El frontend es el stage `runner`; el worker se
