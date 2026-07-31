@@ -347,6 +347,26 @@ renderizar, **no pueden driftar**. Guardarraíles: `tarjeta_contradice_columnas`
 `''` para una variable desconocida → tarjeta EN BLANCO). Usa `scripts/tarjetas-a-plazas-total.cjs`, que
 aborta comprobando el commit vivo de `/api/health` con `git merge-base`.
 
+### 🚨 BOE: `txt.php` clona el ARMAZÓN; el cuerpo está en `buscar/doc.php` (28/07/2026)
+
+Clonando `BOE-A-2026-15700` (Getxo) con `--url=https://www.boe.es/diario_boe/txt.php?id=…` el corpus
+se quedó con **2.800 caracteres de menús del portal**: cabecera, selector de idioma, "Mi BOE",
+navegación… y **ni una** de las cifras del documento. Pasó `esParedDelPortal()` porque un resumen del
+BOE es legítimamente corto, así que el guardarraíl no lo vio.
+
+Se detecta con el canario del propio sistema: el documento **no contenía el literal que sostiene la
+cifra** que acabábamos de escribir (`plazas_libres=29`). Es exactamente lo que mide
+`plazas_afirmadas_sin_documento` en `audit:convocatorias`.
+
+**Regla:** para el BOE, clonar desde **`https://www.boe.es/buscar/doc.php?id=<REF>`**. Mismo
+`boletin_doc_key` → dedup por `doc_key`, así que re-clonar con `--refrescar-texto` **corrige la fila
+existente** sin duplicar. Verificado: el texto pasó a contener *"Veintinueve plazas de
+Administrativo/a"*, *"Cinco plazas"* y *"34 plazas"*.
+
+**Comprobación de cierre (hazla siempre, cuesta un `SELECT`):** tras clonar, confirma que el texto
+contiene el **literal que prueba lo que has escrito** (la cifra en letra *y* en dígitos: los boletines
+escriben "Trece plazas", no "13"). Si no está, has clonado la página equivocada.
+
 ## Gotchas (todos medidos, ninguno teórico)
 
 - ⚠️ **El `seguimiento_url` suele ser el PORTAL GENÉRICO de empleo**, no la página de la convocatoria → crawlearlo NO llega a las bases. Las URLs buenas ya están en BD (`convocatoria_verification.source_url`, `convocatoria_hitos.url`) y **dentro de los propios títulos** (`"Convocatoria publicada en BOE (BOE-A-2025-24633)"`).

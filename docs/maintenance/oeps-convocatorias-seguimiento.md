@@ -379,6 +379,29 @@ WHERE slug ILIKE '%<palabra-clave>%' OR nombre ILIKE '%<cuerpo>%';
 ```
 Si existe → enlazar (`UPDATE oep_detection_signals SET oposicion_id=…`) + enriquecer, y anotar el gap del matcher. Si de verdad no existe → catalogar (§10), sea del tipo que sea. **Nunca** se descarta un proceso nuevo real por su tipo (bolsa/PI/cuerpo raro): eso es scope subjetivo (ver arriba).
 
+### 🚨 Catalogar una fila = `oposiciones` **Y** `convocatorias` (28/07/2026)
+
+Al catalogar 15 filas nuevas escribí solo `oposiciones`. **Ninguna quedó con fila en `convocatorias`**,
+frente al 94 % (2.030/2.163) del resto de catalogadas. No dio ningún error… hasta que al intentar
+clonarle su BOE a `administrativo-ayuntamiento-getxo` la herramienta canónica respondió:
+
+```
+✗ administrativo-ayuntamiento-getxo no tiene convocatoria vigente: no hay ciclo del que colgar el documento
+```
+
+**`convocatorias` es la SSOT del ciclo y de ella cuelga TODO lo que viene después** — documentos del
+hub, entidad `oep`, hitos (`convocatoria_hitos.convocatoria_id`), verificación. Una fila sin
+convocatoria se ve bien en la landing (la vista tiene *fallback* a las columnas legacy) pero es un
+**callejón sin salida**: no admite provenance.
+
+**Al catalogar, crea también la convocatoria** con el mismo mapeo que usa `promoteSignalToConvocatoria`
+(`lib/api/oep-signals/queries.ts`): `oposicion_id`, `"año"`, `is_current=true`, plazas, fechas,
+`estado_proceso`. El trigger `ensure_single_current_convocatoria` impide que haya dos vigentes.
+**Verifica con** `NOT EXISTS(SELECT 1 FROM convocatorias c WHERE c.oposicion_id=o.id)` antes de cerrar.
+
+> **Deuda medida el 28/07:** quedan **118 catalogadas sin convocatoria** (todas de coverage
+> `catalogada`; ninguna activa). Son las que no pueden recibir provenance.
+
 ### ⚠️ La identidad real de una señal `pag_empleo`/agregador está en `raw_extraction`, NO en el label (aprendizaje 13/07/2026)
 
 El `signal_summary`/`detected_oposicion_name` de las señales del agregador (PAG/pag_empleo) trae un **rol genérico + CCAA** ("AUXILIAR DE ADMINISTRACION (Andalucía)", "SUPERIOR FACULTATIVO (Murcia)"), **sin la entidad**. Buscar/enlazar la fila por ese label lleva a **falsos enlaces** a cuerpos autonómicos/locales que NO son. La entidad exacta vive en el JSON `raw_extraction`:
