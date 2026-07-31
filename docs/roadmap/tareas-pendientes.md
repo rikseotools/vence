@@ -1082,6 +1082,18 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.185 preguntas servidas que no explican nada
+
+- **Esfuerzo:** el detector ya está hecho (esta sesión). Lo que queda es **cola larga de reescritura**: 2.185 preguntas en 137 lotes de 16, ~1 h por lote. Va por tandas, atacando por exposición.
+- **ORIGEN — una impugnación que parecía de clave y era de explicación.** Natalia impugnó `e60091bd` («¿en qué artículo establece la CE el principio de autonomía de los municipios?») diciendo que la clave estaba mal. La clave era correcta (art. 137), pero la pregunta llevaba **46% de acierto en 130 exposiciones** y su explicación entera era el artículo 137 copiado, con su encabezado. No decía por qué el 140 —el que uno tiene en la cabeza— no era la respuesta. **La impugnación no era el fallo: era el síntoma.**
+- **Qué es el cubo:** pregunta activa cuya explicación (a) **no razona ninguna opción** y (b) su contenido **ya está en el artículo vinculado**. Se exigen LAS DOS: solo (b) marcaría las citas legítimas dentro de una explicación que sí razona; solo (a) marcaría media base de datos.
+- **Medido el 31/07** (≥10 impresiones en 90 días): **2.185 preguntas · ~78.700 impresiones** — 1.040 copia literal y 1.145 casi literal. Concentración: Ley 39/2015 (511), CE (439), Ley 40/2015 (225), LPRL (190), LO 3/2018 (131). El lote de cabeza son 16 preguntas con 3.131 impresiones.
+- **Punto ciego de los cubos que ya había.** «Apelotonada» mira la FORMA (>400 caracteres sin un salto), así que una transcripción bien maquetada se le escapa entera y una explicación buena escrita de corrido cae en él sin tener este defecto. «Nota de auditoría» es la explicación que habla de sí misma; aquí no habla: calla y copia.
+- **Herramientas (ya en `main`):** núcleo puro `lib/health/explicacionTranscripcion.cjs` (13 tests) + cubo nuevo del extractor de siempre: `node scripts/apelotonadas/extraer-lote.cjs --cubo transcripcion --min-impresiones 10 --out <dir>`. El criterio necesita el artículo, así que el predicado SQL es solo prefiltro y el juicio lo pone el núcleo sobre las filas ya traídas.
+- **Cómo se repara (una a una, NUNCA en automático):** verificar la clave contra el artículo → reescribir en formato estructurado con `scripts/aplicar-explicacion.ts` (una razón por opción, referida al CONTENIDO) → la pregunta nace **barajable**. Comprobar la cita con `citaNoLiteral` antes de aplicar. Si la clave no se sostiene, va a `needs_human`; no se auto-corrige.
+- **Por qué merece la pena aunque sea larga:** son preguntas que YA se están sirviendo, con explicación inútil justo en el momento en que el opositor la abre porque ha fallado. Y cada una reparada sale del pozo de las que no pueden barajar.
+- **Relacionadas:** T-249 (cubo `nota-auditoria`, mismo pipeline), T-080 Fase 2 (explicación estructurada), `docs/maintenance/revisar-preguntas-con-agente.md`.
+
 ### [T-403] 🟡 [ABIERTO 31/07] El push-guard no distingue TRABAJAR una tarea de CITARLA en el cuerpo del commit
 
 - **ORIGEN.** Pisado en la propia sesión de [T-400], minutos después de arreglar tres bloqueos del mismo guard en [T-375]. El commit declaraba su trabajo en el asunto (`feat(T-400): …`) y **citaba** [T-361] y [T-385] en el cuerpo como contexto. El guard exigió reclamar las dos. Salió con `BACKLOG_GUARD_SKIP=1`, que es el escape documentado para este caso… **y que apaga el guard ENTERO para todo el push**.

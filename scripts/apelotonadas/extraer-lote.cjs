@@ -21,6 +21,11 @@
  *   · `nota-auditoria` — la «explicación» es la NOTA que un pase de IA escribió SOBRE la
  *     pregunta (`lib/health/auditNoteExplanation.cjs`, el mismo criterio que el barrido). Es un
  *     defecto PEOR: ahí no hay explicación ninguna, hay una crítica. Cola: T-249.
+ *   · `transcripcion` — la «explicación» es el ARTÍCULO copiado, sin razonar ninguna opción
+ *     (`lib/health/explicacionTranscripcion.cjs`). El opositor falla, la abre, y se encuentra
+ *     otra vez el texto que acaba de no saber aplicar. A diferencia de los otros dos, este
+ *     criterio necesita el artículo, así que el predicado SQL es solo un prefiltro y el juicio
+ *     se aplica sobre las filas ya traídas. Cola: T-409.
  *
  * ## `--ids` significa esos ids, y punto (arreglado 28/07/2026)
  *
@@ -32,6 +37,7 @@
  * Uso:
  *   node scripts/apelotonadas/extraer-lote.cjs --min-impresiones 10 --tam 16 --out <dir>
  *   node scripts/apelotonadas/extraer-lote.cjs --cubo nota-auditoria --min-impresiones 1 --out <dir>
+ *   node scripts/apelotonadas/extraer-lote.cjs --cubo transcripcion --min-impresiones 10 --out <dir>
  *   node scripts/apelotonadas/extraer-lote.cjs --ids a,b,c --out <dir>
  */
 const fs = require('fs');
@@ -60,6 +66,8 @@ async function main() {
   const cubo = arg('cubo', 'apelotonada');
   const { AUDIT_NOTE_PATS, AUDIT_NOTE_META_RE_SRC } = require(
     path.join(RAIZ, 'lib', 'health', 'auditNoteExplanation.cjs'));
+  const { clasificaTranscripcion } = require(
+    path.join(RAIZ, 'lib', 'health', 'explicacionTranscripcion.cjs'));
 
   // El predicado de cada cubo. Con `--ids` no se aplica ninguno: los ids MANDAN (ver cabecera).
   const PREDICADOS = {
@@ -71,6 +79,12 @@ async function main() {
     // `sql.join` —eso es Drizzle—, y el array viaja como UN parámetro, que además es más barato.
     'nota-auditoria': sql`(explanation ILIKE ANY(${AUDIT_NOTE_PATS.map((p) => '%' + p + '%')})
          OR explanation ~* ${AUDIT_NOTE_META_RE_SRC})`,
+    // `transcripcion` NO se puede decidir aquí: el criterio compara la explicación con SU
+    // artículo, y el artículo entra en el JOIN de abajo. Esto es solo el prefiltro barato; el
+    // juicio lo pone `clasificaTranscripcion` sobre las filas ya traídas (ver más abajo).
+    transcripcion: sql`explanation_data IS NULL
+         AND primary_article_id IS NOT NULL
+         AND length(explanation) BETWEEN 80 AND 1500`,
   };
   if (!ids && !PREDICADOS[cubo]) {
     console.error(`❌ --cubo desconocido: "${cubo}". Opciones: ${Object.keys(PREDICADOS).join(', ')}`);
@@ -110,16 +124,31 @@ async function main() {
       console.warn(`⚠️  ${perdidos.length} de ${ids.length} ids NO salieron (inactiva o inexistente): ${perdidos.slice(0, 5).join(', ')}${perdidos.length > 5 ? '…' : ''}`);
   }
 
+  // Segunda vuelta del cubo `transcripcion`: el predicado SQL solo pudo prefiltrar, así que el
+  // criterio de verdad —el del núcleo puro, el mismo que mide la cola— se aplica aquí, con el
+  // artículo ya en la mano. Con `--ids` no se aplica: los ids MANDAN (misma regla que arriba).
+  let seleccion = filas;
+  if (!ids && cubo === 'transcripcion') {
+    const antes = seleccion.length;
+    seleccion = seleccion
+      .map((f) => ({ ...f, transcripcion: clasificaTranscripcion({
+        explanation: f.explanation, articleContent: f.article_content }) }))
+      .filter((f) => f.transcripcion.clase);
+    const lit = seleccion.filter((f) => f.transcripcion.clase === 'literal').length;
+    console.log(`cubo transcripcion: ${seleccion.length} de ${antes} del prefiltro `
+      + `(${lit} copia literal · ${seleccion.length - lit} casi literal)`);
+  }
+
   fs.mkdirSync(out, { recursive: true });
   const lotes = [];
-  for (let i = 0; i < filas.length; i += tam) lotes.push(filas.slice(i, i + tam));
+  for (let i = 0; i < seleccion.length; i += tam) lotes.push(seleccion.slice(i, i + tam));
   lotes.forEach((lote, n) => {
     const f = path.join(out, `lote_${String(n + 1).padStart(2, '0')}.json`);
     fs.writeFileSync(f, JSON.stringify(lote, null, 1));
     const imp = lote.reduce((s, q) => s + q.impresiones, 0);
     console.log(`${f}  ${lote.length} preguntas · ${imp} impresiones`);
   });
-  console.log(`\nTotal: ${filas.length} preguntas en ${lotes.length} lotes.`);
+  console.log(`\nTotal: ${seleccion.length} preguntas en ${lotes.length} lotes.`);
   await sql.end();
 }
 
