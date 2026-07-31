@@ -28,6 +28,39 @@ cd "$(dirname "$0")/.." || exit 1
 
 QUE="${1:-backend}"
 VUELTAS="${2:-12}"
+
+# ── DÓNDE se lanza esto IMPORTA (T-364, 31/07/2026) ───────────────────────────────────────
+# Este script hace `git reset --hard origin/main` en el árbol desde el que se ejecuta, y lo hace
+# EN CADA VUELTA (hasta 12), porque despliega exactamente el SHA cuyo CI ha verificado. Eso está
+# bien para su trabajo y mal para el tuyo si lo lanzas desde el worktree en el que estás
+# programando: **te mueve el HEAD debajo de los pies**, aparecen y desaparecen ficheros según la
+# vuelta, y los commits locales que no hayas pusheado se descartan de la rama (quedan en el reflog,
+# pero hay que saber ir a buscarlos).
+#
+# Lo que NO hace, para que nadie lo suponga: no se lleva por delante cambios sin commitear — se
+# niega a correr con el árbol sucio, unas líneas más abajo. El daño es el otro.
+#
+# Caso real: una sesión lanzó el deploy desde su propio worktree, siguió trabajando, y a la vuelta
+# 4 se encontró la rama en un commit anterior y un fichero recién creado «desaparecido». No se
+# perdió nada porque ya estaba pusheado, pero el susto y el rato de investigación sí.
+#
+# Por eso: se despliega desde el REPO PRINCIPAL, que no tiene trabajo en curso. El script sigue a
+# `origin/main` de todas formas, así que tu rama no pinta nada aquí.
+SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$HOME/vence-sessions}"
+case "$PWD/" in
+  "$SESSIONS_DIR"/*)
+    echo "⚠️  Estás lanzando el deploy DESDE UN WORKTREE DE SESIÓN:"
+    echo "      $PWD"
+    echo "   Este script hace 'git reset --hard origin/main' en cada vuelta: te moverá el HEAD"
+    echo "   mientras trabajas y descartará los commits de esta rama que no hayas pusheado."
+    echo "   Despliega desde el repo principal, que no tiene trabajo en curso."
+    if [ "${DEPLOY_DESDE_WORKTREE:-}" != "1" ]; then
+      echo "   Si de verdad quieres hacerlo aquí:  DEPLOY_DESDE_WORKTREE=1 $0 $*"
+      exit 2
+    fi
+    echo "   (DEPLOY_DESDE_WORKTREE=1 — sigo, pero no edites nada en este worktree hasta que acabe)"
+    ;;
+esac
 case "$QUE" in
   backend|frontend) SCRIPT="scripts/deploy-${QUE}.sh" ;;
   *) echo "uso: $0 backend|frontend [vueltas]"; exit 2 ;;

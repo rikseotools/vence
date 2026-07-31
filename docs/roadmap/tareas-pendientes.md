@@ -1197,6 +1197,17 @@ incluida).
 
 ## Hechas
 
+### [T-365] ✅ [HECHA 31/07] El deploy resetea el worktree desde el que se lanza, y eso no estaba escrito en ningún sitio
+
+- **ORIGEN.** Lanzando el deploy del frontend desde el worktree de una sesión (31/07). A la vuelta 4, la rama había retrocedido a un commit anterior y un fichero recién escrito «había desaparecido». Nada se perdió —ya estaba pusheado— pero costó el susto y un rato de investigación. Manuel, al contárselo: *«¿entonces cómo se soluciona? y si no está dicho, ¿por qué no lo pones en algún sitio?»*. Tenía razón en las dos.
+- **CAUSA, leída del script y no supuesta:** `deploy-cuando-verde.sh` hace **`git reset --hard origin/main` en el árbol desde el que se ejecuta**, y lo repite **en cada vuelta** (hasta 12). Es correcto para su trabajo —despliega exactamente el SHA cuyo CI verificó— y destructivo para el tuyo si estás programando ahí: mueve el HEAD y **descarta los commits de la rama que no estén pusheados** (recuperables por reflog, si sabes buscarlos).
+- **⚠️ Y una corrección de mi primer diagnóstico, que es lo que más engaña:** dije que «se lleva por delante lo que tengas sin commitear» y es **FALSO**. El script **se niega a correr con el árbol sucio** (comprueba `git status --porcelain` antes del reset). Lo que se pierde son commits locales sin pushear, no cambios en curso. Contarlo mal habría mandado a alguien a buscar el problema donde no está.
+- **RESOLUCIÓN, en los dos sitios:**
+  1. **Guarda en el propio script**: si el `PWD` está bajo `~/vence-sessions/*`, avisa de lo que va a pasar y **aborta** (`exit 2`). Escape consciente: `DEPLOY_DESDE_WORKTREE=1`. Se probó: desde un worktree se niega, y el mensaje dice dónde lanzarlo.
+  2. **Runbook `pusheo-revision-despliegue.md`**, en el TL;DR —donde se copia el comando— con el porqué, el caso real y la aclaración de lo que NO hace.
+- **La regla, en una línea:** el deploy se lanza **desde el repo principal**, que no tiene trabajo en curso. Tu rama no pinta nada: el script sigue a `origin/main` de todas formas.
+- **Por qué la guarda y no solo el documento:** lo mismo que aprendimos con el reloj del backlog — un aviso escrito entre otras diez líneas no es una condición. Aquí el error se comete **una vez y en caliente**, cuando quieres desplegar rápido, que es justo cuando nadie relee un runbook.
+
 ### [T-340] 🟢 [HECHA 31/07 · abierta 30/07] Los endpoints de pago aceptaban la identidad que mandara el cliente
 
 - **El fallo:** `/api/stripe/{cancel,reactivate,subscription,create-checkout,cancel/feedback}` leían el `userId` del **cuerpo o de la query**, sin verificar ningún token. Con el UUID de otra persona —que viaja en respuestas de la propia app— se le podía **cancelar la suscripción**, **reactivársela (volver a cobrarle)**, **leer su facturación** o **abrirle el portal de Stripe** (facturas y tarjeta). En `create-checkout` además decidía de quién es un precio personalizado, así que la comprobación se hacía «contra el usuario que dijera el cliente».

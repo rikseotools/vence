@@ -96,8 +96,31 @@ scripts/deploy-frontend.sh   # Next.js (OpenNext) → ECS Fargate + assets a S3
 scripts/deploy-backend.sh    # NestJS → ECS Fargate
 
 # Con VARIAS SESIONES pusheando, usa mejor el lanzador: espera a que el CI verdee y despliega solo.
+# ⚠️ LÁNZALO DESDE EL REPO PRINCIPAL, no desde tu worktree de sesión (ver justo abajo).
 scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 ```
+
+> ## ⚠️ El deploy se lanza desde el REPO PRINCIPAL, no desde tu worktree
+>
+> `deploy-cuando-verde.sh` hace **`git reset --hard origin/main` en el árbol desde el que se
+> ejecuta**, y lo repite **en cada vuelta** (hasta 12), porque despliega exactamente el SHA cuyo CI
+> ha verificado. Si lo lanzas desde el worktree en el que estás programando:
+>
+> - **te mueve el HEAD debajo de los pies** — aparecen y desaparecen ficheros según la vuelta;
+> - **descarta los commits de tu rama que no hayas pusheado** (quedan en el reflog, pero hay que
+>   saber ir a buscarlos).
+>
+> Lo que **NO** hace, para que nadie lo suponga al revés: no se lleva por delante los cambios sin
+> commitear — se **niega a correr** con el árbol sucio. El daño es el otro.
+>
+> **Caso real (31/07/2026):** una sesión lanzó el deploy desde su propio worktree y siguió
+> trabajando. En la vuelta 4 se encontró la rama en un commit anterior y un fichero recién escrito
+> «desaparecido». No se perdió nada porque ya estaba pusheado, pero costó el susto y un rato de
+> investigación. Desde entonces **el script se niega** a arrancar dentro de `~/vence-sessions/*`
+> (escape consciente: `DEPLOY_DESDE_WORKTREE=1`).
+>
+> Tu rama no pinta nada en un deploy: el script sigue a `origin/main`. Por eso el sitio correcto es
+> el repo principal, que no tiene trabajo en curso.
 
 > **¿Por qué un lanzador y no ejecutar el script a pelo?** Los guardarraíles de abajo son correctos
 > uno a uno, pero exigen que coincidan CUATRO cosas: árbol limpio, al día con `origin/main`, lock de
