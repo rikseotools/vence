@@ -21,6 +21,7 @@ set -euo pipefail
 # que se ejecuta a veces no es una guarda.
 ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
 . "$(dirname "$0")/lib/guardia-worktree.sh"
+. "$(dirname "$0")/lib/comprobar-secretos-permitidos.sh"
 guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
 # Construir en un árbol PROPIO y efímero, sin tocar el de nadie (T-385).
 . "$(dirname "$0")/lib/deploy-worktree.sh"
@@ -237,6 +238,11 @@ fs.writeFileSync(process.env.TDNEW, JSON.stringify(td));
 "
 # Guard: transform DEBE producir JSON no vacío (vars por ENTORNO, a prueba de shell).
 [ -s "$TDNEW" ] || { echo "   ❌ el transform del task def produjo un fichero vacío — ABORTO"; rm -f "$TDLIVE" "$TDNEW"; exit 1; }
+# ¿Puede el rol leer los secretos que este mismo transform acaba de cablear (arriba se añaden
+# DATABASE_URL_REPLICA, DEVICE_LIMIT_MODE…)? El permiso vive en una política que enumera ARNs uno
+# a uno y NADIE la toca al añadir el secreto: sin esto, ECS arranca una tarea cada 5 min que muere
+# antes del contenedor y el deployment se queda en IN_PROGRESS con 0 running (T-399). Fail-open.
+comprobar_secretos_permitidos "$TDNEW" "$P" "$R" || { rm -f "$TDLIVE" "$TDNEW"; exit 1; }
 NEWTD=$(aws ecs register-task-definition --cli-input-json "file://${TDNEW}" --profile $P --region $R --query 'taskDefinition.taskDefinitionArn' --output text)
 rm -f "$TDLIVE" "$TDNEW"
 echo "   registrada: $NEWTD"
