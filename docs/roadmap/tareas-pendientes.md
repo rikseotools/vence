@@ -1,6 +1,17 @@
-(c) ✅ **HECHO** — `/api/feedback` ya no pierde el mensaje: resuelve la identidad con el MISMO núcleo del acuñado del token (`canonicalSubForToken`) y, si no hay manera, guarda con `user_id = NULL` (el email queda en la fila, así que se sabe quién escribe y se le puede contestar). La conversación se crea con el id ya resuelto, no con el del cuerpo. Señal: `feedback_identidad_irresoluble` (`warn` al reconciliar, `error` al guardar sin usuario). Probado en transacción contra la BD real: con id fantasma la FK RECHAZA, con NULL guarda; ROLLBACK sin rastro. **El patrón venía del propio repo:** `app/api/webhooks/resend-inbound/route.ts` (los correos a info@vence.es) ya resolvía por email en vez de fiarse del id del cliente.
-
 # 📋 Tareas pendientes (backlog general, sin fecha)
+
+> ### 🧩 Este fichero es UNA PIEZA de un sistema, no un documento suelto
+>
+> El reparto entre 2-10 sesiones (claim con lease, latido, huella de ficheros, índice no
+> compartido, árbol de deploy propio, rescate de sesiones muertas) está **diseñado como un**
+> **conjunto**, y su manual completo —principios, componentes, modos de fallo y cómo portarlo—
+> es **[`docs/runbooks/sistema-sesiones-paralelas.md`](../runbooks/sistema-sesiones-paralelas.md)**.
+>
+> - **Cómo se OPERA el backlog** (coger, pausar, cerrar) → [`docs/runbooks/tareas-pendientes.md`](../runbooks/tareas-pendientes.md)
+> - **POR QUÉ es así**, y qué pasa si tocas una pieza → el manual del sistema
+>
+> Si vas a cambiar cómo funciona el reparto, **lee el manual antes**: cada guardarraíl que hay
+> aquí nació de un fallo medido, y varios se sostienen entre sí.
 
 > **Fuente única de las tareas que Manuel aparca para "luego".** Es el sitio canónico del backlog
 > **sin fecha** (para tareas **con fecha** → memoria `agenda_tareas_programadas`).

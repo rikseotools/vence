@@ -254,6 +254,30 @@ Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · �
 También recoge el trabajo huérfano (§3.9.bis) como clase propia: es fricción de la que solo se
 ve el rastro, porque la sesión que la causó ya no está para contarlo.
 
+### 3.12-bis Cerrar una sesión sin dejar cabos
+
+**`/clear` NO es cerrar la sesión.** Borra la memoria de la conversación; el worktree sigue ahí y
+**las tareas siguen reclamadas**. Si solo vas a hacer `/clear`, con dejar las fichas al día basta:
+no se pierde nada.
+
+**Borrar el worktree es otra cosa: lo que no esté subido se pierde para siempre.** El rescate de
+§3.9 —que enseña a la siguiente sesión lo que dejó la anterior— **solo funciona si ese worktree
+sigue existiendo**.
+
+Por eso el cierre **no depende de que alguien se acuerde**: el script de borrado ABORTA ante las
+cuatro formas de perder algo.
+
+| se pierde | qué lo impide |
+|---|---|
+| commits que no llegaron a la rama principal | aborta y los lista |
+| cambios sin commitear | aborta y los lista |
+| reservas de la cola de trabajo | las suelta él |
+| **el «dónde dejé la tarea»** | aborta si tienes tareas cogidas, y te enseña las dos salidas: cerrarla con su resultado, o **pausarla diciendo qué falta** |
+
+> Las tareas **no se sueltan solas** a propósito: soltar sin decir dónde se dejó una tarea es
+> **indistinguible de un abandono**, y la siguiente sesión empieza de cero. Esa elección la tiene
+> que hacer quien cierra, que es el único que lo sabe.
+
 ### 3.13 El repo principal: NO lo pongas en `bare`
 
 Es tentador: un repo `bare` no admite trabajo, así que haría **imposible** el índice compartido
@@ -332,6 +356,7 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
 | Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
 | **Un proceso de fondo que sobrevive a su sesión** | sigue trabajando y avisando a nadie; si recuerda lo avisado, lo marca como visto |
+| Cerrar la sesión sin soltar sus tareas | la reserva caduca sola, pero el «dónde lo dejé» se pierde |
 | **Cambio estructural del repo sin ficha** | nadie distingue intencionado de accidente → todos se paran |
 | La regla escrita solo al arrancar la sesión | queda sepultada justo cuando toca aplicarla |
 | **Crear el worktree ≠ entrar en él** | la sesión que ejecuta el script se queda donde estaba: worktrees perfectos y VACÍOS |
