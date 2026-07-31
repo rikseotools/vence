@@ -119,7 +119,7 @@
 - **Fuera de alcance a propósito:** Windows/Explorador. Sus combinaciones (`Win+E`, `Win+R`) no se traducen, así que ahí el detector solo produciría ruido.
 - **Lo que queda:** limpiar lo que ha encontrado es [T-351]. Y la idea generaliza — el mismo patrón («dos afirmaciones del banco sobre el mismo hecho») sirve para cifras y fechas, pero eso es otra tarea.
 
-### [T-351] 🟡 [ABIERTO 30/07 — Word y Access CERRADOS, queda Excel/LibreOffice] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
+### [T-351] 🟡 [ABIERTO 30/07 — Word, Access y Excel CERRADOS · LibreOffice ⛔ BLOQUEADO (no hay instalación ES) · quedan 2 hallazgos de pregunta] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
 
 > **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
 > **4 contradicciones `interna` + 10 `familia` → 2 + 3**, y **Word queda limpio del todo**.
@@ -193,12 +193,28 @@
 >    - **Cómo cerrarlo bien:** abrir un LibreOffice instalado en español y probarlo, o mirar
 >      `Herramientas ▸ Personalizar ▸ Teclado` de una instalación ES. Con eso se decide en un minuto
 >      lo que las fuentes secundarias no resuelven. **Hasta entonces no se flipa ninguna clave.**
+>    - **⛔ BLOQUEADA POR ENTORNO (30/07): Manuel no tiene LibreOffice instalado.** No es que falte
+>      tiempo, es que falta la única prueba que zanja la discrepancia. **No reintentar con más
+>      búsquedas web**: ya se hicieron y devuelven las dos respuestas — ese camino está agotado.
+>      Se desbloquea el día que haya una instalación ES a mano (propia o de un usuario), o si aparece
+>      documentación de LibreOffice que distinga explícitamente por idioma de interfaz.
+>    - **Mientras tanto NO se toca nada**: el banco queda con la contradicción, que es preferible a
+>      resolverla a cara o cruz. Las dos preguntas suman 15 exposiciones, así que el coste de esperar
+>      es bajo.
 > 2. El aviso `interna` de LibreOffice (`Ctrl+Alt+B` para Buscar y reemplazar) es **falso positivo**:
 >    el propio artículo lo etiqueta como *«atajo alternativo, versión 4.1»*, y la ayuda oficial ES
 >    confirma `Ctrl+H` como el principal. Alias documentado, no defecto.
-> 3. **Punto ciego del detector detectado por el camino:** «Fuente» no está en su vocabulario de
->    acciones, y el banco tiene dos respuestas para ella (`Ctrl+M` en `8d7b1a8e` frente a
->    `Ctrl+Mayús+F` en `86000eb8` y `f98e1daa`). Ampliar `ACCIONES` o resolverlo a mano.
+> 3. **«Fuente»: contradicción REAL que el detector no ve** (la acción no está en su vocabulario).
+>    El banco da dos respuestas para «abrir el cuadro de diálogo Fuente» en Word: **`Ctrl+M`** en
+>    `8d7b1a8e` (46 exp) frente a **`Ctrl+Mayús+F`** en `86000eb8` (33 exp) y `f98e1daa` (22 exp) —
+>    **101 exposiciones** repartidas entre dos respuestas incompatibles. Nuestro `Word 2016` art.5 dice
+>    `Ctrl+M`. Sospecha razonable: las dos funcionan (`Ctrl+M` es la española y `Ctrl+Mayús+F` un alias
+>    heredado), pero **hay que verificarlo antes de tocar ninguna clave**. Al resolverlo, añadir
+>    `fuente` a `ACCIONES` en `lib/health/atajoCoherencia.js` para que el detector lo cubra en adelante.
+> 4. **Afirmación huérfana:** `Ctrl+Mayús+F5` es la clave de `7b327e92` (33 exp) y `5495794c` (26 exp)
+>    para «insertar un marcador», y **no aparece en NINGÚN artículo del banco**. No es contradicción
+>    —por eso el detector calla— sino una clave sin respaldo documental. Verificar contra fuente y, si
+>    es correcta, llevarla al artículo; si no, corregirla.
 
 
 
@@ -1939,6 +1955,23 @@ incluida).
   - **8 preguntas retiradas** a `needs_human` (clave dudosa u opción ausente). **Ninguna clave se modificó en toda la sesión.**
   - **983 filas** en `ai_verification_results` con `ai_provider LIKE 'claude_code_t291%'` (cohorte por tanda, `review_method_version = v2.1`).
   - Caché de producción invalidada tras cada aplicación.
+
+  ### 🧭 MAPA DEL HILO (30/07) — todo lo que salió de esta campaña y dónde vive
+
+  Tirar de los 8 casos de adjudicación destapó una cadena. Cada eslabón tiene ficha propia; esto es el índice para no perderlos de vista:
+
+  | ficha | qué es | estado |
+  |---|---|---|
+  | **[T-291]** (esta) | la campaña de explicaciones estructuradas | 🟠 abierta — quedan ~500 del top-1000 |
+  | **[T-302]** | contenedores vacíos **y contenedores ricos pero FALSOS** (premisa corregida el 30/07) | 🟠 abierta — Office 2016 y el bloque clínico TCAE |
+  | **[T-342]** | «explicación estructurada SIN cita» = rastro de que el artículo no responde | 🟠 abierta — detector + triaje de 50 |
+  | **[T-351]** | los contenedores de ofimática mezclaban atajos ES/EN | 🟡 Word ✅ · Access ✅ · Excel ✅ · **LibreOffice BLOQUEADO** |
+  | **[T-354]** | detector de contradicciones internas del banco (`npm run audit:atajos`) | ✅ hecha — llevó de 4+10 a 1+2 |
+  | **[T-364]** | el test de PDF troceado tumba el pre-commit de forma intermitente | 🟡 abierta — trabajo en vuelo de otra sesión |
+
+  **Cifras del banco al cierre del 30/07** (medidas, no estimadas): **6.998 preguntas activas con explicación estructurada**, de ellas **6.860 barajables de verdad**.
+
+  **Nada de esto necesita deploy:** todo son datos (preguntas y artículos) más un runner CLI. La caché de producción se invalidó tras cada tanda.
 
   ### 🎯 QUÉ HACER AHORA, por orden de rendimiento
 
