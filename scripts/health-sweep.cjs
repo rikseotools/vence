@@ -207,8 +207,17 @@ async function detectarTodo(c, add, now) {
     if (tema !== 200) add('app', 'error', o.slug, 'http_down', `/${o.slug}/temario → ${tema}`);
     if (test !== 200) add('app', 'error', o.slug, 'http_down', `/${o.slug}/test → ${test}`);
     // ── APP: cobertura (MV, misma fuente que la app) ──
+    // `tp.is_active` NO estaba, y eso daba VERDE FALSO en la tarjeta de temas (T-384, 31/07/2026):
+    // un topic desactivado no existe para el opositor, pero contaba igual, así que una landing que
+    // promete 120 temas y sirve 20 cuadraba porque los otros 100 seguían ahí como filas inactivas.
+    // Caso real: `etgoa-sanidad-consumo`, PUBLICADA, tarjeta de 120 con 20 activos (19 disponibles)
+    // y 4 usuarios estudiándola. Lo cazaba el test de CI `configDbIntegrity` —que sí filtra
+    // activos— mientras este detector decía que todo bien; el desacuerdo entre los dos era la
+    // pista. Calibrado antes de tocar: de 124 oposiciones publicadas solo UNA tiene topics
+    // inactivos, así que el filtro añade exactamente ese hallazgo y no genera ruido.
     const topics = (await c.query(`SELECT tp.topic_number, tp.disponible, COALESCE(SUM(s.total_questions),0)::int n
-      FROM topics tp LEFT JOIN topic_law_question_summary s ON s.topic_id = tp.id WHERE tp.position_type = $1
+      FROM topics tp LEFT JOIN topic_law_question_summary s ON s.topic_id = tp.id
+      WHERE tp.position_type = $1 AND tp.is_active
       GROUP BY tp.topic_number, tp.disponible`, [pt])).rows;
     const disp = topics.filter(t => t.disponible);
     if (topics.length && disp.length === 0) add('app', 'error', o.slug, 'empty_topic', `${o.slug}: 0 temas disponibles (publicado vacío)`);

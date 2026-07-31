@@ -323,20 +323,19 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
   },
   {
     ruta: '__tests__/integration/configDbIntegrity.test.ts',
-    tipo: 'vigilancia',
-    hueco: 'La deriva config ↔ BD (una oposición que declara 120 temas y tiene 20) no tiene detector en el barrido. Es el hallazgo #1 de [T-377] y necesita kind propio.',
-    que: 'La config de oposiciones declara temas que la BD no tiene.',
+    tipo: 'vigilancia', kind: 'temas_card',
+    que: 'La config declara temas que la BD no tiene. YA lo vigila `temas_card`, que estaba CIEGO: contaba topics sin filtrar `is_active`, así que 120 prometidos con 20 activos cuadraban con 100 filas fantasma. Arreglado en los dos barridos (T-384).',
   },
   {
     ruta: '__tests__/integration/positionTypeIntegrity.test.ts',
     tipo: 'vigilancia',
-    hueco: 'Un position_type vivo en BD sin mapeo en config no lo vigila nadie fuera de este test. Mismo kind que necesitaría configDbIntegrity.',
+    hueco: 'NO se puede mudar al barrido tal cual, y el motivo es arquitectónico, no de pereza: necesita `lib/config/oposiciones.ts` (SLUG_TO_POSITION_TYPE) y el writer real es el @Cron del backend, un build NestJS aparte que no puede importar el lib/ del frontend. Para vigilarlo de noche habría que EXPORTAR esa config a datos (tabla o artefacto de build). Mientras tanto vive aquí. Caso vivo: auxiliar_archivos_bibliotecas_museos_madrid, 50 temas y 7 usuarios, sin mapeo.',
     que: 'position_type presente en BD sin configuración que lo respalde.',
   },
   {
     ruta: '__tests__/integration/familiaClassification.test.ts',
     tipo: 'vigilancia',
-    hueco: 'La clasificación por familia no tiene detector en el barrido.',
+    hueco: 'La taxonomía de familias no tiene detector en el barrido. Parte de lo que comprueba (el CHECK rechaza familia inválida) es contrato de ESQUEMA y no vigilancia — al mudarla hay que separar las dos mitades, no moverla entera.',
     que: 'La familia declarada de cada oposición concuerda con la BD.',
   },
   {

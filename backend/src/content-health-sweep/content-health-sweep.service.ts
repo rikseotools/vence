@@ -1096,9 +1096,13 @@ export class ContentHealthSweepService {
       if (test !== 200)
         add('app', 'error', o.slug, 'http_down', `/${o.slug}/test → ${test}`);
       // ── APP: cobertura (MV, misma fuente que la app) ──
+      // `tp.is_active` NO estaba y daba VERDE FALSO en la tarjeta de temas (T-384): un topic
+      // desactivado no existe para el opositor pero contaba igual, así que una landing que promete
+      // 120 temas y sirve 20 cuadraba. Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC).
       const topics = (await this.db.execute(sql`
         SELECT tp.topic_number, tp.disponible, COALESCE(SUM(s.total_questions),0)::int n
-        FROM topics tp LEFT JOIN topic_law_question_summary s ON s.topic_id = tp.id WHERE tp.position_type = ${pt}
+        FROM topics tp LEFT JOIN topic_law_question_summary s ON s.topic_id = tp.id
+        WHERE tp.position_type = ${pt} AND tp.is_active
         GROUP BY tp.topic_number, tp.disponible
       `)) as unknown as Array<{
         topic_number: number;
