@@ -450,6 +450,34 @@ if [ -n "$CANARY_SECRET" ]; then
 else
   echo "   (canary premium omitido: SUPABASE_JWT_SECRET no accesible en SSM)"
 fi
+# Canaries del BACKEND que vigilan el comportamiento del frontend recién publicado.
+#
+# ⚠️ POR QUÉ ESTÁN AQUÍ Y NO SOLO EN GITHUB ACTIONS (31/07/2026): estaban disparados
+# ÚNICAMENTE desde `.github/workflows/frontend-deploy.yml`, y el equipo despliega con ESTE
+# script (el runbook lo dice: «desplegar SIEMPRE con el script»). Resultado medido:
+# `canary-questions-gate` había corrido **3 veces desde el 3 de julio** — un canary
+# post-deploy que casi nunca ve un deploy no vigila nada. El disparo va donde ocurre el
+# despliegue de verdad.
+#
+# NO bloquean el deploy: ya está hecho, y un rojo emite su alerta [Vence CRITICAL] con el
+# detalle. Bloquear aquí solo añadiría un rollback por algo que la alerta ya cuenta mejor.
+echo "→ canaries post-deploy del backend (gate anti-scraping · identidad en pagos)"
+CRON_SECRET_VAL=$(aws --profile "$P" --region "$R" ssm get-parameter --name "/vence-frontend/CRON_SECRET" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
+if [ -n "$CRON_SECRET_VAL" ]; then
+  for CANARY in run-questions-gate run-identidad-pago; do
+    CODE=$(curl -s -o /tmp/canary-$CANARY.json -w '%{http_code}' --max-time 40 \
+      -X POST "https://api.vence.es/api/v2/canary/$CANARY" \
+      -H "Authorization: Bearer ${CRON_SECRET_VAL}" || echo 000)
+    case "$CODE" in
+      200) echo "   ✅ $CANARY OK";;
+      503) echo "   ⚠️⚠️ $CANARY ROJO — el backend ya emitió [Vence CRITICAL]. Revisar: $(cat /tmp/canary-$CANARY.json 2>/dev/null | head -c 300)";;
+      *)   echo "   ⚠️ $CANARY no respondió (HTTP $CODE) — el disparo no llegó, NO es un verde";;
+    esac
+  done
+else
+  echo "   (canaries omitidos: CRON_SECRET no accesible en SSM)"
+fi
+
 # Verificación en NAVEGADOR de lo recién publicado: los journeys de Vence Sim marcados
 # `postDeploy` (hoy, los controles flotantes del examen — el fallo de Manolo era de PINTADO y
 # ningún smoke de HTTP lo ve). Aquí SOLO se resuelven los secretos de ESTA nube; el verificador

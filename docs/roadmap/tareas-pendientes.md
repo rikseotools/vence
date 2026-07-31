@@ -882,23 +882,18 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
-### [T-360] 🔴 [ABIERTO 31/07] `observable_events` (6,9 GB) satura la BD: el motor de alertas la escanea y se pierden respuestas de opositores
+### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
 
-- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás había un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503 «Servicio saturado»), la ingesta de observabilidad tardando hasta **35 s**, y la alerta `5xx_spike` disparando (la vigilancia sí funcionó).
-- **LA PISTA FALSA, y por qué la descarto:** `refresh-rankings` pasó de **104 ms a 19,3 s** en 25 minutos (07:29 → 07:49) y parecía la causa. Pero lleva 36 horas planas en ~110 ms y lo que cambió no fue él: es **la víctima más visible** porque corre cada 5 minutos y tiene reloj. Se degradó encolado detrás de lo demás.
-- **LO MEDIDO (31/07):**
-  - `observable_events`: **6,9 GB · 10.733.632 filas**, creciendo **~70.000/día** (2.000-5.400 por hora).
-  - La consulta de la regla de latencia (`SELECT endpoint … WHERE event_type='request_completed' AND duration_ms > …`) usa el índice **solo por fecha** (`idx_observable_events_ts_desc`) y filtra después: para **una hora** lee 4.663 filas para devolver 23 y tarda **1,9 s**. El motor lanza varias a la vez — medidas **tres simultáneas** en `pg_stat_activity`.
-  - Un **autovacuum de esa tabla terminó a las 07:12**, minutos antes de que empezara la escalada.
-  - `last_analyze` del 27/07; `last_autoanalyze` del 30/07 04:00.
-- **EL PRECEDENTE QUE LO DELATA COMO SILO:** ya existe `idx_observable_events_cron_covering` — `(event_type, ts DESC) INCLUDE (endpoint, duration_ms) WHERE event_type IN ('cron_tick','cron_run')`. Alguien chocó con ESTE mismo problema, lo arregló **solo para los eventos de cron** y las demás reglas se quedaron con el escaneo lento. La solución existe; falta aplicarla donde duele.
-- **QUÉ HACER, por orden de valor:**
-  1. **Retención.** Una tabla de eventos para alertar no necesita ~150 días calientes. Es el arreglo de fondo: sin él, lo demás solo retrasa el problema. **Decisión de producto:** la retención borra histórico de observabilidad, hay que elegir ventana (y si se archiva antes de borrar). Comprobar primero si ya existe alguna purga — no se pudo confirmar en el momento del diagnóstico.
-  2. **Índice cubridor para `request_completed`**, calcado del de crons.
-  3. **Escalonar las reglas** para que no coincidan varias barridas pesadas en el mismo tick.
-- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son *parte del problema*. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Usar ventanas cortas y `EXPLAIN` en vez de contar.
-- **Relacionada:** `docs/runbooks/health-check.md` (§ salud de la BD y del motor de alertas).
-
+- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
+- **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
+  1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
+  2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
+  3. **NO es que el motor de alertas escanee el primario.** Backend y frontend tienen `USE_READ_REPLICA=true` en su task definition: producción computa en la réplica, como manda el runbook de contención.
+- **LO QUE SÍ SE ENCONTRÓ, y ya está arreglado (31/07):** el `.env.local` de las sesiones locales tenía `DATABASE_URL_REPLICA` apuntando a **`vence-prod`, el PRIMARIO**, y sin `USE_READ_REPLICA`. O sea que cada `npm run dev` con el panel de salud abierto le metía los escaneos de 6,9 GB **a la base de datos que atiende a los opositores**, justo lo que producción evita. Corregido en las 10 sesiones vivas y en el `.env.local` del repo principal (del que `crear-worktree.sh` copia, así que las nuevas nacen bien). Verificado: `pg_is_in_recovery = true`, retraso 0,55 s.
+- **LO MEDIDO, que sigue en pie:** 6,9 GB · 10.733.632 filas · ~4.500 eventos/hora (46% `request_completed`). La consulta de la regla de latencia agrega **todos** los `request_completed` de 45 min para un percentil — **un índice parcial NO sirve aquí**, no hay «unas pocas lentas» que indexar (eso descarta el índice que se propuso primero).
+- **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
+- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
+- **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
 
 ### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
 
