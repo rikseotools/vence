@@ -233,6 +233,156 @@ export async function getArticlesForLaw(
 // 2. ESTIMACIÓN DE PREGUNTAS DISPONIBLES
 // ============================================
 
+/**
+ * Resuelve el `law_id` de un short_name cuando NO hay topic_scope del que leerlo
+ * (configurador "por leyes"). Con leyes duplicadas (mismo short_name, una poblada y
+ * otra vacía) elige DETERMINISTA la que más preguntas activas tiene: resolver con
+ * LIMIT 1 a secas devolvía la fila vacía y dejaba todo a 0.
+ *
+ * Es el mismo criterio que ya aplicaba `getArticlesForLaw`; vive aquí para que las dos
+ * lecturas no puedan divergir.
+ */
+async function resolveLawIdByShortName(
+  db: ReturnType<typeof getDb>,
+  lawShortName: string,
+): Promise<string | null> {
+  const activeQuestionsForLaw = sql<number>`(
+    SELECT count(*) FROM ${questions} q
+    JOIN ${articles} a ON q.primary_article_id = a.id
+    WHERE a.law_id = ${laws.id} AND q.is_active = true
+  )`
+  const rows = await db
+    .select({ id: laws.id })
+    .from(laws)
+    .where(eq(laws.shortName, lawShortName))
+    .orderBy(sql`${activeQuestionsForLaw} DESC`, laws.id)
+    .limit(1)
+
+  return rows[0]?.id ?? null
+}
+
+/**
+ * Estimación en modo "por leyes" (sin tema): cuenta sobre la selección real de leyes,
+ * artículos y secciones, con los MISMOS filtros que aplicará el test al servir.
+ *
+ * El conteo de oficiales usa `getValidExamPositions(positionType)` — solo las oficiales
+ * DE ESA oposición, igual que el resto de la app. Contar cross-oposición infla el número
+ * sobre leyes compartidas (CE, LOTC…) y haría mentir a la casilla.
+ */
+async function estimateByLaws(
+  db: ReturnType<typeof getDb>,
+  params: EstimateQuestionsRequest,
+): Promise<EstimateQuestionsResponse> {
+  const {
+    positionType,
+    selectedLaws,
+    selectedArticlesByLaw,
+    selectedSectionFilters,
+    onlyOfficialQuestions,
+    difficultyMode,
+    scopeToPosition,
+  } = params
+
+  // Sin leyes seleccionadas no hay nada que contar (el configurador aún no ha elegido).
+  if (!selectedLaws || selectedLaws.length === 0) {
+    return { success: true, count: 0, byLaw: {} }
+  }
+
+  const validPositions = onlyOfficialQuestions ? getValidExamPositions(positionType) : []
+  // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → no tiene oficiales propias.
+  // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría.
+  if (onlyOfficialQuestions && validPositions.length === 0) {
+    return { success: true, count: 0, byLaw: {} }
+  }
+
+  const byLaw: Record<string, number> = {}
+  let totalCount = 0
+
+  for (const lawShortName of selectedLaws) {
+    const lawId = await resolveLawIdByShortName(db, lawShortName)
+    if (!lawId) continue
+
+    const conditions = [eq(questions.isActive, true), eq(articles.lawId, lawId)]
+
+    // Artículos elegidos por el usuario para ESTA ley
+    const chosen = selectedArticlesByLaw?.[lawShortName]
+    let articleNumbers: string[] | null =
+      chosen && chosen.length > 0 ? chosen.map(a => String(a)) : null
+
+    // Filtros de sección: se resuelven sobre los artículos reales de la ley, con el
+    // mismo helper que el modo tema (rangos → números), no con aritmética aparte.
+    if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+      const candidateConditions = [eq(articles.lawId, lawId), eq(articles.isActive, true)]
+      if (articleNumbers) {
+        candidateConditions.push(inArray(articles.articleNumber, articleNumbers))
+      }
+      if (scopeToPosition) {
+        candidateConditions.push(
+          articleInPositionScopeExists({
+            lawId: articles.lawId,
+            articleNumber: articles.articleNumber,
+            positionType,
+          }),
+        )
+      }
+      const candidates = await db
+        .select({ articleNumber: articles.articleNumber })
+        .from(articles)
+        .where(and(...candidateConditions))
+
+      articleNumbers = applyArticleSectionFilter(
+        candidates.map(c => c.articleNumber).filter((n): n is string => n != null),
+        selectedSectionFilters as SectionFilter[],
+      )
+      // Con secciones elegidas y ningún artículo dentro, esta ley aporta 0.
+      if (articleNumbers.length === 0) {
+        byLaw[lawShortName] = 0
+        continue
+      }
+    }
+
+    if (articleNumbers && articleNumbers.length > 0) {
+      conditions.push(inArray(articles.articleNumber, articleNumbers))
+    }
+
+    // Acotar al temario de la oposición (mismo predicado que el selector de artículos,
+    // para que el número y la lista que el usuario ve hablen de lo mismo).
+    if (scopeToPosition) {
+      conditions.push(
+        articleInPositionScopeExists({
+          lawId: articles.lawId,
+          articleNumber: articles.articleNumber,
+          positionType,
+        }),
+      )
+    }
+
+    if (onlyOfficialQuestions) {
+      conditions.push(eq(questions.isOfficialExam, true))
+      conditions.push(inArray(questions.examPosition, validPositions))
+    }
+
+    if (difficultyMode && difficultyMode !== 'random' && difficultyMode !== 'adaptive') {
+      conditions.push(
+        sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
+            (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
+      )
+    }
+
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(questions)
+      .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+      .where(and(...conditions))
+
+    const count = Number(countResult[0]?.count || 0)
+    byLaw[lawShortName] = (byLaw[lawShortName] || 0) + count
+    totalCount += count
+  }
+
+  return { success: true, count: totalCount, byLaw }
+}
+
 export async function estimateAvailableQuestions(
   params: EstimateQuestionsRequest
 ): Promise<EstimateQuestionsResponse> {
@@ -249,9 +399,11 @@ export async function estimateAvailableQuestions(
       focusEssentialArticles,
     } = params
 
-    // Si no hay tema, no podemos estimar (necesitamos topic_scope)
+    // Sin tema = configurador "por leyes": no hay topic_scope del que partir, pero SÍ se
+    // puede contar (la selección son leyes + artículos). Hace falta para que la casilla
+    // "🏛️ Preguntas oficiales" pueda pintarse ahí con un número honesto — T-326.
     if (!topicNumber) {
-      return { success: false, error: 'topicNumber es requerido para estimar' }
+      return estimateByLaws(db, params)
     }
 
     // 1. Obtener topic_scope
@@ -796,6 +948,10 @@ function normalizeEstimateParams(
     onlyOfficialQuestions: params.onlyOfficialQuestions,
     difficultyMode: params.difficultyMode,
     focusEssentialArticles: params.focusEssentialArticles,
+    // Va en la key a propósito: en modo "por leyes" (sin tema) decide si se cuenta el
+    // temario de la oposición o la ley entera. Si se cae aquí, dos selecciones que dan
+    // números distintos comparten entrada de cache y el segundo lee el del primero.
+    scopeToPosition: params.scopeToPosition,
   }
 }
 

@@ -1,6 +1,6 @@
 // components/TestConfigurator.tsx - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import SectionFilterModal from './SectionFilterModal';
 import { useLawSlugs } from '@/contexts/LawSlugContext';
@@ -431,10 +431,50 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     return 0;
   }, [apiEstimate, totalQuestions, tema, lawsData, selectedLaws]);
 
+  // Params de la estimación, compartidos por los dos consumidores: el conteo de
+  // preguntas disponibles y (en modo "por leyes") el de oficiales que enciende la
+  // casilla. Uno solo para que no puedan contar cosas distintas — T-326.
+  const buildEstimateParams = useCallback(
+    (overrides?: { onlyOfficialQuestions?: boolean }) => {
+      const params = new URLSearchParams({
+        positionType,
+        onlyOfficialQuestions: String(overrides?.onlyOfficialQuestions ?? onlyOfficialQuestions),
+        focusEssentialArticles: String(focusEssentialArticles),
+        difficultyMode,
+      });
+      if (tema) params.set('topicNumber', String(tema));
+      // Sin tema, el acotado a la oposición decide si se cuenta el temario o la ley entera.
+      if (!tema && scopeToPosition) params.set('scopeToPosition', 'true');
+
+      const selectedLawsArray = Array.from(selectedLaws);
+      if (selectedLawsArray.length > 0) {
+        params.set('selectedLaws', selectedLawsArray.join(','));
+      }
+
+      const articlesByLawObj: Record<string, (string | number)[]> = {};
+      for (const [lawName, articlesSet] of selectedArticlesByLaw) {
+        if (articlesSet.size > 0) {
+          articlesByLawObj[lawName] = Array.from(articlesSet);
+        }
+      }
+      if (Object.keys(articlesByLawObj).length > 0) {
+        params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj));
+      }
+
+      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+        params.set('selectedSectionFilters', JSON.stringify(selectedSectionFilters));
+      }
+      return params;
+    },
+    [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode,
+     selectedLaws, selectedArticlesByLaw, selectedSectionFilters, scopeToPosition],
+  );
+
   // 🆕 Fetch estimación de preguntas disponibles desde v2 API (fuente única de verdad)
   useEffect(() => {
-    // Solo llamar al API cuando hay tema (para configurador standalone sin tema, usar totalQuestions prop)
-    if (!tema) return;
+    // Con tema, siempre. Sin tema (configurador "por leyes"), en cuanto hay alguna ley
+    // elegida: antes de eso no hay selección que contar y vale el fallback local.
+    if (!tema && selectedLaws.size === 0) return;
 
     // Abortar fetch anterior si hay uno en vuelo
     if (estimateAbortRef.current) {
@@ -446,36 +486,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     const fetchEstimate = async () => {
       setLoadingEstimate(true);
       try {
-        // Construir params para la API
-        const params = new URLSearchParams({
-          topicNumber: String(tema),
-          positionType,
-          onlyOfficialQuestions: String(onlyOfficialQuestions),
-          focusEssentialArticles: String(focusEssentialArticles),
-          difficultyMode,
-        });
-
-        // Añadir leyes seleccionadas
-        const selectedLawsArray = Array.from(selectedLaws);
-        if (selectedLawsArray.length > 0) {
-          params.set('selectedLaws', selectedLawsArray.join(','));
-        }
-
-        // Añadir artículos seleccionados (como JSON)
-        const articlesByLawObj: Record<string, (string | number)[]> = {};
-        for (const [lawName, articlesSet] of selectedArticlesByLaw) {
-          if (articlesSet.size > 0) {
-            articlesByLawObj[lawName] = Array.from(articlesSet);
-          }
-        }
-        if (Object.keys(articlesByLawObj).length > 0) {
-          params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj));
-        }
-
-        // Añadir filtros de secciones (como JSON)
-        if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-          params.set('selectedSectionFilters', JSON.stringify(selectedSectionFilters));
-        }
+        const params = buildEstimateParams();
 
         const res = await fetch(`/api/v2/test-config/estimate?${params}`, {
           signal: controller.signal,
@@ -504,7 +515,51 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode, selectedLaws, selectedArticlesByLaw, selectedSectionFilters]);
+  }, [tema, selectedLaws, buildEstimateParams]);
+
+  // 🏛️ Cuántas oficiales hay para la selección ACTUAL, en modo "por leyes".
+  //
+  // Con tema, este número llega por prop desde la página (que lo trae de topic-data).
+  // Sin tema no puede: depende de las leyes y artículos elegidos aquí dentro, así que
+  // se pide al MISMO endpoint de estimación forzando `onlyOfficialQuestions`. Reacciona
+  // a la selección — un número estático mentiría en cuanto el usuario acota artículos.
+  // Si sale 0, la casilla sigue oculta (ese comportamiento ya era el correcto). T-326.
+  const [officialCountForLaws, setOfficialCountForLaws] = useState<number | null>(null);
+  const officialCountAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (tema || hideOfficialQuestions) return;
+    if (selectedLaws.size === 0) { setOfficialCountForLaws(0); return; }
+
+    if (officialCountAbortRef.current) officialCountAbortRef.current.abort();
+    const controller = new AbortController();
+    officialCountAbortRef.current = controller;
+
+    const fetchOfficialCount = async () => {
+      try {
+        const params = buildEstimateParams({ onlyOfficialQuestions: true });
+        const res = await fetch(`/api/v2/test-config/estimate?${params}`, { signal: controller.signal });
+        const data = await res.json();
+        if (data.success) {
+          setOfficialCountForLaws(data.count ?? 0);
+        } else {
+          console.warn('⚠️ Error contando oficiales (por leyes):', data.error);
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('❌ Error contando oficiales (por leyes):', error);
+        }
+      }
+    };
+
+    const timer = setTimeout(fetchOfficialCount, 150);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [tema, hideOfficialQuestions, selectedLaws, buildEstimateParams]);
+
+  // Conteo efectivo de oficiales: por prop en modo tema, del endpoint en modo por leyes.
+  const officialCount = tema ? officialQuestionsCount : (officialCountForLaws ?? 0);
 
   // 🆕 Telemetría: detectar filtros que producen 0 preguntas en modo tema
   //
@@ -582,10 +637,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   }, [availableQuestions, selectedQuestions]);
 
   useEffect(() => {
-    if (onlyOfficialQuestions && selectedQuestions > officialQuestionsCount) {
-      setSelectedQuestions(Math.min(25, officialQuestionsCount));
+    if (onlyOfficialQuestions && selectedQuestions > officialCount) {
+      setSelectedQuestions(Math.min(25, officialCount));
     }
-  }, [onlyOfficialQuestions, officialQuestionsCount, selectedQuestions]);
+  }, [onlyOfficialQuestions, officialCount, selectedQuestions]);
 
   // Ajustar selección si la cuota diaria es menor
   useEffect(() => {
@@ -1160,7 +1215,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     }
     
 
-    if (onlyOfficialQuestions && officialQuestionsCount === 0) {
+    if (onlyOfficialQuestions && officialCount === 0) {
       console.warn('⚠️ Solo preguntas oficiales activado pero no hay preguntas oficiales disponibles')
       // El TestPageWrapper manejará este error
     }
@@ -1641,7 +1696,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
             
             {/* Solo preguntas oficiales - CON CONTEO CORREGIDO POR TEMA */}
-            {!hideOfficialQuestions && officialQuestionsCount > 0 && (
+            {!hideOfficialQuestions && officialCount > 0 && (
             <div>
               <label className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -1674,7 +1729,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   }`}>
                     🏛️ Preguntas oficiales de <strong>{getOposicionName(positionType)}</strong>
                     <span className="text-xs text-red-600 ml-1">
-                      ({officialQuestionsCount})
+                      ({officialCount})
                     </span>
                   </span>
                   <button
@@ -1714,7 +1769,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   )}
 
                   {/* 📊 AVISO: Pocos oficiales disponibles */}
-                  {onlyOfficialQuestions && officialQuestionsCount > 0 && availableQuestions > 0 && availableQuestions < 10 && (
+                  {onlyOfficialQuestions && officialCount > 0 && availableQuestions > 0 && availableQuestions < 10 && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <span className="text-yellow-600 text-lg">⚡</span>
@@ -1734,7 +1789,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   )}
 
                   {/* ❌ AVISO: Sin preguntas oficiales en base de datos */}
-                  {onlyOfficialQuestions && officialQuestionsCount === 0 && (
+                  {onlyOfficialQuestions && officialCount === 0 && (
                     <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <span className="text-gray-600 text-lg">📭</span>
@@ -1758,7 +1813,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
             )}
 
             {/* 🆕 ARTÍCULOS IMPRESCINDIBLES */}
-            {!hideEssentialArticles && officialQuestionsCount > 0 && (
+            {!hideEssentialArticles && officialCount > 0 && (
             <div className="border-t border-gray-200 pt-4">
               <label className="flex items-center space-x-2">
                 <input
@@ -2032,7 +2087,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           
           {onlyOfficialQuestions && (
             <div className="mt-2 text-xs text-red-700 font-medium">
-              🏛️ Solo preguntas de exámenes oficiales reales{temaDisplayName ? ` de ${temaDisplayName}` : ''} ({officialQuestionsCount} total)
+              🏛️ Solo preguntas de exámenes oficiales reales{temaDisplayName ? ` de ${temaDisplayName}` : ''} ({officialCount} total)
             </div>
           )}
           

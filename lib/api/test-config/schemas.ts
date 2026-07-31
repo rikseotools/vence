@@ -50,6 +50,10 @@ export const estimateQuestionsRequestSchema = z.object({
   onlyOfficialQuestions: z.boolean().default(false),
   difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'extreme', 'adaptive']).default('random'),
   focusEssentialArticles: z.boolean().default(false),
+  // 🎯 Solo aplica SIN topicNumber (configurador "por leyes"): acota el conteo al
+  // temario del positionType en vez de a la ley entera, igual que hace el selector
+  // de artículos. Con tema, el scope ya lo impone el topic_scope.
+  scopeToPosition: z.boolean().default(false),
 })
 
 export type EstimateQuestionsRequest = z.infer<typeof estimateQuestionsRequestSchema>

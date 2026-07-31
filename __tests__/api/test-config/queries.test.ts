@@ -270,7 +270,10 @@ describe('getArticlesForLaw', () => {
 // ============================================
 
 describe('estimateAvailableQuestions', () => {
-  test('sin topicNumber devuelve error', async () => {
+  // T-326: sin topicNumber ya NO es un error — es el configurador "por leyes", donde la
+  // selección son leyes y artículos. Antes devolvía «topicNumber es requerido» y por eso
+  // la casilla de preguntas oficiales no podía pintarse ahí.
+  test('sin topicNumber y sin leyes: 0, no error (aún no hay selección)', async () => {
     const result = await estimateAvailableQuestions({
       topicNumber: null,
       positionType: 'auxiliar_administrativo_estado',
@@ -280,10 +283,60 @@ describe('estimateAvailableQuestions', () => {
       onlyOfficialQuestions: false,
       difficultyMode: 'random',
       focusEssentialArticles: false,
+      scopeToPosition: false,
     })
 
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('topicNumber es requerido')
+    expect(result.success).toBe(true)
+    expect(result.count).toBe(0)
+  })
+
+  test('sin topicNumber con leyes: cuenta por ley (modo por leyes)', async () => {
+    setupMockDb([
+      [{ id: 'law-ce' }],        // resolver law_id de CE
+      [{ count: 120 }],          // conteo de esa ley
+      [{ id: 'law-39' }],        // resolver law_id de Ley 39/2015
+      [{ count: 80 }],           // conteo de esa ley
+    ])
+
+    const result = await estimateAvailableQuestions({
+      topicNumber: null,
+      positionType: 'auxiliar_administrativo_estado',
+      selectedLaws: ['CE', 'Ley 39/2015'],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random',
+      focusEssentialArticles: false,
+      scopeToPosition: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.count).toBe(200)
+    expect(result.byLaw).toEqual({ CE: 120, 'Ley 39/2015': 80 })
+  })
+
+  // El fail-safe que sostiene la honestidad del contador: una oposición sin posiciones
+  // de examen registradas no tiene oficiales PROPIAS. Omitir el filtro contaría las de
+  // otras oposiciones sobre leyes compartidas (CE, LOTC…) y la casilla prometería
+  // preguntas que el test no va a servir.
+  test('sin topicNumber, oposición sin exam_positions: 0 oficiales, no cross-oposición', async () => {
+    const db = setupMockDb([])
+
+    const result = await estimateAvailableQuestions({
+      topicNumber: null,
+      positionType: 'oposicion_sin_oficiales' as any,
+      selectedLaws: ['CE'],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: true,
+      difficultyMode: 'random',
+      focusEssentialArticles: false,
+      scopeToPosition: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.count).toBe(0)
+    expect(db.select).not.toHaveBeenCalled()
   })
 
   test('sin filtros: total de preguntas del tema', async () => {

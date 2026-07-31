@@ -70,6 +70,9 @@ async function _GET(request: NextRequest) {
       onlyOfficialQuestions: searchParams.get('onlyOfficialQuestions') === 'true',
       difficultyMode: searchParams.get('difficultyMode') || 'random',
       focusEssentialArticles: searchParams.get('focusEssentialArticles') === 'true',
+      // Modo "por leyes" acotado a la oposición del usuario (sin topicNumber): sin esto
+      // el conteo sería el de la ley entera y no el de su temario — T-326.
+      scopeToPosition: searchParams.get('scopeToPosition') === 'true',
     }
 
     const parseResult = safeParseEstimateQuestions(rawData)

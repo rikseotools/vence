@@ -162,4 +162,17 @@ describe('normalizeEstimateParams', () => {
     expect(r.selectedSectionFilters![0].sectionNumber).toBe('1')
     expect(r.selectedSectionFilters![1].sectionNumber).toBe('2')
   })
+
+  // T-326: en modo "por leyes" (sin tema) scopeToPosition decide si se cuenta el temario
+  // de la oposición o la ley entera — son números distintos. Si el normalizador lo tira,
+  // las dos selecciones comparten entrada de cache y la segunda lee el conteo de la
+  // primera: la casilla de oficiales enseñaría un número que no es el suyo.
+  test('scopeToPosition viaja en la clave (dos scopes ≠ misma entrada de cache)', () => {
+    const acotado = normalize({ ...BASE, topicNumber: null, selectedLaws: ['CE'], scopeToPosition: true } as EstimateQuestionsRequest)
+    const abierto = normalize({ ...BASE, topicNumber: null, selectedLaws: ['CE'], scopeToPosition: false } as EstimateQuestionsRequest)
+
+    expect(acotado.scopeToPosition).toBe(true)
+    expect(abierto.scopeToPosition).toBe(false)
+    expect(JSON.stringify(acotado)).not.toBe(JSON.stringify(abierto))
+  })
 })
