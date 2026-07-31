@@ -1373,20 +1373,20 @@ incluida).
 
   Los 24 que quedan coinciden **exactamente** con el inventario original de esta ficha: eso es la deriva de contenido de verdad, ahora sin ruido encima y con el job corriendo en 2 minutos en vez de 21.
 - **Efecto colateral que valía la tarea sola: 3 canarios no podían mirar la BD** — `canary-familia`, `canary-renewal-reminders` y `canary-landing-vs-bd` (este último es el que vigila que las cifras publicadas de una landing cuadren con la BD, la red de seguridad de [T-142]). Fallaban ruidosamente (`exit 1`), pero con un error de infraestructura que nadie tradujo a *"esto no está comprobando nada"*. Arreglados y comprobados en vivo: dos en verde y **`canary-familia` en rojo por un defecto REAL que estaba tapado — cobertura de familia 41% frente al umbral de 80%** (el mismo que canta la suite `familiaClassification`).
-- **Cola pendiente de esta ficha — el rojo REAL, corrido como lo corre CI:** `11 suites · 16 tests` de 2.095. **Ni un fallo de entorno: los 11 son de DATOS.** (Los 8 de `deviceFingerprintV2` y los 7 de `warmCache`/`resolveAlias` que aparecían antes eran artefacto del comando de reproducción, ver arriba — no había nada que arreglar en ellos.)
+- **Cola pendiente de esta ficha — el rojo REAL, corrido como lo corre CI:** empezó en `11 suites · 16 tests` y va por **`8 suites · ~11 tests`** de 2.095 (arregladas `familiaClassification`, `temarioVersions` y `schemaColumnDrift`; el resto abajo). **Ni un fallo de entorno: los 11 son de DATOS.** (Los 8 de `deviceFingerprintV2` y los 7 de `warmCache`/`resolveAlias` que aparecían antes eran artefacto del comando de reproducción, ver arriba — no había nada que arreglar en ellos.)
 
   | suite | qué dice |
   |---|---|
   | `configDbIntegrity` | ETGOA promete 120 temas y sirve 20 *(ver abajo)* |
   | `placeholderTemarioGuard` | trinquete de preguntas sobre artículos vacíos — **es [T-374]** |
-  | `familiaClassification` | cobertura 41% en abiertas + 16/300 desajustes clasificador↔BD *(medido, ver abajo)* |
+  | ~~`familiaClassification`~~ | ✅ **ARREGLADA 31/07**: 141 filas reclasificadas, 0 degradadas *(ver abajo)* |
   | `temarioDataQuality` | **RESUELTA su causa: es ETGOA otra vez** — el bloque «Área de Consumo» declarado sin un solo tema activo. 5 de sus 6 pruebas pasan |
   | ~~`temarioVersions`~~ | ✅ **ARREGLADA 31/07**: era 1 fila (`auxiliar-administrativo-diputacion-cadiz`). La causa no era el dato sino la herramienta: `backfill-temario-versions.cjs` apuntaba la convocatoria **solo al CREAR la versión**, así que una convocatoria nacida después (rollover) se quedaba a NULL para siempre y ninguna herramienta la curaba. Arreglado el hueco + aplicado. Suite en verde |
   | `temarioEpigrafeIntegrity` | 4 fallos, todos trinquetes desbordados: **791** temas sin descripción (techo 500), 64 `descripcion_corta`, título↔epígrafe, y 12 bloques sin temas (uno es ETGOA). **Ficha propia: [T-390]** |
   | `topicScopeIntegrity` / `topicScopeVerification` | scope |
   | `lawCompletenessConsistency` | la vista SQL y el módulo TS no dan el mismo estado a todas las leyes |
   | `seguimientoFuentesCiegas` | fuentes de seguimiento que no vigilan nada |
-  | `schemaColumnDrift` | deriva de columnas |
+  | ~~`schemaColumnDrift`~~ | ✅ **ARREGLADA 31/07**: 18 columnas vivas en RDS que `db/schema.ts` —la fuente de verdad declarada— no tenía. `backlog_tasks` (12: las cuatro esperas + el plazo externo), `user_profiles` (3: `premium_granted_at/by/reason`) y `fraud_confirmations` (3: evidencia + caducidad RGPD). Con capa que fija **por qué** importan, no solo que estén |
   | `positionTypeIntegrity` | integridad de `position_type` |
   | `userStatsSummary` | el resumen precomputado no cuadra con `count(*)` de un usuario pesado |
 
