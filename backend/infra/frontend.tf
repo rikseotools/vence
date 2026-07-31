@@ -756,6 +756,52 @@ resource "aws_appautoscaling_target" "frontend" {
   service_namespace  = "ecs"
 }
 
+# ─── Suelo NOCTURNO (T-383, 31/07/2026) ────────────────────────────────────────
+# De día las 8 tareas son las que pide la política de request-count (pico real
+# ~214 req/target/min contra objetivo 250), así que bajar el suelo NO ahorra: el
+# autoescalado las repone. De madrugada es al revés — medido el 30/07, por hora:
+#   02:00 → 7,9% del objetivo · 03:00 → 5,4% · 04:00 → 2,2% · 05:00 → 4,7% · 06:00 → 9,0%
+# …con las mismas 8 tareas encendidas. De ahí estas dos acciones programadas.
+#
+# ⚠️ POR QUÉ EL SUELO NOCTURNO ES 5 Y NO 3 (no es prudencia, es aritmética):
+# el servicio despliega en-sitio con maximumPercent=100 / minimumHealthyPercent=80,
+# y ECS REDONDEA HACIA ARRIBA las tareas sanas exigidas. Con suelo 4 exige 4 sanas
+# y el tope son 4 → no puede parar ninguna para reemplazarla: **el deploy se queda
+# bloqueado**. Con 5 exige 4 y el tope es 5 → cabe una. Comprobado antes de aplicar:
+#   suelo 3 → ❌ bloqueado · 4 → ❌ bloqueado · 5 → ✅ · 6 → ✅ · 8 → ✅
+# Si algún día se relaja `minimumHealthyPercent`, este 5 se puede revisar.
+#
+# A 5 tareas el tráfico nocturno sube a ~12,7% del objetivo: sigue sobrando de largo.
+# Ahorro: 3 tareas menos × 6 h/día = 18 de 192 task-horas ≈ 9%. Reversible borrando
+# las dos acciones (el suelo vuelve al `min_capacity` de arriba).
+resource "aws_appautoscaling_scheduled_action" "frontend_noche_baja" {
+  name               = "vence-frontend-noche-baja"
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  schedule           = "cron(0 1 * * ? *)" # 01:00 UTC = 03:00 Madrid
+  timezone           = "UTC"               # UTC a propósito: el horario de verano no mueve la ventana
+
+  scalable_target_action {
+    min_capacity = 5
+    max_capacity = 12
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "frontend_dia_sube" {
+  name               = "vence-frontend-dia-sube"
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+  schedule           = "cron(0 7 * * ? *)" # 07:00 UTC = 09:00 Madrid, ANTES de la subida (07:00 ya va al 22,8%)
+  timezone           = "UTC"
+
+  scalable_target_action {
+    min_capacity = 8
+    max_capacity = 12
+  }
+}
+
 # Scale-out por CPU.
 resource "aws_appautoscaling_policy" "frontend_cpu" {
   name               = "vence-frontend-cpu-tracking"
