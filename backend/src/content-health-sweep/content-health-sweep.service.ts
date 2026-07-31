@@ -2261,11 +2261,12 @@ export class ContentHealthSweepService {
     // Se lee de `oposiciones_ssot` y no de `oposiciones`: el mismo barrido sobre la tabla base da
     // CERO con el texto en pantalla, porque la nota vive en `convocatorias` y la vista resuelve
     // desde ahí. Núcleo puro compartido con el CLI — un solo criterio, sin copia que derive.
-    const notaRows = (
-      await this.db.execute(sql`
-        SELECT slug, is_active, boe_reference, diario_referencia, convocatoria_numero, oep_decreto
-          FROM oposiciones_ssot`)
-    ).rows as unknown as Array<{
+    // GOTCHA Drizzle+postgres-js: `execute()` devuelve YA el array (`RowList`), no un `{rows}`.
+    // Poner `.rows` compila en el frontend y NO aquí — lo cazó el typecheck del backend en el
+    // pre-push, que además avisa de que el job `typecheck` del CI tampoco lo habría visto.
+    const notaRows = (await this.db.execute(sql`
+      SELECT slug, is_active, boe_reference, diario_referencia, convocatoria_numero, oep_decreto
+        FROM oposiciones_ssot`)) as unknown as Array<{
       slug: string;
       is_active: boolean;
       boe_reference: string | null;

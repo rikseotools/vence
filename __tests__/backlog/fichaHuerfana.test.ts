@@ -21,6 +21,7 @@ const { clasificarHuerfana, clasificarHuerfanas, MOTIVOS } = require('@/lib/back
     todas: Veredicto[]
     borradas: string[]
     noVerificables: string[]
+    miasSinEscribir: string[]
     desactualizadas: string[]
     sinPushear: string[]
   }
@@ -28,10 +29,10 @@ const { clasificarHuerfana, clasificarHuerfanas, MOTIVOS } = require('@/lib/back
 }
 
 type Origen = { consultable: boolean; estaAhora: boolean; estuvo: boolean }
-type Huerfana = { id: string; estuvoEnElMarkdown?: boolean; origen?: Origen }
+type Huerfana = { id: string; estuvoEnElMarkdown?: boolean; esMia?: boolean; origen?: Origen }
 type Veredicto = {
   id: string
-  motivo: 'borrada' | 'no_verificable' | 'desactualizada' | 'sin_pushear'
+  motivo: 'borrada' | 'no_verificable' | 'mia_sin_escribir' | 'desactualizada' | 'sin_pushear'
   esRegresion: boolean
   alcance: 'origin' | 'local' | 'ninguno'
 }
@@ -117,7 +118,41 @@ describe('T-427 — el punto ciego: la prueba está en origin/main, no en mi ram
   })
 
   it('los motivos van declarados de más a menos accionable', () => {
-    expect(MOTIVOS).toEqual(['borrada', 'no_verificable', 'desactualizada', 'sin_pushear'])
+    expect(MOTIVOS).toEqual(['borrada', 'no_verificable', 'mia_sin_escribir', 'desactualizada', 'sin_pushear'])
+  })
+})
+
+describe('mia_sin_escribir — la ficha que NUNCA llegó a existir', () => {
+  // Caso propio del 31/07: se escribió la ficha de T-435, `sync` la reconcilió, y no entró en
+  // ningún commit — `git log -S` no la encuentra en ninguna revisión. El aviso la dio por
+  // `sin_pushear`, que era CORRECTO (en el historial no estuvo nunca) y por eso sonó inofensivo.
+  // Ni T-427 ni T-428 cubren esto: los dos protegen contra BORRAR una ficha que ya existió.
+  it('si la tarea la tengo YO reclamada, «otra sesión no la ha pusheado» es imposible', () => {
+    const r = clasificarHuerfana({
+      id: 'T-435', estuvoEnElMarkdown: false, esMia: true, origen: origen(false, false),
+    })
+    expect(r.motivo).toBe('mia_sin_escribir')
+    expect(r.esRegresion).toBe(false)   // no es una regresión: es trabajo mío sin terminar
+  })
+
+  it('la MISMA fila, si la tiene otra sesión, sigue siendo trabajo en vuelo normal', () => {
+    // El discriminante es el claim, no el id ni la antigüedad.
+    expect(clasificarHuerfana({ id: 'T-435', esMia: false, origen: origen(false, false) }).motivo)
+      .toBe('sin_pushear')
+  })
+
+  it('no pisa a los motivos más graves: si estuvo en origin, sigue siendo BORRADA', () => {
+    expect(clasificarHuerfana({ id: 'T-435', esMia: true, origen: origen(false, true) }).motivo)
+      .toBe('borrada')
+  })
+
+  it('el lote lo separa en su propio grupo', () => {
+    const r = clasificarHuerfanas([
+      { id: 'T-435', esMia: true, origen: origen(false, false) },
+      { id: 'T-260', esMia: false, origen: origen(false, false) },
+    ])
+    expect(r.miasSinEscribir).toEqual(['T-435'])
+    expect(r.sinPushear).toEqual(['T-260'])
   })
 })
 

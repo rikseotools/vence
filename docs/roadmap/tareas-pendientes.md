@@ -1404,6 +1404,39 @@ de forma TERMINAL el registro de que algo cayó en un examen real. Esos 8 se mir
 fuente delante, porque «dos oficiales casi iguales» suele ser el MISMO examen importado dos veces —
 pero eso hay que comprobarlo, no suponerlo.
 
+### [T-443] 🔴 [ABIERTO 31/07] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
+
+- **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.
+- **ORIGEN.** Petición de Manuel (31/07) al terminar [T-427] y [T-435]: documentar los fallos de coordinación que fueron apareciendo, para ver si el sistema de sesiones se puede mejorar. **Todos ocurrieron en una sola sesión de trabajo, y en todos el claim funcionó perfectamente.**
+- **⚠️ NO confundir con [T-400]**, que ya está hecha: aquella AVISA de que dos sesiones tocan los mismos ficheros. Aquí el trabajo **ya se destruyó** y nada lo cazó. Son problemas distintos: prevención de solape vs. supervivencia de lo escrito.
+
+**1. Un commit rancio dejó un arreglo VIVO pero INERTE (el peor de los cinco).**
+- `6f3e26261` ([T-441], otra sesión) subió una copia vieja de `scripts/backlog.cjs` y borró **todo el cableado de [T-427]** — 123 líneas, casi todo supresiones. `lib/backlog/gitFichas.cjs` y sus 13 tests **seguían en `main`**, así que el CI no protestaba por ellos… pero ya no los llamaba nadie.
+- **Por qué es lo más grave:** el arreglo parecía desplegado y no hacía nada. El único motivo por el que se descubrió es que el guardarraíl de fuente (`fichaHuerfanaMiraOrigin.guardrail.test.ts`) exige la llamada — o sea, se cazó **por casualidad, al reejecutarlo desde la misma sesión que lo escribió**. Si esa sesión hubiera cerrado, nadie se entera.
+- **[T-428] no cubre esto:** protege el CUERPO DE LAS FICHAS en el markdown. El mismo fallo sobre CÓDIGO no lo mira nadie.
+- **Pista de arreglo:** el `pre-push` ya compara versiones del markdown; la misma idea sobre ficheros de código —«este push SUPRIME más de N líneas de un fichero que no has tocado en tus commits»— es barata. Y el trinquete de guardarraíles que exigen una llamada debería correr en CI, no solo en local.
+
+**2. Una ficha se perdió ANTES de llegar a ningún commit.**
+- La de [T-435]: se escribió, `sync` la reconcilió con la tabla… y `git log -S'### [T-435]'` **no la encuentra en ninguna revisión**. No se ha podido determinar el punto exacto en que se perdió, y no se inventa una causa.
+- El aviso la clasificó `sin_pushear`, que era **CORRECTO** (en el historial no estuvo nunca) y justo por eso sonó inofensivo. **Ni [T-427] ni [T-428] cubren este caso: los dos protegen contra BORRAR una ficha que ya existió, no contra que nunca llegue a existir.**
+- **Ya mitigado en esta sesión** con el motivo `mia_sin_escribir` (si el claim es MÍO, «otra sesión no la ha pusheado» es imposible), pero eso es un aviso al correr `sync`. **Queda decidir si el `pre-push` debe bloquear un push de una tarea reclamada por ti cuya ficha no está en el fichero.**
+
+**3. Un test de integración commiteó sus fixtures SOBRE la rama real.**
+- El test de [T-427] monta repositorios de mentira y hace `commit` en ellos. La suite unit la lanza el hook `pre-commit`… y **git exporta `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` a sus hooks**. Esas variables **ganan al `cwd`**, así que cuatro commits de fixture se escribieron sobre la rama del worktree, dejándola apuntando al árbol del fixture (recuperado con `reset --mixed`, sin pérdida).
+- **Arreglado en el módulo y en el test**, con trinquete que comprueba que el `HEAD` real no se mueve. **Lo que queda es lo general:** ningún test del repo debería poder tocar el repositorio desde el que se ejecuta, y hoy eso depende de que cada autor se acuerde. Barrido hecho: los otros dos tests que usan git solo LEEN (`ls-files`, `ls-tree`), así que hoy no hay más casos — pero el siguiente que escriba uno repetirá el fallo.
+
+**4. La regla «conservar SIEMPRE los dos lados» del runbook NO es universal.**
+- Al rebasar, `docs/roadmap/tareas-pendientes.md` dio conflicto **2 de 3 veces**. En uno de ellos, conservar los dos lados habría **DUPLICADO** un bloque de otra sesión que ellos habían MOVIDO a otro sitio del fichero (el lado de `HEAD` estaba vacío a propósito).
+- O sea: la regla protege contra el fallo común, pero aplicada a ciegas crea el fallo contrario. **El gesto correcto es comprobar antes si el bloque ya existe en otra parte de la versión de `origin/main`** — una línea de `grep`. Hay que escribirlo en el runbook, y probablemente automatizarlo.
+
+**5. La ventana entre `rebase` y `push` es más corta que los hooks.**
+- Dos pushes rechazados por `non-fast-forward` con **8 sesiones vivas**: entre que el `pre-push` termina (typecheck de raíz + backend, ~1 min) y el push llega, otra sesión ya ha empujado. Se resuelve rebasando y repitiendo, pero cada vuelta cuesta otro minuto de hooks.
+- **A investigar:** reintento automático con rebase en el propio hook, o mover el typecheck del backend a CI cuando el push no toca `backend/`.
+
+**Dato transversal:** los cinco se descubrieron **por casualidad**, ninguno por una alerta. Encaja con lo que mide `npm run sesiones:friccion` ([T-423]): lo que hay que vigilar no es cuántas veces salta un guardarraíl, sino cuántas veces el trabajo se pierde sin que salte ninguno.
+
+- **Relacionadas:** [T-427] (de donde salen 1, 2 y 3), [T-428] (protege el markdown, no el código), [T-400] (avisa del solape, no de la destrucción), [T-423] (medir la fricción), [T-415] (una sesión por directorio).
+
 ### [T-435] 🟠 [ABIERTO 31/07] Notas internas de auditoría publicadas en la landing: el campo de referencia usado como bloc de notas, y la vista SSOT lo sirve
 
 - **Esfuerzo: larga.** Detector + herramienta + saneo hechos; quedan 3 filas que exigen contrastar contra su documento del hub.

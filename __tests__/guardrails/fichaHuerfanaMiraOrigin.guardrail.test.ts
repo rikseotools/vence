@@ -25,6 +25,12 @@ describe('la clasificación de fichas huérfanas se apoya en origin/main', () =>
     expect(llamada).toContain('hechosDeOrigin(')
   })
 
+  it('pasa el claim propio: sin eso, mi ficha ausente se anuncia como trabajo de otro', () => {
+    // El hueco del 31/07 (T-435): el CLI tenía el dato (`claimed_by`) y no lo usaba.
+    expect(CLI).toContain('esMia:')
+    expect(CLI).toContain('claimed_by')
+  })
+
   it('refresca la ref compartida antes de opinar', () => {
     // Sin fetch, una ficha borrada hace diez minutos se ve «todavía presente» y el aviso llega
     // tarde, que es casi tan malo como no darlo.

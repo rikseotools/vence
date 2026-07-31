@@ -48,12 +48,27 @@ const MD = path.join(REPO, MD_REL);
  * inventarse una regresión y mandar a alguien a buscar una ficha que nunca existió. Un aviso que
  * miente una vez deja de leerse para siempre.
  */
+// Los hechos de git sobre una ficha viven en su propio módulo (T-427): con el `cwd` inyectado se
+// pueden ejercitar contra un repositorio de prueba que reproduzca el incidente. Estaban aquí dentro,
+// y por eso el punto ciego de «solo miro mi rama» sobrevivió a tener tests: lo testeable era la
+// decisión, no los datos con los que se decide.
+//
+// ⚠️ RESTAURADO el 31/07: el commit `6f3e26261` (T-441, otra sesión) subió una copia rancia de este
+// fichero y se llevó por delante todo este cableado — `lib/backlog/gitFichas.cjs` y sus tests
+// seguían en `main` pero ya no los llamaba nadie, o sea el arreglo VIVO pero INERTE. Es el mismo
+// fallo que describe [T-428] y que este subsistema existe para cazar, cometido sobre CÓDIGO en vez
+// de sobre una ficha. Si vuelves a tocar este bloque, mira antes `git log -p` del fichero.
+const {
+  estuvoEnElHistorialLocal, hechosDeOrigin, commitQueLaQuito, refrescarOrigin,
+} = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
+const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
+
+/** Envoltorio del historial LOCAL. Se conserva el nombre porque hay otros llamadores (T-441). */
 function estuvoEnElHistorial(id) {
   // Delegado: los hechos de git viven en `lib/backlog/gitFichas.cjs` y NO se reimplementan aquí.
   // Tener dos lectores con criterios distintos es como nació el punto ciego que costó las cinco
   // fichas del 31/07 — y como nacieron las seis copias del session-id de T-407.
-  return require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'))
-    .estuvoEnElHistorialLocal(id, { cwd: REPO, mdRel: MD_REL });
+  return estuvoEnElHistorialLocal(id, GIT_FICHAS);
 }
 
 function getUrl() {
@@ -889,49 +904,61 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // el id reservado y la ficha sin pushear es lo normal, no un fallo. Avisar de las dos cosas
       // igual gasta el aviso — el mismo final que tuvo cuando incluía a las CERRADAS
       // (T-033/T-039/T-046). La prueba de que la ficha EXISTIÓ es el historial del fichero.
-      const vivas = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
+      const vivas = await s`SELECT id, claimed_by FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const idsEnMd = new Set(md.map((t) => t.id));
-      const sinFicha = vivas.map((r) => r.id).filter((id) => !idsEnMd.has(id));
+      const sinFicha = vivas.filter((r) => !idsEnMd.has(r.id));
       if (sinFicha.length) {
+        // La prueba de que una ficha existió está en `origin/main`, NO en mi rama (T-427). Se
+        // refresca la ref antes de opinar: sin fetch, una ficha borrada hace diez minutos se ve
+        // «todavía presente» y el aviso llega tarde. Best-effort y con techo de tiempo.
+        refrescarOrigin({ cwd: REPO });
         const { clasificarHuerfanas } = require(path.join(REPO, 'lib', 'backlog', 'fichaHuerfana.cjs'));
         // Los hechos de git viven en SU módulo. El CLI tenía su propio pickaxe y por eso el
         // detector miraba MI rama: una ficha ajena borrada de `main` que nunca pasó por aquí no
         // dejaba rastro local y salía «sin pushear», que es el aviso benigno. Dos lectores de git
         // con criterios distintos es exactamente cómo nació el punto ciego.
-        const gitFichas = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
         // Sin refrescar, `origin/main` es la foto de la última vez que alguien hizo fetch: se
         // opinaría sobre un pasado y las fichas recién pusheadas saldrían como borradas.
-        gitFichas.refrescarOrigin({ cwd: REPO });
-        const { borradas, noVerificables, desactualizadas, sinPushear } = clasificarHuerfanas(
-          sinFicha.map((id) => ({
-            id,
-            estuvoEnElMarkdown: gitFichas.estuvoEnElHistorialLocal(id, { cwd: REPO, mdRel: MD_REL }),
-            origen: gitFichas.hechosDeOrigin(id, { cwd: REPO, mdRel: MD_REL }),
+        const { borradas, noVerificables, miasSinEscribir, desactualizadas, sinPushear } =
+          clasificarHuerfanas(sinFicha.map((r) => ({
+            id: r.id,
+            estuvoEnElMarkdown: estuvoEnElHistorialLocal(r.id, GIT_FICHAS),
+            // Si el claim es MÍO, «otra sesión no la ha pusheado» es imposible: la sesión soy yo.
+            esMia: r.claimed_by === sid,
+            origen: hechosDeOrigin(r.id, GIT_FICHAS),
           })));
         if (borradas.length) {
           console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
           console.error('   Alguien commiteó el fichero rancio y se llevó la ficha por delante.');
           for (const id of borradas) {
-            const culpable = gitFichas.commitQueLaQuito(id, { cwd: REPO, mdRel: MD_REL });
-            if (culpable) console.error(`   ${id} — la quitó: ${culpable}`);
-            console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
             // El aviso no puede morir en la consola de quien corrió el sync: quien perdió la ficha
             // es OTRA sesión, que no lo ve. Va al bus que ya usa todo el proyecto, con su regla de
             // alerta (`RULE_BACKLOG_FICHA_BORRADA`) para que no sea un evento ciego.
+            const culpable = commitQueLaQuito(id, GIT_FICHAS);
+            if (culpable) console.error(`   ${id} ← la quitó:  ${culpable}`);
+            console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
+            // OBSERVABILIDAD — que no dependa de que alguien esté mirando esta terminal: quien
+            // BORRA la ficha no es quien corre el `sync` después, y la sesión víctima puede estar
+            // muerta ya. Best-effort: la telemetría no puede tumbar un `sync`.
             try {
-              await s`
-                INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
-                VALUES ('fargate', 'warn', 'backlog_ficha_borrada', 'backlog',
-                        ${`${id}: ficha borrada de origin/main con la tarea aún viva`},
-                        ${s.json({ tarea: id, commit: culpable || null, detectada_por: sid })})`;
-            } catch { /* la telemetría no puede tumbar un sync: fail-open */ }
+              await s`INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+                VALUES (gen_random_uuid(), now(), 'cli', 'warn', 'backlog_ficha_borrada',
+                        ${s.json({ tarea: id, commit: culpable || null, detectada_por: sid })}, now())`;
+            } catch { /* observabilidad fail-open, nunca bloquea el sync */ }
           }
         }
-        if (desactualizadas.length) {
-          console.log(`ℹ️ la ficha SÍ está en origin/main, es tu rama la que va atrasada: ${desactualizadas.join(', ')}`);
-        }
         if (noVerificables.length) {
-          console.log(`ℹ️ no se pudo mirar origin/main, así que de éstas no se afirma nada: ${noVerificables.join(', ')}`);
+          console.error(`⚠️  no puedo comprobar si estas fichas existieron (sin ver origin/main): ${noVerificables.join(', ')}`);
+          console.error('   No es «están bien»: es que no lo sé. Comprueba el remoto y vuelve a correr el sync.');
+        }
+        if (desactualizadas.length) {
+          console.log(`↻ están en origin/main y tu rama va por detrás: ${desactualizadas.join(', ')}`);
+          console.log('   No falta nada: actualiza la rama (git pull --rebase origin main).');
+        }
+        if (miasSinEscribir.length) {
+          console.error(`🟠 RECLAMADA POR TI y SIN FICHA en ninguna parte: ${miasSinEscribir.join(', ')}`);
+          console.error('   No es trabajo de otra sesión: la tienes tú. Escribe la ficha o suéltala');
+          console.error('   (`release`). Sin ficha, quien la coja después empieza sin contexto.');
         }
         if (sinPushear.length) {
           console.log(`ℹ️ sin ficha aquí todavía (otra sesión sin pushear): ${sinPushear.join(', ')}`);
