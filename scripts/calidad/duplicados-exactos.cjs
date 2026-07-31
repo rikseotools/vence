@@ -1,11 +1,34 @@
 #!/usr/bin/env node
 // scripts/calidad/duplicados-exactos.cjs
 //
-// Duplicados EXACTOS del banco de preguntas: simula primero, jubila después. [T-321]
+// Duplicados EXACTOS del banco de preguntas: simula primero, jubila después. [T-321 · T-410]
 //
 //   node scripts/calidad/duplicados-exactos.cjs                      # simula TODO el banco
 //   node scripts/calidad/duplicados-exactos.cjs --dia 2026-03-21     # solo el lote de ese día
 //   node scripts/calidad/duplicados-exactos.cjs --dia 2026-03-21 --aplicar
+//   node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas
+//   node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas --parafraseadas
+//
+// ## Los dos bancos, un solo criterio (31/07/2026, T-410)
+//
+// El 31/07 tres sesiones atacaron el mismo hueco sin verse: este barrido (legislativas), la
+// ficha T-408 —que lo dio por inexistente porque `tools:buscar -- duplicadas` no casa con
+// «duplicados»— y las psicotécnicas duplicadas que destapó la impugnación `b6787619`. En vez
+// de un cuarto script, el banco psicotécnico entra AQUÍ y el criterio vive en un módulo puro
+// compartido: `lib/calidad/duplicados.js` (con tests). Dos puertas al mismo recurso con
+// criterios distintos no protegen — se contradicen.
+//
+// Lo que cambia entre bancos, y por qué:
+//
+// | | legislativas (`questions`) | psicotécnicas (`psychometric_questions`) |
+// |---|---|---|
+// | agrupa por | artículo + enunciado + opciones | enunciado + opciones + **huella de imagen/`content_data`** |
+// | jubila con | `retired_duplicate` (lifecycle, TERMINAL) | `is_active=false` + `deactivation_reason` (no hay lifecycle) |
+// | protege | que un artículo no baje de 4 preguntas | que una SECCIÓN no baje de 4 |
+//
+// La huella no es un adorno: sin ella, 95 de los 98 grupos de psicotécnicas son preguntas
+// DISTINTAS que solo comparten un enunciado genérico («Observa la secuencia…») y se
+// diferencian en la figura. Con ella quedan 3, que es la medida real.
 //
 // ## Por qué existe (31/07/2026)
 //
@@ -32,6 +55,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -41,6 +65,13 @@ const valor = (f) => {
 const DIA = valor('--dia')
 const APLICAR = argv.includes('--aplicar')
 const LIMITE = parseInt(valor('--limite') || '0', 10)
+const BANCO = valor('--banco') || 'legislativas'
+const PARAFRASEADAS = argv.includes('--parafraseadas')
+
+if (!['legislativas', 'psicotecnicas', 'ambos'].includes(BANCO)) {
+  console.error(`❌ --banco debe ser legislativas | psicotecnicas | ambos (recibido: ${BANCO})`)
+  process.exit(2)
+}
 
 const SQL_GRUPOS = `
   with base as (
@@ -66,24 +97,13 @@ const SQL_GRUPOS = `
    group by 1, 2, 3
   having count(*) > 1`
 
-/** Devuelve [superviviente, ...aJubilar] con el orden de prioridad del encabezado. */
-function decidir(miembros) {
-  const orden = [...miembros].sort((a, b) => {
-    if (a.oficial !== b.oficial) return a.oficial ? -1 : 1
-    if ((a.expl > 0) !== (b.expl > 0)) return a.expl > 0 ? -1 : 1
-    if (a.servida !== b.servida) return b.servida - a.servida
-    return new Date(a.alta) - new Date(b.alta)
-  })
-  return [orden[0], orden.slice(1)]
-}
+/**
+ * Devuelve [superviviente, ...aJubilar]. El criterio vive en `lib/calidad/duplicados.js`
+ * (testeado) para que legislativas y psicotécnicas conserven la copia por la misma regla.
+ */
+const decidir = decidirSuperviviente
 
-async function main() {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
-  await c.connect()
-
+async function barridoLegislativas(c) {
   const { rows } = await c.query(SQL_GRUPOS)
   // `ultima` llega como objeto Date: convertir a ISO antes de comparar. Con String() se
   // obtiene «Sat Mar 21 2026…» y el filtro no casaba nunca (daba 0 grupos en silencio).
@@ -141,7 +161,6 @@ async function main() {
 
   if (!APLICAR) {
     console.log('\n  (simulación: no se ha tocado nada — añade --aplicar para jubilar)\n')
-    await c.end()
     return
   }
 
@@ -163,7 +182,170 @@ async function main() {
     }
   }
   console.log(`  jubiladas: ${ok} · fallos: ${fallos}\n`)
-  await c.end()
+}
+
+// ── Psicotécnicas ────────────────────────────────────────────────────────────────────────
+//
+// Mismo criterio, dos diferencias que impone la tabla: aquí NO hay lifecycle (se desactiva
+// con `is_active=false` + `deactivation_reason`, que es reversible, al revés que
+// `retired_duplicate`) y el contenido no siempre está en el texto — vive en `content_data`
+// o en la imagen, así que la huella de ambos entra en la clave del grupo.
+
+const N = (col) => sqlNormalizar(col)
+
+const SQL_PSICO = `
+  with base as (
+    select q.id, q.question_text, q.correct_option, q.created_at, q.is_official_exam,
+           q.explanation, q.section_id,
+           ${N('q.question_text')} as norm,
+           (select string_agg(x, '|' order by x) from unnest(array[
+              ${N('q.option_a')}, ${N('q.option_b')}, ${N('q.option_c')},
+              ${N('q.option_d')}, ${N('q.option_e')}]) x where x <> '') as ops,
+           -- content_data es jsonb: Postgres ya devuelve las claves ordenadas, así que dos
+           -- rejillas iguales dan la misma huella aunque se escribieran en distinto orden.
+           md5(coalesce(q.image_url, '') || '#' || coalesce(q.content_data::text, '')) as huella,
+           (array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e])[q.correct_option + 1] as texto_correcta,
+           (select count(*)::int from psychometric_test_answers a where a.question_id = q.id) as servida
+      from psychometric_questions q
+     where q.is_active
+  )
+  select norm, ops, huella, count(*)::int n,
+         json_agg(json_build_object(
+           'id', id, 'oficial', is_official_exam, 'servida', servida,
+           'expl', coalesce(length(explanation), 0), 'alta', created_at,
+           'seccion', section_id, 'textoCorrecta', texto_correcta
+         ) order by created_at) as miembros
+    from base
+   group by 1, 2, 3
+  having count(*) > 1`
+
+async function barridoPsicotecnicas(c) {
+  const { rows: grupos } = await c.query(SQL_PSICO)
+
+  let jubilar = []
+  let conOficial = 0
+  let conClaveDistinta = 0
+  const porSeccion = new Map()
+  for (const g of grupos) {
+    const [queda, fuera] = decidir(g.miembros)
+    if (queda.oficial) conOficial++
+    if (bandaGrupo(g.miembros) === 'error') conClaveDistinta++
+    jubilar.push(...fuera.map((f) => ({ ...f, quedaId: queda.id })))
+    for (const f of fuera) porSeccion.set(f.seccion, (porSeccion.get(f.seccion) || 0) + 1)
+  }
+  if (LIMITE) jubilar = jubilar.slice(0, LIMITE)
+
+  // Misma guarda que en legislativas, con la sección haciendo de artículo: cambiar
+  // «repetida» por «sección que no da ni para un test» no es una mejora.
+  const MINIMO = 4
+  const secciones = [...porSeccion.keys()].filter(Boolean)
+  const protegidas = new Set()
+  if (secciones.length) {
+    const { rows: totales } = await c.query(
+      `select section_id sid, count(*)::int total from psychometric_questions
+        where is_active and section_id = any($1) group by 1`, [secciones])
+    const mapa = new Map(totales.map((r) => [r.sid, r.total]))
+    for (const [sid, quita] of porSeccion.entries()) {
+      if (sid && (mapa.get(sid) || 0) - quita < MINIMO) protegidas.add(sid)
+    }
+  }
+  const apartadas = jubilar.filter((j) => protegidas.has(j.seccion)).length
+  jubilar = jubilar.filter((j) => !protegidas.has(j.seccion))
+
+  console.log('\n═══ DUPLICADOS EXACTOS · PSICOTÉCNICAS ═══')
+  console.log(`  grupos: ${grupos.length}`)
+  console.log(`  a desactivar: ${jubilar.length}${apartadas ? ` (${apartadas} apartadas para no dejar una sección por debajo de ${MINIMO})` : ''}`)
+  console.log(`  grupos donde la superviviente es de EXAMEN OFICIAL: ${conOficial}`)
+  console.log(`  grupos cuyas gemelas RESPONDEN COSAS DISTINTAS: ${conClaveDistinta}${conClaveDistinta ? '  ← mirar estos primero' : ''}`)
+  for (const g of grupos.slice(0, 10)) {
+    const [queda, fuera] = decidir(g.miembros)
+    console.log(`     · ${bandaGrupo(g.miembros) === 'error' ? '🔴' : '·'} queda ${String(queda.id).slice(0, 8)} — se van ${fuera.map((f) => String(f.id).slice(0, 8)).join(', ')}`)
+  }
+
+  if (!APLICAR) {
+    console.log('\n  (simulación: no se ha tocado nada — añade --aplicar para desactivar)\n')
+    return
+  }
+
+  console.log('\n  aplicando…')
+  let ok = 0, fallos = 0
+  for (const j of jubilar) {
+    try {
+      await c.query(
+        `update psychometric_questions
+            set is_active = false, deactivation_reason = $2, updated_at = now()
+          where id = $1 and is_active`,
+        [j.id,
+         `duplicate_of:${j.quedaId} (mismo enunciado, mismas opciones barajadas y mismo contenido; ` +
+         `se conserva la otra por: oficial > explicacion > mas servida > mas antigua. Barrido T-410).`])
+      ok++
+    } catch (e) {
+      fallos++
+      if (fallos <= 3) console.log(`     ⚠️ ${String(j.id).slice(0, 8)}: ${e.message.slice(0, 90)}`)
+    }
+  }
+  console.log(`  desactivadas: ${ok} · fallos: ${fallos}\n`)
+}
+
+// ── Cola parafraseada (solo listado, NUNCA escribe) ──────────────────────────────────────
+//
+// Mismas opciones, enunciado redactado distinto. Es la clase que la deduplicación de mayo no
+// podía ver, y la que destapó la impugnación `b6787619`. NO se aplica en bloque: aquí la
+// única evidencia son las opciones, así que hay falsos positivos reales (preguntas de tabla
+// que comparten juego de opciones). Sale la lista y se adjudica a mano — T-410.
+
+const SQL_PARAFRASEADAS = `
+  with base as (
+    select q.id, q.question_text, q.is_official_exam,
+           ${N('q.question_text')} as norm,
+           (select string_agg(x, '|' order by x) from unnest(array[
+              ${N('q.option_a')}, ${N('q.option_b')}, ${N('q.option_c')},
+              ${N('q.option_d')}, ${N('q.option_e')}]) x where x <> '') as ops,
+           (array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e])[q.correct_option + 1] as texto_correcta
+      from psychometric_questions q
+     where q.is_active
+  )
+  select ops, count(*)::int n, count(distinct norm)::int textos,
+         json_agg(json_build_object('id', id, 'texto', left(question_text, 70),
+                                    'oficial', is_official_exam, 'textoCorrecta', texto_correcta)) as miembros
+    from base
+   group by 1
+  having count(*) > 1 and count(distinct norm) > 1
+   order by count(*) desc`
+
+async function listadoParafraseadas(c) {
+  const { rows } = await c.query(SQL_PARAFRASEADAS)
+  const utiles = rows.filter((g) => !esJuegoGenerico(g.ops))
+  const descartados = rows.length - utiles.length
+
+  console.log('\n═══ CANDIDATOS PARAFRASEADOS · PSICOTÉCNICAS (solo listado) ═══')
+  console.log(`  grupos: ${utiles.length}  (${descartados} descartados por juego de opciones genérico)`)
+  console.log(`  preguntas implicadas: ${utiles.reduce((a, g) => a + g.n, 0)} · sobrantes si se confirman: ${utiles.reduce((a, g) => a + g.n - 1, 0)}`)
+  console.log(`  grupos cuyas copias RESPONDEN COSAS DISTINTAS: ${utiles.filter((g) => bandaGrupo(g.miembros) === 'error').length}`)
+  console.log('')
+  for (const g of utiles) {
+    console.log(`  ${bandaGrupo(g.miembros) === 'error' ? '🔴' : '·'} ${g.miembros.map((m) => String(m.id).slice(0, 8)).join(' / ')}`)
+    for (const m of g.miembros) console.log(`      ${m.oficial ? '[oficial] ' : ''}${JSON.stringify(m.texto)}`)
+  }
+  console.log('\n  (listado: no se ha tocado nada — se adjudica a mano, ver T-410)\n')
+}
+
+async function main() {
+  const c = new Client({
+    connectionString: process.env.DATABASE_URL.split('?')[0],
+    ssl: { rejectUnauthorized: false },
+  })
+  await c.connect()
+  try {
+    if (PARAFRASEADAS) {
+      await listadoParafraseadas(c)
+      return
+    }
+    if (BANCO === 'legislativas' || BANCO === 'ambos') await barridoLegislativas(c)
+    if (BANCO === 'psicotecnicas' || BANCO === 'ambos') await barridoPsicotecnicas(c)
+  } finally {
+    await c.end()
+  }
 }
 
 main().catch((e) => { console.error(e.message); process.exit(1) })

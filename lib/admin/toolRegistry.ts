@@ -1124,10 +1124,10 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '"me falta el art. X" en vez de juzgar contra el texto que no tiene.',
   },
   duplicados_exactos: {
-    titulo: 'Duplicados EXACTOS del banco: simula el barrido y jubila los sobrantes por lotes',
+    titulo: 'Duplicados EXACTOS del banco (legislativas Y psicotécnicas): simula el barrido y jubila los sobrantes por lotes',
     ruta: 'scripts/calidad/duplicados-exactos.cjs',
     estado: 'vivo',
-    escribe: ['lifecycle_state'],
+    escribe: ['lifecycle_state', 'psychometric_questions.is_active'],
     runbook: 'docs/maintenance/impugnaciones-claude-code.md',
     notas:
       '`[--dia YYYY-MM-DD] [--aplicar] [--limite N]`. SIMULA por defecto; solo escribe con ' +
@@ -1140,7 +1140,17 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '4 preguntas — jubilar ahí cambia la repetición por un artículo que no da ni para un test. ' +
       'Transiciona por `transition_question_state` (nunca UPDATE de `lifecycle_state`) y cada ' +
       'jubilación anota de cuál es duplicada. Origen: 3 impugnaciones de Marta (31/07/2026); el ' +
-      'lote del 21/03 se saldó con 287 jubiladas y 3 apartadas por la guarda.',
+      'lote del 21/03 se saldó con 287 jubiladas y 3 apartadas por la guarda. ' +
+      '**`--banco psicotecnicas` (T-410, 31/07)**: mismo criterio sobre `psychometric_questions`, ' +
+      'que no tiene lifecycle — desactiva con `is_active=false` + `deactivation_reason` (reversible) ' +
+      'y protege la SECCIÓN en vez del artículo. Ahí la clave del grupo incluye la HUELLA de ' +
+      '`image_url`+`content_data`: sin ella 95 de 98 grupos son falsos positivos (preguntas ' +
+      'distintas que comparten un enunciado genérico y se diferencian en la figura). ' +
+      '**`--parafraseadas`** lista —nunca escribe— la clase que el corte exacto no ve: mismas ' +
+      'opciones con el enunciado redactado distinto, que es la que se le escapó entera a la ' +
+      'deduplicación de mayo. El criterio (normalización, clave de opciones, quién sobrevive, ' +
+      'banda error/warn por el TEXTO de la respuesta y no por su índice) vive en el módulo puro ' +
+      '`lib/calidad/duplicados.js`, con tests, para que los dos bancos no diverjan.',
   },
   aprobar_batch_generado: {
     titulo: 'Paso 6: transicionar un batch `draft` → `approved` (lo hace VISIBLE), con gate y resumen de auditoría',

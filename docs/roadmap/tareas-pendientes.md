@@ -1168,6 +1168,26 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Dato de contexto:** en las 502 activas de Access se verificaron a mano pares idénticos (`821259c4`/`e9af0377`, `32fbe5e1`/`c774a064`), así que la duplicación es real y no un artefacto de la normalización.
 - **Capa que lo vigile:** el kind ES la capa (núcleo puro + test: normalización con tildes y espacios, opciones NULL que no cuentan, y las oposiciones de 3 opciones con D nula, que es el falso positivo obvio).
 - **Relacionada:** [T-406] (opciones duplicadas dentro de una pregunta), [T-405], manual `impugnaciones-claude-code.md` (regla «si el fallo puede ser sistémico, mídelo en la BD antes de cerrar», que es la que hizo aflorar esto).
+
+> **⚠️ CORRECCIÓN (31/07, [T-410]) — «no lo caza nada» era falso, y el motivo importa.** El
+> barrido SÍ existía cuando se escribió esta ficha: `scripts/calidad/duplicados-exactos.cjs`,
+> [T-321], construido ese mismo día por otra sesión, con `--aplicar` y todo. **`tools:buscar --
+> duplicadas` no lo devolvió porque el registro lo nombra «duplicad**os**»** — la búsqueda es por
+> subcadena y el femenino no casa. Tres sesiones del mismo día (T-321, esta y T-410) atacaron el
+> mismo hueco sin verse, que es justo lo que el registro existe para impedir.
+>
+> **Qué queda vivo de esta ficha, ya sin solaparse:**
+> 1. El **núcleo puro compartido** ya está: `lib/calidad/duplicados.js` (22 tests) — normalización,
+>    clave de opciones, quién sobrevive y la banda `error`/`warn`. **La banda se decide por el
+>    TEXTO de la respuesta correcta, nunca por `correct_option`**: las copias vienen barajadas, así
+>    que el índice difiere de forma legítima y compararlo da alarmas falsas en cascada.
+> 2. **Falta el KIND `pregunta_duplicada`** que lleve esto al badge (`health-sweep.cjs` + espejo del
+>    `@Cron`): hoy hay que acordarse de correr el script. Ese es el trabajo real que queda aquí.
+> 3. **Falta el corte BORROSO** del caso Laura (una cifra distinta entre las opciones), que sigue
+>    siendo lo único que el corte exacto no puede ver por construcción — y sigue necesitando
+>    calibración antes de tocar el badge.
+> 4. El banco **psicotécnico** ya entra por el mismo script (`--banco psicotecnicas`) con la guarda
+>    de la huella de imagen/`content_data`. Detalle en [T-410].
 ### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 42 grupos que la deduplicación de mayo no podía ver
 
 - **Esfuerzo: ~2 h.** No hay que construir nada: la consulta está escrita aquí abajo. Lo que lleva tiempo es **adjudicar grupo por grupo** (hay falsos positivos reales) y desactivar la copia sobrante de cada uno.
@@ -1179,17 +1199,13 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **⚠️ Los dos sesgos que hay que respetar al adjudicar** (medidos, no teóricos):
   1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*, *«¿Cuántos errores hay en la fila 4?»*) y se diferencian en la **imagen** o en el `content_data`. Sin mirar esos dos campos, el barrido miente en el 97 % de los casos.
   2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta (no su índice — las opciones vienen barajadas entre copias), las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` a secas daría alarmas falsas en cascada.
-- **Consulta que reproduce la cola** (solo lectura; agrupar por conjunto de opciones normalizado, exigir enunciado distinto y descartar juegos genéricos):
-  ```sql
-  -- normalizar: lower + quitar HTML + quitar todo lo que no sea alfanumérico
-  -- clave del grupo = las 4 opciones normalizadas y ORDENADAS (vienen barajadas)
-  -- filtros anti-ruido: length(opciones) > 24, no puramente numéricas, sin 'figura'
-  -- exigir: count(*) > 1 AND count(DISTINCT enunciado_normalizado) > 1
-  ```
-  (script completo en el histórico de la sesión `central-inferior` del 31/07; son ~20 líneas de SQL sobre `psychometric_questions WHERE is_active = true`).
+- **La cola ya se saca con un comando** (31/07, mismo día): **`node scripts/calidad/duplicados-exactos.cjs --parafraseadas`**. Lista y **no escribe nunca** — aquí la única evidencia son las opciones y hay falsos positivos reales, así que se adjudica a mano. Con la normalización estricta del núcleo (que ignora los acentos: *«¿Qué palabra…»* = *«¿Que palabra…»*) la cola queda en **40 grupos · 90 preguntas · 50 sobrantes**; los 2 grupos que faltan respecto de la primera medición no desaparecieron, **ascendieron al corte exacto**.
+- **El corte exacto de psicotécnicas también entra por ese script** (`--banco psicotecnicas`), con la huella de `image_url`+`content_data` en la clave del grupo. Ojo: **NO se construyó un cuarto script** — se extendió el de [T-321], y el criterio vive en el módulo puro `lib/calidad/duplicados.js` (22 tests) que comparten los dos bancos.
 - **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`. Criterio para elegir cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la más antigua. Ojo: las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección (es correcto: el opositor la vería dos veces).
 - **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno ya tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las dos guardas de arriba** lo convierte en trinquete, y el núcleo puro se puede compartir con el detector de duplicados de importación.
-- **Relacionada: [T-408]**, que es el mismo hueco en las **legislativas** (1.955 activas repetidas literalmente) y propone el kind `pregunta_duplicada`. Las dos fichas se escribieron el mismo día sin saber una de otra, lo que refuerza el diagnóstico: **ningún detector compara una pregunta con otra**. Si ese kind se construye, que nazca cubriendo también `psychometric_questions` — pero **la normalización no puede ser la misma**: aquí el contenido vive en `content_data`/`image_url` y sin mirarlos el 97 % de los grupos son falsos positivos.
+- **Relacionada: [T-408]**, el mismo hueco en las **legislativas**. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de [T-321] ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»—. **Ya están unificadas:** un solo script, un solo criterio en `lib/calidad/duplicados.js`. Lo que queda en T-408 es llevar el kind al badge y calibrar el corte borroso; lo que queda aquí es **adjudicar los 40 grupos**.
+- **Pendiente de una decisión, no de trabajo:** el corte exacto de psicotécnicas señala **3 grupos nuevos** (`41ef1a23`/`782ad84c`, `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`) que la normalización estricta hizo aflorar. Son seguros por construcción, pero **el script no ha escrito nada**: se aplican con `--banco psicotecnicas --aplicar` cuando alguien lo mire.
+
 ### [T-411] 🟠 [ABIERTO 31/07] Test por leyes: quien estudia una ley no puede practicar los exámenes reales de OTRAS oposiciones sobre esa misma ley
 
 - **Esfuerzo: ~1-2 h** (el filtro ya existe en el serve; falta decidirlo, emitirlo desde la página y contarlo).
