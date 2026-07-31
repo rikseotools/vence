@@ -21,8 +21,21 @@ import { sinSslMode } from '../helpers/db'
 
 const RAIZ = join(__dirname, '..')
 
-/** Este helper ES la excepción: define la configuración que los demás reutilizan. */
-const EXENTOS = new Set(['helpers/db.ts', 'guardrails/testDbHelper.guardrail.test.ts'])
+/**
+ * Exentos: los ficheros que NOMBRAN el patrón sin usarlo.
+ *  · `helpers/db.ts` ES la puerta única: define la configuración que los demás reutilizan.
+ *  · `testDbHelper.guardrail.test.ts` (este) tiene que escribir los patrones para buscarlos.
+ *  · `suiteRegistry.guardrail.test.ts` (31/07) los lista en su `MARCAS_BD` por el mismo
+ *    motivo: es OTRO detector, y para detectar «esta suite habla con la BD» necesita
+ *    escribir `new Client(` como literal. Sin esta exención, un detector delata a otro
+ *    por mencionar aquello que ambos vigilan — falso positivo puro que dejó `main` en
+ *    ROJO y bloqueó el pre-commit de todas las sesiones.
+ */
+const EXENTOS = new Set([
+  'helpers/db.ts',
+  'guardrails/testDbHelper.guardrail.test.ts',
+  'guardrails/suiteRegistry.guardrail.test.ts',
+])
 
 function ficherosDeTest(dir: string, base = ''): string[] {
   const out: string[] = []
