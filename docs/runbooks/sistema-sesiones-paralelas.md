@@ -213,6 +213,7 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Reescribir el mismo módulo N veces | sin registro de herramientas, cada sesión reconstruye |
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
 | Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
+| **Crear el worktree ≠ entrar en él** | la sesión que ejecuta el script se queda donde estaba: worktrees perfectos y VACÍOS |
 | `git reset --soft` + índice compartido | deja **borrados staged** de ficheros que sí están en la rama: el siguiente commit los borra |
 
 ---

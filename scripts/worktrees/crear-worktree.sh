@@ -128,6 +128,18 @@ cat <<EOF
    deps:   $([ "$OWN_DEPS" = 1 ] && echo "propias (npm ci)" || echo "symlink al repo")
    db:     $DB_DESC
 
-   → cd $WT
+
+   ⚠️  CREARLO NO ES ENTRAR EN ÉL. La sesión que ha ejecutado esto SIGUE en el
+       checkout principal: el worktree se queda vacío hasta que alguien trabaje dentro.
+       Medido el 31/07: cinco worktrees creados bien y CERO sesiones dentro, mientras
+       seis sesiones seguían compartiendo el índice de git del principal.
+
+   → PARA USARLO, una de estas dos:
+        a) esta misma sesión se muda:   cd $WT
+        b) abres una sesión NUEVA ahí:  cd $WT && claude
+
+   → Para comprobar que ha funcionado, desde la sesión que vaya a usarlo:
+        git rev-parse --show-toplevel      (tiene que decir $WT, no el principal)
+
    Al cerrar:  scripts/worktrees/borrar-worktree.sh $SLUG   (cherry-pick a origin/main + limpia)
 EOF
