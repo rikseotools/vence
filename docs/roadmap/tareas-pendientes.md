@@ -4456,7 +4456,17 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   - **La simulación evitó tres destrozos:** 3 preguntas se apartaron porque jubilarlas dejaba su artículo con **1 sola pregunta** — eso cambia la repetición por un artículo que no da ni para un test. La guarda del mínimo servible (4) va ya en el script.
   - En **18 grupos** la superviviente era de examen oficial (no se tocan). **289 transiciones** quedaron en `question_lifecycle_history` anotando de cuál es duplicada cada una.
   - **Fallo propio que casi lo estropea:** la primera pasada del script devolvió **0 grupos en silencio** porque comparaba la fecha del lote como texto (`String(Date)` da «Sat Mar 21 2026…»). De haberme fiado, habría concluido que el lote no existía.
-- **PENDIENTE: el lote GORDO es el del 27/04 (1.039 sobrantes).** Quedan **1.743** en total. El del 27/04 tiene además un patrón propio: duplicados **dentro del mismo día**, no copias de preguntas viejas.
+- **📍 DÓNDE VA ESTO (31/07, para retomarlo sin releer nada):**
+  - **Hecho:** lote **21/03** → 287 jubiladas · lote **27/04** → 862 jubiladas. **1.149 en total, 0 fallos, ninguna visible**, todas con su transición en `question_lifecycle_history` diciendo de cuál son duplicadas.
+  - **Estado del banco:** de **2.030** sobrantes se ha bajado a **487** (482 grupos).
+  - **Siguiente comando, tal cual:**
+    ```bash
+    node scripts/calidad/duplicados-exactos.cjs              # simula TODO lo que queda
+    node scripts/calidad/duplicados-exactos.cjs --dia 2026-04-06 --aplicar
+    ```
+  - **Lo que queda, por lote:** 06/04 → 155 · 27/04 → 135 (los que la guarda apartó) · 25/04 → 90 · 25/12 → 19 · 19/04 → 11.
+  - **⚠️ Los 135 del 27/04 NO son un olvido:** son los que la guarda apartó porque su artículo se quedaría con menos de 4 preguntas. **No se jubilan sin más** — hay que mirarlos aparte, porque en muchos casos el artículo entero se importó duplicado y lo que falta ahí es CONTENIDO, no una poda. Mismo caso, más pequeño, en los 3 del 21/03.
+  - **El patrón cambia según el lote, y conviene saberlo antes de mirar:** el 21/03 son copias de preguntas viejas (la copia entra meses después); el 27/04 son duplicados **dentro del mismo día** — una importación que se duplicó a sí misma, con las copias casi sin servir (0-1 veces).
 - **HUECO DEL DETECTOR DE HERRAMIENTAS, arreglado de paso (31/07):** `escribeRecurso` reconocía `UPDATE`/`INSERT`/Drizzle pero **no la llamada a `transition_question_state`**, que es la ÚNICA vía legítima de tocar `lifecycle_state`. Consecuencia: una herramienta que hacía lo correcto figuraba como «dice escribir y no lo hace», empujando justo a escribir a pelo. Ahora un recurso puede declarar su `funcionPuerta`. Al verla, los escritores de `lifecycle_state` pasaron de 19 a **42**: no son nuevos, es que **los que usaban la vía correcta eran invisibles** y el trinquete se había calibrado contando solo a los que la esquivaban.
 - **Regla que nace de aquí (ya en el manual de impugnaciones):** cuando una impugnación puede ser sistémica, **medir en la BD antes de cerrar** — la persona solo ha visto la punta.
 
