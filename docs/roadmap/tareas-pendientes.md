@@ -1082,6 +1082,17 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-403] 🟡 [ABIERTO 31/07] El push-guard no distingue TRABAJAR una tarea de CITARLA en el cuerpo del commit
+
+- **ORIGEN.** Pisado en la propia sesión de [T-400], minutos después de arreglar tres bloqueos del mismo guard en [T-375]. El commit declaraba su trabajo en el asunto (`feat(T-400): …`) y **citaba** [T-361] y [T-385] en el cuerpo como contexto. El guard exigió reclamar las dos. Salió con `BACKLOG_GUARD_SKIP=1`, que es el escape documentado para este caso… **y que apaga el guard ENTERO para todo el push**.
+- **Por qué importa:** reclamar una tarea que no vas a trabajar es peor que no reclamar — se la quitas a quien sí iba a hacerla, y ensucia el reparto. Así que la salida real es el escape, y **acostumbrarse al escape es como muere un guardarraíl** (la lección que [T-375] acaba de aprender por otra puerta).
+- **Y el roce es estructural, no anecdótico:** las fichas de este repo se cruzan constantemente (`Relacionadas: [T-xxx]`) y los mensajes de commit copian esa costumbre. Cuanto mejor escrito está el commit, más probable es que el guard lo pare.
+- **La regla candidata, que hay que MEDIR antes de aplicar:** los ids del **asunto** (primera línea) exigen claim; los que solo aparecen en el **cuerpo** avisan pero no bloquean. Encaja con cómo escribe el repo —el asunto declara qué hace el commit, el cuerpo es prosa—, pero **es una relajación** y abre un hueco: quien trabaje una tarea mencionándola solo en el cuerpo dejaría de ser cazado.
+- **Cómo medirlo, y NO aplicarlo sin ese dato:** recorrer el historial y contar, de los commits que mencionan un `T-NNN`, cuántos lo llevan en el asunto y cuántos solo en el cuerpo — y de estos últimos, cuántos **tocan código de esa tarea** (o sea, cuántos serían falsos permisos). Si la cola de "trabajo declarado solo en el cuerpo" no es despreciable, la regla no vale y hay que buscar otra (p. ej. exigir claim solo si el commit toca ficheros, no solo docs — que es lo que ya hace la exención estrecha de T-375).
+- **Alternativa sin relajar nada:** un escape con NOMBRE para este caso concreto (`BACKLOG_GUARD_MENCION=T-361,T-385`) en vez del `SKIP` general. No arregla la fricción, pero deja de apagar el guard entero para conseguir pasar — que es el daño de verdad.
+- **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400].
+
+
 ### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
 
 - **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).
