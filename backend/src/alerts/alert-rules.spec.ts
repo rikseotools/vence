@@ -2403,23 +2403,23 @@ describe('RULE_SESSION_IP_COVERAGE_DROP (writer que deja de escribir — T-314, 
   });
 });
 
-describe('RULE_FRAUDE_CONFIRMADO_SIN_ACCION (confirmar saca del badge — T-304, 30/07)', () => {
+describe('RULE_FRAUDE_SIN_TRIAR (mide lo accionable, no lo confirmado — T-426, 31/07)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { RULE_FRAUDE_CONFIRMADO_SIN_ACCION: R } = require('./alert-rules');
+  const { RULE_FRAUDE_SIN_TRIAR: R } = require('./alert-rules');
   const fila = (total: number, dias: number) => [{ total, masAntiguaDias: dias }];
 
-  it('EL CASO REAL: 20 confirmadas, la más antigua de 9 días → dispara', () => {
-    expect(R.shouldFire(fila(20, 9))).toBe(true);
+  it('señales sin mirar durante días → dispara', () => {
+    expect(R.shouldFire(fila(4, 5))).toBe(true);
   });
 
-  it('sin confirmadas no dispara', () => {
+  it('sin señales nuevas no dispara', () => {
     expect(R.shouldFire(fila(0, 0))).toBe(false);
   });
 
-  it('recién confirmadas NO disparan: hay que dar margen para decidir', () => {
-    expect(R.shouldFire(fila(5, 1))).toBe(false);
-    expect(R.shouldFire(fila(5, 6))).toBe(false);
-    expect(R.shouldFire(fila(5, 7))).toBe(true);
+  it('recién detectadas NO disparan: el vigía ya las canta en el momento', () => {
+    expect(R.shouldFire(fila(3, 0))).toBe(false);
+    expect(R.shouldFire(fila(3, 2))).toBe(false);
+    expect(R.shouldFire(fila(3, 3))).toBe(true);
   });
 
   it('tolera filas vacías o corruptas', () => {
@@ -2427,10 +2427,34 @@ describe('RULE_FRAUDE_CONFIRMADO_SIN_ACCION (confirmar saca del badge — T-304,
     expect(R.shouldFire([{}] as never)).toBe(false);
   });
 
-  it('el aviso explica por qué el badge puede estar verde con fraude pendiente', () => {
-    const n = R.buildNotification(fila(20, 9));
-    expect(n.body).toContain('SALEN del badge');
+  // Lo que hundió a la versión anterior: pedía «resolver» las confirmadas cuando confirmar era el
+  // último paso que existía. El aviso tiene que mandar a una acción REAL (triar) y decir que el
+  // farmeo por dispositivo ya se corta solo, para que nadie lo lea como una emergencia.
+  it('el aviso manda a triar y no reclama una acción inexistente', () => {
+    const n = R.buildNotification(fila(4, 5));
     expect(n.body).toContain('fraude:dossier');
+    expect(n.body).toContain('enforce');
+    expect(n.body).not.toContain('decidir qué hacer');
+  });
+
+  // El objeto `sql` de Drizzle no se convierte a texto (`String(...)` da "[object Object]"),
+  // así que el SQL se lee de sus trozos literales.
+  it('mide las SIN TRIAR, no las confirmadas (regresión de T-426)', () => {
+    const sqlTexto = JSON.stringify(R.query);
+    expect(sqlTexto).toContain("status = 'new'");
+    expect(sqlTexto).not.toContain("status = 'confirmed'");
+  });
+
+  // Una regla definida pero no registrada no la ejecuta nadie: el silo más fácil de crear al
+  // renombrar. Y el nombre viejo no puede volver: si reaparece, es que se restauró la versión
+  // que pedía una acción inexistente.
+  it('está registrada en ALERT_RULES (el cron la ejecuta) y el nombre viejo no vuelve', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ALERT_RULES } = require('./alert-rules');
+    expect(ALERT_RULES.some((r: { name: string }) => r.name === 'fraude_sin_triar')).toBe(true);
+    expect(
+      ALERT_RULES.some((r: { name: string }) => r.name === 'fraude_confirmado_sin_accion'),
+    ).toBe(false);
   });
 });
 

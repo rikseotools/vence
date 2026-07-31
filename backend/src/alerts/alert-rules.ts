@@ -5089,46 +5089,66 @@ export const RULE_SESSION_IP_COVERAGE_DROP: AlertRule<{
 
 
 /**
- * Fraude CONFIRMADO que lleva días sin que nadie decida nada.
+ * Señales de fraude SIN TRIAR: las que esperan la única acción que existe.
  *
- * ── POR QUÉ (30/07/2026) ────────────────────────────────────────────────────
- * El badge 🚨 cuenta las señales en estado `new`. Al confirmar una, **desaparece del badge** — así
- * que el trabajo de detectarla y verificarla acaba enterrándola. Medido hoy: **20 confirmadas sin
- * resolver, la más antigua del 21/07**, con el badge en verde y la sensación de que no había nada
- * pendiente.
+ * ── POR QUÉ NACIÓ, Y POR QUÉ MIDE OTRA COSA DESDE EL 31/07 ──────────────────
+ * Nació el 30/07 vigilando las **confirmadas**: el badge 🚨 cuenta las `new`, así que al confirmar
+ * una **desaparece del badge** y el trabajo de detectarla acababa enterrándolo. El razonamiento
+ * era bueno y el dato, cierto (20 confirmadas, la más antigua de 9 días).
  *
- * Es el mismo patrón que `device_limit_mudo` y `session_ip_coverage_drop`: el fallo es una
- * AUSENCIA, y una ausencia no dispara nada por sí sola. Detectar sin resolver es peor que no
- * detectar, porque consume triaje y deja el asunto por atendido.
+ * El problema es lo que PEDÍA. Con F0 —solo detección y revisión—, confirmar era el último paso
+ * que existía: la alerta reclamaba «decidir qué hacer» con algo que no tenía remediación, así que
+ * solo podía acumularse y volver a sonar. Y una alerta que no se puede atender no es ruido
+ * inofensivo: **enseña a ignorar el buzón**, y esa costumbre se contagia a las reglas que sí
+ * importan.
  *
- * Umbral en 7 días: hay que dar margen para decidir sin prisa, pero no un mes.
+ * Dos cosas cambiaron para reformularla (medido el 31/07, [T-426]):
+ *   · El **límite por dispositivo ya está en `enforce`** en producción ([T-304], 30/07) y corta de
+ *     verdad: 1.127 bloqueos en 7 días. El farmeo multicuenta sobre un mismo equipo —que son 18 de
+ *     las 23 confirmadas— **ya se mitiga solo**. Confirmar dejó de ser un callejón.
+ *   · Lo medido pone el abuso en perspectiva: 69 cuentas implicadas, **todas free**, 1.216
+ *     respuestas en 7 días = **1,6 %** del total de la plataforma. No es una emergencia que
+ *     justifique bloquear por IP de registro, donde una academia o un CGNAT son indistinguibles
+ *     de una granja.
+ *
+ * Así que ahora vigila **lo que sí tiene acción**: señales `new` que nadie ha triado. Triar es el
+ * paso que existe, lo hace una sesión con el runbook, y termina en `confirmed`/`dismissed`.
+ *
+ * Lo que NO cubre el enforcement por dispositivo —`multi_account_reg_ip`, altas masivas desde una
+ * misma IP— sigue sin remediación automática, y ésa es la decisión de producto que queda abierta
+ * en [T-426]. Pero es una DECISIÓN, no una deuda de triaje: no se pide por alerta.
+ *
+ * Umbral en 3 días: triar es cuestión de minutos, y el vigía ya canta las nuevas en el momento;
+ * esto es la red por si nadie estuvo mirando.
  */
-export const RULE_FRAUDE_CONFIRMADO_SIN_ACCION: AlertRule<{
+export const RULE_FRAUDE_SIN_TRIAR: AlertRule<{
   total: number;
   masAntiguaDias: number;
 }> = {
-  name: 'fraude_confirmado_sin_accion',
+  name: 'fraude_sin_triar',
   severity: 'warn',
   query: sql`
     SELECT COUNT(*)::int AS total,
-           COALESCE(MAX(EXTRACT(DAY FROM now() - COALESCE(reviewed_at, detected_at)))::int, 0) AS "masAntiguaDias"
+           COALESCE(MAX(EXTRACT(DAY FROM now() - detected_at))::int, 0) AS "masAntiguaDias"
       FROM fraud_alerts
-     WHERE status = 'confirmed'
+     WHERE status = 'new'
   `,
   shouldFire: (rows) =>
-    (rows[0]?.total ?? 0) > 0 && (rows[0]?.masAntiguaDias ?? 0) >= 7,
+    (rows[0]?.total ?? 0) > 0 && (rows[0]?.masAntiguaDias ?? 0) >= 3,
   buildNotification: (rows) => ({
-    title: `${rows[0]?.total ?? 0} señales de fraude CONFIRMADAS sin resolver (la más antigua, ${rows[0]?.masAntiguaDias ?? 0} días)`,
+    title: `${rows[0]?.total ?? 0} señales de fraude SIN TRIAR (la más antigua, ${rows[0]?.masAntiguaDias ?? 0} días)`,
     body:
-      `Están verificadas como fraude real y nadie ha decidido qué hacer con ellas.\n\n` +
-      `Ojo: al confirmarlas SALEN del badge 🚨 (que cuenta las 'new'), así que el panel puede estar ` +
-      `en verde con fraude confirmado esperando. Por eso existe esta regla.\n\n` +
+      `Nadie las ha mirado todavía. Triarlas es el paso que existe: se verifica cada una contra ` +
+      `los datos y acaba en 'confirmed' o 'dismissed'.\n\n` +
       `Expediente de cada una — quién es, qué consume, si sigue activa:\n` +
       `  npm run fraude:dossier\n\n` +
-      `Recuerda que activar el límite por dispositivo (DEVICE_LIMIT_MODE=enforce) corta el farmeo ` +
-      `sin bloquear cuentas a mano. Runbook: docs/runbooks/revisar-fraudes.md`,
+      `Contexto para no alarmarse de más: el límite por dispositivo está en enforce y ya corta el ` +
+      `farmeo multicuenta sin intervención. Lo que sigue sin remediación automática son las altas ` +
+      `masivas desde una misma IP de registro, y eso es una decisión de producto abierta (T-426), ` +
+      `no trabajo pendiente de triaje.\n\n` +
+      `Runbook: docs/runbooks/revisar-fraudes.md`,
     metadata: { total: rows[0]?.total ?? 0, masAntiguaDias: rows[0]?.masAntiguaDias ?? 0 },
-    fingerprint: 'fraude_confirmado_sin_accion',
+    fingerprint: 'fraude_sin_triar',
   }),
   // 24 h. Se intentó semanal (10080) y el guardarraíl de [T-258] lo tumbó con razón: el cooldown
   // persistido se hidrata desde una ventana de 48 h (`LAST_FIRED_LOOKBACK_MIN`), así que cualquier
@@ -5248,7 +5268,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_LAW_SOURCE_CHANGED,
   // Fraude confirmado que nadie resuelve (2026-07-30): confirmar una señal la saca del badge,
   // así que el trabajo bien hecho acababa enterrado. 20 llevaban hasta 9 días.
-  RULE_FRAUDE_CONFIRMADO_SIN_ACCION as AlertRule,
+  RULE_FRAUDE_SIN_TRIAR as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
   // convierte en señal en vez de en punto ciego.
   RULE_EVASION_MULTIDISPOSITIVO as AlertRule,

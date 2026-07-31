@@ -251,9 +251,18 @@ antigua del 21/07**, con el badge en verde y la sensación de que no quedaba nad
 - **`npm run fraude:dossier`** — expediente de cada confirmada sin acción: quién es cada cuenta, qué
   consume el equipo entero, cuántos días lleva activo, cuánto se sale del tope y si hay algún
   **premium** implicado (en cuyo caso, no tocar sin mirarlo despacio). Solo lee.
-- **Alerta `fraude_confirmado_sin_accion`** (semanal, a partir de 7 días): impide que vuelva a
-  pasar. Mismo patrón que `device_limit_mudo` — el fallo es una AUSENCIA y una ausencia no dispara
-  nada sola.
+- **Alerta `fraude_sin_triar`** (diaria, a partir de 3 días **sin mirar** una señal `new`). Ojo al
+  cambio del **31/07 ([T-426])**: hasta esa fecha se llamaba `fraude_confirmado_sin_accion` y
+  vigilaba las **confirmadas**. El razonamiento era bueno —confirmar saca la señal del badge 🚨— y
+  el dato cierto, pero **pedía una acción que no existía**: con F0 (solo detección + revisión),
+  confirmar ERA el último paso, así que la alerta solo podía acumularse y volver a sonar. Y una
+  alerta que no se puede atender enseña a ignorar el buzón, que se contagia a las reglas que sí
+  importan. Ahora vigila lo accionable: señales que **nadie ha triado**.
+  Lo que la desbloqueó: el **límite por dispositivo ya está en `enforce`** ([T-304]) y corta de
+  verdad —1.127 bloqueos en 7 días—, así que el farmeo multicuenta sobre un mismo equipo (18 de las
+  23 confirmadas del 31/07) **se mitiga solo**. Lo que sigue sin remediación automática son las
+  altas masivas desde una misma IP de registro, y eso es **decisión de producto**, no deuda de
+  triaje: no se reclama por alerta.
 - **Alerta `evasion_multidispositivo`**: cuentas ya marcadas que aparecen en equipos nuevos. Es el
   patrón de quien, al topar el límite del dispositivo, prueba con el móvil de su pareja. No es
   concluyente por sí solo (cambiar de móvil es legítimo), pero en cuentas ya marcadas merece mirada.

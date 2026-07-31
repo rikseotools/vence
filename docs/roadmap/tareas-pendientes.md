@@ -1590,7 +1590,16 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Cómo salió:** revisando las gemelas con clave contradictoria de [T-408]. El hueco no lo cazó ningún detector — lo destapó **la guarda del re-anclaje al negarse a mover la pregunta**, que es un sitio raro para encontrar un problema de temario.
 - **Relacionada:** [T-408] (de donde sale), frase-gatillo *«revisa los huecos del temario»* (`scope_titulo_huerfano`) — este caso es su versión pequeña: no falta un título entero, falta **el artículo siguiente**, y por eso el detector de títulos huérfanos no lo ve.
 
-### [T-426] 🟡 [ABIERTO 31/07] 23 señales de fraude CONFIRMADAS y ninguna acción posible: la alerta reclama algo que F0 no construyó
+### [T-426] 🟡 [ABIERTO 31/07 · alerta REFORMULADA, queda 1 decisión] 23 señales de fraude CONFIRMADAS y ninguna acción posible: la alerta reclama algo que F0 no construyó
+
+- **🛠️ HECHO 31/07 (sesión `central-izquierdo`) — la salida elegida por Manuel fue REFORMULAR la alerta.** `fraude_confirmado_sin_accion` pasa a llamarse **`fraude_sin_triar`** y mide señales `new` sin mirar ≥3 días, en vez de confirmadas sin resolver. Pendiente de **desplegar backend** para que viva.
+  - **Capas:** 6 tests de la regla (umbral, tolerancia a filas corruptas, que el aviso mande a una acción REAL y no reclame «decidir qué hacer», regresión de que la query mira `new` y no `confirmed`) **+ el test de que está registrada en `ALERT_RULES`** —el silo más fácil de crear al renombrar es dejar la regla definida y que el cron no la ejecute— **y que el nombre viejo no vuelve**. Las 489 de `src/alerts` en verde.
+  - **Verificada contra la BD real antes de pushear, con contraste:** la query nueva da `{total: 1, masAntigua: 0}` → **no dispara** (silencio sano); la vieja, sobre los mismos datos, da `{total: 23, masAntigua: 10}` → **dispararía hoy mismo** pidiendo lo que nadie puede hacer. Un test con mocks no distingue eso: la query solo se puede juzgar contra datos.
+  - **Sin silo documental:** actualizado el runbook `revisar-fraudes.md` (con el porqué del cambio, no solo el nombre nuevo) y la mención en el registro de alertas de la ficha [T-304].
+- **⚠️ Y la premisa de esta ficha era FALSA — compruébalo antes de reabrir el debate:** decía que «F0 no bloquea y el enforcement es F1/F2 sin construir». **El límite por dispositivo ya está en `enforce` en producción** desde [T-304] (30/07): `/vence-frontend/DEVICE_LIMIT_MODE` y `/vence-backend/DEVICE_LIMIT_MODE` = `enforce`, y **corta de verdad: 1.127 bloqueos en 7 días** («Este dispositivo ha alcanzado el límite diario»). Lo destapó el propio cuerpo de la alerta, que ya recomendaba encenderlo. Así que **18 de las 23 confirmadas** (11 `multi_account_device` + 7 `device_daily_farming`) **ya se mitigan solas**.
+- **La medición que sostiene la decisión (31/07):** 23 confirmadas → **69 cuentas implicadas, TODAS free** (0 premium). De ellas, 15 siguen activas: **1.216 respuestas en 7 días = 1,6 %** de las 77.785 de la plataforma. Casos extremos: 27 cuentas desde una IP de registro y un equipo con 8 cuentas haciendo 200 preguntas/día (8 × 25).
+- **LA DECISIÓN QUE SIGUE ABIERTA, y es la única:** las **5 `multi_account_reg_ip`** no las cubre el límite por dispositivo. Bloquear por IP de registro es lo que hay que decidir, y **no es obvio**: 27 cuentas desde una IP puede ser una granja o una **academia, un aula o un CGNAT de operador**, y desde los datos no se distinguen. Por 1,6 % del consumo y sin un solo premium implicado, mi recomendación es NO construirlo todavía y revisarlo si la proporción sube.
+- **Las 23 confirmadas se quedan como registro.** No hay estado «mitigada» en `fraud_alerts` (solo `new`/`reviewed`/`confirmed`/`dismissed`), así que no se tocan: cerrarlas como `dismissed` sería mentir sobre lo que se verificó.
 
 - **Esfuerzo: ~1 h**, pero es **decisión de Manuel**, no trabajo: mientras no se decida, cualquiera que coja esto se encuentra el mismo callejón.
 - **Qué pasa:** la regla `fraude_confirmado_sin_accion` lleva disparando (*«23 señales de fraude CONFIRMADAS sin resolver, la más antigua 9 días»*) y **tiene razón en el dato y no en la petición**: F0 es, por diseño, **solo detección + revisión — NO bloquea** (CLAUDE.md → *«Señales de fraude»*). El enforcement (límite por device/IP, require-device anti-curl, cap de altas) es **F1/F2 y necesita aprobación explícita**. O sea que confirmar una señal es el ÚLTIMO paso que hoy existe: la alerta pide «resolver» algo que **no tiene remediación construida**, así que solo puede acumularse y volver a sonar.
@@ -8070,7 +8079,8 @@ y el usuario seguía respondiendo mientras sus respuestas se perdían. Ahora dis
 de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
 
 **9. Alertas nuevas** (todas validadas contra producción): `device_limit_mudo`,
-`session_ip_coverage_drop`, `fraude_confirmado_sin_accion`, `evasion_multidispositivo`.
+`session_ip_coverage_drop`, `fraude_confirmado_sin_accion` (**renombrada a `fraude_sin_triar` el
+31/07 por [T-426]**: pedía resolver lo confirmado, que no tenía remediación), `evasion_multidispositivo`.
 
 **10. Herramientas:** `npm run fraude:dossier` (expediente de cada confirmada),
 `fraude:sombra-device` (a quién cortaría el modo global), `fraude:marcar-confirmadas` (idempotente).
