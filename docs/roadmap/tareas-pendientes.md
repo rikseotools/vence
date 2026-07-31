@@ -933,6 +933,62 @@ incluida).
 - **Un test existente exigía que los `bis` NO se mapearan.** Era comportamiento **incidental** —el regex viejo sencillamente no los casaba— fijado en un test como si fuera la regla. Se actualizó explicando el porqué: `articles.article_number` guarda `"32 bis"`, y lo que de verdad importaba (que el bis no desplace al artículo simple) se conserva, porque van en claves distintas.
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
+### [T-392] 🔴 [ABIERTO 31/07] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
+
+- **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
+- **EL DIAGNÓSTICO, y no es una intuición: pasó TRES veces el mismo día.**
+  - Por la mañana, otra sesión **reabrió T-055, T-067 y T-125** tras una revisión independiente: estaban cerradas y su propio texto declaraba trabajo vivo.
+  - Al mediodía cerré **T-355** y una hora después la sustituyó un diseño mejor ([T-363]): había cerrado una solución provisional como si fuera el final.
+  - Y por la tarde cerré **T-363** —que decide **cuándo se le cobra a alguien**— con el código en `main`, **sin desplegar y sin verificar**. Lo cazó Manuel preguntando, no el sistema.
+  - **La causa común:** hoy `done` significa «he escrito el código» y se lee como «funciona». Entre esas dos cosas hay un push, un deploy y una comprobación, y ninguna es automática.
+- **LO QUE YA EXISTE Y NO HAY QUE REINVENTAR** (esto es un ciclo que encadena piezas sueltas, no un sistema nuevo):
+  - **claim + `lease_until`** (90 min, renovable con `heartbeat`) — una sesión muerta libera su tarea sola.
+  - **`pause --tras-deploy`** → `wake_on_deploy_sha` + superficie; el propio script de deploy llama a `backlog.cjs deployed <sha>` y la despierta.
+  - **`pause --hasta` / `snooze`** → `snooze_until`: el reloj la libera sola.
+  - **`due` (`due_at` + motivo)** → fecha límite, para lo que caduca (un plazo de convocatoria, un examen).
+  - **La puerta del `done`** (30/07): aborta si el `outcome` confiesa trabajo pendiente.
+  - **`blocked_by`** para dependencias entre tareas.
+  - **El latido de sesiones** ([T-296]): qué worktree está vivo.
+
+#### Los estados, y qué los mueve
+
+| estado | qué significa | quién lo mueve al siguiente |
+|---|---|---|
+| `abierta` | nadie la tiene | `claim` de una sesión |
+| `en_curso` | alguien trabaja (lease 90 min) | `heartbeat` la mantiene · el lease vencido la devuelve sola a `abierta` |
+| **`implementada`** | el código está en `main`. **Es lo que hoy hace `done`** | el propio comando, que **exige declarar cómo se verificará** |
+| **`verificando`** | esperando la condición que permite comprobarla | el **deploy** (`deployed <sha>`), el **reloj** (`snooze_until`/`due_at`) o un **dato** (que corra un cron, que crezca un corpus) |
+| **`lista_para_verificar`** | la condición se cumplió: hay que ir a mirar | una persona/sesión, con `archive --evidencia` |
+| **`archivada`** | verificada en producción, con evidencia escrita | — (terminal) |
+| `descartada` | no se hace, con motivo | — (terminal) |
+
+- **La transición que hoy falta es la del medio.** `implementada → verificando` tiene que ser **obligatoria**, no opcional: el comando pide **cómo** se comprueba (deploy de qué superficie, o fecha), y sin eso no deja avanzar. Es lo que ya hace `pause`, pero dejado a la voluntad de quien cierra — y hoy se demostró que esa voluntad falla.
+
+#### Las tres reglas que lo salvan de ser burocracia
+
+1. **Exención AUTOMÁTICA y comprobable.** Si los commits que mencionan ese `T-NNN` tocan **solo documentación o tests**, se archiva directo sin pasar por `verificando`. Lo decide el guardarraíl mirando los ficheros del commit, sin preguntar a nadie. Sin esto, las fichas de backlog —que son la mitad— arrastrarían una fase inútil y la gente aprendería a saltársela.
+2. **Archivar exige EVIDENCIA, no un «ok».** Igual que el `outcome` ya obliga a contar qué pasó: *«la primera factura salió el 30/10 por 35 €»*, no *«verificado»*. Se puede exigir por longitud y rechazando el vocabulario vacío (`ok`, `correcto`, `funciona`), que es el mismo criterio que ya usa la puerta del `done`.
+3. **Estar en `verificando` demasiado tiempo ES un hallazgo.** Hoy ya hay un cubo «⏰ listas para verificar» con **7 tareas**; si añadimos la fase sin vaciar ese cubo, cambiamos un problema por otro. Una tarea que lleve más de N días esperando verificación tiene que salir en el panel como sale cualquier otra señal.
+
+#### El escalón que hoy es medible y habría parado el fallo de T-363
+
+La puerta del `done` mira **el texto** del `outcome`. No mira lo que sí es comprobable: **que el código toque una superficie SERVIDA y que el `sha` vivo no lo incluya todavía**. Las dos cosas están al alcance —`git diff --name-only` de los commits de esa tarea, y el `sha` desplegado que ya consulta `deploy:pendiente`—. Con eso, cerrar T-363 habría sido imposible sin declarar antes su verificación.
+
+#### Para sesiones múltiples (que es donde esto se rompe)
+
+- **Todo el estado en RDS**, como ya está: un markdown no admite transiciones atómicas con 2-10 sesiones.
+- **Toda transición con `sid`** y su hora, para poder responder «quién movió esto y cuándo».
+- **Nada depende de que alguien se acuerde:** el deploy despierta, el reloj despierta, el lease caduca. La única acción humana obligatoria es **mirar y escribir la evidencia**.
+- **Y la cola de verificación se reparte igual que el trabajo**: quien coge una tarea `lista_para_verificar` la reclama, para que dos sesiones no verifiquen lo mismo.
+
+#### Migración (que no es lo divertido, pero sin esto no se puede desplegar)
+
+Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo aplica de la fecha de estreno en adelante. Y `done` debe seguir existiendo como alias durante un tiempo, porque hay sesiones vivas con el comando en la cabeza y runbooks que lo nombran.
+
+- **Riesgos, dichos antes de construir:** (a) que la fase nueva se convierta en un sello — lo mitiga la regla 2; (b) que el cubo de `verificando` se llene y nadie lo mire — lo mitiga la regla 3; (c) que la exención automática sea demasiado laxa y deje pasar código servido como si fuera documentación — hay que probarla contra los commits reales de esta semana antes de encenderla.
+- **Por dónde empezar (fases, y la primera ya aporta sola):** (1) el escalón medible del `done` —código servido + sha vivo—, que es pequeño y habría evitado el fallo de hoy; (2) el estado `verificando` explícito con su cubo y su vigía; (3) `archive --evidencia` y la migración.
+- **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), y la puerta del `done` del 30/07.
+
 ### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
 
 - **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
