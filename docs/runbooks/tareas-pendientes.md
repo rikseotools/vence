@@ -200,6 +200,39 @@ push. Un guardarraíl al que se aprende a rodear protege menos que uno que no ex
 nadie revisa. Núcleo puro en `lib/backlog/pushGuard.cjs`, con tests de las tres reglas y de que
 ninguna abre el hueco del olvido.
 
+## Saber EN VIVO si otra sesión va a lo mismo (T-400, 31/07)
+
+El claim reparte **ids de tarea**. El trabajo colisiona en **rutas de fichero**, y eso el claim no
+lo ve: [T-361] fue el mismo bug encontrado por dos sesiones el mismo día, [T-130] un quinto escritor
+de `seguimiento_url` sin ver los otros cuatro, y T-375/T-382 se cogieron por separado siendo los
+mismos ficheros. Con el claim funcionando perfectamente en los tres casos.
+
+Ahora **cada sesión publica su huella** —los ficheros que tiene sucios o por delante de
+`origin/main`— y lo hace el propio latido, sin que nadie tenga que anotar nada:
+
+```bash
+node scripts/sessions/latidos.cjs     # el mapa: quién pisa a quién, ahora mismo
+```
+
+Y **`claim` avisa al reclamar**, antes de que escribas una línea: cruza los ficheros que ya movió
+esa tarea (commits que la mencionan) y los que cita su ficha, contra la huella de las sesiones vivas.
+
+- **Se OBSERVA, no se declara.** Sale de git. Una intención anotada se pudre en cuanto el trabajo se
+  desvía —y se desvía siempre—; el estado observado no puede mentir.
+- **Avisa, nunca bloquea.** Dos sesiones pueden tocar el mismo fichero por motivos legítimos, y un
+  corte por solape se acabaría rodeando (la lección de T-375: el bloqueo imposible enseña a apagar
+  el guard entero).
+- **Si no puede ver a alguien, lo dice.** Una sesión con el latido viejo sale como *«no puedo
+  descartar solape»*, nunca como verde.
+- **Calibrado sobre los worktrees reales**, no a ojo: el único fichero que comparten 3+ sesiones es
+  el propio markdown del backlog, así que está excluido junto a `CLAUDE.md` y las rutas desechables.
+  El solape real es escaso → el aviso salta poco → se lee.
+
+> 🚨 **Y lo primero que encontró:** cuatro sesiones latiendo desde el **mismo checkout**. Eso es peor
+> que el solape y sale aparte: en worktrees separados el choque acaba en un conflicto de git, visible
+> y reversible; en el mismo directorio se sobrescriben en vivo y no hay nada que avise. Lo sano es un
+> worktree por sesión (`scripts/worktrees/crear-worktree.sh <slug>`).
+
 ## Guardarraíles (lo que evita que vuelva a pasar lo del 20/07)
 
 - **`__tests__/guardrails/backlogRegistry.guardrail.test.ts`** (corre en CI, sin BD): toda cabecera lleva id, los ids son únicos y con formato `T-NNN`, toda tarea viva declara prioridad, existe la sección `## Abiertas`, y **ningún título codifica un candado de fecha** (`NO COGER HASTA`, `MEDIR EL 11/08`, `⛔`, `⏱`) — eso va a `snooze_until`, que vence solo; un título no. Si alguien añade una tarea sin id, el CI se pone rojo — porque sin id **nadie puede cogerla**.

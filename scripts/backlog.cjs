@@ -127,6 +127,53 @@ function needSid() {
   if (!sid) { console.error('❌ sin session-id: usa --sid <ID> o crea un fichero .session-id'); process.exit(2); }
 }
 
+/**
+ * Al RECLAMAR, avisa si otra sesión viva ya está tocando los ficheros de esta tarea (T-400).
+ *
+ * El claim protege el id de la tarea; las sesiones chocan por los FICHEROS. Casos medidos: T-361
+ * (mismo bug encontrado por dos sesiones el mismo día), T-130 (quinto escritor de seguimiento_url
+ * sin ver los otros cuatro) y T-375/T-382, cogidas por separado y resultando los mismos ficheros.
+ *
+ * Se AVISA, nunca se bloquea: dos sesiones pueden tocar un fichero por motivos legítimos, y un
+ * corte por solape se acabaría rodeando (la lección de T-375, donde el bloqueo imposible enseñaba
+ * a apagar el guard entero). Y es fail-open total: esto no puede impedir coger una tarea.
+ */
+async function avisarSolape(s, id, ficha) {
+  try {
+    const { ficherosProbablesDeFicha, calcularSolapes, sesionesSinHuella } =
+      require(path.join(REPO, 'lib', 'sessions', 'solape.cjs'));
+    const { execFileSync } = require('child_process');
+    // Dos fuentes: lo que ya movieron los commits de esta tarea + las rutas citadas en su ficha
+    // (lo único que hay si la tarea es nueva).
+    let deCommits = [];
+    try {
+      deCommits = execFileSync('git', ['log', '--grep', id, '--name-only', '--format=', '-30'],
+        { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 6000 })
+        .split('\n').map((l) => l.trim()).filter(Boolean);
+    } catch { /* sin git no hay predicción por commits */ }
+    const probables = [...new Set([...deCommits, ...ficherosProbablesDeFicha(ficha)])];
+    if (!probables.length) return;
+
+    const sesiones = await s`
+      SELECT sid, slug, touched_files, last_signal_at FROM public.worktree_sessions`;
+    const solapes = calcularSolapes({ misFicheros: probables, sesiones, sid });
+    if (solapes.length) {
+      console.log(`\n⚠️  OJO — otra(s) sesión(es) VIVA(s) están tocando ficheros de ${id}:`);
+      for (const c of solapes) {
+        console.log(`   · ${c.slug} (señal hace ${c.minutos} min) — ${c.ficheros.length} fichero(s) en común:`);
+        for (const f of c.ficheros.slice(0, 6)) console.log(`       ${f}`);
+        if (c.ficheros.length > 6) console.log(`       …y ${c.ficheros.length - 6} más`);
+      }
+      console.log('   No bloquea: decide tú si coordinas, esperas o vais por sitios distintos.');
+    }
+    const ciegas = sesionesSinHuella(sesiones, sid);
+    if (ciegas.length && solapes.length === 0) {
+      // Decir "no hay solape" cuando hay sesiones que no publican huella sería un verde falso.
+      console.log(`\nℹ️  ${ciegas.length} sesión(es) viva(s) sin huella publicada: no puedo descartar solape con ellas.`);
+    }
+  } catch { /* fail-open: un aviso roto no puede impedir reclamar */ }
+}
+
 // Cuerpo de la ficha de una tarea: desde su cabecera `### [T-xxx]` hasta la siguiente `###`.
 // Lo usa `claim` para que reclamar imprima el detalle (reclamar = leer).
 function fichaBody(id) {
@@ -433,6 +480,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // bloquea de todos modos, pero esto lo hace innecesario en el flujo normal).
       const ficha = fichaBody(row.id);
       if (ficha) console.log(`\n${'─'.repeat(60)}\n${ficha}\n${'─'.repeat(60)}`);
+      await avisarSolape(s, row.id, ficha);
     }
 
     else if (cmd === 'heartbeat') {

@@ -50,7 +50,8 @@ async function main() {
   let filas
   try {
     filas = await s`
-      SELECT sid, slug, worktree_path, branch, last_signal_at, last_command, signals, first_signal_at
+      SELECT sid, slug, worktree_path, branch, last_signal_at, last_command, signals, first_signal_at,
+             touched_files, touched_at
         FROM worktree_sessions ${SLUG ? s`WHERE slug = ${SLUG}` : s``}
        ORDER BY last_signal_at DESC`
   } finally {
@@ -94,6 +95,54 @@ async function main() {
     const marca = d.existe ? '' : '  (el directorio ya no existe)'
     console.log(`  ${etiquetaEstado(d.estado).padEnd(16)} ${String(d.slug).padEnd(26)} ${d.antiguedad.padEnd(16)} ${d.procesos ? `${d.procesos} proc` : ''}${marca}`)
   }
+  // ── Solape entre sesiones VIVAS (T-400) ───────────────────────────────────────────────────
+  // El claim protege el id de la tarea; las sesiones chocan por los FICHEROS. Esto es el mapa:
+  // qué ficheros están tocando a la vez dos sesiones que siguen dando señal. Informa, no corta.
+  const { calcularSolapes, checkoutsCompartidos, sesionesSinHuella } = require(path.join(REPO, 'lib', 'sessions', 'solape.cjs'))
+
+  // Primero lo PEOR: varias sesiones en el MISMO directorio. Ahí no hay conflicto de git que
+  // avise — se sobrescriben en vivo. Es el acoplamiento de T-385.
+  const compartidos = checkoutsCompartidos(datos, ahora)
+  if (compartidos.length) {
+    console.log('\n🚨 VARIAS SESIONES EN EL MISMO CHECKOUT (se pisan en vivo, git no media):')
+    for (const g of compartidos) {
+      console.log(`     ${g.sids.length} sesiones en  ${g.worktree_path}`)
+      for (const x of g.sids) console.log(`         sid ${String(x).slice(0, 12)}…`)
+    }
+    console.log('     Lo sano es un worktree por sesión:  scripts/worktrees/crear-worktree.sh <slug>')
+  }
+
+  const mismoPath = new Map(datos.map((d) => [d.sid, d.worktree_path]))
+  const vivas = datos.filter((d) => Array.isArray(d.touched_files) && d.touched_files.length)
+  const choques = []
+  const yaVisto = new Set()
+  for (const a of vivas) {
+    for (const c of calcularSolapes({ misFicheros: a.touched_files, sesiones: datos, sid: a.sid, ahora })) {
+      // El mismo checkout ya se ha reportado arriba, y con más gravedad: no duplicar.
+      if (c.worktree_path && mismoPath.get(a.sid) === c.worktree_path) continue
+      const clave = [a.sid, c.sid].sort().join('|')
+      if (yaVisto.has(clave)) continue
+      yaVisto.add(clave)
+      choques.push({ a: a.slug, b: c.slug, ficheros: c.ficheros })
+    }
+  }
+  if (choques.length) {
+    console.log('\n⚠️  SESIONES TOCANDO LOS MISMOS FICHEROS (el claim no cubre esto):')
+    for (const c of choques) {
+      console.log(`     ${c.a}  ↔  ${c.b}   (${c.ficheros.length} fichero(s))`)
+      for (const f of c.ficheros.slice(0, 5)) console.log(`         ${f}`)
+      if (c.ficheros.length > 5) console.log(`         …y ${c.ficheros.length - 5} más`)
+    }
+    console.log('     Aviso, no bloqueo: coordinad o repartíos el terreno.')
+  } else if (vivas.length >= 2) {
+    console.log('\n✅ ninguna sesión viva pisa los ficheros de otra.')
+  }
+  const ciegas = sesionesSinHuella(datos, null, ahora)
+  if (ciegas.length) {
+    // Un "todo limpio" que no puede ver a media plantilla es un verde falso.
+    console.log(`ℹ️  ${ciegas.length} sesión(es) viva(s) sin huella publicada (latido viejo): no se puede descartar solape con ellas.`)
+  }
+
   const pares = nombresCasiIdenticos(datos.map((d) => d.slug).filter(Boolean))
   if (pares.length) {
     console.log('\n⚠️  nombres casi idénticos (equivocarse al cerrar borra el trabajo de la otra):')

@@ -69,6 +69,38 @@ function datosDelWorktree(base) {
   }
 }
 
+/**
+ * La HUELLA de la sesión: qué ficheros está tocando AHORA (T-400).
+ *
+ * Sale de git —sucio + lo que va por delante de `origin/main`— y no de lo que nadie declare: una
+ * intención anotada se pudre en cuanto el trabajo se desvía, el estado observado no. Con esto,
+ * `claim` y el listado de sesiones pueden avisar de que dos sesiones van a los mismos ficheros,
+ * que es como chocan de verdad (el claim solo protege el id de la tarea).
+ *
+ * Devuelve `null` —no `[]`— si git no contesta: quien lee tiene que poder distinguir «no toca
+ * nada» de «no lo sé». Y va con presupuesto de tiempo corto por la regla 3 de la cabecera: esto
+ * corre dentro de otros comandos y de un `pre-push`; más vale no publicar huella que colgar nada.
+ */
+function huellaDelWorktree(base) {
+  const { execFileSync } = require('child_process')
+  const git = (args) => execFileSync('git', args, { cwd: base, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 4000 }).trim()
+  try {
+    const sucios = git(['status', '--porcelain', '--untracked-files=no'])
+      .split('\n').filter(Boolean).map((l) => l.slice(3).trim())
+      // Los renombrados vienen como "viejo -> nuevo": interesa el destino.
+      .map((p) => (p.includes(' -> ') ? p.split(' -> ')[1] : p))
+    let sinPushear = []
+    try {
+      sinPushear = git(['diff', '--name-only', 'origin/main...HEAD']).split('\n').filter(Boolean)
+    } catch { /* sin upstream resuelto: con lo sucio basta */ }
+    const { huellaRelevante } = require(path.join(REPO, 'lib', 'sessions', 'solape.cjs'))
+    // Se guarda ya filtrada: lo que no es señal no merece viajar a la BD ni ocupar la fila.
+    return huellaRelevante([...sucios, ...sinPushear]).slice(0, 400)
+  } catch {
+    return null
+  }
+}
+
 async function cerrar(slug) {
   const u = url()
   if (!u) return
@@ -91,11 +123,13 @@ async function main() {
 
   const { worktree, branch } = datosDelWorktree(base)
   const slug = path.basename(worktree)
+  const huella = huellaDelWorktree(base)
   const s = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
   try {
     await s`
-      INSERT INTO worktree_sessions (sid, slug, worktree_path, branch, host, last_command)
-      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${os.hostname()}, ${arg('--cmd')})
+      INSERT INTO worktree_sessions (sid, slug, worktree_path, branch, host, last_command, touched_files, touched_at)
+      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${os.hostname()}, ${arg('--cmd')},
+              ${huella}, ${huella ? s`now()` : null})
       ON CONFLICT (sid) DO UPDATE
          SET last_signal_at = now(),
              last_command   = COALESCE(EXCLUDED.last_command, worktree_sessions.last_command),
@@ -104,8 +138,12 @@ async function main() {
              slug           = EXCLUDED.slug,
              worktree_path  = EXCLUDED.worktree_path,
              branch         = EXCLUDED.branch,
+             -- La huella solo se pisa si esta vez SÍ se pudo calcular: si git no contestó,
+             -- conservar la anterior es más útil que borrarla (touched_at delata su edad).
+             touched_files  = COALESCE(EXCLUDED.touched_files, worktree_sessions.touched_files),
+             touched_at     = COALESCE(EXCLUDED.touched_at,    worktree_sessions.touched_at),
              signals        = worktree_sessions.signals + 1`
-    if (VERBOSE) console.log(`✅ latido: ${sid} · ${slug} · ${branch || '?'}`)
+    if (VERBOSE) console.log(`✅ latido: ${sid} · ${slug} · ${branch || '?'} · huella: ${huella ? huella.length + ' fichero(s)' : 'no calculable'}`)
   } finally {
     try { await s.end({ timeout: 3 }) } catch {}
   }
