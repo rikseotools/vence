@@ -44,6 +44,19 @@ describe('disparaFinding (umbrales del detector article_no_coverage)', () => {
   it('no dispara en temas de menos de 4 artículos', () => {
     expect(disparaFinding({ n: 3, cubiertos: 0 })).toBe(false)
   })
+
+  // 31/07/2026 — el contador de TEMAS no es una métrica de progreso, y esto lo fija.
+  // Cubrir artículos de un tema mal cubierto lo empuja por encima del corte del 60% y lo hace
+  // ENTRAR en el finding, aunque el trabajo haya mejorado el tema. Medido en producción con 31
+  // preguntas sobre 10 artículos: 353 → 358 temas (8 entraron cruzando el 60% desde el 48-58%,
+  // 3 salieron) mientras los ARTÍCULOS huérfanos bajaban 3.540 → 3.530, exactamente los 10
+  // cubiertos. Quien mida la campaña por el número de temas concluirá que el trabajo no sirve.
+  it('CUBRIR artículos puede hacer que un tema ENTRE en el finding (no es un bug)', () => {
+    // 28/55 = 50,9% → por debajo del corte, es `low_coverage`: no cuenta.
+    expect(disparaFinding({ n: 55, cubiertos: 28 })).toBe(false)
+    // se cubren 6 artículos → 34/55 = 61,8%, cruza el 60% y aún le quedan 21 huecos: entra.
+    expect(disparaFinding({ n: 55, cubiertos: 34 })).toBe(true)
+  })
 })
 
 describe('rankingHuerfanos (prioriza por ALCANCE cross-oposición)', () => {

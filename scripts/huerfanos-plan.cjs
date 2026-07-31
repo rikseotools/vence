@@ -160,9 +160,21 @@ const tabla = (filas) => { console.table(filas); return filas }
   const ranking = plan.marcaEnCurso(plan.rankingHuerfanos(filas, { demanda }), enCurso)
   const deuda = plan.rankingHuerfanos(filas, { soloQueDisparan: false })
   console.log('\n=== CAMPAÑA article_no_coverage (T-115) ===\n')
-  console.log(`  temas que disparan el finding: ${disparan.length}`)
+  console.log(`  temas que disparan el finding: ${disparan.length}   ⚠️ NO es una métrica de progreso (ver abajo)`)
   console.log(`  oposiciones afectadas:         ${new Set(disparan.map((t) => t.pt)).size}`)
   console.log(`  artículos huérfanos distintos: ${ranking.length}  ·  deuda real (incl. invisibles): ${deuda.length}`)
+  // El contador de TEMAS puede SUBIR al cubrir artículos, y no es un fallo: el detector solo
+  // cuenta el tema si su cobertura llega al 60% (por debajo es `low_coverage`, otro cubo). Cubrir
+  // artículos de un tema mal cubierto lo EMPUJA por encima de ese corte, y si aún le quedan ≥4
+  // huecos entra en este contador. Medido el 31/07/2026 con 31 preguntas sobre 10 artículos:
+  // 353 → 358 temas (8 entraron, todos cruzando el 60% desde el 48-58%; 3 salieron), mientras
+  // los ARTÍCULOS huérfanos bajaban 3.540 → 3.530, exactamente los 10 cubiertos.
+  // Quien mida la campaña por el número de temas concluirá que el trabajo no sirve.
+  console.log(
+    '\n  ⚠️ Para medir progreso mira los ARTÍCULOS huérfanos, que solo bajan. El contador de TEMAS\n' +
+    '     puede subir al cubrir: el detector exige ≥60% de cobertura para contar un tema, así que\n' +
+    '     mejorar un tema mal cubierto lo hace CRUZAR ese corte y entrar aquí desde `low_coverage`.',
+  )
 
   // Por ley: nº de huérfanos, a cuánta gente llegan y si otra sesión la está
   // trabajando. Las tres cosas juntas son las que evitan elegir mal.
