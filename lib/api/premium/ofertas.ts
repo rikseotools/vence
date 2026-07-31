@@ -162,3 +162,31 @@ export async function marcarOfertaCanjeada(userId: string, priceId: string): Pro
     WHERE user_id = ${userId} AND stripe_price_id = ${priceId} AND redeemed_at IS NULL
   `)
 }
+
+/**
+ * ¿Le queda suscripción viva a esta persona, y hasta cuándo? (T-355, 31/07/2026)
+ *
+ * El botón «Continuar con mi precio» se le enseña a todo el que no puede renovar en su cuenta, y
+ * eso incluye a las **186 suscripciones que siguen ACTIVAS marcadas «no renueva»** y que se apagan
+ * solas entre ahora y enero de 2027. Si una de esas personas contrata hoy, **paga las dos** hasta
+ * que la vieja caduque: de días a meses (79 son trimestrales y 73 semestrales).
+ *
+ * Se lee de `user_subscriptions` a propósito: mientras no contrate la nueva, esa fila **es** la
+ * antigua. En cuanto contrata, se sobrescribe con la nueva — y entonces este dato ya no sirve para
+ * saber qué tenía antes (el gotcha que documenta T-355, y que costó un falso positivo al medirlo).
+ */
+export async function premiumVigenteHasta(userId: string): Promise<Date | null> {
+  const db = getPoolerDb() ?? getDb()
+  const res = await db.execute(sql`
+    SELECT max(current_period_end) AS hasta
+      FROM user_subscriptions
+     WHERE user_id = ${userId}::uuid
+       AND status = 'active'
+       AND current_period_end > now()`)
+  // El driver devuelve `{rows}` en unos casos y un array pelado en otros (mismo patrón que
+  // `filasDe` en ofertaHeredada): se normaliza aquí en vez de suponer una forma.
+  const crudo = res as unknown
+  const filas = (Array.isArray(crudo) ? crudo : ((crudo as { rows?: unknown[] })?.rows ?? [])) as Array<Record<string, unknown>>
+  const hasta = filas[0]?.hasta
+  return hasta ? new Date(String(hasta)) : null
+}

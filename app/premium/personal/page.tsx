@@ -16,6 +16,12 @@ import { apiGet } from '@/lib/api/client'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { trackIntent, confirmIntent, emitClientEvent } from '@/lib/observability/client'
 
+interface AvisoVista {
+  solapa: boolean
+  dias: number
+  texto: string
+}
+
 interface OfertaVista {
   priceId: string
   intervalo: string
@@ -28,6 +34,7 @@ interface OfertaVista {
 export default function PrecioPersonalPage() {
   const { user, loading: authLoading } = useAuth() as { user: { id: string; email: string } | null; loading: boolean }
   const [ofertas, setOfertas] = useState<OfertaVista[]>([])
+  const [aviso, setAviso] = useState<AvisoVista | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [pagando, setPagando] = useState(false)
@@ -45,12 +52,15 @@ export default function PrecioPersonalPage() {
         // `apiGet`, no `apiFetch`: la firma de `apiFetch` es (url, body, options) y aquí no
         // hay cuerpo que mandar, así que las opciones acababan en la posición del cuerpo y
         // la petición salía como POST (el 405 que tuvo bloqueada a una usuaria tres días).
-        const data = await apiGet<{ success: boolean; ofertas?: OfertaVista[]; oferta: OfertaVista | null }>(
+        const data = await apiGet<{ success: boolean; ofertas?: OfertaVista[]; oferta: OfertaVista | null; aviso?: AvisoVista }>(
           '/api/v2/premium/mi-oferta',
           { retries: 2, headers },
         )
         // `ofertas` es lo actual; `oferta` queda como respaldo por si responde un servidor viejo.
-        if (vivo) setOfertas(data.ofertas ?? (data.oferta ? [data.oferta] : []))
+        if (vivo) {
+          setOfertas(data.ofertas ?? (data.oferta ? [data.oferta] : []))
+          setAviso(data.aviso ?? null)
+        }
       } catch {
         if (vivo) setError('No hemos podido cargar tu precio. Vuelve a intentarlo en un momento.')
       } finally {
@@ -149,6 +159,15 @@ export default function PrecioPersonalPage() {
       <p className="text-gray-600 dark:text-gray-300">
         Por llevar tiempo con nosotros mantienes tu precio. Elige el plan que prefieras.
       </p>
+
+      {/* T-355: si todavía le queda suscripción viva, decírselo ANTES de que pague. No se le
+          bloquea el botón a propósito: hay quien prefiere contratar ya para no arriesgarse a
+          quedarse sin servicio. Se le da la fecha y decide él. */}
+      {aviso?.solapa && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm text-amber-900 dark:text-amber-200">
+          {aviso.texto}
+        </div>
+      )}
 
       {ofertas.map((oferta) => (
         <div key={oferta.priceId} className="mt-6 rounded-2xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/40 p-6 text-center">
