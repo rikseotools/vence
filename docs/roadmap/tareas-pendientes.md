@@ -2356,6 +2356,93 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-273] ✅ 🟠 [HECHA 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
+
+- **🔬 30/07 (madrugada del 31) — VERIFICADO TRAS EL DEPLOY DE FRONTEND (task-def 584). Dos de las cuatro comprobaciones pasan; las otras dos NO SE PUEDEN OBSERVAR, y el motivo importa.**
+  - **(a) ✅ `auxiliar-administrativo-estado` T109 ya no da 413.** Petición real contra producción con la cuenta de TEST (`SMOKE_USER_ID`, premium), canjeando la cookie por Bearer igual que hace la app: **HTTP 200, `application/pdf`, 1.133.348 bytes**. Ese tema es justo el que motivó la ficha: los **5 únicos rechazos `too_large` del histórico son todos él** (22 y 24/07, 485.084 chars).
+  - **(d) ✅ Se sirve de S3 sin renderizar.** El evento `temario_pdf_served` de esa petición: `served:"s3"`, `cpuMs:0`, `parte:null`.
+  - **(b) ❌ `temario_pdf_encolado_por_usuario` NO ha ocurrido nunca**, y (c) **de 618 `temario_pdf_pregenerated` NINGUNO lleva `partes`**; `temario_pdf_partes_ofrecidas`, cero. **No es que fallen: es que no llegan a ejecutarse.** La ruta mira la **caché de S3 PRIMERO**; el camino de auto-curación (encolar) y el de ofrecer partes solo entran en un **fallo de caché** de un tema que no cabe síncrono, y el worker pregenera todo, así que ese hueco ya no se da.
+  - **⚠️ Lo que esto destapa, y es decisión de quien la construyó:** T109 tiene **485.084 chars, por encima de `PDF_MAX_CHARS` (400.000)**, y aun así el worker lo pregeneró **entero, en un solo fichero de 1,1 MB** — no lo troceó. Offline no hay límite de 60 s del ALB, así que generar entero funciona y el opositor recibe su PDF. Pero significa que **el troceado, que es el objetivo de la ficha («si el PDF es muy grande trocearlo y pintarlo por partes»), no se ha ejercitado ni una vez en producción**. Antes de darla por hecha hay que decidir si eso es correcto (el troceado como red de seguridad que hoy no hace falta) o si el criterio de partir debería mirar el PDF pregenerado y no solo el camino síncrono.
+  - **Cómo reproducir la verificación:** cuenta de TEST, nunca un cliente real (`resolverIdentidad`/`resolverAuthSecret` de `lib/sim/`), `GET /api/auth/token` con la cookie forjada → Bearer → `GET /api/temario/<oposicion>/<tema>/pdf`.
+
+> **🎯 OBJETIVO COMPLETO, DECIDIDO POR MANUEL (30/07/2026). Esto es lo que hay que construir, no un piloto.**
+>
+> Textualmente: *«debe estar para todas las oposiciones; si un opositor de otra oposición quiere el PDF se debería poder descargar. Cuando un tema cambia, el worker se debería poner a trabajar para crear la nueva versión, y si el PDF es muy grande trocearlo y al usuario dárselo y pintarlo troceado para que lo descargue por partes.»*
+>
+> **Se descartó el piloto de una sola oposición.** Ningún opositor debe quedarse sin su tema por la oposición que estudie.
+>
+> ### Lo que YA está construido y verificado (30/07) — no rehacerlo
+>
+> | Pieza | Estado | Dónde |
+> |---|---|---|
+> | Partir el tema por estructura | ✅ hecho | `lib/temario/pdf/planPartes.cjs` |
+> | La ruta sirve partes | ✅ hecho, tras el interruptor | `app/api/temario/[oposicion]/[topic]/pdf/route.ts` |
+> | **La interfaz descarga TODAS las partes con un clic** | ✅ hecho | `components/TopicPrintButton.tsx` (`estado === 'disponible_por_partes'`). El usuario NO elige parte por parte |
+> | El interruptor admite «todas» | ✅ hecho | `FEATURE_TEMARIO_PDF_PARTES_SCOPE` vacío o `all` = todas (`lib/temario/pdf/flagPartes.ts`) |
+> | **Regenerar al cambiar el tema** | ✅ hecho, y mejor de lo que parece | La clave de S3 lleva un hash del contenido: si cambia el articulado o el `topic_scope`, cambia la clave → *miss* → se regenera. **No hacen falta hooks de invalidación: el hash ES la versión** (`lib/temario/pdf/pdfCache.ts`). Y cada PARTE se cachea por el hash de SU propio contenido, así que cambiar un capítulo no invalida las demás |
+>
+> ### Lo que FALTA (esto es el trabajo)
+>
+> 1. **El worker NO sabe trocear.** Verificado: `scripts/pdf-worker.ts` no menciona partes por ningún lado — de madrugada genera siempre el PDF ENTERO. El troceado vive solo en la ruta que atiende en directo. Mientras siga así, los temas grandes se trocean **en la web, con el usuario esperando**, en vez de estar ya listos en S3.
+> 2. **El 413 no encola nada.** Cuando un tema no cabe, se devuelve el error y ahí muere: es la única señal de que un premium REAL quería ESE tema, y se tira. Ver [T-159], donde esto está acordado como una de las tres piezas que van juntas.
+> 3. **Encender el interruptor para todas** (`FEATURE_TEMARIO_PDF_PARTES=true` + `_SCOPE=all`). Es configuración en el task def + despliegue, no código.
+>
+> ### ⚠️ EL ORDEN IMPORTA, y no es el intuitivo
+>
+> **Encender el interruptor ANTES de que el worker sepa trocear empeora el incidente de [T-270].** Hoy un tema demasiado grande devuelve 413 sin consumir CPU; con el interruptor puesto y sin worker, ese mismo tema se **trocea y renderiza dentro de la web** — más trabajo pesado en el servidor que atiende a todos, justo lo que tumbó la plataforma el 29/07. El freno del semáforo evita la caída, pero el usuario espera igual.
+>
+> **Orden correcto:** (1) el worker aprende a trocear y deja las partes en S3 → (2) el 413 encola → (3) se enciende para todas, y entonces las partes ya están hechas y se sirven al instante.
+>
+> ### Lo que NO hay que confundir
+>
+> - **Esto NO arregla el incidente del 29/07** ([T-270]): aquello fueron 36 PDFs MEDIANOS, ninguno de más de 154 páginas. Partir los monstruos no lo habría evitado. Se sostiene solo, por producto.
+> - **La espera del usuario la decide [T-159]**, no esta ficha: mientras la cola sea por orden de llegada, una petición en directo se pone detrás del lote nocturno (hasta 20 min) y, si su tema ya estaba encolado, **se descarta en silencio**.
+> - **Contexto de infraestructura:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — qué máquinas hay y por qué existe cada una.
+- **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
+- **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
+
+  | páginas | temas | peor |
+  |---|---|---|
+  | ≤60 | **120** (70%) | 50 |
+  | 61-120 | 24 | 116 |
+  | 121-250 | 13 | 245 |
+  | 251-400 | 6 | 397 |
+  | **>400** | **8** | **651** |
+
+  Solo **14 temas** pasan de 250 páginas. Eso es todo el alcance.
+- **⚠️ NO es el arreglo del incidente del 29/07 ([T-270]) y no debe venderse como tal.** Aquello fueron **36 PDFs medianos** por la ruta pública, **ninguno de más de 154 páginas**; partir los monstruos no lo habría evitado. Los de 487-651 páginas salen de `/api/admin/temario/pregenerate` **de madrugada** y se sirven de caché S3. Confundirlos repetiría el error de [T-254]: un arreglo correcto apuntando a la causa equivocada. Esta tarea **se sostiene sola, por producto**.
+- **Por qué se sostiene sola:** un PDF de 651 páginas es mal material de estudio aunque la infraestructura lo aguantara. Partirlo no es una concesión técnica.
+- **Cómo — el punto clave es CÓMO se parte:**
+  1. **Por ESTRUCTURA, nunca por número de páginas.** Cortar en la página 100 cae a mitad de un artículo y en contenido legal eso no vale. El corte natural es por **ley o bloque**, que además es por donde el opositor navega: *«Parte 2 de 4 — Ley 39/2015 (arts. 1-53)»*. El modelo ya lleva lo necesario (`buildTopicPdfModel`, `getLawSectionNames`).
+  2. **⚠️ Las fronteras tienen que ser ESTABLES: la caché es content-addressed** (`pdfCache.ts`). Si se parte por páginas, cualquier cambio de contenido mueve todos los cortes y **invalida la caché entera**; partiendo por ley, un cambio en una ley solo invalida su parte. Esto no es un detalle de implementación: decide el diseño.
+  3. **Decir el tamaño SIEMPRE, no solo cuando es enorme.** «Tema 29 · 651 páginas · 4 partes» en el botón es útil a cualquier tamaño y no cuesta nada. Enseñarlo solo en los monstruos convierte un dato en una disculpa.
+  4. **Sustituir el 413** por la descarga por partes. El techo (`PDF_MAX_CHARS`, `PDF_MAX_ARTICLE_CHARS` en `topicPdfModel.ts`) deja de ser un muro y pasa a ser el disparador del troceado.
+- **✅ PILOTO CONSTRUIDO (29/07) — apagado por defecto, y elegido para que NO PUEDA empeorar nada.**
+  - **Alcance del piloto: SOLO donde hoy hay un 413.** Quien hoy descarga su PDF lo sigue recibiendo idéntico, con el flag encendido o apagado — el camino de generación normal no se toca. El troceado solo entra donde el opositor ahora mismo **no recibe nada** y el botón le manda a imprimir.
+  - **Cómo se parte** (`lib/temario/pdf/planPartes.cjs`, 12 tests): por **bloque de contenido** (ley o contenedor), nunca por páginas; y si un bloque no cabe ni él solo, por **rangos de artículos consecutivos**. Nunca parte un artículo por la mitad — un artículo cortado no sirve para estudiar, así que uno gigante va en su propia parte. El techo es `PDF_MAX_CHARS`, que ya existe y ya significa «esto cabe en una generación síncrona»: no se inventa una constante nueva que nadie sabría recalibrar.
+  - **Las fronteras son estables donde importa:** el recorte se hace ANTES del hash, así que **cada parte se cachea por el hash de SU propio contenido**. Un cambio dentro de un bloque invalida solo su parte, no el tema entero.
+  - **Simulado contra el caso real que hoy da 413** (`auxiliar-administrativo-estado` T109, 485.084 chars): sale en **2 partes** — *«Excel 365 (arts. 10-80)»* (387.861) y *«Excel 365 (art. 90) + Excel 365 Escritorio»* (97.223), las dos bajo el techo.
+  - **El cliente también, porque si no era una chapuza:** el botón hacía `res.blob()` en cualquier 200, así que el JSON de partes se habría descargado como un `.pdf` ilegible — peor que el 413. Ahora distingue por `content-type` y **descarga todas las partes seguidas**, manteniendo la promesa de un clic. Con test que fija justo ese fallo. De paso, el mock de `fetch` del test existente no traía `headers` (un `Response` real siempre los trae) y hacía pasar un camino que en producción no existe.
+  - **Cómo se enciende** (SSM runtime, sin redeploy para revertir):
+    ```
+    FEATURE_TEMARIO_PDF_PARTES=true
+    FEATURE_TEMARIO_PDF_PARTES_SCOPE=auxiliar_administrativo_estado   # el piloto
+    # …validado → SCOPE=all
+    ```
+  - **Cómo se mide:** evento `temario_pdf_partes_ofrecidas` (con `partes`, `chars`, `userId`) y, en el cliente, `download_por_partes`. Antes de ampliar: comprobar que hay descargas completas y **ninguna** caída a `window.print()`.
+  - **⏭️ Pendiente antes de encender:** deploy de frontend (el código está en `main` con el flag OFF) y decidir con Manuel si el piloto arranca por `auxiliar_administrativo_estado`, que es la única oposición con rechazos medidos.
+- **Efecto secundario bueno (no es el objetivo):** cada parte es barata y se cachea por separado, así que también alivia el coste de render. Pero el arreglo del incidente es encolar al worker ([T-270]), no esto.
+- **Relacionada:** [T-270] (el incidente, independiente), [T-086] (pre-generación), [T-159] (cola de PDFs).
+
+- **✅ VERIFICADO EN PRODUCCIÓN (31/07).** Sobre un usuario premium real y un tema partido de verdad: `auxiliar-administrativo-madrid-2027` tema 18, 485.303 caracteres (no el T109 que decía la ficha, pero es el mismo mecanismo). Cadena entera trazada en `observable_events` a las 19:46 UTC:
+  - `temario_pdf_partes_ofrecidas` con `partes: 2` → **ya no devuelve 413**, ofrece la lista.
+  - `temario_pdf_encolado_por_usuario` con `nuevo: true`.
+  - Las **DOS partes servidas desde S3**: `temario_pdf_served` con `parte: "1/2"` y `"2/2"`, `served: "s3"`, `renderMs: 0`, `cpuMs: 0`.
+  - **Eso último es la prueba que importaba:** que las partes se sirvan de S3 con render 0 significa que el worker las subió con **las mismas claves que la ruta busca**, que era el fallo silencioso que el test clavaba (si no coincidieran, la web volvería a renderizar en línea y el defecto sería invisible).
+  - **Matiz honesto:** no existe ninguna señal `temario_pdf_pregenerated` con campo `partes:N` —la de ese tema sale con `outcome: "skipped"` y es la del PDF entero—. Pero las partes existen y se sirven, que es evidencia más fuerte que el nombre de la señal.
+  - El criterio (a) tal cual estaba escrito **no se puede comprobar sin sesión**: la ruta devuelve `403 premium_required` a un `curl` anónimo. Se verificó por las señales, que además prueban que lo usó una persona de verdad.
+
+
 ### [T-441] ✅ 🟠 [HECHA 31/07] El CLI anunciaba las tareas SIN COMPROBAR como «se cierran rápido»
 
 - **ORIGEN.** Manuel cazó una imprecisión mía: dije *«cuando termine el deploy se cerrarán solas 7 tareas»* y preguntó *«¿realmente se cierran solas? ¿no se verifican y luego se archivan?»*. **Tenía razón: el deploy solo DESPIERTA.** Pone `wake_on_deploy_sha = NULL` y **no toca el `status`** — siguen en `open`. Verificado en el código.
@@ -4566,84 +4653,6 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Tamaño real:** 0,3% no es una campaña, es un goteo. Pero es **determinista, barato y sin falsos positivos** —no hace falta IA ni criterio—, así que encaja como hallazgo del sweep nocturno (`health-sweep.cjs`) con su chip de runbook, no como proyecto.
 - **Antes de arreglar, averiguar POR DÓNDE se cuelan:** ¿es el fetcher que arma el test, la MV de conteos, un `topic_scope` editado después de cachear, o preguntas multi-artículo cuyo `primary_article_id` no es el escopado? La cifra dice que pasa; no dice por dónde. **Sin eso, arreglar es adivinar.**
 - **Origen:** caracterizando el 77% de impugnaciones aceptadas que ningún detector vio venir ([T-207]). La familia «temario» era la mayor identificable (14%), y esta es la parte de ella que se puede comprobar a máquina.
-
-### [T-273] 🟠 [ABIERTO 29/07] Temas enormes: partir el PDF por ESTRUCTURA en varias partes, y decir el tamaño antes de descargar
-
-- **🔬 30/07 (madrugada del 31) — VERIFICADO TRAS EL DEPLOY DE FRONTEND (task-def 584). Dos de las cuatro comprobaciones pasan; las otras dos NO SE PUEDEN OBSERVAR, y el motivo importa.**
-  - **(a) ✅ `auxiliar-administrativo-estado` T109 ya no da 413.** Petición real contra producción con la cuenta de TEST (`SMOKE_USER_ID`, premium), canjeando la cookie por Bearer igual que hace la app: **HTTP 200, `application/pdf`, 1.133.348 bytes**. Ese tema es justo el que motivó la ficha: los **5 únicos rechazos `too_large` del histórico son todos él** (22 y 24/07, 485.084 chars).
-  - **(d) ✅ Se sirve de S3 sin renderizar.** El evento `temario_pdf_served` de esa petición: `served:"s3"`, `cpuMs:0`, `parte:null`.
-  - **(b) ❌ `temario_pdf_encolado_por_usuario` NO ha ocurrido nunca**, y (c) **de 618 `temario_pdf_pregenerated` NINGUNO lleva `partes`**; `temario_pdf_partes_ofrecidas`, cero. **No es que fallen: es que no llegan a ejecutarse.** La ruta mira la **caché de S3 PRIMERO**; el camino de auto-curación (encolar) y el de ofrecer partes solo entran en un **fallo de caché** de un tema que no cabe síncrono, y el worker pregenera todo, así que ese hueco ya no se da.
-  - **⚠️ Lo que esto destapa, y es decisión de quien la construyó:** T109 tiene **485.084 chars, por encima de `PDF_MAX_CHARS` (400.000)**, y aun así el worker lo pregeneró **entero, en un solo fichero de 1,1 MB** — no lo troceó. Offline no hay límite de 60 s del ALB, así que generar entero funciona y el opositor recibe su PDF. Pero significa que **el troceado, que es el objetivo de la ficha («si el PDF es muy grande trocearlo y pintarlo por partes»), no se ha ejercitado ni una vez en producción**. Antes de darla por hecha hay que decidir si eso es correcto (el troceado como red de seguridad que hoy no hace falta) o si el criterio de partir debería mirar el PDF pregenerado y no solo el camino síncrono.
-  - **Cómo reproducir la verificación:** cuenta de TEST, nunca un cliente real (`resolverIdentidad`/`resolverAuthSecret` de `lib/sim/`), `GET /api/auth/token` con la cookie forjada → Bearer → `GET /api/temario/<oposicion>/<tema>/pdf`.
-
-> **🎯 OBJETIVO COMPLETO, DECIDIDO POR MANUEL (30/07/2026). Esto es lo que hay que construir, no un piloto.**
->
-> Textualmente: *«debe estar para todas las oposiciones; si un opositor de otra oposición quiere el PDF se debería poder descargar. Cuando un tema cambia, el worker se debería poner a trabajar para crear la nueva versión, y si el PDF es muy grande trocearlo y al usuario dárselo y pintarlo troceado para que lo descargue por partes.»*
->
-> **Se descartó el piloto de una sola oposición.** Ningún opositor debe quedarse sin su tema por la oposición que estudie.
->
-> ### Lo que YA está construido y verificado (30/07) — no rehacerlo
->
-> | Pieza | Estado | Dónde |
-> |---|---|---|
-> | Partir el tema por estructura | ✅ hecho | `lib/temario/pdf/planPartes.cjs` |
-> | La ruta sirve partes | ✅ hecho, tras el interruptor | `app/api/temario/[oposicion]/[topic]/pdf/route.ts` |
-> | **La interfaz descarga TODAS las partes con un clic** | ✅ hecho | `components/TopicPrintButton.tsx` (`estado === 'disponible_por_partes'`). El usuario NO elige parte por parte |
-> | El interruptor admite «todas» | ✅ hecho | `FEATURE_TEMARIO_PDF_PARTES_SCOPE` vacío o `all` = todas (`lib/temario/pdf/flagPartes.ts`) |
-> | **Regenerar al cambiar el tema** | ✅ hecho, y mejor de lo que parece | La clave de S3 lleva un hash del contenido: si cambia el articulado o el `topic_scope`, cambia la clave → *miss* → se regenera. **No hacen falta hooks de invalidación: el hash ES la versión** (`lib/temario/pdf/pdfCache.ts`). Y cada PARTE se cachea por el hash de SU propio contenido, así que cambiar un capítulo no invalida las demás |
->
-> ### Lo que FALTA (esto es el trabajo)
->
-> 1. **El worker NO sabe trocear.** Verificado: `scripts/pdf-worker.ts` no menciona partes por ningún lado — de madrugada genera siempre el PDF ENTERO. El troceado vive solo en la ruta que atiende en directo. Mientras siga así, los temas grandes se trocean **en la web, con el usuario esperando**, en vez de estar ya listos en S3.
-> 2. **El 413 no encola nada.** Cuando un tema no cabe, se devuelve el error y ahí muere: es la única señal de que un premium REAL quería ESE tema, y se tira. Ver [T-159], donde esto está acordado como una de las tres piezas que van juntas.
-> 3. **Encender el interruptor para todas** (`FEATURE_TEMARIO_PDF_PARTES=true` + `_SCOPE=all`). Es configuración en el task def + despliegue, no código.
->
-> ### ⚠️ EL ORDEN IMPORTA, y no es el intuitivo
->
-> **Encender el interruptor ANTES de que el worker sepa trocear empeora el incidente de [T-270].** Hoy un tema demasiado grande devuelve 413 sin consumir CPU; con el interruptor puesto y sin worker, ese mismo tema se **trocea y renderiza dentro de la web** — más trabajo pesado en el servidor que atiende a todos, justo lo que tumbó la plataforma el 29/07. El freno del semáforo evita la caída, pero el usuario espera igual.
->
-> **Orden correcto:** (1) el worker aprende a trocear y deja las partes en S3 → (2) el 413 encola → (3) se enciende para todas, y entonces las partes ya están hechas y se sirven al instante.
->
-> ### Lo que NO hay que confundir
->
-> - **Esto NO arregla el incidente del 29/07** ([T-270]): aquello fueron 36 PDFs MEDIANOS, ninguno de más de 154 páginas. Partir los monstruos no lo habría evitado. Se sostiene solo, por producto.
-> - **La espera del usuario la decide [T-159]**, no esta ficha: mientras la cola sea por orden de llegada, una petición en directo se pone detrás del lote nocturno (hasta 20 min) y, si su tema ya estaba encolado, **se descarta en silencio**.
-> - **Contexto de infraestructura:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — qué máquinas hay y por qué existe cada una.
-- **Qué ve el usuario hoy:** en los temas más grandes, o se descarga un PDF de **651 páginas** —que pesa, tarda en abrir en el móvil y es imposible de navegar— o directamente **no se descarga nada**: `auxiliar-administrativo-estado` tema **109** devuelve **413 `tema_demasiado_grande`** y el botón cae a «imprimir». Medido: **5 intentos en 30 días**, usuarios que se quedan sin material y sin alternativa.
-- **Tamaño real del problema — está ACOTADO, no es una campaña.** Temas DISTINTOS por tamaño (30 días, 171 medidos):
-
-  | páginas | temas | peor |
-  |---|---|---|
-  | ≤60 | **120** (70%) | 50 |
-  | 61-120 | 24 | 116 |
-  | 121-250 | 13 | 245 |
-  | 251-400 | 6 | 397 |
-  | **>400** | **8** | **651** |
-
-  Solo **14 temas** pasan de 250 páginas. Eso es todo el alcance.
-- **⚠️ NO es el arreglo del incidente del 29/07 ([T-270]) y no debe venderse como tal.** Aquello fueron **36 PDFs medianos** por la ruta pública, **ninguno de más de 154 páginas**; partir los monstruos no lo habría evitado. Los de 487-651 páginas salen de `/api/admin/temario/pregenerate` **de madrugada** y se sirven de caché S3. Confundirlos repetiría el error de [T-254]: un arreglo correcto apuntando a la causa equivocada. Esta tarea **se sostiene sola, por producto**.
-- **Por qué se sostiene sola:** un PDF de 651 páginas es mal material de estudio aunque la infraestructura lo aguantara. Partirlo no es una concesión técnica.
-- **Cómo — el punto clave es CÓMO se parte:**
-  1. **Por ESTRUCTURA, nunca por número de páginas.** Cortar en la página 100 cae a mitad de un artículo y en contenido legal eso no vale. El corte natural es por **ley o bloque**, que además es por donde el opositor navega: *«Parte 2 de 4 — Ley 39/2015 (arts. 1-53)»*. El modelo ya lleva lo necesario (`buildTopicPdfModel`, `getLawSectionNames`).
-  2. **⚠️ Las fronteras tienen que ser ESTABLES: la caché es content-addressed** (`pdfCache.ts`). Si se parte por páginas, cualquier cambio de contenido mueve todos los cortes y **invalida la caché entera**; partiendo por ley, un cambio en una ley solo invalida su parte. Esto no es un detalle de implementación: decide el diseño.
-  3. **Decir el tamaño SIEMPRE, no solo cuando es enorme.** «Tema 29 · 651 páginas · 4 partes» en el botón es útil a cualquier tamaño y no cuesta nada. Enseñarlo solo en los monstruos convierte un dato en una disculpa.
-  4. **Sustituir el 413** por la descarga por partes. El techo (`PDF_MAX_CHARS`, `PDF_MAX_ARTICLE_CHARS` en `topicPdfModel.ts`) deja de ser un muro y pasa a ser el disparador del troceado.
-- **✅ PILOTO CONSTRUIDO (29/07) — apagado por defecto, y elegido para que NO PUEDA empeorar nada.**
-  - **Alcance del piloto: SOLO donde hoy hay un 413.** Quien hoy descarga su PDF lo sigue recibiendo idéntico, con el flag encendido o apagado — el camino de generación normal no se toca. El troceado solo entra donde el opositor ahora mismo **no recibe nada** y el botón le manda a imprimir.
-  - **Cómo se parte** (`lib/temario/pdf/planPartes.cjs`, 12 tests): por **bloque de contenido** (ley o contenedor), nunca por páginas; y si un bloque no cabe ni él solo, por **rangos de artículos consecutivos**. Nunca parte un artículo por la mitad — un artículo cortado no sirve para estudiar, así que uno gigante va en su propia parte. El techo es `PDF_MAX_CHARS`, que ya existe y ya significa «esto cabe en una generación síncrona»: no se inventa una constante nueva que nadie sabría recalibrar.
-  - **Las fronteras son estables donde importa:** el recorte se hace ANTES del hash, así que **cada parte se cachea por el hash de SU propio contenido**. Un cambio dentro de un bloque invalida solo su parte, no el tema entero.
-  - **Simulado contra el caso real que hoy da 413** (`auxiliar-administrativo-estado` T109, 485.084 chars): sale en **2 partes** — *«Excel 365 (arts. 10-80)»* (387.861) y *«Excel 365 (art. 90) + Excel 365 Escritorio»* (97.223), las dos bajo el techo.
-  - **El cliente también, porque si no era una chapuza:** el botón hacía `res.blob()` en cualquier 200, así que el JSON de partes se habría descargado como un `.pdf` ilegible — peor que el 413. Ahora distingue por `content-type` y **descarga todas las partes seguidas**, manteniendo la promesa de un clic. Con test que fija justo ese fallo. De paso, el mock de `fetch` del test existente no traía `headers` (un `Response` real siempre los trae) y hacía pasar un camino que en producción no existe.
-  - **Cómo se enciende** (SSM runtime, sin redeploy para revertir):
-    ```
-    FEATURE_TEMARIO_PDF_PARTES=true
-    FEATURE_TEMARIO_PDF_PARTES_SCOPE=auxiliar_administrativo_estado   # el piloto
-    # …validado → SCOPE=all
-    ```
-  - **Cómo se mide:** evento `temario_pdf_partes_ofrecidas` (con `partes`, `chars`, `userId`) y, en el cliente, `download_por_partes`. Antes de ampliar: comprobar que hay descargas completas y **ninguna** caída a `window.print()`.
-  - **⏭️ Pendiente antes de encender:** deploy de frontend (el código está en `main` con el flag OFF) y decidir con Manuel si el piloto arranca por `auxiliar_administrativo_estado`, que es la única oposición con rechazos medidos.
-- **Efecto secundario bueno (no es el objetivo):** cada parte es barata y se cachea por separado, así que también alivia el coste de render. Pero el arreglo del incidente es encolar al worker ([T-270]), no esto.
-- **Relacionada:** [T-270] (el incidente, independiente), [T-086] (pre-generación), [T-159] (cola de PDFs).
 
 ### [T-270] 🔴 [ABIERTO 29/07] La ruta PÚBLICA del PDF del temario renderiza en el contenedor que sirve y tumba el guardado de respuestas
 
