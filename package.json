@@ -93,6 +93,7 @@
     "scope:title-boundary": "tsx scripts/scope/sim-title-boundary.ts",
     "canary:isr-purge": "node scripts/canary-isr-purge-cross-instancia.cjs",
     "canary:served-rollup": "node scripts/canary-served-rollup.cjs",
+    "canary:registro-crons": "node scripts/canary-registro-crons.cjs",
     "canary:fraud-sweep": "node scripts/canary-fraud-sweep.cjs",
     "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs",
     "tools:buscar": "node scripts/tools-buscar.cjs",

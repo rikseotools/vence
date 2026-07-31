@@ -1062,6 +1062,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Escape `--igualmente`, que queda contado en el bus de fricción. Calibración: ' +
       '`npm run sim:verificacion -- --listar`.',
   },
+  registro_crons: {
+    titulo: '¿Sigue habiendo ALGUIEN escribiendo en el registro de ejecuciones de los crons?',
+    ruta: 'scripts/canary-registro-crons.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      '`npm run canary:registro-crons`. Solo lee. Criterio puro en `lib/cron/registroVivo.cjs` ' +
+      '(13 tests), compartido con `/api/admin/health`. Nace de que la tabla `cron_runs` estuvo ' +
+      'DOS MESES muerta (24/05→31/07) sin que nada avisara: los crons se mudaron a los `@Cron` ' +
+      'del backend, que emiten a `observable_events` con `event_type=\'cron_run\'`, y el panel ' +
+      'siguió consultando la tabla — no fallaba, devolvía CERO filas, y cero se pinta igual que ' +
+      '«todo bien». Todo lo que había vigilaba «¿este cron va retrasado?» y nada «¿sigue ' +
+      'escribiendo alguien aquí?»: por eso `registroMudo` es una comprobación APARTE y de ' +
+      'primera clase (si se mezclara, un termómetro roto saldría como «todos los crons muertos»). ' +
+      'El nombre del cron va en `endpoint`, NO en `metadata->>\'cron\'`, que falta en algunos ' +
+      'y agruparlos por él los pierde en silencio. Primera pasada: 28 crons visibles donde el ' +
+      'panel enseñaba 0, y 4 incidencias de 24 h invisibles (content-health-sweep en `failure` ' +
+      'desde el 29/07, refresh-rankings con consulta rota).',
+  },
   trabajo_huerfano: {
     titulo: '¿Algún worktree abandonado guarda trabajo que no existe en ningún otro sitio?',
     ruta: 'scripts/sessions/huerfanos.cjs',

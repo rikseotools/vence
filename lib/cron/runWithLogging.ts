@@ -1,3 +1,21 @@
+// ⚠️⚠️ CÓDIGO MUERTO — NO LO USES. Marcado el 01/08/2026 por [T-442]. ⚠️⚠️
+//
+// **Nadie llama a esta función**: `grep -rl runWithLogging app lib backend scripts` devuelve solo
+// este fichero. Y la tabla que escribe, `cron_runs`, lleva sin recibir una fila desde el
+// **24/05/2026** (8.726 filas históricas y ninguna después).
+//
+// El registro de ejecuciones NO desapareció: **se mudó**. Los crons viven ahora como `@Cron` del
+// backend y emiten a `observable_events` con `event_type='cron_run'` (y `cron_tick` al arrancar)
+// a través del wrapper compartido `runWithHeartbeat`. Ahí es donde hay que mirar, y ahí es donde
+// miran ya `cron_overdue` y —desde T-442— el panel `/api/admin/health`.
+//
+// Se deja el fichero en vez de borrarlo porque dos documentos de roadmap lo citan como parte de
+// su relato (`agnosticismo-supabase.md`, `auth-agnostico-jwks-y-rls.md`) y esos son registro
+// histórico, no instrucciones. Pero si alguien lo re-cablea sin quitar este aviso, estará
+// escribiendo en una tabla que nadie lee.
+//
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
 // lib/cron/runWithLogging.ts
 // Helper para envolver cron jobs con observabilidad robusta.
 //

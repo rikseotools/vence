@@ -108,22 +108,36 @@ async function _GET(request: NextRequest): Promise<NextResponse<HealthMetrics | 
           EXTRACT(EPOCH FROM (now() - min(updated_at) FILTER (WHERE stats_dirty = true)))::int / 60 AS stats_oldest_min
         FROM questions WHERE stats_dirty = true
       `),
-      // Crons: último run + agregados última hora por cron
+      // Crons: último run + agregados última hora por cron.
+      //
+      // ⚠️ LEE `observable_events`, NO la tabla `cron_runs` (T-442). Los crons se mudaron a los
+      // `@Cron` del backend, que emiten `event_type='cron_run'`; la tabla se quedó sin escritor
+      // el 24/05/2026 y nadie lo notó porque esta consulta no fallaba: devolvía CERO filas, y el
+      // panel pintaba cero crons y cero incidencias — que se lee igual que «todo bien». Dos meses.
+      //
+      // El nombre del cron va en `endpoint`: `metadata->>'cron'` falta en algunos y agrupar por él
+      // los perdería en silencio, que es justo el fallo que esto viene a cerrar.
       db.execute(sql`
         WITH latest AS (
-          SELECT DISTINCT ON (cron_name)
-            cron_name, started_at, ended_at, status, duration_ms, processed, error_message
-          FROM cron_runs
-          WHERE started_at > now() - interval '6 hours'
-          ORDER BY cron_name, started_at DESC
+          SELECT DISTINCT ON (endpoint)
+            endpoint AS cron_name, created_at AS started_at, severity,
+            metadata->>'status' AS status,
+            COALESCE((metadata->>'executionTimeMs')::numeric,
+                     (metadata->>'durationSeconds')::numeric * 1000)::int AS duration_ms,
+            (metadata->>'processed')::int AS processed,
+            error_message
+          FROM observable_events
+          WHERE event_type = 'cron_run' AND created_at > now() - interval '6 hours'
+          ORDER BY endpoint, created_at DESC
         ),
         hourly AS (
-          SELECT cron_name,
+          SELECT endpoint AS cron_name,
                  count(*) AS runs,
-                 count(*) FILTER (WHERE status = 'error') AS errors
-          FROM cron_runs
-          WHERE started_at > now() - interval '1 hour'
-          GROUP BY cron_name
+                 count(*) FILTER (WHERE severity = 'error'
+                                    OR metadata->>'status' NOT IN ('success','completed','heartbeat')) AS errors
+          FROM observable_events
+          WHERE event_type = 'cron_run' AND created_at > now() - interval '1 hour'
+          GROUP BY endpoint
         )
         SELECT l.cron_name,
                l.started_at AS last_run,
@@ -137,23 +151,24 @@ async function _GET(request: NextRequest): Promise<NextResponse<HealthMetrics | 
         LEFT JOIN hourly h ON h.cron_name = l.cron_name
         ORDER BY l.cron_name
       `),
-      // Incidents: long-running crons + recent errors
+      // Incidencias de crons (T-442: también desde `observable_events`).
+      //
+      // `long_running` se queda VACÍO a propósito y no se sustituye por una aproximación: los
+      // `@Cron` emiten UN evento al terminar, así que no existe el estado «arrancó y sigue
+      // corriendo» que la tabla vieja modelaba con `status='running'`. Inventar un equivalente
+      // (p.ej. «lleva mucho sin emitir») mezclaría «tarda demasiado» con «se murió», que son
+      // averías distintas — eso lo dice el canario del registro, no este panel.
       db.execute(sql`
         SELECT
+          '[]'::json AS long_running,
           (SELECT json_agg(row_to_json(r)) FROM (
-            SELECT cron_name, started_at,
-                   EXTRACT(EPOCH FROM (now() - started_at))::int AS secs_running
-            FROM cron_runs
-            WHERE status = 'running'
-            AND started_at > now() - interval '1 hour'
-            AND now() - started_at > interval '60 seconds'
-          ) r) AS long_running,
-          (SELECT json_agg(row_to_json(r)) FROM (
-            SELECT cron_name, ended_at, error_message
-            FROM cron_runs
-            WHERE status = 'error'
-            AND started_at > now() - interval '24 hours'
-            ORDER BY started_at DESC LIMIT 10
+            SELECT endpoint AS cron_name, created_at AS ended_at, error_message
+            FROM observable_events
+            WHERE event_type = 'cron_run'
+              AND (severity = 'error'
+                   OR metadata->>'status' NOT IN ('success','completed','heartbeat'))
+              AND created_at > now() - interval '24 hours'
+            ORDER BY created_at DESC LIMIT 10
           ) r) AS recent_errors
       `),
     ])

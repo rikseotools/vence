@@ -186,6 +186,28 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 - **Regla crónica ⇒ cooldown de 24 h, no de 1 h.** Una alerta `critical` que avisa cada hora de una avería **ya fichada y bloqueada** no acelera el arreglo: entierra las que sí importan. `canary_pdf_queue_failed` mandaba **~28 correos/día** por [T-159] (cola de PDFs sin consumidor, parada por la cuota de vCPU) → `cooldownMin: 1440`. Cuando la causa se cierre, se devuelve a su cadencia normal. **Medir antes de tocar**: `node scripts/alerts/sim-cooldown-persistido.cjs --dias 7` compara los correos reales con los que mandaría el código actual (7 días: 497 → 347, **150 evitados**) y no escribe nada.
 - **`client_edge_sustained` ("Errores de cliente sostenidos — X/h") — RECALIBRADO 2026-07-08.** Disparaba cada hora (cooldown 60m) porque sumaba `http_network_error` (baseline benigno ~100-120/h de móviles en background) con un umbral único de 80/h → el ruido cruzaba solo y ahogaba el 502 real (~8/h). Fix: separar signals — edge 5xx/timeout ≥30/h (accionable) O avalancha de red ≥500/h (outage). Además el cliente ahora suprime `http_network_error` durante unload/background (raíz del ruido). Regla mental: **network_error solo, por muy alto que sea bajo ~500/h, NO es accionable** (conectividad de cliente); el signal accionable es el edge 5xx. Detalle: §3 incidente 08/07.
 - **`pool_hung_clientread` ("Pool: N muestras con conexiones colgadas en ClientRead") — RECALIBRADO 2026-06-12.** Disparaba un CRITICAL cada ~30 min (cooldown) sobre el goteo residual del path `getDb()`/Supavisor (raíz en `[[project_supavisor_zombie_conn_root_cause]]`, se cierra del todo con RDS). El piso de conn-min no bastaba: 2-3 conns sostenidas durante 5 muestras acumulan ~10-15 conn-min y lo cruzaban, pero el **pico simultáneo** (`maxHung`) nunca pasó de 3 en 24h reales y el pool frontend nunca rozó su techo. Fix: gate `maxHung >= 5` (`POOL_HUNG_MIN_PEAK`) además del piso — **pico ≤3 = goteo residual, NO dispara**; una cascada real satura muchas conns a la vez (pico ≫5) y sí dispara, además cubierta en paralelo por `canary_db_pool` + `pool_frontend_saturation` + `5xx_spike`. Regla mental: en este detector, **mira el pico simultáneo, no el conn-min acumulado** — el conn-min confunde "pocas conns mucho rato" (residual) con "muchas un instante" (real).
+- **⚠️ DÓNDE VIVE EL REGISTRO DE CRONS (T-442, 01/08/2026).** En `observable_events`
+  (`event_type='cron_run'`, y `cron_tick` al arrancar), **NO en la tabla `cron_runs`**, que no
+  recibe una fila desde el **24/05/2026** — su único escritor (`lib/cron/runWithLogging.ts`) no lo
+  llama nadie desde que los crons pasaron a `@Cron` del backend.
+  **El nombre del cron va en la columna `endpoint`**, no en `metadata->>'cron'`, que falta en
+  algunos: agrupar por él los pierde en silencio.
+
+  ```bash
+  npm run canary:registro-crons     # ¿escribe alguien? ¿quién calla? ¿quién falla?
+  ```
+
+  `cron_overdue` ya leía el sitio correcto desde el fix de junio. Quien se quedó atrás fue el
+  **panel `/api/admin/health`**, que consultó la tabla muerta dos meses: no fallaba, devolvía
+  **cero filas**, y cero crons + cero incidencias **se lee igual que «todo bien»**. Al repuntarlo
+  aparecieron **28 crons** donde enseñaba 0 y **4 incidencias de 24 h** que nadie había visto
+  (`content-health-sweep` en `failure` desde el 29/07, `refresh-rankings` con la consulta rota).
+
+  **La lección, que es la que vale para el resto del runbook:** todo vigilaba *«¿este cron va
+  retrasado?»* y nada vigilaba *«¿sigue habiendo alguien escribiendo aquí?»*. Un registro vacío no
+  es calma, es no saber nada — y las dos cosas no se pueden pintar del mismo color. Por eso el
+  canario mira **primero el termómetro** y solo después lo que el termómetro dice.
+
 - **`cron_overdue` ("1 cron overdue") — FIX DE FONDO 2026-06-12.** Falso positivo auto-resuelto: `detect-oep-llm` (escaneo LLM, ~30 min) emitía su `cron_run` **al completar**, pasado el margen de 30 min de su tick de las 10:00 → la regla lo veía overdue durante toda la ejecución y disparaba, curándose al terminar. Causa: la regla medía "¿terminó el job?" en vez de "¿disparó el scheduler?", y el cap de margen asumía (falsamente) que "el cron más pesado tarda ~3.4 s". Fix profesional (no parche de margen por-cron, que reintroduciría el mapa hardcoded que la regla presume de haber eliminado): se emite un evento **`cron_tick` al ARRANCAR** el tick desde el wrapper compartido `runWithHeartbeat` (opt-in vía opts: `{ name, observability }`), y `cron_overdue` lee `cron_tick` ∪ `cron_run` (`MAX(ts)` de ambos). Así cualquier cron —de 3 s o de 30 min— se juzga por si disparó, sin config por-cron. El heartbeat in-memory del `HeartbeatRegistry` NO se tocó (sigue marcándose al completar, para no regresar su detección de cuelgue). **Los 32 crons `@Cron` migrados** (todos emiten `cron_tick`); `outbox-processor` se excluye a propósito (es `@Interval` cada 5 s, no lo vigila `cron_overdue`, y un tick cada 5 s saturaría `observable_events`). **NO se añade regla `cron_stuck`**: la detección de cron colgado ya existe y es superior a un email — `HeartbeatRegistry` (`thresholdMs` por-cron) → `/health/crons` (503 si alguno supera su umbral) → la ECS liveness probe **mata y relanza el container** (auto-recovery). Una alert-rule paralela sería redundante y añadiría superficie de falsos positivos.
 #### 1.bis.a — Desglosar `alert_fired` POR REGLA + liveness de TODOS los crons (OBLIGATORIO)
 
