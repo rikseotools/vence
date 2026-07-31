@@ -112,6 +112,12 @@ export const userProfiles = pgTable("user_profiles", {
 	trialEndDate: timestamp("trial_end_date", { withTimezone: true, mode: 'string' }),
 	stripeCustomerId: text("stripe_customer_id"),
 	paymentAccount: text("payment_account").default('manuel').notNull(),
+	// Premium concedido a mano (no comprado): quién, cuándo y por qué. Va junto al resto
+	// de la identidad de pago a propósito — un premium sin cobro es una decisión que hay
+	// que poder auditar, no un flag suelto.
+	premiumGrantedAt: timestamp("premium_granted_at", { withTimezone: true, mode: 'string' }),
+	premiumGrantedBy: text("premium_granted_by"),
+	premiumGrantReason: text("premium_grant_reason"),
 	registrationSource: text("registration_source").default('organic'),
 	requiresPayment: boolean("requires_payment").default(false),
 	nickname: text(),
@@ -2998,6 +3004,10 @@ export const fraudConfirmations = pgTable("fraud_confirmations", {
 	actionTakenAt: timestamp("action_taken_at", { withTimezone: true, mode: 'string' }),
 	actionTakenBy: uuid("action_taken_by"),
 	notes: text(),
+	// Evidencia del caso + caducidad del dato personal (RGPD): la fila se guarda 2 años.
+	emailHashes: text("email_hashes").array().default([""]).notNull(),
+	fingerprint: text(),
+	retentionUntil: timestamp("retention_until", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_fraud_confirmations_device_id").using("btree", table.deviceId.asc().nullsLast().op("text_ops")),
 	index("idx_fraud_confirmations_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
@@ -4380,6 +4390,21 @@ export const backlogTasks = pgTable("backlog_tasks", {
 	closedAt: timestamp("closed_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	// Las CUATRO esperas del backlog (persona / reloj / deploy) y el plazo externo.
+	// Estaban en RDS desde hace semanas y NO en este fichero, que es la fuente de verdad
+	// declarada: el trinquete `schemaColumnDrift` lo cantaba y nadie lo miraba (T-377).
+	snoozeUntil: timestamp("snooze_until", { withTimezone: true, mode: 'string' }),
+	snoozeReason: text("snooze_reason"),
+	snoozedBy: text("snoozed_by"),
+	snoozeCount: integer("snooze_count").default(0).notNull(),
+	wakeOnDeploySha: text("wake_on_deploy_sha"),
+	wakeOnDeploySurface: text("wake_on_deploy_surface"),
+	progressNote: text("progress_note"),
+	resumeCheck: text("resume_check"),
+	dueAt: timestamp("due_at", { withTimezone: true, mode: 'string' }),
+	dueReason: text("due_reason"),
+	forceClaimedAt: timestamp("force_claimed_at", { withTimezone: true, mode: 'string' }),
+	forceClaimReason: text("force_claim_reason"),
 }, (table) => [
 	index("backlog_tasks_abiertas_idx").using("btree", table.priority.asc().nullsLast().op("text_ops"), table.id.asc().nullsLast().op("text_ops")).where(sql`(status = ANY (ARRAY['open'::text, 'in_progress'::text, 'blocked'::text]))`),
 	check("backlog_cierre_coherente", sql`(status = ANY (ARRAY['done'::text, 'dropped'::text])) = (closed_at IS NOT NULL)`),
