@@ -800,6 +800,23 @@ incluida).
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
+### [T-349] 🟠 [ABIERTO 31/07] El pre-commit no pasa lint: un error de sintaxis llega a `main` y bloquea el deploy de TODAS las sesiones
+
+- **Pasó de verdad el 30/07, y costó el deploy de la noche.** Al ir a desplegar (con trabajo terminado de otra sesión esperando), `deploy-cuando-verde.sh` **se negó: CI en rojo**. El rojo era **un solo error de lint** en `data/pilotos/t291-escalon2-30jul/extraer-tanda2.cjs`: tres comentarios SQL dentro de un template literal con los identificadores entre backticks de markdown (``-- pregunta marcada `defecto_opciones`…``), y esos backticks **cierran la plantilla**. El fichero dejaba de parsear.
+- **Es la SEGUNDA vez con el mismo modo de fallo.** La primera tumbó el barrido de salud —`scripts/health-sweep.cjs` llevaba tiempo sin poder arrancar por ``-- `programa_url` a pelo``— y está contada en [T-282]. Allí se puso guardarraíl, pero **solo para ese fichero**.
+- **Lo que falla no es la detección, es el momento.** El CI lo caza perfectamente; el problema es que lo caza **cuando ya está en `main`**, y a partir de ahí ninguna sesión puede desplegar hasta que alguien lo note y lo arregle. El pre-commit de hoy corre el self-test de display-drift y (opcionalmente) los tests, pero **no lint**.
+- **Propuesta (decisión de Manuel, porque el hook lo sufren todas las sesiones):** pasar `eslint` **solo sobre los ficheros staged**, que son segundos, y fallar únicamente ante **errores** (no ante los 247 warnings que el repo arrastra). Escape con la variable de siempre para el caso legítimo.
+- **Alternativa más barata si no se quiere tocar el hook:** un `node --check` sobre los `.cjs`/`.js` staged, que caza exactamente esta familia (parseo) y no opina de estilo. Medido el 30/07 sobre todos los `.cjs` del repo: **0 ficheros con error de parseo** tras el arreglo, así que el suelo está limpio para empezar a vigilarlo.
+- **Impacto:** 🟠 no rompe producción, pero **bloquea a todo el mundo** y el coste se paga en la peor situación posible: cuando alguien va a desplegar.
+
+### [T-350] 🟡 [ABIERTO 31/07] Los contenedores de ofimática son demasiado escuetos para sostener una explicación
+
+- **Cómo salió:** revisando las 22 últimas de [T-282] con el flujo de agentes. En la pregunta `1b818aa9` (marca de agua personalizada en Word 2016) el reparador escribió detalles concretos —escalas 50%/100%/150%, la casilla «Decolorar», «diagonal y horizontal»— y la **auditoría ciega los tumbó**: nada de eso está en el material. El artículo vinculado (`Word 2016`, «Interfaz y cinta de opciones») solo dice que en la pestaña Diseño hay «Fondo de página (marca de agua, color de página, bordes de página)».
+- **El problema no es el agente, es la fuente.** Con ese contenedor, **cualquier** explicación sobre un cuadro de diálogo concreto queda sin respaldo verificable: o se escribe en general y sin cifras (que es lo que se hizo), o se inventa. La segunda auditoría, ya sobre la pregunta viva, lo confirmó como `fuente_insuficiente`.
+- **Qué habría que hacer:** enriquecer los contenedores de ofimática con el detalle que las preguntas necesitan (cuadros de diálogo, opciones reales, rutas de menú), contra documentación oficial de Microsoft y **con la versión que examina cada convocatoria** — ojo, que ahí ya hay drift vigilado (`audit:display-drift` distingue Word 2016 de 365).
+- **Por qué importa más de lo que parece:** el banco de ofimática es grande y estas preguntas se sirven igual que las jurídicas, pero **la verificación de literalidad no puede hacer su trabajo** si el texto de referencia no contiene lo que la pregunta afirma. Es el mismo hueco que [T-207] (citas no literales) mirado desde la fuente en vez de desde la cita.
+- **Mientras no se haga:** las explicaciones de ofimática se escriben en general y sin cifras concretas. Está anotado en el cierre de [T-282].
+
 
 ### [T-344] 🟠 [ABIERTO 30/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
 - **Cómo salió:** revisión de salud del 30/07. Era la única señal del catch-all que tocaba dinero, así que se miró primero.
