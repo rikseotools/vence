@@ -62,30 +62,42 @@ describe('evaluarPush — cuándo bloquea', () => {
 })
 
 describe('señales nuevas — observabilidad sin huecos', () => {
-  it('detecta el eventType que introduce el diff', () => {
-    const diff = "+      eventType: 'precio_heredado_no_procede',\n-      eventType: 'viejo_que_se_va',"
-    expect(guard.eventTypesIntroducidos(diff)).toEqual(['precio_heredado_no_procede'])
+  /** Diff de un fichero de producción que emite una señal con la gravedad dada. */
+  const emision = (tipo: string, severity = 'error', fichero = 'lib/api/x.ts') =>
+    `diff --git a/${fichero} b/${fichero}\n` +
+    `+  emitFireAndForget({\n+    severity: '${severity}',\n+    eventType: '${tipo}',\n+  })`
+
+  it('detecta una señal de ERROR nueva en código de producción', () => {
+    expect(guard.eventTypesIntroducidos(emision('fallo_nuevo'))).toEqual(['fallo_nuevo'])
+  })
+
+  it('IGNORA las señales `info`: contexto no es avería, y exigirles regla es ruido', () => {
+    // Caso real: `precio_heredado_no_procede` significa «no tenía precio anterior».
+    expect(guard.eventTypesIntroducidos(emision('precio_heredado_no_procede', 'info'))).toEqual([])
+  })
+
+  it('IGNORA los fixtures de los tests (el falso positivo que se comió su propio push)', () => {
+    // Un `eventType` dentro de un test es un dato inventado, no una señal que alguien emita.
+    const diff = emision('senal_que_nadie_mira', 'error', '__tests__/calidad/algo.test.ts')
+    expect(guard.eventTypesIntroducidos(diff)).toEqual([])
   })
 
   it('una línea BORRADA no cuenta como señal nueva', () => {
-    expect(guard.eventTypesIntroducidos("-      eventType: 'algo',")).toEqual([])
+    const diff = "diff --git a/lib/api/x.ts b/lib/api/x.ts\n-      eventType: 'algo',"
+    expect(guard.eventTypesIntroducidos(diff)).toEqual([])
   })
 
-  it('BLOQUEA si la señal nueva no la vigila ninguna regla', () => {
-    const r = guard.evaluarPush(
-      ['lib/api/x.ts', '__tests__/x.test.ts'],
-      "+  eventType: 'senal_que_nadie_mira',",
-      VIGILANCIA,
-    )
+  it('BLOQUEA si la señal de error nueva no la vigila ninguna regla', () => {
+    const r = guard.evaluarPush(['lib/api/x.ts', '__tests__/x.test.ts'], emision('sin_dueno'), VIGILANCIA)
     expect(r.allowed).toBe(false)
     expect(r.motivos[0].tipo).toBe('senal_sin_vigilancia')
-    expect(r.motivos[0].detalle).toContain('senal_que_nadie_mira')
+    expect(r.motivos[0].detalle).toContain('sin_dueno')
   })
 
   it('PERMITE si la señal ya está en el catálogo de reglas', () => {
     const r = guard.evaluarPush(
       ['lib/api/x.ts', '__tests__/x.test.ts'],
-      "+  eventType: 'cobro_bloqueado_auth',",
+      emision('cobro_bloqueado_auth'),
       VIGILANCIA,
     )
     expect(r.allowed).toBe(true)
@@ -95,14 +107,14 @@ describe('señales nuevas — observabilidad sin huecos', () => {
     // Caso normal de un cambio bien hecho: la señal y su regla van juntas.
     const r = guard.evaluarPush(
       ['lib/api/x.ts', '__tests__/x.test.ts'],
-      "+  eventType: 'senal_nueva',",
+      emision('senal_nueva'),
       `${VIGILANCIA} 'senal_nueva'`,
     )
     expect(r.allowed).toBe(true)
   })
 
   it('acumula los dos motivos cuando se dan a la vez', () => {
-    const r = guard.evaluarPush(['lib/api/x.ts'], "+  eventType: 'huerfana',", VIGILANCIA)
+    const r = guard.evaluarPush(['lib/api/x.ts'], emision('huerfana'), VIGILANCIA)
     expect(r.allowed).toBe(false)
     expect(r.motivos.map((m: { tipo: string }) => m.tipo).sort()).toEqual([
       'senal_sin_vigilancia',
