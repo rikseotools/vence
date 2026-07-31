@@ -1250,6 +1250,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '375 preguntas, que se siguen sirviendo igual). Deja traza en observable_events ' +
       '(law_marcada_virtual). Contexto: [T-026].',
   },
+
+  vigilar_fuentes_legales: {
+    titulo: 'Vigilar por hash las fuentes legales que el cron del BOE no cubre (avisa si la norma cambió)',
+    ruta: 'scripts/laws/vigilar-fuentes-legales.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'npm run laws:vigilar [-- --aplicar] [--ley <uuid>] [--limite N]. Simula por defecto. Cubre el ' +
+      'hueco de `check-boe-changes`, que excluye a propósito las leyes sin boe_url, las de URL ' +
+      'doc.php y las de scope=eu: 160 leyes reales con 4.893 preguntas, el TUE entre ellas. ' +
+      'Núcleo puro `lib/laws/sourceWatch.cjs` (11 tests) y descargador COMPARTIDO con ' +
+      'verify-law-source.cjs (`lib/laws/fetchSourceText.cjs`) — si cada uno leyera distinto, el ' +
+      'hash no compararía lo mismo que se verificó. Sin LLM a propósito. ' +
+      'GOTCHA nº1: NO usa `verified_source_hash` (que es sha256 del texto CRUDO truncado a 32 y de ' +
+      'otra herramienta); su línea base vive en law_source_verification_history con ' +
+      'verified_by=vigilancia-hash. Mezclarlos da «cambiada» siempre. ' +
+      'GOTCHA nº2: detecta pantallas de captcha/WAF (el BORM devuelve 810 chars con incident id ' +
+      'variable) y las marca `inaccesible`, que NO es un cambio. Frase-gatillo: «revisa los ' +
+      'cambios de fuentes legales».',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

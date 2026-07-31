@@ -259,6 +259,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/completitud-leyes.md',
     claudeHace: 'localiza las leyes que sirven en temas vivos sin verificar contra su fuente oficial (`false_green` = marcada "actualizada" sin evidencia, `no_source` = sin URL de fuente, `never_verified`, `incomplete` = faltan artículos), registra la fuente que falte, compara artículo por artículo contra el boletín oficial e importa lo que falte (verbatim, doble auditoría) — NUNCA marca verificada sin evidencia.',
   },
+  law_source_changed: {
+    title: 'La fuente oficial de una ley ha CAMBIADO desde que la verificamos',
+    triggerPhrase: 'revisa los cambios de fuentes legales',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    claudeHace: 'corre `npm run laws:vigilar` (vigilancia por HASH de las fuentes que el cron `check-boe-changes` NO cubre: sin `boe_url`, URL `doc.php` o `scope=eu` — 160 leyes reales sirviendo 4.893 preguntas). Para cada ley marcada CAMBIADA: descarga la fuente, compara con nuestros artículos, decide si el cambio afecta al articulado que servimos y actualiza lo que toque; después re-verifica con `verify-law-source.cjs` para fijar la nueva línea base. **No hay ningún LLM en la detección, a propósito**: el hash dice QUE cambió, el juicio sobre QUÉ cambió lo pone Claude. GOTCHA: `inaccesible` NO es un cambio — si una fuente lo repite, el problema es de acceso (WAF/captcha, como el BORM el 31/07) y toca fetcher headless, no tocar el contenido. Y NUNCA re-verificar sin abrir el documento: pisar la línea base silencia el aviso sin haber mirado nada.',
+  },
   article_annulled_unmarked: {
     title: 'Inciso anulado por el TC (o disposición derogada) servido sin nota de vigencia',
     triggerPhrase: 'revisa los incisos anulados',
