@@ -142,7 +142,21 @@ sesión, con un suelo por debajo del cual no se toca. La decisión va **dentro d
 atómico (hay versión SQL además de la JS, con paridad testeada), porque decidirla en el lenguaje
 y escribir sin condición es un TOCTOU: dos sesiones leen «libre» y la segunda pisa a la primera.
 
-### 3.9 Vigilancia del propio andamiaje
+### 3.9 Recuperar lo que dejó una sesión que MURIÓ
+
+`backlog_tasks.last_claimed_by` — al retomar una tarea, se enseña el worktree de su dueña
+anterior, sus ficheros sin commitear y **sus commits sin pushear**.
+
+> Una sesión que se apaga de golpe (RAM, corte de luz, la cierran) **no llega a despedirse**: el
+> hueco de «qué hice / qué falta» solo lo llena quien tiene la oportunidad, y justo esas no la
+> tienen. Pero su worktree conserva el trabajo, y **los mensajes de sus commits sin pushear son la
+> mejor nota que existe**: se escribieron con todo el contexto y **no costaron disciplina**.
+>
+> **Se descartó pedir notas periódicas.** Habrían decaído como decae todo lo que depende de
+> acordarse. Lo que no es derivable —el razonamiento que no llegó a ningún commit, las hipótesis
+> descartadas— se pierde igual; la mitigación real es **commitear pronto y a menudo**.
+
+### 3.10 Vigilancia del propio andamiaje
 
 `lib/observability/friccionSesiones.cjs` + `npm run sesiones:friccion` → tabla `observable_events`.
 
@@ -154,7 +168,7 @@ Mide el **ratio de escape** por guardarraíl: <25% sano · 25-66% erosión · �
 
 | tabla | para qué | columnas clave |
 |---|---|---|
-| `backlog_tasks` | tareas + reparto | `claimed_by`, `lease_until`, `snooze_until`, `wake_on_deploy_sha`, `due_at`, `effort`, `worked_seconds`, `first_claimed_at` |
+| `backlog_tasks` | tareas + reparto | `claimed_by`, `lease_until`, `last_claimed_by`, `snooze_until`, `wake_on_deploy_sha`, `due_at`, `effort`, `worked_seconds`, `first_claimed_at` |
 | `worktree_sessions` | quién está vivo y qué toca | `sid`, `worktree_path`, `last_signal_at`, `touched_files` |
 | `deploy_runs` | despliegues | `surface`, `sha`, `pid`, `started_at`, `finished_at` |
 | `observable_events` | bus de señales | `event_type='sesion_friccion'` |
@@ -198,6 +212,8 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Resolver un conflicto con `--theirs` por comodidad | borra el trabajo del otro **en silencio** |
 | Reescribir el mismo módulo N veces | sin registro de herramientas, cada sesión reconstruye |
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
+| Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
+| `git reset --soft` + índice compartido | deja **borrados staged** de ficheros que sí están en la rama: el siguiente commit los borra |
 
 ---
 
@@ -216,7 +232,7 @@ soporte de worktrees, y un sitio donde emitir eventos.
 
 **Orden sugerido para construirlo:** (1) identidad única — todo lo demás cuelga de ahí; (2)
 latido; (3) claim con lease + reap; (4) guardarraíl de índice compartido, que es el que evita el
-daño irreversible; (5) huella y solape; (6) árbol de deploy propio; (7) el ratio de escape.
+daño irreversible; (5) huella y solape; (6) árbol de deploy propio; (7) el ratio de escape; (8) la recuperación de sesiones muertas.
 
 > **Y el consejo que más ahorra:** empieza por el punto 4. Es el único fallo de esta lista que
 > **destruye trabajo sin dejar rastro**; todos los demás cuestan tiempo, pero se recuperan.
