@@ -6,7 +6,7 @@
 // copia: así el test no da falso verde el día que el guard cambie.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { extractTaskIds, evaluatePush } = require('@/lib/backlog/pushGuard.cjs')
+const { extractTaskIds, parseGitLog, clasificarMenciones, evaluatePush } = require('@/lib/backlog/pushGuard.cjs')
 
 const AHORA = new Date('2026-07-20T12:00:00Z')
 const mins = (n: number) => new Date(AHORA.getTime() + n * 60_000).toISOString()
@@ -196,5 +196,152 @@ describe('evaluatePush — push que solo toca el markdown de fichas', () => {
     const zombi = { 'T-214': { status: 'in_progress', claimed_by: OTRA, lease_until: mins(-4320) } }
     const r = evaluatePush({ referencedIds: ['T-214'], tasksById: zombi, sid: SID, changedFiles: [MD], now: AHORA })
     expect(r.allowed).toBe(true)
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
+// CITA ≠ TRABAJO (T-403) — el cuarto bloqueo que empujaba al `BACKLOG_GUARD_SKIP=1`
+//
+// Las fichas de este repo se cruzan sin parar y los mensajes de commit copian esa costumbre, así
+// que cuanto mejor escrito el commit, más probable que el guard lo parase. La regla se restringe
+// a lo que la medida respalda: solo se relaja el cuerpo de un commit cuyo ASUNTO ya declara un
+// id. Con el asunto mudo, el id del cuerpo puede ser el trabajo (medido: 17,2% lo era).
+// ────────────────────────────────────────────────────────────────────────────────────────────
+describe('parseGitLog — el pegamento del que depende toda la regla', () => {
+  const { GIT_LOG_FORMAT } = require('@/lib/backlog/pushGuard.cjs')
+  const RS = '\x1e'
+  const FS = '\x1f'
+
+  it('el formato que pide el bridge y el que lee el parser son EL MISMO', () => {
+    // Vivían separados (el formato en el script, el parseo debajo) y ahí es donde se pierde la
+    // distinción asunto/cuerpo sin que nadie lo note.
+    expect(GIT_LOG_FORMAT).toBe(`--format=${RS}%s${FS}%b`)
+  })
+
+  it('separa asunto y cuerpo de varios commits', () => {
+    const raw = `${RS}feat(T-400): el mapa de solape${FS}Nace de T-361.\n\nY de T-385.\n${RS}fix(T-361): una consulta${FS}`
+    expect(parseGitLog(raw)).toEqual([
+      { subject: 'feat(T-400): el mapa de solape', body: 'Nace de T-361.\n\nY de T-385.\n' },
+      { subject: 'fix(T-361): una consulta', body: '' },
+    ])
+  })
+
+  it('un cuerpo con saltos y líneas vacías NO se parte en commits falsos', () => {
+    const raw = `${RS}fix(T-403): algo${FS}línea 1\n\nlínea 2\n\n  Co-Authored-By: alguien\n`
+    const r = parseGitLog(raw)
+    expect(r).toHaveLength(1)
+    expect(r[0].body).toContain('Co-Authored-By')
+  })
+
+  it('commit sin cuerpo (git omite el campo) → cuerpo vacío, no asunto partido', () => {
+    expect(parseGitLog(`${RS}chore: sin cuerpo`)).toEqual([{ subject: 'chore: sin cuerpo', body: '' }])
+  })
+
+  it('salida vacía de git → sin commits (y el guard no paga peaje)', () => {
+    expect(parseGitLog('')).toEqual([])
+    expect(parseGitLog(null)).toEqual([])
+  })
+
+  it('de punta a punta: lo que git escupe llega clasificado como cita', () => {
+    const raw = `${RS}feat(T-400): las sesiones ven el solape${FS}Contexto: [T-361] y [T-385].\n`
+    expect(clasificarMenciones({ commits: parseGitLog(raw), branch: 'sesion/x' }).mencionSolo.sort())
+      .toEqual(['T-361', 'T-385'])
+  })
+})
+
+describe('clasificarMenciones — qué declara el push y qué solo cita', () => {
+  it('el caso T-400: el asunto declara, el cuerpo cita → las citas no exigen claim', () => {
+    const r = clasificarMenciones({
+      branch: 'sesion/central-derecho',
+      commits: [{
+        subject: 'feat(T-400): las sesiones ya pueden ver EN VIVO si van a los mismos ficheros',
+        body: 'Nace de [T-361] y [T-385], donde el claim funcionó y aun así se duplicó trabajo.',
+      }],
+    })
+    expect(r.referencedIds.sort()).toEqual(['T-361', 'T-385', 'T-400'])
+    expect(r.mencionSolo.sort()).toEqual(['T-361', 'T-385'])
+  })
+
+  it('el caso T-408: varios ids en el asunto, uno citado en el cuerpo', () => {
+    const r = clasificarMenciones({
+      commits: [{ subject: 'fix(T-408, T-410): duplicados', body: 'El barrido ya existía en T-321.' }],
+    })
+    expect(r.mencionSolo).toEqual(['T-321'])
+  })
+
+  it('ASUNTO MUDO → el id del cuerpo SIGUE exigiendo claim (el 17,2% medido, caso T-089)', () => {
+    // `docs(koigrid): …` con el id solo en el cuerpo es trabajo REAL de esa tarea: 22 commits
+    // así en el historial. La regla literal de la ficha («el cuerpo nunca bloquea») los soltaba.
+    const r = clasificarMenciones({
+      commits: [{ subject: 'docs(koigrid): D5 — el restore gestionado tiene un tope de 30 min', body: 'Parte de T-089.' }],
+    })
+    expect(r.mencionSolo).toEqual([])
+    expect(r.referencedIds).toEqual(['T-089'])
+  })
+
+  it('basta que UN commit del push lo declare para que sea trabajo en todo el push', () => {
+    const r = clasificarMenciones({
+      commits: [
+        { subject: 'feat(T-400): el mapa de solape', body: 'contexto de T-361' },
+        { subject: 'fix(T-361): el detector pasa a una consulta', body: '' },
+      ],
+    })
+    expect(r.mencionSolo).toEqual([])
+  })
+
+  it('los ids de la RAMA declaran trabajo, no cita', () => {
+    const r = clasificarMenciones({
+      branch: 'feat/T-042-lo-que-sea',
+      commits: [{ subject: 'chore(T-100): algo', body: 'ver T-042' }],
+    })
+    expect(r.mencionSolo).toEqual([])
+  })
+
+  it('sin ids → nada que verificar (el push normal no paga peaje)', () => {
+    expect(clasificarMenciones({ commits: [{ subject: 'fix: typo', body: '' }] }).referencedIds).toEqual([])
+    expect(clasificarMenciones({}).referencedIds).toEqual([])
+  })
+})
+
+describe('evaluatePush — una tarea CITADA no exige claim', () => {
+  const citando = (tasks: Record<string, any>, id: string) =>
+    evaluatePush({ referencedIds: [id], tasksById: tasks, sid: SID, mencionSolo: [id], now: AHORA })
+
+  it('PERMITE citar una tarea viva SIN reclamar (reclamarla le roba el reparto a quien sí la hará)', () => {
+    const r = citando({ 'T-361': { status: 'open', claimed_by: null, lease_until: null } }, 'T-361')
+    expect(r.allowed).toBe(true)
+    expect(r.notices[0].reason).toMatch(/citada como contexto/)
+  })
+
+  it('PERMITE citar una que otra sesión tiene con lease VIVO — nombrarla no toca nada suyo', () => {
+    // Aquí NO cede, a diferencia de «solo documento la ficha»: escribir la ficha ajena toca su
+    // producto de trabajo; citarla en un párrafo no. Si cediera, no arreglaría el caso del 31/07.
+    const r = citando({ 'T-385': { status: 'in_progress', claimed_by: OTRA, lease_until: mins(45) } }, 'T-385')
+    expect(r.allowed).toBe(true)
+  })
+
+  it('NO abre el hueco del OLVIDO: la misma tarea DECLARADA sigue bloqueando', () => {
+    const tasks = { 'T-361': { status: 'open', claimed_by: null, lease_until: null } }
+    const r = evaluatePush({ referencedIds: ['T-361'], tasksById: tasks, sid: SID, mencionSolo: [], now: AHORA })
+    expect(r.allowed).toBe(false)
+    expect(r.violations[0].reason).toMatch(/sin reclamar/)
+  })
+
+  it('sin `mencionSolo` se comporta como antes (compatibilidad con quien no lo pase)', () => {
+    const tasks = { 'T-361': { status: 'open', claimed_by: null, lease_until: null } }
+    expect(evaluatePush({ referencedIds: ['T-361'], tasksById: tasks, sid: SID, now: AHORA }).allowed).toBe(false)
+  })
+
+  it('con citas y trabajo mezclados, solo bloquea lo DECLARADO', () => {
+    const r = evaluatePush({
+      referencedIds: ['T-400', 'T-361'],
+      tasksById: {
+        'T-400': { status: 'open', claimed_by: null, lease_until: null },   // declarada y sin claim → viola
+        'T-361': { status: 'open', claimed_by: null, lease_until: null },   // citada → aviso
+      },
+      sid: SID, mencionSolo: ['T-361'], now: AHORA,
+    })
+    expect(r.violations.map((v: any) => v.id)).toEqual(['T-400'])
+    expect(r.notices.map((n: any) => n.id)).toEqual(['T-361'])
   })
 })

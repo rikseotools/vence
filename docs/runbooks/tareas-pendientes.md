@@ -170,7 +170,7 @@ node scripts/backlog.cjs wake T-217        # despertarla antes de tiempo
 - **Aplazar en bucle no es programar.** Cada `snooze`/`pause` incrementa `snooze_count`; a partir de 3, `list` y `claim` lo cantan: eso ya no es una tarea programada, es una decisión que nadie toma.
 - **Por qué existe (28/07/2026):** T-221 llegó a llevar `⛔ NO COGER HASTA EL 29/07 07:00 UTC` **en el título de la ficha**… y `next` la seguía ofreciendo, porque ni el CLI ni la tabla leen el texto del markdown. Gritar en la ficha no es un mecanismo. Con 2-10 sesiones, eso es otra sesión montando un worktree para descubrir a los cinco minutos que no había nada que medir.
 
-## El push-guard: qué bloquea y las TRES cosas que ya no (31/07)
+## El push-guard: qué bloquea y las CUATRO cosas que ya no (31/07)
 
 El guard existe para un fallo concreto: **el olvido de reclamar** (colisión T-047/T-050 del 20/07).
 Ese sigue bloqueando igual. Lo que se quitó son tres bloqueos que **no se podían satisfacer**, y que
@@ -184,6 +184,7 @@ push. Un guardarraíl al que se aprende a rodear protege menos que uno que no ex
 | La tiene una sesión cuyo **lease ya venció** | ❌ bloqueaba para siempre | ✅ pasa (con aviso) |
 | La **pausaste tú** (`pause`) y espera deploy/reloj | ❌ callejón sin salida | ✅ pasa (con aviso) |
 | El push toca **solo** `docs/roadmap/tareas-pendientes.md` | ❌ bloqueaba | ✅ pasa (con aviso) |
+| El commit la **CITA en el cuerpo** y declara otra en el asunto | ❌ bloqueaba | ✅ pasa (con aviso) |
 
 - **Lease vencido:** `claim` ya entregaba esa fila (`lease_until < now()`); el guard decía lo
   contrario. **Dos puertas al mismo recurso con criterios distintos no protegen: se contradicen.**
@@ -196,9 +197,53 @@ push. Un guardarraíl al que se aprende a rodear protege menos que uno que no ex
   reclamar: se la quitas a quien sí iba a hacerla. El corte es estrecho a propósito — **solo ese
   fichero** (escribir un runbook sí es trabajo), y **cede** si otra sesión la tiene con lease vivo.
 
+- **Citar no es trabajar (T-403):** las fichas de este repo se cruzan sin parar
+  (`Relacionadas: [T-xxx]`) y los mensajes de commit copian esa costumbre, así que **cuanto mejor
+  escrito estaba el commit, más probable era que el guard lo parase**. Pasó dos veces el 31/07 —
+  `feat(T-400)` citando T-361 y T-385, y `fix(T-408, T-410)` citando T-321— con las tres salidas
+  malas probadas: reclamar una tarea que no vas a trabajar (le robas el reparto a quien sí),
+  `BACKLOG_GUARD_SKIP=1` (apaga el guard entero), o **quitar el id del mensaje**, que es lo que se
+  hizo y tiene coste real: ese id era la traza de por qué NO se abrió un cuarto script duplicado.
+  El guard empujaba a escribir peores mensajes de commit.
+
+  La regla es más estrecha que la obvia, **y la diferencia la decidió la medida**:
+
+  | Dónde sale el id | ¿Exige claim? |
+  |---|---|
+  | En el **asunto** de algún commit, o en el nombre de la rama | ✅ sí — eso es declarar trabajo |
+  | Solo en el **cuerpo** de un commit **cuyo asunto ya declara** otra tarea | ❌ no: es una cita |
+  | Solo en el cuerpo de un commit **cuyo asunto no declara nada** | ✅ **sí** (ver abajo) |
+
+  La ficha proponía «el cuerpo nunca bloquea». Medido sobre los 6.070 commits del repo, eso
+  **habría abierto un 17,2 %**: con el asunto mudo el id del cuerpo sí suele ser el trabajo —22
+  casos son de T-089, cuyos commits se titulan `docs(koigrid): …` y dejan el id abajo—. En la
+  banda que sí se relaja (asunto con id) la cifra es **2,8 %**, y las 6 revisadas a mano eran
+  contexto o tarea vecina que comparte fichero.
+
+  ```bash
+  npm run sim:push-guard-menciones -- --ejemplos    # re-mide sobre el historial; GATE al 6 %
+  ```
+
+  Es un **gate, no un informe**: la regla se apoya en cómo escribe los commits este repo, y si esa
+  costumbre cambia la relajación deja de ser segura sin que nadie se entere. Y a diferencia de la
+  exención de «solo documento la ficha», **esta no cede ante un lease vivo ajeno**: escribir la
+  ficha de otro toca su producto de trabajo, nombrarlo en un párrafo no toca nada suyo.
+
 **Los avisos se imprimen siempre**, pase o no el push: una excepción silenciosa es una excepción que
-nadie revisa. Núcleo puro en `lib/backlog/pushGuard.cjs`, con tests de las tres reglas y de que
+nadie revisa. Núcleo puro en `lib/backlog/pushGuard.cjs`, con tests de las cuatro reglas y de que
 ninguna abre el hueco del olvido.
+
+**Y este cambio se MIDE con el contador de fricción, no con uno propio** (T-403 + [T-423]). La
+relajación existe para que el guard pare menos veces sin dejar de proteger, y eso se lee en la serie
+de `sesion_friccion`: menos `guard_bloqueo` de `backlog-push` y, sobre todo, menos `guard_escape` —
+el ratio entre los dos es el indicador adelantado de que un guardarraíl se está muriendo.
+
+```bash
+npm run sesiones:friccion      # ratio de escape por guardarraíl: sano / erosión / muerto
+```
+
+No se añadió un evento aparte a propósito: dos emisores del mismo hecho no miden el doble, divergen.
+
 
 ## Saber EN VIVO si otra sesión va a lo mismo (T-400, 31/07)
 

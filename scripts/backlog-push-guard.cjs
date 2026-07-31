@@ -18,7 +18,9 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { extractTaskIds, evaluatePush } = require('../lib/backlog/pushGuard.cjs')
+const {
+  clasificarMenciones, evaluatePush, parseGitLog, GIT_LOG_FORMAT,
+} = require('../lib/backlog/pushGuard.cjs')
 
 /** Registrar el roce sin bloquear NUNCA: detached y sin esperar (T-423). */
 function friccion(clase, guard, detalle) {
@@ -46,13 +48,17 @@ function git(args) {
   try { return execFileSync('git', args, { cwd: REPO, encoding: 'utf8' }).trim() } catch { return '' }
 }
 
-/** Commits que se van a empujar: los que están en HEAD y NO en origin/main. Su texto + la rama. */
-function collectPushText() {
-  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD'])
-  // %B = cuerpo completo del mensaje; el rango excluye lo ya publicado en origin/main.
-  const msgs = git(['log', 'origin/main..HEAD', '--format=%B']) ||
-    git(['log', '-20', '--format=%B'])  // fallback si no hay upstream resuelto
-  return `${branch}\n${msgs}`
+/**
+ * Commits que se van a empujar (los que están en HEAD y NO en origin/main), con el ASUNTO y el
+ * CUERPO SEPARADOS — el guard necesita distinguirlos para saber qué declara el push y qué solo
+ * cita (T-403). Antes se concatenaba todo en un churro (`%B`) y esa diferencia se perdía.
+ *
+ * El formato y su parser viven JUNTOS en el núcleo puro: aquí solo se pide y se pasa.
+ */
+function collectPushCommits() {
+  const raw = git(['log', 'origin/main..HEAD', GIT_LOG_FORMAT]) ||
+    git(['log', '-20', GIT_LOG_FORMAT])  // fallback si no hay upstream resuelto
+  return parseGitLog(raw)
 }
 
 /**
@@ -76,7 +82,8 @@ async function main() {
     return 0
   }
 
-  const referencedIds = extractTaskIds(collectPushText())
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD'])
+  const { referencedIds, mencionSolo } = clasificarMenciones({ commits: collectPushCommits(), branch })
   if (referencedIds.length === 0) return 0  // push normal: sin peaje
 
   const sid = readSessionId()
@@ -109,18 +116,21 @@ async function main() {
   }
 
   const { allowed, violations, notices } = evaluatePush({
-    referencedIds, tasksById, sid, changedFiles: collectChangedFiles(),
+    referencedIds, tasksById, sid, mencionSolo, changedFiles: collectChangedFiles(),
   })
   // Los avisos se imprimen SIEMPRE, pase o no: una excepción silenciosa es una excepción que
   // nadie revisa. Que se vea por qué el guard dejó pasar algo que antes bloqueaba.
   for (const n of notices || []) console.log(`ℹ️  backlog-push-guard: ${n.id} — ${n.reason}`)
+
   if (allowed) return 0
 
   console.error('\n❌ PUSH BLOQUEADO por el guardrail del backlog — commits que mencionan una tarea que NO tienes reclamada:\n')
   for (const v of violations) console.error(`   · ${v.id}: ${v.reason}`)
   friccion('guard_bloqueo', 'backlog-push', violations.map((v) => v.id).join(','))
   console.error('\n   Reclama la tarea (o coordina si la tiene otra sesión) y reintenta.')
-  console.error('   Si es legítimo (rehacer historia, mención suelta): BACKLOG_GUARD_SKIP=1 git push …\n')
+  console.error('   Si solo la CITAS como contexto, basta con que no salga en el ASUNTO: los ids del')
+  console.error('   cuerpo no exigen claim cuando el asunto ya declara la tarea que trabajas (T-403).')
+  console.error('   Y si es legítimo (rehacer historia): BACKLOG_GUARD_SKIP=1 git push …\n')
   return 1
 }
 

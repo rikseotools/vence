@@ -973,6 +973,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`lib/sessions/solape.cjs`, 21 tests. Reporta aparte, y más grave, varias sesiones en el ' +
       'MISMO checkout: ahí no hay conflicto de git que avise, se sobrescriben en vivo.',
   },
+  push_guard_menciones: {
+    titulo: 'Medir si «citar una tarea» sigue siendo distinguible de «trabajarla» (gate del push-guard)',
+    ruta: 'scripts/backlog/sim-push-guard-menciones.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`npm run sim:push-guard-menciones [-- --ejemplos]`. Solo lectura (git log; ni BD ni red). ' +
+      'Respalda la relajación de T-403: el guard dejó de exigir claim por un `T-NNN` que solo ' +
+      'sale en el CUERPO de un commit cuyo ASUNTO ya declara otra tarea. Recorre el historial ' +
+      'con la función REAL (`clasificarMenciones`, sin copia) y estima cuántas de esas citas ' +
+      'eran trabajo, contando que el commit toque un fichero DISTINTIVO de la tarea citada ' +
+      '(declarado por <=2 tareas: sin ese filtro `scripts/backlog.cjs` o `alert-rules.ts` hacen ' +
+      'culpable a cualquiera — 158 casos crudos frente a 69). Medido 31/07: banda relajada ' +
+      '2,8 % (217 commits/323 citas) y banda de control —asunto mudo, que SIGUE bloqueando— ' +
+      '17,2 %, o sea que la regla literal de la ficha («el cuerpo nunca bloquea») habría abierto ' +
+      'ese 17 %. Es GATE, no informe: si el repo empieza a declarar trabajo solo en el cuerpo, ' +
+      'la relajación deja de ser segura y nadie se enteraría. Techo 6 %, exit 1 al pasarlo.',
+  },
   indice_compartido: {
     titulo: 'Impedir que dos sesiones compartan el índice de git (pre-commit)',
     ruta: 'scripts/check-indice-compartido.cjs',
