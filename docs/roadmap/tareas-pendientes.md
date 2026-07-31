@@ -989,6 +989,23 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-370] 🔴 [ABIERTO 31/07] El gate de integración/perf/seguridad lleva días en rojo porque CI se quedó sin base de datos
+- **Qué pasa:** el job **`Integration / perf / security`** de `.github/workflows/test.yml` falla en **todos** los commits. La causa no es ningún test: es que el paso arranca sin BD. El error, literal y repetido en cada suite:
+  ```
+  DATABASE_URL environment variable is not set
+    at getAdminDb (db/client.ts:218:11)
+  ```
+  El workflow **sí** declara `DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}`, así que lo que falla es el **secret**: si no existe, GitHub lo sustituye por cadena vacía y el env llega puesto-pero-vacío. Su propio comentario lo anticipaba: *«Si faltan, el step falla y se ve claro qué pasa — mejor que un timeout silencioso»*. Se ve claro, sí; lo que faltó fue alguien mirando.
+- **Desde cuándo (medido el 31/07 contra la API de GitHub):** rojo en los commits de hace **20 h, 3 días y 5 días**; hace 8 días el job salía **`skipped`**. O sea que hay un antes y un después, y lleva **al menos cinco días** sin verificar nada.
+- **Qué deja de vigilarse, que es lo grave.** `test:integration` cubre `__tests__/(integration|perf|security|scraping|api/user-stats)`. Ahí viven, entre otras cosas: las **invariantes de `topic_scope`** (artículos duplicados, artículos del scope que no existen como activos), la **integridad de la entidad OEP**, el **aislamiento entre usuarios (C3)**, el **circuito de referidos y recompensas** (dinero), y los guardarraíles de **seguridad** del gate anti-scraping. Nada de eso se comprueba desde hace días.
+- **Y hay un efecto de segundo orden que conviene decir:** el gate del deploy mira solo los checks de CÓDIGO (unit, typecheck, lint) — a propósito, porque los de integración necesitan red y BD. Así que **se despliega con este job en rojo sin que nadie se entere**, y encima cualquier arreglo que se escriba para esa categoría **tampoco se verifica**: el 30/07 se arregló un test de seguridad desfasado ([T-297]) y el 31/07 se añadió uno de integración nuevo (presupuesto del detector de notas), y **ninguno de los dos ha llegado a ejecutarse en CI**.
+- **Cómo se arregla (no es código, es configuración del repo — decisión de Manuel):**
+  1. Comprobar si el secret `DATABASE_URL_READONLY` existe todavía en Settings → Secrets del repo. Lo más probable es que se borrara o caducara al cambiar algo de RDS.
+  2. Reponerlo apuntando a la réplica de solo lectura. **Ojo:** algunas suites (referidos) escriben con transacción y `ROLLBACK`, así que con una URL estrictamente de solo lectura fallarían igual — hay que decidir si esas van con otra credencial o se marcan como no-CI.
+  3. Y que el rojo **se note**: hoy este job puede estar caído semanas sin que nada avise. Es el mismo patrón que [T-307] (un cron que fallaba a diario sin alerta) y que [T-297] (un test rojo que nadie leía).
+- **Cómo salió:** intentando desplegar el backend el 31/07. El deploy no encontraba ventana (39 commits en dos horas), y al mirar por qué apareció este job en rojo al lado de los tres verdes.
+- **Relacionadas:** [T-297] (test de seguridad desfasado, en esta misma categoría), [T-307] (la familia: un guardarraíl que falla en silencio).
+
 ### [T-369] 🔴 [ABIERTO 31/07] «Desactivar TODOS los emails» apaga también las respuestas a lo que el usuario nos escribe
 
 - **El defecto en una línea:** el botón rojo de `/unsubscribe` pone `email_soporte_disabled = true` (`lib/emails/emailService.server.ts:252`, rama *«Nuclear: disable everything»*), y esa columna es la que gobierna la **entrega de nuestras respuestas** a impugnaciones y feedback. Quien se da de baja de la publicidad deja de recibir, sin saberlo, la contestación a lo que él mismo ha preguntado.
