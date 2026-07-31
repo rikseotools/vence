@@ -314,3 +314,53 @@ describe('corteAcumulado — convertir «319 grupos» en «empieza por estos 87�
     expect(dup.corteAcumulado([1, 1, 1, 1, 1], 0.8)).toBe(4)
   })
 })
+
+// ─── La guarda del ORDEN [T-439] ────────────────────────────────────────────────────────
+//
+// El test de arriba fija que una palabra de contenido cambiada pasa el umbral. Este fija la
+// SEGUNDA señal que sí lo ve, y sobre todo el caso que el criterio por conjunto no puede ver
+// ni en principio: cuando las dos palabras intercambiadas YA salen antes en la frase.
+
+describe('mismoOrdenDeContenido — lo que el conjunto de palabras no puede ver', () => {
+  const A = 'El artículo 81 de la Ley 39/2015 prevé solicitar con carácter preceptivo informes y dictámenes en los procedimientos de responsabilidad patrimonial. ¿Cuántos dictámenes se solicitan?'
+  const B = 'El artículo 81 de la Ley 39/2015 prevé solicitar con carácter preceptivo informes y dictámenes en los procedimientos de responsabilidad patrimonial. ¿Cuántos informes se solicitan?'
+
+  it('el punto ciego es REAL: mismo conjunto de palabras, solape 1 y cero distintas', () => {
+    const m = dup.compararEnunciados(A, B)
+    expect(m.solape).toBe(1)
+    expect(m.distintas).toBe(0)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: true })).toBe('gemela')
+  })
+
+  it('y la secuencia SÍ lo ve — no era irreducible, era que se miraba el conjunto', () => {
+    expect(dup.mismoOrdenDeContenido(A, B)).toBe(false)
+  })
+
+  it('caza el otro par real del barrido: «cita en evento» / «evento en una cita»', () => {
+    // Grupo #60 de los 87 más expuestos. Preguntan lo contrario y usan las mismas palabras.
+    expect(dup.mismoOrdenDeContenido(
+      '¿Podemos convertir una cita en evento en el calendario de Outlook?',
+      '¿Podemos convertir un evento en una cita en el calendario de Outlook?')).toBe(false)
+  })
+
+  it('no se altera por la forma de citar la norma, que es lo único que debe ignorar', () => {
+    expect(dup.mismoOrdenDeContenido(
+      'De acuerdo con el art. 53.2 CE, ¿qué derechos son susceptibles de amparo?',
+      'De acuerdo con el artículo 53.2 de la Constitución, ¿qué derechos son susceptibles de amparo?')).toBe(true)
+  })
+
+  it('«no» y «correcta» NO son ruido: negar la pregunta la invierte', () => {
+    // Estaban en la lista de ruido en la primera pasada y eso clasificó mal tres grupos.
+    expect(dup.RUIDO_DE_CITA.has('no')).toBe(false)
+    expect(dup.RUIDO_DE_CITA.has('correcta')).toBe(false)
+    expect(dup.mismoOrdenDeContenido(
+      'Señale la respuesta correcta sobre el silencio administrativo',
+      'Señale la respuesta no correcta sobre el silencio administrativo')).toBe(false)
+  })
+
+  it('ninguna cifra es ruido: puede ser el artículo por el que se pregunta', () => {
+    expect(dup.secuenciaDeContenido('el artículo 12 de la Ley 39/2015')).toContain('12')
+    expect(dup.mismoOrdenDeContenido('Según el artículo 12 de la Ley 39/2015',
+                                     'Según el artículo 13 de la Ley 39/2015')).toBe(false)
+  })
+})

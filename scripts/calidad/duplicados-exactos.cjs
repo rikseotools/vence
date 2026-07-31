@@ -59,7 +59,8 @@ const { Client } = require('pg')
 // El `sslmode` de la URL PISA la opción `ssl` en `pg`: la receta va en un solo sitio.
 const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes,
-        compararEnunciados, bandaParafraseada, mismaRespuesta, corteAcumulado } = require('../../lib/calidad/duplicados.js')
+        compararEnunciados, bandaParafraseada, mismaRespuesta, corteAcumulado,
+        mismoOrdenDeContenido } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -74,6 +75,9 @@ const PARAFRASEADAS = argv.includes('--parafraseadas')
 // Ordena los grupos por veces servidas y marca el corte del 80% de la exposición. No es un extra
 // informativo: es lo que decide POR DÓNDE se empieza a adjudicar (T-425, decisión de Manuel 31/07).
 const POR_EXPOSICION = argv.includes('--por-exposicion')
+// Vuelca los grupos con los enunciados ENTEROS. El listado de pantalla trunca a 150 caracteres y
+// con eso no se puede adjudicar: la diferencia que decide suele estar al final de la frase.
+const JSON_OUT = argv.includes('--json')
 
 if (!['legislativas', 'psicotecnicas', 'ambos'].includes(BANCO)) {
   console.error(`❌ --banco debe ser legislativas | psicotecnicas | ambos (recibido: ${BANCO})`)
@@ -422,7 +426,9 @@ async function listadoParafraseadasLegislativas(c) {
       distintas: par.distintas,
       mismaRespuesta: mismaRespuesta(par.a.textoCorrecta, par.b.textoCorrecta),
     })
-    if (banda) grupos.push({ ...g, par, banda })
+    // La guarda del orden no cambia la banda: marca la pareja que NO se puede dar por mecánica
+    // aunque el conjunto de palabras coincida (T-439). Quien adjudique tiene que leerla entera.
+    if (banda) grupos.push({ ...g, par, banda, ordenDistinto: !mismoOrdenDeContenido(par.a.texto, par.b.texto) })
   }
   const gemelas = grupos.filter((g) => g.banda === 'gemela').sort((x, y) => y.par.solape - x.par.solape)
   const cola = grupos.filter((g) => g.banda === 'cola')
@@ -434,6 +440,17 @@ async function listadoParafraseadasLegislativas(c) {
     corte = corteAcumulado(gemelas.map((g) => g.expuesta), 0.8)
   }
 
+  if (JSON_OUT) {
+    console.log(JSON.stringify(gemelas.slice(0, LIMITE || gemelas.length).map((g) => ({
+      art: g.art, expuesta: g.expuesta ?? null, copiasServidas: g.copiasServidas ?? null,
+      ordenDistinto: g.ordenDistinto,
+      solape: Number(g.par.solape.toFixed(3)), distintas: g.par.distintas,
+      miembros: g.miembros.map((m) => ({ id: m.id, veces: m.veces ?? null, oficial: m.oficial,
+                                         texto: String(m.texto).replace(/\s+/g, ' ').trim() })),
+    })), null, 1))
+    return
+  }
+
   console.log('\n═══ CANDIDATOS PARAFRASEADOS · LEGISLATIVAS (solo listado) ═══')
   console.log(`  grupos examinados: ${rows.length}`)
   console.log(`  🟥 GEMELAS (mismo artículo y opciones, enunciado casi calcado, misma respuesta): ${gemelas.length}`)
@@ -443,6 +460,8 @@ async function listadoParafraseadasLegislativas(c) {
   console.log('  ⚠️ Ni la banda alta autoriza a jubilar en automático: un intercambio de UNA palabra')
   console.log('     de contenido («prevención secundaria»/«terciaria») hace otra pregunta y pasa el')
   console.log('     umbral. Se adjudica a mano, de una en una. Ver T-425.')
+  const ordDist = gemelas.filter((g) => g.ordenDistinto).length
+  if (ordDist) console.log(`  ⚠️ ${ordDist} llevan ORDEN: mismas palabras en distinta secuencia — ahí vive «¿cuántos\n     dictámenes?»/«¿cuántos informes?». Léelas enteras antes de decidir (T-439).`)
   if (POR_EXPOSICION) {
     const sinServir = gemelas.filter((g) => g.expuesta === 0).length
     const ambas = gemelas.filter((g) => g.copiasServidas >= 2).length
@@ -454,7 +473,8 @@ async function listadoParafraseadasLegislativas(c) {
   console.log('')
   for (const g of gemelas.slice(0, LIMITE || 40)) {
     const exp = POR_EXPOSICION ? ` expuesta=${g.expuesta}${g.copiasServidas >= 2 ? ' [AMBAS servidas]' : ''}` : ''
-    console.log(`\n  · solape=${g.par.solape.toFixed(3)} distintas=${g.par.distintas} n=${g.n}${exp}${g.miembros.some((m) => m.oficial) ? ' [hay OFICIAL en el grupo]' : ''}`)
+    const ord = g.ordenDistinto ? ' ⚠️ORDEN' : ''
+    console.log(`\n  · solape=${g.par.solape.toFixed(3)} distintas=${g.par.distintas} n=${g.n}${exp}${ord}${g.miembros.some((m) => m.oficial) ? ' [hay OFICIAL en el grupo]' : ''}`)
     console.log(`      ${String(g.par.a.id).slice(0, 8)}: ${String(g.par.a.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
     console.log(`      ${String(g.par.b.id).slice(0, 8)}: ${String(g.par.b.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
   }

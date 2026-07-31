@@ -1299,6 +1299,44 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
   las dos copias se han servido de verdad, así que no es hipotético.
 - **Relacionadas:** T-425 (medición y criterio), T-409 (la impugnación que destapó el primer par).
 
+#### 🔬 PRIMERA PASADA (31/07): leídos los 87, NADA jubilado todavía, y tres trampas encontradas
+
+**No se ha tocado ni una pregunta a propósito.** En una hora de lectura aparecieron tres formas
+distintas de borrar contenido bueno, y ninguna era evidente antes de mirar. Van escritas aquí para
+que la sesión que ejecute no las redescubra a base de borrar.
+
+1. **La banda es de GRUPO, el duplicado es de PAREJA.** El grupo entra en la banda por su MEJOR
+   pareja, pero 48 de los 87 tienen 3+ miembros. El grupo más expuesto de la LO 3/2007 tiene cinco:
+   cuatro preguntan por la discriminación **directa** y el quinto por la **indirecta** — misma ley,
+   mismas opciones, pregunta distinta. «Jubilar todo menos el superviviente» se lo lleva por delante.
+   **Se adjudica pareja a pareja, nunca grupo entero.**
+2. **`no` y `correcta` no son muletillas, y una cifra suelta puede ser el artículo.** Al filtrar las
+   palabras que solo son forma de citar, meter esas tres clasificó mal **tres grupos**: «señale la
+   INCORRECTA» es la pregunta contraria, no una variante de redacción. Están fuera de `RUIDO_DE_CITA`
+   con un test que lo fija.
+3. **⭐ El «límite irreducible» de T-425 no lo era.** Aquella ficha daba por imposible distinguir
+   «¿cuántos **dictámenes**?» de «¿cuántos **informes**?» porque las dos palabras ya salen en el
+   preámbulo, así que el CONJUNTO de palabras es idéntico (solape 1,000 · distintas 0). Era que se
+   estaba mirando el conjunto y no la **SECUENCIA**: en orden, las dos frases divergen.
+   `mismoOrdenDeContenido` (en el módulo puro, con tests) lo caza, y de paso cazó el otro par real
+   del barrido, *«¿convertir una CITA en EVENTO?»* / *«¿convertir un EVENTO en una CITA?»*, que el
+   corte anterior daba por simple diferencia de versión de Outlook.
+   - Marca **182 de las 318** — es una señal ANCHA (también salta con «hombres y mujeres»/«mujeres y
+     hombres», que sí es la misma pregunta). No decide: decide qué hay que leer entero. El runner las
+     pinta con `⚠️ORDEN`.
+
+**Y una familia entera que NO va en este barrido: la ofimática.** Unos 10 grupos son `Excel 365`/
+`Excel`, `Access 365`/`Access`, `Windows 11`/`Windows`. Eso no es un duplicado, es **versión de
+software**, que ya tiene sistema propio (`audit:display-drift`, APP_DRIFT/OFFICE_VER_DRIFT) porque
+distintas oposiciones examinan distintas versiones. Jubilar la genérica puede dejar un temario sin
+preguntas. Se sacan de aquí y se tratan allí.
+
+**Regla adoptada sobre las oficiales:** no se jubila ninguna `is_official_exam` en este barrido. Son
+56 de las 249 y solo cambia el resultado en 8 grupos (los que tienen dos o más); a cambio evita borrar
+de forma TERMINAL el registro de que algo cayó en un examen real. Esos 8 se miran aparte, con la
+fuente delante, porque «dos oficiales casi iguales» suele ser el MISMO examen importado dos veces —
+pero eso hay que comprobarlo, no suponerlo.
+
 ### [T-427] 🟠 [ABIERTO 31/07] Un cherry-pick entre sesiones borró 5 fichas del backlog, y el aviso que lo delataba se lee como benigno
 
 - **Esfuerzo: rato** (el aviso ya existe y los datos para distinguirlo también; es cambiar cómo se interpreta).
