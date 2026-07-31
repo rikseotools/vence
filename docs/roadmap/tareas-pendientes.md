@@ -1112,6 +1112,15 @@ incluida).
 - **DESCARTADA — la señal de «respuesta escrita y no entregada».** `resolveDispute` y `respondFeedback` devuelven `emailSkipReason:'user_preferences'` y nadie lo mira; se llegó a escribir la señal + su regla de alerta y **se retiró por decisión de Manuel**: a partir de ahora quien esté en ese estado lo habrá elegido marcando la casilla, y la campana dentro de la app ya se lo comunica. Queda escrito aquí por si el criterio cambia — el trabajo era pequeño (un módulo, dos cableados y una regla).
 - **Origen:** apareció comprobando, a raíz de una pregunta de Manuel, si un usuario con los emails desactivados recibe la respuesta a su impugnación (31/07, tras cerrar `ab3b9e43`).
 
+### [T-375] 🟡 [ABIERTO 31/07] `pause` antes de pushear deja la tarea impusheable: los dos guardarraíles se bloquean entre sí
+
+- **El atasco, reproducido hoy con T-369:** cierras el trabajo → `backlog.cjs pause T-369 --tras-deploy` (que **suelta el claim**, y hace bien) → `git push` → el **push-guard rechaza** el commit porque menciona un `T-` que no tienes reclamado → `claim T-369` → **`claim` se niega** porque la tarea está esperando deploy. Salida cerrada: solo se sale con `BACKLOG_GUARD_SKIP=1` o con un `claim --force` que ensucia el registro con un forzado que no lo es.
+- **Ninguno de los dos guardarraíles está mal.** `pause` suelta el claim a propósito (nada de leases agonizando) y `claim` bloquea las esperas a propósito (T-221). Lo que falta es que **sepan el uno del otro**: una tarea que TÚ acabas de pausar no es una tarea ajena.
+- **Por qué importa y no es cosmético:** el orden natural al terminar es *cerrar la tarea y luego pushear* — el runbook incluso pide programar la vuelta antes de irse. Así que el atasco lo va a pisar cualquier sesión que haga las cosas en ese orden, y la salida fácil es **acostumbrarse a saltarse el guard**, que es justo lo que mata a un guardarraíl (misma lección que su propio fail-open).
+- **Arreglo propuesto (a decidir):** que el push-guard acepte un `T-` **pausado por tu propio session-id** —tiene toda la información: `paused_by`/último `claimed_by` y el sha—, en vez de exigir un claim vivo. Alternativa más pobre: que `claim` deje re-reclamar sin `--force` a quien la pausó.
+- **Mientras tanto:** pushear **ANTES** de `pause`. Es el orden que no choca.
+- **Origen:** cerrando T-369 el 31/07; el push salió con `BACKLOG_GUARD_SKIP=1`, que quedó impreso en la salida.
+
 ### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
 
 - **Lo pide un premium y se le ha PROMETIDO** (feedback `e90d5ee3`, Iván, 31/07): *«¿por qué no suben preguntas y exámenes de las últimas convocatorias de auxiliar administrativo del Gobierno de Canarias? Creo que sería lo lógico para practicar»*. Se le respondió que estamos en ello y que estarán próximamente, así que esto ya no es una mejora opcional.
