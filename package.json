@@ -99,6 +99,8 @@
     "audit:landing": "node scripts/convocatoria/audit-landing.cjs",
     "sim:enlace-boletin": "node scripts/convocatoria/sim-enlace-boletin.cjs",
     "sim:push-guard-menciones": "node scripts/backlog/sim-push-guard-menciones.cjs",
+    "sim:verificacion": "node scripts/backlog/sim-verificacion.cjs",
+    "backlog:verificacion": "node scripts/backlog/verificacion.cjs",
     "sim:baja-emails": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-baja-emails.ts",
     "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs",
     "fraude:marcar-confirmadas": "node scripts/fraude/marcar-confirmadas.cjs",

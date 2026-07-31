@@ -1017,6 +1017,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`lib/sessions/solape.cjs`, 21 tests. Reporta aparte, y más grave, varias sesiones en el ' +
       'MISMO checkout: ahí no hay conflicto de git que avise, se sobrescriben en vivo.',
   },
+  done_verificacion: {
+    titulo: 'Impedir cerrar una tarea cuyo código servido todavía NO está desplegado',
+    ruta: 'scripts/backlog/verificacion.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      'Segunda puerta de `backlog.cjs done` (Fase 1 de T-392). La primera mira el TEXTO del ' +
+      'outcome y caza al que confiesa; esta mira los HECHOS: si los commits que DECLARAN la tarea ' +
+      'tocan superficie servida y el sha vivo (`/api/health`) aún no los incluye, no se puede ' +
+      'haber verificado. Nace del cierre de T-363 —código de COBROS en `main`, sin desplegar y ' +
+      'sin verificar— que la puerta de texto dejó pasar porque el outcome sonaba terminado. ' +
+      'Núcleo puro `lib/backlog/verificacionGate.cjs` (11 tests). Lo que lo salva de ser sello: ' +
+      '«servido» se DERIVA de quién importa el fichero, no de dónde vive — y solo cuentan líneas ' +
+      'con forma de import (una mención en un comentario daba `pushGuard` como servido) y ' +
+      'commits que DECLARAN, no que citan (criterio de T-403; sin eso T-431 heredaba ficheros de ' +
+      'otra sesión). Alcance medido: 36% de las tareas cerradas de 7 días. Fail-open sin red. ' +
+      'Escape `--igualmente`, que queda contado en el bus de fricción. Calibración: ' +
+      '`npm run sim:verificacion -- --listar`.',
+  },
   trabajo_huerfano: {
     titulo: '¿Algún worktree abandonado guarda trabajo que no existe en ningún otro sitio?',
     ruta: 'scripts/sessions/huerfanos.cjs',

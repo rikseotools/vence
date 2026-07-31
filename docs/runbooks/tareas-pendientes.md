@@ -537,6 +537,34 @@ eso `done` es una PUERTA, no un consejo:
 | Hecha, **falta verificar a una hora** | `pause <id> --hasta "2026-08-11 07:00" --hecho "…" --falta "…"` | suelta el claim; **la despierta el reloj** |
 | No avanzo, que la coja otro | `release <id>` | vuelve al pool, sin memoria de lo hecho |
 
+**El `done` tiene DOS puertas, y miran cosas distintas.**
+
+1. **El TEXTO** — aborta si el `--outcome` confiesa que queda trabajo ("pendiente", "falta",
+   "queda", "sin desplegar", "hay que comprobar", "medir en N días") y te imprime el `pause` ya
+   escrito. Caza al que confiesa.
+2. **LOS HECHOS** (T-392 F1) — aborta si los commits que **declaran** esa tarea tocan una
+   superficie **servida** y el `sha` vivo todavía **no los incluye**. Eso no se puede maquillar:
+   si el código no está vivo, no se ha podido verificar. Es lo que faltó con [T-363], que decide
+   cuándo se le cobra a alguien y se cerró con el código en `main` sin desplegar — con un outcome
+   que sonaba perfectamente terminado, así que la puerta del texto lo dejó pasar.
+
+   ```bash
+   npm run backlog:verificacion -- T-392      # ¿por qué me bloquea / me deja?
+   npm run sim:verificacion -- --listar       # calibración: a cuántas tareas les habla
+   ```
+
+   **Lo que lo salva de ser un sello** es que solo habla del código que llega al usuario, y eso se
+   **deriva**: un fichero de `lib/` está servido si algo bajo `app/`, `components/`, `contexts/`,
+   `hooks/` o `backend/src/` lo **importa** (línea con forma de import, no una mención en un
+   comentario), y solo cuentan los commits que **declaran** la tarea, no los que la citan (mismo
+   criterio que el push-guard). Medido: alcanza al **36 %** de las tareas cerradas en 7 días; el
+   otro 64 % —documentación, tooling, datos— se cierra igual que siempre. Fail-open: si no se
+   puede leer el `sha` vivo, no bloquea.
+
+**Ambas puertas comparten el escape `--igualmente`**, que queda contado en el bus de fricción
+(`npm run sesiones:friccion`): si el ratio de escape sube, es que una de las dos se ha vuelto un
+peaje.
+
 **`done` ABORTA si el `--outcome` confiesa que queda trabajo** — "pendiente", "falta", "queda",
 "sin desplegar", "hay que comprobar", "medir en N días"— y te imprime el `pause` ya escrito.
 Cerrar en falso saca la tarea del backlog **y** deja el trabajo sin hacer, con apariencia de

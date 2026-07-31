@@ -976,6 +976,50 @@ incluida).
   - **`blocked_by`** para dependencias entre tareas.
   - **El latido de sesiones** ([T-296]): qué worktree está vivo.
 
+#### ✅ FASE 1 HECHA (31/07) — el escalón medible del `done`
+
+Era la que la propia ficha marcaba como primera *«y ya aporta sola»*: la que habría parado el
+fallo de [T-363]. **`done` ahora tiene dos puertas**: la del TEXTO, que ya existía y caza al que
+confiesa, y la de los HECHOS, que no se puede maquillar — si los commits que **declaran** la tarea
+tocan superficie **servida** y el `sha` vivo todavía no los incluye, el cierre se para y te
+imprime el `pause --tras-deploy` ya escrito.
+
+Probado sobre el caso real: con un outcome que dice *«verificado en producción con un canje
+real»* —que la puerta del texto deja pasar sin pestañear— T-363 **se bloquea** y lista los tres
+ficheros de cobros que no están vivos.
+
+**Las tres decisiones que evitan que sea un sello**, que era el riesgo (a) declarado en la ficha:
+
+1. **«Servido» se DERIVA, no se declara.** Un fichero de `lib/` viaja si algo bajo `app/`,
+   `components/`, `contexts/`, `hooks/` o `backend/src/` lo importa. Al estrenarlo con el nombre
+   del módulo suelto, `pushGuard` salía «servido por backend» porque un fichero servido lo nombra
+   **en un comentario**: ahora solo cuentan líneas con forma de `import`/`require`.
+2. **Solo cuentan los commits que DECLARAN la tarea**, no los que la citan — el criterio de
+   [T-403] aplicándose a sí mismo. Sin eso, T-431 salía «toca backend» por un `alert-rules.ts`
+   que nunca tocó: venía del commit de otra sesión que la citaba de pasada.
+3. **`package.json` solo cuenta si cambian DEPENDENCIAS.** Registrar un comando de npm no llega
+   a ningún usuario, y casi toda tarea de tooling toca ese fichero.
+
+**Alcance medido: 36 %** de las 161 tareas cerradas con código en 7 días tocan superficie servida;
+el otro 64 % (documentación, tooling, datos) se cierra exactamente igual que antes.
+
+> **Lo que NO se pudo medir, y conviene saberlo antes de la Fase 2:** la pregunta retrospectiva
+> «¿cuántos de esos 161 cierres habrían bloqueado **el día que se cerraron**?» **no tiene
+> respuesta**, porque `deploy_runs` está **VACÍA** —ningún deploy ha pasado aún por el camino de
+> [T-385]— y no existe el `sha` que estaba vivo aquel día. La Fase 3 debería apoyarse en esa
+> tabla, así que hasta que un deploy real la alimente, el historial de despliegues no es una
+> fuente utilizable.
+
+Capas: núcleo puro `lib/backlog/verificacionGate.cjs` (11 tests) · I/O
+`scripts/backlog/verificacion.cjs` (`npm run backlog:verificacion -- T-nnn` explica cualquier
+veredicto) · calibración `npm run sim:verificacion -- --listar`, con **gate de regresión** sobre
+tres casos de verdad conocida (T-363 debe bloquear; T-403 y T-431, tooling puro, no pueden).
+Fail-open ante cualquier fallo de red o de git. El escape `--igualmente` y los bloqueos se cuentan
+los dos en el bus de fricción de [T-423]: si el ratio sube, la puerta se ha vuelto peaje.
+
+**Quedan la Fase 2** (el estado `verificando` explícito con su cubo y su vigía) **y la Fase 3**
+(`archive --evidencia` y la migración de las ~350 cerradas).
+
 #### Los estados, y qué los mueve
 
 | estado | qué significa | quién lo mueve al siguiente |
