@@ -1082,6 +1082,20 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
+
+- **Dónde está la cola, medido el 31/07:** `nota-auditoria` a **0**, la banda `≥10 impresiones` de apelotonadas a **1**, y la banda **5-9 impresiones a 97 preguntas**. Es exactamente lo que el manual manda hacer al retomar el cubo (volver a extraer, porque la exposición se mueve, y bajar el umbral). Extracción:
+  ```bash
+  node scripts/apelotonadas/extraer-lote.cjs --min-impresiones 5 --tam 12 --out <dir>   # 9 lotes, 97 preguntas
+  ```
+- **✅ Lote 1 CERRADO (12 preguntas): 11 reescritas + 1 parada a propósito.** Las 11 llevan el ciclo entero del procedimiento v2.1: clave verificada contra su artículo ANTES de escribir, explicación estructurada con cita literal (`citaNoLiteral` en verde en las 11), `--apply` en lote, **re-verificación contra la BD viva en verde** (`verificar-aplicadas.ts`: clave intacta, texto = render, fuera del cubo, barajado coherente), traza en `ai_verification_results` con `ai_provider='claude_code_apelotonadas_2026_07'` y caché de producción invalidada (4 veces, que es per-instancia).
+- **⛔ La que NO se tocó, y es lo único que pide decisión humana: `2249ecd5-3b5c-4040-8d8c-d437eba9d0a7`.** Enunciado *«La legislación de la Unión Europea adopta la forma de:»* con clave **«Todas las respuestas son correctas»**, lo que obliga a dar por buena la opción *«Tratados constitutivos de la Unión Europea»*. Su propio artículo vinculado —**art. 288 TFUE**— enumera lo que adoptan las instituciones (reglamentos, directivas, decisiones, recomendaciones y dictámenes): los Tratados son **derecho originario** y no están ahí. Defecto de CONTENIDO, no de formato, así que el manual prohíbe reescribirla sin más y **nunca** flip automático de clave. Las dos salidas: reformular el enunciado a «actos jurídicos de la Unión» (y entonces la clave se sostiene) o cambiar esa opción. Anotada `answer_ok=false` con el razonamiento. **De paso:** su explicación actual está **sin tildes** por un fallo de codificación («Uni n», «art culo»), así que se reescribe igual cuando se decida.
+- **Cabo menor anotado y NO tocado:** en `1a985c5d` la opción A escribe **«Paulov»** por «Pávlov». No afecta a la clave, y cambiar el texto de una opción invalida el sellado de barajado que se acaba de dejar limpio — no parecía buen canje sin preguntar. Queda dicho en su fila de verificación.
+- **⚠️ GOTCHA del flujo que no estaba escrito y cuesta una pasada entera** (ya añadido al manual, §«Se reescriben ESTRUCTURADAS»): con `"estilo": "boletin"` **el render ya pone el veredicto** («**Por qué C es correcta:** …»), así que escribir las razones empezando por `CORRECTA —`/`INCORRECTA —` lo duplica. Se cuela fácil porque el formato §5.1 del manual —que es el de **impugnaciones**— sí lleva ese prefijo. **Mira siempre el dry-run antes de aplicar.**
+- **Ritmo real medido:** 12 preguntas por tanda con verificación completa (leer artículo, comprobar clave, escribir, validar cita, aplicar, re-verificar). Quedan **8 lotes / 85 preguntas** en esta banda; después toca bajar a `--min-impresiones 2` y volver a medir.
+- **Lo que NO cubre este trabajo:** la **auditoría ciega independiente** (paso 4 del método v2.1). El manual la exige aunque el gate mecánico esté en verde —midió un 14% de defectos que ningún script ve— y necesita un agente distinto del que escribió. En esta sesión no se lanzó: quien siga el cubo debería pasarla sobre las 11 ya aplicadas antes de dar el lote por auditado.
+- **Relacionadas:** el manual `docs/maintenance/revisar-preguntas-con-agente.md` (§ del cubo, con el pipeline y los tres pasos que no se pueden saltar) y la memoria `project-cubo-explicaciones-apelotonadas`.
+
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
 
 - **ORIGEN.** Manuel (31/07): *«el que escribe la ficha y tarea, ¿debería poner tiempo aprox de esfuerzo y fecha límite para ejecutarla? esas dos variables para hacer mejor triaje»*.
@@ -1289,6 +1303,16 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > **Alcance de lo reparado:** 70 respuestas de **49 usuarios distintos** en 90 días sobre las versiones
 > erróneas.
 >
+> **Lo que se tocó en el caso de Laura, para que nadie lo «arregle» de vuelta:** la clave buena es
+> **64.000** (Microsoft, *«El tipo de datos Memo ahora se llama Texto largo»*: *«puede contener hasta un
+> gigabyte de texto, aunque los controles de formularios e informes solo pueden mostrar los primeros
+> 64.000 caracteres»*). **No confundir con 65.535**, que es el máximo del CAMPO escribiendo por la
+> interfaz y es lo que decía la clave errónea. El artículo de teoría **`Access 365 art 1 — Fundamentos`
+> §16.2** solo recogía el 65.535: se le **añadió la fila del límite de visualización y el literal de
+> Microsoft** (por eso la explicación de la superviviente `8dd97c48` puede citarlo como blockquote y el
+> validador lo da por literal). Si un re-verificador LLM propone «corregir» 64.000 → 65.535, está
+> mirando la especificación equivocada.
+>
 > **Lo que queda vivo aquí sigue siendo lo de arriba** (kind al badge + corte borroso) **más la banda
 > `warn`: 954 grupos / 1.943 preguntas** que ya no se contradicen pero siguen saliendo repetidas. Se
 > triarían **por exposición** (las más servidas primero) jubilando el clon redundante de cada grupo,
@@ -1329,6 +1353,17 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cómo se resuelve (y cómo NO):** es trabajo del pipeline `verify:scope` contra el **epígrafe oficial** de cada tema, no un `UPDATE` a mano. Si el epígrafe pide el Título VI o «la igualdad en el acceso a bienes y servicios», el 72 entra; si enumera artículos concretos y no lo nombra, se queda fuera y entonces lo que sobra es la pregunta ahí. **NUNCA añadir el 72 a los 13 por simetría con los 17**: la simetría no es fuente.
 - **Cómo salió:** revisando las gemelas con clave contradictoria de [T-408]. El hueco no lo cazó ningún detector — lo destapó **la guarda del re-anclaje al negarse a mover la pregunta**, que es un sitio raro para encontrar un problema de temario.
 - **Relacionada:** [T-408] (de donde sale), frase-gatillo *«revisa los huecos del temario»* (`scope_titulo_huerfano`) — este caso es su versión pequeña: no falta un título entero, falta **el artículo siguiente**, y por eso el detector de títulos huérfanos no lo ve.
+
+### [T-426] 🟡 [ABIERTO 31/07] 23 señales de fraude CONFIRMADAS y ninguna acción posible: la alerta reclama algo que F0 no construyó
+
+- **Esfuerzo: ~1 h**, pero es **decisión de Manuel**, no trabajo: mientras no se decida, cualquiera que coja esto se encuentra el mismo callejón.
+- **Qué pasa:** la regla `fraude_confirmado_sin_accion` lleva disparando (*«23 señales de fraude CONFIRMADAS sin resolver, la más antigua 9 días»*) y **tiene razón en el dato y no en la petición**: F0 es, por diseño, **solo detección + revisión — NO bloquea** (CLAUDE.md → *«Señales de fraude»*). El enforcement (límite por device/IP, require-device anti-curl, cap de altas) es **F1/F2 y necesita aprobación explícita**. O sea que confirmar una señal es el ÚLTIMO paso que hoy existe: la alerta pide «resolver» algo que **no tiene remediación construida**, así que solo puede acumularse y volver a sonar.
+- **Medido el 31/07** (`fraud_alerts`): **23 `confirmed`** — 11 `multi_account_device`, 7 `device_daily_farming`, 5 `multi_account_reg_ip` — todas entre el **21/07 y el 31/07**. Y **1 `new`** sin revisar. No es un atasco de triaje: el triaje se hizo y ahí acaba el camino.
+- **Las dos salidas, y hay que elegir una** (no valen las dos a medias):
+  1. **Decidir F1** (aunque sea el trozo más pequeño: el límite free es 25/día **por cuenta**, así que N cuentas en un device = N×25 — ese es el hueco que F1 cierra). Entonces «confirmada» pasa a significar algo y la alerta recupera sentido.
+  2. **Reformular la alerta** para que mida lo que sí se puede hacer (p. ej. señales `new` sin revisar en X días) y dejar de pedir una acción inexistente. Una alerta que no se puede atender **enseña a ignorar el buzón**, que es el daño real y se contagia a las demás reglas.
+- **Cómo salió:** triando `alert_fired` de 24 h en una sesión de impugnaciones. De las ~20 reglas que habían disparado ese día, **todas menos dos ya tenían ficha**; esta solo aparecía como mención suelta en una lista (línea de `session_ip_coverage_drop`…), sin nadie describiendo el atasco. La otra sin ficha era [T-422].
+- **Relacionada:** [T-422] (la otra huérfana del mismo triaje), runbook `revisar-fraudes.md`, CLAUDE.md → *«Señales de fraude / abuso»* (donde está escrito que F0 no bloquea).
 
 ### [T-422] 🔴 [ABIERTO 31/07] Tres impugnaciones resueltas cuyo email NUNCA se intentó: el reconciliador lleva horas cantándolo y nadie las reenvía
 
