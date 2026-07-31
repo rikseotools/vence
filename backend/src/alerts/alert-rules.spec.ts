@@ -2530,3 +2530,24 @@ describe('RULE_CANARY_IDENTIDAD_PAGO_FAILED', () => {
     );
   });
 });
+
+// ── La ventana de la alerta del cupo (31/07/2026) ────────────────────────────────────────
+//
+// Medía también el día EN CURSO y disparó 4 veces en 48 h con 12-18 «afectados»; al volver a
+// medir esos mismos días después salían 0 y 1. Mandaba correos por gente que no estaba
+// cobrada de más. Se acota a días cerrados; este test lo fija para que no vuelva.
+describe('RULE_DAILY_QUOTA_OVERCHARGE — mide días CERRADOS, no el que está en curso', () => {
+  it('la ventana es exactamente ayer, no «desde ayer» (que incluye hoy)', () => {
+    const q = JSON.stringify(RULE_DAILY_QUOTA_OVERCHARGE.query);
+    expect(q).toContain("d.usage_date = (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1");
+    expect(q).not.toContain("d.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1");
+  });
+
+  it('la consulta del aviso enseña la MISMA ventana que la regla', () => {
+    // Si divergen, quien investigue mira otro conjunto de datos que el que disparó.
+    const body = RULE_DAILY_QUOTA_OVERCHARGE.buildNotification([
+      { afectados: 12, respondidasMedia: 13, desfaseMedio: 12 },
+    ]).body;
+    expect(body).toContain("d.usage_date = (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1");
+  });
+});

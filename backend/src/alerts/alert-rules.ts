@@ -4620,7 +4620,20 @@ export const RULE_DAILY_QUOTA_OVERCHARGE: AlertRule<{
       FROM daily_question_usage d
       JOIN user_profiles p ON p.id = d.user_id
       WHERE p.plan_type <> 'premium'
-        AND d.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1
+        -- Solo el día CERRADO de ayer, nunca el de hoy (31/07/2026).
+        --
+        -- Antes miraba >= hoy - 1, o sea también el día en curso, y ahí el dato TODAVÍA SE
+        -- ESTÁ ASENTANDO: medido en producción, esta regla disparó 4 veces en 48 h con 12-18
+        -- «afectados»… y al volver a medir esos mismos días después salían 0 y 1. Es decir,
+        -- mandaba correos por gente que no estaba cobrada de más — y una alerta que grita sin
+        -- motivo se acaba ignorando, que es la forma lenta de quedarse sin vigilancia.
+        --
+        -- El desfase intradía no está explicado del todo (la sospecha es la cola asíncrona de
+        -- guardado: el contador va por delante de las filas de test_questions hasta que la
+        -- cola drena). Se acota el síntoma midiendo solo días cerrados, que además es lo
+        -- correcto para esta regla: detectar la regresión con 24 h de retraso vale, porque no
+        -- es un fuego, es un cobro que hay que corregir.
+        AND d.usage_date = (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1
         AND d.questions_answered >= 25
     ),
     con_respuestas AS (
@@ -4655,7 +4668,7 @@ export const RULE_DAILY_QUOTA_OVERCHARGE: AlertRule<{
     const desfase = rows[0]?.desfaseMedio ?? 0;
     return {
       title: `${n} usuarios free agotaron el cupo con ~${media} respuestas reales`,
-      body: `El contador diario está cobrando de más (desfase medio: ${desfase} preguntas).\n\nDesde el 29/07/2026 el cupo lo cobra el SERVIDOR y solo si la respuesta se guarda (\`debeConsumirCupo\`, lib/api/dailyLimit.ts + backend/src/daily-limit/daily-limit.service.ts). Si esta regla dispara, comprobar por ese orden:\n\n  1. ¿Alguien volvió a cobrar desde el cliente? → guardarraíl __tests__/guardrails/dailyQuotaServerSide.test.ts\n  2. ¿Hay respuestas que dejaron de persistirse en test_questions? (cola de guardado, sesión sin crear)\n  3. ¿Un camino nuevo (modalidad nueva) cobra sin guardar?\n\nQuiénes son:\n\n  SELECT d.user_id, d.usage_date, d.questions_answered\n  FROM daily_question_usage d JOIN user_profiles p ON p.id=d.user_id\n  WHERE p.plan_type <> 'premium' AND d.questions_answered >= 25\n    AND d.usage_date >= (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1;`,
+      body: `El contador diario está cobrando de más (desfase medio: ${desfase} preguntas).\n\nDesde el 29/07/2026 el cupo lo cobra el SERVIDOR y solo si la respuesta se guarda (\`debeConsumirCupo\`, lib/api/dailyLimit.ts + backend/src/daily-limit/daily-limit.service.ts). Si esta regla dispara, comprobar por ese orden:\n\n  1. ¿Alguien volvió a cobrar desde el cliente? → guardarraíl __tests__/guardrails/dailyQuotaServerSide.test.ts\n  2. ¿Hay respuestas que dejaron de persistirse en test_questions? (cola de guardado, sesión sin crear)\n  3. ¿Un camino nuevo (modalidad nueva) cobra sin guardar?\n\nQuiénes son:\n\n  SELECT d.user_id, d.usage_date, d.questions_answered\n  FROM daily_question_usage d JOIN user_profiles p ON p.id=d.user_id\n  WHERE p.plan_type <> 'premium' AND d.questions_answered >= 25\n    AND d.usage_date = (NOW() AT TIME ZONE 'Europe/Madrid')::date - 1;`,
       metadata: {
         afectados: n,
         respondidasMedia: media,

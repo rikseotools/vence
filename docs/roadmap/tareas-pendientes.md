@@ -602,6 +602,12 @@
   3. **Psicotécnicos y ortografía siguen sin idempotencia física** (sus tablas de respuestas no tienen índice único por sesión+pregunta): ahí se cobra por guardado correcto, que ya es mejor que por evento de cliente, pero si se añade el índice conviene pasarlas a la misma regla.
 - **Origen:** investigación del feedback `0c4303f7` (Sergio) el 29/07/2026, a raíz de la pregunta "¿por qué siendo free hizo más de 25 preguntas diarias?" — resultó ser lo contrario: hacía menos de las que le cobraban.
 
+#### 📊 VERIFICADO EN PRODUCCIÓN (31/07) — el arreglo bien, la alerta mal
+- **El cobro de más está corregido.** Free que topan en 25 habiendo respondido <20, por día: **12 (28/07) → 6 (29/07) → 1 → 0 (30/07)**. La consulta de la alerta, medida el 31/07, da **1 afectado** contra un umbral de 10.
+- **Pero la alerta disparó 4 veces en 48 h** (2 con correo) reportando 12-18 afectados, y **esos números no sobreviven a volver a medirlos**: el día que ella dijo 13, medido después, sale 0. Estaba mirando `usage_date >= hoy - 1`, o sea también el día EN CURSO, cuando el dato aún se asienta (sospecha: la cola asíncrona de guardado va por detrás del contador; no está probado).
+- **Corregido:** la regla mide solo el **día cerrado de ayer**, con 2 tests que fijan la ventana y que el aviso enseñe la misma. Detectar la regresión con 24 h de retraso vale: esto es un cobro que se corrige, no un fuego. **Una alerta que grita sin motivo se acaba ignorando** — ese era el riesgo real.
+- **Sigue pendiente lo de siempre:** decidir si se repara el dato histórico de los contadores ya inflados (decisión de Manuel, no ejecutada).
+
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
 - **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
@@ -629,6 +635,10 @@
 - **✅ BLOQUEO DEL JOURNEY RESUELTO (29/07):** era la cuenta de test sin onboardear — le faltaban edad y género, así que el modal se abría a pantalla completa encima de CUALQUIER journey autenticado y se tragaba los clics (el síntoma que llegaba era un `locator.click: Timeout` sobre un botón que existe y se ve). Se completó su perfil (`age`, `gender`, `onboarding_completed_at`; ojo, va cacheado 60 s y hay que purgar el tag `profile`) y el runner ahora **lo detecta y lo dice** en vez de morir con un timeout críptico. Documentado en `docs/runbooks/vence-sim.md` §Identidad. Este journey ya puede correr.
 - **Siguiente paso:** desbloquear el journey → reproducir → arreglar el origen de `currentResult` (no parchear el mensaje) → dejar el journey en verde como regresión.
 - **Origen:** feedback `108cc2a8` de MariSol, 28/07/2026.
+
+#### 📊 MEDIDO EN PRODUCCIÓN (31/07) — el volumen es BAJO, y eso decide
+- `evolution_result_mismatch` en los últimos 4 días: **7 · 6 · 10 · 2 eventos**, de **1 a 6 usuarios/día**, y **repartidos entre preguntas distintas** (2 por pregunta, ninguna concentración).
+- La propia ficha decía: *«si el volumen es alto, ir al origen de `currentResult` en vez de parchear el mensaje»*. **No es alto** → toca arreglar el mensaje, no perseguir el origen. Pero es persistente y no se va solo.
 
 ### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
 - **🔬 CORRECCIÓN (29/07, verificada leyendo el código y los datos): los 3 `evolution_result_mismatch` que motivaron el apagado NO pudieron venir del barajado.** Ocurrieron en `/test/repaso-fallos-v2`, y esa ruta se sirve de `/api/v2/tests/failed-questions` — **no pide barajado** (`shuffleOptions` solo lo pide `lib/testFetchers.ts`) y ni siquiera maneja `option_order`. Así que la causa de esos tres es otra y pertenece a [T-244].
@@ -1130,6 +1140,10 @@ incluida).
 - **Verificación pendiente (que esta vez se ejecuta, no se declara):** tras desplegar, la cobertura POR FILA de `user_sessions` debe subir hacia el 70-85 %, y `session_ip_coverage_drop` dejar de disparar. Consulta: `SELECT count(*), count(ip_address) FROM user_sessions WHERE created_at > <hora del deploy>`. **Las 34.732 filas viejas se quedan sin IP a propósito**: esa IP no la sabe ya nadie, e inventarla es exactamente el fallo que se acaba de cerrar.
 - **Lo que esto enseña, y es lo que hay que llevarse:** la ficha se cerró **declarando** el arreglo, no midiéndolo — la verificación quedó escrita como pendiente («que la cobertura suba hacia el 70-85 %») y nadie la ejecutó. Y el arreglo era correcto en lo que miraba: el disparador. Lo que no se comprobó es que el dato llegara a su sitio. La alerta `session_ip_coverage_drop` sí hizo su trabajo y siguió disparando (30/07 11:05, «0 % de 1.108 sesiones»): es la señal que destapó que el cierre era falso.
 - **Sigue ciego hasta el deploy:** `multi_account_reg_ip` y el desempate por IP de la sombra de [T-304].
+
+#### 📊 MEDIDO EN PRODUCCIÓN (31/07) — mejora de verdad, pero NO llega
+- Cobertura de IP en `user_sessions` por día de creación: **2,8% (27/07) → 3,2% → 6,4% → 14,8% → 18,9% (30/07) → 19,0% (31/07)**.
+- El objetivo de la ficha era **70-85%**. Con el 19% queda **el 81% de las sesiones sin IP**: el despliegue mejoró la cosa (×7) pero hay algo más que la sigue perdiendo. **NO se puede cerrar**: falta encontrar qué.
 
 ### [T-352] 🟠 [ABIERTO 31/07] El navegador de un usuario se cree otra cuenta: manda un `userId` que ya no existe
 
