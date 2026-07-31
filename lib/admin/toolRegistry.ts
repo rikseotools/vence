@@ -1314,7 +1314,20 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'opciones con el enunciado redactado distinto, que es la que se le escapó entera a la ' +
       'deduplicación de mayo. El criterio (normalización, clave de opciones, quién sobrevive, ' +
       'banda error/warn por el TEXTO de la respuesta y no por su índice) vive en el módulo puro ' +
-      '`lib/calidad/duplicados.js`, con tests, para que los dos bancos no diverjan.',
+      '`lib/calidad/duplicados.js`, con tests, para que los dos bancos no diverjan. ' +
+      '**`--banco legislativas --parafraseadas` (T-425, 31/07)**: el mismo corte para `questions`, ' +
+      'que NO se podía trasladar tal cual — agrupar solo por opciones da 3.376 grupos casi todos ' +
+      'legítimos (series de variante: `polvorín semienterrado`/`superficial`, `ingreso`/`reintegro`, ' +
+      'tramos de una tabla) y encima `esJuegoGenerico` descarta el caso que originó la ficha, porque ' +
+      'sus opciones son cuatro números de artículo. Aquí se cruza el parecido del enunciado con el ' +
+      'número ABSOLUTO de palabras distintas: el ratio solo dice «se parecen», el absoluto dice «se ' +
+      'parecen POR POCO TEXTO», que es lo que separa la errata del supuesto práctico (mismo preámbulo ' +
+      'largo, pregunta final distinta, ratio 0,90 sin ser gemelas). Dos bandas: GEMELA (318 grupos, ' +
+      '817 preguntas, 499 sobrantes) y cola de revisión (1.292). LISTA Y NO ESCRIBE NUNCA, ni la banda ' +
+      'alta: un intercambio de UNA palabra de contenido («prevención secundaria»/«terciaria») hace otra ' +
+      'pregunta y pasa el umbral — límite irreducible, fijado con un test para que nadie lo «arregle» ' +
+      'sin querer. NO pinga badge a propósito mientras no se decida qué hacer con lo que salga: una ' +
+      'alerta sin remediación construida enseña a ignorar el buzón (lección de T-426).',
   },
   aprobar_batch_generado: {
     titulo: 'Paso 6: transicionar un batch `draft` → `approved` (lo hace VISIBLE), con gate y resumen de auditoría',

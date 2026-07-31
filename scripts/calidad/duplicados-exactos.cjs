@@ -8,6 +8,7 @@
 //   node scripts/calidad/duplicados-exactos.cjs --dia 2026-03-21 --aplicar
 //   node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas
 //   node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas --parafraseadas
+//   node scripts/calidad/duplicados-exactos.cjs --banco legislativas --parafraseadas   # T-425
 //
 // ## Los dos bancos, un solo criterio (31/07/2026, T-410)
 //
@@ -55,7 +56,10 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
-const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes } = require('../../lib/calidad/duplicados.js')
+// El `sslmode` de la URL PISA la opción `ssl` en `pg`: la receta va en un solo sitio.
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
+const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes,
+        compararEnunciados, bandaParafraseada, mismaRespuesta } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -339,15 +343,94 @@ async function listadoParafraseadas(c) {
   console.log('\n  (listado: no se ha tocado nada — se adjudica a mano, ver T-410)\n')
 }
 
+// ── Cola parafraseada · LEGISLATIVAS (solo listado, NUNCA escribe) ──────────────────────
+//
+// Misma idea que el listado de psicotécnicas, pero el ruido de este banco es OTRO y hace falta
+// una segunda señal. Ver el bloque de `lib/calidad/duplicados.js` para los números medidos: el
+// juego de opciones por sí solo da 3.376 grupos casi todos legítimos (series de variante:
+// `polvorín semienterrado`/`superficial`, `ingreso`/`reintegro`, tramos de una tabla), así que
+// aquí se cruza con el parecido del enunciado y el número absoluto de palabras distintas.
+//
+// Se excluyen los supuestos (`exam_case_id`) por el mismo motivo que en el corte exacto:
+// comparten enunciado POR DISEÑO. Sin esa guarda, la banda alta se llena de casos clínicos.
+
+const SQL_PARAFRASEADAS_LEG = `
+  with base as (
+    select q.id, q.question_text, q.is_official_exam, q.primary_article_id, q.created_at,
+           ${N('q.question_text')} as norm,
+           (select string_agg(x, '|' order by x) from unnest(array[
+              ${N('q.option_a')}, ${N('q.option_b')}, ${N('q.option_c')}, ${N('q.option_d')}]) x
+             where x <> '') as ops,
+           (array[q.option_a, q.option_b, q.option_c, q.option_d])[q.correct_option + 1] as texto_correcta
+      from questions q
+     where q.is_active
+       and q.exam_case_id is null          -- los supuestos comparten enunciado POR DISEÑO
+       and q.primary_article_id is not null
+  )
+  select ops, primary_article_id as art, count(*)::int n,
+         json_agg(json_build_object('id', id, 'texto', question_text, 'oficial', is_official_exam,
+                                    'alta', created_at, 'textoCorrecta', texto_correcta)) as miembros
+    from base
+   where ops is not null and ops <> ''
+   group by ops, primary_article_id
+  having count(*) > 1 and count(distinct norm) > 1`
+
+/** Pareja más gemela del grupo: más solape y, a igualdad, menos palabras distintas. */
+function mejorPareja(miembros) {
+  let mejor = null
+  for (let i = 0; i < miembros.length; i++) {
+    for (let j = i + 1; j < miembros.length; j++) {
+      const m = compararEnunciados(miembros[i].texto, miembros[j].texto)
+      if (!mejor || m.solape > mejor.solape || (m.solape === mejor.solape && m.distintas < mejor.distintas)) {
+        mejor = { ...m, a: miembros[i], b: miembros[j] }
+      }
+    }
+  }
+  return mejor
+}
+
+async function listadoParafraseadasLegislativas(c) {
+  const { rows } = await c.query(SQL_PARAFRASEADAS_LEG)
+  const grupos = []
+  for (const g of rows) {
+    const par = mejorPareja(g.miembros)
+    if (!par) continue
+    const banda = bandaParafraseada({
+      solape: par.solape,
+      distintas: par.distintas,
+      mismaRespuesta: mismaRespuesta(par.a.textoCorrecta, par.b.textoCorrecta),
+    })
+    if (banda) grupos.push({ ...g, par, banda })
+  }
+  const gemelas = grupos.filter((g) => g.banda === 'gemela').sort((x, y) => y.par.solape - x.par.solape)
+  const cola = grupos.filter((g) => g.banda === 'cola')
+
+  console.log('\n═══ CANDIDATOS PARAFRASEADOS · LEGISLATIVAS (solo listado) ═══')
+  console.log(`  grupos examinados: ${rows.length}`)
+  console.log(`  🟥 GEMELAS (mismo artículo y opciones, enunciado casi calcado, misma respuesta): ${gemelas.length}`)
+  console.log(`     preguntas implicadas: ${gemelas.reduce((a, g) => a + g.n, 0)} · sobrantes si se confirman: ${gemelas.reduce((a, g) => a + g.n - 1, 0)}`)
+  console.log(`  ⬜ cola de revisión (parecidas, NO concluyentes): ${cola.length}`)
+  console.log('')
+  console.log('  ⚠️ Ni la banda alta autoriza a jubilar en automático: un intercambio de UNA palabra')
+  console.log('     de contenido («prevención secundaria»/«terciaria») hace otra pregunta y pasa el')
+  console.log('     umbral. Se adjudica a mano, de una en una. Ver T-425.')
+  console.log('')
+  for (const g of gemelas.slice(0, LIMITE || 40)) {
+    console.log(`\n  · solape=${g.par.solape.toFixed(3)} distintas=${g.par.distintas} n=${g.n}${g.miembros.some((m) => m.oficial) ? ' [hay OFICIAL en el grupo]' : ''}`)
+    console.log(`      ${String(g.par.a.id).slice(0, 8)}: ${String(g.par.a.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
+    console.log(`      ${String(g.par.b.id).slice(0, 8)}: ${String(g.par.b.texto).replace(/\s+/g, ' ').slice(0, 150)}`)
+  }
+  if (gemelas.length > (LIMITE || 40)) console.log(`\n  … y ${gemelas.length - (LIMITE || 40)} más (usa --limite N)`)
+  console.log('\n  (listado: no se ha tocado nada — se adjudica a mano, ver T-425)\n')
+}
+
 async function main() {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const c = new Client(pgConfig())
   await c.connect()
   try {
     if (PARAFRASEADAS) {
-      await listadoParafraseadas(c)
+      if (BANCO === 'legislativas' || BANCO === 'ambos') await listadoParafraseadasLegislativas(c)
+      if (BANCO === 'psicotecnicas' || BANCO === 'ambos') await listadoParafraseadas(c)
       return
     }
     if (BANCO === 'legislativas' || BANCO === 'ambos') await barridoLegislativas(c)

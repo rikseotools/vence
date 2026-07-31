@@ -1228,6 +1228,62 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Decisión que hará falta (de Manuel):** con dos versiones válidas de la misma pregunta, ¿se jubila una como `retired_duplicate`, se deja porque son variantes legítimas de examen, o se reformula una para que pregunten cosas distintas del mismo artículo? Afecta a cuánto banco se pierde, así que no lo decide la sesión.
 - **NO confundir con T-409:** aquel es «la explicación es el artículo copiado» (defecto de explicación); esto es «la pregunta ya existe» (defecto de banco). Se cruzaron porque la misma impugnación destapó los dos.
 - **Relacionadas:** T-409, `docs/maintenance/impugnaciones-claude-code.md` (regla del fallo sistémico y la de «un hallazgo, una recompensa»).
+
+#### ✅ MEDIDO Y CON HERRAMIENTA (31/07, sesión `centro-inferior`)
+
+**Comando:** `node scripts/calidad/duplicados-exactos.cjs --banco legislativas --parafraseadas [--limite N]`
+— extiende el runner que YA existía en vez de abrir otro; el criterio vive en `lib/calidad/duplicados.js`
+(el mismo módulo que usan los dos bancos), con 12 tests nuevos sobre pares reales de este barrido.
+
+**Lo primero que salió: el método que proponía esta ficha no vale, y el corte que ya existía tampoco.**
+
+- Agrupar por `primary_article_id` + solape ≥70% es **lo que ya probó T-321**: 3.230 pares cuyos
+  peores casos eran supuestos prácticos. Aquí se reprodujo igual.
+- El corte «parafraseado» que existe para psicotécnicas **no se traslada**: agrupando solo por juego
+  de opciones salen **3.376 grupos** y casi todos son legítimos por diseño — gramática inglesa
+  (`another/other/others`), etapas del PAE, `estadio I-IV`, `grado I-IV`. Y encima su filtro
+  `esJuegoGenerico` **descarta justo el par que originó esta ficha**, porque sus opciones son cuatro
+  números de artículo (`115|137|147|148`) — en el banco legislativo eso sí discrimina.
+
+**Lo que sí separa las dos cosas** es cruzar el ratio de solape con el número **ABSOLUTO** de palabras
+no compartidas. El ratio solo dice «se parecen»; el absoluto dice «se parecen POR POCO TEXTO», que es
+lo que distingue la errata de la familia de supuesto (mismo preámbulo largo, pregunta final distinta,
+ratio 0,90 sin ser gemelas):
+
+| ratio \ palabras distintas | ≤2 | 3-5 | 6-10 | 11-20 | >20 |
+|---|---|---|---|---|---|
+| ≥0,95 | **347** | 37 | 8 | 1 | 0 |
+| 0,90-0,95 | 213 | 132 | 12 | 4 | 4 |
+| 0,80-0,90 | 82 | 223 | 164 | 14 | 12 |
+| 0,70-0,80 | 2 | 55 | 204 | 86 | 10 |
+
+**El resultado, sobre las activas (sin supuestos):**
+
+| banda | criterio | grupos | preguntas | sobrantes |
+|---|---|---|---|---|
+| 🟥 **gemela** | solape ≥0,95 · ≤2 palabras distintas · **misma respuesta** | **318** | 817 | **499** |
+| ⬜ cola de revisión | solape ≥0,70, no concluyente | 1.292 | — | — |
+
+Precisión de la banda alta: **18 de 20** revisadas a mano. Son erratas, versiones (`Excel 365`/`Excel`),
+tildes, orden de palabras — duplicados de verdad.
+
+**⚠️ Ni la banda alta autoriza a jubilar en automático, y no es pereza: es irreducible.** Los dos falsos
+positivos que sobreviven al umbral son *«prevención **secundaria**»/«**terciaria**»* y *«¿cuántos
+**dictámenes**?»/«¿cuántos **informes**?»* — un intercambio de UNA palabra de contenido hace otra
+pregunta, y en el segundo caso el conjunto de palabras es idéntico (las dos palabras ya salen en el
+preámbulo), así que el solape da 1,000 y las distintas dan 0. **Hay un test que fija ese límite** para
+que nadie lo «arregle» sin darse cuenta de lo que abre.
+
+**NO pinga el badge a propósito.** Es on-demand hasta que se decida qué se hace con lo que salga: una
+alerta sin remediación construida enseña a ignorar el buzón entero, que es exactamente lo que está
+pasando con `fraude_confirmado_sin_accion` en [T-426].
+
+**🙋 LO QUE FALTA ES LA DECISIÓN DE MANUEL** (la misma que ya pedía la ficha, ahora con cifras
+delante): de las **499 preguntas sobrantes** de la banda alta, ¿se jubilan como `retired_duplicate`
+—estado TERMINAL, no hay vuelta atrás—, se dejan por ser variantes legítimas de examen, o se
+reformulan? Con la decisión tomada, aplicar es un rato: el runner ya identifica el grupo y el módulo
+ya sabe quién sobrevive (`decidirSuperviviente`: oficial > explicación estructurada > más servida >
+más antigua). Sin ella, no se toca nada.
 ### [T-427] 🟠 [ABIERTO 31/07] Un cherry-pick entre sesiones borró 5 fichas del backlog, y el aviso que lo delataba se lee como benigno
 
 - **Esfuerzo: rato** (el aviso ya existe y los datos para distinguirlo también; es cambiar cómo se interpreta).

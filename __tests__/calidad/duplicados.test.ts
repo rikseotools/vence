@@ -190,3 +190,104 @@ describe('sqlNormalizar — el gemelo en SQL del normalizador', () => {
     expect(sql).toContain('[^a-z0-9ñ]+')
   })
 })
+
+// ─── Corte parafraseado del banco LEGISLATIVO [T-425] ───────────────────────────────────
+//
+// Todos los pares de aquí abajo son REALES: salieron del barrido del 31/07/2026 sobre las
+// preguntas activas. Los que están marcados como límite conocido NO son bugs a corregir —
+// son la razón por la que este corte solo LISTA y nunca jubila en automático.
+
+describe('compararEnunciados — ratio y palabras distintas son dos medidas, no una', () => {
+  it('dos textos idénticos: solape 1 y ninguna palabra distinta', () => {
+    const t = 'El plazo de resolución será de tres meses'
+    expect(dup.compararEnunciados(t, t)).toEqual({ solape: 1, distintas: 0 })
+  })
+
+  it('cuenta las palabras distintas en ABSOLUTO, que es lo que delata al supuesto práctico', () => {
+    // Mismo preámbulo largo, pregunta final distinta: el ratio sube, el absoluto NO.
+    const preambulo = 'Manuela es una paciente de 73 años diagnosticada de cáncer de colon intervenida quirúrgicamente con metástasis hepáticas ingresada en la unidad'
+    const a = `${preambulo} ¿qué posición corporal debe adoptar para la exploración abdominal?`
+    const b = `${preambulo} ¿qué tipo de dieta debe pautarse tras la intervención quirúrgica realizada?`
+    const m = dup.compararEnunciados(a, b)
+    expect(m.solape).toBeGreaterThan(0.75)   // parecidísimos por el preámbulo…
+    expect(m.distintas).toBeGreaterThan(10)  // …y aun así, no son gemelas
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: true })).toBe('cola')
+  })
+
+  it('ignora el HTML y los acentos, igual que el resto del módulo', () => {
+    expect(dup.palabrasComparables('<p>Régimen  jurídico</p>')).toEqual(['regimen', 'juridico'])
+  })
+
+  it('no revienta ni con null ni con texto vacío', () => {
+    expect(dup.compararEnunciados(null, 'algo').solape).toBe(0)
+    expect(dup.compararEnunciados('', '').distintas).toBe(Infinity)
+  })
+})
+
+describe('bandaParafraseada — dónde está la frontera y por qué', () => {
+  it('GEMELA: el mismo enunciado con una versión de más («Excel 365» / «Excel»)', () => {
+    const a = 'En una hoja Excel 365 la celda A1 contiene el texto "Referencia 01" y la celda A2 contiene la fórmula "=EXTRAE(A1;12;2)". ¿Qué resultado obtenemos en la celda A2?'
+    const b = 'En una hoja Excel la celda A1 contiene el texto "Referencia 01" y la celda A2 contiene la fórmula "=EXTRAE(A1;12;2)". ¿Qué resultado obtenemos en la celda A2?'
+    const m = dup.compararEnunciados(a, b)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: dup.mismaRespuesta('01', '01') })).toBe('gemela')
+  })
+
+  it('GEMELA: mismas palabras en otro orden («¿cuántos hosts…?» al principio o al final)', () => {
+    const a = '¿Cuántos hosts pueden direccionarse si se utilizan 5 bits en el protocolo IP para identificar los hosts de una subred?'
+    const b = 'Si se utilizan 5 bits en el protocolo IP para identificar los hosts de una subred, ¿cuántos hosts pueden direccionarse?'
+    const m = dup.compararEnunciados(a, b)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: true })).toBe('gemela')
+  })
+
+  it('NO gemela si responden cosas distintas, por calcado que esté el enunciado', () => {
+    // «polvorín semienterrado» / «superficial»: 50.000 kg contra 25.000 kg.
+    const a = 'Reglamento de Explosivos. La capacidad máxima de almacenamiento de cada polvorín semienterrado será de:'
+    const b = 'Reglamento de Explosivos. La capacidad máxima de almacenamiento de cada polvorín superficial será de:'
+    const m = dup.compararEnunciados(a, b)
+    expect(dup.mismaRespuesta('50.000 kilogramos netos', '25.000 kilogramos netos')).toBe(false)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: false })).toBe('cola')
+  })
+
+  it('el par que originó la ficha cae en la COLA, no en la banda alta', () => {
+    // 373bed31 / 6f9e4831 — autonomía municipal, CE 137. Son gemelas de verdad, pero un
+    // umbral estrecho no llega a ellas: por eso la cola se revisa y no se descarta.
+    const a = 'La Constitución garantiza el principio de autonomía de los municipios para la gestión de sus respectivos intereses en su artículo:'
+    const b = 'La Constitución garantiza el principio de autonomía de los municipios y provincias en su artículo:'
+    const m = dup.compararEnunciados(a, b)
+    expect(m.solape).toBeGreaterThan(0.70)
+    expect(m.distintas).toBeGreaterThan(dup.UMBRAL_GEMELA.distintas)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: true })).toBe('cola')
+  })
+
+  it('LÍMITE CONOCIDO: una palabra de contenido cambiada pasa el umbral — por eso no se aplica solo', () => {
+    // «prevención secundaria» / «terciaria»: son preguntas DISTINTAS y la banda las da por gemelas.
+    // Este test fija el límite a propósito: si alguien lo «arregla» bajando el umbral, que sea
+    // una decisión consciente y no un descuido.
+    const a = 'En los pacientes con enfermedad coronaria establecida, la prevención secundaria puede disminuir la probabilidad de eventos coronarios agudos. ¿Qué medida NO forma parte de esa prevención secundaria?'
+    const b = 'En los pacientes con enfermedad coronaria establecida, la prevención terciaria puede disminuir la probabilidad de eventos coronarios agudos. ¿Qué medida NO forma parte de esa prevención terciaria?'
+    const m = dup.compararEnunciados(a, b)
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: true })).toBe('gemela')
+  })
+
+  it('descarta lo que no se parece en nada aunque comparta el juego de opciones', () => {
+    const m = dup.compararEnunciados('I have two pencils. Do you want this one or the ___ one?',
+                                     'Please give me ___ chance.')
+    expect(dup.bandaParafraseada({ ...m, mismaRespuesta: false })).toBeNull()
+  })
+})
+
+describe('mismaRespuesta — el texto de la correcta, nunca su índice', () => {
+  it('el punto final y el símbolo de grado no son una respuesta distinta', () => {
+    expect(dup.mismaRespuesta('2 senadores cada una de ellas', '2 senadores cada una de ellas.')).toBe(true)
+    expect(dup.mismaRespuesta('1º orientación', '1° orientación')).toBe(true)
+  })
+
+  it('dos cifras distintas sí lo son', () => {
+    expect(dup.mismaRespuesta('20', '10')).toBe(false)
+  })
+
+  it('sin texto de respuesta no afirma que coincidan', () => {
+    expect(dup.mismaRespuesta(null, null)).toBe(false)
+    expect(dup.mismaRespuesta('', '')).toBe(false)
+  })
+})
