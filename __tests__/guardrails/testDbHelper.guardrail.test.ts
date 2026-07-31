@@ -50,6 +50,12 @@ function conexionesFueraDelHelper(src: string): string[] {
   let m: RegExpExecArray | null
   while ((m = re.exec(src)) !== null) {
     const desde = m.index
+    // Una MENCIÓN entrecomillada no es una conexión (31/07/2026). `suiteRegistry.guardrail`
+    // lleva `'new Client('` en su LISTA DE PATRONES —es otro guardarraíl que busca justo esto—
+    // y aquí salía como infractor: `main` en rojo y el deploy de todas las sesiones parado por
+    // un falso positivo entre dos guardas que se vigilan la una a la otra.
+    // Basta mirar el carácter anterior: si abre comilla, es texto citado, no código.
+    if (/['"`]/.test(src[desde - 1] || '')) continue
     // Los argumentos van del `(` que abre hasta el `)` que lo CIERRA, balanceando:
     // cortar en el primer `)` se comía el `ssl` de las formas repartidas en varias líneas.
     const abre = desde + m[0].length - 1
@@ -112,5 +118,16 @@ describe('guardarraíl — los tests conectan a RDS por la puerta única', () =>
     // (d) por la puerta única: lo único que se acepta
     expect(conexionesFueraDelHelper('new Client(testDbConfig())')).toHaveLength(0)
     expect(conexionesFueraDelHelper('new Client()')).toHaveLength(0)
+  })
+
+  // 31/07/2026 — `main` en ROJO y el deploy de todas las sesiones parado por esto: otro
+  // guardarraíl (`suiteRegistry`) lleva `'new Client('` en su lista de PATRONES, porque busca
+  // justo esta forma. Una mención entrecomillada no es una conexión.
+  test('una MENCIÓN entre comillas no es una conexión (dos guardas vigilándose)', () => {
+    expect(conexionesFueraDelHelper("const PATRONES = ['getReadDb', 'new Client(', \"from 'pg'\"]")).toHaveLength(0)
+    expect(conexionesFueraDelHelper('const p = "new Client({ connectionString: X })"')).toHaveLength(0)
+    expect(conexionesFueraDelHelper('const p = `new Client({ connectionString: X })`')).toHaveLength(0)
+    // …y la de verdad, en la MISMA cadena de texto, sigue cazándose
+    expect(conexionesFueraDelHelper("const P = ['new Client(']\nclient = new Client({ connectionString: DB_URL })")).toHaveLength(1)
   })
 })
