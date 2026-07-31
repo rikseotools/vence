@@ -1117,20 +1117,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Mientras no exista:** al resolver un conflicto en este fichero, **conservar SIEMPRE los dos lados** (son fichas distintas, casi nunca hay que elegir), y si dudas, mirar `git log -p` del fichero antes de dar el rebase por bueno.
 - **Relacionadas:** [T-400] (ver en vivo qué ficheros toca cada sesión — habría avisado del choque, no del borrado), [T-385].
 
-### [T-429] 🟡 [ABIERTO 31/07] Triar las 11 fichas en DERIVA que destapó el criterio nuevo de abierto/cerrado
-
-- **ORIGEN.** Salieron al arreglar [T-382]. Hasta ese día «abierta» se deducía de la POSICIÓN de la ficha en el markdown, y con tres secciones `## Hechas` el detector de deriva **no podía ver a 145 de las 177 tareas vivas**. Al pasar el criterio a la marca `✅` de la cabecera, aparecieron **11 divergencias que llevaban tiempo invisibles**.
-- **NO se arreglaron en el momento a propósito:** cada una necesita **decidir quién tiene razón**, la BD o la ficha, y eso es juicio, no parseo. Arreglarlas en bloque sería inventar un veredicto — el mismo error que este repo evita en todos sus detectores.
-- **Las 10 que dicen `[ABIERTO …]` y están `done` en BD:** [T-002], [T-004], [T-011], [T-053], [T-058], [T-088], [T-093], [T-128], [T-232], [T-402].
-  - Por cada una: leer la ficha, mirar el `outcome` en BD y decidir. Si el trabajo se hizo → poner `✅` en la cabecera. Si la ficha describe trabajo que sigue vivo (ojo: [T-088] habla de *«cola de 21 recortes»*) → **reabrir** con `backlog.cjs reopen <id> --motivo "…"`, que existe justo para esto.
-- **Y 1 al revés:** [T-304] lleva `✅` en la cabecera pero sigue VIVA en BD (esperaba deploy del frontend). Ahí manda la BD: hay que quitarle el ✅ o cerrarla si ya se verificó.
-- **Cómo verlas en cualquier momento:**
-  ```bash
-  npx tsx -e "import {readFileSync} from 'fs'; import {parseBacklogMarkdown,findBacklogDrift} from './lib/backlog/claim'; …"
-  ```
-  (o simplemente `node scripts/backlog.cjs sync`, que avisa de las huérfanas en ambos sentidos).
-- **Por qué merece la pena y no es papeleo:** una ficha que anuncia trabajo ya hecho hace que otra sesión monte un worktree para nada — es **el incidente del 20/07 que creó todo este sistema** (la ficha del RD 176/2022 decía *«9 mislinks EN VIVO»* cuando ya estaban resueltos). Ahora por fin se pueden ver; lo que falta es mirarlas.
-- **Relacionadas:** [T-382] (el criterio que las destapó), [T-392] (ciclo de vida completo).
 
 
 
@@ -1656,15 +1642,6 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Cómo sería, si se aprueba:** en el test por leyes, ofrecer las oficiales **compartidas** (con su etiqueta clara: «de exámenes reales de otras oposiciones sobre esta ley») en vez de un cero mudo; y que el contador cuente lo mismo que servirá el test — el defecto que [T-326] acaba de arreglar no se puede reintroducir por el otro lado.
 - **A quién afecta más:** exactamente a quien no tiene temario nuestro (por eso estudia por leyes). Ver [T-397] (oposiciones catalogadas sin temario) — es la misma población.
 
-### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
-
-- **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).
-- **Qué pasa:** `scripts/impugnaciones/revisar-impugnacion.cjs:102-111` («PASO 0») avisa cuando el estado es `pending`/`appealed` **y** ya hay `admin_response`, y concluye: *«→ NO re-respondas (duplicarías el email). Solo falta CERRAR el estado (silent close)»*. Nació para cazar el desync del 504 (respuesta guardada y emailada, estado sin voltear) y para eso está bien.
-- **El defecto:** en una **`appealed` el `admin_response` está SIEMPRE relleno** — es la respuesta que motivó la réplica. O sea que **el aviso salta en el 100 % de las apelaciones** y le dice a la sesión que cierre en silencio a alguien que acaba de escribir preguntando. Es la avería que el vigía existe para evitar: la réplica desaparece de toda lista de pendientes y encima el dossier te manda cerrarla sin contestar.
-- **Visto en vivo el 31/07** con `349b5132` (Estela, art. 9.2 Ley 39/2015): saltó el 🛑, se ignoró a propósito porque la persona estaba pidiendo la fuente literal del BOE, y se le contestó. Una sesión que obedezca el aviso la cierra muda.
-- **Arreglo:** partir la condición en dos. `status='pending'` + `admin_response` = el desync de siempre (deja el aviso tal cual). `status='appealed'` = **RÉPLICA**: imprimir lo contrario — *«te han contestado: lee tu `admin_response` anterior y el `appeal_text`, y RESPONDE (§0.bis)»* — y volcar el `appeal_text` entero en el dossier, que hoy ni se imprime (hubo que sacarlo a mano de la BD).
-- **Capa que lo vigile:** la condición no vive en ningún módulo puro, así que hoy no se puede testear sin BD. Sacarla a `scripts/impugnaciones/lib/` (junto a `scope-enforcement.cjs`, que ya sigue ese patrón) con su test en `__tests__/impugnaciones/` — un caso por estado (`pending` sin respuesta / `pending` con respuesta / `appealed`).
-- **Mitigación mientras tanto:** aviso añadido en `docs/maintenance/impugnaciones-claude-code.md` §0.bis.
 
 ### [T-396] 🟠 [ABIERTO 31/07] 🙋 DECISIÓN DE MANUEL — ETGOA Sanidad y Consumo publica «120 temas» y sirve 20
 
@@ -2276,6 +2253,53 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-429] ✅ [HECHA 31/07] Triar las 11 fichas en DERIVA que destapó el criterio nuevo de abierto/cerrado
+
+- **ORIGEN.** Salieron al arreglar [T-382]. Hasta ese día «abierta» se deducía de la POSICIÓN de la ficha en el markdown, y con tres secciones `## Hechas` el detector de deriva **no podía ver a 145 de las 177 tareas vivas**. Al pasar el criterio a la marca `✅` de la cabecera, aparecieron **11 divergencias que llevaban tiempo invisibles**.
+- **NO se arreglaron en el momento a propósito:** cada una necesita **decidir quién tiene razón**, la BD o la ficha, y eso es juicio, no parseo. Arreglarlas en bloque sería inventar un veredicto — el mismo error que este repo evita en todos sus detectores.
+- **Las 10 que dicen `[ABIERTO …]` y están `done` en BD:** [T-002], [T-004], [T-011], [T-053], [T-058], [T-088], [T-093], [T-128], [T-232], [T-402].
+  - Por cada una: leer la ficha, mirar el `outcome` en BD y decidir. Si el trabajo se hizo → poner `✅` en la cabecera. Si la ficha describe trabajo que sigue vivo (ojo: [T-088] habla de *«cola de 21 recortes»*) → **reabrir** con `backlog.cjs reopen <id> --motivo "…"`, que existe justo para esto.
+- **Y 1 al revés:** [T-304] lleva `✅` en la cabecera pero sigue VIVA en BD (esperaba deploy del frontend). Ahí manda la BD: hay que quitarle el ✅ o cerrarla si ya se verificó.
+- **Cómo verlas en cualquier momento:**
+  ```bash
+  npx tsx -e "import {readFileSync} from 'fs'; import {parseBacklogMarkdown,findBacklogDrift} from './lib/backlog/claim'; …"
+  ```
+  (o simplemente `node scripts/backlog.cjs sync`, que avisa de las huérfanas en ambos sentidos).
+- **Por qué merece la pena y no es papeleo:** una ficha que anuncia trabajo ya hecho hace que otra sesión monte un worktree para nada — es **el incidente del 20/07 que creó todo este sistema** (la ficha del RD 176/2022 decía *«9 mislinks EN VIVO»* cuando ya estaban resueltos). Ahora por fin se pueden ver; lo que falta es mirarlas.
+- **Relacionadas:** [T-382] (el criterio que las destapó), [T-392] (ciclo de vida completo).
+
+**✅ RESULTADO (31/07) — las 11 triadas una a una, y no salió lo que se esperaba: 3 de 10 estaban cerradas EN FALSO.**
+
+| ficha | veredicto | en qué se apoya |
+|---|---|---|
+| [T-002] | ✅ cerrar | desplegada 20/07 (`cd1e7804`, task def 490) y verificada en la landing de Madrid: 0 hitos de la convocatoria archivada |
+| [T-004] | ✅ cerrar | 8 artículos del Decreto 255/1997 reimportados del HTML oficial y verificados en producción |
+| [T-011] | ✅ cerrar | el cierre decía *«PENDIENTE solo deploy frontend»* — ya no: `37ea3bd2` es ancestro de la versión viva `a933bd3e` y hay **12 de 110 filas con `rgpd_email_sent_at` sellado**, o sea que el gate sella de verdad |
+| [T-053] | ✅ cerrar | las 4 decisiones abiertas estaban tomadas en código: `BANNER_MIN_PLAZAS=10`, `isBannerWorthy` como puerta única en las dos superficies, publicadas primero, y ocultar en vez de caer al teaser — con guardarraíl propio |
+| [T-058] | ✅ cerrar | art. 171 des-fusionado + 7 disposiciones verbatim, verificado en las dos `/temario/tema-6` |
+| [T-093] | ✅ cerrar | el blip no reapareció entre el 24 y el 31/07; queda vigilancia pasiva, que no es trabajo |
+| [T-402] | ✅ cerrar | `paso0.cjs` con 10 tests, verificado contra la fila real `349b5132` |
+| **[T-088]** | ♻️ **reabierta** | el badge de CONFIRMADOS **sigue sin cablear**: `scope_over_inclusion_confirmed` no aparece en NINGÚN fichero de código, así que los recortes confirmados siguen invisibles en `/admin/salud-sistema`; + 3 adjudicaciones sin resolver |
+| **[T-128]** | ♻️ **reabierta** | medido contra RDS: `administrativo-diputacion-valencia` sin `landing_description` y `tcae-sas` sin `titulo_requerido` (su `examen_config` sí se rellenó); `seo_description` sigue sin servirse |
+| **[T-232]** | ♻️ **reabierta** | la campaña **no se envió**: ningún `referral_page_view` con `src` del mensaje, y 15/268 premium han abierto el panel frente a la línea base de 11/258. Sigue esperando decisión de canal + OK de Manuel |
+| **[T-304]** | ⛔ **se le quita el ✅** | manda la BD: la versión viva es `a933bd3e` y el commit que la despierta (`96c00e254`) es **19 commits posterior** → el frontend no lo lleva y el corte sigue a medias |
+
+- **Lo que enseña el reparto:** la sospecha de la ficha era que [T-088] estaba mal cerrada, y lo estaba — pero **acertar en cuál no era el punto**. 3 de 10 cierres eran falsos, y ninguno de los tres se detecta leyendo el `outcome`: los tres suenan a terminado. Se cayeron al ir a **comprobar el hecho concreto** que afirmaban (¿existe la cadena en el código? ¿está el dato en RDS? ¿hay eventos con ese `src`?). Un triaje de deriva que se haga leyendo outcomes reproduce la deriva.
+- **Y un defecto encontrado por el camino, en la herramienta misma:** `backlog.cjs reopen` remataba con *«devuelve su entrada a "## Abiertas" — el guardarraíl de CI falla si se queda en "Hechas"»*. **Es falso, comprobado con el test:** el guardarraíl de posición solo mira el sentido contrario (una ficha CERRADA que se queda en `## Abiertas`). Lo grave no es la molestia: el aviso **no mencionaba el `✅`**, que desde [T-382] es la única marca que se lee — o sea que quien lo obedeciera al pie de la letra movía 100 líneas por un fichero que editan tres sesiones a la vez (el movimiento que borró 5 fichas en [T-427]/[T-428]) y **dejaba la tarea contando como cerrada igualmente**. Corregido para que pida primero la marca y presente el movimiento como lo que es: legibilidad, no requisito de CI.
+- **Verificación, no declaración:** `scratchpad/t429/verificar-deriva.ts` cruza el markdown con `backlog_tasks` usando el MISMO núcleo que el CLI y el guardarraíl (`lib/backlog/claim`), sin copiar el criterio. Salida tras el triaje: **`cerradaPeroAbiertaEnMarkdown: []` y `vivaPeroCerradaEnMarkdown: []`** sobre 415 fichas y 430 filas. Los 15 `soloEnBd` son ids reservados por otras sesiones cuya ficha aún no está pusheada — lo normal con 2-10 sesiones, no deriva. `__tests__/guardrails/backlogRegistry.guardrail.test.ts` + `__tests__/backlog/`: **248 verdes**.
+- **No se añade capa nueva a propósito:** el detector (`findBacklogDrift`), su publicación (`backlog.cjs sync`) y el guardarraíl de CI ya existían y funcionaron — de hecho **el guardarraíl cazó un error mío en vivo**, al cerrar [T-402] dejándola bajo `## Abiertas`. Lo que faltaba no era instrumento, era mirar; construir un detector nuevo aquí habría sido un silo.
+
+### [T-402] ✅ [HECHA 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
+
+- **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).
+- **Qué pasa:** `scripts/impugnaciones/revisar-impugnacion.cjs:102-111` («PASO 0») avisa cuando el estado es `pending`/`appealed` **y** ya hay `admin_response`, y concluye: *«→ NO re-respondas (duplicarías el email). Solo falta CERRAR el estado (silent close)»*. Nació para cazar el desync del 504 (respuesta guardada y emailada, estado sin voltear) y para eso está bien.
+- **El defecto:** en una **`appealed` el `admin_response` está SIEMPRE relleno** — es la respuesta que motivó la réplica. O sea que **el aviso salta en el 100 % de las apelaciones** y le dice a la sesión que cierre en silencio a alguien que acaba de escribir preguntando. Es la avería que el vigía existe para evitar: la réplica desaparece de toda lista de pendientes y encima el dossier te manda cerrarla sin contestar.
+- **Visto en vivo el 31/07** con `349b5132` (Estela, art. 9.2 Ley 39/2015): saltó el 🛑, se ignoró a propósito porque la persona estaba pidiendo la fuente literal del BOE, y se le contestó. Una sesión que obedezca el aviso la cierra muda.
+- **Arreglo:** partir la condición en dos. `status='pending'` + `admin_response` = el desync de siempre (deja el aviso tal cual). `status='appealed'` = **RÉPLICA**: imprimir lo contrario — *«te han contestado: lee tu `admin_response` anterior y el `appeal_text`, y RESPONDE (§0.bis)»* — y volcar el `appeal_text` entero en el dossier, que hoy ni se imprime (hubo que sacarlo a mano de la BD).
+- **Capa que lo vigile:** la condición no vive en ningún módulo puro, así que hoy no se puede testear sin BD. Sacarla a `scripts/impugnaciones/lib/` (junto a `scope-enforcement.cjs`, que ya sigue ese patrón) con su test en `__tests__/impugnaciones/` — un caso por estado (`pending` sin respuesta / `pending` con respuesta / `appealed`).
+- **Mitigación mientras tanto:** aviso añadido en `docs/maintenance/impugnaciones-claude-code.md` §0.bis.
+- **✅ RESUELTA (31/07).** El dossier separa ya la **RÉPLICA** (`appealed` → responder, con el `appeal_text` entero volcado) del **desync del 504** (`pending` con respuesta → cerrar en silencio). El criterio vive en el módulo puro `scripts/impugnaciones/lib/paso0.cjs` con 10 tests + guardarraíl anti-inline, verificado contra la fila real de `349b5132`, y el manual §0.bis actualizado. *(La cabecera no llevaba el `✅` y el detector de deriva la señalaba como abierta; triada en [T-429].)*
 
 ### [T-430] ✅ 🟠 [HECHA 31/07] Una sesión que muere de golpe no llega a despedirse — pero su worktree sí guarda lo que hizo
 
@@ -7176,11 +7200,12 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
   - **PENDIENTE:** deploy (`scripts/deploy-frontend.sh`). Al desplegar, avisar a Victoria/María y valorar reward.
 - **Paso 2 — fix de verdad (pendiente decisión):** que el botón **genere el PDF nosotros** (ruta server que renderice el tema) en vez de `window.print()`, para que la descarga funcione desde cualquier navegador (in-app incluido) Y sirva de perk premium (PDF del temario completo/por bloque).
 
-### [T-002] 🟡 [ABIERTO 19/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
+### [T-002] ✅ [HECHA 20/07] Render multi-convocatoria: landing pinta las 2 convocatorias vivas como bloques separados
 - **Qué:** cuando una oposición tiene 2 convocatorias vivas a la vez (caso Aux. Admin. Comunidad de Madrid: Orden 264/2026 de 645 plz **en tramitación** —lista de admitidos, examen pendiente— + Orden 1628/2026 de 673 plz con **inscripción abierta** hasta 10/08/2026), la landing lee de `oposiciones_ssot` (solo la `is_current`) para hero/tarjetas, y el **timeline mezcla los hitos de AMBAS convocatorias** (dos "Convocatoria publicada en BOCM", dos plazos de inscripción) → puede confundir a un usuario despistado.
 - **Origen:** feedback de Esther Pimentel (`9d7cabdd`, resuelto): buscaba dónde inscribirse en Aux. Admin. de Madrid; el timeline mezclado y la confusión Ayuntamiento/Comunidad la despistaron. El hero SÍ muestra bien la abierta (673 plz, 10/08); el dato es correcto, es solo UX.
 - **Por qué pendiente:** el schema ya soporta N convocatorias (migración `20260718_convocatorias_multi_por_año.sql`); falta la **vía (a) de render** (OEP manual §4e-ter): que la landing liste las convocatorias no `archived_at` de la oposición como **bloques separados** (cada una con sus plazas/fechas/hitos propios), en vez de mezclarlas. Hoy va la vía interina (`is_current` + hitos de ambas).
 - **Cómo:** cambio de código en la landing (pintar todas las convocatorias no archivadas, agrupando hitos por convocatoria). No urgente. Detalle: memoria `project-convocatorias-multi-por-año-schema`, `docs/roadmap/consolidacion-convocatorias-radar-ssot.md`.
+- **✅ RESUELTA Y DESPLEGADA (20/07, deploy `cd1e7804`, task def `vence-frontend:490`).** Vía (a): `getHitosConvocatoria` devuelve la convocatoria de cada hito y excluye ciclos archivados; `agruparHitosPorConvocatoria()` es pura, con el vigente primero (6 tests, incluido que con UNA sola convocatoria la landing no cambia); el render pinta bloques con cabecera solo si hay varios. **Fix de datos:** 3 hitos de la Orden 1628/2026 no tenían `convocatoria_id`. Verificado en producción: Madrid muestra la cabecera «Convocatoria vigente», la Orden 1628/2026 y el cierre del 10/08, con **0 hitos de la convocatoria archivada** (antes 7 mezclados, ahora 4). El CI cazó el guardarraíl del template (`hitosSafe.map` → `bloque.hitos.map`), actualizado sin debilitarlo. *(Cabecera sin `✅` hasta el triaje de [T-429].)*
 
 ### [T-003] ✅ [CERRADA 20/07 por la auditoría del backlog — YA ESTABA HECHA] Drenar backlog de títulos huérfanos del temario (465 en 96 oposiciones)
 > **Auditoría 20/07:** El drenaje YA está aplicado en RDS (los 3 fixes de CE Título V verificados). El hallazgo de "465 títulos" que seguía vivo era un **rollup del barrido de las 03:00**, anterior a los arreglos: el panel mostraba una cifra caducada.
@@ -7206,7 +7231,7 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
   - **El nombre de la norma es la trampa recurrente** (3 clusters distintos): `tcae_aragon` T8 casó "Procedimiento Administrativo Común" porque es el **título de la ley** —su scope (1-14, 29-33, 106-126) casa con precisión su epígrafe—; la Ley 5/2018 cántabra lleva "Sector Público Institucional" en su propio nombre. Y el patrón "Tribunal de Cuentas" pescó 5 temas del Tribunal de Cuentas **Europeo**.
 - **📊 BALANCE FINAL del drenaje (3 lotes):** de **471 títulos huérfanos en 98 oposiciones**, solo **16 eran huecos reales** (~3,4%) — todos arreglados reusando banco ya en BD, sin crear ni borrar una sola pregunta, y **registrados** en `topic_scope_verification` con su nota. El resto queda documentado como falso positivo **con su razón**, para que el barrido nocturno no lo re-abra como trabajo. **Lo que queda es mantenimiento:** re-adjudicar lo que aparezca nuevo, con el método y las herramientas ya montadas (`analiza-`, `refina-`, `adjudica-cluster-huerfano.cjs` + runbook §"Huecos del temario").
 
-### [T-004] 🟢 [ABIERTO 19/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
+### [T-004] ✅ [HECHA 20/07] Artículos truncados/basura de import — barrido fresco: clusters grandes HECHOS
 - **Qué (HECHO 19/07, verificado vs fuente oficial + en vivo en RDS):** Aragón VIII Convenio (8 arts, nº de maquetación BOA pegado al texto), UMU Matrícula 2026/2027 (~27 arts: marca de agua PDF incrustada + apartados descolocados 18/19/29/30 recompuestos contra fuente), Cantabria Decreto 152/2005 art.7, Instituciones Internacionales GC (5 títulos mal atribuidos), Osakidetza Decreto 255/1997 (5 arts euskera→castellano). Detalle: `docs/roadmap/campana-citas-ajenas-2026-07.md` §"Barrido fresco".
 - **✅ HECHO 20/07 — Osakidetza Decreto 255/1997 (y NO era "bajo ROI"):** al auditar los 21 artículos contra la
   fuente oficial resultó que el defecto era mayor que "bilingües". Eran **8 artículos** (5, 7, 8, 13, 15, 17, 18, 20),
@@ -7297,11 +7322,11 @@ Relacionado: [[project-megachunk-reverify-falsos-positivos.md]] (mega-chunks edi
 - **Cómo:** `docs/maintenance/generar-preguntas-con-ia.md`. Feedbacks claim-ados: `22835b84` (T8), `85d564cf` (T3 Ley 12/2014). Contexto scope (verificado contra BORM 07/10/2021): sesión 17/07.
 - **✅ HECHA 19/07:** art. 9 (Fines) y art. 1 Ley 12/2014 (Objeto) generados y vivos; además ambas leyes completas a ≥50 (Ley 4/1994 → 51, Ley 12/2014 → 52). Triple auditoría (mecánica + Sonnet ciego + Paso 9), verificado contra BOE. **Decisión Manuel: SIN recompensa y SIN mensaje a la usuaria.** Tags `gen_sms_t8t3_2026-07-19`, `gen_ley4_1994_2026-07-19`, `gen_ley12_2014_2026-07-19`.
 
-### [T-011] 🟢 [MEJORA APP — no urgente] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
+### [T-011] ✅ [HECHA 20/07 — desplegada y verificada con datos vivos el 31/07] Email RGPD de borrado *exactly-once* (marcador durable en `deleted_users_log`)
 - **Qué:** en `DELETE /api/admin/delete-user`, el correo de confirmación RGPD (Art. 12.3) puede **duplicarse** en un caso raro: si un 1er intento borró la cuenta y **envió el email** pero devolvió 500 por otra causa (p.ej. error del store de auth legacy), al reintentar (perfil ya ausente + fila de auditoría) la ruta reenvía el email desde el email durable de `deleted_users_log`. El reintento ya NO re-borra ni da 500 perpetuo (arreglado `4ef7a929`), pero el email no es *exactly-once*.
 - **Por qué:** cumplimiento/UX: un usuario borrado podría recibir 2 correos "cuenta eliminada". Impacto bajo (camino raro), pero es un cabo real anotado en la revisión adversarial del fix.
 - **Cómo:** columna `deleted_users_log.rgpd_email_sent_at timestamptz` (migración additiva) + mapearla en Drizzle; enviar el email solo si es `NULL` y sellarla tras el envío OK. Enlaza con memoria `feedback_delete_user_api_504_fallback`.
-- **Estado:** ABIERTA (follow-up del fix desplegado 15/07). No bloqueante.
+- **✅ RESUELTA Y VIVA EN PRODUCCIÓN.** Commit `37ea3bd2` (20/07): columna `deleted_users_log.rgpd_email_sent_at` aplicada en RDS + gate/sello en la ruta `delete-user` + test de regresión. El cierre de entonces decía *«PENDIENTE solo deploy frontend»* y por eso la ficha se quedó como abierta — **comprobado el 31/07 y ya no procede**: `37ea3bd2` es ancestro de la versión viva (`/api/version` = `a933bd3e`) y en RDS hay **12 filas de 110 con `rgpd_email_sent_at` sellado**, o sea que el gate no solo está desplegado: está sellando de verdad. *(Triada en [T-429].)*
 
 ### [T-012] ✅ [HECHA Y DESPLEGADA 20-21/07 — datos + render en producción] Poblar títulos y capítulos (`law_sections`) + mostrarlos en teoría
 > **✅ Las dos mitades hechas.**
@@ -7617,7 +7642,7 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 
 <details><summary>Diagnóstico original</summary>
 
-### [T-053] 🟠 Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
+### [T-053] ✅ [HECHA 20/07] Banner de inscripción abierta: filtrar por RELEVANCIA (plazas y/o vendible)
 > *(Era `T-049-orig`. Renumerada a T-053 el 20/07: el sufijo `-orig` no encaja con el formato `T-NNN`, así que la tarea no se podía reclamar ni entraba en `backlog_tasks`, y dejaba el guardarraíl de CI en rojo. Contenido intacto; solo cambia el id. La parte ya hecha sigue en T-049.)*
 - **Qué:** `app/OpenInscriptionsBanner.tsx` (home) personaliza **solo por familia** (Administración vs Sanidad…),
   ordena por zona + cierre más próximo y corta a 10. **No filtra por número de plazas.**
@@ -7643,11 +7668,18 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
      blindaje (si filtra a 0 → relajar criterio antes que dejarlo vacío).
 - **Riesgo de no hacerlo:** el banner es la puerta de entrada de la home y hoy da una imagen de catálogo
   irrelevante ("Enólogo, 1 plaza") justo al usuario que aún no nos conoce.
+- **✅ RESUELTA (20/07) — las cuatro decisiones se tomaron y están en código.** Verificado el 31/07 leyendo la fuente:
+  1. **Umbral duro**, no solo orden: `BANNER_MIN_PLAZAS = 10` en `lib/oposiciones/inscripcion.ts`, con `hasSignificantPlazas`/`isBannerWorthy` como **puerta única**. `app/page.tsx` filtra por `isBannerWorthy` en el ORIGEN (así el filtro cubre también el fallback por familia) y el banner autenticado lo hace en SQL (`gte(oposiciones.plazasLibres, BANNER_MIN_PLAZAS)`).
+  2. **Publicadas primero**: el `sort` pone `is_active` delante y ordena las catalogadas por plazas desc.
+  3. **`plazas_libres` NULL**: no llega al mínimo → fuera.
+  4. **Anti-vacío**: si la familia del usuario no tiene ninguna que cumpla se **OCULTA** el banner en vez de caer al teaser general — un opositor de sanidad veía 11 de 13 de administración general, que es ruido ajeno en vez de ruido pequeño.
+  - Capas: `__tests__/lib/inscripcion.test.ts` + guardarraíl `__tests__/guardrails/banner-min-plazas.guardrail.test.ts` (falla si alguien quita el filtro de cualquiera de las dos superficies). La página SEO `/oposiciones/inscripcion-abierta` queda fuera **a propósito**: ahí «todas» significa todas.
+  - *La ficha se quedó anunciando decisiones abiertas que ya estaban tomadas; triada en [T-429].*
 
 </details>
 
 
-### [T-058] 🟡 [ABIERTA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
+### [T-058] ✅ [HECHA 20/07 — descubierta haciendo T-054] `Reglamento Cortes CyL`: el art. 171 se tragó las disposiciones
 - **Qué:** el **último** artículo de una ley absorbe todo lo que hay hasta el final de la página. En el camino de
   reserva del extractor, `contentEnd` del último `<h5>` es `html.length`. Resultado en el `Reglamento Cortes CyL`:
   el **art. 171 contenía** su propio texto + las **5 Disposiciones Finales** + la **Transitoria Única** + la
@@ -7703,7 +7735,9 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Acción:** ninguna. Vigilar esa campaña concreta en el próximo repaso de `ads:report`; no justifica tocar presupuesto.
 - **Método:** `deleted_users_log` (bajas tempranas), `user_profiles.registration_source`/`registration_url` (atribución de vivos), `v_campaign_revenue`, `npm run ads:report`.
 
-### [T-088] 🟡 [ABIERTA 22/07] Sobre-inclusión de scope: cola de 21 recortes + 2 errores de adjudicación + badge sin cablear
+### [T-088] 🟡 [ABIERTA 22/07 — REABIERTA 31/07] Sobre-inclusión de scope: cola de 21 recortes + 2 errores de adjudicación + badge sin cablear
+
+> **♻️ REABIERTA el 31/07 en el triaje de [T-429].** Se cerró el 24/07 con 7 recortes aplicados y 11 descartados como falso positivo por el orphan-check (recortarlos habría huerfanado 200-440 preguntas reales, incluidas de examen oficial — el cierre fue correcto en eso). Pero dejó vivo lo que el propio título anuncia: **3 adjudicaciones sin resolver** (el recorte trivial de `aux_madrid_2027` T2 con 4 preguntas de la ILP, y los 2 marcados `unverifiable` que hay que CORREGIR, no aplicar) y, sobre todo, **el badge de CONFIRMADOS sigue sin cablear**: comprobado el 31/07, la cadena `scope_over_inclusion_confirmed` **no aparece en ningún fichero de código**, así que los recortes confirmados siguen invisibles en `/admin/salud-sistema`. Lo que queda está descrito abajo en «Cabo de infra».
 
 **Qué es (subsistema COMPLETO y en `origin/main`).** Detector de sobre-inclusión de `topic_scope`: cuando el scope de un tema mete MÁS artículos de los que pide su epígrafe (sirve preguntas fuera de programa). Tres capas ya en main:
 - **Stage-1 determinista** — `lib/laws/scopeOverInclusion.ts` (`classifyScope`) + test + mirror en el sweep (kind `scope_over_inclusion_suspect`, banda HIGH). Detecta ~90 sospechosos de 5.836 scopes.
@@ -7769,10 +7803,11 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Acción:** ninguna de bloqueo — **son estudiantes gameando el límite free, NO malicia** (política Manuel). La solución estructural es el **cap por device+IP de F1** (enforcement, fase futura), no banear. Evidencia por IP en `fraud_alerts.notes`.
 - **Estado:** ✅ cerrada. Badge sigue a 0.
 
-### [T-093] 🟢 [BAJA/VIGILAR] RDS inaccesible desde local (timeout de conexión) — posible presión de conexiones
+### [T-093] ✅ [CERRADA 24/07 — el blip no se repitió] RDS inaccesible desde local (timeout de conexión) — posible presión de conexiones
 - **Qué:** el 23/07 (tras el asentamiento de los deploys frontend+backend) las conexiones directas `pg` a RDS desde local **dan timeout** (`connectionTimeoutMillis` agotado), varias veces seguidas. **La app SÍ funciona** (backend `/health`=200, home 200, endpoints F0=401) — es solo la conexión directa la que cuelga.
 - **Por qué mirar:** puede ser presión de `max_connections` en RDS (el pool de la app + crons + el nuevo cron fraud-sweep) o un blip de red/SG. Si persiste, revisar `pg_stat_activity` (nº conexiones), `max_connections`, y si algún cron abre conexiones sin cerrarlas. Relacionado con la saturación de BD que puso la salud en ROJO durante el crunch de vCPU.
 - **Estado:** detectado 23/07. **Actualización 24/07:** RDS respondió con normalidad durante toda la sesión (decenas de conexiones directas `pg`, 0 timeouts) → el problema del 23/07 fue **transitorio** (blip durante el crunch de vCPU/asentamiento de deploys), no una fuga de conexiones persistente. Sigue como vigilar (re-mirar `pg_stat_activity` solo si reaparece), no urgente.
+- **✅ CERRADA.** No reapareció: entre el 24/07 y el 31/07 las conexiones directas `pg` a RDS han funcionado con normalidad en todas las sesiones. Queda como **vigilancia pasiva**, que no es trabajo pendiente: si vuelve, se abre ficha nueva con el `pg_stat_activity` del momento. *(La cabecera decía `[BAJA/VIGILAR]` sin `✅` y el detector de deriva la contaba como abierta; triada en [T-429].)*
 
 ### [T-094] ✅ [HECHA 24/07] Marcar T-087 (deploy F0) como `done` en `backlog_tasks`
 - **Qué:** el deploy de F0 (frontend `dbb2b31f` + backend cron) está **HECHO y verificado** (endpoints, logs ECS `Cron 'fraud-sweep' registrado`, health 200), pero T-087 quedó en `open` porque RDS daba timeout al hacer el `UPDATE`. Solo falta el flag.
@@ -8025,7 +8060,9 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Lo que el fix NO hace, y hay que decirlo:** las 91 siguen en `unsafe` y **no se mueven solas** — el backfill no re-procesa sus propios veredictos (protege las bajadas de la auditoría LLM) y el trigger invalida por hash de CONTENIDO, que aquí no cambió: cambió el criterio. Residuo abierto en **[T-306]** con el camino acotado. O sea, en producción esto todavía no baraja nada nuevo.
 - **Tests:** 9 casos nuevos en `__tests__/lib/shuffle/classifyShuffleMode.test.ts` (los 4 medidos + Fahrenheit + los 4 que deben seguir marcando, incluido «5º Continúa» para fijar el lookahead). Suite del módulo 102/102; las 15 suites de shuffle/revisión/paridad 372/372; `typecheck` verde.
 
-### [T-304] ✅ [HECHA 30/07] El límite por dispositivo llevaba TRES MESES construido y sin cortar ni una vez
+### [T-304] 🟡 [ABIERTA — espera deploy de frontend] El límite por dispositivo llevaba TRES MESES construido y sin cortar ni una vez
+
+> **⚠️ Se le QUITÓ el `✅` el 31/07 en el triaje de [T-429]: la cabecera decía «HECHA» y en `backlog_tasks` sigue `open`, esperando el deploy del frontend — y ahí manda la BD.** Comprobado, no supuesto: la versión viva es `a933bd3e` (`/api/version`) y el commit que la despierta, `96c00e254`, es **19 commits POSTERIOR**, así que el frontend no lo lleva. Mientras solo esté vivo el backend el corte está a medias y el agujero sigue abierto por la otra superficie. Lo que falta al desplegar está en su `pause`: (1) desplegar frontend, (2) verificar que aparecen `device_daily_limit_blocked` con `mode:enforce` —el único evento de los 7 días previos salía con `mode:shadow`, midiendo y dejando pasar—, (3) rollback poniendo los dos parámetros SSM en `shadow` si algo va mal. **Que el deploy termine NO es la verificación.**
 - **Cómo salió:** Manuel lo planteó de frente — *"tenemos fiabilidad al 100% de que un free cierra sesión y abre con otro email en el mismo dispositivo para saltarse el límite, y no lo cortamos"*. Y añadió el dato que lo cambiaba todo: *"ya hay mucho hecho de antes y les salía una pantalla de bloqueo"*.
 - **Tenía razón las dos veces.** El enforcement existe desde el **17/04/2026** (commit `e8f1724ed`): función SQL, `checkDeviceDailyUsage`, cableado en 4 endpoints del frontend **y** en el backend, con tests y pantalla de bloqueo. Y en 30 días **0 bloqueos**, frente a **1.095** del límite por cuenta. Mientras tanto, 3-11 dispositivos al día pasándose del tope.
 - **La causa: el ANCLA, no el bloqueo.** Se agrupaba por el `device_id` de `localStorage`, que se borra en dos clics. Prueba medida: el trío `suusyyr`/`susanaborgesr`/`susistrawberryy` aparece bajo **tres `device_id` distintos**; el 29/07 rotaron en 40 minutos (20:40→20:54, 21:03→21:11, 21:14→21:20), 25 preguntas cada una.
@@ -8820,7 +8857,9 @@ de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
 - **❌ DESCARTADA el mismo día (Manuel, 28/07).** Se mantiene la ficha con el análisis porque el trabajo de medición NO se pierde y el día que se retome el sorteo ya está todo: umbrales medidos, avisos de diseño y por qué el podio no vale.
 - **El razonamiento del descarte:** la prioridad pasó a ser **adquisición**, no retención (los ingresos vienen de altas nuevas; las renovaciones están en vaciado), y antes de comprometer 43 €/mes en premios conviene saber si esta gente responde siquiera a un incentivo que ya existe — eso lo mide gratis la campaña de [T-232]. Gastar en un sorteo mientras el 96% de los premium ni sabe que hay programa de recompensas es pagar por atención que no hemos intentado conseguir.
 
-### [T-232] 🟠 [ABIERTO 28/07] El programa de recompensas no falla por el incentivo: el 96% de los premium no sabe que existe
+### [T-232] 🟠 [ABIERTO 28/07 — REABIERTA 31/07] El programa de recompensas no falla por el incentivo: el 96% de los premium no sabe que existe
+
+> **♻️ REABIERTA el 31/07 en el triaje de [T-429]: la tanda NO se ha enviado.** Medido en `observable_events`: los únicos `referral_page_view` con `src` son `header` (16 usuarios) y `nav` (16), ambos desde el 27/07 — ninguno del mensaje, que habría traído su propio `src`. Y la métrica de éxito de la propia ficha no se ha movido: **15 de 268 premium (5,6%) han abierto el panel**, frente a la línea base de 11 de 258 (4,3%). Lo que la bloquea sigue siendo lo que ella misma dice: falta **decidir el CANAL** (a: campana, sale hoy sin desarrollo, pero el usuario tiene que ir a soporte por su cuenta a mandar la captura · b: hilo de soporte abierto por nosotros, menos pasos, pero hay que montar el alta contra `feedback_conversations`/`feedback_messages`) y **la aprobación de Manuel antes de enviar nada**.
 - **Qué:** campaña de contacto uno a uno a los premium más activos para pedirles que **nos mencionen cuando alguien pregunte en un grupo** («¿dónde hago tests?», «¿de dónde saco el temario?»), y de paso descubrirles el programa entero. **No es una idea: es el cuello de botella medido.**
 - **📊 MEDIDO (28/07), y es demoledor:**
   - **11 de 258 premium (4,3%) han abierto el panel de recompensas.** Solo 56 tienen su enlace de referido generado.
@@ -9617,7 +9656,9 @@ de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
   - **PENDIENTE (lo único que queda de esta ficha):** desplegar backend + frontend para que los 2 detectores dejen de estar inertes → va con [T-120] punto 1.
 - **✅ CIERRE 26/07:** desplegado (backend `c85c983d`, frontend `dfe7aab1`) y **verificado que los detectores ya NO están inertes**: el barrido produce 3 hallazgos `landing_incompleta` (luego corren) y **0 errores** de los dos kinds, así que los 4 defectos siguen cerrados. Los 3 warns restantes van a [T-128]; el de `administrativo-pais-vasco` es DELIBERADO (sin convocatoria publicada no se fabrica `examen_config`).
 
-### [T-128] 🟢 [ABIERTO 26/07] Cabos menores de completitud de landings (2 warns) + `seo_description` que no se sirve
+### [T-128] 🟢 [ABIERTO 26/07 — REABIERTA 31/07] Cabos menores de completitud de landings (2 warns) + `seo_description` que no se sirve
+
+> **♻️ REABIERTA el 31/07 en el triaje de [T-429]**, tras medirlo contra RDS en vez de suponerlo. Los tres cabos siguen abiertos, con un avance parcial: `administrativo-diputacion-valencia` sigue **sin `landing_description`**; `tcae-sas` sigue **sin `titulo_requerido`** (su `examen_config` **sí** se ha rellenado desde entonces); y `seo_description` **sigue sin servirse** — las únicas `seoDescription` del código son constantes hardcodeadas en `app/oposiciones/lib/oposiciones-filters.ts`, que son de las páginas de filtro y no tienen nada que ver con el campo de BD.
 - **Qué:** cabo de [T-118], que cerró los 4 defectos graves. Quedan 2 landings `mejorable` (warn, no error) por datos que **hay que verificar contra fuente oficial, no inventar**: `administrativo-diputacion-valencia` (falta `landing_description`) y `tcae-sas` (faltan `titulo_requerido` y `examen_config`). **NO incluye** `administrativo-pais-vasco`: su `examen_config` está vacío a propósito porque la convocatoria no está publicada — ese warn es honesto.
 - **Además (cabo de superficie):** `seo_description` está en BD pero la landing **no lo sirve** — el `<meta name="description">` se autogenera. O se cablea el campo o el detector está exigiendo algo inerte en esa superficie (encaja con [T-113]). El `<title>` sí toma `seo_title`, verificado.
 - **Impacto:** 🟢 son warns, no engañan al opositor; mejoran SEO y completitud. No urgente.
