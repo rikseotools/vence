@@ -636,6 +636,12 @@
 - **Siguiente paso:** desbloquear el journey → reproducir → arreglar el origen de `currentResult` (no parchear el mensaje) → dejar el journey en verde como regresión.
 - **Origen:** feedback `108cc2a8` de MariSol, 28/07/2026.
 
+#### 🔧 EL JOURNEY NUNCA HA PODIDO DAR VERDE (31/07) — no es una regresión, es que no arrancaba
+- **La causa:** entraba directo a `/test/repaso-fallos-v2`, que **solo tiene contenido si la cuenta ha fallado algo**, y la cuenta de prueba tiene **114 respuestas y CERO fallos** (todas de canaries, sobre una única pregunta). Test vacío → «no se pudo evaluar ninguna pregunta». Además declaraba la oposición `auxiliar_administrativo_valencia` y esa cuenta es de `auxiliar_administrativo_estado`.
+- **Arreglado ya:** la oposición correcta; una **pasada previa de siembra** por el camino real (responde un test normal, lo que falle cae solo en el repaso y allí esas preguntas ya tienen historial); se acepta el banner de cookies, que flotaba encima y se comía los clics; y el selector pasa a ser el botón cuadrado `^[ABCD]$`, el mismo que usa `limite-diario-contador`, que sí responde preguntas.
+- **LO QUE FALTA, con la pista exacta:** `…/test/aleatorio` **no lleva a las preguntas, es un CONFIGURADOR** («Número de preguntas / Dificultad / Solo preguntas oficiales»). Hay que **desplazarse y pulsar el botón de empezar**, que está por debajo del pliegue; el regex `/Comenzar|Empezar|Iniciar|Generar/i` no lo encuentra en el viewport inicial. Capturas del estado exacto en `sim-reports/1785491930609/`.
+- Cuando dé verde, marcarlo `postDeploy: true` para que corra en cada despliegue.
+
 #### 📊 MEDIDO EN PRODUCCIÓN (31/07) — el volumen es BAJO, y eso decide
 - `evolution_result_mismatch` en los últimos 4 días: **7 · 6 · 10 · 2 eventos**, de **1 a 6 usuarios/día**, y **repartidos entre preguntas distintas** (2 por pregunta, ninguna concentración).
 - La propia ficha decía: *«si el volumen es alto, ir al origen de `currentResult` en vez de parchear el mensaje»*. **No es alto** → toca arreglar el mensaje, no perseguir el origen. Pero es persistente y no se va solo.
