@@ -1028,6 +1028,18 @@ incluida).
   2. Reponerlo apuntando a la réplica de solo lectura. **Ojo:** algunas suites (referidos) escriben con transacción y `ROLLBACK`, así que con una URL estrictamente de solo lectura fallarían igual — hay que decidir si esas van con otra credencial o se marcan como no-CI.
   3. Y que el rojo **se note**: hoy este job puede estar caído semanas sin que nada avise. Es el mismo patrón que [T-307] (un cron que fallaba a diario sin alerta) y que [T-297] (un test rojo que nadie leía).
 - **Cómo salió:** intentando desplegar el backend el 31/07. El deploy no encontraba ventana (39 commits en dos horas), y al mirar por qué apareció este job en rojo al lado de los tres verdes.
+- **🔬 MEDIDO EL 31/07 — detrás del rojo de configuración SÍ hay deuda real.** Se corrió la categoría en local (con conexión propia, y **dejando fuera a propósito las suites que escriben** —referidos, borrado de usuario, ciclo de convocatoria— porque escriben contra la base viva con `ROLLBACK` y no deben ejecutarse a mano solo para saber si pasarían):
+  - **61 suites en verde, 9 en rojo, 13 tests fallando de 1.580.** O sea: el gate no estaba tapando un desastre, pero tampoco estaba limpio. Y llevaba ≥5 días sin decirlo.
+- **Lo que hay detrás, por orden de gravedad:**
+  1. **🔴 `placeholderTemarioGuard`: el trinquete saltó de 0 a 7.202.** *«Alguien ha colgado preguntas de un artículo virtual VACÍO»* — top: **SALUD MENTAL ENF (701)** y **NUTRICIÓN Y DIETOTERAPIA ENF (667)**. Son preguntas servidas cuyo artículo no tiene contenido: el opositor pincha para leer la fuente y no hay nada. Es un trinquete (solo puede bajar) y ha subido 7.202 sin que nadie lo viera, precisamente porque este gate está ciego.
+  2. **Integridad de temario (4 tests):** topics activos sin `description` (>500), `descripcion_corta` que no resume, bloques sin ningún topic, y `title` ↔ `epigrafe` contradictorios (>20).
+  3. **`oposicion_bloques` ↔ `topics.bloque_number`** no cuadra.
+  4. **`position_type` sin config:** `auxiliar_archivos_bibliotecas_museos_madrid` está en BD y no tiene mapeo.
+  5. **`temario_versions`:** hay convocatoria vigente de oposición activa que no apunta a una versión.
+  6. **Drift de columnas RDS ↔ `db/schema.ts`:** falta una columna en el schema (el trinquete de [T-183]).
+  7. **`correct_option` end-to-end:** la transformación de `filtered-questions` ya no casa el patrón que el test exige — puede ser un renombrado, pero **eso es justo lo que un gate ciego deja pasar sin que nadie lo mire**.
+  8. **ETGOA Sanidad y Consumo:** `count` de topics en BD por debajo del total de la config, y themes sin correspondencia.
+- **Conclusión para quien lo retome:** reponer el secret NO deja el gate en verde; lo pone a decir la verdad, y la verdad son 13 fallos. Conviene repartirlos: el 1 es contenido servido a usuarios (urgente), 2-5 y 8 son datos de temario, 6-7 son de código.
 - **Relacionadas:** [T-297] (test de seguridad desfasado, en esta misma categoría), [T-307] (la familia: un guardarraíl que falla en silencio).
 ### [T-371] 🟠 [ABIERTO 31/07] La huella de dispositivo nace dentro del camino de MARKETING, no al abrir la app: 1 de cada 13 usuarios activos no tiene ninguna
 
