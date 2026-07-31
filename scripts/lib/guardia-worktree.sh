@@ -43,9 +43,26 @@ guardia_worktree() {
   # el árbol principal tenía trabajo sin commitear de otra sesión (`scratchpad/t115`), los scripts
   # se niegan con el árbol sucio, y `scratchpad/` no se puede ignorar porque tiene ficheros
   # TRACKEADOS. El consejo correcto no es «el principal», es «un árbol donde nadie esté trabajando».
+  # …y antes que «limpio o sucio», la pregunta que estaba sin hacer: ¿es SIQUIERA un árbol de
+  # trabajo? En un repo `bare` (o si el directorio ya no existe) `git status` falla por stderr y
+  # devuelve VACÍO — indistinguible de «no hay nada modificado». Así que un principal INSERVIBLE se
+  # leía como impecable y el consejo era ir a desplegar justo donde es imposible. Medido el 31/07
+  # a las 22:45 (T-436): alguien puso `core.bare=true` en el principal y la guarda seguía diciendo
+  # «que ahora mismo está limpio». No saber NUNCA puede pintarse de verde (T-437).
+  local principal_usable="no"
+  [ -n "${principal:-}" ] && \
+    [ "$(git -C "$principal" rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ] && \
+    principal_usable="si"
+
   local sucio_principal=""
-  [ -n "${principal:-}" ] && sucio_principal="$(git -C "$principal" status --porcelain 2>/dev/null | head -3)"
-  if [ -z "$sucio_principal" ]; then
+  [ "$principal_usable" = "si" ] && sucio_principal="$(git -C "$principal" status --porcelain 2>/dev/null | head -3)"
+  if [ "$principal_usable" != "si" ]; then
+    echo "   OJO: el repo principal NO SIRVE — no es un árbol de trabajo utilizable"
+    echo "        (${principal:-<sin ruta>}: ¿'core.bare=true', o el directorio ya no existe?)"
+    echo "   Ahí el deploy fallaría, y no por estar sucio. Despliega desde un árbol DEDICADO a"
+    echo "   desplegar (uno donde nadie programe) con el escape de abajo, o deshaz el 'bare'"
+    echo "   (git -C ${principal:-<repo>} config core.bare false) si fue sin querer — ver T-436."
+  elif [ -z "$sucio_principal" ]; then
     echo "   Despliega desde el repo principal, que ahora mismo está limpio:"
     echo "      cd ${principal:-<repo-principal>} && $0 ${ARGS_ORIGINALES:-}"
   else
