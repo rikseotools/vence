@@ -202,7 +202,7 @@ export class SubscriptionReconciliationService {
     const degraded = accounts.some((a) => !a.readable);
     const sinRespaldo = degraded
       ? []
-      : await this.detectarPremiumSinRespaldo(activasEnStripe);
+      : await this.detectarPremiumSinRespaldo(activasEnStripe, keys);
     if (degraded) {
       this.logger.warn(
         'Pass-3 (premium sin respaldo) OMITIDO: hay cuentas Stripe ilegibles',
@@ -401,8 +401,66 @@ export class SubscriptionReconciliationService {
    * razón que no está en la BD; que lo confirme un humano. Y las `sub_manual_*` se excluyen:
    * son altas sin Stripe detrás, no tienen contraparte que comprobar.
    */
+  /**
+   * ¿Existe esta suscripción en alguna de nuestras cuentas de Stripe, y sigue respaldando el acceso?
+   *
+   * Se pregunta por ID (no se lista): el Pase 3 solo necesita saber de unos pocos sospechosos, y
+   * listar la cartera entera cada hora para responder eso es justo lo que llevó al bug de la
+   * ventana de 30 días (T-344).
+   *
+   * Tres respuestas, y la tercera es la que evita acusar a un cliente:
+   *   · `viva`           — existe y su estado NO es terminal ⇒ respalda la fila.
+   *   · `no_respalda`    — existe pero está cancelada/expirada, o Stripe dice que no existe.
+   *   · `no_comprobable` — la consulta falló por algo que no es «no existe» (red, credenciales).
+   *     Ante la duda NO se acusa: un falso positivo aquí es decirle a alguien que paga que no paga.
+   */
+  private async verificarSubEnStripe(
+    subscriptionId: string,
+    keys: ReturnType<typeof getStripeAccountKeys>,
+  ): Promise<
+    | { tipo: 'viva' }
+    | { tipo: 'no_respalda'; estado: string }
+    | { tipo: 'no_comprobable' }
+  > {
+    let algunaRespondio = false;
+    let ultimoEstado: string | null = null;
+
+    for (const { secretKey } of keys) {
+      if (!secretKey) continue;
+      try {
+        const stripe = this.createStripe(secretKey);
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        algunaRespondio = true;
+        const estado = String((sub as { status?: string }).status ?? 'desconocido');
+        if (!ESTADOS_TERMINALES.has(estado)) return { tipo: 'viva' };
+        // Encontrada y terminal: ya está la respuesta. Un id de Stripe pertenece a UNA cuenta, así
+        // que preguntar en la otra solo gasta una llamada para oír «aquí no está».
+        ultimoEstado = estado;
+        break;
+      } catch (err) {
+        // Stripe devuelve `resource_missing` cuando el id no es de esta cuenta: eso NO es un
+        // error de comprobación, es la respuesta «aquí no está» — y hay que seguir con la otra
+        // cuenta antes de concluir nada.
+        const code = (err as { code?: string; statusCode?: number })?.code;
+        const status = (err as { statusCode?: number })?.statusCode;
+        if (code === 'resource_missing' || status === 404) {
+          algunaRespondio = true;
+          continue;
+        }
+        this.logger.warn(
+          `Pass-3: no se pudo verificar ${subscriptionId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return { tipo: 'no_comprobable' };
+      }
+    }
+
+    if (!algunaRespondio) return { tipo: 'no_comprobable' };
+    return { tipo: 'no_respalda', estado: ultimoEstado ?? 'inexistente' };
+  }
+
   private async detectarPremiumSinRespaldo(
     activasEnStripe: Set<string>,
+    keys: ReturnType<typeof getStripeAccountKeys>,
   ): Promise<PremiumSinRespaldo[]> {
     const out: PremiumSinRespaldo[] = [];
 
@@ -420,14 +478,53 @@ export class SubscriptionReconciliationService {
       email: string | null;
     }>;
 
+    // ⚠️ NO basta con «no está en `activasEnStripe`» (T-344, 30/07/2026). Ese conjunto lo llena el
+    // Pase 2 listando Stripe con `created: { gte: since }` y **`since` son 30 días**, así que toda
+    // suscripción más antigua falta de la lista aunque esté viva y al corriente. Medido en
+    // producción: **159 usuarios acusados cada hora**, con 172 de las 257 filas activas creadas
+    // hace más de 30 días. Se comprobaron cuatro uno a uno (44 a 156 días de antigüedad): los
+    // cuatro premium activos con vencimiento futuro.
+    //
+    // El daño no era el ruido: este detector existe para cazar FUGA de premium (dinero), y con 159
+    // falsos por hora la fuga de verdad queda enterrada — la lección de T-047/T-113/T-179.
+    //
+    // Por eso al sospechoso se le PREGUNTA por su id, que es O(sospechosos) y no O(cartera):
+    // `subscriptions.retrieve(id)` en cada cuenta hasta encontrarla. Solo se acusa cuando Stripe
+    // confirma que no existe o que está en un estado terminal; si no se puede comprobar (red, auth),
+    // NO se acusa — mismo criterio fail-safe que el guard de `degraded`.
+    let comprobadas = 0;
+    let noComprobables = 0;
     for (const f of filas) {
       if (activasEnStripe.has(f.stripe_subscription_id)) continue;
+      if (comprobadas >= MAX_VERIFICACIONES_POR_PASADA) {
+        // Tope defensivo: se DICE, no se calla. Un recorte silencioso se lee como «no hay más».
+        this.logger.warn(
+          `Pass-3: tope de ${MAX_VERIFICACIONES_POR_PASADA} verificaciones alcanzado; el resto se mira en la siguiente pasada`,
+        );
+        break;
+      }
+      comprobadas++;
+      const veredicto = await this.verificarSubEnStripe(
+        f.stripe_subscription_id,
+        keys,
+      );
+      if (veredicto.tipo === 'viva') continue;
+      if (veredicto.tipo === 'no_comprobable') {
+        noComprobables++;
+        continue;
+      }
       out.push({
         userId: f.user_id,
         email: f.email,
         motivo: 'fila_active_sin_sub_en_stripe',
         subscriptionId: f.stripe_subscription_id,
+        estadoEnStripe: veredicto.estado,
       });
+    }
+    if (comprobadas > 0) {
+      this.logger.log(
+        `Pass-3: ${comprobadas} sospechoso(s) verificados por id · ${out.length} confirmados · ${noComprobables} no comprobables`,
+      );
     }
 
     const perfiles = (await this.db.execute(sql`
@@ -553,6 +650,20 @@ export class SubscriptionReconciliationService {
   }
 }
 
+/**
+ * Estados de Stripe en los que una suscripción YA NO respalda el acceso. Todo lo demás (active,
+ * trialing, past_due, unpaid…) se considera respaldo: `past_due` es alguien cuyo cobro falló pero
+ * que sigue siendo cliente, y tratarlo como fuga sería acusar a quien está a un reintento de pagar.
+ */
+const ESTADOS_TERMINALES = new Set(['canceled', 'incomplete_expired']);
+
+/**
+ * Tope de verificaciones por id en una pasada. Con el bug de la ventana había 159 sospechosos por
+ * hora; ya arreglado deberían ser ~0, pero si algo vuelve a inflarlos esto evita gastar una llamada
+ * a Stripe por cada fila de la cartera. Si se alcanza, se DICE en el log (nunca un recorte mudo).
+ */
+const MAX_VERIFICACIONES_POR_PASADA = 300;
+
 // ─── Types ────────────────────────────────────────────────────────────────
 
 /**
@@ -620,6 +731,12 @@ export interface PremiumSinRespaldo {
   /** fila_active_sin_sub_en_stripe | premium_sin_suscripcion_ni_concesion */
   motivo: string;
   subscriptionId: string | null;
+  /**
+   * Estado REAL en Stripe cuando se pudo preguntar por id (T-344): `canceled`,
+   * `incomplete_expired` o `inexistente`. Va en el hallazgo porque quien lo triaje necesita saber
+   * si el cliente canceló o si el id no existe en ninguna cuenta — son dos historias distintas.
+   */
+  estadoEnStripe?: string;
 }
 
 export interface Pass2Result {

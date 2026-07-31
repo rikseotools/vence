@@ -154,9 +154,18 @@ class FakeService extends SubscriptionReconciliationService {
       Array<ReturnType<typeof sub>> | Error
     >,
     private readonly customerEmail: string | null = null,
+    /**
+     * Qué contesta Stripe si se PREGUNTA por un id concreto (T-344). Clave: id de suscripción;
+     * valor: su estado. Un id ausente = `resource_missing` en todas las cuentas, que es lo que
+     * Stripe devuelve cuando el id no es de esa cuenta.
+     */
+    private readonly porId: Record<string, string> = {},
   ) {
     super(db as never);
   }
+
+  /** Ids por los que se ha preguntado, para poder afirmar que NO se lista la cartera entera. */
+  public retrievedIds: string[] = [];
 
   public listedKeys: string[] = [];
 
@@ -168,6 +177,18 @@ class FakeService extends SubscriptionReconciliationService {
         list: () => {
           if (data instanceof Error) return Promise.reject(data);
           return Promise.resolve({ data: data ?? [], has_more: false });
+        },
+        retrieve: (id: string) => {
+          this.retrievedIds.push(id);
+          const estado = this.porId[id];
+          if (!estado) {
+            const err = Object.assign(new Error('No such subscription'), {
+              code: 'resource_missing',
+              statusCode: 404,
+            });
+            return Promise.reject(err);
+          }
+          return Promise.resolve({ id, status: estado });
         },
       },
       customers: {
@@ -409,10 +430,14 @@ describe('Pass-3 — premium sin respaldo (la dirección que nadie vigilaba)', (
         },
       ],
     });
-    const svc = new FakeService(db, {
-      sk_manuel: [sub('sub_viva')],
-      sk_nila: [],
-    });
+    const svc = new FakeService(
+      db,
+      { sk_manuel: [sub('sub_viva')], sk_nila: [] },
+      null,
+      // Stripe confirma que esa sí está cancelada de verdad (T-344: ya no basta con «no salía
+      // en la lista»; hay que preguntar por ella).
+      { sub_muerta: 'canceled' },
+    );
 
     const r = await svc.run(false);
 
@@ -422,8 +447,87 @@ describe('Pass-3 — premium sin respaldo (la dirección que nadie vigilaba)', (
         email: 'ana@example.com',
         motivo: 'fila_active_sin_sub_en_stripe',
         subscriptionId: 'sub_muerta',
+        estadoEnStripe: 'canceled',
       },
     ]);
+    // Y se preguntó SOLO por el sospechoso, no por la cartera.
+    expect(svc.retrievedIds).toEqual(['sub_muerta']);
+  });
+
+  // ── LA REGRESIÓN DE T-344 (30/07/2026) ──────────────────────────────────────────────────
+  // El Pase 2 lista Stripe con `created: { gte: 30 días }`, así que una suscripción más antigua
+  // NO aparece en esa lista aunque esté viva. Antes eso bastaba para acusar a su dueño: medido en
+  // producción, **159 clientes que pagaban, cada hora**. Y lo caro no era el ruido — este detector
+  // vigila fuga de premium, o sea dinero, y con 159 falsos la fuga real quedaba enterrada.
+  it('NO acusa a la suscripción ANTIGUA que sigue viva (no salía en la lista de 30 días)', async () => {
+    const db = new FakeDb({
+      subsInDb: ['sub_vieja'],
+      filasActivas: [
+        {
+          user_id: 'u-veterano',
+          stripe_subscription_id: 'sub_vieja',
+          email: 'ana.veterana@example.com',
+        },
+      ],
+    });
+    const svc = new FakeService(
+      db,
+      // La lista de los últimos 30 días NO la incluye: es de hace 156 días.
+      { sk_manuel: [], sk_nila: [] },
+      null,
+      { sub_vieja: 'active' },
+    );
+
+    const r = await svc.run(false);
+
+    expect(r.pass2.sinRespaldo).toEqual([]);
+    expect(svc.retrievedIds).toEqual(['sub_vieja']);
+  });
+
+  it('tampoco acusa a la que está en `past_due`: es un cobro fallado, no una fuga', async () => {
+    const db = new FakeDb({
+      subsInDb: ['sub_impagada'],
+      filasActivas: [
+        {
+          user_id: 'u-impago',
+          stripe_subscription_id: 'sub_impagada',
+          email: 'dani@example.com',
+        },
+      ],
+    });
+    const svc = new FakeService(db, { sk_manuel: [], sk_nila: [] }, null, {
+      sub_impagada: 'past_due',
+    });
+
+    expect((await svc.run(false)).pass2.sinRespaldo).toEqual([]);
+  });
+
+  it('si Stripe no se puede consultar, NO acusa (ante la duda, callar)', async () => {
+    // Un fallo de red o de credenciales no es prueba de fuga. Acusar aquí es decirle a alguien
+    // que paga que no paga, y eso no se hace con una hipótesis.
+    const db = new FakeDb({
+      subsInDb: [],
+      filasActivas: [
+        {
+          user_id: 'u-dudoso',
+          stripe_subscription_id: 'sub_incognita',
+          email: 'eva@example.com',
+        },
+      ],
+    });
+    class Caida extends FakeService {
+      protected createStripe() {
+        return {
+          subscriptions: {
+            list: () => Promise.resolve({ data: [], has_more: false }),
+            retrieve: () => Promise.reject(new Error('connection reset')),
+          },
+        } as never;
+      }
+    }
+    const svc = new Caida(db, { sk_manuel: [], sk_nila: [] });
+
+    expect((await svc.run(false)).pass2.sinRespaldo).toEqual([]);
   });
 
   it('caza el perfil premium sin suscripción ni concesión declarada', async () => {

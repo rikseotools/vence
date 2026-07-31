@@ -894,7 +894,20 @@ incluida).
 - **Relacionadas:** [T-340] (el contraste que lo destapó), y los **38 endpoints fuera de `/api/stripe`** con el mismo patrón de `userId` sin verificar, que siguen sin auditar.
 
 
-### [T-344] 🟠 [ABIERTO 30/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
+### [T-338] 🟢 [ABIERTO 30/07] Verificar en producción que la suplantación caduca sola (T-335 ya en main)
+
+- **Por qué existe:** [T-335] arregló que la suplantación no caducaba (el plazo vivía en `exp`, que Auth.js re-firma en cada carga). Está **verificado en local** —sim 10/10 con contraste, 465 tests, y `Set-Cookie … Max-Age=0` borrando de verdad una sesión legacy— pero **no se puede comprobar en producción hasta desplegar**: commit `61dd528dd`, superficie **frontend**.
+- **Qué comprobar cuando esté vivo:**
+  1. Suplantar una cuenta de prueba y **esperar los 30 minutos**: la sesión tiene que morir sola y la franja roja desaparecer **a la vez** (que se apagara antes era la mitad del fallo).
+  2. `impersonacion_caducada` en `observable_events` → debe aparecer al vencer. Es la salvaguarda funcionando.
+  3. `impersonacion_caducada_rechazada` → **casi no debería aparecer**. El token nace recortado al restante, así que verla subir significa que alguna capa de arriba dejó de funcionar (mirar el callback `jwt` y el recorte del acuñado).
+  4. Que las sesiones suplantadas **anteriores** al arreglo (sin `impExp`) mueren solas al primer refresco — es el fail-closed, y afecta a cualquier admin que suplantara estos días.
+- **Cómo:** señales y consulta SQL en `docs/runbooks/suplantacion-ver-como-usuario.md`. La sim se puede correr contra prod con `--url`.
+- **Esfuerzo:** bajo, con una espera de 30 min por medio.
+
+## Hechas
+
+### [T-344] ✅ [HECHA 31/07] `premium_sin_respaldo` marca a 159 clientes que pagan: compara contra una lista que solo trae 30 días
 - **Cómo salió:** revisión de salud del 30/07. Era la única señal del catch-all que tocaba dinero, así que se miró primero.
 - **Qué hace mal, exactamente:** el Pase 2 pide a Stripe las suscripciones con `created: { gte: since }` y **`since` son 30 días** (`subscription-reconciliation.service.ts:145`). Con esa lista se llena `activasEnStripe`. El **Pase 3** (`detectarPremiumSinRespaldo`) recorre **TODAS** las filas `status='active'` y marca la que no esté en ese conjunto. Resultado: **toda suscripción creada hace más de 30 días se declara «sin respaldo en Stripe»**, aunque esté viva y al corriente.
 - **Medido (30/07):** el evento reporta **`detected: 159`**, todas con motivo `fila_active_sin_sub_en_stripe`, y **dispara cada hora — 20 veces hoy**. En la base hay **257 filas activas con suscripción de Stripe, de las que 172 se crearon hace más de 30 días**: es decir, el detector señala prácticamente a toda la cartera veterana.
@@ -914,6 +927,17 @@ incluida).
   2. **Verificar solo a los sospechosos**: el Pase 3 ya sabe qué `stripe_subscription_id` no encontró; basta un `subscriptions.retrieve(id)` **por cada uno** (en la cuenta que diga `payment_account`, con la otra como respaldo). Es O(sospechosos) en vez de O(cartera) y además da el motivo real cuando de verdad falta.
 - **Al tocarlo, respetar dos cosas que ya están bien:** que **solo detecta** (quitarle el premium a alguien lo confirma una persona) y que las `sub_manual_*` y las cuentas con `premium_grant_reason` quedan fuera a propósito.
 - **Guardarraíl sugerido:** un test que fije que una suscripción **antigua y viva** NO se marca. Hoy no existe: los tests del servicio cubren el Pase 2 y la reparación, no esta comparación.
+#### ✅ ARREGLADO (31/07) — al sospechoso se le PREGUNTA, no se le deduce
+- **El cambio:** el Pase 3 ya no concluye desde la lista de 30 días. Por cada fila que no aparece en ella hace un `subscriptions.retrieve(id)` **en cada cuenta hasta encontrarla**, y solo acusa cuando Stripe confirma que no existe o que está en estado terminal. Es **O(sospechosos)** en vez de O(cartera): con el bug eran 159 por hora; arreglado deberían ser ~0.
+- **Tres reglas nuevas, y las tres son para NO acusar de más:**
+  - `past_due` **no** es fuga: es un cobro fallado de alguien que sigue siendo cliente y está a un reintento de pagar. Solo `canceled` e `incomplete_expired` cuentan como terminales.
+  - Si la consulta falla por algo que no sea «no existe» (red, credenciales), **no se acusa**. Un falso positivo aquí es decirle a alguien que paga que no paga; mismo criterio fail-safe que el guard de `degraded`.
+  - El hallazgo lleva ahora `estadoEnStripe`, porque «canceló» y «el id no existe en ninguna cuenta» son dos historias distintas y quien triaje necesita saber cuál es.
+- **Tope con voz:** 300 verificaciones por pasada, y si se alcanza **se dice en el log**. Un recorte mudo se lee como «no hay más», que es exactamente el tipo de silencio que este arreglo viene a quitar.
+- **4 tests nuevos** (`subscription-reconciliation.service.spec.ts`), con el fake de Stripe enseñado a responder `retrieve`: la antigua-y-viva NO se acusa (la regresión que da nombre a la ficha), la `past_due` tampoco, con Stripe caído tampoco, y la cancelada de verdad **sí** se caza y además **solo se pregunta por el sospechoso** (`retrievedIds`), no por la cartera.
+- **Verde:** 30 tests del servicio, 495 de `alerts` + `subscription-reconciliation`, typecheck del backend limpio.
+- **⚠️ Falta VERIFICAR EN VIVO (exige deploy de backend):** tras desplegar, el evento `premium_sin_respaldo` debe pasar de `detected: 159` a un número pequeño y creíble, y **cada uno que quede hay que mirarlo de verdad**: ahora sí serán candidatos reales a fuga de premium. De paso desaparecen ~2 correos diarios del buzón.
+
 ### [T-347] 🟠 [ABIERTO 31/07] Las fuentes del radar siguen igual que en la avería de julio: 101 en error y ninguna revisada
 
 - **MEDIDO EL 31/07:** `detection_sources` tiene **173 fuentes, las 173 marcadas `is_active=true`**. De ellas: **101 con `last_error`**, **99 que no han tenido un solo éxito jamás** (`last_success_at IS NULL`) y **0 revisadas en las últimas 48 horas**.
