@@ -134,6 +134,36 @@ describe('decidirSuperviviente — quién se queda', () => {
   })
 })
 
+describe('unidoSoloPorTildes — no borrar la diferencia que la pregunta pregunta', () => {
+  it('avisa cuando lo único que unió al grupo fue quitar la tilde', () => {
+    // Caso real del banco (c3e10f4e / a01cda84): «cómo salir» y «como salir». Aquí es una errata,
+    // pero en una pregunta de ortografía la tilde ES la respuesta, y entonces fusionar borra
+    // justo lo que se examina. Por eso se aparta en vez de aplicarse solo.
+    expect(dup.unidoSoloPorTildes([
+      ['Situación embarazosa, conflicto del cual no se sabe cómo salir'],
+      ['Situación embarazosa, conflicto del cual no se sabe como salir.'],
+    ])).toBe(true)
+  })
+
+  it('NO avisa cuando la diferencia es solo el punto final o el orden', () => {
+    // 13 de los 40 grupos medidos el 31/07 son de este tipo: transcripción, no contenido.
+    // Apartarlos también dejaría la herramienta sin nada que hacer.
+    expect(dup.unidoSoloPorTildes([
+      ['Serio', 'Tolerante', 'Cohibido', 'Zalamero'],
+      ['Zalamero.', 'Cohibido.', 'Serio.', 'Tolerante.'],
+    ])).toBe(false)
+  })
+
+  it('NO avisa cuando las copias son idénticas', () => {
+    expect(dup.unidoSoloPorTildes([['Círculo', 'Cubo'], ['Cubo', 'Círculo']])).toBe(false)
+  })
+
+  it('la ñ no cuenta como tilde en ninguno de los dos caminos', () => {
+    expect(dup.normalizarConTildes('año')).toBe('año')
+    expect(dup.unidoSoloPorTildes([['año'], ['año']])).toBe(false)
+  })
+})
+
 describe('esJuegoGenerico — solo para el corte parafraseado', () => {
   it('descarta los juegos de cifras sueltas y los de «figura A/B/C/D»', () => {
     expect(dup.esJuegoGenerico('13|14|16|18')).toBe(true)

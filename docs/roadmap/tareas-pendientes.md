@@ -1082,6 +1082,21 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-428] 🟠 [ABIERTO 31/07] Una sesión borra las fichas de otra al resolver el conflicto de `tareas-pendientes.md`, y no lo caza nada
+
+- **Esfuerzo: ~1 h** (el detector es una comparación de dos versiones del mismo fichero; lo puro se testea sin git).
+- **QUÉ PASÓ, medido hoy.** La sesión `central-inferior` escribió y **pusheó** (`3f2edb172`) tres bloques de contexto: la reescritura entera de [T-410] como traspaso, el cabo suelto de normalización en [T-408] y la segunda ocurrencia del día en [T-403]. **Tres commits después habían desaparecido los tres**, mientras el bloque que otra sesión había escrito en esa misma ficha sí sobrevivía. No hubo `git revert` ni discusión: fue una **resolución de conflicto** que se quedó con «su» lado del fichero. Se recuperaron a mano desde el commit, porque por casualidad se volvió a abrir la ficha; **si la sesión se hubiera cerrado antes, el trabajo de documentar se habría perdido entero y en silencio.**
+- **Por qué es estructural y va a repetirse:** con 4-6 sesiones a la vez, `docs/roadmap/tareas-pendientes.md` es el fichero que **todas** tocan, y las fichas nuevas se insertan **todas en el mismo sitio** (justo bajo `## Abiertas`), así que el conflicto no es la excepción: es lo normal. En una sola tarde chocó **cuatro veces**. Y resolver un conflicto de prosa a las 2 de la mañana eligiendo «el mío» es el error más fácil del mundo.
+- **Lo que NO lo caza (comprobado uno a uno):**
+  - `backlogRegistry.guardrail` verifica **ids únicos**, marcas de cierre coherentes y que ninguna cerrada se quede en `## Abiertas`. Un id sigue siendo único después de que le borres el cuerpo entero.
+  - `backlog.cjs sync` reconcilia **título y prioridad**. El cuerpo de la ficha —que es TODO el contexto— no lo mira nadie.
+  - El push-guard mira **claims**, no contenido.
+  - O sea: la ficha puede quedarse en una línea y **el CI sigue verde**.
+- **Propuesta (determinista, sin IA):** un check que compare el fichero **antes y después** del cambio (en `pre-push` y/o en CI contra la base) y **bloquee** si una ficha VIVA pierde una parte grande de su cuerpo sin moverse a `## Hechas` — el umbral hay que calibrarlo (una reescritura legítima también encoge; una ficha que pasa de 40 líneas a 6 no). Núcleo puro `lib/backlog/perdidaDeContexto.cjs` que reciba las dos versiones del markdown y devuelva las fichas mermadas, con su test; el hook solo hace de mensajero. **Aviso antes que bloqueo** si al medirlo sobre el histórico salen demasiados falsos positivos.
+- **Alternativa más barata que también sirve** (y compatible): que cada ficha viva en **su propio fichero** (`docs/roadmap/tareas/T-428.md`) y que `tareas-pendientes.md` sea solo el índice. Los conflictos desaparecen por construcción, porque dos sesiones dejan de escribir en el mismo sitio. Es más trabajo de migración, pero ataca la causa y no el síntoma.
+- **Mientras no exista:** al resolver un conflicto en este fichero, **conservar SIEMPRE los dos lados** (son fichas distintas, casi nunca hay que elegir), y si dudas, mirar `git log -p` del fichero antes de dar el rebase por bueno.
+- **Relacionadas:** [T-400] (ver en vivo qué ficheros toca cada sesión — habría avisado del choque, no del borrado), [T-385].
+
 ### [T-429] 🟡 [ABIERTO 31/07] Triar las 11 fichas en DERIVA que destapó el criterio nuevo de abierto/cerrado
 
 - **ORIGEN.** Salieron al arreglar [T-382]. Hasta ese día «abierta» se deducía de la POSICIÓN de la ficha en el markdown, y con tres secciones `## Hechas` el detector de deriva **no podía ver a 145 de las 177 tareas vivas**. Al pasar el criterio a la marca `✅` de la cabecera, aparecieron **11 divergencias que llevaban tiempo invisibles**.
@@ -1296,7 +1311,9 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **La regla candidata, que hay que MEDIR antes de aplicar:** los ids del **asunto** (primera línea) exigen claim; los que solo aparecen en el **cuerpo** avisan pero no bloquean. Encaja con cómo escribe el repo —el asunto declara qué hace el commit, el cuerpo es prosa—, pero **es una relajación** y abre un hueco: quien trabaje una tarea mencionándola solo en el cuerpo dejaría de ser cazado.
 - **Cómo medirlo, y NO aplicarlo sin ese dato:** recorrer el historial y contar, de los commits que mencionan un `T-NNN`, cuántos lo llevan en el asunto y cuántos solo en el cuerpo — y de estos últimos, cuántos **tocan código de esa tarea** (o sea, cuántos serían falsos permisos). Si la cola de "trabajo declarado solo en el cuerpo" no es despreciable, la regla no vale y hay que buscar otra (p. ej. exigir claim solo si el commit toca ficheros, no solo docs — que es lo que ya hace la exención estrecha de T-375).
 - **Alternativa sin relajar nada:** un escape con NOMBRE para este caso concreto (`BACKLOG_GUARD_MENCION=T-361,T-385`) en vez del `SKIP` general. No arregla la fricción, pero deja de apagar el guard entero para conseguir pasar — que es el daño de verdad.
-- **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400].
+- **SEGUNDA VEZ EL MISMO DÍA (31/07, sesión `central-inferior`), y con las tres salidas malas probadas.** El commit `10355860d` (`fix(T-408, T-410): …`) declaraba su trabajo en el asunto y **citaba T-321 en el cuerpo** para explicar que el barrido ya existía y por eso no se construía otro. El guard lo paró. Las salidas eran: (a) **reclamar T-321**, que es de otra sesión y no se iba a trabajar → roba el reparto; (b) **`BACKLOG_GUARD_SKIP=1`** → apaga el guard entero; (c) **quitar el identificador del mensaje**, que es lo que se hizo. Y (c) **tiene coste real: el commit explica menos.** El id era la traza de por qué NO se abrió un cuarto script, justo la información que evita repetir el trabajo. O sea que el guard, tal como está, **empuja a escribir peores mensajes de commit** — que es exactamente lo contrario de lo que quiere el repo.
+- **Dato para la medición, ya recogido:** en las dos ocurrencias del 31/07 el id del asunto era el trabajo real y **los del cuerpo eran contexto en el 100 % de los casos** (T-361, T-385, T-321: ninguno se tocó). Son dos muestras, no una medida — pero apuntan a que la regla candidata es la correcta.
+- **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400], [T-408]/[T-410] (la segunda ocurrencia).
 
 
 ### [T-405] 🟠 [ABIERTO 31/07] El veredicto ROJO de una verificación no llega a ninguna cola: dijo «opciones corruptas» y la pregunta siguió sirviéndose 12 días
@@ -1486,23 +1503,61 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > **bloqueó** el movimiento porque la sacaría de 13 temas. Se corrigió la explicación (que atribuía al
 > 71 lo que dice el 72) y el hueco de scope se fichó aparte → **[T-421]**.
 
-### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 42 grupos que la deduplicación de mayo no podía ver
+> **⚠️ CABO SUELTO CONOCIDO — las dos ramas normalizan distinto, y es a propósito.** El módulo
+> puro normaliza **fuerte** (ignora acentos y puntuación: *«¿Qué palabra…»* = *«Que palabra»*) y
+> lo usa la rama psicotécnica. La rama legislativa **sigue con su normalización original en SQL**
+> (`lower` + colapsar espacios), que es más laxa y agrupa MENOS. No se tocó por una razón: ahí el
+> desenlace es `retired_duplicate`, que es **TERMINAL**, y ensanchar el criterio en el mismo commit
+> que refactoriza habría jubilado preguntas por un cambio que nadie midió. **Antes de unificarlas
+> hay que medir el delta** —correr la rama legislativa con la normalización fuerte y ver cuántos
+> grupos NUEVOS aparecen y si son de verdad—; si el delta es limpio, se sustituye la expresión SQL
+> por `sqlNormalizar()` (ya exportada por el módulo, con su gemela en JS testeada) y se acabó la
+> asimetría. Si no se hace, esto es lo que volverá a divergir.
 
-- **Esfuerzo: ~2 h.** No hay que construir nada: la consulta está escrita aquí abajo. Lo que lleva tiempo es **adjudicar grupo por grupo** (hay falsos positivos reales) y desactivar la copia sobrante de cada uno.
-- **De dónde sale:** la impugnación `b6787619` (Esther Ramos, 31/07) era un falso positivo, pero al mirar esa pregunta en la BD aparecieron **dos copias activas** de ella — `49a8e1d9` (oficial, Guardia Civil 2009) y `63626258` — con **el enunciado redactado distinto**: *«¿Qué palabra sobra en cuanto a la característica del objeto que representa?»* frente a *«¿Qué palabra sobra?»*, mismas cuatro opciones y misma clave. La segunda ya está desactivada.
-- **Por qué se escapó:** la campaña de deduplicación de mayo (las que hoy llevan `duplicate_cross_oposicion:` / `duplicate_keep_official`) agrupó **por enunciado exacto**. Este caso comparte opciones y clave pero **no el texto**, así que quedó entero fuera del barrido — no es que se decidiera conservarlo, es que nunca se miró.
-- **Medido el 31/07 sobre las 7.101 psicotécnicas activas:**
-  - **Duplicados exactos** (enunciado + opciones + imagen + `content_data` + clave): **3 grupos → 3 copias sobrantes. YA DESACTIVADAS** (`727d861d`/`88b5cc9f`, `6581be38`/`b8b856c9`, `e5df9032`/`34af2e63`; se conservó en cada par la de mejor explicación). Esa parte está cerrada.
-  - **Clase parafraseada, que es lo que queda:** mismas 4 opciones normalizadas + enunciado distinto → **42 grupos · 94 preguntas · hasta 52 copias sobrantes**. Casi todas son vocabulario importado dos veces con la redacción cambiada: `15a1fee1`/`9ac9bdea` (JACTAR), `922437c6`/`312c9c66` (PRECAVIDO), `395e29f8`/`50116c54` (CINISMO), `782ad84c`/`41ef1a23` (FANÁTICO), `f024fafc`/`53db41bd` (SOSEGADO), `67f797f3`/`4f09ba8a` (analogía Ineptitud→Paridad)…
-- **⚠️ Los dos sesgos que hay que respetar al adjudicar** (medidos, no teóricos):
-  1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*, *«¿Cuántos errores hay en la fila 4?»*) y se diferencian en la **imagen** o en el `content_data`. Sin mirar esos dos campos, el barrido miente en el 97 % de los casos.
-  2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta (no su índice — las opciones vienen barajadas entre copias), las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` a secas daría alarmas falsas en cascada.
-- **La cola ya se saca con un comando** (31/07, mismo día): **`node scripts/calidad/duplicados-exactos.cjs --parafraseadas`**. Lista y **no escribe nunca** — aquí la única evidencia son las opciones y hay falsos positivos reales, así que se adjudica a mano. Con la normalización estricta del núcleo (que ignora los acentos: *«¿Qué palabra…»* = *«¿Que palabra…»*) la cola queda en **40 grupos · 90 preguntas · 50 sobrantes**; los 2 grupos que faltan respecto de la primera medición no desaparecieron, **ascendieron al corte exacto**.
-- **El corte exacto de psicotécnicas también entra por ese script** (`--banco psicotecnicas`), con la huella de `image_url`+`content_data` en la clave del grupo. Ojo: **NO se construyó un cuarto script** — se extendió el de [T-321], y el criterio vive en el módulo puro `lib/calidad/duplicados.js` (22 tests) que comparten los dos bancos.
-- **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`. Criterio para elegir cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la más antigua. Ojo: las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección (es correcto: el opositor la vería dos veces).
-- **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno ya tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las dos guardas de arriba** lo convierte en trinquete, y el núcleo puro se puede compartir con el detector de duplicados de importación.
-- **Relacionada: [T-408]**, el mismo hueco en las **legislativas**. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de [T-321] ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»—. **Ya están unificadas:** un solo script, un solo criterio en `lib/calidad/duplicados.js`. Lo que queda en T-408 es llevar el kind al badge y calibrar el corte borroso; lo que queda aquí es **adjudicar los 40 grupos**.
-- **Pendiente de una decisión, no de trabajo:** el corte exacto de psicotécnicas señala **3 grupos nuevos** (`41ef1a23`/`782ad84c`, `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`) que la normalización estricta hizo aflorar. Son seguros por construcción, pero **el script no ha escrito nada**: se aplican con `--banco psicotecnicas --aplicar` cuando alguien lo mire.
+### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 40 grupos que la deduplicación de mayo no podía ver
+
+> **La herramienta ya está construida, probada y pusheada (commit `10355860d`). Lo que queda es
+> JUICIO: adjudicar 40 grupos a mano.** Esfuerzo: **~1,5-2 h**. No hace falta leer nada más que
+> esta ficha — abajo está el comando, los grupos ya descartados y el criterio de decisión.
+
+**▶ Empezar así (30 segundos):**
+
+```bash
+node scripts/calidad/duplicados-exactos.cjs --parafraseadas    # la cola: lista, NUNCA escribe
+node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte exacto (simula)
+```
+
+- **De dónde sale:** la impugnación `b6787619` (Esther Ramos, 31/07) era un falso positivo, pero al mirar esa pregunta en la BD aparecieron **dos copias activas** de ella — `49a8e1d9` (oficial, Guardia Civil 2009) y `63626258` — con **el enunciado redactado distinto**: *«¿Qué palabra sobra en cuanto a la característica del objeto que representa?»* frente a *«¿Qué palabra sobra?»*, mismas cuatro opciones y misma clave.
+- **Por qué se escapó:** la campaña de deduplicación de mayo (las que hoy llevan `duplicate_cross_oposicion:` / `duplicate_keep_official`) agrupó **por enunciado exacto**. Esta clase comparte opciones y clave pero **no el texto**, así que quedó entera fuera del barrido — no es que se decidiera conservarla, es que nunca se miró.
+
+**Lo que YA está hecho (no repetirlo):**
+
+| | |
+|---|---|
+| Herramienta | `scripts/calidad/duplicados-exactos.cjs` **extendido** con `--banco psicotecnicas` y `--parafraseadas`. NO se construyó un script nuevo: se amplió el que ya existía |
+| Criterio | módulo puro `lib/calidad/duplicados.js` + **22 tests** (`__tests__/calidad/duplicados.test.ts`). Lo comparten los dos bancos |
+| Registro | entrada `duplicados_exactos` de `lib/admin/toolRegistry.ts` actualizada (si no, la próxima sesión vuelve a construirlo) |
+| Desactivadas a mano | `63626258` (la de la impugnación) y 3 copias exactas: `88b5cc9f`, `b8b856c9`, `34af2e63`. Banco activo: 7.101 → **7.097** |
+
+**Lo que QUEDA, por orden:**
+
+1. **Aplicar el corte exacto** — el script señala **3 grupos** que la normalización estricta hizo aflorar: `41ef1a23`/`782ad84c` (FANÁTICO), `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`. Son seguros por construcción (mismo texto normalizado, mismas opciones, misma huella de contenido, misma respuesta). **El script NO ha escrito nada**: `--banco psicotecnicas --aplicar`. Dos minutos.
+2. **Adjudicar los 40 grupos parafraseados** (90 preguntas, 50 copias sobrantes como techo). Uno a uno, mirando los dos enunciados.
+
+**⚠️ Los cuatro sesgos que hay que respetar al adjudicar** (medidos el 31/07, no teóricos):
+
+1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*) y se diferencian en la **imagen** o en el `content_data`. Por eso el corte exacto lleva la huella de esos dos campos en la clave del grupo; sin ella miente en el 97 % de los casos.
+2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta —no su índice, que difiere porque las copias vienen **barajadas**— las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` daría alarmas falsas en cascada.
+3. **La normalización puede borrar justo lo que la pregunta examina.** El criterio ignora tildes y puntuación —hace falta: *«¿Qué palabra…»* y *«¿Que palabra…»* son la misma pregunta—, pero en un banco que examina **ORTOGRAFÍA** la tilde puede ser **la respuesta**. Por eso el script **aparta y NO aplica** los grupos que solo existen al quitar la tilde (`unidoSoloPorTildes`, en el módulo puro y con tests) y los imprime para que se les mire el enunciado. **Medido:** en el corte exacto, **0** grupos; en la cola parafraseada, **13 de 40** se unen por puntuación u orden de las opciones —transcripción, no contenido, y por eso la puntuación NO se aparta: hacerlo dejaría la herramienta sin nada que hacer— y **1 solo por la tilde** (`c3e10f4e`/`a01cda84`, *«cómo salir»* vs *«como salir»*), que ahí es una errata de una copia. La guarda nace de la lección que otra sesión midió el mismo día en [T-406]: 48 y 8 «irresolubles» eran 33 y 0 al dejar de normalizar lo examinado.
+4. **En la cola parafraseada la única evidencia son las opciones**, así que hay falsos positivos reales. **Ya verificados como FALSOS POSITIVOS — no volver a analizarlos:** los grupos de tabla que comparten juego de opciones (`872c1738`… «Empresa 1/2/3…», Categoría A-D), los de códigos (`9b515096`…), los de recuento de errores ortográficos (`a433893a`…) y cualquiera cuyo enunciado enseñe que la pregunta es OTRA sobre la misma tabla. El script los marca con 🔴 por «responden cosas distintas», y en estos casos ese 🔴 es precisamente la señal de que **no** son duplicados.
+
+**Los que sí son duplicados** son de vocabulario, importados dos veces con la redacción cambiada: `15a1fee1`/`9ac9bdea` (JACTAR), `922437c6`/`312c9c66` (PRECAVIDO), `395e29f8`/`50116c54` (CINISMO), `f024fafc`/`53db41bd` (SOSEGADO), `67f797f3`/`4f09ba8a` (Ineptitud→Paridad), `17b7a08f`/`b5339ef5`/`6760f45b` (INDIGNACIÓN, tres copias), `c94e6621`/`e3284edf` (18 h 20 min 31 s).
+
+- **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`, y **es reversible** (al revés que `retired_duplicate`, que es terminal). Cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la **más servida** → la más antigua. Las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección: es correcto (el opositor la vería dos veces), y el script ya aparta el grupo si dejaría la sección por debajo de 4.
+- **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las guardas de arriba** lo convierte en trinquete. Es el mismo trabajo que reclama [T-408] para las legislativas: **hacerlo una vez, para los dos bancos**.
+- **Relacionada: [T-408]**, el mismo hueco en las legislativas. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de duplicados exactos ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»: la búsqueda es por subcadena y el femenino no encuentra el masculino—. **El criterio ya está unificado**; lo que queda repartido es el badge (T-408) y esta adjudicación.
+- **NO hacer:** aplicar la cola parafraseada en bloque (`--parafraseadas` no escribe a propósito), ni tocar la clave de ninguna copia, ni desactivar la de examen oficial.
+
 
 ### [T-421] 🟡 [ABIERTO 31/07] El art. 72 de la LO 3/2007 falta en 13 temas que sí escopan el 71, y otros 17 lo tienen: la misma materia, partida según la oposición
 

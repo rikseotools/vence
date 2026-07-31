@@ -55,7 +55,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
-const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico } = require('../../lib/calidad/duplicados.js')
+const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -205,6 +205,7 @@ const SQL_PSICO = `
            -- rejillas iguales dan la misma huella aunque se escribieran en distinto orden.
            md5(coalesce(q.image_url, '') || '#' || coalesce(q.content_data::text, '')) as huella,
            (array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e])[q.correct_option + 1] as texto_correcta,
+           array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e] as opciones,
            (select count(*)::int from psychometric_test_answers a where a.question_id = q.id) as servida
       from psychometric_questions q
      where q.is_active
@@ -213,7 +214,7 @@ const SQL_PSICO = `
          json_agg(json_build_object(
            'id', id, 'oficial', is_official_exam, 'servida', servida,
            'expl', coalesce(length(explanation), 0), 'alta', created_at,
-           'seccion', section_id, 'textoCorrecta', texto_correcta
+           'seccion', section_id, 'textoCorrecta', texto_correcta, 'opciones', opciones
          ) order by created_at) as miembros
     from base
    group by 1, 2, 3
@@ -225,8 +226,12 @@ async function barridoPsicotecnicas(c) {
   let jubilar = []
   let conOficial = 0
   let conClaveDistinta = 0
+  const porTilde = []
   const porSeccion = new Map()
   for (const g of grupos) {
+    // Si al grupo lo unió QUITAR LA TILDE, no se aplica solo: en un banco que examina ortografía
+    // la tilde puede ser lo que la pregunta pregunta. Se aparta para mirarlo a mano.
+    if (unidoSoloPorTildes(g.miembros.map((m) => m.opciones))) { porTilde.push(g); continue }
     const [queda, fuera] = decidir(g.miembros)
     if (queda.oficial) conOficial++
     if (bandaGrupo(g.miembros) === 'error') conClaveDistinta++
@@ -257,6 +262,10 @@ async function barridoPsicotecnicas(c) {
   console.log(`  a desactivar: ${jubilar.length}${apartadas ? ` (${apartadas} apartadas para no dejar una sección por debajo de ${MINIMO})` : ''}`)
   console.log(`  grupos donde la superviviente es de EXAMEN OFICIAL: ${conOficial}`)
   console.log(`  grupos cuyas gemelas RESPONDEN COSAS DISTINTAS: ${conClaveDistinta}${conClaveDistinta ? '  ← mirar estos primero' : ''}`)
+  if (porTilde.length) {
+    console.log(`  ⚠️ apartados por unirse SOLO al quitar la tilde (mira el enunciado: puede ser una pregunta de ortografía): ${porTilde.length}`)
+    for (const g of porTilde) console.log(`     · ${g.miembros.map((m) => String(m.id).slice(0, 8)).join(' / ')}`)
+  }
   for (const g of grupos.slice(0, 10)) {
     const [queda, fuera] = decidir(g.miembros)
     console.log(`     · ${bandaGrupo(g.miembros) === 'error' ? '🔴' : '·'} queda ${String(queda.id).slice(0, 8)} — se van ${fuera.map((f) => String(f.id).slice(0, 8)).join(', ')}`)
