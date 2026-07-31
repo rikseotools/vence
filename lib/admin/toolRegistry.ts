@@ -980,6 +980,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'a colectivos — la resta no aparece escrita, mismo patrón que el 2.163 de Policía Nacional, y ' +
       'anunciaba 5 plazas MENOS de las convocadas.',
   },
+  explicacion_sin_cita: {
+    titulo:
+      '«Explicación estructurada SIN cita»: el rastro de que el artículo no responde a la pregunta',
+    ruta: 'scripts/audit-explicacion-sin-cita.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/revisar-preguntas-con-agente.md',
+    notas:
+      'Núcleo puro `lib/health/explicacionSinCita.js` (21 tests) + `npm run audit:sin-cita`. BAJO ' +
+      'DEMANDA, no pinga el badge. Nace de T-342: el esquema hace `cita` OPCIONAL, así que una ' +
+      'explicación sin ella pasa todos los gates — pero es la huella de que el agente leyó el ' +
+      'artículo y no encontró frase que sostuviera la respuesta. NO es un detector de formato, es de ' +
+      'huecos de TEMARIO. Reusa `citaNoLiteral` de impugnaciones (criterio único, con trinquete en ' +
+      '`criterioCitaUnico`), no lo reimplementa. **ALCANCE ACOTADO a propósito:** calcula ' +
+      '`cita_no_literal` pero NO lo reporta, porque ese terreno es del barrido de citas, que tiene su ' +
+      'propia calibración (solo las AJENAS, solape < 0,5; las «retocadas» no son defecto). Medido el ' +
+      '30/07 sobre 7.037 activas con estructura: 3.925 salen no literales en bruto — reportarlas ' +
+      'habría sido un badge gritando. Sin acotar: 4.336 hallazgos; acotado: **411 (5,8%) y 17.547 ' +
+      'exposiciones**. Dos exenciones que lo sostienen: preguntas de NEGACIÓN (ahí no poder citar la ' +
+      'clave es lo ESPERADO) y meta-opciones («todas son correctas»). GOTCHA medido: el patrón de ' +
+      'negación va sin distinguir mayúsculas, porque en los enunciados se resalta escribiéndola así ' +
+      '(«señale la INCORRECTA») y con la regex sensible a la caja se escapaba.',
+  },
   atajos_coherencia: {
     titulo:
       '¿El banco se contradice a sí mismo sobre un atajo de teclado? (no dice cuál es el correcto)',

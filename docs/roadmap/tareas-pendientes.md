@@ -26,6 +26,12 @@
   1. **A quién.** No a toda la base: mandar «último día» a quien no puede presentarse es ruido que se paga en bajas. Lo razonable es acotar a perfiles con encaje real (Andalucía / Jaén, y quien tenga seleccionada una oposición de subalterno, conserjería, universidad o administración local). El runbook de newsletters tiene el cómo segmentar.
   2. **Qué se promete.** El temario propio de la UJA **todavía no está montado** ([T-329]), así que el mensaje no puede dar a entender que la oposición está lista en Vence. Lo honesto y lo que además es cierto: cuatro de sus catorce temas (LOSU, EBEP, Prevención de Riesgos, igualdad) **sí se pueden estudiar hoy**, y la estamos preparando.
 - **Por qué merece el esfuerzo pese a ser 9 plazas:** el gancho no es la oposición, es la **urgencia verificada** (un plazo que cierra hoy es el único correo que se abre seguro), y de paso da a conocer que preparamos oposiciones de universidad. Es la misma lógica de pre-venta del manual de feedback: la respuesta rápida ES la prueba de que la plataforma está viva.
+- **✅ DETECTOR HECHO (30/07).** Núcleo puro `lib/health/explicacionSinCita.js` (**21 tests**) + `npm run audit:sin-cita`, registrado en `toolRegistry`. Bajo demanda, **sin badge** hasta tener recorrido. Reusa `citaNoLiteral` de impugnaciones — no reimplementa el criterio.
+- **📏 Medido bank-wide sobre las 7.037 activas con estructura:** 2.672 con cita literal (38,0 %) · **411 sin cita (5,8 %) · 17.547 exposiciones** · 27 exentas por negación · 2 por meta-opción.
+- **🔴 Y el hallazgo de la calibración, que es lo que salvó al detector de nacer inútil:** en bruto salen **3.925 «citas no literales» (55,8 %)**. Reportarlas habría sido **un badge gritando**. Ese terreno **ya es del barrido de citas**, que tiene su propia calibración —solo marca las **AJENAS**, solape < 0,5, porque las «retocadas» (mismo contenido, distinto formateo) no son defecto—. Así que este detector **calcula ese estado pero NO lo reporta**, y hay un test que lo fija. Sin acotar: 4.336 hallazgos; acotado: 411.
+- **Concentración de la cola** (por exposición): CE 23q/4.610 · Windows 11 11q/3.951 · Word 365 19q/861 · Informática Básica 8q/811 · Ley 39/2015 9q/765. Los cabezas de cola siguen siendo los ya conocidos (`d6482ad1` 748 exp, `29e1b5b6` 617 exp, `4a7c00bc` 393 exp).
+- **GOTCHA medido:** el patrón de negación va **sin distinguir mayúsculas**, porque en los enunciados la negación se resalta escribiéndola así («señale la respuesta **INCORRECTA**») y con la regex sensible a la caja se escapaba — lo cazó su propio test.
+- **Lo que queda:** triar la cola de 411 (leer el artículo y, o se ancla la cita, o el hueco se anota para [T-302]), y decidir si con esa cifra merece badge o se queda bajo demanda.
 - **Cómo:** `docs/runbooks/newsletter-promociones.md`. **Verificar el plazo otra vez antes de enviar** (en la sede de la UJA, no en el BOE): si lo amplían, el correo cambia de sentido — pasó con Madrid, que amplió por incidencia técnica y solo lo publicó en su sede.
 - **Origen:** feedback `7a81b194` de Chari GAMA, que preguntó por esta oposición el 29/07.
 - **Relacionada:** [T-329] (construirla).
@@ -229,7 +235,7 @@
 - **Reproducible:** `node data/pilotos/t291-escalon2-30jul/auditar-atajos-en.cjs` (26 avisos sobre 88 artículos; hay que triarlos a mano, el detector no distingue la afirmación del contraste didáctico).
 - **Relacionada:** [T-302] (ahí está el barrido de las notas al pie ya hecho) · [T-291] · memoria `project-informatica-atajos-es-vs-en`.
 
-### [T-342] 🟠 [ABIERTO 30/07] «Explicación estructurada SIN cita» es el rastro de que el artículo no responde a la pregunta — y nadie lo mira
+### [T-342] 🟡 [ABIERTO 30/07 — DETECTOR HECHO, queda triar la cola de 411] «Explicación estructurada SIN cita» es el rastro de que el artículo no responde a la pregunta
 
 - **Cómo salió:** verificando a mano los 8 casos críticos de [T-291] (ver `data/pilotos/t291-escalon2-30jul/ADJUDICACION-PENDIENTE.md`), Manuel preguntó si el temario **responde literalmente** a las preguntas que se verificaron. Se midió, y la respuesta partió el cubo en dos.
 - **Medido el 30/07 sobre las 737 preguntas de la campaña con explicación estructurada aplicada**, con `citaNoLiteral` importado de `scripts/impugnaciones/validar-explicacion.cjs` (el criterio ÚNICO del guardarraíl de impugnaciones, no una copia):
