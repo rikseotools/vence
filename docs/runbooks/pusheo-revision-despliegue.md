@@ -396,6 +396,9 @@ que dejaron los claims zombi del backlog (`backlog.cjs reap`).
 
 ## Sesiones paralelas (varias sesiones de Claude a la vez)
 
+> 🧩 **El diseño completo del andamiaje** —principios, componentes, tablas, modos de fallo y cómo
+> portarlo— está en [`sistema-sesiones-paralelas.md`](./sistema-sesiones-paralelas.md).
+
 > 🔑 **Distinción clave — pushear a `main` ≠ desplegar** (causa de confusión 09/07, dos sesiones lo leían opuesto):
 > - **Pushear a `main`** = estacionar + disparar el CI. Es **reversible** (revert) y **seguro**. Se hace **cuando TU tarea está COMPLETA** (integrada + testeada), sin esperar a nadie. `main` es el punto de integración; que varias sesiones metan cosas es normal. **No hace falta PR** (el CI también corre en push a `main`; el PR solo sirve para tener CI en una rama ANTES de mergear).
 > - **Desplegar** = coger el estado ACTUAL de `main` y mandarlo a prod. **Es el ÚNICO acto que se coordina**: se despliega cuando `main` tiene solo lo que quieres soltar y ninguna sesión está a media integración. El deploy es cumulativo (sube TODO lo de `main`), por eso solo se sube trabajo COMPLETO a `main`.

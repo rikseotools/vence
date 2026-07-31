@@ -324,6 +324,10 @@ git push origin main
 
 ## Mantenimiento
 
+### 🧩 Sistema de MÚLTIPLES SESIONES en paralelo (diseño completo)
+- **Manual:** `docs/runbooks/sistema-sesiones-paralelas.md` — el diseño entero del andamiaje que permite que 2-10 sesiones trabajen el mismo repo sin pisarse: los **nueve principios** (lease no lock · se observa, no se declara · la señal de vida manda sobre la antigüedad · «no lo sé» tiene que poder decirse · avisar ≠ bloquear · un bloqueo imposible es peor que ninguno · medir cuándo se RODEA un guardarraíl · impedir en el punto de escritura · fail-open en telemetría), los **componentes con su fichero y su tabla**, los **modos de fallo aprendidos** (cada uno costó tiempo real) y **cómo portarlo a otro proyecto**.
+- **Cuándo leerlo:** antes de tocar cualquier pieza de coordinación entre sesiones (claim, latido, guardarraíles de hooks, deploy, colas), o si te preguntas por qué una protección está puesta así. Los runbooks de OPERACIÓN son los de abajo; éste explica el SISTEMA.
+
 ### 📋 Tareas pendientes / backlog con CLAIM entre sesiones (runbook obligatorio)
 - **Runbook:** `docs/runbooks/tareas-pendientes.md`
 - **Cuándo consultarlo (CUALQUIERA de estas frases → este runbook):** *"revisa las tareas pendientes"*, *"revisa el backlog"*, *"revisa los pendientes"*, *"¿qué tareas pendientes tenemos?"*, *"lista las tareas pendientes"*, *"tareas pendientes"*, *"coge una tarea"*, *"ataca la tarea X"*, *"dame la siguiente tarea"*, *"qué hago ahora"*, *"añádelo a pendientes"*, *"cierra la tarea X"*. Seguirlo **ANTES** de ponerse a trabajar en nada del backlog.

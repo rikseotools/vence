@@ -468,6 +468,8 @@ nadie lo supiera, porque la sección salía al final de 128 líneas.
 
 ## Manuales relacionados
 
+- **🧩 El SISTEMA entero (diseño, principios y cómo portarlo):** [`sistema-sesiones-paralelas.md`](./sistema-sesiones-paralelas.md) — este runbook cuenta CÓMO se opera el backlog; aquél explica **por qué** el andamiaje de sesiones paralelas es como es.
+
 - **Push y despliegue:** `docs/runbooks/pusheo-revision-despliegue.md` — fuente única del deploy.
 - **Cola de impugnaciones y feedback:** `scripts/impugnaciones/cola.cjs` — el hermano de este sistema, mismas convenciones de claim para las colas de usuarios.
 - **Backlog (contenido):** `docs/roadmap/tareas-pendientes.md`.
