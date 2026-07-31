@@ -1427,6 +1427,21 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Capas:** 13 unitarios del núcleo puro · **10 de integración contra git de verdad** que reconstruyen la topología del incidente (tres sesiones, un worktree viejo, un push que borra) · guardarraíl de código fuente que impide volver a decidir con el historial local o dejar el evento sin regla · evento `backlog_ficha_borrada` + regla propia del mismo nombre (correo, cooldown 12 h), porque **quien borra la ficha no es quien corre el `sync` después** y la sesión víctima puede haber muerto.
 - **Y un fallo propio, cazado al estrenarlo:** la primera pasada real acusó de BORRADA a T-431 **teniéndola delante en `origin/main`**. El markdown pesa **2,2 MB** y el `maxBuffer` por defecto de `execFileSync` es 1 MB → `git show` moría y ese `null` se leía como «no está»; habría acusado a todas. No lo vieron los tests (su repo de prueba tenía tres líneas), lo vio correr el `sync` de verdad. Arreglado con techo de buffer **y** con que `hechosDeOrigin` se niegue a contestar si no pudo leer el fichero, más un test con un fichero de más de 1 MB.
 - **Y un SEGUNDO fallo propio, peor, cazado al commitear:** el test de integración monta repositorios de mentira y hace `commit` en ellos… y la suite unit la lanza el hook **`pre-commit`**, que corre con **`GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` exportadas**. Esas variables **le ganan al `cwd`**, así que los cuatro commits de los fixtures se escribieron **sobre la rama del worktree real**, dejándola apuntando al árbol del fixture (recuperado con `git reset --mixed`, sin pérdida: los ficheros nunca se tocaron). Arreglado en los DOS sitios, y el de fondo es el segundo: el test limpia el entorno, y **`gitFichas.gitOut` lo limpia también**, porque un módulo que promete contestar sobre el `cwd` que le pasas y calla que `GIT_DIR` manda más es un módulo que devuelve datos de otro repositorio sin dar síntomas. Trinquete: el propio fichero comprueba que el `HEAD` real no se ha movido, y se verificó corriéndolo **con esas variables puestas a mano** (13/13 en verde y repo intacto). Barrido: ningún otro test del repo crea repos —los dos que usan git solo LEEN (`ls-files`, `ls-tree`)—.
+- **⚠️ Y UN TERCER FALLO, que es la propia ficha mordiéndose la cola (31/07, sesión `centro-inferior`):
+  todo lo de arriba llegó a `main` SIN EL CABLEADO.** El commit `b2d263447` subió el módulo, su
+  guardarraíl y la regla de alerta, pero **`scripts/backlog.cjs` se quedó como estaba**: seguía con su
+  propio pickaxe sobre la rama local, sin consultar `origin/main` y sin emitir el evento. **Cinco de
+  los seis tests del guardarraíl llevaban rojos en `main`** y, como el `pre-commit` corre la suite
+  entera, eso **bloqueaba el commit de CUALQUIER sesión** — lo descubrió otra al no poder commitear.
+  - La ficha existe porque un cherry-pick entre sesiones se llevó trabajo ajeno por delante, y **su
+    propio arreglo perdió la mitad por el mismo camino.** Verificar «en vivo» desde el worktree no
+    dice nada de lo que llegó a `main`: son dos preguntas distintas y aquí solo se contestó la primera.
+  - **La lección que sí es nueva:** un guardarraíl que se sube ANTES que el código que vigila deja el
+    repositorio rojo para todos, y como aquí el verde es precondición de commitear, no es una molestia
+    — es un paro. Van juntos o no van.
+  - Cableado y **verificado sobre datos reales**: el `sync` ya separa los cuatro motivos y T-442 salió
+    como *«la ficha SÍ está en origin/main, es tu rama la que va atrasada»*, que es exactamente el caso
+    que antes se disfrazaba del aviso benigno.
 - **Falta:** desplegar backend y comprobar que la regla `backlog_ficha_borrada` se evalúa sin error.
 
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
