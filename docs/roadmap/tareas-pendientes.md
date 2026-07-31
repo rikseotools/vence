@@ -1145,6 +1145,48 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cómo hacerlo bien:** parser que entienda los formatos reales del enunciado (`6-9-7-…`, `6, 9, 7, …`, terminadores `¿?` / `?` / `....`) y, para cada serie, un catálogo de patrones que se prueban en orden (diferencia constante · **ciclo de diferencias** · intercalada aritmética · intercalada geométrica · intercalada con término constante). El hallazgo es «la explicación describe un patrón distinto del que de verdad encaja». Núcleo puro con tests, como el resto de detectores; **bajo demanda al principio**, sin pingar el badge, hasta medir su precisión.
 - **Contexto que conviene saber:** el barrido de salud **no cubría psicotécnicas en absoluto** hasta el 31/07, y el kind que se añadió (`psicotecnico_integridad`, [T-384]) mira **integridad** (`section_id`, `correct_option`, sección de otra categoría), **no** la coherencia de la explicación. Este hueco sigue entero.
 - **Relacionada:** [T-384] (el barrido que ahora sí mira psicotécnicas), `docs/procedures/revisar-preguntas-con-agente.md`.
+### [T-418] 🔴 [ABIERTO 31/07] El usuario free agotado sigue respondiendo preguntas que el servidor RECHAZA una por una: 386 personas en 7 días
+
+- **Esfuerzo: ~2 h** el diagnóstico de producto (¿qué debe ver?); lo que se decida arreglar, aparte.
+- **Qué pasa, en una frase:** alguien con el cupo diario agotado **sigue pudiendo abrir un test y contestar**; ve su respuesta corregida al instante (la corrección es client-side, por diseño) y **el servidor rechaza el guardado de cada una** con `403 · «Has alcanzado el límite diario de preguntas del plan gratuito»`. No cuenta para su progreso, ni para su score, ni para sus estadísticas. Él no tiene forma de saberlo mirando la pantalla.
+- **Escala medida el 31/07 (7 días, `observable_events`):** **2.879 rechazos en 386 usuarios distintos.** Por pantalla: `/api/v2/answer-and-save` 2.160 (367 usuarios), `/api/exam/answer` 326 (8), `/api/answer/psychometric` 68 (17). El `questionOrder` más alto observado es **9**: hay quien encadena nueve preguntas seguidas en balde.
+- **Caso concreto para reproducir:** `javiergalinanesvarela@gmail.com` (free), 71 rechazos el 31/07 en `/tramitacion-procesal/test/test-aleatorio-examen`, con `questionOrder` 1, 2, 3, 4, 5… — es decir, **desde la PRIMERA pregunta del examen**: abrió un examen que ya nacía sin cupo.
+  ```sql
+  SELECT user_id, endpoint, error_message, created_at FROM observable_events
+  WHERE error_message LIKE '%límite diario%' AND created_at > now() - interval '7 days'
+  ORDER BY created_at DESC;
+  ```
+- **Lo que NO está comprobado y hay que mirar primero (no lo des por hecho):** si la UI le enseña el banner de límite en ese momento. Existe uno en el modo examen (`ExamLayout`, ver los tests de «Banner de límite no debe mostrarse en resultados»), así que el defecto puede ser (a) que no se pinte en esta ruta, (b) que se pinte y aun así se le deje contestar, o (c) que el examen se sirva completo y el gate solo actúe al guardar. **Cada una lleva a un arreglo distinto**, así que la primera media hora es reproducirlo con una cuenta free agotada, no tocar código.
+- **Por qué es 🔴 y no una curiosidad:** es el momento exacto en que un free decide si paga o se va, y hoy lo vive como *«contesté veinte preguntas y no me aparecen»*. Enlaza con lo que ya sabemos del churn por el límite diario. Si la decisión es que el cupo se acabó, hay que **decírselo antes de que conteste**, no rechazarle en silencio cada respuesta.
+- **Y un defecto de observabilidad de propina:** ese 403 se registra como `console_error` con `severity='error'` y el texto *«Error guardando respuesta en API (permanente)»*. **Una regla de negocio funcionando no es un error**: ensucia el conteo de errores del panel de salud (182 de los ~1.900 `console_error` de 24 h) y confunde a quien triaje. Al arreglarlo, que deje de contarse como error — ver [T-420].
+- **De dónde sale:** triaje de errores de cliente del 31/07 (sesión `central-izquierdo`), buscando por qué había 2.173 eventos `severity='error'` en 24 h.
+
+### [T-419] 🟠 [ABIERTO 31/07] El sondeo de notificaciones reintenta contra un 401 durante HORAS: una sola pestaña generó 308 errores en 308 minutos
+
+- **Esfuerzo: ~1 h** (parar el bucle es pequeño; lo que lleva tiempo es decidir qué hace la pestaña cuando la sesión ya no vale).
+- **Qué pasa:** el cliente pide `disputes/notifications`, recibe **401**, y **vuelve a pedirlo al minuto siguiente, indefinidamente**. Un 401 no se arregla reintentando: la sesión no va a volver sola.
+- **Medido el 31/07:** **423 eventos en 24 h** (11 usuarios/sesiones) y **1.402 en 7 días**. La distribución es lo que delata el bucle, no el total: **una sesión anónima produjo 308 eventos a lo largo de 308 minutos** (uno por minuto, cinco horas seguidas) y otra estuvo **1.361 minutos** (22 h). El resto son ráfagas de 1-18 min. Mensaje literal: `Error cargando notificaciones: Error: disputes/notifications 401`.
+  ```sql
+  SELECT user_id, count(*), min(created_at), max(created_at) FROM observable_events
+  WHERE error_message LIKE '%disputes/notifications 401%' AND created_at > now() - interval '24 hours'
+  GROUP BY 1 ORDER BY 2 DESC;
+  ```
+- **Qué hay que decidir (no es solo «no reintentar»):** ante un 401, o se **renueva** la sesión una vez y se reintenta, o se **para el sondeo** hasta que haya sesión nueva. Lo que no puede seguir es pedir cada minuto durante cinco horas: son peticiones a un endpoint que ya dijo que no, y ruido permanente en el panel de errores.
+- **Ojo al mirarlo:** la mayoría son sesiones **anónimas**, así que el 401 puede ser el comportamiento correcto del endpoint (no hay sesión) y el defecto estar en **quién arranca el sondeo**: si la pestaña sondea notificaciones sin usuario, el arreglo es no arrancarlo, no cambiar el endpoint.
+- **De dónde sale:** mismo triaje del 31/07 que [T-418].
+
+### [T-420] 🟡 [ABIERTO 31/07] El 95 % de los errores de cliente es ruido, y por eso el panel de salud mide sobre todo dos navegadores
+
+- **Esfuerzo: ~1 h** (es clasificación, no lógica: ampliar el filtro que ya existe y comprobar que no se traga nada real).
+- **Qué pasa:** de los ~1.900 `console_error` de 24 h medidos el 31/07 —que son el **87 % de TODOS los eventos `severity='error'` del sistema** (2.173)—, la inmensa mayoría no describe nada roto:
+  | Eventos | Qué es | Por qué es ruido |
+  |---|---|---|
+  | **1.634** | `[GSI_LOGGER]: FedCM get() rejects with…` (NetworkError 982, AbortError 546, NotSupportedError 106) | Es el widget de Google Sign-In quejándose de FedCM. **No es código nuestro**, y venía de **2 navegadores**: el tipo de error más numeroso del sistema son dos personas con un navegador que no soporta FedCM |
+  | **~600** | `TypeError: Failed to fetch` / `Load failed` en notificaciones (225 en 98 usuarios), artículos (200 en 41), logros, medallas, secciones | Red del cliente: móvil que pierde cobertura o pestaña que se cierra a media petición. Muchos usuarios × pocos eventos = firma de red, no de bug |
+- **Ya se hizo una vez y funcionó:** `lib/observability/consoleNoise.ts` ([T-210], 28/07) nació justo para esto —su cabecera dice *«4.840 `console_error`/24 h, el 95 % del ruido de error del sistema»*— y los bajó a los ~1.900 actuales. **Estas dos familias se le escaparon.** No hace falta diseñar nada: hace falta extender ese filtro y volver a medir.
+- **Por qué importa aunque sea «solo ruido»:** con el 95 % del canal ocupado por FedCM y fallos de red, un error nuevo de verdad entra en un sitio donde nadie mira, y la regla `senal_error_sin_vigilancia` (≥150/h de un tipo `error`) se calibra contra un suelo falso. El objetivo no es que el número baje: es que **lo que quede sea señal**.
+- **Cuidado al filtrar:** `Failed to fetch` es ruido cuando está repartido entre muchos usuarios, pero **concentrado en pocos puede ser un endpoint caído**. Si se suprime en bloque se pierde esa capacidad de detección; mejor bajarlo a `warn` (sigue en la tabla, deja de contar como error) que borrarlo. Los `[GSI_LOGGER]` sí se pueden descartar de raíz: son de un script de terceros.
+- **De dónde sale:** mismo triaje del 31/07 que [T-418] y [T-419].
 
 ### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.185 preguntas servidas que no explican nada
 
@@ -1336,13 +1378,32 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 
 - **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
 - **🔴 LO PRIMERO, porque hay alguien esperando: feedback `bd8b92d0` (Sergio, premium).** Es una RÉPLICA del 31/07 sin contestar: *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*. **No es una preferencia: su oposición (`agente_hacienda`) tiene CERO temas** — ver [T-397]. Lo que pide (filtrar preguntas oficiales en el test por leyes) está diagnosticado en [T-326] y es un arreglo pequeño. **Decisión pendiente de Manuel:** arreglar [T-326] y avisarle, o responderle mientras tanto. No cerrar el hilo sin contestarle: se le prometió por escrito que la idea era buena.
+
+  - **📌 ESTADO REAL a 31/07 noche (sesión `central-izquierdo`) — léelo antes de escribirle:**
+    - **[T-326] YA ESTÁ IMPLEMENTADA y pusheada** (`40022cec7`), **sin desplegar**. La ficha quedó en pausa esperando el deploy de frontend para verificarla en vivo. O sea: lo que se le prometió existe, pero todavía no lo puede usar.
+    - **El hilo está LIBRE** (claim soltado a petición de Manuel, que iba a responderlo desde otra sesión). Si sigue `pending`, cógelo con `cola.cjs next --queue feedback`. **Nadie le ha contestado aún**: el hilo tiene 2 mensajes (nuestra respuesta del 30/07 y su réplica del 31/07 a las 15:44).
+    - ⚠️ **El dato que cambia el mensaje, y que no se ve en su texto: el arreglo NO le va a servir.** Su oposición **no tiene ni una sola pregunta oficial** en el banco (`exam_position ILIKE '%hacienda%'` → **0** de 7.552 oficiales activas), y el filtro sirve solo las de la propia oposición → su contador será 0 y **la casilla le seguirá saliendo oculta**. Lo que a él le valdría son las oficiales de OTRAS oposiciones sobre las mismas leyes: eso es **[T-411]**, abierta y sin decidir.
+    - **Borrador ya redactado y NO enviado** (falta el OK, y falta decidir si se le adelanta la limitación). Se guarda aquí para no rehacerlo:
+      > Hola Sergio,
+      >
+      > Tienes razón: si el tema no encaja con tu temario, mandarte a practicar por tema no te sirve de nada. Ya hemos preparado el filtro de preguntas de exámenes reales en el test por leyes, que es donde tú estudias, y estará disponible en la próxima actualización.
+      >
+      > Te aviso de una cosa para que no te lleves un chasco al verlo: las preguntas de exámenes reales que tenemos de Agente de Hacienda son, por ahora, ninguna, y el filtro muestra solo las de tu propia oposición. Sí tenemos muchas preguntas caídas en exámenes de otras convocatorias sobre las mismas leyes que tú estudias (la Ley 39/2015 o la Constitución son las mismas para todos), así que estamos viendo cómo ofrecértelas ahí, que es lo que de verdad te sirve.
+      >
+      > Te escribimos por aquí en cuanto lo tengamos.
+      >
+      > Muchas gracias.
+      >
+      > Equipo de Vence
+    - **La decisión abierta es una sola:** enviarlo entero, o quitar el segundo párrafo y contarle la limitación cuando [T-411] esté decidida.
+    - Y ojo con el plazo: **[T-327]** (oposición personalizada, lo que pidió en su OTRO hilo) tiene fecha límite y se le dijo que lo tendría «en unos días».
 - **Las 7 impugnaciones pendientes** (todas legislativas, ninguna analizada aún):
   | id | tipo | plan | lo que dice |
   |---|---|---|---|
   | `ee09f030` | desacuerdo_correcta | premium | «Cuando hablamos de la regla general…» (Jesús Quesada) |
   | `b816cd3a` | mal_formulada | premium | «No concuerda la pregunta con las respuestas» (Estela) |
   | `cf376ad0` | mal_formulada | premium | «Pregunta cuándo tendrán capacidad de obrar…» (Jesús Quesada) |
-  | `b9ae32e2` | desacuerdo_correcta | free | «Según el texto literal de la ley sí, pero en la práctica…» (Roberto Benito) |
+  | ~~`b9ae32e2`~~ | desacuerdo_correcta | free | ✅ **CERRADA 31/07** (`rejected`, email entregado) — ver abajo |
   | `e60091bd` | desacuerdo_correcta | free | sin detalle (Natalia Suárez) |
   | `626059c8` | otro | free | «la respuesta A y C son idénticas, las dos estarían correctas» (Marcos Sánchez) |
   | `32b0d55e` | otro | premium | «creo recordar que esta pregunta me ha aparecido alguna otra vez» (Laura Zurdo) |
@@ -1355,6 +1416,13 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
   2. **Cerrar SIEMPRE por el endpoint**, con `scripts/impugnaciones/cerrar.ts` (creado hoy). Un UPDATE directo no manda email, no da el euro y se salta la puerta.
   3. **Medir si el fallo es sistémico ANTES de cerrar** — hoy evitó romper una pregunta buena con 92 exposiciones ([T-389] explica por qué esto no debería depender de la memoria).
   4. **Borrador aprobado por Manuel antes de enviar**, sin excepción.
+
+- **✅ `b9ae32e2` cerrada el 31/07 (sesión `central-izquierdo`), y lo que dejó aprendido:**
+  - **La clave era correcta y el usuario también tenía razón**, cada uno en su plano: la pregunta (oficial, Aux. Admin. Madrid OEP 2020-2022) pregunta el plazo para recurrir un acto presunto y la clave es *seis meses*, que es la letra del **art. 46.1 LJCA** (verificado contra el BOE consolidado). Y Roberto tenía razón en que **la STC 52/2014, de 10 de abril** razonó que *«la impugnación jurisdiccional de las desestimaciones por silencio no está sujeta al plazo de caducidad previsto en el art. 46.1 LJCA»* — pero **desestimó** la cuestión, así que el precepto sigue vigente y es lo que se examina. Cerrada como **`rejected`** (la clave no cambia) con la explicación reescrita e incluyendo esa nota jurisprudencial.
+  - **Patrón reutilizable:** cuando alguien impugna *«según la ley sí, pero en la práctica no»*, casi nunca hay que tocar la clave — hay que **añadir la nota de jurisprudencia a la explicación**. Es el mismo criterio que §7.3.bis aplica a las cifras volátiles.
+  - **El chequeo sistémico encontró una hermana:** `d54d7dd4`, la MISMA pregunta con las opciones en otro orden (no oficial, mismo artículo). Clave correcta también. **Jubilada** como `retired_duplicate` / `admin_duplicate_of` con OK de Manuel. Buscar hermanas por `question_text ILIKE` antes de cerrar cuesta un minuto y aquí destapó una duplicada servida.
+
+- **⚠️ AVISO OPERATIVO para quien siga desde una sesión abierta hoy (no es del contenido, es del tooling):** [T-407] arregló que hubiera **dos identidades de sesión** (el `.session-id` del worktree y `CLAUDE_CODE_SESSION_ID`), pero el arreglo entró en `70f5007db`. **Un worktree creado ANTES de ese commit sigue con el defecto**: `cola.cjs` reclama con una identidad y los dossiers comparan con la otra, así que el dossier avisa de que *«ya lo está revisando otra sesión»* siendo tú mismo — y, peor, un claim tomado con una identidad no se puede soltar con la otra. Pasó de verdad el 31/07 y costó una investigación entera creyendo que dos sesiones habían cogido el mismo feedback (no había tal: la reserva funcionó). **Si tu worktree es de antes, `git rebase origin/main` antes de tocar la cola.** Se reconoce mirando `node -e "console.log(require('./lib/sessions/sid.cjs').resolverSid({repo:process.cwd()}))"`: si el fichero no existe, ese módulo tampoco y estás en la versión vieja.
 
 ### [T-397] 🔴 [ABIERTO 31/07] 592 usuarios (3 de ellos PREMIUM) han elegido una oposición sin ningún tema: se puede pagar por lo que no existe
 
