@@ -1814,6 +1814,27 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-412] ✅ 🔴 [HECHA 31/07] Dos sesiones trabajaron el MISMO feedback: la reserva se escribía sin condición, y caducaba por un reloj que traiciona a quien va lento
+
+- **ORIGEN.** Manuel, 31/07: *«uy aquí ha fallado, hemos cogido el mismo feedback en dos sesiones diferentes a la vez, ¿no se reservó?»*. Era un feedback de **Sergio** (`bd8b92d0`). Comprobado antes de tocar nada: **no llegó a haber doble respuesta al usuario** — su hilo tenía una sola respuesta nuestra y su réplica encima.
+- **NO fue la cola.** `cola.cjs` reserva de forma atómica (`FOR UPDATE SKIP LOCKED`) y funcionó. El fallo estaba en la OTRA puerta.
+- **DEFECTO 1 — la reserva se decidía en JavaScript y se escribía sin condición.** `revisar-feedback.cjs` leía la fila, calculaba en JS si estaba libre, y luego hacía `UPDATE … WHERE id=$1` **a secas**. Dos sesiones que leen «libre» a la vez escriben las dos, y **la segunda le pisa la reserva a la primera en silencio**. Un TOCTOU de manual, en el sitio donde más duele: el gemelo `revisar-impugnacion.cjs` tenía exactamente el mismo. Ahora la condición viaja DENTRO del `UPDATE` y **arbitra la base de datos**: si devuelve fila, es tuya; si no, es de otra.
+- **DEFECTO 2 — el aviso llevaba tiempo gritando en falso, así que ya no se leía.** Ese mismo día se descubrió ([T-407]) que `cola.cjs` y `revisar-*.cjs` resolvían **identidades de sesión distintas**, de modo que el aviso *«la tiene otra sesión»* saltaba **contra uno mismo**. Un guardarraíl que se equivoca a menudo se aprende a ignorar, y el día que acierta tampoco se lee. Es la misma lección que [T-375] por otra puerta.
+- **DEFECTO 3, el que planteó Manuel y cambió el diseño — el reloj fijo no tiene número bueno.** La reserva caducaba a las 2 h *pasara lo que pasara*:
+  | plazo | protege de | traiciona a |
+  |---|---|---|
+  | corto (2 h) | el ordenador apagado | la sesión VIVA que lleva 3 h con un caso difícil → pierde la reserva sin enterarse |
+  | largo | la revisión lenta | todos: si se apaga el ordenador, el caso queda bloqueado HORAS |
+  **La salida es no elegir número: la reserva deja de caducar por reloj y caduca cuando MUERE SU SESIÓN**, usando el latido que ya existía ([T-296]). Ordenador apagado o sesión colgada → deja de latir → se libera sola. Revisión larga pero activa → sigue latiendo → la conserva, sin tope de horas. Es la misma distinción de [T-404]: **la señal de vida es la verdad, la antigüedad solo es el recurso cuando no hay señal.**
+- **Los DOS frenos, que son lo que lo hace seguro:**
+  1. **SUELO de 2 h**: por debajo no se toca ni con la sesión muerta, así que **el peor caso posible sigue siendo el comportamiento de hoy** — si la señal fallara entera, seguiríamos con el reloj de siempre.
+  2. **Sin fila de latido no se inventa veredicto**: un `claimed_by` que no está en `worktree_sessions` no se declara vivo ni muerto → manda el reloj. Darlo por muerto libraría trabajo ajeno en curso.
+- **Y el hueco que quedaba: trabajar ahora ES la señal.** Una sesión viva pero callada —media hora leyendo y redactando— se habría parecido a una muerta. Los propios `revisar-feedback`/`revisar-impugnacion` **laten al abrir un caso**: si estás revisando, estás ejecutando la herramienta. Nadie tiene que acordarse de renovar nada (a diferencia del `heartbeat` manual del backlog).
+- **Capas:** núcleo puro `lib/impugnaciones/reserva.cjs` con **12 tests** —incluidos los cuatro escenarios de arriba y la **paridad JS↔SQL**, porque la decisión que se EJECUTA es el SQL (tiene que ir dentro del UPDATE atómico o no serviría de nada)— y verificación contra la BD real: el fragmento compila y responde correctamente en `user_feedback`, `question_disputes` y `psychometric_question_disputes`.
+- **Anécdota con lección, cometida en esta misma ficha:** escribí los comentarios asumiendo el id **T-408** antes de reservarlo, y `reserve` me dio el **T-412** — T-408 era de otra sesión (duplicados en el banco). Es exactamente lo que el runbook lleva avisando desde seis colisiones: **el id se pide, no se elige**. Peor: al corregirlo con un `sed` global toqué tres ficheros ajenos que citaban T-408 con toda la razón, y hubo que restaurarlos.
+- **Relacionadas:** [T-407] (las dos identidades), [T-375] (el guardarraíl que se aprende a rodear), [T-404] (vida > antigüedad), [T-296] (el latido).
+
+
 ### [T-401] ✅ [HECHA 31/07 — la aplicó otra sesión desde esta ficha] Impugnación `cf376ad0` (Jesús Quesada, premium): enunciado mejorable del art. 3 Ley 39/2015
 
 - **Esfuerzo: ~15 min.** El análisis está hecho y verificado contra el BOE; lo que queda es aplicar dos cambios, enseñar el borrador a Manuel y cerrar. **La impugnación está LIBRE en la cola** (claim soltado al cerrar la sesión), así que empieza por `node scripts/impugnaciones/cola.cjs next` o cógela directa con `revisar-impugnacion.cjs cf376ad0-18e0-4953-842d-84c226e6cf24`.

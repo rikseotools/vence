@@ -83,16 +83,33 @@ if (require.main !== module) {
     // mismo módulo.
     const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
     const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
+// Latir al abrir un caso (T-412): trabajar ES la señal de vida. Sin esto, una revisión larga
+    // —media hora leyendo y redactando, sin ejecutar nada— se parecería a una sesión muerta y otra
+    // sesión podría llevarse la reserva con toda la razón. Fire-and-forget: no puede estorbar.
+    try {
+      require('child_process').spawn(process.execPath,
+        [require('path').join(__dirname, '..', 'sessions', 'latir.cjs'), '--cmd', 'revisar'],
+        { detached: true, stdio: 'ignore' }).unref();
+    } catch { /* la telemetría nunca bloquea la revisión */ }
+
     if (sid && ['pending', 'appealed'].includes(d.status)) {
       const dtbl = isPsy ? 'psychometric_question_disputes' : 'question_disputes';
       try {
-        const fresh = d.claimed_by && d.claimed_by !== sid && d.claimed_at && (Date.now() - new Date(d.claimed_at).getTime()) < 2 * 3600e3;
-        if (fresh) {
-          const mins = Math.round((Date.now() - new Date(d.claimed_at).getTime()) / 60000);
-          claimWarn = `⚠️  YA LA ESTÁ REVISANDO otra sesión (${String(d.claimed_by).slice(0, 8)}, hace ${mins}m). Coordínate o corre "cola.cjs next --sid ${sid}" para coger otra.`;
-        } else {
-          await s.unsafe(`UPDATE public.${dtbl} SET claimed_by=$1, claimed_at=now() WHERE id=$2`, [sid, did]);
+        // La reserva se decide DENTRO del UPDATE, no en JS (T-412). Antes se leía la fila, se
+        // decidía aquí y se escribía con `WHERE id=…` sin condición: dos sesiones leían «libre»
+        // a la vez y la segunda pisaba a la primera en silencio. Gemelo exacto del arreglo en
+        // `revisar-feedback.cjs`, con el MISMO criterio importado (no reescrito).
+        const { sqlReservaLibre } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
+        const got = await s.unsafe(
+          `UPDATE public.${dtbl} SET claimed_by=$1, claimed_at=now()
+            WHERE id=$2 AND ${sqlReservaLibre('', '$1')} RETURNING claimed_by`, [sid, did]);
+        if (got.length) {
           claimWarn = `🔒 Cogida por tu sesión (${String(sid).slice(0, 8)}).`;
+        } else {
+          const [ahora] = await s.unsafe(`SELECT claimed_by, claimed_at FROM public.${dtbl} WHERE id=$1`, [did]);
+          const mins = ahora?.claimed_at ? Math.round((Date.now() - new Date(ahora.claimed_at).getTime()) / 60000) : '?';
+          claimWarn = `⛔ NO ES TUYA: la tiene la sesión ${String(ahora?.claimed_by || '?').slice(0, 12)} (hace ${mins}m) y sigue viva.\n`
+            + `   NO la trabajes ni resuelvas: coge otra con  node scripts/impugnaciones/cola.cjs next`;
         }
       } catch (e) { claimWarn = `(claim no aplicado: ${e.message})`; }
     }

@@ -37,6 +37,10 @@ const cmd = process.argv[2];
 const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
 const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 const stale = `${STALE_HOURS} hours`;
+// El criterio de «reserva libre» vive en UN solo sitio (T-412): ya no es solo el reloj, también
+// mira si la sesión dueña sigue LATIENDO. Así una revisión larga pero viva conserva su reserva,
+// y un ordenador apagado la suelta sola. Ver lib/impugnaciones/reserva.cjs.
+const { sqlReservaLibre } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
 
 // Tablas de cada cola: [tabla, estados-abiertos, herramienta/flujo a usar]
 const DISPUTE_TBL = [
@@ -70,7 +74,7 @@ async function elegirFeedbackPorPrioridad(open) {
        FROM public.user_feedback f
        LEFT JOIN public.user_profiles u ON u.id = f.user_id
       WHERE f.status = ANY($2)
-        AND (f.claimed_by IS NULL OR f.claimed_by = $1 OR f.claimed_at < now() - interval '${stale}')`,
+        AND ${sqlReservaLibre('f.', '$1')}`,
     [sid, open]
   );
   if (!libres.length) return null;
@@ -95,7 +99,7 @@ async function claimFrom(list) {
        WHERE id = (
          SELECT id FROM public.${tbl}
           WHERE status = ANY($2)
-            AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+            AND ${sqlReservaLibre('', '$1')}
             ${elegido ? 'AND id = $3' : ''}
           ORDER BY created_at
           FOR UPDATE SKIP LOCKED
@@ -113,7 +117,7 @@ async function claimFrom(list) {
          WHERE id IN (
            SELECT id FROM public.${tbl}
             WHERE user_id = $3 AND id <> $4 AND status = ANY($2)
-              AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+              AND ${sqlReservaLibre('', '$1')}
             FOR UPDATE SKIP LOCKED)
          RETURNING id, ${typeCol} AS dispute_type, created_at`,
         [sid, open, row.user_id, row.id]
@@ -241,7 +245,7 @@ async function inconsistentesResueltasEnPending() {
            WHERE id = (
              SELECT id FROM public.${tbl}
               WHERE id = $3 AND status = ANY($2)
-                AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+                AND ${sqlReservaLibre('', '$1')}
               FOR UPDATE SKIP LOCKED)
            RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
           [sid, open, id]
@@ -256,7 +260,7 @@ async function inconsistentesResueltasEnPending() {
              WHERE id IN (
                SELECT id FROM public.${tbl}
                 WHERE user_id = $3 AND id <> $4 AND status = ANY($2)
-                  AND (claimed_by IS NULL OR claimed_by = $1 OR claimed_at < now() - interval '${stale}')
+                  AND ${sqlReservaLibre('', '$1')}
                 FOR UPDATE SKIP LOCKED)
              RETURNING id, ${typeCol} AS dispute_type`,
             [sid, open, row.user_id, row.id]

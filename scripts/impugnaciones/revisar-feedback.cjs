@@ -49,13 +49,36 @@ const ago = (d) => {
     // mismo módulo.
     const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
     const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
+// Latir al abrir un caso (T-412): trabajar ES la señal de vida. Sin esto, una revisión larga
+    // —media hora leyendo y redactando, sin ejecutar nada— se parecería a una sesión muerta y otra
+    // sesión podría llevarse la reserva con toda la razón. Fire-and-forget: no puede estorbar.
+    try {
+      require('child_process').spawn(process.execPath,
+        [require('path').join(__dirname, '..', 'sessions', 'latir.cjs'), '--cmd', 'revisar'],
+        { detached: true, stdio: 'ignore' }).unref();
+    } catch { /* la telemetría nunca bloquea la revisión */ }
+
+    // ── LA RESERVA SE DECIDE EN EL `UPDATE`, NO EN JS (T-412) ────────────────────────────────
+    // Antes esto leía la fila, decidía en JavaScript si estaba libre y luego escribía con
+    // `WHERE id=…` **a secas, sin condición**. Dos sesiones a la vez leían «libre», las dos
+    // escribían, y la segunda le pisaba la reserva a la primera sin que nada lo dijera. Es lo
+    // que pasó el 31/07: dos sesiones acabaron trabajando el mismo feedback de un usuario.
+    //
+    // Ahora la condición viaja DENTRO del UPDATE, así que la base de datos arbitra: si devuelve
+    // fila, es tuya; si no la devuelve, es de otra. Mismo criterio que `cola.cjs` —importado del
+    // mismo módulo, no reescrito—, que además ya no es solo el reloj: una sesión que sigue
+    // LATIENDO conserva su reserva por larga que sea la revisión, y una que se apagó la suelta.
     if (sid && fb.status === 'pending') {
-      const fresh = fb.claimed_by && fb.claimed_by !== sid && fb.claimed_at && (Date.now() - new Date(fb.claimed_at).getTime()) < 2 * 3600e3;
-      if (fresh) {
-        claimWarn = `⚠️  YA LO ESTÁ REVISANDO otra sesión (${String(fb.claimed_by).slice(0, 8)}, hace ${ago(fb.claimed_at)}). No lo trabajes.`;
-      } else {
-        await s`UPDATE user_feedback SET claimed_by=${sid}, claimed_at=now() WHERE id=${fid}`;
+      const { sqlReservaLibre } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
+      const got = await s.unsafe(
+        `UPDATE public.user_feedback SET claimed_by=$1, claimed_at=now()
+          WHERE id=$2 AND ${sqlReservaLibre('', '$1')} RETURNING claimed_by`, [sid, fid]);
+      if (got.length) {
         claimWarn = `🔒 Cogido por tu sesión (${String(sid).slice(0, 8)}).`;
+      } else {
+        const [ahora] = await s`SELECT claimed_by, claimed_at FROM user_feedback WHERE id=${fid}`;
+        claimWarn = `⛔ NO ES TUYO: lo tiene la sesión ${String(ahora?.claimed_by || '?').slice(0, 12)} (desde hace ${ahora?.claimed_at ? ago(ahora.claimed_at) : '?'}) y sigue viva.\n`
+          + `   NO lo trabajes ni respondas: coge otro con  node scripts/impugnaciones/cola.cjs next`;
       }
     }
 
