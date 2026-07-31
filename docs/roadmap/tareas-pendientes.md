@@ -1836,6 +1836,20 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-415] ✅ 🟠 [HECHA 31/07] El índice de git es del REPOSITORIO, no de la sesión: una sesión commiteó el trabajo de otra
+
+- **ORIGEN — me pasó a mí, construyendo justo las herramientas para evitarlo.** El 31/07, trabajando en [T-414] desde el checkout principal, **otra sesión commiteó MIS ficheros dentro de su commit**: una migración, un núcleo puro, sus tests y un guardarraíl acabaron en `main` bajo el mensaje *«docs: la referencia a T-349 decía que seguía abierta»*. No se perdió nada, pero **la historia miente** y el `outcome` de la ficha no corresponde a su commit.
+- **LA CAUSA NO ES DESCUIDO DE NADIE, y por eso ningún guardarraíl de contenido lo arregla:** `git add` escribe en el índice del **repositorio**, no de la sesión. Con dos sesiones en el mismo directorio, el `add` de una y el `commit` de la otra son **la misma cola**, y git no puede saber quién puso qué. No hay nada que inspeccionar: el dato de «quién» no existe.
+- **Es el acoplamiento de [T-385] una capa más arriba.** Allí el DEPLOY necesitaba que un árbol compartido estuviera quieto, y se arregló dándole un árbol propio. Aquí es el COMMIT, y la solución es la misma: **un árbol por sesión**. Lo medido el mismo día por [T-400]: **cinco sesiones latiendo desde el checkout principal a la vez**.
+- **✅ GUARDARRAÍL EN `pre-commit`**, porque —regla de Manuel el mismo día— *«si no se obliga no se hace»*: si hay OTRA sesión con latido reciente en TU directorio, el commit se para.
+- **Por qué ESTE sí puede bloquear, cuando hoy mismo se han quitado tres bloqueos:** los de [T-375] eran **imposibles de satisfacer** (esperar a una sesión muerta), y un bloqueo imposible enseña a apagar el guard entero. Éste se satisface con **un comando** (`crear-worktree.sh`), y la alternativa —seguir compartiendo— corrompe trabajo ajeno de forma **irreversible en la historia**. El mensaje propone el arreglo de verdad ANTES que el escape, y hay test de que lo hace.
+- **Lo que NO molesta, a propósito:** una sola sesión en el checkout principal es lo NORMAL (la que coordina, la que despliega) y no dispara nada. **El problema no es el sitio, es la concurrencia** — si esto ladrara siempre, se apagaría el primer día.
+- **Fail-open total:** sin sid, sin ruta, sin BD o sin red, **deja pasar**. Que la telemetría no responda no puede impedirle a nadie commitear; es la misma regla del latido y del push-guard.
+- **Capas:** núcleo puro `lib/sessions/indiceCompartido.cjs` con **14 tests** (incluidos los cuatro casos que NO deben molestar y los tres de fail-open), puente fino en `scripts/check-indice-compartido.cjs`, y verificación en vivo: bloqueó de verdad este commit, con dos compañeras detectadas.
+- **Honestidad sobre este commit:** salió con `INDICE_COMPARTIDO_OK=1`, porque migrar a un worktree a mitad de la sesión habría sido peor. Queda impreso en la salida, que es justo para lo que existe el escape con nombre.
+- **Relacionadas:** [T-385] (mismo acoplamiento, capa de abajo), [T-400] (que midió las 5 sesiones), [T-375] (por qué un bloqueo imposible se acaba rodeando), [T-296] (el latido del que se lee la señal).
+
+
 ### [T-349] ✅ [HECHA 31/07] El pre-commit no pasa lint: un error de sintaxis llega a `main` y bloquea el deploy de TODAS las sesiones
 
 - **Pasó de verdad el 30/07, y costó el deploy de la noche.** Al ir a desplegar (con trabajo terminado de otra sesión esperando), `deploy-cuando-verde.sh` **se negó: CI en rojo**. El rojo era **un solo error de lint** en `data/pilotos/t291-escalon2-30jul/extraer-tanda2.cjs`: tres comentarios SQL dentro de un template literal con los identificadores entre backticks de markdown (``-- pregunta marcada `defecto_opciones`…``), y esos backticks **cierran la plantilla**. El fichero dejaba de parsear.

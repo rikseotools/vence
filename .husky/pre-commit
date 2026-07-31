@@ -37,6 +37,16 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 1b. Una sesión por índice de git (T-415). Va aquí arriba, con lo barato, porque lo que evita es
+#     IRREVERSIBLE en la historia: el índice es del REPOSITORIO, así que si dos sesiones trabajan
+#     en el mismo directorio, el `git add` de una entra en el commit de la otra sin que ni ellas
+#     ni git puedan saberlo. Pasó el 31/07: el trabajo de una sesión acabó en main bajo el mensaje
+#     de otra. Solo bloquea si hay OTRA sesión viva en ESTE directorio; una sola es lo normal.
+node scripts/check-indice-compartido.cjs
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
 echo ""
 # 1b. Drift de display del temario (título ↔ descripcion_corta/epigrafe/description).
 #     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la
