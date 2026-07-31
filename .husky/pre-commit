@@ -27,6 +27,17 @@ else
 fi
 
 echo ""
+# 1a. Sintaxis de lo que se commitea (T-349). Es lo primero porque es lo más barato (milisegundos)
+#     y lo que más caro sale si pasa: un fichero que no parsea pone el CI en rojo y con él el
+#     deploy de TODAS las sesiones. Ha pasado 3 veces con el mismo modo de fallo (backticks de
+#     markdown dentro de un template literal). Detalle y escape: lib/calidad/sintaxisStaged.cjs.
+node scripts/check-sintaxis-staged.cjs
+if [ $? -ne 0 ]; then
+  echo "❌ Commit cancelado por error de sintaxis (ver arriba)."
+  exit 1
+fi
+
+echo ""
 # 1b. Drift de display del temario (título ↔ descripcion_corta/epigrafe/description).
 #     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la
 #     descripcion_corta stale/desalineada). El self-test es puro (sin BD, rápido);

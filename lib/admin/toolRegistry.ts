@@ -257,6 +257,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ofertas nunca pasaría por bueno. Correrla tras tocar `ofertaHeredada`, `precioHeredado` ' +
       'o `reactivateSubscription`.',
   },
+  sintaxis_staged_check: {
+    titulo: 'Impedir que un fichero que no parsea llegue a `main` y bloquee el deploy de todos',
+    ruta: 'scripts/check-sintaxis-staged.cjs',
+    estado: 'vivo',
+    notas:
+      'Hook `.husky/pre-commit`, lo PRIMERO que corre (milisegundos). Pasa `node --check` por ' +
+      'los `.cjs`/`.mjs`/`.js` staged. No opina de estilo: el lint sigue viviendo solo en CI ' +
+      'por los 247 warnings heredados. Existe porque el mismo modo de fallo ha pasado 3 veces ' +
+      '(backticks de markdown dentro de un template literal, que cierran la plantilla): el CI ' +
+      'lo caza, pero YA en `main`, y hasta que alguien lo note ninguna sesión puede desplegar. ' +
+      'Estrenándolo encontró `scripts/temario/detect-temario-revision.cjs` roto en `main`. ' +
+      'Núcleo puro `lib/calidad/sintaxisStaged.cjs` (12 tests). **Un fallo en un fichero con ' +
+      'pinta de JSX avisa y NO bloquea**: `node --check` no entiende JSX, y un bloqueo ' +
+      'injusto enseña a usar `--no-verify`, que apaga además el db:check y el display-drift. ' +
+      'Escape propio: `SINTAXIS_CHECK_SKIP=1`.',
+  },
   robustez_push_guard: {
     titulo: 'Bloquear el push de código de producción que va sin capas, y de señales que nadie vigila',
     ruta: 'scripts/robustez-push-guard.cjs',
