@@ -39,14 +39,26 @@ const REPO = path.join(__dirname, '..');
 const MD_REL = path.join('docs', 'roadmap', 'tareas-pendientes.md');
 const MD = path.join(REPO, MD_REL);
 
-// Los hechos de git sobre una ficha viven en su propio módulo (T-427): con el `cwd` inyectado se
-// pueden ejercitar contra un repositorio de prueba que reproduzca el incidente. Estaban aquí dentro,
-// y por eso el punto ciego de «solo miro mi rama» sobrevivió a tener tests: lo testeable era la
-// decisión, no los datos con los que se decide.
-const {
-  estuvoEnElHistorialLocal, hechosDeOrigin, commitQueLaQuito, refrescarOrigin,
-} = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
-const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
+/**
+ * ¿La ficha de este id ESTUVO alguna vez en el markdown? Es la prueba que separa «me la han
+ * borrado» (regresión) de «otra sesión no ha pusheado la suya» (normal con 2-10 sesiones).
+ *
+ * FAIL-OPEN a `false` a propósito, igual que el push-guard hace con la BD: si git no puede
+ * contestar (no es un repo, el fichero se renombró, cualquier avería), lo que NO se puede hacer es
+ * inventarse una regresión y mandar a alguien a buscar una ficha que nunca existió. Un aviso que
+ * miente una vez deja de leerse para siempre.
+ */
+function estuvoEnElHistorial(id) {
+  try {
+    const { execFileSync } = require('child_process');
+    const out = execFileSync(
+      'git', ['log', '--format=%h', '-S', `### [${id}]`, '--', MD_REL],
+      { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15_000 });
+    return out.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -63,24 +75,6 @@ function arg(name) {
 // La identidad de la sesión se resuelve en UN solo sitio (T-407): había seis copias de esto
 // con dos reglas distintas, y una sesión llegaba a verse a sí misma como ajena.
 const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'));
-
-/**
- * Deja constancia de un roce en el bus de fricción de [T-423]. Detached y en silencio: nada de
- * esto puede añadir latencia ni tumbar un comando del backlog.
- *
- * Se registran las DOS caras del gate de verificación —cuándo para y cuándo se rodea con
- * `--igualmente`—, porque el ratio entre ambas es lo que dice si sigue vivo o si se ha convertido
- * en un peaje que todo el mundo esquiva.
- */
-function friccion(clase, guard, detalle) {
-  try {
-    const a = ['--clase', clase, '--guard', guard];
-    if (detalle) a.push('--detalle', String(detalle).slice(0, 200));
-    require('child_process')
-      .spawn(process.execPath, [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), ...a], { detached: true, stdio: 'ignore' })
-      .unref();
-  } catch { /* la telemetría nunca estorba */ }
-}
 
 const cmd = process.argv[2];
 const sid = resolverSid({ repo: REPO }).sid;
@@ -465,7 +459,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const paraVerificar = listas.filter((r) => clasificarEspera(r.resume_check) === 'verificacion');
       const paraManuel = listas.filter((r) => clasificarEspera(r.resume_check) === 'decision');
       if (paraVerificar.length) {
-        console.log(`\n⏰ ${paraVerificar.length} LISTA(S) PARA VERIFICAR — trabajo casi terminado, se cierran rápido:`);
+        // NO decir «se cierran rápido» (lo decía hasta el 31/07): empuja justo a lo contrario de
+        // lo que toca. Estas tareas están IMPLEMENTADAS y sin comprobar; lo que falta no es
+        // teclear `done`, es ir a mirar producción. Con la frase anterior, el atajo mental era
+        // cerrarlas — y así es como una tarea se da por buena sin que nadie haya verificado nada,
+        // que es el fallo que motivó [T-392].
+        console.log(`\n⏰ ${paraVerificar.length} IMPLEMENTADA(S) Y SIN COMPROBAR — hay que MIRAR producción antes de cerrarlas:`);
         for (const r of paraVerificar) {
           console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
           console.log(`      ▶ falta: ${String(r.resume_check).slice(0, 160)}`);
@@ -680,36 +679,6 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.error('   Si de verdad está terminada y el texto engaña:  --igualmente');
         process.exit(2);
       }
-
-      // SEGUNDA PUERTA (T-392 F1): la de arriba mira EL TEXTO —caza al que confiesa—; esta mira
-      // LOS HECHOS, que no se pueden maquillar. Si los commits que DECLARAN esta tarea tocan una
-      // superficie servida y el `sha` vivo todavía no los incluye, la tarea no está terminada
-      // diga lo que diga el outcome. Es lo que faltó el 31/07 con T-363, que decide cuándo se le
-      // cobra a alguien y se cerró con el código en `main`, sin desplegar y sin verificar.
-      //
-      // Fail-open y silencioso ante cualquier problema: un fallo de red no puede impedir cerrar.
-      if (!process.argv.includes('--igualmente')) {
-        try {
-          const { analizar } = require(path.join(REPO, 'scripts', 'backlog', 'verificacion.cjs'));
-          const v = await analizar(id);
-          if (v.exige) {
-            const sup = v.superficies.length === 2 ? 'both' : v.superficies[0];
-            console.error(`❌ NO cerrada: ${v.motivo}.`);
-            console.error('   Su código todavía NO está vivo, así que no se puede haber verificado:');
-            for (const f of v.servidos.slice(0, 5)) console.error(`     [${f.superficie}] ${f.fichero}`);
-            if (v.servidos.length > 5) console.error(`     …y ${v.servidos.length - 5} más`);
-            console.error('   Prográmale la vuelta — el propio deploy la despierta:');
-            console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie ${sup} \\`);
-            console.error('       --hecho "…lo que ya está…" --falta "…qué mirar cuando esté vivo…"');
-            console.error('   Si de verdad ya lo verificaste (o el análisis se equivoca):  --igualmente');
-            friccion('guard_bloqueo', 'done-verificacion', id);
-            process.exit(2);
-          }
-        } catch { /* fail-open: el gate no puede tumbar un cierre por un fallo suyo */ }
-      } else {
-        friccion('guard_escape', 'done-verificacion', id);
-      }
-
       const [row] = await s`
         UPDATE public.backlog_tasks
            SET status = 'done', outcome = ${outcome}, closed_at = now(),
@@ -721,9 +690,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                               + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
                claimed_by = NULL, claimed_at = NULL, lease_until = NULL
          WHERE id = ${id} AND (claimed_by = ${sid} OR claimed_by IS NULL)
-        RETURNING id, title, effort, worked_seconds`;
+        RETURNING id, title, effort, worked_seconds, resume_check`;
       if (!row) { console.error(`❌ no pude cerrar ${id} (¿la tiene otra sesión?)`); process.exit(1); }
       console.log(`✅ ${row.id} cerrada.`);
+      // Si venía de una pausa, se cierra algo que estaba pendiente de COMPROBAR: recordar qué
+      // significa la palabra, porque `done` se lee como «funciona» y solo garantiza «lo hice».
+      if (row.resume_check) console.log('   (venía de «implementada y sin comprobar»: el outcome debería decir QUÉ verificaste)');
       // Contrastar lo DECLARADO con lo que costó. Es la razón de ser del campo de esfuerzo: sin
       // este momento, la estimación no se puede desmentir nunca y acaba siendo decorativa.
       if (row.worked_seconds > 0) {
@@ -925,46 +897,15 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const idsEnMd = new Set(md.map((t) => t.id));
       const sinFicha = vivas.map((r) => r.id).filter((id) => !idsEnMd.has(id));
       if (sinFicha.length) {
-        // La prueba de que una ficha existió está en `origin/main`, NO en mi rama (T-427). Se
-        // refresca la ref antes de opinar: sin fetch, una ficha borrada hace diez minutos se ve
-        // «todavía presente» y el aviso llega tarde. Best-effort y con techo de tiempo — que no
-        // haya red no puede dejar el `sync` colgado, y el caso se degrada solo hacia
-        // `desactualizada`/`no_verificable`, que son avisos honestos y no un verde falso.
-        refrescarOrigin({ cwd: REPO });
         const { clasificarHuerfanas } = require(path.join(REPO, 'lib', 'backlog', 'fichaHuerfana.cjs'));
-        const { borradas, noVerificables, desactualizadas, sinPushear } = clasificarHuerfanas(
-          sinFicha.map((id) => ({
-            id,
-            estuvoEnElMarkdown: estuvoEnElHistorialLocal(id, GIT_FICHAS),
-            origen: hechosDeOrigin(id, GIT_FICHAS),
-          })));
+        const { borradas, sinPushear } = clasificarHuerfanas(
+          sinFicha.map((id) => ({ id, estuvoEnElMarkdown: estuvoEnElHistorial(id) })));
         if (borradas.length) {
           console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
           console.error('   Alguien commiteó el fichero rancio y se llevó la ficha por delante.');
           for (const id of borradas) {
-            const culpable = commitQueLaQuito(id, GIT_FICHAS);
-            if (culpable) console.error(`   ${id} ← la quitó:  ${culpable}`);
             console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
-            // OBSERVABILIDAD — que no dependa de que alguien esté mirando esta terminal.
-            // La lección entera de T-427 es que el aviso se imprimió y no pasó nada: quien BORRA
-            // la ficha no es quien corre el `sync` después, y la sesión víctima puede estar ya
-            // muerta. Con el evento queda serie temporal (¿cuántas veces al mes se destruye
-            // contexto?) y la regla `backlog_ficha_borrada` lo saca por correo. Best-effort: la
-            // telemetría no puede tumbar un `sync`.
-            try {
-              await s`INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
-                VALUES (gen_random_uuid(), now(), 'cli', 'warn', 'backlog_ficha_borrada',
-                        ${s.json({ tarea: id, commit: culpable || null, detectada_por: sid })}, now())`;
-            } catch { /* observabilidad fail-open, nunca bloquea el sync */ }
           }
-        }
-        if (noVerificables.length) {
-          console.error(`⚠️  no puedo comprobar si estas fichas existieron (sin ver origin/main): ${noVerificables.join(', ')}`);
-          console.error('   No es «están bien»: es que no lo sé. Comprueba el remoto y vuelve a correr el sync.');
-        }
-        if (desactualizadas.length) {
-          console.log(`↻ están en origin/main y tu rama va por detrás: ${desactualizadas.join(', ')}`);
-          console.log('   No falta nada: actualiza la rama (git pull --rebase origin main).');
         }
         if (sinPushear.length) {
           console.log(`ℹ️ sin ficha aquí todavía (otra sesión sin pushear): ${sinPushear.join(', ')}`);

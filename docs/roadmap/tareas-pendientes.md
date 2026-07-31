@@ -2350,6 +2350,20 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-441] ✅ 🟠 [HECHA 31/07] El CLI anunciaba las tareas SIN COMPROBAR como «se cierran rápido»
+
+- **ORIGEN.** Manuel cazó una imprecisión mía: dije *«cuando termine el deploy se cerrarán solas 7 tareas»* y preguntó *«¿realmente se cierran solas? ¿no se verifican y luego se archivan?»*. **Tenía razón: el deploy solo DESPIERTA.** Pone `wake_on_deploy_sha = NULL` y **no toca el `status`** — siguen en `open`. Verificado en el código.
+- **Y al revisarlo salió que el CLI empujaba a lo mismo.** El cubo de tareas despiertas se anunciaba así: *«⏰ N LISTA(S) PARA VERIFICAR — **trabajo casi terminado, se cierran rápido**»*.
+- **Esa frase invita a lo CONTRARIO de lo que toca.** Esas tareas están **implementadas y sin comprobar**: lo que falta no es teclear `done`, es **ir a mirar producción**. Con «se cierran rápido» el atajo mental es cerrarlas — y así una tarea se da por buena sin que nadie haya verificado nada, que es exactamente el fallo que motivó [T-392] (*«hoy `done` significa "he escrito el código" y se lee como "funciona"»*).
+- **✅ ARREGLO — las palabras dicen qué HACER, no lo fácil que es:**
+  - `⏰ N IMPLEMENTADA(S) Y SIN COMPROBAR — hay que MIRAR producción antes de cerrarlas`
+  - Y al cerrar una que venía de pausa, recuerda que **el `outcome` debería decir QUÉ se verificó**.
+- **El resto de mensajes ya eran correctos** —*«ya se puede verificar»*, *«pasan a LISTAS PARA VERIFICAR»*— y hay test que los fija, para que nadie los «mejore» hacia la promesa fácil.
+- **Lo que NO arregla:** sigue sin existir un estado `verificando` de verdad. Que una tarea esté despierta y sin cerrar es todo lo que hay, y se sostiene en que alguien mire ese cubo. Eso es [T-392], 🔴 y sin hacer.
+- **Y un tropiezo propio, otra vez el mismo:** el test falló al principio porque **mi propio comentario citaba la frase vieja**. Un guardarraíl que mide comentarios no mide nada — segunda vez hoy. Ahora filtra los comentarios antes de comprobar.
+- **Capas:** 4 tests. **Relacionadas:** [T-392] (el ciclo de vida completo), [T-385] (cuya verificación motivó la conversación).
+
+
 ### [T-440] ✅ 🟠 [HECHA 31/07] El marcado de deploys se callaba desde un árbol sin `node_modules` — y solo lo vio un deploy REAL
 
 - **CÓMO SALIÓ.** Vigilando el **primer deploy real** por el camino nuevo de [T-385], que es justo para lo que esa ficha se dejó pausada. Tres de las cuatro verificaciones salieron ✅ y **la cuarta falló: `deploy_runs` estaba vacío con un deploy corriendo.**
