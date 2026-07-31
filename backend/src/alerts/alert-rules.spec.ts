@@ -2449,3 +2449,48 @@ describe('RULE_STRIPE_CHECKOUT_FAILED — qué considera «camino de cobro»', (
     expect(n.body).toMatch(/observable_events/);
   });
 });
+
+// ── Cliente bloqueado en la caja (31/07/2026) ────────────────────────────────────────────
+//
+// Hermana de RULE_STRIPE_CHECKOUT_FAILED y su punto ciego: aquella cuenta 5xx (el servidor se
+// rompió); ésta cuenta los «no» (el servidor funcionó y no le dejó pagar). 17 intentos
+// bloqueados en 10 minutos no dispararon nada.
+import { RULE_COBRO_BLOQUEADO_AUTH } from './alert-rules';
+
+describe('RULE_COBRO_BLOQUEADO_AUTH — el 403 en la caja también es una venta perdida', () => {
+  const fila = (n: number, usuarios = 1, topEndpoint = '/api/stripe/create-checkout') => [
+    { n, usuarios, topEndpoint },
+  ];
+
+  it('calla con un rechazo suelto (un clic raro no es un incidente)', () => {
+    expect(RULE_COBRO_BLOQUEADO_AUTH.shouldFire(fila(1))).toBe(false);
+    expect(RULE_COBRO_BLOQUEADO_AUTH.shouldFire(fila(2))).toBe(false);
+  });
+
+  it('salta al tercero: ahí ya hay alguien peleándose con la pantalla de pago', () => {
+    expect(RULE_COBRO_BLOQUEADO_AUTH.shouldFire(fila(3))).toBe(true);
+    expect(RULE_COBRO_BLOQUEADO_AUTH.shouldFire(fila(17))).toBe(true);
+  });
+
+  it('no dispara sin datos', () => {
+    expect(RULE_COBRO_BLOQUEADO_AUTH.shouldFire([])).toBe(false);
+  });
+
+  it('escucha el evento que emite el helper, no uno que nadie manda', () => {
+    const q = JSON.stringify(RULE_COBRO_BLOQUEADO_AUTH.query);
+    expect(q).toContain('auth_identidad_ajena_rechazada');
+  });
+
+  it('mira los MISMOS caminos de cobro que su hermana (una sola lista, no dos)', () => {
+    const q = JSON.stringify(RULE_COBRO_BLOQUEADO_AUTH.query);
+    for (const patron of PATRONES_RUTA_COBRO) expect(q).toContain(patron);
+  });
+
+  it('el aviso dice cuántas personas y cómo distinguir cliente rancio de abuso', () => {
+    const n = RULE_COBRO_BLOQUEADO_AUTH.buildNotification(fila(17, 1));
+    expect(n.title).toContain('17');
+    expect(n.title).toMatch(/1 usuario/);
+    expect(n.body).toMatch(/EXISTE en user_profiles/);
+    expect(n.body).toContain('/api/stripe/create-checkout');
+  });
+});

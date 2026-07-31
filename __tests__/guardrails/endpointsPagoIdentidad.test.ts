@@ -84,6 +84,32 @@ describe('endpoints de pago — la identidad no la pone el cliente', () => {
     expect(src).toMatch(/constructEvent|verifyWebhook|signature/i)
   })
 
+  it.each(TODAS.filter((r) => !EXENTOS[r]))(
+    '%s DECLARA por escrito qué hacer si el cliente afirma otro id',
+    (rel) => {
+      // Añadido el 31/07/2026. El defecto del helper es `cortar`, así que un endpoint que no
+      // declare nada es seguro — pero no es EXPLÍCITO, y esa es justo la decisión que costó
+      // 17 intentos de compra bloqueados: nadie había elegido cortar en el checkout, se
+      // heredó. Aquí se obliga a elegir y a que la elección se lea en el propio fichero.
+      const src = readFileSync(join(RAIZ, rel), 'utf8')
+      expect(src).toMatch(/alDiscrepar:\s*'(cortar|seguir-con-el-token)'/)
+    },
+  )
+
+  it('las acciones DESTRUCTIVAS cortan: equivocarse de cuenta ahí no se deshace solo', () => {
+    // Cancelar, reactivar (volver a cobrar) y escribir en el historial de una persona.
+    for (const rel of ['cancel/route.ts', 'cancel/feedback/route.ts', 'reactivate/route.ts']) {
+      expect(readFileSync(join(RAIZ, rel), 'utf8')).toMatch(/alDiscrepar:\s*'cortar'/)
+    }
+  })
+
+  it('el checkout NO corta: el peor caso es cobrarse a sí mismo lo que iba a pagar', () => {
+    const src = readFileSync(join(RAIZ, 'create-checkout/route.js'), 'utf8')
+    expect(src).toMatch(/alDiscrepar:\s*'seguir-con-el-token'/)
+    // Y aun así la identidad tiene que salir del token — seguir no es confiar.
+    expect(src).toMatch(/const\s+userId\s*=\s*identidad\.userId/)
+  })
+
   it('toda exención está justificada por escrito', () => {
     for (const [ruta, motivo] of Object.entries(EXENTOS)) {
       expect(TODAS).toContain(ruta) // no dejar exenciones de ficheros que ya no existen
@@ -96,9 +122,23 @@ describe('el helper compartido no se puede ablandar sin querer', () => {
   const helper = readFileSync(join(process.cwd(), 'lib/api/shared/auth.ts'), 'utf8')
   const cuerpo = helper.slice(helper.indexOf('export async function requireUsuarioPropio'))
 
-  it('un id distinto al del token se RECHAZA (no se ignora en silencio)', () => {
+  it('un id distinto al del token NUNCA pasa en silencio (se corte o no, se registra)', () => {
     expect(cuerpo).toMatch(/status:\s*403/)
     expect(cuerpo).toMatch(/auth_identidad_ajena_rechazada/)
+    // La señal se emite ANTES de decidir si se corta: dejar pasar no puede dejar de verse.
+    const iSenal = cuerpo.indexOf('auth_identidad_ajena_rechazada')
+    const iCorte = cuerpo.indexOf('if (bloqueado)')
+    expect(iSenal).toBeGreaterThan(-1)
+    expect(iCorte).toBeGreaterThan(iSenal)
+  })
+
+  it('el defecto es CORTAR: olvidarse de declarar la política falla del lado seguro', () => {
+    expect(cuerpo).toMatch(/opciones\.alDiscrepar\s*\?\?\s*'cortar'/)
+  })
+
+  it('al dejar pasar se sigue con el id del TOKEN, nunca con el afirmado', () => {
+    // Sin esto, «seguir-con-el-token» sería un nombre bonito para confiar en el cliente.
+    expect(cuerpo).not.toMatch(/userId:\s*idQueAfirmaElCliente/)
   })
 
   it('propaga el status real de verifyAuth (401 sin sesión, 403 suplantando)', () => {

@@ -30,7 +30,12 @@ async function _POST(request) {
     // activarle el premium) y además es quien decide si un PRECIO PERSONALIZADO es suyo
     // (`priceEsDelUsuario`). Con el userId viniendo del cuerpo, esa comprobación se hacía
     // contra la persona que dijera el cliente, no contra quien está comprando.
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/create-checkout', userIdDelCliente)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/create-checkout', userIdDelCliente, {
+      // El peor caso al seguir es que la persona se cobre a sí misma justo lo que iba a
+      // pagar. El peor caso al cortar ya lo medimos: 17 intentos de compra bloqueados el
+      // 31/07 por un id cacheado de un usuario que ni siquiera existe.
+      alDiscrepar: 'seguir-con-el-token',
+    })
     if (!identidad.ok) return identidad.response
     const userId = identidad.userId
 

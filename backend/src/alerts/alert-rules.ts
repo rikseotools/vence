@@ -1492,6 +1492,66 @@ export const RULE_STRIPE_CHECKOUT_FAILED: AlertRule<{
 };
 
 /**
+ * Cliente **bloqueado** en un camino de cobro: intentó pagar y la autorización le dijo que no.
+ *
+ * ## Por qué NO basta con `RULE_STRIPE_CHECKOUT_FAILED`
+ *
+ * Aquella cuenta 5xx: el servidor se rompió. Ésta cuenta lo contrario — el servidor funcionó
+ * perfectamente y **decidió no dejarle pagar**. Para el negocio son la misma pérdida, y hasta
+ * hoy la segunda no la miraba nadie.
+ *
+ * ## El caso que la motiva (31/07/2026)
+ *
+ * `rdiazprados@gmail.com` intentó comprar premium **17 veces entre las 05:54 y las 06:04** y
+ * recibió 403 en todas. Su sesión era válida; lo que fallaba es que su navegador mandaba en el
+ * cuerpo un `userId` que **ya no existe en la base de datos**, y el contraste de identidad de
+ * T-340 cortaba. Acabó pagando a las 06:10, probablemente tras recargar. **Cero alertas
+ * durante esos diez minutos**: se descubrió al revisar señales a mano, un día después.
+ *
+ * Umbral bajo (3 en 10 min) por la misma razón que su hermana: tres rechazos seguidos en la
+ * pantalla de pago ya son una persona peleándose con la aplicación, no un fallo aislado.
+ */
+export const RULE_COBRO_BLOQUEADO_AUTH: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+  usuarios: number;
+}> = {
+  name: 'cobro_bloqueado_auth',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COUNT(DISTINCT user_id)::int AS usuarios,
+           MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE event_type = 'auth_identidad_ajena_rechazada'
+      AND endpoint LIKE ANY (${sql.raw(`ARRAY[${PATRONES_RUTA_COBRO.map((p) => `'${p}'`).join(', ')}]`)})
+      AND ts > NOW() - INTERVAL '10 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 3,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '/api/stripe/*';
+    const usuarios = rows[0]?.usuarios ?? 0;
+    return {
+      title: `${n} intentos de pago BLOQUEADOS en 10min (${usuarios} usuario/s) — no es un 5xx, es un «no»`,
+      body:
+        `Endpoint: ${top}\n\n` +
+        `El servidor funcionó y aun así no les dejó pagar: el id que manda su navegador no coincide con el de su sesión. ` +
+        `Lo normal es un cliente desincronizado (pestaña vieja, cuenta cambiada, identidad cacheada de un usuario que ya no existe), ` +
+        `y se arregla recargando — pero mientras tanto NO puede comprar.\n\n` +
+        `  SELECT ts, endpoint, user_id, metadata->>'afirmado' AS id_que_manda_el_cliente\n` +
+        `  FROM observable_events WHERE event_type='auth_identidad_ajena_rechazada'\n` +
+        `    AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;\n\n` +
+        `Comprobar primero si ese id EXISTE en user_profiles: si no existe, es un cliente rancio y no un intento de abuso.\n\n` +
+        `Origen 31/07/2026: 17 intentos bloqueados en 10 minutos, cero alertas, detectado a mano al día siguiente.`,
+      metadata: { count: n, topEndpoint: top, usuarios, windowMin: 10 },
+      fingerprint: `cobro_bloqueado_auth_${top}`,
+    };
+  },
+  cooldownMin: 30,
+};
+
+/**
  * Caída brutal de tráfico — proxy de salud del frontend.
  *
  * Origen: incidente 2026-05-26 — entre 12:00-13:00 UTC el tráfico
@@ -5058,6 +5118,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_DRIFT as AlertRule,
   RULE_WEBHOOK_UNHEALTHY as AlertRule,
   RULE_STRIPE_CHECKOUT_FAILED as AlertRule,
+  // Su reverso (31/07/2026): el servidor NO se rompió, simplemente no le dejó pagar. La de
+  // arriba cuenta 5xx y no ve un 403; para el negocio son la misma venta perdida.
+  RULE_COBRO_BLOQUEADO_AUTH as AlertRule,
   // Cancel flow robusto (2026-05-27 post-caso Mariangeles)
   RULE_SUBSCRIPTION_VOID_FAILED as AlertRule,
   RULE_SUBSCRIPTION_FORCE_CANCEL_BURST as AlertRule,

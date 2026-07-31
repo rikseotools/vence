@@ -24,6 +24,7 @@
 import { encode } from 'next-auth/jwt'
 import { Client } from 'pg'
 import { payloadSesionImpersonada } from '../../lib/admin/impersonacion'
+import { sessionCookieNameFor } from '../../lib/sim/session'
 
 const BASE = process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] || 'http://localhost:3000'
 
@@ -36,13 +37,18 @@ async function main() {
 
   const secret = process.env.AUTH_SECRET!
   const now = Math.floor(Date.now() / 1000)
+  // El nombre de la cookie sale de `lib/sim/session.ts`: sobre https Auth.js le pone el
+  // prefijo `__Secure-`, y ese nombre es TAMBIÉN el salt del cifrado. Con el de local, esta
+  // sim contra producción da 401 en todo — los rechazos «pasan» y solo fallan los casos de
+  // contraste, que es la señal de que no está midiendo nada.
+  const COOKIE = sessionCookieNameFor(new URL(BASE).hostname)
   const cookieDe = async (uid: string, email: string) =>
-    encode({ token: { appUserId: uid, email, sub: uid, iat: now, exp: now + 3600 }, secret, salt: 'authjs.session-token', maxAge: 3600 })
+    encode({ token: { appUserId: uid, email, sub: uid, iat: now, exp: now + 3600 }, secret, salt: COOKIE, maxAge: 3600 })
   const cookieSuplantando = async (uid: string, email: string) =>
-    encode({ token: payloadSesionImpersonada({ objetivoUserId: uid, objetivoEmail: email, adminEmail: 'sim@vence.es', nowSec: now }), secret, salt: 'authjs.session-token', maxAge: 1800 })
+    encode({ token: payloadSesionImpersonada({ objetivoUserId: uid, objetivoEmail: email, adminEmail: 'sim@vence.es', nowSec: now }), secret, salt: COOKIE, maxAge: 1800 })
 
   const tokenCon = async (cookie: string) => {
-    const r = await fetch(`${BASE}/api/auth/token`, { headers: { Cookie: `authjs.session-token=${cookie}` } })
+    const r = await fetch(`${BASE}/api/auth/token`, { headers: { Cookie: `${COOKIE}=${cookie}` } })
     const j = await r.json().catch(() => ({}))
     return j.accessToken as string | undefined
   }
@@ -108,6 +114,27 @@ async function main() {
   const s10 = await post('/api/stripe/subscription', { userId: victima.id }, tokenVictima)
   linea(s10 === 200, `10) la propia usuaria abre SU portal de facturación → ${s10} (esperado 200) → la guarda no rompe lo legítimo`)
   if (s10 !== 200) fallos.push(`la dueña no puede abrir su portal: ${s10}`)
+
+  // ── La política por endpoint (31/07/2026) ───────────────────────────────────────────────
+  //
+  // Un cliente desincronizado —pestaña vieja, cuenta cambiada, identidad cacheada de un
+  // usuario borrado— manda un id que no es el de su token. En la ruta de PAGO eso ya no
+  // corta: cortar no impedía ningún abuso (el token manda igual) y sí impidió a alguien
+  // comprar 17 veces seguidas. En las DESTRUCTIVAS sigue cortando.
+  //
+  // Los dos casos van juntos a propósito: por separado, «todo corta» y «nada corta» pasarían
+  // cada uno la mitad de la prueba.
+  const idFantasma = '00000000-0000-4000-8000-000000000000'
+  const s11 = await post('/api/stripe/create-checkout', { userId: idFantasma, priceId: 'price_inexistente_sim' }, tokenVictima)
+  // No se comprueba 200: sin un priceId real esto acaba en 4xx igualmente, y crear una sesión
+  // de checkout de verdad sería escribir en Stripe. Lo que importa es que NO sea el 403 de
+  // identidad, que es el que dejaba a la persona sin poder pagar.
+  linea(s11 !== 403, `11) checkout con id desincronizado → ${s11} (cualquier cosa menos 403) → ya no se le cierra la caja`)
+  if (s11 === 403) fallos.push('el checkout sigue cortando por identidad: la venta se pierde')
+
+  const s12 = await post('/api/stripe/cancel', { userId: idFantasma, reason: 'sim' }, tokenVictima)
+  linea(s12 === 403, `12) cancelar con id desincronizado → ${s12} (esperado 403) → ahí sí se corta`)
+  if (s12 !== 403) fallos.push(`cancelar dejó pasar un id ajeno (${s12}): se cancelaría la cuenta equivocada`)
 
   console.log(fallos.length ? `\n❌ ${fallos.length} fallo(s): ${fallos.join(' · ')}` : '\n✅ La identidad ya no la pone el cliente.')
   process.exit(fallos.length ? 1 : 0)

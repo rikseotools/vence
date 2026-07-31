@@ -42,6 +42,9 @@ async function main() {
     process.exit(1)
   }
   const { payloadSesionImpersonada, TTL_IMPERSONACION_SEG } = await import('../../lib/admin/impersonacion')
+  // Import diferido como los de al lado: este fichero carga `.env.local` ANTES de tocar
+  // nada que lea el entorno.
+  const { sessionCookieNameFor, cookieForPlaywright } = await import('../../lib/sim/session')
   const { Client } = await import('pg')
   const c = new Client({ connectionString: process.env.DATABASE_URL!.split('?')[0], ssl: { rejectUnauthorized: false } })
   await c.connect()
@@ -52,13 +55,17 @@ async function main() {
   if (!rows.length) { console.error('❌ Sin usuario objetivo.'); process.exit(1) }
   const { id: uid, email } = rows[0]
   const now = Math.floor(Date.now() / 1000)
+  // Nombre y salt de la cookie según el host (`lib/sim/session.ts`): sobre https lleva
+  // prefijo `__Secure-` y ese nombre es también el salt. Fijarlo a mano deja la sim ciega
+  // contra producción, que es donde justamente hay que comprobar que el plazo caduca.
+  const COOKIE = sessionCookieNameFor(new URL(URL_BASE).hostname)
   console.log(`🎭 Simulando sobre ${email} (${uid}) contra ${URL_BASE}\n`)
 
   const cookie = async (suplantada: boolean) => {
     const token: Record<string, unknown> = suplantada
       ? payloadSesionImpersonada({ objetivoUserId: uid, objetivoEmail: email, adminEmail: 'sim@vence.es', nowSec: now })
       : { appUserId: uid, email, sub: uid, iat: now, exp: now + TTL_IMPERSONACION_SEG, jti: `sim-${now}` }
-    return encode({ token, secret, salt: 'authjs.session-token', maxAge: TTL_IMPERSONACION_SEG })
+    return encode({ token, secret, salt: COOKIE, maxAge: TTL_IMPERSONACION_SEG })
   }
 
   /**
@@ -77,7 +84,7 @@ async function main() {
       variante === 'vencida' ? { ...base, impExp: now - 60 }
       : variante === 'viva' ? { ...base, impExp: now + TTL_IMPERSONACION_SEG }
       : base // legacy: sin reloj
-    return encode({ token, secret, salt: 'authjs.session-token', maxAge: MES })
+    return encode({ token, secret, salt: COOKIE, maxAge: MES })
   }
 
   const b = await chromium.launch()
@@ -87,11 +94,14 @@ async function main() {
   for (const suplantada of [true, false]) {
     const ctx = await b.newContext()
     const host = new URL(URL_BASE).hostname
-    const cookies = [{ name: 'authjs.session-token', value: await cookie(suplantada), domain: host, path: '/', httpOnly: true, sameSite: 'Lax' as const }]
+    const cookies = [cookieForPlaywright(await cookie(suplantada), host)]
     // La cookie-marca la pone el endpoint real junto a la sesión, y es la que hace que la
     // franja se muestre sin preguntar al servidor en cada página. Si la simulación acuña la
     // sesión a mano y se la salta, mide un escenario que no existe.
-    if (suplantada) cookies.push({ name: 'vence_imp', value: '1', domain: host, path: '/', httpOnly: false, sameSite: 'Lax' as const })
+    // El flag `secure` se hereda del descriptor de la sesión en vez de fijarlo: sobre https
+    // una cookie sin él viaja distinto que la real, y aquí se está midiendo lo que ve el
+    // navegador de un admin de verdad.
+    if (suplantada) cookies.push({ ...cookies[0], name: 'vence_imp', value: '1', httpOnly: false })
     await ctx.addCookies(cookies)
     const p = await ctx.newPage()
     const tj = await (await p.request.get(`${URL_BASE}/api/auth/token`)).json().catch(() => ({}))
@@ -115,7 +125,7 @@ async function main() {
   const ctxSalida = await b.newContext()
   const hostSalida = new URL(URL_BASE).hostname
   await ctxSalida.addCookies([
-    { name: 'authjs.session-token', value: await cookie(true), domain: hostSalida, path: '/', httpOnly: true, sameSite: 'Lax' },
+    cookieForPlaywright(await cookie(true), hostSalida),
     { name: 'vence_imp', value: '1', domain: hostSalida, path: '/', httpOnly: false, sameSite: 'Lax' },
   ])
   const pSalida = await ctxSalida.newPage()
@@ -136,7 +146,7 @@ async function main() {
   for (const variante of ['vencida', 'legacy', 'viva'] as const) {
     const ctx = await b.newContext()
     await ctx.addCookies([
-      { name: 'authjs.session-token', value: await cookieRotada(variante), domain: new URL(URL_BASE).hostname, path: '/', httpOnly: true, sameSite: 'Lax' },
+      cookieForPlaywright(await cookieRotada(variante), new URL(URL_BASE).hostname),
     ])
     const p = await ctx.newPage()
     const rt = await p.request.get(`${URL_BASE}/api/auth/token`)

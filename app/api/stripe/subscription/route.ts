@@ -33,7 +33,10 @@ async function _GET(request: NextRequest) {
     // T-340 — con el `userId` en la query y sin token, esto devolvía los datos de
     // FACTURACIÓN de cualquiera (importe, plan, fechas, estado) a quien tuviera su UUID.
     // Es una lectura, así que la suplantación sí puede hacerla: es su razón de ser.
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription', parseResult.data.userId)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription', parseResult.data.userId, {
+      // Lectura de lo suyo: seguir con el token no enseña nada ajeno.
+      alDiscrepar: 'seguir-con-el-token',
+    })
     if (!identidad.ok) return identidad.response
 
     // Obtener datos de suscripción — del usuario autenticado.
@@ -74,7 +77,10 @@ async function _POST(request: NextRequest) {
     // T-340 — el peor de los cuatro: esto devuelve un enlace al PORTAL de facturación de
     // Stripe (facturas, tarjeta, cancelar). Con el `userId` en el cuerpo y sin token, se
     // obtenía el portal de otra persona. La identidad sale del token y nada más.
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription#portal', parseResult.data.userId)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/subscription#portal', parseResult.data.userId, {
+      // Abre SU portal de facturación (el del token). No cobra ni cambia estado.
+      alDiscrepar: 'seguir-con-el-token',
+    })
     if (!identidad.ok) return identidad.response
 
     // Crear sesión del portal — del usuario autenticado.

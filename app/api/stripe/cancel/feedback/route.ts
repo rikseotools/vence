@@ -27,7 +27,11 @@ async function _POST(request: NextRequest) {
 
     // T-340 — la identidad sale del token: si no, se podía escribir un motivo de
     // cancelación en el expediente de otra persona con solo su UUID.
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel/feedback', parseResult.data.userId)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel/feedback', parseResult.data.userId, {
+      // Escribe en el historial visible de una persona. Justo lo que hubo que limpiar a
+      // mano tras el clic del 30/07: 3 apuntes que no eran suyos.
+      alDiscrepar: 'cortar',
+    })
     if (!identidad.ok) return identidad.response
 
     const result = await submitCancellationFeedback({ ...parseResult.data, userId: identidad.userId })

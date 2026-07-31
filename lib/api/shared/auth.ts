@@ -109,9 +109,38 @@ export async function getAuthenticatedUser(
 //
 // ## La regla
 //
-// **La identidad sale del token y solo del token.** El id que mande el cliente se usa
-// únicamente para detectar la discrepancia: si no coincide, es alguien operando sobre una
-// cuenta ajena y se corta con 403.
+// **La identidad sale del token y solo del token.** El id que mande el cliente NO autoriza
+// nada: en los seis endpoints el valor se sobrescribe siempre con el del token
+// (`{ ...datos, userId: identidad.userId }`). Es decir, el contraste es un **detector**, no
+// un control de acceso.
+//
+// ## Qué hacer cuando el cliente afirma otro id (31/07/2026)
+//
+// Hasta hoy se cortaba siempre con 403. Eso costó una venta a punto de perderse:
+// `rdiazprados@gmail.com` intentó comprar premium **17 veces en 10 minutos** y recibió 403 en
+// todas, porque su navegador mandaba el id de un usuario **que ya no existe en la base de
+// datos** mientras su sesión era perfectamente válida. Cortar no impidió ningún abuso —el
+// token ya mandaba— y sí le impidió pagar.
+//
+// Pero quitarlo del todo tampoco vale, y el motivo es concreto: si una pantalla muestra la
+// cuenta A y el token es B, seguir adelante **cancelaría la suscripción de B en silencio**
+// mientras la persona cree estar cancelando la de A. Ahí el 403 es lo correcto.
+//
+// Así que la política no la decide la ruta, sino **el daño de equivocarse de cuenta**:
+//
+//   · `cortar` (por defecto) — acciones destructivas o irreversibles sobre la suscripción:
+//     cancelar, reactivar, registrar el motivo de una baja. Equivocarse cuesta caro y no se
+//     deshace solo.
+//   · `seguir-con-el-token` — acciones donde el peor caso es que la persona se cobre a sí
+//     misma justo lo que iba a pagar, o lea sus propios datos: checkout, portal, consulta.
+//
+// **El defecto es `cortar` a propósito**: olvidarse de declarar la política tiene que fallar
+// del lado seguro. Y el guardarraíl `endpointsPagoIdentidad` exige que cada endpoint de pago
+// declare la suya por escrito, para que ninguno la herede por accidente.
+//
+// La señal `auth_identidad_ajena_rechazada` se emite en LOS DOS casos: el detector no se
+// pierde por dejar pasar. Lo que cambia es que ya no se cobra en ventas — y la alerta
+// `cobro_bloqueado_auth` (backend) avisa cuando alguien se queda atascado.
 //
 // Devuelve el status REAL de `verifyAuth` (401 sin sesión, 403 si es una suplantación
 // escribiendo) en vez de colapsarlo todo a 401 como `getAuthenticatedUser`: en un endpoint
@@ -121,12 +150,20 @@ export type IdentidadResult =
   | { ok: true; userId: string; email: string | null; impersonadoPor: string | null }
   | { ok: false; response: NextResponse }
 
+/** Qué hacer si el id que manda el cliente no es el del token. Ver el bloque de arriba. */
+export type PoliticaDiscrepancia = 'cortar' | 'seguir-con-el-token'
+
 export async function requireUsuarioPropio(
   request: NextRequest,
   endpoint: string,
   /** El id que afirma el cliente (body/query). NO se usa como identidad: solo se contrasta. */
   idQueAfirmaElCliente?: string | null,
+  opciones: {
+    /** Por defecto `cortar`: olvidarse tiene que fallar del lado seguro. */
+    alDiscrepar?: PoliticaDiscrepancia
+  } = {},
 ): Promise<IdentidadResult> {
+  const alDiscrepar: PoliticaDiscrepancia = opciones.alDiscrepar ?? 'cortar'
   const auth = await verifyAuth(request, endpoint)
   if (!auth.success) {
     return {
@@ -145,21 +182,29 @@ export async function requireUsuarioPropio(
   }
 
   if (idQueAfirmaElCliente && idQueAfirmaElCliente !== auth.userId) {
-    // No se «arregla» usando el del token en silencio: alguien está pidiendo actuar sobre
-    // otra cuenta y eso tiene que verse. Es la firma exacta del abuso que abría el hueco.
-    console.warn(`🔒 [auth] ${endpoint}: el cliente afirmó otro userId — bloqueado`)
+    // La discrepancia SIEMPRE se registra, se corte o no: es la firma tanto del abuso como
+    // del cliente desincronizado, y distinguirlos se hace mirando si ese id existe.
+    const bloqueado = alDiscrepar === 'cortar'
+    console.warn(
+      `🔒 [auth] ${endpoint}: el cliente afirmó otro userId — ${bloqueado ? 'bloqueado' : 'se sigue con el del token'}`,
+    )
     emitFireAndForget({
       source: 'vercel',
       severity: 'warn',
       eventType: 'auth_identidad_ajena_rechazada',
       endpoint,
       userId: auth.userId,
-      metadata: { afirmado: idQueAfirmaElCliente },
+      metadata: { afirmado: idQueAfirmaElCliente, politica: alDiscrepar, bloqueado },
     })
-    return {
-      ok: false,
-      response: NextResponse.json({ error: 'No autorizado' }, { status: 403 }),
+    if (bloqueado) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: 'No autorizado' }, { status: 403 }),
+      }
     }
+    // Se sigue con la identidad del TOKEN, nunca con la afirmada. La diferencia con cortar
+    // no es de seguridad —el id del cliente no autoriza nada— sino de a quién le cuesta el
+    // desajuste: aquí, a nadie.
   }
 
   return {

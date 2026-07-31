@@ -14,7 +14,10 @@ async function _POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
 
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/reactivate', body?.userId)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/reactivate', body?.userId, {
+      // Vuelve a poner un COBRO. Equivocarse de cuenta aquí es cobrarle a quien no tocaba.
+      alDiscrepar: 'cortar',
+    })
     if (!identidad.ok) return identidad.response
 
     const result = await reactivateSubscription({ userId: identidad.userId })

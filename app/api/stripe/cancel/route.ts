@@ -41,7 +41,11 @@ async function _POST(request: NextRequest) {
     // T-340 — la identidad sale del TOKEN, nunca del cuerpo. Antes bastaba con mandar el
     // UUID de otra persona para cancelarle la suscripción; y, al no pasar por `verifyAuth`,
     // el candado de solo lectura de la suplantación tampoco cubría este camino.
-    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel', parseResult.data.userId)
+    const identidad = await requireUsuarioPropio(request, '/api/stripe/cancel', parseResult.data.userId, {
+      // Destructiva: si el cliente va desincronizado, seguir adelante cancelaría la
+      // suscripción de QUIEN tiene el token creyendo cancelar otra. No se deshace solo.
+      alDiscrepar: 'cortar',
+    })
     if (!identidad.ok) return identidad.response
 
     // Cancelar suscripción — con el userId autenticado, no con el que llegó en el cuerpo.

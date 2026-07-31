@@ -224,6 +224,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ofertas nunca pasaría por bueno. Correrla tras tocar `ofertaHeredada`, `precioHeredado` ' +
       'o `reactivateSubscription`.',
   },
+  purgar_feedback_espurio: {
+    titulo: 'Borrar del historial de una persona los apuntes que escribió otro (con respaldo y rastro)',
+    ruta: 'scripts/purgar-feedback-espurio.cjs',
+    estado: 'vivo',
+    notas:
+      'node scripts/purgar-feedback-espurio.cjs [--apply] — DRY-RUN por defecto. Nace de ' +
+      'T-340: un clic en «Reactivar» durante una suplantación de solo lectura dejó 3 apuntes ' +
+      'en el historial VISIBLE de una usuaria que ella no escribió. **El criterio vive en el ' +
+      'fichero (persona + ventana + motivos), no en la línea de comandos**: un criterio por ' +
+      'argumento invita a borrar de más. Antes de tocar nada imprime lo que borra Y lo que ' +
+      'conserva —sin ese contraste, un criterio demasiado ancho se lee igual que uno bueno—, ' +
+      'y guarda las filas completas en `observable_events` (`dato_espurio_purgado`) en la ' +
+      'MISMA transacción, así que si el respaldo falla no se borra. Reconstruir una fila = ' +
+      'leer su evento de purga; por eso el respaldo va a la BD y no a un fichero suelto. ' +
+      'Corrido el 31/07 sobre daluamva (3 filas; su baja real de febrero intacta).',
+  },
   // ── observabilidad de cliente ─────────────────────────────────────────────────────────────
   sim_ruido_console: {
     titulo: 'Medir qué parte de los console_error de cliente es ruido y qué parte es daño (y predecir el efecto del arreglo)',
