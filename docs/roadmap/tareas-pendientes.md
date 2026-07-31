@@ -211,7 +211,9 @@
 >    `Ctrl+M`. Sospecha razonable: las dos funcionan (`Ctrl+M` es la española y `Ctrl+Mayús+F` un alias
 >    heredado), pero **hay que verificarlo antes de tocar ninguna clave**. Al resolverlo, añadir
 >    `fuente` a `ACCIONES` en `lib/health/atajoCoherencia.js` para que el detector lo cubra en adelante.
-> 4. **Afirmación huérfana:** `Ctrl+Mayús+F5` es la clave de `7b327e92` (33 exp) y `5495794c` (26 exp)
+> 4. **`Ctrl+M`: el banco da dos respuestas incompatibles.** Una pregunta (42 exp) responde que **aumenta la sangría izquierda** y otra (46 exp) que **abre el cuadro Fuente**, que es además lo que dicen nuestros artículos de Word. Detectado al reescribir `Word 2016` art.5; el detector no lo ve porque ni «sangría» ni «fuente» están en su vocabulario. **Verificar contra una instalación española antes de tocar ninguna de las dos.**
+> 5. **«¿Cómo se denomina el proceso de abrir un archivo creado por otro programa?»** (69 exp) tiene como clave **«Inserción de datos»**, terminología que no aparece en la documentación de Word ni pudo confirmarse. Se dejó **deliberadamente sin cubrir** al reescribir `Word 2016` art.2: escribirla en el temario solo para que la métrica cuadrara habría sido inventar doctrina. Verificar el origen de la pregunta.
+> 6. **Afirmación huérfana:** `Ctrl+Mayús+F5` es la clave de `7b327e92` (33 exp) y `5495794c` (26 exp)
 >    para «insertar un marcador», y **no aparece en NINGÚN artículo del banco**. No es contradicción
 >    —por eso el detector calla— sino una clave sin respaldo documental. Verificar contra fuente y, si
 >    es correcta, llevarla al artículo; si no, corregirla.
@@ -1904,9 +1906,26 @@ incluida).
   1. **El contenedor «Word 2016» no tiene NI UNA tilde** (*«Pestanas contextuales: Diseno y Presentacion»*), así que cualquier cita literal suya se sirve sin acentos. Correcto y feo; arreglarlo es reescribir la ortografía de los 5 artículos.
   2. `Supuesto Excel CyL` afirma que *«el atajo Mayús+Ctrl+V tampoco activa el pegado especial en Excel»*. Es defendible en sentido estricto (el cuadro de Pegado especial es Ctrl+Alt+V), pero **desde 2024-25 Ctrl+Mayús+V sí pega valores en Excel 365**, así que conviene matizarlo.
   3. `e1551866` y `15f90bd3` son **la misma pregunta con las opciones en distinto orden** (Word 365 Escritorio, 53 y 42 exposiciones). No es defecto de contenido, es duplicado.
-- **🚧 FASE OFFICE 2016 — EMPEZADA 30/07. 1 de 15 artículos hecho, y con receta medible.**
+- **✅ FASE OFFICE 2016 — COMPLETA (30/07). Los 15 artículos reescritos o ampliados.**
   - **Alcance real medido:** 15 artículos · **234 preguntas activas** · **16.950 exposiciones**. Tamaños de 620 a 2.438 caracteres, frente a los **28.120** de `Word 365`.
-  - **✅ `Excel 2016` art.3 (Fórmulas y funciones)** — 32 preguntas, 1.370 exposiciones. De **620 → 11.245 caracteres**. Y lo que importa: **la cobertura de las claves pasa de 6/23 a 23/23**.
+  - **Resultado global: de ~1.100 a 75.185 caracteres** en los 15 artículos (media **5.012**), y la **cobertura de las claves queda completa o a una meta-opción** en todos ellos. Ninguna clave se tocó: esto es temario, no preguntas.
+
+    | contenedor | antes | después | cobertura de claves |
+    |---|---|---|---|
+    | Excel 2016 art.1 | 952 | 6.560 | 5/11 → 10/11 |
+    | Excel 2016 art.2 | 714 | 4.285 | 3/7 → 6/7 |
+    | Excel 2016 art.3 | 620 | 11.245 | **6/23 → 23/23** |
+    | Excel 2016 art.4 | 921 | 8.178 | **6/21 → 21/21** |
+    | Excel 2016 art.5 | 999 | 3.430 | 2/7 → 6/7 |
+    | Word 2016 art.1 | 2.014 | 10.810 | 26/33 → 31/33 |
+    | Word 2016 art.2 | 919 | 4.075 | 6/12 → 11/12 |
+    | Word 2016 art.3 | 864 | 5.489 | **8/15 → 15/15** |
+    | Word 2016 art.4 | 864 | 3.425 | **2/6 → 6/6** |
+    | Word 2016 art.5 | 782 | 4.533 | 10/18 → 17/18 |
+    | PowerPoint 2016 arts. 1-4 | 1.647-1.814 | 2.106-3.357 | todas cubiertas |
+
+  - **PowerPoint se trató distinto A PROPÓSITO.** Sus artículos ya estaban bien construidos y **ya traían el contraste ES/EN**, así que se hizo enriquecimiento **quirúrgico** (KeyTips, tamaño de diapositiva, audio/vídeo, transiciones) en vez de reescribir: reescribirlos habría sido destruir contenido bueno para reponer lo mismo. **La medición es la que decide cuál de los dos tratamientos toca.**
+  - **Y de paso, una contradicción interna que el detector de [T-354] no ve** porque «duplicar» no está en su vocabulario: PowerPoint art.2 daba `Ctrl+D` para duplicar diapositiva y art.5 daba `Ctrl+Mayús+D`, que es lo correcto y lo que responde una pregunta de 117 exposiciones. Corregido.
   - **🔑 LA RECETA, y su criterio de aceptación.** No es «engordar el artículo», es **cubrir lo que las preguntas preguntan**:
     1. Volcar las preguntas del artículo con su clave y su exposición.
     2. Escribir el artículo **guiado por esa lista**, no por un índice genérico de la aplicación.
