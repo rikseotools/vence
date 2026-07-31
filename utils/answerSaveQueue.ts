@@ -5,6 +5,7 @@ import { logClientError } from '@/lib/logClientError'
 import { emitClientEvent } from '@/lib/observability/client'
 import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
+import { getOrCreateDeviceId } from '@/hooks/useDeviceTracking'
 import { dispatchDailyLimitEvent } from '@/hooks/useDailyLimitEvent'
 
 const QUEUE_KEY = 'vence_answer_queue'
@@ -80,7 +81,11 @@ async function syncOne(answer: QueuedAnswer, accessToken: string): Promise<boole
   const timeoutId = setTimeout(() => { timedOut = true; controller.abort() }, SYNC_TIMEOUT_MS)
 
   try {
-    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+    // [T-371] Antes esto era `getItem`: si el identificador no existía, no se mandaba la
+    // cabecera y el servidor no llegaba a registrar el dispositivo, ni siquiera con la huella.
+    // Ahora se CREA si falta. `DeviceIdentity` ya lo pone al arrancar la app; esto es la segunda
+    // línea, en el único flujo por el que pasa todo el que responde preguntas.
+    const deviceId = typeof window !== 'undefined' ? getOrCreateDeviceId() : null
     // Huella v2 (estable ante borrado de localStorage) con caída a v1 durante la migración.
     const hwFp = typeof window !== 'undefined' ? getFingerprintHeader() : null
     const headers: Record<string, string> = {

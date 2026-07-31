@@ -4,6 +4,7 @@
 import { sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import { NextRequest } from 'next/server'
+import { resolverAnclaDispositivo } from '@/lib/security/deviceIdentity'
 // Fase 1.5 outbox sprint (28/05/2026): cache Redis cross-lambda para
 // 3 RPCs antifraude. Ver docs/roadmap/sprint-outbox-test-questions.md
 import { getOrSet, invalidate as redisInvalidate } from '@/lib/cache/redis'
@@ -63,7 +64,9 @@ export function clearDeviceCheckCache() {
  * - Devices inactive 30+ days are auto-evicted by the SQL function.
  * - Cached 60s to avoid RPC spam during exams (100 questions = 100 calls).
  *
- * Returns allowed=true if no userId or no deviceId (fail open).
+ * Sin usuario, o sin NINGUNA señal de dispositivo (ni identificador de navegador ni huella),
+ * devuelve fail-open. Con huella pero sin identificador SÍ registra, aunque no aplica el límite
+ * con esa ancla — ver `lib/security/deviceIdentity.ts` [T-371].
  */
 export async function registerAndCheckDevice(
   userId: string | null,
@@ -71,10 +74,22 @@ export async function registerAndCheckDevice(
   userAgent?: string | null,
   hwFingerprint?: string | null,
 ): Promise<DeviceCheckResult> {
-  if (!userId || !deviceId) return FAIL_OPEN
+  // [T-371] Antes esto era `if (!userId || !deviceId) return FAIL_OPEN`, y ese `return` no solo
+  // dejaba de comprobar: dejaba de REGISTRAR. Sin fila en `user_devices` el sweep de multicuenta,
+  // el límite y el anti-autoreferido de referidos no tienen nada que mirar, y como tampoco hay
+  // señal de que falte, el agujero se realimenta. Peor: la huella de hardware —la buena, la que
+  // sobrevive a borrar el navegador— viaja en esta misma llamada y se perdía con él.
+  //
+  // Ahora, si no hay identificador de navegador pero sí huella, se registra con un ancla derivada
+  // de ella. Registrar ≠ bloquear: con esa ancla NO se aplica el límite (`aplicaLimite`), porque
+  // agrupa cuentas que antes no se agrupaban y eso es exactamente lo que el modo `shadow` de
+  // [T-304] existe para medir antes de cortarle el servicio a nadie.
+  if (!userId) return FAIL_OPEN
+  const ancla = resolverAnclaDispositivo(deviceId, hwFingerprint)
+  if (!ancla.deviceId) return FAIL_OPEN
 
   // L1 cache in-memory por-lambda (mantenemos por compat + edge case Redis caído).
-  const cacheKey = `${userId}:${deviceId}`
+  const cacheKey = `${userId}:${ancla.deviceId}`
   const cached = deviceCheckCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < DEVICE_CHECK_TTL) {
     return cached.result
@@ -84,18 +99,22 @@ export async function registerAndCheckDevice(
   // de 25q en 5min → 96% hit ratio sobre el mismo user+device. Reduce RPCs a
   // Supabase de 25/test a ~1/test. Singleflight de redis.ts protege contra
   // stampede en cache miss. Fallback automático a fetcher si Redis cae.
-  return getOrSet<DeviceCheckResult>(`device_check:${userId}:${deviceId}`, 60, async () => {
+  return getOrSet<DeviceCheckResult>(`device_check:${userId}:${ancla.deviceId}`, 60, async () => {
     try {
       const deviceLabel = userAgent ? parseDeviceLabel(userAgent) : null
 
       const regRes = await getAdminDb().execute(sql`
-        SELECT * FROM register_device(${userId}::uuid, ${deviceId}, ${deviceLabel}, ${hwFingerprint || null})
+        SELECT * FROM register_device(${userId}::uuid, ${ancla.deviceId}, ${deviceLabel}, ${hwFingerprint || null})
       `)
       const result = rowsOf(regRes)[0]
       if (!result) return FAIL_OPEN
 
       const checkResult: DeviceCheckResult = {
-        allowed: result.out_allowed ?? result.allowed,
+        // Con ancla derivada de la huella se REGISTRA pero no se corta: esa ancla agrupa cuentas
+        // que antes no se agrupaban, y estrenar agrupación bloqueando es justo lo que [T-304]
+        // prohíbe (la huella v1 llegó a juntar 83 cuentas bajo un valor por un hash corto).
+        // Ganar visibilidad no puede costarle el servicio a un usuario legítimo.
+        allowed: ancla.aplicaLimite ? (result.out_allowed ?? result.allowed) : true,
         deviceCount: result.out_device_count ?? result.device_count,
         maxDevices: result.out_max_devices ?? result.max_devices,
         isNewDevice: result.out_is_new_device ?? result.is_new_device,

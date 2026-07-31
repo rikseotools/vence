@@ -1180,6 +1180,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mismo TTL: duplicarla garantizaba que un día divergieran). ' +
       'GOTCHA: este endpoint exige `adminUserId` en el CUERPO — el de impugnaciones lo saca del token.',
   },
+
+  // ── Visibilidad del antifraude ────────────────────────────────────────────────────────────
+  canary_cobertura_dispositivos: {
+    titulo: 'Medir qué porcentaje de usuarios activos tiene huella de dispositivo (visibilidad del antifraude)',
+    ruta: 'scripts/canary-cobertura-dispositivos.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/revisar-fraudes.md',
+    notas:
+      'npm run canary:cobertura-dispositivos [-- --dias N] [--json]. Solo lectura. Nace de [T-371]: ' +
+      'el antifraude por dispositivo (multicuenta, límite por cuenta, farmeo del free, ' +
+      'anti-autoreferido de referidos) SOLO ve a quien tiene fila en `user_devices`, y cuando no la ' +
+      'tiene no falla nada — las consultas devuelven cero y todo parece tranquilo (misma firma que ' +
+      'T-304). GOTCHA DE MEDIDA, que es el motivo de que exista: cuenta solo usuarios con ACTIVIDAD ' +
+      'real. Medido contra el padrón entero da 61%, contra uso real 92,4% — el hueco son cuentas que ' +
+      'nunca respondieron una pregunta, y un denominador mal elegido convierte mantenimiento en ' +
+      'alarma. Rojo <60%, ámbar <80%, sobre el suelo medido antes del arreglo.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

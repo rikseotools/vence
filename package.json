@@ -112,7 +112,8 @@
     "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs",
     "llm:ab-vinculo": "node scripts/observabilidad/ab-modelo-vinculo-vecino.cjs",
     "llm:ab-transformacion": "node scripts/observabilidad/ab-modelo-transformacion.cjs",
-    "llm:ab-reescritura": "node scripts/observabilidad/ab-modelo-reescritura.cjs"
+    "llm:ab-reescritura": "node scripts/observabilidad/ab-modelo-reescritura.cjs",
+    "canary:cobertura-dispositivos": "node scripts/canary-cobertura-dispositivos.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

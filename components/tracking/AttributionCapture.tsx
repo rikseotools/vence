@@ -20,22 +20,18 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { esNavegacionInterna } from '@/lib/attribution/touchPolicy'
+import { getOrCreateDeviceId } from '@/hooks/useDeviceTracking'
 
-const DEVICE_ID_KEY = 'vence_device_id'
 const COOKIE_MAX_AGE_DAYS = 90
 
 // Parámetros de URL → claves del payload del endpoint.
 const CLICK_ID_PARAMS = ['gclid', 'gbraid', 'wbraid', 'fbclid', 'ttclid', 'msclkid'] as const
 const UTM_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
 
-function getOrCreateDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_ID_KEY)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(DEVICE_ID_KEY, id)
-  }
-  return id
-}
+// [T-371] El generador vive en `hooks/useDeviceTracking`. Aquí había una COPIA sobre la misma
+// clave `vence_device_id`: dos implementaciones del mismo identificador es una divergencia
+// esperando ocurrir (basta que una cambie de formato o de clave para partir en dos la identidad
+// de un mismo navegador).
 
 function setCookie(name: string, value: string): void {
   const expires = new Date()

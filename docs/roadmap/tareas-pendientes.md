@@ -1029,7 +1029,7 @@ incluida).
   3. Y que el rojo **se note**: hoy este job puede estar caído semanas sin que nada avise. Es el mismo patrón que [T-307] (un cron que fallaba a diario sin alerta) y que [T-297] (un test rojo que nadie leía).
 - **Cómo salió:** intentando desplegar el backend el 31/07. El deploy no encontraba ventana (39 commits en dos horas), y al mirar por qué apareció este job en rojo al lado de los tres verdes.
 - **Relacionadas:** [T-297] (test de seguridad desfasado, en esta misma categoría), [T-307] (la familia: un guardarraíl que falla en silencio).
-### [T-371] 🔴 [ABIERTO 31/07] La huella de dispositivo no nace al abrir la app, sino dentro del camino de MARKETING: 4 de cada 10 usuarios no tienen ninguna
+### [T-371] 🟠 [ABIERTO 31/07] La huella de dispositivo nace dentro del camino de MARKETING, no al abrir la app: 1 de cada 13 usuarios activos no tiene ninguna
 
 - **No es el problema de [T-304], es el inverso, y por eso hace falta otra ficha.** Allí el `device_id` de `localStorage` **se borraba** (se rota en dos clics) y por eso el enforcement estuvo tres meses mudo. Aquí el `device_id` **no llega a existir**: para el 38,7% de las altas recientes no hay ni una fila en `user_devices`. Uno es un ancla que se suelta; el otro es un ancla que nunca se echó, y **la huella v2 no lo arregla** (ver abajo).
 - **El mecanismo, seguido hasta el final:**
@@ -1038,13 +1038,14 @@ incluida).
   3. Responder preguntas —el flujo donde vive el antifraude— **solo lo LEE**: `utils/answerSaveQueue.ts` hace `localStorage.getItem('vence_device_id')` y si no hay, no manda la cabecera `X-Device-Id`.
   4. Y en el servidor, `registerAndCheckDevice` (`lib/api/deviceLimit.ts:74`) abre con **`if (!userId || !deviceId) return FAIL_OPEN`**: sin identificador no comprueba nada… y **tampoco registra**, así que el usuario nunca entra en `user_devices`. El fallo se realimenta solo.
 - **⚠️ Lo más grave, y es lo que invalida el arreglo de T-304:** la **huella de hardware** (`hw_fingerprint`, la que SÍ sobrevive a borrar el navegador) se pasa como argumento a esa misma función, así que **queda detrás del mismo `return`**. La protección buena está condicionada a que exista la frágil: si falta el `device_id` de `localStorage`, tampoco se guarda la huella. `get_device_daily_usage_v2(device_id, fingerprint)` no puede unir dos señales cuando no se ha escrito ninguna.
-- **Medido el 31/07 (RDS):**
-  - `user_devices`: 6.481 filas / 5.736 usuarios, **viva y creciendo** (~450/semana). El 98% con `hw_fingerprint`. **No es una tabla muerta: es una tabla con agujeros.**
-  - Altas desde que existe (17/04): **8.066, con dispositivo 4.945 → 61,3%**.
-  - **405 usuarios recientes con actividad real (han respondido preguntas) y CERO huella.** 219 de escritorio y 166 de móvil: no es un problema de plataforma.
-  - Cuentas **free sin huella: 5.900 de 11.378 (52%)** — y el free es justo donde vive el farmeo multicuenta del límite diario.
-  - Premium sin huella: **8 de 266 (3%)**, porque usan más la app y acaban disparando alguno de los dos caminos. **El sesgo es el peor posible: se ve a quien más usa la plataforma y se deja de ver a quien crea cuentas para consumir el free.**
+- **Medido el 31/07 (RDS) — con la cifra CORREGIDA:**
+  - `user_devices`: 6.481 filas / 5.736 usuarios, **viva y creciendo** (~450/semana), 98% con `hw_fingerprint`. No es una tabla muerta: es una tabla con agujeros.
+  - **La cifra buena es 92,4%**: de los 5.329 usuarios dados de alta desde el 17/04 **que han respondido alguna pregunta**, 4.922 tienen huella. Entre los activos de los últimos 7 días, 95,6%.
+  - ⚠️ **El 61,3% que decía la primera versión de esta ficha estaba inflado y se corrige aquí**: se calculó sobre TODAS las altas (4.945/8.068), y ahí entran ~2.700 cuentas que **nunca respondieron una sola pregunta**. Como el dispositivo se registra al responder, quien no usó la plataforma no tiene fila — y eso no es un agujero de seguridad, es una cuenta vacía. Medir cobertura sobre el padrón entero y no sobre uso real hacía parecer sistémico algo que afecta a **407 personas**.
+  - **Esos 407 sí son el problema**: usan la app, responden preguntas y no dejan rastro de dispositivo. Uno de cada trece.
+  - Reparto: free 94,8% de cobertura entre activos (92 sin huella de 1.781), premium 2 sin huella de 152. El sesgo apuntado sigue siendo el correcto —quien más usa la app siempre acaba registrado— pero es **mucho menos acusado** de lo que decía la primera versión.
 - **Quién se queda ciego** (todos leen `user_devices`): el sweep de fraude (`multi_account_device`, `device_daily_farming`, `premium_sharing`), la regla de alerta de farmeo, el límite de dispositivos por cuenta, y la comprobación **anti-autoreferido** de `lib/referrals/activeSignup.ts`, que cruza `device_id` y `hw_fingerprint` para detectar que quien invita y quien se registra son la misma persona. Si el invitado no tiene fila, esa comprobación **no detecta nada y parece que sí**.
+- **La lección de medida, que vale más que la tarea:** la primera versión de esta ficha midió la cobertura contra el padrón completo y salió «4 de cada 10». Contra el uso real son «1 de cada 13». Un denominador mal elegido convierte una tarea de mantenimiento en una alarma, y gastar la palabra «crítico» donde no toca es la forma más rápida de que deje de significar algo. El canario `npm run canary:cobertura-dispositivos` cuenta SOLO usuarios activos por esto mismo.
 - **Daño hoy en referidos: ninguno, y conviene decirlo** — 8 referidos en total, 7 verificables, y los 2 ya recompensados lo son. El programa es nuevo. La ficha es para que siga siendo así cuando crezca.
 - **Caso que lo destapó:** una usuaria con dos cuentas (`mariasrm3@` y `msainzromero@`), mismo móvil, misma IP y 86 preguntas respondidas, con **cero filas** en `user_devices` en ambas. Se vieron por `user_sessions` (IP + resolución), que sí las tenía. Salió al revisar un feedback de pago, no de un detector.
 - **Arreglo propuesto:**

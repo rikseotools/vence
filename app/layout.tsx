@@ -13,7 +13,7 @@ import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import FraudTracker from '../components/FraudTracker'
 import ChallengeProvider from '../components/security/ChallengeProvider'
-import { GlobalClickTracker, PageViewTracker, AttributionCapture } from '../components/tracking'
+import { GlobalClickTracker, PageViewTracker, AttributionCapture, DeviceIdentity } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
 import ConsentModeDefault from '../components/ConsentModeDefault'
 import { TTSChainProvider } from '../components/tts/TTSChainContext'
@@ -73,6 +73,12 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                     {/* F0 trackeo-conversiones-ventas — captura global de click-IDs
                         (gclid/gbraid/wbraid/fbclid/ttclid/msclkid) + UTM en cualquier
                         página, no solo /landing/*. */}
+                    {/* T-371 — el identificador de dispositivo nace AQUÍ, al arrancar la app.
+                        Antes solo lo creaba el beacon de atribución (y detrás de dos `return`) o
+                        el chat de IA, así que 4 de cada 10 usuarios no tenían ninguno y eran
+                        invisibles para el antifraude. Va antes que AttributionCapture porque el
+                        ancla debe existir antes de que nadie la lea. */}
+                    <DeviceIdentity />
                     <Suspense fallback={null}>
                       <AttributionCapture />
                     </Suspense>
