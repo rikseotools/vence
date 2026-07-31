@@ -20,6 +20,10 @@
 # son el mismo. Eso no se puede esquivar moviendo carpetas.
 #
 # Uso:  . "$(dirname "$0")/lib/guardia-worktree.sh"; guardia_worktree "lo que este script le hace a tu árbol"
+#
+# OJO al escribir el mensaje: dentro de la función, `$*` son los argumentos de LA FUNCIÓN, no los
+# del script. La primera versión los interpolaba y sugería `deploy-frontend.sh resincroniza tu
+# árbol…` — un comando que no existe. Se usa `$ARGS_ORIGINALES`, capturado por el script.
 # Escape consciente:  DEPLOY_DESDE_WORKTREE=1
 
 guardia_worktree() {
@@ -36,9 +40,9 @@ guardia_worktree() {
   echo "      $PWD"
   echo "   Este script $que_hace, así que si sigues programando aquí se te moverá el suelo."
   echo "   Despliega desde el repo principal, que no tiene trabajo en curso:"
-  echo "      cd ${principal:-<repo-principal>} && $0 $*"
+  echo "      cd ${principal:-<repo-principal>} && $0 ${ARGS_ORIGINALES:-}"
   if [ "${DEPLOY_DESDE_WORKTREE:-}" != "1" ]; then
-    echo "   Si de verdad quieres hacerlo aquí:  DEPLOY_DESDE_WORKTREE=1 $0 $*"
+    echo "   Si de verdad quieres hacerlo aquí:  DEPLOY_DESDE_WORKTREE=1 $0 ${ARGS_ORIGINALES:-}"
     exit 2
   fi
   echo "   (DEPLOY_DESDE_WORKTREE=1 — sigo, pero no edites nada aquí hasta que acabe)"

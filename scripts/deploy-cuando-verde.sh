@@ -51,6 +51,7 @@ VUELTAS="${2:-12}"
 #
 # Por eso: se despliega desde el REPO PRINCIPAL, que no tiene trabajo en curso. El script sigue a
 # `origin/main` de todas formas, así que tu rama no pinta nada aquí.
+ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
 . "$(dirname "$0")/lib/guardia-worktree.sh"
 guardia_worktree "hace 'git reset --hard origin/main' en CADA vuelta y dejaría tu rama en el commit que hubiera al hacer el fetch"
 case "$QUE" in

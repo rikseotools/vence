@@ -22,6 +22,7 @@ set -euo pipefail
 # condicional: el primer intento se coló dentro de un `[ -f ./.env.local ] && { … }`, así que la
 # guarda dependía de que existiera ese fichero y corría después de cargar el entorno. Una guarda
 # que se ejecuta a veces no es una guarda.
+ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
 . "$(dirname "$0")/lib/guardia-worktree.sh"
 guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
 cd "$(dirname "$0")/.."
