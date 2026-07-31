@@ -6542,6 +6542,14 @@ de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
   quien topa el límite convierte al **4,8 %**, el doble de la media (2,37 %) — el muro es la palanca
   de conversión más fuerte medida, así que conviene que funcione.
 
+- **📊 MEDIDO EN VIVO EL 31/07 (24 h después del despliegue) — el corte dirigido MUERDE, y el hueco que queda es el global.**
+  - **El peor equipo está contenido.** `fe135d4a…` (3 cuentas, pico de **75/día**, 1.827 preguntas en 30 días) lleva **dos días seguidos clavado en 25**, que es exactamente el tope. Los otros confirmados, entre 0 y 10 al día.
+  - **Pero el modo sombra dejó pasar un equipo a 42 preguntas hoy** (`dirigido:false`, `mode:shadow`, ancla `fingerprint_v2`): un equipo NO confirmado por encima del tope al que no se le cortó porque el modo global sigue en `shadow`. Es el único evento de corte en 7 días, y no era de los confirmados.
+  - **Alcance de un `enforce` global, medido:** **35 device-días por encima de 25 en 7 días, en 15 equipos**. De esos, **solo 8 device-días son de los 8 confirmados** → el **77 % del exceso viene de equipos que nadie ha mirado**. Son ~5 device-días al día: el radio de acción es pequeño y acotado.
+  - **Y hay cola nueva que el triaje no ha tocado.** Equipos multi-cuenta con >100 preguntas en 7 días: **6, y solo uno está confirmado**. Los otros cinco (`2bbb2177…` 298 preg/2 cuentas, `d60ca3e4…` 297/2, `bff26373…` 238/3, `002999b0…` 175/2, `00677a19…` 149/2) están farmeando ahora mismo con el badge 🚨 **a cero**: el detector confirmó 8 equipos el 21/07 y desde entonces no ha vuelto a levantar ninguno. Confirmar saca del badge, pero **no detectar tampoco lo llena** — son dos silencios distintos y este es el segundo.
+  - **La decisión que queda es de Manuel y es una sola:** poner `DEVICE_LIMIT_MODE=enforce` cubre a los 15 equipos de golpe, sin bloquear cuentas a mano y sin ir confirmando de uno en uno. La alternativa —seguir con el corte dirigido— exige un triaje continuo que ya se ha demostrado que no ocurre solo.
+
+
 ### [T-179] ✅ [HECHA 30/07] Calibrar los umbrales de cosecha con la distribución real (los actuales son razonamiento, no datos)
 - **Contexto:** la detección de cosecha del banco (`lib/security/harvestSignals.js`, commits `e08eb7089`/`0d3b85b65`) mide el ratio respondidas/servidas sobre `daily_questions_served`. Sus dos umbrales —`maxAnswerRatio` 0,2 y `minServed` 300— salen de **un caso** (`anferbar987`) y de razonamiento, **no de una distribución**.
 - **Por qué urge medirlo:** el tercer umbral que llevaba (`egregiousServed`, volumen suelto ≥5.000) ya se demostró MAL calibrado antes de desplegar: el usuario real más intenso respondió **4.897** preguntas en 30 días, a un 2 % del corte, y las servidas siempre superan a las respondidas → habría marcado a los opositores de pago más activos. Se quitó. **No hay motivo para suponer que los otros dos están mejor calibrados.**
