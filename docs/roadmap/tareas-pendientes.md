@@ -1098,24 +1098,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-428] 🟠 [ABIERTO 31/07] Una sesión borra las fichas de otra al resolver el conflicto de `tareas-pendientes.md`, y no lo caza nada
-
-- **Esfuerzo: ~1 h** (el detector es una comparación de dos versiones del mismo fichero; lo puro se testea sin git).
-- **QUÉ PASÓ, medido hoy.** La sesión `central-inferior` escribió y **pusheó** (`3f2edb172`) tres bloques de contexto: la reescritura entera de [T-410] como traspaso, el cabo suelto de normalización en [T-408] y la segunda ocurrencia del día en [T-403]. **Tres commits después habían desaparecido los tres**, mientras el bloque que otra sesión había escrito en esa misma ficha sí sobrevivía. No hubo `git revert` ni discusión: fue una **resolución de conflicto** que se quedó con «su» lado del fichero. Se recuperaron a mano desde el commit, porque por casualidad se volvió a abrir la ficha; **si la sesión se hubiera cerrado antes, el trabajo de documentar se habría perdido entero y en silencio.**
-- **Por qué es estructural y va a repetirse:** con 4-6 sesiones a la vez, `docs/roadmap/tareas-pendientes.md` es el fichero que **todas** tocan, y las fichas nuevas se insertan **todas en el mismo sitio** (justo bajo `## Abiertas`), así que el conflicto no es la excepción: es lo normal. En una sola tarde chocó **cuatro veces**. Y resolver un conflicto de prosa a las 2 de la mañana eligiendo «el mío» es el error más fácil del mundo.
-- **Lo que NO lo caza (comprobado uno a uno):**
-  - `backlogRegistry.guardrail` verifica **ids únicos**, marcas de cierre coherentes y que ninguna cerrada se quede en `## Abiertas`. Un id sigue siendo único después de que le borres el cuerpo entero.
-  - `backlog.cjs sync` reconcilia **título y prioridad**. El cuerpo de la ficha —que es TODO el contexto— no lo mira nadie.
-  - El push-guard mira **claims**, no contenido.
-  - O sea: la ficha puede quedarse en una línea y **el CI sigue verde**.
-- **Propuesta (determinista, sin IA):** un check que compare el fichero **antes y después** del cambio (en `pre-push` y/o en CI contra la base) y **bloquee** si una ficha VIVA pierde una parte grande de su cuerpo sin moverse a `## Hechas` — el umbral hay que calibrarlo (una reescritura legítima también encoge; una ficha que pasa de 40 líneas a 6 no). Núcleo puro `lib/backlog/perdidaDeContexto.cjs` que reciba las dos versiones del markdown y devuelva las fichas mermadas, con su test; el hook solo hace de mensajero. **Aviso antes que bloqueo** si al medirlo sobre el histórico salen demasiados falsos positivos.
-- **Alternativa más barata que también sirve** (y compatible): que cada ficha viva en **su propio fichero** (`docs/roadmap/tareas/T-428.md`) y que `tareas-pendientes.md` sea solo el índice. Los conflictos desaparecen por construcción, porque dos sesiones dejan de escribir en el mismo sitio. Es más trabajo de migración, pero ataca la causa y no el síntoma.
-- **Mientras no exista:** al resolver un conflicto en este fichero, **conservar SIEMPRE los dos lados** (son fichas distintas, casi nunca hay que elegir), y si dudas, mirar `git log -p` del fichero antes de dar el rebase por bueno.
-- **Relacionadas:** [T-400] (ver en vivo qué ficheros toca cada sesión — habría avisado del choque, no del borrado), [T-385].
-
-
-
-
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
