@@ -1098,6 +1098,56 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-434] 🔴 [ABIERTO 31/07] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
+
+- **Esfuerzo: larga** (el diagnóstico está hecho; falta encontrar por qué la reconciliación no les alcanza, y eso es tocar identidad).
+- **🔴 HAY DINERO EN JUEGO AHORA MISMO.** El 30/07 a las 06:43, el usuario `140ef91a` intentó contratar premium y recibió **`404 · User not found in database`** — 16 llamadas a `/api/stripe/create-checkout` rechazadas. Es **exactamente** el caso que motivó [T-245] (Sergio, 24 intentos), repitiéndose **dos días después de darla por hecha**.
+- **Lo medido el 31/07 (24 h, sesión `central-izquierdo`):**
+  - **31 usuarios distintos** provocan `Usuario no existe` desde el SERVIDOR (`event_type='auth'`, `severity='warn'`, endpoint `/api/v2/user-stats`): 183 eventos.
+  - **33 usuarios** con la firma de cliente `UserAvatar: v2 stats error: Usuario no existe` (81 eventos).
+  - **Los 33 son fantasmas completos:** 0 de 33 existen en `user_profiles`, 0 en `test_questions`. No es una carrera de milisegundos al crear el perfil: `64a2b250` lleva **dos días** navegando (91 peticiones, banners, TTS, temario) con **68 «Usuario no existe»** a su nombre.
+  - Y **sí pasan por donde debería curarles**: 162 llamadas a `/api/auth/token` desde 28 de los 29, 2.210 en total.
+- **El arreglo de [T-245] ESTÁ desplegado — comprobado, no supuesto.** El commit `e3035a601` (`lib/auth/canonicalSub.ts`) es ancestro de los tres deploys vivos del 30-31/07 (`a933bd3e`, `2fdbcf4e`, `26174822`). O sea: **el problema no es que falte desplegar.**
+- **Y la vigilancia que aquella ficha dejó como red de seguridad NO lo ve.** Su consulta (`auth_sub_reconciliado` por día) devuelve **1 solo evento en 14 días** —un `huerfano` del 29/07— mientras hay 31 usuarios al día con el síntoma. Quien mire esa consulta concluye «drenado, todo bien». **Es un falso verde**, y es lo primero que hay que arreglar: una señal que no ve el caso es peor que no tenerla, porque da por cerrado lo que sigue abierto.
+- **Lo que NO está confirmado (no lo des por hecho):** por qué la reconciliación no les alcanza. El cableado se leyó y es correcto —`/api/auth/token` llama a `canonicalSubForToken(userId, email)` en cada acuñación y emite señal si reconcilia o si queda huérfano—, así que la hipótesis a comprobar es que **el `sub` que ve `/api/v2/user-stats` no es el que pasó por la reconciliación**: `/api/v2/*` lo puede servir el backend (`api.vence.es`) verificando el token por JWKS, y ahí el perfil se busca con el `sub` del token tal cual. Otra opción es que el perfil se borre DESPUÉS de acuñar.
+- **Primer paso concreto (30 min, sin tocar código):** coger uno de los ids de la consulta de abajo y comparar, para ese usuario, los eventos de `/api/auth/token` (¿aparece `auth_sub_reconciliado`? ¿con qué `subOriginal`/`subAcunado`?) con el `user_id` que registra `/api/v2/user-stats`. Si difieren, el fallo está en la propagación del sub acuñado; si coinciden, está en que la reconciliación no se ejecuta en ese camino.
+  ```sql
+  -- los afectados de las últimas 24 h
+  SELECT user_id, count(*) FROM observable_events
+   WHERE event_type='auth' AND severity='warn' AND error_message='Usuario no existe'
+     AND created_at > now() - interval '24 hours' AND user_id IS NOT NULL
+   GROUP BY 1 ORDER BY 2 DESC;
+  ```
+- **El agravante de siempre, que sigue vigente:** un usuario roto **no puede avisarnos** (el soporte falla por la misma FK), así que esto no va a llegar por feedback. O lo caza la observabilidad o no lo caza nadie.
+- **Relacionadas:** [T-245] (el arreglo que no basta), [T-271] (el cubo de `console_error` donde apareció la firma), [T-260].
+
+
+### [T-431] ✅ 🟡 [HECHA 31/07] Un worktree abandonado con trabajo sin pushear es INVISIBLE hasta que alguien mira
+
+- **ORIGEN.** Limpiando worktrees el 31/07, con Manuel preguntando si «ya estaba todo hecho». Había **5 worktrees con trabajo fuera de `main`** y nadie sabía qué contenían: llevaban entre 3 y 9 días ahí.
+- **EL RESULTADO DE MIRARLOS UNO A UNO, que es el dato que justifica esta ficha:**
+  | worktree | qué tenía | veredicto |
+  |---|---|---|
+  | `vence-clean` | **47 commits** sin pushear | los 47 ya estaban en `main` por contenido (`git cherry`) |
+  | `pagos-planes` | 7 ficheros | **idénticos** a `main`, byte a byte |
+  | `umu-golive` | 2 ficheros | versión DESFASADA; la UC3M ya estaba en `main` |
+  | `scrape-opositatest-tai` | 14 ficheros | markdown de antes de los ids `T-nnn` + limpieza a medias |
+  | **`sesion-28jul-d`** | 3 ficheros | ⚠️ **43 líneas de documentación que NUNCA se subieron** |
+- **O sea: 4 de 5 eran ruido y 1 tenía contenido real que llevaba TRES DÍAS perdido.** Y no era menor: dos gotchas con coste medido —que catalogar exige escribir también `convocatorias` (15 filas quedaron en callejón sin salida), y que el BOE por `txt.php` clona el armazón del portal sin ninguna cifra—. Rescatadas a `main` en esa misma sesión.
+- **EL HUECO:** `scripts/worktrees/listar-worktrees.sh` **sí** enseña los commits sin pushear… pero **nada lo vigila**. No hay barrido, ni cron, ni señal: solo lo ves si te acuerdas de ejecutarlo. Y justo las sesiones que mueren no dejan a nadie que se acuerde.
+- **Por qué no basta con [T-430]:** aquello enseña el trabajo de la sesión anterior **cuando alguien retoma su tarea**. Si nadie la retoma —o si el trabajo perdido son documentos que no cuelgan de ninguna ficha, como fue el caso— sigue invisible. Son complementarios: T-430 cubre el rescate dirigido, esto cubre el barrido.
+- **Cómo hacerlo, con la calibración clara:** un chequeo que liste worktrees **sin latido reciente Y con `origin/main..HEAD` no vacío o ficheros sin commitear**. La calibración que lo hace útil es distinguir **contenido único de estar desfasado**: casi todo lo que parece trabajo perdido ya está en `main`, así que el detector debe usar `git cherry` (equivalencia de parche) y no contar commits, o dará 5 avisos de los que 4 son ruido — y morirá como muere todo aviso que grita en falso.
+- **Dónde:** encaja en el barrido nocturno o como aviso en `latidos.cjs`, que ya es el sitio donde se mira quién está vivo.
+- **HECHO, y con un segundo hallazgo que no estaba en la ficha.** El hueco descrito era «nadie barre»; al abrirlo apareció que **`borrar-worktree.sh` YA bloqueaba… con el criterio malo**: `rev-list --count origin/main..` > 0, o sea contando commits. Con `vence-clean` eso son 47 commits de nada, y la salida documentada era `--force`, que **en el mismo paso descarta también los cambios sin commitear**. Un bloqueo que es ruido 4 de cada 5 veces enseñando a teclear el gesto que destruye — la lección de [T-375]/[T-403], pero aquí el borrado NO se puede deshacer.
+- **El criterio, que es todo el trabajo.** La pregunta no es «¿cuánto hay aquí?» sino **«¿qué se PERDERÍA si lo borro?»**, y son tres preguntas a git, cada una matando un falso positivo distinto: (1) `origin/main...HEAD` a **tres puntos** —a dos puntos entra lo que a TI te falta de la principal: mi propio worktree salía con 14 ficheros «únicos» de los que 12 eran de otras sesiones, y de paso resuelve el `umu-golive` desfasado—; (2) ∩ los que **de verdad difieren hoy** de la principal, que es lo que tumba los 47 commits de `vence-clean` y los 7 ficheros idénticos de `pagos-planes`; (3) ∪ lo que **ni siquiera está commiteado**, que no sale en ningún diff y es lo más frágil (fue el caso de `scrape-opositatest-tai`).
+- **UN solo criterio para las TRES puertas** (`lib/sessions/trabajoHuerfano.cjs`): el barrido que avisa, el mapa `latidos.cjs` y el guard del borrado. Si opinaran distinto, el que miente sería justo el irreversible.
+- **`latidos.cjs` ya no manda a mirarlo a mano.** Terminaba literalmente en *«candidatas a cerrar, MIRA SI TIENEN TRABAJO SIN PUSHEAR»* + *«mira también `git status` y `git log origin/main..`»*: era pedirle al lector que hiciera de detector, y las sesiones que mueren no dejan a nadie que se acuerde. Ahora la respuesta viene dada, por worktree.
+- **NO va al barrido nocturno, y conviene que quede escrito:** la ficha lo proponía, pero los worktrees viven en la máquina de quien trabaja y el sweep de salud corre en **Fargate**. Un cron en la nube no puede ver un directorio que no existe ahí. Por eso se engancha en local: el mapa de sesiones y, sobre todo, el punto de pérdida irreversible.
+- **Capas.** Núcleo puro con **19 tests** (`__tests__/sessions/trabajoHuerfano.test.ts`, los cinco worktrees reales como casos). **Simulación `npm run sim:huerfanos`**, que reconstruye esos cinco sobre repos de git DE VERDAD con el colector real: hacía falta porque el detector **nace en silencio** (hoy 0 huérfanos de 8 worktrees, todos vivos) y porque el fallo que se coló no estaba en la clasificación —pura y testeable sin git— sino en **qué se le preguntaba a git**, que ningún unitario con datos inventados habría visto. Verificado además de punta a punta contra `borrar-worktree.sh`: worktree con contenido único → aborta; con 2 commits que no aportan nada → borra limpio (antes esto bloqueaba).
+- **Observabilidad:** clase `trabajo_huerfano` añadida al catálogo de fricción de [T-423] en vez de un evento nuevo — es fricción del mismo tipo, solo que de la que únicamente queda el rastro porque la sesión que la causó ya no está.
+- **Relacionadas:** [T-430] (rescate al retomar), [T-415] (una sesión por directorio), [T-296] (el latido).
+
+
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
@@ -2293,32 +2343,6 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Lo que NO resuelve, dicho claro:** «no hagas chapuzas» es un juicio de calidad y no se puede hacer cumplir con una comprobación. Lo que sí se puede es **hacer imposible saltarse sus señales observables** —capas, registro de herramientas, integración— y traerlas al momento en que sirven.
 - **Capas:** 5 tests (que esté cableado en `claim`, que cubra las cuatro exigencias, que el comando lleve las palabras de la tarea, y que no se lea como burocracia).
 - **Relacionadas:** [T-130] (el registro de herramientas: *¿esto ya existe?*), `scripts/robustez-push-guard.cjs`, [T-415] (mismo patrón: impedir en el punto de escritura).
-### [T-431] ✅ 🟡 [HECHA 31/07] Un worktree abandonado con trabajo sin pushear es INVISIBLE hasta que alguien mira
-
-- **ORIGEN.** Limpiando worktrees el 31/07, con Manuel preguntando si «ya estaba todo hecho». Había **5 worktrees con trabajo fuera de `main`** y nadie sabía qué contenían: llevaban entre 3 y 9 días ahí.
-- **EL RESULTADO DE MIRARLOS UNO A UNO, que es el dato que justifica esta ficha:**
-  | worktree | qué tenía | veredicto |
-  |---|---|---|
-  | `vence-clean` | **47 commits** sin pushear | los 47 ya estaban en `main` por contenido (`git cherry`) |
-  | `pagos-planes` | 7 ficheros | **idénticos** a `main`, byte a byte |
-  | `umu-golive` | 2 ficheros | versión DESFASADA; la UC3M ya estaba en `main` |
-  | `scrape-opositatest-tai` | 14 ficheros | markdown de antes de los ids `T-nnn` + limpieza a medias |
-  | **`sesion-28jul-d`** | 3 ficheros | ⚠️ **43 líneas de documentación que NUNCA se subieron** |
-- **O sea: 4 de 5 eran ruido y 1 tenía contenido real que llevaba TRES DÍAS perdido.** Y no era menor: dos gotchas con coste medido —que catalogar exige escribir también `convocatorias` (15 filas quedaron en callejón sin salida), y que el BOE por `txt.php` clona el armazón del portal sin ninguna cifra—. Rescatadas a `main` en esa misma sesión.
-- **EL HUECO:** `scripts/worktrees/listar-worktrees.sh` **sí** enseña los commits sin pushear… pero **nada lo vigila**. No hay barrido, ni cron, ni señal: solo lo ves si te acuerdas de ejecutarlo. Y justo las sesiones que mueren no dejan a nadie que se acuerde.
-- **Por qué no basta con [T-430]:** aquello enseña el trabajo de la sesión anterior **cuando alguien retoma su tarea**. Si nadie la retoma —o si el trabajo perdido son documentos que no cuelgan de ninguna ficha, como fue el caso— sigue invisible. Son complementarios: T-430 cubre el rescate dirigido, esto cubre el barrido.
-- **Cómo hacerlo, con la calibración clara:** un chequeo que liste worktrees **sin latido reciente Y con `origin/main..HEAD` no vacío o ficheros sin commitear**. La calibración que lo hace útil es distinguir **contenido único de estar desfasado**: casi todo lo que parece trabajo perdido ya está en `main`, así que el detector debe usar `git cherry` (equivalencia de parche) y no contar commits, o dará 5 avisos de los que 4 son ruido — y morirá como muere todo aviso que grita en falso.
-- **Dónde:** encaja en el barrido nocturno o como aviso en `latidos.cjs`, que ya es el sitio donde se mira quién está vivo.
-- **HECHO, y con un segundo hallazgo que no estaba en la ficha.** El hueco descrito era «nadie barre»; al abrirlo apareció que **`borrar-worktree.sh` YA bloqueaba… con el criterio malo**: `rev-list --count origin/main..` > 0, o sea contando commits. Con `vence-clean` eso son 47 commits de nada, y la salida documentada era `--force`, que **en el mismo paso descarta también los cambios sin commitear**. Un bloqueo que es ruido 4 de cada 5 veces enseñando a teclear el gesto que destruye — la lección de [T-375]/[T-403], pero aquí el borrado NO se puede deshacer.
-- **El criterio, que es todo el trabajo.** La pregunta no es «¿cuánto hay aquí?» sino **«¿qué se PERDERÍA si lo borro?»**, y son tres preguntas a git, cada una matando un falso positivo distinto: (1) `origin/main...HEAD` a **tres puntos** —a dos puntos entra lo que a TI te falta de la principal: mi propio worktree salía con 14 ficheros «únicos» de los que 12 eran de otras sesiones, y de paso resuelve el `umu-golive` desfasado—; (2) ∩ los que **de verdad difieren hoy** de la principal, que es lo que tumba los 47 commits de `vence-clean` y los 7 ficheros idénticos de `pagos-planes`; (3) ∪ lo que **ni siquiera está commiteado**, que no sale en ningún diff y es lo más frágil (fue el caso de `scrape-opositatest-tai`).
-- **UN solo criterio para las TRES puertas** (`lib/sessions/trabajoHuerfano.cjs`): el barrido que avisa, el mapa `latidos.cjs` y el guard del borrado. Si opinaran distinto, el que miente sería justo el irreversible.
-- **`latidos.cjs` ya no manda a mirarlo a mano.** Terminaba literalmente en *«candidatas a cerrar, MIRA SI TIENEN TRABAJO SIN PUSHEAR»* + *«mira también `git status` y `git log origin/main..`»*: era pedirle al lector que hiciera de detector, y las sesiones que mueren no dejan a nadie que se acuerde. Ahora la respuesta viene dada, por worktree.
-- **NO va al barrido nocturno, y conviene que quede escrito:** la ficha lo proponía, pero los worktrees viven en la máquina de quien trabaja y el sweep de salud corre en **Fargate**. Un cron en la nube no puede ver un directorio que no existe ahí. Por eso se engancha en local: el mapa de sesiones y, sobre todo, el punto de pérdida irreversible.
-- **Capas.** Núcleo puro con **19 tests** (`__tests__/sessions/trabajoHuerfano.test.ts`, los cinco worktrees reales como casos). **Simulación `npm run sim:huerfanos`**, que reconstruye esos cinco sobre repos de git DE VERDAD con el colector real: hacía falta porque el detector **nace en silencio** (hoy 0 huérfanos de 8 worktrees, todos vivos) y porque el fallo que se coló no estaba en la clasificación —pura y testeable sin git— sino en **qué se le preguntaba a git**, que ningún unitario con datos inventados habría visto. Verificado además de punta a punta contra `borrar-worktree.sh`: worktree con contenido único → aborta; con 2 commits que no aportan nada → borra limpio (antes esto bloqueaba).
-- **Observabilidad:** clase `trabajo_huerfano` añadida al catálogo de fricción de [T-423] en vez de un evento nuevo — es fricción del mismo tipo, solo que de la que únicamente queda el rastro porque la sesión que la causó ya no está.
-- **Relacionadas:** [T-430] (rescate al retomar), [T-415] (una sesión por directorio), [T-296] (el latido).
-
-
 ### [T-432] ✅ 🟠 [HECHA 31/07] Los vigías sobrevivían a su sesión y seguían vigilando PARA NADIE
 
 - **ORIGEN.** Manuel, limpiando worktrees (31/07): *«pero eso es una chapuza, deberían morir con la sesión, ¿no crees?»*. Tenía razón.
@@ -8864,6 +8888,8 @@ de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
 > 2. **La ley figuraba como verificada por CONTAR sus 99 artículos sin huecos.** Completo ≠ fiel: ese es el hueco sistémico, anotado en [T-240] y ya escrito en el runbook de completitud.
 >
 > **Lo que deja montado, reutilizable:** descarga con espejo Cellar ante el racionamiento de EUR-Lex (`lib/laws/descargarEurlex.cjs`), revisión de extracción antes de escribir (`revisarTextoOficial`), conservación del texto anterior en `article_versions` (72 filas, 124.625 caracteres) y el triaje `triar-preguntas-tras-reimportar.cjs`, que responde para cualquier reimportación futura si la rompiste tú o ya estaba rota.
+
+> ⚠️ **31/07: NO BASTA — ver [T-434].** Está desplegada (comprobado: `e3035a601` es ancestro de los deploys vivos) y aun así hay **31 usuarios al día** con sesión y sin perfil, uno de ellos con **16 checkouts rechazados con `404 · User not found in database`** el 30/07. Y la consulta de vigilancia que esta ficha dejó abajo **da falso verde**: 1 evento en 14 días frente a 31 usuarios diarios con el síntoma. No la uses para concluir que está drenado.
 
 ### [T-245] ✅ [HECHO 28/07 · falta desplegar] Sesión con `sub` sin perfil: el usuario no puede pagar, no puede quejarse, y nadie se entera
 - **Qué pasó (caso real, 28/07):** `pcsergio0@gmail.com` intentó contratar premium **24 veces en 10 minutos** y el checkout le rechazó siempre con «User not found in database». Después fue a `/soporte` a avisarnos **6 veces** y también falló (500). Acabó pagando a las 14:50 —es premium activo— pero por su cuenta, y sus 6 avisos se perdieron.
