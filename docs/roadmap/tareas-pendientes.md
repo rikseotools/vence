@@ -1144,31 +1144,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capa que lo vigile:** la condición no vive en ningún módulo puro, así que hoy no se puede testear sin BD. Sacarla a `scripts/impugnaciones/lib/` (junto a `scope-enforcement.cjs`, que ya sigue ese patrón) con su test en `__tests__/impugnaciones/` — un caso por estado (`pending` sin respuesta / `pending` con respuesta / `appealed`).
 - **Mitigación mientras tanto:** aviso añadido en `docs/maintenance/impugnaciones-claude-code.md` §0.bis.
 
-### [T-401] 🟡 [ABIERTO 31/07] Impugnación `cf376ad0` (Jesús Quesada, premium): enunciado mejorable del art. 3 Ley 39/2015 — ANALIZADA, falta aplicar y cerrar
-
-- **Esfuerzo: ~15 min.** El análisis está hecho y verificado contra el BOE; lo que queda es aplicar dos cambios, enseñar el borrador a Manuel y cerrar. **La impugnación está LIBRE en la cola** (claim soltado al cerrar la sesión), así que empieza por `node scripts/impugnaciones/cola.cjs next` o cógela directa con `revisar-impugnacion.cjs cf376ad0-18e0-4953-842d-84c226e6cf24`.
-- **Datos:** dispute `cf376ad0-18e0-4953-842d-84c226e6cf24` · pregunta `34c98670-e444-4b28-9c08-0986ba4f3c35` (no oficial, `approved`, `shuffle_safety='unsafe'`) · usuario `jesusquesada2007@gmail.com` (premium, 0/10 recompensas este mes) · motivo `mal_formulada`: *«pregunta cuando tendrán capacidad de obrar, no se entiende la respuesta correcta, no tiene sentido…»*.
-- **Verificado contra el BOE consolidado: la CLAVE ES CORRECTA.** La opción marcada es el texto literal del art. 3.b) de la Ley 39/2015, y nuestro artículo en BD coincide palabra por palabra con el BOE (art. 3 **no** lo tocó la Ley 8/2021, comprobado). No hay doble solución.
-- **Pero tiene razón en la FORMA, y por eso es `mal_formulada` y no un falso positivo.** Tres defectos reales:
-  1. El enunciado **nombra la ley dos veces entera** (*«…de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, ¿cuándo tendrán capacidad de obrar los menores de edad ante las Administraciones Públicas a efectos de la Ley del Procedimiento Administrativo Común de las Administraciones Públicas?»*).
-  2. Pregunta **«¿cuándo?»** y las cuatro opciones responden a «¿en qué supuestos?». La única que tiene forma de responder a un «cuándo» es el distractor *«Siempre que no se encuentre incapacitado y tenga catorce años cumplidos»*, así que la redacción **empuja hacia la opción falsa**. Ahí es donde falló.
-  3. La opción C acaba con **dos puntos seguidos** (`…patria potestad..`).
-  - Y la explicación es un **volcado crudo del artículo** con el markdown roto (`**Artículo 3. Capacidad de obrar.\n**`), sin análisis por opción.
-- **Cambio 1 — enunciado y opción C** (UPDATE directo, que es lo que manda el manual §5 para una pregunta ya `approved`; **cerrar después vía `/api/v2/dispute/resolve` invalida el cache solo**):
-  ```
-  question_text = 'De conformidad con el artículo 3 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, ¿en qué supuestos tendrán capacidad de obrar los menores de edad ante las Administraciones Públicas?'
-  option_c     = 'Para el ejercicio y defensa de sus derechos cuando estos sean fundamentales y haya obtenido la preceptiva autorización de quien ostente su patria potestad.'
-  ```
-- **Cambio 2 — explicación estructurada** (`npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts 34c98670-e444-4b28-9c08-0986ba4f3c35 <fichero.json> --apply`, dry-run primero). Contenido acordado, con la cita literal del art. 3.b):
-  - **cita** → `Art. 3.b) Ley 39/2015`: *«Los menores de edad para el ejercicio y defensa de aquellos de sus derechos e intereses cuya actuación esté permitida por el ordenamiento jurídico sin la asistencia de la persona que ejerza la patria potestad, tutela o curatela. Se exceptúa el supuesto de los menores incapacitados, cuando la extensión de la incapacitación afecte al ejercicio y defensa de los derechos o intereses de que se trate.»*
-  - **opción «catorce años cumplidos»** → INCORRECTA: el artículo **no fija ningún umbral de edad**; lo que delimita la capacidad es el tipo de derecho que se ejercita, no los años.
-  - **opción del art. 3.b) literal** → CORRECTA.
-  - **opción «derechos fundamentales + autorización de quien ostente la patria potestad»** → INCORRECTA: el artículo no exige autorización ni se limita a los derechos fundamentales; se refiere justo a los que el ordenamiento permite ejercer **sin** esa asistencia.
-  - **opción «asistido por… y la extensión de su incapacitación afecte…»** → INCORRECTA: invierte la excepción del precepto (eso es lo que **excluye** al menor, no lo que le da capacidad).
-  - Ojo al escribirla: razones referidas al **contenido**, nunca a la letra ni a la posición (si no, deja de ser barajable).
-- **Cierre propuesto: `resolved`.** Consecuencia consciente: **le concede 1 €** (premium, `mal_formulada` es motivo verificable). El criterio: si se le cambia el enunciado *porque* avisó de que no se entendía, rechazársela sería incoherente. **Si Manuel prefiere `rejected`** (la clave nunca estuvo mal), los dos cambios de arriba se aplican igual — no dependen del estado.
-- **Contexto que ayuda a responderle:** es el **mismo usuario** de la impugnación `ee09f030`, cerrada `rejected` el 31/07 (silencio administrativo, art. 24: confundía el *sentido* del apartado 1 con los *efectos* del apartado 2; ahí la clave también era correcta y también se reescribió la explicación). Son dos quejas seguidas del mismo día: conviene que la respuesta no suene a plantilla y reconozca lo que sí acertó.
-
 ### [T-396] 🟠 [ABIERTO 31/07] 🙋 DECISIÓN DE MANUEL — ETGOA Sanidad y Consumo publica «120 temas» y sirve 20
 
 - **Los números, medidos el 31/07:** `etgoa-sanidad-consumo` está **activa** (`is_active=true`, estado `inscripcion_cerrada`). Su config declara **120 temas** (20 de parte común + 100 del «Área de Consumo»); en BD hay **120 filas pero solo 20 activas** (T1-T20) y **las 100 específicas (T101-T200) están inactivas y con 0 `topic_scope`**. El home publica *«120 temas»* (`app/page.tsx:327`). **4 usuarios apuntados, 1 de ellos premium.**
@@ -1759,6 +1734,33 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-401] ✅ [HECHA 31/07 — la aplicó otra sesión desde esta ficha] Impugnación `cf376ad0` (Jesús Quesada, premium): enunciado mejorable del art. 3 Ley 39/2015
+
+- **Esfuerzo: ~15 min.** El análisis está hecho y verificado contra el BOE; lo que queda es aplicar dos cambios, enseñar el borrador a Manuel y cerrar. **La impugnación está LIBRE en la cola** (claim soltado al cerrar la sesión), así que empieza por `node scripts/impugnaciones/cola.cjs next` o cógela directa con `revisar-impugnacion.cjs cf376ad0-18e0-4953-842d-84c226e6cf24`.
+- **Datos:** dispute `cf376ad0-18e0-4953-842d-84c226e6cf24` · pregunta `34c98670-e444-4b28-9c08-0986ba4f3c35` (no oficial, `approved`, `shuffle_safety='unsafe'`) · usuario `jesusquesada2007@gmail.com` (premium, 0/10 recompensas este mes) · motivo `mal_formulada`: *«pregunta cuando tendrán capacidad de obrar, no se entiende la respuesta correcta, no tiene sentido…»*.
+- **Verificado contra el BOE consolidado: la CLAVE ES CORRECTA.** La opción marcada es el texto literal del art. 3.b) de la Ley 39/2015, y nuestro artículo en BD coincide palabra por palabra con el BOE (art. 3 **no** lo tocó la Ley 8/2021, comprobado). No hay doble solución.
+- **Pero tiene razón en la FORMA, y por eso es `mal_formulada` y no un falso positivo.** Tres defectos reales:
+  1. El enunciado **nombra la ley dos veces entera** (*«…de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, ¿cuándo tendrán capacidad de obrar los menores de edad ante las Administraciones Públicas a efectos de la Ley del Procedimiento Administrativo Común de las Administraciones Públicas?»*).
+  2. Pregunta **«¿cuándo?»** y las cuatro opciones responden a «¿en qué supuestos?». La única que tiene forma de responder a un «cuándo» es el distractor *«Siempre que no se encuentre incapacitado y tenga catorce años cumplidos»*, así que la redacción **empuja hacia la opción falsa**. Ahí es donde falló.
+  3. La opción C acaba con **dos puntos seguidos** (`…patria potestad..`).
+  - Y la explicación es un **volcado crudo del artículo** con el markdown roto (`**Artículo 3. Capacidad de obrar.\n**`), sin análisis por opción.
+- **Cambio 1 — enunciado y opción C** (UPDATE directo, que es lo que manda el manual §5 para una pregunta ya `approved`; **cerrar después vía `/api/v2/dispute/resolve` invalida el cache solo**):
+  ```
+  question_text = 'De conformidad con el artículo 3 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, ¿en qué supuestos tendrán capacidad de obrar los menores de edad ante las Administraciones Públicas?'
+  option_c     = 'Para el ejercicio y defensa de sus derechos cuando estos sean fundamentales y haya obtenido la preceptiva autorización de quien ostente su patria potestad.'
+  ```
+- **Cambio 2 — explicación estructurada** (`npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts 34c98670-e444-4b28-9c08-0986ba4f3c35 <fichero.json> --apply`, dry-run primero). Contenido acordado, con la cita literal del art. 3.b):
+  - **cita** → `Art. 3.b) Ley 39/2015`: *«Los menores de edad para el ejercicio y defensa de aquellos de sus derechos e intereses cuya actuación esté permitida por el ordenamiento jurídico sin la asistencia de la persona que ejerza la patria potestad, tutela o curatela. Se exceptúa el supuesto de los menores incapacitados, cuando la extensión de la incapacitación afecte al ejercicio y defensa de los derechos o intereses de que se trate.»*
+  - **opción «catorce años cumplidos»** → INCORRECTA: el artículo **no fija ningún umbral de edad**; lo que delimita la capacidad es el tipo de derecho que se ejercita, no los años.
+  - **opción del art. 3.b) literal** → CORRECTA.
+  - **opción «derechos fundamentales + autorización de quien ostente la patria potestad»** → INCORRECTA: el artículo no exige autorización ni se limita a los derechos fundamentales; se refiere justo a los que el ordenamiento permite ejercer **sin** esa asistencia.
+  - **opción «asistido por… y la extensión de su incapacitación afecte…»** → INCORRECTA: invierte la excepción del precepto (eso es lo que **excluye** al menor, no lo que le da capacidad).
+  - Ojo al escribirla: razones referidas al **contenido**, nunca a la letra ni a la posición (si no, deja de ser barajable).
+- **Cierre propuesto: `resolved`.** Consecuencia consciente: **le concede 1 €** (premium, `mal_formulada` es motivo verificable). El criterio: si se le cambia el enunciado *porque* avisó de que no se entendía, rechazársela sería incoherente. **Si Manuel prefiere `rejected`** (la clave nunca estuvo mal), los dos cambios de arriba se aplican igual — no dependen del estado.
+- **Contexto que ayuda a responderle:** es el **mismo usuario** de la impugnación `ee09f030`, cerrada `rejected` el 31/07 (silencio administrativo, art. 24: confundía el *sentido* del apartado 1 con los *efectos* del apartado 2; ahí la clave también era correcta y también se reescribió la explicación). Son dos quejas seguidas del mismo día: conviene que la respuesta no suene a plantilla y reconozca lo que sí acertó.
+
+- **✅ CERRADA 31/07 17:20.** Otra sesión cogió la impugnación de la cola y aplicó **exactamente** lo que dejaba escrito esta ficha: enunciado nuevo (`¿en qué supuestos…?`, sin repetir el nombre de la ley), opción C sin los dos puntos seguidos y explicación estructurada. Comprobado en BD: la pregunta `34c98670` tiene `explanation_data`, está **`safe`** (barajable) y el dispute quedó **`resolved`** con respuesta enviada a Jesús. La ficha valió para lo que se escribió: que quien la cogiera no repitiera el análisis.
 
 ### [T-404] ✅ 🟠 [HECHA 31/07] La cola de deploys ya existía y funcionaba — lo que faltaba era poder PREGUNTARLA
 
