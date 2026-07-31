@@ -28,6 +28,44 @@
 /** Horas entre registros para un mismo usuario. Una IP por franja basta para el antifraude. */
 export const TRACK_IP_TTL_HOURS = 6
 
+// ── EL SEGUNDO FALLO, EL QUE DEJÓ LA COBERTURA EN EL 2% (T-314, 31/07/2026) ──────────────────
+// Arreglar el disparador no bastó: el cliente llamaba, el endpoint respondía 200… y la IP se
+// escribía en la fila EQUIVOCADA. La llamada va sin `sessionId` (en `INITIAL_SESSION` todavía no
+// hay sesión que nombrar), así que el servidor tenía que adivinar y elegía «la sesión más reciente
+// de este usuario que aún no tiene IP». Como la fila de HOY se crea después —la crea el arranque
+// de un test, no la carga de la página—, la más reciente sin IP era la de otro día.
+//
+// Medido sobre 24 h de producción: de 465 escrituras de IP, **448 (96 %) cayeron en una sesión
+// iniciada hacía más de 30 minutos** y 58 en sesiones de hacía más de una semana; sólo 2 fueron a
+// la sesión en curso. Con 34.732 filas sin IP en la cola de los 27 días rotos, el fallback no
+// estaba estampando la sesión viva: estaba drenando el atasco por arriba, con la IP de hoy.
+//
+// Eso NO es «un dato que falta»: es un dato FALSO. Una sesión de abril con la IP de julio miente
+// al antifraude, que es justo quien lo consulta para decidir si dos cuentas comparten casa.
+//
+// La regla: sólo se estampa la sesión que puede ser la de ahora. Si no la hay, no se escribe
+// nada — la IP correcta ya la pone quien CREA la fila, que es el único que la sabe de verdad.
+/** Minutos de antigüedad máxima de una sesión para poder estamparle la IP a posteriori. */
+export const SESSION_IP_MAX_AGE_MIN = 30
+
+/**
+ * ¿Esta fila de sesión puede ser la que el usuario tiene abierta ahora?
+ *
+ * Se define aquí, junto a la otra decisión de esta señal, para que la constante que usa el SQL y
+ * la que se testea sean LA MISMA. Un reloj hacia atrás (sesión con fecha futura) cuenta como
+ * reciente: es raro, pero pisar una fila de hoy es preferible a inventar una de abril.
+ */
+export function esSesionEstampable(input: {
+  sessionStartMs: number
+  nowMs: number
+  maxAgeMin?: number
+}): boolean {
+  const { sessionStartMs, nowMs } = input
+  const antigüedadMs = nowMs - sessionStartMs
+  if (antigüedadMs < 0) return true
+  return antigüedadMs <= (input.maxAgeMin ?? SESSION_IP_MAX_AGE_MIN) * 60_000
+}
+
 export interface TrackDecisionInput {
   /** ¿Hay usuario autenticado ahora mismo? */
   userId: string | null | undefined

@@ -9,6 +9,8 @@ import {
 } from '@/lib/api/v2/user-sessions'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { getClientIp } from '@/lib/api/clientIp'
+import { extractEdgeGeo } from '@/lib/api/edgeGeo'
 
 async function _POST(request: NextRequest): Promise<NextResponse<CreateUserSessionResponse>> {
   const auth = await verifyAuth(request, '/api/v2/user-sessions')
@@ -28,7 +30,13 @@ async function _POST(request: NextRequest): Promise<NextResponse<CreateUserSessi
   if (!parsed.success) {
     return NextResponse.json({ success: false, error: 'Validación' }, { status: 400 })
   }
-  const result = await createUserSession(parsed.data, auth.userId)
+  // El origen lo pone el SERVIDOR, nunca el body: es la única forma de que la sesión nazca ya
+  // sabiendo desde dónde se abrió (T-314). El resolutor de IP es el compartido (T-089), que
+  // distingue la cabecera del borde de confianza de una falsificable.
+  const result = await createUserSession(parsed.data, auth.userId, {
+    ipAddress: getClientIp(request),
+    geo: extractEdgeGeo(request.headers),
+  })
   if (!result.success) {
     return NextResponse.json({ success: false, error: result.error ?? 'db_error' }, { status: 500 })
   }

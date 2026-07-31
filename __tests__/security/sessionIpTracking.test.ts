@@ -11,7 +11,9 @@ import {
   shouldTrackSessionIp,
   encodeTrackMark,
   decodeTrackMark,
+  esSesionEstampable,
   TRACK_IP_TTL_HOURS,
+  SESSION_IP_MAX_AGE_MIN,
 } from '@/lib/security/sessionIpTracking'
 
 const AHORA = new Date('2026-07-30T12:00:00Z').getTime()
@@ -82,4 +84,38 @@ describe('la marca del navegador tolera basura sin dejar de registrar', () => {
       })).toBe(true)
     },
   )
+})
+
+/**
+ * El SEGUNDO fallo de T-314, el que dejó la cobertura en el 2% con el disparador ya arreglado:
+ * la llamada llegaba, respondía 200, y la IP se escribía en una sesión de OTRO DÍA. El endpoint
+ * adivinaba «la más reciente sin IP» sin mirar su fecha, y la fila de hoy todavía no existe cuando
+ * llega la llamada. Medido en 24 h de producción: 448 de 465 escrituras (96%) cayeron en sesiones
+ * iniciadas hacía más de 30 min, 58 en sesiones de hacía más de una semana.
+ *
+ * Eso no es un dato que falta: es un dato falso, y quien lo lee es el antifraude.
+ */
+describe('esSesionEstampable — no se le pone la IP de hoy a una sesión de abril', () => {
+  const nowMs = AHORA
+
+  it('la sesión recién abierta se estampa', () => {
+    expect(esSesionEstampable({ sessionStartMs: nowMs, nowMs })).toBe(true)
+    expect(esSesionEstampable({ sessionStartMs: nowMs - 60_000, nowMs })).toBe(true)
+  })
+
+  it('la frontera es exacta', () => {
+    const limite = SESSION_IP_MAX_AGE_MIN * 60_000
+    expect(esSesionEstampable({ sessionStartMs: nowMs - limite, nowMs })).toBe(true)
+    expect(esSesionEstampable({ sessionStartMs: nowMs - limite - 1, nowMs })).toBe(false)
+  })
+
+  it('el caso REAL que se estaba escribiendo mal: la sesión de otro día NO se estampa', () => {
+    expect(esSesionEstampable({ sessionStartMs: nowMs - horas(24), nowMs })).toBe(false)
+    expect(esSesionEstampable({ sessionStartMs: nowMs - horas(24 * 97), nowMs })).toBe(false)
+  })
+
+  it('una sesión con fecha FUTURA (reloj torcido) cuenta como reciente', () => {
+    // Pisar una fila de hoy es preferible a irse a buscar una de abril.
+    expect(esSesionEstampable({ sessionStartMs: nowMs + horas(2), nowMs })).toBe(true)
+  })
 })

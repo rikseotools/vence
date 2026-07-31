@@ -3,7 +3,10 @@
 import { NextResponse, after } from 'next/server'
 import { getDb, getAdminDb, probeDbPaths } from '@/db/client'
 import { userSessions, userDevices } from '@/db/schema'
-import { eq, isNull, desc, and } from 'drizzle-orm'
+import { eq, isNull, desc, and, gte } from 'drizzle-orm'
+import { SESSION_IP_MAX_AGE_MIN } from '@/lib/security/sessionIpTracking'
+import { extractEdgeGeo, type EdgeGeo } from '@/lib/api/edgeGeo'
+import { getClientIp } from '@/lib/api/clientIp'
 import { z } from 'zod/v3'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
@@ -24,75 +27,6 @@ const trackSessionIpSchema = z.object({
   hwFingerprint: z.string().nullish(),
 })
 
-interface GeoLocation {
-  country_code: string
-  region: string
-  city: string
-  lat: number | null
-  lon: number | null
-}
-
-/**
- * Extrae geolocation de los headers que el edge inyecta server-side (sync, 0
- * latencia). Preferencia: CloudFront (infra actual desde la migración) →
- * Vercel (legacy, por si se volviera a servir desde allí).
- *
- * CloudFront-Viewer-* (requieren origin request policy que reenvíe las geo
- * headers, p.ej. Managed-AllViewerAndCloudFrontHeaders-2022-06):
- *   - CloudFront-Viewer-Country         (e.g. 'ES')
- *   - CloudFront-Viewer-Country-Region  (e.g. 'M')
- *   - CloudFront-Viewer-City            (e.g. 'Madrid', SIN url-encode)
- *   - CloudFront-Viewer-Latitude / -Longitude
- *
- * Vercel headers (legacy): x-vercel-ip-country / -country-region / -city
- *   (url-encoded) / -latitude / -longitude
- *
- * En dev local (next dev) ningún header existe → devolvemos null y la sesión
- * se guarda sin geo data. Comportamiento esperado.
- *
- * Pérdida controlada: el campo isp ya no se rellena (no se consume en el
- * codebase; admin/fraudes solo usa city). Filas históricas mantienen su isp.
- */
-function extractGeo(request: Request): GeoLocation | null {
-  // 1) CloudFront (infra actual). Headers case-insensitive vía Headers.get().
-  const cfCountry = request.headers.get('cloudfront-viewer-country')
-  if (cfCountry) {
-    return {
-      country_code: cfCountry,
-      region: request.headers.get('cloudfront-viewer-country-region') || '',
-      city: request.headers.get('cloudfront-viewer-city') || '',
-      lat: parseFloatOrNull(request.headers.get('cloudfront-viewer-latitude')),
-      lon: parseFloatOrNull(request.headers.get('cloudfront-viewer-longitude')),
-    }
-  }
-
-  // 2) Vercel (legacy). El city viene url-encoded (espacios = %20, etc.)
-  const country = request.headers.get('x-vercel-ip-country')
-  if (!country) return null // dev local o edge sin geo headers
-
-  const cityEncoded = request.headers.get('x-vercel-ip-city')
-  return {
-    country_code: country,
-    region: request.headers.get('x-vercel-ip-country-region') || '',
-    city: cityEncoded ? safeDecodeURIComponent(cityEncoded) : '',
-    lat: parseFloatOrNull(request.headers.get('x-vercel-ip-latitude')),
-    lon: parseFloatOrNull(request.headers.get('x-vercel-ip-longitude')),
-  }
-}
-
-function safeDecodeURIComponent(s: string): string {
-  try {
-    return decodeURIComponent(s)
-  } catch {
-    return s
-  }
-}
-
-function parseFloatOrNull(s: string | null): number | null {
-  if (!s) return null
-  const n = parseFloat(s)
-  return isFinite(n) ? n : null
-}
 
 async function _POST(request: Request) {
   try {
@@ -108,10 +42,9 @@ async function _POST(request: Request) {
 
     const { userId, sessionId, deviceId, hwFingerprint } = parsed.data
 
-    // Obtener IP del request
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const ip = forwardedFor?.split(',')[0]?.trim() ?? realIp ?? 'unknown'
+    // Resolutor compartido (T-089): distingue la cabecera del borde de confianza de una
+    // falsificable, en vez de creerse el primer `x-forwarded-for` que llegue.
+    const ip = getClientIp(request)
 
     console.log('📍 [SessionIP] Tracking IP de sesión:', {
       userId: userId.substring(0, 8) + '...',
@@ -120,14 +53,15 @@ async function _POST(request: Request) {
     })
 
     // Geolocalización de los headers del edge (CloudFront → Vercel legacy), sync 0 latencia
-    const geo = extractGeo(request)
+    const geo: EdgeGeo | null = extractEdgeGeo(request.headers)
 
     const db = getDb()
 
-    // Preparar datos de actualización
-    const updateData: Record<string, unknown> = {
-      ipAddress: ip,
-    }
+    // `ip_address` es de tipo `inet`: escribir 'unknown' —lo que devuelve el resolutor cuando no
+    // hay ninguna cabecera— reventaría el UPDATE entero y el handler degradaría a 200/no-track sin
+    // que nadie viera la causa. Sin IP fiable no se toca la columna; el resto (device, geo) sí.
+    const updateData: Record<string, unknown> = {}
+    if (ip !== 'unknown') updateData.ipAddress = ip
 
     if (deviceId) {
       updateData.deviceFingerprint = deviceId
@@ -159,15 +93,22 @@ async function _POST(request: Request) {
           .set(updateData)
           .where(eq(userSessions.id, sessionId))
       } else {
-        // Sin sessionId: actualizar la sesión más reciente sin IP
-        // Drizzle no soporta .update().order().limit(), usamos select + update por ID
+        // Sin sessionId hay que adivinar la fila, y adivinar mal es PEOR que no escribir: hasta el
+        // 31/07 esto cogía «la más reciente sin IP» sin mirar su fecha y el 96% de las escrituras
+        // caían en sesiones de otros días —58 de hace más de una semana—, porque la fila de hoy
+        // aún no existe cuando llega esta llamada. Con 34.732 filas sin IP en la cola de los 27
+        // días rotos, esto no estampaba la sesión viva: drenaba el atasco con la IP de hoy y le
+        // mentía al antifraude, que es quien luego compara IPs para decidir si dos cuentas
+        // comparten casa. Ahora sólo se estampa una sesión que PUEDA ser la de ahora; si no la
+        // hay, no se escribe nada — la IP de verdad ya la pone quien crea la fila (T-314).
         const recentSession = await db
           .select({ id: userSessions.id })
           .from(userSessions)
           .where(
             and(
               eq(userSessions.userId, userId),
-              isNull(userSessions.ipAddress)
+              isNull(userSessions.ipAddress),
+              gte(userSessions.sessionStart, new Date(Date.now() - SESSION_IP_MAX_AGE_MIN * 60_000).toISOString()),
             )
           )
           .orderBy(desc(userSessions.sessionStart))
