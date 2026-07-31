@@ -77,8 +77,12 @@ if (require.main !== module) {
 
     // --- CLAIM (reparto entre sesiones, ver cola.cjs). Solo si pasas --sid. No fatal. ---
     let claimWarn = '';
-    const sidIdx = process.argv.indexOf('--sid');
-    const sid = (sidIdx >= 0 ? process.argv[sidIdx + 1] : null) || process.env.CLAUDE_CODE_SESSION_ID || null;
+    // T-407: antes esto IGNORABA el fichero `.session-id` y solo miraba la variable de entorno,
+    // así que en un worktree creado con el tooling no coincidía con el id que usa `cola.cjs` para
+    // reclamar → el dossier avisaba de «otra sesión» siendo la misma. Ahora ambos preguntan al
+    // mismo módulo.
+    const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
+    const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
     if (sid && ['pending', 'appealed'].includes(d.status)) {
       const dtbl = isPsy ? 'psychometric_question_disputes' : 'question_disputes';
       try {

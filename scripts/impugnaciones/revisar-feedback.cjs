@@ -43,8 +43,12 @@ const ago = (d) => {
 
     // --- CLAIM (reparto entre sesiones). Solo con --sid. No fatal. ---
     let claimWarn = '';
-    const sidIdx = process.argv.indexOf('--sid');
-    const sid = (sidIdx >= 0 ? process.argv[sidIdx + 1] : null) || process.env.CLAUDE_CODE_SESSION_ID || null;
+    // T-407: antes esto IGNORABA el fichero `.session-id` y solo miraba la variable de entorno,
+    // así que en un worktree creado con el tooling no coincidía con el id que usa `cola.cjs` para
+    // reclamar → el dossier avisaba de «otra sesión» siendo la misma. Ahora ambos preguntan al
+    // mismo módulo.
+    const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
+    const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
     if (sid && fb.status === 'pending') {
       const fresh = fb.claimed_by && fb.claimed_by !== sid && fb.claimed_at && (Date.now() - new Date(fb.claimed_at).getTime()) < 2 * 3600e3;
       if (fresh) {

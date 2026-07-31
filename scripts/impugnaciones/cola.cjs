@@ -28,16 +28,13 @@ function arg(name) { const i = process.argv.indexOf(name); return i >= 0 ? proce
 // El session-id se resuelve solo (nada que teclear): --sid explícito > fichero .session-id
 // (lo escribe crear-worktree.sh) > CLAUDE_CODE_SESSION_ID (cada sesión de Claude Code ya trae
 // el suyo, único). Así el claim funciona sin configurar nada.
-function readSessionId() {
-  const path = require('path');
-  for (const p of [path.join(process.cwd(), '.session-id'), path.join(__dirname, '..', '..', '.session-id')]) {
-    try { const v = fs.readFileSync(p, 'utf8').trim(); if (v) return v; } catch {}
-  }
-  return null;
-}
+// Resuelto por el módulo COMPARTIDO (T-407). Antes esta cola reclamaba con el id del fichero y
+// `revisar-impugnacion.cjs` comparaba contra el de la variable de entorno: el mismo trabajo con
+// dos identidades, y un aviso de «otra sesión» contra uno mismo.
+const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
 
 const cmd = process.argv[2];
-const sid = arg('--sid') || readSessionId() || process.env.CLAUDE_CODE_SESSION_ID || null;
+const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
 const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 const stale = `${STALE_HOURS} hours`;
 

@@ -27,12 +27,11 @@ function url() {
   try { return fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim() } catch { return null }
 }
 
-function sesion() {
-  for (const base of [process.cwd(), REPO]) {
-    try { const v = fs.readFileSync(path.join(base, '.session-id'), 'utf8').trim(); if (v) return v } catch {}
-  }
-  return process.env.CLAUDE_CODE_SESSION_ID || null
-}
+// Misma identidad que el resto del andamiaje (T-407). Esta era la SEXTA copia del resolvedor,
+// escrita el mismo día que se descubrió el problema — de ahí que el arreglo sea un módulo y no
+// una corrección puntual.
+const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+function sesion() { return resolverSid({ repo: REPO }).sid }
 
 async function main() {
   const u = url()

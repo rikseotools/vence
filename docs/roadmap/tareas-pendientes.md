@@ -1134,6 +1134,27 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capa que lo vigile:** el kind ES la capa; núcleo puro con su test (pares idénticos, opciones vacías/NULL que NO cuentan como par, D nula legítima de las oposiciones de 3 opciones → ver manual de impugnaciones §7.8, que es el falso positivo obvio a evitar).
 - **Relacionada:** [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
 
+### [T-408] 🟠 [ABIERTO 31/07] El banco sirve la MISMA pregunta duplicada: 1.955 activas repetidas literalmente, y las gemelas pueden contradecirse en la clave
+
+- **Esfuerzo: ~3 h** (el corte estricto es una consulta determinista; el trabajo está en el corte BORROSO, que es donde vive el daño, y en decidir qué gemela se jubila).
+- **Qué pasa:** dos preguntas activas distintas son la misma pregunta. El opositor la ve repetida —y a veces **con dos respuestas buenas distintas**, sin forma de saber cuál vale—. No es lo mismo que [T-406]: allí se repiten dos OPCIONES dentro de una pregunta; aquí se repite la PREGUNTA entera dentro del banco.
+- **Medido hoy (31/07, banco activo, sin LLM):**
+  | Corte | Grupos | Preguntas activas |
+  |---|---|---|
+  | Mismo enunciado normalizado **y mismo juego de opciones** (duplicado literal) | **959** | **1.955** |
+  | …de ellos, con **clave contradictoria** entre gemelas | 5 | 12 |
+  | Mismo enunciado normalizado, opciones cualesquiera | 3.541 | 7.438 |
+- **El corte estricto es un SUELO, no la medida.** El caso que destapó esto **no aparece en él**: las dos gemelas de Laura Zurdo (`599ffc78` / `8dd97c48`) decían *«Access»* y *«Access 365»*, y una de las cuatro cifras cambiaba (65.535 frente a 64.000) — o sea que **la discrepancia de clave viajaba disfrazada de opción distinta**, que es justo lo que el corte exacto no puede ver. Y el corte ancho (3.541 grupos) no sirve tal cual: mete enunciados genéricos legítimos (*«Señale la respuesta correcta»*) reutilizados por preguntas que no tienen nada que ver. **La banda útil está entre los dos y hay que calibrarla**, no elegir uno de los dos extremos.
+- **Cómo salió:** de la impugnación `32b0d55e` (Laura Zurdo, premium, 31/07): *«creo recordar que esta pregunta me ha aparecido alguna otra vez y la respuesta correcta era 64.000»*. Tenía razón. Había **cuatro versiones** de esa pregunta en el banco y **dos servidas a la vez con claves que se contradecían**; la suya, además, con la clave equivocada (jubilada como `retired_duplicate`, se queda la correcta). **Lo detectó una usuaria acordándose, que es la peor forma posible de detectarlo.**
+- **Por qué no lo caza nada:** `npm run tools:buscar -- duplicadas` no devuelve detector alguno, y ningún kind de `health-sweep` compara una pregunta **con otra pregunta** — todos la comparan con su artículo, su epígrafe o su convocatoria. El lifecycle tiene `retired_duplicate` y `admin_duplicate_of`, o sea que el DESENLACE está construido desde hace meses: lo que falta es quien encuentre los casos. Mismo hueco que [T-406] y [T-405] visto desde un tercer lado.
+- **Propuesta (por orden de coste):**
+  1. **Kind determinista `pregunta_duplicada`** con el corte estricto (enunciado + opciones idénticos): 959 grupos, cero falsos positivos por construcción. Banda **`error`** si las gemelas discrepan en la clave (irresoluble para el opositor), **`warn`** si coinciden (solo repetición).
+  2. **Corte borroso calibrado** para el caso Laura (enunciado casi idéntico + opciones que se solapan salvo una cifra). Ojo: medido con solape ≥0,9 sobre el conjunto menor da ~400 pares solo en Access **y está lleno de falsos positivos** (verificado a mano: mezcla preguntas distintas que comparten el arranque). Va **bajo demanda**, no al badge, hasta que la precisión se mida.
+  3. Al reparar, **jubilar la gemela peor** (`admin_duplicate_of` → `retired_duplicate`) en vez de editar las dos, y verificar la clave de la superviviente contra la fuente antes de dejarla sola.
+- **Dato de contexto:** en las 502 activas de Access se verificaron a mano pares idénticos (`821259c4`/`e9af0377`, `32fbe5e1`/`c774a064`), así que la duplicación es real y no un artefacto de la normalización.
+- **Capa que lo vigile:** el kind ES la capa (núcleo puro + test: normalización con tildes y espacios, opciones NULL que no cuentan, y las oposiciones de 3 opciones con D nula, que es el falso positivo obvio).
+- **Relacionada:** [T-406] (opciones duplicadas dentro de una pregunta), [T-405], manual `impugnaciones-claude-code.md` (regla «si el fallo puede ser sistémico, mídelo en la BD antes de cerrar», que es la que hizo aflorar esto).
+
 ### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
 
 - **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).

@@ -22,14 +22,10 @@ const { extractTaskIds, evaluatePush } = require('../lib/backlog/pushGuard.cjs')
 
 const REPO = path.join(__dirname, '..')
 
-function readSessionId() {
-  const arg = process.argv.indexOf('--sid')
-  if (arg >= 0 && process.argv[arg + 1]) return process.argv[arg + 1]
-  for (const p of [path.join(process.cwd(), '.session-id'), path.join(REPO, '.session-id')]) {
-    try { const v = fs.readFileSync(p, 'utf8').trim(); if (v) return v } catch {}
-  }
-  return process.env.CLAUDE_CODE_SESSION_ID || null
-}
+// Misma identidad que `backlog.cjs`, resuelta por el MISMO módulo (T-407): si el guard y el
+// claim discreparan, el guard bloquearía a la sesión por su propia tarea.
+const { resolverSid } = require('../lib/sessions/sid.cjs')
+function readSessionId() { return resolverSid({ repo: REPO }).sid }
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL

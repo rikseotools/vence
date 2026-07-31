@@ -49,13 +49,13 @@ function url() {
  * El sid y el directorio tienen que venir del MISMO sitio.
  */
 function resolverSesion() {
-  for (const base of [process.cwd(), REPO]) {
-    try {
-      const v = fs.readFileSync(path.join(base, '.session-id'), 'utf8').trim()
-      if (v) return { sid: v, base }
-    } catch {}
-  }
-  return { sid: process.env.CLAUDE_CODE_SESSION_ID || null, base: process.cwd() }
+  // Delegado en el módulo COMPARTIDO (T-407): había seis copias de esta resolución con dos
+  // reglas distintas, y el latido tiene que publicar EXACTAMENTE la misma identidad con la que
+  // el backlog reclama — si no, el mapa de solape muestra a una sesión pisándose a sí misma.
+  // El contrato de arriba se conserva: el sid y el directorio salen del MISMO sitio.
+  const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const { sid, base } = resolverSid({ repo: REPO })
+  return { sid, base }
 }
 
 /** Worktree y rama del directorio de donde salió el sid (ver `resolverSesion`). */

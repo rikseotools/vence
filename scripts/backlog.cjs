@@ -72,15 +72,12 @@ function arg(name) {
   // --superficie frontend` guardaba el sha "--superficie" (visto en la prueba real, 29/07).
   return v == null || v.startsWith('--') ? null : v;
 }
-function readSessionId() {
-  for (const p of [path.join(process.cwd(), '.session-id'), path.join(REPO, '.session-id')]) {
-    try { const v = fs.readFileSync(p, 'utf8').trim(); if (v) return v; } catch {}
-  }
-  return null;
-}
+// La identidad de la sesión se resuelve en UN solo sitio (T-407): había seis copias de esto
+// con dos reglas distintas, y una sesión llegaba a verse a sí misma como ajena.
+const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'));
 
 const cmd = process.argv[2];
-const sid = arg('--sid') || readSessionId() || process.env.CLAUDE_CODE_SESSION_ID || null;
+const sid = resolverSid({ repo: REPO }).sid;
 const s = loadPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
 
 // 'ninguna' = APARCADA por tamaño/coste (decisión Manuel 20/07 para T-040, ~21.000
