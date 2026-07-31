@@ -136,15 +136,40 @@ async function pasada(nombre, vistos, sql) {
   const i = resto.indexOf('--cada');
   const cada = (i >= 0 ? Number(resto[i + 1]) : 600) * 1000;
 
+  // ── MORIR CON LA SESIÓN QUE LO LANZÓ (T-432) ──────────────────────────────────────────────
+  //
+  // El vigía escribe sus avisos en la SALIDA de la sesión que lo arrancó. Si esa sesión se
+  // cierra, el proceso NO muere —Linux se lo entrega a init— y sigue consultando la BD,
+  // detectando novedades y **contándoselas a nadie**. Medido el 31/07: dos vigías llevaban
+  // 33 HORAS así, y uno de ellos duplicado.
+  //
+  // Peor que desperdiciar: en `--loop` recuerda lo ya avisado, así que un huérfano puede marcar
+  // como visto algo **que nadie llegó a ver nunca**. La vigilancia no falla, finge funcionar.
+  //
+  // Se detecta sin depender de señales (varios se lanzaron con `nohup`, que las ignora a
+  // propósito): si el proceso padre muere, el sistema reasigna este proceso a otro —init o el
+  // reaper del usuario—, así que **el ppid CAMBIA**. Comparar contra el del arranque es exacto
+  // y cuesta cero.
+  const padreAlArrancar = process.ppid;
+  const huerfano = () => loop && process.ppid !== padreAlArrancar;
+
   const sql = db();
   const vistos = new Set();
   try {
     do {
       const nuevas = await pasada(fuente, vistos, sql);
       nuevas.forEach((l) => console.log(l));
+      if (huerfano()) {
+        console.error(`vigia: la sesión que me lanzó (pid ${padreAlArrancar}) ya no está — salgo en vez de vigilar para nadie.`);
+        break;
+      }
       if (loop) await new Promise((r) => setTimeout(r, cada));
+      if (huerfano()) {
+        console.error(`vigia: la sesión que me lanzó (pid ${padreAlArrancar}) ya no está — salgo en vez de vigilar para nadie.`);
+        break;
+      }
     } while (loop);
   } finally {
-    if (!loop) await sql.end();
+    await sql.end().catch(() => {});
   }
 })().catch((e) => { console.error('vigia:', e.message); process.exit(1); });

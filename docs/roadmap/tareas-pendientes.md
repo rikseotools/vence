@@ -2251,6 +2251,21 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-432] ✅ 🟠 [HECHA 31/07] Los vigías sobrevivían a su sesión y seguían vigilando PARA NADIE
+
+- **ORIGEN.** Manuel, limpiando worktrees (31/07): *«pero eso es una chapuza, deberían morir con la sesión, ¿no crees?»*. Tenía razón.
+- **LO MEDIDO:** al ir a borrar el worktree `feedback-impugnaciones` tenía **6 procesos dentro**: tres vigías corriendo **1 día y 9 horas**, **1 día y 6 horas** y 11 horas… **de sesiones que ya no existían**. Y dos de ellos eran **el mismo vigía de feedback duplicado**, porque cada sesión nueva lanza el suyo sin saber si ya hay otro.
+- **POR QUÉ NO MORÍAN:** son hijos del proceso `claude`, pero eso no ata nada — cuando el padre muere, Linux entrega el hijo a `init` y sigue. Varios además se lanzaron con **`nohup`**, que literalmente significa *«ignora la señal de colgar»*: estaban **diseñados para sobrevivir**.
+- **Y LO GRAVE NO ES EL DESPERDICIO.** El vigía escribe sus avisos en la **salida de la sesión que lo lanzó**; sin ella, hace todo el trabajo —consultar, detectar, priorizar— y lo tira. Peor: en `--loop` **recuerda lo ya avisado**, así que un huérfano puede **marcar como visto algo que nadie llegó a ver nunca**. La vigilancia no falla: **finge funcionar**, que es el modo de fallo más caro de todos.
+- **✅ ARREGLO: que se dé cuenta de que se ha quedado huérfano.** Guarda su `ppid` al arrancar y lo compara en cada vuelta: si su padre muere, el sistema lo reasigna y **el ppid cambia**. Sale solo, diciendo por qué.
+  - **Sin depender de señales, a propósito:** varios se lanzaron con `nohup`, que las ignora. Lo que no se puede falsear es el cambio de padre.
+  - **Comprueba a los DOS lados de la espera:** si solo mirara antes, un huérfano se quedaría dormido hasta la vuelta siguiente —**hasta 15 minutos** con `--cada 900`— consultando la BD para nadie.
+- **Verificado de verdad:** lanzado un vigía, matado su padre, y **se salió solo** imprimiendo *«la sesión que me lanzó ya no está — salgo en vez de vigilar para nadie»*. En esa misma prueba cazó una réplica REAL de un usuario premium.
+- **Lo que NO arregla, y sigue en [T-288]:** que la vigilancia dependa de que una ventana concreta esté abierta. Ahora al menos **no miente**: si la sesión se va, el vigía se va con ella y el hueco se nota. Antes el hueco era invisible. Y sigue sin haber nada que impida **lanzar un vigía duplicado**.
+- **Capas:** 6 tests (que compare ppid y no espere señales, que solo aplique en `--loop`, que compruebe a los dos lados de la espera y que cierre la conexión al salir).
+- **Relacionadas:** [T-288] (convertirlo en alerta permanente), [T-431] (worktrees abandonados), [T-430] (rescatar lo que dejó una sesión muerta).
+
+
 ### [T-429] ✅ [HECHA 31/07] Triar las 11 fichas en DERIVA que destapó el criterio nuevo de abierto/cerrado
 
 - **ORIGEN.** Salieron al arreglar [T-382]. Hasta ese día «abierta» se deducía de la POSICIÓN de la ficha en el markdown, y con tres secciones `## Hechas` el detector de deriva **no podía ver a 145 de las 177 tareas vivas**. Al pasar el criterio a la marca `✅` de la cabecera, aparecieron **11 divergencias que llevaban tiempo invisibles**.
