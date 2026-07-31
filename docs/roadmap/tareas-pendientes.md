@@ -1858,6 +1858,35 @@ incluida).
   1. **El contenedor «Word 2016» no tiene NI UNA tilde** (*«Pestanas contextuales: Diseno y Presentacion»*), así que cualquier cita literal suya se sirve sin acentos. Correcto y feo; arreglarlo es reescribir la ortografía de los 5 artículos.
   2. `Supuesto Excel CyL` afirma que *«el atajo Mayús+Ctrl+V tampoco activa el pegado especial en Excel»*. Es defendible en sentido estricto (el cuadro de Pegado especial es Ctrl+Alt+V), pero **desde 2024-25 Ctrl+Mayús+V sí pega valores en Excel 365**, así que conviene matizarlo.
   3. `e1551866` y `15f90bd3` son **la misma pregunta con las opciones en distinto orden** (Word 365 Escritorio, 53 y 42 exposiciones). No es defecto de contenido, es duplicado.
+- **🚧 FASE OFFICE 2016 — EMPEZADA 30/07. 1 de 15 artículos hecho, y con receta medible.**
+  - **Alcance real medido:** 15 artículos · **234 preguntas activas** · **16.950 exposiciones**. Tamaños de 620 a 2.438 caracteres, frente a los **28.120** de `Word 365`.
+  - **✅ `Excel 2016` art.3 (Fórmulas y funciones)** — 32 preguntas, 1.370 exposiciones. De **620 → 11.245 caracteres**. Y lo que importa: **la cobertura de las claves pasa de 6/23 a 23/23**.
+  - **🔑 LA RECETA, y su criterio de aceptación.** No es «engordar el artículo», es **cubrir lo que las preguntas preguntan**:
+    1. Volcar las preguntas del artículo con su clave y su exposición.
+    2. Escribir el artículo **guiado por esa lista**, no por un índice genérico de la aplicación.
+    3. Medir con `node data/pilotos/t291-escalon2-30jul/aplicar-articulo.cjs '<ley>' <art> <fichero.md>` (dry-run por defecto), que imprime **cobertura de las claves antes → después**. **Objetivo: cubrirlas todas.** Si sube el tamaño y no la cobertura, se ha escrito volumen, no contenido.
+    4. `--apply`, invalidar caché (`teoria`, `temario`, `laws`) y correr `npm run audit:atajos` por si el texto nuevo introduce una contradicción de atajos.
+  - **GOTCHA de la métrica (medido):** los tokens hay que despuntuarlos por los bordes. Con el punto final pegado, «Absoluta.» no casaba con «absoluta» del artículo y daba **dos falsos negativos** — parecía 21/23 cuando era 23/23. Ya corregido en el script.
+  - **Lo que hay que verificar SIEMPRE contra fuente, no de memoria:** los límites y especificaciones (p. ej. «4.000 millones de fórmulas pueden depender de una sola celda»), los nombres exactos de categorías y comandos, y **cualquier atajo** — recordando que la página `es-es` de Microsoft sirve para funciones y límites pero **NO para atajos** (ver [T-351]).
+  - **Cola restante, por exposición** (todas siguen a 620-2.438 chars):
+
+    | contenedor | artículo | preg | exp |
+    |---|---|---|---|
+    | Word 2016 | 1 · Interfaz y cinta | 33 | 1.513 |
+    | PowerPoint 2016 | 5 · Atajos y avanzadas | 11 | 1.326 |
+    | Excel 2016 | 4 · Gráficos y datos | 21 | 1.138 |
+    | PowerPoint 2016 | 2 · Diapositivas | 10 | 1.235 |
+    | PowerPoint 2016 | 1 · Interfaz | 9 | 1.233 |
+    | PowerPoint 2016 | 4 · Animaciones | 10 | 1.200 |
+    | Word 2016 | 5 · Atajos | 25 | 1.184 |
+    | PowerPoint 2016 | 3 · Contenido | 10 | 1.158 |
+    | Excel 2016 | 1 · Interfaz | 17 | 1.111 |
+    | Word 2016 | 2 · Edición y formato | 13 | 953 |
+    | Excel 2016 | 5 · Atajos | 11 | 943 |
+    | Word 2016 | 3 · Tablas e inserción | 15 | 921 |
+    | Excel 2016 | 2 · Formato de celdas | 11 | 912 |
+    | Word 2016 | 4 · Correspondencia | 6 | 753 |
+
 - **⚠️ AL ENRIQUECER «Word 2016» NO SE PUEDE COPIAR DE «Word 365»** (27.980 chars/art, misma materia). Difieren **exactamente en lo que se pregunta**: en Word 2016 la pestaña de tabla es *Presentación* y en 365 pasó a *Disposición* — es el caso `d94d07d9`, que tuvo la clave mal por esto. Cada dato hay que fijarlo a la versión.
   Consecuencia para la reparación: al enriquecer no basta con AÑADIR texto, hay que **auditar lo que ya hay** contra Microsoft Support en español.
 - **Lo que NO es la reparación:** re-vincular las 216 a otro artículo. Los agentes lo comprobaron leyendo los 5 artículos de cada ley virtual: **en la mayoría de casos no existe un artículo mejor** dentro de esa ley. Re-vincular sería mover el problema de sitio.
