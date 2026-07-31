@@ -12,6 +12,7 @@
 
 const { Client } = require('pg')
 const { pgConfig } = require('../lib/db/pgSsl.cjs')
+const { degradaFamilia } = require('../lib/oposiciones/familiaBackfill.cjs')
 
 require('dotenv').config({ path: '.env.local' })
 const loadFamiliaModule = require('./_load-familia.cjs')
@@ -50,7 +51,13 @@ async function main() {
       `SELECT nombre, administracion, familia FROM oposiciones WHERE familia IS NOT NULL ORDER BY id LIMIT $1`,
       [CONSISTENCY_SAMPLE],
     )
-    const mism = s.rows.filter((o) => classifyFamilia(o.nombre, o.administracion) !== o.familia)
+    // Misma exención que el test y el backfill (núcleo puro `degradaFamilia`): el clasificador
+    // diciendo 'otros' donde la BD tiene familia concreta es una corrección humana PROTEGIDA,
+    // no una desincronización. Exigir lo contrario sería pedir que se borre.
+    const mism = s.rows.filter((o) => {
+      const nueva = classifyFamilia(o.nombre, o.administracion)
+      return nueva !== o.familia && !degradaFamilia(o.familia, nueva)
+    })
     if (mism.length) fails.push(`${mism.length}/${s.rows.length} desincronizados (¿keywords sin reconcile?)`)
   } finally {
     await c.end()

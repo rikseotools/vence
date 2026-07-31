@@ -13,6 +13,8 @@
 import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { degradaFamilia } = require('@/lib/oposiciones/familiaBackfill.cjs')
 import { classifyFamilia, FAMILIA_KEYS } from '@/lib/oposiciones/familia'
 
 dotenv.config({ path: '.env.local', override: true })
@@ -48,13 +50,27 @@ describeIfDb('Familia ↔ BD (integración)', () => {
     const r = await client.query(
       'SELECT nombre, administracion, familia FROM oposiciones WHERE familia IS NOT NULL ORDER BY id LIMIT 300',
     )
-    const mismatches = r.rows.filter((o) => classifyFamilia(o.nombre, o.administracion) !== o.familia)
-    if (mismatches.length) {
-      console.log('mismatches (clasificador vs BD):', mismatches.slice(0, 5).map((m) => m.nombre))
+    // EXENCIÓN (31/07, T-377): que el clasificador diga `otros` donde la BD tiene familia
+    // concreta NO es desincronización, es una fila que alguien arregló a mano y que el
+    // backfill PROTEGE a propósito (`degradaFamilia`). Sin esta exención, el test exigiría
+    // justo lo contrario que la herramienta hace: borrar esas correcciones para ponerse verde.
+    // Se usa el MISMO núcleo puro que el backfill — dos criterios distintos aquí serían la
+    // divergencia de siempre.
+    const desincronizados = r.rows.filter((o) => {
+      const nueva = classifyFamilia(o.nombre, o.administracion)
+      if (nueva === o.familia) return false
+      return !degradaFamilia(o.familia, nueva)
+    })
+    const protegidas = r.rows.filter((o) => degradaFamilia(o.familia, classifyFamilia(o.nombre, o.administracion)))
+    if (desincronizados.length) {
+      console.log('desincronizados (clasificador vs BD):', desincronizados.slice(0, 5).map((m) => m.nombre))
+    }
+    if (protegidas.length) {
+      console.log(`(${protegidas.length} protegidas: el clasificador las mandaría a 'otros' y no se degradan)`)
     }
     // 0 = el backfill está sincronizado con el clasificador actual. Si falla, re-correr
     // scripts/backfill-familia.cjs (o revisar un cambio de keywords sin re-backfill).
-    expect(mismatches).toHaveLength(0)
+    expect(desincronizados).toHaveLength(0)
   })
 
   it('COBERTURA: ≥80% de catalogadas mostrables tienen familia (no otros/null)', async () => {
