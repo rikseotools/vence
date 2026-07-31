@@ -22,14 +22,12 @@ set -euo pipefail
 ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
 . "$(dirname "$0")/lib/guardia-worktree.sh"
 guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
+# Construir en un árbol PROPIO y efímero, sin tocar el de nadie (T-385).
+. "$(dirname "$0")/lib/deploy-worktree.sh"
 cd "$(dirname "$0")/.."
 
 P=vence; R=eu-west-2; ACC=349744179687
 REG="${ACC}.dkr.ecr.${R}.amazonaws.com/vence-backend"
-SHA=$(git rev-parse HEAD | cut -c1-8)      # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07: 'b201d798a' 9c vs 'b201d798' 8c)
-TAG="deploy-${SHA}"
-IMG="${REG}:${TAG}"
-
 # ── CERROJO DE CONCURRENCIA (flock) — mismo lock que frontend ────────────────
 # Serializa deploys entre sesiones paralelas. Lock ÚNICO front+back (comparten ECR /
 # cluster / infra de task def). Se libera solo al morir el proceso → sin locks zombi.
@@ -44,62 +42,68 @@ if command -v flock >/dev/null 2>&1; then
     # Ajustable con DEPLOY_LOCK_WAIT si algún día el build crece más.
     flock -w "${DEPLOY_LOCK_WAIT:-2700}" 9 || { echo "❌ el lock sigue tomado tras $(( ${DEPLOY_LOCK_WAIT:-2700} / 60 )) min — abortado. ¿Un build largo delante? Usa scripts/deploy-cuando-verde.sh, que reintenta."; exit 1; }
   fi
-  : >&9; echo "backend $SHA pid=$$ $(date -u +%FT%TZ)" >&9
   echo "🔒 lock de deploy adquirido ($LOCK)."
 else
   echo "⚠️  flock no disponible — sin serialización de deploy; coordina a mano."
 fi
+
+# ── QUÉ COMMIT SE DESPLIEGA: origin/main, SIEMPRE (T-385) ────────────────────
+# Se resuelve DESPUÉS de tener el lock, y eso importa: esperar el cerrojo puede costar hasta 45
+# minutos, y en ese rato origin/main se mueve. Resolverlo antes dejaría desplegando un commit ya
+# viejo — justo el «clobber stale» que el guardarraíl anti-stale existía para impedir. El modelo
+# anterior lo conseguía re-sincronizando el árbol tras el lock; aquí basta con leerlo ahora.
+#
+# Y va antes de escribir el contenido del lock y la fila de `deploy_runs`, para que ambos anoten
+# EL COMMIT QUE SE DESPLIEGA y no el HEAD de quien lanza: un registro que nombra otra cosa es
+# peor que no tener registro.
+git fetch origin main --quiet 2>/dev/null || true
+FULL_SHA=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+SHA=$(printf '%s' "$FULL_SHA" | cut -c1-8)   # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07: 'b201d798a' 9c vs 'b201d798' 8c)
+TAG="deploy-${SHA}"
+IMG="${REG}:${TAG}"
+[ -e /proc/self/fd/9 ] && { : >&9; echo "backend $SHA pid=$$ $(date -u +%FT%TZ)" >&9; } || true
 
 # ── DEJAR CONSTANCIA PARA LAS DEMÁS SESIONES (T-404) ─────────────────────────
 # Ver el comentario gemelo en deploy-frontend.sh: el lock serializa pero no se puede consultar
 # sin bloquearse. Esto lo publica donde el resto de sesiones ya mira (scripts/deploy-estado.cjs).
 # Best-effort, y el `trap` cierra la fila aunque el build aborte.
 DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie backend --sha "$SHA" --pid $$ 2>/dev/null || true)"
-if [ -n "$DEPLOY_RUN_ID" ]; then
-  trap 'node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" --outcome "$([ "$?" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true' EXIT
-fi
 
-# ── AUTO-SINCRONIZACIÓN CON origin/main (antes del gate de CI) ───────────────
-# El build sale del WORKING TREE, así que el guardarraíl anti-stale de más abajo aborta si
-# tu árbol no contiene todo origin/main. Correcto — pero con varias sesiones pusheando,
-# CUALQUIER push ajeno durante la ventana «verificar CI → construir» tumbaba el deploy y el
-# operador acababa haciendo a mano `fetch` + `reset --hard` + reintentar. Medido el 27/07:
-# tres abortos seguidos por esto (más otros tres por tratar `cancelled` como fallo).
+# ── UNA SOLA SALIDA (ojo: en bash un segundo `trap … EXIT` REEMPLAZA al primero) ──
+# Hay DOS cosas que cerrar al terminar —la fila de `deploy_runs` (T-404) y el árbol de build
+# efímero (T-385)— y registrarlas por separado habría hecho que la segunda silenciara a la
+# primera SIN avisar. Van juntas en una función.
+_al_salir() {
+  local code=$?
+  [ -n "${DEPLOY_RUN_ID:-}" ] && node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" \
+    --outcome "$([ "$code" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true
+  # La ruta va POR ARGUMENTO: `crear_arbol_de_build` corre en un subshell (sustitución de
+  # comandos), así que su variable global no llega hasta aquí. Ver el comentario del helper.
+  borrar_arbol_de_build "${BUILD_DIR:-}"
+  return $code
+}
+trap _al_salir EXIT
+
+# ── POR QUÉ AQUÍ YA NO HAY AUTO-SYNC NI ANTI-STALE (T-385) ───────────────────
+# Antes esto era un baile: se auto-sincronizaba el árbol con `git reset --hard origin/main`, se
+# comprobaba después que HEAD contuviera origin/main, y se construía el WORKING TREE esperando
+# que coincidiera. Tres mecanismos para aproximar una cosa que ahora se dice directamente arriba:
+# **el deploy sube origin/main**. Es cumulativo por definición, así que nunca fue otra cosa.
 #
-# Cuando NO hay nada propio que perder —árbol limpio y HEAD ya contenido en origin/main—
-# resincronizar es seguro POR CONSTRUCCIÓN y no cambia la semántica: el deploy ya es
-# cumulativo, así que subir «el origin/main de este instante» es justo lo que se esperaba.
-# Va ANTES del gate de CI a propósito, para que los checks se verifiquen sobre el SHA que
-# de verdad se construye; y recalcula SHA/FULL_SHA, que si no el build se pinearía al viejo
-# y el anti-clobber del final daría un falso positivo.
+# El cambio ES MÁS FUERTE, no más laxo: antes se construía «el árbol, que esperamos que sea
+# origin/main»; ahora se construye EXACTAMENTE el commit cuyo CI se verifica aquí debajo, en un
+# árbol recién creado que nadie puede ensuciar mientras dura el build.
 #
-# NO auto-sincroniza (y aborta como siempre) si el árbol está sucio o si HEAD tiene commits
-# propios sin pushear: ahí perder trabajo sí es posible y la decisión es del operador.
-# Desactivar: NO_AUTO_SYNC=1.
-git fetch origin main --quiet 2>/dev/null || true
-if [ "${NO_AUTO_SYNC:-0}" != "1" ] && [ "${SKIP_MAIN_SYNC:-0}" != "1" ] \
-   && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    echo "↻ [auto-sync] árbol SUCIO y detrás de origin/main → no toco nada; resuélvelo tú."
-  elif git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
-    echo "↻ [auto-sync] árbol limpio y detrás de origin/main (otra sesión pusheó) → resincronizo."
-    if git reset --hard origin/main --quiet; then
-      SHA=$(git rev-parse HEAD | cut -c1-8)
-      FULL_SHA=$(git rev-parse HEAD)
-      echo "   → ahora en ${SHA}; el gate de CI verificará ESTE SHA."
-    else
-      echo "   ⚠️  no pude resincronizar; sigo y que decida el guardarraíl anti-stale."
-    fi
-  else
-    echo "↻ [auto-sync] HEAD tiene commits propios que NO están en origin/main → no auto-sincronizo (los perdería)."
-    echo "   Pushea tu rama o rebasa a mano; el guardarraíl anti-stale abortará si no."
-  fi
-fi
+# Y desaparecen de golpe los fallos que no eran de código: el `reset --hard` destructivo sobre un
+# árbol compartido, el aborto por «otra sesión pusheó mientras verificaba el CI» y el aborto por
+# árbol sucio de otro. Medido el 27-31/07: seis abortos de deploy y un push a siete intentos.
+echo "→ se desplegará origin/main = ${SHA} (el árbol de trabajo no se toca)"
 
 # GATE CI (Fase 2, 08/07/2026): no desplegar código que no pasó CI. Mismo gate que
 # deploy-frontend.sh — check-runs de GHA para el SHA. Override: SKIP_CI_GATE=1.
+# El `.env.local` se carga AQUÍ, desde el checkout original, porque de él sale el GITHUB_PAT y
+# está gitignorado: al árbol de build no llega (comprobado, y es lo único que hay que sacar).
 [ -f ./.env.local ] && { set -a; . ./.env.local; set +a; }
-FULL_SHA=$(git rev-parse HEAD)
 if [ "${SKIP_CI_GATE:-0}" = "1" ]; then
   echo "→ [gate CI] OMITIDO (SKIP_CI_GATE=1)."
 elif [ -z "${GITHUB_PAT:-}" ] || ! command -v jq >/dev/null 2>&1; then
@@ -125,23 +129,24 @@ else
   INTEG=$(echo "$CR" | jq -r '[.check_runs[]?|select(.name|ascii_downcase|contains("integration"))]|last|.conclusion // "n/a"')
   if [ "$TOTAL" = "0" ] || [ "${MISSING:-0}" -gt 0 ]; then echo "   ❌ faltan checks de código para ${SHA} (¿git push?). SKIP_CI_GATE=1 para forzar."; exit 1
   elif [ "${FAILED:-0}" -gt 0 ]; then echo "   ❌ CI de CÓDIGO en ROJO: ${FAILED} check(s) fallando. SKIP_CI_GATE=1 para forzar."; exit 1
-  elif [ "${CANCELLED:-0}" -gt 0 ]; then echo "   ↻ CI CANCELADO para ${SHA}: ${CANCELLED} check(s) (otro push llegó después; NO es un fallo de tu código). Resincroniza y reintenta:  git fetch origin && git reset --hard origin/main"; exit 1
+  # Desde T-385 este script construye origin/main SIEMPRE, así que ante un `cancelled` no hay
+  # nada que resincronizar: basta con volver a lanzarlo cuando el CI del origin/main nuevo esté
+  # verde. Que no se pida un `reset --hard` es la mitad del sentido de este cambio.
+  elif [ "${CANCELLED:-0}" -gt 0 ]; then echo "   ↻ CI CANCELADO para ${SHA}: ${CANCELLED} check(s) (otro push llegó después; NO es un fallo de tu código). Espera al CI del nuevo origin/main y RELANZA este script — no hay que tocar tu árbol."; exit 1
   elif [ "${PENDING:-0}" -gt 0 ]; then echo "   ⏳ CI de CÓDIGO EN CURSO: ${PENDING} check(s). Espera y reintenta (o SKIP_CI_GATE=1)."; exit 1
   fi
   echo "   ✅ CI de código verde (unit+typecheck+lint) para ${SHA}. [integration=${INTEG} — informativo]"
 fi
 
-# ── GUARDA ANTI-STALE (reconciliar sobre origin/main) — mismo criterio que front ──
-# HEAD debe contener TODO origin/main, o desplegar dejaría caer trabajo de otra sesión.
-git fetch origin main --quiet 2>/dev/null || true
-if [ "${SKIP_MAIN_SYNC:-0}" != "1" ] && ! git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
-  echo "❌ origin/main tiene commits que tu rama NO incluye → desplegar los perdería (clobber stale)."
-  echo "   Reconcilia:  git fetch origin && git rebase origin/main   (override: SKIP_MAIN_SYNC=1)"
-  exit 1
-fi
+# ── ÁRBOL DE BUILD PROPIO Y EFÍMERO (T-385) ──────────────────────────────────
+# Aquí estaba la «guarda anti-stale» que exigía que HEAD contuviera origin/main. Ya no hace
+# falta: no se construye HEAD, se construye origin/main. El guardarraíl no se relaja — se
+# vuelve innecesario porque su invariante pasa a cumplirse POR CONSTRUCCIÓN.
+BUILD_DIR="$(crear_arbol_de_build "$FULL_SHA")" || { echo "❌ no pude preparar el árbol de build"; exit 1; }
+echo "→ árbol de build efímero: $BUILD_DIR (se borra al salir, pase lo que pase)"
 
-echo "→ [1/6] build ${IMG} (contexto backend/)"
-podman build --build-arg GIT_COMMIT_SHA="$SHA" -t "$IMG" ./backend
+echo "→ [1/6] build ${IMG} (contexto backend/ del árbol efímero)"
+podman build --build-arg GIT_COMMIT_SHA="$SHA" -t "$IMG" "$BUILD_DIR/backend"
 
 echo "→ [2/6] push ECR"
 aws ecr get-login-password --profile $P --region $R | podman login --username AWS --password-stdin "${ACC}.dkr.ecr.${R}.amazonaws.com" >/dev/null 2>&1

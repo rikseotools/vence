@@ -339,6 +339,29 @@ trabajo es posible: **árbol sucio**, o **`HEAD` con commits propios sin pushear
 laboratorio con los cuatro casos (limpio-atrasado → resincroniza · sucio → no toca · commits
 propios → no toca · al día → silencio).
 
+## El BACKEND ya no construye tu árbol: construye `origin/main` aparte (T-385, fase 1)
+
+`scripts/deploy-backend.sh` **ya no toca el árbol desde el que lo lanzas.** Crea un worktree
+efímero en `origin/main`, construye ahí y lo borra al salir, pase lo que pase.
+
+- **Es un invariante MÁS FUERTE, no una relajación.** Antes se construía «el working tree, que
+  esperamos que sea `origin/main`», con tres mecanismos aproximándolo (auto-sync, ancestría de
+  HEAD, árbol limpio) sobre un directorio que comparten 2-10 sesiones. Ahora se construye
+  **exactamente el commit cuyo CI se acaba de verificar**. Por eso el `reset --hard`, la guarda
+  anti-stale y el aborto por árbol sucio **desaparecen del backend**: no se relajan, dejan de
+  tener objeto.
+- **Ya no hace falta resincronizar nada** para desplegar backend. Si el CI sale `cancelled`
+  (llegó otro push), basta con **relanzar** cuando el CI del `origin/main` nuevo esté verde.
+- **El SHA se resuelve DESPUÉS de coger el lock**, a propósito: esperar el cerrojo puede costar
+  45 minutos y en ese rato `origin/main` se mueve.
+- **`.env.local` se carga del checkout original**, antes de cambiar de árbol: está gitignorado, no
+  llega al worktree nuevo, y de ahí sale el `GITHUB_PAT` del gate de CI. Es lo único que hace
+  falta sacar; el resto lo trae el commit (comprobado construyendo la imagen desde un árbol pelado).
+
+> ⏳ **El FRONTEND sigue en el modo viejo** (inyecta `NEXT_PUBLIC_*` como build-args y sincroniza
+> assets a S3: más superficie). Mientras convivan los dos modos, el frontend y `deploy-cuando-verde.sh`
+> **mantienen** sus comprobaciones de árbol limpio y sincronizado — quitarlas antes lo dejaría sin red.
+
 ## ANTES de desplegar: ¿hay alguien desplegando ya? (T-404, 31/07)
 
 ```bash

@@ -152,8 +152,22 @@ async function avisarSolape(s, id, ficha) {
     if (!probables.length) return;
 
     const sesiones = await s`
-      SELECT sid, slug, touched_files, last_signal_at FROM public.worktree_sessions`;
-    const solapes = calcularSolapes({ misFicheros: probables, sesiones, sid });
+      SELECT sid, slug, worktree_path, touched_files, last_signal_at FROM public.worktree_sessions`;
+
+    // Las sesiones que comparten MI directorio se excluyen del solape por ficheros, y no es una
+    // excepción de conveniencia: comparten árbol, así que su huella son LITERALMENTE mis mismos
+    // ficheros sucios. El aviso sería tautológico y encima mal atribuido — «otra sesión toca
+    // scripts/backlog.cjs» cuando quien lo estaba tocando era yo. (Saltó en el primer uso real,
+    // reclamando T-385.) Ese problema es más grave y se reporta aparte, arriba: `latidos.cjs` lo
+    // canta como «varias sesiones en el mismo checkout», que es lo accionable.
+    const miPath = (sesiones.find((x) => x.sid === sid) || {}).worktree_path || null;
+    const ajenas = miPath ? sesiones.filter((x) => x.worktree_path !== miPath) : sesiones;
+    const compartiendo = sesiones.length - ajenas.length - (miPath ? 1 : 0);
+    if (compartiendo > 0) {
+      console.log(`\n🚨 ${compartiendo} sesión(es) más trabajan en TU MISMO directorio (${miPath}).`);
+      console.log('   No puedo distinguir sus cambios de los tuyos: lo sano es un worktree por sesión.');
+    }
+    const solapes = calcularSolapes({ misFicheros: probables, sesiones: ajenas, sid });
     if (solapes.length) {
       console.log(`\n⚠️  OJO — otra(s) sesión(es) VIVA(s) están tocando ficheros de ${id}:`);
       for (const c of solapes) {
@@ -163,7 +177,7 @@ async function avisarSolape(s, id, ficha) {
       }
       console.log('   No bloquea: decide tú si coordinas, esperas o vais por sitios distintos.');
     }
-    const ciegas = sesionesSinHuella(sesiones, sid);
+    const ciegas = sesionesSinHuella(ajenas, sid);
     if (ciegas.length && solapes.length === 0) {
       // Decir "no hay solape" cuando hay sesiones que no publican huella sería un verde falso.
       console.log(`\nℹ️  ${ciegas.length} sesión(es) viva(s) sin huella publicada: no puedo descartar solape con ellas.`);

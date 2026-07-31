@@ -144,11 +144,19 @@ describe('ambos scripts — coordinación de sesiones paralelas (incidente 11/07
     })
     // Anti-stale: el build sale del working tree; si tu rama no contiene origin/main,
     // desplegar dejaría caer trabajo de otra sesión (clobber). Exigir ancestría.
-    it(`${name}: aborta si HEAD no contiene origin/main (anti clobber stale)`, () => {
-      expect(s).toMatch(/git fetch origin main/)
-      expect(s).toMatch(/merge-base --is-ancestor origin\/main HEAD/)
-      expect(s).toMatch(/SKIP_MAIN_SYNC/)
-    })
+    //
+    // ⚠️ SOLO FRONTEND desde T-385. El backend ya no construye el working tree: construye
+    // `origin/main` en un worktree efímero, así que este invariante se cumple POR CONSTRUCCIÓN
+    // y comprobar la ancestría de HEAD dejó de significar nada. Su sustituto —más fuerte— está
+    // en el bloque «backend — construye origin/main en un árbol propio». Cuando el frontend
+    // adopte lo mismo (fase 2), este test se retira, no se relaja.
+    if (name === 'frontend') {
+      it(`${name}: aborta si HEAD no contiene origin/main (anti clobber stale)`, () => {
+        expect(s).toMatch(/git fetch origin main/)
+        expect(s).toMatch(/merge-base --is-ancestor origin\/main HEAD/)
+        expect(s).toMatch(/SKIP_MAIN_SYNC/)
+      })
+    }
     // Dedupe env/secret: ECS rechaza un name presente en environment Y secrets.
     // Detectarlo en el transform con mensaje claro > el error críptico de register.
     it(`${name}: detecta colisión env↔secret antes de registrar el task def`, () => {
@@ -235,12 +243,19 @@ describe('gate de CI — `cancelled` no es `failure`', () => {
     expect(linea).not.toContain('cancelled')
   })
 
-  it.each(scripts)('%s: los cancelados tienen su propia rama, que manda RESINCRONIZAR', (rel) => {
+  // Lo que este test protege de verdad es que el mensaje diga QUÉ HACER, no solo que pasó. La
+  // acción correcta ya no es la misma en los dos scripts, así que se comprueba por separado en
+  // vez de exigir un texto que en uno de ellos sería un consejo EQUIVOCADO:
+  //   · frontend — construye el working tree → hay que resincronizarlo;
+  //   · backend  — construye origin/main en un árbol efímero (T-385) → no hay nada que
+  //     resincronizar, basta con relanzar cuando el CI del origin/main nuevo esté verde.
+  it.each(scripts)('%s: los cancelados tienen su propia rama, con acción concreta', (rel) => {
     const src = readFileSync(join(process.cwd(), rel), 'utf8')
     expect(src).toMatch(/CANCELLED=\$\(/)
     expect(src).toMatch(/\$\{CANCELLED:-0\}/)
-    // el mensaje tiene que decir qué hacer, no solo que pasó
-    expect(src).toMatch(/CANCELADO[\s\S]{0,400}reset --hard origin\/main/)
+    const accion = rel.includes('backend') ? /CANCELADO[\s\S]{0,400}RELANZA/
+                                           : /CANCELADO[\s\S]{0,400}reset --hard origin\/main/
+    expect(src).toMatch(accion)
   })
 })
 
@@ -253,8 +268,107 @@ describe('gate de CI — `cancelled` no es `failure`', () => {
 // hay nada propio que perder, resincronizar es seguro por construcción — pero SOLO
 // entonces, y recalculando el SHA o el build se pinearía al commit viejo y el anti-clobber
 // del final daría un falso positivo. Eso es lo que fija este test.
+/**
+ * BACKEND — construye `origin/main` en un árbol PROPIO (T-385, 31/07/2026).
+ *
+ * Este bloque SUSTITUYE, para el backend, a los cuatro invariantes del auto-sync y al anti-stale.
+ * Y hay que leerlo así: el invariante nuevo es **más fuerte**, no más laxo.
+ *
+ *   · Antes: «construyo el working tree, y compruebo con tres mecanismos distintos —auto-sync,
+ *     ancestría de HEAD, árbol limpio— que se parezca a origin/main». Tres aproximaciones a una
+ *     cosa, cada una con su modo de fallo, todas sobre un directorio COMPARTIDO por 2-10 sesiones.
+ *   · Ahora: «construyo EXACTAMENTE el commit de origin/main cuyo CI acabo de verificar, en un
+ *     worktree recién creado que nadie puede tocar». No hay nada que aproximar.
+ *
+ * Lo que se protege aquí es que ese cambio no se deshaga por accidente: si alguien devolviera el
+ * build al working tree, el deploy volvería a depender de que un recurso compartido esté quieto —
+ * que es lo que costó, todo el 31/07, un guard nuevo (T-364), un lanzador bloqueado por el
+ * scratch ajeno (T-366), un lanzador muerto tras 20 vueltas y un push a siete intentos.
+ */
+describe('backend — construye origin/main en un árbol propio (T-385)', () => {
+  const s = readFileSync(join(ROOT, 'scripts/deploy-backend.sh'), 'utf8')
+  const helper = readFileSync(join(ROOT, 'scripts/lib/deploy-worktree.sh'), 'utf8')
+
+  it('el commit a desplegar sale de origin/main, no de HEAD', () => {
+    expect(s).toMatch(/FULL_SHA=\$\(git rev-parse origin\/main/)
+    expect(s).toMatch(/git fetch origin main/)
+  })
+
+  it('construye desde el árbol EFÍMERO, nunca desde ./backend del árbol de trabajo', () => {
+    expect(s).toMatch(/podman build[^\n]*"\$BUILD_DIR\/backend"/)
+    expect(s).not.toMatch(/podman build[^\n]*\s\.\/backend\s*$/m)
+  })
+
+  it('NO toca el árbol de nadie: sin `reset --hard` fuera de los comentarios', () => {
+    const codigo = s.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
+    expect(codigo).not.toMatch(/git reset --hard/)
+  })
+
+  it('el árbol efímero se borra SIEMPRE, también si el build revienta', () => {
+    expect(s).toMatch(/trap _al_salir EXIT/)
+    expect(s).toMatch(/borrar_arbol_de_build/)
+  })
+
+  // En bash un segundo `trap … EXIT` REEMPLAZA al primero en silencio. Hay dos cosas que cerrar
+  // —la fila de deploy_runs (T-404) y el árbol efímero— y registrarlas por separado habría hecho
+  // que la segunda anulara a la primera sin que nadie se enterara.
+  it('hay UNA sola trampa de salida (dos se anularían entre sí en silencio)', () => {
+    const traps = s.split('\n').filter((l) => /^\s*trap\s/.test(l))
+    expect(traps).toHaveLength(1)
+  })
+
+  it('el .env.local se carga ANTES de construir (de ahí sale el GITHUB_PAT del gate)', () => {
+    // Un worktree nuevo no trae ficheros gitignorados: si el PAT se leyera del árbol de build,
+    // el gate de CI no podría preguntar nada y abortaría siempre.
+    //
+    // Se ancla en la INVOCACIÓN real (`BUILD_DIR="$(crear_arbol_de_build`), no en el nombre a
+    // secas: el nombre aparece antes en un comentario y el test comparaba contra ESE — o sea,
+    // pasaba o fallaba por dónde estuviera la prosa. Un guardarraíl que mide comentarios no
+    // mide nada.
+    const carga = s.indexOf('set -a; . ./.env.local')
+    const construye = s.indexOf('BUILD_DIR="$(crear_arbol_de_build')
+    expect(carga).toBeGreaterThan(-1)
+    expect(construye).toBeGreaterThan(-1)
+    expect(carga).toBeLessThan(construye)
+  })
+
+  it('ante un CI cancelado ya NO manda resincronizar el árbol (no hay nada que resincronizar)', () => {
+    expect(s).toMatch(/CANCELADO[\s\S]{0,400}RELANZA/)
+    expect(s).not.toMatch(/CANCELADO[\s\S]{0,400}reset --hard/)
+  })
+
+  describe('el helper', () => {
+    it('crea el worktree detached y forzado (el commit puede estar ya en otro árbol)', () => {
+      expect(helper).toMatch(/git worktree add --detach --force/)
+    })
+    it('limpia el registro con prune (un build interrumpido dejaría entradas fantasma)', () => {
+      expect(helper).toMatch(/git worktree prune/)
+    })
+    it('NO registra su propio trap (lo compone quien llama, o se anularían)', () => {
+      expect(helper).not.toMatch(/^\s*trap\s/m)
+    })
+
+    // ── El fallo que se comió el primer intento, y que solo apareció al EJECUTARLO ──────────
+    // `crear_arbol_de_build` se invoca por sustitución de comandos —`BUILD_DIR="$(…)"`— que corre
+    // en un SUBSHELL: la variable global que asigna ahí muere con él. La limpieza, que solo
+    // miraba esa global, la encontraba vacía, salía con 0 sin borrar nada y el `|| true` se
+    // tragaba el silencio. Medido: dos árboles quedaron en `git worktree list` y en /tmp después
+    // de haber «limpiado». En producción sería un worktree y un directorio colgados por deploy.
+    it('la limpieza acepta la ruta por ARGUMENTO (la global se pierde en el subshell)', () => {
+      expect(helper).toMatch(/borrar_arbol_de_build\(\)\s*\{\s*\n\s*local dir="\$\{1:-\$VENCE_BUILD_WT\}"/)
+    })
+
+    it('y el deploy se la PASA (si no, el arreglo del helper no sirve de nada)', () => {
+      expect(s).toMatch(/borrar_arbol_de_build "\$\{BUILD_DIR:-\}"/)
+    })
+  })
+})
+
 describe('deploy — auto-sync con origin/main', () => {
-  const scripts = ['scripts/deploy-frontend.sh', 'scripts/deploy-backend.sh']
+  // SOLO FRONTEND desde T-385: el backend ya no auto-sincroniza porque ya no construye el árbol
+  // de trabajo. Su invariante equivalente, y más fuerte, se comprueba en el bloque de arriba.
+  // Cuando el frontend adopte el árbol efímero (fase 2), este describe entero desaparece.
+  const scripts = ['scripts/deploy-frontend.sh']
   const src = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
   it.each(scripts)('%s: existe y se puede desactivar (NO_AUTO_SYNC=1)', (rel) => {

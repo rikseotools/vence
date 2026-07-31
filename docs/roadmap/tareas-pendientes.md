@@ -1127,23 +1127,27 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capa que lo vigile:** el propio kind es la capa (hoy no hay ninguna). Cuando exista, un guardarraíl de paridad entre lo que la verificación escribe y lo que el barrido lee.
 - **Relacionada:** [T-036] (la matriz de verificación: qué dimensiones se miran), memoria `project-answer-false-active-sweep` (por qué NO se actúa en bloque sobre este pool), [T-317] (la lección de no llenar el badge de hallazgos no accionables).
 
-### [T-406] 🟡 [ABIERTO 31/07] 48 preguntas activas repiten LITERALMENTE dos de sus opciones, y en 8 la clave está en el par: son irresolubles
+### [T-406] 🟡 [ABIERTO 31/07] 33 preguntas activas repiten LITERALMENTE un distractor: se quedan en tres opciones sin decirlo
 
-- **Esfuerzo: ~2 h** (el detector es una consulta determinista de 10 líneas; lo que lleva tiempo es reparar las 8 graves contra su artículo, una a una).
-- **Qué pasa:** hay preguntas activas con dos opciones **idénticas carácter a carácter** tras normalizar espacios y mayúsculas. Cuando el par NO incluye la respuesta buena es una chapuza cosmética (el opositor ve dos distractores clonados y descarta los dos). Cuando **sí la incluye, la pregunta no tiene solución posible**: marque la que marque, acierta y falla a la vez según cuál de las dos gemelas cogiera el corrector.
-- **Medido hoy (31/07, banco activo):**
+- **Esfuerzo: ~1 h** (reparar 33 distractores clonados, ninguno urgente) **+ ~1 h** el detector.
+- **Qué pasa:** hay preguntas activas donde **dos opciones son idénticas carácter a carácter**. La clave nunca está en el par (medido), así que **ninguna es irresoluble**: el daño es que el opositor ve dos opciones clonadas, la pregunta se queda de hecho en tres alternativas y parece descuidada.
+- **Medido hoy (31/07, banco activo, 138.108 preguntas):**
   | Corte | Preguntas |
   |---|---|
-  | Dos opciones literalmente idénticas | **48** |
-  | …de ellas, con la **clave dentro del par** (irresolubles) | **8** |
-  | …oficiales (no se toca enunciado/opciones, solo se documenta) | 1 |
-  | Exposiciones en 90 días / usuarios distintos | 94 / **64** |
-  - Nacidas entre **oct-2025 y jul-2026**: no es un lote puntual que se pueda revertir, es goteo del pipeline de generación.
-- **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero la consulta que se hizo para comprobarlo destapó las 48 de verdad. El caso de un usuario era un falso positivo; el fenómeno que describía existe.
+  | Dos opciones idénticas carácter a carácter | **33** |
+  | …con la **clave dentro del par** (serían irresolubles) | **0** |
+  | …oficiales | **0** |
+  | Exposiciones en 90 días / usuarios distintos | **3 / 2** |
+  - Nacidas entre **abr-2026 y jul-2026**, casi todas de lotes de contenido sanitario (`GERIATRÍA ENF`, `Pediatría`, `SALUD MENTAL ENF`…) y de `opositatest:*`. Goteo de importación/generación, no un lote revertible.
+- **⚠️ DOS familias de falso positivo, y las dos me mordieron al medir. Encódalas quien haga el detector:**
+  1. **Diferencia SOLO de mayúsculas = legítima, y es frecuente (15 casos).** Normalizar con `lower()` destruye justo lo que esas preguntas examinan: `=MAYUSC("administración")` → `ADMINISTRACIÓN` vs `Administración`; `=NOMPROPIO`; Vi `i` vs `I`; plurales en inglés. Con `lower()` salían **8 «irresolubles» que no existen**.
+  2. **Normalizar espacios con regex mal escapada.** Un `\s+` que llega a SQL como `s+` **borra las eses** y hace iguales `wardrobes` y `wardrobess`. Salieron otros 8 fantasmas, todos de inglés PN. Por eso la comparación va en JS y solo hace `trim` + colapso de espacios.
+  - Moraleja para el kind: **lo único que se normaliza es el espacio en blanco**. Nada más.
+- **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero al comprobarlo apareció el fenómeno de verdad, en otras preguntas.
 - **Por qué no lo caza nada:** ningún detector de `health-sweep` mira la coherencia **interna entre opciones** — todos los kinds de contenido comparan la pregunta con su ARTÍCULO, con el epígrafe o con la convocatoria, nunca la pregunta consigo misma. `npm run tools:buscar -- "opciones duplicadas"` no devuelve escritor ni detector alguno. Es el mismo hueco de [T-405] visto desde otro lado: allí el veredicto existía y no llegaba a ninguna cola; aquí **ni siquiera se mira**.
 - **Propuesta (por orden de coste):**
-  1. **Reparar las 8 graves a mano** contra el artículo vinculado: casi siempre una de las gemelas debía llevar la variante que la convierte en distractor (el par «denunciante/denunciado» de este mismo caso enseña la forma). Si no se puede determinar cuál era, **desactivar en vez de adivinar**.
-  2. Kind determinista en el barrido (`opciones_duplicadas`), con dos bandas: **`error`** = clave dentro del par (irresoluble), **`warn`** = par de distractores. Es medida exacta, sin LLM y sin falsos positivos: o los dos textos son iguales o no lo son.
+  1. **Reparar las 33 a mano** dando al distractor clonado el contenido que le tocaba. Varias lo cantan solas: `e8d1767e` (siglas URL) tiene A y C con *«Universal Resource Library»* siendo la rejilla evidente Uniform/Universal × Locator/Library; `92277697` (binario de 456) repite `010001000` en C y D. Donde no se pueda determinar, **desactivar en vez de inventar**.
+  2. Kind determinista en el barrido (`opciones_duplicadas`), con dos bandas: **`error`** = clave dentro del par (hoy 0, pero es el caso que de verdad rompe la pregunta y hay que vigilar), **`warn`** = par de distractores. Sin LLM: o los dos textos son iguales o no lo son — siempre que se respeten las dos familias de falso positivo de arriba.
   3. Valorar un **trinquete** que impida que el número suba (mismo patrón que `toolWriters`), ya que el goteo viene del generador.
 - **Capa que lo vigile:** el kind ES la capa; núcleo puro con su test (pares idénticos, opciones vacías/NULL que NO cuentan como par, D nula legítima de las oposiciones de 3 opciones → ver manual de impugnaciones §7.8, que es el falso positivo obvio a evitar).
 - **Relacionada:** [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
@@ -1359,27 +1363,21 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Cabo suelto del mismo sitio:** el backfill de versiones de temario reporta **175 temas activos HUÉRFANOS** (`position_type` que no corresponde a ninguna oposición activa) que se quedan sin versión. No rompe ningún test hoy, pero es la misma familia de higiene.
 - **De dónde sale:** del inventario real de [T-377], al separar el rojo de contenido del ruido de conexión.
 
-### [T-385] 🔴 [ABIERTO 31/07] El deploy construye desde el checkout COMPARTIDO, y por eso necesita dos guardarraíles que no deberían existir
-- **Cómo salió:** al cerrar la sesión del 31/07, midiendo por qué el trabajo se atascó tres veces. **91 commits en un día** tocan `tareas-pendientes.md`, hay **22 worktrees** vivos y varias sesiones escriben en el checkout principal a la vez.
-- **El acoplamiento, exacto:** `deploy-{frontend,backend}.sh` hace `git reset --hard origin/main` **en el árbol desde el que se ejecuta** y construye con `podman build … ./backend` desde ese mismo árbol. O sea: **el deploy necesita que un recurso compartido esté quieto y limpio**, cosa que con 2-10 sesiones no se puede garantizar.
-- **Lo que ese acoplamiento ya ha costado, todo del 31/07:**
-  - [T-364]: guard nuevo *«no lances el deploy desde un worktree de sesión»* — porque el `reset --hard` le movía el HEAD a quien programaba.
-  - [T-366]: el lanzador se bloqueaba con el scratch SIN TRACKEAR de otras sesiones.
-  - Un lanzador de backend **muerto tras 20 vueltas** sin desplegar, y otro esperando el lock.
-  - Un `rebase` en estado inconsistente (git decía conflictos sin ficheros en conflicto) mientras otra sesión escribía el mismo fichero.
-  - El último push del día: **siete intentos** esperando a que soltaran el árbol.
-- **El arreglo de fondo: que el deploy NO toque el árbol de nadie.** `git worktree add --detach <tmp> <sha>` → construir ahí → borrarlo (con `trap`, para que un build fallido no deje basura). El deploy pasa a construir **exactamente el commit cuyo CI verificó**, en un árbol **inmutable y propio**, que es lo que la gente cree que hace hoy.
-  - **Y entonces sobran tres cosas:** el `reset --hard` destructivo, la comprobación de árbol sucio y el guard de [T-364]. No se relajan: **dejan de tener objeto**.
-  - **Guardarraíl a REEMPLAZAR, no a borrar:** hoy `deploy-scripts.test.ts` exige *«aborta si HEAD no contiene origin/main»*. Con esto, el invariante correcto es más fuerte: *«construye el SHA de `origin/main` verde en CI, en un árbol recién creado»*. Hay que cambiar el test A LA VEZ que el script y dejar escrito por qué el nuevo es más fuerte, no más laxo.
-- **Gotchas medidos que hay que respetar (por eso NO es un `cd` y ya):**
-  - **`.env.local` está gitignorado** → un worktree nuevo NO lo tiene, y de ahí sale el `GITHUB_PAT` del gate de CI. Hay que leerlo del checkout original ANTES de cambiar de árbol.
-  - El **frontend** además inyecta las `NEXT_PUBLIC_*` como **build-args** y sincroniza assets a S3: más superficie, por eso va en fase 2.
-  - `node_modules` NO hace falta en el host (el build es Docker), pero conviene confirmarlo por Dockerfile antes de dar por hecho.
-- **Fases:** (1) helper compartido `scripts/lib/deploy-worktree.sh` + adopción en **backend**; (2) adopción en **frontend**; (3) retirar el guard de [T-364] y la comprobación de árbol del lanzador, que ya no protegen de nada. Mientras convivan los dos modos, el lanzador mantiene sus comprobaciones — quitarlas antes dejaría al frontend sin red.
-- **✅ LA INCÓGNITA CARA YA ESTÁ RESUELTA (31/07, probado de verdad, no razonado):** se creó un worktree efímero de `origin/main` (`git worktree add --detach`) —sin `node_modules` y **sin `.env.local`**, que ahí no llega por estar gitignorado— y se construyó la imagen del backend desde él: **`podman build … ./backend` termina con éxito**. El `Dockerfile` solo copia ficheros TRACKEADOS (`package*.json`, `tsconfig*`, `nest-cli.json`, `src`) y resuelve las dependencias dentro de la imagen, así que **el árbol pelado basta**. Worktree e imagen de prueba borrados; `git worktree list` vuelve a 22.
-  - Es decir: lo único que hay que sacar del checkout original es el **`GITHUB_PAT`** del gate de CI (se lee de `.env.local` ANTES de cambiar de árbol). Todo lo demás es del commit.
-- **⚠️ LO QUE FALTA ES CIRUGÍA EN EL CAMINO DE DEPLOY, y por eso no se empezó a medias (31/07):** tocar `deploy-backend.sh` obliga a reescribir A LA VEZ cuatro aserciones de `deploy-scripts.test.ts` que hoy están escritas con `it.each(scripts)` para AMBOS scripts (`reset --hard origin/main`, `merge-base --is-ancestor origin/main HEAD`, el bloque de auto-sync y su orden respecto al gate de CI). Hay que **partirlas por script** mientras conviven los dos modos, no relajarlas. Dejar el script de deploy a medio editar bloquea a todas las sesiones, así que esto se hace de una pasada y con la suite delante.
-- **Relacionadas:** [T-364], [T-366], [T-386] (el lanzador), `docs/runbooks/pusheo-revision-despliegue.md`.
+### [T-385] 🟠 [PARCIAL 31/07 — FASE 1 (backend) HECHA; falta el frontend] El deploy construía desde el checkout COMPARTIDO, y por eso necesitaba guardarraíles que no deberían existir
+
+- **El acoplamiento:** `deploy-{frontend,backend}.sh` hacía `git reset --hard origin/main` **en el árbol desde el que se ejecutaban** y construían con `podman build … ./backend` desde ese mismo árbol. O sea: el deploy necesitaba que un recurso COMPARTIDO estuviera quieto y limpio, cosa que con 2-10 sesiones no se puede garantizar. Lo que costó, todo el 31/07: un guard nuevo ([T-364]), el lanzador bloqueado por el scratch ajeno ([T-366]), un lanzador muerto tras 20 vueltas y un push a siete intentos.
+- **✅ FASE 1 HECHA — el backend construye `origin/main` en un worktree EFÍMERO** (`scripts/lib/deploy-worktree.sh`). Y el invariante nuevo es **más fuerte, no más laxo**: antes se construía «el árbol, que esperamos que sea origin/main» con TRES mecanismos aproximándolo (auto-sync, ancestría de HEAD, árbol limpio); ahora se construye **exactamente el commit cuyo CI se acaba de verificar**, en un árbol que nadie puede ensuciar. Desaparecen el `reset --hard` destructivo, el aborto por «otra sesión pusheó mientras verificaba el CI» y el aborto por árbol sucio de otro.
+- **Dos decisiones de orden que no son cosméticas:**
+  - El SHA se resuelve **DESPUÉS de coger el lock**. Esperar el cerrojo puede costar 45 min y en ese rato `origin/main` se mueve: resolverlo antes dejaría desplegando un commit ya viejo, que es el «clobber stale» que el guardarraíl retirado existía para impedir.
+  - Y **antes** de escribir el contenido del lock y la fila de `deploy_runs`, para que ambos anoten el commit que SE DESPLIEGA y no el HEAD de quien lanza. Un registro que nombra otra cosa es peor que no tenerlo.
+- **⚠️ DOS FALLOS PROPIOS, los dos cazados EJECUTANDO y no razonando — y son la parte reutilizable de esta ficha:**
+  1. **`trap … EXIT` duplicado.** Ya había uno (cerrar la fila de `deploy_runs`, [T-404]) y añadí otro para borrar el árbol. **En bash el segundo REEMPLAZA al primero en silencio**: el deploy habría dejado de cerrar su fila sin que nada lo dijera. Van juntos en una función y hay test de que solo hay UNA trampa.
+  2. **La limpieza no borraba nada.** `crear_arbol_de_build` se invoca por sustitución de comandos —`BUILD_DIR="$(…)"`— que corre en un **subshell**, así que la variable global que asigna muere con él; la limpieza la encontraba vacía, salía con 0 y el `|| true` se tragaba el silencio. **Medido: dos worktrees quedaron registrados y en /tmp después de haber "limpiado"** — en producción sería un worktree y un directorio colgados EN CADA DEPLOY. Ahora la ruta va por argumento, con test de regresión.
+- **Verificado de verdad:** worktree efímero creado sobre `origin/main` (distinto del HEAD local, que es el punto), sin `node_modules` ni `.env.local`, y **`podman build` de la imagen del backend termina con éxito** desde él. Árbol e imagen borrados; cero restos en `git worktree list` ni en /tmp.
+- **Guardarraíles REEMPLAZADOS, no borrados** (`deploy-scripts.test.ts`, 88 verdes): las cuatro aserciones que corrían con `it.each` para AMBOS scripts se partieron por script —el frontend conserva las suyas intactas mientras siga en el modo viejo— y el backend estrena un bloque propio con el invariante fuerte. Incluida la acción ante un CI `cancelled`, que en backend ya NO es «resincroniza» sino «relanza»: exigir el texto viejo habría fijado un consejo equivocado.
+  - Un test se escribió mal y lo delató su propio fallo: medía el orden contra una mención en un **comentario** en vez de contra la invocación real. Un guardarraíl que mide comentarios no mide nada.
+- **⏳ LO QUE FALTA (fase 2 y 3):** adoptar el árbol efímero en **frontend** —más superficie: inyecta `NEXT_PUBLIC_*` como build-args y sincroniza assets a S3— y, solo entonces, retirar el guard de [T-364] y la comprobación de árbol del lanzador, que dejarán de proteger de nada. **Mientras convivan los dos modos, el frontend y el lanzador mantienen sus comprobaciones.**
+- **Relacionadas:** [T-364], [T-366], [T-386], [T-404] (el trap con el que chocó), `docs/runbooks/pusheo-revision-despliegue.md`.
 
 ### [T-387] 🟠 [ABIERTO 31/07] `tareas-pendientes.md`: 91 commits al día sobre un fichero de 2 MB que todos editan a mano
 - **Medido el 31/07:** **91 commits en un solo día** tocan ese fichero, que pesa **1,96 MB** y contiene ~360 fichas. Lo escriben todas las sesiones, a mano, con scripts de usar y tirar.
