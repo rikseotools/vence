@@ -5985,6 +5985,15 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
   2. Según cuál sea: perfilar las 3 RPCs antifraude, o revisar la cascada de triggers de `test_questions` (¿cuántos son evitables? ¿alguno hace trabajo que podría ir al outbox?).
   3. **Solo entonces** bajar el timeout. Bajarlo antes devuelve los 503 de mayo.
 - **Relacionada:** [T-312] (el desglose que lo parte en dos), [T-270] (el otro fenómeno del 29/07), [T-254] (la hipótesis refutada), `docs/roadmap/incidente-answer-save-503-28-05.md`.
+#### ⚠️ EL DETECTOR QUE SALIÓ DE AQUÍ ESTÁ AHOGANDO EL BARRIDO NOCTURNO (medido el 31/07)
+- **Qué se ve:** el barrido de salud (`content-health-sweep`) arrancó hoy a las 07:30 y **media hora después seguía corriendo**, cuando su marca histórica son ~90 segundos. En sus logs, dos veces: `techo de timeout no evaluado: Failed query:` — la firma de una consulta que se pasa del `statement_timeout` de 30 s del backend.
+- **De dónde sale:** el detector `latencia_techo_timeout` que añadieron `aaa8bead4` y `3c32c095e` (esta ficha). Su forma es cara por construcción: para **cada endpoint lento** lanza una consulta con **seis subconsultas correlacionadas**, y cada una cuenta filas sobre **`observable_events`** — la tabla más grande de la base (**~3 GB, 12 M de filas**), que además estuvo ayer al 85,9% de páginas visibles ([T-275]).
+- **Lo que NO es:** el barrido no se muere. Sobrevive porque el aislamiento de [T-307] lo protege (antes una consulta así se llevaba la pasada entera). El daño ahora es de **tiempo**, no de caída: un barrido que se arrastra media hora es un barrido que colisiona con la ventana de otros crons y que nadie espera a leer.
+- **Cómo arreglarlo sin perder el detector** (ideas, no decidido — es de quien lleva esta ficha):
+  1. **Una sola pasada en vez de seis subconsultas**: los seis tramos se pueden sacar con un `GROUP BY` sobre un `width_bucket`/`CASE` en una única lectura, en lugar de seis conteos correlacionados por endpoint.
+  2. **Acotar la ventana**: 14 días sobre `observable_events` es mucho para una pregunta sobre la FORMA de la cola; con 2-3 días la forma ya se ve.
+  3. **Sacarlo del barrido nocturno**: es un detector de latencia, no de contenido. Si vive aparte, su coste no penaliza a los otros ~40 detectores.
+- **Medición pendiente y barata:** cronometrar esa consulta con `EXPLAIN (ANALYZE, BUFFERS)` para UN endpoint. Si son ~30 s por endpoint, el coste total del barrido es lineal en el número de endpoints lentos y se puede predecir exactamente.
 
 ### [T-312] 🟠 [ABIERTO 30/07] Una petición lenta no dice POR QUÉ: 50-200 opositores al día con el guardado a >5 s y causa inaveriguable
 - **El hueco, en una frase:** de una petición de **25 segundos que devolvió 200 OK** guardamos `duration_ms`, host, método, `questionId` y poco más. **Nada de dónde se fueron esos 25 segundos** — ni BD, ni espera de pool, ni antifraude, ni llamada externa. La pregunta «¿por qué tardó?» es literalmente incontestable con lo que hay, y el `grep` lo confirma: **no existe ni una medición interna** en `lib/api/v2/answer-and-save`.
