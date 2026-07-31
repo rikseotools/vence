@@ -2207,6 +2207,25 @@ const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABAS
 - **Una viñeta reparada en draft por overclaim** —el defecto más reincidente de esta campaña—: afirmaba que el Comité Europeo interviene «en los artículos 61 y 62» cuando el **61 no lo menciona** (remite al art. 60 del Reglamento y al mecanismo de coherencia). Lo levantó la auditoría ciega como observación menor, se corrigió antes de aprobar, y el Paso 9 fue expresamente a comprobar que la reparación había quedado bien.
 - **Repartir una cláusula entre dos preguntas, otra vez validado:** el art. 61.1 es una frase con supuesto + salvedad, y se preguntan por separado acotando cada enunciado su mitad. Mismo criterio que el art. 52 del RD 203/2021 (§5.39). Las dos auditorías lo revisaron a propósito y confirmaron que no se solapan ni dejan hueco.
 
+### 5.41 Batch Ley 9/2017 arts. 137-148 — el MISMO defecto CUATRO veces, y por qué es de la ley, no del azar (2026-07-31)
+
+- **batches**: `gen_lcsp_t115_2026-07-31` (16 preguntas) + `gen_lcsp_cierre_t115_2026-07-31` (2 de cierre). Arts. 137, 138, 140, 142, 146 y 148. `batch:boe` 6/6 idénticos al BOE vigente · gate 16/16 · **posición de la correcta 4/4/4/4 exacto** · `batch:servido` 8/8 y 6/6 en producción. Sirve a **17 temas de 17 oposiciones** (2.428 usuarios).
+- 🔴 **EL HALLAZGO: la CITA TRUNCADA salió CUATRO veces en el mismo lote, y ningún revisor las vio todas.** Las cuatro son de ENUNCIADO, no de clave —la respuesta marcada era siempre la correcta—; lo que fallaba es que enseñaban como absoluta una regla que la ley excepciona dos líneas después:
+
+| # | Artículo | Cláusula que la clave se dejaba fuera | Quién la vio |
+|---|---|---|---|
+| 1 | 146.2.a) | «o encomendar esta a un organismo técnico especializado» | auditoría ciega (Paso 7) |
+| 2 | 138.3 | «salvo que en los pliegos … se estableciera otro plazo distinto» | auditoría ciega (Paso 7) |
+| 3 | 138.3 | **además**, la reducción a 4 días en expedientes urgentes | Paso 9 — **la reparación del #2 se había quedado corta** |
+| 4 | 140.3 | «No obstante lo anterior, cuando el empresario esté inscrito en el ROLECE…» | Paso 9 v2 |
+
+- **Es de la LEY, no del azar, y eso es lo accionable.** La LCSP está redactada como **regla + excepción al final de la misma oración**, así que este patrón hay que buscarlo POR SISTEMA en ella, no esperar a que aparezca. Compárese con §5.40 (LO 3/2018, preceptos cortos y cerrados): 13/13 a la primera, cero defectos. **El riesgo de cita truncada depende del estilo de redacción de la norma.** Al generar sobre leyes de este tipo (LCSP, LGT, LPAC), díselo al auditor por adelantado: es lo que hizo aparecer los casos 3 y 4.
+- ⚠️ **AL REPARAR UNA CITA TRUNCADA, RELEE EL PRECEPTO ENTERO, no solo el trozo que te han señalado.** El caso #3 es exactamente eso: se reparó la cláusula que el auditor citaba y no se volvió a leer el apartado, que tenía una SEGUNDA excepción. Es la misma forma del fallo ya documentado en §5.19 (se corrigió el enunciado y quedó el mismo error en la cabecera del blockquote).
+- 🧭 **La reparación correcta es ACOTAR EL ENUNCIADO, pero acotar DEJA MATERIA FUERA — y eso se cierra con preguntas, no con un parche.** Al excluir del enunciado el expediente urgente, la regla de los 4 días se quedaba sin enseñar a nadie; al dejar al margen la exención del ROLECE, igual. Por eso el lote se cerró con un **mini-lote de 2 preguntas** que cubre justo esos dos extremos. Regla: cada vez que acotes un enunciado para reparar una cita truncada, **apunta la cláusula excluida como pregunta pendiente**.
+- **Y la demostración en vivo de por qué el manual exige auditoría DOBLE + Paso 9:** hicieron falta **cuatro** pasadas, y **cada revisor encontró algo que el anterior no vio**. Con una sola auditoría habrían quedado tres defectos vivos. El 17% de falsos negativos de §2.4 no es una cifra teórica.
+- **Se evitaron a propósito los arts. 134, 143, 147 y 151**: tienen preguntas scrapeadas en `draft` con la explicación corrupta (mojibake del import). Generar encima habría creado duplicados semánticos el día que alguien las repare, y el dedup del Paso 3 no lo caza porque compara enunciados. **Antes de elegir artículos, mira si ya hay material en `draft`.**
+- **Dos reparaciones de longitud en el borrador, antes de insertar:** una clave demasiado corta (52 ch frente a distractores de 74) y otra demasiado larga (220 frente a 130). El tell de longitud es simétrico y el constructor lo comprueba en el sitio.
+
 ## 6. Anti-patterns (qué NO hacer)
 
 | Anti-pattern | Por qué falla |
