@@ -2232,6 +2232,26 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-433] ✅ 🟠 [HECHA 31/07] El recordatorio de calidad llegaba al ARRANCAR la sesión, no al empezar la tarea
+
+- **ORIGEN.** Manuel (31/07): *«siempre, en cada sesión y worktree, tengo que poner cada poco esto: no hagas chapuzas, hazlo profesional, robusto, escalable y observable, integrado en el sistema que ya hay; si creas una herramienta verifica antes si ya existe; nada de silos; haz capas… ¿cómo hacemos para que la sesión se autogestione sin que yo esté detrás recordándoselo?»*
+- **EL DIAGNÓSTICO, y no era desidia.** La exigencia **YA estaba escrita** en `CLAUDE.md` (5 menciones) y aun así había que repetirla. El motivo: **`CLAUDE.md` se lee UNA VEZ, al arrancar la sesión.** Cuando media hora después se coge una tarea, esas líneas están sepultadas bajo doscientas. *Una regla que vive donde nadie mira en el momento de la verdad no se cumple* — la misma lección que este repo lleva todo el día pagando.
+- **Y lo que sí se hacía cumplir, llegaba TARDE:**
+  | lo que se pide | ¿se hace cumplir? | ¿cuándo? |
+  |---|---|---|
+  | capas de seguridad | ✅ `robustez-push-guard` | **al pushear** — con el trabajo ya hecho |
+  | no crear silos | ✅ guardarraíl de CI | al pushear |
+  | ¿ya existe la herramienta? | ⚠️ existe `tools:buscar`, pero **nadie obliga** | — |
+  | **al EMPEZAR una tarea** | ❌ **`claim` no decía nada** (0 menciones) | — |
+  Ninguno de esos guardarraíles devuelve las dos horas de construir algo que ya existía.
+- **✅ ARREGLO: el recordatorio se imprime en `claim`**, que es **el único punto por el que pasa TODA tarea justo antes de empezar**. Cuatro líneas, en el orden que evita rehacer trabajo: ¿ya existe? → ¿dónde encaja? → capas → el simulador que ya hay.
+- **Es CONTEXTUAL, y eso es lo que lo salva de volverse papel pintado:** el comando de búsqueda sale **ya escrito con las palabras significativas de esa tarea** (`npm run tools:buscar -- <palabras del título>`, sin relleno). Un bloque largo y genérico se salta con la vista a la tercera vez — exactamente como se saltaba el aviso de `CLAUDE.md`.
+- **Y dice «SOLO las que hagan falta»** sobre las capas, a propósito: la petición original lo decía y sin eso el recordatorio se leería como burocracia, que es la otra forma de que se ignore.
+- **Lo que NO resuelve, dicho claro:** «no hagas chapuzas» es un juicio de calidad y no se puede hacer cumplir con una comprobación. Lo que sí se puede es **hacer imposible saltarse sus señales observables** —capas, registro de herramientas, integración— y traerlas al momento en que sirven.
+- **Capas:** 5 tests (que esté cableado en `claim`, que cubra las cuatro exigencias, que el comando lleve las palabras de la tarea, y que no se lea como burocracia).
+- **Relacionadas:** [T-130] (el registro de herramientas: *¿esto ya existe?*), `scripts/robustez-push-guard.cjs`, [T-415] (mismo patrón: impedir en el punto de escritura).
+
+
 ### [T-432] ✅ 🟠 [HECHA 31/07] Los vigías sobrevivían a su sesión y seguían vigilando PARA NADIE
 
 - **ORIGEN.** Manuel, limpiando worktrees (31/07): *«pero eso es una chapuza, deberían morir con la sesión, ¿no crees?»*. Tenía razón.

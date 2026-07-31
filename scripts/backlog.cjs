@@ -125,6 +125,47 @@ function needSid() {
 }
 
 /**
+ * Lo que hay que hacer ANTES de empezar, impreso al reclamar (T-433).
+ *
+ * ── POR QUÉ NO BASTA CON TENERLO ESCRITO ─────────────────────────────────────────────────────
+ * Esta exigencia —no chapuzas, integrar en vez de crear silos, capas de seguridad— lleva tiempo
+ * en CLAUDE.md, y aun así hay que repetirla a mano cada poco. El motivo no es desidia: CLAUDE.md
+ * se lee UNA VEZ al arrancar la sesión, y cuando media hora después se coge una tarea, esas
+ * líneas están sepultadas bajo doscientas. **Una regla que vive donde nadie mira en el momento
+ * de la verdad no se cumple.**
+ *
+ * Y los guardarraíles que ya existen actúan TARDE: `robustez-push-guard` exige capas al pushear
+ * —con el trabajo ya hecho— y los registros de herramientas y runbooks avisan en CI. Ninguno
+ * puede devolverte las dos horas que pasaste construyendo algo que ya existía.
+ *
+ * `claim` es el único punto por el que pasa TODA tarea justo antes de empezar. Por eso el
+ * recordatorio va aquí y no en otro sitio.
+ *
+ * ── POR QUÉ ES CONTEXTUAL Y CORTO ────────────────────────────────────────────────────────────
+ * Cinco líneas y con el comando de búsqueda YA ESCRITO con las palabras de esta tarea. Un bloque
+ * largo y genérico se convierte en papel pintado a la tercera vez que sale: se salta con la
+ * vista, exactamente igual que se saltaba el aviso de CLAUDE.md.
+ */
+function recordarComoSeTrabaja(titulo) {
+  // Palabras con las que buscar si esto YA existe: las significativas del título, sin relleno.
+  const PARADAS = new Set(['para', 'como', 'desde', 'hasta', 'sobre', 'entre', 'cuando', 'donde',
+    'este', 'esta', 'esto', 'todo', 'toda', 'pero', 'porque', 'sin', 'con', 'que', 'los', 'las',
+    'del', 'una', 'uno', 'por', 'más', 'mas', 'son', 'está', 'esta', 'hay', 'sus', 'ese', 'esa']);
+  const claves = String(titulo || '')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9ñ ]+/g, ' ').split(/\s+/)
+    .filter((w) => w.length > 3 && !PARADAS.has(w))
+    .slice(0, 3);
+
+  console.log('\n📐 ANTES DE ESCRIBIR CÓDIGO — el orden que evita rehacer trabajo:');
+  console.log(`   1. ¿ya existe?     npm run tools:buscar -- ${claves.join(' ') || '<palabra>'}`);
+  console.log('   2. ¿dónde encaja?  intégralo en el runbook/sistema que ya lo cubre — nada de silos');
+  console.log('   3. capas          unit · integración · simulación · canary · guardarraíl — SOLO las que hagan falta');
+  console.log('   4. si toca UI     vence-sim (playwright) ya está montado');
+  console.log('   (el pre-push EXIGE al menos una capa; llegar ahí sin ninguna es rehacer el trabajo)');
+}
+
+/**
  * Al retomar una tarea, enseña lo que dejó la sesión ANTERIOR sin pushear (T-430).
  *
  * Cuando una sesión muere de golpe —se apaga el ordenador, se queda sin contexto, la cierran— no
@@ -591,6 +632,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       await avisarSolape(s, row.id, ficha);
       await sugerirRelacionadas(s, row.id, ficha);
       await ofrecerTrabajoDeLaSesionAnterior(s, dueñoAnterior);
+      recordarComoSeTrabaja(row.title);
     }
 
     else if (cmd === 'heartbeat') {
@@ -709,17 +751,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
          WHERE id = ${id} RETURNING id, title`;
       console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      // Lo PRIMERO es la MARCA, no la posición (T-382, 31/07): desde ese cambio «abierta» la
-      // declara el ✅ de la cabecera, y es lo único que leen el parser, el `sync` y la deriva.
-      // Este aviso solo hablaba de mover la ficha y remataba con «el guardarraíl de CI falla si
-      // se queda en Hechas», que es FALSO: el guardarraíl de posición solo mira el sentido
-      // contrario —una ficha CERRADA que se queda en `## Abiertas`—, así que una reabierta bajo
-      // `## Hechas` pasa el CI… y sin quitarle el ✅ el sistema la sigue contando como cerrada,
-      // que es justo la deriva que se estaba deshaciendo. Verificado con el test el 31/07 [T-429].
-      console.log(`   ⚠️ AHORA quita el ✅ de su cabecera en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (es la ÚNICA marca que se lee: sin quitarlo la tarea sigue contando como cerrada)`);
-      console.log(`      Y si la ficha está bajo "## Hechas", devuélvela a "## Abiertas" para que se lea`);
-      console.log(`      (eso el CI no lo exige — solo caza lo contrario — pero deja el fichero honesto)`);
+      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
+      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
     }
 
     else if (cmd === 'release') {
