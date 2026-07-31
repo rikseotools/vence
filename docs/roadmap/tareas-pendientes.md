@@ -1093,6 +1093,26 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400].
 
 
+### [T-405] 🟠 [ABIERTO 31/07] El veredicto ROJO de una verificación no llega a ninguna cola: dijo «opciones corruptas» y la pregunta siguió sirviéndose 12 días
+
+- **El caso que lo destapa (31/07):** la usuaria Estela impugnó `8cd4ee16` (`b816cd3a`, RD 889/2022 art. 13). El enunciado preguntaba cómo se presentan el título y la certificación académica y **las cuatro opciones eran las de otra pregunta** (art. 21, recursos), con la clave marcada en una opción que además es falsa en su propio contexto. **La verificación del 19/07 ya lo había escrito, palabra por palabra**: `answer_ok=false`, `options_ok=false`, explicación *«OPCIONES CORRUPTAS: enunciado y explicacion sobre legalizacion/apostilla (art13.1) pero las 4 opciones hablan de recursos; opcion A marcada no responde a la pregunta»*. **Doce días `approved` y sirviéndose** hasta que la cazó una persona.
+- **Dónde está el hueco, y por qué NO es [T-036]:** aquella pregunta *qué se mira* (la matriz de dimensiones: le faltaba `enunciado_ok`, los distractores no se comprobaban). Esta pregunta **qué se hace con lo que ya se vio**. Escribir la fila en `ai_verification_results` **no cambia el `lifecycle_state`, no crea señal, no pinga ningún badge y no abre ninguna cola**. El veredicto se queda de dato histórico, y el único consumidor real es una sesión que lo mire a mano.
+- **Medido hoy (última verificación no descartada, preguntas ACTIVAS):**
+  | Señal | Activas |
+  |---|---|
+  | `options_ok = false` | **400** |
+  | `answer_ok = false` | 19 |
+  | `enunciado_ok = false` | 8 |
+  | **Total (unión)** | **420**, de las cuales **409 sin `fix_applied`** |
+  - La más antigua sin tocar es del **23/05**. **⚠️ El 420 NO es «420 preguntas rotas»:** el grueso de esas `options_ok=false` son notas de **auditoría ciega**, y la propia campaña de junio midió que **el auditor ciego se equivoca más que la pasada que audita** (ver memoria `project-answer-false-active-sweep`). Por eso el trabajo NO es desactivar en bloque, ni un gate automático que oculte 420 preguntas.
+- **Lo que sí se sostiene:** hay veredictos **inequívocos** que nadie tiene que adjudicar — «opciones corruptas», «la opción marcada no responde a la pregunta»— y hoy mueren en la tabla. Ese subconjunto es el que debe salir a una cola. Medido: la etiqueta literal `OPCIONES CORRUPTAS` aparece en **1 sola** pregunta de todo el banco (la de Estela, ya reparada), así que **el caudal es pequeño y el triaje es barato** — el problema no es el volumen, es que no hay tubería.
+- **Propuesta (por orden de coste):**
+  1. Que un veredicto rojo **deje señal visible** — un kind de `content_health_findings` con su frase-gatillo, alimentado por el barrido, en vez de que haya que ir a la tabla a mirar. Es el patrón que ya usa todo lo demás de salud de contenido.
+  2. Separar en ese kind **lo inequívoco** (bandas `error`: opciones que no responden al enunciado, clave que contradice el artículo citado) de **lo opinable** (banda de cola, que no pinga el badge), para no repetir el fallo de la bandeja que grita todas las noches ([T-317]).
+  3. Decidir si un veredicto inequívoco debe además **bajar el `lifecycle_state`** a `needs_review`. Ojo: eso sí es una puerta con dientes y necesita OK de Manuel, porque oculta preguntas.
+- **Capa que lo vigile:** el propio kind es la capa (hoy no hay ninguna). Cuando exista, un guardarraíl de paridad entre lo que la verificación escribe y lo que el barrido lee.
+- **Relacionada:** [T-036] (la matriz de verificación: qué dimensiones se miran), memoria `project-answer-false-active-sweep` (por qué NO se actúa en bloque sobre este pool), [T-317] (la lección de no llenar el badge de hallazgos no accionables).
+
 ### [T-402] 🟠 [ABIERTO 31/07] El dossier dice «NO RE-RESPONDAS» ante una RÉPLICA: el aviso que evita duplicar un email bloquea justo el caso que hay que contestar
 
 - **Esfuerzo: ~30 min** (el arreglo son 10 líneas; lo que lleva tiempo es sacar la condición a módulo puro para que tenga test, que es lo que pide el guard de robustez).
