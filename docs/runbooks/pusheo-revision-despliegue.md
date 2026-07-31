@@ -50,6 +50,16 @@ cd <repo-principal> && scripts/deploy-cuando-verde.sh <superficie>
 > 3. **No despliega.** Salvo urgencia (fuego en producción, ver §rollback), en cuyo caso despliega
 >    y con eso arrastra lo de todos, que es precisamente la gracia.
 >
+> **ANTES de preguntar «¿despliego?», MIRA SI YA HAY UNO EN MARCHA.** No hace falta coordinar
+> con nadie: el `flock` serializa y lanzar un deploy solo lo pone **a la cola**. Dos comandos:
+> ```bash
+> fuser /tmp/vence-deploy.lock          # quién tiene el lock ahora
+> pgrep -fa "deploy-cuando-verde|deploy-(front|back)end.sh"   # qué hay en marcha o encolado
+> ```
+> Si ya hay uno de tu superficie, **no lances nada**: el deploy sube todo `main`, así que tus
+> commits se van con el suyo. Preguntarle al humano si desplegar cuando el tooling ya lo
+> serializa es hacerle de operador de algo que se coordina solo (31/07/2026).
+>
 > **Cuándo toca desplegar de verdad — `npm run deploy:pendiente`:**
 > ```
 > ¿Toca desplegar?  (política: AGRUPAR — una sola sesión despliega por todas)
