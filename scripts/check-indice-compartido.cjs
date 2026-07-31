@@ -20,6 +20,16 @@ const REPO = path.resolve(__dirname, '..')
 const { evaluarIndice, mensajeBloqueo } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
 const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 
+/** Registrar el roce sin bloquear NUNCA (T-423). */
+function friccion(clase, guard, detalle) {
+  try {
+    const a = ['--clase', clase, '--guard', guard]
+    if (detalle) a.push('--detalle', String(detalle).slice(0, 200))
+    require('child_process').spawn(process.execPath, [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), ...a],
+      { detached: true, stdio: 'ignore' }).unref()
+  } catch { /* la telemetría nunca estorba a un commit */ }
+}
+
 function url() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
   try { return fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim() } catch { return null }
@@ -28,6 +38,7 @@ function url() {
 async function main() {
   if (process.env.INDICE_COMPARTIDO_OK === '1') {
     console.log('⏭️  guardarraíl de índice compartido saltado (INDICE_COMPARTIDO_OK=1)')
+    friccion('guard_escape', 'indice-compartido')
     return 0
   }
   const { sid } = resolverSid({ repo: REPO })
@@ -52,6 +63,8 @@ async function main() {
 
   const v = evaluarIndice({ sesiones, sid, worktreePath })
   if (v.permitido) return 0
+  friccion('guard_bloqueo', 'indice-compartido', `${v.companeras.length} compañera(s)`)
+  friccion('indice_compartido', 'indice-compartido', worktreePath)
   console.error(mensajeBloqueo({ ...v, worktreePath }))
   return 1
 }

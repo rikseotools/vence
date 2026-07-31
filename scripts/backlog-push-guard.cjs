@@ -20,6 +20,16 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 const { extractTaskIds, evaluatePush } = require('../lib/backlog/pushGuard.cjs')
 
+/** Registrar el roce sin bloquear NUNCA: detached y sin esperar (T-423). */
+function friccion(clase, guard, detalle) {
+  try {
+    const a = ['--clase', clase, '--guard', guard]
+    if (detalle) a.push('--detalle', String(detalle).slice(0, 200))
+    require('child_process').spawn(process.execPath, [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), ...a],
+      { detached: true, stdio: 'ignore' }).unref()
+  } catch { /* la telemetría nunca estorba a un push */ }
+}
+
 const REPO = path.join(__dirname, '..')
 
 // Misma identidad que `backlog.cjs`, resuelta por el MISMO módulo (T-407): si el guard y el
@@ -60,6 +70,9 @@ function collectChangedFiles() {
 async function main() {
   if (process.env.BACKLOG_GUARD_SKIP === '1') {
     console.log('⏭️  backlog-push-guard saltado (BACKLOG_GUARD_SKIP=1)')
+    // Deja constancia (T-423): lo que mata a un guardarraíl no es que bloquee, es que se rodee
+    // de forma sistemática sin que nadie lo mida. El escape se emite como `warn` a propósito.
+    friccion('guard_escape', 'backlog-push')
     return 0
   }
 
@@ -105,6 +118,7 @@ async function main() {
 
   console.error('\n❌ PUSH BLOQUEADO por el guardrail del backlog — commits que mencionan una tarea que NO tienes reclamada:\n')
   for (const v of violations) console.error(`   · ${v.id}: ${v.reason}`)
+  friccion('guard_bloqueo', 'backlog-push', violations.map((v) => v.id).join(','))
   console.error('\n   Reclama la tarea (o coordina si la tiene otra sesión) y reintenta.')
   console.error('   Si es legítimo (rehacer historia, mención suelta): BACKLOG_GUARD_SKIP=1 git push …\n')
   return 1

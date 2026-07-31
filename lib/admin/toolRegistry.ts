@@ -918,6 +918,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(11 tests), el mismo criterio que aplican los scripts de deploy en jq, con paridad vigilada ' +
       'por `__tests__/guardrails/ciGateParidad.test.ts`.',
   },
+  friccion_sesiones: {
+    titulo: '¿Cuánto cuesta trabajar en paralelo, y qué guardarraíl se está muriendo?',
+    ruta: 'scripts/friccion-sesiones.cjs',
+    estado: 'vivo',
+    escribe: ['observable_events'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`npm run sesiones:friccion [-- --dias 7]`. Todo lo construido para que 2-10 sesiones no se ' +
+      'pisen contesta «¿qué pasa AHORA?»; nada dejaba SERIE TEMPORAL. Lo que mide, y es lo que ' +
+      'importa, NO es cuántas veces bloquea un guardarraíl —eso solo dice que trabaja— sino ' +
+      'cuántas veces lo RODEAN con su escape: ese ratio es un indicador ADELANTADO, se ve subir ' +
+      'antes de que el guardarraíl deje de servir. Bandas: <25% sano (el escape hace de válvula), ' +
+      '25-66% erosión (falta contemplar un caso legítimo), >=66% MUERTO (ya no protege, es un ' +
+      'peaje: o se arregla el criterio o se quita). Con pocos datos NO opina. El 31/07 murieron ' +
+      'TRES guardarraíles exactamente así y los tres se descubrieron por casualidad. Emiten el ' +
+      'push-guard y el de índice compartido vía `scripts/friccion-emitir.cjs`, best-effort ' +
+      'absoluto (corren dentro de hooks de git). Núcleo `lib/observability/friccionSesiones.cjs`, ' +
+      '11 tests.',
+  },
   sesiones_solape: {
     titulo: '¿Otra sesión está tocando mis mismos ficheros? (mapa en vivo)',
     ruta: 'scripts/sessions/latidos.cjs',

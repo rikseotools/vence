@@ -1098,95 +1098,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **Capas:** núcleo puro `lib/backlog/esfuerzo.cjs` con **17 tests** (incluido que lo desconocido no se promociona y que el contraste NO opina sin datos), migración additiva con CHECK sobre los cajones, y verificación en vivo de que `first_claimed_at` se fija al reclamar y la acumulación cuenta.
 - **Relacionadas:** [T-345] (el plazo, que ya existía), [T-392] (ciclo de vida completo), [T-252] (las fechas que se escribían en los títulos).
 
-### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
-
-- **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
-- **ORIGEN.** Sergio (`pcsergio0@gmail.com`, premium, feedback `bd8b92d0`) pidió filtrar por preguntas de exámenes reales en el test por leyes. [T-326] lo construyó el 31/07 (commit `40022cec7`) **y a él sigue sin llegarle**. Esta ficha es lo que [T-326] no cubre.
-- **Por qué no le llega — dos motivos independientes, y cada uno basta por sí solo:**
-
-  | Ruta | Filtro | Contador |
-  |---|---|---|
-  | `/test/por-leyes` (la que arregló T-326) | ✅ habilitado (`page.tsx:410`, `hideOfficialQuestions={false}`) | ❌ le da **0**: la página manda **su** oposición (`page.tsx:413`) y `agente_hacienda` **no está en `EXAM_POSITION_MAP`** → fail-safe de `lib/api/test-config/queries.ts:291-296` → `count: 0` → la casilla no se pinta (`TestConfigurator.tsx:1699`) |
-  | `/leyes/<ley>` (la que él usa) | ❌ oculto a propósito (`LawTestConfigurator.tsx:180`) | ✅ saldría: **por accidente**, ver abajo |
-
-  Y el efecto que pide el contador arranca con `if (tema || hideOfficialQuestions) return;` (`TestConfigurator.tsx:530`), así que en su ruta ni se pide.
-- **Qué ruta usa, MEDIDO (30 días, `user_interactions`):** **438** configuraciones en `/leyes/<ley>` y **3.973** tests en `/leyes/ley-39-2015/avanzado`, frente a **6** eventos en `/test/por-leyes` (el último el 29/07). El **98,6%** de su uso ocurre donde el filtro está tapado.
-- **⚠️ EL ACCIDENTE QUE NO HAY QUE CONSOLIDAR.** En `/leyes/<ley>` el contador saldría porque `LawTestConfigurator` **no pasa `positionType`** (0 ocurrencias en el fichero) y `TestConfigurator` cae a su valor por defecto `'auxiliar_administrativo_estado'` (`TestConfigurator.tsx:73`). El día que alguien «arregle» eso pasándole la oposición real del usuario, a Sergio se le queda en **0** y la función desaparece sin que nadie lo note. **No construyas encima de ese default.**
-- **ARQUEOLOGÍA: el ocultamiento nunca tuvo una razón.** Viene del commit `a9cb5ff72` (**17/10/2025**), cuyo asunto es *«FIX: Corregir navegación "← Volver a Tests" en tests de leyes»*. El último de sus ocho puntos dice, entero: *«Ocultar elementos innecesarios en configurador de leyes (preguntas oficiales, artículos imprescindibles)»*. Ni medición, ni discusión, ni número: se declaró «innecesario» de pasada en un commit sobre un botón. **Esa misma frase se copió ese día a `CLAUDE.md`**, que es de donde viene la apariencia de que había criterio detrás. No lo hay.
-- **La hipótesis razonable («en una sola ley habrá pocas oficiales») es CIERTA para la cola larga y FALSA justo donde importa.** Medido el 31/07 sobre las **1.137** leyes con preguntas activas, criterio «ha caído en un examen oficial» sin mirar oposición:
-
-  | Oficiales en la ley | Leyes | |
-  |---|---|---|
-  | 0 | **810 (71%)** | la casilla **ya se oculta sola** (`officialCount > 0`) |
-  | 1-4 | 171 | test escuálido, pero el número se ve antes de marcar |
-  | 5-19 | 97 | |
-  | **≥20** | **59** | |
-
-  Y en las troncales, que son las que tienen página de ley visitada: **CE 1.019** (22%), **LECrim 573** (27%), **Ley 39/2015 526** (17%), CP 382, Ley 1/2000 313, LO 6/1985 287, Ley 40/2015 258. **El caso malo que se temía ya lo cubre el código solo**: ocultar a mano no protegía de nada que no estuviera protegido.
-- **HALLAZGO COLATERAL: el bloque CSS que «oculta» la casilla es código muerto.** `LawTestConfigurator.tsx` ~157-170 usa `:has(span:contains("🏛️"))`. **`:contains()` no existe en CSS** (es de jQuery) y un selector inválido dentro de una lista separada por comas **invalida la regla entera**. Lo que oculta de verdad es el prop. Llevamos nueve meses con diez líneas decorativas que nadie comprobó. **Al limpiarlo, ojo:** ese mismo bloque nombra «artículos imprescindibles», que se oculta por su propio prop (`hideEssentialArticles`) y **no se está decidiendo aquí**.
-- **🙋 LA DECISIÓN PENDIENTE, Y ES DE MANUEL: qué es «oficial» para quien tiene la oposición sin montar.** Manuel dijo el 31/07: *«las preguntas oficiales son las que han caído en un examen oficial»*. Tres salidas:
-  1. **Dejar el criterio de hoy** (solo las de tu oposición): Sergio ve cero y esto no le sirve de nada.
-  2. **Quitar la restricción en todas partes:** coherente, pero cambia lo que ven miles de usuarios en las pantallas **por tema** y contradice una decisión ya medida (ver abajo).
-  3. **Hacerlo explícito:** que la casilla diga de qué examen son y que quien no tiene oposición montada pueda pedir «de cualquier examen oficial». Es la única que responde bien a los dos usuarios a la vez y quita la dependencia del prop por defecto.
-- **⛔ LO QUE NO SE PUEDE HACER, y era mi propuesta inicial hasta que Manuel la cuestionó:** cambiar el criterio **solo** en la pantalla de leyes. Deja **dos definiciones de «oficial» en el mismo producto** (la misma ley con distinto número según por dónde entres) y **se salta un fail-safe puesto a propósito**: el filtro por oposición se añadió tras medir que contar de más infló la etiqueta de un tema de Seguridad Social a **115** cuando las suyas eran **~1** (ver el comentario de `lib/api/topic-data/queries.ts` y [T-326]).
-- **Si se destapa, va CON estas capas — no son opcionales, las exige la política de la casa:**
-  1. **Etiqueta honrada.** Hoy dice `🏛️ Preguntas oficiales de <nombre de la oposición> (N)` (`TestConfigurator.tsx` ~1731). Con la salida 2 o 3 ese «de» pasa a ser mentira y hay que reescribirlo.
-  2. **Telemetría.** Se enciende en una pantalla una opción tapada nueve meses: sin evento no podremos responder a «¿la usa alguien?» ni a «¿le está dando tests de 3 preguntas?». El componente ya tiene la equivalente para filtros que dejan 0 preguntas en modo tema; copiar ese patrón.
-  3. **Guardarraíl de paridad entre las dos superficies de leyes.** El defecto de fondo **no es el flag**: es que dos pantallas que hacen lo mismo divergen en qué opciones ofrecen. Por eso T-326 arregló una y dejó la otra. Sin un test que falle cuando vuelvan a divergir, esto se repite a la tercera.
-- **Relacionada:** [T-326] (lo ya construido), [T-327] (la oposición personalizada que pidió el mismo usuario, **con plazo al 05/08**), [T-328] (la landing).
-
-### [T-417] 🟡 [ABIERTO 31/07] Psicotécnicas: 121 explicaciones usan la plantilla «series intercaladas» sin que nadie haya comprobado que la serie lo sea
-
-- **Esfuerzo:** medio. El trabajo es **el detector**, no la reparación: hasta que exista no se sabe cuántas están mal.
-- **ORIGEN.** Impugnación `fd96fd15` (sandra fernandez, free, 31/07, `explicacion_confusa`). Serie `6-9-7-8-11-9-10-13-¿?`, clave **C = 11 CORRECTA** (los saltos son un ciclo `+3, −2, +1`, y 13 − 2 = 11). La explicación, en cambio, describía **dos series intercaladas** cuyos números **no salen de partir la serie por posiciones** (decía `Serie A: 6,7,9,10` y `Serie B: 9,8,11,13`; partiendo de verdad salen `6,7,11,10` y `9,8,9,13`) y **se contradecía sola**: afirmaba alternar `+1/+2` y luego aplicaba `+1` después de un `+1`. **Su propia regla daba 12, que es el distractor B.** Reescrita y la impugnación cerrada como `resolved`.
-- **POR QUÉ IMPORTA, y por qué no lo ve ningún detector:** la clave suele estar **bien** (aquí lo estaba), así que no hay señal de contenido que salte. El daño es que la explicación **enseña un método que no lleva a la respuesta**, y en este caso apuntaba a una opción equivocada.
-- **Lo que hay medido:** **121** psicotécnicas activas con la plantilla «series intercaladas»; **32** con la frase exacta *«Analizamos las dos series intercaladas»*.
-- **⚠️ NO HAY NÚMERO FIABLE DE CUÁNTAS ESTÁN MAL, Y NO SE DEBE INVENTAR.** Se intentó medir el 31/07 con una heurística (partir por posiciones pares/impares y exigir diferencia constante) y **no vale**: dio *11 encajan / 20 no / 90 sin parsear*, pero varios «no encajan» son **falsos positivos** — `2, 11, 4, 11, 8, 11, ?` **sí** es intercalada (una mitad constante, la otra geométrica) y `7-14-7-21-7-28-?` también. El regex sobre el enunciado además arrastra números que no son de la serie.
-- **Cómo hacerlo bien:** parser que entienda los formatos reales del enunciado (`6-9-7-…`, `6, 9, 7, …`, terminadores `¿?` / `?` / `....`) y, para cada serie, un catálogo de patrones que se prueban en orden (diferencia constante · **ciclo de diferencias** · intercalada aritmética · intercalada geométrica · intercalada con término constante). El hallazgo es «la explicación describe un patrón distinto del que de verdad encaja». Núcleo puro con tests, como el resto de detectores; **bajo demanda al principio**, sin pingar el badge, hasta medir su precisión.
-- **Contexto que conviene saber:** el barrido de salud **no cubría psicotécnicas en absoluto** hasta el 31/07, y el kind que se añadió (`psicotecnico_integridad`, [T-384]) mira **integridad** (`section_id`, `correct_option`, sección de otra categoría), **no** la coherencia de la explicación. Este hueco sigue entero.
-- **Relacionada:** [T-384] (el barrido que ahora sí mira psicotécnicas), `docs/procedures/revisar-preguntas-con-agente.md`.
-### [T-418] 🔴 [ABIERTO 31/07] El usuario free agotado sigue respondiendo preguntas que el servidor RECHAZA una por una: 386 personas en 7 días
-
-- **Esfuerzo: ~2 h** el diagnóstico de producto (¿qué debe ver?); lo que se decida arreglar, aparte.
-- **Qué pasa, en una frase:** alguien con el cupo diario agotado **sigue pudiendo abrir un test y contestar**; ve su respuesta corregida al instante (la corrección es client-side, por diseño) y **el servidor rechaza el guardado de cada una** con `403 · «Has alcanzado el límite diario de preguntas del plan gratuito»`. No cuenta para su progreso, ni para su score, ni para sus estadísticas. Él no tiene forma de saberlo mirando la pantalla.
-- **Escala medida el 31/07 (7 días, `observable_events`):** **2.879 rechazos en 386 usuarios distintos.** Por pantalla: `/api/v2/answer-and-save` 2.160 (367 usuarios), `/api/exam/answer` 326 (8), `/api/answer/psychometric` 68 (17). El `questionOrder` más alto observado es **9**: hay quien encadena nueve preguntas seguidas en balde.
-- **Caso concreto para reproducir:** `javiergalinanesvarela@gmail.com` (free), 71 rechazos el 31/07 en `/tramitacion-procesal/test/test-aleatorio-examen`, con `questionOrder` 1, 2, 3, 4, 5… — es decir, **desde la PRIMERA pregunta del examen**: abrió un examen que ya nacía sin cupo.
-  ```sql
-  SELECT user_id, endpoint, error_message, created_at FROM observable_events
-  WHERE error_message LIKE '%límite diario%' AND created_at > now() - interval '7 days'
-  ORDER BY created_at DESC;
-  ```
-- **Lo que NO está comprobado y hay que mirar primero (no lo des por hecho):** si la UI le enseña el banner de límite en ese momento. Existe uno en el modo examen (`ExamLayout`, ver los tests de «Banner de límite no debe mostrarse en resultados»), así que el defecto puede ser (a) que no se pinte en esta ruta, (b) que se pinte y aun así se le deje contestar, o (c) que el examen se sirva completo y el gate solo actúe al guardar. **Cada una lleva a un arreglo distinto**, así que la primera media hora es reproducirlo con una cuenta free agotada, no tocar código.
-- **Por qué es 🔴 y no una curiosidad:** es el momento exacto en que un free decide si paga o se va, y hoy lo vive como *«contesté veinte preguntas y no me aparecen»*. Enlaza con lo que ya sabemos del churn por el límite diario. Si la decisión es que el cupo se acabó, hay que **decírselo antes de que conteste**, no rechazarle en silencio cada respuesta.
-- **Y un defecto de observabilidad de propina:** ese 403 se registra como `console_error` con `severity='error'` y el texto *«Error guardando respuesta en API (permanente)»*. **Una regla de negocio funcionando no es un error**: ensucia el conteo de errores del panel de salud (182 de los ~1.900 `console_error` de 24 h) y confunde a quien triaje. Al arreglarlo, que deje de contarse como error — ver [T-420].
-- **De dónde sale:** triaje de errores de cliente del 31/07 (sesión `central-izquierdo`), buscando por qué había 2.173 eventos `severity='error'` en 24 h.
-
-### [T-419] 🟠 [ABIERTO 31/07] El sondeo de notificaciones reintenta contra un 401 durante HORAS: una sola pestaña generó 308 errores en 308 minutos
-
-- **Esfuerzo: ~1 h** (parar el bucle es pequeño; lo que lleva tiempo es decidir qué hace la pestaña cuando la sesión ya no vale).
-- **Qué pasa:** el cliente pide `disputes/notifications`, recibe **401**, y **vuelve a pedirlo al minuto siguiente, indefinidamente**. Un 401 no se arregla reintentando: la sesión no va a volver sola.
-- **Medido el 31/07:** **423 eventos en 24 h** (11 usuarios/sesiones) y **1.402 en 7 días**. La distribución es lo que delata el bucle, no el total: **una sesión anónima produjo 308 eventos a lo largo de 308 minutos** (uno por minuto, cinco horas seguidas) y otra estuvo **1.361 minutos** (22 h). El resto son ráfagas de 1-18 min. Mensaje literal: `Error cargando notificaciones: Error: disputes/notifications 401`.
-  ```sql
-  SELECT user_id, count(*), min(created_at), max(created_at) FROM observable_events
-  WHERE error_message LIKE '%disputes/notifications 401%' AND created_at > now() - interval '24 hours'
-  GROUP BY 1 ORDER BY 2 DESC;
-  ```
-- **Qué hay que decidir (no es solo «no reintentar»):** ante un 401, o se **renueva** la sesión una vez y se reintenta, o se **para el sondeo** hasta que haya sesión nueva. Lo que no puede seguir es pedir cada minuto durante cinco horas: son peticiones a un endpoint que ya dijo que no, y ruido permanente en el panel de errores.
-- **Ojo al mirarlo:** la mayoría son sesiones **anónimas**, así que el 401 puede ser el comportamiento correcto del endpoint (no hay sesión) y el defecto estar en **quién arranca el sondeo**: si la pestaña sondea notificaciones sin usuario, el arreglo es no arrancarlo, no cambiar el endpoint.
-- **De dónde sale:** mismo triaje del 31/07 que [T-418].
-
-### [T-420] 🟡 [ABIERTO 31/07] El 95 % de los errores de cliente es ruido, y por eso el panel de salud mide sobre todo dos navegadores
-
-- **Esfuerzo: ~1 h** (es clasificación, no lógica: ampliar el filtro que ya existe y comprobar que no se traga nada real).
-- **Qué pasa:** de los ~1.900 `console_error` de 24 h medidos el 31/07 —que son el **87 % de TODOS los eventos `severity='error'` del sistema** (2.173)—, la inmensa mayoría no describe nada roto:
-  | Eventos | Qué es | Por qué es ruido |
-  |---|---|---|
-  | **1.634** | `[GSI_LOGGER]: FedCM get() rejects with…` (NetworkError 982, AbortError 546, NotSupportedError 106) | Es el widget de Google Sign-In quejándose de FedCM. **No es código nuestro**, y venía de **2 navegadores**: el tipo de error más numeroso del sistema son dos personas con un navegador que no soporta FedCM |
-  | **~600** | `TypeError: Failed to fetch` / `Load failed` en notificaciones (225 en 98 usuarios), artículos (200 en 41), logros, medallas, secciones | Red del cliente: móvil que pierde cobertura o pestaña que se cierra a media petición. Muchos usuarios × pocos eventos = firma de red, no de bug |
-- **Ya se hizo una vez y funcionó:** `lib/observability/consoleNoise.ts` ([T-210], 28/07) nació justo para esto —su cabecera dice *«4.840 `console_error`/24 h, el 95 % del ruido de error del sistema»*— y los bajó a los ~1.900 actuales. **Estas dos familias se le escaparon.** No hace falta diseñar nada: hace falta extender ese filtro y volver a medir.
-- **Por qué importa aunque sea «solo ruido»:** con el 95 % del canal ocupado por FedCM y fallos de red, un error nuevo de verdad entra en un sitio donde nadie mira, y la regla `senal_error_sin_vigilancia` (≥150/h de un tipo `error`) se calibra contra un suelo falso. El objetivo no es que el número baje: es que **lo que quede sea señal**.
-- **Cuidado al filtrar:** `Failed to fetch` es ruido cuando está repartido entre muchos usuarios, pero **concentrado en pocos puede ser un endpoint caído**. Si se suprime en bloque se pierde esa capacidad de detección; mejor bajarlo a `warn` (sigue en la tabla, deja de contar como error) que borrarlo. Los `[GSI_LOGGER]` sí se pueden descartar de raíz: son de un script de terceros.
-- **De dónde sale:** mismo triaje del 31/07 que [T-418] y [T-419].
 
 ### [T-409] 🟠 [ABIERTO 31/07] Cubo «la explicación es el ARTÍCULO copiado»: 2.185 preguntas servidas que no explican nada
 
@@ -1211,9 +1122,7 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 - **La regla candidata, que hay que MEDIR antes de aplicar:** los ids del **asunto** (primera línea) exigen claim; los que solo aparecen en el **cuerpo** avisan pero no bloquean. Encaja con cómo escribe el repo —el asunto declara qué hace el commit, el cuerpo es prosa—, pero **es una relajación** y abre un hueco: quien trabaje una tarea mencionándola solo en el cuerpo dejaría de ser cazado.
 - **Cómo medirlo, y NO aplicarlo sin ese dato:** recorrer el historial y contar, de los commits que mencionan un `T-NNN`, cuántos lo llevan en el asunto y cuántos solo en el cuerpo — y de estos últimos, cuántos **tocan código de esa tarea** (o sea, cuántos serían falsos permisos). Si la cola de "trabajo declarado solo en el cuerpo" no es despreciable, la regla no vale y hay que buscar otra (p. ej. exigir claim solo si el commit toca ficheros, no solo docs — que es lo que ya hace la exención estrecha de T-375).
 - **Alternativa sin relajar nada:** un escape con NOMBRE para este caso concreto (`BACKLOG_GUARD_MENCION=T-361,T-385`) en vez del `SKIP` general. No arregla la fricción, pero deja de apagar el guard entero para conseguir pasar — que es el daño de verdad.
-- **SEGUNDA VEZ EL MISMO DÍA (31/07, sesión `central-inferior`), y con las tres salidas malas probadas.** El commit `10355860d` (`fix(T-408, T-410): …`) declaraba su trabajo en el asunto y **citaba T-321 en el cuerpo** para explicar que el barrido ya existía y por eso no se construía otro. El guard lo paró. Las salidas eran: (a) **reclamar T-321**, que es de otra sesión y no se iba a trabajar → roba el reparto; (b) **`BACKLOG_GUARD_SKIP=1`** → apaga el guard entero; (c) **quitar el identificador del mensaje**, que es lo que se hizo. Y (c) **tiene coste real: el commit explica menos.** El id era la traza de por qué NO se abrió un cuarto script, justo la información que evita repetir el trabajo. O sea que el guard, tal como está, **empuja a escribir peores mensajes de commit** — que es exactamente lo contrario de lo que quiere el repo.
-- **Dato para la medición, ya recogido:** en las dos ocurrencias del 31/07 el id del asunto era el trabajo real y **los del cuerpo eran contexto en el 100 % de los casos** (T-361, T-385, T-321: ninguno se tocó). Son dos muestras, no una medida — pero apuntan a que la regla candidata es la correcta.
-- **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400], [T-408]/[T-410] (la segunda ocurrencia).
+- **Relacionadas:** [T-375] (los tres bloqueos imposibles ya arreglados; este es el cuarto), [T-400].
 
 
 ### [T-405] 🟠 [ABIERTO 31/07] El veredicto ROJO de una verificación no llega a ninguna cola: dijo «opciones corruptas» y la pregunta siguió sirviéndose 12 días
@@ -1393,60 +1302,23 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > **bloqueó** el movimiento porque la sacaría de 13 temas. Se corrigió la explicación (que atribuía al
 > 71 lo que dice el 72) y el hueco de scope se fichó aparte → **[T-421]**.
 
+### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 42 grupos que la deduplicación de mayo no podía ver
 
-> **⚠️ CABO SUELTO CONOCIDO — las dos ramas normalizan distinto, y es a propósito.** El módulo
-> puro normaliza **fuerte** (ignora acentos y puntuación: *«¿Qué palabra…»* = *«Que palabra»*) y
-> lo usa la rama psicotécnica. La rama legislativa **sigue con su normalización original en SQL**
-> (`lower` + colapsar espacios), que es más laxa y agrupa MENOS. No se tocó por una razón: ahí el
-> desenlace es `retired_duplicate`, que es **TERMINAL**, y ensanchar el criterio en el mismo commit
-> que refactoriza habría jubilado preguntas por un cambio que nadie midió. **Antes de unificarlas
-> hay que medir el delta** —correr la rama legislativa con la normalización fuerte y ver cuántos
-> grupos NUEVOS aparecen y si son de verdad—; si el delta es limpio, se sustituye la expresión SQL
-> por `sqlNormalizar()` (ya exportada por el módulo, con su gemela en JS testeada) y se acabó la
-> asimetría. Si no se hace, esto es lo que volverá a divergir.
-
-### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 40 grupos que la deduplicación de mayo no podía ver
-
-> **La herramienta ya está construida, probada y pusheada (commit `10355860d`). Lo que queda es
-> JUICIO: adjudicar 40 grupos a mano.** Esfuerzo: **~1,5-2 h**. No hace falta leer nada más que
-> esta ficha — abajo está el comando, los grupos ya descartados y el criterio de decisión.
-
-**▶ Empezar así (30 segundos):**
-
-```bash
-node scripts/calidad/duplicados-exactos.cjs --parafraseadas    # la cola: lista, NUNCA escribe
-node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte exacto (simula)
-```
-
-- **De dónde sale:** la impugnación `b6787619` (Esther Ramos, 31/07) era un falso positivo, pero al mirar esa pregunta en la BD aparecieron **dos copias activas** de ella — `49a8e1d9` (oficial, Guardia Civil 2009) y `63626258` — con **el enunciado redactado distinto**: *«¿Qué palabra sobra en cuanto a la característica del objeto que representa?»* frente a *«¿Qué palabra sobra?»*, mismas cuatro opciones y misma clave.
-- **Por qué se escapó:** la campaña de deduplicación de mayo (las que hoy llevan `duplicate_cross_oposicion:` / `duplicate_keep_official`) agrupó **por enunciado exacto**. Esta clase comparte opciones y clave pero **no el texto**, así que quedó entera fuera del barrido — no es que se decidiera conservarla, es que nunca se miró.
-
-**Lo que YA está hecho (no repetirlo):**
-
-| | |
-|---|---|
-| Herramienta | `scripts/calidad/duplicados-exactos.cjs` **extendido** con `--banco psicotecnicas` y `--parafraseadas`. NO se construyó un script nuevo: se amplió el que ya existía |
-| Criterio | módulo puro `lib/calidad/duplicados.js` + **22 tests** (`__tests__/calidad/duplicados.test.ts`). Lo comparten los dos bancos |
-| Registro | entrada `duplicados_exactos` de `lib/admin/toolRegistry.ts` actualizada (si no, la próxima sesión vuelve a construirlo) |
-| Desactivadas a mano | `63626258` (la de la impugnación) y 3 copias exactas: `88b5cc9f`, `b8b856c9`, `34af2e63`. Banco activo: 7.101 → **7.097** |
-
-**Lo que QUEDA, por orden:**
-
-1. **Aplicar el corte exacto** — el script señala **3 grupos** que la normalización estricta hizo aflorar: `41ef1a23`/`782ad84c` (FANÁTICO), `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`. Son seguros por construcción (mismo texto normalizado, mismas opciones, misma huella de contenido, misma respuesta). **El script NO ha escrito nada**: `--banco psicotecnicas --aplicar`. Dos minutos.
-2. **Adjudicar los 40 grupos parafraseados** (90 preguntas, 50 copias sobrantes como techo). Uno a uno, mirando los dos enunciados.
-
-**⚠️ Los tres sesgos que hay que respetar al adjudicar** (medidos el 31/07, no teóricos):
-
-1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*) y se diferencian en la **imagen** o en el `content_data`. Por eso el corte exacto lleva la huella de esos dos campos en la clave del grupo; sin ella miente en el 97 % de los casos.
-2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta —no su índice, que difiere porque las copias vienen **barajadas**— las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` daría alarmas falsas en cascada.
-3. **En la cola parafraseada la única evidencia son las opciones**, así que hay falsos positivos reales. **Ya verificados como FALSOS POSITIVOS — no volver a analizarlos:** los grupos de tabla que comparten juego de opciones (`872c1738`… «Empresa 1/2/3…», Categoría A-D), los de códigos (`9b515096`…), los de recuento de errores ortográficos (`a433893a`…) y cualquiera cuyo enunciado enseñe que la pregunta es OTRA sobre la misma tabla. El script los marca con 🔴 por «responden cosas distintas», y en estos casos ese 🔴 es precisamente la señal de que **no** son duplicados.
-
-**Los que sí son duplicados** son de vocabulario, importados dos veces con la redacción cambiada: `15a1fee1`/`9ac9bdea` (JACTAR), `922437c6`/`312c9c66` (PRECAVIDO), `395e29f8`/`50116c54` (CINISMO), `f024fafc`/`53db41bd` (SOSEGADO), `67f797f3`/`4f09ba8a` (Ineptitud→Paridad), `17b7a08f`/`b5339ef5`/`6760f45b` (INDIGNACIÓN, tres copias), `c94e6621`/`e3284edf` (18 h 20 min 31 s).
-
-- **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`, y **es reversible** (al revés que `retired_duplicate`, que es terminal). Cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la **más servida** → la más antigua. Las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección: es correcto (el opositor la vería dos veces), y el script ya aparta el grupo si dejaría la sección por debajo de 4.
-- **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las guardas de arriba** lo convierte en trinquete. Es el mismo trabajo que reclama [T-408] para las legislativas: **hacerlo una vez, para los dos bancos**.
-- **Relacionada: [T-408]**, el mismo hueco en las legislativas. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de duplicados exactos ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»: la búsqueda es por subcadena y el femenino no encuentra el masculino—. **El criterio ya está unificado**; lo que queda repartido es el badge (T-408) y esta adjudicación.
-- **NO hacer:** aplicar la cola parafraseada en bloque (`--parafraseadas` no escribe a propósito), ni tocar la clave de ninguna copia, ni desactivar la de examen oficial.
+- **Esfuerzo: ~2 h.** No hay que construir nada: la consulta está escrita aquí abajo. Lo que lleva tiempo es **adjudicar grupo por grupo** (hay falsos positivos reales) y desactivar la copia sobrante de cada uno.
+- **De dónde sale:** la impugnación `b6787619` (Esther Ramos, 31/07) era un falso positivo, pero al mirar esa pregunta en la BD aparecieron **dos copias activas** de ella — `49a8e1d9` (oficial, Guardia Civil 2009) y `63626258` — con **el enunciado redactado distinto**: *«¿Qué palabra sobra en cuanto a la característica del objeto que representa?»* frente a *«¿Qué palabra sobra?»*, mismas cuatro opciones y misma clave. La segunda ya está desactivada.
+- **Por qué se escapó:** la campaña de deduplicación de mayo (las que hoy llevan `duplicate_cross_oposicion:` / `duplicate_keep_official`) agrupó **por enunciado exacto**. Este caso comparte opciones y clave pero **no el texto**, así que quedó entero fuera del barrido — no es que se decidiera conservarlo, es que nunca se miró.
+- **Medido el 31/07 sobre las 7.101 psicotécnicas activas:**
+  - **Duplicados exactos** (enunciado + opciones + imagen + `content_data` + clave): **3 grupos → 3 copias sobrantes. YA DESACTIVADAS** (`727d861d`/`88b5cc9f`, `6581be38`/`b8b856c9`, `e5df9032`/`34af2e63`; se conservó en cada par la de mejor explicación). Esa parte está cerrada.
+  - **Clase parafraseada, que es lo que queda:** mismas 4 opciones normalizadas + enunciado distinto → **42 grupos · 94 preguntas · hasta 52 copias sobrantes**. Casi todas son vocabulario importado dos veces con la redacción cambiada: `15a1fee1`/`9ac9bdea` (JACTAR), `922437c6`/`312c9c66` (PRECAVIDO), `395e29f8`/`50116c54` (CINISMO), `782ad84c`/`41ef1a23` (FANÁTICO), `f024fafc`/`53db41bd` (SOSEGADO), `67f797f3`/`4f09ba8a` (analogía Ineptitud→Paridad)…
+- **⚠️ Los dos sesgos que hay que respetar al adjudicar** (medidos, no teóricos):
+  1. **Agrupar por «enunciado + opciones» a secas da 98 grupos y 95 son FALSOS POSITIVOS** — preguntas distintas que solo comparten un enunciado genérico (*«Observa la secuencia…»*, *«¿Cuántos errores hay en la fila 4?»*) y se diferencian en la **imagen** o en el `content_data`. Sin mirar esos dos campos, el barrido miente en el 97 % de los casos.
+  2. **«Clave discrepante» casi nunca lo es:** al comparar el TEXTO de la opción correcta (no su índice — las opciones vienen barajadas entre copias), las diferencias eran el punto final (*«Serio.»* vs *«Serio»*). Comparar `correct_option` a secas daría alarmas falsas en cascada.
+- **La cola ya se saca con un comando** (31/07, mismo día): **`node scripts/calidad/duplicados-exactos.cjs --parafraseadas`**. Lista y **no escribe nunca** — aquí la única evidencia son las opciones y hay falsos positivos reales, así que se adjudica a mano. Con la normalización estricta del núcleo (que ignora los acentos: *«¿Qué palabra…»* = *«¿Que palabra…»*) la cola queda en **40 grupos · 90 preguntas · 50 sobrantes**; los 2 grupos que faltan respecto de la primera medición no desaparecieron, **ascendieron al corte exacto**.
+- **El corte exacto de psicotécnicas también entra por ese script** (`--banco psicotecnicas`), con la huella de `image_url`+`content_data` en la clave del grupo. Ojo: **NO se construyó un cuarto script** — se extendió el de [T-321], y el criterio vive en el módulo puro `lib/calidad/duplicados.js` (22 tests) que comparten los dos bancos.
+- **Cómo se desactiva una copia:** las psicotécnicas **no tienen lifecycle** — es `UPDATE psychometric_questions SET is_active=false, deactivation_reason='duplicate_of:<id que se conserva> (…)'`. Criterio para elegir cuál se queda, en este orden: **la oficial** (`is_official_exam=true`) → la de **mejor explicación** → la más antigua. Ojo: las copias suelen vivir en **secciones distintas**, así que desactivar una baja el recuento de esa sección (es correcto: el opositor la vería dos veces).
+- **Capa que lo vigile después** (para que no haya una tercera campaña dentro de tres meses): el barrido nocturno ya tiene el kind `psicotecnico_integridad` (`health-sweep.cjs` + espejo del `@Cron`), que hoy solo mira `section_id`, categoría y rango de `correct_option`. Añadir ahí el duplicado **con las dos guardas de arriba** lo convierte en trinquete, y el núcleo puro se puede compartir con el detector de duplicados de importación.
+- **Relacionada: [T-408]**, el mismo hueco en las **legislativas**. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de [T-321] ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»—. **Ya están unificadas:** un solo script, un solo criterio en `lib/calidad/duplicados.js`. Lo que queda en T-408 es llevar el kind al badge y calibrar el corte borroso; lo que queda aquí es **adjudicar los 40 grupos**.
+- **Pendiente de una decisión, no de trabajo:** el corte exacto de psicotécnicas señala **3 grupos nuevos** (`41ef1a23`/`782ad84c`, `7ff29445`/`ecffcf97`, `c21c74b9`/`57b9e27a`) que la normalización estricta hizo aflorar. Son seguros por construcción, pero **el script no ha escrito nada**: se aplican con `--banco psicotecnicas --aplicar` cuando alguien lo mire.
 
 ### [T-421] 🟡 [ABIERTO 31/07] El art. 72 de la LO 3/2007 falta en 13 temas que sí escopan el 71, y otros 17 lo tienen: la misma materia, partida según la oposición
 
@@ -1487,7 +1359,6 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Qué pasa:** `scripts/impugnaciones/revisar-impugnacion.cjs:102-111` («PASO 0») avisa cuando el estado es `pending`/`appealed` **y** ya hay `admin_response`, y concluye: *«→ NO re-respondas (duplicarías el email). Solo falta CERRAR el estado (silent close)»*. Nació para cazar el desync del 504 (respuesta guardada y emailada, estado sin voltear) y para eso está bien.
 - **El defecto:** en una **`appealed` el `admin_response` está SIEMPRE relleno** — es la respuesta que motivó la réplica. O sea que **el aviso salta en el 100 % de las apelaciones** y le dice a la sesión que cierre en silencio a alguien que acaba de escribir preguntando. Es la avería que el vigía existe para evitar: la réplica desaparece de toda lista de pendientes y encima el dossier te manda cerrarla sin contestar.
 - **Visto en vivo el 31/07** con `349b5132` (Estela, art. 9.2 Ley 39/2015): saltó el 🛑, se ignoró a propósito porque la persona estaba pidiendo la fuente literal del BOE, y se le contestó. Una sesión que obedezca el aviso la cierra muda.
-- **📌 ESA MISMA `349b5132` SIGUE EN LA COLA (comprobado 31/07 20:5x, claim caducado = libre) Y ES DE LAS DE CERRAR EN SILENCIO.** Su `appeal_text` **no es una pregunta nueva**: es un agradecimiento —*«Muchas gracias por la aclaración y por haberos tomado el tiempo de explicármelo con tanto detalle. Os pido disculpas por haber insistido tanto…»*— tras la respuesta que se le dio a las 16:47 con la cita del art. 9.2 c). O sea que **la persona ya está atendida y contestarle otra vez sobraría** (memoria `feedback-nila-cierre-silencioso`: corrección aceptada sin dudas → se cierra el estado sin mensaje). Lo único que queda es **cerrar el estado para que deje de figurar como pendiente**; requiere el OK de Manuel como cualquier cierre. Aparece en `cola.cjs list` como `appealed`, así que quien la coja se la encontrará y conviene que sepa esto antes de montarle un análisis de cero.
 - **Arreglo:** partir la condición en dos. `status='pending'` + `admin_response` = el desync de siempre (deja el aviso tal cual). `status='appealed'` = **RÉPLICA**: imprimir lo contrario — *«te han contestado: lee tu `admin_response` anterior y el `appeal_text`, y RESPONDE (§0.bis)»* — y volcar el `appeal_text` entero en el dossier, que hoy ni se imprime (hubo que sacarlo a mano de la BD).
 - **Capa que lo vigile:** la condición no vive en ningún módulo puro, así que hoy no se puede testear sin BD. Sacarla a `scripts/impugnaciones/lib/` (junto a `scope-enforcement.cjs`, que ya sigue ese patrón) con su test en `__tests__/impugnaciones/` — un caso por estado (`pending` sin respuesta / `pending` con respuesta / `appealed`).
 - **Mitigación mientras tanto:** aviso añadido en `docs/maintenance/impugnaciones-claude-code.md` §0.bis.
@@ -1521,33 +1392,13 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 
 - **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
 - **🔴 LO PRIMERO, porque hay alguien esperando: feedback `bd8b92d0` (Sergio, premium).** Es una RÉPLICA del 31/07 sin contestar: *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*. **No es una preferencia: su oposición (`agente_hacienda`) tiene CERO temas** — ver [T-397]. Lo que pide (filtrar preguntas oficiales en el test por leyes) está diagnosticado en [T-326] y es un arreglo pequeño. **Decisión pendiente de Manuel:** arreglar [T-326] y avisarle, o responderle mientras tanto. No cerrar el hilo sin contestarle: se le prometió por escrito que la idea era buena.
-
-  - **✅ CONTESTADO el 31/07 a las 18:06 desde otra sesión — el hilo está `resolved` y sin claim. NO le vuelvas a escribir por esto.** Se le dijo que el filtro «sigue en pie» y que la oposición personalizada ([T-327]) la tendrá «en unos días» para probarla y opinar. **Ese «en unos días» es el plazo que cuelga de [T-327]**, no de esta ficha.
-  - **📌 LO QUE SIGUE VIVO a 31/07 noche (sesión `central-izquierdo`) — léelo antes de anunciarle nada:**
-    - **[T-326] YA ESTÁ IMPLEMENTADA y pusheada** (`40022cec7`), **sin desplegar**. La ficha quedó en pausa esperando el deploy de frontend para verificarla en vivo. O sea: lo que se le prometió existe, pero todavía no lo puede usar.
-    - ⚠️ **AL DESPLEGAR, NO le anuncies el filtro sin leer el punto siguiente**: para él estará vacío, y avisarle de algo que ve vacío es peor que no avisarle.
-    - ⚠️ **El dato que cambia el mensaje, y que no se ve en su texto: el arreglo NO le va a servir.** Su oposición **no tiene ni una sola pregunta oficial** en el banco (`exam_position ILIKE '%hacienda%'` → **0** de 7.552 oficiales activas), y el filtro sirve solo las de la propia oposición → su contador será 0 y **la casilla le seguirá saliendo oculta**. Lo que a él le valdría son las oficiales de OTRAS oposiciones sobre las mismas leyes: eso es **[T-411]**, abierta y sin decidir.
-    - **Borrador que se redactó y NO se envió** (lo respondió otra sesión con otro texto). Se guarda porque **el segundo párrafo sigue siendo la conversación pendiente**: es la forma de contarle la limitación cuando toque, sin que suene a excusa. Reutilizable tal cual:
-      > Hola Sergio,
-      >
-      > Tienes razón: si el tema no encaja con tu temario, mandarte a practicar por tema no te sirve de nada. Ya hemos preparado el filtro de preguntas de exámenes reales en el test por leyes, que es donde tú estudias, y estará disponible en la próxima actualización.
-      >
-      > Te aviso de una cosa para que no te lleves un chasco al verlo: las preguntas de exámenes reales que tenemos de Agente de Hacienda son, por ahora, ninguna, y el filtro muestra solo las de tu propia oposición. Sí tenemos muchas preguntas caídas en exámenes de otras convocatorias sobre las mismas leyes que tú estudias (la Ley 39/2015 o la Constitución son las mismas para todos), así que estamos viendo cómo ofrecértelas ahí, que es lo que de verdad te sirve.
-      >
-      > Te escribimos por aquí en cuanto lo tengamos.
-      >
-      > Muchas gracias.
-      >
-      > Equipo de Vence
-    - **La decisión que queda abierta:** si se le cuenta la limitación (y cuándo), o si se resuelve antes con [T-411] y entonces se le avisa de algo que sí puede usar. Lo que **no** vale es anunciarle el filtro a secas: lo abrirá y no verá nada.
-    - Y ojo con el plazo: **[T-327]** (oposición personalizada, lo que pidió en su OTRO hilo) tiene fecha límite y el 31/07 se le dijo por escrito que lo tendría «en unos días» **para probarlo y decirnos si le sirve** — o sea, se le ha pedido que responda: cuando esté, hay que volver a ese hilo.
 - **Las 7 impugnaciones pendientes** (todas legislativas, ninguna analizada aún):
   | id | tipo | plan | lo que dice |
   |---|---|---|---|
   | `ee09f030` | desacuerdo_correcta | premium | «Cuando hablamos de la regla general…» (Jesús Quesada) |
   | `b816cd3a` | mal_formulada | premium | «No concuerda la pregunta con las respuestas» (Estela) |
   | `cf376ad0` | mal_formulada | premium | «Pregunta cuándo tendrán capacidad de obrar…» (Jesús Quesada) |
-  | ~~`b9ae32e2`~~ | desacuerdo_correcta | free | ✅ **CERRADA 31/07** (`rejected`, email entregado) — ver abajo |
+  | `b9ae32e2` | desacuerdo_correcta | free | «Según el texto literal de la ley sí, pero en la práctica…» (Roberto Benito) |
   | `e60091bd` | desacuerdo_correcta | free | sin detalle (Natalia Suárez) |
   | `626059c8` | otro | free | «la respuesta A y C son idénticas, las dos estarían correctas» (Marcos Sánchez) |
   | `32b0d55e` | otro | premium | «creo recordar que esta pregunta me ha aparecido alguna otra vez» (Laura Zurdo) |
@@ -1560,13 +1411,6 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
   2. **Cerrar SIEMPRE por el endpoint**, con `scripts/impugnaciones/cerrar.ts` (creado hoy). Un UPDATE directo no manda email, no da el euro y se salta la puerta.
   3. **Medir si el fallo es sistémico ANTES de cerrar** — hoy evitó romper una pregunta buena con 92 exposiciones ([T-389] explica por qué esto no debería depender de la memoria).
   4. **Borrador aprobado por Manuel antes de enviar**, sin excepción.
-
-- **✅ `b9ae32e2` cerrada el 31/07 (sesión `central-izquierdo`), y lo que dejó aprendido:**
-  - **La clave era correcta y el usuario también tenía razón**, cada uno en su plano: la pregunta (oficial, Aux. Admin. Madrid OEP 2020-2022) pregunta el plazo para recurrir un acto presunto y la clave es *seis meses*, que es la letra del **art. 46.1 LJCA** (verificado contra el BOE consolidado). Y Roberto tenía razón en que **la STC 52/2014, de 10 de abril** razonó que *«la impugnación jurisdiccional de las desestimaciones por silencio no está sujeta al plazo de caducidad previsto en el art. 46.1 LJCA»* — pero **desestimó** la cuestión, así que el precepto sigue vigente y es lo que se examina. Cerrada como **`rejected`** (la clave no cambia) con la explicación reescrita e incluyendo esa nota jurisprudencial.
-  - **Patrón reutilizable:** cuando alguien impugna *«según la ley sí, pero en la práctica no»*, casi nunca hay que tocar la clave — hay que **añadir la nota de jurisprudencia a la explicación**. Es el mismo criterio que §7.3.bis aplica a las cifras volátiles.
-  - **El chequeo sistémico encontró una hermana:** `d54d7dd4`, la MISMA pregunta con las opciones en otro orden (no oficial, mismo artículo). Clave correcta también. **Jubilada** como `retired_duplicate` / `admin_duplicate_of` con OK de Manuel. Buscar hermanas por `question_text ILIKE` antes de cerrar cuesta un minuto y aquí destapó una duplicada servida.
-
-- **⚠️ AVISO OPERATIVO para quien siga desde una sesión abierta hoy (no es del contenido, es del tooling):** [T-407] arregló que hubiera **dos identidades de sesión** (el `.session-id` del worktree y `CLAUDE_CODE_SESSION_ID`), pero el arreglo entró en `70f5007db`. **Un worktree creado ANTES de ese commit sigue con el defecto**: `cola.cjs` reclama con una identidad y los dossiers comparan con la otra, así que el dossier avisa de que *«ya lo está revisando otra sesión»* siendo tú mismo — y, peor, un claim tomado con una identidad no se puede soltar con la otra. Pasó de verdad el 31/07 y costó una investigación entera creyendo que dos sesiones habían cogido el mismo feedback (no había tal: la reserva funcionó). **Si tu worktree es de antes, `git rebase origin/main` antes de tocar la cola.** Se reconoce mirando `node -e "console.log(require('./lib/sessions/sid.cjs').resolverSid({repo:process.cwd()}))"`: si el fichero no existe, ese módulo tampoco y estás en la versión vieja.
 
 ### [T-397] 🔴 [ABIERTO 31/07] 592 usuarios (3 de ellos PREMIUM) han elegido una oposición sin ningún tema: se puede pagar por lo que no existe
 
@@ -2094,6 +1938,26 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-423] ✅ 🟠 [HECHA 31/07] Nadie medía cuándo se RODEA un guardarraíl, que es como se mueren sin que te enteres
+
+- **ORIGEN.** Manuel (31/07), tras cerrar seis tareas de trabajo en paralelo: *«¿nada más mejorable? ¿puedes montar algún log para observabilidad interno… para mejorar los fallos y conflictos entre sesiones o, aunque no sean errores, mejorar la productividad?»*.
+- **EL HUECO, y no era el que parecía.** Todo lo construido ese día (claim, latido, huella de ficheros, reserva de la cola, árbol de deploy propio, índice no compartido) contesta *«¿qué pasa AHORA?»*. **Ninguna pieza dejaba SERIE TEMPORAL**, así que no se podía contestar si la fricción sube o baja, cuánto se pierde esperando el lock de deploy, ni cuántas veces una sesión le roba la tarea a otra.
+- **✅ PERO LA SEÑAL QUE IMPORTA NO ES EL BLOQUEO, ES EL ESCAPE.** Contar bloqueos solo dice que el guardarraíl trabaja. Lo que dice si SIRVE es **cuántos de esos bloqueos acabaron rodeados**: un guardarraíl que se salta de forma sistemática **está muerto y nadie se ha enterado** — sigue dando la lata, ya no protege, y encima da la falsa sensación de que el hueco está cubierto.
+  - **Ese mismo día murieron TRES exactamente así**, y los tres se descubrieron **por casualidad**: el aviso de «otra sesión» que gritaba en falso hasta que se ignoró ([T-407]), el bloqueo imposible de satisfacer que enseñaba a apagar el guard entero ([T-375]), y el escape general que se volvió rutina. **El ratio de escape es un indicador ADELANTADO**: se ve subir antes de que el guardarraíl deje de servir.
+  - Y no es teoría: en esa sola sesión se usó `BACKLOG_GUARD_SKIP=1` dos veces y `INDICE_COMPARTIDO_OK=1` dos veces. Sin esto, esos cuatro escapes solo existían en la pantalla de quien los hizo.
+- **✅ `npm run sesiones:friccion`** — bandas con su acción, no solo un número:
+  | se rodea… | veredicto | qué hacer |
+  |---|---|---|
+  | <25% | 🟢 sano | nada: el escape hace de válvula, que es su función |
+  | 25-66% | 🟠 erosión | hay un caso legítimo sin contemplar — búscalo |
+  | ≥66% | 🔴 **muerto** | ya no protege, es un peaje: arregla el criterio **o quítalo** |
+- **Con pocos datos NO opina**, y un cero recién estrenado se lee como *«todavía no ha corrido»*, no como *«no hay fricción»*: declarar muerto un guardarraíl por 1 escape de 1 bloqueo sería **el mismo error que este módulo existe para cazar**.
+- **No hubo que construir bus:** emite a `observable_events`, que ya usa todo el proyecto. Emiten el push-guard y el de índice compartido; el escape se marca `warn` aunque el guard dejara pasar a propósito — en `info` se perdería entre el ruido, que es justo cómo un guardarraíl se muere en silencio.
+- **Best-effort ABSOLUTO:** los emisores corren dentro de hooks de git, se lanzan detached y salen con 0 pase lo que pase. Una avería del bus de observabilidad no puede impedirle a nadie commitear ni pushear — misma regla que el latido ([T-296]).
+- **Capas:** núcleo puro `lib/observability/friccionSesiones.cjs` con **11 tests** (las tres bandas, el «no opina», y que el diagnóstico diga QUÉ HACER y no solo qué pasa), probado de extremo a extremo emitiendo y leyendo contra RDS, y registrado en `toolRegistry`.
+- **Relacionadas:** [T-375] (los tres bloqueos que se quitaron por rodeados), [T-407], [T-415] (el guard que estrena el escape), [T-296] (el latido).
+
 
 ### [T-415] ✅ 🟠 [HECHA 31/07] El índice de git es del REPOSITORIO, no de la sesión: una sesión commiteó el trabajo de otra
 
@@ -2735,9 +2599,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Lo caro NO es el material, son las PREGUNTAS.** Los 10 temas nuevos parten de cero y cada uno necesita generación + doble auditoría ciega. Por eso [T-330] (la newsletter del último día) se cerró sin enviar: el plazo moría el 31/07 y una landing con 10 temas a cero es justo lo que el gate pre-envío prohíbe.
 
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
-- **🛠️ YA CONSTRUIDO EL 31/07 — FALTA DESPLEGAR Y CERRAR (lo dejó otra sesión sin cerrar la ficha).** Commit **`40022cec7`** *«feat(T-326): el test por leyes ya puede filtrar por preguntas de exámenes reales»*, en `origin/main`. **No se resolvió como decía esta ficha** (que la *página* pasara el contador): se hizo **dentro de `TestConfigurator`**, que en modo «sin tema» se pide él mismo el número a `/api/v2/test-config/estimate` con `onlyOfficialQuestions`, reaccionando a la selección y con abort de la petición anterior (`TestConfigurator.tsx` ~528-562). Cumple lo que pedía la ficha, incluido «si sale 0, la casilla sigue oculta». **Estaba sin desplegar el 31/07 a las 20:00** (`deploy:pendiente` en 🔴 con el lock libre). Quien lo desplegue: verificar en prod y cerrar con `done --outcome`.
-- **⚠️ NO CIERRA EL CASO DEL USUARIO QUE LO PIDIÓ.** A Sergio le sigue sin llegar, por dos motivos que esta ficha no contemplaba: su ruta real es `/leyes/<ley>` (donde la casilla está oculta a mano) y su oposición `agente_hacienda` **no está en `EXAM_POSITION_MAP`**, así que en la ruta arreglada el contador le da 0. Todo eso, medido y con la decisión de criterio pendiente, está en **[T-416]**. **No cierres T-416 dando por hecho que esto lo resolvió.**
-- **Quién lo pide:** Sergio (`pcsergio0@gmail.com`, premium, 44 tests en 9 días, feedback `bd8b92d0`): *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. **Ya respondido**: se le ha dicho que lo vamos a añadir. **El 31/07 se le volvió a escribir** (mismo hilo) confirmando que el filtro sigue en pie y anunciándole la oposición personalizada de [T-327], que tiene plazo al 05/08.
+- **Quién lo pide:** Sergio (`pcsergio0@gmail.com`, premium, 44 tests en 9 días, feedback `bd8b92d0`): *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. **Ya respondido**: se le ha dicho que lo vamos a añadir.
 - **Qué pasa:** el interruptor «🏛️ Preguntas oficiales» de `TestConfigurator` se pinta si `!hideOfficialQuestions && officialQuestionsCount > 0` (`components/TestConfigurator.tsx:1638`). La página de test por leyes **declara la intención de mostrarlo** (`hideOfficialQuestions={false}`, `app/test/por-leyes/page.tsx:410`) y **sabe llevar el filtro al test** (`params.set('only_official','true')`, línea 151), pero **nunca le pasa `officialQuestionsCount`** → vale 0 por defecto → la condición no se cumple jamás. Las páginas por tema sí lo pasan (`components/test/TemaTestPage.tsx:440`), por eso ahí funciona.
 - **NO es una regresión** (comprobado en el historial del fichero: ese prop no se ha pasado nunca). La fontanería está entera de punta a punta salvo el dato que enciende la casilla.
 - **Cómo:** que la página calcule el contador para la **selección real** (posición + leyes + artículos elegidos) y lo pase. Ya existe la vía: `TestConfigurator` consulta `/api/v2/test-config/estimate` con esos mismos parámetros y `onlyOfficialQuestions`, así que el número honesto se puede pedir ahí sin inventar endpoint nuevo. **El contador tiene que reaccionar a la selección**: si el usuario acota a 3 artículos, el número de al lado debe ser el de esos 3 (un contador estático mentiría, que es peor que no tenerlo). Si sale 0, la casilla sigue oculta — ese comportamiento actual es el correcto.
@@ -2783,7 +2645,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
     - **Y el reverso, que importa igual:** si el autor aparece, aparece **bien**. El nombre que se enseñe debe ser el que esa persona haya elegido mostrar, no su correo ni su nombre completo por defecto (mismo criterio de privacidad que ya aplica el panel de referidos, `abbreviateReferredName`). Publicar un temario no puede convertirse en publicar tus datos.
   - **⚠️ Freno 2 — cuidado con qué se premia.** Si la fama son los seguidores a secas, gana quien mejor nombre pone, no quien mejor lo monta (los datos de arriba ya lo enseñan). Atar el reconocimiento a que el temario esté **completo y mantenido** (bloques con preguntas reales, actualizado tras cada convocatoria), no al número de fans. **Un temario con 200 seguidores y abandonado hace más daño que uno sin nadie.**
   - **Consecuencia de orden:** publicar debería **ganarse al completar**, no ser un interruptor desde el minuto cero. Hoy es lo segundo, y por eso hay 127 personas apuntadas a etiquetas vacías.
-- **Relacionada:** [T-326] (el filtro que pidió en su otro hilo, **ya construido el 31/07 pero sin llegarle a él**), [T-416] (por qué no le llega y la decisión de criterio pendiente), [T-328] (la landing), y el precedente de vender premium con temario incompleto.
+- **Relacionada:** [T-326] (el filtro que pidió en su otro hilo), [T-328] (la landing), y el precedente de vender premium con temario incompleto.
 
 ### [T-328] 🟠 [ABIERTO 30/07] Landing de «tu oposición a medida»: hay hueco de mercado y nadie lo ofrece
 - **La tesis (Manuel, 30/07):** montarte tu propio temario eligiendo leyes y artículos **no lo ofrece nadie** en el mercado de preparación de oposiciones, y **resuelve un dolor real**: el opositor de una oposición específica (A1/A2, o cualquiera fuera de las masivas) no encuentra plataforma con SU temario y acaba estudiando con material genérico o en PDF.

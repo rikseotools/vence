@@ -282,6 +282,28 @@ cabecera que anuncie cierre (`[HECHA …]`, `[CERRADA …]`) sin el `✅` pone e
 > habían empezado a divergir. Dos lectores del mismo fichero que no coinciden en qué está abierto
 > son exactamente el fallo que este subsistema existe para evitar.
 
+## ¿Está vivo el andamiaje? — `npm run sesiones:friccion` (T-423)
+
+Todo lo de arriba contesta *«¿qué pasa AHORA?»*. Esto es lo único que deja **serie temporal**, y
+lo que mide no es lo que parece:
+
+> **No importa cuántas veces bloquea un guardarraíl —eso solo dice que trabaja—. Importa cuántas
+> veces lo RODEAN.** Ese ratio es un indicador **adelantado**: se ve subir antes de que el
+> guardarraíl deje de servir.
+
+| se rodea… | veredicto | qué hacer |
+|---|---|---|
+| <25% | 🟢 sano | nada: el escape hace de válvula, que es su función |
+| 25-66% | 🟠 erosión | hay un caso legítimo que no contempla — búscalo |
+| ≥66% | 🔴 **muerto** | ya no protege, es un peaje: arregla el criterio **o quítalo** |
+
+El 31/07 murieron **tres** guardarraíles exactamente así —el aviso que gritaba en falso hasta que
+se ignoró, el bloqueo imposible de satisfacer, y el escape que se volvió rutina— y los tres se
+descubrieron **por casualidad**. Esto existe para no depender de la casualidad.
+
+Con pocos datos **no opina**, y un cero recién estrenado se lee como *«todavía no ha corrido»*, no
+como *«no hay fricción»*.
+
 ## ⛔ UNA SESIÓN POR DIRECTORIO — el `pre-commit` lo hace cumplir (T-415, 31/07)
 
 Si otra sesión viva trabaja en TU mismo directorio, **el commit se para**.
