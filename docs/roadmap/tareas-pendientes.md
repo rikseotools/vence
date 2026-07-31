@@ -1522,11 +1522,12 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
 - **🔴 LO PRIMERO, porque hay alguien esperando: feedback `bd8b92d0` (Sergio, premium).** Es una RÉPLICA del 31/07 sin contestar: *«ya pero el tema puede no encajar con mi temario, por eso uso el test por artículos de la ley»*. **No es una preferencia: su oposición (`agente_hacienda`) tiene CERO temas** — ver [T-397]. Lo que pide (filtrar preguntas oficiales en el test por leyes) está diagnosticado en [T-326] y es un arreglo pequeño. **Decisión pendiente de Manuel:** arreglar [T-326] y avisarle, o responderle mientras tanto. No cerrar el hilo sin contestarle: se le prometió por escrito que la idea era buena.
 
-  - **📌 ESTADO REAL a 31/07 noche (sesión `central-izquierdo`) — léelo antes de escribirle:**
+  - **✅ CONTESTADO el 31/07 a las 18:06 desde otra sesión — el hilo está `resolved` y sin claim. NO le vuelvas a escribir por esto.** Se le dijo que el filtro «sigue en pie» y que la oposición personalizada ([T-327]) la tendrá «en unos días» para probarla y opinar. **Ese «en unos días» es el plazo que cuelga de [T-327]**, no de esta ficha.
+  - **📌 LO QUE SIGUE VIVO a 31/07 noche (sesión `central-izquierdo`) — léelo antes de anunciarle nada:**
     - **[T-326] YA ESTÁ IMPLEMENTADA y pusheada** (`40022cec7`), **sin desplegar**. La ficha quedó en pausa esperando el deploy de frontend para verificarla en vivo. O sea: lo que se le prometió existe, pero todavía no lo puede usar.
-    - **El hilo está LIBRE** (claim soltado a petición de Manuel, que iba a responderlo desde otra sesión). Si sigue `pending`, cógelo con `cola.cjs next --queue feedback`. **Nadie le ha contestado aún**: el hilo tiene 2 mensajes (nuestra respuesta del 30/07 y su réplica del 31/07 a las 15:44).
+    - ⚠️ **AL DESPLEGAR, NO le anuncies el filtro sin leer el punto siguiente**: para él estará vacío, y avisarle de algo que ve vacío es peor que no avisarle.
     - ⚠️ **El dato que cambia el mensaje, y que no se ve en su texto: el arreglo NO le va a servir.** Su oposición **no tiene ni una sola pregunta oficial** en el banco (`exam_position ILIKE '%hacienda%'` → **0** de 7.552 oficiales activas), y el filtro sirve solo las de la propia oposición → su contador será 0 y **la casilla le seguirá saliendo oculta**. Lo que a él le valdría son las oficiales de OTRAS oposiciones sobre las mismas leyes: eso es **[T-411]**, abierta y sin decidir.
-    - **Borrador ya redactado y NO enviado** (falta el OK, y falta decidir si se le adelanta la limitación). Se guarda aquí para no rehacerlo:
+    - **Borrador que se redactó y NO se envió** (lo respondió otra sesión con otro texto). Se guarda porque **el segundo párrafo sigue siendo la conversación pendiente**: es la forma de contarle la limitación cuando toque, sin que suene a excusa. Reutilizable tal cual:
       > Hola Sergio,
       >
       > Tienes razón: si el tema no encaja con tu temario, mandarte a practicar por tema no te sirve de nada. Ya hemos preparado el filtro de preguntas de exámenes reales en el test por leyes, que es donde tú estudias, y estará disponible en la próxima actualización.
@@ -1538,8 +1539,8 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
       > Muchas gracias.
       >
       > Equipo de Vence
-    - **La decisión abierta es una sola:** enviarlo entero, o quitar el segundo párrafo y contarle la limitación cuando [T-411] esté decidida.
-    - Y ojo con el plazo: **[T-327]** (oposición personalizada, lo que pidió en su OTRO hilo) tiene fecha límite y se le dijo que lo tendría «en unos días».
+    - **La decisión que queda abierta:** si se le cuenta la limitación (y cuándo), o si se resuelve antes con [T-411] y entonces se le avisa de algo que sí puede usar. Lo que **no** vale es anunciarle el filtro a secas: lo abrirá y no verá nada.
+    - Y ojo con el plazo: **[T-327]** (oposición personalizada, lo que pidió en su OTRO hilo) tiene fecha límite y el 31/07 se le dijo por escrito que lo tendría «en unos días» **para probarlo y decirnos si le sirve** — o sea, se le ha pedido que responda: cuando esté, hay que volver a ese hilo.
 - **Las 7 impugnaciones pendientes** (todas legislativas, ninguna analizada aún):
   | id | tipo | plan | lo que dice |
   |---|---|---|---|
