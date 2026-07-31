@@ -59,7 +59,7 @@ const MD = path.join(REPO, MD_REL);
 // fallo que describe [T-428] y que este subsistema existe para cazar, cometido sobre CÓDIGO en vez
 // de sobre una ficha. Si vuelves a tocar este bloque, mira antes `git log -p` del fichero.
 const {
-  estuvoEnElHistorialLocal, hechosDeOrigin, commitQueLaQuito, refrescarOrigin,
+  estuvoEnElHistorialLocal, hechosDeOrigin, enAlgunaRama, commitQueLaQuito, refrescarOrigin,
 } = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
 const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
 
@@ -966,13 +966,15 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         // con criterios distintos es exactamente cómo nació el punto ciego.
         // Sin refrescar, `origin/main` es la foto de la última vez que alguien hizo fetch: se
         // opinaría sobre un pasado y las fichas recién pusheadas saldrían como borradas.
-        const { borradas, noVerificables, miasSinEscribir, desactualizadas, sinPushear } =
+        const { borradas, noVerificables, miasSinEscribir, desactualizadas, enOtraRama, sinPushear } =
           clasificarHuerfanas(sinFicha.map((r) => ({
             id: r.id,
             estuvoEnElMarkdown: estuvoEnElHistorialLocal(r.id, GIT_FICHAS),
             // Si el claim es MÍO, «otra sesión no la ha pusheado» es imposible: la sesión soy yo.
             esMia: r.claimed_by === sid,
             origen: hechosDeOrigin(r.id, GIT_FICHAS),
+            // Y si está commiteada en CUALQUIER rama, existe: es trabajo en vuelo, no perdido.
+            ramas: enAlgunaRama(r.id, GIT_FICHAS),
           })));
         if (borradas.length) {
           console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
@@ -1007,8 +1009,15 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           console.error('   No es trabajo de otra sesión: la tienes tú. Escribe la ficha o suéltala');
           console.error('   (`release`). Sin ficha, quien la coja después empieza sin contexto.');
         }
+        if (enOtraRama.length) {
+          console.log(`ℹ️ commiteada(s) en la rama de otra sesión, pendiente(s) de fusionar: ${
+            enOtraRama.map((h) => h.donde ? `${h.id} (${h.donde})` : h.id).join(', ')}`);
+        }
         if (sinPushear.length) {
-          console.log(`ℹ️ sin ficha aquí todavía (otra sesión sin pushear): ${sinPushear.join(', ')}`);
+          // Se dice «en NINGUNA rama» a propósito: es la misma pinta que tiene el trabajo PERDIDO
+          // (T-407 se escribió, se cerró en la BD y nunca llegó a un commit), y quien lo lea tiene
+          // que poder distinguirlo de una ficha que otra sesión aún está escribiendo.
+          console.log(`ℹ️ sin ficha en NINGUNA rama todavía (se está escribiendo… o se perdió): ${sinPushear.join(', ')}`);
         }
       }
 

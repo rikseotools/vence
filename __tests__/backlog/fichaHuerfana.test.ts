@@ -118,7 +118,12 @@ describe('T-427 — el punto ciego: la prueba está en origin/main, no en mi ram
   })
 
   it('los motivos van declarados de más a menos accionable', () => {
-    expect(MOTIVOS).toEqual(['borrada', 'no_verificable', 'mia_sin_escribir', 'desactualizada', 'sin_pushear'])
+    // `en_otra_rama` (T-445) va EL ÚLTIMO a propósito: es el único donde no hay nada que hacer
+    // salvo esperar a que esa sesión fusione. `sin_pushear` queda por delante porque, desde que
+    // significa «en NINGUNA rama», es también la pinta que tiene el trabajo perdido.
+    expect(MOTIVOS).toEqual([
+      'borrada', 'no_verificable', 'mia_sin_escribir', 'desactualizada', 'sin_pushear', 'en_otra_rama',
+    ])
   })
 })
 

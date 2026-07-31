@@ -1154,23 +1154,6 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-445] 🟠 [ABIERTO 31/07] El clasificador de fichas huérfanas solo mira SU rama: no distingue «perdida» de «sin fusionar»
-
-- **ORIGEN.** Otra sesión reportó que su ficha **T-435 se había perdido**: `git log -S'### [T-435]'` no la encontraba en ninguna revisión, y el aviso de `sync` la clasificó como `sin_pushear`. Concluyó —razonablemente— que el detector había funcionado y el hueco estaba en otro sitio.
-- **PERO LA FICHA NO ESTABA PERDIDA.** Con `--all` sí aparece: commiteada en `refs/heads/sesion/esquina-superior-derecha` (`01014e458`, con el mensaje *«reescribir la ficha, que se perdió antes»*). **Estaba en su rama, sin fusionar.**
-- **EL FALLO, en una palabra:** `estuvoEnElHistorial()` (`scripts/backlog.cjs`) ejecuta `git log -S … -- <fichero>` **sin `--all`**, así que solo ve la rama actual. Y con **un worktree y una rama por sesión, que la ficha viva en otra rama es la situación NORMAL**.
-- **CONFUNDE TRES COSAS QUE NO SON LA MISMA:**
-  | situación | qué es | qué dice hoy |
-  |---|---|---|
-  | ficha en `main` | ✅ | (no avisa) |
-  | **commiteada en la rama de otra sesión** | pendiente de fusionar | ❌ «nunca existió» |
-  | **escrita y perdida sin commitear** | **trabajo perdido** | ❌ «nunca existió» |
-  | estuvo en `main` y ya no | regresión | ✅ la caza |
-  Las dos del medio se ven **idénticas**, y una es normal mientras la otra es trabajo perdido. Por eso quien lo sufre **no puede saber cuál le tocó**.
-- **Y las DOS ocurren de verdad, el mismo día:** T-435 era «sin fusionar» (falsa alarma), y **T-407 se perdió de verdad** —escrita, cerrada en la BD, y nunca en ningún commit— y hubo que reescribirla a mano.
-- **ARREGLO (pequeño, pero hay que hacerlo con cuidado):** añadir `--all` y devolver **tres** estados en vez de dos (`en_main` · `en_otra_rama` · `nunca_commiteada`), y que el mensaje diga cuál. Ojo con el efecto de borde: con `--all`, una ficha que solo existe en una rama ajena dejaría de ser `sin_pushear` y **no debe** clasificarse como `borrada` —no es una regresión, es trabajo en vuelo—.
-- **Dónde:** `estuvoEnElHistorial()` en `scripts/backlog.cjs` y `lib/backlog/fichaHuerfana.cjs` (que ya tiene tests).
-- **Relacionadas:** [T-407] (la que sí se perdió), [T-443] (misma familia, la lleva otra sesión), [T-382].
 ### [T-444] 🟡 [ABIERTO 31/07] El art. 71 de la LO 3/2007 se sirve en 6 temas cuyo epígrafe enumera títulos que NO incluyen el VI
 
 - **Esfuerzo: un rato.** Los 6 temas están listados aquí con su epígrafe ya mapeado; lo que falta es decidir si se recorta y hacerlo con simulación de huérfanas.
@@ -2544,6 +2527,32 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Caché de prod purgada** (`test-counts`, `temario`, `teoria`, `questions`): el endpoint hace *bump* de versión cross-instancia, así que **una llamada por tag basta** — la instrucción de repetir 15-20 veces que imprime `reanclar-preguntas.cjs` es del mecanismo antiguo por instancia y conviene actualizarla.
 - **Cómo salió:** revisando las gemelas con clave contradictoria de [T-408]. No lo cazó ningún detector — lo destapó **la guarda del re-anclaje al negarse a mover la pregunta**, que es un sitio raro para encontrar un problema de temario.
 - **Relacionada:** [T-444] (los 6 restantes), [T-408] (de donde sale), frase-gatillo *«revisa la sobre-inclusión del temario»*.
+
+### [T-445] ✅ [HECHA 31/07] El clasificador de fichas huérfanas solo mira SU rama: no distingue «perdida» de «sin fusionar»
+
+- **ORIGEN.** Otra sesión reportó que su ficha **T-435 se había perdido**: `git log -S'### [T-435]'` no la encontraba en ninguna revisión, y el aviso de `sync` la clasificó como `sin_pushear`. Concluyó —razonablemente— que el detector había funcionado y el hueco estaba en otro sitio.
+- **PERO LA FICHA NO ESTABA PERDIDA.** Con `--all` sí aparece: commiteada en `refs/heads/sesion/esquina-superior-derecha` (`01014e458`, con el mensaje *«reescribir la ficha, que se perdió antes»*). **Estaba en su rama, sin fusionar.**
+- **EL FALLO, en una palabra:** `estuvoEnElHistorial()` (`scripts/backlog.cjs`) ejecuta `git log -S … -- <fichero>` **sin `--all`**, así que solo ve la rama actual. Y con **un worktree y una rama por sesión, que la ficha viva en otra rama es la situación NORMAL**.
+- **CONFUNDE TRES COSAS QUE NO SON LA MISMA:**
+  | situación | qué es | qué dice hoy |
+  |---|---|---|
+  | ficha en `main` | ✅ | (no avisa) |
+  | **commiteada en la rama de otra sesión** | pendiente de fusionar | ❌ «nunca existió» |
+  | **escrita y perdida sin commitear** | **trabajo perdido** | ❌ «nunca existió» |
+  | estuvo en `main` y ya no | regresión | ✅ la caza |
+  Las dos del medio se ven **idénticas**, y una es normal mientras la otra es trabajo perdido. Por eso quien lo sufre **no puede saber cuál le tocó**.
+- **Y las DOS ocurren de verdad, el mismo día:** T-435 era «sin fusionar» (falsa alarma), y **T-407 se perdió de verdad** —escrita, cerrada en la BD, y nunca en ningún commit— y hubo que reescribirla a mano.
+- **ARREGLO (pequeño, pero hay que hacerlo con cuidado):** añadir `--all` y devolver **tres** estados en vez de dos (`en_main` · `en_otra_rama` · `nunca_commiteada`), y que el mensaje diga cuál. Ojo con el efecto de borde: con `--all`, una ficha que solo existe en una rama ajena dejaría de ser `sin_pushear` y **no debe** clasificarse como `borrada` —no es una regresión, es trabajo en vuelo—.
+- **Dónde:** `estuvoEnElHistorial()` en `scripts/backlog.cjs` y `lib/backlog/fichaHuerfana.cjs` (que ya tiene tests).
+- **✅ HECHO 31/07 (sesión `t115-huerfanos`). El aviso ya distingue las cuatro situaciones, y por el camino apareció algo peor que el fallo descrito.**
+  - **Lo que estaba roto de verdad: el arreglo de T-427 existía y NADIE lo llamaba.** `lib/backlog/gitFichas.cjs` (con `hechosDeOrigin`, `refrescarOrigin`, `commitQueLaQuito`) y el clasificador estaban escritos y testeados, y `scripts/backlog.cjs` seguía con su propio `git log -S` sobre la rama local. El **guardarraíl que lo impide llevaba rojo desde que se creó** y, como el `pre-commit` corre la suite unit entera, **tenía bloqueado el commit de CUALQUIER sesión**. Un trinquete que se aterriza sin su cableado no protege: para de trabajar a todo el mundo hasta que alguien lo termina.
+  - **Cableado el CLI a los módulos** (nada de un segundo lector de git) y añadido `enAlgunaRama()`, que es lo que separa las dos del medio de la tabla: `en_otra_rama` —commiteada en la rama de otra sesión, **no es regresión**, y se nombra la ref para poder ir a buscarla— frente a `sin_pushear`, que **ya significa «en NINGUNA rama»** y es la única forma que tiene de verse el trabajo perdido de T-407. Comprobado contra el caso real: **T-435 sale ahora como presente en `origin/main`, no como perdida.**
+  - **El efecto de borde que avisaba la ficha está cubierto con test:** una ficha que estuvo en `origin/main` y ya no está sigue siendo `borrada` **aunque viva en otra rama**. Mirar todas las ramas no puede tapar una regresión.
+  - **Y la señal deja de ser ciega:** al detectar una regresión se emite `backlog_ficha_borrada` con el commit culpable y la sesión que lo vio, fail-open (la telemetría no puede tumbar un `sync`). La regla de alerta ya existía esperando ese evento.
+  - **GOTCHA que costó un test rojo y no se ve leyendo el código:** `git log --all --source` **no** imprime la ref si le pasas un `--format` propio — hay que pedirla con `%S`. Sin ella el comando funciona y la clasificación sale bien; lo único que falta es el «dónde», así que solo lo caza un test que compruebe el CONTENIDO del aviso y no solo el veredicto.
+  - **Capas:** `__tests__/backlog/fichaEnOtraRama.test.ts` (6, contra git de verdad con worktrees hermanos, que es la topología real) + los 32 que ya había en `gitFichas`/`fichaHuerfana`/guardarraíl, ahora en verde.
+- **Relacionadas:** [T-407] (la que sí se perdió), [T-443] (misma familia, la lleva otra sesión), [T-382].
+
 
 ### [T-162] ✅ 🟠 [HECHA 27/07] `detect-notas-convocatoria` no COMPLETA una ejecución desde el 24/07 y nada se enteró
 - **Qué:** el cron (`30 9 * * *`) emitió su `cron_tick` el **25/07 y el 26/07** y **no emitió `cron_run` ninguno de los dos días**. Su emisión está en un `try/catch` que publica `cron_run` tanto en éxito como en fallo, así que la ausencia total significa que **el proceso murió a media ejecución**. Última ejecución completa: **24/07 15:35** (6,1 h, 606 errores de 2.206).
