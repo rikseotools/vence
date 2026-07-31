@@ -165,6 +165,10 @@ const psy = await sql`
 
 ### 1.bis Reparto entre sesiones (claim) — `cola.cjs`
 
+> 🧩 El diseño completo del reparto entre sesiones (por qué la reserva caduca cuando muere su
+> sesión y no por reloj, y el resto del andamiaje) está en
+> [`../runbooks/sistema-sesiones-paralelas.md`](../runbooks/sistema-sesiones-paralelas.md).
+
 Para que **2-10 sesiones** trabajen la cola a la vez sin analizar la misma impugnación (incidente 17/07), cada sesión **coge** items con `scripts/impugnaciones/cola.cjs` (lee/escribe RDS). El claim es atómico (`FOR UPDATE SKIP LOCKED`): dos sesiones nunca reciben la misma fila.
 
 ```bash
