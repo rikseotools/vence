@@ -1006,6 +1006,42 @@ incluida).
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-385] 🔴 [ABIERTO 31/07] El deploy construye desde el checkout COMPARTIDO, y por eso necesita dos guardarraíles que no deberían existir
+- **Cómo salió:** al cerrar la sesión del 31/07, midiendo por qué el trabajo se atascó tres veces. **91 commits en un día** tocan `tareas-pendientes.md`, hay **22 worktrees** vivos y varias sesiones escriben en el checkout principal a la vez.
+- **El acoplamiento, exacto:** `deploy-{frontend,backend}.sh` hace `git reset --hard origin/main` **en el árbol desde el que se ejecuta** y construye con `podman build … ./backend` desde ese mismo árbol. O sea: **el deploy necesita que un recurso compartido esté quieto y limpio**, cosa que con 2-10 sesiones no se puede garantizar.
+- **Lo que ese acoplamiento ya ha costado, todo del 31/07:**
+  - [T-364]: guard nuevo *«no lances el deploy desde un worktree de sesión»* — porque el `reset --hard` le movía el HEAD a quien programaba.
+  - [T-366]: el lanzador se bloqueaba con el scratch SIN TRACKEAR de otras sesiones.
+  - Un lanzador de backend **muerto tras 20 vueltas** sin desplegar, y otro esperando el lock.
+  - Un `rebase` en estado inconsistente (git decía conflictos sin ficheros en conflicto) mientras otra sesión escribía el mismo fichero.
+  - El último push del día: **siete intentos** esperando a que soltaran el árbol.
+- **El arreglo de fondo: que el deploy NO toque el árbol de nadie.** `git worktree add --detach <tmp> <sha>` → construir ahí → borrarlo (con `trap`, para que un build fallido no deje basura). El deploy pasa a construir **exactamente el commit cuyo CI verificó**, en un árbol **inmutable y propio**, que es lo que la gente cree que hace hoy.
+  - **Y entonces sobran tres cosas:** el `reset --hard` destructivo, la comprobación de árbol sucio y el guard de [T-364]. No se relajan: **dejan de tener objeto**.
+  - **Guardarraíl a REEMPLAZAR, no a borrar:** hoy `deploy-scripts.test.ts` exige *«aborta si HEAD no contiene origin/main»*. Con esto, el invariante correcto es más fuerte: *«construye el SHA de `origin/main` verde en CI, en un árbol recién creado»*. Hay que cambiar el test A LA VEZ que el script y dejar escrito por qué el nuevo es más fuerte, no más laxo.
+- **Gotchas medidos que hay que respetar (por eso NO es un `cd` y ya):**
+  - **`.env.local` está gitignorado** → un worktree nuevo NO lo tiene, y de ahí sale el `GITHUB_PAT` del gate de CI. Hay que leerlo del checkout original ANTES de cambiar de árbol.
+  - El **frontend** además inyecta las `NEXT_PUBLIC_*` como **build-args** y sincroniza assets a S3: más superficie, por eso va en fase 2.
+  - `node_modules` NO hace falta en el host (el build es Docker), pero conviene confirmarlo por Dockerfile antes de dar por hecho.
+- **Fases:** (1) helper compartido `scripts/lib/deploy-worktree.sh` + adopción en **backend**; (2) adopción en **frontend**; (3) retirar el guard de [T-364] y la comprobación de árbol del lanzador, que ya no protegen de nada. Mientras convivan los dos modos, el lanzador mantiene sus comprobaciones — quitarlas antes dejaría al frontend sin red.
+- **Relacionadas:** [T-364], [T-366], [T-386] (el lanzador), `docs/runbooks/pusheo-revision-despliegue.md`.
+
+### [T-386] 🟠 [ABIERTO 31/07] Dos lanzadores de deploy compitiendo, ciegos el uno del otro
+- **Qué pasó (31/07):** dos sesiones lanzaron `deploy-cuando-verde.sh backend` a la vez. El lock los serializa, pero **el deploy es cumulativo**: el segundo no aporta nada, solo consume vueltas y consultas al CI. Uno **murió tras 20 vueltas** —por el guard de [T-364], un motivo ajeno al deploy— y **no avisó a nadie**: T-307, T-361 y T-362 se quedaron dormidas hasta que otra sesión relanzó.
+- **La pregunta que el lanzador NO se hace, y es la única que importa:** *«¿está ya vivo el SHA que persigo?»*. Hoy solo sabe *«¿tengo yo el lock?»*.
+- **Arreglo:** antes de cada vuelta y al salir, cruzar el sha vivo de `/health` con `git merge-base --is-ancestor`. Si el objetivo ya está dentro, **salir con éxito** diciendo quién lo desplegó. Y si el lock lo tiene otro lanzador de la MISMA superficie, ponerse a observar en vez de competir.
+- **Reusar, no duplicar:** esa reconciliación ya existe (`despertarPorDeploy` / `shaVivo()`), con su invariante de seguridad — cuando no se puede saber el sha vivo devuelve `null` y **`null` nunca despierta**. Dos implementaciones del mismo criterio se separarían y el desacuerdo sería invisible.
+- **Relacionadas:** [T-385], [T-290] (la reconciliación que ya existe).
+
+### [T-387] 🟠 [ABIERTO 31/07] `tareas-pendientes.md`: 91 commits al día sobre un fichero de 2 MB que todos editan a mano
+- **Medido el 31/07:** **91 commits en un solo día** tocan ese fichero, que pesa **1,96 MB** y contiene ~360 fichas. Lo escriben todas las sesiones, a mano, con scripts de usar y tirar.
+- **El diagnóstico honesto:** el **estado** (el claim) se resolvió bien y vive en Postgres, atómico. El **contenido** nunca se resolvió. Y no es teoría: en UNA sola sesión del 31/07 hicieron falta cuatro scripts ad-hoc para editarlo, **uno se llevó por delante la cabecera `## Hechas`** (lo cazó el guardarraíl de CI: red, no diseño), [T-338] acabó **duplicada** y `sync` tuvo que abortar.
+- **Dos capas, en este orden, porque arreglan cosas DISTINTAS:**
+  1. **`backlog.cjs` pasa a ser el ÚNICO escritor** (`ficha nueva|mover|editar`): lock de fichero, **relectura antes de escribir** —el fichero cambia bajo los pies, pasó dos veces el 31/07— y validación de invariantes ANTES de tocar (id único, sección coherente con el estado en BD, cabecera que no se contradiga). Es mover el guardarraíl de CI al punto de escritura: **impedir** en vez de detectar tarde. Mata la corrupción y los duplicados. **No mata los conflictos de git.**
+  2. **Una ficha por fichero** (`docs/roadmap/tareas/T-361.md`) con índice generado. Es lo ÚNICO que mata los conflictos de git: con un fichero único, dos sesiones tocando fichas distintas chocan igual aunque el escritor sea perfecto. Pasó dos veces el 31/07. Los guardarraíles pasan a leer un directorio; `sync` ya reconcilia por id, así que se adapta.
+- **Por qué en ese orden:** (1) es barato y quita el daño IRREVERSIBLE (corromper el fichero de otro). (2) es más grande y quita la fricción diaria. Hacer solo (2) dejaría vivo el "edito a mano con un script mío".
+- **Relacionadas:** [T-338] (la duplicada), `docs/runbooks/tareas-pendientes.md`.
+
+
 
 ### [T-382] 🟡 [ABIERTO 31/07] El markdown del backlog: solo 16 de 363 fichas caen bajo `## Abiertas` y el `sync` no las reconcilia
 
