@@ -56,6 +56,12 @@ Salieron de fallos reales, no de teoría. Si portas el sistema, porta esto prime
    daño ya está en la rama principal.
 9. **FAIL-OPEN en la telemetría, FAIL-CLOSED en lo que existe para cazar.** Que la observabilidad
    no responda jamás puede impedir trabajar.
+10. **La regla tiene que llegar en el MOMENTO DE LA VERDAD, no al arrancar.** Un documento que se
+    lee una vez al principio queda sepultado cuando llega el momento de aplicarlo. La misma frase,
+    impresa al empezar la tarea, sí se lee. Y si además llega **contextual** —con el comando ya
+    escrito para ese caso— deja de ser papel pintado.
+11. **Un proceso de fondo tiene que MORIR con quien lo lanzó.** Si sobrevive, no falla: sigue
+    trabajando y contándoselo a nadie, que es peor — se comporta como si vigilara.
 
 ---
 
@@ -175,7 +181,29 @@ anterior, sus ficheros sin commitear y **sus commits sin pushear**.
 > acordarse. Lo que no es derivable —el razonamiento que no llegó a ningún commit, las hipótesis
 > descartadas— se pierde igual; la mitigación real es **commitear pronto y a menudo**.
 
-### 3.10 Vigilancia del propio andamiaje
+### 3.10 Que la regla llegue cuando se empieza a trabajar
+
+`backlog.cjs claim` imprime, además de la ficha, **cuatro líneas con el orden que evita rehacer
+trabajo**: ¿ya existe? (con el comando de búsqueda ya escrito con las palabras de esa tarea) →
+¿dónde encaja, para no crear un silo? → capas → el simulador que ya está montado.
+
+> Estaba todo escrito en el documento que se carga al arrancar… y aun así había que repetirlo a
+> mano cada poco. No era desidia: cuando media hora después se coge una tarea, esas líneas están
+> sepultadas. Y los guardarraíles que sí existían actuaban **al pushear**, con el trabajo ya
+> hecho — ninguno devuelve las horas de construir algo que ya existía.
+
+### 3.11 Procesos de fondo: morir con su sesión
+
+Un vigía lanzado por una sesión escribe sus avisos **en la salida de esa sesión**. Si la sesión
+muere, el proceso NO muere —Linux lo entrega a `init`— y sigue consultando, detectando y
+**contándoselo a nadie**. Peor: si recuerda lo ya avisado, puede marcar como visto algo que nadie
+llegó a ver. **No falla: finge funcionar.**
+
+Se detecta guardando el `ppid` al arrancar y comparándolo en cada vuelta: si el padre muere, el
+sistema reasigna el proceso y el ppid **cambia**. Sin depender de señales — `nohup` las ignora a
+propósito, así que varios de estos procesos estaban *diseñados* para sobrevivir.
+
+### 3.12 Vigilancia del propio andamiaje
 
 `lib/observability/friccionSesiones.cjs` + `npm run sesiones:friccion` → tabla `observable_events`.
 
@@ -235,6 +263,8 @@ Cada uno costó tiempo real. Si portas el sistema, **espera estos**:
 | Reescribir el mismo módulo N veces | sin registro de herramientas, cada sesión reconstruye |
 | Un `git log -S` por elemento | barato con 30 elementos, dos minutos con 180 |
 | Una sesión muere sin despedirse | su `--hecho/--falta` nunca se escribe: hay que **derivar** el rastro, no pedirlo |
+| **Un proceso de fondo que sobrevive a su sesión** | sigue trabajando y avisando a nadie; si recuerda lo avisado, lo marca como visto |
+| La regla escrita solo al arrancar la sesión | queda sepultada justo cuando toca aplicarla |
 | **Crear el worktree ≠ entrar en él** | la sesión que ejecuta el script se queda donde estaba: worktrees perfectos y VACÍOS |
 | `git reset --soft` + índice compartido | deja **borrados staged** de ficheros que sí están en la rama: el siguiente commit los borra |
 
@@ -255,7 +285,7 @@ soporte de worktrees, y un sitio donde emitir eventos.
 
 **Orden sugerido para construirlo:** (1) identidad única — todo lo demás cuelga de ahí; (2)
 latido; (3) claim con lease + reap; (4) guardarraíl de índice compartido, que es el que evita el
-daño irreversible; (5) huella y solape; (6) árbol de deploy propio; (7) el ratio de escape; (8) la recuperación de sesiones muertas.
+daño irreversible; (5) huella y solape; (6) árbol de deploy propio; (7) el ratio de escape; (8) la recuperación de sesiones muertas; (9) que los procesos de fondo mueran con su sesión y que la regla se imprima al empezar la tarea.
 
 > **Y el consejo que más ahorra:** empieza por el punto 4. Es el único fallo de esta lista que
 > **destruye trabajo sin dejar rastro**; todos los demás cuestan tiempo, pero se recuperan.
