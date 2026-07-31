@@ -36,7 +36,25 @@ function sesion() { return resolverSid({ repo: REPO }).sid }
 async function main() {
   const u = url()
   if (!u) return
-  const s = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
+  // `postgres` se resuelve con FALLBACK al node_modules del repo principal (T-404 bis).
+  //
+  // Esto corre desde el árbol de deploy, que puede NO tener `node_modules` —el build es Docker y
+  // no los necesita, así que nadie los echa en falta—. Sin fallback, el `require` reventaba, el
+  // fail-open se lo tragaba en silencio y la fila NUNCA se escribía: `deploy-estado` decía
+  // «libre» con un deploy corriendo. Encontrado en el PRIMER deploy real por el camino nuevo;
+  // ningún test lo habría visto, porque en el repo principal los módulos sí están.
+  const cargarPg = () => {
+    try { return require('postgres') } catch { /* este árbol no tiene node_modules */ }
+    // Fallback al node_modules del repo PRINCIPAL, localizado por git: `--git-common-dir` apunta
+    // al `.git` compartido por todos los worktrees, así que su carpeta padre es el checkout
+    // principal. Apuntar a `REPO` (que es ESTE árbol) no servía de nada — fue mi primer intento.
+    const { execFileSync } = require('child_process')
+    const comun = execFileSync('git', ['rev-parse', '--git-common-dir'],
+      { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+    const principal = path.resolve(REPO, comun, '..')
+    return require(path.join(principal, 'node_modules', 'postgres'))
+  }
+  const s = cargarPg()(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
   try {
     if (process.argv.includes('--inicio')) {
       const superficie = arg('--superficie')

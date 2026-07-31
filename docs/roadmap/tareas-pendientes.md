@@ -2312,6 +2312,17 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 ## Hechas
 
+### [T-440] ✅ 🟠 [HECHA 31/07] El marcado de deploys se callaba desde un árbol sin `node_modules` — y solo lo vio un deploy REAL
+
+- **CÓMO SALIÓ.** Vigilando el **primer deploy real** por el camino nuevo de [T-385], que es justo para lo que esa ficha se dejó pausada. Tres de las cuatro verificaciones salieron ✅ y **la cuarta falló: `deploy_runs` estaba vacío con un deploy corriendo.**
+- **LA CAUSA:** el árbol desde el que se despliega **puede no tener `node_modules`** —el build es Docker y no los necesita—. `deploy-marcar.cjs` hacía `require('postgres')`, reventaba, y **el fail-open se lo tragaba en silencio**.
+- **EL DAÑO:** `npm run deploy:estado` decía *«registro: libre»* **con un deploy en marcha**. El `flock` seguía protegiendo, pero **la visibilidad de [T-404] mentía en su primer uso real**.
+- **⚠️ Y EL PRIMER ARREGLO TAMPOCO SERVÍA:** el *fallback* apuntaba a `REPO`… que es **ESE MISMO árbol**. Solo se vio **al probarlo de verdad** desde un worktree pelado. El bueno localiza el repo **principal** por git (`--git-common-dir`).
+- **✅ Verificado:** ejecutado desde un worktree sin `node_modules` y **escribe la fila**; antes devolvía vacío.
+- **LA LECCIÓN:** *construir la imagen no es desplegar*. Ningún test lo habría cazado —en el principal los módulos SÍ están— y el `fail-open`, correcto para no tumbar un deploy, es justo lo que lo hacía invisible. **Un fail-open bien puesto puede esconder que una función nunca se ejecuta.**
+- **Capas:** 3 tests. **Relacionadas:** [T-404], [T-385].
+
+
 ### [T-438] ✅ 🟠 [HECHA 31/07] Cerrar un worktree no exigía cerrar ni pausar las tareas del backlog
 
 - **ORIGEN.** Manuel (31/07): *«cuando quiero cerrar la sesión digo "documenta todo en las tareas y fichas… no dejes cabos sueltos". ¿Está bien, o con hacer `/clear` valdría?»*. Al revisarlo salió que **la frase no era el problema: el problema era que el cierre no lo exigía nadie.**
