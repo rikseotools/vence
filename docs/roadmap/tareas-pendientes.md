@@ -1667,6 +1667,25 @@ Fui a hacer la comprobación que pedía `--falta` (canario de rojo a 🟡). **Si
   - **El 401 de `/api/profile` viene de `verifyAuth`**, o sea de que **el access token no vale** — no de un perfil que falte. Junto con `/api/auth/token` apareciendo en su rastro, apunta a que lo que falla primero es **el acuñado del token**, y que la falta de perfil sea consecuencia y no causa. Es la hipótesis a comprobar, NO una conclusión.
 - **⚠️ EL PUNTO CIEGO QUE IMPIDE CERRAR ESTO, y es lo siguiente que hay que construir:** de las cuatro salidas de `decidirReintentoPerfil`, **`sin_email` y `reintentar` emiten evento, pero `ya_resuelto` y `en_espera` son MUDAS**. Y son justo las dos que habría que distinguir para saber por qué el reintento no actúa. Mientras sigan mudas, la pregunta «¿por qué no se cura nadie?» **no tiene respuesta observable**, y cualquier arreglo que se escriba será a ciegas. Instrumentarlas tiene su propio problema —`ya_resuelto` dispara en cada carga de página de cada usuario sano, así que emitir a pelo sería un diluvio— y por eso es trabajo de diseño, no una línea.
 - **NO se ha tocado el código a propósito.** Se llegó a autorizar un arreglo (que el rebote provocara una rotación que borrase `appUserId`), pero se apoyaba en la causa que este mismo apartado descarta. **Escribirlo habría sido arreglar algo que no está roto** y, peor, habría dado la tarea por resuelta.
+
+##### 🎯 Y SIGUIENDO EL HILO: por qué el reintento NO PUEDE alcanzarles (01/08, mismo día)
+
+Buscando dónde instrumentar apareció que **la instrumentación que hacía falta YA EXISTE** — `auth_sub_reconciliado`, que emite `huerfano` con severidad `error` justo cuando un `sub` no tiene perfil ([T-245], en `/api/auth/token`). No hubo que construir nada; hubo que **mirarla**:
+
+- **Ha hablado UNA sola vez en toda su vida** (30/07, un usuario) y **NINGUNO de los 25 aparece** en ella, ni como `user_id` ni como `subOriginal`.
+- Eso solo puede significar una cosa: **no llegan a esa comprobación**. Se quedan antes, en el `if (!userId) return 401 unauthenticated` de `/api/auth/token` — o sea que **no tienen sesión Auth.js y el bridge tampoco les rescata**.
+- **Y ahí encaja TODO lo demás sin forzar nada:** sin sesión Auth.js, **el callback `jwt` no se ejecuta para ellos NUNCA**. Por eso las cuatro señales del reintento están a cero en producción; por eso la simulación de navegador —que sí abre sesión Auth.js— da verde; y por eso el canario no ve una sola curación.
+- **En una frase: el arreglo de esta tarea vive detrás de una puerta por la que esta gente no pasa.** No es que el reintento falle: es que no le llega el turno.
+- **Lo que queda por confirmar** es de dónde saca el cliente un id de usuario si no hay sesión. Candidato encontrado y **NO probado**: `AuthContext.tsx` tiene un rescate a los 12 s de timeout que **resucita una sesión legacy de Supabase desde `localStorage`** (`sb-<proyecto>-auth`) y hace `setUser(parsed.user)` — con lo que la app se comporta como logueada sin que exista sesión. Cuadra con el perfil medido (id UUID legacy, sin fila en ninguna tabla, todo a 401 desde el primer evento), pero **no hay prueba directa**: ese camino solo deja `console.log`/`console.warn` y no aparece en `observable_events`. **No dar por buena esta parte sin comprobarla.**
+
+##### 🕳️ EL PUNTO CIEGO REAL (y no es el que se dijo antes)
+
+**El 401 de `/api/auth/token` está silenciado A PROPÓSITO** (`expectedStatuses: [401]` en `withErrorLogging`), y con razón: un cliente deslogueado hace polling y generaría ~340k eventos/día. Pero ese silencio mete en el mismo saco dos cosas que no son iguales:
+
+1. **El 401 anónimo** — nadie ha iniciado sesión. Es ruido y debe seguir callado.
+2. **El 401 de un cliente que CREE estar dentro** — manda un id de usuario, navega, responde preguntas, y no se le guarda nada. **Ese es un usuario roto y hoy es invisible.**
+
+Distinguirlos es barato (el segundo trae identidad reclamada y el primero no) y **no crea nada nuevo**: la señal encaja en el canario `perfil-sin-resolver` que ya existe y en sus reglas. **Ese es el trabajo siguiente**, y es lo que convierte esta tarea en verificable.
 - **NO son bajas de cuenta.** Era la otra hipótesis razonable, porque el `catch` que emite el rebote está comentado como *«sesión zombie de user eliminado por admin-delete-user»*. Descartada: **0 de los 25** tienen registro en `deleted_users_log`. Ese comentario describe una causa posible del `23503`, no la que se está dando.
 - **Lo que NO se ha tocado, y por qué:** el arreglo evidente —comprobar que `appUserId` existe— costaría **una consulta a BD en cada rotación de sesión de cada usuario sano**, que es justo lo que la guarda de la línea 80 evita. La salida barata es usar el rebote como señal: cuando un endpoint responde «Usuario no existe», que el cliente pida una rotación que **borre `appUserId`** del token, y entonces el reintento que ya existe hace su trabajo en la siguiente carga. **Eso toca identidad y es decisión de Manuel** (la ficha ya reserva la otra decisión de auth), así que se deja propuesto, no hecho.
 
