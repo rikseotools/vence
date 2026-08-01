@@ -273,6 +273,7 @@ describe('findZombieClaims', () => {
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {
   claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, deployDebtLevel,
+  puedeMarcarseVerificada,
 } = require('@/lib/backlog/claimGate.cjs') as {
   claimGate: (t: unknown, sid: string, now?: Date, openIds?: Set<string>) => {
     ok: boolean; code: string; reason: string | null; forzable: boolean
@@ -280,6 +281,7 @@ const {
   isChronicSnooze: (t: unknown, umbral?: number) => boolean
   deployWakeReady: (t: unknown, contiene: { frontend?: boolean; backend?: boolean }) => boolean
   isAwaitingVerification: (t: unknown, now?: Date) => boolean
+  puedeMarcarseVerificada: (t: unknown, sid: string, now?: Date) => { ok: boolean; motivo?: string }
   deployDebtLevel: (i: { commits?: number; tareasEsperando?: number }) => {
     nivel: string; motivo: string
   }
@@ -613,5 +615,83 @@ describe('detectarTrabajoPendiente — narrar un pendiente YA resuelto no es dej
     'Hecho, falta verificar el barrido de mañana',
   ])('sigue bloqueando lo que de verdad queda: %s', (o) => {
     expect(detectarTrabajoPendiente(o).pendiente).toBe(true)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// T-449 — el gemelo que le faltaba a `pause`.
+//
+// `pause` sabe decir «esto está hecho a falta de que llegue un momento». Lo que NO había forma de
+// decir era «esto YA lo comprobé y la tarea sigue viva»: `done` la cerraría en falso, `pause`
+// obligaría a inventarse una espera y `release` no toca `resume_check`, así que la suelta con el
+// pendiente obsoleto intacto.
+//
+// Costó tiempo real el 01/08: `list` ofrecía T-385 arriba del todo como «IMPLEMENTADA Y SIN
+// COMPROBAR» con un pendiente que otra sesión acababa de resolver, y una tercera montó un
+// worktree para repetir trabajo hecho. Lo paga siempre la sesión más diligente: la que hace caso
+// al orden sugerido.
+// ════════════════════════════════════════════════════════════════════════════
+describe('puedeMarcarseVerificada — «ya lo comprobé» sin cerrar ni fingir una espera', () => {
+  const lista = {
+    id: 'T-9', status: 'open', resume_check: 'comprobar que el badge baja a 0',
+    wake_on_deploy_sha: null, snooze_until: null, claimed_by: null, lease_until: null,
+  }
+
+  it('una tarea lista para verificar SÍ se puede marcar', () => {
+    expect(puedeMarcarseVerificada(lista, 'sid-a', HOY)).toEqual({ ok: true })
+  })
+
+  it('la mía, con lease vivo, también (verificarla es parte de trabajarla)', () => {
+    const lease = new Date(HOY.getTime() + 30 * 60_000).toISOString()
+    expect(puedeMarcarseVerificada({ ...lista, claimed_by: 'sid-a', lease_until: lease }, 'sid-a', HOY).ok).toBe(true)
+  })
+
+  it('sin `resume_check` NO: no hay nada que marcar, y el verbo no es decorativo', () => {
+    const v = puedeMarcarseVerificada({ ...lista, resume_check: null }, 'sid-a', HOY)
+    expect(v.ok).toBe(false)
+    expect(v.motivo).toMatch(/nada pendiente de comprobar/)
+  })
+
+  it('CERRADA no: una tarea cerrada no se verifica, se reabre', () => {
+    const v = puedeMarcarseVerificada({ ...lista, status: 'done' }, 'sid-a', HOY)
+    expect(v.ok).toBe(false)
+    expect(v.motivo).toMatch(/se reabre/)
+  })
+
+  // Este es el caso que de verdad protege el invariante: si el código no está vivo, la
+  // comprobación NO se ha podido hacer. Marcarla sería escribir la misma mentira que el verbo
+  // viene a borrar, solo que en la otra dirección.
+  it('si TODAVÍA espera un deploy NO: sin estar vivo no has podido comprobarlo', () => {
+    const v = puedeMarcarseVerificada({ ...lista, wake_on_deploy_sha: 'abc1234' }, 'sid-a', HOY)
+    expect(v.ok).toBe(false)
+    expect(v.motivo).toMatch(/DEPLOY/)
+  })
+
+  it('si espera un RELOJ que no ha vencido tampoco: hasta esa hora no hay nada que mirar', () => {
+    const futuro = new Date(HOY.getTime() + 3600_000).toISOString()
+    const v = puedeMarcarseVerificada({ ...lista, snooze_until: futuro }, 'sid-a', HOY)
+    expect(v.ok).toBe(false)
+    expect(v.motivo).toMatch(/RELOJ/)
+  })
+
+  it('con el reloj ya vencido sí: la espera terminó', () => {
+    const pasado = new Date(HOY.getTime() - 60_000).toISOString()
+    expect(puedeMarcarseVerificada({ ...lista, snooze_until: pasado }, 'sid-a', HOY).ok).toBe(true)
+  })
+
+  it('la que OTRA sesión tiene con lease vivo NO se toca: su dueño sabe mejor si comprobó', () => {
+    const lease = new Date(HOY.getTime() + 30 * 60_000).toISOString()
+    const v = puedeMarcarseVerificada({ ...lista, claimed_by: 'sesion-b', lease_until: lease }, 'sid-a', HOY)
+    expect(v.ok).toBe(false)
+    expect(v.motivo).toMatch(/coordina/)
+  })
+
+  it('pero si su lease ya VENCIÓ sí, igual que hace `claim` (no se espera a los muertos)', () => {
+    const vencido = new Date(HOY.getTime() - 60_000).toISOString()
+    expect(puedeMarcarseVerificada({ ...lista, claimed_by: 'sesion-b', lease_until: vencido }, 'sid-a', HOY).ok).toBe(true)
+  })
+
+  it('una tarea que no existe no revienta: contesta que no', () => {
+    expect(puedeMarcarseVerificada(null, 'sid-a', HOY).ok).toBe(false)
   })
 })

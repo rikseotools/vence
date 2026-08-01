@@ -30,7 +30,7 @@ const path = require('path');
 // en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
 const loadPg = () => require('postgres');
 // La decisión de si una tarea se puede coger vive en un solo sitio, compartida con los tests.
-const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
+const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, puedeMarcarseVerificada, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 // El PLAZO («tiene que estar antes de») es lo contrario de snooze («no la cojas antes de»).
 const { clasificarPlazo, validarPlazo, tareasConPlazo } = require(path.join(__dirname, '..', 'lib', 'backlog', 'plazo.cjs'));
 
@@ -1269,6 +1269,52 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       if (isChronicSnooze(row)) console.log(`   🔁 van ${row.snooze_count} aplazamientos: ¿tarea programada o decisión pendiente?`);
     }
 
+    else if (cmd === 'verificado') {
+      // GEMELO DE `pause` (T-449). `pause` dice «aún no se puede comprobar»; esto dice «ya lo
+      // comprobé, y la tarea sigue viva». Sin este verbo no había forma de decirlo: `done` la
+      // cerraría en falso, `pause` obligaría a inventarse una espera que no existe, y `release`
+      // no toca `resume_check` —así que la suelta con el pendiente obsoleto intacto y el
+      // siguiente que llegue tropieza igual—.
+      //
+      // NO reparte la columna entre dos criterios: `pause` sigue siendo el ÚNICO que ESCRIBE
+      // `resume_check`; esto solo lo CUMPLE y lo vacía. Dos escritores con criterios distintos
+      // es como nació el quinto escritor de `seguimiento_url` [T-130].
+      needSid();
+      const id = process.argv[3];
+      const nota = arg('--nota');
+      if (!id || !nota) {
+        console.error('Uso: backlog.cjs verificado <T-xxx> --nota "QUÉ comprobaste y con qué evidencia"');
+        console.error('   La nota es OBLIGATORIA: sin ella, «verificado» es indistinguible de «lo doy por bueno».');
+        process.exit(2);
+      }
+      const [prev] = await s`
+        SELECT id, title, status, resume_check, progress_note, claimed_by, lease_until,
+               wake_on_deploy_sha, snooze_until
+          FROM public.backlog_tasks WHERE id = ${id}`;
+      if (!prev) { console.error(`❌ ${id} no existe.`); process.exit(1); }
+      const veredicto = puedeMarcarseVerificada(prev, sid);
+      if (!veredicto.ok) {
+        console.error(`❌ ${id} no se puede marcar verificada: ${veredicto.motivo}.`);
+        process.exit(2);
+      }
+      // El pendiente CUMPLIDO no se borra: baja a `progress_note` con la nota de qué se comprobó.
+      // Borrarlo dejaría la tarea sin rastro de que hubo una verificación, que es justo lo que
+      // hace falta para no repetirla.
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET resume_check = NULL,
+               snooze_reason = NULL,
+               progress_note = concat_ws(E'\n',
+                 ${'VERIFICADO: ' + nota}::text,
+                 ${'(lo que estaba pendiente de comprobar era: ' + String(prev.resume_check).slice(0, 400) + ')'}::text,
+                 progress_note)
+         WHERE id = ${id} RETURNING id, title`;
+      console.log(`✅ ${row.id} marcada VERIFICADA — ${row.title}`);
+      console.log(`   ✔ comprobado: ${nota}`);
+      console.log('   Sale de «⏰ IMPLEMENTADAS Y SIN COMPROBAR» y queda como una tarea abierta normal.');
+      console.log('   Si ya no queda trabajo, ciérrala:  node scripts/backlog.cjs done ' + id + ' --outcome "…"');
+    }
+
     else if (cmd === 'deployed') {
       // Lo llama el propio script de deploy al terminar (best-effort, nunca rompe un deploy).
       // Comparte implementación con la reconciliación perezosa de `list`: dos copias acabarían
@@ -1380,7 +1426,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync');
     }
   } catch (e) {
     console.error('❌', e.message);

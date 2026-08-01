@@ -71,6 +71,7 @@ node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un 
 node scripts/backlog.cjs due T-042 --fecha "2026-08-02 23:59" --motivo "quién lo espera o qué fecha externa lo fija"   # FECHA LÍMITE (lo contrario de snooze)
 node scripts/backlog.cjs due T-042 --quitar
 node scripts/backlog.cjs pause T-042 --tras-deploy --hecho "…" --falta "…"   # empezada, espera deploy
+node scripts/backlog.cjs verificado T-042 --nota "…"   # YA lo comprobé y la tarea sigue viva (gemelo de pause)
 node scripts/backlog.cjs wake T-042        # la despierta antes de tiempo
 node scripts/backlog.cjs deployed <sha> --superficie frontend   # lo llama el propio deploy
 node scripts/backlog.cjs reap              # SIMULA: qué claims son de sesiones muertas
@@ -535,6 +536,7 @@ eso `done` es una PUERTA, no un consejo:
 | Terminada **y verificada** | `done <id> --outcome "…"` | se cierra |
 | Hecha, **falta verla desplegada** | `pause <id> --tras-deploy --superficie frontend\|backend\|both --hecho "…" --falta "…"` | suelta el claim; **la despierta el deploy** |
 | Hecha, **falta verificar a una hora** | `pause <id> --hasta "2026-08-11 07:00" --hecho "…" --falta "…"` | suelta el claim; **la despierta el reloj** |
+| **Comprobada, pero SIGUE viva** | `verificado <id> --nota "…"` | cumple el pendiente y la saca de «sin comprobar»; queda abierta |
 | No avanzo, que la coja otro | `release <id>` | vuelve al pool, sin memoria de lo hecho |
 
 **El `done` tiene DOS puertas, y miran cosas distintas.**
@@ -571,6 +573,41 @@ Cerrar en falso saca la tarea del backlog **y** deja el trabajo sin hacer, con a
 terminada: lo peor de los dos mundos. Escape consciente: `--igualmente`.
 Núcleo puro `detectarTrabajoPendiente` (`lib/backlog/claimGate.cjs`), con tests que separan
 *"consolidados los 6 grupos"* (cierra) de *"quedan 6 grupos"* (bloquea).
+
+## «Ya lo comprobé, pero la tarea sigue viva» — `verificado` (T-449, 01/08)
+
+`pause` sabe decir *«esto está hecho a falta de que llegue un momento»*. Lo que no había forma de
+decir era lo contrario: **«el momento llegó, lo comprobé, y todavía queda trabajo»**. Ninguna de
+las cuatro salidas encajaba:
+
+- `done` no, porque la tarea sigue viva;
+- `pause` no, porque **no hay ninguna espera** — ponerle una fecha sería inventarse una condición,
+  justo lo que un CHECK impide en `due_at` y por el mismo motivo;
+- `release` no, porque **no toca `resume_check`**: la suelta con el pendiente obsoleto intacto.
+
+```bash
+node scripts/backlog.cjs verificado T-385 --nota "deploy real: árbol efímero borrado, deploy_runs cerró con ok, anti-clobber pasó"
+```
+
+- **La nota es OBLIGATORIA.** Sin ella, «verificado» es indistinguible de «lo doy por bueno», que
+  es exactamente el atajo que este subsistema lleva toda la semana cerrando.
+- **El pendiente cumplido NO se borra:** baja a `progress_note` junto con la nota. Borrarlo dejaría
+  la tarea sin rastro de que hubo una verificación — que es lo que hace falta para no repetirla.
+- **No se puede marcar lo que aún espera** un deploy o un reloj: si el código no está vivo, la
+  comprobación no ha podido hacerse, y marcarla sería escribir la misma mentira en la otra
+  dirección. El CLI lo impide (`puedeMarcarseVerificada`, con tests).
+- **`resume_check` conserva UN solo escritor:** `pause` la escribe, `verificado` la cumple. Dos
+  criterios sobre la misma columna es como nació el quinto escritor de `seguimiento_url` (T-130);
+  hay guardarraíl de CI que lo fija.
+
+> **Por qué no era cosmético.** `list` pone esa sección ARRIBA porque son las que «se cierran en
+> minutos». Un `resume_check` ya cumplido convierte esa promesa en una trampa, **y la paga la
+> sesión más diligente**: la que hace caso al orden sugerido. Pasó el 01/08 — `list` ofrecía
+> [T-385] como «IMPLEMENTADA Y SIN COMPROBAR» con un pendiente que otra sesión acababa de
+> resolver, y una tercera montó un worktree y la reclamó para repetir trabajo hecho. Con 196
+> tareas abiertas basta que unas pocas se queden así para que la cabeza de la lista deje de ser
+> fiable: es como murieron los avisos de T-427 y T-221 — no por ser falsos, por volverse
+> indistinguibles de los verdaderos.
 
 ## Al EMPEZAR: lo primero que enseña `list` es lo que se cierra rápido
 
