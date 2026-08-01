@@ -1114,6 +1114,27 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
+### [T-456] 🟠 [ABIERTO 01/08] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
+
+- **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
+- **HAY TRES CAMINOS DE ENVÍO, no dos**, y dos de ellos están completos:
+  1. **`sendEmailV2`** (transaccional, uno a uno): comprueba `canSendEmail`, genera el token de baja, registra en `email_events` y admite `idempotencyKey`. Lo usan impugnaciones, feedback y soporte.
+  2. **Newsletters** (masivo): Resend por HTTP con reintentos y control de rate-limit —lo que necesita un envío a miles— pero **con las tres piezas puestas**: excluye a los dados de baja al construir la audiencia, genera token y registra en `email_events`.
+  3. **Este recordatorio**: Resend crudo **sin ninguna de las tres**.
+- **MEDIDA (01/08):** **424 recordatorios enviados** y **solo 1 aparece en `email_events`**. Los otros 423 son invisibles para observabilidad y analítica. Un destinatario tiene hoy `email_soporte_disabled` (leo el valor de AHORA, no el de entonces, así que no se puede afirmar que se le escribiera después de pedirlo — lo que sí es seguro es que **por ese camino nada lo habría impedido**).
+- **POR QUÉ IMPORTA MÁS DE LO QUE PARECE:** va a gente que **paga**, avisa de un **cobro**, y es justo el tipo de envío cuya desaparición nadie nota — la ceguera que costó seis horas en [T-422] es la misma. Además su guardarraíl documentado («el cron ticó y envió 0») emitía `renewal_reminders_zero_sent` que **ninguna regla miraba** hasta [T-448].
+- **RESOLUCIÓN PROPUESTA:** migrarlo a `sendEmailV2` (que usa Resend por dentro: no se cambia de proveedor, se le ponen las comprobaciones delante). Ojo al hacerlo: hoy el importe se calcula con `invoices.createPreview` y eso hay que conservarlo; y la idempotencia actual vive en `email_logs` (5 días), que conviene mantener ADEMÁS de la clave de Resend.
+- **Relacionadas:** [T-448] (donde salió), [T-369] (por qué la categoría decide quién lo recibe), [T-457] (el otro cabo del mismo repaso).
+
+### [T-457] 🟡 [ABIERTO 01/08] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
+
+- **ORIGEN.** Salió comparando los caminos de envío en [T-448]/[T-456]: la newsletter tiene **dos** rutas y solo una filtra.
+- **EL DETALLE:** el envío **por audiencia** usa el helper de Drizzle que excluye `unsubscribedAll` y `email_newsletter_disabled` (está comentado en el código: *«respeta unsubscribedAll»*). El envío **por `selectedUserIds`** hace `.where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))`: comprueba que tengan email **y nada más**. Ni `resolve-users` ni `users` filtran preferencias tampoco.
+- **NO se afirma que se haya enviado nada indebido**: depende de de dónde saque el admin esa lista, y puede venir de una pantalla ya filtrada. Lo que sí se puede afirmar es que **el filtro no está en el punto de escritura**, que es donde el resto del sistema lo pone ([T-130]: dos puertas al mismo recurso con criterios distintos no protegen).
+- **MEDIR ANTES DE TOCAR:** cruzar `email_events` de newsletters con `email_preferences` para saber si el hueco se ha usado alguna vez. Si el número es 0, esto es un trinquete barato; si no lo es, es un incidente de cumplimiento.
+- **RESOLUCIÓN PROPUESTA:** mover el filtro a la consulta del envío (las dos rutas), no a las pantallas que alimentan la selección. Una lista de destinatarios que llega ya filtrada sigue pudiendo envejecer entre que se construye y se envía.
+- **Relacionadas:** [T-456], [T-369].
+
 ### [T-454] 🟠 [ABIERTO 01/08] El modo EXAMEN nunca registra el dispositivo: 39 usuarios de 7 días responden y no dejan fila en `user_devices`
 
 - **ORIGEN.** Investigando el cabo suelto de [T-371]: quedaban 2 usuarios de 24 h que respondían sin dejar ninguna fila de dispositivo, **uno de ellos con 70 respuestas**. Setenta oportunidades de registrarlo.
