@@ -123,6 +123,17 @@ export type ClientEventType =
   // `user_interactions.device_info.isStandalone`, que se registra desde siempre. Duplicarlo
   // habría creado dos verdades sobre lo mismo.
   | 'pwa_install_banner'
+  // Se ha soltado una sesión FANTASMA: el cliente creía estar dentro y no lo estaba (01/08/2026,
+  // T-434). Tipo PROPIO por lo mismo que `usage_limit_hit`: interesa CONSERVAR visibilidad sin
+  // contarlo como error de cliente — de hecho **no es un error, es la CURACIÓN**. Nace de ~90
+  // personas (desde el 07/07, con 1-5 nuevas al día) que navegaban y respondían preguntas
+  // mientras cada llamada al servidor les rebotaba y no se les guardaba nada: el pre-hydrate las
+  // resucitaba del blob legacy de Supabase y el perfil cacheado que él mismo ponía impedía
+  // soltarlas. Sin este evento el arreglo sería INVISIBLE — un deslogueo ocurre en el navegador
+  // de otra persona y no deja rastro en ninguna parte. Es lo que permite ver el drenaje, y
+  // cruzado con el canario `perfil-sin-resolver` dice si además dejan de nacer.
+  // `metadata`: { motivo, rastroLimpiado }.
+  | 'sesion_fantasma_soltada'
   // Reintento de red del wrapper fetchWithChallenge (fix 24/07/2026). Un
   // `Failed to fetch` transitorio en la ruta crítica (generar test) se
   // reintenta con backoff en vez de dead-end. `outcome:'recovered'` (severity
