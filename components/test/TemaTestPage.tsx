@@ -48,6 +48,11 @@ interface TemaTestPageProps {
    */
   positionTypeOverride?: string
   basePathOverride?: string
+  /**
+   * Nombre a enseñar cuando la oposición no está en el config. Sin él, la chapa cae a
+   * «Oposicion (C2)» — un nombre y un subgrupo INVENTADOS que la persona no reconoce como suyos.
+   */
+  nombreOposicionOverride?: string
 }
 
 export default function TemaTestPage({
@@ -55,6 +60,7 @@ export default function TemaTestPage({
   params,
   positionTypeOverride,
   basePathOverride,
+  nombreOposicionOverride,
 }: TemaTestPageProps) {
   const { getSlug: generateLawSlug } = useLawSlugs()
   const config = getOposicion(oposicionSlug)
@@ -345,7 +351,7 @@ export default function TemaTestPage({
           <div className="text-6xl mb-4">404</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Tema No Encontrado</h1>
           <p className="text-gray-600 mb-6">
-            El Tema {temaNumber || ''} no existe para {config?.shortName || 'esta oposicion'}.
+            El Tema {temaNumber || ''} no existe para {nombreOposicionOverride || config?.shortName || 'esta oposicion'}.
           </p>
           <Link href={`${basePath}/test`} className={`inline-flex items-center px-4 py-2 ${c.btn} text-white rounded-lg transition-colors`}>
             Volver a todos los temas
@@ -357,19 +363,57 @@ export default function TemaTestPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <InteractiveBreadcrumbs />
+      {/* Migas de pan. Para una oposición PERSONALIZADA se pintan aparte y a propósito:
+          `InteractiveBreadcrumbs` deriva TODO del config (nombre, sección, y un desplegable para
+          cambiar de oposición). Sin config caía a «🎯 Tests / Tema 1» —sin decir de qué oposición—
+          y su desplegable ofrecería oposiciones del catálogo, que no es a donde va quien está
+          estudiando SU temario. Meterle ramas a un componente que usa toda la app para este caso
+          sería peor: aquí el recorrido es corto y no hay nada que resolver dinámicamente. */}
+      {nombreOposicionOverride ? (
+        <nav
+          aria-label="Migas de pan"
+          className="bg-white border-b border-gray-200 px-3 py-2 text-sm"
+        >
+          <ol className="max-w-4xl mx-auto flex items-center gap-2 flex-wrap">
+            <li>
+              <Link href="/oposicion-personalizada" className="text-blue-600 hover:underline">
+                ✏️ Mis oposiciones
+              </Link>
+            </li>
+            <li className="text-gray-400">/</li>
+            <li>
+              <Link href={`${basePath}/test`} className="text-blue-600 hover:underline">
+                🎯 {nombreOposicionOverride}
+              </Link>
+            </li>
+            <li className="text-gray-400">/</li>
+            <li className="font-semibold text-gray-800">📋 Tema {temaNumber}</li>
+          </ol>
+        </nav>
+      ) : (
+        <InteractiveBreadcrumbs />
+      )}
       <div className="max-w-4xl mx-auto px-3 py-6">
 
         {/* Header */}
         <div className="text-center mb-8">
           <div className="relative inline-block" ref={dropdownRef}>
             <div className={`inline-flex items-center px-3 py-1 ${c.bg} ${c.text} rounded-full text-xs font-medium mb-3`}>
-              <span className="mr-1">{config?.emoji || '🏛️'}</span>
+              <span className="mr-1">{nombreOposicionOverride ? '✏️' : config?.emoji || '🏛️'}</span>
               <Link href={`${basePath}/test`} className="hover:opacity-80 transition-opacity">
-                {config?.shortName || 'Oposicion'} ({config?.badge || 'C2'})
+                {/* Con nombre propio se enseña ENTERO y SIN subgrupo: una oposición
+                    personalizada no tiene grupo (C1/C2), así que «(C2)» sería un dato
+                    inventado sobre el temario de alguien. */}
+                {nombreOposicionOverride || `${config?.shortName || 'Oposicion'} (${config?.badge || 'C2'})`}
               </Link>
-              <span className="mx-2 opacity-60">{'›'}</span>
-              <span className="font-semibold">{getBloque(temaNumber || 0)}</span>
+              {/* El bloque solo si existe: sin config, `getBloque` devuelve '' y quedaba un «›»
+                  suelto apuntando a nada. */}
+              {getBloque(temaNumber || 0) && (
+                <>
+                  <span className="mx-2 opacity-60">{'›'}</span>
+                  <span className="font-semibold">{getBloque(temaNumber || 0)}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -377,7 +421,9 @@ export default function TemaTestPage({
             Tema {temaNumber}: {topicData?.title}
           </h1>
 
-          {topicData?.description && (
+          {/* La descripción solo si APORTA: en un temario propio el usuario escribe un título y
+              nada más, así que description == title y salía «Tema 1: Tema 1» y debajo «Tema 1». */}
+          {topicData?.description && topicData.description.trim() !== (topicData.title ?? '').trim() && (
             <p className="text-gray-600 text-sm md:text-base mb-4">{topicData.description}</p>
           )}
 

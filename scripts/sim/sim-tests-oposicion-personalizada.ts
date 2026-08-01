@@ -151,6 +151,41 @@ async function main() {
       textoTema.includes('Tema con preguntas'),
       textoTema.split('\n').slice(0, 12).join(' · ').slice(0, 200),
     )
+
+    // ── 3. Que la pantalla sea SUYA, no una genérica ───────────────────────────────────────
+    //
+    // Todo lo de aquí venía del config del catálogo y caía a valores por defecto: nombre y
+    // subgrupo INVENTADOS, migas que no dicen de qué oposición son, y el título repetido. Nada
+    // de eso da error — simplemente le enseña a la persona una oposición que no es la suya.
+    console.log('\n3) La pantalla del tema es la de TU oposición, no una genérica')
+
+    anota(
+      'la chapa lleva el nombre de TU oposición, no «Oposicion (C2)»',
+      textoTema.includes(`Oposición ${MARCA}`) && !/Oposicion \(C2\)/.test(textoTema),
+      /Oposicion \(C2\)/.test(textoTema)
+        ? '⚠️ sigue enseñando el nombre y el subgrupo por defecto'
+        : 'aparece el nombre propio',
+    )
+    anota(
+      'NO se inventa un subgrupo (una personalizada no tiene C1/C2)',
+      !/\((?:C1|C2|A1|A2|E)\)/.test(textoTema),
+      'sin subgrupo inventado',
+    )
+    anota(
+      'las migas de pan dicen de qué oposición es y llevan de vuelta',
+      textoTema.includes('Mis oposiciones') && textoTema.includes(`Oposición ${MARCA}`),
+      textoTema.split('\n').slice(0, 6).join(' · ').slice(0, 160),
+    )
+    anota(
+      'el título no se repite («Tema 1: Tema 1» y debajo otra vez)',
+      (textoTema.match(/Tema con preguntas/g) || []).length <= 2,
+      `«Tema con preguntas» aparece ${(textoTema.match(/Tema con preguntas/g) || []).length} vez/veces`,
+    )
+    anota(
+      'no queda ningún separador apuntando a nada (el «›» del bloque inexistente)',
+      !/›\s*$/m.test(textoTema),
+      'sin separadores huérfanos',
+    )
   } finally {
     await navegador.close()
     if (opId) {
