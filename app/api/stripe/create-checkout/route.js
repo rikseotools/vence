@@ -81,11 +81,24 @@ async function _POST(request) {
         // así que unos días calculados hace dos meses serían dos meses de regalo (T-363).
         if (precioPersonalizado) {
           const { premiumVigenteHasta } = await import('@/lib/api/premium/ofertas')
-          const { coberturaPendiente } = await import('@/lib/api/premium/cobertura')
-          cobertura = coberturaPendiente(await premiumVigenteHasta(userId))
+          const { coberturaPendiente, trazaCobertura } = await import('@/lib/api/premium/cobertura')
+          const vigenteHasta = await premiumVigenteHasta(userId)
+          cobertura = coberturaPendiente(vigenteHasta)
           if (cobertura.aplica) {
             console.log(`🎁 [T-363] precio heredado con cobertura viva: primer cobro aplazado ${cobertura.dias} día(s)`)
           }
+          // Y que quede rastro, porque este fallo NO se ve en pantalla: se ve en el banco del
+          // usuario semanas después. Hasta ahora lo único que quedaba era el console.log de
+          // arriba, en los logs de ECS, que no mira nadie.
+          const { emitFireAndForget } = await import('@/lib/observability/emit')
+          emitFireAndForget({
+            source: 'vercel',
+            severity: 'info',
+            eventType: 'checkout_precio_heredado',
+            endpoint: '/api/stripe/create-checkout',
+            userId,
+            metadata: trazaCobertura(cobertura, !!vigenteHasta),
+          })
         }
         if (precioPersonalizado) console.log(`🎟️ Precio personalizado válido para ${userId}: ${priceId}`)
       } catch (ofertaErr) {

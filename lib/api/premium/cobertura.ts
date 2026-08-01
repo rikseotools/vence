@@ -65,3 +65,50 @@ export function coberturaPendiente(
       `entonces: el primer cobro será ese día, con tu precio de siempre.`,
   }
 }
+
+/** Lo que se guarda de un checkout con precio heredado. Ver `trazaCobertura`. */
+export interface TrazaCobertura {
+  aplaza: boolean
+  dias: number
+  /** Fecha del primer cobro en ISO (null si no se aplaza). */
+  primerCobro: string | null
+  /** Por qué NO se aplaza, cuando no se aplaza. Null si sí se aplaza. */
+  motivo: 'sin_cobertura_previa' | 'menos_de_48h' | null
+}
+
+/**
+ * La traza de un checkout con precio heredado, para `observable_events`. (01/08/2026)
+ *
+ * **Por qué existe.** El aplazamiento se decidía y lo único que quedaba era un `console.log` en
+ * los logs de ECS, que no mira nadie. Y este fallo es **invisible por construcción**: la pantalla
+ * se ve igual de bien tanto si se aplaza como si no, y el doble cargo aparece semanas después en
+ * el banco del usuario. Con 178 ofertas vivas que hoy dispararían el aplazamiento, esperar a que
+ * alguien se queje no es un plan.
+ *
+ * **Distingue las dos formas de NO aplazar**, que no son lo mismo: quien no tenía cobertura previa
+ * (correcto, no hay nada que aplazar) y quien la tenía por debajo de las 48 h que Stripe exige
+ * (correcto también, pero es el borde donde un error de cálculo se escondería). Sin el motivo, un
+ * `aplaza:false` no se puede juzgar.
+ *
+ * Es pura a propósito: la emisión vive en el endpoint, la DECISIÓN de qué se cuenta vive aquí y
+ * tiene test. El evento es `info` — no es una avería, es el rastro de que la función actuó.
+ */
+export function trazaCobertura(
+  cobertura: CoberturaPendiente,
+  teniaCoberturaPrevia: boolean,
+): TrazaCobertura {
+  if (cobertura.aplica) {
+    return {
+      aplaza: true,
+      dias: cobertura.dias,
+      primerCobro: cobertura.trialEnd ? new Date(cobertura.trialEnd * 1000).toISOString() : null,
+      motivo: null,
+    }
+  }
+  return {
+    aplaza: false,
+    dias: 0,
+    primerCobro: null,
+    motivo: teniaCoberturaPrevia ? 'menos_de_48h' : 'sin_cobertura_previa',
+  }
+}
