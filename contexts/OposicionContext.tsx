@@ -49,6 +49,12 @@ export interface OposicionContextValue {
   changeOposicion: (newOposicionId: string | null, showNotificationFlag?: boolean) => Promise<boolean>
   showOposicionChangeNotification: (oposicionName: string) => void
   needsOposicionFix: boolean
+  /**
+   * QUÉ oposición es la que no se ha podido resolver. Sin esto el aviso dice «la oposición que
+   * tienes seleccionada» y no la nombra, así que ni el usuario sabe qué le pasa ni nosotros
+   * podemos ayudarle sin mirarle el perfil a mano. Lo pidió Manuel al ver el banner en producción.
+   */
+  objetivoInvalido: { id: string; nombre: string | null } | null
 }
 
 // ============================================
@@ -102,6 +108,7 @@ const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffec
 
 const OposicionContext = createContext<OposicionContextValue>({
   userOposicion: null,
+  objetivoInvalido: null,
   oposicionId: null,
   oposicionMenu: DEFAULT_MENU,
   loading: true,
@@ -128,6 +135,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
   const [showNotification, setShowNotification] = useState(false)
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
   const [needsOposicionFix, setNeedsOposicionFix] = useState(false)
+  const [objetivoInvalido, setObjetivoInvalido] = useState<{ id: string; nombre: string | null } | null>(null)
 
   // 🚀 PRE-HIDRATACIÓN anti-race (bug Raquel): ANTES del paint, restaurar la última
   // oposición cacheada para que un usuario logueado NO vea el DEFAULT_MENU (Estado)
@@ -214,17 +222,20 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
           setNeedsOposicionFix(false)
+          setObjetivoInvalido(null)
         } else if (action === 'invalid') {
           // Detectar datos sucios: UUIDs, JSON, slugs desconocidos
           console.warn('⚠️ [OposicionContext] target_oposicion inválido:', opoId)
           clearOposicionCache()
           setNeedsOposicionFix(true)
+          setObjetivoInvalido({ id: String(opoId), nombre: blobNombre })
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 'set'
           setNeedsOposicionFix(false)
+          setObjetivoInvalido(null)
           const menuConfig = OPOSICION_MENUS[opoId as string] || DEFAULT_MENU
           // Identidad AGNÓSTICA al blob: si target_oposicion_data es NULL (428
           // perfiles), derivamos el nombre del config. Antes → userOposicion=null
@@ -284,6 +295,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         const isValid = ALL_OPOSICION_IDS.includes(newOpoId)
         if (isValid) {
           setNeedsOposicionFix(false)
+          setObjetivoInvalido(null)
           const menuConfig = OPOSICION_MENUS[newOpoId] || DEFAULT_MENU
           const identity = resolveUserOposicion(newOpoId, menuConfig.name)
           setUserOposicion(identity)
@@ -293,6 +305,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         } else {
           clearOposicionCache()
           setNeedsOposicionFix(true)
+          setObjetivoInvalido({ id: String(newOpoId), nombre: null })
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -457,7 +470,8 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
     dismissNotification,
     changeOposicion,
     showOposicionChangeNotification,
-    needsOposicionFix
+    needsOposicionFix,
+    objetivoInvalido
   }
 
   return (

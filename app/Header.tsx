@@ -103,6 +103,7 @@ export default function HeaderES() {
   } | null
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
   const needsOposicionFix = oposicionContext?.needsOposicionFix || false
+  const objetivoInvalido = oposicionContext?.objetivoInvalido || null
 
   // 🧩 Psicotécnicos SOLO si el examen de la oposición del usuario lo incluye
   // (flag `hasPsychometricTest` del config, verificado por oposición). Se calcula
@@ -1101,8 +1102,19 @@ export default function HeaderES() {
       {needsOposicionFix && user && (
         <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-3 text-center">
           <div className="flex items-center justify-center gap-2 flex-wrap">
+            {/* Se NOMBRA la oposición, y en otro color. Antes decía «la oposición que tienes
+                seleccionada» sin decir cuál: el usuario no sabía qué le pasaba y nosotros no
+                podíamos ayudarle sin abrirle el perfil a mano. Lo pidió Manuel viendo el banner
+                en producción. Si no se sabe el nombre se enseña el identificador, que ya permite
+                buscarla — decir «(sin nombre)» no ayudaría a nadie. */}
             <span className="font-medium">
-              La oposición que tienes seleccionada aún no está disponible en Vence. Elige una de las disponibles.
+              Tu oposición{' '}
+              {objetivoInvalido && (
+                <span className="inline-block bg-white/25 rounded px-2 py-0.5 font-bold text-yellow-100 mx-0.5">
+                  {objetivoInvalido.nombre || objetivoInvalido.id}
+                </span>
+              )}{' '}
+              aún no está disponible en Vence. Elige una de las disponibles.
             </span>
             <Link
               href="/perfil"

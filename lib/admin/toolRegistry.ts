@@ -426,23 +426,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`lib/auth/rebotePersistente.cjs` (13 tests), no en la consulta.',
   },
   rutas_oposicion_personalizada: {
-    titulo: 'Rastrear TODAS las rutas de una oposición personalizada y encontrar las rotas',
+    titulo: 'Recorrer una oposición personalizada COMO UN USUARIO y encontrar lo que está roto',
     ruta: 'scripts/sim/sim-rutas-oposicion-personalizada.ts',
     estado: 'vivo',
     notas:
-      '`npm run sim:rutas-oposicion-personalizada`. Crea una oposición efímera, la fija como ' +
-      'objetivo y **DESCUBRE** las rutas siguiendo cada enlace desde el hub, en vez de ' +
-      'declararlas. Se limpia sola; necesita `AUTH_SECRET`. **Nace de que comprobar pantalla por ' +
-      'pantalla no escala:** Manuel lo dijo —*«pincha en todos los botones, te falta muchos por ' +
-      'comprobar»*— y tenía razón; una lista escrita a mano solo cubre lo que uno se acordó de ' +
-      'mirar, y lo que falta es por definición lo que no pensó. Encontró tres agujeros que ' +
-      'ninguna prueba veía: el botón de EMPEZAR el test llevaba a una ruta inexistente (se podía ' +
-      'armar el temario y no llegar a estudiar, que es el punto de todo), el icono 📚 del Header ' +
-      'daba 404, y —tras arreglar el temario— sus propios enlaces internos seguían rotos, que es ' +
-      'el tipo de agujero que solo aparece rastreando. **No se fía del código HTTP**: estas ' +
+      '`npm run sim:rutas-oposicion-personalizada [-- --free]`. Crea una oposición efímera con su ' +
+      'temario, la fija como objetivo y hace el recorrido entero: mira a dónde te manda el ' +
+      '**Header**, **DESCUBRE** las rutas siguiendo cada enlace desde el hub (no las declara), ' +
+      'entra en el tema y pulsa el botón de empezar. Se limpia sola; necesita `AUTH_SECRET`. ' +
+      '**NACE DE QUE COMPROBAR PANTALLA POR PANTALLA NO ESCALA:** una lista de casos escrita a ' +
+      'mano solo cubre lo que uno se acordó de mirar, y lo que falta es por definición lo que no ' +
+      'pensó. Encontró cuatro agujeros que ninguna prueba veía: el botón de EMPEZAR el test ' +
+      'llevaba a una ruta inexistente (se podía armar el temario y no llegar a estudiar), el ' +
+      'icono 📚 daba 404, los enlaces internos del temario seguían rotos tras arreglar el ' +
+      'temario, y el menú «Test» mandaba a OTRA oposición. **NO se fía del código HTTP**: estas ' +
       'páginas son cascarones que devuelven 200 y luego pintan el error, así que mira el TEXTO ' +
-      'renderizado. Hermanas: `sim:tests-oposicion-personalizada` (que la pantalla sea la suya) y ' +
-      '`sim:oposicion-personalizada` (guardar/editar contra BD).',
+      'renderizado. ⚠️ **LÍMITE CONOCIDO (01/08/2026):** el test EN SÍ queda **no concluyente** — ' +
+      'con cuenta real carga y se responde (comprobado a mano) pero con la cuenta efímera la ' +
+      'pantalla sale vacía; descartado el plan (premium y free), el onboarding y las cookies. Se ' +
+      'marca así a propósito: un rojo que no distingue «roto» de «mi cuenta no lo representa» se ' +
+      'acaba ignorando, y forzarlo a verde sería mentir. **Tres lecciones de método** comentadas ' +
+      'en el fichero, útiles para cualquier simulación de navegador: la cuenta de prueba tiene ' +
+      'que parecerse al usuario (sin onboarding, el modal tapa la pantalla), no construir la URL ' +
+      'a mano (el usuario llega pulsando un botón que pone otros parámetros), y una aserción ' +
+      'equivocada gasta la confianza igual que un fallo de código. Hermanas: ' +
+      '`sim:tests-oposicion-personalizada` y `sim:oposicion-personalizada`.',
   },
   tests_oposicion_personalizada: {
     titulo: 'Comprobar EN UN NAVEGADOR que se puede estudiar con tu propio temario',
