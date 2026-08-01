@@ -25,6 +25,7 @@
 // El session-id se resuelve solo: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
 'use strict';
 const fs = require('fs');
+const { marcarDesplegado } = require('../lib/backlog/marcaDesplegado.cjs');
 const path = require('path');
 // Driver perezoso y por resolucion normal: una ruta ABSOLUTA/cableada rompe el script
 // en CI y en cualquier maquina que no sea la de Manuel. `postgres` esta en la raiz.
@@ -398,11 +399,18 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       backend: contenidoEn(t.wake_on_deploy_sha, shas.backend),
     };
     if (!deployWakeReady(t, contiene)) continue;
+    // El pendiente escrito a mano suele decir «1) Desplegar FRONTEND…», y limpiar solo la
+    // columna dejaba ese texto mintiendo para siempre: en `list` una tarea ya desplegada y una
+    // bloqueada se veían IDÉNTICAS ([T-463]; medido: 10 de 10 tareas que decían «desplegar» ya
+    // estaban vivas, 3 de ellas críticas). Se ANTEPONE una marca, nunca se borra texto ajeno.
+    const shaDesplegado = contiene.frontend ? shas.frontend : shas.backend;
+    const marcado = marcarDesplegado(t.resume_check, shaDesplegado);
     await s`UPDATE public.backlog_tasks
                SET wake_on_deploy_sha = NULL, wake_on_deploy_surface = NULL
+                 , resume_check = COALESCE(${marcado}, resume_check)
              WHERE id = ${t.id}`;
     ids.push(t.id);
-    if (opts.verboso) console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${t.resume_check || t.title}`);
+    if (opts.verboso) console.log(`⏰ ${t.id} DESPERTADA — ya se puede verificar: ${marcado || t.resume_check || t.title}`);
     // El aviso no puede morir en el log de quien desplegó: quien pausó la tarea es otra sesión,
     // que no lo ve. Rastro en `observable_events`, el bus que ya usa todo el proyecto.
     try {
