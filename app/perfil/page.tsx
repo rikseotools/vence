@@ -1,6 +1,7 @@
 // app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
 import { useState, useEffect, useRef, Suspense, useMemo, useCallback, ChangeEvent } from 'react'
+import { textoBotonSuscripcion, textoAvisoCancelacion } from '@/lib/api/premium/textoPrecioFidelidad'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
@@ -2617,14 +2618,7 @@ function PerfilPageContent() {
                     </span>
                   </div>
                   <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
-                    {subscriptionData.renovableEnSuCuenta === false
-                      ? (subscriptionData.precioFidelidad
-                          // T-448 — la cifra AQUÍ. Todo el argumento es el número (20 € frente a
-                          // 29 €) y antes no aparecía hasta dos pantallas más adelante, cuando la
-                          // persona ya había decidido si pinchaba.
-                          ? `Seguirás teniendo acceso Premium hasta esa fecha. Si quieres continuar, mantienes tu precio de fidelidad: ${subscriptionData.precioFidelidad.importe} ${subscriptionData.precioFidelidad.periodicidad}.`
-                          : 'Seguirás teniendo acceso Premium hasta esa fecha. Si quieres continuar, puedes volver a contratar manteniendo el precio que tenías.')
-                      : 'Seguirás teniendo acceso Premium hasta esa fecha. Si cambias de opinión, puedes reactivarla.'}
+                    {textoAvisoCancelacion(subscriptionData.renovableEnSuCuenta, subscriptionData.precioFidelidad)}
                   </p>
                   {/* T-341 — dos botones distintos porque son dos cosas distintas: renovar la
                       suscripción que ya existe, o volver a contratar con la tarifa anterior
@@ -2643,11 +2637,7 @@ function PerfilPageContent() {
                       </>
                     ) : (
                       <span>
-                        {subscriptionData.renovableEnSuCuenta === false
-                          ? (subscriptionData.precioFidelidad
-                              ? `Mantener mi precio: ${subscriptionData.precioFidelidad.importe} ${subscriptionData.precioFidelidad.periodicidad}`
-                              : 'Mantener mi precio de fidelidad')
-                          : 'Reactivar suscripción'}
+                        {textoBotonSuscripcion(subscriptionData.renovableEnSuCuenta, subscriptionData.precioFidelidad)}
                       </span>
                     )}
                   </button>
