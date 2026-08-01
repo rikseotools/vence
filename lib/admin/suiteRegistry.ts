@@ -189,6 +189,11 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     que: 'getArticlesForLaw: las leyes con short_name duplicado no salen en gris.',
   },
   {
+    ruta: '__tests__/integration/lawArticlesOrden.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'El listado de artículos de una ley sale en orden natural y sin disposiciones coladas entre los numerados (el 2 antes que el 10; DA1/DT1 al final). Toma prestada la CE: el defecto solo aparece con datos reales, porque a `DA1` sin letras le queda `1`.',
+  },
+  {
     ruta: '__tests__/integration/examPositionQueryIntegration.test.ts',
     tipo: 'codigo_datos_prestados',
     que: 'El filtro exam_position en la query real.',
