@@ -48,6 +48,16 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
        WHERE up.plan_type = 'free'
          AND tq.user_answer IS NOT NULL AND tq.user_answer <> ''
          AND tq.created_at > now() - ($1 || ' days')::interval
+         -- El plan hay que juzgarlo en la FECHA de la respuesta, no hoy. Un usuario que
+         -- entonces era premium no consumía cupo POR DISEÑO, y hoy puede ser free porque su
+         -- suscripción venció: contarlo sería inventarse una fuga. Falso positivo REAL y
+         -- medido — 11 de los 20 marcados en julio tenían suscripción en esas fechas.
+         AND NOT EXISTS (
+           SELECT 1 FROM user_subscriptions us
+            WHERE us.user_id = tq.user_id
+              AND us.status IN ('active', 'trialing', 'past_due')
+              AND tq.created_at::date BETWEEN us.current_period_start::date
+                                          AND COALESCE(us.current_period_end::date, CURRENT_DATE))
        GROUP BY 1, 2)
     SELECT r.d AS dia, count(*) AS usuarios_con_fuga,
            sum(r.respuestas - COALESCE(u.questions_answered, 0)) AS respuestas_sin_cobrar
