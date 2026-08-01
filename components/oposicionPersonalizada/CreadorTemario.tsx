@@ -177,6 +177,9 @@ export default function CreadorTemario({
   // Arranca OCULTA y se decide tras montar: en servidor no hay `localStorage`, y pintarla
   // siempre para esconderla después daría un parpadeo a quien ya la cerró.
   const [mostrarIntro, setMostrarIntro] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
+  const [guardado, setGuardado] = useState<{ nombre: string; temas: number } | null>(null)
 
   useEffect(() => {
     const almacen = typeof window !== 'undefined' ? window.localStorage : null
@@ -259,10 +262,111 @@ export default function CreadorTemario({
     [arts],
   )
 
+  const guardar = useCallback(async () => {
+    setGuardando(true)
+    setErrorGuardar(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/oposicion-personalizada', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: temario.nombre,
+          temas: temario.temas.map((t) => ({
+            titulo: t.titulo,
+            articulos: t.articulos.map((a) => ({
+              lawId: a.lawId,
+              articleNumber: a.articleNumber,
+            })),
+          })),
+        }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.success) {
+        // El primer problema concreto es más útil que «ha ocurrido un error»: casi siempre es
+        // «ya tienes una oposición con ese nombre», que el usuario arregla solo.
+        setErrorGuardar(
+          body?.errores?.[0]?.mensaje ??
+            'No se ha podido guardar. Inténtalo otra vez en unos segundos.',
+        )
+        return
+      }
+      setGuardado({ nombre: body.nombre, temas: body.temas })
+    } catch {
+      setErrorGuardar('No se ha podido guardar. Comprueba tu conexión e inténtalo otra vez.')
+    } finally {
+      setGuardando(false)
+    }
+  }, [temario])
+
   const anadir = (lawId: string, shortName: string, articleNumber: string) =>
     setTemario((t) => anadirArticulo(t, temaActivo, { lawId, shortName, articleNumber }))
 
   const tema = temario.temas.find((t) => t.id === temaActivo) ?? temario.temas[0]
+
+  // Guardada: se enseña LO QUE HA QUEDADO, no un «listo» a secas. Quien acaba de dedicar diez
+  // minutos a armar un temario necesita ver que está entero antes de fiarse de él.
+  if (guardado) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12">
+        <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-6">
+          <h1 className="text-2xl font-bold text-green-900 dark:text-green-100">
+            ✅ Tu oposición está guardada
+          </h1>
+          <p className="mt-2 text-green-900/90 dark:text-green-100/90">
+            <strong>{nombrePublico(guardado.nombre, autor)}</strong> — {guardado.temas} tema(s).
+            Ya funciona como cualquier otra oposición de Vence.
+          </p>
+        </div>
+
+        <h2 className="mt-8 mb-3 font-semibold text-gray-900 dark:text-white">Lo que has creado</h2>
+        <ul className="space-y-3">
+          {temario.temas
+            .filter((t) => t.articulos.length > 0)
+            .map((t, i) => (
+              <li
+                key={t.id}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+              >
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {i + 1}. {t.titulo}
+                </p>
+                <div className="mt-2 space-y-1">
+                  {agruparPorLey(t).map((g) => (
+                    <p key={g.lawId} className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="font-semibold">{g.shortName}</span>{' '}
+                      {g.articleNumbers === null
+                        ? '(toda la ley)'
+                        : `— ${g.articleNumbers.length} artículo(s): ${g.articleNumbers.join(', ')}`}
+                    </p>
+                  ))}
+                </div>
+              </li>
+            ))}
+        </ul>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a
+            href="/oposiciones"
+            className="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
+          >
+            Ver mis oposiciones
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setGuardado(null)
+              setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })
+              setTemaActivo('t1')
+            }}
+            className="px-5 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Crear otra
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -557,20 +661,21 @@ export default function CreadorTemario({
                 ))}
               </ul>
             )}
+            {errorGuardar && (
+              <p className="mb-3 text-sm text-red-600 dark:text-red-400">{errorGuardar}</p>
+            )}
             <button
               type="button"
-              disabled={!listo}
+              onClick={guardar}
+              disabled={!listo || guardando}
               className={`w-full py-3 rounded-lg font-semibold ${
-                listo
+                listo && !guardando
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }`}
             >
-              Guardar mi oposición
+              {guardando ? 'Guardando…' : 'Guardar'}
             </button>
-            <p className="mt-2 text-xs text-gray-400 text-center">
-              El guardado se conecta en el siguiente paso.
-            </p>
           </div>
         </section>
       </div>

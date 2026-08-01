@@ -5566,6 +5566,49 @@ export const RULE_REINTENTO_PERFIL_ROTO: AlertRule<{ veces: number; muestra: str
   cooldownMin: 720,
 };
 
+/**
+ * [T-327] SE PIERDE UN TEMARIO QUE ALGUIEN ACABA DE ARMAR.
+ *
+ * Guardar una oposición personalizada es el final de un trabajo LARGO: buscar leyes, elegir
+ * artículos uno a uno y repartirlos en temas son muchos minutos. Si la escritura falla, ese
+ * trabajo **no se puede recuperar** —vive solo en la pantalla— y la persona se queda sin nada
+ * después de habérselo currado. Eso no se perdona: no vuelve.
+ *
+ * Y no hay forma de que nos enteremos por otro lado. No es un 5xx de una ruta que alguien vigile
+ * (la petición responde 500 pero el usuario no siempre escribe), ni deja rastro en `topic_scope`
+ * —justamente porque la transacción se revierte entera—. Sin esta señal, el fallo es invisible.
+ *
+ * Dispara a la PRIMERA a propósito: no es un umbral de volumen, es que **una sola pérdida ya es
+ * un usuario perdido**. Se investiga en la BD (¿restricción nueva en `topics`? ¿un `law_id` que
+ * ya no existe?), no en el usuario.
+ */
+export const RULE_TEMARIO_PROPIO_PERDIDO: AlertRule<{ veces: number; detalle: string }> = {
+  name: 'temario_propio_perdido',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS veces,
+           COALESCE(MAX(metadata->>'detalle'), '') AS detalle
+      FROM observable_events
+     WHERE event_type = 'oposicion_personalizada_no_guardada'
+       AND coalesce(metadata->>'simulacion', 'false') <> 'true'
+       AND ts >= now() - interval '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.veces ?? 0} temario(s) propios PERDIDOS al guardar en 24 h`,
+    body:
+      `Alguien armó su oposición entera (buscar leyes, elegir artículos, repartirlos en temas) y ` +
+      `al guardar se perdió. Ese trabajo vivía solo en su pantalla: no se puede recuperar ni ` +
+      `reconstruir desde la BD, porque la transacción se revierte entera.\n\n` +
+      `Se investiga en la BASE DE DATOS, no en el usuario: ¿una restricción nueva en topics o ` +
+      `topic_scope? ¿un law_id que ya no existe? Reproduce con: npm run sim:oposicion-personalizada\n\n` +
+      `Detalle: ${rows[0]?.detalle || '(sin detalle)'}\n\nFicha: T-327.`,
+    metadata: { veces: rows[0]?.veces ?? 0, detalle: rows[0]?.detalle ?? '' },
+    fingerprint: 'temario_propio_perdido',
+  }),
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
   // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
@@ -5585,6 +5628,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SESION_SIN_EMAIL as AlertRule,
   RULE_PERFIL_ROTO_NO_DRENA as AlertRule,
   RULE_REINTENTO_PERFIL_ROTO as AlertRule,
+  RULE_TEMARIO_PROPIO_PERDIDO as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
   // convierte en señal en vez de en punto ciego.
   RULE_EVASION_MULTIDISPOSITIVO as AlertRule,

@@ -380,6 +380,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Simulación hermana: `npm run sim:reintento-perfil` (7 casos contra la BD real, con ' +
       'usuarios efímeros que se borran solos).',
   },
+  oposicion_personalizada: {
+    titulo: 'Comprobar que un temario propio se guarda entero y con la forma que espera topic_scope',
+    ruta: 'scripts/sim/sim-oposicion-personalizada.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:oposicion-personalizada`. Escribe, pero con usuario EFÍMERO que se borra solo ' +
+      '(oposición, temas y scope incluidos), así que es seguro. Nace de T-327: el creador de ' +
+      'oposición personalizada convierte lo que arma el usuario en `custom_oposiciones` + `topics` ' +
+      '+ `topic_scope`, y **los tres fallos posibles son SILENCIOSOS** — Postgres acepta un scope ' +
+      'inflado por repetidos, un tema vacío y un `article_numbers` a `{}` sin rechistar; el usuario ' +
+      'no ve un error, ve un temario distinto del que construyó. Comprueba: repetidos que no ' +
+      'inflan, temas vacíos descartados y renumerados, **«toda la ley» llegando como NULL y no ' +
+      'como `{}`** (que es «ninguno», el opuesto exacto), que no exista el estado «etiqueta sin ' +
+      'temario» y que el nombre repetido choque con 23505. **Ya justificó su existencia el ' +
+      '01/08/2026**: cazó que `topics.descripcion_corta` es NOT NULL en la BD aunque `db/schema.ts` ' +
+      'la declare opcional — un invariante que solo vive en Postgres y que ningún unitario podía ' +
+      'ver; sin esto, el guardado habría reventado en el primer clic de producción. Núcleo puro ' +
+      'con 15 tests en `lib/api/oposicionPersonalizada/plan.ts`.',
+  },
   perfil_roto_se_cura: {
     titulo: 'Comprobar en un NAVEGADOR real que un usuario roto se cura solo al cargar página',
     ruta: 'scripts/sim/sim-perfil-roto-se-cura.ts',
