@@ -203,6 +203,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  sim_baja_emails_vivo: {
+    titulo: 'Comprobar que el SERVIDOR DESPLEGADO respeta la casilla de la baja masiva de emails',
+    ruta: 'scripts/sim/sim-baja-emails-vivo.cjs',
+    estado: 'vivo',
+    runbook: 'docs/roadmap/tareas-pendientes.md',
+    notas:
+      'npm run sim:baja-emails-vivo [-- --base http://localhost:3000]. POST real contra ' +
+      '`/api/unsubscribe` del servidor vivo, con usuarios EFÍMEROS que crea y borra él mismo ' +
+      '(seguro contra producción). **NO duplica a `sim:baja-emails`**: aquélla llama a ' +
+      '`processUnsubscribeByToken` EN PROCESO —ejercita la lógica con el código de tu árbol, que es ' +
+      'la capa correcta para el UPDATE con columnas dinámicas que los tests no ven porque mockean ' +
+      'Drizzle—; ésta pregunta si lo que hay VIVO se comporta así. La distancia entre las dos no es ' +
+      'teórica: [T-369] estuvo un día con el arreglo en verde en local y el defecto vivo en ' +
+      'producción, y el mismo 01/08 [T-450] enseñó la versión cara —un arreglo desplegado, con tests ' +
+      'y guardarraíl en verde, que en producción no hacía nada—. **Son DOS casos y el segundo es lo ' +
+      'que lo hace medir algo**: sin marcar la casilla `email_soporte_disabled` sigue en false, ' +
+      'marcándola pasa a true; un endpoint que ignorase el campo pasaría el primero con nota. ' +
+      'Correrla tras tocar `/api/unsubscribe`, `processUnsubscribeByToken` o el modal de ' +
+      '`app/unsubscribe/page.tsx`.',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',
