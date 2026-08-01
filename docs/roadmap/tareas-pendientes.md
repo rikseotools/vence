@@ -4581,6 +4581,16 @@ y eso solo ocurre donde las dos se sirven.
 - **Lo caro NO es el material, son las PREGUNTAS.** Los 10 temas nuevos parten de cero y cada uno necesita generación + doble auditoría ciega. Por eso [T-330] (la newsletter del último día) se cerró sin enviar: el plazo moría el 31/07 y una landing con 10 temas a cero es justo lo que el gate pre-envío prohíbe.
 
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
+- **✅ VERIFICADO EN PRODUCCIÓN (01/08, sesión `t115-huerfanos`) tras desplegar el backend (`eb6616d6`). Los tres puntos pasan. FALTA SOLO LA REVISIÓN VISUAL DE MANUEL.**
+  | qué pedía la ficha | en producción |
+  |---|---|
+  | (1) `estimate` sin `topicNumber` devuelve conteo, no error | `{"success":true,"count":3042}` ✅ |
+  | (2) con `onlyOfficialQuestions` sale la cifra de las oficiales PROPIAS | **16** — idéntica a la del simulador contra BD ✅ |
+  | (3) el selector de artículos respeta el temario | **128 con `scopeToPosition` frente a 157 sin él** ✅ (antes ignoraba el parámetro) |
+  - **Y el contador REACCIONA a la selección, que era el requisito explícito** («un contador estático mentiría, que es peor que no tenerlo»): acotando a los artículos 13-14 devuelve **87**, exactamente lo que dice el simulador contra la BD.
+  - **Cifras vivas y simulador coinciden en los dos números que importan** (16 y 87). El total general difiere un 1,6% (3.042 en vivo, 3.090 en el simulador); lo más probable es la caché del endpoint y **no está comprobado** — se deja dicho en vez de darlo por bueno.
+  - **GOTCHA para quien lo verifique otra vez:** los dos endpoints piden la ley **por NOMBRE**, no por UUID, y con nombres de parámetro DISTINTOS entre sí — `selectedLaws` en `estimate` y `lawShortName` en `articles`. Pasar el UUID devuelve `count:0` sin error, que parece un fallo del arreglo y no lo es. Me costó dos intentos.
+  - **⏳ LO QUE FALTA NO ES TÉCNICO:** Manuel tiene que mirar en vivo `/test/por-leyes` cómo queda **visualmente** — esa parte no la puede juzgar una sesión. **A Sergio se le avisa solo después de esa revisión**, y su hilo sigue abierto esperando.
 - **Quién lo pide:** Sergio (`pcsergio0@gmail.com`, premium, 44 tests en 9 días, feedback `bd8b92d0`): *«quiero hacer test de leyes y filtrar por preguntas de exámenes reales, ¿es posible?»*. **Ya respondido**: se le ha dicho que lo vamos a añadir.
 - **Qué pasa:** el interruptor «🏛️ Preguntas oficiales» de `TestConfigurator` se pinta si `!hideOfficialQuestions && officialQuestionsCount > 0` (`components/TestConfigurator.tsx:1638`). La página de test por leyes **declara la intención de mostrarlo** (`hideOfficialQuestions={false}`, `app/test/por-leyes/page.tsx:410`) y **sabe llevar el filtro al test** (`params.set('only_official','true')`, línea 151), pero **nunca le pasa `officialQuestionsCount`** → vale 0 por defecto → la condición no se cumple jamás. Las páginas por tema sí lo pasan (`components/test/TemaTestPage.tsx:440`), por eso ahí funciona.
 - **NO es una regresión** (comprobado en el historial del fichero: ese prop no se ha pasado nunca). La fontanería está entera de punta a punta salvo el dato que enciende la casilla.
