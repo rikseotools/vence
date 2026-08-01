@@ -37,9 +37,25 @@ interface UserStats {
 interface TemaTestPageProps {
   oposicionSlug: string
   params: Promise<{ numero: string }>
+  /**
+   * [T-327] `position_type` y ruta base EXPLÍCITOS, para las oposiciones PERSONALIZADAS.
+   *
+   * Ambos son opcionales y sin ellos no cambia nada: se sigue resolviendo desde el config, como
+   * hasta hoy. Hacen falta porque una personalizada no está en ese config, y el fallback de
+   * abajo es `auxiliar_administrativo_estado` — es decir, sin esto le serviría a la persona el
+   * temario de OTRA oposición sin avisar de nada. Un fallback silencioso al que le llega un caso
+   * que no previó no falla: acierta la pregunta equivocada.
+   */
+  positionTypeOverride?: string
+  basePathOverride?: string
 }
 
-export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProps) {
+export default function TemaTestPage({
+  oposicionSlug,
+  params,
+  positionTypeOverride,
+  basePathOverride,
+}: TemaTestPageProps) {
   const { getSlug: generateLawSlug } = useLawSlugs()
   const config = getOposicion(oposicionSlug)
 
@@ -66,8 +82,8 @@ export default function TemaTestPage({ oposicionSlug, params }: TemaTestPageProp
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<{ number: string | null; lawSlug: string | null }>({ number: null, lawSlug: null })
 
-  const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+  const basePath = basePathOverride || `/${oposicionSlug}`
+  const positionType = positionTypeOverride || config?.positionType || 'auxiliar_administrativo_estado'
   const color = config?.color || 'blue'
 
   // Tailwind color mapping

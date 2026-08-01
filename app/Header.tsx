@@ -23,6 +23,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
+import { rutaTestPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -512,6 +513,12 @@ export default function HeaderES() {
   // una oposición. Último fallback: primer slug de la lista.
   const getTestsLink = (): string => {
     const opoId = oposicionContext?.oposicionId
+    // [T-327] Oposición PERSONALIZADA: no tiene slug ni página de catálogo, se sirve por id
+    // desde su propio `topic_scope`. Sin esta rama, `configGetTestsLink` no la encuentra y
+    // devuelve '/' — el usuario que la eligió pulsaría el icono de tests y aterrizaría en la
+    // home, sin explicación.
+    const rutaPersonalizada = rutaTestPersonalizada(opoId)
+    if (rutaPersonalizada) return rutaPersonalizada
     if (opoId) return configGetTestsLink(opoId)
     const segments = pathname?.split('/').filter(Boolean) ?? []
     const slugFromPath = segments.find(seg => ALL_OPOSICION_SLUGS.includes(seg))
