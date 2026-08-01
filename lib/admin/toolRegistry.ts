@@ -400,6 +400,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Simulación hermana: `npm run sim:reintento-perfil` (7 casos contra la BD real, con ' +
       'usuarios efímeros que se borran solos).',
   },
+  tests_oposicion_personalizada: {
+    titulo: 'Comprobar EN UN NAVEGADOR que se puede estudiar con tu propio temario',
+    ruta: 'scripts/sim/sim-tests-oposicion-personalizada.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:tests-oposicion-personalizada [-- --url=…]`. Crea una oposición efímera con ' +
+      'una ley que SÍ tiene preguntas (si cogiera una cualquiera, el tema saldría a cero y la ' +
+      'simulación daría verde sin probar nada) y se limpia sola. Necesita `AUTH_SECRET`. ' +
+      '**NACE DE UN FALLO DE MEDICIÓN, no de código:** el 01/08/2026 se comprobó la ruta con ' +
+      '`curl`, devolvió **HTTP 200** y se dio por buena una pantalla que en el navegador decía ' +
+      '**«404 · Tema No Encontrado»** (lo vio Manuel). Estas páginas son cascarones que cargan ' +
+      'sus datos por API tras montar: **el 200 lo devuelve el cascarón** y el fallo ocurre ' +
+      'después, así que medir el código HTTP es medir lo único que no puede fallar. Y no era un ' +
+      'fallo sino TRES puertas encadenadas, cada una invisible desde la anterior: la validación ' +
+      'de slug del endpoint, el enum de Zod y el `isValidTema` del componente — las tres contra ' +
+      'el catálogo estático, donde una personalizada no está ni puede estar. Hermana: ' +
+      '`npm run sim:oposicion-personalizada` (guardar/editar contra BD, sin navegador).',
+  },
   oposicion_personalizada: {
     titulo: 'Comprobar que un temario propio se guarda entero y con la forma que espera topic_scope',
     ruta: 'scripts/sim/sim-oposicion-personalizada.ts',

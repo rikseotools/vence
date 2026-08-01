@@ -105,6 +105,12 @@ export default function TemaTestPage({
 
   // Validate tema number against config
   const isValidTema = (tema: number): boolean => {
+    // [T-327] Una oposición PERSONALIZADA no tiene bloques en el config —sus temas viven en la
+    // base de datos—, así que aquí no hay nada contra lo que validar y devolver `false` pintaba
+    // «Tema no encontrado» para temas que SÍ existen. Se delega en el API, que lee `topics`: si
+    // el tema no está, `loadTopicData` devuelve !success y se marca igual. No se pierde la
+    // protección, cambia quién la ejerce — y para una personalizada la única fuente es la BD.
+    if (positionTypeOverride) return true
     if (!config) return false
     for (const block of config.blocks) {
       for (const theme of block.themes) {
@@ -137,7 +143,9 @@ export default function TemaTestPage({
   const loadTopicData = useCallback(async (tema: number, userId: string | null): Promise<GetTopicDataResponse | null> => {
     try {
       const queryParams = new URLSearchParams({
-        oposicion: oposicionSlug,
+        // Con override (personalizada) se manda SU position_type: el slug no existe en el
+        // catálogo y el endpoint lo rechazaría.
+        oposicion: positionTypeOverride || oposicionSlug,
         ...(userId && { userId })
       })
       const response = await fetch(`/api/topics/${tema}?${queryParams}`)
@@ -154,7 +162,7 @@ export default function TemaTestPage({
       console.error('Error en loadTopicData:', error)
       return null
     }
-  }, [oposicionSlug])
+  }, [oposicionSlug, positionTypeOverride])
 
   // Refresh on visibility/focus
   useEffect(() => {

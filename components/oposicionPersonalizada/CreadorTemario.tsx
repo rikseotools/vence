@@ -214,7 +214,7 @@ export default function CreadorTemario({
       setErrorGuardar(null)
       try {
         await changeOposicion(`personalizada_${id.replace(/-/g, '')}`)
-        setAviso('Ya es tu oposición: el icono de tests te llevará a ella')
+        setAviso('Ya es tu oposición objetivo: el icono de tests te llevará a ella')
       } catch {
         setErrorGuardar('No se ha podido cambiar tu oposición. Inténtalo otra vez.')
       } finally {

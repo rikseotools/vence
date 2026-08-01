@@ -12,7 +12,14 @@ import {
 
 export const getTopicDataRequestSchema = z.object({
   topicNumber: z.number().int().positive('Número de tema debe ser positivo'),
-  oposicion: z.enum(OPOSICION_SLUGS_ENUM),
+  // [T-327] O un slug del catálogo, O el `position_type` de una oposición PERSONALIZADA
+  // (`personalizada_<id>`), que por definición no puede estar en el enum: la crea el usuario en
+  // tiempo de ejecución. Se acepta por FORMA estricta —prefijo + 32 hex— y no como string libre:
+  // el enum es lo que impide que llegue aquí cualquier cosa, y aflojarlo del todo lo tiraría.
+  oposicion: z.union([
+    z.enum(OPOSICION_SLUGS_ENUM),
+    z.string().regex(/^personalizada_[0-9a-f]{32}$/i, 'oposición personalizada inválida'),
+  ]),
   userId: z.string().uuid().nullable().optional(),
 })
 

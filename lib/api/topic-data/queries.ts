@@ -32,6 +32,7 @@ import {
 // topic_official_by_position. Detrás de feature flag TOPIC_MV_ENABLED para
 // rollback inmediato si hace falta.
 import { getTopicAggregatesFromMV, isTopicMvEnabled } from './mv-queries'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 // Cache simple en memoria (5 minutos)
 const topicCache = new Map<string, { data: GetTopicDataResponse; timestamp: number }>()
@@ -61,7 +62,12 @@ export async function getTopicFullData(
     }
 
     const db = getTopicDataDb()  // canary pooler
-    const positionType = SLUG_TO_POSITION_TYPE[oposicion]
+    // [T-327] Una oposición PERSONALIZADA no tiene slug en el catálogo: lo que llega ya ES su
+    // `position_type`. Sin esta rama, `SLUG_TO_POSITION_TYPE[...]` da undefined y la consulta no
+    // encuentra el tema — que es el «Tema no encontrado» que veía el usuario.
+    const positionType = esObjetivoPersonalizado(oposicion)
+      ? oposicion
+      : SLUG_TO_POSITION_TYPE[oposicion]
 
     // 1️⃣ OBTENER DATOS DEL TEMA
     const topicResult = await db

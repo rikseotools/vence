@@ -98,7 +98,7 @@ export default function MisOposiciones({
                   pero no estudiar, que es justo el problema que esto viene a resolver. */}
               {esObjetivo(o.id) ? (
                 <span className="text-sm px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium whitespace-nowrap">
-                  ✓ Es tu oposición
+                  ✓ Es tu oposición objetivo
                 </span>
               ) : (
                 <button
@@ -106,14 +106,14 @@ export default function MisOposiciones({
                   onClick={() => onElegirObjetivo(o.id)}
                   disabled={fijandoId === o.id}
                   className="text-sm px-3 py-2 rounded-lg border border-green-600 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 font-medium whitespace-nowrap disabled:opacity-60"
-                  title="Practicarás sobre ella al pulsar el icono de tests"
+                  title="Pasará a ser tu oposición objetivo: practicarás sobre ella al pulsar el icono de tests"
                 >
                   {fijandoId === o.id ? (
                     <span className="flex items-center gap-1.5">
                       <Rueda clase="h-3 w-3" /> Fijando…
                     </span>
                   ) : (
-                    'Estudiar esta'
+                    'Hacer mi oposición objetivo'
                   )}
                 </button>
               )}

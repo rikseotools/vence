@@ -27,6 +27,7 @@ import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getCached, setCached } from '@/lib/cache/redis'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,16 +64,22 @@ async function _GET(
       )
     }
 
+    // [T-327] Una personalizada llega como su propio `position_type` (`personalizada_<id>`), que
+    // por definición no está en el catálogo estático. Se acepta y se salta la validación por
+    // config: sus temas se validan contra la BD, que es su única fuente.
+    const esPersonalizada = esObjetivoPersonalizado(oposicion)
+
     // Validar oposición
-    if (!oposicion || !ALL_OPOSICION_SLUGS.includes(oposicion)) {
+    if (!esPersonalizada && (!oposicion || !ALL_OPOSICION_SLUGS.includes(oposicion))) {
       return NextResponse.json(
         { success: false, error: 'Oposición no válida' },
         { status: 400 }
       )
     }
 
-    // Validar que el tema existe para la oposición
-    if (!isValidTopicNumber(topicNumber, oposicion)) {
+    // Validar que el tema existe para la oposición (solo las del catálogo: la personalizada no
+    // tiene números de tema declarados en el config — los suyos están en `topics`).
+    if (!esPersonalizada && !isValidTopicNumber(topicNumber, oposicion)) {
       return NextResponse.json(
         { success: false, error: `Tema ${topicNumber} no válido para ${oposicion}` },
         { status: 400 }
