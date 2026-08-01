@@ -264,6 +264,44 @@ export function computeAllowance(
   }
 }
 
+/**
+ * Cuántas preguntas debe CREER el cliente que lleva hoy, contando también el dispositivo.
+ *
+ * PURA a propósito (como `computeAllowance`, justo arriba): es la regla que decide si sale el
+ * muro, y tiene que poder probarse sin BD ni red.
+ *
+ * POR QUÉ EXISTE ([T-418], 01/08/2026): el servidor rechaza el guardado por DOS motivos —el
+ * cupo de la CUENTA y el del DISPOSITIVO (todas las cuentas free del aparato sumadas)— pero el
+ * cliente solo conocía el primero, porque `/api/v2/daily-question/status` leía únicamente
+ * `get_daily_question_status`. Resultado medido en 14 días: **27 usuarios contestaron 1.471
+ * veces sin que la UI les parara**, y el servidor tiró cada respuesta con un 403 que no
+ * explicaba nada. La respuesta se veía corregida en pantalla, así que parecía guardada.
+ *
+ * QUÉ HACE: devolver el mayor de los dos conteos. El cliente ya calcula
+ * `isLimitReached = questionsToday >= dailyLimit`, así que con esto el muro salta con **el
+ * límite que primero ate**, sin inventar un segundo concepto en la UI ni un mensaje nuevo: al
+ * usuario le sale el modal de Premium de siempre, como a cualquier free que agota su cupo
+ * (decisión de Manuel, 01/08). Y como el muro sale ANTES de contestar, deja de perderse
+ * trabajo: no hay respuesta que tirar.
+ *
+ * DOS INVARIANTES que no se pueden tocar:
+ *  · **premium NUNCA se limita**, pase lo que pase con el aparato (mismo invariante que
+ *    `computeAllowance`; incidente 07/07/2026).
+ *  · **fail-open**: sin dato de dispositivo (`null`, que es lo que devuelve
+ *    `checkDeviceDailyUsage` cuando no hay anclas o falla la consulta) se deja el conteo de la
+ *    cuenta tal cual. Un fallo de infraestructura no puede levantar un muro que no toca.
+ */
+export function conteoEfectivoConDispositivo(
+  questionsToday: number,
+  isPremium: boolean,
+  deviceTotal: number | null | undefined,
+): number {
+  const propio = Number.isFinite(questionsToday) && questionsToday > 0 ? questionsToday : 0
+  if (isPremium) return propio
+  if (typeof deviceTotal !== 'number' || !Number.isFinite(deviceTotal)) return propio
+  return Math.max(propio, deviceTotal)
+}
+
 export async function getDailyLimitStatus(
   userId: string | null | undefined,
 ): Promise<DailyLimitResult> {

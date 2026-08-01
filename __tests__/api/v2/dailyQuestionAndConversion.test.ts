@@ -45,7 +45,17 @@ describe('GET /api/v2/daily-question/status', () => {
   test('devuelve status del usuario del token', async () => {
     mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
     mockExecute.mockResolvedValue({ rows: [{ questions_today: 3, is_premium: false }] })
-    expect((await (await STATUS(reqUrl())).json()).status).toEqual({ questions_today: 3, is_premium: false })
+    // Desde [T-418] la respuesta lleva además el cupo del DISPOSITIVO: `questions_today` es el
+    // conteo EFECTIVO (el mayor entre cuenta y aparato) y viajan dos campos para el aviso de
+    // multicuenta. Aquí el mock no tiene dispositivo, así que el conteo no se toca y los dos
+    // campos salen en su valor neutro — que es justo el fail-open que se quiere: sin señal del
+    // aparato no se limita ni se avisa a nadie.
+    expect((await (await STATUS(reqUrl())).json()).status).toEqual({
+      questions_today: 3,
+      is_premium: false,
+      multi_cuenta_dispositivo: false,
+      cuentas_en_dispositivo: 0,
+    })
     expect(JSON.stringify(mockExecute.mock.calls[0][0])).toContain('U_TOKEN')
   })
 })

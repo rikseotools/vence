@@ -155,6 +155,40 @@ export async function getAccountsOnDevice(deviceId: string): Promise<string[]> {
   }
 }
 
+/**
+ * Cuántas cuentas **FREE** distintas se han visto en este dispositivo.
+ *
+ * NO usar `getAccountsOnDevice` para esto ([T-418], 01/08/2026): aquella devuelve TODAS las
+ * cuentas del aparato, premium incluidas, y mucha gente que paga tiene además una cuenta free
+ * (lo señaló Manuel: *«ojo, no bloquear a ningún premium, muchas veces tienen cuentas free y
+ * premium»*). Contando premium, a un cliente de pago le saldría el aviso de multicuenta en su
+ * propia cuenta gratuita — molestar a quien paga, y encima por algo que no le limita nada.
+ *
+ * Va en la misma línea que `get_device_daily_usage_v2`, que ya excluye a los premium del
+ * conteo de cupo: si sus preguntas no gastan cupo de nadie, su existencia tampoco debe
+ * disparar un aviso. Se filtra AQUÍ y no dentro de `get_accounts_on_device` a propósito: esa
+ * función la usan otros caminos (límite de dispositivos, antifraude) que sí quieren verlas
+ * todas, y cambiarla los rompería en silencio.
+ *
+ * Fail-closed hacia el silencio: ante cualquier error devuelve 0, o sea «no avisar». Un aviso
+ * que insinúa multicuenta a quien no la tiene es peor que no avisar.
+ */
+export async function contarCuentasFreeEnDispositivo(deviceId: string | null): Promise<number> {
+  if (!deviceId) return 0
+  try {
+    const res = await getAdminDb().execute(sql`
+      SELECT count(DISTINCT up.id)::int AS n
+        FROM get_accounts_on_device(${deviceId}) AS d(user_id)
+        JOIN user_profiles up ON up.id = d.user_id
+       WHERE COALESCE(up.plan_type, 'free')
+             NOT IN ('premium', 'trial', 'legacy_free', 'premium_semester', 'admin')
+    `)
+    return Number(rowsOf(res)[0]?.n) || 0
+  } catch {
+    return 0
+  }
+}
+
 function parseDeviceLabel(ua: string): string {
   // Navegador. OJO con iOS: Chrome/Firefox/Edge se identifican como CriOS/FxiOS/
   // EdgiOS (no el literal "Chrome"/"Firefox"/"Edge") y TODOS contienen "Safari".

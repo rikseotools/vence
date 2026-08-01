@@ -19,6 +19,10 @@ interface DailyLimitStatus {
   resetTime: string | null
   loading: boolean
   error: string | null
+  // El servidor ha visto 2+ cuentas free en este dispositivo ([T-418]). Viaja por aquí porque
+  // este hook ya consulta `/api/v2/daily-question/status` y deduplica: un fetch aparte para el
+  // aviso seria una segunda puerta al mismo dato.
+  multiCuentaDispositivo: boolean
 }
 
 const DEFAULT_LIMIT = 25
@@ -40,7 +44,8 @@ export function useDailyQuestionLimit() {
     isGraduated: false,
     resetTime: null,
     loading: true,
-    error: null
+    error: null,
+    multiCuentaDispositivo: false
   })
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -103,7 +108,8 @@ export function useDailyQuestionLimit() {
         isGraduated: false,
         resetTime: null,
         loading: false,
-        error: null
+        error: null,
+        multiCuentaDispositivo: false
       })
       return
     }
@@ -148,7 +154,8 @@ export function useDailyQuestionLimit() {
             isGraduated: userDailyLimit < DEFAULT_LIMIT,
             resetTime: result.reset_time ?? null,
             loading: false,
-            error: null
+            error: null,
+            multiCuentaDispositivo: result.multi_cuenta_dispositivo === true
           }
           setStatus(newStatus)
 
@@ -235,7 +242,10 @@ export function useDailyQuestionLimit() {
           isGraduated: currentLimit < DEFAULT_LIMIT,
           resetTime: result.reset_time ?? null,
           loading: false,
-          error: null
+          error: null,
+          // Se ARRASTRA: `recordAnswer` reconstruye el objeto entero y sin esto el aviso
+          // desapareceria en cuanto el usuario contestara una pregunta.
+          multiCuentaDispositivo: status.multiCuentaDispositivo
         }
 
         setStatus(newStatus)
@@ -353,6 +363,7 @@ export function useDailyQuestionLimit() {
 
     // Flags
     hasLimit,
+    multiCuentaDispositivo: status.multiCuentaDispositivo,
 
     // Modal
     showUpgradeModal,

@@ -12,6 +12,7 @@ import { getSlugMappingForApi } from '@/lib/api/laws'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import FraudTracker from '../components/FraudTracker'
+import AvisoMultiCuentaModal from '@/components/AvisoMultiCuentaModal'
 import ChallengeProvider from '../components/security/ChallengeProvider'
 import { GlobalClickTracker, PageViewTracker, AttributionCapture, DeviceIdentity } from '../components/tracking'
 import CookieBanner, { CookieConsentProvider } from '../components/CookieConsent'
@@ -96,6 +97,10 @@ export default async function SpanishLayout({ children }: { children: React.Reac
                     <AIChatWidget />
                     <GoogleOneTapWrapper />
                     <FraudTracker />
+                    {/* Aviso de «una cuenta por persona y dispositivo» ([T-418]). Global e
+                        invisible salvo que el servidor vea 2+ cuentas FREE en este equipo;
+                        nunca se le enseña a un premium. */}
+                    <AvisoMultiCuentaModal />
                     {/* Modal de verificación humana (anti-scraping). Invisible
                         hasta que un endpoint protegido pide resolver un reto. */}
                     <ChallengeProvider />
