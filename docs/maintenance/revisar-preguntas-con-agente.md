@@ -394,6 +394,35 @@ Para esas opciones-presentadas-como-correctas, verificar que reproducen fielment
 
 **Incidente que motiva la regla:** en la QA de la estructura Min Interior/Defensa (17/06), los agentes verificadores marcaron `options_ok=false` por "D=null" y se desactivaron 81 preguntas; 80 eran preguntas válidas de 3 opciones (hubo que revertirlas a `approved`) y solo 1 estaba realmente rota (`correct_option=D`). Un verificador que oculta preguntas buenas es peor que inútil (§15.8).
 
+### 3.4 ⚠️ Quien REESCRIBE no firma que ha VERIFICADO (post-01/08/2026, T-465)
+
+**El criterio de §3.1 es correcto; el problema es quién lo aplica.** Un usuario premium impugnó ocho preguntas cuyo contenido no estaba en el artículo del temario. Las siete de un mismo lote traían esta firma, del mismo día y con confianza **alta**:
+
+```
+article_ok=true · answer_ok=true · explanation_ok=true · confidence=alta
+«Revisión masiva uncited: explicación reescrita con formato didáctico, blockquote y análisis por opción.»
+```
+
+Ese pase **no verificaba nada**: su trabajo era reescribir explicaciones sin cita. Pero escribió los tres flags como efecto colateral, y con eso las preguntas quedaron marcadas como comprobadas.
+
+**Y hubo un segundo daño, peor.** Como al pase se le pidió añadir un blockquote y el artículo NO contenía la respuesta, el modelo citó **el artículo real diciendo algo que no responde a la pregunta**. La cita es literal —así que `cita_no_literal` no la ve— pero le da al opositor apariencia de fundamento legal sobre una pregunta inestudiable. El pase no solo no detectó el defecto: **lo camufló**.
+
+**Medido el 01/08/2026:** 4.159 firmas cosméticas afirmando fondo y **1.713 preguntas activas cuya ÚNICA verificación es un pase así**. Y en la oposición del usuario (Auxiliar Dip. Córdoba) el banco figuraba verificado al **99,9 %** — 10 preguntas sin verificar de 14.588 — mientras él encontraba ocho defectos reales en una tarde. **«Verificado» no significaba «mirado».**
+
+**Regla:** reescribir es una operación de FORMA; comprobar que el artículo contiene la respuesta es de FONDO. Un pase que hace lo primero **no puede firmar** `article_ok` ni `answer_ok`. Debe dejarlos en `NULL` («no lo he mirado»), que es distinto de `false` («lo he mirado y está mal»). `explanation_ok` **sí** lo puede firmar: es justo lo que acaba de hacer.
+
+**Hecho cumplir en el punto de escritura, no por buena voluntad:** el trigger `tg_verificacion_cosmetica_no_firma` (migración `20260801_verificacion_cosmetica_no_firma.sql`) pone esos dos flags a NULL si el propósito declarado es cosmético, y emite `verificacion_cosmetica_firmaba_fondo`. No rechaza la fila —eso tumbaría lotes en marcha y empujaría a quitar la palabra «reescrita» para esquivarlo—; solo le quita la capacidad de afirmar lo que no ha comprobado. Núcleo puro `lib/calidad/verificacionCosmetica.cjs` (12 tests).
+
+**Y la capa que de verdad caza esta clase de defecto NO es un LLM.** La pregunta *«¿la respuesta existe en alguna fuente que el opositor pueda estudiar?»* es determinista y se comprueba sin modelo. Antes de dar por buena una tanda, pásala por los detectores:
+
+| Detector | Qué caza |
+|---|---|
+| `npm run audit:instrumento-derivado` | la respuesta está en un Plan/Estrategia/Informe que la ley solo manda crear |
+| `npm run audit:vinculo-vecino` | la responde un artículo VECINO (vínculo mal puesto) |
+| `npm run audit:verificacion-cosmetica` | preguntas que figuran verificadas apoyándose solo en un pase cosmético |
+
+**Al escribir un pase masivo nuevo:** decide primero si es de forma o de fondo. Si es de forma, no toques los flags de fondo — el trigger te los va a poner a NULL igualmente, pero el que tiene que saberlo eres tú.
+
 ## 4. Cómo Usar el Agente
 
 ### Opción 1: Revisión individual (pocos temas)

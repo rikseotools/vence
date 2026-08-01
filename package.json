@@ -119,6 +119,7 @@
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",
     "docs:bandeja": "node scripts/convocatoria/bandeja-documentos.cjs",
+    "audit:verificacion-cosmetica": "node --max-old-space-size=3000 scripts/audit-verificacion-cosmetica.cjs",
     "audit:instrumento-derivado": "node --max-old-space-size=3000 scripts/audit-instrumento-derivado.cjs",
     "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs",
     "llm:ab-vinculo": "node scripts/observabilidad/ab-modelo-vinculo-vecino.cjs",

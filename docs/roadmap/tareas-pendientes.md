@@ -1974,6 +1974,39 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Por qué merece la pena:** es el guardarraíl que sostiene la regla *«¿esto ya existe?»* de CLAUDE.md, y ahora mismo su cobertura es menor de lo que su nombre promete. Afecta a TODOS los recursos vigilados, no solo a `fetcher_type`.
 - **Relacionadas:** [T-453] (de donde sale), [T-130] (el episodio que creó el registro).
 
+### [T-465] 🔴 [ABIERTO 01/08] Un pase COSMÉTICO firmó verificación de contenido en 1.713 preguntas: reescribir no es verificar
+
+- **Esfuerzo: rato.** La PREVENCIÓN está hecha y probada en vivo; queda decidir qué se hace con lo ya firmado.
+- **ORIGEN.** Manuel, al ver que un usuario premium encontraba 8 defectos reales en una oposición con el banco «verificado al 99,9 %»: *«deberíamos ampliar el manual de revisión con una capa nueva que encuentre esos fallos»*. Al bajar al detalle —quién verificó esas preguntas y qué dijo— apareció la causa.
+- **LA CAUSA, con nombre y fecha.** Las 7 preguntas de un mismo lote se «verificaron» el 05/04/2026, todas por `claude-opus-4-6`, todas con `article_ok=true · answer_ok=true · explanation_ok=true` y **confianza ALTA**, y todas con la misma firma: *«Revisión masiva uncited: explicación reescrita con formato didáctico, blockquote y análisis por opción.»* Ese pase **no verificaba**: reescribía explicaciones sin cita, y escribió los flags de fondo como efecto colateral.
+- **EL SEGUNDO DAÑO, peor que el primero.** Como al pase se le pidió añadir un blockquote y el artículo NO contenía la respuesta, el modelo citó **el artículo real diciendo algo que no responde a la pregunta**. La cita es literal —así que `cita_no_literal` no la ve— pero da apariencia de fundamento legal a una pregunta inestudiable. **El pase no solo no detectó el defecto: lo camufló**, y por eso ningún detector posterior lo vio.
+- **MEDIDO (01/08):** 4.159 firmas cosméticas afirmando fondo · **1.713 preguntas ACTIVAS cuya ÚNICA verificación es un pase así**. Por ley: Informática Básica 224, La Red Internet 179, Ley 8/2008 Galicia 162, Ley 5/2023 Andalucía 126…
+- **RESUELTO (la prevención):**
+  - Núcleo puro `lib/calidad/verificacionCosmetica.cjs` (12 tests). Regla: reescribir es FORMA, comprobar que el artículo contiene la respuesta es FONDO. `explanation_ok` **sí** lo puede firmar quien reescribe; `article_ok`/`answer_ok` no.
+  - **Trigger `tg_verificacion_cosmetica_no_firma`** — se impide EN EL PUNTO DE ESCRITURA, no en el script del pase: los pases son muchos y el siguiente lote lo repetiría. Pone los dos flags a `NULL` («no lo he mirado», distinto de `false`) y emite `verificacion_cosmetica_firmaba_fondo`. **NO rechaza la fila** a propósito: tumbaría lotes en marcha y empujaría a quitar la palabra «reescrita» del texto para esquivarlo.
+  - **Probado en vivo contra la BD real, con CONTRASTE**: firma cosmética → `null/null` + traza; su `explanation_ok` → respetado; verificación real → `true/true` sin tocar. Sin el contraste, un `null` podría venir de cualquier causa.
+  - Inventario: `npm run audit:verificacion-cosmetica`. Manual: §3.4 de `revisar-preguntas-con-agente.md`, con la tabla de detectores DETERMINISTAS que sí cazan esta clase de defecto (la pregunta «¿la respuesta existe en alguna fuente que el opositor pueda estudiar?» no necesita LLM).
+- **⏳ QUEDA — la decisión:** qué hacer con las **1.713 ya firmadas**. Limpiarles los flags (ponerlos a NULL) las devuelve a la cola de revisión de golpe; dejarlas las mantiene figurando como comprobadas. Opción intermedia: limpiar solo las que además salgan en los detectores deterministas. **NO son necesariamente preguntas malas** — es que nadie ha mirado su contenido.
+- **Relacionadas:** [T-458] (las 8 impugnaciones que lo destaparon), [T-462] (otro guardarraíl desalineado del mismo flujo).
+
+### [T-464] 🟢 [ABIERTO 01/08] Importar el I Plan de Igualdad de la Junta 2023-2027 como contenido propio (celador SAS se quedó sin ese temario)
+
+- **Esfuerzo: rato.** NO URGE, y está medido: ver las cifras abajo.
+- **ORIGEN.** Al resolver [T-458] se retiraron 6 preguntas sobre el I Plan de Igualdad de la Administración General de la Junta de Andalucía 2023-2027 que colgaban del art. 32 de la Ley 12/2007 — el artículo solo manda ELABORAR planes de igualdad cada cuatro años, no dice nada de su contenido.
+- **EL CONFLICTO QUE LO HACE INTERESANTE.** Esas preguntas estaban **fuera de programa para unos y dentro para otros**, porque el artículo es fila COMPARTIDA:
+  - `auxiliar_administrativo_diputacion_cordoba` T4 → *«Aspectos generales de la normativa estatal y autonómica»*: el contenido interno de un Plan **no entra**. De ahí las 8 impugnaciones de m.g.espadero.
+  - `celador_sas` T7 → *«… Plan de Igualdad de la Junta de Andalucía»*: **sí lo nombra el epígrafe**, así que para ellos era temario legítimo.
+- **DECISIÓN (Manuel, 01/08): retirar igualmente y dejar esto pendiente.** Medido antes de decidir, no a ojo:
+  | | usuarios | premium | activos 30d |
+  |---|---|---|---|
+  | celador_sas | 10 | **0** | 3 (29 respuestas) |
+  | aux_admin_dip_cordoba | **135** | **10** | — |
+  Retirar perjudica a 10 usuarios sin ninguno de pago; no retirar sirve contenido fuera de programa a 135 con 10 premium.
+- **QUÉ HAY QUE HACER (el arreglo bueno, cuando toque):** importar el Plan como **contenido propio** —una ley virtual o un artículo tipo Art. 0, como se hizo con la estructura de la Ley 12/2007 en [T-458]—, re-vincular ahí esas 6 preguntas (siguen en BD, `retired_irreparable`) y escoparlo **SOLO en celador_sas T7**. Así celador SAS recupera material que su epígrafe sí pide y Córdoba no lo ve.
+- **GOTCHA de medición que costó dos intentos:** `oposiciones` NO tiene columna `position_type`; el enlace con `topics.position_type` es por `slug` con guiones bajos (`celador_sas` ↔ `celador-sas`). Un `LIMIT 1` sobre `slug ILIKE '%celador%'` devuelve `celador-a-conductor-…` (INACTIVA) y hace creer que la oposición no se prepara. Verificar con `slug` exacto.
+- **Preguntas retiradas** (para recuperarlas): `a2d56bfa`, `a9e57dd1`, `c7a68954`, `7a6a03e7`, `4cfa0fbb`, `21dba412`.
+- **Relacionadas:** [T-458] (de donde sale), [T-130].
+
 ### [T-462] 🟡 [ABIERTO 01/08] El validador de explicaciones exige el formato VIEJO y rechaza lo que escribe el escritor canónico
 
 - **Esfuerzo: rato.** Diagnosticado con dos casos reales; falta decidir qué formato manda y alinear.

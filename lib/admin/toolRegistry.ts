@@ -184,6 +184,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '— el bug del label "115" de Seg. Social T3, por el otro lado. Un test con mocks no lo caza. ' +
       'Correrla al tocar `lib/api/test-config/queries.ts` o el conteo de oficiales.',
   },
+  audit_verificacion_cosmetica: {
+    titulo: 'Preguntas que figuran VERIFICADAS apoyándose solo en un pase cosmético',
+    ruta: 'scripts/audit-verificacion-cosmetica.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/revisar-preguntas-con-agente.md',
+    notas:
+      '`npm run audit:verificacion-cosmetica [--json]`. SOLO LEE. Núcleo puro ' +
+      '`lib/calidad/verificacionCosmetica.cjs` (12 tests). Nace de T-465: un pase cuyo trabajo era ' +
+      'REESCRIBIR explicaciones firmó `article_ok`/`answer_ok` con confianza alta, y con eso siete ' +
+      'preguntas inestudiables quedaron marcadas como comprobadas hasta que un usuario las impugnó ' +
+      'una a una. Medido el 01/08/2026: 4.159 firmas cosméticas afirmando fondo, 1.713 preguntas ' +
+      'activas cuya ÚNICA verificación es un pase así. La PREVENCIÓN no está aquí sino en el punto ' +
+      'de escritura: trigger `tg_verificacion_cosmetica_no_firma` (migración ' +
+      '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
+      '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
+  },
   // ── salud del contenido: pregunta ↔ artículo ──────────────────────────────────────────────
   audit_instrumento_derivado: {
     titulo: 'Preguntas que piden el contenido de un Plan/Estrategia que la ley solo manda crear',

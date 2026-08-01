@@ -283,3 +283,78 @@ describe('un artículo que no menciona el instrumento fechado no lo responde', (
     expect(articuloHablaDelMismoInstrumento('¿Quién aprueba el Plan de Igualdad?', 'texto cualquiera')).toBe(true)
   })
 })
+
+// ── REGRESIÓN: la Estrategia nombrada por su MATERIA (01/08/2026, segunda tanda) ────────────────
+//
+// «I Estrategia de Conciliación en Andalucía 2022-2026» colgada del art. 39, que habla de centros
+// infantiles en los centros de trabajo. La lista de instrumentos solo cubría `estrategia
+// (nacional|andaluza|estatal|espanola)`, así que un instrumento nombrado por su materia era
+// invisible. Tercera vez que una lista cerrada se queda corta.
+describe('instrumentos nombrados por su MATERIA, no por su ámbito', () => {
+  const ART39 = {
+    id: 'art39',
+    content:
+      'La Administración de la Junta de Andalucía impulsará la creación de centros infantiles en ' +
+      'los centros de trabajo, para facilitar la conciliación de la vida laboral y familiar de las ' +
+      'empleadas y empleados públicos.',
+  }
+
+  it('«el salario emocional» de la I Estrategia de Conciliación', () => {
+    const r = clasificarInstrumentoDerivado({
+      enunciado:
+        'Según la I Estrategia de Conciliación en Andalucía 2022-2026, ¿cuál es una de las principales acciones más efectivas para la conciliación?',
+      opcionCorrecta: 'El salario emocional.',
+      articuloVinculado: ART39,
+      articulosDeLaLey: [ART39],
+    })
+    expect(r.hallazgo).toBe(true)
+  })
+
+  it('«la responsabilidad de cuidado» de la misma Estrategia', () => {
+    const r = clasificarInstrumentoDerivado({
+      enunciado:
+        'La I Estrategia de Conciliación en Andalucía 2022-2026 dispone que, para casi la mitad de las mujeres fuera del mercado laboral, el principal motivo es:',
+      opcionCorrecta: 'La responsabilidad de cuidado.',
+      articuloVinculado: ART39,
+      articulosDeLaLey: [ART39],
+    })
+    expect(r.hallazgo).toBe(true)
+  })
+})
+
+// ── REGRESIÓN: la cita de la NORMA no fecha al instrumento (01/08/2026) ─────────────────────────
+//
+// La guarda de instrumento fechado leía «Ley 12/2007, de 26 de noviembre» como si el instrumento
+// fuera de 2007, y el cuerpo de un artículo no repite la fecha de su propia ley. Resultado: marcaba
+// como sospechosas preguntas VERIFICADAS A MANO como legítimas ese mismo día.
+describe('citar la norma por su nombre completo no convierte la pregunta en sospechosa', () => {
+  const ART7 = {
+    id: 'art7',
+    content:
+      'El Consejo de Gobierno de la Junta de Andalucía formulará y aprobará, con una periodicidad ' +
+      'que no será inferior a cuatro años, un Plan Estratégico para la Igualdad de Mujeres y ' +
+      'Hombres en Andalucía, a propuesta de la Consejería competente en materia de igualdad.',
+  }
+
+  it('«¿quién aprueba el Plan?» citando «Ley 12/2007, de 26 de noviembre» NO es hallazgo', () => {
+    const r = clasificarInstrumentoDerivado({
+      enunciado:
+        'Según el artículo 7 de la Ley 12/2007, de 26 de noviembre, para la promoción de la igualdad de género en Andalucía, ¿quién aprueba el Plan Estratégico para la Igualdad de Mujeres y Hombres en Andalucía?',
+      opcionCorrecta: 'El Consejo de Gobierno de la Junta de Andalucía.',
+      articuloVinculado: ART7,
+      articulosDeLaLey: [ART7],
+    })
+    expect(r.hallazgo).toBe(false)
+  })
+
+  it('la periodicidad de cuatro años, citando la ley entera, tampoco', () => {
+    const r = clasificarInstrumentoDerivado({
+      enunciado:
+        'Según el art. 7 de la Ley 12/2007, de 26 de noviembre, el Plan Estratégico para la Igualdad se aprobará:',
+      opcionCorrecta: 'Con una periodicidad que no será inferior a cuatro años.',
+      articuloVinculado: ART7,
+      articulosDeLaLey: [ART7],
+    })
+    expect(r.hallazgo).toBe(false)
+  })
+})
