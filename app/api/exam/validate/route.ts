@@ -30,7 +30,7 @@ import { classifyValidateCall } from '@/lib/api/exam/validateShape'
 import { MAX_QUESTIONS_PER_REQUEST } from '@/lib/api/filtered-questions/schemas'
 import { emit } from '@/lib/observability/emit'
 import { getClientIp } from '@/lib/api/rateLimit'
-import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
+import { getDeviceIdFromRequest, getHwFingerprintFromRequest, registerAndCheckDevice } from '@/lib/api/deviceLimit'
 import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { isCaptchaEnabled } from '@/lib/security/captcha'
@@ -549,6 +549,28 @@ async function traceValidateCall(
     // rechazado de 5.000 falsearía el denominador de golpe.
     if (!args.rejected && !synthetic && args.batchSize > 0) {
       recordServedForSubjects(gateSubjects(userId, deviceId, ip), args.batchSize).catch(() => {})
+
+      // [T-454] REGISTRAR el dispositivo, que es lo único que este camino no hacía.
+      //
+      // De los cuatro endpoints por los que se responde una pregunta, tres llaman a
+      // `registerAndCheckDevice` y este no: leía el `device_id` para el contador de arriba
+      // y lo tiraba. Resultado: quien solo hace exámenes **no existe** en `user_devices`
+      // —39 usuarios en 7 días, uno con 70 respuestas en un minuto— y con él se quedan
+      // ciegos el sweep de fraude, el límite de dispositivos y el anti-autoreferido.
+      //
+      // ⚠️ Se REGISTRA pero NO se hace cumplir el límite: el veredicto `allowed` se ignora
+      // a propósito. En los otros caminos bloquear es aceptable porque se corrige pregunta
+      // a pregunta; aquí `validate` es el FINAL de un examen entero, y cortar en este punto
+      // le tiraría al opositor el trabajo de una hora. Es la misma separación que ya hace
+      // `resolverAnclaDispositivo` con el ancla derivada de la huella: ganar visibilidad no
+      // puede costarle el servicio a nadie.
+      //
+      // Va dentro del `try` del trazo y con `.catch()`: esta función existe bajo la regla de
+      // que la observabilidad degradada nunca rompe la nota del opositor.
+      if (userId) {
+        registerAndCheckDevice(userId, deviceId, request.headers.get('user-agent'), getHwFingerprintFromRequest(request))
+          .catch(() => {})
+      }
     }
   } catch (err) {
     // Observabilidad degradada NUNCA rompe la nota del opositor.
