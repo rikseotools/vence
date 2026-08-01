@@ -1,0 +1,2176 @@
+{
+ "bajo": [
+  {
+   "id": "6ee839de-cee6-42d6-8193-379c3bddd496",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes protocolos se emplea habitualmente para el acc",
+   "clave": "SSH"
+  },
+  {
+   "id": "5ab80ecb-c9cc-4f93-a5be-4d5b89cfa3b8",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "Cuando escribimos una dirección web en el navegador y pulsamos “Enter”",
+   "clave": "DNS"
+  },
+  {
+   "id": "9c6ccfe9-4fc1-470d-98d6-ab8df09342a5",
+   "r": 0,
+   "ley": "CE",
+   "art": "53",
+   "of": false,
+   "real": true,
+   "t": "La Constitución Española, respecto a los poderes públicos los Derechos",
+   "clave": "Tienen eficacia vinculante."
+  },
+  {
+   "id": "5b22eaf4-e45c-48ab-bb6d-4a48479aed8f",
+   "r": 0,
+   "ley": "Decreto 168/2021 Aragón Mapa Sanitario",
+   "art": "3",
+   "of": false,
+   "real": true,
+   "t": "¿En cuántos Sectores está distribuido el Mapa sanitario de Aragón? (se",
+   "clave": "8."
+  },
+  {
+   "id": "1b0410ec-5d59-4b3f-8286-03b799ec5188",
+   "r": 0,
+   "ley": "CE",
+   "art": "147",
+   "of": false,
+   "real": true,
+   "t": "Los estatutos de autonomía formalmente son leyes estatales, concretame",
+   "clave": "Orgánicas."
+  },
+  {
+   "id": "c0d9f893-ad8e-454d-9f6f-f1602f36425a",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice, ¿cuál es el resultado de la siguiente operación: =COCI",
+   "clave": "2"
+  },
+  {
+   "id": "c020ee52-0cb6-4183-a85c-143d15d275fc",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "En relación con el protocolo IP, ¿cuál es el tamaño total del que no p",
+   "clave": "65536 bytes."
+  },
+  {
+   "id": "7bf305d9-dcf6-4d16-989f-b58c329db13b",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "Un newsgroup o grupo de noticias es un foro de discusión virtual o sis",
+   "clave": "Usenet."
+  },
+  {
+   "id": "15fd1022-8913-4eff-97b9-9914fda16e73",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Señale la respuesta correcta que aplica a esta definición: es una pequ",
+   "clave": "Cookie."
+  },
+  {
+   "id": "6a5259ec-dd54-4dba-828d-06fc952a7e62",
+   "r": 0,
+   "ley": "Ley 3/1985 Asturias",
+   "art": "91",
+   "of": false,
+   "real": true,
+   "t": "Según el artículo 91 de la Ley 3/1985, de 26 de diciembre, de Ordenaci",
+   "clave": "Un año"
+  },
+  {
+   "id": "cacfd499-6b74-4920-8185-d002e03ad601",
+   "r": 0,
+   "ley": "Decreto 168/2025 Estructura Consejería Sanidad",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "¿De qué órgano directivo central depende la Dirección General de Consu",
+   "clave": "De la Viceconsejería de Sanidad y Consumo"
+  },
+  {
+   "id": "cd8cc262-c5c5-41ba-a1be-d81c3017a080",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "Cuando un usuario introduce una URL en el navegador, ¿qué protocolo se",
+   "clave": "DNS"
+  },
+  {
+   "id": "c92ab16b-aaf9-4323-8c85-fbbf88f1c509",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué resultado obtendremos si realizamos la sigui",
+   "clave": "2,24"
+  },
+  {
+   "id": "ccc51b0a-f529-4bea-965e-cc17222e1d50",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "En el navegador web de Google Chrome, podemos buscar frases textuales ",
+   "clave": "Comillas."
+  },
+  {
+   "id": "d23e79c0-7cde-458a-b08b-4ef3baf99821",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué permite el protocolo HTTPS que lo hace diferente de HTTP?",
+   "clave": "Proporcionar una conexión segura y cifrada."
+  },
+  {
+   "id": "d3c5b6ce-ffdf-4d73-87e6-9991a10b104a",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué método abreviado de teclado utilizaremos en LibreOffice Writer pa",
+   "clave": "F12"
+  },
+  {
+   "id": "6b19802b-9ebd-4779-abd1-a426cfc4e7fb",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cómo se nombra un rango en una aplicación para hojas de cálculo de Li",
+   "clave": "B3:C7"
+  },
+  {
+   "id": "ce3fa5fb-bc02-474d-ac9d-0e2564c03015",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Qué función de LibreOffice Calc se utiliza para encontrar el valor má",
+   "clave": "MAX()"
+  },
+  {
+   "id": "d2488644-33fc-4ece-91b2-bb4c037e6c32",
+   "r": 0,
+   "ley": "Decreto 277/1997 Consejo Andaluz PRL",
+   "art": "4",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con el Decreto 277/1997, de 9 de diciembre, por el que se c",
+   "clave": "8."
+  },
+  {
+   "id": "ff569253-665a-449c-a170-0169ebf22256",
+   "r": 0,
+   "ley": "Ley 39/2015",
+   "art": "16",
+   "of": false,
+   "real": true,
+   "t": "¿En qué artículo de la Ley 39/2015, de 1 de octubre, del procedimiento",
+   "clave": "16.4."
+  },
+  {
+   "id": "ce5ab670-7482-4444-af30-9abbfec2c58a",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Writer podemos establecer la rotación del texto selecci",
+   "clave": "0º, 90º y 270º."
+  },
+  {
+   "id": "d3589c2d-44fc-4a19-8968-f81271ecfae2",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Una empresa u organización que permite que tu computadora se conecte a",
+   "clave": "ISP."
+  },
+  {
+   "id": "662bee29-85f8-4965-9849-10546090d4d6",
+   "r": 0,
+   "ley": "LO 14/2007",
+   "art": "preámbulo",
+   "of": false,
+   "real": true,
+   "t": "¿Quién es el autor de las Siete Partidas?",
+   "clave": "Alfonso X."
+  },
+  {
+   "id": "c688876c-6093-43f7-882d-c45ed370a3d6",
+   "r": 0,
+   "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+   "art": "3",
+   "of": false,
+   "real": true,
+   "t": "¿Qué Decreto declara el Día de la Bandera de Andalucía?",
+   "clave": "El Decreto 541/2022, de 8 de noviembre."
+  },
+  {
+   "id": "ce45be49-ad27-4cf8-9f2d-86373bb4eadc",
+   "r": 0,
+   "ley": "Ley 39/2015",
+   "art": "124",
+   "of": true,
+   "real": true,
+   "t": "¿Qué plazo establece la Ley del Procedimiento Administrativo Común par",
+   "clave": "Un mes."
+  },
+  {
+   "id": "79579435-c00e-4bdd-9eda-cc4e74853ea1",
+   "r": 0,
+   "ley": "RDL 5/2015",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿En cuántos Títulos está dividido el Real Decreto Legislativo 5/2015, ",
+   "clave": "Ocho."
+  },
+  {
+   "id": "85052565-97c4-4f73-ab16-69fcd70ce312",
+   "r": 0,
+   "ley": "CE",
+   "art": "68",
+   "of": true,
+   "real": true,
+   "t": "El número mínimo de Diputados previstos para el Congreso es de:",
+   "clave": "300"
+  },
+  {
+   "id": "dc6ba8a2-8445-4934-a155-caabf0f6dc35",
+   "r": 0,
+   "ley": "Ley 13/2007 Violencia de Género Andalucía",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "La ley de medidas de prevención y protección integral contra la violen",
+   "clave": "La Ley 13/2007, de 26 de noviembre."
+  },
+  {
+   "id": "3d905e3a-b998-47d9-9baf-079922f8fa69",
+   "r": 0,
+   "ley": "Carta Derechos Ciudadanos Justicia",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "¿En cuántos apartados se divide la Carta de Derechos de los Ciudadanos",
+   "clave": "4."
+  },
+  {
+   "id": "4c06ade1-c8ac-4639-b403-ab0729f7a3ce",
+   "r": 0,
+   "ley": "CE",
+   "art": "122",
+   "of": false,
+   "real": true,
+   "t": "Para la elección de los Jueces y Magistrados que integren el Consejo G",
+   "clave": "3/5."
+  },
+  {
+   "id": "eaf7d46c-082a-4554-9206-a8bc97d5a59a",
+   "r": 0,
+   "ley": "LibreOffice Impress",
+   "art": "6",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Impress, ¿qué menú contiene la opción “Exportar como PD",
+   "clave": "Archivo."
+  },
+  {
+   "id": "eab05295-5b08-45ef-8924-acf0399cd57a",
+   "r": 0,
+   "ley": "Decreto 168/2025 Estructura Consejería Sanidad",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "¿Cuál de las siguientes es una competencia de la Consejería de Sanidad",
+   "clave": "La dirección, edición y publicación del Boletín Oficial de l"
+  },
+  {
+   "id": "eb839184-7ae2-4498-9f0a-548c017e7aff",
+   "r": 0,
+   "ley": "LO 3/2018",
+   "art": "78",
+   "of": false,
+   "real": true,
+   "t": "Dispone el art. 78  de la LO 3/2018 de Protección de Datos Personales,",
+   "clave": "De 1 año."
+  },
+  {
+   "id": "6eb6b924-a918-48c2-b58b-17c78b22390c",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Necesito aguja e hilo, también madera y hierro, eso es todo lo que req",
+   "clave": "mas"
+  },
+  {
+   "id": "f2da993c-b499-4f83-9719-8059e661bd25",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "En una dirección web el protocolo está separado del resto de la direcc",
+   "clave": "://"
+  },
+  {
+   "id": "0518def0-8d3b-4a8d-8e79-40bca251dd9a",
+   "r": 0,
+   "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿Cuántas disposiciones finales tiene el Estatuto de Autonomía para And",
+   "clave": "Tres."
+  },
+  {
+   "id": "78c2d6fe-2ee1-4674-9d3e-e27bc5c81e05",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "Internet es un conjunto de redes de comunicación interconectadas en el",
+   "clave": "TCP/IP"
+  },
+  {
+   "id": "7dfda0aa-dae3-4498-bae3-83bdbbfdd114",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Con qué extensión se guardan por defecto los archivos creados en Libr",
+   "clave": ".ODS"
+  },
+  {
+   "id": "ff1ce9c6-a72a-4844-bedf-574fbcc1f657",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Con qué extensión se guardan por defecto los archivos creados en las ",
+   "clave": ".ods"
+  },
+  {
+   "id": "7a460580-caf5-43fa-98d0-436964fff971",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué significan las siglas HTTP?",
+   "clave": "Hyper Text Transfer Protocol."
+  },
+  {
+   "id": "fcc90bff-0683-400d-bcb2-67685d817d66",
+   "r": 0,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "18",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con la Ley 6/2002, de Salud de Aragón, ¿a quién corresponde",
+   "clave": "Al centro asistencial."
+  },
+  {
+   "id": "307f2d5f-0411-4a68-bfed-861f6fa23981",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes soportes de almacenamiento es óptico?",
+   "clave": "CD-ROM"
+  },
+  {
+   "id": "0d496f21-588d-401f-be09-20e40692c357",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Hay un haya centenaria junto a la entrada del predio, es el orguyo del",
+   "clave": "orguyo"
+  },
+  {
+   "id": "99601e57-2015-4588-8838-5434d7a8b2a2",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Se que si se fue.",
+   "clave": "Se"
+  },
+  {
+   "id": "ac425e9a-2988-45e8-8db0-db233c1c2a68",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "El autor fue un omicida con unas mayas.",
+   "clave": "omicida"
+  },
+  {
+   "id": "3f44ef28-3182-4fdf-92dc-8d55be5fd1ff",
+   "r": 0,
+   "ley": "Plan Transparencia Judicial",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "¿De qué año es el Plan de Transparencia Judicial?",
+   "clave": "2005."
+  },
+  {
+   "id": "ce14b3b5-c235-46fe-8127-5f969f9d4794",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "Si abrimos nuestro LibreOffice Calc y en la celda D1 escribimos \"=4+(3",
+   "clave": "4"
+  },
+  {
+   "id": "e8bf0c42-af9a-4fce-8514-4dd5971b4c81",
+   "r": 0,
+   "ley": "LO 3/2018",
+   "art": "72",
+   "of": false,
+   "real": true,
+   "t": "La vulneración del deber de confidencialidad establecido en el artícul",
+   "clave": "Muy grave."
+  },
+  {
+   "id": "d6d6bcc7-fcaf-4526-8fd8-ed43707650a2",
+   "r": 0,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "57",
+   "of": false,
+   "real": true,
+   "t": "Los informes de alta deberán ser firmados, según establece el artículo",
+   "clave": "La primera y la tercera son correctas."
+  },
+  {
+   "id": "5dd4142a-7fbb-4519-bc88-b03f82679ede",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "La dirección única y específica que se asigna a cada uno de los recurs",
+   "clave": "URL."
+  },
+  {
+   "id": "399239ff-d62c-4cee-847b-eda5ac08f206",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En una hoja de cálculo, si en la celda A1 tienes el valor 10, en la A2",
+   "clave": "20"
+  },
+  {
+   "id": "96c9ae92-3a40-420f-b5f6-9d5d54ba27d0",
+   "r": 0,
+   "ley": "Ley 8/2008 Galicia",
+   "art": "92",
+   "of": false,
+   "real": true,
+   "t": "La Ley de salud de Galicia recoge que el Servicio Gallego de Salud:",
+   "clave": "La segunda y la tercera son correctas."
+  },
+  {
+   "id": "022ee2c4-0012-4f47-88ef-07c2223d443a",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes opciones es una función válida de fecha en Lib",
+   "clave": "HOY()"
+  },
+  {
+   "id": "14b20d2b-e651-4523-8a2d-c680877376bc",
+   "r": 0,
+   "ley": "CE",
+   "art": "11",
+   "of": false,
+   "real": true,
+   "t": "Según la vigente Constitución Española, la nacionalidad española se ad",
+   "clave": "La ley."
+  },
+  {
+   "id": "ddf8436e-20f8-4d1b-a0c2-6b05782ecf73",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "5",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes contraseñas sería la menos segura?",
+   "clave": "P.3Cb"
+  },
+  {
+   "id": "9ba7df85-2902-40c1-b46f-4701cefb2f6d",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Señale qué sistema vincula las direcciones IP con un nombre:",
+   "clave": "DNS."
+  },
+  {
+   "id": "9c5d139d-5f71-4bae-8b70-ac2306f69e74",
+   "r": 0,
+   "ley": "Ley 11/2017 Buen Gobierno SERMAS",
+   "art": "8",
+   "of": false,
+   "real": true,
+   "t": "El Órgano Colegiado de Asesoramiento de la Comisión de Dirección del H",
+   "clave": "La Junta Técnica-Asistencial"
+  },
+  {
+   "id": "8038cb9f-8798-4a78-9404-81f5e78bec5e",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes opciones se corresponde con un sistema operati",
+   "clave": "Mac OS"
+  },
+  {
+   "id": "7c7fd721-f85e-4d08-8dcb-13a36c6e990b",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "Por su número de usuarios los sistemas operativos se suelen clasificar",
+   "clave": "Monousuarios y Multiusuarios."
+  },
+  {
+   "id": "7bead165-e1e4-4212-8028-eec6eb89a11b",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes direcciones IP pertenece a un rango privado en",
+   "clave": "172.16.5.10"
+  },
+  {
+   "id": "13ab532b-b237-4f3a-8a72-45fbe8368107",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, indique cuál de las siguientes fórmulas de DÍA.LA",
+   "clave": "=DÍA.LAB(A1+10)"
+  },
+  {
+   "id": "e4cee484-1b9c-44b3-a8cf-ae94fceceebf",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, todas las fórmulas deben empezar con:",
+   "clave": "un ="
+  },
+  {
+   "id": "634bc6f4-de5e-4bf5-be3d-e332ac29e2d8",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Qué protocolo de red suele usarse para conexiones remotas seguras a s",
+   "clave": "SSH"
+  },
+  {
+   "id": "b0e3140a-2cb4-41a5-a9a2-1179fb4412d7",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué devuelve =DIAS(\"15/06/2025\";\"10/06/2025\")?",
+   "clave": "5"
+  },
+  {
+   "id": "344b98e6-ae5f-4f59-9321-2e3443b73c53",
+   "r": 0,
+   "ley": "RDL 5/2015",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿Cuántos artículos tiene el Texto Refundido de la Ley del Estatuto Bás",
+   "clave": "100"
+  },
+  {
+   "id": "81259365-8f63-4d0b-9afd-ae96243d1127",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál es el formato de archivo propio de LibreOffice?",
+   "clave": "OpenDocument."
+  },
+  {
+   "id": "7cb260b5-0026-4214-9fc1-fc9c7f381ea3",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cuánto es el ancho máximo de una columna en LibreOffice Calc?",
+   "clave": "100 cm"
+  },
+  {
+   "id": "0226cfe5-412c-4f4b-a76d-87b1bba216ab",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "8",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Writer podemos establecer la rotación del texto selecci",
+   "clave": "0º, 90º y 270º."
+  },
+  {
+   "id": "9de161f3-e471-49c3-9a28-4882af20c096",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Podemos tener instalados en el mismo PC una Unidad de disco duro (HDD",
+   "clave": "Sí."
+  },
+  {
+   "id": "7dc2b9f9-f2b2-4e2f-8fbf-fca55cbd9795",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Hasta que el toro no se rompe el hasta, sigue embistiendo el vurladero",
+   "clave": "hasta"
+  },
+  {
+   "id": "0a986ebe-0cee-448e-8ec5-b913d2b87c8e",
+   "r": 0,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "DA_final_primera",
+   "of": false,
+   "real": true,
+   "t": "Algunas de las funciones que el Servicio Aragonés de Salud desarrollar",
+   "clave": "Las respuestas A y B son correctas"
+  },
+  {
+   "id": "e965402c-968a-4eac-b709-6db79ee758d1",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Qué tecla o combinación de teclas se utiliza en los principales naveg",
+   "clave": "F5"
+  },
+  {
+   "id": "3c76f1f8-79a2-4783-a31a-a542cee64004",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿En qué pestaña del menú de LibreOffice Calc encontramos la opción \"Li",
+   "clave": "Ver."
+  },
+  {
+   "id": "370b12c6-43b7-44b0-8da0-c089a772f8f4",
+   "r": 0,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "66",
+   "of": false,
+   "real": true,
+   "t": "Para la promoción y defensa de los derechos y deberes contenidos en la",
+   "clave": "La segunda y tercera opción de respuesta son verdaderas."
+  },
+  {
+   "id": "c17585cd-2a82-4568-889b-7a176eb5ed65",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes funciones de bases de datos no existe en el Li",
+   "clave": "BDRESTA"
+  },
+  {
+   "id": "7d3081ea-cc42-40e3-8b74-2f160f938cc9",
+   "r": 0,
+   "ley": "LO 3/2018",
+   "art": "72",
+   "of": false,
+   "real": true,
+   "t": "La LO 3/2018 de Protección de Datos Personales y garantía de los derec",
+   "clave": "Muy grave."
+  },
+  {
+   "id": "8736937a-78df-4571-9343-bc81ea8d20db",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "Si abrimos nuestro LibreOffice Calc y en la celda B3 escribimos \"=7(1+",
+   "clave": "Err:509"
+  },
+  {
+   "id": "770276e7-5d77-4a81-9ab1-42f298ebd35e",
+   "r": 0,
+   "ley": "LPRL",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "Indica cuál es la Ley de Prevención de Riesgos Laborales:",
+   "clave": "Ley 31/1995, de 8 de noviembre."
+  },
+  {
+   "id": "aa453173-0e6d-4c5c-bf5a-af2037d620a6",
+   "r": 0,
+   "ley": "Constantes vitales",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué factor no afecta directamente la presión arterial?",
+   "clave": "Número de horas de sueño."
+  },
+  {
+   "id": "e86a275e-d85b-47a7-9ddd-b6ab8374f390",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Qué tipo de ataque informático consiste en interceptar comunicaciones",
+   "clave": "Ataque Man-in-the-Middle"
+  },
+  {
+   "id": "2019ee94-b43a-41a5-a59d-c6b172ec5c44",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "En el programa LibreOffice Writer, ¿qué atajo de teclado se utiliza pa",
+   "clave": "Control + X."
+  },
+  {
+   "id": "d7ecfd7f-7a0f-432c-a1aa-a9cfac746b28",
+   "r": 0,
+   "ley": "TFUE",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "Según el artículo 2 del Tratado de Funcionamiento de la Unión Europea,",
+   "clave": "De apoyo."
+  },
+  {
+   "id": "1cc89472-1e71-4eda-b8b7-2c922e329500",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, las referencias a las celdas son de 3 tipos:",
+   "clave": "Absolutas, relativas y mixtas."
+  },
+  {
+   "id": "4738455f-cb7f-46ca-9ce2-79660b68f7b1",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Archie era un sistema de bases de datos de acceso público donde estaba",
+   "clave": "FTP anónimo."
+  },
+  {
+   "id": "f9183834-0514-414c-903e-493f42f0fb84",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "1",
+   "of": true,
+   "real": false,
+   "t": "La extensión de un archivo creado con Writer:",
+   "clave": ".odt"
+  },
+  {
+   "id": "904fbf05-d942-4de2-8dd5-796e94ffa137",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué método abreviado de teclado utilizaremos en LibreOffice Calc para",
+   "clave": "F7"
+  },
+  {
+   "id": "916adeec-7b30-4ed8-a675-f3b82d7e2efd",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué código de error obtendremos si la función ne",
+   "clave": "511"
+  },
+  {
+   "id": "90ec6d02-74af-498c-be72-a546c9656cdb",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Writer, ¿qué hace =DIA.LAB(\"01/06/2025\"; 10) sin festiv",
+   "clave": "Devuelve el 13 de junio de 2025"
+  },
+  {
+   "id": "a668ee3a-7d54-4761-a5b3-3779a04a30df",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes bloques de direcciones TCP/IP está reservado p",
+   "clave": "172.16.0.0 – 172.31.255.255"
+  },
+  {
+   "id": "245e0bb9-976c-49ce-bf4f-d522a58a28c4",
+   "r": 0,
+   "ley": "Orden 20/05/2025 Elaboración Presupuesto JA 2026",
+   "art": "Anexo V",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con la Orden de 20 de mayo de 2025, por la que se dictan no",
+   "clave": "21."
+  },
+  {
+   "id": "7b3f8150-cf02-4b54-88bd-174c91bdc61a",
+   "r": 0,
+   "ley": "CE",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "En el Título I de la Constitución: ¿Qué artículos comprende el capítul",
+   "clave": "Del 53 al 54."
+  },
+  {
+   "id": "abb904f7-cc45-499d-815e-84d92e2b10dc",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes es un protocolo utilizado para la transmisión ",
+   "clave": "NNTP"
+  },
+  {
+   "id": "928ebfec-117d-4f04-8d73-51abbed3b951",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál era el objetivo original de la red creada en Estados Unidos dura",
+   "clave": "Mantener la comunicación en caso de un ataque nuclear."
+  },
+  {
+   "id": "a7c25b22-f20c-44ea-8aad-908cec5ce443",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "6",
+   "of": false,
+   "real": false,
+   "t": "La extensión de nombre de archivo por defecto para los archivos LibreO",
+   "clave": ".odf"
+  },
+  {
+   "id": "939e345b-bcef-492a-b274-d684f710787a",
+   "r": 0,
+   "ley": "Orden 20/05/2025 Elaboración Presupuesto JA 2026",
+   "art": "Anexo V",
+   "of": false,
+   "real": true,
+   "t": "La Orden de 20 de mayo de 2025, por la que se dictan normas para la el",
+   "clave": "18."
+  },
+  {
+   "id": "a6ae4342-3579-4b9d-82ab-541d3b2a8d22",
+   "r": 0,
+   "ley": "LO 3/2018",
+   "art": "73",
+   "of": false,
+   "real": true,
+   "t": "El incumplimiento del deber del encargado del tratamiento de notificar",
+   "clave": "Grave."
+  },
+  {
+   "id": "7c88ab0f-c3e2-458c-b148-da7b15a8774c",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En la aplicación Calc del paquete ofimático LibreOffice versión 7.3 ¿q",
+   "clave": "4"
+  },
+  {
+   "id": "94049c8c-1dfd-4edc-81ee-d98c46237d82",
+   "r": 0,
+   "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿Cuántas disposiciones adicionales tiene el Estatuto de Autonomía para",
+   "clave": "Cinco."
+  },
+  {
+   "id": "3fc73193-14ef-4261-80eb-29467de2c342",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "Existen tres clases de direcciones IP. Señale cuál es aquella en la qu",
+   "clave": "Clase B"
+  },
+  {
+   "id": "15e03a31-e196-460e-8e4b-2999c65493f0",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes términos se corresponde con la descripción “Pr",
+   "clave": "Bot."
+  },
+  {
+   "id": "8d0fb099-a6d0-4298-a14a-57f7435102d7",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de los siguientes protocolos se usa principalmente para la consu",
+   "clave": "DNS"
+  },
+  {
+   "id": "2a0f7f98-4e58-4eae-ac74-d2fab5256117",
+   "r": 0,
+   "ley": "Lengua Española GC",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Deja que te de el té parcialmente.",
+   "clave": "de"
+  },
+  {
+   "id": "32e85155-5062-45d2-936d-bbb2d0dc418c",
+   "r": 0,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "62",
+   "of": false,
+   "real": true,
+   "t": "Según el Decreto 174/2010 del Gobierno de Aragón, con qué 5 periodicid",
+   "clave": "Cada 3 meses."
+  },
+  {
+   "id": "963d4c78-6b71-4d86-b6ce-15bfd83c6d23",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "Cuando una página web nos pide que nos identifiquemos con un nombre de",
+   "clave": "https."
+  },
+  {
+   "id": "f11870f6-ca52-4a3e-863a-f10086bc4010",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes siglas corresponden al Lenguaje de Marcado de ",
+   "clave": "HTML."
+  },
+  {
+   "id": "968bba3c-df7c-44c8-a00a-7c883a94e72b",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Va usted a realizar un curso de formación de modalidad \"en línea\". ¿Cu",
+   "clave": "Moodle."
+  },
+  {
+   "id": "331115f3-1d5f-49db-971c-e6f05a3513b6",
+   "r": 0,
+   "ley": "Ley 13/2007 Violencia de Género Andalucía",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "La ley de medidas de prevención y protección integral contra la violen",
+   "clave": "Un Título Preliminar y cuatro títulos."
+  },
+  {
+   "id": "9446a9b5-d4bc-4a1b-955e-71d2d8c52757",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En CALC, usamos la función BUSCARV para que, con el código de un produ",
+   "clave": "#N/D"
+  },
+  {
+   "id": "94e6e2ea-ac7d-4b64-8a11-ca57ff094911",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué consorcio creó Tim Berners-Lee en 1994 para definir una dirección",
+   "clave": "W3C."
+  },
+  {
+   "id": "53f1841a-f56d-456f-98c5-02c4860b5634",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Señale cómo se denomina el código internacional que opera a nivel de b",
+   "clave": "Código ASCII."
+  },
+  {
+   "id": "b158c389-f41c-40bd-aac1-b6cbd117a2e6",
+   "r": 0,
+   "ley": "Plan Transparencia Judicial",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "El Plan de Transparencia Judicial se publicó en el Boletín Oficial del",
+   "clave": "El 1 de noviembre de 2005."
+  },
+  {
+   "id": "ade7b5b5-72d5-4fd6-a2c7-6f40669b9b4b",
+   "r": 0,
+   "ley": "Ley 12/2001 LOSCAM",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "La Ley de Ordenación Sanitaria de la Comunidad de Madrid, viene recogi",
+   "clave": "Ley 12/2001, de 21 de diciembre."
+  },
+  {
+   "id": "ab454f60-594c-49ee-a8c6-0ef52b5f262c",
+   "r": 0,
+   "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿Cuántas disposiciones transitorias tiene el Estatuto de Autonomía par",
+   "clave": "Dos."
+  },
+  {
+   "id": "3e5dbf32-e0cc-4cdc-b628-efc14090e036",
+   "r": 0,
+   "ley": "Ley 13/2007 Violencia de Género Andalucía",
+   "art": "60",
+   "of": false,
+   "real": true,
+   "t": "El protocolo de respuesta pública de la Administración de la Junta de ",
+   "clave": "Por  la Directora del Instituto Andaluz de la Mujer."
+  },
+  {
+   "id": "3f54b90d-cdbd-4e28-aee6-92861d85ff49",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "En el buscador de Google, podemos buscar frases textuales que aparezca",
+   "clave": "Comillas."
+  },
+  {
+   "id": "3f41b801-eaa7-49f8-a3d2-671392c3c4f7",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿cuál de las siguientes referencias mixtas se man",
+   "clave": "$A1"
+  },
+  {
+   "id": "b5be2df8-4871-4a7d-86e8-019ca9cf7628",
+   "r": 0,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "24",
+   "of": false,
+   "real": true,
+   "t": "Según la Ley 3/2009, de 11 de mayo, de los derechos y deberes de los u",
+   "clave": "Incluso una vez finalizada su actividad profesional."
+  },
+  {
+   "id": "bcddc1cf-a5fe-4616-82ab-e723b3564dd4",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "Si queremos mostrar la ventana del explorador Microsoft Edge en vista ",
+   "clave": "F11"
+  },
+  {
+   "id": "baac91c3-27a0-4da1-adc7-e8cf87a4ea35",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": true,
+   "real": false,
+   "t": "¿Qué nombre recibe el motor de búsqueda diseñado en 1992 específicamen",
+   "clave": "Veronica"
+  },
+  {
+   "id": "bb6e968a-e55c-4158-ac62-e39bfc5f6373",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En Calc, en la columna A tenemos Nombres y en la B Apellidos. Queremos",
+   "clave": "=A1&“ ”&B1"
+  },
+  {
+   "id": "49140298-3890-4d63-9dfd-c36ef19cb2c3",
+   "r": 0,
+   "ley": "Decreto 277/1997 Consejo Andaluz PRL",
+   "art": "4",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con el Decreto 277/1997, de 9 de diciembre, por el que se c",
+   "clave": "8."
+  },
+  {
+   "id": "43f34075-c0bb-46d0-8dfe-db715c1a5333",
+   "r": 0,
+   "ley": "LO 1/2004",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "¿En qué año se creó el Observatorio de la Imagen de las Mujeres (OIM),",
+   "clave": "En 1994."
+  },
+  {
+   "id": "4570fb51-3d94-472c-a716-3e3fc3d8204c",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "En el programa LibreOffice Calc, para convertir una referencia relativ",
+   "clave": "$"
+  },
+  {
+   "id": "47014f00-f2d8-4a23-93c4-e1e2e4e94ce8",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, dado el rango A2:B6 con nombres en A y edades en ",
+   "clave": "30"
+  },
+  {
+   "id": "b6fa8840-b21d-439c-8b32-602f3ce53a45",
+   "r": 0,
+   "ley": "Ley Función Pública Andalucía (Ley 5/2023)",
+   "art": "110",
+   "of": false,
+   "real": true,
+   "t": "Según lo establecido en la Ley 5/2023, de 7 de junio, de la Función Pú",
+   "clave": "Funcionarios en servicio activo."
+  },
+  {
+   "id": "515e6375-9e5e-4fc6-9429-68f6e1e595d5",
+   "r": 0,
+   "ley": "Ley Función Pública Andalucía (Ley 5/2023)",
+   "art": "171",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con la Ley 5/2023, de 7 de junio, de la Función Pública de ",
+   "clave": "Grave."
+  },
+  {
+   "id": "4c67d30a-83b8-4222-a319-be307138771a",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿ A cuál de las siguientes Consejerías de la administración de la Junt",
+   "clave": "Consejería competente en materia de Justicia."
+  },
+  {
+   "id": "4f7544e3-ab1f-4a65-9704-614cd5280a0a",
+   "r": 0,
+   "ley": "Ley 12/2001 LOSCAM",
+   "art": "DA_adicional_decima",
+   "of": false,
+   "real": true,
+   "t": "El órgano colegiado de participación de los profesionales en el mecani",
+   "clave": "La Junta Técnico Asistencial"
+  },
+  {
+   "id": "149c1853-25a7-43ad-bd31-8c75959e7c18",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes opciones corresponde a una herramienta de gest",
+   "clave": "Moodle."
+  },
+  {
+   "id": "58755b16-1b65-48f3-bb77-d3dab8c6eb2b",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué hace =SI(Y(2=2;3=3;4<>5);\"OK\";\"Error\")?",
+   "clave": "OK"
+  },
+  {
+   "id": "acbba1ad-8b35-4d66-a412-5e840dba637b",
+   "r": 0,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "12",
+   "of": false,
+   "real": true,
+   "t": "Según recoge el art. 12 del Decreto 174/2010, de 21 de septiembre, del",
+   "clave": "10.000 y 15.000."
+  },
+  {
+   "id": "5a4240d1-0fcc-4e51-b7f4-ac2c7adf605d",
+   "r": 0,
+   "ley": "RD 187/2008 Red Hospitalaria Defensa",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "El procedimiento de integración del personal laboral del área de activ",
+   "clave": "R.D. 187/2008 de 8 de febrero"
+  },
+  {
+   "id": "ba1e9e0d-ad2f-447b-ae04-86ebbbff20dc",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "Si en LibreOffice Calc empleamos la función estadística PROMEDIOA, ¿cu",
+   "clave": "0"
+  },
+  {
+   "id": "77ede5a3-3abd-41de-bc71-a3cedd5d3a86",
+   "r": 0,
+   "ley": "Decreto 59/1997 Aragón Equipos Atención Primaria",
+   "art": "32",
+   "of": false,
+   "real": true,
+   "t": "El equipo de atención primaria elaborará anualmente una memoria de act",
+   "clave": "Son correctas B y C."
+  },
+  {
+   "id": "97e53a5f-f673-48e3-83e3-98127e764517",
+   "r": 0,
+   "ley": "Decreto 122/2020 Estructura Orgánica Sanidad Aragón",
+   "art": "37",
+   "of": false,
+   "real": true,
+   "t": "El órgano del departamento de salud y consumo encargado de la Prevenci",
+   "clave": "La Dirección de Área de Recursos Humanos."
+  },
+  {
+   "id": "07fecb4a-6103-4e2a-9dd6-f11fd0df4a9b",
+   "r": 0,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "43",
+   "of": false,
+   "real": true,
+   "t": "Sin perjuicio de la adaptación a las condiciones específicas de cada h",
+   "clave": "Análisis y planificación"
+  },
+  {
+   "id": "07888f21-f2f6-4129-b453-174ebc66daeb",
+   "r": 0,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "De los siguientes protocolos, ¿cuál es el utilizado para la transferen",
+   "clave": "FTP."
+  },
+  {
+   "id": "80ea7f34-b6e9-4977-8c8a-5cf243ed4c4c",
+   "r": 0,
+   "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "El 28 de febrero de 1981, ¿en qué ciudad de Andalucía se reunió la Asa",
+   "clave": "En Córdoba"
+  },
+  {
+   "id": "f12a0bef-eef3-4d61-adc3-d8a9c5a1431a",
+   "r": 0,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "66",
+   "of": false,
+   "real": true,
+   "t": "Para la promoción y defensa de los derechos y deberes contenidos en la",
+   "clave": "La segunda y tercera opción de respuesta es verdadera."
+  },
+  {
+   "id": "b373ad5e-99e6-4465-9be1-f46f6af858c9",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué función financiera emplearemos para calcular",
+   "clave": "VA"
+  },
+  {
+   "id": "416ef373-75cc-49e5-b5a9-df730db5d973",
+   "r": 0,
+   "ley": "Ley 39/2015",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "En la Ley 39/2015, de 1 de octubre, aparecen reguladas:",
+   "clave": "Las notificaciones administrativas."
+  },
+  {
+   "id": "cb1179a9-9738-4e96-ac75-c96a3080b01e",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "La extensión de un archivo creado con Writer es ...",
+   "clave": ".ODT"
+  },
+  {
+   "id": "3a9aa619-8d85-464a-856d-d73ea2e4e592",
+   "r": 0,
+   "ley": "Informática Hardware General",
+   "art": "0",
+   "of": true,
+   "real": false,
+   "t": "En un ordenador con un bus de 30 hilos, ¿cuántas palabras se pueden di",
+   "clave": "1 GiB"
+  },
+  {
+   "id": "a071f8db-c368-4266-8c74-4ccea1342abf",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "6",
+   "of": false,
+   "real": false,
+   "t": "¿Con qué extensión se asociaría el archivo correspondiente a una plant",
+   "clave": ".ott"
+  },
+  {
+   "id": "f1fc8916-1564-4568-81fb-83ebed362f44",
+   "r": 0,
+   "ley": "Informática Básica",
+   "art": "5",
+   "of": false,
+   "real": false,
+   "t": "¿Es correcta la siguiente afirmación? El antivirus de Windows Defender",
+   "clave": "Sí."
+  },
+  {
+   "id": "97826a7a-7dd9-4ebf-af05-9f3489eaeece",
+   "r": 0,
+   "ley": "LibreOffice Calc",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En LibreOffice Calc, ¿qué devuelve la fórmula =SIFECHA(\"01/01/2022\";\"0",
+   "clave": "1"
+  },
+  {
+   "id": "1e3250e2-5f0f-4a5a-bdf2-77c9415bd168",
+   "r": 0,
+   "ley": "LO 3/1981",
+   "art": "21",
+   "of": false,
+   "real": true,
+   "t": "El superior jerárquico u Organismo que prohíba al funcionario a sus ór",
+   "clave": "A) y B) son correctas."
+  },
+  {
+   "id": "d4fe2016-b822-4380-8952-3d5dc155b164",
+   "r": 0,
+   "ley": "Portal de Internet",
+   "art": "0",
+   "of": false,
+   "real": false,
+   "t": "Indique cuál, entre las siguientes webs de organismos públicos naciona",
+   "clave": "www.gob.es"
+  },
+  {
+   "id": "f7dd971a-ed78-4f2c-a450-04def12705c5",
+   "r": 0,
+   "ley": "Ley 12/2007 Igualdad de Género Andalucía",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "En Andalucía, ¿cuál es la Ley que regula la promoción de la igualdad d",
+   "clave": "La Ley 12/2007."
+  },
+  {
+   "id": "0baa919e-cd57-44b4-970e-5af5f1efef95",
+   "r": 0,
+   "ley": "Decreto 122/2020 Estructura Orgánica Sanidad Aragón",
+   "art": "37",
+   "of": false,
+   "real": true,
+   "t": "¿Quién aprobará el plan autonómico de prevención de riesgos laborales ",
+   "clave": "El Gobierno de Aragón."
+  },
+  {
+   "id": "7e4baf38-72f7-4a29-bd92-4d5ee5b2c0ea",
+   "r": 0,
+   "ley": "LibreOffice Writer",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "En relación con un documento de LibreOffice Writer, ¿cuál de los sigui",
+   "clave": "A3"
+  },
+  {
+   "id": "d8c852f1-8711-40c2-a41c-8890f722406a",
+   "r": 0,
+   "ley": "Intranet",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál fue el primer servidor web creado por CERN?",
+   "clave": "www.info.cern.ch"
+  },
+  {
+   "id": "755e6381-3726-4be5-b4ef-16a894546150",
+   "r": 0.08,
+   "ley": "Ley 12/2007 Igualdad de Género Andalucía",
+   "art": "3",
+   "of": false,
+   "real": true,
+   "t": "¿Qué se entiende por discriminación horizontal?",
+   "clave": "Significa que a las mujeres se les facilita el acceso a empl"
+  },
+  {
+   "id": "055dd563-2d66-4e9d-a6db-7fae00baad7d",
+   "r": 0.125,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿A cuál de los siguientes tipos de comercio electrónico pertenecerá un",
+   "clave": "B2C (Business to Consumer). Operaciones comerciales entre em"
+  },
+  {
+   "id": "7d60dd36-0503-42c5-8d68-667f9efff8d4",
+   "r": 0.125,
+   "ley": "Ley 6/1990 Archivos y Patrimonio Documental Murcia",
+   "art": "6",
+   "of": false,
+   "real": true,
+   "t": "Según la Ley 6/1990, el Sistema de Archivos de la Región de Murcia est",
+   "clave": "La consejería de planificación informática, sistemas de info"
+  },
+  {
+   "id": "ea8a044e-c0ed-4aad-97a8-a05807134d5e",
+   "r": 0.15384615384615385,
+   "ley": "Explorador Windows 11",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes afirmaciones referidas a un acceso directo de ",
+   "clave": "Es posible crear accesos directos a carpetas y ficheros. Si "
+  },
+  {
+   "id": "648ca5f0-e0b4-4b88-b491-44f7c6bf6f23",
+   "r": 0.16666666666666666,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál es la función del World Wide Web Consortium (W3C)?",
+   "clave": "El desarrollo de estándares que aseguran el crecimiento de l"
+  },
+  {
+   "id": "afcdf775-175a-470f-ab45-9a49e3510a1b",
+   "r": 0.16666666666666666,
+   "ley": "LO 3/2007",
+   "art": "0",
+   "of": false,
+   "real": true,
+   "t": "El término \"empoderamiento\" fue acuñado en:",
+   "clave": "La Conferencia Mundial de las Mujeres en Beijing (Pekín) en "
+  },
+  {
+   "id": "6132470b-088d-43d2-bdae-1779c288857e",
+   "r": 0.16666666666666666,
+   "ley": "Decreto 161/2022 Estructura Consejería Inclusión Social",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "Las competencias relativas a justicia juvenil, ¿a qué Consejería corre",
+   "clave": "A la Consejería de Justicia, Administración Local y Función "
+  },
+  {
+   "id": "d5d9e046-e391-488c-943d-7d6e08cd9841",
+   "r": 0.2,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Qué papel desempeña el protocolo TCP en las comunicaciones por Intern",
+   "clave": "Controla que los paquetes lleguen completos y en orden"
+  },
+  {
+   "id": "c4cd47bd-e031-42a0-977f-a05d264e486c",
+   "r": 0.2,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Qué función cumple una VPN (Red Privada Virtual) en la navegación web",
+   "clave": "Oculta tu dirección IP pública y cifra el tráfico"
+  },
+  {
+   "id": "38915f80-c8e4-42cc-b50f-52af98da3d15",
+   "r": 0.2,
+   "ley": "Explorador Windows 11",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En el Explorador de archivos de Windows 11, ¿qué es un archivo comprim",
+   "clave": "Un archivo que ocupa menos espacio en disco al aplicar un mé"
+  },
+  {
+   "id": "3bdf4212-7e6c-41d4-a559-9129f8ae82a9",
+   "r": 0.2,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "27",
+   "of": false,
+   "real": true,
+   "t": "De conformidad con el artículo 27 del Decreto 174/2010, de 21 de septi",
+   "clave": "El Consejero de Sanidad, Bienestar Social y Familia"
+  },
+  {
+   "id": "c35b290f-1441-4e17-8058-842402f20d07",
+   "r": 0.2,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "5",
+   "of": false,
+   "real": true,
+   "t": "Las personas incluidas en el ámbito de aplicación de la Ley 6/2002, de",
+   "clave": "Deber de comunicar al responsable sanitario correspondiente "
+  },
+  {
+   "id": "673c27eb-56a5-4f2a-894b-112693a12122",
+   "r": 0.23529411764705882,
+   "ley": "Ley 8/2008 Galicia",
+   "art": "12",
+   "of": false,
+   "real": true,
+   "t": "Indique la opción correcta:",
+   "clave": "Se considerará como única causa para la solicitud de reinteg"
+  },
+  {
+   "id": "de08593a-d90f-4b5c-aacd-8041f86791eb",
+   "r": 0.25,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "33",
+   "of": false,
+   "real": true,
+   "t": "Según el art. 33 del Decreto 174/2010 de 21 de septiembre, del Gobiern",
+   "clave": "Dirección de Área de Coordinación Asistencial."
+  },
+  {
+   "id": "dc556f2a-2bab-4e78-8b9e-56dcc471c806",
+   "r": 0.25,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "36",
+   "of": false,
+   "real": true,
+   "t": "Acerca del derecho a recibir información general sobre el conjunto de ",
+   "clave": "Es un derecho que tiene cualquier ciudadano."
+  },
+  {
+   "id": "9be7c3fd-b027-4130-8802-fd8627479f68",
+   "r": 0.25,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "Señale la respuesta correcta. El protocolo Telnet se basa en tres conc",
+   "clave": "El paradigma Terminal virtual de red, el principio de opcion"
+  },
+  {
+   "id": "300b8c97-a9f4-4582-9ef1-be20088c94b6",
+   "r": 0.25,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "La Ley 6/2002, de 15 de abril, de Salud de Aragón considera la coordin",
+   "clave": "Un principio general inspirador de la citada Ley."
+  },
+  {
+   "id": "927f55d4-8e6f-4068-9ed3-a8a7374f5dca",
+   "r": 0.25,
+   "ley": "Movilizacion y posiciones",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál es la principal función del marco de Bolkan?",
+   "clave": "Sujetar extremidades en posición adecuada"
+  },
+  {
+   "id": "7274921e-6df7-4736-a81f-5d594d7610fb",
+   "r": 0.2727272727272727,
+   "ley": "Ley 8/2008 Galicia",
+   "art": "50",
+   "of": false,
+   "real": true,
+   "t": "Sobre coordinación entre niveles asistenciales en el Servizo Galego de",
+   "clave": "Si se considera necesario, el sistema sanitario facilitará u"
+  }
+ ],
+ "medio": [
+  {
+   "id": "26145af8-d186-4c0b-8353-57cd6f3beb3a",
+   "r": 0.3,
+   "ley": "Decreto 80/2005 Murcia Instrucciones Previas",
+   "art": "13",
+   "of": false,
+   "real": true,
+   "t": "En cuál de las situaciones que se describen a continuación no se tendr",
+   "clave": "Los directores gerentes de las instituciones hospitalarias d"
+  },
+  {
+   "id": "255a2f7e-3141-4bbb-b8a8-e21fb5d444a0",
+   "r": 0.3181818181818182,
+   "ley": "Código Conducta TIC JA",
+   "art": "9",
+   "of": true,
+   "real": false,
+   "t": "¿Puede un empleado público de la Administración de la Junta de Andaluc",
+   "clave": "No, porque el apartado 9.3 de la Resolución de 22 de octubre"
+  },
+  {
+   "id": "e3f5aea1-4b3d-41af-a248-d9298ec9d03f",
+   "r": 0.3333333333333333,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "Entre los principios generales en los que se inspira la Ley de Salud d",
+   "clave": "Consecución de la igualdad de género."
+  },
+  {
+   "id": "ee992e39-16a6-4393-9584-567c3df2a3b4",
+   "r": 0.3333333333333333,
+   "ley": "Ley 8/2008 Galicia",
+   "art": "67",
+   "of": false,
+   "real": true,
+   "t": "Elige la denominación correcta según la ordenación territorial estable",
+   "clave": "Distrito sanitario de A Mariña."
+  },
+  {
+   "id": "b86e429e-8288-4981-ae1e-766441e4a6d1",
+   "r": 0.3333333333333333,
+   "ley": "RDL 5/2015",
+   "art": "95",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con lo establecido en el Texto Refundido de la Ley del Esta",
+   "clave": "Falta grave y falta leve."
+  },
+  {
+   "id": "bc453dff-b687-41e1-86f7-a4cb362d95ab",
+   "r": 0.3333333333333333,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "Los principales navegadores actuales disponen de un modo de navegación",
+   "clave": "Privado, incógnito o InPrivate"
+  },
+  {
+   "id": "fb7f28df-704b-45bd-a177-7a7737ad50c7",
+   "r": 0.3333333333333333,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "46",
+   "of": false,
+   "real": true,
+   "t": "Según la ley de salud de Aragón 6/2002 15 Abril, ¿Cómo se estructura t",
+   "clave": "En áreas de salud, sectores sanitarios y zonas básicas de sa"
+  },
+  {
+   "id": "960f52ce-99c4-4042-ac41-9a692a498486",
+   "r": 0.3333333333333333,
+   "ley": "LibreOffice Impress",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Qué opción permite guardar la presentación con un nombre nuevo o en o",
+   "clave": "Archivo > Guardar como."
+  },
+  {
+   "id": "9be6adee-6e3f-4b5d-87b6-0698e7868303",
+   "r": 0.3333333333333333,
+   "ley": "Decreto 80/2005 Murcia Instrucciones Previas",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "Según el Decreto regional 80/2005, de 8 de julio, por el que se aprueb",
+   "clave": "Mediante cualquier medio válido en Derecho y en que conste l"
+  },
+  {
+   "id": "b744c58d-57a2-4899-8aae-5ab39b50ccf9",
+   "r": 0.3333333333333333,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes es una red de telecomunicaciones de banda anch",
+   "clave": "Metropolitan Area Network (MAN)"
+  },
+  {
+   "id": "143ca856-34fd-4c6d-b26c-aa7d82ee7a51",
+   "r": 0.3333333333333333,
+   "ley": "Ley Función Pública Andalucía (Ley 5/2023)",
+   "art": "71",
+   "of": false,
+   "real": true,
+   "t": "Según la Ley 5/2023, de 7 de junio, de la Función Pública de Andalucía",
+   "clave": "El complemento de carrera profesional."
+  },
+  {
+   "id": "fc1104fe-934e-469d-a766-8a565a2db189",
+   "r": 0.3333333333333333,
+   "ley": "LO 3/2018",
+   "art": "74",
+   "of": false,
+   "real": true,
+   "t": "El incumplimiento del principio de transparencia de la información o d",
+   "clave": "Constituye una infracción leve."
+  },
+  {
+   "id": "165ef8cf-5c5c-4e69-ae7a-091cef59594a",
+   "r": 0.3333333333333333,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "43",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo al Decreto 174/2010, de 21 de septiembre, del Gobierno de A",
+   "clave": "Unidades de Trabajo Social."
+  },
+  {
+   "id": "129e62f6-6cf2-458b-83b0-a1703bc03934",
+   "r": 0.3333333333333333,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "¿Cuál es el decreto que regula la organización y el funcionamiento de ",
+   "clave": "El Decreto 174/2010 del 21 de septiembre."
+  },
+  {
+   "id": "de45e8ae-091c-427a-b886-be44993c32f7",
+   "r": 0.3333333333333333,
+   "ley": "CE",
+   "art": "97",
+   "of": false,
+   "real": true,
+   "t": "¿Cuál de las siguientes funciones la Constitución Española no atribuye",
+   "clave": "Controlar la potestad reglamentaria y la legalidad de la act"
+  },
+  {
+   "id": "89446508-be3f-44fe-b0b5-78e59141244d",
+   "r": 0.3333333333333333,
+   "ley": "LibreOffice Calc",
+   "art": "1",
+   "of": false,
+   "real": false,
+   "t": "¿Qué función realiza el siguiente icono utilizado en LibreOffice Calc?",
+   "clave": "Combinar y centrar celdas."
+  },
+  {
+   "id": "1b4cf62a-5651-4034-9d53-6e480df3a360",
+   "r": 0.3333333333333333,
+   "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+   "art": "65",
+   "of": false,
+   "real": true,
+   "t": "De acuerdo con la Ley 9/2007,  de 22 de octubre, de la Administración ",
+   "clave": "A la Consejería a la que están adscritas."
+  },
+  {
+   "id": "1b796624-cb71-4357-8842-a8f6e55758cd",
+   "r": 0.3333333333333333,
+   "ley": "Ley 12/2001 LOSCAM",
+   "art": "41",
+   "of": false,
+   "real": true,
+   "t": "Indique cuál de los siguientes es un órgano de asesoramiento y partici",
+   "clave": "Consejos Territoriales de Salud."
+  },
+  {
+   "id": "b205aec9-709a-4fe1-bcc0-17f92a575a30",
+   "r": 0.3333333333333333,
+   "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+   "art": "37",
+   "of": false,
+   "real": true,
+   "t": "En el ejercicio de sus funciones, el Delegado del Gobierno de la Junta",
+   "clave": "Por la Comisión Provincial de Coordinación"
+  },
+  {
+   "id": "37e712c2-608a-4922-b2b5-e11376e72cf6",
+   "r": 0.3333333333333333,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes organizaciones tiene como misión promover el d",
+   "clave": "Internet Society (ISOC)."
+  },
+  {
+   "id": "bf6fc229-2d06-4c33-9e25-493dad80c343",
+   "r": 0.3333333333333333,
+   "ley": "Ley 39/2015",
+   "art": "101",
+   "of": false,
+   "real": true,
+   "t": "Si en virtud de acto administrativo hubiera de satisfacerse cantidad l",
+   "clave": "El apremio sobre el patrimonio."
+  },
+  {
+   "id": "7b747d79-9237-4ab1-9642-5c0a4d07f032",
+   "r": 0.35714285714285715,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "En general, cuando navegamos por una página web, ¿cuál de las siguient",
+   "clave": "La mayor parte del tráfico es de bajada, porque necesitamos "
+  },
+  {
+   "id": "f12d0732-292e-477a-a0e1-09be18a9176b",
+   "r": 0.375,
+   "ley": "Ley 12/2001 LOSCAM",
+   "art": "5",
+   "of": false,
+   "real": true,
+   "t": "La red sanitaria única de utilización pública de la Comunidad de Madri",
+   "clave": "Por las Instituciones Sanitarias Públicas o Privadas acredit"
+  },
+  {
+   "id": "47940175-a352-4de9-90f2-56e97504f08b",
+   "r": 0.375,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "En Internet, ¿qué es un servidor?",
+   "clave": "Es un ordenador capaz de atender las peticiones de un client"
+  },
+  {
+   "id": "e46a7272-ee7b-4169-bb87-479f9c2ec832",
+   "r": 0.4,
+   "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+   "art": "5",
+   "of": false,
+   "real": true,
+   "t": "Según el Decreto 174/2010, por el que se aprueba el reglamento de la e",
+   "clave": "Se integra en varias de las líneas asistenciales establecida"
+  },
+  {
+   "id": "33c86ad8-0e21-4c47-916f-c7ff863509e6",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "6",
+   "of": false,
+   "real": false,
+   "t": "Para intercambiar información entre los equipos informáticos han sido ",
+   "clave": "Se encarga de fragmentar el mensaje emitido en paquetes."
+  },
+  {
+   "id": "7ff4340d-307b-453b-a0ce-34c635d3d3ef",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En Microsoft Edge, ¿qué ocurre con Ctrl + 1 a Ctrl + 8?",
+   "clave": "Cambian a la pestaña específica según su posición."
+  },
+  {
+   "id": "44d9c6d2-a238-4622-a5b3-8035ef793aa0",
+   "r": 0.4,
+   "ley": "LO 3/2018",
+   "art": "73",
+   "of": false,
+   "real": true,
+   "t": "No posibilitar la efectiva participación del delegado de protección de",
+   "clave": "Se considera una infracción grave y prescribirá a los 2 años"
+  },
+  {
+   "id": "5fd31a4d-7e3d-4026-ba7f-0a50a0daaeba",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En Microsoft Edge, ¿qué ocurre si presionas Ctrl + T?",
+   "clave": "Abre una pestaña nueva y cambia a ella."
+  },
+  {
+   "id": "8b5d00f1-b8ba-4e45-becb-6030c35d0056",
+   "r": 0.4,
+   "ley": "Ley 8/2008 Galicia",
+   "art": "68",
+   "of": false,
+   "real": true,
+   "t": "La persona titular de la Gerencia de una área sanitaria es nombrada:",
+   "clave": "Por orden de la persona titular de la Consellería de Sanidad"
+  },
+  {
+   "id": "6c72d04c-4be0-4a96-bf98-42fbe8cf6433",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "El bloqueo de ventanas emergentes (pop-ups) en un navegador tiene como",
+   "clave": "Reducir interrupciones y posibles riesgos de seguridad."
+  },
+  {
+   "id": "920abe60-06ea-4551-ab83-e3eab83d2b69",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Cuál de las siguientes es una de las funciones desempeñada por el DNS",
+   "clave": "Resolver la conversión de direcciones alfanuméricas a numéri"
+  },
+  {
+   "id": "c292d4c9-a988-4db0-ae66-f4713ed162b0",
+   "r": 0.4,
+   "ley": "Decreto 153/2022 Estructura Consejería Economía",
+   "art": "2",
+   "of": false,
+   "real": true,
+   "t": "¿A qué Consejería está adscrito el Consejo Económico y Social de Andal",
+   "clave": "A la Consejería de Empleo, Empresa y Trabajo Autónomo."
+  },
+  {
+   "id": "02019228-e90c-4505-87c2-d5251ef16487",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "4",
+   "of": false,
+   "real": false,
+   "t": "En Microsoft Edge, ¿cuál es la diferencia entre Ctrl + N y Ctrl + Mayú",
+   "clave": "Una abre ventana normal y la otra ventana InPrivate."
+  },
+  {
+   "id": "04dff115-b777-47e8-aa0f-e7a09fd26825",
+   "r": 0.4,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿Qué es el HTML?",
+   "clave": "Es un lenguaje de marcado para la elaboración de páginas web"
+  },
+  {
+   "id": "4d8d360b-7c1d-4d0c-9d8e-ff31e702e78b",
+   "r": 0.4117647058823529,
+   "ley": "La Red Internet",
+   "art": "2",
+   "of": false,
+   "real": false,
+   "t": "¿A cuál de las siguientes descripciones se ajusta el término Wiki en i",
+   "clave": "Comunidad virtual cuyas páginas son editadas directamente de"
+  },
+  {
+   "id": "5f2ca010-b061-45e2-b172-8e816a62d4f0",
+   "r": 0.42857142857142855,
+   "ley": "Decreto 122/2020 Estructura Orgánica Sanidad Aragón",
+   "art": "30",
+   "of": false,
+   "real": true,
+   "t": "En el Servicio Aragonés de Salud, el control de las cuentas bancarias ",
+   "clave": "Servicio de Presupuestos y Tesorería de la Dirección de área"
+  },
+  {
+   "id": "e19e17c6-a76a-42f6-8728-ac4bd74395c7",
+   "r": 0.42857142857142855,
+   "ley": "RDL 29/2020 Teletrabajo AAPP",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "En relación a la modalidad de Teletrabajo en las Administraciones Públ",
+   "clave": "Ha sido aprobada mediante Real Decreto-ley 29/2020, de 29 de"
+  },
+  {
+   "id": "87e3977c-5fa6-45a5-bbd3-a704e2d78a22",
+   "r": 0.42857142857142855,
+   "ley": "Ley 3/2009 Murcia",
+   "art": "30",
+   "of": false,
+   "real": true,
+   "t": "Señale cuál es la afirmación correcta sobre el derecho a la informació",
+   "clave": "Incluye el derecho a que se respete la voluntad expresa del "
+  },
+  {
+   "id": "99c1d716-e27d-49a2-9144-1d3ac5ccb1e0",
+   "r": 0.42857142857142855,
+   "ley": "Ley 6/2002 Salud Aragón",
+   "art": "12",
+   "of": false,
+   "real": true,
+   "t": "Según la Ley 6/2002, de 15 de abril, de Salud de Aragón, ¿Cuándo es ne",
+   "clave": "En intervenciones quirúrgicas, diagnósticas invasivas u otro"
+  },
+  {
+   "id": "4738ed1f-ed78-44ad-9727-8e5d871f2a98",
+   "r": 0.42857142857142855,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Qué se entiende por ancho de banda en una conexión a Internet?",
+   "clave": "La cantidad máxima de datos que puede transmitirse en un per"
+  },
+  {
+   "id": "3bad48c0-e1de-48b4-85c2-60c7b1022612",
+   "r": 0.42857142857142855,
+   "ley": "Ley 2/2023 Asturias",
+   "art": "85",
+   "of": false,
+   "real": true,
+   "t": "Según el artículo 85 de la Ley 2/2023 del Principado de Asturias, de E",
+   "clave": "Tres años de servicios prestados en la Administración del Pr"
+  },
+  {
+   "id": "aa472307-5a48-45d6-92f4-532411e83be1",
+   "r": 0.42857142857142855,
+   "ley": "Ley 12/2001 LOSCAM",
+   "art": "1",
+   "of": false,
+   "real": true,
+   "t": "¿Cuál es el objetivo principal de la Ley 12/2001 de 21 de diciembre, d",
+   "clave": "Establecer un marco para la organización y funcionamiento de"
+  },
+  {
+   "id": "2e414849-80e5-4958-8ae1-ca3ec51c573b",
+   "r": 0.42857142857142855,
+   "ley": "Ley 39/2015",
+   "art": "12",
+   "of": false,
+   "real": true,
+   "t": "Según el artículo 12 de la Ley 39/2015, de 1 de octubre, del Procedimi",
+   "clave": "A los interesados que no estén obligados a relacionarse elec"
+  },
+  {
+   "id": "23eeded1-8303-4d54-a3eb-1afaa211f187",
+   "r": 0.4444444444444444,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Qué es el Administrador de certificados en un navegador web?",
+   "clave": "Una herramienta para ver los certificados instalados y verif"
+  },
+  {
+   "id": "0a70d010-f152-44f4-93e8-414c52155951",
+   "r": 0.45454545454545453,
+   "ley": "La Red Internet",
+   "art": "3",
+   "of": false,
+   "real": false,
+   "t": "¿Qué función avanzada permiten las extensiones (plugins) en los navega",
+   "clave": "Agregar nuevas capacidades, como bloqueo de anuncios, gestió"
+  }
+ ]
+}

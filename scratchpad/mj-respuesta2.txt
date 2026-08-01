@@ -1,0 +1,25 @@
+Hola María José,
+
+Te dijimos que lo estábamos comprobando, así que te contamos en qué ha quedado y con qué fuentes, para que puedas verificarlo tú misma.
+
+La referencia es la página oficial de Microsoft «Métodos abreviados de teclado en Windows» (se aplica a Windows 11 y Windows 10):
+
+https://support.microsoft.com/es-es/windows/m%C3%A9todos-abreviados-de-teclado-en-windows-dcc61a57-8ff0-cffe-9796-cb9706c75eec
+
+Ahí hay dos tablas distintas, y conviene mirar las dos:
+
+- En la tabla «Métodos abreviados de teclado de Windows» (la general) está la fila «Ctrl + A — Seleccionar todos los elementos de una ventana». El Explorador de archivos es una ventana, y de ahí viene la respuesta.
+
+- En la tabla «Métodos abreviados de teclado del Explorador de archivos» verás las filas «Ctrl + E» y «Ctrl + F — Seleccionar el cuadro de búsqueda». En esa tabla no hay ninguna fila que asigne Ctrl+E a seleccionar todo.
+
+Te avisamos de esto último porque es fácil despistarse: si buscas Ctrl+A dentro de la tabla del Explorador no lo vas a encontrar, está en la general. La página en inglés dice exactamente lo mismo y con la misma estructura, así que no es un problema de traducción.
+
+Dicho esto, tu costumbre no salió de la nada. En Windows 10 en español el atajo del Explorador sí era Ctrl+E: la versión española cambiaba el atajo internacional, y en Windows 11 Microsoft deshizo ese cambio. De ahí que a mucha gente le deje de funcionar de un día para otro lo que llevaba años usando. Y dentro de un documento (Word, Bloc de notas) Ctrl+E sigue siendo seleccionar todo, con lo que la costumbre se refuerza a diario.
+
+Hemos reescrito la explicación de la pregunta para que recoja las dos distinciones y cite dónde comprobarlo.
+
+Y déjanos añadir algo que te servirá más allá de esta pregunta. En informática los atajos cambian entre versiones y entre idiomas, y por eso son las preguntas que más reclamaciones generan. Ante un tribunal solo se puede alegar con documentación oficial: lo que hace un equipo concreto, por mucho que se vea, no es un argumento que se pueda defender en una impugnación. La vía que sí funciona es fijarse en qué versión acota el enunciado y llevar la cita del fabricante para esa versión. Es lo que hemos hecho aquí.
+
+Gracias por insistir. Nos hizo revisarlo a fondo y la pregunta ha quedado mejor.
+
+Equipo de Vence

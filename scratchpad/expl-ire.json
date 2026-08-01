@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 110 Ley 39/2015",
+    "texto": "Las facultades de revisión establecidas en este Capítulo, no podrán ser ejercidas cuando por prescripción de acciones, por el tiempo transcurrido o por otras circunstancias, su ejercicio resulte contrario a la equidad, a la buena fe, al derecho de los particulares o a las leyes."
+  },
+  "intro": "El artículo 110 enuncia un LÍMITE, no una habilitación: fija los cuatro casos en los que la Administración no puede ejercer sus facultades de revisión. Los cuatro están al mismo nivel y operan igual, como freno de la potestad de revisar.",
+  "options": {
+    "0": "La equidad es uno de los cuatro límites, pero no el único: señalarla sola deja fuera los otros tres que el artículo enumera con el mismo valor.",
+    "1": "El derecho de los particulares y las leyes son límites del artículo, pero tampoco agotan la lista: faltan la equidad y la buena fe.",
+    "2": "La buena fe cierra la enumeración del artículo, y por sí sola se queda igual de corta que las anteriores.",
+    "3": "El artículo enumera los cuatro supuestos seguidos y con el mismo efecto: equidad, buena fe, derecho de los particulares y leyes. Concurra el que concurra, la revisión no puede ejercerse."
+  },
+  "outro": "**Los cuatro límites, para retenerlos juntos:** equidad, buena fe, derecho de los particulares y leyes. Y el verbo importa: el artículo dice «NO podrán ser ejercidas».",
+  "estilo": "boletin"
+}

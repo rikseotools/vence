@@ -1,0 +1,11 @@
+{
+  "intro": "La pregunta va de ESTRUCTURA de la norma: dónde se ubica una materia dentro de la ley, no qué dice un artículo concreto. El Título II («Medidas para promover la igualdad de género») se divide en siete Capítulos por materias: I educación, II empleo, III conciliación, IV salud y bienestar social, V promoción y atención a las mujeres, VI participación social, política y económica, y VII imagen y medios de comunicación.",
+  "options": {
+    "0": "El Título I recoge las políticas públicas para la promoción de la igualdad de género (transversalidad, evaluación de impacto, planes), no las materias sectoriales como la salud.",
+    "1": "El Capítulo I del Título II corresponde a la igualdad en la educación.",
+    "2": "El Capítulo IV del Título II se titula «Políticas de promoción y protección de la salud y de bienestar social», que es exactamente la materia por la que se pregunta.",
+    "3": "El Título III regula la organización institucional y la coordinación entre Administraciones para la igualdad de género, no materias sectoriales."
+  },
+  "outro": "**Para situarse en el Título II:** I educación · II empleo · III conciliación · IV salud y bienestar social · V atención a las mujeres · VI participación · VII imagen y medios.",
+  "estilo": "boletin"
+}

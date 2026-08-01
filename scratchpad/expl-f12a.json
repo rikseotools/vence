@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 66 Ley 3/2009 de la Región de Murcia",
+    "texto": "Para la promoción y defensa de los derechos y deberes contenidos en la presente Ley, la Consejería competente en materia de Sanidad desarrollará las siguientes líneas de actuación y protección que favorezcan su garantía: a) Autorización, registro y, en su caso, acreditación de los centros, servicios y establecimientos sanitarios. b) Calidad de los servicios sanitarios. c) Formación e investigación sanitaria. d) Sistemas de información. e) Control e inspección. f) Régimen sancionador. g) Ética asistencial."
+  },
+  "intro": "El artículo 66 enumera SIETE líneas de actuación, de la a) a la g). Las tres que recoge esta pregunta están todas en esa lista, así que ninguna sobra.",
+  "options": {
+    "0": "Es la línea a) del artículo, literal: la autorización, el registro y la acreditación de centros, servicios y establecimientos sanitarios.",
+    "1": "Es la línea f) del artículo.",
+    "2": "Es la línea g) del artículo, y cierra la enumeración.",
+    "3": "Las tres anteriores figuran en la enumeración del artículo 66, junto a la calidad de los servicios, la formación e investigación, los sistemas de información y el control e inspección."
+  },
+  "outro": "**Las siete líneas del art. 66:** autorización y registro de centros · calidad · formación e investigación · sistemas de información · control e inspección · régimen sancionador · ética asistencial.",
+  "estilo": "boletin"
+}

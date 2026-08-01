@@ -1,0 +1,13 @@
+Hola María José,
+
+Volvemos sobre lo del atajo, porque nuestra respuesta anterior se quedó corta y tú tenías más razón de la que te dimos.
+
+El atajo de «seleccionar todo» en el Explorador de archivos no es el mismo en todas las versiones de Windows: en las anteriores es Ctrl+E, que es justo lo que nos decías. Te contestamos pensando solo en la versión más reciente, y así la respuesta quedaba incompleta.
+
+Ya hemos corregido la explicación de la pregunta para que recoja esa diferencia entre versiones, de modo que no vuelva a dar a entender que solo hay un atajo válido.
+
+Sobre lo que nos cuentas de tu equipo: nos viene muy bien saberlo y lo estamos comprobando. Si al final resulta que el comportamiento depende de algo más que de la versión, lo reflejaremos también.
+
+Gracias por insistir, de verdad. Nos ayudó a encontrar el matiz.
+
+Equipo de Vence

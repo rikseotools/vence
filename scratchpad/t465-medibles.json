@@ -1,0 +1,602 @@
+[
+ {
+  "id": "d23e79c0-7cde-458a-b08b-4ef3baf99821",
+  "r": 0,
+  "ley": "Intranet",
+  "art": "1",
+  "of": false,
+  "real": false,
+  "t": "¿Qué permite el protocolo HTTPS que lo hace diferente de HTTP?",
+  "clave": "Proporcionar una conexión segura y cifrada."
+ },
+ {
+  "id": "eab05295-5b08-45ef-8924-acf0399cd57a",
+  "r": 0,
+  "ley": "Decreto 168/2025 Estructura Consejería Sanidad",
+  "art": "1",
+  "of": false,
+  "real": true,
+  "t": "¿Cuál de las siguientes es una competencia de la Consejería de Sanidad",
+  "clave": "La dirección, edición y publicación del Boletín Oficial de l"
+ },
+ {
+  "id": "7a460580-caf5-43fa-98d0-436964fff971",
+  "r": 0,
+  "ley": "Intranet",
+  "art": "1",
+  "of": false,
+  "real": false,
+  "t": "¿Qué significan las siglas HTTP?",
+  "clave": "Hyper Text Transfer Protocol."
+ },
+ {
+  "id": "370b12c6-43b7-44b0-8da0-c089a772f8f4",
+  "r": 0,
+  "ley": "Ley 3/2009 Murcia",
+  "art": "66",
+  "of": false,
+  "real": true,
+  "t": "Para la promoción y defensa de los derechos y deberes contenidos en la",
+  "clave": "La segunda y tercera opción de respuesta son verdaderas."
+ },
+ {
+  "id": "928ebfec-117d-4f04-8d73-51abbed3b951",
+  "r": 0,
+  "ley": "Intranet",
+  "art": "1",
+  "of": false,
+  "real": false,
+  "t": "¿Cuál era el objetivo original de la red creada en Estados Unidos dura",
+  "clave": "Mantener la comunicación en caso de un ataque nuclear."
+ },
+ {
+  "id": "331115f3-1d5f-49db-971c-e6f05a3513b6",
+  "r": 0,
+  "ley": "Ley 13/2007 Violencia de Género Andalucía",
+  "art": "1",
+  "of": false,
+  "real": true,
+  "t": "La ley de medidas de prevención y protección integral contra la violen",
+  "clave": "Un Título Preliminar y cuatro títulos."
+ },
+ {
+  "id": "3e5dbf32-e0cc-4cdc-b628-efc14090e036",
+  "r": 0,
+  "ley": "Ley 13/2007 Violencia de Género Andalucía",
+  "art": "60",
+  "of": false,
+  "real": true,
+  "t": "El protocolo de respuesta pública de la Administración de la Junta de ",
+  "clave": "Por  la Directora del Instituto Andaluz de la Mujer."
+ },
+ {
+  "id": "b5be2df8-4871-4a7d-86e8-019ca9cf7628",
+  "r": 0,
+  "ley": "Ley 3/2009 Murcia",
+  "art": "24",
+  "of": false,
+  "real": true,
+  "t": "Según la Ley 3/2009, de 11 de mayo, de los derechos y deberes de los u",
+  "clave": "Incluso una vez finalizada su actividad profesional."
+ },
+ {
+  "id": "4c67d30a-83b8-4222-a319-be307138771a",
+  "r": 0,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿ A cuál de las siguientes Consejerías de la administración de la Junt",
+  "clave": "Consejería competente en materia de Justicia."
+ },
+ {
+  "id": "97e53a5f-f673-48e3-83e3-98127e764517",
+  "r": 0,
+  "ley": "Decreto 122/2020 Estructura Orgánica Sanidad Aragón",
+  "art": "37",
+  "of": false,
+  "real": true,
+  "t": "El órgano del departamento de salud y consumo encargado de la Prevenci",
+  "clave": "La Dirección de Área de Recursos Humanos."
+ },
+ {
+  "id": "f12a0bef-eef3-4d61-adc3-d8a9c5a1431a",
+  "r": 0,
+  "ley": "Ley 3/2009 Murcia",
+  "art": "66",
+  "of": false,
+  "real": true,
+  "t": "Para la promoción y defensa de los derechos y deberes contenidos en la",
+  "clave": "La segunda y tercera opción de respuesta es verdadera."
+ },
+ {
+  "id": "755e6381-3726-4be5-b4ef-16a894546150",
+  "r": 0.08,
+  "ley": "Ley 12/2007 Igualdad de Género Andalucía",
+  "art": "3",
+  "of": false,
+  "real": true,
+  "t": "¿Qué se entiende por discriminación horizontal?",
+  "clave": "Significa que a las mujeres se les facilita el acceso a empl"
+ },
+ {
+  "id": "055dd563-2d66-4e9d-a6db-7fae00baad7d",
+  "r": 0.125,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "¿A cuál de los siguientes tipos de comercio electrónico pertenecerá un",
+  "clave": "B2C (Business to Consumer). Operaciones comerciales entre em"
+ },
+ {
+  "id": "7d60dd36-0503-42c5-8d68-667f9efff8d4",
+  "r": 0.125,
+  "ley": "Ley 6/1990 Archivos y Patrimonio Documental Murcia",
+  "art": "6",
+  "of": false,
+  "real": true,
+  "t": "Según la Ley 6/1990, el Sistema de Archivos de la Región de Murcia est",
+  "clave": "La consejería de planificación informática, sistemas de info"
+ },
+ {
+  "id": "ea8a044e-c0ed-4aad-97a8-a05807134d5e",
+  "r": 0.15384615384615385,
+  "ley": "Explorador Windows 11",
+  "art": "4",
+  "of": false,
+  "real": false,
+  "t": "¿Cuál de las siguientes afirmaciones referidas a un acceso directo de ",
+  "clave": "Es posible crear accesos directos a carpetas y ficheros. Si "
+ },
+ {
+  "id": "648ca5f0-e0b4-4b88-b491-44f7c6bf6f23",
+  "r": 0.16666666666666666,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿Cuál es la función del World Wide Web Consortium (W3C)?",
+  "clave": "El desarrollo de estándares que aseguran el crecimiento de l"
+ },
+ {
+  "id": "afcdf775-175a-470f-ab45-9a49e3510a1b",
+  "r": 0.16666666666666666,
+  "ley": "LO 3/2007",
+  "art": "0",
+  "of": false,
+  "real": true,
+  "t": "El término \"empoderamiento\" fue acuñado en:",
+  "clave": "La Conferencia Mundial de las Mujeres en Beijing (Pekín) en "
+ },
+ {
+  "id": "6132470b-088d-43d2-bdae-1779c288857e",
+  "r": 0.16666666666666666,
+  "ley": "Decreto 161/2022 Estructura Consejería Inclusión Social",
+  "art": "1",
+  "of": false,
+  "real": true,
+  "t": "Las competencias relativas a justicia juvenil, ¿a qué Consejería corre",
+  "clave": "A la Consejería de Justicia, Administración Local y Función "
+ },
+ {
+  "id": "d5d9e046-e391-488c-943d-7d6e08cd9841",
+  "r": 0.2,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿Qué papel desempeña el protocolo TCP en las comunicaciones por Intern",
+  "clave": "Controla que los paquetes lleguen completos y en orden"
+ },
+ {
+  "id": "c4cd47bd-e031-42a0-977f-a05d264e486c",
+  "r": 0.2,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "¿Qué función cumple una VPN (Red Privada Virtual) en la navegación web",
+  "clave": "Oculta tu dirección IP pública y cifra el tráfico"
+ },
+ {
+  "id": "38915f80-c8e4-42cc-b50f-52af98da3d15",
+  "r": 0.2,
+  "ley": "Explorador Windows 11",
+  "art": "4",
+  "of": false,
+  "real": false,
+  "t": "En el Explorador de archivos de Windows 11, ¿qué es un archivo comprim",
+  "clave": "Un archivo que ocupa menos espacio en disco al aplicar un mé"
+ },
+ {
+  "id": "3bdf4212-7e6c-41d4-a559-9129f8ae82a9",
+  "r": 0.2,
+  "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+  "art": "27",
+  "of": false,
+  "real": true,
+  "t": "De conformidad con el artículo 27 del Decreto 174/2010, de 21 de septi",
+  "clave": "El Consejero de Sanidad, Bienestar Social y Familia"
+ },
+ {
+  "id": "c35b290f-1441-4e17-8058-842402f20d07",
+  "r": 0.2,
+  "ley": "Ley 6/2002 Salud Aragón",
+  "art": "5",
+  "of": false,
+  "real": true,
+  "t": "Las personas incluidas en el ámbito de aplicación de la Ley 6/2002, de",
+  "clave": "Deber de comunicar al responsable sanitario correspondiente "
+ },
+ {
+  "id": "673c27eb-56a5-4f2a-894b-112693a12122",
+  "r": 0.23529411764705882,
+  "ley": "Ley 8/2008 Galicia",
+  "art": "12",
+  "of": false,
+  "real": true,
+  "t": "Indique la opción correcta:",
+  "clave": "Se considerará como única causa para la solicitud de reinteg"
+ },
+ {
+  "id": "de08593a-d90f-4b5c-aacd-8041f86791eb",
+  "r": 0.25,
+  "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+  "art": "33",
+  "of": false,
+  "real": true,
+  "t": "Según el art. 33 del Decreto 174/2010 de 21 de septiembre, del Gobiern",
+  "clave": "Dirección de Área de Coordinación Asistencial."
+ },
+ {
+  "id": "dc556f2a-2bab-4e78-8b9e-56dcc471c806",
+  "r": 0.25,
+  "ley": "Ley 3/2009 Murcia",
+  "art": "36",
+  "of": false,
+  "real": true,
+  "t": "Acerca del derecho a recibir información general sobre el conjunto de ",
+  "clave": "Es un derecho que tiene cualquier ciudadano."
+ },
+ {
+  "id": "9be7c3fd-b027-4130-8802-fd8627479f68",
+  "r": 0.25,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "Señale la respuesta correcta. El protocolo Telnet se basa en tres conc",
+  "clave": "El paradigma Terminal virtual de red, el principio de opcion"
+ },
+ {
+  "id": "300b8c97-a9f4-4582-9ef1-be20088c94b6",
+  "r": 0.25,
+  "ley": "Ley 6/2002 Salud Aragón",
+  "art": "2",
+  "of": false,
+  "real": true,
+  "t": "La Ley 6/2002, de 15 de abril, de Salud de Aragón considera la coordin",
+  "clave": "Un principio general inspirador de la citada Ley."
+ },
+ {
+  "id": "927f55d4-8e6f-4068-9ed3-a8a7374f5dca",
+  "r": 0.25,
+  "ley": "Movilizacion y posiciones",
+  "art": "1",
+  "of": false,
+  "real": false,
+  "t": "¿Cuál es la principal función del marco de Bolkan?",
+  "clave": "Sujetar extremidades en posición adecuada"
+ },
+ {
+  "id": "7274921e-6df7-4736-a81f-5d594d7610fb",
+  "r": 0.2727272727272727,
+  "ley": "Ley 8/2008 Galicia",
+  "art": "50",
+  "of": false,
+  "real": true,
+  "t": "Sobre coordinación entre niveles asistenciales en el Servizo Galego de",
+  "clave": "Si se considera necesario, el sistema sanitario facilitará u"
+ },
+ {
+  "id": "26145af8-d186-4c0b-8353-57cd6f3beb3a",
+  "r": 0.3,
+  "ley": "Decreto 80/2005 Murcia Instrucciones Previas",
+  "art": "13",
+  "of": false,
+  "real": true,
+  "t": "En cuál de las situaciones que se describen a continuación no se tendr",
+  "clave": "Los directores gerentes de las instituciones hospitalarias d"
+ },
+ {
+  "id": "255a2f7e-3141-4bbb-b8a8-e21fb5d444a0",
+  "r": 0.3181818181818182,
+  "ley": "Código Conducta TIC JA",
+  "art": "9",
+  "of": true,
+  "real": false,
+  "t": "¿Puede un empleado público de la Administración de la Junta de Andaluc",
+  "clave": "No, porque el apartado 9.3 de la Resolución de 22 de octubre"
+ },
+ {
+  "id": "fb7f28df-704b-45bd-a177-7a7737ad50c7",
+  "r": 0.3333333333333333,
+  "ley": "Ley 6/2002 Salud Aragón",
+  "art": "46",
+  "of": false,
+  "real": true,
+  "t": "Según la ley de salud de Aragón 6/2002 15 Abril, ¿Cómo se estructura t",
+  "clave": "En áreas de salud, sectores sanitarios y zonas básicas de sa"
+ },
+ {
+  "id": "9be6adee-6e3f-4b5d-87b6-0698e7868303",
+  "r": 0.3333333333333333,
+  "ley": "Decreto 80/2005 Murcia Instrucciones Previas",
+  "art": "2",
+  "of": false,
+  "real": true,
+  "t": "Según el Decreto regional 80/2005, de 8 de julio, por el que se aprueb",
+  "clave": "Mediante cualquier medio válido en Derecho y en que conste l"
+ },
+ {
+  "id": "de45e8ae-091c-427a-b886-be44993c32f7",
+  "r": 0.3333333333333333,
+  "ley": "CE",
+  "art": "97",
+  "of": false,
+  "real": true,
+  "t": "¿Cuál de las siguientes funciones la Constitución Española no atribuye",
+  "clave": "Controlar la potestad reglamentaria y la legalidad de la act"
+ },
+ {
+  "id": "7b747d79-9237-4ab1-9642-5c0a4d07f032",
+  "r": 0.35714285714285715,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "En general, cuando navegamos por una página web, ¿cuál de las siguient",
+  "clave": "La mayor parte del tráfico es de bajada, porque necesitamos "
+ },
+ {
+  "id": "f12d0732-292e-477a-a0e1-09be18a9176b",
+  "r": 0.375,
+  "ley": "Ley 12/2001 LOSCAM",
+  "art": "5",
+  "of": false,
+  "real": true,
+  "t": "La red sanitaria única de utilización pública de la Comunidad de Madri",
+  "clave": "Por las Instituciones Sanitarias Públicas o Privadas acredit"
+ },
+ {
+  "id": "47940175-a352-4de9-90f2-56e97504f08b",
+  "r": 0.375,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "En Internet, ¿qué es un servidor?",
+  "clave": "Es un ordenador capaz de atender las peticiones de un client"
+ },
+ {
+  "id": "e46a7272-ee7b-4169-bb87-479f9c2ec832",
+  "r": 0.4,
+  "ley": "Decreto 174/2010 Áreas y Sectores Aragón",
+  "art": "5",
+  "of": false,
+  "real": true,
+  "t": "Según el Decreto 174/2010, por el que se aprueba el reglamento de la e",
+  "clave": "Se integra en varias de las líneas asistenciales establecida"
+ },
+ {
+  "id": "33c86ad8-0e21-4c47-916f-c7ff863509e6",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "6",
+  "of": false,
+  "real": false,
+  "t": "Para intercambiar información entre los equipos informáticos han sido ",
+  "clave": "Se encarga de fragmentar el mensaje emitido en paquetes."
+ },
+ {
+  "id": "7ff4340d-307b-453b-a0ce-34c635d3d3ef",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "4",
+  "of": false,
+  "real": false,
+  "t": "En Microsoft Edge, ¿qué ocurre con Ctrl + 1 a Ctrl + 8?",
+  "clave": "Cambian a la pestaña específica según su posición."
+ },
+ {
+  "id": "44d9c6d2-a238-4622-a5b3-8035ef793aa0",
+  "r": 0.4,
+  "ley": "LO 3/2018",
+  "art": "73",
+  "of": false,
+  "real": true,
+  "t": "No posibilitar la efectiva participación del delegado de protección de",
+  "clave": "Se considera una infracción grave y prescribirá a los 2 años"
+ },
+ {
+  "id": "5fd31a4d-7e3d-4026-ba7f-0a50a0daaeba",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "4",
+  "of": false,
+  "real": false,
+  "t": "En Microsoft Edge, ¿qué ocurre si presionas Ctrl + T?",
+  "clave": "Abre una pestaña nueva y cambia a ella."
+ },
+ {
+  "id": "8b5d00f1-b8ba-4e45-becb-6030c35d0056",
+  "r": 0.4,
+  "ley": "Ley 8/2008 Galicia",
+  "art": "68",
+  "of": false,
+  "real": true,
+  "t": "La persona titular de la Gerencia de una área sanitaria es nombrada:",
+  "clave": "Por orden de la persona titular de la Consellería de Sanidad"
+ },
+ {
+  "id": "6c72d04c-4be0-4a96-bf98-42fbe8cf6433",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "El bloqueo de ventanas emergentes (pop-ups) en un navegador tiene como",
+  "clave": "Reducir interrupciones y posibles riesgos de seguridad."
+ },
+ {
+  "id": "920abe60-06ea-4551-ab83-e3eab83d2b69",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿Cuál de las siguientes es una de las funciones desempeñada por el DNS",
+  "clave": "Resolver la conversión de direcciones alfanuméricas a numéri"
+ },
+ {
+  "id": "c292d4c9-a988-4db0-ae66-f4713ed162b0",
+  "r": 0.4,
+  "ley": "Decreto 153/2022 Estructura Consejería Economía",
+  "art": "2",
+  "of": false,
+  "real": true,
+  "t": "¿A qué Consejería está adscrito el Consejo Económico y Social de Andal",
+  "clave": "A la Consejería de Empleo, Empresa y Trabajo Autónomo."
+ },
+ {
+  "id": "02019228-e90c-4505-87c2-d5251ef16487",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "4",
+  "of": false,
+  "real": false,
+  "t": "En Microsoft Edge, ¿cuál es la diferencia entre Ctrl + N y Ctrl + Mayú",
+  "clave": "Una abre ventana normal y la otra ventana InPrivate."
+ },
+ {
+  "id": "04dff115-b777-47e8-aa0f-e7a09fd26825",
+  "r": 0.4,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿Qué es el HTML?",
+  "clave": "Es un lenguaje de marcado para la elaboración de páginas web"
+ },
+ {
+  "id": "4d8d360b-7c1d-4d0c-9d8e-ff31e702e78b",
+  "r": 0.4117647058823529,
+  "ley": "La Red Internet",
+  "art": "2",
+  "of": false,
+  "real": false,
+  "t": "¿A cuál de las siguientes descripciones se ajusta el término Wiki en i",
+  "clave": "Comunidad virtual cuyas páginas son editadas directamente de"
+ },
+ {
+  "id": "5f2ca010-b061-45e2-b172-8e816a62d4f0",
+  "r": 0.42857142857142855,
+  "ley": "Decreto 122/2020 Estructura Orgánica Sanidad Aragón",
+  "art": "30",
+  "of": false,
+  "real": true,
+  "t": "En el Servicio Aragonés de Salud, el control de las cuentas bancarias ",
+  "clave": "Servicio de Presupuestos y Tesorería de la Dirección de área"
+ },
+ {
+  "id": "e19e17c6-a76a-42f6-8728-ac4bd74395c7",
+  "r": 0.42857142857142855,
+  "ley": "RDL 29/2020 Teletrabajo AAPP",
+  "art": "1",
+  "of": false,
+  "real": true,
+  "t": "En relación a la modalidad de Teletrabajo en las Administraciones Públ",
+  "clave": "Ha sido aprobada mediante Real Decreto-ley 29/2020, de 29 de"
+ },
+ {
+  "id": "87e3977c-5fa6-45a5-bbd3-a704e2d78a22",
+  "r": 0.42857142857142855,
+  "ley": "Ley 3/2009 Murcia",
+  "art": "30",
+  "of": false,
+  "real": true,
+  "t": "Señale cuál es la afirmación correcta sobre el derecho a la informació",
+  "clave": "Incluye el derecho a que se respete la voluntad expresa del "
+ },
+ {
+  "id": "99c1d716-e27d-49a2-9144-1d3ac5ccb1e0",
+  "r": 0.42857142857142855,
+  "ley": "Ley 6/2002 Salud Aragón",
+  "art": "12",
+  "of": false,
+  "real": true,
+  "t": "Según la Ley 6/2002, de 15 de abril, de Salud de Aragón, ¿Cuándo es ne",
+  "clave": "En intervenciones quirúrgicas, diagnósticas invasivas u otro"
+ },
+ {
+  "id": "4738ed1f-ed78-44ad-9727-8e5d871f2a98",
+  "r": 0.42857142857142855,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "¿Qué se entiende por ancho de banda en una conexión a Internet?",
+  "clave": "La cantidad máxima de datos que puede transmitirse en un per"
+ },
+ {
+  "id": "3bad48c0-e1de-48b4-85c2-60c7b1022612",
+  "r": 0.42857142857142855,
+  "ley": "Ley 2/2023 Asturias",
+  "art": "85",
+  "of": false,
+  "real": true,
+  "t": "Según el artículo 85 de la Ley 2/2023 del Principado de Asturias, de E",
+  "clave": "Tres años de servicios prestados en la Administración del Pr"
+ },
+ {
+  "id": "aa472307-5a48-45d6-92f4-532411e83be1",
+  "r": 0.42857142857142855,
+  "ley": "Ley 12/2001 LOSCAM",
+  "art": "1",
+  "of": false,
+  "real": true,
+  "t": "¿Cuál es el objetivo principal de la Ley 12/2001 de 21 de diciembre, d",
+  "clave": "Establecer un marco para la organización y funcionamiento de"
+ },
+ {
+  "id": "2e414849-80e5-4958-8ae1-ca3ec51c573b",
+  "r": 0.42857142857142855,
+  "ley": "Ley 39/2015",
+  "art": "12",
+  "of": false,
+  "real": true,
+  "t": "Según el artículo 12 de la Ley 39/2015, de 1 de octubre, del Procedimi",
+  "clave": "A los interesados que no estén obligados a relacionarse elec"
+ },
+ {
+  "id": "23eeded1-8303-4d54-a3eb-1afaa211f187",
+  "r": 0.4444444444444444,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "¿Qué es el Administrador de certificados en un navegador web?",
+  "clave": "Una herramienta para ver los certificados instalados y verif"
+ },
+ {
+  "id": "0a70d010-f152-44f4-93e8-414c52155951",
+  "r": 0.45454545454545453,
+  "ley": "La Red Internet",
+  "art": "3",
+  "of": false,
+  "real": false,
+  "t": "¿Qué función avanzada permiten las extensiones (plugins) en los navega",
+  "clave": "Agregar nuevas capacidades, como bloqueo de anuncios, gestió"
+ }
+]
