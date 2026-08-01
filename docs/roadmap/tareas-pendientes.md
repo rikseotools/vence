@@ -1140,6 +1140,12 @@ incluida).
   - **`nueva_oposicion`** tampoco está.
   - Cerrarlo pide una **migración que amplíe el CHECK** (+ quitar el insert duplicado de `avisoFinSuscripcion`), y eso es territorio de [T-448]. Mientras tanto queda vigilado por trinquete en `__tests__/integration/emailEventsTiposAceptados.test.ts`: **no falla por la deuda de hoy, falla si crece** — un gate en cero dejaría el CI rojo para todas las sesiones por algo que no se arregla desde esta ficha.
 
+- **📦 ESTADO AL CERRAR LA SESIÓN (01/08 12:45 CEST) — qué encuentra quien la coja:**
+  - En `main` como `e8f928427`. Frontend **desplegándose** en esa misma tanda (`origin/main` = `9cbdc06f`, que ya lo incluye). Al terminar el deploy, la tarea se despierta sola y sale como `⏰ LISTA PARA VERIFICAR`.
+  - **⚠️ PERO NO SE PODRÁ VERIFICAR ESE MISMO DÍA, y conviene saberlo antes de intentarlo.** El cron es `@Cron('0 9 * * *', UTC)` en `backend/src/internal-cron-triggers/` y dispara `/api/cron/renewal-reminders` **una vez al día**. El 01/08 ya había corrido (a las 09:00 UTC) con el código VIEJO, y el deploy salió a las ~10:40 UTC. O sea: **la primera tanda con el código nuevo es la del día siguiente a las 09:00 UTC**. Despertarse «lista para verificar» y no encontrar datos NO es que el arreglo falle.
+  - **Cómo verificarla (en este orden):** (1) `SELECT count(*) FROM email_events WHERE email_type='recordatorio_renovacion' AND created_at > '<fecha del deploy>'` en RDS — antes del arreglo eran **424 en `email_logs` contra 1 en `email_events`**, así que cualquier número > 0 que case con los envíos del día ya es la prueba; (2) comprobar que a quien tiene `loyalty_10`/`loyalty_20` el correo le pinta la línea del descuento (es lo que arregla el despacho de templates, y era el fallo latente que la migración iba a estrenar); (3) `node scripts/canary-renewal-reminders.cjs` si se quiere adelantar sin esperar al cron.
+  - **Ojo al leer los números:** `avisoFinSuscripcion` ([T-448]) escribe **dos** filas en `email_logs` por envío, así que contar por ahí infla. `email_events` es la cuenta buena.
+
 ### [T-457] 🟡 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
 
 - **ORIGEN.** Salió comparando los caminos de envío en [T-448]/[T-456]: la newsletter tiene **dos** rutas y solo una filtra.
@@ -1269,7 +1275,10 @@ incluida).
 - **Alcance acordado:** (1) aviso a 3 días reutilizando el cron; (2) crear la oferta al enviar; (3) herramienta de anulación con el plazo como parámetro y dry-run por defecto. **Sin enviar nada sin borrador aprobado y sin anular nada sin que Manuel dé el plazo.**
 - **✅ EL PLAZO YA ESTÁ DECIDIDO (Manuel, 01/08): UN MES.** Al terminar la suscripción pasan a gratis; tienen **un mes** para volver con su precio; pasado ese mes **se anula la oferta** y contratan en `/premium` a los planes vigentes. Eso es lo que hace verdad el aviso, así que la anulación **no puede depender de que alguien se acuerde**: va programada, no a mano.
 - **Pendiente de decidir:** qué se hace con las **170 ya vencidas**, a las que el aviso de 3 días ya no alcanza.
-- **Relacionadas:** [T-341] (el botón), [T-363] (no cobrar dos veces al volver), [T-369] (por qué la categoría importa), [T-373].
+- **🔎 DOS CABOS QUE LE LLEGAN DESDE [T-456] (medidos el 01/08, sin tocar) — el aviso que ya se envía es CIEGO:**
+  1. **`email_events` rechaza `fin_suscripcion_precio_heredado` en silencio.** La columna `email_type` tiene un CHECK con lista blanca (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo ausente **no da error a nadie**, simplemente no deja fila. Las 4 personas que recibieron el aviso el 01/08 a las 09:00 dejaron **8 filas en `email_logs` y CERO en `email_events`**. Es exactamente la ceguera que [T-456] acaba de arreglar para el recordatorio de renovación, un piso más abajo. **Se cierra con una migración que amplíe el CHECK** (`nueva_oposicion` está en el mismo caso). Al hacerlo hay que **quitar el tipo de `HUECOS_CONOCIDOS`** en `__tests__/integration/emailEventsTiposAceptados.test.ts`, o deja de vigilarse sin que nadie se entere (el trinquete comprueba las dos direcciones y se pondrá rojo si se olvida).
+  2. **`avisoFinSuscripcion` escribe la fila de `email_logs` DOS veces por envío** — `sendEmailV2` ya la escribe y él repite el insert. Además de ensuciar la cuenta, **rompe cualquier medida basada en `email_logs`** (que es como se midieron los 424 recordatorios de [T-456]) y puede descuadrar la idempotencia de 5 días si alguien la lee contando filas.
+- **Relacionadas:** [T-341] (el botón), [T-363] (no cobrar dos veces al volver), [T-369] (por qué la categoría importa), [T-373], [T-456] (de donde vienen los dos cabos de arriba).
 
 ### [T-392] 🔴 [ABIERTO 31/07] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
 
