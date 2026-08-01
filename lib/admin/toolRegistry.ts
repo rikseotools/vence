@@ -58,6 +58,23 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Precio de fidelidad de quien se queda sin suscripción al vaciar la cuenta antigua ──────
+  crear_ofertas_fidelidad: {
+    titulo: 'Crear POR ADELANTADO el precio de fidelidad de quien se le apaga la suscripción (T-448)',
+    ruta: 'scripts/premium/crear-ofertas-fidelidad.ts',
+    estado: 'vivo',
+    notas:
+      'NODE_OPTIONS="--require ./scripts/sim/stubs/server-only-shim.cjs" npx tsx --env-file=.env.local ' +
+      'scripts/premium/crear-ofertas-fidelidad.ts [--apply] [--limite=N]. Dry-run por defecto. ' +
+      'EJECUTADO el 01/08/2026: 189 ofertas creadas, 0 fallos (84 a 35 € trimestral, 73 a 59 € ' +
+      'semestral, 32 a 20 € mensual) — 190 vivas en total, una por persona. Se crean por ' +
+      'adelantado y no al pulsar el botón por tres motivos: el perfil no puede enseñar la CIFRA ' +
+      'si la oferta no existe (y la cifra es el argumento entero), crearla en el clic habla con ' +
+      'Stripe en vivo y un fallo manda a la persona a /premium con la TARIFA NUEVA, y así se ' +
+      'sabe de antemano a cuántos les sale en vez de descubrirlo de uno en uno. Idempotente ' +
+      '(price por lookup_key + ON CONFLICT DO NOTHING): repetirlo no duplica. Las ofertas las ' +
+      'anula el barrido del cron un mes después de vencer (mismo criterio que promete el email).',
+  },
   // ── Preferencias de email: reparación del efecto colateral del botón de baja masiva ──────
   restaurar_soporte_baja_masiva: {
     titulo: 'Devolver las respuestas por email a quien no pidió perderlas (T-369/T-373)',

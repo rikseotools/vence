@@ -55,6 +55,16 @@ export const getSubscriptionResponseSchema = z.object({
    * actual. Lo decide el servidor para que la interfaz no tenga que deducirlo.
    */
   renovableEnSuCuenta: z.boolean().optional(),
+  /**
+   * T-448 — su precio de fidelidad, YA CALCULADO, para que el perfil pueda enseñar la cifra en
+   * el propio botón. Antes el número no aparecía hasta dos pantallas después, y es justo el
+   * argumento entero: 20 € frente a 29 €. Se manda formateado desde el servidor (misma fuente
+   * que la página de destino) para que no haya dos formas de pintar el mismo importe.
+   */
+  precioFidelidad: z
+    .object({ importe: z.string(), periodicidad: z.string() })
+    .nullable()
+    .optional(),
   error: z.string().optional()
 })
 

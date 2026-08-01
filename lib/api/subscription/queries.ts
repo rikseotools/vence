@@ -131,6 +131,11 @@ export async function getSubscription(
       // que es quien sabe en qué cuenta está cada persona, para que la interfaz no tenga
       // que deducirlo ni enseñar un botón que va a fallar.
       renovableEnSuCuenta: resolveAccount(profile.paymentAccount) === newSignupAccount(),
+      // T-448 — la cifra, aquí y no dos pantallas después. `getOfertaActiva` solo LEE: las
+      // ofertas se crean aparte (al enviar el aviso o al pulsar el botón), porque una lectura
+      // que escribe en Stripe es justo lo que se evitó en T-341 al hacer POST el endpoint de
+      // recuperar el precio. Si todavía no la tiene, se manda `null` y el botón no promete cifra.
+      precioFidelidad: await precioFidelidadDe(params.userId),
       subscription: {
         id: subscription.id,
         status: subscription.status,
@@ -1049,4 +1054,21 @@ Si no reconoces esta acción o fue un error, contáctanos respondiendo a este em
     html,
     text,
   })
+}
+
+
+/**
+ * Su precio de fidelidad ya formateado, o `null` si aún no tiene oferta creada. (T-448)
+ * Fail-soft a propósito: que no se pueda leer la oferta no puede tumbar la tarjeta de
+ * suscripción entera — se enseña el botón sin cifra, que es lo que había antes.
+ */
+async function precioFidelidadDe(userId: string): Promise<{ importe: string; periodicidad: string } | null> {
+  try {
+    const { getOfertaActiva, formatearImporte, ETIQUETA_INTERVALO } = await import('@/lib/api/premium/ofertas')
+    const oferta = await getOfertaActiva(userId)
+    if (!oferta) return null
+    return { importe: formatearImporte(oferta.importeCentimos), periodicidad: ETIQUETA_INTERVALO[oferta.intervalo] }
+  } catch {
+    return null
+  }
 }
