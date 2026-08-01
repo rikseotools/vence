@@ -5463,6 +5463,7 @@ export const RULE_SESION_SIN_EMAIL: AlertRule<{ veces: number }> = {
     SELECT COUNT(*)::int AS veces
       FROM observable_events
      WHERE event_type = 'auth_sesion_sin_email'
+       AND coalesce(metadata->>'simulacion', 'false') <> 'true'
        AND ts >= now() - interval '24 hours'
   `,
   shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
@@ -5504,6 +5505,7 @@ export const RULE_PERFIL_ROTO_NO_DRENA: AlertRule<{ dias: number; usuarios: numb
            COUNT(DISTINCT metadata->>'emailPrefijo')::int AS usuarios
       FROM observable_events
      WHERE event_type = 'auth_perfil_recuperado'
+       AND coalesce(metadata->>'simulacion', 'false') <> 'true'
        AND ts >= now() - interval '7 days'
   `,
   shouldFire: (rows) => (rows[0]?.dias ?? 0) >= 7,
@@ -5543,6 +5545,7 @@ export const RULE_REINTENTO_PERFIL_ROTO: AlertRule<{ veces: number; muestra: str
            COALESCE(MAX(metadata->>'detalle'), '') AS muestra
       FROM observable_events
      WHERE event_type = 'auth_reintento_roto'
+       AND coalesce(metadata->>'simulacion', 'false') <> 'true'
        AND ts >= now() - interval '24 hours'
   `,
   shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,

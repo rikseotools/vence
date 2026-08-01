@@ -13,6 +13,30 @@ import { encode, decode } from 'next-auth/jwt'
 
 export const AUTHJS_SESSION_COOKIE = '__Secure-authjs.session-token'
 
+/**
+ * Marca que dice «esta sesión la ha fabricado una simulación».
+ *
+ * ── POR QUÉ EXISTE (01/08/2026, T-434) ──────────────────────────────────────────────────────
+ *
+ * Una simulación con identidad recorre la aplicación DE VERDAD, así que genera los mismos
+ * eventos que una persona. Y eso envenena lo que se mide con ellos: el canario de perfiles sin
+ * resolver contó **2 usuarios «curados»** que eran las dos corridas de `sim-perfil-roto-se-cura`
+ * —una en local y otra contra producción—, o sea que informaba de progreso donde no había
+ * ninguno. Peor todavía: la regla `sesion_sin_email` dispara a la PRIMERA, así que el caso 3 de
+ * esa misma simulación mandaba una alerta falsa cada vez que se corría. Una alerta que salta por
+ * nuestras propias pruebas enseña a ignorarla, que es la forma más cara de perder una alerta.
+ *
+ * ── LO QUE ESTA MARCA NO PUEDE HACER ────────────────────────────────────────────────────────
+ *
+ * **Solo etiqueta telemetría. JAMÁS decide permisos ni cambia comportamiento.** Si algún día
+ * concediera algo, sería una puerta trasera. Que hoy sea inofensiva se apoya en dos cosas: (a)
+ * ponerla exige `AUTH_SECRET`, y quien lo tiene ya puede firmar cualquier sesión —así que no
+ * añade poder—; y (b) el guardarraíl `simulacionNoDaPoder` comprueba que nadie la lee para
+ * autorizar. La (b) es la que aguanta, porque la (a) deja de ser cierta el día que el secreto
+ * se filtre.
+ */
+export const CLAIM_SIMULACION = 'venceSim'
+
 export interface OwnAuthSubject {
   userId: string
   email: string
@@ -27,6 +51,10 @@ export function sessionTokenPayload(sub: OwnAuthSubject, nowSec: number, ttlSec:
     iat: nowSec,
     exp: nowSec + ttlSec,
     jti: `vence-sim-${sub.userId}`,
+    // Va aquí —en el constructor COMPARTIDO— y no en cada simulación: así toda simulación que
+    // forje identidad queda marcada por defecto, incluidas las que nadie ha escrito todavía.
+    // Marcar «cuando me acuerde» es exactamente cómo se cuela tráfico de prueba en las métricas.
+    [CLAIM_SIMULACION]: true,
   }
 }
 

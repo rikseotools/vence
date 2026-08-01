@@ -56,7 +56,7 @@ async function main() {
     console.error('❌ Falta AUTH_SECRET (SSM: /vence-frontend/AUTH_SECRET).')
     process.exit(1)
   }
-  const { sessionCookieNameFor, cookieForPlaywright } = await import('../../lib/sim/session')
+  const { sessionCookieNameFor, cookieForPlaywright, CLAIM_SIMULACION } = await import('../../lib/sim/session')
   const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
   const { Client } = await import('pg')
 
@@ -81,8 +81,11 @@ async function main() {
   console.log(`   navegador real contra ${URL_BASE}`)
   console.log(`   usuario de prueba: ${email.slice(0, 3)}***@${email.split('@')[1]} (${uid})\n`)
 
+  // Todos los tokens forjados aquí llevan la marca de simulación: sin ella, este mismo fichero
+  // envenena el canario que lo acompaña (contó sus 2 corridas como usuarios curados) y hace
+  // saltar la alerta de `sesion_sin_email` en cada ejecución del caso 3.
   const cookieCon = async (token: Record<string, unknown>) =>
-    encode({ token, secret, salt: COOKIE, maxAge: MES })
+    encode({ token: { ...token, [CLAIM_SIMULACION]: true }, secret, salt: COOKIE, maxAge: MES })
 
   const navegador = await chromium.launch()
 

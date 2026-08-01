@@ -18,6 +18,9 @@ import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import { resolverPerfilPorEmail } from './resolveAppUser'
 import { decidirReintentoPerfil, CAMPO_REINTENTO } from './reintentoPerfil'
+// El NOMBRE del claim se importa del emisor (lib/sim/session.ts) para que no haya dos
+// literales que puedan divergir en silencio: si allí se renombra, aquí deja de compilar.
+import { CLAIM_SIMULACION } from '@/lib/sim/session'
 import { verifyGoogleIdToken } from './verifyGoogleIdToken'
 import { adminQueSuplanta, impersonacionCaducada } from '@/lib/admin/impersonacion'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -142,6 +145,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email
       }
 
+      // ¿Este tráfico lo ha fabricado una simulación? Se ETIQUETA la telemetría, nunca se
+      // cambia el comportamiento (ver `CLAIM_SIMULACION`). Sin esto, nuestras propias pruebas
+      // contaminan lo que medimos: el canario de T-434 contó 2 corridas de la simulación como
+      // usuarios «curados», y el caso sin-email hacía saltar su alerta en cada ejecución.
+      const esSimulacion = token[CLAIM_SIMULACION] === true
+
       // ── [T-434] REINTENTO: el arreglo de fondo ───────────────────────────────────────────
       //
       // Hasta hoy, `token.appUserId` se resolvía SOLO en el bloque de arriba, y ese bloque solo
@@ -197,6 +206,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 motivo: r.motivo,
                 detalle: r.detalle ?? null,
                 enReintento: true,
+                simulacion: esSimulacion,
               },
             })
           }
@@ -210,7 +220,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             severity: 'error',
             eventType: 'auth_sesion_sin_email',
             endpoint: '/api/auth/session',
-            metadata: { sub: typeof token.sub === 'string' ? token.sub.slice(0, 8) : null },
+            metadata: {
+              sub: typeof token.sub === 'string' ? token.sub.slice(0, 8) : null,
+              simulacion: esSimulacion,
+            },
           })
         }
       } catch (err) {
@@ -223,7 +236,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           severity: 'error',
           eventType: 'auth_reintento_roto',
           endpoint: '/api/auth/session',
-          metadata: { detalle: (err instanceof Error ? err.message : String(err)).slice(0, 200) },
+          metadata: {
+            detalle: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+            simulacion: token[CLAIM_SIMULACION] === true,
+          },
         })
       }
 

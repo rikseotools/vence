@@ -66,10 +66,18 @@ async function main() {
       [ventana],
     )
 
+    // ⚠️ SE EXCLUYE EL TRÁFICO DE SIMULACIÓN, y no es un detalle: `sim-perfil-roto-se-cura`
+    // recorre la aplicación DE VERDAD, así que sus curaciones son indistinguibles de las de una
+    // persona. Medido el 01/08/2026 al verificar el despliegue: este canario cantó «2 usuarios
+    // curados» y los dos eran corridas MÍAS —una en local, otra contra producción—. O sea que
+    // informaba de progreso donde no había ninguno, justo en el momento en que se decidía si el
+    // arreglo funcionaba. Un canario que se cuenta a sí mismo miente en la dirección más cara:
+    // la tranquilizadora. La marca la pone `lib/sim/session.ts` (CLAIM_SIMULACION).
     const curados = await c.query(
       `SELECT count(DISTINCT metadata->>'emailPrefijo')::int AS usuarios, count(*)::int AS eventos
          FROM observable_events
         WHERE event_type = 'auth_perfil_recuperado'
+          AND coalesce(metadata->>'simulacion', 'false') <> 'true'
           AND created_at > now() - $1::interval`,
       [ventana],
     )
@@ -99,10 +107,19 @@ async function main() {
       console.log(`\n   🟢 VERDE — nadie navegando sin perfil en esta ventana.`)
     } else if (cu.usuarios === 0) {
       codigo = 1
+      // OJO: esta cifra NO puede distinguir por sí sola las dos causas, y decir solo una manda
+      // a investigar al sitio equivocado. Se comprobó el 01/08/2026, media hora después de
+      // desplegar: cero curaciones porque **ningún roto había vuelto todavía**, mientras la
+      // simulación demostraba que el mecanismo SÍ corría en producción. El canario mide el
+      // RESULTADO; solo la simulación puede decir si el mecanismo está vivo.
       console.log(
         `\n   🔴 ROJO — hay ${r.usuarios} usuario(s) rotos y NINGUNA curación.\n` +
-          `      El reintento no está corriendo: comprueba que el frontend desplegado incluye\n` +
-          `      el callback jwt con \`decidirReintentoPerfil\` (T-434).`,
+          `      DOS causas posibles y hay que distinguirlas antes de tocar nada:\n` +
+          `        (a) el reintento no corre → compruébalo, no lo supongas:\n` +
+          `            npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es\n` +
+          `            (verde = el mecanismo está vivo y la causa es la (b))\n` +
+          `        (b) corre, pero ningún roto ha cargado página aún — normal justo tras\n` +
+          `            desplegar: cada persona se cura la primera vez que vuelve.`,
       )
     } else {
       console.log(
