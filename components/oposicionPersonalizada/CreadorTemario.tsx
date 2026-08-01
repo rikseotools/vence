@@ -173,6 +173,7 @@ export default function CreadorTemario({
   // Artículos de una ley concreta, cuando el usuario despliega una ley del resultado.
   const [arts, setArts] = useState<Record<string, string[]>>({})
   const [cargandoArts, setCargandoArts] = useState<string | null>(null)
+  const [errorArts, setErrorArts] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Arranca OCULTA y se decide tras montar: en servidor no hay `localStorage`, y pintarla
   // siempre para esconderla después daría un parpadeo a quien ya la cerró.
@@ -238,23 +239,36 @@ export default function CreadorTemario({
   // ── Artículos de una ley (para elegir uno a uno) ─────────────────────────────────────────
   const cargarArticulos = useCallback(
     async (ley: LeyHit) => {
-      if (arts[ley.lawId]) return
+      // Segundo clic = plegar. Sin esto, abrir una ley no se puede deshacer y la lista crece
+      // hasta tapar el resto de resultados.
+      if (arts[ley.lawId]) {
+        setArts((prev) => {
+          const copia = { ...prev }
+          delete copia[ley.lawId]
+          return copia
+        })
+        return
+      }
       setCargandoArts(ley.lawId)
+      setErrorArts(null)
       try {
         const headers = await getAuthHeaders()
-        const res = await fetch(
-          `/api/v2/test-config/articles?lawShortName=${encodeURIComponent(ley.shortName)}`,
-          { headers },
-        )
+        const res = await fetch(`/api/v2/laws/${ley.lawId}/articles`, { headers })
         const body = await res.json().catch(() => null)
-        const lista: string[] = Array.isArray(body?.articles)
-          ? body.articles.map((a: { article_number?: string; articleNumber?: string }) =>
-              String(a.article_number ?? a.articleNumber ?? ''),
-            ).filter(Boolean)
+        if (!res.ok || !body?.success) {
+          // Antes esto se tragaba en silencio y el botón «no hacía nada», que es la peor
+          // respuesta posible: el usuario no sabe si ha pulsado mal o si está roto.
+          setErrorArts('No se han podido cargar los artículos. Inténtalo otra vez.')
+          return
+        }
+        const lista: string[] = Array.isArray(body.articles)
+          ? body.articles
+              .map((a: { article_number?: string }) => String(a.article_number ?? ''))
+              .filter(Boolean)
           : []
         setArts((prev) => ({ ...prev, [ley.lawId]: lista }))
       } catch {
-        setArts((prev) => ({ ...prev, [ley.lawId]: [] }))
+        setErrorArts('No se han podido cargar los artículos. Comprueba tu conexión.')
       } finally {
         setCargandoArts(null)
       }
@@ -435,6 +449,7 @@ export default function CreadorTemario({
           {errorBusqueda && (
             <p className="mt-3 text-sm text-red-600 dark:text-red-400">{errorBusqueda}</p>
           )}
+          {errorArts && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{errorArts}</p>}
           {buscando && <p className="mt-3 text-sm text-gray-500">Buscando…</p>}
 
           {leyes.length > 0 && (
@@ -479,7 +494,7 @@ export default function CreadorTemario({
                           onClick={() => cargarArticulos(l)}
                           className="text-sm px-3 py-1.5 rounded-md border border-blue-600 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 whitespace-nowrap"
                         >
-                          {cargandoArts === l.lawId ? '…' : 'Añadir artículos'}
+                          {cargandoArts === l.lawId ? '…' : arts[l.lawId] ? 'Ocultar artículos' : 'Añadir artículos'}
                         </button>
                       </div>
                     </div>
