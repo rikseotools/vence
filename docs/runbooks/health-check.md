@@ -195,7 +195,17 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false });
 
   ```bash
   npm run canary:registro-crons     # ¿escribe alguien? ¿quién calla? ¿quién falla?
+
+  # el volcado completo de incidentes — OJO, hacen falta LAS DOS cabeceras:
+  curl -H "x-cron-secret: $CRON_SECRET" -H "Authorization: Bearer $CRON_SECRET" \
+       https://www.vence.es/api/admin/health
   ```
+
+  **Lo de las dos cabeceras no es capricho** (comprobado en vivo el 01/08): `/api/admin/*` pasa
+  antes por el guard del proxy edge, que acepta `x-cron-secret` pero por `Authorization: Bearer`
+  espera un **JWT de admin**, no el `CRON_SECRET` — con solo el Bearer responde `Token inválido`
+  **antes** de llegar a la ruta, y la ruta hace además su propia comprobación del Bearer. La
+  documentación decía solo el Bearer y llevaba tiempo sin funcionar.
 
   `cron_overdue` ya leía el sitio correcto desde el fix de junio. Quien se quedó atrás fue el
   **panel `/api/admin/health`**, que consultó la tabla muerta dos meses: no fallaba, devolvía

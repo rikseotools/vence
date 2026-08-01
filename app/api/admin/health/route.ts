@@ -3,7 +3,18 @@
 // Una sola request devuelve TODA la info necesaria para diagnosticar en 30s
 // cualquier saturación o lentitud.
 //
-// Para usar: curl -H "Authorization: Bearer $CRON_SECRET" https://www.vence.es/api/admin/health
+// Para usar hacen falta LAS DOS cabeceras (comprobado en vivo el 01/08/2026, T-442):
+//
+//   curl -H "x-cron-secret: $CRON_SECRET" -H "Authorization: Bearer $CRON_SECRET" \\
+//        https://www.vence.es/api/admin/health
+//
+// Por qué dos: `/api/admin/*` pasa antes por el guard del proxy edge
+// (`lib/security/adminApiGuard.ts`), que acepta `x-cron-secret` pero por
+// `Authorization: Bearer` espera un JWT de ADMIN, no el CRON_SECRET — así que con solo
+// el Bearer te rechaza con «Token inválido» ANTES de llegar aquí. Y una vez dentro,
+// esta ruta hace además su propia comprobación del Bearer. Aquí ponía solo el Bearer,
+// y llevaba tiempo sin funcionar: quien viniera a diagnosticar un incidente se comía un
+// 401 y concluía que el endpoint estaba roto.
 // Para monitorizar: UptimeRobot/BetterStack apuntando a este endpoint.
 
 import { NextResponse, type NextRequest } from 'next/server'
