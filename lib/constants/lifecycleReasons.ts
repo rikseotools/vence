@@ -87,6 +87,13 @@ export const LIFECYCLE_REASONS = {
   admin_duplicate_of:               { label: 'Admin: duplicada de otra (ver notes)',         typicalTarget: 'retired_duplicate' },
   admin_law_derogated:              { label: 'Admin: ley derogada',                          typicalTarget: 'retired_irreparable' },
   admin_exam_annulled:              { label: 'Admin: pregunta anulada en examen oficial',    typicalTarget: 'retired_irreparable' },
+  // Añadido 01/08/2026 (T-458). Ninguno de los anteriores servía y forzar uno que no encaja habría
+  // dejado el audit trail mintiendo: la ley NO está derogada, no hay imagen, ni se anuló en examen.
+  // El caso es otro: la pregunta pide el CONTENIDO de un instrumento derivado (un Plan, una
+  // Estrategia, un Informe) que la ley se limita a mandar crear, así que la respuesta no está en el
+  // artículo vinculado ni en ningún otro de la ley — y el epígrafe del tema tampoco pide ese
+  // documento. Detectable con `npm run audit:instrumento-derivado`.
+  admin_content_not_in_law:         { label: 'Admin: el contenido está en un instrumento derivado, no en la ley', typicalTarget: 'retired_irreparable' },
   admin_repaired_quarantine:        { label: 'Admin: estructural reparada',                  typicalTarget: 'draft' },
 
   // Pipelines automatizados

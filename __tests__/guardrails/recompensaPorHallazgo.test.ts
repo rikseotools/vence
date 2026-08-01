@@ -75,3 +75,41 @@ describe('un fallo o hallazgo, una recompensa', () => {
     expect(j).toBeGreaterThan(0)
   })
 })
+
+// ── GUARDARRAÍL AÑADIDO 01/08/2026 [T-458] ────────────────────────────────────────────────────
+//
+// Se descubrió EN PRODUCCIÓN, no en un test: al corregir la respuesta ya enviada a una usuaria, el
+// correo salió bien y la ficha se quedó guardando el mensaje ANTERIOR. Quien abriera esa ficha para
+// atender una réplica habría leído como «lo último que le dijimos» algo que ya no lo era.
+//
+// Se fija aquí y no en un fichero nuevo porque es el mismo camino de código (`resolveDispute`) y la
+// misma rama (`if (correccion)`) que ya vigila este guardarraíl: partirlo en dos ficheros haría que
+// quien toque la rama vea solo la mitad de lo que debe respetar.
+describe('corregir una respuesta deja la ficha y el hilo coherentes', () => {
+  const q = leer('lib/api/v2/dispute/queries.ts')
+  const ramaCorreccion = q.slice(q.indexOf('if (correccion) {'), q.indexOf('} else if (questionType ==='))
+
+  it('la corrección ACTUALIZA adminResponse: la ficha muestra lo último que le dijimos', () => {
+    expect(ramaCorreccion).toMatch(/adminResponse: trimmedResponse/)
+  })
+
+  it('pero NO toca el estado ni resolvedAt: corregir no es volver a decidir', () => {
+    expect(ramaCorreccion).not.toMatch(/\bstatus,/)
+    expect(ramaCorreccion).not.toMatch(/resolvedAt: now/)
+  })
+
+  it('TODA respuesta enviada queda en el historial, no solo la última', () => {
+    // `adminResponse` sobrescribe; el hilo entero vive en question_dispute_messages (espeja
+    // feedback_messages). Sin esto, una réplica se contesta a ciegas sobre lo ya dicho.
+    expect(q).toMatch(/INSERT INTO question_dispute_messages/)
+    expect(q).toMatch(/correccion_motivo/)
+  })
+
+  it('el historial es fail-open: si falla, NO se devuelve error', () => {
+    // El mensaje ya salió por email. Devolver error aquí haría creer que el envío falló y llevaría
+    // a un reenvío duplicado, que es peor que perder la fila.
+    const bloque = q.slice(q.indexOf('INSERT INTO question_dispute_messages'))
+    expect(bloque.slice(0, 700)).toMatch(/catch/)
+    expect(bloque.slice(0, 700)).not.toMatch(/return \{ success: false/)
+  })
+})

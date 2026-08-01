@@ -386,6 +386,25 @@ export async function resolveDispute(
           VALUES (gen_random_uuid(), NOW(), 'api:dispute/resolve', 'info', 'dispute_respuesta_corregida',
                   ${JSON.stringify({ disputeId, questionId, estado: currentStatus, motivo: correccion })}::jsonb, NOW())`)
       } catch { /* la traza no puede tumbar una corrección ya decidida */ }
+
+      // La corrección SÍ actualiza `adminResponse` (y solo eso): ese campo es «lo último que le
+      // dijimos», y es lo que lee quien abra la ficha para atender una réplica. Dejarlo con el
+      // mensaje anterior fue el hueco que se vio en producción el 01/08 [T-458] — el correo salía
+      // corregido y la ficha seguía contando la versión vieja. NO se tocan `status` ni `resolvedAt`:
+      // corregir lo que dijimos no es volver a decidir sobre la impugnación.
+      if (trimmedResponse) {
+        if (questionType === 'psychometric') {
+          await db
+            .update(psychometricQuestionDisputes)
+            .set({ adminResponse: trimmedResponse, updatedAt: now })
+            .where(eq(psychometricQuestionDisputes.id, disputeId))
+        } else {
+          await db
+            .update(questionDisputes)
+            .set({ adminResponse: trimmedResponse, updatedAt: now })
+            .where(eq(questionDisputes.id, disputeId))
+        }
+      }
     } else if (questionType === 'psychometric') {
       const result = await db
         .update(psychometricQuestionDisputes)
@@ -413,6 +432,27 @@ export async function resolveDispute(
         .returning({ id: questionDisputes.id })
       if (!result[0]?.id) {
         return { success: false, error: 'Error actualizando impugnacion legislativa' }
+      }
+    }
+
+    // 3.bis HISTORIAL de lo que le hemos escrito [T-458]. `adminResponse` guarda solo la ÚLTIMA
+    // respuesta; desde que se puede corregir un mensaje ya enviado, ese campo sobrescribe lo
+    // anterior y el hilo se pierde. Aquí queda entero, para que quien atienda una réplica pueda leer
+    // TODO lo que le dijimos y no repetirse (regla §0.bis del manual de impugnaciones). Espeja
+    // `feedback_messages`, que es como el lado de feedback resolvió exactamente lo mismo.
+    //
+    // Solo legislativas: la tabla apunta por FK a `question_disputes`. Las psicotécnicas viven en
+    // otra tabla y siguen sin historial — está anotado en T-458, no es un olvido.
+    if (trimmedResponse && questionType !== 'psychometric') {
+      try {
+        await db.execute(sql`
+          INSERT INTO question_dispute_messages (dispute_id, is_admin, message, correccion_motivo)
+          VALUES (${disputeId}::uuid, true, ${trimmedResponse}, ${correccion})`)
+      } catch (e) {
+        // Fail-open a propósito: el mensaje YA se le ha enviado a la persona. Perder la fila del
+        // historial es malo, pero devolver error aquí haría creer que el envío falló y llevaría a un
+        // reenvío duplicado, que es peor.
+        console.warn('⚠️ [Dispute] no se pudo guardar el historial:', (e as Error).message)
       }
     }
 

@@ -426,6 +426,24 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'ahí el vínculo actual suele ser tan defendible como el sugerido. NUNCA re-vincular por cercanía de número. ' +
       'Al re-vincular, comprueba que el artículo destino está escopado en los mismos temas o la pregunta cambia de sitio.',
   },
+  pregunta_instrumento_derivado: {
+    title: 'Pregunta que pide el contenido de un Plan/Estrategia que la ley solo manda crear',
+    triggerPhrase: 'revisa las preguntas de planes y estrategias',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'corre `npm run audit:instrumento-derivado` (BAJO DEMANDA, NO pinga el badge; acota con `-- --ley <texto>`). ' +
+      'Es el HERMANO de `vinculo_articulo_vecino` y cubre su punto ciego: allí el vínculo está mal y un artículo ' +
+      'vecino sí responde; aquí NO responde ninguno, porque la respuesta vive en un documento que la ley se limita ' +
+      'a ordenar (el Plan Estratégico, el Informe de Impacto de Género). El opositor abre el artículo desde la ' +
+      'pregunta y no hay nada que leer. Para cada línea, abre el artículo y decide entre DOS arreglos: importar el ' +
+      'instrumento como contenido propio (si el epígrafe lo pide), o RETIRAR la pregunta (`retired_irreparable`). ' +
+      'NUNCA cambiar la clave para que encaje con el artículo. Lee la banda: `error` = el artículo nombra el ' +
+      'instrumento y nadie contiene la respuesta (caso limpio); `warn` = la clave es demasiado corta para medirla ' +
+      'por solape de palabras (un órgano, una fecha, una cifra) y hay que LEERLA — ahí es donde apareció una clave ' +
+      'equivocada: «¿quién publica la memoria?» respondía «el Instituto Andaluz de la Mujer» cuando el artículo ' +
+      'solo dice que ASESORA. Mira también el epígrafe del tema: si dice «aspectos generales de la normativa», el ' +
+      'contenido interno de un Plan no entra en programa.',
+  },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',
     triggerPhrase: 'revisa las leyes duplicadas entre temas',

@@ -1839,6 +1839,25 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Por qué merece la pena:** es el guardarraíl que sostiene la regla *«¿esto ya existe?»* de CLAUDE.md, y ahora mismo su cobertura es menor de lo que su nombre promete. Afecta a TODOS los recursos vigilados, no solo a `fetcher_type`.
 - **Relacionadas:** [T-453] (de donde sale), [T-130] (el episodio que creó el registro).
 
+### [T-458] 🟡 [ABIERTO 01/08] Preguntas que piden el contenido de un Plan/Estrategia que la ley solo manda crear
+
+- **Esfuerzo: rato.** El detector y las 7 retiradas están HECHOS y verificados; queda la cola de epígrafes.
+- **ORIGEN.** Cinco impugnaciones seguidas de un usuario premium (m.g.espadero) sobre la Ley 12/2007 andaluza: *«Esto no está dentro del artículo en el Temario»*. **Tenía razón en las cinco.** Su quinta observación fue más lejos que la queja: *«veo que le dais mucha importancia porque sobre él preguntáis bastante en este artículo»* — preguntábamos mucho de un documento que no enseñamos.
+- **EL FALLO.** El art. 7 dice «el Consejo de Gobierno aprobará un Plan Estratégico con periodicidad no inferior a cuatro años» y NADA más. Colgadas de él había 9 preguntas y **6 pedían lo que solo está DENTRO del Plan de 2022** (ejes, objetivos, vigencia, quién publica su memoria). Y dos tenían además la **clave sin respaldo**: «quién publica la memoria → el IAM» cuando el art. 7.4 solo dice que ASESORA, y «4 años de duración de los planes específicos», que es una **deducción nuestra** (el 7.2 pide evaluación ANUAL). Sus explicaciones se delataban: citaban el artículo para sostener algo que el artículo no dice.
+- **PUNTO CIEGO que lo explica.** El detector hermano `vinculo_articulo_vecino` **no puede verlo por construcción**: exige que un artículo VECINO sí responda (su arreglo es re-vincular). Aquí no responde NINGUNO, porque la respuesta vive en un documento derivado. Sin vecino al que apuntar, se queda mudo.
+- **RESUELTO.** Núcleo puro `lib/health/instrumentoDerivado.cjs` (13 tests, calibrado con las 9 preguntas reales clasificadas a mano) + runner `npm run audit:instrumento-derivado` + registro en `toolRegistry` y `runbookRegistry` (frase *«revisa las preguntas de planes y estrategias»*) + CLAUDE.md. **Reutiliza las primitivas del hermano**, no las recopia. Medido: 147 preguntas nombran un instrumento → 38 hallazgos (6 firmes, 32 a leer), 33 descartadas porque el artículo sí responde.
+  - **GOTCHA de medida (lo enseñaron los tests):** un recall alto sobre 3 palabras no es una medida sino una coincidencia de nombres («El Instituto Andaluz de la Mujer» está en el artículo… porque asesora). Y «para» contaba como palabra significativa e inflaba el solape. Por eso la fiabilidad se cuenta con `palabrasFuertes` y **NUNCA dentro de `recall`**, que el hermano tiene calibrado.
+  - **7 preguntas RETIRADAS** (`retired_irreparable`, audit trail completo). Hizo falta añadir el `reason_code` `admin_content_not_in_law`: ninguno de los tres existentes era cierto y forzar el más parecido habría dejado el audit trail mintiendo.
+  - **Verificado antes de retirar:** los 11 epígrafes que escopan el art. 7 hablan de NORMATIVA, ninguno pide el Plan.
+- **⏳ QUEDA:**
+  1. **`a2d56bfa` NO se retira**: el epígrafe de `celador_sas` T7 sí nombra *«Plan de Igualdad de la Junta de Andalucía»* → hay que IMPORTAR ese Plan como contenido. Es el arreglo contrario, y la primera lectura casi la retira por error.
+  2. **Verificar el epígrafe de `celador_sas` T7** contra su boletín: es el que sostiene lo anterior y está SIN FILA de verificación.
+  3. **9 de 11 temas** con epígrafe o scope sin verificar: jaén T8, ayto-córdoba T5, marbella T14, celador-sas T7, cuidador-córdoba T4, enfermero-sas T7, parlamento T39 (sin fila) + administrativo-andalucía T16 y aux-admin-andalucía T9 (scope `stale`).
+  4. **Contestar las 5 impugnaciones** de m.g.espadero (reclamadas, sin responder).
+  5. **Historial de impugnaciones psicotécnicas**: la tabla nueva apunta por FK a `question_disputes`, así que las psicotécnicas siguen sin historial.
+- **DE PASO, hueco encontrado EN PRODUCCIÓN:** al corregir con T-394 la respuesta ya enviada a una usuaria, el correo salió bien y **la ficha se quedó con el mensaje ANTERIOR** — quien atendiera una réplica leería como «lo último» algo que ya no lo era (§0.bis del manual). Resuelto espejando el modelo que YA existía en feedback (`feedback_messages`): tabla `question_dispute_messages` append-only + backfill de 1.589 mensajes; `admin_response` sigue siendo «lo último» y el hilo entero vive en la tabla. 4 guardarraíles nuevos en `recompensaPorHallazgo`.
+- **Relacionadas:** [T-394] (la puerta de corrección que destapó el hueco), [T-130] (registro de herramientas).
+
 ### [T-443] 🔴 [ABIERTO 31/07] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
 
 - **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.

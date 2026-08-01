@@ -184,6 +184,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '— el bug del label "115" de Seg. Social T3, por el otro lado. Un test con mocks no lo caza. ' +
       'Correrla al tocar `lib/api/test-config/queries.ts` o el conteo de oficiales.',
   },
+  // ── salud del contenido: pregunta ↔ artículo ──────────────────────────────────────────────
+  audit_instrumento_derivado: {
+    titulo: 'Preguntas que piden el contenido de un Plan/Estrategia que la ley solo manda crear',
+    ruta: 'scripts/audit-instrumento-derivado.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run audit:instrumento-derivado [-- --ley <texto>] [--json]`. SOLO LEE. Núcleo puro en ' +
+      '`lib/health/instrumentoDerivado.cjs` (13 tests, calibrado con las 9 preguntas reales del art. 7 ' +
+      'de la Ley 12/2007 clasificadas a mano). **HERMANO de `audit:vinculo-vecino`, no un duplicado**: ' +
+      'reutiliza sus primitivas (`norm`/`words`/`recall`, las exclusiones de negación y meta-opción) y ' +
+      'se distingue por un discriminante medible — allí un artículo VECINO sí responde y el arreglo es ' +
+      're-vincular; aquí NO responde ninguno de la ley y el arreglo es importar el instrumento o retirar ' +
+      'la pregunta. Por eso aquel se queda mudo en estos casos: exige un vecino al que apuntar. ' +
+      'Medido el 01/08/2026 sobre el banco: 147 preguntas nombran un instrumento, 38 hallazgos ' +
+      '(6 firmes + 32 «hay que leer»), 33 descartadas por responderlas el artículo. BAJO DEMANDA, no ' +
+      'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
+      'premium que ningún detector del barrido podía ver.',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',
