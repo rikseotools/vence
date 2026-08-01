@@ -50,6 +50,9 @@ export const sendNewsletterResponseSchema = z.object({
   total: z.number().int().min(0),
   sent: z.number().int().min(0),
   failed: z.number().int().min(0),
+  // Excluidos por baja / newsletter desactivada (T-457): que el admin vea que
+  // su selección de N acabó siendo un envío de N-k, y no lo descubra por un hueco.
+  skippedBlocked: z.number().int().min(0).optional(),
   audienceType: audienceTypeSchema.optional(),
   testMode: z.boolean().optional(),
   errors: z.array(z.object({

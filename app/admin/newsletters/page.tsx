@@ -62,6 +62,8 @@ interface SendResult {
   total?: number
   sent?: number
   failed?: number
+  /** Excluidos por baja / newsletter desactivada (T-457) */
+  skippedBlocked?: number
   audiences?: Array<{ audienceName: string }>
   errors?: Array<{ email: string; error: string }>
   retryAttempted?: boolean
@@ -1326,7 +1328,16 @@ export default function NewslettersPage() {
                     <div className="text-sm">
                       <span className="font-medium">Audiencias:</span> {result.audiences?.map(a => a.audienceName).join(', ')}
                     </div>
-                    
+
+                    {/* T-457: una selección de N que sale a N-k tiene que verse. Si el
+                        descarte no se enseña, el envío parece haber salido entero. */}
+                    {!!result.skippedBlocked && result.skippedBlocked > 0 && (
+                      <div className="text-sm p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
+                        🚫 <span className="font-medium">No enviados por preferencias:</span> {result.skippedBlocked}
+                        <div className="text-xs mt-0.5">Están dados de baja o tienen la newsletter desactivada.</div>
+                      </div>
+                    )}
+
                     {result.retryAttempted && result.lastRetryResult && (
                       <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded">
                         <h5 className="text-sm font-medium text-orange-800 mb-1">🔄 Último reintento:</h5>

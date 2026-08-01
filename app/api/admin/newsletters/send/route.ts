@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   safeParseSendRequest,
   getNewsletterAudience,
+  getNewsletterRecipientsByIds,
   replaceNewsletterVariables,
   type SendNewsletterRequest,
   type EligibleUser
 } from '@/lib/api/newsletters'
 import { renderTemplate, getEmailTemplate, getActiveOposiciones } from '@/lib/api/newsletters'
 import { getAdminDb } from '@/db/client'
-import { userProfiles, emailEvents } from '@/db/schema'
-import { and, inArray, isNotNull } from 'drizzle-orm'
+import { emailEvents } from '@/db/schema'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -89,27 +89,24 @@ async function _POST(request: NextRequest) {
 
     // Obtener usuarios según el tipo de audiencia
     let users: EligibleUser[] = []
+    // Cuántos se cayeron por preferencias: un envío del que desaparecen
+    // destinatarios en silencio es indistinguible de uno que salió entero.
+    let skippedBlocked = 0
 
     if (selectedUserIds?.length) {
-      // Envío a usuarios específicos - obtener de DB
+      // Envío a usuarios específicos — pasa por el MISMO filtro de preferencias
+      // que la audiencia (T-457). La lista puede venir de una pantalla filtrada,
+      // de una sin filtrar, o de ids pegados a mano: se comprueba aquí, que es
+      // el punto de escritura, y no en la pantalla que la arma.
       console.log(`👥 [Newsletter/Send] Enviando a ${selectedUserIds.length} usuarios específicos`)
 
-      const data = await getAdminDb()
-        .select({
-          id: userProfiles.id,
-          email: userProfiles.email,
-          fullName: userProfiles.fullName,
-          targetOposicion: userProfiles.targetOposicion,
-        })
-        .from(userProfiles)
-        .where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))
+      const seleccion = await getNewsletterRecipientsByIds(selectedUserIds)
+      users = seleccion.users
+      skippedBlocked = seleccion.skippedBlocked
 
-      users = data.map(u => ({
-        id: u.id,
-        email: u.email,
-        fullName: u.fullName,
-        targetOposicion: u.targetOposicion
-      }))
+      if (skippedBlocked > 0) {
+        console.log(`🚫 [Newsletter/Send] ${skippedBlocked} destinatario(s) excluidos: baja o newsletter desactivada`)
+      }
     } else if (audienceType) {
       // Envío por audiencia - usa Drizzle (respeta unsubscribedAll)
       console.log(`👥 [Newsletter/Send] Obteniendo audiencia tipo: ${audienceType}`)
@@ -119,10 +116,13 @@ async function _POST(request: NextRequest) {
     if (!users.length) {
       return NextResponse.json({
         success: true,
-        message: 'No se encontraron usuarios para la audiencia seleccionada',
+        message: skippedBlocked > 0
+          ? `No queda ningún destinatario: ${skippedBlocked} está(n) dado(s) de baja o con la newsletter desactivada`
+          : 'No se encontraron usuarios para la audiencia seleccionada',
         sent: 0,
         failed: 0,
-        total: 0
+        total: 0,
+        skippedBlocked
       })
     }
 
@@ -321,6 +321,7 @@ async function _POST(request: NextRequest) {
       total: users.length,
       sent,
       failed,
+      skippedBlocked,
       audienceType,
       testMode,
       errors: errors.slice(0, 10) // Solo mostrar los primeros 10 errores

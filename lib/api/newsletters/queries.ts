@@ -1,13 +1,86 @@
 // lib/api/newsletters/queries.ts - Queries tipadas para newsletters
 import { getDb } from '@/db/client'
 import { userProfiles, emailPreferences, emailEvents, adminUsersWithRoles, oposiciones } from '@/db/schema'
-import { eq, and, not, isNull, sql, gte, lt, notInArray, desc, or, ilike, ne } from 'drizzle-orm'
+import { eq, and, not, isNull, sql, gte, lt, inArray, notInArray, desc, or, ilike, ne } from 'drizzle-orm'
 import type {
   AudienceType, EligibleUser, AudienceStats, NewsletterVariables,
   TemplateStatsResponse, TemplateStat,
   NewsletterUsersResponse, NewsletterUser
 } from './schemas'
 import { generalAudienceTypes } from './schemas'
+import {
+  blockedUserIds,
+  filterEligibleRecipients,
+  type NewsletterPreference,
+  type RecipientCandidate
+} from './recipients'
+
+// ============================================
+// QUIÉN NO PUEDE RECIBIR UNA NEWSLETTER
+// ============================================
+// ÚNICA lectura de las preferencias que bloquean (T-457). Antes vivía copiada
+// en `getNewsletterAudience` y en `getAudienceStats`, y la tercera vía —el envío
+// por selección manual— sencillamente no la tenía. El criterio lo pone el núcleo
+// puro `recipients.ts`; aquí solo se traen las filas candidatas.
+
+export async function getBlockedNewsletterUserIds(): Promise<Set<string>> {
+  const db = getDb()
+
+  const prefs: NewsletterPreference[] = await db
+    .select({
+      userId: emailPreferences.userId,
+      unsubscribedAll: emailPreferences.unsubscribedAll,
+      emailNewsletterDisabled: emailPreferences.emailNewsletterDisabled,
+    })
+    .from(emailPreferences)
+    .where(
+      or(
+        eq(emailPreferences.unsubscribedAll, true),
+        eq(emailPreferences.emailNewsletterDisabled, true)
+      )
+    )
+
+  return blockedUserIds(prefs)
+}
+
+/**
+ * Destinatarios de un envío por selección MANUAL de usuarios.
+ *
+ * Es el punto de escritura de esa vía: la pantalla que arma la lista puede
+ * estar filtrada o no, puede haber envejecido, o el admin puede pegar ids a
+ * mano. Aquí se comprueba, siempre, justo antes de enviar.
+ */
+export async function getNewsletterRecipientsByIds(
+  selectedUserIds: readonly string[]
+): Promise<{ users: EligibleUser[]; skippedBlocked: number; skippedNoEmail: number }> {
+  if (!selectedUserIds.length) return { users: [], skippedBlocked: 0, skippedNoEmail: 0 }
+
+  const db = getDb()
+
+  const candidates: RecipientCandidate[] = await db
+    .select({
+      id: userProfiles.id,
+      email: userProfiles.email,
+      fullName: userProfiles.fullName,
+      targetOposicion: userProfiles.targetOposicion,
+    })
+    .from(userProfiles)
+    .where(inArray(userProfiles.id, selectedUserIds as string[]))
+
+  const blocked = await getBlockedNewsletterUserIds()
+  const { recipients, skippedBlocked, skippedNoEmail } = filterEligibleRecipients(candidates, blocked)
+
+  return {
+    users: recipients.map(u => ({
+      id: u.id,
+      email: u.email!,
+      fullName: u.fullName ?? null,
+      targetOposicion: u.targetOposicion ?? null,
+    })),
+    skippedBlocked,
+    skippedNoEmail,
+  }
+}
 
 // ============================================
 // OBTENER OPOSICIONES ACTIVAS DESDE BD
@@ -95,26 +168,14 @@ export async function getNewsletterAudience(
     .where(and(...baseConditions))
 
   // Excluir usuarios dados de baja (unsubscribedAll) o con newsletters desactivadas
-  const blockedUsers = await db
-    .select({ userId: emailPreferences.userId })
-    .from(emailPreferences)
-    .where(
-      or(
-        eq(emailPreferences.unsubscribedAll, true),
-        eq(emailPreferences.emailNewsletterDisabled, true)
-      )
-    )
+  const blockedIds = await getBlockedNewsletterUserIds()
 
-  const blockedIds = new Set(blockedUsers.map(u => u.userId))
-
-  return users
-    .filter(u => u.email && !blockedIds.has(u.id))
-    .map(u => ({
-      id: u.id,
-      email: u.email!,
-      fullName: u.fullName,
-      targetOposicion: u.targetOposicion
-    }))
+  return filterEligibleRecipients(users, blockedIds).recipients.map(u => ({
+    id: u.id,
+    email: u.email!,
+    fullName: u.fullName ?? null,
+    targetOposicion: u.targetOposicion ?? null
+  }))
 }
 
 // ============================================
@@ -128,16 +189,7 @@ export async function getAudienceStats(): Promise<AudienceStats> {
   const activeOposiciones = await getActiveOposiciones()
 
   // 2. IDs de usuarios dados de baja o con newsletters desactivadas (1 query)
-  const blockedUsers = await db
-    .select({ userId: emailPreferences.userId })
-    .from(emailPreferences)
-    .where(
-      or(
-        eq(emailPreferences.unsubscribedAll, true),
-        eq(emailPreferences.emailNewsletterDisabled, true)
-      )
-    )
-  const blockedIds = new Set(blockedUsers.map(u => u.userId))
+  const blockedIds = await getBlockedNewsletterUserIds()
 
   // 3. Todos los usuarios con email en 1 sola query
   const allUsers = await db

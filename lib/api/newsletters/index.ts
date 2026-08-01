@@ -32,6 +32,8 @@ export {
 export {
   getActiveOposiciones,
   getNewsletterAudience,
+  getBlockedNewsletterUserIds,
+  getNewsletterRecipientsByIds,
   getAudienceStats,
   replaceNewsletterVariables,
   renderTemplate,
@@ -42,3 +44,12 @@ export {
   getNewsletterUsers,
   type OposicionOption
 } from './queries'
+
+// Núcleo puro del filtro de destinatarios (único criterio para las dos vías)
+export {
+  isBlockedForNewsletter,
+  blockedUserIds,
+  filterEligibleRecipients,
+  type NewsletterPreference,
+  type RecipientCandidate
+} from './recipients'

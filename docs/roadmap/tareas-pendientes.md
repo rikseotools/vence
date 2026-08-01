@@ -1126,14 +1126,32 @@ incluida).
 - **RESOLUCIÓN PROPUESTA:** migrarlo a `sendEmailV2` (que usa Resend por dentro: no se cambia de proveedor, se le ponen las comprobaciones delante). Ojo al hacerlo: hoy el importe se calcula con `invoices.createPreview` y eso hay que conservarlo; y la idempotencia actual vive en `email_logs` (5 días), que conviene mantener ADEMÁS de la clave de Resend.
 - **Relacionadas:** [T-448] (donde salió), [T-369] (por qué la categoría decide quién lo recibe), [T-457] (el otro cabo del mismo repaso).
 
-### [T-457] 🟡 [ABIERTO 01/08] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
+### [T-457] 🟡 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
 
 - **ORIGEN.** Salió comparando los caminos de envío en [T-448]/[T-456]: la newsletter tiene **dos** rutas y solo una filtra.
 - **EL DETALLE:** el envío **por audiencia** usa el helper de Drizzle que excluye `unsubscribedAll` y `email_newsletter_disabled` (está comentado en el código: *«respeta unsubscribedAll»*). El envío **por `selectedUserIds`** hace `.where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))`: comprueba que tengan email **y nada más**. Ni `resolve-users` ni `users` filtran preferencias tampoco.
 - **NO se afirma que se haya enviado nada indebido**: depende de de dónde saque el admin esa lista, y puede venir de una pantalla ya filtrada. Lo que sí se puede afirmar es que **el filtro no está en el punto de escritura**, que es donde el resto del sistema lo pone ([T-130]: dos puertas al mismo recurso con criterios distintos no protegen).
 - **MEDIR ANTES DE TOCAR:** cruzar `email_events` de newsletters con `email_preferences` para saber si el hueco se ha usado alguna vez. Si el número es 0, esto es un trinquete barato; si no lo es, es un incidente de cumplimiento.
+
+- **📏 MEDIDO (01/08) — es un TRINQUETE, no un incidente. Y la medida corrigió mi primera lectura.**
+  - Universo: **7.660** envíos de newsletter a **5.577** usuarios desde el 28/09/2025. Hoy hay **109** usuarios detrás del filtro (104 baja total + 83 newsletter apagada, solapan).
+  - **Evidencia dura** (envío POSTERIOR a `unsubscribed_at`, que es la única marca de tiempo que permite afirmar algo): **1 usuario, 2 envíos**, el 10/12/2025 y el 22/12/2025, dado de baja el 29/10/2025. Uno de los dos tiene la firma exacta del hueco: `campaign_id` con **un solo destinatario**, que es como se ve una selección manual.
+  - **PERO los dos son ANTERIORES al filtro:** `getNewsletterAudience` no excluyó preferencias hasta `c30893c94` (**30/03/2026**). En diciembre **ninguna** vía filtraba, así que esos 2 envíos **no prueban** que se haya usado el hueco actual. Desde que existe el filtro: **0 envíos demostrables** a alguien ya bloqueado.
+  - Conclusión honesta: **no consta uso del hueco vigente**, así que esto es el trinquete barato de la ficha — pero con 109 personas al alcance y sin nada que lo impidiera.
+  - Reproducible: `scratchpad/t457/medir-hueco.cjs`.
+
+- **✅ ARREGLADO (01/08), en el punto de escritura:**
+  - **Núcleo puro nuevo `lib/api/newsletters/recipients.ts`** — `isBlockedForNewsletter` / `blockedUserIds` / `filterEligibleRecipients`. El criterio (baja total **o** newsletter apagada) vive en UN sitio y lo usan las dos vías.
+  - **`getNewsletterRecipientsByIds`** (`queries.ts`) es ahora la vía de la selección manual; la ruta `send` **ya no consulta `user_profiles` por su cuenta**.
+  - **`getBlockedNewsletterUserIds`** unifica la lectura de preferencias, que estaba **copiada** en `getNewsletterAudience` y `getAudienceStats` (y ausente en la tercera vía). Una sola puerta.
+  - **Se CUENTA lo que se descarta** (`skippedBlocked`, en la respuesta y en la tarjeta de resultado del panel): una selección de N que sale a N−k tenía que verse; si el descarte es mudo, el envío parece haber salido entero.
+  - **NO se toca la pantalla** que arma la selección, a propósito: una lista filtrada al construirse envejece antes de pulsar «enviar».
+  - **Capas:** 12 unitarios del núcleo puro (`__tests__/emails/newsletterDestinatarios.test.ts`) · guardarraíl de 6 que enumera **las dos vías** y pone trinquete a que el criterio se vuelva a copiar (`__tests__/guardrails/newsletterFiltraPreferencias.test.ts`) · **simulación contra la BD real** `npx tsx --env-file=.env.local scripts/sim/sim-newsletter-destinatarios.ts` (no envía nada; 7 seleccionados → 3 destinatarios, 4 excluidos, y comprueba que los NO bloqueados siguen pasando).
+  - El guardarraíl se **mutó a propósito** en las dos direcciones antes de darlo por bueno: reintroducir la consulta en la ruta y renombrar la llamada a `XXgetNewsletterRecipientsByIds(` lo ponen en rojo, y el original en verde. Sin eso sería teatro (lección de [T-454]).
+
+- **⏳ FALTA:** desplegar **frontend** y, en el siguiente envío manual real, ver la línea «No enviados por preferencias» en la tarjeta de resultado.
 - **RESOLUCIÓN PROPUESTA:** mover el filtro a la consulta del envío (las dos rutas), no a las pantallas que alimentan la selección. Una lista de destinatarios que llega ya filtrada sigue pudiendo envejecer entre que se construye y se envía.
-- **Relacionadas:** [T-456], [T-369].
+- **Relacionadas:** [T-456] (el otro cabo del mismo repaso: el recordatorio de renovación envía con Resend crudo, sin filtro ni rastro), [T-369], [T-130] (dos puertas con criterios distintos no protegen).
 
 ### [T-454] 🟠 [ABIERTO 01/08] El modo EXAMEN nunca registra el dispositivo: 39 usuarios de 7 días responden y no dejan fila en `user_devices`
 
