@@ -143,7 +143,13 @@ Y con los parámetros BUENOS, el resultado fue el mismo, lo que enseña algo má
   aportaba nada… porque el problema nunca fue el render: **los href a los PDF SÍ estaban en el HTML** y
   el ciego era mi extracción de TEXTO (que se quedaba en los menús).
 
-**Antes de pedir headless para una fuente, comprueba qué aporta de verdad frente a `curl`.** Hoy:
+**Antes de pedir headless para una fuente, comprueba qué aporta de verdad frente a `curl`.**
+
+> **Y desde T-453 (01/08/2026) esa comprobación la hace sola la herramienta que escribe la URL.**
+> `scripts/seguimiento/repuntar-url.cjs` mide con navegador cuando el fetch plano no ve nada y
+> **promueve a `headless` solo si está medido que aporta**; si el navegador tampoco ve nada,
+> rechaza — el problema es la URL. Antes solo existía el camino contrario (degradar), así que una
+> fuente SPA quedaba invigilable para siempre: **13 oposiciones activas** en ese estado ese día. Hoy:
 **cero de cinco**.
 
 **Medición 26/07/2026 (T-125), los dos casos nuevos — y un fallo de la Lambda que sale a la luz:**

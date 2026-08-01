@@ -37,9 +37,12 @@ const path = require('path')
 const {
   verificarUrlCandidata,
   decidirEscritura,
+  veredictoHeadless,
+  decidirFetcherType,
   extraerTextoRelevante,
   CABECERAS_CRON,
 } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'seguimientoVigilable.cjs'))
+const { invocarHeadless } = require(path.join(__dirname, '..', '..', 'lib', 'convocatoria', 'headlessFetch.cjs'))
 
 const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
@@ -121,7 +124,7 @@ function pinta(url, r) {
   console.log(`  motivo   : ${diag.motivo}\n`)
 }
 
-async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado, forzadoDudoso }) {
+async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado, forzadoDudoso, promocion }) {
   try {
     await sql`
       INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
@@ -138,6 +141,10 @@ async function traza(sql, { slug, urlVieja, urlNueva, diag, aplicado, forzadoDud
                 nivel: diag.nivel,
                 motivo: diag.motivo,
                 anclas_encontradas: diag.anclasEncontradas || [],
+                // Promoción a headless (T-453): sin esto, el evento diría que se escribió una URL
+                // «no vigilable» y no que se cambió el fetcher — la mitad de la historia.
+                promovido_a: promocion ? promocion.destino : null,
+                texto_headless_chars: promocion ? promocion.chars : null,
               })}, NOW())`
   } catch (e) {
     // La traza NUNCA debe tumbar el repunte: si falla, se avisa y se sigue.
@@ -160,7 +167,7 @@ async function main() {
 
   const sql = conectar()
   const [op] = await sql`
-    SELECT id, slug, nombre, is_active, seguimiento_url FROM oposiciones WHERE slug = ${slug}`
+    SELECT id, slug, nombre, is_active, seguimiento_url, fetcher_type FROM oposiciones WHERE slug = ${slug}`
   if (!op) {
     await sql.end()
     uso(`no existe la oposición '${slug}'`)
@@ -182,7 +189,34 @@ async function main() {
     console.log('⚠️  ACEPTADA POR --aceptar-dudoso: contenido escaso pero no es un shell ciego.')
     console.log('   Queda registrado en observable_events. Revísala si el cron no detecta cambios.\n')
   }
+  // ── SEGUNDA OPORTUNIDAD: medir con NAVEGADOR antes de rendirse (T-453) ──────────────────
+  // El fetch de arriba es HTTP plano, que es lo que hace el cron con `fetcher_type='http'`. Si la
+  // fuente es una SPA, ahí se ve un cascarón y esta herramienta la rechazaba... aunque fuese la URL
+  // BUENA. El sistema sabía degradar a `http` pero no promover a `headless`, así que esas fuentes
+  // quedaban invigilables para siempre: 13 oposiciones ACTIVAS en ese estado el 01/08.
+  //
+  // La guarda importante es la que NO cambia: si el navegador tampoco ve nada (`ambos_ciegos`), se
+  // rechaza igual. El problema entonces es la URL, y marcar `headless` solo lo enmascararía.
+  let promocion = null
   if (!aceptado) {
+    process.stdout.write('  … el fetch plano no la ve; probando con NAVEGADOR (headless)…\n')
+    const h = await invocarHeadless(urlNueva)
+    const textoH = extraerTextoRelevante(h.html || '')
+    const vh = veredictoHeadless({
+      statusCurl: r.diag.httpStatus, textoCurl: r.texto || '', errorCurl: r.diag.error,
+      statusHeadless: h.status, textoHeadless: textoH, errorHeadless: h.error,
+    })
+    const df = decidirFetcherType(vh.veredicto, op.fetcher_type || 'http')
+    console.log(`  headless : ${h.status}/${textoH.length}ch → ${vh.veredicto} (${vh.motivo})`)
+    if (df.cambiar && df.destino === 'headless') {
+      promocion = { destino: 'headless', motivo: df.motivo, chars: textoH.length }
+      console.log(`  veredicto: ✅ VIGILABLE con navegador → hay que promover a \`headless\``)
+    } else {
+      console.log(`  veredicto: ❌ tampoco con navegador — ${df.motivo}`)
+    }
+  }
+
+  if (!aceptado && !promocion) {
     await traza(sql, {
       slug: op.slug, urlVieja: op.seguimiento_url, urlNueva, diag: r.diag, aplicado: false,
     })
@@ -202,6 +236,18 @@ async function main() {
 
   await sql.begin(async (tx) => {
     await tx`UPDATE oposiciones SET seguimiento_url = ${urlNueva} WHERE id = ${op.id}`
+    if (promocion) {
+      // La URL y el fetcher se escriben JUNTOS y en la MISMA transacción: escribir una URL que solo
+      // el navegador ve dejando el fetcher en `http` es exactamente la fuente ciega que este
+      // subsistema existe para evitar.
+      // `headless_required` va en el MISMO UPDATE: la tabla lo exige con un CHECK
+      // (`chk_fetcher_headless_consistency`) y tiene razón — un `fetcher_type='headless'` con
+      // `headless_required=false` es una fuente que dice que necesita navegador y declara que no.
+      await tx`
+        UPDATE oposiciones
+           SET fetcher_type = ${promocion.destino}, headless_required = true
+         WHERE id = ${op.id}`
+    }
     // Reset del hash EN `oposiciones` — la tabla que usa el cron. Sin esto, la siguiente pasada
     // compara el hash de la página ANTIGUA con la nueva y da un `changed` falso garantizado.
     await tx`
@@ -212,11 +258,15 @@ async function main() {
   })
   await traza(sql, {
     slug: op.slug, urlVieja: op.seguimiento_url, urlNueva, diag: r.diag, aplicado: true,
-    forzadoDudoso: decision.forzado,
+    forzadoDudoso: decision.forzado, promocion,
   })
   await sql.end()
 
   console.log('✅ APLICADO: seguimiento_url actualizada y hash reseteado (oposiciones).')
+  if (promocion) {
+    console.log(`   + fetcher_type → ${promocion.destino} (${promocion.chars} chars de texto con navegador).`)
+    console.log('   Lo respetan detect-oep-llm, detect-notas-convocatoria y detect-generic-sources.')
+  }
   console.log('   La siguiente pasada del cron tomará línea base en silencio, sin `changed` falso.\n')
 }
 

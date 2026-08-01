@@ -360,7 +360,19 @@ La OEP y la convocatoria son documentos diferentes publicados en momentos distin
 | `inscription_start/deadline` | Convocatoria | Cuando se publica |
 | `exam_date` | Convocatoria o resolucion posterior | Cuando se conozca |
 | `programa_url` | Convocatoria (anexo con el temario) | Cuando se publica |
-| `seguimiento_url` | Pagina de seguimiento del proceso | **DEBE SER URL ESPECIFICA, no buscador generico** |
+| `seguimiento_url` | Pagina de seguimiento del proceso | **DEBE SER URL ESPECIFICA, no buscador generico — y VIGILABLE: compruébala antes (ver abajo)** |
+
+**⚠️ COMPROBAR QUE SE PUEDE VIGILAR, no solo que existe (T-453, 01/08/2026).** El cron hashea el HTML **servido, sin ejecutar JavaScript**: si el portal es una SPA, guarda el hash de un cascarón que no cambia nunca, `seguimiento_change_status` se queda en `ok`, el panel se ve verde y **no se vigila nada**. Una URL así es peor que ninguna, porque parece cobertura. Antes de escribirla:
+
+```bash
+# ¿la ve el cron? (solo comprueba, no escribe)
+node scripts/seguimiento/repuntar-url.cjs --verificar "<url>" --anclas "<denominación|nº plazas>"
+
+# al darla de alta o cambiarla — mide con HTTP y, si hace falta, con NAVEGADOR:
+node scripts/seguimiento/repuntar-url.cjs <slug> "<url>" --anclas "…" --apply
+```
+
+Si solo la ve el navegador, la herramienta **promueve la fuente a `fetcher_type='headless'`** en la misma transacción. Si no la ve ninguna de las dos, **rechaza** — ahí el problema es la URL. Medido el 01/08: **13 oposiciones ACTIVAS** tenían el seguimiento en `error` por haberse dado de alta sin esta comprobación.
 
 **Error clasico con `seguimiento_url`:** NO poner un buscador generico de empleo publico (ej: `sede.gva.es/busc_empleo_publico`). Debe ser la URL de la ficha concreta del proceso selectivo. Si aun no existe (porque no esta convocada), usar la URL de la pagina de la OEP donde aparecera cuando se convoque.
 
@@ -1386,7 +1398,7 @@ WHERE oposicion_id = '<uuid>' AND titulo ILIKE '%subsanacion%';
 
 ### 5c. Monitoreo de seguimiento (automatico)
 
-Al crear la oposicion con `seguimiento_url`, el cron diario (`/api/cron/check-seguimiento`) empezara a monitorearla automaticamente. Cuando detecte cambios:
+Al crear la oposicion con una `seguimiento_url` **vigilable** (ver el aviso de arriba: comprobada con `repuntar-url.cjs`, y promovida a `headless` si el contenido solo se ve con navegador), el cron diario (`/api/cron/check-seguimiento`) empezara a monitorearla automaticamente. **Si la URL no es vigilable, el cron corre igual y no vigila nada** — hashea un cascarón inmutable y el panel se queda verde. Cuando detecte cambios:
 
 1. Badge "CAMBIO" en `/admin/seguimiento-convocatorias`
 2. El admin avisa a Claude

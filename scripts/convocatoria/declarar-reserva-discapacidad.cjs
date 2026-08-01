@@ -113,9 +113,14 @@ async function main() {
   }
   const incluidas = crudo === 'true' ? true : crudo === 'false' ? false : null
 
+  // `pgConfig()` y no `{connectionString, ssl}` a mano: la URL de RDS lleva `sslmode=require`, y ese
+  // parámetro PISA la opción `ssl`, así que `rejectUnauthorized:false` no basta y la conexión muere
+  // con «self-signed certificate in certificate chain». Con la URL tal cual, esta herramienta no
+  // podía conectar NUNCA (comprobado el 01/08 al ir a usarla) — su hermano
+  // `corregir-plazas-contra-boletin.cjs` lo esquivaba con su propio `replace` del sslmode, o sea que
+  // había dos criterios y solo uno funcionaba. Se unifica en el helper canónico.
   const c = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ...require(path.join(__dirname, '..', '..', 'lib', 'db', 'pgSsl.cjs')).pgConfig(),
     // El modo proponer se trae el corpus ENTERO de cada convocatoria (varios MB por boletín), así
     // que necesita más margen que una escritura, que solo toca una fila.
     statement_timeout: PROPONER ? 180000 : 60000,

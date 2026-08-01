@@ -871,14 +871,20 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',
     ruta: 'scripts/seguimiento/repuntar-url.cjs',
     estado: 'vivo',
-    escribe: ['seguimiento_url'],
+    escribe: ['seguimiento_url', 'fetcher_type', 'headless_required'],
     runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
     notas:
       'Dry-run por defecto. Descarga la candidata con las cabeceras EXACTAS del cron, la pasa por ' +
       '`decidirEscritura` y RECHAZA una URL que no sirva contenido; `--anclas` exige además que la ' +
       'página mencione el proceso. Resetea `seguimiento_last_hash` en `oposiciones` (la tabla que usa ' +
       'el cron; existe también en `convocatorias` y resetear esa NO hace nada). Traza en ' +
-      '`observable_events` (`seguimiento_url_repuntada`).',
+      '`observable_events` (`seguimiento_url_repuntada`). **Desde T-453 mide con NAVEGADOR antes de ' +
+      'rechazar**: si el fetch plano ve un cascarón pero el headless ve contenido, PROMUEVE la fuente ' +
+      'a `fetcher_type=headless` (+`headless_required`, que exige el CHECK `chk_fetcher_headless_consistency`) ' +
+      'y escribe la URL en la misma transacción — antes rechazaba la URL BUENA de cualquier portal SPA ' +
+      'y esas fuentes quedaban invigilables para siempre (13 activas así el 01/08). La guarda que NO ' +
+      'cambia: si el navegador tampoco ve nada (`ambos_ciegos`) se rechaza igual, porque ahí el ' +
+      'problema es la URL y marcar headless solo lo enmascara.',
   },
   asignar_seguimiento_url_catalogadas: {
     titulo: 'Asignar seguimiento_url a oposiciones CATALOGADAS que no tienen ninguna',

@@ -341,6 +341,27 @@ describe('decidirFetcherType — qué se automatiza y qué NO', () => {
   it('deja en paz lo que sí aporta', () => {
     expect(decidirFetcherType('aporta', 'headless').cambiar).toBe(false)
   })
+
+  it('PROMUEVE a headless cuando el navegador ve lo que el fetch plano no (T-453)', () => {
+    // El caso simétrico del `no_aporta`+headless, y faltaba: el sistema sabía degradar pero no
+    // subir, así que `repuntar-url.cjs` rechazaba por «invigilable» la URL buena de un portal SPA
+    // y la fuente quedaba ciega para siempre. Medido el 01/08: 13 oposiciones ACTIVAS con `http`
+    // y el seguimiento en `error`, y solo 20 de 2.658 en `headless`.
+    const d = decidirFetcherType('aporta', 'http')
+    expect(d.cambiar).toBe(true)
+    expect(d.destino).toBe('headless')
+  })
+
+  it('pero NO toca la que ya está en headless y aporta: no hay nada que cambiar', () => {
+    expect(decidirFetcherType('aporta', 'headless').cambiar).toBe(false)
+  })
+
+  it('«ambos ciegos» sigue sin promover: el problema es la URL y cambiar el fetcher lo enmascara', () => {
+    // Esta es la guarda que evita que la promoción se convierta en el martillo de todo: si el
+    // navegador TAMPOCO ve nada, marcar headless solo esconde una URL equivocada.
+    expect(decidirFetcherType('ambos_ciegos', 'http').cambiar).toBe(false)
+    expect(decidirFetcherType('rechaza_bot', 'http').cambiar).toBe(false)
+  })
 })
 
 // ── T-165: la página RICA que no es una página de convocatorias ────────────────

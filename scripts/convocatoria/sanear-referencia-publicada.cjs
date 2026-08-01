@@ -117,11 +117,17 @@ function url() {
           // Celador YA estaba clonado, y la nota de auditoría afirmaba lo contrario.
           let doc = null
           if (VERIFICADO) {
-            const [d] = await tx`
+            // Se busca la cita entre TODOS los documentos de la convocatoria, no en «el primero».
+            // Medido el 01/08: `auxiliar-administrativo-clm` tiene 20 documentos clonados y el
+            // primero por tipo/fecha era un PDF de temarios — la guarda rechazó una cita que SÍ
+            // estaba en el decreto. Coger el que contiene la prueba es además más útil: la fila de
+            // verificación acaba apuntando al documento que de verdad la respalda.
+            const docs = await tx`
               SELECT id, url, content_hash, extracted_text
                 FROM convocatoria_documentos
-               WHERE convocatoria_id = ${conv.id}
-               ORDER BY (tipo = 'convocatoria') DESC, created_at DESC LIMIT 1`
+               WHERE convocatoria_id = ${conv.id} AND extracted_text IS NOT NULL
+               ORDER BY (tipo = 'convocatoria') DESC, created_at DESC`
+            const d = docs.find((x) => aplanar(x.extracted_text).includes(aplanar(CITA))) || docs[0]
             if (!d) {
               throw new Error(
                 `--verificado: ${h.slug} no tiene documento en el hub de provenance.\n` +
@@ -132,8 +138,9 @@ function url() {
             }
             if (!aplanar(d.extracted_text).includes(aplanar(CITA))) {
               throw new Error(
-                `--verificado: la cita NO aparece en el documento clonado (${d.url}). ` +
-                'O la cita está mal transcrita o el documento no es el que crees.')
+                `--verificado: la cita no aparece en NINGUNO de los ${docs.length} documento(s) ` +
+                `clonados de ${h.slug}. O está mal transcrita, o el documento que la respalda aún ` +
+                'no está en el hub (clónalo con backend/scripts/clonar-documento.ts).')
             }
             doc = d
           }
@@ -177,13 +184,14 @@ function url() {
         SELECT c.id FROM convocatorias c JOIN oposiciones o ON o.id = c.oposicion_id
          WHERE o.slug = ${SOLO} AND c.is_current = true LIMIT 1`
       if (!conv) throw new Error(`no hay convocatoria vigente para ${SOLO}`)
-      const [d] = await s`
+      const docs = await s`
         SELECT url, content_hash, extracted_text FROM convocatoria_documentos
-         WHERE convocatoria_id = ${conv.id}
-         ORDER BY (tipo = 'convocatoria') DESC, created_at DESC LIMIT 1`
-      if (!d) throw new Error(`${SOLO} no tiene documento en el hub — clónalo con backend/scripts/clonar-documento.ts`)
-      if (!aplanar(d.extracted_text).includes(aplanar(CITA))) {
-        throw new Error(`la cita NO aparece en el documento clonado (${d.url}) — no se enlaza una prueba falsa`)
+         WHERE convocatoria_id = ${conv.id} AND extracted_text IS NOT NULL
+         ORDER BY (tipo = 'convocatoria') DESC, created_at DESC`
+      if (!docs.length) throw new Error(`${SOLO} no tiene documento en el hub — clónalo con backend/scripts/clonar-documento.ts`)
+      const d = docs.find((x) => aplanar(x.extracted_text).includes(aplanar(CITA)))
+      if (!d) {
+        throw new Error(`la cita no aparece en ninguno de los ${docs.length} documentos clonados de ${SOLO} — no se enlaza una prueba falsa`)
       }
       console.log(`  🔗 ${SOLO}: cita contrastada contra el hub → ${d.url}`)
       if (APPLY) {

@@ -219,7 +219,13 @@ Vale como diana solo si **HTTP 200 Y el recuento es > 0**. Casos reales de T-114
 
 **Dónde buscar la ficha concreta, por orden:** (1) página propia del proceso en la web del convocante (`comunidad.madrid/empleo/<slug>`, `dipujaen.es/…/_detalles/index.html?uid=…`); (2) **ficha por convocatoria del PAG** `administracion.gob.es/pagFront/ofertasempleopublico/detalleEmpleo.htm?idConvocatoria=N` — cubre casi todo lo publicado en BOE, va en HTML plano y trae apartado *Seguimiento*; (3) para cuerpos AGE, el **índice del CUERPO en INAP** sin sufijo de año (el sufijado a una convocatoria muere con ella). **Verificar SIEMPRE la ficha contra la `boe_reference` que ya tenemos**: en T-114 el primer candidato del PAG para IIPP (`idConvocatoria=207187`) resultó ser la convocatoria de **2023** (756 plazas), justo el error que veníamos a corregir.
 
-Si no hay ninguna URL que pase la comprobación, **no inventes una**: déjala como está y anótala como caso de *headless-fetcher* (renderizar con navegador y hashear el texto renderizado). Es lo que se hizo con IIPP y Junta General de Asturias en **T-125**.
+Si la candidata no pasa la comprobación, **`repuntar-url.cjs` la vuelve a medir CON NAVEGADOR antes de rendirse** (T-453, 01/08/2026). Tres desenlaces:
+
+- **El fetch plano la ve** → se escribe y punto.
+- **Solo la ve el navegador** → la herramienta **promueve la fuente a `fetcher_type='headless'`** (y `headless_required=true`, que exige el CHECK `chk_fetcher_headless_consistency`) y escribe la URL **en la misma transacción**. Escribir una URL que solo el navegador ve dejando el fetcher en `http` es precisamente la *fuente ciega* que este subsistema existe para evitar.
+- **No la ve ninguna de las dos** (`ambos_ciegos`) → **se rechaza igual, y esa guarda no se toca**: ahí el problema es la URL, y marcar `headless` solo lo enmascara. Ahí sí: no inventes una, déjala como está y anótala.
+
+> **Por qué hizo falta.** Hasta ese día el sistema sabía **degradar** de `headless` a `http` (`ajustar-fetcher-type.cjs`, que consulta `WHERE fetcher_type='headless'`) pero **no promover**, y el repuntador medía siempre por HTTP — así que rechazaba por «invigilable» la URL BUENA de cualquier portal SPA y esa fuente quedaba invigilable **para siempre**. Medido el 01/08: **13 oposiciones ACTIVAS** con `http` y el seguimiento en `error`, y solo 20 de 2.658 en `headless` — no porque no hiciera falta, sino porque no había camino para llegar. Caso que lo estrenó: `auxiliar-administrativo-diputacion-cordoba`, cuyo portal real (`empleo.eprinsa.es/diputacion`) da **21 caracteres** por HTTP y **27.157** con navegador.
 
 #### Esto ya NO es una comprobación manual: está en código (26/07/2026)
 
@@ -228,7 +234,7 @@ La tabla de arriba se hizo a mano con `curl` la primera vez. Ahora hay tres piez
 | Pieza | Qué hace |
 |---|---|
 | `lib/convocatoria/seguimientoVigilable.cjs` | **Núcleo puro** (sin red, sin BD) que decide si una URL es vigilable. Umbrales calibrados sobre las 428 fuentes con HTTP 2xx. Tests: `__tests__/lib/convocatoria/seguimientoVigilable.test.js` |
-| `scripts/seguimiento/repuntar-url.cjs` | **La única vía legítima para cambiar una `seguimiento_url`.** Dry-run por defecto; comprueba la candidata con las cabeceras del cron, **rehúsa** escribir una URL no vigilable, resetea el hash en la tabla correcta y deja traza en `observable_events` |
+| `scripts/seguimiento/repuntar-url.cjs` | **La única vía legítima para cambiar una `seguimiento_url`.** Dry-run por defecto; comprueba la candidata con las cabeceras del cron, **rehúsa** escribir una URL que NINGUNA vía puede vigilar; si solo la ve el navegador, **promueve a `headless`** en la misma transacción (T-453). Resetea el hash en la tabla correcta y deja traza en `observable_events` (con `promovido_a` y los caracteres medidos) |
 | `scripts/seguimiento/sim-fuentes-ciegas.cjs` | **Simulación** bank-wide, no escribe nada. Enseña qué marcaría y por qué antes de que nada llegue al badge |
 
 Y el badge lo vigila solo: kind **`seguimiento_fuente_ciega`** (frase-gatillo *"revisa las fuentes ciegas de seguimiento"*), en el gemelo CLI y en el `@Cron` del backend.
@@ -1266,7 +1272,7 @@ WHERE coverage_level='catalogada' AND seguimiento_url IS NOT NULL ORDER BY slug;
 
 El monitoreo hace **fetch HTML plano + hash + LLM**. Las webs **JS-rendered (SPA)** devuelven un shell de navegación vacío que nunca cambia → el monitor **nunca dispararía**. Meter una URL SPA sería una chapuza silenciosa: parece vigilada pero no detecta nada.
 
-**Regla:** solo dar de alta URLs **server-rendered** (boletín oficial, sede electrónica con detalle, listado plano de OEP). Verificar SIEMPRE con WebFetch antes de insertar: pedir "¿lista entradas concretas con años/fechas/BOAM o solo un menú?". Si solo trae menú → es SPA, buscar alternativa server-rendered o dejarla para cuando exista el headless browser (Fase 1 del roadmap).
+**Regla:** solo dar de alta URLs **server-rendered** (boletín oficial, sede electrónica con detalle, listado plano de OEP). Verificar SIEMPRE con WebFetch antes de insertar: pedir "¿lista entradas concretas con años/fechas/BOAM o solo un menú?". Si solo trae menú → es SPA, buscar alternativa server-rendered o —desde T-453— dejar que `repuntar-url.cjs` la promueva a `headless`, que YA existe y está desplegado (Lambda `vence-backend-headless-fetcher`). Lo que sigue prohibido es marcar `headless` **sin medir**: si el navegador tampoco ve contenido, el problema es la URL.
 
 - Ejemplo confirmado SPA (NO sirve): `madrid.es/.../Oposiciones/` (buscador de oposiciones) → solo menú.
 - Ejemplo confirmado server-rendered (SÍ sirve): `madrid.es/.../Oferta-de-Empleo-Publico/Ofertas-de-empleo-publico/` → lista OEP 2025/2024/2021 con BOAM y fechas.
