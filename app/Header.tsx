@@ -379,6 +379,16 @@ export default function HeaderES() {
     const opoSlug = oposicionId ? getOposicion(oposicionId)?.slug : null
     const opoResolved = !!opoSlug && ALL_OPOSICION_SLUGS.includes(opoSlug)
 
+    // [T-327] Oposición PERSONALIZADA: `getOposicion` no la encuentra (no está en el config), así
+    // que `opoResolved` era false y el menú caía a la oposición POR DEFECTO — el usuario pulsaba
+    // «Test» y aterrizaba en Auxiliar de Madrid, que no es la suya. Lo reportó Manuel.
+    //
+    // Va aquí, en el punto donde se decide la RAÍZ de los enlaces, y no parcheando cada uno:
+    // Test y Temario se construyen los dos desde `opoSlug`, y arreglar solo el que se ve fallar
+    // deja al otro roto hasta que alguien lo pulse. (Antes ya se arregló `getTestsLink()` para
+    // el icono 🎯 del móvil, que es OTRO camino distinto — de ahí que este siguiera mal.)
+    const raizPersonalizada = rutaTestPersonalizada(oposicionId)?.replace(/\/test$/, '') ?? null
+
     // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos
     // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).
     const commonLinks: NavLink[] = [
@@ -401,6 +411,14 @@ export default function HeaderES() {
     ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
+    if (raizPersonalizada) {
+      return [
+        { href: `${raizPersonalizada}/test`, label: 'Test', icon: '🎯' },
+        { href: `${raizPersonalizada}/temario`, label: 'Temario', icon: '📚' },
+        ...commonLinks,
+      ]
+    }
+
     if (opoResolved) {
       return [
         { href: `/${opoSlug}/test`, label: 'Test', icon: '🎯' },

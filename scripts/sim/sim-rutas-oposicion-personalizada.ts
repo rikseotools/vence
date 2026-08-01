@@ -148,6 +148,49 @@ async function main() {
       { ruta: `${raiz}/test/tema/1/test-personalizado`, desde: 'botón «empezar test»' },
       { ruta: `${raiz}/test/tema/1/test-examen`, desde: 'botón «empezar test» (modo examen)' },
     ]
+    // ── EL HEADER: ¿a dónde te lleva de verdad? ────────────────────────────────────────────
+    //
+    // El rastreo empieza en el hub, así que por sí solo NO ve este fallo: los enlaces «Test» y
+    // «Temario» del menú se construyen aparte, y con una personalizada caían a la oposición POR
+    // DEFECTO — el usuario pulsaba «Test» y aterrizaba en Auxiliar de Madrid. Lo reportó Manuel
+    // después de que yo diera el rastreo por verde, que es justo el punto: si la prueba empieza
+    // donde acaba el fallo, no lo ve. Se mira desde una página CUALQUIERA, como el usuario.
+    await p.goto(`${URL_BASE}/oposicion-personalizada`, { waitUntil: 'domcontentloaded' })
+    await p.waitForTimeout(3500)
+    const hrefsHeader = await p
+      .locator('header a, nav a')
+      .evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''))
+      .catch(() => [] as string[])
+    // Se miran los enlaces por su ETIQUETA, no por la forma de la URL: `/psicotecnicos/test`
+    // también acaba en «/test» y es un enlace legítimo que NO depende de tu oposición. Filtrar
+    // por la URL daba un rojo falso — la primera versión de esta comprobación se equivocó así.
+    const porEtiqueta = async (etiqueta: string) =>
+      (await p
+        .locator(`header a, nav a`)
+        .evaluateAll(
+          (as, txt) =>
+            as
+              .filter((a) => (a.textContent || '').trim().toLowerCase().endsWith(txt))
+              .map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''),
+          etiqueta,
+        )
+        .catch(() => [] as string[]))
+
+    const enlacesTest = await porEtiqueta('test')
+    const enlacesTemario = await porEtiqueta('temario')
+    const apuntaBien = (hs: string[]) => hs.length > 0 && hs.every((h) => h.startsWith(raiz))
+
+    console.log('Enlaces del Header (a dónde te manda cuando ELLA es tu objetivo):')
+    console.log(`   ${apuntaBien(enlacesTest) ? '✅' : '❌'} «Test» → ${enlacesTest.join(', ') || '(ninguno)'}`)
+    console.log(`   ${apuntaBien(enlacesTemario) ? '✅' : '❌'} «Temario» → ${enlacesTemario.join(', ') || '(ninguno)'}`)
+    if (!apuntaBien(enlacesTest)) {
+      visitas.push({ ruta: enlacesTest[0] || '(sin enlace de Test)', estado: 0, roto: 'el Header NO lleva a tu oposición', desde: 'menú del Header' })
+    }
+    if (!apuntaBien(enlacesTemario)) {
+      visitas.push({ ruta: enlacesTemario[0] || '(sin enlace de Temario)', estado: 0, roto: 'el Header NO lleva a tu oposición', desde: 'menú del Header' })
+    }
+    console.log('')
+
     const vistas = new Set<string>()
 
     while (pendientes.length && vistas.size < MAX_PAGINAS) {
