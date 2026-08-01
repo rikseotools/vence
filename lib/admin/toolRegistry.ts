@@ -1552,6 +1552,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Mitigación: nombrar siempre la ley al citar un artículo ajeno, y pedirle al auditor que diga ' +
       '"me falta el art. X" en vez de juzgar contra el texto que no tiene.',
   },
+  oposicion_sin_temario: {
+    titulo: 'Quién ha elegido una oposición que no tiene NI UN TEMA (y cuántos de esos pagan)',
+    ruta: 'scripts/health/oposicion-sin-temario.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/roadmap/tareas-pendientes.md',
+    notas:
+      '`[--todos] [--limite N]`. SOLO LEE: no escribe, no pinga badge y no manda correo, porque ' +
+      'las tres salidas (marcar la oposición en el selector, atender a los premium, construir el ' +
+      'temario) son decisiones de producto sin tomar — y una alerta sin remediación construida ' +
+      'enseña a ignorar el buzón (T-426). Cubre un hueco real: los badges de salud de contenido ' +
+      'miran DENTRO de las oposiciones que preparamos, así que a esta gente no la ve nadie. ' +
+      'Criterio en `lib/health/oposicionSinTemario.cjs` con 15 tests. **Dos guardas que no son ' +
+      'cosméticas:** las oposiciones PERSONALIZADAS guardan un UUID en la misma columna y su ' +
+      'temario vive en `custom_oposiciones` (contarlas ya hizo publicar una cifra equivocada), y ' +
+      'la CADENA VACÍA no es una oposición (8 perfiles reales que inflaban el recuento a mano). ' +
+      'La banda la decide quién PAGA, no el volumen. [T-397]',
+  },
   duplicados_exactos: {
     titulo: 'Duplicados EXACTOS del banco (legislativas Y psicotécnicas): simula el barrido y jubila los sobrantes por lotes',
     ruta: 'scripts/calidad/duplicados-exactos.cjs',

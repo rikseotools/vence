@@ -2416,6 +2416,18 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Contexto previo:** hay memoria del proyecto sobre premium con temario incompleto, así que el patrón no es nuevo — lo nuevo es el número y que ahora hay nombres concretos.
 - **Al arreglarlo, la comprobación honesta** no es que el contador baje, sino que **ningún usuario nuevo pueda quedarse en una oposición sin temas sin haber sido advertido**, y que los 3 premium actuales tengan una respuesta.
 
+#### ✅ DETECTOR CONSTRUIDO (01/08) — la cifra deja de depender de que alguien la mida a mano
+
+**Comando:** `node scripts/health/oposicion-sin-temario.cjs [--todos] [--limite N]`
+Núcleo puro `lib/health/oposicionSinTemario.cjs` con **15 tests**. Registrado en `toolRegistry`.
+
+- **Por qué hacía falta, y no es papeleo:** la cifra de arriba existía porque alguien la contó **una vez**. Al reproducirla el 01/08 había cambiado: **ya no son 3 premium, son 4** — uno nuevo (`cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl`) en un solo día. Esto no es un stock parado que se vacíe cuando haya tiempo: **es una entrada continua**, y sin detector nadie sabría dentro de un mes si mejoró o empeoró.
+- **📉 Y CORRIGE LA CIFRA DE ESTA FICHA: son 182 oposiciones y 586 usuarios, no 183 y 592/594.** La diferencia son **8 perfiles con `target_oposicion = ''`** (cadena vacía, no NULL). La consulta a mano los agrupaba como «una oposición sin temario» más; no lo son — **no eligieron nada**. Es un problema distinto (higiene de datos: por qué el campo queda en vacío en vez de NULL) y no se mezcla aquí. Fijado con test.
+- **La banda la decide quién PAGA, no el volumen.** `error` si hay al menos un premium; `warn` si solo free, por muchos que sean. Si el volumen subiera la banda, `enfermero` (58 personas) enterraría a los premium y la lista dejaría de servir para reparar. El volumen sigue ahí, ordenado aparte, porque **es la señal de qué temario construir** — que es la decisión 3.
+- **La trampa del UUID va en el núcleo y con test**, no en la consulta: las personalizadas guardan un UUID en la misma columna y su temario vive en `custom_oposiciones`. Contarlas ya hizo publicar una cifra equivocada una vez.
+- **NO pinga badge ni manda correo, a propósito.** Las tres decisiones de abajo son de producto y no están tomadas; una alerta sin remediación construida enseña a ignorar el buzón entero, que es lo que ya pasa con `fraude_confirmado_sin_accion` ([T-426]). Cuando haya decisión, subirlo al sweep es cambiar el runner de sitio.
+- **Lo que el detector NO decide (sigue siendo tuyo):** las tres preguntas de arriba. Lo único que cambia es que ahora la cifra se puede volver a mirar en cualquier momento con un comando, y que los premium salen con su slug delante para atenderlos uno a uno.
+
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
 - **Qué hay, medido el 31/07:** `auxiliar_archivos_bibliotecas_museos_madrid` tiene **50 temas activos, los 50 con epígrafe**, y **0 filas de `topic_scope`**. Como la pregunta llega al tema por el scope, esos 50 temas sirven **cero preguntas**. La oposición está en `oposiciones` con `is_active=false` (o sea, no la preparamos) y **sin entrada en `lib/config/oposiciones.ts`**, así que la app ni siquiera sabe enrutarla.
