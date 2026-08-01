@@ -148,6 +148,11 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     tipo: 'codigo', fixturePropio: false,
     que: 'Trinquete de drift de COLUMNAS entre RDS y db/schema.ts. Compara ESQUEMA, no contenido — por eso es código, y es justo el que hace falta para poder levantar una BD efímera fiel (F2).',
   },
+  {
+    ruta: '__tests__/integration/emailEventsTiposAceptados.test.ts',
+    tipo: 'codigo', fixturePropio: false,
+    que: 'Trinquete del CHECK de email_events contra EMAIL_TYPES: caza el tipo que la app envía y la BD rechaza EN SILENCIO (el insert va en try/catch). Lee el catálogo de constraints, no filas de negocio — mismo caso que schemaColumnDrift (T-456).',
+  },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────
   // CÓDIGO con DATOS PRESTADOS — prueban comportamiento, pero leyendo lo que haya en producción.

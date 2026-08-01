@@ -230,6 +230,73 @@ describe('Template dispatch in sendEmailV2 — real templates, no mocks', () => 
     expect(lastResendCall!.html).not.toContain('undefined')
   })
 
+  // T-456. El descuento de fidelidad son los DOS ÚLTIMOS argumentos del template y este
+  // despacho no los pasaba. Como el correo se enviaba por Resend en crudo (con los 8 args),
+  // el fallo estaba latente: se habría estrenado justo al migrarlo a este carril, borrando
+  // la explicación del importe en el correo que avisa de un cobro. Se fija aquí porque este
+  // fichero usa los templates REALES y es el único sitio donde un argumento de menos se ve.
+  test('recordatorio_renovacion: pinta el descuento de fidelidad (baseAmount + discountPercent)', async () => {
+    const result = await sendEmailV2({
+      userId: 'user-123',
+      emailType: 'recordatorio_renovacion',
+      customData: {
+        daysUntilRenewal: 7,
+        fechaRenovacion: '15 de marzo de 2026',
+        planAmount: 47,
+        baseAmount: 59,
+        discountPercent: 20,
+        gestionarUrl: 'https://www.vence.es/perfil?tab=suscripcion',
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(lastResendCall!.html).toContain('47')
+    expect(lastResendCall!.html).toContain('precio base 59')
+    expect(lastResendCall!.html).toContain('20% de descuento de fidelidad')
+    expect(lastResendCall!.html).not.toContain('undefined')
+  })
+
+  // Sin descuento no debe aparecer la línea (no es solo que no reviente: prometer un
+  // «0% de descuento» en un aviso de cobro confunde más que callarse).
+  test('recordatorio_renovacion: sin descuento no menciona precio base', async () => {
+    const result = await sendEmailV2({
+      userId: 'user-123',
+      emailType: 'recordatorio_renovacion',
+      customData: {
+        daysUntilRenewal: 1,
+        fechaRenovacion: '1 de abril de 2026',
+        planAmount: 59,
+        baseAmount: 59,
+        discountPercent: 0,
+        gestionarUrl: 'https://www.vence.es/perfil?tab=suscripcion',
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(lastResendCall!.html).not.toContain('precio base')
+    expect(lastResendCall!.html).not.toContain('descuento de fidelidad')
+    expect(lastResendCall!.html).not.toContain('undefined')
+  })
+
+  // El botón «Gestionar mi suscripción» es la ÚNICA salida que ofrece el correo. Si el
+  // llamante no pasa la URL, el href se quedaba vacío y la persona no podía cancelar.
+  test('recordatorio_renovacion: sin gestionarUrl cae a la página de suscripción, no a un href vacío', async () => {
+    const result = await sendEmailV2({
+      userId: 'user-123',
+      emailType: 'recordatorio_renovacion',
+      customData: {
+        daysUntilRenewal: 7,
+        fechaRenovacion: '15 de marzo de 2026',
+        planAmount: 59,
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(lastResendCall!.html).toContain('/perfil?tab=suscripcion')
+    expect(lastResendCall!.html).not.toContain('href=""')
+    expect(lastResendCall!.html).not.toContain('undefined')
+  })
+
   // ==============================
   // resumen_semanal (5 args — was broken before fix)
   // ==============================

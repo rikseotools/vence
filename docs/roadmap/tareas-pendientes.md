@@ -1114,7 +1114,7 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
-### [T-456] 🟠 [ABIERTO 01/08] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
+### [T-456] 🟠 [ABIERTO 01/08 · IMPLEMENTADO 01/08, falta verlo vivo] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
 
 - **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
 - **HAY TRES CAMINOS DE ENVÍO, no dos**, y dos de ellos están completos:
@@ -1125,6 +1125,20 @@ incluida).
 - **POR QUÉ IMPORTA MÁS DE LO QUE PARECE:** va a gente que **paga**, avisa de un **cobro**, y es justo el tipo de envío cuya desaparición nadie nota — la ceguera que costó seis horas en [T-422] es la misma. Además su guardarraíl documentado («el cron ticó y envió 0») emitía `renewal_reminders_zero_sent` que **ninguna regla miraba** hasta [T-448].
 - **RESOLUCIÓN PROPUESTA:** migrarlo a `sendEmailV2` (que usa Resend por dentro: no se cambia de proveedor, se le ponen las comprobaciones delante). Ojo al hacerlo: hoy el importe se calcula con `invoices.createPreview` y eso hay que conservarlo; y la idempotencia actual vive en `email_logs` (5 días), que conviene mantener ADEMÁS de la clave de Resend.
 - **Relacionadas:** [T-448] (donde salió), [T-369] (por qué la categoría decide quién lo recibe), [T-457] (el otro cabo del mismo repaso).
+
+- **✅ HECHO (01/08) — migrado a `sendEmailV2`, con lo que había que conservar conservado:**
+  - `sendRenewalReminder` ya no habla con Resend en crudo. Gana las tres piezas: `canSendEmail`, token de baja con cabeceras `List-Unsubscribe`, y fila en `email_events`. El importe se sigue calculando con `invoices.createPreview` (no se tocó `getUpcomingInvoiceInfo`) y el dedup de `email_logs` a 5 días **se conserva** por delante del envío, que es lo que separa el aviso de 7 días del de 1 día.
+  - **La trampa de la migración, que estaba a un paso de tragarse el descuento:** el despacho de templates de `sendEmailV2` NO pasaba `baseAmount` ni `discountPercent`, que son los dos últimos argumentos del template y los únicos que pintan la línea *«precio base 59€ con tu 20% de descuento de fidelidad aplicado»*. Como el correo salía por el camino crudo (con los 8 argumentos), el fallo estaba **latente**: se habría estrenado justo al migrar, borrando la explicación del importe en el correo que avisa de un cobro. Se arregla en el despacho y se fija en `templateDispatch.test.ts`, que es el único sitio que usa los templates REALES.
+  - **Clave de idempotencia de Resend:** `renewal:<user>:<fecha de renovación>:<día de envío>`, en un núcleo puro y testeado. **`daysUntilRenewal` NO sirve** como discriminante: sale de un `Math.ceil` sobre `now`, así que la misma persona da 8 por la mañana y 7 por la tarde — una clave que cambia sola entre dos intentos del mismo día no deduplica nada.
+  - **Bloqueado por preferencias cuenta como OMITIDO, no como fallido.** Si contara como fallo, el guardarraíl de *«ticó y envió 0»* gritaría por gente que decidió no recibirlo.
+  - **Alcance medido antes de tocar (para no cambiarle el correo a nadie sin saberlo):** de las **74** suscripciones activas que renuevan, **0** tienen `email_soporte_disabled` y **0** tienen baja total. Es decir: hoy la comprobación de preferencias **no deja fuera a nadie** — se pone para el futuro, no para cortar envíos vivos.
+  - **Capas:** 6 tests de contrato del camino (`recordatorioRenovacionCarril.test.ts`), 4 de clave pura, 3 nuevos de render real con y sin descuento, y los 5 de `renewalReminderPrices` reapuntados al `customData`. Typecheck y lint limpios.
+
+- **🔎 HALLAZGO al verificar, que NO se cierra desde aquí — el rastro depende de una lista blanca en la BD.** `email_events.email_type` tiene un CHECK (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo que no esté en la lista **no da error a nadie**, simplemente no deja fila. Medido sobre RDS: 18 tipos declarados en la app, 24 en el CHECK, y **2 que la app envía y la BD rechaza**:
+  - `recordatorio_renovacion` **SÍ está** en la lista → el arreglo de esta ficha funciona. ✅
+  - **`fin_suscripcion_precio_heredado` NO está**, y es de [T-448], que se estrenó esa misma mañana: 4 personas recibieron el aviso a las 09:00 y las **8 filas** que quedaron son de `email_logs` (**dos por envío**: `sendEmailV2` escribe una y `avisoFinSuscripcion` repite el insert), **cero** en `email_events`. O sea que el correo hermano nace con la misma ceguera que esta ficha arregla.
+  - **`nueva_oposicion`** tampoco está.
+  - Cerrarlo pide una **migración que amplíe el CHECK** (+ quitar el insert duplicado de `avisoFinSuscripcion`), y eso es territorio de [T-448]. Mientras tanto queda vigilado por trinquete en `__tests__/integration/emailEventsTiposAceptados.test.ts`: **no falla por la deuda de hoy, falla si crece** — un gate en cero dejaría el CI rojo para todas las sesiones por algo que no se arregla desde esta ficha.
 
 ### [T-457] 🟡 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
 

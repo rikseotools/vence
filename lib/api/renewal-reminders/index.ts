@@ -9,4 +9,6 @@ export {
   checkReminderAlreadySent,
   sendRenewalReminder,
   runRenewalReminderCampaign,
+  renewalReminderWindow,
+  renewalReminderIdempotencyKey,
 } from './queries'

@@ -67,24 +67,18 @@ jest.mock('resend', () => ({
   })),
 }))
 
+// T-456. El recordatorio ya NO habla con Resend en crudo: va por `sendEmailV2`, que es quien
+// comprueba preferencias, acuña el token de baja y deja la fila en `email_events`. Los datos del
+// importe se observan por tanto en el `customData` que recibe ese carril, no en una llamada al
+// template. Que esos datos LLEGUEN AL HTML lo fija `templateDispatch.test.ts` con templates reales.
+const mockSendEmailV2 = jest.fn().mockResolvedValue({ success: true, emailId: 'email-test-id' })
 jest.mock('@/lib/api/emails', () => ({
-  generateUnsubscribeToken: jest.fn().mockResolvedValue('test-token'),
-  getUnsubscribeUrl: jest.fn().mockReturnValue('https://vence.es/unsub/test-token'),
-}))
-
-jest.mock('@/lib/emails/templates', () => ({
-  emailTemplates: {
-    recordatorio_renovacion: {
-      subject: jest.fn().mockReturnValue('Test subject'),
-      html: jest.fn().mockReturnValue('<html>test</html>'),
-    },
-  },
+  sendEmailV2: (...args: unknown[]) => mockSendEmailV2(...args),
 }))
 
 process.env.RESEND_API_KEY = 'test-resend-key'
 
 import { getSubscriptionsForReminder, sendRenewalReminder, checkReminderAlreadySent } from '@/lib/api/renewal-reminders/queries'
-import { emailTemplates } from '@/lib/emails/templates'
 
 // ============================================
 // HELPERS
@@ -285,7 +279,7 @@ describe('sendRenewalReminder', () => {
     })
   })
 
-  it('pasa baseAmount y discountPercent al template', async () => {
+  it('pasa baseAmount y discountPercent al carril de envío', async () => {
     const result = await sendRenewalReminder({
       userId: 'user-1',
       email: 'test@test.com',
@@ -298,11 +292,18 @@ describe('sendRenewalReminder', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(emailTemplates.recordatorio_renovacion.html).toHaveBeenCalledWith(
-      'Test User', 7, expect.any(String), 18,
-      expect.stringContaining('perfil'), expect.any(String),
-      20, 10
-    )
+    expect(mockSendEmailV2).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'user-1',
+      emailType: 'recordatorio_renovacion',
+      customData: expect.objectContaining({
+        userName: 'Test User',
+        daysUntilRenewal: 7,
+        planAmount: 18,
+        baseAmount: 20,
+        discountPercent: 10,
+        gestionarUrl: expect.stringContaining('perfil'),
+      }),
+    }))
   })
 
   it('pasa baseAmount=null y discountPercent=null cuando no hay descuento', async () => {
@@ -317,11 +318,13 @@ describe('sendRenewalReminder', () => {
       discountPercent: null,
     })
 
-    expect(emailTemplates.recordatorio_renovacion.html).toHaveBeenCalledWith(
-      'Test User', 7, expect.any(String), 20,
-      expect.stringContaining('perfil'), expect.any(String),
-      null, null
-    )
+    expect(mockSendEmailV2).toHaveBeenCalledWith(expect.objectContaining({
+      customData: expect.objectContaining({
+        planAmount: 20,
+        baseAmount: null,
+        discountPercent: null,
+      }),
+    }))
   })
 
   it('no envía si ya se envió recordatorio para este período', async () => {
@@ -364,10 +367,9 @@ describe('sendRenewalReminder', () => {
       discountPercent: 0,
     })
 
-    const htmlCall = (emailTemplates.recordatorio_renovacion.html as jest.Mock).mock.calls[0]
-    const formattedDate = htmlCall[2]
+    const { customData } = mockSendEmailV2.mock.calls[0][0]
     // Debe ser formato español: "15 de mayo de 2026"
-    expect(formattedDate).toMatch(/\d+ de \w+ de 2026/)
+    expect(customData.fechaRenovacion).toMatch(/\d+ de \w+ de 2026/)
   })
 
   it('usa "Usuario" si fullName es null', async () => {
@@ -382,8 +384,8 @@ describe('sendRenewalReminder', () => {
       discountPercent: 0,
     })
 
-    const htmlCall = (emailTemplates.recordatorio_renovacion.html as jest.Mock).mock.calls[0]
-    expect(htmlCall[0]).toBe('Usuario')
+    const { customData } = mockSendEmailV2.mock.calls[0][0]
+    expect(customData.userName).toBe('Usuario')
   })
 })
 

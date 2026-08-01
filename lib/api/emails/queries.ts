@@ -366,9 +366,22 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
       const gestionarUrl = `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=pago_fallido`
       html = template.html(userName, gestionarUrl, unsubscribeUrl)
     } else if (emailType === 'recordatorio_renovacion') {
+      // T-456. `baseAmount` y `discountPercent` son los dos últimos argumentos del template y
+      // son los que pintan la línea del descuento de fidelidad. Estaban SIN pasar: quien tenía
+      // -10%/-20% leía su importe con descuento sin explicación de por qué no es el de tarifa,
+      // en el correo que le avisa de un COBRO. Al migrar el recordatorio a este carril había
+      // que traerlos, o la migración habría borrado esa línea sin que nadie lo notara.
       const diasRestantes = (customData.daysUntilRenewal as number) || 7
+      // El botón «Gestionar mi suscripción» es la única salida que ofrece el correo: si el
+      // llamante no la pasa, un href vacío deja al usuario sin forma de cancelar.
+      const gestionarUrl = (customData.gestionarUrl as string)
+        || `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=renewal_reminder`
       subject = template.subject(userName, diasRestantes)
-      html = template.html(userName, diasRestantes, customData.fechaRenovacion, customData.planAmount, customData.gestionarUrl, unsubscribeUrl)
+      html = template.html(
+        userName, diasRestantes, customData.fechaRenovacion, customData.planAmount,
+        gestionarUrl, unsubscribeUrl,
+        customData.baseAmount, customData.discountPercent,
+      )
     } else if (emailType === 'resumen_semanal') {
       const articlesData = (customData.articlesData as unknown[]) || []
       subject = template.subject(userName, articlesData.length)

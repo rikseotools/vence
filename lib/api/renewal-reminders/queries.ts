@@ -2,9 +2,7 @@
 import { getDb } from '@/db/client'
 import { userSubscriptions, userProfiles, emailLogs } from '@/db/schema'
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
-import { Resend } from 'resend'
-import { emailTemplates } from '@/lib/emails/templates'
-import { generateUnsubscribeToken, getUnsubscribeUrl } from '@/lib/api/emails'
+import { sendEmailV2 } from '@/lib/api/emails'
 import { getStripeFor, resolveAccount } from '@/lib/stripe'
 import type Stripe from 'stripe'
 import type {
@@ -246,6 +244,32 @@ export async function checkReminderAlreadySent(
 // ENVIAR RECORDATORIO INDIVIDUAL
 // ============================================
 
+/**
+ * PURA y testeable. Clave de idempotencia que se le pasa a Resend, que deduplica peticiones
+ * repetidas dentro de su ventana de retención (~24 h).
+ *
+ * La componen la PERSONA + su fecha de renovación + el DÍA en que se envía, y ninguna de las
+ * tres sobra:
+ *  - sin el día, el recordatorio de 7 días y el de 1 día del mismo periodo tendrían la misma
+ *    clave y el segundo podría no salir;
+ *  - `daysUntilRenewal` NO sirve como discriminante: se calcula con `Math.ceil` sobre `now`, así
+ *    que la misma persona puede dar 7 por la mañana y 8 por la tarde. Una clave que cambia sola
+ *    entre dos intentos del mismo día no deduplica nada.
+ *
+ * Lo que protege es el reintento del cron el mismo día (o un doble disparo): ahí el correo ya
+ * salió y la fila de `email_logs` pudo no escribirse. El corte entre DÍAS lo sigue haciendo
+ * `checkReminderAlreadySent` sobre `email_logs`, que se conserva.
+ */
+export function renewalReminderIdempotencyKey(
+  userId: string,
+  renewalDate: string,
+  now: Date,
+): string {
+  const periodo = String(renewalDate).slice(0, 10)
+  const dia = now.toISOString().slice(0, 10)
+  return `renewal:${userId}:${periodo}:${dia}`
+}
+
 export async function sendRenewalReminder(
   params: SendReminderRequest
 ): Promise<SendReminderResponse> {
@@ -254,7 +278,8 @@ export async function sendRenewalReminder(
 
     console.log(`📧 Enviando recordatorio de renovación a ${email}`)
 
-    // Verificar si ya se envió
+    // Verificar si ya se envió. Se CONSERVA además de la clave de Resend: cubre la ventana de
+    // 5 días (que separa el aviso de 7d del de 1d), muy por encima de la retención del proveedor.
     const { alreadySent } = await checkReminderAlreadySent(userId, renewalDate)
     if (alreadySent) {
       console.log(`⏭️ Recordatorio ya enviado a ${email} para este período`)
@@ -265,24 +290,6 @@ export async function sendRenewalReminder(
       }
     }
 
-    // Obtener template
-    const template = emailTemplates['recordatorio_renovacion']
-    if (!template) {
-      throw new Error('Template recordatorio_renovacion no encontrado')
-    }
-
-    // Generar URLs
-    const gestionarUrl = `${BASE_URL}/perfil?tab=suscripcion&utm_source=email&utm_campaign=renewal_reminder`
-
-    // Generar token de unsubscribe
-    let unsubscribeUrl = `${BASE_URL}/perfil?tab=emails`
-    try {
-      const unsubscribeToken = await generateUnsubscribeToken(userId, email, EMAIL_TYPE)
-      unsubscribeUrl = getUnsubscribeUrl(unsubscribeToken)
-    } catch {
-      // Fallback to profile page
-    }
-
     // Formatear fecha
     const formattedDate = new Date(renewalDate).toLocaleDateString('es-ES', {
       day: 'numeric',
@@ -290,41 +297,54 @@ export async function sendRenewalReminder(
       year: 'numeric'
     })
 
-    const userName = fullName || 'Usuario'
-    const subject = template.subject(userName, daysUntilRenewal)
-    const html = template.html(userName, daysUntilRenewal, formattedDate, planAmount, gestionarUrl, unsubscribeUrl, baseAmount, discountPercent)
-
-    // Enviar con Resend
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY no configurada')
-    }
-
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const emailResponse = await resend.emails.send({
-      from: `${process.env.EMAIL_FROM_NAME || 'Vence'} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@vence.es'}>`,
-      to: email,
-      subject,
-      html,
-    })
-
-    if (emailResponse.error) {
-      throw new Error(`Error de Resend: ${emailResponse.error.message}`)
-    }
-
-    // Registrar en email_logs
-    const db = getDb()
-    await db.insert(emailLogs).values({
+    // T-456. Se envía por `sendEmailV2` y NO con Resend en crudo. Es el mismo proveedor por
+    // dentro; lo que se gana son las tres piezas que a este camino le faltaban y que los otros
+    // dos caminos de envío ya tenían: comprobación de preferencias (`canSendEmail`), token de
+    // baja con cabeceras `List-Unsubscribe`, y rastro en `email_events`. Medido antes de tocar
+    // nada: 424 recordatorios en `email_logs` y UNO solo en `email_events` — es decir, un correo
+    // que avisa de un cobro a gente que paga era invisible para observabilidad y analítica.
+    //
+    // Su categoría es `soporte`, así que lo único que lo frena es `email_soporte_disabled`: el
+    // botón de baja masiva NO lo apaga, que es lo correcto para un aviso de cobro (ver [T-369]).
+    const envio = await sendEmailV2({
       userId,
       emailType: EMAIL_TYPE,
-      subject,
-      status: 'sent',
+      idempotencyKey: renewalReminderIdempotencyKey(userId, renewalDate, new Date()),
+      customData: {
+        to: email,
+        userName: fullName || 'Usuario',
+        daysUntilRenewal,
+        fechaRenovacion: formattedDate,
+        planAmount,
+        baseAmount,
+        discountPercent,
+        gestionarUrl: `${BASE_URL}/perfil?tab=suscripcion&utm_source=email&utm_campaign=renewal_reminder`,
+      },
     })
 
-    console.log(`✅ Recordatorio enviado a ${email}`)
+    if (envio.success) {
+      // El registro en `email_logs` (y ahora también en `email_events`) lo hace `sendEmailV2`.
+      // No se repite aquí: una segunda fila rompería el recuento de la campaña y el dedup.
+      console.log(`✅ Recordatorio enviado a ${email}`)
+      return {
+        success: true,
+        emailId: envio.emailId,
+      }
+    }
+
+    // Bloqueado por preferencias: NO es un fallo. Es la comprobación que este camino no tenía.
+    if ('cancelled' in envio && envio.cancelled) {
+      console.log(`⏭️ Recordatorio no enviado a ${email}: ${envio.reason}`)
+      return {
+        success: false,
+        skipped: true,
+        skipReason: envio.reason || 'preference_blocked',
+      }
+    }
 
     return {
-      success: true,
-      emailId: emailResponse.data?.id,
+      success: false,
+      error: ('error' in envio && envio.error) || 'Error desconocido enviando el recordatorio',
     }
   } catch (error) {
     console.error(`❌ Error enviando recordatorio a ${params.email}:`, error)
