@@ -1099,6 +1099,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Escape `--igualmente`, que queda contado en el bus de fricción. Calibración: ' +
       '`npm run sim:verificacion -- --listar`.',
   },
+  pareja_farmeo: {
+    titulo: 'Detectar la PAREJA de cuentas clavadas en el tope del free (el farmeo mínimo viable)',
+    ruta: 'lib/security/parejaFarmeo.js',
+    estado: 'vivo',
+    escribe: ['fraud_alerts'],
+    runbook: 'docs/runbooks/revisar-fraudes.md',
+    notas:
+      'Núcleo puro (18 tests) usado por el @Cron real `backend/src/fraud-sweep` —vía su espejo ' +
+      '`pareja-farmeo.ts`, con test de PARIDAD de 19 casos— y por el gemelo CLI ' +
+      '`scripts/fraud-sweep.cjs`. Cierra un punto ciego aritmético: `multi_account_device` pedía ' +
+      '≥3 cuentas y una pareja tiene 2; `device_daily_farming` pedía >60 preguntas/día y 2 ' +
+      'cuentas × el tope free de 25 son 50, así que el patrón que produce el propio límite caía ' +
+      'bajo los dos cortes A LA VEZ (de 5 equipos triados a mano el 31/07, 4 sin una sola señal ' +
+      'histórica). NO se arregla bajando el umbral a 2 cuentas: inundaría el inbox de familias. ' +
+      'La señal es la FORMA —las dos al tope, el mismo día, repetido— con DOS condiciones porque ' +
+      'ninguna basta sola: ≥3 días clavados Y ≥50% de sus días ACTIVOS (el denominador son los ' +
+      'activos, no la ventana: si no, quien usa la app 4 días al mes nunca daría). Validado ' +
+      'contra verdad conocida: los 3 equipos confirmados a mano salen los 3 como farmeo. La zona ' +
+      'intermedia se imprime en el CLI y no abre señal.',
+  },
   registro_crons: {
     titulo: '¿Sigue habiendo ALGUIEN escribiendo en el registro de ejecuciones de los crons?',
     ruta: 'scripts/canary-registro-crons.cjs',

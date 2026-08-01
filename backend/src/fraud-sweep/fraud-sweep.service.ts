@@ -4,6 +4,7 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { pgUuidArray } from '../db/sql-arrays';
 import { ObservabilityService } from '../observability/observability.service';
 import { classifyHarvest } from './harvest-signals';
+import { clasificarEquipo as clasificarPareja, gravedad as gravedadPareja } from './pareja-farmeo';
 
 /**
  * Barrido ANTIFRAUDE → señales en `fraud_alerts` (status='new') → badge 🚨 + revisión.
@@ -115,6 +116,8 @@ export class FraudSweepService {
     let found = 0;
     const W = String(this.WINDOW_DAYS);
 
+    const parejaDias = new Map<string, { users: string[]; dias: Map<string, { userId: string; preguntas: number }[]> }>();
+
     // D1 multi_account_device
     for (const r of rows(
       await this.db.execute(sql`
@@ -206,6 +209,60 @@ export class FraudSweepService {
             threshold: this.DEVICE_DAILY_Q,
           },
           Number(r.max_dia),
+        ),
+      );
+    }
+
+    // ── D3-bis: la PAREJA clavada en su tope (T-372) ──────────────────────────
+    //
+    // El punto ciego es pura aritmética: `multi_account_device` pide >=3 cuentas y una pareja
+    // tiene 2; `device_daily_farming` pide >60 preguntas/dia y 2 cuentas x el tope free de 25
+    // son 50. El patron que produce el propio limite free caia por debajo de los dos cortes a
+    // la vez. Medido el 31/07: de 5 equipos revisados a mano, 4 no habian generado JAMAS una
+    // senal.
+    //
+    // NO se arregla bajando el umbral a 2 cuentas: eso inunda el inbox de familias, y un inbox
+    // inundado se deja de mirar. La senal es la FORMA -las dos cuentas al tope, el mismo dia,
+    // repetido- y la decide el nucleo puro, no este SQL. Aqui solo se recogen los dias.
+    for (const r of rows(
+      await this.db.execute(sql`
+      WITH dev AS (
+        SELECT device_id, array_agg(DISTINCT user_id) users FROM user_devices
+        WHERE last_seen_at >= now() - (${W}||' days')::interval
+        GROUP BY device_id HAVING count(DISTINCT user_id) BETWEEN 2 AND 3)
+      SELECT d.device_id, d.users, du.usage_date::text AS fecha,
+             du.user_id::text AS uid, du.questions_answered::int AS q
+      FROM dev d
+      JOIN daily_question_usage du ON du.user_id = ANY(d.users)
+      WHERE du.usage_date >= (CURRENT_DATE - (${this.WINDOW_DAYS})::int)`),
+    )) {
+      const k = r.device_id as string;
+      if (!parejaDias.has(k)) parejaDias.set(k, { users: r.users as string[], dias: new Map() });
+      const e = parejaDias.get(k)!;
+      if (!e.dias.has(r.fecha)) e.dias.set(r.fecha, []);
+      e.dias.get(r.fecha)!.push({ userId: r.uid, preguntas: Number(r.q) });
+    }
+    for (const [deviceId, e] of parejaDias) {
+      const v = clasificarPareja([...e.dias.entries()].map(([fecha, cuentas]) => ({ fecha, cuentas })));
+      // Solo `farmeo` abre senal. `revisar` es la zona de duda (3 dias pero dispersos) y sale en
+      // el informe del CLI, no en el inbox: abrir alertas de lo dudoso es como se muere un inbox.
+      if (v.veredicto !== 'farmeo') continue;
+      found++;
+      bump(
+        await this.upsert(
+          'device_pair_farming',
+          deviceId,
+          e.users,
+          {
+            device_id: deviceId,
+            accounts: e.users.length,
+            dias_clavados: v.diasClavados,
+            dias_activos: v.diasActivos,
+            proporcion: v.proporcion,
+            motivo: v.motivo,
+          },
+          v.diasClavados,
+          gravedadPareja(v),
         ),
       );
     }

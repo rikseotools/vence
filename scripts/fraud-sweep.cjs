@@ -10,6 +10,8 @@
  *   - multi_account_device   : ≥N cuentas distintas en un mismo dispositivo (farmeo/sharing)
  *   - multi_account_reg_ip    : ≥N cuentas desde una IP (excl. CDN/proxy; exige device compartido o ≥20 = granja)
  *   - device_daily_farming    : un dispositivo suma > umbral preguntas/día across cuentas
+ *   - device_pair_farming     : la PAREJA clavada en su tope (T-372) — el patrón que caía por
+ *                               debajo de los dos umbrales de arriba a la vez
  *   - curl_scraping / harvest_* : COSECHA — servidas >> respondidas (lib/security/harvestSignals.js)
  *   - premium_sharing         : dispositivo compartido que incluye premium + ≥2 cuentas activas
  *
@@ -24,6 +26,7 @@
 const { Client } = require('pg');
 // Núcleo puro compartido con el panel admin (mismo criterio en los dos lados).
 const { classifyHarvest } = require('../lib/security/harvestSignals');
+const { clasificarEquipo: clasificarPareja, gravedad: gravedadPareja } = require('../lib/security/parejaFarmeo');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -47,6 +50,7 @@ const sevFor = (kind, n) => {
   if (kind === 'multi_account_device') return n >= 6 ? 'critical' : 'high';
   if (kind === 'multi_account_reg_ip') return n >= 10 ? 'critical' : 'high';
   if (kind === 'device_daily_farming') return 'high';
+  if (kind === 'device_pair_farming') return 'medium';   // la gravedad real la pone el núcleo
   if (kind === 'premium_sharing') return 'high';
   return 'medium';
 };
@@ -141,6 +145,48 @@ async function main() {
     found++;
     bump(await upsertSignal(c, { kind: 'device_daily_farming', subject: r.device_id, userIds: r.users, n: Number(r.max_dia),
       details: { device_id: r.device_id, accounts: r.users.length, max_questions_one_day: Number(r.max_dia), threshold: DEVICE_DAILY_Q } }));
+  }
+
+  // ── D3-bis: la PAREJA clavada en su tope (T-372) ──────────────────────────
+  //
+  // Punto ciego aritmético: multi_account_device pide >=3 cuentas y una pareja tiene 2;
+  // device_daily_farming pide >60 preguntas/dia y 2 cuentas x el tope free de 25 son 50. El
+  // patron que produce el propio limite free caia por debajo de los DOS cortes a la vez.
+  // El criterio (repeticion Y proporcion) vive en el nucleo puro, compartido con el backend.
+  {
+    const { rows: filas } = await c.query(`
+      WITH dev AS (
+        SELECT device_id, array_agg(DISTINCT user_id) users FROM user_devices
+        WHERE last_seen_at >= now() - ($1||' days')::interval
+        GROUP BY device_id HAVING count(DISTINCT user_id) BETWEEN 2 AND 3)
+      SELECT d.device_id, d.users, du.usage_date::text fecha, du.user_id::text uid,
+             du.questions_answered::int q
+      FROM dev d JOIN daily_question_usage du ON du.user_id = ANY(d.users)
+      WHERE du.usage_date >= (CURRENT_DATE - $1::int)`, [WINDOW_DAYS]);
+    const equipos = new Map();
+    for (const f of filas) {
+      if (!equipos.has(f.device_id)) equipos.set(f.device_id, { users: f.users, dias: new Map() });
+      const e = equipos.get(f.device_id);
+      if (!e.dias.has(f.fecha)) e.dias.set(f.fecha, []);
+      e.dias.get(f.fecha).push({ userId: f.uid, preguntas: Number(f.q) });
+    }
+    const dudosos = [];
+    for (const [deviceId, e] of equipos) {
+      const v = clasificarPareja([...e.dias.entries()].map(([fecha, cuentas]) => ({ fecha, cuentas })));
+      if (v.veredicto === 'revisar') { dudosos.push({ deviceId, v }); continue; }
+      if (v.veredicto !== 'farmeo') continue;
+      found++;
+      bump(await upsertSignal(c, { kind: 'device_pair_farming', subject: deviceId, userIds: e.users,
+        n: v.diasClavados, severityOverride: gravedadPareja(v),
+        details: { device_id: deviceId, accounts: e.users.length, dias_clavados: v.diasClavados,
+                   dias_activos: v.diasActivos, proporcion: v.proporcion, motivo: v.motivo } }));
+    }
+    // La zona de duda NO abre senal: se imprime. Abrir alertas de lo dudoso es como se muere un
+    // inbox, y estos equipos necesitan que alguien mire, no que algo decida por el.
+    if (dudosos.length) {
+      console.log(`\n  🔍 ${dudosos.length} equipo(s) en ZONA DE DUDA (no abren señal, míralos a mano):`);
+      for (const d of dudosos) console.log(`     ${d.deviceId.slice(0, 14)}… — ${d.v.motivo}`);
+    }
   }
 
   // ── D4: COSECHA de preguntas (servidas vs respondidas) ────────────────────

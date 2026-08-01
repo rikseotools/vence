@@ -2479,6 +2479,25 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Relacionadas:** [T-304] (límite por dispositivo y la decisión del enforce), `docs/runbooks/revisar-fraudes.md` §umbrales.
 
 
+- **✅ CONSTRUIDO (01/08) — y la señal es la FORMA, no el recuento, que es lo que la ficha pedía.** Detector `device_pair_farming` con **dos condiciones, porque ninguna basta sola**: ≥3 días con **todas** las cuentas del equipo al tope **y** ≥50% de sus días **ACTIVOS**. El denominador son los días activos y no la ventana: contra 30 días, quien usa la app cuatro días al mes saldría siempre bajo y el criterio no distinguiría nada.
+- **La calibración salió de los datos, no de una intuición.** Medido sobre los equipos de 2-3 cuentas de 30 días, el reparto es **bimodal** y por eso hay corte limpio:
+
+  | equipo | días clavados / activos | |
+  |---|---|---|
+  | `fe135d4a…` | 22 de 28 (79%) | rutina |
+  | `23d64ed0…` | 18 de 20 (90%) | rutina |
+  | `2bbb2177…` | 18 de 24 (75%) | ✅ confirmado a mano |
+  | `29cbfabc…` | 11 de 13 (85%) | rutina |
+  | `02c4a7ca…` | 9 de 10 (90%) | rutina |
+  | `d60ca3e4…` | 9 de 12 (75%) | ✅ confirmado a mano |
+  | `002999b0…` | 3 de 5 (60%) | ✅ confirmado a mano |
+  | `4839e75e…` · `d392329d…` · `b6a4aad9…` | 3-4 días pero 38-44% | zona de duda |
+  | `ca8c880e…` | **1 de 16** | familia con un día intenso |
+
+- **VALIDADO CONTRA VERDAD CONOCIDA:** los **3 equipos que se confirmaron a mano** el 31/07 salen los tres como `farmeo`, sin que el detector supiera nada de ellos. Y destapa **4 equipos nuevos** que ningún detector veía, uno con 22 de 28 días.
+- **La zona de duda NO abre señal:** 3 equipos entre el 38% y el 44% se imprimen en el CLI para que un humano decida. Abrir alertas de lo dudoso es exactamente como se muere un inbox — la misma razón por la que no se baja el umbral a 2 cuentas.
+- **Capas:** núcleo puro `lib/security/parejaFarmeo.js` (**18 tests**, cada uno fijando una decisión de calibración con su dato detrás) · espejo `backend/src/fraud-sweep/pareja-farmeo.ts` con **test de paridad de 19 casos** anclados a los equipos reales —el backend no puede importar `lib/`, y un espejo desincronizado clasificaría al mismo equipo distinto de día que de noche— · cableado en el `@Cron` que corre DE VERDAD **y** en el gemelo CLI · runbook §umbrales con la aritmética del punto ciego · registrado en `toolRegistry`.
+- **⏳ Falta verlo VIVO:** exige **deploy de backend**. Al desplegar, comprobar que el sweep de las 03:15 UTC abre señales `device_pair_farming` para esos 7 equipos y que la zona de duda sigue sin abrirlas.
 ### [T-370] 🔴 [ABIERTO 31/07] El gate de integración/perf/seguridad lleva días en rojo porque CI se quedó sin base de datos
 - **Qué pasa:** el job **`Integration / perf / security`** de `.github/workflows/test.yml` falla en **todos** los commits. La causa no es ningún test: es que el paso arranca sin BD. El error, literal y repetido en cada suite:
   ```

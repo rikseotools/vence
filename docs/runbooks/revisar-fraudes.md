@@ -18,6 +18,7 @@ Sistema **Claude-en-el-bucle**: el sweep detecta y alerta (badge); **el humano d
 | `multi_account_device` | ≥N cuentas distintas en un mismo dispositivo | familia/academia que comparte equipo (pocas cuentas, uso normal) |
 | `multi_account_reg_ip` | ≥N cuentas desde una IP **con device compartido** (o ≥20 = egregio), excluyendo rangos CDN/proxy | raro tras el afinado 21/07 (antes: Cloudflare + CGNAT eran 20/21 falsos positivos) |
 | `device_daily_farming` | un dispositivo suma > umbral preguntas/día across cuentas | poco frecuente; casi siempre farmeo real del límite free |
+| `device_pair_farming` | **la PAREJA clavada en su tope**: las dos cuentas agotan su cupo el mismo día, repetido (T-372) | familia con un día intenso — por eso exige repetición **y** proporción |
 | `curl_scraping` | **cosecha SIN navegador**: servidas ≫ respondidas + sin dispositivo + 0 page_views | humano cuyo fingerprint no se registró (pero ESE sí tiene page_views → no salta) |
 > ⚠️ **El límite diario distorsiona el denominador — dos veces ya.** El ratio solo significa algo si el usuario pudo contestar libremente. (1) Los **premium** no incrementan `daily_question_usage` (lo esquivan) → por eso `answered` se cuenta en `test_questions`. (2) Los **free** que topan sus 25/día tienen ratio ≤ 0,25 **por construcción** si arman un test grande → por eso existe `answerCapped`, que exime a quien topó su tope. Las 2 primeras señales reales del detector (28/07) fueron justo eso y se descartaron. Contrapartida asumida y anotada en T-179: un cosechador free que conteste hasta su tope queda exento.
 
@@ -282,7 +283,27 @@ el siguiente paso es coger otro móvil. Ahora es **uno solo e idéntico**, lo fi
 se entienda mejor» es exactamente el problema.
 
 ## Umbrales (env del sweep, calibrables)
-`FRAUD_DEVICE_ACCOUNTS` (3), `FRAUD_IP_ACCOUNTS` (5), `FRAUD_DEVICE_DAILY_Q` (60), `FRAUD_SCRAPE_MIN_SERVED` (300), `FRAUD_WINDOW_DAYS` (30). Subirlos = menos ruido; bajarlos = más sensibilidad. Ajustar con datos reales (fase F3). Los umbrales de la cosecha (ratio 0,2 y volumen egregio 5.000) viven en `DEFAULTS` de `harvestSignals.js`.
+`FRAUD_DEVICE_ACCOUNTS` (3), `FRAUD_IP_ACCOUNTS` (5), `FRAUD_DEVICE_DAILY_Q` (60), `FRAUD_SCRAPE_MIN_SERVED` (300), `FRAUD_WINDOW_DAYS` (30).
+
+> **⚠️ El punto ciego que estos umbrales tenían, y por qué NO se arregla tocándolos (T-372).**
+> `multi_account_device` exige **≥3 cuentas** y una pareja tiene 2; `device_daily_farming` exige
+> **>60 preguntas/día** y 2 cuentas × el tope free de 25 son **50**. O sea: **el patrón que
+> produce el propio límite free caía por debajo de los dos cortes a la vez** — el farmeo mínimo
+> viable era el invisible. Medido el 31/07 triando a mano los equipos que más consumían: **de 5
+> revisados, 4 no habían generado JAMÁS una señal**.
+>
+> Bajar `FRAUD_DEVICE_ACCOUNTS` a 2 **no es la solución**: inundaría el inbox de familias y
+> ordenadores compartidos, y un inbox inundado se deja de mirar. La señal no es cuántas cuentas
+> hay, es la **FORMA**: las dos al tope, el mismo día, **repetido**. Una familia reparte de forma
+> desigual y variable; una pareja farmeando clava las dos su cupo día tras día.
+>
+> El criterio vive en `lib/security/parejaFarmeo.js` (núcleo puro, espejado en el backend con
+> test de paridad) y tiene **dos partes, porque ninguna basta sola**: ≥3 días clavados **y** ≥50%
+> de sus días ACTIVOS. Medido sobre los equipos de 2-3 cuentas de 30 días, el reparto es bimodal
+> —`18 de 20` y `9 de 10` frente a `1 de 16`— y los **tres equipos confirmados a mano** el 31/07
+> caen los tres en la banda alta (75%, 90%, 60%): la calibración reproduce el veredicto humano.
+> La zona intermedia (≥3 días pero <50%) **no abre señal**: sale impresa en el CLI para que un
+> humano decida. Subirlos = menos ruido; bajarlos = más sensibilidad. Ajustar con datos reales (fase F3). Los umbrales de la cosecha (ratio 0,2 y volumen egregio 5.000) viven en `DEFAULTS` de `harvestSignals.js`.
 
 ## Gaps conocidos / roadmap (enforcement, aún NO activo)
 F0 (esto) = **solo detección + revisión**. Pendiente en `docs/roadmap/`:
