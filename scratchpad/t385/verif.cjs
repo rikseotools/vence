@@ -1,0 +1,8 @@
+const { Client } = require('pg'); const { pgConfig } = require('../../lib/db/pgSsl.cjs')
+;(async () => { const c=new Client(pgConfig(process.env.DATABASE_URL)); await c.connect()
+  const cols = (await c.query(`SELECT column_name FROM information_schema.columns WHERE table_name='deploy_runs' ORDER BY ordinal_position`)).rows.map(r=>r.column_name)
+  console.log('columnas:', cols.join(', '))
+  const { rows } = await c.query(`SELECT * FROM deploy_runs ORDER BY started_at DESC NULLS LAST LIMIT 6`)
+  console.log('filas:', rows.length)
+  for (const r of rows) console.log(JSON.stringify(r))
+  await c.end() })().catch(e=>{console.error('ERROR',e.message);process.exit(1)})
