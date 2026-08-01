@@ -26,7 +26,18 @@
 > node scripts/backlog.cjs list           # qué hay y quién tiene qué
 > node scripts/backlog.cjs next           # sugiere la siguiente por prioridad
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
-> node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas"
+> node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas
+
+### [T-447] ✅ [HECHA 31/07] El constructor del input de auditoría descartaba «de la misma Ley» como si fuera otra norma
+
+- **ORIGEN.** Cerrando el lote `gen_lcsp5_2026-07-31_t115e` de [T-115], **las dos auditorías ciegas convergieron en un único hallazgo** y no era de contenido: la explicación decía *«el fraccionamiento del objeto del contrato es objeto del artículo 99 de la misma Ley»* y **el art. 99 no viajaba en su input**, así que ninguna podía verificar la remisión y las dos la devolvieron como *«no verificable»*. Comprobada después contra la BD, era exacta.
+- **EL FALLO.** La guarda `OTRA_NORMA` de `scripts/auditar-batch-input.cjs` lista `misma`/`propia` entre los cualificadores que hacen **descartar** la cita, cuando son justo el marcador de que remite al **mismo** cuerpo. El módulo existe precisamente para evitar ese ruido, y **es la tercera vez que se paga el mismo peaje** (25/07 dos veces, 26/07), cada una por una causa distinta.
+- **POR QUÉ NO BASTABA SACAR `misma` DE LA LISTA**, que es lo primero que se piensa: *«la misma Ley»* puede referirse a una norma citada **antes** en esa misma explicación (*«…del artículo 4 de la Ley 10/2010… y del artículo 8 de la misma Ley»*), y resolver eso contra la ley del lote adjunta un artículo **homónimo por número de otra materia** — el fallo que la guarda existe para impedir, y que sus propios comentarios documentan como PEOR que no adjuntar nada.
+- **ARREGLO — corte doble.** Se relaja solo si (1) el cualificador es autorreferencial (`misma`/`propia`) **y** (2) todo número de norma que aparezca ANTES en el texto es el de la ley del lote. Sin saber cuál es esa ley se mantiene el comportamiento estricto de siempre: ante la duda, no se adjunta.
+- **Verificado sobre el lote que lo destapó:** de 2 adjuntos a 3, con el art. 99 dentro. Tests: 4 nuevos en `__tests__/scripts/auditarBatchInput.test.js`, incluido el caso ambiguo que hay que **seguir** descartando.
+- **Relacionadas:** [T-115] (de donde sale).
+
+"
 
 ### [T-330] ✅ [CERRADA SIN ENVIAR 31/07] Newsletter del último día de plazo de Conserjería de la UJA
 - **⏳ CADUCA EL 31/07/2026 A LAS 23:59** (cierre del plazo de solicitudes, verificado en la sede de la UJA). No es una preferencia: **pasada esa hora la tarea no se pospone, se cierra sin hacer**, porque el correo pasaría a anunciar un plazo cerrado. Programada para la mañana del 31/07, así que la ventana real son unas doce horas.

@@ -79,12 +79,46 @@ const OTRA_NORMA = /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[a
 const REGLAMENTO_SIN_IDENTIFICAR =
   /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?Reglamento\b(?!\s*(?:\(|n[.ºo°]|n[úu]m|\d|de (?:ejecuci[óo]n|desarrollo|la|los|las)|delegado|general|europeo|comunitario))/i
 
+// …y «de la MISMA Ley» / «de la PROPIA Ley» dicen justo LO CONTRARIO de lo que la guarda de
+// arriba supone: son el marcador de que la remisión es al MISMO cuerpo. Estaban en la lista de
+// cualificadores que hacen DESCARTAR la cita, así que una explicación que dijera «el fraccionamiento
+// es objeto del artículo 99 de la misma Ley» no adjuntaba el art. 99 — y las DOS auditorías ciegas
+// del lote gastaban su único hallazgo en decir «no verificable» (T-447, medido en
+// `gen_lcsp5_2026-07-31_t115e`; es la tercera vez que se paga ese peaje).
+//
+// ⚠️ NO basta con sacar `misma`/`propia` de la lista, y por eso siguen ahí: «la misma Ley» puede
+// referirse a una norma citada ANTES en esa misma explicación («…del artículo 4 de la Ley 10/2010…
+// y del artículo 8 de la misma Ley»), y resolver eso contra la ley del lote adjunta un artículo
+// HOMÓNIMO de otra materia — el fallo que esta guarda existe para impedir, y que es PEOR que no
+// adjuntar nada. El corte es por tanto doble: (1) el cualificador tiene que ser autorreferencial y
+// (2) todo número de norma que aparezca ANTES en el texto tiene que ser el de la ley del lote.
+const AUTORREFERENCIAL =
+  /^\s*(?:,\s*)?(?:de (?:la|el)|del|de las|de los)\s+(?:propi[ao]|misma)\s+(?:Ley|Real Decreto|Reglamento|Decreto|Orden|Directiva|Texto Refundido|Estatuto|C[óo]digo)\b/i
+
+/** «9/2017», «203/2021»: la designación numérica que identifica una norma. */
+const NUM_NORMA = /\b\d+\/\d{4}\b/g
+
+/** El número de la ley del lote, del que se deriva si un «la misma Ley» apunta a ella o a otra. */
+function numeroDeNorma(nombre) {
+  const m = String(nombre || '').match(/\b\d+\/\d{4}\b/)
+  return m ? m[0] : null
+}
+
+/**
+ * ¿Todo lo que se nombra ANTES de la cita es la propia ley del lote? Si aparece cualquier otra
+ * norma numerada, «la misma Ley» ya es ambiguo y se vuelve al comportamiento estricto.
+ */
+function soloNombraSuPropiaNorma(antes, numLote) {
+  return (String(antes).match(NUM_NORMA) || []).every((n) => n === numLote)
+}
+
 /**
  * `leyEsReglamento`: si la norma del lote es ella misma un reglamento. Se deriva del NOMBRE de
  * la ley (`esLeyReglamento`), no se adivina. Por defecto **false** = comportamiento estricto de
  * siempre: ante la duda, no adjuntar.
  */
-function numerosCitados(texto, { leyEsReglamento = false } = {}) {
+function numerosCitados(texto, { leyEsReglamento = false, leyDelLote = null } = {}) {
+  const numLote = numeroDeNorma(leyDelLote)
   const t = String(texto || '')
   const out = new Set()
   // El sufijo de REFORMA forma parte del número: de "artículo 75 bis.1" hay que sacar
@@ -94,7 +128,10 @@ function numerosCitados(texto, { leyEsReglamento = false } = {}) {
   const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*(?:\s*(?:,|\by\b|\be\b)\s*[0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*)*)/gi
   for (const m of t.matchAll(re)) {
     const sigue = t.slice(m.index + m[0].length, m.index + m[0].length + 40)
-    const mismoCuerpo = leyEsReglamento && REGLAMENTO_SIN_IDENTIFICAR.test(sigue)
+    const mismoCuerpo = (leyEsReglamento && REGLAMENTO_SIN_IDENTIFICAR.test(sigue))
+      // «de la misma Ley» solo cuenta como el mismo cuerpo si NADA distinto se ha nombrado antes.
+      || (numLote !== null && AUTORREFERENCIAL.test(sigue)
+          && soloNombraSuPropiaNorma(t.slice(0, m.index), numLote))
     if (OTRA_NORMA.test(sigue) && !mismoCuerpo) continue
     // El separador debe ir con frontera de palabra: partir por una "e" suelta
     // troceaba "127 octies" en "127 octi" + "s".
@@ -116,7 +153,7 @@ function esLeyReglamento(nombreLey) {
   return /\breglamento\b/i.test(String(nombreLey || ''))
 }
 
-module.exports = { numerosCitados, esLeyReglamento }
+module.exports = { numerosCitados, esLeyReglamento, numeroDeNorma }
 if (require.main !== module) return
 
 
@@ -185,7 +222,10 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
     const vistos = new Set()
     for (const x of p) {
       const law_id = idx.get(x.id).law_id
-      for (const n of numerosCitados(x.explicacion, { leyEsReglamento: esLeyReglamento(idx.get(x.id).ley_nombre) })) {
+      for (const n of numerosCitados(x.explicacion, {
+        leyEsReglamento: esLeyReglamento(idx.get(x.id).ley_nombre),
+        leyDelLote: idx.get(x.id).ley_nombre,
+      })) {
         const k = `${law_id}|${n}`
         if (enEsteTrozo.has(k) || vistos.has(k)) continue
         vistos.add(k)

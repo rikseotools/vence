@@ -80,6 +80,39 @@ describe('numerosCitados', () => {
     expect(numerosCitados('el artículo 9 del Reglamento delegado', R)).toEqual([])
   })
 
+  // 31/07/2026, lote `gen_lcsp5_2026-07-31_t115e`: la explicación decía «el fraccionamiento del
+  // objeto del contrato es objeto del artículo 99 de la misma Ley» y el art. 99 NO se adjuntaba,
+  // porque `misma` estaba en la lista de cualificadores que hacen descartar la cita. Resultado
+  // medido: las DOS auditorías ciegas gastaron su único hallazgo en «no verificable» sobre una
+  // remisión que era exacta. Es el mismo peaje que ya se pagó el 25/07 (dos veces) y el 26/07.
+  describe('«de la misma Ley» remite al MISMO cuerpo… salvo que antes se haya nombrado otra', () => {
+    const LEY = 'Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público'
+
+    it('adjunta el artículo cuando lo único nombrado antes es la propia ley del lote', () => {
+      const glosa = 'Art. 132.2 de la Ley 9/2017, de 8 de noviembre, de Contratos del Sector '
+        + 'Público. El fraccionamiento del objeto del contrato es objeto del artículo 99 de la misma Ley.'
+      expect(numerosCitados(glosa, { leyDelLote: LEY })).toEqual(['99'])
+      expect(numerosCitados('el artículo 70 de la propia Ley', { leyDelLote: LEY })).toEqual(['70'])
+    })
+
+    it('NO lo adjunta si antes se ha nombrado OTRA norma: ahí «la misma» es la otra', () => {
+      // Este es el caso que impide sacar `misma` de la lista sin más. Resolverlo contra la ley
+      // del lote adjunta un artículo HOMÓNIMO de otra materia, que es peor que no adjuntar nada.
+      const glosa = 'Según el artículo 4 de la Ley 10/2010, y también el artículo 8 de la misma Ley.'
+      expect(numerosCitados(glosa, { leyDelLote: LEY })).toEqual([])
+    })
+
+    it('sin saber cuál es la ley del lote se mantiene el comportamiento ESTRICTO', () => {
+      // Ante la duda no se adjunta: es la asimetría de siempre en este módulo.
+      expect(numerosCitados('el artículo 99 de la misma Ley')).toEqual([])
+    })
+
+    it('no toca a los otros cualificadores, que sí señalan otra norma', () => {
+      expect(numerosCitados('el artículo 31 de la citada Ley Orgánica', { leyDelLote: LEY })).toEqual([])
+      expect(numerosCitados('los arts. 16 y 17 de la Ley 10/2010', { leyDelLote: LEY })).toEqual([])
+    })
+  })
+
   it('el apartado se descarta y el sufijo NO', () => {
     expect(numerosCitados('el artículo 102.3')).toEqual(['102'])
     expect(numerosCitados('el artículo 102 bis.3')).toEqual(['102 bis'])
