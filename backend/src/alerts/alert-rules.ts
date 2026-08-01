@@ -5380,7 +5380,74 @@ export const RULE_BACKLOG_FICHA_BORRADA: AlertRule = {
   cooldownMin: 720,
 };
 
+/**
+ * Una campaña de email PROGRAMADA encontró destinatarios y no envió a ninguno. (T-448)
+ *
+ * Cubre las dos que existen —el recordatorio de cobro y el aviso de fin de suscripción— porque el
+ * fallo es idéntico y la respuesta también: el cron dice 200, el heartbeat está verde, y nadie se
+ * entera hasta que alguien reclama. Es el punto ciego que ya tenían documentado en el código
+ * (`renewal_reminders_zero_sent`) y que, medido al añadir la campaña nueva, resultó que **no
+ * vigilaba ninguna regla**: llevaba emitiéndose para nadie.
+ *
+ * Cualquier ocurrencia es señal: estas campañas corren una vez al día, así que no hay ráfaga que
+ * filtrar. Ventana de 26 h para que un tick perdido no se trague el único evento del día.
+ */
+export const RULE_CAMPANA_EMAIL_ZERO_SENT: AlertRule<{ n: number; ultimo: string | null }> = {
+  name: 'campana_email_zero_sent',
+  severity: 'error',
+  query: sql`
+    SELECT count(*)::int AS n, MAX(error_message) AS ultimo
+    FROM observable_events
+    WHERE event_type IN ('renewal_reminders_zero_sent', 'fin_suscripcion_aviso_zero_sent')
+      AND ts > NOW() - INTERVAL '26 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: 'Una campaña de email no envió a NADIE teniendo a quien avisar',
+    body:
+      (rows[0]?.ultimo ?? 'sin detalle') +
+      '. El cron respondió bien y el heartbeat está verde, así que esto no se ve por ningún otro ' +
+      'sitio. Mirar la query de selección, el dedup de email_logs y si Resend responde.',
+    metadata: { n: rows[0]?.n ?? 0 },
+  }),
+  cooldownMin: 720,
+};
+
+/**
+ * El barrido que anula precios de fidelidad se paró solo por el tope de seguridad. (T-448)
+ *
+ * Anular 50+ ofertas de golpe no es un trámite: significa que el criterio del mes se rompió (una
+ * fecha mal leída, un cambio de columna) y que estábamos a punto de quitarle a mucha gente un
+ * precio que se le prometió por email. El barrido NO toca nada cuando esto pasa; hay que mirarlo
+ * a mano antes de dejarlo correr.
+ */
+export const RULE_ANULACION_PRECIO_ABORTADA: AlertRule<{ n: number; detalle: string | null }> = {
+  name: 'anulacion_precio_fidelidad_abortada',
+  severity: 'critical',
+  query: sql`
+    SELECT count(*)::int AS n, MAX(error_message) AS detalle
+    FROM observable_events
+    WHERE event_type = 'anulacion_precio_fidelidad_abortada'
+      AND ts > NOW() - INTERVAL '26 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: 'El barrido de precios de fidelidad se ABORTÓ por el tope de seguridad',
+    body:
+      (rows[0]?.detalle ?? 'sin detalle') +
+      '. No se ha anulado ninguna oferta. Revisar el criterio del mes antes de desbloquearlo: ' +
+      'quitar un precio prometido por email a decenas de personas no se deshace con un revert.',
+    metadata: { n: rows[0]?.n ?? 0 },
+  }),
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
+  // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
+  RULE_CAMPANA_EMAIL_ZERO_SENT as AlertRule,
+  // Barrido de precios de fidelidad abortado por el tope (2026-08-01, T-448).
+  RULE_ANULACION_PRECIO_ABORTADA as AlertRule,
   // Ficha de tarea viva borrada de main (2026-07-31, T-427): el contexto de trabajo se destruye en
   // silencio al resolver conflictos, y las dos veces que pasó se descubrió por casualidad.
   RULE_BACKLOG_FICHA_BORRADA,
