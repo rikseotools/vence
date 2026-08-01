@@ -30,6 +30,13 @@ export interface GetArticlesRequest {
   topicNumber?: number | null;
   positionType: string;
   includeOfficialCount: boolean;
+  /**
+   * Solo SIN `topicNumber` (configurador "por leyes"): devolver únicamente los artículos
+   * que están en el temario de la oposición, en vez de la ley entera. Con tema el scope ya
+   * lo impone `validArticleNumbers`. Sin esto el selector enseña artículos que el usuario no
+   * estudia — la confusión que motivó el filtro en el frontend.
+   */
+  scopeToPosition?: boolean;
 }
 
 export interface ArticleItem {
@@ -66,6 +73,11 @@ export interface EstimateQuestionsRequest {
   onlyOfficialQuestions: boolean;
   difficultyMode: DifficultyMode;
   focusEssentialArticles: boolean;
+  // 🎯 Solo aplica SIN topicNumber (configurador "por leyes"): acota el conteo al temario
+  // del positionType en vez de a la ley entera, igual que hace el selector de artículos.
+  // Con tema, el scope ya lo impone el topic_scope. Opcional porque el contrato del
+  // frontend le da `default(false)` y las llamadas viejas no lo mandan.
+  scopeToPosition?: boolean;
 }
 
 export interface EstimateQuestionsResponse {

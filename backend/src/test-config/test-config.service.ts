@@ -117,6 +117,12 @@ export class TestConfigService {
         );
       }
 
+      // Modo "por leyes" acotado al temario. Con `topicNumber` no aplica: el scope ya lo
+      // impone `validArticleNumbers` de arriba. [T-326]
+      if (params.scopeToPosition && !topicNumber) {
+        articleConditions.push(this.articleInPositionScope(positionType));
+      }
+
       const articleData = await this.db
         .select({
           articleNumber: articles.articleNumber,
@@ -210,6 +216,170 @@ export class TestConfigService {
   // 2. ESTIMACIÓN DE PREGUNTAS DISPONIBLES
   // ============================================
 
+  /**
+   * ¿El artículo `(lawId, articleNumber)` cae en algún `topic_scope` de la oposición?
+   *
+   * `article_numbers IS NULL` significa "toda la ley" (ley virtual), y por eso NO basta con
+   * `= ANY(...)`: en Postgres `x = ANY(NULL)` evalúa a NULL, la fila se descarta y un scope
+   * de ley entera contaría 0. Es la misma convención que ya escriben en crudo los otros
+   * servicios del backend (`served-coverage`, `auto-promote-coverage`, `canary-theme-stats`)
+   * y que en el frontend vive en `lib/api/_shared/topicScopeSql.ts`.
+   */
+  private articleInPositionScope(positionType: string) {
+    return sql`EXISTS (
+      SELECT 1
+      FROM topic_scope ts
+      INNER JOIN topics t ON t.id = ts.topic_id
+      WHERE t.position_type = ${positionType}
+        AND ts.law_id = ${articles.lawId}
+        AND (ts.article_numbers IS NULL OR ${articles.articleNumber} = ANY(ts.article_numbers))
+    )`;
+  }
+
+  /**
+   * Estimación en modo "por leyes" (sin tema): cuenta sobre la selección real de leyes,
+   * artículos y secciones, con los MISMOS filtros que aplicará el test al servir.
+   *
+   * Gemelo de `estimateByLaws` en `lib/api/test-config/queries.ts`. Vive aquí porque la
+   * familia `test-config` está enrutada al backend y es este camino el que ejecuta
+   * producción; tenerlo solo en el frontend fue exactamente el defecto de T-326.
+   *
+   * El conteo de oficiales usa `getValidExamPositions(positionType)` — solo las oficiales
+   * DE ESA oposición, igual que el resto de la app. Contar cross-oposición infla el número
+   * sobre leyes compartidas (CE, LOTC…) y haría mentir a la casilla.
+   */
+  private async estimateByLaws(
+    params: EstimateQuestionsRequest,
+  ): Promise<EstimateQuestionsResponse> {
+    const {
+      positionType,
+      selectedLaws,
+      selectedArticlesByLaw,
+      selectedSectionFilters,
+      onlyOfficialQuestions,
+      difficultyMode,
+      scopeToPosition,
+    } = params;
+
+    // Sin leyes seleccionadas no hay nada que contar (el configurador aún no ha elegido).
+    if (!selectedLaws || selectedLaws.length === 0) {
+      return { success: true, count: 0, byLaw: {} };
+    }
+
+    const validPositions = onlyOfficialQuestions
+      ? getValidExamPositions(positionType)
+      : [];
+    // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → no tiene oficiales propias.
+    // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría.
+    if (onlyOfficialQuestions && validPositions.length === 0) {
+      return { success: true, count: 0, byLaw: {} };
+    }
+
+    const byLaw: Record<string, number> = {};
+    let totalCount = 0;
+
+    for (const lawShortName of selectedLaws) {
+      // Con leyes duplicadas se prefiere DETERMINISTA la fila con más preguntas activas,
+      // para no caer en la fila vacía (mismo criterio que `getArticlesForLaw`).
+      const lawResult = await this.db
+        .select({ id: laws.id })
+        .from(laws)
+        .where(eq(laws.shortName, lawShortName))
+        .orderBy(
+          sql`(
+            SELECT count(*) FROM ${questions} q
+            JOIN ${articles} a ON q.primary_article_id = a.id
+            WHERE a.law_id = ${laws.id} AND q.is_active = true
+          ) DESC`,
+          laws.id,
+        )
+        .limit(1);
+      const lawId = lawResult[0]?.id;
+      if (!lawId) continue;
+
+      const conditions = [
+        eq(questions.isActive, true),
+        eq(articles.lawId, lawId),
+      ];
+
+      // Artículos elegidos por el usuario para ESTA ley
+      const chosen = selectedArticlesByLaw?.[lawShortName];
+      let articleNumbers: string[] | null =
+        chosen && chosen.length > 0 ? chosen.map((a) => String(a)) : null;
+
+      // Filtros de sección: se resuelven sobre los artículos reales de la ley, con el
+      // mismo helper que el modo tema (rangos → números), no con aritmética aparte.
+      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+        const candidateConditions = [
+          eq(articles.lawId, lawId),
+          eq(articles.isActive, true),
+        ];
+        if (articleNumbers) {
+          candidateConditions.push(
+            inArray(articles.articleNumber, articleNumbers),
+          );
+        }
+        if (scopeToPosition) {
+          candidateConditions.push(this.articleInPositionScope(positionType));
+        }
+        const candidates = await this.db
+          .select({ articleNumber: articles.articleNumber })
+          .from(articles)
+          .where(and(...candidateConditions));
+
+        articleNumbers = applyArticleSectionFilter(
+          candidates
+            .map((c) => c.articleNumber)
+            .filter((n): n is string => n != null),
+          selectedSectionFilters,
+        );
+        // Con secciones elegidas y ningún artículo dentro, esta ley aporta 0.
+        if (articleNumbers.length === 0) {
+          byLaw[lawShortName] = 0;
+          continue;
+        }
+      }
+
+      if (articleNumbers && articleNumbers.length > 0) {
+        conditions.push(inArray(articles.articleNumber, articleNumbers));
+      }
+
+      // Acotar al temario de la oposición (mismo predicado que el selector de artículos,
+      // para que el número y la lista que el usuario ve hablen de lo mismo).
+      if (scopeToPosition) {
+        conditions.push(this.articleInPositionScope(positionType));
+      }
+
+      if (onlyOfficialQuestions) {
+        conditions.push(eq(questions.isOfficialExam, true));
+        conditions.push(inArray(questions.examPosition, validPositions));
+      }
+
+      if (
+        difficultyMode &&
+        difficultyMode !== 'random' &&
+        difficultyMode !== 'adaptive'
+      ) {
+        conditions.push(
+          sql`(${questions.globalDifficultyCategory} = ${difficultyMode} OR
+              (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`,
+        );
+      }
+
+      const countResult = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .where(and(...conditions));
+
+      const count = Number(countResult[0]?.count || 0);
+      byLaw[lawShortName] = (byLaw[lawShortName] || 0) + count;
+      totalCount += count;
+    }
+
+    return { success: true, count: totalCount, byLaw };
+  }
+
   async estimateAvailableQuestions(
     params: EstimateQuestionsRequest,
   ): Promise<EstimateQuestionsResponse> {
@@ -225,12 +395,16 @@ export class TestConfigService {
         focusEssentialArticles,
       } = params;
 
-      // Si no hay tema, no podemos estimar (necesitamos topic_scope)
+      // Sin tema = configurador "por leyes": no hay topic_scope del que partir, pero SÍ se
+      // puede contar, porque la selección son leyes + artículos. Hace falta para que la
+      // casilla "🏛️ Preguntas oficiales" pueda pintarse ahí con un número honesto — T-326.
+      //
+      // ⚠️ Esta rama existía SOLO en el frontend (`lib/api/test-config/queries.ts`) y por eso
+      // el arreglo llegó a producción INERTE: la familia `test-config` está enrutada al
+      // backend, así que el camino que se ejecuta es ÉSTE y seguía contestando el error de
+      // abajo. La paridad la vigila `__tests__/guardrails/estimateByLawsParidad.test.ts`.
       if (!topicNumber) {
-        return {
-          success: false,
-          error: 'topicNumber es requerido para estimar',
-        };
+        return this.estimateByLaws(params);
       }
 
       // 1. Obtener topic_scope

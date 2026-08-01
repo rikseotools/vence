@@ -68,9 +68,13 @@ export class TestConfigController {
       topicNumber: query.topicNumber ? Number(query.topicNumber) : null,
       positionType,
       includeOfficialCount: query.includeOfficialCount === 'true',
+      scopeToPosition: query.scopeToPosition === 'true',
     };
 
-    const subKey = `articles:${params.lawShortName}:t${params.topicNumber ?? 'all'}:p${params.positionType}:o${params.includeOfficialCount ? '1' : '0'}`;
+    // `scopeToPosition` va EN LA CLAVE por el mismo motivo que en `estimate`: sin tema
+    // cambia la LISTA devuelta (temario vs ley entera), así que omitirlo haría que las dos
+    // vistas compartieran entrada de caché.
+    const subKey = `articles:${params.lawShortName}:t${params.topicNumber ?? 'all'}:p${params.positionType}:o${params.includeOfficialCount ? '1' : '0'}:sc${params.scopeToPosition ? '1' : '0'}`;
     return this.servedCached(subKey, TTL.articles, res, () =>
       this.service.getArticlesForLaw(params),
     );
@@ -175,6 +179,7 @@ export class TestConfigController {
       onlyOfficialQuestions: query.onlyOfficialQuestions === 'true',
       difficultyMode: (query.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
       focusEssentialArticles: query.focusEssentialArticles === 'true',
+      scopeToPosition: query.scopeToPosition === 'true',
     };
 
     // Cache key normalizado: ordenar arrays para que ?l=A,B&l=B,A → mismo hit.
@@ -184,7 +189,11 @@ export class TestConfigController {
       .map((k) => `${k}:${(selectedArticlesByLaw[k] ?? []).slice().sort().join('|')}`)
       .join(';');
     const sectionsKey = JSON.stringify(selectedSectionFilters); // ya estable
-    const subKey = `estimate:t${params.topicNumber ?? 'all'}:p${params.positionType ?? 'any'}:l${lawsKey}:a${articlesKey}:s${sectionsKey}:o${params.onlyOfficialQuestions ? '1' : '0'}:d${params.difficultyMode}:e${params.focusEssentialArticles ? '1' : '0'}`;
+    // ⚠️ `scopeToPosition` va EN LA CLAVE. Sin tema cambia el resultado (temario de la
+    // oposición vs ley entera), así que omitirlo haría que dos selecciones distintas
+    // compartieran entrada y la segunda leyera el número de la primera. Es el mismo bug
+    // que se encontró en el normalizador del frontend al implementar T-326.
+    const subKey = `estimate:t${params.topicNumber ?? 'all'}:p${params.positionType ?? 'any'}:l${lawsKey}:a${articlesKey}:s${sectionsKey}:o${params.onlyOfficialQuestions ? '1' : '0'}:d${params.difficultyMode}:e${params.focusEssentialArticles ? '1' : '0'}:sc${params.scopeToPosition ? '1' : '0'}`;
 
     return this.servedCached(subKey, TTL.estimate, res, () =>
       this.service.estimateAvailableQuestions(params),
