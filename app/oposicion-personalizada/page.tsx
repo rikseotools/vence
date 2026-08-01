@@ -1,4 +1,4 @@
-// app/mi-oposicion/crear/page.tsx — crear tu propia oposición. (T-327)
+// app/oposicion-personalizada/page.tsx — crear tu propia oposición. (T-327)
 //
 // `noindex` a propósito: es una herramienta de usuario autenticado, no contenido de catálogo.
 // Las oposiciones que se creen aquí SÍ serán públicas y elegibles por otros, pero eso es una

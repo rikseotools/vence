@@ -385,6 +385,10 @@ export default function HeaderES() {
       { href: '/test/por-leyes', label: 'Test combinando leyes', icon: '📝' },
       ...(userHasPsico ? [{ href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' }] : []),
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' },
+      // Oposición personalizada (T-327). Solo con sesión, igual que «Preguntas guardadas» y por
+      // el mismo motivo: el temario que armes hay que guardarlo en TU cuenta, así que sin sesión
+      // el enlace solo lleva a una pantalla de «inicia sesión» — ruido en el menú.
+      ...(user ? [{ href: '/oposicion-personalizada', label: 'Oposición personalizada', icon: '✏️', title: 'Arma tu propio temario eligiendo leyes y artículos' }] : []),
       // Preguntas guardadas con el corazón (T-261). Solo con sesión: sin cuenta no hay
       // nada que guardar, y un enlace que lleva a "inicia sesión" es ruido en el menú.
       ...(user ? [{ href: '/test/favoritas', label: 'Preguntas guardadas', icon: '❤️', title: 'Repasa las preguntas que has marcado con el corazón' }] : []),

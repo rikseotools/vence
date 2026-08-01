@@ -1,5 +1,5 @@
 'use client'
-// components/miOposicion/CreadorTemario.tsx — armar tu propio temario. (T-327)
+// components/oposicionPersonalizada/CreadorTemario.tsx — armar tu propio temario. (T-327)
 //
 // La lógica de QUÉ entra en el temario NO está aquí: vive en `./temario.ts` (puro y testeado).
 // Esta pantalla solo pinta y llama. Así el día que cambie el diseño no se lleva por delante las

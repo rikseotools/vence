@@ -18,7 +18,7 @@ import {
   nombrePublico,
   temaVacio,
   type Temario,
-} from '@/components/miOposicion/temario'
+} from '@/components/oposicionPersonalizada/temario'
 
 const LEY_39 = { lawId: 'ley-39', shortName: 'Ley 39/2015' }
 const CE = { lawId: 'ce', shortName: 'CE' }

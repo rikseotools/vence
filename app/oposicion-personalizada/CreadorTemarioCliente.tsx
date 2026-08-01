@@ -6,7 +6,7 @@
 // toda la lógica se puede montar en una prueba o en una simulación sin levantar la sesión.
 
 import { useAuth } from '@/contexts/AuthContext'
-import CreadorTemario from '@/components/miOposicion/CreadorTemario'
+import CreadorTemario from '@/components/oposicionPersonalizada/CreadorTemario'
 
 export default function CreadorTemarioCliente() {
   const { user, loading } = useAuth() as {

@@ -1,4 +1,4 @@
-// components/miOposicion/temario.ts — NÚCLEO PURO del creador de temario propio. (T-327)
+// components/oposicionPersonalizada/temario.ts — NÚCLEO PURO del creador de temario propio. (T-327)
 //
 // Sin React, sin red, sin BD: recibe estado y devuelve estado. Todo lo que decide QUÉ acaba en
 // el temario vive aquí, para poder probarlo sin montar la pantalla.
