@@ -76,6 +76,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 5. **Corregir** lo que esté mal (§5): no oficial + mejorable = se mejora aunque la queja sea parcial (§7.3); oficial = no se toca enunciado/opciones. Re-vincular artículo exige explicación nueva coherente. Si la pregunta estaba oculta, transicionar lifecycle (§5.2).
 
 6. **Redactar el mensaje** (§6): conciso, aireado, reconocer si el usuario tenía razón, firmar "Equipo de Vence". Mostrar el borrador y ESPERAR aprobación.
+   - ⚖️ **Si la vas a RECHAZAR, la respuesta tiene que convencer, no solo informar (§7.3.quater):** cita literal del artículo, nombre de la ley, enlace al BOE y —lo que de verdad resuelve la duda— **por qué él vio otra cosa** (una redacción anterior, un apunte sin actualizar, un plazo parecido de otra norma). Un «no procede» a secas hace que la próxima vez no nos avise de un fallo real.
 
 > **NUNCA afirmes categóricamente que está resuelto (Manuel, 30/07/2026).** Escribe **«no debería
 > volver a salirte»**, no «dejará de salirte»; **«ya debería estar resuelto»**, no «ya está
@@ -1012,6 +1013,60 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 **Regla:** verifica contra fuente oficial **el valor vigente para la fecha de hoy**. Si nuestro contenido coincide con el periodo actual, la pregunta es correcta — **no cambies la cifra** (cambiarla la dejaría obsoleta en la siguiente revisión). Mejora la explicación añadiendo una **nota de vigencia** que despeje la confusión.
 
 **Incidente que motiva la regla (02/06/2026 — Roberto, LCSP art. 22):** umbral de regulación armonizada de servicios para entidades distintas de la AGE marcado en **216.000 €**. Es correcto: es el valor **vigente desde el 1 de enero de 2026** (Orden HAC/1517/2025); en 2024-2025 era 221.000 € — justo lo que despistaba al usuario. Fix: mantener la cifra, reestructurar la explicación con los tres umbrales + nota de vigencia. Reconcilia con la trampa de "contenido volátil entre versiones" del §5.1.3 (allí informática, aquí legislación).
+
+## 7.3.quater RECHAZAR exige explicar MEJOR, no menos: con el artículo, la ley y la fuente (post-01/08/2026)
+
+> **Regla (Manuel, 01/08/2026):** cuando la impugnación NO procede, la respuesta tiene que dejar al
+> usuario **satisfecho y convencido**, no simplemente informado de que se equivocaba. Eso significa
+> **citar el artículo concreto, nombrar la ley y darle el enlace** para que lo compruebe él mismo.
+> Un «tu impugnación no procede» a secas es la peor respuesta posible: el opositor se queda pensando
+> que no le hemos mirado el caso, y la próxima vez que vea un fallo real **ya no nos lo dice**.
+
+**Qué tiene que llevar una respuesta de `rejected`:**
+
+1. **La cita literal del precepto**, entrecomillada y con su referencia exacta (artículo, apartado y
+   letra). No parafrasear: el opositor quiere ver la frase.
+2. **El enlace directo** al texto oficial (`https://www.boe.es/buscar/act.php?id=…#aN`), para que lo
+   verifique sin buscarlo.
+3. **Por qué ÉL vio otra cosa** — que casi siempre tiene explicación y es lo que de verdad resuelve
+   la duda: una redacción anterior, un texto de academia sin actualizar, otra ley con un plazo
+   parecido, una versión distinta del programa. Si se le nombra el motivo concreto, entiende el
+   desajuste; si no, se queda con la sensación de que uno de los dos miente.
+4. **Tratar sus argumentos secundarios**, aunque el principal no proceda. Si citó otro artículo o
+   una disposición adicional, dile qué dice esa también.
+5. Y aun así, **mejorar la pregunta si se puede** (§7.3): que la queja no proceda no significa que
+   no haya nada que pulir.
+
+**Caso de éxito que da origen a la regla — impugnación `349b5132` (Estela Jiménez, 31/07-01/08):**
+
+- Impugnó `desacuerdo_correcta` sobre el plazo del **art. 9.2.c) de la Ley 39/2015** (cuántos meses
+  desde la comunicación a la SGAD hasta la eficacia jurídica del sistema de identificación), con un
+  único comentario: *«Desactualizado»*. La clave —**dos meses**— era CORRECTA.
+- La respuesta **no se limitó a decir que no procedía**: le transcribió la letra c) entera
+  entrecomillada, le dio el enlace al artículo en el BOE, y —esto es lo que lo resolvió— le explicó
+  **por qué ella no encontraba el párrafo**: la redacción vigente la introdujo la **Ley 11/2022** (30
+  de junio de 2022) y la anterior no hablaba de dos meses sino de una autorización previa a resolver
+  en tres; si consultaba el BOE con otra redacción seleccionada, veía justo eso. Además se le
+  contestó el argumento secundario (la disposición adicional octava y el art. 10.2.c), dándole la
+  razón en esa parte.
+- **Su réplica, literal:** *«Muchas gracias por la aclaración y por haberos tomado el tiempo de
+  explicármelo con tanto detalle… no había caído en que estaba consultando una redacción distinta.
+  Ahora ya me ha quedado completamente claro. Me ha gustado mucho la atención que me habéis dado y
+  la rapidez… Precisamente por este tipo de soporte creo que voy a animarme a contratar la versión
+  Premium».* Una impugnación **rechazada** que acaba en una posible alta de pago.
+- **Y se aprovechó igualmente para mejorar la pregunta:** su explicación abría con *«La respuesta
+  correcta es la **D**»* —letra clavada en la narrativa, que impide barajar (§🔀)—, así que se
+  reescribió estructurada, incorporando como razón de la opción «3 meses» **la propia confusión de
+  Estela** (que era el plazo de la redacción anterior) y una nota de vigencia de la Ley 11/2022. La
+  duda de una usuaria se convirtió en el material didáctico de la pregunta.
+
+> **Cómo se cerró, que también importa:** su réplica era un **agradecimiento**, no una queja nueva.
+> Ahí NO se contesta otra vez —mandar un correo para decir «de nada» es ruido—: se hace **cierre
+> silencioso**. ⚠️ Y OJO con cómo: `/api/v2/dispute/resolve` escribe `adminResponse: trimmedResponse || null`,
+> así que cerrar con mensaje vacío **borra la respuesta que sí se le envió** (1.770 caracteres, en
+> este caso). El cierre silencioso es un `UPDATE` del `status` **preservando `admin_response`** —la
+> única excepción legítima a «cerrar siempre por el endpoint» (§6), porque aquí el email es
+> exactamente lo que no se quiere.
 
 ## 7.3.ter «Según la ley sí, pero en la práctica no»: la jurisprudencia va a la EXPLICACIÓN, no a la clave (post-31/07/2026)
 
