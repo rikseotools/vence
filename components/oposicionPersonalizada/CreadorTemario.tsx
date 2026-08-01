@@ -190,6 +190,15 @@ export default function CreadorTemario({
   /** Id que se está editando. `null` = estoy creando una nueva. */
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [cargandoEdicion, setCargandoEdicion] = useState(false)
+  /**
+   * ¿Está desplegado el constructor?
+   *
+   * Con oposiciones ya creadas arranca PLEGADO: lo primero que quiere quien vuelve es abrir la
+   * suya, no encontrarse un formulario vacío que le hace buscar entre campos qué era lo que
+   * venía a hacer. Sin ninguna, se despliega solo — no tendría sentido pedirle un clic extra
+   * para llegar a lo único que puede hacer.
+   */
+  const [constructorAbierto, setConstructorAbierto] = useState(false)
 
   useEffect(() => {
     const almacen = typeof window !== 'undefined' ? window.localStorage : null
@@ -202,7 +211,11 @@ export default function CreadorTemario({
       const headers = await getAuthHeaders()
       const res = await fetch('/api/v2/oposicion-personalizada', { headers })
       const body = await res.json().catch(() => null)
-      setMias(res.ok && body?.success && Array.isArray(body.oposiciones) ? body.oposiciones : [])
+      const lista = res.ok && body?.success && Array.isArray(body.oposiciones) ? body.oposiciones : []
+      setMias(lista)
+      // Solo en la PRIMERA carga: si el usuario ya lo ha abierto, recargar la lista tras guardar
+      // no puede cerrárselo en la cara.
+      setConstructorAbierto((abierto) => abierto || lista.length === 0)
     } catch {
       // Si el listado falla, NO se bloquea la pantalla: crear una oposición nueva sigue
       // funcionando sin saber cuáles tienes ya.
@@ -239,6 +252,7 @@ export default function CreadorTemario({
       setTemaActivo('t1')
       setEditandoId(id)
       setGuardado(null)
+      setConstructorAbierto(true)
       // Al abrir una para editar, el sitio donde se trabaja es el constructor de abajo.
       if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
@@ -254,6 +268,7 @@ export default function CreadorTemario({
     setEditandoId(null)
     setGuardado(null)
     setErrorGuardar(null)
+    setConstructorAbierto(true)
   }, [])
 
   const cerrarIntro = useCallback(() => {
@@ -486,7 +501,6 @@ export default function CreadorTemario({
         cargando={cargandoMias}
         editandoId={editandoId}
         onEditar={editar}
-        onNueva={empezarNueva}
       />
 
       {cargandoEdicion && (
@@ -495,6 +509,20 @@ export default function CreadorTemario({
         </p>
       )}
 
+      {/* Con el constructor plegado, este botón es la ÚNICA forma de llegar a él: tiene que
+          decir exactamente lo que va a pasar, no un «+» suelto. */}
+      {!cargandoMias && !constructorAbierto && (
+        <button
+          type="button"
+          onClick={empezarNueva}
+          className="w-full mb-8 py-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+        >
+          + Añadir otra oposición personalizada
+        </button>
+      )}
+
+      {!cargandoMias && constructorAbierto && (
+        <>
       {/* Nombre */}
       <section className="mb-8">
         <label htmlFor="nombre-oposicion" className="block font-semibold text-gray-900 dark:text-white mb-2">
@@ -846,6 +874,8 @@ export default function CreadorTemario({
           </div>
         </section>
       </div>
+        </>
+      )}
     </div>
   )
 }

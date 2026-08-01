@@ -31,13 +31,11 @@ export default function MisOposiciones({
   cargando,
   editandoId,
   onEditar,
-  onNueva,
 }: {
   oposiciones: ResumenOposicion[]
   cargando: boolean
   editandoId: string | null
   onEditar: (id: string) => void
-  onNueva: () => void
 }) {
   if (cargando) {
     return (
@@ -52,18 +50,9 @@ export default function MisOposiciones({
 
   return (
     <section className="mb-8">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="font-semibold text-gray-900 dark:text-white">
-          Tus oposiciones ({oposiciones.length})
-        </h2>
-        <button
-          type="button"
-          onClick={onNueva}
-          className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          + Crear otra
-        </button>
-      </div>
+      <h2 className="mb-3 font-semibold text-gray-900 dark:text-white">
+        Tus oposiciones personalizadas ({oposiciones.length})
+      </h2>
 
       <ul className="space-y-2">
         {oposiciones.map((o) => {
