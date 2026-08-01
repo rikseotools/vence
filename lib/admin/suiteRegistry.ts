@@ -281,6 +281,11 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     tipo: 'codigo_datos_prestados',
     que: 'El CTA de test por artículo: el conteo del SSOT coincide con lo servido.',
   },
+  {
+    ruta: '__tests__/integration/repasoBarajadoCoherente.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'El CONTRATO del que depende el repaso de un test barajado (T-472): las opciones guardadas van en el orden mostrado y las letras en coordenadas de la BD.',
+  },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────
   // VIGILANCIAS — monitores del contenido de producción. Destino: el barrido de salud.

@@ -82,6 +82,18 @@ describe('getTestReview — fallback de opciones para psicotécnicas (regresión
   })
 
   it('el campo options del response usa el fallback (contextOptions || fallback?.options || [])', () => {
-    expect(src).toMatch(/options:\s*contextOptions\s*\|\|\s*fallback\?\.options\s*\|\|\s*\[\]/)
+    // La cadena de fallback puede estar inline en el `return` o en una constante
+    // intermedia — desde T-472 vive en `const opciones`, porque el mismo array se
+    // necesita antes para traducir las letras al orden que vio el usuario. Lo que
+    // este test protege es la CADENA (contexto → fallback → vacío), no dónde se
+    // escribe: la regresión de Nila fue perder el fallback, no perder una línea.
+    const cadena = /(?:options|opciones)\s*[:=]\s*contextOptions\s*\|\|\s*fallback\?\.options\s*\|\|\s*\[\]/
+    expect(src).toMatch(cadena)
+
+    // Y que lo que se devuelve es exactamente eso, no otro array construido aparte.
+    const asignadaAConstante = /const\s+opciones\s*=\s*contextOptions\s*\|\|\s*fallback\?\.options\s*\|\|\s*\[\]/.test(src)
+    if (asignadaAConstante) {
+      expect(src).toMatch(/options:\s*opciones\b/)
+    }
   })
 })

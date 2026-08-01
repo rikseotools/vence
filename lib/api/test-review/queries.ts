@@ -7,6 +7,8 @@ function getTestReviewDb() {
 }
 import { tests, testQuestions, questions, examCases, psychometricQuestions } from '@/db/schema'
 import { eq, asc, inArray } from 'drizzle-orm'
+import { resolverCoordenadasRepaso } from '@/lib/shuffle/reviewCoords'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type {
   GetTestReviewRequest,
   GetTestReviewResponse,
@@ -77,6 +79,9 @@ export async function getTestReview(
         articleNumber: testQuestions.articleNumber,
         lawName: testQuestions.lawName,
         fullQuestionContext: testQuestions.fullQuestionContext,
+        // Permutación con la que se sirvió esa exposición. Sin ella, las letras
+        // guardadas (coords de BD) señalan la opción equivocada del array mostrado.
+        optionOrder: testQuestions.optionOrder,
       })
       .from(testQuestions)
       .where(eq(testQuestions.testId, testId))
@@ -205,11 +210,44 @@ export async function getTestReview(
       const ctxImageUrl = typeof context.image_url === 'string' ? context.image_url : null
       const ctxContentData = context.content_data ?? null
 
+      // Opciones que se van a pintar: las del contexto están en el orden MOSTRADO
+      // (lo que vio el usuario); las del fallback vienen de `questions` en orden de BD.
+      const opciones = contextOptions || fallback?.options || []
+      // Las letras guardadas están en coordenadas de BD → traducirlas al orden mostrado
+      // o la pantalla señala la opción de al lado (T-472, impugnación 8e9142c0).
+      const coords = resolverCoordenadasRepaso({
+        optionOrder: a.optionOrder,
+        opcionesMostradas: opciones.length,
+        opcionesSonLasVistas: contextOptions !== null,
+        userAnswer: a.userAnswer,
+        correctAnswer: a.correctAnswer,
+      })
+
+      if (coords.anomalia) {
+        // Fail-open: la revisión se sirve igual (sin resaltar de más), pero la
+        // desincronía se ve. Mismo eventType que el detector de answer-and-save:
+        // es el mismo hecho (un `option_order` que no cuadra), no una señal nueva.
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'shuffle_option_order_invalid',
+          endpoint: '/api/tests/[testId]/review',
+          metadata: {
+            anomalia: coords.anomalia,
+            testId,
+            questionId: a.questionId,
+            testQuestionId: a.id,
+            opcionesMostradas: opciones.length,
+            optionOrderLen: Array.isArray(a.optionOrder) ? a.optionOrder.length : null,
+          },
+        })
+      }
+
       return {
         id: a.questionId || a.psychometricQuestionId || a.id,
         order: a.questionOrder ?? index + 1,
         questionText: a.questionText || (context.question_text as string) || 'Pregunta no disponible',
-        options: contextOptions || fallback?.options || [],
+        options: opciones,
         difficulty: a.difficulty || 'medium',
         tema: a.temaNumber,
         articleNumber: a.articleNumber,
@@ -221,9 +259,9 @@ export async function getTestReview(
         isPsychometric,
         imageUrl: ctxImageUrl ?? fallback?.imageUrl ?? null,
         contentData: ctxContentData ?? fallback?.contentData ?? null,
-        // Datos de la respuesta del usuario
-        userAnswer: a.userAnswer || null, // 'A', 'B', 'C', 'D' o null
-        correctAnswer: a.correctAnswer, // 'A', 'B', 'C', 'D'
+        // Datos de la respuesta del usuario, EN LAS LETRAS QUE VIO (no las de la BD).
+        userAnswer: coords.userAnswer, // 'A', 'B', 'C', 'D' o null (en blanco)
+        correctAnswer: coords.correctAnswer, // 'A', 'B', 'C', 'D'
         isCorrect: a.isCorrect,
         timeSpent: a.timeSpentSeconds || 0,
       }

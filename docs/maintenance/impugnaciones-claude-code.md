@@ -1954,6 +1954,16 @@ más cercana a la fecha de la impugnación y, si estaba barajada, imprime el blo
 Si la exposición fue en orden natural lo dice también, en una línea. **Al redactar la respuesta,
 usa la letra que vio el usuario**, no la de la BD: para él la nuestra no significa nada.
 
+> ⚠️ **Y hay un tercer sitio donde las letras podían no cuadrar: la pantalla de REPASO** (`/revisar/<testId>`,
+> que es donde está el botón de impugnar de un test ya terminado). Hasta el **01/08/2026** pintaba las
+> opciones en el orden que vio el usuario pero resaltaba la correcta con la letra de la BD → **le
+> señalaba la opción de al lado en el 77 % de las exposiciones barajadas** (446 de 577, 24 usuarios).
+> Arreglado en **[T-472]** (`lib/shuffle/reviewCoords.ts`). **Para ti, al analizar:** si una
+> impugnación de un usuario con barajado dice *«la correcta es X y no Y»* y **ambas opciones existen
+> en la pregunta**, comprueba si su queja describe este desfase antes de tocar la pregunta — la
+> pregunta puede estar impecable y el fallo ser nuestro, al enseñársela. Y **date cuenta de que
+> tenía razón**: se cierra `resolved`, no `rejected`.
+
 Mapeo y traducción son funciones puras (`mapaExposicion`, `traducirLetrasDelUsuario`) con 8 tests
 en `__tests__/impugnaciones/dossierExposicionBarajada.test.ts`.
 
