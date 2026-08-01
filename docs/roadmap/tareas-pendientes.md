@@ -1165,32 +1165,34 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-444] 🟡 [ABIERTO 31/07] El art. 71 de la LO 3/2007 se sirve en 6 temas cuyo epígrafe enumera títulos que NO incluyen el VI
+### [T-444] 🟡 [ABIERTO 31/07 · AVANZADA 01/08] El art. 71 de la LO 3/2007 se servía en 6 temas cuyo epígrafe no llega al Título VI — quedan 2
 
-- **Esfuerzo: un rato.** Los 6 temas están listados aquí con su epígrafe ya mapeado; lo que falta es decidir si se recorta y hacerlo con simulación de huérfanas.
-- **DE DÓNDE SALE.** Es el reverso de [T-421]. Aquélla preguntaba por qué 13 temas escopaban el art. 71 sin el 72; al mirar los epígrafes uno a uno resultó que **no eran 13 casos del mismo problema, sino dos problemas distintos**: en 7 faltaba el 72 (ya añadido) y en estos 6 **sobra el 71**.
-- **La pista era que los 13 tenían EXACTAMENTE la misma lista de 28 artículos** (`1-11,13-19,21,39,45,49,51,55,62,64,71,76`) con epígrafes que no se parecen en nada. Eso no es un scope derivado de 13 epígrafes: es **una selección copiada de oposición en oposición**. Los otros 17 temas que sí tenían el 72 lo tenían porque escopan la ley **casi entera** (77-132 artículos), no por criterio — o sea que la «simetría» que parecía sostener el caso no existía.
-- **Estructura oficial (verificada contra BOE-A-2007-6115):** Preliminar 1-2 · I 3-13 · II 14-35 · III 36-41 · IV 42-50 · V 51-68 · **VI 69-72** · VII 73-75 · VIII 76-78.
-- **Los 6 temas y por qué el Título VI les queda fuera:**
+- **Esfuerzo: un rato.** Lo que queda es **bajar el temario oficial de 2 convocatorias** y verificar su epígrafe; el análisis ya está hecho y medido aquí.
+- **ESTADO: 4 de 6 resueltos (01/08).** Quedan `auxiliar_administrativo_ayuntamiento_alcala_henares/T23` y `ayudantes_ejecucion_penal_pais_vasco/T7`, **y no por falta de criterio sino de FUENTE**: su epígrafe está `SIN VERIFICAR` contra boletín, y recortar 418 y 489 preguntas apoyándose en un texto que puede estar parafraseado es exactamente el error que el manual prohíbe. **Primero se verifica el epígrafe, después se decide.**
+- **DE DÓNDE SALE.** Reverso de [T-421]: 13 temas escopaban el art. 71 sin el 72, y al mirar los epígrafes uno a uno resultaron **dos problemas distintos** — en 7 faltaba el 72 (añadido allí) y en estos 6 sobraba el 71.
+- **La pista:** los 13 tenían **exactamente la misma lista de 28 artículos** (`1-11,13-19,21,39,45,49,51,55,62,64,71,76`) con epígrafes que no se parecen en nada. No es un scope derivado de 13 epígrafes: es **una selección copiada** de oposición en oposición.
+- **Estructura oficial (BOE-A-2007-6115, bajado y parseado):** Preliminar 1-2 · I 3-13 · II 14-35 · III 36-41 · IV 42-50 · V 51-68 · **VI 69-72** · VII 73-75 · VIII 76-78.
+- **Mapeo de la lista de 28 a sus títulos:** `1,2`→Prel · `3-11,13`→I · `14-19,21`→II · `39`→III · `45,49`→IV · `51,55,62,64`→V · `71`→VI · `76`→VIII.
 
-  | Tema | Epígrafe (literal, resumido) | Títulos que pide |
-  |---|---|---|
-  | `auxiliar_administrativo_universidad_alcala/T6` | «Título Preliminar, Título I …, Título II … y Título V …» | Prel · I · II · V |
-  | `auxiliar_administrativo_universidad_complutense/T11` | «Título I … Título II … Título V …» | I · II · V |
-  | `auxiliar_administrativo_ayuntamiento_alcala_henares/T23` | «objeto y ámbito de la Ley. El principio de igualdad en el empleo público» | Prel · V |
-  | `auxiliar_administrativo_ayuntamiento_madrid/T16` | «objeto y ámbito de la ley. El principio de igualdad y la tutela contra la discriminación» + Plan municipal | Prel · I |
-  | `auxiliar_administrativo_canarias/T10` | «principio de igualdad y tutela contra la discriminación» + Ley canaria 1/2010 | I |
-  | `ayudantes_ejecucion_penal_pais_vasco/T7` | **solo normativa autonómica vasca** — no menciona la LO 3/2007 | ninguno |
+- **✅ HECHO — los 4 resueltos, con dos criterios distintos a propósito:**
 
-- **Ojo: el 71 no es el único que sobraría.** Esa misma lista de 28 mete el **39** (Título III), **45 y 49** (IV), **51/55/62/64** (V) y **76** (VIII). En `complutense T11` y `alcala T6`, cuyo epígrafe SÍ pide el Título V, los de empleo público están bien; pero el 39, 45, 49 y 76 caen fuera igual que el 71. **La ficha se llama «art. 71» porque es por donde se entró, no porque sea el único** — al atacarla hay que mirar la lista entera contra cada epígrafe.
-- **El caso del País Vasco es el más gordo y el más raro:** su epígrafe es íntegramente de normativa autonómica de la CAE y aun así escopa 28 artículos de la ley ESTATAL. Ahí la pregunta no es qué artículo recortar, sino **si esa ley pinta algo en ese tema**.
-- **Cómo se resuelve (y cómo NO):** pipeline `verify:scope` (dump → plan → apply), que manda los recortes a **puerta de juicio** y nunca los aplica solo. **NUNCA un `UPDATE` a mano**: quitar del scope puede dejar preguntas sin servirse en silencio, que es justo lo que vigila el trinquete de `article_numbers`. Y **NUNCA recortar por simetría con las otras oposiciones** — es el error que este hallazgo desmonta.
-- **Impacto acotado, por eso es 🟡 y no urgente:** sirve materia de MÁS (fuera de programa), no de menos. Nadie deja de estudiar nada; algunos estudian lo que no les van a preguntar.
-- **Ya hecho en [T-421] y que no hay que repetir:** los 7 temas cuyo epígrafe sí abarca la ley tienen el 72 añadido, y la pregunta `b49017b3` (sus cuatro opciones son literales del art. 72.2) está re-anclada al 72 y ha salido de estos 6 a propósito.
-- **Relacionadas:** [T-421] (de donde sale), [T-088] (campaña de recortes de sobre-inclusión), frase-gatillo *«revisa la sobre-inclusión del temario»*.
+  | Tema | Usuarios | Epígrafe | Qué se quitó | Preguntas |
+  |---|---|---|---|---|
+  | `universidad_alcala/T6` | 10 | *sin verificar* | `39,45,49,71,76` (III·IV·VI·VIII) | 44 |
+  | `universidad_complutense/T11` | 16 (2 prem) | ✅ literal (BOUC) | `39,45,49,71,76` | 44 |
+  | `canarias/T10` | **275** (8 prem) | ✅ literal (BOC 2024) | **solo `71,76`** | 15 |
+  | `ayuntamiento_madrid/T16` | 27 | ✅ literal (madrid.es) | **solo `71,76`** | 15 |
 
+  - Las **dos universidades** enumeran títulos de forma EXPLÍCITA («Título Preliminar, Título I, Título II y Título V»), así que el recorte completo es mecánico. Salieron `auto_safe`. *Nota: el epígrafe de Alcalá no está verificado; lo sostiene que su gemela Complutense SÍ lo está y enumera los mismos títulos.*
+  - **Canarias y Madrid: recorte MÍNIMO por decisión de Manuel (01/08)** — solo Títulos VI y VIII, los ajenos a cualquier lectura. Su epígrafe está verificado literal y **también dejaría fuera los Títulos II/III/IV/V** (228 y 205 preguntas), pero el clasificador los manda a **puerta de juicio** por ser epígrafe temático y con 275 usuarios en Canarias no se recorta a lo grande sobre una lectura de prosa. **Eso sigue pendiente y está medido abajo.**
 
-
+- **⏳ LO QUE QUEDA, con su motivo:**
+  1. **`alcala_henares/T23`** (3 usuarios) — epígrafe SIN VERIFICAR: *«objeto y ámbito de la Ley. El principio de igualdad en el empleo público»* = Preliminar + Título V. Si se confirma literal, **sobran 22 de 28 artículos (418 preguntas)**: Títulos I, II, III, IV, VI y VIII enteros. Es un recorte enorme sobre 3 usuarios; verificar la fuente ANTES.
+  2. **`ayudantes_ejecucion_penal_pais_vasco/T7`** (5 usuarios, 1 premium) — epígrafe SIN VERIFICAR y **100% de normativa autonómica de la CAE**: no menciona la LO 3/2007 por ningún lado, y aun así escopa 28 artículos de la ley ESTATAL (489 preguntas, la ley entera en ese tema). Aquí la pregunta no es qué artículo recortar sino **si esa ley pinta algo en ese tema** — y eso no se contesta sin el temario oficial.
+  3. **Canarias T10 y Madrid T16, segunda vuelta:** decidir los Títulos II/III/IV/V que su epígrafe literal tampoco nombra (228 y 205 preguntas). Requiere criterio, no datos: ya están medidos.
+- **Cómo se resuelve (y cómo NO):** pipeline `verify:scope` (dump → plan → apply), que manda los recortes a **puerta de juicio** y nunca los aplica solo; los de Canarias/Madrid necesitaron `--include-gate` con la decisión humana ya tomada. **NUNCA un `UPDATE` a mano** (el `article_numbers` tiene trinquete) ni **recortar por simetría** con otras oposiciones — es el error que este hallazgo desmonta.
+- **Impacto acotado, por eso es 🟡:** se sirve materia de MÁS, no de menos. Nadie deja de estudiar lo suyo; algunos practican lo que no les van a preguntar.
+- **Relacionadas:** [T-421] (de donde sale), [T-088] (campaña de recortes de sobre-inclusión), frase-gatillo *«revisa la sobre-inclusión del temario»* y *«revisa los scopes sin verificar»* (los 2 que quedan son casos suyos).
 ### [T-434] 🔴 [ABIERTO 31/07] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
 
 - **Esfuerzo: larga** (el diagnóstico está hecho; falta encontrar por qué la reconciliación no les alcanza, y eso es tocar identidad).
