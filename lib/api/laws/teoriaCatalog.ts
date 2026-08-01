@@ -206,6 +206,13 @@ export const HL_START = '⟦' // ⟦
 export const HL_END = '⟧' // ⟧
 
 export interface TeoriaContentHit {
+  /**
+   * Id de la ley. Lo añade [T-327]: `/teoria` solo necesitaba pintar un enlace, pero quien
+   * arma un temario tiene que poder **escribir el `topic_scope`**, y esa fila se indexa por
+   * `law_id` — con el nombre corto y el slug no se puede. Es aditivo: nada de lo que ya
+   * consumía este tipo cambia.
+   */
+  lawId: string
   lawShortName: string
   lawSlug: string
   articleNumber: string
@@ -248,7 +255,7 @@ export async function searchTeoriaContent(opts: {
 
   const headlineOpts = `MaxWords=26,MinWords=12,MaxFragments=1,StartSel=${HL_START},StopSel=${HL_END}`
   const rows = (await db.execute(sql`
-    SELECT l.short_name, l.slug, a.article_number,
+    SELECT l.id AS law_id, l.short_name, l.slug, a.article_number,
       ts_headline('public.spanish_unaccent', a.content,
         websearch_to_tsquery('public.spanish_unaccent', ${q}), ${headlineOpts}) AS snippet
     FROM articles a JOIN laws l ON l.id = a.law_id
@@ -259,6 +266,7 @@ export async function searchTeoriaContent(opts: {
              l.short_name ASC
     LIMIT ${limit}
   `)) as unknown as Array<{
+    law_id: string
     short_name: string
     slug: string
     article_number: string
@@ -268,6 +276,7 @@ export async function searchTeoriaContent(opts: {
   return {
     total,
     hits: rows.map((r) => ({
+      lawId: r.law_id,
       lawShortName: r.short_name,
       lawSlug: r.slug,
       articleNumber: r.article_number,
