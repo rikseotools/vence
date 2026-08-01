@@ -1414,6 +1414,20 @@ de forma TERMINAL el registro de que algo cayó en un examen real. Esos 8 se mir
 fuente delante, porque «dos oficiales casi iguales» suele ser el MISMO examen importado dos veces —
 pero eso hay que comprobarlo, no suponerlo.
 
+### [T-449] 🟡 [ABIERTO 01/08] Una tarea verificada que sigue viva no tiene cómo decirlo: se anuncia como «lista para verificar» para siempre
+
+- **Esfuerzo: rato.** El hueco está localizado y es una columna; lo que hay que decidir es el verbo, no el código.
+- **VIVIDO, no supuesto (01/08, sesión `centro-inferior`).** Cogí [T-385] porque `list` la ofrecía arriba del todo como *«⏰ IMPLEMENTADA Y SIN COMPROBAR»* con el pendiente *«⚠️ NINGÚN DEPLOY REAL ha corrido por el camino nuevo (`deploy_runs` está a 0)»*. Al abrir la ficha, **ya estaba verificada**: otra sesión lo había hecho minutos antes con un deploy real y lo había escrito entero, con los cuatro puntos comprobados uno a uno. Monté un worktree y reclamé una tarea para repetir trabajo hecho.
+- **La causa es que `resume_check` solo tiene UN escritor y exige una espera.** Lo escribe `pause`, que obliga a `--hasta <fecha>` o `--tras-deploy`. O sea que el CLI sabe decir *«esto está hecho a falta de que llegue un momento»*, pero **no sabe decir *«esto ya lo comprobé y sigue habiendo trabajo»***. Las salidas que hay son las cuatro de siempre y ninguna encaja:
+  - `done` no, porque la tarea sigue viva (a T-385 le queda la fase 3);
+  - `pause` no, porque no hay ninguna espera: la fase 3 se puede atacar ahora mismo. Ponerle una fecha sería inventarse una condición, que es justo lo que un CHECK impide en `due_at` y por el mismo motivo;
+  - `release` no, porque **no toca `resume_check`**: la suelta con el texto obsoleto intacto y el siguiente que llegue tropieza igual.
+- **Por qué no es cosmético:** `list` ordena esa sección ARRIBA a propósito, porque son las que «se cierran en minutos». Un `resume_check` cumplido convierte esa promesa en una trampa, y **la paga la sesión más diligente** — la que hace caso al orden sugerido. Con 196 tareas abiertas, basta que unas pocas se queden así para que la cabeza de la lista deje de ser fiable, que es exactamente cómo murieron los avisos de [T-427] y [T-221]: no por ser falsos, por ser indistinguibles de los verdaderos.
+- **Arreglo propuesto (a decidir):** un verbo que marque el `resume_check` como CUMPLIDO sin cerrar la tarea ni fingir una espera — `verificado <id> --nota "…"` — que vacíe `resume_check`, deje la nota en `progress_note` y saque la tarea de la sección de «listas para verificar» dejándola como una tarea abierta normal. Es el gemelo que le falta a `pause`: uno dice «aún no se puede comprobar», el otro diría «ya se comprobó».
+  - **Ojo al hacerlo:** el escritor tiene que seguir siendo único. Hoy `resume_check` solo lo escribe `pause` y eso es lo correcto; el verbo nuevo va al lado, no se reparte la columna entre dos criterios ([T-130]).
+- **Mientras no exista:** al retomar una tarea de esa sección, **leer la ficha ANTES de montar nada** — el `claim` ya la imprime entera, que para eso se hizo. Si la ficha dice que ya está verificada, soltarla y avisar aquí.
+- **Relacionadas:** [T-385] (el caso que lo destapó), [T-414] (las cuatro salidas y por qué el CLI las impone), [T-345] (`due_at` y el CHECK que impide inventarse condiciones).
+
 ### [T-443] 🔴 [ABIERTO 31/07] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
 
 - **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.
