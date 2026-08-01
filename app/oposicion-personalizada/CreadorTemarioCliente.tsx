@@ -5,6 +5,7 @@
 // Va aparte para que `CreadorTemario` no dependa de `AuthContext`: así el componente que tiene
 // toda la lógica se puede montar en una prueba o en una simulación sin levantar la sesión.
 
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import CreadorTemario from '@/components/oposicionPersonalizada/CreadorTemario'
 
@@ -27,12 +28,12 @@ export default function CreadorTemarioCliente() {
         <p className="mt-3 text-gray-600 dark:text-gray-300">
           Necesitas iniciar sesión para armar tu propio temario y poder guardarlo.
         </p>
-        <a
+        <Link
           href="/login"
           className="inline-block mt-6 px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
         >
           Iniciar sesión
-        </a>
+        </Link>
       </div>
     )
   }

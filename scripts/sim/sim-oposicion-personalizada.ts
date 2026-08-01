@@ -199,6 +199,72 @@ async function main() {
     )
 
 
+    // ── 2.ter ELEGIRLA COMO OPOSICIÓN OBJETIVO ────────────────────────────────────────────
+    //
+    // Es lo que convierte «puedo montar mi temario» en «puedo estudiar con él». Y es el punto
+    // MÁS delicado de T-327, porque toca el objetivo del usuario, que es lo que gobierna la
+    // navegación de toda la app: si se guarda algo que el cliente no sabe resolver, le BORRA la
+    // oposición y le deja el menú por defecto.
+    console.log('\n2.ter) Elegirla como oposición objetivo')
+    const { esObjetivoValido, esObjetivoPersonalizado, rutaTestPersonalizada } = await import(
+      '../../lib/oposicion/objetivoPersonalizado'
+    )
+    const { nombrePublico } = await import('../../lib/oposicionPersonalizada/nombrePublico')
+
+    const objetivo = `personalizada_${opId.replace(/-/g, '')}`
+    // Se escribe como lo hace el endpoint: el valor + el blob con el nombre público resuelto.
+    const { rows: co } = await c.query(
+      `SELECT nombre, created_by_username FROM custom_oposiciones WHERE id = $1`,
+      [opId],
+    )
+    const nombreVisible = nombrePublico(co[0].nombre, co[0].created_by_username)
+    await c.query(
+      `UPDATE user_profiles SET target_oposicion = $1, target_oposicion_data = $2::jsonb WHERE id = $3`,
+      [objetivo, JSON.stringify({ id: objetivo, name: nombreVisible, nombre: nombreVisible, tipo: 'personalizada' }), userId],
+    )
+
+    const { rows: perfil } = await c.query(
+      `SELECT target_oposicion, target_oposicion_data FROM user_profiles WHERE id = $1`,
+      [userId],
+    )
+    const guardado = perfil[0]
+    anota(
+      'el objetivo queda con el prefijo que el cliente sabe resolver',
+      esObjetivoPersonalizado(guardado.target_oposicion),
+      `target_oposicion = ${guardado.target_oposicion}`,
+    )
+    anota(
+      'y el cliente lo daría por VÁLIDO (no le borraría la oposición al usuario)',
+      esObjetivoValido(guardado.target_oposicion, false, guardado.target_oposicion_data?.name),
+      `nombre en el blob: «${guardado.target_oposicion_data?.name}»`,
+    )
+    anota(
+      'el nombre visible NO es el identificador interno, y lleva la autoría',
+      typeof guardado.target_oposicion_data?.name === 'string' &&
+        !guardado.target_oposicion_data.name.startsWith('personalizada_') &&
+        guardado.target_oposicion_data.name.includes(' by '),
+      `«${guardado.target_oposicion_data?.name}»`,
+    )
+
+    // El temario tiene que existir DETRÁS del objetivo: es la diferencia entre esto y las
+    // etiquetas del onboarding antiguo (303 usuarios apuntados a algo sin temario).
+    const { rows: temasObjetivo } = await c.query(
+      `SELECT count(*)::int n FROM topics WHERE position_type = $1`,
+      [guardado.target_oposicion],
+    )
+    anota(
+      'detrás del objetivo HAY temario (no es una etiqueta vacía)',
+      temasObjetivo[0].n > 0,
+      `${temasObjetivo[0].n} tema(s) con position_type = ${guardado.target_oposicion}`,
+    )
+    anota(
+      'la ruta de sus tests apunta a la oposición correcta',
+      rutaTestPersonalizada(guardado.target_oposicion) ===
+        `/oposicion-personalizada/${opId.replace(/-/g, '')}/test`,
+      String(rutaTestPersonalizada(guardado.target_oposicion)),
+    )
+
+
     // ── 3. El nombre repetido del mismo usuario se rechaza ─────────────────────────────────
     console.log('\n3) El mismo usuario no puede repetir el nombre')
     let choco = false

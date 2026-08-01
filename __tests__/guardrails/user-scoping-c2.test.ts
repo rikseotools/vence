@@ -61,8 +61,15 @@ function tokenRefsForFile(src: string): string[] {
 // ¿El fichero AUTENTICA? (deriva el id del token vía verifyAuth). Si lo hace,
 // confiamos en que acota correctamente (la prueba conductual por-endpoint es C3);
 // un endpoint que NO autentica y toca una tabla user-scoped es el agujero a cazar.
+//
+// `getAuthenticatedUser` cuenta IGUAL, y no es una concesión: es una envoltura FINA de
+// `verifyAuth` (`lib/api/shared/auth.ts:61` — llama a verifyAuth y devuelve 401 si falla), con 27
+// llamantes. Sin reconocerla, el detector señala como «endpoint público» rutas que sí autentican
+// —pasó el 01/08 con `/api/profile/target`— y un guardarraíl que da falsos positivos acaba en la
+// lista de excepciones, que es donde deja de proteger. Se comprueba abajo que sigue siendo
+// envoltura: si alguien la desacopla de verifyAuth, este test se pone rojo.
 function fileAuthenticates(src: string): boolean {
-  return /\bverifyAuth\s*\(/.test(src)
+  return /\b(?:verifyAuth|getAuthenticatedUser)\s*\(/.test(src)
 }
 
 // ¿El bloque sql`` interpola alguno de los identificadores del token?
@@ -210,5 +217,28 @@ describe('Guardrail C2 — meta: la detección funciona', () => {
   it('fileAuthenticates detecta verifyAuth (y su ausencia)', () => {
     expect(fileAuthenticates('const auth = await verifyAuth(request, "/x")')).toBe(true)
     expect(fileAuthenticates('const userId = searchParams.get("userId")')).toBe(false)
+  })
+})
+
+/**
+ * El detector acepta `getAuthenticatedUser` como autenticación. Esto lo mantiene honesto.
+ *
+ * Vale porque es una ENVOLTURA de `verifyAuth`. El día que alguien la desacople —y siga
+ * llamándose igual— el detector estaría dando por autenticadas rutas que ya no lo están, en
+ * silencio y en el sitio donde más caro sale. Aquí se comprueba que la envoltura sigue siéndolo.
+ */
+describe('la equivalencia en la que se apoya el detector', () => {
+  it('`getAuthenticatedUser` sigue llamando a `verifyAuth`', () => {
+    const src = readFileSync(join(process.cwd(), 'lib/api/shared/auth.ts'), 'utf8')
+    const i = src.indexOf('export async function getAuthenticatedUser')
+    expect(i).toBeGreaterThan(-1)
+    // Dentro de su cuerpo (no en cualquier punto del fichero, que tiene más funciones).
+    expect(src.slice(i, i + 400)).toMatch(/\bverifyAuth\s*\(/)
+  })
+
+  it('…y rechaza si la autenticación falla (no sigue adelante sin usuario)', () => {
+    const src = readFileSync(join(process.cwd(), 'lib/api/shared/auth.ts'), 'utf8')
+    const i = src.indexOf('export async function getAuthenticatedUser')
+    expect(src.slice(i, i + 400)).toMatch(/if\s*\(\s*!auth\.success\s*\)/)
   })
 })

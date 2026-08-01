@@ -9,6 +9,7 @@ import { testDbConfig } from '../helpers/db'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 dotenv.config({ path: '.env.local', override: true })
 
@@ -49,7 +50,14 @@ describeIfDb('position_type integrity', () => {
 
   test('all DB position_types have a config mapping', () => {
     const configValues = Object.values(SLUG_TO_POSITION_TYPE)
-    const unmapped = dbPositionTypes.filter(pt => !configValues.includes(pt))
+    // Las oposiciones PERSONALIZADAS (T-327) no están —ni pueden estar— en el config estático:
+    // las crea el usuario en tiempo de ejecución y viven en `custom_oposiciones`. Exigirles un
+    // mapeo pondría este test en rojo permanente a partir de la primera que alguien cree, y un
+    // guardarraíl siempre rojo deja de leerse. Su integridad se comprueba en su propio sitio
+    // (`npm run sim:oposicion-personalizada`, que verifica que detrás del objetivo HAY temario).
+    const unmapped = dbPositionTypes.filter(
+      pt => !configValues.includes(pt) && !esObjetivoPersonalizado(pt),
+    )
     if (unmapped.length > 0) {
       throw new Error(
         `${unmapped.length} DB position_types without config mapping: ${unmapped.join(', ')}`

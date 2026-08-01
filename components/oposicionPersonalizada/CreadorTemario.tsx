@@ -15,6 +15,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
 import SelectorArticulos, { Rueda, type GrupoArticulos } from './SelectorArticulos'
 import MisOposiciones, { type ResumenOposicion } from './MisOposiciones'
+import { useOposicion } from '@/contexts/OposicionContext'
 import {
   anadirArticulo,
   anadirArticulos,
@@ -201,6 +202,27 @@ export default function CreadorTemario({
   const [constructorAbierto, setConstructorAbierto] = useState(false)
   /** Tema cuyo borrado está pendiente de confirmar. */
   const [confirmandoBorrado, setConfirmandoBorrado] = useState<string | null>(null)
+  const [fijandoObjetivo, setFijandoObjetivo] = useState<string | null>(null)
+  // El cambio de objetivo pasa por el MISMO camino que el modal «Cambiar oposición» del hub de
+  // tests: `changeOposicion` del contexto → `setTargetOposicion` → PUT /api/profile/target. Abrir
+  // otra vía haría que el estado del cliente y la BD se contaran distinto según por dónde entres.
+  const { oposicionId, changeOposicion } = useOposicion()
+
+  const elegirObjetivo = useCallback(
+    async (id: string) => {
+      setFijandoObjetivo(id)
+      setErrorGuardar(null)
+      try {
+        await changeOposicion(`personalizada_${id.replace(/-/g, '')}`)
+        setAviso('Ya es tu oposición: el icono de tests te llevará a ella')
+      } catch {
+        setErrorGuardar('No se ha podido cambiar tu oposición. Inténtalo otra vez.')
+      } finally {
+        setFijandoObjetivo(null)
+      }
+    },
+    [changeOposicion],
+  )
 
   useEffect(() => {
     const almacen = typeof window !== 'undefined' ? window.localStorage : null
@@ -451,7 +473,10 @@ export default function CreadorTemario({
         oposiciones={mias}
         cargando={cargandoMias}
         editandoId={editandoId}
+        objetivoId={oposicionId}
+        fijandoId={fijandoObjetivo}
         onEditar={editar}
+        onElegirObjetivo={elegirObjetivo}
       />
 
       {cargandoEdicion && (

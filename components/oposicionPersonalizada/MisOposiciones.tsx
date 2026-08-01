@@ -26,16 +26,27 @@ function tamano(o: ResumenOposicion): string {
   return `${t} · ${a}`
 }
 
+/** El objetivo se guarda como `personalizada_<id sin guiones>`, no como el id pelado. */
+const objetivoDe = (id: string) => `personalizada_${id.replace(/-/g, '')}`
+
 export default function MisOposiciones({
   oposiciones,
   cargando,
   editandoId,
+  objetivoId,
+  fijandoId,
   onEditar,
+  onElegirObjetivo,
 }: {
   oposiciones: ResumenOposicion[]
   cargando: boolean
   editandoId: string | null
+  /** `target_oposicion` actual, para saber cuál está ya elegida. */
+  objetivoId?: string | null
+  /** Id que se está fijando ahora mismo (para el indicador de espera). */
+  fijandoId?: string | null
   onEditar: (id: string) => void
+  onElegirObjetivo: (id: string) => void
 }) {
   if (cargando) {
     return (
@@ -57,6 +68,7 @@ export default function MisOposiciones({
       <ul className="space-y-2">
         {oposiciones.map((o) => {
           const editando = o.id === editandoId
+          const esObjetivo = (id: string) => !!objetivoId && objetivoId === objetivoDe(id)
           return (
             <li
               key={o.id}
@@ -80,11 +92,36 @@ export default function MisOposiciones({
                   )}
                 </p>
               </div>
+              <div className="shrink-0 flex flex-col sm:flex-row gap-2">
+              {/* Elegirla como objetivo es lo que hace que el icono de tests lleve a ELLA. Sin
+                  este botón, el temario que acabas de armar se queda mirando: se puede crear
+                  pero no estudiar, que es justo el problema que esto viene a resolver. */}
+              {esObjetivo(o.id) ? (
+                <span className="text-sm px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium whitespace-nowrap">
+                  ✓ Es tu oposición
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onElegirObjetivo(o.id)}
+                  disabled={fijandoId === o.id}
+                  className="text-sm px-3 py-2 rounded-lg border border-green-600 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 font-medium whitespace-nowrap disabled:opacity-60"
+                  title="Practicarás sobre ella al pulsar el icono de tests"
+                >
+                  {fijandoId === o.id ? (
+                    <span className="flex items-center gap-1.5">
+                      <Rueda clase="h-3 w-3" /> Fijando…
+                    </span>
+                  ) : (
+                    'Estudiar esta'
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onEditar(o.id)}
                 disabled={editando}
-                className={`shrink-0 text-sm px-4 py-2 rounded-lg font-medium ${
+                className={`text-sm px-4 py-2 rounded-lg font-medium ${
                   editando
                     ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-default'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -92,6 +129,7 @@ export default function MisOposiciones({
               >
                 {editando ? 'Editando' : 'Editar'}
               </button>
+              </div>
             </li>
           )
         })}

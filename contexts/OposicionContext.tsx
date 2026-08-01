@@ -10,6 +10,7 @@ import { OPOSICIONES, ALL_OPOSICION_IDS, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
 import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
 import { resolveUserOposicion, extractOposicionId } from '@/lib/oposicion/resolveUserOposicion'
+import { esObjetivoValido } from '@/lib/oposicion/objetivoPersonalizado'
 import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
 
 // ============================================
@@ -188,7 +189,20 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
 
         const opoId: string | null = profile?.target_oposicion ?? null
-        const isValidOposicion = !!opoId && ALL_OPOSICION_IDS.includes(opoId)
+        // [T-327] Una oposición PERSONALIZADA no está en el catálogo estático, así que hasta hoy
+        // caía en la rama `invalid` y le BORRABA la oposición al usuario que la eligiera. Se
+        // acepta solo si además se sabe nombrarla (ver `objetivoPersonalizado.ts`): sin nombre
+        // quedaría una oposición muda en la cabecera, que es peor que pedirle que la arregle.
+        const blobNombre =
+          (profile?.target_oposicion_data as { name?: string | null; nombre?: string | null } | null)
+            ?.name ??
+          (profile?.target_oposicion_data as { nombre?: string | null } | null)?.nombre ??
+          null
+        const isValidOposicion = esObjetivoValido(
+          opoId,
+          !!opoId && ALL_OPOSICION_IDS.includes(opoId),
+          blobNombre,
+        )
         // res.ok es true aquí (el !res.ok se trató arriba con retry). El helper
         // PURO decide la acción; aquí solo la aplicamos. Ver lib/oposicion/decideLoad.
         const action = decideOposicionLoad(true, opoId, isValidOposicion)
@@ -217,7 +231,10 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           // → hasOposicion=false → selector fantasma en /test pese a tener oposición.
           const oposicionData = resolveUserOposicion(
             opoId as string,
-            menuConfig.name,
+            // Para una personalizada NO hay nombre en el config: `menuConfig` es el genérico por
+            // defecto, y su nombre haría pasar «Auxiliar Administrativo» por la oposición del
+            // usuario. Se pasa el del blob, que para ella es la única fuente que existe.
+            esObjetivoValido(opoId, false, blobNombre) ? blobNombre : menuConfig.name,
             profile.target_oposicion_data as { name?: string | null } | null,
           )
 

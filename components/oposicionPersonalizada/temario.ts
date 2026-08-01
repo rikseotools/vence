@@ -236,28 +236,7 @@ export function totalArticulos(temario: Temario): number {
   return temario.temas.reduce((n, t) => n + t.articulos.length, 0)
 }
 
-/**
- * Nombre público: «\<nombre\> by \<Nombre I.\>» (decisión de Manuel, 01/08).
- *
- * La autoría va EN EL NOMBRE a propósito: es lo que sostiene la idea de temarios con seguidores
- * y, sobre todo, **le pone dueño a una etiqueta**. Medido el 30/07: los nombres genéricos
- * («Estudiante», «Renfe», «Administrativo») son justo los que concentran la gente que se apunta
- * y no llega a hacer un test.
- *
- * Se construye con el nombre de pila y las INICIALES del resto — ni el email ni el apellido
- * completo, que son datos personales innecesarios para lo que esto resuelve.
- */
-export function nombrePublico(nombreOposicion: string, autor: string | null | undefined): string {
-  const base = nombreOposicion.trim()
-  const partes = String(autor ?? '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-  if (partes.length === 0) return base
-  const pila = partes[0]
-  const iniciales = partes
-    .slice(1)
-    .map((p) => `${p[0].toUpperCase()}.`)
-    .join('')
-  return iniciales ? `${base} by ${pila} ${iniciales}` : `${base} by ${pila}`
-}
+// El nombre público vive en `lib/` porque lo comparten la pantalla y el SERVIDOR (al fijar la
+// oposición objetivo compone el nombre que se verá en la cabecera). Se reexporta para no cambiar
+// los imports de quien ya lo usaba desde aquí.
+export { nombrePublico } from '@/lib/oposicionPersonalizada/nombrePublico'
