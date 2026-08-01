@@ -350,13 +350,34 @@ export default function CreadorTemario({
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{l.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{l.articleCount} artículos</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => cargarArticulos(l)}
-                        className="shrink-0 text-sm px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        {cargandoArts === l.lawId ? '…' : 'Ver artículos'}
-                      </button>
+                      {/* Dos caminos, y son decisiones distintas: la ley ENTERA se guarda como
+                          «toda la ley» (no como la lista de artículos de hoy, que envejecería),
+                          y elegir artículos es para cuando el programa solo pide una parte. */}
+                      <div className="shrink-0 flex flex-col gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTemario((t) =>
+                              anadirArticulo(t, temaActivo, {
+                                lawId: l.lawId,
+                                shortName: l.shortName,
+                                articleNumber: null,
+                              }),
+                            )
+                          }
+                          className="text-sm px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 whitespace-nowrap"
+                          title="Entra la ley completa, y seguirá completa aunque la ley cambie"
+                        >
+                          Añadir toda la ley
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => cargarArticulos(l)}
+                          className="text-sm px-3 py-1.5 rounded-md border border-blue-600 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 whitespace-nowrap"
+                        >
+                          {cargandoArts === l.lawId ? '…' : 'Añadir artículos'}
+                        </button>
+                      </div>
                     </div>
                     {arts[l.lawId] && (
                       <div className="mt-3 flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
@@ -483,6 +504,21 @@ export default function CreadorTemario({
                           <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                             {g.shortName}
                           </p>
+                          {g.articleNumbers === null ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTemario((x) =>
+                                  quitarArticulo(x, t.id, { lawId: g.lawId, articleNumber: null }),
+                                )
+                              }
+                              className="group mt-1 text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 hover:bg-red-100 dark:hover:bg-red-900/40"
+                              title="Quitar la ley entera"
+                            >
+                              Toda la ley{' '}
+                              <span className="text-green-600 group-hover:text-red-600">✕</span>
+                            </button>
+                          ) : (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {g.articleNumbers.map((n) => (
                               <button
@@ -500,6 +536,7 @@ export default function CreadorTemario({
                               </button>
                             ))}
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>

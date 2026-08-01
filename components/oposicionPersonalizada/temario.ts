@@ -21,8 +21,20 @@ export interface ArticuloElegido {
   lawId: string
   /** Nombre corto de la ley, para pintarlo sin volver a consultar. */
   shortName: string
-  articleNumber: string
+  /**
+   * Número de artículo, o **`null` = LA LEY ENTERA**.
+   *
+   * No es un atajo de la interfaz: es el modelo de datos de la casa. En `topic_scope`,
+   * `article_numbers IS NULL` significa «toda la ley», y los lectores lo respetan. Guardar «la
+   * ley entera» enumerando sus artículos de hoy sería **una foto que envejece**: en cuanto la ley
+   * gane un artículo, el temario del usuario dejaría de incluirlo sin que nadie se entere. Con
+   * `null`, «entera» sigue siendo entera el año que viene.
+   */
+  articleNumber: string | null
 }
+
+/** ¿Esta entrada representa la ley completa? */
+export const esLeyEntera = (a: { articleNumber: string | null }) => a.articleNumber === null
 
 export interface Tema {
   id: string
@@ -35,19 +47,42 @@ export interface Temario {
   temas: Tema[]
 }
 
-/** Clave de identidad de un artículo dentro de un tema: la ley y su número. */
-const clave = (a: { lawId: string; articleNumber: string }) => `${a.lawId}::${a.articleNumber}`
+/** Clave de identidad dentro de un tema: la ley y su número (o la marca de ley entera). */
+const clave = (a: { lawId: string; articleNumber: string | null }) =>
+  `${a.lawId}::${a.articleNumber ?? '*'}`
 
 export function temaVacio(id: string, indice: number): Tema {
   return { id, titulo: `Tema ${indice}`, articulos: [] }
 }
 
-/** Añade un artículo a un tema. Idempotente: repetir no duplica (regla 1). */
+/**
+ * Añade un artículo (o la ley entera) a un tema. Idempotente: repetir no duplica (regla 1).
+ *
+ * ── LA LEY ENTERA Y LOS ARTÍCULOS SUELTOS NO PUEDEN CONVIVIR ────────────────────────────────
+ *
+ * Son dos formas de decir lo mismo y tenerlas a la vez hace que el temario **mienta sobre sí
+ * mismo**: al guardar habría que elegir una, y la que se descartara dejaría al usuario con un
+ * temario distinto del que construyó. Así que:
+ *
+ *  · añadir **la ley entera** ABSORBE los artículos sueltos de esa ley que ya hubiera (ya están
+ *    dentro; dejarlos sería ruido que además se pinta dos veces);
+ *  · añadir **un artículo** de una ley que ya está entera **no hace nada** (ya está incluido).
+ *    Y no es un fallo del usuario: es que pedir algo que ya tiene no debería cambiarle nada.
+ */
 export function anadirArticulo(temario: Temario, temaId: string, art: ArticuloElegido): Temario {
   return {
     ...temario,
     temas: temario.temas.map((t) => {
       if (t.id !== temaId) return t
+      const yaEntera = t.articulos.some((a) => a.lawId === art.lawId && esLeyEntera(a))
+
+      if (esLeyEntera(art)) {
+        if (yaEntera) return t
+        // La ley entera se queda, y los sueltos de esa ley se van (quedan absorbidos).
+        return { ...t, articulos: [...t.articulos.filter((a) => a.lawId !== art.lawId), art] }
+      }
+
+      if (yaEntera) return t
       if (t.articulos.some((a) => clave(a) === clave(art))) return t
       return { ...t, articulos: [...t.articulos, art] }
     }),
@@ -66,7 +101,7 @@ export function anadirArticulos(
 export function quitarArticulo(
   temario: Temario,
   temaId: string,
-  art: { lawId: string; articleNumber: string },
+  art: { lawId: string; articleNumber: string | null },
 ): Temario {
   return {
     ...temario,
@@ -93,15 +128,18 @@ export function quitarTema(temario: Temario, temaId: string): Temario {
  */
 export function agruparPorLey(
   tema: Tema,
-): Array<{ lawId: string; shortName: string; articleNumbers: string[] }> {
+): Array<{ lawId: string; shortName: string; articleNumbers: string[] | null }> {
   const orden: string[] = []
-  const porLey = new Map<string, { shortName: string; articleNumbers: string[] }>()
+  const porLey = new Map<string, { shortName: string; articleNumbers: string[] | null }>()
   for (const a of tema.articulos) {
     if (!porLey.has(a.lawId)) {
       porLey.set(a.lawId, { shortName: a.shortName, articleNumbers: [] })
       orden.push(a.lawId)
     }
-    porLey.get(a.lawId)!.articleNumbers.push(a.articleNumber)
+    const g = porLey.get(a.lawId)!
+    // `null` gana y se queda: es «toda la ley», que es exactamente lo que espera `topic_scope`.
+    if (esLeyEntera(a)) g.articleNumbers = null
+    else if (g.articleNumbers !== null) g.articleNumbers.push(a.articleNumber as string)
   }
   return orden.map((lawId) => ({ lawId, ...porLey.get(lawId)! }))
 }

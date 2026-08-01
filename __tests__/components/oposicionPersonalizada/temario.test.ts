@@ -69,6 +69,77 @@ describe('añadir artículos a un tema', () => {
   })
 })
 
+// «Toda la ley» se guarda como `articleNumbers = null`, que es lo que `topic_scope` entiende por
+// la ley completa. Enumerar los artículos de hoy sería una FOTO que envejece: en cuanto la ley
+// gane un artículo, el temario dejaría de incluirlo sin que nadie se entere.
+describe('añadir la LEY ENTERA', () => {
+  const ENTERA = { ...LEY_39, articleNumber: null }
+
+  it('se guarda como «toda la ley» (null), no como la lista de artículos de hoy', () => {
+    const r = anadirArticulo(base(), 't1', ENTERA)
+    expect(agruparPorLey(r.temas[0])).toEqual([
+      { lawId: 'ley-39', shortName: 'Ley 39/2015', articleNumbers: null },
+    ])
+  })
+
+  it('añadir la ley entera ABSORBE los artículos sueltos que ya hubiera de esa ley', () => {
+    // Tener las dos formas a la vez haría que el temario se contradiga consigo mismo.
+    let r = anadirArticulos(base(), 't1', [
+      { ...LEY_39, articleNumber: '24' },
+      { ...LEY_39, articleNumber: '25' },
+    ])
+    r = anadirArticulo(r, 't1', ENTERA)
+    expect(r.temas[0].articulos).toHaveLength(1)
+    expect(agruparPorLey(r.temas[0])).toEqual([
+      { lawId: 'ley-39', shortName: 'Ley 39/2015', articleNumbers: null },
+    ])
+  })
+
+  it('…pero NO toca los artículos de OTRAS leyes', () => {
+    let r = anadirArticulos(base(), 't1', [
+      { ...CE, articleNumber: '103' },
+      { ...LEY_39, articleNumber: '24' },
+    ])
+    r = anadirArticulo(r, 't1', ENTERA)
+    expect(agruparPorLey(r.temas[0])).toEqual([
+      { lawId: 'ce', shortName: 'CE', articleNumbers: ['103'] },
+      { lawId: 'ley-39', shortName: 'Ley 39/2015', articleNumbers: null },
+    ])
+  })
+
+  it('añadir un artículo de una ley que YA está entera no cambia nada', () => {
+    let r = anadirArticulo(base(), 't1', ENTERA)
+    r = anadirArticulo(r, 't1', { ...LEY_39, articleNumber: '24' })
+    expect(r.temas[0].articulos).toHaveLength(1)
+    expect(agruparPorLey(r.temas[0])[0].articleNumbers).toBeNull()
+  })
+
+  it('añadir la ley entera dos veces no la duplica', () => {
+    let r = anadirArticulo(base(), 't1', ENTERA)
+    r = anadirArticulo(r, 't1', ENTERA)
+    expect(r.temas[0].articulos).toHaveLength(1)
+  })
+
+  it('se puede quitar la ley entera', () => {
+    let r = anadirArticulo(base(), 't1', ENTERA)
+    r = quitarArticulo(r, 't1', { lawId: 'ley-39', articleNumber: null })
+    expect(r.temas[0].articulos).toHaveLength(0)
+  })
+
+  it('quitar un artículo suelto NO quita la ley entera de la misma ley', () => {
+    // Son entradas distintas: pedir quitar «art. 24» cuando lo que hay es «toda la ley» no
+    // puede vaciar el tema por sorpresa.
+    let r = anadirArticulo(base(), 't1', ENTERA)
+    r = quitarArticulo(r, 't1', { lawId: 'ley-39', articleNumber: '24' })
+    expect(r.temas[0].articulos).toHaveLength(1)
+  })
+
+  it('la ley entera cuenta como contenido para poder guardar', () => {
+    const r = anadirArticulo(base(), 't1', ENTERA)
+    expect(puedeGuardar(r)).toBe(true)
+  })
+})
+
 describe('quitar y renombrar', () => {
   it('quitar saca solo ese artículo', () => {
     let r = anadirArticulos(base(), 't1', [
