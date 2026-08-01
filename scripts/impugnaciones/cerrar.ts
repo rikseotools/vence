@@ -26,6 +26,10 @@
  *     --estado resolved|rejected --mensaje <fichero.txt> [--psicotecnica] \
  *     [--sin-recompensa "<motivo>"] [--saltar-barajado "<motivo>"] [--aplicar]
  *
+ *   CORREGIR una respuesta YA enviada (T-394) — no re-resuelve, no toca el estado y no vuelve a
+ *   evaluar la recompensa; solo le escribe de nuevo y deja traza:
+ *     … --correccion "<qué se corrige y por qué>" --mensaje <fichero.txt> --aplicar
+ *
  * Sin `--aplicar` enseña lo que enviaría y no toca nada.
  */
 import { readFileSync } from 'fs'
@@ -51,6 +55,7 @@ export function parsearArgs(argv: string[]) {
     psicotecnica: argv.includes('--psicotecnica'),
     sinRecompensa: valor('--sin-recompensa'),
     saltarBarajado: valor('--saltar-barajado'),
+    correccion: valor('--correccion'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -143,6 +148,7 @@ async function main() {
     adminResponse: mensaje,
   }
   if (a.sinRecompensa) cuerpo.skipRewardReason = a.sinRecompensa
+  if (a.correccion) cuerpo.correccionDeRespuesta = a.correccion
   if (a.saltarBarajado) cuerpo.skipShuffleReason = a.saltarBarajado
 
   const etiqueta = tipo === 'psychometric' ? ' (psicotécnica)' : ''

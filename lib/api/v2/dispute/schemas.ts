@@ -112,6 +112,26 @@ export const resolveDisputeRequestSchema = z.object({
   // rastro de POR QUÉ no se pagó, que es justo lo que habrá que releer dentro de tres meses.
   // Se espera algo como «mismo hallazgo que ce143c99: la misma pregunta duplicada».
   skipRewardReason: z.string().min(10, 'Explica por qué esta no lleva recompensa (min. 10 caracteres)').max(500).optional(),
+
+  /**
+   * CORREGIR una respuesta ya enviada, sin re-resolver [T-394].
+   *
+   * La guarda de idempotencia impide re-resolver (para no duplicar el email ni pagar dos veces el
+   * euro) y eso NO cambia. Pero la clave de idempotencia del email está construida a propósito para
+   * permitir corregirse —si el texto cambia, el email nuevo sale—, así que el sistema declaraba
+   * saber corregirse y no dejaba hacerlo. En la práctica ganaba el único camino que existía: no
+   * hacer nada.
+   *
+   * Caso que lo obliga: `6c8a13af` (María José, premium). Se le respondió que en el Explorador el
+   * atajo es `Ctrl+A`; era correcto para Windows 11 e INCOMPLETO —el atajo cambió de versión y en
+   * Windows 10 es `Ctrl+E`, como ella decía—. La explicación de la pregunta se corrigió el mismo
+   * día; lo que no se pudo fue decírselo. Volvió a escribir por eso.
+   *
+   * Con este parámetro NO se toca el estado ni se vuelve a evaluar la recompensa: solo se reenvía
+   * el mensaje y se deja traza (`dispute_respuesta_corregida`), para que corregirse sea auditable
+   * y no un atajo silencioso.
+   */
+  correccionDeRespuesta: z.string().min(10, 'Explica qué se corrige y por qué (min. 10 caracteres)').max(500).optional(),
 })
 
 export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>

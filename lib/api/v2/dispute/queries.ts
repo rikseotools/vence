@@ -30,6 +30,7 @@ import type {
   ResolveDisputeResponse,
 } from './schemas'
 import { sendEmailV2 } from '@/lib/api/emails'
+import { decidirReResolucion } from './correccionRespuesta'
 import { buildDisputeEmailIdempotencyKey } from './idempotency'
 import { emit } from '@/lib/observability/emit'
 
@@ -243,6 +244,8 @@ export async function resolveDispute(
   try {
     const db = getV2DisputeDb()
     const { disputeId, questionType, status, adminResponse, skipRewardReason } = params
+    // Corrección de una respuesta YA enviada (T-394): no re-resuelve, solo vuelve a escribir.
+    const correccion = params.correccionDeRespuesta?.trim() || null
     const trimmedResponse = adminResponse.trim()
     const now = new Date().toISOString()
 
@@ -320,29 +323,48 @@ export async function resolveDispute(
     }
 
     // 2. Idempotencia: no re-resolver
-    if (currentStatus === 'resolved' || currentStatus === 'rejected') {
-      return {
-        success: false,
-        error: `La impugnacion ya estaba ${currentStatus} y no se puede re-resolver`,
-      }
+    //
+    // La guarda se queda EXACTAMENTE igual para el camino normal: existe para no re-resolver por
+    // error, no duplicar el email y no pagar dos veces el euro. Lo único que se abre es una puerta
+    // estrecha y EXPLÍCITA para corregir una respuesta equivocada (T-394), que hasta hoy no existía
+    // aunque la clave de idempotencia del email estuviera diseñada para permitirlo.
+    const veredictoReResolucion = decidirReResolucion(currentStatus as never, correccion)
+    if (!veredictoReResolucion.permitir) {
+      return { success: false, error: veredictoReResolucion.error }
+    }
+    if (veredictoReResolucion.esCorreccion) {
+      // Camino de CORRECCIÓN: se deja pasar, pero más abajo se saltan el UPDATE de estado, la
+      // puerta de barajado y la concesión de recompensa. Atraviesa el MISMO envío de siempre en
+      // vez de tener el suyo: dos caminos de email con criterios distintos es como se duplican los
+      // avisos, y la clave de idempotencia ya distingue por contenido.
+      console.log(`✏️  [Dispute] ${disputeId} CORRECCIÓN de respuesta (sigue ${currentStatus}): ${correccion}`)
     }
 
     if (!userId) {
       return { success: false, error: 'La impugnacion no tiene usuario asociado' }
     }
 
+    // En una corrección no hay transición: el estado sigue siendo el que ya tenía.
+    const estadoFinal = correccion && currentStatus ? (currentStatus as typeof status) : status
+
     // 2-bis. PUERTA de barajado (29/07/2026). No se cierra una impugnación legislativa como
     // resuelta dejando la pregunta sin explicación estructurada: el manual pide evaluarla SIEMPRE
     // y dejarla barajable, y hasta hoy eso solo se AVISABA (dossier, validador y este endpoint
     // callaban). Núcleo puro y testeado en `shuffleReadiness.ts`; escape con `skipShuffleReason`.
-    const veredictoBarajado = evaluarPreparacionBarajado({
-      questionType: questionType === 'psychometric' ? 'psychometric' : 'legislative',
-      status,
-      explanationData,
-      isActive: preguntaActiva,
-      skipReason: params.skipShuffleReason,
-    })
-    if (!veredictoBarajado.ok) return { success: false, error: veredictoBarajado.error }
+    // En una CORRECCIÓN no se evalúa: esta puerta vigila que no se CIERRE una impugnación dejando
+    // la pregunta sin explicación estructurada, y aquí no se cierra nada — ya estaba cerrada.
+    const veredictoBarajado = correccion
+      ? { ok: true as const, saltado: false, motivo: null }
+      : evaluarPreparacionBarajado({
+        questionType: questionType === 'psychometric' ? 'psychometric' : 'legislative',
+        status,
+        explanationData,
+        isActive: preguntaActiva,
+        skipReason: params.skipShuffleReason,
+      })
+    if (!veredictoBarajado.ok) {
+      return { success: false, error: 'error' in veredictoBarajado ? veredictoBarajado.error : 'barajado no preparado' }
+    }
     if (veredictoBarajado.saltado) {
       // El escape deja rastro: sin esto, saltárselo sale gratis y deja de ser un escape.
       try {
@@ -353,8 +375,18 @@ export async function resolveDispute(
       } catch { /* el registro no puede tumbar el cierre */ }
     }
 
-    // 3. UPDATE atomico de la disputa
-    if (questionType === 'psychometric') {
+    // 3. UPDATE atomico de la disputa — SALTADO en una corrección: no se toca el estado ni
+    // `resolvedAt`. Corregir lo que dijimos no es volver a decidir sobre la impugnación.
+    if (correccion) {
+      // Mismo estilo que su vecino de doce líneas más abajo (SQL crudo): una corrección que no
+      // deja rastro es indistinguible de haberse saltado el flujo.
+      try {
+        await db.execute(sql`
+          INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+          VALUES (gen_random_uuid(), NOW(), 'api:dispute/resolve', 'info', 'dispute_respuesta_corregida',
+                  ${JSON.stringify({ disputeId, questionId, estado: currentStatus, motivo: correccion })}::jsonb, NOW())`)
+      } catch { /* la traza no puede tumbar una corrección ya decidida */ }
+    } else if (questionType === 'psychometric') {
       const result = await db
         .update(psychometricQuestionDisputes)
         .set({
@@ -387,10 +419,12 @@ export async function resolveDispute(
     console.log(`\u2705 [Dispute] ${questionType} ${disputeId} → ${status}`)
 
     // 3.2 Recompensa de 1 € si la impugnación se ACEPTA a favor de un usuario premium (Manuel 28/07).
+    // En una CORRECCIÓN no se evalúa: la decisión ya se tomó y pagar dos veces por el mismo
+    // hallazgo es justo lo que la guarda de idempotencia protege.
     // Va aquí —después del UPDATE atómico y FUERA de él— porque este es el único punto por el que una
     // impugnación llega a `resolved` (endpoint admin y scripts CLI incluidos). No lanza nunca: si la
     // concesión falla, la impugnación queda resuelta igual (ver lib/referrals/disputeReward.ts).
-    if (status === 'resolved' && userId) {
+    if (!correccion && status === 'resolved' && userId) {
       if (skipRewardReason) {
         // La impugnación es válida (por eso va a `resolved`), pero es el MISMO hallazgo que
         // otra ya recompensada: «un fallo o hallazgo, una recompensa». No se concede el euro
@@ -490,11 +524,11 @@ export async function resolveDispute(
         // CAMBIA (corrección de una respuesta errónea, o contestación a una
         // alegación `appealed`), la clave cambia y el email nuevo SÍ sale.
         // Ver `./idempotency.ts` para el porqué de las dos propiedades.
-        idempotencyKey: buildDisputeEmailIdempotencyKey(disputeId, status, trimmedResponse),
+        idempotencyKey: buildDisputeEmailIdempotencyKey(disputeId, estadoFinal, trimmedResponse),
         customData: {
           to: userEmail,
           userName: userName || 'Usuario',
-          status,
+          status: estadoFinal,
           adminResponse: trimmedResponse,
           questionText: questionText || '',
           disputeUrl,

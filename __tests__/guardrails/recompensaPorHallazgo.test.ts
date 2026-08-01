@@ -32,11 +32,31 @@ describe('un fallo o hallazgo, una recompensa', () => {
     expect(schema).toMatch(/skipRewardReason:\s*z\.string\(\)\.min\(10/)
   })
 
+  // El ancla es una REGEX y no un literal a propósito (01/08/2026, T-394): la condición admite
+  // guardas adicionales delante — la primera fue `!correccion &&`, para que corregir una respuesta
+  // ya enviada no vuelva a evaluar la recompensa. Anclar al texto exacto hacía fallar el
+  // guardarraíl por un cambio que NO tocaba lo que vigila, y un guardarraíl que salta por reformateo
+  // acaba desactivado por costumbre. Lo que se exige sigue siendo lo mismo: `status === 'resolved'`
+  // y `userId`.
+  const ANCLA_RAMA_RESUELTA = /if \([^)]*status === 'resolved' && userId\)/
+
   it('con motivo NO se concede el euro; sin motivo se concede como siempre', () => {
     const q = leer('lib/api/v2/dispute/queries.ts')
-    const bloque = q.slice(q.indexOf('if (status === \'resolved\' && userId)'), q.indexOf('3.4 Invalidar cache'))
+    const m = q.match(ANCLA_RAMA_RESUELTA)
+    expect(m).not.toBeNull()
+    const bloque = q.slice(q.indexOf(m![0]), q.indexOf('3.4 Invalidar cache'))
     expect(bloque).toMatch(/if \(skipRewardReason\)/)
     expect(bloque).toMatch(/else \{[\s\S]*maybeRewardResolvedDispute/)
+  })
+
+  it('CORREGIR una respuesta ya enviada no vuelve a pagar el euro', () => {
+    // Pagar dos veces por el mismo hallazgo es justo lo que la idempotencia protege: la
+    // corrección reescribe lo que se dijo, no descubre nada nuevo. La guarda va en la MISMA
+    // condición que abre la rama de recompensa, no en un `if` aparte que alguien pueda mover.
+    const q = leer('lib/api/v2/dispute/queries.ts')
+    const m = q.match(ANCLA_RAMA_RESUELTA)
+    expect(m).not.toBeNull()
+    expect(m![0]).toMatch(/!correccion/)
   })
 
   it('queda rastro de POR QUÉ no se pagó (auditable dentro de tres meses)', () => {
@@ -50,7 +70,7 @@ describe('un fallo o hallazgo, una recompensa', () => {
     // rechazarlas, estaría diciéndole a quien acertó que se equivocaba.
     const q = leer('lib/api/v2/dispute/queries.ts')
     const i = q.indexOf('skipRewardReason')
-    const j = q.indexOf("if (status === 'resolved' && userId)")
+    const j = q.search(ANCLA_RAMA_RESUELTA)
     expect(i).toBeGreaterThan(0)
     expect(j).toBeGreaterThan(0)
   })
