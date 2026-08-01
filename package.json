@@ -128,7 +128,8 @@
     "sim:contexto-guard": "node scripts/backlog/sim-contexto-guard.cjs",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",
     "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes",
-    "canary:opciones-duplicadas": "node scripts/canary-opciones-duplicadas.cjs"
+    "canary:opciones-duplicadas": "node scripts/canary-opciones-duplicadas.cjs",
+    "canary:cupo-vs-respuestas": "node scripts/canary-cupo-vs-respuestas.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

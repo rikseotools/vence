@@ -201,14 +201,23 @@ export async function checkDeviceDailyUsage(
  */
 export async function incrementDailyCount(
   userId: string | null | undefined,
+  amount = 1,
 ): Promise<void> {
   if (!userId) return
+  // Cobrar 0 (o menos) no es un error: el examen en el que no se respondió nada nuevo
+  // llega hasta aquí y lo correcto es no tocar el contador ni gastar una consulta.
+  const cantidad = Math.max(0, Math.trunc(amount))
+  if (cantidad === 0) return
 
   try {
     const dynamicLimit = await getDynamicLimit(userId)
 
+    // `amount` existe por el modo EXAMEN (T-450), que persiste sus respuestas EN BLOQUE:
+    // cobrarlas de una en una serían ~50 idas y vueltas en un camino que el usuario está
+    // esperando. La función SATURA en el tope —`questions_answered` es cupo consumido, no
+    // cuenta bruta—, así que pasar un importe grande no puede pasarse de 25.
     await getAdminDb().execute(sql`
-      SELECT increment_daily_questions(${userId}::uuid, ${dynamicLimit.dailyLimit})
+      SELECT increment_daily_questions(${userId}::uuid, ${dynamicLimit.dailyLimit}, ${cantidad})
     `)
 
     // Invalidar cache tras incrementar — siguiente lectura forzada a BD.

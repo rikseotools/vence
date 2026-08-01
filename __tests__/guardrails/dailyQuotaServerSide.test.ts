@@ -75,6 +75,37 @@ describe('guardarraíl: el cupo diario lo cobra el servidor', () => {
     }
   })
 
+  // T-450 (01/08/2026): EL PUNTO CIEGO DE ESTE MISMO GUARDARRAÍL.
+  //
+  // Cuando el 29/07 se movió el cobro del cliente al servidor, este fichero listó los
+  // caminos que cobran… y se dejó fuera el MODO EXAMEN, que no pasa por answer-and-save:
+  // persiste sus respuestas EN BLOQUE en /api/exam/validate. Resultado medido cuatro días
+  // después: 10.181 respuestas de examen en 7 días sin llegar al contador, y un usuario
+  // free con 489 respuestas en 4 días mientras su contador marcaba ~65.
+  //
+  // La lección no es «se olvidó un fichero»: es que un guardarraíl que enumera caminos
+  // solo protege los que enumeró. Por eso aquí se comprueba también el ORDEN (cobrar
+  // después de persistir) y la CONDICIÓN (solo lo que se estrena), que es lo que
+  // distingue cobrar bien de cobrar.
+  it('el modo EXAMEN cobra al persistir en bloque, y solo lo que se estrena', () => {
+    const src = leer('app/api/exam/validate/route.ts')
+    expect(src).toContain('incrementDailyCount(')
+    // Se cobra con IMPORTE, no una llamada por respuesta: el examen se persiste en bloque.
+    expect(src).toMatch(/incrementDailyCount\([^)]*nuevasRespondidas/)
+    // Y solo si de verdad se ha estrenado alguna respuesta.
+    expect(src).toMatch(/nuevasRespondidas\s*>\s*0/)
+    // El cobro va DESPUÉS de persistir: usa el resultado de la persistencia.
+    expect(src.indexOf('persistExamQuestions(testId')).toBeLessThan(src.indexOf('incrementDailyCount('))
+  })
+
+  it('el examen NO cobra lo que no ha podido guardar', () => {
+    // Misma regla que `save_failed` en answer-and-save: si la persistencia falla, no se le
+    // cobra al usuario cupo por respuestas que no existen. El catch devuelve 0.
+    const src = leer('app/api/exam/validate/route.ts')
+    const captura = src.slice(src.indexOf('Error persistiendo test_questions'))
+    expect(captura).toMatch(/nuevasRespondidas:\s*0/)
+  })
+
   it('la política del backend es paritaria con la del frontend', () => {
     // Se compara COMPORTAMIENTO, no texto: se extrae la copia del backend y se
     // evalúan los mismos casos que la del frontend.

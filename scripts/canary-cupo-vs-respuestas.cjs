@@ -1,0 +1,82 @@
+#!/usr/bin/env node
+/**
+ * ¿Hay algún camino de respuesta que NO cobre cupo? (T-450)
+ *
+ * Uso:  npm run canary:cupo-vs-respuestas [-- --dias N]
+ *
+ * ## Por qué existe, y por qué NO es otro guardarraíl de código
+ *
+ * El cupo diario ya tiene un guardarraíl (`__tests__/guardrails/dailyQuotaServerSide.test.ts`)
+ * que comprueba que los caminos de respuesta cobran. **Y aun así esto pasó**: cuando el 29/07 se
+ * movió el cobro del cliente al servidor, ese guardarraíl enumeró los caminos que cobran… y se
+ * dejó fuera el modo EXAMEN, que no pasa por `answer-and-save`. Un guardarraíl que enumera solo
+ * protege lo que enumeró, y el que se olvida es justo el que se rompe.
+ *
+ * Esto mira los DATOS, así que no depende de ninguna lista: si mañana aparece un quinto camino de
+ * respuesta y nadie se acuerda de cobrarlo, aquí se ve igual.
+ *
+ * ## El criterio, y por qué no da falsos positivos
+ *
+ * `daily_question_usage.questions_answered` es CUPO CONSUMIDO y **satura en el tope**: un free que
+ * responde 25 tiene el contador en 25, y uno que responde 200 también. Así que comparar respuestas
+ * contra contador a secas marcaría a todo el mundo.
+ *
+ * La firma de la fuga es otra: **respondió MÁS que el tope y el contador se quedó POR DEBAJO**. Si
+ * todos los caminos cobrasen, cualquiera que llega al tope tendría el contador AL tope. Que no lo
+ * esté significa que algo de lo que respondió no pasó por caja.
+ *
+ * Se deja un margen (`HOLGURA`) porque el cobro es fail-silent a propósito: si el contador falla,
+ * el usuario se lleva la pregunta gratis — mejor eso que un bloqueo indebido. Ese goteo es normal.
+ */
+const path = require('path')
+const { Client } = require('pg')
+const { pgConfig } = require(path.join(__dirname, '..', 'lib', 'db', 'pgSsl.cjs'))
+
+const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? process.argv[i + 1] : d }
+const DIAS = Number(arg('--dias', 7))
+const HOLGURA = 5          // respuestas de más que se toleran por el fail-silent del cobro
+const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consideran ruido
+
+;(async () => {
+  const c = new Client(pgConfig())
+  await c.connect()
+  const { rows } = await c.query(`
+    WITH resp AS (
+      SELECT tq.user_id, tq.created_at::date AS d, count(*) AS respuestas
+        FROM test_questions tq
+        JOIN user_profiles up ON up.id = tq.user_id
+       WHERE up.plan_type = 'free'
+         AND tq.user_answer IS NOT NULL AND tq.user_answer <> ''
+         AND tq.created_at > now() - ($1 || ' days')::interval
+       GROUP BY 1, 2)
+    SELECT r.d AS dia, count(*) AS usuarios_con_fuga,
+           sum(r.respuestas - COALESCE(u.questions_answered, 0)) AS respuestas_sin_cobrar
+      FROM resp r
+      LEFT JOIN daily_question_usage u ON u.user_id = r.user_id AND u.usage_date = r.d
+     WHERE r.respuestas > 25 + $2                      -- llegó de sobra al tope…
+       AND COALESCE(u.questions_answered, 0) < 25      -- …y el contador NO llegó
+     GROUP BY 1 ORDER BY 1 DESC`, [String(DIAS), HOLGURA])
+
+  console.log(`\n🕯️  Cupo vs respuestas reales — usuarios FREE, ${DIAS} días`)
+  console.log('   (fuga = respondió por encima del tope y su contador se quedó por debajo)\n')
+  if (!rows.length) {
+    console.log('   ningún usuario-día con fuga.')
+  } else {
+    for (const r of rows) {
+      console.log(`   ${String(r.dia).slice(0, 10)}  ·  ${r.usuarios_con_fuga} usuario(s)  ·  ${r.respuestas_sin_cobrar} respuestas sin cobrar`)
+    }
+  }
+  await c.end()
+
+  const peor = rows.reduce((m, r) => Math.max(m, Number(r.usuarios_con_fuga)), 0)
+  console.log(`\n   peor día: ${peor} usuario(s) · techo ${TECHO}`)
+  if (peor > TECHO) {
+    console.error('\n❌ HAY UN CAMINO DE RESPUESTA QUE NO COBRA CUPO.')
+    console.error('   Busca por qué tipo de test entran esas respuestas:')
+    console.error("     SELECT t.test_type, count(*) FROM test_questions tq JOIN tests t ON t.id=tq.test_id")
+    console.error("      WHERE tq.user_id='<uuid>' AND tq.created_at::date='<dia>' GROUP BY 1;")
+    console.error('   Ficha: [T-450] · guardarraíl de código: __tests__/guardrails/dailyQuotaServerSide.test.ts')
+    process.exit(2)
+  }
+  console.log('\n✅ dentro del techo.')
+})().catch((e) => { console.error('❌', e.message); process.exit(1) })

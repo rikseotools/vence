@@ -10,9 +10,10 @@ export const maxDuration = 60
 
 import { getDb } from '@/db/client'
 import { questions, tests, testQuestions } from '@/db/schema'
-import { inArray, eq, sql } from 'drizzle-orm'
+import { inArray, eq, and, sql } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { incrementDailyCount } from '@/lib/api/dailyLimit'
 import { getSink } from '@/lib/observability/sink'
 import {
   summarizeDbScore,
@@ -128,7 +129,7 @@ async function persistExamQuestions(
   answers: ExamAnswer[],
   results: ValidatedResult[],
   metaMap: Map<string, QuestionMeta>
-): Promise<void> {
+): Promise<{ userId: string | null; nuevasRespondidas: number }> {
   try {
     const db = getDb()
 
@@ -169,7 +170,27 @@ async function persistExamQuestions(
       })
       .filter((r): r is NonNullable<typeof r> => r !== null)
 
-    if (rows.length === 0) return
+    if (rows.length === 0) return { userId, nuevasRespondidas: 0 }
+
+    // CUPO (T-450): se cuenta ANTES del upsert cuántas de las respuestas que entran
+    // estrenan fila —o rellenan una que estaba en blanco—, porque ese es el mismo criterio
+    // que usa `answer-and-save` para cobrar: se cobra lo que se PERSISTE por primera vez.
+    // Medirlo antes es lo que da la idempotencia sin tabla extra: un `validate` reenviado
+    // encuentra las filas ya respondidas y cobra 0. Es exactamente la condición que el
+    // propio UPSERT de abajo aplica para decidir si escribe, leída un instante antes.
+    const ordenesConRespuesta = rows.filter((r) => !r.wasBlank).map((r) => r.questionOrder)
+    let nuevasRespondidas = 0
+    if (ordenesConRespuesta.length > 0) {
+      const yaRespondidas = await db
+        .select({ questionOrder: testQuestions.questionOrder })
+        .from(testQuestions)
+        .where(and(
+          eq(testQuestions.testId, testId),
+          inArray(testQuestions.questionOrder, ordenesConRespuesta),
+          sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} <> ''`,
+        ))
+      nuevasRespondidas = ordenesConRespuesta.length - yaRespondidas.length
+    }
 
     // UPSERT en bloque sobre la constraint única (test_id, question_order).
     //
@@ -192,10 +213,14 @@ async function persistExamQuestions(
         },
       })
 
-    console.log(`✅ [API/exam/validate] ${rows.length} filas persistidas en test_questions (bulk) para test ${testId}`)
+    console.log(`✅ [API/exam/validate] ${rows.length} filas persistidas en test_questions (bulk) para test ${testId} · ${nuevasRespondidas} respuesta(s) nuevas a efectos de cupo`)
+    return { userId, nuevasRespondidas }
   } catch (error) {
     // No abortamos validate: el usuario debe ver su nota igualmente.
     console.error('❌ [API/exam/validate] Error persistiendo test_questions en bloque:', error)
+    // Si no se ha podido persistir, NO se cobra: nunca se le cobra al usuario cupo por
+    // respuestas que no han quedado guardadas (misma regla que `save_failed`).
+    return { userId: null, nuevasRespondidas: 0 }
   }
 }
 
@@ -324,7 +349,27 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
     // La nota mostrada y el detalle por-pregunta se derivan de la BD (fuente
     // autoritativa), NO del batch indexado por posición que puede desalinearse.
     if (testId) {
-      await persistExamQuestions(testId, answers, results, correctAnswersMap)
+      const persistencia = await persistExamQuestions(testId, answers, results, correctAnswersMap)
+
+      // ── CUPO DIARIO (T-450) ────────────────────────────────────────────────────────
+      // El modo examen NO pasa por `answer-and-save`, que es quien cobra el cupo desde el
+      // 29/07. Al mover el cobro del cliente al servidor —con razón: cobrar desde el
+      // cliente lo desacoplaba del guardado y no era idempotente— este camino se quedó
+      // SIN NADIE QUE COBRE, y un free pasó a tener barra libre por exámenes. Medido:
+      // 10.181 respuestas en 7 días sin llegar al contador, y un usuario con 489 en 4
+      // días mientras el contador marcaba ~65.
+      //
+      // Se cobra AQUÍ porque aquí es donde las respuestas se persisten, que es la regla
+      // de `debeConsumirCupo`: se cobra lo guardado por primera vez, ni antes ni de más.
+      // En una sola llamada con importe, no una por respuesta (~50 idas y vueltas en un
+      // camino donde el usuario espera su nota).
+      //
+      // Fail-silent y con `.catch`: el cobro del cupo NUNCA puede tumbar un examen que el
+      // usuario ya ha terminado. Si falla, se lleva las preguntas gratis.
+      if (persistencia.userId && persistencia.nuevasRespondidas > 0) {
+        await incrementDailyCount(persistencia.userId, persistencia.nuevasRespondidas)
+          .catch(() => {})
+      }
 
       // Re-leer el estado autoritativo (incluye lo que escribieron los saves
       // realtime + lo que rellenó el persist) y recomputar la nota desde ahí.
