@@ -742,6 +742,13 @@ npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es
 
 **Por qué hacen falta los dos.** El canario mide el RESULTADO y tiene un punto ciego grave: «0 curaciones» se lee igual siendo *«no hay nadie a quien curar»* (bien) que *«el reintento no está corriendo»* (muy mal). La simulación fabrica un usuario roto a propósito —cookie válida, con email y sin `appUserId`, el estado exacto de los 235— y comprueba en un navegador real si se cura. Verde ahí + 0 curaciones = de verdad no hay nadie roto.
 
+**⏳ La curación NO es inmediata al desplegar, y saberlo evita una falsa alarma.** Medido el 01/08/2026 justo tras el deploy: la simulación en verde y aun así **0 curaciones reales durante media hora**, con gente rebotando. No era un fallo, son dos retrasos que se suman:
+
+1. **El reintento corre en la ROTACIÓN de sesión, no en cada llamada a la API.** Quien ya está dentro navegando por la aplicación (haciendo un test, sin recarga completa) puede tardar en rotar. Se cura en su siguiente carga de página o visita.
+2. **El Bearer se acuña de la sesión y dura 1 h** (`ACCESS_TOKEN_TTL_SECONDS`). Un usuario que lo sacó ANTES del deploy sigue usando el viejo —con el `sub` roto— hasta que caduque, así que **puede rebotar aunque su sesión ya esté curada**. Caso real: rebote a las 11:12 con un token acuñado a las 10:59, siete minutos antes de que el rollout terminara (11:07).
+
+Regla para leerlo: **espera al menos una hora antes de sacar conclusiones**, y si tienes prisa, la pregunta *«¿está vivo el mecanismo?»* la contesta la simulación, no el canario. Si además `auth_alta_sin_perfil` con `enReintento=true` está a 0, es que ningún reintento ha fallado — solo faltan por volver.
+
 | Lo que ves | Qué significa |
 |---|---|
 | rotos ↓ · curados > 0 | el atasco se drena solo. Es lo esperado |
