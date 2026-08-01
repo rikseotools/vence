@@ -18,6 +18,20 @@ import { useCallback, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { estaEnTema, cuantosEnTema, type Tema } from './temario'
 
+/**
+ * Rueda de carga. Misma forma que el resto de la app (`animate-spin` + borde), para no estrenar
+ * un indicador propio que se vea distinto al de al lado.
+ */
+export function Rueda({ clase = 'h-4 w-4' }: { clase?: string }) {
+  return (
+    <span
+      className={`inline-block ${clase} animate-spin rounded-full border-2 border-current border-t-transparent align-[-2px]`}
+      role="status"
+      aria-label="Cargando"
+    />
+  )
+}
+
 export interface GrupoArticulos {
   seccionId: string | null
   titulo: string | null
@@ -186,7 +200,11 @@ export default function SelectorArticulos({ ley, grupos, tema, onToggle }: Props
               Pulsa sobre un artículo para leerlo aquí antes de decidir si entra en tu temario.
             </p>
           )}
-          {cargandoTexto && <p className="text-xs text-gray-500">Cargando…</p>}
+          {cargandoTexto && (
+            <p className="flex items-center gap-2 text-xs text-gray-500">
+              <Rueda /> Cargando el artículo {leyendo}…
+            </p>
+          )}
           {texto && (
             <>
               <div className="flex items-start gap-2 mb-2">

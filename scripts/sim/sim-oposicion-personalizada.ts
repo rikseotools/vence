@@ -31,7 +31,7 @@ const anota = (nombre: string, ok: boolean, detalle: string) => {
 async function main() {
   const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
   const { Client } = await import('pg')
-  const { construirPlan, positionTypeDe } = await import('../../lib/api/oposicionPersonalizada/plan')
+  const { positionTypeDe } = await import('../../lib/api/oposicionPersonalizada/plan')
 
   const c = new Client(pgConfig(process.env.DATABASE_URL!))
   await c.connect()
@@ -73,35 +73,28 @@ async function main() {
       ],
     }
 
-    // Se escribe con el MISMO camino que el endpoint (el módulo de guardado usa server-only, así
-    // que aquí se replica su transacción con el mismo plan puro: lo que se valida es el PLAN
-    // llegando a Postgres, que es donde estaban los dos fallos silenciosos).
-    const { rows: op } = await c.query(
-      `INSERT INTO custom_oposiciones (user_id, nombre, is_public, is_active, created_by_username)
-       VALUES ($1, $2, true, true, $3) RETURNING id`,
-      [userId, entrada.nombre, 'Sim T327'],
+    // ⚠️ SE LLAMA AL ESCRITOR REAL, y esto es EL punto de esta simulación.
+    //
+    // La primera versión reimplementaba la escritura aquí con `pg` a pelo, y por eso dio VERDE
+    // mientras el guardado estaba roto en producción: interpolar un array de JS en una plantilla
+    // `sql` de Drizzle lo expande en `($1, $2, $3…)` —una tupla, no un array— y el INSERT
+    // revienta. Con `pg` directo eso no pasa, así que la simulación probaba un camino que nadie
+    // recorre. **Una simulación que reimplementa lo que quiere probar no prueba nada.**
+    //
+    // El módulo es `server-only`; el shim de `NODE_OPTIONS` lo permite en la simulación sin
+    // tocar la guarda de la app.
+    const { guardarOposicionPersonalizada } = await import(
+      '../../lib/api/oposicionPersonalizada/guardar'
     )
-    const opId = op[0].id
+    const res = await guardarOposicionPersonalizada(userId, entrada, 'Sim T327')
+    anota(
+      'el guardado REAL termina bien',
+      res.ok === true,
+      res.ok ? `oposición ${res.id} con ${res.temas} tema(s)` : `falló: ${res.motivo} ${res.detalle ?? ''}`,
+    )
+    if (!res.ok) throw new Error(`el escritor real falló: ${res.detalle ?? res.motivo}`)
+    const opId = res.id!
     creados.push(opId)
-    const { plan } = construirPlan(entrada, opId)
-    if (!plan) throw new Error('el plan salió nulo')
-
-    for (const tema of plan.temas) {
-      const { rows: t } = await c.query(
-        // `descripcion_corta` va aquí porque es NOT NULL en la BD y el schema de Drizzle NO lo
-        // dice. Este mismo caso es lo que justifica que esta simulación exista: los unitarios
-        // no pueden ver un invariante que solo vive en Postgres.
-        `INSERT INTO topics (position_type, topic_number, title, descripcion_corta, is_active, disponible)
-         VALUES ($1, $2, $3, $3, true, true) RETURNING id`,
-        [plan.positionType, tema.topicNumber, tema.titulo],
-      )
-      for (const f of tema.scope) {
-        await c.query(
-          `INSERT INTO topic_scope (topic_id, law_id, article_numbers) VALUES ($1, $2, $3)`,
-          [t[0].id, f.lawId, f.articleNumbers],
-        )
-      }
-    }
 
     const pt = positionTypeDe(opId)
     const { rows: temasBd } = await c.query(

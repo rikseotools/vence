@@ -75,9 +75,13 @@ export async function guardarOposicionPersonalizada(
         // (deriva del schema, comprobado el 01/08 contra RDS). Lo cazó la simulación, no los
         // unitarios: es un invariante que solo existe en Postgres. Se rellena con el título,
         // que es lo único que el usuario ha escrito y describe el tema de verdad.
+        // `description` va rellena aunque el usuario no la escriba: hay una vigilancia de calidad
+        // que exige que ningún tema activo la tenga vacía, y un temario propio no tiene por qué
+        // ensuciar esa medición. Con el título es honesto (es lo único que ha escrito) y deja la
+        // fila coherente con las del catálogo.
         const t = (await tx.execute(sql`
-          INSERT INTO topics (position_type, topic_number, title, descripcion_corta, is_active, disponible)
-          VALUES (${plan!.positionType}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, true, true)
+          INSERT INTO topics (position_type, topic_number, title, description, descripcion_corta, is_active, disponible)
+          VALUES (${plan!.positionType}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, ${tema.titulo}, true, true)
           RETURNING id
         `)) as unknown as Array<{ id: string }>
         const topicId = t[0]?.id
@@ -87,14 +91,27 @@ export async function guardarOposicionPersonalizada(
           // `article_numbers` NULL = la ley entera. Se manda NULL de verdad, no un array vacío:
           // un `'{}'` es «ninguno», que sirve 0 preguntas — el opuesto exacto de lo que quiso el
           // usuario al pulsar «Añadir toda la ley».
-          await tx.execute(sql`
-            INSERT INTO topic_scope (topic_id, law_id, article_numbers)
-            VALUES (
-              ${topicId}::uuid,
-              ${fila.lawId}::uuid,
-              ${fila.articleNumbers === null ? null : fila.articleNumbers}::text[]
-            )
-          `)
+          //
+          // ⚠️ EL ARRAY VA COMO JSON Y SE CONVIERTE EN SQL, y no es rebuscado: interpolar un
+          // array de JS en una plantilla `sql` de Drizzle lo EXPANDE en `($1, $2, $3…)`, o sea
+          // una tupla, no un array — el INSERT revienta con un error de sintaxis. Cazado el
+          // 01/08/2026 con el primer guardado real. `jsonb_array_elements_text` lo reconstruye
+          // como `text[]` de verdad, con UN solo parámetro y sin escapar nada a mano.
+          if (fila.articleNumbers === null) {
+            await tx.execute(sql`
+              INSERT INTO topic_scope (topic_id, law_id, article_numbers)
+              VALUES (${topicId}::uuid, ${fila.lawId}::uuid, NULL)
+            `)
+          } else {
+            await tx.execute(sql`
+              INSERT INTO topic_scope (topic_id, law_id, article_numbers)
+              VALUES (
+                ${topicId}::uuid,
+                ${fila.lawId}::uuid,
+                ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(fila.articleNumbers)}::jsonb))
+              )
+            `)
+          }
         }
       }
 

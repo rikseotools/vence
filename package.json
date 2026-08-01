@@ -134,7 +134,7 @@
     "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes",
     "canary:opciones-duplicadas": "node scripts/canary-opciones-duplicadas.cjs",
     "canary:cupo-vs-respuestas": "node scripts/canary-cupo-vs-respuestas.cjs",
-    "sim:oposicion-personalizada": "tsx --env-file=.env.local scripts/sim/sim-oposicion-personalizada.ts",
+    "sim:oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-oposicion-personalizada.ts",
     "sim:baja-emails-vivo": "node scripts/sim/sim-baja-emails-vivo.cjs"
   },
   "dependencies": {

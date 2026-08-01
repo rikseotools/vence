@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
-import SelectorArticulos, { type GrupoArticulos } from './SelectorArticulos'
+import SelectorArticulos, { Rueda, type GrupoArticulos } from './SelectorArticulos'
 import {
   anadirArticulo,
   anadirArticulos,
@@ -493,10 +493,23 @@ export default function CreadorTemario({
                           onClick={() => cargarArticulos(l)}
                           className="text-sm px-3 py-1.5 rounded-md border border-blue-600 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 whitespace-nowrap"
                         >
-                          {cargandoArts === l.lawId ? '…' : arts[l.lawId] ? 'Ocultar artículos' : 'Añadir artículos'}
+                          {cargandoArts === l.lawId ? (
+                            <span className="flex items-center gap-1.5">
+                              <Rueda clase="h-3 w-3" /> Cargando…
+                            </span>
+                          ) : arts[l.lawId] ? (
+                            'Ocultar artículos'
+                          ) : (
+                            'Añadir artículos'
+                          )}
                         </button>
                       </div>
                     </div>
+                    {cargandoArts === l.lawId && (
+                      <p className="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <Rueda /> Cargando los {l.articleCount} artículos de {l.shortName}…
+                      </p>
+                    )}
                     {arts[l.lawId] && (
                       <SelectorArticulos
                         ley={l}
