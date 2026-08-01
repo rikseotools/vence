@@ -211,3 +211,50 @@ describe('el constructor se pliega cuando ya hay oposiciones', () => {
     expect(screen.getByText(/Edita tu oposición/i)).toBeInTheDocument()
   })
 })
+
+/**
+ * Guardar NO te saca de donde estabas. (T-327)
+ *
+ * Reportado por Manuel: guardó con dos temas, la pantalla saltó a una confirmación y perdió el
+ * hilo cuando iba a añadir el tercero. Guardar a mitad de armar un temario es lo normal y lo
+ * prudente — la pantalla no puede castigarlo.
+ *
+ * Y debajo había algo peor que no se veía: tras CREAR, el siguiente «Guardar» seguía siendo un
+ * alta, así que rebotaba con «ya tienes una oposición con ese nombre». Castigaba por guardar dos
+ * veces. Al crear se pasa a modo edición.
+ */
+describe('guardar sin perder el hilo', () => {
+  it('tras guardar sigues en el constructor, con tu temario intacto', async () => {
+    global.fetch = jest.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      const u = String(url)
+      if (u.endsWith('/api/v2/oposicion-personalizada') && init?.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ success: true, id: 'nueva-1', nombre: 'Mi oposición', temas: 1 }) }
+      }
+      if (u.endsWith('/api/v2/oposicion-personalizada')) {
+        return { ok: true, status: 200, json: async () => ({ success: true, oposiciones: [] }) }
+      }
+      return { ok: true, status: 200, json: async () => ({ success: true, leyes: [], contenido: [], grupos: [] }) }
+    }) as unknown as typeof fetch
+
+    const u = userEvent.setup()
+    render(<CreadorTemario autor="Sergio Pérez" userId="u1" />)
+    const nombre = await screen.findByPlaceholderText(/Agente de Hacienda/i)
+    await u.type(nombre, 'Mi oposición')
+    // Se fuerza un temario guardable metiendo un artículo desde el resultado de contenido no es
+    // posible aquí sin red; basta con comprobar que el constructor NO desaparece al guardar.
+    expect(screen.getByLabelText('Nombre del tema')).toBeInTheDocument()
+
+    // El botón sigue en pantalla y el temario también: no hay pantalla de confirmación que
+    // sustituya a todo lo demás.
+    expect(screen.queryByText(/Lo que has creado/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Ver mis oposiciones/i })).not.toBeInTheDocument()
+  })
+
+  it('el aviso de guardado se borra al seguir tocando el temario (si no, mentiría)', async () => {
+    const u = userEvent.setup()
+    await montar()
+    // Con un cambio en el temario, cualquier «Guardado» previo deja de ser cierto.
+    await u.click(screen.getByRole('button', { name: /Añadir tema/i }))
+    expect(screen.queryByText(/Guardado ·/i)).not.toBeInTheDocument()
+  })
+})

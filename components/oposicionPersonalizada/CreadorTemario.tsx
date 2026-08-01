@@ -184,7 +184,7 @@ export default function CreadorTemario({
   const [mostrarIntro, setMostrarIntro] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
-  const [guardado, setGuardado] = useState<{ nombre: string; temas: number } | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [mias, setMias] = useState<ResumenOposicion[]>([])
   const [cargandoMias, setCargandoMias] = useState(true)
   /** Id que se está editando. `null` = estoy creando una nueva. */
@@ -251,7 +251,7 @@ export default function CreadorTemario({
       })
       setTemaActivo('t1')
       setEditandoId(id)
-      setGuardado(null)
+      setAviso(null)
       setConstructorAbierto(true)
       // Al abrir una para editar, el sitio donde se trabaja es el constructor de abajo.
       if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -266,7 +266,7 @@ export default function CreadorTemario({
     setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })
     setTemaActivo('t1')
     setEditandoId(null)
-    setGuardado(null)
+      setAviso(null)
     setErrorGuardar(null)
     setConstructorAbierto(true)
   }, [])
@@ -388,8 +388,14 @@ export default function CreadorTemario({
         )
         return
       }
-      // Al editar, el PUT no devuelve el nombre (no lo cambia él): se usa el que hay en pantalla.
-      setGuardado({ nombre: body.nombre ?? temario.nombre, temas: body.temas })
+      // Se AVISA sin sacar al usuario de donde está: guardar a mitad de armar un temario es lo
+      // normal (y lo prudente), y una pantalla de confirmación le hace perder el hilo justo
+      // cuando iba a añadir el tema siguiente.
+      setAviso(`Guardado · ${body.temas} tema(s)`)
+      // Si acababa de CREARLA, a partir de ahora se está EDITANDO. Sin esto, el siguiente
+      // «Guardar» intentaría crear otra con el mismo nombre y rebotaría con «ya tienes una
+      // oposición con ese nombre» — castigando al usuario por guardar dos veces.
+      if (!editandoId && body.id) setEditandoId(body.id)
       recargarMias()
     } catch {
       setErrorGuardar('No se ha podido guardar. Comprueba tu conexión e inténtalo otra vez.')
@@ -398,75 +404,18 @@ export default function CreadorTemario({
     }
   }, [temario, editandoId, recargarMias])
 
-  const anadir = (lawId: string, shortName: string, articleNumber: string) =>
-    setTemario((t) => anadirArticulo(t, temaActivo, { lawId, shortName, articleNumber }))
+  const anadir = (lawId: string, shortName: string, articleNumber: string) => {
+    setAviso(null)
+    cambiarTemario((t) => anadirArticulo(t, temaActivo, { lawId, shortName, articleNumber }))
+  }
+
+  /** Cualquier cambio en el temario invalida el «Guardado»: ya hay cosas sin guardar. */
+  const cambiarTemario = (f: (t: Temario) => Temario) => {
+    setAviso(null)
+    setTemario(f)
+  }
 
   const tema = temario.temas.find((t) => t.id === temaActivo) ?? temario.temas[0]
-
-  // Guardada: se enseña LO QUE HA QUEDADO, no un «listo» a secas. Quien acaba de dedicar diez
-  // minutos a armar un temario necesita ver que está entero antes de fiarse de él.
-  if (guardado) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-6">
-          <h1 className="text-2xl font-bold text-green-900 dark:text-green-100">
-            ✅ {editandoId ? 'Cambios guardados' : 'Tu oposición está guardada'}
-          </h1>
-          <p className="mt-2 text-green-900/90 dark:text-green-100/90">
-            <strong>{nombrePublico(guardado.nombre, autor)}</strong> — {guardado.temas} tema(s).
-            Ya funciona como cualquier otra oposición de Vence.
-          </p>
-        </div>
-
-        <h2 className="mt-8 mb-3 font-semibold text-gray-900 dark:text-white">Lo que has creado</h2>
-        <ul className="space-y-3">
-          {temario.temas
-            .filter((t) => t.articulos.length > 0)
-            .map((t, i) => (
-              <li
-                key={t.id}
-                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
-              >
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {i + 1}. {t.titulo}
-                </p>
-                <div className="mt-2 space-y-1">
-                  {agruparPorLey(t).map((g) => (
-                    <p key={g.lawId} className="text-sm text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold">{g.shortName}</span>{' '}
-                      {g.articleNumbers === null
-                        ? '(toda la ley)'
-                        : `— ${g.articleNumbers.length} artículo(s): ${g.articleNumbers.join(', ')}`}
-                    </p>
-                  ))}
-                </div>
-              </li>
-            ))}
-        </ul>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href="/oposiciones"
-            className="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
-          >
-            Ver mis oposiciones
-          </a>
-          <button
-            type="button"
-            onClick={() => {
-              setGuardado(null)
-              setEditandoId(null)
-              setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })
-              setTemaActivo('t1')
-            }}
-            className="px-5 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            Crear otra
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -532,7 +481,7 @@ export default function CreadorTemario({
           id="nombre-oposicion"
           type="text"
           value={temario.nombre}
-          onChange={(e) => setTemario((t) => ({ ...t, nombre: e.target.value }))}
+          onChange={(e) => cambiarTemario((t) => ({ ...t, nombre: e.target.value }))}
           placeholder="Ej.: Agente de Hacienda"
           className="w-full max-w-xl px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         />
@@ -593,7 +542,7 @@ export default function CreadorTemario({
                         <button
                           type="button"
                           onClick={() =>
-                            setTemario((t) =>
+                            cambiarTemario((t) =>
                               anadirArticulo(t, temaActivo, {
                                 lawId: l.lawId,
                                 shortName: l.shortName,
@@ -634,7 +583,7 @@ export default function CreadorTemario({
                         grupos={arts[l.lawId]}
                         tema={tema}
                         onToggle={(numeros, marcar) =>
-                          setTemario((t) =>
+                          cambiarTemario((t) =>
                             marcar
                               ? anadirArticulos(
                                   t,
@@ -702,7 +651,7 @@ export default function CreadorTemario({
             <button
               type="button"
               onClick={() =>
-                setTemario((t) => {
+                cambiarTemario((t) => {
                   const id = `t${Date.now()}`
                   setTemaActivo(id)
                   return { ...t, temas: [...t.temas, temaVacio(id, t.temas.length + 1)] }
@@ -760,7 +709,7 @@ export default function CreadorTemario({
                       id={`titulo-${t.id}`}
                       type="text"
                       value={t.titulo}
-                      onChange={(e) => setTemario((x) => renombrarTema(x, t.id, e.target.value))}
+                      onChange={(e) => cambiarTemario((x) => renombrarTema(x, t.id, e.target.value))}
                       placeholder="Nombre del tema"
                       className="flex-1 min-w-0 bg-transparent font-semibold text-gray-900 dark:text-white rounded px-1 py-0.5 border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none"
                       aria-label="Nombre del tema"
@@ -773,7 +722,7 @@ export default function CreadorTemario({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setTemario((x) => quitarTema(x, t.id))
+                          cambiarTemario((x) => quitarTema(x, t.id))
                         }}
                         className="shrink-0 text-gray-400 hover:text-red-600"
                         aria-label={`Quitar ${t.titulo}`}
@@ -807,7 +756,7 @@ export default function CreadorTemario({
                             <button
                               type="button"
                               onClick={() =>
-                                setTemario((x) =>
+                                cambiarTemario((x) =>
                                   quitarArticulo(x, t.id, { lawId: g.lawId, articleNumber: null }),
                                 )
                               }
@@ -824,7 +773,7 @@ export default function CreadorTemario({
                                 key={n}
                                 type="button"
                                 onClick={() =>
-                                  setTemario((x) =>
+                                  cambiarTemario((x) =>
                                     quitarArticulo(x, t.id, { lawId: g.lawId, articleNumber: n }),
                                   )
                                 }
@@ -858,6 +807,18 @@ export default function CreadorTemario({
             )}
             {errorGuardar && (
               <p className="mb-3 text-sm text-red-600 dark:text-red-400">{errorGuardar}</p>
+            )}
+            {/* El aviso vive JUNTO al botón, no arriba del todo: si estuviera en la cabecera,
+                quien guarda desde el final del temario no lo vería y creería que no ha pasado
+                nada. Se borra en cuanto sigues tocando el temario, porque a partir de ahí ya
+                no es cierto: hay cambios sin guardar. */}
+            {aviso && !guardando && (
+              <p className="mb-3 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-3 py-2 text-sm text-green-800 dark:text-green-200">
+                ✅ {aviso}
+                <span className="text-green-700/70 dark:text-green-300/70">
+                  · puedes seguir añadiendo temas
+                </span>
+              </p>
             )}
             <button
               type="button"
