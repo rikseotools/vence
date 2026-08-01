@@ -1,11 +1,13 @@
 // app/Footer.js - FOOTER CON LOGO INTEGRADO
 'use client'
 import Link from 'next/link'
+import { usePlatformStats } from '@/hooks/usePlatformStats'
 import { LogoFooter } from '../components/Logo'
 import { useAuth } from '../contexts/AuthContext'
 import { useCookieConsent } from '../components/CookieConsent'
 
 export default function FooterES() {
+  const stats = usePlatformStats()
   const { user, loading } = useAuth()
   const { resetConsent } = useCookieConsent()
   const currentYear = new Date().getFullYear()
@@ -102,8 +104,8 @@ export default function FooterES() {
               <LogoFooter />
             </div>
             <p className="text-gray-300 mb-6 leading-relaxed">
-              La plataforma para preparar oposiciones y estudiar legislación española. 
-              Más de 20.000 preguntas gratuitas, temarios actualizados y simulacros de examen.
+              La plataforma para preparar oposiciones y estudiar legislación española.{' '}
+              {stats.fmt(stats.preguntas)} preguntas, temarios actualizados y simulacros de examen.
             </p>
           </div>
 

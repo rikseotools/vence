@@ -1851,6 +1851,37 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Por qué merece la pena:** es el guardarraíl que sostiene la regla *«¿esto ya existe?»* de CLAUDE.md, y ahora mismo su cobertura es menor de lo que su nombre promete. Afecta a TODOS los recursos vigilados, no solo a `fetcher_type`.
 - **Relacionadas:** [T-453] (de donde sale), [T-130] (el episodio que creó el registro).
 
+### [T-461] 🟠 [ABIERTO 01/08] El modal del artículo no renderiza markdown cuando se abre DESDE una pregunta: 58.932 preguntas afectadas
+
+- **Esfuerzo: rato.** Diagnosticado y medido; falta decidir el arreglo y aplicarlo.
+- **ORIGEN.** Manuel abrió `/pregunta/24444be7…`, pinchó «Ver Artículo 0» y vio el texto **con los asteriscos en crudo**: `**Rango:** Ley autonómica de Andalucía`. Lo cazó a ojo en una captura.
+- **LA CAUSA, localizada.** `components/ArticleModal.tsx` tiene **TRES ramas** de render y solo una pinta markdown:
+  1. `questionText && correctAnswer !== null && options` → `dangerouslySetInnerHTML` con `formatTextContent(...)`, que **resalta palabras clave pero NO interpreta markdown**.
+  2. `articleData.cleanContent` → `dangerouslySetInnerHTML` crudo. Tampoco.
+  3. resto → `ReactMarkdown` + `remarkGfm`. ✅
+  Al abrirlo **desde una pregunta** siempre entra por la rama 1 (por eso se ven a la vez las palabras resaltadas en azul y los `**` sin interpretar).
+- **ALCANCE medido (01/08):** **683 artículos activos** contienen `**`, y **58.932 preguntas activas** (el **42,7 %** del total) cuelgan de uno de ellos. El grueso son los contenedores gordos de leyes virtuales: `Correos T3 art 1` (1.981 preguntas), `Correos T4 art 1` (1.016), `Correos T12 art 1` (939), `Proceso de atención de enfermería art 1` (907)… También hay **341 artículos con tablas markdown**, que en esa rama saldrán igual de rotas.
+- **QUÉ HAY QUE DECIDIR (no es obvio, por eso no se aplicó ya):** la rama 1 existe para RESALTAR las palabras de la respuesta dentro del artículo, y eso hoy se hace inyectando HTML. Combinar resaltado + markdown exige o bien renderizar markdown primero y resaltar sobre el HTML resultante, o bien mover el resaltado a componentes de `ReactMarkdown`. Lo segundo es más limpio y lo primero más barato; conviene mirar `formatTextContent` antes de elegir.
+- **CAPAS que pide:** el defecto es de RENDER, así que un test de texto no basta — hace falta comprobarlo en navegador (`playwright`, como se verificó el arreglo del Art. 0) sobre una pregunta cuyo artículo lleve markdown Y tablas.
+- **NO confundir con** *«revisa las explicaciones descuadradas»* (`explicacion_estructura_rota`): aquello es un `**` huérfano en el CONTENIDO; esto es contenido correcto que el RENDER no interpreta.
+- **Relacionadas:** [T-458] (misma sesión: el Art. 0 que se reescribió con markdown es el que lo destapó).
+
+### [T-460] 🟡 [ABIERTO 01/08] Cifras de volumen clavadas a mano en 13 sitios: decíamos «+5000 preguntas» teniendo 145.206
+
+- **Esfuerzo: rato.** Fuente única + footer + página de pregunta HECHOS y probados en navegador; quedan 9 sitios y una decisión de SEO.
+- **ORIGEN.** Manuel abrió `/pregunta/<id>` y vio *«En Vence tenemos +5000 preguntas de oposiciones para practicar»*. Hay **145.206** activas (138.108 legislativas + 7.098 psicotécnicas): **29 veces más**. Al barrer el repo salieron **13 sitios** con cifras a mano y **ninguna** se acercaba.
+- **EL FALLO DE FONDO.** No es que un número envejeciera: es que **no había de dónde sacarlo bien**. Cada pantalla se inventó el suyo el día que se escribió. Y el daño era comercial además de estético — nos infravalorábamos justo donde le pedimos al usuario que se registre. Medido: footer (TODAS las páginas) «Más de 20.000» · home ×3 «+20.000» · `/leyes` ×3 «+3000» (48× menos) · landing de Ads «5.000+» · psicotécnicos «Más de 500» y «1720» (hay 7.098) · chat IA «+170 leyes» (hay 1.137).
+- **RESUELTO.** `lib/api/platform-stats/queries.ts` → `getPlatformStats()` cacheada 24 h con `versionedCache` (tag `platform-stats`), copiando de `law-stats` su guarda de **no cachear un error transitorio** (allí un timeout envenenó la caché 6 h y generó una tanda de feedbacks de «no cargan los tests»). `MINIMOS_GARANTIZADOS` como suelo si la BD falla. Ruta `/api/platform-stats` con `s-maxage` para los componentes de cliente + hook `usePlatformStats`. **14 tests**: `formatVolumen` **nunca redondea al alza** (propiedad comprobada sobre un barrido) y 7 de guardarraíl.
+  - **GOTCHA que solo se ve EJECUTANDO (no lo vio ningún test ni el typecheck):** con `formatVolumen` viviendo junto a la consulta, el hook de cliente arrastraba `getDb → postgres → tls` al bundle → `Module not found: Can't resolve 'tls'` y la página salía **SIN footer y SIN CTA**. Arreglado separando `shared.ts` (puro, viaja al navegador) de `queries.ts`. Hay test que lo impide, y **ese test hubo que corregirlo dos veces**: saltaba por la palabra «postgres» de su propio comentario.
+  - **GOTCHA de formato:** en español los números de CUATRO cifras no llevan separador («7000») y desde cinco sí («145.000») — `minimumGroupingDigits=2` del CLDR. El test que esperaba «+7.000» estaba mal, no el código.
+  - **Texto final, aprobado por Manuel:** footer sin la palabra «gratuitas» (*«suena a barato y poco profesional»*); CTA = *«En Vence tenemos +145.000 preguntas de 124 oposiciones para practicar. Y si no encuentras la tuya, puedes creártela tú mismo o pedírnosla»*, con enlaces reales a `/oposicion-personalizada` y `/soporte`.
+- **⏳ QUEDA:**
+  1. Migrar los 9 sitios restantes: `app/page.tsx` ×3, `app/leyes/page.js` ×3, `app/landing/premium-ads-1/page.js`, `app/psicotecnicos/test/page.js` ×2, `app/psicotecnicos/PsicotecnicosClient.js`, `components/AIChatWidget.js` ×2.
+  2. **DECISIÓN DE MANUEL:** dos de las cifras de la home viven en `export const metadata` — son las descripciones que **muestra Google**. Cambiarlas exige pasar a `generateMetadata()`. Es correcto pero toca SEO.
+  3. Al migrar, añadir cada fichero a `VIGILADOS` en el guardarraíl.
+- **NO tocar** las cifras que son HECHOS y no volumen: las «110 preguntas» de un simulacro (formato del examen) o los «169 artículos» de la Constitución. El guardarraíl usa lista explícita por eso.
+- **Relacionadas:** [T-458] (misma sesión), [T-326] (contador del configurador, otro caso de cifra que mentía).
+
 ### [T-458] 🟡 [ABIERTO 01/08] Preguntas que piden el contenido de un Plan/Estrategia que la ley solo manda crear
 
 - **Esfuerzo: rato.** El detector y las 7 retiradas están HECHOS y verificados; queda la cola de epígrafes.

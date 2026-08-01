@@ -1,6 +1,7 @@
 // app/pregunta/[id]/page.tsx - Página individual de pregunta con modo quiz interactivo
 'use client'
 import { useState, useEffect } from 'react'
+import { usePlatformStats } from '@/hooks/usePlatformStats'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
@@ -41,6 +42,7 @@ interface QuestionData {
 }
 
 export default function QuestionPage({ params }: { params: Promise<{ id: string }> }) {
+  const stats = usePlatformStats()
   const { getSlug: resolveLawSlug } = useLawSlugs()
   const searchParams = useSearchParams()
   const [question, setQuestion] = useState<QuestionData | null>(null)
@@ -444,7 +446,15 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
                 {isQuizMode ? '¿Te ha gustado el reto?' : '¿Quieres practicar mas?'}
               </h3>
               <p className="text-indigo-100 mb-4 text-sm">
-                En Vence tenemos +5000 preguntas de oposiciones para practicar
+                En Vence tenemos {stats.fmt(stats.preguntas)} preguntas de {stats.oposiciones} oposiciones para practicar.
+                Y si no encuentras la tuya, puedes{' '}
+                <Link href="/oposicion-personalizada" className="underline font-semibold hover:text-white">
+                  creártela tú mismo
+                </Link>{' '}
+                o{' '}
+                <Link href="/soporte" className="underline font-semibold hover:text-white">
+                  pedírnosla
+                </Link>.
               </p>
               <Link
                 href="/leyes"
