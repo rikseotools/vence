@@ -1685,7 +1685,19 @@ Buscando dónde instrumentar apareció que **la instrumentación que hacía falt
 1. **El 401 anónimo** — nadie ha iniciado sesión. Es ruido y debe seguir callado.
 2. **El 401 de un cliente que CREE estar dentro** — manda un id de usuario, navega, responde preguntas, y no se le guarda nada. **Ese es un usuario roto y hoy es invisible.**
 
-Distinguirlos es barato (el segundo trae identidad reclamada y el primero no) y **no crea nada nuevo**: la señal encaja en el canario `perfil-sin-resolver` que ya existe y en sus reglas. **Ese es el trabajo siguiente**, y es lo que convierte esta tarea en verificable.
+Distinguirlos es barato (el segundo trae identidad reclamada y el primero no) y **no crea nada nuevo**: la señal encaja en el canario `perfil-sin-resolver` que ya existe y en sus reglas.
+
+##### ✅ CONSTRUIDO (01/08) — el canario ya los ve, y son 46
+
+Segundo bloque **dentro** del canario que ya existía (`npm run canary:perfil-sin-resolver`), no un script aparte. Núcleo puro `lib/auth/rebotePersistente.cjs` con **13 tests**; registro y runbook actualizados.
+
+- **Medido en producción al estrenarlo: 46 personas**, la más antigua **desde el 19/07** (13 días rebotando), una con 150 rebotes. Y **no se solapan con las 26 de la ventana corta**: solo 3 coinciden, o sea que las otras 43 **eran completamente invisibles** para todo lo que había.
+- **NO se emitió ninguna señal nueva, porque el dato ya estaba.** Los 401 de `/api/auth/token` sí se registran (3.777 en 24 h); lo que faltaba era **mirarlos**. De esos 3.777, solo **22 llevan identidad** — el resto es polling anónimo, que es exactamente el ruido que justifica el silencio de `expectedStatuses`. El discriminador sale gratis: `user_id IS NOT NULL`.
+- **La señal es la PERSISTENCIA, no el volumen, y esto es lo que evita la chapuza.** La tentación era contar rebotes; al medirlo, los de un solo día acumulaban 1-4 peticiones, **igual que un roto**. Un detector por volumen habría marcado caducidades normales y perdido a los rotos.
+- **Corte calibrado, no intuido** (483 usuarios en 14 días): **391 (81%) en un solo día** → caducidad normal, se descartan; 46 en dos días → zona gris, no se reporta; **46 en 3+ días** → rotos.
+- **Banda `error` desde el primero, sin margen de tolerancia:** cada unidad es una persona usando la aplicación a la que no se le guarda nada. No hay un número aceptable de eso.
+- **⚠️ AVISO QUE VA EN EL RUNBOOK, porque casi me engaña:** el propio `--falta` de esta ficha decía *«si `auth_alta_sin_perfil` con `enReintento=true` sigue a 0, es que ningún reintento ha fallado»*. Estaba a 0… **y nunca se ha emitido en toda la BD**. Cero no significaba «ninguno falló», significaba «no se ejecuta». **Una señal que nunca ha hablado no puede tranquilizar a nadie** — antes de leer una ausencia como buena noticia, comprobar que esa señal ha hablado alguna vez.
+- **Lo que este bloque NO hace:** no cura a nadie. Los hace **visibles y contables**, que es lo que faltaba para poder decidir el arreglo con la causa delante en vez de a ciegas. Y deja dicho en el propio canario que **esta cifra no baja al desplegar**, para que nadie lea su terquedad como un deploy fallido.
 - **NO son bajas de cuenta.** Era la otra hipótesis razonable, porque el `catch` que emite el rebote está comentado como *«sesión zombie de user eliminado por admin-delete-user»*. Descartada: **0 de los 25** tienen registro en `deleted_users_log`. Ese comentario describe una causa posible del `23503`, no la que se está dando.
 - **Lo que NO se ha tocado, y por qué:** el arreglo evidente —comprobar que `appUserId` existe— costaría **una consulta a BD en cada rotación de sesión de cada usuario sano**, que es justo lo que la guarda de la línea 80 evita. La salida barata es usar el rebote como señal: cuando un endpoint responde «Usuario no existe», que el cliente pida una rotación que **borre `appUserId`** del token, y entonces el reintento que ya existe hace su trabajo en la siguiente carga. **Eso toca identidad y es decisión de Manuel** (la ficha ya reserva la otra decisión de auth), así que se deja propuesto, no hecho.
 

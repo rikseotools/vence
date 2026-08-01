@@ -398,7 +398,16 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'siguen naciendo rotos al ritmo que se curan, un goteo que cualquier gráfica de «rotos» a ' +
       'secas leería como éxito. Y rotos>0 con CERO curaciones = el reintento no está corriendo. ' +
       'Simulación hermana: `npm run sim:reintento-perfil` (7 casos contra la BD real, con ' +
-      'usuarios efímeros que se borran solos).',
+      'usuarios efímeros que se borran solos). **Segundo bloque (01/08): «clientes que CREEN ' +
+      'estar dentro»**, ventana propia de 14 días, porque la persistencia no se puede medir en ' +
+      '24 h: quien perdió la sesión y cuyo cliente NO se enteró sigue navegando y respondiendo ' +
+      'sin que se le guarde nada durante DÍAS, y en una ventana corta es idéntico a una ' +
+      'caducidad normal. La señal es la PERSISTENCIA, no el volumen (los de un solo día ' +
+      'acumulan 1-4 rebotes, igual que un roto). Corte calibrado sobre 483 usuarios/14d: 391 ' +
+      '(81%) rebotan un solo día → caducidad, se descartan; 46 en 3+ días → rotos, el peor 13 ' +
+      'días seguidos. **Esta cifra NO baja al desplegar**: el reintento vive en el callback de ' +
+      'Auth.js y esta gente no llega a tener sesión Auth.js. Criterio en el núcleo puro ' +
+      '`lib/auth/rebotePersistente.cjs` (13 tests), no en la consulta.',
   },
   tests_oposicion_personalizada: {
     titulo: 'Comprobar EN UN NAVEGADOR que se puede estudiar con tu propio temario',

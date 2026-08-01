@@ -43,6 +43,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') })
 const { Client } = require('pg')
 const { pgConfig } = require('../lib/db/pgSsl.cjs')
+const { clasificarRebotes, bandaRebotes } = require('../lib/auth/rebotePersistente.cjs')
 
 const arg = (n, def) => {
   const i = process.argv.indexOf(n)
@@ -92,6 +93,34 @@ async function main() {
       [ventana],
     )
 
+    // ── «Cree que está dentro, y no lo está» ────────────────────────────────────────────
+    //
+    // Las tres cifras de arriba miran una VENTANA CORTA, y por eso no pueden ver este caso:
+    // alguien que perdió la sesión y cuyo cliente NO se enteró sigue navegando, respondiendo
+    // preguntas y sin que se le guarde nada — durante DÍAS. En 24 h se parece a cualquier
+    // caducidad; solo el historial los separa.
+    //
+    // El rebote de `/api/auth/token` con 401 está silenciado a propósito en `withErrorLogging`
+    // (un navegador deslogueado haría ~340k eventos/día de polling anónimo), así que aquí se
+    // exige `user_id IS NOT NULL`: sin identidad reclamada no hay a quién arreglar.
+    //
+    // Ventana propia de 14 días — la persistencia no se puede medir en la ventana corta.
+    const persistentes = await c.query(
+      `SELECT user_id::text AS "userId",
+              count(*)::int AS eventos,
+              count(DISTINCT date_trunc('day', created_at))::int AS dias,
+              min(created_at) AS primero,
+              max(created_at) AS ultimo
+         FROM observable_events
+        WHERE user_id IS NOT NULL
+          AND created_at > now() - interval '14 days'
+          AND ( (endpoint = '/api/auth/token' AND http_status = 401)
+             OR (event_type = 'auth' AND severity = 'warn' AND error_message = 'Usuario no existe') )
+        GROUP BY user_id`,
+    )
+    const reb = clasificarRebotes(persistentes.rows)
+    const bandaReb = bandaRebotes(reb.resumen)
+
     const r = rotos.rows[0]
     const cu = curados.rows[0]
     const p = pagos.rows[0]
@@ -130,6 +159,38 @@ async function main() {
     }
     if (p.intentos > 0) {
       console.log(`   💸 ${p.intentos} intento(s) de compra rechazados: hay dinero en juego.`)
+    }
+
+    // Bloque aparte porque responde a otra pregunta: no «¿se está drenando el atasco?» sino
+    // «¿hay alguien viviendo dentro de la aplicación sin existir para ella?».
+    console.log(`\n── Clientes que CREEN estar dentro — ventana de 14 días ${'─'.repeat(20)}`)
+    const etiqueta = (t) => `   ${t.padEnd(48)}: `
+    console.log(
+      etiqueta(`rotos persistentes (rebotan ${reb.resumen.minDias}+ días distintos)`) +
+        reb.resumen.rotos,
+    )
+    console.log(etiqueta('caducidades normales (descartadas)') + reb.resumen.caducados)
+    if (reb.resumen.rotos > 0) {
+      codigo = Math.max(codigo, bandaReb.codigo)
+      console.log(
+        `\n   🔴 ${reb.resumen.rotos} persona(s) llevan días usando la app sin que se les guarde NADA.\n` +
+          `      No es una caducidad de sesión: han vuelto en ${reb.resumen.minDias} o más días\n` +
+          `      distintos y siguen rebotando. El reintento de [T-434] NO puede curarles —vive\n` +
+          `      en el callback de Auth.js y ellos no llegan a tener sesión Auth.js—, así que\n` +
+          `      esta cifra NO baja sola por mucho que se despliegue.`,
+      )
+      for (const f of reb.persistentes.slice(0, 8)) {
+        const desde = f.primero ? new Date(f.primero).toISOString().slice(0, 10) : '?'
+        console.log(
+          `        · ${String(f.userId).slice(0, 8)}  ${String(f.dias).padStart(2)} días  ` +
+            `${String(f.eventos).padStart(4)} rebotes  desde ${desde}`,
+        )
+      }
+      if (reb.persistentes.length > 8) {
+        console.log(`        … y ${reb.persistentes.length - 8} más`)
+      }
+    } else {
+      console.log(`\n   🟢 Nadie atascado más de ${reb.resumen.minDias} días.`)
     }
     console.log('')
     return codigo

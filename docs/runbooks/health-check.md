@@ -749,6 +749,15 @@ npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es
 
 Regla para leerlo: **espera al menos una hora antes de sacar conclusiones**, y si tienes prisa, la pregunta *«¿está vivo el mecanismo?»* la contesta la simulación, no el canario. Si además `auth_alta_sin_perfil` con `enReintento=true` está a 0, es que ningún reintento ha fallado — solo faltan por volver.
 
+**⚠️ Y OJO CON ESE ÚLTIMO ATAJO — medido el 01/08 y resultó ENGAÑOSO.** `auth_alta_sin_perfil` estaba a 0, sí… pero **no se ha emitido NUNCA en toda la base de datos**, ni una vez. Cero no significaba «ningún reintento ha fallado»: significaba **«el reintento no se ejecuta»**. La comprobación honesta es mirar si la señal ha hablado ALGUNA vez antes de leer su ausencia como buena noticia — una señal que nunca ha hablado no puede tranquilizarte.
+
+**El segundo bloque del canario: «clientes que CREEN estar dentro» (14 días).** Responde a otra pregunta que las cifras de 24 h no pueden contestar. Alguien que perdió la sesión y cuyo cliente **no se enteró** sigue navegando y respondiendo preguntas **sin que se le guarde nada**, durante días. En una ventana corta es indistinguible de una caducidad normal; solo el historial los separa.
+
+- **La señal es la PERSISTENCIA, no el volumen.** Medido: los que rebotan un solo día acumulan 1-4 peticiones, exactamente igual que un roto. Lo que los separa es **cuántos días distintos** vuelven a rebotar.
+- **Corte calibrado (01/08, 14 días):** de 483 usuarios con rebote, **391 (81%) en un solo día** → caducidad normal, descartados; **46 en 3+ días** → rotos, el peor con 13 días seguidos.
+- **Esta cifra NO baja al desplegar,** y por eso está separada de las otras: el reintento de T-434 vive en el callback de Auth.js y **esta gente no llega a tener sesión Auth.js** (se quedan en el `401 unauthenticated` de `/api/auth/token`, que está silenciado a propósito por el polling anónimo). Si sube, es que nacen rotos nuevos; si no baja tras un deploy, **no es un fallo del deploy**.
+- Núcleo puro con el criterio y sus tests: `lib/auth/rebotePersistente.cjs` (13 tests). Cambiar el umbral se hace ahí, no en la consulta.
+
 | Lo que ves | Qué significa |
 |---|---|
 | rotos ↓ · curados > 0 | el atasco se drena solo. Es lo esperado |
