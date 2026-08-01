@@ -199,6 +199,8 @@ export default function CreadorTemario({
    * para llegar a lo único que puede hacer.
    */
   const [constructorAbierto, setConstructorAbierto] = useState(false)
+  /** Tema cuyo borrado está pendiente de confirmar. */
+  const [confirmandoBorrado, setConfirmandoBorrado] = useState<string | null>(null)
 
   useEffect(() => {
     const almacen = typeof window !== 'undefined' ? window.localStorage : null
@@ -722,7 +724,11 @@ export default function CreadorTemario({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          cambiarTemario((x) => quitarTema(x, t.id))
+                          // Un tema VACÍO no tiene nada que perder: preguntar por costumbre
+                          // enseña a decir «sí» sin leer, y entonces la pregunta ya no protege
+                          // el día que sí importa.
+                          if (t.articulos.length === 0) cambiarTemario((x) => quitarTema(x, t.id))
+                          else setConfirmandoBorrado(t.id)
                         }}
                         className="shrink-0 text-gray-400 hover:text-red-600"
                         aria-label={`Quitar ${t.titulo}`}
@@ -732,6 +738,44 @@ export default function CreadorTemario({
                       </button>
                     )}
                   </div>
+
+                  {confirmandoBorrado === t.id && (
+                    <div
+                      className="mx-3 mt-3 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-3"
+                      role="alertdialog"
+                      aria-label={`Confirmar borrado de ${t.titulo}`}
+                    >
+                      <p className="text-sm text-red-800 dark:text-red-200">
+                        ¿Seguro que quieres quitar <strong>{t.titulo}</strong>?
+                      </p>
+                      <p className="mt-0.5 text-xs text-red-700/80 dark:text-red-300/80">
+                        Se borrarán sus {t.articulos.length} artículo(s). No se puede deshacer.
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            cambiarTemario((x) => quitarTema(x, t.id))
+                            setConfirmandoBorrado(null)
+                          }}
+                          className="text-sm px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+                        >
+                          Sí, quitar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmandoBorrado(null)
+                          }}
+                          className="text-sm px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Solo el tema ACTIVO recibe lo que añades. Decirlo evita el error de
                       buscar a la izquierda y no entender por qué aparece en otro tema. */}

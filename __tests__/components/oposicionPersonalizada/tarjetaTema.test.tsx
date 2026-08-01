@@ -89,6 +89,7 @@ describe('varios temas', () => {
     await u.click(screen.getByRole('button', { name: /Añadir tema/i }))
     // Con dos temas, el activo es el 2.º. Se quita el 1.º: si el clic se propagara, la tarjeta
     // del 1.º se seleccionaría justo antes de desaparecer.
+    // El Tema 1 está VACÍO, así que se quita sin preguntar (no hay nada que perder).
     await u.click(screen.getByRole('button', { name: /Quitar Tema 1/i }))
 
     const campos = screen.getAllByLabelText('Nombre del tema') as HTMLInputElement[]
@@ -256,5 +257,83 @@ describe('guardar sin perder el hilo', () => {
     // Con un cambio en el temario, cualquier «Guardado» previo deja de ser cierto.
     await u.click(screen.getByRole('button', { name: /Añadir tema/i }))
     expect(screen.queryByText(/Guardado ·/i)).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * Quitar un tema CON contenido pregunta antes. (T-327)
+ *
+ * Pedido por Manuel. Y con un matiz que decide si la pregunta sirve: un tema VACÍO no la tiene.
+ * Preguntar por costumbre enseña a decir «sí» sin leer, y entonces la pregunta deja de proteger
+ * justo el día que sí había algo que perder.
+ */
+describe('quitar un tema pregunta antes (solo si hay algo que perder)', () => {
+  it('un tema VACÍO se quita sin preguntar', async () => {
+    const u = userEvent.setup()
+    await montar()
+    await u.click(screen.getByRole('button', { name: /Añadir tema/i }))
+    await u.click(screen.getByRole('button', { name: /Quitar Tema 1/i }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getAllByLabelText('Nombre del tema')).toHaveLength(1)
+  })
+
+  it('un tema CON artículos pide confirmación, y cancelar no borra nada', async () => {
+    global.fetch = jest.fn().mockImplementation(async (url: string) => {
+      const u = String(url)
+      if (u.endsWith('/api/v2/oposicion-personalizada')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            oposiciones: [{ id: 'op-1', nombre: 'Con contenido', temas: 2, articulos: 4, vecesElegida: 1, actualizada: null }],
+          }),
+        }
+      }
+      if (u.includes('/api/v2/oposicion-personalizada/op-1')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            id: 'op-1',
+            nombre: 'Con contenido',
+            temas: [
+              { titulo: 'Tema lleno', articulos: [{ lawId: 'l1', shortName: 'CE', articleNumber: '1' }] },
+              { titulo: 'Otro', articulos: [{ lawId: 'l1', shortName: 'CE', articleNumber: '2' }] },
+            ],
+          }),
+        }
+      }
+      return { ok: true, status: 200, json: async () => ({ success: true, leyes: [], contenido: [], grupos: [] }) }
+    }) as unknown as typeof fetch
+
+    const u = userEvent.setup()
+    render(<CreadorTemario autor="Sergio Pérez" userId="u1" />)
+    await u.click(await screen.findByRole('button', { name: /^Editar$/i }))
+    await screen.findByDisplayValue('Tema lleno')
+
+    await u.click(screen.getByRole('button', { name: /Quitar Tema lleno/i }))
+    const dialogo = screen.getByRole('alertdialog')
+    // Dice QUÉ se pierde, no solo «¿seguro?».
+    expect(dialogo).toHaveTextContent(/1 artículo/)
+
+    await u.click(within(dialogo).getByRole('button', { name: /Cancelar/i }))
+    expect(screen.getByDisplayValue('Tema lleno')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('confirmar sí lo quita', async () => {
+    const u = userEvent.setup()
+    render(<CreadorTemario autor="Sergio Pérez" userId="u1" />)
+    await u.click(await screen.findByRole('button', { name: /^Editar$/i }))
+    await screen.findByDisplayValue('Tema lleno')
+
+    await u.click(screen.getByRole('button', { name: /Quitar Tema lleno/i }))
+    await u.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /Sí, quitar/i }))
+
+    expect(screen.queryByDisplayValue('Tema lleno')).not.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Otro')).toBeInTheDocument()
   })
 })
