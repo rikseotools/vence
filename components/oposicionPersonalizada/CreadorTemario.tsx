@@ -606,39 +606,80 @@ export default function CreadorTemario({
               return (
                 <li
                   key={t.id}
-                  className={`rounded-lg border p-3 ${
+                  className={`rounded-xl border bg-white dark:bg-gray-800 shadow-sm transition ${
                     activo
-                      ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                      ? 'border-blue-500 ring-2 ring-blue-500/30'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                   }`}
                   onClick={() => setTemaActivo(t.id)}
                 >
-                  <div className="flex items-center gap-2">
+                  {/* CABECERA de la tarjeta: separada del contenido por una línea, para que se
+                      lea como «el nombre del tema» y no como una fila más de la lista. */}
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border-b ${
+                      activo
+                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
+                        : 'bg-gray-50 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    {/* El lápiz DICE que se puede escribir ahí. Sin él, el nombre parece una
+                        etiqueta fija: nadie prueba a pulsar un texto que no invita a nada. */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const el = document.getElementById(`titulo-${t.id}`) as HTMLInputElement | null
+                        el?.focus()
+                        el?.select()
+                      }}
+                      className="shrink-0 text-gray-400 hover:text-blue-600"
+                      title="Cambiar el nombre del tema"
+                      aria-label={`Cambiar el nombre de ${t.titulo}`}
+                    >
+                      ✏️
+                    </button>
                     <input
+                      id={`titulo-${t.id}`}
                       type="text"
                       value={t.titulo}
                       onChange={(e) => setTemario((x) => renombrarTema(x, t.id, e.target.value))}
-                      className="flex-1 bg-transparent font-medium text-gray-900 dark:text-white border-b border-transparent focus:border-gray-400 outline-none"
-                      aria-label="Título del tema"
+                      placeholder="Nombre del tema"
+                      className="flex-1 min-w-0 bg-transparent font-semibold text-gray-900 dark:text-white rounded px-1 py-0.5 border border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-800 outline-none"
+                      aria-label="Nombre del tema"
                     />
+                    <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                      {t.articulos.length}
+                    </span>
                     {temario.temas.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => setTemario((x) => quitarTema(x, t.id))}
-                        className="text-xs text-gray-400 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setTemario((x) => quitarTema(x, t.id))
+                        }}
+                        className="shrink-0 text-gray-400 hover:text-red-600"
                         aria-label={`Quitar ${t.titulo}`}
+                        title="Quitar este tema"
                       >
                         ✕
                       </button>
                     )}
                   </div>
 
+                  {/* Solo el tema ACTIVO recibe lo que añades. Decirlo evita el error de
+                      buscar a la izquierda y no entender por qué aparece en otro tema. */}
+                  {activo && temario.temas.length > 1 && (
+                    <p className="px-3 pt-2 text-[11px] font-medium text-blue-700 dark:text-blue-300">
+                      ● Lo que añadas entra aquí
+                    </p>
+                  )}
+
                   {t.articulos.length === 0 ? (
-                    <p className="mt-2 text-xs text-gray-400">
-                      Vacío. Busca a la izquierda y pulsa «Añadir».
+                    <p className="px-3 py-3 text-xs text-gray-400">
+                      Vacío. Busca una ley a la izquierda y marca sus artículos.
                     </p>
                   ) : (
-                    <div className="mt-2 space-y-2">
+                    <div className="px-3 py-3 space-y-2">
                       {agruparPorLey(t).map((g) => (
                         <div key={g.lawId}>
                           <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
