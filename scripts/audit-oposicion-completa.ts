@@ -30,9 +30,16 @@ async function rows(q: any): Promise<any[]> { return await q }
 const PT = slug.replace(/-/g, '_')
 
 let fails = 0, warns = 0
+// Los hallazgos se ACUMULAN además de imprimirse: hasta el 01/08 (T-455) este gate escribía CERO
+// filas en `content_health_findings` y CERO en `observable_events`, así que comprobaba diez fases
+// y todo moría en la terminal de quien lo ejecutaba. Si el gate fallaba —o no se corría— no
+// quedaba rastro en ninguna parte, y la oposición podía publicarse igual. Es el mismo modo de
+// fallo que ya costó semanas con `landing_incompleta`: una comprobación ON-DEMAND que nadie repite
+// no es una comprobación, es un buen propósito.
+const hallazgos: Array<{ severity: 'error' | 'warn'; message: string }> = []
 const ok = (m: string) => console.log('  ✅ ' + m)
-const bad = (m: string) => { console.log('  ❌ ' + m); fails++ }
-const warn = (m: string) => { console.log('  🟡 ' + m); warns++ }
+const bad = (m: string) => { console.log('  ❌ ' + m); fails++; hallazgos.push({ severity: 'error', message: m }) }
+const warn = (m: string) => { console.log('  🟡 ' + m); warns++; hallazgos.push({ severity: 'warn', message: m }) }
 
 async function countQuestionsForTopic(topicId: string): Promise<number> {
   const sc = await rows(sql`SELECT law_id, article_numbers, include_full_title FROM topic_scope WHERE topic_id = ${topicId}`)
@@ -173,7 +180,43 @@ async function main() {
     bad(`CcaaFlag NO resuelve nada → emoji de fallback. Añadir keyword a CcaaFlag.tsx (FASE 4c.bis)`)
   }
 
+  await publicarHallazgos()
   finish()
+}
+
+/**
+ * Publica lo encontrado donde SE MIRA: `content_health_findings` (lo pinta `/admin/contenido` y el
+ * badge de salud del contenido) y una traza en `observable_events`.
+ *
+ * Se REEMPLAZA lo anterior de este slug+kind en vez de acumular: el gate es una foto del estado
+ * actual, y dejar hallazgos viejos de una oposición ya arreglada es la forma más rápida de que el
+ * panel deje de leerse. Si no hay hallazgos, se borra y no se inserta nada — el verde es la
+ * ausencia de filas, igual que en el barrido nocturno.
+ *
+ * Fail-open: un problema al publicar NO cambia el veredicto del gate (su exit code manda), pero se
+ * dice en voz alta. Una comprobación que se cae por su telemetría sería peor que la de antes.
+ */
+async function publicarHallazgos() {
+  try {
+    await sql`DELETE FROM content_health_findings WHERE kind = 'oposicion_incompleta' AND oposicion_slug = ${slug}`
+    for (const h of hallazgos) {
+      await sql`
+        INSERT INTO content_health_findings (id, category, severity, oposicion_slug, kind, message, detail, computed_at)
+        VALUES (gen_random_uuid(), 'content', ${h.severity}, ${slug}, 'oposicion_incompleta',
+                ${`${slug}: ${h.message}`}, ${sql.json({ origen: 'audit:oposicion', fase: 'creacion' })}, NOW())`
+    }
+    await sql`
+      INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+      VALUES (gen_random_uuid(), NOW(), 'script:audit-oposicion',
+              ${fails > 0 ? 'error' : warns > 0 ? 'warn' : 'info'}, 'oposicion_auditada',
+              ${sql.json({ slug, fails, warns })}, NOW())`
+    if (hallazgos.length) {
+      console.log(`\n📋 ${hallazgos.length} hallazgo(s) publicados en /admin/contenido (kind: oposicion_incompleta).`)
+    }
+  } catch (e: any) {
+    console.log(`\n⚠️  no se pudieron publicar los hallazgos: ${e?.message || e}`)
+    console.log('   El veredicto del gate NO cambia, pero esta ejecución no deja rastro en el panel.')
+  }
 }
 
 function finish() {

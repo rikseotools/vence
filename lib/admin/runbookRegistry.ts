@@ -130,6 +130,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/rollover-oposiciones.md',
     claudeHace: 'reconstruye el timeline de hitos de la convocatoria vigente contra la fuente oficial.',
   },
+  oposicion_incompleta: {
+    title: 'Oposición publicada con la construcción a medias (lo que el gate de creación encontró)',
+    triggerPhrase: 'revisa las oposiciones incompletas',
+    runbook: 'docs/maintenance/crear-nueva-oposicion.md',
+    claudeHace: 'son los hallazgos de `npm run audit:oposicion <slug>`, el gate que se corre AL CREAR una oposición: fila de `oposiciones` con campos vacíos, topics sin `topic_scope`, temas marcados disponibles con 0 preguntas, timeline sin hitos, `estado_proceso` divergente entre `oposiciones` y su convocatoria vigente, rutas de frontend que faltan, registros de UI (OnboardingModal, perfil, mapeo CCAA, CcaaFlag) sin dar de alta. ⚠️ POR QUÉ EXISTE EL KIND (T-455, 01/08/2026): hasta esa fecha el gate escribía **CERO** filas en `content_health_findings` y **CERO** en `observable_events` — comprobaba diez fases y todo moría en la terminal de quien lo ejecutaba, así que si fallaba (o no se corría) la oposición se publicaba igual y no quedaba rastro en ninguna parte. Es el mismo modo de fallo que ya costó semanas con `landing_incompleta`: una comprobación ON-DEMAND que nadie repite no es una comprobación. Ahora cada ejecución REEMPLAZA lo anterior de ese slug (el gate es una foto del estado actual; dejar hallazgos de una oposición ya arreglada es la forma más rápida de que el panel deje de leerse) y emite `oposicion_auditada`. Para resolverlos: correr el gate, arreglar lo que señale siguiendo el manual de creación, y volver a correrlo — el verde es la AUSENCIA de filas. NUNCA marcar `is_active=true` con hallazgos `error` abiertos.',
+  },
   nota_interna_publicada: {
     title: 'La landing publica una nota interna nuestra (el campo de referencia usado como bloc de notas)',
     triggerPhrase: 'revisa las notas internas publicadas',
