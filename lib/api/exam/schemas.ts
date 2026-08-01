@@ -41,6 +41,14 @@ export const saveAnswerResponseSchema = z.object({
   // discriminador todo `success:false` caía en 500 y contaminaba la métrica de
   // 5xx y el veredicto de salud user-facing (incidente 08/07/2026).
   reason: z.enum(['invalid_input']).optional(),
+  // Qué hizo de verdad el guardado, con el MISMO vocabulario que `answer-and-save`
+  // (T-450, 01/08/2026). Existe para que el cobro del cupo pueda decidirse con la
+  // política compartida `debeConsumirCupo(saveAction, isPremium)` en vez de con un
+  // criterio propio: dos puertas al mismo recurso con criterios distintos no
+  // protegen, se contradicen — que es exactamente cómo el examen se quedó sin cobrar.
+  //   · `saved_new`      → la respuesta se estrena (fila nueva, o fila que estaba en blanco)
+  //   · `already_saved`  → la fila ya tenía respuesta: se re-responde, no se vuelve a cobrar
+  saveAction: z.enum(['saved_new', 'already_saved']).optional(),
 })
 
 export type SaveAnswerResponse = z.infer<typeof saveAnswerResponseSchema>

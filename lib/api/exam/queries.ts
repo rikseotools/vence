@@ -118,6 +118,10 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         id: testQuestions.id,
         correctAnswer: testQuestions.correctAnswer,
         temaNumber: testQuestions.temaNumber,
+        // Hace falta para decidir el CUPO (T-450): rellenar una fila en blanco es
+        // estrenar una respuesta y se cobra; re-responder una que ya tenía respuesta
+        // no. Sin este campo el `saveAction` no se puede derivar.
+        userAnswer: testQuestions.userAnswer,
       })
       .from(testQuestions)
       .where(and(
@@ -148,6 +152,10 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
     }
 
     if (existing.length > 0) {
+      // ¿Se ESTRENA la respuesta? La fila puede existir en blanco (el examen crea filas
+      // conforme se navega) y rellenarla es la primera vez que esa respuesta se guarda.
+      const estabaEnBlanco = existing[0].userAnswer == null || existing[0].userAnswer === ''
+
       // Usar correctAnswer del registro existente si no se proporcionó
       if (!correctAnswer && existing[0].correctAnswer) {
         correctAnswer = existing[0].correctAnswer
@@ -190,6 +198,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         success: true,
         answerId,
         isCorrect,
+        saveAction: estabaEnBlanco ? 'saved_new' : 'already_saved',
       }
     } else {
       // Path principal para exámenes: la fila no existe aún en test_questions
@@ -254,7 +263,12 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
             confidenceLevel: params.confidenceLevel,
           },
         })
-        .returning({ id: testQuestions.id })
+        // `xmax = 0` distingue el INSERT real de la rama de conflicto del propio UPSERT.
+        // Importa para el cupo (T-450): dos clics simultáneos ven los dos "no existe fila"
+        // en el SELECT de arriba, y sin esto los dos cobrarían por la MISMA respuesta.
+        // Cobrar de más es peor que cobrar de menos, así que la duda se resuelve en el
+        // motor y no en la lectura previa.
+        .returning({ id: testQuestions.id, insertada: sql<boolean>`(xmax = 0)` })
 
       answerId = result[0].id
 
@@ -265,6 +279,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         success: true,
         answerId,
         isCorrect,
+        saveAction: result[0].insertada ? 'saved_new' : 'already_saved',
       }
     }
   } catch (error) {

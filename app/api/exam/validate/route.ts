@@ -351,7 +351,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
     if (testId) {
       const persistencia = await persistExamQuestions(testId, answers, results, correctAnswersMap)
 
-      // ── CUPO DIARIO (T-450) ────────────────────────────────────────────────────────
+      // ── CUPO DIARIO (T-450) — LA RED, no el cobro principal ────────────────────────
       // El modo examen NO pasa por `answer-and-save`, que es quien cobra el cupo desde el
       // 29/07. Al mover el cobro del cliente al servidor —con razón: cobrar desde el
       // cliente lo desacoplaba del guardado y no era idempotente— este camino se quedó
@@ -359,10 +359,22 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
       // 10.181 respuestas en 7 días sin llegar al contador, y un usuario con 489 en 4
       // días mientras el contador marcaba ~65.
       //
-      // Se cobra AQUÍ porque aquí es donde las respuestas se persisten, que es la regla
-      // de `debeConsumirCupo`: se cobra lo guardado por primera vez, ni antes ni de más.
-      // En una sola llamada con importe, no una por respuesta (~50 idas y vueltas en un
-      // camino donde el usuario espera su nota).
+      // ⚠️ EL COBRO PRINCIPAL DEL EXAMEN NO ESTÁ AQUÍ: está en `/api/exam/answer`, que es
+      // quien persiste cada respuesta EN VIVO durante el examen. Este cobro se desplegó
+      // primero él solo (01/08, 08:47 UTC) y resultó INERTE: para cuando `validate` corre,
+      // las respuestas ya están escritas, así que `nuevasRespondidas` es 0. Verificado con
+      // el primer examen real posterior al deploy — 10 respuestas escritas entre las
+      // 09:00:42 y las 09:04:30, `validate` a las 09:04:32, contador sin una sola fila.
+      //
+      // Lo que queda aquí es la RED, y sigue haciendo falta: `validate` es el único que ve
+      // las respuestas que los saves en vivo NO consiguieron guardar (fire-and-forget, poco
+      // fiables bajo carga: 30/40 exámenes con filas perdidas el 08/06). Esas son las que
+      // «estrena» al persistir en bloque, y son justo las que nadie ha cobrado todavía.
+      // Los dos cobros NO se solapan por construcción: la condición que decide aquí
+      // —fila sin respuesta— es la negación exacta de la que decide allí.
+      //
+      // Se cobra con IMPORTE en una sola llamada, no una por respuesta (~50 idas y vueltas
+      // en un camino donde el usuario está esperando su nota).
       //
       // Fail-silent y con `.catch`: el cobro del cupo NUNCA puede tumbar un examen que el
       // usuario ya ha terminado. Si falla, se lleva las preguntas gratis.

@@ -7,7 +7,7 @@ import {
 } from '@/lib/api/exam'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
-import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken, incrementDailyCount, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 // Evitar 504 de Vercel (default 300s): fail fast
@@ -151,8 +151,33 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer)
-    // No incrementar aquí para evitar doble conteo
+    // ── CUPO DIARIO (T-450, 01/08/2026) ──────────────────────────────────────────────
+    // Aquí es donde el examen persiste CADA respuesta, así que aquí es donde se cobra:
+    // misma regla que `answer-and-save` (cobrar lo que se guarda por primera vez) y con
+    // la MISMA política compartida, no con un criterio propio.
+    //
+    // Hasta hoy aquí había un comentario diciendo que el contador lo subía el cliente
+    // (`useDailyQuestionLimit.recordAnswer`) y que no había que tocarlo aquí para no
+    // contar dos veces. Ese reparto dejó de existir el 29/07, cuando el cobro se movió
+    // del cliente al servidor, y el comentario se quedó describiendo un mundo que ya no
+    // era: el examen se quedó SIN NADIE QUE COBRE. Medido: 10.181 respuestas de examen
+    // en 7 días sin llegar al contador.
+    //
+    // Y NO basta con cobrar en `/api/exam/validate` (primer intento, desplegado a las
+    // 08:47 UTC del 01/08): ese cobra solo las respuestas que ESTRENA al persistir en
+    // bloque, y para cuando corre ya las ha escrito este endpoint una a una durante el
+    // examen → cobraba 0. Verificado en producción con el primer examen posterior al
+    // deploy: 10 respuestas persistidas entre las 09:00:42 y las 09:04:30, `validate` a
+    // las 09:04:32, y ninguna fila en `daily_question_usage`.
+    //
+    // Los dos cobros son COMPLEMENTARIOS y no se solapan por construcción: `validate`
+    // solo cobra lo que aquí no se llegó a guardar (la red del save fallido).
+    //
+    // Fail-silent: el cobro del cupo nunca puede tumbar el guardado de una respuesta que
+    // el usuario ya ha dado. Si falla, se lleva la pregunta gratis.
+    if (debeConsumirCupo(result.saveAction, dailyLimit.isPremium)) {
+      await incrementDailyCount(tokenUserId).catch(() => {})
+    }
 
     return NextResponse.json({
       success: true,

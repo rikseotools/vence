@@ -29,6 +29,11 @@
  * el usuario se lleva la pregunta gratis — mejor eso que un bloqueo indebido. Ese goteo es normal.
  */
 const path = require('path')
+// Sin esto, `npm run canary:cupo-vs-respuestas` —el comando que documenta la ficha— muere con
+// «no hay URL de base de datos» y el canario no habla nunca. Lo hacen todos sus hermanos
+// (`canary-familia`, `canary-oposiciones-live`, `canary-isr-purge`…); este nació sin ello y
+// se estrenó ejecutándolo a mano con `--env-file`, así que el hueco no se vio.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 const { Client } = require('pg')
 const { pgConfig } = require(path.join(__dirname, '..', 'lib', 'db', 'pgSsl.cjs'))
 

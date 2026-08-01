@@ -87,7 +87,41 @@ describe('guardarraíl: el cupo diario lo cobra el servidor', () => {
   // solo protege los que enumeró. Por eso aquí se comprueba también el ORDEN (cobrar
   // después de persistir) y la CONDICIÓN (solo lo que se estrena), que es lo que
   // distingue cobrar bien de cobrar.
-  it('el modo EXAMEN cobra al persistir en bloque, y solo lo que se estrena', () => {
+  // T-450 SEGUNDA VUELTA (01/08/2026): el primer arreglo se desplegó y NO SIRVIÓ.
+  //
+  // Cobrar en `/api/exam/validate` «solo lo que se estrena» es correcto como frase y es
+  // inerte como código: `/api/exam/answer` ya ha escrito cada respuesta durante el examen,
+  // así que cuando `validate` corre no estrena ninguna y cobra 0. Verificado en producción
+  // con el primer examen posterior al deploy (10 respuestas, contador sin fila).
+  //
+  // La lección se repite una capa más abajo: este guardarraíl lee el CÓDIGO, así que puede
+  // confirmar que el cobro existe y con qué condición, pero **no puede ver que la condición
+  // nunca se cumple**. Eso solo lo ve el canario `npm run canary:cupo-vs-respuestas`, que
+  // mira los datos. Por eso el cobro se comprueba en los DOS sitios y por eso el canario
+  // no es opcional.
+  it('el modo EXAMEN cobra donde persiste cada respuesta (el camino en vivo)', () => {
+    const src = leer('app/api/exam/answer/route.ts')
+    expect(src).toContain('incrementDailyCount(')
+    // Misma política que answer-and-save, no un criterio propio.
+    expect(src).toMatch(/debeConsumirCupo\(\s*result\.saveAction/)
+    // El cobro va DESPUÉS de guardar: usa el resultado del save.
+    expect(src.indexOf('saveAnswer(data)')).toBeLessThan(src.indexOf('incrementDailyCount('))
+    // Y el comentario que decía «se incrementa en el frontend» no puede volver: describía
+    // el reparto anterior al 29/07 y es literalmente el hueco por el que se coló esto.
+    expect(src).not.toMatch(/Daily count se incrementa en el frontend/)
+  })
+
+  it('el examen deriva el `saveAction` de si la respuesta se ESTRENA', () => {
+    // Rellenar una fila en blanco es estrenar (se cobra); re-responder una que ya tenía
+    // respuesta, no. Y el caso de dos clics a la vez lo arbitra el motor (`xmax = 0`), no
+    // el SELECT previo: los dos verían «no existe» y cobrarían dos veces la misma respuesta.
+    const src = leer('lib/api/exam/queries.ts')
+    expect(src).toMatch(/saveAction:\s*estabaEnBlanco\s*\?\s*'saved_new'\s*:\s*'already_saved'/)
+    expect(src).toMatch(/xmax\s*=\s*0/)
+    expect(src).toMatch(/saveAction:\s*result\[0\]\.insertada\s*\?\s*'saved_new'\s*:\s*'already_saved'/)
+  })
+
+  it('el modo EXAMEN cobra también al persistir en bloque lo que el save en vivo perdió', () => {
     const src = leer('app/api/exam/validate/route.ts')
     expect(src).toContain('incrementDailyCount(')
     // Se cobra con IMPORTE, no una llamada por respuesta: el examen se persiste en bloque.
