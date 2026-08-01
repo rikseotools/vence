@@ -260,6 +260,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'mira los tres invariantes que emite el barrido sobre `psychometric_questions` activas y los repara UNO A UNO contra la fuente, nunca en lote: sin `section_id` (la pregunta existe pero no cae en ninguna sección, así que NO se sirve a nadie) → asignarle la sección que le corresponde por su categoría; sección de OTRA categoría (los totales por categoría mienten y la pregunta sale donde no toca) → corregir el `section_id`, no la categoría, salvo que la materia diga lo contrario; y `correct_option` fuera de 0-3 o nulo (la pregunta no se puede corregir al responderla) → verificar la clave contra el enunciado y las opciones, y si no se puede determinar, desactivar en vez de adivinar. NUNCA fijar una clave a ojo.',
   },
+  opciones_duplicadas: {
+    title: 'Dos opciones IDÉNTICAS dentro de la misma pregunta (se queda en tres alternativas)',
+    triggerPhrase: 'revisa las opciones duplicadas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'separa las DOS BANDAS antes de tocar nada, porque no son el mismo problema. `error` = la clave está DENTRO del par: da igual cuál de las dos marque el opositor, acierta y falla a la vez, así que la pregunta está rota y se repara hoy. `warn` = el par son dos distractores: la pregunta sigue siendo resoluble (la clave está fuera) pero se sirve con tres alternativas de hecho y se lee descuido. Se repara SIEMPRE reescribiendo una opción que NO sea la clave, dándole el contenido que le falta a la rejilla de la propia pregunta (Uniform/Universal × Locator/Library, natural/artificial × activa/pasiva, las cuatro categorías OMS, los cuatro principios de la bioética): casi siempre la casilla ausente es evidente al leer las otras tres. En las preguntas de «señale la FALSA» el distractor nuevo tiene que ser una afirmación VERDADERA, que es el error fácil de cometer ahí. NUNCA tocar `correct_option`. GOTCHA de medición: lo único que se normaliza es el espacio en blanco — al comparar con `lower()` o con una regex mal escapada salieron fantasmas (un `\\s+` que llegó a SQL como `s+` borraba las eses e igualaba `wardrobes` con `wardrobess`). Y una opción vacía NO forma par: las oposiciones de tres alternativas sirven la D vacía por diseño. El cambio es un UPDATE directo de `questions.option_*` y NO deja rastro en ningún historial, así que la única traza es `updated_at`: anótalo al terminar e invalida la caché `questions`.',
+  },
   audit_note_explanation: {
     title: 'Explicación = nota de auditoría (defecto de pipeline)',
     triggerPhrase: 'revisa las explicaciones rotas',

@@ -44,6 +44,7 @@ const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
+const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO } = require('../lib/generacion/huerfanosPlan.js');
@@ -433,6 +434,33 @@ async function detectarTodo(c, add, now) {
     if (partes.length) add('content', 'error', null, 'psicotecnico_integridad',
       `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
       { sinSeccion: psi.sin_seccion, seccionAjena: psi.seccion_ajena, claveInvalida: psi.clave_invalida });
+  }
+
+  // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──
+  // Hueco que ningún kind cubría (T-406): todos los detectores de contenido comparan la pregunta
+  // con su ARTÍCULO, con el epígrafe o con la convocatoria — ninguno la compara CONSIGO MISMA. La
+  // pregunta se queda de hecho en tres alternativas y no lo dice.
+  //
+  // La comparación va en JS, en el núcleo puro, y NO en esta consulta a propósito: normalizar en
+  // SQL fue justo lo que inventó los fantasmas. Un `\s+` que llegó como `s+` borraba las eses e
+  // igualaba `wardrobes` con `wardrobess` (8 falsos), y `lower()` igualaba opciones que se
+  // distinguen precisamente por la mayúscula. Aquí solo se TRAEN las opciones.
+  //
+  // Dos bandas: `error` = la clave está dentro del par (se acierta y se falla a la vez) · `warn` =
+  // son dos distractores (resoluble, pero se lee descuido). Medido el 31/07: 33 preguntas, todas
+  // warn, ya reparadas → **nace en verde**, que es el momento exacto de poner el trinquete.
+  const opcRows = (await c.query(`
+    SELECT id, option_a, option_b, option_c, option_d, correct_option
+      FROM questions WHERE is_active`)).rows;
+  {
+    const { errores, avisos } = clasificarOpcionesDuplicadas(opcRows);
+    const muestra = (xs) => xs.slice(0, 15).map(x => `${x.id} (${LETRAS_OPCION[x.i]}=${LETRAS_OPCION[x.j]})`);
+    if (errores.length) add('content', 'error', null, 'opciones_duplicadas',
+      `${errores.length} pregunta(s) activas con la CLAVE duplicada en dos opciones: se acierta y se falla a la vez`,
+      { count: errores.length, banda: 'clave_en_el_par', sample: muestra(errores) });
+    if (avisos.length) add('content', 'warn', null, 'opciones_duplicadas',
+      `${avisos.length} pregunta(s) activas con dos distractores idénticos: se quedan en tres opciones sin decirlo`,
+      { count: avisos.length, banda: 'distractores', sample: muestra(avisos) });
   }
 
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──

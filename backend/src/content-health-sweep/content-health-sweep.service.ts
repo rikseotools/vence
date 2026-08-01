@@ -1614,6 +1614,75 @@ export class ContentHealthSweepService {
         );
     }
 
+    // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
+    // Criterio en `lib/health/opcionesDuplicadas.cjs`, que es donde vive con sus tests.
+    //
+    // Hueco que ningún kind cubría (T-406): todos los detectores de contenido comparan la pregunta
+    // con su ARTÍCULO, con el epígrafe o con la convocatoria — ninguno la compara CONSIGO MISMA.
+    //
+    // La comparación se hace AQUÍ, en JS, y NO en la consulta, a propósito: normalizar en SQL fue
+    // lo que inventó los fantasmas. Un `\s+` que llegó como `s+` borraba las eses e igualaba
+    // `wardrobes` con `wardrobess` (8 falsos), y `lower()` igualaba opciones que se distinguen
+    // justamente por la mayúscula. Lo único que se normaliza es el espacio en blanco.
+    //
+    // Dos bandas: `error` = la clave está DENTRO del par (se acierta y se falla a la vez) ·
+    // `warn` = son dos distractores (resoluble, pero se lee descuido). Medido el 31/07: 33, todas
+    // warn y ya reparadas → nace en verde, que es el momento exacto de poner un trinquete.
+    const opcRows = (await this.db.execute(sql`
+      SELECT id, option_a, option_b, option_c, option_d, correct_option
+        FROM questions WHERE is_active
+    `)) as unknown as Array<{
+      id: string
+      option_a: string | null
+      option_b: string | null
+      option_c: string | null
+      option_d: string | null
+      correct_option: number | null
+    }>;
+    {
+      const LETRAS = ['A', 'B', 'C', 'D'];
+      const norm = (x: string | null): string | null => {
+        if (x == null) return null;
+        const t = String(x).trim().replace(/\s+/g, ' ');
+        return t.length ? t : null;
+      };
+      const errores: string[] = [];
+      const avisos: string[] = [];
+      for (const q of opcRows ?? []) {
+        const opts = [q.option_a, q.option_b, q.option_c, q.option_d].map(norm);
+        for (let i = 0; i < 4; i++) {
+          for (let j = i + 1; j < 4; j++) {
+            // Una opción vacía NO forma par: si contase, saltaría toda pregunta de tres
+            // alternativas (Policía Nacional sirve 989 de 991 oficiales con la D vacía).
+            if (opts[i] === null || opts[j] === null) continue;
+            if (opts[i] !== opts[j]) continue;
+            const etiqueta = `${q.id} (${LETRAS[i]}=${LETRAS[j]})`;
+            if (q.correct_option === i || q.correct_option === j) errores.push(etiqueta);
+            else avisos.push(etiqueta);
+          }
+        }
+      }
+      if (errores.length)
+        add(
+          'content',
+          'error',
+          null,
+          'opciones_duplicadas',
+          `${errores.length} pregunta(s) activas con la CLAVE duplicada en dos opciones: se acierta y se falla a la vez`,
+          { count: errores.length, banda: 'clave_en_el_par', sample: errores.slice(0, 15) },
+        );
+      if (avisos.length)
+        add(
+          'content',
+          'warn',
+          null,
+          'opciones_duplicadas',
+          `${avisos.length} pregunta(s) activas con dos distractores idénticos: se quedan en tres opciones sin decirlo`,
+          { count: avisos.length, banda: 'distractores', sample: avisos.slice(0, 15) },
+        );
+    }
+
     // ── CONTENIDO: preguntas que invocan una imagen/icono AUSENTE (visual deixis sin image_url) ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
     // El enunciado apunta a un visual ("el siguiente icono", "observa la figura", "de la imagen…")

@@ -240,6 +240,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'el Payment Link recién creado se DESACTIVA: un enlace vivo sin fila detrás es dinero ' +
       'que puede entrar sin saber por qué, y en Stripe no caducan solos.',
   },
+  canary_opciones_duplicadas: {
+    titulo: 'Trinquete: ninguna pregunta activa puede repetir una opción',
+    ruta: 'scripts/canary-opciones-duplicadas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run canary:opciones-duplicadas` (solo lectura; exit 2 si el número sube). Techo ' +
+      'declarado CERO en las dos bandas: `error` = la clave está dentro del par (se acierta y se ' +
+      'falla a la vez) y `warn` = dos distractores clonados. **Por qué un canario y no un guard ' +
+      'en el punto de escritura, que es la regla de la casa:** `questions.option_*` lo escriben ' +
+      '28 scripts de importación distintos sin un camino común — el caso que `toolWriters` ' +
+      'contempla para los recursos con decenas de escritores legítimos. El camino de GENERACIÓN ' +
+      'sí está cubierto aguas arriba (`verificar-batch-generado.cjs` exige las cuatro opciones ' +
+      'distintas y aborta el lote); el goteo medido venía del IMPORTADOR, y esa puerta no ' +
+      'existe. **El techo es 0 porque las 33 medidas el 31/07 se repararon ese mismo día**: con ' +
+      'el banco limpio, cualquier aparición es una regresión demostrable, que es justo lo que un ' +
+      'techo heredado no permite distinguir. Comparte núcleo con el detector del barrido ' +
+      '(`lib/health/opcionesDuplicadas.cjs`, kind `opciones_duplicadas`), así que canario y badge ' +
+      'no pueden divergir de criterio. Medido al estrenarlo: 0 y 0 sobre 138.115 activas.',
+  },
   canary_identidad_pago: {
     titulo: 'Comprobar tras cada deploy que la caja no se cierra por un id desincronizado (y que cancelar sigue cortando)',
     ruta: 'backend/src/canary-identidad-pago/canary-identidad-pago.service.ts',
