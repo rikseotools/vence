@@ -1899,6 +1899,16 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Por qué merece la pena:** es el guardarraíl que sostiene la regla *«¿esto ya existe?»* de CLAUDE.md, y ahora mismo su cobertura es menor de lo que su nombre promete. Afecta a TODOS los recursos vigilados, no solo a `fetcher_type`.
 - **Relacionadas:** [T-453] (de donde sale), [T-130] (el episodio que creó el registro).
 
+### [T-462] 🟡 [ABIERTO 01/08] El validador de explicaciones exige el formato VIEJO y rechaza lo que escribe el escritor canónico
+
+- **Esfuerzo: rato.** Diagnosticado con dos casos reales; falta decidir qué formato manda y alinear.
+- **ORIGEN.** Al corregir la impugnación `f5f63871` (Irene, art. 110 Ley 39/2015) se escribió la explicación con `scripts/aplicar-explicacion.ts` —el camino canónico de T-080 Fase 2, «estructura → texto por RENDER, determinista»— y acto seguido `validar-explicacion.cjs` la rechazó con 4 problemas.
+- **NO ES UN CASO AISLADO.** Se probó también con `9b51a517` (el atajo de Windows, reescrita hoy con la misma herramienta): **mismos 4 errores**. Las dos explicaciones están bien; el que está desfasado es el validador.
+- **LA CONTRADICCIÓN, que es lo grave.** La primera queja del validador es *«No empieza con "La respuesta correcta es …"»* — y eso es **exactamente el defecto `shuffle_narrativa_letra_clavada`** que el propio CLAUDE.md manda quitar, porque la letra clavada en la narrativa rompe el barajado. **Un guardarraíl exige lo que otro prohíbe.**
+- **POR QUÉ IMPORTA.** El manual de impugnaciones dice que `validar-explicacion.cjs` «DEBE pasar en verde ANTES de aplicar cualquier explicación». Si el escritor canónico produce siempre algo que él rechaza, quien siga el manual aprende a ignorar el validador — y un guardarraíl que se ignora por costumbre ya no protege nada.
+- **QUÉ HAY QUE DECIDIR:** el formato estructurado es el bueno (nace barajable y las dos columnas quedan coherentes por construcción), así que lo razonable es enseñar al validador a reconocerlo: aceptar `**Por qué X es correcta:**` + `- **A)** …` como análisis por opción, y NO exigir el arranque con la letra. Mantener sus comprobaciones que sí siguen valiendo: cita literal contra el artículo y coherencia clave↔opción.
+- **Relacionadas:** [T-080] (Fase 2, el formato estructurado), [T-458] (la sesión donde salió).
+
 ### [T-461] 🟠 [ABIERTO 01/08] El modal del artículo no renderiza markdown cuando se abre DESDE una pregunta: 58.932 preguntas afectadas
 
 - **Esfuerzo: rato.** Diagnosticado y medido; falta decidir el arreglo y aplicarlo.

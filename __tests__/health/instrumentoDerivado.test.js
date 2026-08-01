@@ -65,10 +65,9 @@ describe('pregunta que pide el contenido de un instrumento derivado', () => {
         'Señale cuál no es uno de los objetivos estratégicos del Plan Estratégico para la Igualdad de Mujeres y Hombres en Andalucía de 2022:',
         'Contribuir a la erradicación de la violencia doméstica.',
       )
-      // OJO: ésta es de negación («señale cuál NO es»), y ahí el desajuste es por diseño. Se excluye
-      // aunque el fondo sea un instrumento derivado: la exclusión pesa más que la sospecha.
-      expect(r.hallazgo).toBe(false)
-      expect(r.motivo).toBe('negacion')
+      // Es de negación («señale cuál NO es»). La primera versión la descartaba por eso, heredando la
+      // guarda del detector hermano; se retiró al ver que ahí NO aplica (ver cabecera del núcleo).
+      expect(r.hallazgo).toBe(true)
     })
 
     it('la vigencia del Plan (hasta 2028) no la fija la ley', () => {
@@ -187,5 +186,100 @@ describe('pregunta que pide el contenido de un instrumento derivado', () => {
       expect(r.hallazgo).toBe(false)
       expect(r.motivo).toBe('oficial_no_se_toca')
     })
+  })
+
+  // ── REGRESIÓN: las cuatro que se escaparon (01/08/2026) ──────────────────────────────────────
+  //
+  // El mismo usuario mandó otras cuatro impugnaciones cuatro horas después de estrenar el detector,
+  // todas sobre el I Plan de Igualdad de la Junta 2023-2027 colgadas del art. 32. TRES se perdieron
+  // por la exclusión de negación heredada. Son texto real de esas preguntas.
+  describe('las cuatro que se escaparon por heredar la guarda de negación', () => {
+    const ART32 = {
+      id: 'art32',
+      content:
+        'Las Consejerías y sus entidades instrumentales aprobarán planes de igualdad en el empleo ' +
+        'público, previa negociación con la representación legal del personal.',
+    }
+    const clasifica32 = (enunciado, opcionCorrecta) =>
+      clasificarInstrumentoDerivado({
+        enunciado,
+        opcionCorrecta,
+        articuloVinculado: ART32,
+        articulosDeLaLey: [ART32],
+      })
+
+    it('«Señale la respuesta incorrecta» sobre el contenido del Plan', () => {
+      const r = clasifica32(
+        'Señale la respuesta incorrecta. Según establece el I Plan de Igualdad de la Administración General de la Junta de Andalucía 2023-2027:',
+        'El Comité Directivo se reúne con carácter trimestral para aprobar las medidas correctoras.',
+      )
+      expect(r.hallazgo).toBe(true)
+    })
+
+    it('«no es función del Comité» — negativa y aun así inestudiable', () => {
+      const r = clasifica32(
+        'Según lo dispuesto en el I Plan de Igualdad de la Administración General de la Junta de Andalucía 2023-2027, no es función del Comité:',
+        'Elaborar la memoria anual de contratación pública de la Consejería competente.',
+      )
+      expect(r.hallazgo).toBe(true)
+    })
+
+    it('«no es uno de los principios básicos» del Plan', () => {
+      const r = clasifica32(
+        'Señale cuál de los siguientes no es uno de los principios básicos en los que se fundamentan todas las medidas que conforman el I Plan de Igualdad 2023-2027:',
+        'La primacía del criterio de antigüedad sobre cualquier otro mérito.',
+      )
+      expect(r.hallazgo).toBe(true)
+    })
+  })
+})
+
+// ── REGRESIÓN: el solape de VOCABULARIO no es responder (01/08/2026) ──────────────────────────
+//
+// La cuarta de esa tanda seguía escapándose con la exclusión de negación ya retirada: el art. 32 se
+// titula «Planes de igualdad en el empleo en la Administración pública», comparte vocabulario con la
+// clave y el recall subía a 0,63 sin que el artículo dijera una palabra del I Plan 2023-2027.
+describe('un artículo que no menciona el instrumento fechado no lo responde', () => {
+  const ART32 = {
+    id: 'art32',
+    content:
+      'Las Consejerías y sus entidades instrumentales de la Administración General de la Junta de ' +
+      'Andalucía aprobarán planes de igualdad en el empleo público, previa negociación con la ' +
+      'representación legal del personal, y velarán por la igualdad de mujeres y hombres.',
+  }
+
+  it('recall alto pero el artículo no habla de ESE Plan → sigue siendo hallazgo', () => {
+    const r = clasificarInstrumentoDerivado({
+      enunciado:
+        'Según establece el I Plan de Igualdad de la Administración General de la Junta de Andalucía 2023-2027, es función del Comité Directivo:',
+      opcionCorrecta:
+        'Marcar las prioridades de la Administración General de la Junta de Andalucía en materia de igualdad.',
+      articuloVinculado: ART32,
+      articulosDeLaLey: [ART32],
+    })
+    expect(r.hallazgo).toBe(true)
+    expect(r.motivo).toBe('solape_de_vocabulario_no_menciona_el_instrumento')
+  })
+
+  it('si el artículo SÍ trae el año, se respeta el recall y no se marca', () => {
+    const conAnio = {
+      id: 'x',
+      content:
+        'El I Plan de Igualdad 2023-2027 fija como función del Comité Directivo marcar las ' +
+        'prioridades de la Administración General de la Junta de Andalucía en materia de igualdad.',
+    }
+    const r = clasificarInstrumentoDerivado({
+      enunciado: 'Según el I Plan de Igualdad 2023-2027, es función del Comité Directivo:',
+      opcionCorrecta:
+        'Marcar las prioridades de la Administración General de la Junta de Andalucía en materia de igualdad.',
+      articuloVinculado: conAnio,
+      articulosDeLaLey: [conAnio],
+    })
+    expect(r.hallazgo).toBe(false)
+  })
+
+  it('sin fecha en el enunciado NO se opina: no se puede discriminar', () => {
+    const { articuloHablaDelMismoInstrumento } = require('../../lib/health/instrumentoDerivado.cjs')
+    expect(articuloHablaDelMismoInstrumento('¿Quién aprueba el Plan de Igualdad?', 'texto cualquiera')).toBe(true)
   })
 })
