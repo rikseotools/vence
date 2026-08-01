@@ -361,6 +361,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Simulación hermana: `npm run sim:reintento-perfil` (7 casos contra la BD real, con ' +
       'usuarios efímeros que se borran solos).',
   },
+  perfil_roto_se_cura: {
+    titulo: 'Comprobar en un NAVEGADOR real que un usuario roto se cura solo al cargar página',
+    ruta: 'scripts/sim/sim-perfil-roto-se-cura.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:perfil-roto-se-cura [-- --url=https://www.vence.es]`. Solo LEE (usa un ' +
+      'usuario que ya existe, así que la reparación esperada es encontrar su perfil, no crear ' +
+      'uno) → es seguro contra producción, que es donde hay que comprobarlo. Necesita ' +
+      '`AUTH_SECRET` (SSM `/vence-frontend/AUTH_SECRET`). **La capa que faltaba en T-434:** el ' +
+      'núcleo puro y el resolutor SE EJECUTAN en sus pruebas, pero el cableado dentro del ' +
+      'callback `jwt` solo lo miraban guardarraíles que leen el fichero como TEXTO — eso ' +
+      'demuestra que el código está escrito, no que funcione. Y no hay otra forma: a ese ' +
+      'callback lo invoca `@auth/core` por dentro en cada rotación de sesión, así que hay que ' +
+      'hacer que la aplicación lo llame. Forja la cookie de sesión con el MISMO mecanismo que ' +
+      '`sim-impersonacion.ts` (`lib/sim/session.ts`), sin abrir otra puerta: así se fabrica el ' +
+      'estado exacto de los 235 rotos —cookie válida, con email y SIN `appUserId`— que es justo ' +
+      'lo que no se le puede pedir a Google que produzca. **Probado por mutación el 01/08/2026:** ' +
+      'apagando el reintento, `session.user.id` sale `null` (el estado roto reproducido) y el ' +
+      'caso 1 se pone rojo. Contra un despliegue sin T-434 el caso 1 falla POR DISEÑO: es la ' +
+      'línea base, no un defecto.',
+  },
   contexto_push_guard: {
     titulo: 'Bloquear el push que borra el contexto de una ficha viva del backlog',
     ruta: 'scripts/contexto-push-guard.cjs',

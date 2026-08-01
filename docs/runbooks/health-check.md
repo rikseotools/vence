@@ -735,7 +735,12 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 ```bash
 npm run canary:perfil-sin-resolver          # ventana de 24 h
 npm run canary:perfil-sin-resolver -- --horas 72
+
+# Y si el canario dice «0 curaciones», ESTO distingue las dos lecturas posibles:
+npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es
 ```
+
+**Por qué hacen falta los dos.** El canario mide el RESULTADO y tiene un punto ciego grave: «0 curaciones» se lee igual siendo *«no hay nadie a quien curar»* (bien) que *«el reintento no está corriendo»* (muy mal). La simulación fabrica un usuario roto a propósito —cookie válida, con email y sin `appUserId`, el estado exacto de los 235— y comprueba en un navegador real si se cura. Verde ahí + 0 curaciones = de verdad no hay nadie roto.
 
 | Lo que ves | Qué significa |
 |---|---|
