@@ -141,6 +141,64 @@ async function main() {
       sinTemario.length === 0 ? 'la oposición tiene sus temas' : '⚠️ quedó vacía',
     )
 
+    // ── 2.bis EDITAR: listar, cargar y reemplazar ──────────────────────────────────────────
+    //
+    // Editar es donde más fácil se pierde trabajo: se BORRA el temario y se vuelve a escribir, y
+    // un fallo entre las dos mitades dejaría al usuario sin nada. Por eso se ejercen las tres
+    // operaciones reales, no solo la escritura.
+    console.log('\n2.bis) Editar la oposición que acabo de crear')
+    const { misOposiciones, cargarOposicion, reemplazarTemario } = await import(
+      '../../lib/api/oposicionPersonalizada/consultas'
+    )
+
+    const lista = await misOposiciones(userId)
+    anota(
+      'sale en MIS oposiciones, con el tamaño real de su temario',
+      lista.length === 1 && lista[0].temas === 2 && lista[0].articulos === 3,
+      `${lista.length} oposición(es) · ${lista[0]?.temas} temas · ${lista[0]?.articulos} artículos (2 sueltos + 1 ley entera = 3)`,
+    )
+
+    const cargada = await cargarOposicion(userId, opId)
+    anota(
+      'se carga para editar y «toda la ley» sigue siendo toda la ley',
+      cargada?.temas.length === 2 &&
+        cargada.temas[1].articulos.length === 1 &&
+        cargada.temas[1].articulos[0].articleNumber === null,
+      cargada
+        ? `tema 2 → ${JSON.stringify(cargada.temas[1].articulos.map((a) => a.articleNumber))} (null = entera)`
+        : 'no se pudo cargar',
+    )
+
+    const ajena = await cargarOposicion('00000000-0000-0000-0000-000000000000', opId)
+    anota(
+      'OTRO usuario NO puede abrirla (son públicas: sin este filtro se editaría la de cualquiera)',
+      ajena === null,
+      ajena === null ? 'devuelve null' : '⚠️ la ha devuelto',
+    )
+
+    const edit = await reemplazarTemario(userId, opId, {
+      nombre: `Oposición ${MARCA}`,
+      temas: [{ titulo: 'Tema único tras editar', articulos: [{ lawId: leyA.id, articleNumber: '3' }] }],
+    })
+    const tras = await cargarOposicion(userId, opId)
+    anota(
+      'reemplazar deja EXACTAMENTE el temario nuevo, sin restos del viejo',
+      edit.ok === true && tras?.temas.length === 1 && tras.temas[0].titulo === 'Tema único tras editar',
+      `${tras?.temas.length} tema(s): ${tras?.temas.map((t) => t.titulo).join(' · ')}`,
+    )
+
+    const noMia = await reemplazarTemario('00000000-0000-0000-0000-000000000000', opId, {
+      nombre: 'secuestrada',
+      temas: [{ titulo: 'X', articulos: [{ lawId: leyA.id, articleNumber: '1' }] }],
+    })
+    const intacta = await cargarOposicion(userId, opId)
+    anota(
+      'OTRO usuario NO puede reescribirla, y no la deja tocada',
+      noMia.ok === false && noMia.motivo === 'no_es_tuya' && intacta?.nombre === `Oposición ${MARCA}`,
+      `motivo=${noMia.motivo} · nombre tras el intento: ${intacta?.nombre}`,
+    )
+
+
     // ── 3. El nombre repetido del mismo usuario se rechaza ─────────────────────────────────
     console.log('\n3) El mismo usuario no puede repetir el nombre')
     let choco = false

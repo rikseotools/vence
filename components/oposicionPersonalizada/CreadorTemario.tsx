@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
 import SelectorArticulos, { Rueda, type GrupoArticulos } from './SelectorArticulos'
+import MisOposiciones, { type ResumenOposicion } from './MisOposiciones'
 import {
   anadirArticulo,
   anadirArticulos,
@@ -184,11 +185,76 @@ export default function CreadorTemario({
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
   const [guardado, setGuardado] = useState<{ nombre: string; temas: number } | null>(null)
+  const [mias, setMias] = useState<ResumenOposicion[]>([])
+  const [cargandoMias, setCargandoMias] = useState(true)
+  /** Id que se está editando. `null` = estoy creando una nueva. */
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [cargandoEdicion, setCargandoEdicion] = useState(false)
 
   useEffect(() => {
     const almacen = typeof window !== 'undefined' ? window.localStorage : null
     setMostrarIntro(debeMostrarIntro(leerMarca(almacen, userId)))
   }, [userId])
+
+  const recargarMias = useCallback(async () => {
+    setCargandoMias(true)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/oposicion-personalizada', { headers })
+      const body = await res.json().catch(() => null)
+      setMias(res.ok && body?.success && Array.isArray(body.oposiciones) ? body.oposiciones : [])
+    } catch {
+      // Si el listado falla, NO se bloquea la pantalla: crear una oposición nueva sigue
+      // funcionando sin saber cuáles tienes ya.
+      setMias([])
+    } finally {
+      setCargandoMias(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    recargarMias()
+  }, [recargarMias])
+
+  /** Carga una oposición propia en el constructor para editarla. */
+  const editar = useCallback(async (id: string) => {
+    setCargandoEdicion(true)
+    setErrorGuardar(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/v2/oposicion-personalizada/${id}`, { headers })
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.success) {
+        setErrorGuardar('No se ha podido abrir esa oposición. Inténtalo otra vez.')
+        return
+      }
+      setTemario({
+        nombre: body.nombre,
+        temas: (body.temas ?? []).map((t: { titulo: string; articulos: unknown[] }, i: number) => ({
+          id: `t${i + 1}`,
+          titulo: t.titulo,
+          articulos: t.articulos,
+        })),
+      })
+      setTemaActivo('t1')
+      setEditandoId(id)
+      setGuardado(null)
+      // Al abrir una para editar, el sitio donde se trabaja es el constructor de abajo.
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch {
+      setErrorGuardar('No se ha podido abrir esa oposición. Comprueba tu conexión.')
+    } finally {
+      setCargandoEdicion(false)
+    }
+  }, [])
+
+  const empezarNueva = useCallback(() => {
+    setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })
+    setTemaActivo('t1')
+    setEditandoId(null)
+    setGuardado(null)
+    setErrorGuardar(null)
+  }, [])
 
   const cerrarIntro = useCallback(() => {
     setMostrarIntro(false)
@@ -280,8 +346,10 @@ export default function CreadorTemario({
     setErrorGuardar(null)
     try {
       const headers = await getAuthHeaders()
-      const res = await fetch('/api/v2/oposicion-personalizada', {
-        method: 'POST',
+      const res = await fetch(
+        editandoId ? `/api/v2/oposicion-personalizada/${editandoId}` : '/api/v2/oposicion-personalizada',
+        {
+        method: editandoId ? 'PUT' : 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre: temario.nombre,
@@ -293,7 +361,8 @@ export default function CreadorTemario({
             })),
           })),
         }),
-      })
+      },
+      )
       const body = await res.json().catch(() => null)
       if (!res.ok || !body?.success) {
         // El primer problema concreto es más útil que «ha ocurrido un error»: casi siempre es
@@ -304,13 +373,15 @@ export default function CreadorTemario({
         )
         return
       }
-      setGuardado({ nombre: body.nombre, temas: body.temas })
+      // Al editar, el PUT no devuelve el nombre (no lo cambia él): se usa el que hay en pantalla.
+      setGuardado({ nombre: body.nombre ?? temario.nombre, temas: body.temas })
+      recargarMias()
     } catch {
       setErrorGuardar('No se ha podido guardar. Comprueba tu conexión e inténtalo otra vez.')
     } finally {
       setGuardando(false)
     }
-  }, [temario])
+  }, [temario, editandoId, recargarMias])
 
   const anadir = (lawId: string, shortName: string, articleNumber: string) =>
     setTemario((t) => anadirArticulo(t, temaActivo, { lawId, shortName, articleNumber }))
@@ -324,7 +395,7 @@ export default function CreadorTemario({
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-6">
           <h1 className="text-2xl font-bold text-green-900 dark:text-green-100">
-            ✅ Tu oposición está guardada
+            ✅ {editandoId ? 'Cambios guardados' : 'Tu oposición está guardada'}
           </h1>
           <p className="mt-2 text-green-900/90 dark:text-green-100/90">
             <strong>{nombrePublico(guardado.nombre, autor)}</strong> — {guardado.temas} tema(s).
@@ -369,6 +440,7 @@ export default function CreadorTemario({
             type="button"
             onClick={() => {
               setGuardado(null)
+              setEditandoId(null)
               setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })
               setTemaActivo('t1')
             }}
@@ -384,7 +456,9 @@ export default function CreadorTemario({
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Crea tu oposición</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          {editandoId ? 'Edita tu oposición' : 'Crea tu oposición'}
+        </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
           Arma tu propio temario eligiendo las leyes y los artículos que entran en cada tema. Si no
           sabes en qué ley está una materia, búscala por su contenido.
@@ -404,6 +478,22 @@ export default function CreadorTemario({
       </header>
 
       {mostrarIntro && <Intro onCerrar={cerrarIntro} />}
+
+      {/* Tus oposiciones, justo después del aviso: si ya tienes alguna, lo primero que quieres
+          es abrirla, no volver a crear una desde cero. */}
+      <MisOposiciones
+        oposiciones={mias}
+        cargando={cargandoMias}
+        editandoId={editandoId}
+        onEditar={editar}
+        onNueva={empezarNueva}
+      />
+
+      {cargandoEdicion && (
+        <p className="mb-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <Rueda /> Abriendo tu oposición…
+        </p>
+      )}
 
       {/* Nombre */}
       <section className="mb-8">
@@ -751,7 +841,7 @@ export default function CreadorTemario({
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }`}
             >
-              {guardando ? 'Guardando…' : 'Guardar'}
+              {guardando ? 'Guardando…' : editandoId ? 'Guardar cambios' : 'Guardar'}
             </button>
           </div>
         </section>

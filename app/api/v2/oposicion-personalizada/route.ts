@@ -73,3 +73,19 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export const POST = withErrorLogging('/api/v2/oposicion-personalizada', _POST)
+
+// ── Listar LAS MÍAS ─────────────────────────────────────────────────────────────────────────
+//
+// Alimenta la tira de «tus oposiciones» del creador. Va en el MISMO fichero que el POST porque es
+// el mismo recurso: separar el listado en otra ruta duplicaría la resolución de identidad y el
+// día que cambie una, la otra se queda atrás.
+async function _GET(request: NextRequest): Promise<NextResponse> {
+  const auth = await verifyAuth(request, '/api/v2/oposicion-personalizada')
+  if (!auth.success) {
+    return NextResponse.json({ success: false, error: 'unauthorized' }, { status: auth.status })
+  }
+  const { misOposiciones } = await import('@/lib/api/oposicionPersonalizada/consultas')
+  return NextResponse.json({ success: true, oposiciones: await misOposiciones(auth.userId) })
+}
+
+export const GET = withErrorLogging('/api/v2/oposicion-personalizada', _GET)
