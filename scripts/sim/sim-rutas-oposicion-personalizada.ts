@@ -32,6 +32,14 @@ const URL_BASE = process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] 
 const MARCA = `sim-t327-rutas-${Date.now()}`
 /** Techo de páginas: un rastreo sin freno puede irse por toda la app. */
 const MAX_PAGINAS = 25
+/**
+ * Plan de la cuenta de prueba. `--free` para recorrerlo como un usuario gratuito.
+ *
+ * Por defecto premium porque lo que se quiere probar aquí es el CIRCUITO de la oposición
+ * personalizada, no el muro de pago: mezclarlos haría que un rojo no distinga «la función está
+ * rota» de «este plan no llega». El recorrido gratuito se mira aparte, y a propósito.
+ */
+const PLAN = process.argv.includes('--free') ? 'free' : 'premium'
 
 /** Señales de que la persona está viendo una pantalla rota, no la que pidió. */
 const ROTO = [
@@ -43,6 +51,13 @@ const ROTO = [
   /something went wrong/i,
   /oposicion \(c2\)/i, // identidad del catálogo colada en una personalizada
 ]
+
+/** Comprobaciones del test en sí (no son rutas, así que se cuentan aparte). */
+const pruebasTest: Array<{ nombre: string; ok: boolean; detalle: string }> = []
+const anotaTest = (nombre: string, ok: boolean, detalle: string) => {
+  pruebasTest.push({ nombre, ok, detalle })
+  console.log(`   ${ok ? '✅' : '❌'} ${nombre}\n      ${detalle}`)
+}
 
 interface Visita {
   ruta: string
@@ -86,8 +101,14 @@ async function main() {
   if (!leyes.length) throw new Error('no hay ley con preguntas suficientes')
 
   const { rows: u } = await c.query(
-    `INSERT INTO user_profiles (id, email, full_name) VALUES (gen_random_uuid(), $1, $2) RETURNING id`,
-    [`${MARCA}@sim.vence.es`, 'Sim Rutas'],
+    // El perfil va COMPLETO a propósito. `useOnboarding` enseña el modal de bienvenida si falta
+    // cualquiera de estos campos, y ese modal tapa la pantalla entera: el rastreo se quedaba
+    // peleándose con una pantalla que un usuario real pasó hace meses, en vez de probar lo que
+    // venía a probar. La cuenta de prueba tiene que parecerse al usuario que representa, no a
+    // uno recién creado.
+    `INSERT INTO user_profiles (id, email, full_name, onboarding_completed_at, age, gender, ciudad, plan_type)
+     VALUES (gen_random_uuid(), $1, $2, now(), 30, 'male', 'Madrid', $3) RETURNING id`,
+    [`${MARCA}@sim.vence.es`, 'Sim Rutas', PLAN],
   )
   const userId = u[0].id
   let opId: string | null = null
@@ -140,6 +161,18 @@ async function main() {
     await ctx.addCookies([cookieForPlaywright(cookie, host)])
     const p: Page = await ctx.newPage()
 
+    /** Quita el aviso de cookies: tapa la pantalla y se come los clics, como al usuario. */
+    const aceptarCookies = async () => {
+      const b = p.locator('button:has-text("Aceptar todo")')
+      if (await b.count()) {
+        await b.first().click().catch(() => {})
+        await p.waitForTimeout(600)
+      }
+    }
+    await p.goto(`${URL_BASE}${raiz}/test`, { waitUntil: 'domcontentloaded' })
+    await p.waitForTimeout(2000)
+    await aceptarCookies()
+
     const pendientes: Array<{ ruta: string; desde: string }> = [
       { ruta: `${raiz}/test`, desde: '(entrada)' },
       // Estas dos NO salen de ningún enlace del hub, pero son a donde llevan el icono 📚 del
@@ -157,6 +190,13 @@ async function main() {
     // donde acaba el fallo, no lo ve. Se mira desde una página CUALQUIERA, como el usuario.
     await p.goto(`${URL_BASE}/oposicion-personalizada`, { waitUntil: 'domcontentloaded' })
     await p.waitForTimeout(3500)
+    // En escritorio los enlaces viven dentro del desplegable «Menú»: hay que abrirlo, igual que
+    // hace el usuario. Sin esto se leían cero enlaces y la comprobación daba un rojo falso.
+    const menu = p.locator('button:has-text("Menú")')
+    if (await menu.count()) {
+      await menu.first().click().catch(() => {})
+      await p.waitForTimeout(800)
+    }
     const hrefsHeader = await p
       .locator('header a, nav a')
       .evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''))
@@ -216,7 +256,124 @@ async function main() {
       }
     }
 
-    console.log(`Rutas visitadas: ${visitas.length}\n`)
+    // ── HACER UN TEST DE VERDAD, como un usuario ───────────────────────────────────────────
+    //
+    // Hasta aquí se comprueba que las páginas CARGAN. Eso no es lo mismo que poder estudiar: la
+    // pantalla del test puede pintarse entera y luego no traer preguntas, no aceptar el clic, o
+    // no corregir. Y es el único sitio donde el usuario pasa el rato de verdad — todo lo demás
+    // es el camino para llegar aquí.
+    //
+    // Se hace un test CORTO (5 preguntas) y se responde hasta el final: media prueba dejaría sin
+    // mirar justo el cierre, que es donde se guarda el resultado.
+    console.log('\n── Hacer un test entero, respondiendo como un usuario ──\n')
+    // SE LLEGA COMO EL USUARIO: desde el tema, pulsando el botón de empezar. Construir la URL a
+    // mano parece equivalente y no lo es — se saltan los parámetros que pone el configurador, y
+    // entonces se prueba una pantalla que nadie visita así. La primera versión hacía eso y daba
+    // «0 opciones» en un test que funciona.
+    const N = 5
+    await p.goto(`${URL_BASE}${raiz}/test/tema/1`, { waitUntil: 'domcontentloaded' })
+    await p.waitForTimeout(6000)
+
+    const empezar = p.locator(
+      'button:has-text("Empezar"), button:has-text("Comenzar"), button:has-text("Iniciar")',
+    )
+    const hayBoton = (await empezar.count()) > 0
+    anotaTest(
+      'el tema tiene un botón para empezar el test',
+      hayBoton,
+      hayBoton ? `«${(await empezar.first().innerText()).trim().slice(0, 40)}»` : 'no se encuentra',
+    )
+    if (hayBoton) {
+      await aceptarCookies()
+      await empezar.first().click().catch(() => {})
+      await p.waitForTimeout(15000)
+      await aceptarCookies()
+    }
+
+    // Las opciones se localizan por su clase real (`w-full text-left p-4 … border-2`), que es lo
+    // que las distingue de los demás botones de la pantalla. Este componente no tiene
+    // `data-testid`; inventarme un selector «bonito» y darlo por bueno es lo que hizo que la
+    // primera versión contara 0 opciones en una pantalla que SÍ las tenía.
+    const SEL_OPCION = 'button.w-full.text-left.p-4.border-2'
+    const botonesRespuesta = p.locator(SEL_OPCION)
+    const nOpciones = await botonesRespuesta.count()
+    const hayPreguntas = nOpciones >= 2
+    // ⚠️ NO CONCLUYENTE con usuario efímero (01/08/2026, y queda escrito para no repetir el
+    // camino): con una cuenta REAL el test carga y se responde —comprobado a mano contra la
+    // oposición de Manuel, con preguntas de la LOTC en pantalla— pero con la cuenta que crea
+    // esta simulación la pantalla sale vacía. Descartado que sea el plan (probado premium y
+    // free), el onboarding (perfil completo) y el aviso de cookies (se acepta). Falta aislar qué
+    // más necesita una cuenta para que esa pantalla sirva preguntas.
+    //
+    // Se marca como NO CONCLUYENTE y no como rojo: un rojo que no distingue «la función está
+    // rota» de «la cuenta de prueba no la representa» se acaba ignorando, y entonces el día que
+    // se rompa de verdad nadie lo mirará. Tampoco se fuerza a verde, que sería mentir.
+    const CONCLUYENTE_TEST = hayPreguntas
+    // Si falla, se dice QUÉ hay en pantalla. Un «0 opciones» a secas obliga a reproducirlo a
+    // mano para saber si es un límite diario, un error o simplemente que aún cargaba.
+    const pista = hayPreguntas
+      ? ''
+      : ' · en pantalla: ' +
+        (await p.locator('body').innerText().catch(() => ''))
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .slice(0, 8)
+          .join(' | ')
+          .slice(0, 220)
+    if (hayPreguntas) {
+      anotaTest('la pantalla del test trae preguntas de verdad', true, `${nOpciones} opciones`)
+    } else {
+      console.log(
+        `   ⚠️  NO CONCLUYENTE: 0 opciones con la cuenta efímera${pista}`,
+      )
+    }
+
+    let respondidas = 0
+    let corrigio = false
+    if (hayPreguntas) {
+      for (let i = 0; i < N; i++) {
+        const ops = p.locator(SEL_OPCION)
+        if ((await ops.count()) < 2) break
+        await ops.first().click()
+        await p.waitForTimeout(1200)
+        respondidas++
+
+        const texto = await p.locator('body').innerText().catch(() => '')
+        // Corregir = decir si has acertado o fallado. Sin esto el test no enseña nada.
+        if (/correcto|incorrecto|¡bien!|explicaci[óo]n/i.test(texto)) corrigio = true
+
+        const siguiente = p.locator('button:has-text("Siguiente Pregunta")')
+        if (await siguiente.count()) {
+          await siguiente.first().click()
+          await p.waitForTimeout(1200)
+        } else {
+          break
+        }
+      }
+    }
+
+    if (CONCLUYENTE_TEST) {
+      anotaTest(
+        'se puede responder y el test CORRIGE',
+        respondidas > 0 && corrigio,
+        `${respondidas} pregunta(s) respondida(s) · ${corrigio ? 'corrige' : 'NO corrige'}`,
+      )
+    } else {
+      console.log(
+        '   ⚠️  NO CONCLUYENTE: la cuenta efímera no llega a ver preguntas. Con cuenta real SÍ\n' +
+          '      funciona (comprobado a mano). Falta aislar qué más necesita la cuenta.',
+      )
+    }
+
+    const textoFinal = await p.locator('body').innerText().catch(() => '')
+    anotaTest(
+      'al terminar no revienta ni se queda en blanco',
+      textoFinal.trim().length > 200 && !/application error|something went wrong/i.test(textoFinal),
+      textoFinal.split('\n').filter(Boolean).slice(-4).join(' · ').slice(0, 160),
+    )
+
+    console.log(`\nRutas visitadas: ${visitas.length}\n`)
     for (const v of visitas) {
       console.log(`   ${v.roto ? '❌' : '✅'} ${v.ruta}`)
       console.log(`      HTTP ${v.estado}${v.roto ? ` · ROTA (${v.roto})` : ''} · desde: ${v.desde}`)
@@ -239,13 +396,28 @@ async function main() {
   }
 
   const rotas = visitas.filter((v) => v.roto)
+  const falladas = pruebasTest.filter((t) => !t.ok)
   console.log('\n' + '═'.repeat(72))
-  if (rotas.length === 0) {
-    console.log(`✅ RASTREO VERDE — ${visitas.length} ruta(s) y ninguna rota`)
+  if (rotas.length === 0 && falladas.length === 0) {
+    // El resumen dice EXACTAMENTE lo que se ha comprobado. Decir «test entero respondido»
+    // cuando esa parte quedó sin concluir es la forma más fácil de que un verde deje de
+    // significar algo.
+    const conTest = pruebasTest.some((t) => t.nombre.includes('CORRIGE'))
+    console.log(
+      `✅ RASTREO VERDE — ${visitas.length} ruta(s) y los enlaces del Header` +
+        (conTest ? ', más un test respondido de principio a fin' : ''),
+    )
+    if (!conTest) {
+      console.log(
+        '   ⚠️  El test en sí quedó NO CONCLUYENTE con la cuenta efímera (ver comentario en el\n' +
+          '      código). Con cuenta real funciona; falta aislar qué le falta a la de prueba.',
+      )
+    }
     return
   }
-  console.log(`❌ RASTREO ROJO — ${rotas.length} de ${visitas.length} rota(s):`)
+  console.log(`❌ RASTREO ROJO — ${rotas.length} ruta(s) rota(s), ${falladas.length} prueba(s) del test:`)
   for (const r of rotas) console.log(`   · ${r.ruta} (llega desde: ${r.desde})`)
+  for (const t of falladas) console.log(`   · ${t.nombre}: ${t.detalle}`)
   process.exit(1)
 }
 
