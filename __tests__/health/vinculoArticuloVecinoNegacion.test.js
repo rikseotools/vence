@@ -40,6 +40,7 @@ describe('RE_NEGATIVA — enunciados que hay que EXCLUIR', () => {
     'Todas las siguientes son ciertas EXCEPTO una.',
     'Señale cuál de los siguientes no es uno de los principios básicos.',
     '¿Qué requisito NO SE REQUIERE para acceder al puesto?',
+    'Según el Decreto 80/2005, NO se considera procedimiento válido para otorgar el documento:',
   ])('sigue reconociendo las formas ya cubiertas: %s', (t) => {
     expect(esNegativa(t)).toBe(true)
   })
