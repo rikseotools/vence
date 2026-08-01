@@ -25,6 +25,7 @@ import { join } from 'path'
 const ROOT = join(__dirname, '..', '..')
 const AUTHJS = readFileSync(join(ROOT, 'lib/auth/authjs.ts'), 'utf8')
 const RESOLVER = readFileSync(join(ROOT, 'lib/auth/resolveAppUser.ts'), 'utf8')
+const REGLAS = readFileSync(join(ROOT, 'backend/src/alerts/alert-rules.ts'), 'utf8')
 
 describe('el reintento está CABLEADO en el callback jwt', () => {
   it('`authjs.ts` importa y llama al núcleo puro de la decisión', () => {
@@ -104,6 +105,47 @@ describe('el resolutor no puede duplicar a un usuario ni tumbar la sesión', () 
   it('el resolutor DICE por qué (si solo devolviera null, no se podría emitir el evento justo)', () => {
     expect(RESOLVER).toMatch(/export type MotivoResolucion/)
     expect(RESOLVER).toMatch(/export async function resolverPerfilPorEmail/)
+  })
+
+  it('`getAdminDb()` va DENTRO del try: también lanza, y estaba fuera', () => {
+    // db/client.ts: `throw new Error('DATABASE_URL environment variable is not set')`. Con el
+    // reintento esto ya no corre solo en el alta sino en cada carga de página, así que la
+    // excepción dejaría al usuario sin poder ABRIR la web, no solo sin perfil.
+    // Se exige la SECUENCIA literal, no un «hay un try» y «hay un getAdminDb» sueltos: el
+    // fichero tiene otro `const db = getAdminDb()` en `canonicalSubForToken`, y compararlo por
+    // posiciones daba un falso rojo casando con aquél.
+    expect(RESOLVER).toMatch(/try\s*\{\s*db = getAdminDb\(\)/)
+  })
+})
+
+// UNA REPARACIÓN NO PUEDE TUMBAR AQUELLO QUE REPARA.
+//
+// El reintento vive en el callback `jwt`, el único punto por el que pasa TODA rotación de
+// sesión — o sea, cada carga de página de cada usuario. Una excepción ahí no rompe el
+// reintento: rompe la SESIÓN, y precisamente la de quien este código viene a arreglar.
+// Pasaríamos de «no puede comprar» a «no puede entrar», que es peor que no haber tocado nada.
+describe('el reintento no puede romper la sesión de nadie', () => {
+  it('todo el bloque del reintento va envuelto en try/catch', () => {
+    const iDecide = AUTHJS.indexOf('decidirReintentoPerfil(token')
+    expect(iDecide).toBeGreaterThan(-1)
+    // El `try {` que lo envuelve está ANTES de la decisión…
+    const iTry = AUTHJS.lastIndexOf('try {', iDecide)
+    expect(iTry).toBeGreaterThan(-1)
+    // …y su catch, DESPUÉS.
+    expect(AUTHJS.indexOf('} catch (err) {', iDecide)).toBeGreaterThan(iDecide)
+  })
+
+  it('si revienta, lo cuenta: el try que evita el desastre lo haría MUDO', () => {
+    // Sin señal propia, el reintento podría llevar semanas sin funcionar mientras el canario
+    // dice «0 curaciones» — que se lee igual que «no hay nadie a quien curar».
+    expect(AUTHJS).toContain('auth_reintento_roto')
+    const bloque = AUTHJS.slice(AUTHJS.indexOf('auth_reintento_roto') - 300)
+    expect(bloque).toContain("severity: 'error'")
+  })
+
+  it('esa señal TIENE quien la vigile (si no, es un hueco)', () => {
+    expect(REGLAS).toContain('auth_reintento_roto')
+    expect(REGLAS).toContain('RULE_REINTENTO_PERFIL_ROTO as AlertRule')
   })
 })
 

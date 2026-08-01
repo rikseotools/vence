@@ -155,51 +155,75 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // la próxima vez que carguen una página.
       //
       // El usuario sano no paga NADA: `decidirReintentoPerfil` mira `appUserId` lo primero.
-      const decision = decidirReintentoPerfil(token, Math.floor(Date.now() / 1000))
-      if (decision.accion === 'reintentar') {
-        token[CAMPO_REINTENTO] = Math.floor(Date.now() / 1000)
-        const r = await resolverPerfilPorEmail(decision.email, token.name as string | null)
-        if (r.id) {
-          token.appUserId = r.id
-          // Métrica de la REPARACIÓN, no del fallo: cuenta a los 235 vaciándose. Cuando deje de
-          // hablar, el atasco está drenado; si no decae, es que siguen naciendo rotos.
-          emitFireAndForget({
-            source: 'vercel',
-            severity: 'info',
-            eventType: 'auth_perfil_recuperado',
-            endpoint: '/api/auth/session',
-            metadata: {
-              emailPrefijo: decision.email.slice(0, 3),
-              dominio: decision.email.split('@')[1] ?? null,
-              motivo: r.motivo,
-            },
-          })
-        } else {
+      //
+      // ⚠️ TODO EL BLOQUE VA EN `try`, y no por prudencia genérica: este callback es el ÚNICO
+      // punto por el que pasa toda rotación de sesión, o sea **cada carga de página de cada
+      // usuario**. Si algo de aquí dentro lanza, no falla el reintento: falla la SESIÓN. Y le
+      // fallaría justo a la persona que este código viene a reparar, que ya no podía pagar —
+      // convertiríamos «no puede comprar» en «no puede entrar».
+      //
+      // La regla, entonces: **una reparación jamás puede tumbar aquello que repara.** Si el
+      // reintento no se puede hacer, el usuario se queda como estaba (roto, pero dentro) y se
+      // vuelve a intentar en la siguiente carga. Degradar, nunca derribar.
+      try {
+        const decision = decidirReintentoPerfil(token, Math.floor(Date.now() / 1000))
+        if (decision.accion === 'reintentar') {
+          token[CAMPO_REINTENTO] = Math.floor(Date.now() / 1000)
+          const r = await resolverPerfilPorEmail(decision.email, token.name as string | null)
+          if (r.id) {
+            token.appUserId = r.id
+            // Métrica de la REPARACIÓN, no del fallo: cuenta a los 235 vaciándose. Cuando deje
+            // de hablar, el atasco está drenado; si no decae, es que siguen naciendo rotos.
+            emitFireAndForget({
+              source: 'vercel',
+              severity: 'info',
+              eventType: 'auth_perfil_recuperado',
+              endpoint: '/api/auth/session',
+              metadata: {
+                emailPrefijo: decision.email.slice(0, 3),
+                dominio: decision.email.split('@')[1] ?? null,
+                motivo: r.motivo,
+              },
+            })
+          } else {
+            emitFireAndForget({
+              source: 'vercel',
+              severity: 'error',
+              eventType: 'auth_alta_sin_perfil',
+              endpoint: '/api/auth/session',
+              metadata: {
+                emailPrefijo: decision.email.slice(0, 3),
+                dominio: decision.email.split('@')[1] ?? null,
+                motivo: r.motivo,
+                detalle: r.detalle ?? null,
+                enReintento: true,
+              },
+            })
+          }
+        } else if (decision.accion === 'sin_email') {
+          // Caso DISTINTO y que no se veía: sin email no hay nada que resolver, así que el
+          // reintento no puede curarle NUNCA. Se emite aparte para no confundirlo con un fallo
+          // de la resolución — si esto aparece, el arreglo de arriba no es la respuesta y hay
+          // que mirar qué proveedor está firmando sesiones sin email.
           emitFireAndForget({
             source: 'vercel',
             severity: 'error',
-            eventType: 'auth_alta_sin_perfil',
+            eventType: 'auth_sesion_sin_email',
             endpoint: '/api/auth/session',
-            metadata: {
-              emailPrefijo: decision.email.slice(0, 3),
-              dominio: decision.email.split('@')[1] ?? null,
-              motivo: r.motivo,
-              detalle: r.detalle ?? null,
-              enReintento: true,
-            },
+            metadata: { sub: typeof token.sub === 'string' ? token.sub.slice(0, 8) : null },
           })
         }
-      } else if (decision.accion === 'sin_email') {
-        // Caso DISTINTO y que no se veía: sin email no hay nada que resolver, así que el
-        // reintento no puede curarle NUNCA. Se emite aparte para no confundirlo con un fallo de
-        // la resolución — si esto aparece, el arreglo de arriba no es la respuesta y hay que
-        // mirar qué proveedor está firmando sesiones sin email.
+      } catch (err) {
+        // Que esto suene es DISTINTO de que el perfil no se resuelva: significa que el propio
+        // reintento se rompió (BD sin configurar, un fallo inesperado). Se emite aparte para no
+        // diluirlo entre los `auth_alta_sin_perfil` normales, porque la respuesta también es
+        // distinta: aquí no se mira al usuario, se mira a la infraestructura.
         emitFireAndForget({
           source: 'vercel',
           severity: 'error',
-          eventType: 'auth_sesion_sin_email',
+          eventType: 'auth_reintento_roto',
           endpoint: '/api/auth/session',
-          metadata: { sub: typeof token.sub === 'string' ? token.sub.slice(0, 8) : null },
+          metadata: { detalle: (err instanceof Error ? err.message : String(err)).slice(0, 200) },
         })
       }
 

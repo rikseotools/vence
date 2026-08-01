@@ -93,7 +93,18 @@ export async function resolverPerfilPorEmail(
   const email = (emailRaw || '').trim().toLowerCase()
   if (!email) return { id: null, motivo: 'sin_email' }
 
-  const db = getAdminDb()
+  // OJO: `getAdminDb()` **lanza** si falta `DATABASE_URL` (`db/client.ts`), así que va DENTRO
+  // del try igual que la consulta. Fuera, la excepción subiría al callback `jwt` de Auth.js —
+  // y desde T-434 esto ya no corre solo en el alta, sino en CADA carga de página de un usuario
+  // sin perfil. O sea: el mismo despiste que antes rompía un sign-in raro, ahora dejaría a esas
+  // personas sin poder ABRIR la web. Un reintento capaz de tumbar la sesión que viene a reparar
+  // es peor que no reintentar.
+  let db: ReturnType<typeof getAdminDb>
+  try {
+    db = getAdminDb()
+  } catch (err) {
+    return { id: null, motivo: 'error_lectura', detalle: recorta(err) }
+  }
 
   // 1. Lookup por email (case-insensitive). Fuente única del `sub`.
   //    Desde el índice funcional de T-434 esto es un Index Scan (~3 ms); antes era un Seq Scan

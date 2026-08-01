@@ -5521,6 +5521,48 @@ export const RULE_PERFIL_ROTO_NO_DRENA: AlertRule<{ dias: number; usuarios: numb
   cooldownMin: 1440,
 };
 
+/**
+ * [T-434] EL REINTENTO SE ROMPIÓ — no «no encontró perfil», sino que reventó.
+ *
+ * El reintento vive en el callback `jwt`, o sea en **cada carga de página de cada usuario**. Va
+ * envuelto en `try` justo para que un fallo suyo no tumbe la sesión de nadie: si algo revienta,
+ * la persona se queda como estaba (rota, pero dentro) y esta señal es lo único que lo cuenta.
+ *
+ * Es decir: **el guardarraíl que impide el desastre también lo vuelve silencioso**, y por eso la
+ * alerta no es opcional. Sin ella, el reintento podría estar sin funcionar semanas mientras el
+ * canario dice «0 curaciones» y alguien concluye que no hay nadie a quien curar.
+ *
+ * Dispara a la PRIMERA y es de infraestructura, no de usuario: BD sin configurar en el deploy,
+ * o un fallo inesperado. Nace en cero.
+ */
+export const RULE_REINTENTO_PERFIL_ROTO: AlertRule<{ veces: number; muestra: string }> = {
+  name: 'reintento_perfil_roto',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS veces,
+           COALESCE(MAX(metadata->>'detalle'), '') AS muestra
+      FROM observable_events
+     WHERE event_type = 'auth_reintento_roto'
+       AND ts >= now() - interval '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `El reintento de perfil REVENTÓ ${rows[0]?.veces ?? 0} vez/veces en 24 h`,
+    body:
+      `No es «no se encontró el perfil»: es que el propio reintento lanzó una excepción. Está ` +
+      `envuelto en try para no tumbar la sesión, así que el usuario sigue entrando —roto— y ` +
+      `esto es lo ÚNICO que lo delata.\n\n` +
+      `Ojo con leer el canario mientras esto suena: diría «0 curaciones», que se parece mucho a ` +
+      `«no hay nadie a quien curar» y significa lo contrario.\n\n` +
+      `Se investiga en la INFRAESTRUCTURA (¿DATABASE_URL en el deploy? ¿pool agotado?), no en el ` +
+      `usuario. Detalle: ${rows[0]?.muestra || '(sin detalle)'}\n\n` +
+      `Ficha: T-434.`,
+    metadata: { veces: rows[0]?.veces ?? 0, muestra: rows[0]?.muestra ?? '' },
+    fingerprint: 'reintento_perfil_roto',
+  }),
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
   // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
@@ -5539,6 +5581,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_ALTA_SIN_PERFIL as AlertRule,
   RULE_SESION_SIN_EMAIL as AlertRule,
   RULE_PERFIL_ROTO_NO_DRENA as AlertRule,
+  RULE_REINTENTO_PERFIL_ROTO as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
   // convierte en señal en vez de en punto ciego.
   RULE_EVASION_MULTIDISPOSITIVO as AlertRule,

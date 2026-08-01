@@ -13,7 +13,8 @@
 // Aquí el instante se fija a mano, con un doble de la base de datos.
 
 const mockEjecutar = jest.fn()
-jest.mock('@/db/client', () => ({ getAdminDb: () => ({ execute: (...a: unknown[]) => mockEjecutar(...a) }) }))
+const mockGetAdminDb = jest.fn(() => ({ execute: (...a: unknown[]) => mockEjecutar(...a) }))
+jest.mock('@/db/client', () => ({ getAdminDb: () => mockGetAdminDb() }))
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { resolverPerfilPorEmail } = require('@/lib/auth/resolveAppUser')
@@ -21,7 +22,41 @@ const { resolverPerfilPorEmail } = require('@/lib/auth/resolveAppUser')
 const ID_GANADOR = '99999999-8888-7777-6666-555555555555'
 const violacionUnica = () => Object.assign(new Error('duplicate key'), { code: '23505' })
 
-beforeEach(() => mockEjecutar.mockReset())
+beforeEach(() => {
+  mockEjecutar.mockReset()
+  mockGetAdminDb.mockReset()
+  mockGetAdminDb.mockImplementation(() => ({ execute: (...a: unknown[]) => mockEjecutar(...a) }))
+})
+
+// `getAdminDb()` LANZA si falta DATABASE_URL (db/client.ts). Antes de T-434 esa llamada estaba
+// FUERA del try, y la excepción habría subido hasta el callback `jwt` de Auth.js.
+//
+// Por qué importa ahora y antes no tanto: esa resolución ya no corre solo en el alta, sino en
+// CADA carga de página de un usuario sin perfil. El mismo despiste que antes rompía un sign-in
+// raro dejaría hoy a esas personas **sin poder abrir la web** — y son justo las que este código
+// viene a reparar. Convertiría «no puede comprar» en «no puede entrar».
+describe('ni la obtención del cliente de BD puede tumbar la sesión', () => {
+  it('si getAdminDb lanza, se devuelve error_lectura en vez de propagar', async () => {
+    mockGetAdminDb.mockImplementation(() => {
+      throw new Error('DATABASE_URL environment variable is not set')
+    })
+    const r = await resolverPerfilPorEmail('nadie@vence.es')
+    expect(r).toMatchObject({ id: null, motivo: 'error_lectura' })
+    expect(r.detalle).toContain('DATABASE_URL')
+    // Y no se llegó a tocar la BD: no había cliente con el que hacerlo.
+    expect(mockEjecutar).not.toHaveBeenCalled()
+  })
+
+  it('no se intenta crear nada a ciegas cuando ni siquiera hay cliente', async () => {
+    mockGetAdminDb.mockImplementation(() => {
+      throw new Error('sin cliente')
+    })
+    await resolverPerfilPorEmail('nadie@vence.es')
+    // Crear sin haber podido comprobar si existe es el peor fallo posible aquí: duplicaría
+    // al usuario, y la cabecera del fichero lo dice — «un usuario hereda los datos de otro».
+    expect(mockEjecutar).not.toHaveBeenCalled()
+  })
+})
 
 describe('la CARRERA: otra petición creó el perfil entre nuestra lectura y nuestra escritura', () => {
   it('el 23505 NO es un fallo: se relee y se devuelve el id del ganador', async () => {
