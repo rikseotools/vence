@@ -53,8 +53,20 @@ const SQL = `
   FROM topic_scope ts
   JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
   JOIN laws l ON l.id = ts.law_id
-  JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-  JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
+  -- article_numbers = NULL significa LA LEY ENTERA (convención del proyecto), y el
+  -- unnest de antes lo trataba como «ningún artículo»: unnest(NULL) no devuelve filas,
+  -- así que el scope entero desaparecía del análisis. Mismo patrón que ya mordió en
+  -- articleInScope() con x = ANY(NULL) → NULL.
+  --
+  -- Una ley seguía siendo visible si ALGÚN OTRO tema la escopaba con lista (por eso
+  -- TFUE salía con 244 huecos). Las que se perdían del todo eran las que solo tienen
+  -- scopes NULL: 184 leyes y 4.865 artículos con texto y sin una sola pregunta, frente a
+  -- los 10.200 que el planificador sí reportaba. Y esta herramienta es justo por donde
+  -- CLAUDE.md manda empezar antes de escribir una pregunta. Medido el 01/08 (T-451).
+  JOIN articles a
+    ON a.law_id = ts.law_id
+   AND a.is_active
+   AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
   WHERE length(coalesce(a.content, '')) > 40
     AND a.content NOT ILIKE '%derogado%'`
 
