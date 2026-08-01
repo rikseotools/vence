@@ -55,6 +55,8 @@ export function parsearArgs(argv: string[]) {
     psicotecnica: argv.includes('--psicotecnica'),
     sinRecompensa: valor('--sin-recompensa'),
     saltarBarajado: valor('--saltar-barajado'),
+    silencioso: process.argv.includes('--silencioso'),
+    nota: valor('--nota'),
     correccion: valor('--correccion'),
     aplicar: argv.includes('--aplicar'),
   }
@@ -119,17 +121,57 @@ async function dondeVive(disputeId: string): Promise<{ enLegislativas: boolean; 
   }
 }
 
+/**
+ * Deja constancia de un cierre SILENCIOSO. Sin esto, «cerrada sin escribirle» es indistinguible de
+ * «se nos olvidó contestar»: no queda email, ni campana, ni `admin_response`. La traza es lo único
+ * que permite, dentro de tres meses, saber que fue una decisión y cuál fue el motivo.
+ *
+ * Fail-open: la impugnación YA está cerrada cuando esto corre. Perder la traza es malo; abortar y
+ * dejar creer que el cierre falló sería peor.
+ */
+async function trazarCierreSilencioso(disputeId: string, motivo: string): Promise<boolean> {
+  const url = process.env.DATABASE_URL
+  if (!url) return false
+  let sql: any
+  try {
+    const postgres = (await import('postgres')).default
+    sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 })
+    await sql`
+      INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+      VALUES (gen_random_uuid(), NOW(), 'cli:impugnaciones/cerrar', 'info',
+              'dispute_cerrada_en_silencio',
+              ${JSON.stringify({ disputeId, motivo })}::jsonb, NOW())`
+    return true
+  } catch {
+    return false
+  } finally {
+    await sql?.end?.().catch(() => {})
+  }
+}
+
 async function main() {
   const a = parsearArgs(process.argv.slice(2))
-  if (!a.disputeId || !a.estado || !a.mensajeFichero) {
-    console.error('uso: cerrar.ts <dispute_id> --estado resolved|rejected --mensaje <fichero.txt> [--aplicar]')
+  if (!a.disputeId || !a.estado || (!a.mensajeFichero && !a.silencioso)) {
+    console.error('uso: cerrar.ts <dispute_id> --estado resolved|rejected (--mensaje <fichero.txt> | --silencioso --nota "<por qué>") [--aplicar]')
+    process.exit(1)
+  }
+  // El cierre SILENCIOSO exige decir por qué no se escribe. Cerrar sin mensaje y sin motivo es
+  // indistinguible de olvidarse de contestar, y desde fuera nadie puede saber cuál de las dos fue.
+  if (a.silencioso && !a.nota) {
+    console.error('--silencioso exige --nota "<por qué no se le escribe>" (p.ej. «respondida en la impugnación X, misma causa»)')
+    process.exit(1)
+  }
+  if (a.silencioso && a.mensajeFichero) {
+    console.error('--silencioso y --mensaje son incompatibles: o se le escribe o no.')
     process.exit(1)
   }
   if (a.estado !== 'resolved' && a.estado !== 'rejected') {
     console.error(`--estado tiene que ser resolved o rejected (llegó «${a.estado}»)`)
     process.exit(1)
   }
-  const mensaje = readFileSync(a.mensajeFichero, 'utf8').trim()
+  // adminResponse VACÍO es lo que hace el cierre silencioso: el endpoint no manda email ni campana
+  // (emailSkipReason='empty_response'). Ver `feedback-nila-cierre-silencioso`.
+  const mensaje = a.silencioso ? '' : readFileSync(a.mensajeFichero!, 'utf8').trim()
 
   const donde = await dondeVive(a.disputeId)
   let tipo: TipoImpugnacion
@@ -156,7 +198,11 @@ async function main() {
   console.log(`   endpoint: ${BASE}/api/v2/dispute/resolve · admin: ${ADMIN}`)
   if (a.sinRecompensa) console.log(`   sin recompensa: ${a.sinRecompensa}`)
   if (a.saltarBarajado) console.log(`   salta barajado: ${a.saltarBarajado}`)
-  console.log('\n' + mensaje.split('\n').map((l) => '   │ ' + l).join('\n'))
+  if (a.silencioso) {
+    console.log(`   🔇 CIERRE SILENCIOSO — sin email ni campana. Motivo: ${a.nota}`)
+  } else {
+    console.log('\n' + mensaje.split('\n').map((l) => '   │ ' + l).join('\n'))
+  }
 
   if (!a.aplicar) {
     console.log('\n(dry-run — repite con --aplicar para enviarlo)\n')
@@ -174,7 +220,12 @@ async function main() {
   // El email es la mitad del trabajo: si no sale, la impugnación queda cerrada y el usuario
   // sin enterarse. Se canta en vez de dejarlo enterrado en el JSON.
   if (out?.success) {
-    console.log(out.emailSent ? '\n✅ cerrada y email enviado' : `\n⚠️ cerrada pero SIN email: ${out.emailError || out.emailSkipReason || '?'}`)
+    if (a.silencioso) {
+      const trazada = await trazarCierreSilencioso(a.disputeId, a.nota!)
+      console.log(`\n✅ cerrada EN SILENCIO (sin email ni campana)${trazada ? ' · traza guardada' : ' · ⚠️ no se pudo guardar la traza'}`)
+    } else {
+      console.log(out.emailSent ? '\n✅ cerrada y email enviado' : `\n⚠️ cerrada pero SIN email: ${out.emailError || out.emailSkipReason || '?'}`)
+    }
   } else {
     process.exitCode = 1
   }
