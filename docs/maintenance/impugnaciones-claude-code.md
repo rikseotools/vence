@@ -1028,6 +1028,17 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
    letra). No parafrasear: el opositor quiere ver la frase.
 2. **El enlace directo** al texto oficial (`https://www.boe.es/buscar/act.php?id=…#aN`), para que lo
    verifique sin buscarlo.
+   > ⚠️ **El ancla NO se deduce del número de artículo: se COMPRUEBA (01/08/2026).** En muchas leyes
+   > consolidadas el BOE numera las anclas **por bloque**, no por artículo. En la **LO 3/2018** el
+   > artículo 17 es **`#a1-9`** (`[Bloque 23: #a1-9] Artículo 17`) y el 18 es `#a1-10`: **`#a17`
+   > sencillamente no existe**, y el enlace abre el documento por arriba dejando al usuario buscando
+   > a mano — lo contrario de lo que un `rejected` promete. Se comprueba en dos órdenes:
+   > `curl -s "<url>" | grep -c 'id="a1-9"'`, y si el ancla que ibas a usar da 0, localiza la buena
+   > buscando la rúbrica del artículo en el HTML (el marcador `[Bloque N: #ancla]` va justo delante).
+   > **Y ese `grep` léelo entero:** en el caso que originó esta nota, un `grep … | head -8` devolvió
+   > `id="a1"…id="a8"` y se leyó como «las anclas van por número», cuando eran las únicas nueve que
+   > había. Un `head` sobre la comprobación de un guardarraíl convierte la comprobación en su
+   > contrario.
 3. **Por qué ÉL vio otra cosa** — que casi siempre tiene explicación y es lo que de verdad resuelve
    la duda: una redacción anterior, un texto de academia sin actualizar, otra ley con un plazo
    parecido, una versión distinta del programa. Si se le nombra el motivo concreto, entiende el

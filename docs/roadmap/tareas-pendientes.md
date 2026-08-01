@@ -1587,6 +1587,81 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Relacionadas:** [T-444] (de donde sale), [T-146] (los huecos que el badge no ve por otro motivo: artículos no numéricos), CLAUDE.md → *«revisa los artículos sin preguntas»*.
 
 
+### [T-470] 🟠 [ABIERTO 01/08] Impugnación `e1b2b9e4` (Lucía Quiroga, UC3M): analizada y con borrador escrito — solo falta el OK de Manuel para cerrarla
+
+- **Esfuerzo: minutos.** Todo el trabajo está hecho y verificado; lo único que falta es aprobar el texto y lanzar un comando.
+- **QUÉ ES.** Tercera de las tres impugnaciones de `luciaquiroga55@gmail.com` (premium, `auxiliar_administrativo_universidad_carlos_iii`) del 01/08. Las otras dos se cerraron `resolved` esa noche (`dd9aeb94`, `6628e247`: tenía razón, ver [T-467]). **Esta es la única en la que NO tiene razón** → va `rejected`.
+- **PREGUNTA:** `4f984a01-7cde-485b-b384-e1599cdc3e8e` — *«¿Cuál de los siguientes derechos se ejercerá de acuerdo con lo establecido en el artículo 20 del Reglamento (UE) 2016/679?»*, clave D) portabilidad. **Su queja:** *«Fuera de temario. En esta oposición entra la ley, no el reglamento.»*
+- **POR QUÉ NO PROCEDE (verificado contra el BOE, no contra nuestra BD):** el artículo que la responde es el **17 de la LO 3/2018**, del Título III «Derechos de las personas», que su epígrafe **sí incluye**. Su confusión es entendible: el enunciado nombra el Reglamento, pero todo el Título III regula los derechos **remitiendo** cada uno a su artículo del RGPD, así que la remisión es texto de la ley que estudia.
+- **CLAVE CORRECTA y contrastada:** supresión → art. 17 RGPD (art. 15 LO) · limitación → art. 18 (art. 16 LO) · portabilidad → **art. 20** (art. 17 LO) · oposición → arts. 21 y 22 (art. 18 LO). Los cuatro distractores mapean a artículos distintos, así que no hay ambigüedad.
+- **⚠️ GOTCHA QUE COSTÓ UNA CORRECCIÓN DE MANUEL — el ancla del BOE.** En esta ley **`#a17` NO EXISTE**: el consolidado numera por bloques y el artículo 17 es **`#a1-9`** (`[Bloque 23: #a1-9] Artículo 17`), el 18 es `#a1-10`. El enlace con `#a17` abre el BOE por arriba y deja al usuario buscando a mano — lo contrario de lo que el enlace promete en un `rejected` (§7.3.quater). **Comprobar el ancla, no deducirla del número.** Detalle en el manual de impugnaciones §7.3.quater.
+- **YA HECHO (no repetir):** la explicación de la pregunta está **reescrita en formato estructurado** y nace barajable (`explanation_data` presente, `shuffle_safety=safe`), y la caché `questions` está revalidada. La pregunta era transcripción apelotonada del artículo (§7.3).
+- **LO ÚNICO QUE FALTA:** enseñarle este borrador a Manuel y, con su OK, cerrar. El claim de la cola se soltó al terminar la sesión, así que hay que volver a cogerla (`cola.cjs`/`revisar-impugnacion.cjs`).
+  ```
+  Hola Lucía,
+
+  En este caso la pregunta sí entra en tu temario. El artículo que la responde es el 17 de la
+  Ley Orgánica 3/2018, dentro de «Derechos de las personas», que tu programa incluye expresamente:
+
+  «El derecho a la portabilidad se ejercerá de acuerdo con lo establecido en el artículo 20 del
+  Reglamento (UE) 2016/679.»
+
+  https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673#a1-9
+
+  Entiendo de dónde viene la duda: al leer «artículo 20 del Reglamento» parece una pregunta del
+  Reglamento europeo. Pero es al revés: todo el Título III de la ley orgánica regula los derechos
+  remitiendo cada uno a su artículo del Reglamento (la supresión al 17, la limitación al 18, la
+  oposición al 21 y 22), así que esa remisión forma parte del texto de la ley que estudias. Saber
+  qué derecho va con cada remisión es precisamente lo que aquí se pregunta.
+
+  Muchas gracias.
+
+  Equipo de Vence
+  ```
+  Cierre: `AUTH_SECRET="$(aws --profile vence --region eu-west-2 ssm get-parameter --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)" npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts e1b2b9e4-1367-4690-9da8-c8c6ee16e574 --estado rejected --mensaje <fichero> --aplicar`
+- **Recompensa:** su motivo es `otro`, que **no paga solo**, y además esta se rechaza. Las otras dos SÍ eran hallazgo real y tampoco cobraron por el mismo motivo; si Manuel quiere premiarlas es **a mano y con orden expresa**.
+- **Relacionadas:** [T-467] (el defecto de scope que destaparon sus otras dos), [T-471] (el Paso 1 de su oposición, aún sin registrar).
+
+
+### [T-471] 🟡 [ABIERTO 01/08] Los 20 epígrafes de UC3M siguen `never_sourced`: el 🛑 del dossier seguirá saltando en la próxima impugnación de temario
+
+- **Esfuerzo: rato.** Mecánico teniendo el PDF; lo que lleva tiempo es cotejar los 20 uno a uno.
+- **QUÉ PASA.** `topic_epigrafe_verification` está **VACÍA** para `auxiliar_administrativo_universidad_carlos_iii` (0 filas, 20 temas). Por eso `revisar-impugnacion.cjs` saca el aviso **BLOQUEANTE** *«🛑 PASO 1 SIN HACER (20 temas never_sourced)»* en cualquier impugnación de temario de esa oposición, y lo seguirá sacando.
+- **Lo que YA está comprobado (01/08) y no hay que repetir:** el **Tema 6** se coteja **carácter por carácter** con el Anexo I del PDF oficial y es literal. Sirvió para adjudicar [T-467].
+- **FUENTE, ya localizada:** `programa_url` = `https://www.uc3m.es/empleo/concurso_oposicion_escala_auxiliar_administrativa_C2_2026`. **El temario NO está en esa página**: va dentro del PDF «Convocatoria 06/07/2026», que se baja del enlace `Satellite?…blobwhere=1371629176530…` de esa misma página. El programa es el **ANEXO I**, y el texto empieza en la pág. 15 del PDF (`pdftotext -layout`).
+- **OJO — el epígrafe correcto NO garantiza el scope correcto.** Aquí los 20 epígrafes están (por lo visto en el Tema 6) bien transcritos y aun así el scope servía 56 preguntas fuera de programa: el defecto lo metió `verify:scope` razonando por rango. Registrar el Paso 1 es provenance, **no** revalida el Paso 2.
+- **Cómo se registra:** `verify-epigrafe-literality.cjs record` (enlaza al hub `convocatoria_documentos`), clonando antes el PDF con `backend/scripts/clonar-documento.ts` para que quede `source_documento_id` y no una URL suelta.
+- **Relacionadas:** [T-467] y [T-470] (de donde sale), CLAUDE.md → *«revisa la provenance de epígrafes»* y el §Regla previa OBLIGATORIA de `verificar-epigrafes-scope.md`.
+
+
+### [T-467] 🟠 [ABIERTO 01/08] El detector de fronteras de temario solo sabe de TÍTULOS: el mismo fallo un nivel más abajo (CAPÍTULO) le es invisible
+
+- **Esfuerzo: sesion_propia.** Hay que bajar la estructura a capítulos y casar rúbricas en prosa; y luego re-medir el banco, porque el alcance del detector cambia.
+- **ORIGEN (01/08).** Impugnaciones `dd9aeb94` y `6628e247` de una usuaria premium de `auxiliar_administrativo_universidad_carlos_iii` que **adjuntó sus propias bases**: *«Fuera de temario, en este caso únicamente entran el encargado y el delegado»*. Tenía razón.
+- **EL DEFECTO CONCRETO.** Su Tema 6 (Bloque I) escopaba `1-18 + 28-37` de la LO 3/2018. El epígrafe oficial —verificado contra el PDF de la convocatoria UC3M de 06/07/2026, literal— dice: *«Responsable y encargado del tratamiento: **Encargado del tratamiento y Delegado de protección de datos**»*. Del Título V eso son **solo** el Capítulo II (art. 33) y el Capítulo III (arts. 34-37). Los **arts. 28-32 son el Capítulo I** («Disposiciones generales. Medidas de responsabilidad activa»), que el epígrafe NO nombra. **56 preguntas** fuera de programa servidas en silencio.
+- **QUIÉN LO INTRODUJO — el propio `verify:scope`, y lo FIRMÓ como correcto.** Run `verify_auxiliar_administrativo_universidad_carlos_iii_2026-07-10`, `verified_by=multi_agent` (dos agentes + juez), `state=verified_correct`, y su nota se delata sola: *«LO 3/2018 1-18+**28-37**, excluye 19-27. **Ambos CORRECT**»*. Razonó por **rango contiguo**: leyó «Encargado (33) + Delegado (34-37)» y cogió desde el arranque del Título V. Es exactamente el modo de fallo que la cabecera de `lib/laws/scopeTitleBoundary.js` documenta… un nivel más arriba.
+- **POR QUÉ EL DETECTOR QUE EXISTE PARA ESTO NO LO VE — dos motivos, ninguno arreglable con un umbral:**
+  1. **Granularidad.** `classifyTitleBoundary` mapea cada artículo a su **TÍTULO**. El art. 28 y el art. 33 están **los dos en el Título V** → indistinguibles por construcción. El error vive en el CAPÍTULO, que el modelo no tiene.
+  2. **Enganche.** Solo aplica cuando el epígrafe **enumera títulos literalmente** («Título I», «Título IX»). El de UC3M nombra la **rúbrica en prosa**, así que ni se activa. Ejecutado el 01/08 sobre esa oposición: `17 scope(s) evaluado(s) · **17 con epígrafe no mapeable a títulos** · ✅ Sin overflow`. Y según la medición de T-121 que cita CLAUDE.md, **el 91% de los scopes del banco** está en ese saco.
+- **Y los otros dos detectores tampoco:** `scopeOverInclusion` busca «casi la ley ENTERA» y aquí el scope son 28 artículos de ~97; los de HUECOS ven un tema que rebosa preguntas. **Las tres capas dieron verde sobre un defecto real.**
+- **HECHO YA (el caso individual, no el detector):** recorte aplicado por el pipeline canónico (`verify:scope plan` → `apply`, auto_safe, delta válido, 56 preg), scope verificado en BD (`1-18 + 33-37`, 23 arts) y caché `temario`+`test-counts` revalidada.
+- **LO QUE FALTA:** (a) estructura a nivel de **capítulo** en `parseBoeSections` / `classifyTitleBoundary`; (b) casar **rúbricas en prosa** contra la estructura, que es lo que desbloquea el 91% mudo; (c) re-medir bank-wide, **troceando por tamaño** como ya enseñó T-121 (1-2 arts = frontera; 3+ = sobre-inclusión, que va a otra frase-gatillo); (d) el guardarraíl no puede dejar de parar el caso LOSU/Murcia para el que nació.
+- **OJO al calibrar:** el Capítulo I de un Título **sí** entra muchas veces de forma legítima (un epígrafe que nombra el Título a secas lo incluye entero). Lo que hace hallazgo a este caso es que el epígrafe **enumera** capítulos tras los dos puntos — la misma convención que el resto del programa UC3M usa («Derecho de acceso a la información pública: Disposiciones generales y Procedimiento»).
+- **Relacionadas:** [T-468] (el verde vacío del mismo runner, que es lo que hace que esto se pueda dar por sano), [T-121] y [T-129] (calibración e historia del detector), [T-104] (nivel LIBRO, el mismo hueco por arriba), [T-088] (recortes confirmados), CLAUDE.md → *«revisa las fronteras de título del temario»*.
+
+
+### [T-468] 🟡 [ABIERTO 01/08] `sim-title-boundary` da un verde CONCLUYENTE con CERO epígrafes mapeables: el guardarraíl anti-verde-vacío cubre el hueco raro y no el dominante
+
+- **Esfuerzo: rato.** El arreglo es pasar un contador que ya existe; lo que lleva tiempo es decidir la banda y no romper los verdes legítimos.
+- **Qué pasa.** `resumenBarrida()` (núcleo puro, `lib/laws/scopeTitleBoundary.js:334`) nació justo para que el runner no dijera «✅ limpio» cuando en realidad no había mirado nada — CLAUDE.md lo anuncia así: *«El runner ya no da verdes vacíos»*. Pero solo conoce **un** hueco de cobertura: `fetchFail` (el índice del BOE no se pudo bajar). El otro —**el epígrafe no se puede mapear a títulos**— se cuenta en el runner como `noAplicable`, **se imprime… y nunca se le pasa**.
+- **La línea exacta.** En `scripts/scope/sim-title-boundary.ts:114` el `evaluados++` va **antes** de mirar `r.applicable`, así que un scope no mapeable cuenta como evaluado. Con `{temas:20, evaluados:17, fetchFail:0, flagged:0}` el núcleo devuelve `{veredicto:'limpio', concluyente:true, exitCode:0}`.
+- **Medido en vivo (01/08, `auxiliar_administrativo_universidad_carlos_iii`):** `17 scope(s) evaluado(s) · 17 con epígrafe no mapeable a títulos` → **`✅ Sin overflow de frontera de título`** y exit 0. Cero de diecisiete evaluables de verdad, y el veredicto se declara **concluyente**. Ese mismo temario tenía un overflow real de 56 preguntas ([T-467]).
+- **Por qué importa más que el otro hueco:** según T-121 (citado en CLAUDE.md) **el 91% de los scopes tiene epígrafe no mapeable**. O sea que el guardarraíl protege el caso excepcional y deja pasar el normal: en la inmensa mayoría de las barridas, ese ✅ significa «no he podido opinar» y se lee como «este temario está sano».
+- **Arreglo:** pasar `noAplicable` a `resumenBarrida` y tratarlo como hueco de cobertura igual que `fetchFail` → `incompleto` / `nada_evaluado` cuando no queda nada realmente evaluado, con su exit code. **Sin inventar una banda nueva:** el helper ya distingue concluyente de no concluyente, esto solo le da el dato que le falta. Y fijarlo con un test en `__tests__/lib/laws/scopeTitleBoundary.test.ts`, que es donde vive su regresión.
+- **Cuidado con el efecto colateral:** si `noAplicable` bloquea el verde sin más, las oposiciones con epígrafes en prosa pasarán a salir siempre `incompleto`. Eso es **honesto** pero ruidoso — conviene decidirlo junto con [T-467], que es lo que reduce ese 91%.
+- **Relacionadas:** [T-467] (el defecto de fondo que este verde tapó), [T-121] (de donde sale `resumenBarrida` y la medida del 91%).
+
+
 ### [T-444] 🟡 [ABIERTO 31/07 · AVANZADA 01/08] El art. 71 de la LO 3/2007 se servía en 6 temas cuyo epígrafe no llega al Título VI — quedan 2
 
 - **Esfuerzo: un rato.** Lo que queda es **bajar el temario oficial de 2 convocatorias** y verificar su epígrafe; el análisis ya está hecho y medido aquí.
