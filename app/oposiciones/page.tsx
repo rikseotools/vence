@@ -11,6 +11,7 @@ import FilteredResults from './[filtro]/FilteredResults'
 import { getCatalogadasAbiertas } from './lib/catalogadas'
 import { CCAA_FILTERS, SUBGRUPO_FILTERS, TIPO_FILTERS } from './lib/oposiciones-filters'
 import { isInscripcionAbierta } from '@/lib/oposiciones/inscripcion'
+import { fraseInscripcionAbierta } from '@/lib/oposiciones/resumenCabecera'
 
 export const metadata: Metadata = {
   title: 'Oposiciones en España 2026 | Plazas y Convocatorias | Vence',
@@ -125,9 +126,11 @@ export default async function OposicionesPage() {
           <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-2xl">
             {oposiciones.length} oposiciones de Administraci&oacute;n, Sanidad y Justicia con{' '}
             <span className="font-semibold text-blue-600 dark:text-blue-400">{totalPlazas.toLocaleString('es-ES')} plazas</span>.
-            {conInscripcion.length > 0 && (
+            {fraseInscripcionAbierta(conInscripcion.length) && (
+              // La frase entera va en UNA expresión: escrita como texto suelto detrás de
+              // `{expr}`, JSX se comía el espacio inicial y salía «8con inscripción abierta».
               <span className="text-green-700 dark:text-green-400 font-semibold">
-                {' '}{conInscripcion.length} con inscripci&oacute;n abierta ahora.
+                {` ${fraseInscripcionAbierta(conInscripcion.length)}`}
               </span>
             )}
           </p>
