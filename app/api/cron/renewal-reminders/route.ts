@@ -6,6 +6,7 @@ import {
   safeParseRunReminderCampaign,
   type RunReminderCampaignResponse
 } from '@/lib/api/renewal-reminders'
+import { runCampanaFinSuscripcion, anularOfertasCaducadas } from '@/lib/api/premium/avisoFinSuscripcion'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -31,6 +32,33 @@ async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampa
 
     // Campaña 2: 1 día antes
     const result1d = await runRenewalReminderCampaign({ daysBeforeRenewal: 1, dryRun: false })
+
+    // Campaña 3 (T-448): el COMPLEMENTARIO de las dos anteriores. Aquellas avisan de un cobro que
+    // viene y excluyen `cancel_at_period_end = true`; ésta avisa a los excluidos, que son justo
+    // los que van a PERDER el acceso (190 medidos el 01/08, 59 solo en agosto). Va en este mismo
+    // cron a propósito: comparten cadencia diaria, heartbeat y el guardarraíl de «ticó y envió 0».
+    // Nunca coinciden en la misma persona: las separa `cancel_at_period_end`.
+    // Aislada en su propio try: si esta campaña falla, los recordatorios de cobro (que mueven
+    // dinero) no pueden caerse con ella.
+    let finSusc = { candidatos: 0, enviados: 0, omitidos: 0, fallidos: 0 }
+    try {
+      const r = await runCampanaFinSuscripcion({ diasAntes: 3, dryRun: false })
+      finSusc = { candidatos: r.candidatos, enviados: r.enviados, omitidos: r.omitidos, fallidos: r.fallidos }
+      console.log(`🔔 [T-448] fin de suscripción: ${r.enviados} avisos de ${r.candidatos} candidato(s)`)
+
+      // Y lo que hace VERDAD ese aviso: el email dice «si no lo haces, lo perderás», así que
+      // alguien tiene que quitarlo. Va aquí y no en un comando manual porque una condición que
+      // depende de que una persona se acuerde no es una condición (misma lección que `pause
+      // --tras-deploy` en el backlog). Usa la MISMA frontera que se prometió por correo y aborta
+      // sin tocar nada si le tocara anular más de 50 de golpe: eso no sería un trámite, sería
+      // señal de que el criterio se rompió.
+      const anul = await anularOfertasCaducadas({ dryRun: false })
+      if (anul.candidatas > 0) {
+        console.log(`🔕 [T-448] precios de fidelidad caducados: ${anul.anuladas}/${anul.candidatas}${anul.abortado ? ' (ABORTADO por el tope)' : ''}`)
+      }
+    } catch (e) {
+      console.error('❌ [T-448] campaña de fin de suscripción falló:', e)
+    }
 
     // Agregar resultados de ambas campañas
     const result: RunReminderCampaignResponse = {
@@ -59,7 +87,7 @@ async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampa
       })
     }
 
-    return NextResponse.json(result)
+    return NextResponse.json({ ...result, finSuscripcion: finSusc })
 
   } catch (error) {
     console.error('❌ Error en cron de recordatorios:', error)

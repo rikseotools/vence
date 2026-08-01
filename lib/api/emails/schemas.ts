@@ -49,6 +49,10 @@ export const EMAIL_TYPES = [
   'nueva_oposicion',
   'lanzamiento_premium',
   'recordatorio_renovacion',
+  // T-448 — HERMANO de `recordatorio_renovacion` y su complementario exacto: aquel avisa de un
+  // COBRO que viene; éste, de un ACCESO que se acaba y no se va a renovar. El primero excluye
+  // `cancel_at_period_end = true`, así que sin este tipo esas 190 personas no reciben nada.
+  'fin_suscripcion_precio_heredado',
   'pago_fallido',
   'admin_notification',
 ] as const
@@ -82,6 +86,9 @@ export const EMAIL_TYPE_TO_CATEGORY: Record<EmailType, EmailCategory> = {
   lanzamiento_premium: 'marketing',
   // Transaccional (aviso de cobro/pago, no bloqueado por unsubscribed_all)
   recordatorio_renovacion: 'soporte',
+  // `soporte` a propósito, igual que su hermano: buena parte de este público pulsó el botón de
+  // baja masiva ([T-369]) y esto NO es publicidad — es avisar de que pierde un acceso que paga.
+  fin_suscripcion_precio_heredado: 'soporte',
   pago_fallido: 'soporte',
   // Admin/internal
   admin_notification: 'admin',

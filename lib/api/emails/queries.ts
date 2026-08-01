@@ -353,6 +353,14 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
     } else if (emailType === 'impugnacion_respuesta') {
       subject = template.subject(customData.status)
       html = template.html(userName, customData.status, customData.adminResponse, customData.questionText, customData.disputeUrl, unsubscribeUrl)
+    } else if (emailType === 'fin_suscripcion_precio_heredado') {
+      // T-448. Todos los datos vienen calculados de fuera (fecha e importe salen del histórico
+      // REAL de Stripe y del núcleo `finSuscripcion`), aquí no se deriva ni se supone nada.
+      subject = template.subject(customData.userName, customData.fechaFin)
+      html = template.html(
+        customData.userName, customData.fechaFin, customData.importe,
+        customData.periodicidad, customData.fechaLimite, customData.ctaUrl, unsubscribeUrl,
+      )
     } else if (emailType === 'pago_fallido') {
       subject = template.subject()
       const gestionarUrl = `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=pago_fallido`

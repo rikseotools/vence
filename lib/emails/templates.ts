@@ -944,6 +944,77 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
     `
   },
 
+  // T-448 — «tu suscripción se acaba y no se va a renovar».
+  //
+  // Complementario EXACTO de `recordatorio_renovacion`: aquel avisa de un cobro; éste, de un
+  // acceso que se apaga. Nunca los recibe la misma persona el mismo día (el criterio de
+  // `finSuscripcion.ts` los separa por `cancel_at_period_end`), porque decirle a alguien que se
+  // le va a cobrar y que se le va a apagar sería contradecirse en el mismo buzón.
+  //
+  // REGLAS DEL TEXTO, que son las que impiden que esto envejezca mal:
+  //  · La fecha límite NO se inventa: sale de `fechaLimiteRetorno()`, la MISMA función que usa
+  //    el barrido que anula las ofertas. Si el texto y el barrido divergieran, prometeríamos un
+  //    mes y quitaríamos el precio antes.
+  //  · No se dice «oferta» ni «descuento»: no es una promoción, es SU precio.
+  //  · No se detalla por qué se apagó su suscripción (cambio de cuenta de cobro): es un problema
+  //    nuestro y contarlo solo siembra dudas sobre si su dinero está bien.
+  fin_suscripcion_precio_heredado: {
+    subject: (_userName: string, fechaFin: string) =>
+      `Tu Premium termina el ${fechaFin} (puedes mantener tu precio de fidelidad)`,
+    html: (
+      userName: string,
+      fechaFin: string,
+      importe: string,
+      periodicidad: string,
+      fechaLimite: string,
+      ctaUrl: string,
+      unsubscribeUrl: string,
+    ) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2563eb; margin: 0;">Vence</h1>
+          <p style="color: #6b7280; margin: 5px 0;">Tu sistema de preparación de oposiciones</p>
+        </div>
+
+        <h2 style="color: #374151;">Hola ${userName},</h2>
+
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+          Tu suscripción Premium termina el <strong>${fechaFin}</strong> y no se renovará sola.
+          A partir de ese día tu cuenta pasará al plan gratuito.
+        </p>
+
+        <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px;margin:24px 0;text-align:center;">
+          <div style="font-size:14px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px;font-weight:600;">
+            Tu precio de fidelidad
+          </div>
+          <div style="font-size:34px;font-weight:bold;color:#111827;margin:8px 0;">${importe}</div>
+          <div style="font-size:15px;color:#4b5563;">${periodicidad}</div>
+        </div>
+
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+          Para mantenerlo tienes que renovar tú: pulsa el botón de abajo y vuelve a suscribirte
+          con esa misma tarifa. Si no lo haces, lo perderás.
+        </p>
+
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${ctaUrl}" style="background:#2563eb;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600;display:inline-block;">
+            Mantener mi precio de fidelidad
+          </a>
+        </div>
+
+        <p style="font-size: 14px; line-height: 1.6; color: #6b7280;">
+          Si prefieres no continuar, no tienes que hacer nada: tu cuenta pasará al plan gratuito
+          y seguirás teniendo acceso a los tests gratuitos de siempre.
+        </p>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0;">
+        <p style="font-size:12px;color:#9ca3af;text-align:center;">
+          Vence · <a href="${unsubscribeUrl}" style="color:#9ca3af;">Gestionar mis emails</a>
+        </p>
+      </div>
+    `,
+  },
+
   recordatorio_renovacion: {
     subject: (userName, diasRestantes) => `Tu suscripción Premium de Vence se renueva en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}`,
     html: (userName, diasRestantes, fechaRenovacion, importe, gestionarUrl, unsubscribeUrl, baseAmount?: number | null, discountPercent?: number | null) => {
