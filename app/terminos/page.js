@@ -14,7 +14,7 @@ export default function TerminosPage() {
 
         <div className="prose dark:prose-invert max-w-none">
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            <strong>Última actualización:</strong> Enero 2026
+            <strong>Última actualización:</strong> Agosto 2026
           </p>
 
           <p className="text-gray-600 dark:text-gray-300 mb-4">
@@ -111,6 +111,18 @@ export default function TerminosPage() {
             Te comprometes a usar Vence de manera responsable y legal, sin intentar
             acceder a sistemas sin autorización ni interferir con el funcionamiento
             de la plataforma.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <strong>Una cuenta por persona y por dispositivo.</strong> Cada persona puede
+            tener una única cuenta, y en cada dispositivo debe usarse una única cuenta. No
+            está permitido crear cuentas adicionales, ni alternar varias cuentas en el mismo
+            dispositivo, con el fin de superar los límites del plan gratuito.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            El plan gratuito incluye un número limitado de preguntas al día. Ese límite
+            forma parte del servicio y no es un fallo que se pueda sortear. Si detectamos
+            que se están usando varias cuentas para eludirlo, podemos limitar el acceso de
+            las cuentas implicadas conforme al apartado 8.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
