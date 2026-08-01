@@ -1352,7 +1352,12 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 
 - **Riesgos, dichos antes de construir:** (a) que la fase nueva se convierta en un sello — lo mitiga la regla 2; (b) que el cubo de `verificando` se llene y nadie lo mire — lo mitiga la regla 3; (c) que la exención automática sea demasiado laxa y deje pasar código servido como si fuera documentación — hay que probarla contra los commits reales de esta semana antes de encenderla.
 - **Por dónde empezar (fases, y la primera ya aporta sola):** (1) el escalón medible del `done` —código servido + sha vivo—, que es pequeño y habría evitado el fallo de hoy; (2) el estado `verificando` explícito con su cubo y su vigía; (3) `archive --evidencia` y la migración.
-- **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), y la puerta del `done` del 30/07.
+- **📥 CONSOLIDADO DESDE [T-449] (01/08), que era un DUPLICADO de esta ficha.** La abrí sin buscar antes —el fallo que [T-427] documenta y que CLAUDE.md avisa: cinco segundos de `grep` antes de `reserve`— y otra sesión la cerró. Lo que traía y no se puede perder son **tres casos VIVIDOS la misma madrugada**, que dicen algo que esta ficha aún no decía: al terminar de verificar **no hay un desenlace, hay tres, y el diseño tiene que distinguirlos**.
+  1. **Verificado y CORRECTO, pero la tarea sigue viva.** [T-385]: sus cuatro puntos se comprobaron con un deploy real y aun así le queda la fase 3. Su `resume_check` seguía diciendo *«ningún deploy real ha corrido»* y `list` la anunciaba arriba del todo como «se cierra en minutos». **La cogí para repetir trabajo hecho.**
+  2. **Verificado y ROTO — destapa trabajo NUEVO que nadie había previsto.** [T-326]: la verificación en vivo demostró que el arreglo estaba desplegado e **inerte** (vivía en el camino que producción no ejecuta). No es «falta mirar producción», es «hay que programar otra cosa». Hoy los dos se ven idénticos desde `list`.
+  3. **Verificado por la MÁQUINA, pendiente del OJO humano.** También [T-326], ya con el porte vivo: el dato es correcto —tres comprobaciones contra producción— pero *si la casilla se entiende en pantalla* no lo puede juzgar una sesión, y Manuel pidió expresamente revisarlo él. **No es «esperando decisión de Manuel»**: esa sección existe y es para decisiones de producto. Esto es una **revisión**, no una decisión — nadie elige nada, solo mira.
+  - **Y el detalle operativo que lo hace urgente:** `resume_check` **solo lo escribe `pause`**, que exige `--hasta` o `--tras-deploy`. Así que hoy no hay forma de decir ninguna de las tres sin *inventarse* una espera (mal, por lo mismo que el CHECK de `due_at`) o dejar el texto obsoleto ahí — y `release` no lo toca. **Dos sesiones pagaron ese peaje en menos de una hora.**
+- **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), [T-449] (duplicada y consolidada aquí), [T-385] y [T-326] (los tres casos medidos), y la puerta del `done` del 30/07.
 
 ### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
 
@@ -2938,6 +2943,8 @@ de «desconecta un dispositivo»: sería mandarle a arreglar lo que no falla.
 
 
 ### [T-449] ✅ [HECHA 01/08] Una tarea verificada que sigue viva no tiene cómo decirlo: se anuncia como «lista para verificar» para siempre
+
+> ⚠️ **DUPLICADA de [T-392]** — se abrió sin buscar antes (el fallo que documenta [T-427]). Su contenido útil, los tres desenlaces medidos en vivo, está consolidado allí. Se conserva por la trazabilidad de los tres casos, no como trabajo pendiente.
 
 - **Esfuerzo: rato.** El hueco está localizado y es una columna; lo que hay que decidir es el verbo, no el código.
 - **VIVIDO, no supuesto (01/08, sesión `centro-inferior`).** Cogí [T-385] porque `list` la ofrecía arriba del todo como *«⏰ IMPLEMENTADA Y SIN COMPROBAR»* con el pendiente *«⚠️ NINGÚN DEPLOY REAL ha corrido por el camino nuevo (`deploy_runs` está a 0)»*. Al abrir la ficha, **ya estaba verificada**: otra sesión lo había hecho minutos antes con un deploy real y lo había escrito entero, con los cuatro puntos comprobados uno a uno. Monté un worktree y reclamé una tarea para repetir trabajo hecho.
