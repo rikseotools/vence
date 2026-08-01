@@ -99,13 +99,17 @@ describe('[T-245] cableado en /api/auth/token', () => {
 describe('[T-434] cableado en el callback jwt de Auth.js', () => {
   const fuente = fs.readFileSync(path.join(process.cwd(), 'lib/auth/authjs.ts'), 'utf8')
 
-  it('emite `auth_alta_sin_perfil` cuando resolveAppUserId no devuelve id', () => {
+  it('emite `auth_alta_sin_perfil` cuando la resolución no devuelve id', () => {
     expect(fuente).toContain('auth_alta_sin_perfil')
     // La emisión va en la rama del fallo, no en la del caso bueno.
-    const iAsigna = fuente.indexOf('token.appUserId = appUserId')
-    const iEmite = fuente.indexOf('auth_alta_sin_perfil')
-    expect(iAsigna).toBeGreaterThan(-1)
-    expect(iEmite).toBeGreaterThan(iAsigna)
+    //
+    // Se busca la ASIGNACIÓN, sea cual sea el nombre de la variable de la derecha: atarlo al
+    // literal `token.appUserId = appUserId` puso este guardarraíl en rojo al renombrarla
+    // (`= r.id`) sin que nada del comportamiento vigilado hubiera cambiado. Un guardarraíl que
+    // salta por un renombrado enseña a saltárselo, que es justo lo contrario de lo que hace falta.
+    const asigna = /token\.appUserId\s*=\s*\S/.exec(fuente)
+    expect(asigna).not.toBeNull()
+    expect(fuente.indexOf('auth_alta_sin_perfil')).toBeGreaterThan(asigna!.index)
   })
 
   it('la señal es `error`: el usuario queda sin poder pagar ni quejarse', () => {

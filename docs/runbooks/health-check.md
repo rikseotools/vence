@@ -730,6 +730,25 @@ Ir a https://github.com/rikseotools/vence/actions/workflows/check-stats-drift.ym
 
 ## 3. Incidentes conocidos (referencias rápidas)
 
+**Usuarios con sesión y SIN perfil: no pueden pagar y no pueden avisarnos (01/08, T-434).** Si la resolución de `user_profiles.id` falla, Auth.js **firma la sesión igual**: la persona entra, navega y para la base de datos no existe. Todo lo que se indexa por su id le rebota — `/api/v2/user-stats` («Usuario no existe»), el checkout (`404 · User not found in database`) y **el propio formulario de soporte**, así que no tiene forma de decírnoslo.
+
+```bash
+npm run canary:perfil-sin-resolver          # ventana de 24 h
+npm run canary:perfil-sin-resolver -- --horas 72
+```
+
+| Lo que ves | Qué significa |
+|---|---|
+| rotos ↓ · curados > 0 | el atasco se drena solo. Es lo esperado |
+| rotos > 0 · **curados = 0** | **el reintento NO está corriendo**: comprueba que el frontend desplegado lleva `decidirReintentoPerfil` |
+| rotos ≈ constantes · curados > 0 | **siguen naciendo rotos** al ritmo que se curan. Un goteo tapado: mira `auth_alta_sin_perfil` |
+| `auth_sesion_sin_email` > 0 | caso DISTINTO: sin email el reintento no puede curar a nadie. Se investiga en el **proveedor de identidad**, no en `create_organic_user` |
+
+**La causa raíz, para no volver a buscarla donde no está:** el fallo no era *por qué* falla la creación, sino que `token.appUserId` se resolvía **una sola vez en la vida de la sesión** (dentro de `if (user?.email)`, y `user` solo llega en el primer sign-in). Un único tropiezo dejaba a la persona rota **para siempre**: por eso había gente así desde el 7 de julio y por eso las 2.210 llamadas a `/api/auth/token` no les curaban — ese endpoint LEE `appUserId`, no lo resuelve. Desde T-434 se reintenta en cualquier rotación, con ventana para no martillear la BD.
+
+**Y el índice que lo sostiene:** la búsqueda es `lower(email)` y el único índice era sobre `email` en crudo, así que hacía **Seq Scan de 426 ms** sobre la tabla entera en cada sign-in (medido con `EXPLAIN ANALYZE`, 11.713 perfiles). Con `user_profiles_email_lower_key` son **0,04 ms**. Si alguien cambia esa expresión y deja de casar con el índice, se vuelve al escaneo sin que nada avise — lo vigila `__tests__/guardrails/perfilSeReintenta.guardrail.test.ts`.
+
+
 **PDF del temario: el circuito completo, y cómo saber si se está curando solo (30/07, T-273).** Un tema que no cabe entero ya no muere en un error: **se encola** para que `vence-temario-pdf-worker` lo deje troceado en S3, y la próxima petición se sirve al instante. Tres señales cuentan la historia, en este orden:
 
 | Señal | Qué significa |

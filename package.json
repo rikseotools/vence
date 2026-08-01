@@ -125,6 +125,8 @@
     "llm:ab-reescritura": "node scripts/observabilidad/ab-modelo-reescritura.cjs",
     "canary:cobertura-dispositivos": "node scripts/canary-cobertura-dispositivos.cjs",
     "laws:vigilar": "node scripts/laws/vigilar-fuentes-legales.cjs",
+    "canary:perfil-sin-resolver": "node scripts/canary-perfil-sin-resolver.cjs",
+    "sim:reintento-perfil": "tsx --env-file=.env.local scripts/sim/sim-reintento-perfil.ts",
     "sim:contexto-guard": "node scripts/backlog/sim-contexto-guard.cjs",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",
     "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes",

@@ -5442,6 +5442,85 @@ export const RULE_ANULACION_PRECIO_ABORTADA: AlertRule<{ n: number; detalle: str
   cooldownMin: 720,
 };
 
+/**
+ * [T-434] LA SESIÓN SE FIRMA SIN EMAIL — el caso que el reintento NO puede curar.
+ *
+ * El reintento de `authjs.ts` repara al usuario cuyo perfil no se resolvió, porque el email viaja
+ * en el token y con él se puede volver a buscar. Si NO hay email, no hay por dónde: esa persona
+ * quedará rota para siempre por mucho que recargue.
+ *
+ * Se vigila aparte, y no mezclado con `alta_sin_perfil`, justamente porque **la respuesta es
+ * distinta**: aquello se arregla mirando `create_organic_user`; esto se arregla mirando qué
+ * proveedor de identidad está firmando sesiones sin email. Confundirlos manda a investigar al
+ * sitio equivocado, que es lo que ya pasó una vez en esta ficha.
+ *
+ * Nace en CERO a propósito: si habla, es un caso nuevo que nadie había visto.
+ */
+export const RULE_SESION_SIN_EMAIL: AlertRule<{ veces: number }> = {
+  name: 'sesion_sin_email',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS veces
+      FROM observable_events
+     WHERE event_type = 'auth_sesion_sin_email'
+       AND ts >= now() - interval '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.veces ?? 0} sesión(es) firmadas SIN email en 24 h`,
+    body:
+      `Auth.js firmó una sesión sin email, así que no hay forma de resolver su perfil: ni en el ` +
+      `alta ni reintentando. Esa persona no puede pagar ni escribir a soporte, y a diferencia de ` +
+      `los demás casos NO se curará sola al recargar.\n\n` +
+      `Esto NO se investiga en create_organic_user: se investiga en el PROVEEDOR. Mira qué ` +
+      `provider firmó esas sesiones (Google redirect, One Tap) y si dejó de devolver el email.\n\n` +
+      `Ficha: T-434.`,
+    metadata: { veces: rows[0]?.veces ?? 0 },
+    fingerprint: 'sesion_sin_email',
+  }),
+  cooldownMin: 1440,
+};
+
+/**
+ * [T-434] EL ATASCO DE PERFILES ROTOS NO SE DRENA.
+ *
+ * `auth_perfil_recuperado` es la métrica de la REPARACIÓN: cada evento es un usuario que estaba
+ * roto y acaba de curarse solo al recargar. Es una señal BUENA, y por eso su alerta no es «que
+ * ocurra» sino **que no deje de ocurrir**.
+ *
+ * Los 235 rotos que había el 01/08/2026 se curan la primera vez que cargan una página, así que
+ * esto debe subir unos días y **caer a cero**. Si sigue habiendo curaciones TODOS los días de una
+ * semana, es que **siguen naciendo rotos** — el reintento estaría tapando el goteo en vez de
+ * dejarlo ver, que es exactamente cómo un arreglo se convierte en un anestésico.
+ *
+ * Se mide en DÍAS DISTINTOS con eventos, no en volumen: un pico grande el primer día es lo
+ * esperado; siete días seguidos, por pocos que sean, es un goteo.
+ */
+export const RULE_PERFIL_ROTO_NO_DRENA: AlertRule<{ dias: number; usuarios: number }> = {
+  name: 'perfil_roto_no_drena',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(DISTINCT date_trunc('day', ts))::int AS dias,
+           COUNT(DISTINCT metadata->>'emailPrefijo')::int AS usuarios
+      FROM observable_events
+     WHERE event_type = 'auth_perfil_recuperado'
+       AND ts >= now() - interval '7 days'
+  `,
+  shouldFire: (rows) => (rows[0]?.dias ?? 0) >= 7,
+  buildNotification: (rows) => ({
+    title: `Perfiles rotos: 7 días seguidos curando (${rows[0]?.usuarios ?? 0} usuarios)`,
+    body:
+      `El reintento de T-434 lleva una semana entera reparando sesiones sin perfil. El atasco ` +
+      `inicial (235 usuarios el 01/08/2026) debería haberse drenado ya, así que si sigue ` +
+      `curando a diario es que SIGUEN NACIENDO ROTOS y el reintento está tapando el goteo.\n\n` +
+      `Mira auth_alta_sin_perfil en la misma ventana: ahí está el motivo del fallo original.\n\n` +
+      `Ficha: T-434.`,
+    metadata: { dias: rows[0]?.dias ?? 0, usuarios: rows[0]?.usuarios ?? 0 },
+    fingerprint: 'perfil_roto_no_drena',
+  }),
+  cooldownMin: 1440,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
   // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
@@ -5458,6 +5537,8 @@ export const ALERT_RULES: AlertRule[] = [
   // así que el trabajo bien hecho acababa enterrado. 20 llevaban hasta 9 días.
   RULE_FRAUDE_SIN_TRIAR as AlertRule,
   RULE_ALTA_SIN_PERFIL as AlertRule,
+  RULE_SESION_SIN_EMAIL as AlertRule,
+  RULE_PERFIL_ROTO_NO_DRENA as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
   // convierte en señal en vez de en punto ciego.
   RULE_EVASION_MULTIDISPOSITIVO as AlertRule,

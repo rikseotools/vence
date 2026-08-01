@@ -342,6 +342,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'es `origin/main...HEAD` con TRES puntos; con dos se colaban los ficheros de otras ' +
       'sesiones y, como casi siempre traen algún test, dejaba pasar cualquier cosa.',
   },
+  perfil_sin_resolver: {
+    titulo: 'Medir si las sesiones sin perfil se están curando solas (y si hay dinero en juego)',
+    ruta: 'scripts/canary-perfil-sin-resolver.cjs',
+    estado: 'vivo',
+    notas:
+      '`npm run canary:perfil-sin-resolver [-- --horas N]`. Solo LEE. Nace de T-434: un usuario ' +
+      'cuyo `user_profiles.id` no se resolvió navega con la sesión firmada y **para la BD no ' +
+      'existe** — sus estadísticas fallan, el checkout le responde «User not found in database» ' +
+      'y el formulario de soporte también, así que NI PUEDE AVISARNOS. Medido el 01/08/2026: 235 ' +
+      'personas, la más antigua desde el 7 de julio, y 85 intentos de compra rechazados en 7 días ' +
+      'de 12 personas. **No se puede consultar «sesiones sin perfil»** (la sesión vive en una ' +
+      'cookie, no en la BD): se cuenta el REBOTE (`auth`/`warn` «Usuario no existe») por usuarios ' +
+      'DISTINTOS, no por eventos —uno navegando mucho taparía si el grupo crece—, y se CRUZA con ' +
+      '`auth_perfil_recuperado`. El cruce es lo que aporta: rotos≈constantes CON curaciones = ' +
+      'siguen naciendo rotos al ritmo que se curan, un goteo que cualquier gráfica de «rotos» a ' +
+      'secas leería como éxito. Y rotos>0 con CERO curaciones = el reintento no está corriendo. ' +
+      'Simulación hermana: `npm run sim:reintento-perfil` (7 casos contra la BD real, con ' +
+      'usuarios efímeros que se borran solos).',
+  },
   contexto_push_guard: {
     titulo: 'Bloquear el push que borra el contexto de una ficha viva del backlog',
     ruta: 'scripts/contexto-push-guard.cjs',

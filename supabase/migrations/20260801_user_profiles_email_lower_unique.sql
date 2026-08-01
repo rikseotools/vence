@@ -1,0 +1,49 @@
+-- 20260801_user_profiles_email_lower_unique.sql — índice funcional único sobre lower(email). (T-434)
+--
+-- ── QUÉ ARREGLA, Y SON TRES COSAS A LA VEZ ──────────────────────────────────────────────────
+--
+-- 1) **RENDIMIENTO en el camino crítico del login.** Toda la identidad del usuario se resuelve
+--    con `WHERE lower(email) = $1` (`lib/auth/resolveAppUser.ts`), y el único índice que había
+--    era sobre `email` EN CRUDO, así que esa consulta **no podía usarlo**. Medido contra RDS el
+--    01/08/2026 con EXPLAIN ANALYZE sobre 11.713 perfiles:
+--
+--        lower(email)  →  Seq Scan · 11.713 filas descartadas · 426 ms
+--        email crudo   →  Index Scan · 3 ms
+--
+--    Es decir: **medio segundo de escaneo secuencial en cada sign-in**, y creciendo con la tabla.
+--    Ya estaba documentado en `resolveAppUser.ts` («NO usa el índice único porque compara en
+--    minúsculas -y por eso tarda-») y se aceptó por ser un camino raro; con el reintento de
+--    T-434 deja de ser raro, así que el índice pasa de mejora a REQUISITO.
+--
+-- 2) **UN DUPLICADO QUE HOY ES POSIBLE.** La búsqueda compara en minúsculas y el índice único
+--    comparaba en crudo: **dos criterios distintos sobre la misma columna**. Comprobado contra
+--    RDS (en transacción con ROLLBACK): insertar el mismo email en MAYÚSCULAS con otro id **no
+--    choca y crea un segundo perfil**. Eso es exactamente el fallo que la cabecera de
+--    `resolveAppUser.ts` declara como el peor posible: «un usuario hereda los datos de otro».
+--    Con este índice deja de ser posible POR CONSTRUCCIÓN, no por disciplina.
+--
+-- 3) **LA CARRERA ENTRE PESTAÑAS.** Con el reintento, varias peticiones simultáneas del mismo
+--    usuario roto pueden intentar crear su perfil a la vez. El `ON CONFLICT (id)` de
+--    `create_organic_user` NO las protege (los ids son distintos). Este índice hace que las
+--    perdedoras reciban un 23505 limpio, que el código trata como «otro lo creó» y relee.
+--
+-- ── POR QUÉ ES SEGURO APLICARLO ─────────────────────────────────────────────────────────────
+--
+-- Comprobado el 01/08/2026 sobre los 11.713 perfiles ANTES de escribir esto:
+--   · emails duplicados ignorando mayúsculas ... 0
+--   · emails con espacios al principio/final .... 0
+--   · emails con alguna mayúscula ............... 0
+-- No hay ninguna fila que pueda hacer fallar la creación del índice. Si en el futuro la hubiera,
+-- CREATE UNIQUE INDEX falla RUIDOSAMENTE y no deja nada a medias: es el comportamiento correcto.
+--
+-- `CONCURRENTLY` para no bloquear escrituras en una tabla viva. OJO: no puede ir dentro de una
+-- transacción, así que este fichero NO lleva BEGIN/COMMIT a propósito.
+--
+-- ── LO QUE NO SE HACE AQUÍ, A PROPÓSITO ─────────────────────────────────────────────────────
+-- NO se elimina `user_profiles_email_key` (el único sobre `email` crudo). Es redundante con
+-- éste, pero quitarlo es una decisión aparte y sin prisa: mantenerlo no cuesta correctitud y
+-- borrar un índice único en el mismo cambio que introduce otro complica el rollback.
+-- Rollback de esto: DROP INDEX CONCURRENTLY IF EXISTS user_profiles_email_lower_key;
+
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS user_profiles_email_lower_key
+  ON public.user_profiles (lower(email));

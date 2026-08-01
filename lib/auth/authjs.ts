@@ -16,7 +16,8 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { resolveAppUserId } from './resolveAppUser'
+import { resolverPerfilPorEmail } from './resolveAppUser'
+import { decidirReintentoPerfil, CAMPO_REINTENTO } from './reintentoPerfil'
 import { verifyGoogleIdToken } from './verifyGoogleIdToken'
 import { adminQueSuplanta, impersonacionCaducada } from '@/lib/admin/impersonacion'
 import { emitFireAndForget } from '@/lib/observability/emit'
@@ -97,11 +98,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // En el primer sign-in, `user` trae el email del proveedor. Resolvemos el
-      // UUID canónico UNA vez y lo persistimos en el token de sesión.
+      // UUID canónico y lo persistimos en el token de sesión.
       if (user?.email) {
-        const appUserId = await resolveAppUserId(user.email, user.name)
-        if (appUserId) token.appUserId = appUserId
+        const r = await resolverPerfilPorEmail(user.email, user.name)
+        if (r.id) token.appUserId = r.id
         else {
+          // [T-434] Se deja constancia de CUÁNDO se intentó, para que el reintento de abajo no
+          // vuelva a probar en la misma vuelta ni en la siguiente carga de página. Sin esta
+          // marca, un usuario irresoluble consultaría la BD en cada petición.
+          token[CAMPO_REINTENTO] = Math.floor(Date.now() / 1000)
           // [T-434] El perfil NO se pudo resolver ni crear. Sin esto, el fallo es INVISIBLE:
           // `resolveAppUserId` solo deja un `console.warn` que no se persiste en ninguna parte
           // (medido el 31/07: CERO rastro en `observable_events` y en `validation_error_logs`).
@@ -129,12 +134,75 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             metadata: {
               emailPrefijo: user.email.slice(0, 3),
               dominio: user.email.split('@')[1] ?? null,
-              motivo: 'resolveAppUserId_null',
+              motivo: r.motivo,
+              detalle: r.detalle ?? null,
             },
           })
         }
         token.email = user.email
       }
+
+      // ── [T-434] REINTENTO: el arreglo de fondo ───────────────────────────────────────────
+      //
+      // Hasta hoy, `token.appUserId` se resolvía SOLO en el bloque de arriba, y ese bloque solo
+      // corre en el primer sign-in: `@auth/core@0.41.2` invoca este callback **sin `user`** en
+      // cada rotación de sesión (`lib/actions/session.js`, una por carga de página). Es decir,
+      // **un único fallo dejaba al usuario roto para siempre**, y por eso había 235 personas así
+      // —la más antigua desde el 7 de julio— con 85 intentos de compra rechazados en una semana.
+      //
+      // El email SÍ viaja en el token (lo mete el propio Auth.js al construir el `defaultToken`
+      // en el sign-in), así que la reparación no necesita nada más y **cura sola a los ya rotos**
+      // la próxima vez que carguen una página.
+      //
+      // El usuario sano no paga NADA: `decidirReintentoPerfil` mira `appUserId` lo primero.
+      const decision = decidirReintentoPerfil(token, Math.floor(Date.now() / 1000))
+      if (decision.accion === 'reintentar') {
+        token[CAMPO_REINTENTO] = Math.floor(Date.now() / 1000)
+        const r = await resolverPerfilPorEmail(decision.email, token.name as string | null)
+        if (r.id) {
+          token.appUserId = r.id
+          // Métrica de la REPARACIÓN, no del fallo: cuenta a los 235 vaciándose. Cuando deje de
+          // hablar, el atasco está drenado; si no decae, es que siguen naciendo rotos.
+          emitFireAndForget({
+            source: 'vercel',
+            severity: 'info',
+            eventType: 'auth_perfil_recuperado',
+            endpoint: '/api/auth/session',
+            metadata: {
+              emailPrefijo: decision.email.slice(0, 3),
+              dominio: decision.email.split('@')[1] ?? null,
+              motivo: r.motivo,
+            },
+          })
+        } else {
+          emitFireAndForget({
+            source: 'vercel',
+            severity: 'error',
+            eventType: 'auth_alta_sin_perfil',
+            endpoint: '/api/auth/session',
+            metadata: {
+              emailPrefijo: decision.email.slice(0, 3),
+              dominio: decision.email.split('@')[1] ?? null,
+              motivo: r.motivo,
+              detalle: r.detalle ?? null,
+              enReintento: true,
+            },
+          })
+        }
+      } else if (decision.accion === 'sin_email') {
+        // Caso DISTINTO y que no se veía: sin email no hay nada que resolver, así que el
+        // reintento no puede curarle NUNCA. Se emite aparte para no confundirlo con un fallo de
+        // la resolución — si esto aparece, el arreglo de arriba no es la respuesta y hay que
+        // mirar qué proveedor está firmando sesiones sin email.
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'error',
+          eventType: 'auth_sesion_sin_email',
+          endpoint: '/api/auth/session',
+          metadata: { sub: typeof token.sub === 'string' ? token.sub.slice(0, 8) : null },
+        })
+      }
+
       return token
     },
     async session({ session, token }) {

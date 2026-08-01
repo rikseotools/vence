@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+// scripts/canary-perfil-sin-resolver.cjs
+//
+// ¿Cuánta gente sigue navegando con sesión y SIN perfil? [T-434]
+//
+// ## Por qué existe
+//
+// Un usuario cuyo `user_profiles.id` no se resolvió entra en la web y **parece que todo va
+// bien**, pero para la base de datos no existe: sus estadísticas fallan, el checkout le
+// responde «User not found in database» y el formulario de soporte también — así que **ni
+// siquiera puede avisarnos**. Medido el 01/08/2026: **235 personas** en ese estado, la más
+// antigua desde el 7 de julio, y **85 intentos de compra rechazados en 7 días de 12 personas**.
+//
+// El arreglo (reintentar la resolución en cualquier rotación de sesión, no solo en el alta) los
+// cura solos al recargar. **Este canario mide si eso está pasando de verdad**, que es distinto
+// de que el código esté desplegado.
+//
+// ## Qué mira, y por qué así
+//
+// No se puede consultar «sesiones sin perfil»: la sesión vive en una cookie firmada, no en la
+// base de datos. Lo que sí deja rastro es el REBOTE — cada vez que uno de ellos toca un
+// endpoint que indexa por su id, queda un `auth`/`warn` con «Usuario no existe». Se cuentan
+// USUARIOS DISTINTOS, no eventos: uno solo navegando mucho generaría cientos y taparía si el
+// grupo crece o se vacía.
+//
+// Se contrasta con `auth_perfil_recuperado` —las curaciones— porque las dos cifras juntas dicen
+// lo que ninguna dice sola:
+//
+//   rotos ↓ y curados > 0  → el atasco se está drenando: lo esperado
+//   rotos ↓ y curados = 0  → SOSPECHOSO: se han ido, pero no porque les curásemos
+//   rotos ≈ y curados > 0  → siguen naciendo rotos al mismo ritmo que se curan (goteo tapado)
+//   rotos > 0 y curados = 0 → el reintento NO está corriendo (¿desplegado?)
+//
+// Ese tercer caso es el que más importa y el que nadie habría visto sin cruzarlos: un arreglo
+// que cura tan rápido como se rompe se lee como éxito en cualquier gráfica de «rotos».
+//
+// Uso:
+//   node scripts/canary-perfil-sin-resolver.cjs            # ventana de 24 h
+//   node scripts/canary-perfil-sin-resolver.cjs --horas 72
+//
+// Salida: 0 = verde · 1 = hay que mirarlo. Pensado para leerse a ojo y para un cron.
+
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') })
+const { Client } = require('pg')
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
+
+const arg = (n, def) => {
+  const i = process.argv.indexOf(n)
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : def
+}
+const HORAS = Number(arg('--horas', 24))
+
+async function main() {
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
+  await c.connect()
+  try {
+    const ventana = `${HORAS} hours`
+
+    const rotos = await c.query(
+      `SELECT count(DISTINCT user_id)::int AS usuarios, count(*)::int AS eventos
+         FROM observable_events
+        WHERE event_type = 'auth' AND severity = 'warn'
+          AND error_message = 'Usuario no existe'
+          AND user_id IS NOT NULL
+          AND created_at > now() - $1::interval`,
+      [ventana],
+    )
+
+    const curados = await c.query(
+      `SELECT count(DISTINCT metadata->>'emailPrefijo')::int AS usuarios, count(*)::int AS eventos
+         FROM observable_events
+        WHERE event_type = 'auth_perfil_recuperado'
+          AND created_at > now() - $1::interval`,
+      [ventana],
+    )
+
+    // El daño en dinero, que es lo que hace que esto no sea una métrica de higiene.
+    const pagos = await c.query(
+      `SELECT count(DISTINCT user_id)::int AS usuarios, count(*)::int AS intentos
+         FROM observable_events
+        WHERE endpoint = '/api/stripe/create-checkout'
+          AND severity IN ('error','warn')
+          AND created_at > now() - $1::interval`,
+      [ventana],
+    )
+
+    const r = rotos.rows[0]
+    const cu = curados.rows[0]
+    const p = pagos.rows[0]
+
+    console.log(`\n══ Perfiles sin resolver — ventana de ${HORAS} h ${'═'.repeat(30)}`)
+    console.log(`   usuarios rotos (rebotan con «Usuario no existe») : ${r.usuarios}  (${r.eventos} eventos)`)
+    console.log(`   usuarios CURADOS por el reintento               : ${cu.usuarios}  (${cu.eventos} eventos)`)
+    console.log(`   checkouts rechazados                            : ${p.intentos} de ${p.usuarios} usuario(s)`)
+
+    // Veredicto. Las bandas no son un umbral inventado: salen del cruce de arriba.
+    let codigo = 0
+    if (r.usuarios === 0) {
+      console.log(`\n   🟢 VERDE — nadie navegando sin perfil en esta ventana.`)
+    } else if (cu.usuarios === 0) {
+      codigo = 1
+      console.log(
+        `\n   🔴 ROJO — hay ${r.usuarios} usuario(s) rotos y NINGUNA curación.\n` +
+          `      El reintento no está corriendo: comprueba que el frontend desplegado incluye\n` +
+          `      el callback jwt con \`decidirReintentoPerfil\` (T-434).`,
+      )
+    } else {
+      console.log(
+        `\n   🟡 EN CURSO — ${cu.usuarios} curado(s) y ${r.usuarios} aún rebotando.\n` +
+          `      Es lo esperado mientras se drena el atasco: un usuario aparece en AMBAS cifras\n` +
+          `      el día en que se cura (rebotó antes, se curó después). Debe bajar cada día.`,
+      )
+    }
+    if (p.intentos > 0) {
+      console.log(`   💸 ${p.intentos} intento(s) de compra rechazados: hay dinero en juego.`)
+    }
+    console.log('')
+    return codigo
+  } finally {
+    await c.end()
+  }
+}
+
+main()
+  .then((c) => process.exit(c))
+  .catch((e) => {
+    // Fail-open ruidoso: un canario que no puede medir NO es un canario en verde.
+    console.error(`\n⚠️  canary-perfil-sin-resolver: no pude medir (${e.message}).\n`)
+    process.exit(1)
+  })
