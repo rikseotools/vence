@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { usePlatformStats } from '@/hooks/usePlatformStats'
+import { limpiarMarkdown } from '@/lib/teoria/tieneMarkdown'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
@@ -401,7 +402,7 @@ export default function QuestionPage({ params }: { params: Promise<{ id: string 
                   </button>
                 </div>
                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic line-clamp-4">
-                  &ldquo;{question.articles.content.substring(0, 300)}{question.articles.content.length > 300 ? '... ' : ''}&rdquo;
+                  &ldquo;{limpiarMarkdown(question.articles.content).substring(0, 300)}{limpiarMarkdown(question.articles.content).length > 300 ? '... ' : ''}&rdquo;
                   {question.articles.content.length > 300 && (
                     <button
                       onClick={() => setShowArticleModal(true)}

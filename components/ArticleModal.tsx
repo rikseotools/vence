@@ -7,6 +7,7 @@ import { getAuthHeaders } from '../lib/api/authHeaders'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { formatLegalText } from '../lib/teoria/formatLegalText'
+import { tieneMarkdown } from '../lib/teoria/tieneMarkdown'
 
 interface OfficialExamData {
   hasOfficialExams: boolean
@@ -494,7 +495,11 @@ export default function ArticleModal({
                   </h3>
 
                   {/* Contenido con resaltado inteligente si se proporcionan datos de pregunta */}
-                  {questionText && correctAnswer !== null && options ? (
+                  {/* El resaltado NO interpreta markdown (T-461): si el artículo lo lleva, se pinta
+                      con ReactMarkdown aunque venga desde una pregunta. Medido: 683 artículos
+                      recuperan el formato y solo 3 pierden el subrayado. */}
+                  {questionText && correctAnswer !== null && options
+                    && !tieneMarkdown(articleData.cleanContent || articleData.content) ? (
                     <div
                       className="text-gray-800 dark:text-gray-200 leading-loose text-base"
                       dangerouslySetInnerHTML={{
@@ -506,7 +511,7 @@ export default function ArticleModal({
                         )
                       }}
                     />
-                  ) : articleData.cleanContent ? (
+                  ) : articleData.cleanContent && !tieneMarkdown(articleData.cleanContent) ? (
                     <div
                       className="text-gray-800 dark:text-gray-200 leading-relaxed text-base"
                       dangerouslySetInnerHTML={{ __html: articleData.cleanContent }}
