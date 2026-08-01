@@ -60,7 +60,13 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
          AND NOT EXISTS (
            SELECT 1 FROM user_subscriptions us
             WHERE us.user_id = tq.user_id
-              AND us.status IN ('active', 'trialing', 'past_due')
+              -- SIN filtrar por status, y esto costó cometer DOS VECES el mismo error:
+              -- status es el de HOY. Una suscripción que estuvo activa en julio y se canceló
+              -- en agosto figura hoy como cancelada, así que exigir estado activo vuelve a
+              -- juzgar el pasado con el presente, que es justo lo que esta guarda venía a
+              -- arreglar. Lo que decide es si el PERIODO cubre el día de la respuesta.
+              -- Caso que lo destapó: un usuario con premium mensual del 25/06 al 25/07 y
+              -- 300 respuestas diarias sin cobrar, que es lo correcto: era premium.
               AND tq.created_at::date BETWEEN us.current_period_start::date
                                           AND COALESCE(us.current_period_end::date, CURRENT_DATE))
        GROUP BY 1, 2)
