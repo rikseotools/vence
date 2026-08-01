@@ -1,6 +1,7 @@
 // lib/api/emails/queries.ts - Core v2 email module (Drizzle + Zod)
 import { getDb } from '@/db/client'
 import { emailPreferences, emailLogs, emailEvents, emailUnsubscribeTokens, userProfiles } from '@/db/schema'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import { eq } from 'drizzle-orm'
 import { Resend } from 'resend'
 import crypto from 'crypto'
@@ -233,6 +234,25 @@ async function logEmailSent(
   } catch (error) {
     // Don't fail the email send if logging fails
     console.error('⚠️ [Emails/v2] Error logging email:', error)
+    // …pero que no sea GRATIS. Este catch se tragaba cualquier fallo dejando solo un log que no
+    // mira nadie, y el correo salía igual: para toda la observabilidad, no había existido.
+    // Medido el 01/08/2026 (T-448): 8 avisos reales enviados y CERO filas en `email_events`,
+    // porque el CHECK de la columna rechazaba su `email_type` — un `Promise.all` en el que una
+    // de las dos inserciones ya había entrado. El CI lo gatea ahora
+    // (`emailEventsTiposAceptados`), pero esto cubre lo que el CI no puede ver: la BD caída, el
+    // pool saturado o un tipo añadido en caliente. `warn` y no `error` porque el usuario SÍ
+    // recibió su correo; lo que se ha perdido es el rastro.
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'email_sin_rastro',
+      endpoint: 'sendEmailV2',
+      userId,
+      metadata: {
+        emailType,
+        motivo: error instanceof Error ? error.message.slice(0, 200) : 'desconocido',
+      },
+    })
   }
 }
 

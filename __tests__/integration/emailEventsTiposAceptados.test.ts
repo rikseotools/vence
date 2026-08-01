@@ -24,7 +24,15 @@ dotenv.config({ path: '.env.local', override: true })
 
 // Deuda conocida y medida el 01/08. Al ampliar el CHECK, QUITAR de aquí lo que se arregle:
 // la lista solo puede encoger.
-const HUECOS_CONOCIDOS = ['nueva_oposicion', 'fin_suscripcion_precio_heredado']
+//
+// ✅ VACÍA desde el 01/08/2026 (migración `20260801_email_events_tipos_faltantes.sql`, aplicada
+// en RDS ese día): los dos huecos que se declararon aquí por la mañana —`nueva_oposicion` y
+// `fin_suscripcion_precio_heredado`— ya están en la lista blanca. Al quedarse a cero, este
+// trinquete deja de ser «que no crezca» y pasa a ser un gate de verdad: cualquier tipo nuevo
+// que la app pueda enviar y la BD rechace pone el CI en rojo ANTES de que un correo real salga
+// sin rastro. No volver a rellenar esta lista para «desbloquear» un push: eso es exactamente
+// el fallo que vigila.
+const HUECOS_CONOCIDOS: string[] = []
 
 const DB_URL = process.env.DATABASE_URL
 const describeIfDb = DB_URL ? describe : describe.skip
