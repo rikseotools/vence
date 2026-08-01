@@ -10,7 +10,7 @@ import CreadorTemario from '@/components/oposicionPersonalizada/CreadorTemario'
 
 export default function CreadorTemarioCliente() {
   const { user, loading } = useAuth() as {
-    user?: { full_name?: string | null; email?: string | null } | null
+    user?: { id?: string | null; full_name?: string | null; email?: string | null } | null
     loading?: boolean
   }
 
@@ -38,5 +38,6 @@ export default function CreadorTemarioCliente() {
   }
 
   // Solo el nombre; nunca el email. El nombre público lleva pila + iniciales (ver `temario.ts`).
-  return <CreadorTemario autor={user.full_name ?? null} />
+  // El `id` es únicamente para recordar por usuario que ya leyó la explicación (`introVisto.ts`).
+  return <CreadorTemario autor={user.full_name ?? null} userId={user.id ?? null} />
 }

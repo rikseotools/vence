@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
 import {
   anadirArticulo,
   quitarArticulo,
@@ -82,7 +83,86 @@ function Fragmento({ texto }: { texto: string }) {
   )
 }
 
-export default function CreadorTemario({ autor }: { autor?: string | null }) {
+/**
+ * Explicación de para qué sirve esta pantalla. Se cierra con la ✕ y no vuelve a salir.
+ *
+ * No es decoración: quien llega aquí ve un buscador de leyes y una lista de temas vacía, y sin
+ * este texto no tiene forma de saber que lo que está mirando resuelve SU problema. El problema,
+ * además, es de gente concreta y medida: **303 usuarios** tienen hoy una oposición personalizada
+ * como objetivo y **127 no han hecho ni un solo test** (30/07) — se apuntaron a una etiqueta que
+ * no tenía temario detrás. Por eso el texto nombra los dos casos en voz alta, para que quien
+ * esté en ellos se reconozca.
+ */
+function Intro({ onCerrar }: { onCerrar: () => void }) {
+  return (
+    <section
+      className="relative mb-8 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-5 pr-12"
+      aria-labelledby="intro-oposicion-personalizada"
+    >
+      <button
+        type="button"
+        onClick={onCerrar}
+        aria-label="He entendido, cerrar la explicación"
+        title="Cerrar (no volverá a salir)"
+        className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        ✕
+      </button>
+
+      <h2
+        id="intro-oposicion-personalizada"
+        className="text-lg font-bold text-blue-900 dark:text-blue-100"
+      >
+        Aquí puedes crear tu propia oposición
+      </h2>
+
+      <div className="mt-2 space-y-2 text-sm text-blue-900/90 dark:text-blue-100/90">
+        <p>
+          Si no encuentras tu oposición en Vence, no tienes que esperar a que la montemos: puedes
+          armar tú mismo su temario, tema a tema, con las leyes y los artículos que entran en tu
+          programa. Al guardarla funcionará como cualquier otra oposición (tests, estadísticas y
+          repaso de fallos incluidos).
+        </p>
+        <p>Está pensada sobre todo para dos situaciones:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>Oposiciones de A1 y A2</strong>, que son mucho más específicas y donde cada
+            opositor necesita su propia combinación de leyes (un temario cerrado no le vale a
+            todo el mundo).
+          </li>
+          <li>
+            <strong>Oposiciones muy minoritarias</strong>, con pocas plazas, que difícilmente
+            vamos a tener montadas y que aun así hay que estudiar.
+          </li>
+        </ul>
+        <p className="text-blue-800/80 dark:text-blue-200/80">
+          Si tu programa habla de una materia sin decir de qué ley es (que es lo normal), búscala
+          por su contenido y te diremos en qué ley y en qué artículo está.
+        </p>
+        <p className="font-medium">
+          Cuando la termines, tu oposición será pública y otros opositores podrán elegirla, pero
+          solo tú podrás modificarla.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onCerrar}
+        className="mt-4 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+      >
+        Entendido, vamos a configurarla
+      </button>
+    </section>
+  )
+}
+
+export default function CreadorTemario({
+  autor,
+  userId,
+}: {
+  autor?: string | null
+  userId?: string | null
+}) {
   const [temario, setTemario] = useState<Temario>({ nombre: '', temas: [temaVacio('t1', 1)] })
   const [temaActivo, setTemaActivo] = useState('t1')
   const [q, setQ] = useState('')
@@ -94,6 +174,19 @@ export default function CreadorTemario({ autor }: { autor?: string | null }) {
   const [arts, setArts] = useState<Record<string, string[]>>({})
   const [cargandoArts, setCargandoArts] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Arranca OCULTA y se decide tras montar: en servidor no hay `localStorage`, y pintarla
+  // siempre para esconderla después daría un parpadeo a quien ya la cerró.
+  const [mostrarIntro, setMostrarIntro] = useState(false)
+
+  useEffect(() => {
+    const almacen = typeof window !== 'undefined' ? window.localStorage : null
+    setMostrarIntro(debeMostrarIntro(leerMarca(almacen, userId)))
+  }, [userId])
+
+  const cerrarIntro = useCallback(() => {
+    setMostrarIntro(false)
+    marcarVisto(typeof window !== 'undefined' ? window.localStorage : null, userId)
+  }, [userId])
 
   const problemas = problemasParaGuardar(temario)
   const listo = puedeGuardar(temario)
@@ -173,13 +266,27 @@ export default function CreadorTemario({ autor }: { autor?: string | null }) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Crea tu oposición</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300">
           Arma tu propio temario eligiendo las leyes y los artículos que entran en cada tema. Si no
           sabes en qué ley está una materia, búscala por su contenido.
         </p>
+        {!mostrarIntro && (
+          // Quien la cerró tiene que poder volver a leerla: cerrar una explicación no debería ser
+          // irreversible, y sin esta salida el único modo de recuperarla sería borrar datos del
+          // navegador. No se guarda el «reabierto»: es solo para esta visita.
+          <button
+            type="button"
+            onClick={() => setMostrarIntro(true)}
+            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            ¿Para qué sirve esto?
+          </button>
+        )}
       </header>
+
+      {mostrarIntro && <Intro onCerrar={cerrarIntro} />}
 
       {/* Nombre */}
       <section className="mb-8">
