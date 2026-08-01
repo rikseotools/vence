@@ -19,6 +19,7 @@ import { sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getReadDb } from '@/db/client'
+import { agruparPorTitulo } from '@/lib/laws/agruparPorTitulo'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -58,9 +59,55 @@ async function _GET(
               a.article_number
   `)) as unknown as Array<{ article_number: string; title: string | null; question_count: number }>
 
+  // Títulos de la ley. Salen de `law_sections`, que es la fuente fiable — NO de
+  // `articles.title_number`, que está a NULL en la mayor parte del catálogo. Y muchas leyes no
+  // tienen ninguno (744 de 1.036 en temas vivos), así que esto puede venir vacío con toda
+  // normalidad: `agruparPorTitulo` lo trata como «lista plana» y la pantalla sigue funcionando.
+  const secciones = (await db.execute(sql`
+    SELECT id, section_number, title, article_range_start, article_range_end
+      FROM law_sections
+     WHERE law_id = ${lawId}::uuid AND is_active = true AND section_type = 'titulo'
+     ORDER BY order_position
+  `)) as unknown as Array<{
+    id: string
+    section_number: string | null
+    title: string
+    article_range_start: number | null
+    article_range_end: number | null
+  }>
+
+  const articulos = filas.map((f) => ({
+    articleNumber: f.article_number,
+    questionCount: Number(f.question_count ?? 0),
+  }))
+
+  // El reparto se hace en el SERVIDOR y con núcleo puro (`agruparPorTitulo`, 13 tests): así el
+  // caso que se pierde en silencio —las disposiciones, que no caen en ningún rango numérico—
+  // está resuelto en un solo sitio y probado, en vez de repetido en cada pantalla que lo pinte.
+  const grupos = agruparPorTitulo(
+    articulos,
+    secciones.map((s) => ({
+      id: s.id,
+      sectionNumber: s.section_number,
+      title: s.title,
+      from: s.article_range_start,
+      to: s.article_range_end,
+    })),
+  )
+
   return NextResponse.json({
     success: true,
     lawId,
+    tieneTitulos: grupos.some((g) => g.seccionId !== null),
+    grupos: grupos.map((g) => ({
+      seccionId: g.seccionId,
+      titulo: g.titulo,
+      articulos: g.articulos.map((a) => ({
+        article_number: a.articleNumber,
+        question_count: a.questionCount,
+      })),
+    })),
+    // Lista plana, por compatibilidad con quien solo quiera los artículos.
     articles: filas.map((f) => ({
       article_number: f.article_number,
       title: f.title,

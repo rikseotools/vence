@@ -91,6 +91,11 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
   // CÓDIGO con fixture propio — ya deterministas. Van tal cual a la BD efímera.
   // ─────────────────────────────────────────────────────────────────────────────────────────
   {
+    ruta: '__tests__/integration/lawArticlesOrden.integration.test.ts',
+    tipo: 'codigo', fixturePropio: false, gateEscritura: false,
+    que: 'El orden del listado de artículos de una ley (T-327). SOLO LEE. Fija el defecto que motivó el test: al quitarle las letras a «DA1» queda «1», así que con un ORDER BY ingenuo las disposiciones se colaban entre el art. 1 y el 2 (medido en la CE: 0 · 1 · DA1 · DT1 · 2 …) y quien busca el artículo 2 no lo encontraba donde debe estar. No puede ser unitario: con datos inventados nadie escribe un «DA1».',
+  },
+  {
     ruta: '__tests__/integration/referrals-queries.test.ts',
     tipo: 'codigo', fixturePropio: true, gateEscritura: true,
     que: 'Circuito de referidos por función (atribuir, calificar, hold, promover). Migrada a usuarios efímeros en T-336.',

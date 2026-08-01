@@ -13,9 +13,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
+import SelectorArticulos, { type GrupoArticulos } from './SelectorArticulos'
 import {
   anadirArticulo,
+  anadirArticulos,
   quitarArticulo,
+  quitarArticulos,
   renombrarTema,
   quitarTema,
   agruparPorLey,
@@ -171,7 +174,7 @@ export default function CreadorTemario({
   const [contenido, setContenido] = useState<ContenidoHit[]>([])
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null)
   // Artículos de una ley concreta, cuando el usuario despliega una ley del resultado.
-  const [arts, setArts] = useState<Record<string, string[]>>({})
+  const [arts, setArts] = useState<Record<string, GrupoArticulos[]>>({})
   const [cargandoArts, setCargandoArts] = useState<string | null>(null)
   const [errorArts, setErrorArts] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -261,12 +264,8 @@ export default function CreadorTemario({
           setErrorArts('No se han podido cargar los artículos. Inténtalo otra vez.')
           return
         }
-        const lista: string[] = Array.isArray(body.articles)
-          ? body.articles
-              .map((a: { article_number?: string }) => String(a.article_number ?? ''))
-              .filter(Boolean)
-          : []
-        setArts((prev) => ({ ...prev, [ley.lawId]: lista }))
+        const grupos: GrupoArticulos[] = Array.isArray(body.grupos) ? body.grupos : []
+        setArts((prev) => ({ ...prev, [ley.lawId]: grupos }))
       } catch {
         setErrorArts('No se han podido cargar los artículos. Comprueba tu conexión.')
       } finally {
@@ -499,21 +498,30 @@ export default function CreadorTemario({
                       </div>
                     </div>
                     {arts[l.lawId] && (
-                      <div className="mt-3 flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
-                        {arts[l.lawId].length === 0 && (
-                          <p className="text-xs text-gray-500">Sin artículos disponibles.</p>
-                        )}
-                        {arts[l.lawId].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => anadir(l.lawId, l.shortName, n)}
-                            className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-200"
-                          >
-                            Art. {n}
-                          </button>
-                        ))}
-                      </div>
+                      <SelectorArticulos
+                        ley={l}
+                        grupos={arts[l.lawId]}
+                        tema={tema}
+                        onToggle={(numeros, marcar) =>
+                          setTemario((t) =>
+                            marcar
+                              ? anadirArticulos(
+                                  t,
+                                  temaActivo,
+                                  numeros.map((n) => ({
+                                    lawId: l.lawId,
+                                    shortName: l.shortName,
+                                    articleNumber: n,
+                                  })),
+                                )
+                              : quitarArticulos(
+                                  t,
+                                  temaActivo,
+                                  numeros.map((n) => ({ lawId: l.lawId, articleNumber: n })),
+                                ),
+                          )
+                        }
+                      />
                     )}
                   </li>
                 ))}

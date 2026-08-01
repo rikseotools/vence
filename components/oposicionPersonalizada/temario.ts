@@ -111,6 +111,15 @@ export function quitarArticulo(
   }
 }
 
+/** Quita VARIOS de golpe (desmarcar un título entero, o «desmarcar todos»). */
+export function quitarArticulos(
+  temario: Temario,
+  temaId: string,
+  arts: Array<{ lawId: string; articleNumber: string | null }>,
+): Temario {
+  return arts.reduce((acc, a) => quitarArticulo(acc, temaId, a), temario)
+}
+
 export function renombrarTema(temario: Temario, temaId: string, titulo: string): Temario {
   return {
     ...temario,
@@ -189,6 +198,37 @@ export function problemasParaGuardar(temario: Temario): Problema[] {
 /** ¿Bloquea el guardado? Solo el nombre y el «no hay ni un artículo». Lo demás es aviso. */
 export function puedeGuardar(temario: Temario): boolean {
   return !problemasParaGuardar(temario).some((p) => p.campo === 'nombre' || p.campo === 'temas')
+}
+
+/**
+ * ¿Está este artículo ya en el tema?
+ *
+ * Es lo que marca la casilla en la pantalla, y va contra el TEMARIO en vez de contra un estado
+ * de selección aparte. Llevar dos listas —«lo marcado» y «lo que hay en el tema»— es la forma
+ * clásica de que se separen: basta con quitar un artículo desde el panel de la derecha para que
+ * la casilla de la izquierda siga marcada, y entonces la pantalla miente sobre lo que has creado.
+ *
+ * Cuenta como presente si está la LEY ENTERA: pedir el art. 24 de una ley que ya entra completa
+ * no es «no lo tienes», es que ya está dentro.
+ */
+export function estaEnTema(
+  tema: Tema | undefined | null,
+  lawId: string,
+  articleNumber: string,
+): boolean {
+  if (!tema) return false
+  return tema.articulos.some(
+    (a) => a.lawId === lawId && (esLeyEntera(a) || a.articleNumber === articleNumber),
+  )
+}
+
+/** Cuántos de esos artículos ya están en el tema. Para el tick de un título («todos/algunos»). */
+export function cuantosEnTema(
+  tema: Tema | undefined | null,
+  lawId: string,
+  articleNumbers: string[],
+): number {
+  return articleNumbers.filter((n) => estaEnTema(tema, lawId, n)).length
 }
 
 /** Cuántos artículos tiene el temario entero (contando repetidos entre temas: son reales). */
