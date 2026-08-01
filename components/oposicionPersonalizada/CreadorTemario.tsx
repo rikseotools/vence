@@ -131,8 +131,8 @@ function Intro({ onCerrar }: { onCerrar: () => void }) {
             todo el mundo).
           </li>
           <li>
-            <strong>Oposiciones muy minoritarias</strong>, con pocas plazas, que difícilmente
-            vamos a tener montadas y que aun así hay que estudiar.
+            <strong>Oposiciones muy minoritarias</strong>, con pocas plazas, que difícilmente vas
+            a encontrar en otro sitio y que aquí vas a poder configurarte tú mismo.
           </li>
         </ul>
         <p className="text-blue-800/80 dark:text-blue-200/80">
