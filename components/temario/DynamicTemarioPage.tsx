@@ -13,6 +13,12 @@ import { notFound } from 'next/navigation'
 
 interface DynamicTemarioPageProps {
   oposicionSlug: string          // ej: 'auxilio-judicial'
+  /**
+   * [T-327] `position_type` explícito para oposiciones PERSONALIZADAS: no tienen slug en el
+   * config, así que `slugToPositionType` devuelve null y esta página daba 404 — el icono 📚 del
+   * Header llevaba a una página inexistente.
+   */
+  positionTypeOverride?: string
   oposicionDisplayName: string   // ej: 'Auxilio Judicial'
   breadcrumbHint?: string        // opcional: texto adicional para header
 }
@@ -27,9 +33,10 @@ function getFechaActualizacion() {
 
 export default async function DynamicTemarioPage({
   oposicionSlug,
+  positionTypeOverride,
   oposicionDisplayName,
 }: DynamicTemarioPageProps) {
-  const positionType = slugToPositionType(oposicionSlug)
+  const positionType = positionTypeOverride || slugToPositionType(oposicionSlug)
   if (!positionType) notFound()
 
   const temario = await getTemarioByPositionType(positionType)

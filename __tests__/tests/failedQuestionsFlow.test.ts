@@ -50,14 +50,21 @@ describe('test-personalizado pages - sessionStorage via useEffect', () => {
   const fs = require('fs')
   const glob = require('glob')
 
-  // Exclude dynamic route wrapper and fully migrated pages (< 15 lines = thin wrapper)
+  // Solo las páginas que TODAVÍA llevan la lógica dentro. Una que delega en el componente
+  // compartido no tiene nada que comprobar aquí: la lógica vive allí, y se verifica aparte.
+  //
+  // Antes esto se decidía por NÚMERO DE LÍNEAS (<15 = envoltorio). Es una heurística que mide lo
+  // que no importa: una página que delega en una línea pero lleva cabecera explicando por qué
+  // existe pasa de 15 líneas y era tratada como si tuviera código inline — le exigía un
+  // `useState` que no tiene ni debe tener. Pasó el 01/08/2026 con la ruta de oposición
+  // personalizada (T-327). Ahora se mira si DELEGA, que es la pregunta de verdad; documentar
+  // bien un fichero no puede ponerlo en la lista de sospechosos.
   const testPersonalizadoPages = glob.sync('app/**/test/tema/*/test-personalizado/page.{js,tsx}')
     .filter((f: string) => {
       if (f.includes('[oposicion]')) return false
       const content = fs.readFileSync(f, 'utf-8')
-      const lineCount = content.split('\n').length
-      // Migrated pages are thin wrappers (< 15 lines). Non-migrated have full inline code (50+ lines)
-      return lineCount > 15
+      const delega = /<TestPersonalizadoPage\b/.test(content)
+      return !delega
     })
 
   it('should find all test-personalizado pages', () => {

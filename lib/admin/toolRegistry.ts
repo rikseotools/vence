@@ -409,6 +409,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Auth.js y esta gente no llega a tener sesión Auth.js. Criterio en el núcleo puro ' +
       '`lib/auth/rebotePersistente.cjs` (13 tests), no en la consulta.',
   },
+  rutas_oposicion_personalizada: {
+    titulo: 'Rastrear TODAS las rutas de una oposición personalizada y encontrar las rotas',
+    ruta: 'scripts/sim/sim-rutas-oposicion-personalizada.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:rutas-oposicion-personalizada`. Crea una oposición efímera, la fija como ' +
+      'objetivo y **DESCUBRE** las rutas siguiendo cada enlace desde el hub, en vez de ' +
+      'declararlas. Se limpia sola; necesita `AUTH_SECRET`. **Nace de que comprobar pantalla por ' +
+      'pantalla no escala:** Manuel lo dijo —*«pincha en todos los botones, te falta muchos por ' +
+      'comprobar»*— y tenía razón; una lista escrita a mano solo cubre lo que uno se acordó de ' +
+      'mirar, y lo que falta es por definición lo que no pensó. Encontró tres agujeros que ' +
+      'ninguna prueba veía: el botón de EMPEZAR el test llevaba a una ruta inexistente (se podía ' +
+      'armar el temario y no llegar a estudiar, que es el punto de todo), el icono 📚 del Header ' +
+      'daba 404, y —tras arreglar el temario— sus propios enlaces internos seguían rotos, que es ' +
+      'el tipo de agujero que solo aparece rastreando. **No se fía del código HTTP**: estas ' +
+      'páginas son cascarones que devuelven 200 y luego pintan el error, así que mira el TEXTO ' +
+      'renderizado. Hermanas: `sim:tests-oposicion-personalizada` (que la pantalla sea la suya) y ' +
+      '`sim:oposicion-personalizada` (guardar/editar contra BD).',
+  },
   tests_oposicion_personalizada: {
     titulo: 'Comprobar EN UN NAVEGADOR que se puede estudiar con tu propio temario',
     ruta: 'scripts/sim/sim-tests-oposicion-personalizada.ts',

@@ -8,17 +8,24 @@ import { getOposicion } from '@/lib/config/oposiciones'
 
 interface TestPersonalizadoPageProps {
   oposicionSlug: string
+  /**
+   * [T-327] `position_type` explícito para oposiciones PERSONALIZADAS, que no están en el config.
+   * Sin él, el fallback de abajo es `auxiliar_administrativo_estado`: le serviría a la persona
+   * las preguntas de OTRA oposición sin avisar. No falla — acierta la pregunta equivocada.
+   */
+  positionTypeOverride?: string
+  basePathOverride?: string
   params: Promise<{ numero: string }>
 }
 
-function TestPersonalizadoContent({ oposicionSlug, params }: TestPersonalizadoPageProps) {
+function TestPersonalizadoContent({ oposicionSlug, params, positionTypeOverride, basePathOverride }: TestPersonalizadoPageProps) {
   const searchParams = useSearchParams()
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [failedQuestionIds, setFailedQuestionIds] = useState<string[] | null>(null)
 
   const config = getOposicion(oposicionSlug)
-  const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+  const basePath = basePathOverride || `/${oposicionSlug}`
+  const positionType = positionTypeOverride || config?.positionType || 'auxiliar_administrativo_estado'
 
   // Resolve params
   useEffect(() => {
@@ -100,7 +107,9 @@ function TestPersonalizadoContent({ oposicionSlug, params }: TestPersonalizadoPa
     )
   }
 
-  if (isNaN(temaNumber) || !isValidTema(temaNumber)) {
+  // Con override (personalizada) los temas viven en la BD, no en el config: validar aquí
+  // devolvería siempre «Tema no válido» para temas que SÍ existen.
+  if (isNaN(temaNumber) || (!positionTypeOverride && !isValidTema(temaNumber))) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -136,7 +145,7 @@ function TestPersonalizadoContent({ oposicionSlug, params }: TestPersonalizadoPa
   )
 }
 
-export default function TestPersonalizadoPage({ oposicionSlug, params }: TestPersonalizadoPageProps) {
+export default function TestPersonalizadoPage({ oposicionSlug, params, positionTypeOverride, basePathOverride }: TestPersonalizadoPageProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -146,7 +155,7 @@ export default function TestPersonalizadoPage({ oposicionSlug, params }: TestPer
         </div>
       </div>
     }>
-      <TestPersonalizadoContent oposicionSlug={oposicionSlug} params={params} />
+      <TestPersonalizadoContent oposicionSlug={oposicionSlug} params={params} positionTypeOverride={positionTypeOverride} basePathOverride={basePathOverride} />
     </Suspense>
   )
 }

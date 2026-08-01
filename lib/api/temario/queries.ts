@@ -25,6 +25,7 @@ import {
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { sortByArticleNumber } from '@/lib/utils/articleOrder'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 // ============================================
 // OBTENER CONTENIDO COMPLETO DE UN TEMA
@@ -60,7 +61,15 @@ export async function getTopicContentBaseInternal(
   topicNumber: number
 ): Promise<TopicContentBase | null> {
   const db = getTemarioDb()
-  const oposicion = OPOSICIONES[oposicionSlug]
+  // [T-327] Una oposición PERSONALIZADA no está en el config: lo que llega ya ES su
+  // `position_type`. Sin esta rama, `OPOSICIONES[...]` es undefined y la página del tema del
+  // temario daba 404 — lo descubrió el rastreador de rutas siguiendo los enlaces del temario.
+  const positionTypeDirecto = esObjetivoPersonalizado(oposicionSlug) ? oposicionSlug : null
+  const oposicion = positionTypeDirecto
+    // Mismo shape que las del catálogo: el `name` lo rellena luego la propia página con el
+    // nombre público. Devolver un objeto a medias obligaría a comprobar cada campo aguas abajo.
+    ? { id: positionTypeDirecto, name: 'Tu oposición', totalTopics: 0, positionType: positionTypeDirecto }
+    : OPOSICIONES[oposicionSlug]
 
   if (!oposicion) {
     return null

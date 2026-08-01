@@ -9,10 +9,17 @@ import { getOposicion } from '@/lib/config/oposiciones'
 
 interface TestExamenPageProps {
   oposicionSlug: string
+  /**
+   * [T-327] `position_type` explícito para oposiciones PERSONALIZADAS, que no están en el config.
+   * Sin él, el fallback de abajo es `auxiliar_administrativo_estado`: le serviría a la persona
+   * las preguntas de OTRA oposición sin avisar. No falla — acierta la pregunta equivocada.
+   */
+  positionTypeOverride?: string
+  basePathOverride?: string
   params: Promise<{ numero: string }>
 }
 
-function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
+function TestExamenContent({ oposicionSlug, params, positionTypeOverride, basePathOverride }: TestExamenPageProps) {
   const searchParams = useSearchParams()
   const [temaNumber, setTemaNumber] = useState<number | null>(null)
   const [questions, setQuestions] = useState<any[]>([])
@@ -22,8 +29,8 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
   const [savedAnswers, setSavedAnswers] = useState<any>(null)
 
   const config = getOposicion(oposicionSlug)
-  const basePath = `/${oposicionSlug}`
-  const positionType = config?.positionType || 'auxiliar_administrativo_estado'
+  const basePath = basePathOverride || `/${oposicionSlug}`
+  const positionType = positionTypeOverride || config?.positionType || 'auxiliar_administrativo_estado'
 
   // Validate tema number
   const isValidTema = (tema: number): boolean => {
@@ -181,7 +188,9 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
     )
   }
 
-  if (isNaN(temaNumber) || !isValidTema(temaNumber)) {
+  // Con override (personalizada) los temas viven en la BD, no en el config: validar aquí
+  // devolvería siempre «Tema no válido» para temas que SÍ existen.
+  if (isNaN(temaNumber) || (!positionTypeOverride && !isValidTema(temaNumber))) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -216,7 +225,7 @@ function TestExamenContent({ oposicionSlug, params }: TestExamenPageProps) {
   )
 }
 
-export default function TestExamenPage({ oposicionSlug, params }: TestExamenPageProps) {
+export default function TestExamenPage({ oposicionSlug, params, positionTypeOverride, basePathOverride }: TestExamenPageProps) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -226,7 +235,7 @@ export default function TestExamenPage({ oposicionSlug, params }: TestExamenPage
         </div>
       </div>
     }>
-      <TestExamenContent oposicionSlug={oposicionSlug} params={params} />
+      <TestExamenContent oposicionSlug={oposicionSlug} params={params} positionTypeOverride={positionTypeOverride} basePathOverride={basePathOverride} />
     </Suspense>
   )
 }

@@ -136,7 +136,8 @@
     "canary:cupo-vs-respuestas": "node scripts/canary-cupo-vs-respuestas.cjs",
     "sim:oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-oposicion-personalizada.ts",
     "sim:baja-emails-vivo": "node scripts/sim/sim-baja-emails-vivo.cjs",
-    "sim:tests-oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-tests-oposicion-personalizada.ts"
+    "sim:tests-oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-tests-oposicion-personalizada.ts",
+    "sim:rutas-oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-rutas-oposicion-personalizada.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

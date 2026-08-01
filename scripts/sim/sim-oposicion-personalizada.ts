@@ -289,6 +289,7 @@ async function main() {
         positionTypeDe(id),
       ])
       await c.query(`DELETE FROM topics WHERE position_type = $1`, [positionTypeDe(id)])
+      await c.query(`DELETE FROM oposicion_bloques WHERE position_type = $1`, [positionTypeDe(id)])
     }
     await c.query(`DELETE FROM custom_oposiciones WHERE user_id = $1`, [userId])
     const { rowCount } = await c.query(`DELETE FROM user_profiles WHERE id = $1`, [userId])

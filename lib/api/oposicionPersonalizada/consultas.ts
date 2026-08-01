@@ -180,10 +180,18 @@ export async function reemplazarTemario(
       `)
       await tx.execute(sql`DELETE FROM topics WHERE position_type = ${pt}`)
 
+      // El bloque se reescribe igual que los temas: si la oposición se creó antes de que esto
+      // existiera, editarla la repara sola en vez de dejarla con el temario en 404 para siempre.
+      await tx.execute(sql`DELETE FROM oposicion_bloques WHERE position_type = ${pt}`)
+      await tx.execute(sql`
+        INSERT INTO oposicion_bloques (position_type, bloque_number, titulo, icon, sort_order)
+        VALUES (${pt}, 1, 'Tu temario', '✏️', 0)
+      `)
+
       for (const tema of plan.temas) {
         const t = (await tx.execute(sql`
-          INSERT INTO topics (position_type, topic_number, title, description, descripcion_corta, is_active, disponible)
-          VALUES (${pt}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, ${tema.titulo}, true, true)
+          INSERT INTO topics (position_type, topic_number, title, description, descripcion_corta, bloque_number, is_active, disponible)
+          VALUES (${pt}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, ${tema.titulo}, 1, true, true)
           RETURNING id
         `)) as unknown as Array<{ id: string }>
         const topicId = t[0]?.id

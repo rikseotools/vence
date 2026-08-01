@@ -70,6 +70,17 @@ export async function guardarOposicionPersonalizada(
       //    usuarios pueden llamar igual a su oposición y un slug por nombre las mezclaría).
       const { plan } = construirPlan(entrada, id)
 
+
+        // [T-327] UN BLOQUE, y no es papeleo: el temario (`getTemarioByPositionType`) devuelve
+        // NULL si la oposición no tiene filas en `oposicion_bloques`, así que sin esto la página
+        // del temario daba 404 — lo cazó el rastreador de rutas. Un temario propio no tiene
+        // bloques como los del catálogo («Organización del Estado», «Ofimática»…): son una
+        // división editorial que aquí no existe, así que se crea UNO solo que agrupa sus temas.
+        await tx.execute(sql`
+          INSERT INTO oposicion_bloques (position_type, bloque_number, titulo, icon, sort_order)
+          VALUES (${plan!.positionType}, 1, 'Tu temario', '✏️', 0)
+        `)
+
       for (const tema of plan!.temas) {
         // `descripcion_corta` es NOT NULL en la BD aunque `db/schema.ts` la declare opcional
         // (deriva del schema, comprobado el 01/08 contra RDS). Lo cazó la simulación, no los
@@ -80,8 +91,8 @@ export async function guardarOposicionPersonalizada(
         // ensuciar esa medición. Con el título es honesto (es lo único que ha escrito) y deja la
         // fila coherente con las del catálogo.
         const t = (await tx.execute(sql`
-          INSERT INTO topics (position_type, topic_number, title, description, descripcion_corta, is_active, disponible)
-          VALUES (${plan!.positionType}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, ${tema.titulo}, true, true)
+          INSERT INTO topics (position_type, topic_number, title, description, descripcion_corta, bloque_number, is_active, disponible)
+          VALUES (${plan!.positionType}, ${tema.topicNumber}, ${tema.titulo}, ${tema.titulo}, ${tema.titulo}, 1, true, true)
           RETURNING id
         `)) as unknown as Array<{ id: string }>
         const topicId = t[0]?.id
