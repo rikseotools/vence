@@ -1205,6 +1205,20 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-451] 🟠 [ABIERTO 01/08] `huerfanos:plan` no ve las leyes escopadas como «ley entera»: 4.865 artículos sin preguntas fuera del radar
+
+- **Esfuerzo: rato.** El arreglo es una query; lo que lleva tiempo es re-medir la deuda con la cifra buena y ver qué cambia de prioridad.
+- **Qué pasa:** `scripts/huerfanos-plan.cjs` recorre los artículos escopados con `JOIN LATERAL unnest(ts.article_numbers)`. Cuando el scope es **`article_numbers = NULL` —que en este proyecto significa LA LEY ENTERA— `unnest(NULL)` no devuelve ni una fila**, así que ese scope desaparece del análisis. Es el mismo patrón que ya mordió en `articleInScope()` (`x = ANY(NULL)` → NULL).
+- **A quién afecta de verdad:** una ley sigue siendo visible si **algún otro** tema la escopa con lista (por eso `TFUE` sí sale, con 244 huecos). Las que desaparecen del todo son las que **solo** tienen scopes NULL: **184 leyes · 4.865 artículos** con texto y sin una sola pregunta activa.
+- **La comparación que lo dimensiona:** el planificador reporta **10.200** artículos de deuda real… y hay **4.865 más que no puede ver**. Quien prioriza con esa herramienta —que es lo que manda CLAUDE.md: *«PRIORIZAR ANTES DE ESCRIBIR con `npm run huerfanos:plan`»*— está trabajando sobre dos tercios del problema creyendo que es el total.
+- **Las peores, todas con UNA sola oposición detrás (por eso nadie las echa de menos):** `Reglamento Cortes Aragón 2017` 320 · `Convenio Colectivo Personal Laboral CM` 260 · `Estatutos UGR` 222 · `RD 2364/1994 Seg Privada` 179 · `Ley 5/2010 LAULA` 123 · `Reglamento Económico-Financiero UGR` 116 · `RD 130/2017 Explosivos` 105 · `Ley 14/2013` 103.
+- **Cómo se destapó (01/08):** al ir a generar preguntas de la `Ley 4/2005 Igualdad Euskadi` para el caso vasco de [T-444]. Esa ley tiene **83 artículos y 10 preguntas**, está escopada en dos temas (`administrativo_pais_vasco/T6` y `auxiliar_administrativo_pais_vasco/T6`) **con NULL las dos veces**, y el planificador respondía **`0 artículos huérfanos`** — tanto con `--ley` como con `--deuda`. Un cero que parece «cubierto» y es «no lo he mirado».
+- **Arreglo:** tratar el NULL como lo trata el resto del sistema — todos los artículos de esa ley. En la práctica, sustituir el `unnest` por la unión de (a) los artículos enumerados cuando hay lista y (b) todos los de la ley cuando no la hay. Existe ya el criterio en `articleInScope()`; conviene reusarlo y no escribir un tercer intérprete del NULL.
+- **Al arreglarlo, cuidado con dos cosas:** (1) la cifra global de deuda subirá de golpe ~48%, así que hay que avisar de que es la MISMA deuda mejor medida, no deuda nueva; (2) el detector `article_no_coverage` del barrido nocturno merece la misma revisión — si comparte el patrón, el badge lleva el mismo punto ciego.
+- ⚠️ **Defecto menor visto de paso, en el propio `reserve`:** al reservar el id, el aviso anti-duplicados **se comparó con la ficha que él mismo acababa de crear** y respondió *«❌ NO reservado: T-451 se parece demasiado (8 palabras)»*. El id sí quedó reservado. No es grave —el guardarraíl de [T-427] funciona y es justo lo que se pedía— pero hace creer que otra sesión ya hizo tu trabajo: excluir la propia fila recién insertada es una línea.
+- **Relacionadas:** [T-444] (de donde sale), [T-146] (los huecos que el badge no ve por otro motivo: artículos no numéricos), CLAUDE.md → *«revisa los artículos sin preguntas»*.
+
+
 ### [T-444] 🟡 [ABIERTO 31/07 · AVANZADA 01/08] El art. 71 de la LO 3/2007 se servía en 6 temas cuyo epígrafe no llega al Título VI — quedan 2
 
 - **Esfuerzo: un rato.** Lo que queda es **bajar el temario oficial de 2 convocatorias** y verificar su epígrafe; el análisis ya está hecho y medido aquí.
