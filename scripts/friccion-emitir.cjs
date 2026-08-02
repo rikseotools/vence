@@ -27,7 +27,7 @@ function url() {
 }
 
 async function main() {
-  const { EVENT_TYPE, esClase } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
+  const { EVENT_TYPE, esClase, severidad } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
   const clase = arg('--clase')
   if (!esClase(clase)) return
   const u = url()
@@ -39,11 +39,10 @@ async function main() {
     await s`
       INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
       VALUES ('fargate',
-              -- Un escape es SIEMPRE 'warn' aunque el guardarraíl haya dejado pasar a propósito:
-              -- lo que interesa vigilar no es el bloqueo, es cuántas veces se rodea (ver el
-              -- núcleo). Un escape en 'info' se perdería entre el ruido, que es justo cómo un
-              -- guardarraíl se muere sin que nadie se entere.
-              ${clase === 'guard_escape' ? 'warn' : 'info'},
+              -- La severidad la decide el NÚCLEO (severidad()), no este script: si cada emisor
+              -- eligiera, la serie dejaría de ser comparable consigo misma. Lo que sube de 'info'
+              -- es lo que se perdería entre el ruido — el escape de un guardarraíl y el reparto roto.
+              ${severidad(clase)},
               ${EVENT_TYPE}, 'sesiones',
               ${arg('--detalle') || clase},
               ${s.json({

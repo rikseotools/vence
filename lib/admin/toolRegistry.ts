@@ -676,6 +676,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
       '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
   },
+  sim_identidad_maquina: {
+    titulo: 'Simular que dos MÁQUINAS comparten session-id (comprobación de ejecución, no de texto)',
+    ruta: 'scripts/sim/sim-identidad-maquina.cjs',
+    estado: 'vivo',
+    escribe: ['worktree_sessions'],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run sim:identidad-maquina`. Segundo escritor de `worktree_sessions` además de ' +
+      '`latir.cjs`, y **acotado a un sid desechable propio** que borra al terminar (en `finally`): ' +
+      'no toca ninguna fila real. Existe porque los unitarios ejercitan los núcleos puros y lo que ' +
+      'de verdad se rompe aquí está en el script suelto — al construir T-484, unas comillas ' +
+      'invertidas dentro de un comentario SQL cerraron la plantilla de JS y dejaron `latir.cjs` ' +
+      'SIN PODER ARRANCAR con las 84 pruebas en verde. Afirma cuatro cosas contra la BD real: el ' +
+      'host se escribe, se REFRESCA al cambiar de máquina (antes solo se ponía en el INSERT), el ' +
+      'aviso de identidad compartida sale por **stderr** y queda serie temporal en ' +
+      '`observable_events` con severidad `warn`. NUNCA ampliarlo para tocar filas que no sean las suyas.',
+  },
   clasificar_familia_oposiciones: {
     titulo: 'Clasificar la familia de las oposiciones del catálogo (la que personaliza el banner)',
     ruta: 'scripts/backfill-familia.cjs',

@@ -41,7 +41,9 @@ async function main() {
     friccion('guard_escape', 'indice-compartido')
     return 0
   }
-  const { sid } = resolverSid({ repo: REPO })
+  // El host viene del MISMO resolvedor que el sid (T-484): dos sesiones en la misma ruta de
+  // máquinas distintas no comparten índice, y sin este dato el guard las bloqueaba en falso.
+  const { sid, host } = resolverSid({ repo: REPO })
   if (!sid) return 0                                   // sin identidad no se puede afirmar nada
 
   let worktreePath = null
@@ -57,15 +59,15 @@ async function main() {
     const postgres = require('postgres')
     const s = postgres(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
     try {
-      sesiones = await s`SELECT sid, worktree_path, last_signal_at FROM public.worktree_sessions`
+      sesiones = await s`SELECT sid, worktree_path, host, last_signal_at FROM public.worktree_sessions`
     } finally { try { await s.end({ timeout: 3 }) } catch {} }
   } catch { return 0 }                                  // BD caída → no bloquea
 
-  const v = evaluarIndice({ sesiones, sid, worktreePath })
+  const v = evaluarIndice({ sesiones, sid, worktreePath, host })
   if (v.permitido) return 0
   friccion('guard_bloqueo', 'indice-compartido', `${v.companeras.length} compañera(s)`)
-  friccion('indice_compartido', 'indice-compartido', worktreePath)
-  console.error(mensajeBloqueo({ ...v, worktreePath }))
+  friccion('indice_compartido', 'indice-compartido', `${host || '?'}:${worktreePath}`)
+  console.error(mensajeBloqueo({ ...v, worktreePath, host }))
   return 1
 }
 

@@ -24,9 +24,11 @@
  * están: sin él, cada worktree cerrado dejaba una fila para siempre y la lista volvía a ser ruido.
  * Es el ÚNICO escritor de la tabla, a propósito (una tabla con dos puertas driftea).
  */
+// El hostname NO se lee aquí: lo resuelve `maquina()` en lib/sessions/sid.cjs, que es el único
+// sitio que decide qué es «esta máquina» (T-484). Otra lectura suelta sería la séptima copia del
+// error de T-407, esta vez con el host en vez del sid.
 const fs = require('fs')
 const path = require('path')
-const os = require('os')
 
 const REPO = path.resolve(__dirname, '../..')
 const VERBOSE = process.argv.includes('--verbose')
@@ -101,6 +103,41 @@ function huellaDelWorktree(base) {
   }
 }
 
+/**
+ * DOS MÁQUINAS CON EL MISMO SID. (T-484)
+ *
+ * Es el único fallo de este subsistema que **nadie más puede ver**: la PK de `worktree_sessions`
+ * es el sid, así que las dos máquinas escriben sobre la misma fila y el mapa enseña UNA sesión
+ * donde hay dos. Y no es cosmético — el claim, el lease y la huella cuelgan del sid: con la
+ * identidad compartida, una sesión cierra o suelta la tarea de la otra creyéndola suya, y el gate
+ * del claim la deja porque «ya es tuya».
+ *
+ * Cómo se llega ahí: horneando `.session-id` dentro de una imagen de contenedor, o copiando un
+ * worktree con su fichero. Por eso el sid se acuña al arrancar (`nuevoSid`) y por eso esto existe
+ * igualmente: una regla que depende de que alguien se acuerde no es una regla.
+ *
+ * **Habla aunque no sea `--verbose`**, que es la única excepción a la regla 2 de la cabecera: un
+ * aviso que solo se ve pidiéndolo no avisa de nada. Sigue sin fallar hacia fuera (regla 1).
+ *
+ * Falso positivo posible y asumido: una sesión que se MUDA de máquina de verdad (o una máquina que
+ * cambia de hostname) avisa una vez. Preferible a callar el caso que rompe el reparto.
+ */
+function avisarIdentidadCompartida({ sid, host, hostPrevio }) {
+  const { mismaMaquina } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  if (mismaMaquina(host, hostPrevio) !== false) return   // igual, o no se puede afirmar → callar
+  console.error(
+    `\n🚨 IDENTIDAD DE SESIÓN COMPARTIDA — el sid «${sid}» acaba de latir desde «${host}» y antes lo hacía desde «${hostPrevio}».\n` +
+    '   Si las dos máquinas siguen vivas, comparten claim y lease: una puede soltar o cerrar la tarea de la otra.\n' +
+    '   El sid se acuña al ARRANCAR la sesión, nunca se hornea en una imagen ni se copia con el worktree.\n'
+  )
+  try {
+    require('child_process').spawn(process.execPath,
+      [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), '--clase', 'identidad_compartida',
+        '--guard', 'latido', '--detalle', `${sid}: ${hostPrevio} → ${host}`],
+      { detached: true, stdio: 'ignore' }).unref()
+  } catch { /* la telemetría nunca estorba (regla 1) */ }
+}
+
 async function cerrar(slug) {
   const u = url()
   if (!u) return
@@ -124,11 +161,17 @@ async function main() {
   const { worktree, branch } = datosDelWorktree(base)
   const slug = path.basename(worktree)
   const huella = huellaDelWorktree(base)
+  const { maquina } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const host = maquina()
   const s = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
   try {
-    await s`
+    const r = await s`
+      -- El host ANTERIOR se lee en la misma sentencia (T-484). Si no coincide con el mío, dos
+      -- máquinas están latiendo con el mismo sid: ver avisarIdentidadCompartida más arriba.
+      -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+      WITH previo AS (SELECT host AS host_previo FROM worktree_sessions WHERE sid = ${sid})
       INSERT INTO worktree_sessions (sid, slug, worktree_path, branch, host, last_command, touched_files, touched_at)
-      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${os.hostname()}, ${arg('--cmd')},
+      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${host}, ${arg('--cmd')},
               ${huella}, ${huella ? s`now()` : null})
       ON CONFLICT (sid) DO UPDATE
          SET last_signal_at = now(),
@@ -138,12 +181,18 @@ async function main() {
              slug           = EXCLUDED.slug,
              worktree_path  = EXCLUDED.worktree_path,
              branch         = EXCLUDED.branch,
+             -- La MÁQUINA también, y hasta el 02/08 no se refrescaba: la fila conservaba para
+             -- siempre el host del primer latido, así que un sid que empezara a latir desde otro
+             -- sitio se veía igual que uno que no se hubiera movido.
+             host           = EXCLUDED.host,
              -- La huella solo se pisa si esta vez SÍ se pudo calcular: si git no contestó,
              -- conservar la anterior es más útil que borrarla (touched_at delata su edad).
              touched_files  = COALESCE(EXCLUDED.touched_files, worktree_sessions.touched_files),
              touched_at     = COALESCE(EXCLUDED.touched_at,    worktree_sessions.touched_at),
-             signals        = worktree_sessions.signals + 1`
-    if (VERBOSE) console.log(`✅ latido: ${sid} · ${slug} · ${branch || '?'} · huella: ${huella ? huella.length + ' fichero(s)' : 'no calculable'}`)
+             signals        = worktree_sessions.signals + 1
+      RETURNING (SELECT host_previo FROM previo) AS host_previo`
+    avisarIdentidadCompartida({ sid, host, hostPrevio: r[0] && r[0].host_previo })
+    if (VERBOSE) console.log(`✅ latido: ${sid} · ${slug} · ${branch || '?'} · ${host || 'máquina ?'} · huella: ${huella ? huella.length + ' fichero(s)' : 'no calculable'}`)
   } finally {
     try { await s.end({ timeout: 3 }) } catch {}
   }

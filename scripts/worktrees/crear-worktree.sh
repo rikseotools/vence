@@ -93,8 +93,12 @@ if [ -d "$MAIN_REPO/.husky/_" ] && [ ! -e "$WT/.husky/_" ]; then
   echo "→ .husky/_ por symlink (hooks activos: pre-commit + pre-push claim-guard)"
 fi
 
-# session-id (lo lee cola.cjs solo)
-SID="$SLUG-$(openssl rand -hex 3 2>/dev/null || printf '%04x%04x' $RANDOM $RANDOM)"
+# session-id (lo lee cola.cjs solo). Se acuña con `nuevoSid` de lib/sessions/sid.cjs, que es el
+# ÚNICO sitio que sabe hacerlo (T-484): estampa la MÁQUINA, así que dos sesiones de servidores
+# distintos no pueden coincidir ni por casualidad. Si node no está, se cae al formato de antes —
+# perder la máquina es peor informe, no un fallo.
+SID="$(node -e "process.stdout.write(require('$MAIN_REPO/lib/sessions/sid.cjs').nuevoSid('$SLUG'))" 2>/dev/null \
+      || echo "$SLUG-$(openssl rand -hex 3 2>/dev/null || printf '%04x%04x' $RANDOM $RANDOM)")"
 printf '%s\n' "$SID" > "$WT/.session-id"
 
 # DB

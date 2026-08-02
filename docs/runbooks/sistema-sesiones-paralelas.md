@@ -108,6 +108,41 @@ entorno. **El fichero gana** porque es del worktree y describe dónde estás tra
 > a sí misma como ajena. Todo el andamiaje cuelga de este identificador: si dos herramientas
 > discrepan, el sistema **miente sin romperse**, que es la peor forma de fallar.
 
+### 3.3.bis La MÁQUINA es la otra mitad de la identidad (T-484)
+
+Con sesiones fuera del portátil (servidores, contenedores) la pregunta deja de ser «quién soy» y
+pasa a ser **«quién soy Y DÓNDE»**. El mismo módulo resuelve las dos: `maquina()` —
+`VENCE_SESSION_HOST` > `os.hostname()`, normalizado a nombre corto — y `mismaMaquina()`, que tiene
+**tres estados**: sí, no, y **«no lo sé»**.
+
+Los dos hechos que cambian de significado al cruzar de máquina, y son opuestos:
+
+| Hecho | Dentro de una máquina | Entre máquinas |
+|---|---|---|
+| **misma ruta** (`/app/vence`) | mismo índice de git: se pisan | discos distintos: **no se pisan** |
+| **mismo sid** | es la misma sesión | **dos sesiones con una identidad**: comparten claim y lease |
+
+- **El guard del índice** (§3.5) descarta a quien se pueda AFIRMAR que está en otra máquina; con
+  el dato en blanco sigue contando. Sin esto bloqueaba el commit de una flota entera de
+  contenedores clonados y empujaba a usar el escape a diario, que es como muere un guardarraíl.
+- **El sid compartido lo canta el propio latido**, que es el único que puede verlo: la PK de
+  `worktree_sessions` es el sid, así que las dos máquinas escriben sobre la **misma fila** y el
+  mapa enseña UNA sesión donde hay dos. Si el host cambia, avisa por stderr y deja
+  `sesion_friccion / identidad_compartida` (severidad `warn`).
+- **El sid se acuña al arrancar** (`nuevoSid`, que estampa la máquina), **nunca se hornea en una
+  imagen ni se copia con el worktree**. Lo usa `crear-worktree.sh` y lo tiene que usar el arranque
+  de cualquier trabajador remoto: una segunda forma de acuñar identidad es el error de T-407 otra vez.
+- **El disco y `/proc` son solo de esta máquina.** El mapa de sesiones no le pregunta al disco local
+  por el worktree de una sesión remota: eso no daría un «no», daría una respuesta falsa.
+
+```bash
+npm run sim:identidad-maquina    # lo comprueba EJECUTÁNDOLO, contra la BD real, con un sid desechable
+```
+
+> Esa simulación no es adorno: los 84 unitarios estaban en verde mientras `latir.cjs` **no podía ni
+> arrancar** (unas comillas invertidas dentro de un comentario SQL cerraban la plantilla de JS). Un
+> guardarraíl de TEXTO no es una comprobación de EJECUCIÓN.
+
 ### 3.4 Solape de FICHEROS — lo que el claim no ve
 
 `lib/sessions/solape.cjs` — cada sesión publica su huella (sucio + lo que va por delante de la

@@ -73,6 +73,46 @@ describe('fail-open: no saber NUNCA bloquea', () => {
   })
 })
 
+// ── LA MÁQUINA (T-484) ────────────────────────────────────────────────────────────────────────
+// Dos worktrees en la MISMA ruta de máquinas distintas no comparten índice de git: están en discos
+// distintos. Comparando solo la ruta, este guard —que BLOQUEA— paraba el commit de una flota
+// entera de contenedores clonados (todos en `/app/vence`) y empujaba al escape a diario, que es
+// como se muere un guardarraíl (T-423). Pero solo se descarta a quien se puede AFIRMAR que está
+// en otra máquina: sin el dato, este guard sigue protegiendo.
+describe('otra MÁQUINA no comparte índice', () => {
+  const remota = (over = {}) => ses({ host: 'koigrid-w2', ...over })
+
+  it('misma ruta pero OTRA máquina → deja pasar', () => {
+    expect(run([remota()], { host: 'koigrid-w1' }).permitido).toBe(true)
+  })
+
+  it('misma ruta y MISMA máquina → sigue bloqueando (es el caso que existe para cazar)', () => {
+    expect(run([ses({ host: 'koigrid-w1' })], { host: 'koigrid-w1' }).permitido).toBe(false)
+  })
+
+  it('el nombre de máquina se compara sin sufijo de DNS ni mayúsculas', () => {
+    // `koigrid-w1.local` y `KOIGRID-W1` son la misma máquina: creerse lo contrario dejaría pasar
+    // dos sesiones que SÍ comparten índice, que es el fallo grave de los dos.
+    expect(run([ses({ host: 'koigrid-w1.local' })], { host: 'KOIGRID-W1' }).permitido).toBe(false)
+  })
+
+  describe('«no lo sé» NO es «otra máquina»: ante la duda, protege', () => {
+    it('la fila no dice de qué máquina es (latido viejo) → cuenta igual', () => {
+      expect(run([ses({ host: null })], { host: 'koigrid-w1' }).permitido).toBe(false)
+    })
+    it('yo no sé en qué máquina estoy → cuenta igual', () => {
+      expect(run([remota()], { host: null }).permitido).toBe(false)
+    })
+    it('sin el dato en ninguno de los dos lados → exactamente como antes de T-484', () => {
+      expect(run([ses()]).permitido).toBe(false)
+    })
+  })
+
+  it('otra máquina Y otra ruta: sigue sin estorbar', () => {
+    expect(run([remota({ worktree_path: '/otro' })], { host: 'koigrid-w1' }).permitido).toBe(true)
+  })
+})
+
 // Un bloqueo que no dice cómo salir se convierte en `--no-verify`, que apaga TODO el hook. Es la
 // lección que este repo pagó tres veces el 31/07 (T-375).
 describe('el mensaje dice cómo salir, no solo que pasó', () => {

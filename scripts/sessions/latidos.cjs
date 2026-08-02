@@ -50,7 +50,7 @@ async function main() {
   let filas
   try {
     filas = await s`
-      SELECT sid, slug, worktree_path, branch, last_signal_at, last_command, signals, first_signal_at,
+      SELECT sid, slug, worktree_path, branch, host, last_signal_at, last_command, signals, first_signal_at,
              touched_files, touched_at
         FROM worktree_sessions ${SLUG ? s`WHERE slug = ${SLUG}` : s``}
        ORDER BY last_signal_at DESC`
@@ -59,9 +59,17 @@ async function main() {
   }
 
   const ahora = new Date()
+  // El disco y `/proc` son de ESTA máquina (T-484): preguntarles por el worktree de una sesión
+  // remota no da un «no» — da una respuesta falsa. Un `/app/vence` que aquí no existe se pintaría
+  // como «el directorio ya no existe» de una sesión que está trabajando tan ricamente, y los
+  // procesos contados serían los míos. Sobre lo ajeno se dice «no lo sé» (null), no «no».
+  const { maquina } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const AQUI = maquina()
   const datos = filas.map((r) => {
     const c = clasificarSenal(r.last_signal_at, ahora)
-    const procs = r.worktree_path && fs.existsSync(r.worktree_path) ? procesosDentro(r.worktree_path) : null
+    const local = !r.host || !AQUI || r.host === AQUI
+    const existe = local && r.worktree_path ? fs.existsSync(r.worktree_path) : null
+    const procs = existe ? procesosDentro(r.worktree_path) : null
     return {
       ...r,
       estado: c.estado,
@@ -71,7 +79,9 @@ async function main() {
       // Un proceso dentro MANDA sobre la antigüedad de la señal: la señal puede ser vieja y estar
       // alguien compilando ahí ahora mismo.
       borrable: c.borrable && !procs,
-      existe: r.worktree_path ? fs.existsSync(r.worktree_path) : false,
+      existe,
+      // Una sesión de OTRA máquina no la puedo borrar yo: el directorio no está aquí.
+      remota: !local,
     }
   })
 
@@ -85,14 +95,14 @@ async function main() {
     const d = datos[0]
     if (!d) { console.log(`⚪ ${SLUG}: sin ninguna señal registrada (nunca ha latido)`); process.exit(0) }
     console.log(`${etiquetaEstado(d.estado)}  ${d.slug}  ·  última señal ${d.antiguedad}${d.procesos ? `  ·  ${d.procesos} proceso(s) dentro` : ''}`)
-    console.log(`   sid: ${d.sid} · rama: ${d.branch || '?'} · ${d.signals} señales desde ${String(d.first_signal_at).slice(0, 16)}`)
+    console.log(`   sid: ${d.sid} · rama: ${d.branch || '?'} · máquina: ${d.host || '?'}${d.remota ? ' (REMOTA: su worktree no está aquí)' : ''} · ${d.signals} señales desde ${String(d.first_signal_at).slice(0, 16)}`)
     if (!d.borrable) console.log('   ⛔ EN USO — no la borres')
     process.exit(d.borrable ? 0 : 3)
   }
 
   console.log(`\nSESIONES CON SEÑAL (${datos.length}):\n`)
   for (const d of datos) {
-    const marca = d.existe ? '' : '  (el directorio ya no existe)'
+    const marca = d.remota ? `  (en ${d.host})` : d.existe === false ? '  (el directorio ya no existe)' : ''
     console.log(`  ${etiquetaEstado(d.estado).padEnd(16)} ${String(d.slug).padEnd(26)} ${d.antiguedad.padEnd(16)} ${d.procesos ? `${d.procesos} proc` : ''}${marca}`)
   }
   // ── Solape entre sesiones VIVAS (T-400) ───────────────────────────────────────────────────
@@ -106,7 +116,7 @@ async function main() {
   if (compartidos.length) {
     console.log('\n🚨 VARIAS SESIONES EN EL MISMO CHECKOUT (se pisan en vivo, git no media):')
     for (const g of compartidos) {
-      console.log(`     ${g.sids.length} sesiones en  ${g.worktree_path}`)
+      console.log(`     ${g.sids.length} sesiones en  ${g.host ? `${g.host}:` : ''}${g.worktree_path}`)
       for (const x of g.sids) console.log(`         sid ${String(x).slice(0, 12)}…`)
     }
     console.log('     Lo sano es un worktree por sesión:  scripts/worktrees/crear-worktree.sh <slug>')
