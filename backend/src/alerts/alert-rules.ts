@@ -5582,12 +5582,22 @@ export const RULE_REINTENTO_PERFIL_ROTO: AlertRule<{ veces: number; muestra: str
  * un usuario perdido**. Se investiga en la BD (¿restricción nueva en `topics`? ¿un `law_id` que
  * ya no existe?), no en el usuario.
  */
-export const RULE_TEMARIO_PROPIO_PERDIDO: AlertRule<{ veces: number; detalle: string }> = {
+export const RULE_TEMARIO_PROPIO_PERDIDO: AlertRule<{
+  veces: number
+  detalle: string
+  ultima: Date | string | null
+}> = {
   name: 'temario_propio_perdido',
   severity: 'error',
+  // `ultima` (MAX(ts)) NO es adorno: la ventana es de 24 h, así que una pérdida ya
+  // ARREGLADA hace horas se sigue anunciando como si estuviera pasando ahora. El 02/08
+  // costó media hora reconstruir a mano que la pérdida (13:47) era anterior al arreglo
+  // (15:56 del mismo día, commit d6bb20af0) — el aviso no daba ni la hora. Con el sello
+  // temporal, comparar contra el último deploy es inmediato.
   query: sql`
     SELECT COUNT(*)::int AS veces,
-           COALESCE(MAX(metadata->>'detalle'), '') AS detalle
+           COALESCE(MAX(metadata->>'detalle'), '') AS detalle,
+           MAX(ts) AS ultima
       FROM observable_events
      WHERE event_type = 'oposicion_personalizada_no_guardada'
        AND coalesce(metadata->>'simulacion', 'false') <> 'true'
@@ -5595,15 +5605,24 @@ export const RULE_TEMARIO_PROPIO_PERDIDO: AlertRule<{ veces: number; detalle: st
   `,
   shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
   buildNotification: (rows) => ({
-    title: `${rows[0]?.veces ?? 0} temario(s) propios PERDIDOS al guardar en 24 h`,
+    title:
+      `${rows[0]?.veces ?? 0} temario(s) propios PERDIDOS al guardar en 24 h` +
+      (rows[0]?.ultima ? ` (última: ${new Date(rows[0]!.ultima!).toISOString()})` : ''),
     body:
       `Alguien armó su oposición entera (buscar leyes, elegir artículos, repartirlos en temas) y ` +
       `al guardar se perdió. Ese trabajo vivía solo en su pantalla: no se puede recuperar ni ` +
       `reconstruir desde la BD, porque la transacción se revierte entera.\n\n` +
       `Se investiga en la BASE DE DATOS, no en el usuario: ¿una restricción nueva en topics o ` +
       `topic_scope? ¿un law_id que ya no existe? Reproduce con: npm run sim:oposicion-personalizada\n\n` +
+      `⏱ Última pérdida: ${rows[0]?.ultima ? new Date(rows[0]!.ultima!).toISOString() : '(sin fecha)'}. ` +
+      `COMPARA esa hora con el último deploy antes de investigar: la ventana es de 24 h, así que ` +
+      `una pérdida ya arreglada se sigue anunciando hasta que caduca.\n\n` +
       `Detalle: ${rows[0]?.detalle || '(sin detalle)'}\n\nFicha: T-327.`,
-    metadata: { veces: rows[0]?.veces ?? 0, detalle: rows[0]?.detalle ?? '' },
+    metadata: {
+      veces: rows[0]?.veces ?? 0,
+      detalle: rows[0]?.detalle ?? '',
+      ultima: rows[0]?.ultima ? new Date(rows[0]!.ultima!).toISOString() : null,
+    },
     fingerprint: 'temario_propio_perdido',
   }),
   cooldownMin: 720,
