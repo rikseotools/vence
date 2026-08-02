@@ -1637,15 +1637,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Antes de montar:** bajar las bases específicas del BOP de Sevilla y comprobar el temario real, que en Auxiliar de Clínica suele traer bloque de cuidados + bloque de centros residenciales propios de la diputación.
 - **Relacionadas:** [T-488] (Cádiz, más plazas), [T-490] (Granada).
 
-### [T-490] 🟢 [ABIERTO 02/08] Verificar si la Diputación de Granada convoca Auxiliar de Enfermería (la usuaria la da por segura y hoy no consta)
-
-- **Esfuerzo: rato.**
-- **ORIGEN.** El mismo feedback `58299f8c` (ver [T-488]), que nombra Sevilla, Cádiz **y Granada**. A la usuaria se le dijo que en Granada **no hay convocatoria nueva publicada**, y conviene que eso siga siendo cierto o corregirlo pronto.
-- **Qué se comprobó (02/08):** la resolución de 2026 de esa diputación en el BOE (**BOE-A-2026-6148**, de 9/03/2026) es de **Educador/a Social**, no de enfermería. Lo que aparece con ese nombre son **ofertas de interinidad del SAE** para el Centro Psicopedagógico de Armilla y convocatorias de años anteriores (14 y 5 plazas), no un proceso vivo de 2026.
-- **Qué hay que hacer:** mirar el BOP de Granada y el portal de convocatorias de la diputación (`dipgra.convoca.online`), y **si hay bases**, abrir ficha de construcción como las hermanas; si no, dejarlo anotado con fecha para no repetir la búsqueda.
-- **Por qué ficha propia y no una nota dentro de [T-488]:** es la única de las tres cuyo trabajo es **decidir si hay trabajo**. Meterla dentro haría que se arrastrara con una tarea de sesión propia.
-- **Relacionadas:** [T-488], [T-489].
-
 ### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
 
 - **Esfuerzo: rato.** El camino está trillado — se acaba de arreglar su gemela con el mismo síntoma.
@@ -3327,6 +3318,19 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-490] ✅ 🟢 [HECHA 02/08] Verificar si la Diputación de Granada convoca Auxiliar de Enfermería (la usuaria la da por segura y hoy no consta)
+
+- **VEREDICTO: NO hay convocatoria vendible en Granada, y lo que le dijimos a la usuaria se sostiene.** No hace falta ficha de construcción; lo que sí sale de aquí es un hallazgo que se le pasa a las hermanas.
+- **Verificado en la fuente de la propia diputación, no en portales de terceros:** el catálogo vive en `dipgra.convoca.online`, que es una SPA (con `curl` o WebFetch solo se ve el cascarón, y su modal de cookies intercepta los clics de Playwright). El listado real lo sirve su API, `https://apigw.convoca.online/api/EntityOep/<id>` — **214 procesos** con plazas desglosadas por turno. Ahí está el dato, no en el HTML.
+- **La familia de cuidados en Granada, con sus plazas reales:**
+  - `AUXILIAR DE ENFERMERÍA` — 14 plazas (13 libre + 1 discapacidad), **BOP 306 de 23/12/2021**, plazo 24/12/2021-21/01/2022. Es la «convocatoria de 14 plazas» que enseñan los buscadores como si fuera de ahora: tiene **cuatro años**.
+  - `Estabilización. Auxiliar Enfermería (concurso)` — **111 plazas** (2022, concurso, terminado). No vendible (concurso puro, sin examen), pero dice el tamaño de la plantilla.
+  - `OPE 2022/23/24 CUIDADOR/A TÉCNICO/A DE PERSONAS DEPENDIENTES` — **5 plazas** turno libre, BOP 221 de 13/09/2025, plazo 15/09-10/10/2025 → proceso en curso, **plazo cerrado y solo 5 plazas**.
+  - `OPE 2024 CUIDADOR/A … PROMOCIÓN INTERNA` — **142 plazas, TODAS internas** (`free:0`), BOP 111 de 07/05/2026. Es de 2026 y es la que hace que los buscadores parezcan decir que hay convocatoria: **está cerrada a quien no trabaja ya allí**, así que para nosotros vale cero.
+- **EL HALLAZGO QUE SÍ IMPORTA, y va para [T-488] y [T-489]: buscar por «TCAE» es CIEGO.** Ninguna de las tres diputaciones llama así a la categoría — Sevilla la llama **«Auxiliar de Clínica»**, Granada **«Cuidador/a Técnico/a de Personas Dependientes»** (que es, literalmente, el nombre de la oposición que ya tenemos montada en Córdoba) y Cádiz **«Auxiliar de Enfermería Geriatría»**. Es la razón de que este hueco de catálogo llevara años invisible: el nombre por el que las buscábamos no lo usa ninguna. Al catalogar administración local hay que barrer por las cuatro variantes, no por la sanitaria.
+- **Nota para el radar (no se toca aquí):** `apigw.convoca.online` sirve JSON limpio con plazas por turno y fechas de plazo, y lo usan varias diputaciones. Es candidata a fuente del radar, mucho mejor que hashear el HTML de una SPA (que es justo el modo de fallo `seguimiento_fuente_ciega`). Queda anotado, no construido.
+- **Cuándo volver a mirar:** la reposición de esas 111 plazas de auxiliar de enfermería tendrá que salir en algún momento; revisar el portal cuando se toque [T-488] o [T-489], que es cuando ya se está en el tema.
 
 ### [T-484] ✅ 🟠 [HECHA 02/08] Identidad y ubicación de sesión asumen UNA máquina: el andamiaje miente en cuanto hay sesiones remotas
 
