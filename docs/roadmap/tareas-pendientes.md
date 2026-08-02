@@ -1566,6 +1566,24 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-482] 🔴 [ABIERTO 02/08] Dos endpoints de tests sin autenticación: `/review` lee el examen de cualquiera y `/recover` escribe en la cuenta que le digas
+
+- **⛔ NO EMPEZAR HASTA EL MARTES 04/08 (decisión de Manuel, 02/08).** Está en `snooze_until`, así que `claim` no la entrega antes.
+- **Esfuerzo: sesion_propia.** No es «añadir un guard»: hay que decidir la identidad de cada endpoint, tocar también el cliente que hoy llama sin token, y comprobar que no se rompe el repaso de nadie.
+- **Cómo salió:** verificando [T-472] en producción. Para comprobar el arreglo hice `curl` a `/api/tests/<uuid>/review` **sin sesión** y respondió 200 con el examen entero. Me vino de perlas para verificar, y por eso mismo es un agujero.
+- **Los dos casos NO son el mismo problema, y el segundo es peor:**
+  - **`GET /api/tests/[testId]/review`** (`app/api/tests/[testId]/review/route.ts`) — **lectura ajena (IDOR)**: no llama a `getAuthenticatedUser` ni comprueba que el test sea tuyo. Con el UUID se leen enunciados, **las respuestas de esa persona**, sus aciertos y sus tiempos. El UUID viaja en la URL del navegador (`/revisar/<testId>`), así que aparece en historiales, capturas y cualquier enlace compartido.
+  - **`POST /api/tests/recover`** (`app/api/tests/recover/route.ts` → `recoverTest` en `lib/api/tests/queries.ts`) — **ESCRITURA con el `userId` del CUERPO**: sin sesión, se crea un test con sus respuestas para el usuario que se indique y se toca su `user_profiles`. Contamina el historial y las estadísticas de terceros, y es munición para el antifraude (aciertos que el usuario no hizo).
+- **Contraste que demuestra que es un olvido y no un diseño:** el feed de la campana (`/api/notifications/oposicion-alerts`) documenta en su cabecera *«userId SIEMPRE de la sesión → sin IDOR»* y así lo hace. La casa ya tiene la pieza (`getAuthenticatedUser` en `lib/api/shared/auth`); estos dos endpoints no la usan.
+- **Lo que hay que decidir al atacarla (no está resuelto):**
+  1. **`/review` necesita cambio de cliente además de servidor**: hoy `app/revisar/[testId]/page.tsx` hace `fetch` **sin cabecera de autorización**. Añadir el guard sin tocar el cliente deja la pantalla de repaso en 401 para todo el mundo.
+  2. **¿Dueño o compartible?** Si algún día se quiere «compartir mi resultado», eso es un token de compartición explícito, no la ausencia de guard.
+  3. **`/recover`**: el `userId` del cuerpo se ignora y se coge de la sesión. Revisar quién lo llama (recuperación de test interrumpido) para no romper el caso legítimo.
+- **Medir antes de tocar:** contar en `observable_events` cuántas llamadas reales reciben ambos endpoints y desde dónde, para saber si alguien los usa sin sesión por un motivo legítimo.
+- **Capas que pedirá:** test de que sin token responde 401 y con token ajeno 403 · integración contra BD real (un test de A no se lee con la sesión de B) · **journey** de la pantalla de repaso, que es lo que se rompe si el cliente no manda el token · y mirar si el guardarraíl de endpoints sin auth existe ya (`__tests__` de `/api/admin/*` cazó algo parecido: memoria `project-admin-endpoints-sin-auth`).
+- **Relacionadas:** [T-472] (de donde sale), y la memoria `project-admin-endpoints-sin-auth` (mismo fallo, otra familia de rutas).
+
+
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
