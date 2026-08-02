@@ -155,3 +155,97 @@ export async function getUserProblematicArticlesWeekly(
 // fail-on-error propagaba 503s en pool blips. Ahora el route usa el patrón
 // de theme-stats: getCached/setCached + fallback a stale en timeout.
 // Ver app/api/notifications/problematic-articles/route.ts.
+
+// ============================================================================
+// FEED DE LA CAMPANA — avisos por hito de oposición (Fase 8c)
+// ============================================================================
+//
+// ## El defecto que corrige esta sección (T-480, feedback `d7c1bd2a`)
+//
+// Marta Pérez escribió *«se me ha quedado enganchada esta notificación, no se
+// cierra»*. La ✕ **sí** funcionaba: marcaba `read_at` en la fila (el suyo, del
+// 15/07 a las 21:51). Lo que fallaba es que el feed devolvía la fila IGUAL, así
+// que la notificación seguía en la campana. La cerró y la siguió viendo 18 días.
+//
+// Es el único feed de la campana que se comportaba así: las impugnaciones se
+// filtran server-side por `is_read=false` y las notificaciones inteligentes
+// descartan las leídas al construir la lista. Medido el 01/08: **126 avisos ya
+// cerrados seguían sirviéndose a 98 usuarios**, el más antiguo desde el 04/06.
+//
+// ## Por qué el filtro va en SQL y no después
+//
+// El feed corta a `FEED_AVISOS_LIMIT`. Filtrar en memoria DESPUÉS del corte
+// significa que a quien acumule 30 avisos leídos no le llega ninguno de los
+// nuevos: el límite se lo habrían comido los cerrados. El orden correcto es
+// filtrar y luego cortar.
+//
+// La fila NO se borra: sigue en la tabla para historial y auditoría. Lo que
+// cambia es lo que se SIRVE.
+
+import { userOposicionAlerts } from '@/db/schema'
+import { desc, isNull } from 'drizzle-orm'
+import { getAdminDb } from '@/db/client'
+
+/** Cuántos avisos como mucho viajan en el feed. */
+export const FEED_AVISOS_LIMIT = 30
+
+export type AvisoOposicion = {
+  id: string
+  oposicionId: string | null
+  hitoId: string | null
+  titulo: string
+  descripcion: string | null
+  severity: string | null
+  url: string | null
+  readAt: Date | string | null
+  createdAt: Date | string
+}
+
+/**
+ * ¿Este aviso sigue en la campana? Regla ÚNICA de visibilidad del feed.
+ *
+ * PURA y exportada a propósito: es lo que el usuario entiende por «cerrar», y
+ * hasta T-480 estaba implícita en una consulta que no la aplicaba. Tenerla con
+ * nombre permite testearla y que no vuelva a divergir del filtro de SQL.
+ */
+export function avisoSigueEnLaCampana(aviso: { readAt: Date | string | null | undefined }): boolean {
+  if (aviso.readAt == null) return true
+  // Una fecha vacía no es un cierre. Se falla hacia MOSTRAR: enseñar de más un
+  // aviso molesta; esconder uno que el usuario nunca cerró le oculta que su
+  // oposición se ha movido, y de eso no se entera por ningún otro sitio.
+  if (typeof aviso.readAt === 'string' && aviso.readAt.trim() === '') return true
+  return false
+}
+
+/**
+ * Avisos vivos del usuario (los que no ha cerrado), del más nuevo al más viejo.
+ *
+ * `unreadCount` es la longitud de lo servido: al no viajar ya nada leído, contar
+ * aparte sería una segunda verdad sobre el mismo hecho.
+ */
+export async function getOposicionAlertsFeed(
+  userId: string,
+): Promise<{ data: AvisoOposicion[]; unreadCount: number }> {
+  const db = getAdminDb()
+  const rows = await db
+    .select({
+      id: userOposicionAlerts.id,
+      oposicionId: userOposicionAlerts.oposicionId,
+      hitoId: userOposicionAlerts.hitoId,
+      titulo: userOposicionAlerts.titulo,
+      descripcion: userOposicionAlerts.descripcion,
+      severity: userOposicionAlerts.severity,
+      url: userOposicionAlerts.url,
+      readAt: userOposicionAlerts.readAt,
+      createdAt: userOposicionAlerts.createdAt,
+    })
+    .from(userOposicionAlerts)
+    .where(and(eq(userOposicionAlerts.userId, userId), isNull(userOposicionAlerts.readAt)))
+    .orderBy(desc(userOposicionAlerts.createdAt))
+    .limit(FEED_AVISOS_LIMIT)
+
+  // Cinturón: si alguien tocara el WHERE, la regla con nombre sigue mandando.
+  const data = (rows as AvisoOposicion[]).filter(avisoSigueEnLaCampana)
+
+  return { data, unreadCount: data.length }
+}

@@ -1585,6 +1585,20 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
   3. **`event_loop_lag`** (`critical`, 17:25) — *«máx 114,8 s de lag»*. **Remedir antes de investigar:** coincidió con un deploy en curso, así que puede ser efecto suyo. Ojo, [T-160] ya recalibró esta regla el 28/07 de ~65 avisos/día a <1, así que si vuelve a hablar es que hay algo o que la calibración se quedó corta.
   4. **`main_ci_rojo`** (`error`, 13:55) — *«CI ROJO en main (Tests)»*. Sin confirmar si sigue: **`gh` no está instalado en esta máquina**, hay que mirarlo por la web o instalarlo.
 - **Lo que NO hay que volver a investigar:** `dispute_email_drop` (3 impugnaciones de la misma usuaria «sin email») es un **falso positivo ya documentado en `verdict.ts`** — el envío se saltó bien porque ella tenía la baja masiva antes de [T-369], y [T-373] restauró la preferencia después, así que el reconciliador lo relee mal. Su arreglo ([T-422]) ya está vivo y la alerta se apagó sola al salir de la ventana de 24 h. **Una sesión anterior ya se comió este anzuelo y estuvo a punto de reenviar correos que no se habían perdido.**
+### [T-480] 🟠 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La campana no suelta los avisos de oposición ya cerrados: la ✕ marca leído y la notificación sigue ahí
+
+- **Esfuerzo: rato.** Una condición que faltaba en la consulta; lo que costó fue verlo desde el lado del usuario.
+- **Qué pasa, en una frase:** el feed `/api/notifications/oposicion-alerts` devolvía **todos** los avisos del usuario, leídos incluidos, así que cerrar uno con la ✕ (que sí persiste `read_at`) no lo quitaba de la campana.
+- **Quién lo cazó:** **Marta Pérez Llorente** (premium, Aux. Admin. CAM), feedback `d7c1bd2a`: *«se me ha quedado enganchada esta notificación, no se cierra»*, con captura. Su fila estaba marcada leída **desde el 15/07 a las 21:51**: la cerró y la siguió viendo **18 días**.
+- **Alcance medido en RDS (01/08):** **126 avisos ya cerrados** seguían sirviéndose a **98 usuarios**, el más antiguo desde el **04/06**. No era su caso aislado: le pasaba a todo el que hubiera cerrado uno.
+- **Por qué se notaba tanto:** es el **único** de los tres feeds de la campana que se comportaba así. Las impugnaciones se filtran server-side por `is_read=false` y las notificaciones inteligentes descartan las leídas al construir la lista. Solo este las conservaba, de modo que el gesto de cerrar funcionaba en todas partes menos aquí.
+- **Daño silencioso añadido:** el feed corta a 30. Como los cerrados ocupaban sitio, a un usuario veterano el corte podía **dejar fuera avisos nuevos** — perderse que su oposición se ha movido, que es justo para lo que existe el aviso. Por eso el filtro va en SQL **antes** del corte, no en memoria después.
+- **El arreglo:** `getOposicionAlertsFeed` + la regla con nombre `avisoSigueEnLaCampana` en `lib/api/notifications/queries.ts` (el módulo que ya existía, no uno nuevo), y el route pasa a llamarla. La fila **no se borra**: sigue en la tabla para historial; lo que cambia es lo que se sirve.
+- **Un caso que decidió el test, no al revés:** una fecha de lectura vacía se trata como **no cerrado**. Enseñar de más un aviso molesta; esconder uno que el usuario nunca cerró le oculta que su oposición se ha movido, y de eso no se entera por ningún otro sitio.
+- **Capas:** `__tests__/notifications/avisosCampana.test.ts` (8 tests, incluido el orden filtrar→cortar con el historial de un usuario veterano) · `npm run sim:avisos-campana`, que **ejecuta la consulta real** contra 40 usuarios reales con avisos cerrados: **68 servidos antes, 0 ahora**; con `--usuario` reproduce el caso exacto de la impugnante (1 → 0).
+- **Pendiente:** desplegar frontend y responder a Marta (su otro hilo, `fc499576`, va aparte y por su cuenta).
+- **Relacionadas:** [T-472] (mismo patrón: el dato estaba bien guardado y lo que fallaba era lo que se le enseñaba al usuario).
+
 
 ### [T-463] 🟠 [ABIERTO 01/08] Al despertar una tarea tras el deploy, el «falta: desplegar» se queda escrito y 10 tareas listas parecen bloqueadas
 

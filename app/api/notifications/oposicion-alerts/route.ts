@@ -10,41 +10,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
 import { userOposicionAlerts } from '@/db/schema'
-import { and, eq, isNull, sql, desc, inArray } from 'drizzle-orm'
+import { and, eq, isNull, sql, inArray } from 'drizzle-orm'
+import { getOposicionAlertsFeed } from '@/lib/api/notifications/queries'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const maxDuration = 10
 
-const FEED_LIMIT = 30
-
-// GET → últimos avisos del usuario + nº no leídos.
+// GET → avisos VIVOS del usuario (los cerrados no vuelven: T-480).
 async function _GET(request: NextRequest) {
   const auth = await getAuthenticatedUser(request)
   if (!auth.ok) return auth.response
 
-  const db = getAdminDb()
-  const rows = await db
-    .select({
-      id: userOposicionAlerts.id,
-      oposicionId: userOposicionAlerts.oposicionId,
-      hitoId: userOposicionAlerts.hitoId,
-      titulo: userOposicionAlerts.titulo,
-      descripcion: userOposicionAlerts.descripcion,
-      severity: userOposicionAlerts.severity,
-      url: userOposicionAlerts.url,
-      readAt: userOposicionAlerts.readAt,
-      createdAt: userOposicionAlerts.createdAt,
-    })
-    .from(userOposicionAlerts)
-    .where(eq(userOposicionAlerts.userId, auth.user.id))
-    .orderBy(desc(userOposicionAlerts.createdAt))
-    .limit(FEED_LIMIT)
+  const { data, unreadCount } = await getOposicionAlertsFeed(auth.user.id)
 
-  const unreadCount = rows.filter((r) => r.readAt == null).length
-
-  return NextResponse.json({ success: true, data: rows, unreadCount })
+  return NextResponse.json({ success: true, data, unreadCount })
 }
 
 // PATCH { ids?: string[] } → marca leídos esos avisos; sin ids = todos los no leídos.
