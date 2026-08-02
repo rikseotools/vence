@@ -1566,6 +1566,18 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
+
+- **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
+- **Lo pide una usuaria PREMIUM de esa oposición:** Marta Pérez Llorente, feedback `fc499576` (01/08): *«Para los tests de auxiliar de la CAM C2, faltan algunos exámenes oficiales. Se podrían completar con los cuestionarios de llamamientos extraordinarios o los de informática que faltan de 2023»*. Ella misma da las dos fuentes oficiales:
+  - https://www.comunidad.madrid/empleo/auxiliares-administracion-general-c2-2023
+  - https://www.comunidad.madrid/empleo/auxiliares-administracion-general-c2-2025
+- **Qué hay HOY, medido en RDS (01/08):** 10 fuentes de examen oficial de Madrid con **254 preguntas** en total. La convocatoria más reciente está claramente **a medias**: de la OEP 2023-2024 (examen del 12 de abril de 2026) solo hay **70 preguntas** repartidas en cuatro bloques (30 + 5 de reserva en la primera parte, 30 + 5 de reserva en la segunda), cuando un ejercicio completo ronda las 100. Las OEP 2020-2022, 2017-2019 y 2015-2016 sí tienen sus sesiones.
+- **Lo que hay que decidir al atacarla (no está resuelto):** qué falta exactamente de cada convocatoria, si los llamamientos extraordinarios se sirven como examen propio o como refuerzo del banco, y si el bloque de informática de 2023 corresponde a la versión de Office que examina ESA convocatoria (ver el split Escritorio/Web: la clave cambia entre variantes).
+- **Al importar, NO improvisar:** seguir `docs/maintenance/importar-examen-oficial-completo.md` (incluida la defensa de supuestos prácticos huérfanos: una pregunta que cita «el supuesto» sin `exam_case_id` es irresoluble y el trigger de BD la bloquea al aprobar).
+- **Por qué merece la pena:** es contenido oficial de la oposición que la usuaria prepara, ya publicado por la propia Comunidad de Madrid, y lo pide quien lo está estudiando. **Ella ya está avisada** de que queda anotado, así que al cerrarla conviene volver a escribirle.
+
+
 ### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
 
 - **Esfuerzo: rato.** El camino está trillado — se acaba de arreglar su gemela con el mismo síntoma.
