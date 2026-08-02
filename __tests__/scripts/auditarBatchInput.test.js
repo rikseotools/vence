@@ -1,4 +1,4 @@
-const { numerosCitados, esLeyReglamento } = require('../../scripts/auditar-batch-input')
+const { citasExternas, esDesignacionGenerica, nombreDeNormaCitada, numerosCitados, esLeyReglamento } = require('../../scripts/auditar-batch-input')
 
 /**
  * Extractor de las remisiones que hacen las EXPLICACIONES, para adjuntarle al auditor
@@ -116,5 +116,73 @@ describe('numerosCitados', () => {
   it('el apartado se descarta y el sufijo NO', () => {
     expect(numerosCitados('el artículo 102.3')).toEqual(['102'])
     expect(numerosCitados('el artículo 102 bis.3')).toEqual(['102 bis'])
+  })
+})
+
+
+/**
+ * La OTRA MITAD de T-149: las citas a otra norma no se resuelven contra la ley del lote
+ * (eso adjuntaba artículos homónimos de otra materia), pero tampoco se pueden TIRAR: el
+ * auditor se queda sin el precepto en el que se apoya la viñeta y devuelve un ISSUE que no
+ * existe. Los casos son los medidos en `gen_atc_t208_2026-07-26_s26c`.
+ */
+describe('citasExternas — las remisiones a OTRA norma, con su norma', () => {
+  it('saca el artículo y la norma citada', () => {
+    const r = citasExternas('Conforme al artículo 31 de la Ley 58/2003, General Tributaria.', {
+      leyDelLote: 'Real Decreto 1065/2007',
+    })
+    expect(r).toEqual([{ numero: '31', norma: 'Ley 58/2003', pista: '58/2003' }])
+  })
+
+  it('NO considera externa la cita a la propia norma del lote', () => {
+    const r = citasExternas('el art. 125 del Real Decreto 1065/2007 exige…', {
+      leyDelLote: 'Real Decreto 1065/2007, por el que se aprueba el Reglamento…',
+    })
+    expect(r).toEqual([])
+  })
+
+  it('ignora el apartado: del 32.2 se pide el artículo 32', () => {
+    const r = citasExternas('según el artículo 32.2 de la Ley 58/2003', { leyDelLote: 'RD 1065/2007' })
+    expect(r[0]).toMatchObject({ numero: '32', pista: '58/2003' })
+  })
+
+  it('no duplica la misma pareja artículo+norma citada dos veces', () => {
+    const t = 'el art. 108.4 de la Ley 58/2003 … y de nuevo el artículo 108.4 de la Ley 58/2003'
+    expect(citasExternas(t, { leyDelLote: 'RD 1065/2007' })).toHaveLength(1)
+  })
+
+  it('«de la misma ley» no es externa cuando solo se ha nombrado la propia', () => {
+    const t = 'La Ley 58/2003 lo regula; el artículo 31 de la misma Ley lo concreta.'
+    expect(citasExternas(t, { leyDelLote: 'Ley 58/2003, General Tributaria' })).toEqual([])
+  })
+
+  it('reconoce normas sin número, como la Constitución', () => {
+    const r = citasExternas('según el artículo 103 de la Constitución Española', { leyDelLote: 'Ley 39/2015' })
+    expect(r[0]).toMatchObject({ numero: '103', pista: 'Constitución Española' })
+  })
+
+  it('«de la Ley» a secas NO se trata como norma externa: no identifica nada', () => {
+    // Medido en gen_atc_t208: buscarla casaba con 438 leyes, y los dos casos del lote ya
+    // venían adjuntos por otra vía. Una nota ahí es ruido, no información.
+    expect(citasExternas('el artículo 90 de la Ley exige…', { leyDelLote: 'Ley 58/2003' })).toEqual([])
+    expect(esDesignacionGenerica('Ley')).toBe(true)
+    expect(esDesignacionGenerica('Ley 58/2003')).toBe(false)
+    expect(esDesignacionGenerica('Constitución Española')).toBe(false)
+  })
+
+  it('una cita SIN norma detrás no es externa (la resuelve numerosCitados)', () => {
+    expect(citasExternas('conforme al artículo 21.4 procede', { leyDelLote: 'Ley 39/2015' })).toEqual([])
+  })
+})
+
+describe('nombreDeNormaCitada', () => {
+  it('recorta el nombre y deja fuera la coletilla descriptiva', () => {
+    expect(nombreDeNormaCitada(' de la Ley 58/2003, de 17 de diciembre, General Tributaria')).toBe('Ley 58/2003')
+  })
+  it('reconoce el Real Decreto', () => {
+    expect(nombreDeNormaCitada(' del Real Decreto 1065/2007, de 27 de julio')).toBe('Real Decreto 1065/2007')
+  })
+  it('devuelve null si no hay norma', () => {
+    expect(nombreDeNormaCitada(' procede la sanción')).toBeNull()
   })
 })

@@ -145,6 +145,69 @@ function numerosCitados(texto, { leyEsReglamento = false, leyDelLote = null } = 
 }
 
 /**
+ * Citas a OTRA norma, con la norma que nombran: «el artículo 31 de la Ley 58/2003» →
+ * `[{ numero: '31', norma: 'Ley 58/2003', pista: '58/2003' }]`.
+ *
+ * ## Por qué existe (T-149, la otra mitad)
+ *
+ * `numerosCitados` DESCARTA estas citas, y hace bien: resolverlas contra la ley del lote
+ * adjuntaba un artículo homónimo de otra materia, que es peor que no adjuntar nada. Pero
+ * descartarlas deja al auditor **sin el precepto en el que se apoya la viñeta**, y entonces
+ * devuelve un ISSUE que no existe. Medido en `gen_atc_t208_2026-07-26_s26c`: faltaron LGT
+ * 32.2 (la base de una clave), 108.4, 99.7, 131, 142.2, 142.4 y RD 1065/2007 125.
+ *
+ * Aquí se sacan CON su norma para que el llamador la resuelva contra `laws` y adjunte el
+ * artículo bueno. La `pista` es lo que mejor identifica a la norma: su número (`58/2003`)
+ * cuando lo lleva, porque es lo único que no admite dos lecturas.
+ *
+ * PURA. Si la norma no se puede resolver, el llamador debe decirlo en el anexo: «se cita X y
+ * no se ha podido adjuntar». Callarlo es lo que produce el ISSUE inventado.
+ */
+function citasExternas(texto, { leyDelLote = null } = {}) {
+  const numLote = numeroDeNorma(leyDelLote)
+  const t = String(texto || '')
+  const out = []
+  const vistas = new Set()
+  const re = /\b(?:art[íi]culos?|arts?\.)\s*([0-9]+(?:\s*(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\.[0-9]+)*)/gi
+  for (const m of t.matchAll(re)) {
+    const sigue = t.slice(m.index + m[0].length, m.index + m[0].length + 90)
+    if (!OTRA_NORMA.test(sigue)) continue
+    // «de la misma Ley» cuando solo se ha nombrado la propia: no es externa.
+    if (AUTORREFERENCIAL.test(sigue) && soloNombraSuPropiaNorma(t.slice(0, m.index), numLote)) continue
+    const norma = nombreDeNormaCitada(sigue)
+    if (!norma) continue
+    // Una designación GENÉRICA sin número («de la Ley», «del Decreto») no identifica ninguna
+    // norma: buscarla casa con cientos y adjuntar una sería el homónimo que esta ficha existe
+    // para evitar. Tampoco se anota como «no verificable», porque en la práctica es la forma
+    // coloquial de referirse a la propia norma del lote y llenaría el anexo de ruido — medido
+    // en `gen_atc_t208_2026-07-26_s26c`, donde los dos casos ya venían adjuntos por otra vía.
+    if (esDesignacionGenerica(norma)) continue
+    const pista = numeroDeNorma(norma) || norma
+    // La norma del propio lote no es «otra».
+    if (numLote && pista === numLote) continue
+    const numero = m[1].split('.')[0].trim().replace(/\s+/g, ' ')
+    const clave = `${numero}|${pista}`
+    if (vistas.has(clave)) continue
+    vistas.add(clave)
+    out.push({ numero, norma, pista })
+  }
+  return out
+}
+
+/** «Ley», «Reglamento», «Decreto»… a secas: no identifican una norma concreta. */
+function esDesignacionGenerica(norma) {
+  return /^(?:Ley(?: Org[áa]nica)?|Real Decreto(?: Legislativo| Ley)?|Reglamento|Decreto|Orden|Directiva|Texto Refundido|Estatuto|C[óo]digo)$/i.test(String(norma).trim())
+}
+
+/** El nombre de la norma que sigue a una cita: «de la Ley 58/2003, General Tributaria» → «Ley 58/2003». */
+function nombreDeNormaCitada(sigue) {
+  const m = String(sigue).match(
+    /(?:de (?:la|el)|del|de las|de los)\s+(?:citad[ao]\s+|mencionad[ao]\s+|referid[ao]\s+|propi[ao]\s+|misma\s+)?((?:Ley Org[áa]nica|Ley|Real Decreto(?: Legislativo| Ley)?|Reglamento|Decreto|Orden|Directiva|Constituci[óo]n(?: Espa[ñn]ola)?|Texto Refundido|Estatuto|C[óo]digo(?: Civil| Penal)?)(?:\s+\(UE\))?(?:\s+n[.ºo°]?\s*)?(?:\s+\d+\/\d{4})?)/i,
+  )
+  return m ? m[1].replace(/\s+/g, ' ').trim() : null
+}
+
+/**
  * ¿La norma del lote es ella misma un reglamento? Se mira el NOMBRE oficial: un Real Decreto que
  * "aprueba el Reglamento de…" lo es; una Ley Orgánica no, por mucho que sus explicaciones citen
  * el Reglamento (UE) 2016/679 a cada paso.
@@ -153,7 +216,7 @@ function esLeyReglamento(nombreLey) {
   return /\breglamento\b/i.test(String(nombreLey || ''))
 }
 
-module.exports = { numerosCitados, esLeyReglamento, numeroDeNorma }
+module.exports = { numerosCitados, esLeyReglamento, numeroDeNorma, citasExternas, nombreDeNormaCitada, esDesignacionGenerica }
 if (require.main !== module) return
 
 
@@ -211,6 +274,27 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
     return cache.get(k)
   }
 
+  /**
+   * Norma citada («Ley 58/2003», «Constitución Española») → `law_id`.
+   *
+   * Se busca por el NÚMERO cuando lo lleva (`58/2003`), que es lo único que no admite dos
+   * lecturas; si no, por el nombre. Devuelve null si hay DUDA —cero o varias candidatas—:
+   * adjuntar el artículo de la norma equivocada es peor que no adjuntar nada (T-149), y ese
+   * fue justo el fallo que originó esta ficha.
+   */
+  const cacheNorma = new Map()
+  const resolverNorma = async (pista) => {
+    if (cacheNorma.has(pista)) return cacheNorma.get(pista)
+    const porNumero = /^\d+\/\d{4}$/.test(pista)
+    const r = porNumero
+      ? await s`SELECT id, short_name, name FROM laws WHERE short_name ILIKE ${'%' + pista + '%'} OR name ILIKE ${'%' + pista + '%'}`
+      : await s`SELECT id, short_name, name FROM laws WHERE short_name ILIKE ${pista} OR name ILIKE ${'%' + pista + '%'}`
+    const res = r.length === 1 ? r[0] : null
+    if (r.length > 1) console.log(`   ⚠️ «${pista}» casa con ${r.length} leyes — no se adjunta (ambiguo)`)
+    cacheNorma.set(pista, res)
+    return res
+  }
+
   const trozos = SPLIT > 1
     ? Array.from({ length: SPLIT }, (_, i) => preguntas.filter((_, j) => j % SPLIT === i))
     : [preguntas]
@@ -231,6 +315,40 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
         vistos.add(k)
         const art = await traer(law_id, n)
         if (art) refs.push(art)
+      }
+
+      // Remisiones a OTRA norma: se resuelven contra SU ley (T-149). Antes se descartaban
+      // —correcto para no adjuntar un homónimo— pero eso dejaba al auditor sin el precepto
+      // en el que se apoya la viñeta, y devolvía ISSUES inventados.
+      for (const cita of citasExternas(x.explicacion, { leyDelLote: idx.get(x.id).ley_nombre })) {
+        const ley = await resolverNorma(cita.pista)
+        if (!ley) {
+          const aviso = `${cita.numero}|externa-sin-resolver|${cita.pista}`
+          if (!vistos.has(aviso)) {
+            vistos.add(aviso)
+            // Se DICE. Un hueco callado es lo que hace que el auditor juzgue a ciegas.
+            refs.push({
+              ley: cita.norma,
+              articulo: cita.numero,
+              titulo: null,
+              texto: null,
+              no_adjuntado: `La explicación remite al artículo ${cita.numero} de ${cita.norma}, que no está en nuestra base. NO juzgues esa remisión: márcala como no verificable.`,
+            })
+          }
+          continue
+        }
+        const k2 = `${ley.id}|${cita.numero}`
+        if (enEsteTrozo.has(k2) || vistos.has(k2)) continue
+        vistos.add(k2)
+        const artExterno = await traer(ley.id, cita.numero)
+        if (artExterno) refs.push(artExterno)
+        else refs.push({
+          ley: ley.short_name || cita.norma,
+          articulo: cita.numero,
+          titulo: null,
+          texto: null,
+          no_adjuntado: `Tenemos la norma pero no ese artículo. NO juzgues esa remisión: márcala como no verificable.`,
+        })
       }
     }
     const file = SPLIT > 1 ? OUT.replace(/\.json$/, `.${i + 1}.json`) : OUT
