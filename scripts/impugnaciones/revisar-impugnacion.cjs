@@ -227,6 +227,39 @@ if (require.main !== module) {
       console.log(`  ${art.content.slice(0, 500).replace(/\n/g, '\n  ')}${art.content.length > 500 ? ' …' : ''}`);
     } else if (!isPsy) console.log('\n⚠️ Artículo vinculado: NINGUNO (primary_article_id null)');
 
+    // ── ¿Es SISTÉMICO? Las HERMANAS del mismo artículo, con su clave ────────────────
+    //
+    // Regla de Manuel: «siempre, en las impugnaciones, hay que revisar si es un fallo
+    // sistémico». Vivía SOLO en el manual (§7.5/§7.7) y por eso se olvidaba: el 02/08, en
+    // la impugnación 4b2e527e, se miró si el término inventado estaba extendido pero NO si
+    // el CONCEPTO lo estaba. Al mirarlo salieron dos preguntas hermanas del mismo artículo
+    // que preguntaban lo mismo con otro recorte… y sus claves DEMOSTRABAN que la impugnada
+    // estaba mal (2 informes + 1 dictamen = 3). El banco se contradecía consigo mismo.
+    //
+    // Por eso ya no es una línea de checklist que hay que acordarse de ejecutar: el dossier
+    // las TRAE. Ver una clave que no cuadra con las vecinas cuesta un vistazo; buscarlas a
+    // mano, acordarse primero.
+    if (!isPsy && q.primary_article_id) {
+      const hermanas = await s`
+        SELECT id, question_text qt, correct_option co, option_a a, option_b b, option_c c, option_d d
+          FROM questions
+         WHERE primary_article_id = ${q.primary_article_id} AND is_active = true AND id <> ${q.id}
+         ORDER BY created_at LIMIT 12`;
+      console.log(`\n─── 🔬 ¿FALLO SISTÉMICO? ${hermanas.length} pregunta(s) activa(s) del MISMO artículo ───`);
+      if (hermanas.length === 0) {
+        console.log('   (ninguna: el defecto, si lo hay, es de esta pregunta sola)');
+      } else {
+        for (const h of hermanas) {
+          const ops = [h.a, h.b, h.c, h.d];
+          const letra = ['A', 'B', 'C', 'D'][h.co] ?? '?';
+          console.log(`   ${String(h.id).slice(0, 8)} | ${String(h.qt).replace(/\s+/g, ' ').slice(0, 88)}`);
+          console.log(`      clave ${letra}) ${String(ops[h.co] ?? '').replace(/\s+/g, ' ').slice(0, 70)}`);
+        }
+        console.log('   ⚠️ Si una hermana responde lo MISMO de otra forma, sus claves tienen que ser coherentes.');
+        console.log('      Y si el defecto se repite, NO lo arregles solo aquí: mídelo y abre ficha.');
+      }
+    }
+
     console.log('\n─── CHECKS AUTOMÁTICOS (los verifica el código; el juicio lo pone Claude) ───');
     // Check (b): ¿el artículo vinculado responde? (recall de la opción correcta en el artículo)
     if (art) {
@@ -243,6 +276,7 @@ if (require.main !== module) {
     console.log('  [ ] 2. (b) ¿El artículo vinculado responde LITERALMENTE? (no solo solape de palabras)');
     console.log('  [ ] 3. ¿La pregunta está bien formulada? (¿doble solución? ¿opción D vacía legítima? ¿enunciado confuso?)');
     console.log('  [ ] 4. (a) ¿La explicación es mejorable? (formato §5.1 + exactitud) → SIEMPRE evaluar');
+    console.log('  [ ] 4.bis ¿Es SISTÉMICO? Mirar las hermanas de arriba y medir el patrón en el banco (§7.5/§7.7)');
     console.log('  [ ] 5. Clasificar: informática / tema_incorrecto / supuesto huérfano / estructural / normal');
     console.log('  [ ] 6. ¿Oficial? (oficial=no se toca enunciado/opciones; no oficial=se mejora)');
     console.log('  [ ] 7. Antes de aplicar explicación nueva → pasar validar-explicacion.cjs');
