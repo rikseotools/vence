@@ -1546,6 +1546,25 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
+
+- **Esfuerzo: rato.** Montado entero el 01/08; queda un paso de un minuto (ver «Lo que falta»).
+- **ORIGEN:** Manuel preguntó si podría conectarse desde el móvil al portátil (que deja encendido) para seguir trabajando por comandos con Claude Code como hace desde el escritorio. No venía de ningún fallo: es una capacidad nueva.
+- **CONTEXTO Y MEDIDA:** el portátil ya tenía media pieza puesta sin saberlo (`openssh-server` instalado pero **apagado**, `tmux` instalado, `firewalld` ya permitiendo `ssh` en la zona `FedoraWorkstation`, y GNOME con `sleep-inactive-ac-type=nothing`). Faltaban la red y el pegamento.
+- **RESOLUCIÓN — cuatro piezas, cada una tapa un modo de fallo distinto:**
+  1. **`sshd`** encendido (`systemctl enable --now sshd`). Escucha en `0.0.0.0:22`, así que cubre también la interfaz de Tailscale.
+  2. **Tailscale** (`1.98.8`, **está en los repos oficiales de Fedora**, no hace falta repo de terceros). Portátil `fedora` = `100.110.138.54`, móvil `s24-de-manuel` = `100.77.116.67`, cuenta `manueltrader@`. Evita abrir puertos en el router y funciona igual por 4G que en casa.
+  3. **tmux**, que es lo que hace esto usable: sin él, el proceso está atado a la conexión SSH y **bloquear la pantalla del móvil mata Claude Code a media tarea**. Con tmux el proceso es de tmux y sobrevive.
+  4. **Atajo `cc` en `~/.bashrc`** (función, no alias). `cc` → worktree `~/vence-sessions/movil` **creándolo la primera vez** con `crear-worktree.sh`; `cc <nombre>` → ese worktree, también creándolo; `cc principal` → checkout principal; `cc /ruta` → ruta literal. Nombre de sesión tmux = nombre del worktree, así que se pueden tener varias a la vez sin mezclarlas.
+- **Por qué el atajo apunta a un WORKTREE y no al checkout principal:** una sesión abierta desde el móvil es una sesión más, y el `pre-commit` de [T-415] bloquea si dos sesiones vivas comparten directorio. Que el camino cómodo sea también el correcto es la única forma de que se respete.
+- **Dos tropiezos que costaron tiempo real y son reutilizables:**
+  - **Un ejemplo demasiado realista se copia literalmente.** Puse `https://login.tailscale.com/a/a1b2c3d4e5f6` como muestra del formato y se pegó tal cual en el navegador → 404. Al enseñar un comando que **genera** un identificador, el ejemplo tiene que ser obviamente falso (`<pega-aqui-la-url-que-imprima>`), no plausible.
+  - **Cambiar `~/.bashrc` no cambia las shells ya abiertas.** Tras mejorar `cc`, el móvil seguía con la versión vieja y daba *«no existe la carpeta: movil»* con la carpeta existiendo. Al tocar el `.bashrc` hay que decir en el mismo mensaje que toca `source ~/.bashrc` o reconectar.
+- **Verificado de extremo a extremo, no declarado:** sesión SSH del móvil vista en `who` (`pts/11` desde `100.77.116.67`), banner `SSH-2.0-OpenSSH_10.2` respondiendo por la IP de Tailscale, sesión tmux `movil` en estado `(attached)` y proceso `claude` con `cwd` en el worktree. El camino de **enganche** de `tmux new-session -A` se probó aparte con un pty real (lanzándolo dentro de otra sesión tmux), porque la herramienta de Bash no tiene terminal y ahí falla con `open terminal failed` dando un falso negativo.
+- **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
+- **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
+
+
 ### [T-491] 🟡 [ABIERTO 02/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
 
 - **Esfuerzo: rato.** Es una regla de alerta; el camino está trillado (acaba de escribirse su gemela `sim_ruta_rota`).
