@@ -263,6 +263,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'auxiliar_clinica_diputacion_sevilla',
+      label: 'Auxiliar de Clínica Dip. Sevilla',
+      data: {
+        name: 'Auxiliar de Clínica de la Diputación Provincial de Sevilla',
+        slug: 'auxiliar-clinica-diputacion-sevilla',
+        categoria: 'C2',
+        administracion: 'Diputación Provincial de Sevilla'
+      }
+    },
+    {
       value: 'mecanico_conductor_estado',
       label: 'Conductor Parque Móvil',
       data: {

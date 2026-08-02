@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'auxiliar_clinica_diputacion_sevilla',
+    nombre: 'Auxiliar de Clínica Dip. Sevilla',
+    categoria: 'C2',
+    administracion: 'Diputación Provincial de Sevilla',
+    icon: '🧑‍⚕️'
+  },
+  {
     id: 'administrativo_agencia_tributaria_canaria',
     nombre: 'Agentes Tributos Canarias',
     categoria: 'administrativa',

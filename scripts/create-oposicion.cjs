@@ -22,6 +22,7 @@
 require('dotenv').config({ path: '.env.local' });
 const fs = require('fs');
 const { Client } = require('pg');
+const { pgConfig } = require('../lib/db/pgSsl.cjs');
 
 // ────────────────────────────────────────────────────────────────────────────
 // VALIDACIÓN (función pura, testeable sin BD) — codifica las lecciones aprendidas
@@ -351,7 +352,11 @@ async function main() {
   const PT = id.position_type, SLUG = id.slug;
   const temario = spec.temario, bloques = spec.bloques;
 
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, statement_timeout: 30000 });
+  // `pgConfig()` y no la receta a mano: la URL de RDS trae `sslmode=require`, que en `pg`
+  // PISA la opción `ssl` y hace que la conexión muera con «self-signed certificate in
+  // certificate chain». Con esa receta a medias el scaffolder no llegaba nunca a la BD
+  // (medido el 02/08 al montar la primera oposición desde spec en meses). Ver T-377.
+  const c = new Client({ ...pgConfig(), statement_timeout: 30000 });
   await c.connect();
   try {
     const yaExiste = (await c.query('select id from oposiciones where slug=$1', [SLUG])).rows[0];

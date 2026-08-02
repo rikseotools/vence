@@ -1597,6 +1597,16 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Cómo atacarlo:** regla propia mirando `event_type='sim_journey_result' AND severity='error'` en las últimas horas, con el nombre del journey y su invariante fallida en el cuerpo; declararlo en las **dos** copias de `CON_REGLA_PROPIA` (hay guardarraíl de paridad). Copiar la forma de `RULE_SIM_RUTA_ROTA`.
 - **Relacionada:** [T-487] (de donde sale, y de donde se copia la regla).
 
+### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
+
+- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
+- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
+- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
+- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
+- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
+- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
+
 ### [T-482] 🔴 [ABIERTO 02/08] Dos endpoints de tests sin autenticación: `/review` lee el examen de cualquiera y `/recover` escribe en la cuenta que le digas
 
 - **⛔ NO EMPEZAR HASTA EL MARTES 04/08 (decisión de Manuel, 02/08).** Está en `snooze_until`, así que `claim` no la entrega antes.
@@ -1670,7 +1680,18 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **⚠️ GOTCHA de nomenclatura:** la diputación **no la llama TCAE ni Auxiliar de Enfermería**, la llama **«Auxiliar de Clínica»**. Buscar por «TCAE» en el BOE no la encuentra — es la razón de que no estuviera catalogada.
 - **Reutilización:** idéntica a [T-488] (general de administración local ya montada + bloques de cuidados ya en BD).
 - **Antes de montar:** bajar las bases específicas del BOP de Sevilla y comprobar el temario real, que en Auxiliar de Clínica suele traer bloque de cuidados + bloque de centros residenciales propios de la diputación.
-- **Relacionadas:** [T-488] (Cádiz, más plazas), [T-490] (Granada).
+
+**AVANCE (02/08) — FASES 1 a 5 HECHAS. La oposición existe en BD con `is_active=false`; NO está publicada.**
+
+- **FASE 1 (el juicio):** temario LITERAL del Anexo I de las bases (BOP Sevilla nº163 de 26/08/2025, Resolución 5788/2025, CVE BOP-SE-2025-163005; rectificaciones en BOP nº228 de 26/11/2025). **20 temas: 4 comunes + 16 específicas.** Spec en `data/temarios/auxiliar-clinica-diputacion-sevilla.json`, con el PDF de las bases citado dentro.
+- **Datos del proceso, de las bases:** concurso-oposición libre (oposición 60% / concurso 40%), primer ejercicio con DOS pruebas tipo test de 30+5 preguntas en 80 minutos (la primera teórica sobre comunes y específicas, la segunda práctica solo sobre específicas), segundo ejercicio práctico de hasta 1h30. **Penalización 1/3** (literal citado en `examScoring.source`). Derechos de examen 20 €. Titulación: FP de Auxiliar de Clínica / TCAE / Atención a la Dependencia (entre otras) + ESO, **y carnet de manipulador de alimentos**.
+- **FASE 3 (mapeo de scope) hecho MIDIENDO, no a ojo:** para cada tema específico se contó qué contenedor responde de verdad (consulta por palabras del epígrafe contra el banco vivo). **30 filas de `topic_scope` · 16.801 preguntas servibles.** La base viene de `cuidador-diputacion-cordoba` y `tcae-sas`: es el mismo oficio, en el mismo tipo de centro y en la misma comunidad.
+- **Gate `npm run audit:oposicion auxiliar-clinica-diputacion-sevilla`: 0 ❌ / 0 🟡** (incluye rutas, registros de UI y bandera). `typecheck` verde.
+- **⚠️ LO QUE FALTA ANTES DEL GO-LIVE (no publicar sin esto):**
+  1. **Tres temas por debajo del mínimo de la casa (~100 preguntas): T3 «Hacienda Local: clasificación de los recursos» (20), T8 «Seguridad y accesibilidad de los espacios» (38) y T6 «Acogida el día del ingreso» (76).** Los tres son huecos de CONTENIDO, no de scope: hay que generar preguntas ancladas (T3 a los arts. 2-6 del RDL 2/2004; T6 y T8 son editoriales de centro residencial). Publicar así deja tres temas famélicos.
+  2. **`verify:scope`** (los 2 agentes contra el BOE), que además adjudicará dos decisiones que tomé estrechas a propósito: en T1 el epígrafe dice «estructura» y sólo se han escopado los arts. 0-55 de la CE (fuera la Corona, que sí está en Córdoba porque su epígrafe la nombra), y en T4 la Ley 4/2023 entró **entera** aunque el epígrafe pida sólo «medidas en el ámbito administrativo y laboral» (sus artículos no tienen rúbrica en BD, así que no se puede recortar por título sin leerla).
+  3. **`is_active=true` + deploy con el OK de Manuel.**
+- **Relacionadas:** [T-488] (Cádiz, más plazas), [T-490] (Granada, descartada), [T-492] (el scaffolder no conectaba a RDS: salió aquí).
 
 ### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
 
