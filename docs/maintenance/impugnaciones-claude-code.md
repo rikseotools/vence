@@ -56,6 +56,14 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
   estructurada devuelve ❌ («no empieza con "La respuesta correcta es…"»), que es un falso negativo.
   Para el formato nuevo, la comprobación equivalente es el **dry-run de `aplicar-explicacion.ts`**,
   que renderiza con el mismo render que usa el serve.
+- 🔗 **TODO ENLACE QUE MANDES SE ABRE ANTES Y SE COMPRUEBA QUE DICE LO QUE TÚ DICES (Manuel, 01/08/2026).**
+  Vale para cualquier mensaje, no solo para los rechazos: BOE, boletín autonómico, Microsoft Support.
+  **No basta con que la URL responda 200** — el fallo caro es el enlace que abre **otra cosa**:
+  el ancla del BOE **no es `#a<nº de artículo>` en todos los textos** (Ley 39/2015 → `#a95` ✅;
+  Código Civil → `#art3`, mientras que `#a3` **existe y lleva a «Artículo 301 a 324. (Derogados)»**).
+  Así no da 404 ni se nota al escribir: el opositor pincha, lee un artículo que no tiene nada que ver,
+  y la respuesta que iba a convencerle prueba lo contrario. **Tabla de anclas comprobadas + el comando
+  de verificación (30 s, y de paso confirma la cita literal): §7.3.quater punto 2.**
 - ⚠️ **Listar/consultar SIEMPRE contra RDS (`pg` + `DATABASE_URL`), NUNCA con `@supabase/supabase-js`.** Desde el cutover 04/07 la BD viva es **AWS RDS**; el cliente `@supabase/supabase-js` (`NEXT_PUBLIC_SUPABASE_URL`, sea ANON o SERVICE_ROLE) apunta al **Supabase CONGELADO** y devuelve datos desactualizados — muestra como `pending` disputes que en RDS ya están `resolved` (incidente 17/07: `supabase-js` dio 1 pendiente cuando RDS tenía 6; una dispute "pending" en el backup llevaba resuelta desde el 05/07). **Fíate del dossier `revisar-impugnacion.cjs`** (lee RDS). Ver aviso CLAUDE.md → "CUTOVER A RDS".
 
 **Pasos:**
@@ -1026,16 +1034,37 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 
 1. **La cita literal del precepto**, entrecomillada y con su referencia exacta (artículo, apartado y
    letra). No parafrasear: el opositor quiere ver la frase.
-2. **El enlace directo** al texto oficial (`https://www.boe.es/buscar/act.php?id=…#aN`), para que lo
-   verifique sin buscarlo.
-   > ⚠️ **El ancla NO se deduce del número de artículo: se COMPRUEBA (01/08/2026).** En muchas leyes
-   > consolidadas el BOE numera las anclas **por bloque**, no por artículo. En la **LO 3/2018** el
-   > artículo 17 es **`#a1-9`** (`[Bloque 23: #a1-9] Artículo 17`) y el 18 es `#a1-10`: **`#a17`
-   > sencillamente no existe**, y el enlace abre el documento por arriba dejando al usuario buscando
-   > a mano — lo contrario de lo que un `rejected` promete. Se comprueba en dos órdenes:
-   > `curl -s "<url>" | grep -c 'id="a1-9"'`, y si el ancla que ibas a usar da 0, localiza la buena
-   > buscando la rúbrica del artículo en el HTML (el marcador `[Bloque N: #ancla]` va justo delante).
-   > **Y ese `grep` léelo entero:** en el caso que originó esta nota, un `grep … | head -8` devolvió
+2. **El enlace directo** al texto oficial (`https://www.boe.es/buscar/act.php?id=…#<ancla>`), para
+   que lo verifique sin buscarlo.
+   > ⚠️ **ABRE EL ENLACE ANTES DE MANDARLO Y COMPRUEBA QUE DICE LO QUE DICES (Manuel, 01/08/2026).**
+   > **El ancla NO es `#a<número de artículo>` en todos los textos** — es un id de bloque del
+   > consolidado, y la convención cambia de norma a norma:
+   >
+   > | Norma | Ancla del artículo | Comprobado |
+   > |---|---|---|
+   > | Ley 39/2015 (`BOE-A-2015-10565`) | `#a95` → «Artículo 95. Requisitos y efectos» | ✅ |
+   > | Código Civil (`BOE-A-1889-4763`) | `#art3`, `#art4` | ✅ |
+   > | Código Civil — `#a3` | ❌ **lleva a «Artículo 301 a 324. (Derogados)»** | — |
+   > | LO 3/2018 (`BOE-A-2018-16673`) | art. 17 → **`#a1-9`** (`#a17` y `#art17` **no existen**) | ✅ |
+   >
+   > **Son tres convenciones distintas en tres normas**, así que no hay patrón que memorizar: hay
+   > que mirarlo. Y el fallo no avisa — en el Código Civil el patrón `#aN` **existe pero apunta a
+   > otro artículo**, así que no da 404: el usuario pincha, lee un artículo derogado que no tiene
+   > nada que ver, y la respuesta que pretendía convencerle demuestra lo contrario. Cazado el 01/08
+   > al ir a mandarle a Marta Pérez (`1e9c09f6`) un `#a3` para el art. 3.2 CC.
+   >
+   > **Cómo se verifica** (30 s, y de paso confirma la cita del punto 1):
+   > ```bash
+   > curl -s "https://www.boe.es/buscar/act.php?id=BOE-A-1889-4763" -o /tmp/norma.html
+   > grep -o 'id="art3"' /tmp/norma.html        # ¿existe el ancla?
+   > # y localizar la frase citada para ver qué bloque la contiene:
+   > python3 -c "import re,html;s=open('/tmp/norma.html',encoding='utf-8',errors='replace').read();i=s.find('La equidad habrá de ponderarse');print(re.findall(r'id=\"([^\"]+)\"',s[i-3000:i])[-4:])"
+   > ```
+   > La regla de fondo es la de siempre en esta casa: **no se cita lo que no se ha abierto.** Vale
+   > igual para el enlace de Microsoft Support de §5.1.1 («No inventar URLs») y para cualquier
+   > boletín autonómico.
+   >
+   > **Y ese `grep` léelo entero:** en el caso de la LO 3/2018, un `grep … | head -8` devolvió
    > `id="a1"…id="a8"` y se leyó como «las anclas van por número», cuando eran las únicas nueve que
    > había. Un `head` sobre la comprobación de un guardarraíl convierte la comprobación en su
    > contrario.

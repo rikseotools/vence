@@ -1608,41 +1608,18 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Relacionadas:** [T-444] (de donde sale), [T-146] (los huecos que el badge no ve por otro motivo: artículos no numéricos), CLAUDE.md → *«revisa los artículos sin preguntas»*.
 
 
-### [T-470] 🟠 [ABIERTO 01/08] Impugnación `e1b2b9e4` (Lucía Quiroga, UC3M): analizada y con borrador escrito — solo falta el OK de Manuel para cerrarla
+### [T-478] 🟡 [ABIERTO 02/08] El aviso de similitud de `reserve` solo enseñó fichas CERRADAS y dejó pasar el duplicado de una ABIERTA
 
-- **Esfuerzo: minutos.** Todo el trabajo está hecho y verificado; lo único que falta es aprobar el texto y lanzar un comando.
-- **QUÉ ES.** Tercera de las tres impugnaciones de `luciaquiroga55@gmail.com` (premium, `auxiliar_administrativo_universidad_carlos_iii`) del 01/08. Las otras dos se cerraron `resolved` esa noche (`dd9aeb94`, `6628e247`: tenía razón, ver [T-467]). **Esta es la única en la que NO tiene razón** → va `rejected`.
-- **PREGUNTA:** `4f984a01-7cde-485b-b384-e1599cdc3e8e` — *«¿Cuál de los siguientes derechos se ejercerá de acuerdo con lo establecido en el artículo 20 del Reglamento (UE) 2016/679?»*, clave D) portabilidad. **Su queja:** *«Fuera de temario. En esta oposición entra la ley, no el reglamento.»*
-- **POR QUÉ NO PROCEDE (verificado contra el BOE, no contra nuestra BD):** el artículo que la responde es el **17 de la LO 3/2018**, del Título III «Derechos de las personas», que su epígrafe **sí incluye**. Su confusión es entendible: el enunciado nombra el Reglamento, pero todo el Título III regula los derechos **remitiendo** cada uno a su artículo del RGPD, así que la remisión es texto de la ley que estudia.
-- **CLAVE CORRECTA y contrastada:** supresión → art. 17 RGPD (art. 15 LO) · limitación → art. 18 (art. 16 LO) · portabilidad → **art. 20** (art. 17 LO) · oposición → arts. 21 y 22 (art. 18 LO). Los cuatro distractores mapean a artículos distintos, así que no hay ambigüedad.
-- **⚠️ GOTCHA QUE COSTÓ UNA CORRECCIÓN DE MANUEL — el ancla del BOE.** En esta ley **`#a17` NO EXISTE**: el consolidado numera por bloques y el artículo 17 es **`#a1-9`** (`[Bloque 23: #a1-9] Artículo 17`), el 18 es `#a1-10`. El enlace con `#a17` abre el BOE por arriba y deja al usuario buscando a mano — lo contrario de lo que el enlace promete en un `rejected` (§7.3.quater). **Comprobar el ancla, no deducirla del número.** Detalle en el manual de impugnaciones §7.3.quater.
-- **YA HECHO (no repetir):** la explicación de la pregunta está **reescrita en formato estructurado** y nace barajable (`explanation_data` presente, `shuffle_safety=safe`), y la caché `questions` está revalidada. La pregunta era transcripción apelotonada del artículo (§7.3).
-- **LO ÚNICO QUE FALTA:** enseñarle este borrador a Manuel y, con su OK, cerrar. El claim de la cola se soltó al terminar la sesión, así que hay que volver a cogerla (`cola.cjs`/`revisar-impugnacion.cjs`).
-  ```
-  Hola Lucía,
-
-  En este caso la pregunta sí entra en tu temario. El artículo que la responde es el 17 de la
-  Ley Orgánica 3/2018, dentro de «Derechos de las personas», que tu programa incluye expresamente:
-
-  «El derecho a la portabilidad se ejercerá de acuerdo con lo establecido en el artículo 20 del
-  Reglamento (UE) 2016/679.»
-
-  https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673#a1-9
-
-  Entiendo de dónde viene la duda: al leer «artículo 20 del Reglamento» parece una pregunta del
-  Reglamento europeo. Pero es al revés: todo el Título III de la ley orgánica regula los derechos
-  remitiendo cada uno a su artículo del Reglamento (la supresión al 17, la limitación al 18, la
-  oposición al 21 y 22), así que esa remisión forma parte del texto de la ley que estudias. Saber
-  qué derecho va con cada remisión es precisamente lo que aquí se pregunta.
-
-  Muchas gracias.
-
-  Equipo de Vence
-  ```
-  Cierre: `AUTH_SECRET="$(aws --profile vence --region eu-west-2 ssm get-parameter --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)" npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts e1b2b9e4-1367-4690-9da8-c8c6ee16e574 --estado rejected --mensaje <fichero> --aplicar`
-- **Recompensa:** su motivo es `otro`, que **no paga solo**, y además esta se rechaza. Las otras dos SÍ eran hallazgo real y tampoco cobraron por el mismo motivo; si Manuel quiere premiarlas es **a mano y con orden expresa**.
-- **Relacionadas:** [T-467] (el defecto de scope que destaparon sus otras dos), [T-471] (el Paso 1 de su oposición, aún sin registrar).
-
+- **Esfuerzo: rato.** El aviso ya existe y ya cruza texto; lo que falla es a QUÉ universo mira y cómo ordena.
+- **QUÉ PASÓ (02/08).** Cerrando la impugnación `e1b2b9e4` saltó el 🛑 de Paso 1 de `auxiliar_administrativo_universidad_carlos_iii`. Manuel pidió abrir ficha, se llamó a `reserve` y **su aviso de parecido enseñó tres fichas: T-070 (Extremadura), T-123 (León) y T-101 (ULE) — las tres `[done]` y las tres de OTRAS oposiciones**. No enseñó **[T-471]**, que estaba **ABIERTA**, creada horas antes por otra sesión y que cubre exactamente eso. Se reservó T-473 y hubo que anularla.
+- **POR QUÉ IMPORTA MÁS DE LO QUE PARECE.** Ese aviso es la puerta de la regla *«¿esto ya existe?»* de CLAUDE.md aplicada al BACKLOG. Una ficha cerrada de otra oposición es, como mucho, contexto histórico; **la que de verdad hace daño no verla es la abierta**, porque es la que otra sesión puede estar trabajando AHORA. Es el mismo modo de fallo que [T-130] una capa más arriba: allí se duplicó la HERRAMIENTA, aquí la FICHA.
+- **LO QUE HAY QUE MIRAR (no está diagnosticado, esto es el punto de partida):**
+  - Si el ranking pondera por solape de palabras sin tener en cuenta el `status`, tres cerradas con muchas palabras comunes («admin», «epigrafe», «oficial», «paso») desplazan a la abierta que comparte lo único que decide: **el slug de la oposición** (`universidad_carlos_iii`, `uc3m`).
+  - Comprobar si las ABIERTAS deberían salir **siempre** y aparte de las cerradas, en vez de competir en la misma lista por puntuación.
+  - El nombre propio (slug de oposición, id de ley, `T-nnn` citado) debería pesar más que las palabras genéricas del dominio, que casan con medio backlog.
+- **CÓMO REPRODUCIRLO:** `node scripts/backlog.cjs reserve "Paso 1 (epígrafe oficial) de Aux. Admin. Universidad Carlos III: 20 temas never_sourced con plazo abierto" --esfuerzo rato` con [T-471] abierta. Salida real guardada en la ficha de [T-473].
+- **Capa que pide:** el criterio de parecido a núcleo puro con test, para poder fijar este caso como regresión (una ABIERTA que comparte el nombre propio sale por delante de tres CERRADAS que solo comparten vocabulario).
+- **Relacionadas:** [T-473] (la ficha duplicada que se anuló), [T-471] (la que no se vio), [T-130] (el registro de herramientas, mismo fallo un nivel más arriba).
 
 ### [T-477] 🟡 [ABIERTO 02/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`
 
@@ -3240,6 +3217,50 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-470] ✅ 🟠 [HECHA 02/08] Impugnación `e1b2b9e4` (Lucía Quiroga, UC3M): cerrada `rejected` — la pregunta SÍ entra en su temario
+
+- **Esfuerzo: minutos.** Todo el trabajo está hecho y verificado; lo único que falta es aprobar el texto y lanzar un comando.
+- **QUÉ ES.** Tercera de las tres impugnaciones de `luciaquiroga55@gmail.com` (premium, `auxiliar_administrativo_universidad_carlos_iii`) del 01/08. Las otras dos se cerraron `resolved` esa noche (`dd9aeb94`, `6628e247`: tenía razón, ver [T-467]). **Esta es la única en la que NO tiene razón** → va `rejected`.
+- **PREGUNTA:** `4f984a01-7cde-485b-b384-e1599cdc3e8e` — *«¿Cuál de los siguientes derechos se ejercerá de acuerdo con lo establecido en el artículo 20 del Reglamento (UE) 2016/679?»*, clave D) portabilidad. **Su queja:** *«Fuera de temario. En esta oposición entra la ley, no el reglamento.»*
+- **POR QUÉ NO PROCEDE (verificado contra el BOE, no contra nuestra BD):** el artículo que la responde es el **17 de la LO 3/2018**, del Título III «Derechos de las personas», que su epígrafe **sí incluye**. Su confusión es entendible: el enunciado nombra el Reglamento, pero todo el Título III regula los derechos **remitiendo** cada uno a su artículo del RGPD, así que la remisión es texto de la ley que estudia.
+- **CLAVE CORRECTA y contrastada:** supresión → art. 17 RGPD (art. 15 LO) · limitación → art. 18 (art. 16 LO) · portabilidad → **art. 20** (art. 17 LO) · oposición → arts. 21 y 22 (art. 18 LO). Los cuatro distractores mapean a artículos distintos, así que no hay ambigüedad.
+- **⚠️ GOTCHA QUE COSTÓ UNA CORRECCIÓN DE MANUEL — el ancla del BOE.** En esta ley **`#a17` NO EXISTE**: el consolidado numera por bloques y el artículo 17 es **`#a1-9`** (`[Bloque 23: #a1-9] Artículo 17`), el 18 es `#a1-10`. El enlace con `#a17` abre el BOE por arriba y deja al usuario buscando a mano — lo contrario de lo que el enlace promete en un `rejected` (§7.3.quater). **Comprobar el ancla, no deducirla del número.** Detalle en el manual de impugnaciones §7.3.quater.
+- **YA HECHO (no repetir):** la explicación de la pregunta está **reescrita en formato estructurado** y nace barajable (`explanation_data` presente, `shuffle_safety=safe`), y la caché `questions` está revalidada. La pregunta era transcripción apelotonada del artículo (§7.3).
+- **CERRADA (02/08).** Con el OK de Manuel se cerró `e1b2b9e4` como **`rejected`**: `emailSent:true`, `bellSent:true`, `emailId 80dbba9a-b4d3-420f-a6d0-b266d67ed5e3`, `emailSkipReason:null`. La cogió otra sesión (el claim se había liberado) y **llegó al mismo diagnóstico por su cuenta**, lo que vale como segunda opinión: art. 17 LO 3/2018 dentro de «Derechos de las personas», epígrafe cotejado contra el **ANEXO I del PDF oficial** de la convocatoria UC3M (06/07/2026), y ancla `#a1-9` **verificada abriendo el BOE** antes de enviar.
+  - **Lo que se añadió al borrador de esta ficha:** la respuesta explica la diferencia con las **dos que sí se le aceptaron** (aquellas salían del art. 28, del capítulo que su temario no incluye). Sin esa frase, la tercera respuesta en unas horas se le lee como que nos contradecimos.
+- **Lo que faltaba y ya está hecho:** enseñarle este borrador a Manuel y, con su OK, cerrar. El claim de la cola se soltó al terminar la sesión, así que hay que volver a cogerla (`cola.cjs`/`revisar-impugnacion.cjs`).
+  ```
+  Hola Lucía,
+
+  En este caso la pregunta sí entra en tu temario. El artículo que la responde es el 17 de la
+  Ley Orgánica 3/2018, dentro de «Derechos de las personas», que tu programa incluye expresamente:
+
+  «El derecho a la portabilidad se ejercerá de acuerdo con lo establecido en el artículo 20 del
+  Reglamento (UE) 2016/679.»
+
+  https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673#a1-9
+
+  Entiendo de dónde viene la duda: al leer «artículo 20 del Reglamento» parece una pregunta del
+  Reglamento europeo. Pero es al revés: todo el Título III de la ley orgánica regula los derechos
+  remitiendo cada uno a su artículo del Reglamento (la supresión al 17, la limitación al 18, la
+  oposición al 21 y 22), así que esa remisión forma parte del texto de la ley que estudias. Saber
+  qué derecho va con cada remisión es precisamente lo que aquí se pregunta.
+
+  Muchas gracias.
+
+  Equipo de Vence
+  ```
+  Cierre: `AUTH_SECRET="$(aws --profile vence --region eu-west-2 ssm get-parameter --name /vence-frontend/AUTH_SECRET --with-decryption --query Parameter.Value --output text)" npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts e1b2b9e4-1367-4690-9da8-c8c6ee16e574 --estado rejected --mensaje <fichero> --aplicar`
+- **Recompensa:** su motivo es `otro`, que **no paga solo**, y además esta se rechaza. Las otras dos SÍ eran hallazgo real y tampoco cobraron por el mismo motivo; si Manuel quiere premiarlas es **a mano y con orden expresa**.
+- **Relacionadas:** [T-467] (el defecto de scope que destaparon sus otras dos), [T-471] (el Paso 1 de su oposición, aún sin registrar).
+
+### [T-473] ✅ [HECHA 02/08] Reservada por error: duplicaba a [T-471] (Paso 1 de UC3M)
+
+- **Esfuerzo: minutos.** No llegó a tener ficha propia: se anula en el acto.
+- **QUÉ PASÓ.** Al resolver la impugnación `e1b2b9e4` salió el 🛑 de Paso 1 de `auxiliar_administrativo_universidad_carlos_iii` y Manuel pidió abrir ficha. Se reservó este id sin ver que **[T-471] ya existía y cubre exactamente eso**, creada horas antes por otra sesión.
+- **Por qué no lo evitó `reserve`:** su aviso de similitud enseñó tres fichas **ya cerradas y de otras oposiciones** (T-070 Extremadura, T-123 León, T-101 ULE) y **no** la abierta que sí solapaba. El aviso existe justo para esto, así que el hueco es de su criterio de parecido, no del flujo.
+- **Relacionadas:** [T-471] (la que se queda), [T-470].
 
 ### [T-472] ✅ [HECHA 01/08] El repaso de un test barajado señala como correcta la opción equivocada
 
