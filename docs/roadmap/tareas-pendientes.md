@@ -1616,6 +1616,36 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Riesgo de que muera:** simulaciones inestables que nadie tría se vuelven ruido y se acaban ignorando, que es como murieron los tres guardarraíles del 31/07 ([T-423]). Si esto se monta, cada hallazgo necesita dueño y `sesiones:friccion` tiene que poder verlo.
 - **Relacionadas:** [T-486] (la flota que lo ejecutaría), [T-484] (identidad por máquina), [T-089] (dimensionado de Koigrid: 1 réplica).
 
+### [T-488] 🟠 [ABIERTO 02/08] Construir TCAE de la Diputación de Cádiz (Auxiliar de Enfermería Geriatría, 31 plazas)
+
+- **Esfuerzo: sesion_propia.**
+- **ORIGEN.** Feedback `58299f8c` de Mari Carmen Verdejo (premium, TCAE SERGAS, vive en Dos Hermanas), 02/08: *«hay muchísimas convocatorias de diputaciones pero no hay tcae de diputaciones, por ejemplo Sevilla, Cádiz o Granada… desde que salió la ley de los interinos están pegando fuerte todas»*. **Se le respondió que la incorporaremos** (sin plazo), así que esto es un compromiso adquirido con una usuaria, no una idea suelta.
+- **EL HUECO ES DE CATÁLOGO, no de contenido:** tenemos **17 diputaciones activas y todas son de perfil administrativo**; de cuidados hay **una sola**, `cuidador-diputacion-cordoba`. La categoría sanitaria del mismo nicho no existe en Vence.
+- **Qué convoca (verificado):** 31 plazas de **Auxiliar de Enfermería Geriatría**, escala Admón. Especial, **C2**, por **oposición libre** (acumulación de las OEP 2023, 2024 y 2025). Bases en **BOP Cádiz nº28 de 11/02/2026** y **nº72 de 17/04/2026**. Es la más vendible de las tres provincias: más plazas, C2 y oposición pura (formato test).
+- **⚠️ GOTCHA antes de invertir nada:** lo primero que sale en buscadores y en la web de Dipucádiz es el proceso **ANTERIOR** (OEP 2020, concurso-oposición) que **terminó en 2024** con nombramientos y bolsa. No es este. Confirmar el estado real del proceso de las 31 plazas en la sede de la Diputación (y su fecha de examen) **antes** de montar temario.
+- **Ángulo de reutilización (por eso es barata):** la parte general ya está montada en las 17 diputaciones activas (CE, Ley 39/2015, régimen local, LPRL, igualdad) y la parte de cuidados existe como leyes virtuales servibles (`Higiene del paciente`, `Movilizacion y posiciones`, `Constantes vitales`, `Esterilizacion y desinfeccion`…) usadas hoy por `tcae-sas` y `cuidador-diputacion-cordoba`. El coste real es el temario específico de SUS bases, no la base común.
+- **Cómo se construye:** manual `docs/maintenance/crear-nueva-oposicion.md` (temario LITERAL de las bases + scaffolder + gates `audit:oposicion` y `verify:scope`). NUNCA inventar temario.
+- **Relacionadas:** [T-489] (Sevilla, mismo nicho y misma base reutilizable), [T-490] (Granada, sin convocatoria confirmada). Contexto y priorización: `docs/roadmap/activacion-oposiciones-vendibles.md`.
+
+### [T-489] 🟡 [ABIERTO 02/08] Construir Auxiliar de Clínica de la Diputación de Sevilla (12 plazas)
+
+- **Esfuerzo: sesion_propia.**
+- **ORIGEN.** El mismo feedback `58299f8c` (ver [T-488]). La usuaria vive en **Dos Hermanas**, o sea que Sevilla es su provincia: es la que más probabilidades tiene de convertir con ella.
+- **Qué convoca (verificado en fuente oficial):** **12 plazas de Auxiliar de Clínica**, escala Admón. Especial, turno libre — **BOE-A-2026-3554**, Resolución de 9/02/2026 de la Diputación Provincial de Sevilla. Plazo de 10 días hábiles desde el 16/02/2026 → **cerrado, examen pendiente**, que es justo la ventana en la que la gente estudia.
+- **⚠️ GOTCHA de nomenclatura:** la diputación **no la llama TCAE ni Auxiliar de Enfermería**, la llama **«Auxiliar de Clínica»**. Buscar por «TCAE» en el BOE no la encuentra — es la razón de que no estuviera catalogada.
+- **Reutilización:** idéntica a [T-488] (general de administración local ya montada + bloques de cuidados ya en BD).
+- **Antes de montar:** bajar las bases específicas del BOP de Sevilla y comprobar el temario real, que en Auxiliar de Clínica suele traer bloque de cuidados + bloque de centros residenciales propios de la diputación.
+- **Relacionadas:** [T-488] (Cádiz, más plazas), [T-490] (Granada).
+
+### [T-490] 🟢 [ABIERTO 02/08] Verificar si la Diputación de Granada convoca Auxiliar de Enfermería (la usuaria la da por segura y hoy no consta)
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** El mismo feedback `58299f8c` (ver [T-488]), que nombra Sevilla, Cádiz **y Granada**. A la usuaria se le dijo que en Granada **no hay convocatoria nueva publicada**, y conviene que eso siga siendo cierto o corregirlo pronto.
+- **Qué se comprobó (02/08):** la resolución de 2026 de esa diputación en el BOE (**BOE-A-2026-6148**, de 9/03/2026) es de **Educador/a Social**, no de enfermería. Lo que aparece con ese nombre son **ofertas de interinidad del SAE** para el Centro Psicopedagógico de Armilla y convocatorias de años anteriores (14 y 5 plazas), no un proceso vivo de 2026.
+- **Qué hay que hacer:** mirar el BOP de Granada y el portal de convocatorias de la diputación (`dipgra.convoca.online`), y **si hay bases**, abrir ficha de construcción como las hermanas; si no, dejarlo anotado con fecha para no repetir la búsqueda.
+- **Por qué ficha propia y no una nota dentro de [T-488]:** es la única de las tres cuyo trabajo es **decidir si hay trabajo**. Meterla dentro haría que se arrastrara con una tarea de sesión propia.
+- **Relacionadas:** [T-488], [T-489].
+
 ### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
 
 - **Esfuerzo: rato.** El camino está trillado — se acaba de arreglar su gemela con el mismo síntoma.
