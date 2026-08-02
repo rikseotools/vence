@@ -52,6 +52,24 @@ describe('parseFichasConCuerpo — trocear el markdown', () => {
     expect(parseFichasConCuerpo(null).size).toBe(0)
     expect(parseFichasConCuerpo(undefined).size).toBe(0)
   })
+
+  it('una cabecera que CITA otra tarea se registra con SU id, no con el citado', () => {
+    // Falso positivo real (02/08): `### [T-492] … (la deuda que dejó [T-377])` se registraba
+    // como ficha de T-377 —el `.*` era codicioso y capturaba el ÚLTIMO id— y su cuerpo corto
+    // se comparaba contra la ficha larga de T-377: «pierde 85%», push bloqueado, y T-377
+    // intacta en el fichero. Citar una tarea no es serla.
+    const md = '### [T-492] 🟠 [ABIERTO 02/08] Deuda que dejó [T-377]\n\n- cuerpo corto de la nueva\n'
+    const f = parseFichasConCuerpo(md)
+    expect([...f.keys()]).toEqual(['T-492'])
+    expect(f.has('T-377')).toBe(false)
+  })
+
+  it('la cita en la cabecera no puede fabricar una pérdida de la ficha citada', () => {
+    const antes = ficha('T-377', 14000)
+    const despues = `${antes}\n### [T-492] 🟠 Deuda que dejó [T-377]\n\n- cuerpo corto\n`
+    const { hallazgos } = findPerdidaDeContexto(antes, despues)
+    expect(hallazgos.filter(h => h.id === 'T-377')).toEqual([])
+  })
 })
 
 describe('findPerdidaDeContexto — el daño que hay que cazar', () => {
