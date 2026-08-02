@@ -676,6 +676,21 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
       '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
   },
+  parte_de_sesiones: {
+    titulo: 'El PARTE: qué hace cada sesión, quién está parado y qué espera decisión — en una pantalla',
+    ruta: 'scripts/sessions/parte.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`npm run parte` (exit 3 si hay algo parado; `--json` para encadenar). **Solo LEE**: no ' +
+      'reparte ni manda, porque el claim ya reparte y es atómico. **Sin LLM**: los hechos son ' +
+      'deterministas. Contesta la pregunta que no vivía en ninguna tabla —«¿quién está PARADO?»— ' +
+      'cruzando `backlog_tasks` con `worktree_sessions`: `list` pintaba la tarea cogida y ' +
+      '`latidos` la sesión dormida, y nadie ataba los cabos. Distingue TRES motivos que no son el ' +
+      'mismo (parada · lease_vencido · desaparecida, esta última cuando la sesión NUNCA latió: se ' +
+      'dice, no se supone). Núcleo puro `lib/sessions/parte.cjs` (14 tests). NUNCA hacer que diga ' +
+      'verde cuando no ha podido mirar: sin señales el veredicto es ⚪, no 🟢.',
+  },
   embudo_preguntas_sesiones: {
     titulo: 'Preguntar a Manuel sin que tenga que entrar en la terminal de cada sesión (el embudo)',
     ruta: 'scripts/backlog.cjs',

@@ -88,6 +88,44 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 3. **Al cerrar, `done --outcome` Y mueve la entrada a `## Hechas` en el markdown.** Las dos cosas. Si solo haces una, el guardarraíl de CI te lo tira.
 4. **`next` sugiere, no coge.** Está pensado para que elijas por encaje: si acabas de construir una oposición, la siguiente oposición te cuesta la mitad.
 
+## El PARTE: qué hace cada sesión y quién está parado (T-494)
+
+```bash
+npm run parte              # una pantalla; exit 3 si hay algo parado
+npm run parte -- --json    # para encadenarlo
+```
+
+**La pregunta que no contestaba nadie era «¿quién está PARADO?»**, y no lo hacía porque **no vive
+en ninguna tabla**: es el cruce de `backlog_tasks` (quién tiene qué) con `worktree_sessions` (quién
+da señal). `list` pintaba la tarea como cogida, `latidos` pintaba la sesión como dormida, y había
+que atar los dos cabos a mano cada vez.
+
+**Qué enseña, en este orden y por este motivo:**
+
+1. **El embudo de preguntas** ([T-493]) — lo único que depende de Manuel, y lo único cuyo coste
+   corre mientras nadie lo lee.
+2. **Tareas sin señal de su sesión**, con **tres motivos que no son el mismo**: `parada` (la sesión
+   existe y calla) · `lease_vencido` (además `reap --apply` ya puede segarla) · `desaparecida` (esa
+   sesión **nunca** latió — puede ser un CLI viejo, así que se dice, no se supone).
+3. Quién trabaja ahora, con su worktree y su máquina.
+4. Sesiones vivas **sin** tarea cogida: brazos libres.
+5. Listas para verificar.
+6. **Guardarraíles que se están rodeando** (7 días). No importa cuántas veces bloquean —eso solo
+   dice que trabajan—: importa cuántas se **rodean**, que es el indicador adelantado de que van a
+   dejar de servir ([T-423]).
+
+**Lo que NO hace, a propósito:** repartir ni mandar. El claim ya reparte, es atómico y no se
+olvida; un supervisor que redistribuyera metería una opinión y un punto único de fallo donde hoy
+hay una regla. Y **no usa ningún modelo**: los hechos son deterministas, el resumen en prosa lo
+pone quien lo lea.
+
+**Nunca dice «todo bien» cuando no ha podido mirar.** Si ninguna sesión ha dado señal, el veredicto
+es ⚪ *«no se puede afirmar nada»*, no 🟢. Un parte en verde por ceguera es la peor mentira posible.
+
+> **Lo primero que encontró, en su primera ejecución:** el guardarraíl del índice compartido
+> **rodeado el 67% de las veces** (banda `muerto`) — y es el único que bloquea de verdad. Es
+> [T-496].
+
 ## Preguntar a Manuel sin entrar en su terminal — el EMBUDO (T-493)
 
 ```bash

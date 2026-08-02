@@ -1,0 +1,128 @@
+#!/usr/bin/env node
+/**
+ * parte.cjs — UNA pantalla con lo que hace cada sesión, quién está parado y qué te espera.
+ * (T-494, 02/08/2026)
+ *
+ * Nace de una frase de Manuel (02/08): *«un resumen muy corto de lo que va haciendo cada sesión,
+ * para ver si están paradas»*. Los datos ya existían repartidos en tres sitios; lo que no existía
+ * era la respuesta a **«¿quién está parado?»**, que no vive en ninguna tabla: es el cruce de
+ * `backlog_tasks` (quién tiene qué) con `worktree_sessions` (quién da señal). `list` pintaba la
+ * tarea como cogida, `latidos` pintaba la sesión como dormida, y había que atar los cabos a ojo.
+ *
+ * **Solo LEE.** No reparte ni manda: el claim ya reparte, es atómico y no se olvida — un
+ * supervisor que redistribuyera metería una opinión y un punto único de fallo donde hoy hay una
+ * regla.
+ *
+ * **Sin LLM.** Los hechos son deterministas (quién calla, desde cuándo, qué espera); el resumen en
+ * prosa lo pone quien lo lea.
+ *
+ *   npm run parte           # el parte
+ *   npm run parte -- --json # para encadenarlo
+ */
+const fs = require('fs')
+const path = require('path')
+
+const REPO = path.resolve(__dirname, '../..')
+const JSON_OUT = process.argv.includes('--json')
+
+const { cruzarTrabajo, sesionesOciosas, veredicto } = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
+const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'))
+const { clasificarSenal } = require(path.join(REPO, 'lib', 'sessions', 'latido.js'))
+const { ratioEscape, diagnostico, EVENT_TYPE } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
+const { isAwaitingVerification } = require(path.join(REPO, 'lib', 'backlog', 'claimGate.cjs'))
+
+function url() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL
+  try { return fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim() } catch { return null }
+}
+
+async function main() {
+  const u = url()
+  if (!u) { console.error('❌ sin DATABASE_URL'); return 1 }
+  const sql = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
+
+  let tareas, sesiones, preguntas, friccion, listas
+  try {
+    tareas = await sql`
+      SELECT id, title, claimed_by, claimed_at, lease_until
+        FROM public.backlog_tasks WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
+    sesiones = await sql`
+      SELECT sid, slug, host, last_signal_at, last_command FROM public.worktree_sessions`
+    // Fail-open por pieza: si el embudo aún no existe (migración sin aplicar), el resto del parte
+    // sigue sirviendo. Un parte que se cae entero porque falta una tabla no se usa.
+    preguntas = await sql`
+      SELECT id, sid, task_id, question, blocking, asked_at, status
+        FROM public.session_questions WHERE status = 'open'`.catch(() => [])
+    listas = await sql`
+      SELECT id, title, resume_check, wake_on_deploy_sha, snooze_until
+        FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
+    friccion = await sql`
+      SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard
+        FROM public.observable_events
+       WHERE event_type = ${EVENT_TYPE} AND ts > now() - interval '7 days'`.catch(() => [])
+  } finally {
+    try { await sql.end({ timeout: 5 }) } catch {}
+  }
+
+  const ahora = new Date()
+  const { trabajando, paradas } = cruzarTrabajo(tareas, sesiones, { ahora })
+  const ociosas = sesionesOciosas(tareas, sesiones, { ahora })
+  const conSenal = sesiones.filter((s) => clasificarSenal(s.last_signal_at, ahora).estado !== 'sin_senales').length
+  const v = veredicto({ paradas, trabajando, preguntas, sesionesConSenal: conSenal })
+  const paraVerificar = (listas || []).filter((t) => isAwaitingVerification(t, ahora))
+
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ veredicto: v, trabajando, paradas, ociosas, preguntas, paraVerificar }, null, 1))
+    return paradas.length ? 3 : 0
+  }
+
+  console.log(`\n${v.icono}  ${v.frase}\n`)
+
+  // 1. EL EMBUDO PRIMERO: es lo único que depende de Manuel y lo único cuyo coste corre mientras
+  //    nadie lo lee.
+  for (const l of PREG.formatearEmbudo(preguntas, { ahora })) console.log(l)
+  if (preguntas.length) console.log('')
+
+  if (paradas.length) {
+    console.log(`🟠 ${paradas.length} TAREA(S) SIN SEÑAL DE SU SESIÓN:`)
+    for (const p of paradas) {
+      console.log(`   ${p.id}  ${String(p.title).slice(0, 62)}`)
+      console.log(`      ${String(p.sid).slice(0, 12)}…${p.slug ? ` · ${p.slug}` : ''}${p.host ? ` @${p.host}` : ''} — ${p.detalle}`)
+    }
+    console.log('')
+  }
+
+  if (trabajando.length) {
+    console.log(`🟢 ${trabajando.length} TRABAJANDO AHORA:`)
+    for (const t of trabajando) {
+      console.log(`   ${t.id}  ${String(t.title).slice(0, 62)}`)
+      console.log(`      ${t.slug || String(t.sid).slice(0, 12) + '…'}${t.host ? ` @${t.host}` : ''} · señal ${t.antiguedad}`)
+    }
+    console.log('')
+  }
+
+  if (ociosas.length) {
+    console.log(`⚪ ${ociosas.length} sesión(es) vivas SIN tarea cogida: ${ociosas.map((o) => o.slug || String(o.sid).slice(0, 8)).join(', ')}\n`)
+  }
+
+  if (paraVerificar.length) {
+    console.log(`⏰ ${paraVerificar.length} LISTA(S) PARA VERIFICAR (se cierran en minutos):`)
+    for (const t of paraVerificar.slice(0, 8)) console.log(`   ${t.id}  ${String(t.title).slice(0, 66)}`)
+    console.log('')
+  }
+
+  // 2. LA SALUD DEL PROPIO ANDAMIAJE. No es cuántas veces bloquea un guardarraíl —eso solo dice
+  //    que trabaja— sino cuántas se RODEA: es el indicador adelantado de que va a dejar de servir.
+  const ratios = ratioEscape((friccion || []).filter((f) => f.clase && f.guard))
+  const malos = ratios.filter((r) => r.veredicto === 'erosion' || r.veredicto === 'muerto')
+  if (malos.length) {
+    console.log('🧯 GUARDARRAÍLES QUE SE ESTÁN RODEANDO (7 días):')
+    for (const g of malos) console.log(`   ${diagnostico(g)}`)
+    console.log('')
+  }
+
+  // Exit code para poder encadenarlo: 3 = hay algo parado.
+  return paradas.length ? 3 : 0
+}
+
+main().then((c) => process.exit(c)).catch((e) => { console.error('❌ parte:', e.message); process.exit(1) })
