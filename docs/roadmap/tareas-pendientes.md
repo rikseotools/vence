@@ -2396,6 +2396,10 @@ pero eso hay que comprobarlo, no suponerlo.
 
 #### 📈 Avance
 
+- **02/08 — cuarto lote cerrado: 16 preguntas · 1.712 impresiones** (el `lote_01` de la regeneración de ese día, es decir, las 16 de más exposición que quedaban). Las 16 con explicación estructurada, **0 siguen en el cubo** al re-medirlas con `clasificaTranscripcion` (las 16 salen ahora por `analiza_opciones`), 15 quedan `safe` y 1 `unsafe` —`63a8ccbc`, que tiene una opción «Ninguna de las anteriores»: es el gotcha ya documentado, no un fallo—. Caché de `questions` purgada 4 veces. **Cola restante al empezar: 2.110 preguntas en 132 lotes.**
+  - **16 de 16 claves correctas** otra vez: van 64/64. Sigue sin aparecer una sola clave mala en este cubo.
+  - Reparto: 5 de CE (arts. 9, 53, 54, 55, 104, 156), 5 de Ley 39/2015 (arts. 7 ×2, 10 ×2, 18), 3 de Ley 40/2015 (arts. 25, 31, 44), 1 de TREBEP y 1 del RD 1708/2011.
+  - **Gotcha de VERIFICACIÓN pagado aquí:** al re-medir, `clasificaTranscripcion` **no devuelve ningún booleano** — devuelve `{clase, cobertura, motivo}`, y estar fuera del cubo es `clase === null`. Un check escrito contra un campo `enCubo`/`esTranscripcion` inexistente sale «0 en el cubo» **siempre**, incluso sin haber tocado nada. Comprobar contra `clase`, no contra un nombre inventado.
 - **31/07 — lotes 01, 02 y 03 cerrados: 48 preguntas · 7.656 impresiones**, los tres de más exposición de toda la cola. Las 48 con explicación estructurada, ninguna sigue en el cubo al re-medirla, caché purgada.
 - **48 de 48 claves correctas.** Con tres lotes seguidos ya se puede afirmar: en este cubo el defecto es SIEMPRE la explicación, nunca la respuesta. Por eso la reparación es segura y rápida, y no abre `needs_human`.
 - Reparto de lo hecho: 26 de CE, 8 de Ley 39/2015, 4 de Ley 40/2015, y una de LO 4/2001, Ley 7/1985, LPRL, TUE y RD 951/2005.
