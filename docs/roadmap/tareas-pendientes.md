@@ -831,38 +831,6 @@
   - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
   - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
 
-### [T-260] 🟠 [ABIERTO 29/07] El cupo del plan gratuito lo cobraba el CLIENTE: usuarios free se quedaban sin límite habiendo respondido la mitad
-
-- **Qué le pasaba al usuario:** un free llegaba al tope de 25 preguntas/día habiendo respondido bastantes menos. Caso origen: **Sergio** (`pcsergio0@gmail.com`, feedback `0c4303f7`), el **27/07** hizo **un solo test de 15 preguntas**, lo completó, las 15 quedaron guardadas… y `daily_question_usage` marcó **25**. Al día siguiente pagó el trimestral (39 €, cuenta Nila, cobro verificado en Stripe).
-- **Alcance medido** (tablas completas, sin muestreo, 14 días, descontando ya zona horaria + psicotécnicos + ortografía): **41 usuarios free** agotaron el tope habiendo respondido **una media de 13** preguntas. Ritmo estable de 3-6 casos/día, no era una regresión reciente.
-- **CAUSA RAÍZ:** el contador lo incrementaba **solo el cliente** (`useDailyQuestionLimit.recordAnswer` → `POST /api/v2/daily-question/increment`), desacoplado del guardado:
-  - Si la sesión de test no llegaba a crearse, la respuesta se quedaba en un buffer en memoria (`TestLayout.tsx`, `pendingAnswersBuffer`) y se perdía al salir — **pero el cupo se cobraba igual**.
-  - No había idempotencia: un evento repetido del cliente cobraba dos veces.
-  - `incrementDailyCount` existía en el servidor desde hacía meses… **y no la llamaba nadie**. El comentario del código lo decía explícitamente: *"Daily count se incrementa en el frontend. No incrementar aquí para evitar doble conteo"*.
-- **Por qué nadie lo vio:** la observabilidad de peticiones va **muestreada al 10%** (`lib/api/withErrorLogging.ts` → `SUCCESS_TIMING_SAMPLE_RATE = 0.1`), así que no se pueden contar llamadas; y la BD guardaba lo correcto, de modo que ninguna alerta miraba la divergencia. Solo se ve cruzando contador contra respuestas guardadas.
-- **ARREGLADO (29/07) — cobra el servidor, y solo si la respuesta se persiste:**
-  - Regla pura `debeConsumirCupo(saveAction, isPremium)` en `lib/api/dailyLimit.ts`, con copia paritaria en `backend/src/daily-limit/daily-limit.service.ts` (el mismo endpoint lo sirven las dos implementaciones según el flag de canary).
-  - **La idempotencia no necesita tabla nueva**: la da el índice único `unique_test_question (test_id, question_order)` — un reintento de la cola devuelve `already_saved` y no vuelve a cobrar.
-  - Cableado en `app/api/v2/answer-and-save/route.ts`, `backend/src/answer-save/answer-save.controller.ts` (en background) y en las otras dos modalidades: `app/api/answer/psychometric` y `app/api/answer/spelling`.
-  - El cliente pasa a llevar una cuenta **optimista** para que el gate de la UI siga reaccionando al instante, y reconcilia con el servidor a los 2,5 s.
-  - Un fallo del contador **nunca** degrada la respuesta del usuario (fail-silent + `.catch` explícito): como mucho, una pregunta gratis.
-- **Capas de seguridad puestas:**
-  - Unit de la regla: `__tests__/lib/dailyQuotaConsumePolicy.test.ts` (6).
-  - Integración del endpoint: `__tests__/api/v2/answerAndSaveCobroCupo.test.ts` (5) — cobra 1 con `saved_new`, 0 con `already_saved`, 0 con `save_failed`, 0 en premium, y 200 aunque el contador reviente.
-  - Guardarraíl anti-regresión + paridad: `__tests__/guardrails/dailyQuotaServerSide.test.ts` (5) — ningún componente de cliente puede volver a llamar al endpoint de incremento, los dos servidores cobran por la política, y las dos copias se comportan igual.
-  - Alerta continua: `RULE_DAILY_QUOTA_OVERCHARGE` en `backend/src/alerts/alert-rules.ts` (+6 tests en su spec). Mide sobre las tablas de negocio, no sobre eventos muestreados. Documentada en `docs/runbooks/health-check.md` §4.
-- **PENDIENTE al desplegar:**
-  1. **Verificar en producción a las 24-48 h** que la alerta se mantiene por debajo del umbral y que el desfase medido cae a ~0 (query en el cuerpo de la alerta).
-  2. **Decidir si se repara el dato histórico**: los contadores ya inflados de hoy no se reconstruyen solos. Se puede recalcular el de hoy desde las respuestas reales para no dejar a nadie bloqueado injustamente — es una decisión de Manuel, no la he ejecutado.
-  3. **Psicotécnicos y ortografía siguen sin idempotencia física** (sus tablas de respuestas no tienen índice único por sesión+pregunta): ahí se cobra por guardado correcto, que ya es mejor que por evento de cliente, pero si se añade el índice conviene pasarlas a la misma regla.
-- **Origen:** investigación del feedback `0c4303f7` (Sergio) el 29/07/2026, a raíz de la pregunta "¿por qué siendo free hizo más de 25 preguntas diarias?" — resultó ser lo contrario: hacía menos de las que le cobraban.
-
-#### 📊 VERIFICADO EN PRODUCCIÓN (31/07) — el arreglo bien, la alerta mal
-- **El cobro de más está corregido.** Free que topan en 25 habiendo respondido <20, por día: **12 (28/07) → 6 (29/07) → 1 → 0 (30/07)**. La consulta de la alerta, medida el 31/07, da **1 afectado** contra un umbral de 10.
-- **Pero la alerta disparó 4 veces en 48 h** (2 con correo) reportando 12-18 afectados, y **esos números no sobreviven a volver a medirlos**: el día que ella dijo 13, medido después, sale 0. Estaba mirando `usage_date >= hoy - 1`, o sea también el día EN CURSO, cuando el dato aún se asienta (sospecha: la cola asíncrona de guardado va por detrás del contador; no está probado).
-- **Corregido:** la regla mide solo el **día cerrado de ayer**, con 2 tests que fijan la ventana y que el aviso enseñe la misma. Detectar la regresión con 24 h de retraso vale: esto es un cobro que se corrige, no un fuego. **Una alerta que grita sin motivo se acaba ignorando** — ese era el riesgo real.
-- **Sigue pendiente lo de siempre:** decidir si se repara el dato histórico de los contadores ya inflados (decisión de Manuel, no ejecutada).
-
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
 - **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
@@ -3273,6 +3241,41 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-260] ✅ [HECHA 02/08] El cupo del plan gratuito lo cobraba el CLIENTE: usuarios free se quedaban sin límite habiendo respondido la mitad
+
+- **Qué le pasaba al usuario:** un free llegaba al tope de 25 preguntas/día habiendo respondido bastantes menos. Caso origen: **Sergio** (`pcsergio0@gmail.com`, feedback `0c4303f7`), el **27/07** hizo **un solo test de 15 preguntas**, lo completó, las 15 quedaron guardadas… y `daily_question_usage` marcó **25**. Al día siguiente pagó el trimestral (39 €, cuenta Nila, cobro verificado en Stripe).
+- **Alcance medido** (tablas completas, sin muestreo, 14 días, descontando ya zona horaria + psicotécnicos + ortografía): **41 usuarios free** agotaron el tope habiendo respondido **una media de 13** preguntas. Ritmo estable de 3-6 casos/día, no era una regresión reciente.
+- **CAUSA RAÍZ:** el contador lo incrementaba **solo el cliente** (`useDailyQuestionLimit.recordAnswer` → `POST /api/v2/daily-question/increment`), desacoplado del guardado:
+  - Si la sesión de test no llegaba a crearse, la respuesta se quedaba en un buffer en memoria (`TestLayout.tsx`, `pendingAnswersBuffer`) y se perdía al salir — **pero el cupo se cobraba igual**.
+  - No había idempotencia: un evento repetido del cliente cobraba dos veces.
+  - `incrementDailyCount` existía en el servidor desde hacía meses… **y no la llamaba nadie**. El comentario del código lo decía explícitamente: *"Daily count se incrementa en el frontend. No incrementar aquí para evitar doble conteo"*.
+- **Por qué nadie lo vio:** la observabilidad de peticiones va **muestreada al 10%** (`lib/api/withErrorLogging.ts` → `SUCCESS_TIMING_SAMPLE_RATE = 0.1`), así que no se pueden contar llamadas; y la BD guardaba lo correcto, de modo que ninguna alerta miraba la divergencia. Solo se ve cruzando contador contra respuestas guardadas.
+- **ARREGLADO (29/07) — cobra el servidor, y solo si la respuesta se persiste:**
+  - Regla pura `debeConsumirCupo(saveAction, isPremium)` en `lib/api/dailyLimit.ts`, con copia paritaria en `backend/src/daily-limit/daily-limit.service.ts` (el mismo endpoint lo sirven las dos implementaciones según el flag de canary).
+  - **La idempotencia no necesita tabla nueva**: la da el índice único `unique_test_question (test_id, question_order)` — un reintento de la cola devuelve `already_saved` y no vuelve a cobrar.
+  - Cableado en `app/api/v2/answer-and-save/route.ts`, `backend/src/answer-save/answer-save.controller.ts` (en background) y en las otras dos modalidades: `app/api/answer/psychometric` y `app/api/answer/spelling`.
+  - El cliente pasa a llevar una cuenta **optimista** para que el gate de la UI siga reaccionando al instante, y reconcilia con el servidor a los 2,5 s.
+  - Un fallo del contador **nunca** degrada la respuesta del usuario (fail-silent + `.catch` explícito): como mucho, una pregunta gratis.
+- **Capas de seguridad puestas:**
+  - Unit de la regla: `__tests__/lib/dailyQuotaConsumePolicy.test.ts` (6).
+  - Integración del endpoint: `__tests__/api/v2/answerAndSaveCobroCupo.test.ts` (5) — cobra 1 con `saved_new`, 0 con `already_saved`, 0 con `save_failed`, 0 en premium, y 200 aunque el contador reviente.
+  - Guardarraíl anti-regresión + paridad: `__tests__/guardrails/dailyQuotaServerSide.test.ts` (5) — ningún componente de cliente puede volver a llamar al endpoint de incremento, los dos servidores cobran por la política, y las dos copias se comportan igual.
+  - Alerta continua: `RULE_DAILY_QUOTA_OVERCHARGE` en `backend/src/alerts/alert-rules.ts` (+6 tests en su spec). Mide sobre las tablas de negocio, no sobre eventos muestreados. Documentada en `docs/runbooks/health-check.md` §4.
+- **PENDIENTE al desplegar:**
+  1. **Verificar en producción a las 24-48 h** que la alerta se mantiene por debajo del umbral y que el desfase medido cae a ~0 (query en el cuerpo de la alerta).
+  2. **Decidir si se repara el dato histórico**: los contadores ya inflados de hoy no se reconstruyen solos. Se puede recalcular el de hoy desde las respuestas reales para no dejar a nadie bloqueado injustamente — es una decisión de Manuel, no la he ejecutado.
+  3. **Psicotécnicos y ortografía siguen sin idempotencia física** (sus tablas de respuestas no tienen índice único por sesión+pregunta): ahí se cobra por guardado correcto, que ya es mejor que por evento de cliente, pero si se añade el índice conviene pasarlas a la misma regla.
+- **Origen:** investigación del feedback `0c4303f7` (Sergio) el 29/07/2026, a raíz de la pregunta "¿por qué siendo free hizo más de 25 preguntas diarias?" — resultó ser lo contrario: hacía menos de las que le cobraban.
+
+#### 📊 VERIFICADO EN PRODUCCIÓN (31/07) — el arreglo bien, la alerta mal
+- **El cobro de más está corregido.** Free que topan en 25 habiendo respondido <20, por día: **12 (28/07) → 6 (29/07) → 1 → 0 (30/07)**. La consulta de la alerta, medida el 31/07, da **1 afectado** contra un umbral de 10.
+- **Pero la alerta disparó 4 veces en 48 h** (2 con correo) reportando 12-18 afectados, y **esos números no sobreviven a volver a medirlos**: el día que ella dijo 13, medido después, sale 0. Estaba mirando `usage_date >= hoy - 1`, o sea también el día EN CURSO, cuando el dato aún se asienta (sospecha: la cola asíncrona de guardado va por detrás del contador; no está probado).
+- **Corregido:** la regla mide solo el **día cerrado de ayer**, con 2 tests que fijan la ventana y que el aviso enseñe la misma. Detectar la regresión con 24 h de retraso vale: esto es un cobro que se corrige, no un fuego. **Una alerta que grita sin motivo se acaba ignorando** — ese era el riesgo real.
+- **Sigue pendiente lo de siempre:** decidir si se repara el dato histórico de los contadores ya inflados (decisión de Manuel, no ejecutada).
+
+- **✅ CERRADA (02/08).** Verificado con la consulta de la PROPIA alerta (descuenta zona horaria, psicotécnicos y ortografía): **29/07 = 12 afectados** (el disparo), **30/07 = 1**, **31/07 = 1**, **01/08 = 0**; la alerta no dispara desde el 30/07. **Decisión de Manuel: NO se repara el histórico** — hay 1.708 días-usuario inflados de 812 usuarios desde el 03/01, pero el cupo **se reinicia a diario**, así que ese dato ya no le quita preguntas a nadie y reescribirlo solo descuadraría las métricas que lo leen. El daño real (gente que se quedó sin practicar esos días) no se repara tocando el contador.
+
 
 ### [T-480] ✅ [HECHA 01/08] La campana no suelta los avisos de oposición ya cerrados: la ✕ marca leído y la notificación sigue ahí
 
