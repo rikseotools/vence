@@ -1539,6 +1539,26 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
+
+- **Esfuerzo: rato.** El camino está trillado — se acaba de arreglar su gemela con el mismo síntoma.
+- **Qué pasa:** la regla muere con `canceling statement due to statement timeout` en cada evaluación (fallos a las 19:11, 19:36 y 20:11 del 01/08, y `alert_rule_failing` la delata). Mientras esté así **nadie vigila si el rollup de estadísticas se queda viejo**, y eso no se ve como un rojo: se ve como silencio.
+- **Cómo salió:** triando `alert_rule_failing` el 01/08. Sus dos reglas caídas eran `cron_sin_exito` y esta. La primera ya está arreglada (índice parcial con `severity`, 29.157 ms → 1.365 ms, migración `20260801_cron_covering_incluye_severity.sql`); **esta NO**, porque su consulta es otra.
+- **⚠️ NO es la misma causa, y suponerlo haría perder el tiempo:** `cron_sin_exito` leía `observable_events`; esta lee **`test_questions` + las vistas materializadas** (`user_question_history_v2`, `user_article_stats`, `user_daily_stats`, `user_hourly_stats`, `user_stats_summary`, `user_difficulty_stats`). Mismo síntoma, distinta tabla.
+- **Cómo atacarlo, en este orden** (es lo que funcionó con la gemela): `EXPLAIN (ANALYZE, BUFFERS)` de la consulta real **primero**, hipótesis después. Y comprobar `pg_stat_user_tables.last_analyze` antes de culpar al índice — pero **sin darlo por hecho**: en `cron_sin_exito` la hipótesis del `ANALYZE` era la obvia y era FALSA (las stats estaban frescas), la causa era un `INCLUDE` al que le faltaba una columna.
+- **Es una REGRESIÓN, no algo nuevo:** [T-173] cerró exactamente este fenómeno el 27/07 y dejó escrito un pendiente —*«queda por confirmar con varios ticks que `materialized_stats_stale` también se cura; un solo tick no es prueba»*— dentro de una ficha que se cerró. Nadie volvió. Por eso esto nace como ficha propia y no como nota en la cerrada.
+- **Verificación honesta:** no vale que deje de fallar una vez. El motor evalúa cada ~5 min, así que **varios ticks limpios** seguidos, y `alert_rule_failing` sin mencionarla.
+
+### [T-476] 🟠 [ABIERTO 01/08] Cuatro alertas de salud del 01/08 quedaron sin triar
+
+- **Esfuerzo: rato.** Son cuatro triajes cortos; ninguno está diagnosticado.
+- **De dónde salen:** revisión de salud del 01/08 por la noche (paso 0 del runbook: `alert_fired` de las últimas 24 h). Dispararon 15 reglas; se atendieron `dispute_email_drop` (falso positivo conocido, ver abajo) y `alert_rule_failing` (arreglada la mitad, la otra mitad es [T-475]). **Estas cuatro se quedaron sin mirar** y no tenían ficha, así que se perderían.
+  1. **`user_daily_stats_paridad_divergence`** (`error`, 18:11) — *«5 divergencias `user_daily_stats` vs `test_questions` — el rollup del ranking escribe MAL»*. **Es la más seria de las cuatro**: afecta a lo que el usuario ve en su clasificación. Emparentada con [T-475] (las dos miran el mismo rollup desde lados distintos).
+  2. **`hydration_mismatch_spike`** (`error`, 19:00) — una ruta con pico de *hydration mismatch*. Era la más reciente de la noche.
+  3. **`event_loop_lag`** (`critical`, 17:25) — *«máx 114,8 s de lag»*. **Remedir antes de investigar:** coincidió con un deploy en curso, así que puede ser efecto suyo. Ojo, [T-160] ya recalibró esta regla el 28/07 de ~65 avisos/día a <1, así que si vuelve a hablar es que hay algo o que la calibración se quedó corta.
+  4. **`main_ci_rojo`** (`error`, 13:55) — *«CI ROJO en main (Tests)»*. Sin confirmar si sigue: **`gh` no está instalado en esta máquina**, hay que mirarlo por la web o instalarlo.
+- **Lo que NO hay que volver a investigar:** `dispute_email_drop` (3 impugnaciones de la misma usuaria «sin email») es un **falso positivo ya documentado en `verdict.ts`** — el envío se saltó bien porque ella tenía la baja masiva antes de [T-369], y [T-373] restauró la preferencia después, así que el reconciliador lo relee mal. Su arreglo ([T-422]) ya está vivo y la alerta se apagó sola al salir de la ventana de 24 h. **Una sesión anterior ya se comió este anzuelo y estuvo a punto de reenviar correos que no se habían perdido.**
+
 ### [T-463] 🟠 [ABIERTO 01/08] Al despertar una tarea tras el deploy, el «falta: desplegar» se queda escrito y 10 tareas listas parecen bloqueadas
 
 - **Esfuerzo: rato.** El arreglo es pequeño; lo caro sería no darse cuenta.
