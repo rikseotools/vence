@@ -37,6 +37,8 @@
  * Sin `--aplicar` enseña lo que enviaría y no toca nada.
  */
 import { readFileSync } from 'fs'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { extraerEnlacesBoe, anclaDe, articuloCitadoEnElTexto, extraerCitas, verificarDocumento } = require('../../lib/impugnaciones/verificarEnlaces.cjs')
 import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
@@ -180,6 +182,50 @@ async function main() {
   // adminResponse VACÍO es lo que hace el cierre silencioso: el endpoint no manda email ni campana
   // (emailSkipReason='empty_response'). Ver `feedback-nila-cierre-silencioso`.
   const mensaje = a.silencioso ? '' : readFileSync(a.mensajeFichero!, 'utf8').trim()
+
+  // ── PUERTA DE LOS ENLACES: no sale un enlace que no se ha abierto ───────────────────────────
+  //
+  // Regla de Manuel, y regla de la casa: si el mensaje enlaza al BOE y cita un artículo, hay
+  // que ABRIRLO y comprobar que dice lo que decimos. Dependía de acordarse y el 02/08 se hizo
+  // a medias (se comprobó que el ancla existía, no que llevara al artículo citado). Que exista
+  // no basta: en el Código Civil `#a3` existe y lleva a «Artículo 301 a 324. (Derogados)».
+  //
+  // Se descarga aquí, en el último punto por el que pasa el mensaje, y el juicio lo pone el
+  // núcleo puro `lib/impugnaciones/verificarEnlaces.cjs` (11 tests).
+  if (mensaje) {
+    const enlaces = extraerEnlacesBoe(mensaje)
+    for (const url of enlaces) {
+      const ancla = anclaDe(url)
+      const articulo = articuloCitadoEnElTexto(mensaje)
+      const citas = extraerCitas(mensaje)
+      process.stdout.write(`🔗 abriendo ${url} … `)
+      let html: string | null = null
+      try {
+        const r = await fetch(url.split('#')[0], { signal: AbortSignal.timeout(20000) })
+        html = r.ok ? await r.text() : null
+        if (!r.ok) console.log(`HTTP ${r.status}`)
+      } catch (e) {
+        console.log(`no se pudo abrir (${(e as Error).message.slice(0, 40)})`)
+      }
+      if (!html) {
+        console.log('   ⚠️  NO se ha podido comprobar el enlace. Compruébalo a mano antes de enviar.')
+        if (a.aplicar && !process.argv.includes('--enlace-sin-comprobar')) {
+          console.error('   ❌ abortado: repite con --enlace-sin-comprobar si aun así quieres enviarlo.')
+          process.exit(1)
+        }
+        continue
+      }
+      const v = verificarDocumento(html, { ancla, articulo, citas })
+      if (v.ok) {
+        console.log(`✅ ${ancla ? `#${ancla} → ${v.tituloDelBloque ?? 'bloque'}` : 'documento'}${citas.length ? ` · ${citas.length} cita(s) literal(es)` : ''}`)
+      } else {
+        console.log('❌')
+        v.problemas.forEach((problema: string) => console.error(`   · ${problema}`))
+        console.error('   ❌ abortado: el mensaje NO se envía con un enlace o una cita que no casan.')
+        process.exit(1)
+      }
+    }
+  }
 
   const donde = await dondeVive(a.disputeId)
   let tipo: TipoImpugnacion
