@@ -121,6 +121,35 @@ describe('guardarraíl: el cupo diario lo cobra el servidor', () => {
     expect(src).toMatch(/saveAction:\s*result\[0\]\.insertada\s*\?\s*'saved_new'\s*:\s*'already_saved'/)
   })
 
+  // TERCER camino, encontrado el 02/08 verificando T-450 en producción: el SIMULACRO
+  // (examen oficial) tiene endpoints propios y no cobraba NADA. Medido antes de tocarlo:
+  // 100 usuarios free y 4.975 respuestas en 7 días. Comparte el modo de fallo con el
+  // examen normal — pre-crea sus filas al abrirse, así que guardar es un UPDATE y «la
+  // fila ya existía» se confundía con «ya había respondido».
+  it('el SIMULACRO (examen oficial) cobra donde guarda cada respuesta', () => {
+    const src = leer('app/api/v2/official-exams/answer/route.ts')
+    expect(src).toContain('incrementDailyCount(')
+    expect(src).toMatch(/debeConsumirCupo\(\s*result\.saveAction/)
+    // Después de guardar, nunca antes.
+    expect(src.indexOf('saveOfficialExamAnswer(')).toBeLessThan(src.indexOf('incrementDailyCount('))
+  })
+
+  it('el SIMULACRO deriva el `saveAction` con la MISMA regla compartida', () => {
+    const src = leer('lib/api/official-exams/queries.ts')
+    // La regla no se reescribe aquí: se importa de la política de cupo. Una tercera copia
+    // sería la tercera forma de equivocarse.
+    expect(src).toContain("from '@/lib/api/dailyLimit'")
+    expect(src).toMatch(/estrenaRespuesta\(record\.userAnswerPrevio\)/)
+  })
+
+  it('los TRES caminos usan la misma regla de «estrena», sin copias a mano', () => {
+    // Si alguien vuelve a escribir la comparación a pelo en vez de importarla, este test
+    // lo caza: es exactamente como nació el hueco del simulacro.
+    for (const f of ['lib/api/exam/queries.ts', 'lib/api/official-exams/queries.ts']) {
+      expect(leer(f)).toContain('estrenaRespuesta(')
+    }
+  })
+
   it('el modo EXAMEN cobra también al persistir en bloque lo que el save en vivo perdió', () => {
     const src = leer('app/api/exam/validate/route.ts')
     expect(src).toContain('incrementDailyCount(')

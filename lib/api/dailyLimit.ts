@@ -43,6 +43,25 @@ export function debeConsumirCupo(
   return saveAction === 'saved_new'
 }
 
+/**
+ * ¿Rellenar esta fila ESTRENA una respuesta (y por tanto cobra cupo)?
+ *
+ * Hay dos familias de examen que **pre-crean sus filas** en `test_questions` al abrirse,
+ * con `user_answer` vacío. Ahí el guardado es un UPDATE, así que «existe la fila» NO
+ * significa «ya respondió»: significa que el examen está abierto. La respuesta se estrena
+ * cuando esa casilla en blanco se rellena; **rectificar** una respuesta ya dada, no.
+ *
+ * Vive aquí, junto a `debeConsumirCupo`, porque es la MISMA decisión vista un paso antes,
+ * y porque ya estaba escrita a mano en dos sitios (T-450, 02/08/2026): el examen normal
+ * (`lib/api/exam/queries.ts`) y —sin escribirla, que es el defecto— el examen oficial
+ * (`lib/api/official-exams/queries.ts`), donde 100 usuarios free respondieron 4.975
+ * preguntas en 7 días sin que el contador se moviera. Una tercera copia habría sido la
+ * tercera forma de equivocarse.
+ */
+export function estrenaRespuesta(userAnswerPrevio: string | null | undefined): boolean {
+  return userAnswerPrevio == null || userAnswerPrevio.trim() === ''
+}
+
 interface DailyLimitResult {
   allowed: boolean
   questionsToday: number

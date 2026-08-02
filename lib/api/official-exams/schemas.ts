@@ -215,6 +215,12 @@ export const saveOfficialExamAnswerResponseSchema = z.object({
   success: z.boolean(),
   answerId: z.string().uuid().optional(),
   error: z.string().optional(),
+  // Cupo (T-450): quién responde y si estrena respuesta. Van juntos porque el endpoint
+  // NO está autenticado a propósito (latencia): el dueño sale del test, que sí se creó
+  // con sesión en `/init`. Son datos internos — el route los usa y no los devuelve.
+  saveAction: z.enum(['saved_new', 'already_saved']).optional(),
+  userId: z.string().uuid().nullable().optional(),
+  isPremium: z.boolean().optional(),
 })
 
 export type SaveOfficialExamAnswerResponse = z.infer<typeof saveOfficialExamAnswerResponseSchema>

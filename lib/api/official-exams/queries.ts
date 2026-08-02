@@ -7,7 +7,8 @@ import { getDb, getPoolerDb } from '@/db/client'
 function getOfficialExamsDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
-import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases } from '@/db/schema'
+import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases, userProfiles } from '@/db/schema'
+import { estrenaRespuesta } from '@/lib/api/dailyLimit'
 import { eq, and, like, sql, inArray, desc, count, isNull } from 'drizzle-orm'
 import {
   psychometricExamColumns,
@@ -855,13 +856,22 @@ export async function saveOfficialExamAnswer(
   try {
     const db = getOfficialExamsDb()  // canary pooler
 
-    // Find existing question record
+    // Find existing question record.
+    //
+    // `userAnswer` y el dueño del test se traen AQUÍ, en la consulta que ya se hacía, para
+    // decidir el cupo sin añadir ni un viaje más a la BD: este endpoint se llama en cada
+    // respuesta del simulacro y su razón de ser es la latencia (T-450, 02/08/2026).
     const existing = await db
       .select({
         id: testQuestions.id,
         correctAnswer: testQuestions.correctAnswer,
+        userAnswerPrevio: testQuestions.userAnswer,
+        userId: tests.userId,
+        planType: userProfiles.planType,
       })
       .from(testQuestions)
+      .innerJoin(tests, eq(tests.id, testQuestions.testId))
+      .leftJoin(userProfiles, eq(userProfiles.id, tests.userId))
       .where(
         and(
           eq(testQuestions.testId, testId),
@@ -912,6 +922,12 @@ export async function saveOfficialExamAnswer(
     return {
       success: true,
       answerId: record.id,
+      // El simulacro PRE-CREA sus filas al abrirse, así que «la fila existe» no significa
+      // «ya respondió»: rellenar la casilla en blanco es estrenar la respuesta y cobra
+      // cupo; rectificar, no. Misma regla que el examen normal (`estrenaRespuesta`).
+      saveAction: estrenaRespuesta(record.userAnswerPrevio) ? 'saved_new' : 'already_saved',
+      userId: record.userId ?? null,
+      isPremium: record.planType === 'premium',
     }
   } catch (error) {
     console.error('❌ [saveOfficialExamAnswer] Error:', error)

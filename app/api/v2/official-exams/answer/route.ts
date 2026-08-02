@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { safeParseSaveOfficialExamAnswer, saveOfficialExamAnswer } from '@/lib/api/official-exams'
+import { debeConsumirCupo, incrementDailyCount } from '@/lib/api/dailyLimit'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 /**
@@ -48,6 +49,20 @@ async function _POST(request: NextRequest) {
         { success: false, error: result.error },
         { status: 500 }
       )
+    }
+
+    // CUPO (T-450, 02/08/2026): el simulacro era el segundo camino que respondía sin
+    // pasar por el contador diario. Medido antes de tocarlo: 100 usuarios free y 4.975
+    // respuestas en 7 días sin cobrar. El examen normal ya cobraba aquí desde el 01/08;
+    // este endpoint, no — y comparten el mismo modo de fallo (filas pre-creadas, así que
+    // guardar es un UPDATE y «ya existía» se confundía con «ya había respondido»).
+    //
+    // Misma política que el resto (`debeConsumirCupo`), mismo incremento
+    // (`incrementDailyCount`, que también corta premium en la propia función SQL) y el
+    // mismo fail-silent: cobrar el cupo NUNCA puede tumbar el guardado de una respuesta
+    // que el usuario ya ha dado — si el cobro falla, esa pregunta sale gratis.
+    if (result.userId && debeConsumirCupo(result.saveAction, result.isPremium === true)) {
+      await incrementDailyCount(result.userId).catch(() => {})
     }
 
     return NextResponse.json({

@@ -20,6 +20,7 @@ import type {
 } from './schemas'
 
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
+import { estrenaRespuesta } from '@/lib/api/dailyLimit'
 
 // ============================================
 // OBTENER OPOSICIÓN DEL USUARIO
@@ -154,7 +155,9 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
     if (existing.length > 0) {
       // ¿Se ESTRENA la respuesta? La fila puede existir en blanco (el examen crea filas
       // conforme se navega) y rellenarla es la primera vez que esa respuesta se guarda.
-      const estabaEnBlanco = existing[0].userAnswer == null || existing[0].userAnswer === ''
+      // La regla vive con la política de cupo: la comparte con el examen oficial, que
+      // pre-crea sus filas igual (T-450).
+      const estabaEnBlanco = estrenaRespuesta(existing[0].userAnswer)
 
       // Usar correctAnswer del registro existente si no se proporcionó
       if (!correctAnswer && existing[0].correctAnswer) {
