@@ -26,6 +26,10 @@
  *     --estado resolved|rejected --mensaje <fichero.txt> [--psicotecnica] \
  *     [--sin-recompensa "<motivo>"] [--saltar-barajado "<motivo>"] [--aplicar]
  *
+ *   Exige tener la impugnación RESERVADA (T-474): cerrar lo que no has cogido es lo que hace que
+ *   dos sesiones acaben en el mismo caso. Si sigues el flujo del manual ya la tienes, porque
+ *   `revisar-impugnacion.cjs` reserva al abrir el dossier. Escape: `--igualmente "<motivo>"`.
+ *
  *   CORREGIR una respuesta YA enviada (T-394) — no re-resuelve, no toca el estado y no vuelve a
  *   evaluar la recompensa; solo le escribe de nuevo y deja traza:
  *     … --correccion "<qué se corrige y por qué>" --mensaje <fichero.txt> --aplicar
@@ -35,6 +39,7 @@
 import { readFileSync } from 'fs'
 import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
+import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
 
 config({ path: '.env.local' })
 
@@ -58,6 +63,9 @@ export function parsearArgs(argv: string[]) {
     silencioso: process.argv.includes('--silencioso'),
     nota: valor('--nota'),
     correccion: valor('--correccion'),
+    // Escape de la puerta de reserva (T-474). Exige motivo: un escape anónimo no se puede revisar
+    // después, y lo que hay que poder ver es si la puerta se está rodeando por sistema.
+    igualmente: valor('--igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -204,10 +212,18 @@ async function main() {
     console.log('\n' + mensaje.split('\n').map((l) => '   │ ' + l).join('\n'))
   }
 
+  // ── PUERTA DE RESERVA (T-474) ──────────────────────────────────────────────────────────────
+  // Se comprueba también en dry-run —y a propósito—: enterarte de que el caso es de otra sesión
+  // DESPUÉS de redactarle el mensaje al usuario no sirve de nada. Solo aborta con --aplicar.
+  const tabla = tipo === 'psychometric' ? 'psychometric_question_disputes' : 'question_disputes'
+  const veredicto = await comprobarReserva({ tabla, id: a.disputeId, igualmente: a.igualmente })
+  const sePuede = anunciar(veredicto, { aplicar: a.aplicar })
+
   if (!a.aplicar) {
-    console.log('\n(dry-run — repite con --aplicar para enviarlo)\n')
+    console.log(sePuede ? '\n(dry-run — repite con --aplicar para enviarlo)\n' : '\n(dry-run — con --aplicar esto se habría abortado)\n')
     return
   }
+  if (!sePuede) process.exit(1)
 
   const token = await tokenDeAdmin()
   const res = await fetch(`${BASE}/api/v2/dispute/resolve`, {

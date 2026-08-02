@@ -1401,6 +1401,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'un caso: trabajar ES la señal. Hay versión SQL además de JS porque la decisión tiene que ' +
       'ir DENTRO del UPDATE atómico; su paridad está testeada. 12 tests.',
   },
+  cola_puerta_cierre: {
+    titulo: 'Exigir tener el caso RESERVADO para poder cerrarlo (la reserva deja de ser decorativa)',
+    ruta: 'lib/impugnaciones/puertaCierre.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'La cola tenía reserva atómica y NADA que la exigiera: `cerrar.ts` y `cerrar-feedback.ts` ' +
+      '—los dos comandos que mandan el email y conceden el euro— no miraban `claimed_by` ni una ' +
+      'vez. Medido el 01/08/2026 sobre RDS: de 165 impugnaciones cerradas en 14 días, 28 (17 %) ' +
+      'no habían pasado nunca por reserva; de 111 feedbacks, 58 (52 %). Y en simulación con seis ' +
+      'sesiones concurrentes el claim aguanta (1 ganador de 6) pero la que PERDÍA cerraba la fila ' +
+      'igualmente: la reserva protegía el reparto, no el acto de responder. Es el principio 8 del ' +
+      'runbook de sesiones paralelas (impedir en el punto de ESCRITURA), que el backlog ya aplica ' +
+      'con su pre-push. BLOQUEA TAMBIÉN el cierre «sin reservar», no solo el ajeno: bloquear solo ' +
+      'lo ajeno llega tarde (la otra sesión ya gastó el análisis), y lo que CREA la colisión es ' +
+      'trabajar sin reservar, porque entonces la cola le ofrece ese mismo caso a las demás. ' +
+      'Satisfacible con un comando (`cola.cjs claim <id>`) y quien sigue el manual nunca ve la ' +
+      'puerta: `revisar-impugnacion.cjs` ya reserva al abrir el dossier. Escape declarado ' +
+      '`--igualmente "<motivo>"`, contado como `guard_escape` del guard `cierre-cola` en el bus de ' +
+      'fricción. FAIL-OPEN sin sid y sin BD. IO compartido por los dos cierres en ' +
+      'scripts/impugnaciones/lib/comprobar-reserva.ts. 12 tests + trinquete de criterio único.',
+  },
   deploy_estado: {
     titulo: '¿Hay alguien desplegando AHORA? (sin competir por el lock)',
     ruta: 'scripts/deploy-estado.cjs',
@@ -1781,7 +1804,9 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'GOTCHAS: (1) AUTH_SECRET NO está en .env.local, sale de SSM /vence-frontend/AUTH_SECRET; ' +
       '(2) el admin tiene que ser el de la whitelist (manueltrader@gmail.com), otro da 403; ' +
       '(3) canta si cierra SIN email en vez de enterrarlo en el JSON. ' +
-      '`--sin-recompensa "<motivo>"` para el mismo hallazgo repetido (un fallo, una recompensa).',
+      '`--sin-recompensa "<motivo>"` para el mismo hallazgo repetido (un fallo, una recompensa). ' +
+      'Desde T-474 EXIGE tener la impugnación reservada (ver cola_puerta_cierre); escape ' +
+      '`--igualmente "<motivo>"`.',
   },
   cerrar_feedback: {
     titulo: 'Responder o cerrar en silencio un feedback por el endpoint',
@@ -1795,7 +1820,9 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`waiting_admin` contando como pendiente para todas las sesiones. Comparte identidad de ' +
       'admin con cerrar_impugnacion vía scripts/impugnaciones/lib/admin-token.ts (misma whitelist, ' +
       'mismo TTL: duplicarla garantizaba que un día divergieran). ' +
-      'GOTCHA: este endpoint exige `adminUserId` en el CUERPO — el de impugnaciones lo saca del token.',
+      'GOTCHA: este endpoint exige `adminUserId` en el CUERPO — el de impugnaciones lo saca del token. ' +
+      'Desde T-474 EXIGE tener el feedback reservado (ver cola_puerta_cierre), que es donde peor ' +
+      'estaba: 52 % de los cerrados en 14 días no había pasado por reserva.',
   },
 
   // ── Visibilidad del antifraude ────────────────────────────────────────────────────────────

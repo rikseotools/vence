@@ -4,8 +4,11 @@
 // nunca @supabase/supabase-js (que apunta al Supabase congelado).
 //
 // El claim es atómico vía FOR UPDATE SKIP LOCKED: dos sesiones NUNCA reciben la misma fila.
-// Un claim se considera libre si claimed_by IS NULL, es tuyo, o es viejo (> STALE_HOURS).
-// El cierre (status -> resolved/rejected/dismissed) lo saca del pool solo.
+// Cuándo una reserva vuelve a estar libre lo decide UN solo sitio — `lib/impugnaciones/reserva.cjs`
+// (señal de vida de la sesión dueña, con suelo por reloj) — y de ahí sale tanto el claim como lo
+// que pinta `list`: tener dos criterios para el mismo recurso no protege, se contradice (T-474).
+// El cierre (status -> resolved/rejected/dismissed) lo saca del pool solo, y desde T-474 exige
+// tener la fila reservada (`lib/impugnaciones/puertaCierre.cjs`, en cerrar.ts / cerrar-feedback.ts).
 //
 // Uso:
 //   node scripts/impugnaciones/cola.cjs list                      # ver las 3 colas + estado de claim
@@ -17,7 +20,6 @@
 // <ID> = tu id de sesión. Usa el UUID de tu carpeta de scratchpad (único por sesión).
 const fs = require('fs');
 const pg = require('postgres');
-const STALE_HOURS = 2;
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -36,11 +38,10 @@ const { resolverSid } = require(require('path').join(__dirname, '..', '..', 'lib
 const cmd = process.argv[2];
 const sid = resolverSid({ repo: require('path').join(__dirname, '..', '..') }).sid;
 const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
-const stale = `${STALE_HOURS} hours`;
 // El criterio de «reserva libre» vive en UN solo sitio (T-412): ya no es solo el reloj, también
 // mira si la sesión dueña sigue LATIENDO. Así una revisión larga pero viva conserva su reserva,
 // y un ordenador apagado la suelta sola. Ver lib/impugnaciones/reserva.cjs.
-const { sqlReservaLibre } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
+const { sqlReservaLibre, etiquetaReserva } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
 
 // Tablas de cada cola: [tabla, estados-abiertos, herramienta/flujo a usar]
 const DISPUTE_TBL = [
@@ -187,10 +188,13 @@ async function inconsistentesResueltasEnPending() {
         zombis.forEach((z) => console.log(`     · [${z.kind}] ${z.id}`));
       }
       if (!rows.length) { console.log('Cola vacía (0 pendientes en RDS).'); return; }
+      // El estado de cada reserva se pinta con el MISMO núcleo que la concede (T-474). Antes aquí
+      // había un reloj propio de 2 h: una fila reservada por una sesión que seguía trabajando salía
+      // como «claim viejo (libre)» y la siguiente sesión se ponía con ella.
+      const sesiones = await s`SELECT sid, last_signal_at FROM public.worktree_sessions`;
       console.log(`COLA (RDS) — ${rows.length} pendientes:\n`);
       for (const r of rows) {
-        const fresh = r.claimed_by && (Date.now() - new Date(r.claimed_at).getTime()) < STALE_HOURS * 3600e3;
-        const lock = fresh ? `🔒 ${r.claimed_by.slice(0, 8)} (hace ${age(r.claimed_at)})` : (r.claimed_by ? '🟡 claim viejo (libre)' : '🟢 libre');
+        const lock = etiquetaReserva({ claimedBy: r.claimed_by, claimedAt: r.claimed_at, sesiones, sid });
         console.log(`  [${r.kind}] ${r.id} | ${r.t} | ${r.status} | hace ${age(r.created_at)} | ${lock}`);
       }
       return;

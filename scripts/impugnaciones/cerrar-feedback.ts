@@ -22,6 +22,7 @@
 import { readFileSync } from 'fs'
 import { config } from 'dotenv'
 import { identidadDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
+import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
 
 config({ path: '.env.local' })
 
@@ -40,6 +41,8 @@ export function parsearArgs(argv: string[]) {
     mensajeFichero: valor('--mensaje'),
     silencioso: argv.includes('--silencioso'),
     estado: valor('--estado') || 'resolved',
+    // Escape de la puerta de reserva (T-474), con motivo obligatorio para poder revisarlo después.
+    igualmente: valor('--igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -62,10 +65,17 @@ async function main() {
   console.log(`   endpoint: ${BASE}/api/v2/feedback/respond · admin: ${ADMIN}`)
   if (cuerpo.message) console.log('\n' + String(cuerpo.message).split('\n').map((l) => '   │ ' + l).join('\n'))
 
+  // Puerta de reserva (T-474): mismo criterio y mismo módulo que el cierre de impugnaciones.
+  // El feedback lo necesita MÁS: era donde peor estaba (52 % de los cerrados en 14 días no había
+  // pasado por reserva, frente al 17 % de las impugnaciones).
+  const veredicto = await comprobarReserva({ tabla: 'user_feedback', id: a.feedbackId, igualmente: a.igualmente })
+  const sePuede = anunciar(veredicto, { aplicar: a.aplicar })
+
   if (!a.aplicar) {
-    console.log('\n(dry-run — repite con --aplicar)\n')
+    console.log(sePuede ? '\n(dry-run — repite con --aplicar)\n' : '\n(dry-run — con --aplicar esto se habría abortado)\n')
     return
   }
+  if (!sePuede) process.exit(1)
 
   // `adminUserId` va en el CUERPO (a diferencia de dispute/resolve, que lo saca del token).
   const { token, userId } = await identidadDeAdmin({ base: BASE, admin: ADMIN })
