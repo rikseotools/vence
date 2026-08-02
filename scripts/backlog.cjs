@@ -344,6 +344,9 @@ function fichaBody(id) {
 const { parseBacklogMarkdown } = require(path.join(REPO, 'lib', 'backlog', 'parseMarkdown.cjs'));
 // Esfuerzo declarado en cajones + contraste con lo que costó de verdad (T-414).
 const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
+// El embudo de preguntas a Manuel (T-493). El juicio —qué es contestable, en qué orden, qué
+// respuestas tiene que ver una sesión— vive en el núcleo puro, no aquí.
+const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
 
 function parseMd() {
   return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
@@ -442,6 +445,35 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       { detached: true, stdio: 'ignore' });
     hijo.unref();
   } catch { /* sin latido se sigue trabajando igual */ }
+
+  // ── EL CAMINO DE VUELTA DE UNA RESPUESTA (T-493) ─────────────────────────────────────────
+  // Va aquí, antes de cualquier comando, por el mismo motivo que el latido: la sesión invoca este
+  // CLI constantemente, así que **trabajar es enterarse** y nadie tiene que acordarse de mirar
+  // una bandeja. Se marca `seen_at` al imprimirlo para que salga UNA vez: un aviso que se repite
+  // para siempre se vuelve indistinguible del ruido, que es como mueren los avisos de este repo.
+  //
+  // Fail-open: si la tabla aún no existe (migración sin aplicar) o la consulta falla, se calla.
+  // Una avería del embudo no puede impedir reclamar una tarea.
+  try {
+    if (sid) {
+      const pendientes = await s`
+        SELECT id, task_id, question, answer, sid, status, seen_at
+          FROM public.session_questions
+         WHERE sid = ${sid} AND status = 'answered' AND seen_at IS NULL
+         ORDER BY answered_at`;
+      const sinLeer = PREG.respuestasSinLeer(pendientes, sid);
+      if (sinLeer.length) {
+        console.log(`\n📬 ${sinLeer.length} RESPUESTA(S) DE MANUEL a lo que preguntaste:`);
+        for (const p of sinLeer) {
+          console.log(`   #${p.id}${p.task_id ? ` · ${p.task_id}` : ''}  ${String(p.question).replace(/\s+/g, ' ').slice(0, 100)}`);
+          console.log(`   → ${p.answer}`);
+        }
+        console.log('');
+        await s`UPDATE public.session_questions SET seen_at = now() WHERE id IN ${s(sinLeer.map((p) => p.id))}`;
+      }
+    }
+  } catch { /* sin embudo se sigue trabajando igual */ }
+
   try {
     if (cmd === 'list') {
       const all = process.argv.includes('--all');
@@ -508,8 +540,22 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         }
         console.log('   (cógelas con `claim <id>`: imprime dónde se dejaron)');
       }
+      // ── EL EMBUDO, LO PRIMERO (T-493) ─────────────────────────────────────────────────
+      // Va por delante incluso de las listas para verificar: una pregunta abierta puede tener a
+      // una sesión parada AHORA, y ese coste corre mientras nadie la lee.
+      try {
+        const abiertas = await s`
+          SELECT id, sid, task_id, question, context, blocking, asked_at, status
+            FROM public.session_questions WHERE status = 'open'`;
+        for (const l of PREG.formatearEmbudo(abiertas)) console.log(l);
+      } catch { /* sin embudo, el resto del listado sigue igual */ }
+
       if (paraManuel.length) {
-        console.log(`\n🙋 ${paraManuel.length} ESPERANDO UNA DECISIÓN DE MANUEL — enséñaselas, no se pueden cerrar solas:`);
+        // LEGACY (T-493): esto se DEDUCE de la prosa de `resume_check` con cinco expresiones
+        // regulares, así que solo ve las tareas PAUSADAS y solo si alguien escribió la palabra
+        // correcta. El canal de verdad es el embudo de arriba; esto se queda mientras queden
+        // tareas pausadas con la fórmula vieja, y NO debe crecer: preguntar va por `preguntar`.
+        console.log(`\n🙋 ${paraManuel.length} ESPERANDO UNA DECISIÓN DE MANUEL (por texto de pausa) — no se pueden cerrar solas:`);
         for (const r of paraManuel) {
           console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
           console.log(`      ▶ decide: ${String(r.resume_check).slice(0, 160)}`);
@@ -1433,8 +1479,98 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`   y luego:  node scripts/backlog.cjs sync   (actualizará el título real)`);
     }
 
+    // ── EL EMBUDO DE PREGUNTAS (T-493) ───────────────────────────────────────────────────────
+    // Manuel no puede entrar en 2-10 terminales a ver si alguien le necesita. Antes de esto una
+    // duda moría en la terminal, o se colaba en el `resume_check` de una tarea PAUSADA donde
+    // `clasificarEspera` la buscaba con cinco expresiones regulares — y si la sesión no escribía
+    // la palabra correcta, la pregunta desaparecía de la lista.
+    else if (cmd === 'preguntar') {
+      const pregunta = process.argv[3];
+      const contexto = arg('--contexto');
+      const tarea = arg('--tarea');
+      const bloquea = process.argv.includes('--bloquea');
+      const v = PREG.validarPregunta({ question: pregunta, context: contexto, blocking: bloquea });
+      if (!v.ok) {
+        console.error('❌ esa pregunta no se puede contestar sin abrir tu sesión:');
+        for (const p of v.problemas) console.error(`   · ${p}`);
+        console.error('\n   Ej:  node scripts/backlog.cjs preguntar "¿el barrido entra también en las rutas que sirven preguntas, o lo dejo solo en públicas?" \\');
+        console.error('          --contexto "Medido: 168 formas; las de test alimentan el antifraude" --tarea T-487');
+        process.exit(2);
+      }
+      if (tarea) {
+        const [t] = await s`SELECT id FROM public.backlog_tasks WHERE id = ${tarea}`;
+        if (!t) { console.error(`❌ la tarea ${tarea} no existe`); process.exit(2); }
+      }
+      const [r] = await s`
+        INSERT INTO public.session_questions (sid, task_id, question, context, blocking)
+        VALUES (${sid}, ${tarea || null}, ${pregunta}, ${contexto || null}, ${bloquea})
+        RETURNING id`;
+      console.log(`🙋 pregunta #${r.id} en el embudo${bloquea ? ' — marcada como BLOQUEANTE' : ''}.`);
+      // Preguntar NO para a la sesión (avisar ≠ bloquear). Si de verdad no se puede avanzar, eso
+      // ya tiene nombre en el sistema y hay que decirlo, no dejarlo implícito en el tono.
+      console.log(bloquea
+        ? '   Si no puedes avanzar en NADA, suelta la tarea:  backlog.cjs pause <id> --hasta … --hecho "…" --falta "…"'
+        : '   Sigue con otra cosa: la respuesta te la enseña cualquier comando del backlog.');
+    }
+
+    else if (cmd === 'preguntas') {
+      const todas = process.argv.includes('--todas');
+      const filas = await s`
+        SELECT q.*, t.title AS tarea_titulo
+          FROM public.session_questions q
+          LEFT JOIN public.backlog_tasks t ON t.id = q.task_id
+         WHERE ${todas ? s`true` : s`q.status = 'open'`}
+         ORDER BY q.asked_at DESC LIMIT 60`;
+      if (!filas.length) { console.log('✅ no hay preguntas pendientes.'); }
+      else if (!todas) {
+        for (const l of PREG.formatearEmbudo(filas)) console.log(l);
+        console.log('');
+        // El detalle va DEBAJO del listado: lo que se contesta rápido primero, el contexto para
+        // quien lo necesite. Sin el contexto, contestar obliga a abrir la sesión.
+        for (const p of PREG.ordenarEmbudo(filas)) {
+          console.log(`── #${p.id}${p.task_id ? ` · ${p.task_id} — ${String(p.tarea_titulo || '').slice(0, 60)}` : ''}${p.blocking ? ' · ⛔ PARADA' : ''}`);
+          console.log(`   ${p.question}`);
+          if (p.context) console.log(`   contexto: ${p.context}`);
+          console.log(`   sesión ${String(p.sid).slice(0, 12)}… · ${PREG.esperaHoras(p)}h esperando`);
+        }
+      } else {
+        for (const p of filas) {
+          console.log(`#${p.id} [${p.status}] ${String(p.question).slice(0, 80)}`);
+          if (p.answer) console.log(`   → ${String(p.answer).slice(0, 100)}`);
+        }
+      }
+    }
+
+    else if (cmd === 'responder') {
+      const id = process.argv[3];
+      const texto = arg('--respuesta') || process.argv[4];
+      if (!id || !texto) { console.error('Uso: backlog.cjs responder <id> "la respuesta"'); process.exit(2); }
+      const [r] = await s`
+        UPDATE public.session_questions
+           SET answer = ${texto}, answered_at = now(), answered_by = 'manuel', status = 'answered'
+         WHERE id = ${Number(id)} AND status = 'open'
+        RETURNING id, sid, task_id, question`;
+      if (!r) { console.error(`❌ la pregunta #${id} no existe o ya está cerrada`); process.exit(2); }
+      console.log(`✅ #${r.id} respondida. La sesión ${String(r.sid).slice(0, 12)}… la verá en su próximo comando del backlog.`);
+    }
+
+    else if (cmd === 'retirar') {
+      const id = process.argv[3];
+      const motivo = arg('--motivo');
+      // El motivo es obligatorio: una pregunta que desaparece sin explicación es indistinguible
+      // de una que se perdió, y perder preguntas es justo lo que este canal existe para evitar.
+      if (!id || !motivo) { console.error('Uso: backlog.cjs retirar <id> --motivo "lo resolví solo porque…"'); process.exit(2); }
+      const [r] = await s`
+        UPDATE public.session_questions
+           SET status = 'withdrawn', withdrawn_reason = ${motivo}, answered_at = now()
+         WHERE id = ${Number(id)} AND sid = ${sid} AND status = 'open'
+        RETURNING id`;
+      if (!r) { console.error(`❌ #${id} no existe, no es tuya o ya está cerrada`); process.exit(2); }
+      console.log(`✅ #${r.id} retirada: ${motivo}`);
+    }
+
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);

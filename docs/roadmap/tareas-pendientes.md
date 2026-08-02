@@ -1564,6 +1564,28 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
 - **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
 
+### [T-495] 🟡 [ABIERTO 02/08] El recordatorio de método se olvida a media tarea: llega al reclamar y nada lo repite
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Manuel (02/08): *«a las sesiones cada poco habría que darles este texto […] porque a veces se les olvida y me he dado cuenta de que si se lo pongo cada poco les hago recordar y lo hacen mejor»*, y después: *«o checklist o guardarraíl cada pocos minutos, o no lo sé»*.
+- **LO QUE YA HAY, y funciona:** `claim` imprime el orden entero (`scripts/backlog.cjs:190-195`): *¿ya existe? → ¿dónde encaja? → capas → vence-sim*, con el comando `tools:buscar` **ya escrito con las palabras de esa tarea**. Es el principio 10 del sistema de sesiones: *la regla tiene que llegar en el MOMENTO DE LA VERDAD, no al arrancar*. Y el `pre-push` **bloquea** el push sin una sola capa (`robustez-push-guard`), que es la versión que no depende de la memoria de nadie.
+- **DÓNDE SE CAE:** entre esos dos extremos hay horas. El recordatorio llega **una vez**, al principio, y la decisión de *«¿esto ya existe?»* o *«¿esto es un silo?»* se toma **en medio**, cuando ya está sepultado — que es exactamente el fallo que el principio 10 describe y que aquí se cumple contra el propio sistema.
+- **⚠️ Lo que NO hay que hacer: un temporizador.** Un texto cada N minutos llega en mitad de una edición, no aporta nada la mayoría de las veces y se aprende a saltar — es como murieron los tres guardarraíles del 31/07 ([T-423]): no por ser falsos, por volverse indistinguibles del ruido. **El recordatorio se cuelga de MOMENTOS, no del reloj.**
+- **Dos vías, y son complementarias:**
+  1. **Momentos que faltan** (barato, y en el sitio donde ya se lee): al **crear un fichero nuevo** —que es cuando aplica *«¿ya existe?»*— y en `heartbeat`, que la sesión invoca cuando lleva rato.
+  2. **Gancho del entorno**: un hook `UserPromptSubmit` en `.claude/settings.json` puede inyectar el texto cada N mensajes sin que nadie se acuerde. Es literalmente «pegarles comandos repetitivos» y está soportado por el propio Claude Code.
+- **Y se puede MEDIR si sirve**, que es lo que evita discutirlo a ojo: `npm run sesiones:friccion` da el ratio de escape por guardarraíl. Si el recordatorio funciona, bajan los `guard_escape` de `robustez-push`.
+- **Relacionadas:** [T-423] (el contador que lo mide), [T-486] (la flota que lo necesitaría más).
+
+### [T-494] 🟡 [ABIERTO 02/08] No hay UN parte de las sesiones: saber quién está parado exige cruzar tres comandos a mano
+
+- **Esfuerzo: rato.** Es una consulta que junta datos que YA existen; nada nuevo que medir.
+- **ORIGEN.** Manuel (02/08): *«un resumen muy corto de lo que va haciendo cada sesión, para ver si están paradas»*.
+- **Los datos están, repartidos:** `worktree_sessions` (quién está vivo, desde cuándo, qué ficheros toca), `backlog_tasks` (quién tiene qué, desde cuándo, qué espera y por qué) y `observable_events` (fricción y escapes). Hoy hay que mirar `backlog.cjs list` + `sesiones:latidos` + `sesiones:friccion` y cruzarlos a ojo.
+- **Y ninguno contesta la pregunta que se hace:** *«¿quién está PARADO?»*. Eso es **tarea reclamada + latido viejo**, un cruce de dos tablas — una consulta, no un juicio. Hoy no lo dice nadie: `list` pinta la tarea como cogida y `latidos` pinta la sesión como dormida, y hay que atar los dos cabos manualmente.
+- **Cómo atacarlo:** un comando (`npm run parte`) con una pantalla: sesiones vivas y qué llevan · las **paradas** (con cuánto llevan sin señal) · lo que espera decisión ([T-493]) · lo que está listo para verificar · el ratio de escape de guardarraíles. Read-only y sin LLM: los hechos son deterministas, y el resumen en prosa lo pone quien lo lea.
+- **Lo que NO debe hacer:** repartir ni mandar. El claim ya reparte. Esto solo mira.
+- **Relacionadas:** [T-493] (el canal de preguntas que enseña), [T-486] (el supervisor que lo leería).
 
 ### [T-491] 🟡 [ABIERTO 02/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
 
@@ -3341,6 +3363,33 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-493] ✅ 🟠 [HECHA 02/08] Una sesión que tiene una duda para Manuel no tiene dónde ponerla: muere en su terminal
+
+- **RESOLUCIÓN (02/08).** `backlog.cjs preguntar / preguntas / responder / retirar` sobre la tabla `session_questions` (migración `20260802_session_questions.sql`, aplicada). **Probado de extremo a extremo contra RDS**: pregunta → embudo → respuesta → la sesión se entera → no se repite.
+  - **La respuesta vuelve SOLA**, que es lo que hace que el embudo funcione sin disciplina: el CLI del backlog imprime lo contestado en **cualquier** comando, por el mismo camino por el que ya late (`trabajar es enterarse`). Marca `seen_at` para avisar **una vez** — un aviso que se repite para siempre se vuelve ruido, que es como murieron tres guardarraíles el 31/07.
+  - **Se valida al ESCRIBIRLA, no después:** menos de 15 caracteres, o exponer un problema sin plantear la decisión, se rechaza con el ejemplo ya escrito; y si lleva `--bloquea`, el **contexto es obligatorio**. Una pregunta que obliga a pedir contexto hace que el embudo cueste más que entrar en la sesión, que es lo que venía a evitar. Misma decisión que el `--esfuerzo` obligatorio de `reserve`: impedir en el punto de escritura.
+  - **Orden del embudo:** primero lo que tiene una sesión **PARADA**, y dentro de eso lo más viejo. Solo por antigüedad, una sesión bloqueada hace diez minutos quedaría detrás de cinco dudas cómodas de ayer.
+  - **Preguntar no bloquea** (avisar ≠ bloquear): se sigue con otra cosa. Si de verdad no se puede avanzar, eso ya tiene nombre y es `pause`.
+  - **Sin lease, a propósito.** Todo lo demás del andamiaje caduca porque caducar libera; una pregunta no, porque caducar sería **perderla**.
+  - **El criterio viejo queda marcado como legacy y NO debe crecer:** `list` sigue pintando *«esperando una decisión de Manuel (por texto de pausa)»*, que se deduce del `resume_check` con cinco expresiones regulares y solo ve tareas pausadas. Dos criterios sobre el mismo hecho no protegen el doble, se contradicen ([T-130]).
+  - **Capas:** núcleo puro `lib/backlog/preguntas.cjs` con **16 tests** (validación, orden, respuestas sin leer, formato que no trunca en silencio), registro en `toolRegistry` como escritor único de la tabla, y runbook.
+  - **Lo que falta para cerrar el círculo que pidió Manuel:** el parte de sesiones ([T-494]), que es donde este embudo se enseña junto a quién está parado.
+
+- **Esfuerzo: larga.** Tabla + CLI + integración en `list` + el camino de vuelta de la respuesta; lo caro es no dejar tres criterios sobre el mismo hecho.
+- **ORIGEN.** Manuel (02/08), pidiendo un supervisor: *«si tienen preguntas a hacerme que me las hagan todas al servidor central supervisor, y me las resume y yo las contesto… como un embudo, yo lo que no quiero es estarme metiendo en cada una de las sesiones»*.
+- **LO QUE YA EXISTE Y NO HAY QUE REHACER:** el reparto. `backlog_tasks` con claim ya distribuye solo, es atómico, no se olvida y devuelve al pool la tarea de una sesión muerta. **Un supervisor que repartiera sería peor**: metería una opinión y un punto único de fallo donde hoy hay una regla.
+- **EL HUECO, comprobado en el código:** *«🙋 esperando una decisión de Manuel»* que imprime `list` **se DEDUCE de la prosa** del campo `resume_check` con cinco expresiones regulares (`clasificarEspera` en `lib/backlog/claimGate.cjs`: busca «decisión de manuel», «ok de manuel», «decidir»…), y **solo mira tareas PAUSADAS**. O sea:
+  1. una sesión que tiene una duda **mientras trabaja** no tiene dónde ponerla: se queda en su terminal y se pierde cuando la sesión muere;
+  2. la que sí la anota depende de haber escrito la palabra correcta — si escribe *«falta que Manuel me diga si esto va a producción»*, ninguna de las cinco expresiones casa y la pregunta **desaparece de la lista**;
+  3. y obliga a **pausar la tarea** para poder preguntar, que es una condición inventada: se puede tener una duda y seguir trabajando en otra cosa.
+- **Cómo atacarlo:** tabla propia (una pregunta es un objeto, no un adjetivo de una tarea), CLI `preguntar` / `preguntas` / `responder`, y **la respuesta vuelve por donde ya pasa todo**: el latido corre dentro de cada comando del backlog, así que la sesión se entera al hacer cualquier cosa, sin tener que acordarse de mirar.
+- **Reglas que NO se pueden saltar:**
+  - **Avisar ≠ bloquear.** Preguntar no para a la sesión: puede seguir con otra cosa. Si de verdad no puede avanzar, eso ya tiene nombre (`pause`).
+  - **UN solo criterio.** `clasificarEspera` no puede quedarse como segunda puerta al mismo hecho: o se migra a esta tabla o pasa a apuntar a ella. Dos criterios sobre lo mismo no protegen el doble, se contradicen ([T-130]).
+  - **Sin lease.** Una pregunta no caduca sola: caducar sería perderla, que es justo el fallo que arregla.
+- **Relacionadas:** [T-494] (el parte que la enseña), [T-486] (el supervisor que la leería).
+
 
 ### [T-490] ✅ 🟢 [HECHA 02/08] Verificar si la Diputación de Granada convoca Auxiliar de Enfermería (la usuaria la da por segura y hoy no consta)
 

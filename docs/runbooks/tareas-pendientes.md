@@ -88,6 +88,52 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 3. **Al cerrar, `done --outcome` Y mueve la entrada a `## Hechas` en el markdown.** Las dos cosas. Si solo haces una, el guardarraíl de CI te lo tira.
 4. **`next` sugiere, no coge.** Está pensado para que elijas por encaje: si acabas de construir una oposición, la siguiente oposición te cuesta la mitad.
 
+## Preguntar a Manuel sin entrar en su terminal — el EMBUDO (T-493)
+
+```bash
+node scripts/backlog.cjs preguntar "¿hago A o B?" --contexto "lo que ya he mirado" --tarea T-487 [--bloquea]
+node scripts/backlog.cjs preguntas            # el embudo, como lo lee Manuel
+node scripts/backlog.cjs responder 12 "haz B" # y la sesión se entera sola
+node scripts/backlog.cjs retirar 12 --motivo "lo resolví solo: …"
+```
+
+**Por qué existe.** Con 2-10 sesiones, Manuel no puede entrar en cada terminal a ver si alguien le
+necesita. Antes de esto una duda solo tenía dos destinos, y los dos malos:
+
+- la **terminal de la sesión**, donde muere cuando la sesión muere;
+- el `resume_check` de una tarea **PAUSADA**, donde `clasificarEspera` intenta adivinarla con cinco
+  expresiones regulares. Si la sesión escribía *«falta que Manuel me diga si esto va a
+  producción»*, ninguna casaba y **la pregunta desaparecía de la lista**.
+
+Y obligaba a **pausar la tarea** para poder preguntar, que es una condición inventada: se puede
+tener una duda y seguir trabajando en otra cosa.
+
+**Las cuatro reglas, y cada una viene de un fallo ya pagado en este repo:**
+
+1. **Preguntar NO bloquea.** Sigues con otra cosa. Si de verdad no puedes avanzar en nada, eso ya
+   tiene nombre y es `pause` — decirlo con `--bloquea` es informar, no parar.
+2. **La respuesta vuelve sola.** No hay bandeja que mirar: el CLI del backlog imprime lo que te han
+   contestado en **cualquier** comando, igual que el latido late dentro de todo. Trabajar *es*
+   enterarse.
+3. **Se avisa UNA vez** (`seen_at`). Un aviso que se repite para siempre se vuelve indistinguible
+   del ruido, que es exactamente cómo murieron tres guardarraíles el 31/07.
+4. **Sin lease.** Todo lo demás aquí caduca porque caducar libera. Una pregunta no: caducar sería
+   perderla, que es el fallo que este canal arregla.
+
+**Se valida al escribirla**, no después: una pregunta de menos de 15 caracteres, o que expone un
+problema sin plantear la decisión («esto va lento»), se rechaza con el ejemplo escrito. Si además
+`--bloquea`, el **contexto es obligatorio** — es lo que permite desbloquearte sin ida y vuelta. El
+criterio es puro y está en `lib/backlog/preguntas.cjs` (16 tests).
+
+**Orden del embudo:** primero lo que tiene una sesión **parada**, y dentro de eso lo más viejo.
+Ordenar solo por antigüedad enterraría una sesión bloqueada hace diez minutos detrás de cinco dudas
+cómodas de ayer.
+
+> **Lo viejo sigue ahí, marcado como legacy:** `list` aún pinta *«esperando una decisión de Manuel
+> (por texto de pausa)»* deduciéndolo del `resume_check`. Se queda mientras haya tareas pausadas con
+> la fórmula vieja y **no debe crecer**: para preguntar está `preguntar`. Dos criterios sobre el
+> mismo hecho no protegen el doble, se contradicen ([T-130]).
+
 ## Lease, no lock
 
 `lease_until` es un **arriendo renovable**, no un candado eterno. Una sesión que muere (se acaba el contexto, peta, cierras la ventana) libera su tarea sola al caducar el lease; una sesión viva la conserva mientras dé señales con `heartbeat`. Sin esto, el backlog se bloquearía solo la primera vez que una sesión muriese con una tarea cogida.

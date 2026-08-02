@@ -676,6 +676,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
       '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
   },
+  embudo_preguntas_sesiones: {
+    titulo: 'Preguntar a Manuel sin que tenga que entrar en la terminal de cada sesión (el embudo)',
+    ruta: 'scripts/backlog.cjs',
+    estado: 'vivo',
+    escribe: ['session_questions'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`preguntar "…" [--contexto] [--tarea] [--bloquea]` · `preguntas` · `responder <id> "…"` · ' +
+      '`retirar <id> --motivo`. Escritor ÚNICO de `session_questions`. Antes de T-493 una duda ' +
+      'moría en la terminal de la sesión, o se colaba en el `resume_check` de una tarea PAUSADA ' +
+      'donde `clasificarEspera` la buscaba con CINCO expresiones regulares — si no se escribía la ' +
+      'palabra correcta, desaparecía de la lista. **La respuesta vuelve sola**: el CLI la imprime ' +
+      'en cualquier comando (mismo camino que el latido) y marca `seen_at` para avisar UNA vez. ' +
+      'Preguntar NO bloquea; si de verdad no se puede avanzar, eso es `pause`. Sin lease a ' +
+      'propósito: caducar sería perder la pregunta. Criterio puro en `lib/backlog/preguntas.cjs` ' +
+      '(16 tests). NUNCA hacer que caduque ni añadir un segundo sitio donde preguntar.',
+  },
   sim_identidad_maquina: {
     titulo: 'Simular que dos MÁQUINAS comparten session-id (comprobación de ejecución, no de texto)',
     ruta: 'scripts/sim/sim-identidad-maquina.cjs',
