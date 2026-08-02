@@ -5628,7 +5628,85 @@ export const RULE_TEMARIO_PROPIO_PERDIDO: AlertRule<{
   cooldownMin: 720,
 };
 
+/**
+ * El barrido de rutas encontró una página ROTA. (T-487, 02/08/2026)
+ *
+ * ── Por qué hace falta la regla, y no basta con emitir ──────────────────────────────────────
+ * Vence Sim ya escribía en `observable_events` desde que existe… y **ninguna regla miraba sus
+ * eventos**: `sim_journey_result` no aparecía ni aquí ni en las señales benignas. O sea que una
+ * simulación podía estar en rojo y el único sitio donde se veía era la terminal de quien la
+ * ejecutó. El catch-all (`senal_error_sin_vigilancia`) tampoco lo cubría: exige 150 del mismo
+ * tipo en una hora, y una pasada del barrido produce unidades.
+ *
+ * Una comprobación continua cuyo resultado no llega a Salud del sistema no es una comprobación:
+ * es una anécdota. Mismo modo de fallo que el gate de creación de oposiciones, que revisaba diez
+ * fases y no escribía una sola fila (T-455).
+ *
+ * ── Qué dispara, y qué NO ───────────────────────────────────────────────────────────────────
+ * Solo `error`, o sea rutas ROTAS: 5xx, la pantalla de error de la app, un 200 que no pinta nada,
+ * o una subpetición con 5xx. Las `sospechosas` (404 en una ruta que existe, hidratación, consola)
+ * entran en el bus como `warn` y se leen en el panel — meterlas aquí llenaría el correo de cosas
+ * que hay que mirar sin prisa, y un aviso que grita se deja de leer.
+ *
+ * El PUNTO CIEGO va destacado a propósito: una ruta rota que además no generó ni una señal
+ * significa que, sin este barrido, nos habríamos enterado por un usuario.
+ */
+export const RULE_SIM_RUTA_ROTA: AlertRule<{
+  rutas: number
+  ciegas: number
+  muestra: string
+  motivo: string
+  ultima: Date | string | null
+}> = {
+  name: 'sim_ruta_rota',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT endpoint)::int AS rutas,
+           COUNT(DISTINCT endpoint) FILTER (WHERE (metadata->>'puntoCiego')::boolean)::int AS ciegas,
+           COALESCE(MIN(endpoint), '') AS muestra,
+           COALESCE(MIN(error_message), '') AS motivo,
+           MAX(ts) AS ultima
+      FROM observable_events
+     WHERE event_type = 'sim_ruta_rota'
+       AND severity = 'error'
+       AND ts >= now() - interval '6 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.rutas ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r?.rutas ?? 0} ruta(s) ROTAS en el barrido${(r?.ciegas ?? 0) > 0 ? ` · ${r!.ciegas} sin señal propia` : ''}`,
+      body:
+        `El barrido de rutas recorre la app como un usuario y ha encontrado páginas que no se ` +
+        `pueden usar (5xx, pantalla de error, o un 200 que no pinta nada).\n\n` +
+        `Ejemplo: ${r?.muestra || '(sin ruta)'} — ${r?.motivo || '(sin motivo)'}\n` +
+        `Última: ${r?.ultima ? new Date(r.ultima).toISOString() : '(sin fecha)'}\n\n` +
+        ((r?.ciegas ?? 0) > 0
+          ? `⚠️  ${r!.ciegas} de ellas NO generaron ninguna señal de observabilidad: son PUNTOS ` +
+            `CIEGOS. Sin este barrido nos habríamos enterado por un usuario, y eso es un fallo ` +
+            `de la observabilidad además del de la página.\n\n`
+          : '') +
+        `Reproducir una ruta concreta:  npm run sim:rutas -- --presupuesto 5\n` +
+        `Ver todas las de la ventana (incluidas las «sospechosas», que no disparan correo):\n\n` +
+        `  SELECT ts, severity, endpoint, error_message FROM observable_events\n` +
+        `   WHERE event_type='sim_ruta_rota' AND ts > now() - interval '6 hours' ORDER BY ts DESC;\n\n` +
+        `Runbook: docs/runbooks/vence-sim.md (sección «Barrido continuo de rutas»). Ficha: T-487.`,
+      metadata: {
+        rutas: r?.rutas ?? 0,
+        ciegas: r?.ciegas ?? 0,
+        muestra: r?.muestra ?? '',
+        ultima: r?.ultima ? new Date(r.ultima).toISOString() : null,
+      },
+      fingerprint: `sim_ruta_rota:${r?.muestra ?? 'na'}`,
+    };
+  },
+  cooldownMin: 360,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // El barrido de rutas encontró una página que un usuario no puede usar (T-487). Vence Sim
+  // emitía desde siempre y NINGUNA regla miraba sus eventos: el resultado moría en la terminal.
+  RULE_SIM_RUTA_ROTA as AlertRule,
   // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
   // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
   RULE_CAMPANA_EMAIL_ZERO_SENT as AlertRule,

@@ -132,6 +132,7 @@
     "sim:perfil-roto-se-cura": "tsx --env-file=.env.local scripts/sim/sim-perfil-roto-se-cura.ts",
     "sim:sesion-fantasma": "tsx --env-file=.env.local scripts/sim/sim-sesion-fantasma.ts",
     "sim:contexto-guard": "node scripts/backlog/sim-contexto-guard.cjs",
+    "sim:rutas": "npx tsx scripts/sim/barrido-rutas.ts",
     "sim:identidad-maquina": "node scripts/sim/sim-identidad-maquina.cjs",
     "sim:cola-reserva": "node scripts/impugnaciones/sim-reserva-cola.cjs",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",

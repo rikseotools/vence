@@ -148,6 +148,65 @@ el deploy deja de invocarlo.
   con la sesión y el ancho. Reutilízalo para cualquier elemento pegajoso/flotante nuevo.
 - `failureWasObserved` — **meta-invariante**: un fallo visible SIN evento = punto ciego.
 
+## Barrido continuo de RUTAS — recorrer la app como un usuario (T-487)
+
+```bash
+npm run sim:rutas -- --plan              # QUÉ visitaría, sin abrir navegador ni tocar nada
+npm run sim:rutas                        # lo recorre y lo juzga
+npm run sim:rutas -- --pasada 3 --emit   # rota los ejemplares y publica en observabilidad
+```
+
+**Qué cubre que no cubría nada.** Un journey afirma cosas de dominio de UNA pantalla; los canary
+de AWS son de API. Nadie miraba la app **como la ve una persona** salvo cuando alguien lo pedía —
+y el motivo estaba escrito aquí mismo: *«Fargate no tiene chromium»*. Esto es la capa que faltaba.
+
+**804 páginas, 168 FORMAS.** Cada oposición tiene su propio directorio con un envoltorio de ~21
+líneas sobre un componente compartido, así que **el código es común y lo que cambia son los
+datos**. De ahí las dos coberturas:
+
+| | cómo se cubre | coste |
+|---|---|---|
+| **código** | una visita por FORMA | 168 visitas, no 804 |
+| **datos** | rotar el ejemplar entre pasadas (`--pasada`) | el ciclo completo son 128 pasadas, y el comando lo dice |
+
+**Los dos frenos, que son diseño y no detalle:**
+
+1. **No autodenegarse el servicio.** Un barrido interno ya tumbó parte del sitio, y con una réplica
+   no lo degrada: lo para entero. Ritmo limitado (`--rpm`, 10 por defecto) y una visita por forma.
+2. **No ensuciar los datos con los que decidimos.** Las rutas que sirven preguntas alimentan
+   `daily_questions_served`, el ranking y **el antifraude** — abrir preguntas sin responderlas es
+   la firma de `harvest_no_answer`. Van clasificadas aparte y **fuera por defecto** (`--clases`).
+
+**Lo que no se puede visitar se DICE.** Una ruta cuyo parámetro no tiene valor real en la BD sale
+en «fuera de esta pasada», nunca como visitada. Inventarse un id daría un 404 que el oráculo
+leería como página rota, y un detector que se autoinventa hallazgos deja de leerse en una semana.
+
+### El oráculo (`lib/sim/oraculo.ts`) — lo que faltaba no era Playwright
+
+| veredicto | qué es | va al bus como |
+|---|---|---|
+| **rota** | 5xx · la pantalla de error de la app · un 200 que no pinta nada · subpetición con 5xx | `error` → **dispara correo** |
+| **sospechosa** | 404 en una ruta que existe en el código · hidratación · errores de consola | `warn` → se lee en el panel |
+| **punto ciego** | estaba rota **y no generó ni una señal** | destacado en la alerta |
+
+El punto ciego reutiliza `failureWasObserved`, la meta-invariante que ya existía: dos criterios
+para el mismo hecho no protegen el doble, se contradicen.
+
+**Calibración medida, no intuida.** La primera pasada real dio **12 de 12 rutas «sospechosas» por
+el mismo 401 de `/api/auth/token`** — la app preguntando «¿quién eres?» sin sesión. Se descarta
+**solo yendo anónimo**, porque ese mismo 401 **con** sesión sí es un defecto.
+
+### Sin silos: esto llega a Salud del sistema
+
+El barrido publica en `observable_events` (`sim_ruta_rota` por ruta, `sim_barrido_pasada` de
+resumen) y lo vigila la regla **`sim_ruta_rota`** de `backend/src/alerts/alert-rules.ts`, que manda
+correo y sale en `/admin/salud-sistema`. Las sanas **no** se publican una a una: 168 filas verdes
+por pasada ahogarían el bus.
+
+> ⚠️ **Hueco conocido y con ficha:** `sim_journey_result` —el evento que emiten los journeys desde
+> siempre— **no tiene ninguna regla que lo mire**, ni aparece entre las señales benignas. Un
+> journey puede estar en rojo y verse solo en la terminal de quien lo ejecutó. Es [T-491].
+
 ## Canary continuo en AWS (ya existe — NO se duplica)
 La vigilancia continua del invariante #2 la hace **`backend/src/canary-por-leyes-scope`**
 (`@Cron('*/5 * * * *')` en Fargate, como `health-sweep`): afirma que el "test por leyes"
