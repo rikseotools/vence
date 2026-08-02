@@ -9,6 +9,7 @@ function getOfficialExamsDb() {
 }
 import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback, examCases, userProfiles } from '@/db/schema'
 import { estrenaRespuesta } from '@/lib/api/dailyLimit'
+import { esPlanPremium } from '@/lib/api/daily-limit/config'
 import { eq, and, like, sql, inArray, desc, count, isNull } from 'drizzle-orm'
 import {
   psychometricExamColumns,
@@ -927,7 +928,12 @@ export async function saveOfficialExamAnswer(
       // cupo; rectificar, no. Misma regla que el examen normal (`estrenaRespuesta`).
       saveAction: estrenaRespuesta(record.userAnswerPrevio) ? 'saved_new' : 'already_saved',
       userId: record.userId ?? null,
-      isPremium: record.planType === 'premium',
+      // «Premium» NO es `plan_type === 'premium'`: son CINCO planes (trial, legacy_free,
+      // premium_semester y admin también quedan exentos), y esa lista ya existe una vez
+      // en `PREMIUM_PLAN_TYPES` — la misma que aplica la función SQL del contador. Escribir
+      // aquí la comparación a mano creaba una segunda definición que hoy coincidiría por
+      // casualidad y mañana no.
+      isPremium: esPlanPremium(record.planType),
     }
   } catch (error) {
     console.error('❌ [saveOfficialExamAnswer] Error:', error)

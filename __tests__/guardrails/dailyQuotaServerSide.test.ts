@@ -134,6 +134,27 @@ describe('guardarraíl: el cupo diario lo cobra el servidor', () => {
     expect(src.indexOf('saveOfficialExamAnswer(')).toBeLessThan(src.indexOf('incrementDailyCount('))
   })
 
+  it('«premium» se decide con la lista canónica, no con una comparación a mano', () => {
+    // El 02/08 este mismo arreglo introdujo `plan_type === 'premium'`, que dejaba fuera a
+    // trial, legacy_free, premium_semester y admin. No cobró de más porque la función SQL
+    // corta igual — pero eran dos definiciones del mismo concepto, que es como se rompen
+    // las cosas más tarde y en otro sitio.
+    const src = leer('lib/api/official-exams/queries.ts')
+    expect(src).toContain('esPlanPremium(')
+    expect(src).not.toMatch(/planType\s*===\s*'premium'/)
+  })
+
+  it('la lista de planes exentos del código es la MISMA que aplica la función SQL', () => {
+    const { PREMIUM_PLAN_TYPES } = require('@/lib/api/daily-limit/config')
+    const sql = leer('supabase/migrations/20260801_increment_daily_questions_amount.sql')
+    // La migración la escribe como IN ('premium', 'trial', …). Si alguien añade un plan en
+    // un sitio y no en el otro, el cupo se cobra distinto según por dónde entre la respuesta.
+    const enSql = (sql.match(/IN \(([^)]*)\)/) || [])[1] || ''
+    for (const plan of PREMIUM_PLAN_TYPES) {
+      expect(enSql).toContain(`'${plan}'`)
+    }
+  })
+
   it('el SIMULACRO deriva el `saveAction` con la MISMA regla compartida', () => {
     const src = leer('lib/api/official-exams/queries.ts')
     // La regla no se reescribe aquí: se importa de la política de cupo. Una tercera copia
