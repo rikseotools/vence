@@ -116,6 +116,13 @@ const findMatchingOfficialOposicion = (customName: string): OposicionItem | unde
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 export const OFFICIAL_OPOSICIONES: OposicionItem[] = [
   {
+    id: 'auxiliar_enfermeria_geriatria_diputacion_cadiz',
+    nombre: 'Aux. Enfermería Geriatría Dip. Cádiz',
+    categoria: 'C2',
+    administracion: 'Diputación Provincial de Cádiz',
+    icon: '🧑‍⚕️'
+  },
+  {
     id: 'auxiliar_clinica_diputacion_sevilla',
     nombre: 'Auxiliar de Clínica Dip. Sevilla',
     categoria: 'C2',

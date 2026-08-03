@@ -30,6 +30,32 @@ const { pgConfig } = require('../lib/db/pgSsl.cjs');
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const PT_RE = /^[a-z0-9]+(_[a-z0-9]+)*$/;
 
+/**
+ * Literales de TEXTO de la plantilla (Administrativo U. de León) que nunca pueden sobrevivir a la
+ * FASE 5. Solo texto: los NÚMEROS van aparte, porque un número de la plantilla puede ser el número
+ * CORRECTO de otra oposición (ver `hayRecuentoAjeno`).
+ */
+const STRAGGLER_TEXTO = /administrativo-universidad-leon|administrativo_universidad_leon|Universidad de Le[oó]n|Escala Administrativa|BOCYL|Gestión académica e Informática/i;
+
+/**
+ * ¿El texto anuncia un número de temas que NO es el de esta oposición?
+ *
+ * Nace de un falso positivo real (03/08/2026, Aux. Enfermería Geriatría de Cádiz): la plantilla tiene
+ * 25 temas, así que el straggler check llevaba «25 temas» como literal prohibido… y esa oposición
+ * tiene 25 de verdad. Abortaba la FASE 5 por un dato CIERTO. Y al mismo tiempo dejaba pasar el
+ * residuo auténtico —los bloques de León enumerados en la meta description—, que no estaba en la
+ * lista. Un guardarraíl que prohíbe un valor concreto en vez de comprobar la coherencia falla en las
+ * dos direcciones a la vez.
+ *
+ * @param {string} texto  contenido del fichero generado
+ * @param {number} nTemas nº de temas REAL de la oposición (spec.temario.length)
+ * @returns {boolean} true si algún «N temas» del texto no cuadra con nTemas
+ */
+function hayRecuentoAjeno(texto, nTemas) {
+  return (String(texto).match(/(\d+) temas/g) || [])
+    .some(m => parseInt(m, 10) !== nTemas);
+}
+
 /** Devuelve array de errores (vacío = válido). No toca BD. */
 function validateSpec(spec) {
   const e = [];
@@ -219,6 +245,11 @@ function scaffoldRoutes(spec, opts = {}) {
     ['universidad de leon', id.short_name.toLowerCase()],
     ['25 Temas Oficiales', `${spec.temario.length} Temas Oficiales`], ['25 temas', `${spec.temario.length} temas`], ['25 temas', `${spec.temario.length} temas`],
     ['5 grupos', `${spec.bloques.length} partes`], ['5 bloques', `${spec.bloques.length} partes`],
+    // La plantilla ENUMERA sus cinco bloques en las descripciones SEO. Sin esta sustitución, una
+    // oposición de cuidados acababa anunciando «Gestión financiera, Gestión académica e Informática»
+    // en su meta description — y el straggler check NO lo veía (03/08/2026, Aux. Enf. Geriatría Cádiz).
+    ['Derecho y régimen jurídico, Empleados públicos, Gestión financiera, Gestión académica e Informática',
+      spec.bloques.map(b => b.titulo).join(', ').replace(/, ([^,]*)$/, ' y $1')],
     ['BOCYL', boletin], ['Grupo C1', `Subgrupo ${id.subgrupo}`], ['11 plazas', 'plazas'],
   ];
   const files = [];
@@ -238,8 +269,16 @@ function scaffoldRoutes(spec, opts = {}) {
     fs.writeFileSync(f, s);
   }
   // STRAGGLER CHECK: ningún literal de la plantilla debe sobrevivir
-  const straggler = /administrativo-universidad-leon|administrativo_universidad_leon|Universidad de Le[oó]n|Escala Administrativa|BOCYL|25 temas/i;
-  const bad = files.filter(f => straggler.test(fs.readFileSync(f, 'utf8')));
+  // Los literales de TEXTO sí son residuo siempre. Los NÚMEROS no: la plantilla (León) tiene 25 temas,
+  // así que "25 temas" en la lista fija convierte el guardarraíl en un FALSO POSITIVO para cualquier
+  // oposición que tenga 25 — y encima tapaba un residuo real que no estaba en la lista (los cinco
+  // bloques de León enumerados en la meta description). Medido el 03/08/2026 con Aux. Enf. Geriatría
+  // de Cádiz: abortaba por el número correcto mientras dejaba pasar el texto ajeno.
+  // Un recuento solo es residuo si NO es el de esta oposición.
+  const bad = files.filter(f => {
+    const s = fs.readFileSync(f, 'utf8');
+    return STRAGGLER_TEXTO.test(s) || hayRecuentoAjeno(s, spec.temario.length);
+  });
   if (bad.length) throw new Error(`FASE 5: quedan literales de la plantilla en ${bad.length} fichero(s): ${bad.map(f => f.replace(dst + '/', '')).join(', ')} — revisa el mapa de sustituciones`);
   return { files: files.map(f => f.replace('app/', '')), warnings: [] };
 }
@@ -422,7 +461,13 @@ async function main() {
         position_type: PT, bloque_number: b.numero, titulo: b.titulo, icon: b.icon || null, sort_order: b.sort_order ?? b.numero,
       });
       if (bIns.missing.length) throw new Error(`schema-drift oposicion_bloques: ${bIns.missing.join(', ')}`);
-      await c.query(bIns.text, bIns.params);
+      // UPSERT y no INSERT: con `--completar` (fila ya existente) los bloques ya están, y un insert
+      // pelado moría con "duplicate key ... oposicion_bloques_unique" DESPUÉS de haber actualizado la
+      // fila de `oposiciones` — o sea que el camino que el manual ofrece para implementar una
+      // aspiracional no se podía correr dos veces. El resto del script sí era idempotente.
+      await c.query(
+        bIns.text.replace(/ returning id$/, ' on conflict (position_type, bloque_number) do update set titulo = excluded.titulo, icon = excluded.icon, sort_order = excluded.sort_order returning id'),
+        bIns.params);
     }
 
     // ── topics ──
@@ -437,7 +482,13 @@ async function main() {
         is_active: t.is_active !== false, disponible: t.disponible === true,
       });
       if (tIns.missing.length) throw new Error(`schema-drift topics: ${tIns.missing.join(', ')}`);
-      await c.query(tIns.text, tIns.params);
+      // UPSERT, mismo motivo que en los bloques: con `--completar` los topics ya existen.
+      // `disponible` se deja INTACTO al actualizar a propósito: lo decide la FASE 3 (scope + preguntas)
+      // y lo puede haber puesto a true un gate posterior; re-correr el scaffolder no debe apagarle
+      // los tests a una oposición que ya está sirviendo.
+      await c.query(
+        tIns.text.replace(/ returning id$/, ' on conflict (position_type, topic_number) do update set display_number = excluded.display_number, bloque_number = excluded.bloque_number, title = excluded.title, descripcion_corta = excluded.descripcion_corta, epigrafe = excluded.epigrafe, difficulty = excluded.difficulty, estimated_hours = excluded.estimated_hours, is_active = excluded.is_active returning id'),
+        tIns.params);
     }
 
     // ── convocatoria SSOT (is_current) ──
@@ -454,7 +505,16 @@ async function main() {
     };
     const cvIns = buildInsert('convocatorias', cCols, cvObj);
     if (cvIns.missing.length) throw new Error(`schema-drift convocatorias: ${cvIns.missing.join(', ')}`);
-    await c.query(cvIns.text, cvIns.params);
+    // UPSERT contra el índice parcial `convocatorias_ref_oficial_unica` (oposicion_id, convocatoria_numero),
+    // por el mismo motivo que bloques y topics: re-correr `--completar` chocaba con su propia fila.
+    // Al ir por ON CONFLICT se re-marca is_current=true, que es lo que el UPDATE de la línea de arriba
+    // acababa de apagar.
+    const cvOnConflict = cvObj.convocatoria_numero
+      ? ' on conflict (oposicion_id, convocatoria_numero) where convocatoria_numero is not null do update set ' +
+        Object.keys(cvObj).filter(k => k !== 'oposicion_id' && k !== 'convocatoria_numero')
+          .map(k => `"${k}" = excluded."${k}"`).join(', ') + ' returning id'
+      : ' returning id';
+    await c.query(cvIns.text.replace(/ returning id$/, cvOnConflict), cvIns.params);
 
     // ── temario_version (Fase 1 de temario-versionado-por-convocatoria) ──
     // El temario cuelga de una versión: 1 versión `active`+default por oposición. Sin esto los
@@ -462,7 +522,12 @@ async function main() {
     // __tests__/integration/temarioVersions). La convocatoria vigente apunta a esta versión.
     // Ver docs/roadmap/temario-versionado-por-convocatoria.md.
     const cvId = (await c.query('select id from convocatorias where oposicion_id=$1 and is_current=true', [oid])).rows[0].id;
-    const tvId = (await c.query(
+    // Reutilizar la versión por defecto si ya existe (`ux_temario_version_default` es UNIQUE parcial
+    // por oposición): con `--completar` volver a insertarla rompía la transacción entera. NO se crea
+    // una versión nueva — eso es una decisión de temario, no un efecto colateral de re-correr el
+    // scaffolder (ver docs/roadmap/temario-versionado-por-convocatoria.md).
+    const tvPrev = (await c.query('select id from temario_versions where oposicion_id=$1 and es_default limit 1', [oid])).rows[0];
+    const tvId = tvPrev ? tvPrev.id : (await c.query(
       `insert into temario_versions (oposicion_id, label, estado, es_default, source_convocatoria_id)
        values ($1, $2, 'active', true, $3) returning id`,
       [oid, String(conv.año || 'base'), cvId])).rows[0].id;
@@ -476,7 +541,18 @@ async function main() {
         status: h.status || 'upcoming', order_index: h.order_index ?? 1, severity: h.severity || 'important', notify_status: 'pending', url: h.url || null,
       });
       if (hIns.missing.length) throw new Error(`schema-drift convocatoria_hitos: ${hIns.missing.join(', ')}`);
-      await c.query(hIns.text, hIns.params);
+      // Los hitos NO tienen índice único, así que aquí el ON CONFLICT no sirve: re-correr duplicaba
+      // el timeline en silencio —y eso no revienta, se PUBLICA— (medido: 3 hitos del spec → 6 en BD
+      // tras dos pasadas). Se comprueba por su identidad natural (misma convocatoria + fecha + título).
+      const yaEsta = await c.query(
+        'select id from convocatoria_hitos where convocatoria_id=$1 and fecha=$2 and titulo=$3 limit 1',
+        [cvId, h.fecha, h.titulo]);
+      if (yaEsta.rows.length) {
+        await c.query('update convocatoria_hitos set descripcion=$2, status=$3, order_index=$4, url=$5 where id=$1',
+          [yaEsta.rows[0].id, h.descripcion || null, h.status || 'upcoming', h.order_index ?? 1, h.url || null]);
+      } else {
+        await c.query(hIns.text, hIns.params);
+      }
     }
 
     // ── FASE 3: topic_scope (si el spec lo trae) ──
@@ -500,7 +576,14 @@ async function main() {
             arts = arts.filter(a => found.includes(a));
             if (!arts.length) { console.warn(`  ⚠️ scope T${tnStr} (${en.law}): sin artículos válidos, entrada omitida`); continue; }
           }
-          await c.query('insert into topic_scope (topic_id, law_id, article_numbers) values ($1,$2,$3) on conflict do nothing', [topicId, lid, arts]);
+          // El `on conflict do nothing` de antes NO hacía nada: `topic_scope` no tiene índice único
+          // sobre (topic_id, law_id), así que no hay conflicto que capturar y cada pasada AÑADÍA otra
+          // fila (medido: 37 filas del spec → 111 en BD tras tres pasadas). Se comprueba a mano.
+          // Si la pareja ya existe se RESPETA tal cual: puede venir recortada por `verify:scope`, y
+          // re-correr el scaffolder no puede deshacer una decisión de temario ya tomada.
+          const yaScope = await c.query('select id from topic_scope where topic_id=$1 and law_id=$2 limit 1', [topicId, lid]);
+          if (yaScope.rows.length) continue;
+          await c.query('insert into topic_scope (topic_id, law_id, article_numbers) values ($1,$2,$3)', [topicId, lid, arts]);
           scopeRows++;
         }
       }
@@ -561,4 +644,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, scaffoldRegistrations, buildInsert };
+module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, scaffoldRegistrations, buildInsert, hayRecuentoAjeno, STRAGGLER_TEXTO };

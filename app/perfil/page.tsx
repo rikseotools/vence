@@ -263,6 +263,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'auxiliar_enfermeria_geriatria_diputacion_cadiz',
+      label: 'Aux. Enfermería Geriatría Dip. Cádiz',
+      data: {
+        name: 'Auxiliar de Enfermería Geriatría de la Diputación de Cádiz',
+        slug: 'auxiliar-enfermeria-geriatria-diputacion-cadiz',
+        categoria: 'C2',
+        administracion: 'Diputación Provincial de Cádiz'
+      }
+    },
+    {
       value: 'auxiliar_clinica_diputacion_sevilla',
       label: 'Auxiliar de Clínica Dip. Sevilla',
       data: {

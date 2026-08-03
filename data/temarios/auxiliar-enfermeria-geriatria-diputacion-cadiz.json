@@ -1,0 +1,902 @@
+{
+  "_fuente": "Temario y datos del proceso: LITERALES de la convocatoria y bases específicas de 31 plazas de Auxiliar Enfermería Geriatría de la Diputación Provincial de Cádiz, firmadas el 04/02/2026, publicadas en el Boletín Oficial de la Provincia de Cádiz nº 28, de 11 de febrero de 2026, con publicación posterior en el BOP nº 72, de 17 de abril de 2026, y anuncio en BOJA nº 102, de 29 de mayo de 2026. El temario es el ANEXO I (A) Materias Comunes, 8 temas; B) Materias Específicas, 17 temas). PDF oficial: https://www.dipucadiz.es/export/sites/default/funcion_publica_y_recursos_humanos/.galeria_de_ficheros/documentos/ope/procesosentramite/Aux_Enf_Geriatria/01.-Convocatoria-de-plazas-y-bases-especificas.pdf",
+  "identity": {
+    "nombre": "Auxiliar de Enfermería Geriatría de la Diputación de Cádiz",
+    "short_name": "Aux. Enfermería Geriatría Dip. Cádiz",
+    "slug": "auxiliar-enfermeria-geriatria-diputacion-cadiz",
+    "position_type": "auxiliar_enfermeria_geriatria_diputacion_cadiz",
+    "grupo": "C",
+    "subgrupo": "C2",
+    "categoria": "C2",
+    "tipo_acceso": "libre",
+    "administracion": "Local",
+    "administracion_config": "local",
+    "administracion_display": "Diputación Provincial de Cádiz",
+    "titulo_requerido": "Título de Técnico/a Auxiliar en la especialidad de Auxiliar de Enfermería (F.P. primer grado) o equivalente",
+    "coverage_level": "con_landing",
+    "fetcher_type": "http",
+    "headless_required": false,
+    "familia": "social",
+    "color_primario": "emerald",
+    "sistema_selectivo": "oposicion",
+    "emoji": "🧑‍⚕️",
+    "badge": "C2",
+    "hasPsychometricTest": false,
+    "aliases": [
+      "auxiliar de enfermeria geriatria diputacion cadiz",
+      "tcae diputacion cadiz",
+      "auxiliar enfermeria diputacion de cadiz",
+      "auxiliar de enfermeria geriatria cadiz",
+      "tcae geriatria cadiz",
+      "oposicion auxiliar enfermeria geriatria cadiz"
+    ],
+    "ccaa": "andalucia",
+    "temas_count": 25,
+    "bloques_count": 2
+  },
+  "examScoring": {
+    "penaltyDivisor": 2.6667,
+    "source": "BOP Cádiz nº 28 de 11/02/2026, bases específicas, base séptima 2.1 y 2.2: «Se valorará con 0,20 puntos cada una de las preguntas contestadas correctamente, penalizando cada contestación errónea con 0,075 puntos. Las respuestas en blanco no penalizan. En caso de señalar más de una opción se considerará como respuesta en blanco». 0,20 / 0,075 = 2,6667 respuestas erróneas anulan una correcta."
+  },
+  "examen_config": {
+    "tipo": "Oposición libre: tres ejercicios obligatorios y eliminatorios (dos test teóricos + uno práctico)",
+    "penalizacion": "Cada acierto suma 0,20 y cada error resta 0,075 (2,67 errores anulan un acierto). Las respuestas en blanco no penalizan; marcar más de una opción cuenta como blanco.",
+    "total_preguntas": 100,
+    "partes": [
+      {
+        "nombre": "Primer ejercicio — test teórico",
+        "preguntas": 50,
+        "reserva": 10,
+        "puntuacion_max": 10,
+        "puntuacion_min": 5,
+        "nota": "Cuatro respuestas alternativas, una sola correcta. Versa sobre TODO el Anexo I (Materias Comunes y Materias Específicas). 60 minutos. Sin material de consulta."
+      },
+      {
+        "nombre": "Segundo ejercicio — test teórico específico",
+        "preguntas": 50,
+        "reserva": 10,
+        "puntuacion_max": 10,
+        "puntuacion_min": 5,
+        "nota": "Cuatro respuestas alternativas, una sola correcta. Versa solo sobre la parte específica (Materias Específicas) del Anexo I. 60 minutos. Sin material de consulta."
+      },
+      {
+        "nombre": "Tercer ejercicio — práctico",
+        "preguntas": null,
+        "reserva": null,
+        "puntuacion_max": 10,
+        "puntuacion_min": 5,
+        "nota": "Ejercicio práctico sobre las funciones propias de la plaza, relacionado con el programa de Materias Específicas."
+      }
+    ],
+    "notas": "Los tres ejercicios son eliminatorios: no superar uno impide concurrir a los siguientes. Las preguntas de reserva sustituyen por orden correlativo a las que se anulen. Fuente: bases específicas, BOP Cádiz nº 28 de 11/02/2026."
+  },
+  "landing": {
+    "estadisticas": [
+      {
+        "numero": "31",
+        "texto": "Plazas (turno libre)",
+        "color": "text-green-600"
+      },
+      {
+        "numero": "25",
+        "texto": "Temas oficiales",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "100",
+        "texto": "Preguntas tipo test (dos ejercicios)",
+        "color": "text-purple-600"
+      },
+      {
+        "numero": "C2",
+        "texto": "Subgrupo",
+        "color": "text-orange-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "31 plazas de Auxiliar Enfermería Geriatría en turno libre, como personal funcionario de carrera de la Diputación Provincial de Cádiz. Salen de acumular tres ofertas de empleo público en un único procedimiento: 10 plazas de la OEP de 2023, 11 de la de 2024 y 10 de la de 2025."
+      },
+      {
+        "pregunta": "¿Qué sistema de selección tiene?",
+        "respuesta": "Oposición libre, sin fase de concurso. Son tres ejercicios obligatorios y eliminatorios: dos exámenes tipo test de 50 preguntas más 10 de reserva (60 minutos cada uno) y un tercer ejercicio práctico sobre las funciones del puesto."
+      },
+      {
+        "pregunta": "¿Cómo puntúa el test y penalizan los errores?",
+        "respuesta": "Sí penalizan. Cada respuesta correcta suma 0,20 puntos y cada respuesta errónea resta 0,075, así que hacen falta unos 2,67 errores para anular un acierto. Las respuestas en blanco no penalizan, y marcar más de una opción cuenta como respuesta en blanco. Cada ejercicio se puntúa de 0 a 10 y hay que sacar al menos un 5 para superarlo."
+      },
+      {
+        "pregunta": "¿Qué titulación se necesita?",
+        "respuesta": "El título de Técnico/a Auxiliar en la especialidad de Auxiliar de Enfermería (F.P. de primer grado) o equivalente."
+      },
+      {
+        "pregunta": "¿Qué entra en el temario?",
+        "respuesta": "El Anexo I de las bases tiene 25 temas repartidos en dos bloques: 8 de Materias Comunes (Constitución, organización del Estado, Estatuto de Autonomía de Andalucía, régimen local, procedimiento administrativo, prevención de riesgos laborales e igualdad) y 17 de Materias Específicas de cuidados y geriatría, desde la documentación sanitaria y la prevención de infecciones hasta las úlceras por presión, la movilización del paciente geriátrico y la atención centrada en la persona."
+      },
+      {
+        "pregunta": "¿En qué grupo está la plaza?",
+        "respuesta": "Grupo de clasificación C, subgrupo C2, escala de Administración Especial, subescala de Servicios Especiales, clase Cometidos Especiales, Oficiales y Asimilados."
+      }
+    ],
+    "description": "Prepara la oposición de Auxiliar de Enfermería Geriatría de la Diputación de Cádiz (31 plazas, subgrupo C2, turno libre) con tests por tema ajustados al Anexo I de las bases oficiales publicadas en el BOP de Cádiz.",
+    "seo_title": "Oposición Auxiliar de Enfermería Geriatría Diputación de Cádiz 2026 | 31 plazas | Tests",
+    "seo_description": "Tests de la oposición de Auxiliar de Enfermería Geriatría de la Diputación de Cádiz: 31 plazas en turno libre, subgrupo C2, temario oficial de 25 temas del BOP de Cádiz nº 28 de 2026."
+  },
+  "convocatoria": {
+    "año": 2026,
+    "estado_proceso": "inscripcion_cerrada",
+    "diario_oficial": "BOP",
+    "diario_referencia": "BOP Cádiz nº 28, de 11 de febrero de 2026 (bases específicas), y BOP nº 72, de 17 de abril de 2026",
+    "numero": "Acuerdo de 4 de febrero de 2026 (convocatoria y bases específicas)",
+    "fecha": "2026-02-04",
+    "diario": "BOP Cádiz nº 28 de 11/02/2026 y nº 72 de 17/04/2026 (bases); BOJA nº 102 de 29/05/2026 (convocatoria)",
+    "programa_url": "https://www.dipucadiz.es/export/sites/default/funcion_publica_y_recursos_humanos/.galeria_de_ficheros/documentos/ope/procesosentramite/Aux_Enf_Geriatria/01.-Convocatoria-de-plazas-y-bases-especificas.pdf",
+    "seguimiento_url": "https://www.dipucadiz.es/funcion_publica_y_recursos_humanos/oferta-empleo-publico/Procesos-selectivos-en-tramite-00001",
+    "plazas_libres": 31,
+    "plazas_promocion_interna": 0,
+    "plazas_discapacidad": 0,
+    "inscription_start": "2026-05-30",
+    "inscription_deadline": null,
+    "exam_date": null,
+    "exam_date_approximate": false,
+    "boe_publication_date": null,
+    "boe_reference": "BOJA nº 102, de 29 de mayo de 2026 (Anuncio de 22 de abril de 2026 de la Diputación Provincial de Cádiz, PP. 856/2026)",
+    "oep_decreto": "Ofertas de Empleo Público de la Diputación Provincial de Cádiz de 2023 (10 plazas), 2024 (11 plazas) y 2025 (10 plazas), acumuladas en un procedimiento único",
+    "oep_fecha": "2025-07-08"
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Materias Comunes",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Materias Específicas",
+      "icon": "🧑‍⚕️"
+    }
+  ],
+  "temario": [
+    {
+      "topic_number": 1,
+      "bloque": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "La Constitución Española de 1978. Principios generales, características y estructura. Los derechos y deberes fundamentales: garantía y suspensión."
+    },
+    {
+      "topic_number": 2,
+      "bloque": 1,
+      "titulo": "La Corona",
+      "epigrafe": "La Corona. El Poder Legislativo. El Poder Ejecutivo. El Poder Judicial. El Gobierno y la Administración del Estado."
+    },
+    {
+      "topic_number": 3,
+      "bloque": 1,
+      "titulo": "La Administración Pública en el ordenamiento jurídico español",
+      "epigrafe": "La Administración Pública en el ordenamiento jurídico español. Tipología de los entes públicos. Las Administraciones del Estado, Autonómica y Local."
+    },
+    {
+      "topic_number": 4,
+      "bloque": 1,
+      "titulo": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales",
+      "epigrafe": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales. Competencias de la Comunidad Autónoma de Andalucía."
+    },
+    {
+      "topic_number": 5,
+      "bloque": 1,
+      "titulo": "La Provincia",
+      "epigrafe": "La Provincia. Organización: órganos necesarios y complementarios de las Diputaciones Provinciales. Sistema de elección de los/las Diputados/as y del/la Presidente/a. El Municipio. Organización Municipal. Competencias. Autonomía Municipal."
+    },
+    {
+      "topic_number": 6,
+      "bloque": 1,
+      "titulo": "Los derechos de los ciudadanos ante la Administración Pública",
+      "epigrafe": "Los derechos de los ciudadanos ante la Administración Pública. Consideración especial del interesado. Colaboración y participación de los ciudadanos en la Administración."
+    },
+    {
+      "topic_number": 7,
+      "bloque": 1,
+      "titulo": "Ley Prevención de Riesgos Laborales",
+      "epigrafe": "Ley Prevención de Riesgos Laborales. Definiciones. Derecho a la protección frente a los riesgos laborales. Principios de la acción preventiva."
+    },
+    {
+      "topic_number": 8,
+      "bloque": 1,
+      "titulo": "Conceptualización básica",
+      "epigrafe": "Conceptualización básica. Discriminación y relaciones desiguales: concepto y tipos de discriminación. Igualdad de oportunidades: principios de igualdad. Planes de igualdad. Breve referencia al Plan Estratégico de Igualdad de Oportunidades entre mujeres y hombres de la Diputación Provincial de Cádiz."
+    },
+    {
+      "topic_number": 9,
+      "bloque": 2,
+      "titulo": "Documentación en el ámbito sanitario",
+      "epigrafe": "Documentación en el ámbito sanitario. La historia clínica. Documentación administrativa. Métodos de archivo. Organización del almacén. Normas de seguridad e higiene en el almacén. Formulación de pedidos."
+    },
+    {
+      "topic_number": 10,
+      "bloque": 2,
+      "titulo": "Las técnicas de comunicación interpersonal",
+      "epigrafe": "Las técnicas de comunicación interpersonal. Definición, elementos, tipos, estilos de comunicación. Canales comunicativos. Barreras de la comunicación. Comunicación oral, comunicación no verbal. Acogida al paciente geriátrico: aspectos administrativos. Aspectos organizativos: la toma de decisiones. Prioridades y estrategias de intervención. Aspectos psicológicos: estrategias del personal de enfermería. La comunicación con el paciente geriátrico."
+    },
+    {
+      "topic_number": 11,
+      "bloque": 2,
+      "titulo": "Necesidades fundamentales de la persona",
+      "epigrafe": "Necesidades fundamentales de la persona. Jerarquía de las necesidades de A. Maslow. Adaptación de Kalish a la jerarquía de Maslow. Valoración de las necesidades de Virginia Henderson. Los Cuidados Básicos de Enfermería o Plan de Cuidados Integral de Enfermería. El Proceso de Atención de Enfermería (PAE)."
+    },
+    {
+      "topic_number": 12,
+      "bloque": 2,
+      "titulo": "Epidemiología, cadena epidemiológica y transmisión de infecciones",
+      "epigrafe": "Epidemiología, cadena epidemiológica y transmisión de infecciones. Medidas para disminuir el riesgo de transmisión de infecciones: lavado de manos, tipos y recomendaciones; Aislamiento: concepto, tipos y procedimientos. Protección universal. Residuos sanitarios: concepto, clasificación, recogida, transporte, almacenamiento, tratamiento y eliminación."
+    },
+    {
+      "topic_number": 13,
+      "bloque": 2,
+      "titulo": "Limpieza en el medio sanitario",
+      "epigrafe": "Limpieza en el medio sanitario. Productos utilizados en la limpieza: el detergente. Procedimiento para la limpieza manual del material. Desinfección en el medio sanitario. Principios básicos de desinfección y métodos de desinfección: los germicidas. Esterilización en el medio sanitario: principios básicos de esterilización, métodos y control de calidad."
+    },
+    {
+      "topic_number": 14,
+      "bloque": 2,
+      "titulo": "Mobiliario y accesorios de la habitación hospitalaria",
+      "epigrafe": "Mobiliario y accesorios de la habitación hospitalaria. La cama hospitalaria: características, tipos. El colchón de la cama hospitalaria. La preparación de la cama hospitalaria. Ropa o lencería de la cama hospitalaria. Procedimiento para hacer una cama desocupada y una cama ocupada."
+    },
+    {
+      "topic_number": 15,
+      "bloque": 2,
+      "titulo": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento",
+      "epigrafe": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento. Procesos dermatológicos más frecuentes en los ancianos. La higiene integral: conceptos; el aseo en pacientes geriátricos. La úlcera de decúbito o úlcera por presión (UPP): concepto, etiología, clasificación GENEAUPP. Proceso de generación de la UPP. Plan de actuación."
+    },
+    {
+      "topic_number": 16,
+      "bloque": 2,
+      "titulo": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes",
+      "epigrafe": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes. Modificaciones del sistema gastrointestinal asociadas al proceso de envejecimiento. Factores que influyen en los hábitos alimenticios de la población y su influencia en los estados de salud. Dietas terapéuticas. Alteración de alimentos y toxiinfección alimentaria. Prevención de la toxiinfección alimentaria: conservación y manipulación de alimentos."
+    },
+    {
+      "topic_number": 17,
+      "bloque": 2,
+      "titulo": "Conceptos de nutrición enteral y parenteral",
+      "epigrafe": "Conceptos de nutrición enteral y parenteral. Tipos de sondas. Cuidados del paciente con sonda nasoentérica y con gastro-enterostomías. Métodos de preparación y administración en la nutrición enteral: clasificación de las fórmulas, preparación, formas de administración, precauciones generales respecto a la administración. Complicaciones de la administración de la nutrición enteral."
+    },
+    {
+      "topic_number": 18,
+      "bloque": 2,
+      "titulo": "Características de la orina",
+      "epigrafe": "Características de la orina. Cambios en el aparato urinario con el envejecimiento. Patologías más frecuentes del aparato urinario en el paciente geriátrico. El balance hídrico y el control de diuresis. Sondaje vesical: procedimiento, obtención de una muestra de orina estéril de una sonda Foley, cuidados de enfermería en el paciente con sonda permanente, el lavado vesical. Dispositivos de recogida externa de orina: cuña y botella. Características de las heces. Incontinencia fecal (IF): clasificación, colocación de sondas rectales y administración de enemas."
+    },
+    {
+      "topic_number": 19,
+      "bloque": 2,
+      "titulo": "Paciente geriátrico y necesidad de movilización",
+      "epigrafe": "Paciente geriátrico y necesidad de movilización. Normas básicas de mecánica corporal. Técnicas de movilización para pacientes geriátricos: movilización del paciente geriátrico en la cama. Incorporación. Traslado. Ayudas a la deambulación. Cambios posturales en el paciente anciano."
+    },
+    {
+      "topic_number": 20,
+      "bloque": 2,
+      "titulo": "Concepto clínico de muerte",
+      "epigrafe": "Concepto clínico de muerte. Manifestaciones observables de la ausencia de signos clínicos. Cambios en el cuerpo después de la muerte. Cuidados postmortem y normas de comportamiento. Atenciones a la familia."
+    },
+    {
+      "topic_number": 21,
+      "bloque": 2,
+      "titulo": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación",
+      "epigrafe": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación. Las constantes vitales: la temperatura corporal. La respiración. El pulso. La tensión arterial. Medicamentos: presentación y administración. Efectos adversos de los medicamentos. Presentación, preparación y administración de medicamentos. Vías de administración de medicamentos. El secreto médico como obligación del auxiliar de enfermería."
+    },
+    {
+      "topic_number": 22,
+      "bloque": 2,
+      "titulo": "Centros de atención y asistencia al anciano: definición y tipos",
+      "epigrafe": "Centros de atención y asistencia al anciano: definición y tipos. El mayor válido y el mayor asistido en el centro residencial. Estructura organizativa de los centros residenciales. Concepto de Gerontología. El envejecimiento: definición. Aspectos generales de las características fisiológicas del envejecimiento. Modificaciones en el envejecimiento por órganos y sistemas. Cuidados de la boca y los pies en el paciente mayor. Aspectos psicológicos de la ancianidad. Aspectos sociales de la ancianidad."
+    },
+    {
+      "topic_number": 23,
+      "bloque": 2,
+      "titulo": "Introducción a la Geriatría",
+      "epigrafe": "Introducción a la Geriatría. Concepto y objetivos. Valoración geriátrica integral: clínica, funcional, mental, social. Consideraciones sobre la actitud del profesional sanitario ante el enfermo geriátrico. Morbilidad y mortalidad del paciente geriátrico. Enfermedades más frecuentes en el anciano. Síndromes geriátricos: caídas, insomnio, síndrome confusional agudo (SCA) o delírium, discapacidad física, inmovilismo."
+    },
+    {
+      "topic_number": 24,
+      "bloque": 2,
+      "titulo": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta",
+      "epigrafe": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta. Concepto de terapia ocupacional. Objetivos de la terapia ocupacional en personas mayores. Actividades de terapia ocupacional en personas mayores: actividades de la vida diaria, de ocio, de revitalización geriátrica, físicas y deportivas."
+    },
+    {
+      "topic_number": 25,
+      "bloque": 2,
+      "titulo": "La atención centrada en la persona: concepto, metodología y buenas prácticas",
+      "epigrafe": "La atención centrada en la persona: concepto, metodología y buenas prácticas. El derecho del mayor a realizar su proyecto de vida en la residencia. El testamento vital anticipado."
+    }
+  ],
+  "scope": {
+    "1": [
+      {
+        "law": "CE",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55"
+        ]
+      }
+    ],
+    "2": [
+      {
+        "law": "CE",
+        "articles": [
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107",
+          "117",
+          "118",
+          "119",
+          "120",
+          "121",
+          "122",
+          "123",
+          "124",
+          "125",
+          "126",
+          "127"
+        ]
+      }
+    ],
+    "3": [
+      {
+        "law": "CE",
+        "articles": [
+          "137",
+          "138",
+          "139",
+          "140",
+          "141",
+          "142",
+          "143",
+          "144",
+          "145",
+          "146",
+          "147",
+          "148",
+          "149",
+          "150",
+          "151",
+          "152",
+          "153",
+          "154",
+          "155",
+          "156",
+          "157",
+          "158"
+        ]
+      },
+      {
+        "law": "Ley 40/2015",
+        "articles": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "law": "Ley 7/1985",
+        "articles": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    ],
+    "4": [
+      {
+        "law": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84"
+        ]
+      }
+    ],
+    "5": [
+      {
+        "law": "Ley 7/1985",
+        "articles": [
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38"
+        ]
+      }
+    ],
+    "6": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "53"
+        ]
+      }
+    ],
+    "7": [
+      {
+        "law": "LPRL",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "14",
+          "15"
+        ]
+      }
+    ],
+    "8": [
+      {
+        "law": "LO 3/2007",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49"
+        ]
+      }
+    ],
+    "9": [
+      {
+        "law": "Documentacion sanitaria",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      }
+    ],
+    "10": [
+      {
+        "law": "Comunicacion sanitaria",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      }
+    ],
+    "11": [
+      {
+        "law": "Proceso de atención de enfermería",
+        "wholeLaw": true
+      }
+    ],
+    "12": [
+      {
+        "law": "Infecciones nosocomiales",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      },
+      {
+        "law": "Residuos sanitarios",
+        "articles": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    ],
+    "13": [
+      {
+        "law": "Esterilizacion y desinfeccion",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      {
+        "law": "HIGIENE DE CENTROS SANITARIOS ENF",
+        "wholeLaw": true
+      }
+    ],
+    "14": [
+      {
+        "law": "Movilizacion y posiciones",
+        "articles": [
+          "2"
+        ]
+      }
+    ],
+    "15": [
+      {
+        "law": "Higiene del paciente",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      },
+      {
+        "law": "Ulceras por presion",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      }
+    ],
+    "16": [
+      {
+        "law": "Alimentacion y nutricion",
+        "articles": [
+          "1",
+          "2",
+          "5"
+        ]
+      },
+      {
+        "law": "Aparato digestivo",
+        "wholeLaw": true
+      },
+      {
+        "law": "Eliminacion y sondajes",
+        "articles": [
+          "6",
+          "6.2",
+          "6.3"
+        ]
+      }
+    ],
+    "17": [
+      {
+        "law": "Alimentacion y nutricion",
+        "articles": [
+          "3",
+          "4"
+        ]
+      },
+      {
+        "law": "Eliminacion y sondajes",
+        "articles": [
+          "4",
+          "5"
+        ]
+      }
+    ],
+    "18": [
+      {
+        "law": "Eliminacion y sondajes",
+        "articles": [
+          "1",
+          "1.2",
+          "1.3",
+          "2",
+          "4",
+          "6.4"
+        ]
+      },
+      {
+        "law": "Nefrología y urología",
+        "wholeLaw": true
+      }
+    ],
+    "19": [
+      {
+        "law": "Movilizacion y posiciones",
+        "articles": [
+          "1",
+          "1.2",
+          "1.3",
+          "1.4",
+          "3",
+          "5",
+          "6",
+          "7"
+        ]
+      }
+    ],
+    "20": [
+      {
+        "law": "Cuidados paliativos",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      }
+    ],
+    "21": [
+      {
+        "law": "Muestras biologicas",
+        "articles": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    ],
+    "22": [
+      {
+        "law": "Atencion al anciano",
+        "articles": [
+          "1",
+          "4",
+          "5"
+        ]
+      }
+    ],
+    "23": [
+      {
+        "law": "GERIATRÍA ENF",
+        "wholeLaw": true
+      },
+      {
+        "law": "Atencion al anciano",
+        "articles": [
+          "1"
+        ]
+      }
+    ],
+    "24": [
+      {
+        "law": "Educación para la salud",
+        "wholeLaw": true
+      },
+      {
+        "law": "Atencion al anciano",
+        "articles": [
+          "2"
+        ]
+      }
+    ],
+    "25": [
+      {
+        "law": "Atencion al anciano",
+        "articles": [
+          "3",
+          "5"
+        ]
+      }
+    ]
+  },
+  "hitos": [
+    {
+      "fecha": "2026-02-11",
+      "titulo": "Bases específicas publicadas (BOP de Cádiz)",
+      "descripcion": "Acuerdo de 4 de febrero de 2026 por el que se aprueban la convocatoria y las bases específicas de 31 plazas de Auxiliar Enfermería Geriatría en turno libre, acumulando las Ofertas de Empleo Público de 2023, 2024 y 2025. BOP de Cádiz nº 28, de 11 de febrero de 2026.",
+      "status": "completed",
+      "order_index": 1,
+      "url": "https://www.dipucadiz.es/export/sites/default/funcion_publica_y_recursos_humanos/.galeria_de_ficheros/documentos/ope/procesosentramite/Aux_Enf_Geriatria/01.-Convocatoria-de-plazas-y-bases-especificas.pdf"
+    },
+    {
+      "fecha": "2026-04-17",
+      "titulo": "Publicación en el BOP de Cádiz nº 72",
+      "descripcion": "Segunda publicación de las bases en el Boletín Oficial de la Provincia de Cádiz nº 72, de 17 de abril de 2026.",
+      "status": "completed",
+      "order_index": 2,
+      "url": null
+    },
+    {
+      "fecha": "2026-05-29",
+      "titulo": "Convocatoria publicada (BOJA) y apertura del plazo de solicitudes",
+      "descripcion": "Anuncio de 22 de abril de 2026 de la Diputación Provincial de Cádiz, publicado en el BOJA nº 102 de 29 de mayo de 2026, que abre el plazo de veinte días hábiles para presentar solicitudes contados desde el día siguiente a su publicación.",
+      "status": "completed",
+      "order_index": 3,
+      "url": "https://www.juntadeandalucia.es/boja/2026/102/61"
+    }
+  ]
+}
