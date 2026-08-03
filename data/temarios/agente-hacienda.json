@@ -1,0 +1,1606 @@
+{
+  "_fuente": "Temario y datos del proceso: LITERALES de la Resolución de 22 de diciembre de 2025, de la Presidencia de la Agencia Estatal de Administración Tributaria (BOE núm. 314, de 30/12/2025, https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27056). El temario es el ANEXO I: Materias comunes (7 temas de Organización del Estado y AGE + 5 de Derecho Administrativo General) y Materias específicas (20 temas de Organización de la Hacienda Pública y Derecho Tributario). Cifras de plazas literales de la base 2: turno libre 1.000 (920 general + 80 discapacidad) y promoción interna 400.",
+  "identity": {
+    "nombre": "Agente de la Hacienda Pública",
+    "short_name": "Agente de Hacienda",
+    "slug": "agente-hacienda",
+    "position_type": "agente_hacienda",
+    "grupo": "C",
+    "subgrupo": "C1",
+    "categoria": "C1",
+    "tipo_acceso": "libre",
+    "administracion": "Estado",
+    "administracion_config": "estado",
+    "administracion_display": "Agencia Estatal de Administración Tributaria (AEAT)",
+    "titulo_requerido": "Título de Bachiller o Técnico, o tener aprobadas las pruebas de acceso a la Universidad para mayores de 25 años",
+    "coverage_level": "con_landing",
+    "fetcher_type": "http",
+    "headless_required": false,
+    "familia": "administracion_general",
+    "color_primario": "blue",
+    "sistema_selectivo": "oposicion",
+    "emoji": "🏛️",
+    "badge": "C1",
+    "hasPsychometricTest": false,
+    "aliases": [
+      "agente de hacienda",
+      "agente hacienda publica",
+      "agentes de la hacienda publica",
+      "oposicion agente de hacienda",
+      "agente tributario aeat",
+      "cuerpo general administrativo hacienda"
+    ],
+    "ccaa": "estado",
+    "temas_count": 32,
+    "bloques_count": 2
+  },
+  "examScoring": {
+    "penaltyDivisor": 3,
+    "source": "BOE-A-2025-27056, base 7. Pendiente de confirmar el divisor exacto contra el texto de la base al preparar el simulacro: se fija 3 (la regla habitual de la AEAT) y se marca para verificar antes de publicar simulacros."
+  },
+  "examen_config": {
+    "tipo": "Oposición: dos ejercicios obligatorios y eliminatorios (cuestionario de respuestas múltiples + supuestos prácticos)",
+    "penalizacion": "Pendiente de confirmar contra la base 7 del BOE antes de publicar simulacros.",
+    "total_preguntas": null,
+    "partes": [
+      {
+        "nombre": "Primer ejercicio — cuestionario de respuestas múltiples",
+        "preguntas": null,
+        "reserva": null,
+        "puntuacion_max": null,
+        "puntuacion_min": null,
+        "nota": "Teórico, sobre el programa del Anexo I. Detalle a completar contra la base 7 del BOE."
+      },
+      {
+        "nombre": "Segundo ejercicio — supuestos de carácter práctico",
+        "preguntas": null,
+        "reserva": null,
+        "puntuacion_max": null,
+        "puntuacion_min": null,
+        "nota": "Práctico. Detalle a completar contra la base 7 del BOE."
+      }
+    ],
+    "notas": "Fuente: BOE-A-2025-27056. Los detalles de puntuación quedan por completar a propósito en vez de suponerse."
+  },
+  "landing": {
+    "estadisticas": [
+      {
+        "numero": "1.000",
+        "texto": "Plazas (turno libre)",
+        "color": "text-green-600"
+      },
+      {
+        "numero": "32",
+        "texto": "Temas oficiales",
+        "color": "text-blue-600"
+      },
+      {
+        "numero": "400",
+        "texto": "Plazas (promoción interna)",
+        "color": "text-purple-600"
+      },
+      {
+        "numero": "C1",
+        "texto": "Subgrupo",
+        "color": "text-orange-600"
+      }
+    ],
+    "faqs": [
+      {
+        "pregunta": "¿Cuántas plazas hay?",
+        "respuesta": "La última convocatoria publicada ofertó 1.400 plazas: 1.000 por turno libre (920 de acceso general y 80 reservadas a personas con discapacidad) y 400 por promoción interna, en el Cuerpo General Administrativo de la Administración del Estado, especialidad de Agentes de la Hacienda Pública."
+      },
+      {
+        "pregunta": "¿En qué grupo está la plaza?",
+        "respuesta": "Grupo C, subgrupo C1, del Cuerpo General Administrativo de la Administración del Estado. La especialidad es Agentes de la Hacienda Pública y depende de la Agencia Estatal de Administración Tributaria."
+      },
+      {
+        "pregunta": "¿Qué titulación se necesita?",
+        "respuesta": "El título de Bachiller o de Técnico, o bien tener aprobadas las pruebas de acceso a la Universidad para mayores de 25 años."
+      },
+      {
+        "pregunta": "¿Qué entra en el temario?",
+        "respuesta": "El Anexo I tiene 32 temas en dos bloques: 12 de materias comunes (organización del Estado, Administración General del Estado, funcionamiento electrónico, igualdad, empleo público y Derecho Administrativo General) y 20 de materias específicas de Organización de la Hacienda Pública y Derecho Tributario, desde la Ley General Tributaria hasta el IRPF, Sociedades, IVA y Aduanas."
+      },
+      {
+        "pregunta": "¿Cómo es el proceso selectivo?",
+        "respuesta": "Son dos ejercicios obligatorios y eliminatorios: un cuestionario de respuestas múltiples sobre el temario y un segundo ejercicio de supuestos de carácter práctico."
+      }
+    ],
+    "description": "Prepara la oposición de Agente de la Hacienda Pública (AEAT, subgrupo C1) con tests por tema ajustados al temario oficial del Anexo I publicado en el BOE.",
+    "seo_title": "Oposición Agente de Hacienda (AEAT) 2026 | Temario oficial y tests por tema",
+    "seo_description": "Tests de la oposición de Agente de la Hacienda Pública: 32 temas del Anexo I del BOE, subgrupo C1, Agencia Estatal de Administración Tributaria."
+  },
+  "convocatoria": {
+    "año": 2026,
+    "estado_proceso": "oep_aprobada",
+    "diario_oficial": "BOE",
+    "diario_referencia": "BOE núm. 314, de 30 de diciembre de 2025 (BOE-A-2025-27056)",
+    "numero": "Resolución de 22 de diciembre de 2025 de la Presidencia de la AEAT",
+    "fecha": "2025-12-22",
+    "diario": "BOE núm. 314 de 30/12/2025",
+    "programa_url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27056",
+    "seguimiento_url": "https://sede.agenciatributaria.gob.es/Sede/agencia-tributaria/empleo-publico.html",
+    "plazas_libres": 1000,
+    "plazas_promocion_interna": 400,
+    "plazas_discapacidad": 80,
+    "inscription_start": null,
+    "inscription_deadline": null,
+    "exam_date": null,
+    "exam_date_approximate": false,
+    "boe_publication_date": "2025-12-30",
+    "boe_reference": "BOE-A-2025-27056",
+    "oep_decreto": "Oferta de Empleo Público 2026",
+    "oep_fecha": null
+  },
+  "bloques": [
+    {
+      "numero": 1,
+      "titulo": "Materias Comunes",
+      "icon": "⚖️"
+    },
+    {
+      "numero": 2,
+      "titulo": "Materias Específicas (Hacienda Pública y Derecho Tributario)",
+      "icon": "🏛️"
+    }
+  ],
+  "temario": [
+    {
+      "topic_number": 1,
+      "bloque": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "La Constitución Española de 1978: Estructura y contenido. Derechos y deberes fundamentales. Su garantía y suspensión. La Corona. El Tribunal Constitucional."
+    },
+    {
+      "topic_number": 2,
+      "bloque": 1,
+      "titulo": "Las Cortes Generales",
+      "epigrafe": "Las Cortes Generales: Composición, atribuciones y funcionamiento. El Defensor del Pueblo. El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española."
+    },
+    {
+      "topic_number": 3,
+      "bloque": 1,
+      "titulo": "El Gobierno",
+      "epigrafe": "El Gobierno: Nombramiento y cese. Las funciones del Gobierno. La Administración Pública: Principios constitucionales informadores. La Administración central y periférica del Estado. Tipos de Entes Públicos."
+    },
+    {
+      "topic_number": 4,
+      "bloque": 1,
+      "titulo": "La organización territorial del Estado",
+      "epigrafe": "La organización territorial del Estado. Comunidades y Ciudades Autónomas. Las Entidades Locales. Las Instituciones de la Unión Europea: El Consejo, el Parlamento Europeo, la Comisión, el Tribunal de Justicia."
+    },
+    {
+      "topic_number": 5,
+      "bloque": 1,
+      "titulo": "El funcionamiento electrónico del sector público",
+      "epigrafe": "El funcionamiento electrónico del sector público. Derecho y obligación de relacionarse electrónicamente con las Administraciones Públicas, registros y archivo electrónico. El Gobierno abierto, la transparencia, el acceso a la información pública, la participación en la rendición de cuentas y el buen gobierno. Normativa reguladora de la protección de datos personales: principios, derechos de las personas y ejercicios de los derechos."
+    },
+    {
+      "topic_number": 6,
+      "bloque": 1,
+      "titulo": "Políticas de igualdad de género, no discriminación y contra la violencia de género",
+      "epigrafe": "Políticas de igualdad de género, no discriminación y contra la violencia de género. Discapacidad y dependencia: régimen jurídico."
+    },
+    {
+      "topic_number": 7,
+      "bloque": 1,
+      "titulo": "Régimen jurídico del personal al servicio de las Administraciones Públicas",
+      "epigrafe": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El Estatuto Básico del Empleado Público. Derechos y deberes de los funcionarios. La provisión de puestos de trabajo y la carrera administrativa. Situaciones administrativas. Incompatibilidades y régimen disciplinario. El régimen de Seguridad Social de los funcionarios."
+    },
+    {
+      "topic_number": 8,
+      "bloque": 1,
+      "titulo": "Las fuentes del Derecho Administrativo",
+      "epigrafe": "Las fuentes del Derecho Administrativo. La jerarquía de las fuentes. La Constitución. La Ley. El Reglamento. El ordenamiento jurídico de la Unión Europea."
+    },
+    {
+      "topic_number": 9,
+      "bloque": 1,
+      "titulo": "Los actos administrativos",
+      "epigrafe": "Los actos administrativos. Concepto y clases. Motivación, forma y eficacia de los actos administrativos. Notificación y publicación. Nulidad y anulabilidad. La revisión de oficio."
+    },
+    {
+      "topic_number": 10,
+      "bloque": 1,
+      "titulo": "El procedimiento administrativo común",
+      "epigrafe": "El procedimiento administrativo común. La capacidad de obrar y el concepto de interesado. Representación. Identificación y firma de los interesados. Derechos del interesado en el procedimiento administrativo. Obligación de resolver y silencio administrativo. Términos y plazos."
+    },
+    {
+      "topic_number": 11,
+      "bloque": 1,
+      "titulo": "Las fases del procedimiento administrativo",
+      "epigrafe": "Las fases del procedimiento administrativo: Iniciación, ordenación, instrucción y finalización. La ejecución de los actos y resoluciones administrativas."
+    },
+    {
+      "topic_number": 12,
+      "bloque": 1,
+      "titulo": "Los recursos administrativos",
+      "epigrafe": "Los recursos administrativos: concepto y clases. Recurso de alzada. Recurso potestativo de reposición. Recurso extraordinario de revisión. La jurisdicción contencioso-administrativa: objeto y plazos de interposición del recurso contencioso-administrativo."
+    },
+    {
+      "topic_number": 13,
+      "bloque": 2,
+      "titulo": "El sistema fiscal español",
+      "epigrafe": "El sistema fiscal español. Principios impositivos en la Constitución Española. Los impuestos de titularidad estatal y sus características. La Hacienda Pública Estatal, Autonómica y Local."
+    },
+    {
+      "topic_number": 14,
+      "bloque": 2,
+      "titulo": "La Agencia Estatal de Administración Tributaria",
+      "epigrafe": "La Agencia Estatal de Administración Tributaria: creación, naturaleza, objetivos, funciones y organización."
+    },
+    {
+      "topic_number": 15,
+      "bloque": 2,
+      "titulo": "Derecho Tributario",
+      "epigrafe": "Derecho Tributario: concepto y contenido. Fuentes. Los tributos: concepto y clasificación. La obligación tributaria. Hecho imponible. Devengo. Base imponible y liquidable. Cuota y deuda tributaria."
+    },
+    {
+      "topic_number": 16,
+      "bloque": 2,
+      "titulo": "Obligaciones tributarias formales",
+      "epigrafe": "Obligaciones tributarias formales. Derechos y garantías de los obligados tributarios. Los obligados tributarios. La capacidad de obrar en el orden tributario. Representación y domicilio fiscal. Plazos de prescripción."
+    },
+    {
+      "topic_number": 17,
+      "bloque": 2,
+      "titulo": "Información y Asistencia a los obligados tributarios",
+      "epigrafe": "Información y Asistencia a los obligados tributarios. La colaboración social en la aplicación de los tributos. Carácter reservado de los datos con trascendencia tributaria. Normas comunes sobre actuaciones y procedimientos tributarios: fases. Las liquidaciones tributarias. Obligación de resolver y plazos de resolución. Carga de la prueba. Las notificaciones."
+    },
+    {
+      "topic_number": 18,
+      "bloque": 2,
+      "titulo": "Las declaraciones tributarias",
+      "epigrafe": "Las declaraciones tributarias: concepto y clases. Las autoliquidaciones. Las comunicaciones de datos. Los pagos a cuenta."
+    },
+    {
+      "topic_number": 19,
+      "bloque": 2,
+      "titulo": "Actuaciones y procedimiento de gestión tributaria",
+      "epigrafe": "Actuaciones y procedimiento de gestión tributaria. Los procedimientos de gestión tributaria: iniciación, trámites y terminación. El procedimiento de verificación de datos. El procedimiento de comprobación de valores. El procedimiento de comprobación limitada. Rectificación de autoliquidaciones, declaraciones, comunicaciones de datos e iniciación del procedimiento de devolución."
+    },
+    {
+      "topic_number": 20,
+      "bloque": 2,
+      "titulo": "Actuaciones y procedimiento de inspección",
+      "epigrafe": "Actuaciones y procedimiento de inspección: funciones y facultades. Documentación de las actuaciones de inspección. La personación de la inspección en el domicilio o locales del contribuyente. El procedimiento de inspección: iniciación, desarrollo y terminación. Las medidas cautelares en el procedimiento inspector."
+    },
+    {
+      "topic_number": 21,
+      "bloque": 2,
+      "titulo": "La extinción de la deuda tributaria (I)",
+      "epigrafe": "La extinción de la deuda tributaria (I). Medios de extinción de la deuda. El pago o cumplimiento: forma, momento, plazos, imputación, consignación y medios de pago. Aplazamiento y fraccionamiento del pago."
+    },
+    {
+      "topic_number": 22,
+      "bloque": 2,
+      "titulo": "La extinción de la deuda tributaria (II)",
+      "epigrafe": "La extinción de la deuda tributaria (II). Otras formas de extinción de las deudas: la compensación, la extinción de deudas de las entidades de derecho público mediante deducciones sobre transferencias. La condonación. Baja provisional por insolvencia. Terminación del procedimiento de apremio."
+    },
+    {
+      "topic_number": 23,
+      "bloque": 2,
+      "titulo": "Las actuaciones y el procedimiento de recaudación tributaria",
+      "epigrafe": "Las actuaciones y el procedimiento de recaudación tributaria: la recaudación en período ejecutivo. Iniciación. Efectos. Recargos del período ejecutivo. Procedimiento de apremio: características, concurrencia y suspensión del procedimiento. Providencia de apremio: concepto y plazos para el pago. Las garantías de la deuda tributaria: tipos y ejecución de garantías."
+    },
+    {
+      "topic_number": 24,
+      "bloque": 2,
+      "titulo": "El embargo",
+      "epigrafe": "El embargo. Facultades de la recaudación. Las diligencias de embargo: concepto y motivos de oposición. Práctica del embargo de bienes y derechos. Depósito y enajenación de los bienes embargados. El procedimiento frente a responsables. Procedimiento de recaudación frente a los sucesores."
+    },
+    {
+      "topic_number": 25,
+      "bloque": 2,
+      "titulo": "La potestad sancionadora en materia tributaria",
+      "epigrafe": "La potestad sancionadora en materia tributaria. Principios. Sujetos responsables. Concepto y clases de infracciones y sanciones tributarias. Cuantificación de las sanciones tributarias pecuniarias. Extinción de la responsabilidad derivada de las infracciones tributarias y extinción de las sanciones tributarias. Procedimiento sancionador en materia tributaria: iniciación, instrucción y terminación."
+    },
+    {
+      "topic_number": 26,
+      "bloque": 2,
+      "titulo": "Revisión en vía administrativa",
+      "epigrafe": "Revisión en vía administrativa. El recurso de reposición. Las reclamaciones económico-administrativas. Los Tribunales Económico-Administrativos."
+    },
+    {
+      "topic_number": 27,
+      "bloque": 2,
+      "titulo": "El Impuesto sobre la Renta de las Personas Físicas (I)",
+      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (I). Naturaleza, objeto y ámbito de aplicación. Sujeción al impuesto: aspectos materiales, personales y temporales. Rendimientos del trabajo, rendimientos del capital mobiliario, rendimientos del capital inmobiliario, rendimientos de actividades económicas. Imputación de rentas inmobiliarias. Ganancias y pérdidas patrimoniales."
+    },
+    {
+      "topic_number": 28,
+      "bloque": 2,
+      "titulo": "El Impuesto sobre la Renta de las Personas Físicas (II)",
+      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (II): clases de Renta. Integración y compensación de rentas. Base liquidable general y del ahorro. Adecuación del impuesto a las circunstancias personales y familiares del contribuyente. Cálculo del impuesto estatal. Cuota diferencial. Tributación familiar. Gestión del Impuesto."
+    },
+    {
+      "topic_number": 29,
+      "bloque": 2,
+      "titulo": "El Impuesto sobre Sociedades",
+      "epigrafe": "El Impuesto sobre Sociedades: naturaleza y ámbito de aplicación. Hecho imponible. Contribuyentes. Concepto y determinación de la base imponible. Reglas de imputación temporal. Reducciones en la base imponible. Período impositivo y devengo del impuesto. Tipo de gravamen y cuota íntegra. Deducciones para evitar la doble imposición internacional. Bonificaciones. Declaración, autoliquidación y liquidación provisional. Devolución."
+    },
+    {
+      "topic_number": 30,
+      "bloque": 2,
+      "titulo": "El Impuesto sobre el Valor Añadido (I)",
+      "epigrafe": "El Impuesto sobre el Valor Añadido (I). Naturaleza y ámbito de aplicación. Entregas de bienes y prestaciones de servicios: hecho imponible. Exenciones. Lugar de realización del hecho imponible."
+    },
+    {
+      "topic_number": 31,
+      "bloque": 2,
+      "titulo": "El Impuesto sobre el Valor Añadido (II)",
+      "epigrafe": "El Impuesto sobre el Valor Añadido (II). Sujetos pasivos. Repercusión del impuesto. Devengo del impuesto. Base imponible. Deducciones: requisitos subjetivos de la deducción y limitaciones del derecho a deducir. Régimen de deducciones en sectores diferenciados de la actividad empresarial o profesional. Regla de prorrata. Regularización de deducciones por bienes de inversión. Devoluciones."
+    },
+    {
+      "topic_number": 32,
+      "bloque": 2,
+      "titulo": "La Aduana",
+      "epigrafe": "La Aduana: representación aduanera. Deuda aduanera de importación y deuda aduanera de exportación. Inclusión de mercancías en un régimen aduanero: disposiciones generales."
+    }
+  ],
+  "scope": {
+    "1": [
+      {
+        "law": "CE",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "159",
+          "160",
+          "161",
+          "162",
+          "163",
+          "164",
+          "165"
+        ]
+      }
+    ],
+    "2": [
+      {
+        "law": "CE",
+        "articles": [
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "54",
+          "117",
+          "118",
+          "119",
+          "120",
+          "121",
+          "122",
+          "123",
+          "124",
+          "125",
+          "126",
+          "127"
+        ]
+      }
+    ],
+    "3": [
+      {
+        "law": "CE",
+        "articles": [
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107"
+        ]
+      },
+      {
+        "law": "Ley 40/2015",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104"
+        ]
+      }
+    ],
+    "4": [
+      {
+        "law": "CE",
+        "articles": [
+          "137",
+          "138",
+          "139",
+          "140",
+          "141",
+          "142",
+          "143",
+          "144",
+          "145",
+          "146",
+          "147",
+          "148",
+          "149",
+          "150",
+          "151",
+          "152",
+          "153",
+          "154",
+          "155",
+          "156",
+          "157",
+          "158"
+        ]
+      },
+      {
+        "law": "Ley 7/1985",
+        "articles": [
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "law": "Unión Europea (instituciones)",
+        "wholeLaw": true
+      }
+    ],
+    "5": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "14",
+          "16",
+          "26",
+          "27",
+          "28"
+        ]
+      },
+      {
+        "law": "Ley 19/2013",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24"
+        ]
+      },
+      {
+        "law": "LO 3/2018",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18"
+        ]
+      }
+    ],
+    "6": [
+      {
+        "law": "LO 3/2007",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14"
+        ]
+      },
+      {
+        "law": "LO 1/2004",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ]
+      }
+    ],
+    "7": [
+      {
+        "law": "RDL 5/2015",
+        "wholeLaw": true
+      }
+    ],
+    "8": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "127",
+          "128",
+          "129",
+          "130",
+          "131",
+          "132",
+          "133"
+        ]
+      },
+      {
+        "law": "CE",
+        "articles": [
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96"
+        ]
+      }
+    ],
+    "9": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "106",
+          "107",
+          "108",
+          "109",
+          "110",
+          "111"
+        ]
+      }
+    ],
+    "10": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33"
+        ]
+      }
+    ],
+    "11": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105"
+        ]
+      }
+    ],
+    "12": [
+      {
+        "law": "Ley 39/2015",
+        "articles": [
+          "112",
+          "113",
+          "114",
+          "115",
+          "116",
+          "117",
+          "118",
+          "119",
+          "120",
+          "121",
+          "122",
+          "123",
+          "124",
+          "125",
+          "126"
+        ]
+      }
+    ],
+    "13": [
+      {
+        "law": "CE",
+        "articles": [
+          "31",
+          "133",
+          "134"
+        ]
+      },
+      {
+        "law": "LGT",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      }
+    ],
+    "14": [
+      {
+        "law": "Ley 31/1990",
+        "articles": [
+          "103"
+        ]
+      }
+    ],
+    "15": [
+      {
+        "law": "LGT",
+        "articles": [
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28"
+        ]
+      }
+    ],
+    "16": [
+      {
+        "law": "LGT",
+        "articles": [
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57"
+        ]
+      }
+    ],
+    "17": [
+      {
+        "law": "LGT",
+        "articles": [
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97"
+        ]
+      }
+    ],
+    "18": [
+      {
+        "law": "LGT",
+        "articles": [
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107",
+          "108",
+          "109",
+          "110",
+          "111",
+          "112",
+          "113",
+          "114",
+          "115",
+          "116"
+        ]
+      }
+    ],
+    "19": [
+      {
+        "law": "LGT",
+        "articles": [
+          "117",
+          "118",
+          "119",
+          "120",
+          "121",
+          "122",
+          "123",
+          "124",
+          "125",
+          "126",
+          "127",
+          "128",
+          "129",
+          "130",
+          "131",
+          "132",
+          "133",
+          "134",
+          "135",
+          "136",
+          "137",
+          "138",
+          "139",
+          "140"
+        ]
+      }
+    ],
+    "20": [
+      {
+        "law": "LGT",
+        "articles": [
+          "141",
+          "142",
+          "143",
+          "144",
+          "145",
+          "146",
+          "147",
+          "148",
+          "149",
+          "150",
+          "151",
+          "152",
+          "153",
+          "154",
+          "155",
+          "156",
+          "157",
+          "158",
+          "159"
+        ]
+      }
+    ],
+    "21": [
+      {
+        "law": "LGT",
+        "articles": [
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65"
+        ]
+      }
+    ],
+    "22": [
+      {
+        "law": "LGT",
+        "articles": [
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82"
+        ]
+      }
+    ],
+    "23": [
+      {
+        "law": "LGT",
+        "articles": [
+          "160",
+          "161",
+          "162",
+          "163",
+          "164",
+          "165",
+          "166",
+          "167",
+          "168"
+        ]
+      },
+      {
+        "law": "RD 939/2005",
+        "articles": [
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79"
+        ]
+      }
+    ],
+    "24": [
+      {
+        "law": "LGT",
+        "articles": [
+          "169",
+          "170",
+          "171",
+          "172",
+          "173",
+          "174",
+          "175",
+          "176",
+          "177"
+        ]
+      },
+      {
+        "law": "RD 939/2005",
+        "articles": [
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101"
+        ]
+      }
+    ],
+    "25": [
+      {
+        "law": "LGT",
+        "articles": [
+          "178",
+          "179",
+          "180",
+          "181",
+          "182",
+          "183",
+          "184",
+          "185",
+          "186",
+          "187",
+          "188",
+          "189",
+          "190",
+          "191",
+          "192",
+          "193",
+          "194",
+          "195",
+          "196",
+          "197",
+          "198",
+          "199",
+          "200",
+          "201",
+          "202",
+          "203",
+          "204",
+          "205",
+          "206",
+          "207",
+          "208",
+          "209",
+          "210",
+          "211",
+          "212"
+        ]
+      }
+    ],
+    "26": [
+      {
+        "law": "LGT",
+        "articles": [
+          "213",
+          "214",
+          "215",
+          "216",
+          "217",
+          "218",
+          "219",
+          "220",
+          "221",
+          "222",
+          "223",
+          "224",
+          "225",
+          "226",
+          "227",
+          "228",
+          "229",
+          "230",
+          "231",
+          "232",
+          "233",
+          "234",
+          "235",
+          "236",
+          "237",
+          "238",
+          "239",
+          "240",
+          "241",
+          "242",
+          "243",
+          "244",
+          "245",
+          "246",
+          "247",
+          "248",
+          "249"
+        ]
+      }
+    ],
+    "27": [
+      {
+        "law": "LIRPF",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43"
+        ]
+      }
+    ],
+    "28": [
+      {
+        "law": "LIRPF",
+        "articles": [
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107",
+          "108"
+        ]
+      }
+    ],
+    "29": [
+      {
+        "law": "LIS",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "124",
+          "125",
+          "126",
+          "127",
+          "128",
+          "129",
+          "130",
+          "131",
+          "132"
+        ]
+      }
+    ],
+    "30": [
+      {
+        "law": "LIVA",
+        "articles": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74"
+        ]
+      }
+    ],
+    "31": [
+      {
+        "law": "LIVA",
+        "articles": [
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85",
+          "86",
+          "87",
+          "88",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99",
+          "100",
+          "101",
+          "102",
+          "103",
+          "104",
+          "105",
+          "106",
+          "107",
+          "108",
+          "109",
+          "110",
+          "111",
+          "112",
+          "113",
+          "114",
+          "115",
+          "116",
+          "117",
+          "118",
+          "119"
+        ]
+      }
+    ],
+    "32": [
+      {
+        "law": "Código Aduanero UE",
+        "wholeLaw": true
+      }
+    ]
+  },
+  "hitos": [
+    {
+      "fecha": "2025-12-30",
+      "titulo": "Convocatoria publicada en el BOE",
+      "descripcion": "Resolución de 22 de diciembre de 2025 de la Presidencia de la Agencia Estatal de Administración Tributaria, por la que se convoca proceso selectivo para ingreso por acceso libre y promoción interna en el Cuerpo General Administrativo de la Administración del Estado, especialidad de Agentes de la Hacienda Pública. 1.400 plazas. BOE núm. 314.",
+      "status": "completed",
+      "order_index": 1,
+      "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27056"
+    },
+    {
+      "fecha": "2026-03-21",
+      "titulo": "Primer ejercicio de la convocatoria de 1.400 plazas",
+      "descripcion": "Fecha del primer ejercicio de la convocatoria publicada el 30/12/2025. El proceso está en marcha; quien empieza a prepararse ahora apunta a la siguiente convocatoria, de la OEP 2026.",
+      "status": "completed",
+      "order_index": 2,
+      "url": null
+    }
+  ]
+}

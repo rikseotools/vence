@@ -263,6 +263,16 @@ function PerfilPageContent() {
   const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     {
+      value: 'agente_hacienda',
+      label: 'Agente de Hacienda',
+      data: {
+        name: 'Agente de la Hacienda Pública',
+        slug: 'agente-hacienda',
+        categoria: 'C1',
+        administracion: 'Agencia Estatal de Administración Tributaria (AEAT)'
+      }
+    },
+    {
       value: 'auxiliar_enfermeria_geriatria_diputacion_cadiz',
       label: 'Aux. Enfermería Geriatría Dip. Cádiz',
       data: {
