@@ -1577,16 +1577,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Y se puede MEDIR si sirve**, que es lo que evita discutirlo a ojo: `npm run sesiones:friccion` da el ratio de escape por guardarraíl. Si el recordatorio funciona, bajan los `guard_escape` de `robustez-push`.
 - **Relacionadas:** [T-423] (el contador que lo mide), [T-486] (la flota que lo necesitaría más).
 
-### [T-497] 🟠 [ABIERTO 03/08] El escape del push-guard también se usa de prefijo: 13 de 23 no responden a ningún bloqueo
-
-- **Esfuerzo: minutos.** El arreglo ya está escrito y probado para su hermano: se copia el patrón de [T-496].
-- **CÓMO SALIÓ:** al desglosar los escapes de `indice-compartido` apareció el mismo patrón en el vecino, y con más volumen absoluto.
-- **LA MEDIDA (7 días):** `backlog-push` rodeado el 33% (23/70) — banda `erosion`— pero **13 de esos 23 escapes NUNCA fueron precedidos de un bloqueo a esa sesión**. O sea que más de la mitad de los rodeos no son rodeos: son `BACKLOG_GUARD_SKIP=1` arrastrado en el comando.
-- **Por qué importa:** ese escape apaga el guard **entero** para todos los ficheros del push, y el guard existe para el olvido de reclamar (la colisión T-047/T-050). Una sesión que lo lleva puesto puede pushear trabajo sobre una tarea de otra sin que nada la pare.
-- **El arreglo, ya probado:** que `BACKLOG_GUARD_SKIP` pida un **MOTIVO** en vez de aceptar un `1` (`evaluarEscape` en `lib/sessions/indiceCompartido.cjs`, reutilizable), que quede registrado en el detalle de la fricción, y que un valor inválido **no bloquee nada nuevo** — simplemente se evalúa el guard.
-- **⚠️ Ojo con el tercero:** `ROBUSTEZ_GUARD_SKIP` y `CONTEXTO_GUARD_SKIP` no salen en la medida porque casi no se usan. Antes de tocarlos, medir: cambiar un escape que nadie usa es trabajo sin efecto.
-- **Relacionadas:** [T-496] (mismo fallo, mismo arreglo), [T-423] (el contador), [T-494] (el parte que lo enseña).
-
 ### [T-491] 🟡 [ABIERTO 02/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
 
 - **Esfuerzo: rato.** Es una regla de alerta; el camino está trillado (acaba de escribirse su gemela `sim_ruta_rota`).
@@ -3390,6 +3380,24 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-497] ✅ 🟠 [HECHA 03/08] El escape del push-guard también se usa de prefijo: 13 de 23 no responden a ningún bloqueo
+
+- **RESOLUCIÓN (03/08).** `BACKLOG_GUARD_SKIP` pide un MOTIVO, igual que su hermano [T-496]. Probadas las tres ramas contra el guard real: con `=1` se ignora y el guard se evalúa como siempre (no bloquea nada nuevo); con motivo pasa y queda escrito en la fricción; sin variable, comportamiento normal.
+  - **El criterio se MOVIÓ a un solo sitio**, que era lo que faltaba para no repetir el fallo de fondo: `evaluarEscape` vive ahora en `lib/observability/friccionSesiones.cjs` —junto a la medida y a `escapesSinBloqueo`— y lo comparten el guard del índice y el del push. Dejar una copia en cada uno es como nacieron los cinco escritores de `seguimiento_url` ([T-130]); hay test que fija que **es la misma función**, no dos iguales.
+  - **El mensaje de BLOQUEO también cambió.** Seguía enseñando `BACKLOG_GUARD_SKIP=1`, o sea que el propio guard le dictaba a la sesión el prefijo que luego se le quedaba puesto. Ahora pide el motivo, y hay test de que el script ya no compara contra `'1'`.
+  - **LOS OTROS DOS ESCAPES NO SE TOCAN, y está medido:** en 30 días `ROBUSTEZ_GUARD_SKIP` no aparece ni una vez y `CONTEXTO_GUARD_SKIP` tampoco (su guard bloqueó 3 veces y nadie lo rodeó). Cambiar un escape que nadie usa es trabajo sin efecto — la propia ficha lo advertía y la medida lo confirma.
+  - **`done-verificacion` (38%) se queda aparte a propósito:** su escape es `--igualmente`, un flag que se teclea en el comando de cierre, no una variable de entorno que se arrastre. Es otro fenómeno y necesita su propia medida antes de tocarlo.
+  - **Efecto esperado y cómo se comprueba:** los preventivos deberían caer a cero en la serie de `npm run parte`. Si el ratio sigue alto pero **sin** preventivos, entonces sí hay un caso legítimo que el guard no contempla, y ahí el arreglo será otro.
+
+- **Esfuerzo: minutos.** El arreglo ya está escrito y probado para su hermano: se copia el patrón de [T-496].
+- **CÓMO SALIÓ:** al desglosar los escapes de `indice-compartido` apareció el mismo patrón en el vecino, y con más volumen absoluto.
+- **LA MEDIDA (7 días):** `backlog-push` rodeado el 33% (23/70) — banda `erosion`— pero **13 de esos 23 escapes NUNCA fueron precedidos de un bloqueo a esa sesión**. O sea que más de la mitad de los rodeos no son rodeos: son `BACKLOG_GUARD_SKIP=1` arrastrado en el comando.
+- **Por qué importa:** ese escape apaga el guard **entero** para todos los ficheros del push, y el guard existe para el olvido de reclamar (la colisión T-047/T-050). Una sesión que lo lleva puesto puede pushear trabajo sobre una tarea de otra sin que nada la pare.
+- **El arreglo, ya probado:** que `BACKLOG_GUARD_SKIP` pida un **MOTIVO** en vez de aceptar un `1` (`evaluarEscape` en `lib/sessions/indiceCompartido.cjs`, reutilizable), que quede registrado en el detalle de la fricción, y que un valor inválido **no bloquee nada nuevo** — simplemente se evalúa el guard.
+- **⚠️ Ojo con el tercero:** `ROBUSTEZ_GUARD_SKIP` y `CONTEXTO_GUARD_SKIP` no salen en la medida porque casi no se usan. Antes de tocarlos, medir: cambiar un escape que nadie usa es trabajo sin efecto.
+- **Relacionadas:** [T-496] (mismo fallo, mismo arreglo), [T-423] (el contador), [T-494] (el parte que lo enseña).
+
 
 ### [T-496] ✅ 🟠 [HECHA 03/08] El guardarraíl del índice compartido se rodea el 67% de las veces: está MUERTO y lo dijo el parte
 

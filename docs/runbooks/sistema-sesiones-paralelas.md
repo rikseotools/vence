@@ -362,7 +362,7 @@ configuración local y sus dependencias.
 
 ## 6. Escapes, y por qué están nombrados
 
-`BACKLOG_GUARD_SKIP=1` · `INDICE_COMPARTIDO_OK="motivo"` · `ROBUSTEZ_GUARD_SKIP=1` ·
+`BACKLOG_GUARD_SKIP="motivo"` · `INDICE_COMPARTIDO_OK="motivo"` · `ROBUSTEZ_GUARD_SKIP=1` ·
 `PRECOMMIT_TESTS_SKIP=1` · `CONTEXTO_GUARD_SKIP=1`
 
 Cada guardarraíl tiene el **suyo**, a propósito: si compartieran uno, apagar el que estorba hoy
@@ -372,7 +372,7 @@ apagaría de paso el que protege de otra cosa.
 7 días: de los 10 escapes de `indice-compartido`, **6 no respondían a ningún bloqueo de esa
 sesión** — dos sesiones escaparon dos veces cada una sin que el guard las hubiera parado jamás.
 El ratio lo pintaba como «guardarraíl muerto», y la lectura correcta era la contraria: el guard
-acertaba y la llave se había quedado puesta. Por eso `INDICE_COMPARTIDO_OK` pide ahora un
+acertaba y la llave se había quedado puesta. Por eso `INDICE_COMPARTIDO_OK` y `BACKLOG_GUARD_SKIP` piden ahora un
 **motivo** (como `claim --force --motivo` o `snooze --motivo`), que no se arrastra sin darse
 cuenta y además queda escrito. **No añade ningún bloqueo nuevo**: un valor que no vale se ignora y
 el guard se limita a evaluarse. El desglose vive en `escapesSinBloqueo()` y sale en `npm run

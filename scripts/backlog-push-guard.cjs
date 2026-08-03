@@ -12,7 +12,9 @@
 //   · Cortocircuito: si ningún commit menciona un T-NNN, ni se conecta a la BD (push normal
 //     no paga peaje).
 //
-// Escape hatch: BACKLOG_GUARD_SKIP=1 (para casos legítimos: rehacer historia, hotfix sin ficha).
+// Escape hatch: BACKLOG_GUARD_SKIP="por qué" (rehacer historia, hotfix sin ficha). Pide un
+// MOTIVO desde T-497: con un «1» se convertía en prefijo — 13 de 23 escapes medidos NO respondían
+// a ningún bloqueo de esa sesión, y este apaga el guard ENTERO para todos los ficheros del push.
 // El session-id se resuelve igual que scripts/backlog.cjs: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
 
 const fs = require('fs')
@@ -21,6 +23,9 @@ const { execFileSync } = require('child_process')
 const {
   clasificarMenciones, evaluatePush, parseGitLog, GIT_LOG_FORMAT,
 } = require('../lib/backlog/pushGuard.cjs')
+// El criterio de qué vale como escape es COMPARTIDO con el resto de guardarraíles (T-497): vive
+// junto a la medida en el núcleo de fricción, para que no diverjan.
+const { evaluarEscape } = require('../lib/observability/friccionSesiones.cjs')
 
 /** Registrar el roce sin bloquear NUNCA: detached y sin esperar (T-423). */
 function friccion(clase, guard, detalle) {
@@ -74,12 +79,26 @@ function collectChangedFiles() {
 }
 
 async function main() {
-  if (process.env.BACKLOG_GUARD_SKIP === '1') {
-    console.log('⏭️  backlog-push-guard saltado (BACKLOG_GUARD_SKIP=1)')
+  // ── EL ESCAPE CUESTA UN MOTIVO (T-497) ─────────────────────────────────────────────────────
+  // Mismo fallo y mismo arreglo que su hermano del índice compartido (T-496), y aquí con más
+  // volumen: **13 de 23 escapes NUNCA respondieron a un bloqueo de esa sesión**, o sea que más de
+  // la mitad no eran rodeos sino un `=1` arrastrado en el comando. Y este apaga el guard ENTERO
+  // para todos los ficheros del push, incluido el que existe para el olvido de reclamar.
+  //
+  // Un valor que no vale NO bloquea nada nuevo: el guard se limita a evaluarse, y un push que no
+  // menciona ninguna tarea viva pasa igual (ni siquiera se conecta a la BD).
+  const esc = evaluarEscape(process.env.BACKLOG_GUARD_SKIP)
+  if (esc.usa && esc.permitido) {
+    console.log(`⏭️  backlog-push-guard saltado: ${esc.motivo}`)
     // Deja constancia (T-423): lo que mata a un guardarraíl no es que bloquee, es que se rodee
     // de forma sistemática sin que nadie lo mida. El escape se emite como `warn` a propósito.
-    friccion('guard_escape', 'backlog-push')
+    friccion('guard_escape', 'backlog-push', esc.motivo)
     return 0
+  }
+  if (esc.usa && !esc.permitido) {
+    console.log(`⚠️  BACKLOG_GUARD_SKIP ignorado — ${esc.problema}`)
+    console.log('    BACKLOG_GUARD_SKIP="rehago historia; la ficha ya está cerrada" git push …')
+    console.log('    (no se bloquea nada por esto: se comprueban las menciones como siempre)')
   }
 
   const branch = git(['rev-parse', '--abbrev-ref', 'HEAD'])
@@ -130,7 +149,8 @@ async function main() {
   console.error('\n   Reclama la tarea (o coordina si la tiene otra sesión) y reintenta.')
   console.error('   Si solo la CITAS como contexto, basta con que no salga en el ASUNTO: los ids del')
   console.error('   cuerpo no exigen claim cuando el asunto ya declara la tarea que trabajas (T-403).')
-  console.error('   Y si es legítimo (rehacer historia): BACKLOG_GUARD_SKIP=1 git push …\n')
+  console.error('   Y si es legítimo (rehacer historia), di POR QUÉ — queda registrado:')
+  console.error('     BACKLOG_GUARD_SKIP="…tu motivo…" git push …\n')
   return 1
 }
 

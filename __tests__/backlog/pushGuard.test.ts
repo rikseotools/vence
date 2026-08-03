@@ -345,3 +345,38 @@ describe('evaluatePush — una tarea CITADA no exige claim', () => {
     expect(r.notices.map((n: any) => n.id)).toEqual(['T-361'])
   })
 })
+
+// ── EL ESCAPE CUESTA UN MOTIVO (T-497) ──────────────────────────────────────────────────────
+// Mismo fallo que su hermano del índice compartido y con más volumen: 13 de 23 escapes medidos
+// NUNCA respondieron a un bloqueo de esa sesión — el `=1` se arrastraba en el comando. Y este
+// apaga el guard ENTERO para todos los ficheros del push.
+describe('el escape del push-guard usa el criterio COMPARTIDO', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { evaluarEscape } = require('@/lib/observability/friccionSesiones.cjs')
+
+  it('un «1» ya no abre la puerta', () => {
+    expect(evaluarEscape('1')).toMatchObject({ usa: true, permitido: false })
+  })
+
+  it('un motivo de verdad sí, y se conserva para registrarlo', () => {
+    const e = evaluarEscape('rehago historia; la ficha ya está cerrada')
+    expect(e.permitido).toBe(true)
+    expect(e.motivo).toContain('rehago historia')
+  })
+
+  // Dos criterios sobre lo que vale como escape acabarían divergiendo: es como nacieron los cinco
+  // escritores de seguimiento_url (T-130). Hay UNA definición y los guardarraíles la comparten.
+  it('es LA MISMA función que usa el guard del índice compartido', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const idx = require('@/lib/sessions/indiceCompartido.cjs')
+    expect(idx.evaluarEscape).toBe(evaluarEscape)
+  })
+
+  it('el script del push-guard NO reimplementa el criterio', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const src = require('fs').readFileSync(require('path').join(process.cwd(), 'scripts/backlog-push-guard.cjs'), 'utf8')
+    expect(src).toContain('evaluarEscape')
+    // La comparación literal contra '1' es exactamente el agujero que esta tarea cierra.
+    expect(src).not.toMatch(/BACKLOG_GUARD_SKIP\s*===\s*'1'/)
+  })
+})
