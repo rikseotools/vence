@@ -53,6 +53,54 @@ Filtrar SIEMPRE por consentimiento: `email_preferences.unsubscribed_all = false`
 
 > **🔒 Garantía anti-desuscritos (por diseño):** el filtro de consentimiento va **hardcoded en el `WHERE`** de la query de audiencia del script `send-promo-inscripcion.cjs` — **NO es un parámetro del config**, así que **ninguna ejecución puede saltárselo** aunque el `promo.json` esté mal. Excluye tanto la **baja total** (`unsubscribed_all`) como la **baja solo de newsletter** (`email_newsletter_disabled`). Quien se da de baja desaparece automáticamente del siguiente envío (verificado E2E). Nota: quien **no tiene fila** en `email_preferences` SÍ recibe — es correcto: "sin fila" = nunca se dio de baja (`COALESCE(...,false)` lo trata como suscrito). **Es imposible enviar a un desuscrito con este script.**
 
+### 2.0-bis SEGMENTAR POR FAMILIA: ya se puede HOY, sin construir nada (medido 03/08/2026)
+
+**No hace falta un criterio de audiencia nuevo.** La herramienta admite **una audiencia por envío** —un
+`target_oposicion` concreto o un tipo general—, así que una familia es simplemente **N envíos, uno por
+cada oposición suya**. Y para casi todas las familias N es pequeño:
+
+| Familia | Oposiciones activas con usuarios | Usuarios | % premium | % premium **teniendo temario** |
+|---|---|---|---|---|
+| administracion_general | **84** | 8.883 | 2,66 % | 2,67 % |
+| justicia | 2 | 572 | 2,05 % | 2,10 % |
+| sanidad | 22 | 346 | 2,03 % | 2,28 % |
+| **oficios** | **5** | 342 | **3,94 %** | **4,39 %** |
+| seguridad | 5 | 269 | **0,60 %** | **0,74 %** |
+| tecnica | 2 | 51 | 2,60 % | 3,92 % |
+
+**Cómo usarlo, por familia:**
+
+- **Oficios: 5 envíos cubren la familia ENTERA** (`ordenanza-ayuntamiento-cordoba` 134,
+  `ujieres-cortes-generales` 73, `tecnico-auxiliar-universidad-de-murcia` 53, `subalterno-gva` 45,
+  `subalterno-parlamento-andalucia` 37). Es la familia que **mejor convierte de todo el catálogo** y la
+  que más crece (317 altas en 30 días). Primera opción si hay que elegir uno.
+- **Sanidad: los 5 primeros envíos cubren el 57 %** (`tcae-murcia` 67, `tcae-sermas-madrid` 41,
+  `tcae-galicia` 36, `auxiliar-enfermeria-gva` 27, `tcae-sas` 27). La cola son 17 oposiciones de
+  menos de 20 usuarios: no compensa el envío individual salvo que la promo sea suya.
+- **Administración general NO se segmenta**: son 84 oposiciones y el **83 % de toda la base**. Para
+  ella la audiencia general YA es su segmento.
+- **⛔ A seguridad NO se le manda oferta premium.** 269 usuarios al **0,60 %**, y —esto es lo que
+  decide— **0,74 % incluso teniendo temario**, contra el 2,67 % de administrativa. La medición separa
+  a propósito quién tiene contenido y quién no, para no confundir «no convierte» con «no tiene qué
+  estudiar»: aquí no es falta de producto, es que ese público no compra. El retorno esperado de un
+  envío entero son ~2 conversiones, y el coste es fatiga de lista y reputación de envío.
+
+**La familia NO se pregunta: se DEDUCE.** `user_profiles.target_oposicion` → `oposiciones.familia`
+cubre el **91,7 %** de los 11.959 usuarios (95,9 % tiene objetivo). Añadir un paso al registro para
+preguntarlo sería preguntarle a 9 de cada 10 algo que ya está en la BD, y encima solo captaría a los
+nuevos: deducirlo funciona **retroactivamente sobre toda la base**. Las **favoritas no sirven** como
+señal supletoria — medido: de los 671 usuarios cuya familia no se puede deducir, solo **6** tienen una
+configuración guardada y **2** preguntas guardadas (1,2 %); son función de repaso, no de identidad.
+
+```sql
+-- las oposiciones de una familia, ordenadas por audiencia (una fila = un envío)
+SELECT o.slug, replace(o.slug,'-','_') AS audience_key, count(u.id) AS usuarios
+FROM oposiciones o
+JOIN user_profiles u ON replace(o.slug,'-','_') = u.target_oposicion
+WHERE o.is_active AND o.familia = 'oficios'
+GROUP BY 1,2 ORDER BY usuarios DESC;
+```
+
 ### 2.0 ELEGIR EL ALCANCE correcto (¡decisión previa, no acotar de menos!)
 > **Aprendizaje 05/07 (fallo real en León):** acoté el envío a la **provincia** de León cuando el puesto (Universidad de León) lo puede opositar **toda la comunidad autónoma** → se quedó fuera medio Castilla y León y hubo que hacer un envío make-up. **Regla:** el alcance por defecto de una oposición es **su comunidad autónoma completa**, no solo la provincia.
 - **Autonómico / universidad / estatal en una CCAA** → toda la **comunidad autónoma** (todas sus provincias).
