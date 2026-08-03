@@ -9,7 +9,7 @@
 // CONTENIDO que lo arregle: solo dejar de compartir directorio.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { evaluarIndice, mensajeBloqueo, VIVA_MIN } = require('@/lib/sessions/indiceCompartido.cjs')
+const { evaluarIndice, mensajeBloqueo, evaluarEscape, MOTIVO_MIN, VIVA_MIN } = require('@/lib/sessions/indiceCompartido.cjs')
 
 const AHORA = new Date('2026-07-31T21:00:00Z')
 const haceMin = (m: number) => new Date(AHORA.getTime() - m * 60_000).toISOString()
@@ -121,10 +121,56 @@ describe('el mensaje dice cómo salir, no solo que pasó', () => {
   it('propone el arreglo de verdad (un árbol propio), no solo el escape', () => {
     expect(txt).toMatch(/crear-worktree\.sh/)
   })
-  it('nombra el escape explícito', () => {
-    expect(txt).toMatch(/INDICE_COMPARTIDO_OK=1/)
+  it('nombra el escape explícito — que desde T-496 pide un MOTIVO, no un «1»', () => {
+    expect(txt).toMatch(/INDICE_COMPARTIDO_OK="/)
   })
   it('explica POR QUÉ, para que no se lea como un capricho del hook', () => {
     expect(txt).toMatch(/índice de git es del REPOSITORIO/)
+  })
+})
+
+// ── EL ESCAPE CUESTA UN MOTIVO (T-496) ──────────────────────────────────────────────────────
+// Medido sobre 7 días: el guard se rodeaba el 67% (banda «muerto»), pero al desglosarlo **6 de
+// los 10 escapes NUNCA fueron precedidos de un bloqueo a esa sesión** — dos sesiones escaparon
+// dos veces cada una sin que el guard las hubiera parado jamás. No estorbaba: el `=1` se había
+// vuelto un prefijo que se copia de un comando a otro.
+describe('evaluarEscape — un «1» se escribe sin pensar; un motivo, no', () => {
+  it.each([['1'], ['true'], ['yes'], ['si'], ['ok'], ['skip']])('«%s» ya no vale como escape', (v) => {
+    const e = evaluarEscape(v)
+    expect(e).toMatchObject({ usa: true, permitido: false })
+    expect(e.problema).toBeTruthy()
+  })
+
+  it('un motivo de verdad pasa, y se conserva para registrarlo', () => {
+    const e = evaluarEscape('commiteo solo la ficha; la otra sesión está en otro fichero')
+    expect(e.permitido).toBe(true)
+    expect(e.motivo).toContain('solo la ficha')
+  })
+
+  it('un motivo demasiado corto no cuela (sería un «1» con letras)', () => {
+    expect(evaluarEscape('xx').permitido).toBe(false)
+    expect(evaluarEscape('a'.repeat(MOTIVO_MIN)).permitido).toBe(true)
+  })
+
+  it('sin la variable no hay escape ni aviso: es el caso normal', () => {
+    expect(evaluarEscape(undefined)).toMatchObject({ usa: false, permitido: false, problema: null })
+    expect(evaluarEscape('   ')).toMatchObject({ usa: false })
+  })
+
+  // Que un valor no valga NO puede bloquear nada nuevo: el guard se limita a evaluarse, y en el
+  // caso preventivo (nadie más en el directorio) el commit pasa igual.
+  it('un escape inválido se marca como intento, para poder contarlo', () => {
+    expect(evaluarEscape('1').usa).toBe(true)
+  })
+})
+
+describe('el mensaje de bloqueo enseña la forma NUEVA del escape', () => {
+  const txt = mensajeBloqueo({ companeras: ['abc'], worktreePath: '/x' })
+  it('pide un motivo, no un 1', () => {
+    expect(txt).toContain('INDICE_COMPARTIDO_OK="…tu motivo…"')
+    expect(txt).not.toContain('INDICE_COMPARTIDO_OK=1')
+  })
+  it('sigue proponiendo primero el arreglo de verdad', () => {
+    expect(txt.indexOf('crear-worktree.sh')).toBeLessThan(txt.indexOf('INDICE_COMPARTIDO_OK'))
   })
 })

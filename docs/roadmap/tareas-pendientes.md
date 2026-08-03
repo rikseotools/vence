@@ -1577,15 +1577,15 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Y se puede MEDIR si sirve**, que es lo que evita discutirlo a ojo: `npm run sesiones:friccion` da el ratio de escape por guardarraíl. Si el recordatorio funciona, bajan los `guard_escape` de `robustez-push`.
 - **Relacionadas:** [T-423] (el contador que lo mide), [T-486] (la flota que lo necesitaría más).
 
-### [T-496] 🟠 [ABIERTO 02/08] El guardarraíl del índice compartido se rodea el 67% de las veces: está MUERTO y lo dijo el parte
+### [T-497] 🟠 [ABIERTO 03/08] El escape del push-guard también se usa de prefijo: 13 de 23 no responden a ningún bloqueo
 
-- **Esfuerzo: rato.** El diagnóstico es el trabajo; el arreglo puede ser una línea de criterio.
-- **CÓMO SALIÓ:** estrenando `npm run parte` ([T-494]). Primera ejecución real y ya cantó algo que nadie estaba mirando.
-- **LA MEDIDA (7 días):** `indice-compartido` **rodeado 10 de 15 veces (67%)** → banda `muerto` según [T-423]: *ya no protege, es un peaje*. Detrás vienen `done-verificacion` (38%) y `backlog-push` (33%), los dos en `erosion`.
-- **Por qué importa que sea ESTE:** es el único guardarraíl del sistema que **bloquea de verdad** (`pre-commit`), y bloquea porque la alternativa —dos sesiones compartiendo el índice de git— corrompe la historia de forma irreversible ([T-415], el trabajo de una sesión acabó en `main` bajo el mensaje de otra). Si se está apagando 2 de cada 3 veces con `INDICE_COMPARTIDO_OK=1`, ese fallo puede volver **hoy mismo**.
-- **Lo que hay que averiguar antes de tocar nada:** ¿qué caso legítimo no contempla? Hipótesis a comprobar, no a dar por buenas: (a) sesiones que solo commitean documentación y no se pisan de verdad; (b) el coste de montar worktree se percibe alto para un cambio de dos líneas; (c) **desde [T-484] el criterio cambió** (ahora descarta a quien está en otra máquina), así que parte del 67% puede ser anterior y estar ya resuelto — hay que **re-medir la serie después** de ese cambio antes de concluir.
-- **La salida NO es subir el umbral ni quitar el escape:** el escape con nombre es lo que evita el `--no-verify`, que apaga todo a la vez. O se arregla el criterio, o se acepta y se documenta por qué.
-- **Relacionadas:** [T-423] (el contador que lo mide), [T-415] (por qué existe), [T-484] (cambió su criterio hace horas).
+- **Esfuerzo: minutos.** El arreglo ya está escrito y probado para su hermano: se copia el patrón de [T-496].
+- **CÓMO SALIÓ:** al desglosar los escapes de `indice-compartido` apareció el mismo patrón en el vecino, y con más volumen absoluto.
+- **LA MEDIDA (7 días):** `backlog-push` rodeado el 33% (23/70) — banda `erosion`— pero **13 de esos 23 escapes NUNCA fueron precedidos de un bloqueo a esa sesión**. O sea que más de la mitad de los rodeos no son rodeos: son `BACKLOG_GUARD_SKIP=1` arrastrado en el comando.
+- **Por qué importa:** ese escape apaga el guard **entero** para todos los ficheros del push, y el guard existe para el olvido de reclamar (la colisión T-047/T-050). Una sesión que lo lleva puesto puede pushear trabajo sobre una tarea de otra sin que nada la pare.
+- **El arreglo, ya probado:** que `BACKLOG_GUARD_SKIP` pida un **MOTIVO** en vez de aceptar un `1` (`evaluarEscape` en `lib/sessions/indiceCompartido.cjs`, reutilizable), que quede registrado en el detalle de la fricción, y que un valor inválido **no bloquee nada nuevo** — simplemente se evalúa el guard.
+- **⚠️ Ojo con el tercero:** `ROBUSTEZ_GUARD_SKIP` y `CONTEXTO_GUARD_SKIP` no salen en la medida porque casi no se usan. Antes de tocarlos, medir: cambiar un escape que nadie usa es trabajo sin efecto.
+- **Relacionadas:** [T-496] (mismo fallo, mismo arreglo), [T-423] (el contador), [T-494] (el parte que lo enseña).
 
 ### [T-491] 🟡 [ABIERTO 02/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
 
@@ -3390,6 +3390,25 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-496] ✅ 🟠 [HECHA 03/08] El guardarraíl del índice compartido se rodea el 67% de las veces: está MUERTO y lo dijo el parte
+
+- **RESOLUCIÓN (03/08) — y el diagnóstico salió al revés de lo que decía el titular.** La ficha exigía re-medir antes de tocar nada, y hacerlo cambió el arreglo entero.
+  - **LO QUE DIJO LA MEDIDA:** el 67% es cierto, pero al desglosarlo POR SESIÓN, **6 de los 10 escapes NUNCA fueron precedidos de un bloqueo a esa sesión**. Dos sesiones escaparon dos veces cada una **sin que el guard las hubiera parado jamás**. No es un guardarraíl que estorba y se rodea: es un escape que se ha adoptado como **PREFIJO** — `INDICE_COMPARTIDO_OK=1` se copia de un comando anterior y ya nunca se quita.
+  - **Y el criterio ACERTABA:** la única sesión que respetó el bloqueo (la de esta ficha) se montó un worktree y no hubo problema. Relajar el criterio, que es lo que sugería el 67% leído a secas, habría sido exactamente el arreglo contrario al que hacía falta.
+  - **EL ARREGLO: el escape cuesta un MOTIVO**, como ya hacen `claim --force --motivo`, `snooze --motivo` y `retirar --motivo`. Un `1` se escribe sin pensar; un motivo no se arrastra sin darse cuenta y además queda escrito en la fricción. **No añade ningún bloqueo nuevo**: si el valor no vale, el guard simplemente se evalúa — y en el caso preventivo (nadie más en el directorio) el commit pasa igual. Solo deja de ser una llave maestra.
+  - **LA MEDIDA QUE FALTABA, para que no se repita el error de lectura:** `escapesSinBloqueo()` en el núcleo de fricción, y el desglose sale **pegado al ratio** en `npm run parte`. Sin él, el próximo que lea «69% muerto» relajará el criterio; con él lee *«6 de 11 escapes no respondían a ningún bloqueo: el escape se usa de prefijo, no por estorbo»*.
+  - **Y encontró un hermano mayor:** `backlog-push` tiene **13 de 23** escapes preventivos, y ese apaga el guard entero para todo el push → [T-497].
+  - **Capas:** 12 tests nuevos (el escape con motivo, el mensaje que enseña la forma nueva, y `escapesSinBloqueo` con su cota inferior por sesión), CLAUDE.md y los dos runbooks corregidos, registro de herramientas al día.
+
+- **Esfuerzo: rato.** El diagnóstico es el trabajo; el arreglo puede ser una línea de criterio.
+- **CÓMO SALIÓ:** estrenando `npm run parte` ([T-494]). Primera ejecución real y ya cantó algo que nadie estaba mirando.
+- **LA MEDIDA (7 días):** `indice-compartido` **rodeado 10 de 15 veces (67%)** → banda `muerto` según [T-423]: *ya no protege, es un peaje*. Detrás vienen `done-verificacion` (38%) y `backlog-push` (33%), los dos en `erosion`.
+- **Por qué importa que sea ESTE:** es el único guardarraíl del sistema que **bloquea de verdad** (`pre-commit`), y bloquea porque la alternativa —dos sesiones compartiendo el índice de git— corrompe la historia de forma irreversible ([T-415], el trabajo de una sesión acabó en `main` bajo el mensaje de otra). Si se está apagando 2 de cada 3 veces con `INDICE_COMPARTIDO_OK=1`, ese fallo puede volver **hoy mismo**.
+- **Lo que hay que averiguar antes de tocar nada:** ¿qué caso legítimo no contempla? Hipótesis a comprobar, no a dar por buenas: (a) sesiones que solo commitean documentación y no se pisan de verdad; (b) el coste de montar worktree se percibe alto para un cambio de dos líneas; (c) **desde [T-484] el criterio cambió** (ahora descarta a quien está en otra máquina), así que parte del 67% puede ser anterior y estar ya resuelto — hay que **re-medir la serie después** de ese cambio antes de concluir.
+- **La salida NO es subir el umbral ni quitar el escape:** el escape con nombre es lo que evita el `--no-verify`, que apaga todo a la vez. O se arregla el criterio, o se acepta y se documenta por qué.
+- **Relacionadas:** [T-423] (el contador que lo mide), [T-415] (por qué existe), [T-484] (cambió su criterio hace horas).
+
 
 ### [T-494] ✅ 🟡 [HECHA 02/08] No hay UN parte de las sesiones: saber quién está parado exige cruzar tres comandos a mano
 

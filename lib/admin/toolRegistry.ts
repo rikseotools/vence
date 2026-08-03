@@ -1415,7 +1415,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'bloquea (a diferencia de los tres que se quitaron ese día en T-375) porque se satisface ' +
       'con un comando —`scripts/worktrees/crear-worktree.sh`— y la alternativa es irreversible. ' +
       'Una SOLA sesión en el checkout principal no dispara nada: el problema es la concurrencia, ' +
-      'no el sitio. Fail-open total; escape `INDICE_COMPARTIDO_OK=1`. Núcleo `lib/sessions/' +
+      'no el sitio. Fail-open total; escape `INDICE_COMPARTIDO_OK="motivo"` — desde T-496 pide un ' +
+      'MOTIVO, porque el `=1` se había vuelto un prefijo (6 de 10 escapes sin bloqueo previo). Núcleo `lib/sessions/' +
       'indiceCompartido.cjs`, 14 tests.',
   },
   backlog_esfuerzo: {

@@ -28,7 +28,7 @@ const JSON_OUT = process.argv.includes('--json')
 const { cruzarTrabajo, sesionesOciosas, veredicto } = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'))
 const { clasificarSenal } = require(path.join(REPO, 'lib', 'sessions', 'latido.js'))
-const { ratioEscape, diagnostico, EVENT_TYPE } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
+const { ratioEscape, escapesSinBloqueo, diagnostico, EVENT_TYPE } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
 const { isAwaitingVerification } = require(path.join(REPO, 'lib', 'backlog', 'claimGate.cjs'))
 
 function url() {
@@ -57,7 +57,7 @@ async function main() {
       SELECT id, title, resume_check, wake_on_deploy_sha, snooze_until
         FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
     friccion = await sql`
-      SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard
+      SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid
         FROM public.observable_events
        WHERE event_type = ${EVENT_TYPE} AND ts > now() - interval '7 days'`.catch(() => [])
   } finally {
@@ -117,7 +117,17 @@ async function main() {
   const malos = ratios.filter((r) => r.veredicto === 'erosion' || r.veredicto === 'muerto')
   if (malos.length) {
     console.log('🧯 GUARDARRAÍLES QUE SE ESTÁN RODEANDO (7 días):')
-    for (const g of malos) console.log(`   ${diagnostico(g)}`)
+    // El desglose de PREVENTIVOS va pegado al ratio a propósito (T-496): sin él, un 67% se lee
+    // como «el guardarraíl estorba» y se relaja el criterio, cuando lo que puede estar pasando es
+    // que el escape se haya vuelto un prefijo. Los dos arreglos son opuestos.
+    const prev = new Map(escapesSinBloqueo(friccion || []).map((x) => [x.guard, x]))
+    for (const g of malos) {
+      console.log(`   ${diagnostico(g)}`)
+      const p = prev.get(g.guard)
+      if (p && p.preventivos) {
+        console.log(`      ↳ ${p.preventivos} de ${p.escapes} escapes NO respondían a ningún bloqueo: el escape se usa de prefijo, no por estorbo`)
+      }
+    }
     console.log('')
   }
 

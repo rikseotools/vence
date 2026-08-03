@@ -10,14 +10,15 @@
  *   · FAIL-CLOSED solo en lo que existe para cazar: dos sesiones vivas en el mismo directorio.
  *   · FAIL-OPEN ante cualquier problema de infra (sin BD, sin red, sin sid): avisa y deja pasar.
  *     Bloquear commits porque la telemetría no responde sería peor que el fallo que evita.
- *   · Escape con nombre: INDICE_COMPARTIDO_OK=1, que queda impreso.
+ *   · Escape con nombre Y CON MOTIVO (T-496): INDICE_COMPARTIDO_OK="por qué", que queda impreso
+ *     y registrado. El `=1` dejó de valer porque se había vuelto un prefijo que se copiaba.
  */
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..')
-const { evaluarIndice, mensajeBloqueo } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
+const { evaluarIndice, mensajeBloqueo, evaluarEscape } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
 const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 
 /** Registrar el roce sin bloquear NUNCA (T-423). */
@@ -36,10 +37,21 @@ function url() {
 }
 
 async function main() {
-  if (process.env.INDICE_COMPARTIDO_OK === '1') {
-    console.log('⏭️  guardarraíl de índice compartido saltado (INDICE_COMPARTIDO_OK=1)')
-    friccion('guard_escape', 'indice-compartido')
+  // ── EL ESCAPE CUESTA UN MOTIVO (T-496) ────────────────────────────────────────────────────
+  // Medido: 6 de 10 escapes NUNCA fueron precedidos de un bloqueo — el `=1` se había vuelto un
+  // prefijo que se copia de un comando a otro. Un motivo no se arrastra sin darse cuenta, y queda
+  // escrito. Si el valor no vale, NO se bloquea nada: simplemente se evalúa el guard, que en el
+  // caso preventivo (nadie más en el directorio) deja pasar igual.
+  const esc = evaluarEscape(process.env.INDICE_COMPARTIDO_OK)
+  if (esc.usa && esc.permitido) {
+    console.log(`⏭️  guardarraíl de índice compartido saltado: ${esc.motivo}`)
+    friccion('guard_escape', 'indice-compartido', esc.motivo)
     return 0
+  }
+  if (esc.usa && !esc.permitido) {
+    console.log(`⚠️  INDICE_COMPARTIDO_OK ignorado — ${esc.problema}`)
+    console.log('    INDICE_COMPARTIDO_OK="commiteo solo docs; la otra sesión está en otro fichero" git commit …')
+    console.log('    (no se bloquea nada por esto: se comprueba el directorio como siempre)')
   }
   // El host viene del MISMO resolvedor que el sid (T-484): dos sesiones en la misma ruta de
   // máquinas distintas no comparten índice, y sin este dato el guard las bloqueaba en falso.

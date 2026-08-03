@@ -83,3 +83,51 @@ describe('esperaDeploy — tiempo de sesión tirado esperando el lock', () => {
     expect(esperaDeploy(null).minutos).toBe(0)
   })
 })
+
+// ── PREVENTIVOS: la pregunta que el ratio solo no contesta (T-496) ──────────────────────────
+// Sin este desglose, un 67% de rodeo se lee como «el guardarraíl estorba» y se relaja el
+// criterio. Al desglosarlo apareció lo contrario: el escape se había vuelto un prefijo. Los dos
+// arreglos son OPUESTOS, así que distinguirlos no es un matiz.
+describe('escapesSinBloqueo', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { escapesSinBloqueo } = require('@/lib/observability/friccionSesiones.cjs')
+
+  it('una sesión que escapa sin que la bloqueen nunca: todos preventivos', () => {
+    const r = escapesSinBloqueo([
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+    ])
+    expect(r[0]).toMatchObject({ guard: 'g', escapes: 2, preventivos: 2, ratioPreventivo: 1 })
+  })
+
+  it('un escape que responde a un bloqueo suyo NO es preventivo', () => {
+    const r = escapesSinBloqueo([
+      { clase: 'guard_bloqueo', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+    ])
+    expect(r[0].preventivos).toBe(0)
+  })
+
+  // Se cuenta POR SESIÓN: el bloqueo de otra no te justifica a ti.
+  it('el bloqueo de OTRA sesión no justifica tu escape', () => {
+    const r = escapesSinBloqueo([
+      { clase: 'guard_bloqueo', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'b' },
+    ])
+    expect(r[0].preventivos).toBe(1)
+  })
+
+  it('es una cota INFERIOR: equivocarse por lo bajo antes que acusar', () => {
+    const r = escapesSinBloqueo([
+      { clase: 'guard_bloqueo', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+      { clase: 'guard_escape', guard: 'g', sid: 'a' },
+    ])
+    expect(r[0]).toMatchObject({ escapes: 3, preventivos: 2 })
+  })
+
+  it('sin sid no se puede emparejar: esos eventos no cuentan', () => {
+    expect(escapesSinBloqueo([{ clase: 'guard_escape', guard: 'g' }])).toEqual([])
+  })
+})

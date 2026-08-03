@@ -487,7 +487,7 @@ Si otra sesión viva trabaja en TU mismo directorio, **el commit se para**.
 
 ```
 scripts/worktrees/crear-worktree.sh <un-nombre>     # el arreglo, 30 segundos
-INDICE_COMPARTIDO_OK=1 git commit …                 # el escape, si de verdad hace falta
+INDICE_COMPARTIDO_OK="por qué tienes que commitear aquí" git commit …   # el escape: pide MOTIVO (T-496)
 ```
 
 **Por qué no basta con tener cuidado:** `git add` escribe en el índice del **REPOSITORIO**, no de
