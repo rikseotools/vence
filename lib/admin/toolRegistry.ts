@@ -238,6 +238,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'en MAYÚSCULA (la «O» de una tabla de coordenadas es Oeste, no una conjunción). ' +
       'La muestra es determinista a propósito (sin Math.random): re-calibrar exige reproducirla.',
   },
+  // ── salud del contenido: teoría servida ───────────────────────────────────────────────────
+  audit_tablas_refluidas: {
+    titulo: 'Tablas de boletín que se sirven como párrafo corrido (el punto ciego de detectFlattenedTable)',
+    ruta: 'scripts/audit-tablas-refluidas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/tablas-articulos.md',
+    notas:
+      '`npm run audit:tablas-refluidas [-- --json]`. SOLO LEE. Núcleo puro ' +
+      '`lib/teoria/detectReflowedTable.cjs` (6 tests con casos reales). **COMPLEMENTA a ' +
+      '`detectFlattenedTable`, no lo duplica**, y el discriminante es medible: aquel busca rachas de ' +
+      'LÍNEAS CORTAS (la salida cruda de pdftotext) y se queda mudo en cuanto el texto se RE-FLUYE, ' +
+      'que es justo lo que el manual de generación manda hacer antes de insertar. Este mira la huella ' +
+      'que sobrevive al re-fluido: cabeceras de columna en mayúsculas encajadas en el párrafo y, sobre ' +
+      'todo, REPETIDAS (el salto de página del boletín reimprime la fila de encabezados). ' +
+      'Medido el 03/08/2026 sobre los 54.674 artículos activos: **1 hallazgo**. ' +
+      '⚠️ Su primera versión daba 2 y el de más impacto (78 preguntas servidas) era un FALSO POSITIVO: ' +
+      'un texto de esterilización que escribe «ZONA SUCIA/LIMPIA/ESTÉRIL» en mayúsculas por énfasis. ' +
+      'Por eso la lista de cabeceras se podó de las palabras que la prosa usa igual (ZONA, PERSONAL, ' +
+      'TOTAL, GRUPO, NIVEL). **LÍMITE CONOCIDO:** solo ve cabeceras en MAYÚSCULAS; una tabla re-fluida ' +
+      'con encabezados en minúscula sigue siendo invisible. Segunda señal candidata sin calibrar: ' +
+      'densidad de cifras con unidad (≥6 por párrafo) → 30 artículos, precisión sin medir. ' +
+      'BAJO DEMANDA, no pinga el badge.',
+  },
   // ── salud del contenido: psicotécnicas ────────────────────────────────────────────────────
   audit_psico_explicacion: {
     titulo: 'Psicotécnicas cuya explicación no llega a la respuesta que dice explicar',
