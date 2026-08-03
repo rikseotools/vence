@@ -1546,16 +1546,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-499] 🟡 [ABIERTO 03/08] La puerta del texto de `done` confunde «en 30 días» de historial con un plazo futuro
-
-- **Esfuerzo: minutos.**
-- **CÓMO SALIÓ:** cerrando [T-497]. El outcome decía *«está medido: en 30 días ROBUSTEZ_GUARD_SKIP no aparece ni una vez»* —una medida del PASADO— y `detectarTrabajoPendiente` lo clasificó como *«apunta a un momento futuro»* y abortó el cierre.
-- **Coste real, no hipotético:** al aislar qué disparaba la puerta, se cerró la tarea con el outcome literal **«test»**. Hubo que `reopen` + `claim` + `done` otra vez. El registro permanente de una tarea estuvo a punto de quedarse en una palabra sin sentido.
-- **Qué hay que distinguir:** *«medir en 14 días»* (promesa futura → la puerta acierta) de *«en 30 días de historial»* / *«en los últimos 30 días»* (medida pasada → falso positivo). La pista está delante: **«últimos», «de historial», «medido», un verbo en pasado**.
-- **Ojo con el arreglo fácil:** relajar el patrón entero abriría el caso que la puerta existe para cazar ([T-363] se cerró con el código sin desplegar y un outcome que sonaba terminado). Es un matiz, no una amnistía.
-- **Y hay una lección de método aparte:** un guardarraíl del que no se sabe qué frase lo dispara empuja a probar con basura. Que el error diga **qué patrón casó** —no solo «apunta a un momento futuro»— habría evitado el rodeo entero.
-- **Relacionadas:** [T-392] (la puerta), [T-423] (el escape se cuenta).
-
 ### [T-500] 🟡 [ABIERTO 03/08] Explicaciones de psicotécnicos que razonan sobre otro dato o no citan ni su propia respuesta
 
 - **Esfuerzo: rato** para medirlo bien y decidir el corte; reparar el lote ya es aparte.
@@ -3401,6 +3391,23 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-499] ✅ 🟡 [HECHA 03/08] La puerta del texto de `done` confunde «en 30 días» de historial con un plazo futuro
+
+- **RESOLUCIÓN (03/08).** El marcador temporal se exime **solo** cuando el contexto INMEDIATO delata una medida ya hecha (`últimos`, `historial`, `medido`, `durante`, `contadas`, `hace`…). Los demás marcadores no se tocan: seguir diciendo «queda», «falta» o «sin desplegar» bloquea igual aunque la frase hable en pasado.
+  - **La ventana es CORTA (30 caracteres antes, 25 después), y esa es la decisión.** Con una ventana ancha, un outcome que mezcla las dos cosas —*«medido hace 30 días; hay que repetirlo en 14 días»*— se eximiría entero por la palabra del principio, y ahí **sí** hay trabajo por hacer. La pista tiene que estar pegada a la fecha. Tiene test propio.
+  - **Es un matiz, no una amnistía:** relajar el patrón entero habría abierto el caso que la puerta existe para cazar ([T-363] se cerró con el código en `main` sin desplegar y un outcome que sonaba terminado).
+  - **Y la lección de método, que valía más que el arreglo:** el error ahora dice **QUÉ fragmento** lo disparó (`el outcome dice "queda/quedan" («queda»)`), no solo la categoría. Un guardarraíl del que no se sabe qué frase lo activa empuja a probar outcomes hasta que uno pase — que es exactamente lo que ocurrió al cerrar [T-497] y acabó guardando el outcome literal «test».
+  - **Capas:** 9 tests nuevos (tres medidas pasadas que ya no bloquean, tres promesas futuras que siguen bloqueando, la mezcla de ambas, los marcadores que no se relajan, y el fragmento).
+
+- **Esfuerzo: minutos.**
+- **CÓMO SALIÓ:** cerrando [T-497]. El outcome decía *«está medido: en 30 días ROBUSTEZ_GUARD_SKIP no aparece ni una vez»* —una medida del PASADO— y `detectarTrabajoPendiente` lo clasificó como *«apunta a un momento futuro»* y abortó el cierre.
+- **Coste real, no hipotético:** al aislar qué disparaba la puerta, se cerró la tarea con el outcome literal **«test»**. Hubo que `reopen` + `claim` + `done` otra vez. El registro permanente de una tarea estuvo a punto de quedarse en una palabra sin sentido.
+- **Qué hay que distinguir:** *«medir en 14 días»* (promesa futura → la puerta acierta) de *«en 30 días de historial»* / *«en los últimos 30 días»* (medida pasada → falso positivo). La pista está delante: **«últimos», «de historial», «medido», un verbo en pasado**.
+- **Ojo con el arreglo fácil:** relajar el patrón entero abriría el caso que la puerta existe para cazar ([T-363] se cerró con el código sin desplegar y un outcome que sonaba terminado). Es un matiz, no una amnistía.
+- **Y hay una lección de método aparte:** un guardarraíl del que no se sabe qué frase lo dispara empuja a probar con basura. Que el error diga **qué patrón casó** —no solo «apunta a un momento futuro»— habría evitado el rodeo entero.
+- **Relacionadas:** [T-392] (la puerta), [T-423] (el escape se cuenta).
+
 
 ### [T-498] ✅ 🟠 [HECHA 03/08] Al cerrar una tarea no se sugiere ninguna siguiente: el contexto cargado se tira a la basura
 

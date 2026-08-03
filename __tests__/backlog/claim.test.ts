@@ -519,6 +519,50 @@ describe('deployDebtLevel — cuándo toca desplegar si la política es AGRUPAR'
 // Exacto: programar la vuelta no puede depender de la memoria de nadie. Si el texto con el que se
 // cierra una tarea confiesa que queda trabajo, el CLI se NIEGA y manda a `pause`, que sí agenda
 // el regreso. Es una puerta, no un aviso: un aviso se ignora justo cuando hay prisa.
+// ── UNA MEDIDA DEL PASADO NO ES UN PLAZO (T-499) ────────────────────────────────────────────
+// El marcador temporal nació para cazar *«medir en 14 días»*, pero casaba igual con *«medido
+// sobre 30 días de historial»*, que es lo contrario. Pasó cerrando [T-497] y costó caro: al
+// aislar qué disparaba la puerta, la tarea se cerró con el outcome literal «test».
+describe('detectarTrabajoPendiente — el pasado no es futuro', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs')
+
+  it.each([
+    ['está medido: en 30 días ROBUSTEZ_GUARD_SKIP no aparece ni una vez'],
+    ['contadas en 7 días: 24 escapes de 70 bloqueos'],
+    ['medido en 30 días de historial, cero usos'],
+  ])('una ventana YA medida no bloquea el cierre: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(false)
+  })
+
+  it.each([
+    ['hay que medir en 14 días el efecto'],
+    ['la campaña sale en 3 días'],
+    ['se repite mañana'],
+  ])('una promesa futura SIGUE bloqueando: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
+  })
+
+  // Con una ventana ancha, un outcome que mezcla las dos cosas se eximiría entero por la palabra
+  // del principio — y ahí sí queda trabajo. La pista tiene que estar PEGADA a la fecha.
+  it('mezclar medida pasada y promesa futura NO exime: la pista tiene que estar pegada', () => {
+    expect(detectarTrabajoPendiente('medido hace 30 días; hay que repetirlo en 14 días').pendiente).toBe(true)
+  })
+
+  // La exención es un matiz, no una amnistía: relajar el patrón entero abriría el caso que la
+  // puerta existe para cazar (T-363 se cerró con el código sin desplegar).
+  it('los demás marcadores no se relajan por hablar en pasado', () => {
+    expect(detectarTrabajoPendiente('medido en 30 días; queda desplegarlo').pendiente).toBe(true)
+    expect(detectarTrabajoPendiente('medido en 30 días; falta la migración').pendiente).toBe(true)
+  })
+
+  // Un guardarraíl que no dice QUÉ frase lo disparó empuja a probar outcomes hasta que uno pase.
+  it('dice qué fragmento lo disparó, no solo la categoría', () => {
+    const r = detectarTrabajoPendiente('esto queda a medias')
+    expect(r.fragmento).toBe('queda')
+  })
+})
+
 describe('detectarTrabajoPendiente — cerrar en falso deja de ser posible', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { detectarTrabajoPendiente, clasificarEspera } = require('@/lib/backlog/claimGate.cjs') as {

@@ -792,7 +792,9 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // falta algo, aquí se para y se manda a `pause`, que sí agenda la vuelta.
       const pend = detectarTrabajoPendiente(outcome);
       if (pend.pendiente && !process.argv.includes('--igualmente')) {
-        console.error(`❌ NO cerrada: el outcome ${pend.motivo}, así que la tarea NO está terminada.`);
+        // Decir QUÉ frase lo disparó (T-499): sin eso, la reacción natural es probar outcomes
+        // hasta que uno pase — y al cerrar [T-497] eso acabó guardando el outcome literal «test».
+        console.error(`❌ NO cerrada: el outcome ${pend.motivo}${pend.fragmento ? ` («${pend.fragmento}»)` : ''}, así que la tarea NO está terminada.`);
         console.error('   Si queda trabajo, prográmale la vuelta en vez de cerrarla en falso:');
         console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie frontend|backend|both \\`);
         console.error('       --hecho "…lo que ya está…" --falta "…lo que queda…"');
