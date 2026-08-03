@@ -390,6 +390,8 @@ const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
 // Qué tarea toca ahora: criterio ÚNICO, compartido por `next` y por la sugerencia de `done`.
 const ORDEN = require(path.join(REPO, 'lib', 'backlog', 'orden.cjs'));
+// El recordatorio de método: qué recordar y CUÁNDO (T-495). Momentos, nunca un temporizador.
+const RECORDATORIO = require(path.join(REPO, 'lib', 'sessions', 'recordatorio.cjs'));
 
 function parseMd() {
   return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
@@ -770,6 +772,17 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         RETURNING id`;
       console.log(rows.length ? `✅ lease renovado (${LEASE_MIN} min): ${rows.map((r) => r.id).join(', ')}`
                               : 'No tienes tareas cogidas.');
+      // El OTRO momento en que la regla es aplicable AHORA (T-495): renovar el lease significa que
+      // llevas rato con la misma tarea, o sea que el recordatorio del `claim` ya está sepultado.
+      // El umbral lo decide el núcleo puro; aquí solo se le pasa cuánto llevas.
+      if (rows.length) {
+        const [t] = await s`
+          SELECT EXTRACT(EPOCH FROM (now() - claimed_at)) / 60 AS minutos
+            FROM public.backlog_tasks WHERE claimed_by = ${sid} AND claimed_at IS NOT NULL
+           ORDER BY claimed_at LIMIT 1`;
+        const rec = RECORDATORIO.recordatorioPorTiempo(Number(t?.minutos || 0));
+        if (rec) { console.log(''); for (const l of rec.lineas) console.log(l); }
+      }
     }
 
     else if (cmd === 'mine') {

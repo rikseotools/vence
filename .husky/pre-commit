@@ -47,6 +47,11 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 1b-bis. Recordatorio de método cuando el commit ESTRENA ficheros (T-495): es el momento exacto
+#     en que aplica «¿ya existe?», y el que imprime `claim` lleva horas sepultado. NO bloquea
+#     nunca —es un recordatorio— y calla si el commit solo modifica cosas que ya existían.
+node scripts/sessions/recordar-metodo.cjs --staged || true
+
 echo ""
 # 1b. Drift de display del temario (título ↔ descripcion_corta/epigrafe/description).
 #     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la

@@ -107,6 +107,32 @@ nada, así que ese contexto se perdía salvo que alguien se acordara de mirar. E
 > nadie lo ha mirado). Y no se sugiere lo aparcado, lo que espera a un reloj o a un deploy, lo
 > bloqueado por otra tarea abierta, ni lo que tiene lease vivo de otra sesión.
 
+## El recordatorio de método llega a MEDIA tarea, no solo al empezar (T-495)
+
+El método ya se imprimía al reclamar (`claim` suelta el orden entero con el `tools:buscar` escrito
+para esa tarea) y el `pre-push` **bloquea** el push sin una sola capa. Entre esos dos extremos hay
+horas — y la decisión de *«¿esto ya existe?»* o *«¿esto es un silo?»* se toma **en medio**.
+
+Ahora vuelve en **tres momentos**, y ninguno es un reloj:
+
+| cuándo | quién lo imprime | por qué ahí |
+|---|---|---|
+| el commit **estrena** ficheros | `pre-commit` | es exactamente cuando aplica «¿ya existe?», y trae el `tools:buscar` **con las palabras de ese fichero** |
+| llevas **90 min** con la tarea | `heartbeat` | renovar el lease significa que el recordatorio del `claim` ya está sepultado |
+| cada **15 mensajes** | hook `UserPromptSubmit` (`.claude/settings.json`) | cubre los tramos largos en que no estrenas nada ni renuevas el lease, pero sigues decidiendo |
+
+**Por qué NO un temporizador.** Un texto cada N minutos dispara mientras la sesión piensa, compila
+o espera un deploy — momentos sin ninguna decisión que corregir — y se aprende a saltar, que es
+como murieron tres guardarraíles el 31/07. El turno de conversación sí es una unidad de trabajo:
+cada uno es una decisión tomada.
+
+**Y calla cuando no aplica**, que es lo que lo mantiene vivo: un commit que solo modifica ficheros
+existentes no dice nada, y estrenar documentación, migraciones o tests tampoco (eso no es construir
+una herramienta). El texto vive en **un solo sitio** (`lib/sessions/recordatorio.cjs`, 23 tests):
+tres copias acabarían diciendo tres cosas distintas.
+
+> Intervalo ajustable con `VENCE_RECORDATORIO_CADA` (por defecto 15).
+
 ## El PARTE: qué hace cada sesión y quién está parado (T-494)
 
 ```bash
