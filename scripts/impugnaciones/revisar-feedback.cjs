@@ -160,11 +160,19 @@ const ago = (d) => {
     // El historial de arriba ya los volcaba, pero en una línea plana y sin ids: con Chema
     // (30/07) estaban delante y no se vieron, y sus dos hilos de Policía Municipal
     // llevaban un día esperando mientras se le contestaba eso mismo en otro hilo.
+    // `convStatus` en vez de «¿hay mensajes nuestros?» (T-512): un hilo CERRADO no espera
+    // respuesta aunque no tengamos un solo mensaje dentro, que es lo que pasa cuando alguien
+    // pregunta lo mismo en tres hilos y se le contesta en uno. `waiting_admin` es la misma
+    // señal que cuenta el panel de admin. Si alguna conversación del feedback está esperando,
+    // manda esa; si no, vale la última (para distinguir «cerrada» de «sin conversación»).
     const todos = await s`
       SELECT f.id, f.type, f.status, f.message, f.created_at,
-             (SELECT count(*) FROM feedback_conversations c
-                JOIN feedback_messages m ON m.conversation_id = c.id
-               WHERE c.feedback_id = f.id AND m.is_admin)::int AS "adminMsgs"
+             COALESCE(
+               (SELECT 'waiting_admin' FROM feedback_conversations c
+                 WHERE c.feedback_id = f.id AND c.status = 'waiting_admin' LIMIT 1),
+               (SELECT c.status FROM feedback_conversations c
+                 WHERE c.feedback_id = f.id ORDER BY c.created_at DESC LIMIT 1)
+             ) AS "convStatus"
         FROM user_feedback f WHERE f.user_id=${fb.user_id} ORDER BY f.created_at`;
     const hilos = analizarHilos(todos, String(fb.id));
     if (hilos.aviso) {

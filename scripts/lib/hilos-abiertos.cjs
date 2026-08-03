@@ -40,9 +40,52 @@ function mismoAsunto(a, b) {
   return na.length > 0 && na === nb;
 }
 
+/** Un feedback en uno de estos estados ya está cerrado: no espera respuesta de nadie. */
+const ESTADOS_TERMINALES = new Set(['resolved', 'dismissed', 'closed']);
+
 /**
- * @param {{id:string, type?:string, status?:string, message?:string, created_at?:string|Date, adminMsgs?:number}[]} feedbacks
- *        TODOS los feedbacks de la persona, el actual incluido.
+ * ¿Este hilo espera respuesta NUESTRA?
+ *
+ * ## El fallo que corrige (T-512, 03/08/2026)
+ *
+ * Antes se medía por «ningún mensaje nuestro en el hilo», descartando el estado a
+ * propósito (*«`status` no sirve: un `pending` puede estar respondido y sin cerrar»*). Esa
+ * mitad era cierta, pero al ignorar el estado ENTERO daba por vivos los hilos **cerrados**:
+ * quien pregunta lo mismo en tres hilos y recibe la respuesta en uno deja los otros dos
+ * cerrados y sin un solo mensaje nuestro dentro, o sea marcados «sin responder» **para
+ * siempre**.
+ *
+ * Medido en el banco entero el 03/08: de los 99 hilos que el panel marcaba, **94 estaban
+ * cerrados (29 personas) y solo 5 esperaban de verdad**. El 95 % era ruido, y del malo: el
+ * panel manda a escribirle a alguien cuyo hilo se cerró hace mes y medio, que es
+ * exactamente el mensaje que no hay que mandar (una respuesta que llega tarde es peor que
+ * ninguna). Caso que lo destapó: Laura García, cinco hilos marcados y los cinco contestados
+ * en su día **en otro hilo suyo** (ella repite la misma pregunta en varios a la vez).
+ *
+ * ## La señal que se usa ahora, y por qué esa
+ *
+ * `feedback_conversations.status = 'waiting_admin'` — **la misma que cuenta el panel de
+ * admin** (`getAdminFeedbackCounts`, `waitingAdmin`). No se inventa un criterio nuevo: dos
+ * puertas al mismo hecho con reglas distintas acaban contradiciéndose.
+ *
+ * Sin conversación no hay `status` que mirar, y ahí SÍ manda el del feedback: un feedback
+ * vivo sin conversación es alguien a quien **no se le puede contestar** (es el hallazgo
+ * `feedback_sin_conversacion` del barrido de salud), así que se enseña; uno cerrado, no.
+ *
+ * **Límite conocido, a propósito:** una conversación `closed` cuyo ÚLTIMO mensaje es del
+ * usuario (una réplica: contestamos, el hilo se cerró y la persona volvió a escribir) NO se
+ * marca aquí. Son 141 en el banco, casi todas viejas y ya atendidas, y quien vigila eso es
+ * `vigia.cjs` con su clase RÉPLICA. Meterlo aquí volvería a llenar el panel de ruido.
+ */
+function esperaRespuesta(f) {
+  if (f.convStatus) return String(f.convStatus) === 'waiting_admin';
+  return !ESTADOS_TERMINALES.has(String(f.status || '').toLowerCase());
+}
+
+/**
+ * @param {{id:string, type?:string, status?:string, convStatus?:string, message?:string, created_at?:string|Date}[]} feedbacks
+ *        TODOS los feedbacks de la persona, el actual incluido. `convStatus` = estado de su
+ *        conversación (`waiting_admin` si alguna lo está); ausente = no tiene conversación.
  * @param {string} idActual  el que se está atendiendo
  * @returns {{otros:Array, sinResponder:Array, duplicados:Array<Array>, aviso:string|null}}
  */
@@ -51,11 +94,12 @@ function analizarHilos(feedbacks, idActual) {
   const actual = String(idActual || '');
   const otros = todos.filter((f) => !f.id.startsWith(actual) && !actual.startsWith(f.id));
 
-  // Sin responder = ningún mensaje nuestro en el hilo. `status` no sirve: un feedback
-  // `pending` puede estar respondido y sin cerrar (lo dice el propio manual).
-  const sinResponder = otros.filter((f) => (f.adminMsgs ?? 0) === 0);
+  const sinResponder = otros.filter(esperaRespuesta);
 
   // Grupos de texto idéntico (entre todos, incluido el actual: el duplicado puede ser él).
+  // Solo interesan si AL MENOS DOS siguen esperando: el consejo es «responde a uno y cierra
+  // los demás», y no se cierra lo que ya está cerrado. Los tres hilos idénticos de Laura,
+  // cerrados en junio, salían aquí mandando cerrar lo que llevaba mes y medio cerrado.
   const grupos = [];
   const vistos = new Set();
   for (const f of todos) {
@@ -63,6 +107,7 @@ function analizarHilos(feedbacks, idActual) {
     const iguales = todos.filter((g) => !vistos.has(g.id) && mismoAsunto(f.message, g.message));
     if (iguales.length > 1) {
       iguales.forEach((g) => vistos.add(g.id));
+      if (iguales.filter(esperaRespuesta).length < 2) continue;
       // El primero por fecha es al que se responde; el resto se cierra en silencio.
       grupos.push(
         iguales.slice().sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)),
@@ -96,4 +141,4 @@ function analizarHilos(feedbacks, idActual) {
   return { otros, sinResponder, duplicados: grupos, aviso };
 }
 
-module.exports = { analizarHilos, mismoAsunto, normalizar };
+module.exports = { analizarHilos, esperaRespuesta, mismoAsunto, normalizar };

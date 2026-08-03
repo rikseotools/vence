@@ -274,6 +274,17 @@ Y decide con eso:
 > y dejaba los otros dos hilos sin tocar, sin responder desde el día anterior. Se separó
 > antes de enviar: un mensaje por asunto, en su hilo, y el duplicado cerrado en silencio.
 
+> **⚠️ Un hilo SIN mensajes nuestros dentro NO significa que esté sin responder (T-512,
+> 03/08/2026).** Quien pregunta lo mismo en tres hilos recibe la respuesta en uno y deja los
+> otros dos cerrados y mudos: el panel «🧵 OTROS HILOS» del dossier los daba por vivos y
+> mandaba escribir a gente cuyo hilo se cerró hace mes y medio (**94 falsos de 99** medidos
+> ese día, 29 personas). Lo decide ahora el estado de la conversación —**`waiting_admin`, la
+> misma señal que cuenta el panel de admin**— y no «¿hay mensajes nuestros?».
+> **Antes de escribirle por un hilo viejo, mira si se le contestó en OTRO hilo suyo**
+> (`feedback_messages` de la persona por fechas, no solo del hilo que tienes abierto): una
+> respuesta que llega semanas tarde es peor que ninguna. Núcleo puro
+> `scripts/lib/hilos-abiertos.cjs`, con el caso real como regresión.
+
 ## Paso 1: Identificar al usuario y contexto
 
 ```js

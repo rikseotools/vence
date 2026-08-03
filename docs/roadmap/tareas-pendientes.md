@@ -1640,6 +1640,60 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
+
+**De dónde sale:** una opositora premium (alta hace 15 h, feedback `9a70f674` del 02/08) preguntó lo
+más razonable que se puede preguntar antes de estudiar: *«¿los temarios están completos según lo que
+exigen para el examen, y están actualizados?»*. Es la pregunta que la plataforma debería poder
+responder con un dato, no con una impresión.
+
+**Lo que se midió al ir a contestarle** (`ujieres-cortes-generales`, convocatoria BOE-A-2026-16036 del
+23/07/2026, **inscripción abierta**):
+
+| Comprobación | Estado |
+|---|---|
+| Temas del programa oficial presentes | **17 / 17** ✅ |
+| Normas que alimentan el temario | 11, todas activas y con articulado completo (CE 209 arts, Regl. Congreso 207, Regl. Senado 227, Estatuto del Personal 86…) |
+| **Literalidad del epígrafe vs BOE** (`verify:epigrafe`, Sistema 2) | **0 / 17** — nunca se ha corrido aquí |
+| **scope ↔ epígrafe** (`verify:scope`, Sistema 1) | **6 / 17** (`verified_correct` en T3–T8; los otros 11 sin verificar) |
+| `audit:epigrafe` | 0 🔴 / **4 🟡** — T5 (CE 33q y Regl. Congreso 11q, materia parcial), T7 (CE 15q OVER), T8 (Regl. Senado 3q OVER) |
+
+**Por qué importa y no es sólo higiene:** la cobertura está bien —los 17 temas están— pero lo que la
+usuaria pregunta es si se corresponden con **lo que exige el examen**, y eso es exactamente lo que
+mide el Sistema 2, que aquí no ha corrido nunca. Sin él, que el epígrafe sea el texto literal del
+boletín es una suposición. Y es una convocatoria **con inscripción abierta**: la gente está
+estudiando con esto ahora mismo, no dentro de seis meses.
+
+Los 4 🟡 caen además en temas marcados `verified_correct`, así que conviene mirar si el heurístico
+mecánico ve algo que los agentes pasaron por alto o si son proxies defendibles.
+
+**Qué hacer:** `npm run verify:epigrafe ujieres_cortes_generales` (los 17) y `npm run verify:scope`
+para los 11 temas sin estado, y adjudicar los 4 🟡 con `verificar-epigrafe-topic-scope.md`. Manual:
+`docs/maintenance/verificar-epigrafe-topic-scope.md` + runbook `docs/runbooks/verificar-epigrafes-scope.md`.
+
+**Segundo hallazgo, al contar preguntas por tema (03/08):** el temario sirve **8.915 preguntas
+activas**, pero repartidas de forma muy desigual — y el hueco cae justo en lo que es *propio* de esta
+oposición:
+
+| Tema | Preguntas | Base normativa |
+|---|---|---|
+| T12 La Administración parlamentaria | **11** | Estatuto del Personal |
+| T4 Órganos de Gobierno de las Cámaras | **28** | Regl. Congreso + Senado |
+| T10 El Cuerpo de Ujieres | **29** | Estatuto + material del Congreso |
+| T9 Tipos de personal de las Cortes | **45** | Estatuto del Personal |
+| T11 Derechos, deberes e incompatibilidades | **52** | Estatuto del Personal |
+| …frente a T1 (1.402), T7 (1.112), T3 (1.104), T16 (940), T5 (935) | | |
+
+Los cinco temas flacos son **los cinco que preguntan por las Cortes Generales como empleador** — o sea
+el núcleo diferencial del Cuerpo de Ujieres, no relleno. Un opositor que llegue a T12 se encuentra
+once preguntas. No dispara `LOW_COVERAGE` (<10) por poco, así que hoy no lo ve nadie: el umbral está
+calibrado para detectar temas vacíos, no temas anémicos en la parte que más se examina.
+
+⚠️ **Y una pregunta que esto deja abierta, más grande que esta oposición:** ¿cuántas convocatorias
+ABIERTAS más están sirviendo temario con 0 epígrafes verificados? Si son varias, el orden de ataque
+no es alfabético: es por convocatoria abierta y volumen de opositores. Merece medirse antes de
+ponerse a verificar una por una.
+
 ### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
 
 - **Esfuerzo: rato.** Montado entero el 01/08; queda un paso de un minuto (ver «Lo que falta»).
@@ -3545,6 +3599,20 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **DOS CAPAS, no una:** el origen ya regeneraba bien tras `revalidatePath`, pero **CloudFront seguía sirviendo la copia rota**; hizo falta invalidar el CDN. Comprobarlo cuesta diez segundos (`?cb=$RANDOM` = origen · sin él = CDN) y distingue qué capa miente.
 - **ARREGLADO:** (a) `TestHubPage` y `RandomTestPage` ya no capturan — dejar reventar es mejor en los dos momentos: al construir falla el deploy y nadie ve la página rota, y al regenerar en caliente Next conserva la última versión BUENA; (b) guardarraíl de CI `lib/calidad/erroresHorneados.cjs` que lo impide por construcción, con salida legítima **firmada** junto al catch para el fragmento decorativo (hoy: 1, la cajita de estadísticas de `/leyes/[law]`, con trinquete); (c) el texto entra en `TEXTOS_PANTALLA_ERROR` del oráculo, así que el barrido de rutas caza las que queden vivas — el barrido la habría dado por SANA (200, cabecera y pie, consola limpia, ninguna petición fallida).
 - **EL HERMANO SILENCIOSO, arreglado de paso:** `RandomTestPage` degradaba a `themeCounts = []` y horneaba **«0 preguntas» en todos los temas**. No enseña un error: enseña un dato falso, con la misma permanencia y más difícil de ver.
+
+### [T-512] ✅ [HECHA 03/08] El dossier de feedback marcaba «sin responder» hilos ya CERRADOS: 94 falsos de 99
+
+- **Esfuerzo declarado: rato.**
+- **De dónde sale:** atendiendo el feedback de Laura García (`10bdd362`), el panel «🧵 OTROS HILOS» del dossier avisó de **5 hilos suyos «sin responder»**. Los cinco estaban **cerrados** —tres `dismissed` idénticos del 16/06 (pulsó tres veces en 36 segundos) y dos `resolved` del 18/06 y el 04/07— y a los cinco **se les había contestado en su día, en OTRO hilo suyo**: ella hace la misma pregunta en varios a la vez y la respuesta va a uno solo.
+- **Por qué NO era cosmético:** el aviso no informa, **manda escribir**. Escribirle a alguien sobre un hilo que se cerró hace 30-48 días, de un examen que ya hizo, es exactamente el mensaje que no hay que mandar (misma decisión que el 03/08 sobre no reenviar respuestas viejas: *«ha pasado mucho tiempo y es peor enviarlo»*). Y el ruido tapa lo que sí espera.
+- **La causa, y la parte reutilizable:** `analizarHilos` decidía «sin responder» contando **mensajes de admin DENTRO del hilo**, descartando el estado a propósito (*«`status` no sirve: un `pending` puede estar respondido y sin cerrar»*). Esa mitad era cierta; el error fue **tirar el estado entero** en vez de buscar la señal buena. Un hilo puede no tener ni un mensaje nuestro y estar perfectamente cerrado.
+- **Medido en el banco ANTES de tocar nada:** de los hilos que el panel marcaba, **94 estaban cerrados (29 personas) y 5 esperaban de verdad** → **95% de ruido**. Contado por aperturas de dossier, **1.429 avisos falsos**.
+- **Arreglo:** la señal pasa a ser **`feedback_conversations.status = 'waiting_admin'`**, que es **la MISMA que cuenta el panel de admin** (`getAdminFeedbackCounts`). No se inventa criterio nuevo a propósito: dos puertas al mismo hecho con reglas distintas acaban contradiciéndose. Sin conversación sí manda el estado del feedback (uno vivo sin conversación es alguien a quien **no se le puede** contestar, el hallazgo `feedback_sin_conversacion`; uno cerrado, no). Y los **duplicados** solo se anuncian si **al menos dos siguen esperando**: mandar cerrar lo que lleva mes y medio cerrado no es una acción.
+- **Capas:** 13 tests del núcleo puro (`__tests__/scripts/hilosAbiertos.test.ts`), con **el caso Chema que dio origen al panel intacto** (sigue avisando de sus dos hilos abiertos) y **el caso Laura como regresión** (los cinco cerrados, silencio). Verificación contra RDS con el núcleo REAL: **1.429 → 0** avisos, sin perder ninguno de los 3 hilos que de verdad esperan.
+- **El cero está comprobado, no supuesto:** los 3 hilos en `waiting_admin` son de 3 personas con **un solo feedback cada una**, así que no hay ningún caso legítimo que enseñar hoy; y los 3 de Chema están hoy `resolved/closed`, o sea que el silencio es correcto. La validación en el otro sentido la dan los tests (con `waiting_admin` sigue avisando) y la consulta del dossier, comprobada aparte: devuelve `closed` para los cerrados y `waiting_admin` para los pendientes.
+- **Límite conocido, dejado fuera a propósito:** una conversación `closed` cuyo ÚLTIMO mensaje es del usuario (una **réplica**: contestamos, se cerró el hilo y la persona volvió a escribir) no se marca aquí. Son **141** en el banco, casi todas viejas y atendidas, y de eso ya se encarga `vigia.cjs` con su clase RÉPLICA. Meterlo aquí devolvería el ruido.
+- **Manual actualizado** (`docs/procedures/gestionar-feedback-bug.md`, §«cada hilo se responde en SU hilo»): un hilo sin mensajes nuestros NO significa sin responder, y antes de escribir por un hilo viejo hay que mirar si se le contestó en otro suyo.
+- **Relacionadas:** [T-501] (el otro hueco de esta misma cola: saber si la respuesta llegó), y la ficha del caso Chema que creó el panel.
 ### [T-495] ✅ 🟡 [HECHA 03/08] El recordatorio de método se olvida a media tarea: llega al reclamar y nada lo repite
 
 - **RESOLUCIÓN (03/08).** El recordatorio vuelve en **tres momentos**, y ninguno es un reloj:
