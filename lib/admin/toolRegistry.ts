@@ -58,6 +58,22 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── La cabecera nunca deja nada fuera de la pantalla ──────────────────────────────────────
+  sim_cabecera_alcanzable: {
+    titulo: 'Comprobar que la cabecera no deja perfil ni notificaciones fuera de la pantalla (T-504)',
+    ruta: 'scripts/sim/sim-cabecera-alcanzable.ts',
+    estado: 'vivo',
+    notas:
+      'npm run sim:cabecera [-- --url=https://www.vence.es] [--solo=premium|free]. Navegador real ' +
+      'sobre 4 anchuras de escritorio × 3 tipos de sesión. Comprueba TRES cosas distintas: que la ' +
+      'fila no desborda su contenedor, que todo lo pulsable de la cabecera se puede pulsar de ' +
+      'verdad, y que los enlaces que no caben están en el menú «Más» y ese menú se abre y se puede ' +
+      'usar (con `elementFromPoint`, no contando enlaces: la primera versión los contaba y daba ' +
+      'verde con el menú recortado por un `overflow-x`). Sale 2 = NO CONCLUYENTE si algún caso no ' +
+      'se pudo juzgar, porque un verde PARCIAL no es un verde. Correrla al añadir cualquier cosa a ' +
+      'la cabecera: es lo que faltaba cuando el menú creció hasta echar el avatar fuera del ' +
+      'viewport en las cuatro anchuras y en los dos planes. Necesita AUTH_SECRET (SSM) y solo LEE.',
+  },
   // ── Precio de fidelidad de quien se queda sin suscripción al vaciar la cuenta antigua ──────
   crear_ofertas_fidelidad: {
     titulo: 'Crear POR ADELANTADO el precio de fidelidad de quien se le apaga la suscripción (T-448)',

@@ -137,6 +137,7 @@
     "sim:rutas": "npx tsx scripts/sim/barrido-rutas.ts",
     "sim:identidad-maquina": "node scripts/sim/sim-identidad-maquina.cjs",
     "sim:cola-reserva": "node scripts/impugnaciones/sim-reserva-cola.cjs",
+    "sim:cabecera": "tsx scripts/sim/sim-cabecera-alcanzable.ts",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",
     "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes",
     "canary:opciones-duplicadas": "node scripts/canary-opciones-duplicadas.cjs",

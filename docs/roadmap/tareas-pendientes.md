@@ -28,6 +28,25 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas
 
+### [T-504] 🔴 [ABIERTO 03/08] La cabecera de escritorio se desborda 375 px y deja el perfil y las notificaciones FUERA de la pantalla, sin scroll con el que alcanzarlos
+
+- **Lo reportó un usuario** (`e41cf047`, premium, Brave sobre Windows, 1920×925, feedback enviado desde el propio checkout de Stripe): *«desde que me he hecho premium el menú superior se descuadra y me impide ver mi perfil y las notificaciones. Tampoco me deja desplazarme horizontalmente para acceder a ellos»*. Adjuntó captura.
+- **NO es de Brave ni es de premium**, y eso es lo que cambia el tamaño del problema. Medido con navegador real contra producción, la fila de la cabecera ocupaba **1.879 px** dentro de un contenedor que da **1.504 px** como máximo → desbordaba en las **cuatro** anchuras de escritorio (1280, 1440, 1536, 1920) y en los **dos** planes. Con `html` y `body` en `overflow-x: hidden`, `scrollWidth == innerWidth`: lo que se sale **no se puede alcanzar de ninguna manera**. A 1280 quedaban inalcanzables SEIS controles (IA, ranking, racha, selector de oposición, campana y avatar), no los dos que él llegó a contar.
+- **Lo que cambió al pagar fue CUÁL se cae, no si se cae:** premium pierde el botón «Hazte Premium» del bloque derecho y gana el enlace «Recompensas» en la barra. Él cruzó el umbral; no lo causó.
+- **Causa raíz:** la barra era un `flex-1` **sin `min-w-0`**, así que por `min-width: auto` no podía encogerse por debajo de su contenido, y el bloque derecho es `flex-shrink-0` → la barra lo empujaba fuera del viewport. **Ningún breakpoint lo arreglaba**: `container` topa en 1.536 px, así que ni en una pantalla de 2560 cabría. La cabecera llevaba meses creciendo un enlace cada vez y aguantando por suerte; con el octavo se acabó.
+- **Arreglado (03/08) en dos capas, y la de abajo aguanta sola:**
+  1. **CSS, garantía por construcción:** `min-w-0` en el `<nav>` y scroll de reserva envolviendo solo los enlaces. Aunque el JavaScript no llegue a correr, lo peor que pasa es una barra con scroll — el perfil y la campana NO pueden volver a quedarse fuera.
+  2. **Reparto «priority+»** (`components/HeaderDesktopNav.tsx`): se mide lo que ocupa cada enlace y el sitio real que queda, y lo que no cabe se pliega en un menú **«Más»**. Da igual cuántos enlaces se añadan mañana: el sobrante se pliega en vez de empujar a nadie.
+  3. La cabecera pasa a ocupar **todo el ancho en escritorio** (`xl:max-w-none`): `container` desperdiciaba 384 px en una pantalla de 1920 mientras el menú no cabía. Con eso a 1920 vuelven a la barra 7 de 9 enlaces en vez de 5.
+  4. El nombre del avatar va **topado** (`max-w-[9rem] truncate`): lo escribe el usuario y un «Sergio De La Rosa Márquez» medía 273 px él solo.
+- **Capas:** núcleo puro `lib/ui/navOverflow.ts` (**18 tests**, con las anchuras medidas en producción) · simulación **`npm run sim:cabecera`** con navegador real (4 anchuras × 3 tipos de sesión), registrada en `toolRegistry`.
+- **La simulación está validada en los DOS sentidos**, que es lo que la hace valer: contra producción con el código viejo sale **roja en 8 de 12** casos y nombra exactamente los controles que el usuario no podía pulsar; contra el arreglo, verde en 12.
+- **Dos fallos de mi propio instrumento, encontrados y cerrados** (van aquí porque son la parte reutilizable):
+  - El medidor invisible **contaba en el `scrollWidth`** de sus ancestros y hacía ver un desborde de 379 px que no existía. Un instrumento que falsea justo lo que va a medir.
+  - La simulación **contaba enlaces del menú** en vez de comprobar que se vieran, y daba verde con el desplegable **recortado por un `overflow-x: auto`** — invisible en pantalla, presente en el DOM. **Lo cazó un pantallazo, no la simulación.** Ahora se comprueba con `elementFromPoint`, que caza recortes, tapados y z-index.
+  - Y un **verde parcial**: contra el código viejo se saltaba 8 de 12 casos por «no concluyente» y aun así imprimía 🟢. Ahora cualquier caso sin poder juzgar deja el veredicto en amarillo (salida 2).
+- **Queda por decidir (producto, no bug):** cuántos enlaces caben depende del bloque DERECHO, que hoy pesa 674 px en producción (Soporte y IA con texto, meta diaria, ranking, racha, selector de oposición, campana y avatar con nombre). Si se quiere más menú visible, el sitio de donde sacarlo es ese. El invariante se cumple igual con cualquier decisión.
+
 ### [T-479] 🟡 [ABIERTO 02/08] La cola de trabajo externo no deja traza de quién la trabajó, y el vigía no sabe que existen las reservas
 
 - **De dónde sale:** los cuatro huecos que [T-474] midió y NO arregló (allí se cerró lo que impide el pisotón: la puerta de cierre y el criterio único del panel). Estos cuatro son de **visibilidad**, no de bloqueo, y por eso van aparte.

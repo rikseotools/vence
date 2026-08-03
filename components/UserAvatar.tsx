@@ -385,9 +385,14 @@ export default function UserAvatar() {
           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
         </div>
 
-        {/* Name (only on large screens) */}
-        <div className="hidden md:block text-left">
-          <div className="text-sm font-medium text-gray-900">
+        {/* Name (only on large screens).
+            El ancho va TOPADO (T-504): este bloque vive en la cabecera, que es de anchura
+            fija, y el nombre lo escribe el usuario. Medido en producción, un «Sergio De La
+            Rosa Márquez» ocupaba 273 px él solo; sin tope, un nombre largo se come el sitio
+            del resto de la barra y vuelve a empujar cosas fuera de la pantalla. Se recorta
+            con puntos suspensivos y el nombre entero sigue en el desplegable. */}
+        <div className="hidden md:block text-left max-w-[9rem]">
+          <div className="text-sm font-medium text-gray-900 truncate" title={displayName}>
             {displayName}
           </div>
           {userProfile ? (

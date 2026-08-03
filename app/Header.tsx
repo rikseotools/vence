@@ -26,6 +26,7 @@ import { getOposicion, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getTestsLin
 import { rutaTestPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
+import HeaderDesktopNav from '@/components/HeaderDesktopNav'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 
 // ── Types ────────────────────────────────────────────────────────
@@ -599,7 +600,12 @@ export default function HeaderES() {
   return (
     <>
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative min-h-16">
-        <div className={`container mx-auto px-2 sm:px-4 ${user ? 'py-6 pb-12 xl:pb-6' : 'py-6'}`}>
+        {/* En escritorio la cabecera ocupa TODO el ancho (T-504). `container` topa en 1.536 px,
+            así que en una pantalla de 1920 se dejaban sin usar 384 px mientras el menú no cabía
+            y el avatar se salía fuera. Una barra superior pegada al viewport es lo normal, y
+            aquí además es lo que devuelve los enlaces a la barra en vez de plegarlos en «Más».
+            Por debajo de 1280 no cambia nada: ahí el `container` ya valía casi el ancho entero. */}
+        <div className={`container mx-auto px-2 sm:px-4 xl:max-w-none xl:px-6 ${user ? 'py-6 pb-12 xl:pb-6' : 'py-6'}`}>
           <div className="flex items-center justify-between relative overflow-visible">
             
             {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
@@ -742,24 +748,18 @@ export default function HeaderES() {
               </div>
             </div>
             
-            {/* NAVEGACIÓN COMPLETA DESKTOP */}
-            <nav className="hidden xl:flex items-center justify-center flex-1 mx-8">
-              <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-800 rounded-full p-1">
-                {(user ? getLoggedInNavLinks() : getGuestNavLinks()).map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    title={link.title}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all duration-200 ${
-                      getColorClasses(pathname === link.href)
-                    }`}
-                  >
-                    <span className="text-sm">{link.icon}</span>
-                    <span className="text-sm font-medium">{link.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </nav>
+            {/* NAVEGACIÓN COMPLETA DESKTOP — pliega en «Más» lo que no cabe (T-504).
+                Antes esta barra era un `flex-1` sin `min-w-0` con la lista entera dentro, así
+                que no podía encogerse y empujaba el bloque de la derecha (campana y avatar)
+                FUERA del viewport, sin scroll con el que alcanzarlos. Medido contra
+                producción: se salía en las cuatro anchuras de escritorio y en los dos planes.
+                El reparto y su garantía de CSS viven en `HeaderDesktopNav`. */}
+            <HeaderDesktopNav
+              links={user ? getLoggedInNavLinks() : getGuestNavLinks()}
+              pathname={pathname}
+              getColorClasses={getColorClasses}
+              onAbrirMas={(ocultos) => trackClick('Header', 'nav_mas_abierto', { ocultos })}
+            />
 
             {/* DERECHA: Notificaciones + Menú hamburguesa + Avatar del usuario */}
             <div className="flex items-center space-x-1 flex-shrink-0">
