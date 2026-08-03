@@ -53,53 +53,58 @@ Filtrar SIEMPRE por consentimiento: `email_preferences.unsubscribed_all = false`
 
 > **🔒 Garantía anti-desuscritos (por diseño):** el filtro de consentimiento va **hardcoded en el `WHERE`** de la query de audiencia del script `send-promo-inscripcion.cjs` — **NO es un parámetro del config**, así que **ninguna ejecución puede saltárselo** aunque el `promo.json` esté mal. Excluye tanto la **baja total** (`unsubscribed_all`) como la **baja solo de newsletter** (`email_newsletter_disabled`). Quien se da de baja desaparece automáticamente del siguiente envío (verificado E2E). Nota: quien **no tiene fila** en `email_preferences` SÍ recibe — es correcto: "sin fila" = nunca se dio de baja (`COALESCE(...,false)` lo trata como suscrito). **Es imposible enviar a un desuscrito con este script.**
 
-### 2.0-bis SEGMENTAR POR FAMILIA: ya se puede HOY, sin construir nada (medido 03/08/2026)
+### 2.0-bis SABER LA FAMILIA DEL OPOSITOR ANTES DE ENVIAR (y por dónde SÍ se cruza)
 
-**No hace falta un criterio de audiencia nuevo.** La herramienta admite **una audiencia por envío** —un
-`target_oposicion` concreto o un tipo general—, así que una familia es simplemente **N envíos, uno por
-cada oposición suya**. Y para casi todas las familias N es pequeño:
+**Antes de enviar hay que saber a qué FAMILIA opositan los destinatarios.** No es lo mismo alguien de
+**sanidad** (TCAE, celador, enfermería) que uno de **administrativas**, y menos aún que uno de
+**fuerzas y cuerpos de seguridad**: otras pruebas, otro perfil y otra forma de estudiar. Mandar fuera
+de familia gasta la lista, empeora la reputación de envío y enseña a esa persona a ignorarnos.
 
-| Familia | Oposiciones activas con usuarios | Usuarios | % premium | % premium **teniendo temario** |
-|---|---|---|---|---|
-| administracion_general | **84** | 8.883 | 2,66 % | 2,67 % |
-| justicia | 2 | 572 | 2,05 % | 2,10 % |
-| sanidad | 22 | 346 | 2,03 % | 2,28 % |
-| **oficios** | **5** | 342 | **3,94 %** | **4,39 %** |
-| seguridad | 5 | 269 | **0,60 %** | **0,74 %** |
-| tecnica | 2 | 51 | 2,60 % | 3,92 % |
+**Pero NO es un muro, y la forma importa** (medido sobre qué oposiciones toca de verdad cada usuario):
 
-**Cómo usarlo, por familia:**
+- **Administración general es el EJE por el que pasa todo el mundo.** Una minoría real de cada familia
+  hace además tests de administrativas: **1 de cada 4** de oficios, **1 de cada 5** de justicia, y en
+  torno a 1 de cada 8-9 de sanidad y de seguridad. Así que promocionar **una administrativa** a
+  especialistas **no es absurdo** — hay público.
+- **Entre familias ESPECIALIZADAS no hay tráfico.** Sanidad ↔ oficios: 2 personas. Sanidad ↔ justicia:
+  2. Ofrecer un TCAE a quien prepara ordenanza, o al revés, es tirar el envío.
+- **La dirección no es simétrica.** Muchísima más gente toca administrativas que cualquier
+  especialidad, así que promocionar **una de sanidad al grueso de administrativos** impacta sobre todo
+  a personas que nunca han hecho un test de sanidad. Al revés (una administrativa a sanitarios) sí
+  tiene público.
 
-- **Oficios: 5 envíos cubren la familia ENTERA** (`ordenanza-ayuntamiento-cordoba` 134,
-  `ujieres-cortes-generales` 73, `tecnico-auxiliar-universidad-de-murcia` 53, `subalterno-gva` 45,
-  `subalterno-parlamento-andalucia` 37). Es la familia que **mejor convierte de todo el catálogo** y la
-  que más crece (317 altas en 30 días). Primera opción si hay que elegir uno.
-- **Sanidad: los 5 primeros envíos cubren el 57 %** (`tcae-murcia` 67, `tcae-sermas-madrid` 41,
-  `tcae-galicia` 36, `auxiliar-enfermeria-gva` 27, `tcae-sas` 27). La cola son 17 oposiciones de
-  menos de 20 usuarios: no compensa el envío individual salvo que la promo sea suya.
-- **Administración general NO se segmenta**: son 84 oposiciones y el **83 % de toda la base**. Para
-  ella la audiencia general YA es su segmento.
-- **⛔ A seguridad NO se le manda oferta premium.** 269 usuarios al **0,60 %**, y —esto es lo que
-  decide— **0,74 % incluso teniendo temario**, contra el 2,67 % de administrativa. La medición separa
-  a propósito quién tiene contenido y quién no, para no confundir «no convierte» con «no tiene qué
-  estudiar»: aquí no es falta de producto, es que ese público no compra. El retorno esperado de un
-  envío entero son ~2 conversiones, y el coste es fatiga de lista y reputación de envío.
+**Regla operativa:** dentro de la familia, siempre. Hacia administración general, se puede. Entre dos
+especialidades distintas, no.
 
-**La familia NO se pregunta: se DEDUCE.** `user_profiles.target_oposicion` → `oposiciones.familia`
-cubre el **91,7 %** de los 11.959 usuarios (95,9 % tiene objetivo). Añadir un paso al registro para
-preguntarlo sería preguntarle a 9 de cada 10 algo que ya está en la BD, y encima solo captaría a los
-nuevos: deducirlo funciona **retroactivamente sobre toda la base**. Las **favoritas no sirven** como
-señal supletoria — medido: de los 671 usuarios cuya familia no se puede deducir, solo **6** tienen una
-configuración guardada y **2** preguntas guardadas (1,2 %); son función de repaso, no de identidad.
+**Cómo saber la familia, sin preguntarle nada a nadie:** se DEDUCE del objetivo que ya tiene puesto
+(`user_profiles.target_oposicion` → `oposiciones.familia`) y cubre a la gran mayoría de la base. No
+hace falta añadir un paso al registro: sería preguntarle a casi todo el mundo algo que ya está en la
+BD, y solo valdría para los que se registren después. Las **favoritas no sirven** de señal supletoria
+(casi nadie las usa: son función de repaso, no de identidad).
+
+**En la práctica**, la audiencia es **una por envío** (un `target_oposicion` o un tipo general), así que
+una familia son **N envíos, uno por oposición suya** — y para casi todas N es pequeño. La excepción es
+**administración general**: es la mayor parte de la base y ahí la audiencia general YA es su segmento.
 
 ```sql
 -- las oposiciones de una familia, ordenadas por audiencia (una fila = un envío)
 SELECT o.slug, replace(o.slug,'-','_') AS audience_key, count(u.id) AS usuarios
 FROM oposiciones o
 JOIN user_profiles u ON replace(o.slug,'-','_') = u.target_oposicion
-WHERE o.is_active AND o.familia = 'oficios'
+WHERE o.is_active AND o.familia = 'sanidad'   -- sanidad | oficios | seguridad | justicia | tecnica | social
 GROUP BY 1,2 ORDER BY usuarios DESC;
+
+-- ¿cuánta gente cruza DE VERDAD entre dos familias? (re-medir antes de asumir)
+WITH fam AS (
+  SELECT t.user_id, o.familia FROM tests t
+  JOIN oposiciones o ON replace(o.slug,'-','_') = t.position_type
+  WHERE t.position_type IS NOT NULL AND o.familia IS NOT NULL GROUP BY 1,2)
+SELECT a.familia, b.familia, count(*) FROM fam a JOIN fam b
+  ON a.user_id = b.user_id AND a.familia < b.familia GROUP BY 1,2 ORDER BY 3 DESC;
 ```
+
+> Aplica **con más fuerza al cross-sell** (§8): una oposición nueva se promociona dentro de su familia
+> —o desde una especialidad hacia administrativas—, nunca entre dos especialidades distintas.
 
 ### 2.0 ELEGIR EL ALCANCE correcto (¡decisión previa, no acotar de menos!)
 > **Aprendizaje 05/07 (fallo real en León):** acoté el envío a la **provincia** de León cuando el puesto (Universidad de León) lo puede opositar **toda la comunidad autónoma** → se quedó fuera medio Castilla y León y hubo que hacer un envío make-up. **Regla:** el alcance por defecto de una oposición es **su comunidad autónoma completa**, no solo la provincia.
