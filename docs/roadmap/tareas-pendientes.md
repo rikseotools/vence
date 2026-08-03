@@ -1588,16 +1588,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Y se puede MEDIR si sirve**, que es lo que evita discutirlo a ojo: `npm run sesiones:friccion` da el ratio de escape por guardarraíl. Si el recordatorio funciona, bajan los `guard_escape` de `robustez-push`.
 - **Relacionadas:** [T-423] (el contador que lo mide), [T-486] (la flota que lo necesitaría más).
 
-### [T-491] 🟡 [ABIERTO 02/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
-
-- **Esfuerzo: rato.** Es una regla de alerta; el camino está trillado (acaba de escribirse su gemela `sim_ruta_rota`).
-- **CÓMO SALIÓ.** Construyendo [T-487], al comprobar la pregunta de Manuel — *«la simulación continua, si algo falla avisa a salud de la app, ¿no? ¿sin silos?»*. La respuesta era **no**.
-- **QUÉ PASA:** `lib/sim/report.ts` construye el evento `sim_journey_result` con severidad `error` cuando falla un journey `critical`/`high`, y lo emite desde siempre. Pero ese tipo **no aparece en `backend/src/alerts/alert-rules.ts` ni en `benignSignals.ts`**: nadie lo vigila y nadie lo ha declarado ruido.
-- **Y el catch-all TAMPOCO lo cubre:** `senal_error_sin_vigilancia` exige **≥150 eventos del mismo tipo en una hora**, y una corrida de Vence Sim produce unidades. O sea que un journey en rojo se ve en la tarjeta «Todas las señales (24h)» si alguien entra a mirarla, y **no manda correo a nadie**.
-- **Dónde duele:** los journeys marcados `postDeploy: true` corren **en cada despliegue**. Si uno se pone rojo justo después de publicar, hoy el aviso muere en el log del deploy.
-- **Cómo atacarlo:** regla propia mirando `event_type='sim_journey_result' AND severity='error'` en las últimas horas, con el nombre del journey y su invariante fallida en el cuerpo; declararlo en las **dos** copias de `CON_REGLA_PROPIA` (hay guardarraíl de paridad). Copiar la forma de `RULE_SIM_RUTA_ROTA`.
-- **Relacionada:** [T-487] (de donde sale, y de donde se copia la regla).
-
 ### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
 
 - **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
@@ -3399,6 +3389,23 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-491] ✅ 🟡 [HECHA 03/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira
+
+- **RESOLUCIÓN (03/08).** Regla `sim_journey_fallido` (`error`, cooldown 3 h) + el tipo declarado en las **dos** copias de `CON_REGLA_PROPIA`, para que el catch-all no lo cuente por duplicado.
+  - **Ventana de 3 h, no de 24, y es la decisión de fondo:** estos journeys corren atados a un despliegue o a alguien reproduciendo un bug, así que un fallo de ayer no dice nada del estado de ahora — solo repetiría un aviso ya atendido. Es el defecto que a `temario_propio_perdido` hubo que corregirle poniéndole la hora delante.
+  - **El aviso trae lo que hace falta para triarlo sin abrir nada:** el nombre del journey, la invariante que cayó, y el `npm run sim -- <journey>` ya escrito. Y **manda a mirar el despliegue primero**, porque es cuando corren: investigar el app cuando la respuesta está en el commit recién publicado es media hora tirada.
+  - **Dice que un rojo suelto puede ser del entorno** (contenedor frío, límite de peticiones) y que lo que confirma es repetirlo. Un aviso que se presenta como certeza y falla en falso se acaba ignorando.
+  - **Capas:** 10 tests, incluidos dos que comprueban que está **enchufada de verdad** — que entra en `ALERT_RULES` y que los dos eventos de Vence Sim están declarados. No es paranoia: al escribirla, el reemplazo que la registraba **no casó y falló en silencio**; el test lo cazó al instante. Una regla que existe y no está registrada no vigila nada.
+
+- **Esfuerzo: rato.** Es una regla de alerta; el camino está trillado (acaba de escribirse su gemela `sim_ruta_rota`).
+- **CÓMO SALIÓ.** Construyendo [T-487], al comprobar la pregunta de Manuel — *«la simulación continua, si algo falla avisa a salud de la app, ¿no? ¿sin silos?»*. La respuesta era **no**.
+- **QUÉ PASA:** `lib/sim/report.ts` construye el evento `sim_journey_result` con severidad `error` cuando falla un journey `critical`/`high`, y lo emite desde siempre. Pero ese tipo **no aparece en `backend/src/alerts/alert-rules.ts` ni en `benignSignals.ts`**: nadie lo vigila y nadie lo ha declarado ruido.
+- **Y el catch-all TAMPOCO lo cubre:** `senal_error_sin_vigilancia` exige **≥150 eventos del mismo tipo en una hora**, y una corrida de Vence Sim produce unidades. O sea que un journey en rojo se ve en la tarjeta «Todas las señales (24h)» si alguien entra a mirarla, y **no manda correo a nadie**.
+- **Dónde duele:** los journeys marcados `postDeploy: true` corren **en cada despliegue**. Si uno se pone rojo justo después de publicar, hoy el aviso muere en el log del deploy.
+- **Cómo atacarlo:** regla propia mirando `event_type='sim_journey_result' AND severity='error'` en las últimas horas, con el nombre del journey y su invariante fallida en el cuerpo; declararlo en las **dos** copias de `CON_REGLA_PROPIA` (hay guardarraíl de paridad). Copiar la forma de `RULE_SIM_RUTA_ROTA`.
+- **Relacionada:** [T-487] (de donde sale, y de donde se copia la regla).
+
 
 ### [T-499] ✅ 🟡 [HECHA 03/08] La puerta del texto de `done` confunde «en 30 días» de historial con un plazo futuro
 

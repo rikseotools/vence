@@ -203,9 +203,15 @@ resumen) y lo vigila la regla **`sim_ruta_rota`** de `backend/src/alerts/alert-r
 correo y sale en `/admin/salud-sistema`. Las sanas **no** se publican una a una: 168 filas verdes
 por pasada ahogarían el bus.
 
-> ⚠️ **Hueco conocido y con ficha:** `sim_journey_result` —el evento que emiten los journeys desde
-> siempre— **no tiene ninguna regla que lo mire**, ni aparece entre las señales benignas. Un
-> journey puede estar en rojo y verse solo en la terminal de quien lo ejecutó. Es [T-491].
+**Y los journeys también avisan** (T-491): `sim_journey_result` con severidad `error` lo vigila la
+regla **`sim_journey_fallido`**, con ventana de 3 h — corta a propósito, porque estos journeys
+corren atados a un deploy o a alguien reproduciendo un bug, y un fallo viejo ya no dice nada del
+estado actual. El aviso trae el nombre del journey, la invariante que cayó y el `npm run sim -- …`
+para reproducirlo.
+
+> Ese evento llevaba **sin vigilancia desde que existe el harness**: no aparecía en ninguna regla
+> ni entre las señales benignas, y el catch-all no lo cubría porque exige 150 del mismo tipo en una
+> hora. Un journey en rojo tras un despliegue se veía solo en el log del deploy.
 
 ## Canary continuo en AWS (ya existe — NO se duplica)
 La vigilancia continua del invariante #2 la hace **`backend/src/canary-por-leyes-scope`**

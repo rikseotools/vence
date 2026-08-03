@@ -5703,10 +5703,88 @@ export const RULE_SIM_RUTA_ROTA: AlertRule<{
   cooldownMin: 360,
 };
 
+
+/**
+ * Un JOURNEY de Vence Sim ha fallado. (T-491, 03/08/2026)
+ *
+ * ── EL HUECO, que llevaba abierto desde que existe Vence Sim ────────────────────────────────
+ * `lib/sim/report.ts` construye este evento con severidad `error` cuando cae un journey
+ * `critical`/`high`, y lo emite desde el primer día. Pero `sim_journey_result` **no aparecía en
+ * ninguna regla ni en las señales benignas**: nadie lo miraba y nadie lo había declarado ruido.
+ *
+ * El catch-all tampoco lo cubría: `senal_error_sin_vigilancia` exige **150 eventos del mismo tipo
+ * en una hora**, y una corrida de Vence Sim produce unidades. Así que un journey en rojo se veía
+ * en la tarjeta «Todas las señales (24h)» si alguien entraba a mirarla, y no avisaba a nadie.
+ *
+ * ── DÓNDE DUELE ────────────────────────────────────────────────────────────────────────────
+ * Los journeys marcados `postDeploy: true` corren **en cada despliegue**. Si uno se pone rojo
+ * justo después de publicar, el aviso moría en el log del deploy — y esa es precisamente la clase
+ * de fallo (pintado, oclusión, un control que no recibe el clic) que solo ve un navegador.
+ *
+ * ── VENTANA CORTA A PROPÓSITO ──────────────────────────────────────────────────────────────
+ * 3 horas, no 24: estos journeys corren atados a un deploy o a alguien reproduciendo un bug, así
+ * que un fallo viejo ya no dice nada del estado actual y solo serviría para repetir un aviso ya
+ * atendido — el defecto que a `temario_propio_perdido` hubo que corregirle con la hora delante.
+ */
+export const RULE_SIM_JOURNEY_FALLIDO: AlertRule<{
+  journeys: number
+  corridas: number
+  muestra: string
+  invariante: string
+  ultima: Date | string | null
+}> = {
+  name: 'sim_journey_fallido',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT metadata->>'journey')::int AS journeys,
+           COUNT(*)::int AS corridas,
+           COALESCE(MIN(metadata->>'journey'), '') AS muestra,
+           COALESCE(MIN(metadata->>'firstFailure'), '') AS invariante,
+           MAX(ts) AS ultima
+      FROM observable_events
+     WHERE event_type = 'sim_journey_result'
+       AND severity = 'error'
+       AND ts >= now() - interval '3 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.journeys ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r?.journeys ?? 0} journey(s) de Vence Sim en ROJO: ${r?.muestra || '?'}`,
+      body:
+        `Un escenario de usuario reproducible ha dejado de pasar. Estos journeys corren en cada ` +
+        `despliegue (los marcados postDeploy), así que lo primero es mirar si acaba de publicarse algo.\n\n` +
+        `Journey: ${r?.muestra || '(sin nombre)'}\n` +
+        `Invariante que cayó: ${r?.invariante || '(sin detalle)'}\n` +
+        `Corridas fallidas en 3 h: ${r?.corridas ?? 0}\n` +
+        `Última: ${r?.ultima ? new Date(r.ultima).toISOString() : '(sin fecha)'}\n\n` +
+        `Reproducir en local, con navegador y capturas por paso:\n\n` +
+        `  npm run sim -- ${r?.muestra || '<journey>'}\n\n` +
+        `Ver todas las de la ventana:\n\n` +
+        `  SELECT ts, endpoint, error_message, metadata->>'failedInvariants' AS fallaron\n` +
+        `   FROM observable_events WHERE event_type='sim_journey_result' AND severity='error'\n` +
+        `   AND ts > now() - interval '6 hours' ORDER BY ts DESC;\n\n` +
+        `Un rojo puede ser del entorno (contenedor frío, límite de peticiones): si se repite en dos ` +
+        `corridas seguidas, es del app. Runbook: docs/runbooks/vence-sim.md. Ficha: T-491.`,
+      metadata: {
+        journeys: r?.journeys ?? 0,
+        corridas: r?.corridas ?? 0,
+        journey: r?.muestra ?? '',
+        ultima: r?.ultima ? new Date(r.ultima).toISOString() : null,
+      },
+      fingerprint: `sim_journey_fallido:${r?.muestra ?? 'na'}`,
+    };
+  },
+  cooldownMin: 180,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // El barrido de rutas encontró una página que un usuario no puede usar (T-487). Vence Sim
   // emitía desde siempre y NINGUNA regla miraba sus eventos: el resultado moría en la terminal.
   RULE_SIM_RUTA_ROTA as AlertRule,
+  // Y el evento VIEJO de Vence Sim, sin vigilancia desde que existe el harness (T-491): el
+  // catch-all tampoco lo cubría, porque exige 150 del mismo tipo en una hora.
+  RULE_SIM_JOURNEY_FALLIDO as AlertRule,
   // Campaña de email que no envió a nadie teniendo a quien (2026-08-01, T-448). El hueco existía
   // desde antes: `renewal_reminders_zero_sent` se emitía y NINGUNA regla lo miraba.
   RULE_CAMPANA_EMAIL_ZERO_SENT as AlertRule,

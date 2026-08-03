@@ -67,7 +67,7 @@ export const CON_REGLA_PROPIA: readonly string[] = [
   'exam_integrity_drift', 'filtered_questions_validation_rejected',
   'http_4xx', 'http_5xx', 'http_network_error', 'http_timeout', 'invariant_violation',
   'laws_configurator_error', 'network_retry', 'react_error_boundary', 'runtime_kill',
-  'shuffle_option_order_invalid', 'sim_ruta_rota', 'subscription_cancel_error', 'subscription_drift',
+  'shuffle_option_order_invalid', 'sim_journey_result', 'sim_ruta_rota', 'subscription_cancel_error', 'subscription_drift',
   'subscription_drift_missing_in_db', 'subscription_force_canceled_past_due',
   'subscription_void_invoice_failed', 'tts_error', 'unhandled_error',
   'unhandled_rejection', 'webhook_unhealthy', 'workflow_failed', 'workflow_failure',
