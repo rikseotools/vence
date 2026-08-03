@@ -26,6 +26,23 @@ describe('lo que un usuario llamaría ROTO', () => {
     }
   })
 
+  // El caso REAL que se escapó (03/08/2026): `/administrativo-estado/test` sirvió ~17 h el aviso
+  // «Error cargando temas» horneado en su HTML estático. Responde 200, trae cabecera y pie (así
+  // que pasa de sobra el mínimo de texto), ninguna petición falla y la consola está limpia: por
+  // todas las demás reglas era una página sana. Lo descubrió un usuario premium escribiendo «No
+  // carga la página de test», que es exactamente lo que este barrido existe para evitar.
+  it('el aviso que una página hornea cuando sus datos no cargan, con todo lo demás en verde', () => {
+    const j = juzgarVisita({
+      ...SANA,
+      status: 200,
+      textoVisible: `Vence Oposiciones Inicio Temario Tests ${'contenido de cabecera y pie. '.repeat(20)} Error cargando temas`,
+      erroresConsola: [],
+      peticionesFallidas: [],
+    })
+    expect(j.veredicto).toBe('rota')
+    expect(j.motivos.join(' ')).toContain('pantalla de error')
+  })
+
   // Un esqueleto de React sin datos pesa decenas de kB de marcado y CERO letras para el usuario:
   // es el fallo que un `content-length` no puede ver.
   it('responde 200 y no pinta nada', () => {

@@ -72,7 +72,18 @@ export interface JuicioDeRuta {
  * Se comprueban literales a propósito: buscar la palabra «error» daría positivo en media web
  * («Notificar un error», «errores frecuentes»), y un detector que grita en falso se ignora.
  */
-export const TEXTOS_PANTALLA_ERROR = ['Algo no ha ido bien', 'Algo salió mal']
+export const TEXTOS_PANTALLA_ERROR = [
+  'Algo no ha ido bien',
+  'Algo salió mal',
+  // Avisos que una PÁGINA concreta pinta cuando sus datos no cargan. No son la pantalla de error
+  // global, y por eso se escapaban: la página responde 200, tiene cabecera y pie (así que pasa de
+  // sobra el mínimo de texto visible) y ninguna petición falla — sencillamente no hay contenido.
+  // Añadido tras el 03/08/2026: `/administrativo-estado/test` sirvió «Error cargando temas» ~17 h
+  // horneada en el HTML estático y el barrido la habría dado por buena (feedback `ddaa31dd`).
+  // Que ya no se puedan escribir es cosa de `lib/calidad/erroresHorneados.cjs`; esto caza las que
+  // queden vivas, que es lo que el usuario tiene delante.
+  'Error cargando temas',
+]
 
 /**
  * Debajo de esto, una página que responde 200 no está enseñando nada.

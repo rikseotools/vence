@@ -67,33 +67,26 @@ export default async function TestHubPage({ oposicion }: Props) {
   // (getAdminDb) en vez de createClient(ANON)+PostgREST — coherente con
   // getThemeQuestionCounts (que ya es Drizzle) en este mismo server component.
   type TopicRow = { id: string; topic_number: number; title: string; description: string | null; is_active: boolean | null }
-  let topics: TopicRow[]
-  try {
-    const res = await getAdminDb().execute(sql`
-      SELECT id, topic_number, title, description, is_active
-      FROM topics
-      WHERE position_type = ${positionType}
-      ORDER BY topic_number ASC
-    `)
-    topics = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as TopicRow[]
-  } catch (error) {
-    console.error('Error fetching topics:', error)
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600">Error cargando temas</p>
-        </div>
-      </div>
-    )
-  }
+  // NO se captura este error a propósito (T-506). Esta página se cachea (`revalidate = false`),
+  // así que una pantalla de aviso devuelta aquí se HORNEA como si fuera la página buena y se
+  // sirve durante toda la vida del deploy. Pasó el 03/08/2026: un tropiezo de la consulta dejó
+  // `/administrativo-estado/test` sirviendo «Error cargando temas» ~17 h con los 45 temas
+  // intactos en la BD, y lo descubrió un usuario premium (feedback `ddaa31dd`).
+  // Dejarlo reventar es mejor en los dos momentos: al construir, el deploy falla y nadie ve la
+  // página rota; al regenerar en caliente, Next conserva la última versión BUENA.
+  // Guardarraíl que lo impide: `lib/calidad/erroresHorneados.cjs`.
+  const res = await getAdminDb().execute(sql`
+    SELECT id, topic_number, title, description, is_active
+    FROM topics
+    WHERE position_type = ${positionType}
+    ORDER BY topic_number ASC
+  `)
+  const topics = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []) as TopicRow[]
 
-  // Obtener conteos de preguntas por tema (1 query cacheada, no N+1)
-  let themeCounts: { themeId: number; count: number }[] = []
-  try {
-    themeCounts = await getThemeQuestionCounts(oposicion as RandomTestOposicionSlug)
-  } catch (error) {
-    console.error('Error fetching theme counts:', error)
-  }
+  // Obtener conteos de preguntas por tema (1 query cacheada, no N+1).
+  // Tampoco se captura (T-506): quedarse con la lista vacía no enseña un error, enseña un DATO
+  // FALSO — todos los temas saldrían como «sin contenido» — y se hornea con la misma permanencia.
+  const themeCounts = await getThemeQuestionCounts(oposicion as RandomTestOposicionSlug)
   const themeCountMap = new Map(themeCounts.map(tc => [tc.themeId, tc.count]))
 
   // Transformar a formato esperado

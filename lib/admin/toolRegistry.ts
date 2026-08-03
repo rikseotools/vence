@@ -106,6 +106,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'La causa ya está cerrada en `processUnsubscribeByToken` (casilla `includeSoporte`), así que ' +
       'si esto vuelve a dar >0 filas, el defecto ha REAPARECIDO: mirar ahí antes de re-ejecutar.',
   },
+  errores_horneados: {
+    titulo: 'Impedir que una página cacheada hornee su pantalla de error (T-506)',
+    ruta: 'lib/calidad/erroresHorneados.cjs',
+    estado: 'vivo',
+    runbook: 'docs/procedures/gestionar-feedback-bug.md',
+    notas:
+      'Núcleo puro + guardarraíl de CI (__tests__/guardrails/erroresHorneados.guardrail.test.ts). ' +
+      'Marca el `catch` que devuelve JSX en un componente cuya salida se cachea ' +
+      '(`revalidate`/`force-static`): ahí un fallo pasajero se congela como si fuera la página ' +
+      'buena. Nace de un caso real (03/08/2026): `/administrativo-estado/test` sirvió ~17 h la ' +
+      'pantalla «Error cargando temas» con los 45 temas intactos en la BD, y lo descubrió un ' +
+      'usuario premium (feedback `ddaa31dd`), no nosotros. Salida legítima FIRMADA junto al catch ' +
+      '(`erroresHorneados: excepcion — <por qué>`) para el fragmento decorativo que no debe tumbar ' +
+      'la página entera; las firmadas van con trinquete para que no crezcan en silencio. ' +
+      'Complemento en caliente: el texto está en TEXTOS_PANTALLA_ERROR de `lib/sim/oraculo.ts`, ' +
+      'así que el barrido de rutas caza las que ya estén vivas.',
+  },
   // ── Consumo de LLM (API facturable + suscripción de Claude Code) ──────────────────────────
   llm_gasto: {
     titulo: 'Ver el consumo de LLM del sistema: lo que se factura y lo que consume cuota',

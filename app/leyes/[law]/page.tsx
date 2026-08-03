@@ -211,6 +211,11 @@ async function LawStatsLoader({ lawShortName }: { lawShortName: string }) {
         </div>
       </div>
     )
+    // erroresHorneados: excepcion — lo que degrada aquí es un RECUADRO de estadísticas dentro de
+    // una página que por lo demás funciona (el texto legal, el temario, los tests). Dejarlo
+    // reventar tumbaría una página de mucho tráfico orgánico por una cifra decorativa, y el ISR
+    // de esta ruta es de 24 h, no permanente. El caso que prohíbe capturar (T-506) es el
+    // contrario: el catch que sustituye la PÁGINA ENTERA en algo cacheado para siempre.
   } catch (error) {
     console.error('Error loading law stats:', error)
     return (
