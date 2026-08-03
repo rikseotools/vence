@@ -1507,6 +1507,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'nocturno: los worktrees son locales y el sweep corre en Fargate. Emite `trabajo_huerfano` ' +
       'al bus de fricción (T-423).',
   },
+  contador_servible: {
+    titulo: 'Medir cuánto promete el contador de un tema por encima de lo que el test puede servir',
+    ruta: 'scripts/sim/sim-contador-servible.ts',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run sim:contador-servible [-- --oposicion <position_type>]`. Solo lectura. El serve ' +
+      'aplica DOS filtros que los contadores no aplicaban: `buildOfficialExamFilter` (una oficial ' +
+      'solo se sirve si su exam_position es de TU oposición) y `buildQuestionTagFilter`. La ' +
+      'tarjeta prometía preguntas que el test no da; lo cazó una usuaria premium (feedback ' +
+      '8b788ee0): subalterno_gva T3 anunciaba 39 y servía 22. La rama de OFICIALES quedó cerrada ' +
+      'en [T-507] (se descuenta en los 4 contadores); la del TAG sigue ABIERTA por decisión de ' +
+      'producto y este script es donde se mira: 1.374 temas · 137.252 preguntas (03/08), con ' +
+      'policia_nacional T21 anunciando 2.006 y sirviendo 222, y mecanico_conductor_estado ' +
+      'sirviendo CERO en 8 temas que sí anuncian. No es la puerta: la puerta en CI es ' +
+      '`__tests__/integration/topicCountVsServed.integration.test.ts`, que exige que la ' +
+      'diferencia anunciado−servido sea EXACTAMENTE la del tag y nada más. ' +
+      '⚠️ GOTCHA de medida: la condición del tag tiene que ser NULL-safe (`NOT (tags @> …)` es ' +
+      'NULL con tags NULL) — sin eso PN T21 parecía servir 608 en vez de 222.',
+  },
   push_guard_menciones: {
     titulo: 'Medir si «citar una tarea» sigue siendo distinguible de «trabajarla» (gate del push-guard)',
     ruta: 'scripts/backlog/sim-push-guard-menciones.cjs',

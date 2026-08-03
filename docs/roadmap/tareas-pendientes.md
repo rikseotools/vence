@@ -1640,6 +1640,43 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-507] 🟡 [ABIERTO 03/08 — HECHO, EN ESPERA DE DEPLOY] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
+
+- **ESTADO: el código está en `main` y la migración YA APLICADA en RDS, pero SIN DESPLEGAR.** Lo verificado lo está contra la BD de producción con las funciones de producción; falta verlo en la app en vivo. Al desplegar: abrir el tema 3 de `subalterno-gva` y comprobar que dice 22 (y que el hub dice lo mismo).
+- **Esfuerzo declarado: rato.** Se fue a más al medir: la migración de la MV y la tercera causa (oficiales sin `exam_position`) no estaban a la vista al abrirla.
+- **CÓMO SALIÓ.** Feedback `8b788ee0` de **Neus A.B. (premium, `subalterno_gva`)**: *«En el tema 3 solo puedo realizar 22 preguntas, las mismas todo el rato. Pero pone que hay más disponibles»*. Tenía razón y el número que veía lo poníamos nosotros.
+- **LA CAUSA, en una frase: el rótulo y el test usaban criterios distintos.** El serve aplica SIEMPRE `buildOfficialExamFilter` (una pregunta de examen oficial solo se sirve si su `exam_position` es de TU oposición — anti-contaminación, caso Laura 14/04/2026) y los cuatro contadores no lo aplicaban. En su tema 3 había 39 preguntas en el scope, de las que **17 son oficiales de `auxiliar_administrativo_valencia`**: el test no se las iba a dar jamás y el rótulo las contaba.
+- **Comprobado con SUS datos, no deducido:** 378 respuestas, 245 preguntas distintas, **ni una sola oficial servida** en toda su historia; en el tema 3, esas 22 preguntas repetidas 122 veces. Además `totalQuestions` es el denominador de su barra de progreso, así que ese tema no podía pasar del 56% por mucho que estudiara.
+- **ALCANCE (`npm run sim:contador-servible`, 03/08):** **2.286 temas activos** descontaban mal, **197.734 preguntas** anunciadas y no servibles.
+- **TERCERA CAUSA que apareció al atar el test, y que no se veía:** **33 preguntas oficiales del banco no tienen `exam_position`**. No se las sirve nadie (ninguna oposición las reclama) pero además **quedaban fuera de la MV de oficiales**, así que no había forma de descontarlas: seguían anunciándose en **141 temas**. Ahora se agrupan bajo `''`, cadena que jamás está en `EXAM_POSITION_MAP` → cuentan como ajenas y nunca como propias.
+- **QUÉ SE TOCÓ.** El criterio NO se ha copiado a ningún sitio nuevo: el gemelo JS del filtro SQL (`passesOfficialExamFilter`) vive **en el mismo módulo** que `buildOfficialExamFilter`, junto a `ownOfficialPredicate`.
+  - `lib/api/oposicion-scope/queries.ts` — `passesOfficialExamFilter` (gemelo JS: ¿esto lo puede DAR el serve?).
+  - `lib/api/topic-data/mv-queries.ts` — resta las ajenas del total **y cubo a cubo por dificultad**, porque la ficha del tema pinta el total como suma de `difficultyStats` (restar solo del total dejaba el rótulo igual); y el contador del hub.
+  - `lib/api/topic-data/queries.ts` y `lib/api/random-test/queries.ts` — los caminos legacy, que siguen vivos como fallback sin redeploy (arreglar solo la MV dejaba el fallo esperando a que alguien apagase el flag).
+  - `lib/api/test-config/queries.ts` — la estimación del configurador, que además **tampoco excluía los supuestos prácticos** (`exam_case_id`), otro filtro que el serve sí aplica.
+  - `supabase/migrations/20260803_topic_official_by_position_difficulty.sql` — la MV de oficiales gana el desglose por dificultad (misma función `topic_question_difficulty_bucket` que la otra MV) y deja de tirar las de `exam_position` NULL. **APLICADA EN RDS el 03/08** (21.131 filas, los cubos suman exactamente el total). Recrea sus dos índices: sin el UNIQUE, el refresh nocturno `CONCURRENTLY` falla.
+- **CAPAS.** `officialCountSingleSource.test.ts` (24 tests) — extendido, no duplicado: era el guardarraíl de la mitad hermana de este criterio (contar de MÁS las propias, bug del «115»). Ahora cubre las dos mitades y exige que **los cuatro contadores** descuenten. `topicCountVsServed.integration.test.ts` — compara contra `getFilteredQuestions`, la función que sirve de verdad, y exige que la diferencia anunciado−servido sea **exactamente** la del tag: si aparece una causa nueva, pincha. `npm run sim:contador-servible` — la medida re-ejecutable, registrada en `toolRegistry`.
+- **⚠️ GOTCHA DE MEDICIÓN que costó dos vueltas y es reutilizable:** al contar lo excluido por tag, `NOT (tags @> ARRAY['PN'])` **vale NULL cuando `tags` es NULL**, así que deja fuera preguntas que el serve SÍ descarta. Con ese fallo, Policía Nacional T21 parecía servir **608** cuando sirve **222**, y las primeras cifras que se dieron estaban infladas. Lo cazó el test de integración al exigir residuo cero, no una revisión a ojo.
+- **VERIFICADO** con las funciones de producción, en los dos caminos (MV y legacy): tema 3 de `subalterno-gva` anuncia **22** y sirve **22**; la tarjeta del hub, 22.
+- **LO QUE NO ENTRA, y por qué:** la otra mitad de la clase (el filtro de TAG) es **[T-513]** — bajar el número de Policía Nacional de 2.006 a 222 no es corregir un contador, es una decisión de producto. Decisión de Manuel el 03/08.
+- **Relacionadas:** [T-513] (la deuda del tag), [T-411] (servir las oficiales compartidas, que cerraría el hueco por el otro lado), [T-326].
+
+
+### [T-513] 🟠 [ABIERTO 03/08] 🙋 DECISIÓN DE MANUEL — los contadores anuncian 137.252 preguntas que el filtro de TAG impide servir
+
+- **Esfuerzo: rato** el arreglo técnico; la decisión es lo caro.
+- **DE DÓNDE SALE:** de [T-507]. Al cerrar la brecha de las oficiales quedó a la vista su gemela, que es **más grande**: el serve aplica también `buildQuestionTagFilter` (con tag propio sirve SOLO lo etiquetado como suyo; sin tag propio excluye lo etiquetado como exclusivo de otras) y **ningún contador lo aplica**.
+- **MEDIDO el 03/08 (`npm run sim:contador-servible`): 1.374 temas · 137.252 preguntas** anunciadas que el test no puede dar. Los peores:
+  - `policia_nacional` T21 → anuncia **2.006**, sirve **222**. T5 → anuncia 1.114, sirve **48**.
+  - `mecanico_conductor_estado` → **ocho temas (6, 7, 8, 11-15) anuncian preguntas y sirven CERO**. Eso no es un rótulo optimista: es un callejón sin salida para quien entre ahí.
+- **POR QUÉ NO SE ARREGLÓ CON [T-507]:** el arreglo es de una línea por contador, pero **el efecto visible es enorme**: Policía Nacional pasaría a anunciar 222 donde hoy pone 2.006. Es tu decisión, no la del contador.
+- **LAS DOS SALIDAS, y no son excluyentes:**
+  1. **Bajar el número** (contar lo servible). Honesto e inmediato, pero la oposición se ve mucho más pobre de lo que se ve hoy.
+  2. **Subir lo servido**: revisar por qué el temario de esas oposiciones escopa miles de preguntas que su propio filtro rechaza. En `mecanico_conductor_estado` sirviendo cero, el defecto no está en el rótulo — está en que **el temario apunta a preguntas que no son suyas**. Ahí lo que toca no es corregir el contador sino el scope o las etiquetas.
+- **MIRAR ANTES DE DECIDIR:** `mecanico_conductor_estado` es el caso que apremia (temas que sirven 0 preguntas), y conviene saber cuántos usuarios lo tienen como objetivo antes de tocar nada.
+- **Relacionadas:** [T-507], [T-411], [T-397].
+
+
 ### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
 
 **De dónde sale:** una opositora premium (alta hace 15 h, feedback `9a70f674` del 02/08) preguntó lo

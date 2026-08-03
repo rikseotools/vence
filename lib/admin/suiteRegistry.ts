@@ -282,6 +282,15 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     que: 'El CTA de test por artículo: el conteo del SSOT coincide con lo servido.',
   },
   {
+    ruta: '__tests__/integration/topicCountVsServed.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que:
+      'El contador del TEMA: lo que la tarjeta anuncia es lo que getFilteredQuestions entrega ' +
+      '[T-507]. Hermano de articleTestCount para la otra superficie. Exige que la diferencia ' +
+      'anunciado−servido sea EXACTAMENTE la del filtro de tag (deuda declarada, [T-513]): si ' +
+      'aparece un residuo, es una causa nueva que nadie ha visto.',
+  },
+  {
     ruta: '__tests__/integration/repasoBarajadoCoherente.integration.test.ts',
     tipo: 'codigo_datos_prestados',
     que: 'El CONTRATO del que depende el repaso de un test barajado (T-472): las opciones guardadas van en el orden mostrado y las letras en coordenadas de la BD.',

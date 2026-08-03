@@ -40,6 +40,8 @@ async function getThemeQuestionCountsInternal(
   // Obtener posiciones válidas para contar solo oficiales propias
   const { getValidExamPositions } = await import('@/lib/config/exam-positions')
   const validPositions = getValidExamPositions(positionType)
+  // Mismo filtro que aplica el serve, para que la tarjeta no prometa de más [T-507].
+  const { buildOfficialExamFilter } = await import('@/lib/api/oposicion-scope/queries')
 
   // Conteos por tema (total + oficiales de la PROPIA oposición por exam_position).
   // FAST PATH (TOPIC_MV_ENABLED): lee las MVs pre-agregadas (~5ms) en vez del join
@@ -69,7 +71,11 @@ async function getThemeQuestionCountsInternal(
           // Excluir preguntas de casos prácticos: requieren el contexto narrativo
           // del exam_case que solo se renderiza en OfficialExamLayout/ExamReview.
           // En tests aislados aparecerían sin contexto → incomprensibles.
-          isNull(questions.examCaseId)
+          isNull(questions.examCaseId),
+          // Contar lo que el test puede SERVIR: el serve aplica siempre este
+          // mismo filtro, así que sin él la tarjeta del tema anuncia preguntas
+          // que nunca salen (subalterno_gva T3: 39 anunciadas, 22 servidas) [T-507].
+          buildOfficialExamFilter(positionType)
         ))
         .where(and(
           eq(topics.positionType, positionType),

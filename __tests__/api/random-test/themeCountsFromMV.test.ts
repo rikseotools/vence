@@ -40,11 +40,21 @@ describe('getThemeCountsFromMV', () => {
     expect(s).not.toContain('count(DISTINCT') // no es el join pesado en vivo
   })
 
-  it('validPositions vacío → official = 0 (sin subquery de oficiales)', async () => {
+  it('validPositions vacío → official = 0, pero SÍ se miran las oficiales: son todas ajenas', async () => {
+    // Cambió con [T-507]. Antes esta prueba exigía NO tocar la MV de oficiales
+    // cuando la oposición no tiene posiciones válidas, porque el único uso era
+    // contar las propias (0 → no hay nada que consultar). Ahora hay un segundo
+    // uso: DESCONTAR del total las que el serve no va a servir. Y sin posiciones
+    // válidas la respuesta no es "ninguna", es "TODAS son ajenas" — que es
+    // exactamente el caso de subalterno_gva, donde el tema 3 anunciaba 39 y
+    // servía 22. Dejar de mirarla aquí sería reintroducir el fallo justo en las
+    // oposiciones que más lo sufren.
     const db = fakeDb([])
     await getThemeCountsFromMV(db, 'pt', [1], [])
     const s = JSON.stringify((db as unknown as { execute: jest.Mock }).execute.mock.calls[0][0])
-    expect(s).not.toContain('topic_official_by_position')
+    expect(s).toContain('topic_official_by_position')
+    // El conteo de PROPIAS sigue siendo 0 sin subquery: es el literal `0`.
+    expect(s).toContain('0')
   })
 
   it('lowercasea exam_position (la MV guarda lower(exam_position))', async () => {

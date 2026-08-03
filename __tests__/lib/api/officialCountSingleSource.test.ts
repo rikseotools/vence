@@ -16,7 +16,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import { ownOfficialPredicate } from '@/lib/api/oposicion-scope/queries'
+import { ownOfficialPredicate, passesOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 
 describe('ownOfficialPredicate — fuente única de conteo de oficiales (JS)', () => {
   // auxiliar_administrativo_estado está mapeada en EXAM_POSITION_MAP.
@@ -55,6 +55,102 @@ describe('ownOfficialPredicate — fuente única de conteo de oficiales (JS)', (
     ]
     expect(rows.filter(isOwn).length).toBe(1)
   })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA OTRA MITAD DEL MISMO CRITERIO (T-507, 03/08/2026)
+//
+// El bug del 115 era contar de MÁS las oficiales PROPIAS. Su gemelo es contar
+// como disponibles las AJENAS: el serve aplica siempre buildOfficialExamFilter,
+// así que una oficial de otra oposición NUNCA sale en un test — pero los
+// contadores la sumaban igual. subalterno_gva tema 3 anunciaba 39 preguntas y
+// servía 22 (17 oficiales de auxiliar_administrativo_valencia); la usuaria veía
+// "las mismas todo el rato" y un rótulo que prometía más.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('passesOfficialExamFilter — lo que el serve puede DAR (gemelo JS del filtro SQL)', () => {
+  const sirve = passesOfficialExamFilter('auxiliar_administrativo_estado')
+
+  it('deja pasar cualquier pregunta NO oficial', () => {
+    expect(sirve({ isOfficialExam: false, examPosition: null })).toBe(true)
+    expect(sirve({ isOfficialExam: null, examPosition: null })).toBe(true)
+    // ...incluso si arrastra un exam_position de otra oposición (dato residual)
+    expect(sirve({ isOfficialExam: false, examPosition: 'guardia_civil' })).toBe(true)
+  })
+
+  it('deja pasar la oficial de la PROPIA oposición', () => {
+    expect(sirve({ isOfficialExam: true, examPosition: 'auxiliar_administrativo_estado' })).toBe(true)
+  })
+
+  it('DESCARTA la oficial de otra oposición (es la que el serve nunca da)', () => {
+    expect(sirve({ isOfficialExam: true, examPosition: 'administrativo_estado' })).toBe(false)
+    expect(sirve({ isOfficialExam: true, examPosition: null })).toBe(false)
+  })
+
+  it('oposición sin mapeo → NINGUNA oficial es servible (subalterno_gva)', () => {
+    const sirveGva = passesOfficialExamFilter('subalterno_gva')
+    expect(sirveGva({ isOfficialExam: true, examPosition: 'auxiliar_administrativo_valencia' })).toBe(false)
+    expect(sirveGva({ isOfficialExam: false, examPosition: null })).toBe(true)
+  })
+
+  it('es EXACTAMENTE la negación de "oficial ajena" (no se pueden desincronizar)', () => {
+    const esPropia = ownOfficialPredicate('auxiliar_administrativo_estado')
+    const casos = [
+      { isOfficialExam: true, examPosition: 'auxiliar_administrativo_estado' },
+      { isOfficialExam: true, examPosition: 'administrativo_estado' },
+      { isOfficialExam: true, examPosition: null },
+      { isOfficialExam: false, examPosition: 'auxiliar_administrativo_estado' },
+      { isOfficialExam: null, examPosition: null },
+    ]
+    for (const q of casos) {
+      const esAjena = q.isOfficialExam === true && !esPropia(q)
+      expect(sirve(q)).toBe(!esAjena)
+    }
+  })
+
+  it('reproduce el caso de Neus: 39 en el scope, 22 servibles', () => {
+    const sirveGva = passesOfficialExamFilter('subalterno_gva')
+    const scopeTema3 = [
+      ...Array.from({ length: 22 }, () => ({ isOfficialExam: false, examPosition: null })),
+      ...Array.from({ length: 17 }, () => ({
+        isOfficialExam: true,
+        examPosition: 'auxiliar_administrativo_valencia',
+      })),
+    ]
+    expect(scopeTema3.length).toBe(39)
+    expect(scopeTema3.filter(sirveGva).length).toBe(22)
+  })
+})
+
+describe('GUARD: ningún CONTADOR anuncia lo que el serve no sirve', () => {
+  // Los cuatro sitios que producen un número de "preguntas disponibles" que el
+  // opositor ve en pantalla. Todos DEBEN aplicar el mismo filtro de oficiales que
+  // aplica el serve; si uno se olvida, vuelve a prometer preguntas inexistentes.
+  //   · mv-queries      → tarjeta del hub + ficha del tema (camino vivo)
+  //   · topic-data      → ficha del tema (fallback sin MV)
+  //   · random-test     → tarjeta del hub (fallback sin MV)
+  //   · test-config     → "N preguntas disponibles con tu configuración"
+  const contadores = [
+    'lib/api/topic-data/mv-queries.ts',
+    'lib/api/topic-data/queries.ts',
+    'lib/api/random-test/queries.ts',
+    'lib/api/test-config/queries.ts',
+  ]
+
+  for (const file of contadores) {
+    it(`${file} descuenta las oficiales que el serve no sirve`, () => {
+      const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8')
+      const aplicaElFiltro =
+        /buildOfficialExamFilter|passesOfficialExamFilter|ajenas/i.test(src)
+      expect(aplicaElFiltro).toBe(true)
+    })
+
+    it(`${file} deja constancia de POR QUÉ (referencia a T-507)`, () => {
+      // Un descuento sin explicación se borra en la siguiente refactorización
+      // "simplificadora". La referencia es lo que permite recuperar el motivo.
+      const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8')
+      expect(src).toMatch(/T-507/)
+    })
+  }
 })
 
 describe('GUARD: topic-data NO cuenta oficiales sin la fuente única', () => {

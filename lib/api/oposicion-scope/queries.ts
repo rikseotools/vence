@@ -292,3 +292,26 @@ export function ownOfficialPredicate(
   return (q) =>
     q.isOfficialExam === true && q.examPosition != null && valid.has(q.examPosition)
 }
+
+/**
+ * Gemelo en JS de {@link buildOfficialExamFilter}: ¿esta pregunta SOBREVIVE al
+ * filtro de oficiales que el serve aplica SIEMPRE? Es la negación de "oficial
+ * ajena": pasa toda no-oficial, y la oficial solo si es de esta oposición.
+ *
+ * **Para qué existe (T-507, 03/08/2026).** `ownOfficialPredicate` responde
+ * "¿cuántas oficiales PROPIAS hay?" (el rótulo 🏛️). Esta responde la otra
+ * pregunta, que es la que faltaba: "¿cuántas de estas preguntas puede DAR el
+ * test?". Los contadores de tema respondían a esa con `count(*)` a secas, así
+ * que anunciaban preguntas que `buildOfficialExamFilter` descarta: subalterno_gva
+ * tema 3 decía 39 y servía 22 (17 oficiales de `auxiliar_administrativo_valencia`).
+ *
+ * Las dos viven aquí, al lado del filtro SQL del que son espejo, para que no se
+ * pueda cambiar el criterio en un sitio y no en el otro. `officialCountSingleSource`
+ * vigila que ningún contador vuelva a inventarse el suyo.
+ */
+export function passesOfficialExamFilter(
+  positionType: string,
+): (q: { isOfficialExam?: boolean | null; examPosition?: string | null }) => boolean {
+  const esPropia = ownOfficialPredicate(positionType)
+  return (q) => q.isOfficialExam !== true || esPropia(q)
+}

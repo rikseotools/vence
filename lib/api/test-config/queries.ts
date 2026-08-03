@@ -6,9 +6,10 @@ function getTestConfigDb() {
   return process.env.USE_SELF_HOSTED_POOLER === 'true' ? getPoolerDb() : getDb()
 }
 import { questions, articles, laws, topicScope, topics, lawSections } from '@/db/schema'
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { eq, and, inArray, isNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
 import type {
   GetArticlesRequest,
@@ -531,6 +532,16 @@ export async function estimateAvailableQuestions(
               (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`
         )
       }
+
+      // [T-507] Los dos filtros que el serve aplica SIEMPRE y que esta estimación
+      // no aplicaba, así que prometía preguntas que el test no da:
+      //   · oficiales de OTRA oposición (buildOfficialExamFilter, caso Laura)
+      //   · supuestos prácticos (sin su contexto narrativo no se sirven en tests)
+      // Van al final para cubrir también la rama focusEssentialArticles, que
+      // reconstruye `conditions` desde cero.
+      conditions.push(isNull(questions.examCaseId))
+      const soloServibles = buildOfficialExamFilter(positionType)
+      if (soloServibles) conditions.push(soloServibles)
 
       const countResult = await db
         .select({ count: sql<number>`count(*)` })

@@ -49,7 +49,17 @@ type LawSummaryRow = {
 type OfficialRow = {
   exam_position: string
   official_questions: number
+  // Desglose por cubo de dificultad (migración 20260803_*). Presente desde T-507
+  // para poder restar las oficiales AJENAS cubo a cubo, no solo del total.
+  count_easy?: number
+  count_medium?: number
+  count_hard?: number
+  count_extreme?: number
+  count_auto?: number
 } & Record<string, unknown>
+
+/** Cubos de dificultad, en el orden en que los expone {@link DifficultyStats}. */
+const DIFFICULTY_BUCKETS = ['easy', 'medium', 'hard', 'extreme', 'auto'] as const
 
 /**
  * Lee los agregados de un tema desde las MVs y los ensambla en la misma
@@ -85,7 +95,8 @@ export async function getTopicAggregatesFromMV(
       WHERE topic_id = ${topicId}
     `),
     db.execute<OfficialRow>(sql`
-      SELECT exam_position, official_questions
+      SELECT exam_position, official_questions,
+             count_easy, count_medium, count_hard, count_extreme, count_auto
       FROM topic_official_by_position
       WHERE topic_id = ${topicId}
     `),
@@ -118,12 +129,33 @@ export async function getTopicAggregatesFromMV(
   // las propias; contar cross-oposición inflaba el label (p.ej. Seg. Social T3
   // "Tribunal Constitucional": 115 cross vs ~1 propia). La MV ya trae el
   // desglose por exam_position, así que filtramos antes de sumar.
+  //
+  // Y por el MISMO motivo hay que RESTAR las ajenas del total (T-507): el serve
+  // no las va a dar nunca, así que anunciarlas es prometer preguntas que el test
+  // no tiene. Caso que lo destapa: subalterno_gva T3 anunciaba 39 y servía 22.
+  // Se resta también cubo a cubo porque la ficha del tema pinta el total como
+  // suma de `difficultyStats` (TemaTestPage) — restar solo del total dejaría el
+  // rótulo diciendo 39 igualmente.
   const validPositions = getValidExamPositions(positionType)
   let officialQuestionsCount = 0
   for (const r of officialRows) {
     if (validPositions.includes(r.exam_position)) {
       officialQuestionsCount += Number(r.official_questions)
+      continue
     }
+    // Oficial de OTRA oposición: el serve la descarta → fuera del anuncio.
+    totalQuestions -= Number(r.official_questions)
+    for (const bucket of DIFFICULTY_BUCKETS) {
+      difficultyStats[bucket] -= Number(r[`count_${bucket}`] ?? 0)
+    }
+  }
+
+  // Suelo defensivo: si la MV de oficiales se refrescara sin la de totales (o al
+  // revés), la resta podría pasarse de rosca. Un contador negativo se vería en
+  // pantalla; uno a cero solo se ve en el peor caso y es honesto.
+  totalQuestions = Math.max(0, totalQuestions)
+  for (const bucket of DIFFICULTY_BUCKETS) {
+    difficultyStats[bucket] = Math.max(0, difficultyStats[bucket])
   }
 
   // articlesByLaw: la misma forma que devolvía processArticlesByLaw, ordenada
@@ -163,8 +195,9 @@ export interface ThemeCount {
 
 /**
  * Versión MULTI-TOPIC para los conteos por tema del configurador
- * (`lib/api/random-test/queries.ts`). Lee `total` (todas) + `official` (solo las
- * oficiales de la PROPIA oposición, por `exam_position`) de las MVs, en vez del
+ * (`lib/api/random-test/queries.ts`). Lee `total` (las SERVIBLES: todas menos las
+ * oficiales de otra oposición, que el serve descarta — T-507) + `official` (solo
+ * las oficiales de la PROPIA oposición, por `exam_position`) de las MVs, en vez del
  * join 4-tablas `topics→topic_scope→articles→questions` + `count(DISTINCT)` en
  * vivo (~2s/llamada, mayor consumidor de BD del sistema → ~5ms por lookup índice).
  *
@@ -194,9 +227,24 @@ export async function getThemeCountsFromMV(
               WHERE o.topic_id = t.id AND o.exam_position = ANY(${pgTextArray(lowerPositions)})), 0)`
       : sql`0`
 
+  // Oficiales AJENAS = todas las oficiales del tema menos las propias. El serve
+  // (buildOfficialExamFilter) no sirve ninguna de ellas, así que se restan del
+  // total anunciado [T-507]. Sin `validPositions` la oposición no tiene NINGUNA
+  // oficial propia → ajenas = todas.
+  const ajenasExpr =
+    lowerPositions.length > 0
+      ? sql`COALESCE((SELECT sum(o.official_questions) FROM topic_official_by_position o
+              WHERE o.topic_id = t.id AND NOT (o.exam_position = ANY(${pgTextArray(lowerPositions)}))), 0)`
+      : sql`COALESCE((SELECT sum(o.official_questions) FROM topic_official_by_position o
+              WHERE o.topic_id = t.id), 0)`
+
   const result = await db.execute<{ topic_number: number; total: number; official: number } & Record<string, unknown>>(sql`
     SELECT t.topic_number AS topic_number,
-           COALESCE((SELECT sum(s.total_questions) FROM topic_law_question_summary s WHERE s.topic_id = t.id), 0)::int AS total,
+           GREATEST(
+             COALESCE((SELECT sum(s.total_questions) FROM topic_law_question_summary s WHERE s.topic_id = t.id), 0)
+             - ${ajenasExpr},
+             0
+           )::int AS total,
            ${officialExpr}::int AS official
     FROM topics t
     WHERE t.position_type = ${positionType}

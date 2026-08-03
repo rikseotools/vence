@@ -19,7 +19,7 @@ import type {
   OposicionKey,
 } from './schemas'
 import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
-import { ownOfficialPredicate } from '@/lib/api/oposicion-scope/queries'
+import { ownOfficialPredicate, passesOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
 
 // Importar módulo compartido
 import {
@@ -147,7 +147,12 @@ export async function getTopicFullData(
       officialQuestionsCount = agg.officialQuestionsCount
       articlesByLaw = agg.articlesByLaw
     } else {
-      const questionResults = await getQuestionsForTopic(db, scopeMappings)
+      const todas = await getQuestionsForTopic(db, scopeMappings)
+      // Solo lo que el serve puede DAR: `buildOfficialExamFilter` descarta
+      // siempre las oficiales de otra oposición, así que anunciarlas es prometer
+      // preguntas que el test no tiene [T-507]. Mismo criterio y misma fuente que
+      // el camino MV; el gemelo JS vive junto al filtro SQL del que es espejo.
+      const questionResults = todas.filter(passesOfficialExamFilter(positionType))
       difficultyStats = processDifficultyStats(questionResults)
       totalQuestions = Object.values(difficultyStats).reduce(
         (sum, count) => sum + count,
