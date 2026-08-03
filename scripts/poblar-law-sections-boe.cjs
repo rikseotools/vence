@@ -37,7 +37,7 @@ const boeId = (u) => (String(u || '').match(/BOE-A-\d{4}-\d+/) || [])[0]
 // La lógica de parseo (qué es título/capítulo/artículo, de dónde sale el nº) vive en el
 // módulo PURO lib/laws/parseBoeSections, testeado en __tests__/laws/parseBoeSections.
 // Aquí solo queda lo que necesita red (fetch del índice + rúbrica).
-const { parseBoeSections, validarSecciones } = require('../lib/laws/parseBoeSections')
+const { parseBoeSectionsMultinivel, validarSecciones } = require('../lib/laws/parseBoeSections')
 const { bloqueVigente } = require('../lib/laws/boeBloqueVigente')
 // Normas EUROPEAS (30/07/2026): la API de legislación consolidada es derecho español y
 // responde «Identificador no válido» a un id DOUE, así que hasta hoy ninguna entraba aquí
@@ -75,9 +75,15 @@ async function rubrica(bid, blockId) {
 async function estructura(bid, { conRubrica = false } = {}) {
   const idx = await (await fetch(`https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${bid}/texto/indice`, XML)).text()
   const bl = [...idx.matchAll(/<bloque>\s*<id>([^<]*)<\/id>\s*<titulo>([\s\S]*?)<\/titulo>/g)].map((m) => ({ id: m[1].trim(), label: clean(m[2]) }))
-  const { tipo, secciones } = parseBoeSections(bl)
-  const out = secciones.map((s) => ({ tipo, blockId: s.blockId, num: s.num, from: s.from, to: s.to }))
-  if (conRubrica) for (const s of out) { s.rubrica = await rubrica(bid, s.blockId) }
+  // TODOS los niveles, no solo el externo (T-510): una ley con títulos también tiene capítulos,
+  // y hasta el 03/08/2026 se tiraban — 234 leyes con títulos y CERO capítulos en BD.
+  const { niveles } = parseBoeSectionsMultinivel(bl)
+  const out = []
+  for (const nivel of niveles) {
+    const secs = nivel.secciones.map((s) => ({ tipo: nivel.tipo, blockId: s.blockId, num: s.num, from: s.from, to: s.to }))
+    if (conRubrica) for (const s of secs) { s.rubrica = await rubrica(bid, s.blockId) }
+    out.push({ tipo: nivel.tipo, secs })
+  }
   return out
 }
 
@@ -98,12 +104,16 @@ async function validar(lawId, secs) {
   return r
 }
 
-async function insertar(lawId, secs, tipo) {
+async function insertar(lawId, secs, tipo, desde = 0) {
   const nombreTipo = tipo === 'titulo' ? 'Título' : 'Capítulo'
+  // `desde` = cuántas secciones tiene ya la ley. El `order_position` es POR LEY, no por nivel:
+  // sin este desplazamiento los capítulos vuelven a empezar en 1 y, como el fetcher ordena por
+  // esa columna, títulos y capítulos salen ENTRELAZADOS en pantalla (título I, capítulo I,
+  // título II, capítulo II…). Se ve solo al pintar, no al insertar (T-510).
   // TODO-o-nada: una ley entra entera o no entra. Sin transacción, un slug repetido a
   // mitad dejaba la ley a medias (bug real: RD 137/1993 quedó con 1 de N secciones).
   return sql.begin(async (tx) => {
-    let i = 0
+    let i = desde, ins = 0
     for (const s of secs) {
       const title = s.rubrica ? `${nombreTipo} ${s.num}. ${s.rubrica}` : `${nombreTipo} ${s.num}`
       // slug ÚNICO GLOBAL (law_sections_slug_key): incluye el law_id, si no "titulo-i"
@@ -116,10 +126,11 @@ async function insertar(lawId, secs, tipo) {
       // posicional no garantiza si el índice del BOE cambia de orden.
       const sufijo = s.blockId ? `-${String(s.blockId).toLowerCase()}` : ''
       const slug = `${lawId.slice(0, 8)}-${tipo}-${String(s.num).toLowerCase()}${sufijo}`
+      ins++
       await tx`INSERT INTO law_sections (law_id, section_type, section_number, title, description, article_range_start, article_range_end, slug, order_position, is_active, created_at, updated_at)
         VALUES (${lawId}, ${tipo}, ${s.num}, ${title}, NULL, ${s.from}, ${s.to}, ${slug}, ${++i}, true, now(), now())`
     }
-    return i
+    return ins
   })
 }
 
@@ -145,27 +156,46 @@ async function procesarLey(l, { apply }) {
   const bid = boeId(l.boe_url)
   const did = bid ? null : esIdDoue(l.boe_url)
   if (!bid && !did) return { slug: l.short_name, estado: 'no_boe' }
-  const ya = (await sql`SELECT count(*)::int n FROM law_sections WHERE law_id=${l.id}`)[0].n
-  if (ya > 0) return { slug: l.short_name, estado: 'ya_poblada', n: ya }
-  let secs
+  // El "ya poblada" es POR NIVEL, no por ley (T-510). Contarlo por ley dejaba fuera para siempre
+  // a las 234 que ya tenían títulos: nunca llegaban a recibir sus capítulos.
+  const yaPorTipo = new Set((await sql`SELECT DISTINCT section_type FROM law_sections WHERE law_id=${l.id}`).map((r) => r.section_type))
+
+  let niveles
   if (did) {
     const r = await estructuraDoue(did)
     if (r.motivo) return { slug: l.short_name, estado: 'rechazada', motivo: r.motivo, n: 0 }
-    secs = r.secs
+    niveles = [{ tipo: r.secs[0] ? r.secs[0].tipo : 'capitulo', secs: r.secs }]
   } else {
-    secs = await estructura(bid, { conRubrica: apply })
+    niveles = await estructura(bid, { conRubrica: apply })
   }
-  const v = await validar(l.id, secs)
-  if (!v.ok) return { slug: l.short_name, estado: 'rechazada', motivo: v.motivo, n: secs.length }
-  if (!apply) return { slug: l.short_name, estado: 'lista', n: secs.length, tipo: secs[0].tipo }
-  // ⚠️ `v.secs`, NO `secs` (arreglado 30/07/2026). Se insertaban TODAS las secciones,
-  // incluidas las que el validador acababa de descartar por no tener artículos: el propio
-  // script imprimía «1 sección(es) sin artículos, descartadas» y acto seguido la metía. El
-  // resultado en pantalla es un filtro por capítulo que existe y devuelve cero preguntas
-  // (el capítulo derogado del RD 208/1996, por ejemplo). Validar y luego ignorar lo
-  // validado deja el mensaje diciendo una cosa y la base de datos otra.
-  const n = await insertar(l.id, v.secs, v.secs[0].tipo)
-  return { slug: l.short_name, estado: 'insertada', n, tipo: secs[0].tipo }
+
+  const pendientes = niveles.filter((n) => !yaPorTipo.has(n.tipo))
+  if (!niveles.length) return { slug: l.short_name, estado: 'rechazada', motivo: 'sin_secciones', n: 0 }
+  if (!pendientes.length) return { slug: l.short_name, estado: 'ya_poblada', n: yaPorTipo.size }
+
+  // Cada nivel se valida y se inserta POR SEPARADO: sus rangos se solapan entre sí por
+  // definición (un capítulo vive dentro de un título), así que mezclarlos haría saltar el
+  // guardarraíl de solape en todas las leyes. Ver lib/laws/parseBoeSections.js.
+  const hechos = []
+  for (const nivel of pendientes) {
+    const v = await validar(l.id, nivel.secs)
+    if (!v.ok) { hechos.push({ tipo: nivel.tipo, motivo: v.motivo }); continue }
+    if (!apply) { hechos.push({ tipo: nivel.tipo, n: v.secs.length, simulado: true }); continue }
+    // `v.secs`, NO `nivel.secs` (lección del 30/07/2026): se insertaban también las secciones que
+    // el validador acababa de descartar por no tener artículos, así que el script imprimía
+    // «descartadas» y acto seguido las metía — un filtro por capítulo que existe y da cero preguntas.
+    const yaHay = (await sql`SELECT count(*)::int n FROM law_sections WHERE law_id=${l.id}`)[0].n
+    const n = await insertar(l.id, v.secs, nivel.tipo, yaHay)
+    hechos.push({ tipo: nivel.tipo, n })
+  }
+  const ok = hechos.filter((h) => h.n)
+  if (!ok.length) return { slug: l.short_name, estado: 'rechazada', motivo: hechos.map((h) => `${h.tipo}:${h.motivo}`).join(' '), n: 0 }
+  return {
+    slug: l.short_name,
+    estado: apply ? 'insertada' : 'lista',
+    n: ok.reduce((s, h) => s + h.n, 0),
+    tipo: ok.map((h) => `${h.tipo}(${h.n})`).join('+'),
+  }
 }
 
 ;(async () => {

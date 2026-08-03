@@ -264,3 +264,89 @@ describe('rubricaVigente — la rúbrica de un bloque del BOE es la ÚLTIMA, no 
     expect(rubricaVigente('<bloque><p class="titulo_tit">De la denuncia</p></bloque>', '20260726').rubrica).toBe('De la denuncia')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// T-510 — parseBoeSectionsMultinivel: la ley puede tener TÍTULOS Y CAPÍTULOS a la vez
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe('parseBoeSectionsMultinivel (T-510)', () => {
+  const { parseBoeSectionsMultinivel, parseBoeSections, haySolape, validarSecciones } = require('../../lib/laws/parseBoeSections')
+
+  // Índice al estilo del BOE: dos títulos, y dentro del segundo dos capítulos.
+  const INDICE = [
+    { id: 'ti', label: 'TÍTULO I. De los interesados' },
+    { id: 'a1', label: 'Artículo 1' },
+    { id: 'a2', label: 'Artículo 2' },
+    { id: 'tii', label: 'TÍTULO II. De la actividad' },
+    { id: 'ci', label: 'CAPÍTULO I. Normas generales' },
+    { id: 'a3', label: 'Artículo 3' },
+    { id: 'a4', label: 'Artículo 4' },
+    { id: 'cii', label: 'CAPÍTULO II. Términos y plazos' },
+    { id: 'a5', label: 'Artículo 5' },
+    { id: 'a6', label: 'Artículo 6' },
+  ]
+
+  it('devuelve LOS DOS niveles, de fuera hacia dentro', () => {
+    const { niveles } = parseBoeSectionsMultinivel(INDICE)
+    expect(niveles.map(n => n.tipo)).toEqual(['titulo', 'capitulo'])
+    expect(niveles[0].secciones).toEqual([
+      { num: 'I', blockId: 'ti', from: 1, to: 2 },
+      { num: 'II', blockId: 'tii', from: 3, to: 6 },
+    ])
+    expect(niveles[1].secciones).toEqual([
+      { num: 'I', blockId: 'ci', from: 3, to: 4 },
+      { num: 'II', blockId: 'cii', from: 5, to: 6 },
+    ])
+  })
+
+  it('el defecto que motiva la tarea: antes SOLO salía el nivel externo', () => {
+    // `parseBoeSections` sigue haciendo eso a propósito (back-compat), y por eso los capítulos
+    // no llegaban nunca a la BD: 234 leyes con títulos y CERO capítulos.
+    const viejo = parseBoeSections(INDICE)
+    expect(viejo.tipo).toBe('titulo')
+    expect(viejo.secciones).toHaveLength(2)
+    // …mientras que la ley SÍ tiene capítulos que se estaban perdiendo:
+    expect(parseBoeSectionsMultinivel(INDICE).niveles[1].secciones).toHaveLength(2)
+  })
+
+  it('LA TRAMPA: los rangos de capítulo SOLAPAN con los de título, y es correcto', () => {
+    const { niveles } = parseBoeSectionsMultinivel(INDICE)
+    const todosJuntos = [...niveles[0].secciones, ...niveles[1].secciones]
+    // Mezclar niveles haría saltar el guardarraíl de solape en TODAS las leyes…
+    expect(haySolape(todosJuntos)).toBe(true)
+    // …y por separado cada nivel está limpio, que es como hay que validarlo e insertarlo.
+    expect(haySolape(niveles[0].secciones)).toBe(false)
+    expect(haySolape(niveles[1].secciones)).toBe(false)
+  })
+
+  it('cada nivel pasa `validarSecciones` por su cuenta', () => {
+    const { niveles } = parseBoeSectionsMultinivel(INDICE)
+    for (const nivel of niveles) {
+      const secs = nivel.secciones.map(s => ({ ...s, arts: s.to - s.from + 1 }))
+      expect(validarSecciones(secs).ok).toBe(true)
+    }
+  })
+
+  it('ley con SOLO capítulos → un único nivel (y `parseBoeSections` no cambia)', () => {
+    const soloCaps = [
+      { id: 'ci', label: 'CAPÍTULO I. Uno' }, { id: 'a1', label: 'Artículo 1' }, { id: 'a2', label: 'Artículo 2' },
+      { id: 'cii', label: 'CAPÍTULO II. Dos' }, { id: 'a3', label: 'Artículo 3' },
+    ]
+    expect(parseBoeSectionsMultinivel(soloCaps).niveles.map(n => n.tipo)).toEqual(['capitulo'])
+    expect(parseBoeSections(soloCaps).tipo).toBe('capitulo')
+  })
+
+  it('ley sin estructura → sin niveles (y el viejo sigue devolviendo capitulo vacío)', () => {
+    const plana = [{ id: 'a1', label: 'Artículo 1' }, { id: 'a2', label: 'Artículo 2' }]
+    expect(parseBoeSectionsMultinivel(plana).niveles).toEqual([])
+    expect(parseBoeSections(plana)).toEqual({ tipo: 'capitulo', secciones: [] })
+  })
+
+  it('una sección sin artículos no entra en ningún nivel', () => {
+    const conVacia = [
+      { id: 'ti', label: 'TÍTULO I. Con artículos' }, { id: 'a1', label: 'Artículo 1' },
+      { id: 'tii', label: 'TÍTULO II. Derogado entero' },
+      { id: 'tiii', label: 'TÍTULO III. Con artículos' }, { id: 'a2', label: 'Artículo 2' },
+    ]
+    expect(parseBoeSectionsMultinivel(conVacia).niveles[0].secciones.map(s => s.num)).toEqual(['I', 'III'])
+  })
+})
