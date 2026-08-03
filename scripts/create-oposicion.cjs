@@ -105,8 +105,12 @@ function validateSpec(spec) {
   });
 
   // temario
-  const temario = spec.temario || [];
-  if (!Array.isArray(temario) || temario.length === 0) e.push('temario[] es obligatorio (≥1 tema)');
+  // `temario` no-array: se REPORTA y se deja de mirar. Antes se apuntaba el error y acto seguido
+  // se llamaba a `.forEach` sobre lo que fuera → TypeError. Un validador que revienta en vez de
+  // devolver su lista de errores no se puede usar en bucle sobre todos los specs, que es justo
+  // como se descubrió (03/08/2026).
+  const temario = Array.isArray(spec.temario) ? spec.temario : [];
+  if (!Array.isArray(spec.temario) || spec.temario.length === 0) e.push('temario[] es obligatorio (≥1 tema)');
   const topicNums = new Set();
   temario.forEach((t, i) => {
     if (t == null) { e.push(`temario[${i}] nulo`); return; }
