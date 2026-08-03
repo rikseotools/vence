@@ -233,6 +233,32 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
       '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
   },
+  explicaciones_bucle_reescritura: {
+    titulo: 'Bucle para reescribir explicaciones a escala (gate de citas, volcado para re-verificar, correcciones con rastro)',
+    ruta: 'scripts/explicaciones/',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/revisar-preguntas-con-agente.md',
+    notas:
+      'Cinco herramientas + README con el bucle entero. NO son de una tarea concreta: sirven para ' +
+      'cualquier reescritura de explicaciones a escala (T-409, T-249, T-197, T-424, T-207). ' +
+      '`gate-citas.cjs --pre|--post` es el paso 5 del manual y acumula TRES modos de cita cortada ' +
+      'que costó encontrar uno a uno —por el final (falta la palabra que decide: «diez días» sin ' +
+      '«naturales»), por el principio (arranca en minúscula y pierde el sujeto) y por quedarse en ' +
+      'los dos puntos (la enumeración que prueba la clave queda fuera)— más el punto final AÑADIDO, ' +
+      'donde el artículo tenía una coma y seguía con una salvedad. La lección general vale para ' +
+      'cualquier gate: comprobar la FORMA del recorte no dice nada si esa forma la produce el propio ' +
+      'recortador; hay que comprobarla contra la FUENTE. ' +
+      '`dump-preguntas-vivas.cjs` prepara el paso 7 (re-verificación por agente independiente sobre ' +
+      'la pregunta VIVA), que sobre 16 lotes encontró defectos en 8 y NINGUNO lo veía un gate ' +
+      'determinista: todos eran afirmaciones de derecho falsas con la forma impecable. ' +
+      '`corregir-enunciado.cjs` y `corregir-opcion.cjs` hacen el UPDATE y el evento de ' +
+      'observabilidad EN UNA TRANSACCIÓN (`enunciado_referencia_corregida`, `opcion_errata_corregida`) ' +
+      'con el texto anterior y el nuevo. ⚠️ `corregir-opcion` aborta si el cambio supera 3 caracteres: ' +
+      'cambiar el CONTENIDO de una opción toca a la clave y no se hace de pasada; la errata legítima ' +
+      'que excede el margen va con `--forzar`, que deja constancia del forzado en el evento en vez ' +
+      'de relajar la guarda. Vivían en `scratchpad/` y se subieron al comprobar que ya no se ' +
+      'reescribían «en cinco minutos».',
+  },
   audit_explicacion_truncada: {
     titulo: 'Explicaciones activas que se cortan a mitad de frase',
     ruta: 'scripts/audit-explicacion-truncada.cjs',
