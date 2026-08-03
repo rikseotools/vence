@@ -217,6 +217,17 @@ const OPTION_CROSSREF_PATTERNS: RegExp[] = [
   /\b(?:la|las)\s+[ABCDE]\)/,
   /\b(?:la|las)\s+(?:anterior|anteriores|primera|segunda|tercera|cuarta|[úu]ltima)s?\s+(?:respuesta|opci[óo]n|alternativa)/i,
   /\b(?:todas|ninguna)\s+(?:las|de las)\s+(?:anteriores|respuestas|opciones)\b/i,
+  // «A y B son correctas», «b y c son válidas», «A, B y C son falsas» — la meta-opción SIN el
+  // sustantivo delante. El patrón gemelo existía desde el principio para las EXPLICACIONES y nunca
+  // se trajo aquí, así que el detector daba por buena una opción que enumera a otras dos por su
+  // letra. Salió midiendo un lote del cubo de transcripción (T-409, 03/08): `077d6f6f` («B y C son
+  // correctas») quedaba `safe`, y en el banco había 233 más invisibles.
+  //
+  // Lo que lo hace seguro es exigir el verbo de veracidad pegado: «son correctas|incorrectas|
+  // ciertas|falsas|verdaderas|válidas». Revisados los 233 textos distintos que caza sobre las
+  // 138.106 activas, TODOS son meta-opciones; ninguno es lenguaje corriente. Sin ese verbo, «las
+  // vitaminas A y B son esenciales» entraría.
+  /\b[ABCDE]\s*(?:y|,|e|o)\s*(?:la\s+)?[ABCDE]\s+son\s+(?:correct|incorrect|ciert|fals|verdader|v[áa]lid)/i,
 ];
 
 /**

@@ -33,6 +33,14 @@ describe('una opción que cita a OTRAS opciones se detecta', () => {
     // La forma que ya se cubría antes, que no puede perderse.
     'Son correctas las opciones A y C',
     'Las respuestas B y C son correctas.',
+    // La meta-opción SIN el sustantivo delante. El patrón gemelo llevaba desde el principio en el
+    // detector de EXPLICACIONES y nunca se trajo al de OPCIONES: 233 activas invisibles, una de
+    // ellas barajándose («b y c son válidas», `97978377`).
+    'B y C son correctas.',
+    'b y c son válidas.',
+    'A, B y C son falsas.',
+    'A y B son correctos.',
+    'La A y la C son correctas.',
   ])('marca %j', (texto) => {
     expect(marca(texto)).toBe(true)
   })
@@ -47,6 +55,9 @@ describe('no confunde el lenguaje corriente con una referencia cruzada', () => {
     'No empleando nunca las respuestas de D.A.A. como reafirmación.',
     // Una opción normal, sin ninguna letra suelta.
     'Acceso a una variedad de opciones de entrega disponibles en el país de destino.',
+    // El verbo de veracidad es lo que separa la meta-opción del lenguaje corriente: sin exigirlo,
+    // esta entraría por «A y B son…».
+    'Las vitaminas A y B son esenciales para el metabolismo celular.',
   ])('no marca %j', (texto) => {
     expect(marca(texto)).toBe(false)
   })
