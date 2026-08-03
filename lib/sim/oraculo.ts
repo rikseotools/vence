@@ -106,6 +106,10 @@ const AUTENTICACION_SIN_SESION = [
   // Mismo origen, otra forma: el propio widget de Google avisando de que no consigue token
   // porque no hay cuenta iniciada. Salió en la tercera pasada real, ya con las otras dos calladas.
   /\[GSI_LOGGER\].*FedCM.*(reject|NetworkError)/i,
+  // Tercera cara de lo mismo, vista en la pasada del 03/08 ya con las otras dos calladas: el
+  // proveedor de identidad contestando que no hay ninguna cuenta iniciada. Son tres formas
+  // distintas de decir «no has iniciado sesión», y las tres solo aparecen yendo anónimo.
+  /Provider's accounts list is empty/i,
 ]
 
 const esRuido = (m: string, anonimo: boolean) =>

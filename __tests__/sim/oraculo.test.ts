@@ -100,6 +100,12 @@ describe('lo que NO es señal (o el detector se ignora en una semana)', () => {
       expect(juzgarVisita({ ...SANA, anonimo: false, erroresConsola: [g] }).veredicto).toBe('sospechosa')
     })
 
+    it('«Provider\'s accounts list is empty» — la tercera cara de lo mismo', () => {
+      const g = "Provider's accounts list is empty."
+      expect(juzgarVisita({ ...SANA, anonimo: true, erroresConsola: [g] }).veredicto).toBe('ok')
+      expect(juzgarVisita({ ...SANA, anonimo: false, erroresConsola: [g] }).veredicto).toBe('sospechosa')
+    })
+
     it('un 401 de otro endpoint NO se descarta ni yendo anónimo', () => {
       const otro = 'Failed to load resource: the server responded with a status of 401 () [https://www.vence.es/api/v2/tests]'
       expect(juzgarVisita({ ...SANA, anonimo: true, erroresConsola: [otro] }).veredicto).toBe('sospechosa')
