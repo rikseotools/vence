@@ -162,151 +162,176 @@
       "topic_number": 1,
       "bloque": 1,
       "titulo": "La Constitución Española de 1978",
-      "epigrafe": "La Constitución Española de 1978. Principios generales, características y estructura. Los derechos y deberes fundamentales: garantía y suspensión."
+      "epigrafe": "La Constitución Española de 1978. Principios generales, características y estructura. Los derechos y deberes fundamentales: garantía y suspensión.",
+      "descripcion_corta": "La Constitución Española de 1978. Principios generales, características y estructura."
     },
     {
       "topic_number": 2,
       "bloque": 1,
       "titulo": "La Corona",
-      "epigrafe": "La Corona. El Poder Legislativo. El Poder Ejecutivo. El Poder Judicial. El Gobierno y la Administración del Estado."
+      "epigrafe": "La Corona. El Poder Legislativo. El Poder Ejecutivo. El Poder Judicial. El Gobierno y la Administración del Estado.",
+      "descripcion_corta": "La Corona. El Poder Legislativo."
     },
     {
       "topic_number": 3,
       "bloque": 1,
       "titulo": "La Administración Pública en el ordenamiento jurídico español",
-      "epigrafe": "La Administración Pública en el ordenamiento jurídico español. Tipología de los entes públicos. Las Administraciones del Estado, Autonómica y Local."
+      "epigrafe": "La Administración Pública en el ordenamiento jurídico español. Tipología de los entes públicos. Las Administraciones del Estado, Autonómica y Local.",
+      "descripcion_corta": "La Administración Pública en el ordenamiento jurídico español. Tipología de los entes públicos."
     },
     {
       "topic_number": 4,
       "bloque": 1,
       "titulo": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales",
-      "epigrafe": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales. Competencias de la Comunidad Autónoma de Andalucía."
+      "epigrafe": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales. Competencias de la Comunidad Autónoma de Andalucía.",
+      "descripcion_corta": "El Estatuto de Autonomía para Andalucía: estructura y disposiciones generales. Competencias de la Comunidad Autónoma de Andalucía."
     },
     {
       "topic_number": 5,
       "bloque": 1,
       "titulo": "La Provincia",
-      "epigrafe": "La Provincia. Organización: órganos necesarios y complementarios de las Diputaciones Provinciales. Sistema de elección de los/las Diputados/as y del/la Presidente/a. El Municipio. Organización Municipal. Competencias. Autonomía Municipal."
+      "epigrafe": "La Provincia. Organización: órganos necesarios y complementarios de las Diputaciones Provinciales. Sistema de elección de los/las Diputados/as y del/la Presidente/a. El Municipio. Organización Municipal. Competencias. Autonomía Municipal.",
+      "descripcion_corta": "La Provincia. Organización: órganos necesarios y complementarios de las Diputaciones Provinciales."
     },
     {
       "topic_number": 6,
       "bloque": 1,
       "titulo": "Los derechos de los ciudadanos ante la Administración Pública",
-      "epigrafe": "Los derechos de los ciudadanos ante la Administración Pública. Consideración especial del interesado. Colaboración y participación de los ciudadanos en la Administración."
+      "epigrafe": "Los derechos de los ciudadanos ante la Administración Pública. Consideración especial del interesado. Colaboración y participación de los ciudadanos en la Administración.",
+      "descripcion_corta": "Los derechos de los ciudadanos ante la Administración Pública. Consideración especial del interesado."
     },
     {
       "topic_number": 7,
       "bloque": 1,
       "titulo": "Ley Prevención de Riesgos Laborales",
-      "epigrafe": "Ley Prevención de Riesgos Laborales. Definiciones. Derecho a la protección frente a los riesgos laborales. Principios de la acción preventiva."
+      "epigrafe": "Ley Prevención de Riesgos Laborales. Definiciones. Derecho a la protección frente a los riesgos laborales. Principios de la acción preventiva.",
+      "descripcion_corta": "Ley Prevención de Riesgos Laborales. Definiciones."
     },
     {
       "topic_number": 8,
       "bloque": 1,
       "titulo": "Conceptualización básica",
-      "epigrafe": "Conceptualización básica. Discriminación y relaciones desiguales: concepto y tipos de discriminación. Igualdad de oportunidades: principios de igualdad. Planes de igualdad. Breve referencia al Plan Estratégico de Igualdad de Oportunidades entre mujeres y hombres de la Diputación Provincial de Cádiz."
+      "epigrafe": "Conceptualización básica. Discriminación y relaciones desiguales: concepto y tipos de discriminación. Igualdad de oportunidades: principios de igualdad. Planes de igualdad. Breve referencia al Plan Estratégico de Igualdad de Oportunidades entre mujeres y hombres de la Diputación Provincial de Cádiz.",
+      "descripcion_corta": "Conceptualización básica. Discriminación y relaciones desiguales: concepto y tipos de discriminación."
     },
     {
       "topic_number": 9,
       "bloque": 2,
       "titulo": "Documentación en el ámbito sanitario",
-      "epigrafe": "Documentación en el ámbito sanitario. La historia clínica. Documentación administrativa. Métodos de archivo. Organización del almacén. Normas de seguridad e higiene en el almacén. Formulación de pedidos."
+      "epigrafe": "Documentación en el ámbito sanitario. La historia clínica. Documentación administrativa. Métodos de archivo. Organización del almacén. Normas de seguridad e higiene en el almacén. Formulación de pedidos.",
+      "descripcion_corta": "Documentación en el ámbito sanitario. La historia clínica."
     },
     {
       "topic_number": 10,
       "bloque": 2,
       "titulo": "Las técnicas de comunicación interpersonal",
-      "epigrafe": "Las técnicas de comunicación interpersonal. Definición, elementos, tipos, estilos de comunicación. Canales comunicativos. Barreras de la comunicación. Comunicación oral, comunicación no verbal. Acogida al paciente geriátrico: aspectos administrativos. Aspectos organizativos: la toma de decisiones. Prioridades y estrategias de intervención. Aspectos psicológicos: estrategias del personal de enfermería. La comunicación con el paciente geriátrico."
+      "epigrafe": "Las técnicas de comunicación interpersonal. Definición, elementos, tipos, estilos de comunicación. Canales comunicativos. Barreras de la comunicación. Comunicación oral, comunicación no verbal. Acogida al paciente geriátrico: aspectos administrativos. Aspectos organizativos: la toma de decisiones. Prioridades y estrategias de intervención. Aspectos psicológicos: estrategias del personal de enfermería. La comunicación con el paciente geriátrico.",
+      "descripcion_corta": "Las técnicas de comunicación interpersonal. Definición, elementos, tipos, estilos de comunicación."
     },
     {
       "topic_number": 11,
       "bloque": 2,
       "titulo": "Necesidades fundamentales de la persona",
-      "epigrafe": "Necesidades fundamentales de la persona. Jerarquía de las necesidades de A. Maslow. Adaptación de Kalish a la jerarquía de Maslow. Valoración de las necesidades de Virginia Henderson. Los Cuidados Básicos de Enfermería o Plan de Cuidados Integral de Enfermería. El Proceso de Atención de Enfermería (PAE)."
+      "epigrafe": "Necesidades fundamentales de la persona. Jerarquía de las necesidades de A. Maslow. Adaptación de Kalish a la jerarquía de Maslow. Valoración de las necesidades de Virginia Henderson. Los Cuidados Básicos de Enfermería o Plan de Cuidados Integral de Enfermería. El Proceso de Atención de Enfermería (PAE).",
+      "descripcion_corta": "Necesidades fundamentales de la persona. Jerarquía de las necesidades de A."
     },
     {
       "topic_number": 12,
       "bloque": 2,
       "titulo": "Epidemiología, cadena epidemiológica y transmisión de infecciones",
-      "epigrafe": "Epidemiología, cadena epidemiológica y transmisión de infecciones. Medidas para disminuir el riesgo de transmisión de infecciones: lavado de manos, tipos y recomendaciones; Aislamiento: concepto, tipos y procedimientos. Protección universal. Residuos sanitarios: concepto, clasificación, recogida, transporte, almacenamiento, tratamiento y eliminación."
+      "epigrafe": "Epidemiología, cadena epidemiológica y transmisión de infecciones. Medidas para disminuir el riesgo de transmisión de infecciones: lavado de manos, tipos y recomendaciones; Aislamiento: concepto, tipos y procedimientos. Protección universal. Residuos sanitarios: concepto, clasificación, recogida, transporte, almacenamiento, tratamiento y eliminación.",
+      "descripcion_corta": "Epidemiología, cadena epidemiológica y transmisión de infecciones."
     },
     {
       "topic_number": 13,
       "bloque": 2,
       "titulo": "Limpieza en el medio sanitario",
-      "epigrafe": "Limpieza en el medio sanitario. Productos utilizados en la limpieza: el detergente. Procedimiento para la limpieza manual del material. Desinfección en el medio sanitario. Principios básicos de desinfección y métodos de desinfección: los germicidas. Esterilización en el medio sanitario: principios básicos de esterilización, métodos y control de calidad."
+      "epigrafe": "Limpieza en el medio sanitario. Productos utilizados en la limpieza: el detergente. Procedimiento para la limpieza manual del material. Desinfección en el medio sanitario. Principios básicos de desinfección y métodos de desinfección: los germicidas. Esterilización en el medio sanitario: principios básicos de esterilización, métodos y control de calidad.",
+      "descripcion_corta": "Limpieza en el medio sanitario. Productos utilizados en la limpieza: el detergente."
     },
     {
       "topic_number": 14,
       "bloque": 2,
       "titulo": "Mobiliario y accesorios de la habitación hospitalaria",
-      "epigrafe": "Mobiliario y accesorios de la habitación hospitalaria. La cama hospitalaria: características, tipos. El colchón de la cama hospitalaria. La preparación de la cama hospitalaria. Ropa o lencería de la cama hospitalaria. Procedimiento para hacer una cama desocupada y una cama ocupada."
+      "epigrafe": "Mobiliario y accesorios de la habitación hospitalaria. La cama hospitalaria: características, tipos. El colchón de la cama hospitalaria. La preparación de la cama hospitalaria. Ropa o lencería de la cama hospitalaria. Procedimiento para hacer una cama desocupada y una cama ocupada.",
+      "descripcion_corta": "Mobiliario y accesorios de la habitación hospitalaria. La cama hospitalaria: características, tipos."
     },
     {
       "topic_number": 15,
       "bloque": 2,
       "titulo": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento",
-      "epigrafe": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento. Procesos dermatológicos más frecuentes en los ancianos. La higiene integral: conceptos; el aseo en pacientes geriátricos. La úlcera de decúbito o úlcera por presión (UPP): concepto, etiología, clasificación GENEAUPP. Proceso de generación de la UPP. Plan de actuación."
+      "epigrafe": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento. Procesos dermatológicos más frecuentes en los ancianos. La higiene integral: conceptos; el aseo en pacientes geriátricos. La úlcera de decúbito o úlcera por presión (UPP): concepto, etiología, clasificación GENEAUPP. Proceso de generación de la UPP. Plan de actuación.",
+      "descripcion_corta": "La piel del anciano como órgano de protección ante las infecciones: los cambios de la piel como consecuencia del envejecimiento."
     },
     {
       "topic_number": 16,
       "bloque": 2,
       "titulo": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes",
-      "epigrafe": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes. Modificaciones del sistema gastrointestinal asociadas al proceso de envejecimiento. Factores que influyen en los hábitos alimenticios de la población y su influencia en los estados de salud. Dietas terapéuticas. Alteración de alimentos y toxiinfección alimentaria. Prevención de la toxiinfección alimentaria: conservación y manipulación de alimentos."
+      "epigrafe": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes. Modificaciones del sistema gastrointestinal asociadas al proceso de envejecimiento. Factores que influyen en los hábitos alimenticios de la población y su influencia en los estados de salud. Dietas terapéuticas. Alteración de alimentos y toxiinfección alimentaria. Prevención de la toxiinfección alimentaria: conservación y manipulación de alimentos.",
+      "descripcion_corta": "El sistema gastrointestinal: conceptos básicos y patologías más frecuentes."
     },
     {
       "topic_number": 17,
       "bloque": 2,
       "titulo": "Conceptos de nutrición enteral y parenteral",
-      "epigrafe": "Conceptos de nutrición enteral y parenteral. Tipos de sondas. Cuidados del paciente con sonda nasoentérica y con gastro-enterostomías. Métodos de preparación y administración en la nutrición enteral: clasificación de las fórmulas, preparación, formas de administración, precauciones generales respecto a la administración. Complicaciones de la administración de la nutrición enteral."
+      "epigrafe": "Conceptos de nutrición enteral y parenteral. Tipos de sondas. Cuidados del paciente con sonda nasoentérica y con gastro-enterostomías. Métodos de preparación y administración en la nutrición enteral: clasificación de las fórmulas, preparación, formas de administración, precauciones generales respecto a la administración. Complicaciones de la administración de la nutrición enteral.",
+      "descripcion_corta": "Conceptos de nutrición enteral y parenteral. Tipos de sondas."
     },
     {
       "topic_number": 18,
       "bloque": 2,
       "titulo": "Características de la orina",
-      "epigrafe": "Características de la orina. Cambios en el aparato urinario con el envejecimiento. Patologías más frecuentes del aparato urinario en el paciente geriátrico. El balance hídrico y el control de diuresis. Sondaje vesical: procedimiento, obtención de una muestra de orina estéril de una sonda Foley, cuidados de enfermería en el paciente con sonda permanente, el lavado vesical. Dispositivos de recogida externa de orina: cuña y botella. Características de las heces. Incontinencia fecal (IF): clasificación, colocación de sondas rectales y administración de enemas."
+      "epigrafe": "Características de la orina. Cambios en el aparato urinario con el envejecimiento. Patologías más frecuentes del aparato urinario en el paciente geriátrico. El balance hídrico y el control de diuresis. Sondaje vesical: procedimiento, obtención de una muestra de orina estéril de una sonda Foley, cuidados de enfermería en el paciente con sonda permanente, el lavado vesical. Dispositivos de recogida externa de orina: cuña y botella. Características de las heces. Incontinencia fecal (IF): clasificación, colocación de sondas rectales y administración de enemas.",
+      "descripcion_corta": "Características de la orina. Cambios en el aparato urinario con el envejecimiento."
     },
     {
       "topic_number": 19,
       "bloque": 2,
       "titulo": "Paciente geriátrico y necesidad de movilización",
-      "epigrafe": "Paciente geriátrico y necesidad de movilización. Normas básicas de mecánica corporal. Técnicas de movilización para pacientes geriátricos: movilización del paciente geriátrico en la cama. Incorporación. Traslado. Ayudas a la deambulación. Cambios posturales en el paciente anciano."
+      "epigrafe": "Paciente geriátrico y necesidad de movilización. Normas básicas de mecánica corporal. Técnicas de movilización para pacientes geriátricos: movilización del paciente geriátrico en la cama. Incorporación. Traslado. Ayudas a la deambulación. Cambios posturales en el paciente anciano.",
+      "descripcion_corta": "Paciente geriátrico y necesidad de movilización. Normas básicas de mecánica corporal."
     },
     {
       "topic_number": 20,
       "bloque": 2,
       "titulo": "Concepto clínico de muerte",
-      "epigrafe": "Concepto clínico de muerte. Manifestaciones observables de la ausencia de signos clínicos. Cambios en el cuerpo después de la muerte. Cuidados postmortem y normas de comportamiento. Atenciones a la familia."
+      "epigrafe": "Concepto clínico de muerte. Manifestaciones observables de la ausencia de signos clínicos. Cambios en el cuerpo después de la muerte. Cuidados postmortem y normas de comportamiento. Atenciones a la familia.",
+      "descripcion_corta": "Concepto clínico de muerte. Manifestaciones observables de la ausencia de signos clínicos."
     },
     {
       "topic_number": 21,
       "bloque": 2,
       "titulo": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación",
-      "epigrafe": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación. Las constantes vitales: la temperatura corporal. La respiración. El pulso. La tensión arterial. Medicamentos: presentación y administración. Efectos adversos de los medicamentos. Presentación, preparación y administración de medicamentos. Vías de administración de medicamentos. El secreto médico como obligación del auxiliar de enfermería."
+      "epigrafe": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación. Las constantes vitales: la temperatura corporal. La respiración. El pulso. La tensión arterial. Medicamentos: presentación y administración. Efectos adversos de los medicamentos. Presentación, preparación y administración de medicamentos. Vías de administración de medicamentos. El secreto médico como obligación del auxiliar de enfermería.",
+      "descripcion_corta": "Las muestras de productos biológicos para analizar: concepto, tipos y normas generales de actuación. Las constantes vitales: la temperatura corporal."
     },
     {
       "topic_number": 22,
       "bloque": 2,
       "titulo": "Centros de atención y asistencia al anciano: definición y tipos",
-      "epigrafe": "Centros de atención y asistencia al anciano: definición y tipos. El mayor válido y el mayor asistido en el centro residencial. Estructura organizativa de los centros residenciales. Concepto de Gerontología. El envejecimiento: definición. Aspectos generales de las características fisiológicas del envejecimiento. Modificaciones en el envejecimiento por órganos y sistemas. Cuidados de la boca y los pies en el paciente mayor. Aspectos psicológicos de la ancianidad. Aspectos sociales de la ancianidad."
+      "epigrafe": "Centros de atención y asistencia al anciano: definición y tipos. El mayor válido y el mayor asistido en el centro residencial. Estructura organizativa de los centros residenciales. Concepto de Gerontología. El envejecimiento: definición. Aspectos generales de las características fisiológicas del envejecimiento. Modificaciones en el envejecimiento por órganos y sistemas. Cuidados de la boca y los pies en el paciente mayor. Aspectos psicológicos de la ancianidad. Aspectos sociales de la ancianidad.",
+      "descripcion_corta": "Centros de atención y asistencia al anciano: definición y tipos. El mayor válido y el mayor asistido en el centro residencial."
     },
     {
       "topic_number": 23,
       "bloque": 2,
       "titulo": "Introducción a la Geriatría",
-      "epigrafe": "Introducción a la Geriatría. Concepto y objetivos. Valoración geriátrica integral: clínica, funcional, mental, social. Consideraciones sobre la actitud del profesional sanitario ante el enfermo geriátrico. Morbilidad y mortalidad del paciente geriátrico. Enfermedades más frecuentes en el anciano. Síndromes geriátricos: caídas, insomnio, síndrome confusional agudo (SCA) o delírium, discapacidad física, inmovilismo."
+      "epigrafe": "Introducción a la Geriatría. Concepto y objetivos. Valoración geriátrica integral: clínica, funcional, mental, social. Consideraciones sobre la actitud del profesional sanitario ante el enfermo geriátrico. Morbilidad y mortalidad del paciente geriátrico. Enfermedades más frecuentes en el anciano. Síndromes geriátricos: caídas, insomnio, síndrome confusional agudo (SCA) o delírium, discapacidad física, inmovilismo.",
+      "descripcion_corta": "Introducción a la Geriatría. Concepto y objetivos."
     },
     {
       "topic_number": 24,
       "bloque": 2,
       "titulo": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta",
-      "epigrafe": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta. Concepto de terapia ocupacional. Objetivos de la terapia ocupacional en personas mayores. Actividades de terapia ocupacional en personas mayores: actividades de la vida diaria, de ocio, de revitalización geriátrica, físicas y deportivas."
+      "epigrafe": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta. Concepto de terapia ocupacional. Objetivos de la terapia ocupacional en personas mayores. Actividades de terapia ocupacional en personas mayores: actividades de la vida diaria, de ocio, de revitalización geriátrica, físicas y deportivas.",
+      "descripcion_corta": "Hábitos de vida saludables en el anciano: el hábito de la higiene en el anciano, las prendas de vestir, la actividad física, la actividad sexual, el ocio y la dieta."
     },
     {
       "topic_number": 25,
       "bloque": 2,
       "titulo": "La atención centrada en la persona: concepto, metodología y buenas prácticas",
-      "epigrafe": "La atención centrada en la persona: concepto, metodología y buenas prácticas. El derecho del mayor a realizar su proyecto de vida en la residencia. El testamento vital anticipado."
+      "epigrafe": "La atención centrada en la persona: concepto, metodología y buenas prácticas. El derecho del mayor a realizar su proyecto de vida en la residencia. El testamento vital anticipado.",
+      "descripcion_corta": "La atención centrada en la persona: concepto, metodología y buenas prácticas. El derecho del mayor a realizar su proyecto de vida en la residencia."
     }
   ],
   "scope": {

@@ -150,193 +150,225 @@
       "topic_number": 1,
       "bloque": 1,
       "titulo": "La Constitución Española de 1978",
-      "epigrafe": "La Constitución Española de 1978: Estructura y contenido. Derechos y deberes fundamentales. Su garantía y suspensión. La Corona. El Tribunal Constitucional."
+      "epigrafe": "La Constitución Española de 1978: Estructura y contenido. Derechos y deberes fundamentales. Su garantía y suspensión. La Corona. El Tribunal Constitucional.",
+      "descripcion_corta": "La Constitución Española de 1978: Estructura y contenido. Derechos y deberes fundamentales."
     },
     {
       "topic_number": 2,
       "bloque": 1,
       "titulo": "Las Cortes Generales",
-      "epigrafe": "Las Cortes Generales: Composición, atribuciones y funcionamiento. El Defensor del Pueblo. El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española."
+      "epigrafe": "Las Cortes Generales: Composición, atribuciones y funcionamiento. El Defensor del Pueblo. El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española.",
+      "descripcion_corta": "Las Cortes Generales: Composición, atribuciones y funcionamiento. El Defensor del Pueblo."
     },
     {
       "topic_number": 3,
       "bloque": 1,
       "titulo": "El Gobierno",
-      "epigrafe": "El Gobierno: Nombramiento y cese. Las funciones del Gobierno. La Administración Pública: Principios constitucionales informadores. La Administración central y periférica del Estado. Tipos de Entes Públicos."
+      "epigrafe": "El Gobierno: Nombramiento y cese. Las funciones del Gobierno. La Administración Pública: Principios constitucionales informadores. La Administración central y periférica del Estado. Tipos de Entes Públicos.",
+      "descripcion_corta": "El Gobierno: Nombramiento y cese. Las funciones del Gobierno."
     },
     {
       "topic_number": 4,
       "bloque": 1,
       "titulo": "La organización territorial del Estado",
-      "epigrafe": "La organización territorial del Estado. Comunidades y Ciudades Autónomas. Las Entidades Locales. Las Instituciones de la Unión Europea: El Consejo, el Parlamento Europeo, la Comisión, el Tribunal de Justicia."
+      "epigrafe": "La organización territorial del Estado. Comunidades y Ciudades Autónomas. Las Entidades Locales. Las Instituciones de la Unión Europea: El Consejo, el Parlamento Europeo, la Comisión, el Tribunal de Justicia.",
+      "descripcion_corta": "La organización territorial del Estado. Comunidades y Ciudades Autónomas."
     },
     {
       "topic_number": 5,
       "bloque": 1,
       "titulo": "El funcionamiento electrónico del sector público",
-      "epigrafe": "El funcionamiento electrónico del sector público. Derecho y obligación de relacionarse electrónicamente con las Administraciones Públicas, registros y archivo electrónico. El Gobierno abierto, la transparencia, el acceso a la información pública, la participación en la rendición de cuentas y el buen gobierno. Normativa reguladora de la protección de datos personales: principios, derechos de las personas y ejercicios de los derechos."
+      "epigrafe": "El funcionamiento electrónico del sector público. Derecho y obligación de relacionarse electrónicamente con las Administraciones Públicas, registros y archivo electrónico. El Gobierno abierto, la transparencia, el acceso a la información pública, la participación en la rendición de cuentas y el buen gobierno. Normativa reguladora de la protección de datos personales: principios, derechos de las personas y ejercicios de los derechos.",
+      "descripcion_corta": "El funcionamiento electrónico del sector público."
     },
     {
       "topic_number": 6,
       "bloque": 1,
       "titulo": "Políticas de igualdad de género, no discriminación y contra la violencia de género",
-      "epigrafe": "Políticas de igualdad de género, no discriminación y contra la violencia de género. Discapacidad y dependencia: régimen jurídico."
+      "epigrafe": "Políticas de igualdad de género, no discriminación y contra la violencia de género. Discapacidad y dependencia: régimen jurídico.",
+      "descripcion_corta": "Políticas de igualdad de género, no discriminación y contra la violencia de género. Discapacidad y dependencia: régimen jurídico."
     },
     {
       "topic_number": 7,
       "bloque": 1,
       "titulo": "Régimen jurídico del personal al servicio de las Administraciones Públicas",
-      "epigrafe": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El Estatuto Básico del Empleado Público. Derechos y deberes de los funcionarios. La provisión de puestos de trabajo y la carrera administrativa. Situaciones administrativas. Incompatibilidades y régimen disciplinario. El régimen de Seguridad Social de los funcionarios."
+      "epigrafe": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El Estatuto Básico del Empleado Público. Derechos y deberes de los funcionarios. La provisión de puestos de trabajo y la carrera administrativa. Situaciones administrativas. Incompatibilidades y régimen disciplinario. El régimen de Seguridad Social de los funcionarios.",
+      "descripcion_corta": "Régimen jurídico del personal al servicio de las Administraciones Públicas. El Estatuto Básico del Empleado Público."
     },
     {
       "topic_number": 8,
       "bloque": 1,
       "titulo": "Las fuentes del Derecho Administrativo",
-      "epigrafe": "Las fuentes del Derecho Administrativo. La jerarquía de las fuentes. La Constitución. La Ley. El Reglamento. El ordenamiento jurídico de la Unión Europea."
+      "epigrafe": "Las fuentes del Derecho Administrativo. La jerarquía de las fuentes. La Constitución. La Ley. El Reglamento. El ordenamiento jurídico de la Unión Europea.",
+      "descripcion_corta": "Las fuentes del Derecho Administrativo. La jerarquía de las fuentes."
     },
     {
       "topic_number": 9,
       "bloque": 1,
       "titulo": "Los actos administrativos",
-      "epigrafe": "Los actos administrativos. Concepto y clases. Motivación, forma y eficacia de los actos administrativos. Notificación y publicación. Nulidad y anulabilidad. La revisión de oficio."
+      "epigrafe": "Los actos administrativos. Concepto y clases. Motivación, forma y eficacia de los actos administrativos. Notificación y publicación. Nulidad y anulabilidad. La revisión de oficio.",
+      "descripcion_corta": "Los actos administrativos. Concepto y clases."
     },
     {
       "topic_number": 10,
       "bloque": 1,
       "titulo": "El procedimiento administrativo común",
-      "epigrafe": "El procedimiento administrativo común. La capacidad de obrar y el concepto de interesado. Representación. Identificación y firma de los interesados. Derechos del interesado en el procedimiento administrativo. Obligación de resolver y silencio administrativo. Términos y plazos."
+      "epigrafe": "El procedimiento administrativo común. La capacidad de obrar y el concepto de interesado. Representación. Identificación y firma de los interesados. Derechos del interesado en el procedimiento administrativo. Obligación de resolver y silencio administrativo. Términos y plazos.",
+      "descripcion_corta": "El procedimiento administrativo común. La capacidad de obrar y el concepto de interesado."
     },
     {
       "topic_number": 11,
       "bloque": 1,
       "titulo": "Las fases del procedimiento administrativo",
-      "epigrafe": "Las fases del procedimiento administrativo: Iniciación, ordenación, instrucción y finalización. La ejecución de los actos y resoluciones administrativas."
+      "epigrafe": "Las fases del procedimiento administrativo: Iniciación, ordenación, instrucción y finalización. La ejecución de los actos y resoluciones administrativas.",
+      "descripcion_corta": "Las fases del procedimiento administrativo: Iniciación, ordenación, instrucción y finalización."
     },
     {
       "topic_number": 12,
       "bloque": 1,
       "titulo": "Los recursos administrativos",
-      "epigrafe": "Los recursos administrativos: concepto y clases. Recurso de alzada. Recurso potestativo de reposición. Recurso extraordinario de revisión. La jurisdicción contencioso-administrativa: objeto y plazos de interposición del recurso contencioso-administrativo."
+      "epigrafe": "Los recursos administrativos: concepto y clases. Recurso de alzada. Recurso potestativo de reposición. Recurso extraordinario de revisión. La jurisdicción contencioso-administrativa: objeto y plazos de interposición del recurso contencioso-administrativo.",
+      "descripcion_corta": "Los recursos administrativos: concepto y clases. Recurso de alzada."
     },
     {
       "topic_number": 13,
       "bloque": 2,
       "titulo": "El sistema fiscal español",
-      "epigrafe": "El sistema fiscal español. Principios impositivos en la Constitución Española. Los impuestos de titularidad estatal y sus características. La Hacienda Pública Estatal, Autonómica y Local."
+      "epigrafe": "El sistema fiscal español. Principios impositivos en la Constitución Española. Los impuestos de titularidad estatal y sus características. La Hacienda Pública Estatal, Autonómica y Local.",
+      "descripcion_corta": "El sistema fiscal español. Principios impositivos en la Constitución Española."
     },
     {
       "topic_number": 14,
       "bloque": 2,
       "titulo": "La Agencia Estatal de Administración Tributaria",
-      "epigrafe": "La Agencia Estatal de Administración Tributaria: creación, naturaleza, objetivos, funciones y organización."
+      "epigrafe": "La Agencia Estatal de Administración Tributaria: creación, naturaleza, objetivos, funciones y organización.",
+      "descripcion_corta": "La Agencia Estatal de Administración Tributaria: creación, naturaleza, objetivos, funciones y organización."
     },
     {
       "topic_number": 15,
       "bloque": 2,
       "titulo": "Derecho Tributario",
-      "epigrafe": "Derecho Tributario: concepto y contenido. Fuentes. Los tributos: concepto y clasificación. La obligación tributaria. Hecho imponible. Devengo. Base imponible y liquidable. Cuota y deuda tributaria."
+      "epigrafe": "Derecho Tributario: concepto y contenido. Fuentes. Los tributos: concepto y clasificación. La obligación tributaria. Hecho imponible. Devengo. Base imponible y liquidable. Cuota y deuda tributaria.",
+      "descripcion_corta": "Derecho Tributario: concepto y contenido. Fuentes."
     },
     {
       "topic_number": 16,
       "bloque": 2,
       "titulo": "Obligaciones tributarias formales",
-      "epigrafe": "Obligaciones tributarias formales. Derechos y garantías de los obligados tributarios. Los obligados tributarios. La capacidad de obrar en el orden tributario. Representación y domicilio fiscal. Plazos de prescripción."
+      "epigrafe": "Obligaciones tributarias formales. Derechos y garantías de los obligados tributarios. Los obligados tributarios. La capacidad de obrar en el orden tributario. Representación y domicilio fiscal. Plazos de prescripción.",
+      "descripcion_corta": "Obligaciones tributarias formales. Derechos y garantías de los obligados tributarios."
     },
     {
       "topic_number": 17,
       "bloque": 2,
       "titulo": "Información y Asistencia a los obligados tributarios",
-      "epigrafe": "Información y Asistencia a los obligados tributarios. La colaboración social en la aplicación de los tributos. Carácter reservado de los datos con trascendencia tributaria. Normas comunes sobre actuaciones y procedimientos tributarios: fases. Las liquidaciones tributarias. Obligación de resolver y plazos de resolución. Carga de la prueba. Las notificaciones."
+      "epigrafe": "Información y Asistencia a los obligados tributarios. La colaboración social en la aplicación de los tributos. Carácter reservado de los datos con trascendencia tributaria. Normas comunes sobre actuaciones y procedimientos tributarios: fases. Las liquidaciones tributarias. Obligación de resolver y plazos de resolución. Carga de la prueba. Las notificaciones.",
+      "descripcion_corta": "Información y Asistencia a los obligados tributarios. La colaboración social en la aplicación de los tributos."
     },
     {
       "topic_number": 18,
       "bloque": 2,
       "titulo": "Las declaraciones tributarias",
-      "epigrafe": "Las declaraciones tributarias: concepto y clases. Las autoliquidaciones. Las comunicaciones de datos. Los pagos a cuenta."
+      "epigrafe": "Las declaraciones tributarias: concepto y clases. Las autoliquidaciones. Las comunicaciones de datos. Los pagos a cuenta.",
+      "descripcion_corta": "Las declaraciones tributarias: concepto y clases. Las autoliquidaciones."
     },
     {
       "topic_number": 19,
       "bloque": 2,
       "titulo": "Actuaciones y procedimiento de gestión tributaria",
-      "epigrafe": "Actuaciones y procedimiento de gestión tributaria. Los procedimientos de gestión tributaria: iniciación, trámites y terminación. El procedimiento de verificación de datos. El procedimiento de comprobación de valores. El procedimiento de comprobación limitada. Rectificación de autoliquidaciones, declaraciones, comunicaciones de datos e iniciación del procedimiento de devolución."
+      "epigrafe": "Actuaciones y procedimiento de gestión tributaria. Los procedimientos de gestión tributaria: iniciación, trámites y terminación. El procedimiento de verificación de datos. El procedimiento de comprobación de valores. El procedimiento de comprobación limitada. Rectificación de autoliquidaciones, declaraciones, comunicaciones de datos e iniciación del procedimiento de devolución.",
+      "descripcion_corta": "Actuaciones y procedimiento de gestión tributaria. Los procedimientos de gestión tributaria: iniciación, trámites y terminación."
     },
     {
       "topic_number": 20,
       "bloque": 2,
       "titulo": "Actuaciones y procedimiento de inspección",
-      "epigrafe": "Actuaciones y procedimiento de inspección: funciones y facultades. Documentación de las actuaciones de inspección. La personación de la inspección en el domicilio o locales del contribuyente. El procedimiento de inspección: iniciación, desarrollo y terminación. Las medidas cautelares en el procedimiento inspector."
+      "epigrafe": "Actuaciones y procedimiento de inspección: funciones y facultades. Documentación de las actuaciones de inspección. La personación de la inspección en el domicilio o locales del contribuyente. El procedimiento de inspección: iniciación, desarrollo y terminación. Las medidas cautelares en el procedimiento inspector.",
+      "descripcion_corta": "Actuaciones y procedimiento de inspección: funciones y facultades. Documentación de las actuaciones de inspección."
     },
     {
       "topic_number": 21,
       "bloque": 2,
       "titulo": "La extinción de la deuda tributaria (I)",
-      "epigrafe": "La extinción de la deuda tributaria (I). Medios de extinción de la deuda. El pago o cumplimiento: forma, momento, plazos, imputación, consignación y medios de pago. Aplazamiento y fraccionamiento del pago."
+      "epigrafe": "La extinción de la deuda tributaria (I). Medios de extinción de la deuda. El pago o cumplimiento: forma, momento, plazos, imputación, consignación y medios de pago. Aplazamiento y fraccionamiento del pago.",
+      "descripcion_corta": "La extinción de la deuda tributaria (I). Medios de extinción de la deuda."
     },
     {
       "topic_number": 22,
       "bloque": 2,
       "titulo": "La extinción de la deuda tributaria (II)",
-      "epigrafe": "La extinción de la deuda tributaria (II). Otras formas de extinción de las deudas: la compensación, la extinción de deudas de las entidades de derecho público mediante deducciones sobre transferencias. La condonación. Baja provisional por insolvencia. Terminación del procedimiento de apremio."
+      "epigrafe": "La extinción de la deuda tributaria (II). Otras formas de extinción de las deudas: la compensación, la extinción de deudas de las entidades de derecho público mediante deducciones sobre transferencias. La condonación. Baja provisional por insolvencia. Terminación del procedimiento de apremio.",
+      "descripcion_corta": "La extinción de la deuda tributaria (II)."
     },
     {
       "topic_number": 23,
       "bloque": 2,
       "titulo": "Las actuaciones y el procedimiento de recaudación tributaria",
-      "epigrafe": "Las actuaciones y el procedimiento de recaudación tributaria: la recaudación en período ejecutivo. Iniciación. Efectos. Recargos del período ejecutivo. Procedimiento de apremio: características, concurrencia y suspensión del procedimiento. Providencia de apremio: concepto y plazos para el pago. Las garantías de la deuda tributaria: tipos y ejecución de garantías."
+      "epigrafe": "Las actuaciones y el procedimiento de recaudación tributaria: la recaudación en período ejecutivo. Iniciación. Efectos. Recargos del período ejecutivo. Procedimiento de apremio: características, concurrencia y suspensión del procedimiento. Providencia de apremio: concepto y plazos para el pago. Las garantías de la deuda tributaria: tipos y ejecución de garantías.",
+      "descripcion_corta": "Las actuaciones y el procedimiento de recaudación tributaria: la recaudación en período ejecutivo. Iniciación."
     },
     {
       "topic_number": 24,
       "bloque": 2,
       "titulo": "El embargo",
-      "epigrafe": "El embargo. Facultades de la recaudación. Las diligencias de embargo: concepto y motivos de oposición. Práctica del embargo de bienes y derechos. Depósito y enajenación de los bienes embargados. El procedimiento frente a responsables. Procedimiento de recaudación frente a los sucesores."
+      "epigrafe": "El embargo. Facultades de la recaudación. Las diligencias de embargo: concepto y motivos de oposición. Práctica del embargo de bienes y derechos. Depósito y enajenación de los bienes embargados. El procedimiento frente a responsables. Procedimiento de recaudación frente a los sucesores.",
+      "descripcion_corta": "El embargo. Facultades de la recaudación."
     },
     {
       "topic_number": 25,
       "bloque": 2,
       "titulo": "La potestad sancionadora en materia tributaria",
-      "epigrafe": "La potestad sancionadora en materia tributaria. Principios. Sujetos responsables. Concepto y clases de infracciones y sanciones tributarias. Cuantificación de las sanciones tributarias pecuniarias. Extinción de la responsabilidad derivada de las infracciones tributarias y extinción de las sanciones tributarias. Procedimiento sancionador en materia tributaria: iniciación, instrucción y terminación."
+      "epigrafe": "La potestad sancionadora en materia tributaria. Principios. Sujetos responsables. Concepto y clases de infracciones y sanciones tributarias. Cuantificación de las sanciones tributarias pecuniarias. Extinción de la responsabilidad derivada de las infracciones tributarias y extinción de las sanciones tributarias. Procedimiento sancionador en materia tributaria: iniciación, instrucción y terminación.",
+      "descripcion_corta": "La potestad sancionadora en materia tributaria. Principios."
     },
     {
       "topic_number": 26,
       "bloque": 2,
       "titulo": "Revisión en vía administrativa",
-      "epigrafe": "Revisión en vía administrativa. El recurso de reposición. Las reclamaciones económico-administrativas. Los Tribunales Económico-Administrativos."
+      "epigrafe": "Revisión en vía administrativa. El recurso de reposición. Las reclamaciones económico-administrativas. Los Tribunales Económico-Administrativos.",
+      "descripcion_corta": "Revisión en vía administrativa. El recurso de reposición."
     },
     {
       "topic_number": 27,
       "bloque": 2,
       "titulo": "El Impuesto sobre la Renta de las Personas Físicas (I)",
-      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (I). Naturaleza, objeto y ámbito de aplicación. Sujeción al impuesto: aspectos materiales, personales y temporales. Rendimientos del trabajo, rendimientos del capital mobiliario, rendimientos del capital inmobiliario, rendimientos de actividades económicas. Imputación de rentas inmobiliarias. Ganancias y pérdidas patrimoniales."
+      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (I). Naturaleza, objeto y ámbito de aplicación. Sujeción al impuesto: aspectos materiales, personales y temporales. Rendimientos del trabajo, rendimientos del capital mobiliario, rendimientos del capital inmobiliario, rendimientos de actividades económicas. Imputación de rentas inmobiliarias. Ganancias y pérdidas patrimoniales.",
+      "descripcion_corta": "El Impuesto sobre la Renta de las Personas Físicas (I). Naturaleza, objeto y ámbito de aplicación."
     },
     {
       "topic_number": 28,
       "bloque": 2,
       "titulo": "El Impuesto sobre la Renta de las Personas Físicas (II)",
-      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (II): clases de Renta. Integración y compensación de rentas. Base liquidable general y del ahorro. Adecuación del impuesto a las circunstancias personales y familiares del contribuyente. Cálculo del impuesto estatal. Cuota diferencial. Tributación familiar. Gestión del Impuesto."
+      "epigrafe": "El Impuesto sobre la Renta de las Personas Físicas (II): clases de Renta. Integración y compensación de rentas. Base liquidable general y del ahorro. Adecuación del impuesto a las circunstancias personales y familiares del contribuyente. Cálculo del impuesto estatal. Cuota diferencial. Tributación familiar. Gestión del Impuesto.",
+      "descripcion_corta": "El Impuesto sobre la Renta de las Personas Físicas (II): clases de Renta. Integración y compensación de rentas."
     },
     {
       "topic_number": 29,
       "bloque": 2,
       "titulo": "El Impuesto sobre Sociedades",
-      "epigrafe": "El Impuesto sobre Sociedades: naturaleza y ámbito de aplicación. Hecho imponible. Contribuyentes. Concepto y determinación de la base imponible. Reglas de imputación temporal. Reducciones en la base imponible. Período impositivo y devengo del impuesto. Tipo de gravamen y cuota íntegra. Deducciones para evitar la doble imposición internacional. Bonificaciones. Declaración, autoliquidación y liquidación provisional. Devolución."
+      "epigrafe": "El Impuesto sobre Sociedades: naturaleza y ámbito de aplicación. Hecho imponible. Contribuyentes. Concepto y determinación de la base imponible. Reglas de imputación temporal. Reducciones en la base imponible. Período impositivo y devengo del impuesto. Tipo de gravamen y cuota íntegra. Deducciones para evitar la doble imposición internacional. Bonificaciones. Declaración, autoliquidación y liquidación provisional. Devolución.",
+      "descripcion_corta": "El Impuesto sobre Sociedades: naturaleza y ámbito de aplicación. Hecho imponible."
     },
     {
       "topic_number": 30,
       "bloque": 2,
       "titulo": "El Impuesto sobre el Valor Añadido (I)",
-      "epigrafe": "El Impuesto sobre el Valor Añadido (I). Naturaleza y ámbito de aplicación. Entregas de bienes y prestaciones de servicios: hecho imponible. Exenciones. Lugar de realización del hecho imponible."
+      "epigrafe": "El Impuesto sobre el Valor Añadido (I). Naturaleza y ámbito de aplicación. Entregas de bienes y prestaciones de servicios: hecho imponible. Exenciones. Lugar de realización del hecho imponible.",
+      "descripcion_corta": "El Impuesto sobre el Valor Añadido (I). Naturaleza y ámbito de aplicación."
     },
     {
       "topic_number": 31,
       "bloque": 2,
       "titulo": "El Impuesto sobre el Valor Añadido (II)",
-      "epigrafe": "El Impuesto sobre el Valor Añadido (II). Sujetos pasivos. Repercusión del impuesto. Devengo del impuesto. Base imponible. Deducciones: requisitos subjetivos de la deducción y limitaciones del derecho a deducir. Régimen de deducciones en sectores diferenciados de la actividad empresarial o profesional. Regla de prorrata. Regularización de deducciones por bienes de inversión. Devoluciones."
+      "epigrafe": "El Impuesto sobre el Valor Añadido (II). Sujetos pasivos. Repercusión del impuesto. Devengo del impuesto. Base imponible. Deducciones: requisitos subjetivos de la deducción y limitaciones del derecho a deducir. Régimen de deducciones en sectores diferenciados de la actividad empresarial o profesional. Regla de prorrata. Regularización de deducciones por bienes de inversión. Devoluciones.",
+      "descripcion_corta": "El Impuesto sobre el Valor Añadido (II). Sujetos pasivos."
     },
     {
       "topic_number": 32,
       "bloque": 2,
       "titulo": "La Aduana",
-      "epigrafe": "La Aduana: representación aduanera. Deuda aduanera de importación y deuda aduanera de exportación. Inclusión de mercancías en un régimen aduanero: disposiciones generales."
+      "epigrafe": "La Aduana: representación aduanera. Deuda aduanera de importación y deuda aduanera de exportación. Inclusión de mercancías en un régimen aduanero: disposiciones generales.",
+      "descripcion_corta": "La Aduana: representación aduanera. Deuda aduanera de importación y deuda aduanera de exportación."
     }
   ],
   "scope": {
