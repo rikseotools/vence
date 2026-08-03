@@ -188,7 +188,21 @@ const OPTION_CROSSREF_PATTERNS: RegExp[] = [
   // La letra tiene que ir con paréntesis O en MAYÚSCULA. Sin esta condición, «la respuesta **a**
   // los estímulos» casaba —la «a» es preposición— y 103 preguntas se marcaron unsafe sin motivo.
   /\b(?:respuesta|opci[óo]n|alternativa)\s+(?:[a-eA-E]\)|[A-E]\b)/,
-  /\b(?:respuestas|opciones)\s+[ABCDE]\s*(?:y|,|e)\s*[ABCDE]\b/i, // "las opciones A y C"
+  // «las opciones A y C», «las opciones a) y c)», «las opciones B) o C)».
+  //
+  // Tres cosas que la primera versión no cubría y que costaron 3 preguntas SERVIDAS barajadas
+  // (T-409, 03/08): (a) la letra con PARÉNTESIS —`opciones a)`—, (b) la letra en MINÚSCULA, que
+  // aquí NO es la letra de apartado legal porque la palabra que la precede es «opciones», y
+  // (c) la conjunción «o», que es la que usan las tres afectadas: `95003f09` («Por los indicados
+  // en las opciones A) o C)»), `57ed7965` y `daa99a80`. En las tres esa opción es LA CLAVE, así
+  // que al barajar la respuesta correcta pasaba a señalar a otras.
+  //
+  // El cierre `(?:\)|\b)` tras cada letra es lo que sostiene la precisión y no es opcional: sin
+  // él, `[ABCDE]` casa la «d» de «de» y la «e» siguiente hace de conjunción, de modo que
+  // «Respuestas **de b**ajo nivel» o «opciones **de b**úsqueda» se leen como referencia cruzada.
+  // Medido sobre las 138.096 activas: el patrón nuevo caza 379 que el anterior no veía y de paso
+  // deja de marcar 5 que aquél marcaba en falso, todas de ese tipo.
+  /\b(?:respuestas|opciones)\s+[ABCDE](?:\)|\b)\s*(?:y|o|,|e)\s*(?:la\s+)?[ABCDE](?:\)|\b)/i,
   // Artículo + letra con paréntesis, con el SUSTANTIVO ELIDIDO: «Por la B) o, en su defecto, por
   // la C)», «A) y la B) son correctas», «Cierta la A), entendiéndose…», «Respecto a la A), no será
   // de aplicación…». Encontrado el 30/07 revisando las 22 de T-282: la pregunta `1311556a` (art.
