@@ -1622,6 +1622,21 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-505] 🟡 [ABIERTO 03/08] El detector de tablas aplanadas es CIEGO si el texto se re-fluye, que es justo lo que manda el manual
+
+- **Esfuerzo: rato.** El núcleo ya existe y tiene fixtures; lo que falta es una segunda señal y su calibración.
+- **CÓMO SALIÓ (03/08).** Importando al temario de [T-489] la Orden de 21/07/2026 (BOJA 143): su Anexo I.2 es una tabla de zonas y superficies que el PDF entrega aplanada. La detecté LEYÉNDOLA, y al pasarle después `detectFlattenedTable` —el detector que existe exactamente para esto— dio **`detected:false` sobre el texto aplanado original**.
+- **POR QUÉ NO LA VE, y es un choque entre dos instrucciones de la casa:**
+  - El detector busca **runs de LÍNEAS CORTAS** (`CELL_MAX_LEN = 30`, `MIN_RUN = 4`): asume que una tabla aplanada llega con cada celda en su propia línea, que es como sale de `pdftotext` en crudo.
+  - El manual de generación manda **RE-FLUIR** el texto del PDF antes de insertarlo (*«un renglón físico no es un párrafo»*), porque si no la teoría se sirve a líneas sueltas.
+  - Al re-fluir, las celdas se pegan en un párrafo largo → **ya no hay líneas cortas** → el detector se queda mudo. Es decir: **el camino que el manual recomienda hace invisible el defecto que el detector persigue**.
+- **Consecuencia:** cualquier tabla importada por el camino bueno entra sin vigilancia. No sabemos cuántas hay así; el badge no puede decirlo, porque su criterio es el que falla.
+- **Cómo atacarlo:** añadir una SEGUNDA señal para el texto ya re-fluido — cabeceras de columna en mayúsculas dentro de un párrafo (`ESTANCIA`, `ESPECIFICACIONES`, `SUPERFICIE MÍNIMA`, `EXCEPCIONES`), rachas de `m²`/cifras separadas por texto corto, o la repetición del mismo encabezado varias veces en el mismo bloque (es lo que deja el salto de página de un boletín). **Calibrar antes de publicarla**: el criterio actual ya tuvo un falso positivo masivo con el pie de la sede del BOE (≈80 de 141 hits), así que la señal nueva se mide antes de tocar el badge.
+- **Y hay que barrer lo ya importado**, no solo vigilar lo nuevo: pasar la señal nueva sobre `articles` para ver cuántas tablas re-fluidas están sirviéndose hoy.
+- **Referencia de cómo se repara una:** en [T-489] la tabla se reconstruyó como tabla real y **la columna de excepciones se atribuyó por COORDENADAS** (`pdftotext -bbox-layout`: el «Sí» de la pág. 18 a y=622,9 con «Cocina» a y=627,7; el de la pág. 19 a y=262,5 con «Aseos de uso público»), no a ojo. Ese es el estándar: en una tabla, adivinar a qué fila pertenece una celda es inventar.
+- **Relacionadas:** [T-489] (donde salió), runbook `docs/runbooks/tablas-articulos.md`.
+
+
 > ### 🧵 CABOS SUELTOS de la sesión del 02-03/08 (identidad de máquina, embudo, parte, guardarraíles)
 >
 > **1. ~~Deploy de backend en vuelo~~ → RESUELTO.** Aterrizó (`1abc80fd`, smoke en verde) y
