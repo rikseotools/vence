@@ -1157,6 +1157,24 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
+### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
+
+- **Esfuerzo: rato** (el parser y el render ya existen; es soportar el segundo nivel).
+- **ORIGEN.** Feedback `2f904b99` de Lú Henao (premium, Aux. Admin. Madrid, 48 días y 5 feedbacks previos resueltos): *«En el estudio de leyes estaría muy bien que leyes como la 39 especifique títulos, capítulos y en general la estructura de la ley»*. Se le respondió que los **títulos ya se ven** en `/leyes/[law]` (venía del temario, no de ahí) y que lo de capítulos quedaba apuntado.
+- **NO es [T-012] otra vez, y por eso tiene ficha propia.** Aquélla está hecha y desplegada: pobló `law_sections` en 249 leyes y pinta las cabeceras de sección en teoría. Su pendiente declarado son *«~58 leyes de estructura ANIDADA (Código Civil, LECrim, Ley 9/2017: libro>título>capítulo) que el parser RECHAZA a propósito»*. **Lo medido el 03/08 tiene otra forma y es mucho más ancho:**
+  | Forma de la estructura guardada | Leyes |
+  |---|---|
+  | solo TÍTULOS | **234** |
+  | solo CAPÍTULOS | 89 |
+  | **AMBOS niveles** | **0** |
+  - **Ninguna ley del catálogo tiene los dos niveles.** No es que fallen 58 leyes raras: es que el parser guarda **un único nivel por ley** (el más externo que encuentre), y quien tiene títulos se queda sin capítulos por construcción.
+- **A quién le toca, que es lo que lo hace prioritario:** son justo las leyes más estudiadas. CE (4.607 preguntas servidas), Ley 39/2015 (3.088), LECrim (2.092), Reglamento Penitenciario (1.720), CP (1.701), Ley 1/2000 (1.550), LOPJ (1.507), Ley 40/2015 (1.466), Código Civil (1.349), TREBEP (1.224), LO 3/2018 (889). **Todas con títulos y capítulos a cero.**
+- **Dónde se ve el hueco:** en `/leyes/ley-39-2015` se pinta «Título I. De los interesados en el procedimiento · Artículos 3 a 12» y ahí se acaba; el usuario no puede orientarse dentro de un título largo, que es justo lo que pedía Lú. El Título IV de la 39/2015 (el del procedimiento común) tiene siete capítulos y ninguno se ve.
+- **Por dónde va el arreglo:** `lib/laws/parseBoeSections.js` (lógica pura, ya con 10 tests) + `scripts/poblar-law-sections-boe.cjs`. El render **no habría que tocarlo**: `lib/teoria/sectionHeaders.ts` ya pinta cabeceras por sección y `availableSections` ya se carga para el filtro, así que el segundo nivel entra sin fetch nuevo. La tabla tampoco cambia: `section_type` ya admite `capitulo` y hay 523 filas de 89 leyes que lo demuestran.
+- **Ojo al medir el resultado:** el éxito NO es «hay más filas en `law_sections`», es que **las leyes con títulos pasen a tener también capítulos**. La query de arriba (formas de estructura) es el antes/después.
+- **Relacionadas:** [T-012] (la que dejó el nivel de título hecho y el render puesto).
+
+
 ### [T-502] 🟡 [ABIERTO 03/08] Reparar las 171 psicotécnicas cuya explicación no cierra (el detector ya está hecho)
 
 - **Esfuerzo: larga.** Son 171 preguntas y **cada una se repara leyendo su enunciado y rehaciendo el cálculo**; no hay reescritura en bloque que valga.
