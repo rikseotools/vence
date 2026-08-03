@@ -88,6 +88,25 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 3. **Al cerrar, `done --outcome` Y mueve la entrada a `## Hechas` en el markdown.** Las dos cosas. Si solo haces una, el guardarraíl de CI te lo tira.
 4. **`next` sugiere, no coge.** Está pensado para que elijas por encaje: si acabas de construir una oposición, la siguiente oposición te cuesta la mitad.
 
+## Al cerrar, SIEMPRE se sugiere lo siguiente (T-498)
+
+`done` ya no acaba en seco. Imprime, en dos escalones:
+
+1. las **relacionadas libres** — las que cita la propia ficha entre `[T-nnn]`. Son las que cuestan
+   la mitad, porque el contexto ya está cargado;
+2. si no hay ninguna, **lo que propondría `next`** (mismo criterio, no una copia);
+3. y si tampoco hay nada libre, lo dice: *«el backlog está al día»*.
+
+**Por qué ahí.** Cerrar es el momento en que el contexto está más cargado **y a punto de tirarse**:
+acabas de leerte un subsistema entero. Hasta ahora `claim` sugería relacionadas y `done` no decía
+nada, así que ese contexto se perdía salvo que alguien se acordara de mirar. Es el principio 10
+—la regla llega en el MOMENTO DE LA VERDAD— aplicado al final en vez de al principio.
+
+> El criterio de «qué toca ahora» vive en `lib/backlog/orden.cjs` y lo comparten `next` y `done`.
+> Prioridad → lo más corto → lo no declarado al final (no se puede afirmar que algo sea rápido si
+> nadie lo ha mirado). Y no se sugiere lo aparcado, lo que espera a un reloj o a un deploy, lo
+> bloqueado por otra tarea abierta, ni lo que tiene lease vivo de otra sesión.
+
 ## El PARTE: qué hace cada sesión y quién está parado (T-494)
 
 ```bash

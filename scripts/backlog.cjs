@@ -319,13 +319,54 @@ async function sugerirRelacionadas(s, id, ficha) {
         FROM public.backlog_tasks
        WHERE id IN ${s(ids)} AND status IN ('open','in_progress','blocked')`;
     const libres = rows.filter((r) => !r.claimed_by || (r.lease_until && new Date(r.lease_until) < new Date()));
-    if (!libres.length) return;
+    if (!libres.length) return false;
     console.log(`\n🔗 ${libres.length} tarea(s) RELACIONADA(s) y libres — el contexto que acabas de cargar sirve para ellas:`);
     for (const r of libres.slice(0, 6)) {
       const esf = r.effort ? ` · ${r.effort}` : '';
       console.log(`   ${EMOJI[r.priority] || ' '} ${r.id}${esf}  ${String(r.title).slice(0, 66)}`);
     }
-  } catch { /* una sugerencia rota no puede estorbar un claim */ }
+    return true;
+  } catch { return false; /* una sugerencia rota no puede estorbar un claim */ }
+}
+
+/**
+ * AL CERRAR, SIEMPRE SE SUGIERE ALGO. (T-498)
+ *
+ * Regla de Manuel (03/08): *«siempre que las sesiones terminen una tarea deben sugerir coger otra
+ * relacionada para aprovechar el contexto que tienen; si no hay ninguna, sugerir otra, pero
+ * siempre hay que sugerir cosas y ser proactivo»*.
+ *
+ * Hasta hoy `claim` sugería relacionadas y `done` **no sugería nada**, que es justo el momento en
+ * que el contexto está más cargado y a punto de tirarse: acabas de leerte un subsistema entero.
+ * Es el principio 10 del sistema de sesiones —la regla tiene que llegar en el MOMENTO DE LA
+ * VERDAD— aplicado al final en vez de al principio.
+ *
+ * Dos escalones, y el segundo es el que hace que NUNCA se quede en silencio:
+ *   1. las RELACIONADAS que cita la propia ficha (contexto compartido, cuestan la mitad);
+ *   2. si no hay ninguna libre, la que propondría `next` — mismo criterio, sin duplicarlo.
+ */
+async function sugerirSiguiente(s, id, sid) {
+  try {
+    if (await sugerirRelacionadas(s, id, fichaBody(id))) {
+      console.log('   (cógela con `claim <id>`: imprime la ficha entera)');
+      return;
+    }
+    const rows = await s`
+      SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until,
+             wake_on_deploy_sha, effort, resume_check
+        FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
+    // MISMO criterio que `next`, no una copia (T-130): vive en lib/backlog/orden.cjs.
+    const libre = ORDEN.candidatas(rows, {
+      sid, excluir: [id], enEspera: enEsperaAlguna, pesoEsfuerzo: ESF.pesoEsfuerzo,
+    });
+    if (!libre.length) { console.log('\n🎉 no hay ninguna tarea libre que sugerir — el backlog está al día.'); return; }
+    console.log('\n➡️  NINGUNA relacionada libre. Lo siguiente por prioridad y esfuerzo:');
+    for (const r of libre.slice(0, 3)) {
+      const esf = r.effort ? ` · ${r.effort}` : '';
+      console.log(`   ${EMOJI[r.priority] || ' '} ${r.id}${esf}  ${String(r.title).slice(0, 66)}`);
+    }
+    console.log('   (`next` explica el criterio completo; `claim <id>` la coge)');
+  } catch { /* sugerir NUNCA puede estropear un cierre ya hecho */ }
 }
 
 // Cuerpo de la ficha de una tarea: desde su cabecera `### [T-xxx]` hasta la siguiente `###`.
@@ -347,6 +388,8 @@ const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 // El embudo de preguntas a Manuel (T-493). El juicio —qué es contestable, en qué orden, qué
 // respuestas tiene que ver una sesión— vive en el núcleo puro, no aquí.
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
+// Qué tarea toca ahora: criterio ÚNICO, compartido por `next` y por la sugerencia de `done`.
+const ORDEN = require(path.join(REPO, 'lib', 'backlog', 'orden.cjs'));
 
 function parseMd() {
   return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
@@ -596,15 +639,10 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason,
                wake_on_deploy_sha, effort
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
-      const openIds = new Set(rows.map((r) => r.id));
-      const rank = { critica: 0, alta: 1, media: 2, baja: 3, ninguna: 9 };
       const dormidas = rows.filter(enEsperaAlguna).length;
-      const libre = rows
-        .filter((r) => !r.claimed_by || r.claimed_by === sid || (r.lease_until && new Date(r.lease_until) < new Date()))
-        .filter((r) => r.priority !== 'ninguna') // aparcadas: no se sugieren nunca
-        .filter((r) => !enEsperaAlguna(r))       // aplazadas o esperando deploy: hoy no hay nada que hacer
-        .filter((r) => !(r.blocked_by || []).some((d) => openIds.has(d)))
-        .sort((a, b) => (rank[a.priority] - rank[b.priority]) || ESF.pesoEsfuerzo(a.effort) - ESF.pesoEsfuerzo(b.effort) || a.id.localeCompare(b.id));
+      // El criterio de «qué toca ahora» es COMPARTIDO con la sugerencia que imprime `done`
+      // (T-498): dos copias del mismo juicio acaban contestando distinto a la misma pregunta.
+      const libre = ORDEN.candidatas(rows, { sid, enEspera: enEsperaAlguna, pesoEsfuerzo: ESF.pesoEsfuerzo });
       if (dormidas) console.log(`(${dormidas} en espera por reloj — se saltan; \`list\` las muestra con su hora)`);
       // Antes que cualquier tarea nueva, lo que ya está hecho y solo falta comprobar: cuesta
       // minutos, cierra una ficha y libera el backlog. Sin esto se quedaban al fondo de `list`.
@@ -825,6 +863,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       }
       console.log(`   ⚠️ AHORA mueve su entrada a "## Hechas" en docs/roadmap/tareas-pendientes.md`);
       console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
+      // Cerrar es el momento en que el contexto está más cargado y a punto de tirarse (T-498).
+      await sugerirSiguiente(s, id, sid);
     }
 
     else if (cmd === 'reopen') {

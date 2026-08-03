@@ -1546,6 +1546,16 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-499] 🟡 [ABIERTO 03/08] La puerta del texto de `done` confunde «en 30 días» de historial con un plazo futuro
+
+- **Esfuerzo: minutos.**
+- **CÓMO SALIÓ:** cerrando [T-497]. El outcome decía *«está medido: en 30 días ROBUSTEZ_GUARD_SKIP no aparece ni una vez»* —una medida del PASADO— y `detectarTrabajoPendiente` lo clasificó como *«apunta a un momento futuro»* y abortó el cierre.
+- **Coste real, no hipotético:** al aislar qué disparaba la puerta, se cerró la tarea con el outcome literal **«test»**. Hubo que `reopen` + `claim` + `done` otra vez. El registro permanente de una tarea estuvo a punto de quedarse en una palabra sin sentido.
+- **Qué hay que distinguir:** *«medir en 14 días»* (promesa futura → la puerta acierta) de *«en 30 días de historial»* / *«en los últimos 30 días»* (medida pasada → falso positivo). La pista está delante: **«últimos», «de historial», «medido», un verbo en pasado**.
+- **Ojo con el arreglo fácil:** relajar el patrón entero abriría el caso que la puerta existe para cazar ([T-363] se cerró con el código sin desplegar y un outcome que sonaba terminado). Es un matiz, no una amnistía.
+- **Y hay una lección de método aparte:** un guardarraíl del que no se sabe qué frase lo dispara empuja a probar con basura. Que el error diga **qué patrón casó** —no solo «apunta a un momento futuro»— habría evitado el rodeo entero.
+- **Relacionadas:** [T-392] (la puerta), [T-423] (el escape se cuenta).
+
 ### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
 
 - **Esfuerzo: rato.** Montado entero el 01/08; queda un paso de un minuto (ver «Lo que falta»).
@@ -3380,6 +3390,19 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-498] ✅ 🟠 [HECHA 03/08] Al cerrar una tarea no se sugiere ninguna siguiente: el contexto cargado se tira a la basura
+
+- **RESOLUCIÓN (03/08).** `done` sugiere ahora, siempre, en dos escalones: primero las **relacionadas libres** que cita la propia ficha (mismo `sugerirRelacionadas` que ya usaba `claim`), y si no hay ninguna, **lo que propondría `next`**. Nunca se calla: si tampoco hay nada libre, lo dice («el backlog está al día»).
+  - **El criterio de «qué toca ahora» se extrajo a `lib/backlog/orden.cjs`** en vez de copiarlo: `next` y la sugerencia de `done` contestan a la MISMA pregunta, y dos copias acaban contestando distinto ([T-130]). El núcleo recibe inyectados los criterios que ya viven en otro sitio (`enEspera` de `claimGate`, `pesoEsfuerzo` de `esfuerzo`) para no tener aquí una segunda versión de ninguno. 15 tests: el orden (prioridad → lo más corto → lo no declarado al final) y las cinco exclusiones, cada una con su porqué.
+  - **Probado en vivo** cerrando [T-497]: sin relacionadas libres, cayó al respaldo y ofreció las tres siguientes por prioridad y esfuerzo.
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Manuel (03/08): *«siempre que las sesiones terminen una tarea deben sugerir coger otra relacionada para aprovechar el contexto que tienen; si no hay ninguna, sugerir otra, pero siempre hay que sugerir cosas y ser proactivo»*.
+- **EL HUECO:** `claim` **sí** sugiere relacionadas (`sugerirRelacionadas`, que las deduce de los `[T-nnn]` que cita la propia ficha). `done` **no sugería nada** — y es justo el momento en que el contexto está más cargado y a punto de tirarse: acabas de leerte un subsistema entero.
+- **Cómo atacarlo (dos escalones, y el segundo es el que impide el silencio):** al cerrar, primero las **relacionadas libres**; si no hay ninguna, **lo que propondría `next`**, con el mismo criterio y sin duplicarlo.
+- **Relacionadas:** [T-414] (el esfuerzo, que es la mitad del orden), [T-403] (de dónde salen los ids citados).
+
 
 ### [T-497] ✅ 🟠 [HECHA 03/08] El escape del push-guard también se usa de prefijo: 13 de 23 no responden a ningún bloqueo
 
