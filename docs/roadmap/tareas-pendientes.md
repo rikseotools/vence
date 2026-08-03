@@ -1138,6 +1138,17 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
+### [T-502] 🟡 [ABIERTO 03/08] Reparar las 171 psicotécnicas cuya explicación no cierra (el detector ya está hecho)
+
+- **Esfuerzo: larga.** Son 171 preguntas y **cada una se repara leyendo su enunciado y rehaciendo el cálculo**; no hay reescritura en bloque que valga.
+- **De dónde sale:** [T-500] construyó el detector y midió. `npm run audit:psico-explicacion -- --todos` da la lista con su banda y su motivo.
+- **Cola, por orden de daño:**
+  1. **48 graves.** Tres formas: una NOTA DE REVISIÓN INTERNA publicada como explicación (*«Errores en desglose por filas: fila 4 lista 960 como par…»*), una explicación que enuncia el método y se corta antes de resolver (*«se aplica la fórmula de iguales excluidos:»*), y la peor, la que **cierra afirmando la cifra de OTRA opción**.
+  2. **123 avisos:** nunca mencionan la cifra de su respuesta. Suelen describir el patrón de la serie sin llegar a decir el resultado.
+- **REGLA DURA al reparar:** se rehace la EXPLICACIÓN contra el enunciado. **NUNCA se toca la clave para que encaje con la explicación** — en el caso que abrió esta familia la clave era la correcta y lo falso era el razonamiento.
+- **Y ojo, porque el detector no ve el defecto entero:** solo comprueba que la explicación **llegue** a su respuesta. Una explicación que cita su cifra por un camino equivocado le parece sana (es exactamente el caso `3ff87618`). Al reparar una, merece la pena leer sus hermanas del mismo tipo de ejercicio.
+- **Relacionadas:** [T-500] (detector y medición), [T-410] (duplicados en psicotécnicas).
+
 ### [T-456] 🟠 [ABIERTO 01/08 · IMPLEMENTADO 01/08, falta verlo vivo] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
 
 - **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
@@ -1545,17 +1556,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > verdad al buscar tareas rápidas el 27/07. Una lista a mano de 76 entradas se desincroniza sola; el
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
-
-### [T-500] 🟡 [ABIERTO 03/08] Explicaciones de psicotécnicos que razonan sobre otro dato o no citan ni su propia respuesta
-
-- **Esfuerzo: rato** para medirlo bien y decidir el corte; reparar el lote ya es aparte.
-- **CÓMO SALIÓ.** Impugnación `3ff87618` de una usuaria premium (03/08): en una pregunta de reparto proporcional (cuatro deportistas con 12, 16, 29 y 43 % de uso; el del 43 % paga 300 €; se pregunta por el del 12 %) **la clave era correcta —83,72 €— y la explicación estaba mal**: decía *«El tercer deportista usa el 29% del tiempo. Gasto = Total × 29/100»*, o sea que razonaba sobre otro deportista y trataba los 300 € como si fueran el total. Llegaba al número bueno por un camino falso. Ya reparada.
-- **MEDIDO, y no es un caso aislado:** de **37 preguntas activas de reparto proporcional, 11 tienen una explicación que ni siquiera menciona la cifra de su propia respuesta correcta**. Ejemplos: `0d5df8eb` (34.000 € entre Julia, Claudia y Filomena), `6bcaef9b` (9.000 € de gratificación entre tres funcionarios), `58642511` (1.000 € repartidos de forma inversamente proporcional), y varias de «¿cuánto vale la X?».
-- **⚠️ El defecto REAL es más ancho que esa medida:** la impugnada **sí citaba** su respuesta (83,72) y aun así estaba mal, así que «no cita su cifra» es solo el subconjunto barato de detectar. La clase completa es *la explicación no reproduce el cálculo que lleva a la clave*, y eso pide leerlas.
-- **Por qué importa más que en las legislativas:** aquí el opositor no puede contrastar con un artículo. Si la explicación miente, se lleva un método equivocado a casa y lo repite en el examen.
-- **Punto ciego que lo explica:** los detectores de explicaciones del barrido (`audit_note_explanation`, `explicacion_estructura_rota`, `cita_no_literal`) están todos escritos para preguntas **legislativas** —comparan contra el artículo vinculado— y las psicotécnicas no tienen artículo. El kind `psicotecnico_integridad` mira `section_id` y rangos de `correct_option`, no el contenido de la explicación.
-- **Cómo atacarlo:** empezar por el corte mecánico (la explicación no contiene la cifra de su opción correcta) porque es determinista y ya está medido; en las de cálculo con enunciado numérico, contrastar el resultado que afirma la explicación con la clave. Comando de partida en `scratchpad/psico2.cjs` de la sesión del 03/08 (recorre las 37 y marca las 11).
-- **Relacionada:** flujo de impugnaciones (`docs/maintenance/impugnaciones-claude-code.md`), donde el dossier ya avisa de si la explicación tiene formato §5.1.
 
 ### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
 
@@ -3400,6 +3400,23 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   2. **Gancho del entorno**: un hook `UserPromptSubmit` en `.claude/settings.json` puede inyectar el texto cada N mensajes sin que nadie se acuerde. Es literalmente «pegarles comandos repetitivos» y está soportado por el propio Claude Code.
 - **Y se puede MEDIR si sirve**, que es lo que evita discutirlo a ojo: `npm run sesiones:friccion` da el ratio de escape por guardarraíl. Si el recordatorio funciona, bajan los `guard_escape` de `robustez-push`.
 - **Relacionadas:** [T-423] (el contador que lo mide), [T-486] (la flota que lo necesitaría más).
+
+### [T-500] ✅ 🟡 [HECHA 03/08] Explicaciones de psicotécnicos que razonan sobre otro dato o no citan ni su propia respuesta
+
+- **Esfuerzo: rato** para medirlo bien y decidir el corte; reparar el lote ya es aparte.
+- **CÓMO SALIÓ.** Impugnación `3ff87618` de una usuaria premium (03/08): en una pregunta de reparto proporcional (cuatro deportistas con 12, 16, 29 y 43 % de uso; el del 43 % paga 300 €; se pregunta por el del 12 %) **la clave era correcta —83,72 €— y la explicación estaba mal**: decía *«El tercer deportista usa el 29% del tiempo. Gasto = Total × 29/100»*, o sea que razonaba sobre otro deportista y trataba los 300 € como si fueran el total. Llegaba al número bueno por un camino falso. Ya reparada.
+- **MEDIDO, y no es un caso aislado:** de **37 preguntas activas de reparto proporcional, 11 tienen una explicación que ni siquiera menciona la cifra de su propia respuesta correcta**. Ejemplos: `0d5df8eb` (34.000 € entre Julia, Claudia y Filomena), `6bcaef9b` (9.000 € de gratificación entre tres funcionarios), `58642511` (1.000 € repartidos de forma inversamente proporcional), y varias de «¿cuánto vale la X?».
+- **⚠️ El defecto REAL es más ancho que esa medida:** la impugnada **sí citaba** su respuesta (83,72) y aun así estaba mal, así que «no cita su cifra» es solo el subconjunto barato de detectar. La clase completa es *la explicación no reproduce el cálculo que lleva a la clave*, y eso pide leerlas.
+- **Por qué importa más que en las legislativas:** aquí el opositor no puede contrastar con un artículo. Si la explicación miente, se lleva un método equivocado a casa y lo repite en el examen.
+- **Punto ciego que lo explica:** los detectores de explicaciones del barrido (`audit_note_explanation`, `explicacion_estructura_rota`, `cita_no_literal`) están todos escritos para preguntas **legislativas** —comparan contra el artículo vinculado— y las psicotécnicas no tienen artículo. El kind `psicotecnico_integridad` mira `section_id` y rangos de `correct_option`, no el contenido de la explicación.
+- **Cómo atacarlo:** empezar por el corte mecánico (la explicación no contiene la cifra de su opción correcta) porque es determinista y ya está medido; en las de cálculo con enunciado numérico, contrastar el resultado que afirma la explicación con la clave. Comando de partida en `scratchpad/psico2.cjs` de la sesión del 03/08 (recorre las 37 y marca las 11).
+- **Relacionada:** flujo de impugnaciones (`docs/maintenance/impugnaciones-claude-code.md`), donde el dossier ya avisa de si la explicación tiene formato §5.1.
+
+- **RESOLUCIÓN (03/08).** Medido, calibrado y con detector propio. **`npm run audit:psico-explicacion`** (núcleo puro `lib/health/psicotecnicoExplicacionSinRespuesta.cjs`, 19 tests con preguntas reales). Sobre 7.040 activas con explicación: **3.630 medibles → 48 graves + 123 avisos**. La reparación va aparte, en [T-502].
+- **Lo que el detector SÍ puede ver:** si la explicación llega a decir su propia respuesta. **Lo que no:** si el razonamiento es correcto — el caso que abrió la ficha citaba su cifra y estaba mal. Por eso el veredicto se llama «no cierra» y el runner es BAJO DEMANDA, sin badge.
+- **⚠️ EL CHECK NACIÓ MAL CALIBRADO Y LO CAZÓ CORRERLO CONTRA LO SANO.** La primera versión marcaba también por LONGITUD (<40 caracteres útiles) y daba **296 graves**, de los que **4 de los 5 primeros eran preguntas perfectas**: en psicotécnicos la explicación buena es corta por naturaleza (`X = 1·420/7 = 60 km/h`). La longitud no mide si una explicación resuelve; la presencia de la CIFRA sí. Es la lección del manual de generación —si un check nuevo sale rojo sobre lo que sabes bueno, el defecto está en el check— y aquí habría hecho perder una tarde reparando lo que no estaba roto.
+- **Las seis exenciones salen de LEER los marcados, no de imaginarlos:** decimal con apóstrofo (`5'5`), miles con punto, clave con varias cifras (una serie: basta citar una), clave por rango (`Entre 2.001 y 2.500`), **redondeo** (la explicación calcula 111,35 semanas y la opción dice 111) y **clave que enumera enunciados** (`Sólo 2, 3 y 5`: sus cifras son etiquetas, no un valor a calcular).
+- **Registrada** en `lib/admin/toolRegistry.ts` para que la próxima sesión no la reconstruya.
 
 
 ### [T-491] ✅ 🟡 [HECHA 03/08] Los journeys de Vence Sim emiten `sim_journey_result` desde siempre y NINGUNA regla lo mira

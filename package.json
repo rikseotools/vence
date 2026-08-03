@@ -146,7 +146,8 @@
     "sim:rutas-oposicion-personalizada": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-rutas-oposicion-personalizada.ts",
     "sim:repaso-barajado": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-repaso-barajado.ts",
     "sim:avisos-campana": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-avisos-campana.ts",
-    "sim:cupo-simulacro": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-cupo-simulacro.ts"
+    "sim:cupo-simulacro": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-cupo-simulacro.ts",
+    "audit:psico-explicacion": "node scripts/audit-psico-explicacion.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -200,6 +200,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
       '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
   },
+  // ── salud del contenido: psicotécnicas ────────────────────────────────────────────────────
+  audit_psico_explicacion: {
+    titulo: 'Psicotécnicas cuya explicación no llega a la respuesta que dice explicar',
+    ruta: 'scripts/audit-psico-explicacion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`npm run audit:psico-explicacion [-- --todos] [-- --json]`. SOLO LEE. Núcleo puro ' +
+      '`lib/health/psicotecnicoExplicacionSinRespuesta.cjs` (19 tests, todos con preguntas reales). ' +
+      'CUBRE UN HUECO ENTERO: los detectores de explicaciones del barrido (`audit_note_explanation`, ' +
+      '`explicacion_estructura_rota`, `cita_no_literal`) comparan contra el ARTÍCULO vinculado, y una ' +
+      'psicotécnica no tiene artículo → 7.040 preguntas activas con explicación y cero cobertura. ' +
+      'Nace de la impugnación `3ff87618` (03/08/2026), donde la CLAVE era correcta y la explicación ' +
+      'razonaba sobre otro deportista: llegaba al número bueno por un camino falso. ' +
+      'Medido: 3.630 medibles → 48 graves (nota interna publicada, se corta sin resolver, o cierra ' +
+      'con la cifra de OTRA opción) + 123 avisos (nunca menciona su cifra). BAJO DEMANDA, no pinga el ' +
+      'badge: el criterio dice si la explicación CIERRA, no si el razonamiento es correcto — y el caso ' +
+      'origen citaba su cifra. ⚠️ Su primera versión marcaba por LONGITUD y daba 296 graves con 4 de ' +
+      'los 5 primeros sanos: en psicotécnicos la explicación buena es corta por naturaleza. Las ' +
+      'exenciones (decimal con apóstrofo, miles con punto, clave con varias cifras, clave por rango, ' +
+      'redondeo, clave que enumera enunciados) salen de leer los marcados, no de imaginarlos.',
+  },
   // ── salud del contenido: pregunta ↔ artículo ──────────────────────────────────────────────
   audit_instrumento_derivado: {
     titulo: 'Preguntas que piden el contenido de un Plan/Estrategia que la ley solo manda crear',
