@@ -3155,6 +3155,68 @@ export class ContentHealthSweepService {
       this.logger.warn(`estructura de explicaciones no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
+    // ── Explicación CORTADA a mitad de frase (T-250) ──
+    // ⚠️ ESPEJO de `lib/health/explicacionTruncada.cjs` (núcleo puro y testeado que usa el CLI). El
+    // backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas la regla
+    // aquí, tócala allí — `content-sweep-parity.test.ts` vigila que los KINDS no diverjan.
+    //
+    // Hermana de la anterior y distinta: allí el texto está entero y se PINTA mal; aquí termina en
+    // seco y falta lo que venía detrás («…los miembros del Cuerpo Nacional de»).
+    //
+    // EL CRITERIO ES GRAMATICAL, NO ORTOGRÁFICO, y eso no es un detalle de estilo: «no acaba en
+    // signo de cierre» da 8.938 sobre 136.310 activas y casi todas son correctas (cierran con la
+    // referencia de la fuente, con una URL, o están mal puntuadas pero completas). Mirando en
+    // cambio si la ÚLTIMA PALABRA pide continuación: 112 hallazgos, 20 de 20 correctos en muestra
+    // aleatoria. Las tres exclusiones son las que sostienen esa precisión: URLs (`isAllowed=y` no
+    // es la conjunción), locuciones de cierre («entre otros») y letra suelta en mayúscula (la «O»
+    // de una tabla de coordenadas es Oeste).
+    try {
+      const FUNCIONALES = new Set(
+        ('a ante bajo cabe con contra de desde durante en entre hacia hasta mediante para por segun según sin so sobre tras ' +
+          'y e o u ni que pero sino aunque porque si como cuando donde mientras pues ' +
+          'el la los las un una unos unas del al lo su sus mi mis tu tus este esta estos estas ese esa esos esas ' +
+          'aquel aquella aquellos aquellas cuyo cuya cuyos cuyas ' +
+          'quien quienes cual cuales cuanto cuanta cuantos cuantas muy mas más menos tan tanto ' +
+          'todo toda todos todas otro otra otros otras cada cualquier cualesquiera').split(' '),
+      );
+      const CIERRE = /[.!?…»"”')\]:]\s*$/;
+      const LOCUCION_DE_CIERRE = /\b(entre otr[oa]s|etc)\s*$/i;
+      const truncada = (texto: string): string | null => {
+        const limpia = String(texto ?? '')
+          .replace(/(\*\*|__|\*|`)+\s*$/, '')
+          .replace(/ /g, ' ')
+          .replace(/\s+$/, '');
+        if (!limpia) return null;
+        const ultimoToken = limpia.split(/\s/).pop() ?? '';
+        if (/(https?:\/\/|www\.)/.test(ultimoToken) || /[/?=&]/.test(ultimoToken)) return null;
+        if (LOCUCION_DE_CIERRE.test(limpia)) return null;
+        if (/,\s*$/.test(limpia)) return 'coma_final';
+        if (CIERRE.test(limpia)) return null;
+        const ultima = (limpia.match(/([\wáéíóúñüÁÉÍÓÚÑÜ]+)\s*$/) ?? [])[1];
+        if (!ultima) return null;
+        if (ultima.length === 1 && ultima !== ultima.toLowerCase()) return null;
+        return FUNCIONALES.has(ultima.toLowerCase()) ? 'palabra_funcional' : null;
+      };
+      const trRows = (await this.db.execute(sql`
+        SELECT q.id, right(q.explanation, 220) AS cola,
+               (SELECT count(*) FROM test_questions tq WHERE tq.question_id = q.id)::int AS servidas
+          FROM questions q
+         WHERE q.is_active = true AND q.explanation IS NOT NULL AND length(trim(q.explanation)) > 0
+      `)) as unknown as Array<{ id: string; cola: string; servidas: number }>;
+      const cortadas = (Array.isArray(trRows) ? trRows : [])
+        .map((q) => ({ id: q.id, motivo: truncada(q.cola), cola: String(q.cola ?? '').slice(-70), servidas: Number(q.servidas ?? 0) }))
+        .filter((q) => q.motivo !== null)
+        .sort((a, b) => b.servidas - a.servidas);
+      if (cortadas.length) {
+        const exposiciones = cortadas.reduce((a, b) => a + b.servidas, 0);
+        add('content', 'warn', null, 'explicacion_truncada',
+          `${cortadas.length} explicación(es) se cortan a mitad de frase (${exposiciones} exposiciones acumuladas)`,
+          { total: cortadas.length, exposiciones, muestra: cortadas.slice(0, 10) });
+      }
+    } catch (e) {
+      this.logger.warn(`explicaciones truncadas no evaluadas: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
     // ── Plazas publicadas con una SUMA que puede ser falsa (29/07/2026, caso Concha) ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC). Cuando no consta si la
     // reserva de discapacidad va dentro del turno libre o aparte, la vista SSOT supone

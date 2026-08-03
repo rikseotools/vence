@@ -216,6 +216,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
       '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
   },
+  audit_explicacion_truncada: {
+    titulo: 'Explicaciones activas que se cortan a mitad de frase',
+    ruta: 'scripts/audit-explicacion-truncada.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run audit:explicacion-truncada [-- --json] [-- --muestra 20]`. SOLO LEE. Núcleo puro ' +
+      '`lib/health/explicacionTruncada.cjs` (26 tests, todos con textos reales del banco), cableado a ' +
+      'los dos gemelos del sweep con el kind `explicacion_truncada` y paridad vigilada por ' +
+      '`__tests__/backend/contentSweepTruncadaParity.test.ts`. ' +
+      'LO QUE COSTÓ NO FUE EL BARRIDO SINO LA CALIBRACIÓN (T-250, abierta desde el 28/07 justo por ' +
+      'eso): la heurística ortográfica «no acaba en signo de cierre» da 8.938 sobre 136.310 activas ' +
+      'y casi todas son CORRECTAS — cierran con la referencia de la fuente, con una URL, o están mal ' +
+      'puntuadas pero completas. Cablear eso habría llenado la bandeja de aciertos y matado el ' +
+      'detector. El criterio que sí discrimina es GRAMATICAL: la última palabra pide continuación ' +
+      '(preposición, conjunción, determinante) o el texto acaba en coma → 112 hallazgos, 20 de 20 ' +
+      'correctos en muestra aleatoria juzgada a mano. ⚠️ Las tres exclusiones NO son cosmética: sin ' +
+      'ellas vuelven los falsos positivos que hundieron la primera versión — URLs (el `isAllowed=y` ' +
+      'final es un parámetro, no la conjunción), locuciones de cierre («entre otros») y letra suelta ' +
+      'en MAYÚSCULA (la «O» de una tabla de coordenadas es Oeste, no una conjunción). ' +
+      'La muestra es determinista a propósito (sin Math.random): re-calibrar exige reproducirla.',
+  },
   // ── salud del contenido: psicotécnicas ────────────────────────────────────────────────────
   audit_psico_explicacion: {
     titulo: 'Psicotécnicas cuya explicación no llega a la respuesta que dice explicar',

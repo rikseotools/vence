@@ -414,6 +414,22 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'y texto queden coherentes. NO toques la clave ni el contenido: esto es un defecto de FORMA. Ojo con la ' +
       'rama de la cita: si `cita.bloque` está relleno, el render pinta la cita entera y NO hay defecto.',
   },
+  explicacion_truncada: {
+    title: 'Explicación cortada a mitad de frase',
+    triggerPhrase: 'revisa las explicaciones cortadas',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'la explicación termina EN SECO y falta lo que venía detrás: «…los miembros del Cuerpo Nacional de», ' +
+      '«…optar por la vecindad civil del otro», «…tres años de». NO confundir con «revisa las explicaciones ' +
+      'descuadradas», que es el texto entero pintado mal; aquí falta texto. El criterio es GRAMATICAL y no ' +
+      'ortográfico, y eso es lo que hace usable el detector: «no acaba en punto» da 8.938 sobre 136.310 y casi ' +
+      'todas son correctas (cierran con la referencia de la fuente, con una URL, o están mal puntuadas pero ' +
+      'completas); mirar si la ÚLTIMA PALABRA pide continuación —preposición, conjunción, determinante— o si ' +
+      'acaba en coma deja 112, con 20 de 20 correctos en muestra aleatoria. Repáralo COMPLETANDO la frase ' +
+      'contra el artículo vinculado, nunca poniendo un punto donde se cortó: el punto tapa el hueco y deja al ' +
+      'opositor sin la parte que faltaba. Núcleo `lib/health/explicacionTruncada.cjs`; para ver la cola de ' +
+      'trabajo por exposición, `npm run audit:explicacion-truncada`.',
+  },
   vinculo_articulo_vecino: {
     title: 'Pregunta colgada de un artículo que no la responde (lo hace un vecino)',
     triggerPhrase: 'revisa los vínculos al artículo vecino',

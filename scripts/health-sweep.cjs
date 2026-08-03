@@ -42,6 +42,7 @@ const { tablasFrias, tablasSinAjuste, remedioVisibilidad, VM_MIN_PAGES } = requi
 const { detectarTecho } = require('../lib/observability/techoTimeout.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
+const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
@@ -1561,6 +1562,39 @@ async function detectarTodo(c, add, now) {
         { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
     }
   } catch (e) { console.warn('⚠️ estructura de explicaciones no evaluada:', String(e.message || e).slice(0, 120)); }
+
+  // ── Explicación CORTADA a mitad de frase (T-250) ──
+  // Hermana de la anterior y distinta: allí el texto está entero y se PINTA mal; aquí el texto
+  // termina en seco y falta lo que venía después («…los miembros del Cuerpo Nacional de»).
+  // Lo que hizo falta para poder cablearlo fue la CALIBRACIÓN: la heurística ortográfica («no
+  // acaba en signo de cierre») da 8.938 sobre 136.310 y casi todas son correctas —cierran con la
+  // referencia de la fuente, con una URL, o simplemente están mal puntuadas—. El criterio que sí
+  // discrimina es gramatical: la última palabra PIDE continuación (preposición, conjunción,
+  // determinante) o el texto acaba en coma. Con eso: 112 hallazgos y 20 de 20 correctos en muestra
+  // aleatoria juzgada a mano. El juicio vive en el núcleo puro, no aquí.
+  try {
+    const filas = (await c.query(`
+      SELECT q.id, right(q.explanation, 220) AS cola,
+             (SELECT count(*) FROM test_questions tq WHERE tq.question_id = q.id)::int AS servidas
+        FROM questions q
+       WHERE q.is_active = true AND q.explanation IS NOT NULL AND length(trim(q.explanation)) > 0`)).rows;
+    const cortadas = filas
+      .map((f) => ({ ...f, v: clasificaTruncada({ explanation: f.cola }) }))
+      .filter((f) => f.v.truncada);
+    if (cortadas.length) {
+      const exposiciones = cortadas.reduce((a, b) => a + b.servidas, 0);
+      add('content', 'warn', null, 'explicacion_truncada',
+        `${cortadas.length} explicación(es) se cortan a mitad de frase (${exposiciones} exposiciones acumuladas)`,
+        {
+          total: cortadas.length,
+          exposiciones,
+          muestra: cortadas
+            .sort((a, b) => b.servidas - a.servidas)
+            .slice(0, 10)
+            .map((f) => ({ id: f.id, motivo: f.v.motivo, cola: f.v.cola.slice(-70), servidas: f.servidas })),
+        });
+    }
+  } catch (e) { console.warn('⚠️ explicaciones truncadas no evaluadas:', String(e.message || e).slice(0, 120)); }
   // ── Plazas publicadas con una SUMA que puede ser falsa (29/07/2026, caso Concha) ──
   // Cuando `plazas_discapacidad_incluidas` es NULL no consta si la reserva va dentro del
   // turno libre o aparte, y la vista SSOT tiene que dar un número: supone que van aparte
