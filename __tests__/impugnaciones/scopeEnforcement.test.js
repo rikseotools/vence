@@ -47,6 +47,42 @@ describe('isScopeComplaint — NO dispara en quejas ajenas al scope', () => {
     expect(isScopeComplaint('la respuesta correcta debería ser la B según el artículo')).toBe(false);
   });
 
+  // ── MECÁNICA DE LA APP (03/08/2026) ────────────────────────────────────────────────────────
+  // La palabra «temario» sale en cualquier frase de una plataforma de oposiciones. Cuando es lo
+  // ÚNICO que dispara y la persona habla de un botón o de un fichero, no hay nada que auditar.
+  // Caso que lo motiva: una usuaria premium escribió «COMO DESCARGAR UN TEMARIO» y el dossier le
+  // sacó el 🛑 «no resuelvas: clona el epígrafe oficial de los 19 temas». Un aviso que manda parar
+  // donde no toca es como se aprende a saltárselo — y este existe para cuando saltárselo sale caro.
+  test.each([
+    ['COMO DESCARGAR UN TEMARIO'],
+    ['no puedo descargar el temario.'],
+    ['Quiero saber como descargar el temario'],
+    ['como puedo imprimir todo el temario de auxiliar administrativo de la generalitat de catalunya?'],
+    ['hola buenas tardes !! no sé cómo descargarme el temario de la teoría o pasarlo a pdf, gracias!'],
+    ['En el tema, le doy a "escuchar " y no pasa nada'],
+  ])('mecánica de la app, no contenido: %s', (t) => expect(isScopeComplaint(t)).toBe(false));
+});
+
+// El corte anterior es ESTRECHO a propósito, y estos tres casos son los que lo demuestran: los
+// tres salieron de medir 1.200 textos reales de la cola, y los tres eran quejas de temario de las
+// buenas que una primera versión del corte silenciaba.
+describe('isScopeComplaint — el corte de mecánica NO se come una queja de contenido', () => {
+  test('el boilerplate del adjunto no decide: «Captura de pantalla» lo pone el formulario', () => {
+    expect(isScopeComplaint(
+      'Buenos días, con respecto al tema 8 y sobre la ley 40/2015. Me parece que deberían ser los art. 1 a 80. ¿Faltan? 📸 Imágenes adjuntas: 1. Captura de pantalla'
+    )).toBe(true);
+  });
+
+  test('la URL que se pega como PRUEBA no cuenta (la nota del IAAP acaba en «-pdf»)', () => {
+    expect(isScopeComplaint(
+      'https://www.aragon.es/documents/d/guest/2-nota-informartiva-ejercicio-250109-pdf Creo que las preguntas de WORD y EXCEL NO corresponden con el temario'
+    )).toBe(true);
+  });
+
+  test('una frase de contenido manda aunque venga con un verbo de mecánica', () => {
+    expect(isScopeComplaint('no me deja descargar y además el artículo 5 no entra en el temario')).toBe(true);
+  });
+
   test('texto vacío / nulo', () => {
     expect(isScopeComplaint('')).toBe(false);
     expect(isScopeComplaint(null)).toBe(false);

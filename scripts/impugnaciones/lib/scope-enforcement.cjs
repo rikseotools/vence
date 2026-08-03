@@ -15,7 +15,66 @@
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 // Frases que delatan una queja de temario/epígrafe/scope (sobre `norm(text)`, sin acentos).
-const SCOPE_TRIGGER = /\b(temario|tema|epigrafe|scope|no entra|no aparece|no esta|no figura|falta|fuera del temario|otro tema|otro bloque|no corresponde|deberia entrar|primera parte|1a parte|segunda parte|entra en el|deberia estar|no deberia)\b/i;
+// Se parte en dos porque no pesan igual, ver `esQuejaDeScope` abajo.
+const SCOPE_TRIGGER = /\b(temario|tema|epigrafe|scope|no entra|no aparece|no esta|no figura|falta\w*|fuera del temario|otro tema|otro bloque|no corresponde|deberia entrar|primera parte|1a parte|segunda parte|entra en el|deberia estar|no deberia)\b/i;
+
+/**
+ * Las palabras GENÉRICAS del patrón de arriba: nombran el temario sin decir nada de su contenido.
+ * «temario» y «tema» salen en cualquier frase de una plataforma de oposiciones.
+ */
+const SCOPE_GENERICO = /\b(temario|tema)\b/gi;
+
+/**
+ * Verbos de MECÁNICA de la app: la persona habla de un botón, un fichero o una pantalla, no de
+ * qué materia entra en su examen.
+ *
+ * ── POR QUÉ HIZO FALTA (03/08/2026, feedback `5d5bb5bf`) ────────────────────────────────────
+ * Una usuaria premium escribió *«COMO DESCARGAR UN TEMARIO»* —una pregunta por un BOTÓN— y el
+ * dossier sacó el 🛑 bloqueante: *«NO resuelvas aún, clona el epígrafe oficial de los 19 temas»*.
+ * Un aviso que manda parar donde no toca no es inofensivo: es como se enseña a saltárselo, y
+ * este existe justo para el caso en que saltárselo sale caro (el falso verde de Sara García).
+ *
+ * El corte es estrecho a propósito: solo desactiva el disparo cuando lo ÚNICO que disparó fue una
+ * palabra genérica. Cualquier frase de contenido («no entra», «es de otro tema», «falta el
+ * artículo») sigue disparando aunque venga acompañada de un «no me deja descargar».
+ */
+const MECANICA_TRIGGER =
+  /\b(descargar|descarga|descargarme|descargarlo|descargo|bajar|bajarme|imprimir|impresion|pdf|no carga|no cargan|no funciona|no me deja|boton|audio|voz|escuchar|se cierra|se bloquea|expulsa)\b/i;
+
+/**
+ * Lo que hay que QUITAR antes de juzgar, porque no lo escribió la persona o no es su queja.
+ *
+ * Medido sobre 1.200 textos reales de la cola: sin esta poda, el corte de mecánica se comía
+ * quejas de temario de las buenas. Dos ladrones, los dos de boilerplate:
+ *   · **«📸 Imágenes adjuntas: 1. Captura de pantalla…»** lo añade el formulario, no el usuario.
+ *     Bastaba para que *«sobre el tema 8 y la ley 40/2015, deberían ser los art. 1 a 80, ¿faltan?»*
+ *     —scope puro— quedara callado por la palabra «pantalla».
+ *   · **las URL que la gente pega como PRUEBA**: la nota oficial del IAAP acaba en `-pdf`, así que
+ *     *«las preguntas de WORD y EXCEL no corresponden con el temario»* se silenciaba por su propio
+ *     enlace justificativo.
+ * Por lo mismo se cayeron de la lista `error`, `pantalla`, `enlace` y `navegador`: son palabras
+ * que se usan igual para *«hay un error EN EL TEMARIO»* (contenido) que para *«da error»* (app).
+ */
+const RUIDO = [
+  /https?:\/\/\S+/gi,
+  /📸[\s\S]*$/,
+  /im[aá]genes adjuntas[\s\S]*$/i,
+  /captura de pantalla/gi,
+]
+
+/**
+ * ¿El texto habla del CONTENIDO del temario (y por tanto toca la Regla previa), o solo de la
+ * mecánica de la app? Pura y exportada: es la decisión que se puede medir contra la cola real.
+ */
+function esQuejaDeScope(texto) {
+  const limpio = RUIDO.reduce((s, re) => String(s || '').replace(re, ' '), texto)
+  const t = norm(limpio);
+  if (!SCOPE_TRIGGER.test(t)) return false;
+  // Si lo único que ha disparado es «temario»/«tema» y además se está hablando de un botón o de
+  // descargar un fichero, no es una queja de scope.
+  const soloGenerico = !SCOPE_TRIGGER.test(t.replace(SCOPE_GENERICO, ' '));
+  return !(soloGenerico && MECANICA_TRIGGER.test(t));
+}
 
 /**
  * VERSIÓN DE SOFTWARE — el otro disparador, añadido el 30/07/2026.
@@ -41,7 +100,7 @@ const VERSION_SOFTWARE_TRIGGER =
  */
 async function scopeEnforcement(s, { text, oposicion, force }) {
   const esVersion = VERSION_SOFTWARE_TRIGGER.test(norm(text));
-  const triggered = !!force || SCOPE_TRIGGER.test(norm(text)) || esVersion;
+  const triggered = !!force || esQuejaDeScope(text) || esVersion;
   if (!triggered) return '';
 
   // La duda de VERSIÓN tiene su propio procedimiento y su propia trampa, así que se avisa
@@ -113,7 +172,9 @@ async function scopeEnforcement(s, { text, oposicion, force }) {
 }
 
 // ¿el texto del usuario es una queja de temario/epígrafe/scope? (parte pura, testeable)
-const isScopeComplaint = (text) => SCOPE_TRIGGER.test(norm(text));
+// Es el MISMO criterio que usa el dossier (`esQuejaDeScope`), no una copia: dos puertas al mismo
+// recurso con criterios distintos no protegen el doble, se contradicen.
+const isScopeComplaint = (text) => esQuejaDeScope(text);
 
 // ───────────────────────────────────────────────────────────────────────────────────────
 // ESTRUCTURA vs SCOPE (T-223, 28/07/2026)
@@ -265,6 +326,6 @@ async function estructuraVsScope(s, { text, oposicion }) {
 }
 
 module.exports = {
-  norm, SCOPE_TRIGGER, scopeEnforcement, isScopeComplaint,
+  norm, SCOPE_TRIGGER, MECANICA_TRIGGER, esQuejaDeScope, scopeEnforcement, isScopeComplaint,
   extraerReferenciasNorma, formatEstructuraVsScope, enSeccion, estructuraVsScope,
 };
