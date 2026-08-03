@@ -1579,6 +1579,31 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+> ### 🧵 CABOS SUELTOS de la sesión del 02-03/08 (identidad de máquina, embudo, parte, guardarraíles)
+>
+> **1. Hay un deploy de BACKEND en vuelo, y dos tareas dependen de él.** Se lanzó desde
+> `~/vence-deploy` persiguiendo `a44afda0d` y quedó **encolado detrás de un deploy de frontend**
+> de otra sesión. Si llegó, [T-487] y [T-491] se despertaron solas y salen en `list` como listas
+> para verificar (son minutos cada una). **Si NO llegó** —el `flock` abandona a los 45 min— no hay
+> que investigar nada: `npm run deploy:pendiente` lo dirá en 🔴 y basta con relanzar
+> `scripts/deploy-cuando-verde.sh backend` **desde un árbol donde nadie programe** (el principal
+> tenía trabajo sin commitear de otra sesión).
+>
+> **2. Otra sesión tenía `backend/src/alerts/alert-rules.ts` modificado sin commitear**, sobre un
+> HEAD 20 commits viejo que **no contiene** `RULE_SIM_RUTA_ROTA` ni `RULE_SIM_JOURNEY_FALLIDO`. Lo
+> normal es que el rebase las conserve (están en zonas que esa sesión no tocó), pero si alguien
+> resolvió el conflicto quedándose con su lado, habrán desaparecido. **Comprobación de 5 segundos:**
+> `grep -c RULE_SIM_ backend/src/alerts/alert-rules.ts` → tiene que dar **2 o más**. Ningún
+> guardarraíl vigila esto: `contexto-push-guard` solo mira el markdown del backlog, no el código.
+>
+> **3. [T-486] (el piloto de la flota) está LIBRE y sin prerequisitos** — su ficha lleva abajo el
+> estado de arranque y las tres decisiones que hay que tomar antes de escribir código.
+>
+> **4. [T-038] lleva >10 h con la sesión muerta y el lease vencido**, así que nadie puede cogerla.
+> `node scripts/backlog.cjs reap --apply` la devuelve al pool sin tocar su ficha.
+
+
+
 ### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
 
 - **Esfuerzo: rato.** Montado entero el 01/08; queda un paso de un minuto (ver «Lo que falta»).
@@ -1646,6 +1671,19 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **NO bloquea el piloto** [T-486]: allí los trabajadores tienen prohibido desplegar, precisamente por esto. Se vuelve obligatoria el día que un trabajador remoto pueda desplegar.
 
 ### [T-486] 🟠 [ABIERTO 02/08] Piloto de flota remota en Koigrid: 2 trabajadores + supervisor de EVIDENCIA, con el mismo reparto que las sesiones locales
+
+- **✅ LISTA PARA COGER (03/08). Sus prerequisitos técnicos están HECHOS y desplegados o en `main`:**
+  - **[T-484]** identidad de sesión con MÁQUINA — sin ella la flota compartía sid o no podía commitear. Hecha.
+  - **[T-493]** el EMBUDO (`backlog.cjs preguntar/preguntas/responder`) — el canal por el que los trabajadores preguntan sin que Manuel entre en cada terminal. Hecho.
+  - **[T-494]** el PARTE (`npm run parte`) — quién trabaja, quién está PARADO y qué espera decisión. Hecho.
+  - **[T-495]** el recordatorio de método en tres momentos — lo que evita que una flota grande derive en chapuzas. Hecho.
+  - **[T-487]** el barrido de rutas — el mejor TRABAJO para esos trabajadores (salida = evidencia determinista). En `main`, a falta de un deploy de backend para su alerta.
+  - **NO hace falta [T-485]** (el `flock` del deploy es per-máquina) porque el piloto prohíbe a los trabajadores desplegar. El día que eso cambie, sí.
+- **LO QUE HAY QUE DECIDIR ANTES DE ESCRIBIR CÓDIGO, y no es código:**
+  1. **Secretos.** ¿Los trabajadores llevan `.env.local` completo (RDS + `AUTH_SECRET` + Stripe) o solo lo que alcanza a RDS? N copias de las claves de pago en servidores es una decisión de Manuel, no una de arquitectura.
+  2. **Cuota.** N instancias headless consumen la misma suscripción o facturan por token con API key. **Esto se mira ANTES que la infraestructura**: es el límite duro.
+  3. **¿Máquina propia o agentes remotos de Claude Code?** La alternativa hace lo mismo sin administrar VPS, secretos ni actualizaciones. El piloto debería comparar las dos, no dar por hecha la casera.
+- **Cómo se sabrá si salió bien** (declarado antes de empezar): tareas cerradas y **verificadas** por trabajador, ratio de escape de guardarraíles (`npm run sesiones:friccion` — si sube, la flota está erosionando las protecciones) y **horas de revisión de Manuel por tarea entregada**. Si esa última sube, el piloto ha fallado aunque produzca más.
 
 - **Esfuerzo: sesion_propia.**
 - **ORIGEN.** Petición de Manuel (02/08): varios Claude Code en servidores de Koigrid trabajando en paralelo y **uno central que supervise, resuma y compruebe lo que hacen los demás**. Condición suya, y es la que define el diseño: *«que el sistema de gestión funcione bien tanto con las sesiones que tengo en local en mi portátil como con Koigrid»* → **una sola flota híbrida**, no un sistema para remotos y otro para locales.
