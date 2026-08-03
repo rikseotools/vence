@@ -1605,13 +1605,8 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 > ### 🧵 CABOS SUELTOS de la sesión del 02-03/08 (identidad de máquina, embudo, parte, guardarraíles)
 >
-> **1. Hay un deploy de BACKEND en vuelo, y dos tareas dependen de él.** Se lanzó desde
-> `~/vence-deploy` persiguiendo `a44afda0d` y quedó **encolado detrás de un deploy de frontend**
-> de otra sesión. Si llegó, [T-487] y [T-491] se despertaron solas y salen en `list` como listas
-> para verificar (son minutos cada una). **Si NO llegó** —el `flock` abandona a los 45 min— no hay
-> que investigar nada: `npm run deploy:pendiente` lo dirá en 🔴 y basta con relanzar
-> `scripts/deploy-cuando-verde.sh backend` **desde un árbol donde nadie programe** (el principal
-> tenía trabajo sin commitear de otra sesión).
+> **1. ~~Deploy de backend en vuelo~~ → RESUELTO.** Aterrizó (`1abc80fd`, smoke en verde) y
+> [T-487] y [T-491] se despertaron solas, se verificaron contra producción y están CERRADAS.
 >
 > **2. Otra sesión tenía `backend/src/alerts/alert-rules.ts` modificado sin commitear**, sobre un
 > HEAD 20 commits viejo que **no contiene** `RULE_SIM_RUTA_ROTA` ni `RULE_SIM_JOURNEY_FALLIDO`. Lo
