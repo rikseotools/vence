@@ -59,3 +59,51 @@ describe('clasificarVerdicto — la evidencia manda sobre el estado mutable', ()
     expect(esDropReal('real_drop')).toBe(true);
   });
 });
+
+// ── El token de baja como SEGUNDA evidencia (T-501) ───────────────────────────────────
+//
+// Nace del lado de feedback, donde hay dos saltos legítimos más que en impugnaciones y uno
+// depende de una ventana de 5 segundos que nadie puede releer. Sin este hecho, la única
+// pérdida real de 90 días queda enterrada entre 42 saltos legítimos.
+describe('clasificarVerdicto — el token prueba que el envío pasó el gate', () => {
+  it('token sin email: drop REAL aunque la preferencia de hoy explicaría el salto', () => {
+    // Éste es el caso que el criterio viejo NO podía afirmar: `soporteDisabled` lo habría
+    // rebajado a "inferido" y nadie lo miraría. El token dice que sendEmailV2 llegó a
+    // ejecutarse, así que el gate ya lo había dejado pasar.
+    const v = clasificarVerdicto(
+      hechos({ hasUnsubscribeToken: true, soporteDisabled: true }),
+    );
+    expect(v).toBe('real_drop');
+    expect(esDropReal(v)).toBe(true);
+  });
+
+  it('token sin email y sin destinatario conocido: sigue siendo drop (hubo intento)', () => {
+    expect(clasificarVerdicto(hechos({ hasUnsubscribeToken: true, email: null }))).toBe(
+      'real_drop',
+    );
+  });
+
+  it('el email entregado sigue mandando sobre el token', () => {
+    expect(
+      clasificarVerdicto(hechos({ hasUnsubscribeToken: true, hasEmailEvent: true })),
+    ).toBe('delivered');
+  });
+
+  it('la evidencia del salto gana al token (no pueden darse a la vez de verdad)', () => {
+    // Contradicción imposible por construcción —el token se crea DESPUÉS del gate y el
+    // skip se emite AL cortarlo—, así que si aparecen juntos es una colisión de la ventana
+    // temporal con otro envío del mismo tipo. Ante la duda, no se grita.
+    expect(
+      clasificarVerdicto(hechos({ hasUnsubscribeToken: true, hasSkipEvent: true })),
+    ).toBe('expected_skip');
+  });
+
+  it('SIN el hecho nuevo, el criterio de impugnaciones no cambia ni un ápice', () => {
+    // El campo es opcional a propósito: el reconciliador de impugnaciones no lo pasa
+    // todavía y su comportamiento verificado en producción tiene que quedar idéntico.
+    expect(clasificarVerdicto(hechos({ soporteDisabled: true }))).toBe(
+      'expected_skip_inferred',
+    );
+    expect(clasificarVerdicto(hechos())).toBe('real_drop');
+  });
+});

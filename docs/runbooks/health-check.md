@@ -126,6 +126,40 @@ no se puede probar se cuenta aparte como `inferredSkips` en el `cron_run` de
 `dispute-email-reconciliation` — **debe tender a 0**; si no baja, el emisor no está llegando a
 producción. Criterio en `backend/src/dispute-email-reconciliation/verdict.ts` (puro, con spec).
 
+### 0.ter — `feedback_email_drop`: el mismo hueco en el OTRO canal (T-501, 03/08/2026)
+
+Le contestamos a una persona por dos caminos distintos —impugnaciones y feedback— y hasta el
+03/08 **solo uno estaba vigilado**. `respondFeedback` no emitía ni un evento: los cinco motivos
+de «sin email» y los fallos de envío viajaban en el JSON de vuelta y morían ahí. Sin
+reconciliador y sin regla, un drop en ese lado era invisible del todo (T-422 lo dejó anotado
+como hueco conocido y no lo cubría).
+
+**Medido antes de construir nada (90 días):** 532 respuestas de admin, **43 sin fila en
+`email_events`** — y de esas, **42 saltos legítimos y 1 pérdida real**: a
+`garciamoyanoraquel7179@` se le contestó el 14/07 cómo evitar el siguiente cobro de su plan, el
+envío pasó el gate y el correo no salió. **Nadie se enteró en 20 días.**
+
+Se triaja igual que §0.bis, con dos diferencias que importan:
+
+| | Impugnaciones | Feedback |
+|---|---|---|
+| Unidad | la impugnación | **el MENSAJE** (`feedback_messages`): un hilo tiene N respuestas |
+| Saltos legítimos | preferencia del usuario | preferencia **+ `sendEmail:false` + `user_actively_browsing`** |
+| Evidencia del momento | `dispute_email_skipped` | `feedback_email_skipped` (con `messageId`) |
+
+Ese tercer salto es el que obliga a mirar distinto: `user_actively_browsing` compara contra
+`user_sessions.updated_at` con una ventana de **CINCO segundos**. Es la condición más efímera
+del sistema y **no se puede releer después** — por eso aquí el token de baja no es un apaño de
+triaje sino parte del criterio: si hay token, el envío pasó el gate y la pérdida es **certeza**
+(el `sample` del evento lo marca con `conToken:true`). Control que lo sostiene: de las 488
+entregadas, **488 tienen token (100%)**; si eso baja, el discriminante dejó de servir.
+
+- Medir sin escribir nada: **`npm run sim:reconciliador-feedback`** (ventana real + calibración
+  a 90 días + el control del 100%).
+- **NO reenviar por reflejo.** Si el hallazgo tiene ya semanas, reenviar es **peor** que no
+  hacerlo (decisión de Manuel, 03/08): la persona tiene la respuesta en la campana y en
+  `/soporte`. Lo que toca es averiguar por qué se perdió.
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:

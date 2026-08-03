@@ -28,6 +28,7 @@ import {
   userSessions,
 } from '@/db/schema'
 import { eq, desc, and, isNull } from 'drizzle-orm'
+import { emit } from '@/lib/observability/emit'
 import { sendEmailV2 } from '@/lib/api/emails'
 import type {
   RespondFeedbackRequest,
@@ -258,6 +259,53 @@ export async function respondFeedback(
       // ese path por ahora para no duplicar lógica de email directo aquí.
       // Desde el caller: si quieres enviar email a externo, llama también a ese endpoint.
       emailSkipReason = 'no_user_email' // placeholder — externo requiere path distinto
+    }
+
+    // 4. EVIDENCIA de lo que pasó con el email, en el momento en que se decide [T-501].
+    //
+    // Hasta el 03/08/2026 esta función no emitía NADA: las cinco salidas sin email y los
+    // fallos de envío viajaban en el JSON de vuelta y morían ahí. Sin esto, «se saltó a
+    // propósito» y «se perdió» son indistinguibles después, que es exactamente el defecto
+    // que [T-422] arregló en el lado de impugnaciones — aquí ni siquiera había un
+    // reconciliador que pudiera equivocarse.
+    //
+    // Solo cuando hay mensaje: sin mensaje no hay fila en `feedback_messages`, y esa fila
+    // es la unidad que reconcilia el cron (una conversación tiene N respuestas; anclar la
+    // evidencia al feedback las confundiría entre sí).
+    //
+    // `await` (no fire-and-forget), igual que su gemelo de impugnaciones: la evidencia
+    // tiene que estar persistida antes de que la lambda suspenda. La observabilidad nunca
+    // rompe el flujo: la respuesta ya está escrita y la campana ya salió.
+    if (hasMessage && (emailSkipReason || emailError)) {
+      const evidencia = {
+        feedbackId,
+        conversationId: conversationId ?? null,
+        messageId,
+        userId: targetUserId ?? null,
+        reason: emailError ?? emailSkipReason,
+      }
+      await emit(
+        emailError
+          ? {
+              source: 'vercel',
+              severity: 'warn',
+              eventType: 'feedback_email_failed',
+              endpoint: '/api/v2/feedback/respond',
+              errorMessage: `Email soporte_respuesta no enviado (${feedbackId}): ${emailError}`,
+              metadata: evidencia,
+            }
+          : {
+              // Decisión correcta, no avería: es el contexto que el reconciliador necesita
+              // para NO gritar por un salto legítimo.
+              source: 'vercel',
+              severity: 'info',
+              eventType: 'feedback_email_skipped',
+              endpoint: '/api/v2/feedback/respond',
+              metadata: evidencia,
+            }
+      ).catch(() => {
+        /* la observabilidad nunca rompe una respuesta ya enviada */
+      })
     }
 
     return {

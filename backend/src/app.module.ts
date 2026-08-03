@@ -55,6 +55,7 @@ import { TestAnswersModule } from './test-answers/test-answers.module';
 import { CheckWebhookHealthModule } from './check-webhook-health/check-webhook-health.module';
 import { SubscriptionReconciliationModule } from './subscription-reconciliation/subscription-reconciliation.module';
 import { DisputeEmailReconciliationModule } from './dispute-email-reconciliation/dispute-email-reconciliation.module';
+import { FeedbackEmailReconciliationModule } from './feedback-email-reconciliation/feedback-email-reconciliation.module';
 // Canary HTTP autenticado — Nivel 3 sistema canary+simulaciones (27/05/2026
 // post-incidente Rocío/Mercedes). Detecta regresión auth+profile en <5min.
 import { CanarySmokeAuthModule } from './canary-smoke-auth/canary-smoke-auth.module';
@@ -182,6 +183,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     CheckWebhookHealthModule, // cada 15min — salud webhook entrante
     SubscriptionReconciliationModule, // cada 1h — Pass-1 BD + Pass-2 Stripe directo
     DisputeEmailReconciliationModule, // cada 1h (:15) — invariante impugnación resuelta ⇒ email (Gap 17)
+    FeedbackEmailReconciliationModule, // cada 1h (:35) — su gemelo para las respuestas a feedback (T-501)
     CanarySmokeAuthModule, // cada 5min — login + GET /api/profile contra prod (Nivel 3)
     CanaryStripeWebhookModule, // cada 5min — evento sintético firmado a /api/stripe/webhook
     CanaryAnswerSaveModule, // cada 5min — POST sintético al endpoint más caliente

@@ -3420,6 +3420,51 @@ export const RULE_DISPUTE_EMAIL_DROP: AlertRule<{ realDrops: number }> = {
 };
 
 /**
+ * Gemela de la anterior para el OTRO canal por el que contestamos a una persona:
+ * respuestas a feedback ([T-501]). El cron `feedback-email-reconciliation` la
+ * levanta cuando una respuesta de admin se escribió, se guardó y su email nunca
+ * salió — el usuario cree que le ignoramos exactamente igual que en el caso Eva.
+ *
+ * Por qué es una regla APARTE y no un `OR` en la de impugnaciones: son dos
+ * caminos de código distintos (`resolveDispute` / `respondFeedback`), con
+ * saltos legítimos distintos, y mezclarlas haría que el cooldown de una
+ * silenciara a la otra. Fingerprint propio por el mismo motivo.
+ *
+ * Calibración con datos reales (90 días, medidos el 03/08/2026 antes de
+ * construir nada): 532 respuestas de admin, 43 sin email — y de esas, **42 son
+ * saltos legítimos y 1 un drop real**. O sea que el criterio del reconciliador
+ * (evidencia del momento + token de baja) deja pasar ~0,2 avisos al mes: una
+ * ocurrencia es señal, no ruido, y no hace falta umbral de ráfaga.
+ */
+export const RULE_FEEDBACK_EMAIL_DROP: AlertRule<{ realDrops: number }> = {
+  name: 'feedback_email_drop',
+  severity: 'error',
+  query: sql`
+    SELECT COALESCE(MAX((metadata->>'realDrops')::int), 0) AS "realDrops"
+    FROM observable_events
+    WHERE event_type = 'invariant_violation'
+      AND metadata->>'invariant' = 'feedback_responded_without_email'
+      AND ts > NOW() - INTERVAL '90 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.realDrops ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.realDrops ?? 0} respuesta(s) a feedback SIN email al usuario`,
+    body:
+      'El reconciliador detectó respuestas de admin escritas y guardadas cuyo email ' +
+      "nunca salió. Revisar observable_events con event_type='invariant_violation' e " +
+      "invariant='feedback_responded_without_email' (el sample trae messageId y feedbackId). " +
+      'Cada caso del sample con `conToken:true` es CERTEZA, no sospecha: el token de baja se ' +
+      'crea dentro de sendEmailV2, así que su presencia prueba que el envío pasó el gate de ' +
+      'preferencias y aun así no hay fila en email_events. NO reenviar sin más: si el ' +
+      'hallazgo tiene ya semanas, reenviar es peor que no hacerlo (decisión de Manuel, ' +
+      '03/08) — la persona tiene la respuesta en la campana y en /soporte. Lo que sí toca ' +
+      'es mirar por qué se perdió. Triaje completo en docs/runbooks/health-check.md §0.',
+    metadata: { realDrops: rows[0]?.realDrops ?? 0 },
+  }),
+  cooldownMin: 60,
+};
+
+/**
  * Email transaccional que SÍ se intentó y el proveedor RECHAZÓ (`email_events`
  * con `event_type='failed'`). Complementa a `dispute_email_drop`, que cubre el
  * caso opuesto (el envío nunca se llegó a intentar, 0 filas).
@@ -5898,6 +5943,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_PREMIUM_SIN_RESPALDO as AlertRule,
   // Gap 17 (2026-06-03 post-incidente Eva) — impugnación resuelta sin email al usuario
   RULE_DISPUTE_EMAIL_DROP as AlertRule,
+  // Su gemela para el otro canal (T-501, 03/08/2026): respuesta a feedback sin email.
+  // Ese lado no tenía reconciliador NI regla, así que el drop era invisible por completo.
+  RULE_FEEDBACK_EMAIL_DROP as AlertRule,
   // Pareja de la anterior: aquella cubre "el email nunca se intentó";
   // ésta, "se intentó y el proveedor lo rechazó" (el hueco de T-116).
   RULE_EMAIL_SEND_FAILED as AlertRule,

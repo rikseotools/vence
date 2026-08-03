@@ -46,8 +46,27 @@ export interface HechosReconciliacion {
   soporteDisabled: boolean;
   /** ¿Hay fila en `email_events` para esta respuesta? */
   hasEmailEvent: boolean;
-  /** ¿Hay evento `dispute_email_skipped` de esta impugnación? (evidencia del momento) */
+  /** ¿Hay evento `*_email_skipped` de esta respuesta? (evidencia del momento) */
   hasSkipEvent: boolean;
+  /**
+   * ¿Hay token de baja (`email_unsubscribe_tokens`) de esta respuesta?
+   *
+   * Es la SEGUNDA evidencia, y es del momento igual que la anterior: el token se inserta
+   * DENTRO de `sendEmailV2`, **después** de que `canSendEmail` haya dejado pasar el envío.
+   * Su presencia prueba que el envío superó el gate de preferencias; su ausencia, que se
+   * cortó antes. No depende de releer ninguna columna mutable.
+   *
+   * Medido el 03/08/2026 sobre 90 días de respuestas a feedback: **489 de 489** de las que
+   * SÍ tienen email tienen también token (control limpio), y de las 43 sin email solo 1
+   * tenía token — esa 1 es un drop real (`garciamoyanoraquel7179@`, 14/07: se le contestó
+   * cómo evitar el siguiente cobro y el correo no salió). Sin este hecho ese caso queda
+   * enterrado entre 42 saltos legítimos.
+   *
+   * Opcional: el reconciliador de impugnaciones no lo pasa todavía (su criterio se acaba de
+   * verificar en producción y no se cambia en el mismo paso que estrena un consumidor
+   * nuevo). Ver [T-501].
+   */
+  hasUnsubscribeToken?: boolean;
 }
 
 export function clasificarVerdicto(h: HechosReconciliacion): Veredicto {
@@ -58,14 +77,21 @@ export function clasificarVerdicto(h: HechosReconciliacion): Veredicto {
   //    actual: si la ruta de resolución registró que saltaba, sabemos qué pasó y por qué.
   if (h.hasSkipEvent) return 'expected_skip';
 
-  // 3. Sin destinatario no hay envío posible (y no es un fallo nuestro de entrega).
+  // 3. La otra evidencia del momento, y en la dirección contraria: hubo token, así que el
+  //    envío pasó el gate y se intentó de verdad. Que no haya fila en `email_events` es
+  //    entonces una pérdida REAL, se diga lo que se diga la preferencia de hoy. Va ANTES de
+  //    los dos indicios de abajo justamente por eso: es lo único que puede afirmar un drop
+  //    sin depender de una columna que alguien puede reescribir después.
+  if (h.hasUnsubscribeToken) return 'real_drop';
+
+  // 4. Sin destinatario no hay envío posible (y no es un fallo nuestro de entrega).
   if (h.email === null || h.email === '') return 'no_user_email';
 
-  // 4. Sin evidencia: la preferencia actual es lo ÚNICO que queda, y puede haber cambiado
+  // 5. Sin evidencia: la preferencia actual es lo ÚNICO que queda, y puede haber cambiado
   //    después. Se marca como inferido para no contarlo como certeza.
   if (h.soporteDisabled) return 'expected_skip_inferred';
 
-  // 5. Debía salir y no hay ni email ni constancia de haberlo saltado.
+  // 6. Debía salir y no hay ni email ni constancia de haberlo saltado.
   return 'real_drop';
 }
 

@@ -13,6 +13,14 @@ jest.mock('@/lib/api/emails', () => ({
   sendEmailV2: (...args: unknown[]) => mockSendEmailV2(...args),
 }))
 
+// Evidencia de lo que pasa con el email (T-501). Se mockea porque `emit` escribe en
+// `observable_events`: lo que se prueba aquí es QUÉ se registra, no que la BD funcione.
+const mockEmit = jest.fn(async () => undefined)
+jest.mock('@/lib/observability/emit', () => ({
+  __esModule: true,
+  emit: (...args: unknown[]) => mockEmit(...args),
+}))
+
 // Drizzle chain mock
 type Op = 'select' | 'update' | 'insert'
 const dbResponses: Record<Op, unknown[][]> = { select: [], update: [], insert: [] }
@@ -164,6 +172,8 @@ beforeEach(() => {
   setCalls.length = 0
   activeBrowsing = false
   mockSendEmailV2.mockReset()
+  mockEmit.mockReset()
+  mockEmit.mockResolvedValue(undefined)
   mockDb.transaction.mockClear()
   txFns.insert.mockClear()
   txFns.update.mockClear()
@@ -437,5 +447,102 @@ describe('respondFeedback — BD falla', () => {
     const r = await respondFeedback(baseReq())
     expect(r.success).toBe(false)
     if (!r.success) expect(r.error).toBe('db down')
+  })
+})
+
+// ============================================
+// T-501 — evidencia de lo que pasó con el email
+// ============================================
+//
+// Hasta el 03/08/2026 esta función no emitía NADA: los cinco motivos de "sin email" y los
+// fallos de envío se devolvían en el JSON y morían ahí. Sin evidencia del momento, «se
+// saltó a propósito» y «se perdió» son indistinguibles después — que es el defecto que
+// [T-422] arregló en impugnaciones. Aquí, además, uno de los saltos depende de una ventana
+// de CINCO segundos (`user_actively_browsing`) que nadie puede releer más tarde.
+//
+// Lo que fijan estos tests es el CONTRATO con el reconciliador: qué evento, con qué
+// gravedad, y anclado al `messageId` (no al feedbackId: una conversación tiene N respuestas).
+describe('respondFeedback — evidencia para el reconciliador (T-501)', () => {
+  const evento = () => mockEmit.mock.calls[0][0] as unknown as Record<string, unknown>
+
+  it('sendEmail:false → feedback_email_skipped con el motivo y el messageId', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    await respondFeedback(baseReq({ sendEmail: false }))
+
+    expect(mockEmit).toHaveBeenCalledTimes(1)
+    const e = evento()
+    expect(e.eventType).toBe('feedback_email_skipped')
+    expect(e.severity).toBe('info') // decisión correcta, no avería
+    expect(e.metadata).toEqual(
+      expect.objectContaining({ messageId: MSG_ID, feedbackId: FB_ID, reason: 'send_email_false_flag' })
+    )
+  })
+
+  it('usuario mirando la app → deja constancia de los 5 segundos, que si no son irrecuperables', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    activeBrowsing = true
+    pushActiveBrowsingResponse()
+    await respondFeedback(baseReq())
+
+    expect(mockEmit).toHaveBeenCalledTimes(1)
+    expect(evento().metadata).toEqual(
+      expect.objectContaining({ reason: 'user_actively_browsing', messageId: MSG_ID })
+    )
+  })
+
+  it('cancelado por preferencias del usuario → skipped con reason user_preferences', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    pushActiveBrowsingResponse()
+    mockSendEmailV2.mockResolvedValueOnce({ cancelled: true, reason: 'unsubscribed' })
+    await respondFeedback(baseReq())
+
+    const e = evento()
+    expect(e.eventType).toBe('feedback_email_skipped')
+    expect((e.metadata as Record<string, unknown>).reason).toBe('user_preferences')
+  })
+
+  it('el envío falla → feedback_email_failed en severity warn, con el error', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    pushActiveBrowsingResponse()
+    mockSendEmailV2.mockResolvedValueOnce({ success: false, error: 'Resend 503' })
+    await respondFeedback(baseReq())
+
+    const e = evento()
+    expect(e.eventType).toBe('feedback_email_failed')
+    expect(e.severity).toBe('warn')
+    expect((e.metadata as Record<string, unknown>).reason).toBe('Resend 503')
+  })
+
+  it('email enviado → NO emite nada (la fila de email_events ya es la prueba)', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    pushActiveBrowsingResponse()
+    mockSendEmailV2.mockResolvedValueOnce({ success: true, emailId: 'em-1' })
+    await respondFeedback(baseReq())
+
+    expect(mockEmit).not.toHaveBeenCalled()
+  })
+
+  it('cierre silencioso (sin mensaje) → NO emite: no hay respuesta que entregar', async () => {
+    setupFeedback({})
+    await respondFeedback(baseReq({ message: undefined, finalStatus: 'dismissed' }))
+
+    expect(mockEmit).not.toHaveBeenCalled()
+  })
+
+  it('si la observabilidad falla, la respuesta sigue siendo un éxito', async () => {
+    setupFeedback({})
+    pushMessageInsertResult()
+    mockEmit.mockRejectedValueOnce(new Error('observabilidad caída'))
+
+    const r = await respondFeedback(baseReq({ sendEmail: false }))
+    expect(r.success).toBe(true)
+    // El mensaje ya está escrito y la campana ya ha salido: perder la traza es malo,
+    // devolver error aquí haría creer que la respuesta no se envió.
+    if (r.success) expect(r.messageId).toBe(MSG_ID)
   })
 })

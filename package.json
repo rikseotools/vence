@@ -115,6 +115,7 @@
     "sim:cadencia-cron": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cadencia-cron-overdue.ts",
     "sim:cron-sin-exito": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cron-sin-exito.ts",
     "sim:fatiga-email": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-fatiga-email.ts",
+    "sim:reconciliador-feedback": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-reconciliador-feedback.ts",
     "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",

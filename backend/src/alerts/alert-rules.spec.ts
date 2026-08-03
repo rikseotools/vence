@@ -26,6 +26,7 @@ import {
   RULE_SUBSCRIPTION_DRIFT_MISSING_IN_DB,
   RULE_CI_INTEGRACION_ROJO,
   RULE_DISPUTE_EMAIL_DROP,
+  RULE_FEEDBACK_EMAIL_DROP,
   RULE_EMAIL_SEND_FAILED,
   RULE_CANARY_AUTH_FAILED,
   RULE_CANARY_WEBHOOK_FAILED,
@@ -970,6 +971,33 @@ describe('RULE_DISPUTE_EMAIL_DROP (Gap 17 — impugnación resuelta sin email)',
 
   it('severity=error — el usuario cree que le ignoramos', () => {
     expect(RULE_DISPUTE_EMAIL_DROP.severity).toBe('error');
+  });
+});
+
+describe('RULE_FEEDBACK_EMAIL_DROP (T-501 — respuesta a feedback sin email)', () => {
+  it('dispara con realDrops≥1', () => {
+    expect(RULE_FEEDBACK_EMAIL_DROP.shouldFire([{ realDrops: 1 }])).toBe(true);
+  });
+
+  it('NO dispara con realDrops=0 ni sin filas (42 de 43 saltos medidos son legítimos)', () => {
+    expect(RULE_FEEDBACK_EMAIL_DROP.shouldFire([{ realDrops: 0 }])).toBe(false);
+    expect(RULE_FEEDBACK_EMAIL_DROP.shouldFire([])).toBe(false);
+  });
+
+  it('la notificación lee su invariante propia, no la de impugnaciones', () => {
+    const notif = RULE_FEEDBACK_EMAIL_DROP.buildNotification([{ realDrops: 1 }]);
+    expect(notif.body).toContain('feedback_responded_without_email');
+    expect(notif.body).toContain('messageId');
+  });
+
+  it('avisa de NO reenviar sin mirar: reenviar tarde es peor que no hacerlo', () => {
+    const notif = RULE_FEEDBACK_EMAIL_DROP.buildNotification([{ realDrops: 1 }]);
+    expect(notif.body).toMatch(/NO reenviar/);
+  });
+
+  it('es una regla DISTINTA de la de impugnaciones (cooldowns que no se tapan)', () => {
+    expect(RULE_FEEDBACK_EMAIL_DROP.name).not.toBe(RULE_DISPUTE_EMAIL_DROP.name);
+    expect(RULE_FEEDBACK_EMAIL_DROP.severity).toBe('error');
   });
 });
 
