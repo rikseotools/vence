@@ -1556,6 +1556,17 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Y hay una lección de método aparte:** un guardarraíl del que no se sabe qué frase lo dispara empuja a probar con basura. Que el error diga **qué patrón casó** —no solo «apunta a un momento futuro»— habría evitado el rodeo entero.
 - **Relacionadas:** [T-392] (la puerta), [T-423] (el escape se cuenta).
 
+### [T-500] 🟡 [ABIERTO 03/08] Explicaciones de psicotécnicos que razonan sobre otro dato o no citan ni su propia respuesta
+
+- **Esfuerzo: rato** para medirlo bien y decidir el corte; reparar el lote ya es aparte.
+- **CÓMO SALIÓ.** Impugnación `3ff87618` de una usuaria premium (03/08): en una pregunta de reparto proporcional (cuatro deportistas con 12, 16, 29 y 43 % de uso; el del 43 % paga 300 €; se pregunta por el del 12 %) **la clave era correcta —83,72 €— y la explicación estaba mal**: decía *«El tercer deportista usa el 29% del tiempo. Gasto = Total × 29/100»*, o sea que razonaba sobre otro deportista y trataba los 300 € como si fueran el total. Llegaba al número bueno por un camino falso. Ya reparada.
+- **MEDIDO, y no es un caso aislado:** de **37 preguntas activas de reparto proporcional, 11 tienen una explicación que ni siquiera menciona la cifra de su propia respuesta correcta**. Ejemplos: `0d5df8eb` (34.000 € entre Julia, Claudia y Filomena), `6bcaef9b` (9.000 € de gratificación entre tres funcionarios), `58642511` (1.000 € repartidos de forma inversamente proporcional), y varias de «¿cuánto vale la X?».
+- **⚠️ El defecto REAL es más ancho que esa medida:** la impugnada **sí citaba** su respuesta (83,72) y aun así estaba mal, así que «no cita su cifra» es solo el subconjunto barato de detectar. La clase completa es *la explicación no reproduce el cálculo que lleva a la clave*, y eso pide leerlas.
+- **Por qué importa más que en las legislativas:** aquí el opositor no puede contrastar con un artículo. Si la explicación miente, se lleva un método equivocado a casa y lo repite en el examen.
+- **Punto ciego que lo explica:** los detectores de explicaciones del barrido (`audit_note_explanation`, `explicacion_estructura_rota`, `cita_no_literal`) están todos escritos para preguntas **legislativas** —comparan contra el artículo vinculado— y las psicotécnicas no tienen artículo. El kind `psicotecnico_integridad` mira `section_id` y rangos de `correct_option`, no el contenido de la explicación.
+- **Cómo atacarlo:** empezar por el corte mecánico (la explicación no contiene la cifra de su opción correcta) porque es determinista y ya está medido; en las de cálculo con enunciado numérico, contrastar el resultado que afirma la explicación con la clave. Comando de partida en `scratchpad/psico2.cjs` de la sesión del 03/08 (recorre las 37 y marca las 11).
+- **Relacionada:** flujo de impugnaciones (`docs/maintenance/impugnaciones-claude-code.md`), donde el dossier ya avisa de si la explicación tiene formato §5.1.
+
 ### [T-469] 🟢 [ABIERTO 01/08] Acceso remoto al portátil desde el móvil (SSH + Tailscale + tmux) para trabajar con Claude Code
 
 - **Esfuerzo: rato.** Montado entero el 01/08; queda un paso de un minuto (ver «Lo que falta»).
