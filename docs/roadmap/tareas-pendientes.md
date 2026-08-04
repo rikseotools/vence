@@ -4502,7 +4502,34 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Frontera de palabra al buscar el id corto:** sin ella, ocho caracteres hex casarían dentro de cualquier otro hash.
 
 
-### [T-507] ✅ [HECHA 04/08] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
+### [T-507] 🟠 [REABIERTA 04/08] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
+
+> ♻️ **REABIERTA el 04/08 por un efecto colateral: el arreglo dejó en ROJO PERMANENTE el gate de
+> cierre de lotes generados.** `scripts/verificar-batch-servido.cjs` (el `npm run batch:servido` que
+> el manual de generación impone como «cierre obligatorio») recomputa el conteo del tema **con la
+> semántica de la materialized view**, y producción ya aplica encima la exclusión que introdujo esta
+> ficha. Resultado: la comparación nunca cuadra y el gate acusa «falta propagar (MV → Redis → tags)»
+> con las tres cachés perfectamente invalidadas, mandando a re-purgar en vano.
+>
+> **Reproducido el 04/08** al cerrar el lote `gen_estatut_cv_2026-08-04_lote1` (Estatut valenciano):
+>
+> | tema | MV cuenta | sirve producción | lo que dice el gate |
+> |---|---|---|---|
+> | `subalterno_gva` T3 | 52 | **35** | «falta propagar» |
+> | `auxiliar_administrativo_diputacion_alicante` T2 | 51 | **35** | «falta propagar» |
+> | `administrativo_gva` T6 | 65 | **45** | «falta propagar» |
+>
+> Los 35 de subalterno_gva T3 son exactamente los **22** que esta ficha verificó en producción más
+> las **13** del lote nuevo: la propagación había funcionado a la primera. El desfase se reproduce
+> excluyendo `is_official_exam AND exam_position <> <position_type>`, que es justo la regla de esta
+> ficha, así que **la corrección va en el gate, no en las cachés**.
+>
+> **Es el mismo modo de fallo que se arregló hoy en el verificador de enlaces:** un falso positivo
+> con diagnóstico seguro es peor que no comprobar, porque manda a «arreglar» lo que está bien y
+> desgasta la confianza en el gate hasta que alguien lo ignora — y este gate es el que impide servir
+> un lote sin re-verificar. **Lo que queda:** que `verificar-batch-servido.cjs` use la MISMA
+> semántica que la API (mejor compartiendo el núcleo, no una segunda copia del criterio — es como
+> nacieron los cinco escritores de [T-130]), con un test que fije el contraste MV vs servido.
 
 - **VERIFICADO EN PRODUCCIÓN (04/08, `deploy-de7d31c3`):** `GET /api/topics/3?oposicion=subalterno-gva` devuelve `totalQuestions: 22` y los cubos de dificultad suman 22. Antes anunciaba 39.
 - **Esfuerzo declarado: rato.** Se fue a más al medir: la migración de la MV y la tercera causa (oficiales sin `exam_position`) no estaban a la vista al abrirla.
