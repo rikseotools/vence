@@ -28,6 +28,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { claveAceptacion, debeMostrarAviso, diaLocal } from '../lib/multicuenta/aviso'
+import { emitClientEvent } from '@/lib/observability/client'
 
 export default function AvisoMultiCuentaModal() {
   const { user } = useAuth() as any
@@ -50,25 +51,48 @@ export default function AvisoMultiCuentaModal() {
     }
 
     setClave(k)
-    setVisible(
-      debeMostrarAviso({
-        multiCuenta: multiCuentaDispositivo,
-        esPremium: isPremiumUser,
-        userId,
-        yaAceptadoHoy,
-        cargando: loading,
-      }),
-    )
+    const mostrar = debeMostrarAviso({
+      multiCuenta: multiCuentaDispositivo,
+      esPremium: isPremiumUser,
+      userId,
+      yaAceptadoHoy,
+      cargando: loading,
+    })
+    setVisible(mostrar)
+
+    // Este aviso solo dejaba rastro en `localStorage`, o sea en el navegador de quien lo ve.
+    // Consecuencia práctica (04/08/2026): al ir a verificar [T-418] en producción, el punto
+    // «¿le sale el modal y deja de salirle tras Aceptar?» resultó **imposible de comprobar** —
+    // no hay dato que mirar. Una pantalla que decide algo y no deja huella no se puede verificar
+    // ni medir: no sabemos a cuánta gente le sale, ni si alguien lo acepta.
+    // `info` a propósito: no es una avería, es un embudo (visto → aceptado).
+    if (mostrar) {
+      emitClientEvent({
+        severity: 'info',
+        eventType: 'multicuenta_aviso',
+        metadata: { accion: 'visto' },
+      })
+    }
   }, [user?.id, multiCuentaDispositivo, isPremiumUser, loading])
 
   if (!visible) return null
 
   const aceptar = () => {
+    let guardado = true
     try {
       if (clave) window.localStorage.setItem(clave, '1')
     } catch {
       // Si no se puede guardar, al menos no se queda atascado en pantalla.
+      guardado = false
     }
+    // `guardado:false` es justo el caso que hace que el aviso REAPAREZCA en la siguiente carga
+    // (navegador con almacenamiento bloqueado). Sin este dato, eso se vive como «me sale todo el
+    // rato» y no habría forma de distinguirlo de un fallo de la condición.
+    emitClientEvent({
+      severity: 'info',
+      eventType: 'multicuenta_aviso',
+      metadata: { accion: 'aceptado', guardado },
+    })
     setVisible(false)
   }
 

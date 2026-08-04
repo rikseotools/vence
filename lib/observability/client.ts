@@ -269,6 +269,13 @@ export type ClientEventType =
   // narrowedLaws, wholeQuestionsTotal, positionType}. severity:'info' (no es error).
   // Mide la frecuencia real para priorizar mejoras de UX. Ver TestConfigurator.tsx.
   | 'multiley_mixed_inclusion_start'
+  // Aviso «una cuenta por persona y dispositivo» ([T-418]): embudo visto → aceptado.
+  // Existe porque ese modal solo dejaba rastro en `localStorage`, o sea en el navegador de quien
+  // lo ve: al ir a verificar la tarea en producción, «¿le sale y deja de salirle tras Aceptar?»
+  // resultó imposible de comprobar — no había ningún dato que mirar. metadata: {accion, guardado}.
+  // `guardado:false` marca el navegador con almacenamiento bloqueado, que es justo el caso en que
+  // el aviso REAPARECE y se vive como «me sale todo el rato». severity:'info' (no es avería).
+  | 'multicuenta_aviso'
 
 interface ClientEvent {
   ts: string
