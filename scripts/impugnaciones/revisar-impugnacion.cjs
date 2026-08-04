@@ -11,6 +11,7 @@ const fs = require('fs');
 // Política de recompensa POR MOTIVO, importada del núcleo puro que usa también el runtime: el
 // dossier enseña exactamente lo que el sistema va a pagar, no una copia que se desactualice.
 const { disputeTypeIsRewardable } = require('../../lib/referrals/disputeRewardPolicy');
+const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
 // `postgres` se carga PEREZOSAMENTE (igual que en `validar-explicacion.cjs`). Antes era un
 // require de RUTA ABSOLUTA a la máquina de Manuel en el top-level: fuera de ella —CI, otro
 // worktree, otro portátil— el módulo reventaba nada más importarlo, aunque solo quisieras las
@@ -104,11 +105,11 @@ if (require.main !== module) {
           `UPDATE public.${dtbl} SET claimed_by=$1, claimed_at=now()
             WHERE id=$2 AND ${sqlReservaLibre('', '$1')} RETURNING claimed_by`, [sid, did]);
         if (got.length) {
-          claimWarn = `🔒 Cogida por tu sesión (${String(sid).slice(0, 8)}).`;
+          claimWarn = `🔒 Cogida por tu sesión (${sidCorto(sid)}).`;
         } else {
           const [ahora] = await s.unsafe(`SELECT claimed_by, claimed_at FROM public.${dtbl} WHERE id=$1`, [did]);
           const mins = ahora?.claimed_at ? Math.round((Date.now() - new Date(ahora.claimed_at).getTime()) / 60000) : '?';
-          claimWarn = `⛔ NO ES TUYA: la tiene la sesión ${String(ahora?.claimed_by || '?').slice(0, 12)} (hace ${mins}m) y sigue viva.\n`
+          claimWarn = `⛔ NO ES TUYA: la tiene la sesión ${sidCorto(ahora?.claimed_by)} (hace ${mins}m) y sigue viva.\n`
             + `   NO la trabajes ni resuelvas: coge otra con  node scripts/impugnaciones/cola.cjs next`;
         }
       } catch (e) { claimWarn = `(claim no aplicado: ${e.message})`; }

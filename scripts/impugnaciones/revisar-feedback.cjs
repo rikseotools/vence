@@ -20,6 +20,7 @@ const pg = require('postgres');
 const { scopeEnforcement } = require('./lib/scope-enforcement.cjs');
 // Regla «cada hilo se responde en SU hilo» (30/07, caso Chema): núcleo puro y testeado.
 const { analizarHilos } = require('../lib/hilos-abiertos.cjs');
+const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
 
 function getUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
@@ -74,10 +75,10 @@ const ago = (d) => {
         `UPDATE public.user_feedback SET claimed_by=$1, claimed_at=now()
           WHERE id=$2 AND ${sqlReservaLibre('', '$1')} RETURNING claimed_by`, [sid, fid]);
       if (got.length) {
-        claimWarn = `🔒 Cogido por tu sesión (${String(sid).slice(0, 8)}).`;
+        claimWarn = `🔒 Cogido por tu sesión (${sidCorto(sid)}).`;
       } else {
         const [ahora] = await s`SELECT claimed_by, claimed_at FROM user_feedback WHERE id=${fid}`;
-        claimWarn = `⛔ NO ES TUYO: lo tiene la sesión ${String(ahora?.claimed_by || '?').slice(0, 12)} (desde hace ${ahora?.claimed_at ? ago(ahora.claimed_at) : '?'}) y sigue viva.\n`
+        claimWarn = `⛔ NO ES TUYO: lo tiene la sesión ${sidCorto(ahora?.claimed_by)} (desde hace ${ahora?.claimed_at ? ago(ahora.claimed_at) : '?'}) y sigue viva.\n`
           + `   NO lo trabajes ni respondas: coge otro con  node scripts/impugnaciones/cola.cjs next`;
       }
     }

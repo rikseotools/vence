@@ -1303,26 +1303,6 @@ como núcleo puro + kind del barrido (`pregunta_estructural_sin_articulo_cero`),
 que **no pingan el badge** (precisión ~85% medida, se adjudica leyendo). Hoy la única forma de
 enterarse es que lo impugne un usuario, que es exactamente lo que pasó.
 
-### [T-538] 🟡 [ABIERTO 04/08] `cola.cjs list` trunca el `claimed_by` a 8 caracteres y hace pasar por tuya la reserva de otra sesión
-
-- **Cazado el 04/08** resolviendo la cola de impugnaciones desde el worktree `imp-04ago-c`. `cola.cjs list` pintaba **seis** impugnaciones como `🔒 imp-04ag — reservada hace 0.2 h (suelo de 2 h)`. Las seis eran de OTRAS sesiones:
-  | dispute | `claimed_by` real |
-  |---|---|
-  | `30c8af0c` | `imp-04ago-g-fedora-73618e` |
-  | `a85c9faa` | `imp-04ago-e-fedora-b6a253` |
-  | `1c8fd75a` | `imp-04ago-d-fedora-75459b` |
-  | `70110a29` · `381188b5` · `0bbce41a` | `imp-04ago-b-fedora-45b0da` |
-- **El defecto no es el truncado, es que el truncado ocurre justo donde vive la distinción.** El sid se corta a 8 caracteres y la convención de nombres de `crear-worktree.sh` es `<nombre-de-sesión>-<host>-<hash>`; con varias sesiones abiertas el mismo día, `imp-04ago-b`, `-c`, `-d`, `-e` y `-g` **colapsan todas en `imp-04ag`**. Cuantas más sesiones en paralelo —que es el caso para el que se construyó la cola— más se parecen entre sí las etiquetas.
-- **Por qué es peligroso y no cosmético:** `list` es la pantalla desde la que se decide qué coger. Leída de buena fe, decía que seis impugnaciones ajenas ya eran mías, que es exactamente la colisión que el claim existe para impedir. Y el fallo **no avisa**: no hay error, no hay línea roja; se lee y se sigue.
-- **Lo que salvó el caso fue una contradicción, no la pantalla:** `cola.cjs mine` decía «No tienes claims activos» a la vez que `list` mostraba seis con mi prefijo. Ese desacuerdo obligó a ir a la BD. Sin dos comandos que se contradijeran, no había señal.
-- **El dossier SÍ lo hace bien** (`revisar-impugnacion.cjs` imprime «🔒 Cogida por **tu sesión** (imp-04ag)»): compara el sid entero y dice de quién es. O sea que el dato está y la lógica ya existe en el repo — es `list` quien la tira al formatear.
-- **Arreglo propuesto** (en `scripts/impugnaciones/cola.cjs`, donde se compone la línea):
-  1. Decir la RELACIÓN, no el identificador: `🔒 TUYA` / `🔒 otra sesión (imp-04ago-b)`. Es lo que el lector necesita decidir, y no depende de cuántos caracteres quepan.
-  2. Si se conserva el sid, truncar por el **segmento distintivo** (`imp-04ago-b`), nunca por longitud fija — el hash del final es lo único prescindible.
-  3. Núcleo puro con test que fije el caso: dos sids que comparten los primeros 8 caracteres tienen que renderizarse distinto.
-- **Guardarraíl que lo mantiene:** un test que llame al formateador con `imp-04ago-b-fedora-45b0da` y `imp-04ago-c-fedora-eca3f1` y exija que las dos líneas se distingan. Sin él, cualquier cambio de anchura lo reintroduce.
-- **Mirar de paso si el mismo truncado está en otros listados** que muestren `claimed_by` (`backlog.cjs list`, paneles admin): la causa es el formateo, no la cola de impugnaciones.
-
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
 - **Esfuerzo: sesion_propia.** Toca el andamiaje del que dependen 2-10 sesiones a la vez; hacerlo deprisa es peor que no hacerlo.
@@ -4350,6 +4330,24 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
   - **Al reparar: COMPLETAR la frase contra el artículo vinculado, NUNCA poner un punto donde se cortó.** El punto tapa el hueco y deja al opositor sin la parte que faltaba, que es peor que el defecto original porque ya no se nota.
   - **NO confundir con `explicacion_estructura_rota`**, que es la hermana: allí el texto está entero y se PINTA mal; aquí falta texto.
 
+
+### [T-538] ✅ [HECHA 04/08] Un sid abreviado a 8 caracteres hacía pasar por propias las reservas de otras sesiones
+
+- **Cazado el 04/08** resolviendo la cola de impugnaciones desde el worktree `imp-04ago-c`. `cola.cjs list` pintaba **seis** impugnaciones con un candado y el texto `imp-04ag`. Las seis eran de OTRAS sesiones (`imp-04ago-b`, `-d`, `-e`, `-g`), y más tarde pasó igual con dos feedbacks: **ocho filas ajenas leídas como propias** en una sola sesión.
+- **CORRECCIÓN al diagnóstico inicial de esta ficha:** el icono SÍ distinguía (`🙋 TUYA` frente a `🔒`). El defecto era otro y más fino: junto al candado se imprimía **el mismo texto** que el nombre de quien miraba, y **lo que se lee es el nombre, no el emoji**. Un candado al lado de tu propio nombre se lee «cerrada por ti». Merecía comprobarse antes de escribir el arreglo.
+- **La causa real, que era más ancha de lo que parecía:** ONCE sitios recortaban el sid a mano, unos a 8 caracteres y otros a 12. La forma canónica de `nuevoSid` es `<nombre>-<máquina>-<azar>`, con **lo distintivo al principio**, así que recortar por longitud fija corta justo por donde no es. A 8 caracteres, las cinco sesiones abiertas ese día se escriben idénticas.
+- **Lo que dio la señal no fue la pantalla**, fue que `cola.cjs mine` decía «no tienes claims activos» mientras `list` mostraba seis con ese prefijo. Sin dos comandos que se contradijeran, no había aviso — y hubo que ir tres veces a la BD.
+- **Arreglo, en un solo sitio:** `sidCorto()` en `lib/sessions/sid.cjs`, que ya es la fuente única de identidad desde [T-407]. Abrevia **por segmento**: tira máquina y azar, conserva el nombre entero (que es el del worktree, o sea lo que la persona ve en su terminal). Si el sid no tiene esa forma —uno antiguo, un UUID de `CLAUDE_CODE_SESSION_ID`— **no se toca**: más vale una línea larga que una abreviatura que colisiona. Los 7 módulos que enseñan un sid lo usan; ninguno recorta ya por su cuenta.
+- **Y las etiquetas dicen la RELACIÓN, no solo el id:** `🙋 TUYA` / `🔒 otra sesión (imp-04ago-b)`. Quien lee la cola no necesita un identificador, necesita saber si puede cogerlo.
+- **Capas:**
+  | capa | qué fija |
+  |---|---|
+  | `__tests__/sessions/sidCorto.test.ts` (10) | las cinco sesiones hermanas se escriben distinto; inverso de `nuevoSid`; no mangla lo que no reconoce |
+  | `__tests__/guardrails/sidSinTruncarAMano.guardrail.test.ts` (13) | trinquete: nadie vuelve a recortar un sid a mano |
+  | verificación | **reintroducido el bug: 3 tests en rojo**. Un test que nunca ha visto fallar no prueba nada |
+- **Dos cosas que el propio guardarraíl encontró al escribirse:** (a) quedaban **dos** recortes más que se me habían pasado (`cola.cjs` release-all y el «NO ES TUYO» de `revisar-feedback`); (b) mi primera regla daba **falso positivo** con `${String(row.user_id).slice(0, 8)}` —el id de un USUARIO, que no es un sid y se puede abreviar sin riesgo—. Se corrigió mirando la ventana inmediatamente anterior al recorte: un guardarraíl que marca lo correcto se aprende a ignorar, y entonces deja de proteger.
+- **Decisión anotada:** un sid sin máquina queda en dos segmentos (`sesion-abc123`) y **no se poda**, porque no se puede distinguir de un nombre legítimo cuyo segundo segmento parezca hexadecimal (`deploy-abcdef`). Entre una línea más larga y podar un nombre real, se deja larga.
+- Registrado en `toolRegistry` y en `docs/runbooks/sistema-sesiones-paralelas.md` §3.3.
 
 ### [T-542] ✅ [HECHA 04/08] La puerta de temario decía «queda contado» y no contaba nada: el emisor de fricción estaba copiado en cada guardarraíl y el sexto no lo escribió
 

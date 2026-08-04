@@ -1504,6 +1504,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'código original), guardarraíl `puertasQueCuentan.guardrail` con TRINQUETE sobre las 6 ' +
       'copias privadas restantes, y `npm run sim:friccion-puertas` de extremo a extremo contra RDS.',
   },
+  sid_corto: {
+    titulo: 'Cómo se escribe un session-id en pantalla sin que colisione con el de otra sesión',
+    ruta: 'lib/sessions/sid.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`sidCorto(sid)`. Abrevia por SEGMENTO, nunca por longitud: la forma canónica de `nuevoSid` ' +
+      'es `<nombre>-<máquina>-<azar>`, con lo distintivo al principio, así que recortar a 8 ó 12 ' +
+      'caracteres corta por donde no es. **Medido el 04/08 (T-538):** con cinco sesiones abiertas ' +
+      'el mismo día (`imp-04ago-b/c/d/e/g`) las cinco se escribían `imp-04ag`, y `cola.cjs list` ' +
+      'marcaba con candado seis reservas AJENAS junto al nombre que quien miraba leía como suyo — ' +
+      'el icono distinguía y el texto no. Ocho filas ajenas leídas como propias en una sesión. ' +
+      'Si el sid no tiene esa forma (uno antiguo, un UUID de CLAUDE_CODE_SESSION_ID) NO se toca: ' +
+      'más vale largo que colisionando. Y las etiquetas dicen la RELACIÓN («🙋 TUYA» / «🔒 otra ' +
+      'sesión (imp-04ago-b)»), no solo el id. Guardarraíl: ' +
+      '`__tests__/guardrails/sidSinTruncarAMano.guardrail.test.ts` (recorre los 7 módulos que ' +
+      'enseñan un sid y distingue un sid del id de un usuario) + `__tests__/sessions/sidCorto.test.ts`.',
+  },
   puertas_que_cuentan: {
     titulo: 'Una puerta que bloquea tiene que contarse (guardarraíl)',
     ruta: 'lib/calidad/puertasQueCuentan.cjs',

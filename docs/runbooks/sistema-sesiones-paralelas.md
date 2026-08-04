@@ -108,6 +108,35 @@ entorno. **El fichero gana** porque es del worktree y describe dónde estás tra
 > a sí misma como ajena. Todo el andamiaje cuelga de este identificador: si dos herramientas
 > discrepan, el sistema **miente sin romperse**, que es la peor forma de fallar.
 
+#### Y la identidad también se ESCRIBE en un solo sitio — `sidCorto()` (T-538)
+
+Un sid entero no cabe en una tabla, así que **once sitios lo recortaban a mano**, unos a 8
+caracteres y otros a 12. Ahí estaba el fallo: la forma canónica es `<nombre>-<máquina>-<azar>`, con
+**lo distintivo al principio y lo prescindible al final**, de modo que cortar por longitud fija
+corta justo por donde no es.
+
+Medido el 04/08 con cinco sesiones abiertas el mismo día — `imp-04ago-b`, `-c`, `-d`, `-e`, `-g` —:
+a 8 caracteres **las cinco se escriben `imp-04ag`**. La cola marcaba con un candado seis reservas
+ajenas y, al lado del candado, el nombre que quien miraba reconocía como suyo. El icono distinguía;
+el texto, que es lo que se lee, decía lo contrario. **Ocho filas ajenas leídas como propias en una
+sola sesión**, y tres viajes a la base de datos para deshacer el equívoco. Lo que dio la señal no
+fue la pantalla, fue que `cola.cjs mine` decía «no tienes claims» mientras `list` mostraba seis con
+ese prefijo: **sin dos comandos que se contradijeran, no había aviso**.
+
+Las dos reglas que salen de ahí:
+
+1. **Se abrevia por SEGMENTO, nunca por longitud.** `sidCorto()` tira máquina y azar —que no
+   identifican nada para un humano— y conserva el nombre entero, que es el del worktree y por tanto
+   lo que la persona ve en su terminal. Si el sid no tiene esa forma (uno antiguo, un UUID de
+   `CLAUDE_CODE_SESSION_ID`), **no se toca**: más vale una línea larga que una abreviatura que
+   colisiona.
+2. **Se dice la RELACIÓN, no solo el identificador.** `🙋 TUYA` / `🔒 otra sesión (imp-04ago-b)`.
+   Quien lee la cola no necesita un id, necesita saber si puede cogerlo.
+
+Guardarraíl: `__tests__/guardrails/sidSinTruncarAMano.guardrail.test.ts` recorre los módulos que
+enseñan un sid y falla si alguno vuelve a recortarlo por su cuenta; distingue un sid del id de un
+usuario, porque un guardarraíl que marca lo correcto se aprende a ignorar.
+
 ### 3.3.bis La MÁQUINA es la otra mitad de la identidad (T-484)
 
 Con sesiones fuera del portátil (servidores, contenedores) la pregunta deja de ser «quién soy» y

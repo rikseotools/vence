@@ -42,6 +42,9 @@ const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_tim
 // mira si la sesión dueña sigue LATIENDO. Así una revisión larga pero viva conserva su reserva,
 // y un ordenador apagado la suelta sola. Ver lib/impugnaciones/reserva.cjs.
 const { sqlReservaLibre, etiquetaReserva } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
+// Abreviar un sid es cosa de `sid.cjs` (T-538): a 8 caracteres, cinco sesiones del mismo día se
+// escriben igual y el listado hacía pasar por propias las reservas ajenas.
+const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
 
 // Tablas de cada cola: [tabla, estados-abiertos, herramienta/flujo a usar]
 const DISPUTE_TBL = [
@@ -207,7 +210,7 @@ async function inconsistentesResueltasEnPending() {
       const row = await claimFrom(list);
       if (!row) { console.log(`Sin items libres en la cola "${queue}" (todo cogido o vacío).`); return; }
       const sibs = row.siblings || [];
-      console.log(`✅ CLAIM hecho por ${sid.slice(0, 8)} (usuario ${String(row.user_id).slice(0, 8)}):`);
+      console.log(`✅ CLAIM hecho por ${sidCorto(sid)} (usuario ${String(row.user_id).slice(0, 8)}):`);
       console.log(`   id:   ${row.id}`);
       console.log(`   tipo: [${row.kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
       if (sibs.length) {
@@ -255,7 +258,7 @@ async function inconsistentesResueltasEnPending() {
           [sid, open, id]
         );
         if (!row) continue;
-        console.log(`✅ CLAIM hecho por ${sid.slice(0, 8)} (usuario ${String(row.user_id ?? '?').slice(0, 8)}):`);
+        console.log(`✅ CLAIM hecho por ${sidCorto(sid)} (usuario ${String(row.user_id ?? '?').slice(0, 8)}):`);
         console.log(`   id:   ${row.id}`);
         console.log(`   tipo: [${kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
         if (row.user_id != null) {
@@ -298,7 +301,7 @@ async function inconsistentesResueltasEnPending() {
           `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]);
         n += res.length;
       }
-      console.log(`✅ Liberados ${n} claims del sid ${sid.slice(0, 12)}.`);
+      console.log(`✅ Liberados ${n} claims del sid ${sidCorto(sid)}.`);
       return;
     }
 

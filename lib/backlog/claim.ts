@@ -1,4 +1,5 @@
 // lib/backlog/claim.ts — lógica PURA del claim del backlog (sin BD, testeable directa).
+const { sidCorto } = require('../sessions/sid.cjs')
 //
 // Vive aparte del CLI (scripts/backlog.cjs) para que los tests importen la función REAL
 // de producción y no una copia (una copia da falso verde cuando el original cambia).
@@ -66,7 +67,7 @@ export function claimBlockedReason(task: BacklogTask, sid: string, now: Date = n
   if (CLOSED_STATUSES.includes(task.status)) return `ya está cerrada (${task.status})`
   const lease = task.lease_until == null ? null : new Date(task.lease_until)
   const mins = lease ? Math.max(0, Math.round((lease.getTime() - now.getTime()) / 60000)) : 0
-  return `la tiene ${String(task.claimed_by).slice(0, 12)} (lease vivo, ${mins} min)`
+  return `la tiene ${sidCorto(task.claimed_by)} (lease vivo, ${mins} min)`
 }
 
 /**
