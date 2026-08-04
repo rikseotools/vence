@@ -19,8 +19,8 @@ const { execFileSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..')
 const { evaluarIndice, mensajeBloqueo, evaluarEscape, esCommitParcial } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
-const { resolverSid, rol } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
-const { cegueraBloquea, mensajeCeguera } = require(path.join(REPO, 'lib', 'sessions', 'preflight.cjs'))
+const { resolverSid, rol, hogar, esTrabajador } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+const { cegueraBloquea, mensajeCeguera, evaluarUbicacion } = require(path.join(REPO, 'lib', 'sessions', 'preflight.cjs'))
 
 /** Registrar el roce sin bloquear NUNCA (T-423). */
 function friccion(clase, guard, detalle) {
@@ -58,6 +58,36 @@ async function main() {
   // máquinas distintas no comparten índice, y sin este dato el guard las bloqueaba en falso.
   const { sid, host } = resolverSid({ repo: REPO })
   if (!sid) return 0                                   // sin identidad no se puede afirmar nada
+
+  // ── COMMITEAR EN EL ÁRBOL DE OTRA SESIÓN (T-539) ─────────────────────────────────────────
+  // Este guard existe para que el `git add` de una sesión no entre en el commit de otra. Hay una
+  // variante que no podía ver: que el proceso ENTERO esté en el árbol ajeno — ahí adopta su
+  // `.session-id` y se vuelve indistinguible de su dueña, así que la comparación de compañeras de
+  // abajo da «estás solo» y deja pasar. Se detecta con el único ancla que sobrevive a un cambio de
+  // directorio: el hogar declarado por quien arrancó al trabajador.
+  //
+  // Solo para TRABAJADORES: a una persona que se cambia de árbol a propósito no hay que pararla.
+  {
+    const casa = hogar()
+    let aqui = null
+    try {
+      aqui = execFileSync('git', ['rev-parse', '--show-toplevel'],
+        { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+    } catch { /* sin git no se afirma nada */ }
+    if (esTrabajador() && evaluarUbicacion(casa, aqui) === 'fuera') {
+      console.error('')
+      console.error('⛔ COMMIT BLOQUEADO — estás commiteando en un árbol que NO es el tuyo.')
+      console.error(`   tu árbol:  ${casa}`)
+      console.error(`   estás en:  ${aqui}`)
+      console.error('')
+      console.error('   Aquí adoptas el .session-id de la sesión dueña, así que ni ella ni git pueden')
+      console.error('   distinguir tu trabajo del suyo. Vuelve a tu árbol y repite el comando desde allí.')
+      console.error('')
+      friccion('guard_bloqueo', 'indice-compartido', `arbol ajeno: ${aqui}`)
+      friccion('indice_compartido', 'indice-compartido', `${host || '?'}:${aqui} (proceso fuera de su hogar)`)
+      return 1
+    }
+  }
 
   let worktreePath = null
   try {

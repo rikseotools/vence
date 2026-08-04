@@ -94,6 +94,31 @@ async function main() {
     afirmar('la PERSONA pasa avisada', pgPersona.code === 0, `exit=${pgPersona.code}`)
   }
 
+  // ── 3.bis. EL PROCESO EN EL ÁRBOL DE OTRA SESIÓN (T-539) ────────────────────────────────
+  // El caso que reportó el trabajador del piloto: su `cwd` se reiniciaba entre comandos y acababa
+  // ejecutando en el árbol de otra sesión. Ahí adopta su `.session-id`, así que el guard de índice
+  // compartido ve «estás solo» y deja pasar — es [T-415] por una puerta que no se podía ver.
+  console.log('\n▸ 3.bis. commitear desde el árbol de OTRA sesión')
+  const FUERA = { VENCE_SESSION_HOME: '/home/manuel/vence-sessions/un-arbol-que-no-es-el-mio' }
+  const aquiMismo = { VENCE_SESSION_HOME: REPO }
+
+  const trabFuera = correr('scripts/check-indice-compartido.cjs', [], { ...FUERA, VENCE_SESSION_ROLE: 'trabajador' })
+  afirmar('al TRABAJADOR se le para el commit', trabFuera.code === 1, `exit=${trabFuera.code}`)
+  afirmar('y se le dicen los DOS árboles, para que sepa a dónde volver',
+    /tu árbol/.test(trabFuera.salida) && /estás en/.test(trabFuera.salida))
+
+  const trabCasa = correr('scripts/check-indice-compartido.cjs', [], { ...aquiMismo, VENCE_SESSION_ROLE: 'trabajador' })
+  afirmar('en SU árbol no le estorba', trabCasa.code === 0, `exit=${trabCasa.code}`)
+
+  // Una persona se cambia de árbol a propósito continuamente: pararla sería el falso positivo que
+  // acaba con un guardarraíl.
+  const personaFuera = correr('scripts/check-indice-compartido.cjs', [], FUERA)
+  afirmar('a una PERSONA fuera de ese árbol no se la para', personaFuera.code === 0, `exit=${personaFuera.code}`)
+
+  // Y sin hogar declarado, exactamente como antes de T-539: nadie dijo dónde debería estar.
+  const sinHogar = correr('scripts/check-indice-compartido.cjs', [], { VENCE_SESSION_ROLE: 'trabajador' })
+  afirmar('sin hogar declarado no se inventa el requisito', sinHogar.code === 0, `exit=${sinHogar.code}`)
+
   // ── 4. CON BD: la sesión queda VISIBLE y deja veredicto ──────────────────────────────────
   console.log('\n▸ 4. preflight CON BD: la sesión aparece en el reparto y deja rastro')
   const u = url()

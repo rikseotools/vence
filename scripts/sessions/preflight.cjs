@@ -20,8 +20,8 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..', '..')
-const { resolverSid, rol } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
-const { evaluarPreflight, mensajePreflight, severidadPreflight } =
+const { resolverSid, rol, hogar } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+const { evaluarPreflight, mensajePreflight, severidadPreflight, evaluarUbicacion } =
   require(path.join(REPO, 'lib', 'sessions', 'preflight.cjs'))
 
 const VERBOSE = process.argv.includes('--verbose')
@@ -52,6 +52,14 @@ function pedirLatido() {
 async function main() {
   const { sid, host } = resolverSid({ repo: REPO })
   const miRol = rol()
+  // ¿Estoy en MI árbol? Solo se puede saber si alguien declaró cuál es el mío: el sid y el latido
+  // se derivan del directorio, así que al mudarse cambian con él y todo vuelve a cuadrar (T-539).
+  let aqui = null
+  try {
+    aqui = execFileSync('git', ['rev-parse', '--show-toplevel'],
+      { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+  } catch { /* sin git no se puede afirmar nada, y no afirmar es la respuesta correcta */ }
+  const ubicacion = evaluarUbicacion(hogar(), aqui)
 
   let coordinacion = null
   let latido = null
@@ -83,7 +91,7 @@ async function main() {
     // El veredicto se emite con la MISMA conexión que acaba de probarse: si no se pudo emitir, la
     // sesión tampoco estaba completa, así que no se pierde información por callarlo.
     if (s) {
-      const v = evaluarPreflight({ sid, host, coordinacion, latido, rol: miRol })
+      const v = evaluarPreflight({ sid, host, coordinacion, latido, rol: miRol, ubicacion })
       if (coordinacion) {
         try {
           await s`
@@ -91,14 +99,14 @@ async function main() {
             VALUES ('fargate', ${severidadPreflight(v)}, 'sesion_preflight', 'sesiones',
                     ${v.motivo},
                     ${s.json({ sid, host, rol: miRol, veredicto: v.veredicto,
-                               faltas: v.faltas.map((f) => f.clave), cwd: process.cwd() })})`
+                               faltas: v.faltas.map((f) => f.clave), ubicacion, hogar: hogar(), cwd: process.cwd() })})`
         } catch { /* la observabilidad nunca decide si se puede trabajar */ }
       }
       try { await s.end({ timeout: 3 }) } catch {}
     }
   }
 
-  const v = evaluarPreflight({ sid, host, coordinacion, latido, rol: miRol })
+  const v = evaluarPreflight({ sid, host, coordinacion, latido, rol: miRol, ubicacion })
   console.log(mensajePreflight(v))
   return v.puedeTrabajar ? 0 : 1
 }

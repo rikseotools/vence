@@ -464,7 +464,28 @@ garantía. Vive en `lib/sessions/sid.cjs` porque es identidad, junto a «quién 
 ```
 npm run sesion:preflight                                   # persona: avisa
 VENCE_SESSION_ROLE=trabajador npm run sesion:preflight      # trabajador: exit 1 si no está listo
+
+# Y al ARRANCAR un trabajador, las dos variables juntas — las declara el lanzador, no él:
+VENCE_SESSION_ROLE=trabajador VENCE_SESSION_HOME=/ruta/a/su/worktree  <arranque del trabajador>
 ```
+
+#### `VENCE_SESSION_HOME`: el ancla que sobrevive al cambio de directorio
+
+La identidad de este sistema la manda el **sitio** (§3.3: el `.session-id` del directorio gana). Es
+lo correcto para una persona, y tiene una consecuencia que solo se ve con procesos autónomos: **si
+un trabajador acaba en el árbol de otra sesión, adopta su identidad y se vuelve indistinguible de
+ella**. El sid, el latido y la huella se derivan todos del directorio, así que al mudarse cambian
+con él y **todo vuelve a cuadrar**. No hay nada dentro del repositorio con lo que notarlo.
+
+Lo reportó el trabajador en la primera vuelta del piloto: *«hice `cd` a mi worktree y la llamada
+siguiente ya estaba de vuelta en el otro… un comando que yo creía ejecutando en mi worktree se
+habría ejecutado en el directorio de otra sesión»*. Tuvo que prefijar unas veinte llamadas con `cd`.
+Es [T-415] por otra puerta, y esa ya costó un commit con el trabajo de otra sesión dentro.
+
+Por eso el hogar lo declara **quien arranca al trabajador**: es el único dato que no se mueve con
+el directorio. Con él puesto, el `pre-commit` **para** a un trabajador que va a commitear fuera de
+su árbol y le dice a dónde volver. Sin él, no opina — una persona se cambia de árbol a propósito
+continuamente, y pararla sería el falso positivo que acaba con un guardarraíl.
 
 Tres cosas que hacen que esto no sea un informe más:
 

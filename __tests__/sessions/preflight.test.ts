@@ -12,8 +12,10 @@
 // que lo distinguiera de una sesión sana.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { evaluarPreflight, mensajePreflight, severidadPreflight, cegueraBloquea, mensajeCeguera } =
+const { evaluarPreflight, mensajePreflight, severidadPreflight, evaluarUbicacion, cegueraBloquea, mensajeCeguera } =
   require('@/lib/sessions/preflight.cjs')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { hogar } = require('@/lib/sessions/sid.cjs')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { rol, rolDeclarado, esTrabajador } = require('@/lib/sessions/sid.cjs')
 
@@ -137,6 +139,55 @@ describe('rol de sesión', () => {
     it('un valor desconocido no es una declaración', () => {
       expect(rolDeclarado({ env: { VENCE_SESSION_ROLE: 'robot' } })).toBeNull()
     })
+  })
+})
+
+// ── ESTAR EN EL ÁRBOL DE OTRA SESIÓN (T-539) ────────────────────────────────────────────────
+// La identidad la manda el SITIO, así que un proceso que acaba en el árbol ajeno adopta su
+// `.session-id` y se vuelve indistinguible de su dueña: el sid, el latido y la huella se derivan
+// todos del directorio, así que al mudarse cambian con él y todo vuelve a cuadrar. Lo reportó el
+// trabajador en la 1ª vuelta del piloto —su `cwd` se reiniciaba entre comandos— y es [T-415] por
+// otra puerta. El único ancla que sobrevive a un cambio de directorio es el entorno del proceso.
+describe('¿estoy en MI árbol?', () => {
+  const CASA = '/home/manuel/vence-sessions/piloto-t533'
+
+  it('mismo árbol → ok, y una barra final no cambia el veredicto', () => {
+    expect(evaluarUbicacion(CASA, CASA)).toBe('ok')
+    expect(evaluarUbicacion(`${CASA}/`, CASA)).toBe('ok')
+  })
+
+  it('otro árbol → fuera', () => {
+    expect(evaluarUbicacion(CASA, '/home/manuel/vence-sessions/t486-flota')).toBe('fuera')
+  })
+
+  // Un falso positivo aquí manda a alguien a mudarse sin motivo, y a la tercera deja de hacer caso.
+  it.each([
+    ['nadie declaró el hogar', null, '/x'],
+    ['no se sabe dónde estoy', CASA, null],
+    ['ninguno de los dos', null, null],
+  ])('%s → no se acusa', (_c, casa, aqui) => {
+    expect(evaluarUbicacion(casa as any, aqui as any)).toBe('no_declarado')
+  })
+
+  it('el hogar lo declara el ENTORNO, no la sesión, y sin variable no hay hogar', () => {
+    expect(hogar({ env: {} })).toBeNull()
+    expect(hogar({ env: { VENCE_SESSION_HOME: `${CASA}/` } })).toBe(CASA)
+  })
+
+  it('estar fuera cuenta como falta del preflight', () => {
+    const v = evaluarPreflight({ ...sana, ubicacion: 'fuera' })
+    expect(v.completo).toBe(false)
+    expect(v.faltas.map((f: any) => f.clave)).toContain('ubicacion')
+  })
+
+  it('«no declarado» NO cuenta como falta: es el caso de cualquier persona', () => {
+    expect(evaluarPreflight({ ...sana, ubicacion: 'no_declarado' }).completo).toBe(true)
+  })
+
+  it('a un TRABAJADOR fuera de su árbol se le impide trabajar', () => {
+    const v = evaluarPreflight({ ...sana, ubicacion: 'fuera', rol: 'trabajador' })
+    expect(v.puedeTrabajar).toBe(false)
+    expect(mensajePreflight(v)).toMatch(/NO es el suyo/)
   })
 })
 

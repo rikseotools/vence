@@ -1752,7 +1752,11 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`.env.local` —la condición NORMAL de un worktree de agente— : sesión invisible para el ' +
       'reparto y tres protecciones apagadas sin que nada lo dijera. Capas: 20 tests + ' +
       '`npm run sim:preflight-trabajador` (ejecuta los binarios reales y mira EXIT CODES, que es ' +
-      'lo que git obedece; provoca la ceguera con una URL inalcanzable, no quitando ficheros).',
+      'lo que git obedece; provoca la ceguera con una URL inalcanzable, no quitando ficheros). ' +
+      'Comprueba TAMBIÉN la ubicación: con `VENCE_SESSION_HOME` declarado por el lanzador, detecta ' +
+      'que el proceso está trabajando en el árbol de OTRA sesión — donde adopta su `.session-id` y ' +
+      'se vuelve indistinguible de ella, porque sid, latido y huella se derivan todos del ' +
+      'directorio. Es el único ancla que sobrevive a un cambio de cwd.',
   },
   indice_compartido: {
     titulo: 'Impedir que dos sesiones compartan el índice de git (pre-commit)',
