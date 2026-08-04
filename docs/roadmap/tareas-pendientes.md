@@ -842,6 +842,17 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-554] 🟢 [ABIERTO 04/08] El triaje epígrafe↔fuente solo corre cuando alguien lo pide: automatizarlo pide persistir el veredicto
+
+- **De dónde sale.** [T-552] construyó `npm run audit:epigrafe-fuente` y [T-553] le dio frase-gatillo, así que ya es invocable. Lo que NO tiene es quien lo mire solo: la cifra de hoy —**765 de 2.193 temas (35%) fuera de su fuente** y **44 de 126 oposiciones cuyo `programa_url` ni siquiera es un temario**— envejece sin que nada avise.
+- **Por qué no se metió en el barrido nocturno de una vez.** `health-sweep.cjs` hace `TRUNCATE content_health_findings` y **recalcula todo en cada pasada**. Un kind que necesita DESCARGAR el programa de cada oposición serían **126 descargas por noche** de una señal que solo cambia cuando alguien repunta una URL. Es el mismo derroche que este proyecto ya corrigió una vez: el cron `detect-notas-convocatoria` clonaba 750 documentos diarios y el 96% era de procesos que nadie estudia.
+- **Lo que hace falta, en orden:**
+  1. **Persistir el veredicto por `programa_url`**, para que una re-ejecución con la URL sin cambiar cueste cero descargas. El sitio natural es `convocatorias`, junto a `programa_last_hash` y `programa_last_checked`, que **ya existen** — la migración es additiva. Ojo: no vale apoyarse en `content_health_findings`, que el `TRUNCATE` nocturno vacía.
+  2. **El gemelo `@Cron` del backend** (`backend/src/content-health-sweep/`), con su guardarraíl de paridad.
+  3. **Deploy de backend.** Hasta entonces el kind está escrito e inerte — el modo de fallo de [T-118], que costó semanas.
+- **Y antes de nada, una decisión de fondo que lo simplifica todo:** `programa_url` **sirve a dos contratos** —el enlace del botón «Ver convocatoria» y la fuente del temario del Sistema 2— y mientras siga así ningún detector puede juzgarlo sin ambigüedad. Estaba apuntado hace días sin número; ahora lo tiene: **44 de 126 activas** son un botón razonable y una fuente inútil a la vez. **Separar el campo haría este kind trivial** y de paso desambiguaría a los tres detectores de enlace (`convocatoria_link_mismatch`, `_etiqueta_boletin`, `_enlace_no_boletin`). El guardarraíl que impide fundir los dos conceptos ya está puesto ([T-553]).
+- **Es 🟢 a propósito:** nada está roto y la herramienta se invoca con una frase. Lo que se gana es que el número no se quede viejo en silencio.
+
 ### [T-551] 🔴 [ABIERTO 04/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
 
 **El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
@@ -894,18 +905,6 @@ tema»). Félix es uno de esos tres premium. **Son dos fallos distintos y los do
 T-397 es que se pueda elegir (y pagar) una oposición vacía; esto es que, aun estando en esa
 situación, el contador le impide usar lo que sí funciona. Arreglar solo T-397 dejaría el contador
 mintiendo a cualquiera que en el futuro acote a una oposición en construcción.
-
-### [T-553] 🟢 [ABIERTO 04/08] El triaje epígrafe↔fuente ya tiene frase-gatillo; su barrido NOCTURNO pide migración y no cabía de propina
-
-- **HECHO:** las dos salidas de `npm run audit:epigrafe-fuente` ([T-552]) están registradas como kinds on-demand con la frase **«revisa los temarios contra su fuente»** (`runbookRegistry` + CLAUDE.md + runbook), igual que `audita la landing`. Así el triaje se invoca con una frase en vez de quedarse en la terminal de quien lo escribió.
-- **LO QUE FALTA, y por qué no se hizo en el mismo movimiento:** meterlo en el barrido nocturno **no es añadir un kind**. `health-sweep.cjs` hace `TRUNCATE content_health_findings` y **recalcula todo en cada pasada**, así que un kind que necesita DESCARGAR el programa de cada oposición serían **126 descargas por noche** — de una señal que solo cambia cuando alguien repunta una URL. Es exactamente el derroche que este proyecto ya corrigió una vez (el cron que clonaba 750 documentos diarios para tirar el 96%).
-- **Lo que costaría de verdad, que es la razón de esta ficha:**
-  1. **Persistir el veredicto** por `programa_url` para no re-descargar lo que no ha cambiado → migración (columna en `convocatorias`, junto a `programa_last_hash`/`programa_last_checked`, que ya existen) o un mecanismo que sobreviva al `TRUNCATE`.
-  2. **El gemelo `@Cron` del backend** (`backend/src/content-health-sweep/`), con su guardarraíl de paridad.
-  3. **Deploy de backend** — hasta entonces el kind estaría escrito e inerte (el modo de fallo de T-118).
-- **Y hay una decisión de fondo debajo que conviene tomar antes de automatizar nada:** `programa_url` **sirve a dos contratos** —el enlace del botón «Ver convocatoria» y la fuente del temario del Sistema 2— y por eso ningún detector puede juzgarlo sin ambigüedad. Estaba apuntado hace días como «tarea propia»; [T-552] le puso precio: **44 de 126 activas** sirven como botón razonable y como fuente del temario NO valen. Separar el campo haría este kind trivial y arreglaría de paso a los tres detectores de enlace.
-- **Es 🟢 a propósito:** nada está roto y la herramienta ya es invocable. Lo que se gana automatizándola es que la cifra no envejezca sola.
-
 
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 
@@ -4379,6 +4378,19 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-553] ✅ [HECHA 04/08] El triaje epígrafe↔fuente ya tiene frase-gatillo; su barrido NOCTURNO pide migración y no cabía de propina
+
+- **HECHO:** las dos salidas de `npm run audit:epigrafe-fuente` ([T-552]) están registradas como kinds on-demand con la frase **«revisa los temarios contra su fuente»** (`runbookRegistry` + CLAUDE.md + runbook), igual que `audita la landing`. Así el triaje se invoca con una frase en vez de quedarse en la terminal de quien lo escribió.
+- **LO QUE FALTA, y por qué no se hizo en el mismo movimiento:** meterlo en el barrido nocturno **no es añadir un kind**. `health-sweep.cjs` hace `TRUNCATE content_health_findings` y **recalcula todo en cada pasada**, así que un kind que necesita DESCARGAR el programa de cada oposición serían **126 descargas por noche** — de una señal que solo cambia cuando alguien repunta una URL. Es exactamente el derroche que este proyecto ya corrigió una vez (el cron que clonaba 750 documentos diarios para tirar el 96%).
+- **Lo que costaría de verdad, que es la razón de esta ficha:**
+  1. **Persistir el veredicto** por `programa_url` para no re-descargar lo que no ha cambiado → migración (columna en `convocatorias`, junto a `programa_last_hash`/`programa_last_checked`, que ya existen) o un mecanismo que sobreviva al `TRUNCATE`.
+  2. **El gemelo `@Cron` del backend** (`backend/src/content-health-sweep/`), con su guardarraíl de paridad.
+  3. **Deploy de backend** — hasta entonces el kind estaría escrito e inerte (el modo de fallo de T-118).
+- **Y hay una decisión de fondo debajo que conviene tomar antes de automatizar nada:** `programa_url` **sirve a dos contratos** —el enlace del botón «Ver convocatoria» y la fuente del temario del Sistema 2— y por eso ningún detector puede juzgarlo sin ambigüedad. Estaba apuntado hace días como «tarea propia»; [T-552] le puso precio: **44 de 126 activas** sirven como botón razonable y como fuente del temario NO valen. Separar el campo haría este kind trivial y arreglaría de paso a los tres detectores de enlace.
+- **El nocturno tiene ficha propia: [T-554].** Aquí se cierra lo que era esta tarea —la frase-gatillo— y allí va lo que pide migración, gemelo de backend y deploy.
+
+
 
 ### [T-527] ✅ [HECHA 04/08] Las otras 3 universidades escopan el RD 534/2024 ENTERO con epígrafes que enumeran capítulos concretos
 
