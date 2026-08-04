@@ -72,3 +72,65 @@ describe('el test de un tema propio usa SU temario, no el de otra oposición', (
     expect(ruta).toMatch(/\[0-9a-f\]\{32\}/)
   })
 })
+
+/**
+ * CUARTO ESLABÓN MUDO: una personalizada VACÍA. [T-508]
+ *
+ * Los tres de arriba fijan que el circuito «mi oposición → mis tests» llegue a su sitio. Este
+ * fija qué pasa cuando el sitio existe pero está vacío, que es el estado NORMAL de la mayoría de
+ * las filas: el 03/08/2026, de 585 `custom_oposiciones` activas, **580 eran etiquetas del
+ * onboarding viejo con 0 temas** y solo 5 tenían temario.
+ *
+ * Falla mudo igual que los otros tres: nada peta, simplemente una usuaria premium pulsa 📚 y ve
+ * un 404 — pasó, y lo supimos porque escribió. Lo que se fija:
+ *
+ *  1. La ruta del temario distingue «no existe» (404, correcto) de «existe y está vacía»
+ *     (pantalla explicada). Si alguien vuelve a dejar que caiga en el `notFound()` del
+ *     componente compartido, vuelve el 404.
+ *  2. El texto de esa pantalla es UNO, compartido con la ruta de tests. Con dos copias, la
+ *     próxima corrección solo llega a una — que es exactamente cómo nació este bug (la de tests
+ *     lo explicaba, la de temario no).
+ *  3. Las dos puertas que deciden si se puede fijar como objetivo usan el MISMO criterio puro.
+ *     Escribir `temas > 0` a mano en cualquiera de ellas las separa el día que el criterio
+ *     cambie, y entonces la buena deja de proteger.
+ */
+describe('una personalizada vacía no es un 404', () => {
+  const rutaTemario = leer('app/oposicion-personalizada/[id]/temario/page.tsx')
+  const rutaTests = leer('app/oposicion-personalizada/[id]/test/page.tsx')
+  const boton = leer('components/oposicionPersonalizada/MisOposiciones.tsx')
+  const endpoint = leer('app/api/profile/target/route.ts')
+
+  it('la ruta del temario decide ELLA si está vacía, en vez de heredar el 404 del componente', () => {
+    expect(rutaTemario).toContain('personalizadaUtilizable')
+    expect(rutaTemario).toContain('AvisoTemarioVacio')
+  })
+
+  it('el texto del vacío es uno solo: las dos rutas usan el mismo componente', () => {
+    expect(rutaTests).toContain('AvisoTemarioVacio')
+    // Y ninguna se guarda una copia del texto por su cuenta.
+    expect(rutaTemario).not.toMatch(/aún no tiene temas con contenido/)
+    expect(rutaTests).not.toMatch(/aún no tiene temas con contenido/)
+  })
+
+  /**
+   * Se mira el CÓDIGO, no la prosa. La primera versión de esta comprobación daba rojo por el
+   * comentario que explica justamente por qué no hay que escribir `temas > 0` a mano — un
+   * guardarraíl que se dispara con las palabras en vez de con lo ejecutable acaba obligando a
+   * escribir peores comentarios para callarlo.
+   */
+  const sinComentarios = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '')
+
+  it('las DOS puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
+    for (const [nombre, fuente] of [['botón', boton], ['endpoint', endpoint]] as const) {
+      const codigo = sinComentarios(fuente)
+      expect(`${nombre}:${codigo.includes('personalizadaUtilizable')}`).toBe(`${nombre}:true`)
+      expect(`${nombre}:${/\.temas\s*>\s*0/.test(codigo)}`).toBe(`${nombre}:false`)
+    }
+  })
+
+  it('el rechazo del servidor deja rastro: sin evento no nos enteraríamos otra vez', () => {
+    expect(endpoint).toContain('objetivo_personalizado_vacio')
+    expect(rutaTemario).toContain('objetivo_personalizado_vacio')
+  })
+})

@@ -47,7 +47,39 @@ export function idCustomDe(objetivo: string): string | null {
 }
 
 /**
+ * ¿Esta personalizada se puede ESTUDIAR, o es solo una etiqueta? [T-508]
+ *
+ * ── LA FILA SIGNIFICA DOS COSAS Y NADA EN ELLA LO DICE ───────────────────────────────────────
+ *
+ * `custom_oposiciones` lleva viva desde diciembre de 2025 guardando lo que el onboarding viejo
+ * llamaba «mi oposición no está en vuestro catálogo»: un NOMBRE y nada más. T-327 montó encima
+ * de esa misma tabla el creador de temario propio. Medido el 03/08/2026: de 585 filas activas,
+ * **580 son etiqueta pura** (0 temas) y solo 5 tienen temario — todas de agosto.
+ *
+ * Ninguna columna distingue las dos cosas, así que cada lector tiene que deducirlo contando
+ * temas. El primero que se olvidó de deducirlo produjo el 404 que abre esta tarea: una usuaria
+ * premium fijó como objetivo su etiqueta de marzo y el icono 📚 del Header la mandó a una página
+ * que no existe.
+ *
+ * ── POR QUÉ VIVE AQUÍ Y NO EN CADA PUERTA ───────────────────────────────────────────────────
+ *
+ * Porque hay DOS sitios que deciden lo mismo —el botón «Hacer mi oposición objetivo» y el PUT de
+ * `/api/profile/target`— y dos puertas con criterios propios se separan a la primera. La de
+ * verdad es la del servidor; la del botón está para que el usuario no llegue a chocar con ella.
+ *
+ * @param temasActivos temas con `is_active` del `position_type` de esa personalizada
+ */
+export function personalizadaUtilizable(temasActivos: number | null | undefined): boolean {
+  return typeof temasActivos === 'number' && Number.isFinite(temasActivos) && temasActivos > 0
+}
+
+/**
  * ¿Es válido este objetivo? Es la pregunta que hoy contesta `ALL_OPOSICION_IDS.includes(id)`.
+ *
+ * ⚠️ Esto es el camino de LECTURA: contesta «¿sé pintar este objetivo?», no «¿se puede fijar?».
+ * A quien YA está en el estado roto no se le invalida el objetivo —eso le dejaría además sin
+ * menú—: se le enseña el temario vacío explicado. Quien decide si se PUEDE fijar es
+ * `personalizadaUtilizable`, en el punto de escritura.
  *
  * @param id            `target_oposicion`
  * @param estaEnCatalogo si el id está en el catálogo estático

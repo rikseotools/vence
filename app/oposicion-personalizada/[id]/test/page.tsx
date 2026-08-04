@@ -18,6 +18,7 @@ import { notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import { nombrePublico } from '@/lib/oposicionPersonalizada/nombrePublico'
+import AvisoTemarioVacio from '@/components/oposicionPersonalizada/AvisoTemarioVacio'
 
 // Es contenido de un usuario, cambia cuando él lo edita y no tiene valor de catálogo.
 export const dynamic = 'force-dynamic'
@@ -107,10 +108,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </header>
 
         {datos.temas.length === 0 ? (
-          <p className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-amber-900 dark:text-amber-100">
-            Este temario aún no tiene temas con contenido. Vuelve al editor y añade leyes y
-            artículos a algún tema.
-          </p>
+          // [T-508] El texto vive en el componente compartido: esta pantalla y la de `/temario`
+          // dicen lo mismo, y con dos copias volverían a separarse.
+          <AvisoTemarioVacio ctaEditor={false} />
         ) : (
           <ul className="space-y-3">
             {datos.temas.map((t) => {

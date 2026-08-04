@@ -13,6 +13,7 @@ import {
   idCustomDe,
   esObjetivoValido,
   rutaTestPersonalizada,
+  personalizadaUtilizable,
 } from '@/lib/oposicion/objetivoPersonalizado'
 
 const ID = 'personalizada_aaaaaaaabbbbccccddddeeeeeeeeeeee'
@@ -87,5 +88,38 @@ describe('la ruta de sus tests', () => {
   it('lo demás devuelve null para que el llamante use su camino de siempre', () => {
     expect(rutaTestPersonalizada('auxiliar_administrativo_estado')).toBeNull()
     expect(rutaTestPersonalizada(null)).toBeNull()
+  })
+})
+
+/**
+ * ¿Se puede ESTUDIAR, o es solo una etiqueta? [T-508]
+ *
+ * Nace de un 404 real: una usuaria premium fijó como objetivo su fila de marzo de
+ * `custom_oposiciones` —una etiqueta del onboarding viejo, sin un solo tema— y el icono 📚 del
+ * Header la mandó a `/oposicion-personalizada/<id>/temario`, que sin temario no existe.
+ *
+ * El criterio se fija aquí porque lo aplican DOS puertas (el botón «Hacer mi oposición
+ * objetivo» y el PUT de `/api/profile/target`) y dos puertas con criterios propios se separan.
+ */
+describe('una personalizada solo es estudiable si tiene temas', () => {
+  it('con al menos un tema, sí', () => {
+    expect(personalizadaUtilizable(1)).toBe(true)
+    expect(personalizadaUtilizable(37)).toBe(true)
+  })
+
+  it('a cero NO: es el caso que produjo el 404', () => {
+    expect(personalizadaUtilizable(0)).toBe(false)
+  })
+
+  it('«no lo sé» NO cuenta como sí — sin el dato no se afirma que se pueda estudiar', () => {
+    // Importa el sentido de la falta: si la consulta no trajo el número, el llamante tiene que
+    // decidir a propósito (hoy: fail-open en el servidor), no colarse por un `undefined > 0`.
+    expect(personalizadaUtilizable(null)).toBe(false)
+    expect(personalizadaUtilizable(undefined)).toBe(false)
+    expect(personalizadaUtilizable(NaN)).toBe(false)
+  })
+
+  it('un negativo tampoco (una fila corrupta no abre la puerta)', () => {
+    expect(personalizadaUtilizable(-3)).toBe(false)
   })
 })

@@ -556,7 +556,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     ruta: 'scripts/sim/sim-rutas-oposicion-personalizada.ts',
     estado: 'vivo',
     notas:
-      '`npm run sim:rutas-oposicion-personalizada [-- --free]`. Crea una oposición efímera con su ' +
+      '`npm run sim:rutas-oposicion-personalizada [-- --free] [-- --vacia]`. Crea una oposición efímera con su ' +
       'temario, la fija como objetivo y hace el recorrido entero: mira a dónde te manda el ' +
       '**Header**, **DESCUBRE** las rutas siguiendo cada enlace desde el hub (no las declara), ' +
       'entra en el tema y pulsa el botón de empezar. Se limpia sola; necesita `AUTH_SECRET`. ' +
@@ -575,7 +575,15 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'en el fichero, útiles para cualquier simulación de navegador: la cuenta de prueba tiene ' +
       'que parecerse al usuario (sin onboarding, el modal tapa la pantalla), no construir la URL ' +
       'a mano (el usuario llega pulsando un botón que pone otros parámetros), y una aserción ' +
-      'equivocada gasta la confianza igual que un fallo de código. Hermanas: ' +
+      'equivocada gasta la confianza igual que un fallo de código. 🆕 **`--vacia` (T-508): recorre ' +
+      'una oposición que EXISTE pero no tiene ni un tema**, que era el punto ciego de esta ' +
+      'simulación — creando siempre una oposición CON temario recorría el camino feliz y daba ' +
+      'verde mientras el caso MAYORITARIO estaba roto (03/08/2026: de 585 `custom_oposiciones` ' +
+      'activas, **580 sin un solo tema**, etiquetas del onboarding viejo). Ahí el icono 📚 daba ' +
+      '404 y una usuaria premium lo reportó. En ese modo no se exige el test (sin temas no hay ' +
+      'botón que pulsar: un rojo imposible de poner verde se deja de leer) sino que **ninguna ' +
+      'ruta MIENTA**, más la comprobación positiva de que la pantalla EXPLICA que faltan temas. ' +
+      'Hermanas: ' +
       '`sim:tests-oposicion-personalizada` y `sim:oposicion-personalizada`.',
   },
   tests_oposicion_personalizada: {

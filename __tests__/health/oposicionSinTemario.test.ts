@@ -117,3 +117,50 @@ describe('resumir', () => {
     expect(det.resumir([])).toEqual({ oposiciones: 0, usuarios: 0, premium: 0, conPremium: 0 })
   })
 })
+
+/**
+ * Las personalizadas del formato NUEVO se juzgan por los HECHOS. [T-508]
+ *
+ * Antes de esto el detector las listaba por accidente (el regex de exclusión solo reconoce el
+ * UUID pelado) mientras su pie de página anunciaba que estaban excluidas y «NO están rotas».
+ * Una salida que se desmiente a sí misma no es una señal: el 03/08/2026 ya traía a una usuaria
+ * premium con 0 temas —que ese mismo día escribió reportando el 404 que eso produce— y el texto
+ * de al lado mandaba ignorarla.
+ *
+ * Lo que se fija aquí es la ASIMETRÍA, que es lo que no es obvio:
+ *   · formato viejo (UUID pelado) → EXCLUIR siempre: sus temas cuelgan de otro `position_type`,
+ *     el join daría 0 para todas y contarlas fabrica hallazgos (ya pasó una vez).
+ *   · formato nuevo (`personalizada_<uuid>`) → MEDIR: aquí el target ES el `position_type`, así
+ *     que un 0 es un 0 de verdad.
+ */
+describe('personalizadas: cuál se mide y cuál no', () => {
+  const NUEVA = 'personalizada_cddb52fd92ea4cbb9e2223ad53a36adc'
+  const VIEJA = 'cddb52fd-92ea-4cbb-9e22-23ad53a36adc'
+
+  it('reconoce el formato nuevo y NO lo confunde con el viejo', () => {
+    expect(det.esPersonalizadaConTemarioPropio(NUEVA)).toBe(true)
+    expect(det.esPersonalizadaConTemarioPropio(VIEJA)).toBe(false)
+    expect(det.esOposicionPersonalizada(VIEJA)).toBe(true)
+    expect(det.esOposicionPersonalizada(NUEVA)).toBe(false)
+  })
+
+  it('una personalizada nueva y VACÍA es hallazgo, y premium la pone en rojo', () => {
+    const h = det.clasificarEleccion({ slug: NUEVA, usuarios: 1, premium: 1, temasActivos: 0 })
+    expect(h).not.toBeNull()
+    expect(h.severity).toBe('error')
+    expect(h.tipo).toBe('personalizada')
+  })
+
+  it('con temario NO es hallazgo — la función es legítima', () => {
+    expect(det.clasificarEleccion({ slug: NUEVA, usuarios: 4, premium: 2, temasActivos: 7 })).toBeNull()
+  })
+
+  it('la del formato viejo sigue fuera aunque salga a cero (no se puede medir, no es que esté bien)', () => {
+    expect(det.clasificarEleccion({ slug: VIEJA, usuarios: 9, premium: 3, temasActivos: 0 })).toBeNull()
+  })
+
+  it('el `tipo` distingue la reparación: catálogo se construye, personalizada se edita', () => {
+    const cat = det.clasificarEleccion({ slug: 'enfermero', usuarios: 58, premium: 0, temasActivos: 0 })
+    expect(cat.tipo).toBe('catalogo')
+  })
+})

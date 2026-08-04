@@ -23,8 +23,13 @@ import { getOposicion } from '@/lib/config/oposiciones'
 import { withDbTimeout } from '@/lib/db/timeout'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateProfileCache } from '@/lib/api/profile/queries'
-import { esObjetivoPersonalizado, idCustomDe } from '@/lib/oposicion/objetivoPersonalizado'
+import {
+  esObjetivoPersonalizado,
+  idCustomDe,
+  personalizadaUtilizable,
+} from '@/lib/oposicion/objetivoPersonalizado'
 import { nombrePublico } from '@/lib/oposicionPersonalizada/nombrePublico'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -39,38 +44,70 @@ const TARGET_UPDATE_TIMEOUT_MS = 8000
  * Si la oposición no está en el config (demanda no implementada todavía), se
  * guarda el mínimo {id, name} para capturar la demanda.
  */
-async function buildCanonicalData(
+interface PersonalizadaResuelta {
+  nombre: string
+  /** Temas activos de su `position_type`. 0 = la fila es solo una etiqueta, no un temario. */
+  temas: number
+}
+
+/**
+ * La personalizada, con el TAMAÑO REAL de su temario, en una sola consulta. [T-508]
+ *
+ * El `temas` viaja junto al nombre y no en una consulta aparte a propósito: son la misma
+ * decisión («¿puede esta persona estudiar esto?») y separarlas deja que una diga que sí y la
+ * otra que no según cuál corra primero.
+ *
+ * Devuelve `null` tanto si no hay fila como si la consulta falla. Los dos casos se tratan
+ * igual —seguir adelante— porque el guardarraíl que se apoya en esto tiene que ser FAIL-OPEN:
+ * bloquear el cambio de objetivo porque la base de datos tosió sería peor que el fallo que
+ * viene a evitar.
+ */
+async function buscarPersonalizada(
   oposicionId: string,
   userId: string,
+): Promise<PersonalizadaResuelta | null> {
+  const idCustom = idCustomDe(oposicionId)
+  try {
+    // ACOTADA: pública O tuya. Sin la condición, cualquiera podría fijar como objetivo la
+    // oposición PRIVADA de otra persona con solo conocer su id — y de paso leer su nombre.
+    // Que sean elegibles por otros es el diseño (`is_public`), pero solo las públicas.
+    // Lo pilló el guardarraíl C2 de scoping por usuario, que hizo bien en preguntar.
+    const filas = (await getAdminDb().execute(sql`
+      SELECT co.nombre,
+             co.created_by_username,
+             (SELECT count(*)::int FROM topics t
+               WHERE t.position_type = ${oposicionId} AND t.is_active = true) AS temas
+        FROM custom_oposiciones co
+       WHERE replace(co.id::text, '-', '') = ${idCustom}
+         AND co.is_active = true
+         AND (co.is_public = true OR co.user_id = ${userId}::uuid)
+       LIMIT 1
+    `)) as unknown as Array<{ nombre: string; created_by_username: string | null; temas: number }>
+    const fila = filas[0]
+    if (!fila) return null
+    return { nombre: nombrePublico(fila.nombre, fila.created_by_username), temas: Number(fila.temas ?? 0) }
+  } catch {
+    // Si la consulta falla se cae al fallback: guardar el objetivo con un nombre feo es malo,
+    // pero perder el cambio que el usuario acaba de pedir es peor.
+    return null
+  }
+}
+
+async function buildCanonicalData(
+  oposicionId: string,
+  personalizada: PersonalizadaResuelta | null,
 ): Promise<Record<string, unknown>> {
   // [T-327] Oposición PERSONALIZADA: no está en el config —vive en la base de datos— así que su
   // nombre hay que ir a buscarlo. Sin esto, el fallback de abajo guardaría
   // `personalizada_<uuid>` COMO NOMBRE y el usuario vería ese churro en la cabecera y en todos
   // los selectores. Se resuelve aquí, en el ÚNICO punto de escritura, y no en cada llamante:
   // este endpoint existe justamente porque antes había cuatro write-paths divergiendo.
-  if (esObjetivoPersonalizado(oposicionId)) {
-    const idCustom = idCustomDe(oposicionId)
-    try {
-      // ACOTADA: pública O tuya. Sin la condición, cualquiera podría fijar como objetivo la
-      // oposición PRIVADA de otra persona con solo conocer su id — y de paso leer su nombre.
-      // Que sean elegibles por otros es el diseño (`is_public`), pero solo las públicas.
-      // Lo pilló el guardarraíl C2 de scoping por usuario, que hizo bien en preguntar.
-      const filas = (await getAdminDb().execute(sql`
-        SELECT nombre, created_by_username
-          FROM custom_oposiciones
-         WHERE replace(id::text, '-', '') = ${idCustom}
-           AND is_active = true
-           AND (is_public = true OR user_id = ${userId}::uuid)
-         LIMIT 1
-      `)) as unknown as Array<{ nombre: string; created_by_username: string | null }>
-      const fila = filas[0]
-      if (fila) {
-        const nombre = nombrePublico(fila.nombre, fila.created_by_username)
-        return { id: oposicionId, name: nombre, nombre, tipo: 'personalizada' }
-      }
-    } catch {
-      // Si la consulta falla se cae al fallback de abajo: guardar el objetivo con un nombre feo
-      // es malo, pero perder el cambio que el usuario acaba de pedir es peor.
+  if (personalizada) {
+    return {
+      id: oposicionId,
+      name: personalizada.nombre,
+      nombre: personalizada.nombre,
+      tipo: 'personalizada',
     }
   }
 
@@ -103,8 +140,36 @@ async function _PUT(request: NextRequest) {
     )
   }
 
+  // [T-508] Una personalizada SIN UN SOLO TEMA no se puede fijar como objetivo: el Header
+  // enrutaría su icono 📚 a `/oposicion-personalizada/<id>/temario`, que sin temario da 404.
+  // Se impide AQUÍ, que es el único punto de escritura del objetivo, y no en el botón que lo
+  // ofrece: el botón evita el choque, pero el que manda es el servidor.
+  const personalizada =
+    !clearing && esObjetivoPersonalizado(oposicionId)
+      ? await buscarPersonalizada(oposicionId, auth.user.id)
+      : null
+
+  if (personalizada && !personalizadaUtilizable(personalizada.temas)) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'objetivo_personalizado_vacio',
+      endpoint: '/api/profile/target',
+      metadata: { oposicionId, temas: personalizada.temas, bloqueado: true },
+    })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'personalizada_sin_temario',
+        message:
+          'Esa oposición todavía no tiene ningún tema con contenido. Añádele leyes y artículos en el editor y vuelve a elegirla.',
+      },
+      { status: 409 },
+    )
+  }
+
   const targetValue = clearing ? null : oposicionId
-  const data = clearing ? null : await buildCanonicalData(oposicionId, auth.user.id)
+  const data = clearing ? null : await buildCanonicalData(oposicionId, personalizada)
 
   // Throw en fallo → withErrorLogging lo emite a observable_events (detectable).
   await withDbTimeout(

@@ -9,6 +9,10 @@
 // que solo te afecta a ti.
 
 import { Rueda } from './SelectorArticulos'
+// El criterio de «se puede estudiar» es el MISMO que aplica el servidor al fijar el objetivo.
+// Importarlo (en vez de escribir `o.temas > 0` aquí) es lo que impide que las dos puertas se
+// separen el día que el criterio cambie.
+import { personalizadaUtilizable } from '@/lib/oposicion/objetivoPersonalizado'
 
 export interface ResumenOposicion {
   id: string
@@ -99,6 +103,18 @@ export default function MisOposiciones({
               {esObjetivo(o.id) ? (
                 <span className="text-sm px-3 py-2 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium whitespace-nowrap">
                   ✓ Es tu oposición objetivo
+                </span>
+              ) : !personalizadaUtilizable(o.temas) ? (
+                /* [T-508] Sin un solo tema NO se ofrece: el icono 📚 del Header llevaría a un
+                   404. La mayoría de estas filas son etiquetas del onboarding viejo (580 de 585
+                   el 03/08/2026) que nunca tuvieron temario, y el botón las presentaba como si
+                   se pudieran estudiar. El servidor lo rechaza igualmente; esto es para que el
+                   usuario no llegue a chocar. */
+                <span
+                  className="text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                  title="Añádele al menos un tema con leyes y artículos para poder estudiarla"
+                >
+                  Añade un tema para estudiarla
                 </span>
               ) : (
                 <button

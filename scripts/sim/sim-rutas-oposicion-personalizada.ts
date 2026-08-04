@@ -41,6 +41,17 @@ const MAX_PAGINAS = 25
  */
 const PLAN = process.argv.includes('--free') ? 'free' : 'premium'
 
+/**
+ * `--vacia`: recorrer una oposición que EXISTE pero no tiene ni un tema. [T-508]
+ *
+ * Es el estado de la inmensa mayoría de las filas reales, y era el punto ciego de esta
+ * simulación: creando siempre una oposición con temario, el recorrido salía verde mientras el
+ * caso mayoritario daba 404. Lo que se exige aquí no es que las pantallas funcionen —no hay
+ * contenido que servir— sino que **ninguna mienta**: nada de 404 ni de «esta página no existe»
+ * en una oposición que es tuya y existe. El texto correcto es que le faltan temas.
+ */
+const VACIA = process.argv.includes('--vacia')
+
 /** Señales de que la persona está viendo una pantalla rota, no la que pidió. */
 const ROTO = [
   /tema no encontrado/i,
@@ -116,16 +127,37 @@ async function main() {
   const visitas: Visita[] = []
 
   try {
-    const res = await guardarOposicionPersonalizada(
-      userId,
-      {
-        nombre: `Oposición ${MARCA}`,
-        temas: [{ titulo: 'Tema con preguntas', articulos: [{ lawId: leyes[0].id, articleNumber: null }] }],
-      },
-      'Sim Rutas',
-    )
-    if (!res.ok) throw new Error(`no se pudo crear: ${res.detalle ?? res.motivo}`)
-    opId = res.id!
+    if (VACIA) {
+      // [T-508] LA OPOSICIÓN VACÍA — el punto ciego de esta simulación hasta hoy.
+      //
+      // Hasta ahora esto siempre creaba una oposición CON temario, así que recorría el camino
+      // feliz y daba verde mientras el caso mayoritario estaba roto: el 03/08/2026, de 585
+      // `custom_oposiciones` activas **580 no tenían ni un tema** (etiquetas del onboarding
+      // viejo, de cuando esta tabla solo guardaba «mi oposición no está en vuestro catálogo»).
+      // Una usuaria premium fijó una de ellas como objetivo y el icono 📚 le dio un 404.
+      //
+      // Se INSERTA a pelo y no por `guardarOposicionPersonalizada` a propósito: el guardado
+      // exige temas, así que por ahí este estado no se puede fabricar — pero existe en
+      // producción por centenares, que es lo que hay que reproducir.
+      const ins = await c.query(
+        `INSERT INTO custom_oposiciones (user_id, nombre, administracion, is_active, is_public, created_by_username)
+         VALUES ($1, $2, 'local', true, false, 'Sim Rutas') RETURNING id`,
+        [userId, `Oposición vacía ${MARCA}`],
+      )
+      opId = ins.rows[0].id
+    } else {
+      const res = await guardarOposicionPersonalizada(
+        userId,
+        {
+          nombre: `Oposición ${MARCA}`,
+          temas: [{ titulo: 'Tema con preguntas', articulos: [{ lawId: leyes[0].id, articleNumber: null }] }],
+        },
+        'Sim Rutas',
+      )
+      if (!res.ok) throw new Error(`no se pudo crear: ${res.detalle ?? res.motivo}`)
+      opId = res.id!
+    }
+    if (!opId) throw new Error('no se obtuvo el id de la oposición creada')
     const idLimpio = opId.replace(/-/g, '')
     const raiz = `/oposicion-personalizada/${idLimpio}`
 
@@ -265,6 +297,14 @@ async function main() {
     //
     // Se hace un test CORTO (5 preguntas) y se responde hasta el final: media prueba dejaría sin
     // mirar justo el cierre, que es donde se guarda el resultado.
+    // [T-508] En `--vacia` esto NO aplica y no se hace: sin temas no hay botón de «empezar
+    // test» que buscar, así que exigirlo dejaría el modo rojo para siempre. Y un rojo que no se
+    // puede poner verde deja de leerse — que es justo lo que le pasó al pie del detector de
+    // salud, anunciando que las personalizadas estaban excluidas mientras las listaba.
+    // Aquí lo que se comprueba es OTRA cosa: que ninguna ruta MIENTA (ver el veredicto).
+    if (VACIA) {
+      console.log('\n── Modo --vacia: sin temas no hay test que hacer (se comprueban las rutas) ──')
+    } else {
     console.log('\n── Hacer un test entero, respondiendo como un usuario ──\n')
     // SE LLEGA COMO EL USUARIO: desde el tema, pulsando el botón de empezar. Construir la URL a
     // mano parece equivalente y no lo es — se saltan los parámetros que pone el configurador, y
@@ -372,6 +412,22 @@ async function main() {
       textoFinal.trim().length > 200 && !/application error|something went wrong/i.test(textoFinal),
       textoFinal.split('\n').filter(Boolean).slice(-4).join(' · ').slice(0, 160),
     )
+    }
+
+    // [T-508] Lo que se exige en `--vacia`: la pantalla del temario tiene que EXPLICAR que
+    // faltan temas. Es la comprobación positiva que acompaña al rastreo — sin ella, quitar el
+    // aviso y devolver una página en blanco pasaría por verde (no hay 404, luego «no está
+    // rota»), y el usuario volvería a quedarse sin saber qué hacer.
+    if (VACIA) {
+      await p.goto(`${URL_BASE}${raiz}/temario`, { waitUntil: 'domcontentloaded' })
+      await p.waitForTimeout(2500)
+      const txt = await p.locator('body').innerText().catch(() => '')
+      anotaTest(
+        'el temario vacío EXPLICA que faltan temas (no un 404 ni una página muda)',
+        /a[úu]n no tiene temas con contenido/i.test(txt),
+        txt.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3).join(' · ').slice(0, 160),
+      )
+    }
 
     console.log(`\nRutas visitadas: ${visitas.length}\n`)
     for (const v of visitas) {

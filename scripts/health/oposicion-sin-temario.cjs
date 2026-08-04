@@ -98,10 +98,23 @@ const SQL = `
       }
     }
 
+    // [T-508] Este pie decía «las personalizadas están EXCLUIDAS… NO están rotas» mientras la
+    // lista de arriba ya traía dos, una de ellas de una premium que ese día reportó el 404 que
+    // eso provoca. Un aviso que desmiente a la propia salida enseña a descartar filas buenas.
+    // Ahora se dice exactamente qué se excluye (el formato viejo, que no se puede medir) y qué
+    // no (el formato nuevo, que sí).
+    const personalizadas = hallazgos.filter((h) => h.tipo === 'personalizada')
     console.log('')
-    console.log('  ⚠️ Las personalizadas (UUID en target_oposicion) están EXCLUIDAS: su temario')
-    console.log('     vive en `custom_oposiciones` y NO están rotas. Contarlas ya hizo publicar')
-    console.log('     una cifra equivocada una vez.')
+    if (personalizadas.length > 0) {
+      console.log(`  📌 ${personalizadas.length} de las de arriba son PERSONALIZADAS vacías (formato`)
+      console.log('     `personalizada_<uuid>`): la fila existe pero no tiene ni un tema, así que a')
+      console.log('     su dueño el icono 📚 le enseña el temario vacío. Se arregla en el editor, no')
+      console.log('     construyendo temario nosotros.')
+    }
+    console.log('  ⚠️ Las personalizadas del formato VIEJO (UUID pelado en target_oposicion) están')
+    console.log('     EXCLUIDAS y seguirán estándolo: sus temas viven bajo otro `position_type`, así')
+    console.log('     que el join daría 0 para todas. Contarlas ya hizo publicar una cifra')
+    console.log('     equivocada una vez.')
     console.log('  (solo lectura: no se ha tocado nada — las tres salidas son decisión de producto, ver T-397)\n')
   } finally {
     await c.end()
