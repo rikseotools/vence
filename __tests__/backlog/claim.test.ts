@@ -810,3 +810,28 @@ describe('detectarTrabajoPendiente — una CANTIDAD contada delata la ventana me
     expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
   })
 })
+
+describe('detectarTrabajoPendiente — una palabra ENTRECOMILLADA se nombra, no se usa (T-531)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs')
+
+  // Salió cerrando la propia T-531: el outcome que EXPLICA el arreglo lo bloqueaba el arreglo,
+  // porque citaba las palabras de la lista como ejemplos.
+  it.each([
+    ['se rechazaba por «quedan» sin mirar el contexto'],
+    ['la lista incluye "falta" y "pendiente"'],
+    ['el marcador de ‘queda’ no distinguía el sentido'],
+  ])('palabra citada → pasa: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(false)
+  })
+
+  it.each([
+    // Citar una FRASE no exime: ahí sí se está describiendo trabajo, y las comillas no abrazan
+    // la palabra que dispara.
+    ['el outcome decía «queda por verificar en producción»'],
+    ['queda por verificar en producción'],
+    ['falta desplegar el backend'],
+  ])('frase citada o uso real → sigue abortando: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
+  })
+})
