@@ -843,40 +843,6 @@
 ## Abiertas
 
 
-### [T-552] 🟡 [ABIERTO 04/08] Triaje determinista epígrafe vs su fuente: por dónde empezar el Paso 1 de las 126 activas
-
-- **El hueco que cierra.** [T-528] midió que **2.295 temas (60%) nunca se han contrastado con su fuente**, teniendo el `programa_url` en las **126** activas. No faltaba el documento: faltaba mirar. Y no se miraba porque el Paso 1 parecía caro — se corre oposición a oposición y exige parsear el boletín, que falla en un tercio de los casos.
-- **La pregunta barata, que no necesita parser.** En vez de trocear el programa oficial en temas y alinearlos, se pregunta lo contrario: **¿el epígrafe de la BD aparece DENTRO del documento?** Si es literal, aparece; si es paráfrasis, no. Sin parser, sin alinear, sin LLM. `npm run audit:epigrafe-fuente`.
-- **Calibrado contra el único caso con verdad conocida:** `administrativo_asturias`, cuyos 30 epígrafes se conocen ANTES y DESPUÉS de clonarlos ([T-547], el mismo día) → **0/30 antes, 30/30 después**. Separación limpia, sin falsos en ninguna dirección.
-- **Reutiliza, no duplica:** el fetcher es `fetchProgramaText` de `verify-epigrafe-literality.cjs` (se exportó para esto), donde ya viven resueltos el `maxBuffer` de 256 MB y el timeout de 150 s. Un segundo fetcher habría sido el antipatrón de los cinco escritores.
-- **TRES gotchas, y cada uno decidía si la herramienta servía:**
-  1. **El mobiliario de página.** Un tema que cruza salto de página lleva la cabecera del boletín incrustada en mitad de la frase → un epígrafe impecable se declara ausente. Se limpia de forma GENÉRICA (el mobiliario se delata porque se repite), sin patrones por boletín.
-  2. **El pie CAMBIA con la paginación** (`núm. 248 de 24-xii-2024 15/18`), así que contado literalmente aparece una vez y sobrevive al filtro. Se enmascaran los dígitos antes de contar — **con tope de 80 caracteres**, porque si no, catorce líneas de temario que solo difieren en su número comparten clave y el filtro **se lleva por delante justo lo que se quiere medir**. Lo cazó un test, y el corte sale de medir el BOPA: mobiliario 8-66 caracteres, temario desde 87.
-  3. **🔗 `fuente_no_es_temario` va en cubo APARTE.** Al estrenarlo, el primero de la cola era `administrativo-estado` con «45 de 45 fuera de su fuente» — y su `programa_url` era el **RD 387/2026 de la Oferta de Empleo Público**, sin un solo tema dentro. Ese 0/45 no decía «parafraseamos», decía «el enlace no es un temario». Mezclarlos pone los enlaces rotos por delante de las paráfrasis reales y vuelve la cola inútil. Se distinguen por la **racha de enteros consecutivos**: un programa enumera 1,2,3… y una norma no.
-- **Medido sobre las 25 primeras (04/08):** 4 literal · 12 con drift accionable · 4 enlace malo · 1 sin fuente. Cabeza de cola: `administrativo-la-rioja` (42/42), `administrativo-junta-general-asturias` (38/38), `administrativo-aragon` (35/35), `administrativo-carm` (28/28).
-- **🔍 HALLAZGO de propina:** `administrativo-estado` y `administrativo-seguridad-social` **comparten el mismo `programa_url`**, y apunta al decreto de la OEP. Dos oposiciones distintas no pueden tener el mismo temario; va por la frase-gatillo *«revisa los enlaces de convocatoria»*.
-- **Lo que NO hace, a propósito:** no escribe, no pinga badge y no sustituye al Paso 1. Mide **distancia a la propia fuente**, no corrección — un `parafraseado` puede ser paráfrasis nuestra o un `programa_url` de otro ciclo (el caso Cantabria), y las dos piden abrir el documento. Las oposiciones personalizadas que quedan fuera de la medida y lo que recorta un `--limite` **se cantan**, no se callan.
-- **Queda por hacer:** correrlo sobre las 126 (aquí solo se midieron 25 para calibrar) y abrir la cola resultante.
-
-### [T-549] 🟡 [ABIERTO 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
-
-> ⚠️ El outcome de [T-523] la cita como «T-546» — ese número se escribió antes de reservarlo y es incorrecto. Es ESTA.
-
-**Qué pasa.** `scripts/backlog/verificacion.cjs` decide si una tarea se puede cerrar con `contenidos(shaVivo, commits)`, que exige que **todos** los commits que declaran la tarea sean ancestros del sha vivo. Pero el veredicto que se quiere dar es otro: *«¿está vivo el código SERVIDO que toca esta tarea?»*. El propio módulo ya sabe distinguirlo — tiene `DIRS_SERVIDOS` (`app`, `components`, `contexts`, `hooks` en frontend; `backend/src`) y calcula `importadoEn` por fichero — pero esa distinción **no se aplica al conjunto de commits** que se le pasa a `contenidos`.
-
-**La consecuencia, y es lo que lo hace algo más que un detalle:** castiga exactamente la práctica que la casa pide. El orden bueno es *desplegar → verificar en producción → subir la prueba que lo verifica*. Al subir esa prueba (una simulación en `scripts/sim/`, que no es código servido y no cambia nada de lo desplegado), la tarea **deja de ser cerrable hasta el siguiente deploy**. O sea que la única forma de cerrar sin escape es escribir la verificación ANTES de poder verificar, o no subirla.
-
-**Cómo salió (04/08/2026).** Cerrando [T-523]: el arreglo se desplegó (`a68f5648`), se verificó en un navegador real contra producción (4/4) y se subió `scripts/sim/sim-editor-abre-la-tuya.ts` con esa comprobación. `done` bloqueó con *«su código todavía NO está vivo»* señalando tres ficheros de `components/` y `app/` que **sí** estaban vivos: `/api/health` respondía `a68f5648` y `git merge-base --is-ancestor` lo confirmaba. Lo que faltaba en el sha vivo era el commit de la SIMULACIÓN. Se cerró con `--igualmente` y el motivo escrito.
-
-**Segundo hallazgo del mismo rato, distinto y también real: durante el rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` lee `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva, así que ese endpoint contesta un sha **u otro** según a cuál caiga. El primer intento de cierre falló por esto (antes de que el rollout terminara) y el segundo ya devolvía el sha nuevo. Un guardarraíl que da veredictos distintos a la misma pregunta en el mismo minuto enseña a ignorarlo.
-
-**Qué mirar.**
-1. Filtrar los commits por si tocan `DIRS_SERVIDOS` **antes** de exigir que estén vivos: un commit que solo añade tests, simulaciones, documentación o scripts no puede impedir el cierre. La pieza ya existe (`importadoEn`), solo hay que usarla aquí.
-2. Para el rollout: o consultar el sha de forma estable (preguntar N veces y exigir acuerdo, o leer `deploy_runs`, que registra el fin del deploy con su `outcome`), o decirlo explícitamente en el mensaje («hay un rollout en curso, reintenta al terminar») en vez de afirmar que no está vivo.
-3. Medir cuántos `--igualmente` de los contados en el bus de fricción responden a estas dos causas: si son la mayoría, el guardarraíl está enseñando a saltárselo.
-
-**Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
-
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 
 - **Sale de [T-547]**, que puso los 38 epígrafes en `verified_literal` contra el BOPA. Reescribir el epígrafe dispara el trigger, así que su scope quedó **`stale`**: el veredicto anterior se emitió contra una paráfrasis y ya no vale. Estado hoy: **29 stale · 8 verified_correct · 1 verified_issues**.
@@ -4327,6 +4293,31 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-552] ✅ [HECHA 04/08] Triaje determinista epígrafe vs su fuente: por dónde empezar el Paso 1 de las 126 activas
+
+- **El hueco que cierra.** [T-528] midió que **2.295 temas (60%) nunca se han contrastado con su fuente**, teniendo el `programa_url` en las **126** activas. No faltaba el documento: faltaba mirar. Y no se miraba porque el Paso 1 parecía caro — se corre oposición a oposición y exige parsear el boletín, que falla en un tercio de los casos.
+- **La pregunta barata, que no necesita parser.** En vez de trocear el programa oficial en temas y alinearlos, se pregunta lo contrario: **¿el epígrafe de la BD aparece DENTRO del documento?** Si es literal, aparece; si es paráfrasis, no. Sin parser, sin alinear, sin LLM. `npm run audit:epigrafe-fuente`.
+- **Calibrado contra el único caso con verdad conocida:** `administrativo_asturias`, cuyos 30 epígrafes se conocen ANTES y DESPUÉS de clonarlos ([T-547], el mismo día) → **0/30 antes, 30/30 después**. Separación limpia, sin falsos en ninguna dirección.
+- **Reutiliza, no duplica:** el fetcher es `fetchProgramaText` de `verify-epigrafe-literality.cjs` (se exportó para esto), donde ya viven resueltos el `maxBuffer` de 256 MB y el timeout de 150 s. Un segundo fetcher habría sido el antipatrón de los cinco escritores.
+- **TRES gotchas, y cada uno decidía si la herramienta servía:**
+  1. **El mobiliario de página.** Un tema que cruza salto de página lleva la cabecera del boletín incrustada en mitad de la frase → un epígrafe impecable se declara ausente. Se limpia de forma GENÉRICA (el mobiliario se delata porque se repite), sin patrones por boletín.
+  2. **El pie CAMBIA con la paginación** (`núm. 248 de 24-xii-2024 15/18`), así que contado literalmente aparece una vez y sobrevive al filtro. Se enmascaran los dígitos antes de contar — **con tope de 80 caracteres**, porque si no, catorce líneas de temario que solo difieren en su número comparten clave y el filtro **se lleva por delante justo lo que se quiere medir**. Lo cazó un test, y el corte sale de medir el BOPA: mobiliario 8-66 caracteres, temario desde 87.
+  3. **🔗 `fuente_no_es_temario` va en cubo APARTE.** Al estrenarlo, el primero de la cola era `administrativo-estado` con «45 de 45 fuera de su fuente» — y su `programa_url` era el **RD 387/2026 de la Oferta de Empleo Público**, sin un solo tema dentro. Ese 0/45 no decía «parafraseamos», decía «el enlace no es un temario». Mezclarlos pone los enlaces rotos por delante de las paráfrasis reales y vuelve la cola inútil. Se distinguen por la **racha de enteros consecutivos**: un programa enumera 1,2,3… y una norma no.
+- **BARRIDO COMPLETO — las 126 activas (04/08):**
+  | | |
+  |---|---|
+  | ✅ literal (todos sus epígrafes están en su fuente) | **22** |
+  | ⚠️ parcial | **41** |
+  | 🔴 parafraseado (ninguno está) | **11** |
+  | 🔗 el `programa_url` NO apunta a un temario | **44** |
+  | ⏭️ no se pudo descargar/leer | **8** |
+  | **temas medibles** | **2.193**, de los cuales **765 (35%) no están en su fuente** |
+- **🔗 El hallazgo más gordo no es el drift: son los 44 enlaces.** Un tercio de las oposiciones activas tiene como `programa_url` algo que no es un temario — portales (`zaragoza.es/oferta/…`, `jccm.es/tramites/…`), la portada de un boletín (`bopmalaga.es`), o directamente el decreto de la OEP. Hasta arreglar eso **no se puede medir su temario**, y es una cola distinta que va por *«revisa los enlaces de convocatoria»*.
+- **Cabeza de la cola de temario:** `enfermero-sms` (71/71), `ayudantes-ejecucion-penal-pais-vasco` (51/53), `tcae-murcia` (44/44), `administrativo-la-rioja` (42/42), `administrativo-junta-general-asturias` (38/38), `administrativo-diputacion-jaen` (36/40), `administrativo-aragon` (35/35), `auxiliar-administrativo-ayuntamiento-salamanca` (32/39).
+- **🔍 HALLAZGO de propina:** `administrativo-estado` y `administrativo-seguridad-social` **comparten el mismo `programa_url`**, y apunta al decreto de la OEP. Dos oposiciones distintas no pueden tener el mismo temario; va por la frase-gatillo *«revisa los enlaces de convocatoria»*.
+- **Lo que NO hace, a propósito:** no escribe, no pinga badge y no sustituye al Paso 1. Mide **distancia a la propia fuente**, no corrección — un `parafraseado` puede ser paráfrasis nuestra o un `programa_url` de otro ciclo (el caso Cantabria), y las dos piden abrir el documento. Las oposiciones personalizadas que quedan fuera de la medida y lo que recorta un `--limite` **se cantan**, no se callan.
+
 
 ### [T-550] ✅ [HECHA 04/08] Un valor por defecto que es una oposición REAL: cerrada la puerta por la que se colaron cinco fallos
 
