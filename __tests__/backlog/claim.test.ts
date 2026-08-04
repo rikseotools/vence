@@ -739,3 +739,74 @@ describe('puedeMarcarseVerificada — «ya lo comprobé» sin cerrar ni fingir u
     expect(puedeMarcarseVerificada(null, 'sid-a', HOY).ok).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// [T-531] La puerta rechazaba outcomes por palabras que NO son trabajo pendiente. Los tres casos
+// de abajo son REALES (medidos cerrando T-463 y T-250), no hipótesis. Y van con su contraste:
+// una exención que no se prueba en los dos sentidos no protege, solo abre un hueco.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe('detectarTrabajoPendiente — citar el enunciado no es prometer trabajo (T-531)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs')
+
+  it.each([
+    ['la descripción de lo que hay que comprobar sigue ahí detrás'],
+    ['se conserva el texto de lo que hay que verificar'],
+    // Sin otras palabras-gatillo dentro: esta suite prueba la exención de la CITA, y una frase
+    // con «queda intacto» dispara ADEMÁS el marcador de «queda», que es otro caso (ver la ficha).
+    ['el enunciado de lo que hay que medir se conserva'],
+  ])('CITA → pasa: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(false)
+  })
+
+  it.each([
+    ['hay que comprobar en producción que el cron emite'],
+    ['todo listo, pero hay que verificar el badge'],
+    ['la descripción está actualizada. hay que medir el efecto'],
+  ])('PROMESA → sigue abortando: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
+  })
+})
+
+describe('detectarTrabajoPendiente — «el pendiente» como SUSTANTIVO (T-531)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs')
+
+  it.each([
+    ['el pendiente completo sigue ahí'],
+    ['se respeta el pendiente anterior tal cual'],
+    ['ese pendiente previo ya no aplica'],
+  ])('texto guardado → pasa: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(false)
+  })
+
+  it.each([
+    // Sin el calificador que lo delata como texto, NO se exime: puede significar trabajo, y abrir
+    // esa puerta es el caso para el que nació (T-363, cobros cerrados sin desplegar).
+    ['el pendiente sigue ahí'],
+    ['queda pendiente la fase 2'],
+    ['está pendiente de desplegar'],
+  ])('trabajo de verdad → sigue abortando: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
+  })
+})
+
+describe('detectarTrabajoPendiente — una CANTIDAD contada delata la ventana medida (T-531)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { detectarTrabajoPendiente } = require('@/lib/backlog/claimGate.cjs')
+
+  it.each([
+    ['medido en producción: 9 eventos en 2 días'],
+    ['13 emisiones en 7 días, ninguna con error'],
+    ['1.191 respuestas en 3 días'],
+  ])('cantidad delante → pasa: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(false)
+  })
+
+  it.each([
+    ['volver a medir en 14 días'],
+    ['repetirlo en 2 días para confirmar'],
+  ])('verbo delante → sigue abortando: %s', (txt) => {
+    expect(detectarTrabajoPendiente(txt).pendiente).toBe(true)
+  })
+})
