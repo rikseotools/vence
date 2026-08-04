@@ -136,6 +136,7 @@
     "parte": "node scripts/sessions/parte.cjs",
     "sim:rutas": "npx tsx scripts/sim/barrido-rutas.ts",
     "sim:identidad-maquina": "node scripts/sim/sim-identidad-maquina.cjs",
+    "sim:indice-parcial": "node scripts/sim/sim-indice-parcial.cjs",
     "sim:cola-reserva": "node scripts/impugnaciones/sim-reserva-cola.cjs",
     "sim:cabecera": "tsx scripts/sim/sim-cabecera-alcanzable.ts",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",

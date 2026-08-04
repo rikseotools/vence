@@ -576,8 +576,24 @@ Si otra sesión viva trabaja en TU mismo directorio, **el commit se para**.
 
 ```
 scripts/worktrees/crear-worktree.sh <un-nombre>     # el arreglo, 30 segundos
+git commit -m "…" -- <tus/ficheros>                 # commit PARCIAL: no lo bloquea (T-486)
 INDICE_COMPARTIDO_OK="por qué tienes que commitear aquí" git commit …   # el escape: pide MOTIVO (T-496)
 ```
+
+**El commit PARCIAL no dispara el guardarraíl, y esa es la salida para el caso más común** (T-486,
+04/08): ya estabas trabajando aquí y otra sesión ha empezado a latir en el directorio *después*.
+Al nombrar las rutas, git construye un **índice temporal propio** (`next-index-<pid>`) y commitea
+desde ahí: lo que la otra sesión tenga preparado **ni entra en tu commit ni se toca** — sigue
+staged para ella. No es una excepción de confianza, es que el fallo no puede ocurrir.
+
+Salió de medir los escapes: de los 3 posteriores a T-496 —los primeros con motivo escrito— **2
+decían exactamente eso**, o sea que ya se estaba resolviendo bien y el guardarraíl obligaba a
+apagarse para hacer lo correcto.
+
+> ⚠️ **`git commit -a` NO vale**, aunque también traiga un índice distinto (`index.lock`): barre el
+> árbol de trabajo entero, que también se comparte, y **se lleva lo ajeno** — medido. Por eso el
+> criterio es el nombre exacto del índice temporal y no «un índice distinto del normal».
+> Comprobable sobre repos git de verdad: `npm run sim:indice-parcial`.
 
 **Por qué no basta con tener cuidado:** `git add` escribe en el índice del **REPOSITORIO**, no de
 tu sesión. Con dos sesiones en el mismo directorio, el `add` de una y el `commit` de la otra son

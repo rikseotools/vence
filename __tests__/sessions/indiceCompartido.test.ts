@@ -9,7 +9,7 @@
 // CONTENIDO que lo arregle: solo dejar de compartir directorio.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { evaluarIndice, mensajeBloqueo, evaluarEscape, MOTIVO_MIN, VIVA_MIN } = require('@/lib/sessions/indiceCompartido.cjs')
+const { evaluarIndice, mensajeBloqueo, evaluarEscape, esCommitParcial, MOTIVO_MIN, VIVA_MIN } = require('@/lib/sessions/indiceCompartido.cjs')
 
 const AHORA = new Date('2026-07-31T21:00:00Z')
 const haceMin = (m: number) => new Date(AHORA.getTime() - m * 60_000).toISOString()
@@ -161,6 +161,73 @@ describe('evaluarEscape — un «1» se escribe sin pensar; un motivo, no', () =
   // caso preventivo (nadie más en el directorio) el commit pasa igual.
   it('un escape inválido se marca como intento, para poder contarlo', () => {
     expect(evaluarEscape('1').usa).toBe(true)
+  })
+})
+
+// ── EL COMMIT PARCIAL NO USA EL ÍNDICE COMPARTIDO (T-486) ───────────────────────────────────
+// Los 3 escapes posteriores a T-496 —los primeros con motivo escrito— dijeron el caso: «ya estaba
+// en el índice cuando otra sesión empezó a latir aquí; commiteo con rutas explícitas». Dos de tres
+// resolvían BIEN el problema y el guard les obligaba a apagarse para hacerlo.
+//
+// El corte es estrecho porque `git commit -a` también trae un índice distinto (`index.lock`) y SÍ
+// arrastra lo ajeno: medido sobre un repo real en `npm run sim:indice-parcial`.
+describe('esCommitParcial — qué índice trae git', () => {
+  it('`next-index-<pid>` es el índice temporal de un commit parcial', () => {
+    expect(esCommitParcial('/repo/.git/next-index-47225.lock')).toBe(true)
+    expect(esCommitParcial('.git/next-index-9')).toBe(true)
+  })
+
+  it('el índice NORMAL no exime: es justo el caso que hay que cazar', () => {
+    expect(esCommitParcial('.git/index')).toBe(false)
+    expect(esCommitParcial('/repo/.git/index')).toBe(false)
+  })
+
+  // La regla cómoda («índice distinto del normal → deja pasar») abriría con `-a` el agujero que
+  // este guard existe para cerrar: barre el árbol de trabajo, que también se comparte.
+  it('`index.lock` (git commit -a) NO es commit parcial, aunque el índice sea otro fichero', () => {
+    expect(esCommitParcial('/repo/.git/index.lock')).toBe(false)
+  })
+
+  it('sin dato o con basura → false, que es seguir protegiendo', () => {
+    expect(esCommitParcial(undefined)).toBe(false)
+    expect(esCommitParcial('')).toBe(false)
+    expect(esCommitParcial('   ')).toBe(false)
+    expect(esCommitParcial('/repo/.git/')).toBe(false)
+  })
+})
+
+describe('evaluarIndice con commit parcial', () => {
+  it('hay otra sesión aquí, pero el commit es parcial → deja pasar', () => {
+    const v = run([ses()], { commitParcial: true })
+    expect(v.permitido).toBe(true)
+    expect(v.exento).toBe('commit_parcial')
+  })
+
+  it('sigue diciendo CON QUIÉN comparte: la situación no desaparece, solo el bloqueo', () => {
+    expect(run([ses({ sid: 'a' }), ses({ sid: 'b' })], { commitParcial: true }).companeras.sort())
+      .toEqual(['a', 'b'])
+  })
+
+  it('sin compañeras no se marca exención: no había nada de lo que eximir', () => {
+    expect(run([], { commitParcial: true }).exento).toBeUndefined()
+  })
+
+  it('el commit normal con otra sesión aquí sigue bloqueando', () => {
+    expect(run([ses()], { commitParcial: false }).permitido).toBe(false)
+  })
+})
+
+describe('el mensaje de bloqueo ofrece la salida que NO apaga nada', () => {
+  const txt = mensajeBloqueo({ companeras: ['abc'], worktreePath: '/x' })
+
+  it('enseña el commit parcial', () => {
+    expect(txt).toMatch(/git commit -m .* -- </)
+  })
+
+  // El orden importa: quien lee para arriba se queda con lo primero que le sirva, y el escape
+  // —que apaga el guard entero— tiene que ser el último recurso, no el más visible.
+  it('lo ofrece ANTES que el escape', () => {
+    expect(txt.indexOf('git commit -m')).toBeLessThan(txt.indexOf('INDICE_COMPARTIDO_OK'))
   })
 })
 

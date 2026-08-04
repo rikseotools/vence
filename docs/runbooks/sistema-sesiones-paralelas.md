@@ -414,6 +414,30 @@ Cada uno **se imprime al usarse** y **se cuenta**. Un escape con nombre es infin
 que `--no-verify`, que apaga todo a la vez y no deja rastro. Y contarlos es lo que permite saber
 si un guardarraíl sigue vivo (§3.9).
 
+### 6.bis. El escape que sobra: leer los MOTIVOS y contemplar el caso (T-486, 04/08)
+
+Pedir motivo (§6) no era el final del trabajo, era **el instrumento**: convierte cada escape en una
+frase que se puede leer. Al leerlas, de los 3 escapes de `indice-compartido` posteriores a T-496
+**2 decían lo mismo** — *«ya estaba en el índice cuando otra sesión empezó a latir aquí; commiteo
+con rutas explícitas»*. Es decir: el guardarraíl estaba **parando a quien ya estaba haciendo lo
+correcto**, y lo obligaba a apagarlo para poder hacerlo.
+
+Así que el arreglo no fue relajar el criterio ni subir el techo, sino **contemplar el caso**: un
+commit parcial (`git commit -m "…" -- <rutas>`) recibe de git un índice temporal propio y no puede
+arrastrar lo que otra sesión dejó preparado. Ya no hay nada que escapar.
+
+Tres cosas que generalizan a cualquier guardarraíl de este sistema:
+
+1. **El ratio dice que algo pasa; los motivos dicen QUÉ.** Sin ellos, un 65 % se lee como «esto
+   estorba» y se acaba relajando lo que no era.
+2. **La regla cómoda suele ser el agujero.** Aquí era «índice distinto del normal → deja pasar»:
+   `git commit -a` también trae índice distinto (`index.lock`) y **sí** se lleva lo ajeno (medido).
+   El corte tuvo que ser el nombre exacto del índice temporal.
+3. **Una exención se verifica contra el comportamiento REAL, no contra lo que dice la
+   documentación de la herramienta.** `npm run sim:indice-parcial` monta repos git de verdad,
+   reproduce el choque de dos sesiones y compara el veredicto del detector con lo que git acaba
+   metiendo en el commit. Si una versión futura de git cambia, se pone rojo el día que pase.
+
 ---
 
 ## 7. Modos de fallo aprendidos

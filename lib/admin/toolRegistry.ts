@@ -1654,8 +1654,15 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'con un comando —`scripts/worktrees/crear-worktree.sh`— y la alternativa es irreversible. ' +
       'Una SOLA sesión en el checkout principal no dispara nada: el problema es la concurrencia, ' +
       'no el sitio. Fail-open total; escape `INDICE_COMPARTIDO_OK="motivo"` — desde T-496 pide un ' +
-      'MOTIVO, porque el `=1` se había vuelto un prefijo (6 de 10 escapes sin bloqueo previo). Núcleo `lib/sessions/' +
-      'indiceCompartido.cjs`, 14 tests.',
+      'MOTIVO, porque el `=1` se había vuelto un prefijo (6 de 10 escapes sin bloqueo previo). ' +
+      'Y desde T-486 NO bloquea el commit PARCIAL (`git commit -m … -- <rutas>`): git le da un ' +
+      'índice temporal propio (`next-index-<pid>`, vía `GIT_INDEX_FILE`), así que lo que otra ' +
+      'sesión tenga preparado no puede colarse. El corte es estrecho a propósito — `git commit -a` ' +
+      'también trae un índice distinto (`index.lock`) y SÍ arrastra lo ajeno, medido. Salió de que ' +
+      '2 de los 3 escapes con motivo escrito ya resolvían así el problema, apagando el guard para ' +
+      'hacer justo lo correcto. Núcleo `lib/sessions/indiceCompartido.cjs`, 41 tests + ' +
+      '`npm run sim:indice-parcial` (repos git reales: compara el veredicto con lo que git mete ' +
+      'de verdad en el commit, y reproduce el fallo de T-415).',
   },
   backlog_esfuerzo: {
     titulo: 'Esfuerzo declarado en cajones + tiempo REAL medido por tarea',

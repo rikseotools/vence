@@ -18,7 +18,7 @@ const path = require('path')
 const { execFileSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..')
-const { evaluarIndice, mensajeBloqueo, evaluarEscape } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
+const { evaluarIndice, mensajeBloqueo, evaluarEscape, esCommitParcial } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
 const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 
 /** Registrar el roce sin bloquear NUNCA (T-423). */
@@ -75,7 +75,20 @@ async function main() {
     } finally { try { await s.end({ timeout: 3 }) } catch {} }
   } catch { return 0 }                                  // BD caída → no bloquea
 
-  const v = evaluarIndice({ sesiones, sid, worktreePath, host })
+  // `GIT_INDEX_FILE` lo exporta git al hook y dice sobre QUÉ índice se está commiteando (T-486).
+  // Un commit parcial (`git commit -- <rutas>`) trae su propio índice temporal, así que lo que la
+  // otra sesión tenga preparado no puede colarse. Ojo: `git commit -a` TAMBIÉN trae un índice
+  // distinto (`index.lock`) y sí arrastra lo ajeno — el núcleo distingue los dos casos.
+  const commitParcial = esCommitParcial(process.env.GIT_INDEX_FILE)
+  const v = evaluarIndice({ sesiones, sid, worktreePath, host, commitParcial })
+  if (v.exento === 'commit_parcial') {
+    // La SITUACIÓN se registra igual (dos sesiones aquí sigue siendo fricción y hay que poder
+    // verla subir), pero no es un bloqueo ni un rodeo: contarlo como cualquiera de los dos
+    // envenenaría el ratio de escape, que es el termómetro de si este guard sigue vivo.
+    console.log(`✅ commit parcial (rutas explícitas): el índice compartido no te afecta — ${v.companeras.length} sesión(es) más aquí.`)
+    friccion('indice_compartido', 'indice-compartido', `${host || '?'}:${worktreePath} (commit parcial)`)
+    return 0
+  }
   if (v.permitido) return 0
   friccion('guard_bloqueo', 'indice-compartido', `${v.companeras.length} compañera(s)`)
   friccion('indice_compartido', 'indice-compartido', `${host || '?'}:${worktreePath}`)
