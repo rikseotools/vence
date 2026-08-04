@@ -1077,13 +1077,25 @@ ponerse a verificar una por una.
   - **[T-493]** el EMBUDO (`backlog.cjs preguntar/preguntas/responder`) — el canal por el que los trabajadores preguntan sin que Manuel entre en cada terminal. Hecho.
   - **[T-494]** el PARTE (`npm run parte`) — quién trabaja, quién está PARADO y qué espera decisión. Hecho.
   - **[T-495]** el recordatorio de método en tres momentos — lo que evita que una flota grande derive en chapuzas. Hecho.
-  - **[T-487]** el barrido de rutas — el mejor TRABAJO para esos trabajadores (salida = evidencia determinista). En `main`, a falta de un deploy de backend para su alerta.
+  - **[T-487]** el barrido de rutas — el mejor TRABAJO para esos trabajadores (salida = evidencia determinista). **Ya DESPLEGADO y verificado en producción** (commit `ad49410a6`; backend vivo `b9388330` lo lleva) — esta línea decía «a falta de un deploy de backend» y se quedó atrás.
   - **NO hace falta [T-485]** (el `flock` del deploy es per-máquina) porque el piloto prohíbe a los trabajadores desplegar. El día que eso cambie, sí.
-- **LO QUE HAY QUE DECIDIR ANTES DE ESCRIBIR CÓDIGO, y no es código:**
-  1. **Secretos.** ¿Los trabajadores llevan `.env.local` completo (RDS + `AUTH_SECRET` + Stripe) o solo lo que alcanza a RDS? N copias de las claves de pago en servidores es una decisión de Manuel, no una de arquitectura.
-  2. **Cuota.** N instancias headless consumen la misma suscripción o facturan por token con API key. **Esto se mira ANTES que la infraestructura**: es el límite duro.
-  3. **¿Máquina propia o agentes remotos de Claude Code?** La alternativa hace lo mismo sin administrar VPS, secretos ni actualizaciones. El piloto debería comparar las dos, no dar por hecha la casera.
-- **Cómo se sabrá si salió bien** (declarado antes de empezar): tareas cerradas y **verificadas** por trabajador, ratio de escape de guardarraíles (`npm run sesiones:friccion` — si sube, la flota está erosionando las protecciones) y **horas de revisión de Manuel por tarea entregada**. Si esa última sube, el piloto ha fallado aunque produzca más.
+  - **→ No queda NINGÚN prerequisito técnico pendiente** (revisado el 04/08 ejecutando las herramientas, no leyendo las fichas: `npm run parte`, `backlog.cjs preguntas` y `npm run sesiones:friccion` responden).
+
+- **🚦 PUERTA DE ENTRADA que esta ficha NO tenía, y sale de medir su propio criterio de éxito (revisión 04/08).**
+  La ficha dice «si el ratio de escape de guardarraíles sube, la flota está erosionando las protecciones»… y **nunca dejó anotada la línea base**. Medida hoy con `npm run sesiones:friccion` (7 días):
+  - **154 roces en 26 sesiones: 95 bloqueos y 42 escapes.** Uno de cada tres bloqueos se rodea.
+  - **`indice-compartido` se rodea el 65 % de las veces (13 de 20).**
+  - **`done-verificacion` el 40 %** (4/10) y **`backlog-push` el 26 %** (25/97).
+  - Y ya hay **3 eventos de `identidad_compartida`** (dos máquinas latiendo con el MISMO session-id) **con una sola máquina**, que es justo el fallo que [T-484] venía a cerrar.
+  **El termómetro del piloto está en ámbar ANTES de empezar.** El riesgo nº 3 de esta misma ficha («el cuello de botella no es el cómputo, es la integración») ya no es una hipótesis: es el estado actual.
+  **Evidencia fresca de una sola noche (03→04/08), una máquina, ~5 sesiones locales:** el `pre-commit` paró a una sesión, esa sesión usó el escape, su commit **se llevó por delante la ficha sin commitear de otra** ([T-511], recuperada de milagro al resolver el conflicto), hubo **dos conflictos en el backlog** en dos pushes seguidos, y el deploy **no se pudo lanzar desde el árbol principal** porque otra sesión lo tenía sucio. Cinco incidentes de integración en cuatro horas, sin un solo trabajador remoto.
+  **Propuesta: bajar ese 65 % antes de montar la flota.** No es «mejorar un guardarraíl»: es que el piloto multiplica exactamente el modo de fallo que hoy se está rodeando dos de cada tres veces, y en remoto no hay nadie delante para verlo.
+
+- **LO QUE HAY QUE DECIDIR ANTES DE ESCRIBIR CÓDIGO, y no es código** (revisión 04/08: dos de las tres ya se pueden cerrar con datos):
+  1. **Secretos → la propia acotación del piloto los hace innecesarios.** Si los trabajadores no despliegan, no escriben en la BD de negocio y no responden a usuarios, **no necesitan `AUTH_SECRET` ni las claves de Stripe**: les basta alcanzar RDS. La decisión es mucho más pequeña de lo que esta ficha temía — y el corte «solo RDS» ya estaba escrito aquí como alternativa.
+  2. **Cuota → medida (`npm run llm:gasto`, 30 días).** La suscripción de Claude Code lleva **49.456 respuestas y 20.080 M de tokens** repartidas en **10 sesiones**; la API facturada aparte son **59,29 USD**. O sea: dos trabajadores más **salen de la misma tarta**, no de una nueva. Es el límite duro, como decía la ficha, y ahora tiene número.
+  3. **¿Máquina propia o agentes remotos de Claude Code?** Sigue abierta, pero con un dato que cambia el coste de comprobarlo: **los agentes remotos ya están disponibles en el propio Claude Code**, así que la comparación se puede hacer **sin alquilar ni administrar nada**. Probar esa vía primero cuesta cero; montar VPS no.
+- **Cómo se sabrá si salió bien** (declarado antes de empezar): tareas cerradas y **verificadas** por trabajador, ratio de escape de guardarraíles (`npm run sesiones:friccion` — **línea base del 04/08 arriba: 95 bloqueos / 42 escapes; índice-compartido 65 %**) y **horas de revisión de Manuel por tarea entregada**. Si esa última sube, el piloto ha fallado aunque produzca más.
 
 - **Esfuerzo: sesion_propia.**
 - **ORIGEN.** Petición de Manuel (02/08): varios Claude Code en servidores de Koigrid trabajando en paralelo y **uno central que supervise, resuma y compruebe lo que hacen los demás**. Condición suya, y es la que define el diseño: *«que el sistema de gestión funcione bien tanto con las sesiones que tengo en local en mi portátil como con Koigrid»* → **una sola flota híbrida**, no un sistema para remotos y otro para locales.
