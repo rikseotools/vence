@@ -4559,7 +4559,7 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Frontera de palabra al buscar el id corto:** sin ella, ocho caracteres hex casarían dentro de cualquier otro hash.
 
 
-### [T-507] 🟠 [REABIERTA 04/08] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
+### [T-507] ✅ [HECHA 04/08] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
 
 > ♻️ **REABIERTA el 04/08 por un efecto colateral: el arreglo dejó en ROJO PERMANENTE el gate de
 > cierre de lotes generados.** `scripts/verificar-batch-servido.cjs` (el `npm run batch:servido` que
