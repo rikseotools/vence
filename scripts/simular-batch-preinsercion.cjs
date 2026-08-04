@@ -97,9 +97,15 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   const claveDe = (q) =>
     q.primary_article_id || `${q.law_slug}\u0000${q.primary_article_number}`
 
+  // Se trae también el TEXTO de la respuesta correcta (no su índice: las copias vienen
+  // barajadas). Sin él, el dedup solo puede comparar enunciados — y el duplicado que se cuela
+  // es justo el que cambia el enunciado y repite la respuesta [T-519].
   const rv = articleIds.length
     ? await c.query(
-        'SELECT question_text FROM questions WHERE primary_article_id = ANY($1) AND is_active = true',
+        `SELECT question_text,
+                (ARRAY[option_a, option_b, option_c, option_d])[correct_option + 1] AS clave
+           FROM questions
+          WHERE primary_article_id = ANY($1) AND is_active = true`,
         [articleIds],
       )
     : { rows: [] }
@@ -142,7 +148,7 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
     }
   }
   lote.errores.forEach((e) => errores.push(e))
-  analizarDuplicados(Q, rv.rows.map((r) => r.question_text)).forEach((d) =>
+  analizarDuplicados(Q, rv.rows.map((r) => ({ question_text: r.question_text, clave: r.clave }))).forEach((d) =>
     avisos.push(`${etiqueta(Q[d.i], d.i)}: ${d.motivo}`),
   )
 

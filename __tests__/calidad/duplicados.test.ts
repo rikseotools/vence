@@ -415,3 +415,54 @@ describe('validarAdjudicacion — la puerta antes de una escritura TERMINAL', ()
     expect(p).toHaveLength(1)  // el runner aborta entero con que haya uno
   })
 })
+
+// ─── Corte MISMA CLAVE [T-519] ──────────────────────────────────────────────────────────
+//
+// Los números de estas pruebas NO son inventados: son los casos reales sobre los que se
+// calibró el umbral el 03/08/2026 (impugnación 9e0d7418). Si alguien mueve el umbral, aquí
+// se entera de a costa de qué.
+describe('duplicados · misma respuesta en el mismo artículo con otros distractores', () => {
+  // Caso cierto: las dos preguntan «¿en qué principios se fundamenta la Seguridad Social?»
+  const MARTA_A = 'A tenor de lo establecido en el artículo 2 del texto refundido de la Ley General de la Seguridad Social aprobado por Real Decreto Legislativo 8/2015, de 30 de octubre, el sistema de la seguridad social se fundamenta en los principios de:'
+  const MARTA_B = 'Según el artículo 2 del Real Decreto Legislativo 8/2015 el sistema de la Seguridad Social, configurado por la acción protectora en sus modalidades contributiva y no contributiva, se fundamenta en los principios de:'
+  // Falso positivo conocido: dos subhechos DISTINTOS del art. 5 LOFCS que comparten la
+  // etiqueta «Relaciones con la comunidad» como respuesta.
+  const LOFCS_A = '¿Cuál de los principios básicos de actuación se refiere a la utilización de armas de fuego?'
+  const LOFCS_B = 'Los principios básicos de actuación contemplan “impedir, en el ejercicio de su actuación profesional, cualquier práctica abusiva, arbitraria o discriminatoria”. ¿A cuál corresponde?'
+
+  it('el caso que originó la ficha queda POR ENCIMA del corte', () => {
+    expect(dup.solapeDeContenido(MARTA_A, MARTA_B)).toBeGreaterThanOrEqual(dup.UMBRAL_MISMA_CLAVE.cola)
+  })
+
+  it('el falso positivo conocido queda POR DEBAJO del corte', () => {
+    // Medido: 0,12–0,27. Si esto sube, el badge se llena de subhechos legítimos.
+    expect(dup.solapeDeContenido(LOFCS_A, LOFCS_B)).toBeLessThan(dup.UMBRAL_MISMA_CLAVE.cola)
+  })
+
+  it('descarta la pareja cuando las OPCIONES también coinciden (ya la ven los otros dos cortes)', () => {
+    expect(dup.bandaMismaClave({ solape: 1, mismasOpciones: true })).toBeNull()
+  })
+
+  it('gradúa: gemela por encima de 0,85, cola por encima de 0,55, nada por debajo', () => {
+    expect(dup.bandaMismaClave({ solape: 0.9, mismasOpciones: false })).toBe('gemela')
+    expect(dup.bandaMismaClave({ solape: 0.6, mismasOpciones: false })).toBe('cola')
+    expect(dup.bandaMismaClave({ solape: 0.3, mismasOpciones: false })).toBeNull()
+  })
+
+  it('empareja por el TEXTO de la respuesta, nunca por su índice (las copias vienen barajadas)', () => {
+    const a = { question_text: MARTA_A, opciones: ['X larga y distinta', 'Universalidad, unidad, solidaridad e igualdad.', 'Y', 'Z'], correctOption: 1 }
+    const b = { question_text: MARTA_B, opciones: ['Universalidad, unidad, solidaridad e igualdad.', 'P', 'Q', 'R'], correctOption: 0 }
+    expect(dup.parejaMismaClave(a, b)).not.toBeNull()
+  })
+
+  it('no empareja si la respuesta correcta es OTRA, por parecidos que sean los enunciados', () => {
+    const a = { question_text: MARTA_A, opciones: ['Universalidad, unidad, solidaridad e igualdad.', 'b', 'c', 'd'], correctOption: 0 }
+    const b = { question_text: MARTA_A, opciones: ['Universalidad, jerarquía, solidaridad e igualdad.', 'b', 'c', 'd'], correctOption: 0 }
+    expect(dup.parejaMismaClave(a, b)).toBeNull()
+  })
+
+  it('una respuesta vacía no empareja con otra vacía', () => {
+    const q = (t: string) => ({ question_text: t, opciones: ['', 'b', 'c', 'd'], correctOption: 0 })
+    expect(dup.parejaMismaClave(q(MARTA_A), q(MARTA_B))).toBeNull()
+  })
+})

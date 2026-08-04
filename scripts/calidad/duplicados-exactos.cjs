@@ -60,7 +60,8 @@ const { Client } = require('pg')
 const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { sqlNormalizar, decidirSuperviviente, bandaGrupo, esJuegoGenerico, unidoSoloPorTildes,
         compararEnunciados, bandaParafraseada, mismaRespuesta, corteAcumulado,
-        mismoOrdenDeContenido, validarAdjudicacion } = require('../../lib/calidad/duplicados.js')
+        mismoOrdenDeContenido, validarAdjudicacion,
+        solapeDeContenido, bandaMismaClave, claveOpciones } = require('../../lib/calidad/duplicados.js')
 
 const argv = process.argv.slice(2)
 const valor = (f) => {
@@ -72,6 +73,9 @@ const APLICAR = argv.includes('--aplicar')
 const LIMITE = parseInt(valor('--limite') || '0', 10)
 const BANCO = valor('--banco') || 'legislativas'
 const PARAFRASEADAS = argv.includes('--parafraseadas')
+// Tercer corte [T-519]: misma respuesta en el mismo artículo con OTROS distractores. Es el
+// único que no exige que las opciones coincidan, y por eso ve lo que los otros dos no pueden.
+const MISMA_CLAVE = argv.includes('--misma-clave')
 // Ordena los grupos por veces servidas y marca el corte del 80% de la exposición. No es un extra
 // informativo: es lo que decide POR DÓNDE se empieza a adjudicar (T-425, decisión de Manuel 31/07).
 const POR_EXPOSICION = argv.includes('--por-exposicion')
@@ -419,6 +423,85 @@ async function anotarExposicion(c, grupos) {
   }
 }
 
+// ─── Corte MISMA CLAVE [T-519] ──────────────────────────────────────────────────────────
+//
+// Agrupa por artículo + TEXTO de la respuesta correcta, y descarta las parejas cuyas opciones
+// también coinciden (ésas ya las ven los otros dos cortes). El criterio y sus umbrales viven
+// en `lib/calidad/duplicados.js`; aquí solo se hace I/O.
+const SQL_MISMA_CLAVE = `
+  with base as (
+    select q.id, q.question_text, q.is_official_exam, q.primary_article_id, q.created_at,
+           q.lifecycle_state, length(coalesce(q.explanation,'')) as expl,
+           q.option_a, q.option_b, q.option_c, q.option_d,
+           ${N(`(array[q.option_a, q.option_b, q.option_c, q.option_d])[q.correct_option + 1]`)} as clave,
+           (array[q.option_a, q.option_b, q.option_c, q.option_d])[q.correct_option + 1] as texto_correcta
+      from questions q
+     where q.is_active
+       and q.exam_case_id is null          -- los supuestos comparten enunciado POR DISEÑO
+       and q.primary_article_id is not null
+       and q.correct_option between 0 and 3
+  )
+  select primary_article_id as art, clave, count(*)::int n,
+         json_agg(json_build_object('id', id, 'texto', question_text, 'oficial', is_official_exam,
+                                    'alta', created_at, 'textoCorrecta', texto_correcta,
+                                    'estado', lifecycle_state, 'expl', expl,
+                                    'ops', array[option_a, option_b, option_c, option_d])) as miembros
+    from base
+   where clave is not null and clave <> ''
+   group by primary_article_id, clave
+  having count(*) > 1`
+
+async function listadoMismaClave(c) {
+  const { rows } = await c.query(SQL_MISMA_CLAVE)
+  const grupos = []
+  let paresMismasOpciones = 0
+  for (const g of rows) {
+    // La banda del GRUPO la fija su MEJOR pareja: un grupo es un cierre transitivo y su pareja
+    // más floja no puede decidir por las demás (medido: el grupo del art. 2 LGSS tiene parejas
+    // en 0,48 y en 0,87 — puntuarlo por la peor lo habría dejado fuera del corte).
+    let mejor = null
+    for (let i = 0; i < g.miembros.length; i++) {
+      for (let j = i + 1; j < g.miembros.length; j++) {
+        const a = g.miembros[i], b = g.miembros[j]
+        const mismasOpciones = claveOpciones(a.ops) === claveOpciones(b.ops)
+        if (mismasOpciones) { paresMismasOpciones++; continue }
+        const solape = solapeDeContenido(a.texto, b.texto)
+        if (!mejor || solape > mejor.solape) mejor = { solape, a, b }
+      }
+    }
+    if (!mejor) continue
+    const banda = bandaMismaClave({ solape: mejor.solape, mismasOpciones: false })
+    if (banda) grupos.push({ ...g, par: mejor, banda })
+  }
+
+  const gemelas = grupos.filter((g) => g.banda === 'gemela')
+  const cola = grupos.filter((g) => g.banda === 'cola')
+  await anotarExposicion(c, gemelas)
+  gemelas.sort((x, y) => y.expuesta - x.expuesta)
+  const corte = corteAcumulado(gemelas.map((g) => g.expuesta), 0.8)
+
+  console.log('═══ MISMA RESPUESTA · MISMO ARTÍCULO · OTROS DISTRACTORES · LEGISLATIVAS (solo listado) ═══')
+  console.log(`  grupos examinados: ${rows.length}`)
+  console.log(`  🟥 GEMELAS (el enunciado pide lo mismo): ${gemelas.length}`)
+  console.log(`     preguntas implicadas: ${gemelas.reduce((a, g) => a + g.n, 0)} · sobrantes si se confirman: ${gemelas.reduce((a, g) => a + g.n - 1, 0)}`)
+  console.log(`  ⬜ cola de revisión (parecidas, NO concluyentes): ${cola.length}`)
+  console.log(`  (${paresMismasOpciones} parejas con las MISMAS opciones se dejan a los otros dos cortes, para no contar dos veces)`)
+  console.log('')
+  console.log('  ⚠️ Ni la banda alta autoriza a jubilar en automático: un artículo puede pedir')
+  console.log('     legítimamente la misma respuesta desde dos ángulos. Se adjudica a mano, de una')
+  console.log('     en una, y NUNCA se jubila una de examen OFICIAL.')
+  if (corte) console.log(`\n  🎯 el 80% de la exposición cabe en los ${corte} primeros grupos — empieza por ahí.`)
+
+  for (const g of gemelas.slice(0, LIMITE || 25)) {
+    console.log(`\n  · contenido=${g.par.solape.toFixed(3)} n=${g.n} servida ${g.expuesta}× (${g.copiasServidas} copias con exposición)`)
+    console.log(`    clave: «${String(g.miembros[0].textoCorrecta).replace(/\s+/g, ' ').slice(0, 90)}»`)
+    for (const m of g.miembros) {
+      console.log(`      ${m.id.slice(0, 8)}${m.oficial ? ' [OFICIAL]' : '         '} ${String(m.texto).replace(/\s+/g, ' ').slice(0, 105)}`)
+    }
+  }
+  if (gemelas.length > (LIMITE || 25)) console.log(`\n  … y ${gemelas.length - (LIMITE || 25)} grupos más (--limite N para ver otros).`)
+}
+
 async function listadoParafraseadasLegislativas(c) {
   const { rows } = await c.query(SQL_PARAFRASEADAS_LEG)
   const grupos = []
@@ -545,6 +628,10 @@ async function main() {
   try {
     if (ADJUDICADOS) {
       await aplicarAdjudicados(c, ADJUDICADOS)
+      return
+    }
+    if (MISMA_CLAVE) {
+      await listadoMismaClave(c)
       return
     }
     if (PARAFRASEADAS) {

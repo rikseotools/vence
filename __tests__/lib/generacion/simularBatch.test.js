@@ -504,3 +504,46 @@ describe('simularBatch — no anclar a un artículo que no se sirve (T-139)', ()
     expect(errores.some((e) => e.includes('sin texto de artículo'))).toBe(true)
   })
 })
+
+// ─── El dedup contra las VIVAS mira también la CLAVE [T-519] ────────────────────────────
+//
+// El agujero por el que el art. 2 de la LGSS acumuló once preguntas sobre la misma frase:
+// enunciado distinto (no dispara el Jaccard) y misma respuesta (nadie la miraba).
+describe('analizarDuplicados · misma respuesta que una viva', () => {
+  const nueva = {
+    question_text: 'A tenor de lo establecido en el artículo 2 del texto refundido de la Ley General de la Seguridad Social, el sistema de la seguridad social se fundamenta en los principios de:',
+    options: ['Universalidad, concentración, solidaridad e igualdad.', 'Universalidad, unidad, solidaridad e igualdad.', 'c', 'd'],
+    correct_option: 1,
+  }
+  const viva = {
+    question_text: 'Según el artículo 2 del Real Decreto Legislativo 8/2015 el sistema de la Seguridad Social, configurado por la acción protectora en sus modalidades contributiva y no contributiva, se fundamenta en los principios de:',
+    clave: 'Universalidad, unidad, solidaridad e igualdad.',
+  }
+
+  it('avisa aunque el ENUNCIADO no se parezca lo bastante para el Jaccard', () => {
+    const avisos = analizarDuplicados([nueva], [viva])
+    expect(avisos.some((a) => /MISMA RESPUESTA/.test(a.motivo))).toBe(true)
+  })
+
+  it('no avisa si la respuesta correcta es otra', () => {
+    const otra = { ...viva, clave: 'Universalidad, jerarquía, solidaridad e igualdad.' }
+    expect(analizarDuplicados([nueva], [otra]).some((a) => /MISMA RESPUESTA/.test(a.motivo))).toBe(false)
+  })
+
+  it('compara el TEXTO de la clave, no su índice', () => {
+    // La misma respuesta colocada en otra letra tiene que emparejar igual.
+    const barajada = { ...nueva, options: ['Universalidad, unidad, solidaridad e igualdad.', 'x', 'y', 'z'], correct_option: 0 }
+    expect(analizarDuplicados([barajada], [viva]).some((a) => /MISMA RESPUESTA/.test(a.motivo))).toBe(true)
+  })
+
+  it('con el formato ANTIGUO (solo el enunciado) no inventa el aviso', () => {
+    // Degradar es correcto: sin la clave no se puede afirmar nada sobre ella.
+    const avisos = analizarDuplicados([nueva], [viva.question_text])
+    expect(avisos.some((a) => /MISMA RESPUESTA/.test(a.motivo))).toBe(false)
+  })
+
+  it('una viva sin clave resuelta no empareja con una nueva sin clave resoluble', () => {
+    const sinClave = { question_text: nueva.question_text, options: [], correct_option: 0 }
+    expect(analizarDuplicados([sinClave], [{ question_text: viva.question_text, clave: '' }])).toEqual([])
+  })
+})

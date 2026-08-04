@@ -1953,7 +1953,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'alta: un intercambio de UNA palabra de contenido («prevención secundaria»/«terciaria») hace otra ' +
       'pregunta y pasa el umbral — límite irreducible, fijado con un test para que nadie lo «arregle» ' +
       'sin querer. NO pinga badge a propósito mientras no se decida qué hacer con lo que salga: una ' +
-      'alerta sin remediación construida enseña a ignorar el buzón (lección de T-426).',
+      'alerta sin remediación construida enseña a ignorar el buzón (lección de T-426).' +
+      '**`--misma-clave` (T-519, 03/08)**: el TERCER corte, y el único que NO exige que las opciones ' +
+      'coincidan — por eso ve lo que los otros dos no pueden. Agrupa por artículo + TEXTO de la ' +
+      'respuesta correcta (nunca por su índice: las copias vienen barajadas) y descarta la pareja si ' +
+      'las opciones también coinciden, para no contar dos veces el mismo defecto. Lo destapó la ' +
+      'impugnación `9e0d7418`: una usuaria pidió un test del art. 2 de la LGSS, le salieron 10 ' +
+      'preguntas y OCHO examinaban la misma frase; el artículo servía 13 activas y 11 preguntaban lo ' +
+      'mismo, con enunciados y distractores distintos, así que era invisible para las dos herramientas ' +
+      'que había. El discriminador NO puede ser «misma respuesta» a secas: un artículo con una ' +
+      'enumeración (LOFCS art. 5, principios básicos de actuación) tiene N preguntas que piden ' +
+      'subhechos DISTINTOS y comparten la etiqueta como respuesta. Lo que separa las dos cosas es si ' +
+      'el ENUNCIADO pide lo mismo, medido sobre las palabras de CONTENIDO (`secuenciaDeContenido` de ' +
+      'T-439, que ya quita el ruido de cita — el nombre desarrollado de la ley que exige §2.2-quater ' +
+      'pesa más que la materia e infla el parecido solo). Calibrado con anclas leídas a mano: los ' +
+      'falsos positivos conocidos caen en 0,12-0,27 y los ciertos de 0,48 arriba → GEMELA ≥0,85 ' +
+      '(2.277 grupos, 4.233 sobrantes; 6 de 6 ciertas en muestra) y cola 0,55-0,85 (1.919). ' +
+      'La banda del grupo la fija su MEJOR pareja, no la peor: un grupo es un cierre transitivo y el ' +
+      'caso que originó la ficha tiene parejas en 0,48 y en 0,87. LISTA Y NO ESCRIBE, como los otros ' +
+      'dos cortes. La PREVENCIÓN va aparte y en el punto de escritura: `analizarDuplicados` ' +
+      '(`lib/generacion/simularBatch.js`) compara ahora la clave también contra las VIVAS — antes ' +
+      'solo lo hacía intra-lote, y por ahí entraba la clase entera.',
   },
   aprobar_batch_generado: {
     titulo: 'Paso 6: transicionar un batch `draft` → `approved` (lo hace VISIBLE), con gate y resumen de auditoría',
