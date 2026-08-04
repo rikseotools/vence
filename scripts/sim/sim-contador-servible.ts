@@ -4,6 +4,7 @@
 //
 //   npm run sim:contador-servible                 # foto del banco entero
 //   npm run sim:contador-servible -- --oposicion subalterno_gva
+//   npm run sim:contador-servible -- --por-oposicion   # qué número quedaría en cada una
 //
 // Esto MIDE; no es la puerta. La puerta por oposición es `npm run audit:served`
 // (compara contra la función de producción, tema a tema) y el trinquete en CI es
@@ -47,6 +48,7 @@ type Fila = {
 
 const args = process.argv.slice(2)
 const soloOposicion = args.includes('--oposicion') ? args[args.indexOf('--oposicion') + 1] : null
+const porOposicion = args.includes('--por-oposicion')
 
 function lit(s: string) {
   return `'${String(s).replace(/'/g, "''")}'`
@@ -97,10 +99,15 @@ async function main() {
     marcada AS (
       SELECT c.position_type, c.topic_number,
              (c.is_official_exam AND NOT (COALESCE(lower(c.exam_position), '') = ANY(p.valid))) AS es_ajena,
-             (CASE WHEN p.tag IS NOT NULL
+             -- COALESCE en las DOS ramas: el operador && vale NULL cuando la columna tags es NULL,
+             -- y un NULL aqui hace que la fila se caiga de los dos lados de la cuenta (ni servible
+             -- ni excluida). Como la mayoria de preguntas NO llevan etiquetas, sin esto salia que
+             -- oposiciones enteras servian 0 (Correos daba 0 cuando sirve de sobra). Es la misma
+             -- trampa de la rama de arriba, y mordio dos veces el mismo dia.
+             COALESCE(CASE WHEN p.tag IS NOT NULL
                    THEN (c.tags IS NULL OR NOT (c.tags @> ARRAY[p.tag]::text[]))
                    ELSE (c.tags && ARRAY[${exclusivos}]::text[])
-              END) AS fuera_por_tag
+              END, false) AS fuera_por_tag
         FROM cand c JOIN par p ON p.pt = c.position_type
     )
     SELECT position_type, topic_number,
@@ -121,6 +128,40 @@ async function main() {
   console.log(`     ESTADO: descontadas del anuncio desde [T-507] — este número es cuánto se descuenta, no una brecha.`)
   console.log(`🏷️  excluidas por TAG            → ${conTag.length} temas · ${sumar(conTag, 'excluidas_tag')} preguntas`)
   console.log(`     ESTADO: DEUDA ABIERTA — el contador las sigue anunciando y el test no las da.`)
+
+  if (porOposicion) {
+    // Para decidir si se publica el número honesto hace falta ver A QUIÉN le baja y cuánto.
+    // Solo oposiciones ACTIVAS: son las únicas cuyo rótulo ve alguien.
+    const { rows: activas } = await c.query<{ position_type: string; usuarios: number }>(`
+      SELECT replace(o.slug,'-','_') AS position_type,
+             (SELECT count(*)::int FROM user_profiles u WHERE u.target_oposicion = replace(o.slug,'-','_')) AS usuarios
+        FROM oposiciones o WHERE o.is_active = true`)
+    const meta = new Map(activas.map((a) => [a.position_type, a.usuarios]))
+    const agg = new Map<string, { anuncia: number; sirve: number }>()
+    for (const r of rows) {
+      if (!meta.has(r.position_type)) continue
+      const e = agg.get(r.position_type) || { anuncia: 0, sirve: 0 }
+      e.anuncia += Number(r.anunciado)
+      e.sirve += Number(r.servible)
+      agg.set(r.position_type, e)
+    }
+    const tabla = [...agg.entries()]
+      .map(([pt, v]) => ({
+        oposicion: pt.slice(0, 34),
+        usuarios: meta.get(pt) ?? 0,
+        'anuncia hoy': v.anuncia,
+        'diría la verdad': v.sirve,
+        'de menos': v.anuncia - v.sirve,
+        '%': v.anuncia ? `${Math.round((100 * (v.anuncia - v.sirve)) / v.anuncia)}%` : '—',
+      }))
+      .filter((x) => x['de menos'] > 0)
+      .sort((a, b) => Number(b['%'].replace('%', '')) - Number(a['%'].replace('%', '')))
+    console.log(`\nQué número quedaría en cada oposición ACTIVA si el contador aplicara el filtro de tag:`)
+    console.table(tabla.slice(0, 20))
+    console.log(`(${tabla.length} oposiciones activas afectadas de ${meta.size})`)
+    await c.end()
+    return
+  }
 
   const peores = [...conTag]
     .filter((r) => r.anunciado > 0)
