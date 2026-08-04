@@ -1458,26 +1458,6 @@ explicaciones legales.
   3. Solo entonces, LLM para la cola que quede: el epígrafe **parafraseado** («materia acotada en prosa») no se puede mapear con un `includes()` y ahí sí hace falta juicio.
 - **Lo que NO hay que hacer:** volver a correr el verificador multiagente sobre epígrafes sin sourcear. Es lo que ya se hizo, y lo que produjo el verde falso: más capacidad de razonamiento sobre una premisa sin verificar **no corrige el error, lo argumenta mejor**.
 
-### [T-527] 🟠 [ABIERTO 04/08] Las otras 3 universidades escopan el RD 534/2024 ENTERO con epígrafes que enumeran capítulos concretos
-
-- **Sale de las 10 impugnaciones de Lucia Quiroga sobre la UC3M** (`d4841d9b` y hermanas, resueltas el 04/08). Al medir si era sistémico, las **cuatro** oposiciones que escopan el RD 534/2024 tienen `article_numbers = NULL` (= ley entera) y las cuatro tienen un epígrafe que **enumera bloques concretos**:
-  | oposición | tema | scope | capítulos que el epígrafe nombra |
-  |---|---|---|---|
-  | `auxiliar_administrativo_universidad_carlos_iii` | T17 B3 | **ya recortado** (arts 1-8, 22-26, 37-45) | I, II, IV, VI |
-  | `administrativa_universidad_de_murcia` | T4 B5 | ley entera | (heurística: II, IV — **leer**) |
-  | `auxiliar_administrativo_universidad_almeria` | T17 B2 | ley entera | (heurística: II, IV — **leer**) |
-  | `escala_administrativa_universidad_de_granada` | T7 B1 | ley entera | (heurística: II, IV — **leer**) |
-- **La columna de la derecha NO es un veredicto.** Sale de buscar rúbricas del BOE dentro del epígrafe, que es un apaño para dimensionar; los epígrafes de esas tres son más cortos que el de la UC3M y hay que **leerlos enteros contra su propia convocatoria**. Puede que alguno pida legítimamente la norma completa.
-- **Estructura real del RD 534/2024** (BOE `BOE-A-2024-11858`, ya verificada): CAP I arts 1-3 · CAP II 4-8 · CAP III 9-21 (Prueba de acceso) · CAP IV 22-26 · CAP V 27-36 (Procedimientos específicos) · CAP VI 37-45.
-- **Cómo se hace, una por una** (es el camino que funcionó en la UC3M y está probado):
-  1. `programa_url` de la oposición → si la página sirve un cascarón sin JS (la UC3M servía 1.565 caracteres), el temario está en un **PDF enlazado**; bajarlo y `pdftotext -layout`.
-  2. Localizar el tema y **comparar palabra por palabra** con `topics.epigrafe`.
-  3. Mapear las rúbricas que enumera a los capítulos del BOE y construir el `article_numbers`.
-  4. `verify:scope plan <pt> <propuestas.json>` → `apply` (con scope NULL el recorte se expresa en `anadir`, materializando la lista; `quitar` va vacío).
-  5. `verify:epigrafe record <pt> <consenso.json>` con `source_url` al PDF, que lo enlaza al hub de provenance.
-- **NUNCA recortar sin el boletín** y nunca por analogía con la UC3M: cada universidad tiene su propio temario.
-
-
 ### [T-524] 🟡 [ABIERTO 04/08] Duplicados que NINGÚN corte puede ver: el hecho examinado es el mismo y el TEXTO de la respuesta no
 
 - **De dónde sale.** Impugnación `2377b3d1` (Marta Benito Padilla, premium, 03/08). Hizo un test de **39 preguntas de un solo artículo** (Windows 10, «Interfaz y entorno») y en ESE MISMO test le salieron dos preguntas idénticas de fondo, en las posiciones **21 y 39**:
@@ -4293,6 +4273,34 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-527] ✅ [HECHA 04/08] Las otras 3 universidades escopan el RD 534/2024 ENTERO con epígrafes que enumeran capítulos concretos
+
+- **Sale de las 10 impugnaciones de Lucia Quiroga sobre la UC3M** (`d4841d9b` y hermanas, resueltas el 04/08). Al medir si era sistémico, las **cuatro** oposiciones que escopan el RD 534/2024 tienen `article_numbers = NULL` (= ley entera) y las cuatro tienen un epígrafe que **enumera bloques concretos**:
+  | oposición | tema | scope | capítulos que el epígrafe nombra |
+  |---|---|---|---|
+  | `auxiliar_administrativo_universidad_carlos_iii` | T17 B3 | **ya recortado** (arts 1-8, 22-26, 37-45) | I, II, IV, VI |
+  | `administrativa_universidad_de_murcia` | T4 B5 | ley entera | (heurística: II, IV — **leer**) |
+  | `auxiliar_administrativo_universidad_almeria` | T17 B2 | ley entera | (heurística: II, IV — **leer**) |
+  | `escala_administrativa_universidad_de_granada` | T7 B1 | ley entera | (heurística: II, IV — **leer**) |
+- **La columna de la derecha NO es un veredicto.** Sale de buscar rúbricas del BOE dentro del epígrafe, que es un apaño para dimensionar; los epígrafes de esas tres son más cortos que el de la UC3M y hay que **leerlos enteros contra su propia convocatoria**. Puede que alguno pida legítimamente la norma completa.
+- **Estructura real del RD 534/2024** (BOE `BOE-A-2024-11858`, ya verificada): CAP I arts 1-3 · CAP II 4-8 · CAP III 9-21 (Prueba de acceso) · CAP IV 22-26 · CAP V 27-36 (Procedimientos específicos) · CAP VI 37-45.
+- **Cómo se hace, una por una** (es el camino que funcionó en la UC3M y está probado):
+  1. `programa_url` de la oposición → si la página sirve un cascarón sin JS (la UC3M servía 1.565 caracteres), el temario está en un **PDF enlazado**; bajarlo y `pdftotext -layout`.
+  2. Localizar el tema y **comparar palabra por palabra** con `topics.epigrafe`.
+  3. Mapear las rúbricas que enumera a los capítulos del BOE y construir el `article_numbers`.
+  4. `verify:scope plan <pt> <propuestas.json>` → `apply` (con scope NULL el recorte se expresa en `anadir`, materializando la lista; `quitar` va vacío).
+  5. `verify:epigrafe record <pt> <consenso.json>` con `source_url` al PDF, que lo enlaza al hub de provenance.
+- **MEDIDO EL 04/08 — y la premisa de la ficha NO se sostiene: ninguna de las tres sobre-incluye.** Leídos los tres epígrafes enteros contra su fuente, la columna «heurística» era lo que la propia ficha advertía que era (un apaño para dimensionar), no un veredicto:
+  | oposición | qué pide su epígrafe | veredicto |
+  |---|---|---|
+  | `administrativa_universidad_de_murcia` T504 | *«Régimen de acceso y admisión: R.D. 534/2024 …»* + la Resolución del Rector — **la norma entera**, sin enumerar capítulos | scope `NULL` **correcto**; Paso 1 ya `verified_literal` contra el BORM |
+  | `auxiliar_administrativo_universidad_almeria` T17 | el **título íntegro** del RD y nada más | scope `NULL` **correcto**; Paso 1 ya `verified_literal` contra el BOE |
+  | `escala_administrativa_universidad_de_granada` T107 | el **título íntegro** del RD (BOE-A-2026-14538, ANEXO I, Bloque I, punto 7) | scope `NULL` **correcto**; le faltaba el Paso 1, **hecho hoy** |
+- **Lo que sí había en Granada: 28 temas con CERO Paso 1.** Contrastados contra el ANEXO I del documento **ya clonado en el hub** (cero re-descarga): **14 son idénticos** al programa oficial → registrados `verified_literal` con `source_url` y enlazados al hub. Los otros **14 dicen lo mismo con otra redacción** (separadores `,`/`;`, el título largo del RD abreviado, y las listas con viñetas del oficial compactadas en una línea): **NO se registran**, porque decidir si eso es `provisional` o `drift` es un criterio que afecta a todo el banco y pertenece a [T-528]. Sellar aquí un veredicto a ojo sería el falso verde que esa ficha viene a quitar.
+- **GOTCHA de medición que casi fabrica un hallazgo:** la primera comparación se hizo contra el documento ENTERO y daba ocho epígrafes «que empiezan igual y divergen» — eran coincidencias con el párrafo de *normativa aplicable* de las BASES, que nombra las mismas leyes. Acotando al ANEXO I desaparecen. El programa se compara contra el PROGRAMA, no contra el boletín entero.
+- **NUNCA recortar sin el boletín** y nunca por analogía con la UC3M: cada universidad tiene su propio temario.
+
 
 ### [T-552] ✅ [HECHA 04/08] Triaje determinista epígrafe vs su fuente: por dónde empezar el Paso 1 de las 126 activas
 
