@@ -16,8 +16,16 @@
 // contenido, y eso tiene arreglo desde el editor.
 
 import Link from 'next/link'
+import { enlaceEditor } from '@/lib/oposicionPersonalizada/enlaceEditor'
 
-export default function AvisoTemarioVacio({ ctaEditor = true }: { ctaEditor?: boolean }) {
+export default function AvisoTemarioVacio({
+  ctaEditor = true,
+  personalizadaId = null,
+}: {
+  ctaEditor?: boolean
+  /** [T-523] Con él, el editor abre ESTA oposición en vez de la lista. Sin él, la lista. */
+  personalizadaId?: string | null
+}) {
   return (
     <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-amber-900 dark:text-amber-100">
       <p>
@@ -26,7 +34,7 @@ export default function AvisoTemarioVacio({ ctaEditor = true }: { ctaEditor?: bo
       </p>
       {ctaEditor && (
         <Link
-          href="/oposicion-personalizada"
+          href={enlaceEditor(personalizadaId)}
           className="mt-3 inline-block rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
         >
           Ir al editor del temario

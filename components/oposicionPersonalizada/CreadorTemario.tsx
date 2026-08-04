@@ -16,6 +16,7 @@ import { debeMostrarIntro, leerMarca, marcarVisto } from './introVisto'
 import SelectorArticulos, { Rueda, type GrupoArticulos } from './SelectorArticulos'
 import MisOposiciones, { type ResumenOposicion } from './MisOposiciones'
 import { useOposicion } from '@/contexts/OposicionContext'
+import { idAEditarDesdeUrl } from '@/lib/oposicionPersonalizada/enlaceEditor'
 import {
   anadirArticulo,
   anadirArticulos,
@@ -285,6 +286,22 @@ export default function CreadorTemario({
       setCargandoEdicion(false)
     }
   }, [])
+
+  // [T-523] Venir de «Ir al editor del temario» con una oposición concreta: se abre ESA, no la
+  // lista. El usuario ya dijo cuál era al pulsar su temario; obligarle a buscarla otra vez es
+  // perder el contexto que él mismo acaba de dar.
+  //
+  // Se dispara UNA sola vez (`abiertaPorUrl`) a propósito: sin el pestillo, cualquier re-render
+  // que recreara `editar` volvería a cargar la oposición y le pisaría al usuario lo que llevara
+  // escrito en el constructor.
+  const abiertaPorUrl = useRef(false)
+  useEffect(() => {
+    if (abiertaPorUrl.current) return
+    const id = idAEditarDesdeUrl(typeof window !== 'undefined' ? window.location.search : null)
+    if (!id) return
+    abiertaPorUrl.current = true
+    editar(id)
+  }, [editar])
 
   const empezarNueva = useCallback(() => {
     setTemario({ nombre: '', temas: [temaVacio('t1', 1)] })

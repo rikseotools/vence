@@ -80,7 +80,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <InteractiveBreadcrumbs personalizada={{ id: limpio, nombre: nombre }} />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <h1 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">{nombre}</h1>
-          <AvisoTemarioVacio />
+          <AvisoTemarioVacio personalizadaId={limpio} />
         </div>
       </main>
     )
