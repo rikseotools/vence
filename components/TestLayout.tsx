@@ -15,6 +15,7 @@ import QuestionDispute from './QuestionDispute'
 import FavoriteQuestionButton from './FavoriteQuestionButton'
 import ShareQuestion from './ShareQuestion'
 import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
+import { raizPersonalizada, raizPersonalizadaEnRuta } from '@/lib/oposicion/objetivoPersonalizado'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 
@@ -389,6 +390,18 @@ export default function TestLayout({
   // USUARIO (userOposicionSlug) cuando la URL es global sin slug (/test/rapido de
   // la campana, práctica IA): así "Volver a Tests" NO bota a otra oposición.
   const navSlug = resolveOposicionSlugForNav(pathname, userOposicionSlug)
+
+  // RAÍZ de los enlaces de fin de test. Se decide UNA vez, aquí, y no en cada botón: son tres
+  // sitios y arreglar solo el que se ve fallar deja los otros dos rotos hasta que alguien los
+  // pulse (misma lección que en el Header).
+  //
+  // [T-541] `resolveOposicionSlugForNav` solo conoce el catálogo estático, así que dentro de una
+  // oposición personalizada devuelve la flagship: al acabar un test propio, «Volver al Tema» y
+  // «Ver Otros Temas» mandaban al usuario a `/auxiliar-administrativo-estado/…`. Manda la RUTA
+  // sobre el perfil porque las personalizadas son públicas: puedes estar viendo una que no es tu
+  // objetivo.
+  const navBase =
+    raizPersonalizadaEnRuta(pathname) ?? raizPersonalizada(userOposicionSlug) ?? `/${navSlug}`
 
   // Resetear sesión y buffer cuando cambia el tema o test
   useEffect(() => {
@@ -2016,7 +2029,7 @@ export default function TestLayout({
                       if (config.customNavigationLinks?.backToLaw) {
                         window.location.href = config.customNavigationLinks.backToLaw.href
                       } else {
-                        window.location.href = config.isLawTest ? '/leyes' : `/${navSlug}/test`
+                        window.location.href = config.isLawTest ? '/leyes' : `${navBase}/test`
                       }
                     }}
                     className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm border border-gray-700"
@@ -2637,7 +2650,7 @@ export default function TestLayout({
                                 {/* Fallback para tema = 0 sin customNavigationLinks */}
                                 {tema === 0 && !config.customNavigationLinks?.backToLaw && (
                                   <Link
-                                    href={config.isLawTest ? "/leyes" : `/${navSlug}/test`}
+                                    href={config.isLawTest ? "/leyes" : `${navBase}/test`}
                                     className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color || 'from-blue-500 to-cyan-600'} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto`}
                                   >
                                     <span>📚</span>
@@ -2650,7 +2663,7 @@ export default function TestLayout({
                               <>
                                 {/* Botón principal: Volver al Tema */}
                                 <Link
-                                  href={`/${navSlug}/test/tema/${tema}`}
+                                  href={`${navBase}/test/tema/${tema}`}
                                   className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto`}
                                 >
                                   <span>📚</span>
@@ -2659,7 +2672,7 @@ export default function TestLayout({
                                 
                                 {/* Botón secundario: Ir a Otros Temas */}
                                 <Link
-                                  href={`/${navSlug}/test`}
+                                  href={`${navBase}/test`}
                                   className="px-8 py-4 rounded-lg font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3"
                                 >
                                   <span>🗂️</span>

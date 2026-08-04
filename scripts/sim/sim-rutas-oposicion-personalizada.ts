@@ -92,6 +92,7 @@ async function main() {
     '../../lib/api/oposicionPersonalizada/guardar'
   )
   const { positionTypeDe } = await import('../../lib/api/oposicionPersonalizada/plan')
+  const { enlaceSaleAOtraOposicion } = await import('../../lib/oposicion/objetivoPersonalizado')
 
   const c = new Client(pgConfig(process.env.DATABASE_URL!))
   await c.connect()
@@ -125,6 +126,8 @@ async function main() {
   let opId: string | null = null
   const navegador = await chromium.launch()
   const visitas: Visita[] = []
+  /** Enlaces que sacan al usuario de SU oposición y lo meten en otra. [T-541] */
+  const fugas: Array<{ href: string; desde: string }> = []
 
   try {
     if (VACIA) {
@@ -306,14 +309,34 @@ async function main() {
       const roto = ROTO.find((re) => re.test(texto))?.source ?? null
       visitas.push({ ruta, estado: resp?.status() ?? 0, roto, desde })
 
-      // Descubrir a dónde se puede seguir DESDE aquí, dentro de la propia oposición.
+      // Descubrir a dónde se puede seguir DESDE aquí.
+      //
+      // [T-541] Se leen TODOS los enlaces internos, no solo los que empiezan por la raíz. El
+      // filtro `a[href^="${raiz}"]` era el punto ciego de esta simulación: un enlace que SACA al
+      // usuario de su oposición no empieza por la raíz, así que quedaba fuera del rastreo por
+      // construcción — y es justo el fallo que un premium encontró a mano el 04/08/2026
+      // («Practicar este tema» llevaba a `/administrativo-estado/test/tema/10`). Un rastreador
+      // que solo mira dentro no puede ver una fuga.
       const enlaces = await p
-        .locator(`a[href^="${raiz}"]`)
+        .locator('a[href^="/"]')
         .evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''))
         .catch(() => [] as string[])
+      // Las FUGAS se buscan solo en el CONTENIDO, no en el Header. El Header es cromo compartido
+      // y sus enlaces apuntan fuera con toda legitimidad (de hecho ya se comprueba aparte, más
+      // arriba); mezclarlos hacía que una cuenta sin objetivo fijado —como la efímera de esta
+      // simulación— saliera con fugas que no lo son.
+      const enlacesContenido = await p
+        .locator('main a[href^="/"]')
+        .evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''))
+        .catch(() => [] as string[])
+      for (const href of enlacesContenido) {
+        const limpia = href.split('?')[0].split('#')[0]
+        if (limpia && enlaceSaleAOtraOposicion(limpia, raiz)) fugas.push({ href: limpia, desde: ruta })
+      }
       for (const href of enlaces) {
         const limpia = href.split('?')[0].split('#')[0]
-        if (limpia && !vistas.has(limpia)) pendientes.push({ ruta: limpia, desde: ruta })
+        if (!limpia || !limpia.startsWith(raiz)) continue
+        if (!vistas.has(limpia)) pendientes.push({ ruta: limpia, desde: ruta })
       }
     }
 
@@ -458,6 +481,10 @@ async function main() {
       )
     }
 
+    if (fugas.length) {
+      console.log(`\n❌ ENLACES QUE SE ESCAPAN A OTRA OPOSICIÓN: ${fugas.length}\n`)
+      for (const f of fugas) console.log(`   ❌ ${f.href}\n      desde: ${f.desde}`)
+    }
     console.log(`\nRutas visitadas: ${visitas.length}\n`)
     for (const v of visitas) {
       console.log(`   ${v.roto ? '❌' : '✅'} ${v.ruta}`)
@@ -482,6 +509,16 @@ async function main() {
 
   const rotas = visitas.filter((v) => v.roto)
   const falladas = pruebasTest.filter((t) => !t.ok)
+  // Una fuga NO rompe ninguna pantalla: la de destino carga perfectamente. Por eso cuenta como
+  // rojo aparte — si dependiera de `ROTO` (texto de error) no se vería nunca. [T-541]
+  if (fugas.length) {
+    console.log('\n' + '═'.repeat(72))
+    console.log(
+      `❌ ${fugas.length} enlace(s) sacan al usuario de su oposición y lo meten en otra.\n` +
+        '   No dan error: la página de destino carga bien. Simplemente es el temario de otro.',
+    )
+    process.exitCode = 1
+  }
   console.log('\n' + '═'.repeat(72))
   if (rotas.length === 0 && falladas.length === 0) {
     // El resumen dice EXACTAMENTE lo que se ha comprobado. Decir «test entero respondido»

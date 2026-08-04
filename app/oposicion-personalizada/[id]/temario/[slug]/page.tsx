@@ -9,6 +9,7 @@ import type { Metadata } from 'next'
 import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from '@/app/administrativo-estado/temario/[slug]/TopicContentView'
 import { formatUpdatedAt } from '@/lib/temario/updatedAt'
+import { raizPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,15 +32,19 @@ export default async function Page({
 
   // Se le pasa el `position_type` donde el catálogo pasa el slug: la query lo reconoce y lo usa
   // tal cual (ver `getTopicContentBaseInternal`).
-  const content = await getTopicContent(
-    `personalizada_${limpio}` as never,
-    parseInt(m[1], 10),
-  )
+  const objetivo = `personalizada_${limpio}`
+  const content = await getTopicContent(objetivo as never, parseInt(m[1], 10))
   if (!content) notFound()
+
+  // El `basePath` va EXPLÍCITO. Sin él, `TopicContentView` cae en su valor por defecto
+  // (`administrativo-estado`, la oposición de la que se reutiliza el componente) y los cuatro
+  // enlaces de esta pantalla —tema anterior, tema siguiente, «Volver al índice» y «Practicar
+  // este tema»— sacan al usuario a OTRA oposición sin dar ningún error. [T-541]
+  const raiz = raizPersonalizada(objetivo)!
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <TopicContentView content={content} updatedAt={formatUpdatedAt()} />
+      <TopicContentView content={content} basePath={raiz} updatedAt={formatUpdatedAt()} />
     </div>
   )
 }

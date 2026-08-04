@@ -17,6 +17,17 @@ import MarkdownContent from '@/components/MarkdownContent'
 interface TopicContentViewProps {
   content: TopicContent
   oposicion?: string
+  /**
+   * Prefijo del que cuelgan los enlaces de esta pantalla (miga «Temario», tema anterior/
+   * siguiente y «Practicar este tema»). Por defecto se deriva de `oposicion`.
+   *
+   * Existe porque una oposición PERSONALIZADA no tiene slug: vive en `/oposicion-personalizada/
+   * <id>`, y su página reutiliza este componente. Sin poder decirlo, heredaba el valor por
+   * defecto de `oposicion` —un slug REAL— y mandaba al usuario al temario de otra oposición sin
+   * fallar por ningún lado ([T-541]). Se pasa explícito y no se adivina del perfil: se puede
+   * estar leyendo una personalizada que no es tu objetivo, porque son públicas.
+   */
+  basePath?: string
   updatedAt: string
 }
 
@@ -38,7 +49,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'administrativo-estado', updatedAt }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'administrativo-estado', basePath: basePathProp, updatedAt }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
@@ -72,7 +83,9 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
     return acc + law.articles.filter(a => a.officialQuestionCount > 0).length
   }, 0)
 
-  const basePath = `/${oposicion}`
+  // El prefijo lo manda quien renderiza; `oposicion` solo es el atajo de las páginas del
+  // catálogo, donde slug y raíz coinciden. Ver `basePath` en las props ([T-541]).
+  const basePath = basePathProp ?? `/${oposicion}`
 
   return (
     <>

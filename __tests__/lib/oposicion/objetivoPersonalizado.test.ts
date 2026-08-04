@@ -13,6 +13,9 @@ import {
   idCustomDe,
   esObjetivoValido,
   rutaTestPersonalizada,
+  raizPersonalizada,
+  raizPersonalizadaEnRuta,
+  enlaceSaleAOtraOposicion,
   personalizadaUtilizable,
 } from '@/lib/oposicion/objetivoPersonalizado'
 
@@ -121,5 +124,98 @@ describe('una personalizada solo es estudiable si tiene temas', () => {
 
   it('un negativo tampoco (una fila corrupta no abre la puerta)', () => {
     expect(personalizadaUtilizable(-3)).toBe(false)
+  })
+})
+
+
+/**
+ * [T-541] La RAÍZ y la fuga a otra oposición.
+ *
+ * Nace de un fallo real (Sergio, premium, 04/08/2026): pulsó «Practicar este tema» dentro de su
+ * oposición personalizada y acabó en `/administrativo-estado/test/tema/10`. La causa era un
+ * componente compartido cuyo valor POR DEFECTO es un slug REAL, así que la página que no le
+ * pasaba el suyo no fallaba: mandaba al usuario a otra oposición.
+ */
+describe('la raíz de una personalizada', () => {
+  it('es el prefijo del que cuelgan todas sus páginas', () => {
+    expect(raizPersonalizada(ID)).toBe('/oposicion-personalizada/aaaaaaaabbbbccccddddeeeeeeeeeeee')
+  })
+
+  it('la ruta de tests se construye SOBRE ella (una sola verdad)', () => {
+    expect(rutaTestPersonalizada(ID)).toBe(`${raizPersonalizada(ID)}/test`)
+  })
+
+  it('lo que no es personalizado devuelve null, para que el llamante siga por su camino', () => {
+    expect(raizPersonalizada('auxiliar_administrativo_estado')).toBeNull()
+    expect(raizPersonalizada(null)).toBeNull()
+    expect(raizPersonalizada(undefined)).toBeNull()
+    expect(raizPersonalizada('personalizada_')).toBeNull()
+  })
+})
+
+describe('la raíz que hay en una RUTA', () => {
+  it('la saca de la propia URL, que es la señal más fuerte (las personalizadas son públicas)', () => {
+    const id = 'aaaaaaaabbbbccccddddeeeeeeeeeeee'
+    expect(raizPersonalizadaEnRuta(`/oposicion-personalizada/${id}/test/tema/10/test-personalizado`))
+      .toBe(`/oposicion-personalizada/${id}`)
+    expect(raizPersonalizadaEnRuta(`/oposicion-personalizada/${id}`)).toBe(`/oposicion-personalizada/${id}`)
+  })
+
+  it('fuera de una personalizada, null (el llamante sigue con el catálogo)', () => {
+    expect(raizPersonalizadaEnRuta('/administrativo-estado/test/tema/10')).toBeNull()
+    expect(raizPersonalizadaEnRuta('/test/rapido')).toBeNull()
+    expect(raizPersonalizadaEnRuta(null)).toBeNull()
+  })
+
+  it('un id con mala forma no cuela (no se fabrica una raíz inventada)', () => {
+    expect(raizPersonalizadaEnRuta('/oposicion-personalizada/no-es-un-id/test')).toBeNull()
+  })
+})
+
+describe('un enlace que SACA al usuario de su oposición personalizada', () => {
+  const raiz = raizPersonalizada(ID)!
+
+  it('caza el fallo que lo motiva: «Practicar este tema» apuntando a otra oposición', () => {
+    expect(enlaceSaleAOtraOposicion('/administrativo-estado/test/tema/10', raiz)).toBe(true)
+    expect(enlaceSaleAOtraOposicion('/administrativo-estado/temario/tema-10', raiz)).toBe(true)
+    expect(enlaceSaleAOtraOposicion('/auxiliar-administrativo-estado/temario', raiz)).toBe(true)
+  })
+
+  it('lo que se queda en casa NO es fuga', () => {
+    expect(enlaceSaleAOtraOposicion(`${raiz}/test/tema/10`, raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion(`${raiz}/temario/tema-10`, raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion(raiz, raiz)).toBe(false)
+    // Con query/hash sigue siendo la misma página.
+    expect(enlaceSaleAOtraOposicion(`${raiz}/test?foo=1#x`, raiz)).toBe(false)
+  })
+
+  it('los enlaces que un temario tiene legítimamente hacia fuera NO son fuga', () => {
+    // Practicar una ley suelta es lo que hace el propio temario en cada ley que lista.
+    expect(enlaceSaleAOtraOposicion('/leyes/trrl', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/leyes/rdl-5-2015/avanzado', raiz)).toBe(false)
+    // Y los comunes del Header.
+    expect(enlaceSaleAOtraOposicion('/teoria', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/oposiciones', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/test/por-leyes', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/test/favoritas', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/perfil', raiz)).toBe(false)
+  })
+
+  it('las SECCIONES de la app no son otra oposición, aunque la ruta se les parezca', () => {
+    // Medido contra producción: `/psicotecnicos/test` (enlace común del Header) era 14 de las
+    // 17 señales del rastreo. Un detector que grita en el caso normal deja de mirarse.
+    expect(enlaceSaleAOtraOposicion('/psicotecnicos/test', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/teoria/test', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('/admin/test', raiz)).toBe(false)
+  })
+
+  it('sin raíz no se opina (no se marca fuga a quien no está en una personalizada)', () => {
+    expect(enlaceSaleAOtraOposicion('/administrativo-estado/test', null)).toBe(false)
+  })
+
+  it('un enlace externo o relativo no es cosa suya', () => {
+    expect(enlaceSaleAOtraOposicion('https://www.boe.es/x/test', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion('', raiz)).toBe(false)
+    expect(enlaceSaleAOtraOposicion(null, raiz)).toBe(false)
   })
 })

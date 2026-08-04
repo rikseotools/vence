@@ -23,7 +23,7 @@ import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAIChat } from '../contexts/AIChatContext'
 import { getOposicion, ALL_OPOSICION_SLUGS, FLAGSHIP_OPOSICION_SLUG, getTestsLink as configGetTestsLink } from '@/lib/config/oposiciones'
-import { rutaTestPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
+import { raizPersonalizada as raizDePersonalizada, rutaTestPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import DailyGoalBanner from '@/components/DailyGoalBanner'
 import HeaderDesktopNav from '@/components/HeaderDesktopNav'
@@ -389,7 +389,10 @@ export default function HeaderES() {
     // Test y Temario se construyen los dos desde `opoSlug`, y arreglar solo el que se ve fallar
     // deja al otro roto hasta que alguien lo pulse. (Antes ya se arregló `getTestsLink()` para
     // el icono 🎯 del móvil, que es OTRO camino distinto — de ahí que este siguiera mal.)
-    const raizPersonalizada = rutaTestPersonalizada(oposicionId)?.replace(/\/test$/, '') ?? null
+    // La raíz la da el núcleo puro. Antes se sacaba quitándole el `/test` a la ruta de tests, y
+    // ese atajo es lo que dejó el concepto sin nombre reutilizable: la página del tema del
+    // temario no pudo usarlo y acabó heredando el slug de otra oposición ([T-541]).
+    const raizPersonalizada = raizDePersonalizada(oposicionId)
 
     // Enlaces que NO dependen de la oposición (siempre visibles), + psicotécnicos
     // condicional (userHasPsico, calculado a nivel de componente y compartido con el móvil).

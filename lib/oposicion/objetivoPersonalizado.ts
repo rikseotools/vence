@@ -28,6 +28,13 @@
 const PREFIJO = 'personalizada_'
 
 /**
+ * Primeros segmentos de ruta que NO son una oposición aunque sigan de `/test` o `/temario`.
+ * Son secciones transversales de la app, enlazadas desde cualquier pantalla con toda
+ * legitimidad. Ver `enlaceSaleAOtraOposicion`.
+ */
+const SECCIONES_NO_OPOSICION = new Set(['psicotecnicos', 'leyes', 'teoria', 'test', 'admin', 'api'])
+
+/**
  * ¿Este identificador es una oposición personalizada CON temario?
  *
  * Se exige el prefijo a propósito. El onboarding antiguo guardaba el **UUID pelado** de
@@ -97,6 +104,23 @@ export function esObjetivoValido(
 }
 
 /**
+ * RAÍZ de una oposición personalizada: el prefijo del que cuelgan todas sus páginas.
+ *
+ * Es la primitiva que faltaba. El Header la necesitaba y la sacaba quitándole el `/test` a
+ * `rutaTestPersonalizada` (`.replace(/\/test$/, '')`), que es la señal clásica de que el
+ * concepto existía sin nombre: en cuanto una segunda pantalla lo necesitó —la página del tema
+ * del temario, [T-541]— el atajo no se podía reutilizar y se acabó tirando de un DEFAULT que
+ * apuntaba a otra oposición.
+ *
+ * Devuelve `null` para lo que no sea personalizado, igual que sus hermanas, para que el
+ * llamante siga por su camino de siempre.
+ */
+export function raizPersonalizada(id: string | null | undefined): string | null {
+  if (!esObjetivoPersonalizado(id)) return null
+  return `/oposicion-personalizada/${idCustomDe(id as string)}`
+}
+
+/**
  * Ruta de los tests de un objetivo personalizado.
  *
  * Las del catálogo van a `/{slug}/test`, pero una personalizada no tiene slug ni página propia:
@@ -104,6 +128,67 @@ export function esObjetivoValido(
  * personalizado deja que el llamante siga usando su camino de siempre.
  */
 export function rutaTestPersonalizada(id: string | null | undefined): string | null {
-  if (!esObjetivoPersonalizado(id)) return null
-  return `/oposicion-personalizada/${idCustomDe(id as string)}/test`
+  const raiz = raizPersonalizada(id)
+  return raiz && `${raiz}/test`
+}
+
+/**
+ * La raíz personalizada que hay EN UNA RUTA, si la hay. [T-541]
+ *
+ * Es la señal más fuerte de las dos: el perfil dice cuál es TU oposición, pero la URL dice cuál
+ * estás mirando, y no tienen por qué coincidir — las personalizadas son públicas. Por eso los
+ * enlaces de una pantalla se construyen desde aquí primero y desde el perfil después.
+ *
+ * Existe porque `resolveOposicionSlugForNav` solo conoce el catálogo ESTÁTICO: dentro de una
+ * personalizada no casa ningún segmento, el `target_oposicion` tampoco está en sus mapas, y
+ * devuelve la flagship. Así, al terminar un test propio, «Volver al Tema» y «Ver Otros Temas»
+ * llevaban a `/auxiliar-administrativo-estado/…`.
+ */
+export function raizPersonalizadaEnRuta(pathname: string | null | undefined): string | null {
+  if (typeof pathname !== 'string') return null
+  const m = pathname.match(/^\/oposicion-personalizada\/([0-9a-f]{32})(?:\/|$)/i)
+  return m ? `/oposicion-personalizada/${m[1]}` : null
+}
+
+/**
+ * ¿Este enlace SACA al usuario de su oposición personalizada y lo mete en otra? [T-541]
+ *
+ * ── EL FALLO QUE LO PIDE ────────────────────────────────────────────────────────────────────
+ *
+ * La página del tema de una personalizada reutiliza el `TopicContentView` de
+ * `administrativo-estado`, y ese componente tiene el slug de su oposición como valor POR
+ * DEFECTO. La página no le pasaba el suyo, así que sus cuatro enlaces (tema anterior, tema
+ * siguiente, la miga «Temario» y «Practicar este tema») salían apuntando a
+ * `/administrativo-estado/...`. Un premium (Sergio, 04/08/2026) pulsó «Practicar este tema» y
+ * acabó estudiando el temario del Estado creyendo que era el suyo.
+ *
+ * Un default que es una oposición REAL no rompe nada: **teletransporta**. Por eso hace falta
+ * una regla que lo diga en voz alta.
+ *
+ * ── POR QUÉ ESTA FORMA Y NO «¿está en el catálogo?» ─────────────────────────────────────────
+ *
+ * Se mira la FORMA de la ruta (`/<algo>/test|temario`), no una lista de slugs, porque la lista
+ * es un catálogo estático que hay que mantener y que ya se quedó corto una vez (es justo lo que
+ * deja fuera a las personalizadas, ver cabecera del fichero). La forma no envejece.
+ *
+ * NO cuentan como fuga los enlaces que un temario tiene legítimamente hacia fuera: `/leyes/...`
+ * (practicar una ley suelta), `/teoria`, `/oposiciones`, `/perfil` y demás enlaces comunes del
+ * Header — ninguno tiene la forma «oposición».
+ */
+export function enlaceSaleAOtraOposicion(
+  href: string | null | undefined,
+  raiz: string | null | undefined,
+): boolean {
+  if (typeof href !== 'string' || !href.startsWith('/')) return false
+  if (!raiz) return false
+  const limpia = href.split('?')[0].split('#')[0]
+  if (limpia === raiz || limpia.startsWith(`${raiz}/`)) return false
+  // Forma de página de oposición del catálogo: /<slug>/test… o /<slug>/temario…
+  const m = limpia.match(/^\/([a-z0-9-]+)\/(?:test|temario)(?:\/|$)/)
+  if (!m) return false
+  // …salvo las SECCIONES de la app que casualmente tienen esa forma. `/psicotecnicos/test` es
+  // el enlace común del Header, no la oposición «psicotecnicos»; medido contra producción el
+  // 04/08/2026, era 14 de las 17 señales del rastreo. Sin esta lista el detector grita en el
+  // caso normal, que es la forma más rápida de que se deje de mirar.
+  return !SECCIONES_NO_OPOSICION.has(m[1])
 }

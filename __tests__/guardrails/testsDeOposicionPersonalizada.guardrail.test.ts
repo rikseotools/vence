@@ -13,11 +13,22 @@
  *
  * Ninguno de los tres da error al romperse. Por eso se fijan aquí.
  */
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { readFileSync, readdirSync } from 'fs'
+import { join, relative } from 'path'
 
 const raiz = process.cwd()
 const leer = (p: string) => readFileSync(join(raiz, p), 'utf8')
+
+/** Todos los `.tsx` bajo un directorio, en ruta relativa al repo. */
+function ficherosTsx(dir: string): string[] {
+  const salida: string[] = []
+  for (const e of readdirSync(join(raiz, dir), { withFileTypes: true })) {
+    const p = join(dir, e.name)
+    if (e.isDirectory()) salida.push(...ficherosTsx(p))
+    else if (e.name.endsWith('.tsx')) salida.push(relative('.', p))
+  }
+  return salida
+}
 
 describe('el icono de tests lleva a la oposición personalizada', () => {
   const header = leer('app/Header.tsx')
@@ -132,5 +143,68 @@ describe('una personalizada vacía no es un 404', () => {
   it('el rechazo del servidor deja rastro: sin evento no nos enteraríamos otra vez', () => {
     expect(endpoint).toContain('objetivo_personalizado_vacio')
     expect(rutaTemario).toContain('objetivo_personalizado_vacio')
+  })
+})
+
+/**
+ * QUINTO ESLABÓN MUDO: el TEMARIO de un tema propio. [T-541]
+ *
+ * El eslabón del TEST (arriba) ya fija que la ruta pase `positionTypeOverride` y
+ * `basePathOverride`, y explica por qué: *«el fallback de TemaTestPage es
+ * auxiliar_administrativo_estado, así que sin pasarlo le serviría el temario de OTRA oposición
+ * — no falla: acierta la pregunta equivocada»*.
+ *
+ * Su hermana, la página del TEMA del temario, tenía el mismo agujero y nadie lo miraba. Ahí el
+ * componente compartido es el `TopicContentView` de `administrativo-estado`, cuyo `oposicion`
+ * por defecto es su propio slug: la página no le pasaba nada, así que los cuatro enlaces de la
+ * pantalla (tema anterior, tema siguiente, «Volver al índice» y «Practicar este tema») salían a
+ * `/administrativo-estado/...`.
+ *
+ * Lo cazó un premium el 04/08/2026, no una prueba: pulsó «Practicar este tema» dentro de su
+ * oposición y se puso a hacer el test del Estado.
+ */
+describe('el temario de un tema propio enlaza DENTRO de tu oposición', () => {
+  const ruta = leer('app/oposicion-personalizada/[id]/temario/[slug]/page.tsx')
+  const componente = leer('app/administrativo-estado/temario/[slug]/TopicContentView.tsx')
+
+  it('la ruta pasa el basePath explícito', () => {
+    expect(ruta).toMatch(/basePath=\{/)
+  })
+
+  it('…y lo saca del núcleo puro, no de una plantilla escrita a mano', () => {
+    // Si se escribe la ruta aquí, el día que cambie habrá dos verdades (misma razón que en el
+    // Header con `rutaTestPersonalizada`).
+    expect(ruta).toContain('raizPersonalizada')
+    expect(ruta).toMatch(/from '@\/lib\/oposicion\/objetivoPersonalizado'/)
+  })
+
+  it('el componente SIGUE respetando el basePath (si se quita, vuelve el default mudo)', () => {
+    expect(componente).toMatch(/basePath\?:\s*string/)
+    expect(componente).toMatch(/basePathProp\s*\?\?\s*`\/\$\{oposicion\}`/)
+  })
+
+  it('el default peligroso sigue siendo el ÚLTIMO recurso, no el primero', () => {
+    const linea = componente.split('\n').find((l) => l.includes('const basePath ='))
+    expect(linea).toBeDefined()
+    expect(linea!.indexOf('basePathProp')).toBeLessThan(linea!.indexOf('${oposicion}'))
+  })
+
+  it('ninguna otra página monta el TopicContentView de OTRA oposición a ciegas', () => {
+    // La regla de clase: reutilizar el componente de otra oposición es legítimo (lo hace esta
+    // página), pero entonces hay que decirle dónde está. Sin `basePath`, hereda un slug REAL y
+    // teletransporta al usuario.
+    const cruzadas = ficherosTsx('app').filter((f) => {
+      const propia = f.match(/^app\/([a-z0-9-]+)\//)?.[1]
+      const importada = leer(f).match(
+        /@\/app\/([a-z0-9-]+)\/temario\/\[slug\]\/TopicContentView/,
+      )?.[1]
+      return propia && importada && propia !== importada
+    })
+    // La página personalizada es una de ellas: si esta lista se queda vacía es que el import
+    // cambió de forma y el guardarraíl dejó de mirar nada.
+    expect(cruzadas.length).toBeGreaterThan(0)
+    for (const f of cruzadas) {
+      expect(leer(f)).toMatch(/basePath=\{/)
+    }
   })
 })
