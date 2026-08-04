@@ -1696,6 +1696,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ese 17 %. Es GATE, no informe: si el repo empieza a declarar trabajo solo en el cuerpo, ' +
       'la relajación deja de ser segura y nadie se enteraría. Techo 6 %, exit 1 al pasarlo.',
   },
+  backlog_espera_revision: {
+    titulo: 'La QUINTA espera del backlog: «hecho, con entregable, esperando que una persona lo revise»',
+    ruta: 'lib/backlog/revision.cjs',
+    estado: 'vivo',
+    escribe: ['backlog_tasks'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`backlog.cjs revision <id> --entrega "…"`. Suelta el claim (entregar es soltarla), sale ' +
+      'bajo 🙋 en `list` y en `npm run parte` con desde cuándo espera y quién la dejó, `claim` la ' +
+      'rechaza salvo `--force --motivo`, y NO se despierta sola: la despierta `wake`. La entrega ' +
+      'es obligatoria (≥20 caracteres) y lo hace cumplir un CHECK de la tabla, no solo el CLI. ' +
+      'Antes se DEDUCÍA de la prosa de `resume_check` con cinco expresiones regulares; la 1ª ' +
+      'vuelta del piloto de flota lo desmintió — el trabajador no tenía comando con el que decirlo ' +
+      'y acabó en `pause --hasta` con una fecha inventada. Mismo patrón que `snooze_until` y ' +
+      '`due_at`: una condición en prosa no es una condición. La comprobación va en el MISMO UPDATE ' +
+      'atómico del claim (guardarraíl `esperaRevision.guardrail`), porque tenerla solo en ' +
+      '`claimGate` dejaba pasar la tarea igual — lo destapó `npm run sim:espera-revision` (17 casos ' +
+      'contra la BD real), no los 19 tests unitarios.',
+  },
   canary_rol_coordinacion: {
     titulo: 'El rol de BD de la flota, ejercitado: que SÍ puede coordinarse y que NO puede leer negocio',
     ruta: 'scripts/canary-rol-coordinacion.cjs',

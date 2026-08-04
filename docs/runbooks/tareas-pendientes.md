@@ -293,7 +293,7 @@ la ficha**: el contexto de la tarea se conserva entero.
 > Antes de segar, mira si esa sesión dejó trabajo sin pushear (`git -C <wt> status` y
 > `git log origin/main..`). `reap` no borra nada, pero saberlo evita re-hacer lo que ya está hecho.
 
-## Las CUATRO esperas, y por qué no son la misma
+## Las CINCO esperas, y por qué no son la misma
 
 | Situación | Campo | Qué significa | ¿`claim` la entrega? |
 |---|---|---|---|
@@ -301,6 +301,39 @@ la ficha**: el contexto de la tarea se conserva entero.
 | Depende de otra tarea nuestra | `blocked_by` | dependencia interna del backlog | ❌ salvo `--force --motivo` |
 | Hasta cierta hora no hay NADA que hacer | `snooze_until` | reloj EXTERNO: un cron que no ha corrido, una cosecha, la fecha en que toca medir | ❌ salvo `--force --motivo` |
 | **Hecha, pero no se puede verificar hasta que se despliegue** | **`wake_on_deploy_sha`** | **CONDICIÓN, no reloj: «mi commit ya está vivo». No hay fecha que poner** | ❌ salvo `--force --motivo` |
+| **Hecha, con entregable, y falta que una PERSONA lo revise** | **`review_requested_at` + `review_note`** | **la despierta alguien mirando, ni el reloj ni el deploy** | ❌ salvo `--force --motivo` |
+
+### La quinta: `revision` — «hecho, esperando que lo mires» (T-539, 04/08)
+
+```bash
+node scripts/backlog.cjs revision T-533 --entrega "propuesta de recorte 25-37 verificada contra el BOC, sin aplicar"
+node scripts/backlog.cjs wake T-533        # al aprobarla: vuelve al pool
+```
+
+**Suelta el claim**, como `pause`: entregar es soltarla, y un lease agonizando sobre algo terminado
+impide que la coja quien vaya a revisarla. Sale bajo 🙋 en `list` y en `npm run parte` con **desde
+cuándo espera** —una revisión parada tres días es el dato que importa— y **quién la dejó**, para
+poder preguntarle.
+
+**La entrega es OBLIGATORIA** (≥20 caracteres; «revisar», «listo», «ok» no cuelan) y lo hace cumplir
+un CHECK de la tabla, no solo el CLI. No es burocracia: con varios trabajadores entregando a la vez,
+una petición sin entregable obliga a quien revisa a reconstruir el contexto y adivinar qué se espera
+de él — y la revisión es el recurso escaso.
+
+**Por qué hacía falta un campo.** Esto se DEDUCÍA de la prosa de `resume_check` con cinco
+expresiones regulares, y el propio código lo defendía: *«no hay campo para esto y añadir uno
+costaría una migración para algo que se resuelve leyendo lo que la gente YA escribe»*. La primera
+vuelta del piloto de flota lo desmintió en una tarde: el trabajador terminó una auditoría, dejó una
+propuesta lista y **no tenía comando con el que decirlo** — acabó en `pause --hasta "2026-08-06
+09:00"` con una fecha inventada, porque su bloqueo no era el reloj. Es el mismo patrón corregido ya
+dos veces aquí (`snooze_until`, `due_at`): **una condición en prosa no es una condición**. La
+heurística de texto se conserva SOLO para las filas anteriores.
+
+> **Lo que encontró la simulación y no los tests:** la comprobación estaba puesta únicamente en
+> `claimGate`, que es quien REDACTA el motivo del rechazo. Los unit pasaban y la tarea **se
+> entregaba igual**, porque quien decide es el `UPDATE ... WHERE` del claim. Y en el mismo pase, el
+> `SELECT` que alimenta el gate no traía la columna, así que el rechazo ocurría pero se explicaba
+> con otro motivo. Las dos cosas solo se ven ejecutando: `npm run sim:espera-revision` (17 casos).
 
 **El reloj IMPIDE coger, no avisa (cambio del 29/07).** Hasta ese día `claim` te dejaba coger una aplazada y solo imprimía un aviso. Medido 24 h después de estrenar el campo: **T-221 seguía con `⛔ NO COGER HASTA EL 29/07 07:00 UTC` en el título y T-234 con `⏱ MEDIR EL 11/08`** — o sea, ni con el campo disponible se confió en el aviso. Un aviso impreso entre otras diez líneas no es una condición. Las colas de trabajo serias (DelaySeconds de SQS, scheduled sets de Sidekiq, ETA de Celery) no avisan de que un trabajo no toca: **no lo entregan**. La comprobación va **en el mismo `UPDATE` atómico que el lease y con el reloj del SERVIDOR** — con 2-10 sesiones, el reloj de cada portátil no es una fuente de verdad.
 

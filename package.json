@@ -160,7 +160,8 @@
     "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs",
     "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs",
     "canary:rol-coordinacion": "node scripts/canary-rol-coordinacion.cjs",
-    "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs"
+    "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs",
+    "sim:espera-revision": "node scripts/backlog/sim-espera-revision.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

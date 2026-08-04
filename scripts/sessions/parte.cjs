@@ -30,6 +30,7 @@ const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'))
 const { clasificarSenal } = require(path.join(REPO, 'lib', 'sessions', 'latido.js'))
 const { ratioEscape, escapesSinBloqueo, diagnostico, EVENT_TYPE } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
 const { isAwaitingVerification } = require(path.join(REPO, 'lib', 'backlog', 'claimGate.cjs'))
+const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 
 function url() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
@@ -41,7 +42,7 @@ async function main() {
   if (!u) { console.error('❌ sin DATABASE_URL'); return 1 }
   const sql = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
 
-  let tareas, sesiones, preguntas, friccion, listas, preflights
+  let tareas, sesiones, preguntas, friccion, listas, preflights, entregadas
   try {
     tareas = await sql`
       SELECT id, title, claimed_by, claimed_at, lease_until
@@ -54,12 +55,20 @@ async function main() {
       SELECT id, sid, task_id, question, blocking, asked_at, status
         FROM public.session_questions WHERE status = 'open'`.catch(() => [])
     listas = await sql`
-      SELECT id, title, resume_check, wake_on_deploy_sha, snooze_until
+      SELECT id, title, resume_check, wake_on_deploy_sha, snooze_until,
+             review_requested_at, review_note, review_requested_by
         FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
     friccion = await sql`
       SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid
         FROM public.observable_events
        WHERE event_type = ${EVENT_TYPE} AND ts > now() - interval '7 days'`.catch(() => [])
+    // Entregadas y esperando revisión (T-539). Consulta propia porque una entrega NO tiene por
+    // qué haber pasado por `pause`, así que no aparece en `listas` (que exige resume_check).
+    entregadas = await sql`
+      SELECT id, title, review_requested_at, review_note, review_requested_by
+        FROM public.backlog_tasks
+       WHERE status <> 'done' AND review_requested_at IS NOT NULL
+       ORDER BY review_requested_at`.catch(() => [])
     // Evidencia por sesión (T-539): sin esto el parte no distingue una sesión sana de una que
     // trabaja a ciegas. Fail-open por pieza, como el embudo: si aún no hay preflights, el resto
     // del parte sigue sirviendo.
@@ -82,7 +91,7 @@ async function main() {
 
   if (JSON_OUT) {
     console.log(JSON.stringify({
-      veredicto: v, trabajando, paradas, ociosas, preguntas, paraVerificar,
+      veredicto: v, trabajando, paradas, ociosas, preguntas, paraVerificar, entregadas,
       evidencia: evidenciaSesiones(sesiones, preflights, { ahora }),
     }, null, 1))
     return paradas.length ? 3 : 0
@@ -94,6 +103,14 @@ async function main() {
   //    nadie lo lee.
   for (const l of PREG.formatearEmbudo(preguntas, { ahora })) console.log(l)
   if (preguntas.length) console.log('')
+
+  // Entregadas: van pegadas al embudo porque desde el punto de vista de Manuel son lo mismo
+  // —trabajo parado esperando que él mire— con la diferencia de que aquí YA hay entregable.
+  if (entregadas && entregadas.length) {
+    console.log(`🙋 ${entregadas.length} ENTREGADA(S) — hechas y esperando que las revises:`)
+    for (const r of entregadas) console.log(REV.lineaRevision(r, ahora))
+    console.log('')
+  }
 
   if (paradas.length) {
     console.log(`🟠 ${paradas.length} TAREA(S) SIN SEÑAL DE SU SESIÓN:`)

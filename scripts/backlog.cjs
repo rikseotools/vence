@@ -131,7 +131,9 @@ const cuando = (t) => new Date(t).toLocaleString('es-ES', {
 const dormida = (r) => r.snooze_until && new Date(r.snooze_until) > new Date();
 // Esperar a un deploy es esperar igual: `next` no la sugiere y `claim` no la entrega.
 const esperandoDeploy = (r) => !!r.wake_on_deploy_sha;
-const enEsperaAlguna = (r) => dormida(r) || esperandoDeploy(r);
+// La QUINTA espera cuenta como espera para TODO lo que ordena o sugiere trabajo (T-539): si no,
+// `next` ofrecería una tarea ya entregada y alguien reharía lo que está pendiente de revisar.
+const enEsperaAlguna = (r) => dormida(r) || esperandoDeploy(r) || REV.esperaRevision(r);
 
 /**
  * Momento hasta el que aplazar, desde --hasta/--horas/--dias. Devuelve Date o lanza.
@@ -353,7 +355,8 @@ async function sugerirSiguiente(s, id, sid) {
     }
     const rows = await s`
       SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until,
-             wake_on_deploy_sha, effort, resume_check
+             wake_on_deploy_sha, effort, resume_check,
+             review_requested_at, review_note, review_requested_by
         FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
     // MISMO criterio que `next`, no una copia (T-130): vive en lib/backlog/orden.cjs.
     const libre = ORDEN.candidatas(rows, {
@@ -388,6 +391,7 @@ const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 // El embudo de preguntas a Manuel (T-493). El juicio —qué es contestable, en qué orden, qué
 // respuestas tiene que ver una sesión— vive en el núcleo puro, no aquí.
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
+const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'));
 // Qué tarea toca ahora: criterio ÚNICO, compartido por `next` y por la sugerencia de `done`.
 const ORDEN = require(path.join(REPO, 'lib', 'backlog', 'orden.cjs'));
 // El recordatorio de método: qué recordar y CUÁNDO (T-495). Momentos, nunca un temporizador.
@@ -540,7 +544,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
                snooze_until, snooze_reason, snooze_count, resume_check, due_at, due_reason,
-               wake_on_deploy_sha, wake_on_deploy_surface, effort
+               wake_on_deploy_sha, wake_on_deploy_surface, effort,
+               review_requested_at, review_note, review_requested_by
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
          ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END,
@@ -570,8 +575,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         }
       }
       const listas = rows.filter((r) => isAwaitingVerification(r));
-      const paraVerificar = listas.filter((r) => clasificarEspera(r.resume_check) === 'verificacion');
-      const paraManuel = listas.filter((r) => clasificarEspera(r.resume_check) === 'decision');
+      const paraVerificar = listas.filter((r) => REV.clasificarEsperaTarea(r, clasificarEspera) === 'verificacion');
+      const paraManuel = listas.filter((r) => REV.clasificarEsperaTarea(r, clasificarEspera) === 'decision');
+      // ENTREGADAS: la quinta espera, y esta sí es un CAMPO, no una redacción afortunada (T-539).
+      // Se sacan de `rows` y no de `listas` porque `isAwaitingVerification` exige `resume_check`,
+      // y una entrega no tiene por qué haber pasado por `pause`.
+      const entregadas = rows.filter((r) => REV.esperaRevision(r));
       if (paraVerificar.length) {
         // NO decir «se cierran rápido» (lo decía hasta el 31/07): empuja justo a lo contrario de
         // lo que toca. Estas tareas están IMPLEMENTADAS y sin comprobar; lo que falta no es
@@ -594,6 +603,15 @@ async function despertarPorDeploy(s, shas, opts = {}) {
             FROM public.session_questions WHERE status = 'open'`;
         for (const l of PREG.formatearEmbudo(abiertas)) console.log(l);
       } catch { /* sin embudo, el resto del listado sigue igual */ }
+
+      // ── ENTREGADAS Y ESPERANDO REVISIÓN (T-539) ──────────────────────────────────────
+      // Van pegadas al embudo porque son lo mismo desde el punto de vista de Manuel: trabajo
+      // parado esperando que él mire. La diferencia es que aquí YA HAY entregable.
+      if (entregadas.length) {
+        console.log(`\n🙋 ${entregadas.length} ENTREGADA(S) — hechas y esperando que las revises:`);
+        for (const r of entregadas) console.log(REV.lineaRevision(r));
+        console.log(`   (al aprobarla: 'wake <id>' la devuelve al pool; nadie la coge sin --force)`);
+      }
 
       if (paraManuel.length) {
         // LEGACY (T-493): esto se DEDUCE de la prosa de `resume_check` con cinco expresiones
@@ -639,7 +657,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     else if (cmd === 'next') {
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason,
-               wake_on_deploy_sha, effort
+               wake_on_deploy_sha, effort, review_requested_at, review_note, review_requested_by
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const dormidas = rows.filter(enEsperaAlguna).length;
       // El criterio de «qué toca ahora» es COMPARTIDO con la sugerencia que imprime `done`
@@ -704,6 +722,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
               AND (${force} OR snooze_until IS NULL OR snooze_until <= now())
               -- deploy: si espera a que su commit esté vivo, tampoco (salvo --force)
               AND (${force} OR wake_on_deploy_sha IS NULL)
+              -- revisión humana: entregada y sin mirar, tampoco (T-539, salvo --force).
+              -- Va en el MISMO UPDATE atómico que las otras, no solo en el mensaje de error: la
+              -- simulación destapó que con la comprobación únicamente en claimGate la tarea se
+              -- entregaba igual, y el gate solo servía para explicar un fallo que no ocurría.
+              -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+              AND (${force} OR review_requested_at IS NULL)
               -- dependencia: bloqueada por otra tarea NUESTRA aún viva (salvo --force)
               AND (${force} OR NOT EXISTS (
                     SELECT 1 FROM public.backlog_tasks d
@@ -714,7 +738,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       if (!row) {
         const [cur] = await s`
           SELECT id, title, status, claimed_by, lease_until, snooze_until, snooze_reason, blocked_by,
-                 wake_on_deploy_sha, wake_on_deploy_surface
+                 wake_on_deploy_sha, wake_on_deploy_surface,
+                 review_requested_at, review_note, review_requested_by
             FROM public.backlog_tasks WHERE id = ${id}`;
         if (!cur) { console.error(`❌ ${id} no existe (¿has corrido 'sync'?)`); process.exit(1); }
         const abiertas = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
@@ -1378,6 +1403,52 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       if (isChronicSnooze(row)) console.log(`   🔁 van ${row.snooze_count} aplazamientos: ¿tarea programada o decisión pendiente?`);
     }
 
+    // ── LA QUINTA ESPERA: hecho y esperando que una PERSONA lo mire (T-539) ─────────────────
+    // Nace de la 1ª vuelta del piloto de flota: el trabajador terminó su auditoría, dejó una
+    // propuesta lista para revisar y NO TENÍA COMANDO con el que decirlo. Acabó en
+    // `pause --hasta "2026-08-06 09:00"` con una fecha inventada, porque su bloqueo no era el
+    // reloj. Con trabajadores autónomos éste va a ser el estado final MÁS FRECUENTE.
+    //
+    // Suelta el claim, como `pause`: quien entrega ya no la está trabajando, y un lease agonizando
+    // sobre algo terminado impide que la coja quien vaya a revisarla.
+    else if (cmd === 'revision') {
+      needSid();
+      const id = process.argv[3];
+      const entrega = arg('--entrega');
+      const v = REV.validarEntrega(entrega);
+      if (!id || !v.ok) {
+        console.error('Uso: backlog.cjs revision <T-xxx> --entrega "QUÉ hay que revisar y DÓNDE está"');
+        if (v.problema) console.error(`   ❌ ${v.problema}`);
+        console.error('   La entrega es OBLIGATORIA: quien revisa no puede adivinar qué se espera de él,');
+        console.error('   y con varios trabajadores entregando a la vez la revisión es el recurso escaso.');
+        process.exit(2);
+      }
+      const [prev] = await s`SELECT id, title, status FROM public.backlog_tasks WHERE id = ${id}`;
+      if (!prev) { console.error(`❌ ${id} no existe.`); process.exit(1); }
+      if (['done', 'cancelled'].includes(prev.status)) {
+        console.error(`❌ ${id} ya está cerrada (${prev.status}): no hay nada que revisar.`);
+        process.exit(2);
+      }
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET review_requested_at = now(),
+               review_note         = ${entrega},
+               review_requested_by = ${sid},
+               -- El tiempo trabajado se acumula ANTES de soltar el claim, igual que en release:
+               -- si no, se pierde el único dato con el que contrastar la estimación (T-414).
+               -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+               worked_seconds = COALESCE(worked_seconds, 0)
+                              + GREATEST(0, COALESCE(EXTRACT(EPOCH FROM (now() - claimed_at))::int, 0)),
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL,
+               status = CASE WHEN status = 'in_progress' THEN 'open' ELSE status END
+         WHERE id = ${id} RETURNING id, title`;
+      console.log(`🙋 ${row.id} ENTREGADA — esperando revisión humana.`);
+      console.log(`   ${row.title}`);
+      console.log(`   ▶ ${entrega}`);
+      console.log(`   Sale en 'list' y en 'npm run parte' bajo 🙋. Nadie la coge sin --force,`);
+      console.log(`   y no se despierta sola: la despierta una persona ('wake ${row.id}').`);
+    }
+
     else if (cmd === 'verificado') {
       // GEMELO DE `pause` (T-449). `pause` dice «aún no se puede comprobar»; esto dice «ya lo
       // comprobé, y la tarea sigue viva». Sin este verbo no había forma de decirlo: `done` la
@@ -1442,11 +1513,22 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     else if (cmd === 'wake') {
       const id = process.argv[3];
       if (!id) { console.error('Uso: backlog.cjs wake <T-xxx>'); process.exit(2); }
+      // El estado ANTERIOR se lee antes de tocarla: `RETURNING` devuelve la fila ya actualizada,
+      // así que preguntarle ahí si estaba en revisión daría siempre «no».
+      const [antes] = await s`
+        SELECT (review_requested_at IS NOT NULL) AS en_revision FROM public.backlog_tasks WHERE id = ${id}`;
       const [row] = await s`
-        UPDATE public.backlog_tasks SET snooze_until = NULL, snooze_reason = NULL, snoozed_by = NULL
+        UPDATE public.backlog_tasks
+           SET snooze_until = NULL, snooze_reason = NULL, snoozed_by = NULL,
+               -- wake es «vuelve al pool», y la espera de REVISIÓN también se levanta aquí
+               -- (T-539): un verbo nuevo para lo mismo obligaría a saber cuál de las esperas la
+               -- tenía parada antes de poder despertarla.
+               -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+               review_requested_at = NULL, review_note = NULL, review_requested_by = NULL
          WHERE id = ${id} RETURNING id, title`;
       if (!row) { console.error(`❌ ${id} no existe`); process.exit(1); }
       console.log(`⏰ ${row.id} despierta — ${row.title}`);
+      if (antes && antes.en_revision) console.log('   (estaba esperando revisión humana: queda libre para cogerla)');
     }
 
     else if (cmd === 'reserve') {
@@ -1695,7 +1777,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);
