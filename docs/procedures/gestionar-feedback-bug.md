@@ -156,6 +156,24 @@ Preguntas que se repiten y ya tienen respuesta acordada con Manuel. **Usa esta l
 
 **No hagas esto:** ofrecerle practicar las leyes del supuesto como sucedáneo. Se propuso en el borrador de Sergio y Manuel lo quitó: el usuario pregunta si tenemos supuestos, y la respuesta es qué tenemos y qué haremos, no un consejo de estudio que no ha pedido.
 
+### «No me deja seleccionar / no encuentro mi oposición» y es de grupo **A1 o A2** (línea fijada 04/08/2026, caso Félix Peña, Cuerpo Superior Junta de Castilla y León)
+
+**Respuesta canónica, y son DOS mitades — las dos, siempre:**
+
+1. **NO la tenemos, y a CORTO PLAZO no está previsto.** Vence construye contenido de **D / C1 / C2**, y ahí está el esfuerzo ahora mismo. **Ni prometer ni negar en absoluto** (corrección de Manuel, 04/08): nada de «está en construcción» ni de fechas, pero tampoco un «no la vamos a tener» categórico. La fórmula es *«no la tenemos montada, y a corto plazo no está previsto»*.
+2. **Y sí puede prepararla igualmente: «Oposición personalizada».** Se introduce con **«La buena noticia es que…»** (no con «dicho eso», que suena a portazo) y con la prueba social: **«es justo lo que hacen los opositores de A1 y A2»**. En el menú, le pone nombre, crea sus temas y añade a cada uno las leyes y artículos de su programa; de ahí le salen tests y temario.
+
+   > **No escribas «que estudian con nosotros»** detrás de la prueba social (Manuel lo quitó del borrador el 04/08): sobra y suena a folleto.
+   > Y si ya tenía una combinación de leyes guardada o venía usando el test multi-ley, **díselo** — *«ya llevas medio camino hecho»* —, porque convierte la personalizada en la continuación de lo que ya hacía y no en un premio de consolación.
+
+**Por qué las dos:** dar solo la primera es echar al usuario (y era premium); dar solo la segunda deja viva la idea de que se la vamos a montar nosotros.
+
+**Y el TONO importa tanto como el contenido** (Manuel, 04/08): la persona no puede quedarse con la sensación de que se la deja tirada. Cierra ofreciéndole ayuda si se atasca montando la suya.
+
+> ⚠️ **No des el grupo por sabido leyendo la BD.** En el caso que fija la línea, de las dos filas del catálogo que encajaban con lo que pedía, **una tenía `subgrupo` sin declarar** (y encima `estado_proceso='convocada'` sin una sola fecha ni plaza). El «A1» lo puso él, no nuestra ficha. La respuesta vale igual —ninguna estaba construida—, pero **no afirmes el grupo si la fila no lo declara**.
+
+Relacionado: la regla de fondo es que se **cataloga** cualquier grupo y solo se **construye** D/C1/C2; publicar un grupo A es decisión de Manuel (T-391).
+
 ### «Mi suscripción no se ha renovado / yo no la he cancelado» (línea fijada 29/07/2026, caso Rocío)
 
 **Antes de responder, MIRA STRIPE.** Puede ser una baja del usuario… o una cancelación NUESTRA. En julio de 2026, al vaciar la cuenta antigua de Stripe, se pusieron ~200 suscripciones en «no renovar» (`cancel_at_period_end`) y se fueron apagando solas. A esas personas **les habíamos enviado antes** el correo de recordatorio diciendo *"tu suscripción se renovará automáticamente el DD/MM por X €"* y *"si deseas seguir, no tienes que hacer nada"*. Hicieron lo que les pedimos: nada. Y se quedaron sin premium.
