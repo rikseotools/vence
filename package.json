@@ -36,7 +36,7 @@
     "huerfanos:plan": "node scripts/huerfanos-plan.cjs",
     "batch:boe": "node scripts/verificar-articulos-vs-boe.cjs",
     "batch:gate": "node scripts/verificar-batch-generado.cjs",
-    "batch:servido": "node scripts/verificar-batch-servido.cjs",
+    "batch:servido": "npx tsx scripts/verificar-batch-servido.cjs",
     "batch:registrar": "node scripts/registrar-verificacion.cjs",
     "audit:oposicion-contenido": "npx tsx --env-file=.env.local scripts/audit-oposicion-contenido-prep.ts",
     "ads:auth": "npx tsx --env-file=.env.local scripts/google-ads/get-refresh-token.ts",

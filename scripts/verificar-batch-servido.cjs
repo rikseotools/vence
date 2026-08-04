@@ -21,6 +21,11 @@ const fs = require('fs')
 const path = require('path')
 const pg = require('postgres')
 const { estadoCierre } = require(path.join(__dirname, '..', 'lib', 'generacion', 'cierreLote'))
+// El MISMO helper que usa la API para decidir qué oficiales son de esta oposición
+// (T-507). Se requiere el .ts a propósito: el criterio tiene un único dueño y este
+// script corre bajo `tsx` (ver `batch:servido` en package.json) precisamente para
+// poder importarlo en vez de copiar el mapa.
+const { getValidExamPositions } = require(path.join(__dirname, '..', 'lib', 'config', 'exam-positions.ts'))
 
 const argv = process.argv.slice(2)
 const BATCH = argv[0]
@@ -40,7 +45,7 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
 ;(async () => {
   // Temas donde el lote DEBE ser visible: los que escopan sus artículos.
   const temas = await s`
-    SELECT DISTINCT o.slug, t.topic_number AS tema, t.id AS topic_id
+    SELECT DISTINCT o.slug, t.topic_number AS tema, t.id AS topic_id, t.position_type
     FROM questions q
     JOIN articles a ON a.id = q.primary_article_id
     JOIN topic_scope ts ON ts.law_id = a.law_id
@@ -60,19 +65,36 @@ const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout:
 
   let fallos = 0
   for (const t of temas.slice(0, MUESTRA)) {
-    // Verdad recomputada desde `questions`, con la MISMA semántica que la
-    // materialized view `topic_law_question_summary` que lee la app. El matiz
-    // que importa: la MV excluye `exam_case_id IS NOT NULL` (preguntas de
-    // supuesto práctico). Contar "parecido" en vez de "igual" daba un desfase
-    // fijo de 3-5 preguntas por tema y convertía el canary en un falso positivo
-    // permanente — el mismo error que documenta `audit-served-questions.ts`
-    // (una auditoría que reimplementa la lógica de producción, deriva).
+    // Verdad recomputada desde `questions`, con la MISMA semántica que sirve la
+    // app. Dos exclusiones, y las DOS hacen falta:
+    //   · `exam_case_id IS NOT NULL` — preguntas de supuesto práctico, que la
+    //     materialized view no cuenta.
+    //   · las OFICIALES DE OTRA OPOSICIÓN [T-507] — el serve nunca las da, así
+    //     que anunciarlas es prometer preguntas que el test no tiene. Se decide
+    //     con `getValidExamPositions`, el MISMO helper que usa la API: es un
+    //     criterio con dueño (`lib/config/exam-positions.ts`), no una copia.
+    //
+    // Contar "parecido" en vez de "igual" convierte este canary en un falso
+    // positivo PERMANENTE — el error que ya documentaba `audit-served-questions.ts`
+    // («una auditoría que reimplementa la lógica de producción, deriva») y en el
+    // que este script volvió a caer el 04/08: al desplegarse T-507 producción
+    // empezó a restar las oficiales ajenas, aquí no, y todo lote quedaba en rojo
+    // con las tres cachés bien invalidadas (subalterno_gva T3: 52 vs 35 servidas,
+    // que son las 22 previas + las 13 del lote). Diagnóstico seguro y equivocado:
+    // manda a re-purgar cachés correctas hasta que alguien aprende a ignorar el gate.
+    const validas = getValidExamPositions(t.position_type)
     const bd = (await s`
       SELECT count(q.id)::int n
       FROM topic_scope ts
       LEFT JOIN articles a ON a.law_id = ts.law_id
           AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
       LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active AND q.exam_case_id IS NULL
+          AND (
+            NOT coalesce(q.is_official_exam, false)
+            ${validas.length
+              ? s`OR q.exam_position = ANY(${validas})`
+              : s``}
+          )
       WHERE ts.topic_id = ${t.topic_id}`)[0].n
 
     let api
