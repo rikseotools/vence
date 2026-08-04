@@ -1273,9 +1273,30 @@ que lo incluyen**, o sea que el patrón está asentado y esto es cola, no diseñ
 5. Revalidar `temario` + `test-counts` (+ `teoria`) y **comprobarlo en el HTML servido**, no en la BD:
    la revalidación es per-instancia y hay que repetirla.
 
-**Empezar por la CE** (7 preguntas y es la ley más servida del banco). Su Artículo 0 ya existe y
-recoge estructura e historia de reformas, así que ahí el trabajo es solo re-vincular y comprobar el
-scope — la parte cara (redactar el Artículo 0 contra el BOE) no aplica.
+**⛔ NO empieces por la CE «porque es la barata». Se probó el 04/08 y NO lo es.** El razonamiento
+que invita a hacerlo es correcto hasta la mitad: la CE ya tiene Artículo 0, y **está verificado que
+contiene los cinco datos** que piden sus preguntas estructurales (169 artículos, 4 disposiciones
+adicionales, 9 transitorias, y los 3 capítulos del Título VIII). O sea que redactar no hay que
+redactar nada. **El trabajo caro es el scope, y no es un trámite: es la tarea entera.**
+
+Medido: de las 8 candidatas de la CE, **7 son estructurales y 1 es falso positivo** (`197a14c2`
+pregunta por las mayorías del art. 168, o sea por su CONTENIDO). Pero re-vincular esas 7 al
+Artículo 0 **las quitaría de 77 `topic_scope`** repartidos por decenas de oposiciones, porque sirven
+el art. 137/169/DA1/DT1 y **no llevan el `0`**. Y añadirles el `0` tampoco es mecánico: arrastra al
+tema **las 131 preguntas que ya cuelgan del Artículo 0** (estructura, historia de reformas), que en
+un tema como `administrativo_estado T301 — Las Fuentes del Derecho Administrativo` **están fuera de
+programa**.
+
+El número que lo resume: **solo 92 de los 360 scopes de la CE (26%) sirven el Artículo 0**. Así que
+mover una pregunta ahí no es «colocarla bien», es **cambiarle la audiencia**: gana 92 temas y pierde
+77. Para «¿cuántas disposiciones transitorias tiene la CE?» salir de «La Organización territorial
+del Estado» es una mejora; para «¿en cuántos capítulos se divide el Título VIII?» puede no serlo.
+**Se decide tema a tema contra el epígrafe, no en lote**, y por eso esta tarea es `sesion_propia` y
+no un rato.
+
+Consecuencia práctica: **empezar por las leyes de UNA sola oposición** (la Ley 55/2003 tiene 3, la
+LO 14/2007 dos), donde el reparto de scopes es pequeño y la decisión de epígrafe es abarcable, y
+dejar la CE para el final precisamente por ser la más servida.
 
 **Capa que falta y sin la cual esto se repite:** no hay detector. El corte medido aquí debería vivir
 como núcleo puro + kind del barrido (`pregunta_estructural_sin_articulo_cero`), en la banda de los
