@@ -28,12 +28,49 @@ const arg = (n, d) => { const i = process.argv.indexOf(n); return i === -1 ? d :
 const DIAS = Number(arg('--dias', 7))
 const LISTAR = process.argv.includes('--listar')
 
-// Verdad conocida: por qué cada uno es lo que es está en la cabecera.
-const CONOCIDOS = [
-  { id: 'T-363', esperado: true, que: 'código de cobros servido — el fallo que motivó la ficha' },
-  { id: 'T-403', esperado: false, que: 'guard de push: tooling local, no viaja a nadie' },
-  { id: 'T-431', esperado: false, que: 'barrido de worktrees: tooling local' },
-]
+/**
+ * El commit RAÍZ del repo: el estado sintético «no hay NADA desplegado».
+ *
+ * ── POR QUÉ NO SE USA EL SHA VIVO AQUÍ (T-459, 04/08) ──────────────────────────────────────
+ * Los casos de verdad conocida se medían contra producción, y eso los hizo **caducar**: [T-363]
+ * se declaró «tiene que BLOQUEAR» cuando su código de cobros aún no estaba desplegado; en cuanto
+ * se desplegó, el gate empezó a decir con toda la razón «se puede cerrar» y la simulación llevaba
+ * días en 🔴 acusando a la calibración de rota. Un fixture cuya verdad depende del día es un
+ * fixture que miente: o grita en falso (y se ignora) o hay que reescribirlo cada semana.
+ *
+ * Contra la raíz, la pregunta que se hace es la que no envejece: *«si esto NO estuviera
+ * desplegado, ¿bloquearía?»*. Eso es una propiedad de la tarea, no del calendario.
+ */
+function commitRaiz() {
+  const salida = require('child_process')
+    .execFileSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: REPO, encoding: 'utf8' })
+    .trim().split('\n')
+  return salida[salida.length - 1]
+}
+
+/**
+ * Verdad conocida. `shas` fija el estado desplegado SINTÉTICO de cada caso; si no se pone, es
+ * «nada desplegado» (la raíz).
+ */
+function casosConocidos(raiz) {
+  const nada = { frontend: raiz, backend: raiz }
+  return [
+    { id: 'T-363', esperado: true, shas: nada, que: 'código de cobros servido y sin desplegar — el fallo que motivó la puerta' },
+    { id: 'T-403', esperado: false, shas: nada, que: 'guard de push: tooling local, no viaja a nadie' },
+    { id: 'T-431', esperado: false, shas: nada, que: 'barrido de worktrees: tooling local' },
+    // El caso de [T-459]: el commit SERVIDO está vivo y el que falta no toca nada servido (un
+    // spec y un módulo que solo importan las pruebas). Antes bloqueaba —y había que rodearlo con
+    // `--igualmente`— porque preguntaba por TODOS los commits. Con `shas.frontend` fijado al
+    // commit servido, este caso reproduce esa situación exacta y no depende de qué se despliegue
+    // mañana.
+    {
+      id: 'T-504',
+      esperado: false,
+      shas: { frontend: '29a3dc2f4', backend: raiz },
+      que: 'lo servido YA está vivo; lo que falta es un spec + un módulo de solo pruebas (T-459)',
+    },
+  ]
+}
 
 async function tareasCerradas() {
   try {
@@ -50,14 +87,15 @@ async function tareasCerradas() {
 }
 
 async function main() {
-  const shas = { frontend: await shaVivo(HEALTH.frontend), backend: await shaVivo(HEALTH.backend) }
+  const shas = { frontend: await shaVivo('frontend'), backend: await shaVivo('backend') }
+  const raiz = commitRaiz()
   console.log(`\n═══ SIM — el escalón medible del \`done\` (T-392 F1) ═══`)
   console.log(`sha vivo: frontend ${String(shas.frontend).slice(0, 9)} · backend ${String(shas.backend).slice(0, 9)}\n`)
 
   let fallos = 0
-  console.log('CASOS CON VERDAD CONOCIDA (gate de regresión):')
-  for (const c of CONOCIDOS) {
-    const r = await analizar(c.id, { shas })
+  console.log('CASOS CON VERDAD CONOCIDA (gate de regresión, contra estado desplegado SINTÉTICO):')
+  for (const c of casosConocidos(raiz)) {
+    const r = await analizar(c.id, { shas: c.shas })
     const ok = r.exige === c.esperado
     if (!ok) fallos++
     console.log(`  ${ok ? '✅' : '❌'} ${c.id} ${r.exige ? 'BLOQUEA' : 'deja cerrar'}${ok ? '' : ` (esperado ${c.esperado ? 'BLOQUEA' : 'deja cerrar'})`} — ${c.que}`)

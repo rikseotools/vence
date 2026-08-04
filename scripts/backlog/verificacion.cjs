@@ -17,14 +17,17 @@
  */
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { exigeVerificacion } = require('../../lib/backlog/verificacionGate.cjs')
+const { exigeVerificacion, commitsPorSuperficie } = require('../../lib/backlog/verificacionGate.cjs')
 const { clasificarMenciones } = require('../../lib/backlog/pushGuard.cjs')
+// El sha vivo sale del módulo CANÓNICO, no de una copia local (T-459). Este fichero tenía la suya
+// —mismos endpoints, distinto timeout y distinto trato del `!r.ok`—, y dos lectores de «qué está
+// desplegado» que no coinciden es el modo de fallo silencioso que ese módulo dice evitar en su
+// propia cabecera: uno diría «ya está vivo» y el otro «todavía no».
+const { shaVivo, shaVivoEstable, ENDPOINTS } = require('../../lib/deploy/shaVivo.cjs')
 
 const REPO = path.resolve(__dirname, '../..')
-const HEALTH = {
-  frontend: 'https://www.vence.es/api/health',
-  backend: 'https://api.vence.es/health',
-}
+/** @deprecated se conserva el nombre por los llamadores; la fuente es `ENDPOINTS`. */
+const HEALTH = ENDPOINTS
 /** Dónde vive el código que SÍ se sirve: si algo de aquí importa un fichero, ese fichero viaja. */
 const DIRS_SERVIDOS = { frontend: ['app', 'components', 'contexts', 'hooks'], backend: ['backend/src'] }
 
@@ -129,17 +132,9 @@ function packageTocaDependencias(commits) {
   return false
 }
 
-async function shaVivo(url) {
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(12000) })
-    const j = await r.json()
-    return typeof j?.deploy === 'string' ? j.deploy : null
-  } catch { return null }
-}
-
-/** ¿El sha vivo CONTIENE todos los commits de la tarea? `null` si no se puede saber. */
+/** ¿El sha vivo CONTIENE todos estos commits? `null` si no se puede saber. */
 function contenidos(shaVivo, commits) {
-  if (!shaVivo || !commits.length) return null
+  if (!shaVivo || !commits || !commits.length) return null
   if (!git(['cat-file', '-t', shaVivo])) return null   // el sha vivo no está en el repo local
   for (const c of commits) {
     try {
@@ -149,28 +144,78 @@ function contenidos(shaVivo, commits) {
   return true
 }
 
+/** Los commits de la lista que el sha vivo todavía NO incluye (para poder nombrarlos). */
+function noContenidos(shaVivo, commits) {
+  if (!shaVivo || !commits || !commits.length) return []
+  if (!git(['cat-file', '-t', shaVivo])) return []
+  return commits.filter((c) => {
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', c, shaVivo], { cwd: REPO, stdio: 'ignore' })
+      return false
+    } catch { return true }
+  })
+}
+
 /**
  * Veredicto para una tarea. `{ exige, motivo, superficies, servidos, commits }`.
  * @param opciones.shas  inyectable (la medición reutiliza una sola lectura para 40 tareas)
  */
-async function analizar(id, { shas = null } = {}) {
+async function analizar(id, { shas = null, detectarRollout = true } = {}) {
   const commits = commitsDe(id)
   if (!commits.length) {
     return { exige: false, motivo: 'ningún commit menciona esta tarea todavía', superficies: [], servidos: [], commits: [] }
   }
   const tocaDeps = packageTocaDependencias(commits)
-  const cambios = ficherosDe(commits)
-    .filter((f) => f !== 'package.json' || tocaDeps)
-    .map((f) => ({ fichero: f, importadoEn: f === 'package.json' ? ['frontend'] : importadoEn(f) }))
-  const vivos = shas || { frontend: await shaVivo(HEALTH.frontend), backend: await shaVivo(HEALTH.backend) }
-  const desplegado = {
-    frontend: contenidos(vivos.frontend, commits),
-    backend: contenidos(vivos.backend, commits),
+  // El `importadoEn` de un fichero es caro (varios `git grep`) y se repite entre commits: se
+  // calcula UNA vez por fichero y se reparte.
+  const cache = new Map()
+  const clasificar = (f) => {
+    if (!cache.has(f)) cache.set(f, f === 'package.json' ? ['frontend'] : importadoEn(f))
+    return cache.get(f)
   }
-  return { ...exigeVerificacion(cambios, desplegado), commits, desplegado, vivos }
+  const relevante = (f) => f !== 'package.json' || tocaDeps
+
+  // Por COMMIT, no en un montón: es lo que permite preguntar por los commits que tocan cada
+  // superficie en vez de por todos (T-459).
+  const porCommit = commits.map((sha) => ({
+    sha,
+    cambios: ficherosDe([sha]).filter(relevante).map((f) => ({ fichero: f, importadoEn: clasificar(f), sha })),
+  }))
+  const cambios = porCommit.flatMap((c) => c.cambios)
+  const grupos = commitsPorSuperficie(porCommit)
+
+  const vivos = shas || { frontend: await shaVivo('frontend'), backend: await shaVivo('backend') }
+  const desplegado = {
+    frontend: contenidos(vivos.frontend, grupos.frontend),
+    backend: contenidos(vivos.backend, grupos.backend),
+  }
+
+  // ── ¿O es que hay un ROLLOUT en curso? ────────────────────────────────────────────────────
+  // Solo se comprueba cuando íbamos a BLOQUEAR: en el caso normal no cuesta nada, y es el único
+  // caso en que la respuesta cambia algo. Si las lecturas no coinciden, el balanceador está
+  // repartiendo entre la revisión vieja y la nueva y el veredicto sería una moneda al aire → se
+  // degrada a «no lo sé», que ya es fail-open, y se DICE.
+  const rollout = []
+  if (detectarRollout && !shas) {
+    for (const sup of ['frontend', 'backend']) {
+      if (desplegado[sup] !== false) continue
+      const { estable, vistos } = await shaVivoEstable(sup, { intentos: 3, pausaMs: 400 })
+      if (!estable) { rollout.push(sup); desplegado[sup] = null; if (vistos.length) vivos[sup] = vistos[vistos.length - 1] }
+    }
+  }
+
+  const pendientes = [
+    ...noContenidos(vivos.frontend, grupos.frontend),
+    ...noContenidos(vivos.backend, grupos.backend),
+  ]
+  const veredicto = exigeVerificacion(cambios, desplegado, { commitsPendientes: pendientes })
+  if (rollout.length && !veredicto.exige) {
+    veredicto.motivo = `hay un DEPLOY EN CURSO de ${rollout.join(' y ')} (el /health contesta shas distintos): no se puede afirmar qué está vivo — no se bloquea`
+  }
+  return { ...veredicto, commits, desplegado, vivos, rollout, grupos }
 }
 
-module.exports = { analizar, commitsDe, ficherosDe, importadoEn, tokenDeImport, patronImport, packageTocaDependencias, contenidos, shaVivo, HEALTH }
+module.exports = { analizar, commitsDe, ficherosDe, importadoEn, tokenDeImport, patronImport, packageTocaDependencias, contenidos, noContenidos, shaVivo, HEALTH }
 
 if (require.main === module) {
   const id = process.argv[2]

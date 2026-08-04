@@ -8,7 +8,7 @@
 // confiesa. Esta mira los HECHOS: código servido + sha vivo que aún no lo incluye.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { exigeVerificacion, superficieDe } = require('@/lib/backlog/verificacionGate.cjs')
+const { exigeVerificacion, superficieDe, commitsPorSuperficie } = require('@/lib/backlog/verificacionGate.cjs')
 
 const f = (fichero: string, importadoEn: string[] = []) => ({ fichero, importadoEn })
 const VIVO = { frontend: true, backend: true }
@@ -100,5 +100,70 @@ describe('exigeVerificacion — «no lo sé» no puede bloquear a nadie', () => 
   it('sin cambios que analizar tampoco inventa un bloqueo', () => {
     expect(exigeVerificacion([], SIN_DESPLEGAR).exige).toBe(false)
     expect(exigeVerificacion(null as any, SIN_DESPLEGAR).exige).toBe(false)
+  })
+})
+
+// ── T-459: la espera se ata a los commits que SE SIRVEN, no a todos ─────────────────────────
+describe('commitsPorSuperficie — a qué commits puede afectarles un deploy', () => {
+  const A = { sha: 'aaa', cambios: [{ fichero: 'app/premium/page.tsx', importadoEn: [] }] }
+  const B = { sha: 'bbb', cambios: [
+    { fichero: 'docs/roadmap/tareas-pendientes.md', importadoEn: [] },
+    { fichero: 'e2e/smoke-x.spec.ts', importadoEn: [] },
+  ] }
+  const C = { sha: 'ccc', cambios: [{ fichero: 'backend/src/cron.ts', importadoEn: [] }] }
+
+  it('el commit de CERRAR (ficha + spec) no cuelga de ninguna superficie', () => {
+    // Es el 66% de las tareas del repo: el último commit no toca nada servido. Atarle la espera
+    // era pedir un deploy que nunca podría satisfacerla.
+    expect(commitsPorSuperficie([B])).toEqual({})
+  })
+
+  it('cada superficie se lleva SOLO los commits que la tocan', () => {
+    expect(commitsPorSuperficie([A, B, C])).toEqual({ frontend: ['aaa'], backend: ['ccc'] })
+  })
+
+  it('un commit que toca las dos aparece en las dos, sin repetirse', () => {
+    const D = { sha: 'ddd', cambios: [
+      { fichero: 'app/x.tsx', importadoEn: [] },
+      { fichero: 'app/y.tsx', importadoEn: [] },
+      { fichero: 'backend/src/z.ts', importadoEn: [] },
+    ] }
+    expect(commitsPorSuperficie([D])).toEqual({ frontend: ['ddd'], backend: ['ddd'] })
+  })
+
+  it('un fichero ambiguo cuelga de quien lo importa', () => {
+    const E = { sha: 'eee', cambios: [{ fichero: 'lib/api/premium/cobertura.ts', importadoEn: ['frontend'] }] }
+    const F = { sha: 'fff', cambios: [{ fichero: 'lib/ui/navOverflowProbe.ts', importadoEn: [] }] }
+    expect(commitsPorSuperficie([E, F])).toEqual({ frontend: ['eee'] })
+  })
+
+  it('no se cae con entradas vacías o sin sha', () => {
+    expect(commitsPorSuperficie([])).toEqual({})
+    expect(commitsPorSuperficie(null as any)).toEqual({})
+    expect(commitsPorSuperficie([{ cambios: [{ fichero: 'app/x.tsx' }] } as any])).toEqual({})
+  })
+})
+
+describe('el motivo NO acusa a ficheros que ya están vivos (T-459)', () => {
+  it('nombra solo los ficheros de los commits que faltan por desplegar', () => {
+    // Antes salía la UNIÓN de todos los commits, así que el mensaje señalaba código desplegado.
+    // Un aviso que acusa en falso es un aviso que se deja de creer.
+    const r = exigeVerificacion(
+      [
+        { fichero: 'app/viejo.tsx', importadoEn: [], sha: 'aaa' },
+        { fichero: 'app/nuevo.tsx', importadoEn: [], sha: 'bbb' },
+      ],
+      SIN_DESPLEGAR,
+      { commitsPendientes: ['bbb'] },
+    )
+    expect(r.exige).toBe(true)
+    expect(r.servidos.map((s: { fichero: string }) => s.fichero)).toEqual(['app/nuevo.tsx'])
+    expect(r.motivo).toMatch(/1 fichero/)
+  })
+
+  it('sin saber qué commit falta, se sigue nombrando todo (comportamiento de siempre)', () => {
+    const r = exigeVerificacion([{ fichero: 'app/a.tsx', importadoEn: [], sha: 'aaa' }], SIN_DESPLEGAR)
+    expect(r.exige).toBe(true)
+    expect(r.servidos).toHaveLength(1)
   })
 })

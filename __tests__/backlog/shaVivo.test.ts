@@ -14,9 +14,10 @@
 // que este módulo pasa a ser la pieza de la que cuelga todo el mecanismo.
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { shaVivo, shasVivos, ENDPOINTS } = require('@/lib/deploy/shaVivo.cjs') as {
+const { shaVivo, shasVivos, shaVivoEstable, ENDPOINTS } = require('@/lib/deploy/shaVivo.cjs') as {
   shaVivo: (s: string, o?: { timeoutMs?: number }) => Promise<string | null>
   shasVivos: (o?: { timeoutMs?: number }) => Promise<{ frontend: string | null; backend: string | null }>
+  shaVivoEstable: (s: string, o?: { intentos?: number; pausaMs?: number }) => Promise<{ sha: string | null; estable: boolean; vistos: string[] }>
   ENDPOINTS: Record<string, string>
 }
 
@@ -89,5 +90,57 @@ describe('shaVivo — la fuente de verdad de qué está desplegado', () => {
         : { throw: true, ok: false, json: async () => ({}) },
     ) as never
     await expect(shasVivos()).resolves.toEqual({ frontend: null, backend: 'back99' })
+  })
+})
+
+// ── T-459: durante un rollout el sha vivo es una MONEDA AL AIRE ─────────────────────────────
+// Mientras ECS sustituye tareas, el balanceador reparte entre la revisión vieja y la nueva, así
+// que /health contesta un sha u otro según a cuál caiga. Quien lo use para decidir si algo está
+// desplegado obtiene veredictos OPUESTOS a la misma pregunta en el mismo minuto — y eso es lo que
+// enseña a no creerse la puerta. Aquí no se adivina cuál es «el bueno»: se detecta el desacuerdo.
+describe('shaVivoEstable — ¿me puedo fiar de este sha?', () => {
+  const secuencia = (shas: (string | null)[]) => {
+    let i = 0
+    global.fetch = jest.fn(async () => {
+      const s = shas[Math.min(i++, shas.length - 1)]
+      return s === null
+        ? { ok: false, json: async () => ({}) }
+        : { ok: true, json: async () => ({ deploy: s }) }
+    }) as never
+  }
+
+  it('con el despliegue quieto dice ESTABLE', async () => {
+    secuencia(['abc123', 'abc123', 'abc123'])
+    await expect(shaVivoEstable('frontend', { pausaMs: 0 })).resolves.toEqual({
+      sha: 'abc123', estable: true, vistos: ['abc123'],
+    })
+  })
+
+  it('con un ROLLOUT en curso (dos shas distintos) dice que NO es estable', async () => {
+    secuencia(['viejo11', 'nuevo22', 'viejo11'])
+    const r = await shaVivoEstable('frontend', { pausaMs: 0 })
+    expect(r.estable).toBe(false)
+    expect(r.vistos.sort()).toEqual(['nuevo22', 'viejo11'])
+  })
+
+  it('una lectura FALLIDA no es un desacuerdo: no inventa un rollout', async () => {
+    // Un /health que da timeout una vez no prueba que haya dos revisiones sirviendo. Confundirlo
+    // convertiría cualquier hipo de red en «se está desplegando».
+    secuencia(['abc123', null, 'abc123'])
+    const r = await shaVivoEstable('backend', { pausaMs: 0 })
+    expect(r).toEqual({ sha: 'abc123', estable: true, vistos: ['abc123'] })
+  })
+
+  it('sin poder leer NADA devuelve null y estable: «no lo sé» no es «hay rollout»', async () => {
+    secuencia([null, null, null])
+    await expect(shaVivoEstable('frontend', { pausaMs: 0 })).resolves.toEqual({
+      sha: null, estable: true, vistos: [],
+    })
+  })
+
+  it('pregunta tantas veces como se le pida', async () => {
+    secuencia(['x1'])
+    await shaVivoEstable('frontend', { intentos: 4, pausaMs: 0 })
+    expect(global.fetch).toHaveBeenCalledTimes(4)
   })
 })
