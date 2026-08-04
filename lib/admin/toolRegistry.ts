@@ -825,6 +825,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'dice, no se supone). Núcleo puro `lib/sessions/parte.cjs` (14 tests). NUNCA hacer que diga ' +
       'verde cuando no ha podido mirar: sin señales el veredicto es ⚪, no 🟢.',
   },
+  colocar_ficha_backlog: {
+    titulo: 'Colocar una ficha nueva del backlog en su sitio (a mano se coloca mal)',
+    ruta: 'scripts/backlog.cjs',
+    estado: 'vivo',
+    escribe: ['docs/roadmap/tareas-pendientes.md'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`ficha <id> [--texto <fichero.md>]` (o por stdin). Lo cita `reserve` en lugar del ' +
+      '«escríbela a mano» de antes. **Nace de que a mano NO sale bien:** el fichero pasa de ' +
+      '11.000 líneas y la frase `## Abiertas` aparece DENTRO del texto de varias fichas (las que ' +
+      'hablan de este problema), antes que el encabezado real — así que un `index()`, un `sed` o ' +
+      '«pégala arriba» aciertan la MENCIÓN y la ficha aterriza en el preámbulo, fuera de toda ' +
+      'sección. Medido al estrenarlo: **58 fichas huérfanas, 27 vivas**, o sea que colocarla mal ' +
+      'era el resultado NORMAL, no el desliz. Y el aviso no bastaba: el ancla falsa con la que se ' +
+      'tropezó el 04/08 era un bullet de otra sesión documentando esta misma trampa. Localiza el ' +
+      'encabezado por **línea exacta**, nunca por búsqueda de texto, y se niega a escribir si el ' +
+      'id no está RESERVADO en `backlog_tasks` (la BD es el árbitro; el markdown no admite reserva ' +
+      'atómica), si el id ya tiene ficha, si la cabecera dice otro id, si la ficha nace con ✅, o ' +
+      'si desaparecería alguna ficha previa. ⚠️ **NO reduce los conflictos de git** —todas las ' +
+      'sesiones insertan en el mismo punto— y no pretende hacerlo: eso se resuelve al fusionar ' +
+      'conservando LOS DOS lados. Criterio puro en `lib/backlog/insertarFicha.cjs` (11 tests). ' +
+      'Funciona igual en local y en un trabajador remoto (texto + una consulta a RDS).',
+  },
   embudo_preguntas_sesiones: {
     titulo: 'Preguntar a Manuel sin que tenga que entrar en la terminal de cada sesión (el embudo)',
     ruta: 'scripts/backlog.cjs',

@@ -9,11 +9,36 @@
 ## Crear una ficha nueva: `reserve` PRIMERO
 
 ```bash
-node scripts/backlog.cjs reserve "Título provisional de la tarea"
+node scripts/backlog.cjs reserve "Título provisional de la tarea" --esfuerzo rato
 #  ✅ id reservado: T-216
-#     escribe la ficha en docs/roadmap/tareas-pendientes.md como:  ### [T-216] 🟡 [ABIERTO …] <título>
+#     escribe la ficha y COLÓCALA con la herramienta (a mano se coloca mal — T-515):
+#       node scripts/backlog.cjs ficha T-216 --texto <fichero.md>
 #     y luego:  node scripts/backlog.cjs sync
 ```
+
+### Y COLÓCALA con `ficha`, no a mano (T-515)
+
+```bash
+node scripts/backlog.cjs ficha T-216 --texto mi-ficha.md   # o por stdin
+```
+
+**A mano se coloca mal, y no es cuestión de tener cuidado.** Este fichero pasa de 11.000 líneas y la
+frase `## Abiertas` aparece **dentro del texto** de varias fichas (las que hablan justamente de este
+problema), *antes* que el encabezado de verdad. Un `index()`, un `sed` o «pégala arriba del todo»
+aciertan la MENCIÓN, y la ficha aterriza en el preámbulo, fuera de toda sección.
+
+Medido el 04/08 al estrenar el comando: **58 fichas huérfanas en el preámbulo, 27 de ellas VIVAS**
+(T-504 🔴 entre ellas). O sea que colocarla mal era el resultado **normal**, no el desliz. Y el aviso
+escrito no lo evitaba: el ancla falsa con la que tropezó la sesión que construyó esto era **un bullet
+de otra sesión documentando esta misma trampa** — un aviso no es un guardarraíl.
+
+`ficha` localiza el encabezado por **línea exacta** y se NIEGA a escribir si: el id no está reservado
+en `backlog_tasks`, el id ya tiene ficha, la cabecera dice otro id, la ficha nace con `✅`, o
+desaparecería alguna ficha previa (el guardarraíl de ids solo mira unicidad, y un id sigue siendo
+único después de vaciarle el cuerpo).
+
+⚠️ **No reduce los conflictos de git** y no lo pretende: todas las sesiones insertan en el mismo
+punto del mismo fichero. Eso se resuelve al fusionar conservando **los dos lados**.
 
 **Nunca elijas el id mirando el markdown.** La fuente de verdad de los ids es la **tabla
 `backlog_tasks`**, igual que para el claim: con 2-10 sesiones en paralelo, otra puede haber creado

@@ -1530,8 +1530,51 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       }
       if (!reservado) { console.error('❌ no se pudo reservar un id tras 10 intentos'); process.exit(2); }
       console.log(`✅ id reservado: ${reservado}`);
-      console.log(`   escribe la ficha en docs/roadmap/tareas-pendientes.md como:  ### [${reservado}] 🟡 [ABIERTO …] <título>`);
+      console.log(`   escribe la ficha y COLÓCALA con la herramienta (a mano se coloca mal — T-515):`);
+      console.log(`     node scripts/backlog.cjs ficha ${reservado} --texto <fichero.md>`);
+      console.log(`     (o por stdin:  … | node scripts/backlog.cjs ficha ${reservado})`);
+      console.log(`   empieza el fichero por:  ### [${reservado}] 🟡 [ABIERTO …] <título>`);
       console.log(`   y luego:  node scripts/backlog.cjs sync   (actualizará el título real)`);
+    }
+
+    // ── COLOCAR UNA FICHA NUEVA (T-515) ──────────────────────────────────────────────────────
+    // A mano se coloca mal. `tareas-pendientes.md` pasa de 11.000 líneas y la frase «## Abiertas»
+    // sale DENTRO del texto de varias fichas, así que cualquier búsqueda de esa cadena acierta la
+    // mención antes que el encabezado y la ficha acaba en el preámbulo, fuera de toda sección.
+    // Pasó dos veces; la segunda, el ancla falsa era un bullet de otra sesión avisando de esto
+    // mismo — o sea que el aviso escrito no lo evita. El criterio vive en `lib/backlog/insertarFicha.cjs`.
+    else if (cmd === 'ficha') {
+      const id = process.argv[3];
+      if (!id) { console.error('❌ uso: node scripts/backlog.cjs ficha T-042 [--texto <fichero.md>]'); process.exit(1); }
+      const { insertarFicha } = require('../lib/backlog/insertarFicha.cjs');
+      const fTexto = arg('--texto');
+      let bloque = '';
+      try {
+        bloque = fTexto ? fs.readFileSync(fTexto, 'utf8') : fs.readFileSync(0, 'utf8');
+      } catch (e) {
+        console.error(`❌ no se pudo leer la ficha: ${e.message}`);
+        process.exit(1);
+      }
+
+      // El id tiene que estar RESERVADO. La BD es el árbitro del reparto (el markdown no admite
+      // reserva atómica), así que escribir una ficha con un id que nadie reservó es cómo se
+      // pisan dos sesiones — el mismo fallo que `reserve` vino a cerrar.
+      const [fila] = await s`SELECT id, title FROM public.backlog_tasks WHERE id = ${id}`;
+      if (!fila) {
+        console.error(`❌ ${id} no está reservado en backlog_tasks. Resérvalo antes:`);
+        console.error(`     node scripts/backlog.cjs reserve "<título>" --esfuerzo <cajón>`);
+        process.exit(3);
+      }
+
+      const md = fs.readFileSync(MD, 'utf8');
+      const r = insertarFicha(md, id, bloque);
+      if (!r.ok) {
+        console.error(`❌ NO insertada (${r.motivo}): ${r.detalle}`);
+        process.exit(2);
+      }
+      fs.writeFileSync(MD, r.md);
+      console.log(`✅ ficha ${id} colocada bajo «## Abiertas» (línea ${r.linea}) — ninguna ficha previa se ha perdido`);
+      console.log(`   ahora:  node scripts/backlog.cjs sync`);
     }
 
     // ── EL EMBUDO DE PREGUNTAS (T-493) ───────────────────────────────────────────────────────
@@ -1625,7 +1668,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);

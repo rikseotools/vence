@@ -1674,6 +1674,18 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
+
+- **Esfuerzo: rato.** Núcleo puro + subcomando + tests.
+- **EL FALLO.** `docs/roadmap/tareas-pendientes.md` pasa de 11.000 líneas y la frase `## Abiertas` aparece **dentro del texto** de varias fichas (las que hablan justamente de este problema), *antes* que el encabezado de verdad. Cualquier búsqueda de esa cadena —un `index()`, un `sed`, «pégala arriba del todo»— acierta la MENCIÓN, y la ficha aterriza en el preámbulo, fuera de toda sección.
+- **POR QUÉ IMPORTA Y NO ES COSMÉTICO.** Una ficha fuera de sección la sigue viendo `parseMarkdown.cjs` (que desde [T-382] lee la CABECERA, no la posición), pero queda desordenada respecto a lo que un humano lee, y el fichero acumula fichas huérfanas en el preámbulo que nadie encuentra al revisar el backlog.
+- **LA PRUEBA DE QUE NO ES DESCUIDO — y el número real es mucho peor de lo que parecía.** Se creyó que habían sido «un par de veces»; al estrenar la herramienta se midió el fichero y hay **58 fichas fuera de toda sección, 27 de ellas VIVAS** (T-504 🔴, T-479, …). O sea que colocarla mal no es el desliz: es el **resultado normal** de insertarla a mano. Y la señal de que no se arregla avisando: el ancla falsa con la que se tropezó el 04/08 escribiendo [T-508] era **un bullet de otra sesión documentando esta misma trampa**. Dos personas distintas, el mismo agujero, con el aviso escrito delante — **un aviso no es un guardarraíl**. Mismo principio que ganó `snooze_until` ([T-221]) y el push-guard: lo que no se impide en el punto de escritura, se repite.
+- **PENDIENTE (no hecho aquí a propósito):** reubicar esas 27 vivas. Es mecánico pero toca 27 sitios de un fichero que todas las sesiones editan a la vez, así que va en su propia pasada y no mezclado con el arreglo — mezclarlo garantizaría un conflicto enorme y ninguna de las dos cosas revisable.
+- **ARREGLO.** Núcleo puro `lib/backlog/insertarFicha.cjs` + subcomando `node scripts/backlog.cjs ficha <id> [--texto <fichero.md>]` (o por stdin), citado por `reserve` en lugar del «escríbela a mano» de antes. Localiza el encabezado por **línea exacta**, nunca por búsqueda de texto. Se niega a escribir si: el id no está **reservado en `backlog_tasks`** (la BD es el árbitro del reparto, el markdown no admite reserva atómica), el id ya tiene ficha, la cabecera dice otro id, la ficha **nace con ✅**, o **desaparecería alguna ficha previa** (comprobación de no-pérdida: el guardarraíl de ids solo mira unicidad, y un id sigue siendo único después de vaciarle el cuerpo).
+- **LO QUE NO ARREGLA, dicho a propósito:** *no* reduce los conflictos de git. Todas las sesiones insertan en el mismo punto del mismo fichero, así que el conflicto sigue siendo lo normal — se resuelve al fusionar conservando LOS DOS lados (`perdidaDeContexto.cjs`). Esto quita la colocación equivocada y el id repetido, no la contención.
+- **Capas:** 11 unitarios (`__tests__/backlog/insertarFicha.test.ts`) sobre el fichero real reducido, incluido el ancla falsa. Estrenado contra el fichero de verdad: **esta misma ficha se colocó con la herramienta**.
+- **VPS:** es manipulación de texto sobre un fichero versionado más una consulta a RDS, así que funciona igual en local y en un trabajador remoto. Ver [T-486].
+
 ### [T-508] 🟡 [ABIERTO 03/08] Una oposición personalizada VACÍA daba 404 en el icono 📚, y el detector que la veía decía que la ignoraras
 
 - **Esfuerzo: larga.** Hecho: arreglo + capas. Falta desplegar y verificar en vivo.
