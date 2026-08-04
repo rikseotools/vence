@@ -1304,10 +1304,49 @@ Consecuencia práctica: **empezar por las leyes de UNA sola oposición** (la Ley
 LO 14/2007 dos), donde el reparto de scopes es pequeño y la decisión de epígrafe es abarcable, y
 dejar la CE para el final precisamente por ser la más servida.
 
-**Capa que falta y sin la cual esto se repite:** no hay detector. El corte medido aquí debería vivir
-como núcleo puro + kind del barrido (`pregunta_estructural_sin_articulo_cero`), en la banda de los
-que **no pingan el badge** (precisión ~85% medida, se adjudica leyendo). Hoy la única forma de
-enterarse es que lo impugne un usuario, que es exactamente lo que pasó.
+**Capa que falta:** no hay detector, así que hoy la única forma de enterarse es que lo impugne un
+usuario, que es exactamente lo que pasó.
+
+**⚠️ SE INTENTÓ EL 04/08 Y NO SALIÓ. Lee esto antes de volver a intentarlo, porque los dos cortes
+evidentes están probados y los dos fallan.** (La estimación de «precisión ~85%» que había aquí era
+mía, a ojo, y la medición la desmiente: bórrala de la cabeza.)
+
+- **Corte 1 — verbo estructural + divisiones + que se nombre una norma.** Da **218 hallazgos** sobre
+  60.644 preguntas activas de leyes con `boe_url`. Leídos 14 repartidos por todo el conjunto:
+  **14 falsos positivos de 14**. La causa es tonta y hay que saberla: admitir `art[íi]culo` en
+  **singular** entre las divisiones hace que case *«según el artículo 81 de la Ley…»*, que es como
+  empieza casi toda pregunta legal. Y `cuánt` a secas convierte cualquier pregunta de contar
+  (*«¿cuántos delegados de prevención?»*, *«¿cuántas clases de pensiones hay?»*) en estructural.
+- **Corte 2 — exigir además que la norma sea el SUJETO del verbo, por ventana de caracteres.**
+  Rechaza el ruido, pero **también rechaza 5 de los 6 casos ciertos**. Y no es cuestión de ajustar
+  la ventana: en el caso cierto *«El título VIII **de la Constitución**, sobre la Organización
+  territorial del Estado, **se divide en**»* hay **47 caracteres** entre la norma y el verbo, y en el
+  falso positivo *«…**de la Ley 31/1995**, en una empresa con 5.001 trabajadores, **¿cuántos**
+  delegados…»* hay **50**. **La señal NO es la distancia**, así que ningún umbral los separa.
+
+**Lo que sí quedó calibrado, y es por donde hay que empezar** — anclas leídas a mano sobre datos
+reales, que cualquier corte nuevo tiene que satisfacer las dos columnas a la vez:
+
+| DEBE cazarlo (estructura de la norma) | DEBE rechazarlo (contenido del artículo) |
+|---|---|
+| «La ley … **cuenta con:**» + opciones «Un Título Preliminar y cuatro títulos» (divisiones **solo en las opciones**) | «**En cuanto a** la reforma agravada… señale la INCORRECTA» (el «cuant» viene de *en cuanto a*) |
+| «¿De cuántos **artículos se compone** la Constitución Española?» | «el **Congreso** se compone de:» (se estructura un ÓRGANO, no la norma) |
+| «¿Cuántas **disposiciones adicionales** tiene la Constitución?» | «el **personal estatutario** … se divide en:» (una CATEGORÍA) |
+| «¿Cuántas **disposiciones transitorias** tiene la Constitución?» | «¿**cuántos delegados** de prevención le corresponden?» |
+| «El **título VIII** de la Constitución … se divide en:» | «¿**cuántas clases de pensiones** hay…?» |
+| «¿De cuántos **títulos se compone** la Ley 5/2023…?» | «programa oficial de doctorado con los **títulos** de grado y máster» (títulos ACADÉMICOS) |
+| | «¿cuántos **ejemplares de libros** de bibliófilo…?» (libros FÍSICOS) |
+| | «Anatómicamente el **estómago se divide** en regiones» |
+
+**La pista que yo no supe explotar:** lo que distingue las dos columnas es **quién** se estructura —
+el documento o algo regulado por él— y eso es una relación gramatical, no una coincidencia de
+palabras ni una distancia. O se ataca con análisis del sintagma que precede al verbo, o este
+detector es de los que piden LLM. **No lo vuelvas a intentar con regex y ventanas: ya está probado
+que no separa.**
+
+El código de los dos intentos se **retiró** en vez de dejarlo tras un flag (un detector mal
+calibrado que alguien puede encender es peor que no tenerlo); lo que valía eran las anclas de
+arriba, y por eso están aquí y no en un fichero muerto.
 
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
