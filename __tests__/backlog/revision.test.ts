@@ -118,6 +118,31 @@ describe('lo que se le enseña a quien revisa', () => {
     expect(l).toMatch(/la dejó piloto-t533/)
   })
 
+  // ── EL SID SE ABREVIA POR SEGMENTO, NO POR LONGITUD (T-538) ────────────────────────────────
+  // Cortar por caracteres corta justo por donde no es: la forma canónica es
+  // `<nombre>-<máquina>-<azar>`, con lo distintivo al principio. Medido el 04/08 con cinco
+  // sesiones del mismo día (imp-04ago-b/-c/-d/-e/-g): a 8 caracteres las cinco se escriben igual,
+  // y quien lee reconoce como suya una fila ajena.
+  it('el sid de quien entregó se abrevia por segmento, sin arrastrar máquina ni azar', () => {
+    const l = REV.lineaRevision(entregada({ review_requested_by: 'piloto-t533-fedora-b3c66a' }), AHORA)
+    expect(l).toContain('la dejó piloto-t533')
+    expect(l).not.toContain('fedora')       // con un slice(0,18) esto entraría
+    expect(l).not.toContain('b3c66a')
+  })
+
+  it('y el motivo del rechazo del claim usa la misma abreviatura', () => {
+    const g = claimGate(entregada({ review_requested_by: 'piloto-t533-fedora-b3c66a' }), 'x', AHORA)
+    expect(g.reason).toContain('piloto-t533')
+    expect(g.reason).not.toContain('fedora')
+  })
+
+  // Un sid que NO tiene la forma de los nuestros (uno viejo, un UUID del entorno) no se toca:
+  // más vale una línea larga que una abreviatura que colisiona.
+  it('un sid ajeno a nuestra convención no se recorta', () => {
+    const uuid = '550e8400-e29b-41d4-a716-446655440000'
+    expect(REV.lineaRevision(entregada({ review_requested_by: uuid }), AHORA)).toContain(uuid)
+  })
+
   it('sobre una tarea que no espera revisión no inventa nada', () => {
     expect(REV.lineaRevision({ id: 'T-1' })).toBeNull()
     expect(REV.esperandoDesde({ id: 'T-1' })).toBeNull()
