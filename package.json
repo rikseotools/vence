@@ -161,7 +161,8 @@
     "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs",
     "canary:rol-coordinacion": "node scripts/canary-rol-coordinacion.cjs",
     "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs",
-    "sim:espera-revision": "node scripts/backlog/sim-espera-revision.cjs"
+    "sim:espera-revision": "node scripts/backlog/sim-espera-revision.cjs",
+    "audit:epigrafe-fuente": "node scripts/temario/audit-epigrafe-vs-fuente.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -1504,6 +1504,30 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'código original), guardarraíl `puertasQueCuentan.guardrail` con TRINQUETE sobre las 6 ' +
       'copias privadas restantes, y `npm run sim:friccion-puertas` de extremo a extremo contra RDS.',
   },
+  epigrafe_vs_fuente: {
+    titulo: '¿Qué oposiciones sirven un temario que NO está en su propia fuente? (triaje del Paso 1)',
+    ruta: 'scripts/temario/audit-epigrafe-vs-fuente.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      '`npm run audit:epigrafe-fuente [-- --slug X] [--limite N] [--json out]`. SOLO LEE. Núcleo ' +
+      'puro `lib/temario/epigrafeEnFuente.cjs` (22 tests). **Cubre el hueco de [T-528]**: 2.295 ' +
+      'temas (60%) sin contrastar nunca contra su fuente, teniendo el programa_url en las 126 ' +
+      'activas. No sustituye al Paso 1 ni pinga badge: ORDENA LA COLA para empezar por donde más ' +
+      'se miente. **La pregunta es barata a propósito** —¿el epígrafe de la BD aparece DENTRO del ' +
+      'documento?— y por eso no necesita parsear el boletín, que es lo que falla en un tercio de ' +
+      'los casos. Reutiliza `fetchProgramaText` de `verify-epigrafe-literality.cjs`, no otro ' +
+      'fetcher. Calibrado contra `administrativo_asturias`, del que se conoce el temario antes y ' +
+      'después de clonarlo: **0/30 antes, 30/30 después**. Tres gotchas que decidían si servía: ' +
+      '(1) hay que limpiar el mobiliario de página o un tema que cruza de página se declara ' +
+      'ausente; (2) el pie CAMBIA con la paginación, así que se enmascaran los dígitos antes de ' +
+      'contar repeticiones — con tope de 80 caracteres, o el filtro se lleva por delante la lista ' +
+      'de temas; (3) **`fuente_no_es_temario` va en cubo APARTE**: `administrativo-estado` salía ' +
+      'el primero con «45 de 45 fuera de su fuente» y su programa_url era el RD de la OEP 2026, ' +
+      'sin un solo tema dentro — mezclar enlaces rotos con paráfrasis pone lo uno delante de lo ' +
+      'otro. Las oposiciones personalizadas y lo que deja fuera un `--limite` se cantan, no se callan.',
+  },
   sid_corto: {
     titulo: 'Cómo se escribe un session-id en pantalla sin que colisione con el de otra sesión',
     ruta: 'lib/sessions/sid.cjs',

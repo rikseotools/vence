@@ -357,4 +357,7 @@ async function main() {
 if (require.main === module) main()
 
 
-module.exports = { ensureDocConTexto }
+// `fetchProgramaText` se exporta para que el triaje de T-550 use ESTE fetcher y no escriba otro:
+// aquí viven resueltos el maxBuffer de 256 MB (los boletines que publican todos los programas en
+// un PDF desbordaban 1 MB y se declaraban ilegibles EN SILENCIO) y el timeout de 150 s.
+module.exports = { ensureDocConTexto, fetchProgramaText }

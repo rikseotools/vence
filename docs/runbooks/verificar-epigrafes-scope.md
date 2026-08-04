@@ -94,6 +94,45 @@ Motivo: el texto literal del usuario suele ser la punta del iceberg (p.ej. "no h
 
 > 🧩 **EL PROGRAMA PUEDE ESTAR REPARTIDO EN VARIOS DOCUMENTOS (base + comunicados) — apunte crítico.** La convocatoria publica un programa, pero luego salen **notas/comunicados que lo AFINAN**: por dudas, por versiones de software, por añadir una 2ª parte, etc. El `programa_url` es UN solo campo → NO basta mirar ese PDF. **Verifica cada tema contra su documento fuente REAL** (base o comunicado) y enlaza `source_documento_id` por-tema (el modelo lo soporta: distintos temas pueden apuntar a distintos documentos). Los comunicados **ya están clonados en el hub** (`convocatoria_documentos`, `tipo='nota'`, 6.403 a 25/07) con su URL+texto → **léelos del hub, cero re-descarga**. **Los feedbacks suelen señalar estos casos** (un usuario avisa "en la 2ª parte entra X según el BOE"). **Caso raíz CARM (25/07):** el programa base 2016 (BORM, 16 temas) NO tenía ofimática; casi jubilo 5 temas — pero el BORM 2025 (disp. 5341) + notas afinaban con un Anexo de PowerPoint/Excel/Firma/Word/Outlook, y un feedback lo señalaba. T1-16 se verificaron contra el base 2016, T17-21 contra el comunicado 2025. **NUNCA concluir "temario de más" sin mirar los comunicados del hub + los feedbacks.**
 
+## ¿Por dónde empiezo el Paso 1? — `npm run audit:epigrafe-fuente` (T-552)
+
+El Paso 1 es caro y hay **126 oposiciones activas** con `programa_url`; [T-528] midió que **2.295
+temas (60%) no se han contrastado nunca** contra su fuente. Sin una cola, se empieza por la que
+alguien menciona ese día.
+
+```bash
+npm run audit:epigrafe-fuente                      # las 126, ordenadas por distancia a su fuente
+npm run audit:epigrafe-fuente -- --slug X          # una sola
+npm run audit:epigrafe-fuente -- --limite 25 --json /tmp/cola.json
+```
+
+Hace **una sola pregunta, y barata**: *¿el epígrafe que hay en la BD aparece DENTRO del documento
+oficial?* Si es literal, aparece; si es paráfrasis, no. **No parsea el boletín** —que es justo lo
+que falla en un tercio de los casos— ni alinea temas ni usa LLM. Solo lee.
+
+**Tres cosas que hay que saber para leer su salida:**
+
+| cubo | qué significa | qué se hace |
+|---|---|---|
+| 🔴 `parafraseado` / ⚠️ `parcial` | epígrafes que NO están en su fuente | **Paso 1**, empezando por arriba |
+| 🔗 `fuente_no_es_temario` | el `programa_url` apunta a un documento SIN temas | arreglar el ENLACE primero (frase *«revisa los enlaces de convocatoria»*) |
+| ⏭️ `sin_fuente` | no se pudo descargar o es un cascarón de SPA | tampoco dice nada del temario |
+
+> **Los dos últimos van APARTE a propósito.** El día que se estrenó, el primero de la cola era
+> `administrativo-estado` con *«45 de 45 fuera de su fuente»*… y su `programa_url` era el **Real
+> Decreto de la OEP 2026**, un decreto de plazas sin un solo tema dentro. Nuestros epígrafes no
+> tenían por qué estar ahí. Mezclar enlaces rotos con paráfrasis reales pone lo uno delante de lo
+> otro y vuelve la cola inútil.
+
+**Un `parafraseado` NO significa automáticamente que la culpa sea nuestra:** puede ser una
+paráfrasis de la BD (el caso normal) o un `programa_url` que apunta a **otro ciclo** — el caso de
+Cantabria, donde una Orden posterior había modificado el programa. Las dos piden abrir el
+documento; ninguna se arregla sola.
+
+Calibrado contra `administrativo_asturias`, la única oposición de la que se conoce el temario
+antes y después de clonarlo: **0/30 antes, 30/30 después**. Núcleo puro
+`lib/temario/epigrafeEnFuente.cjs` (22 tests).
+
 ## Modelo mental
 
 - Estado por tema en `topic_scope_verification`: `never_verified` → `verifying` → `verified_correct` | `verified_issues` → (`stale` si cambia el scope/epígrafe).
