@@ -1,6 +1,6 @@
 // app/leyes/[law]/page.tsx - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
-import { unstable_cache } from 'next/cache'
+import { versionedCache } from '@/lib/cache/versionedCache'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { resolveLawBySlug, getCanonicalSlugAsync } from '@/lib/api/laws'
@@ -42,20 +42,22 @@ async function resolveLaw(slug: string): Promise<{ lawShortName: string; lawInfo
 // con revalidateTag('teoria') al editar contenido (docs/maintenance/cache-revalidation.md).
 // revalidate:false = permanente (el texto legal cambia poco). Sirve contenido
 // crawleable a Google sin pegar a BD en cada visita.
+// `versionedCache` y NO `unstable_cache` plano (T-510, 03/08/2026). Con `revalidate:false`
+// + `tags:['teoria']` la invalidación por tag solo limpia LA INSTANCIA que atiende la
+// petición, y en AWS el frontend son N contenedores standalone con su caché EN MEMORIA:
+// medido tras poblar los capítulos de 21 leyes, la Ley 39/2015 pasó a verse y la Ley
+// 1/2000 seguía sirviendo 8 títulos y 0 capítulos aunque el dato estuviera bien (con
+// cache-buster salían sus 80). Repetir la llamada a /api/admin/revalidate acierta a veces
+// y eso no es invalidar, es insistir. `versionedCache` mete la versión del tag —leída de
+// Postgres, común a todas— DENTRO de la clave, así que un bump la cambia para todas a la vez.
 const getLawSectionsCached = (slug: string) =>
-  unstable_cache(() => fetchLawSections(slug), ['law-sections-ssr', slug], {
-    revalidate: false,
-    tags: ['teoria'],
-  })()
+  versionedCache(fetchLawSections, { tag: 'teoria', keyParts: ['law-sections-ssr'] })(slug)
 
 // Fallback SSR para leyes SIN títulos (law_sections vacío) pero CON artículos
 // (p.ej. LPRL, Ley 9/2017, Ley 55/2003): índice de artículos crawleable. Mismo
 // patrón cacheable. Solo se llama cuando no hay secciones (evita BD extra).
 const getLawArticlesCached = (slug: string) =>
-  unstable_cache(() => fetchLawArticles(slug), ['law-articles-ssr', slug], {
-    revalidate: false,
-    tags: ['teoria'],
-  })()
+  versionedCache(fetchLawArticles, { tag: 'teoria', keyParts: ['law-articles-ssr'] })(slug)
 
 const SEO_DESCRIPTIONS: Record<string, string> = {
   'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
