@@ -842,6 +842,25 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-549] 🟡 [ABIERTO 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
+
+> ⚠️ El outcome de [T-523] la cita como «T-546» — ese número se escribió antes de reservarlo y es incorrecto. Es ESTA.
+
+**Qué pasa.** `scripts/backlog/verificacion.cjs` decide si una tarea se puede cerrar con `contenidos(shaVivo, commits)`, que exige que **todos** los commits que declaran la tarea sean ancestros del sha vivo. Pero el veredicto que se quiere dar es otro: *«¿está vivo el código SERVIDO que toca esta tarea?»*. El propio módulo ya sabe distinguirlo — tiene `DIRS_SERVIDOS` (`app`, `components`, `contexts`, `hooks` en frontend; `backend/src`) y calcula `importadoEn` por fichero — pero esa distinción **no se aplica al conjunto de commits** que se le pasa a `contenidos`.
+
+**La consecuencia, y es lo que lo hace algo más que un detalle:** castiga exactamente la práctica que la casa pide. El orden bueno es *desplegar → verificar en producción → subir la prueba que lo verifica*. Al subir esa prueba (una simulación en `scripts/sim/`, que no es código servido y no cambia nada de lo desplegado), la tarea **deja de ser cerrable hasta el siguiente deploy**. O sea que la única forma de cerrar sin escape es escribir la verificación ANTES de poder verificar, o no subirla.
+
+**Cómo salió (04/08/2026).** Cerrando [T-523]: el arreglo se desplegó (`a68f5648`), se verificó en un navegador real contra producción (4/4) y se subió `scripts/sim/sim-editor-abre-la-tuya.ts` con esa comprobación. `done` bloqueó con *«su código todavía NO está vivo»* señalando tres ficheros de `components/` y `app/` que **sí** estaban vivos: `/api/health` respondía `a68f5648` y `git merge-base --is-ancestor` lo confirmaba. Lo que faltaba en el sha vivo era el commit de la SIMULACIÓN. Se cerró con `--igualmente` y el motivo escrito.
+
+**Segundo hallazgo del mismo rato, distinto y también real: durante el rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` lee `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva, así que ese endpoint contesta un sha **u otro** según a cuál caiga. El primer intento de cierre falló por esto (antes de que el rollout terminara) y el segundo ya devolvía el sha nuevo. Un guardarraíl que da veredictos distintos a la misma pregunta en el mismo minuto enseña a ignorarlo.
+
+**Qué mirar.**
+1. Filtrar los commits por si tocan `DIRS_SERVIDOS` **antes** de exigir que estén vivos: un commit que solo añade tests, simulaciones, documentación o scripts no puede impedir el cierre. La pieza ya existe (`importadoEn`), solo hay que usarla aquí.
+2. Para el rollout: o consultar el sha de forma estable (preguntar N veces y exigir acuerdo, o leer `deploy_runs`, que registra el fin del deploy con su `outcome`), o decirlo explícitamente en el mensaje («hay un rollout en curso, reintenta al terminar») en vez de afirmar que no está vivo.
+3. Medir cuántos `--igualmente` de los contados en el bus de fricción responden a estas dos causas: si son la mayoría, el guardarraíl está enseñando a saltárselo.
+
+**Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
+
 ### [T-541] 🔴 [ABIERTO 04/08] Dentro de una oposición personalizada, cuatro enlaces te sacaban a otra oposición sin dar ningún error
 
 - **Lo encontró un usuario, no una prueba.** Sergio (`pcsergio0@gmail.com`, premium, feedback `bd8b92d0`, 04/08): *«NO PUEDO PRACTICAR TEST SOBRE MI TEMA, ME LLEVA AL TEMA DE LAS OPOSICIONES DEL ESTADO QUE ELEGÍ CUANDO NO PODÍA PERSONALIZARLO»*. En su journey se ve clavado: **09:45:49** pulsa «Practicar este tema» en `/oposicion-personalizada/a92faef…/temario/tema-10` y aterriza en `/administrativo-estado/test/tema/10`. Repetido a las 09:52:15.
@@ -1507,22 +1526,6 @@ explicaciones legales.
   5. `verify:epigrafe record <pt> <consenso.json>` con `source_url` al PDF, que lo enlaza al hub de provenance.
 - **NUNCA recortar sin el boletín** y nunca por analogía con la UC3M: cada universidad tiene su propio temario.
 
-
-### [T-523] 🔴 [ABIERTO 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
-
-- **Esfuerzo: rato** (el arreglo es de PANTALLA, no de datos).
-- **ORIGEN.** Reproducido el 03/08 investigando el feedback `c2ae71e8` de **Esther Lázaro** (`esthlazar@gmail.com`, **premium**): *«Hola, no me funciona la opción de temario. Aparece el error 404. Gracias»*. Su objetivo es `personalizada_cddb52fd92ea4cbb9e2223ad53a36adc` («universidad», creada por ella). Ese feedback lo atendió otra sesión: **atender a una persona no arregla el fallo**, que es esto.
-- **LO MEDIDO, y es lo que lo convierte en 🔴:**
-  | | |
-  |---|---|
-  | Oposiciones personalizadas creadas | **585** |
-  | …con temas de verdad | **5** |
-  | O sea, gente que al pulsar «temario» ve un 404 | **~580** |
-  - Las dos rutas devuelven 404 en producción: `/oposicion-personalizada/<id>` y `/oposicion-personalizada/<id>/temario`. Comprobado con el id real de Esther.
-  - La causa NO es un bug de routing: la oposición **no tiene ni un tema ni una fila de `topic_scope`**. Crearon la etiqueta y nunca llegaron a armar el temario.
-- **POR QUÉ UN 404 ES LA PEOR RESPUESTA POSIBLE AQUÍ.** Esa persona ya está dentro del producto: creó su oposición, la fijó como objetivo y pulsó el sitio correcto. Lo que le falta es **exactamente lo que esa pantalla debería ofrecerle** («arma tu temario»). En vez de eso recibe un error, que se lee como *«esto está roto»* y no como *«te falta un paso»*. Es el mismo patrón que [T-397] (592 usuarios en oposiciones sin temario) pero con una diferencia: aquí **el usuario sí puede resolverlo solo** en dos minutos, si la pantalla se lo dice.
-- **LO QUE HAY QUE HACER (no está decidido el diseño, esto es el punto de partida):** que la ruta de temario de una personalizada SIN temas no dé 404 sino que lleve al creador de temario, conservando el contexto de qué oposición es. Y mirar si el mismo hueco existe en sus otras rutas (test, test por tema).
-- **Relacionadas:** [T-327] (la funcionalidad; su ficha ya avisaba de que *«nadie las echará en falta hasta que alguien pulse»* — pues alguien pulsó), [T-397] (el hermano en oposiciones del catálogo).
 
 ### [T-524] 🟡 [ABIERTO 04/08] Duplicados que NINGÚN corte puede ver: el hecho examinado es el mismo y el TEXTO de la respuesta no
 
@@ -4349,6 +4352,23 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-523] ✅ 🔴 [HECHA 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
+
+- **Esfuerzo: rato** (el arreglo es de PANTALLA, no de datos).
+- **ORIGEN.** Reproducido el 03/08 investigando el feedback `c2ae71e8` de **Esther Lázaro** (`esthlazar@gmail.com`, **premium**): *«Hola, no me funciona la opción de temario. Aparece el error 404. Gracias»*. Su objetivo es `personalizada_cddb52fd92ea4cbb9e2223ad53a36adc` («universidad», creada por ella). Ese feedback lo atendió otra sesión: **atender a una persona no arregla el fallo**, que es esto.
+- **LO MEDIDO, y es lo que lo convierte en 🔴:**
+  | | |
+  |---|---|
+  | Oposiciones personalizadas creadas | **585** |
+  | …con temas de verdad | **5** |
+  | O sea, gente que al pulsar «temario» ve un 404 | **~580** |
+  - Las dos rutas devuelven 404 en producción: `/oposicion-personalizada/<id>` y `/oposicion-personalizada/<id>/temario`. Comprobado con el id real de Esther.
+  - La causa NO es un bug de routing: la oposición **no tiene ni un tema ni una fila de `topic_scope`**. Crearon la etiqueta y nunca llegaron a armar el temario.
+- **POR QUÉ UN 404 ES LA PEOR RESPUESTA POSIBLE AQUÍ.** Esa persona ya está dentro del producto: creó su oposición, la fijó como objetivo y pulsó el sitio correcto. Lo que le falta es **exactamente lo que esa pantalla debería ofrecerle** («arma tu temario»). En vez de eso recibe un error, que se lee como *«esto está roto»* y no como *«te falta un paso»*. Es el mismo patrón que [T-397] (592 usuarios en oposiciones sin temario) pero con una diferencia: aquí **el usuario sí puede resolverlo solo** en dos minutos, si la pantalla se lo dice.
+- **LO QUE HAY QUE HACER (no está decidido el diseño, esto es el punto de partida):** que la ruta de temario de una personalizada SIN temas no dé 404 sino que lleve al creador de temario, conservando el contexto de qué oposición es. Y mirar si el mismo hueco existe en sus otras rutas (test, test por tema).
+- **Relacionadas:** [T-327] (la funcionalidad; su ficha ya avisaba de que *«nadie las echará en falta hasta que alguien pulse»* — pues alguien pulsó), [T-397] (el hermano en oposiciones del catálogo).
+
 
 ### [T-533] ✅ [HECHA 04/08] Cantabria T6 sirve los Capítulos III y IV de la Ley 40/2015 que su epígrafe oficial no pide
 
