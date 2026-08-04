@@ -219,7 +219,16 @@ async function procesarLey(l, { apply }) {
         -- 2-3 artículos donde el resultado no podría ser útil (el botón de Títulos exige
         -- >=2 secciones). Es ahorro de peticiones, no una salvaguarda.
         AND (SELECT count(*) FROM articles a WHERE a.law_id=l.id) >= 5
-        AND (SELECT count(*) FROM law_sections s WHERE s.law_id=l.id) = 0
+        -- Le falta ALGÚN nivel, no "no tiene ninguno" (T-510, 03/08/2026). La condición
+        -- anterior era count(law_sections)=0, así que una ley con títulos quedaba fuera
+        -- del barrido PARA SIEMPRE y nunca recibía sus capítulos: exactamente las 234 leyes
+        -- que motivan la tarea, y entre ellas las más estudiadas (CE, Ley 39/2015, CP…).
+        -- Una ley que de verdad solo tiene un nivel se vuelve a mirar en cada barrido y sale
+        -- como ya_poblada sin escribir nada: cuesta una petición al BOE, no corrección.
+        AND NOT (
+          EXISTS (SELECT 1 FROM law_sections s WHERE s.law_id=l.id AND s.section_type='titulo')
+          AND EXISTS (SELECT 1 FROM law_sections s WHERE s.law_id=l.id AND s.section_type='capitulo')
+        )
       ORDER BY arts DESC LIMIT ${limit}`
   } else {
     const law = process.argv[process.argv.indexOf('--law') + 1] || ''
