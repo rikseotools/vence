@@ -1638,6 +1638,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ese 17 %. Es GATE, no informe: si el repo empieza a declarar trabajo solo en el cuerpo, ' +
       'la relajación deja de ser segura y nadie se enteraría. Techo 6 %, exit 1 al pasarlo.',
   },
+  canary_rol_coordinacion: {
+    titulo: 'El rol de BD de la flota, ejercitado: que SÍ puede coordinarse y que NO puede leer negocio',
+    ruta: 'scripts/canary-rol-coordinacion.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`VENCE_COORDINACION_URL=… npm run canary:rol-coordinacion`. Un GRANT es una afirmación ' +
+      'sobre PRODUCCIÓN y la mitad que importa NO se puede leer en el `.sql`: que el rol no pueda ' +
+      'leer negocio. Los privilegios se acumulan por vías que no están en ese fichero, así que ' +
+      'aquí se INTENTA leer `user_profiles`, `questions`, `test_sessions` y `observable_events` ' +
+      '(que necesita INSERT y NO debe poder leerse: cientos de miles de filas con `user_id`) y se ' +
+      'exige que el motor lo rechace con 42501. La otra mitad ejercita lo que un trabajador SÍ ' +
+      'necesita: latir, reclamar, preguntar y dejar rastro. Escribe solo filas `CANARY-…` y las ' +
+      'borra con la credencial ADMIN, porque el rol de coordinación no tiene DELETE — que es ' +
+      'justo lo que se quiere. Sin credencial dice «no puedo mirar», NO se da un verde. ' +
+      'Migración: `supabase/migrations/20260804_rol_coordinacion_flota.sql`.',
+  },
   sesion_preflight: {
     titulo: '¿Esta sesión está COMPLETA para trabajar? (y un trabajador autónomo no puede trabajar si no)',
     ruta: 'scripts/sessions/preflight.cjs',

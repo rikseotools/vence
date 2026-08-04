@@ -453,6 +453,56 @@ Tres cosas que hacen que esto no sea un informe más:
 > ejecuta los binarios de verdad y mira **códigos de salida**, que es lo que git obedece, y provoca
 > la ceguera con una URL inalcanzable en vez de escondiendo ficheros.
 
+### 6.quater. Dar de alta un TRABAJADOR: el rol de coordinación (T-539, 04/08)
+
+Un trabajador necesita hablar con la BD para reclamar, latir y preguntar. **No se le da el
+`.env.local`**: esa es la credencial de la aplicación y abre `user_profiles`, `questions`,
+`test_sessions` y todo lo demás. N trabajadores serían N copias de un secreto de negocio en
+máquinas que no lo necesitan, sin forma de rotarlas ni de saber cuál se usó.
+
+Se le da un rol propio: **`vence_coordinacion`**, con alcance medido — 4 tablas, ninguna de
+negocio, ningún `DELETE`, y `observable_events` **solo escritura** (tiene cientos de miles de filas
+con `user_id`; el andamiaje nunca la lee).
+
+**Los cuatro pasos. El 1 y el 2 los tiene que hacer Manuel: hacen falta accesos que una sesión no
+tiene.**
+
+```bash
+# 1) Crear el rol y sus permisos (idempotente; NO lleva contraseña dentro)
+psql "$DATABASE_URL" -f supabase/migrations/20260804_rol_coordinacion_flota.sql
+
+# 2) Generar la contraseña, guardarla en SSM y ponérsela al rol.
+#    Se genera y se guarda ANTES de usarla: así nunca existe solo en el historial de una terminal.
+PASS="$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)"
+aws --profile vence --region eu-west-2 ssm put-parameter \
+  --name /vence-flota/COORDINACION_DB_PASSWORD --type SecureString --value "$PASS" --overwrite
+psql "$DATABASE_URL" -c "ALTER ROLE vence_coordinacion PASSWORD '$PASS';"
+unset PASS
+
+# 3) Componer la URL del trabajador (mismo host y base que la app, distinto usuario)
+#    y comprobar que el permiso es EL QUE SE CREE que es:
+export VENCE_COORDINACION_URL="postgres://vence_coordinacion:<pass>@<host-rds>:5432/<base>"
+npm run canary:rol-coordinacion
+
+# 4) El trabajador arranca con ESA url y declarándose trabajador:
+DATABASE_URL="$VENCE_COORDINACION_URL" VENCE_SESSION_ROLE=trabajador npm run sesion:preflight
+```
+
+**El paso 3 no es opcional.** Un `GRANT` es una afirmación sobre producción y **la mitad que
+importa no se puede leer en el `.sql`**: que el rol NO pueda leer negocio. Los privilegios se
+acumulan por vías que no están en ese fichero. El canario lo intenta de verdad y exige que el motor
+lo rechace — y sin credencial dice *«no puedo mirar»* en vez de darse un verde (§3.9).
+
+> **Si algún día los trabajadores corren en AWS**, lo mejor es **IAM database authentication**: el
+> token lo emite IAM, dura 15 minutos y no hay contraseña que rotar ni que guardar. El rol de arriba
+> vale igual (`GRANT rds_iam TO vence_coordinacion`). Con la contraseña en SSM se empieza porque no
+> exige que el trabajador esté dentro de AWS, que es justo lo que aún no está decidido ([T-486]).
+
+**Límite conocido y aceptado en el piloto:** el permiso es por TABLA, así que un trabajador puede
+escribir en `backlog_tasks` filas que no son suyas (p.ej. tocar el claim de otra sesión). Acotarlo
+más exigiría RLS o permisos por columna, y para 2 trabajadores con auditoría no compensa. Si la
+flota crece, esto es lo siguiente que hay que apretar.
+
 ### 6.bis. El escape que sobra: leer los MOTIVOS y contemplar el caso (T-486, 04/08)
 
 Pedir motivo (§6) no era el final del trabajo, era **el instrumento**: convierte cada escape en una

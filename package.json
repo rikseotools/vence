@@ -158,7 +158,8 @@
     "sim:contador-servible": "npx tsx --env-file=.env.local scripts/sim/sim-contador-servible.ts",
     "epigrafe:revision": "node --env-file=.env.local scripts/temario/revisar-oposicion.cjs",
     "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs",
-    "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs"
+    "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs",
+    "canary:rol-coordinacion": "node scripts/canary-rol-coordinacion.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
