@@ -8,6 +8,26 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 
 ## ⚠️ Regla previa OBLIGATORIA — orden de trabajo cuando lo dispara un USUARIO
 
+> 🚪 **Y EXIGIDA EN EL CIERRE (desde 04/08/2026) — `npm run epigrafe:revision -- <position_type> [--pregunta <question_id>]`.**
+> El 🛑 del dossier **avisa**; esto **bloquea**, y lo hace donde la escritura es irreversible (el email
+> al usuario y el euro): `cerrar.ts` no cierra una impugnación de temario si los temas que SIRVEN esa
+> pregunta no están en orden. Escape con motivo: `--temario-igualmente "<por qué>"`.
+>
+> **Las tres cosas que cambia respecto al aviso:**
+> 1. **Bloquea en vez de avisar.** El 04/08 el 🛑 salió, se leyó y se siguió igual. Un aviso entre
+>    otras veinte líneas no es una condición.
+> 2. **Exige solo lo que sirve ESA pregunta** (uno o dos temas), no la oposición entera. El aviso
+>    anterior pedía clonar 21 epígrafes para contestar a quien preguntaba por un artículo, y un
+>    bloqueo que no se puede satisfacer en el momento se aprende a rodear (principio 5).
+> 3. **Desconfía del `verified_correct`.** Un Paso 2 sellado por `claude_direct`, o con un
+>    `agent_run_id` que no identifica ninguna corrida (`--run`, vacío), NO respalda nada. Medido el
+>    04/08: **711 temas en 45 oposiciones** así, **550 sin Paso 1**. Ese verde era el dato en el que
+>    uno se apoyaba para decirle a un usuario que su temario estaba comprobado.
+>
+> Núcleo puro `lib/temario/revisionEpigrafe.cjs` (14 tests) · simulación contra RDS
+> `npm run sim:puerta-temario` (los tres casos: verde, rojo con su comando, y fail-open cuando no se
+> sabe qué tema sirve la pregunta).
+
 > 🗺️ **ENFORZADA POR CÓDIGO (desde 24/07):** los dossiers `revisar-impugnacion.cjs` y `revisar-feedback.cjs` detectan solos cuando la queja va de temario/epígrafe/scope y **imprimen un CHECK con el estado Paso 1/Paso 2 de la oposición + un 🛑 bloqueante si el epígrafe está `never_sourced`**. Módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`. Nace porque la regla se saltaba (caso Sara 24/07: scope `verified_correct` pero epígrafe `never_sourced` = falso verde). Si ves el 🛑, haz el Paso 1 antes de resolver.
 
 > 📐 **Y desde el 28/07 el mismo bloque imprime la ESTRUCTURA de la ley frente al scope** (capítulos/títulos con su rúbrica, su rango y cuántos de sus artículos están escopados, marcando los que quedan `⟵ FUERA`). Se dispara solo con que el usuario cite la norma («decreto 53/1989», «la 39/2015»). **Si la ley no tiene estructura en BD, lo GRITA** en vez de callarse — ese silencio era el problema.

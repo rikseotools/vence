@@ -786,6 +786,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'confirmado se usa `escopar_ley_entera`. Núcleo puro `lib/health/normaDelEpigrafeSinEscopar.cjs` ' +
       '(12 tests, con los falsos positivos medidos fijados como casos negativos).',
   },
+  revisar_oposicion_temario: {
+    titulo: '¿Se puede responder ya a una queja de temario? (Regla previa OBLIGATORIA, con veredicto)',
+    ruta: 'scripts/temario/revisar-oposicion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      '`npm run epigrafe:revision -- <position_type> [--pregunta <question_id>]`. Corre la Regla previa ' +
+      '§2 del runbook y sale con 0/1/2 (verde / hay bloqueos / no se pudo comprobar). Con `--pregunta` ' +
+      'acota el veredicto a **los temas que sirven esa pregunta**, que es lo que hace la puerta ' +
+      'cumplible: se exige poner en orden uno o dos temas, no los veintiuno. Núcleo puro ' +
+      '`lib/temario/revisionEpigrafe.cjs` (14 tests) + `npm run sim:puerta-temario` contra RDS. ' +
+      'Lo EXIGE `cerrar.ts` antes de mandar el email (escape `--temario-igualmente "<motivo>"`). ' +
+      'Caza dos cosas que el 🛑 del dossier no veía: el epígrafe sin clonar del tema concreto y el ' +
+      '`verified_correct` que **no vino del pipeline** — el 04/08/2026 había 711 temas en 45 ' +
+      'oposiciones sellados por `claude_direct` con `agent_run_id=\'--run\'`, 550 de ellos sin Paso 1.',
+  },
   escopar_ley_entera: {
     titulo: 'Enganchar una ley COMPLETA al temario de un tema (rescatar preguntas que ningún tema sirve)',
     ruta: 'scripts/scope/escopar-ley-entera.cjs',

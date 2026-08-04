@@ -43,6 +43,7 @@ const { validarVerdictoSistemico } = require('../../lib/impugnaciones/verdictoSi
 import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
+import { comprobarTemario, anunciarTemario } from './lib/puerta-temario'
 
 config({ path: '.env.local' })
 
@@ -73,6 +74,9 @@ export function parsearArgs(argv: string[]) {
     sistemico: valor('--sistemico'),
     // Escape, con motivo y contado: un escape anónimo no se puede revisar después.
     sistemicoOmitido: valor('--sistemico-omitido'),
+    // Escape de la puerta de TEMARIO (04/08/2026). Separado del de reserva a propósito: son dos
+    // condiciones distintas y compartir el escape apagaría las dos de una vez.
+    temarioIgualmente: valor('--temario-igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -268,7 +272,14 @@ async function main() {
   // DESPUÉS de redactarle el mensaje al usuario no sirve de nada. Solo aborta con --aplicar.
   const tabla = tipo === 'psychometric' ? 'psychometric_question_disputes' : 'question_disputes'
   const veredicto = await comprobarReserva({ tabla, id: a.disputeId, igualmente: a.igualmente })
-  const sePuede = anunciar(veredicto, { aplicar: a.aplicar })
+  const sePuedeReserva = anunciar(veredicto, { aplicar: a.aplicar })
+
+  // ── PUERTA DE TEMARIO ──────────────────────────────────────────────────────────────────────
+  // La Regla previa OBLIGATORIA del runbook de epígrafes, exigida donde se escribe. Ver
+  // `lib/puerta-temario.ts` para el porqué de bloquear aquí y no en el dossier.
+  const vTemario = await comprobarTemario({ disputeId: a.disputeId, tabla, igualmente: a.temarioIgualmente })
+  const sePuedeTemario = anunciarTemario(vTemario, { aplicar: a.aplicar })
+  const sePuede = sePuedeReserva && sePuedeTemario
 
   // ── PUERTA DEL VERDICTO SISTÉMICO (T-520) ──────────────────────────────────────────────────
   // «Después de cada impugnación deberías hacerte esa pregunta y que no se te olvide, porque si no

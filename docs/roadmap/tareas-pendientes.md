@@ -1038,6 +1038,61 @@ Ojo con T10, cuya base incluye material del Congreso que no es una norma consoli
 **Contexto:** se le dijo a la usuaria en la respuesta del 04/08 que esos temas llevan menos preguntas
 y que **ya estamos ampliándolos**, así que hay una promesa hecha a una clienta premium con la
 convocatoria abierta. Ficha hermana: **T-511** (verificar epígrafes y scope de esta misma oposición).
+### [T-518] 🔴 [ABIERTO 04/08] 550 temas con el Paso 2 en VERDE sin haber pasado por el pipeline — el sellado directo del 20-21/07
+
+**De dónde sale:** una impugnación de temario (`0b9d9f56`, Jonatan González, Aux. Admin. Universidad
+de León). Decía *«el art. 28.3 no entra en este examen»* y **tenía razón**: el art. 28 de la Ley
+40/2015 es del Capítulo III del Título Preliminar (potestad sancionadora) y el programa oficial
+(BOE-A-2026-4150, Anexo II) solo pide los Capítulos I y II y el V. Se servían **62 preguntas fuera de
+programa** en ese tema.
+
+**Lo que apareció al mirar por qué nadie lo había visto:** esa oposición figuraba con sus **21 temas
+`verified_correct`**. Los 21 se sellaron **en el mismo segundo** (22/07, 09:40:28) con
+`verified_by='claude_direct'`, `agent_run_id='--run'` —el id es el propio flag, mal pasado— y la
+**misma nota copiada** tema a tema. El pipeline de dos agentes que exige el runbook no llegó a correr.
+
+**Medido el 04/08 en todo el banco:**
+
+| | |
+|---|---|
+| temas `verified_correct` sellados por `claude_direct` | **711**, en **45 oposiciones** |
+| de esos, **sin** el Paso 1 (epígrafe literal) hecho | **550** |
+| oposiciones con ≥20 temas así | 12 (IIPP 48, Archivos 48, Ávila 30, Segovia 30, Murcia 29, TCAE SESCAM 29…) |
+
+Es el falso verde del caso Sara, pero a escala y con el agravante de que **el panel lo cuenta como
+verificado**: el badge de `/admin/contenido` mide `verified_correct`, así que 45 oposiciones aparecen
+como comprobadas sin estarlo. Un verde que no distingue «lo miró el pipeline» de «alguien escribió
+correct» no es un dato.
+
+**Ya hecho (04/08), no forma parte del pendiente:**
+- **Puerta de temario** en el cierre de impugnaciones: `lib/temario/revisionEpigrafe.cjs` (puro, 14
+  tests) + `scripts/temario/revisar-oposicion.cjs` (`npm run epigrafe:revision`) + gate en
+  `cerrar.ts` (`--temario-igualmente` como escape) + `npm run sim:puerta-temario` contra RDS.
+  **Bloquea solo por los temas que sirven la pregunta impugnada** — el aviso anterior exigía la
+  oposición entera y por eso se rodeaba.
+- **León T2 arreglado end-to-end**: epígrafe clonado literal del BOE (`verified_literal`, con
+  fuente), scope recortado a 1-24 y 38-46, cachés revalidadas.
+- **León T1/T3/T4 destapados y registrados** (`verified_issues` ×2 + `needs_human` ×1) con el detalle
+  de qué títulos sobran, medidos con `sim-title-boundary`.
+
+**Lo que queda:**
+1. **Decidir qué se hace con los 550.** Lo honesto sería degradarlos a `never_verified` (no es un
+   veredicto, es una firma sin respaldo) — pero eso enciende el badge de 45 oposiciones de golpe, así
+   que es **decisión de Manuel**: degradar todo, degradar solo los que además no tienen Paso 1, o
+   dejarlos y atacarlos por orden de usuarios.
+2. **Que el badge no vuelva a poder mentir:** el estado efectivo debería exigir procedencia
+   (`verified_by` del pipeline + `agent_run_id` real). Hoy `verified_correct` es `verified_correct`
+   venga de donde venga.
+3. **León:** los 20 epígrafes restantes (Paso 1) y adjudicar los tres recortes de frontera de
+   T1/T3/T4 contra el programa oficial, que ya está localizado y descargado.
+4. `verify:scope apply` **no se identifica** en `topic_scope_history` (`changed_by`/`change_reason`
+   a NULL). Es una línea (`SET LOCAL app.actor`) y hoy el escritor canónico deja misterio.
+
+**Cómo se reproduce la medida:**
+```sql
+SELECT t.position_type, count(*) FROM topic_scope_verification v JOIN topics t ON t.id=v.topic_id
+ WHERE v.verified_by='claude_direct' AND v.state='verified_correct' GROUP BY 1 ORDER BY 2 DESC;
+```
 
 ### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
 

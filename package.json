@@ -153,7 +153,9 @@
     "audit:psico-explicacion": "node scripts/audit-psico-explicacion.cjs",
     "audit:explicacion-truncada": "node --env-file=.env.local scripts/audit-explicacion-truncada.cjs",
     "audit:tablas-refluidas": "node scripts/audit-tablas-refluidas.cjs",
-    "sim:contador-servible": "npx tsx --env-file=.env.local scripts/sim/sim-contador-servible.ts"
+    "sim:contador-servible": "npx tsx --env-file=.env.local scripts/sim/sim-contador-servible.ts",
+    "epigrafe:revision": "node --env-file=.env.local scripts/temario/revisar-oposicion.cjs",
+    "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
