@@ -858,14 +858,25 @@
 - **LO QUE HAY QUE HACER (no está decidido el diseño, esto es el punto de partida):** que la ruta de temario de una personalizada SIN temas no dé 404 sino que lleve al creador de temario, conservando el contexto de qué oposición es. Y mirar si el mismo hueco existe en sus otras rutas (test, test por tema).
 - **Relacionadas:** [T-327] (la funcionalidad; su ficha ya avisaba de que *«nadie las echará en falta hasta que alguien pulse»* — pues alguien pulsó), [T-397] (el hermano en oposiciones del catálogo).
 
-### [T-517] 🟡 [ABIERTO 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
+### [T-524] 🟡 [ABIERTO 04/08] Duplicados que NINGÚN corte puede ver: el hecho examinado es el mismo y el TEXTO de la respuesta no
 
-- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
-- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
-- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
-- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
-- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
-- **Relacionadas:** [T-516], [T-507].
+- **De dónde sale.** Impugnación `2377b3d1` (Marta Benito Padilla, premium, 03/08). Hizo un test de **39 preguntas de un solo artículo** (Windows 10, «Interfaz y entorno») y en ESE MISMO test le salieron dos preguntas idénticas de fondo, en las posiciones **21 y 39**:
+  - `0d3f81b0` — *«Queremos ver la información detallada de la versión de Windows 10 instalada. ¿Qué opción de la Configuración nos mostrará esta información?»* → clave **«Sistema y Acerca de.»**
+  - `ed3ae3d4` — *«Para ver las especificaciones de Windows 10 y del equipo, ¿cuál de las siguientes es la secuencia correcta?»* → clave **«Configuración > Sistema > Acerca de»**
+  Misma ruta, misma pregunta, 18 preguntas de separación. Impugnó la segunda porque ya había contestado la primera.
+- **Por qué es una clase NUEVA y no más de lo mismo.** Los TRES cortes que hay —exacto (T-321), parafraseado (T-425) y `--misma-clave` (T-519)— **se anclan al TEXTO de la respuesta correcta**. Aquí el hecho examinado es idéntico y el texto no lo es, así que los tres dan cero. Medido sobre este par: `misma clave = false` (`configuracionsistemaacercade` vs `sistemayacercade`) y solape de enunciado 0,300, por debajo de cualquier corte razonable.
+- **Dos formas, y conviene no mezclarlas:**
+  1. **Misma respuesta escrita de otra manera** — la misma ruta con otro formato o con un sinónimo. Es el par de arriba.
+  2. **ESPEJO** — la respuesta de una es el sujeto de la otra. En el mismo test: `d4477667` *«¿cómo se denomina al asistente de voz de Windows 10?»* → «Cortana» y `2837deaa` *«¿qué es Cortana en Windows 10?»* → «un asistente virtual» (posiciones 5 y 16). Aquí las claves no solo difieren: son **complementarias**, así que ningún criterio basado en igualdad de respuesta puede acercarse.
+- **Decisión tomada sobre el espejo (04/08): NO se toca de momento.** *«¿Cómo se llama X?»* y *«¿qué es X?»* se defienden como reconocimiento en los dos sentidos, y retirarlo sería una opinión sobre el temario y no un defecto demostrable. Se anota como forma de la clase, no como cola de trabajo.
+- **Lo hecho hasta ahora:** jubilada `ed3ae3d4` (`retired_duplicate`, se conserva `0d3f81b0` porque tiene explicación estructurada) y respondida la impugnación. La clase **NO está detectada** en ningún sitio.
+- **Pendiente — y la trampa está en el criterio, no en el código.** Anclarse a la respuesta ya no sirve, así que hay que medir el **hecho examinado**, y las dos vías obvias tienen su pega:
+  - **Normalizar la respuesta** (rutas: colapsar `>`, `y`, `Configuración` inicial) arregla el caso (1) y no toca el (2). Es barato, determinista y acotado a un dominio (informática); **empezar por aquí**.
+  - **Comparar enunciado + respuesta juntos** o pasar por un LLM cubriría el (2), pero antes hay que MEDIR cuántos casos hay: si son pocos, un pase LLM sobre 138.000 preguntas es la clase de gasto que ya se retiró una vez (los 6.886 extractos triados a cero, 17 USD, del cron de documentos).
+  - **NO subir la sensibilidad de los cortes existentes** para intentar pescarlo: están calibrados con anclas leídas a mano (falsos positivos en 0,12-0,27) y aflojarlos rompe lo que ya funciona.
+- **Y el dato que ordena el trabajo antes de escribir nada:** medir **cuántas parejas hay** y cuántas se han servido AL MISMO USUARIO EN EL MISMO TEST, que es el único caso en que el opositor lo nota. Un duplicado que nunca coincide con su gemelo no molesta a nadie.
+- **Nota de método:** esta ficha existe porque la puerta de [T-520] obligó a dar un verdicto sistémico al cerrar. Sin ella, la impugnación se habría cerrado como «falso positivo» — la pregunta impugnada es única en el banco y las tres herramientas decían que no había duplicados.
+
 
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
