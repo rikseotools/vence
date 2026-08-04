@@ -842,6 +842,31 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-523] 🔴 [ABIERTO 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
+
+- **Esfuerzo: rato** (el arreglo es de PANTALLA, no de datos).
+- **ORIGEN.** Reproducido el 03/08 investigando el feedback `c2ae71e8` de **Esther Lázaro** (`esthlazar@gmail.com`, **premium**): *«Hola, no me funciona la opción de temario. Aparece el error 404. Gracias»*. Su objetivo es `personalizada_cddb52fd92ea4cbb9e2223ad53a36adc` («universidad», creada por ella). Ese feedback lo atendió otra sesión: **atender a una persona no arregla el fallo**, que es esto.
+- **LO MEDIDO, y es lo que lo convierte en 🔴:**
+  | | |
+  |---|---|
+  | Oposiciones personalizadas creadas | **585** |
+  | …con temas de verdad | **5** |
+  | O sea, gente que al pulsar «temario» ve un 404 | **~580** |
+  - Las dos rutas devuelven 404 en producción: `/oposicion-personalizada/<id>` y `/oposicion-personalizada/<id>/temario`. Comprobado con el id real de Esther.
+  - La causa NO es un bug de routing: la oposición **no tiene ni un tema ni una fila de `topic_scope`**. Crearon la etiqueta y nunca llegaron a armar el temario.
+- **POR QUÉ UN 404 ES LA PEOR RESPUESTA POSIBLE AQUÍ.** Esa persona ya está dentro del producto: creó su oposición, la fijó como objetivo y pulsó el sitio correcto. Lo que le falta es **exactamente lo que esa pantalla debería ofrecerle** («arma tu temario»). En vez de eso recibe un error, que se lee como *«esto está roto»* y no como *«te falta un paso»*. Es el mismo patrón que [T-397] (592 usuarios en oposiciones sin temario) pero con una diferencia: aquí **el usuario sí puede resolverlo solo** en dos minutos, si la pantalla se lo dice.
+- **LO QUE HAY QUE HACER (no está decidido el diseño, esto es el punto de partida):** que la ruta de temario de una personalizada SIN temas no dé 404 sino que lleve al creador de temario, conservando el contexto de qué oposición es. Y mirar si el mismo hueco existe en sus otras rutas (test, test por tema).
+- **Relacionadas:** [T-327] (la funcionalidad; su ficha ya avisaba de que *«nadie las echará en falta hasta que alguien pulse»* — pues alguien pulsó), [T-397] (el hermano en oposiciones del catálogo).
+
+### [T-517] 🟡 [ABIERTO 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
+
+- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
+- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
+- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
+- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
+- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
+- **Relacionadas:** [T-516], [T-507].
+
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
 - **Esfuerzo: rato.** Núcleo puro + subcomando + tests.
