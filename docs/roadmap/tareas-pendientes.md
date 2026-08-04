@@ -861,6 +861,17 @@
 
 **Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
 
+### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
+
+- **Sale de [T-547]**, que puso los 38 epígrafes en `verified_literal` contra el BOPA. Reescribir el epígrafe dispara el trigger, así que su scope quedó **`stale`**: el veredicto anterior se emitió contra una paráfrasis y ya no vale. Estado hoy: **29 stale · 8 verified_correct · 1 verified_issues**.
+- **Los 8 `verified_correct` NO son de fiar tampoco**, y conviene saberlo antes de empezar: son los temas cuyo epígrafe ya era literal, así que conservan el veredicto viejo — y ese veredicto lleva escrito *«Revisor único (agentes rate-limited)… **PENDIENTE confirmar con 2 agentes tras reset**»*. Es exactamente el sellado fuera del pipeline que mide [T-518]. Al re-verificar, entran los 38, no los 29.
+- **🔴 LA DECISIÓN QUE HAY QUE TOMAR — T215, y no es mecánica.** El programa acota la LO 3/2007 a Título Preliminar + Título I (arts 1-13; estructura verificada contra `BOE-A-2007-6115`). El scope sirve además 17 artículos de los Títulos II-V (14-19, 21, 39, 45, 49, 51, 55, 62, 64, 71, 72, 76): **208 preguntas activas fuera de programa**, el 42% de lo que el tema sirve de esa ley.
+  - **Por qué no se aplicó ya:** 208 > 150 → puerta de juicio. Quitar 208 preguntas del tema de igualdad de una oposición viva es una decisión de programa, no un recorte de higiene. Las preguntas **no se borran**, dejan de servirse en ese tema.
+  - **Antes de recortar, mirar los temas hermanos:** parte de esos artículos (empleo público, planes de igualdad) puede pertenecer legítimamente a otro tema del mismo programa, y entonces el movimiento es REPARTIR, no quitar.
+- **Cómo se hace** (pipeline, no a mano): `verify:scope dump administrativo_asturias` → Workflow `verify-scope-oposicion` (2 agentes + juez anclados a BOE) → `plan` → `apply` (los `auto_safe`; T215 exigirá `--include-gate` tras decidir).
+- **Y hay una segunda sospecha que mirar con el literal delante:** T305, cuyo epígrafe ahora delimita la LGSS a *«(Capítulo I, Capítulo II, Secciones 1 y 2 del Capítulo III y Secciones 1 y 2 del Capítulo IV del Título I)»* mientras el scope sirve 52 artículos. No se ha medido: hace falta mapear esas secciones a sus artículos en el BOE, que es trabajo de la adjudicación, no de un `includes()`.
+- **NO cerrar esto sellando los 29 como `correct` sin pasar por los 2 agentes.** Es el error que este trabajo acaba de destapar, y hacerlo aquí sería repetirlo con la tinta fresca.
+
 ### [T-541] 🔴 [ABIERTO 04/08] Dentro de una oposición personalizada, cuatro enlaces te sacaban a otra oposición sin dar ningún error
 
 - **Lo encontró un usuario, no una prueba.** Sergio (`pcsergio0@gmail.com`, premium, feedback `bd8b92d0`, 04/08): *«NO PUEDO PRACTICAR TEST SOBRE MI TEMA, ME LLEVA AL TEMA DE LAS OPOSICIONES DEL ESTADO QUE ELEGÍ CUANDO NO PODÍA PERSONALIZARLO»*. En su journey se ve clavado: **09:45:49** pulsa «Practicar este tema» en `/oposicion-personalizada/a92faef…/temario/tema-10` y aterriza en `/administrativo-estado/test/tema/10`. Repetido a las 09:52:15.
@@ -4395,6 +4406,28 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **El riesgo residual que quedó anotado NO era tal, comprobado:** los temas 19-25 (Windows 11 / Microsoft 365 / Teams) no salen de la nada — están `verified_literal` contra un **segundo** documento del BOC (`idAnuBlob=431034`, distinto del de T6), y los **25** epígrafes de la oposición tienen su documento enlazado al hub (0 sin enlazar). No hace falta ficha aparte.
 - **NO se toca nada más:** las otras seis oposiciones que escopan el Capítulo III lo piden de verdad (Galicia y Aux. Galicia lo enumeran, Badajoz pide justo los Caps III y IV, Cuenca «Capítulos I a VI», Granada y Guardia Civil el Título Preliminar entero). Recortarlas sacaría de programa lo que su boletín sí incluye.
 - Relacionadas: [T-528] (el 59% de los scopes «verificados» se apoya en un epígrafe que nadie contrastó) y [T-527] (el mismo patrón con el RD 534/2024 en tres universidades). Esta ficha es un caso concreto y medido de lo que [T-528] describe en agregado.
+
+### [T-547] ✅ [HECHA 04/08] Paso 1 de administrativo_asturias: los 38 epígrafes eran paráfrasis y ninguno se había contrastado con el BOPA
+
+- **Estado al empezar:** 38 de 38 temas en `never_sourced`, y sin embargo 38 con el Paso 2 en `verified_correct`. O sea, el scope estaba «verificado» contra un texto que nadie había contrastado — el falso verde que describe [T-528]. Salió al resolver la impugnación `fd964259` (Iván, art. 10.4 de la Ley 39/2015): la puerta de temario bloqueó y hubo que rodearla con motivo.
+- **La convocatoria manda, no el `programa_url` — comprobado primero.** La fila vigente es del ciclo 2026 en `oep_aprobada`: la OEP 2025 está aprobada pero **no hay convocatoria nueva publicada**, así que el programa aplicable sigue siendo el del BOPA de 2024 (`2024-11213`). Sin esa comprobación se habría clonado un temario superado o descartado el bueno.
+- **RESULTADO: 38/38 `verified_literal`**, los 38 enlazados al hub de provenance. 30 reescritos al literal + 8 que ya coincidían verbatim y solo faltaba registrarlos.
+- **El drift no era de estilo, era de ALCANCE.** La BD condensaba justo lo que delimita:
+  | tema | BD (paráfrasis) | BOPA (literal) |
+  |---|---|---|
+  | T305 LGSS | «acción protectora» | «…(Capítulo I, Capítulo II, **Secciones 1 y 2** del Capítulo III y **Secciones 1 y 2** del Capítulo IV del Título I)» |
+  | T215 LO 3/2007 | «para la igualdad efectiva» | «…**(Título Preliminar); …(Título I)**» |
+  | T501-504 ofimática | «(interfaz, formato, tablas…)» | enumeración completa de funciones |
+  Es el caso Cantabria del runbook: *una paráfrasis fiel en el tono es indistinguible de una infiel en el alcance*.
+- **🔴 HALLAZGO que la paráfrasis tapaba — T215, 208 preguntas fuera de programa.** El literal acota la LO 3/2007 a Título Preliminar + Título I (**arts 1-13**, estructura verificada contra `BOE-A-2007-6115`: T.Prel. 1-2, T.I 3-13). El `topic_scope` sirve además **17 artículos de los Títulos II a V** (14-19, 21, 39, 45, 49, 51, 55, 62, 64, 71, 72, 76) = **208 preguntas activas**, el **42%** de las que ese tema sirve de esa ley. Registrado como `verified_issues`; **NO se recorta aquí** porque 208 > 150 = puerta de juicio (decisión de programa). Va en [T-548].
+- **Cómo se hizo, para repetirlo en otra oposición:**
+  1. El boletín NO parsea (`dump` da `temario_parseado=0/38`) → `pdftotext -layout` sobre el PDF del BOPA.
+  2. **GOTCHA del propio boletín:** publica el tema 9 del Bloque II como «**9-**» y no «9.—». Con el patrón único salían 37 temas y uno se perdía en silencio; ese hueco explicaba los «sin par» de la primera medición.
+  3. **GOTCHA del PDF:** hay temas que cruzan salto de página con la cabecera del boletín metida en medio, y palabras cortadas con guion (`procedi-\nmientos`). Verificación fuerte: aplanar crudo y reconstruido y exigir contención → **38/38 verbatim**. Sin quitar antes el ruido de página da un falso negativo.
+  4. `verify:epigrafe apply` con `oficial_manual: true` + `source_url` (acreditación a mano, que el comando anuncia en voz alta). La guarda validó los 30 y hace el recache sola.
+- **Verificado servido, no declarado:** `tema-501` y `tema-215` en producción muestran ya el literal (HTTP 200, texto nuevo presente). La lista del temario no cambia porque muestra `title`/`descripcion_corta`, que se conservaron a propósito: el programa va en el epígrafe, no en la etiqueta.
+- **Efecto en el badge, y es una MEJORA aunque suba:** el Paso 2 pasa de «38 verified_correct» a **29 stale + 8 correct + 1 issues**. Antes decía verde contra una paráfrasis; ahora dice «hay que re-verificar» contra un literal acreditado. Un verde falso vale menos que un ámbar cierto.
+
 
 ### [T-250] ✅ 🟡 [HECHA 04/08] Explicaciones CORTADAS a mitad de frase: hay que calibrar el detector antes de poder contarlas
 - **Qué:** explicaciones activas que terminan en seco, sin cerrar la oración: *«…otras que sean inherentes a los servicios comunes del Ministerio»*, *«…soluciones sostenibles a largo plazo para abordar la violencia de género»*. Encontradas de refilón revisando el cubo de apelotonadas el 28/07: **4 de 73** preguntas de alta exposición estaban así.
