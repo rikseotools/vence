@@ -43,6 +43,9 @@ import { isValidExposureOrder } from '@/lib/shuffle/subsetOrder'
 /** Letra que la UI resuelve como "ninguna opción" (`indexOf` → -1). */
 export const LETRA_DESCONOCIDA = '?'
 
+/** Valor con el que se guarda «la dejó en blanco» en `test_questions.user_answer`. */
+export const EN_BLANCO = 'BLANK'
+
 export type AnomaliaRepaso = 'orden_invalido' | 'letra_fuera_del_orden'
 
 export interface CoordenadasRepaso {
@@ -107,7 +110,20 @@ export function resolverCoordenadasRepaso(
 
   const orden = entrada.optionOrder as number[]
   const traducidaCorrecta = aPosicionMostrada(correctAnswer, orden)
-  const traducidaUsuario = userAnswer === null ? null : aPosicionMostrada(userAnswer, orden)
+  // `'BLANK'` es el valor con el que se guarda «la dejó en blanco» (feature de 15/04/2026), no
+  // una letra: no hay nada que traducir y **no es una anomalía**. Se deja pasar tal cual para no
+  // cambiar lo que recibe la pantalla en los tests sin barajar, que son la mayoría.
+  //
+  // ── LO QUE COSTÓ NO TENERLO (04/08/2026) ──────────────────────────────────────────────────
+  // Los 13 `shuffle_option_order_invalid` que había en producción eran **los 13 en blanco**:
+  // permutación correcta, fila bien puntuada, ni un solo caso de barajado roto. El daño no está
+  // en la fila —se sirve igual— sino en la SEÑAL: [T-235] decide si el piloto de barajado se
+  // amplía o se apaga vigilando que este evento **siga a cero**, y un contador que suma blancos
+  // no puede responder a esa pregunta. Un detector que grita por algo normal deja de
+  // distinguirse del que grita por algo roto.
+  const enBlanco = userAnswer === EN_BLANCO
+  const traducidaUsuario =
+    userAnswer === null || enBlanco ? userAnswer : aPosicionMostrada(userAnswer, orden)
 
   const anomalia =
     traducidaCorrecta === LETRA_DESCONOCIDA || traducidaUsuario === LETRA_DESCONOCIDA

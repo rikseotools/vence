@@ -254,3 +254,40 @@ describe('resolverCoordenadasRepaso', () => {
     })
   })
 })
+
+// ── LA RESPUESTA EN BLANCO NO ES UNA ANOMALÍA (04/08/2026) ───────────────────────────────────
+// Los 13 `shuffle_option_order_invalid` que había en producción eran LOS 13 en blanco:
+// `user_answer='BLANK'`, permutación correcta y fila bien puntuada. Ni un caso de barajado roto.
+// El daño no está en la fila —se sirve igual— sino en la señal: [T-235] decide si el piloto de
+// barajado se amplía o se apaga vigilando que este evento siga a CERO, y un contador que suma
+// blancos no puede responder a esa pregunta.
+describe('respuesta dejada en blanco', () => {
+  const enBlanco = {
+    optionOrder: [3, 1, 0, 2],
+    opcionesMostradas: 4,
+    opcionesSonLasVistas: true,
+    userAnswer: 'BLANK',
+    correctAnswer: 'A',
+  }
+
+  it('no levanta anomalía', () => {
+    expect(resolverCoordenadasRepaso(enBlanco).anomalia).toBe(null)
+  })
+
+  it('se deja pasar tal cual, sin traducir', () => {
+    // Traducirla daría '?', y cambiar el valor rompería la pantalla de los tests SIN barajar,
+    // que son la mayoría y hoy reciben 'BLANK'.
+    expect(resolverCoordenadasRepaso(enBlanco).userAnswer).toBe('BLANK')
+  })
+
+  it('la CORRECTA sí se traduce, que es para lo que existe este módulo', () => {
+    // orden [3,1,0,2] → la original A (posición 0) se mostró en la 3ª casilla = C.
+    expect(resolverCoordenadasRepaso(enBlanco).correctAnswer).toBe('C')
+  })
+
+  // Sin esto, la exención podría tragarse una anomalía DE VERDAD del mismo test.
+  it('una letra que sigue fuera del orden SÍ levanta anomalía', () => {
+    const r = resolverCoordenadasRepaso({ ...enBlanco, userAnswer: 'E' })
+    expect(r.anomalia).toBe('letra_fuera_del_orden')
+  })
+})
