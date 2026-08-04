@@ -453,8 +453,18 @@ compactadas que el precepto lista por letras). Regresión fijada en
 Para preguntas de temas técnicos/informáticos, la explicación **SIEMPRE** debe:
 
 1. **Ser didáctica con markdown:** negrita, listas, análisis por opción (A, B, C, D)
-2. **Incluir fuente oficial en español al final:** enlace a Microsoft Support en español (`support.microsoft.com/es-es/...`)
+2. **Incluir fuente oficial en español al final:** enlace a Microsoft Support en español (`support.microsoft.com/es-es/...`) — **EXCEPCIÓN en atajos de LETRA, ver el aviso de abajo**
 3. **Verificar la fuente antes de usarla:** buscar con WebSearch y confirmar que la URL existe y es relevante
+
+> ⛔ **EN ATAJOS DE LETRA, MICROSOFT SUPPORT es-es NO SIRVE COMO FUENTE — y enlazarla contradice tu propia respuesta (04/08/2026).** Esa página es una **traducción** del original inglés que **conserva las teclas inglesas**, así que en los atajos que Word/Office SÍ localizan dice lo contrario que el programa instalado en español. El punto 2 de arriba, aplicado a ciegas, te hace cerrar la explicación con un enlace que le da la razón a quien impugna.
+>
+> **Caso que lo fija (impugnación `75dfeb94`, Cristina):** *«¿qué hace Ctrl+K en Word 365?»*, clave **cursiva**. Ella sostenía «insertar hipervínculo» —que es lo correcto en el Word **inglés**—. Un `WebFetch` a la página es-es devolvió *«Ctrl+K: Insertar un hipervínculo»* **y** *«Ctrl+I: cursiva»*, contradiciéndose en la misma respuesta y dando el atajo inglés para la cursiva. **Fiándose de esa única fuente se habría roto una clave correcta.**
+>
+> **Qué hacer en su lugar:**
+> - **Prueba discriminante** (memoria `project-informatica-atajos-es-vs-en`): mira si el **SET completo** de la familia está desplazado por iniciales españolas. Word ES: `Ctrl+N` **N**egrita · `Ctrl+K` cursiva · `Ctrl+S` **S**ubrayado (en inglés B-I-U). Si el set es coherente en español y difiere **en bloque** del inglés, está localizado. Al ocupar la cursiva la «K», el hipervínculo se corre a **`Ctrl+Alt+K`**.
+> - **Cruza fuentes, nunca un solo WebFetch** (puede confabular, y dos a la misma página ya se han contradicho): temario de oposiciones AGE (`age.josenrique.es/leccion/atajos-de-teclado-word/`), PDFs de academias españolas, hilos de MS Q&A.
+> - **Mira el propio banco:** suele corroborarse solo. Aquí `cfa27a3e` ya preguntaba por el hipervínculo con clave `Ctrl+Alt+K`, y de las 13 activas que mencionan `Ctrl+K` **ninguna** lo clavaba a hipervínculo.
+> - Y **«desconfía de la traducción» es una sospecha, no un veredicto**: hay contraejemplos donde la página es-es acierta (T-394, `Ctrl+A` en el Explorador de Win11). Aplica la prueba discriminante y **acepta el resultado aunque salga a favor de la página**.
 
 **Formato obligatorio para preguntas de informática:**
 ```
