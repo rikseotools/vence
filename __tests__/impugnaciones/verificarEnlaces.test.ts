@@ -70,6 +70,32 @@ describe('verificarDocumento', () => {
     expect(r.tituloDelBloque).toBe('Artículo 53')
   })
 
+  // Las leyes viejas rotulan «Art. 20.» y no «Artículo 20». Sin aceptar la abreviatura, la
+  // regex saltaba a la primera referencia cruzada del cuerpo y abortaba el envío de un
+  // mensaje CORRECTO diciendo «lleva a Artículo 23» (impugnación `70110a29`, 04/08). Un
+  // falso positivo con diagnóstico seguro es peor que no comprobar: manda a «arreglar» un
+  // enlace que estaba bien.
+  const MADRID = `
+    <p class="parrafo" id="a20"> [Bloque 29: #a20] </p>
+    <p class="articulo">Art. 20.</p>
+    <p>1. De conformidad con el art&iacute;culo 23 del Estatuto de Autonom&iacute;a, el Consejo de Gobierno cesa tras la celebraci&oacute;n de elecciones a la Asamblea.</p>`
+
+  it('✅ acepta la rúbrica ABREVIADA «Art. 20.» de las leyes viejas', () => {
+    const r = verificarDocumento(MADRID, { ancla: 'a20', articulo: '20' })
+    expect(r.ok).toBe(true)
+    expect(r.problemas).toEqual([])
+    expect(r.tituloDelBloque).toBe('Artículo 20')
+  })
+
+  it('❌ una referencia cruzada en MINÚSCULA no valida un ancla equivocada', () => {
+    // El cuerpo del art. 20 nombra el «artículo 23», pero en minúscula porque es una
+    // remisión, no una rúbrica. Si esto pasara, el ancla #a20 valdría para el 23.
+    const r = verificarDocumento(MADRID, { ancla: 'a20', articulo: '23' })
+    expect(r.ok).toBe(false)
+    expect(r.problemas[0]).toContain('NO lleva al artículo 23')
+    expect(r.problemas[0]).toContain('Artículo 20')
+  })
+
   it('❌ el ancla EXISTE pero lleva a otro artículo (el caso del Código Civil)', () => {
     const CC = `<p id="a3"> [Bloque 9: #a3] </p><p class="articulo">Artículo 301 a 324</p><p>(Derogados)</p>`
     const r = verificarDocumento(CC, { ancla: 'a3', articulo: '3' })
