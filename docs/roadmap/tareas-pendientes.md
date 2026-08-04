@@ -907,6 +907,45 @@ generar sobre él.
 
 **Relacionadas:** el patrón general de saturar por demanda ya está descrito para otras oposiciones;
 esta ficha es el caso concreto de la UAL, con las cifras medidas y con una usuaria de pago detrás.
+### [T-539] 🟠 [ABIERTO 04/08] Un trabajador autónomo no puede ser una sesión ciega: credencial de coordinación propia + preflight que le impida coger trabajo sin poder latir
+
+- **Esfuerzo: larga.** Dos piezas pequeñas cada una, pero la segunda toca el arranque de todas las sesiones y eso se hace despacio.
+- **ORIGEN.** Sale de la puerta de entrada de [T-486] (piloto de flota). Al probar un trabajador en un clon **sin `.env.local`** —que es la condición NORMAL de cualquier sesión de agente, porque `.claude/worktrees/` no hereda un fichero que está en `.gitignore`— quedaron **tres protecciones apagadas y el sistema siguió diciendo que todo iba bien**.
+
+- **EL DEFECTO DE FONDO, y no es «dónde corre el trabajador»: el andamiaje hace fail-open EN TODAS PARTES.**
+  Y el fail-open es **correcto para una persona**: no se le bloquea el commit a nadie porque la telemetría no responda — es una regla explícita de este repo, escrita en el latido, en el push-guard y en el guard del índice. Pero para un trabajador autónomo, fail-open significa **«trabaja sin supervisión y sin que nadie te vea»**, que es justo lo contrario de lo que hace falta.
+  **El mismo código sirve a los dos casos y no sabe cuál de los dos es.** Esa distinción no existe hoy, y es la pieza que falta antes de añadir ningún trabajador, en Koigrid o donde sea.
+
+- **Lo medido el 04/08 en ese clon** (dos de estos ya están arreglados en [T-486], quedan como prueba del patrón):
+  - `check-indice-compartido` salía 0 **sin imprimir nada** → indistinguible de «he mirado y estás solo». **Arreglado.**
+  - `test:unit` no ejecutaba **ni un test** dentro de un worktree de agente (1.143 ficheros visibles sin el patrón de exclusión, 0 con él) y el hook felicitaba. **Arreglado.**
+  - `backlog-push-guard` no comprueba el claim (sí lo dice) · el **latido no escribe**, así que el trabajador es **invisible para las demás sesiones y ellas para él** — `reap` y `sesiones:huerfanos` lo darían por muerto. **Esto sigue abierto y es lo que arregla esta ficha.**
+
+- **PIEZA 1 — credencial de coordinación propia, entregada por SSM (no un `.env.local` copiado).**
+  - **Alcance ya medido: 4 tablas y ninguna de negocio.** `backlog_tasks`, `worktree_sessions` y `session_questions` con SELECT/INSERT/UPDATE; `observable_events` **solo INSERT** — el andamiaje **nunca la lee**, y tiene 307.224 filas con `user_id` en 7 días, así que darle SELECT regalaría datos de usuarios sin ninguna razón.
+  - Con ese rol, un trabajador **no puede leer datos de un usuario ni tocar cobros aunque quiera**: es una propiedad del permiso, no una promesa de comportamiento. Reduce el riesgo nº1 de [T-486] («N copias de `AUTH_SECRET` y claves de Stripe») a casi nada.
+  - **Se entrega por AWS SSM Parameter Store, que es el patrón que este repo YA usa** para los secretos de runtime (`/vence-frontend/<NAME>`). Nada de silos nuevos.
+  - **La chapuza a evitar, que es la tentadora:** copiar `.env.local` a cada máquina. Son N copias de credenciales de negocio en sitios que no las necesitan, y no hay forma de rotarlas.
+
+- **PIEZA 2 — preflight de sesión con DOS MODOS, que es lo que hace seguro el fail-open.**
+  - Un solo sitio que conteste *«¿estoy completo?»*: identidad resuelta, BD de coordinación alcanzable, guardarraíles operativos. Hoy esa lógica está desperdigada por cinco scripts que la resuelven cada uno a su manera — el mismo modo de fallo que costó [T-407] con el session-id.
+  - **Persona → aviso. Trabajador → se NIEGA a coger trabajo.** Un worker que no puede latir no debe reclamar una tarea: el reparto entero cuelga del latido, y una tarea reclamada por alguien invisible es peor que una tarea libre.
+  - Emite su veredicto, para que se pueda ver desde fuera y no solo en la terminal de quien lo corrió (misma lección que [T-455]).
+
+- **✅ PIEZA 2 HECHA (04/08).** `npm run sesion:preflight` + el rol de sesión (`VENCE_SESSION_ROLE`, en `sid.cjs` porque es identidad, `persona` por defecto y **lo declara quien ARRANCA al trabajador**, no el trabajador). El criterio de cómo fallar vive en UN sitio (`lib/sessions/preflight.cjs` → `cegueraBloquea`) y lo importan el push-guard y el guard del índice: con rol `trabajador`, la ceguera pasa a BLOQUEAR. El preflight **no escribe el latido** —se lo pide a `latir.cjs`, escritor único, y luego MIRA la fila en la BD— y emite su veredicto al bus (`sesion_preflight`, en `warn`/`error`, que el catch-all del panel ya recoge: sin regla nueva, sin silo). Capas: **20 tests** + `npm run sim:preflight-trabajador` (10/10; ejecuta los binarios reales y mira EXIT CODES). Runbook: `sistema-sesiones-paralelas.md` §6.ter.
+  **Lo encontró la simulación y no los tests:** arreglado el camino de «no hay URL», quedaba **otro `catch { return 0 }` mudo** detrás para la BD caída. Se tapa la puerta que se mira y la de al lado sigue abierta.
+  **Y la primera versión de la simulación estaba MAL**: creaba una sesión falsa y luego medía sobre ella, así que el guard bloqueaba por culpa de la propia prueba. La ceguera se provoca ahora con una URL inalcanzable, que ejercita el camino real sin escribir nada.
+
+- **PIEZA 3 — el supervisor tiene que distinguir «verde porque lo comprobé» de «verde porque estoy ciego».**
+  Es la misma distinción de la pieza 2 un piso más arriba. Sin ella, un trabajador roto le pinta un panel en verde — el modo de fallo que este repo ya ha pagado varias veces (`landing_incompleta`, el gate de oposiciones que no escribía ni una fila, `audit:oposicion` on-demand). **Sin la pieza 2, el supervisor de [T-486] no vale para nada; con ella, es casi solo agregación de lo que ya existe.**
+
+- **Reglas que van con esto, y son de reparto, no de código:** los trabajadores **no pushean a `main`** (entregan ramas) y el supervisor produce **UN triaje**, no N informes. Si cada trabajador añade cola de revisión a Manuel, el piloto ha fallado aunque produzca más — es el criterio de éxito ya escrito en [T-486].
+
+- **Por qué va ANTES de elegir plataforma:** las tres piezas hacen falta en los dos caminos (agentes remotos o VPS). Hechas, la plataforma pasa a ser una decisión de despliegue reversible en vez de una apuesta. Y se pueden construir y verificar **sin un solo servidor**.
+
+- **Cómo se sabrá si salió bien:** un clon pelado sin credencial **no puede reclamar una tarea** (hoy sí puede, y encima invisible); el preflight aparece en `observable_events` con su veredicto; y ninguna de las comprobaciones que dependen de la BD vuelve a salir 0 en silencio.
+
+- **Relacionadas:** [T-486] (el piloto que lo necesita), [T-485] (el candado de deploy entre máquinas, obligatorio solo si algún día despliegan), [T-407] (una sola identidad de sesión — mismo modo de fallo que la pieza 2 evita), [T-423] (el contador de fricción que lo mide).
 
 ### [T-535] 🟡 [ABIERTO 04/08] Duplicadas con las OPCIONES reescritas: el punto ciego del barrido de parafraseadas
 

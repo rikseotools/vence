@@ -414,6 +414,45 @@ Cada uno **se imprime al usarse** y **se cuenta**. Un escape con nombre es infin
 que `--no-verify`, que apaga todo a la vez y no deja rastro. Y contarlos es lo que permite saber
 si un guardarraíl sigue vivo (§3.9).
 
+### 6.ter. Fail-open es para PERSONAS: un trabajador autónomo tiene que fallar cerrado (T-539, 04/08)
+
+Todo el andamiaje de este documento hace **fail-open** cuando no puede hablar con la BD: el latido
+no escribe y calla, el push-guard avisa y deja pasar, el guard del índice salía 0 sin decir nada.
+Está bien razonado — **la avería de un sistema de observación no puede parar el trabajo de quien
+está delante y puede juzgar**, y es la regla que evita que un guardarraíl se acabe apagando entero.
+
+Pero el mismo camino, en un **trabajador autónomo**, significa *«trabaja sin supervisión y sin que
+nadie te vea»*. Medido el 04/08 en un clon sin `.env.local` —que es la condición **normal** de un
+worktree de agente, porque el fichero está en `.gitignore` y no viaja—: la sesión no aparecía en
+`worktree_sessions` (invisible para las demás **y ellas para ella**), los guardarraíles que
+dependen de la BD no comprobaban nada, y por fuera no se distinguía de una sesión sana.
+
+**Misma observación, distinta consecuencia.** El rol se declara en `VENCE_SESSION_ROLE`
+(`persona` por defecto — un valor que se olvida no puede cambiar el comportamiento) y **lo pone el
+entorno que ARRANCA al trabajador**, no el trabajador: si se lo pudiera poner él, no sería una
+garantía. Vive en `lib/sessions/sid.cjs` porque es identidad, junto a «quién soy» y «dónde».
+
+```
+npm run sesion:preflight                                   # persona: avisa
+VENCE_SESSION_ROLE=trabajador npm run sesion:preflight      # trabajador: exit 1 si no está listo
+```
+
+Tres cosas que hacen que esto no sea un informe más:
+
+1. **El criterio de cómo fallar vive en UN sitio** (`lib/sessions/preflight.cjs` → `cegueraBloquea`)
+   y lo importan el push-guard y el guard del índice. Dos reglas sobre lo mismo acabarían
+   divergiendo — es como nacieron los cinco escritores de `seguimiento_url` (§ herramientas).
+2. **El preflight NO escribe el latido**: se lo pide a `latir.cjs`, el escritor único, y luego
+   **mira en la BD** si la fila está. Se observa, no se declara.
+3. **«No lo sé» cuenta como falta, no como aprobado.** Una comprobación que no se pudo hacer no
+   puede sumar al verde: es el mismo principio del guard del índice.
+
+> **Lo que descubrió la simulación y no los tests:** arreglado el camino de «no hay URL», quedaba
+> **otro `catch { return 0 }` mudo** detrás, para la BD caída. Los agujeros sobreviven así — se
+> tapa la puerta que se mira y la de al lado sigue abierta. Por eso `sim:preflight-trabajador`
+> ejecuta los binarios de verdad y mira **códigos de salida**, que es lo que git obedece, y provoca
+> la ceguera con una URL inalcanzable en vez de escondiendo ficheros.
+
 ### 6.bis. El escape que sobra: leer los MOTIVOS y contemplar el caso (T-486, 04/08)
 
 Pedir motivo (§6) no era el final del trabajo, era **el instrumento**: convierte cada escape en una

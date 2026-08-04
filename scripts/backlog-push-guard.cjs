@@ -41,7 +41,19 @@ const REPO = path.join(__dirname, '..')
 
 // Misma identidad que `backlog.cjs`, resuelta por el MISMO módulo (T-407): si el guard y el
 // claim discreparan, el guard bloquearía a la sesión por su propia tarea.
-const { resolverSid } = require('../lib/sessions/sid.cjs')
+const { resolverSid, rol } = require('../lib/sessions/sid.cjs')
+const { cegueraBloquea, mensajeCeguera } = require('../lib/sessions/preflight.cjs')
+
+/**
+ * Fail-open para una persona, fail-CLOSED para un trabajador autónomo (T-539). El criterio es
+ * compartido con los demás guardarraíles; aquí solo se imprime y se cuenta.
+ */
+function sinRedEsBloqueante(detalle) {
+  if (!cegueraBloquea(rol())) return false
+  console.error(mensajeCeguera('backlog-push-guard', detalle))
+  friccion('guard_bloqueo', 'backlog-push', `ciego: ${detalle}`.slice(0, 180))
+  return true
+}
 function readSessionId() { return resolverSid({ repo: REPO }).sid }
 
 function getUrl() {
@@ -108,6 +120,10 @@ async function main() {
   const sid = readSessionId()
   const url = getUrl()
   if (!url) {
+    // Fail-open para una PERSONA (está delante y puede juzgar); fail-CLOSED para un trabajador
+    // autónomo, que si no puede comprobar el claim empujaría trabajo declarando tareas que quizá
+    // tiene otra sesión, sin nadie mirando (T-539).
+    if (sinRedEsBloqueante(`no puedo verificar el claim de ${referencedIds.join(', ')}`)) return 1
     console.log(`⚠️  backlog-push-guard: sin DATABASE_URL — no puedo verificar el claim de ${referencedIds.join(', ')}. Push permitido (fail-open).`)
     return 0
   }
@@ -123,6 +139,7 @@ async function main() {
       for (const r of rows) tasksById.set(r.id, r)
     } finally { await s.end({ timeout: 5 }) }
   } catch (e) {
+    if (sinRedEsBloqueante(`no pude leer backlog_tasks (${e.message})`)) return 1
     console.log(`⚠️  backlog-push-guard: no pude leer backlog_tasks (${e.message}). Push permitido (fail-open).`)
     return 0
   }

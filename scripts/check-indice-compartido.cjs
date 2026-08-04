@@ -19,7 +19,8 @@ const { execFileSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..')
 const { evaluarIndice, mensajeBloqueo, evaluarEscape, esCommitParcial } = require(path.join(REPO, 'lib', 'sessions', 'indiceCompartido.cjs'))
-const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+const { resolverSid, rol } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+const { cegueraBloquea, mensajeCeguera } = require(path.join(REPO, 'lib', 'sessions', 'preflight.cjs'))
 
 /** Registrar el roce sin bloquear NUNCA (T-423). */
 function friccion(clase, guard, detalle) {
@@ -76,6 +77,11 @@ async function main() {
   // el estado NORMAL de cualquier sesión de agente, no un caso raro.
   const u = url()
   if (!u) {
+    // Y para un TRABAJADOR autónomo no basta con decirlo: no puede seguir sin comprobar (T-539).
+    if (cegueraBloquea(rol())) {
+      console.error(mensajeCeguera('check-indice-compartido', 'sin DATABASE_URL — no sé si otra sesión trabaja aquí'))
+      return 1
+    }
     console.log('⚠️  check-indice-compartido: sin DATABASE_URL — NO he podido comprobar si otra sesión trabaja aquí.')
     console.log('    Commit permitido (fail-open), pero esto NO es «estás solo»: es «no lo sé».')
     return 0
@@ -87,7 +93,19 @@ async function main() {
     try {
       sesiones = await s`SELECT sid, worktree_path, host, last_signal_at FROM public.worktree_sessions`
     } finally { try { await s.end({ timeout: 3 }) } catch {} }
-  } catch { return 0 }                                  // BD caída → no bloquea
+  } catch (e) {
+    // La BD caída es la MISMA ceguera que no tener URL, y hasta hoy este camino también callaba.
+    // Lo encontró la simulación de T-539 al probar con una URL que no responde: se arregló el
+    // `if (!u)` y este `catch` se quedó mudo detrás, que es como sobreviven los agujeros.
+    const detalle = `no pude consultar worktree_sessions (${String(e.message || e).slice(0, 80)})`
+    if (cegueraBloquea(rol())) {
+      console.error(mensajeCeguera('check-indice-compartido', detalle))
+      return 1
+    }
+    console.log(`⚠️  check-indice-compartido: ${detalle} — NO he podido comprobar si otra sesión trabaja aquí.`)
+    console.log('    Commit permitido (fail-open), pero esto NO es «estás solo»: es «no lo sé».')
+    return 0
+  }
 
   // `GIT_INDEX_FILE` lo exporta git al hook y dice sobre QUÉ índice se está commiteando (T-486).
   // Un commit parcial (`git commit -- <rutas>`) trae su propio índice temporal, así que lo que la

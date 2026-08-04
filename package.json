@@ -111,6 +111,7 @@
     "deploy:estado": "node scripts/deploy-estado.cjs",
     "sesiones:friccion": "node scripts/friccion-sesiones.cjs",
     "sesiones:huerfanos": "node scripts/sessions/huerfanos.cjs",
+    "sesion:preflight": "node scripts/sessions/preflight.cjs",
     "sim:huerfanos": "node scripts/sessions/sim-huerfanos.cjs",
     "sim:cadencia-cron": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cadencia-cron-overdue.ts",
     "sim:cron-sin-exito": "tsx --tsconfig backend/tsconfig.json backend/scripts/sim-cron-sin-exito.ts",
@@ -156,7 +157,8 @@
     "audit:tablas-refluidas": "node scripts/audit-tablas-refluidas.cjs",
     "sim:contador-servible": "npx tsx --env-file=.env.local scripts/sim/sim-contador-servible.ts",
     "epigrafe:revision": "node --env-file=.env.local scripts/temario/revisar-oposicion.cjs",
-    "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs"
+    "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs",
+    "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

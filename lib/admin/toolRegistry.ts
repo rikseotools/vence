@@ -1638,6 +1638,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ese 17 %. Es GATE, no informe: si el repo empieza a declarar trabajo solo en el cuerpo, ' +
       'la relajación deja de ser segura y nadie se enteraría. Techo 6 %, exit 1 al pasarlo.',
   },
+  sesion_preflight: {
+    titulo: '¿Esta sesión está COMPLETA para trabajar? (y un trabajador autónomo no puede trabajar si no)',
+    ruta: 'scripts/sessions/preflight.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run sesion:preflight`. Comprueba identidad, BD de coordinación y que el latido se ' +
+      'ESCRIBE de verdad (lo mira en `worktree_sessions`; NO lo escribe él — el escritor único ' +
+      'sigue siendo `latir.cjs`). Existe porque todo el andamiaje hace fail-open al faltarle la ' +
+      'BD, que es correcto para una PERSONA (no se le para el trabajo a quien está delante por ' +
+      'una avería de telemetría) y es lo contrario de lo que hace falta en un TRABAJADOR ' +
+      'autónomo: trabajar sin supervisión y sin dejar rastro. Con `VENCE_SESSION_ROLE=trabajador` ' +
+      'la misma ceguera pasa a BLOQUEAR, y ese criterio vive en UN sitio ' +
+      '(`lib/sessions/preflight.cjs` → `cegueraBloquea`) compartido por el push-guard y el guard ' +
+      'del índice. El rol es identidad y vive con el sid. Medido el 04/08 en un clon sin ' +
+      '`.env.local` —la condición NORMAL de un worktree de agente— : sesión invisible para el ' +
+      'reparto y tres protecciones apagadas sin que nada lo dijera. Capas: 20 tests + ' +
+      '`npm run sim:preflight-trabajador` (ejecuta los binarios reales y mira EXIT CODES, que es ' +
+      'lo que git obedece; provoca la ceguera con una URL inalcanzable, no quitando ficheros).',
+  },
   indice_compartido: {
     titulo: 'Impedir que dos sesiones compartan el índice de git (pre-commit)',
     ruta: 'scripts/check-indice-compartido.cjs',
