@@ -1478,7 +1478,46 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'TRES guardarraíles exactamente así y los tres se descubrieron por casualidad. Emiten el ' +
       'push-guard y el de índice compartido vía `scripts/friccion-emitir.cjs`, best-effort ' +
       'absoluto (corren dentro de hooks de git). Núcleo `lib/observability/friccionSesiones.cjs`, ' +
-      '11 tests.',
+      '11 tests. **Para emitir NO se escribe un spawn propio: se llama a `emitirFriccion` de ' +
+      '`lib/sessions/friccion.cjs`** (T-542) — cada guardarraíl se copiaba el suyo y la sexta ' +
+      'puerta, la de temario, nació imprimiendo «queda contado» sin contar nada.',
+  },
+  friccion_emisor: {
+    titulo: 'Emitir un roce entre sesiones sin poder romper nada (emisor único)',
+    ruta: 'lib/sessions/friccion.cjs',
+    estado: 'vivo',
+    escribe: ['observable_events'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`emitirFriccion({ clase, guard, detalle, segundos })`. Es la ÚNICA forma legítima de contar ' +
+      'un roce: no lanza nunca, no bloquea (detached+unref, corre dentro de hooks de git), no ' +
+      'imprime, y descarta una clase que no esté en el catálogo cerrado de ' +
+      '`lib/observability/friccionSesiones.cjs` antes de gastar un proceso. **Nace de un fallo ' +
+      'medido (T-542, 04/08/2026):** el emisor estaba copiado a mano en cada guardarraíl (6 copias ' +
+      'privadas) y la sexta puerta —la de temario, T-518— nació SIN escribir la suya, imprimiendo ' +
+      '«queda contado» y no contando nada. Peor que el silencio: el mensaje le decía a la ' +
+      'siguiente sesión que no se preocupara. Lo destapó una sesión que rodeó la puerta y fue a ' +
+      'buscar su escape al bus. GOTCHA al consultar: el `detalle` se guarda en la columna ' +
+      '`error_message`, NO en `metadata` — buscarlo en el jsonb da cero filas y se lee como «el ' +
+      'bus está roto». Capas: `__tests__/sessions/friccionEmisor.test.ts` (6), ' +
+      '`__tests__/impugnaciones/puertaTemarioFriccion.test.ts` (8, verificado que falla contra el ' +
+      'código original), guardarraíl `puertasQueCuentan.guardrail` con TRINQUETE sobre las 6 ' +
+      'copias privadas restantes, y `npm run sim:friccion-puertas` de extremo a extremo contra RDS.',
+  },
+  puertas_que_cuentan: {
+    titulo: 'Una puerta que bloquea tiene que contarse (guardarraíl)',
+    ruta: 'lib/calidad/puertasQueCuentan.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Núcleo puro + `__tests__/guardrails/puertasQueCuentan.guardrail.test.ts`. Marca la puerta ' +
+      'que comunica un rechazo (🛑/⛔) y puede devolver `false` pero NO llama a `emitirFriccion`. ' +
+      'Detecta por COMPORTAMIENTO, no por mención —igual que `toolWriters`—: un comentario que ' +
+      'nombre la fricción no cuenta como contarla, que es exactamente la trampa del caso original. ' +
+      'Lleva además un trinquete sobre los módulos que lanzan `friccion-emitir.cjs` por su cuenta ' +
+      '(6 el 04/08, casi todos en hooks de git; migrarlos es trabajo aparte porque romper el ' +
+      'pre-push deja a todas las sesiones sin poder subir nada).',
   },
   sesiones_solape: {
     titulo: '¿Otra sesión está tocando mis mismos ficheros? (mapa en vivo)',

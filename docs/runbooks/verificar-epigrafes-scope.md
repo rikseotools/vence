@@ -27,6 +27,21 @@ Verifica que el `topic_scope` (artículos asignados a cada tema) **se correspond
 > Núcleo puro `lib/temario/revisionEpigrafe.cjs` (14 tests) · simulación contra RDS
 > `npm run sim:puerta-temario` (los tres casos: verde, rojo con su comando, y fail-open cuando no se
 > sabe qué tema sirve la pregunta).
+>
+> 📡 **Los bloqueos y los ESCAPES de esta puerta se cuentan** (`npm run sesiones:friccion`, `guard:'temario'`).
+> No fue así al nacer: durante su primer día imprimía *«queda contado»* y **no contaba nada** — peor
+> que el silencio, porque le afirmaba a la siguiente sesión que el rodeo había quedado registrado.
+> Se descubrió el 04/08 porque una sesión saltó la puerta con `--temario-igualmente` y fue a buscar
+> su escape al bus, donde reportaban nueve guardarraíles y temario no estaba. **Por qué importa:** el
+> ratio de escape es el indicador ADELANTADO de que un guardarraíl está muerto (T-423), así que una
+> puerta muda puede llevar meses sin proteger y sin que nada lo diga. Causa de fondo: cada
+> guardarraíl se escribía su propio emisor, y el sexto no lo escribió — ahora hay uno solo
+> (`emitirFriccion` de `lib/sessions/friccion.cjs`) y un guardarraíl que impide que la próxima puerta
+> nazca muda (`lib/calidad/puertasQueCuentan.cjs`). Extremo a extremo: `npm run sim:friccion-puertas`.
+> Detalle: [T-542].
+>
+> **Si el escape se repite, la puerta estorba y hay que revisarla** — que es justo para lo que se
+> cuenta. Mírala en `npm run sesiones:friccion` antes de dar por bueno que el bloqueo es sano.
 
 > 🗺️ **ENFORZADA POR CÓDIGO (desde 24/07):** los dossiers `revisar-impugnacion.cjs` y `revisar-feedback.cjs` detectan solos cuando la queja va de temario/epígrafe/scope y **imprimen un CHECK con el estado Paso 1/Paso 2 de la oposición + un 🛑 bloqueante si el epígrafe está `never_sourced`**. Módulo `scripts/impugnaciones/lib/scope-enforcement.cjs`. Nace porque la regla se saltaba (caso Sara 24/07: scope `verified_correct` pero epígrafe `never_sourced` = falso verde). Si ves el 🛑, haz el Paso 1 antes de resolver.
 

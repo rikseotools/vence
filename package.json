@@ -159,7 +159,8 @@
     "epigrafe:revision": "node --env-file=.env.local scripts/temario/revisar-oposicion.cjs",
     "sim:puerta-temario": "node --env-file=.env.local scripts/sim/sim-puerta-temario.cjs",
     "sim:preflight-trabajador": "node scripts/sim/sim-preflight-trabajador.cjs",
-    "canary:rol-coordinacion": "node scripts/canary-rol-coordinacion.cjs"
+    "canary:rol-coordinacion": "node scripts/canary-rol-coordinacion.cjs",
+    "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

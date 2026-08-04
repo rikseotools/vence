@@ -12,24 +12,19 @@
  * sesión, se avisa y se deja pasar. Una avería de la observabilidad no puede impedir contestarle
  * a un usuario que lleva horas esperando.
  */
-import { spawn } from 'child_process'
 import { join } from 'path'
+import { createRequire } from 'module'
 
 const REPO = join(__dirname, '..', '..', '..')
+// Emisor ÚNICO (T-542). Antes aquí vivía una copia privada del `spawn`; era una de las cinco que
+// llevaron a que la sexta puerta —la de temario— naciera sin emitir nada.
+const { emitirFriccion } = createRequire(__filename)(join(REPO, 'lib/sessions/friccion.cjs'))
 
 export type Veredicto = { permitido: boolean; clase: string; motivo: string; comando?: string }
 
 /** Cuenta el roce en el bus de fricción (`npm run sesiones:friccion`). Best-effort absoluto. */
 function friccion(clase: 'guard_bloqueo' | 'guard_escape', detalle: string) {
-  try {
-    spawn(
-      process.execPath,
-      [join(REPO, 'scripts', 'friccion-emitir.cjs'), '--clase', clase, '--guard', 'cierre-cola', '--detalle', detalle.slice(0, 180)],
-      { detached: true, stdio: 'ignore' },
-    ).unref()
-  } catch {
-    /* la telemetría nunca bloquea un cierre */
-  }
+  emitirFriccion({ clase, guard: 'cierre-cola', detalle })
 }
 
 /**

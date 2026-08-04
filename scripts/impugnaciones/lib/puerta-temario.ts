@@ -29,6 +29,9 @@ const { evaluarRevisionTemario } = req(path.join(ROOT, 'lib/temario/revisionEpig
 const { reunirHechos } = req(path.join(ROOT, 'scripts/temario/revisar-oposicion.cjs'))
 const { pgConfig } = req(path.join(ROOT, 'lib/db/pgSsl.cjs'))
 const { Client } = req('pg')
+// Emisor ÚNICO (T-542). No se escribe una copia privada aquí: esta puerta nació el 04/08 sin ella
+// —imprimiendo «queda contado» sin contar nada— justo porque cada guardarraíl se la reescribía.
+const { emitirFriccion } = req(path.join(ROOT, 'lib/sessions/friccion.cjs'))
 
 /** Motivos de impugnación que van de temario aunque el texto no diga nada. */
 const TIPOS_DE_SCOPE = new Set(['tema_incorrecto'])
@@ -39,6 +42,23 @@ export type VeredictoTemario = {
   bloqueos: Array<{ code: string; detalle: string; comando?: string }>
   avisos: Array<{ code: string; detalle: string }>
   positionType?: string | null
+  /** Motivo declarado en `--temario-igualmente`. Lo produce el núcleo; se propaga para poder CONTARLO. */
+  motivo?: string
+}
+
+/** Qué se guarda de un escape: el motivo que la persona escribió, que es lo único que explica el rodeo. */
+export function motivoEscape(v: VeredictoTemario): string {
+  return (v.motivo || '').trim() || 'sin motivo legible'
+}
+
+/**
+ * Qué se guarda de un bloqueo: los CODES, no la prosa. El detalle lleva el nombre del tema y de la
+ * oposición, así que agregarlo por texto libre daría una serie que no agrupa con nada.
+ */
+export function resumenBloqueos(v: VeredictoTemario): string {
+  const codes = v.bloqueos.map((b) => b.code)
+  const unicos = [...new Set(codes)]
+  return `${v.clase}: ${unicos.join(',') || 'sin_code'}${v.positionType ? ` (${v.positionType})` : ''}`
 }
 
 export async function comprobarTemario({
@@ -99,6 +119,7 @@ export async function comprobarTemario({
       bloqueos: v.bloqueos,
       avisos: v.avisos,
       positionType: d.target_oposicion,
+      motivo: v.motivo,
     }
   } catch (e: any) {
     // Sin BD no se afirma nada (principio 9: fail-open en telemetría y en comprobaciones).
@@ -113,17 +134,29 @@ export async function comprobarTemario({
   }
 }
 
-/** Imprime el veredicto. Devuelve si se puede seguir. */
+/**
+ * Imprime el veredicto y CUENTA la fricción. Devuelve si se puede seguir.
+ *
+ * El emisor va aquí y no en `comprobarTemario` porque contar un bloqueo que solo era un dry-run
+ * inflaría la serie con ensayos: lo mismo que hace `anunciar()` en la puerta de reserva, y por
+ * el mismo motivo. Solo se emite con `--aplicar`, o sea cuando el cierre va en serio.
+ */
 export function anunciarTemario(v: VeredictoTemario, { aplicar }: { aplicar: boolean }): boolean {
   if (v.clase === 'no_aplica') return true
 
   for (const a of v.avisos) console.log(`   ⚠️  temario [${a.code}]: ${a.detalle}`)
 
   if (v.permitido) {
-    if (v.clase === 'escape') console.log('   🚪 puerta de temario SALTADA con motivo declarado (queda contado)')
-    else if (v.clase === 'verde') console.log('   ✅ temario: lo que sirve esta pregunta está verificado contra el programa oficial')
+    if (v.clase === 'escape') {
+      console.log('   🚪 puerta de temario SALTADA con motivo declarado (queda contado en el bus de fricción;')
+      console.log('      si esto se repite, la puerta estorba y hay que revisarla)')
+      if (aplicar) emitirFriccion({ clase: 'guard_escape', guard: 'temario', detalle: motivoEscape(v) })
+    } else if (v.clase === 'verde') {
+      console.log('   ✅ temario: lo que sirve esta pregunta está verificado contra el programa oficial')
+    }
     return true
   }
+  if (aplicar) emitirFriccion({ clase: 'guard_bloqueo', guard: 'temario', detalle: resumenBloqueos(v) })
 
   console.log('\n   🛑 PUERTA DE TEMARIO — no se puede cerrar todavía:')
   for (const b of v.bloqueos) {
