@@ -160,6 +160,27 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'punto ciego de los dos detectores anteriores: ambos exigen RECONOCER un boletín en la URL, así que cuando `programa_url` apuntaba a un portal institucional se callaban los tres. Caso raíz 26/07 (T-134): `policia-nacional`, con plazo ABIERTO, prometía "Ver convocatoria en BOE" y llevaba a `policia.es/portalaspirantes/en/web/…` — ni BOE, ni convocatoria, ni español; medido ese día, 56 de 123 landings activas estaban en esa zona muerta. `error` = hay convocatoria PUBLICADA (existe documento oficial que enlazar) y el botón lleva a una portada/sección de portal o a una página en otro idioma; `warn` = aún no hay convocatoria (OEP aprobada, sin OEP, proceso cerrado) o el enlace es un TEMARIO bajo un rótulo que SÍ promete la convocatoria. ⚠️ DESDE EL 28/07 el detector juzga el enlace que la landing ENSEÑA, no `programa_url` a pelo: sin convocatoria publicada y con el documento de la OEP clonado, la página enlaza ESE documento y rotula "Ver OEP en {diario}" (núcleo compartido `lib/convocatoria/enlaceOficial.cjs`). Corolario al triar: un aviso en una oposición sin convocatoria casi siempre significa que FALTA CLONAR EL DOCUMENTO DE SU OEP —por eso la landing cae al portal institucional—, no que haya que cambiar la etiqueta; herramienta `scripts/convocatoria/bandeja-documentos.cjs`. Arreglo: busca el documento oficial de la convocatoria en su boletín y repunta `programa_url` (dual-write en `oposiciones` Y en la convocatoria vigente, que es de donde lee la landing), o —si de verdad no hay documento— cambia `diario_oficial` a lo que el enlace es en realidad y deja el boletín de las bases en `diario_referencia`. Simula antes con `node scripts/convocatoria/sim-enlace-boletin.cjs`. NUNCA repuntar sin abrir el documento y confirmar que es esa convocatoria.',
   },
+  // ── Kinds ON-DEMAND del triaje epígrafe↔fuente (T-552): los emite `npm run audit:epigrafe-fuente`.
+  // NO van al barrido nocturno porque medir exige DESCARGAR el programa de cada oposición, y el
+  // sweep hace TRUNCATE y recalcula todo en cada pasada: serían 126 descargas por noche de una
+  // señal que solo cambia cuando alguien repunta la URL. Automatizarlo pide persistir el veredicto
+  // (migración) + el gemelo @Cron del backend + deploy → [T-553].
+  temario_fuera_de_su_fuente: {
+    title: 'El temario que servimos NO aparece en el documento del que dice venir',
+    triggerPhrase: 'revisa los temarios contra su fuente',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    comando: 'audit:epigrafe-fuente',
+    claudeHace:
+      'compara cada epígrafe de la BD contra el texto del `programa_url` y pregunta solo si APARECE dentro: si es literal aparece, si es paráfrasis no. Sin parsear el boletín (que falla en un tercio de los casos), sin alinear temas y sin LLM. Medido el 04/08 sobre las 126 activas: 2.193 temas medibles y 765 (35%) fuera de su fuente — 22 oposiciones literales, 41 parciales y 11 enteramente parafraseadas. Ordena la cola del Paso 1 por impacto; NO lo sustituye. ⚠️ Un «parafraseado» no dice de quién es la culpa: puede ser paráfrasis NUESTRA (el caso normal) o un `programa_url` que apunta a OTRO CICLO —el caso Cantabria, donde una Orden posterior había modificado el programa—. Las dos piden abrir el documento. Para atacarlo: Paso 1 del runbook (clonar el literal con `verify:epigrafe apply`).',
+  },
+  programa_url_no_es_temario: {
+    title: 'El `programa_url` apunta a un documento SIN temario dentro',
+    triggerPhrase: 'revisa los temarios contra su fuente',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    comando: 'audit:epigrafe-fuente',
+    claudeHace:
+      'cubo APARTE del anterior, y separarlos es lo que hace útil la cola: al estrenar el triaje el primero de la lista era `administrativo-estado` con «45 de 45 fuera de su fuente», y su `programa_url` era el RD 387/2026 de la Oferta de Empleo Público — un decreto de plazas sin un solo tema dentro. Ese 0/45 no decía «parafraseamos», decía «el enlace no es un temario». Medido sobre las 126: **44** están así (portales tipo `zaragoza.es/oferta/…` o `jccm.es/tramites/…`, portadas de boletín como `bopmalaga.es`, o el decreto de la OEP) y otras 8 no se pueden ni descargar. Se distingue por la racha de enteros consecutivos: un programa enumera 1,2,3… y una norma no. ⚠️ Esto NO es lo mismo que `convocatoria_enlace_no_boletin`: aquel juzga `programa_url` como ENLACE DEL BOTÓN (¿lleva al boletín que promete?) y este como FUENTE DEL TEMARIO (¿tiene temas dentro?). El campo sirve a dos contratos y un portal puede ser un botón correcto y una fuente inútil a la vez. Arreglo: localizar el documento con el programa y repuntar `programa_url` con dual-write; hasta entonces el temario de esa oposición NO se puede medir.',
+  },
   // ── Kinds ON-DEMAND: los emite `npm run audit:landing -- <slug>`, no el sweep nocturno ──
   // Se midieron sobre las 123 landings activas antes de decidir dónde viven (T-142): en el barrido
   // nocturno producían 168 y 89 hallazgos respectivamente, casi todos por falta de contexto (el

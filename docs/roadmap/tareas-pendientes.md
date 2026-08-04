@@ -914,6 +914,18 @@ mintiendo a cualquiera que en el futuro acote a una oposición en construcción.
 
 **Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
 
+### [T-553] 🟢 [ABIERTO 04/08] El triaje epígrafe↔fuente ya tiene frase-gatillo; su barrido NOCTURNO pide migración y no cabía de propina
+
+- **HECHO:** las dos salidas de `npm run audit:epigrafe-fuente` ([T-552]) están registradas como kinds on-demand con la frase **«revisa los temarios contra su fuente»** (`runbookRegistry` + CLAUDE.md + runbook), igual que `audita la landing`. Así el triaje se invoca con una frase en vez de quedarse en la terminal de quien lo escribió.
+- **LO QUE FALTA, y por qué no se hizo en el mismo movimiento:** meterlo en el barrido nocturno **no es añadir un kind**. `health-sweep.cjs` hace `TRUNCATE content_health_findings` y **recalcula todo en cada pasada**, así que un kind que necesita DESCARGAR el programa de cada oposición serían **126 descargas por noche** — de una señal que solo cambia cuando alguien repunta una URL. Es exactamente el derroche que este proyecto ya corrigió una vez (el cron que clonaba 750 documentos diarios para tirar el 96%).
+- **Lo que costaría de verdad, que es la razón de esta ficha:**
+  1. **Persistir el veredicto** por `programa_url` para no re-descargar lo que no ha cambiado → migración (columna en `convocatorias`, junto a `programa_last_hash`/`programa_last_checked`, que ya existen) o un mecanismo que sobreviva al `TRUNCATE`.
+  2. **El gemelo `@Cron` del backend** (`backend/src/content-health-sweep/`), con su guardarraíl de paridad.
+  3. **Deploy de backend** — hasta entonces el kind estaría escrito e inerte (el modo de fallo de T-118).
+- **Y hay una decisión de fondo debajo que conviene tomar antes de automatizar nada:** `programa_url` **sirve a dos contratos** —el enlace del botón «Ver convocatoria» y la fuente del temario del Sistema 2— y por eso ningún detector puede juzgarlo sin ambigüedad. Estaba apuntado hace días como «tarea propia»; [T-552] le puso precio: **44 de 126 activas** sirven como botón razonable y como fuente del temario NO valen. Separar el campo haría este kind trivial y arreglaría de paso a los tres detectores de enlace.
+- **Es 🟢 a propósito:** nada está roto y la herramienta ya es invocable. Lo que se gana automatizándola es que la cifra no envejezca sola.
+
+
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 
 - **Sale de [T-547]**, que puso los 38 epígrafes en `verified_literal` contra el BOPA. Reescribir el epígrafe dispara el trigger, así que su scope quedó **`stale`**: el veredicto anterior se emitió contra una paráfrasis y ya no vale. Estado hoy: **29 stale · 8 verified_correct · 1 verified_issues**.
