@@ -161,8 +161,13 @@ async function main() {
   const { worktree, branch } = datosDelWorktree(base)
   const slug = path.basename(worktree)
   const huella = huellaDelWorktree(base)
-  const { maquina } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const { maquina, rol } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
   const host = maquina()
+  // QUÉ es esta sesión (T-539). Viaja en el latido porque es lo que permite al parte distinguir
+  // una persona que no ha hecho preflight (normal) de un trabajador que no lo ha hecho (está
+  // trabajando sin que nadie sepa si puede). Se declara explícitamente o no se declara: por eso
+  // `persona` —el valor por defecto— se guarda como NULL en vez de afirmarse.
+  const miRol = rol() === 'trabajador' ? 'trabajador' : null
   const s = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
   try {
     const r = await s`
@@ -170,8 +175,8 @@ async function main() {
       -- máquinas están latiendo con el mismo sid: ver avisarIdentidadCompartida más arriba.
       -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
       WITH previo AS (SELECT host AS host_previo FROM worktree_sessions WHERE sid = ${sid})
-      INSERT INTO worktree_sessions (sid, slug, worktree_path, branch, host, last_command, touched_files, touched_at)
-      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${host}, ${arg('--cmd')},
+      INSERT INTO worktree_sessions (sid, slug, worktree_path, branch, host, rol, last_command, touched_files, touched_at)
+      VALUES (${sid}, ${slug}, ${worktree}, ${branch}, ${host}, ${miRol}, ${arg('--cmd')},
               ${huella}, ${huella ? s`now()` : null})
       ON CONFLICT (sid) DO UPDATE
          SET last_signal_at = now(),
@@ -185,6 +190,9 @@ async function main() {
              -- siempre el host del primer latido, así que un sid que empezara a latir desde otro
              -- sitio se veía igual que uno que no se hubiera movido.
              host           = EXCLUDED.host,
+             -- El rol también se refresca: una sesión que pasa a ser trabajador tiene que verse
+             -- como tal desde el latido siguiente, no desde el primero de su vida.
+             rol            = EXCLUDED.rol,
              -- La huella solo se pisa si esta vez SÍ se pudo calcular: si git no contestó,
              -- conservar la anterior es más útil que borrarla (touched_at delata su edad).
              touched_files  = COALESCE(EXCLUDED.touched_files, worktree_sessions.touched_files),

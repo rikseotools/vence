@@ -25,7 +25,7 @@ const path = require('path')
 const REPO = path.resolve(__dirname, '../..')
 const JSON_OUT = process.argv.includes('--json')
 
-const { cruzarTrabajo, sesionesOciosas, veredicto } = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
+const { cruzarTrabajo, sesionesOciosas, veredicto, evidenciaSesiones, diagnosticoEvidencia } = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'))
 const { clasificarSenal } = require(path.join(REPO, 'lib', 'sessions', 'latido.js'))
 const { ratioEscape, escapesSinBloqueo, diagnostico, EVENT_TYPE } = require(path.join(REPO, 'lib', 'observability', 'friccionSesiones.cjs'))
@@ -41,13 +41,13 @@ async function main() {
   if (!u) { console.error('❌ sin DATABASE_URL'); return 1 }
   const sql = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
 
-  let tareas, sesiones, preguntas, friccion, listas
+  let tareas, sesiones, preguntas, friccion, listas, preflights
   try {
     tareas = await sql`
       SELECT id, title, claimed_by, claimed_at, lease_until
         FROM public.backlog_tasks WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
     sesiones = await sql`
-      SELECT sid, slug, host, last_signal_at, last_command FROM public.worktree_sessions`
+      SELECT sid, slug, host, rol, last_signal_at, last_command FROM public.worktree_sessions`
     // Fail-open por pieza: si el embudo aún no existe (migración sin aplicar), el resto del parte
     // sigue sirviendo. Un parte que se cae entero porque falta una tabla no se usa.
     preguntas = await sql`
@@ -60,6 +60,15 @@ async function main() {
       SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid
         FROM public.observable_events
        WHERE event_type = ${EVENT_TYPE} AND ts > now() - interval '7 days'`.catch(() => [])
+    // Evidencia por sesión (T-539): sin esto el parte no distingue una sesión sana de una que
+    // trabaja a ciegas. Fail-open por pieza, como el embudo: si aún no hay preflights, el resto
+    // del parte sigue sirviendo.
+    preflights = await sql`
+      SELECT DISTINCT ON (metadata->>'sid')
+             metadata->>'sid' AS sid, metadata->>'veredicto' AS veredicto, ts
+        FROM public.observable_events
+       WHERE event_type = 'sesion_preflight' AND ts > now() - interval '1 day'
+       ORDER BY metadata->>'sid', ts DESC`.catch(() => [])
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}
   }
@@ -72,7 +81,10 @@ async function main() {
   const paraVerificar = (listas || []).filter((t) => isAwaitingVerification(t, ahora))
 
   if (JSON_OUT) {
-    console.log(JSON.stringify({ veredicto: v, trabajando, paradas, ociosas, preguntas, paraVerificar }, null, 1))
+    console.log(JSON.stringify({
+      veredicto: v, trabajando, paradas, ociosas, preguntas, paraVerificar,
+      evidencia: evidenciaSesiones(sesiones, preflights, { ahora }),
+    }, null, 1))
     return paradas.length ? 3 : 0
   }
 
@@ -108,6 +120,22 @@ async function main() {
   if (paraVerificar.length) {
     console.log(`⏰ ${paraVerificar.length} LISTA(S) PARA VERIFICAR (se cierran en minutos):`)
     for (const t of paraVerificar.slice(0, 8)) console.log(`   ${t.id}  ${String(t.title).slice(0, 66)}`)
+    console.log('')
+  }
+
+  // 1.bis. ¿ES DE FIAR LO QUE ACABO DE PINTAR? (T-539, pieza 3 de la flota)
+  //    Una sesión que no alcanza la BD de coordinación no sale peor en este parte: sale MENOS,
+  //    porque ni siquiera late — y los guardarraíles que dependen de esa BD la dejan pasar sin
+  //    comprobar nada. Aquí se cruza el `rol` del latido con el veredicto del preflight para
+  //    separar «verde porque lo comprobé» de «verde porque estoy ciego».
+  //    Solo se pinta lo ANORMAL: que una persona no haya hecho preflight es lo normal, y un aviso
+  //    que ladra a todo el mundo se deja de mirar en una tarde (la lección del 31/07).
+  const avisos = evidenciaSesiones(sesiones, preflights, { ahora })
+    .map(diagnosticoEvidencia)
+    .filter(Boolean)
+  if (avisos.length) {
+    console.log('🔎 SESIONES QUE TRABAJAN SIN EVIDENCIA:')
+    for (const a of avisos) console.log(`   ${a}`)
     console.log('')
   }
 
