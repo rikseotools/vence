@@ -10,7 +10,12 @@ import { eq, and, inArray, isNull, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { buildOfficialExamFilter } from '@/lib/api/oposicion-scope/queries'
-import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
+import {
+  articleInPositionScopeExists,
+  esDegradacion,
+  positionHasScopeForLaw,
+} from '@/lib/api/_shared/topicScopeSql'
+import { emitFireAndForget } from '@/lib/observability/emit'
 import type {
   GetArticlesRequest,
   GetArticlesResponse,
@@ -298,6 +303,8 @@ async function estimateByLaws(
 
   const byLaw: Record<string, number> = {}
   let totalCount = 0
+  // Leyes en las que se pidió acotar y NO se pudo (oposición sin temario) — se observa al final.
+  const degradedLaws: string[] = []
 
   for (const lawShortName of selectedLaws) {
     const lawId = await resolveLawIdByShortName(db, lawShortName)
@@ -348,7 +355,17 @@ async function estimateByLaws(
 
     // Acotar al temario de la oposición (mismo predicado que el selector de artículos,
     // para que el número y la lista que el usuario ve hablen de lo mismo).
-    if (scopeToPosition) {
+    //
+    // …salvo que la oposición NO tenga temario construido para esta ley: entonces se DEGRADA
+    // igual que el camino del test, en vez de intersecar contra vacío y devolver 0. La decisión
+    // vive en `_shared/topicScopeSql` para que contador y test no puedan divergir ([T-551]).
+    const tieneScopeDeLaLey = scopeToPosition
+      ? await positionHasScopeForLaw(db, { positionType, lawId })
+      : false
+    if (esDegradacion({ acotarAlTemario: !!scopeToPosition, tieneScopeDeLaLey })) {
+      degradedLaws.push(lawShortName)
+    }
+    if (scopeToPosition && tieneScopeDeLaLey) {
       conditions.push(
         articleInPositionScopeExists({
           lawId: articles.lawId,
@@ -379,6 +396,23 @@ async function estimateByLaws(
     const count = Number(countResult[0]?.count || 0)
     byLaw[lawShortName] = (byLaw[lawShortName] || 0) + count
     totalCount += count
+  }
+
+  // Misma señal que el camino del test (`filtered_questions_unbuilt_oposicion_degrade`): un solo
+  // evento para un solo fenómeno — qué oposiciones sin construir está usando la gente. Dos emisores
+  // del mismo hecho no miden el doble, divergen.
+  if (degradedLaws.length > 0) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'info',
+      eventType: 'filtered_questions_unbuilt_oposicion_degrade',
+      endpoint: '/api/test-config/estimate',
+      metadata: {
+        positionType: String(positionType).slice(0, 80),
+        degradedLaws: degradedLaws.slice(0, 20),
+        mode: 'estimate',
+      },
+    })
   }
 
   return { success: true, count: totalCount, byLaw }

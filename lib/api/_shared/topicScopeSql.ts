@@ -48,6 +48,73 @@ export function articleInScope(articleNumber: SqlExpr, articleNumbers: SqlExpr):
  * @param positionType  position_type de la oposición
  * @param topicNumber   si se pasa y es > 0, acota además a ese tema concreto
  */
+/**
+ * ¿Hay que ACOTAR al temario, o hay que DEGRADAR?
+ *
+ * Decisión pura, y vive aquí porque es la misma en los dos caminos que sirven o cuentan
+ * preguntas. Hasta el 04/08 solo existía dentro de `filtered-questions` (como el `null` de
+ * `scopedNumbersFor`) y el contador del configurador **no la tenía**: añadía el EXISTS de
+ * {@link articleInPositionScopeExists} como condición dura, así que una oposición sin temario
+ * construido contaba **0 en todas sus leyes** y el botón de empezar se quedaba en gris… mientras
+ * el test, si hubiera podido lanzarse, servía preguntas de sobra.
+ *
+ * Caso que lo destapó ([T-551], feedback `a99d3fec`): Félix Peña, premium, oposición
+ * `cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl` (0 temas, 0 filas de `topic_scope`).
+ * Su combinación guardada tenía **1.283 preguntas** y el contador le decía **0**.
+ *
+ * La regla es la que ya aprendió el camino del test con el incidente Alfonso (11/07): **no se
+ * interseca contra vacío**. Si la oposición no tiene NINGUNA fila de scope para esa ley, se
+ * respeta lo que el usuario pidió explícitamente; y si no pidió artículos, la ley entera. Nunca
+ * un cero silencioso.
+ *
+ * @param tieneScopeDeLaLey ¿existe ALGUNA fila de topic_scope de esa oposición para esa ley?
+ * @param haySeleccionManual ¿el usuario eligió artículos concretos de esa ley?
+ */
+export function decidirAlcanceDeLey(opts: {
+  acotarAlTemario: boolean
+  tieneScopeDeLaLey: boolean
+  haySeleccionManual: boolean
+}): 'ley_entera' | 'seleccion_del_usuario' | 'interseccion_con_temario' | 'temario' {
+  if (!opts.acotarAlTemario) {
+    return opts.haySeleccionManual ? 'seleccion_del_usuario' : 'ley_entera'
+  }
+  if (!opts.tieneScopeDeLaLey) {
+    // DEGRADACIÓN: sin temario para esta ley, intersecar daría 0.
+    return opts.haySeleccionManual ? 'seleccion_del_usuario' : 'ley_entera'
+  }
+  return opts.haySeleccionManual ? 'interseccion_con_temario' : 'temario'
+}
+
+/** ¿Se ha degradado, es decir, se pidió acotar y no se pudo? Útil para observarlo. */
+export function esDegradacion(opts: {
+  acotarAlTemario: boolean
+  tieneScopeDeLaLey: boolean
+}): boolean {
+  return opts.acotarAlTemario && !opts.tieneScopeDeLaLey
+}
+
+/**
+ * ¿Tiene esa oposición ALGUNA fila de `topic_scope` para esa ley?
+ *
+ * Query compartida por los dos caminos, para que «sin temario» signifique lo mismo en el
+ * contador y en el test. `db` se inyecta para no acoplar este módulo a un cliente concreto.
+ */
+export async function positionHasScopeForLaw(
+  db: { execute: (q: SQL) => Promise<unknown> },
+  opts: { positionType: string; lawId: string },
+): Promise<boolean> {
+  const res = (await db.execute(sql`
+    SELECT 1
+    FROM topic_scope ts
+    INNER JOIN topics t ON t.id = ts.topic_id
+    WHERE t.position_type = ${opts.positionType}
+      AND ts.law_id = ${opts.lawId}
+    LIMIT 1
+  `)) as { rows?: unknown[] } | unknown[]
+  const rows = Array.isArray(res) ? res : (res?.rows ?? [])
+  return rows.length > 0
+}
+
 export function articleInPositionScopeExists(opts: {
   lawId: SqlExpr
   articleNumber: SqlExpr

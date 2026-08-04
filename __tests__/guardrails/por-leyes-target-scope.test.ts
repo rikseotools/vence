@@ -101,6 +101,32 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     expect(q).toMatch(/filtered_questions_unbuilt_oposicion_degrade/)
   })
 
+  // ── [T-551] La degradación estaba en UN camino y no en su gemelo ──
+
+  it('T-551: el CONTADOR degrada igual que el test (no interseca contra vacío)', () => {
+    const q = read('lib/api/test-config/queries.ts')
+    // el EXISTS del scope solo se aplica si la oposición TIENE temario para esa ley
+    expect(q).toMatch(/positionHasScopeForLaw/)
+    expect(q).toMatch(/scopeToPosition && tieneScopeDeLaLey/)
+  })
+
+  it('T-551: la decisión de degradar vive en UN solo sitio, no copiada en cada camino', () => {
+    const shared = read('lib/api/_shared/topicScopeSql.ts')
+    expect(shared).toMatch(/export function decidirAlcanceDeLey/)
+    expect(shared).toMatch(/export function esDegradacion/)
+    expect(shared).toMatch(/export async function positionHasScopeForLaw/)
+    // y el contador la IMPORTA en vez de reimplementarla
+    const q = read('lib/api/test-config/queries.ts')
+    expect(q).toMatch(/from '@\/lib\/api\/_shared\/topicScopeSql'/)
+  })
+
+  it('T-551: el contador OBSERVA la degradación con el MISMO evento que el test', () => {
+    // Dos emisores del mismo hecho no miden el doble, divergen: un solo eventType.
+    const q = read('lib/api/test-config/queries.ts')
+    expect(q).toMatch(/filtered_questions_unbuilt_oposicion_degrade/)
+    expect(q).toMatch(/mode: 'estimate'/)
+  })
+
   it('FIX auditoría: multi-ley espera a userProfile cuando la URL pide scoped=1', () => {
     const src = read('app/test/multi-ley/page.tsx')
     expect(src).toMatch(/!scopedRequested \|\| userProfile !== null/)

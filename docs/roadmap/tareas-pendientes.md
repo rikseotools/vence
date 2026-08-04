@@ -842,6 +842,77 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-551] 🔴 [ABIERTO 04/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
+
+**El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
+añade un `EXISTS` contra `topic_scope` como **condición dura**. Si la oposición **no tiene temario
+construido** (0 filas de `topic_scope`), ese `EXISTS` no casa nunca y **todas las leyes cuentan 0**.
+El usuario ve *«Número de preguntas: 0 · Solo hay 0 preguntas disponibles»* y no llega a lanzar el
+test — aunque el test, si lo lanzara, **sí le serviría preguntas**.
+
+**Los dos caminos NO se comportan igual, y ese es el defecto:**
+
+| camino | fichero | ¿degrada si la oposición no tiene temario? |
+|---|---|---|
+| el TEST | `lib/api/filtered-questions/queries.ts` | **Sí** — «degrad» sale **6 veces** |
+| el CONTADOR | `lib/api/test-config/queries.ts` (`estimateByLaws`) | **No** — sale **0 veces** |
+
+El del test incluso lo explica: *«Devuelve `null` cuando la oposición NO tiene NINGUNA fila de
+topic_scope… para poder DEGRADAR con gracia en vez de servir un test vacío que frustra al usuario
+(incidente Alfonso, premium, 11/07)»*. La lección se aprendió una vez y se aplicó **en un solo
+sitio**. Este es el mismo incidente por la otra puerta.
+
+**Medido el 04/08 sobre el caso real** (feedback `a99d3fec`, Félix Peña, **premium**, alta hace 8
+días, oposición `cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl` → **0 temas, 0 filas de
+`topic_scope`**), con su combinación guardada «Bloque económico» (10 leyes, dos de ellas acotadas a
+artículos concretos):
+
+| | preguntas |
+|---|---|
+| la combinación entera, sin acotar | **1.283** |
+| CE con sus 19 artículos, sin acotar | 317 |
+| CE con sus 19 artículos, **acotado a su oposición** | **0** ← lo que ve el contador |
+
+Su captura lo confirma: las 10 leyes se restauran bien («10 de 1136 leyes seleccionadas»), el aviso
+de mezcla de leyes acotadas y completas se pinta bien, y aun así el número es 0. **La selección
+guardada no tiene nada malo: miente el contador.**
+
+**Arreglo.** Llevar a `estimateByLaws` la misma degradación que ya tiene el camino del test: si la
+oposición no tiene NINGUNA fila de `topic_scope` para esa ley, **no intersecar contra vacío** —
+respetar la selección explícita del usuario (o la ley entera). Lo suyo es **extraer el criterio a un
+sitio único** en vez de copiarlo: dos guardas con criterios distintos sobre el mismo recurso no
+protegen, se contradicen (la lección de [T-130]).
+
+**Capas que pide.** Ya existe `npm run sim:estimate-por-leyes` («comprobar que el contador del
+configurador dice la verdad», T-326) y **no cazó esto**, porque compara el contador contra SQL
+escrito aparte pero **sin el caso de la oposición sin temario**. El caso nuevo es barato de añadir
+ahí y es el que convierte esto en trinquete: *contador y test tienen que dar el MISMO número*, que
+es la invariante de verdad y hoy no la vigila nadie.
+
+**Relacionada: [T-397]** («592 usuarios, 3 de ellos PREMIUM, han elegido una oposición sin ningún
+tema»). Félix es uno de esos tres premium. **Son dos fallos distintos y los dos hay que arreglar:**
+T-397 es que se pueda elegir (y pagar) una oposición vacía; esto es que, aun estando en esa
+situación, el contador le impide usar lo que sí funciona. Arreglar solo T-397 dejaría el contador
+mintiendo a cualquiera que en el futuro acote a una oposición en construcción.
+
+### [T-549] 🟡 [ABIERTO 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
+
+> ⚠️ El outcome de [T-523] la cita como «T-546» — ese número se escribió antes de reservarlo y es incorrecto. Es ESTA.
+
+**Qué pasa.** `scripts/backlog/verificacion.cjs` decide si una tarea se puede cerrar con `contenidos(shaVivo, commits)`, que exige que **todos** los commits que declaran la tarea sean ancestros del sha vivo. Pero el veredicto que se quiere dar es otro: *«¿está vivo el código SERVIDO que toca esta tarea?»*. El propio módulo ya sabe distinguirlo — tiene `DIRS_SERVIDOS` (`app`, `components`, `contexts`, `hooks` en frontend; `backend/src`) y calcula `importadoEn` por fichero — pero esa distinción **no se aplica al conjunto de commits** que se le pasa a `contenidos`.
+
+**La consecuencia, y es lo que lo hace algo más que un detalle:** castiga exactamente la práctica que la casa pide. El orden bueno es *desplegar → verificar en producción → subir la prueba que lo verifica*. Al subir esa prueba (una simulación en `scripts/sim/`, que no es código servido y no cambia nada de lo desplegado), la tarea **deja de ser cerrable hasta el siguiente deploy**. O sea que la única forma de cerrar sin escape es escribir la verificación ANTES de poder verificar, o no subirla.
+
+**Cómo salió (04/08/2026).** Cerrando [T-523]: el arreglo se desplegó (`a68f5648`), se verificó en un navegador real contra producción (4/4) y se subió `scripts/sim/sim-editor-abre-la-tuya.ts` con esa comprobación. `done` bloqueó con *«su código todavía NO está vivo»* señalando tres ficheros de `components/` y `app/` que **sí** estaban vivos: `/api/health` respondía `a68f5648` y `git merge-base --is-ancestor` lo confirmaba. Lo que faltaba en el sha vivo era el commit de la SIMULACIÓN. Se cerró con `--igualmente` y el motivo escrito.
+
+**Segundo hallazgo del mismo rato, distinto y también real: durante el rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` lee `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva, así que ese endpoint contesta un sha **u otro** según a cuál caiga. El primer intento de cierre falló por esto (antes de que el rollout terminara) y el segundo ya devolvía el sha nuevo. Un guardarraíl que da veredictos distintos a la misma pregunta en el mismo minuto enseña a ignorarlo.
+
+**Qué mirar.**
+1. Filtrar los commits por si tocan `DIRS_SERVIDOS` **antes** de exigir que estén vivos: un commit que solo añade tests, simulaciones, documentación o scripts no puede impedir el cierre. La pieza ya existe (`importadoEn`), solo hay que usarla aquí.
+2. Para el rollout: o consultar el sha de forma estable (preguntar N veces y exigir acuerdo, o leer `deploy_runs`, que registra el fin del deploy con su `outcome`), o decirlo explícitamente en el mensaje («hay un rollout en curso, reintenta al terminar») en vez de afirmar que no está vivo.
+3. Medir cuántos `--igualmente` de los contados en el bus de fricción responden a estas dos causas: si son la mayoría, el guardarraíl está enseñando a saltárselo.
+
+**Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
 
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 

@@ -228,7 +228,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'npx tsx --env-file=.env.local scripts/sim/sim-estimate-por-leyes.ts. Solo lectura. Contrasta ' +
       '`estimateAvailableQuestions` SIN tema (modo por leyes, T-326) contra SQL escrito aparte: total ' +
       'por ley, oficiales de la propia oposición, acotado a artículos concretos, oposición sin banco ' +
-      'oficial propio (debe dar 0, NO el cross-oposición) y sin selección. **Lo que vigila no es la ' +
+      'oficial propio (debe dar 0, NO el cross-oposición), **oposición SIN TEMARIO construido — ' +
+      'acotar tiene que DEGRADAR, no dar 0 (T-551)** y sin selección. **Lo que vigila no es la ' +
       'aritmética sino el CRITERIO**: ese número es el que enciende la casilla "🏛️ Preguntas ' +
       'oficiales" y el que el usuario lee antes de decidir, así que si cuenta oficiales de otras ' +
       'oposiciones sobre leyes compartidas (CE, LOTC…) promete preguntas que el test no va a servir ' +

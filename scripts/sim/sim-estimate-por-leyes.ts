@@ -85,6 +85,37 @@ async function main() {
   })
   casos.push({ nombre: 'agente_hacienda · oficiales (sin banco propio)', obtenido: sinBanco.count ?? -1, esperado: 0 })
 
+  // [T-551] ACOTADO a una oposición SIN TEMARIO construido. El caso que este sim no cubría y por
+  // el que no cazó el fallo: con `scopeToPosition` el contador añadía el EXISTS de topic_scope como
+  // condición dura, así que una oposición con 0 filas de scope contaba 0 en TODAS sus leyes y dejaba
+  // el botón de empezar en gris — mientras el test, por su cuenta, ya degradaba y servía preguntas.
+  // La invariante que se fija aquí es la de fondo: ACOTAR NO PUEDE DAR MENOS QUE NO ACOTAR cuando la
+  // oposición no tiene temario, porque no hay nada contra lo que acotar.
+  const SIN_TEMARIO = 'cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl'
+  const [{ n: filasDeScope }]: any = await db.execute(sql`
+    SELECT count(*)::int AS n FROM topic_scope ts
+    JOIN topics t ON t.id = ts.topic_id WHERE t.position_type = ${SIN_TEMARIO}`)
+  if (Number(filasDeScope) === 0) {
+    const comun = {
+      topicNumber: null, selectedLaws: ['Ley 39/2015'], selectedArticlesByLaw: {},
+      selectedSectionFilters: [], onlyOfficialQuestions: false,
+      difficultyMode: 'random' as const, focusEssentialArticles: false,
+    }
+    const sinAcotar = await estimateAvailableQuestions({
+      ...comun, positionType: SIN_TEMARIO as any, scopeToPosition: false,
+    })
+    const acotado = await estimateAvailableQuestions({
+      ...comun, positionType: SIN_TEMARIO as any, scopeToPosition: true,
+    })
+    casos.push({
+      nombre: 'oposición SIN temario · acotado degrada (no da 0)',
+      obtenido: acotado.count ?? -1,
+      esperado: sinAcotar.count ?? -1,
+    })
+  } else {
+    console.log(`⏭️  ${SIN_TEMARIO} ya tiene temario: el caso de degradación no aplica (busca otra sin scope).`)
+  }
+
   // Sin leyes elegidas no hay nada que contar.
   const vacio = await estimateAvailableQuestions({
     topicNumber: null, positionType: POSITION as any, selectedLaws: [],
