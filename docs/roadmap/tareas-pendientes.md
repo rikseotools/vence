@@ -1382,21 +1382,6 @@ arriba, y por eso están aquí y no en un fichero muerto.
 - **LO QUE HAY QUE TOCAR (y por qué es sesion_propia):** `lib/backlog/parseMarkdown.cjs` (fuente única de parseo), `sync`, `backlog.cjs ficha`/`reubicar`, `backlogRegistry.guardrail`, `contexto-push-guard` (compara ESE fichero contra `origin/main`), `perdidaDeContexto.cjs`, y la migración de las 506 fichas. Son las piezas de las que depende el reparto entre sesiones: romperlas deja a todas sin coordinación.
 - **DESCARTADO: el merge driver de git.** Parecía el atajo (unir por id al fusionar) pero se registra en `.git/config`, que **no se versiona**: en cada VPS habría que instalarlo aparte, y quien no lo tenga cae al comportamiento de siempre. Una protección que depende de que cada máquina esté bien configurada no es fiable, es optimista.
 - **CÓMO SE SABRÁ SI SALIÓ BIEN** (declarado antes de empezar): conflictos en el backlog por sesión → 0; `npm run sesiones:friccion` sin subida de escapes; y ninguna ficha perdida en la migración (comparar el conjunto de ids Y el de líneas con contenido antes/después, que es como se verificó [T-515]).
-### [T-531] 🟡 [ABIERTO 04/08] La puerta del cierre rechaza outcomes por palabras que no son trabajo pendiente
-
-- **Esfuerzo: minutos.** Es afinar una lista que ya existe (`lib/backlog/claimGate.cjs`), con los casos reales delante.
-- **QUÉ PASA:** `done --outcome` aborta si el texto «confiesa trabajo pendiente». La regla es buena —nace de cerrar una tarea de cobros con el código sin desplegar— pero dispara con palabras que en el outcome significan otra cosa.
-- **MEDIDO el 04/08 cerrando [T-463]: CUATRO rechazos seguidos del mismo texto**, y ninguno era trabajo pendiente:
-  1. *«la descripción de lo que hay que comprobar sigue ahí detrás»* → cazó **«hay que comprobar»**, que estaba CITANDO el enunciado de la tarea, no anunciando trabajo.
-  2. *«el pendiente completo sigue ahí»* → cazó **«pendiente»** usado como SUSTANTIVO (el texto guardado en `resume_check`).
-  3. *«que era lo que faltaba»* → cazó **«falta»** en pasado, describiendo lo que se acababa de resolver.
-  4. *«9 eventos en 2 días»* → cazó **«en 2 días»** como futuro, cuando era una ventana hacia ATRÁS.
-- **El (4) es un hueco de la exención que ya existe:** [T-499] añadió `esMedidaPasada` para no marcar mediciones del pasado, y su lista (`últimos`, `durante`, `hace`, `pasados`…) no cubre `en N días` sin marcador delante. Se arregla ahí, no con una regla nueva.
-- **POR QUÉ MERECE ARREGLARSE aunque el escape exista:** reescribí el texto cuatro veces en vez de usar `--igualmente`, y el resultado es un outcome **peor** que el que quería escribir. Una puerta que obliga a escribir peor para poder pasar enseña a usar el escape, y entonces deja de proteger — que es la lección de los tres guardarraíles que hubo que quitar el 31/07.
-- **Cómo NO arreglarlo:** quitando palabras de la lista a bulto. Lo que falla no es que `falta` sea mala señal, es que se mira sin contexto. El camino es el mismo que ya funcionó en [T-499]: mirar las palabras de alrededor.
-- **La prueba de que está bien calibrado:** los cuatro textos de arriba pasan, y un outcome de verdad inacabado («falta desplegar», «queda por verificar») sigue abortando. Los dos sentidos, como en T-499.
-- **Relacionadas:** [T-499] (la misma puerta, la exención anterior), [T-392] (de donde sale la puerta), `__tests__/backlog/claimGate.test.ts`.
-
 ### [T-530] 🟠 [ABIERTO 04/08] La huella de hardware no reconoce la misma máquina: 30 casos medidos y el antifraude se apoya en ella
 
 - **Esfuerzo: larga.** Medir primero; lo que se decida arreglar, aparte.
@@ -4379,6 +4364,22 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Mejora del rastreador que salió de aquí:** ahora dice el **texto** del enlace además de la ruta. Una fuga sin saber qué botón es obliga a buscar a ciegas en el código, y costó una vuelta entera localizar «Cambiar configuración».
 - **La respuesta al usuario la mandó OTRA sesión** (`imp-04ago-e`, 15:33) cubriendo las dos quejas, incluida esta. La puerta de reserva de [T-474] impidió el correo duplicado: el arreglo viajó por la ficha, no por el mensaje.
 - Relacionadas: [T-327] (el creador de temario propio), [T-521] (las migas y el selector en personalizada — mismo origen: el catálogo estático no conoce estas oposiciones) y [T-508].
+
+### [T-531] ✅ 🟡 [HECHA 04/08] La puerta del cierre rechaza outcomes por palabras que no son trabajo pendiente
+
+- **Esfuerzo: minutos.** Es afinar una lista que ya existe (`lib/backlog/claimGate.cjs`), con los casos reales delante.
+- **QUÉ PASA:** `done --outcome` aborta si el texto «confiesa trabajo pendiente». La regla es buena —nace de cerrar una tarea de cobros con el código sin desplegar— pero dispara con palabras que en el outcome significan otra cosa.
+- **MEDIDO el 04/08 cerrando [T-463]: CUATRO rechazos seguidos del mismo texto**, y ninguno era trabajo pendiente:
+  1. *«la descripción de lo que hay que comprobar sigue ahí detrás»* → cazó **«hay que comprobar»**, que estaba CITANDO el enunciado de la tarea, no anunciando trabajo.
+  2. *«el pendiente completo sigue ahí»* → cazó **«pendiente»** usado como SUSTANTIVO (el texto guardado en `resume_check`).
+  3. *«que era lo que faltaba»* → cazó **«falta»** en pasado, describiendo lo que se acababa de resolver.
+  4. *«9 eventos en 2 días»* → cazó **«en 2 días»** como futuro, cuando era una ventana hacia ATRÁS.
+- **El (4) es un hueco de la exención que ya existe:** [T-499] añadió `esMedidaPasada` para no marcar mediciones del pasado, y su lista (`últimos`, `durante`, `hace`, `pasados`…) no cubre `en N días` sin marcador delante. Se arregla ahí, no con una regla nueva.
+- **POR QUÉ MERECE ARREGLARSE aunque el escape exista:** reescribí el texto cuatro veces en vez de usar `--igualmente`, y el resultado es un outcome **peor** que el que quería escribir. Una puerta que obliga a escribir peor para poder pasar enseña a usar el escape, y entonces deja de proteger — que es la lección de los tres guardarraíles que hubo que quitar el 31/07.
+- **Cómo NO arreglarlo:** quitando palabras de la lista a bulto. Lo que falla no es que `falta` sea mala señal, es que se mira sin contexto. El camino es el mismo que ya funcionó en [T-499]: mirar las palabras de alrededor.
+- **La prueba de que está bien calibrado:** los cuatro textos de arriba pasan, y un outcome de verdad inacabado («falta desplegar», «queda por verificar») sigue abortando. Los dos sentidos, como en T-499.
+- **Relacionadas:** [T-499] (la misma puerta, la exención anterior), [T-392] (de donde sale la puerta), `__tests__/backlog/claimGate.test.ts`.
+
 
 ### [T-549] ✅ 🟡 [HECHA 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
 
