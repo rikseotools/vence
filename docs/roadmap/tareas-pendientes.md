@@ -956,6 +956,65 @@ SELECT count(*) FROM questions
 - **Qué hacer:** recortar 25-37 del `topic_scope` de Cantabria T6 por el camino del runbook (`verify:scope plan` → `apply`), re-verificar el tema y purgar la caché del tema. **No tocar nada más**: las otras seis oposiciones piden el Capítulo III de verdad y recortarlas sacaría de programa lo que su boletín sí incluye.
 - **Ojo con la frontera:** el epígrafe de Cantabria también deja fuera los arts. 6, 7 y 16-18 del Capítulo II, que el scope tampoco tiene — eso ya estaba bien y no se toca.
 - Relacionadas: [T-528] (el 59% de los scopes «verificados» se apoya en un epígrafe que nadie contrastó) y [T-527] (el mismo patrón con el RD 534/2024 en tres universidades). Esta ficha es un caso concreto y medido de lo que [T-528] describe en agregado.
+### [T-536] 🟡 [ABIERTO 04/08] Preguntas ESTRUCTURALES colgadas de un artículo de fondo: el opositor abre el artículo y la respuesta no está
+
+**Qué pasa.** Una pregunta que va de la **estructura o los metadatos de la norma** (cuántos títulos
+tiene, cuántas disposiciones adicionales, en qué se divide un título, de cuántos artículos consta)
+NO se responde con ningún artículo de contenido. El manual ya tiene la regla —§7.1.1 de
+`docs/maintenance/impugnaciones-claude-code.md`: **van vinculadas al «Artículo 0» de la ley**, que es
+el único cuyo contenido las responde— y aun así hay preguntas activas colgadas del artículo que
+mencionan de pasada. El efecto para el usuario es doble y silencioso: abre el artículo desde la
+pregunta y **no hay nada que leer**, y si el Artículo 0 no está escopado en su tema, el dato **no
+está en su temario en absoluto**.
+
+**Cómo se destapó.** Impugnación `f34b88ad` (manolo garcía, premium, Diputación de Córdoba, 04/08):
+*«No aparece en el Temario que nos pasáis»*. La pregunta pedía en cuántos títulos se estructura la
+**Ley 13/2007** andaluza de violencia de género y colgaba del **art. 1 (Objeto de la Ley)**. La ley
+**no tenía Artículo 0**, y de los **23 artículos** escopados en su tema **ninguno** describía la
+estructura. Tenía razón literalmente: el dato no estaba en ningún sitio. Resuelto ese caso creando
+el Artículo 0 verificado contra el BOE, re-vinculando sus **2** preguntas estructurales y añadiendo
+el `0` al `article_numbers` del tema.
+
+**Cuánto queda (medido el 04/08).** **23 preguntas activas** en **14 leyes reales** (con `boe_url`)
+siguen colgadas de un artículo de fondo. Al leerlas, ~3 son falsos positivos, así que la cola real
+ronda las **20**. Reparto: **7 de la CE**, 3 de la Ley 55/2003, 2 de la LO 14/2007, y una suelta en
+LO 3/2007, LRC, LOFCS, Ley 23/2011, Ley 40/2015, RD 99/2011, RD 534/2024, Ley 39/2015, Ley 5/2023
+andaluza y LO 3/1983. Contexto: **220 leyes de 1.405 tienen Artículo 0** y hay **236 `topic_scope`
+que lo incluyen**, o sea que el patrón está asentado y esto es cola, no diseño nuevo.
+
+**⚠️ GOTCHA de medición — las dos primeras cifras eran mentira, y las dos por motivos distintos.**
+1. Un corte por verbo estructural a secas (`cuenta con|se estructura|consta de|se divide en`) da
+   **352** y es basura: mete *«el estómago se divide en distintas regiones»*, *«la secuencia rápida
+   de intubación consta de varias etapas»* y *«el Grupo Correos cuenta con una sólida estructura»*.
+   Son preguntas de fondo perfectamente vinculadas. Hay que exigir además una **división propia de
+   un texto legal** (título/capítulo/libro/disposición/artículos) **y** que el sujeto sea una
+   **norma**, y filtrar por `laws.boe_url IS NOT NULL` para echar fuera apuntes y temarios propios.
+2. Con ese corte salen **14**… y **se deja fuera el caso que originó la ficha**, porque el enunciado
+   dice solo *«La ley … cuenta con:»* y las divisiones viven en las **OPCIONES**. El corte bueno
+   mira **enunciado + opciones** juntos. De 14 a 23.
+   → Moraleja de las dos: leer una muestra antes de creerse el número, y comprobar que el corte
+   captura el caso conocido. Un detector que no encuentra su propio caso raíz no está medido.
+
+**Qué hay que hacer, por ley (no por pregunta: el Artículo 0 es fila compartida).**
+1. Sacar las preguntas estructurales de esa ley con el corte de arriba.
+2. Si la ley **no tiene Artículo 0**, crearlo con la estructura **verificada contra el BOE**
+   (rúbricas literales de títulos y capítulos, rangos de artículos, recuento de disposiciones).
+   NUNCA transcribir la estructura de la propia explicación de la pregunta.
+3. Re-vincular las preguntas al Artículo 0 (`primary_article_id`).
+4. Comprobar tema a tema si el `0` está en el `article_numbers` de los `topic_scope` que sirven esas
+   preguntas; si no, añadirlo — **sin ese paso el dato sigue sin estar en el temario**, que es la
+   queja original.
+5. Revalidar `temario` + `test-counts` (+ `teoria`) y **comprobarlo en el HTML servido**, no en la BD:
+   la revalidación es per-instancia y hay que repetirla.
+
+**Empezar por la CE** (7 preguntas y es la ley más servida del banco). Su Artículo 0 ya existe y
+recoge estructura e historia de reformas, así que ahí el trabajo es solo re-vincular y comprobar el
+scope — la parte cara (redactar el Artículo 0 contra el BOE) no aplica.
+
+**Capa que falta y sin la cual esto se repite:** no hay detector. El corte medido aquí debería vivir
+como núcleo puro + kind del barrido (`pregunta_estructural_sin_articulo_cero`), en la banda de los
+que **no pingan el badge** (precisión ~85% medida, se adjudica leyendo). Hoy la única forma de
+enterarse es que lo impugne un usuario, que es exactamente lo que pasó.
 
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
