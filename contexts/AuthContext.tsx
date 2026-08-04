@@ -16,6 +16,8 @@ import {
 } from '@/lib/security/sessionIpTracking'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
 import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
+import { decidirSesionFantasma } from '@/lib/auth/sesionFantasma'
+import { emitClientEvent } from '@/lib/observability/client'
 import SessionWarningModal from '../components/SessionWarningModal'
 import { logClientError } from '../lib/logClientError'
 
@@ -143,6 +145,20 @@ function clearCachedProfile(): void {
   try {
     const key = profileCacheKey()
     if (key) localStorage.removeItem(key)
+  } catch {}
+}
+
+/**
+ * Borra el blob de sesión LEGACY de Supabase, que es de donde tira el pre-hydrate.
+ *
+ * Sin esto, soltar al usuario no dura ni una recarga: el pre-hydrate vuelve a leer el blob y le
+ * encierra otra vez (T-434). La fórmula de la clave estaba escrita a mano en cuatro sitios de
+ * este fichero; aquí queda una sola vez.
+ */
+function limpiarBlobLegacySupabase(): void {
+  try {
+    const ref = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('://')[1]?.split('.')[0]
+    if (ref && typeof window !== 'undefined') localStorage.removeItem(`sb-${ref}-auth`)
   } catch {}
 }
 
@@ -725,7 +741,25 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         // 🛡️ NO hacer setUser(null) si hay perfil cacheado — previene que
         // ProgressiveRegistrationManager muestre "Regístrate" a usuarios Premium
         // cuando Supabase no puede refrescar el token (pool saturado).
-        // setUser(null) se hace SOLO tras confirmar que la sesión está realmente perdida.
+        //
+        // …PERO esa guarda no tenía salida (T-434): el perfil cacheado que impide limpiar lo
+        // acaba de poner el pre-hydrate, así que se alimentaban entre sí y la persona quedaba
+        // encerrada PARA SIEMPRE — viéndose dentro mientras cada llamada al servidor le rebota,
+        // sin que se le guarde nada y sin poder pagar. Medido el 04/08: 44 personas rebotando
+        // 3+ días distintos (una, 167 veces en 11 días) y 6 intentos de compra rechazados.
+        //
+        // El comentario de arriba prometía limpiar «tras confirmar que la sesión está realmente
+        // perdida» y ese camino NO existía. `INITIAL_SESSION` con sesión nula ES esa
+        // confirmación: Auth.js ya ha mirado la cookie y dice que no hay nadie. Quién decide
+        // eso vive aparte y PURO en `lib/auth/sesionFantasma.ts` (con sus unitarios), porque el
+        // criterio tiene que poder probarse sin navegador.
+        // ⚠️ Esta guarda NO se toca (T-434, 04/08). La tentación era limpiar aquí mismo en
+        // cuanto `INITIAL_SESSION` llega sin sesión, y **es demasiado agresivo**: existe el caso
+        // legítimo del premium cuya sesión SÍ está y cuyo `INITIAL_SESSION` vuelve nulo por un
+        // fallo transitorio — a ése lo recupera el reintento de más abajo. Al probarlo, el test
+        // «caso Nila» se puso rojo: el premium sano se quedaba fuera. El agujero real no está
+        // aquí, sino en la limpieza definitiva de abajo, que soltaba el perfil pero NO el blob
+        // legacy de `localStorage` (ver `limpiarBlobLegacySupabase`).
         if (newUser || !userProfileRef.current) {
           setUser(newUser)
         } else {
@@ -792,11 +826,47 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
                           console.log('✅ Sesión recuperada en segundo reintento')
                           setUser(retry2.user.raw as User)
                         } else {
-                          // Sesión realmente perdida — limpiar
+                          // Sesión realmente perdida — limpiar.
+                          //
+                          // 🔴 AQUÍ ESTABA EL ENCIERRO (T-434). Esto soltaba el usuario y el
+                          // perfil cacheado… pero NO el blob legacy de Supabase, así que en la
+                          // SIGUIENTE CARGA el pre-hydrate volvía a leerlo, volvía a poner
+                          // usuario + perfil, y la guarda de arriba volvía a impedir la
+                          // limpieza. Bucle cerrado: la persona se veía dentro para siempre
+                          // mientras cada llamada al servidor le rebotaba, sin que se le
+                          // guardara nada y sin poder pagar. Medido el 04/08: 44 personas
+                          // rebotando 3+ días distintos (una, 167 veces en 11 días) y 6 intentos
+                          // de compra rechazados.
+                          //
+                          // Este punto es el sitio correcto para romperlo, y no la guarda de
+                          // arriba: aquí Auth.js ya ha dicho «no hay nadie» DOS veces con 15 s
+                          // de margen, así que no es un fallo transitorio — el premium sano al
+                          // que protege el «caso Nila» ya se ha recuperado en el `if` de encima.
                           console.log('👋 Sesión perdida tras 2 reintentos — limpiando')
+                          const decision = decidirSesionFantasma({
+                            evento: 'INITIAL_SESSION',
+                            haySesion: false,
+                            hayPerfilCacheado: userProfileRef.current !== null,
+                          })
+                          const idFantasma = userProfileRef.current?.id ?? null
                           updateUserProfile(null)
                           clearCachedProfile()
                           setUser(null)
+                          if (decision.limpiar) {
+                            limpiarBlobLegacySupabase()
+                            // 📡 Sin esta señal la cura sería MUDA, y un canario a cero no se
+                            // distinguiría de «esto no se ejecuta» — que es el error que esta
+                            // misma ficha ya cometió con `auth_alta_sin_perfil`. `warn` y no
+                            // `error`: cada emisión es alguien que ESTABA roto y acaba de
+                            // soltarse, así que la serie debe caer sola según se vacía la bolsa;
+                            // si no cae, siguen naciendo fantasmas nuevos.
+                            emitClientEvent({
+                              severity: 'warn',
+                              eventType: 'sesion_fantasma_soltada',
+                              errorMessage: 'sesión perdida tras 2 reintentos: se suelta también el blob legacy',
+                              metadata: { motivo: decision.motivo, userId: idFantasma },
+                            })
+                          }
                         }
                       } catch {
                         console.log('👋 Error en segundo reintento — limpiando')

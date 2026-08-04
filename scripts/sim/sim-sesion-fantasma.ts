@@ -63,9 +63,38 @@ const anota = (nombre: string, ok: boolean, detalle: string) => {
   console.log(`   ${ok ? '✅' : '❌'} ${nombre}\n      ${detalle}`)
 }
 
-/** El blob que deja Supabase legacy en `localStorage` y del que tira el pre-hydrate. */
-const blobLegacy = (id: string, email: string) =>
-  JSON.stringify({ user: { id, email, user_metadata: { full_name: 'Fantasma Sim' } } })
+/**
+ * El blob que deja Supabase legacy en `localStorage` y del que tira el pre-hydrate.
+ *
+ * ⚠️ TIENE QUE PARECERSE AL DE VERDAD, y esto es lo que invalidaba la medición anterior
+ * (01/08): la primera versión guardaba solo `{user:{id,email}}`, sin `access_token` ni
+ * `expires_at`. Con eso el cliente lo trataba como un token caducado —rama que YA limpiaba— así
+ * que el caso salía VERDE contra un código que no tenía el arreglo. **Un verde que no depende
+ * del arreglo no prueba nada**, y por poco se lee como que el fallo no existía.
+ *
+ * Un blob real lleva sesión completa y NO caducada: es el estado en el que están las personas
+ * medidas —cliente convencido de estar dentro, servidor que no las conoce—, y el único con el
+ * que la simulación puede distinguir el código roto del arreglado.
+ */
+const blobLegacy = (id: string, email: string) => {
+  const ahoraSeg = Math.floor(Date.now() / 1000)
+  return JSON.stringify({
+    access_token: `sim.${Buffer.from(id).toString('base64url')}.fantasma`,
+    refresh_token: `sim-refresh-${id.slice(0, 8)}`,
+    token_type: 'bearer',
+    expires_in: MES,
+    expires_at: ahoraSeg + MES, // NO caducado: si caducara, el cliente ya lo limpiaba por otra rama
+    user: {
+      id,
+      email,
+      aud: 'authenticated',
+      role: 'authenticated',
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: { full_name: 'Fantasma Sim' },
+      created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+    },
+  })
+}
 
 /** El perfil cacheado: lo pone el propio pre-hydrate y es lo que impedía soltar al usuario. */
 const perfilCacheado = (id: string, email: string) =>
@@ -131,9 +160,15 @@ async function main() {
     )
     const p = await ctx.newPage()
     await p.goto(`${URL_BASE}/`, { waitUntil: 'domcontentloaded' })
-    // El veredicto llega con `INITIAL_SESSION`, que el adaptador emite por sondeo: hay que
-    // darle su tiempo o se mediría el estado de antes de la decisión.
-    await p.waitForTimeout(6000)
+    // El veredicto llega con `INITIAL_SESSION`, que el adaptador emite por sondeo, y la
+    // limpieza NO es inmediata: el cliente protege al premium con perfil cacheado dando dos
+    // oportunidades a la sesión (reintento a los 5 s y otro 10 s después) antes de darla por
+    // perdida. Hay que esperar a que ESE plazo venza, o se mediría el estado de antes de la
+    // decisión y el caso saldría rojo sin que nada esté mal.
+    //
+    // ⚠️ Esperar 6 s —lo que había— mide la ventana equivocada: es justo el hueco en el que el
+    // cliente todavía está, a propósito, conservando el perfil.
+    await p.waitForTimeout(22000)
     const estado = await p.evaluate(
       ([k1, k2]: string[]) => ({
         sesionLegacy: localStorage.getItem(k1) !== null,

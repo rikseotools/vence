@@ -192,6 +192,54 @@ async function main() {
     } else {
       console.log(`\n   🟢 Nadie atascado más de ${reb.resumen.minDias} días.`)
     }
+
+    // ── ¿Está corriendo la CURA? (T-434) ─────────────────────────────────────────────────
+    // El bloque de arriba cuenta a los rotos. Este cuenta las veces que el cliente ha SOLTADO
+    // una sesión fantasma, y hace falta por un motivo que esta misma ficha ya aprendió a su
+    // costa: `auth_alta_sin_perfil` llevaba a 0 desde siempre y se leyó como «ningún reintento
+    // ha fallado», cuando significaba «esto no se ejecuta». **Una señal que nunca ha hablado no
+    // puede tranquilizar a nadie.** Con esto, un 0 arriba se puede interpretar: si además hay
+    // curas, la bolsa se está drenando; si no hay ninguna, lo que hay que mirar es si el
+    // arreglo está desplegado.
+    // Se EXCLUYE el tráfico de simulación. `sim-sesion-fantasma.ts` fabrica un fantasma
+    // sintético, y su caso 1 no puede llevar la marca en cookie que usan las demás sims —el
+    // fantasma se define justamente por NO tener cookie—, así que cada corrida de la simulación
+    // sumaría una «cura» falsa y el canario diría que el arreglo está drenando cuando lo único
+    // que ha pasado es que alguien probó. El discriminante honesto es el navegador: un usuario
+    // real no llega en headless.
+    const NO_SIMULACION = `coalesce(metadata->>'userAgent','') NOT ILIKE '%HeadlessChrome%'`
+    const cura = await c.query(
+      `SELECT count(*)::int eventos,
+              count(DISTINCT metadata->>'userId')::int usuarios,
+              max(created_at) ultima
+         FROM observable_events
+        WHERE event_type = 'sesion_fantasma_soltada'
+          AND ${NO_SIMULACION}
+          AND created_at > now() - ($1 || ' hours')::interval`,
+      [String(HORAS)],
+    )
+    const cur = cura.rows[0]
+    console.log(`\n── La cura, ¿corre? — sesiones fantasma soltadas (${HORAS} h) ${'─'.repeat(11)}`)
+    if (cur.eventos > 0) {
+      console.log(
+        `   🟢 ${cur.eventos} liberación(es) en ${cur.usuarios} usuario(s) · última ` +
+          `${new Date(cur.ultima).toISOString().slice(0, 16)}`,
+      )
+      console.log(`      El arreglo está vivo y drenando. Esta serie DEBE bajar sola según se`)
+      console.log(`      vacía la bolsa; si se mantiene, siguen naciendo fantasmas nuevos.`)
+    } else {
+      const total = await c.query(
+        `SELECT count(*)::int n FROM observable_events
+          WHERE event_type = 'sesion_fantasma_soltada' AND ${NO_SIMULACION}`,
+      )
+      console.log(
+        total.rows[0].n > 0
+          ? `   🟢 ninguna en esta ventana (histórico: ${total.rows[0].n}). Nadie a quien soltar.`
+          : `   ⚠️  NUNCA se ha emitido esta señal — un 0 aquí NO es buena noticia:\n` +
+            `      significa que la cura no se ha ejecutado todavía. Comprobar que el arreglo\n` +
+            `      del cliente está DESPLEGADO antes de leer los ceros de arriba como sanos.`,
+      )
+    }
     console.log('')
     return codigo
   } finally {

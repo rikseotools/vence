@@ -58,6 +58,27 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Soltar al que «cree estar dentro» sin soltar al que sí lo está ───────────────────────
+  sim_sesion_fantasma: {
+    titulo: 'Comprobar que se suelta la sesión fantasma y NO se desloguea al usuario sano (T-434)',
+    ruta: 'scripts/sim/sim-sesion-fantasma.ts',
+    estado: 'vivo',
+    notas:
+      'AUTH_SECRET=… npx tsx --env-file=.env.local scripts/sim/sim-sesion-fantasma.ts ' +
+      '[--url=https://www.vence.es]. Navegador real. Siembra el blob LEGACY de Supabase en ' +
+      'localStorage antes de que cargue la app (si no, el pre-hydrate ya habría corrido) y mira ' +
+      'qué queda después. DOS casos y hacen falta los dos, porque este cambio puede fallar en ' +
+      'las dos direcciones y solo una se nota: soltar de MENOS deja a la persona encerrada ' +
+      '(silencioso), soltar de MÁS desloguea a premium sanos (ruidoso y caro). ' +
+      '⚠️ EL FIXTURE ES LA PARTE FRÁGIL: el blob tiene que llevar access_token y un expires_at ' +
+      'NO caducado, o el cliente lo trata como token expirado —rama que ya limpiaba— y el caso ' +
+      'sale VERDE contra código SIN el arreglo, que es lo que pasó el 01/08 y no probaba nada. ' +
+      'Validada por mutación el 04/08: ROJA contra producción sin el arreglo, VERDE (2/2) contra ' +
+      'local con él. Solo LEE; el fantasma se fabrica con un id inventado. La decisión vive ' +
+      'aparte y pura en `lib/auth/sesionFantasma.ts` (9 tests) y la vigilancia en ' +
+      '`npm run canary:perfil-sin-resolver`, que cuenta las curas EXCLUYENDO el tráfico headless ' +
+      'de esta misma simulación.',
+  },
   // ── La cabecera nunca deja nada fuera de la pantalla ──────────────────────────────────────
   sim_cabecera_alcanzable: {
     titulo: 'Comprobar que la cabecera no deja perfil ni notificaciones fuera de la pantalla (T-504)',
