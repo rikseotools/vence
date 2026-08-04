@@ -469,6 +469,69 @@ VENCE_SESSION_ROLE=trabajador npm run sesion:preflight      # trabajador: exit 1
 VENCE_SESSION_ROLE=trabajador VENCE_SESSION_HOME=/ruta/a/su/worktree  <arranque del trabajador>
 ```
 
+#### Levantar un trabajador en un servidor: `scripts/flota/arrancar-trabajador.sh`
+
+Las sesiones se reparten el trabajo **por base de datos**, no por estar en la misma máquina: el
+claim con su lease, el latido, el embudo y las entregas viven en RDS. Así que una sesión en un VPS
+participa del **mismo** reparto que las del portátil sin sincronizar nada — pero solo si arranca
+bien puesta, y eso son seis cosas que a mano se olvidan.
+
+```bash
+# en el portátil, UNA VEZ POR CUENTA (necesita navegador):
+claude setup-token                          # token OAuth de 1 año
+
+# en el VPS:
+export CLAUDE_CODE_OAUTH_TOKEN='…'                  # cuenta principal
+export CLAUDE_CODE_OAUTH_TOKEN_SECUNDARIA='…'       # (opcional) segunda cuenta
+export VENCE_COORDINACION_URL='postgres://vence_coordinacion:…@<host-rds>:5432/<base>'
+./scripts/flota/arrancar-trabajador.sh w1 [--cuenta secundaria]
+```
+
+**Varias cuentas de Claude Code.** El registro vive en `lib/flota/cuentas.cjs` con la **misma forma
+que el multi-cuenta de Stripe**: añadir una cuenta es **una fila y su variable**, sin tocar a ningún
+consumidor. La cuenta por defecto lee la variable histórica sin sufijo, así que lo que ya funcionaba
+sigue funcionando.
+
+El reparto es **determinista por nombre, no rotatorio**: `w1` cae siempre en la misma cuenta,
+reinicie las veces que reinicie. Con rotación, un reinicio movería a `w1` de cuenta y entonces el
+consumo por cuenta dejaría de ser comparable consigo mismo — si una topa su límite, no se podría
+saber a quién le pasó ni reproducirlo. `--cuenta` fuerza una concreta; un nombre que no existe
+**falla** en vez de caer al reparto en silencio.
+
+**El token se pide UNA vez.** `claude setup-token` da un token de **un año**; el script lo persiste
+en `/etc/vence-flota/<slug>.env` con permisos `0600` y lo lee una **unidad de systemd**. Así
+sobrevive a que se caiga el SSH, a que se cierre la terminal y a un reinicio de la máquina. Dentro,
+la unidad arranca **tmux**, para que la sesión siga siendo atachable y se pueda hablar con ella:
+systemd la levanta, tmux la hace conversable. Los dos, no uno — una flota que hay que rearrancar a
+mano cada vez que el proveedor reinicia un host no es una flota.
+
+> ⚠️ **`--bare` NO lee `CLAUDE_CODE_OAUTH_TOKEN`** (documentación oficial de autenticación), y bare
+> es justo lo que recomiendan para CI. Por eso el arranque usa `claude` normal. Si alguien
+> «optimiza» el arranque metiendo `--bare`, la flota deja de autenticar.
+
+```bash
+systemctl status vence-flota@w1     # cómo está
+systemctl stop   vence-flota@w1     # pararlo
+tmux attach -t w1                   # hablar con él (soltar: Ctrl-b d)
+```
+
+**Las dos credenciales, y por qué son ESAS:**
+
+- **El token NO se copia de `~/.claude/.credentials.json`.** Ese camino no está soportado y se
+  rompe en silencio al caducar. `claude setup-token` está pensado exactamente para servidores.
+- **La BD NO es el `.env.local` del portátil.** Ese es el de la APLICACIÓN: abre `user_profiles`,
+  `questions` y los pagos. El trabajador recibe `vence_coordinacion`, que solo alcanza las cuatro
+  tablas del reparto (§6.quater). Si algún día alguien «arregla» un fallo copiando el `.env.local`,
+  habrá puesto la credencial de negocio en N servidores sin forma de rotarla.
+
+**El gate del final no es decorativo:** el script termina corriendo el preflight como trabajador y
+**si no puede latir, no arranca nada**. Un trabajador invisible reclamaría tareas que nadie ve ni
+puede recuperar. Y deja la sesión en **tmux**, para que cerrar el SSH no lo mate a media tarea.
+
+Desde el portátil, la flota se ve y se gobierna con lo que ya existe: `npm run parte` (quién
+trabaja, quién está parado), `backlog.cjs preguntas` (lo que te preguntan sin entrar en su
+terminal) y el cajón 🙋 de `list` (lo que te entregan).
+
 #### `VENCE_SESSION_HOME`: el ancla que sobrevive al cambio de directorio
 
 La identidad de este sistema la manda el **sitio** (§3.3: el `.session-id` del directorio gana). Es

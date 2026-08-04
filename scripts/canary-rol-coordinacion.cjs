@@ -95,12 +95,22 @@ async function main() {
 
     await coord`INSERT INTO public.backlog_tasks (id, title, status, priority)
                 VALUES (${SUF}, 'canario del rol de coordinación', 'open', 'baja')`
-    await coord`UPDATE public.backlog_tasks SET claimed_by = ${SUF}, status = 'in_progress' WHERE id = ${SUF}`
+    // Los tres campos del claim van JUNTOS: lo exige el CHECK `backlog_claim_coherente`, y con
+    // razón — un `claimed_by` sin lease sería una tarea cogida para siempre por alguien que quizá
+    // ya no existe. La primera versión de este canario ponía solo `claimed_by` y la BD la paró:
+    // el canario estaba mal, no el rol.
+    await coord`UPDATE public.backlog_tasks
+                   SET claimed_by = ${SUF}, claimed_at = now(),
+                       lease_until = now() + interval '90 minutes', status = 'in_progress'
+                 WHERE id = ${SUF}`
     const t = await coord`SELECT claimed_by FROM public.backlog_tasks WHERE id = ${SUF}`
     afirmar('reclamar una tarea (INSERT + UPDATE + SELECT)', t.length === 1 && t[0].claimed_by === SUF)
 
+    // La pregunta tiene un mínimo de 15 caracteres (`session_questions_question_check`): una
+    // pregunta de dos palabras no le dice nada a quien la lee. El dato de prueba lo cumple porque
+    // el canario prueba el PERMISO, no cómo saltarse las reglas de la tabla.
     await coord`INSERT INTO public.session_questions (sid, question, blocking)
-                VALUES (${SUF}, 'canario', false)`
+                VALUES (${SUF}, 'canario del rol de coordinación: ¿puede este rol preguntar?', false)`
     afirmar('preguntar por el embudo (y su SECUENCIA concede USAGE)', true)
 
     await coord`INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message)
@@ -112,7 +122,12 @@ async function main() {
 
     await debeDenegar('leer user_profiles (datos de usuarios)', () => coord`SELECT id FROM public.user_profiles LIMIT 1`)
     await debeDenegar('leer questions (el banco entero)', () => coord`SELECT id FROM public.questions LIMIT 1`)
-    await debeDenegar('leer test_sessions (actividad de usuarios)', () => coord`SELECT id FROM public.test_sessions LIMIT 1`)
+    // OJO: las tablas de esta lista tienen que EXISTIR. La primera versión probaba contra
+    // `test_sessions`, que no existe en RDS —está en CLAUDE.md pero no en la base—, y el motor
+    // respondía «no existe» en vez de «denegado». Eso habría pasado por verde en un canario menos
+    // estricto: por eso `debeDenegar` exige el código 42501 y no se conforma con «falló».
+    await debeDenegar('leer tests (actividad de usuarios)', () => coord`SELECT id FROM public.tests LIMIT 1`)
+    await debeDenegar('leer user_subscriptions (quién paga y cuánto)', () => coord`SELECT id FROM public.user_subscriptions LIMIT 1`)
     // `observable_events` es la trampa fina: necesita INSERT y NO debe poder LEER — tiene cientos
     // de miles de filas con user_id, y un SELECT de conveniencia las regalaría.
     await debeDenegar('LEER observable_events (solo puede escribir)', () => coord`SELECT id FROM public.observable_events LIMIT 1`)

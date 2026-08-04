@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# Convierte una máquina Linux pelada en un TRABAJADOR de la flota, sincronizado con las sesiones
+# del portátil, y lo deja arrancando SOLO tras un reinicio. (T-486 / T-539)
+#
+# ── QUÉ RESUELVE ─────────────────────────────────────────────────────────────────────────────
+# Las sesiones de este repo se reparten el trabajo por BASE DE DATOS, no por estar en la misma
+# máquina: el claim con lease, el latido, el embudo de preguntas y las entregas viven en RDS. Una
+# sesión en un servidor participa del MISMO reparto sin sincronizar nada — pero solo si arranca
+# bien puesta, y "bien puesta" son cosas que a mano se olvidan.
+#
+# Idempotente: se puede volver a correr sin romper nada ni pisar trabajo en curso.
+#
+# ── LAS DOS CREDENCIALES, Y POR QUÉ SON ESAS ────────────────────────────────────────────────
+#  1. **El token de Claude Code.** Se acuña con `claude setup-token` (dura UN AÑO) en una máquina
+#     CON navegador y viaja en la variable de su cuenta. NO se copia `~/.claude/.credentials.json`:
+#     ese camino no está soportado y se rompe en silencio al caducar.
+#     ⚠️ La documentación avisa de que **`--bare` NO lee `CLAUDE_CODE_OAUTH_TOKEN`**. Por eso aquí
+#     se arranca `claude` normal y no en modo bare, aunque bare sea lo que recomiendan para CI.
+#  2. **La credencial de la BD de coordinación.** Un trabajador NO recibe el `.env.local` del
+#     portátil: esa es la credencial de la APLICACIÓN y abre `user_profiles`, `questions` y los
+#     pagos — en una máquina expuesta a internet. Recibe `vence_coordinacion`, que solo alcanza las
+#     4 tablas del reparto.
+#
+# ── VARIAS CUENTAS DE CLAUDE CODE ───────────────────────────────────────────────────────────
+# El registro vive en `lib/flota/cuentas.cjs`, con la misma forma que el multi-cuenta de Stripe:
+# **añadir una cuenta = una fila + su variable**. El reparto es DETERMINISTA por nombre, así que
+# `w1` cae siempre en la misma cuenta reinicie las veces que reinicie — si fuese rotatorio, el
+# consumo por cuenta dejaría de ser comparable consigo mismo y no se podría saber quién saturó cuál.
+# Se puede forzar con `--cuenta <nombre>`.
+#
+# ── POR QUÉ SYSTEMD Y ADEMÁS TMUX ───────────────────────────────────────────────────────────
+# tmux solo no sobrevive a un reinicio de la máquina, y una flota que hay que rearrancar a mano
+# cada vez que el proveedor reinicia un host no es una flota. systemd la levanta al arrancar; tmux
+# la mantiene ATACHABLE, que es lo que permite hablar con ella. Los dos, no uno.
+#
+# ── USO ──────────────────────────────────────────────────────────────────────────────────────
+#   # en el portátil, una vez por CUENTA (necesita navegador):
+#   claude setup-token
+#
+#   # en el VPS:
+#   export CLAUDE_CODE_OAUTH_TOKEN='…'                    # cuenta principal
+#   export CLAUDE_CODE_OAUTH_TOKEN_SECUNDARIA='…'         # (opcional) segunda cuenta
+#   export VENCE_COORDINACION_URL='postgres://vence_coordinacion:…@<host-rds>:5432/<base>'
+#   ./arrancar-trabajador.sh w1 [--cuenta secundaria]
+set -euo pipefail
+
+SLUG="${1:-}"; shift || true
+CUENTA_PEDIDA=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --cuenta) CUENTA_PEDIDA="${2:-}"; shift 2 ;;
+    *) echo "❌ flag desconocido: $1"; exit 2 ;;
+  esac
+done
+[ -n "$SLUG" ] || { echo "Uso: arrancar-trabajador.sh <nombre> [--cuenta <cuenta>]"; exit 2; }
+[[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "❌ nombre inválido: usa kebab-case"; exit 2; }
+
+REPO_URL="${VENCE_REPO_URL:-https://github.com/rikseotools/vence.git}"
+BASE="${VENCE_BASE_DIR:-$HOME/vence}"
+SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$HOME/vence-sessions}"
+WT="$SESSIONS_DIR/$SLUG"
+ENV_DIR="/etc/vence-flota"
+ENV_FILE="$ENV_DIR/$SLUG.env"
+UNIT="/etc/systemd/system/vence-flota@.service"
+
+fallo() { echo ""; echo "❌ $1"; echo ""; exit 1; }
+
+echo "══ TRABAJADOR '$SLUG' ══"
+
+# ── 1. LO QUE TIENE QUE ESTAR ANTES ─────────────────────────────────────────────────────────
+for cmd in git node npm tmux systemctl; do
+  command -v "$cmd" >/dev/null || fallo "falta '$cmd'. En Debian/Ubuntu: sudo apt install -y $cmd"
+done
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+[ "$NODE_MAJOR" -ge 22 ] || fallo "node $NODE_MAJOR es demasiado viejo: hace falta 22+ (el repo usa --env-file)"
+
+[ -n "${VENCE_COORDINACION_URL:-}" ] || fallo \
+  "falta VENCE_COORDINACION_URL (rol vence_coordinacion, NO el .env.local del portátil).
+   Procedimiento: docs/runbooks/sistema-sesiones-paralelas.md §6.quater"
+
+# ── 2. CLAUDE CODE ──────────────────────────────────────────────────────────────────────────
+command -v claude >/dev/null || { echo "→ instalando Claude Code…"; npm install -g @anthropic-ai/claude-code; }
+echo "→ claude $(claude --version 2>/dev/null || echo '?')"
+
+# ── 3. EL REPO ──────────────────────────────────────────────────────────────────────────────
+if [ -d "$BASE/.git" ]; then
+  echo "→ repo ya está, actualizando origin…"; git -C "$BASE" fetch origin --quiet
+else
+  echo "→ clonando el repo en $BASE…"; git clone --quiet "$REPO_URL" "$BASE"
+fi
+git -C "$BASE" config user.name  "flota-$SLUG"
+git -C "$BASE" config user.email "flota@vence.es"
+
+echo "→ dependencias…"
+( cd "$BASE" && npm ci --silent )
+[ -d "$BASE/backend" ] && ( cd "$BASE/backend" && npm ci --silent ) || true
+
+# ── 4. QUÉ CUENTA DE CLAUDE CODE LE TOCA ────────────────────────────────────────────────────
+# La decisión vive en el núcleo puro (testeado); aquí solo se consulta y se obedece.
+RES="$(cd "$BASE" && node -e "
+  const C = require('./lib/flota/cuentas.cjs')
+  const r = C.resolver(process.argv[1], process.argv[2] || null)
+  process.stdout.write(JSON.stringify(r))
+" "$SLUG" "$CUENTA_PEDIDA")"
+CUENTA="$(printf '%s' "$RES" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).cuenta || ""')"
+TOKEN="$(printf '%s' "$RES" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).token || ""')"
+PROBLEMA="$(printf '%s' "$RES" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).problema || ""')"
+[ -n "$TOKEN" ] || fallo "$PROBLEMA"
+echo "→ cuenta de Claude Code: $CUENTA"
+
+# ── 5. SU PROPIO ÁRBOL ──────────────────────────────────────────────────────────────────────
+# Con el tooling de siempre: acuña el .session-id estampando la MÁQUINA, así que dos trabajadores
+# de servidores distintos no pueden colisionar de identidad ni por casualidad (T-484).
+if [ -d "$WT" ]; then
+  echo "→ el árbol $WT ya existe, se reutiliza"
+else
+  ( cd "$BASE" && VENCE_SESSIONS_DIR="$SESSIONS_DIR" scripts/worktrees/crear-worktree.sh "$SLUG" >/dev/null )
+  echo "→ árbol propio en $WT"
+fi
+# La coordinación va donde el andamiaje la busca, y SOLO ella: ni pagos ni AUTH_SECRET.
+umask 077
+printf 'DATABASE_URL=%s\n' "$VENCE_COORDINACION_URL" > "$WT/.env.local"
+
+# ── 6. LA CREDENCIAL, PERSISTIDA UNA SOLA VEZ ───────────────────────────────────────────────
+# Fichero de entorno con permisos 0600 que lee systemd. Es lo que hace que el token se pida UNA
+# vez: sobrevive a reinicios, a que se caiga el SSH y a que se cierre la terminal.
+mkdir -p "$ENV_DIR"; chmod 700 "$ENV_DIR"
+umask 077
+cat > "$ENV_FILE" <<ENVF
+# Trabajador '$SLUG' de la flota de Vence. Generado por arrancar-trabajador.sh — NO editar a mano.
+# El token dura un año (claude setup-token). Cuenta: $CUENTA
+CLAUDE_CODE_OAUTH_TOKEN=$TOKEN
+VENCE_FLOTA_CUENTA=$CUENTA
+VENCE_SESSION_ROLE=trabajador
+VENCE_SESSION_HOME=$WT
+VENCE_SESSION_HOST=${VENCE_SESSION_HOST:-$(hostname -s)}
+DATABASE_URL=$VENCE_COORDINACION_URL
+ENVF
+chmod 600 "$ENV_FILE"
+echo "→ credencial persistida en $ENV_FILE (0600): no se vuelve a pedir"
+
+# ── 7. LA UNIDAD DE SYSTEMD (una plantilla para todos los trabajadores) ─────────────────────
+cat > "$UNIT" <<'UNITF'
+[Unit]
+Description=Trabajador %i de la flota de Vence (Claude Code en tmux)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+# El token y el resto del entorno viven aquí, con permisos 0600. Nunca en la línea de órdenes:
+# lo que va en ExecStart es visible en `ps` para cualquier usuario de la máquina.
+EnvironmentFile=/etc/vence-flota/%i.env
+# tmux mantiene la sesión ATACHABLE (que es como se habla con ella); systemd la levanta sola tras
+# un reinicio. Los dos, no uno: una flota que hay que rearrancar a mano no es una flota.
+ExecStart=/usr/bin/tmux new-session -d -s %i -c ${VENCE_SESSION_HOME} claude
+ExecStop=/usr/bin/tmux kill-session -t %i
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+UNITF
+systemctl daemon-reload
+echo "→ unidad systemd instalada (vence-flota@$SLUG)"
+
+# ── 8. EL GATE: si no puede participar del reparto, NO arranca ──────────────────────────────
+echo ""
+echo "→ comprobando que puede participar del reparto…"
+if ! ( cd "$WT" && set -a && . "$ENV_FILE" && set +a && npm run --silent sesion:preflight ); then
+  fallo "el preflight dice que este trabajador no está listo (ver arriba).
+   No se arranca: un trabajador invisible reclamaría tareas que nadie puede ver ni recuperar."
+fi
+
+# ── 9. ARRANQUE ─────────────────────────────────────────────────────────────────────────────
+if tmux has-session -t "$SLUG" 2>/dev/null; then
+  echo "→ ya había una sesión tmux '$SLUG': se conserva (no se pisa el trabajo en curso)"
+  systemctl enable "vence-flota@$SLUG" >/dev/null 2>&1 || true
+else
+  systemctl enable --now "vence-flota@$SLUG"
+  echo "→ arrancado y habilitado para el próximo reinicio"
+fi
+
+cat <<FIN
+
+✅ trabajador '$SLUG' en marcha
+   árbol:   $WT
+   cuenta:  $CUENTA
+   máquina: $(hostname -s)
+   rol:     trabajador (sus guardarraíles fallan CERRADOS)
+
+   hablar con él:            tmux attach -t $SLUG      (soltar sin matarlo: Ctrl-b d)
+   pararlo / arrancarlo:     systemctl stop|start vence-flota@$SLUG
+   verlo desde el portátil:  npm run parte
+   lo que te pregunte:       node scripts/backlog.cjs preguntas
+   lo que te entregue:       sale bajo 🙋 en 'backlog list'
+FIN

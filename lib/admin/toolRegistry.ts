@@ -1740,6 +1740,47 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'ese 17 %. Es GATE, no informe: si el repo empieza a declarar trabajo solo en el cuerpo, ' +
       'la relajación deja de ser segura y nadie se enteraría. Techo 6 %, exit 1 al pasarlo.',
   },
+  flota_arrancar_trabajador: {
+    titulo: 'Convertir una máquina Linux pelada en un TRABAJADOR de la flota, sincronizado con las sesiones del portátil',
+    ruta: 'scripts/flota/arrancar-trabajador.sh',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`./arrancar-trabajador.sh <nombre>` EN EL VPS, idempotente. Las sesiones se reparten el ' +
+      'trabajo por BASE DE DATOS (claim con lease, latido, embudo, entregas), así que una sesión ' +
+      'en un servidor participa del MISMO reparto sin sincronizar nada — pero solo si arranca bien ' +
+      'puesta. Exige las DOS credenciales que no puede inventarse: `CLAUDE_CODE_OAUTH_TOKEN` ' +
+      '(`claude setup-token` en una máquina con navegador; NO se copia `.credentials.json`, ese ' +
+      'camino no está soportado y caduca en silencio) y `VENCE_COORDINACION_URL` (el rol de 4 ' +
+      'tablas, NUNCA el `.env.local` del portátil, que es la credencial de la APLICACIÓN y abre ' +
+      'usuarios y pagos). Declara `VENCE_SESSION_ROLE=trabajador` y `VENCE_SESSION_HOME` desde el ' +
+      'ARRANQUE —si se las pusiera la sesión no serían garantía— y **termina con el preflight como ' +
+      'GATE: si no puede latir, no arranca nada**, porque un trabajador invisible reclamaría tareas ' +
+      'que nadie ve. La credencial se persiste en `/etc/vence-flota/<slug>.env` (0600) y la lee una ' +
+      'unidad **systemd**, que es lo que hace que el token se pida UNA vez y que la flota se levante ' +
+      'sola tras un reinicio; dentro arranca **tmux** para que la sesión siga siendo atachable y se ' +
+      'pueda hablar con ella. Los dos, no uno: tmux solo no sobrevive a un reinicio, y una flota que ' +
+      'hay que rearrancar a mano no es una flota. GOTCHA de la documentación: **`--bare` NO lee ' +
+      '`CLAUDE_CODE_OAUTH_TOKEN`**, así que se arranca `claude` normal aunque bare sea lo que ' +
+      'recomiendan para CI. La cuenta la decide `lib/flota/cuentas.cjs`.',
+  },
+  flota_cuentas: {
+    titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
+    ruta: 'lib/flota/cuentas.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Misma forma que el registro multi-cuenta de Stripe (`lib/stripe.ts` → `ACCOUNT_ENV`), a ' +
+      'propósito: **añadir una cuenta = UNA fila + su variable de entorno**, sin tocar la lógica de ' +
+      'ningún consumidor. La cuenta por defecto lee la variable histórica sin sufijo. El reparto es ' +
+      'DETERMINISTA por nombre y no rotatorio: `w1` cae siempre en la misma cuenta reinicie las ' +
+      'veces que reinicie — con rotación, el consumo por cuenta dejaría de ser comparable consigo ' +
+      'mismo y, si una topa su límite, no se podría saber a quién le pasó ni reproducirlo. Lo ' +
+      'explícito (`--cuenta`) manda, pero un nombre que no existe FALLA en vez de caer al reparto ' +
+      'en silencio. Una cuenta sin token NO existe: declararla no la crea. 15 tests.',
+  },
   backlog_espera_revision: {
     titulo: 'La QUINTA espera del backlog: «hecho, con entregable, esperando que una persona lo revise»',
     ruta: 'lib/backlog/revision.cjs',
