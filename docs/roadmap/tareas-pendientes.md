@@ -3660,6 +3660,20 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 ## Hechas
 
+### [T-522] ✅ [HECHA 04/08] El gate de oposición completa daba por bueno un tema disponible que el test no puede servir
+
+- **Esfuerzo: rato.**
+- **CÓMO SALIÓ.** Persiguiendo la deuda de [T-513]: `mecanico_conductor_estado` (Parque Móvil del Estado, **ACTIVA y con inscripción abierta**, 11 usuarios) tenía **8 temas que anunciaban preguntas y servían CERO**. Al mirarlos uno a uno, 7 ya estaban marcados `disponible=false` (el usuario no entra), pero **el tema 11 «Maniobras de circulación» está `disponible=true`, anuncia 40 y sirve 0**. Verificado con `getFilteredQuestions`, la función que sirve de verdad.
+- **POR QUÉ SIRVE 0:** sus 42 preguntas del scope están etiquetadas como exclusivas de Policía Nacional, así que `buildQuestionTagFilter` las descarta siempre. Es decir: **ese tema no tiene contenido propio**, y lo que lo disimulaba era contar el de otra oposición.
+- **LO GRAVE NO ES EL DATO, ES QUE EL GATE LO BENDECÍA.** `npm run audit:oposicion` existe justo para impedir publicar un tema que invite a entrar y no tenga test, y decía **✅ «ningún topic disponible=true sin preguntas»**. Estaba ciego por la MISMA razón que los contadores de pantalla en [T-507]: contaba lo que hay en el `topic_scope`, no lo que el test puede entregar.
+- **Y era una TERCERA implementación del conteo** (`countQuestionsForTopic`), sin `exam_case_id`, sin filtro de oficiales y sin filtro de tags. Tres copias del criterio son tres verdades.
+- **ARREGLO:** el gate ya no cuenta, **pregunta a producción** (`getFilteredQuestions`), que es la lección que ya estaba escrita en `audit-served-questions.ts` (*«NO reimplementa nada: pregunta a producción cuántas preguntas sirves»*). Se conserva el conteo del scope solo para el MENSAJE, que ahora es accionable: *«T11 disponible=true y el test sirve 0 (tiene 42 en el scope, pero son de otra oposición)»*.
+- **No se queda en la terminal:** el gate ya publicaba en `content_health_findings` desde [T-455], así que el hallazgo sale en `/admin/contenido` con kind `oposicion_incompleta`.
+- **CAPA:** el guardarraíl `officialCountSingleSource` —el que ya vigilaba esta clase de defecto— incorpora el gate a su lista de contadores. Acepta las dos formas legítimas de tener el criterio: aplicar el filtro compartido o preguntarle a `getFilteredQuestions`.
+- **DECISIÓN PENDIENTE DE MANUEL:** qué hacer con el tema 11 en vivo. O se marca `disponible=false` (honesto e inmediato, pero deja el temario específico con un tema menos), o se genera contenido propio para él. Los otros 7 ya están en desarrollo, así que el temario específico de esta oposición está **sin construir** salvo el tema 11 mal marcado. **11 usuarios, ninguno premium.**
+- **Relacionadas:** [T-507] (el mismo defecto en los contadores de pantalla), [T-513] (la deuda del tag, que es lo que hace que sirva 0), [T-455] (que el gate deje rastro).
+
+
 ### [T-517] ✅ [HECHA 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
 
 - **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.

@@ -17,6 +17,9 @@ import * as path from 'path'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { hasCcaaFlag, resolveEscudo, resolveFlagKey } from '@/components/CcaaFlag'
 import { oposicionToCcaa } from '@/app/oposiciones/lib/oposiciones-filters'
+// [T-522] El gate pregunta a PRODUCCIÓN cuántas preguntas serviría, en vez de contarlas él.
+// Ver `contarServibles` más abajo.
+import { getFilteredQuestions } from '@/lib/api/filtered-questions'
 
 const slug = process.argv[2]
 if (!slug) { console.error('Uso: ... audit-oposicion-completa.ts <slug>'); process.exit(2) }
@@ -41,7 +44,7 @@ const ok = (m: string) => console.log('  ✅ ' + m)
 const bad = (m: string) => { console.log('  ❌ ' + m); fails++; hallazgos.push({ severity: 'error', message: m }) }
 const warn = (m: string) => { console.log('  🟡 ' + m); warns++; hallazgos.push({ severity: 'warn', message: m }) }
 
-async function countQuestionsForTopic(topicId: string): Promise<number> {
+async function contarEnScope(topicId: string): Promise<number> {
   const sc = await rows(sql`SELECT law_id, article_numbers, include_full_title FROM topic_scope WHERE topic_id = ${topicId}`)
   let ids: string[] = []
   for (const e of sc) {
@@ -54,6 +57,39 @@ async function countQuestionsForTopic(topicId: string): Promise<number> {
   // RDS acepta el array como parámetro (sin el límite de URL del PostgREST) → una sola query.
   const r = (await rows(sql`SELECT COUNT(*)::int AS c FROM questions WHERE primary_article_id = ANY(${ids}::uuid[]) AND is_active = true`))[0]
   return r?.c || 0
+}
+
+/**
+ * Lo que el TEST de ese tema puede entregar de verdad, preguntándoselo a producción
+ * (`getFilteredQuestions`, la misma función que sirve /api/questions/filtered).
+ *
+ * ── POR QUÉ NO VALE CONTAR EL SCOPE (T-522, 04/08/2026) ─────────────────────────────────────
+ * Este gate existe para impedir publicar un tema que invite a entrar y no tenga test. Contaba
+ * las preguntas del scope… y el serve aplica dos filtros que ese conteo ignoraba
+ * (`buildOfficialExamFilter` y `buildQuestionTagFilter`), así que daba ✅ a un tema que sirve
+ * CERO. Caso real: Parque Móvil del Estado, tema 11 «Maniobras de circulación», `disponible=true`,
+ * 40 preguntas en el scope y **0 servibles** — todas son de Policía Nacional, que las tiene
+ * marcadas como exclusivas suyas. La oposición está ACTIVA y con inscripción abierta.
+ *
+ * Es el mismo defecto de clase que [T-507] arregló en los contadores de pantalla, en el gate.
+ * La lección es la de `audit-served-questions.ts`: **no reimplementes el criterio, pregúntale a
+ * producción** — una tercera copia del conteo es una tercera verdad.
+ */
+async function contarServibles(topicNumber: number, positionType: string): Promise<number> {
+  try {
+    const res: any = await getFilteredQuestions({
+      topicNumber,
+      positionType,
+      numQuestions: 200,
+      selectedLaws: [],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+    } as never)
+    return res?.questions?.length ?? 0
+  } catch {
+    return -1 // no se pudo preguntar: no se inventa un veredicto (lo dice el mensaje)
+  }
 }
 
 async function main() {
@@ -123,12 +159,22 @@ async function main() {
     const scn = Number((await rows(sql`SELECT COUNT(*)::int AS c FROM topic_scope WHERE topic_id = ${t.id}`))[0]?.c || 0)
     if (!scn) { sinScope++; if (t.disponible) dispSinPreg++ ; continue }
     if (t.disponible) {
-      const q = await countQuestionsForTopic(t.id)
-      if (q === 0) { dispSinPreg++; warn(`T${t.topic_number} disponible=true pero 0 preguntas`) }
+      // Lo que decide es lo SERVIBLE, no lo escopado: un tema puede tener cientos de preguntas
+      // en su scope y no poder dar ni una (T-522).
+      const servibles = await contarServibles(t.topic_number, PT)
+      if (servibles === 0) {
+        dispSinPreg++
+        const enScope = await contarEnScope(t.id)
+        warn(enScope > 0
+          ? `T${t.topic_number} disponible=true y el test sirve 0 (tiene ${enScope} en el scope, pero son de otra oposición)`
+          : `T${t.topic_number} disponible=true pero 0 preguntas`)
+      } else if (servibles < 0) {
+        warn(`T${t.topic_number}: no se pudo preguntar a producción cuántas serviría`)
+      }
     }
   }
   if (sinScope === 0) ok('todos los topics tienen topic_scope') ; else warn(`${sinScope} topics sin topic_scope`)
-  if (dispSinPreg === 0) ok('ningún topic disponible=true sin preguntas') ; else bad(`${dispSinPreg} topics disponibles sin preguntas (no activar)`)
+  if (dispSinPreg === 0) ok('ningún topic disponible=true que el test no pueda servir') ; else bad(`${dispSinPreg} topics disponibles que sirven 0 preguntas (no activar)`)
 
   // ── FASE 2c: tabla convocatorias (SSOT del proceso que lee el catálogo/banner) ──
   console.log('\nFASE 2c — tabla convocatorias')

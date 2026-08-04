@@ -134,13 +134,18 @@ describe('GUARD: ningún CONTADOR anuncia lo que el serve no sirve', () => {
     'lib/api/topic-data/queries.ts',
     'lib/api/random-test/queries.ts',
     'lib/api/test-config/queries.ts',
+    // El GATE que decide si un tema se puede publicar es un contador más, y por contar el scope
+    // en vez de lo servible dio ✅ a un tema disponible que sirve 0 (Parque Móvil T11, T-522).
+    'scripts/audit-oposicion-completa.ts',
   ]
 
   for (const file of contadores) {
     it(`${file} descuenta las oficiales que el serve no sirve`, () => {
       const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8')
+      // Vale cualquiera de las dos formas de tener el criterio: aplicar el filtro compartido,
+      // o —mejor— preguntarle directamente a la función que sirve.
       const aplicaElFiltro =
-        /buildOfficialExamFilter|passesOfficialExamFilter|ajenas/i.test(src)
+        /buildOfficialExamFilter|passesOfficialExamFilter|ajenas|getFilteredQuestions/i.test(src)
       expect(aplicaElFiltro).toBe(true)
     })
 
