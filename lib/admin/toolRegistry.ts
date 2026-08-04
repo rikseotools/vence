@@ -72,7 +72,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'verde con el menú recortado por un `overflow-x`). Sale 2 = NO CONCLUYENTE si algún caso no ' +
       'se pudo juzgar, porque un verde PARCIAL no es un verde. Correrla al añadir cualquier cosa a ' +
       'la cabecera: es lo que faltaba cuando el menú creció hasta echar el avatar fuera del ' +
-      'viewport en las cuatro anchuras y en los dos planes. Necesita AUTH_SECRET (SSM) y solo LEE.',
+      'viewport en las cuatro anchuras y en los dos planes. Necesita AUTH_SECRET (SSM) y solo LEE. ' +
+      'El CRITERIO (guiones de medida + qué cuenta como defecto) NO vive aquí: está en ' +
+      '`lib/ui/navOverflowProbe.ts`, compartido con `e2e/smoke-cabecera-alcanzable.spec.ts`, que ' +
+      'corre el caso ANÓNIMO solo en cada PR y cada 6 h contra producción (workflow e2e-smoke). ' +
+      'Esta simulación es la que cubre los menús CON sesión, que son los largos, y por eso sigue ' +
+      'siendo la que hay que correr al tocar la cabecera; el smoke es la red de debajo. Si un caso ' +
+      'no se puede ni abrir (un modal tapando la cabecera del usuario que salga de la BD) se ' +
+      'degrada a NO CONCLUYENTE en vez de tumbar la corrida entera.',
   },
   // ── Precio de fidelidad de quien se queda sin suscripción al vaciar la cuenta antigua ──────
   crear_ofertas_fidelidad: {

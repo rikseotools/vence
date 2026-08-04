@@ -38,70 +38,23 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 import { chromium, type Browser } from 'playwright'
+import {
+  ANCHURAS_ESCRITORIO,
+  GUION_MEDIR_CABECERA,
+  GUION_MENU_MAS,
+  SELECTOR_BOTON_MAS,
+  problemasDeCabecera,
+  type MedidaCabecera,
+} from '../../lib/ui/navOverflowProbe'
 
 const URL_BASE = process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] || 'http://localhost:3000'
 const SOLO = process.argv.find((a) => a.startsWith('--solo'))?.split('=')[1]
 
-/** Anchuras de escritorio reales. 1280 es donde arranca el menú completo (`xl:`); 1920 es la
- *  pantalla más común de sobremesa y era la del usuario que lo reportó. */
-const ANCHURAS = [1280, 1440, 1536, 1920]
+/** Anchuras de escritorio reales, compartidas con el smoke de CI: si divergieran, una de las
+ *  dos comprobaciones dejaría de mirar la anchura que aprieta. */
+const ANCHURAS = ANCHURAS_ESCRITORIO
 
 interface Caso { etiqueta: string; userId: string | null; email: string | null }
-
-interface Medida {
-  hayCabecera: boolean
-  desborde: number
-  fuera: Array<{ que: string; px: number; lado: string; l: number; r: number }>
-  enBarra: number
-  totalEnlaces: number
-  hayBotonMas: boolean
-  haySesion: boolean
-}
-
-const GUION_MEDIR = `(() => {
-  const header = document.querySelector('header');
-  if (!header) return { hayCabecera: false, desborde: 0, fuera: [], enBarra: 0, totalEnlaces: 0, hayBotonMas: false, haySesion: false };
-  const fila = header.querySelector('div > div.flex.items-center.justify-between');
-  const desborde = fila ? fila.scrollWidth - fila.clientWidth : 0;
-
-  // Todo lo que el usuario puede pulsar en la barra principal. Se excluye lo que está oculto
-  // (display:none del responsive) y el MEDIDOR, que es invisible a propósito.
-  //
-  // El criterio es el CENTRO dentro del viewport, no el borde, y no es un umbral elegido a
-  // ojo: un elemento cuyo centro está en pantalla se puede pulsar, y uno cuyo centro está
-  // fuera no. Con el borde habría que inventarse una tolerancia — el logo lleva scale-125 y
-  // su caja visual asoma 1 px por la izquierda sin que eso le impida a nadie hacer clic.
-  // Que nada se vea CORTADO lo cubre la otra comprobación (la fila no desborda su contenedor),
-  // que es geometría de layout y no admite discusión.
-  const fuera = [];
-  const pulsables = header.querySelectorAll('a[href], button');
-  for (let i = 0; i < pulsables.length; i++) {
-    const el = pulsables[i];
-    if (el.closest('[aria-hidden="true"]')) continue;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
-    if (r.top > 200) continue;
-    const nombre = (el.getAttribute('aria-label') || el.textContent || el.tagName).replace(/\\s+/g, ' ').trim().slice(0, 40);
-    const centro = (r.left + r.right) / 2;
-    if (centro > window.innerWidth) fuera.push({ que: nombre, px: Math.round(centro - window.innerWidth), lado: 'derecha', l: Math.round(r.left), r: Math.round(r.right) });
-    else if (centro < 0) fuera.push({ que: nombre, px: Math.round(-centro), lado: 'izquierda', l: Math.round(r.left), r: Math.round(r.right) });
-  }
-
-  const nav = header.querySelector('nav');
-  const medidor = nav ? nav.querySelector('[aria-hidden="true"]') : null;
-  // El total sale del MEDIDOR, que por construcción lleva la lista completa. Si no está (código
-  // viejo, o alguien lo quitó) NO se puede comprobar que no falte ningún enlace — pero las
-  // otras dos comprobaciones siguen valiendo, así que el caso NO se salta: se marca.
-  const totalEnlaces = medidor ? medidor.querySelectorAll('[data-medida="enlace"]').length : 0;
-  const enBarra = nav ? nav.querySelectorAll('a[href]').length : 0;
-  const botones = nav ? nav.querySelectorAll('button[aria-haspopup="menu"]') : [];
-  // Que la sesión se haya aplicado se mira por la CAMPANA, que solo existe con sesión. Antes se
-  // deducía del medidor y eso ataba la comprobación al código nuevo: contra el código viejo
-  // todos los casos con sesión se saltaban «no concluyentes» y el resumen salía verde con 8 de
-  // 12 casos sin mirar. Un instrumento que no puede juzgar el fallo que busca no sirve.
-  const haySesion = !!header.querySelector('button[aria-label^="Notificaciones"]');
-  return { hayCabecera: true, desborde, fuera, enBarra, totalEnlaces, hayBotonMas: botones.length > 0, haySesion };
-})()`
 
 async function medirCaso(browser: Browser, caso: Caso, ancho: number, cookie: string | null) {
   const ctx = await browser.newContext({ viewport: { width: ancho, height: 925 } })
@@ -115,40 +68,31 @@ async function medirCaso(browser: Browser, caso: Caso, ancho: number, cookie: st
   // se estaría midiendo el render provisional, que a propósito enseña TODOS los enlaces.
   await page.waitForTimeout(2500)
 
-  const m: Medida = await page.evaluate(GUION_MEDIR)
+  const m: MedidaCabecera = await page.evaluate(GUION_MEDIR_CABECERA)
 
-  // Abrir «Más» y mirar lo que guarda. NO basta con CONTAR los enlaces: la primera versión
-  // de esta simulación los contaba y daba verde con el menú **recortado por un
-  // `overflow-x: auto`**, o sea invisible en pantalla. Lo cazó un pantallazo. Ahora se
-  // comprueba que cada enlace se pueda PULSAR de verdad — que en su centro conteste él y no
-  // otro elemento (`elementFromPoint`), que es lo que caza recortes, tapados y z-index malos.
+  // Abrir «Más» y mirar lo que guarda (el guion y su porqué viven en `navOverflowProbe`).
   let enMenu = 0
   let inalcanzablesEnMenu: string[] = []
+  let noSePudoAbrir: string | null = null
   if (m.hayBotonMas) {
-    await page.click('header nav button[aria-haspopup="menu"]')
-    await page.waitForTimeout(400)
-    const r: { total: number; inalcanzables: string[] } = await page.evaluate(`(() => {
-      const enlaces = Array.from(document.querySelectorAll('header nav [role="menu"] a[href]'));
-      const malos = [];
-      for (let i = 0; i < enlaces.length; i++) {
-        const el = enlaces[i];
-        const b = el.getBoundingClientRect();
-        const etiqueta = (el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 30);
-        if (b.width === 0 || b.height === 0) { malos.push(etiqueta + ' (sin caja: recortado u oculto)'); continue }
-        const cx = (b.left + b.right) / 2, cy = (b.top + b.bottom) / 2;
-        if (cx < 0 || cy < 0 || cx > innerWidth || cy > innerHeight) { malos.push(etiqueta + ' (fuera de pantalla)'); continue }
-        const golpe = document.elementFromPoint(cx, cy);
-        if (!golpe || (golpe !== el && !el.contains(golpe))) {
-          malos.push(etiqueta + ' (tapado por <' + (golpe ? golpe.tagName.toLowerCase() : 'nada') + '>)');
-        }
-      }
-      return { total: enlaces.length, inalcanzables: malos };
-    })()`)
-    enMenu = r.total
-    inalcanzablesEnMenu = r.inalcanzables
+    try {
+      await page.click(SELECTOR_BOTON_MAS, { timeout: 5000 })
+      await page.waitForTimeout(400)
+      const r: { total: number; inalcanzables: string[] } = await page.evaluate(GUION_MENU_MAS)
+      enMenu = r.total
+      inalcanzablesEnMenu = r.inalcanzables
+    } catch (e) {
+      // Que el clic no llegue NO es lo mismo que un menú roto, y la diferencia importa: los
+      // usuarios de prueba salen de la BD (`order by updated_at desc`), así que cambian entre
+      // corridas, y a uno le puede tocar un modal (onboarding, aviso) tapando la cabecera.
+      // Medido el 04/08: eso reventaba la corrida ENTERA con un TimeoutError que se lee como
+      // «la cabecera está rota», tirando por el desagüe los otros 11 casos ya medidos.
+      // Se degrada a NO CONCLUYENTE, que ya pone el veredicto en amarillo.
+      noSePudoAbrir = (e as Error).message.split('\n')[0].slice(0, 120)
+    }
   }
   await ctx.close()
-  return { ...m, enMenu, inalcanzablesEnMenu }
+  return { ...m, enMenu, inalcanzablesEnMenu, noSePudoAbrir }
 }
 
 async function main() {
@@ -199,17 +143,14 @@ async function main() {
       const nombre = `${caso.etiqueta} @${ancho}`
       if (!r.hayCabecera) { noConcluyentes.push(`${nombre}: no se encontró la cabecera`); continue }
       if (caso.userId && !r.haySesion) { noConcluyentes.push(`${nombre}: la sesión no se aplicó (sin campana)`); continue }
+      // Sin poder abrir «Más» no se puede juzgar si falta algún enlace, así que este caso no
+      // se cuenta como medido — pero tampoco como rojo: no se ha visto ningún defecto.
+      if (r.noSePudoAbrir) { noConcluyentes.push(`${nombre}: no se pudo abrir «Más» (${r.noSePudoAbrir})`); continue }
       medidos++
 
-      const problemas: string[] = []
-      // 1px de tolerancia: el subpíxel del layout no es un desborde.
-      if (r.desborde > 1) problemas.push(`la fila desborda su contenedor ${r.desborde}px`)
-      for (const f of r.fuera) problemas.push(`«${f.que}» no se puede pulsar: su centro cae ${f.px}px fuera por la ${f.lado} [${f.l}..${f.r}] de ${ancho}`)
-      if (r.totalEnlaces > 0 && r.enBarra + r.enMenu < r.totalEnlaces) {
-        problemas.push(`se han perdido ${r.totalEnlaces - r.enBarra - r.enMenu} enlaces (barra ${r.enBarra} + menú ${r.enMenu} de ${r.totalEnlaces})`)
-      }
-      if (r.hayBotonMas && r.enMenu === 0) problemas.push('el botón «Más» existe pero su menú no se abre o está vacío')
-      for (const mal of r.inalcanzablesEnMenu) problemas.push(`en el menú «Más», «${mal}» no se puede pulsar`)
+      // El veredicto es compartido con el smoke de CI (`lib/ui/navOverflowProbe.ts`): dos
+      // criterios sobre lo mismo divergen.
+      const problemas = problemasDeCabecera(r, ancho)
       if (r.totalEnlaces === 0) sinMedidor.push(nombre)
 
       if (problemas.length) {
